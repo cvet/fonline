@@ -1201,7 +1201,7 @@ bool ProtoMap::Refresh()
             mobj_child->ProtoId = proto_parent->GetChildPid( mobj_child->ParentChildIndex );
             #ifdef FONLINE_MAPPER
             SAFEREL( mobj_child->ProtoName );
-            mobj_child->ProtoName = ScriptString::Create( HASH_STR( mobj_child->ProtoId ) );
+            mobj_child->ProtoName = ScriptString::Create( Str::GetName( mobj_child->ProtoId ) );
             #endif
             delete_child = false;
             break;
@@ -1255,13 +1255,13 @@ bool ProtoMap::Refresh()
         ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
         if( !proto_item )
         {
-            WriteLogF( _FUNC_, " - Map '%s', unknown item '%s', hex x %u, hex y %u.\n", pmapName.c_str(), HASH_STR( pid ), hx, hy );
+            WriteLogF( _FUNC_, " - Map '%s', unknown item '%s', hex x %u, hex y %u.\n", pmapName.c_str(), Str::GetName( pid ), hx, hy );
             continue;
         }
 
         if( hx >= maxhx || hy >= maxhy )
         {
-            WriteLogF( _FUNC_, " - Invalid item '%s' position on map '%s', hex x %u, hex y %u.\n", HASH_STR( pid ), pmapName.c_str(), hx, hy );
+            WriteLogF( _FUNC_, " - Invalid item '%s' position on map '%s', hex x %u, hex y %u.\n", Str::GetName( pid ), pmapName.c_str(), hx, hy );
             continue;
         }
 

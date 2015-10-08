@@ -21,7 +21,7 @@ void ResourceManager::Refresh()
             StrVec file_names;
             data_file->GetFileNames( FileManager::GetDataPath( "", PT_DATA ), true, NULL, file_names );
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
-                Str::GetHash( ( *it ).c_str() );
+                Str::GetHash( it->c_str() );
 
             // Splashes
             StrVec splashes;

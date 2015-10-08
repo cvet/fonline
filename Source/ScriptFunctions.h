@@ -127,7 +127,7 @@ void Global_CreateDirectoryTree( ScriptString& path )
 {
     char tmp[ MAX_FOPATH ];
     Str::Copy( tmp, path.c_str() );
-    Str::Append( tmp, DIR_SLASH_S );
+    Str::Append( tmp, "/" );
     FileManager::FormatPath( tmp );
     CreateDirectoryTree( tmp );
 }

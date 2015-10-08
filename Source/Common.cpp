@@ -410,19 +410,11 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
 void RestoreMainDirectory()
 {
     #if defined ( FO_WINDOWS )
-    // Get executable file path
-    char path[ MAX_FOPATH ] = { 0 };
-    GetModuleFileName( GetModuleHandle( NULL ), path, MAX_FOPATH );
-
-    // Cut off executable name
-    int last = 0;
-    for( int i = 0; path[ i ]; i++ )
-        if( path[ i ] == DIR_SLASH_C )
-            last = i;
-    path[ last + 1 ] = 0;
-
-    // Set executable directory
-    SetCurrentDirectory( path );
+    char path[ MAX_FOPATH ];
+    GetModuleFileName( GetModuleHandle( NULL ), path, sizeof( path ) );
+    char dir[ MAX_FOPATH ];
+    FileManager::ExtractDir( path, dir );
+    SetCurrentDirectory( dir );
     #elif defined ( FO_LINUX )
     // Read symlink to executable
     char buf[ MAX_FOPATH ];
@@ -430,7 +422,7 @@ void RestoreMainDirectory()
         readlink( "/proc/curproc/file", buf, MAX_FOPATH ) != -1 ) // FreeBSD
     {
         string            sbuf = buf;
-        string::size_type pos = sbuf.find_last_of( DIR_SLASH_C );
+        string::size_type pos = sbuf.find_last_of( '/' );
         if( pos != string::npos )
         {
             buf[ pos ] = 0;
@@ -789,14 +781,14 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );
     FileManager::FormatPath( buf );
     *GameOpt.ClientPath = buf;
-    if( GameOpt.ClientPath->length() && GameOpt.ClientPath->c_str()[ GameOpt.ClientPath->length() - 1 ] != DIR_SLASH_C )
-        *GameOpt.ClientPath += DIR_SLASH_S;
+    if( GameOpt.ClientPath->length() && GameOpt.ClientPath->c_str()[ GameOpt.ClientPath->length() - 1 ] != '/' && GameOpt.ClientPath->c_str()[ GameOpt.ClientPath->length() - 1 ] != '\\' )
+        *GameOpt.ClientPath += "/";
     cfg_mapper.GetStr( "ServerPath", "", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "-ServerPath" );
     FileManager::FormatPath( buf );
     *GameOpt.ServerPath = buf;
-    if( GameOpt.ServerPath->length() && GameOpt.ServerPath->c_str()[ GameOpt.ServerPath->length() - 1 ] != DIR_SLASH_C )
-        *GameOpt.ServerPath += DIR_SLASH_S;
+    if( GameOpt.ServerPath->length() && GameOpt.ServerPath->c_str()[ GameOpt.ServerPath->length() - 1 ] != '/' && GameOpt.ServerPath->c_str()[ GameOpt.ServerPath->length() - 1 ] != '\\' )
+        *GameOpt.ServerPath += "/";
 
     // Server and client data
     FileManager::InitDataFiles( GameOpt.ServerPath->c_str() );
@@ -1344,8 +1336,8 @@ GameOptions::GameOptions()
     ChosenLightFlags = 0;
 
     // Mapper
-    ClientPath = ScriptString::Create( DIR_SLASH_SD );
-    ServerPath = ScriptString::Create( DIR_SLASH_SD );
+    ClientPath = ScriptString::Create( "./" );
+    ServerPath = ScriptString::Create( "./" );
     ShowCorners = false;
     ShowSpriteCuts = false;
     ShowDrawOrder = false;

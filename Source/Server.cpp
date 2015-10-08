@@ -3370,7 +3370,7 @@ bool FOServer::InitReal()
 {
     WriteLog( "***   Starting initialization   ****\n" );
 
-    FileManager::InitDataFiles( DIR_SLASH_SD );
+    FileManager::InitDataFiles( "./" );
 
     IniParser& cfg = IniParser::GetServerConfig();
 

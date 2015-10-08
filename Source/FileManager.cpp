@@ -8,54 +8,54 @@ const char* PathList[ PATH_LIST_COUNT ] =
     // Client and mapper paths
     "",
     "",
-    "art" DIR_SLASH_S,
-    "art" DIR_SLASH_S "critters" DIR_SLASH_S,
-    "art" DIR_SLASH_S "intrface" DIR_SLASH_S,
-    "art" DIR_SLASH_S "inven" DIR_SLASH_S,
-    "art" DIR_SLASH_S "items" DIR_SLASH_S,
-    "art" DIR_SLASH_S "misc" DIR_SLASH_S,
-    "art" DIR_SLASH_S "scenery" DIR_SLASH_S,
-    "art" DIR_SLASH_S "skilldex" DIR_SLASH_S,
-    "art" DIR_SLASH_S "splash" DIR_SLASH_S,
-    "art" DIR_SLASH_S "tiles" DIR_SLASH_S,
-    "art" DIR_SLASH_S "walls" DIR_SLASH_S,
-    "textures" DIR_SLASH_S,
-    "effects" DIR_SLASH_S,
+    "art/",
+    "art/critters/",
+    "art/intrface/",
+    "art/inven/",
+    "art/items/",
+    "art/misc/",
+    "art/scenery/",
+    "art/skilldex/",
+    "art/splash/",
+    "art/tiles/",
+    "art/walls/",
+    "textures/",
+    "effects/",
     "",
-    "sound" DIR_SLASH_S "music" DIR_SLASH_S,
-    "sound" DIR_SLASH_S "sfx" DIR_SLASH_S,
-    "scripts" DIR_SLASH_S,
-    "video" DIR_SLASH_S,
-    "text" DIR_SLASH_S,
-    "save" DIR_SLASH_S,
-    "fonts" DIR_SLASH_S,
-    "cache" DIR_SLASH_S,
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "Data" DIR_SLASH_S,
+    "sound/music/",
+    "sound/sfx/",
+    "scripts/",
+    "video/",
+    "text/",
+    "save/",
+    "fonts/",
+    "cache/",
     "",
     "",
     "",
     "",
     "",
     "",
-    "Save" DIR_SLASH_S,
-    "Save" DIR_SLASH_S "Clients" DIR_SLASH_S,
-    "Save" DIR_SLASH_S "Bans" DIR_SLASH_S,
-    "Logs" DIR_SLASH_S,
-    "Dumps" DIR_SLASH_S,
-    "Profiler" DIR_SLASH_S,
-    "Update" DIR_SLASH_S,
-    "Cache" DIR_SLASH_S,
+    "",
+    "Data/",
     "",
     "",
     "",
-    "Modules" DIR_SLASH_S,
+    "",
+    "",
+    "",
+    "Save/",
+    "Save/Clients/",
+    "Save/Bans/",
+    "Logs/",
+    "Dumps/",
+    "Profiler/",
+    "Update/",
+    "Cache/",
+    "",
+    "",
+    "",
+    "Modules/",
 };
 
 DataFileVec FileManager::dataFiles;
@@ -80,7 +80,7 @@ FileManager::~FileManager()
 
 void FileManager::InitDataFiles( const char* path )
 {
-    RUNTIME_ASSERT( path && ( !path[ 0 ] || path[ Str::Length( path ) - 1 ] == DIR_SLASH_C ) );
+    RUNTIME_ASSERT( path && ( !path[ 0 ] || path[ Str::Length( path ) - 1 ] == '/' || path[ Str::Length( path ) - 1 ] == '\\' ) );
 
     // Init internal data file
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -199,25 +199,13 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
         Str::Append( data_path, fname );
         FormatPath( data_path );
 
-        // Store original data path
-        char original_data_path[ MAX_FOPATH ];
-        Str::Copy( original_data_path, data_path );
-
-        // File names in data files in lower case
-        Str::Lower( data_path );
-
-        // Change slashes back to slash, because dat tree use '\'
-        for( char* str = data_path; *str; str++ )
-            if( *str == '/' )
-                *str = '\\';
-
         // Find file in every data file
         for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
         {
             DataFile* dat = *it;
             if( !no_read_data )
             {
-                fileBuf = dat->OpenFile( data_path, original_data_path, fileSize, writeTime );
+                fileBuf = dat->OpenFile( data_path, fileSize, writeTime );
                 if( fileBuf )
                 {
                     curPos = 0;
@@ -226,7 +214,7 @@ bool FileManager::LoadFile( const char* fname, int path_type, bool no_read_data 
             }
             else
             {
-                if( dat->IsFilePresent( data_path, original_data_path, fileSize, writeTime ) )
+                if( dat->IsFilePresent( data_path, fileSize, writeTime ) )
                     return true;
             }
         }
@@ -727,19 +715,10 @@ void FileManager::FormatPath( char* path )
     Str::Trim( path );
 
     // Change to valid slash
-    for( char* str = path; *str; str++ )
-    {
-        #ifdef FO_WINDOWS
-        if( *str == '/' )
-            *str = '\\';
-        #else
-        if( *str == '\\' )
-            *str = '/';
-        #endif
-    }
+    NormalizePathSlashes( path );
 
     // Erase first './'
-    while( path[ 0 ] == '.' && path[ 1 ] == DIR_SLASH_C )
+    while( path[ 0 ] == '.' && path[ 1 ] == '/' )
     {
         char* str = path;
         char* str_ = str + 2;
@@ -749,11 +728,11 @@ void FileManager::FormatPath( char* path )
     }
 
     // Skip first '../'
-    while( path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == DIR_SLASH_C )
+    while( path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == '/' )
         path += 3;
 
     // Erase './'
-    char* str = Str::Substring( path, DIR_SLASH_SD );
+    char* str = Str::Substring( path, "./" );
     if( str && ( str == path || *( str - 1 ) != '.' ) )
     {
         // Erase interval
@@ -768,14 +747,14 @@ void FileManager::FormatPath( char* path )
     }
 
     // Erase 'folder/../'
-    str = Str::Substring( path, DIR_SLASH_SDD );
+    str = Str::Substring( path, "../" );
     if( str )
     {
         // Erase interval
         char* str_ = str + 3;
         str -= 2;
         for( ; str >= path; str-- )
-            if( *str == DIR_SLASH_C )
+            if( *str == '/' )
                 break;
         if( str < path )
             str = path;
@@ -789,6 +768,9 @@ void FileManager::FormatPath( char* path )
         FormatPath( path );
         return;
     }
+
+    // Merge '//' to '/'
+    Str::Replacement( path, '/', '/', '/' );
 }
 
 void FileManager::ExtractDir( const char* path, char* dir )
@@ -797,13 +779,13 @@ void FileManager::ExtractDir( const char* path, char* dir )
     Str::Copy( buf, path );
     FormatPath( buf );
 
-    const char* str = Str::Substring( buf, DIR_SLASH_S );
+    const char* str = Str::Substring( buf, "/" );
     if( str )
     {
         str++;
         while( true )
         {
-            const char* str_ = Str::Substring( str, DIR_SLASH_S );
+            const char* str_ = Str::Substring( str, "/" );
             if( str_ )
                 str = str_ + 1;
             else
@@ -826,13 +808,13 @@ void FileManager::ExtractFileName( const char* path, char* name )
     Str::Copy( buf, path );
     FormatPath( buf );
 
-    const char* str = Str::Substring( buf, DIR_SLASH_S );
+    const char* str = Str::Substring( buf, "/" );
     if( str )
     {
         str++;
         while( true )
         {
-            const char* str_ = Str::Substring( str, DIR_SLASH_S );
+            const char* str_ = Str::Substring( str, "/" );
             if( str_ )
                 str = str_ + 1;
             else
@@ -862,7 +844,7 @@ void FileManager::MakeFilePath( const char* name, const char* path, char* result
         FormatPath( path_ );
     }
 
-    if( Str::Substring( name_, DIR_SLASH_S ) && name_[ 0 ] != '.' )
+    if( Str::Substring( name_, "/" ) && name_[ 0 ] != '.' )
     {
         // Direct
         Str::Copy( result, MAX_FOPATH, name_ );
@@ -968,7 +950,7 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
             {
                 Str::Copy( path, cur_dir );
                 Str::Append( path, fd.FileName );
-                Str::Append( path, DIR_SLASH_S );
+                Str::Append( path, "/" );
 
                 if( dirs )
                     dirs->push_back( fd );
@@ -1028,11 +1010,6 @@ void FileManager::GetDataFileNames( const char* path, bool include_subdirs, cons
     Str::Copy( path_, path );
     FormatPath( path_ );
 
-    // Change slashes back to slash, because dat tree use '\'
-    for( char* str = path_; *str; str++ )
-        if( *str == '/' )
-            *str = '\\';
-
     // Find in dat files
     for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
@@ -1045,8 +1022,8 @@ FilesCollection::FilesCollection( const char* ext, int path_type /* = PT_SERVER_
 {
     curFileIndex = 0;
     searchPath = FileManager::GetWritePath( dir ? dir : "", path_type );
-    if( searchPath.length() > 0 && searchPath[ searchPath.length() - 1 ] != DIR_SLASH_C )
-        searchPath.append( DIR_SLASH_S );
+    if( searchPath.length() > 0 && searchPath[ searchPath.length() - 1 ] != '/' && searchPath[ searchPath.length() - 1 ] != '\\' )
+        searchPath.append( "/" );
 
     FileManager::GetFolderFileNames( searchPath.c_str(), true, ext, filePaths );
     for( size_t i = 0; i < filePaths.size(); i++ )

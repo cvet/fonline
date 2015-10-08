@@ -76,11 +76,7 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
         Str::Copy( file_name, IfaceIniNames[ i ].c_str() );
         if( !Str::Substring( ini_name, "\\" ) && !Str::Substring( ini_name, "/" ) )
             FileManager::GetDataPath( file_name, PT_ART_INTRFACE, file_name );
-        for( char* str = file_name; *str; str++ )
-        {
-            if( *str == '/' )
-                *str = '\\';
-        }
+        NormalizePathSlashes( file_name );
 
         // Data files
         DataFileVec& data_files = FileManager::GetDataFiles();
@@ -89,7 +85,7 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
             DataFile* data_file = data_files[ k ];
             uint      len;
             uint64    write_time;
-            uchar*    data = data_file->OpenFile( file_name, file_name, len, write_time );
+            uchar*    data = data_file->OpenFile( file_name, len, write_time );
             if( data )
             {
                 AppendIfaceIni( data, len );

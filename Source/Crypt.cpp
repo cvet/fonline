@@ -18,7 +18,19 @@ CryptManager::CryptManager()
     }
 }
 
-uint CryptManager::Crc32( uchar* data, uint len )
+uint CryptManager::Crc32( const char* data )
+{
+    const uint CRC_MASK = 0xD202EF8D;
+    uint       value = 0;
+    while( *data )
+    {
+        value = crcTable[ (uchar) value ^ ( uchar ) * data++ ] ^ value >> 8;
+        value ^= CRC_MASK;
+    }
+    return value;
+}
+
+uint CryptManager::Crc32( const uchar* data, uint len )
 {
     const uint CRC_MASK = 0xD202EF8D;
     uint       value = 0;
@@ -30,7 +42,7 @@ uint CryptManager::Crc32( uchar* data, uint len )
     return value;
 }
 
-void CryptManager::Crc32( uchar* data, uint len, uint& crc )
+void CryptManager::Crc32( const uchar* data, uint len, uint& crc )
 {
     const uint CRC_MASK = 0xD202EF8D;
     while( len-- )
@@ -40,7 +52,51 @@ void CryptManager::Crc32( uchar* data, uint len, uint& crc )
     }
 }
 
-uint CryptManager::CheckSum( uchar* data, uint len )
+uint CryptManager::MurmurHash2( const uchar* data, uint len )
+{
+    const uint m = 0x5BD1E995;
+    const uint seed = 0;
+    const int  r = 24;
+    uint       h = seed ^ len;
+
+    while( len >= 4 )
+    {
+        uint k;
+
+        k  = data[ 0 ];
+        k |= data[ 1 ] << 8;
+        k |= data[ 2 ] << 16;
+        k |= data[ 3 ] << 24;
+
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+
+        h *= m;
+        h ^= k;
+
+        data += 4;
+        len -= 4;
+    }
+
+    switch( len )
+    {
+    case 3:
+        h ^= data[ 2 ] << 16;
+    case 2:
+        h ^= data[ 1 ] << 8;
+    case 1:
+        h ^= data[ 0 ];
+        h *= m;
+    }
+
+    h ^= h >> 13;
+    h *= m;
+    h ^= h >> 15;
+    return h;
+}
+
+uint CryptManager::CheckSum( const uchar* data, uint len )
 {
     uint value = 0;
     while( len-- )
@@ -407,9 +463,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
     // Fix path
     char data_name_[ MAX_FOPATH ];
     Str::Copy( data_name_, data_name );
-    for( uint i = 0; data_name_[ i ]; i++ )
-        if( data_name_[ i ] == '\\' )
-            data_name_[ i ] = '/';
+    NormalizePathSlashes( data_name_ );
 
     // Find data
     CacheDescriptor desc_;
@@ -529,9 +583,7 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
     // Fix path
     char data_name_[ MAX_FOPATH ];
     Str::Copy( data_name_, data_name );
-    for( uint i = 0; data_name_[ i ]; i++ )
-        if( data_name_[ i ] == '\\' )
-            data_name_[ i ] = '/';
+    NormalizePathSlashes( data_name_ );
 
     // For each descriptors
     for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )

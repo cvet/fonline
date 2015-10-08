@@ -135,7 +135,7 @@ bool Map::Generate()
         Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, mobj.Props, NULL, script_name[ 0 ] ? script_name : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
         if( !npc )
         {
-            WriteLogF( _FUNC_, " - Create npc '%s' on map '%s' fail, continue generate.\n", HASH_STR( mobj.ProtoId ), GetName() );
+            WriteLogF( _FUNC_, " - Create npc '%s' on map '%s' fail, continue generate.\n", Str::GetName( mobj.ProtoId ), GetName() );
             continue;
         }
 
@@ -193,7 +193,7 @@ bool Map::Generate()
         ProtoItem* proto = ItemMngr.GetProtoItem( pid );
         if( !proto )
         {
-            WriteLogF( _FUNC_, " - Proto item '%s' on map '%s' not found, continue generate.\n", HASH_STR( pid ), GetName() );
+            WriteLogF( _FUNC_, " - Proto item '%s' on map '%s' not found, continue generate.\n", Str::GetName( pid ), GetName() );
             continue;
         }
 
@@ -217,7 +217,7 @@ bool Map::Generate()
         Item* item = ItemMngr.CreateItem( pid );
         if( !item )
         {
-            WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", HASH_STR( pid ), GetName() );
+            WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", Str::GetName( pid ), GetName() );
             continue;
         }
 
@@ -308,7 +308,7 @@ bool Map::Generate()
         {
             if( !AddItem( item, mobj.MapX, mobj.MapY ) )
             {
-                WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failure, continue generate.\n", HASH_STR( pid ), GetName() );
+                WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failure, continue generate.\n", Str::GetName( pid ), GetName() );
                 ItemMngr.DeleteItem( item );
                 continue;
             }

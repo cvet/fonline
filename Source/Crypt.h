@@ -14,13 +14,15 @@ public:
     CryptManager();
 
     // Returns Crc32 of data
-    uint Crc32( uchar* data, uint len );
+    uint Crc32( const char* data );
+    uint Crc32( const uchar* data, uint len );
+    void Crc32( const uchar* data, uint len, uint& crc );
 
-    // Continue calculate of Crc32
-    void Crc32( uchar* data, uint len, uint& crc );
+    // Returns hash
+    uint MurmurHash2( const uchar* data, uint len );
 
     // Returns CheckSum of data
-    uint CheckSum( uchar* data, uint len );
+    uint CheckSum( const uchar* data, uint len );
 
     // Xor the data
     void XOR( char* data, uint len, char* xor_key, uint xor_len );

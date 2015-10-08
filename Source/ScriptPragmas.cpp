@@ -383,7 +383,7 @@ public:
 
         // Defaults
         bool is_defaults = false;
-        if( Str::CompareCase( access_str.c_str(), "Defaults" ) )
+        if( Str::Compare( access_str.c_str(), "Defaults" ) )
             is_defaults = true;
 
         // Property type and name
@@ -425,31 +425,31 @@ public:
         Property::AccessType access = (Property::AccessType) 0;
         if( !is_defaults )
         {
-            if( Str::CompareCase( access_str.c_str(), "PrivateCommon" ) )
+            if( Str::Compare( access_str.c_str(), "PrivateCommon" ) )
                 access = Property::PrivateCommon;
-            else if( Str::CompareCase( access_str.c_str(), "PrivateClient" ) )
+            else if( Str::Compare( access_str.c_str(), "PrivateClient" ) )
                 access = Property::PrivateClient;
-            else if( Str::CompareCase( access_str.c_str(), "PrivateServer" ) )
+            else if( Str::Compare( access_str.c_str(), "PrivateServer" ) )
                 access = Property::PrivateServer;
-            else if( Str::CompareCase( access_str.c_str(), "Public" ) )
+            else if( Str::Compare( access_str.c_str(), "Public" ) )
                 access = Property::Public;
-            else if( Str::CompareCase( access_str.c_str(), "PublicModifiable" ) )
+            else if( Str::Compare( access_str.c_str(), "PublicModifiable" ) )
                 access = Property::PublicModifiable;
-            else if( Str::CompareCase( access_str.c_str(), "PublicFullModifiable" ) )
+            else if( Str::Compare( access_str.c_str(), "PublicFullModifiable" ) )
                 access = Property::PublicFullModifiable;
-            else if( Str::CompareCase( access_str.c_str(), "Protected" ) )
+            else if( Str::Compare( access_str.c_str(), "Protected" ) )
                 access = Property::Protected;
-            else if( Str::CompareCase( access_str.c_str(), "ProtectedModifiable" ) )
+            else if( Str::Compare( access_str.c_str(), "ProtectedModifiable" ) )
                 access = Property::ProtectedModifiable;
-            else if( Str::CompareCase( access_str.c_str(), "VirtualPrivateCommon" ) )
+            else if( Str::Compare( access_str.c_str(), "VirtualPrivateCommon" ) )
                 access = Property::VirtualPrivateCommon;
-            else if( Str::CompareCase( access_str.c_str(), "VirtualPrivateClient" ) )
+            else if( Str::Compare( access_str.c_str(), "VirtualPrivateClient" ) )
                 access = Property::VirtualPrivateClient;
-            else if( Str::CompareCase( access_str.c_str(), "VirtualPrivateServer" ) )
+            else if( Str::Compare( access_str.c_str(), "VirtualPrivateServer" ) )
                 access = Property::VirtualPrivateServer;
-            else if( Str::CompareCase( access_str.c_str(), "VirtualPublic" ) )
+            else if( Str::Compare( access_str.c_str(), "VirtualPublic" ) )
                 access = Property::VirtualPublic;
-            else if( Str::CompareCase( access_str.c_str(), "VirtualProtected" ) )
+            else if( Str::Compare( access_str.c_str(), "VirtualProtected" ) )
                 access = Property::VirtualProtected;
             if( access == (Property::AccessType) 0 )
             {
@@ -485,34 +485,34 @@ public:
             const char*   opt_name = opt_entry[ 0 ].c_str();
             const string& opt_svalue = opt_entry[ 1 ];
 
-            if( Str::CompareCase( opt_name, "Group" ) )
+            if( Str::Compare( opt_name, "Group" ) )
             {
                 group = opt_svalue;
             }
-            else if( Str::CompareCase( opt_name, "Default" ) )
+            else if( Str::Compare( opt_name, "Default" ) )
             {
                 set_default_value = true;
                 default_value = ConvertParamValue( opt_svalue.c_str(), fail );
             }
-            else if( Str::CompareCase( opt_name, "Min" ) )
+            else if( Str::Compare( opt_name, "Min" ) )
             {
                 check_min_value = true;
                 min_value = ConvertParamValue( opt_svalue.c_str(), fail );
             }
-            else if( Str::CompareCase( opt_name, "Max" ) )
+            else if( Str::Compare( opt_name, "Max" ) )
             {
                 check_max_value = true;
                 max_value = ConvertParamValue( opt_svalue.c_str(), fail );
             }
-            else if( Str::CompareCase( opt_name, "Random" ) )
+            else if( Str::Compare( opt_name, "Random" ) )
             {
                 generate_random_value = ( ConvertParamValue( opt_svalue.c_str(), fail ) != 0 );
             }
-            else if( Str::CompareCase( opt_name, "GetCallabck" ) )
+            else if( Str::Compare( opt_name, "GetCallabck" ) )
             {
                 get_callback = opt_svalue;
             }
-            else if( Str::CompareCase( opt_name, "SetCallabck" ) )
+            else if( Str::Compare( opt_name, "SetCallabck" ) )
             {
                 set_callbacks.push_back( opt_svalue );
             }
@@ -628,15 +628,15 @@ public:
 
         // Parse access type
         Method::CallType call_type = (Method::CallType) 0;
-        if( Str::CompareCase( call_type_str.c_str(), "LocalServer" ) )
+        if( Str::Compare( call_type_str.c_str(), "LocalServer" ) )
             call_type = Method::LocalServer;
-        else if( Str::CompareCase( call_type_str.c_str(), "LocalClient" ) )
+        else if( Str::Compare( call_type_str.c_str(), "LocalClient" ) )
             call_type = Method::LocalClient;
-        else if( Str::CompareCase( call_type_str.c_str(), "LocalCommon" ) )
+        else if( Str::Compare( call_type_str.c_str(), "LocalCommon" ) )
             call_type = Method::LocalCommon;
-        else if( Str::CompareCase( call_type_str.c_str(), "RemoteServer" ) )
+        else if( Str::Compare( call_type_str.c_str(), "RemoteServer" ) )
             call_type = Method::RemoteServer;
-        else if( Str::CompareCase( call_type_str.c_str(), "RemoteClient" ) )
+        else if( Str::Compare( call_type_str.c_str(), "RemoteClient" ) )
             call_type = Method::RemoteClient;
         if( call_type == (Method::CallType) 0 )
         {
@@ -713,27 +713,27 @@ public:
         asIScriptEngine* engine = Script::GetEngine();
         int              group_index;
         const char*      ns;
-        if( Str::CompareCase( group, "Dialog" ) )
+        if( Str::Compare( group, "Dialog" ) )
         {
             group_index = 0;
             ns = "Content::Dialog";
         }
-        else if( Str::CompareCase( group, "Item" ) )
+        else if( Str::Compare( group, "Item" ) )
         {
             group_index = 1;
             ns = "Content::Item";
         }
-        else if( Str::CompareCase( group, "Critter" ) )
+        else if( Str::Compare( group, "Critter" ) )
         {
             group_index = 2;
             ns = "Content::Critter";
         }
-        else if( Str::CompareCase( group, "Location" ) )
+        else if( Str::Compare( group, "Location" ) )
         {
             group_index = 3;
             ns = "Content::Location";
         }
-        else if( Str::CompareCase( group, "Map" ) )
+        else if( Str::Compare( group, "Map" ) )
         {
             group_index = 4;
             ns = "Content::Map";

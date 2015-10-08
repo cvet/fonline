@@ -611,13 +611,16 @@ const char* IniParser::GetConfigFileName()
         // Call once
         processed = true;
 
-        // Get full path
+        // Get module name
         char module_name[ MAX_FOPATH ];
         # ifdef FO_WINDOWS
-        if( !GetModuleFileName( NULL, module_name, sizeof( module_name ) ) )
+        char path[ MAX_FOPATH ];
+        if( !GetModuleFileName( NULL, path, sizeof( path ) ) )
             return config_name;
+        FileManager::ExtractFileName( path, module_name );
         # else
         // Todo: Linux CommandLineArgValues[0] ?
+        return config_name;
         # endif
 
         // Change extension
@@ -630,16 +633,8 @@ const char* IniParser::GetConfigFileName()
         if( !FileExist( module_name ) )
             return config_name;
 
-        // Get file name
-        const char* name = NULL;
-        for( size_t i = 0, j = Str::Length( module_name ); i < j; i++ )
-            if( module_name[ i ] == DIR_SLASH_C )
-                name = &module_name[ i + 1 ];
-        if( !name )
-            return config_name;
-
         // Set as main
-        Str::Copy( config_name, name );
+        Str::Copy( config_name, module_name );
     }
     #endif
 

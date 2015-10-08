@@ -387,12 +387,12 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
 
             // Bind functions
             uint errors = 0;
-            #define BIND_ASSIMP_FUNC( f )                                            \
-                Ptr_ ## f = ( decltype( Ptr_ ## f ) )DLL_GetAddress( dll, # f );     \
-                if( !Ptr_ ## f )                                                     \
-                {                                                                    \
+            #define BIND_ASSIMP_FUNC( f )                                             \
+                Ptr_ ## f = ( decltype( Ptr_ ## f ) )DLL_GetAddress( dll, # f );      \
+                if( !Ptr_ ## f )                                                      \
+                {                                                                     \
                     WriteLogF( _FUNC_, " - Assimp function '" # f "' not found.\n" ); \
-                    errors++;                                                        \
+                    errors++;                                                         \
                 }
             BIND_ASSIMP_FUNC( aiImportFileFromMemory );
             BIND_ASSIMP_FUNC( aiReleaseImport );

@@ -559,7 +559,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             MeshTexture* texture = NULL;
 
             // Get texture
-            if( Str::CompareCaseCount( data.TextureName[ i ], "Parent", 6 ) )     // Parent_MeshName
+            if( Str::CompareCount( data.TextureName[ i ], "Parent", 6 ) )     // Parent_MeshName
             {
                 if( parentAnimation )
                 {
@@ -604,7 +604,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             Effect* effect = NULL;
 
             // Get effect
-            if( Str::CompareCaseCount( data.EffectInst[ i ].EffectFilename, "Parent", 6 ) )     // Parent_MeshName
+            if( Str::CompareCount( data.EffectInst[ i ].EffectFilename, "Parent", 6 ) )     // Parent_MeshName
             {
                 if( parentAnimation )
                 {
@@ -1414,21 +1414,21 @@ bool Animation3dEntity::Load( const char* name )
 
             if( closed )
             {
-                if( Str::CompareCase( token, "ContinueParsing" ) )
+                if( Str::Compare( token, "ContinueParsing" ) )
                     closed = false;
                 continue;
             }
 
-            if( Str::CompareCase( token, "StopParsing" ) )
+            if( Str::Compare( token, "StopParsing" ) )
             {
                 closed = true;
             }
-            else if( Str::CompareCase( token, "Model" ) )
+            else if( Str::Compare( token, "Model" ) )
             {
                 ( *istr ) >> buf;
                 FileManager::MakeFilePath( buf, path, model );
             }
-            else if( Str::CompareCase( token, "Include" ) )
+            else if( Str::Compare( token, "Include" ) )
             {
                 // Get swapped words
                 StrVec templates;
@@ -1492,7 +1492,7 @@ bool Animation3dEntity::Load( const char* name )
                 delete istr;
                 istr = new istrstream( &big_buf[ istr_pos ] );
             }
-            else if( Str::CompareCase( token, "Root" ) )
+            else if( Str::Compare( token, "Root" ) )
             {
                 if( layer < 0 )
                     link = &animDataDefault;
@@ -1513,23 +1513,23 @@ bool Animation3dEntity::Load( const char* name )
 
                 mesh = 0;
             }
-            else if( Str::CompareCase( token, "Mesh" ) )
+            else if( Str::Compare( token, "Mesh" ) )
             {
                 ( *istr ) >> buf;
-                if( !Str::CompareCase( buf, "All" ) )
+                if( !Str::Compare( buf, "All" ) )
                     mesh = Bone::GetHash( buf );
                 else
                     mesh = 0;
             }
-            else if( Str::CompareCase( token, "Subset" ) )
+            else if( Str::Compare( token, "Subset" ) )
             {
                 ( *istr ) >> buf;
                 WriteLogF( _FUNC_, " - Tag 'Subset' obsolete, use 'Mesh' instead.\n" );
             }
-            else if( Str::CompareCase( token, "Layer" ) || Str::CompareCase( token, "Value" ) )
+            else if( Str::Compare( token, "Layer" ) || Str::Compare( token, "Value" ) )
             {
                 ( *istr ) >> buf;
-                if( Str::CompareCase( token, "Layer" ) )
+                if( Str::Compare( token, "Layer" ) )
                     layer = (int) ConvertParamValue( buf, convert_value_fail );
                 else
                     layer_val = (int) ConvertParamValue( buf, convert_value_fail );
@@ -1537,7 +1537,7 @@ bool Animation3dEntity::Load( const char* name )
                 link = &dummy_link;
                 mesh = 0;
             }
-            else if( Str::CompareCase( token, "Attach" ) )
+            else if( Str::Compare( token, "Attach" ) )
             {
                 ( *istr ) >> buf;
                 if( layer < 0 || !layer_val )
@@ -1556,13 +1556,13 @@ bool Animation3dEntity::Load( const char* name )
 
                 mesh = 0;
             }
-            else if( Str::CompareCase( token, "Link" ) )
+            else if( Str::Compare( token, "Link" ) )
             {
                 ( *istr ) >> buf;
                 if( link->Id )
                     link->LinkBoneHash = Bone::GetHash( buf );
             }
-            else if( Str::CompareCase( token, "Cut" ) )
+            else if( Str::Compare( token, "Cut" ) )
             {
                 ( *istr ) >> buf;
                 char              fname[ MAX_FOPATH ];
@@ -1611,7 +1611,7 @@ bool Animation3dEntity::Load( const char* name )
                     // Unskin bone
                     ( *istr ) >> buf;
                     cut->UnskinBone = Bone::GetHash( buf );
-                    if( Str::CompareCase( buf, "-" ) )
+                    if( Str::Compare( buf, "-" ) )
                         cut->UnskinBone = 0;
 
                     // Unskin shape
@@ -1635,146 +1635,146 @@ bool Animation3dEntity::Load( const char* name )
                     ( *istr ) >> buf;
                 }
             }
-            else if( Str::CompareCase( token, "RotX" ) )
+            else if( Str::Compare( token, "RotX" ) )
                 ( *istr ) >> link->RotX;
-            else if( Str::CompareCase( token, "RotY" ) )
+            else if( Str::Compare( token, "RotY" ) )
                 ( *istr ) >> link->RotY;
-            else if( Str::CompareCase( token, "RotZ" ) )
+            else if( Str::Compare( token, "RotZ" ) )
                 ( *istr ) >> link->RotZ;
-            else if( Str::CompareCase( token, "MoveX" ) )
+            else if( Str::Compare( token, "MoveX" ) )
                 ( *istr ) >> link->MoveX;
-            else if( Str::CompareCase( token, "MoveY" ) )
+            else if( Str::Compare( token, "MoveY" ) )
                 ( *istr ) >> link->MoveY;
-            else if( Str::CompareCase( token, "MoveZ" ) )
+            else if( Str::Compare( token, "MoveZ" ) )
                 ( *istr ) >> link->MoveZ;
-            else if( Str::CompareCase( token, "ScaleX" ) )
+            else if( Str::Compare( token, "ScaleX" ) )
                 ( *istr ) >> link->ScaleX;
-            else if( Str::CompareCase( token, "ScaleY" ) )
+            else if( Str::Compare( token, "ScaleY" ) )
                 ( *istr ) >> link->ScaleY;
-            else if( Str::CompareCase( token, "ScaleZ" ) )
+            else if( Str::Compare( token, "ScaleZ" ) )
                 ( *istr ) >> link->ScaleZ;
-            else if( Str::CompareCase( token, "Scale" ) )
+            else if( Str::Compare( token, "Scale" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleX = link->ScaleY = link->ScaleZ = valuef;
             }
-            else if( Str::CompareCase( token, "Speed" ) )
+            else if( Str::Compare( token, "Speed" ) )
                 ( *istr ) >> link->SpeedAjust;
-            else if( Str::CompareCase( token, "RotX+" ) )
+            else if( Str::Compare( token, "RotX+" ) )
             {
                 ( *istr ) >> valuef;
                 link->RotX = ( link->RotX == 0.0f ? valuef : link->RotX + valuef );
             }
-            else if( Str::CompareCase( token, "RotY+" ) )
+            else if( Str::Compare( token, "RotY+" ) )
             {
                 ( *istr ) >> valuef;
                 link->RotY = ( link->RotY == 0.0f ? valuef : link->RotY + valuef );
             }
-            else if( Str::CompareCase( token, "RotZ+" ) )
+            else if( Str::Compare( token, "RotZ+" ) )
             {
                 ( *istr ) >> valuef;
                 link->RotZ = ( link->RotZ == 0.0f ? valuef : link->RotZ + valuef );
             }
-            else if( Str::CompareCase( token, "MoveX+" ) )
+            else if( Str::Compare( token, "MoveX+" ) )
             {
                 ( *istr ) >> valuef;
                 link->MoveX = ( link->MoveX == 0.0f ? valuef : link->MoveX + valuef );
             }
-            else if( Str::CompareCase( token, "MoveY+" ) )
+            else if( Str::Compare( token, "MoveY+" ) )
             {
                 ( *istr ) >> valuef;
                 link->MoveY = ( link->MoveY == 0.0f ? valuef : link->MoveY + valuef );
             }
-            else if( Str::CompareCase( token, "MoveZ+" ) )
+            else if( Str::Compare( token, "MoveZ+" ) )
             {
                 ( *istr ) >> valuef;
                 link->MoveZ = ( link->MoveZ == 0.0f ? valuef : link->MoveZ + valuef );
             }
-            else if( Str::CompareCase( token, "ScaleX+" ) )
+            else if( Str::Compare( token, "ScaleX+" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleX = ( link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef );
             }
-            else if( Str::CompareCase( token, "ScaleY+" ) )
+            else if( Str::Compare( token, "ScaleY+" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleY = ( link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef );
             }
-            else if( Str::CompareCase( token, "ScaleZ+" ) )
+            else if( Str::Compare( token, "ScaleZ+" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleZ = ( link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef );
             }
-            else if( Str::CompareCase( token, "Scale+" ) )
+            else if( Str::Compare( token, "Scale+" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleX = ( link->ScaleX == 0.0f ? valuef : link->ScaleX + valuef );
                 link->ScaleY = ( link->ScaleY == 0.0f ? valuef : link->ScaleY + valuef );
                 link->ScaleZ = ( link->ScaleZ == 0.0f ? valuef : link->ScaleZ + valuef );
             }
-            else if( Str::CompareCase( token, "Speed+" ) )
+            else if( Str::Compare( token, "Speed+" ) )
             {
                 ( *istr ) >> valuef;
                 link->SpeedAjust = ( link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef );
             }
-            else if( Str::CompareCase( token, "RotX*" ) )
+            else if( Str::Compare( token, "RotX*" ) )
             {
                 ( *istr ) >> valuef;
                 link->RotX = ( link->RotX == 0.0f ? valuef : link->RotX * valuef );
             }
-            else if( Str::CompareCase( token, "RotY*" ) )
+            else if( Str::Compare( token, "RotY*" ) )
             {
                 ( *istr ) >> valuef;
                 link->RotY = ( link->RotY == 0.0f ? valuef : link->RotY * valuef );
             }
-            else if( Str::CompareCase( token, "RotZ*" ) )
+            else if( Str::Compare( token, "RotZ*" ) )
             {
                 ( *istr ) >> valuef;
                 link->RotZ = ( link->RotZ == 0.0f ? valuef : link->RotZ * valuef );
             }
-            else if( Str::CompareCase( token, "MoveX*" ) )
+            else if( Str::Compare( token, "MoveX*" ) )
             {
                 ( *istr ) >> valuef;
                 link->MoveX = ( link->MoveX == 0.0f ? valuef : link->MoveX * valuef );
             }
-            else if( Str::CompareCase( token, "MoveY*" ) )
+            else if( Str::Compare( token, "MoveY*" ) )
             {
                 ( *istr ) >> valuef;
                 link->MoveY = ( link->MoveY == 0.0f ? valuef : link->MoveY * valuef );
             }
-            else if( Str::CompareCase( token, "MoveZ*" ) )
+            else if( Str::Compare( token, "MoveZ*" ) )
             {
                 ( *istr ) >> valuef;
                 link->MoveZ = ( link->MoveZ == 0.0f ? valuef : link->MoveZ * valuef );
             }
-            else if( Str::CompareCase( token, "ScaleX*" ) )
+            else if( Str::Compare( token, "ScaleX*" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleX = ( link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef );
             }
-            else if( Str::CompareCase( token, "ScaleY*" ) )
+            else if( Str::Compare( token, "ScaleY*" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleY = ( link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef );
             }
-            else if( Str::CompareCase( token, "ScaleZ*" ) )
+            else if( Str::Compare( token, "ScaleZ*" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleZ = ( link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef );
             }
-            else if( Str::CompareCase( token, "Scale*" ) )
+            else if( Str::Compare( token, "Scale*" ) )
             {
                 ( *istr ) >> valuef;
                 link->ScaleX = ( link->ScaleX == 0.0f ? valuef : link->ScaleX * valuef );
                 link->ScaleY = ( link->ScaleY == 0.0f ? valuef : link->ScaleY * valuef );
                 link->ScaleZ = ( link->ScaleZ == 0.0f ? valuef : link->ScaleZ * valuef );
             }
-            else if( Str::CompareCase( token, "Speed*" ) )
+            else if( Str::Compare( token, "Speed*" ) )
             {
                 ( *istr ) >> valuef;
                 link->SpeedAjust = ( link->SpeedAjust == 0.0f ? valuef : link->SpeedAjust * valuef );
             }
-            else if( Str::CompareCase( token, "DisableLayer" ) )
+            else if( Str::Compare( token, "DisableLayer" ) )
             {
                 ( *istr ) >> buf;
                 StrVec layers;
@@ -1794,12 +1794,12 @@ bool Animation3dEntity::Load( const char* name )
                     }
                 }
             }
-            else if( Str::CompareCase( token, "DisableSubset" ) )
+            else if( Str::Compare( token, "DisableSubset" ) )
             {
                 ( *istr ) >> buf;
                 WriteLogF( _FUNC_, " - Tag 'DisableSubset' obsolete, use 'DisableMesh' instead.\n" );
             }
-            else if( Str::CompareCase( token, "DisableMesh" ) )
+            else if( Str::Compare( token, "DisableMesh" ) )
             {
                 ( *istr ) >> buf;
                 StrVec meshes;
@@ -1807,7 +1807,7 @@ bool Animation3dEntity::Load( const char* name )
                 for( uint m = 0, n = (uint) meshes.size(); m < n; m++ )
                 {
                     uint mesh_name_hash = 0;
-                    if( !Str::CompareCase( meshes[ m ].c_str(), "All" ) )
+                    if( !Str::Compare( meshes[ m ].c_str(), "All" ) )
                         mesh_name_hash = Bone::GetHash( meshes[ m ].c_str() );
                     uint* tmp = link->DisabledMesh;
                     link->DisabledMesh = new uint[ link->DisabledMeshCount + 1 ];
@@ -1818,7 +1818,7 @@ bool Animation3dEntity::Load( const char* name )
                     link->DisabledMeshCount++;
                 }
             }
-            else if( Str::CompareCase( token, "Texture" ) )
+            else if( Str::Compare( token, "Texture" ) )
             {
                 ( *istr ) >> buf;
                 int index = (int) ConvertParamValue( buf, convert_value_fail );
@@ -1846,7 +1846,7 @@ bool Animation3dEntity::Load( const char* name )
                     link->TextureCount++;
                 }
             }
-            else if( Str::CompareCase( token, "Effect" ) )
+            else if( Str::Compare( token, "Effect" ) )
             {
                 ( *istr ) >> buf;
                 EffectInstance* effect_inst = new EffectInstance;
@@ -1870,7 +1870,7 @@ bool Animation3dEntity::Load( const char* name )
 
                 cur_effect = &link->EffectInst[ link->EffectCount - 1 ];
             }
-            else if( Str::CompareCase( token, "EffDef" ) )
+            else if( Str::Compare( token, "EffDef" ) )
             {
                 char def_name[ MAX_FOTEXT ];
                 char def_value[ MAX_FOTEXT ];
@@ -1884,13 +1884,13 @@ bool Animation3dEntity::Load( const char* name )
                 EffectDefault::EType type;
                 uchar*               data = NULL;
                 uint                 data_len = 0;
-                if( Str::CompareCase( buf, "String" ) )
+                if( Str::Compare( buf, "String" ) )
                 {
                     type = EffectDefault::String;
                     data = (uchar*) Str::Duplicate( def_value );
                     data_len = Str::Length( (char*) data );
                 }
-                else if( Str::CompareCase( buf, "Floats" ) )
+                else if( Str::Compare( buf, "Floats" ) )
                 {
                     type = EffectDefault::Floats;
                     StrVec floats;
@@ -1902,7 +1902,7 @@ bool Animation3dEntity::Load( const char* name )
                     for( uint i = 0, j = (uint) floats.size(); i < j; i++ )
                         ( (float*) data )[ i ] = (float) atof( floats[ i ].c_str() );
                 }
-                else if( Str::CompareCase( buf, "Dword" ) )
+                else if( Str::Compare( buf, "Dword" ) )
                 {
                     type = EffectDefault::Dword;
                     data_len = sizeof( uint );
@@ -1924,8 +1924,8 @@ bool Animation3dEntity::Load( const char* name )
                 cur_effect->Defaults[ cur_effect->DefaultsCount ].Data = data;
                 cur_effect->DefaultsCount++;
             }
-            else if( Str::CompareCase( token, "Anim" ) || Str::CompareCase( token, "AnimSpeed" ) ||
-                     Str::CompareCase( token, "AnimExt" ) || Str::CompareCase( token, "AnimSpeedExt" ) )
+            else if( Str::Compare( token, "Anim" ) || Str::Compare( token, "AnimSpeed" ) ||
+                     Str::Compare( token, "AnimExt" ) || Str::Compare( token, "AnimSpeedExt" ) )
             {
                 // Index animation
                 int ind1 = 0, ind2 = 0;
@@ -1934,7 +1934,7 @@ bool Animation3dEntity::Load( const char* name )
                 ( *istr ) >> buf;
                 ind2 = (int) ConvertParamValue( buf, convert_value_fail );
 
-                if( Str::CompareCase( token, "Anim" ) || Str::CompareCase( token, "AnimExt" ) )
+                if( Str::Compare( token, "Anim" ) || Str::Compare( token, "AnimExt" ) )
                 {
                     // Deferred loading
                     // Todo: Reverse play
@@ -1945,7 +1945,7 @@ bool Animation3dEntity::Load( const char* name )
                     ( *istr ) >> buf;
                     anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
 
-                    if( Str::CompareCase( token, "AnimExt" ) )
+                    if( Str::Compare( token, "AnimExt" ) )
                     {
                         anim_indexes.push_back( ( ind1 << 8 ) | ( ind2 | 0x80 ) );
                         ( *istr ) >> buf;
@@ -1959,14 +1959,14 @@ bool Animation3dEntity::Load( const char* name )
                     ( *istr ) >> valuef;
                     animSpeed.insert( PAIR( ( ind1 << 8 ) | ind2, valuef ) );
 
-                    if( Str::CompareCase( token, "AnimSpeedExt" ) )
+                    if( Str::Compare( token, "AnimSpeedExt" ) )
                     {
                         ( *istr ) >> valuef;
                         animSpeed.insert( PAIR( ( ind1 << 8 ) | ( ind2 | 0x80 ), valuef ) );
                     }
                 }
             }
-            else if( Str::CompareCase( token, "AnimLayerValue" ) )
+            else if( Str::Compare( token, "AnimLayerValue" ) )
             {
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
@@ -1985,12 +1985,12 @@ bool Animation3dEntity::Load( const char* name )
                     animLayerValues.insert( PAIR( index, IntPairVec() ) );
                 animLayerValues[ index ].push_back( IntPair( layer, value ) );
             }
-            else if( Str::CompareCase( token, "FastTransitionBone" ) )
+            else if( Str::Compare( token, "FastTransitionBone" ) )
             {
                 ( *istr ) >> buf;
                 fastTransitionBones.insert( Bone::GetHash( buf ) );
             }
-            else if( Str::CompareCase( token, "AnimEqual" ) )
+            else if( Str::Compare( token, "AnimEqual" ) )
             {
                 ( *istr ) >> valuei;
 
@@ -2005,7 +2005,7 @@ bool Animation3dEntity::Load( const char* name )
                 else if( valuei == 2 )
                     anim2Equals.insert( PAIR( ind1, ind2 ) );
             }
-            else if( Str::CompareCase( token, "RenderFrame" ) || Str::CompareCase( token, "RenderFrames" ) )
+            else if( Str::Compare( token, "RenderFrame" ) || Str::Compare( token, "RenderFrames" ) )
             {
                 anim_indexes.push_back( 0 );
                 ( *istr ) >> buf;
@@ -2021,24 +2021,24 @@ bool Animation3dEntity::Load( const char* name )
                 renderAnimProcTo = renderAnimProcFrom;
 
                 // Many frames
-                if( Str::CompareCase( token, "RenderFrames" ) )
+                if( Str::Compare( token, "RenderFrames" ) )
                     ( *istr ) >> renderAnimProcTo;
 
                 // Check
                 renderAnimProcFrom = CLAMP( renderAnimProcFrom, 0, 100 );
                 renderAnimProcTo = CLAMP( renderAnimProcTo, 0, 100 );
             }
-            else if( Str::CompareCase( token, "RenderDir" ) )
+            else if( Str::Compare( token, "RenderDir" ) )
             {
                 ( *istr ) >> buf;
 
                 renderAnimDir = (int) ConvertParamValue( buf, convert_value_fail );
             }
-            else if( Str::CompareCase( token, "DisableShadow" ) )
+            else if( Str::Compare( token, "DisableShadow" ) )
             {
                 shadowDisabled = true;
             }
-            else if( Str::CompareCase( token, "DrawSize" ) )
+            else if( Str::Compare( token, "DrawSize" ) )
             {
                 int w = 0, h = 0;
                 ( *istr ) >> buf;
@@ -2049,7 +2049,7 @@ bool Animation3dEntity::Load( const char* name )
                 drawWidth = w;
                 drawHeight = h;
             }
-            else if( Str::CompareCase( token, "DisableAnimationInterpolation" ) )
+            else if( Str::Compare( token, "DisableAnimationInterpolation" ) )
             {
                 disable_animation_interpolation = true;
             }
@@ -2108,7 +2108,7 @@ bool Animation3dEntity::Load( const char* name )
                 char* anim_name = (char*) anim_indexes[ i + 2 ];
 
                 char  anim_path[ MAX_FOPATH ];
-                if( Str::CompareCase( anim_fname, "ModelFile" ) )
+                if( Str::Compare( anim_fname, "ModelFile" ) )
                     Str::Copy( anim_path, model );
                 else
                     FileManager::MakeFilePath( anim_fname, path, anim_path );

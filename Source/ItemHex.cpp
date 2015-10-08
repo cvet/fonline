@@ -220,6 +220,8 @@ void ItemHex::RefreshAnim()
     Anim = NULL;
     if( name_hash )
         Anim = ResMngr.GetItemAnim( name_hash );
+    if( name_hash && !Anim )
+        WriteLog( "PicMap for item '%s' not found.\n", GetName() );
     if( Anim && isEffect )
         Anim = Anim->GetDir( effDir );
     if( !Anim )

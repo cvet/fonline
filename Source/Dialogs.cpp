@@ -299,9 +299,9 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
             LOAD_FAIL( "Bad not answer action." );
         #ifdef FONLINE_NPCEDITOR
         Str::Copy( script, read_str );
-        if( Str::CompareCase( script, "NOT_ANSWER_CLOSE_DIALOG" ) )
+        if( Str::Compare( script, "NOT_ANSWER_CLOSE_DIALOG" ) )
             Str::Copy( script, "None" );
-        else if( Str::CompareCase( script, "NOT_ANSWER_BEGIN_BATTLE" ) )
+        else if( Str::Compare( script, "NOT_ANSWER_BEGIN_BATTLE" ) )
             Str::Copy( script, "Attack" );
         ret_val = false;
         #else
@@ -676,9 +676,9 @@ uint DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
 {
     ret_val = false;
 
-    if( Str::CompareCase( str, "NOT_ANSWER_CLOSE_DIALOG" ) || Str::CompareCase( str, "None" ) )
+    if( Str::Compare( str, "NOT_ANSWER_CLOSE_DIALOG" ) || Str::Compare( str, "None" ) )
         return NOT_ANSWER_CLOSE_DIALOG;
-    if( Str::CompareCase( str, "NOT_ANSWER_BEGIN_BATTLE" ) || Str::CompareCase( str, "Attack" ) )
+    if( Str::Compare( str, "NOT_ANSWER_BEGIN_BATTLE" ) || Str::Compare( str, "Attack" ) )
         return NOT_ANSWER_BEGIN_BATTLE;
 
     #ifdef FONLINE_SERVER

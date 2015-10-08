@@ -961,7 +961,7 @@ bool FOServer::TransferAllNpc()
 
         if( cr->GetMapId() && !map )
         {
-            WriteLog( "Map '%s' (%u) not found, critter '%s', hx %u, hy %u. Transfered to global map.\n", HASH_STR( cr->Data.MapPid ), cr->GetMapId(), cr->GetInfo(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Map '%s' (%u) not found, critter '%s', hx %u, hy %u. Transfered to global map.\n", Str::GetName( cr->Data.MapPid ), cr->GetMapId(), cr->GetInfo(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             cr->SetMaps( 0, 0 );
             cr->Data.HexX = 0;
@@ -970,7 +970,7 @@ bool FOServer::TransferAllNpc()
 
         if( !MapMngr.AddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 2 ) )
         {
-            WriteLog( "Error parsing npc to map '%s' (%u), critter '%s', hx %u, hy %u.\n", HASH_STR( cr->Data.MapPid ), cr->GetMapId(), cr->GetInfo(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Error parsing npc to map '%s' (%u), critter '%s', hx %u, hy %u.\n", Str::GetName( cr->Data.MapPid ), cr->GetMapId(), cr->GetInfo(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }

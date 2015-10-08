@@ -492,33 +492,6 @@ Item* CritterCl::GetSlotUse( uchar num_slot, uchar& use )
     return item;
 }
 
-hash CritterCl::GetUsePicName( uchar num_slot )
-{
-    static hash use_on_pic = Str::GetHash( "art\\intrface\\useon.frm" );
-    static hash use_pic = Str::GetHash( "art\\intrface\\uset.frm" );
-    static hash reload_pic = Str::GetHash( "art\\intrface\\reload.frm" );
-
-    uchar       use;
-    Item*       item = GetSlotUse( num_slot, use );
-    if( !item )
-        return 0;
-    if( item->IsWeapon() )
-    {
-        if( use == USE_RELOAD )
-            return reload_pic;
-        if( use == USE_USE )
-            return use_on_pic;
-        if( use >= MAX_USES )
-            return 0;
-        return ( use == 0 ? item->Proto->GetWeapon_PicUse_0() : ( use == 1 ? item->Proto->GetWeapon_PicUse_1() : item->Proto->GetWeapon_PicUse_2() ) );
-    }
-    if( item->GetIsCanUseOnSmth() )
-        return use_on_pic;
-    if( item->GetIsCanUse() )
-        return use_pic;
-    return 0;
-}
-
 bool CritterCl::IsItemAim( uchar num_slot )
 {
     uchar use;

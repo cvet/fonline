@@ -184,7 +184,6 @@ public:
     int        GetFreeVolume();
     bool       IsHaveLightSources();
     Item*      GetSlotUse( uchar num_slot, uchar& use );
-    hash       GetUsePicName( uchar num_slot );
     bool       IsItemAim( uchar num_slot );
     uchar      GetUse()      { return ItemSlotMain->GetMode() & 0xF; }
     uchar      GetFullRate() { return ItemSlotMain->GetMode(); }

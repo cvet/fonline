@@ -274,7 +274,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
     ProtoItem* proto = GetProtoItem( pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", HASH_STR( pid ) );
+        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
         return NULL;
     }
 
@@ -298,7 +298,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
         item->SetScript( proto->ScriptName.c_str(), true );
         if( item->IsDestroyed )
         {
-            WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization.\n", HASH_STR( pid ) );
+            WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization.\n", Str::GetName( pid ) );
             return NULL;
         }
     }
@@ -310,7 +310,7 @@ bool ItemManager::RestoreItem( uint id, hash pid, Properties& props, uchar acc, 
     ProtoItem* proto = GetProtoItem( pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", HASH_STR( pid ) );
+        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
         return false;
     }
 

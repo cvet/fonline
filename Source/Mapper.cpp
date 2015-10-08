@@ -1546,7 +1546,7 @@ void FOMapper::MainLoop()
                     char str[ 512 ] = { 0 };
 
                     if( DrawCrExtInfo == 1 )
-                        Str::Format( str, "|0xffaabbcc ProtoId...%s\n|0xffff1122 DialogId...%s\n", HASH_STR( mobj->ProtoId ), cr->GetDialogId() );
+                        Str::Format( str, "|0xffaabbcc ProtoId...%s\n|0xffff1122 DialogId...%s\n", Str::GetName( mobj->ProtoId ), cr->GetDialogId() );
                     else if( DrawCrExtInfo == 2 )
                         Str::Format( str, "|0xff00ff00 ScriptName...%s\n|0xffff0000 FuncName...%s\n", mobj->ScriptName, mobj->FuncName );
 
@@ -1662,8 +1662,10 @@ void FOMapper::RefreshTiles( int tab )
                 {
                     int lc = tolower( *lit );
                     int rc = tolower( *rit );
-                    if( lc < rc ) return true;
-                    else if( lc > rc ) return false;
+                    if( lc < rc )
+                        return true;
+                    else if( lc > rc )
+                        return false;
                 }
                 return left.size() < right.size();
             }
@@ -1709,7 +1711,7 @@ void FOMapper::RefreshTiles( int tab )
                 string collection_name_ex;
                 if( GameOpt.SplitTilesCollection )
                 {
-                    size_t pos = fname.find_last_of( '\\' );
+                    size_t pos = fname.find_last_of( '/' );
                     if( pos == string::npos )
                         pos = 0;
                     else
@@ -1914,7 +1916,7 @@ void FOMapper::IntDraw()
             SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, w, h / 2, false, true, col );
 
             string& name = ( *CurTileNames )[ i ];
-            size_t  pos = name.find_last_of( '\\' );
+            size_t  pos = name.find_last_of( '/' );
             if( pos != string::npos )
                 SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), name.substr( pos + 1 ).c_str(), FT_NOBREAK, COLOR_TEXT_WHITE );
             else
@@ -2171,7 +2173,7 @@ void FOMapper::ObjDraw()
         DRAW_COMPONENT_TEXT( "MapObjType", "Item", true );                                  // 2
     if( o->MapObjType == MAP_OBJECT_SCENERY )
         DRAW_COMPONENT_TEXT( "MapObjType", "Scenery", true );                               // 2
-    DRAW_COMPONENT_TEXT( "ProtoName", HASH_STR( o->ProtoId ), true );                       // 3
+    DRAW_COMPONENT_TEXT( "ProtoName", Str::GetName( o->ProtoId ), true );                   // 3
     DRAW_COMPONENT( "MapX", o->MapX, true, true );                                          // 4
     DRAW_COMPONENT( "MapY", o->MapY, true, true );                                          // 5
     y += step;                                                                              // 6
@@ -4187,7 +4189,7 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     if( proto_item->IsScen() || proto_item->IsGrid() || proto_item->IsWall() )
         mobj->MapObjType = MAP_OBJECT_SCENERY;
     mobj->ProtoId = pid;
-    mobj->ProtoName = ScriptString::Create( HASH_STR( pid ) );
+    mobj->ProtoName = ScriptString::Create( Str::GetName( pid ) );
     mobj->MapX = hx;
     mobj->MapY = hy;
     mobj->LightDistance = proto_item->GetLightDistance();
@@ -4293,7 +4295,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     mobj->RunTime.MapObjId = cr->GetId();
     mobj->MapObjType = MAP_OBJECT_CRITTER;
     mobj->ProtoId = pid;
-    mobj->ProtoName = ScriptString::Create( HASH_STR( pid ) );
+    mobj->ProtoName = ScriptString::Create( Str::GetName( pid ) );
     mobj->MapX = hx;
     mobj->MapY = hy;
     mobj->MCritter.Dir = NpcDir;
@@ -5037,7 +5039,7 @@ void FOMapper::ParseCommand( const char* cmd )
                         else
                         {
                             if( same )
-                                AddMessFormat( "%d duplicates of %s on %d:%d.", same, HASH_STR( pids[ i ] ), hx, hy );
+                                AddMessFormat( "%d duplicates of %s on %d:%d.", same, Str::GetName( pids[ i ] ), hx, hy );
                             same = 0;
                         }
                     }
@@ -5218,7 +5220,7 @@ bool FOMapper::SaveLogFile()
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
     char     log_path[ MAX_FOPATH ];
-    Str::Format( log_path, DIR_SLASH_SD "mapper_messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",
+    Str::Format( log_path, "./mapper_messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",
                  dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
     void* f = FileOpen( log_path, true );
@@ -5493,7 +5495,7 @@ MapObject* FOMapper::SScriptFunc::MapperObject_AddChild( MapObject& mobj, hash p
     mobj_->RunTime.FromMap = mobj.RunTime.FromMap;
     mobj_->MapObjType = MAP_OBJECT_ITEM;
     mobj_->ProtoId = pid;
-    mobj_->ProtoName = ScriptString::Create( HASH_STR( pid ) );
+    mobj_->ProtoName = ScriptString::Create( Str::GetName( pid ) );
     mobj_->MapX = mobj.MapX;
     mobj_->MapY = mobj.MapY;
     if( !mobj.UID )
@@ -5607,7 +5609,7 @@ MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx
     mobj->RunTime.FromMap = &pmap;
     mobj->MapObjType = mobj_type;
     mobj->ProtoId = pid;
-    mobj->ProtoName = ScriptString::Create( HASH_STR( pid ) );
+    mobj->ProtoName = ScriptString::Create( Str::GetName( pid ) );
     mobj->MapX = hx;
     mobj->MapY = hy;
     if( mobj_type == MAP_OBJECT_CRITTER )

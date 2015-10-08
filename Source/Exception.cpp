@@ -91,7 +91,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     # ifdef FONLINE_SERVER
     FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
-    Str::Copy( dump_path_dir, DIR_SLASH_SD );
+    Str::Copy( dump_path_dir, "./" );
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
@@ -470,10 +470,14 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     # ifdef FONLINE_SERVER
     FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
     # else
-    Str::Copy( dump_path_dir, DIR_SLASH_SD );
+    Str::Copy( dump_path_dir, "./" );
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+
+    for( char* s = dump_path; *s; s++ )
+        if( *s == '/' )
+            *s = '\\';
 
     HANDLE f = CreateFile( dump_path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
     if( f != INVALID_HANDLE_VALUE )

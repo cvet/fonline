@@ -398,8 +398,8 @@ bool FOServer::ReloadClientScripts()
             Str::Append( fname, extensions[ d ] );
 
             // Erase first './'
-            if( Str::CompareCount( fname, DIR_SLASH_SD, Str::Length( DIR_SLASH_SD ) ) )
-                Str::EraseInterval( fname, Str::Length( DIR_SLASH_SD ) );
+            if( Str::CompareCount( fname, "./", Str::Length( "./" ) ) )
+                Str::EraseInterval( fname, Str::Length( "./" ) );
 
             // Load dll
             FileManager dll;
@@ -685,7 +685,7 @@ Item* FOServer::SScriptFunc::Container_AddItem( Item* cont, hash pid, uint count
     if( !cont->IsContainer() )
         SCRIPT_ERROR_R0( "Container item is not container type." );
     if( !ItemMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", HASH_STR( pid ) );
+        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", Str::GetName( pid ) );
     if( !count )
         count = 1;
     return ItemMngr.AddItemContainer( cont, pid, count, stack_id );
@@ -2045,7 +2045,7 @@ Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
     if( !pid )
         SCRIPT_ERROR_R0( "Proto id arg is zero." );
     if( !ItemMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid proto '%s'.", HASH_STR( pid ) );
+        SCRIPT_ERROR_R0( "Invalid proto '%s'.", Str::GetName( pid ) );
     if( !count )
         count = 1;
     return ItemMngr.AddItemCritter( cr, pid, count );
@@ -3554,7 +3554,7 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     ProtoItem* proto_item = ItemMngr.GetProtoItem( proto_id );
     if( !proto_item )
-        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", HASH_STR( proto_id ) );
+        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", Str::GetName( proto_id ) );
     if( proto_item->IsBlockLines() && !map->IsPlaceForItem( hx, hy, proto_item ) )
         SCRIPT_ERROR_R0( "No place for item." );
     if( !count )
@@ -3986,7 +3986,7 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     if( hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     if( !CrMngr.GetProto( proto_id ) )
-        SCRIPT_ERROR_R0( "Proto '%s' not found.", HASH_STR( proto_id ) );
+        SCRIPT_ERROR_R0( "Proto '%s' not found.", Str::GetName( proto_id ) );
 
     IntVec params_;
     if( params )
@@ -4800,7 +4800,7 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
     Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy, 0 );
     if( !loc )
     {
-        WriteLogF( _FUNC_, " - Unable to create location '%s'.\n", HASH_STR( loc_pid ) );
+        WriteLogF( _FUNC_, " - Unable to create location '%s'.\n", Str::GetName( loc_pid ) );
         SCRIPT_ERROR_R0( "Unable to create location." );
     }
 
@@ -5497,7 +5497,7 @@ bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, 
     prop = ( prop ? prop : Critter::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
+        SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
     string result = prop->SetGetCallback( script_func.c_str() );
     if( result != "" )
@@ -5510,7 +5510,7 @@ bool FOServer::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, 
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
+        SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
     string result = prop->AddSetCallback( script_func.c_str() );
     if( result != "" )

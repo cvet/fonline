@@ -679,11 +679,16 @@ void Str::Replacement( char* str, char from1, char from2, char to )
     }
 }
 
-char* Str::Trim( char* str )
+char* Str::Trim( char* str, uint* trimmed /* = NULL */ )
 {
     char* front = str;
     while( *front && ( *front == ' ' || *front == '\t' || *front == '\n' || *front == '\r' ) )
+    {
         front++;
+        if( trimmed )
+            *trimmed++;
+    }
+
     if( front != str )
     {
         char* str_ = str;
@@ -697,7 +702,11 @@ char* Str::Trim( char* str )
         back++;
     back--;
     while( back >= str && ( *back == ' ' || *back == '\t' || *back == '\n' || *back == '\r' ) )
+    {
         back--;
+        if( trimmed )
+            *trimmed++;
+    }
     *( back + 1 ) = 0;
 
     return str;
@@ -826,8 +835,7 @@ char* Str::GetBigBuf()
 }
 
 static Mutex                    HashNamesLocker;
-static map< hash, const char* > HashRawNames;
-static map< hash, const char* > HashFormattedNames;
+static map< hash, const char* > HashNames;
 
 #define HASH_IMPL( var, name )    hash var = Str::GetHash( name )
 HASH_IMPL( ITEM_DEF_SLOT, "default_weapon" );
@@ -840,44 +848,41 @@ HASH_IMPL( SP_GRID_EXITGRID, "exit_grid" );
 HASH_IMPL( SP_GRID_ENTIRE, "entrance" );
 HASH_IMPL( SP_MISC_SCRBLOCK, "scroll_block" );
 
-static void AddNameHash( hash hash, const char* raw_name, const char* formatted_name )
-{
-    SCOPE_LOCK( HashNamesLocker );
-
-    auto ins = HashFormattedNames.insert( PAIR( hash, Str::Duplicate( formatted_name ) ) );
-    if( !ins.second && !Str::Compare( ( *ins.first ).second, formatted_name ) )
-        WriteLog( "Hash collision detected for names '%s' and '%s', hash %08X.\n", formatted_name, ( *ins.first ).second, hash );
-    else if( ins.second )
-        HashRawNames.insert( PAIR( hash, Str::Duplicate( raw_name ) ) );
-}
-
-static uint FormatForHash( char* name )
-{
-    Str::Trim( name );
-    Str::Lower( name );
-    uint len = 0;
-    for( char* s = name; *s; s++, len++ )
-        if( *s == '\\' )
-            *s = '/';
-    return len;
-}
-
 hash Str::GetHash( const char* name )
 {
     if( !name || !name[ 0 ] )
         return 0;
 
-    char name_[ MAX_FOTEXT ];
-    Copy( name_, name );
-    uint len = FormatForHash( name_ );
+    // Copy and swap '\' to '/'
+    char        name_[ MAX_FOTEXT ];
+    uint        len = 0;
+    const char* from = name;
+    char*       to = name_;
+    for( ; *from; from++, to++, len++ )
+        *to = ( *from != '\\' ? *from : '/' );
+    *to = 0;
+
+    // Trim specific chars
+    uint trimmed = 0;
+    Str::Trim( name_, &trimmed );
+    len -= trimmed;
     if( !len )
         return 0;
 
-    hash h = Crypt.Crc32( (uchar*) name_, len );
+    // Calculate hash
+    hash h = Crypt.MurmurHash2( (const uchar*) name_, len );
     if( !h )
         return 0;
 
-    AddNameHash( h, name, name_ );
+    // Add hash
+    SCOPE_LOCK( HashNamesLocker );
+
+    auto ins = HashNames.insert( PAIR( h, nullptr ) );
+    if( ins.second )
+        ins.first->second = Str::Duplicate( name_ );
+    else if( !Str::Compare( ins.first->second, name_ ) )
+        WriteLog( "Hash collision detected for names '%s' and '%s', hash %08X.\n", name_, ins.first->second, h );
+
     return h;
 }
 
@@ -885,11 +890,11 @@ const char* Str::GetName( hash h )
 {
     SCOPE_LOCK( HashNamesLocker );
 
-    auto it = HashRawNames.find( h );
-    if( it == HashRawNames.end() )
+    auto it = HashNames.find( h );
+    if( it == HashNames.end() )
     {
         static THREAD char error[ MAX_FOTEXT ];
-        Format( error, "(unknown hash %u)", h );
+        Format( error, "(unknown hash %08X)", h );
         return error;
     }
     return it->second;
@@ -899,7 +904,7 @@ void Str::SaveHashes( void ( * save_func )( void*, size_t ) )
 {
     SCOPE_LOCK( HashNamesLocker );
 
-    for( auto it = HashRawNames.begin(); it != HashRawNames.end(); ++it )
+    for( auto it = HashNames.begin(); it != HashNames.end(); ++it )
     {
         const char* name = it->second;
         uint        name_len = Str::Length( name );
@@ -916,6 +921,8 @@ void Str::SaveHashes( void ( * save_func )( void*, size_t ) )
 
 void Str::LoadHashes( void* f, uint version )
 {
+    SCOPE_LOCK( HashNamesLocker );
+
     char buf[ 256 ];
     while( true )
     {

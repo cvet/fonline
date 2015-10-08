@@ -217,7 +217,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     ProtoCritter* proto = GetProto( proto_id );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", HASH_STR( proto_id ) );
+        WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", Str::GetName( proto_id ) );
         return NULL;
     }
 
@@ -337,7 +337,7 @@ bool CritterManager::RestoreNpc( uint id, CritData& data, Properties& props, Cri
     ProtoCritter* proto = GetProto( data.ProtoId );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", HASH_STR( data.ProtoId ) );
+        WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", Str::GetName( data.ProtoId ) );
         return false;
     }
 

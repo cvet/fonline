@@ -667,7 +667,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         errors++;
 
     #ifdef FONLINE_SERVER
-    if( !errors && Str::CompareCase( target, "Server" ) && !RebindFunctions() )
+    if( !errors && Str::Compare( target, "Server" ) && !RebindFunctions() )
         errors++;
     #endif
 
@@ -1634,7 +1634,7 @@ uint Script::BindByFuncNum( hash func_num, bool is_temp, bool disable_log /* = f
     if( !func )
     {
         if( !disable_log )
-            WriteLogF( _FUNC_, " - Function '%s' not found.\n", HASH_STR( func_num ) );
+            WriteLogF( _FUNC_, " - Function '%s' not found.\n", Str::GetName( func_num ) );
         return 0;
     }
 

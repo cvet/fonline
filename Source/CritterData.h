@@ -21,7 +21,7 @@ struct ProtoCritter: public Entity
     string   CollectionName;
     #endif
 
-    const char* GetName() { return HASH_STR( ProtoId ); }
+    const char* GetName() { return Str::GetName( ProtoId ); }
 
     #ifdef FONLINE_MAPPER
     uint GetCrType()

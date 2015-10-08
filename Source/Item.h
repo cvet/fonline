@@ -247,7 +247,7 @@ public:
     void AddRef()  {}
     void Release() {}
 
-    const char* GetName() { return HASH_STR( ProtoId ); }
+    const char* GetName() { return Str::GetName( ProtoId ); }
 
     bool IsItem()      { return !IsScen() && !IsWall() && !IsGrid(); }
     bool IsScen()      { return GetType() == ITEM_TYPE_GENERIC; }

@@ -6,7 +6,6 @@
 
 #define MAX_FOTEXT      UTF8_BUF_SIZE( 2048 )
 #define BIG_BUF_SIZE    ( 0x100000 )       // 1mb
-#define HASH_STR( h )    ( Str::GetName( h ) )
 
 namespace Str
 {
@@ -63,7 +62,7 @@ namespace Str
     void  ReplaceText( char* str, const char* from, const char* to );
     void  Replacement( char* str, char from, char to );
     void  Replacement( char* str, char from1, char from2, char to );
-    char* Trim( char* str );
+    char* Trim( char* str, uint* trimmed = NULL );
 
     void SkipLine( char*& str );
     void GoTo( char*& str, char ch, bool skip_char = false );

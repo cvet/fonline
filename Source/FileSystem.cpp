@@ -1,15 +1,24 @@
 #include "Common.h"
 
+char* NormalizePathSlashes( char* path )
+{
+    for( char* s = path; *s; s++ )
+        if( *s == '\\' )
+            *s = '/';
+    return path;
+}
+
 void CreateDirectoryTree( const char* path )
 {
     char* work = Str::Duplicate( path );
+    NormalizePathSlashes( work );
     for( char* ptr = work; *ptr; ++ptr )
     {
-        if( *ptr == DIR_SLASH_C )
+        if( *ptr == '/' )
         {
             *ptr = 0;
             MakeDirectory( work );
-            *ptr = DIR_SLASH_C;
+            *ptr = '/';
         }
     }
     delete[] work;
@@ -19,21 +28,27 @@ void CreateDirectoryTree( const char* path )
 
 # include <io.h>
 
-wchar_t* MBtoWC( const char* mb, wchar_t* buf )
+static wchar_t* MBtoWC( const char* mb, wchar_t* buf )
 {
-    if( MultiByteToWideChar( CP_UTF8, 0, mb, -1, buf, MAX_FOPATH - 1 ) == 0 )
+    char mb_[ MAX_FOPATH ];
+    Str::Copy( mb_, mb );
+    for( char* s = mb_; *s; s++ )
+        if( *s == '/' )
+            *s = '\\';
+    if( MultiByteToWideChar( CP_UTF8, 0, mb_, -1, buf, MAX_FOPATH - 1 ) == 0 )
         buf[ 0 ] = 0;
     return buf;
 }
 
-char* WCtoMB( const wchar_t* wc, char* buf )
+static char* WCtoMB( const wchar_t* wc, char* buf )
 {
     if( WideCharToMultiByte( CP_UTF8, 0, wc, -1, buf, MAX_FOPATH - 1, NULL, NULL ) == 0 )
         buf[ 0 ] = 0;
+    NormalizePathSlashes( buf );
     return buf;
 }
 
-uint64 FileTimeToUInt64( FILETIME ft )
+static uint64 FileTimeToUInt64( FILETIME ft )
 {
     union
     {
@@ -217,18 +232,6 @@ bool MakeDirectory( const char* path )
     return CreateDirectoryW( MBtoWC( path, wc ), NULL ) != FALSE;
 }
 
-char* FixPathSlashes( char* path )
-{
-    char* path_ = path;
-    while( *path )
-    {
-        if( *path == '/' )
-            *path = '\\';
-        ++path;
-    }
-    return path_;
-}
-
 bool ResolvePath( char* path )
 {
     wchar_t path_[ MAX_FOPATH ];
@@ -251,12 +254,13 @@ struct FileDesc
     bool  writeThrough;
 };
 
-void SetRelativePath( const char* fname, char* result )
+static void SetRelativePath( const char* fname, char* result )
 {
     result[ 0 ] = 0;
     if( fname[ 0 ] != '.' )
-        Str::Copy( result, MAX_FOPATH, DIR_SLASH_SD );
+        Str::Copy( result, MAX_FOPATH, "./" );
     Str::Append( result, MAX_FOPATH, fname );
+    NormalizePathSlashes( result );
 }
 
 void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
@@ -415,8 +419,8 @@ void* FileFindFirst( const char* path, const char* extension, FindData& fd )
     memzero( ff, sizeof( FileFind ) );
     ff->d = h;
     Str::Copy( ff->path, path_ );
-    if( ff->path[ Str::Length( ff->path ) - 1 ] != DIR_SLASH_C )
-        Str::Append( ff->path, DIR_SLASH_S );
+    if( ff->path[ Str::Length( ff->path ) - 1 ] != '/' )
+        Str::Append( ff->path, "/" );
     if( extension )
         Str::Copy( ff->ext, extension );
 
@@ -504,19 +508,8 @@ bool MakeDirectory( const char* path )
 {
     char path_[ MAX_FOPATH ];
     SetRelativePath( path, path_ );
-    return mkdir( path_, ALLPERMS ) == 0;
-}
 
-char* FixPathSlashes( char* path )
-{
-    char* path_ = path;
-    while( *path )
-    {
-        if( *path == '\\' )
-            *path = '/';
-        ++path;
-    }
-    return path_;
+    return mkdir( path_, ALLPERMS ) == 0;
 }
 
 bool ResolvePath( char* path )

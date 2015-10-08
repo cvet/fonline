@@ -290,7 +290,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
                 return false;
 
             if( !ItemMngr.RestoreItem( id, pid, props, acc, acc_buf ) )
-                WriteLog( "Fail to restore item '%s' with id %u.\n", HASH_STR( pid ), id );
+                WriteLog( "Fail to restore item '%s' with id %u.\n", Str::GetName( pid ), id );
         }
         else if( type == EntityType::Npc )
         {
@@ -313,7 +313,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
             }
 
             if( !CrMngr.RestoreNpc( id, data, props, tevents ) )
-                WriteLog( "Fail to restore npc '%s' with id %u on map '%s'.\n", HASH_STR( data.ProtoId ), id, HASH_STR( data.MapPid ) );
+                WriteLog( "Fail to restore npc '%s' with id %u on map '%s'.\n", Str::GetName( data.ProtoId ), id, Str::GetName( data.MapPid ) );
         }
         else if( type == EntityType::Location )
         {
@@ -342,7 +342,7 @@ bool EntityManager::LoadEntities( void* file, uint version )
             }
 
             if( !MapMngr.RestoreLocation( id, data, loc_props, map_ids, map_datas, map_props ) )
-                WriteLog( "Fail to restore location '%s' with id %u.\n", HASH_STR( data.LocPid ), id );
+                WriteLog( "Fail to restore location '%s' with id %u.\n", Str::GetName( data.LocPid ), id );
         }
         else if( type == EntityType::Custom )
         {

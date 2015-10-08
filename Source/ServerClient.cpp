@@ -896,20 +896,20 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         ProtoItem* proto_scenery = ItemMngr.GetProtoItem( target_pid );
         if( !proto_scenery )
         {
-            WriteLogF( _FUNC_, " - Proto scenery '%s' not found, critter '%s'.\n", HASH_STR( target_pid ), cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Proto scenery '%s' not found, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
             return false;
         }
 
         if( !proto_scenery->IsScen() )
         {
-            WriteLogF( _FUNC_, " - Target scenery '%s' is not scenery, critter '%s'.\n", HASH_STR( target_pid ), cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Target scenery '%s' is not scenery, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
             return false;
         }
 
         target_scen = map->Proto->GetMapScenery( hx, hy, target_pid );
         if( !target_scen )
         {
-            WriteLogF( _FUNC_, " - Scenery '%s' not found on map, critter '%s'.\n", HASH_STR( target_pid ), cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Scenery '%s' not found on map, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
             return false;
         }
     }
@@ -1055,7 +1055,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
     ProtoItem* proto = ItemMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found, critter '%s'.\n", HASH_STR( pid ), cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Proto item '%s' not found, critter '%s'.\n", Str::GetName( pid ), cr->GetInfo() );
         return false;
     }
 

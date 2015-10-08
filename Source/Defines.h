@@ -75,8 +75,8 @@
 const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 
 // Generic
-#define CLIENT_DATA                  "data" DIR_SLASH_S
-#define MAPPER_DATA                  "data" DIR_SLASH_S
+#define CLIENT_DATA                  "data/"
+#define MAPPER_DATA                  "data/"
 #define WORLD_START_TIME             "07:00 30:10:2246 x00"
 #define MAX_FOPATH                   UTF8_BUF_SIZE( 1024 )
 #define CRAFT_SEND_TIME              ( 60000 )

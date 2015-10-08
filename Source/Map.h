@@ -102,7 +102,7 @@ public:
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
     hash        GetPid()  { return Data.MapPid; }
-    const char* GetName() { return HASH_STR( Data.MapPid ); }
+    const char* GetName() { return Str::GetName( Data.MapPid ); }
 
     void AddCritter( Critter* cr );
     void AddCritterEvents( Critter* cr );
@@ -291,7 +291,7 @@ public:
     void        Update();
     bool        IsVisible()     { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
     hash        GetPid()        { return Data.LocPid; }
-    const char* GetName()       { return HASH_STR( Data.LocPid ); }
+    const char* GetName()       { return Str::GetName( Data.LocPid ); }
     uint        GetRadius()     { return Data.Radius; }
     MapVec&     GetMapsNoLock() { return locMaps; };
     void        GetMaps( MapVec& maps, bool lock );

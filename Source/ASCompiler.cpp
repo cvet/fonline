@@ -122,11 +122,11 @@ int main( int argc, char* argv[] )
     char path[ MAX_FOTEXT ];
     char path_prep[ MAX_FOTEXT ];
     Str::Copy( path, arg_path );
-    FixPathSlashes( path );
+    NormalizePathSlashes( path );
     if( arg_path_prep )
     {
         Str::Copy( path_prep, arg_path_prep );
-        FixPathSlashes( path_prep );
+        NormalizePathSlashes( path_prep );
     }
     else
     {

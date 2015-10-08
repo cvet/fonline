@@ -343,7 +343,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
             // Check version
             if( version == -1 )
             {
-                if( !Str::CompareCase( key, "Version" ) )
+                if( !Str::Compare( key, "Version" ) )
                 {
                     WriteLogF( _FUNC_, " - Font '%s' 'Version' signature not found (used deprecated format of 'fofnt').\n", fname );
                     return false;
@@ -358,23 +358,23 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
             }
 
             // Get value
-            if( Str::CompareCase( key, "Image" ) )
+            if( Str::Compare( key, "Image" ) )
             {
                 str >> image_name;
             }
-            else if( Str::CompareCase( key, "LineHeight" ) )
+            else if( Str::Compare( key, "LineHeight" ) )
             {
                 str >> font.LineHeight;
             }
-            else if( Str::CompareCase( key, "YAdvance" ) )
+            else if( Str::Compare( key, "YAdvance" ) )
             {
                 str >> font.YAdvance;
             }
-            else if( Str::CompareCase( key, "End" ) )
+            else if( Str::Compare( key, "End" ) )
             {
                 break;
             }
-            else if( Str::CompareCase( key, "Letter" ) )
+            else if( Str::Compare( key, "Letter" ) )
             {
                 str.getline( letter_buf, sizeof( letter_buf ) );
                 char* utf8_letter_begin = Str::Substring( letter_buf, "'" );
@@ -399,19 +399,19 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
             if( !cur_letter )
                 continue;
 
-            if( Str::CompareCase( key, "PositionX" ) )
+            if( Str::Compare( key, "PositionX" ) )
                 str >> cur_letter->PosX;
-            else if( Str::CompareCase( key, "PositionY" ) )
+            else if( Str::Compare( key, "PositionY" ) )
                 str >> cur_letter->PosY;
-            else if( Str::CompareCase( key, "Width" ) )
+            else if( Str::Compare( key, "Width" ) )
                 str >> cur_letter->W;
-            else if( Str::CompareCase( key, "Height" ) )
+            else if( Str::Compare( key, "Height" ) )
                 str >> cur_letter->H;
-            else if( Str::CompareCase( key, "OffsetX" ) )
+            else if( Str::Compare( key, "OffsetX" ) )
                 str >> cur_letter->OffsX;
-            else if( Str::CompareCase( key, "OffsetY" ) )
+            else if( Str::Compare( key, "OffsetY" ) )
                 str >> cur_letter->OffsY;
-            else if( Str::CompareCase( key, "XAdvance" ) )
+            else if( Str::Compare( key, "XAdvance" ) )
                 str >> cur_letter->XAdvance;
         }
 

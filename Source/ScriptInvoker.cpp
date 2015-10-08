@@ -261,7 +261,7 @@ bool ScriptInvoker::LoadDeferredCalls( void* f, uint version )
         call.BindId = Script::BindByFuncNum( call.FuncNum, false );
         if( !call.BindId )
         {
-            WriteLog( "Unable to bind script function '%s' for event %u. Skip event.\n", HASH_STR( call.FuncNum ), call.Id );
+            WriteLog( "Unable to bind script function '%s' for event %u. Skip event.\n", Str::GetName( call.FuncNum ), call.Id );
             continue;
         }
 

@@ -424,7 +424,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
 
         // Check pattern '...Texts/lang/file'
         StrVec dirs;
-        Str::ParseLine( name_with_path, DIR_SLASH_C, dirs, Str::ParseLineDummy );
+        Str::ParseLine( name_with_path, '/', dirs, Str::ParseLineDummy );
         if( dirs.size() >= 3 && dirs[ dirs.size() - 3 ] == "Texts" && dirs[ dirs.size() - 2 ] == lang_name )
         {
             for( int i = 0; i < TEXTMSG_COUNT; i++ )

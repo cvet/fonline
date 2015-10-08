@@ -378,7 +378,7 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     ProtoItem* proto = ItemMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto not found '%s'.\n", HASH_STR( pid ) );
+        WriteLogF( _FUNC_, " - Proto not found '%s'.\n", Str::GetName( pid ) );
         return 0;
     }
 
@@ -440,7 +440,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     ItemHex* item = GetItemById( id );
     if( !item )
     {
-        WriteLogF( _FUNC_, " - Item '%s' not found.\n", HASH_STR( id ) );
+        WriteLogF( _FUNC_, " - Item '%s' not found.\n", Str::GetName( id ) );
         return;
     }
 
@@ -650,7 +650,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
     ProtoItem* proto = ItemMngr.GetProtoItem( eff_pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto '%s' not found.\n", HASH_STR( eff_pid ) );
+        WriteLogF( _FUNC_, " - Proto '%s' not found.\n", Str::GetName( eff_pid ) );
         return false;
     }
 
@@ -3782,7 +3782,7 @@ bool HexManager::LoadMap( hash map_pid )
 
         if( !ParseScenery( cur_scen ) )
         {
-            WriteLog( "Unable to parse scenery item '%s'.\n", HASH_STR( cur_scen.ProtoId ) );
+            WriteLog( "Unable to parse scenery item '%s'.\n", Str::GetName( cur_scen.ProtoId ) );
             continue;
         }
     }
@@ -3876,7 +3876,7 @@ void HexManager::UnloadMap()
 
 void HexManager::GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen )
 {
-    WriteLog( "Get hash of map '%s'...", HASH_STR( map_pid ) );
+    WriteLog( "Get hash of map '%s'...", Str::GetName( map_pid ) );
 
     hash_tiles = 0;
     hash_walls = 0;
@@ -4068,7 +4068,7 @@ bool HexManager::ParseScenery( SceneryCl& scen )
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item )
     {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", HASH_STR( pid ) );
+        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
         return false;
     }
 
@@ -4237,7 +4237,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             ProtoCritter* proto = CrMngr.GetProto( o->ProtoId );
             if( !proto )
             {
-                WriteLog( "Proto '%s' npc not found.\n", HASH_STR( o->ProtoId ) );
+                WriteLog( "Proto '%s' npc not found.\n", Str::GetName( o->ProtoId ) );
                 continue;
             }
 

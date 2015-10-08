@@ -386,7 +386,7 @@ bool MapManager::RestoreLocation( uint id, Location::LocData& data, Properties& 
     // Check pids
     if( !GetProtoLocation( data.LocPid ) )
     {
-        WriteLog( "Proto location '%s' is not loaded.\n", HASH_STR( data.LocPid ) );
+        WriteLog( "Proto location '%s' is not loaded.\n", Str::GetName( data.LocPid ) );
         return false;
     }
     bool map_fail = false;
@@ -394,7 +394,7 @@ bool MapManager::RestoreLocation( uint id, Location::LocData& data, Properties& 
     {
         if( !GetProtoMap( map_datas[ j ].MapPid ) )
         {
-            WriteLog( "Proto map '%s' of proto location '%s' is not loaded.\n", HASH_STR( map_datas[ j ].MapPid ), HASH_STR( data.LocPid ) );
+            WriteLog( "Proto map '%s' of proto location '%s' is not loaded.\n", Str::GetName( map_datas[ j ].MapPid ), Str::GetName( data.LocPid ) );
             map_fail = true;
         }
     }
@@ -405,7 +405,7 @@ bool MapManager::RestoreLocation( uint id, Location::LocData& data, Properties& 
     Location* loc = CreateLocation( data.LocPid, data.WX, data.WY, id );
     if( !loc )
     {
-        WriteLog( "Can't create location '%s'.\n", HASH_STR( data.LocPid ) );
+        WriteLog( "Can't create location '%s'.\n", Str::GetName( data.LocPid ) );
         return false;
     }
     loc->Data = data;
@@ -416,7 +416,7 @@ bool MapManager::RestoreLocation( uint id, Location::LocData& data, Properties& 
         Map* map = CreateMap( map_datas[ j ].MapPid, loc, map_ids[ j ] );
         if( !map )
         {
-            WriteLog( "Can't create map '%s' for location '%s'.\n", HASH_STR( map_datas[ j ].MapPid ), HASH_STR( data.LocPid ) );
+            WriteLog( "Can't create map '%s' for location '%s'.\n", Str::GetName( map_datas[ j ].MapPid ), Str::GetName( data.LocPid ) );
             return false;
         }
         map->Data = map_datas[ j ];
@@ -494,13 +494,13 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     ProtoLocation* loc_proto = GetProtoLocation( loc_pid );
     if( !loc_proto )
     {
-        WriteLogF( _FUNC_, " - Location proto '%s' is not loaded.\n", HASH_STR( loc_pid ) );
+        WriteLogF( _FUNC_, " - Location proto '%s' is not loaded.\n", Str::GetName( loc_pid ) );
         return NULL;
     }
 
     if( !wx || !wy || wx >= GM__MAXZONEX * GameOpt.GlobalMapZoneLength || wy >= GM__MAXZONEY * GameOpt.GlobalMapZoneLength )
     {
-        WriteLogF( _FUNC_, " - Invalid location '%s' coordinates.\n", HASH_STR( loc_pid ) );
+        WriteLogF( _FUNC_, " - Invalid location '%s' coordinates.\n", Str::GetName( loc_pid ) );
         return NULL;
     }
 
@@ -514,7 +514,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
             Map* map = CreateMap( map_pid, loc, 0 );
             if( !map )
             {
-                WriteLogF( _FUNC_, " - Create map '%s' fail.\n", HASH_STR( map_pid ) );
+                WriteLogF( _FUNC_, " - Create map '%s' fail.\n", Str::GetName( map_pid ) );
                 MapVec& maps = loc->GetMapsNoLock();
                 for( auto it = maps.begin(); it != maps.end(); ++it )
                     ( *it )->Release();
@@ -538,7 +538,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
         Map* map = *it;
         if( !map->Generate() )
         {
-            WriteLogF( _FUNC_, " - Generate map '%s' fail.\n", HASH_STR( map->GetPid() ) );
+            WriteLogF( _FUNC_, " - Generate map '%s' fail.\n", Str::GetName( map->GetPid() ) );
             loc->Data.ToGarbage = true;
             MapMngr.RunGarbager();
             return NULL;
@@ -553,7 +553,7 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
     ProtoMap* proto_map = GetProtoMap( map_pid );
     if( !proto_map )
     {
-        WriteLogF( _FUNC_, " - Proto map '%s' is not loaded.\n", HASH_STR( map_pid ) );
+        WriteLogF( _FUNC_, " - Proto map '%s' is not loaded.\n", Str::GetName( map_pid ) );
         return NULL;
     }
 

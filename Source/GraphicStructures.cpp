@@ -390,10 +390,7 @@ void Bone::FixAfterLoad( Bone* root_bone )
 
 uint Bone::GetHash( const char* name )
 {
-    uint hash = 2166136261U;
-    for( uint i = 0, j = Str::Length( name ); i < j; i++ )
-        hash = 16777619U * hash ^ (uint) name[ i ];
-    return hash;
+    return Str::GetHash( name );
 }
 
 //

@@ -645,7 +645,7 @@ void FOClient::UpdateFiles( bool early_call )
                         #ifdef FO_OSX_IOS
                         FileManager::InitDataFiles( "../../Documents/" );
                         #endif
-                        FileManager::InitDataFiles( DIR_SLASH_SD CLIENT_DATA );
+                        FileManager::InitDataFiles( "./" CLIENT_DATA );
                     }
 
                     return;
@@ -4320,7 +4320,7 @@ void FOClient::Net_OnChosenAddItem()
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item )
     {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", HASH_STR( pid ) );
+        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
         return;
     }
 
@@ -4591,7 +4591,7 @@ void FOClient::Net_OnFlyEffect()
 
     if( !HexMngr.RunEffect( eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy ) )
     {
-        WriteLogF( _FUNC_, " - Run effect '%s' fail.\n", HASH_STR( eff_pid ) );
+        WriteLogF( _FUNC_, " - Run effect '%s' fail.\n", Str::GetName( eff_pid ) );
         return;
     }
 }
@@ -5905,7 +5905,7 @@ void FOClient::Net_OnPlayersBarterSetHide()
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item )
     {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", HASH_STR( pid ) );
+        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
         Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
         return;
     }
@@ -7936,8 +7936,6 @@ const char* FOClient::GetHoloText( uint str_num )
 
 const char* FOClient::FmtGameText( uint str_num, ... )
 {
-//	return Str::FormatBuf(MsgGame->GetStr(str_num),(void*)(_ADDRESSOF(str_num)+_INTSIZEOF(str_num)));
-
     static char res[ MAX_FOTEXT ];
     static char str[ MAX_FOTEXT ];
 
@@ -10870,7 +10868,7 @@ bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, 
     prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
+        SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
     string result = prop->SetGetCallback( script_func.c_str() );
     if( result != "" )
@@ -10883,7 +10881,7 @@ bool FOClient::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, 
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property '%s' not found.", HASH_STR( prop_enum_value ) );
+        SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
     string result = prop->AddSetCallback( script_func.c_str() );
     if( result != "" )

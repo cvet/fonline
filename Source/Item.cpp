@@ -318,7 +318,7 @@ bool Item::SetScript( const char* script_name, bool first_time )
         SetScriptId( func_num );
     }
 
-    if( GetScriptId() && Script::PrepareScriptFuncContext( GetScriptId(), _FUNC_, Str::FormatBuf( "Item '%s' (%u)", HASH_STR( GetProtoId() ), GetId() ) ) )
+    if( GetScriptId() && Script::PrepareScriptFuncContext( GetScriptId(), _FUNC_, Str::FormatBuf( "Item '%s' (%u)", GetName(), GetId() ) ) )
     {
         Script::SetArgObject( this );
         Script::SetArgBool( first_time );
@@ -333,7 +333,7 @@ bool Item::PrepareScriptFunc( int num_scr_func )
         return false;
     if( !FuncId[ num_scr_func ] )
         return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Item '%s' (%u)", HASH_STR( GetProtoId() ), GetId() ) );
+    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Item '%s' (%u)", GetName(), GetId() ) );
 }
 
 void Item::EventFinish( bool deleted )

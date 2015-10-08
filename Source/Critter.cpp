@@ -1347,7 +1347,7 @@ void Critter::EraseItem( Item* item, bool send )
     if( it != invItems.end() )
         invItems.erase( it );
     else
-		WriteLogF( _FUNC_, " - Item '%s' (%u) not found, critter '%s'.\n", item->GetName(), item->GetId(), GetInfo() );
+        WriteLogF( _FUNC_, " - Item '%s' (%u) not found, critter '%s'.\n", item->GetName(), item->GetId(), GetInfo() );
 
     if( !GetMapId() && GroupMove && GroupMove->CarId == item->GetId() )
     {
