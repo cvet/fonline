@@ -3629,16 +3629,16 @@ bool FOServer::InitReal()
     NetIOCompletionPort = CreateIoCompletionPort( INVALID_HANDLE_VALUE, nullptr, 0, NetIOThreadsCount );
     if( !NetIOCompletionPort )
     {
-        WriteLogF( nullptr, "Can't create IO Completion Port, error %u.\n", GetLastError() );
+        WriteLog( "Can't create IO Completion Port, error %u.\n", GetLastError() );
         shutdown( ListenSock, SD_BOTH );
         closesocket( ListenSock );
         return false;
     }
 
-    WriteLogF( nullptr, "Starting net listen thread.\n" );
+    WriteLog( "Starting net listen thread.\n" );
     ListenThread.Start( Net_Listen, "NetListen" );
 
-    WriteLogF( nullptr, "Starting net work threads, count %u.\n", NetIOThreadsCount );
+    WriteLog( "Starting net work threads, count %u.\n", NetIOThreadsCount );
     NetIOThreads = new Thread[ NetIOThreadsCount ];
     for( uint i = 0; i < NetIOThreadsCount; i++ )
     {
