@@ -17,12 +17,12 @@ ClVec                       FOServer::LogClients;
 Thread                      FOServer::ListenThread;
 SOCKET                      FOServer::ListenSock = INVALID_SOCKET;
 #if defined ( USE_LIBEVENT )
-event_base*                 FOServer::NetIOEventHandler = NULL;
+event_base*                 FOServer::NetIOEventHandler = nullptr;
 Thread                      FOServer::NetIOThread;
 uint                        FOServer::NetIOThreadsCount = 0;
 #else // IOCP
-HANDLE                      FOServer::NetIOCompletionPort = NULL;
-Thread*                     FOServer::NetIOThreads = NULL;
+HANDLE                      FOServer::NetIOCompletionPort = nullptr;
+Thread*                     FOServer::NetIOThreads = nullptr;
 uint                        FOServer::NetIOThreadsCount = 0;
 #endif
 ClVec                       FOServer::ConnectedClients;
@@ -33,7 +33,7 @@ size_t                      FOServer::ClientsSaveDataCount = 0;
 PUCharVec                   FOServer::WorldSaveData;
 size_t                      FOServer::WorldSaveDataBufCount = 0;
 size_t                      FOServer::WorldSaveDataBufFreeSize = 0;
-void*                       FOServer::DumpFile = NULL;
+void*                       FOServer::DumpFile = nullptr;
 MutexEvent                  FOServer::DumpBeginEvent;
 MutexEvent                  FOServer::DumpEndEvent;
 uint                        FOServer::SaveWorldIndex = 0;
@@ -109,7 +109,7 @@ void FOServer::Finish()
     }
     if( DumpFile )
         FileClose( DumpFile );
-    DumpFile = NULL;
+    DumpFile = nullptr;
     SaveWorldIndex = 0;
     SaveWorldTime = 0;
     SaveWorldNextTick = 0;
@@ -138,7 +138,7 @@ void FOServer::Finish()
     #if defined ( USE_LIBEVENT )
     // Net IO events
     event_base* eb = NetIOEventHandler;
-    NetIOEventHandler = NULL;
+    NetIOEventHandler = nullptr;
     if( eb )
         event_base_loopbreak( eb );
     NetIOThread.Wait();
@@ -147,13 +147,13 @@ void FOServer::Finish()
     NetIOThreadsCount = 0;
     #else // IOCP
     for( uint i = 0; i < NetIOThreadsCount; i++ )
-        PostQueuedCompletionStatus( NetIOCompletionPort, 0, 1, NULL );
+        PostQueuedCompletionStatus( NetIOCompletionPort, 0, 1, nullptr );
     for( uint i = 0; i < NetIOThreadsCount; i++ )
         NetIOThreads[ i ].Wait();
     SAFEDELA( NetIOThreads );
     NetIOThreadsCount = 0;
     CloseHandle( NetIOCompletionPort );
-    NetIOCompletionPort = NULL;
+    NetIOCompletionPort = nullptr;
     #endif
 
     // Managers
@@ -204,7 +204,7 @@ string FOServer::GetIngamePlayersStatistics()
         Client*     cl = players[ i ];
         const char* name = cl->GetName();
         Map*        map = MapMngr.GetMap( cl->GetMapId(), false );
-        Location*   loc = ( map ? map->GetLocation( false ) : NULL );
+        Location*   loc = ( map ? map->GetLocation( false ) : nullptr );
 
         Str::Format( str_loc, "%s (%u) %s (%u)", map ? loc->GetName() : "", map ? loc->GetId() : 0, map ? map->GetName() : "", map ? map->GetId() : 0 );
         Str::Format( str, "%-20s %-10u %-15s %-7s %-8s %-5u %-5u %s\n",
@@ -244,7 +244,7 @@ void FOServer::DisconnectClient( Client* cl )
 {
     // Manage saves, exit from game
     uint    id = cl->GetId();
-    Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : NULL );
+    Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : nullptr );
     if( cl_ && cl_ == cl )
     {
         EraseSaveClient( cl->GetId() );
@@ -253,7 +253,7 @@ void FOServer::DisconnectClient( Client* cl )
         SETFLAG( cl->Flags, FCRIT_DISCONNECT );
         if( cl->GetMapId() )
         {
-            cl->SendA_Action( ACTION_DISCONNECT, 0, NULL );
+            cl->SendA_Action( ACTION_DISCONNECT, 0, nullptr );
         }
         else if( cl->GroupMove )
         {
@@ -270,7 +270,7 @@ void FOServer::DisconnectClient( Client* cl )
 void FOServer::RemoveClient( Client* cl )
 {
     uint    id = cl->GetId();
-    Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : NULL );
+    Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : nullptr );
     if( cl_ && cl_ == cl )
     {
         cl->EventFinish( cl->Data.ClientToDelete );
@@ -317,7 +317,7 @@ void FOServer::RemoveClient( Client* cl )
                     MapMngr.GM_GroupSetMove( group, group->ToX, group->ToY, 0.0f );                // Stop others
                 }
             }
-            cl->GroupMove = NULL;
+            cl->GroupMove = nullptr;
         }
 
         // Deferred saving
@@ -494,7 +494,7 @@ void FOServer::MainLoop()
         if( Timer::FastTick() >= SaveWorldNextTick )
         {
             SynchronizeLogicThreads();
-            SaveWorld( NULL );
+            SaveWorld( nullptr );
             SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
             ResynchronizeLogicThreads();
         }
@@ -539,7 +539,7 @@ void FOServer::MainLoop()
     Job::ProcessDeferredReleasing();
 
     // Save
-    SaveWorld( NULL );
+    SaveWorld( nullptr );
 
     // Last unlock
     sync_mngr->UnlockAll();
@@ -567,7 +567,7 @@ void FOServer::Logic_Work( void* data )
         return;
 
     // Add sleep job for current thread
-    Job::PushBack( Job( JOB_THREAD_LOOP, NULL, true ) );
+    Job::PushBack( Job( JOB_THREAD_LOOP, nullptr, true ) );
 
     // Get synchronize manager
     SyncManager* sync_mngr = SyncManager::GetForCurThread();
@@ -738,7 +738,7 @@ void FOServer::Logic_Work( void* data )
                 uint LoopMin;
                 uint LoopMax;
                 uint LagsCount;
-            } static THREAD* stats = NULL;
+            } static THREAD* stats = nullptr;
             if( !stats )
             {
                 stats = new StatisticsThread();
@@ -834,7 +834,7 @@ void FOServer::Net_Listen( void* )
         sockaddr_in from;
         #ifdef FO_WINDOWS
         socklen_t   addrsize = sizeof( from );
-        SOCKET      sock = WSAAccept( ListenSock, (sockaddr*) &from, &addrsize, NULL, NULL );
+        SOCKET      sock = WSAAccept( ListenSock, (sockaddr*) &from, &addrsize, nullptr, 0 );
         #else
         socklen_t   addrsize = sizeof( from );
         SOCKET      sock = accept( ListenSock, (sockaddr*) &from, &addrsize );
@@ -886,7 +886,7 @@ void FOServer::Net_Listen( void* )
         // ZLib
         cl->Zstrm.zalloc = zlib_alloc;
         cl->Zstrm.zfree = zlib_free;
-        cl->Zstrm.opaque = NULL;
+        cl->Zstrm.opaque = nullptr;
         int result = deflateInit( &cl->Zstrm, Z_BEST_SPEED );
         if( result != Z_OK )
         {
@@ -920,7 +920,7 @@ void FOServer::Net_Listen( void* )
 
         // First receive queue
         DWORD bytes;
-        if( WSARecv( cl->Sock, &cl->NetIOIn->Buffer, 1, &bytes, &cl->NetIOIn->Flags, &cl->NetIOIn->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
+        if( WSARecv( cl->Sock, &cl->NetIOIn->Buffer, 1, &bytes, &cl->NetIOIn->Flags, &cl->NetIOIn->OV, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
         {
             WriteLogF( _FUNC_, " - First recv fail, error '%s'.\n", GetLastSocketError() );
             closesocket( sock );
@@ -940,14 +940,14 @@ void FOServer::Net_Listen( void* )
         // Setup timeouts
         # if !defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
         timeval tv = { 0, 5 * 1000 };  // Check output data every 5ms
-        bufferevent_set_timeouts( bev, NULL, &tv );
+        bufferevent_set_timeouts( bev, nullptr, &tv );
         # endif
 
         // Setup bandwidth
         const uint                  rate = 100000; // 100kb per second
-        static ev_token_bucket_cfg* rate_cfg = NULL;
+        static ev_token_bucket_cfg* rate_cfg = nullptr;
         if( !rate_cfg )
-            rate_cfg = ev_token_bucket_cfg_new( rate, rate, rate, rate, NULL );
+            rate_cfg = ev_token_bucket_cfg_new( rate, rate, rate, rate, nullptr );
         if( !Singleplayer )
             bufferevent_set_rate_limit( bev, rate_cfg );
 
@@ -1042,7 +1042,7 @@ void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
                 bufferevent_disable( bev, EV_READ );
 
             // Disable timeout
-            bufferevent_set_timeouts( bev, NULL, NULL );
+            bufferevent_set_timeouts( bev, nullptr, nullptr );
         }
 
         // Try send again
@@ -1261,7 +1261,7 @@ void FOServer::NetIO_Input( Client::NetIOArg* io )
 
     io->Flags = 0;
     DWORD bytes;
-    if( WSARecv( cl->Sock, &io->Buffer, 1, &bytes, &io->Flags, &io->OV, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
+    if( WSARecv( cl->Sock, &io->Buffer, 1, &bytes, &io->Flags, &io->OV, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
         WriteLogF( _FUNC_, " - Recv fail, error '%s'.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
@@ -1329,7 +1329,7 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
 
     // Send
     DWORD bytes;
-    if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, NULL ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
+    if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
         WriteLogF( _FUNC_, " - Send fail, error '%s'.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
@@ -1591,7 +1591,7 @@ void FOServer::Process( ClientPtr& cl )
                     }
                 };
                 cl_ = cl;
-                Process_Command( cl->Bin, LogCB::Message, cl, NULL );
+                Process_Command( cl->Bin, LogCB::Message, cl, nullptr );
                 BIN_END( cl );
                 continue;
             }
@@ -1729,7 +1729,7 @@ void FOServer::Process( ClientPtr& cl )
             }
             case NETMSG_SEND_REFRESH_ME:
             {
-                cl->Send_LoadMap( NULL );
+                cl->Send_LoadMap( nullptr );
                 BIN_END( cl );
                 continue;
             }
@@ -2032,7 +2032,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     bool allow_command = false;
     if( Script::PrepareContext( ServerFunctions.PlayerAllowCommand, _FUNC_, cl_ ? cl_->GetInfo() : "AdminPanel" ) )
     {
-        ScriptString* sstr = ( cl_ ? NULL : ScriptString::Create( admin_panel ) );
+        ScriptString* sstr = ( cl_ ? nullptr : ScriptString::Create( admin_panel ) );
         Script::SetArgObject( cl_ );
         Script::SetArgObject( sstr );
         Script::SetArgUChar( cmd );
@@ -2226,7 +2226,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             break;
         }
 
-        KillCritter( cr, ANIM2_DEAD_FRONT, NULL );
+        KillCritter( cr, ANIM2_DEAD_FRONT, nullptr );
         logcb( "Critter is dead." );
     }
     break;
@@ -2428,7 +2428,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        if( ItemMngr.AddItemCritter( cl_, pid, count ) != NULL )
+        if( ItemMngr.AddItemCritter( cl_, pid, count ) != nullptr )
             logcb( "Item(s) added." );
         else
             logcb( "Item(s) added fail." );
@@ -2449,7 +2449,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ADMIN_PANEL;
 
         Map* map = MapMngr.GetMap( cl_->GetMapId() );
-        Npc* npc = CrMngr.CreateNpc( pid, NULL, NULL, NULL, map, hex_x, hex_y, dir, true );
+        Npc* npc = CrMngr.CreateNpc( pid, nullptr, nullptr, nullptr, map, hex_x, hex_y, dir, true );
         if( !npc )
             logcb( "Npc not created." );
         else
@@ -2480,7 +2480,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         SynchronizeLogicThreads();
 
-        Script::Undef( NULL );
+        Script::Undef( nullptr );
         Script::Define( "__SERVER" );
         Script::Define( "__VERSION %d", FONLINE_VERSION );
         if( Script::ReloadScripts( "Server", "SERVER_" ) )
@@ -2508,7 +2508,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         {
             char dir[ MAX_FOPATH ];
             FileManager::ExtractDir( path, dir );
-            if( Script::LoadModuleFromFile( module_name, file, dir, NULL ) )
+            if( Script::LoadModuleFromFile( module_name, file, dir, nullptr ) )
             {
                 if( Script::BindImportedFunctions() )
                     logcb( "Complete." );
@@ -2651,7 +2651,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         SynchronizeLogicThreads();
 
-        if( MapMngr.ReloadMaps( NULL ) == 0 )
+        if( MapMngr.ReloadMaps( nullptr ) == 0 )
             logcb( "Reload proto maps complete, without fails." );
         else
             logcb( "Reload proto maps complete, with fails." );
@@ -3137,7 +3137,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
             char               func_code[ MAX_FOTEXT ];
             Str::Format( func_code, "void Execute(){\n%s;\n}", command );
-            asIScriptFunction* func = NULL;
+            asIScriptFunction* func = nullptr;
             int                r = mod->CompileFunction( "DevConsole", func_code, -1, asCOMP_ADD_TO_MODULE, &func );
             if( r >= 0 )
             {
@@ -3153,7 +3153,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         {
             WriteLog( "%s : Set function '%s'.\n", console_name, command );
 
-            mod->CompileFunction( "DevConsole", command, 0, asCOMP_ADD_TO_MODULE, NULL );
+            mod->CompileFunction( "DevConsole", command, 0, asCOMP_ADD_TO_MODULE, nullptr );
         }
         else if( cmd == CMD_DEV_GVAR )
         {
@@ -3498,7 +3498,7 @@ bool FOServer::InitReal()
     if( GameOpt.GameServer && !Singleplayer )
     {
         // Copy of data
-        if( !LoadWorld( NULL ) )
+        if( !LoadWorld( nullptr ) )
             return false;
 
         // Try generate world if not exist
@@ -3524,7 +3524,7 @@ bool FOServer::InitReal()
     #endif
 
     #ifdef FO_WINDOWS
-    ListenSock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED );
+    ListenSock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED );
     #else
     ListenSock = socket( AF_INET, SOCK_STREAM, 0 );
     #endif
@@ -3626,19 +3626,19 @@ bool FOServer::InitReal()
     Client::SendData = &NetIO_Output;
     # endif
     #else // IOCP
-    NetIOCompletionPort = CreateIoCompletionPort( INVALID_HANDLE_VALUE, NULL, NULL, NetIOThreadsCount );
+    NetIOCompletionPort = CreateIoCompletionPort( INVALID_HANDLE_VALUE, nullptr, 0, NetIOThreadsCount );
     if( !NetIOCompletionPort )
     {
-        WriteLogF( NULL, "Can't create IO Completion Port, error %u.\n", GetLastError() );
+        WriteLogF( nullptr, "Can't create IO Completion Port, error %u.\n", GetLastError() );
         shutdown( ListenSock, SD_BOTH );
         closesocket( ListenSock );
         return false;
     }
 
-    WriteLogF( NULL, "Starting net listen thread.\n" );
+    WriteLogF( nullptr, "Starting net listen thread.\n" );
     ListenThread.Start( Net_Listen, "NetListen" );
 
-    WriteLogF( NULL, "Starting net work threads, count %u.\n", NetIOThreadsCount );
+    WriteLogF( nullptr, "Starting net work threads, count %u.\n", NetIOThreadsCount );
     NetIOThreads = new Thread[ NetIOThreadsCount ];
     for( uint i = 0; i < NetIOThreadsCount; i++ )
     {
@@ -3664,7 +3664,7 @@ bool FOServer::InitReal()
         bool        is_const;
         const char* config_group;
         void*       pointer;
-        if( engine->GetGlobalPropertyByIndex( i, &name, NULL, &type_id, &is_const, &config_group, &pointer ) >= 0 )
+        if( engine->GetGlobalPropertyByIndex( i, &name, nullptr, &type_id, &is_const, &config_group, &pointer ) >= 0 )
         {
             const char* cmd_name = Str::Substring( cmd_line, name );
             if( cmd_name )
@@ -3728,7 +3728,7 @@ bool FOServer::InitCrafts( LangPackVec& lang_packs )
     WriteLog( "FixBoy load crafts...\n" );
     MrFixit.Finish();
 
-    LanguagePack* main_lang = NULL;
+    LanguagePack* main_lang = nullptr;
     for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
     {
         LanguagePack& lang = *it;
@@ -3830,7 +3830,7 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
         }
     }
 
-    DialogPack* pack = NULL;
+    DialogPack* pack = nullptr;
     uint        index = 0;
     while( pack = DlgMngr.GetDialogByIndex( index++ ) )
     {
@@ -3858,7 +3858,7 @@ bool FOServer::InitLangPacksLocations( LangPackVec& lang_packs )
     for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
         it->Msg[ TEXTMSG_LOCATIONS ].Clear();
 
-    ProtoLocation* ploc = NULL;
+    ProtoLocation* ploc = nullptr;
     uint           index = 0;
     while( ploc = MapMngr.GetProtoLocationByIndex( index++ ) )
     {
@@ -4098,8 +4098,8 @@ bool FOServer::LoadClientsData()
     FileManager::GetDataPath( "", PT_SERVER_CLIENTS, clients_path );
 
     // Get cache for clients
-    istrstream* cache_str = NULL;
-    char*       cache_buf = NULL;
+    istrstream* cache_str = nullptr;
+    char*       cache_buf = nullptr;
     char        cache_fname[ MAX_FOPATH ];
     Str::Copy( cache_fname, FileManager::GetDataPath( "ClientsList.txt", PT_SERVER_CACHE ) );
 
@@ -4129,7 +4129,7 @@ bool FOServer::LoadClientsData()
 
     // Scan folder for names if no cache
     FindData    file_find_data;
-    void*       file_find = NULL;
+    void*       file_find = nullptr;
     FileManager file_cache_write;
 
     // Index clients
@@ -4270,7 +4270,7 @@ bool FOServer::LoadClientsData()
     if( file_find )
     {
         FileFindClose( file_find );
-        file_find = NULL;
+        file_find = nullptr;
     }
     SAFEDEL( cache_str );
     SAFEDELA( cache_buf );
@@ -4282,7 +4282,7 @@ bool FOServer::LoadClientsData()
 FOServer::ClientData* FOServer::GetClientData( uint id )
 {
     auto it = ClientsData.find( id );
-    return it != ClientsData.end() ? it->second : NULL;
+    return it != ClientsData.end() ? it->second : nullptr;
 }
 
 bool FOServer::SaveClient( Client* cl, bool deferred )
@@ -4316,7 +4316,7 @@ bool FOServer::SaveClient( Client* cl, bool deferred )
         FileWrite( f, cl->PassHash, sizeof( cl->PassHash ) );
         FileWrite( f, &cl->Data, sizeof( cl->Data ) );
         #pragma MESSAGE( "Rework props storing workaround 1" )
-        static THREAD void* File = NULL;
+        static THREAD void* File = nullptr;
         File = f;
         auto                save_func = [] ( void* buf, size_t len )
         {
@@ -4490,7 +4490,7 @@ void FOServer::SaveWorld( const char* fname )
     else
     {
         FileClose( DumpFile );
-        DumpFile = NULL;
+        DumpFile = nullptr;
         SaveWorldIndex++;
         if( SaveWorldIndex >= WORLD_SAVE_MAX_INDEX )
             SaveWorldIndex = 0;
@@ -4503,7 +4503,7 @@ bool FOServer::LoadWorld( const char* fname )
 {
     UnloadWorld();
 
-    void* f = NULL;
+    void* f = nullptr;
     if( !fname )
     {
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
@@ -4745,7 +4745,7 @@ void FOServer::Dump_Work( void* data )
             FileWrite( fc, csd.PasswordHash, sizeof( csd.PasswordHash ) );
             FileWrite( fc, &csd.Data, sizeof( csd.Data ) );
             #pragma MESSAGE( "Rework props storing workaround 2" )
-            static THREAD void* File = NULL;
+            static THREAD void* File = nullptr;
             File = fc;
             auto                save_func = [] ( void* buf, size_t len )
             {
@@ -4794,7 +4794,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     StrVec      dummy_vec;
     StrVec      all_dirs_path;
     FindDataVec all_dirs;
-    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_MODULES ), true, NULL, dummy_vec, NULL, &all_dirs_path, &all_dirs );
+    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_MODULES ), true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
     for( size_t d = 0; d < all_dirs.size(); d++ )
     {
         if( !Str::CompareCase( all_dirs[ d ].FileName, "Resources" ) )
@@ -4802,11 +4802,11 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
         StrVec      resources_dirs_path;
         FindDataVec resources_dirs;
-        FileManager::GetFolderFileNames( FileManager::GetDataPath( all_dirs_path[ d ].c_str(), PT_SERVER_MODULES ), false, NULL, dummy_vec, NULL, &resources_dirs_path, &resources_dirs );
+        FileManager::GetFolderFileNames( FileManager::GetDataPath( all_dirs_path[ d ].c_str(), PT_SERVER_MODULES ), false, nullptr, dummy_vec, nullptr, &resources_dirs_path, &resources_dirs );
         for( size_t r = 0; r < resources_dirs.size(); r++ )
         {
             const char*     res_name = resources_dirs[ r ].FileName;
-            FilesCollection resources( NULL, PT_SERVER_MODULES, ( all_dirs_path[ d ] + res_name ).c_str() );
+            FilesCollection resources( nullptr, PT_SERVER_MODULES, ( all_dirs_path[ d ] + res_name ).c_str() );
 
             if( !Str::Substring( res_name, "_Raw" ) )
             {
@@ -4819,7 +4819,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                 {
                     while( resources.IsNextFile() )
                     {
-                        FileManager& file = resources.GetNextFile( NULL, NULL, true );
+                        FileManager& file = resources.GetNextFile( nullptr, nullptr, true );
                         if( file.GetWriteTime() > zip_file.GetWriteTime() )
                         {
                             skip_making_zip = false;
@@ -4845,7 +4845,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                         while( resources.IsNextFile() )
                         {
                             const char*  name;
-                            FileManager& file = resources.GetNextFile( NULL, &name );
+                            FileManager& file = resources.GetNextFile( nullptr, &name );
                             FileManager* converted_file = ResourceConverter::Convert( name, file );
                             if( !converted_file )
                             {
@@ -4855,7 +4855,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
                             zip_fileinfo zfi;
                             memzero( &zfi, sizeof( zfi ) );
-                            if( zipOpenNewFileInZip( zip, name, &zfi, NULL, 0, NULL, 0, NULL, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
+                            if( zipOpenNewFileInZip( zip, name, &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
                             {
                                 if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
                                     WriteLog( "Can't write file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
@@ -4870,7 +4870,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                             if( converted_file != &file )
                                 delete converted_file;
                         }
-                        zipClose( zip, NULL );
+                        zipClose( zip, nullptr );
                     }
                     else
                     {
@@ -4886,7 +4886,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
                 while( resources.IsNextFile() )
                 {
                     const char*  path;
-                    FileManager& file = resources.GetNextFile( NULL, &path );
+                    FileManager& file = resources.GetNextFile( nullptr, &path );
                     char         fname[ MAX_FOTEXT ];
                     FileManager::ExtractFileName( path, fname );
                     FileManager  update_file;
@@ -4916,11 +4916,11 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     }
 
     // Delete unnecessary update files
-    FilesCollection update_files( NULL, PT_SERVER_UPDATE );
+    FilesCollection update_files( nullptr, PT_SERVER_UPDATE );
     while( update_files.IsNextFile() )
     {
         const char* name;
-        update_files.GetNextFile( NULL, &name );
+        update_files.GetNextFile( nullptr, &name );
         if( !update_file_names.count( name ) )
             FileManager::DeleteFile( FileManager::GetDataPath( name, PT_SERVER_UPDATE ) );
     }
@@ -4977,7 +4977,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
     // Fill files
     StrVec file_paths;
-    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, NULL, file_paths );
+    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, nullptr, file_paths );
     for( size_t i = 0; i < file_paths.size(); i++ )
     {
         string      file_path = file_paths[ i ];

@@ -9,18 +9,18 @@ void Sprite::Unvalidate()
         if( ValidCallback )
         {
             *ValidCallback = false;
-            ValidCallback = NULL;
+            ValidCallback = nullptr;
         }
         Valid = false;
 
         if( Parent )
         {
-            Parent->Child = NULL;
+            Parent->Child = nullptr;
             Parent->Unvalidate();
         }
         if( Child )
         {
-            Child->Parent = NULL;
+            Child->Parent = nullptr;
             Child->Unvalidate();
         }
     }
@@ -30,9 +30,9 @@ Sprite* Sprite::GetIntersected( int ox, int oy )
 {
     // Check for cutting
     if( ox < 0 || oy < 0 )
-        return NULL;
+        return nullptr;
     if( !CutType )
-        return SprMngr.IsPixNoTransp( PSprId ? *PSprId : SprId, ox, oy ) ? this : NULL;
+        return SprMngr.IsPixNoTransp( PSprId ? *PSprId : SprId, ox, oy ) ? this : nullptr;
 
     // Find root sprite
     Sprite* spr = this;
@@ -44,10 +44,10 @@ Sprite* Sprite::GetIntersected( int ox, int oy )
     while( spr )
     {
         if( oxf >= spr->CutX && oxf < spr->CutX + spr->CutW )
-            return SprMngr.IsPixNoTransp( spr->PSprId ? *spr->PSprId : spr->SprId, ox, oy ) ? spr : NULL;
+            return SprMngr.IsPixNoTransp( spr->PSprId ? *spr->PSprId : spr->SprId, ox, oy ) ? spr : nullptr;
         spr = spr->Child;
     }
-    return NULL;
+    return nullptr;
 }
 
 #define SPRITE_SETTER( func, type, val )                                                           \
@@ -102,9 +102,9 @@ void Sprite::SetLight( int corner, uchar* light, int maxhx, int maxhy )
     }
     else
     {
-        Light = NULL;
-        LightRight = NULL;
-        LightLeft = NULL;
+        Light = nullptr;
+        LightRight = nullptr;
+        LightLeft = nullptr;
     }
 
     if( Parent )
@@ -153,9 +153,9 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
     spr->OffsX = ox;
     spr->OffsY = oy;
     spr->Alpha = alpha;
-    spr->Light = NULL;
-    spr->LightRight = NULL;
-    spr->LightLeft = NULL;
+    spr->Light = nullptr;
+    spr->LightRight = nullptr;
+    spr->LightLeft = nullptr;
     spr->Valid = true;
     spr->ValidCallback = callback;
     if( callback )
@@ -166,8 +166,8 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
     spr->Color = 0;
     spr->FlashMask = 0;
     spr->DrawEffect = effect;
-    spr->Parent = NULL;
-    spr->Child = NULL;
+    spr->Parent = nullptr;
+    spr->Child = nullptr;
 
     // Cutting
     if( cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL )
@@ -208,7 +208,7 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
             if( xx + ww > widthf )
                 ww = widthf - xx;
 
-            Sprite& spr_ = ( i != h1 ? PutSprite( spritesTreeSize, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, id, id_ptr, ox, oy, alpha, effect, NULL ) : *spr );
+            Sprite& spr_ = ( i != h1 ? PutSprite( spritesTreeSize, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, id, id_ptr, ox, oy, alpha, effect, nullptr ) : *spr );
             if( i != h1 )
                 spr_.Parent = parent;
             parent->Child = &spr_;
@@ -341,7 +341,7 @@ void Sprites::Unvalidate()
     spritesTreeSize = 0;
 }
 
-SprInfoVec* SortSpritesSurfSprData = NULL;
+SprInfoVec* SortSpritesSurfSprData = nullptr;
 void Sprites::SortBySurfaces()
 {
     struct Sorter

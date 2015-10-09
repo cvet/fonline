@@ -226,8 +226,8 @@ public:
     PropertyRegistrator( bool is_server, const char* class_name );
     ~PropertyRegistrator();
     bool      Init();
-    Property* Register( const char* type_name, const char* name, Property::AccessType access, const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
-    void      SetDefaults( const char* group = NULL, bool* generate_random_value = NULL, int64* default_value = NULL, int64* min_value = NULL, int64* max_value = NULL );
+    Property* Register( const char* type_name, const char* name, Property::AccessType access, const char* group = nullptr, bool* generate_random_value = nullptr, int64* default_value = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
+    void      SetDefaults( const char* group = nullptr, bool* generate_random_value = nullptr, int64* default_value = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
     void      FinishRegistration();
     uint      GetCount();
     Property* Find( const char* property_name );

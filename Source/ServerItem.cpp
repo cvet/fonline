@@ -7,22 +7,22 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
     // Checks
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item || !count )
-        return NULL;
+        return nullptr;
 
     // Check blockers
     if( check_blocks && proto_item->IsBlockLines() && !map->IsPlaceForItem( hx, hy, proto_item ) )
-        return NULL;
+        return nullptr;
 
     // Create instance
     Item* item = ItemMngr.CreateItem( pid, count );
     if( !item )
-        return NULL;
+        return nullptr;
 
     // Add on map
     if( !map->AddItem( item, hx, hy ) )
     {
         ItemMngr.DeleteItem( item );
-        return NULL;
+        return nullptr;
     }
 
     // Create childs

@@ -43,7 +43,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     char full_path[ MAX_FOPATH ] = { 0 };
     char path[ MAX_FOPATH ] = { 0 };
     char name[ MAX_FOPATH ] = { 0 };
-    GetModuleFileName( NULL, full_path, MAX_FOPATH );
+    GetModuleFileName( nullptr, full_path, MAX_FOPATH );
     FileManager::ExtractDir( full_path, path );
     FileManager::ExtractFileName( full_path, name );
     if( Str::Substring( name, "Singleplayer" ) || Str::Substring( CommandLine, "Singleplayer" ) )
@@ -96,7 +96,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
         // Start server
         Str::Format( command_line, "\"%s%s\" -singleplayer %p %p %s -logpath %s", server_path, server_exe, map_file, client_process, server_cmdline, path );
-        if( !CreateProcess( NULL, command_line, NULL, NULL, TRUE, NORMAL_PRIORITY_CLASS, NULL, server_path, &sui, &server ) )
+        if( !CreateProcess( nullptr, command_line, nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, server_path, &sui, &server ) )
         {
             WriteLog( "Can't start server process, error %u.\n", GetLastError() );
             return 0;
@@ -109,7 +109,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     // Check for already runned window
     #ifndef DEV_VERSION
     # ifdef FO_WINDOWS
-    HANDLE h = CreateEvent( NULL, FALSE, FALSE, "fonline_instance" );
+    HANDLE h = CreateEvent( nullptr, FALSE, FALSE, "fonline_instance" );
     if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
     {
         ShowMessage( "FOnline engine instance is already running." );

@@ -9,12 +9,12 @@ NativeCallbackVec PropertyRegistrator::GlobalSetCallbacks;
 
 Property::Property()
 {
-    nativeSendCallback = NULL;
-    nativeSetCallback = NULL;
+    nativeSendCallback = nullptr;
+    nativeSetCallback = nullptr;
     setCallbacksAnyOldValue = false;
     getCallbackLocked = false;
     setCallbackLocked = false;
-    sendIgnoreEntity = NULL;
+    sendIgnoreEntity = nullptr;
 }
 
 void* Property::CreateComplexValue( uchar* data, uint data_size )
@@ -141,7 +141,7 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
     {
         RUNTIME_ASSERT( !"Unexpected type" );
     }
-    return NULL;
+    return nullptr;
 }
 
 void Property::AddRefComplexValue( void* value )
@@ -175,7 +175,7 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
     {
         ScriptString* str = *(ScriptString**) base_ptr;
         data_size = ( str ? str->length() : 0 );
-        return data_size ? (uchar*) str->c_str() : NULL;
+        return data_size ? (uchar*) str->c_str() : nullptr;
     }
     else if( dataType == Property::Array )
     {
@@ -215,12 +215,12 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
                 }
                 return init_buf;
             }
-            return NULL;
+            return nullptr;
         }
         else
         {
             data_size = ( arr ? arr->GetSize() * arr->GetElementSize() : 0 );
-            return data_size ? (uchar*) arr->At( 0 ) : NULL;
+            return data_size ? (uchar*) arr->At( 0 ) : nullptr;
         }
     }
     else if( dataType == Property::Dict )
@@ -355,13 +355,13 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
                 return init_buf;
             }
         }
-        return NULL;
+        return nullptr;
     }
     else
     {
         RUNTIME_ASSERT( !"Unexpected type" );
     }
-    return NULL;
+    return nullptr;
 }
 
 void Property::GenericGet( Entity* entity, void* ret_value )
@@ -411,7 +411,7 @@ void Property::GenericGet( Entity* entity, void* ret_value )
                     if( val )
                         AddRefComplexValue( val );
                     else
-                        val = CreateComplexValue( NULL, 0 );
+                        val = CreateComplexValue( nullptr, 0 );
                 }
                 return;
             }
@@ -553,8 +553,8 @@ void Property::GenericSet( Entity* entity, void* new_value )
     }
 
     // Get current complex value
-    void* complex_value = NULL;
-    void* cur_complex_value = NULL;
+    void* complex_value = nullptr;
+    void* cur_complex_value = nullptr;
     if( dataType != Property::POD )
     {
         RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
@@ -1008,7 +1008,7 @@ Properties::Properties( PropertyRegistrator* reg )
 Properties::~Properties()
 {
     registrator->podDataPool.push_back( podData );
-    podData = NULL;
+    podData = nullptr;
 
     for( size_t i = 0; i < complexData.size(); i++ )
         SAFEDELA( complexData[ i ] );
@@ -1050,7 +1050,7 @@ void* Properties::FindData( const char* property_name )
     Property* prop = registrator->Find( property_name );
     RUNTIME_ASSERT( prop );
     RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) );
-    return prop ? &podData[ prop->podDataOffset ] : NULL;
+    return prop ? &podData[ prop->podDataOffset ] : nullptr;
 }
 
 uint Properties::StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes )
@@ -1130,7 +1130,7 @@ void Properties::RestoreData( UCharVecVec& all_data )
     UIntVec   all_data_sizes( all_data.size() );
     for( size_t i = 0; i < all_data.size(); i++ )
     {
-        all_data_ext[ i ] = ( !all_data[ i ].empty() ? &all_data[ i ][ 0 ] : NULL );
+        all_data_ext[ i ] = ( !all_data[ i ].empty() ? &all_data[ i ][ 0 ] : nullptr );
         all_data_sizes[ i ] = (uint) all_data[ i ].size();
     }
     RestoreData( all_data_ext, all_data_sizes );
@@ -1237,7 +1237,7 @@ bool Properties::Load( void* file, uint version )
         Property* prop = registrator->Find( name );
         if( prop && Str::Compare( prop->typeName.c_str(), type_name ) )
         {
-            prop->SetPropRawData( this, data_size ? &data[ 0 ] : NULL, data_size );
+            prop->SetPropRawData( this, data_size ? &data[ 0 ] : nullptr, data_size );
         }
         else
         {
@@ -1245,7 +1245,7 @@ bool Properties::Load( void* file, uint version )
             unresolved_property->Name = Str::Duplicate( name );
             unresolved_property->TypeName = Str::Duplicate( type_name );
             unresolved_property->DataSize = data_size;
-            unresolved_property->Data = ( data_size ? new uchar[ data_size ] : NULL );
+            unresolved_property->Data = ( data_size ? new uchar[ data_size ] : nullptr );
             if( data_size )
                 memcpy( unresolved_property->Data, &data[ 0 ], data_size );
             unresolvedProperties.push_back( unresolved_property );
@@ -1369,11 +1369,11 @@ PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_cla
     scriptClassName = script_class_name;
     wholePodDataSize = 0;
     complexPropertiesCount = 0;
-    defaultGroup = NULL;
-    defaultGenerateRandomValue = NULL;
-    defaultDefaultValue = NULL;
-    defaultMinValue = NULL;
-    defaultMaxValue = NULL;
+    defaultGroup = nullptr;
+    defaultGenerateRandomValue = nullptr;
+    defaultDefaultValue = nullptr;
+    defaultMinValue = nullptr;
+    defaultMaxValue = nullptr;
 }
 
 PropertyRegistrator::~PropertyRegistrator()
@@ -1453,7 +1453,7 @@ Property* PropertyRegistrator::Register(
     if( registrationFinished )
     {
         WriteLogF( _FUNC_, " - Registration of class properties is finished.\n" );
-        return NULL;
+        return nullptr;
     }
 
     // Check defaults
@@ -1472,7 +1472,7 @@ Property* PropertyRegistrator::Register(
     if( type_id < 0 )
     {
         WriteLogF( _FUNC_, " - Invalid type '%s'.\n", type_name );
-        return NULL;
+        return nullptr;
     }
 
     Property::DataType data_type;
@@ -1490,7 +1490,7 @@ Property* PropertyRegistrator::Register(
     if( type_id & asTYPEID_OBJHANDLE )
     {
         WriteLogF( _FUNC_, " - Invalid property type '%s', handles not allowed.\n", type_name );
-        return NULL;
+        return nullptr;
     }
     else if( !( type_id & asTYPEID_MASK_OBJECT ) )
     {
@@ -1501,14 +1501,14 @@ Property* PropertyRegistrator::Register(
         if( primitive_size <= 0 )
         {
             WriteLogF( _FUNC_, " - Invalid property POD type '%s'.\n", type_name );
-            return NULL;
+            return nullptr;
         }
 
         data_size = (uint) primitive_size;
         if( data_size != 1 && data_size != 2 && data_size != 4 && data_size != 8 )
         {
             WriteLogF( _FUNC_, " - Invalid size of property POD type '%s', size %d.\n", type_name, data_size );
-            return NULL;
+            return nullptr;
         }
 
         is_int_data_type = ( type_id >= asTYPEID_INT8 && type_id <= asTYPEID_UINT64 );
@@ -1532,7 +1532,7 @@ Property* PropertyRegistrator::Register(
         if( !is_array_of_pod && !is_array_of_string )
         {
             WriteLogF( _FUNC_, " - Invalid property type '%s', array elements must have POD/string type.\n", type_name );
-            return NULL;
+            return nullptr;
         }
     }
     else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
@@ -1543,7 +1543,7 @@ Property* PropertyRegistrator::Register(
         if( as_obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT )
         {
             WriteLogF( _FUNC_, " - Invalid property type '%s', dict key must have POD type.\n", type_name );
-            return NULL;
+            return nullptr;
         }
 
         int value_sub_type_id = as_obj_type->GetSubTypeId( 1 );
@@ -1557,14 +1557,14 @@ Property* PropertyRegistrator::Register(
             if( !is_dict_of_string && !is_dict_array_of_pod && !is_dict_of_array_of_string )
             {
                 WriteLogF( _FUNC_, " - Invalid property type '%s', dict value must have POD/string type or array of POD/string type.\n", type_name );
-                return NULL;
+                return nullptr;
             }
         }
     }
     else
     {
         WriteLogF( _FUNC_, " - Invalid property type '%s'.\n", type_name );
-        return NULL;
+        return nullptr;
     }
 
     // Check name for already used
@@ -1577,7 +1577,7 @@ Property* PropertyRegistrator::Register(
         if( Str::Compare( n, name ) )
         {
             WriteLogF( _FUNC_, " - Trying to register already registered property '%s'.\n", name );
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -1619,7 +1619,7 @@ Property* PropertyRegistrator::Register(
         if( result < 0 )
         {
             WriteLogF( _FUNC_, " - Register entity property '%s' getter fail, error %d.\n", name, result );
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -1642,7 +1642,7 @@ Property* PropertyRegistrator::Register(
         if( result < 0 )
         {
             WriteLogF( _FUNC_, " - Register entity property '%s' setter fail, error %d.\n", name, result );
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -1654,7 +1654,7 @@ Property* PropertyRegistrator::Register(
     if( result < 0 )
     {
         WriteLogF( _FUNC_, " - Register entity property enum '%s::%s' value %d fail, error %d.\n", enumTypeName.c_str(), name, enum_value, result );
-        return NULL;
+        return nullptr;
     }
 
     // Add property to group
@@ -1663,7 +1663,7 @@ Property* PropertyRegistrator::Register(
         char full_decl[ MAX_FOTEXT ];
         Str::Format( full_decl, "const %s[] %s%s", enumTypeName.c_str(), enumTypeName.c_str(), group );
 
-        ScriptArray* group_array = NULL;
+        ScriptArray* group_array = nullptr;
         if( enumGroups.count( full_decl ) )
             group_array = enumGroups[ full_decl ];
 
@@ -1675,21 +1675,21 @@ Property* PropertyRegistrator::Register(
             if( !enum_array_type )
             {
                 WriteLogF( _FUNC_, " - Invalid type for property group '%s'.\n", decl );
-                return NULL;
+                return nullptr;
             }
 
             group_array = ScriptArray::Create( enum_array_type );
             if( !enum_array_type )
             {
                 WriteLogF( _FUNC_, " - Can not create array type for property group '%s'.\n", decl );
-                return NULL;
+                return nullptr;
             }
 
             int result = engine->RegisterGlobalProperty( full_decl, group_array );
             if( result < 0 )
             {
                 WriteLogF( _FUNC_, " - Register entity property group '%s' fail, error %d.\n", full_decl, result );
-                return NULL;
+                return nullptr;
             }
 
             enumGroups.insert( PAIR( string( full_decl ), group_array ) );
@@ -1772,7 +1772,7 @@ Property* PropertyRegistrator::Register(
     prop->baseSize = data_size;
     prop->getCallback = 0;
     prop->getCallbackArgs = 0;
-    prop->nativeSetCallback = NULL;
+    prop->nativeSetCallback = nullptr;
 
     prop->propName = name;
     prop->typeName = type_name;
@@ -1792,9 +1792,9 @@ Property* PropertyRegistrator::Register(
     prop->isReadable = !disable_get;
     prop->isWritable = !disable_set;
     prop->generateRandomValue = ( generate_random_value ? *generate_random_value : false );
-    prop->setDefaultValue = ( default_value != NULL );
-    prop->checkMinValue = ( min_value != NULL && ( is_int_data_type || is_float_data_type ) );
-    prop->checkMaxValue = ( max_value != NULL && ( is_int_data_type || is_float_data_type ) );
+    prop->setDefaultValue = ( default_value != nullptr );
+    prop->checkMinValue = ( min_value != nullptr && ( is_int_data_type || is_float_data_type ) );
+    prop->checkMaxValue = ( max_value != nullptr && ( is_int_data_type || is_float_data_type ) );
     prop->defaultValue = ( default_value ? *default_value : 0 );
     prop->minValue = ( min_value ? *min_value : 0 );
     prop->maxValue = ( max_value ? *max_value : 0 );
@@ -1861,7 +1861,7 @@ Property* PropertyRegistrator::Get( uint property_index )
 {
     if( property_index < (uint) registeredProperties.size() )
         return registeredProperties[ property_index ];
-    return NULL;
+    return nullptr;
 }
 
 Property* PropertyRegistrator::Find( const char* property_name )
@@ -1869,7 +1869,7 @@ Property* PropertyRegistrator::Find( const char* property_name )
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
         if( Str::Compare( property_name, registeredProperties[ i ]->propName.c_str() ) )
             return registeredProperties[ i ];
-    return NULL;
+    return nullptr;
 }
 
 Property* PropertyRegistrator::FindByEnum( int enum_value )
@@ -1877,7 +1877,7 @@ Property* PropertyRegistrator::FindByEnum( int enum_value )
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
         if( registeredProperties[ i ]->enumValue == enum_value )
             return registeredProperties[ i ];
-    return NULL;
+    return nullptr;
 }
 
 void PropertyRegistrator::SetNativeSetCallback( const char* property_name, NativeCallback callback )

@@ -57,8 +57,8 @@ struct LightSource
     short  LastOffsX;
     short  LastOffsY;
 
-    LightSource( ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags, short* ox = NULL, short* oy = NULL ): HexX( hx ), HexY( hy ), ColorRGB( color ), Distance( distance ), Flags( flags ), Intensity( inten ),
-                                                                                                                                 OffsX( ox ), OffsY( oy ), LastOffsX( ox ? *ox : 0 ), LastOffsY( oy ? *oy : 0 ) {}
+    LightSource( ushort hx, ushort hy, uint color, uchar distance, int inten, uchar flags, short* ox = nullptr, short* oy = nullptr ): HexX( hx ), HexY( hy ), ColorRGB( color ), Distance( distance ), Flags( flags ), Intensity( inten ),
+                                                                                                                                       OffsX( ox ), OffsY( oy ), LastOffsX( ox ? *ox : 0 ), LastOffsY( oy ? *oy : 0 ) {}
 };
 typedef vector< LightSource > LightSourceVec;
 
@@ -299,7 +299,7 @@ private:
 public:
     uint        AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );
     void        FinishItem( uint id, bool is_deleted );
-    void        DeleteItem( ItemHex* item, bool destroy_item = true, ItemHexVec::iterator* it_hex_items = NULL );
+    void        DeleteItem( ItemHex* item, bool destroy_item = true, ItemHexVec::iterator* it_hex_items = nullptr );
     void        PushItem( ItemHex* item );
     ItemHex*    GetItem( ushort hx, ushort hy, hash pid );
     ItemHex*    GetItemById( ushort hx, ushort hy, uint id );

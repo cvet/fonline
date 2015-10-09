@@ -211,10 +211,10 @@ uchar* CryptManager::Compress( const uchar* data, uint& data_len )
     uLongf              buf_len = data_len * 110 / 100 + 12;
     AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
     if( !buf.IsValid() )
-        return NULL;
+        return nullptr;
 
     if( compress( buf.Get(), &buf_len, data, data_len ) != Z_OK )
-        return NULL;
+        return nullptr;
     XOR( (char*) buf.Get(), (uint) buf_len, (char*) &crcTable[ 1 ], sizeof( crcTable ) - 4 );
     XOR( (char*) buf.Get(), 4, (char*) buf.Get() + 4, 4 );
 
@@ -240,21 +240,21 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
     if( buf_len > 100000000 ) // 100mb
     {
         WriteLogF( _FUNC_, "Unpack - Buffer length is too large, data length %u, multiplier %u.\n", data_len, mul_approx );
-        return NULL;
+        return nullptr;
     }
 
     AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
     if( !buf.IsValid() )
     {
         WriteLog( "Unpack - Bad alloc, size %u.\n", buf_len );
-        return NULL;
+        return nullptr;
     }
 
     AutoPtrArr< uchar > data_( new uchar[ data_len ] );
     if( !data_.IsValid() )
     {
         WriteLog( "Unpack - Bad alloc, size %u.\n", data_len );
-        return NULL;
+        return nullptr;
     }
 
     memcpy( data_.Get(), data, data_len );
@@ -267,7 +267,7 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
     if( *(ushort*) data_.Get() != 0x9C78 )
     {
         WriteLog( "Unpack - Signature not found.\n" );
-        return NULL;
+        return nullptr;
     }
 
     while( true )
@@ -280,13 +280,13 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
             if( !buf.IsValid() )
             {
                 WriteLog( "Unpack - Bad alloc, size %u.\n", buf_len );
-                return NULL;
+                return nullptr;
             }
         }
         else if( result != Z_OK )
         {
             WriteLog( "Unpack error %d.\n", result );
-            return NULL;
+            return nullptr;
         }
         else
             break;
@@ -330,7 +330,7 @@ struct CacheDescriptor
     uint   Crc;
 } CacheTable[ MAX_CACHE_DESCRIPTORS ];
 
-void* CacheTableFile = NULL;
+void* CacheTableFile = nullptr;
 
 bool CryptManager::IsCacheTable( const char* cache_fname )
 {
@@ -348,7 +348,7 @@ bool CryptManager::CreateCacheTable( const char* cache_fname )
     if( CacheTableFile )
     {
         FileClose( CacheTableFile );
-        CacheTableFile = NULL;
+        CacheTableFile = nullptr;
     }
 
     void* f = FileOpen( cache_fname, true );
@@ -370,7 +370,7 @@ bool CryptManager::CreateCacheTable( const char* cache_fname )
 
     FileClose( f );
     CacheTableFile = FileOpenForReadWrite( cache_fname, true );
-    return CacheTableFile != NULL;
+    return CacheTableFile != nullptr;
 }
 
 bool CryptManager::SetCacheTable( const char* cache_fname )
@@ -381,7 +381,7 @@ bool CryptManager::SetCacheTable( const char* cache_fname )
     if( CacheTableFile )
     {
         FileClose( CacheTableFile );
-        CacheTableFile = NULL;
+        CacheTableFile = nullptr;
     }
 
     void* f = FileOpenForReadWrite( cache_fname, true );
@@ -598,7 +598,7 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
         {
             UNSETFLAG( desc.Flags, CACHE_DATA_VALID );
             UNSETFLAG( desc.Flags, CACHE_SIZE_VALID );
-            return NULL;
+            return nullptr;
         }
 
         uint file_len = FileGetSize( CacheTableFile );
@@ -606,12 +606,12 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
         {
             UNSETFLAG( desc.Flags, CACHE_DATA_VALID );
             UNSETFLAG( desc.Flags, CACHE_SIZE_VALID );
-            return NULL;
+            return nullptr;
         }
 
         uchar* data = new uchar[ desc.DataCurLen ];
         if( !data )
-            return NULL;
+            return nullptr;
 
         data_len = desc.DataCurLen;
         FileSetPointer( CacheTableFile, sizeof( CacheTable ) + desc.DataOffset, SEEK_SET );
@@ -619,7 +619,7 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
         XOR( (char*) data, data_len, (char*) &desc.XorKey[ 0 ], 20 );
         return data;
     }
-    return NULL;
+    return nullptr;
 }
 
 string CryptManager::GetCache( const char* data_name )

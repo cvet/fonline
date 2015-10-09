@@ -53,13 +53,13 @@ Critter* GlobalMapGroup::GetCritter( uint crid )
             return cr;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* GlobalMapGroup::GetCar()
 {
     if( !CarId )
-        return NULL;
+        return nullptr;
     Item* car = ItemMngr.GetItem( CarId, true );
     if( !car )
         CarId = 0;
@@ -478,7 +478,7 @@ bool MapManager::GenerateWorld()
 ProtoLocation* MapManager::GetProtoLocation( hash loc_pid )
 {
     auto it = protoLoc.find( loc_pid );
-    return it != protoLoc.end() ? it->second : NULL;
+    return it != protoLoc.end() ? it->second : nullptr;
 }
 
 ProtoLocation* MapManager::GetProtoLocationByIndex( uint index )
@@ -486,7 +486,7 @@ ProtoLocation* MapManager::GetProtoLocationByIndex( uint index )
     auto it = protoLoc.begin();
     while( index-- && it != protoLoc.end() )
         ++it;
-    return it != protoLoc.end() ? it->second : NULL;
+    return it != protoLoc.end() ? it->second : nullptr;
 }
 
 Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint loc_id )
@@ -495,16 +495,16 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     if( !loc_proto )
     {
         WriteLogF( _FUNC_, " - Location proto '%s' is not loaded.\n", Str::GetName( loc_pid ) );
-        return NULL;
+        return nullptr;
     }
 
     if( !wx || !wy || wx >= GM__MAXZONEX * GameOpt.GlobalMapZoneLength || wy >= GM__MAXZONEY * GameOpt.GlobalMapZoneLength )
     {
         WriteLogF( _FUNC_, " - Invalid location '%s' coordinates.\n", Str::GetName( loc_pid ) );
-        return NULL;
+        return nullptr;
     }
 
-    Location* loc = NULL;
+    Location* loc = nullptr;
     if( !loc_id )
     {
         loc = new Location( 0, protoLoc[ loc_pid ], wx, wy );
@@ -519,7 +519,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
                 for( auto it = maps.begin(); it != maps.end(); ++it )
                     ( *it )->Release();
                 loc->Release();
-                return NULL;
+                return nullptr;
             }
         }
     }
@@ -541,7 +541,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
             WriteLogF( _FUNC_, " - Generate map '%s' fail.\n", Str::GetName( map->GetPid() ) );
             loc->Data.ToGarbage = true;
             MapMngr.RunGarbager();
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -554,7 +554,7 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
     if( !proto_map )
     {
         WriteLogF( _FUNC_, " - Proto map '%s' is not loaded.\n", Str::GetName( map_pid ) );
-        return NULL;
+        return nullptr;
     }
 
     Map* map = new Map( map_id ? map_id : 0, protoMaps[ map_pid ], loc );
@@ -573,7 +573,7 @@ Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
 Map* MapManager::GetMap( uint map_id, bool sync_lock )
 {
     if( !map_id )
-        return NULL;
+        return nullptr;
 
     Map* map = (Map*) EntityMngr.GetEntity( map_id, EntityType::Map );
     if( map && sync_lock )
@@ -584,7 +584,7 @@ Map* MapManager::GetMap( uint map_id, bool sync_lock )
 Map* MapManager::GetMapByPid( hash map_pid, uint skip_count )
 {
     if( !map_pid )
-        return NULL;
+        return nullptr;
 
     Map* map = EntityMngr.GetMapByPid( map_pid, skip_count );
     if( map )
@@ -609,7 +609,7 @@ uint MapManager::GetMapsCount()
 ProtoMap* MapManager::GetProtoMap( hash map_pid )
 {
     auto it = protoMaps.find( map_pid );
-    return it != protoMaps.end() ? it->second : NULL;
+    return it != protoMaps.end() ? it->second : nullptr;
 }
 
 bool MapManager::IsProtoMapNoLogOut( hash map_pid )
@@ -622,14 +622,14 @@ Location* MapManager::GetLocationByMap( uint map_id )
 {
     Map* map = GetMap( map_id );
     if( !map )
-        return NULL;
+        return nullptr;
     return map->GetLocation( true );
 }
 
 Location* MapManager::GetLocation( uint loc_id )
 {
     if( !loc_id )
-        return NULL;
+        return nullptr;
 
     Location* loc = (Location*) EntityMngr.GetEntity( loc_id, EntityType::Location );
     if( loc )
@@ -640,7 +640,7 @@ Location* MapManager::GetLocation( uint loc_id )
 Location* MapManager::GetLocationByPid( hash loc_pid, uint skip_count )
 {
     if( !loc_pid )
-        return NULL;
+        return nullptr;
 
     Location* loc = (Location*) EntityMngr.GetLocationByPid( loc_pid, skip_count );
     if( loc )
@@ -693,7 +693,7 @@ void MapManager::LocationGarbager()
         LocVec locs;
         EntityMngr.GetLocations( locs );
 
-        ClVec* gmap_players = NULL;
+        ClVec* gmap_players = nullptr;
         ClVec  players;
         for( auto it = locs.begin(); it != locs.end(); ++it )
         {
@@ -1059,7 +1059,7 @@ ScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
     if( !arr )
     {
         WriteLogF( _FUNC_, " - Create script array fail.\n" );
-        return NULL;
+        return nullptr;
     }
 
     group->SyncLockGroup();
@@ -1078,7 +1078,7 @@ ScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
         if( !p )
         {
             WriteLogF( _FUNC_, " - Critical bug, rule critter '%s', not valid %d.\n", group->Rule->GetInfo(), group->Rule->IsDestroyed );
-            return NULL;
+            return nullptr;
         }
         *p = cr;
         cr->AddRef();
@@ -1185,7 +1185,7 @@ void MapManager::GM_LeaveGroup( Critter* cr )
     else
     {
         // Give rule to critter with highest charisma
-        Critter* new_rule = NULL;
+        Critter* new_rule = nullptr;
         int      max_charisma = 0;
         for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
         {
@@ -1255,7 +1255,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
     uchar    dir;
     ushort   car_hx, car_hy;
     Item*    car = group->GetCar();
-    Critter* car_owner = NULL;
+    Critter* car_owner = nullptr;
 
     if( car )
     {
@@ -1263,7 +1263,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
         if( !car_owner )
         {
             WriteLogF( _FUNC_, " - Car owner not found, rule '%s'.\n", rule->GetInfo() );
-            car = NULL;
+            car = nullptr;
         }
     }
 
@@ -1527,7 +1527,7 @@ void MapManager::TraceBullet( TraceData& trace )
 
         if( !map->IsHexRaked( cx, cy ) )
             break;
-        if( trace.Critters != NULL && map->IsHexCritter( cx, cy ) )
+        if( trace.Critters != nullptr && map->IsHexCritter( cx, cy ) )
             map->GetCrittersHex( cx, cy, 0, trace.FindType, *trace.Critters, false );
         if( ( trace.FindCr || trace.IsCheckTeam ) && map->IsFlagCritter( cx, cy, false ) )
         {
@@ -1565,7 +1565,7 @@ void MapManager::TraceBullet( TraceData& trace )
 
 int THREAD           MapGridOffsX = 0;
 int THREAD           MapGridOffsY = 0;
-static THREAD short* Grid = NULL;
+static THREAD short* Grid = nullptr;
 #define GRID( x, y )    Grid[ ( ( FPATH_MAX_PATH + 1 ) + ( y ) - MapGridOffsY ) * ( FPATH_MAX_PATH * 2 + 2 ) + ( ( FPATH_MAX_PATH + 1 ) + ( x ) - MapGridOffsX ) ]
 int MapManager::FindPath( PathFindData& pfd )
 {
@@ -1954,8 +1954,8 @@ label_FindOk:
 label_TraceOk:
         if( trace_ok )
         {
-            pfd.GagItem = NULL;
-            pfd.GagCritter = NULL;
+            pfd.GagItem = nullptr;
+            pfd.GagCritter = nullptr;
         }
     }
 
@@ -2326,7 +2326,7 @@ bool MapManager::TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, 
     {
         ( (Client*) cr )->AddKnownLoc( loc->GetId() );
         if( loc->IsAutomaps() )
-            cr->Send_AutomapsInfo( NULL, loc );
+            cr->Send_AutomapsInfo( nullptr, loc );
     }
     cr->SetTimeoutTransfer( 0 );
     cr->SetTimeoutBattle( 0 );
@@ -2356,13 +2356,13 @@ bool MapManager::TransitToGlobal( Critter* cr, uint rule, uchar follow_type, boo
         return false;
     }
 
-    return Transit( cr, NULL, rule >> 16, rule & 0xFFFF, follow_type, 0, force );
+    return Transit( cr, nullptr, rule >> 16, rule & 0xFFFF, follow_type, 0, force );
 }
 
 bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, bool force )
 {
     // Check location deletion
-    Location* loc = ( map ? map->GetLocation( true ) : NULL );
+    Location* loc = ( map ? map->GetLocation( true ) : nullptr );
     if( loc && loc->Data.ToGarbage )
     {
         WriteLogF( _FUNC_, " - Transfer to deleted location, critter '%s'.\n", cr->GetInfo() );
@@ -2460,7 +2460,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
             EraseCrFromMap( cr, old_map, old_hx, old_hy );
 
         cr->SetBreakTime( 0 );
-        cr->Send_LoadMap( NULL );
+        cr->Send_LoadMap( nullptr );
 
         // Map out / in events
         if( old_map )
@@ -2537,7 +2537,7 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map, ushort hex_x, ushort hex
                 cr_->Send_RemoveCritter( cr );
                 // cr_->EventHideCritter(cr);
             }
-            cr->GroupMove = NULL;
+            cr->GroupMove = nullptr;
         }
     }
     // Local map

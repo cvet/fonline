@@ -72,7 +72,7 @@ void CatchExceptions( const char* app_name, int app_ver )
         SetUnhandledExceptionFilter( TopLevelFilterMiniDump );
     # endif
     else
-        SetUnhandledExceptionFilter( NULL );
+        SetUnhandledExceptionFilter( nullptr );
 }
 
 # ifdef FO_X86
@@ -210,7 +210,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         }
 
         // Init symbols
-        SymInitialize( process, NULL, TRUE );
+        SymInitialize( process, nullptr, TRUE );
         SymSetOptions( SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS );
 
         // Print information about each thread
@@ -291,7 +291,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             };
 
             int frame_num = 0;
-            while( StackWalk64( machine_type, process, t, &stack, &context, RPM::Call, SymFunctionTableAccess64, SymGetModuleBase64, NULL ) )
+            while( StackWalk64( machine_type, process, t, &stack, &context, RPM::Call, SymFunctionTableAccess64, SymGetModuleBase64, nullptr ) )
             {
                 struct CSE
                 {
@@ -403,7 +403,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                             callstack.symTypeString = "Virtual";
                             break;
                         default:
-                            callstack.symTypeString = NULL;
+                            callstack.symTypeString = nullptr;
                             break;
                         }
 
@@ -481,7 +481,7 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
         if( *s == '/' )
             *s = '\\';
 
-    HANDLE f = CreateFile( dump_path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+    HANDLE f = CreateFile( dump_path, GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr );
     if( f != INVALID_HANDLE_VALUE )
     {
         MINIDUMP_EXCEPTION_INFORMATION ex_info;
@@ -489,7 +489,7 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
         ex_info.ExceptionPointers = except;
         ex_info.ClientPointers = FALSE;
 
-        if( MiniDumpWriteDump( GetCurrentProcess(), GetCurrentProcessId(), f, MiniDumpNormal, except ? &ex_info : NULL, NULL, NULL ) )
+        if( MiniDumpWriteDump( GetCurrentProcess(), GetCurrentProcessId(), f, MiniDumpNormal, except ? &ex_info : nullptr, nullptr, nullptr ) )
         {
             Str::Format( mess, DumpMess, dump_path );
             retval = EXCEPTION_EXECUTE_HANDLER;
@@ -517,9 +517,9 @@ void CreateDump( const char* appendix )
     Str::Copy( ManualDumpAppendix, appendix );
 
     # ifndef EXCEPTION_MINIDUMP
-    TopLevelFilterReadableDump( NULL );
+    TopLevelFilterReadableDump( nullptr );
     # else
-    TopLevelFilterMiniDump( NULL );
+    TopLevelFilterMiniDump( nullptr );
     # endif
 }
 
@@ -580,8 +580,8 @@ void CatchExceptions( const char* app_name, int app_ver )
     }
     else if( !app_name && sigactionsSetted )
     {
-        sigaction( SIGSEGV, &oldSIGSEGV, NULL );
-        sigaction( SIGFPE, &oldSIGFPE, NULL );
+        sigaction( SIGSEGV, &oldSIGSEGV, nullptr );
+        sigaction( SIGFPE, &oldSIGFPE, nullptr );
 
         sigactionsSetted = false;
     }
@@ -590,7 +590,7 @@ void CatchExceptions( const char* app_name, int app_ver )
 void CreateDump( const char* appendix )
 {
     Str::Copy( ManualDumpAppendix, appendix );
-    TerminationHandler( 0, NULL, NULL );
+    TerminationHandler( 0, nullptr, nullptr );
 }
 
 void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
@@ -628,7 +628,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         // Exception information
         if( siginfo )
         {
-            const char* str = NULL;
+            const char* str = nullptr;
             static const char* str_SIGSEGV[] =
             {
                 "Address not mapped to object, SEGV_MAPERR",
@@ -676,10 +676,10 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
             Dl_info info;
             if( dladdr( callstack[ i ], &info ) && info.dli_sname )
             {
-                char* demangled = NULL;
+                char* demangled = nullptr;
                 int status = -1;
                 if( info.dli_sname[ 0 ] == '_' )
-                    demangled = abi::__cxa_demangle( info.dli_sname, NULL, 0, &status );
+                    demangled = abi::__cxa_demangle( info.dli_sname, nullptr, 0, &status );
                 snprintf( buf, sizeof( buf ), "%-3d %*p %s + %zd",
                           i, int(2 + sizeof( void* ) * 2), callstack[ i ],
                           status == 0 ? demangled : info.dli_sname == 0 ? symbols[ i ] : info.dli_sname,

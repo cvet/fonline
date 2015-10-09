@@ -33,7 +33,7 @@ bool Global_StrToFloat( ScriptString* text, float& result )
 {
     if( !text || !text->length() )
         return false;
-    result = (float) strtod( text->c_str(), NULL );
+    result = (float) strtod( text->c_str(), nullptr );
     return true;
 }
 
@@ -107,7 +107,7 @@ ScriptString* Global_GetFilePath( int path_type )
 uint Global_GetFolderFileNames( ScriptString& path, ScriptString* ext, bool include_subdirs, ScriptArray* result )
 {
     StrVec files;
-    FileManager::GetFolderFileNames( path.c_str(), include_subdirs, ext ? ext->c_str() : NULL, files );
+    FileManager::GetFolderFileNames( path.c_str(), include_subdirs, ext ? ext->c_str() : nullptr, files );
 
     if( result )
     {
@@ -265,7 +265,7 @@ ScriptString* Global_SHA1( ScriptString& text )
         hex_digest[ i ] = nums[ i % 2 ? digest[ i / 2 ] & 0xF : digest[ i / 2 ] >> 4 ];
     return ScriptString::Create( hex_digest, sizeof( hex_digest ) );
     #else
-    return NULL;
+    return nullptr;
     #endif
 }
 
@@ -282,14 +282,14 @@ ScriptString* Global_SHA2( ScriptString& text )
         hex_digest[ i ] = nums[ i % 2 ? digest[ i / 2 ] & 0xF : digest[ i / 2 ] >> 4 ];
     return ScriptString::Create( hex_digest, sizeof( hex_digest ) );
     #else
-    return NULL;
+    return nullptr;
     #endif
 }
 
 void Global_OpenLink( ScriptString& link )
 {
     #ifdef FO_WINDOWS
-    ShellExecute( NULL, "open", link.c_str(), NULL, NULL, SW_SHOWNORMAL );
+    ShellExecute( nullptr, "open", link.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
     #else
     system( ( string( "xdg-open " ) + link.c_std_str() ).c_str() );
     #endif

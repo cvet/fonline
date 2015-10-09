@@ -5,7 +5,7 @@
 #include "F2Palette.h"
 
 SpriteManager SprMngr;
-AnyFrames*    SpriteManager::DummyAnimation = NULL;
+AnyFrames*    SpriteManager::DummyAnimation = nullptr;
 
 #define MAX_ATLAS_SIZE           ( 4096 )
 #define SPRITES_BUFFER_SIZE      ( 10000 )
@@ -30,8 +30,8 @@ SpriteManager::SpriteManager()
     curDrawQuad = 0;
     sceneBeginned = false;
 
-    sprEgg = NULL;
-    eggData = NULL;
+    sprEgg = nullptr;
+    eggData = nullptr;
     eggValid = false;
     eggHx = eggHy = eggX = eggY = 0;
     eggAtlasWidth = 0;
@@ -45,11 +45,11 @@ SpriteManager::SpriteManager()
     allAtlases.reserve( 100 );
     dipQueue.reserve( 1000 );
 
-    rtMain = NULL;
-    rtContours = rtContoursMid = NULL;
+    rtMain = nullptr;
+    rtContours = rtContoursMid = nullptr;
 
-    quadsVertexArray = NULL;
-    pointsVertexArray = NULL;
+    quadsVertexArray = nullptr;
+    pointsVertexArray = nullptr;
 
     for( uint i = 0; i < sizeof( FoPalette ); i += 4 )
         std::swap( FoPalette[ i ], FoPalette[ i + 2 ] );
@@ -220,7 +220,7 @@ bool SpriteManager::Init()
     // Sprites buffer
     sprData.resize( SPRITES_BUFFER_SIZE );
     for( auto it = sprData.begin(), end = sprData.end(); it != end; ++it )
-        ( *it ) = NULL;
+        ( *it ) = nullptr;
 
     // Render targets
     rtMain = CreateRenderTarget( false, false, true, 0, 0, true );
@@ -409,7 +409,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tex_linear ? GL_LINEAR : GL_NEAREST ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP ) );
         GL( glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP ) );
-        GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL ) );
+        GL( glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr ) );
         if( GL_HAS( framebuffer_object ) )
         {
             GL( glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->Id, 0 ) );
@@ -500,7 +500,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         if( status != GL_FRAMEBUFFER_COMPLETE )
         {
             WriteLogF( _FUNC_, " - Framebuffer not created, status %08X.\n", status );
-            return NULL;
+            return nullptr;
         }
     }
     else // framebuffer_object_ext
@@ -510,7 +510,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         if( status != GL_FRAMEBUFFER_COMPLETE_EXT )
         {
             WriteLogF( _FUNC_, " - FramebufferExt not created, status %08X.\n", status );
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -809,7 +809,7 @@ void SpriteManager::InitVertexArray( VertexArray* va, bool quads, uint count )
     if( !va->VBO )
         GL( glGenBuffers( 1, &va->VBO ) );
     GL( glBindBuffer( GL_ARRAY_BUFFER, va->VBO ) );
-    GL( glBufferData( GL_ARRAY_BUFFER, vertices_count * sizeof( Vertex2D ), NULL, GL_DYNAMIC_DRAW ) );
+    GL( glBufferData( GL_ARRAY_BUFFER, vertices_count * sizeof( Vertex2D ), nullptr, GL_DYNAMIC_DRAW ) );
     va->VCount = vertices_count;
 
     // Index buffer
@@ -997,7 +997,7 @@ TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
     atlas->TextureOwner = atlas->RT->TargetTexture;
     atlas->Width = w;
     atlas->Height = h;
-    atlas->RootNode = ( accumulatorActive ? new TextureAtlas::SpaceNode( 0, 0, w, h ) : NULL );
+    atlas->RootNode = ( accumulatorActive ? new TextureAtlas::SpaceNode( 0, 0, w, h ) : nullptr );
     allAtlases.push_back( atlas );
     return atlas;
 }
@@ -1005,7 +1005,7 @@ TextureAtlas* SpriteManager::CreateAtlas( int w, int h )
 TextureAtlas* SpriteManager::FindAtlasPlace( SpriteInfo* si, int& x, int& y )
 {
     // Find place in already created atlas
-    TextureAtlas* atlas = NULL;
+    TextureAtlas* atlas = nullptr;
     int           atlas_type = atlasTypeStack.back();
     uint          w = si->Width + ATLAS_SPRITES_PADDING * 2;
     uint          h = si->Height + ATLAS_SPRITES_PADDING * 2;
@@ -1097,7 +1097,7 @@ void SpriteManager::DestroyAtlases( int atlas_type )
                         si->Anim3d->SprId = 0;
 
                     delete si;
-                    ( *it_ ) = NULL;
+                    ( *it_ ) = nullptr;
                 }
             }
 
@@ -1122,7 +1122,7 @@ void SpriteManager::DumpAtlases()
     }
 
     char path[ MAX_FOPATH ];
-    Str::Format( path, "./%u_%u.%03umb/", (uint) time( NULL ), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000 );
+    Str::Format( path, "./%u_%u.%03umb/", (uint) time( nullptr ), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000 );
 
     int cnt = 0;
     for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
@@ -1209,7 +1209,7 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
     uint   w = si->Width;
     uint   h = si->Height;
 
-    si->Data = NULL;
+    si->Data = nullptr;
 
     PushAtlasType( si->DataAtlasType, si->DataAtlasOneImage );
     int           x, y;
@@ -1263,7 +1263,7 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
 
 AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, bool use_dummy /* = false */, bool frm_anim_pix /* = false */ )
 {
-    AnyFrames* dummy = ( use_dummy ? DummyAnimation : NULL );
+    AnyFrames* dummy = ( use_dummy ? DummyAnimation : nullptr );
 
     if( !fname || !fname[ 0 ] )
         return dummy;
@@ -1275,7 +1275,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, bool 
         return dummy;
     }
 
-    AnyFrames* result = NULL;
+    AnyFrames* result = nullptr;
     if( Str::CompareCase( ext, "png" ) )
         result = LoadAnimationOther( fname, path_type, &GraphicLoader::LoadPNG );
     else if( Str::CompareCase( ext, "tga" ) )
@@ -1344,7 +1344,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
         char* ext = (char*) FileManager::GetExtension( fname_ );
         *( ext + 2 ) = '0';
         if( !fm.LoadFile( fname_, path_type ) )
-            return NULL;
+            return nullptr;
         load_from_fr = true;
     }
 
@@ -1400,7 +1400,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
                 {
                     WriteLogF( _FUNC_, " - File '%s' not found.\n", fname_ );
                     AnyFrames::Destroy( base_anim );
-                    return NULL;
+                    return nullptr;
                 }
                 break;
             }
@@ -1419,7 +1419,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
             {
                 WriteLogF( _FUNC_, " - FRM file '%s' truncated.\n", fname );
                 AnyFrames::Destroy( base_anim );
-                return NULL;
+                return nullptr;
             }
             break;
         }
@@ -1609,7 +1609,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
             if( !result )
             {
                 AnyFrames::Destroy( anim );
-                return NULL;
+                return nullptr;
             }
             anim->Ind[ frm ] = result;
         }
@@ -1622,7 +1622,7 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
 {
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
-        return NULL;
+        return nullptr;
 
     SpriteInfo* si = new SpriteInfo();
     fm.SetCurPos( 0x4 );
@@ -1648,7 +1648,7 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
 
     uint result = RequestFillAtlas( si, w, h, data );
     if( !result )
-        return NULL;
+        return nullptr;
 
     AnyFrames* anim = AnyFrames::Create( 1, 100 );
     anim->Ind[ 0 ] = result;
@@ -1663,7 +1663,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
     if( TryLoadAnimationInFastFormat( fname, path_type, fm, fast_anim ) )
         return fast_anim;
     if( !fm.IsLoaded() )
-        return NULL;
+        return nullptr;
 
     // Load ini parser
     IniParser fofrm;
@@ -1680,7 +1680,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
     int     ox = fofrm.GetInt( "offs_x", 0 );
     int     oy = fofrm.GetInt( "offs_y", 0 );
 
-    Effect* effect = NULL;
+    Effect* effect = nullptr;
     if( fofrm.IsKey( "effect" ) )
     {
         char effect_name[ MAX_FOPATH ];
@@ -1693,7 +1693,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
     anims.reserve( 50 );
     anims_offs.reserve( 100 );
 
-    AnyFrames* base_anim = NULL;
+    AnyFrames* base_anim = nullptr;
     for( int dir = 0; dir < DIRS_COUNT; dir++ )
     {
         anims.clear();
@@ -1712,7 +1712,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             {
                 WriteLogF( _FUNC_, " - FOFRM file '%s' invalid apps.\n", fname );
                 AnyFrames::Destroy( base_anim );
-                return NULL;
+                return nullptr;
             }
         }
         else
@@ -1730,8 +1730,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
         bool  load_fail = false;
         for( int frm = 0; frm < frm_num; frm++ )
         {
-            if( !fofrm.GetStr( no_app ? NULL : dir_str, Str::FormatBuf( "frm_%d", frm ), "", frm_name ) &&
-                ( frm != 0 || !fofrm.GetStr( no_app ? NULL : dir_str, Str::FormatBuf( "frm", frm ), "", frm_name ) ) )
+            if( !fofrm.GetStr( no_app ? nullptr : dir_str, Str::FormatBuf( "frm_%d", frm ), "", frm_name ) &&
+                ( frm != 0 || !fofrm.GetStr( no_app ? nullptr : dir_str, Str::FormatBuf( "frm", frm ), "", frm_name ) ) )
             {
                 no_info = true;
                 break;
@@ -1747,8 +1747,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             frames += anim->CntFrm;
             anims.push_back( anim );
 
-            anims_offs.push_back( fofrm.GetInt( no_app ? NULL : dir_str, Str::FormatBuf( "next_x_%d", frm ), 0 ) );
-            anims_offs.push_back( fofrm.GetInt( no_app ? NULL : dir_str, Str::FormatBuf( "next_y_%d", frm ), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? nullptr : dir_str, Str::FormatBuf( "next_x_%d", frm ), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? nullptr : dir_str, Str::FormatBuf( "next_y_%d", frm ), 0 ) );
         }
 
         // No frames found or error
@@ -1761,7 +1761,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             for( uint i = 0, j = (uint) anims.size(); i < j; i++ )
                 AnyFrames::Destroy( anims[ i ] );
             AnyFrames::Destroy( base_anim );
-            return NULL;
+            return nullptr;
         }
 
         // Allocate animation storage
@@ -1799,7 +1799,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
 AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
 {
     if( !GameOpt.Enable3dRendering )
-        return NULL;
+        return nullptr;
 
     // Load file
     FileManager fm;
@@ -1807,12 +1807,12 @@ AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
     if( TryLoadAnimationInFastFormat( fname, path_type, fm, fast_anim ) )
         return fast_anim;
     if( !fm.IsLoaded() )
-        return NULL;
+        return nullptr;
 
     // Load 3d animation
     Animation3d* anim3d = Animation3d::GetAnimation( fname, path_type, false );
     if( !anim3d )
-        return NULL;
+        return nullptr;
     anim3d->StartMeshGeneration();
 
     // Get animation data
@@ -1831,7 +1831,7 @@ AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
     if( period == 0.0f || proc_from == proc_to )
     {
 label_LoadOneSpr:
-        anim3d->SetAnimation( 0, proc_from * 10, NULL, ANIMATION_ONE_TIME | ANIMATION_STAY );
+        anim3d->SetAnimation( 0, proc_from * 10, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY );
         Render3d( anim3d );
 
         AnyFrames* anim = AnyFrames::Create( 1, 100 );
@@ -1863,7 +1863,7 @@ label_LoadOneSpr:
         // Previous frame is different
         if( cur_proci != prev_cur_proci )
         {
-            anim3d->SetAnimation( 0, cur_proci, NULL, ANIMATION_ONE_TIME | ANIMATION_STAY );
+            anim3d->SetAnimation( 0, cur_proci, nullptr, ANIMATION_ONE_TIME | ANIMATION_STAY );
             Render3d( anim3d );
 
             anim->Ind[ i ] = anim3d->SprId;
@@ -1884,7 +1884,7 @@ label_LoadOneSpr:
 
 AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
 {
-    AnyFrames* base_anim = NULL;
+    AnyFrames* base_anim = nullptr;
 
     for( int dir = 0; dir < DIRS_COUNT; dir++ )
     {
@@ -1981,11 +1981,11 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
             Str::EraseInterval( delim, len );
         }
         if( !file_name[ 0 ] )
-            return NULL;
+            return nullptr;
 
         FileManager fm;
         if( !fm.LoadFile( file_name, path_type ) )
-            return NULL;
+            return nullptr;
 
         struct ArtHeader
         {
@@ -2018,7 +2018,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
         ArtPalette palette[ 4 ];
 
         if( !fm.CopyMem( &header, sizeof( header ) ) )
-            return NULL;
+            return nullptr;
         if( header.flags & 0x00000001 )
             header.rotationCount = 1;
 
@@ -2033,7 +2033,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
             if( header.paletteList[ i ] )
             {
                 if( !fm.CopyMem( &palette[ i ], sizeof( ArtPalette ) ) )
-                    return NULL;
+                    return nullptr;
                 palette_count++;
             }
         }
@@ -2092,14 +2092,14 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
             if( !si )
             {
                 AnyFrames::Destroy( base_anim );
-                return NULL;
+                return nullptr;
             }
 
             if( !fm.CopyMem( &frame_info, sizeof( frame_info ) ) )
             {
                 delete si;
                 AnyFrames::Destroy( base_anim );
-                return NULL;
+                return nullptr;
             }
 
             si->OffsX = ( -frame_info.offsetX + frame_info.frameWidth / 2 ) * ( mirror_hor ? -1 : 1 );
@@ -2184,7 +2184,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
             if( !result )
             {
                 AnyFrames::Destroy( base_anim );
-                return NULL;
+                return nullptr;
             }
             anim->Ind[ frm_cur ] = result;
 
@@ -2208,7 +2208,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
 #define SPR_CACHED_COUNT    ( 10 )
 AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
 {
-    AnyFrames* base_anim = NULL;
+    AnyFrames* base_anim = nullptr;
 
     for( int dir = 0; dir < DIRS_COUNT; dir++ )
     {
@@ -2310,7 +2310,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
             Str::EraseInterval( delim, len );
         }
         if( !file_name[ 0 ] )
-            return NULL;
+            return nullptr;
 
         // Cache last 10 big SPR files (for critters)
         struct SprCache
@@ -2338,7 +2338,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
         {
             FileManager fm;
             if( !fm.LoadFile( file_name, path_type ) )
-                return NULL;
+                return nullptr;
 
             if( fm.GetFsize() > 1000000 )                 // 1mb
             {
@@ -2363,7 +2363,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
 
                 cached[ index ] = new SprCache();
                 if( !cached[ index ] )
-                    return NULL;
+                    return nullptr;
                 Str::Copy( cached[ index ]->fileName, file_name );
                 cached[ index ]->pathType = path_type;
                 cached[ index ]->fm = fm;
@@ -2389,7 +2389,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
         // Read header
         char head[ 11 ];
         if( !fm.CopyMem( head, 11 ) || head[ 8 ] || strcmp( head, "<sprite>" ) )
-            return NULL;
+            return nullptr;
 
         float dimension_left = (float) fm.GetUChar() * 6.7f;
         float dimension_up = (float) fm.GetUChar() * 7.6f;
@@ -2451,14 +2451,14 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
             }
         }
         if( !seq_founded )
-            return NULL;
+            return nullptr;
 
         // Find animation
         fm.SetCurPos( 0 );
         for( uint i = 0; i <= anim_index; i++ )
         {
             if( !fm.FindFragment( (uchar*) "<spranim>", 9, fm.GetCurPos() ) )
-                return NULL;
+                return nullptr;
             fm.GoForward( 12 );
         }
 
@@ -2507,7 +2507,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
             uint unpacked_len = fm.GetLEUInt();
             data = Crypt.Uncompress( fm.GetCurBuf(), data_len, unpacked_len / data_len + 1 );
             if( !data )
-                return NULL;
+                return nullptr;
             data_len = unpacked_len;
         }
         FileManager fm_images;
@@ -2631,7 +2631,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
                 if( zar[ 5 ] || strcmp( zar, "<zar>" ) || ( subtype != 0x34 && subtype != 0x35 ) || palette_present == 1 )
                 {
                     AnyFrames::Destroy( anim );
-                    return NULL;
+                    return nullptr;
                 }
 
                 uint* ptr = (uint*) img_data + ( posy * whole_w ) + posx;
@@ -2711,7 +2711,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
             if( !result )
             {
                 AnyFrames::Destroy( base_anim );
-                return NULL;
+                return nullptr;
             }
             anim->Ind[ f ] = result;
         }
@@ -2728,12 +2728,12 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
     // Open file
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
-        return NULL;
+        return nullptr;
 
     // Read header
     char head[ 6 ];
     if( !fm.CopyMem( head, 6 ) || head[ 5 ] || strcmp( head, "<zar>" ) )
-        return NULL;
+        return nullptr;
     uchar type = fm.GetUChar();
     fm.GoForward( 1 );   // \0
     uint  w = fm.GetLEUInt();
@@ -2747,7 +2747,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
     {
         uint palette_count = fm.GetLEUInt();
         if( palette_count > 256 )
-            return NULL;
+            return nullptr;
         fm.CopyMem( palette, sizeof( uint ) * palette_count );
         if( type == 0x34 )
             def_color = fm.GetUChar();
@@ -2812,7 +2812,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
     SpriteInfo* si = new SpriteInfo();
     uint        result = RequestFillAtlas( si, w, h, img_data );
     if( !result )
-        return NULL;
+        return nullptr;
 
     AnyFrames* anim = AnyFrames::Create( 1, 100 );
     anim->Ind[ 0 ] = result;
@@ -2824,12 +2824,12 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
     // Open file
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
-        return NULL;
+        return nullptr;
 
     // Read header
     char head[ 7 ];
     if( !fm.CopyMem( head, 7 ) || head[ 6 ] || strcmp( head, "<tile>" ) )
-        return NULL;
+        return nullptr;
     while( fm.GetUChar() )
         ;
     fm.GoForward( 7 + 4 ); // Unknown
@@ -2839,7 +2839,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
     UNUSED_VARIABLE( h );
 
     if( !fm.FindFragment( (uchar*) "<tiledata>", 10, fm.GetCurPos() ) )
-        return NULL;
+        return nullptr;
     fm.GoForward( 10 + 3 ); // Signature
     uint frames_count = fm.GetLEUInt();
 
@@ -2851,7 +2851,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
         // Read header
         char head[ 6 ];
         if( !fm.CopyMem( head, 6 ) || head[ 5 ] || strcmp( head, "<zar>" ) )
-            return NULL;
+            return nullptr;
         uchar type = fm.GetUChar();
         fm.GoForward( 1 );       // \0
         uint  w = fm.GetLEUInt();
@@ -2865,7 +2865,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
         {
             uint palette_count = fm.GetLEUInt();
             if( palette_count > 256 )
-                return NULL;
+                return nullptr;
             fm.CopyMem( palette, sizeof( uint ) * palette_count );
             if( type == 0x34 )
                 def_color = fm.GetUChar();
@@ -2930,7 +2930,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
         SpriteInfo* si = new SpriteInfo();
         uint        result = RequestFillAtlas( si, w, h, img_data );
         if( !result )
-            return NULL;
+            return nullptr;
 
         anim->Ind[ frm ] = result;
     }
@@ -2942,12 +2942,12 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
 {
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
-        return NULL;
+        return nullptr;
 
     // Read signature
     char head[ 8 ];
     if( !fm.CopyMem( head, 8 ) || !Str::CompareCount( head, "MOS", 3 ) )
-        return NULL;
+        return nullptr;
 
     // Packed
     if( head[ 3 ] == 'C' )
@@ -2958,14 +2958,14 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
         *(ushort*) buf = 0x9C78;
         uchar* data = Crypt.Uncompress( buf, data_len, unpacked_len / fm.GetFsize() + 1 );
         if( !data )
-            return NULL;
+            return nullptr;
 
         fm.UnloadFile();
         fm.LoadStream( data, data_len );
         delete[] data;
 
         if( !fm.CopyMem( head, 8 ) || !Str::CompareCount( head, "MOS", 3 ) )
-            return NULL;
+            return nullptr;
     }
 
     // Read header
@@ -3032,7 +3032,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
     SpriteInfo* si = new SpriteInfo();
     uint        result = RequestFillAtlas( si, w, h, img_data );
     if( !result )
-        return NULL;
+        return nullptr;
 
     AnyFrames* anim = AnyFrames::Create( 1, 100 );
     anim->Ind[ 0 ] = result;
@@ -3072,17 +3072,17 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
         Str::EraseInterval( delim, len );
     }
     if( !file_name[ 0 ] )
-        return NULL;
+        return nullptr;
 
     // Load file
     FileManager fm;
     if( !fm.LoadFile( file_name, path_type ) )
-        return NULL;
+        return nullptr;
 
     // Read signature
     char head[ 8 ];
     if( !fm.CopyMem( head, 8 ) || !Str::CompareCount( head, "BAM", 3 ) )
-        return NULL;
+        return nullptr;
 
     // Packed
     if( head[ 3 ] == 'C' )
@@ -3093,14 +3093,14 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
         *(ushort*) buf = 0x9C78;
         uchar* data = Crypt.Uncompress( buf, data_len, unpacked_len / fm.GetFsize() + 1 );
         if( !data )
-            return NULL;
+            return nullptr;
 
         fm.UnloadFile();
         fm.LoadStream( data, data_len );
         delete[] data;
 
         if( !fm.CopyMem( head, 8 ) || !Str::CompareCount( head, "BAM", 3 ) )
-            return NULL;
+            return nullptr;
     }
 
     // Read header
@@ -3181,7 +3181,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
         SpriteInfo* si = new SpriteInfo();
         uint        result = RequestFillAtlas( si, w, h, img_data );
         if( !result )
-            return NULL;
+            return nullptr;
         si->OffsX = -ox + w / 2;
         si->OffsY = -oy + h;
 
@@ -3208,13 +3208,13 @@ AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, 
     uint   w, h;
     uchar* data = loader( fm.GetBuf(), fm.GetFsize(), w, h );
     if( !data )
-        return NULL;
+        return nullptr;
 
     // Fill data
     SpriteInfo* si = new SpriteInfo();
     uint        result = RequestFillAtlas( si, w, h, data );
     if( !result )
-        return NULL;
+        return nullptr;
 
     // Create animation
     AnyFrames* anim = AnyFrames::Create( 1, 100 );
@@ -3249,7 +3249,7 @@ bool SpriteManager::Render3d( Animation3d* anim3d )
         (int) ( si->SprRect.R * (float) si->Atlas->Width + 0.5f ),
         (int) ( ( 1.0f - si->SprRect.B ) * (float) si->Atlas->Height + 0.5f ) );
     PushRenderTarget( si->Atlas->RT );
-    DrawRenderTarget( rt, false, NULL, &region_to );
+    DrawRenderTarget( rt, false, nullptr, &region_to );
     PopRenderTarget();
 
     return true;
@@ -3272,12 +3272,12 @@ bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
 Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_type, bool auto_redraw )
 {
     if( !GameOpt.Enable3dRendering )
-        return NULL;
+        return nullptr;
 
     // Fill data
     Animation3d* anim3d = Animation3d::GetAnimation( fname, path_type, false );
     if( !anim3d )
-        return NULL;
+        return nullptr;
 
     // Create render sprite
     anim3d->SprId = 0;
@@ -3295,7 +3295,7 @@ void SpriteManager::RefreshPure3dAnimationSprite( Animation3d* anim3d )
     // Free old place
     if( anim3d->SprId )
     {
-        sprData[ anim3d->SprId ]->Anim3d = NULL;
+        sprData[ anim3d->SprId ]->Anim3d = nullptr;
         anim3d->SprId = 0;
     }
 
@@ -3320,7 +3320,7 @@ void SpriteManager::RefreshPure3dAnimationSprite( Animation3d* anim3d )
     if( !index )
     {
         PushAtlasType( anim3d->SprAtlasType );
-        index = RequestFillAtlas( NULL, draw_width, draw_height, NULL );
+        index = RequestFillAtlas( nullptr, draw_width, draw_height, nullptr );
         PopAtlasType();
         SpriteInfo* si = sprData[ index ];
         si->OffsY = draw_height / 4;
@@ -3341,7 +3341,7 @@ void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
             autoRedrawAnim3d.erase( it );
 
         if( anim3d->SprId )
-            sprData[ anim3d->SprId ]->Anim3d = NULL;
+            sprData[ anim3d->SprId ]->Anim3d = nullptr;
 
         SAFEDEL( anim3d );
     }
@@ -3375,7 +3375,7 @@ bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const char* fnam
 bool SpriteManager::TryLoadAnimationInFastFormat( const char* fname, int path_type, FileManager& fm, AnyFrames*& anim )
 {
     // Null result
-    anim = NULL;
+    anim = nullptr;
 
     // Load file
     if( !fm.LoadFile( fname, path_type ) )
@@ -3726,22 +3726,22 @@ bool SpriteManager::DrawSpritePattern( uint id, int x, int y, int w, int h, int 
 
 void SpriteManager::PrepareSquare( PointVec& points, Rect r, uint color )
 {
-    points.push_back( PrepPoint( r.L, r.B, color, NULL, NULL ) );
-    points.push_back( PrepPoint( r.L, r.T, color, NULL, NULL ) );
-    points.push_back( PrepPoint( r.R, r.B, color, NULL, NULL ) );
-    points.push_back( PrepPoint( r.L, r.T, color, NULL, NULL ) );
-    points.push_back( PrepPoint( r.R, r.T, color, NULL, NULL ) );
-    points.push_back( PrepPoint( r.R, r.B, color, NULL, NULL ) );
+    points.push_back( PrepPoint( r.L, r.B, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( r.L, r.T, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( r.R, r.B, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( r.L, r.T, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( r.R, r.T, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( r.R, r.B, color, nullptr, nullptr ) );
 }
 
 void SpriteManager::PrepareSquare( PointVec& points, Point lt, Point rt, Point lb, Point rb, uint color )
 {
-    points.push_back( PrepPoint( lb.X, lb.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( lt.X, lt.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( rb.X, rb.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( lt.X, lt.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( rt.X, rt.Y, color, NULL, NULL ) );
-    points.push_back( PrepPoint( rb.X, rb.Y, color, NULL, NULL ) );
+    points.push_back( PrepPoint( lb.X, lb.Y, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( lt.X, lt.Y, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( rb.X, rb.Y, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( lt.X, lt.Y, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( rt.X, rt.Y, color, nullptr, nullptr ) );
+    points.push_back( PrepPoint( rb.X, rb.Y, color, nullptr, nullptr ) );
 }
 
 uint SpriteManager::PackColor( int r, int g, int b, int a /* = 255 */ )
@@ -4027,7 +4027,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
         #endif
 
         // Choose effect
-        Effect* effect = ( spr->DrawEffect ? *spr->DrawEffect : NULL );
+        Effect* effect = ( spr->DrawEffect ? *spr->DrawEffect : nullptr );
         if( !effect )
             effect = ( si->DrawEffect ? si->DrawEffect : Effect::Generic );
 

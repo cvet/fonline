@@ -62,7 +62,7 @@ namespace Str
     void  ReplaceText( char* str, const char* from, const char* to );
     void  Replacement( char* str, char from, char to );
     void  Replacement( char* str, char from1, char from2, char to );
-    char* Trim( char* str, uint* trimmed = NULL );
+    char* Trim( char* str, uint* trimmed = nullptr );
 
     void SkipLine( char*& str );
     void GoTo( char*& str, char ch, bool skip_char = false );

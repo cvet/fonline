@@ -147,7 +147,7 @@ hash ProtoItem::GetChildPid( uint index )
 
 ScriptString* ProtoItem::GetChildLinesStr( uint index )
 {
-    ScriptString* result = NULL;
+    ScriptString* result = nullptr;
     if( index == 0 )
         result = GetChildLines_0();
     else if( index == 1 )
@@ -239,15 +239,15 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
 
     MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() );
 
-    Proto = NULL;
+    Proto = nullptr;
     Accessory = ITEM_ACCESSORY_NONE;
     ViewPlaceOnMap = false;
     memzero( AccBuffer, sizeof( AccBuffer ) );
 
     #ifdef FONLINE_SERVER
     memzero( FuncId, sizeof( FuncId ) );
-    ViewByCritter = NULL;
-    ChildItems = NULL;
+    ViewByCritter = nullptr;
+    ChildItems = nullptr;
     #endif
 
     SetProto( proto );
@@ -649,7 +649,7 @@ void Item::ContEraseItem( Item* item )
 Item* Item::ContGetItem( uint item_id, bool skip_hide )
 {
     if( !IsContainer() || !ChildItems || !item_id )
-        return NULL;
+        return nullptr;
 
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
@@ -657,12 +657,12 @@ Item* Item::ContGetItem( uint item_id, bool skip_hide )
         if( item->GetId() == item_id )
         {
             if( skip_hide && item->GetIsHidden() )
-                return NULL;
+                return nullptr;
             SYNC_LOCK( item );
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
@@ -687,7 +687,7 @@ void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
 Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 {
     if( !IsContainer() || !ChildItems )
-        return NULL;
+        return nullptr;
 
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
@@ -698,7 +698,7 @@ Item* Item::ContGetItemByPid( hash pid, uint stack_id )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
@@ -762,13 +762,13 @@ Item* Item::GetChild( uint child_index )
 {
     hash pid = ( child_index == 0 ? Proto->GetChildPid_0() : ( child_index == 1 ? Proto->GetChildPid_1() : Proto->GetChildPid_2() ) );
     if( !pid )
-        return NULL;
+        return nullptr;
 
     if( Accessory == ITEM_ACCESSORY_HEX )
     {
         Map* map = MapMngr.GetMap( AccHex.MapId );
         if( !map )
-            return NULL;
+            return nullptr;
         return map->GetItemChild( AccHex.HexX, AccHex.HexY, Proto, child_index );
     }
     else if( Accessory == ITEM_ACCESSORY_CRITTER )
@@ -783,7 +783,7 @@ Item* Item::GetChild( uint child_index )
         if( cont )
             return cont->ContGetItemByPid( pid, AccContainer.StackId );
     }
-    return NULL;
+    return nullptr;
 }
 #endif // FONLINE_SERVER
 

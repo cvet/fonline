@@ -50,7 +50,7 @@ public:
 
     Item* AddItemContainer( Item* cont, hash pid, uint count, uint stack_id );
     Item* AddItemCritter( Critter* cr, hash pid, uint count );
-    bool  SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* erased_items = NULL );
+    bool  SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* erased_items = nullptr );
     bool  SetItemCritter( Critter* cr, hash pid, uint count );
     bool  MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_id, uint count );
     bool  MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint item_id, uint count, uint stack_id );

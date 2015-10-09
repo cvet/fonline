@@ -208,7 +208,7 @@ private:
     bool        interpolationDisabled;
 
 public:
-    AnimController(): sets( NULL ), outputs( NULL ), curTime( 0.0f ), interpolationDisabled( false )
+    AnimController(): sets( nullptr ), outputs( nullptr ), curTime( 0.0f ), interpolationDisabled( false )
     {
         //
     }
@@ -269,7 +269,7 @@ public:
     AnimSet* GetAnimationSet( uint index )
     {
         if( index >= sets->size() )
-            return NULL;
+            return nullptr;
         return ( *sets )[ index ];
     }
 
@@ -280,7 +280,7 @@ public:
             if( ( *it )->animName == name )
                 return *it;
         }
-        return NULL;
+        return nullptr;
     }
 
     float GetTrackPosition( uint track )
@@ -302,7 +302,7 @@ public:
         for( uint i = 0; i < count; i++ )
         {
             hash    link_name_hash = anim->boneOutputs[ i ].nameHash;
-            Output* output = NULL;
+            Output* output = nullptr;
             for( uint j = 0; j < (uint) outputs->size(); j++ )
             {
                 if( ( *outputs )[ j ].nameHash == link_name_hash )
@@ -331,7 +331,7 @@ public:
                     if( tracks[ i ].animOutput[ k ] && tracks[ i ].animOutput[ k ]->nameHash == bone_name_hash )
                     {
                         tracks[ i ].animOutput[ k ]->valid[ i ] = false;
-                        tracks[ i ].animOutput[ k ] = NULL;
+                        tracks[ i ].animOutput[ k ] = nullptr;
                     }
                 }
             }

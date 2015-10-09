@@ -4,7 +4,7 @@
 
 static Mutex SyncLocker; // Defense code from simultaneously execution
 
-SyncObject::SyncObject(): curMngr( NULL )
+SyncObject::SyncObject(): curMngr( nullptr )
 {}
 
 void SyncObject::Lock()
@@ -108,7 +108,7 @@ void SyncObject::Unlock()
     {
         auto it = std::find( curMngr->lockedObjects.begin(), curMngr->lockedObjects.end(), this );
         curMngr->lockedObjects.erase( it );
-        curMngr = NULL;
+        curMngr = nullptr;
     }
 
     for( auto it = SyncManager::Managers.begin(), end = SyncManager::Managers.end(); it != end; ++it )
@@ -168,7 +168,7 @@ void SyncManager::UnlockAll()
     for( auto it = lockedObjects.begin(), end = lockedObjects.end(); it != end; ++it )
     {
         SyncObject* obj = *it;
-        obj->curMngr = NULL;
+        obj->curMngr = nullptr;
     }
     lockedObjects.clear();
 }
@@ -213,12 +213,12 @@ void SyncManager::Resume()
 
 SyncManager* SyncManager::GetForCurThread()
 {
-    static THREAD SyncManager* sync_mngr = NULL;
+    static THREAD SyncManager* sync_mngr = nullptr;
     if( !sync_mngr )
     {
         sync_mngr = new SyncManager();
         if( !sync_mngr )
-            return NULL;
+            return nullptr;
         Managers.push_back( sync_mngr );
     }
     return sync_mngr;

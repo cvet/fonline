@@ -745,7 +745,7 @@ public:
     T* Release()
     {
         T* tmp = Ptr;
-        Ptr = NULL;
+        Ptr = nullptr;
         return tmp;
     }
     void Reset( T* ptr )
@@ -753,7 +753,7 @@ public:
         if( ptr != Ptr && Ptr != 0 ) delete Ptr;
         Ptr = ptr;
     }
-    bool IsValid() const { return Ptr != NULL; }
+    bool IsValid() const { return Ptr != nullptr; }
 
 private:
     T* Ptr;
@@ -771,7 +771,7 @@ public:
     T* Release()
     {
         T* tmp = Ptr;
-        Ptr = NULL;
+        Ptr = nullptr;
         return tmp;
     }
     void Reset( T* ptr )
@@ -779,7 +779,7 @@ public:
         if( ptr != Ptr && Ptr != 0 ) delete[] Ptr;
         Ptr = ptr;
     }
-    bool IsValid() const { return Ptr != NULL; }
+    bool IsValid() const { return Ptr != nullptr; }
 
 private:
     T* Ptr;
@@ -865,7 +865,7 @@ private:
 public:
     Thread();
     ~Thread();
-    void Start( void ( * func )( void* ), const char* name, void* arg = NULL );
+    void Start( void ( * func )( void* ), const char* name, void* arg = nullptr );
     void Wait();
     void Finish();
     void Release();
@@ -966,7 +966,7 @@ template< class T >
 T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
 {
     pos += size;
-    return size ? &vec[ pos - size ] : NULL;
+    return size ? &vec[ pos - size ] : nullptr;
 }
 
 /************************************************************************/

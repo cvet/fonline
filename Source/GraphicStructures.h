@@ -122,8 +122,8 @@ struct PrepPoint
     short* PointOffsY;
     uint   PointColor;
 
-    PrepPoint(): PointX( 0 ), PointY( 0 ), PointOffsX( NULL ), PointOffsY( NULL ), PointColor( 0 ) {}
-    PrepPoint( short x, short y, uint color, short* ox = NULL, short* oy = NULL ): PointX( x ), PointY( y ), PointOffsX( ox ), PointOffsY( oy ), PointColor( color ) {}
+    PrepPoint(): PointX( 0 ), PointY( 0 ), PointOffsX( nullptr ), PointOffsY( nullptr ), PointColor( 0 ) {}
+    PrepPoint( short x, short y, uint color, short* ox = nullptr, short* oy = nullptr ): PointX( x ), PointY( y ), PointOffsX( ox ), PointOffsY( oy ), PointColor( color ) {}
 };
 typedef vector< PrepPoint > PointVec;
 typedef vector< PointVec >  PointVecVec;

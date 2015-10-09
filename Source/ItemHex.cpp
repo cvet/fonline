@@ -39,8 +39,8 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* data, int hx, int hy, 
     isAnimated = false;
     animTick = 0;
     animNextTick = 0;
-    SprDraw = NULL;
-    SprTemp = NULL;
+    SprDraw = nullptr;
+    SprTemp = nullptr;
     SprDrawValid = false;
 
     // Alpha
@@ -217,7 +217,7 @@ void ItemHex::RefreshAnim()
     hash name_hash = Proto->GetPicMap();
     if( GetPicMap() )
         name_hash = GetPicMap();
-    Anim = NULL;
+    Anim = nullptr;
     if( name_hash )
         Anim = ResMngr.GetItemAnim( name_hash );
     if( name_hash && !Anim )

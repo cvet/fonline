@@ -84,7 +84,7 @@ double Timer::AccurateTick()
     return (double) ( (double) ( qpc_value - QPCStartValue ) / (double) QPCFrequency * 1000.0 );
     #else
     struct timeval tv;
-    gettimeofday( &tv, NULL );
+    gettimeofday( &tv, nullptr );
     return (double) ( tv.tv_sec * 1000000 + tv.tv_usec ) / 1000.0;
     #endif
 }
@@ -153,7 +153,7 @@ void Timer::GetCurrentDateTime( DateTimeStamp& dt )
     dt.Day = lt->tm_mday, dt.Hour = lt->tm_hour, dt.Minute = lt->tm_min,
     dt.Second = lt->tm_sec;
     struct timeval tv;
-    gettimeofday( &tv, NULL );
+    gettimeofday( &tv, nullptr );
     dt.Milliseconds = tv.tv_usec / 1000;
     #endif
 }

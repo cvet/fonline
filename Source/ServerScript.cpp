@@ -113,7 +113,7 @@ bool FOServer::InitScriptSystem()
     #include "ScriptBind.h"
 
     // Load script modules
-    Script::Undef( NULL );
+    Script::Undef( nullptr );
     Script::Define( "__SERVER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
     if( !Script::ReloadScripts( "Server", "SERVER_" ) )
@@ -701,7 +701,7 @@ uint FOServer::SScriptFunc::Container_GetItems( Item* cont, uint stack_id, Scrip
         SCRIPT_ERROR_R0( "Container item is not container type." );
 
     ItemVec items_;
-    cont->ContGetItems( items_, stack_id, items != NULL );
+    cont->ContGetItems( items_, stack_id, items != nullptr );
     if( items )
         Script::AppendVectorToArrayRef< Item* >( items_, items );
     return (uint) items_.size();
@@ -808,7 +808,7 @@ Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    Map* map = NULL;
+    Map* map = nullptr;
     switch( item->Accessory )
     {
     case ITEM_ACCESSORY_CRITTER:
@@ -820,7 +820,7 @@ Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
         {
             hx = cr->Data.WorldX;
             hy = cr->Data.WorldY;
-            return NULL;
+            return nullptr;
         }
         map = MapMngr.GetMap( cr->GetMapId(), true );
         if( !map )
@@ -1932,7 +1932,7 @@ Critter* FOServer::SScriptFunc::Crit_GetFollowLeader( Critter* cr )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     uint leader_id = cr->GetFollowCrit();
     if( !leader_id )
-        return NULL;
+        return nullptr;
     return cr->GetCritSelf( leader_id, true );
 }
 
@@ -1941,7 +1941,7 @@ ScriptArray* FOServer::SScriptFunc::Crit_GetGlobalGroup( Critter* cr )
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( cr->GetMapId() || !cr->GroupMove )
-        return NULL;
+        return nullptr;
     ScriptArray* result = MapMngr.GM_CreateGroupArray( cr->GroupMove );
     if( !result )
         SCRIPT_ERROR_R0( "Fail to create group." );
@@ -2100,7 +2100,7 @@ Item* FOServer::SScriptFunc::Crit_GetItem( Critter* cr, hash proto_id, int slot 
         return cr->GetItemByPidInvPriority( proto_id );
     else if( slot >= 0 && slot < SLOT_GROUND )
         return cr->GetItemSlot( slot );
-    return NULL;
+    return nullptr;
 }
 
 Item* FOServer::SScriptFunc::Crit_GetItemById( Critter* cr, uint item_id )
@@ -2115,7 +2115,7 @@ uint FOServer::SScriptFunc::Crit_GetItems( Critter* cr, int slot, ScriptArray* i
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     ItemVec items_;
-    cr->GetItemsSlot( slot, items_, items != NULL );
+    cr->GetItemsSlot( slot, items_, items != nullptr );
     if( items )
         Script::AppendVectorToArrayRef< Item* >( items_, items );
     return (uint) items_.size();
@@ -2126,7 +2126,7 @@ uint FOServer::SScriptFunc::Crit_GetItemsByType( Critter* cr, int type, ScriptAr
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     ItemVec items_;
-    cr->GetItemsType( type, items_, items != NULL );
+    cr->GetItemsType( type, items_, items != nullptr );
     if( items )
         Script::AppendVectorToArrayRef< Item* >( items_, items );
     return (uint) items_.size();
@@ -2137,7 +2137,7 @@ ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto( Critter* cr, int slot, ucha
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    Item* item = NULL;
+    Item* item = nullptr;
     switch( slot )
     {
     case SLOT_HAND1:
@@ -2154,7 +2154,7 @@ ProtoItem* FOServer::SScriptFunc::Crit_GetSlotProto( Critter* cr, int slot, ucha
         break;
     }
     if( !item )
-        return NULL;
+        return nullptr;
 
     mode = item->GetMode();
     if( !item->GetId() && ( item == cr->ItemSlotMain || item == cr->ItemSlotExt ) )
@@ -2277,7 +2277,7 @@ AIDataPlane* FOServer::SScriptFunc::Npc_GetCurPlane( Critter* npc )
         SCRIPT_ERROR_R0( "Critter is not npc." );
     Npc* npc_ = (Npc*) npc;
     if( npc_->IsNoPlanes() )
-        return NULL;
+        return nullptr;
     return npc_->GetPlanes()[ 0 ];
 }
 
@@ -2465,7 +2465,7 @@ bool FOServer::SScriptFunc::Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_
 
     cr->AddKnownLoc( loc->GetId() );
     if( loc->IsAutomaps() )
-        cr->Send_AutomapsInfo( NULL, loc );
+        cr->Send_AutomapsInfo( nullptr, loc );
     if( !cr->GetMapId() )
         cr->Send_GlobalLocation( loc, true );
 
@@ -3569,7 +3569,7 @@ uint FOServer::SScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushort hy, Scr
     if( hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     ItemVec items_;
-    map->GetItemsHex( hx, hy, items_, items != NULL );
+    map->GetItemsHex( hx, hy, items_, items != nullptr );
     if( items )
         Script::AppendVectorToArrayRef< Item* >( items_, items );
     return (uint) items_.size();
@@ -3582,7 +3582,7 @@ uint FOServer::SScriptFunc::Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, u
     if( hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     ItemVec items_;
-    map->GetItemsHexEx( hx, hy, radius, pid, items_, items != NULL );
+    map->GetItemsHexEx( hx, hy, radius, pid, items_, items != nullptr );
     if( items )
         Script::AppendVectorToArrayRef< Item* >( items_, items );
     return (uint) items_.size();
@@ -3593,7 +3593,7 @@ uint FOServer::SScriptFunc::Map_GetItemsByPid( Map* map, hash pid, ScriptArray* 
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     ItemVec items_;
-    map->GetItemsPid( pid, items_, items != NULL );
+    map->GetItemsPid( pid, items_, items != nullptr );
     if( items )
         Script::AppendVectorToArrayRef< Item* >( items_, items );
     return (uint) items_.size();
@@ -3604,7 +3604,7 @@ uint FOServer::SScriptFunc::Map_GetItemsByType( Map* map, int type, ScriptArray*
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     ItemVec items_;
-    map->GetItemsType( type, items_, items != NULL );
+    map->GetItemsType( type, items_, items != nullptr );
     if( items )
         Script::AppendVectorToArrayRef< Item* >( items_, items );
     return (uint) items_.size();
@@ -3625,7 +3625,7 @@ Item* FOServer::SScriptFunc::Map_GetItemHex( Map* map, ushort hx, ushort hy, has
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
-    return map->GetItemHex( hx, hy, pid, NULL );
+    return map->GetItemHex( hx, hy, pid, nullptr );
 }
 
 Critter* FOServer::SScriptFunc::Map_GetCritterHex( Map* map, ushort hx, ushort hy )
@@ -4027,7 +4027,7 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     else
         script_name[ 0 ] = 0;
 
-    Critter* npc = CrMngr.CreateNpc( proto_id, &params_, &items_, script_name[ 0 ] ? script_name : NULL, map, hx, hy, dir, false );
+    Critter* npc = CrMngr.CreateNpc( proto_id, &params_, &items_, script_name[ 0 ] ? script_name : nullptr, map, hx, hy, dir, false );
     if( !npc )
         SCRIPT_ERROR_R0( "Create npc fail." );
     return npc;
@@ -4483,7 +4483,7 @@ Map* FOServer::SScriptFunc::Location_GetMap( Location* loc, hash map_pid )
             return map;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Map* FOServer::SScriptFunc::Location_GetMapByIndex( Location* loc, uint index )
@@ -4503,7 +4503,7 @@ uint FOServer::SScriptFunc::Location_GetMaps( Location* loc, ScriptArray* maps )
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     MapVec maps_;
-    loc->GetMaps( maps_, maps != NULL );
+    loc->GetMaps( maps_, maps != nullptr );
     if( maps )
         Script::AppendVectorToArrayRef< Map* >( maps_, maps );
     return (uint) maps_.size();
@@ -4602,7 +4602,7 @@ Item* FOServer::SScriptFunc::Global_GetItem( uint item_id )
         SCRIPT_ERROR_R0( "Item id arg is zero." );
     Item* item = ItemMngr.GetItem( item_id, true );
     if( !item || item->IsDestroyed )
-        return NULL;
+        return nullptr;
     return item;
 }
 
@@ -4743,17 +4743,17 @@ void FOServer::SScriptFunc::Global_DeleteNpcById( uint npc_id )
 
 void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, ScriptString& text )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (uint) text.length(), 0, false, 0, 0, NULL );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (uint) text.length(), 0, false, 0, 0, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, NULL, 0, 0, false, text_msg, num_str, NULL );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, 0, false, text_msg, num_str, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, ScriptString* lexems )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, NULL, 0, 0, false, text_msg, num_str, lexems && lexems->length() ? lexems->c_str() : NULL );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, 0, false, text_msg, num_str, lexems && lexems->length() ? lexems->c_str() : nullptr );
 }
 
 uint FOServer::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
@@ -4815,7 +4815,7 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
         if( !cr->GetMapId() )
             cr->Send_GlobalLocation( loc, true );
         if( loc->IsAutomaps() )
-            cr->Send_AutomapsInfo( NULL, loc );
+            cr->Send_AutomapsInfo( nullptr, loc );
 
         ushort zx = GM_ZONE( loc->Data.WX );
         ushort zy = GM_ZONE( loc->Data.WY );
@@ -4831,14 +4831,14 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
 
 void FOServer::SScriptFunc::Global_DeleteLocation( Location* loc )
 {
-    MapMngr.DeleteLocation( loc, NULL );
+    MapMngr.DeleteLocation( loc, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_DeleteLocationById( uint loc_id )
 {
     Location* loc = MapMngr.GetLocation( loc_id );
     if( loc )
-        MapMngr.DeleteLocation( loc, NULL );
+        MapMngr.DeleteLocation( loc, nullptr );
 }
 
 // void FOServer::SScriptFunc::Global_GetProtoCritter( hash proto_id, ScriptArray& data )
@@ -4860,7 +4860,7 @@ CraftItem* FOServer::SScriptFunc::Global_GetCraftItem( uint num )
 Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
 {
     if( !crid )
-        return NULL;          // SCRIPT_ERROR_R0("Critter id arg is zero.");
+        return nullptr;          // SCRIPT_ERROR_R0("Critter id arg is zero.");
     return CrMngr.GetCritter( crid, true );
 }
 
@@ -4868,9 +4868,9 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( ScriptString& name )
 {
     uint len_utf8 = Str::LengthUTF8( name.c_str() );
     if( len_utf8 < MIN_NAME || len_utf8 < GameOpt.MinNameLength )
-        return NULL;
+        return nullptr;
     if( len_utf8 > MAX_NAME || len_utf8 > GameOpt.MaxNameLength )
-        return NULL;
+        return nullptr;
 
     return CrMngr.GetPlayer( name.c_str(), true );
 }
@@ -4895,19 +4895,19 @@ uint FOServer::SScriptFunc::Global_GetPlayerId( ScriptString& name )
 ScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
 {
     if( !id )
-        return NULL;         // SCRIPT_ERROR_R0("Id arg is zero.");
+        return nullptr;         // SCRIPT_ERROR_R0("Id arg is zero.");
 
     if( Singleplayer )
     {
         if( id == 1 )
             return ScriptString::Create( SingleplayerSave.CrData.Name );
-        return NULL;
+        return nullptr;
     }
 
     SCOPE_LOCK( ClientsDataLocker );
     ClientData* data = GetClientData( id );
     if( !data )
-        return NULL;           // SCRIPT_ERROR_R0("Player not found.");
+        return nullptr;           // SCRIPT_ERROR_R0("Player not found.");
     return ScriptString::Create( data->ClientName );
 }
 
@@ -5048,7 +5048,7 @@ bool FOServer::SScriptFunc::Global_RunDialogHex( Critter* player, uint dlg_pack,
     Client* cl = (Client*) player;
     if( cl->Talk.Locked )
         SCRIPT_ERROR_R0( "Can't open new dialog from demand, result or dialog functions." );                   // if(DlgCtx->GetState()==asEXECUTION_ACTIVE)
-    Dialog_Begin( cl, NULL, dlg_pack, hx, hy, ignore_distance );
+    Dialog_Begin( cl, nullptr, dlg_pack, hx, hy, ignore_distance );
     return cl->Talk.TalkType == TALK_WITH_HEX && cl->Talk.TalkHexX == hx && cl->Talk.TalkHexY == hy;
 }
 
@@ -5182,7 +5182,7 @@ void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
 
     if( map != prev_map )
     {
-        cl->Send_LoadMap( NULL );
+        cl->Send_LoadMap( nullptr );
     }
     else
     {
@@ -5530,7 +5530,7 @@ void FOServer::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
 
     ScriptArray* props_array;
     int          props_array_index = Script::GetEngine()->GetGlobalPropertyIndexByName( "CritterPropertyRegProperties" );
-    Script::GetEngine()->GetGlobalPropertyByIndex( props_array_index, NULL, NULL, NULL, NULL, NULL, (void**) &props_array );
+    Script::GetEngine()->GetGlobalPropertyByIndex( props_array_index, nullptr, nullptr, nullptr, nullptr, nullptr, (void**) &props_array );
     props_array->Resize( 0 );
     for( auto it = Critter::RegProperties.begin(); it != Critter::RegProperties.end(); ++it )
         props_array->InsertLast( (void*) &( *it ) );
@@ -5628,7 +5628,7 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_na
     {
         MEMORY_PROCESS( MEMORY_IMAGE, -(int) ServerImages[ index ]->Data.capacity() );
         delete ServerImages[ index ];
-        ServerImages[ index ] = NULL;
+        ServerImages[ index ] = nullptr;
     }
     if( !image_name || !image_name->length() )
         return true;
@@ -5651,20 +5651,20 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_na
         SCRIPT_ERROR_R0( "File '%s' not found.", image_name->c_str() );
 
     // Load PNG from memory
-    png_structp pp = png_create_read_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
-    png_infop   info = NULL;
+    png_structp pp = png_create_read_struct( PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr );
+    png_infop   info = nullptr;
     if( pp )
         info = png_create_info_struct( pp );
     if( !pp || !info )
     {
         if( pp )
-            png_destroy_read_struct( &pp, NULL, NULL );
+            png_destroy_read_struct( &pp, nullptr, nullptr );
         SCRIPT_ERROR_R0( "Cannot allocate memory to read PNG data." );
     }
 
     if( setjmp( png_jmpbuf( pp ) ) )
     {
-        png_destroy_read_struct( &pp, &info, NULL );
+        png_destroy_read_struct( &pp, &info, nullptr );
         SCRIPT_ERROR_R0( "PNG data contains errors." );
     }
 
@@ -5727,11 +5727,11 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_na
         rows[ i ] = (png_bytep) ( data + i * w * d );
 
     for( int i = png_set_interlace_handling( pp ); i > 0; i-- )
-        png_read_rows( pp, rows, NULL, h );
+        png_read_rows( pp, rows, nullptr, h );
 
     delete[] rows;
     png_read_end( pp, info );
-    png_destroy_read_struct( &pp, &info, NULL );
+    png_destroy_read_struct( &pp, &info, nullptr );
 
     // Copy data
     ServerImage* simg = new ServerImage();

@@ -39,7 +39,7 @@ public:
     BindFunction()
     {
         IsScriptCall = false;
-        ScriptFunc = NULL;
+        ScriptFunc = nullptr;
         NativeFuncAddr = 0;
     }
 
@@ -60,7 +60,7 @@ public:
         NativeFuncAddr = native_func_addr;
         ModuleName = module_name;
         FuncName = func_name;
-        ScriptFunc = NULL;
+        ScriptFunc = nullptr;
     }
 
     void Clear()
@@ -72,7 +72,7 @@ public:
 };
 typedef vector< BindFunction > BindFunctionVec;
 
-static asIScriptEngine* Engine = NULL;
+static asIScriptEngine* Engine = nullptr;
 static bool             LogDebugInfo = false;
 
 static BindFunctionVec  BindedFunctions;
@@ -138,7 +138,7 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     Engine->SetModuleUserDataCleanupCallback([] ( asIScriptModule * module )
                                              {
                                                  Preprocessor::DeleteLineNumberTranslator( (Preprocessor::LineNumberTranslator*) module->GetUserData() );
-                                                 module->SetUserData( NULL );
+                                                 module->SetUserData( nullptr );
                                              } );
 
     while( FreeContexts.size() < 10 )
@@ -159,9 +159,9 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
             {
                 char dir[ MAX_FOPATH ];
                 FileManager::ExtractDir( path, dir );
-                return Script::LoadModuleFromFile( module_name, file, dir, NULL ) && Script::BindImportedFunctions();
+                return Script::LoadModuleFromFile( module_name, file, dir, nullptr ) && Script::BindImportedFunctions();
             }
-            return NULL;
+            return nullptr;
         }
         static uint ScriptBind( const char* script_name, const char* func_decl, bool temporary_id )
         {
@@ -336,7 +336,7 @@ void Script::Finish()
     BindedFunctions.clear();
     ScriptFuncBinds.clear();
 
-    Preprocessor::SetPragmaCallback( NULL );
+    Preprocessor::SetPragmaCallback( nullptr );
     Preprocessor::UndefAll();
     UnloadScripts();
 
@@ -366,7 +366,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     if( !edata->AllowNativeCalls )
     {
         WriteLogF( _FUNC_, " - Unable to load dll '%s', native calls not allowed.\n", dll_name );
-        return NULL;
+        return nullptr;
     }
 
     // Find in already loaded
@@ -448,7 +448,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     chdir( cur_path );
     #endif
     if( !dll )
-        return NULL;
+        return nullptr;
 
     // Verify compilation target
     size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
@@ -458,7 +458,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
                    DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
                    !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
         DLL_Free( dll );
-        return NULL;
+        return nullptr;
     }
 
     // Register variables
@@ -534,7 +534,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
 
     EngineData* edata = (EngineData*) Engine->GetUserData();
     int         errors = 0;
-    bool        load_from_raw = ( cache_pefix == NULL );
+    bool        load_from_raw = ( cache_pefix == nullptr );
 
     // Get last write time in cache scripts
     uint64          cache_write_time = 0;
@@ -790,10 +790,10 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
     if( !engine )
     {
         WriteLogF( _FUNC_, " - asCreateScriptEngine fail.\n" );
-        return NULL;
+        return nullptr;
     }
 
-    engine->SetMessageCallback( asFUNCTION( CallbackMessage ), NULL, asCALL_CDECL );
+    engine->SetMessageCallback( asFUNCTION( CallbackMessage ), nullptr, asCALL_CDECL );
     RegisterScriptArray( engine, true );
     RegisterScriptString( engine );
     RegisterScriptAny( engine );
@@ -809,7 +809,7 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
     edata->DllTarget = dll_target;
     edata->AllowNativeCalls = allow_native_calls;
     edata->Invoker = new ScriptInvoker();
-    edata->Profiler = NULL;
+    edata->Profiler = nullptr;
     engine->SetUserData( edata );
     return engine;
 }
@@ -818,13 +818,13 @@ void Script::FinishEngine( asIScriptEngine*& engine )
 {
     if( engine )
     {
-        EngineData* edata = (EngineData*) engine->SetUserData( NULL );
+        EngineData* edata = (EngineData*) engine->SetUserData( nullptr );
         delete edata->PragmaCB;
         for( auto it = edata->LoadedDlls.begin(), end = edata->LoadedDlls.end(); it != end; ++it )
             DLL_Free( it->second.second );
         delete edata;
         engine->ShutDownAndRelease();
-        engine = NULL;
+        engine = nullptr;
     }
 }
 
@@ -832,7 +832,7 @@ void Script::CreateContext()
 {
     asIScriptContext* ctx = Engine->CreateContext();
     RUNTIME_ASSERT( ctx );
-    int               r = ctx->SetExceptionCallback( asFUNCTION( CallbackException ), NULL, asCALL_CDECL );
+    int               r = ctx->SetExceptionCallback( asFUNCTION( CallbackException ), nullptr, asCALL_CDECL );
     RUNTIME_ASSERT( r >= 0 );
 
     ContextData* ctx_data = new ContextData();
@@ -857,7 +857,7 @@ void Script::FinishContext( asIScriptContext* ctx )
 
     delete (ContextData*) ctx->GetUserData();
     ctx->Release();
-    ctx = NULL;
+    ctx = nullptr;
 }
 
 asIScriptContext* Script::RequestContext()
@@ -912,7 +912,7 @@ void Script::RaiseException( const char* message, ... )
     if( ctx )
         ctx->SetException( buf );
     else
-        HandleException( NULL, "Engine exception: %s\n", buf );
+        HandleException( nullptr, "Engine exception: %s\n", buf );
 }
 
 void Script::PassException()
@@ -1066,10 +1066,10 @@ const char* Script::GetActiveModuleName()
 {
     asIScriptContext* ctx = asGetActiveContext();
     if( !ctx )
-        return NULL;
+        return nullptr;
     asIScriptFunction* func = ctx->GetFunction( 0 );
     if( !func )
-        return NULL;
+        return nullptr;
     return func->GetModuleName();
 }
 
@@ -1179,7 +1179,7 @@ public:
                 data.resize( InitialFile->GetFsize() );
                 if( !data.empty() )
                     memcpy( &data[ 0 ], InitialFile->GetBuf(), data.size() );
-                InitialFile = NULL;
+                InitialFile = nullptr;
                 return true;
             }
 
@@ -1566,7 +1566,7 @@ uint Script::BindByModuleFuncName( const char* module_name, const char* func_nam
         if( is_temp )
         {
             BindedFunctions[ 1 ].IsScriptCall = false;
-            BindedFunctions[ 1 ].ScriptFunc = NULL;
+            BindedFunctions[ 1 ].ScriptFunc = nullptr;
             BindedFunctions[ 1 ].NativeFuncAddr = func;
             return 1;
         }
@@ -1656,11 +1656,11 @@ bool Script::RebindFunctions()
             if( bf.ScriptFunc )
                 bf.ScriptFunc->Release();
 
-            int bind_id = BindByModuleFuncName( bf.ModuleName.c_str(), bf.FuncName.c_str(), NULL, true, false );
+            int bind_id = BindByModuleFuncName( bf.ModuleName.c_str(), bf.FuncName.c_str(), nullptr, true, false );
             if( bind_id <= 0 )
             {
                 WriteLogF( _FUNC_, " - Unable to bind function, module '%s', function '%s'.\n", bf.ModuleName.c_str(), bf.FuncName.c_str() );
-                bf.ScriptFunc = NULL;
+                bf.ScriptFunc = nullptr;
                 errors++;
             }
             else
@@ -1780,7 +1780,7 @@ asIScriptFunction* Script::FindFunc( hash func_num )
                 return func;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 hash Script::BindScriptFuncNumByFuncNameInRuntime( const char* func_name, const char* decl )
@@ -1971,7 +1971,7 @@ int Script::GetEnumValue( const char* enum_name, const char* value_name, bool& f
 /************************************************************************/
 
 static THREAD bool              ScriptCall = false;
-static THREAD asIScriptContext* CurrentCtx = NULL;
+static THREAD asIScriptContext* CurrentCtx = nullptr;
 static THREAD size_t            NativeFuncAddr = 0;
 static THREAD size_t            NativeArgs[ 256 ] = { 0 };
 static THREAD size_t            RetValue[ 2 ] = { 0 }; // EAX:EDX
@@ -2356,7 +2356,7 @@ bool Script::RunPrepared()
         asIScriptContext* ctx = CurrentCtx;
         ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
         uint              tick = Timer::FastTick();
-        CurrentCtx = NULL;
+        CurrentCtx = nullptr;
         ctx_data->StartTick = tick;
         ctx_data->Parent = asGetActiveContext();
 
@@ -2658,7 +2658,7 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 
 ScriptArray* Script::CreateArray( const char* type )
 {
-    return ScriptArray::Create( Engine->GetObjectTypeById( Engine->GetTypeIdByDecl( type ) ), 0, NULL );
+    return ScriptArray::Create( Engine->GetObjectTypeById( Engine->GetTypeIdByDecl( type ) ), 0, nullptr );
 }
 
 /************************************************************************/

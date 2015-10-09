@@ -52,8 +52,8 @@ Animation3dVec Animation3d::loadedAnimations;
 
 Animation3d::Animation3d()
 {
-    animEntity = NULL;
-    animController = NULL;
+    animEntity = nullptr;
+    animController = nullptr;
     combinedMeshesSize = 0;
     disableCulling = false;
     currentTrack = 0;
@@ -64,8 +64,8 @@ Animation3d::Animation3d()
     speedAdjustLink = 1.0f;
     shadowDisabled = false;
     dirAngle = ( GameOpt.MapHexagonal ? 150.0f : 135.0f );
-    parentAnimation = NULL;
-    parentBone = NULL;
+    parentAnimation = nullptr;
+    parentBone = nullptr;
     childChecker = true;
     useGameTimer = true;
     animPosProc = 0.0f;
@@ -261,7 +261,7 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
 
                     if( !aviable )
                     {
-                        Animation3d* anim3d = NULL;
+                        Animation3d* anim3d = nullptr;
 
                         // Link to main bone
                         if( link.LinkBoneHash )
@@ -444,7 +444,7 @@ bool Animation3d::IsAnimation( uint anim1, uint anim2 )
 
 bool Animation3d::CheckAnimation( uint& anim1, uint& anim2 )
 {
-    if( animEntity->GetAnimationIndex( anim1, anim2, NULL, false ) == -1 )
+    if( animEntity->GetAnimationIndex( anim1, anim2, nullptr, false ) == -1 )
     {
         anim1 = ANIM1_UNARMED;
         anim2 = ANIM2_IDLE;
@@ -556,7 +556,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
     {
         for( uint i = 0; i < data.TextureCount; i++ )
         {
-            MeshTexture* texture = NULL;
+            MeshTexture* texture = nullptr;
 
             // Get texture
             if( Str::CompareCount( data.TextureName[ i ], "Parent", 6 ) )     // Parent_MeshName
@@ -601,7 +601,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
     {
         for( uint i = 0; i < data.EffectCount; i++ )
         {
-            Effect* effect = NULL;
+            Effect* effect = nullptr;
 
             // Get effect
             if( Str::CompareCount( data.EffectInst[ i ].EffectFilename, "Parent", 6 ) )     // Parent_MeshName
@@ -930,7 +930,7 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
     if( cut->UnskinBone )
     {
         // Find unskin bone
-        Bone* unskin_bone = NULL;
+        Bone* unskin_bone = nullptr;
         for( size_t i = 0; i < combined_mesh->CurBoneMatrix; i++ )
         {
             if( combined_mesh->SkinBones[ i ]->NameHash == cut->UnskinBone )
@@ -977,7 +977,7 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
                             break;
 
                         // Skip equal influence side
-                        bool influence_side = ( unskin_bone->Find( combined_mesh->SkinBones[ (int) v.BlendIndices[ b ] ]->NameHash ) != NULL );
+                        bool influence_side = ( unskin_bone->Find( combined_mesh->SkinBones[ (int) v.BlendIndices[ b ] ]->NameHash ) != nullptr );
                         if( v_side == influence_side )
                             continue;
 
@@ -1251,10 +1251,10 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
 {
     Animation3dEntity* entity = Animation3dEntity::GetEntity( name );
     if( !entity )
-        return NULL;
+        return nullptr;
     Animation3d* anim3d = entity->CloneAnimation();
     if( !anim3d )
-        return NULL;
+        return nullptr;
 
     // Create mesh instances
     anim3d->allMeshes.resize( entity->xFile->allDrawBones.size() );
@@ -1265,13 +1265,13 @@ Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
         MeshData*     mesh = entity->xFile->allDrawBones[ i ]->Mesh;
         memzero( &mesh_instance, sizeof( mesh_instance ) );
         mesh_instance.Mesh = mesh;
-        const char* tex_name = ( mesh->DiffuseTexture.length() ? mesh->DiffuseTexture.c_str() : NULL );
-        mesh_instance.CurTexures[ 0 ] = mesh_instance.DefaultTexures[ 0 ] = ( tex_name ? entity->xFile->GetTexture( tex_name ) : NULL );
-        mesh_instance.CurEffect = mesh_instance.DefaultEffect = ( mesh->DrawEffect.EffectFilename ? entity->xFile->GetEffect( &mesh->DrawEffect ) : NULL );
+        const char* tex_name = ( mesh->DiffuseTexture.length() ? mesh->DiffuseTexture.c_str() : nullptr );
+        mesh_instance.CurTexures[ 0 ] = mesh_instance.DefaultTexures[ 0 ] = ( tex_name ? entity->xFile->GetTexture( tex_name ) : nullptr );
+        mesh_instance.CurEffect = mesh_instance.DefaultEffect = ( mesh->DrawEffect.EffectFilename ? entity->xFile->GetEffect( &mesh->DrawEffect ) : nullptr );
     }
 
     // Set default data
-    anim3d->SetAnimation( 0, 0, NULL, ANIMATION_INIT );
+    anim3d->SetAnimation( 0, 0, nullptr, ANIMATION_INIT );
 
     if( !is_child )
         loadedAnimations.push_back( anim3d );
@@ -1310,7 +1310,7 @@ Point Animation3d::Convert3dTo2d( Vector pos )
 
 Animation3dEntityVec Animation3dEntity::allEntities;
 
-Animation3dEntity::Animation3dEntity(): xFile( NULL ), animController( NULL ),
+Animation3dEntity::Animation3dEntity(): xFile( nullptr ), animController( nullptr ),
                                         renderAnim( 0 ), renderAnimProcFrom( 0 ), renderAnimProcTo( 100 ), renderAnimDir( 0 ),
                                         shadowDisabled( false ), drawWidth( DEFAULT_DRAW_SIZE ), drawHeight( DEFAULT_DRAW_SIZE )
 {
@@ -1380,7 +1380,7 @@ bool Animation3dEntity::Load( const char* name )
         uint             mesh = 0;
         int              layer = -1;
         int              layer_val = 0;
-        EffectInstance*  cur_effect = NULL;
+        EffectInstance*  cur_effect = nullptr;
 
         AnimParams       dummy_link;
         memzero( &dummy_link, sizeof( dummy_link ) );
@@ -1882,7 +1882,7 @@ bool Animation3dEntity::Load( const char* name )
                     continue;
 
                 EffectDefault::EType type;
-                uchar*               data = NULL;
+                uchar*               data = nullptr;
                 uint                 data_len = 0;
                 if( Str::Compare( buf, "String" ) )
                 {
@@ -2153,7 +2153,7 @@ bool Animation3dEntity::Load( const char* name )
                             {
                                 child = new Bone();
                                 child->NameHash = bone_hierarchy[ b ];
-                                child->Mesh = NULL;
+                                child->Mesh = nullptr;
                                 bone->Children.push_back( child );
                             }
                             bone = child;
@@ -2280,7 +2280,7 @@ Animation3d* Animation3dEntity::CloneAnimation()
     // Create instance
     Animation3d* a3d = new Animation3d();
     if( !a3d )
-        return NULL;
+        return nullptr;
 
     a3d->animEntity = this;
 
@@ -2293,7 +2293,7 @@ Animation3d* Animation3dEntity::CloneAnimation()
 Animation3dEntity* Animation3dEntity::GetEntity( const char* name )
 {
     // Try find instance
-    Animation3dEntity* entity = NULL;
+    Animation3dEntity* entity = nullptr;
     for( auto it = allEntities.begin(), end = allEntities.end(); it != end; ++it )
     {
         Animation3dEntity* e = *it;
@@ -2311,7 +2311,7 @@ Animation3dEntity* Animation3dEntity::GetEntity( const char* name )
         if( !entity || !entity->Load( name ) )
         {
             SAFEDEL( entity );
-            return NULL;
+            return nullptr;
         }
 
         allEntities.push_back( entity );
@@ -2326,18 +2326,18 @@ Animation3dEntity* Animation3dEntity::GetEntity( const char* name )
 
 Animation3dXFileVec Animation3dXFile::xFiles;
 
-Animation3dXFile::Animation3dXFile(): rootBone( NULL )
+Animation3dXFile::Animation3dXFile(): rootBone( nullptr )
 {}
 
 Animation3dXFile::~Animation3dXFile()
 {
     GraphicLoader::DestroyModel( rootBone );
-    rootBone = NULL;
+    rootBone = nullptr;
 }
 
 Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
 {
-    Animation3dXFile* xfile = NULL;
+    Animation3dXFile* xfile = nullptr;
 
     for( auto it = xFiles.begin(), end = xFiles.end(); it != end; ++it )
     {
@@ -2356,14 +2356,14 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
         if( !root_bone )
         {
             WriteLogF( _FUNC_, " - Unable to load 3d file '%s'.\n", xname );
-            return NULL;
+            return nullptr;
         }
 
         xfile = new Animation3dXFile();
         if( !xfile )
         {
             WriteLogF( _FUNC_, " - Allocation fail, x file '%s'.\n", xname );
-            return NULL;
+            return nullptr;
         }
 
         xfile->fileName = xname;
@@ -2420,7 +2420,7 @@ MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )
 
 Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
 {
-    Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, NULL, fileName.c_str(), effect_inst->Defaults, effect_inst->DefaultsCount );
+    Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, nullptr, fileName.c_str(), effect_inst->Defaults, effect_inst->DefaultsCount );
     if( !effect )
         WriteLogF( _FUNC_, " - Can't load effect '%s'.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
     return effect;

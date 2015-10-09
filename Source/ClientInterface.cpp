@@ -156,7 +156,7 @@ int FOClient::InitIface()
     DlgMainTextLinesReal = 1;
     IfaceLoadRect( DlgWMain, "DlgMain" );
     IfaceLoadRect( DlgWText, "DlgText" );
-    DlgMainTextLinesRect = SprMngr.GetLinesCount( 0, DlgWText.H(), NULL );
+    DlgMainTextLinesRect = SprMngr.GetLinesCount( 0, DlgWText.H(), nullptr );
     IfaceLoadRect( DlgBScrUp, "DlgScrUp" );
     IfaceLoadRect( DlgBScrDn, "DlgScrDn" );
     IfaceLoadRect( DlgAnsw, "DlgAnsw" );
@@ -265,7 +265,7 @@ int FOClient::InitIface()
     GmapTilesX = IfaceIni.GetInt( "GmapTilesX", 0 );
     GmapTilesY = IfaceIni.GetInt( "GmapTilesY", 0 );
     GmapPic.resize( GmapTilesX * GmapTilesY );
-    GmapFog.Create( GM__MAXZONEX, GM__MAXZONEY, NULL );
+    GmapFog.Create( GM__MAXZONEX, GM__MAXZONEY, nullptr );
 
     // Other
     IfaceLoadRect( GmapWMain, "GmapMain" );
@@ -374,7 +374,7 @@ int FOClient::InitIface()
     AimY = ( GameOpt.ScreenHeight - AimWMain.H() ) / 2;
     AimVectX = 0;
     AimVectY = 0;
-    AimPic = NULL;
+    AimPic = nullptr;
     AimTargetId = 0;
 
     // Dialog box
@@ -522,7 +522,7 @@ int FOClient::InitIface()
     IfaceLoadSpr( DlgPAnsw, "DlgAnswPic" );
     IfaceLoadSpr( DlgPBBarter, "DlgBarterPicDn" );
     IfaceLoadSpr( DlgPBSay, "DlgSayPicDn" );
-    DlgAvatarPic = NULL;
+    DlgAvatarPic = nullptr;
     // Barter
     IfaceLoadSpr( BarterPMain, "BarterMainPic" );
     IfaceLoadSpr( BarterPBOfferDn, "BarterOfferPic" );
@@ -708,16 +708,16 @@ void FOClient::DrawIndicator( Rect& rect, PointVec& points, uint color, int proc
                 if( is_vertical )
                 {
                     if( from_top_or_left )
-                        points[ i ] = PrepPoint( rect[ 0 ], rect[ 1 ] + i * 2, color, NULL, NULL );
+                        points[ i ] = PrepPoint( rect[ 0 ], rect[ 1 ] + i * 2, color, nullptr, nullptr );
                     else
-                        points[ i ] = PrepPoint( rect[ 0 ], rect[ 3 ] - i * 2, color, NULL, NULL );
+                        points[ i ] = PrepPoint( rect[ 0 ], rect[ 3 ] - i * 2, color, nullptr, nullptr );
                 }
                 else
                 {
                     if( from_top_or_left )
-                        points[ i ] = PrepPoint( rect[ 0 ] + i * 2, rect[ 1 ], color, NULL, NULL );
+                        points[ i ] = PrepPoint( rect[ 0 ] + i * 2, rect[ 1 ], color, nullptr, nullptr );
                     else
-                        points[ i ] = PrepPoint( rect[ 2 ] - i * 2, rect[ 1 ], color, NULL, NULL );
+                        points[ i ] = PrepPoint( rect[ 2 ] - i * 2, rect[ 1 ], color, nullptr, nullptr );
                 }
             }
         }
@@ -781,7 +781,7 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
 Item* FOClient::GetContainerItem( ItemVec& cont, uint id )
 {
     auto it = PtrCollectionFind( cont.begin(), cont.end(), id );
-    return it != cont.end() ? *it : NULL;
+    return it != cont.end() ? *it : nullptr;
 }
 
 void FOClient::CollectContItems()
@@ -1016,7 +1016,7 @@ void FOClient::GameLMouseDown()
     }
     else if( IsCurMode( CUR_MOVE ) )
     {
-        ActionEvent* act = ( IsAction( CHOSEN_MOVE ) ? &ChosenAction[ 0 ] : NULL );
+        ActionEvent* act = ( IsAction( CHOSEN_MOVE ) ? &ChosenAction[ 0 ] : nullptr );
         ushort       hx, hy;
         if( act && Timer::FastTick() - act->Param[ 5 ] < ( GameOpt.DoubleClickTime ? GameOpt.DoubleClickTime : GetDoubleClickTicks() ) )
         {
@@ -1036,8 +1036,8 @@ void FOClient::GameLMouseDown()
         Item* use_item = ( !is_attack && CurUseItem != 0 ? Chosen->GetItem( CurUseItem ) : Chosen->ItemSlotMain );
         if( use_item )
         {
-            CritterCl* cr = NULL;
-            ItemHex*   item = NULL;
+            CritterCl* cr = nullptr;
+            ItemHex*   item = nullptr;
             if( is_attack )
                 cr = HexMngr.GetCritterPixel( GameOpt.MouseX, GameOpt.MouseY, true );
             else
@@ -1909,7 +1909,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
         return;
 
     Item* item = *it;
-    Item* to_item = NULL;
+    Item* to_item = nullptr;
 
     if( item->GetCount() < item_count )
         return;
@@ -2217,7 +2217,7 @@ void FOClient::LMenuStayOff()
             cr->SprDraw->SetContour( 0 );
     }
     TargetSmth.Clear();
-    LMenuCurNodes = NULL;
+    LMenuCurNodes = nullptr;
 }
 
 void FOClient::LMenuTryCreate()
@@ -2450,7 +2450,7 @@ void FOClient::LMenuSet( uchar set_lmenu )
         SetCurPos( LMenuRestoreCurX, LMenuRestoreCurY );
 
     LMenuMode = set_lmenu;
-    LMenuCurNodes = NULL;
+    LMenuCurNodes = nullptr;
 
     switch( LMenuMode )
     {
@@ -2649,9 +2649,9 @@ void FOClient::LMenuSet( uchar set_lmenu )
 
     if( LMenuCurNodes )
     {
-        CritterCl* cr = NULL;
-        ItemHex*   item = NULL;
-        Item*      cont_item = NULL;
+        CritterCl* cr = nullptr;
+        ItemHex*   item = nullptr;
+        Item*      cont_item = nullptr;
         if( TargetSmth.IsCritter() )
             cr = GetCritter( TargetSmth.GetId() );
         else if( TargetSmth.IsItem() )
@@ -2760,9 +2760,9 @@ void FOClient::LMenuMouseUp()
     auto it_l = LMenuCurNodes->begin();
     it_l += LMenuCurNode;
 
-    CritterCl* cr = NULL;
-    ItemHex*   item = NULL;
-    Item*      cont_item = NULL;
+    CritterCl* cr = nullptr;
+    ItemHex*   item = nullptr;
+    Item*      cont_item = nullptr;
     if( TargetSmth.IsCritter() )
         cr = GetCritter( TargetSmth.GetId() );
     else if( TargetSmth.IsItem() )
@@ -3146,7 +3146,7 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
 
     int prev_main_screen = ScreenModeMain;
     if( ScreenModeMain )
-        RunScreenScript( false, ScreenModeMain, NULL );
+        RunScreenScript( false, ScreenModeMain, nullptr );
     ScreenModeMain = new_screen;
     RunScreenScript( true, new_screen, params );
 
@@ -3294,7 +3294,7 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         GmapTownTextPos.clear();
         GmapTownText.clear();
 
-        GmapTownPic = NULL;
+        GmapTownPic = nullptr;
         GmapTownPicPos[ 0 ] = 0;
         GmapTownPicPos[ 1 ] = 0;
         GmapTownPicPos[ 2 ] = GameOpt.ScreenWidth;
@@ -3391,7 +3391,7 @@ void FOClient::HideScreen( int screen )
         }
     }
 
-    RunScreenScript( false, screen, NULL );
+    RunScreenScript( false, screen, nullptr );
 }
 
 void FOClient::RunScreenScript( bool show, int screen, ScriptDictionary* params )
@@ -3997,7 +3997,7 @@ void FOClient::GmapDraw()
         int cy = (int) ( ( GameOpt.MouseY - GmapOffsetY ) * GmapZoom );
         if( GmapFog.Get2Bit( GM_ZONE( cx ), GM_ZONE( cy ) ) != GM_FOG_FULL )
         {
-            GmapLocation* cur_loc = NULL;
+            GmapLocation* cur_loc = nullptr;
             for( auto it = GmapLoc.begin(); it != GmapLoc.end(); ++it )
             {
                 GmapLocation& loc = ( *it );
@@ -4556,7 +4556,7 @@ void FOClient::AimDraw()
         SprMngr.DrawStr( Rect( AimWGroinT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimGroin, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_GROIN - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_GROIN ? COLOR_TEXT_RED : COLOR_TEXT );
     }
 
-    bool zero = !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), Chosen->GetAttackDist(), 0.0f, cr, false, NULL, 0, NULL, NULL, NULL, true );
+    bool zero = !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), Chosen->GetAttackDist(), 0.0f, cr, false, nullptr, 0, nullptr, nullptr, nullptr, true );
     SprMngr.DrawStr( Rect( AimWHeadP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_HEAD ) ), FT_NOBREAK | FT_CENTERX );
     SprMngr.DrawStr( Rect( AimWLArmP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_LEFT_ARM ) ), FT_NOBREAK | FT_CENTERX );
     SprMngr.DrawStr( Rect( AimWRArmP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_RIGHT_ARM ) ), FT_NOBREAK | FT_CENTERX );
@@ -5079,7 +5079,7 @@ CritterCl* FOClient::PupGetLootCrit( int scroll )
     for( uint i = 0, j = (uint) loot.size(); i < j; i++ )
         if( i == (uint) scroll )
             return loot[ i ];
-    return NULL;
+    return nullptr;
 }
 
 // ==============================================================================================================================
@@ -5091,14 +5091,14 @@ void FOClient::CurDrawHand()
     if( !Chosen )
         return;
 
-    SpriteInfo* si = NULL;
+    SpriteInfo* si = nullptr;
     int         x = 0, y = 0;
 
     if( GetActiveScreen() == SCREEN__BARTER )
     {
         if( IfaceHold && BarterHoldId )
         {
-            ItemVec* cont = NULL;
+            ItemVec* cont = nullptr;
             switch( IfaceHold )
             {
             case IFACE_BARTER_CONT1:
@@ -5385,9 +5385,9 @@ void FOClient::ElevatorMouseMove()
 
 void FOClient::ElevatorGenerate( uint param )
 {
-    ElevatorMainPic = NULL;
-    ElevatorExtPic = NULL;
-    ElevatorButtonPicDown = NULL;
+    ElevatorMainPic = nullptr;
+    ElevatorExtPic = nullptr;
+    ElevatorButtonPicDown = nullptr;
     ElevatorIndicatorAnim = 0;
     ElevatorButtonsCount = 0;
     ElevatorLevelsCount = 0;
@@ -5642,9 +5642,9 @@ void FOClient::SayKeyDown( uchar dik, const char* dik_text )
     }
 
     if( SayType == DIALOGSAY_TEXT )
-        Keyb::GetChar( dik, dik_text, SayText, NULL, MAX_SAY_NPC_TEXT, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, SayText, nullptr, MAX_SAY_NPC_TEXT, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_NO_SPEC_SYMBOLS );
     else if( SayType == DIALOGSAY_SAVE )
-        Keyb::GetChar( dik, dik_text, SayText, NULL, MAX_FOPATH, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_FILE_NAME );
+        Keyb::GetChar( dik, dik_text, SayText, nullptr, MAX_FOPATH, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_FILE_NAME );
 }
 
 // ==============================================================================================================================
@@ -5664,11 +5664,11 @@ void FOClient::WaitDraw()
 void FOClient::SplitStart( uint item_id, int item_cont )
 {
     #define FIND_IN_CONT( cont )    { auto it = PtrCollectionFind( cont.begin(), cont.end(), item_id ); item = ( it != cont.end() ? *it : NULL ); }
-    Item* item = NULL;
+    Item* item = nullptr;
     switch( item_cont )
     {
     case ITEMS_CHOSEN_ALL:
-        item = ( Chosen ? Chosen->GetItem( item_id ) : NULL );
+        item = ( Chosen ? Chosen->GetItem( item_id ) : nullptr );
         break;
     case ITEMS_INVENTORY:
         FIND_IN_CONT( InvContInit );
@@ -5979,7 +5979,7 @@ int FOClient::GetMouseCraft()
 FOClient::SCraftVec* FOClient::GetCurSCrafts()
 {
     if( FixCraftLst.empty() )
-        return NULL;
+        return nullptr;
     if( FixScrollLst >= (int) FixCraftLst.size() )
         FixScrollLst = (int) FixCraftLst.size() - 1;
     return &FixCraftLst[ FixScrollLst ];
@@ -6600,7 +6600,7 @@ void FOClient::SaveLoadProcessDone()
         }
         else
         {
-            Net_SendSaveLoad( false, SaveLoadDataSlots[ SaveLoadSlotIndex ].FileName.c_str(), NULL );
+            Net_SendSaveLoad( false, SaveLoadDataSlots[ SaveLoadSlotIndex ].FileName.c_str(), nullptr );
             ShowScreen( SCREEN_NONE );
             WaitPing();
         }
@@ -6663,7 +6663,7 @@ void FOClient::SaveLoadDraw()
     if( SaveLoadDraftValid )
     {
         Rect dst( SaveLoadPic.L + ox, SaveLoadPic.T + oy, SaveLoadPic.R + ox, SaveLoadPic.B + oy );
-        SprMngr.DrawRenderTarget( SaveLoadDraft, false, NULL, &dst );
+        SprMngr.DrawRenderTarget( SaveLoadDraft, false, nullptr, &dst );
     }
 }
 

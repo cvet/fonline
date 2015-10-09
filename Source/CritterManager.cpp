@@ -120,7 +120,7 @@ bool CritterManager::LoadProtos()
 ProtoCritter* CritterManager::GetProto( hash proto_id )
 {
     auto it = allProtos.find( proto_id );
-    return it != allProtos.end() ? it->second : NULL;
+    return it != allProtos.end() ? it->second : nullptr;
 }
 
 ProtoCritterMap& CritterManager::GetAllProtos()
@@ -194,7 +194,7 @@ void CritterManager::DeleteNpc( Critter* cr )
                     MapMngr.GM_GroupSetMove( group, group->ToX, group->ToY, 0.0f );                                      // Stop others
                 }
             }
-            cr->GroupMove = NULL;
+            cr->GroupMove = nullptr;
         }
 
         // Delete inventory
@@ -218,13 +218,13 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", Str::GetName( proto_id ) );
-        return NULL;
+        return nullptr;
     }
 
     if( !map || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
     {
         WriteLogF( _FUNC_, " - Wrong map values, hx %u, hy %u, map is nullptr '%s'.\n", hx, hy, !map ? "true" : "false" );
-        return NULL;
+        return nullptr;
     }
 
     if( !map->IsHexPassed( hx, hy ) )
@@ -232,7 +232,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
         if( accuracy )
         {
             WriteLogF( _FUNC_, " - Accuracy position busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
-            return NULL;
+            return nullptr;
         }
 
         static THREAD int cur_step = 0;
@@ -247,7 +247,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
             if( i >= 18 )
             {
                 WriteLogF( _FUNC_, " - All positions busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
-                return NULL;
+                return nullptr;
             }
             cur_step++;
             if( cur_step >= 18 )
@@ -528,11 +528,11 @@ Critter* CritterManager::GetCritter( uint crid, bool sync_lock )
 Client* CritterManager::GetPlayer( uint crid, bool sync_lock )
 {
     if( !IS_CLIENT_ID( crid ) )
-        return NULL;
+        return nullptr;
 
     Client* cl = (Client*) EntityMngr.GetEntity( crid, EntityType::Client );
     if( !cl )
-        return NULL;
+        return nullptr;
     if( sync_lock )
         SYNC_LOCK( cl );
     return cl;
@@ -543,7 +543,7 @@ Client* CritterManager::GetPlayer( const char* name, bool sync_lock )
     EntityVec entities;
     EntityMngr.GetEntities( EntityType::Client, entities );
 
-    Client* cl = NULL;
+    Client* cl = nullptr;
     for( auto it = entities.begin(); it != entities.end(); ++it )
     {
         Client* cl_ = (Client*) *it;
@@ -562,11 +562,11 @@ Client* CritterManager::GetPlayer( const char* name, bool sync_lock )
 Npc* CritterManager::GetNpc( uint crid, bool sync_lock )
 {
     if( IS_CLIENT_ID( crid ) )
-        return NULL;
+        return nullptr;
 
     Npc* npc = (Npc*) EntityMngr.GetEntity( crid, EntityType::Npc );
     if( !npc )
-        return NULL;
+        return nullptr;
     if( sync_lock )
         SYNC_LOCK( npc );
     return npc;

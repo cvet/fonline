@@ -230,15 +230,15 @@ public:
         CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
         if( entity && entity->SubType == SubType )
             return entity;
-        return NULL;
+        return nullptr;
     }
 
     #else
-    CustomEntity* CreateEntity()                              { return NULL; }
+    CustomEntity* CreateEntity()                              { return nullptr; }
     void          RestoreEntity( uint id, Properties& props ) {}
     void          DeleteEntity( CustomEntity* entity )        {}
     void          DeleteEntityById( uint id )                 {}
-    CustomEntity* GetEntity( uint id )                        { return NULL; }
+    CustomEntity* GetEntity( uint id )                        { return nullptr; }
     #endif
 };
 
@@ -328,7 +328,7 @@ public:
     PropertyRegistrator* FindEntityRegistrator( const char* class_name )
     {
         auto it = entityCreators.find( class_name );
-        return it != entityCreators.end() ? it->second->Registrator : NULL;
+        return it != entityCreators.end() ? it->second->Registrator : nullptr;
     }
 
     void RestoreEntity( const char* class_name, uint id, Properties& props )
@@ -524,7 +524,7 @@ public:
         }
 
         // Choose registrator
-        PropertyRegistrator* registrator = NULL;
+        PropertyRegistrator* registrator = nullptr;
         if( class_name == "Global" )
             registrator = propertyRegistrators[ 0 ];
         else if( class_name == "Critter" )
@@ -548,8 +548,8 @@ public:
         if( !is_defaults )
         {
             if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access,
-                                        group.length() > 0 ? group.c_str() : NULL, generate_random_value ? &generate_random_value : NULL,
-                                        set_default_value ? &default_value : NULL, check_min_value ? &min_value : NULL, check_max_value ? &max_value : NULL ) )
+                                        group.length() > 0 ? group.c_str() : nullptr, generate_random_value ? &generate_random_value : nullptr,
+                                        set_default_value ? &default_value : nullptr, check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr ) )
             {
                 WriteLog( "Unable to register 'property' pragma '%s'.\n", text.c_str() );
                 return false;
@@ -559,8 +559,8 @@ public:
         // Work with defaults
         if( is_defaults )
         {
-            registrator->SetDefaults( group.length() > 0 ? group.c_str() : NULL, generate_random_value ? &generate_random_value : NULL,
-                                      set_default_value ? &default_value : NULL, check_min_value ? &min_value : NULL, check_max_value ? &max_value : NULL );
+            registrator->SetDefaults( group.length() > 0 ? group.c_str() : nullptr, generate_random_value ? &generate_random_value : nullptr,
+                                      set_default_value ? &default_value : nullptr, check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr );
         }
 
         return true;
@@ -645,7 +645,7 @@ public:
         }
 
         // Choose registrator
-        MethodRegistrator* registrator = NULL;
+        MethodRegistrator* registrator = nullptr;
         if( class_name == "Global" )
             registrator = methodRegistrator[ 0 ];
         else if( class_name == "Critter" )
@@ -884,14 +884,14 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
     if( pragmaType != PRAGMA_SERVER && pragmaType != PRAGMA_CLIENT && pragmaType != PRAGMA_MAPPER )
         pragmaType = PRAGMA_UNKNOWN;
 
-    ignorePragma = NULL;
-    globalVarPragma = NULL;
-    bindFuncPragma = NULL;
-    entityPragma = NULL;
-    propertyPragma = NULL;
-    methodPragma = NULL;
-    contentPragma = NULL;
-    enumPragma = NULL;
+    ignorePragma = nullptr;
+    globalVarPragma = nullptr;
+    bindFuncPragma = nullptr;
+    entityPragma = nullptr;
+    propertyPragma = nullptr;
+    methodPragma = nullptr;
+    contentPragma = nullptr;
+    enumPragma = nullptr;
 
     if( pragmaType != PRAGMA_UNKNOWN )
     {

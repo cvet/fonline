@@ -120,7 +120,7 @@ int main( int argc, char** argv )
     if( Str::Substring( CommandLine, "-service" ) )
     {
         # ifdef FO_WINDOWS
-        ServiceMain( Str::Substring( CommandLine, "--service" ) != NULL );
+        ServiceMain( Str::Substring( CommandLine, "--service" ) != nullptr );
         # endif
         return 0;
     }
@@ -148,7 +148,7 @@ int main( int argc, char** argv )
 
         // Shared data
         const char* ptr = Str::Substring( CommandLine, "-singleplayer " ) + Str::Length( "-singleplayer " );
-        HANDLE      map_file = NULL;
+        HANDLE      map_file = nullptr;
         if( sscanf( ptr, "%p%p", &map_file, &SingleplayerClientProcess ) != 2 || !SingleplayerData.Attach( map_file ) )
         {
             WriteLog( "Can't attach to mapped file '%p'.\n", map_file );
@@ -164,7 +164,7 @@ int main( int argc, char** argv )
     {
         Fl::lock();         // Begin GUI multi threading
         GUIInit( cfg );
-        LogToFile( NULL );
+        LogToFile( nullptr );
         LogToBuffer( true );
     }
 
@@ -710,7 +710,7 @@ void GameLoopThread( void* )
         if( GuiWindow )
         {
             if( GuiCBtnLogging->value() == 0 )
-                LogToTextBox( NULL );
+                LogToTextBox( nullptr );
 
             // Enable buttons
             GuiBtnRlClScript->activate();
@@ -762,16 +762,16 @@ void ServiceMain( bool as_service )
     if( as_service )
     {
         // Start
-        SERVICE_TABLE_ENTRY dispatch_table[] = { { Str::Duplicate( "FOnlineServer" ), FOServiceStart }, { NULL, NULL } };
+        SERVICE_TABLE_ENTRY dispatch_table[] = { { Str::Duplicate( "FOnlineServer" ), FOServiceStart }, { nullptr, nullptr } };
         StartServiceCtrlDispatcher( dispatch_table );
         return;
     }
 
     // Open service manager
-    SC_HANDLE manager = OpenSCManager( NULL, NULL, SC_MANAGER_ALL_ACCESS );
+    SC_HANDLE manager = OpenSCManager( nullptr, nullptr, SC_MANAGER_ALL_ACCESS );
     if( !manager )
     {
-        MessageBox( NULL, "Can't open service manager.", "FOnlineServer", MB_OK | MB_ICONHAND );
+        MessageBox( nullptr, "Can't open service manager.", "FOnlineServer", MB_OK | MB_ICONHAND );
         return;
     }
 
@@ -781,9 +781,9 @@ void ServiceMain( bool as_service )
         SC_HANDLE service = OpenService( manager, "FOnlineServer", DELETE );
 
         if( service && DeleteService( service ) )
-            MessageBox( NULL, "Service deleted.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
+            MessageBox( nullptr, "Service deleted.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
         else
-            MessageBox( NULL, "Can't delete service.", "FOnlineServer", MB_OK | MB_ICONHAND );
+            MessageBox( nullptr, "Can't delete service.", "FOnlineServer", MB_OK | MB_ICONHAND );
 
         CloseServiceHandle( service );
         CloseServiceHandle( manager );
@@ -795,7 +795,7 @@ void ServiceMain( bool as_service )
 
     // Compile service path
     char path1[ MAX_FOPATH ];
-    GetModuleFileName( GetModuleHandle( NULL ), path1, MAX_FOPATH );
+    GetModuleFileName( GetModuleHandle( nullptr ), path1, MAX_FOPATH );
     char path2[ MAX_FOPATH ];
     Str::Format( path2, "\"%s\" --service", path1 );
 
@@ -805,7 +805,7 @@ void ServiceMain( bool as_service )
         LPQUERY_SERVICE_CONFIG service_cfg = (LPQUERY_SERVICE_CONFIG) calloc( 8192, 1 );
         DWORD                  dw;
         if( QueryServiceConfig( service, service_cfg, 8192, &dw ) && !Str::CompareCase( service_cfg->lpBinaryPathName, path2 ) )
-            ChangeServiceConfig( service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path2, NULL, NULL, NULL, NULL, NULL, NULL );
+            ChangeServiceConfig( service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path2, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
         free( service_cfg );
     }
 
@@ -813,21 +813,21 @@ void ServiceMain( bool as_service )
     if( !service )
     {
         service = CreateService( manager, "FOnlineServer", "FOnlineServer", SERVICE_ALL_ACCESS,
-                                 SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path2, NULL, NULL, NULL, NULL, NULL );
+                                 SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path2, nullptr, nullptr, nullptr, nullptr, nullptr );
 
         if( service )
-            MessageBox( NULL, "\'FOnlineServer\' service registered.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
+            MessageBox( nullptr, "\'FOnlineServer\' service registered.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
         else
-            MessageBox( NULL, "Can't register \'FOnlineServer\' service.", "FOnlineServer", MB_OK | MB_ICONHAND );
+            MessageBox( nullptr, "Can't register \'FOnlineServer\' service.", "FOnlineServer", MB_OK | MB_ICONHAND );
     }
     // Start service
     else
     {
         SERVICE_STATUS status;
         if( service && QueryServiceStatus( service, &status ) && status.dwCurrentState != SERVICE_STOPPED )
-            MessageBox( NULL, "Service already running.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
-        else if( service && !StartService( service, 0, NULL ) )
-            MessageBox( NULL, "Can't start service.", "FOnlineServer", MB_OK | MB_ICONHAND );
+            MessageBox( nullptr, "Service already running.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
+        else if( service && !StartService( service, 0, nullptr ) )
+            MessageBox( nullptr, "Can't start service.", "FOnlineServer", MB_OK | MB_ICONHAND );
     }
 
     // Close handles
@@ -848,7 +848,7 @@ VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
         return;
 
     // Start admin manager
-    InitAdminManager( NULL );
+    InitAdminManager( nullptr );
 
     // Start game
     SetFOServiceStatus( SERVICE_START_PENDING );
@@ -1016,7 +1016,7 @@ void DaemonLoop()
     LoopThread.Start( GameLoopThread, "Main" );
 
     // Start admin manager
-    InitAdminManager( NULL );
+    InitAdminManager( nullptr );
 
     // Daemon loop
     while( true )
@@ -1132,7 +1132,7 @@ void AdminManager( void* port_ )
         fd_set  sock_set;
         FD_ZERO( &sock_set );
         FD_SET( listen_sock, &sock_set );
-        if( select( (int) listen_sock + 1, &sock_set, NULL, NULL, &tv ) > 0 )
+        if( select( (int) listen_sock + 1, &sock_set, nullptr, nullptr, &tv ) > 0 )
         {
             sockaddr_in from;
             socklen_t   len = sizeof( from );
@@ -1313,7 +1313,7 @@ void AdminWork( void* session_ )
             }
             else
             {
-                LogToFile( NULL );
+                LogToFile( nullptr );
                 ADMIN_LOG( "Logging disabled.\n" );
             }
         }
@@ -1418,7 +1418,7 @@ void AdminWork( void* session_ )
                 send_fail = false;
 
                 BufferManager buf;
-                PackCommand( &cmd[ 1 ], buf, LogCB::Message, NULL );
+                PackCommand( &cmd[ 1 ], buf, LogCB::Message, nullptr );
                 if( !buf.IsEmpty() )
                 {
                     if( Script::InitThread() )
@@ -1426,7 +1426,7 @@ void AdminWork( void* session_ )
                         uint msg;
                         buf >> msg;
                         WriteLog( ADMIN_PREFIX "Execute command '%s'.\n", admin_name, cmd );
-                        Server.Process_Command( buf, LogCB::Message, NULL, admin_name );
+                        Server.Process_Command( buf, LogCB::Message, nullptr, admin_name );
                         Script::FinishThread();
                     }
                     else

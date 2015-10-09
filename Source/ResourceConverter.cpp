@@ -33,7 +33,7 @@ private:
 public:
     FbxStreamImpl(): FbxStream()
     {
-        fm = NULL;
+        fm = nullptr;
         curState = FbxStream::eClosed;
     }
 
@@ -53,7 +53,7 @@ public:
     virtual bool Close()
     {
         fm->SetCurPos( 0 );
-        fm = NULL;
+        fm = nullptr;
         curState = FbxStream::eClosed;
         return true;
     }
@@ -168,7 +168,7 @@ FileManager* ResourceConverter::ConvertImage( const char* name, FileManager& fil
     else
         data = LoadTGA( file.GetBuf(), file.GetFsize(), width, height );
     if( !data )
-        return NULL;
+        return nullptr;
 
     FileManager* converted_file = new FileManager();
     converted_file->SetLEUInt( width );
@@ -183,7 +183,7 @@ FileManager* ResourceConverter::ConvertImage( const char* name, FileManager& fil
 FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
 {
     // Result bone
-    Bone*  root_bone = NULL;
+    Bone*  root_bone = nullptr;
     PtrVec loaded_animations;
 
     // FBX loader
@@ -191,14 +191,14 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
     if( Str::CompareCase( ext, "fbx" ) )
     {
         // Create manager
-        static FbxManager* fbx_manager = NULL;
+        static FbxManager* fbx_manager = nullptr;
         if( !fbx_manager )
         {
             fbx_manager = FbxManager::Create();
             if( !fbx_manager )
             {
                 WriteLogF( _FUNC_, " - Unable to create FBX Manager.\n" );
-                return NULL;
+                return nullptr;
             }
 
             // Create an IOSettings object. This object holds all import/export settings.
@@ -214,7 +214,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
         if( !fbx_scene )
         {
             WriteLogF( _FUNC_, " - Unable to create FBX scene.\n" );
-            return NULL;
+            return nullptr;
         }
 
         // Create an importer
@@ -222,7 +222,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
         if( !fbx_importer )
         {
             WriteLogF( _FUNC_, " - Unable to create FBX importer.\n" );
-            return NULL;
+            return nullptr;
         }
 
         // Initialize the importer
@@ -239,7 +239,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
                 WriteLogF( _FUNC_, " - FBX file format version for this FBX SDK is %d.%d.%d.\n", sdk_major, sdk_minor, sdk_revision );
                 WriteLogF( _FUNC_, " - FBX file format version for file '%s' is %d.%d.%d.\n", name, file_major, file_minor, file_revision );
             }
-            return NULL;
+            return nullptr;
         }
 
         // Import the scene
@@ -255,7 +255,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
                             return NULL;
                }*/
             WriteLogF( _FUNC_, " - Can't import scene, file '%s'.\n", name );
-            return NULL;
+            return nullptr;
         }
 
         // Load hierarchy
@@ -332,7 +332,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
 
                     UIntVec  hierarchy;
                     FbxNode* fbx_node = fbx_all_nodes[ n ];
-                    while( fbx_node != NULL )
+                    while( fbx_node != nullptr )
                     {
                         hierarchy.insert( hierarchy.begin(), Bone::GetHash( fbx_node->GetName() ) );
                         fbx_node = fbx_node->GetParent();
@@ -360,7 +360,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
         {
             // Already try
             if( binded_try )
-                return NULL;
+                return nullptr;
             binded_try = true;
 
             // Library extension
@@ -381,7 +381,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
                 if( !dll )
                 {
                     WriteLogF( _FUNC_, " - '" ASSIMP_PATH2 "' not found.\n" );
-                    return NULL;
+                    return nullptr;
                 }
             }
 
@@ -405,7 +405,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
             BIND_ASSIMP_FUNC( aiGetMaterialFloatArray );
             #undef BIND_ASSIMP_FUNC
             if( errors )
-                return NULL;
+                return nullptr;
             binded = true;
 
             // Logging
@@ -426,12 +426,12 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
         if( !scene )
         {
             WriteLogF( _FUNC_, " - Can't load 3d file, name '%s', error '%s'.\n", name, Ptr_aiGetErrorString() );
-            return NULL;
+            return nullptr;
         }
 
         // Extract bones
         root_bone = ConvertAssimpPass1( scene, scene->mRootNode );
-        ConvertAssimpPass2( root_bone, NULL, root_bone, scene, scene->mRootNode );
+        ConvertAssimpPass2( root_bone, nullptr, root_bone, scene, scene->mRootNode );
 
         // Extract animations
         FloatVec      st;
@@ -473,7 +473,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
 
                 UIntVec hierarchy;
                 aiNode* ai_node = scene->mRootNode->FindNode( na->mNodeName );
-                while( ai_node != NULL )
+                while( ai_node != nullptr )
                 {
                     hierarchy.insert( hierarchy.begin(), Bone::GetHash( ai_node->mName.data ) );
                     ai_node = ai_node->mParent;
@@ -515,7 +515,7 @@ static Bone* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node )
     bone->TransformationMatrix = ai_node->mTransformation;
     bone->GlobalTransformationMatrix = AssimpGlobalTransform( ai_node );
     bone->CombinedTransformationMatrix = Matrix();
-    bone->Mesh = NULL;
+    bone->Mesh = nullptr;
     bone->Children.resize( ai_node->mNumChildren );
 
     for( uint i = 0; i < ai_node->mNumChildren; i++ )
@@ -603,12 +603,12 @@ static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, 
         aiString    path;
         if( Ptr_aiGetMaterialTextureCount( material, aiTextureType_DIFFUSE ) )
         {
-            Ptr_aiGetMaterialTexture( material, aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL );
+            Ptr_aiGetMaterialTexture( material, aiTextureType_DIFFUSE, 0, &path, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
             mesh->DiffuseTexture = path.data;
         }
 
         // Effect
-        mesh->DrawEffect.EffectFilename = NULL;
+        mesh->DrawEffect.EffectFilename = nullptr;
 
         // Skinning
         if( ai_mesh->mNumBones > 0 )
@@ -698,7 +698,7 @@ static Bone* ConvertFbxPass1( FbxNode* fbx_node, vector< FbxNode* >& fbx_all_nod
     bone->TransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateLocalTransform() );
     bone->GlobalTransformationMatrix = ConvertFbxMatrix( fbx_node->EvaluateGlobalTransform() );
     bone->CombinedTransformationMatrix = Matrix();
-    bone->Mesh = NULL;
+    bone->Mesh = nullptr;
     bone->Children.resize( fbx_node->GetChildCount() );
 
     for( int i = 0; i < fbx_node->GetChildCount(); i++ )
@@ -814,7 +814,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
         }
 
         // Effect
-        mesh->DrawEffect.EffectFilename = NULL;
+        mesh->DrawEffect.EffectFilename = nullptr;
 
         // Skinning
         FbxSkin* fbx_skin = (FbxSkin*) fbx_mesh->GetDeformer( 0, FbxDeformer::eSkin );
@@ -955,23 +955,23 @@ static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, ui
     };
 
     // Setup PNG reader
-    png_structp png_ptr = png_create_read_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
+    png_structp png_ptr = png_create_read_struct( PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr );
     if( !png_ptr )
-        return NULL;
+        return nullptr;
 
     png_set_error_fn( png_ptr, png_get_error_ptr( png_ptr ), &PNGMessage::Error, &PNGMessage::Warning );
 
     png_infop info_ptr = png_create_info_struct( png_ptr );
     if( !info_ptr )
     {
-        png_destroy_read_struct( &png_ptr, NULL, NULL );
-        return NULL;
+        png_destroy_read_struct( &png_ptr, nullptr, nullptr );
+        return nullptr;
     }
 
     if( setjmp( png_jmpbuf( png_ptr ) ) )
     {
-        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
-        return NULL;
+        png_destroy_read_struct( &png_ptr, &info_ptr, nullptr );
+        return nullptr;
     }
 
     static const uchar* data_;
@@ -985,20 +985,20 @@ static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, ui
         }
     };
     data_ = data;
-    png_set_read_fn( png_ptr, NULL, &PNGReader::Read );
+    png_set_read_fn( png_ptr, nullptr, &PNGReader::Read );
     png_read_info( png_ptr, info_ptr );
 
     if( setjmp( png_jmpbuf( png_ptr ) ) )
     {
-        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
-        return NULL;
+        png_destroy_read_struct( &png_ptr, &info_ptr, nullptr );
+        return nullptr;
     }
 
     // Get information
     png_uint_32 width, height;
     int         bit_depth;
     int         color_type;
-    png_get_IHDR( png_ptr, info_ptr, (png_uint_32*) &width, (png_uint_32*) &height, &bit_depth, &color_type, NULL, NULL, NULL );
+    png_get_IHDR( png_ptr, info_ptr, (png_uint_32*) &width, (png_uint_32*) &height, &bit_depth, &color_type, nullptr, nullptr, nullptr );
 
     // Settings
     png_set_strip_16( png_ptr );
@@ -1016,8 +1016,8 @@ static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, ui
     png_bytepp row_pointers = (png_bytepp) malloc( height * sizeof( png_bytep ) );
     if( !row_pointers )
     {
-        png_destroy_read_struct( &png_ptr, &info_ptr, NULL );
-        return NULL;
+        png_destroy_read_struct( &png_ptr, &info_ptr, nullptr );
+        return nullptr;
     }
 
     // Set the individual row_pointers to point at the correct offsets
@@ -1030,7 +1030,7 @@ static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, ui
 
     // Clean up
     png_read_end( png_ptr, info_ptr );
-    png_destroy_read_struct( &png_ptr, &info_ptr, (png_infopp) NULL );
+    png_destroy_read_struct( &png_ptr, &info_ptr, (png_infopp) nullptr );
     free( row_pointers );
 
     // Return
@@ -1076,19 +1076,19 @@ static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, ui
 
     // Check for errors when loading the header
     if( read_error )
-        return NULL;
+        return nullptr;
 
     // Check if the image is color indexed
     if( type == 1 )
-        return NULL;
+        return nullptr;
 
     // Check for TrueColor
     if( type != 2 && type != 10 )
-        return NULL;
+        return nullptr;
 
     // Check for RGB(A)
     if( pixel_depth != 24 && pixel_depth != 32 )
-        return NULL;
+        return nullptr;
 
     // Read
     int    bpp = pixel_depth / 8;
@@ -1113,7 +1113,7 @@ static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, ui
                 if( read_error )
                 {
                     delete[] read_data;
-                    return NULL;
+                    return nullptr;
                 }
                 run_len = ( header + 1 ) * bpp;
                 for( i = 0; i < run_len; i += bpp )
@@ -1132,7 +1132,7 @@ static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, ui
                 if( read_error )
                 {
                     delete[] read_data;
-                    return NULL;
+                    return nullptr;
                 }
                 bytes_read += run_len;
                 if( bytes_read + run_len > read_size )
@@ -1143,7 +1143,7 @@ static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, ui
     if( read_error )
     {
         delete[] read_data;
-        return NULL;
+        return nullptr;
     }
 
     // Copy data

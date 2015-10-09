@@ -9,7 +9,7 @@
 
 IniParser::IniParser()
 {
-    bufPtr = NULL;
+    bufPtr = nullptr;
     bufLen = 0;
     lastApp[ 0 ] = 0;
     lastAppPos = 0;
@@ -22,7 +22,7 @@ IniParser::~IniParser()
 
 bool IniParser::IsLoaded()
 {
-    return bufPtr != NULL;
+    return bufPtr != nullptr;
 }
 
 bool IniParser::LoadFile( const char* fname, int path_type )
@@ -295,7 +295,7 @@ int IniParser::GetInt( const char* app_name, const char* key_name, int def_val )
 
 int IniParser::GetInt( const char* key_name, int def_val )
 {
-    return GetInt( NULL, key_name, def_val );
+    return GetInt( nullptr, key_name, def_val );
 }
 
 bool IniParser::GetStr( const char* app_name, const char* key_name, const char* def_val, char* ret_buf, char end /* = 0 */ )
@@ -367,7 +367,7 @@ label_DefVal:
 
 bool IniParser::GetStr( const char* key_name, const char* def_val, char* ret_buf, char end /* = 0 */ )
 {
-    return GetStr( NULL, key_name, def_val, ret_buf, end );
+    return GetStr( nullptr, key_name, def_val, ret_buf, end );
 }
 
 void IniParser::SetStr( const char* app_name, const char* key_name, const char* val )
@@ -444,7 +444,7 @@ void IniParser::SetStr( const char* app_name, const char* key_name, const char* 
 
 void IniParser::SetStr( const char* key_name, const char* val )
 {
-    return SetStr( NULL, key_name, val );
+    return SetStr( nullptr, key_name, val );
 }
 
 bool IniParser::IsApp( const char* app_name )
@@ -465,21 +465,21 @@ bool IniParser::IsKey( const char* app_name, const char* key_name )
 
 bool IniParser::IsKey( const char* key_name )
 {
-    return IsKey( NULL, key_name );
+    return IsKey( nullptr, key_name );
 }
 
 char* IniParser::GetApp( const char* app_name )
 {
     if( !bufPtr )
-        return NULL;
+        return nullptr;
     if( !app_name )
-        return NULL;
+        return nullptr;
 
     uint iter = 0;
     if( lastAppPos && Str::Compare( app_name, lastApp ) )
         iter = lastAppPos;
     else if( !GotoApp( app_name, iter ) )
-        return NULL;
+        return nullptr;
 
     uint i = iter, len = 0;
     for( ; i < bufLen; i++, len++ )
@@ -615,7 +615,7 @@ const char* IniParser::GetConfigFileName()
         char module_name[ MAX_FOPATH ];
         # ifdef FO_WINDOWS
         char path[ MAX_FOPATH ];
-        if( !GetModuleFileName( NULL, path, sizeof( path ) ) )
+        if( !GetModuleFileName( nullptr, path, sizeof( path ) ) )
             return config_name;
         FileManager::ExtractFileName( path, module_name );
         # else

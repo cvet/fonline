@@ -4,7 +4,7 @@
 #include "ScriptFunctions.h"
 
 bool      FOMapper::SpritesCanDraw = false;
-FOMapper* FOMapper::Self = NULL;
+FOMapper* FOMapper::Self = nullptr;
 char      FOMapper::ServerWritePath[ MAX_FOPATH ];
 char      FOMapper::ClientWritePath[ MAX_FOPATH ];
 FOMapper::FOMapper()
@@ -56,7 +56,7 @@ bool FOMapper::Init()
         {
             Sprites& tree = Self->HexMngr.GetDrawTree();
             count = tree.Size();
-            if( !count ) return NULL;
+            if( !count ) return nullptr;
             return &( *tree.Begin() );
         }
     };
@@ -179,7 +179,7 @@ bool FOMapper::Init()
         return false;
 
     // Critter types
-    CritType::InitFromFile( NULL );
+    CritType::InitFromFile( nullptr );
 
     // Item manager
     if( !ItemMngr.Init() )
@@ -417,16 +417,16 @@ int FOMapper::InitIface()
 
     SubTabsActive = false;
     SubTabsActiveTab = 0;
-    SubTabsPic = NULL;
+    SubTabsPic = nullptr;
     SubTabsX = 0;
     SubTabsY = 0;
 
-    CurProtoMap = NULL;
-    CurItemProtos = NULL;
-    CurTileHashes = NULL;
-    CurTileNames = NULL;
-    CurNpcProtos = NULL;
-    CurProtoScroll = NULL;
+    CurProtoMap = nullptr;
+    CurItemProtos = nullptr;
+    CurTileHashes = nullptr;
+    CurTileNames = nullptr;
+    CurNpcProtos = nullptr;
+    CurProtoScroll = nullptr;
 
     ProtoWidth = ini.GetInt( "ProtoWidth", 50 );
     ProtosOnScreen = ( IntWWork[ 2 ] - IntWWork[ 0 ] ) / ProtoWidth;
@@ -444,7 +444,7 @@ int FOMapper::InitIface()
     SelectY = 0;
 
     InContScroll = 0;
-    InContObject = NULL;
+    InContObject = nullptr;
 
     DrawRoof = false;
     TileLayer = 0;
@@ -545,7 +545,7 @@ void FOMapper::ChangeGameTime()
 {
     GameOpt.Minute = DayTime % 60;
     GameOpt.Hour = DayTime / 60 % 24;
-    uint color = GetColorDay( HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), NULL );
+    uint color = GetColorDay( HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr );
     SprMngr.SetSpritesColor( COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF ) );
     HexMngr.RefreshMap();
 }
@@ -699,7 +699,7 @@ void FOMapper::AnimFree( int res_type )
         if( anim && anim->ResType == res_type )
         {
             delete anim;
-            ( *it ) = NULL;
+            ( *it ) = nullptr;
         }
     }
 }
@@ -964,7 +964,7 @@ void FOMapper::ParseKeyboard()
                     SelectClear();
                     HexMngr.RefreshMap();
                     FileManager::SetCurrentDir( ServerWritePath, "./" );
-                    if( CurProtoMap->Save( NULL ) )
+                    if( CurProtoMap->Save( nullptr ) )
                     {
                         AddMess( "Map saved." );
                         RunMapSaveScript( CurProtoMap );
@@ -1628,7 +1628,7 @@ void FOMapper::RefreshTiles( int tab )
         if( stab.TileNames.size() )
         {
             if( TabsActive[ tab ] == &stab )
-                TabsActive[ tab ] = NULL;
+                TabsActive[ tab ] = nullptr;
             Tabs[ tab ].erase( it++ );
         }
         else
@@ -1651,7 +1651,7 @@ void FOMapper::RefreshTiles( int tab )
         bool    include_subdirs = ttab.TileSubDirs[ t ];
 
         StrVec  tiles;
-        FileManager::GetDataFileNames( path.c_str(), include_subdirs, NULL, tiles );
+        FileManager::GetDataFileNames( path.c_str(), include_subdirs, nullptr, tiles );
 
         struct StrComparator_
         {
@@ -1936,7 +1936,7 @@ void FOMapper::IntDraw()
         {
             ProtoCritter* proto = ( *CurNpcProtos )[ i ];
 
-            uint      spr_id = ResMngr.GetCritSprId( proto->GetCrType(), 1, 1, NpcDir, NULL ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+            uint      spr_id = ResMngr.GetCritSprId( proto->GetCrType(), 1, 1, NpcDir, nullptr ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if( !spr_id )
                 continue;
 
@@ -2090,7 +2090,7 @@ void FOMapper::ObjDraw()
     if( IntMode == INT_MODE_INCONT && InContObject )
         o = InContObject;
 
-    ProtoItem* proto = NULL;
+    ProtoItem* proto = nullptr;
     if( o->MapObjType != MAP_OBJECT_CRITTER )
         proto = ItemMngr.GetProtoItem( o->ProtoId );
 
@@ -2334,16 +2334,16 @@ void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
 
 void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
 {
-    char*      val_c = NULL;
-    uchar*     val_b = NULL;
-    short*     val_s = NULL;
-    ushort*    val_w = NULL;
-    uint*      val_dw = NULL;
-    int*       val_i = NULL;
-    bool*      val_bool = NULL;
-    ScriptString** str = NULL;
+    char*      val_c = nullptr;
+    uchar*     val_b = nullptr;
+    short*     val_s = nullptr;
+    ushort*    val_w = nullptr;
+    uint*      val_dw = nullptr;
+    int*       val_i = nullptr;
+    bool*      val_bool = nullptr;
+    ScriptString** str = nullptr;
 
-    ProtoItem* proto = ( o->MapObjType != MAP_OBJECT_CRITTER ? ItemMngr.GetProtoItem( o->ProtoId ) : NULL );
+    ProtoItem* proto = ( o->MapObjType != MAP_OBJECT_CRITTER ? ItemMngr.GetProtoItem( o->ProtoId ) : nullptr );
     if( o->MapObjType != MAP_OBJECT_CRITTER && !proto )
         return;
 
@@ -2354,7 +2354,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         char buf[ MAX_FOTEXT ];
         ScriptString* val_str = o->GetPropValue( ShowCritterProps[ ObjCurLine - 20 ].c_str() );
         Str::Copy( buf, val_str->c_str() );
-        Keyb::GetChar( dik, dik_text, buf, sizeof( buf ), NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, buf, sizeof( buf ), nullptr, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
         Str::Trim( buf );
         *val_str = buf;
         return;
@@ -2363,10 +2363,10 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
     switch( ObjCurLine )
     {
     case 7:
-        Keyb::GetChar( dik, dik_text, o->ScriptName, sizeof( o->ScriptName ), NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, o->ScriptName, sizeof( o->ScriptName ), nullptr, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
         return;
     case 8:
-        Keyb::GetChar( dik, dik_text, o->FuncName, sizeof( o->FuncName ), NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, o->FuncName, sizeof( o->FuncName ), nullptr, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
         return;
     case 9:
         val_c = &o->LightIntensity;
@@ -2402,7 +2402,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
             val_dw = &o->MCritter.Anim1;
         else
         {
-            Keyb::GetChar( dik, dik_text, o->RunTime.PicMapName, sizeof( o->RunTime.PicMapName ), NULL, sizeof( o->RunTime.PicMapName ), KIF_NO_SPEC_SYMBOLS );
+            Keyb::GetChar( dik, dik_text, o->RunTime.PicMapName, sizeof( o->RunTime.PicMapName ), nullptr, sizeof( o->RunTime.PicMapName ), KIF_NO_SPEC_SYMBOLS );
             return;
         }
         break;
@@ -2411,7 +2411,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
             val_dw = &o->MCritter.Anim2;
         else
         {
-            Keyb::GetChar( dik, dik_text, o->RunTime.PicInvName, sizeof( o->RunTime.PicInvName ), NULL, sizeof( o->RunTime.PicInvName ), KIF_NO_SPEC_SYMBOLS );
+            Keyb::GetChar( dik, dik_text, o->RunTime.PicInvName, sizeof( o->RunTime.PicInvName ), nullptr, sizeof( o->RunTime.PicInvName ), KIF_NO_SPEC_SYMBOLS );
             return;
         }
         break;
@@ -2505,7 +2505,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         if( o->MapObjType == MAP_OBJECT_ITEM && proto->GetType() == ITEM_TYPE_WEAPON && proto->GetWeapon_MaxAmmoCount() )
         {
             string str = ( o->MItem.AmmoPid ? o->MItem.AmmoPid->c_str() : "" );
-            Keyb::GetChar( dik, dik_text, str, NULL, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
+            Keyb::GetChar( dik, dik_text, str, nullptr, MAPOBJ_SCRIPT_NAME, KIF_NO_SPEC_SYMBOLS );
             SAFEREL( o->MItem.AmmoPid );
             o->MItem.AmmoPid = ScriptString::Create( str.c_str() );
             return;
@@ -2532,7 +2532,7 @@ void FOMapper::ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text )
         if( !*str )
             *str = ScriptString::Create( "" );
         string s = ( *str )->c_std_str();
-        Keyb::GetChar( dik, dik_text, s, NULL, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( dik, dik_text, s, nullptr, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
         *( *str ) = s;
         if( ( *str )->length() == 0 )
             SAFEREL( *str );
@@ -2685,7 +2685,7 @@ void FOMapper::IntLMouseDown()
     // Map
     if( ( !IntVisible || !IsCurInRect( IntWMain, IntX, IntY ) ) && ( !ObjVisible || SelectedObj.empty() || !IsCurInRect( ObjWMain, ObjX, ObjY ) ) )
     {
-        InContObject = NULL;
+        InContObject = nullptr;
 
         if( !HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, SelectHX1, SelectHY1 ) )
             return;
@@ -2714,7 +2714,7 @@ void FOMapper::IntLMouseDown()
                         ushort   hx = so.MapNpc->GetHexX();
                         ushort   hy = so.MapNpc->GetHexY();
                         UCharVec steps;
-                        if( HexMngr.FindPath( NULL, hx, hy, SelectHX1, SelectHY1, steps, -1 ) )
+                        if( HexMngr.FindPath( nullptr, hx, hy, SelectHX1, SelectHY1, steps, -1 ) )
                         {
                             for( uint k = 0; k < steps.size(); k++ )
                             {
@@ -2742,7 +2742,7 @@ void FOMapper::IntLMouseDown()
         else if( CurMode == CUR_MODE_PLACE_OBJECT )
         {
             if( IsObjectMode() && ( *CurItemProtos ).size() )
-                ParseProto( ( *CurItemProtos )[ GetTabIndex() ]->ProtoId, SelectHX1, SelectHY1, NULL );
+                ParseProto( ( *CurItemProtos )[ GetTabIndex() ]->ProtoId, SelectHX1, SelectHY1, nullptr );
             else if( IsTileMode() && CurTileHashes->size() )
                 ParseTile( ( *CurTileHashes )[ GetTabIndex() ], SelectHX1, SelectHY1, 0, 0, TileLayer, DrawRoof );
             else if( IsCritMode() && CurNpcProtos->size() )
@@ -2849,7 +2849,7 @@ void FOMapper::IntLMouseDown()
         }
         else if( IntMode == INT_MODE_INCONT )
         {
-            InContObject = NULL;
+            InContObject = nullptr;
             ind += InContScroll;
 
             if( !SelectedObj.empty() && !SelectedObj[ 0 ].Childs.empty() )
@@ -2866,7 +2866,7 @@ void FOMapper::IntLMouseDown()
                         SAFEREL( InContObject );
                         CurProtoMap->MObjects.erase( it );
                     }
-                    InContObject = NULL;
+                    InContObject = nullptr;
 
                     // Reselect
                     MapObject* mobj = SelectedObj[ 0 ].MapObj;
@@ -2930,8 +2930,8 @@ void FOMapper::IntLMouseDown()
 
                 if( SelectedObj[ 0 ].MapNpc )
                 {
-                    ProtoItem* pitem_ext = NULL;
-                    ProtoItem* pitem_armor = NULL;
+                    ProtoItem* pitem_ext = nullptr;
+                    ProtoItem* pitem_armor = nullptr;
                     for( uint i = 0; i < SelectedObj[ 0 ].Childs.size(); i++ )
                     {
                         MapObject* child = SelectedObj[ 0 ].Childs[ i ];
@@ -2942,7 +2942,7 @@ void FOMapper::IntLMouseDown()
                     }
                     SelectedObj[ 0 ].MapNpc->DefItemSlotArmor->SetProto( pitem_armor ? pitem_armor : ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
 
-                    ProtoItem* pitem_main = NULL;
+                    ProtoItem* pitem_main = nullptr;
                     for( uint i = 0; i < SelectedObj[ 0 ].Childs.size(); i++ )
                     {
                         MapObject* child = SelectedObj[ 0 ].Childs[ i ];
@@ -2952,7 +2952,7 @@ void FOMapper::IntLMouseDown()
                             uchar anim1 = ( pitem_main->IsWeapon() ? pitem_main->GetWeapon_Anim1() : 0 );
                             if( anim1 && !CritType::IsAnim1( SelectedObj[ 0 ].MapNpc->GetCrType(), anim1 ) )
                             {
-                                pitem_main = NULL;
+                                pitem_main = nullptr;
                                 child->MItem.ItemSlot = SLOT_INV;
                             }
                         }
@@ -3356,12 +3356,12 @@ void FOMapper::SetTabIndex( uint index )
 void FOMapper::RefreshCurProtos()
 {
     // Select protos and scroll
-    CurItemProtos = NULL;
-    CurProtoScroll = NULL;
-    CurTileHashes = NULL;
-    CurTileNames = NULL;
-    CurNpcProtos = NULL;
-    InContObject = NULL;
+    CurItemProtos = nullptr;
+    CurProtoScroll = nullptr;
+    CurTileHashes = nullptr;
+    CurTileNames = nullptr;
+    CurNpcProtos = nullptr;
+    InContObject = nullptr;
 
     if( IntMode >= 0 && IntMode < TAB_COUNT )
     {
@@ -3472,7 +3472,7 @@ MapObject* FOMapper::FindMapObject( ProtoMap& pmap, ushort hx, ushort hy, uchar 
                 return mo;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void FOMapper::FindMapObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, uchar mobj_type, hash pid, MapObjectPtrVec& objects )
@@ -3500,7 +3500,7 @@ MapObject* FOMapper::FindMapObject( ushort hx, ushort hy, uchar mobj_type, hash 
             return mo;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void FOMapper::UpdateMapObject( MapObject* mobj )
@@ -4170,13 +4170,13 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     // Checks
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
     if( !proto_item )
-        return NULL;
+        return nullptr;
     if( owner && !Item::PropertyIsCanPickUp->GetValue< bool >( &proto_item->ItemPropsEntity ) )
-        return NULL;
+        return nullptr;
     if( hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() )
-        return NULL;
+        return nullptr;
     if( ( proto_item->IsScen() || proto_item->IsGrid() || proto_item->IsWall() ) && owner )
-        return NULL;
+        return nullptr;
 
     // Clear selection
     SelectClear();
@@ -4205,9 +4205,9 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
     }
 
     // Add base object
-    mobj->RunTime.MapObjId = HexMngr.AddItem( ++AnyId, pid, hx, hy, 0, NULL );
+    mobj->RunTime.MapObjId = HexMngr.AddItem( ++AnyId, pid, hx, hy, 0, nullptr );
     if( !mobj->RunTime.MapObjId )
-        return NULL;
+        return nullptr;
     CurProtoMap->MObjects.push_back( mobj );
 
     // Add childs
@@ -4223,7 +4223,7 @@ MapObject* FOMapper::ParseProto( hash pid, ushort hx, ushort hy, MapObject* owne
         ushort child_hx = hx, child_hy = hy;
         FOREACH_PROTO_ITEM_LINES( proto_item->GetChildLinesStr( i ), child_hx, child_hy, HexMngr.GetMaxHexX(), HexMngr.GetMaxHexY() );
 
-        MapObject* mobj_child = ParseProto( proto_item->GetChildPid( i ), child_hx, child_hy, NULL, true );
+        MapObject* mobj_child = ParseProto( proto_item->GetChildPid( i ), child_hx, child_hy, nullptr, true );
         if( mobj_child )
         {
             if( !mobj->UID )
@@ -4311,7 +4311,7 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
 MapObject* FOMapper::ParseMapObj( MapObject* mobj )
 {
     if( mobj->MapX >= HexMngr.GetMaxHexX() || mobj->MapY >= HexMngr.GetMaxHexY() )
-        return NULL;
+        return nullptr;
 
     if( mobj->MapObjType == MAP_OBJECT_CRITTER )
     {
@@ -4332,11 +4332,11 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
                 }
             }
             if( !place_founded )
-                return NULL;
+                return nullptr;
         }
         ProtoCritter* proto = CrMngr.GetProto( mobj->ProtoId );
         if( !proto )
-            return NULL;
+            return nullptr;
 
         CurProtoMap->MObjects.push_back( new MapObject( *mobj ) );
         mobj = CurProtoMap->MObjects[ CurProtoMap->MObjects.size() - 1 ];
@@ -4360,7 +4360,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
     {
         ProtoItem* proto = ItemMngr.GetProtoItem( mobj->ProtoId );
         if( !proto )
-            return NULL;
+            return nullptr;
 
         CurProtoMap->MObjects.push_back( new MapObject( *mobj ) );
         mobj = CurProtoMap->MObjects.back();
@@ -4369,7 +4369,7 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         if( mobj->MapObjType == MAP_OBJECT_ITEM && mobj->ContainerUID )
             return mobj;
 
-        mobj->RunTime.MapObjId = HexMngr.AddItem( ++AnyId, mobj->ProtoId, mobj->MapX, mobj->MapY, 0, NULL );
+        mobj->RunTime.MapObjId = HexMngr.AddItem( ++AnyId, mobj->ProtoId, mobj->MapX, mobj->MapY, 0, nullptr );
         if( mobj->RunTime.MapObjId )
         {
             HexMngr.AffectItem( mobj, HexMngr.GetItemById( mobj->RunTime.MapObjId ) );
@@ -4939,7 +4939,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 {
                     sobj.MapNpc->ClearAnim();
                     for( uint j = 0; j < anims.size() / 2; j++ )
-                        sobj.MapNpc->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], NULL );
+                        sobj.MapNpc->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], nullptr );
                 }
             }
         }
@@ -4951,7 +4951,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 CritterCl* cr = it->second;
                 cr->ClearAnim();
                 for( uint j = 0; j < anims.size() / 2; j++ )
-                    cr->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], NULL );
+                    cr->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], nullptr );
             }
         }
     }
@@ -5267,7 +5267,7 @@ bool FOMapper::InitScriptSystem()
         return false;
 
     // Load scripts
-    Script::Undef( NULL );
+    Script::Undef( nullptr );
     Script::Define( "__MAPPER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
@@ -5384,7 +5384,7 @@ ScriptString* FOMapper::SScriptFunc::MapperObject_get_ScriptName( MapObject& mob
 
 void FOMapper::SScriptFunc::MapperObject_set_ScriptName( MapObject& mobj, ScriptString* str )
 {
-    Str::Copy( mobj.ScriptName, str ? str->c_str() : NULL );
+    Str::Copy( mobj.ScriptName, str ? str->c_str() : nullptr );
 }
 
 ScriptString* FOMapper::SScriptFunc::MapperObject_get_FuncName( MapObject& mobj )
@@ -5394,7 +5394,7 @@ ScriptString* FOMapper::SScriptFunc::MapperObject_get_FuncName( MapObject& mobj 
 
 void FOMapper::SScriptFunc::MapperObject_set_FuncName( MapObject& mobj, ScriptString* str )
 {
-    Str::Copy( mobj.FuncName, str ? str->c_str() : NULL );
+    Str::Copy( mobj.FuncName, str ? str->c_str() : nullptr );
 }
 
 uchar FOMapper::SScriptFunc::MapperObject_get_Critter_Cond( MapObject& mobj )
@@ -5488,7 +5488,7 @@ MapObject* FOMapper::SScriptFunc::MapperObject_AddChild( MapObject& mobj, hash p
 
     MapObject* mobj_ = new MapObject();
     if( !mobj_ )
-        return NULL;
+        return nullptr;
     mobj_->RunTime.FromMap = mobj.RunTime.FromMap;
     mobj_->MapObjType = MAP_OBJECT_ITEM;
     mobj_->ProtoId = pid;
@@ -5602,7 +5602,7 @@ MapObject* FOMapper::SScriptFunc::MapperMap_AddObject( ProtoMap& pmap, ushort hx
 
     MapObject* mobj = new MapObject();
     if( !mobj )
-        return NULL;
+        return nullptr;
     mobj->RunTime.FromMap = &pmap;
     mobj->MapObjType = mobj_type;
     mobj->ProtoId = pid;
@@ -5973,7 +5973,7 @@ ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int pa
     if( !pmap->Init( file_name.c_str() ) )
     {
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
-        return NULL;
+        return nullptr;
     }
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
     Self->LoadedProtoMaps.push_back( pmap );
@@ -6003,7 +6003,7 @@ bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, ScriptString* custom
     if( !pmap )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    bool result = pmap->Save( custom_name ? custom_name->c_str() : NULL );
+    bool result = pmap->Save( custom_name ? custom_name->c_str() : nullptr );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
     if( result )
         Self->RunMapSaveScript( pmap );
@@ -6048,7 +6048,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArr
         dir_ = dir->c_std_str();
 
     FindData fd;
-    void*     h = FileFindFirst( dir_.c_str(), NULL, fd );
+    void*     h = FileFindFirst( dir_.c_str(), nullptr, fd );
     if( !h )
     {
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
@@ -6128,7 +6128,7 @@ void FOMapper::SScriptFunc::Global_SelectObjects( ScriptArray& objects, bool set
 
 MapObject* FOMapper::SScriptFunc::Global_GetSelectedObject()
 {
-    return Self->SelectedObj.size() ? Self->SelectedObj[ 0 ].MapObj : NULL;
+    return Self->SelectedObj.size() ? Self->SelectedObj[ 0 ].MapObj : nullptr;
 }
 
 uint FOMapper::SScriptFunc::Global_GetSelectedObjects( ScriptArray* objects )
@@ -6255,7 +6255,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, ScriptString* sub_ta
         if( it != Self->Tabs[ tab ].end() )
         {
             if( Self->TabsActive[ tab ] == &it->second )
-                Self->TabsActive[ tab ] = NULL;
+                Self->TabsActive[ tab ] = nullptr;
             Self->Tabs[ tab ].erase( it );
         }
     }
@@ -6311,7 +6311,7 @@ void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, ScriptString* sub
         if( it != Self->Tabs[ tab ].end() )
         {
             if( Self->TabsActive[ tab ] == &it->second )
-                Self->TabsActive[ tab ] = NULL;
+                Self->TabsActive[ tab ] = nullptr;
             Self->Tabs[ tab ].erase( it );
         }
     }
@@ -6517,7 +6517,7 @@ ScriptString* FOMapper::SScriptFunc::Global_ReplaceTextInt( ScriptString& text, 
 void FOMapper::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
 {
     UShortPair pre_block, block;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, NULL, 0, &block, &pre_block, NULL, true );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, true );
     to_hx = pre_block.first;
     to_hy = pre_block.second;
 }
@@ -6529,10 +6529,10 @@ uint FOMapper::SScriptFunc::Global_GetPathLengthHex( ushort from_hx, ushort from
     if( to_hx >= Self->HexMngr.GetMaxHexX() || to_hy >= Self->HexMngr.GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid to hexes args." );
 
-    if( cut > 0 && !Self->HexMngr.CutPath( NULL, from_hx, from_hy, to_hx, to_hy, cut ) )
+    if( cut > 0 && !Self->HexMngr.CutPath( nullptr, from_hx, from_hy, to_hx, to_hy, cut ) )
         return 0;
     UCharVec steps;
-    if( !Self->HexMngr.FindPath( NULL, from_hx, from_hy, to_hx, to_hy, steps, -1 ) )
+    if( !Self->HexMngr.FindPath( nullptr, from_hx, from_hy, to_hx, to_hy, steps, -1 ) )
         return 0;
     return (uint) steps.size();
 }
@@ -6577,13 +6577,13 @@ MapObject* FOMapper::SScriptFunc::Global_GetMonitorObject( int x, int y, bool ig
         SCRIPT_ERROR_R0( "Map not loaded." );
 
     if( !ignore_interface && Self->IsCurInInterface() )
-        return NULL;
+        return nullptr;
 
     ItemHex*   item;
     CritterCl* cr;
     Self->HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
 
-    MapObject* mobj = NULL;
+    MapObject* mobj = nullptr;
     if( item )
     {
         mobj = Self->FindMapObject( item->GetHexX(), item->GetHexY(), MAP_OBJECT_ITEM, item->GetProtoId(), false );
@@ -6710,7 +6710,7 @@ void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, Script
 
 void FOMapper::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )
 {
-    Self->HexMngr.SetRainAnimation( fall_anim_name ? fall_anim_name->c_str() : NULL, drop_anim_name ? drop_anim_name->c_str() : NULL );
+    Self->HexMngr.SetRainAnimation( fall_anim_name ? fall_anim_name->c_str() : nullptr, drop_anim_name ? drop_anim_name->c_str() : nullptr );
 }
 
 void FOMapper::SScriptFunc::Global_ChangeZoom( float target_zoom )
@@ -6805,7 +6805,7 @@ uint FOMapper::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, 
 
 void FOMapper::SScriptFunc::Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
-    SprMngr.GetTextInfo( w, h, text ? text->c_str() : NULL, font, flags, tw, th, lines );
+    SprMngr.GetTextInfo( w, h, text ? text->c_str() : nullptr, font, flags, tw, th, lines );
 }
 
 void FOMapper::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
@@ -6909,8 +6909,8 @@ void FOMapper::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArra
         pp.PointX = *(int*) data.At( i * 3 );
         pp.PointY = *(int*) data.At( i * 3 + 1 );
         pp.PointColor = *(int*) data.At( i * 3 + 2 );
-        pp.PointOffsX = NULL;
-        pp.PointOffsY = NULL;
+        pp.PointOffsX = nullptr;
+        pp.PointOffsY = nullptr;
     }
 
     SprMngr.DrawPoints( points, prim );
@@ -6937,7 +6937,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
     Sprite&    spr = tree.InsertSprite( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ),
                                         hx, hy + ( proto_item ? proto_item->GetDrawOrderOffsetHexY() : 0 ), 0,
                                         f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, spr_index < 0 ? anim->GetCurSprId() : anim->GetSprId( spr_index ),
-                                        NULL, NULL, NULL, NULL, NULL, NULL );
+                                        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
     if( !no_light )
         spr.SetLight( proto_item ? proto_item->GetCorner() : CORNER_EAST_WEST, Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
 

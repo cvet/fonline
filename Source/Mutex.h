@@ -45,7 +45,7 @@ private:
     MutexEvent& operator=( const MutexEvent& ) { return *this; }
 
 public:
-    MutexEvent() { mutexEvent = CreateEvent( NULL, TRUE, TRUE, NULL ); }
+    MutexEvent() { mutexEvent = CreateEvent( nullptr, TRUE, TRUE, nullptr ); }
     ~MutexEvent() { CloseHandle( mutexEvent ); }
     void  Allow()     { SetEvent( mutexEvent ); }
     void  Disallow()  { ResetEvent( mutexEvent ); }
@@ -109,8 +109,8 @@ private:
 public:
     MutexEvent()
     {
-        pthread_mutex_init( &ptMutex, NULL );
-        pthread_cond_init( &ptCond, NULL );
+        pthread_mutex_init( &ptMutex, nullptr );
+        pthread_cond_init( &ptCond, nullptr );
         flag = true;
     }
     ~MutexEvent()

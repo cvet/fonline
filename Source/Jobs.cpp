@@ -11,7 +11,7 @@ typedef deque< Job > JobDeque;
 static JobDeque Jobs;
 
 Job::Job(): Type( JOB_NOP ),
-            Data( NULL ),
+            Data( nullptr ),
             ThreadId( 0 )
 {}
 
@@ -27,7 +27,7 @@ void Job::PushBack( int type )
 {
     SCOPE_LOCK( JobLocker );
 
-    Jobs.push_back( Job( type, NULL, 0 ) );
+    Jobs.push_back( Job( type, nullptr, 0 ) );
 }
 
 void Job::PushBack( int type, void* data )
@@ -58,7 +58,7 @@ Job Job::PopFront()
     SCOPE_LOCK( JobLocker );
 
     if( Jobs.empty() )
-        return Job( JOB_NOP, NULL, false );
+        return Job( JOB_NOP, nullptr, false );
 
     Job job = Jobs.front();
 
@@ -76,7 +76,7 @@ Job Job::PopFront()
                 return job__;
             }
         }
-        return Job( JOB_NOP, NULL, false );
+        return Job( JOB_NOP, nullptr, false );
     }
 
     Jobs.pop_front();

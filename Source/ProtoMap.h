@@ -349,7 +349,7 @@ public:
 
     #ifdef FONLINE_MAPPER
     void        GenNew();
-    bool        Save( const char* custom_name = NULL );
+    bool        Save( const char* custom_name = nullptr );
     static bool IsMapFile( const char* fname );
     #endif
 
@@ -366,7 +366,7 @@ public:
     void       GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, hash pid, MapObjectPtrVec& mobjs );
     void       GetMapSceneriesByPid( hash pid, MapObjectPtrVec& mobjs );
     MapObject* GetMapGrid( ushort hx, ushort hy );
-    ProtoMap(): HexFlags( NULL ) { MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) ); }
+    ProtoMap(): HexFlags( nullptr ) { MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) ); }
     ProtoMap( const ProtoMap& r )
     {
         *this = r;
@@ -374,7 +374,7 @@ public:
     }
     ~ProtoMap()
     {
-        HexFlags = NULL;
+        HexFlags = nullptr;
         MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) sizeof( ProtoMap ) );
     }
     #else

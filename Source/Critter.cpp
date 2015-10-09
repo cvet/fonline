@@ -150,7 +150,7 @@ CLASS_PROPERTY_IMPL( Critter, FavoriteItemPid );
 Critter::Critter( uint id, EntityType type ): Entity( id, type, PropertiesRegistrator )
 {
     CritterIsNpc = false;
-    GroupMove = NULL;
+    GroupMove = nullptr;
     PrevHexTick = 0;
     PrevHexX = PrevHexY = 0;
     startBreakTime = 0;
@@ -1086,7 +1086,7 @@ void Critter::ClearVisible()
 
 Critter* Critter::GetCritSelf( uint crid, bool sync_lock )
 {
-    Critter* cr = NULL;
+    Critter* cr = nullptr;
 
     auto     it = VisCrSelfMap.find( crid );
     if( it != VisCrSelfMap.end() )
@@ -1376,34 +1376,34 @@ void Critter::EraseItem( Item* item, bool send )
 Item* Critter::GetItem( uint item_id, bool skip_hide )
 {
     if( !item_id )
-        return NULL;
+        return nullptr;
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetId() == item_id )
         {
             if( skip_hide && item->GetIsHidden() )
-                return NULL;
+                return nullptr;
 
             SYNC_LOCK( item );
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Critter::GetInvItem( uint item_id, int transfer_type )
 {
     if( transfer_type == TRANSFER_CRIT_LOOT && GetIsNoLoot() )
-        return NULL;
+        return nullptr;
     if( transfer_type == TRANSFER_CRIT_STEAL && GetIsNoSteal() )
-        return NULL;
+        return nullptr;
 
     Item* item = GetItem( item_id, true );
     if( !item || item->AccCritter.Slot != SLOT_INV ||
         ( transfer_type == TRANSFER_CRIT_LOOT && item->GetIsNoLoot() ) ||
         ( transfer_type == TRANSFER_CRIT_STEAL && item->GetIsNoSteal() ) )
-        return NULL;
+        return nullptr;
     return item;
 }
 
@@ -1440,7 +1440,7 @@ Item* Critter::GetItemByPid( hash item_pid )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Critter::GetItemByPidSlot( hash item_pid, int slot )
@@ -1454,14 +1454,14 @@ Item* Critter::GetItemByPidSlot( hash item_pid, int slot )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Critter::GetItemByPidInvPriority( hash item_pid )
 {
     ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
     if( !proto_item )
-        return NULL;
+        return nullptr;
 
     if( proto_item->GetStackable() )
     {
@@ -1477,7 +1477,7 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
     }
     else
     {
-        Item* another_slot = NULL;
+        Item* another_slot = nullptr;
         for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         {
             Item* item = *it;
@@ -1495,13 +1495,13 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
             SYNC_LOCK( another_slot );
         return another_slot;
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Critter::GetAmmoForWeapon( Item* weap )
 {
     if( !weap->IsWeapon() )
-        return NULL;
+        return nullptr;
 
     Item* ammo = GetItemByPid( weap->GetAmmoPid() );
     if( ammo )
@@ -1526,7 +1526,7 @@ Item* Critter::GetAmmo( int caliber )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Critter::GetItemCar()
@@ -1540,7 +1540,7 @@ Item* Critter::GetItemCar()
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Critter::GetItemSlot( int slot )
@@ -1554,7 +1554,7 @@ Item* Critter::GetItemSlot( int slot )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void Critter::GetItemsSlot( int slot, ItemVec& items, bool lock )
@@ -1642,7 +1642,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         return false;
     }
 
-    Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : NULL );
+    Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : nullptr );
     bool  allow = false;
     if( Script::PrepareContext( ServerFunctions.CritterCheckMoveItem, _FUNC_, GetInfo() ) )
     {
@@ -1687,7 +1687,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
             else
             {
                 item->ChangeCount( -(int) count );
-                item = NULL;
+                item = nullptr;
             }
         }
         else
@@ -1696,7 +1696,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
             if( !GetMapId() )
             {
                 ItemMngr.DeleteItem( item );
-                item = NULL;
+                item = nullptr;
             }
         }
 
@@ -1714,7 +1714,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         SendAA_Action( ACTION_DROP_ITEM, from_slot, item );
         item->ViewByCritter = this;
         map->AddItem( item, GetHexX(), GetHexY() );
-        item->ViewByCritter = NULL;
+        item->ViewByCritter = nullptr;
         item->EventDrop( this );
         EventDropItem( item );
         return true;
@@ -1775,7 +1775,7 @@ void Critter::TakeDefaultItem( uchar slot )
     if( slot == SLOT_HAND1 || slot == SLOT_HAND2 )
     {
         hash       hands_pid = GetHandsItemProtoId();
-        ProtoItem* proto_hand = ( hands_pid ? ItemMngr.GetProtoItem( hands_pid ) : NULL );
+        ProtoItem* proto_hand = ( hands_pid ? ItemMngr.GetProtoItem( hands_pid ) : nullptr );
         if( !proto_hand )
             proto_hand = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
         RUNTIME_ASSERT( proto_hand );
@@ -1786,7 +1786,7 @@ void Critter::TakeDefaultItem( uchar slot )
     else if( slot == SLOT_ARMOR )
     {
         hash       armor_pid = ITEM_DEF_ARMOR;
-        ProtoItem* proto_armor = ( armor_pid ? ItemMngr.GetProtoItem( armor_pid ) : NULL );
+        ProtoItem* proto_armor = ( armor_pid ? ItemMngr.GetProtoItem( armor_pid ) : nullptr );
         if( !proto_armor )
             proto_armor = ItemMngr.GetProtoItem( ITEM_DEF_ARMOR );
         RUNTIME_ASSERT( proto_armor );
@@ -1855,7 +1855,7 @@ void Critter::TryUpOnKnockout()
 
     // Stand up
     Data.Cond = COND_LIFE;
-    SendAA_Action( ACTION_STANDUP, Data.Anim2KnockoutEnd, NULL );
+    SendAA_Action( ACTION_STANDUP, Data.Anim2KnockoutEnd, nullptr );
     SetBreakTime( GameOpt.Breaktime );
 }
 
@@ -1876,7 +1876,7 @@ void Critter::ToDead( uint anim2, bool send_all )
         MoveItem( SLOT_HAND2, SLOT_INV, item->GetId(), item->GetCount() );
 
     if( send_all )
-        SendAA_Action( ACTION_DEAD, anim2, NULL );
+        SendAA_Action( ACTION_DEAD, anim2, nullptr );
 
     if( !already_dead )
     {
@@ -3119,7 +3119,7 @@ void Critter::Send_AllAutomapsInfo()
     }
     SAFEREL( known_locs );
 
-    Send_AutomapsInfo( &locs, NULL );
+    Send_AutomapsInfo( &locs, nullptr );
 }
 
 void Critter::SendMessage( int num, int val, int to )
@@ -3177,7 +3177,7 @@ void Critter::RefreshName()
     else
     {
         hash        dlg_pack_id = GetDialogId();
-        DialogPack* dlg_pack = ( dlg_pack_id ? DlgMngr.GetDialog( dlg_pack_id ) : NULL );
+        DialogPack* dlg_pack = ( dlg_pack_id ? DlgMngr.GetDialog( dlg_pack_id ) : nullptr );
         char        buf[ MAX_FOTEXT ];
         if( dlg_pack )
             *NameStr = Str::Format( buf, "%s (Npc)", dlg_pack->PackName.c_str(), GetId() );
@@ -3424,7 +3424,7 @@ void Critter::EraseEnemyInStack( uint crid )
 Critter* Critter::ScanEnemyStack()
 {
     if( GetIsNoEnemyStack() )
-        return NULL;
+        return nullptr;
 
     ScriptArray* enemy_stack = GetEnemyStack();
     for( int i = (int) enemy_stack->GetSize() - 1; i >= 0; i-- )
@@ -3437,7 +3437,7 @@ Critter* Critter::ScanEnemyStack()
         }
     }
     SAFEREL( enemy_stack );
-    return NULL;
+    return nullptr;
 }
 
 /************************************************************************/
@@ -3548,7 +3548,7 @@ void Critter::ContinueTimeEvents( int offs_time )
 /************************************************************************/
 
 #if !defined ( USE_LIBEVENT ) || defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
-Client::SendCallback Client::SendData = NULL;
+Client::SendCallback Client::SendData = nullptr;
 #endif
 
 Client::Client(): Critter( 0, EntityType::Client )
@@ -3587,7 +3587,7 @@ Client::Client(): Critter( 0, EntityType::Client )
     memzero( UID, sizeof( UID ) );
 
     #if defined ( USE_LIBEVENT )
-    NetIOArgPtr = NULL;
+    NetIOArgPtr = nullptr;
     #else // IOCP
     MEMORY_PROCESS( MEMORY_CLIENT, WSA_BUF_SIZE * 2 );
     NetIOIn = new NetIOArg();
@@ -3644,7 +3644,7 @@ void Client::Shutdown()
     # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
     NetIOArgPtr->BEVLocker.Lock();
     bufferevent_free( NetIOArgPtr->BEV );
-    NetIOArgPtr->BEV = NULL;
+    NetIOArgPtr->BEV = nullptr;
     NetIOArgPtr->BEVLocker.Unlock();
     # else
     bufferevent_free( NetIOArgPtr->BEV );
@@ -3787,7 +3787,7 @@ void Client::Send_AddCritter( Critter* cr )
     BOUT_END( this );
 
     if( cr != this )
-        Send_MoveItem( cr, NULL, ACTION_REFRESH, 0 );
+        Send_MoveItem( cr, nullptr, ACTION_REFRESH, 0 );
 }
 
 void Client::Send_RemoveCritter( Critter* cr )
@@ -3806,7 +3806,7 @@ void Client::Send_LoadMap( Map* map )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    Location* loc = NULL;
+    Location* loc = nullptr;
     hash      pid_map = 0;
     hash      pid_loc = 0;
     uchar     map_index_in_loc = 0;
@@ -4289,7 +4289,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
     if( LockMapTransfers )
         return;
 
-    Item*        car = ( FLAG( info_flags, GM_INFO_GROUP_PARAM ) ? GroupMove->GetCar() : NULL );
+    Item*        car = ( FLAG( info_flags, GM_INFO_GROUP_PARAM ) ? GroupMove->GetCar() : nullptr );
     ScriptArray* known_locs = GetKnownLocations();
 
     // Calculate length of message
@@ -5092,7 +5092,7 @@ Client* Client::BarterGetOpponent( uint opponent_id )
     if( !GetMapId() && !GroupMove )
     {
         BarterEnd();
-        return NULL;
+        return nullptr;
     }
 
     if( BarterOpponent && BarterOpponent != opponent_id )
@@ -5110,7 +5110,7 @@ Client* Client::BarterGetOpponent( uint opponent_id )
         if( cr && cr->IsPlayer() && BarterOpponent == cr->GetId() )
             ( (Client*) cr )->BarterEnd();
         BarterEnd();
-        return NULL;
+        return nullptr;
     }
 
     BarterOpponent = cr->GetId();
@@ -5160,7 +5160,7 @@ void Client::BarterRefresh( Client* opponent )
 Client::BarterItem* Client::BarterGetItem( uint item_id )
 {
     auto it = std::find( BarterItems.begin(), BarterItems.end(), item_id );
-    return it != BarterItems.end() ? &( *it ) : NULL;
+    return it != BarterItems.end() ? &( *it ) : nullptr;
 }
 
 void Client::BarterEraseItem( uint item_id )
@@ -5203,7 +5203,7 @@ void Client::ProcessTalk( bool force )
     }
 
     // Check npc
-    Npc* npc = NULL;
+    Npc* npc = nullptr;
     if( Talk.TalkType == TALK_WITH_NPC )
     {
         npc = CrMngr.GetNpc( Talk.TalkNpc, true );
@@ -5262,7 +5262,7 @@ void Client::CloseTalk()
 {
     if( Talk.TalkType != TALK_NONE )
     {
-        Npc* npc = NULL;
+        Npc* npc = nullptr;
         if( Talk.TalkType == TALK_WITH_NPC )
         {
             Talk.TalkType = TALK_NONE;
@@ -5294,7 +5294,7 @@ void Client::CloseTalk()
                 break;
             Script::SetArgObject( this );
             Script::SetArgObject( npc );
-            Script::SetArgObject( NULL );
+            Script::SetArgObject( nullptr );
             Talk.Locked = true;
             Script::RunPrepared();
             Talk.Locked = false;
@@ -5810,5 +5810,5 @@ void Npc::SetTarget( int reason, Critter* target, int min_hp, bool is_gag )
     plane->Attack.GagHexX = target->GetHexX();
     plane->Attack.GagHexY = target->GetHexY();
     plane->Attack.IsRun = ( IsTurnBased() ? GameOpt.TbAlwaysRun : GameOpt.RtAlwaysRun );
-    AddPlane( reason, plane, false, target, NULL );
+    AddPlane( reason, plane, false, target, nullptr );
 }

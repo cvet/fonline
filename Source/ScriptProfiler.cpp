@@ -3,10 +3,10 @@
 
 ScriptProfiler::ScriptProfiler()
 {
-    scriptEngine = NULL;
+    scriptEngine = nullptr;
     curStage = ProfilerUninitialized;
     sampleInterval = 0;
-    saveFileHandle = NULL;
+    saveFileHandle = nullptr;
     isDynamicDisplay = false;
     totalCallPaths = 0;
 }
@@ -176,7 +176,7 @@ void ScriptProfiler::Finish()
     if( saveFileHandle )
     {
         FileClose( saveFileHandle );
-        saveFileHandle = NULL;
+        saveFileHandle = nullptr;
     }
 
     curStage = ProfilerUninitialized;

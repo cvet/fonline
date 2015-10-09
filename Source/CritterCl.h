@@ -232,7 +232,7 @@ public:
 
     // Animation
 public:
-    uint GetAnim1( Item* anim_item = NULL );
+    uint GetAnim1( Item* anim_item = nullptr );
     uint GetAnim2();
     void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item );
     int* GetLayers3dData();
@@ -262,7 +262,7 @@ private:
     CritterAnimVec animSequence;
     CritterAnim    stayAnim;
 
-    CritterAnim* GetCurAnim() { return IsAnim() ? &animSequence[ 0 ] : NULL; }
+    CritterAnim* GetCurAnim() { return IsAnim() ? &animSequence[ 0 ] : nullptr; }
     void         NextAnim( bool erase_front );
 
 public:
@@ -282,7 +282,7 @@ public:
     uint         OffsExtNextTick;
 
     void         SetSprRect();
-    bool         Is3dAnim()  { return Anim3d != NULL; }
+    bool         Is3dAnim()  { return Anim3d != nullptr; }
     Animation3d* GetAnim3d() { return Anim3d; }
     bool         IsAnim()    { return animSequence.size() > 0; }
     bool         IsWalkAnim();

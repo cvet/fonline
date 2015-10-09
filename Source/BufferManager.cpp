@@ -141,7 +141,7 @@ void BufferManager::Push( const char* buf, uint len, bool no_crypt /* = false */
         return;
     if( bufEndPos + len >= bufLen )
         GrowBuf( len );
-    CopyBuf( buf, bufData + bufEndPos, NULL, no_crypt ? 0 : EncryptKey( len ), len );
+    CopyBuf( buf, bufData + bufEndPos, nullptr, no_crypt ? 0 : EncryptKey( len ), len );
     bufEndPos += len;
 }
 
@@ -165,7 +165,7 @@ void BufferManager::Pop( char* buf, uint len )
         WriteLogF( _FUNC_, " - Error!\n" );
         return;
     }
-    CopyBuf( bufData + bufReadPos, buf, NULL, EncryptKey( len ), len );
+    CopyBuf( bufData + bufReadPos, buf, nullptr, EncryptKey( len ), len );
     bufReadPos += len;
 }
 

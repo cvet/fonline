@@ -38,7 +38,7 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     Proto = proto;
     mapLocation = location;
 
-    hexFlags = NULL;
+    hexFlags = nullptr;
     NeedProcess = false;
     IsTurnBasedOn = false;
     TurnBasedEndTick = 0;
@@ -132,7 +132,7 @@ bool Map::Generate()
         Str::Append( script_name, mobj.FuncName );
 
         // Create npc
-        Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, mobj.Props, NULL, script_name[ 0 ] ? script_name : NULL, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
+        Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, mobj.Props, nullptr, script_name[ 0 ] ? script_name : nullptr, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
         if( !npc )
         {
             WriteLogF( _FUNC_, " - Create npc '%s' on map '%s' fail, continue generate.\n", Str::GetName( mobj.ProtoId ), GetName() );
@@ -182,7 +182,7 @@ bool Map::Generate()
 
         // Store UID association
         if( mobj.UID )
-            UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( NULL, npc ) ) );
+            UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( nullptr, npc ) ) );
     }
 
     // Generate items
@@ -200,8 +200,8 @@ bool Map::Generate()
         if( !proto->IsItem() )
             continue;
 
-        Npc*  cr_cont = NULL;
-        Item* item_cont = NULL;
+        Npc*  cr_cont = nullptr;
+        Item* item_cont = nullptr;
 
         // Find container
         if( mobj.ContainerUID )
@@ -283,7 +283,7 @@ bool Map::Generate()
 
         // Store UID association
         if( mobj.UID )
-            UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( item, NULL ) ) );
+            UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( item, nullptr ) ) );
 
         // Transfer to container
         if( mobj.ContainerUID )
@@ -618,7 +618,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
 
             cr->AddIdVisItem( item->GetId() );
             cr->Send_AddItemOnMap( item );
-            cr->EventShowItemOnMap( item, false, NULL );
+            cr->EventShowItemOnMap( item, false, nullptr );
         }
     }
     item->ViewPlaceOnMap = false;
@@ -754,7 +754,7 @@ void Map::ChangeViewItem( Item* item )
             {
                 cr->DelIdVisItem( item->GetId() );
                 cr->Send_EraseItemFromMap( item );
-                cr->EventHideItemOnMap( item, false, NULL );
+                cr->EventHideItemOnMap( item, false, nullptr );
             }
             else if( !item->GetIsAlwaysView() )           // Check distance for non-hide items
             {
@@ -781,7 +781,7 @@ void Map::ChangeViewItem( Item* item )
                 {
                     cr->DelIdVisItem( item->GetId() );
                     cr->Send_EraseItemFromMap( item );
-                    cr->EventHideItemOnMap( item, false, NULL );
+                    cr->EventHideItemOnMap( item, false, nullptr );
                 }
             }
         }
@@ -814,7 +814,7 @@ void Map::ChangeViewItem( Item* item )
 
             cr->AddIdVisItem( item->GetId() );
             cr->Send_AddItemOnMap( item );
-            cr->EventShowItemOnMap( item, false, NULL );
+            cr->EventShowItemOnMap( item, false, nullptr );
         }
     }
 }
@@ -843,7 +843,7 @@ Item* Map::GetItem( uint item_id )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Map::GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker )
@@ -858,7 +858,7 @@ Item* Map::GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Map::GetItemDoor( ushort hx, ushort hy )
@@ -872,7 +872,7 @@ Item* Map::GetItemDoor( ushort hx, ushort hy )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Map::GetItemCar( ushort hx, ushort hy )
@@ -886,7 +886,7 @@ Item* Map::GetItemCar( ushort hx, ushort hy )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Map::GetItemContainer( ushort hx, ushort hy )
@@ -900,7 +900,7 @@ Item* Map::GetItemContainer( ushort hx, ushort hy )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 Item* Map::GetItemGag( ushort hx, ushort hy )
@@ -914,7 +914,7 @@ Item* Map::GetItemGag( ushort hx, ushort hy )
             return item;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void Map::GetItemsHex( ushort hx, ushort hy, ItemVec& items, bool lock )
@@ -1245,7 +1245,7 @@ uint Map::GetNpcCount( int npc_role, int find_type )
 
 Critter* Map::GetCritter( uint crid, bool sync_lock )
 {
-    Critter* cr = NULL;
+    Critter* cr = nullptr;
 
     dataLocker.Lock();
     for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
@@ -1266,7 +1266,7 @@ Critter* Map::GetCritter( uint crid, bool sync_lock )
 
         // Recheck
         if( cr->GetMapId() != GetId() )
-            return NULL;
+            return nullptr;
     }
 
     return cr;
@@ -1274,7 +1274,7 @@ Critter* Map::GetCritter( uint crid, bool sync_lock )
 
 Critter* Map::GetNpc( int npc_role, int find_type, uint skip_count, bool sync_lock )
 {
-    Npc* npc = NULL;
+    Npc* npc = nullptr;
 
     dataLocker.Lock();
     for( auto it = mapNpcs.begin(), end = mapNpcs.end(); it != end; ++it )
@@ -1309,9 +1309,9 @@ Critter* Map::GetNpc( int npc_role, int find_type, uint skip_count, bool sync_lo
 Critter* Map::GetHexCritter( ushort hx, ushort hy, bool dead, bool sync_lock )
 {
     if( !IsFlagCritter( hx, hy, dead ) )
-        return NULL;
+        return nullptr;
 
-    Critter* cr = NULL;
+    Critter* cr = nullptr;
 
     dataLocker.Lock();
     for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
@@ -1626,13 +1626,13 @@ Item* Map::GetItemChild( ushort hx, ushort hy, ProtoItem* proto_item, uint child
     // Get child pid
     hash child_pid = proto_item->GetChildPid( child_index );
     if( !child_pid )
-        return NULL;
+        return nullptr;
 
     // Move to position
     FOREACH_PROTO_ITEM_LINES( proto_item->GetChildLinesStr( child_index ), hx, hy, GetMaxHexX(), GetMaxHexY() );
 
     // Find on map
-    return GetItemHex( hx, hy, child_pid, NULL );
+    return GetItemHex( hx, hy, child_pid, nullptr );
 }
 
 bool Map::PrepareScriptFunc( int num_scr_func )
@@ -2073,7 +2073,7 @@ void Map::NextCritterTurn()
     if( TurnSequenceCur >= (int) TurnSequence.size() ) // Next round
     {
         // Next turn
-        GenerateSequence( NULL );
+        GenerateSequence( nullptr );
         TurnSequenceCur = -1;
         TurnBasedRound++;
         TurnBasedTurn = 0;
@@ -2244,7 +2244,7 @@ void Location::GetMaps( MapVec& maps, bool lock )
 Map* Location::GetMap( uint count )
 {
     if( count >= locMaps.size() )
-        return NULL;
+        return nullptr;
     Map* map = locMaps[ count ];
     SYNC_LOCK( map );
     return map;
@@ -2271,7 +2271,7 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
         return true;
     }
 
-    Map* to_map = NULL;
+    Map* to_map = nullptr;
     for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
     {
         Map* map = *it;

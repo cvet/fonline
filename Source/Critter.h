@@ -761,12 +761,12 @@ private:
     AIDataPlaneVec aiPlanes;
 
 public:
-    bool            AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some_cr = NULL, Item* some_item = NULL );
-    void            NextPlane( int reason, Critter* some_cr = NULL, Item* some_item = NULL );
+    bool            AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some_cr = nullptr, Item* some_item = nullptr );
+    void            NextPlane( int reason, Critter* some_cr = nullptr, Item* some_item = nullptr );
     bool            RunPlane( int reason, uint& r0, uint& r1, uint& r2 );
     bool            IsPlaneAviable( int plane_type );
     bool            IsCurPlane( int plane_type );
-    AIDataPlane*    GetCurPlane() { return aiPlanes.size() ? aiPlanes[ 0 ]->GetCurPlane() : NULL; }
+    AIDataPlane*    GetCurPlane() { return aiPlanes.size() ? aiPlanes[ 0 ]->GetCurPlane() : nullptr; }
     AIDataPlaneVec& GetPlanes()   { return aiPlanes; }
     void            DropPlanes();
     void            SetBestCurPlane();

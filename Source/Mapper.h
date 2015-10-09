@@ -250,8 +250,8 @@ public:
         CritterCl*      MapNpc;
         MapObjectPtrVec Childs;
 
-        SelMapObj( MapObject* mobj, ItemHex* itm ): MapObj( mobj ), MapItem( itm ), MapNpc( NULL ) {}
-        SelMapObj( MapObject* mobj, CritterCl* npc ): MapObj( mobj ), MapItem( NULL ), MapNpc( npc ) {}
+        SelMapObj( MapObject* mobj, ItemHex* itm ): MapObj( mobj ), MapItem( itm ), MapNpc( nullptr ) {}
+        SelMapObj( MapObject* mobj, CritterCl* npc ): MapObj( mobj ), MapItem( nullptr ), MapNpc( npc ) {}
         SelMapObj( const SelMapObj& r )
         {
             MapObj = r.MapObj;
@@ -268,8 +268,8 @@ public:
             return *this;
         }
         bool operator==( const MapObject* r ) { return MapObj == r; }
-        bool IsItem()                         { return MapItem != NULL; }
-        bool IsNpc()                          { return MapNpc != NULL; }
+        bool IsItem()                         { return MapItem != nullptr; }
+        bool IsNpc()                          { return MapNpc != nullptr; }
         bool IsContainer()                    { return IsNpc() || ( IsItem() && MapItem->Proto->GetType() == ITEM_TYPE_CONTAINER ); }
     };
     typedef vector< SelMapObj > SelMapProtoItemVec;

@@ -42,7 +42,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
     // Add to already processed
     for( size_t i = 0, j = processedFiles.size(); i < j; i++ )
         if( Str::CompareCase( processedFiles[ i ].c_str(), fname ) )
-            return NULL;
+            return nullptr;
     processedFiles.push_back( fname );
 
     // Load file data
@@ -50,7 +50,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
     if( !file.LoadFile( fname, PT_DATA ) )
     {
         WriteLogF( _FUNC_, " - 3d file '%s' not found.\n", fname );
-        return NULL;
+        return nullptr;
     }
 
     // Load bones
@@ -87,13 +87,13 @@ AnimSet* GraphicLoader::LoadAnimation( const char* anim_fname, const char* anim_
     // Check maybe file already processed and nothing founded
     for( size_t i = 0, j = processedFiles.size(); i < j; i++ )
         if( Str::CompareCase( processedFiles[ i ].c_str(), anim_fname ) )
-            return NULL;
+            return nullptr;
 
     // File not processed, load and recheck animations
     if( LoadModel( anim_fname ) )
         return LoadAnimation( anim_fname, anim_name );
 
-    return NULL;
+    return nullptr;
 }
 
 /************************************************************************/
@@ -105,14 +105,14 @@ MeshTextureVec GraphicLoader::loadedMeshTextures;
 MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* model_path )
 {
     if( !texture_name || !texture_name[ 0 ] )
-        return NULL;
+        return nullptr;
 
     // Try find already loaded texture
     for( auto it = loadedMeshTextures.begin(), end = loadedMeshTextures.end(); it != end; ++it )
     {
         MeshTexture* texture = *it;
         if( Str::CompareCase( texture->Name.c_str(), texture_name ) )
-            return texture && texture->Id ? texture : NULL;
+            return texture && texture->Id ? texture : nullptr;
     }
 
     // Allocate structure
@@ -134,7 +134,7 @@ MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* m
     }
     SprMngr.PopAtlasType();
     if( !anim )
-        return NULL;
+        return nullptr;
 
     SpriteInfo* si = SprMngr.GetSpriteInfo( anim->Ind[ 0 ] );
     mesh_tex->Id = si->Atlas->TextureOwner->Id;
@@ -169,7 +169,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Reset defaults to NULL if it's count is zero
     if( defaults_count == 0 )
-        defaults = NULL;
+        defaults = nullptr;
 
     // Try find already loaded effect
     char loaded_fname[ MAX_FOPATH ];
@@ -197,7 +197,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     if( !file.IsLoaded() )
     {
         WriteLogF( _FUNC_, " - Effect file '%s' not found.\n", fname );
-        return NULL;
+        return nullptr;
     }
 
     // Parse effect commands
@@ -234,7 +234,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     // Load passes
     for( uint pass = 0; pass < passes; pass++ )
         if( !LoadEffectPass( &effect, fname, file, pass, use_in_2d, defines, defaults, defaults_count ) )
-            return NULL;
+            return nullptr;
 
     // Process commands
     for( size_t i = 0; i < commands.size(); i++ )
@@ -328,7 +328,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     if( fail )
     {
         WriteLogF( _FUNC_, " - Invalid commands in effect '%s'.\n", fname );
-        return NULL;
+        return nullptr;
     }
 
     // Assign identifier and return
@@ -446,10 +446,10 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         CharVec       buf( file_buf.size() + MAX_FOTEXT );
         Str::Format( &buf[ 0 ], "%s%s%s%s%s%s%s", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", pass_str, defines ? defines : "", "\n", str );
         const GLchar* vs_str = &buf[ 0 ];
-        GL( glShaderSource( vs, 1, &vs_str, NULL ) );
+        GL( glShaderSource( vs, 1, &vs_str, nullptr ) );
         Str::Format( &buf[ 0 ], "%s%s%s%s%s%s%s", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", pass_str, defines ? defines : "", "\n", str );
         const GLchar* fs_str = &buf[ 0 ];
-        GL( glShaderSource( fs, 1, &fs_str, NULL ) );
+        GL( glShaderSource( fs, 1, &fs_str, nullptr ) );
 
         // Info parser
         struct ShaderInfo
@@ -800,8 +800,8 @@ Effect* Effect::Skinned3d, * Effect::Skinned3dDefault;
 bool GraphicLoader::LoadMinimalEffects()
 {
     uint effect_errors = 0;
-    LOAD_EFFECT( Effect::Font, "Font_Default", true, NULL );
-    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, NULL );
+    LOAD_EFFECT( Effect::Font, "Font_Default", true, nullptr );
+    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, nullptr );
     if( effect_errors > 0 )
     {
         WriteLog( "Minimal effects not loaded.\n" );
@@ -815,27 +815,27 @@ bool GraphicLoader::LoadDefaultEffects()
     // Default effects
     uint effect_errors = 0;
     #ifndef DISABLE_EGG
-    LOAD_EFFECT( Effect::Generic, "2D_Default", true, NULL );
-    LOAD_EFFECT( Effect::Critter, "2D_Default", true, NULL );
-    LOAD_EFFECT( Effect::Roof, "2D_Default", true, NULL );
+    LOAD_EFFECT( Effect::Generic, "2D_Default", true, nullptr );
+    LOAD_EFFECT( Effect::Critter, "2D_Default", true, nullptr );
+    LOAD_EFFECT( Effect::Roof, "2D_Default", true, nullptr );
     #else
-    LOAD_EFFECT( Effect::Generic, "2D_WithoutEgg", true, NULL );
-    LOAD_EFFECT( Effect::Critter, "2D_WithoutEgg", true, NULL );
-    LOAD_EFFECT( Effect::Roof, "2D_WithoutEgg", true, NULL );
+    LOAD_EFFECT( Effect::Generic, "2D_WithoutEgg", true, nullptr );
+    LOAD_EFFECT( Effect::Critter, "2D_WithoutEgg", true, nullptr );
+    LOAD_EFFECT( Effect::Roof, "2D_WithoutEgg", true, nullptr );
     #endif
-    LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, NULL );
-    LOAD_EFFECT( Effect::Iface, "Interface_Default", true, NULL );
-    LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, NULL );
-    LOAD_EFFECT( Effect::Light, "Primitive_Light", true, NULL );
-    LOAD_EFFECT( Effect::Fog, "Primitive_Fog", true, NULL );
-    LOAD_EFFECT( Effect::Font, "Font_Default", true, NULL );
-    LOAD_EFFECT( Effect::Contour, "Contour_Default", true, NULL );
-    LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, NULL );
-    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, NULL );
-    LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, NULL );
-    LOAD_EFFECT( Effect::FlushMap, "Flush_Map", true, NULL );
-    LOAD_EFFECT( Effect::FlushLight, "Flush_Light", true, NULL );
-    LOAD_EFFECT( Effect::FlushFog, "Flush_Fog", true, NULL );
+    LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, nullptr );
+    LOAD_EFFECT( Effect::Iface, "Interface_Default", true, nullptr );
+    LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, nullptr );
+    LOAD_EFFECT( Effect::Light, "Primitive_Light", true, nullptr );
+    LOAD_EFFECT( Effect::Fog, "Primitive_Fog", true, nullptr );
+    LOAD_EFFECT( Effect::Font, "Font_Default", true, nullptr );
+    LOAD_EFFECT( Effect::Contour, "Contour_Default", true, nullptr );
+    LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, nullptr );
+    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, nullptr );
+    LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, nullptr );
+    LOAD_EFFECT( Effect::FlushMap, "Flush_Map", true, nullptr );
+    LOAD_EFFECT( Effect::FlushLight, "Flush_Light", true, nullptr );
+    LOAD_EFFECT( Effect::FlushFog, "Flush_Fog", true, nullptr );
     if( effect_errors > 0 )
     {
         WriteLog( "Default effects not loaded.\n" );
@@ -847,7 +847,7 @@ bool GraphicLoader::LoadDefaultEffects()
 bool GraphicLoader::Load3dEffects()
 {
     uint effect_errors = 0;
-    LOAD_EFFECT( Effect::Skinned3d, "3D_Skinned", false, NULL );
+    LOAD_EFFECT( Effect::Skinned3d, "3D_Skinned", false, nullptr );
     if( effect_errors > 0 )
     {
         WriteLog( "3D effects not loaded.\n" );
@@ -865,7 +865,7 @@ uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_w
     result_width = *(uint*) data;
     result_height = *(uint*) ( data + 4 );
     if( result_width * result_height * 4 != data_size - 8 )
-        return NULL;
+        return nullptr;
     uchar* result = new uchar[ result_width * result_height * 4 ];
     memcpy( result, data + 8, result_width * result_height * 4 );
     return result;
@@ -874,7 +874,7 @@ uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_w
 void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint height )
 {
     // Initialize stuff
-    png_structp png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
+    png_structp png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr );
     if( !png_ptr )
         return;
     png_infop info_ptr = png_create_info_struct( png_ptr );
@@ -898,7 +898,7 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
         }
     };
     result_png.clear();
-    png_set_write_fn( png_ptr, NULL, &PNGWriter::Write, &PNGWriter::Flush );
+    png_set_write_fn( png_ptr, nullptr, &PNGWriter::Write, &PNGWriter::Flush );
 
     // Write header
     if( setjmp( png_jmpbuf( png_ptr ) ) )
@@ -921,7 +921,7 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
     // End write
     if( setjmp( png_jmpbuf( png_ptr ) ) )
         return;
-    png_write_end( png_ptr, NULL );
+    png_write_end( png_ptr, nullptr );
 
     // Clean up
     delete[] row_pointers;
@@ -937,7 +937,7 @@ uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_w
     result_width = *(uint*) data;
     result_height = *(uint*) ( data + 4 );
     if( result_width * result_height * 4 != data_size - 8 )
-        return NULL;
+        return nullptr;
     uchar* result = new uchar[ result_width * result_height * 4 ];
     memcpy( result, data + 8, result_width * result_height * 4 );
     return result;

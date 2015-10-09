@@ -109,7 +109,7 @@ public:
     static HoloInfo* GetHoloInfo( uint id )
     {
         auto it = HolodiskInfo.find( id );
-        return it != HolodiskInfo.end() ? it->second : NULL;
+        return it != HolodiskInfo.end() ? it->second : nullptr;
     }
     static void AddPlayerHoloInfo( Critter* cr, uint holo_num, bool send );
     static void ErasePlayerHoloInfo( Critter* cr, uint index, bool send );
@@ -301,7 +301,7 @@ public:
 
         ClientSaveData()
         {
-            Props = NULL;
+            Props = nullptr;
             Clear();
         }
 
@@ -364,12 +364,12 @@ public:
     static ClientBanned* GetBanByName( const char* name )
     {
         auto it = std::find( Banned.begin(), Banned.end(), name );
-        return it != Banned.end() ? &( *it ) : NULL;
+        return it != Banned.end() ? &( *it ) : nullptr;
     }
     static ClientBanned* GetBanByIp( uint ip )
     {
         auto it = std::find( Banned.begin(), Banned.end(), ip );
-        return it != Banned.end() ? &( *it ) : NULL;
+        return it != Banned.end() ? &( *it ) : nullptr;
     }
     static uint GetBanTime( ClientBanned& ban );
     static void ProcessBans();

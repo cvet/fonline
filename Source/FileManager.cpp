@@ -65,8 +65,8 @@ FileManager::FileManager()
 {
     curPos = 0;
     fileSize = 0;
-    dataOutBuf = NULL;
-    fileBuf = NULL;
+    dataOutBuf = nullptr;
+    fileBuf = nullptr;
     posOutBuf = 0;
     endOutBuf = 0;
     lenOutBuf = 0;
@@ -176,7 +176,7 @@ void FileManager::UnloadFile()
 uchar* FileManager::ReleaseBuffer()
 {
     uchar* tmp = fileBuf;
-    fileBuf = NULL;
+    fileBuf = nullptr;
     fileSize = 0;
     curPos = 0;
     return tmp;
@@ -455,7 +455,7 @@ float FileManager::GetLEFloat()
 void FileManager::SwitchToRead()
 {
     fileBuf = dataOutBuf;
-    dataOutBuf = NULL;
+    dataOutBuf = nullptr;
     fileSize = endOutBuf;
     curPos = 0;
     lenOutBuf = 0;
@@ -466,7 +466,7 @@ void FileManager::SwitchToRead()
 void FileManager::SwitchToWrite()
 {
     dataOutBuf = fileBuf;
-    fileBuf = NULL;
+    fileBuf = nullptr;
     lenOutBuf = fileSize;
     endOutBuf = fileSize;
     posOutBuf = fileSize;
@@ -655,7 +655,7 @@ void FileManager::ResetCurrentDir()
 {
     #if defined ( FO_WINDOWS )
     char path[ MAX_FOPATH ];
-    GetModuleFileName( GetModuleHandle( NULL ), path, sizeof( path ) );
+    GetModuleFileName( GetModuleHandle( nullptr ), path, sizeof( path ) );
     char dir[ MAX_FOPATH ];
     FileManager::ExtractDir( path, dir );
     SetCurrentDirectory( dir );
@@ -887,23 +887,23 @@ void FileManager::MakeFilePath( const char* name, const char* path, char* result
 const char* FileManager::GetExtension( const char* fname )
 {
     if( !fname )
-        return NULL;
-    const char* last_dot = NULL;
+        return nullptr;
+    const char* last_dot = nullptr;
     for( ; *fname; fname++ )
         if( *fname == '.' )
             last_dot = fname;
     if( !last_dot )
-        return NULL;
+        return nullptr;
     last_dot++;
     if( !*last_dot )
-        return NULL;
+        return nullptr;
     return last_dot;
 }
 
 char* FileManager::EraseExtension( char* fname )
 {
     if( !fname )
-        return NULL;
+        return nullptr;
     char* ext = (char*) GetExtension( fname );
     if( ext )
         *( ext - 1 ) = 0;
@@ -966,7 +966,7 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
     Str::Append( path, cur_dir );
 
     FindData fd;
-    void*    h = FileFindFirst( path, NULL, fd );
+    void*    h = FileFindFirst( path, nullptr, fd );
     while( h )
     {
         if( fd.IsDirectory )

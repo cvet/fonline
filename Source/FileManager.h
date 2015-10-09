@@ -119,7 +119,7 @@ public:
     int    ParseLinesInt( const char* fname, int path_type, IntVec& lines );
 
     static DataFileVec& GetDataFiles() { return dataFiles; }
-    static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files = NULL, StrVec* dirs_path = NULL, FindDataVec* dirs = NULL );
+    static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr );
     static void         GetDataFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
 
     FileManager();
@@ -146,10 +146,10 @@ private:
 class FilesCollection
 {
 public:
-    FilesCollection( const char* ext, int path_type = PT_SERVER_MODULES, const char* dir = NULL );
+    FilesCollection( const char* ext, int path_type = PT_SERVER_MODULES, const char* dir = nullptr );
     bool         IsNextFile();
-    FileManager& GetNextFile( const char** name = NULL, const char** path = NULL, bool no_read_data = false );
-    FileManager& FindFile( const char* name, const char** path = NULL );
+    FileManager& GetNextFile( const char** name = nullptr, const char** path = nullptr, bool no_read_data = false );
+    FileManager& FindFile( const char* name, const char** path = nullptr );
     uint         GetFilesCount();
     void         ResetCounter();
 

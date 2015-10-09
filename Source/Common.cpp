@@ -410,12 +410,12 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
 void ShowMessage( const char* message )
 {
     #if defined ( FO_CLIENT ) || defined ( FO_MAPPER )
-    SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline", message, NULL );
+    SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline", message, nullptr );
     #else
     # ifdef FO_WINDOWS
     wchar_t message_wc[ MAX_FOTEXT ];
     MultiByteToWideChar( CP_UTF8, 0, message, -1, message_wc, MAX_FOPATH );
-    MessageBoxW( NULL, message_wc, L"FOnline", MB_OK );
+    MessageBoxW( nullptr, message_wc, L"FOnline", MB_OK );
     # else
     // Todo: Linux
     # endif
@@ -464,10 +464,10 @@ int ConvertParamValue( const char* str, bool& fail )
 // Hex offset
 #define HEX_OFFSET_SIZE    ( ( MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2 ) * DIRS_COUNT )
 int           CurHexOffset = 0; // 0 - none, 1 - hexagonal, 2 - square
-static short* SXEven = NULL;
-static short* SYEven = NULL;
-static short* SXOdd = NULL;
-static short* SYOdd = NULL;
+static short* SXEven = nullptr;
+static short* SYEven = nullptr;
+static short* SXOdd = nullptr;
+static short* SYOdd = nullptr;
 
 void InitializeHexOffsets()
 {
@@ -659,8 +659,8 @@ const char* GetWindowName()
 /************************************************************************/
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
-SDL_Window*   MainWindow = NULL;
-SDL_GLContext GLContext = NULL;
+SDL_Window*   MainWindow = nullptr;
+SDL_GLContext GLContext = nullptr;
 IntVec        MainWindowKeyboardEvents;
 StrVec        MainWindowKeyboardEventsText;
 IntVec        MainWindowMouseEvents;
@@ -880,7 +880,7 @@ void GetClientOptions()
     if( !logging )
     {
         WriteLog( "File logging off.\n" );
-        LogToFile( NULL );
+        LogToFile( nullptr );
     }
 
     logging = cfg.GetInt( "LoggingDebugOutput", 0 ) != 0;
@@ -1318,51 +1318,51 @@ GameOptions::GameOptions()
     SplitTilesCollection = true;
 
     // Engine data
-    CritterTypes = NULL;
+    CritterTypes = nullptr;
 
-    ClientMap = NULL;
-    ClientMapLight = NULL;
+    ClientMap = nullptr;
+    ClientMapLight = nullptr;
     ClientMapWidth = 0;
     ClientMapHeight = 0;
 
-    GetDrawingSprites = NULL;
-    GetSpriteInfo = NULL;
-    GetSpriteColor = NULL;
-    IsSpriteHit = NULL;
+    GetDrawingSprites = nullptr;
+    GetSpriteInfo = nullptr;
+    GetSpriteColor = nullptr;
+    IsSpriteHit = nullptr;
 
     GetNameByHash = &Str::GetName;
     GetHashByName = &Str::GetHash;
 
-    ScriptLoadModule = NULL;
-    ScriptBind = NULL;
-    ScriptPrepare = NULL;
-    ScriptSetArgInt8 = NULL;
-    ScriptSetArgInt16 = NULL;
-    ScriptSetArgInt = NULL;
-    ScriptSetArgInt64 = NULL;
-    ScriptSetArgUInt8 = NULL;
-    ScriptSetArgUInt16 = NULL;
-    ScriptSetArgUInt = NULL;
-    ScriptSetArgUInt64 = NULL;
-    ScriptSetArgBool = NULL;
-    ScriptSetArgFloat = NULL;
-    ScriptSetArgDouble = NULL;
-    ScriptSetArgObject = NULL;
-    ScriptSetArgAddress = NULL;
-    ScriptRunPrepared = NULL;
-    ScriptGetReturnedInt8 = NULL;
-    ScriptGetReturnedInt16 = NULL;
-    ScriptGetReturnedInt = NULL;
-    ScriptGetReturnedInt64 = NULL;
-    ScriptGetReturnedUInt8 = NULL;
-    ScriptGetReturnedUInt16 = NULL;
-    ScriptGetReturnedUInt = NULL;
-    ScriptGetReturnedUInt64 = NULL;
-    ScriptGetReturnedBool = NULL;
-    ScriptGetReturnedFloat = NULL;
-    ScriptGetReturnedDouble = NULL;
-    ScriptGetReturnedObject = NULL;
-    ScriptGetReturnedAddress = NULL;
+    ScriptLoadModule = nullptr;
+    ScriptBind = nullptr;
+    ScriptPrepare = nullptr;
+    ScriptSetArgInt8 = nullptr;
+    ScriptSetArgInt16 = nullptr;
+    ScriptSetArgInt = nullptr;
+    ScriptSetArgInt64 = nullptr;
+    ScriptSetArgUInt8 = nullptr;
+    ScriptSetArgUInt16 = nullptr;
+    ScriptSetArgUInt = nullptr;
+    ScriptSetArgUInt64 = nullptr;
+    ScriptSetArgBool = nullptr;
+    ScriptSetArgFloat = nullptr;
+    ScriptSetArgDouble = nullptr;
+    ScriptSetArgObject = nullptr;
+    ScriptSetArgAddress = nullptr;
+    ScriptRunPrepared = nullptr;
+    ScriptGetReturnedInt8 = nullptr;
+    ScriptGetReturnedInt16 = nullptr;
+    ScriptGetReturnedInt = nullptr;
+    ScriptGetReturnedInt64 = nullptr;
+    ScriptGetReturnedUInt8 = nullptr;
+    ScriptGetReturnedUInt16 = nullptr;
+    ScriptGetReturnedUInt = nullptr;
+    ScriptGetReturnedUInt64 = nullptr;
+    ScriptGetReturnedBool = nullptr;
+    ScriptGetReturnedFloat = nullptr;
+    ScriptGetReturnedDouble = nullptr;
+    ScriptGetReturnedObject = nullptr;
+    ScriptGetReturnedAddress = nullptr;
 
     Random = &::Random;
     GetTick = &Timer::FastTick;
@@ -1385,7 +1385,7 @@ FileLogger::~FileLogger()
     if( logFile )
     {
         fclose( logFile );
-        logFile = NULL;
+        logFile = nullptr;
     }
 }
 
@@ -1411,18 +1411,18 @@ void FileLogger::Write( const char* fmt, ... )
 
 HANDLE InterprocessData::Init()
 {
-    SECURITY_ATTRIBUTES sa = { sizeof( sa ), NULL, TRUE };
-    mapFile = CreateFileMapping( INVALID_HANDLE_VALUE, &sa, PAGE_READWRITE, 0, INTERPROCESS_DATA_SIZE + sizeof( mapFileMutex ), NULL );
+    SECURITY_ATTRIBUTES sa = { sizeof( sa ), nullptr, TRUE };
+    mapFile = CreateFileMapping( INVALID_HANDLE_VALUE, &sa, PAGE_READWRITE, 0, INTERPROCESS_DATA_SIZE + sizeof( mapFileMutex ), nullptr );
     if( !mapFile )
-        return NULL;
-    mapFilePtr = NULL;
+        return nullptr;
+    mapFilePtr = nullptr;
 
-    mapFileMutex = CreateMutex( &sa, FALSE, NULL );
+    mapFileMutex = CreateMutex( &sa, FALSE, nullptr );
     if( !mapFileMutex )
-        return NULL;
+        return nullptr;
 
     if( !Lock() )
-        return NULL;
+        return nullptr;
     memzero( this, INTERPROCESS_DATA_SIZE );
     ( (InterprocessData*) mapFilePtr )->mapFileMutex = mapFileMutex;
     Unlock();
@@ -1435,8 +1435,8 @@ void InterprocessData::Finish()
         CloseHandle( mapFile );
     if( mapFileMutex )
         CloseHandle( mapFileMutex );
-    mapFile = NULL;
-    mapFilePtr = NULL;
+    mapFile = nullptr;
+    mapFilePtr = nullptr;
 }
 
 bool InterprocessData::Attach( HANDLE map_file )
@@ -1444,7 +1444,7 @@ bool InterprocessData::Attach( HANDLE map_file )
     if( !map_file )
         return false;
     mapFile = map_file;
-    mapFilePtr = NULL;
+    mapFilePtr = nullptr;
 
     // Read mutex handle
     void* ptr = MapViewOfFile( mapFile, FILE_MAP_WRITE, 0, 0, 0 );
@@ -1481,7 +1481,7 @@ void InterprocessData::Unlock()
 
     memcpy( mapFilePtr, this, INTERPROCESS_DATA_SIZE );
     UnmapViewOfFile( mapFilePtr );
-    mapFilePtr = NULL;
+    mapFilePtr = nullptr;
 
     ReleaseMutex( mapFileMutex );
 }
@@ -1494,7 +1494,7 @@ bool InterprocessData::Refresh()
     return true;
 }
 
-void* SingleplayerClientProcess = NULL;
+void* SingleplayerClientProcess = nullptr;
 #endif
 
 bool             Singleplayer = false;
@@ -1524,7 +1524,11 @@ void* ThreadBeginExecution( void* args )
     delete[] name;
     free( args );
     func( func_arg );
-    return NULL;
+    # ifdef FO_WINDOWS
+    return 0;
+    # else
+    return nullptr;
+    # endif
 }
 
 Thread::Thread()
@@ -1543,10 +1547,10 @@ void Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = N
     char*  name_ = Str::Duplicate( name );
     args[ 0 ] = (void*) func, args[ 1 ] = arg, args[ 2 ] = name_;
     # ifdef FO_WINDOWS
-    threadId = CreateThread( NULL, 0, ThreadBeginExecution, args, 0, NULL );
-    isStarted = ( threadId != NULL );
+    threadId = CreateThread( nullptr, 0, ThreadBeginExecution, args, 0, nullptr );
+    isStarted = ( threadId != nullptr );
     # else
-    isStarted = ( pthread_create( &threadId, NULL, ThreadBeginExecution, args ) == 0 );
+    isStarted = ( pthread_create( &threadId, nullptr, ThreadBeginExecution, args ) == 0 );
     # endif
     RUNTIME_ASSERT( isStarted );
 }
@@ -1558,7 +1562,7 @@ void Thread::Wait()
         # ifdef FO_WINDOWS
         WaitForSingleObject( threadId, INFINITE );
         # else
-        pthread_join( threadId, NULL );
+        pthread_join( threadId, nullptr );
         # endif
         isStarted = false;
     }
@@ -1570,7 +1574,7 @@ void Thread::Finish()
     {
         isStarted = false;
         # ifdef FO_WINDOWS
-        TerminateThread( threadId, NULL );
+        TerminateThread( threadId, 0 );
         # else
         pthread_cancel( threadId );
         # endif
@@ -1623,7 +1627,7 @@ const char* Thread::FindName( uint thread_id )
 {
     SCOPE_LOCK( threadNamesLocker );
     auto it = threadNames.find( thread_id );
-    return it != threadNames.end() ? it->second.c_str() : NULL;
+    return it != threadNames.end() ? it->second.c_str() : nullptr;
 }
 
 void Thread::Sleep( uint ms )
@@ -1740,19 +1744,19 @@ const char* ConvertProtoIdByInt( uint pid )
 {
     GeneratePidMaps();
     auto it = PidIdToName.find( pid );
-    return it != PidIdToName.end() ? it->second.c_str() : NULL;
+    return it != PidIdToName.end() ? it->second.c_str() : nullptr;
 }
 
 const char* ConvertProtoIdByStr( const char* pid )
 {
     GeneratePidMaps();
     auto it = PidNameToName.find( pid );
-    return it != PidNameToName.end() ? it->second.c_str() : NULL;
+    return it != PidNameToName.end() ? it->second.c_str() : nullptr;
 }
 
 const char* ConvertProtoCritterIdByInt( uint pid )
 {
     GeneratePidMaps();
     auto it = PidCrIdToName.find( pid );
-    return it != PidCrIdToName.end() ? it->second.c_str() : NULL;
+    return it != PidCrIdToName.end() ? it->second.c_str() : nullptr;
 }

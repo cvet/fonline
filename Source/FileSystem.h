@@ -13,7 +13,7 @@ void*  FileOpen( const char* fname, bool write, bool write_through = false );
 void*  FileOpenForAppend( const char* fname, bool write_through = false );
 void*  FileOpenForReadWrite( const char* fname, bool write_through = false );
 void   FileClose( void* file );
-bool   FileRead( void* file, void* buf, uint len, uint* rb = NULL );
+bool   FileRead( void* file, void* buf, uint len, uint* rb = nullptr );
 bool   FileWrite( void* file, const void* buf, uint len );
 bool   FileSetPointer( void* file, int offset, int origin );
 uint   FileGetPointer( void* file );

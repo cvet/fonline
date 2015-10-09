@@ -610,7 +610,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     }
 
     // Ammo
-    ProtoItem* ammo = NULL;
+    ProtoItem* ammo = nullptr;
     if( weap->WeapGetAmmoCaliber() && weap->WeapGetMaxAmmoCount() )
     {
         ammo = ItemMngr.GetProtoItem( weap->GetAmmoPid() );
@@ -682,7 +682,7 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
 {
     cr->SetBreakTime( GameOpt.Breaktime );
 
-    if( !cr->CheckMyTurn( NULL ) )
+    if( !cr->CheckMyTurn( nullptr ) )
     {
         WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
         return false;
@@ -715,7 +715,7 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
     }
     cr->SubAp( ap_cost );
 
-    Item* ammo = ( ammo_id ? cr->GetItem( ammo_id, true ) : NULL );
+    Item* ammo = ( ammo_id ? cr->GetItem( ammo_id, true ) : nullptr );
     if( ammo_id && !ammo )
     {
         WriteLogF( _FUNC_, " - Unable to find ammo, id %u, critter '%s'.\n", ammo_id, cr->GetInfo() );
@@ -761,7 +761,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         return false;
     }
 
-    Item* item = NULL;
+    Item* item = nullptr;
     if( item_id )
     {
         item = cr->GetItem( item_id, cr->IsPlayer() );
@@ -780,9 +780,9 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     }
     cr->SubAp( ap_cost );
 
-    Critter*   target_cr = NULL;
-    Item*      target_item = NULL;
-    MapObject* target_scen = NULL;
+    Critter*   target_cr = nullptr;
+    Item*      target_item = nullptr;
+    MapObject* target_scen = nullptr;
 
     if( target_type == TARGET_CRITTER )
     {
@@ -931,7 +931,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             if( target_item )
                 cr->SendAA_Action( ACTION_USE_SKILL, skill, target_item );
             else if( target_cr )
-                cr->SendAA_Action( ACTION_USE_SKILL, skill, NULL );
+                cr->SendAA_Action( ACTION_USE_SKILL, skill, nullptr );
             else if( target_scen )
             {
                 Item* item_scenery = new Item( uint( -1 ), ItemMngr.GetProtoItem( target_scen->ProtoId ) );
@@ -1064,7 +1064,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
     if( proto->IsItem() )
     {
-        Item* pick_item = map->GetItemHex( hx, hy, pid, cr->IsPlayer() ? cr : NULL );
+        Item* pick_item = map->GetItemHex( hx, hy, pid, cr->IsPlayer() ? cr : nullptr );
         if( !pick_item )
             return false;
 
@@ -1072,15 +1072,15 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
         if( pick_item->EventSkill( cr, SKILL_PICK_ON_GROUND ) )
             return true;
-        if( cr->EventUseSkill( SKILL_PICK_ON_GROUND, NULL, pick_item, NULL ) )
+        if( cr->EventUseSkill( SKILL_PICK_ON_GROUND, nullptr, pick_item, nullptr ) )
             return true;
         if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cr->GetInfo() ) )
         {
             Script::SetArgObject( cr );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
-            Script::SetArgObject( NULL );
+            Script::SetArgObject( nullptr );
             Script::SetArgObject( pick_item );
-            Script::SetArgObject( NULL );
+            Script::SetArgObject( nullptr );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return true;
         }
@@ -1107,21 +1107,21 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
             Script::SetArgObject( cr );
             Script::SetArgObject( pick_scenery );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
-            Script::SetArgObject( NULL );
+            Script::SetArgObject( nullptr );
             for( int i = 0, j = MIN( pick_scenery->MScenery.ParamsCount, 5 ); i < j; i++ )
                 Script::SetArgUInt( pick_scenery->MScenery.Param[ i ] );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return true;
         }
 
-        if( cr->EventUseSkill( SKILL_PICK_ON_GROUND, NULL, NULL, pick_scenery ) )
+        if( cr->EventUseSkill( SKILL_PICK_ON_GROUND, nullptr, nullptr, pick_scenery ) )
             return true;
         if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cr->GetInfo() ) )
         {
             Script::SetArgObject( cr );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
-            Script::SetArgObject( NULL );
-            Script::SetArgObject( NULL );
+            Script::SetArgObject( nullptr );
+            Script::SetArgObject( nullptr );
             Script::SetArgObject( pick_scenery );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return true;
@@ -1214,8 +1214,8 @@ void FOServer::RespawnCritter( Critter* cr )
     cr->Data.Cond = COND_LIFE;
     if( cr->GetCurrentHp() < 1 )
         cr->SetCurrentHp( 1 );
-    cr->Send_Action( cr, ACTION_RESPAWN, 0, NULL );
-    cr->SendAA_Action( ACTION_RESPAWN, 0, NULL );
+    cr->Send_Action( cr, ACTION_RESPAWN, 0, nullptr );
+    cr->SendAA_Action( ACTION_RESPAWN, 0, nullptr );
     cr->EventRespawn();
     if( Script::PrepareContext( ServerFunctions.CritterRespawn, _FUNC_, cr->GetInfo() ) )
     {
@@ -1557,7 +1557,7 @@ void FOServer::Process_CreateClient( Client* cl )
     if( !Singleplayer )
     {
         SaveClientsLocker.Lock();
-        bool exist = ( GetClientData( id ) != NULL );
+        bool exist = ( GetClientData( id ) != nullptr );
         SaveClientsLocker.Unlock();
 
         if( !exist )
@@ -1717,7 +1717,7 @@ void FOServer::Process_CreateClient( Client* cl )
 
     cl->AddRef();
     EntityMngr.RegisterEntity( cl );
-    MapMngr.AddCrToMap( cl, NULL, 0, 0, 0 );
+    MapMngr.AddCrToMap( cl, nullptr, 0, 0, 0 );
     Job::PushBack( JOB_CRITTER, cl );
 
     if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, cl->GetInfo() ) )
@@ -2181,7 +2181,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         // Erase from save
         EraseSaveClient( cl->GetId() );
 
-        cl->SendA_Action( ACTION_CONNECT, 0, NULL );
+        cl->SendA_Action( ACTION_CONNECT, 0, nullptr );
     }
     // Avatar not in game
     else
@@ -2198,7 +2198,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         // Find in saved array
         SaveClientsLocker.Lock();
-        Client* cl_saved = NULL;
+        Client* cl_saved = nullptr;
         for( auto it = SaveClients.begin(), end = SaveClients.end(); it != end; ++it )
         {
             Client* cl_ = *it;
@@ -2251,7 +2251,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 }
                 else
                 {
-                    map = NULL;
+                    map = nullptr;
                     cl->SetMaps( 0, 0 );
                     cl->Data.HexX = 0;
                     cl->Data.HexY = 0;
@@ -2312,7 +2312,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             Script::RunPrepared();
         }
         if( !cl_old )
-            cl->SetScript( NULL, false );
+            cl->SetScript( nullptr, false );
         cl->DisableSend--;
     }
 
@@ -2378,7 +2378,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     cl->Bin.SetEncryptKey( bin_seed );
     cl->Bout.SetEncryptKey( bout_seed );
 
-    cl->Send_LoadMap( NULL );
+    cl->Send_LoadMap( nullptr );
 }
 
 void FOServer::Process_SingleplayerSaveLoad( Client* cl )
@@ -2638,7 +2638,7 @@ void FOServer::Process_GiveMap( Client* cl )
 
     if( !automap )
     {
-        Map* map = NULL;
+        Map* map = nullptr;
         if( cl->ViewMapId )
             map = MapMngr.GetMap( cl->ViewMapId );
         cl->Send_LoadMap( map );
@@ -2786,7 +2786,7 @@ void FOServer::Process_ChangeItem( Client* cl )
 
     cl->SetBreakTime( GameOpt.Breaktime );
 
-    if( !cl->CheckMyTurn( NULL ) )
+    if( !cl->CheckMyTurn( nullptr ) )
     {
         WriteLogF( _FUNC_, " - Is not client '%s' turn.\n", cl->GetInfo() );
         cl->Send_AddAllItems();
@@ -2910,7 +2910,7 @@ void FOServer::Process_PickCritter( Client* cl )
 
     cl->SetBreakTime( GameOpt.Breaktime );
 
-    if( !cl->CheckMyTurn( NULL ) )
+    if( !cl->CheckMyTurn( nullptr ) )
     {
         WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cl->GetInfo() );
         return;
@@ -2947,7 +2947,7 @@ void FOServer::Process_PickCritter( Client* cl )
         }
 
         // Script events
-        if( cl->EventUseSkill( SKILL_LOOT_CRITTER, cr, NULL, NULL ) )
+        if( cl->EventUseSkill( SKILL_LOOT_CRITTER, cr, nullptr, nullptr ) )
             return;
         if( cr->EventUseSkillOnMe( cl, SKILL_LOOT_CRITTER ) )
             return;
@@ -2956,8 +2956,8 @@ void FOServer::Process_PickCritter( Client* cl )
             Script::SetArgObject( cl );
             Script::SetArgUInt( SKILL_LOOT_CRITTER );
             Script::SetArgObject( cr );
-            Script::SetArgObject( NULL );
-            Script::SetArgObject( NULL );
+            Script::SetArgObject( nullptr );
+            Script::SetArgObject( nullptr );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return;
         }
@@ -2978,7 +2978,7 @@ void FOServer::Process_PickCritter( Client* cl )
         }
 
         // Script events
-        if( cl->EventUseSkill( SKILL_PUSH_CRITTER, cr, NULL, NULL ) )
+        if( cl->EventUseSkill( SKILL_PUSH_CRITTER, cr, nullptr, nullptr ) )
             return;
         if( cr->EventUseSkillOnMe( cl, SKILL_PUSH_CRITTER ) )
             return;
@@ -2987,8 +2987,8 @@ void FOServer::Process_PickCritter( Client* cl )
             Script::SetArgObject( cl );
             Script::SetArgUInt( SKILL_PUSH_CRITTER );
             Script::SetArgObject( cr );
-            Script::SetArgObject( NULL );
-            Script::SetArgObject( NULL );
+            Script::SetArgObject( nullptr );
+            Script::SetArgObject( nullptr );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return;
         }
@@ -3015,7 +3015,7 @@ void FOServer::Process_ContainerItem( Client* cl )
 
     cl->SetBreakTime( GameOpt.Breaktime );
 
-    if( !cl->CheckMyTurn( NULL ) )
+    if( !cl->CheckMyTurn( nullptr ) )
     {
         WriteLogF( _FUNC_, " - Is not client '%s' turn.\n", cl->GetInfo() );
         return;
@@ -3156,15 +3156,15 @@ void FOServer::Process_ContainerItem( Client* cl )
             // Script events
             if( item->EventSkill( cl, SKILL_TAKE_CONT ) )
                 return;
-            if( cl->EventUseSkill( SKILL_TAKE_CONT, NULL, item, NULL ) )
+            if( cl->EventUseSkill( SKILL_TAKE_CONT, nullptr, item, nullptr ) )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
                 Script::SetArgObject( cl );
                 Script::SetArgUInt( SKILL_TAKE_CONT );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 Script::SetArgObject( item );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3177,7 +3177,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         case CONT_GETALL:
         {
             // Send
-            cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 1, NULL );
+            cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 1, nullptr );
 
             // Get items
             ItemVec items;
@@ -3212,15 +3212,15 @@ void FOServer::Process_ContainerItem( Client* cl )
             // Script events
             if( cont->EventSkill( cl, SKILL_TAKE_ALL_CONT ) )
                 return;
-            if( cl->EventUseSkill( SKILL_TAKE_ALL_CONT, NULL, cont, NULL ) )
+            if( cl->EventUseSkill( SKILL_TAKE_ALL_CONT, nullptr, cont, nullptr ) )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
                 Script::SetArgObject( cl );
                 Script::SetArgUInt( SKILL_TAKE_ALL_CONT );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 Script::SetArgObject( cont );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3278,15 +3278,15 @@ void FOServer::Process_ContainerItem( Client* cl )
             // Script events
             if( item->EventSkill( cl, SKILL_PUT_CONT ) )
                 return;
-            if( cl->EventUseSkill( SKILL_PUT_CONT, NULL, item, NULL ) )
+            if( cl->EventUseSkill( SKILL_PUT_CONT, nullptr, item, nullptr ) )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
                 Script::SetArgObject( cl );
                 Script::SetArgUInt( SKILL_PUT_CONT );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 Script::SetArgObject( item );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3434,15 +3434,15 @@ void FOServer::Process_ContainerItem( Client* cl )
             // Script events
             if( item->EventSkill( cl, SKILL_TAKE_CONT ) )
                 return;
-            if( cl->EventUseSkill( SKILL_TAKE_CONT, NULL, item, NULL ) )
+            if( cl->EventUseSkill( SKILL_TAKE_CONT, nullptr, item, nullptr ) )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
                 Script::SetArgObject( cl );
                 Script::SetArgUInt( SKILL_TAKE_CONT );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 Script::SetArgObject( item );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3462,7 +3462,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Send
-            cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 1, NULL );
+            cl->SendAA_Action( ACTION_OPERATE_CONTAINER, transfer_type * 10 + 1, nullptr );
 
             // Get items
             ItemVec items;
@@ -3491,7 +3491,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Script events
-            if( cl->EventUseSkill( SKILL_TAKE_ALL_CONT, cr, NULL, NULL ) )
+            if( cl->EventUseSkill( SKILL_TAKE_ALL_CONT, cr, nullptr, nullptr ) )
                 return;
             if( cr->EventUseSkillOnMe( cl, SKILL_TAKE_ALL_CONT ) )
                 return;
@@ -3500,8 +3500,8 @@ void FOServer::Process_ContainerItem( Client* cl )
                 Script::SetArgObject( cl );
                 Script::SetArgUInt( SKILL_TAKE_ALL_CONT );
                 Script::SetArgObject( cr );
-                Script::SetArgObject( NULL );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
+                Script::SetArgObject( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3574,15 +3574,15 @@ void FOServer::Process_ContainerItem( Client* cl )
             // Script events
             if( item->EventSkill( cl, SKILL_PUT_CONT ) )
                 return;
-            if( cl->EventUseSkill( SKILL_PUT_CONT, NULL, item, NULL ) )
+            if( cl->EventUseSkill( SKILL_PUT_CONT, nullptr, item, nullptr ) )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
                 Script::SetArgObject( cl );
                 Script::SetArgUInt( SKILL_PUT_CONT );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 Script::SetArgObject( item );
-                Script::SetArgObject( NULL );
+                Script::SetArgObject( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3633,7 +3633,7 @@ void FOServer::Process_Dir( Client* cl )
     cl->Bin >> dir;
     CHECK_IN_BUFF_ERROR( cl );
 
-    if( !cl->GetMapId() || dir >= DIRS_COUNT || cl->GetDir() == dir || cl->IsTalking() || !cl->CheckMyTurn( NULL ) )
+    if( !cl->GetMapId() || dir >= DIRS_COUNT || cl->GetDir() == dir || cl->IsTalking() || !cl->CheckMyTurn( nullptr ) )
     {
         if( cl->GetDir() != dir )
             cl->Send_Dir( cl );
@@ -3998,10 +3998,10 @@ label_EndOffer:
                 opponent->BarterRefresh( cl );
                 if( cl->GetMapId() )
                 {
-                    cl->Send_Action( cl, ACTION_BARTER, 0, NULL );
-                    cl->SendAA_Action( ACTION_BARTER, 0, NULL );
-                    opponent->Send_Action( opponent, ACTION_BARTER, 0, NULL );
-                    opponent->SendAA_Action( ACTION_BARTER, 0, NULL );
+                    cl->Send_Action( cl, ACTION_BARTER, 0, nullptr );
+                    cl->SendAA_Action( ACTION_BARTER, 0, nullptr );
+                    opponent->Send_Action( opponent, ACTION_BARTER, 0, nullptr );
+                    opponent->SendAA_Action( ACTION_BARTER, 0, nullptr );
                 }
             }
             else
@@ -4163,9 +4163,9 @@ void FOServer::Process_RunServerScript( Client* cl )
     int           p0, p1, p2;
     ushort        p3len;
     char          p3str[ MAX_FOTEXT ];
-    ScriptString* p3 = NULL;
+    ScriptString* p3 = nullptr;
     ushort        p4size;
-    ScriptArray*  p4 = NULL;
+    ScriptArray*  p4 = nullptr;
 
     cl->Bin >> msg_len;
     cl->Bin >> unsafe;
@@ -4594,8 +4594,8 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     CHECK_IN_BUFF_ERROR( cl );
 
     bool      is_public = false;
-    Property* prop = NULL;
-    Entity*   entity = NULL;
+    Property* prop = nullptr;
+    Entity*   entity = nullptr;
     switch( type )
     {
     case NetProperty::Global:
@@ -4673,7 +4673,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         return;
 
     #pragma MESSAGE( "Disable send changing field by client to this client" )
-    prop->SetData( entity, !data.empty() ? &data[ 0 ] : NULL, (uint) data.size() );
+    prop->SetData( entity, !data.empty() ? &data[ 0 ] : nullptr, (uint) data.size() );
 }
 
 void FOServer::OnSendGlobalValue( Entity* entity, Property* prop, void* cur_value, void* old_value )

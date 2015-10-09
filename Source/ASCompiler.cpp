@@ -93,9 +93,9 @@ int main( int argc, char* argv[] )
     }
 
     // Parse args
-    const char*           target = NULL;
+    const char*           target = nullptr;
     const char*           arg_path = argv[ 1 ];
-    const char*           arg_path_prep = NULL;
+    const char*           arg_path_prep = nullptr;
     vector< const char* > defines;
     vector< const char* > run_func;
     for( int i = 2; i < argc; i++ )
@@ -273,7 +273,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
         Preprocessor::Define( string( defines[ i ] ) );
 
     // Compile
-    if( !Script::LoadModuleFromFile( module_name, file, dir, NULL ) )
+    if( !Script::LoadModuleFromFile( module_name, file, dir, nullptr ) )
         return -1;
 
     // Finish pragmas

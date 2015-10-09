@@ -45,14 +45,14 @@ struct FontData
     FontData()
     {
         Builded = false;
-        FontTex = NULL;
-        FontTexBordered = NULL;
+        FontTex = nullptr;
+        FontTexBordered = nullptr;
         SpaceWidth = 0;
         LineHeight = 0;
         YAdvance = 0;
         DrawEffect = Effect::Font;
-        ImageNormal = NULL;
-        ImageBordered = NULL;
+        ImageNormal = nullptr;
+        ImageBordered = nullptr;
         MakeGray = false;
     }
 };
@@ -68,7 +68,7 @@ FontData* GetFont( int num )
     if( num < 0 )
         num = DefFontIndex;
     if( num < 0 || num >= (int) Fonts.size() )
-        return NULL;
+        return nullptr;
     return Fonts[ num ];
 }
 
@@ -106,7 +106,7 @@ struct FontFormatInfo
         Str::Copy( Str, str_in );
         PStr = Str;
         DefColor = COLOR_TEXT;
-        StrLines = NULL;
+        StrLines = nullptr;
     }
 
     FontFormatInfo& operator=( const FontFormatInfo& _fi )
@@ -193,8 +193,8 @@ void SpriteManager::BuildFont( int index )
     if( font.Letters.count( ' ' ) )
         font.SpaceWidth = font.Letters[ ' ' ].XAdvance;
 
-    SpriteInfo* si_bordered = ( font.ImageBordered ? GetSpriteInfo( font.ImageBordered->GetSprId( 0 ) ) : NULL );
-    font.FontTexBordered = ( si_bordered ? si_bordered->Atlas->TextureOwner : NULL );
+    SpriteInfo* si_bordered = ( font.ImageBordered ? GetSpriteInfo( font.ImageBordered->GetSprId( 0 ) ) : nullptr );
+    font.FontTexBordered = ( si_bordered ? si_bordered->Atlas->TextureOwner : nullptr );
 
     uint normal_ox = (uint) ( tex_w * si->SprRect.L );
     uint normal_oy = (uint) ( tex_h * si->SprRect.T );
@@ -209,7 +209,7 @@ void SpriteManager::BuildFont( int index )
     GL( glReadPixels( normal_ox, normal_oy, si->Width, si->Height, GL_RGBA, GL_UNSIGNED_BYTE, data_normal ) );
     PopRenderTarget();
 
-    uint* data_bordered = NULL;
+    uint* data_bordered = nullptr;
     if( si_bordered )
     {
         PushRenderTarget( si_bordered->Atlas->RT );
@@ -325,7 +325,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
         istrstream str( (char*) fm.GetBuf() );
         char       key[ MAX_FOTEXT ];
         char       letter_buf[ MAX_FOTEXT ];
-        Letter*    cur_letter = NULL;
+        Letter*    cur_letter = nullptr;
         int        version = -1;
         while( !str.eof() && !str.fail() )
         {
@@ -378,7 +378,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
             {
                 str.getline( letter_buf, sizeof( letter_buf ) );
                 char* utf8_letter_begin = Str::Substring( letter_buf, "'" );
-                if( utf8_letter_begin == NULL )
+                if( utf8_letter_begin == nullptr )
                 {
                     WriteLogF( _FUNC_, " - Font '%s' invalid letter specification.\n", fname );
                     return false;
@@ -628,7 +628,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
             char buf[ 5 ];
             memzero( buf, sizeof( buf ) );
             Str::EncodeUTF8( id, buf );
-            void* f = NULL;
+            void* f = nullptr;
             if( !FileExist( "./export.txt" ) )
                 f = FileOpen( "./export.txt", true );
             else
@@ -722,7 +722,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
     }
 
     // Colorize
-    uint* dots = NULL;
+    uint* dots = nullptr;
     uint  d_offs = 0;
     char* str_ = str;
     char* big_buf = Str::GetBigBuf();
@@ -743,7 +743,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         if( dots )
         {
             size_t d_len = (uint) ( (size_t) s2 - (size_t) s1 ) + 1;
-            uint   d = (uint) strtoul( s1 + 1, NULL, 0 );
+            uint   d = (uint) strtoul( s1 + 1, nullptr, 0 );
 
             dots[ (uint) ( (size_t) s1 - (size_t) str ) - d_offs ] = d;
             d_offs += (uint) d_len;
@@ -1340,5 +1340,5 @@ bool SpriteManager::HaveLetter( int num_font, const char* letter )
     FontData* font = GetFont( num_font );
     if( !font )
         return false;
-    return font->Letters.count( Str::DecodeUTF8( letter, NULL ) ) > 0;
+    return font->Letters.count( Str::DecodeUTF8( letter, nullptr ) ) > 0;
 }

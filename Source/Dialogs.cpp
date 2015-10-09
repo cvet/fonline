@@ -30,7 +30,7 @@ int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash 
         return -1;
     }
 
-    Property* prop = NULL;
+    Property* prop = nullptr;
     if( prop_global )
         prop = prop_global, type = DR_PROP_GLOBAL;
     else if( prop_critter )
@@ -143,7 +143,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
 DialogPack* DialogManager::GetDialog( hash pack_id )
 {
     auto it = dialogPacks.find( pack_id );
-    return it != dialogPacks.end() ? it->second : NULL;
+    return it != dialogPacks.end() ? it->second : nullptr;
 }
 
 DialogPack* DialogManager::GetDialogByIndex( uint index )
@@ -151,7 +151,7 @@ DialogPack* DialogManager::GetDialogByIndex( uint index )
     auto it = dialogPacks.begin();
     while( index-- && it != dialogPacks.end() )
         ++it;
-    return it != dialogPacks.end() ? it->second : NULL;
+    return it != dialogPacks.end() ? it->second : nullptr;
 }
 
 void DialogManager::EraseDialog( hash pack_id )
@@ -190,7 +190,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     DialogPack* pack = new DialogPack();
     char*       dlg_buf = fodlg.GetApp( "dialog" );
     istrstream  input( dlg_buf, Str::Length( dlg_buf ) );
-    char*       lang_buf = NULL;
+    char*       lang_buf = nullptr;
     pack->PackId = Str::GetHash( pack_name );
     pack->PackName = pack_name;
     StrVec lang_apps;
@@ -267,7 +267,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     char ch;
     input >> ch;
     if( ch != '&' )
-        return NULL;
+        return nullptr;
 
     uint dlg_id;
     uint text_id;
@@ -410,7 +410,7 @@ load_false:
     delete pack;
     SAFEDELA( dlg_buf );
     SAFEDELA( lang_buf );
-    return NULL;
+    return nullptr;
 }
 
 DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )
@@ -437,7 +437,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     if( input.fail() )
     {
         WriteLog( "Parse DR type fail.\n" );
-        return NULL;
+        return nullptr;
     }
 
     int type = GetDRType( type_str );
@@ -448,7 +448,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         if( input.fail() )
         {
             WriteLog( "Parse DR type fail2.\n" );
-            return NULL;
+            return nullptr;
         }
         type = GetDRType( type_str );
     }
@@ -624,7 +624,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         if( !id )
         {
             WriteLog( "Script '%s' bind error.\n", name );
-            return NULL;
+            return nullptr;
         }
         #endif
     }
@@ -632,7 +632,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     case DR_OR:
         break;
     default:
-        return NULL;
+        return nullptr;
     }
 
     // Validate parsing
@@ -667,7 +667,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
     result.ValueExt[ 3 ] = script_val[ 3 ];
     result.ValueExt[ 4 ] = script_val[ 4 ];
     if( fail )
-        return NULL;
+        return nullptr;
     #endif
     return &result;
 }

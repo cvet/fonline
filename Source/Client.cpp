@@ -65,9 +65,9 @@ int HandleAppEvents( void* userdata, SDL_Event* event )
 }
 #endif
 
-FOClient*    FOClient::Self = NULL;
+FOClient*    FOClient::Self = nullptr;
 int          FOClient::SpritesCanDraw = 0;
-static uint* UID4 = NULL;
+static uint* UID4 = nullptr;
 FOClient::FOClient()
 {
     Self = this;
@@ -87,12 +87,12 @@ FOClient::FOClient()
     UpdateFilesAborted = false;
     UpdateFilesFontLoaded = false;
     UpdateFilesText = "";
-    UpdateFilesList = NULL;
+    UpdateFilesList = nullptr;
     UpdateFilesWholeSize = 0;
     UpdateFileActive = false;
-    UpdateFileTemp = NULL;
+    UpdateFileTemp = nullptr;
 
-    Chosen = NULL;
+    Chosen = nullptr;
     PingTick = 0;
     PingCallTick = 0;
     IsTurnBased = false;
@@ -104,10 +104,10 @@ FOClient::FOClient()
     LMenuActive = false;
     LMenuMode = LMENU_OFF;
 
-    GmapCar.Car = NULL;
+    GmapCar.Car = nullptr;
     Animations.resize( 10000 );
 
-    CurVideo = NULL;
+    CurVideo = nullptr;
     MusicVolumeRestore = -1;
 
     UIDFail = false;
@@ -118,7 +118,7 @@ FOClient::FOClient()
     CurMapLocPid = 0;
     CurMapIndexInLoc = 0;
 
-    SomeItem = NULL;
+    SomeItem = nullptr;
     CurUseSkill = 0;
 
     LMenuOX = 0;
@@ -156,7 +156,7 @@ bool FOClient::Init()
     if( !Singleplayer )
     {
         # ifdef FO_WINDOWS
-        HANDLE h = CreateEvent( NULL, FALSE, FALSE, "_fosync_" );
+        HANDLE h = CreateEvent( nullptr, FALSE, FALSE, "_fosync_" );
         if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
             memset( MulWndArray, 1, sizeof( MulWndArray ) );
         # else
@@ -176,7 +176,7 @@ bool FOClient::Init()
 
     // SDL events
     #ifdef FO_OSX_IOS
-    SDL_SetEventFilter( HandleAppEvents, NULL );
+    SDL_SetEventFilter( HandleAppEvents, nullptr );
     #endif
 
     // Register dll script data
@@ -188,7 +188,7 @@ bool FOClient::Init()
         {
             Sprites& tree = Self->HexMngr.GetDrawTree();
             count = tree.Size();
-            if( !count ) return NULL;
+            if( !count ) return nullptr;
             return &( *tree.Begin() );
         }
     };
@@ -370,7 +370,7 @@ bool FOClient::Init()
     SprMngr.EndScene();
 
     // Base ini options
-    if( !AppendIfaceIni( NULL ) )
+    if( !AppendIfaceIni( nullptr ) )
         return false;
 
     // Scripts
@@ -469,7 +469,7 @@ bool FOClient::Init()
     ScreenOffsYf = 0.0f;
     ScreenOffsStep = 0.0f;
     ScreenOffsNextTick = 0;
-    ScreenMirrorTexture = NULL;
+    ScreenMirrorTexture = nullptr;
     ScreenMirrorEndTick = 0;
     ScreenMirrorStart = false;
     RebuildLookBorders = false;
@@ -516,7 +516,7 @@ bool FOClient::Init()
 
     // Disable dumps if multiple window detected
     if( MulWndArray[ 11 ] )
-        CatchExceptions( NULL, 0 );
+        CatchExceptions( nullptr, 0 );
 
     return true;
 }
@@ -700,7 +700,7 @@ void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
     if( UpdateFileTemp )
     {
         FileClose( UpdateFileTemp );
-        UpdateFileTemp = NULL;
+        UpdateFileTemp = nullptr;
     }
 
     while( num_str == STR_CLIENT_OUTDATED || num_str == STR_CLIENT_OUTDATED_APP_STORE || num_str == STR_CLIENT_OUTDATED_GOOGLE_PLAY ||
@@ -767,7 +767,7 @@ void FOClient::Finish()
 void FOClient::DeleteCritters()
 {
     HexMngr.DeleteCritters();
-    Chosen = NULL;
+    Chosen = nullptr;
     ChosenAction.clear();
     Item::ClearItems( InvContInit );
     Item::ClearItems( BarterCont1oInit );
@@ -807,7 +807,7 @@ void FOClient::AddCritter( CritterCl* cr )
 void FOClient::DeleteCritter( uint remid )
 {
     if( Chosen && Chosen->GetId() == remid )
-        Chosen = NULL;
+        Chosen = nullptr;
     HexMngr.DeleteCritter( remid );
 }
 
@@ -818,7 +818,7 @@ void FOClient::LookBordersPrepare()
 
     if( !Chosen || !HexMngr.IsMapLoaded() || ( !DrawLookBorders && !DrawShootBorders ) )
     {
-        HexMngr.SetFog( LookBorders, ShootBorders, NULL, NULL );
+        HexMngr.SetFog( LookBorders, ShootBorders, nullptr, nullptr );
         return;
     }
 
@@ -862,7 +862,7 @@ void FOClient::LookBordersPrepare()
                     ii = DIRS_COUNT - ii;
                 uint       dist_ = dist - dist * GameOpt.LookDir[ ii ] / 100;
                 UShortPair block;
-                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, dist_, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, false );
+                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, false );
                 hx_ = block.first;
                 hy_ = block.second;
             }
@@ -870,7 +870,7 @@ void FOClient::LookBordersPrepare()
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_TRACE ) )
             {
                 UShortPair block;
-                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, 0, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
+                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, true );
                 hx_ = block.first;
                 hy_ = block.second;
             }
@@ -880,8 +880,8 @@ void FOClient::LookBordersPrepare()
             {
                 int    x, y;
                 HexMngr.GetHexCurrentPosition( hx_, hy_, x, y );
-                short* ox = ( dist_look == dist ? &Chosen->SprOx : NULL );
-                short* oy = ( dist_look == dist ? &Chosen->SprOy : NULL );
+                short* ox = ( dist_look == dist ? &Chosen->SprOx : nullptr );
+                short* oy = ( dist_look == dist ? &Chosen->SprOy : nullptr );
                 LookBorders.push_back( PrepPoint( x + HEX_OX, y + HEX_OY, COLOR_RGBA( 0, 255, dist_look * 255 / dist, 0 ), ox, oy ) );
             }
 
@@ -891,15 +891,15 @@ void FOClient::LookBordersPrepare()
                 ushort     hy__ = hy_;
                 UShortPair block;
                 uint       max_shoot_dist = MAX( MIN( dist_look, dist_shoot ), 0 ) + 1;
-                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, NULL, false, NULL, 0, NULL, &block, NULL, true );
+                HexMngr.TraceBullet( base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, true );
                 hx__ = block.first;
                 hy__ = block.second;
 
                 int    x_, y_;
                 HexMngr.GetHexCurrentPosition( hx__, hy__, x_, y_ );
                 uint   result_shoot_dist = DistGame( base_hx, base_hy, hx__, hy__ );
-                short* ox = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOx : NULL );
-                short* oy = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOy : NULL );
+                short* ox = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOx : nullptr );
+                short* oy = ( result_shoot_dist == max_shoot_dist ? &Chosen->SprOy : nullptr );
                 ShootBorders.push_back( PrepPoint( x_ + HEX_OX, y_ + HEX_OY, COLOR_RGBA( 255, 255, result_shoot_dist * 255 / max_shoot_dist, 0 ), ox, oy ) );
             }
         }
@@ -1065,7 +1065,7 @@ int FOClient::MainLoop()
         else if( reason == INIT_NET_REASON_REG )
             Net_SendCreatePlayer();
         else if( reason == INIT_NET_REASON_LOAD )
-            Net_SendSaveLoad( false, SaveLoadFileName.c_str(), NULL );
+            Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
         else if( reason != INIT_NET_REASON_CUSTOM )
             RUNTIME_ASSERT( !"Unreachable place" );
     }
@@ -1444,7 +1444,7 @@ void FOClient::ParseKeyboard()
         // Key script event
         if( dikdw && Script::PrepareContext( ClientFunctions.KeyDown, _FUNC_, "Game" ) )
         {
-            ScriptString* event_text_script = NULL;
+            ScriptString* event_text_script = nullptr;
             if( dikdw == DIK_TEXT )
                 event_text_script = ScriptString::Create( event_text );
             Script::SetArgUChar( dikdw );
@@ -1765,7 +1765,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     Bout.SetEncryptKey( 0 );
 
     #ifdef FO_WINDOWS
-    if( ( Sock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0 ) ) == INVALID_SOCKET )
+    if( ( Sock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, 0 ) ) == INVALID_SOCKET )
     #else
     if( ( Sock = socket( AF_INET, SOCK_STREAM, 0 ) ) == INVALID_SOCKET )
     #endif
@@ -1972,7 +1972,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
 
     ZStream.zalloc = zlib_alloc_;
     ZStream.zfree = zlib_free_;
-    ZStream.opaque = NULL;
+    ZStream.opaque = nullptr;
     if( inflateInit( &ZStream ) != Z_OK )
     {
         WriteLog( "ZStream InflateInit error.\n" );
@@ -2065,7 +2065,7 @@ bool FOClient::NetOutput()
     FD_ZERO( &SockSetErr );
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
-    if( select( (int) Sock + 1, NULL, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
+    if( select( (int) Sock + 1, nullptr, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
         WriteLogF( _FUNC_, " - Select error '%s'.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
         WriteLogF( _FUNC_, " - Socket error.\n" );
@@ -2081,7 +2081,7 @@ bool FOClient::NetOutput()
         WSABUF buf;
         buf.buf = Bout.GetData() + sendpos;
         buf.len = tosend - sendpos;
-        if( WSASend( Sock, &buf, 1, &len, 0, NULL, NULL ) == SOCKET_ERROR || len == 0 )
+        if( WSASend( Sock, &buf, 1, &len, 0, nullptr, nullptr ) == SOCKET_ERROR || len == 0 )
         #else
         int len = (int) send( Sock, Bout.GetData() + sendpos, tosend - sendpos, 0 );
         if( len <= 0 )
@@ -2108,7 +2108,7 @@ int FOClient::NetInput( bool unpack )
     FD_ZERO( &SockSetErr );
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
-    if( select( (int) Sock + 1, &SockSet, NULL, &SockSetErr, &tv ) == SOCKET_ERROR )
+    if( select( (int) Sock + 1, &SockSet, nullptr, &SockSetErr, &tv ) == SOCKET_ERROR )
         WriteLogF( _FUNC_, " - Select error '%s'.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
         WriteLogF( _FUNC_, " - Socket error.\n" );
@@ -2121,7 +2121,7 @@ int FOClient::NetInput( bool unpack )
     WSABUF buf;
     buf.buf = ComBuf;
     buf.len = ComLen;
-    if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
+    if( WSARecv( Sock, &buf, 1, &len, &flags, nullptr, nullptr ) == SOCKET_ERROR )
     #else
     int len = (int) recv( Sock, ComBuf, ComLen, 0 );
     if( len < 0 )
@@ -2150,7 +2150,7 @@ int FOClient::NetInput( bool unpack )
         flags = 0;
         buf.buf = ComBuf + pos;
         buf.len = ComLen - pos;
-        if( WSARecv( Sock, &buf, 1, &len, &flags, NULL, NULL ) == SOCKET_ERROR )
+        if( WSARecv( Sock, &buf, 1, &len, &flags, nullptr, nullptr ) == SOCKET_ERROR )
         #else
         int len = (int) recv( Sock, ComBuf + pos, ComLen - pos, 0 );
         if( len < 0 )
@@ -3415,7 +3415,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
         break;
     }
 
-    CritterCl* cr = NULL;
+    CritterCl* cr = nullptr;
     if( how_say != SAY_RADIO )
         cr = GetCritter( crid );
 
@@ -3642,7 +3642,7 @@ void FOClient::Net_OnMapTextMsg()
 
     static char str[ MAX_FOTEXT ];
     Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ) );
-    FormatTags( str, Chosen, NULL, "" );
+    FormatTags( str, Chosen, nullptr, "" );
 
     OnMapText( str, hx, hy, color, 0 );
 }
@@ -3681,7 +3681,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
     char str[ MAX_FOTEXT ];
     Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ) );
-    FormatTags( str, Chosen, NULL, lexems );
+    FormatTags( str, Chosen, nullptr, lexems );
 
     OnMapText( str, hx, hy, color, 0 );
 }
@@ -3821,7 +3821,7 @@ void FOClient::Net_OnCritterAction()
     if( !cr )
         return;
 
-    cr->Action( action, action_ext, is_item ? SomeItem : NULL, false );
+    cr->Action( action, action_ext, is_item ? SomeItem : nullptr, false );
 }
 
 void FOClient::Net_OnCritterKnockout()
@@ -3843,7 +3843,7 @@ void FOClient::Net_OnCritterKnockout()
     if( !cr )
         return;
 
-    cr->Action( ACTION_KNOCKOUT, anim2begin, NULL, false );
+    cr->Action( ACTION_KNOCKOUT, anim2begin, nullptr, false );
     cr->Anim2Knockout = anim2idle;
 
     if( cr->GetHexX() != knock_hx || cr->GetHexY() != knock_hy )
@@ -3928,7 +3928,7 @@ void FOClient::Net_OnCritterMoveItem()
             HexMngr.RebuildLight();
     }
 
-    cr->Action( action, prev_slot, is_item ? SomeItem : NULL, false );
+    cr->Action( action, prev_slot, is_item ? SomeItem : nullptr, false );
 }
 
 void FOClient::Net_OnCritterAnimate()
@@ -3955,7 +3955,7 @@ void FOClient::Net_OnCritterAnimate()
     if( clear_sequence )
         cr->ClearAnim();
     if( delay_play || !cr->IsAnim() )
-        cr->Animate( anim1, anim2, is_item ? SomeItem : NULL );
+        cr->Animate( anim1, anim2, is_item ? SomeItem : nullptr );
 }
 
 void FOClient::Net_OnCritterSetAnims()
@@ -4078,7 +4078,7 @@ void FOClient::Net_OnCustomCommand()
 
             Chosen->SetCrType( value );
             if( !Chosen->IsAnim() )
-                Chosen->Action( ACTION_REFRESH, 0, NULL, false );
+                Chosen->Action( ACTION_REFRESH, 0, nullptr, false );
         }
         break;
         case OTHER_MULTIHEX:
@@ -4163,7 +4163,7 @@ void FOClient::Net_OnCustomCommand()
 
             cr->SetCrType( value );
             if( !cr->IsAnim() )
-                cr->Action( ACTION_REFRESH, 0, NULL, false );
+                cr->Action( ACTION_REFRESH, 0, nullptr, false );
         }
         else if( index == OTHER_MULTIHEX )
         {
@@ -4747,8 +4747,8 @@ void FOClient::Net_OnProperty( uint data_size )
 
     CHECK_IN_BUFF_ERROR;
 
-    Property* prop = NULL;
-    Entity*   entity = NULL;
+    Property* prop = nullptr;
+    Entity*   entity = nullptr;
     switch( type )
     {
     case NetProperty::Global:
@@ -4780,7 +4780,7 @@ void FOClient::Net_OnProperty( uint data_size )
     case NetProperty::ChosenItem:
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
-            entity = ( Chosen ? Chosen->GetItem( item_id ) : NULL );
+            entity = ( Chosen ? Chosen->GetItem( item_id ) : nullptr );
         break;
     case NetProperty::Map:
         break;
@@ -4794,8 +4794,8 @@ void FOClient::Net_OnProperty( uint data_size )
         return;
 
     prop->SetSendIgnore( entity );
-    prop->SetData( entity, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : NULL, (uint) TempPropertyData.size() );
-    prop->SetSendIgnore( NULL );
+    prop->SetData( entity, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : nullptr, (uint) TempPropertyData.size() );
+    prop->SetSendIgnore( nullptr );
 
     if( type == NetProperty::MapItem && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
     {
@@ -4855,10 +4855,10 @@ void FOClient::Net_OnChosenTalk()
     // Find critter
     DlgIsNpc = is_npc;
     DlgNpcId = talk_id;
-    CritterCl* npc = ( is_npc ? GetCritter( talk_id ) : NULL );
+    CritterCl* npc = ( is_npc ? GetCritter( talk_id ) : nullptr );
 
     // Avatar
-    DlgAvatarPic = NULL;
+    DlgAvatarPic = nullptr;
     if( npc && npc->Avatar->length() )
         DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar->c_str() ), RES_ATLAS_DYNAMIC );
 
@@ -5087,7 +5087,7 @@ void FOClient::Net_OnLoadMap()
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
     for( size_t i = 0, j = GmapPic.size(); i < j; i++ )
-        GmapPic[ i ] = NULL;
+        GmapPic[ i ] = nullptr;
 
     DropScroll();
     IsTurnBased = false;
@@ -5150,13 +5150,13 @@ void FOClient::Net_OnMap()
     Str::Format( map_name, "map%u", map_pid );
 
     bool  tiles = false;
-    char* tiles_data = NULL;
+    char* tiles_data = nullptr;
     uint  tiles_len = 0;
     bool  walls = false;
-    char* walls_data = NULL;
+    char* walls_data = nullptr;
     uint  walls_len = 0;
     bool  scen = false;
-    char* scen_data = NULL;
+    char* scen_data = nullptr;
     uint  scen_len = 0;
 
     if( FLAG( send_info, SENDMAP_TILES ) )
@@ -6027,9 +6027,9 @@ void FOClient::Net_OnRunClientScript()
     ScriptString* func_name = ScriptString::Create();
     int           p0, p1, p2;
     ushort        p3len;
-    ScriptString* p3 = NULL;
+    ScriptString* p3 = nullptr;
     ushort        p4size;
-    ScriptArray*  p4 = NULL;
+    ScriptArray*  p4 = nullptr;
     Bin >> msg_len;
     Bin >> func_name_len;
     if( func_name_len && func_name_len < MAX_FOTEXT )
@@ -6193,7 +6193,7 @@ void FOClient::Net_OnUpdateFileData()
     {
         // Finalize received data
         FileClose( UpdateFileTemp );
-        UpdateFileTemp = NULL;
+        UpdateFileTemp = nullptr;
 
         // Cache
         if( update_file.Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
@@ -6482,7 +6482,7 @@ void FOClient::SetDayTime( bool refresh )
         return;
 
     static uint old_color = -1;
-    uint        color = GetColorDay( HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), NULL );
+    uint        color = GetColorDay( HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr );
     color = COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
 
     if( refresh )
@@ -6497,13 +6497,13 @@ void FOClient::SetDayTime( bool refresh )
 Item* FOClient::GetTargetContItem()
 {
     if( !TargetSmth.IsContItem() )
-        return NULL;
+        return nullptr;
 
     // Script stuff
     if( TargetSmth.GetParam() > 1 )
     {
         uint  item_id = TargetSmth.GetId();
-        Item* item = NULL;
+        Item* item = nullptr;
         if( TargetSmth.GetParam() == 2 )
         {
             if( Chosen )
@@ -6556,7 +6556,7 @@ Item* FOClient::GetTargetContItem()
         }
     }
     TargetSmth.Clear();
-    return NULL;
+    return nullptr;
 }
 
 void FOClient::AddAction( bool to_front, ActionEvent act )
@@ -7030,9 +7030,9 @@ label_EndMove:
         bool is_main_item = ( item == Chosen->ItemSlotMain );
 
         // Find target
-        CritterCl* target_cr = NULL;
-        ItemHex*   target_item = NULL;
-        Item*      target_item_self = NULL;
+        CritterCl* target_cr = nullptr;
+        ItemHex*   target_item = nullptr;
+        Item*      target_item_self = nullptr;
         if( target_type == TARGET_SELF )
             target_cr = Chosen;
         else if( target_type == TARGET_SELF_ITEM )
@@ -7183,7 +7183,7 @@ label_EndMove:
             // Target find
             bool need_move = false;
             if( is_attack )
-                need_move = !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy, max_dist, 0.0f, target_cr, false, NULL, 0, NULL, NULL, NULL, true );
+                need_move = !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy, max_dist, 0.0f, target_cr, false, nullptr, 0, nullptr, nullptr, nullptr, true );
             else
                 need_move = !CheckDist( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy, max_dist );
             if( need_move )
@@ -7259,7 +7259,7 @@ label_EndMove:
         if( to_slot != SLOT_GROUND && !CritterCl::SlotEnabled[ to_slot ] )
             break;
 
-        Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? Chosen->GetItemSlot( to_slot ) : NULL );
+        Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? Chosen->GetItemSlot( to_slot ) : nullptr );
         bool  allow = false;
         if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
         {
@@ -7282,7 +7282,7 @@ label_EndMove:
                     Script::SetArgObject( Chosen );
                     Script::SetArgObject( item_swap );
                     Script::SetArgUChar( SLOT_INV );
-                    Script::SetArgObject( NULL );
+                    Script::SetArgObject( nullptr );
                     if( Script::RunPrepared() )
                         allow1 = Script::GetReturnedBool();
                 }
@@ -7294,7 +7294,7 @@ label_EndMove:
                     Script::SetArgObject( Chosen );
                     Script::SetArgObject( item );
                     Script::SetArgUChar( to_slot );
-                    Script::SetArgObject( NULL );
+                    Script::SetArgObject( nullptr );
                     if( Script::RunPrepared() )
                         allow2 = Script::GetReturnedBool();
                 }
@@ -7436,7 +7436,7 @@ label_EndMove:
             Item::ClearItems( PupCont2Init );
             PupCount = 0;
             Net_SendItemCont( PupTransferType, PupContId, PupHoldId, 0, CONT_GETALL );
-            Chosen->Action( ACTION_OPERATE_CONTAINER, PupTransferType * 10 + 1, NULL );
+            Chosen->Action( ACTION_OPERATE_CONTAINER, PupTransferType * 10 + 1, nullptr );
             Chosen->SubAp( Chosen->GetApCostMoveItemContainer() );
             CollectContItems();
         }
@@ -7479,7 +7479,7 @@ label_EndMove:
         }
 
         CHECK_NEED_AP( Chosen->GetApCostUseSkill() );
-        Chosen->Action( ACTION_USE_SKILL, skill, NULL );
+        Chosen->Action( ACTION_USE_SKILL, skill, nullptr );
         Net_SendUseSkill( skill, cr );
         Chosen->SubAp( Chosen->GetApCostUseSkill() );
         WaitPing();
@@ -7634,7 +7634,7 @@ label_EndMove:
             return;
         }
 
-        if( !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), talk_distance + Chosen->GetMultihex(), 0.0f, cr, false, NULL, 0, NULL, NULL, NULL, true ) )
+        if( !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), talk_distance + Chosen->GetMultihex(), 0.0f, cr, false, nullptr, 0, nullptr, nullptr, nullptr, true ) )
         {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_FINDPATH_AIMBLOCK ) );
             break;
@@ -7738,12 +7738,12 @@ label_EndMove:
         if( is_loot )
         {
             Net_SendPickCritter( cr->GetId(), PICK_CRIT_LOOT );
-            Chosen->Action( ACTION_PICK_CRITTER, 0, NULL );
+            Chosen->Action( ACTION_PICK_CRITTER, 0, nullptr );
         }
         else if( cr->IsLife() )
         {
             Net_SendPickCritter( cr->GetId(), PICK_CRIT_PUSH );
-            Chosen->Action( ACTION_PICK_CRITTER, 2, NULL );
+            Chosen->Action( ACTION_PICK_CRITTER, 2, nullptr );
         }
         Chosen->SubAp( Chosen->GetApCostPickCritter() );
         WaitPing();
@@ -7981,7 +7981,7 @@ const char* FOClient::FmtGenericDesc( int desc_type, int& ox, int& oy )
             {
                 static char str[ MAX_FOTEXT ];
                 Str::Copy( str, result->c_str() );
-                return str[ 0 ] ? str : NULL;
+                return str[ 0 ] ? str : nullptr;
             }
         }
     }
@@ -8002,7 +8002,7 @@ const char* FOClient::FmtCritLook( CritterCl* cr, int look_type )
             {
                 static char str[ MAX_FOTEXT ];
                 Str::Copy( str, MAX_FOTEXT, result->c_str() );
-                return str[ 0 ] ? str : NULL;
+                return str[ 0 ] ? str : nullptr;
             }
         }
     }
@@ -8023,7 +8023,7 @@ const char* FOClient::FmtItemLook( Item* item, int look_type )
             {
                 static char str[ MAX_FOTEXT ];
                 Str::Copy( str, MAX_FOTEXT, result->c_str() );
-                return str[ 0 ] ? str : NULL;
+                return str[ 0 ] ? str : nullptr;
             }
         }
     }
@@ -8297,7 +8297,7 @@ void FOClient::PlayVideo()
 
     th_info_init( &CurVideo->VideoInfo );
     th_comment_init( &CurVideo->Comment );
-    CurVideo->SetupInfo = NULL;
+    CurVideo->SetupInfo = nullptr;
     while( true )
     {
         int stream_index = VideoDecodePacket();
@@ -8449,7 +8449,7 @@ void FOClient::RenderVideo()
     for( uint f = 0; f < skip_frames; f++ )
     {
         // Decode frame
-        int r = th_decode_packetin( CurVideo->Context, &CurVideo->Packet, NULL );
+        int r = th_decode_packetin( CurVideo->Context, &CurVideo->Packet, nullptr );
         if( r != TH_DUPFRAME )
         {
             if( r )
@@ -8547,7 +8547,7 @@ void FOClient::RenderVideo()
     int  y = ( GameOpt.ScreenHeight - h ) / 2;
     SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
     Rect r = Rect( x, y, x + w, y + h );
-    SprMngr.DrawRenderTarget( CurVideo->RT, false, NULL, &r );
+    SprMngr.DrawRenderTarget( CurVideo->RT, false, nullptr, &r );
     SprMngr.EndScene();
 
     // Store render time
@@ -8836,7 +8836,7 @@ void FOClient::OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, 
         if( prop == Item::PropertyIsColorize )
             hex_item->RefreshAlpha();
         else if( prop == Item::PropertyIsBadItem )
-            hex_item->SetSprite( NULL );
+            hex_item->SetSprite( nullptr );
         else if( prop == Item::PropertyIsShootThru )
             Self->RebuildLookBorders = true, rebuild_cache = true;
         else if( prop == Item::PropertyIsLightThru )
@@ -8960,7 +8960,7 @@ bool FOClient::ReloadScripts()
     }
 
     // Options
-    Script::Undef( NULL );
+    Script::Undef( nullptr );
     Script::Define( "__CLIENT" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
 
@@ -9260,7 +9260,7 @@ bool FOClient::SScriptFunc::Crit_IsAnim3d( CritterCl* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->Anim3d != NULL;
+    return cr->Anim3d != nullptr;
 }
 
 bool FOClient::SScriptFunc::Crit_IsAnimAviable( CritterCl* cr, uint anim1, uint anim2 )
@@ -9288,7 +9288,7 @@ void FOClient::SScriptFunc::Crit_Animate( CritterCl* cr, uint anim1, uint anim2 
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    cr->Animate( anim1, anim2, NULL );
+    cr->Animate( anim1, anim2, nullptr );
 }
 
 void FOClient::SScriptFunc::Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, Item* item )
@@ -9357,7 +9357,7 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, hash proto_id, int slo
         return cr->GetItemByPidInvPriority( proto_id );
     else if( slot >= 0 && slot < SLOT_GROUND )
         return cr->GetItemSlot( slot );
-    return NULL;
+    return nullptr;
 }
 
 Item* FOClient::SScriptFunc::Crit_GetItemById( CritterCl* cr, uint item_id )
@@ -9394,7 +9394,7 @@ ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto( CritterCl* cr, int slot, uc
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    Item* item = NULL;
+    Item* item = nullptr;
     switch( slot )
     {
     case SLOT_HAND1:
@@ -9411,7 +9411,7 @@ ProtoItem* FOClient::SScriptFunc::Crit_GetSlotProto( CritterCl* cr, int slot, uc
         break;
     }
     if( !item )
-        return NULL;
+        return nullptr;
 
     mode = item->GetMode();
     return item->Proto;
@@ -9557,7 +9557,7 @@ Item* FOClient::SScriptFunc::Item_GetChild( Item* item, uint childIndex )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     // Need implement
     #pragma MESSAGE("Implement Item_GetChild.")
-    return NULL;
+    return nullptr;
 }
 
 ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, ScriptString& separator )
@@ -9936,7 +9936,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "AssignPerk" && args.size() == 2 )
     {
         int perk = Str::AtoI( args[ 1 ].c_str() );
-        Self->Net_SendLevelUp( perk, NULL );
+        Self->Net_SendLevelUp( perk, nullptr );
     }
     else if( cmd == "GmapHome" )
     {
@@ -10036,7 +10036,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
 CritterCl* FOClient::SScriptFunc::Global_GetChosen()
 {
     if( Self->Chosen && Self->Chosen->IsDestroyed )
-        return NULL;
+        return nullptr;
     return Self->Chosen;
 }
 
@@ -10116,7 +10116,7 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
     }
 
     if( !item || item->IsDestroyed )
-        return NULL;
+        return nullptr;
     return item;
 }
 
@@ -10134,10 +10134,10 @@ uint FOClient::SScriptFunc::Global_GetCrittersDistantion( CritterCl* cr1, Critte
 CritterCl* FOClient::SScriptFunc::Global_GetCritter( uint critter_id )
 {
     if( !critter_id )
-        return NULL;                // SCRIPT_ERROR_R0("CritterCl id arg is zero.");
+        return nullptr;                // SCRIPT_ERROR_R0("CritterCl id arg is zero.");
     CritterCl* cr = Self->GetCritter( critter_id );
     if( !cr || cr->IsDestroyed )
-        return NULL;
+        return nullptr;
     return cr;
 }
 
@@ -10195,7 +10195,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int find_type, S
 uint FOClient::SScriptFunc::Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters )
 {
     CritVec cr_vec;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, &cr_vec, find_type, NULL, NULL, NULL, true );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, &cr_vec, find_type, nullptr, nullptr, nullptr, true );
     if( critters )
         Script::AppendVectorToArrayRef< CritterCl* >( cr_vec, critters );
     return (uint) cr_vec.size();
@@ -10205,7 +10205,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_hx, ushor
 {
     CritVec    cr_vec;
     UShortPair block, pre_block;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, &cr_vec, find_type, &block, &pre_block, NULL, true );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, &cr_vec, find_type, &block, &pre_block, nullptr, true );
     if( critters )
         Script::AppendVectorToArrayRef< CritterCl* >( cr_vec, critters );
     pre_block_hx = pre_block.first;
@@ -10218,7 +10218,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_hx, ushor
 void FOClient::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
 {
     UShortPair pre_block, block;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, NULL, false, NULL, 0, &block, &pre_block, NULL, true );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, true );
     to_hx = pre_block.first;
     to_hy = pre_block.second;
 }
@@ -10230,10 +10230,10 @@ uint FOClient::SScriptFunc::Global_GetPathLengthHex( ushort from_hx, ushort from
     if( to_hx >= Self->HexMngr.GetMaxHexX() || to_hy >= Self->HexMngr.GetMaxHexY() )
         SCRIPT_ERROR_R0( "Invalid to hexes args." );
 
-    if( cut > 0 && !Self->HexMngr.CutPath( NULL, from_hx, from_hy, to_hx, to_hy, cut ) )
+    if( cut > 0 && !Self->HexMngr.CutPath( nullptr, from_hx, from_hy, to_hx, to_hy, cut ) )
         return 0;
     UCharVec steps;
-    if( !Self->HexMngr.FindPath( NULL, from_hx, from_hy, to_hx, to_hy, steps, -1 ) )
+    if( !Self->HexMngr.FindPath( nullptr, from_hx, from_hy, to_hx, to_hy, steps, -1 ) )
         steps.clear();
     return (uint) steps.size();
 }
@@ -10415,7 +10415,7 @@ ScriptString* FOClient::SScriptFunc::Global_FormatTags( ScriptString& text, Scri
 {
     char buf[ MAX_FOTEXT ];
     Str::Copy( buf, text.c_str() );
-    Self->FormatTags( buf, Self->Chosen, NULL, lexems ? lexems->c_str() : NULL );
+    Self->FormatTags( buf, Self->Chosen, nullptr, lexems ? lexems->c_str() : nullptr );
     return ScriptString::Create( buf );
 }
 
@@ -10667,11 +10667,11 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_FLUSH_LIGHT               ( 0x10000000 )
     #define EFFECT_FLUSH_FOG                 ( 0x20000000 )
 
-    Effect* effect = NULL;
+    Effect* effect = nullptr;
     if( effect_name && effect_name->length() )
     {
         bool use_in_2d = !( effect_type & EFFECT_3D_SKINNED );
-        effect = GraphicLoader::LoadEffect( effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : NULL );
+        effect = GraphicLoader::LoadEffect( effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : nullptr );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
     }
@@ -10810,7 +10810,7 @@ void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, Script
 
 void FOClient::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )
 {
-    Self->HexMngr.SetRainAnimation( fall_anim_name ? fall_anim_name->c_str() : NULL, drop_anim_name ? drop_anim_name->c_str() : NULL );
+    Self->HexMngr.SetRainAnimation( fall_anim_name ? fall_anim_name->c_str() : nullptr, drop_anim_name ? drop_anim_name->c_str() : nullptr );
 }
 
 void FOClient::SScriptFunc::Global_ChangeZoom( float target_zoom )
@@ -10900,7 +10900,7 @@ void FOClient::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
 
     ScriptArray* props_array;
     int          props_array_index = Script::GetEngine()->GetGlobalPropertyIndexByName( "CritterPropertyRegProperties" );
-    Script::GetEngine()->GetGlobalPropertyByIndex( props_array_index, NULL, NULL, NULL, NULL, NULL, (void**) &props_array );
+    Script::GetEngine()->GetGlobalPropertyByIndex( props_array_index, nullptr, nullptr, nullptr, nullptr, nullptr, (void**) &props_array );
     props_array->Resize( 0 );
     for( auto it = CritterCl::RegProperties.begin(); it != CritterCl::RegProperties.end(); ++it )
         props_array->InsertLast( (void*) &( *it ) );
@@ -10993,7 +10993,7 @@ void FOClient::SScriptFunc::Global_RunServerScript( ScriptString& func_name, int
         Script::AssignScriptArrayInVector< uint >( dw, p4 );
     char script_name[ MAX_FOTEXT ];
     Script::MakeScriptNameInRuntime( func_name.c_str(), script_name );
-    Self->Net_SendRunScript( false, script_name, p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
+    Self->Net_SendRunScript( false, script_name, p0, p1, p2, p3 ? p3->c_str() : nullptr, dw );
 }
 
 void FOClient::SScriptFunc::Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
@@ -11003,7 +11003,7 @@ void FOClient::SScriptFunc::Global_RunServerScriptUnsafe( ScriptString& func_nam
         Script::AssignScriptArrayInVector< uint >( dw, p4 );
     char script_name[ MAX_FOTEXT ];
     Script::MakeScriptNameInRuntime( func_name.c_str(), script_name );
-    Self->Net_SendRunScript( true, script_name, p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
+    Self->Net_SendRunScript( true, script_name, p0, p1, p2, p3 ? p3->c_str() : nullptr, dw );
 }
 
 uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_index )
@@ -11067,7 +11067,7 @@ uint FOClient::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, 
 
 void FOClient::SScriptFunc::Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
-    SprMngr.GetTextInfo( w, h, text ? text->c_str() : NULL, font, flags, tw, th, lines );
+    SprMngr.GetTextInfo( w, h, text ? text->c_str() : nullptr, font, flags, tw, th, lines );
 }
 
 void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
@@ -11172,8 +11172,8 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArra
         pp.PointX = *(int*) data.At( i * 3 );
         pp.PointY = *(int*) data.At( i * 3 + 1 );
         pp.PointColor = *(int*) data.At( i * 3 + 2 );
-        pp.PointOffsX = NULL;
-        pp.PointOffsY = NULL;
+        pp.PointOffsX = nullptr;
+        pp.PointOffsY = nullptr;
     }
 
     SprMngr.DrawPoints( points, prim );
@@ -11199,7 +11199,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( ushort hx, ushort hy, hash pro
     Sprites&   tree = Self->HexMngr.GetDrawTree();
     Sprite&    spr = tree.InsertSprite( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ),
                                         hx, hy + ( proto_item ? proto_item->GetDrawOrderOffsetHexY() : 0 ), 0,
-                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), NULL, NULL, NULL, NULL, NULL, NULL );
+                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
     if( !no_light )
         spr.SetLight( proto_item ? proto_item->GetCorner() : CORNER_EAST_WEST, Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetMaxHexX(), Self->HexMngr.GetMaxHexY() );
 
@@ -11714,7 +11714,7 @@ bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, usho
 Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y, bool ignore_interface )
 {
     if( !ignore_interface && Self->IsCurInInterface( x, y ) )
-        return NULL;
+        return nullptr;
 
     ItemHex*   item;
     CritterCl* cr;
@@ -11725,7 +11725,7 @@ Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y, bool ignore_in
 CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter( int x, int y, bool ignore_interface )
 {
     if( !ignore_interface && Self->IsCurInInterface( x, y ) )
-        return NULL;
+        return nullptr;
 
     ItemHex*   item;
     CritterCl* cr;
@@ -11773,7 +11773,7 @@ bool FOClient::SScriptFunc::Global_SaveScreenshot( ScriptString& file_path )
     Str::Copy( screen_path, file_path.c_str() );
     FileManager::FormatPath( screen_path );
 
-    SprMngr.SaveTexture( NULL, screen_path, true );
+    SprMngr.SaveTexture( nullptr, screen_path, true );
     return true;
 }
 

@@ -58,7 +58,7 @@ void AnyFrames::CreateDirAnims()
 // Texture
 //
 
-Texture::Texture(): Name( NULL ), Id( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f )
+Texture::Texture(): Name( nullptr ), Id( 0 ), Width( 0 ), Height( 0 ), Samples( 0.0f )
 {
     // Dummy comment
 }
@@ -86,7 +86,7 @@ TextureAtlas::SpaceNode::SpaceNode( int x, int y, int w, int h )
     posY = y;
     width = w;
     height = h;
-    child1 = child2 = NULL;
+    child1 = child2 = nullptr;
 }
 
 TextureAtlas::SpaceNode::~SpaceNode()
@@ -327,7 +327,7 @@ Bone* Bone::Find( uint name_hash )
         if( bone )
             return bone;
     }
-    return NULL;
+    return nullptr;
 }
 
 void Bone::Save( FileManager& file )
@@ -335,7 +335,7 @@ void Bone::Save( FileManager& file )
     file.SetData( &NameHash, sizeof( NameHash ) );
     file.SetData( &TransformationMatrix, sizeof( TransformationMatrix ) );
     file.SetData( &GlobalTransformationMatrix, sizeof( GlobalTransformationMatrix ) );
-    file.SetUChar( Mesh != NULL ? 1 : 0 );
+    file.SetUChar( Mesh != nullptr ? 1 : 0 );
     if( Mesh )
         Mesh->Save( file );
     uint len = (uint) Children.size();
@@ -357,7 +357,7 @@ void Bone::Load( FileManager& file )
     }
     else
     {
-        Mesh = NULL;
+        Mesh = nullptr;
     }
     uint len = 0;
     file.CopyMem( &len, sizeof( len ) );

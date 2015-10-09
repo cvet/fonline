@@ -41,7 +41,7 @@ Entity* EntityManager::GetEntity( uint id, EntityType type )
     auto it = allEntities.find( id );
     if( it != allEntities.end() && it->second->Type == type )
         return it->second;
-    return NULL;
+    return nullptr;
 }
 
 void EntityManager::GetEntities( EntityType type, EntityVec& entities )
@@ -97,7 +97,7 @@ Critter* EntityManager::GetCritter( uint id )
     auto it = allEntities.find( id );
     if( it != allEntities.end() && ( it->second->Type == EntityType::Npc || it->second->Type == EntityType::Client ) )
         return (Critter*) it->second;
-    return NULL;
+    return nullptr;
 }
 
 void EntityManager::GetCritters( CrVec& critters )
@@ -130,7 +130,7 @@ Map* EntityManager::GetMapByPid( hash pid, uint skip_count )
             }
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void EntityManager::GetMaps( MapVec& maps )
@@ -163,7 +163,7 @@ Location* EntityManager::GetLocationByPid( hash pid, uint skip_count )
             }
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void EntityManager::GetLocations( LocVec& locs )
@@ -397,7 +397,7 @@ void EntityManager::InitEntities()
         {
             Item* item = (Item*) entity;
             if( item->GetScriptId() )
-                item->SetScript( NULL, false );
+                item->SetScript( nullptr, false );
             if( !item->IsDestroyed && item->GetIsRadio() )
                 ItemMngr.RadioRegister( item, true );
         }
@@ -413,13 +413,13 @@ void EntityManager::InitEntities()
                 Script::RunPrepared();
             }
             if( !npc->IsDestroyed && npc->GetScriptId() )
-                npc->SetScript( NULL, false );
+                npc->SetScript( nullptr, false );
         }
         else if( entity->Type == EntityType::Map )
         {
             Map* map = (Map*) entity;
             if( map->Data.ScriptId )
-                map->SetScript( NULL, false );
+                map->SetScript( nullptr, false );
         }
     }
 }

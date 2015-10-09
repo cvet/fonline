@@ -19,7 +19,7 @@ void ResourceManager::Refresh()
         {
             // All names
             StrVec file_names;
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_DATA ), true, NULL, file_names );
+            data_file->GetFileNames( FileManager::GetDataPath( "", PT_DATA ), true, nullptr, file_names );
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
                 Str::GetHash( it->c_str() );
 
@@ -122,7 +122,7 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
     // Load new animation
     const char* fname = Str::GetName( name_hash );
     if( !fname )
-        return NULL;
+        return nullptr;
 
     SprMngr.PushAtlasType( res_type );
     AnyFrames* anim = SprMngr.LoadAnimation( fname, PT_DATA, false, true );
@@ -143,7 +143,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
     // Check for 3d
     uint anim_type = CritType::GetAnimType( crtype );
     if( anim_type == ANIM_TYPE_3D )
-        return NULL;
+        return nullptr;
 
     // Process dir
     dir = CLAMP( dir, 0, DIRS_COUNT - 1 );
@@ -156,11 +156,11 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
     // Check already loaded
     auto it = critterFrames.find( id );
     if( it != critterFrames.end() )
-        return it->second ? it->second->GetDir( dir ) : NULL;
+        return it->second ? it->second->GetDir( dir ) : nullptr;
 
     // Process loading
     uint       crtype_base = crtype, anim1_base = anim1, anim2_base = anim2;
-    AnyFrames* anim = NULL;
+    AnyFrames* anim = nullptr;
     while( true )
     {
         // Load
@@ -310,7 +310,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
 
     // Store
     critterFrames.insert( PAIR( id, anim ) );
-    return anim ? anim->GetDir( dir ) : NULL;
+    return anim ? anim->GetDir( dir ) : nullptr;
 }
 
 AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2 )
@@ -334,14 +334,14 @@ AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2
             // Load
             AnyFrames* anim = LoadFalloutAnimSpr( crtype, anim1, anim2 );
             if( !anim )
-                return NULL;
+                return nullptr;
 
             // Merge
             if( anim1ex && anim2ex )
             {
                 AnyFrames* animex = LoadFalloutAnimSpr( crtype, anim1ex, anim2ex );
                 if( !animex )
-                    return NULL;
+                    return nullptr;
 
                 AnyFrames* anim_merge_base = AnyFrames::Create( anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks );
                 for( int d = 0; d < anim->DirCount(); d++ )
@@ -404,10 +404,10 @@ AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2
                 }
                 return anim_clone_base;
             }
-            return NULL;
+            return nullptr;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void FixAnimOffs( AnyFrames* frames_base, AnyFrames* stay_frm_base )
@@ -487,7 +487,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
 
     critterFrames.insert( PAIR( AnimMapId( crtype, anim1, anim2, true ), frames ) );
     if( !frames )
-        return NULL;
+        return nullptr;
 
     #define LOADSPR_ADDOFFS( a1, a2 )         FixAnimOffs( frames, LoadFalloutAnimSpr( crtype, a1, a2 ) )
     #define LOADSPR_ADDOFFS_NEXT( a1, a2 )    FixAnimOffsNext( frames, LoadFalloutAnimSpr( crtype, a1, a2 ) )
@@ -630,7 +630,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
 Animation3d* ResourceManager::GetCrit3dAnim( uint crtype, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
 {
     if( CritType::GetAnimType( crtype ) != ANIM_TYPE_3D )
-        return NULL;
+        return nullptr;
 
     if( !CritType::IsCanRotate( crtype ) )
         dir = 0;
@@ -648,7 +648,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( uint crtype, uint anim1, uint anim2
     Animation3d* anim3d = SprMngr.LoadPure3dAnimation( name, PT_ART_CRITTERS, true );
     SprMngr.PopAtlasType();
     if( !anim3d )
-        return NULL;
+        return nullptr;
 
     if( crtype >= critter3d.size() )
         critter3d.resize( crtype + 1 );
@@ -681,7 +681,7 @@ AnyFrames* ResourceManager::GetRandomSplash()
     if( splashNames.empty() )
         return 0;
     int rnd = Random( 0, (int) splashNames.size() - 1 );
-    static AnyFrames* splash = NULL;
+    static AnyFrames* splash = nullptr;
     SprMngr.PushAtlasType( RES_ATLAS_SPLASH, true );
     splash = SprMngr.ReloadAnimation( splash, splashNames[ rnd ].c_str(), PT_DATA );
     SprMngr.PopAtlasType();

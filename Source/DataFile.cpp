@@ -142,7 +142,7 @@ DataFile* OpenDataFile( const char* path )
     if( !path || !path[ 0 ] )
     {
         WriteLogF( _FUNC_, " - Invalid file name, empty or nullptr.\n" );
-        return NULL;
+        return nullptr;
     }
 
     const char* ext = FileManager::GetExtension( path );
@@ -153,7 +153,7 @@ DataFile* OpenDataFile( const char* path )
         {
             WriteLogF( _FUNC_, " - Unable to open DAT file '%s'.\n", path );
             delete dat;
-            return NULL;
+            return nullptr;
         }
         return dat;
     }
@@ -164,7 +164,7 @@ DataFile* OpenDataFile( const char* path )
         {
             WriteLogF( _FUNC_, " - Unable to open ZIP file '%s'.\n", path );
             delete zip;
-            return NULL;
+            return nullptr;
         }
         return zip;
     }
@@ -175,12 +175,12 @@ DataFile* OpenDataFile( const char* path )
         {
             WriteLogF( _FUNC_, " - Unable to open folder '%s'.\n", path );
             delete folder;
-            return NULL;
+            return nullptr;
         }
         return folder;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /************************************************************************/
@@ -203,7 +203,7 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree )
 
     StrVec      files;
     FindDataVec find_data;
-    FileManager::GetFolderFileNames( basePath.c_str(), true, NULL, files, &find_data );
+    FileManager::GetFolderFileNames( basePath.c_str(), true, nullptr, files, &find_data );
 
     for( size_t i = 0, j = files.size(); i < j; i++ )
     {
@@ -222,7 +222,7 @@ bool FolderFile::IsFilePresent( const char* path, uint& size, uint64& write_time
     #ifndef DISABLE_FOLDER_CACHING
     auto it = filesTree.find( path );
     if( it == filesTree.end() )
-        return NULL;
+        return nullptr;
 
     FileEntry& fe = it->second;
     size = fe.FileSize;
@@ -248,12 +248,12 @@ uchar* FolderFile::OpenFile( const char* path, uint& size, uint64& write_time )
     #ifndef DISABLE_FOLDER_CACHING
     auto it = filesTree.find( path );
     if( it == filesTree.end() )
-        return NULL;
+        return nullptr;
 
     FileEntry& fe = it->second;
     void*      f = FileOpen( fe.FileName.c_str(), false );
     if( !f )
-        return NULL;
+        return nullptr;
 
     size = fe.FileSize;
     uchar* buf = new uchar[ size + 1 ];
@@ -261,7 +261,7 @@ uchar* FolderFile::OpenFile( const char* path, uint& size, uint64& write_time )
     {
         FileClose( f );
         delete[] buf;
-        return NULL;
+        return nullptr;
     }
     FileClose( f );
     buf[ size ] = 0;
@@ -274,7 +274,7 @@ uchar* FolderFile::OpenFile( const char* path, uint& size, uint64& write_time )
     Str::Append( path_, path );
     void* f = FileOpen( path_, false );
     if( !f )
-        return NULL;
+        return nullptr;
 
     size = FileGetSize( f );
     uchar* buf = new uchar[ size + 1 ];
@@ -282,7 +282,7 @@ uchar* FolderFile::OpenFile( const char* path, uint& size, uint64& write_time )
     {
         FileClose( f );
         delete[] buf;
-        return NULL;
+        return nullptr;
     }
     write_time = FileGetWriteTime( f );
     FileClose( f );
@@ -314,8 +314,8 @@ void FolderFile::GetFileNames( const char* path, bool include_subdirs, const cha
 
 bool FalloutDatFile::Init( const char* fname )
 {
-    datHandle = NULL;
-    memTree = NULL;
+    datHandle = nullptr;
+    memTree = nullptr;
     fileName = fname;
 
     datHandle = FileOpen( fname, false );
@@ -342,7 +342,7 @@ FalloutDatFile::~FalloutDatFile()
     if( datHandle )
     {
         FileClose( datHandle );
-        datHandle = NULL;
+        datHandle = nullptr;
     }
     SAFEDELA( memTree );
 }
@@ -373,7 +373,7 @@ bool FalloutDatFile::ReadTree()
         if( !FileRead( datHandle, &files_total, 4 ) )
             return false;
         tree_size -= 28 + 4;     // Subtract information block and files total
-        if( ( memTree = new uchar[ tree_size ] ) == NULL )
+        if( ( memTree = new uchar[ tree_size ] ) == nullptr )
             return false;
         memzero( memTree, tree_size );
         if( !FileRead( datHandle, memTree, tree_size ) )
@@ -437,7 +437,7 @@ bool FalloutDatFile::ReadTree()
     if( !FileRead( datHandle, &files_total, 4 ) )
         return false;
     tree_size -= 4;
-    if( ( memTree = new uchar[ tree_size ] ) == NULL )
+    if( ( memTree = new uchar[ tree_size ] ) == nullptr )
         return false;
     memzero( memTree, tree_size );
     if( !FileRead( datHandle, memTree, tree_size ) )
@@ -484,11 +484,11 @@ bool FalloutDatFile::IsFilePresent( const char* path, uint& size, uint64& write_
 uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_time )
 {
     if( !datHandle )
-        return NULL;
+        return nullptr;
 
     auto it = filesTree.find( path );
     if( it == filesTree.end() )
-        return NULL;
+        return nullptr;
 
     uchar* ptr = it->second;
     uchar  type = *ptr;
@@ -497,7 +497,7 @@ uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_tim
     uint   offset = *(uint*) ( ptr + 9 );
 
     if( !FileSetPointer( datHandle, offset, SEEK_SET ) )
-        return NULL;
+        return nullptr;
 
     size = real_size;
     uchar* buf = new uchar[ size + 1 ];
@@ -508,7 +508,7 @@ uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_tim
         if( !FileRead( datHandle, buf, size ) )
         {
             delete[] buf;
-            return NULL;
+            return nullptr;
         }
     }
     else
@@ -523,7 +523,7 @@ uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_tim
         if( inflateInit( &stream ) != Z_OK )
         {
             delete[] buf;
-            return NULL;
+            return nullptr;
         }
 
         stream.next_out = buf;
@@ -542,7 +542,7 @@ uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_tim
                 if( !FileRead( datHandle, read_buf, left > sizeof( read_buf ) ? sizeof( read_buf ) : left, &rb ) )
                 {
                     delete[] buf;
-                    return NULL;
+                    return nullptr;
                 }
                 stream.avail_in = rb;
                 left -= rb;
@@ -551,7 +551,7 @@ uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_tim
             if( r != Z_OK && r != Z_STREAM_END )
             {
                 delete[] buf;
-                return NULL;
+                return nullptr;
             }
             if( r == Z_STREAM_END )
                 break;
@@ -572,7 +572,7 @@ uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_tim
 bool ZipFile::Init( const char* fname )
 {
     fileName = fname;
-    zipHandle = NULL;
+    zipHandle = nullptr;
 
     if( fname[ 0 ] != '$' )
     {
@@ -599,7 +599,7 @@ bool ZipFile::Init( const char* fname )
         #ifdef FO_WINDOWS
         wchar_t path_wc[ MAX_FOPATH ];
         if( MultiByteToWideChar( CP_UTF8, 0, path, -1, path_wc, MAX_FOPATH ) == 0 ||
-            WideCharToMultiByte( GetACP(), 0, path_wc, -1, path, MAX_FOPATH, NULL, NULL ) == 0 )
+            WideCharToMultiByte( GetACP(), 0, path_wc, -1, path, MAX_FOPATH, nullptr, nullptr ) == 0 )
         {
             WriteLogF( _FUNC_, " - Code page conversion fail.\n" );
             return false;
@@ -683,11 +683,11 @@ bool ZipFile::Init( const char* fname )
         };
         ffunc.zerror_file = [] ( voidpf opaque, voidpf stream )->int
         {
-            if( stream == NULL )
+            if( stream == nullptr )
                 return 1;
             return 0;
         };
-        ffunc.opaque = NULL;
+        ffunc.opaque = nullptr;
 
         zipHandle = unzOpen2( fname, &ffunc );
         if( !zipHandle )
@@ -711,7 +711,7 @@ ZipFile::~ZipFile()
     if( zipHandle )
     {
         unzClose( zipHandle );
-        zipHandle = NULL;
+        zipHandle = nullptr;
     }
 }
 
@@ -729,7 +729,7 @@ bool ZipFile::ReadTree()
     {
         if( unzGetFilePos( zipHandle, &pos ) != UNZ_OK )
             return false;
-        if( unzGetCurrentFileInfo( zipHandle, &info, name, MAX_FOPATH, NULL, 0, NULL, 0 ) != UNZ_OK )
+        if( unzGetCurrentFileInfo( zipHandle, &info, name, MAX_FOPATH, nullptr, 0, nullptr, 0 ) != UNZ_OK )
             return false;
 
         if( !( info.external_fa & 0x10 ) )   // Not folder
@@ -764,32 +764,32 @@ bool ZipFile::IsFilePresent( const char* path, uint& size, uint64& write_time )
 uchar* ZipFile::OpenFile( const char* path, uint& size, uint64& write_time )
 {
     if( !zipHandle )
-        return NULL;
+        return nullptr;
 
     auto it = filesTree.find( path );
     if( it == filesTree.end() )
-        return NULL;
+        return nullptr;
 
     ZipFileInfo& info = it->second;
 
     if( unzGoToFilePos( zipHandle, &info.Pos ) != UNZ_OK )
-        return NULL;
+        return nullptr;
 
     uchar* buf = new uchar[ info.UncompressedSize + 1 ];
     if( !buf )
-        return NULL;
+        return nullptr;
 
     if( unzOpenCurrentFile( zipHandle ) != UNZ_OK )
     {
         delete[] buf;
-        return NULL;
+        return nullptr;
     }
 
     int read = unzReadCurrentFile( zipHandle, buf, info.UncompressedSize );
     if( unzCloseCurrentFile( zipHandle ) != UNZ_OK || read != info.UncompressedSize )
     {
         delete[] buf;
-        return NULL;
+        return nullptr;
     }
 
     write_time = writeTime;

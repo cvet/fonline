@@ -8,11 +8,11 @@
 #endif
 
 Mutex                LogLocker;
-void*                LogFileHandle = NULL;
+void*                LogFileHandle = nullptr;
 vector< LogFuncPtr > LogFunctions;
 bool                 LogFunctionsInProcess = false;
-void*                LogTextBox = NULL;
-string*              LogBufferStr = NULL;
+void*                LogTextBox = nullptr;
+string*              LogBufferStr = nullptr;
 bool                 ToDebugOutput = false;
 bool                 LoggingWithTime = false;
 bool                 LoggingWithThread = false;
@@ -25,7 +25,7 @@ void LogToFile( const char* fname )
 
     if( LogFileHandle )
         FileClose( LogFileHandle );
-    LogFileHandle = NULL;
+    LogFileHandle = nullptr;
 
     if( fname && fname[ 0 ] )
         LogFileHandle = FileOpen( fname, true, true );
@@ -79,9 +79,9 @@ void LogFinish()
 {
     SCOPE_LOCK( LogLocker );
 
-    LogToFile( NULL );
-    LogToFunc( NULL, false );
-    LogToTextBox( NULL );
+    LogToFile( nullptr );
+    LogToFunc( nullptr, false );
+    LogToTextBox( nullptr );
     LogToBuffer( false );
     LogToDebugOutput( false );
 }
@@ -90,7 +90,7 @@ void WriteLog( const char* frmt, ... )
 {
     va_list list;
     va_start( list, frmt );
-    WriteLogInternal( NULL, frmt, list );
+    WriteLogInternal( nullptr, frmt, list );
     va_end( list );
 }
 

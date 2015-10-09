@@ -110,7 +110,7 @@ const char* MemBlockNames[ MAX_MEM_NODES ] =
     "Angel Script ",
 };
 
-static Mutex* MemLocker = NULL;
+static Mutex* MemLocker = nullptr;
 
 void Debugger::Memory( int block, int value )
 {
@@ -435,21 +435,21 @@ template< class T >
 class Patch
 {
 public:
-    Patch< T >(): Call( NULL ), PatchFunc( NULL ) {}
+    Patch< T >(): Call( nullptr ), PatchFunc( nullptr ) {}
     ~Patch< T >() { Uninstall(); }
     bool Install( void* orig, void* patch )
     {
         if( orig && patch )
             Call = CodeHooker.createHook( (T) orig, (T) patch );
         PatchFunc = (T) patch;
-        return Call != NULL;
+        return Call != nullptr;
     }
     void Uninstall()
     {
         if( PatchFunc )
             CodeHooker.removeHook( PatchFunc );
-        PatchFunc = NULL;
-        Call = NULL;
+        PatchFunc = nullptr;
+        Call = nullptr;
     }
     T Call;
     T PatchFunc;
@@ -595,7 +595,7 @@ void* malloc_hook( size_t size, const void* caller )
 {
     SCOPE_LOCK( HookLocker );
 
-    __malloc_hook = NULL;
+    __malloc_hook = nullptr;
     void* ptr = malloc( size );
     if( MemoryTrace )
         ALLOCATE_PTR( ptr, size, caller );
@@ -607,7 +607,7 @@ void* realloc_hook( void* ptr, size_t size, const void* caller )
 {
     SCOPE_LOCK( HookLocker );
 
-    __realloc_hook = NULL;
+    __realloc_hook = nullptr;
     if( MemoryTrace )
         DEALLOCATE_PTR( ptr );
     ptr = realloc( ptr, size );
@@ -621,7 +621,7 @@ void free_hook( void* ptr, const void* caller )
 {
     SCOPE_LOCK( HookLocker );
 
-    __free_hook = NULL;
+    __free_hook = nullptr;
     free( ptr );
     if( MemoryTrace )
         DEALLOCATE_PTR( ptr );
@@ -635,7 +635,7 @@ void Debugger::StartTraceMemory()
     #ifdef FO_WINDOWS
     // Stack symbols unnaming
     ProcessHandle = OpenProcess( PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId() );
-    SymInitialize( ProcessHandle, NULL, TRUE );
+    SymInitialize( ProcessHandle, nullptr, TRUE );
     SymSetOptions( SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS );
 
     // Allocators

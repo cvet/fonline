@@ -54,8 +54,8 @@ public:
     AnyFrames* GetItemAnim( hash name_hash )  { return GetAnim( name_hash, RES_ATLAS_DYNAMIC ); }
 
     AnyFrames*   GetCrit2dAnim( uint crtype, uint anim1, uint anim2, int dir );
-    Animation3d* GetCrit3dAnim( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = NULL );
-    uint         GetCritSprId( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = NULL );
+    Animation3d* GetCrit3dAnim( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = nullptr );
+    uint         GetCritSprId( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = nullptr );
 
     AnyFrames* GetRandomSplash();
 

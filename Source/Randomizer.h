@@ -50,7 +50,7 @@ public:
 
     void Generate()
     {
-        Generate( (unsigned int) time( NULL ) );
+        Generate( (unsigned int) time( nullptr ) );
     }
 
     void Generate( unsigned int seed )

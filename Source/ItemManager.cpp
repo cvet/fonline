@@ -171,7 +171,7 @@ bool ItemManager::LoadProtos()
 ProtoItem* ItemManager::GetProtoItem( hash pid )
 {
     auto it = allProtos.find( pid );
-    return it != allProtos.end() ? it->second : NULL;
+    return it != allProtos.end() ? it->second : nullptr;
 }
 
 ProtoItemMap& ItemManager::GetAllProtos()
@@ -275,7 +275,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
-        return NULL;
+        return nullptr;
     }
 
     Item* item = new Item( 0, proto );
@@ -299,7 +299,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
         if( item->IsDestroyed )
         {
             WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization.\n", Str::GetName( pid ) );
-            return NULL;
+            return nullptr;
         }
     }
     return item;
@@ -382,21 +382,21 @@ Item* ItemManager::SplitItem( Item* item, uint count )
     if( !item->IsStackable() )
     {
         WriteLogF( _FUNC_, " - Splitted item '%s' is not stackable, id %u.\n", item->GetName(), item->GetId() );
-        return NULL;
+        return nullptr;
     }
 
     uint item_count = item->GetCount();
     if( !count || count >= item_count )
     {
         WriteLogF( _FUNC_, " - Invalid item '%s' count, id %u, count %u, split count %u.\n", item->GetName(), item->GetId(), item_count, count );
-        return NULL;
+        return nullptr;
     }
 
     Item* new_item = CreateItem( item->GetProtoId() ); // Ignore init script
     if( !new_item )
     {
         WriteLogF( _FUNC_, " - Create item '%s' fail, count %u.\n", item->GetName(), count );
-        return NULL;
+        return nullptr;
     }
 
     item->ChangeCount( -(int) count );
@@ -508,10 +508,10 @@ void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id
 Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stack_id )
 {
     if( !cont || !cont->IsContainer() )
-        return NULL;
+        return nullptr;
 
     Item* item = cont->ContGetItemByPid( pid, stack_id );
-    Item* result = NULL;
+    Item* result = nullptr;
 
     if( item )
     {
@@ -569,10 +569,10 @@ Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stac
 Item* ItemManager::AddItemCritter( Critter* cr, hash pid, uint count )
 {
     if( !count )
-        return NULL;
+        return nullptr;
 
     Item* item = cr->GetItemByPid( pid );
-    Item* result = NULL;
+    Item* result = nullptr;
 
     if( item )
     {
@@ -684,7 +684,7 @@ bool ItemManager::SetItemCritter( Critter* cr, hash pid, uint count )
     if( cur_count > count )
         return SubItemCritter( cr, pid, cur_count - count );
     else if( cur_count < count )
-        return AddItemCritter( cr, pid, count - cur_count ) != NULL;
+        return AddItemCritter( cr, pid, count - cur_count ) != nullptr;
     return true;
 }
 
@@ -890,7 +890,7 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     {
         RadioSendTextEx( channels[ i ],
                          radios[ i ]->GetRadioBroadcastSend(), cr->GetMapId(), cr->Data.WorldX, cr->Data.WorldY,
-                         text, text_len, cr->IntellectCacheValue, unsafe_text, text_msg, num_str, NULL );
+                         text, text_len, cr->IntellectCacheValue, unsafe_text, text_msg, num_str, nullptr );
     }
 }
 

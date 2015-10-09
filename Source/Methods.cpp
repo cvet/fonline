@@ -6,14 +6,14 @@
 Method::Method()
 {
     callType = (CallType) 0;
-    registrator = NULL;
+    registrator = nullptr;
     regIndex = 0;
     callbackBindId = 0;
 }
 
 void Method::Wrap( asIScriptGeneric* gen )
 {
-    Method*  self = NULL;    // gen->GetObjForThiscall();
+    Method*  self = nullptr;    // gen->GetObjForThiscall();
     Entity*  entity = (Entity*) gen->GetObject();
     Methods* methods = &entity->Meths;
 
@@ -106,7 +106,7 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
     if( registrationFinished )
     {
         WriteLogF( _FUNC_, " - Registration of class properties is finished.\n" );
-        return NULL;
+        return nullptr;
     }
 
     // Get engine
@@ -161,7 +161,7 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
         if( result < 0 )
         {
             WriteLogF( _FUNC_, " - Register entity method '%s' fail, error %d.\n", decl, result );
-            return NULL;
+            return nullptr;
         }
 
         asIScriptFunction* func = engine->GetFunctionById( result );
@@ -203,5 +203,5 @@ Method* MethodRegistrator::Get( uint reg_index )
 {
     if( reg_index < (uint) registeredMethods.size() )
         return registeredMethods[ reg_index ];
-    return NULL;
+    return nullptr;
 }

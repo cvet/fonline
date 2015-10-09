@@ -78,7 +78,7 @@ void Field::EraseTile( uint index, bool is_roof )
     AnyFrames*& stile = SimplyTile[ is_roof ? 1 : 0 ];
     if( index == 0 && stile )
     {
-        stile = NULL;
+        stile = nullptr;
         if( tiles_vec && !tiles_vec->front().OffsX && !tiles_vec->front().OffsY && !tiles_vec->front().Layer )
         {
             stile = tiles_vec->front().Anim;
@@ -141,7 +141,7 @@ void Field::ProcessCache()
     Flags.IsWallTransp = false;
     Flags.IsScen = false;
     Flags.IsExitGrid = false;
-    Flags.IsNotPassed = ( Crit != NULL || Flags.IsMultihex );
+    Flags.IsNotPassed = ( Crit != nullptr || Flags.IsMultihex );
     Flags.IsNotRaked = false;
     Flags.IsNoLight = false;
     Flags.ScrollBlock = false;
@@ -186,7 +186,7 @@ void Field::ProcessCache()
 
 HexManager::HexManager()
 {
-    viewField = NULL;
+    viewField = nullptr;
     isShowHex = false;
     roofSkip = 0;
     rainCapacity = 0;
@@ -196,19 +196,19 @@ HexManager::HexManager()
     critterContour = 0;
     maxHexX = 0;
     maxHexY = 0;
-    hexField = NULL;
-    hexToDraw = NULL;
-    hexTrack = NULL;
-    hexLight = NULL;
+    hexField = nullptr;
+    hexToDraw = nullptr;
+    hexTrack = nullptr;
+    hexLight = nullptr;
     hTop = 0;
     hBottom = 0;
     wLeft = 0;
     wRight = 0;
     isShowCursor = false;
     drawCursorX = 0;
-    cursorPrePic = NULL;
-    cursorPostPic = NULL;
-    cursorXPic = NULL;
+    cursorPrePic = nullptr;
+    cursorPostPic = nullptr;
+    cursorXPic = nullptr;
     cursorX = 0;
     cursorY = 0;
     memzero( (void*) &AutoScroll, sizeof( AutoScroll ) );
@@ -242,12 +242,12 @@ HexManager::HexManager()
     dayColor[ 11 ] = 29;
     picRainFallName = "art/misc/rain_fall.fofrm";
     picRainDropName = "art/misc/rain_drop.fofrm";
-    picRainFall = NULL;
-    picRainDrop = NULL;
-    picTrack1 = picTrack2 = picHexMask = NULL;
-    rtMap = rtTiles = rtRoof = rtLight = rtFog = NULL;
+    picRainFall = nullptr;
+    picRainDrop = nullptr;
+    picTrack1 = picTrack2 = picHexMask = nullptr;
+    rtMap = rtTiles = rtRoof = rtLight = rtFog = nullptr;
     rtScreenOX = rtScreenOY = 0;
-    fogOffsX = fogOffsY = NULL;
+    fogOffsX = fogOffsY = nullptr;
     fogLastOffsX = fogLastOffsY = 0;
     fogForceRerender = false;
 }
@@ -283,7 +283,7 @@ bool HexManager::Init()
 
     #ifdef FONLINE_MAPPER
     ClearSelTiles();
-    CurProtoMap = NULL;
+    CurProtoMap = nullptr;
     #endif
 
     WriteLog( "Hex field initialization complete.\n" );
@@ -331,7 +331,7 @@ void HexManager::ReloadSprites()
     picHexMask = SprMngr.LoadAnimation( ( curDataPrefix + "hex_mask.png" ).c_str(), PT_DATA );
 
     // Rain
-    SetRainAnimation( NULL, NULL );
+    SetRainAnimation( nullptr, nullptr );
 }
 
 void HexManager::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
@@ -552,7 +552,7 @@ void HexManager::PushItem( ItemHex* item )
 ItemHex* HexManager::GetItem( ushort hx, ushort hy, hash pid )
 {
     if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY || !GetField( hx, hy ).Items )
-        return NULL;
+        return nullptr;
 
     for( auto it = GetField( hx, hy ).Items->begin(), end = GetField( hx, hy ).Items->end(); it != end; ++it )
     {
@@ -560,13 +560,13 @@ ItemHex* HexManager::GetItem( ushort hx, ushort hy, hash pid )
         if( item->GetProtoId() == pid )
             return item;
     }
-    return NULL;
+    return nullptr;
 }
 
 ItemHex* HexManager::GetItemById( ushort hx, ushort hy, uint id )
 {
     if( !IsMapLoaded() || hx >= maxHexX || hy >= maxHexY || !GetField( hx, hy ).Items )
-        return NULL;
+        return nullptr;
 
     for( auto it = GetField( hx, hy ).Items->begin(), end = GetField( hx, hy ).Items->end(); it != end; ++it )
     {
@@ -574,7 +574,7 @@ ItemHex* HexManager::GetItemById( ushort hx, ushort hy, uint id )
         if( item->GetId() == id )
             return item;
     }
-    return NULL;
+    return nullptr;
 }
 
 ItemHex* HexManager::GetItemById( uint id )
@@ -585,7 +585,7 @@ ItemHex* HexManager::GetItemById( uint id )
         if( item->GetId() == id )
             return item;
     }
-    return NULL;
+    return nullptr;
 }
 
 void HexManager::GetItems( ushort hx, ushort hy, ItemHexVec& items )
@@ -655,7 +655,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
     }
 
     Field&   f = GetField( from_hx, from_hy );
-    ItemHex* item = new ItemHex( 0, proto, NULL, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
+    ItemHex* item = new ItemHex( 0, proto, nullptr, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
 
     float    sx = 0;
     float    sy = 0;
@@ -664,7 +664,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
     if( from_hx != to_hx || from_hy != to_hy )
     {
         item->EffSteps.push_back( PAIR( from_hx, from_hy ) );
-        TraceBullet( from_hx, from_hy, to_hx, to_hy, 0, 0.0f, NULL, false, NULL, 0, NULL, NULL, &item->EffSteps, false );
+        TraceBullet( from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, false, nullptr, 0, nullptr, nullptr, &item->EffSteps, false );
         int x, y;
         GetHexInterval( from_hx, from_hy, to_hx, to_hy, x, y );
         y += Random( 5, 25 );    // Center of body
@@ -743,11 +743,11 @@ void HexManager::SetRainAnimation( const char* fall_anim_name, const char* drop_
         picRainDropName = drop_anim_name;
 
     if( picRainFall == SpriteManager::DummyAnimation )
-        picRainFall = NULL;
+        picRainFall = nullptr;
     else
         AnyFrames::Destroy( picRainFall );
     if( picRainDrop == SpriteManager::DummyAnimation )
-        picRainDrop = NULL;
+        picRainDrop = nullptr;
     else
         AnyFrames::Destroy( picRainDrop );
 
@@ -915,7 +915,7 @@ void HexManager::RebuildMap( int rx, int ry )
                 uint        spr_id = ( GetHexTrack( nx, ny ) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId() );
                 SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
                 mainTree.AddSprite( DRAW_ORDER_TRACK, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY + ( si ? si->Height / 2 : 0 ), spr_id,
-                                    NULL, NULL, NULL, NULL, NULL, NULL );
+                                    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
             }
 
             // Hex Lines
@@ -936,7 +936,7 @@ void HexManager::RebuildMap( int rx, int ry )
                 uint        spr_id = ( thru ? picHex[ 1 ]->GetCurSprId() : picHex[ 0 ]->GetCurSprId() );
                 SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
                 mainTree.AddSprite( DRAW_ORDER_HEX_GRID, nx, ny, 0, f.ScrX + ( si ? si->Width / 2 : 0 ), f.ScrY + ( si ? si->Height : 0 ), spr_id,
-                                    NULL, NULL, NULL, NULL, NULL, NULL );
+                                    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
             }
 
             // Rain
@@ -951,14 +951,14 @@ void HexManager::RebuildMap( int rx, int ry )
                     if( rofy & 1 )
                         rofy--;
 
-                    Drop* new_drop = NULL;
+                    Drop* new_drop = nullptr;
                     if( !GetField( rofx, rofy ).GetTilesCount( true ) )
                     {
                         new_drop = new Drop( picRainFall->GetCurSprId(), Random( -10, 10 ), -Random( 0, 200 ), 0 );
                         rainData.push_back( new_drop );
 
                         mainTree.AddSprite( DRAW_ORDER_RAIN, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &new_drop->CurSprId,
-                                            &new_drop->OffsX, &new_drop->OffsY, NULL, &Effect::Rain, NULL ).SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
+                                            &new_drop->OffsX, &new_drop->OffsY, nullptr, &Effect::Rain, nullptr ).SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
                     }
                     else if( !roofSkip || roofSkip != GetField( rofx, rofy ).RoofNum )
                     {
@@ -966,7 +966,7 @@ void HexManager::RebuildMap( int rx, int ry )
                         rainData.push_back( new_drop );
 
                         roofRainTree.AddSprite( DRAW_ORDER_RAIN, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &new_drop->CurSprId,
-                                                &new_drop->OffsX, &new_drop->OffsY, NULL, &Effect::Rain, NULL ).SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
+                                                &new_drop->OffsX, &new_drop->OffsY, nullptr, &Effect::Rain, nullptr ).SetLight( CORNER_EAST_WEST, hexLight, maxHexX, maxHexY );
                     }
                     if( new_drop )
                     {
@@ -1450,8 +1450,8 @@ void HexManager::ParseLightTriangleFan( LightSource& ls )
 
             if( hx_ != last_hx || hy_ != last_hy )
             {
-                short* ox = NULL;
-                short* oy = NULL;
+                short* ox = nullptr;
+                short* oy = nullptr;
                 if( (int) hx_ != hx_far || (int) hy_ != hy_far )
                 {
                     int a = alpha - DistGame( hx, hy, hx_, hy_ ) * alpha / dist;
@@ -1633,9 +1633,9 @@ void HexManager::RebuildTiles()
                     Sprites&           tree = ( tile.Anim->GetCnt() == 1 && rtTiles ? tilesTree : tilesAnimatedTree );
                     #ifdef FONLINE_MAPPER
                     ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
-                    tree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : NULL, &Effect::Tile, NULL );
+                    tree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : nullptr, &Effect::Tile, nullptr );
                     #else
-                    tree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, NULL, &Effect::Tile, NULL );
+                    tree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, nullptr, &Effect::Tile, nullptr );
                     #endif
                 }
             }
@@ -1699,9 +1699,9 @@ void HexManager::RebuildRoof()
                         Sprites&           tree = ( roof.Anim->GetCnt() == 1 && rtRoof ? roofTree : roofAnimatedTree );
                         #ifdef FONLINE_MAPPER
                         ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
-                        tree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, &Effect::Roof, NULL ).SetEgg( EGG_ALWAYS );
+                        tree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, &Effect::Roof, nullptr ).SetEgg( EGG_ALWAYS );
                         #else
-                        tree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, NULL, NULL, NULL, &GameOpt.RoofAlpha, &Effect::Roof, NULL ).SetEgg( EGG_ALWAYS );
+                        tree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, &GameOpt.RoofAlpha, &Effect::Roof, nullptr ).SetEgg( EGG_ALWAYS );
                         #endif
                     }
                 }
@@ -1835,8 +1835,8 @@ void HexManager::SetWeather( int time, uchar rain )
 
 void HexManager::ResizeField( ushort w, ushort h )
 {
-    GameOpt.ClientMap = NULL;
-    GameOpt.ClientMapLight = NULL;
+    GameOpt.ClientMap = nullptr;
+    GameOpt.ClientMapLight = nullptr;
     GameOpt.ClientMapWidth = 0;
     GameOpt.ClientMapHeight = 0;
 
@@ -2533,7 +2533,7 @@ void HexManager::RemoveCritter( CritterCl* cr )
     Field& f = GetField( hx, hy );
     if( f.Crit == cr )
     {
-        f.Crit = NULL;
+        f.Crit = nullptr;
         SetMultihex( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), false );
     }
     else
@@ -2551,17 +2551,17 @@ void HexManager::RemoveCritter( CritterCl* cr )
 CritterCl* HexManager::GetCritter( uint crid )
 {
     if( !crid )
-        return NULL;
+        return nullptr;
     auto it = allCritters.find( crid );
-    return it != allCritters.end() ? it->second : NULL;
+    return it != allCritters.end() ? it->second : nullptr;
 }
 
 CritterCl* HexManager::GetChosen()
 {
     if( !chosenId )
-        return NULL;
+        return nullptr;
     auto it = allCritters.find( chosenId );
-    return it != allCritters.end() ? it->second : NULL;
+    return it != allCritters.end() ? it->second : nullptr;
 }
 
 void HexManager::AddCritter( CritterCl* cr )
@@ -2675,12 +2675,12 @@ bool HexManager::TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bo
     // Not dead transit
     Field& f = GetField( hx, hy );
 
-    if( f.Crit != NULL ) // Hex busy
+    if( f.Crit != nullptr ) // Hex busy
     {
         // Try move critter on busy hex in previous position
         if( force && f.Crit->IsLastHexes() )
             TransitCritter( f.Crit, f.Crit->PopLastHexX(), f.Crit->PopLastHexY(), false, true );
-        if( f.Crit != NULL )
+        if( f.Crit != nullptr )
         {
             // Try move in next game cycle
             return false;
@@ -2796,7 +2796,7 @@ bool HexManager::GetHexPixel( int x, int y, ushort& hx, ushort& hy )
 ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
 {
     if( !IsMapLoaded() )
-        return NULL;
+        return nullptr;
 
     ItemHexVec pix_item;
     ItemHexVec pix_item_egg;
@@ -2868,7 +2868,7 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
     if( pix_item.empty() )
     {
         if( pix_item_egg.empty() )
-            return NULL;
+            return nullptr;
         if( pix_item_egg.size() > 1 )
         {
             std::sort( pix_item_egg.begin(), pix_item_egg.end(), Sorter::ByTreeIndex );
@@ -2891,7 +2891,7 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
 CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chosen )
 {
     if( !IsMapLoaded() || !GameOpt.ShowCrit )
-        return NULL;
+        return nullptr;
 
     CritVec crits;
     for( auto it = allCritters.begin(); it != allCritters.end(); it++ )
@@ -2911,7 +2911,7 @@ CritterCl* HexManager::GetCritterPixel( int x, int y, bool ignore_dead_and_chose
     }
 
     if( crits.empty() )
-        return NULL;
+        return nullptr;
     struct Sorter
     {
         static bool ByTreeIndex( CritterCl* cr1, CritterCl* cr2 ) { return cr1->SprDraw->TreeIndex > cr2->SprDraw->TreeIndex; } };
@@ -2929,13 +2929,13 @@ void HexManager::GetSmthPixel( int pix_x, int pix_y, ItemHex*& item, CritterCl*&
     if( cr && item )
     {
         if( item->IsTransparent() || item_egg )
-            item = NULL;
+            item = nullptr;
         else
         {
             if( item->SprDraw->TreeIndex > cr->SprDraw->TreeIndex )
-                cr = NULL;
+                cr = nullptr;
             else
-                item = NULL;
+                item = nullptr;
         }
     }
 }
@@ -2945,7 +2945,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
     // Static data
     #define GRID( x, y )    grid[ ( ( MAX_FIND_PATH + 1 ) + ( y ) - grid_oy ) * ( MAX_FIND_PATH * 2 + 2 ) + ( ( MAX_FIND_PATH + 1 ) + ( x ) - grid_ox ) ]
     static int           grid_ox = 0, grid_oy = 0;
-    static short*        grid = NULL;
+    static short*        grid = nullptr;
     static UShortPairVec coords;
 
     // Allocate temporary grid
@@ -3490,9 +3490,9 @@ bool HexManager::TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint d
         Field& f = GetField( cx, cy );
         if( check_passed && f.Flags.IsNotRaked )
             break;
-        if( critters != NULL )
+        if( critters != nullptr )
             GetCritters( cx, cy, *critters, find_type );
-        if( find_cr != NULL && f.Crit )
+        if( find_cr != nullptr && f.Crit )
         {
             CritterCl* cr = f.Crit;
             if( cr && cr == find_cr )
@@ -4075,7 +4075,7 @@ bool HexManager::ParseScenery( SceneryCl& scen )
     static uint scen_id = 0;
     scen_id--;
 
-    ItemHex* scenery = new ItemHex( scen_id, proto_item, NULL, hx, hy,
+    ItemHex* scenery = new ItemHex( scen_id, proto_item, nullptr, hx, hy,
                                     scen.OffsetX, scen.OffsetY, &GetField( hx, hy ).ScrX, &GetField( hx, hy ).ScrY,
                                     scen.SpriteCut );
     scenery->ScenFlags = scen.Flags;
@@ -4139,7 +4139,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     WriteLog( "Create map from prototype.\n" );
 
     UnloadMap();
-    CurProtoMap = NULL;
+    CurProtoMap = nullptr;
 
     if( curDataPrefix != GameOpt.MapDataPrefix->c_std_str() )
         ReloadSprites();
@@ -4225,7 +4225,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 continue;
 
             Field&   f = GetField( o->MapX, o->MapY );
-            ItemHex* item = new ItemHex( --any_id, proto, NULL, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
+            ItemHex* item = new ItemHex( --any_id, proto, nullptr, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
             PushItem( item );
             AffectItem( o, item );
             o->RunTime.MapObjId = item->Id;
@@ -4241,9 +4241,9 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 continue;
             }
 
-            ProtoItem* pitem_main = NULL;
-            ProtoItem* pitem_ext = NULL;
-            ProtoItem* pitem_armor = NULL;
+            ProtoItem* pitem_main = nullptr;
+            ProtoItem* pitem_ext = nullptr;
+            ProtoItem* pitem_armor = nullptr;
             for( uint k = 0, l = (uint) pmap.MObjects.size(); k < l; k++ )
             {
                 MapObject* child = pmap.MObjects[ k ];

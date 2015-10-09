@@ -265,7 +265,7 @@ void FOServer::ProcessAI( Npc* npc )
                 hy = plane->Move.HexY;
                 cut = plane->Move.Cut;
                 trace = 0;
-                trace_cr = NULL;
+                trace_cr = nullptr;
             }
 
             PathFindData pfd;
@@ -298,14 +298,14 @@ void FOServer::ProcessAI( Npc* npc )
             if( pfd.GagCritter )
             {
                 plane->IsMove = false;
-                npc->NextPlane( REASON_GAG_CRITTER, pfd.GagCritter, NULL );
+                npc->NextPlane( REASON_GAG_CRITTER, pfd.GagCritter, nullptr );
                 return;
             }
 
             if( pfd.GagItem )
             {
                 plane->IsMove = false;
-                npc->NextPlane( REASON_GAG_ITEM, NULL, pfd.GagItem );
+                npc->NextPlane( REASON_GAG_ITEM, nullptr, pfd.GagItem );
                 return;
             }
 
@@ -480,7 +480,7 @@ void FOServer::ProcessAI( Npc* npc )
             /************************************************************************/
             // Get battle weapon
             int   use;
-            Item* weap = NULL;
+            Item* weap = nullptr;
             uint  r0 = targ->GetId(), r1 = 0, r2 = 0;
             if( !npc->RunPlane( REASON_ATTACK_WEAPON, r0, r1, r2 ) )
             {
@@ -641,7 +641,7 @@ void FOServer::ProcessAI( Npc* npc )
                     UShortPair last_passed;
                     trace.LastPassed = &last_passed;
                     trace.LastPassedSkipCritters = true;
-                    trace.FindCr = NULL;
+                    trace.FindCr = nullptr;
                     trace.Dist = best_dist;
 
                     bool  find_ok = false;
@@ -749,7 +749,7 @@ void FOServer::ProcessAI( Npc* npc )
             if( ( !plane->Attack.LastHexX && !plane->Attack.LastHexY ) || !CritType::IsCanWalk( npc->GetCrType() ) )
             {
                 Critter* targ_ = CrMngr.GetCritter( plane->Attack.TargId, true );
-                npc->NextPlane( REASON_TARGET_DISAPPEARED, targ_, NULL );
+                npc->NextPlane( REASON_TARGET_DISAPPEARED, targ_, nullptr );
                 break;
             }
 
@@ -807,7 +807,7 @@ void FOServer::ProcessAI( Npc* npc )
         bool   to_open = plane->Pick.ToOpen;
         bool   is_run = plane->Pick.IsRun;
 
-        Item*  item = map->GetItemHex( hx, hy, pid, NULL );         // Cheat
+        Item*  item = map->GetItemHex( hx, hy, pid, nullptr );         // Cheat
         if( !item || ( item->IsDoor() && ( to_open ? item->LockerIsOpen() : item->LockerIsClose() ) ) )
         {
             npc->NextPlane( REASON_SUCCESS );
@@ -983,7 +983,7 @@ bool FOServer::TransferAllNpc()
     for( auto it = critters_groups.begin(), end = critters_groups.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( !MapMngr.AddCrToMap( cr, NULL, cr->GetHexX(), cr->GetHexY(), 2 ) )
+        if( !MapMngr.AddCrToMap( cr, nullptr, cr->GetHexX(), cr->GetHexY(), 2 ) )
         {
             WriteLog( "Error parsing npc to global group, critter '%s', map id %u, map pid %u, hx %u, hy %u.\n", cr->GetInfo(), cr->GetMapId(), cr->Data.MapPid, cr->GetHexX(), cr->GetHexY() );
             errors++;
@@ -1066,8 +1066,8 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
         case DR_PROP_LOCATION:
         case DR_PROP_MAP:
         {
-            Entity*              entity = NULL;
-            PropertyRegistrator* prop_registrator = NULL;
+            Entity*              entity = nullptr;
+            PropertyRegistrator* prop_registrator = nullptr;
             if( demand.Type == DR_PROP_GLOBAL )
             {
                 entity = master;
@@ -1091,7 +1091,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             else if( demand.Type == DR_PROP_LOCATION )
             {
                 Map* map = MapMngr.GetMap( master->GetMapId(), false );
-                entity = ( map ? map->GetLocation( false ) : NULL );
+                entity = ( map ? map->GetLocation( false ) : nullptr );
                 prop_registrator = Location::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_MAP )
@@ -1112,7 +1112,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
 
                 ScriptDict* dict = (ScriptDict*) prop->GetValue< void* >( entity );
                 uint        slave_id = slave->GetId();
-                void*       pvalue = dict->GetDefault( &slave_id, NULL );
+                void*       pvalue = dict->GetDefault( &slave_id, nullptr );
                 dict->Release();
                 if( pvalue )
                 {
@@ -1287,8 +1287,8 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
         case DR_PROP_LOCATION:
         case DR_PROP_MAP:
         {
-            Entity*              entity = NULL;
-            PropertyRegistrator* prop_registrator = NULL;
+            Entity*              entity = nullptr;
+            PropertyRegistrator* prop_registrator = nullptr;
             if( result.Type == DR_PROP_GLOBAL )
             {
                 entity = master;
@@ -1312,7 +1312,7 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             else if( result.Type == DR_PROP_LOCATION )
             {
                 Map* map = MapMngr.GetMap( master->GetMapId(), false );
-                entity = ( map ? map->GetLocation( false ) : NULL );
+                entity = ( map ? map->GetLocation( false ) : nullptr );
                 prop_registrator = Location::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_MAP )
@@ -1326,7 +1326,7 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             uint        prop_index = (uint) index;
             Property*   prop = prop_registrator->Get( prop_index );
             int         val = 0;
-            ScriptDict* dict = NULL;
+            ScriptDict* dict = nullptr;
             if( result.Type == DR_PROP_CRITTER_DICT )
             {
                 if( !slave )
@@ -1334,7 +1334,7 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
 
                 dict = (ScriptDict*) prop->GetValue< void* >( master );
                 uint  slave_id = slave->GetId();
-                void* pvalue = dict->GetDefault( &slave_id, NULL );
+                void* pvalue = dict->GetDefault( &slave_id, nullptr );
                 if( pvalue )
                 {
                     int value_type_id = prop->GetASObjectType()->GetSubTypeId( 1 );
@@ -1490,8 +1490,8 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     if( cl->Talk.TalkType != TALK_NONE )
         cl->CloseTalk();
 
-    DialogPack* dialog_pack = NULL;
-    DialogsVec* dialogs = NULL;
+    DialogPack* dialog_pack = nullptr;
+    DialogsVec* dialogs = nullptr;
 
     // Talk with npc
     if( npc )
@@ -1582,7 +1582,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         }
 
         dialog_pack = DlgMngr.GetDialog( dlg_pack_id );
-        dialogs = ( dialog_pack ? &dialog_pack->Dialogs : NULL );
+        dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
         if( !dialogs || !dialogs->size() )
             return;
 
@@ -1608,7 +1608,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         }
 
         dialog_pack = DlgMngr.GetDialog( dlg_pack_id );
-        dialogs = ( dialog_pack ? &dialog_pack->Dialogs : NULL );
+        dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
         if( !dialogs || !dialogs->size() )
         {
             WriteLogF( _FUNC_, " - No dialogs, hx %u, hy %u, client '%s'.\n", hx, hy, cl->GetInfo() );
@@ -1745,9 +1745,9 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         cl->SetIsHide( false );
     cl->ProcessTalk( true );
 
-    Npc*        npc = NULL;
-    DialogPack* dialog_pack = NULL;
-    DialogsVec* dialogs = NULL;
+    Npc*        npc = nullptr;
+    DialogPack* dialog_pack = nullptr;
+    DialogsVec* dialogs = nullptr;
 
     if( is_npc )
     {
@@ -1776,7 +1776,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
 
         // Set dialogs
         dialog_pack = DlgMngr.GetDialog( cl->Talk.DialogPackId );
-        dialogs = dialog_pack ? &dialog_pack->Dialogs : NULL;
+        dialogs = dialog_pack ? &dialog_pack->Dialogs : nullptr;
         if( !dialogs || !dialogs->size() )
         {
             cl->CloseTalk();
@@ -1789,7 +1789,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
     {
         // Set dialogs
         dialog_pack = DlgMngr.GetDialog( id_npc_talk );
-        dialogs = dialog_pack ? &dialog_pack->Dialogs : NULL;
+        dialogs = dialog_pack ? &dialog_pack->Dialogs : nullptr;
         if( !dialogs || !dialogs->size() )
         {
             Map* map = MapMngr.GetMap( cl->GetMapId() );

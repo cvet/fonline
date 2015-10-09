@@ -51,7 +51,7 @@ public:
     {
         if( isAlloc )
             delete[] data;
-        data = NULL;
+        data = nullptr;
     }
 
 private:
@@ -129,7 +129,7 @@ public:
     {
         if( isAlloc )
             delete[] data;
-        data = NULL;
+        data = nullptr;
     }
 
 private:

@@ -60,7 +60,7 @@ char* Str::Duplicate( const char* str )
     uint  len = Length( str );
     char* dup = new char[ len + 1 ];
     if( !dup )
-        return NULL;
+        return nullptr;
     if( len )
         memcpy( dup, str, len );
     dup[ len ] = 0;
@@ -190,7 +190,7 @@ void Str::Upper( char* str )
 uint Str::UpperUTF8( uint ucs )
 {
     // Taked from FLTK
-    static unsigned short* table = NULL;
+    static unsigned short* table = nullptr;
     if( !table )
     {
         table = (unsigned short*) malloc( sizeof( unsigned short ) * 0x10000 );
@@ -236,7 +236,7 @@ const char* Str::Substring( const char* str, const char* sub_str )
 char* Str::LastSubstring( char* str, const char* sub_str )
 {
     uint  len = Length( sub_str );
-    char* last = NULL;
+    char* last = nullptr;
     while( true )
     {
         str = strstr( str, sub_str );
@@ -251,7 +251,7 @@ char* Str::LastSubstring( char* str, const char* sub_str )
 const char* Str::LastSubstring( const char* str, const char* sub_str )
 {
     uint        len = Length( sub_str );
-    const char* last = NULL;
+    const char* last = nullptr;
     while( true )
     {
         str = strstr( str, sub_str );
@@ -780,26 +780,26 @@ const char* Str::UItoA( uint dw )
 int Str::AtoI( const char* str )
 {
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return (int) strtol( str + 2, NULL, 16 );
+        return (int) strtol( str + 2, nullptr, 16 );
     return atoi( str );
 }
 
 int64 Str::AtoI64( const char* str )
 {
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return (int64) strtol( str + 2, NULL, 16 );
+        return (int64) strtol( str + 2, nullptr, 16 );
     #ifdef FO_WINDOWS
     return _atoi64( str );
     #else
-    return strtoll( str, NULL, 10 );
+    return strtoll( str, nullptr, 10 );
     #endif
 }
 
 uint Str::AtoUI( const char* str )
 {
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return (uint) strtoul( str + 2, NULL, 16 );
-    return (uint) strtoul( str, NULL, 10 );
+        return (uint) strtoul( str + 2, nullptr, 16 );
+    return (uint) strtoul( str, nullptr, 10 );
 }
 
 void Str::HexToStr( uchar hex, char* str )

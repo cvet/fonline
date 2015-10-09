@@ -125,12 +125,12 @@ public:
     void OnResolutionChanged();
 
     // Render targets
-    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect = NULL, RenderTarget* rt_refresh = NULL );
+    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect = nullptr, RenderTarget* rt_refresh = nullptr );
     void          CleanRenderTarget( RenderTarget* rt );
     void          DeleteRenderTarget( RenderTarget*& rt );
     void          PushRenderTarget( RenderTarget* rt );
     void          PopRenderTarget();
-    void          DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from = NULL, const Rect* region_to = NULL );
+    void          DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from = nullptr, const Rect* region_to = nullptr );
     uint          GetRenderTargetPixel( RenderTarget* rt, int x, int y );
     void          ClearCurrentRenderTarget( uint color );
     void          ClearCurrentRenderTargetDS( bool depth, bool stencil );
@@ -213,7 +213,7 @@ public:
     bool DrawSpriteSizeExt( uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color );
     bool DrawSpritePattern( uint id, int x, int y, int w, int h, int spr_width = 0, int spr_height = 0, uint color = 0 );
     bool DrawSprites( Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0 );
-    bool DrawPoints( PointVec& points, int prim, float* zoom = NULL, PointF* offset = NULL, Effect* effect = NULL );
+    bool DrawPoints( PointVec& points, int prim, float* zoom = nullptr, PointF* offset = nullptr, Effect* effect = nullptr );
     bool Draw3d( int x, int y, Animation3d* anim3d, uint color );
 
     inline bool DrawSprite( AnyFrames* frames, int x, int y, uint color = 0 )

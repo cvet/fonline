@@ -729,7 +729,7 @@ bool CraftManager::AddCraft( CraftItem* craft, bool make_copy )
 CraftItem* CraftManager::GetCraft( uint num )
 {
     auto it = itemCraft.find( num );
-    return it != itemCraft.end() ? it->second : NULL;
+    return it != itemCraft.end() ? it->second : nullptr;
 }
 
 bool CraftManager::IsCraftExist( uint num )

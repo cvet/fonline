@@ -43,8 +43,8 @@ public:
 
     OggVorbis_File OggDescriptor;
 
-    Sound(): BaseBuf( NULL ), BaseBufSize( 0 ), ConvertedBuf( NULL ),
-             ConvertedBufSize( 0 ), ConvertedBufCur( 0 ), OutputBuf( NULL ),
+    Sound(): BaseBuf( nullptr ), BaseBufSize( 0 ), ConvertedBuf( nullptr ),
+             ConvertedBufSize( 0 ), ConvertedBufCur( 0 ), OutputBuf( nullptr ),
              OriginalFormat( 0 ), OriginalChannels( 0 ), OriginalRate( 0 ),
              IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),
              Streamable( false ), StreamType( WAV )
@@ -97,8 +97,8 @@ bool SoundManager::Init()
     desired.padding = 0;               // Necessary for some compile environments
     desired.size = 0;                  // Audio buffer size in bytes (calculated)
     desired.callback = AudioCallback;
-    desired.userdata = NULL;
-    DeviceID = SDL_OpenAudioDevice( NULL, 0, &desired, &SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE );
+    desired.userdata = nullptr;
+    DeviceID = SDL_OpenAudioDevice( nullptr, 0, &desired, &SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE );
     if( DeviceID < 2 )
     {
         WriteLog( "SDL Open audio device fail, error '%s'.\n", SDL_GetError() );
@@ -260,7 +260,7 @@ Sound* SoundManager::Load( const char* fname, int path_type )
     if( !sound )
     {
         WriteLogF( _FUNC_, " - Allocation error.\n" );
-        return NULL;
+        return nullptr;
     }
 
     if( !( ( Str::CompareCase( ext, ".wav" ) && LoadWAV( sound, fname_, path_type ) ) ||
@@ -268,7 +268,7 @@ Sound* SoundManager::Load( const char* fname, int path_type )
            ( Str::CompareCase( ext, ".ogg" ) && LoadOGG( sound, fname_, path_type ) ) ) )
     {
         delete sound;
-        return NULL;
+        return nullptr;
     }
 
     SDL_LockAudioDevice( DeviceID );
@@ -281,7 +281,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
 {
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
-        return NULL;
+        return nullptr;
 
     uint dw_buf = fm.GetLEUInt();
     if( dw_buf != MAKEUINT( 'R', 'I', 'F', 'F' ) )
@@ -382,7 +382,7 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
 {
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
-        return NULL;
+        return nullptr;
 
     int                     channels = 0;
     int                     freq = 0;
@@ -455,7 +455,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     if( !fm || !fm->LoadFile( fname, path_type ) )
     {
         SAFEDEL( fm );
-        return NULL;
+        return nullptr;
     }
 
     ov_callbacks callbacks;
@@ -464,7 +464,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     callbacks.close_func = &Ogg_close_func;
     callbacks.tell_func = &Ogg_tell_func;
 
-    int error = ov_open_callbacks( fm, &sound->OggDescriptor, NULL, 0, callbacks );
+    int error = ov_open_callbacks( fm, &sound->OggDescriptor, nullptr, 0, callbacks );
     if( error )
     {
         WriteLogF( _FUNC_, " - Open OGG file '%s' fail, error:\n", fname );
@@ -513,7 +513,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     while( true )
     {
         int portion = MIN( (uint) 4096, STREAMING_PORTION - decoded );
-        result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
+        result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, nullptr );
         if( result <= 0 )
             break;
         decoded += result;
@@ -564,7 +564,7 @@ bool SoundManager::StreamingOGG( Sound* sound )
     while( true )
     {
         int portion = MIN( (uint) 4096, STREAMING_PORTION - decoded );
-        result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, NULL );
+        result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, nullptr );
         if( result <= 0 )
             break;
         decoded += result;
@@ -628,7 +628,7 @@ bool SoundManager::PlaySound( const char* name )
     StrMap& names = ResMngr.GetSoundNames();
     auto    it = names.find( name_ );
     if( it != names.end() )
-        return Load( it->second.c_str(), PT_SND_SFX ) != NULL;
+        return Load( it->second.c_str(), PT_SND_SFX ) != nullptr;
 
     // Check random pattern 'NAME_X'
     uint count = 0;
@@ -636,7 +636,7 @@ bool SoundManager::PlaySound( const char* name )
     while( names.find( Str::Format( buf, "%s_%d", name_, count + 1 ) ) != names.end() )
         count++;
     if( count )
-        return Load( names.find( Str::Format( buf, "%s_%d", name_, Random( 1, count ) ) )->second.c_str(), PT_SND_SFX ) != NULL;
+        return Load( names.find( Str::Format( buf, "%s_%d", name_, Random( 1, count ) ) )->second.c_str(), PT_SND_SFX ) != nullptr;
 
     return false;
 }

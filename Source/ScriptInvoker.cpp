@@ -309,32 +309,32 @@ string ScriptInvoker::GetStatistics()
 uint ScriptInvoker::Global_DeferredCall( uint delay, asIScriptFunction* func )
 {
     #pragma MESSAGE( "Take Invoker from func." )
-    return Script::GetInvoker()->AddDeferredCall( delay, false, func, NULL, NULL );
+    return Script::GetInvoker()->AddDeferredCall( delay, false, func, nullptr, nullptr );
 }
 
 uint ScriptInvoker::Global_DeferredCallWithValue( uint delay, asIScriptFunction* func, int value )
 {
-    return Script::GetInvoker()->AddDeferredCall( delay, false, func, &value, NULL );
+    return Script::GetInvoker()->AddDeferredCall( delay, false, func, &value, nullptr );
 }
 
 uint ScriptInvoker::Global_DeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
 {
-    return Script::GetInvoker()->AddDeferredCall( delay, false, func, NULL, values );
+    return Script::GetInvoker()->AddDeferredCall( delay, false, func, nullptr, values );
 }
 
 uint ScriptInvoker::Global_SavedDeferredCall( uint delay, asIScriptFunction* func )
 {
-    return Script::GetInvoker()->AddDeferredCall( delay, true, func, NULL, NULL );
+    return Script::GetInvoker()->AddDeferredCall( delay, true, func, nullptr, nullptr );
 }
 
 uint ScriptInvoker::Global_SavedDeferredCallWithValue( uint delay, asIScriptFunction* func, int value )
 {
-    return Script::GetInvoker()->AddDeferredCall( delay, true, func, &value, NULL );
+    return Script::GetInvoker()->AddDeferredCall( delay, true, func, &value, nullptr );
 }
 
 uint ScriptInvoker::Global_SavedDeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
 {
-    return Script::GetInvoker()->AddDeferredCall( delay, true, func, NULL, values );
+    return Script::GetInvoker()->AddDeferredCall( delay, true, func, nullptr, values );
 }
 
 bool ScriptInvoker::Global_IsDeferredCallPending( uint id )

@@ -79,7 +79,7 @@ void ProtoMap::Clear()
     {
         MapObject* mobj = *it;
         #ifdef FONLINE_MAPPER
-        mobj->RunTime.FromMap = NULL;
+        mobj->RunTime.FromMap = nullptr;
         mobj->RunTime.MapObjId = 0;
         #endif
         SAFEREL( mobj );
@@ -310,7 +310,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         char       svalue[ MAX_FOTEXT ];
         int        ivalue;
         #ifndef FONLINE_MAPPER
-        Property*  cur_prop = NULL;
+        Property*  cur_prop = nullptr;
         #endif
         while( !istr.eof() && !istr.fail() )
         {
@@ -340,7 +340,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     // Shared
                     if( field == "ProtoId" )
                     {
-                        const char* proto_name = NULL;
+                        const char* proto_name = nullptr;
                         if( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY )
                             proto_name = ConvertProtoIdByInt( ivalue );
                         else if( mobj.MapObjType == MAP_OBJECT_CRITTER )
@@ -464,7 +464,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                         mobj.Props->push_back( Script::GetEnumValue( cur_prop->GetTypeName(), svalue, fail ) );
                                     else
                                         mobj.Props->push_back( ConvertParamValue( svalue, fail ) );
-                                    cur_prop = NULL;
+                                    cur_prop = nullptr;
                                 }
                                 else
                                 {
@@ -1617,7 +1617,7 @@ ProtoMap::MapEntire* ProtoMap::GetEntire( uint num, uint skip )
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 ProtoMap::MapEntire* ProtoMap::GetEntireRandom( uint num )
@@ -1630,13 +1630,13 @@ ProtoMap::MapEntire* ProtoMap::GetEntireRandom( uint num )
     }
 
     if( entires.empty() )
-        return NULL;
+        return nullptr;
     return entires[ Random( 0, (uint) entires.size() - 1 ) ];
 }
 
 ProtoMap::MapEntire* ProtoMap::GetEntireNear( uint num, ushort hx, ushort hy )
 {
-    MapEntire* near_entire = NULL;
+    MapEntire* near_entire = nullptr;
     uint       last_dist = 0;
     for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
     {
@@ -1656,7 +1656,7 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear( uint num, ushort hx, ushort hy )
 
 ProtoMap::MapEntire* ProtoMap::GetEntireNear( uint num, uint num_ext, ushort hx, ushort hy )
 {
-    MapEntire* near_entire = NULL;
+    MapEntire* near_entire = nullptr;
     uint       last_dist = 0;
     for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
     {
@@ -1692,7 +1692,7 @@ MapObject* ProtoMap::GetMapScenery( ushort hx, ushort hy, hash pid )
         if( ( !pid || mobj->ProtoId == pid ) && mobj->MapX == hx && mobj->MapY == hy )
             return mobj;
     }
-    return NULL;
+    return nullptr;
 }
 
 void ProtoMap::GetMapSceneriesHex( ushort hx, ushort hy, MapObjectPtrVec& mobjs )
@@ -1733,7 +1733,7 @@ MapObject* ProtoMap::GetMapGrid( ushort hx, ushort hy )
         if( mobj->MapX == hx && mobj->MapY == hy )
             return mobj;
     }
-    return NULL;
+    return nullptr;
 }
 
 #endif // FONLINE_SERVER

@@ -51,13 +51,13 @@ public:
     StrVec     Preload3dFiles;
 
     int        ScreenModeMain;
-    void ShowMainScreen( int new_screen, ScriptDictionary* params = NULL );
+    void ShowMainScreen( int new_screen, ScriptDictionary* params = nullptr );
     int  GetMainScreen()                  { return ScreenModeMain; }
     bool IsMainScreen( int check_screen ) { return check_screen == ScreenModeMain; }
 
-    void ShowScreen( int screen, ScriptDictionary* params = NULL );
+    void ShowScreen( int screen, ScriptDictionary* params = nullptr );
     void HideScreen( int screen );
-    int  GetActiveScreen( IntVec** screens = NULL );
+    int  GetActiveScreen( IntVec** screens = nullptr );
     bool IsScreenPresent( int screen );
     void RunScreenScript( bool show, int screen, ScriptDictionary* params );
 
@@ -1225,7 +1225,7 @@ public:
         string     Text;
         AnyFrames* Anim;
 
-        FixDrawComponent( Rect& r, string& text ): IsText( true ), Anim( NULL )
+        FixDrawComponent( Rect& r, string& text ): IsText( true ), Anim( nullptr )
         {
             Place = r;
             Text = text;
