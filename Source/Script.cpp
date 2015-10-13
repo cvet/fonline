@@ -1212,7 +1212,12 @@ public:
     char path[ MAX_FOPATH ];
     Str::Copy( path, dir );
     Str::Append( path, module_name );
-    Str::Append( path, ".fos" );
+    const char* ext = FileManager::GetExtension( module_name );
+    bool        is_header = ( ext && Str::CompareCase( ext, "fosh" ) );
+    if( !is_header )
+        Str::Append( path, ".fos" );
+    else
+        FileManager::EraseExtension( path );
 
     // Preprocess
     MemoryFileLoader              loader( file );

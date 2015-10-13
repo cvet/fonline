@@ -420,6 +420,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         file_buf.resize( file.GetFsize() + 1 );
         Str::Copy( &file_buf[ 0 ], (uint) file_buf.size(), (char*) file.GetBuf() );
         char* str = &file_buf[ 0 ];
+        Str::Replacement( str, '\r', '\n', '\n' );
         char* ver = Str::Substring( str, "#version" );
         if( ver )
         {
@@ -435,19 +436,19 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         ver = ios_data;
         #endif
 
-        // Pass definition
-        char pass_str[ MAX_FOTEXT ];
-        Str::Format( pass_str, "#define PASS%u\n", pass );
+        // Internal definitions
+        char internal_defines[ MAX_FOTEXT ];
+        Str::Format( internal_defines, "#define PASS%u\n#define MAX_BONES %u\n", pass, Effect::MaxBones );
 
         // Create shaders
         GLuint vs, fs;
         GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
         GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
         CharVec       buf( file_buf.size() + MAX_FOTEXT );
-        Str::Format( &buf[ 0 ], "%s%s%s%s%s%s%s", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", pass_str, defines ? defines : "", "\n", str );
+        Str::Format( &buf[ 0 ], "%s%s%s%s%s%s%s", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", internal_defines, defines ? defines : "", "\n", str );
         const GLchar* vs_str = &buf[ 0 ];
         GL( glShaderSource( vs, 1, &vs_str, nullptr ) );
-        Str::Format( &buf[ 0 ], "%s%s%s%s%s%s%s", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", pass_str, defines ? defines : "", "\n", str );
+        Str::Format( &buf[ 0 ], "%s%s%s%s%s%s%s", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines ? defines : "", "\n", str );
         const GLchar* fs_str = &buf[ 0 ];
         GL( glShaderSource( fs, 1, &fs_str, nullptr ) );
 
@@ -770,6 +771,8 @@ void GraphicLoader::EffectProcessVariables( EffectPass& effect_pass, bool start,
                 Effect=NULL;
         }
  */
+
+uint    Effect::MaxBones;
 
 Effect* Effect::Contour, * Effect::ContourDefault;
 Effect* Effect::Generic, * Effect::GenericDefault;

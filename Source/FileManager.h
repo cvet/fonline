@@ -104,8 +104,8 @@ public:
     static void        ExtractDir( const char* path, char* dir );
     static void        ExtractFileName( const char* path, char* name );
     static void        MakeFilePath( const char* name, const char* path, char* result );
-    static const char* GetExtension( const char* fname ); // EXT without dot
-    static char*       EraseExtension( char* fname );     // Erase EXT with dot
+    static const char* GetExtension( const char* path ); // EXT without dot
+    static char*       EraseExtension( char* path );     // Erase EXT with dot
     static bool        CopyFile( const char* from, const char* to );
     static bool        DeleteFile( const char* fname );
 

@@ -15,7 +15,6 @@
 #endif
 
 #define EFFECT_TEXTURES         ( 10 )
-#define MAX_BONE_MATRICES       ( 128 )
 #define BONES_PER_VERTEX        ( 4 )
 
 typedef aiMatrix4x4          Matrix;
@@ -232,6 +231,9 @@ struct Effect
     static Effect* FlushFog, * FlushFogDefault;
     static Effect* Font, * FontDefault;
     static Effect* Skinned3d, * Skinned3dDefault;
+
+    // Constants
+    static uint    MaxBones;
 };
 typedef vector< Effect* > EffectVec;
 
@@ -411,8 +413,8 @@ struct CombinedMesh
     UIntVec      MeshIndices;
     IntVec       MeshAnimLayers;
     size_t       CurBoneMatrix;
-    Bone*        SkinBones[ MAX_BONE_MATRICES ];
-    Matrix       SkinBoneOffsets[ MAX_BONE_MATRICES ];
+    BoneVec      SkinBones;
+    MatrixVec    SkinBoneOffsets;
     MeshTexture* Textures[ EFFECT_TEXTURES ];
     Effect*      DrawEffect;
     GLuint       VAO, VBO, IBO;
@@ -422,7 +424,11 @@ struct CombinedMesh
     void Encapsulate( MeshInstance& mesh_instance, int anim_layer );
     void Finalize();
 
-    CombinedMesh(): EncapsulatedMeshCount( 0 ), CurBoneMatrix( 0 ), VAO( 0 ), VBO( 0 ), IBO( 0 ) {}
+    CombinedMesh(): EncapsulatedMeshCount( 0 ), CurBoneMatrix( 0 ), VAO( 0 ), VBO( 0 ), IBO( 0 )
+    {
+        SkinBones.resize( Effect::MaxBones );
+        SkinBoneOffsets.resize( Effect::MaxBones );
+    }
     ~CombinedMesh() { Clear(); }
 };
 typedef vector< CombinedMesh* > CombinedMeshVec;

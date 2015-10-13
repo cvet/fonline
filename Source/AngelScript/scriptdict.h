@@ -47,7 +47,7 @@ public:
     virtual void* GetKey( uint index );
     virtual void* GetValue( uint index );
     virtual bool  Exists( void* key ) const;
-    virtual void* GetMap();
+    virtual void  GetMap( std::vector< std::pair< void*, void* > >& data );
 
     // GC methods
     virtual int  GetRefCount();

@@ -7,15 +7,15 @@
 #include "CritterType.h"
 #include "GL/glu_stuff.h"
 
-int    ModeWidth = 0, ModeHeight = 0;
-float  ModeWidthF = 0, ModeHeightF = 0;
-Matrix MatrixProjRM, MatrixEmptyRM, MatrixProjCM, MatrixEmptyCM;    // Row or Column major order
-float  MoveTransitionTime = 0.25f;
-float  GlobalSpeedAdjust = 1.0f;
-bool   SoftwareSkinning = false;
-uint   AnimDelay = 0;
-Color  LightColor;
-Matrix WorldMatrices[ MAX_BONE_MATRICES ];
+int       ModeWidth = 0, ModeHeight = 0;
+float     ModeWidthF = 0, ModeHeightF = 0;
+Matrix    MatrixProjRM, MatrixEmptyRM, MatrixProjCM, MatrixEmptyCM; // Row or Column major order
+float     MoveTransitionTime = 0.25f;
+float     GlobalSpeedAdjust = 1.0f;
+bool      SoftwareSkinning = false;
+uint      AnimDelay = 0;
+Color     LightColor;
+MatrixVec WorldMatrices;
 
 void VecProject( const Vector& v, Vector& out )
 {
@@ -850,9 +850,9 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
                     result_vertices.push_back( v1 );
                     result_vertices.push_back( v2 );
                     result_vertices.push_back( v3 );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
                     continue;
                 }
 
@@ -877,17 +877,17 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
                     result_vertices.push_back( vv1 );
                     result_vertices.push_back( vv2 );
                     result_vertices.push_back( vv3 );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
 
                     // Second face
                     result_vertices.push_back( vv3 );
                     result_vertices.push_back( vv2 );
                     result_vertices.push_back( vv4 );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
                 }
                 else if( !ignore && sum == 1 )                 // 1 1 -1, corner out
                 {
@@ -899,9 +899,9 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
                     result_vertices.push_back( vv1 );
                     result_vertices.push_back( vv2 );
                     result_vertices.push_back( vv3 );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
                 }
                 else if( ignore || outside )
                 {
@@ -911,9 +911,9 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
                     result_vertices.push_back( v1 );
                     result_vertices.push_back( v2 );
                     result_vertices.push_back( v3 );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
-                    result_indices.push_back( result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
+                    result_indices.push_back( (ushort) result_indices.size() );
                 }
             }
 
@@ -1188,6 +1188,12 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow_dis
 
 bool Animation3d::StartUp()
 {
+    // Calculate max effect bones
+    GLint max_uniform_components = 0;
+    GL( glGetIntegerv( GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components ) );
+    Effect::MaxBones = MIN( max_uniform_components / 16, 256 ) - 4;
+    WorldMatrices.resize( Effect::MaxBones );
+
     // Check effects
     if( !GraphicLoader::Load3dEffects() )
         return false;

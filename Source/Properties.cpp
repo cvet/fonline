@@ -237,10 +237,11 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
 
                 // Calculate size
                 data_size = 0;
-                map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
-                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                vector< pair< void*, void* > > dict_map;
+                dict->GetMap( dict_map );
+                for( const auto& it : dict_map )
                 {
-                    ScriptArray* arr = (ScriptArray*) it->second;
+                    ScriptArray* arr = (ScriptArray*) it.second;
                     uint         arr_size = arr->GetSize();
                     data_size += key_element_size + sizeof( uint );
                     if( isDictOfArrayOfString )
@@ -260,10 +261,10 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
                 // Make buffer
                 uchar* init_buf = new uchar[ data_size ];
                 uchar* buf = init_buf;
-                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                for( const auto& it : dict_map )
                 {
-                    ScriptArray* arr = (ScriptArray*) it->second;
-                    memcpy( buf, it->first, key_element_size );
+                    ScriptArray* arr = (ScriptArray*) it.second;
+                    memcpy( buf, it.first, key_element_size );
                     buf += key_element_size;
                     uint arr_size = arr->GetSize();
                     memcpy( buf, &arr_size, sizeof( uint ) );
@@ -305,10 +306,11 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
 
                 // Calculate size
                 data_size = 0;
-                map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
-                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                vector< pair< void*, void* > > dict_map;
+                dict->GetMap( dict_map );
+                for( const auto& it : dict_map )
                 {
-                    ScriptString* str = (ScriptString*) it->second;
+                    ScriptString* str = (ScriptString*) it.second;
                     uint          str_size = str->length();
                     data_size += key_element_size + sizeof( uint ) + str_size;
                 }
@@ -316,10 +318,10 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
                 // Make buffer
                 uchar* init_buf = new uchar[ data_size ];
                 uchar* buf = init_buf;
-                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                for( const auto& it : dict_map )
                 {
-                    ScriptString* str = (ScriptString*) it->second;
-                    memcpy( buf, it->first, key_element_size );
+                    ScriptString* str = (ScriptString*) it.second;
+                    memcpy( buf, it.first, key_element_size );
                     buf += key_element_size;
                     uint str_size = str->length();
                     memcpy( buf, &str_size, sizeof( uint ) );
@@ -342,14 +344,15 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
             if( data_size )
             {
                 need_delete = true;
-                uchar*               init_buf = new uchar[ data_size ];
-                uchar*               buf = init_buf;
-                map< void*, void* >* dict_map = ( map< void*, void* >* )dict->GetMap();
-                for( auto it = dict_map->begin(); it != dict_map->end(); ++it )
+                uchar*                         init_buf = new uchar[ data_size ];
+                uchar*                         buf = init_buf;
+                vector< pair< void*, void* > > dict_map;
+                dict->GetMap( dict_map );
+                for( const auto& it : dict_map )
                 {
-                    memcpy( buf, it->first, key_element_size );
+                    memcpy( buf, it.first, key_element_size );
                     buf += key_element_size;
-                    memcpy( buf, it->second, value_element_size );
+                    memcpy( buf, it.second, value_element_size );
                     buf += value_element_size;
                 }
                 return init_buf;

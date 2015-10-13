@@ -884,14 +884,14 @@ void FileManager::MakeFilePath( const char* name, const char* path, char* result
     }
 }
 
-const char* FileManager::GetExtension( const char* fname )
+const char* FileManager::GetExtension( const char* path )
 {
-    if( !fname )
+    if( !path )
         return nullptr;
     const char* last_dot = nullptr;
-    for( ; *fname; fname++ )
-        if( *fname == '.' )
-            last_dot = fname;
+    for( ; *path; path++ )
+        if( *path == '.' )
+            last_dot = path;
     if( !last_dot )
         return nullptr;
     last_dot++;
@@ -900,14 +900,14 @@ const char* FileManager::GetExtension( const char* fname )
     return last_dot;
 }
 
-char* FileManager::EraseExtension( char* fname )
+char* FileManager::EraseExtension( char* path )
 {
-    if( !fname )
+    if( !path )
         return nullptr;
-    char* ext = (char*) GetExtension( fname );
+    char* ext = (char*) GetExtension( path );
     if( ext )
         *( ext - 1 ) = 0;
-    return fname;
+    return path;
 }
 
 bool FileManager::CopyFile( const char* from, const char* to )

@@ -4961,7 +4961,7 @@ void Client::Send_RunClientScript( const char* func_name, int p0, int p1, int p2
 
     ushort script_name_len = Str::Length( script_name );
     ushort p3len = ( p3 ? Str::Length( p3 ) : 0 );
-    ushort p4size = (uint) p4.size();
+    ushort p4size = (ushort) p4.size();
     uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( script_name_len ) + script_name_len + sizeof( p0 ) + sizeof( p1 ) + sizeof( p2 ) + sizeof( p3len ) + p3len + sizeof( p4size ) + p4size * sizeof( uint );
 
     BOUT_BEGIN( this );

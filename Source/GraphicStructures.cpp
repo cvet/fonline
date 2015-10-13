@@ -212,7 +212,7 @@ bool CombinedMesh::CanEncapsulate( MeshInstance& mesh_instance )
     for( int i = 0; i < EFFECT_TEXTURES; i++ )
         if( Textures[ i ] && mesh_instance.CurTexures[ i ] && Textures[ i ]->Id != mesh_instance.CurTexures[ i ]->Id )
             return false;
-    if( CurBoneMatrix + mesh_instance.Mesh->SkinBones.size() > MAX_BONE_MATRICES )
+    if( CurBoneMatrix + mesh_instance.Mesh->SkinBones.size() > SkinBones.size() )
         return false;
     return true;
 }
@@ -229,7 +229,7 @@ void CombinedMesh::Encapsulate( MeshInstance& mesh_instance, int anim_layer )
         Vertices = mesh->Vertices;
         Indices = mesh->Indices;
         DrawEffect = mesh_instance.CurEffect;
-        memzero( SkinBones, sizeof( SkinBones ) );
+        memzero( &SkinBones[ 0 ], SkinBones.size() * sizeof( SkinBones[ 0 ] ) );
         memzero( Textures, sizeof( Textures ) );
         CurBoneMatrix = 0;
     }

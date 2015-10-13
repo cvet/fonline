@@ -693,9 +693,12 @@ bool ScriptDict::GetFlag()
     return gcFlag;
 }
 
-void* ScriptDict::GetMap()
+void ScriptDict::GetMap( std::vector< std::pair< void*, void* > >& data )
 {
-    return dictMap;
+    DictMap* dict = (DictMap*) dictMap;
+    data.reserve( data.size() + dict->size() );
+    for( const auto& it :* dict )
+        data.push_back( std::pair< void*, void* >( it.first, it.second ) );
 }
 
 // internal

@@ -243,9 +243,11 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     FileManager::ExtractFileName( path, file_name );
 
     // Make module name
-    char module_name[ MAX_FOTEXT ];
+    char        module_name[ MAX_FOTEXT ];
     Str::Copy(  module_name, file_name );
-    FileManager::EraseExtension( module_name );
+    const char* ext = FileManager::GetExtension( file_name );
+    if( !( ext && Str::CompareCase( ext, "fosh" ) ) )
+        FileManager::EraseExtension( module_name );
 
     // Start compilation
     char target_lower[ MAX_FOTEXT ];
