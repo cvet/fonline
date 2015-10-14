@@ -3168,7 +3168,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         base_type = DEFAULT_CRTYPE;
 
     if( !crid )
-        WriteLogF( _FUNC_, " - CritterCl id is zero.\n" );
+        WriteLogF( _FUNC_, " - Critter id is zero.\n" );
     else if( HexMngr.IsMapLoaded() && ( hx >= HexMngr.GetMaxHexX() || hy >= HexMngr.GetMaxHexY() || dir >= DIRS_COUNT ) )
         WriteLogF( _FUNC_, " - Invalid positions hx %u, hy %u, dir %u.\n", hx, hy, dir );
     else
@@ -9059,43 +9059,43 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.KeyDown, "key_down", "void %s(uint8,string@)" },
         { &ClientFunctions.KeyUp, "key_up", "void %s(uint8)" },
         { &ClientFunctions.InputLost, "input_lost", "void %s()" },
-        { &ClientFunctions.CritterIn, "critter_in", "void %s(CritterCl&)" },
-        { &ClientFunctions.CritterOut, "critter_out", "void %s(CritterCl&)" },
-        { &ClientFunctions.ItemMapIn, "item_map_in", "void %s(ItemCl&)" },
-        { &ClientFunctions.ItemMapChanged, "item_map_changed", "void %s(ItemCl&,ItemCl&)" },
-        { &ClientFunctions.ItemMapOut, "item_map_out", "void %s(ItemCl&)" },
+        { &ClientFunctions.CritterIn, "critter_in", "void %s(Critter&)" },
+        { &ClientFunctions.CritterOut, "critter_out", "void %s(Critter&)" },
+        { &ClientFunctions.ItemMapIn, "item_map_in", "void %s(Item&)" },
+        { &ClientFunctions.ItemMapChanged, "item_map_changed", "void %s(Item&,Item&)" },
+        { &ClientFunctions.ItemMapOut, "item_map_out", "void %s(Item&)" },
         { &ClientFunctions.ItemInvAllIn, "item_inv_all_in", "void %s()" },
-        { &ClientFunctions.ItemInvIn, "item_inv_in", "void %s(ItemCl&)" },
-        { &ClientFunctions.ItemInvChanged, "item_inv_changed", "void %s(ItemCl&,ItemCl&)" },
-        { &ClientFunctions.ItemInvOut, "item_inv_out", "void %s(ItemCl&)" },
+        { &ClientFunctions.ItemInvIn, "item_inv_in", "void %s(Item&)" },
+        { &ClientFunctions.ItemInvChanged, "item_inv_changed", "void %s(Item&,Item&)" },
+        { &ClientFunctions.ItemInvOut, "item_inv_out", "void %s(Item&)" },
         { &ClientFunctions.ContainerChanged, "container_changed", "void %s()" },
         { &ClientFunctions.MapMessage, "map_message", "bool %s(string&,uint16&,uint16&,uint&,uint&)" },
         { &ClientFunctions.InMessage, "in_message", "bool %s(string&,int&,uint&,uint&)" },
         { &ClientFunctions.OutMessage, "out_message", "bool %s(string&,int&)" },
         { &ClientFunctions.MessageBox, "message_box", "void %s(string&,int,bool)" },
-        { &ClientFunctions.ToHit, "to_hit", "int %s(CritterCl&,CritterCl&,ProtoItem&,uint8)" },
+        { &ClientFunctions.ToHit, "to_hit", "int %s(Critter&,Critter&,ProtoItem&,uint8)" },
         { &ClientFunctions.HitAim, "hit_aim", "void %s(uint8&)" },
         { &ClientFunctions.CombatResult, "combat_result", "void %s(uint[]&)" },
         { &ClientFunctions.GenericDesc, "generic_description", "string@ %s(int,int&,int&)" },
-        { &ClientFunctions.ItemLook, "item_description", "string@ %s(ItemCl&,int)" },
-        { &ClientFunctions.CritterLook, "critter_description", "string@ %s(CritterCl&,int)" },
+        { &ClientFunctions.ItemLook, "item_description", "string@ %s(Item&,int)" },
+        { &ClientFunctions.CritterLook, "critter_description", "string@ %s(Critter&,int)" },
         { &ClientFunctions.GetElevator, "get_elevator", "bool %s(uint,uint[]&)" },
-        { &ClientFunctions.ItemCost, "item_cost", "uint %s(ItemCl&,CritterCl&,CritterCl&,bool)" },
+        { &ClientFunctions.ItemCost, "item_cost", "uint %s(Item&,Critter&,Critter&,bool)" },
         { &ClientFunctions.GetTimeouts, "get_available_timeouts", "void %s(CritterProperty[]&)" },
-        { &ClientFunctions.CritterAction, "critter_action", "void %s(bool,CritterCl&,int,int,ItemCl@)" },
-        { &ClientFunctions.Animation2dProcess, "animation2d_process", "void %s(bool,CritterCl&,uint,uint,ItemCl@)" },
-        { &ClientFunctions.Animation3dProcess, "animation3d_process", "void %s(bool,CritterCl&,uint,uint,ItemCl@)" },
-        { &ClientFunctions.ItemsCollection, "items_collection", "void %s(int,ItemCl@[]&)" },
+        { &ClientFunctions.CritterAction, "critter_action", "void %s(bool,Critter&,int,int,Item@)" },
+        { &ClientFunctions.Animation2dProcess, "animation2d_process", "void %s(bool,Critter&,uint,uint,Item@)" },
+        { &ClientFunctions.Animation3dProcess, "animation3d_process", "void %s(bool,Critter&,uint,uint,Item@)" },
+        { &ClientFunctions.ItemsCollection, "items_collection", "void %s(int,Item@[]&)" },
         { &ClientFunctions.CritterAnimation, "critter_animation", "string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)" },
         { &ClientFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(int,uint,uint,uint,uint&,uint&,uint&)" },
         { &ClientFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(uint,uint&,uint&,uint&,uint&,uint&)" },
-        { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(CritterCl&,ItemCl&,uint8,ItemCl@)" },
-        { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(CritterCl&,ItemCl&,uint8)" },
-        { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(CritterCl&,ItemCl&,uint8)" },
+        { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(Critter&,Item&,uint8,Item@)" },
+        { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(Critter&,Item&,uint8)" },
+        { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(Critter&,Item&,uint8)" },
         { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },
         { &ClientFunctions.GetContItem, "get_cont_item", "bool %s(uint&,bool&)" },
-        { &ClientFunctions.LMenuCollectNodes, "lmenu_collect_nodes", "void %s(CritterCl@,ItemCl@,int[]&)" },
-        { &ClientFunctions.LMenuNodeSelect, "lmenu_node_select", "bool %s(int,CritterCl@,ItemCl@)" },
+        { &ClientFunctions.LMenuCollectNodes, "lmenu_collect_nodes", "void %s(Critter@,Item@,int[]&)" },
+        { &ClientFunctions.LMenuNodeSelect, "lmenu_node_select", "bool %s(int,Critter@,Item@)" },
     };
     if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
         errors++;
@@ -10134,7 +10134,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersDistantion( CritterCl* cr1, Critte
 CritterCl* FOClient::SScriptFunc::Global_GetCritter( uint critter_id )
 {
     if( !critter_id )
-        return nullptr;                // SCRIPT_ERROR_R0("CritterCl id arg is zero.");
+        return nullptr;                // SCRIPT_ERROR_R0("Critter id arg is zero.");
     CritterCl* cr = Self->GetCritter( critter_id );
     if( !cr || cr->IsDestroyed )
         return nullptr;
@@ -10434,7 +10434,7 @@ void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed,
 void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same )
 {
     if( cr && cr->IsDestroyed )
-        SCRIPT_ERROR_R( "CritterCl arg is destroyed." );
+        SCRIPT_ERROR_R( "Critter arg is destroyed." );
 
     uint id = ( cr ? cr->GetId() : 0 );
     if( unlock_if_same && id == Self->HexMngr.AutoScroll.LockedCritter )
@@ -10455,7 +10455,7 @@ int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )
 
 ScriptArray* FOClient::SScriptFunc::Global_RefreshItemsCollection( int collection )
 {
-    ScriptArray* result = Script::CreateArray( "ItemCl@[]" );
+    ScriptArray* result = Script::CreateArray( "Item@[]" );
     switch( collection )
     {
     case ITEMS_CHOSEN_ALL:

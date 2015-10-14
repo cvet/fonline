@@ -855,7 +855,7 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
     if( Script::PrepareContext( ClientFunctions.ItemsCollection, _FUNC_, "Game" ) )
     {
         // Create script array
-        ScriptArray* arr = Script::CreateArray( "ItemCl@[]" );
+        ScriptArray* arr = Script::CreateArray( "Item@[]" );
         RUNTIME_ASSERT( arr );
 
         // Copy to script array

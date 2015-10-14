@@ -353,8 +353,8 @@ public:
 
         propertyRegistrators = new PropertyRegistrator*[ 6 ];
         propertyRegistrators[ 0 ] = new PropertyRegistrator( is_server || is_mapper, "GlobalVars" );
-        propertyRegistrators[ 1 ] = new PropertyRegistrator( is_server || is_mapper, is_server ? "Critter" : "CritterCl" );
-        propertyRegistrators[ 2 ] = new PropertyRegistrator( is_server || is_mapper, is_server ? "Item" : "ItemCl" );
+        propertyRegistrators[ 1 ] = new PropertyRegistrator( is_server || is_mapper, "Critter" );
+        propertyRegistrators[ 2 ] = new PropertyRegistrator( is_server || is_mapper, "Item" );
         propertyRegistrators[ 3 ] = new PropertyRegistrator( is_server || is_mapper, "ProtoItem" );
         propertyRegistrators[ 4 ] = new PropertyRegistrator( is_server || is_mapper, "Map" );
         propertyRegistrators[ 5 ] = new PropertyRegistrator( is_server || is_mapper, "Location" );
@@ -587,8 +587,8 @@ public:
 
         methodRegistrator = new MethodRegistrator*[ 6 ];
         methodRegistrator[ 0 ] = new MethodRegistrator( is_server || is_mapper, "GlobalVars" );
-        methodRegistrator[ 1 ] = new MethodRegistrator( is_server || is_mapper, is_server ? "Critter" : "CritterCl" );
-        methodRegistrator[ 2 ] = new MethodRegistrator( is_server || is_mapper, is_server ? "Item" : "ItemCl" );
+        methodRegistrator[ 1 ] = new MethodRegistrator( is_server || is_mapper, "Critter" );
+        methodRegistrator[ 2 ] = new MethodRegistrator( is_server || is_mapper, "Item" );
         methodRegistrator[ 3 ] = new MethodRegistrator( is_server || is_mapper, "ProtoItem" );
         methodRegistrator[ 4 ] = new MethodRegistrator( is_server || is_mapper, "Map" );
         methodRegistrator[ 5 ] = new MethodRegistrator( is_server || is_mapper, "Location" );
