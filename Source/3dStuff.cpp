@@ -1193,7 +1193,7 @@ bool Animation3d::StartUp()
     GL( glGetIntegerv( GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components ) );
     Effect::MaxBones = MIN( max_uniform_components / 16, 256 ) - 4;
     WorldMatrices.resize( Effect::MaxBones );
-    RUNTIME_ASSERT( Effect::MaxBones >= 28 );
+    RUNTIME_ASSERT( Effect::MaxBones >= MAX_BONES_PER_MODEL );
 
     // Check effects
     if( !GraphicLoader::Load3dEffects() )

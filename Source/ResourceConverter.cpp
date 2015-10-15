@@ -616,7 +616,7 @@ static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, 
             mesh->SkinBoneNameHashes.resize( ai_mesh->mNumBones );
             mesh->SkinBoneOffsets.resize( ai_mesh->mNumBones );
             mesh->SkinBones.resize( ai_mesh->mNumBones );
-            RUNTIME_ASSERT( ai_mesh->mNumBones <= Effect::MaxBones );
+            RUNTIME_ASSERT( ai_mesh->mNumBones <= MAX_BONES_PER_MODEL );
             for( uint i = 0; i < ai_mesh->mNumBones; i++ )
             {
                 aiBone* ai_bone = ai_mesh->mBones[ i ];
@@ -835,7 +835,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
             mesh->SkinBoneNameHashes.resize( num_bones );
             mesh->SkinBoneOffsets.resize( num_bones );
             mesh->SkinBones.resize( num_bones );
-            RUNTIME_ASSERT( num_bones <= Effect::MaxBones );
+            RUNTIME_ASSERT( num_bones <= MAX_BONES_PER_MODEL );
             for( int i = 0; i < num_bones; i++ )
             {
                 FbxCluster* fbx_cluster = fbx_skin->GetCluster( i );
