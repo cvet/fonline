@@ -1191,13 +1191,11 @@ bool Animation3d::StartUp()
     // Calculate max effect bones
     GLint max_uniform_components = 0;
     GL( glGetIntegerv( GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components ) );
-    Effect::MaxBones = CLAMP( max_uniform_components / 16, 4, 256 ) - 4;
+    if( max_uniform_components < 1024 )
+        WriteLog( "Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is %u.\n", max_uniform_components );
+    Effect::MaxBones = MIN( MAX( max_uniform_components, 1024 ) / 16, 256 ) - 4;
+    RUNTIME_ASSERT( Effect::MaxBones >= MAX_BONES_PER_MODEL );
     WorldMatrices.resize( Effect::MaxBones );
-    if( Effect::MaxBones < MAX_BONES_PER_MODEL )
-    {
-        WriteLog( "Hardware support only %u bone matrices, but must support at least %u.\n", Effect::MaxBones, MAX_BONES_PER_MODEL );
-        return false;
-    }
 
     // Check effects
     if( !GraphicLoader::Load3dEffects() )

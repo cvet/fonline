@@ -16,7 +16,7 @@
 
 #define EFFECT_TEXTURES         ( 10 )
 #define BONES_PER_VERTEX        ( 4 )
-#define MAX_BONES_PER_MODEL     ( 28 )
+#define MAX_BONES_PER_MODEL     ( 60 )
 
 typedef aiMatrix4x4          Matrix;
 typedef aiVector3D           Vector;
