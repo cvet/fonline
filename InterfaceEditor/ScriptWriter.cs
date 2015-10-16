@@ -283,14 +283,14 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnHoverChanged() override", obj.OnHoverChanged);
 			WriteClassFunction("void OnDragChanged() override", obj.OnDragChanged);
 			WriteClassFunction("void OnResizeGrid( GUIObject@ cell, uint cellIndex ) override", obj.OnResizeGrid);
-			WriteClassFunction("void OnDrawItem( ItemCl@ item, GUIObject@ cell, uint cellIndex ) override", obj.OnDrawItem);
+			WriteClassFunction("void OnDrawItem( Item@ item, GUIObject@ cell, uint cellIndex ) override", obj.OnDrawItem);
 			if (obj is GUICheckBox)
 			{
 				WriteClassFunction("void OnCheckedChanged() override", ((GUICheckBox)obj).OnCheckedChanged);
 			}
 			if (obj is GUIItemView)
 			{
-				WriteClassFunction("int OnCheckItem( ItemCl@ item ) override", ((GUIItemView)obj).OnCheckItem);
+				WriteClassFunction("int OnCheckItem( Item@ item ) override", ((GUIItemView)obj).OnCheckItem);
 			}
 
 			// Subtypes

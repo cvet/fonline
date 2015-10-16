@@ -106,6 +106,8 @@ bool SpriteManager::Init()
     SDL_ShowCursor( 0 );
     SDL_GL_SetSwapInterval( GameOpt.VSync ? 1 : 0 );
     GL( glGetIntegerv( GL_FRAMEBUFFER_BINDING, &baseFBO ) );
+    if( GameOpt.AlwaysOnTop )
+        SetAlwaysOnTop( true );
 
     // Calculate atlas size
     GLint max_texture_size;
@@ -326,6 +328,16 @@ void SpriteManager::OnResolutionChanged()
     }
 
     RefreshViewport();
+}
+
+void SpriteManager::SetAlwaysOnTop( bool enable )
+{
+    #ifdef FO_WINDOWS
+    SDL_SysWMinfo info;
+    SDL_VERSION( &info.version );
+    if( SDL_GetWindowWMInfo( MainWindow, &info ) )
+        SetWindowPos( info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
+    #endif
 }
 
 RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect /* = NULL */, RenderTarget* rt_refresh /* = NULL */ )

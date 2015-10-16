@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>FCTB</id>
+    <version>2.16.11.0</version>
+    <title>FastColoredTextBox</title>
+    <authors>Pavel Torgashov</authors>
+    <owners>Pavel Torgashov</owners>
+    <projectUrl>http://www.codeproject.com/Articles/161871/Fast-Colored-TextBox-for-syntax-highlighting</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Fast Colored TextBox for Syntax Highlighting. The text editor component for .NET.</description>
+    <copyright>Pavel Torgashov</copyright>
+  </metadata>
+</package>

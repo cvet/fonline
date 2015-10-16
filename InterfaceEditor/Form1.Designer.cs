@@ -190,6 +190,7 @@
 			// 
 			// Properties
 			// 
+			this.Properties.CategoryForeColor = System.Drawing.SystemColors.InactiveCaptionText;
 			this.Properties.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.Properties.Location = new System.Drawing.Point(3, 3);
 			this.Properties.Name = "Properties";
@@ -269,7 +270,7 @@
 			this.Controls.Add(this.tabControl1);
 			this.DoubleBuffered = true;
 			this.Name = "MainForm";
-			this.Text = "Interface Editor v.1.16";
+			this.Text = "Interface Editor v.1.17";
 			this.tabControl2.ResumeLayout(false);
 			this.tabPage4.ResumeLayout(false);
 			this.tabPage3.ResumeLayout(false);

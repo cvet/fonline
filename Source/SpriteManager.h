@@ -123,6 +123,7 @@ public:
     void BeginScene( uint clear_color );
     void EndScene();
     void OnResolutionChanged();
+    void SetAlwaysOnTop( bool enable );
 
     // Render targets
     RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect = nullptr, RenderTarget* rt_refresh = nullptr );

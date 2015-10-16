@@ -7910,6 +7910,7 @@ void FOClient::FlashGameWindow()
 
     #ifdef FO_WINDOWS
     SDL_SysWMinfo info;
+    SDL_VERSION( &info.version );
     if( GameOpt.MessNotify && SDL_GetWindowWMInfo( MainWindow, &info ) )
         FlashWindow( info.info.win.window, true );
     if( GameOpt.SoundNotify )
@@ -9724,6 +9725,10 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         SprMngr.OnResolutionChanged();
         if( Self->HexMngr.IsMapLoaded() )
             Self->HexMngr.OnResolutionChanged();
+    }
+    else if( cmd == "RefreshAlwaysOnTop" )
+    {
+        SprMngr.SetAlwaysOnTop( GameOpt.AlwaysOnTop );
     }
     else if( cmd == "Command" && args.size() >= 2 )
     {
