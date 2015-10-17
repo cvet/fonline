@@ -1795,7 +1795,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
             Map* map = MapMngr.GetMap( cl->GetMapId() );
             if( map )
                 map->SetTextMsg( cl->Talk.TalkHexX, cl->Talk.TalkHexY, 0, TEXTMSG_GAME, STR_DIALOG_NO_DIALOGS );
-            WriteLogF( _FUNC_, " - No dialogs, hx %u, hy %u, client '%s'.\n", cl->Talk.TalkHexX, cl->Talk.TalkHexY, cl->GetInfo() );
+            WriteLogF( _FUNC_, " - No dialogs, dialog '%s' hx %u, hy %u, client '%s'.\n", Str::GetName( id_npc_talk ), cl->Talk.TalkHexX, cl->Talk.TalkHexY, cl->GetInfo() );
             return;
         }
     }

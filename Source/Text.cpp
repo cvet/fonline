@@ -779,9 +779,7 @@ const char* Str::UItoA( uint dw )
 
 int Str::AtoI( const char* str )
 {
-    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return (int) strtol( str + 2, nullptr, 16 );
-    return atoi( str );
+    return (int) AtoI64( str );
 }
 
 int64 Str::AtoI64( const char* str )
