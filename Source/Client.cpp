@@ -3491,7 +3491,8 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
     // Encounter question
     if( how_say >= SAY_ENCOUNTER_ANY && how_say <= SAY_ENCOUNTER_TB && IsMainScreen( SCREEN_GLOBAL_MAP ) )
     {
-        ShowScreen( SCREEN__DIALOGBOX );
+        DlgboxSelectedButton = 0;
+
         if( how_say == SAY_ENCOUNTER_ANY )
         {
             DlgboxType = DIALOGBOX_ENCOUNTER_ANY;
@@ -3516,6 +3517,8 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
         }
         DlgboxWait = Timer::GameTick() + GM_ANSWER_WAIT_TIME;
         Str::Copy( DlgboxText, fstr );
+
+        ShowDialogBox();
     }
 
     // FixBoy result
@@ -3524,9 +3527,15 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
 
     // Dialogbox
     if( how_say == SAY_DIALOGBOX_TEXT )
+    {
         Str::Copy( DlgboxText, fstr );
+        ShowDialogBox();
+    }
     else if( how_say >= SAY_DIALOGBOX_BUTTON( 0 ) && how_say < SAY_DIALOGBOX_BUTTON( MAX_DLGBOX_BUTTONS ) )
+    {
         DlgboxButtonText[ how_say - SAY_DIALOGBOX_BUTTON( 0 ) ] = fstr;
+        ShowDialogBox();
+    }
 
     // Say box
     if( how_say == SAY_SAY_TITLE )
@@ -5630,7 +5639,7 @@ void FOClient::Net_OnFollow()
 
     CHECK_IN_BUFF_ERROR;
 
-    ShowScreen( SCREEN__DIALOGBOX );
+    DlgboxSelectedButton = 0;
     DlgboxType = DIALOGBOX_FOLLOW;
     FollowRuleId = rule;
     FollowType = follow_type;
@@ -5662,6 +5671,8 @@ void FOClient::Net_OnFollow()
     DlgboxButtonText[ 0 ] = MsgGame->GetStr( STR_DIALOGBOX_FOLLOW );
     DlgboxButtonText[ 1 ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
     DlgboxButtonsCount = 2;
+
+    ShowDialogBox();
 }
 
 void FOClient::Net_OnPlayersBarter()
@@ -5729,7 +5740,8 @@ void FOClient::Net_OnPlayersBarter()
         CritterCl* cr = GetCritter( param );
         if( !cr )
             break;
-        ShowScreen( SCREEN__DIALOGBOX );
+
+        DlgboxSelectedButton = 0;
         DlgboxType = DIALOGBOX_BARTER;
         PBarterPlayerId = param;
         BarterOpponentHide = ( param_ext != 0 );
@@ -5740,6 +5752,8 @@ void FOClient::Net_OnPlayersBarter()
         DlgboxButtonText[ 1 ] = MsgGame->GetStr( STR_DIALOGBOX_BARTER_HIDE );
         DlgboxButtonText[ 2 ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
         DlgboxButtonsCount = 3;
+
+        ShowDialogBox();
     }
     break;
     case BARTER_SET_SELF:
@@ -5965,7 +5979,8 @@ void FOClient::Net_OnShowScreen()
     }
     break;
     case SHOW_SCREEN_DIALOGBOX:
-        ShowScreen( SCREEN__DIALOGBOX );
+    {
+        DlgboxSelectedButton = 0;
         DlgboxWait = 0;
         DlgboxText[ 0 ] = 0;
         DlgboxType = DIALOGBOX_MANUAL;
@@ -5975,7 +5990,9 @@ void FOClient::Net_OnShowScreen()
         for( uint i = 0; i < DlgboxButtonsCount; i++ )
             DlgboxButtonText[ i ] = "";
         DlgboxButtonText[ param ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
-        break;
+        ShowDialogBox();
+    }
+    break;
     case SHOW_SCREEN_SKILLBOX:
         ShowScreen( SCREEN__SKILLBOX );
         break;
@@ -10030,6 +10047,11 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
             Self->LmapPrepareMap();
         }
         SprMngr.DrawPoints( Self->LmapPrepPix, PRIMITIVE_LINELIST );
+    }
+    else if( cmd == "DialogBoxAnswer" && args.size() == 2 )
+    {
+        Self->DlgboxSelectedButton = Str::AtoI( args[ 1 ].c_str() );
+        Self->DlgboxAnswer();
     }
     else
     {

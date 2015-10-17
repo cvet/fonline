@@ -1104,9 +1104,11 @@ public:
     uint   PBarterPlayerId;
     bool   PBarterHide;
 
+    void ShowDialogBox();
     void DlgboxDraw();
     void DlgboxLMouseDown();
     void DlgboxLMouseUp();
+    void DlgboxAnswer();
     void DlgboxMouseMove();
 
 /************************************************************************/

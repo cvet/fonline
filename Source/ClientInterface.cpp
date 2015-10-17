@@ -3214,9 +3214,6 @@ bool FOClient::IsScreenPresent( int screen )
 void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
 {
     SmthSelected smth = TargetSmth;
-    ShowScreenType = 0;
-    ShowScreenParam = 0;
-    ShowScreenNeedAnswer = false;
     IfaceHold = IFACE_NONE;
     Timer::StartAccelerator( ACCELERATE_NONE );
     DropScroll();
@@ -3283,11 +3280,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         SayOnlyNumbers = false;
         break;
     case SCREEN__DIALOGBOX:
-        DlgboxType = DIALOGBOX_NONE;
-        DlgboxWait = 0;
-        Str::Copy( DlgboxText, "" );
-        DlgboxButtonsCount = 0;
-        DlgboxSelectedButton = 0;
         break;
     case SCREEN__GM_TOWN:
     {
@@ -5162,6 +5154,32 @@ DrawCurHand:
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
+void FOClient::ShowDialogBox()
+{
+    ScriptArray* button_texts = Script::CreateArray( "string@[]" );
+    for( uint i = 0; i < DlgboxButtonsCount; i++ )
+    {
+        ScriptString* sstr = ScriptString::Create( DlgboxButtonText[ i ].c_str() );
+        button_texts->InsertLast( &sstr );
+        sstr->Release();
+    }
+
+    ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+    int               type = DlgboxType;
+    dict->Set( "BoxType", &type, asTYPEID_INT32 );
+    dict->Set( "WaitTime", &DlgboxWait, asTYPEID_UINT32 );
+    dict->Set( "Buttons", &DlgboxButtonsCount, asTYPEID_UINT32 );
+    ScriptString* text = ScriptString::Create( DlgboxText );
+    dict->Set( "Text", &text, Script::GetEngine()->GetTypeIdByDecl( "string@" ) );
+    dict->Set( "ButtonTexts", &button_texts, Script::GetEngine()->GetTypeIdByDecl( "string@[]@" ) );
+
+    ShowScreen( SCREEN__DIALOGBOX, dict );
+
+    button_texts->Release();
+    text->Release();
+    dict->Release();
+}
+
 void FOClient::DlgboxDraw()
 {
     // Check for end time
@@ -5224,47 +5242,8 @@ void FOClient::DlgboxLMouseUp()
         if( !IsCurInRect( DlgboxBButton, DlgboxX, DlgboxY + DlgboxWTop.H() + DlgboxSelectedButton * DlgboxWMiddle.H() ) )
             break;
 
-        if( DlgboxSelectedButton == DlgboxButtonsCount - 1 )
-        {
-            if( DlgboxType >= DIALOGBOX_ENCOUNTER_ANY && DlgboxType <= DIALOGBOX_ENCOUNTER_TB )
-                Net_SendRuleGlobal( GM_CMD_ANSWER, -1 );
-            // if(DlgboxType==DIALOGBOX_BARTER) Net_SendPlayersBarter(BARTER_END,PBarterPlayerId,true);
-            DlgboxType = DIALOGBOX_NONE;
-            ShowScreen( SCREEN_NONE );
-            return;
-        }
+        DlgboxAnswer();
 
-        if( DlgboxType == DIALOGBOX_FOLLOW )
-        {
-            Net_SendRuleGlobal( GM_CMD_FOLLOW, FollowRuleId );
-        }
-        else if( DlgboxType == DIALOGBOX_BARTER )
-        {
-            if( DlgboxSelectedButton == 0 )
-                Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, false );
-            else
-                Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, true );
-        }
-        else if( DlgboxType == DIALOGBOX_ENCOUNTER_ANY )
-        {
-            if( DlgboxSelectedButton == 0 )
-                Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_REAL_TIME );
-            else
-                Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_TURN_BASED );
-        }
-        else if( DlgboxType == DIALOGBOX_ENCOUNTER_RT )
-        {
-            Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_REAL_TIME );
-        }
-        else if( DlgboxType == DIALOGBOX_ENCOUNTER_TB )
-        {
-            Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_TURN_BASED );
-        }
-        else if( DlgboxType == DIALOGBOX_MANUAL )
-        {
-            if( ShowScreenType && ShowScreenNeedAnswer )
-                Net_SendScreenAnswer( DlgboxSelectedButton, "" );
-        }
         DlgboxType = DIALOGBOX_NONE;
         ShowScreen( SCREEN_NONE );
         break;
@@ -5273,6 +5252,48 @@ void FOClient::DlgboxLMouseUp()
     }
 
     IfaceHold = IFACE_NONE;
+}
+
+void FOClient::DlgboxAnswer()
+{
+    if( DlgboxSelectedButton == DlgboxButtonsCount - 1 )
+    {
+        if( DlgboxType >= DIALOGBOX_ENCOUNTER_ANY && DlgboxType <= DIALOGBOX_ENCOUNTER_TB )
+            Net_SendRuleGlobal( GM_CMD_ANSWER, -1 );
+        return;
+    }
+
+    if( DlgboxType == DIALOGBOX_FOLLOW )
+    {
+        Net_SendRuleGlobal( GM_CMD_FOLLOW, FollowRuleId );
+    }
+    else if( DlgboxType == DIALOGBOX_BARTER )
+    {
+        if( DlgboxSelectedButton == 0 )
+            Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, false );
+        else
+            Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, true );
+    }
+    else if( DlgboxType == DIALOGBOX_ENCOUNTER_ANY )
+    {
+        if( DlgboxSelectedButton == 0 )
+            Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_REAL_TIME );
+        else
+            Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_TURN_BASED );
+    }
+    else if( DlgboxType == DIALOGBOX_ENCOUNTER_RT )
+    {
+        Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_REAL_TIME );
+    }
+    else if( DlgboxType == DIALOGBOX_ENCOUNTER_TB )
+    {
+        Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_TURN_BASED );
+    }
+    else if( DlgboxType == DIALOGBOX_MANUAL )
+    {
+        if( ShowScreenType && ShowScreenNeedAnswer )
+            Net_SendScreenAnswer( DlgboxSelectedButton, "" );
+    }
 }
 
 void FOClient::DlgboxMouseMove()
