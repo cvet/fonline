@@ -17,6 +17,7 @@ private:
     bool GotoApp( const char* app_name, uint& iter );
     bool GotoKey( const char* key_name, uint& iter );
     bool GetPos( const char* app_name, const char* key_name, uint& iter );
+    void AppendText( const char* text, bool to_begin );
 
 public:
     IniParser();
@@ -26,7 +27,8 @@ public:
     void  LoadFilePtr( const char* buf, uint len );
     bool  AppendToBegin( const char* fname, int path_type );
     bool  AppendToEnd( const char* fname, int path_type );
-    bool  AppendPtrToBegin( const char* buf, uint len );
+    void  AppendPtrToBegin( const char* buf );
+    void  AppendPtrToEnd( const char* buf );
     bool  SaveFile( const char* fname, int path_type );
     void  UnloadFile();
     char* GetBuffer();

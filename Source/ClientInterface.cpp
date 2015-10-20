@@ -99,7 +99,7 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
 
 void FOClient::AppendIfaceIni( uchar* data, uint len )
 {
-    typedef multimap< int, pair< char*, uint > > IniMMap;
+    typedef multimap< int, char* > IniMMap;
     IniMMap sections;
 
     int     w = 0, h = 0;
@@ -109,9 +109,11 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
     {
         if( w <= GameOpt.ScreenWidth && h <= GameOpt.ScreenHeight )
         {
-            uint l = (uint) ( end ? (size_t) end - (size_t) begin : (size_t) ( data + len ) - (size_t) begin );
-            auto value = PAIR( begin, l );
-            sections.insert( PAIR( w, value ) );
+            uint  l = (uint) ( end ? (size_t) end - (size_t) begin : (size_t) ( data + len ) - (size_t) begin );
+            char* buf = new char[ l + 1 ];
+            memcpy( buf, begin, l );
+            buf[ l ] = 0;
+            sections.insert( PAIR( w, buf ) );
         }
 
         if( !end )
@@ -127,7 +129,10 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
     }
 
     for( auto it = sections.begin(), end = sections.end(); it != end; ++it )
-        IfaceIni.AppendPtrToBegin( it->second.first, it->second.second );
+    {
+        IfaceIni.AppendPtrToBegin( it->second );
+        delete[] it->second;
+    }
 }
 
 int FOClient::InitIface()
