@@ -77,13 +77,10 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         }
 
         // Config parsing
-        IniParser& cfg = IniParser::GetClientConfig();
-        char       server_exe[ MAX_FOPATH ] = { 0 };
-        char       server_path[ MAX_FOPATH ] = { 0 };
-        char       server_cmdline[ MAX_FOPATH ] = { 0 };
-        cfg.GetStr( "ServerAppName", "FOnlineServer.exe", server_exe );
-        cfg.GetStr( "ServerPath", "..\\Server\\", server_path );
-        cfg.GetStr( "ServerCommandLine", "", server_cmdline );
+        IniParser&  cfg = IniParser::GetClientConfig();
+        const char* server_exe = cfg.GetStr( "ServerAppName", "FOnlineServer.exe" );
+        const char* server_path = cfg.GetStr( "ServerPath", "..\\Server\\" );
+        const char* server_cmdline = cfg.GetStr( "ServerCommandLine", "" );
 
         // Process attributes
         PROCESS_INFORMATION server;

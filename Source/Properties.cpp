@@ -1257,18 +1257,17 @@ bool Properties::Load( void* file, uint version )
     return true;
 }
 
-bool Properties::LoadFromText( const char* text )
+bool Properties::LoadFromText( const StrMap& key_values )
 {
-    bool      is_error = false;
-    IniParser ini;
-    ini.LoadFilePtr( text, Str::Length( text ) );
-    ini.CacheKeys();
-    StrSet& keys = ini.GetCachedKeys();
-    for( auto it = keys.begin(); it != keys.end(); ++it )
+    bool is_error = false;
+    for( auto it = key_values.begin(); it != key_values.end(); ++it )
     {
-        const char* key = it->c_str();
-        char        value[ MAX_FOTEXT ];
-        ini.GetStr( key, "", value );
+        const char* key = it->first.c_str();
+        const char* value = it->second.c_str();
+
+        // Skip content
+        if( !key[ 0 ] )
+            continue;
 
         Property* prop = registrator->Find( key );
         if( !prop )
@@ -1283,9 +1282,13 @@ bool Properties::LoadFromText( const char* text )
             uchar pod[ 8 ];
             if( prop->isEnumDataType )
             {
-                *(int*) pod = Script::GetEnumValue( prop->typeName.c_str(), value, is_error );
-                if( is_error )
+                bool enum_error = false;
+                *(int*) pod = Script::GetEnumValue( prop->typeName.c_str(), value, enum_error );
+                if( enum_error )
+                {
                     WriteLog( "Value '%s' of enum '%s' in property '%s' not found.\n", value, prop->typeName.c_str(), key );
+                    is_error = true;
+                }
             }
             else if( prop->isHash )
             {

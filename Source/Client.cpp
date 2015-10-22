@@ -245,10 +245,11 @@ bool FOClient::Init()
     UID_PREPARE_UID4_3;
 
     // Check password in config and command line
-    char       pass[ MAX_FOTEXT ];
-    IniParser& cfg = IniParser::GetClientConfig();     // Also used below
-    cfg.GetStr( "UserPass", "", pass );
-    char*      cmd_line_pass = Str::Substring( CommandLine, "-UserPass" );
+    IniParser&  cfg = IniParser::GetClientConfig();    // Also used below
+    char        pass[ MAX_FOTEXT ];
+    const char* pass_ = cfg.GetStr( "UserPass", "" );
+    Str::Copy( pass, pass_ );
+    char*       cmd_line_pass = Str::Substring( CommandLine, "-UserPass" );
     if( cmd_line_pass )
         sscanf( cmd_line_pass + Str::Length( "-UserPass" ) + 1, "%s", pass );
     Password = pass;
@@ -293,15 +294,11 @@ bool FOClient::Init()
 
     // Sound manager
     SndMngr.Init();
-    GameOpt.SoundVolume = cfg.GetInt( "SoundVolume", 100 );
-    GameOpt.MusicVolume = cfg.GetInt( "MusicVolume", 100 );
+    GameOpt.SoundVolume = cfg.GetInt( "", "SoundVolume", 100 );
+    GameOpt.MusicVolume = cfg.GetInt( "", "MusicVolume", 100 );
 
     // Language Packs
-    char lang_name[ MAX_FOTEXT ];
-    cfg.GetStr( "Language", DEFAULT_LANGUAGE, lang_name );
-    if( Str::Length( lang_name ) != 4 )
-        Str::Copy( lang_name, DEFAULT_LANGUAGE );
-    Str::Lower( lang_name );
+    const char* lang_name = cfg.GetStr( "", "Language", DEFAULT_LANGUAGE );
 
     CurLang.LoadFromCache( lang_name );
 
@@ -10628,10 +10625,7 @@ bool FOClient::SScriptFunc::Global_AppendIfaceIni( ScriptString& ini_name )
 
 ScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
 {
-    char* big_buf = Str::GetBigBuf();
-    if( Self->IfaceIni.GetStr( key.c_str(), "", big_buf ) )
-        return ScriptString::Create( big_buf );
-    return ScriptString::Create();
+    return ScriptString::Create( Self->IfaceIni.GetStr( "", key.c_str(), "" ) );
 }
 
 void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames, int path_type )

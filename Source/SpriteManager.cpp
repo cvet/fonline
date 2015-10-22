@@ -1678,27 +1678,22 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
         return nullptr;
 
     // Load ini parser
-    IniParser fofrm;
-    fofrm.LoadFilePtr( (char*) fm.GetBuf(), fm.GetFsize() );
+    IniParser fofrm( fm.GetCStr() );
 
-    ushort frm_fps = fofrm.GetInt( "fps", 0 );
+    ushort    frm_fps = fofrm.GetInt( "", "fps", 0 );
     if( !frm_fps )
         frm_fps = 10;
 
-    ushort frm_num = fofrm.GetInt( "count", 0 );
+    ushort frm_num = fofrm.GetInt( "", "count", 0 );
     if( !frm_num )
         frm_num = 1;
 
-    int     ox = fofrm.GetInt( "offs_x", 0 );
-    int     oy = fofrm.GetInt( "offs_y", 0 );
+    int     ox = fofrm.GetInt( "", "offs_x", 0 );
+    int     oy = fofrm.GetInt( "", "offs_y", 0 );
 
     Effect* effect = nullptr;
-    if( fofrm.IsKey( "effect" ) )
-    {
-        char effect_name[ MAX_FOPATH ];
-        if( fofrm.GetStr( "effect", "", effect_name ) )
-            effect = GraphicLoader::LoadEffect( effect_name, true );
-    }
+    if( fofrm.IsKey( "", "effect" ) )
+        effect = GraphicLoader::LoadEffect( fofrm.GetStr( "", "effect" ), true );
 
     AnimVec anims;
     IntVec  anims_offs;
@@ -1733,17 +1728,17 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             oy = fofrm.GetInt( dir_str, "offs_y", oy );
         }
 
-        char  frm_fname[ MAX_FOPATH ];
+        char        frm_fname[ MAX_FOPATH ];
         FileManager::ExtractDir( fname, frm_fname );
-        char* frm_name = frm_fname + Str::Length( frm_fname );
+        const char* frm_name = frm_fname + Str::Length( frm_fname );
 
-        uint  frames = 0;
-        bool  no_info = false;
-        bool  load_fail = false;
+        uint        frames = 0;
+        bool        no_info = false;
+        bool        load_fail = false;
         for( int frm = 0; frm < frm_num; frm++ )
         {
-            if( !fofrm.GetStr( no_app ? nullptr : dir_str, Str::FormatBuf( "frm_%d", frm ), "", frm_name ) &&
-                ( frm != 0 || !fofrm.GetStr( no_app ? nullptr : dir_str, Str::FormatBuf( "frm", frm ), "", frm_name ) ) )
+            if( !( frm_name = fofrm.GetStr( no_app ? "" : dir_str, Str::FormatBuf( "frm_%d", frm ), "" ) ) &&
+                ( frm != 0 || !( frm_name = fofrm.GetStr( no_app ? "" : dir_str, Str::FormatBuf( "frm", frm ), "" ) ) ) )
             {
                 no_info = true;
                 break;
@@ -1759,8 +1754,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             frames += anim->CntFrm;
             anims.push_back( anim );
 
-            anims_offs.push_back( fofrm.GetInt( no_app ? nullptr : dir_str, Str::FormatBuf( "next_x_%d", frm ), 0 ) );
-            anims_offs.push_back( fofrm.GetInt( no_app ? nullptr : dir_str, Str::FormatBuf( "next_y_%d", frm ), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str, Str::FormatBuf( "next_x_%d", frm ), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str, Str::FormatBuf( "next_y_%d", frm ), 0 ) );
         }
 
         // No frames found or error

@@ -72,34 +72,30 @@ bool ItemManager::LoadProtos()
             continue;
         }
 
-        ProtoItem* proto = new ProtoItem( pid );
+        ProtoItem*    proto = new ProtoItem( pid );
 
-        IniParser  foitem;
-        foitem.LoadFilePtr( (char*) file.GetBuf(), file.GetFsize() );
-        if( foitem.GotoNextApp( "Item" ) )
-        {
-            if( !proto->ItemPropsEntity.Props.LoadFromText( foitem.GetApp( "Item" ) ) )
-                errors++;
-        }
-        if( foitem.GotoNextApp( "ProtoItem" ) )
-        {
-            if( !proto->Props.LoadFromText( foitem.GetApp( "ProtoItem" ) ) )
-                errors++;
-        }
+        IniParser     foitem( file.GetCStr() );
+        const StrMap* item_app = foitem.GetAppKeyValues( "Item" );
+        if( !item_app || !proto->ItemPropsEntity.Props.LoadFromText( *item_app ) )
+            errors++;
+        const StrMap* proto_item_app = foitem.GetAppKeyValues( "ProtoItem" );
+        if( !proto_item_app || !proto->Props.LoadFromText( *proto_item_app ) )
+            errors++;
 
         // Texts
-        foitem.CacheApps();
-        StrSet& apps = foitem.GetCachedApps();
+        StrSet apps;
+        foitem.GetAppNames( apps );
         for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
         {
             const string& app_name = *it;
             if( !( app_name.size() == 9 && app_name.find( "Text_" ) == 0 ) )
                 continue;
 
-            char* app_content = foitem.GetApp( app_name.c_str() );
+            const char* app_content = foitem.GetAppContent( app_name.c_str() );
+            RUNTIME_ASSERT( app_content );
+
             FOMsg temp_msg;
             temp_msg.LoadFromString( app_content, Str::Length( app_content ) );
-            SAFEDELA( app_content );
 
             FOMsg* msg = new FOMsg();
             uint   str_num = 0;

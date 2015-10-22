@@ -109,14 +109,15 @@ public:
     static bool        CopyFile( const char* from, const char* to );
     static bool        DeleteFile( const char* fname );
 
-    bool   IsLoaded()     { return fileSize != 0; }
-    uchar* GetBuf()       { return fileBuf; }
-    uchar* GetCurBuf()    { return fileBuf + curPos; }
-    uint   GetCurPos()    { return curPos; }
-    uint   GetFsize()     { return fileSize; }
-    bool   IsEOF()        { return curPos >= fileSize; }
-    uint64 GetWriteTime() { return writeTime; }
-    int    ParseLinesInt( const char* fname, int path_type, IntVec& lines );
+    bool        IsLoaded()     { return fileSize != 0; }
+    uchar*      GetBuf()       { return fileBuf; }
+    const char* GetCStr()      { return (const char*) fileBuf; }
+    uchar*      GetCurBuf()    { return fileBuf + curPos; }
+    uint        GetCurPos()    { return curPos; }
+    uint        GetFsize()     { return fileSize; }
+    bool        IsEOF()        { return curPos >= fileSize; }
+    uint64      GetWriteTime() { return writeTime; }
+    int         ParseLinesInt( const char* fname, int path_type, IntVec& lines );
 
     static DataFileVec& GetDataFiles() { return dataFiles; }
     static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr );

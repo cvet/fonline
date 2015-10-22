@@ -181,33 +181,31 @@ string ParseLangKey( const char* str )
 
 DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data )
 {
-    IniParser fodlg;
-    fodlg.LoadFilePtr( data, Str::Length( data ) );
+    IniParser fodlg( data );
 
     #define LOAD_FAIL( err )           { WriteLog( "Dialog '%s' - %s\n", pack_name, err ); goto load_false; }
     #define VERIFY_STR_ID( str_id )    ( uint( str_id ) <= ~DLGID_MASK )
 
     DialogPack* pack = new DialogPack();
-    char*       dlg_buf = fodlg.GetApp( "dialog" );
-    istrstream  input( dlg_buf, Str::Length( dlg_buf ) );
-    char*       lang_buf = nullptr;
+    const char* dlg_buf = fodlg.GetAppContent( "dialog" );
+    istrstream  input( dlg_buf );
+    const char* lang_buf = nullptr;
     pack->PackId = Str::GetHash( pack_name );
     pack->PackName = pack_name;
     StrVec lang_apps;
 
     // Comment
-    char* comment = fodlg.GetApp( "comment" );
+    const char* comment = fodlg.GetAppContent( "comment" );
     if( comment )
         pack->Comment = comment;
-    SAFEDELA( comment );
 
     // Check dialog pack
     if( pack->PackId <= 0xFFFF )
         LOAD_FAIL( "Invalid hash for dialog name." );
 
     // Texts
-    char lang_key[ MAX_FOTEXT ];
-    if( !fodlg.GetStr( "data", "lang", "russ", lang_key ) )
+    const char* lang_key = fodlg.GetStr( "data", "lang" );
+    if( !lang_key )
         LOAD_FAIL( "Lang app not found." );
 
     Str::ParseLine( lang_key, ' ', lang_apps, ParseLangKey );
@@ -220,14 +218,13 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         if( lang_app.size() != 4 )
             LOAD_FAIL( "Language length not equal 4." );
 
-        lang_buf = fodlg.GetApp( lang_app.c_str() );
+        lang_buf = fodlg.GetAppContent( lang_app.c_str() );
         if( !lang_buf )
             LOAD_FAIL( "One of the lang section not found." );
 
         FOMsg temp_msg;
         if( !temp_msg.LoadFromString( lang_buf, Str::Length( lang_buf ) ) )
             LOAD_FAIL( "Load MSG fail." );
-        SAFEDELA( lang_buf );
 
         if( temp_msg.GetStrNumUpper( 100000000 + ~DLGID_MASK ) )
             LOAD_FAIL( "Text have any text with index greather than 4000." );
@@ -338,7 +335,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
             break;
         }
         if( ch != '#' )
-            LOAD_FAIL( "Parse error0." );
+            LOAD_FAIL( "Parse error 0." );
 
         while( !input.eof() )
         {
@@ -401,15 +398,11 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     }
 
 load_done:
-    SAFEDELA( dlg_buf );
-    SAFEDELA( lang_buf );
     return pack;
 
 load_false:
     WriteLog( "Dialog '%s' - Bad node %d.\n", pack_name, dlg_id );
     delete pack;
-    SAFEDELA( dlg_buf );
-    SAFEDELA( lang_buf );
     return nullptr;
 }
 

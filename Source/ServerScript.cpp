@@ -88,8 +88,8 @@ bool FOServer::InitScriptSystem()
 
     // Profiler settings
     IniParser& cfg = IniParser::GetServerConfig();
-    uint       sample_time = cfg.GetInt( "ProfilerSampleInterval", 0 );
-    uint       profiler_mode = cfg.GetInt( "ProfilerMode", 0 );
+    uint       sample_time = cfg.GetInt( "", "ProfilerSampleInterval", 0 );
+    uint       profiler_mode = cfg.GetInt( "", "ProfilerMode", 0 );
     if( !profiler_mode )
         sample_time = 0;
 

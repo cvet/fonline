@@ -97,12 +97,11 @@ void ProtoMap::Clear()
 
 bool ProtoMap::LoadTextFormat( const char* buf )
 {
-    IniParser map_ini;
-    map_ini.LoadFilePtr( buf, Str::Length( buf ) );
+    IniParser map_ini( buf );
 
     // Header
     memzero( &Header, sizeof( Header ) );
-    char* header_str = map_ini.GetApp( APP_HEADER );
+    const char* header_str = map_ini.GetAppContent( APP_HEADER );
     if( header_str )
     {
         istrstream istr( header_str );
@@ -201,7 +200,6 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                 }
             }
         }
-        delete[] header_str;
     }
     if( ( Header.Version != FO_MAP_VERSION_TEXT1 && Header.Version != FO_MAP_VERSION_TEXT2 && Header.Version != FO_MAP_VERSION_TEXT3 &&
           Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 &&
@@ -210,7 +208,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         return false;
 
     // Tiles
-    char* tiles_str = map_ini.GetApp( APP_TILES );
+    const char* tiles_str = map_ini.GetAppContent( APP_TILES );
     if( tiles_str )
     {
         istrstream istr( tiles_str );
@@ -297,11 +295,10 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                 }
             }
         }
-        delete[] tiles_str;
     }
 
     // Objects
-    char* objects_str = map_ini.GetApp( APP_OBJECTS );
+    const char* objects_str = map_ini.GetAppContent( APP_OBJECTS );
     if( objects_str )
     {
         bool       fail = false;
@@ -595,7 +592,6 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                 }
             }
         }
-        delete[] objects_str;
         if( fail )
             return false;
     }
@@ -1580,7 +1576,7 @@ bool ProtoMap::IsMapFile( const char* fname )
     {
         // Check text format
         IniParser txt;
-        if( !txt.LoadFile( fname, PT_ROOT ) )
+        if( !txt.AppendFile( fname, PT_ROOT ) )
             return false;
         return txt.IsApp( APP_HEADER ) && txt.IsApp( APP_TILES ) && txt.IsApp( APP_OBJECTS );
     }

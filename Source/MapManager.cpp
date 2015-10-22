@@ -182,8 +182,7 @@ bool MapManager::LoadLocationsProtos()
 bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
 {
     // Parse as INI
-    IniParser ploc_data;
-    ploc_data.LoadFilePtr( (const char*) file.GetBuf(), file.GetFsize() );
+    IniParser ploc_data( file.GetCStr() );
 
     // Parameters
     ProtoLocation* ploc = new ProtoLocation();
@@ -200,11 +199,14 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
     uint map_index = 0;
     while( true )
     {
-        char map_name[ MAX_FOTEXT ];
         char key[ MAX_FOTEXT ];
         Str::Format( key, "Map_%u", map_index++ );
-        if( !ploc_data.GetStr( "Main", key, "", map_name ) )
+
+        const char* map_name_ = ploc_data.GetStr( "Main", key );
+        if( !map_name_ )
             break;
+        char map_name[ MAX_FOTEXT ];
+        Str::Copy( map_name, map_name_ );
 
         load_maps_fail = true;
 
@@ -253,10 +255,10 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
     uint entrance_index = 0;
     while( true )
     {
-        char entrance_text[ MAX_FOTEXT ];
-        char key[ MAX_FOTEXT ];
+        char        key[ MAX_FOTEXT ];
         Str::Format( key, "Entrance_%u", entrance_index++ );
-        if( !ploc_data.GetStr( "Main", key, "", entrance_text ) )
+        const char* entrance_text = ploc_data.GetStr( "Main", key );
+        if( !entrance_text )
             break;
 
         char map_name[ MAX_FOTEXT ];
@@ -285,8 +287,8 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
     }
 
     // Entrance function
-    char script[ MAX_FOTEXT ];
-    if( ploc_data.GetStr( "Main", "EntranceScript", "", script ) && script[ 0 ] != '-' )
+    const char* script = ploc_data.GetStr( "Main", "EntranceScript" );
+    if( script && script[ 0 ] != '-' )
     {
         int bind_id = Script::BindByScriptName( script, "bool %s(Location&,Critter@[]&,uint8)", false );
         if( bind_id <= 0 )
@@ -303,20 +305,19 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
     }
 
     // Texts
-    bool    load_texts_fail = false;
-    ploc_data.CacheApps();
-    StrSet& apps = ploc_data.GetCachedApps();
+    bool   load_texts_fail = false;
+    StrSet apps;
+    ploc_data.GetAppNames( apps );
     for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
     {
         const string& app_name = *it;
         if( !( app_name.size() == 9 && app_name.find( "Text_" ) == 0 ) )
             continue;
 
-        char* app_content = ploc_data.GetApp( app_name.c_str() );
-        FOMsg temp_msg;
+        const char* app_content = ploc_data.GetAppContent( app_name.c_str() );
+        FOMsg       temp_msg;
         if( !temp_msg.LoadFromString( app_content, Str::Length( app_content ) ) )
             load_texts_fail = true;
-        SAFEDELA( app_content );
 
         FOMsg* msg = new FOMsg();
         uint   str_num = 0;

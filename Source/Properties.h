@@ -200,7 +200,7 @@ public:
     void        RestoreData( UCharVecVec& all_data );
     void        Save( void ( * save_func )( void*, size_t ) );
     bool        Load( void* file, uint version );
-    bool        LoadFromText( const char* text );
+    bool        LoadFromText( const StrMap& key_values );
     static int  GetValueAsInt( Entity* entity, int enum_value );
     static void SetValueAsInt( Entity* entity, int enum_value, int value );
     static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );

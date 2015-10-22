@@ -92,7 +92,7 @@ int main( int argc, char** argv )
     IniParser& cfg = IniParser::GetServerConfig();
 
     // Memory debugging
-    MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
+    MemoryDebugLevel = cfg.GetInt( "", "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
 
@@ -100,9 +100,9 @@ int main( int argc, char** argv )
     SetCommandLine( argc, argv );
 
     // Logging
-    LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
-    LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
-    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
+    LogWithTime( cfg.GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
+    LogWithThread( cfg.GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
+    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "", "LoggingDebugOutput", 0 ) != 0 )
         LogToDebugOutput( true );
 
     // Update stuff
@@ -176,9 +176,9 @@ int main( int argc, char** argv )
     if( GuiWindow )
     {
         GuiCBtnAutoUpdate->value( 0 );
-        GuiCBtnLogging->value( cfg.GetInt( "Logging", 1 ) != 0 ? 1 : 0 );
-        GuiCBtnLoggingTime->value( cfg.GetInt( "LoggingTime", 1 ) != 0 ? 1 : 0 );
-        GuiCBtnLoggingThread->value( cfg.GetInt( "LoggingThread", 1 ) != 0 ? 1 : 0 );
+        GuiCBtnLogging->value( cfg.GetInt( "", "Logging", 1 ) != 0 ? 1 : 0 );
+        GuiCBtnLoggingTime->value( cfg.GetInt( "", "LoggingTime", 1 ) != 0 ? 1 : 0 );
+        GuiCBtnLoggingThread->value( cfg.GetInt( "", "LoggingThread", 1 ) != 0 ? 1 : 0 );
         GuiCBtnScriptDebug->value( 0 );
     }
 
@@ -290,13 +290,13 @@ void GUIInit( IniParser& cfg )
         }
     } GUISetup;
 
-    GUISizeMod = cfg.GetInt( "GUISize", 0 );
+    GUISizeMod = cfg.GetInt( "", "GUISize", 0 );
     GUISetup.FontType = FL_COURIER;
     GUISetup.FontSize = 11;
 
     // Main window
-    int wx = cfg.GetInt( "PositionX", 0 );
-    int wy = cfg.GetInt( "PositionY", 0 );
+    int wx = cfg.GetInt( "", "PositionX", 0 );
+    int wy = cfg.GetInt( "", "PositionY", 0 );
     if( !wx && !wy )
         wx = ( Fl::w() - GUI_SIZE1( 496 ) ) / 2, wy = ( Fl::h() - GUI_SIZE1( 412 ) ) / 2;
     GuiWindow = new Fl_Window( wx, wy, GUI_SIZE2( 496, 412 ), "FOnline Server" );
@@ -1073,11 +1073,11 @@ void InitAdminManager( IniParser* cfg )
             WriteLogF( _FUNC_, "Can't access to config file.\n" );
             return;
         }
-        port = cfg_.GetInt( "AdminPanelPort", 0 );
+        port = cfg_.GetInt( "", "AdminPanelPort", 0 );
     }
     else
     {
-        port = cfg->GetInt( "AdminPanelPort", 0 );
+        port = cfg->GetInt( "", "AdminPanelPort", 0 );
     }
 
     if( port )

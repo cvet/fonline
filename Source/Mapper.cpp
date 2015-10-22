@@ -165,16 +165,11 @@ bool FOMapper::Init()
 
     // Language Packs
     FileManager::ResetCurrentDir();
-    IniParser& cfg_mapper = IniParser::GetMapperConfig();
+    IniParser&  cfg_mapper = IniParser::GetMapperConfig();
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    IniParser& cfg_server = IniParser::GetServerConfig();
+    IniParser&  cfg_server = IniParser::GetServerConfig();
 
-    char       lang_name[ MAX_FOTEXT ];
-    cfg_server.GetStr( "Language_0", DEFAULT_LANGUAGE, lang_name );
-    if( Str::Length( lang_name ) != 4 )
-        Str::Copy( lang_name, DEFAULT_LANGUAGE );
-    Str::Lower( lang_name );
-
+    const char* lang_name = cfg_server.GetStr( "", "Language_0", DEFAULT_LANGUAGE );
     if( !CurLang.LoadFromFiles( lang_name ) )
         return false;
 
@@ -322,8 +317,8 @@ bool FOMapper::Init()
 
 bool FOMapper::IfaceLoadRect( Rect& comp, const char* name )
 {
-    char res[ 256 ];
-    if( !IfaceIni.GetStr( name, "", res ) )
+    const char* res = IfaceIni.GetStr( "", name );
+    if( !res )
     {
         WriteLog( "Signature '%s' not found.\n", name );
         return false;
@@ -344,20 +339,18 @@ int FOMapper::InitIface()
     WriteLog( "Init interface.\n" );
 
     IniParser& ini = IfaceIni;
-    char       int_file[ 256 ];
+    IniParser& cfg = IniParser::GetMapperConfig();
+    const char* int_file = cfg.GetStr( "", "MapperInterface", CFG_DEF_INT_FILE );
 
-    IniParser&  cfg = IniParser::GetMapperConfig();
-    cfg.GetStr( "MapperInterface", CFG_DEF_INT_FILE, int_file );
-
-    if( !ini.LoadFile( int_file, PT_DATA ) )
+    if( !ini.AppendFile( int_file, PT_DATA ) )
     {
         WriteLog( "File '%s' not found.\n", int_file );
         return __LINE__;
     }
 
     // Interface
-    IntX = ini.GetInt( "IntX", -1 );
-    IntY = ini.GetInt( "IntY", -1 );
+    IntX = ini.GetInt( "", "IntX", -1 );
+    IntY = ini.GetInt( "", "IntY", -1 );
 
     IfaceLoadRect( IntWMain, "IntMain" );
     if( IntX == -1 )
@@ -428,7 +421,7 @@ int FOMapper::InitIface()
     CurNpcProtos = nullptr;
     CurProtoScroll = nullptr;
 
-    ProtoWidth = ini.GetInt( "ProtoWidth", 50 );
+    ProtoWidth = ini.GetInt( "", "ProtoWidth", 50 );
     ProtosOnScreen = ( IntWWork[ 2 ] - IntWWork[ 0 ] ) / ProtoWidth;
     memzero( TabIndex, sizeof( TabIndex ) );
     NpcDir = 3;
@@ -473,10 +466,10 @@ int FOMapper::InitIface()
     ObjToAll = false;
 
     // Console
-    ConsolePicX = ini.GetInt( "ConsolePicX", 0 );
-    ConsolePicY = ini.GetInt( "ConsolePicY", 0 );
-    ConsoleTextX = ini.GetInt( "ConsoleTextX", 0 );
-    ConsoleTextY = ini.GetInt( "ConsoleTextY", 0 );
+    ConsolePicX = ini.GetInt( "", "ConsolePicX", 0 );
+    ConsolePicY = ini.GetInt( "", "ConsolePicY", 0 );
+    ConsoleTextX = ini.GetInt( "", "ConsoleTextX", 0 );
+    ConsoleTextY = ini.GetInt( "", "ConsoleTextY", 0 );
 
     ConsoleEdit = 0;
     ConsoleLastKey = 0;
@@ -486,44 +479,31 @@ int FOMapper::InitIface()
     ConsoleStr = "";
     ConsoleCur = 0;
 
-    char f_name[ MAX_FOTEXT ];
-    ini.GetStr( "ItemStub", "art/items/reserved.frm", f_name );
-    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation( f_name, PT_DATA, true );
-    ini.GetStr( "CritterStub", "art/critters/reservaa.frm", f_name );
-    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation( f_name, PT_DATA, true );
+    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation( ini.GetStr( "", "ItemStub", "art/items/reserved.frm" ), PT_DATA, true );
+    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation( ini.GetStr( "", "CritterStub", "art/critters/reservaa.frm" ), PT_DATA, true );
 
     // Messbox
     MessBoxScroll = 0;
 
     // Cursor
-    ini.GetStr( "CurDefault", "actarrow.frm", f_name );
-    CurPDef = SprMngr.LoadAnimation( f_name, PT_DATA, true );
-    ini.GetStr( "CurHand", "hand.frm", f_name );
-    CurPHand = SprMngr.LoadAnimation( f_name, PT_DATA, true );
+    CurPDef = SprMngr.LoadAnimation( ini.GetStr( "", "CurDefault", "actarrow.frm" ), PT_DATA, true );
+    CurPHand = SprMngr.LoadAnimation( ini.GetStr( "", "CurHand", "hand.frm" ), PT_DATA, true );
 
     // Iface
-    ini.GetStr( "IntMainPic", "error", f_name );
-    IntMainPic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
-    ini.GetStr( "IntTabPic", "error", f_name );
-    IntPTab = SprMngr.LoadAnimation( f_name, PT_DATA, true );
-    ini.GetStr( "IntSelectPic", "error", f_name );
-    IntPSelect = SprMngr.LoadAnimation( f_name, PT_DATA, true );
-    ini.GetStr( "IntShowPic", "error", f_name );
-    IntPShow = SprMngr.LoadAnimation( f_name, PT_DATA, true );
+    IntMainPic = SprMngr.LoadAnimation( ini.GetStr( "", "IntMainPic", "error" ), PT_DATA, true );
+    IntPTab = SprMngr.LoadAnimation( ini.GetStr( "", "IntTabPic", "error" ), PT_DATA, true );
+    IntPSelect = SprMngr.LoadAnimation( ini.GetStr( "", "IntSelectPic", "error" ), PT_DATA, true );
+    IntPShow = SprMngr.LoadAnimation( ini.GetStr( "", "IntShowPic", "error" ), PT_DATA, true );
 
     // Object
-    ini.GetStr( "ObjMainPic", "error", f_name );
-    ObjWMainPic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
-    ini.GetStr( "ObjToAllPicDn", "error", f_name );
-    ObjPBToAllDn = SprMngr.LoadAnimation( f_name, PT_DATA, true );
+    ObjWMainPic = SprMngr.LoadAnimation( ini.GetStr( "", "ObjMainPic", "error" ), PT_DATA, true );
+    ObjPBToAllDn = SprMngr.LoadAnimation( ini.GetStr( "", "ObjToAllPicDn", "error" ), PT_DATA, true );
 
     // Sub tabs
-    ini.GetStr( "SubTabsPic", "error", f_name );
-    SubTabsPic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
+    SubTabsPic = SprMngr.LoadAnimation( ini.GetStr( "", "SubTabsPic", "error" ), PT_DATA, true );
 
     // Console
-    ini.GetStr( "ConsolePic", "error", f_name );
-    ConsolePic = SprMngr.LoadAnimation( f_name, PT_DATA, true );
+    ConsolePic = SprMngr.LoadAnimation( ini.GetStr( "", "ConsolePic", "error" ), PT_DATA, true );
 
     WriteLog( "Init interface complete.\n" );
     return 0;
@@ -6414,10 +6394,7 @@ void FOMapper::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
 
 ScriptString* FOMapper::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
 {
-    char* big_buf = Str::GetBigBuf();
-    if( Self->IfaceIni.GetStr( key.c_str(), "", big_buf ) )
-        return ScriptString::Create( big_buf );
-    return ScriptString::Create();
+    return ScriptString::Create( Self->IfaceIni.GetStr( "", key.c_str(), "" ) );
 }
 
 void FOMapper::SScriptFunc::Global_Message( ScriptString& msg )

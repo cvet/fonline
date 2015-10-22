@@ -68,28 +68,26 @@ bool CritterManager::LoadProtos()
         ProtoCritter* proto = new ProtoCritter();
         proto->ProtoId = pid;
 
-        IniParser focr;
-        focr.LoadFilePtr( (char*) file.GetBuf(), file.GetFsize() );
-        if( focr.GotoNextApp( "Critter" ) )
-        {
-            if( !proto->Props.LoadFromText( focr.GetApp( "Critter" ) ) )
-                errors++;
-        }
+        IniParser     focr( file.GetCStr() );
+        const StrMap* cr_app = focr.GetAppKeyValues( "Critter" );
+        if( !cr_app || !proto->Props.LoadFromText( *cr_app ) )
+            errors++;
 
         // Texts
-        focr.CacheApps();
-        StrSet& apps = focr.GetCachedApps();
+        StrSet apps;
+        focr.GetAppNames( apps );
         for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
         {
             const string& app_name = *it;
             if( !( app_name.size() == 9 && app_name.find( "Text_" ) == 0 ) )
                 continue;
 
-            char* app_content = focr.GetApp( app_name.c_str() );
+            const char* app_content = focr.GetAppContent( app_name.c_str() );
+            RUNTIME_ASSERT( app_content );
+
             FOMsg temp_msg;
             if( !temp_msg.LoadFromString( app_content, Str::Length( app_content ) ) )
                 errors++;
-            SAFEDELA( app_content );
 
             FOMsg* msg = new FOMsg();
             uint   str_num = 0;

@@ -3,588 +3,220 @@
 #include "Crypt.h"
 #include "FileManager.h"
 
-#define STR_PRIVATE_APP_BEGIN    '['
-#define STR_PRIVATE_APP_END      ']'
-#define STR_PRIVATE_KEY_CHAR     '='
-
 IniParser::IniParser()
 {
-    bufPtr = nullptr;
-    bufLen = 0;
-    lastApp[ 0 ] = 0;
-    lastAppPos = 0;
+    //
 }
 
-IniParser::~IniParser()
+IniParser::IniParser( const char* str )
 {
-    UnloadFile();
+    AppendStr( str );
 }
 
-bool IniParser::IsLoaded()
+IniParser::IniParser( const char* fname, int path_type )
 {
-    return bufPtr != nullptr;
+    AppendFile( fname, path_type );
 }
 
-bool IniParser::LoadFile( const char* fname, int path_type )
+void IniParser::AppendStr( const char* buf )
 {
-    UnloadFile();
-
-    FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
-        return false;
-
-    bufPtr = (char*) fm.ReleaseBuffer();
-    Str::Replacement( bufPtr, '\r', ' ' );
-    bufLen = Str::Length( bufPtr );
-    return true;
+    ParseStr( buf );
 }
 
-void IniParser::LoadFilePtr( const char* buf, uint len )
-{
-    UnloadFile();
-
-    bufPtr = new char[ len + 1 ];
-    memcpy( bufPtr, buf, len );
-    bufPtr[ len ] = 0;
-    Str::Replacement( bufPtr, '\r', ' ' );
-    bufLen = Str::Length( bufPtr );
-}
-
-bool IniParser::AppendToBegin( const char* fname, int path_type )
+bool IniParser::AppendFile( const char* fname, int path_type )
 {
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
         return false;
-    AppendPtrToBegin( (const char*) fm.GetBuf() );
+
+    AppendStr( (const char*) fm.GetBuf() );
     return true;
 }
 
-bool IniParser::AppendToEnd( const char* fname, int path_type )
+void IniParser::ParseStr( const char* str )
 {
-    FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
-        return false;
-    AppendPtrToEnd( (const char*) fm.GetBuf() );
-    return true;
-}
+    StrMap* cur_app = &appKeyValues.insert( PAIR( string( "" ), StrMap() ) )->second;
 
-void IniParser::AppendPtrToBegin( const char* buf )
-{
-    AppendText( buf, true );
-}
+    string  app_content;
+    app_content.reserve( 0xFFFF );
 
-void IniParser::AppendPtrToEnd( const char* buf )
-{
-    AppendText( buf, false );
-}
-
-void IniParser::AppendText( const char* text, bool to_begin )
-{
-    char* buf = Str::Duplicate( text );
-    Str::EraseChars( buf, '\r' );
-    uint  len = Str::Length( buf );
-
-    char* grow_buf = new char[ bufLen + len + 2 ];
-    if( to_begin )
+    istrstream istr( str );
+    char       line[ MAX_FOTEXT ];
+    char       buf[ MAX_FOTEXT ];
+    while( istr.getline( line, MAX_FOTEXT ) )
     {
-        if( len )
-            memcpy( grow_buf, buf, len );
-        memcpy( grow_buf + len, "\n", 1 );
-        if( bufLen )
-            memcpy( grow_buf + len + 1, bufPtr, bufLen );
-    }
-    else
-    {
-        if( bufLen )
-            memcpy( grow_buf, bufPtr, bufLen );
-        memcpy( grow_buf + bufLen, "\n", 1 );
-        if( len )
-            memcpy( grow_buf + bufLen + 1, buf, len );
-    }
-    grow_buf[ bufLen + len + 1 ] = 0;
+        // New section
+        if( line[ 0 ] == '[' )
+        {
+            // Parse name
+            const char* begin = &line[ 1 ];
+            const char* end = Str::Substring( begin, "]" );
+            if( !end )
+                continue;
 
-    SAFEDELA( bufPtr );
-    bufPtr = grow_buf;
-    bufLen += len + 1;
-    lastApp[ 0 ] = 0;
-    lastAppPos = 0;
+            Str::CopyCount( buf, begin, (uint) ( end - begin ) );
+            Str::Trim( buf );
+            if( !buf[ 0 ] )
+                continue;
 
-    delete[] buf;
+            // Store current section content
+            ( *cur_app )[ "" ] = app_content;
+            app_content.clear();
+
+            // Add new section
+            cur_app = &appKeyValues.insert( PAIR( string( buf ), StrMap() ) )->second;
+        }
+        // Section content
+        else
+        {
+            // Store raw content
+            app_content.append( line ).append( "\n" );
+
+            // Cut comments
+            Str::Trim( line );
+            char* comment = Str::Substring( line, "#" );
+            if( comment )
+                *comment = 0;
+
+            // Parse key value
+            char* begin = &line[ 0 ];
+            char* separator = Str::Substring( begin, "=" );
+            if( !separator )
+                continue;
+
+            // Parse key value
+            Str::CopyCount( buf, begin, (uint) ( separator - begin ) );
+            char* value = separator + 1;
+            Str::Trim( buf );
+            Str::Trim( value );
+
+            // Store entire
+            if( buf[ 0 ] )
+            {
+                if( Str::CompareCase( value, "True" ) )
+                    ( *cur_app )[ buf ] = "1";
+                else if( Str::CompareCase( value, "False" ) )
+                    ( *cur_app )[ buf ] = "0";
+                else
+                    ( *cur_app )[ buf ] = value;
+            }
+        }
+    }
+
+    // Store current section content
+    ( *cur_app )[ "" ] = app_content;
 }
 
 bool IniParser::SaveFile( const char* fname, int path_type )
 {
+    string str;
+    str.reserve( 0xFFFF );
+    for( const auto& app : appKeyValues )
+    {
+        str.append( string( "[" ).append( app.first ).append( "]" ).append( "\n" ) );
+        for( const auto& kv : app.second )
+            str.append( string( kv.first ).append( " = " ).append( kv.second ).append( "\n" ) );
+    }
+
     FileManager fm;
-    fm.SetData( bufPtr, bufLen );
+    fm.SetData( (void*) str.c_str(), str.length() );
     return fm.SaveOutBufToFile( fname, path_type );
 }
 
-void IniParser::UnloadFile()
+void IniParser::Clear()
 {
-    SAFEDELA( bufPtr );
-    bufLen = 0;
-    lastApp[ 0 ] = 0;
-    lastAppPos = 0;
+    appKeyValues.clear();
 }
 
-char* IniParser::GetBuffer()
+bool IniParser::IsLoaded()
 {
-    return bufPtr;
+    return !appKeyValues.empty();
 }
 
-void IniParser::GotoEol( uint& iter )
+string* IniParser::GetRawValue( const char* app_name, const char* key_name )
 {
-    for( ; iter < bufLen; ++iter )
-        if( bufPtr[ iter ] == '\n' )
-            return;
+    auto it_app = appKeyValues.find( app_name );
+    if( it_app == appKeyValues.end() )
+        return nullptr;
+
+    auto it_key = it_app->second.find( key_name );
+    if( it_key == it_app->second.end() )
+        return nullptr;
+
+    return &it_key->second;
 }
 
-bool IniParser::GotoApp( const char* app_name, uint& iter )
+int IniParser::GetInt( const char* app_name, const char* key_name, int def_val /* = 0 */  )
 {
-    // Skip UTF-8 BOM signature
-    if( iter == 0 && bufLen >= 3 && (uchar) bufPtr[ 0 ] == 0xEF && (uchar) bufPtr[ 1 ] == 0xBB && (uchar) bufPtr[ 2 ] == 0xBF )
-        iter += 3;
-
-    uint j;
-    for( ; iter < bufLen; ++iter )
-    {
-        // Skip white spaces and tabs
-        while( iter < bufLen && ( bufPtr[ iter ] == ' ' || bufPtr[ iter ] == '\t' ) )
-            ++iter;
-        if( iter >= bufLen )
-            break;
-
-        if( bufPtr[ iter ] == STR_PRIVATE_APP_BEGIN )
-        {
-            ++iter;
-            for( j = 0; app_name[ j ]; ++iter, ++j )
-            {
-                if( iter >= bufLen )
-                    return false;
-                if( app_name[ j ] != bufPtr[ iter ] )
-                    goto label_NextLine;
-            }
-
-            if( bufPtr[ iter ] != STR_PRIVATE_APP_END )
-                goto label_NextLine;
-
-            GotoEol( iter );
-            ++iter;
-
-            Str::Copy( lastApp, app_name );
-            lastAppPos = iter;
-            return true;
-        }
-
-label_NextLine:
-        GotoEol( iter );
-    }
-    return false;
+    string* str = GetRawValue( app_name, key_name );
+    return str ? Str::AtoI( str->c_str() ) : def_val;
 }
 
-bool IniParser::GotoKey( const char* key_name, uint& iter )
+const char* IniParser::GetStr( const char* app_name, const char* key_name, const char* def_val /* = nullptr */ )
 {
-    // Skip UTF-8 BOM signature
-    if( iter == 0 && bufLen >= 3 && (uchar) bufPtr[ 0 ] == 0xEF && (uchar) bufPtr[ 1 ] == 0xBB && (uchar) bufPtr[ 2 ] == 0xBF )
-        iter += 3;
-
-    uint j;
-    for( ; iter < bufLen; ++iter )
-    {
-        if( bufPtr[ iter ] == STR_PRIVATE_APP_BEGIN )
-            return false;
-
-        // Skip white spaces and tabs
-        while( iter < bufLen && ( bufPtr[ iter ] == ' ' || bufPtr[ iter ] == '\t' ) )
-            ++iter;
-        if( iter >= bufLen )
-            break;
-
-        // Compare first character
-        if( bufPtr[ iter ] == key_name[ 0 ] )
-        {
-            // Compare others
-            ++iter;
-            for( j = 1; key_name[ j ]; ++iter, ++j )
-            {
-                if( iter >= bufLen )
-                    return false;
-                if( key_name[ j ] != bufPtr[ iter ] )
-                    goto label_NextLine;
-            }
-
-            // Skip white spaces and tabs
-            while( iter < bufLen && ( bufPtr[ iter ] == ' ' || bufPtr[ iter ] == '\t' ) )
-                ++iter;
-            if( iter >= bufLen )
-                break;
-
-            // Check for '='
-            if( bufPtr[ iter ] != STR_PRIVATE_KEY_CHAR )
-                goto label_NextLine;
-            ++iter;
-
-            return true;
-        }
-
-label_NextLine:
-        GotoEol( iter );
-    }
-
-    return false;
-}
-
-bool IniParser::GetPos( const char* app_name, const char* key_name, uint& iter )
-{
-    // Check
-    if( !key_name || !key_name[ 0 ] )
-        return false;
-
-    // Find
-    iter = 0;
-    if( app_name && lastAppPos && Str::Compare( app_name, lastApp ) )
-    {
-        iter = lastAppPos;
-    }
-    else if( app_name )
-    {
-        if( !GotoApp( app_name, iter ) )
-            return false;
-    }
-
-    if( !GotoKey( key_name, iter ) )
-        return false;
-    return true;
-}
-
-int IniParser::GetInt( const char* app_name, const char* key_name, int def_val )
-{
-    if( !bufPtr )
-        return def_val;
-
-    // Get pos
-    uint iter;
-    if( !GetPos( app_name, key_name, iter ) )
-        return def_val;
-
-    // Read number
-    uint j;
-    char num[ 64 ];
-    for( j = 0; iter < bufLen; ++iter, ++j )
-    {
-        if( j >= 63 || bufPtr[ iter ] == '\n' || bufPtr[ iter ] == '#' || bufPtr[ iter ] == ';' )
-            break;
-        num[ j ] = bufPtr[ iter ];
-    }
-
-    if( !j )
-        return def_val;
-    num[ j ] = 0;
-    Str::Trim( num );
-    if( Str::CompareCase( num, "true" ) )
-        return 1;
-    if( Str::CompareCase( num, "false" ) )
-        return 0;
-    return atoi( num );
-}
-
-int IniParser::GetInt( const char* key_name, int def_val )
-{
-    return GetInt( nullptr, key_name, def_val );
-}
-
-bool IniParser::GetStr( const char* app_name, const char* key_name, const char* def_val, char* ret_buf, char end /* = 0 */ )
-{
-    uint iter = 0, j = 0;
-
-    // Check
-    if( !ret_buf )
-        goto label_DefVal;
-    if( !bufPtr )
-        goto label_DefVal;
-
-    // Get pos
-    if( !GetPos( app_name, key_name, iter ) )
-        goto label_DefVal;
-
-    // Skip white spaces and tabs
-    while( iter < bufLen && ( bufPtr[ iter ] == ' ' || bufPtr[ iter ] == '\t' ) )
-        ++iter;
-    if( iter >= bufLen )
-        goto label_DefVal;
-
-    // Read string
-    for( ; iter < bufLen && bufPtr[ iter ]; ++iter )
-    {
-        if( end )
-        {
-            if( bufPtr[ iter ] == end )
-                break;
-
-            if( bufPtr[ iter ] == '\n' )
-            {
-                if( j && ret_buf[ j - 1 ] != ' ' )
-                    ret_buf[ j++ ] = ' ';
-                continue;
-            }
-            if( bufPtr[ iter ] == ';' || bufPtr[ iter ] == '#' )
-            {
-                if( j && ret_buf[ j - 1 ] != ' ' )
-                    ret_buf[ j++ ] = ' ';
-                GotoEol( iter );
-                continue;
-            }
-        }
-        else
-        {
-            if( !bufPtr[ iter ] || bufPtr[ iter ] == '\n' || bufPtr[ iter ] == '#' || bufPtr[ iter ] == ';' )
-                break;
-        }
-
-        ret_buf[ j ] = bufPtr[ iter ];
-        j++;
-    }
-
-    // Erase white spaces and tabs from end
-    for( ; j; j-- )
-        if( ret_buf[ j - 1 ] != ' ' && ret_buf[ j - 1 ] != '\t' )
-            break;
-
-    ret_buf[ j ] = 0;
-    return true;
-
-label_DefVal:
-    ret_buf[ 0 ] = 0;
-    if( def_val )
-        Str::Copy( ret_buf, MAX_FOTEXT, def_val );
-    return false;
-}
-
-bool IniParser::GetStr( const char* key_name, const char* def_val, char* ret_buf, char end /* = 0 */ )
-{
-    return GetStr( nullptr, key_name, def_val, ret_buf, end );
+    string* str = GetRawValue( app_name, key_name );
+    return str ? str->c_str() : def_val;
 }
 
 void IniParser::SetStr( const char* app_name, const char* key_name, const char* val )
 {
-    uint iter = 0;
-    if( bufPtr && GetPos( app_name, key_name, iter ) )
+    auto it_app = appKeyValues.find( app_name );
+    if( it_app == appKeyValues.end() )
     {
-        // Refresh founded field
-        while( iter < bufLen && ( bufPtr[ iter ] == ' ' || bufPtr[ iter ] == '\t' ) )
-            ++iter;
-
-        uint        start = iter;
-        uint        count = 0;
-        const char* end_str = Str::Substring( &bufPtr[ start ], "\n" );
-        if( !end_str )
-            end_str = &bufPtr[ bufLen ];
-
-        const char* comment = Str::Substring( &bufPtr[ start ], "#" );
-        if( comment && comment < end_str )
-            end_str = comment;
-        comment = Str::Substring( &bufPtr[ start ], ";" );
-        if( comment && comment < end_str )
-            end_str = comment;
-
-        count = (uint) ( (size_t) end_str - (size_t) ( &bufPtr[ start ] ) );
-
-        uint val_len = Str::Length( val );
-        if( val_len > count )
-        {
-            char* grow_buf = new char[ bufLen + val_len - count + 1 ];
-            memcpy( grow_buf, bufPtr, bufLen );
-            grow_buf[ bufLen ] = 0;
-            delete[] bufPtr;
-            bufPtr = grow_buf;
-        }
-
-        if( count )
-            Str::EraseInterval( &bufPtr[ start ], count );
-        Str::Insert( &bufPtr[ start ], val );
-        bufLen = bufLen + val_len - count;
+        StrMap key_values;
+        key_values[ key_name ] = val;
+        appKeyValues.insert( PAIR( string( app_name ), key_values ) );
     }
     else
     {
-        // Write new field
-        bool new_line = false;
-        if( bufPtr && bufPtr[ bufLen - 1 ] != '\n' )
-            new_line = true;
-
-        uint  key_name_len = Str::Length( key_name );
-        uint  val_len = Str::Length( val );
-        uint  new_len = bufLen + ( new_line ? 1 : 0 ) + key_name_len + 3 + val_len + 1; // {[\n]key_name = val\n}
-        char* new_buf = new char[ new_len + 1 ];
-        if( bufPtr )
-            memcpy( new_buf, bufPtr, bufLen );
-
-        uint pos = bufLen;
-        if( new_line )
-            new_buf[ pos++ ] = '\n';
-        memcpy( &new_buf[ pos ], key_name, key_name_len );
-        pos += key_name_len;
-        new_buf[ pos++ ] = ' ';
-        new_buf[ pos++ ] = '=';
-        new_buf[ pos++ ] = ' ';
-        memcpy( &new_buf[ pos ], val, val_len );
-        pos += val_len;
-        new_buf[ pos++ ] = '\n';
-        new_buf[ pos ] = 0;
-
-        SAFEDELA( bufPtr );
-        bufPtr = new_buf;
-        bufLen = new_len;
+        it_app->second[ key_name ] = val;
     }
-}
-
-void IniParser::SetStr( const char* key_name, const char* val )
-{
-    return SetStr( nullptr, key_name, val );
 }
 
 bool IniParser::IsApp( const char* app_name )
 {
-    if( !bufPtr )
-        return false;
-    uint iter = 0;
-    return GotoApp( app_name, iter );
+    auto it_app = appKeyValues.find( app_name );
+    return it_app != appKeyValues.end();
 }
 
 bool IniParser::IsKey( const char* app_name, const char* key_name )
 {
-    if( !bufPtr )
+    auto it_app = appKeyValues.find( app_name );
+    if( it_app == appKeyValues.end() )
         return false;
-    uint iter = 0;
-    return GetPos( app_name, key_name, iter );
+
+    return it_app->second.find( key_name ) != it_app->second.end();
 }
 
-bool IniParser::IsKey( const char* key_name )
+void IniParser::GetAppNames( StrSet& apps )
 {
-    return IsKey( nullptr, key_name );
+    for( const auto& kv : appKeyValues )
+        apps.insert( kv.first );
 }
 
-char* IniParser::GetApp( const char* app_name )
+void IniParser::GotoNextApp( const char* app_name )
 {
-    if( !bufPtr )
-        return nullptr;
-    if( !app_name )
-        return nullptr;
-
-    uint iter = 0;
-    if( lastAppPos && Str::Compare( app_name, lastApp ) )
-        iter = lastAppPos;
-    else if( !GotoApp( app_name, iter ) )
-        return nullptr;
-
-    uint i = iter, len = 0;
-    for( ; i < bufLen; i++, len++ )
-        if( i > 0 && bufPtr[ i - 1 ] == '\n' && bufPtr[ i ] == STR_PRIVATE_APP_BEGIN )
-            break;
-    for( ; len; i--, len-- )
-        if( i > 0 && bufPtr[ i - 1 ] != '\n' )
-            break;
-
-    char* ret_buf = new char[ len + 1 ];
-    if( len )
-        memcpy( ret_buf, &bufPtr[ iter ], len );
-    ret_buf[ len ] = 0;
-    return ret_buf;
-}
-
-bool IniParser::GotoNextApp( const char* app_name )
-{
-    if( !bufPtr )
-        return false;
-    return GotoApp( app_name, lastAppPos );
-}
-
-void IniParser::GetAppLines( StrVec& lines )
-{
-    if( !bufPtr )
-        return;
-    uint i = lastAppPos, len = 0;
-    for( ; i < bufLen; i++, len++ )
-        if( i > 0 && bufPtr[ i - 1 ] == '\n' && bufPtr[ i ] == STR_PRIVATE_APP_BEGIN )
-            break;
-    for( ; len; i--, len-- )
-        if( i > 0 && bufPtr[ i - 1 ] != '\n' )
-            break;
-
-    istrstream str( &bufPtr[ lastAppPos ], len );
-    char       line[ MAX_FOTEXT ];
-    while( !str.eof() )
-    {
-        str.getline( line, sizeof( line ), '\n' );
-        lines.push_back( line );
-    }
-}
-
-void IniParser::CacheApps()
-{
-    if( !bufPtr )
+    auto it_app = appKeyValues.find( app_name );
+    if( it_app == appKeyValues.end() )
         return;
 
-    istrstream str( bufPtr, bufLen );
-    char       line[ MAX_FOTEXT ];
-    while( !str.eof() )
-    {
-        str.getline( line, sizeof( line ), '\n' );
-        if( line[ 0 ] == STR_PRIVATE_APP_BEGIN )
-        {
-            char* end = Str::Substring( line + 1, "]" );
-            if( end )
-            {
-                int len = (int) ( end - line - 1 );
-                if( len > 0 )
-                {
-                    string app;
-                    app.assign( line + 1, len );
-                    cachedApps.insert( app );
-                }
-            }
-        }
-    }
+    appKeyValues.erase( it_app );
 }
 
-bool IniParser::IsCachedApp( const char* app_name )
+const StrMap* IniParser::GetAppKeyValues( const char* app_name )
 {
-    return cachedApps.count( string( app_name ) ) != 0;
+    auto it_app = appKeyValues.find( app_name );
+    return it_app != appKeyValues.end() ? &it_app->second : nullptr;
 }
 
-StrSet& IniParser::GetCachedApps()
+const char* IniParser::GetAppContent( const char* app_name )
 {
-    return cachedApps;
-}
+    auto it_app = appKeyValues.find( app_name );
+    if( it_app == appKeyValues.end() )
+        return nullptr;
 
-void IniParser::CacheKeys()
-{
-    if( !bufPtr )
-        return;
-
-    istrstream str( bufPtr, bufLen );
-    char       line[ MAX_FOTEXT ];
-    while( !str.eof() )
-    {
-        str.getline( line, sizeof( line ), '\n' );
-        char* key_end = Str::Substring( line, "=" );
-        if( key_end )
-        {
-            *key_end = 0;
-            Str::Trim( line );
-            if( Str::Length( line ) && line[ 0 ] != '#' )
-                cachedKeys.insert( line );
-        }
-    }
-}
-
-bool IniParser::IsCachedKey( const char* key_name )
-{
-    return cachedKeys.count( string( key_name ) ) != 0;
-}
-
-StrSet& IniParser::GetCachedKeys()
-{
-    return cachedKeys;
+    auto it_key = it_app->second.find( "" );
+    return it_key != it_app->second.end() ? it_key->second.c_str() : nullptr;
 }
 
 const char* IniParser::GetConfigFileName()
@@ -639,19 +271,7 @@ const char* IniParser::GetConfigFileName()
 IniParser& IniParser::GetClientConfig()
 {
     static IniParser cfg_client;
-
-    #ifndef FONLINE_MAPPER
-    const char* cfg_name = GetConfigFileName();
-    cfg_client.LoadFile( cfg_name, PT_ROOT );
-    cfg_client.AppendToBegin( cfg_name, PT_CACHE );
-    #else
-    IniParser& cfg_mapper = GetMapperConfig();
-    char       cfg_name[ MAX_FOPATH ];
-    cfg_mapper.GetStr( "ClientName", "FOnline", cfg_name );
-    Str::Append( cfg_name, ".cfg" );
-    cfg_client.LoadFile( cfg_name, PT_ROOT );
-    cfg_client.AppendToBegin( cfg_name, PT_CACHE );
-    #endif
+    cfg_client.Clear();
 
     // Injected options
     static char InternalClientConfig[ 5032 ] =
@@ -708,7 +328,21 @@ IniParser& IniParser::GetClientConfig()
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
     };
-    cfg_client.AppendPtrToEnd( InternalClientConfig );
+
+    #ifndef FONLINE_MAPPER
+    const char* cfg_name = GetConfigFileName();
+    cfg_client.AppendStr( InternalClientConfig );
+    cfg_client.AppendFile( cfg_name, PT_ROOT );
+    cfg_client.AppendFile( cfg_name, PT_CACHE );
+    #else
+    IniParser&  cfg_mapper = GetMapperConfig();
+    const char* client_name = cfg_mapper.GetStr( "", "ClientName", "FOnline" );
+    char        cfg_name[ MAX_FOTEXT ];
+    Str::Copy( cfg_name, client_name );
+    Str::Append( cfg_name, ".cfg" );
+    cfg_client.AppendFile( cfg_name, PT_ROOT );
+    cfg_client.AppendFile( cfg_name, PT_CACHE );
+    #endif
 
     return cfg_client;
 }
@@ -716,14 +350,17 @@ IniParser& IniParser::GetClientConfig()
 IniParser& IniParser::GetServerConfig()
 {
     static IniParser cfg_server;
+    cfg_server.Clear();
 
     #ifndef FONLINE_MAPPER
-    cfg_server.LoadFile( GetConfigFileName(), PT_ROOT );
+    cfg_server.AppendFile( GetConfigFileName(), PT_ROOT );
     #else
-    IniParser& cfg_mapper = GetMapperConfig();
-    char       cfg_name[ MAX_FOTEXT ];
-    cfg_mapper.GetStr( "ServerName", "FOnline", cfg_name );
-    cfg_server.LoadFile( cfg_name, PT_ROOT );
+    IniParser&  cfg_mapper = GetMapperConfig();
+    const char* server_name = cfg_mapper.GetStr( "", "ServerName", "FOnline" );
+    char        cfg_name[ MAX_FOTEXT ];
+    Str::Copy( cfg_name, server_name );
+    Str::Append( cfg_name, ".cfg" );
+    cfg_server.AppendFile( cfg_name, PT_ROOT );
     #endif
 
     return cfg_server;
@@ -732,8 +369,9 @@ IniParser& IniParser::GetServerConfig()
 IniParser& IniParser::GetMapperConfig()
 {
     static IniParser cfg_mapper;
+    cfg_mapper.Clear();
 
-    cfg_mapper.LoadFile( GetConfigFileName(), PT_ROOT );
+    cfg_mapper.AppendFile( GetConfigFileName(), PT_ROOT );
 
     return cfg_mapper;
 }

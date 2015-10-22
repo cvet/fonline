@@ -6,52 +6,34 @@
 class IniParser
 {
 private:
-    char*  bufPtr;
-    uint   bufLen;
-    char   lastApp[ 128 ];
-    uint   lastAppPos;
-    StrSet cachedApps;
-    StrSet cachedKeys;
+    typedef multimap< string, StrMap > ValuesMap;
+    ValuesMap appKeyValues;
 
-    void GotoEol( uint& iter );
-    bool GotoApp( const char* app_name, uint& iter );
-    bool GotoKey( const char* key_name, uint& iter );
-    bool GetPos( const char* app_name, const char* key_name, uint& iter );
-    void AppendText( const char* text, bool to_begin );
+    void    ParseStr( const char* str );
+    string* GetRawValue( const char* app_name, const char* key_name );
 
 public:
     IniParser();
-    ~IniParser();
-    bool  IsLoaded();
-    bool  LoadFile( const char* fname, int path_type );
-    void  LoadFilePtr( const char* buf, uint len );
-    bool  AppendToBegin( const char* fname, int path_type );
-    bool  AppendToEnd( const char* fname, int path_type );
-    void  AppendPtrToBegin( const char* buf );
-    void  AppendPtrToEnd( const char* buf );
-    bool  SaveFile( const char* fname, int path_type );
-    void  UnloadFile();
-    char* GetBuffer();
-    int   GetInt( const char* app_name, const char* key_name, int def_val );
-    int   GetInt( const char* key_name, int def_val );
-    bool  GetStr( const char* app_name, const char* key_name, const char* def_val, char* ret_buf, char end = 0 );
-    bool  GetStr( const char* key_name, const char* def_val, char* ret_buf, char end = 0 );
-    void  SetStr( const char* app_name, const char* key_name, const char* val ); // If key not founded than writes to end of file despite app
-    void  SetStr( const char* key_name, const char* val );
-    bool  IsApp( const char* app_name );
-    bool  IsKey( const char* app_name, const char* key_name );
-    bool  IsKey( const char* key_name );
+    IniParser( const char* str );
+    IniParser( const char* fname, int path_type );
+    void AppendStr( const char* buf );
+    bool AppendFile( const char* fname, int path_type );
+    bool SaveFile( const char* fname, int path_type );
+    void Clear();
+    bool IsLoaded();
 
-    char* GetApp( const char* app_name );
-    bool  GotoNextApp( const char* app_name );
-    void  GetAppLines( StrVec& lines );
+    int         GetInt( const char* app_name, const char* key_name, int def_val = 0 );
+    const char* GetStr( const char* app_name, const char* key_name, const char* def_val = nullptr );
 
-    void    CacheApps();
-    bool    IsCachedApp( const char* app_name );
-    StrSet& GetCachedApps();
-    void    CacheKeys();
-    bool    IsCachedKey( const char* key_name );
-    StrSet& GetCachedKeys();
+    void SetStr( const char* app_name, const char* key_name, const char* val );
+
+    bool IsApp( const char* app_name );
+    bool IsKey( const char* app_name, const char* key_name );
+
+    void          GetAppNames( StrSet& apps );
+    void          GotoNextApp( const char* app_name );
+    const StrMap* GetAppKeyValues( const char* app_name );
+    const char*   GetAppContent( const char* app_name );
 
     static const char* GetConfigFileName();
     static IniParser& GetClientConfig();

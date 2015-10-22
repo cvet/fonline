@@ -7,8 +7,8 @@
 
 bool FOClient::IfaceLoadRect( Rect& comp, const char* name )
 {
-    char res[ MAX_FOTEXT ];
-    if( !IfaceIni.GetStr( name, "", res ) )
+    const char* res = IfaceIni.GetStr( "", name );
+    if( !res )
         return false;
 
     if( sscanf( res, "%d%d%d%d", &comp[ 0 ], &comp[ 1 ], &comp[ 2 ], &comp[ 3 ] ) != 4 )
@@ -29,22 +29,20 @@ void FOClient::IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy )
 
 void FOClient::IfaceLoadSpr( AnyFrames*& comp, const char* name )
 {
-    char res[ MAX_FOTEXT ];
-    IfaceIni.GetStr( name, "none.png", res );
+    const char* res = IfaceIni.GetStr( "", name, "none.png" );
     comp = SprMngr.LoadAnimation( res, PT_ART_INTRFACE, true );
 }
 
 void FOClient::IfaceLoadAnim( uint& comp, const char* name )
 {
-    char res[ MAX_FOTEXT ];
-    IfaceIni.GetStr( name, "none.png", res );
+    const char* res = IfaceIni.GetStr( "", name, "none.png" );
     comp = AnimLoad( res, PT_ART_INTRFACE, RES_ATLAS_STATIC );
 }
 
 void FOClient::IfaceLoadArray( IntVec& arr, const char* name )
 {
-    char res[ MAX_FOTEXT ];
-    if( IfaceIni.GetStr( name, "", res ) )
+    const char* res = IfaceIni.GetStr( "", name );
+    if( res )
         Str::ParseLine( res, ' ', arr, Str::AtoI );
 }
 
@@ -68,7 +66,7 @@ bool FOClient::AppendIfaceIni( const char* ini_name )
         IfaceIniNames.push_back( string( ini_name ) );
 
     // Build ini file
-    IfaceIni.UnloadFile();
+    IfaceIni.Clear();
     for( uint i = 0, j = (uint) IfaceIniNames.size(); i < j; i++ )
     {
         // Create name
@@ -130,7 +128,7 @@ void FOClient::AppendIfaceIni( uchar* data, uint len )
 
     for( auto it = sections.begin(), end = sections.end(); it != end; ++it )
     {
-        IfaceIni.AppendPtrToBegin( it->second );
+        IfaceIni.AppendStr( it->second );
         delete[] it->second;
     }
 }
@@ -173,12 +171,12 @@ int FOClient::InitIface()
     IfaceLoadRect2( DlgBSayText, "DlgSayText", DlgAnsw[ 0 ], DlgAnsw[ 1 ] );
     IfaceLoadRect( DlgWAvatar, "DlgAvatar" );
     IfaceLoadRect( DlgWTimer, "DlgTimer" );
-    DlgNextAnswX = IfaceIni.GetInt( "DlgNextAnswX", 1 );
-    DlgNextAnswY = IfaceIni.GetInt( "DlgNextAnswY", 1 );
-    DlgX = IfaceIni.GetInt( "DlgX", -1 );
+    DlgNextAnswX = IfaceIni.GetInt( "", "DlgNextAnswX", 1 );
+    DlgNextAnswY = IfaceIni.GetInt( "", "DlgNextAnswY", 1 );
+    DlgX = IfaceIni.GetInt( "", "DlgX", -1 );
     if( DlgX == -1 )
         DlgX = GameOpt.ScreenWidth / 2 - DlgWMain[ 2 ] / 2;
-    DlgY = IfaceIni.GetInt( "DlgY", -1 );
+    DlgY = IfaceIni.GetInt( "", "DlgY", -1 );
     if( DlgY == -1 )
         DlgY = GameOpt.ScreenHeight / 2 - DlgWMain[ 3 ] / 2;
     // Barter
@@ -206,10 +204,10 @@ int FOClient::InitIface()
     IfaceLoadRect2( BarterWCost2, "BarterCost2", BarterWMain[ 0 ], BarterWMain[ 1 ] );
     IfaceLoadRect2( BarterWChosen, "BarterChosen", BarterWMain[ 0 ], BarterWMain[ 1 ] );
     IfaceLoadRect2( BarterWCritter, "BarterCritter", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    BarterCont1HeightItem = IfaceIni.GetInt( "BarterCont1ItemHeight", 30 );
-    BarterCont2HeightItem = IfaceIni.GetInt( "BarterCont2ItemHeight", 30 );
-    BarterCont1oHeightItem = IfaceIni.GetInt( "BarterCont1oItemHeight", 30 );
-    BarterCont2oHeightItem = IfaceIni.GetInt( "BarterCont2oItemHeight", 30 );
+    BarterCont1HeightItem = IfaceIni.GetInt( "", "BarterCont1ItemHeight", 30 );
+    BarterCont2HeightItem = IfaceIni.GetInt( "", "BarterCont2ItemHeight", 30 );
+    BarterCont1oHeightItem = IfaceIni.GetInt( "", "BarterCont1oItemHeight", 30 );
+    BarterCont2oHeightItem = IfaceIni.GetInt( "", "BarterCont2oItemHeight", 30 );
     BarterHoldId = 0;
     BarterCount = 0;
     BarterScroll1 = 0;
@@ -233,12 +231,12 @@ int FOClient::InitIface()
     LMenuRestoreCurY = 0;
     LMenuHeightOffset = 0;
     LMenuSet( LMENU_OFF );
-    LMenuNodeHeight = IfaceIni.GetInt( "LMenuNodeHeight", 40 );
+    LMenuNodeHeight = IfaceIni.GetInt( "", "LMenuNodeHeight", 40 );
     LMenuNodes.push_back( LMENU_NODE_LOOK );
 
     // Minimap
-    LmapX = IfaceIni.GetInt( "LmapX", 100 );
-    LmapY = IfaceIni.GetInt( "LmapY", 100 );
+    LmapX = IfaceIni.GetInt( "", "LmapX", 100 );
+    LmapY = IfaceIni.GetInt( "", "LmapY", 100 );
     LmapVectX = 0;
     LmapVectY = 0;
     LmapZoom = 2;
@@ -265,10 +263,12 @@ int FOClient::InitIface()
     TViewGmapLocEntrance = 0;
 
     // Global map
-    if( !IfaceIni.GetStr( "GmapTilesPic", "", GmapTilesPic ) )
+    const char* tiles_pic = IfaceIni.GetStr( "", "GmapTilesPic" );
+    if( !tiles_pic )
         WriteLogF( _FUNC_, " - <GmapTilesPic> signature not found.\n" );
-    GmapTilesX = IfaceIni.GetInt( "GmapTilesX", 0 );
-    GmapTilesY = IfaceIni.GetInt( "GmapTilesY", 0 );
+    Str::Copy( GmapTilesPic, tiles_pic );
+    GmapTilesX = IfaceIni.GetInt( "", "GmapTilesX", 0 );
+    GmapTilesY = IfaceIni.GetInt( "", "GmapTilesY", 0 );
     GmapPic.resize( GmapTilesX * GmapTilesY );
     GmapFog.Create( GM__MAXZONEX, GM__MAXZONEY, nullptr );
 
@@ -290,16 +290,16 @@ int FOClient::InitIface()
     GmapOffsetX = GmapWMap.W() / 2 + GmapWMap.L;
     GmapOffsetY = GmapWMap.H() / 2 + GmapWMap.T;
     IfaceLoadRect2( GmapWLock, "GmapLock", GmapX, GmapY );
-    GmapWNameStepX = IfaceIni.GetInt( "GmapNameStepX", 0 );
-    GmapWNameStepY = IfaceIni.GetInt( "GmapNameStepY", 22 );
+    GmapWNameStepX = IfaceIni.GetInt( "", "GmapNameStepX", 0 );
+    GmapWNameStepY = IfaceIni.GetInt( "", "GmapNameStepY", 22 );
     IfaceLoadRect2( GmapWTabs, "GmapTabs", GmapX, GmapY );
     IfaceLoadRect2( GmapBTabsScrUp, "GmapTabsScrUp", GmapX, GmapY );
     IfaceLoadRect2( GmapBTabsScrDn, "GmapTabsScrDn", GmapX, GmapY );
     IfaceLoadRect( GmapWTab, "GmapTab" );
     IfaceLoadRect( GmapWTabLoc, "GmapTabLocImage" );
     IfaceLoadRect( GmapBTabLoc, "GmapTabLoc" );
-    GmapTabNextX = IfaceIni.GetInt( "GmapTabNextX", 0 );
-    GmapTabNextY = IfaceIni.GetInt( "GmapTabNextY", 0 );
+    GmapTabNextX = IfaceIni.GetInt( "", "GmapTabNextX", 0 );
+    GmapTabNextY = IfaceIni.GetInt( "", "GmapTabNextY", 0 );
     GmapNullParams();
     GmapTabsScrX = 0;
     GmapTabsScrY = 0;
@@ -308,10 +308,10 @@ int FOClient::InitIface()
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
     memzero( GmapShowEntrances, sizeof( GmapShowEntrances ) );
-    GmapPTownInOffsX = IfaceIni.GetInt( "GmapTownInOffsX", 0 );
-    GmapPTownInOffsY = IfaceIni.GetInt( "GmapTownInOffsY", 0 );
-    GmapPTownViewOffsX = IfaceIni.GetInt( "GmapTownViewOffsX", 0 );
-    GmapPTownViewOffsY = IfaceIni.GetInt( "GmapTownViewOffsY", 0 );
+    GmapPTownInOffsX = IfaceIni.GetInt( "", "GmapTownInOffsX", 0 );
+    GmapPTownInOffsY = IfaceIni.GetInt( "", "GmapTownInOffsY", 0 );
+    GmapPTownViewOffsX = IfaceIni.GetInt( "", "GmapTownViewOffsX", 0 );
+    GmapPTownViewOffsY = IfaceIni.GetInt( "", "GmapTownViewOffsY", 0 );
     GmapZoom = 1.0f;
 
     // PickUp
@@ -329,8 +329,8 @@ int FOClient::InitIface()
     IfaceLoadRect( PupBNextCritRight, "PupNextCritRight" );
     PupX = ( GameOpt.ScreenWidth - PupWMain.W() ) / 2;
     PupY = ( GameOpt.ScreenHeight - PupWMain.H() ) / 2;
-    PupHeightItem1 = IfaceIni.GetInt( "PupHeightCont1", 0 );
-    PupHeightItem2 = IfaceIni.GetInt( "PupHeightCont2", 0 );
+    PupHeightItem1 = IfaceIni.GetInt( "", "PupHeightCont1", 0 );
+    PupHeightItem2 = IfaceIni.GetInt( "", "PupHeightCont2", 0 );
     PupHoldId = 0;
     PupScroll1 = 0;
     PupScroll2 = 0;
@@ -373,8 +373,8 @@ int FOClient::InitIface()
     IfaceLoadRect( AimWLLegP, "AimLLegProc" );
     IfaceLoadRect( AimWEyesP, "AimEyesProc" );
     IfaceLoadRect( AimWGroinP, "AimGroinProc" );
-    AimPicX = IfaceIni.GetInt( "AimPicX", 0 );
-    AimPicY = IfaceIni.GetInt( "AimPicY", 0 );
+    AimPicX = IfaceIni.GetInt( "", "AimPicX", 0 );
+    AimPicY = IfaceIni.GetInt( "", "AimPicY", 0 );
     AimX = ( GameOpt.ScreenWidth - AimWMain.W() ) / 2;
     AimY = ( GameOpt.ScreenHeight - AimWMain.H() ) / 2;
     AimVectX = 0;

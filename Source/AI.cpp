@@ -124,27 +124,25 @@ bool NpcAIMngr::LoadNpcBags()
     WriteLog( "Load NPC bags...\n" );
 
     IniParser bags_txt;
-    if( !bags_txt.LoadFile( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) )
+    if( !bags_txt.AppendFile( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) )
     {
         WriteLog( "File '%s' not found.\n", FileManager::GetDataPath( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) );
         npcBags.resize( 1 );
         return true;
     }
 
-    int                 end_bag = bags_txt.GetInt( "end_bag", -1 );
+    int                 end_bag = bags_txt.GetInt( "", "end_bag", -1 );
     int                 bag_count = 0;
-    char*               bag_str = new char[ 0x10000 ];
     StringNpcBagCombMap loaded_comb;
 
     npcBags.resize( end_bag + 1 );
 
     for( int i = 0; i <= end_bag; i++ )
     {
-        if( !bags_txt.GetStr( Str::FormatBuf( "bag_%d", i ), "", bag_str ) )
-            continue;
-        NpcBag& cur_bag = npcBags[ i ];
+        const char* bag_str = bags_txt.GetStr( "", Str::FormatBuf( "bag_%d", i ), "" );
+        NpcBag&     cur_bag = npcBags[ i ];
 
-        StrVec  comb;
+        StrVec      comb;
         Str::ParseLine< StrVec, string ( * )( const char* ) >( bag_str, ' ', comb, ParseBagComb );
 
         for( uint j = 0; j < comb.size(); j++ )
@@ -154,10 +152,9 @@ bool NpcAIMngr::LoadNpcBags()
             if( it == loaded_comb.end() )
             {
                 // Get combination line
-                if( !bags_txt.GetStr( c.c_str(), "", bag_str ) )
+                if( !( bag_str = bags_txt.GetStr( "", c.c_str(), "" ) ) )
                 {
                     WriteLog( "Items combination '%s' not found.\n", c.c_str() );
-                    delete[] bag_str;
                     return false;
                 }
 
@@ -175,7 +172,6 @@ bool NpcAIMngr::LoadNpcBags()
                         if( b.MinCnt > b.MaxCnt )
                         {
                             WriteLog( "Invalid items combination '%s', item combination %d, number %d.\n", c.c_str(), l, k );
-                            delete[] bag_str;
                             return false;
                         }
                     }
@@ -191,7 +187,6 @@ bool NpcAIMngr::LoadNpcBags()
         bag_count++;
     }
 
-    delete[] bag_str;
     WriteLog( "Load NPC bags complete, count %d.\n", bag_count );
     return true;
 }

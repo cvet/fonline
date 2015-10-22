@@ -226,17 +226,17 @@ void FOServer::GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVe
     IniParser& cfg = IniParser::GetServerConfig();
     if( cfg.IsLoaded() )
     {
-        char buf[ MAX_FOTEXT ];
-        if( cfg.GetStr( "Access_client", "", buf ) )
-            Str::ParseLine( buf, ' ', client, Str::ParseLineDummy );
-        if( cfg.GetStr( "Access_tester", "", buf ) )
-            Str::ParseLine( buf, ' ', tester, Str::ParseLineDummy );
-        if( cfg.GetStr( "Access_moder", "", buf ) )
-            Str::ParseLine( buf, ' ', moder, Str::ParseLineDummy );
-        if( cfg.GetStr( "Access_admin", "", buf ) )
-            Str::ParseLine( buf, ' ', admin, Str::ParseLineDummy );
-        if( cfg.GetStr( "AccessNames_admin", "", buf ) )
-            Str::ParseLine( buf, ' ', admin_names, Str::ParseLineDummy );
+        const char* s;
+        if( ( s = cfg.GetStr( "", "Access_client" ) ) )
+            Str::ParseLine( s, ' ', client, Str::ParseLineDummy );
+        if( ( s = cfg.GetStr( "", "Access_tester" ) ) )
+            Str::ParseLine( s, ' ', tester, Str::ParseLineDummy );
+        if( ( s = cfg.GetStr( "", "Access_moder" ) ) )
+            Str::ParseLine( s, ' ', moder, Str::ParseLineDummy );
+        if( ( s = cfg.GetStr( "", "Access_admin" ) ) )
+            Str::ParseLine( s, ' ', admin, Str::ParseLineDummy );
+        if( ( s = cfg.GetStr( "", "AccessNames_admin" ) ) )
+            Str::ParseLine( s, ' ', admin_names, Str::ParseLineDummy );
     }
 }
 
@@ -3411,14 +3411,14 @@ bool FOServer::InitReal()
     LastHoloId = USER_HOLO_START_NUM;
 
     // Profiler
-    uint sample_time = cfg.GetInt( "ProfilerSampleInterval", 0 );
-    uint profiler_mode = cfg.GetInt( "ProfilerMode", 0 );
+    uint sample_time = cfg.GetInt( "", "ProfilerSampleInterval", 0 );
+    uint profiler_mode = cfg.GetInt( "", "ProfilerMode", 0 );
     if( !profiler_mode )
         sample_time = 0;
 
     // Threading
-    LogicThreadSetAffinity = cfg.GetInt( "LogicThreadSetAffinity", 0 ) != 0;
-    LogicThreadCount = cfg.GetInt( "LogicThreadCount", 0 );
+    LogicThreadSetAffinity = cfg.GetInt( "", "LogicThreadSetAffinity", 0 ) != 0;
+    LogicThreadCount = cfg.GetInt( "", "LogicThreadCount", 0 );
     if( sample_time )
         LogicThreadCount = 1;
     else if( !LogicThreadCount )
@@ -3532,7 +3532,7 @@ bool FOServer::InitReal()
     ushort port;
     if( !Singleplayer )
     {
-        port = cfg.GetInt( "Port", 4000 );
+        port = cfg.GetInt( "", "Port", 4000 );
         if( GameOpt.UpdateServer && !GameOpt.GameServer )
         {
             ushort update_port = ( ushort ) Str::AtoI( Str::Substring( CommandLine, "-update" ) + Str::Length( "-update" ) );
@@ -3577,7 +3577,7 @@ bool FOServer::InitReal()
         return false;
     }
 
-    NetIOThreadsCount = cfg.GetInt( "NetWorkThread", 0 );
+    NetIOThreadsCount = cfg.GetInt( "", "NetWorkThread", 0 );
     if( !NetIOThreadsCount )
         NetIOThreadsCount = CpuCount;
 
@@ -3700,7 +3700,7 @@ bool FOServer::InitReal()
         DumpEndEvent.Allow();
         DumpThread.Start( Dump_Work, "WorldSaveManager" );
     }
-    SaveWorldTime = cfg.GetInt( "WorldSaveTime", 60 ) * 60 * 1000;
+    SaveWorldTime = cfg.GetInt( "", "WorldSaveTime", 60 ) * 60 * 1000;
     SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
 
     Active = true;
@@ -3771,10 +3771,10 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
     while( true )
     {
         char cur_str_lang[ MAX_FOTEXT ];
-        char lang_name[ MAX_FOTEXT ];
         Str::Format( cur_str_lang, "Language_%u", cur_lang );
 
-        if( !cfg.GetStr( cur_str_lang, "", lang_name ) )
+        const char* lang_name = cfg.GetStr( "", cur_str_lang );
+        if( !lang_name )
             break;
 
         if( Str::Length( lang_name ) != 4 )
@@ -4058,7 +4058,7 @@ void FOServer::LoadBans()
     Banned.clear();
     Banned.reserve( 1000 );
     IniParser bans_txt;
-    if( !bans_txt.LoadFile( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) )
+    if( !bans_txt.AppendFile( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) )
     {
         void* f = FileOpen( FileManager::GetWritePath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ), true );
         if( f )
@@ -4066,25 +4066,27 @@ void FOServer::LoadBans()
         return;
     }
 
-    char buf[ MAX_FOTEXT ];
-    while( bans_txt.GotoNextApp( "Ban" ) )
+    while( bans_txt.IsApp( "Ban" ) )
     {
         ClientBanned  ban;
         memzero( &ban, sizeof( ban ) );
         DateTimeStamp time;
         memzero( &time, sizeof( time ) );
-        if( bans_txt.GetStr( "Ban", "User", "", buf ) )
-            Str::Copy( ban.ClientName, buf );
+        const char*   s;
+        if( ( s = bans_txt.GetStr( "Ban", "User" ) ) )
+            Str::Copy( ban.ClientName, s );
         ban.ClientIp = bans_txt.GetInt( "Ban", "UserIp", 0 );
-        if( bans_txt.GetStr( "Ban", "BeginTime", "", buf ) && sscanf( buf, "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute ) )
+        if( ( s = bans_txt.GetStr( "Ban", "BeginTime" ) ) && sscanf( s, "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute ) )
             ban.BeginTime = time;
-        if( bans_txt.GetStr( "Ban", "EndTime", "", buf ) && sscanf( buf, "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute ) )
+        if( ( s = bans_txt.GetStr( "Ban", "EndTime" ) ) && sscanf( s, "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute ) )
             ban.EndTime = time;
-        if( bans_txt.GetStr( "Ban", "BannedBy", "", buf ) )
-            Str::Copy( ban.BannedBy, buf );
-        if( bans_txt.GetStr( "Ban", "Comment", "", buf ) )
-            Str::Copy( ban.BanInfo, buf );
+        if( ( s = bans_txt.GetStr( "Ban", "BannedBy" ) ) )
+            Str::Copy( ban.BannedBy, s );
+        if( ( s = bans_txt.GetStr( "Ban", "Comment" ) ) )
+            Str::Copy( ban.BanInfo, s );
         Banned.push_back( ban );
+
+        bans_txt.GotoNextApp( "Ban" );
     }
     ProcessBans();
 }
