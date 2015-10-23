@@ -13,17 +13,17 @@
 # include "ResourceManager.h"
 #endif
 
-#define FO_MAP_VERSION_TEXT1                     ( 1 )
-#define FO_MAP_VERSION_TEXT2                     ( 2 )
-#define FO_MAP_VERSION_TEXT3                     ( 3 )
-#define FO_MAP_VERSION_TEXT4                     ( 4 )
-#define FO_MAP_VERSION_TEXT5                     ( 5 )
-#define FO_MAP_VERSION_TEXT6                     ( 6 )
-#define FO_MAP_VERSION_TEXT7                     ( 7 )
+#define FO_MAP_VERSION_TEXT1    ( 1 )
+#define FO_MAP_VERSION_TEXT2    ( 2 )
+#define FO_MAP_VERSION_TEXT3    ( 3 )
+#define FO_MAP_VERSION_TEXT4    ( 4 )
+#define FO_MAP_VERSION_TEXT5    ( 5 )
+#define FO_MAP_VERSION_TEXT6    ( 6 )
+#define FO_MAP_VERSION_TEXT7    ( 7 )
 
-#define APP_HEADER                               "Header"
-#define APP_TILES                                "Tiles"
-#define APP_OBJECTS                              "Objects"
+#define APP_HEADER              "Header"
+#define APP_TILES               "Tiles"
+#define APP_OBJECTS             "Objects"
 
 bool ProtoMap::Init( const char* name )
 {
@@ -61,6 +61,10 @@ void ProtoMap::Clear()
 
     SAFEDELA( HexFlags );
 
+    SceneriesToSend.clear();
+    WallsToSend.clear();
+    mapEntires.clear();
+
     for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
         SAFEREL( *it );
     CrittersVec.clear();
@@ -93,6 +97,17 @@ void ProtoMap::Clear()
     memzero( &Header, sizeof( Header ) );
     pmapName = "";
     pmapPid = 0;
+
+    #ifdef FONLINE_SERVER
+    CLEAN_CONTAINER( SceneriesToSend );
+    CLEAN_CONTAINER( WallsToSend );
+    CLEAN_CONTAINER( mapEntires );
+    CLEAN_CONTAINER( CrittersVec );
+    CLEAN_CONTAINER( ItemsVec );
+    CLEAN_CONTAINER( SceneryVec );
+    CLEAN_CONTAINER( GridsVec );
+    CLEAN_CONTAINER( Tiles );
+    #endif
 }
 
 bool ProtoMap::LoadTextFormat( const char* buf )

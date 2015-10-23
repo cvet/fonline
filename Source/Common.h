@@ -77,6 +77,7 @@ const char* GetLastSocketError();
 #define OFFSETOF( s, m )                  ( (int) (size_t) ( &reinterpret_cast< s* >( 100000 )->m ) - 100000 )
 #define UNUSED_VARIABLE( x )              (void) ( x )
 #define memzero( ptr, size )              memset( ptr, 0, size )
+#define CLEAN_CONTAINER( cont )           cont.swap( decltype( cont ) ( ) )
 
 // FOnline stuff
 #include "Types.h"
