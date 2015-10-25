@@ -4166,7 +4166,7 @@ void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, u
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( hex_x >= map->GetMaxHexX() || hex_y >= map->GetMaxHexY() )
         SCRIPT_ERROR_R( "Invalid hexes args." );
-    map->SetText( hex_x, hex_y, color, text.c_str(), (uint) text.c_std_str().length(), 0, false );
+    map->SetText( hex_x, hex_y, color, text.c_str(), (ushort) text.c_std_str().length(), 0, false );
 }
 
 void FOServer::SScriptFunc::Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num )

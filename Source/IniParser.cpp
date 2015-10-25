@@ -29,15 +29,20 @@ bool IniParser::AppendFile( const char* fname, int path_type )
     if( !fm.LoadFile( fname, path_type ) )
         return false;
 
-    AppendStr( (const char*) fm.GetBuf() );
+    ParseStr( fm.GetCStr() );
     return true;
 }
 
 void IniParser::ParseStr( const char* str )
 {
-    StrMap* cur_app = &appKeyValues.insert( PAIR( string( "" ), StrMap() ) )->second;
+    StrMap* cur_app;
+    auto    it_app = appKeyValues.find( "" );
+    if( it_app == appKeyValues.end() )
+        cur_app = &appKeyValues.insert( PAIR( string( "" ), StrMap() ) )->second;
+    else
+        cur_app = &it_app->second;
 
-    string  app_content;
+    string app_content;
     app_content.reserve( 0xFFFF );
 
     istrstream istr( str );
