@@ -525,7 +525,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
         // Value
         input >> svalue;
-        ivalue = (int) Str::GetHash( svalue );
+        ivalue = (int) ConvertParamValue( svalue, fail );
     }
     break;
     case DR_SCRIPT:
