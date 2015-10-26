@@ -117,10 +117,13 @@ bool SpriteManager::Init()
     atlasWidth = atlasHeight = MIN( max_texture_size, MAX_ATLAS_SIZE );
     atlasWidth = MIN( max_viewport_size[ 0 ], atlasWidth );
     atlasHeight = MIN( max_viewport_size[ 1 ], atlasHeight );
-    #ifdef FO_OSX_IOS
     atlasWidth = MIN( 2048, atlasWidth );
-    atlasHeight = MIN( 3584, atlasHeight );
-    #endif
+    atlasHeight = MIN( 2048, atlasHeight );
+    if( atlasWidth != 2048 || atlasHeight != 2048 )
+    {
+        WriteLog( "Max texture size must be at least 2048x2048, current is %ux%u.\n", atlasWidth, atlasHeight );
+        return false;
+    }
 
     // Initialize GLEW
     #ifndef FO_OGL_ES
@@ -1728,23 +1731,26 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             oy = fofrm.GetInt( dir_str, "offs_y", oy );
         }
 
-        char        frm_fname[ MAX_FOPATH ];
-        FileManager::ExtractDir( fname, frm_fname );
-        const char* frm_name = frm_fname + Str::Length( frm_fname );
+        char frm_dir[ MAX_FOTEXT ];
+        FileManager::ExtractDir( fname, frm_dir );
 
-        uint        frames = 0;
-        bool        no_info = false;
-        bool        load_fail = false;
+        uint frames = 0;
+        bool no_info = false;
+        bool load_fail = false;
+        char buf[ MAX_FOTEXT ];
         for( int frm = 0; frm < frm_num; frm++ )
         {
-            if( !( frm_name = fofrm.GetStr( no_app ? "" : dir_str, Str::FormatBuf( "frm_%d", frm ), "" ) ) &&
-                ( frm != 0 || !( frm_name = fofrm.GetStr( no_app ? "" : dir_str, Str::FormatBuf( "frm", frm ), "" ) ) ) )
+            const char* frm_name;
+            if( !( frm_name = fofrm.GetStr( no_app ? "" : dir_str, Str::Format( buf, "frm_%d", frm ) ) ) &&
+                ( frm != 0 || !( frm_name = fofrm.GetStr( no_app ? "" : dir_str, "frm" ) ) ) )
             {
                 no_info = true;
                 break;
             }
 
-            AnyFrames* anim = LoadAnimation( frm_fname, path_type );
+            Str::Copy( buf, frm_dir );
+            Str::Append( buf, frm_name );
+            AnyFrames* anim = LoadAnimation( buf, path_type );
             if( !anim )
             {
                 load_fail = true;
@@ -1754,8 +1760,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             frames += anim->CntFrm;
             anims.push_back( anim );
 
-            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str, Str::FormatBuf( "next_x_%d", frm ), 0 ) );
-            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str, Str::FormatBuf( "next_y_%d", frm ), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str, Str::FormatBuf( buf, "next_x_%d", frm ), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str, Str::FormatBuf( buf, "next_y_%d", frm ), 0 ) );
         }
 
         // No frames found or error
