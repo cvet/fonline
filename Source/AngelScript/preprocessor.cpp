@@ -233,7 +233,7 @@ Preprocessor::LineNumberTranslator::Entry& Preprocessor::LineNumberTranslator::S
 void Preprocessor::LineNumberTranslator::AddLineRange( const std::string& file, unsigned int start_line, unsigned int offset )
 {
     Entry e;
-    e.File = file.substr( 0, file.find_last_of( '.' ) );
+    e.File = file + ( file.find_last_of( '.' ) == std::string::npos ? ".fosh" : "" );
     e.StartLine = start_line;
     e.Offset = offset;
     lines.push_back( e );
@@ -1027,7 +1027,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
             else if( value == "#include" )
             {
                 if( LNT )
-                    LNT->AddLineRange( PrependRootPath( filename ), start_line, CurrentLine - LinesThisFile );
+                    LNT->AddLineRange( current_file, start_line, CurrentLine - LinesThisFile );
                 unsigned int save_lines_this_file = LinesThisFile;
                 std::string  file_name;
                 ParseIf( directive, file_name );
@@ -1079,7 +1079,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
     }
 
     if( LNT )
-        LNT->AddLineRange( PrependRootPath( filename ), start_line, CurrentLine - LinesThisFile );
+        LNT->AddLineRange( current_file, start_line, CurrentLine - LinesThisFile );
 }
 
 int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStream* errors, FileLoader* loader, bool skip_pragmas )
