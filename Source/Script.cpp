@@ -1595,10 +1595,7 @@ uint Script::BindByScriptName( const char* script_name, const char* decl, bool i
     char module_name[ MAX_FOTEXT ];
     char func_name[ MAX_FOTEXT ];
     if( !ParseScriptName( script_name, module_name, func_name, disable_log ) )
-    {
-        WriteLogF( _FUNC_, " - Parse script name '%s' fail.\n", script_name );
         return 0;
-    }
     return BindByModuleFuncName( module_name, func_name, decl, is_temp, disable_log );
 }
 
@@ -1687,7 +1684,7 @@ bool Script::ParseScriptName( const char* script_name, char* module_name, char* 
     if( !Str::Substring( script_name, "@" ) )
     {
         if( !disable_log )
-            WriteLogF( _FUNC_, " - Script name parse error, string '%s'.\n", script_name );
+            WriteLog( "Script name parse error, string '%s'.\n", script_name );
         return false;
     }
 
@@ -1702,13 +1699,13 @@ bool Script::ParseScriptName( const char* script_name, char* module_name, char* 
     if( !module_name[ 0 ] )
     {
         if( !disable_log )
-            WriteLogF( _FUNC_, " - Module name parse error, string '%s'.\n", script_name );
+            WriteLog( "Module name parse error, string '%s'.\n", script_name );
         return false;
     }
     if( !func_name[ 0 ] )
     {
         if( !disable_log )
-            WriteLogF( _FUNC_, " - Function name parse error, string '%s'.\n", script_name );
+            WriteLog( "Function name parse error, string '%s'.\n", script_name );
         return false;
     }
     return true;

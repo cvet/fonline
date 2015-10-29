@@ -170,7 +170,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     Header.Time = ivalue;
                 else if( field == "NoLogOut" )
                     Header.NoLogOut = ( ivalue != 0 );
-                else if( field == "ScriptModule" && value != "-" )
+                else if( ( field == "ScriptModule" || field == "ScriptName" ) && value != "-" )
                     Str::Copy( Header.ScriptModule, value.c_str() );
                 else if( field == "ScriptFunc" && value != "-" )
                     Str::Copy( Header.ScriptFunc, value.c_str() );
@@ -754,13 +754,13 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
         if( !proto_item )
         {
-            WriteLogF( _FUNC_, " - Map '%s', unknown item '%s', hex x %u, hex y %u.\n", pmapName.c_str(), Str::GetName( pid ), hx, hy );
+            WriteLog( "Map '%s', unknown item '%s', hex x %u, hex y %u.\n", pmapName.c_str(), Str::GetName( pid ), hx, hy );
             continue;
         }
 
         if( hx >= maxhx || hy >= maxhy )
         {
-            WriteLogF( _FUNC_, " - Invalid item '%s' position on map '%s', hex x %u, hex y %u.\n", Str::GetName( pid ), pmapName.c_str(), hx, hy );
+            WriteLog( "Invalid item '%s' position on map '%s', hex x %u, hex y %u.\n", Str::GetName( pid ), pmapName.c_str(), hx, hy );
             continue;
         }
 
@@ -1425,6 +1425,27 @@ void ProtoMap::SaveCache( FileManager& fm )
 bool ProtoMap::BindScripts( MapObjectPtrVec& mobjs )
 {
     int errors = 0;
+
+    // Map script
+    if( Header.ScriptModule[ 0 ] || Header.ScriptFunc[ 0 ] )
+    {
+        char script_name[ MAX_FOTEXT ];
+        Str::Copy( script_name, Header.ScriptModule );
+        if( script_name[ 0 ] )
+            Str::Append( script_name, "@" );
+        Str::Append( script_name, Header.ScriptFunc );
+        if( script_name[ 0 ] )
+        {
+            hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Map&,bool)" );
+            if( !func_num )
+            {
+                WriteLog( "Map '%s', can't bind map function '%s'.\n", pmapName.c_str(), script_name );
+                errors++;
+            }
+        }
+    }
+
+    // Objects scripts
     for( auto& mobj : mobjs )
     {
         mobj->RunTime.BindScriptId = 0;
@@ -1504,7 +1525,7 @@ bool ProtoMap::Refresh()
     FileManager& map_file = maps.FindFile( pmapName.c_str(), &path );
     if( !map_file.IsLoaded() )
     {
-        WriteLogF( _FUNC_, " - Map '%s' not found.\n", pmapName.c_str() );
+        WriteLog( "Map '%s' not found.\n", pmapName.c_str() );
         return false;
     }
 
@@ -1531,7 +1552,7 @@ bool ProtoMap::Refresh()
     // Load from file
     if( !LoadTextFormat( (const char*) map_file.GetBuf() ) )
     {
-        WriteLogF( _FUNC_, " - Map '%s'. Can't read text map format.\n", pmapName.c_str() );
+        WriteLog( "Unable to load map '%s'.\n", pmapName.c_str() );
         return false;
     }
 
@@ -1627,7 +1648,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
     string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : pmapName ) + ".fomap";
     if( !fm.SaveOutBufToFile( save_fname.c_str(), PT_SERVER_MODULES ) )
     {
-        WriteLogF( _FUNC_, " - Unable write file.\n" );
+        WriteLog( "Unable write file.\n" );
         fm.ClearOutBuf();
         return false;
     }
