@@ -131,7 +131,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
         uint check_pack_id = it->first & DLGID_MASK;
         if( pack_id == check_pack_id )
         {
-            WriteLog( "Name hash collision for dialogs  '%s' and  '%s'.\n", pack->PackName.c_str(), it->second->PackName.c_str() );
+            WriteLog( "Name hash collision for dialogs '%s' and '%s'.\n", pack->PackName.c_str(), it->second->PackName.c_str() );
             return false;
         }
     }

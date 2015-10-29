@@ -274,13 +274,6 @@ bool Map::Generate()
         if( mobj.MItem.PicMap )
             item->SetPicMap( mobj.MItem.PicMap );
 
-        // Parse script
-        char script_name[ MAX_FOTEXT ] = { 0 };
-        Str::Copy( script_name, mobj.ScriptName );
-        if( script_name[ 0 ] )
-            Str::Append( script_name, "@" );
-        Str::Append( script_name, mobj.FuncName );
-
         // Store UID association
         if( mobj.UID )
             UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( item, nullptr ) ) );
@@ -315,6 +308,11 @@ bool Map::Generate()
         }
 
         // Script
+        char script_name[ MAX_FOTEXT ] = { 0 };
+        Str::Copy( script_name, mobj.ScriptName );
+        if( script_name[ 0 ] )
+            Str::Append( script_name, "@" );
+        Str::Append( script_name, mobj.FuncName );
         if( script_name[ 0 ] )
             item->SetScript( script_name, true );
     }

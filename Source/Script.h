@@ -27,7 +27,7 @@ struct EngineData
     map< string, pair< string, void* > > LoadedDlls;
     ScriptInvoker*                       Invoker;
     ScriptProfiler*                      Profiler;
-    map< string, map< string, int > >    CachedEnums;
+    map< string, int >                   CachedEnums;
 };
 
 struct ReservedScriptFunction
@@ -115,7 +115,7 @@ public:
     static bool               PrepareScriptFuncContext( hash func_num, const char* call_func, const char* ctx_info );
     static string             GetScriptFuncName( hash func_num );
 
-    static bool CacheEnumValues();
+    static void CacheEnumValues();
     static int  GetEnumValue( const char* enum_value_name, bool& fail );
     static int  GetEnumValue( const char* enum_name, const char* value_name, bool& fail );
 

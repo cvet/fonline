@@ -257,8 +257,10 @@ public:
     } Header;
 
     // Objects
+    #ifdef FONLINE_MAPPER
     MapObjectPtrVec MObjects;
     uint            LastObjectUID;
+    #endif
 
     // Tiles
     struct Tile     // 16 bytes
@@ -309,7 +311,7 @@ public:
 private:
     bool LoadCache( FileManager& fm );
     void SaveCache( FileManager& fm );
-    void BindSceneryScript( MapObject* mobj );
+    bool BindScripts( MapObjectPtrVec& mobjs );
     #endif
 
 public:
