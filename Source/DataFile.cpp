@@ -393,6 +393,7 @@ bool FalloutDatFile::ReadTree()
                 memcpy( name, ptr + 4, fnsz );
                 name[ fnsz ] = 0;
                 NormalizePathSlashes( name );
+                Str::Lower( name );
                 if( type == 2 )
                     *( ptr + 4 + fnsz + 7 ) = 1;               // Compressed
                 filesTree.insert( PAIR( string( name ), ptr + 4 + fnsz + 7 ) );
@@ -456,6 +457,7 @@ bool FalloutDatFile::ReadTree()
             memcpy( name, ptr + 4, fnsz );
             name[ fnsz ] = 0;
             NormalizePathSlashes( name );
+            Str::Lower( name );
             filesTree.insert( PAIR( string( name ), ptr + 4 + fnsz ) );
         }
 

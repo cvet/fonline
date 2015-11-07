@@ -468,7 +468,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
         return it->second;
 
     // Load file
-    static char frm_ind[] = "_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    static char frm_ind[] = "_abcdefghijklmnopqrstuvwxyz0123456789";
     char spr_name[ MAX_FOPATH ];
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
 
