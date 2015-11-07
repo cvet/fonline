@@ -199,14 +199,14 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     if( comment )
         pack->Comment = comment;
 
-    // Check dialog pack
-    if( pack->PackId <= 0xFFFF )
-        LOAD_FAIL( "Invalid hash for dialog name." );
-
     // Texts
     const char* lang_key = fodlg.GetStr( "data", "lang" );
     if( !lang_key )
         LOAD_FAIL( "Lang app not found." );
+
+    // Check dialog pack
+    if( pack->PackId <= 0xFFFF )
+        LOAD_FAIL( "Invalid hash for dialog name." );
 
     Str::ParseLine( lang_key, ' ', lang_apps, ParseLangKey );
     if( !lang_apps.size() )

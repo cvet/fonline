@@ -981,15 +981,15 @@ int main( int argc, char** argv )
     IniParser& cfg = IniParser::GetServerConfig();
 
     // Memory debugging
-    MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
+    MemoryDebugLevel = cfg.GetInt( "", "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
 
 
     // Logging
-    LogWithTime( cfg.GetInt( "LoggingTime", 1 ) == 0 ? false : true );
-    LogWithThread( cfg.GetInt( "LoggingThread", 1 ) == 0 ? false : true );
-    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "LoggingDebugOutput", 0 ) != 0 )
+    LogWithTime( cfg.GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
+    LogWithThread( cfg.GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
+    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "", "LoggingDebugOutput", 0 ) != 0 )
         LogToDebugOutput( true );
     LogToFile( "./FOnlineServerDaemon.log" );
 
