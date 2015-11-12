@@ -1868,13 +1868,6 @@ void Critter::ToDead( uint anim2, bool send_all )
     Data.Cond = COND_DEAD;
     Data.Anim2Dead = anim2;
 
-    Item* item = ItemSlotMain;
-    if( item->GetId() )
-        MoveItem( SLOT_HAND1, SLOT_INV, item->GetId(), item->GetCount() );
-    item = ItemSlotExt;
-    if( item->GetId() )
-        MoveItem( SLOT_HAND2, SLOT_INV, item->GetId(), item->GetCount() );
-
     if( send_all )
         SendAA_Action( ACTION_DEAD, anim2, nullptr );
 
