@@ -72,9 +72,11 @@ bool ItemManager::LoadProtos()
             continue;
         }
 
-        ProtoItem*    proto = new ProtoItem( pid );
+        ProtoItem* proto = new ProtoItem( pid );
 
-        IniParser     foitem( file.GetCStr() );
+        IniParser  foitem;
+        foitem.CollectContent();
+        foitem.AppendStr( file.GetCStr() );
         const StrMap* item_app = foitem.GetAppKeyValues( "Item" );
         if( !item_app || !proto->ItemPropsEntity.Props.LoadFromText( *item_app ) )
             errors++;
@@ -301,26 +303,20 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
     return item;
 }
 
-bool ItemManager::RestoreItem( uint id, hash pid, Properties& props, uchar acc, char* acc_buf )
+bool ItemManager::RestoreItem( uint id, hash proto_id, Properties& props )
 {
-    ProtoItem* proto = GetProtoItem( pid );
+    ProtoItem* proto = GetProtoItem( proto_id );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
+        WriteLog( "Proto item '%s' is not loaded.\n", Str::GetName( proto_id ) );
         return false;
     }
 
     Item* item = new Item( id, proto );
     SYNC_LOCK( item );
-
-    // Restore accessory
     item->Props = props;
-    item->Accessory = acc;
-    memcpy( item->AccBuffer, acc_buf, sizeof( item->AccBuffer ) );
-
-    // Main collection
+    item->ProtoId = proto_id;
     EntityMngr.RegisterEntity( item );
-
     return true;
 }
 
@@ -346,7 +342,7 @@ void ItemManager::DeleteItem( Item* item )
     }
 
     // Tear off from environment
-    while( item->Accessory != ITEM_ACCESSORY_NONE || item->ContIsItems() )
+    while( item->GetAccessory() != ITEM_ACCESSORY_NONE || ( item->IsContainer() && item->ContIsItems() ) )
     {
         // Delete from owner
         EraseItemHolder( item );
@@ -416,40 +412,45 @@ Item* ItemManager::GetItem( uint item_id, bool sync_lock )
 
 void ItemManager::EraseItemHolder( Item* item )
 {
-    switch( item->Accessory )
+    switch( item->GetAccessory() )
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, true );
+        Critter* cr = CrMngr.GetCritter( item->GetCritId(), true );
         if( cr )
             cr->EraseItem( item, true );
         else if( item->GetIsRadio() )
             ItemMngr.RadioRegister( item, true );
+        item->SetCritId( 0 );
+        item->SetCritSlot( 0 );
     }
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId, true );
+        Map* map = MapMngr.GetMap( item->GetMapId(), true );
         if( map )
             map->EraseItem( item->GetId() );
+        item->SetMapId( 0 );
     }
     break;
     case ITEM_ACCESSORY_CONTAINER:
     {
-        Item* cont = ItemMngr.GetItem( item->AccContainer.ContainerId, true );
+        Item* cont = ItemMngr.GetItem( item->GetContainerId(), true );
         if( cont )
             cont->ContEraseItem( item );
+        item->SetContainerId( 0 );
+        item->SetContainerStack( 0 );
     }
     break;
     default:
         break;
     }
-    item->Accessory = ITEM_ACCESSORY_NONE;
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
 }
 
 void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
 {
-    if( item->Accessory == ITEM_ACCESSORY_CRITTER && item->AccCritter.Id == to_cr->GetId() )
+    if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER && item->GetCritId() == to_cr->GetId() )
         return;
 
     if( count >= item->GetCount() || !item->IsStackable() )
@@ -467,7 +468,7 @@ void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
 
 void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy )
 {
-    if( item->Accessory == ITEM_ACCESSORY_HEX && item->AccHex.MapId == to_map->GetId() && item->AccHex.HexX == to_hx && item->AccHex.HexY == to_hy )
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy )
         return;
 
     if( count >= item->GetCount() || !item->IsStackable() )
@@ -485,7 +486,7 @@ void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, u
 
 void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id )
 {
-    if( item->Accessory == ITEM_ACCESSORY_CONTAINER && item->AccContainer.ContainerId == to_cont->GetId() && item->AccContainer.StackId == stack_id )
+    if( item->GetAccessory() == ITEM_ACCESSORY_CONTAINER && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id )
         return;
 
     if( count >= item->GetCount() || !item->IsStackable() )
@@ -747,7 +748,7 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
                 return false;
             }
 
-            item_->AccContainer.StackId = stack_id;
+            item_->SetContainerStack( stack_id );
             to_cont->ContSetItem( item_ );
         }
         else
@@ -885,7 +886,7 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     for( uint i = 0, j = (uint) radios.size(); i < j; i++ )
     {
         RadioSendTextEx( channels[ i ],
-                         radios[ i ]->GetRadioBroadcastSend(), cr->GetMapId(), cr->Data.WorldX, cr->Data.WorldY,
+                         radios[ i ]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(),
                          text, text_len, cr->IntellectCacheValue, unsafe_text, text_msg, num_str, nullptr );
     }
 }
@@ -953,9 +954,9 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                 broadcast = RADIO_BROADCAST_FORCE_ALL;
             }
 
-            if( radio->Accessory == ITEM_ACCESSORY_CRITTER )
+            if( radio->GetAccessory() == ITEM_ACCESSORY_CRITTER )
             {
-                Client* cl = CrMngr.GetPlayer( radio->AccCritter.Id, false );
+                Client* cl = CrMngr.GetPlayer( radio->GetCritId(), false );
                 if( cl && cl->RadioMessageSended != msg_count )
                 {
                     if( broadcast != RADIO_BROADCAST_FORCE_ALL )
@@ -973,7 +974,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                         }
                         else if( broadcast >= 101 && broadcast <= 200 )                   // RADIO_BROADCAST_ZONE
                         {
-                            if( !MapMngr.IsIntersectZone( from_wx, from_wy, 0, cl->Data.WorldX, cl->Data.WorldY, 0, broadcast - 101 ) )
+                            if( !MapMngr.IsIntersectZone( from_wx, from_wy, 0, cl->GetWorldX(), cl->GetWorldY(), 0, broadcast - 101 ) )
                                 continue;
                         }
                         else
@@ -990,12 +991,12 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                     cl->RadioMessageSended = msg_count;
                 }
             }
-            else if( radio->Accessory == ITEM_ACCESSORY_HEX )
+            else if( radio->GetAccessory() == ITEM_ACCESSORY_HEX )
             {
-                if( broadcast == RADIO_BROADCAST_MAP && broadcast_map_id != radio->AccHex.MapId )
+                if( broadcast == RADIO_BROADCAST_MAP && broadcast_map_id != radio->GetMapId() )
                     continue;
 
-                Map* map = MapMngr.GetMap( radio->AccHex.MapId, false );
+                Map* map = MapMngr.GetMap( radio->GetMapId(), false );
                 if( map )
                 {
                     if( broadcast != RADIO_BROADCAST_FORCE_ALL && broadcast != RADIO_BROADCAST_MAP )
@@ -1009,7 +1010,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                         else if( broadcast >= 101 && broadcast <= 200 )                   // RADIO_BROADCAST_ZONE
                         {
                             Location* loc = map->GetLocation( false );
-                            if( !MapMngr.IsIntersectZone( from_wx, from_wy, 0, loc->Data.WX, loc->Data.WY, loc->GetRadius(), broadcast - 101 ) )
+                            if( !MapMngr.IsIntersectZone( from_wx, from_wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), broadcast - 101 ) )
                                 continue;
                         }
                         else
@@ -1017,11 +1018,11 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                     }
 
                     if( text )
-                        map->SetText( radio->AccHex.HexX, radio->AccHex.HexY, 0xFFFFFFFE, text, text_len, intellect, unsafe_text );
+                        map->SetText( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, text_len, intellect, unsafe_text );
                     else if( lexems )
-                        map->SetTextMsgLex( radio->AccHex.HexX, radio->AccHex.HexY, 0xFFFFFFFE, text_msg, num_str, lexems, Str::Length( lexems ) );
+                        map->SetTextMsgLex( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str, lexems, Str::Length( lexems ) );
                     else
-                        map->SetTextMsg( radio->AccHex.HexX, radio->AccHex.HexY, 0xFFFFFFFE, text_msg, num_str );
+                        map->SetTextMsg( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str );
                 }
             }
         }

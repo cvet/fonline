@@ -92,6 +92,7 @@ const char* GetLastSocketError();
 #include "Text.h"
 #include "FileManager.h"
 #include "FileSystem.h"
+#include "IniParser.h"
 #include "AngelScript/scriptstring.h"
 #include "AngelScript/scriptarray.h"
 #include "AngelScript/scriptdict.h"
@@ -366,7 +367,6 @@ extern bool FOQuit;
 extern int  ServerGameSleep;
 extern int  MemoryDebugLevel;
 extern uint VarsGarbageTime;
-extern bool WorldSaveManager;
 extern bool LogicMT;
 extern bool AllowServerNativeCalls;
 extern bool AllowClientNativeCalls;

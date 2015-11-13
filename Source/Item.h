@@ -22,6 +22,12 @@ class MapObject;
 #define ITEM_EVENT_MAX                ( 8 )
 extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 
+// Items accessory
+#define ITEM_ACCESSORY_NONE           ( 0 )
+#define ITEM_ACCESSORY_CRITTER        ( 1 )
+#define ITEM_ACCESSORY_HEX            ( 2 )
+#define ITEM_ACCESSORY_CONTAINER      ( 3 )
+
 // Generic
 #define ITEM_MAX_CHILDS               ( 5 )
 #define MAX_ADDED_NOGROUP_ITEMS       ( 30 )
@@ -48,12 +54,6 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define GRID_LADDERBOT                ( 3 )
 #define GRID_LADDERTOP                ( 4 )
 #define GRID_ELEVATOR                 ( 5 )
-
-// Accessory
-#define ITEM_ACCESSORY_NONE           ( 0 )
-#define ITEM_ACCESSORY_CRITTER        ( 1 )
-#define ITEM_ACCESSORY_HEX            ( 2 )
-#define ITEM_ACCESSORY_CONTAINER      ( 3 )
 
 // Uses
 #define USE_PRIMARY                   ( 0 )
@@ -221,7 +221,6 @@ public:
         ProtoItemExt();
     } ItemPropsEntity;
 
-    hash     ProtoId;
     int64    InstanceCount;
 
     UIntVec  TextsLang;
@@ -288,6 +287,14 @@ public:
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( ushort, LockerComplexity );
     #endif
+    CLASS_PROPERTY( char, Accessory );
+    CLASS_PROPERTY( uint, MapId );
+    CLASS_PROPERTY( ushort, HexX );
+    CLASS_PROPERTY( ushort, HexY );
+    CLASS_PROPERTY( uint, CritId );
+    CLASS_PROPERTY( uchar, CritSlot );
+    CLASS_PROPERTY( uint, ContainerId );
+    CLASS_PROPERTY( uint, ContainerStack );
     CLASS_PROPERTY( bool, IsHidden );
     CLASS_PROPERTY( bool, IsFlat );
     CLASS_PROPERTY( bool, IsNoBlock );
@@ -327,6 +334,7 @@ public:
     CLASS_PROPERTY( uchar, LightDistance );
     CLASS_PROPERTY( uchar, LightFlags );
     CLASS_PROPERTY( uint, LightColor );
+    CLASS_PROPERTY( int, Type );
     CLASS_PROPERTY( uint, Count );
     CLASS_PROPERTY( uint, Cost );
     CLASS_PROPERTY( int, Val0 );
@@ -361,32 +369,7 @@ public:
 
     // Internal fields
     ProtoItem* Proto;
-    uchar      Accessory;
     bool       ViewPlaceOnMap;
-
-    union     // 8
-    {
-        struct
-        {
-            uint   MapId;
-            ushort HexX;
-            ushort HexY;
-        } AccHex;
-
-        struct
-        {
-            uint  Id;
-            uchar Slot;
-        } AccCritter;
-
-        struct
-        {
-            uint ContainerId;
-            uint StackId;
-        } AccContainer;
-
-        char AccBuffer[ 8 ];
-    };
 
     #ifdef FONLINE_SERVER
     uint       FuncId[ ITEM_EVENT_MAX ];
@@ -421,13 +404,11 @@ public:
     static void ClearItems( ItemVec& items );
 
     // All
-    hash        GetProtoId()       { return Proto->ProtoId; }
-    const char* GetName()          { return Proto->GetName(); }
-    hash        GetActualPicMap()  { return GetPicMap() ? GetPicMap() : Proto->GetPicMap(); }
-    hash        GetActualPicInv()  { return GetPicInv() ? GetPicInv() : Proto->GetPicInv(); }
-    bool        IsValidAccessory() { return Accessory == ITEM_ACCESSORY_CRITTER || Accessory == ITEM_ACCESSORY_HEX || Accessory == ITEM_ACCESSORY_CONTAINER; }
+    hash        GetProtoId()      { return Proto->ProtoId; }
+    const char* GetName()         { return Proto->GetName(); }
+    hash        GetActualPicMap() { return GetPicMap() ? GetPicMap() : Proto->GetPicMap(); }
+    hash        GetActualPicInv() { return GetPicInv() ? GetPicInv() : Proto->GetPicInv(); }
     void        ChangeCount( int val );
-    int         GetType() { return Proto->GetType(); }
     void        SetWeaponMode( uchar mode );
     bool        IsStackable() { return Proto->GetStackable(); }
 

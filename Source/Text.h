@@ -68,12 +68,20 @@ namespace Str
     void GoTo( char*& str, char ch, bool skip_char = false );
 
     bool        IsNumber( const char* str );
-    const char* ItoA( int i );
-    const char* I64toA( int64 i );
-    const char* UItoA( uint dw );
+    const char* BtoA( bool value );
+    const char* ItoA( int value );
+    const char* UItoA( uint value );
+    const char* I64toA( int64 value );
+    const char* UI64toA( uint64 value );
+    const char* FtoA( float value );
+    const char* DFtoA( double value );
+    bool        AtoB( const char* str );
     int         AtoI( const char* str );
-    int64       AtoI64( const char* str );
     uint        AtoUI( const char* str );
+    int64       AtoI64( const char* str );
+    uint64      AtoUI64( const char* str );
+    float       AtoF( const char* str );
+    double      AtoDF( const char* str );
 
     void  HexToStr( uchar hex, char* str ); // 2 bytes string
     uchar StrToHex( const char* str );
@@ -83,8 +91,8 @@ namespace Str
     // Name hashes
     hash        GetHash( const char* name );
     const char* GetName( hash h );
-    void        SaveHashes( void ( * save_func )( void*, size_t ) );
-    void        LoadHashes( void* f, uint version );
+    void        SaveHashes( StrMap& hashes );
+    void        LoadHashes( StrMap& hashes );
 
     // Parse str
     const char* ParseLineDummy( const char* str );

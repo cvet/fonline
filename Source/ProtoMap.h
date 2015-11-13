@@ -355,8 +355,8 @@ public:
     static bool IsMapFile( const char* fname );
     #endif
 
-    const char* GetName() { return pmapName.c_str(); }
-    hash        GetPid()  { return pmapPid; }
+    const char* GetName()    { return pmapName.c_str(); }
+    hash        GetProtoId() { return pmapPid; }
 
     long RefCounter;
     void AddRef()  { ++RefCounter; }

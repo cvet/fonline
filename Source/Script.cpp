@@ -1024,16 +1024,16 @@ void Script::ProcessDeferredCalls()
     edata->Invoker->Process();
 }
 
-void Script::SaveDeferredCalls( void ( * save_func )( void*, size_t ) )
+void Script::SaveDeferredCalls( IniParser& data )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    edata->Invoker->SaveDeferredCalls( save_func );
+    edata->Invoker->SaveDeferredCalls( data );
 }
 
-bool Script::LoadDeferredCalls( void* f, uint version )
+bool Script::LoadDeferredCalls( IniParser& data )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    return edata->Invoker->LoadDeferredCalls( f, version );
+    return edata->Invoker->LoadDeferredCalls( data );
 }
 
 void Script::ProfilerContextCallback( asIScriptContext* ctx, void* obj )
@@ -1056,10 +1056,11 @@ PropertyRegistrator* Script::FindEntityRegistrator( const char* class_name )
     return edata->PragmaCB->FindEntityRegistrator( class_name );
 }
 
-void Script::RestoreEntity( const char* class_name, uint id, Properties& props )
+bool Script::RestoreEntity( const char* class_name, uint id, Properties& props )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     edata->PragmaCB->RestoreEntity( class_name, id, props );
+    return true;
 }
 
 const char* Script::GetActiveModuleName()
@@ -1760,11 +1761,11 @@ hash Script::GetFuncNum( asIScriptFunction* func )
     hash   func_num = (hash) h;
     if( !func_num )
     {
-        char func_signature[ MAX_FOTEXT ];
-        Str::Copy( func_signature, func->GetModuleName() );
-        Str::Append( func_signature, "|" );
-        Str::Append( func_signature, func->GetDeclaration( true, true ) );
-        func_num = Str::GetHash( func_signature );
+        char script_name[ MAX_FOTEXT ];
+        Str::Copy( script_name, func->GetModuleName() );
+        Str::Append( script_name, "@" );
+        Str::Append( script_name, func->GetName() );
+        func_num = Str::GetHash( script_name );
         func->SetUserData( (void*) func_num );
     }
     return func_num;
@@ -1881,39 +1882,36 @@ bool Script::PrepareScriptFuncContext( hash func_num, const char* call_func, con
     uint bind_id = GetScriptFuncBindId( func_num );
     if( !bind_id )
     {
-        WriteLogF( _FUNC_, " - Function %u '%s' not found. Context info '%s', call func '%s'.\n", func_num, GetScriptFuncName( func_num ).c_str(), ctx_info, call_func );
+        WriteLogF( _FUNC_, " - Function %u '%s' not found. Context info '%s', call func '%s'.\n", func_num, Str::GetName( func_num ), ctx_info, call_func );
         return false;
     }
     return PrepareContext( bind_id, call_func, ctx_info );
-}
-
-string Script::GetScriptFuncName( hash func_num )
-{
-    asIScriptFunction* func = FindFunc( func_num );
-    if( !func )
-        return "";
-    return string( func->GetModuleName() ).append( "@" ).append( func->GetName() );
 }
 
 void Script::CacheEnumValues()
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     auto&       cached_enums = edata->CachedEnums;
+    auto&       cached_enum_names = edata->CachedEnumNames;
     char        buf[ MAX_FOTEXT ];
 
     // Enums
     cached_enums.clear();
+    cached_enum_names.clear();
     for( asUINT i = 0, j = Engine->GetEnumCount(); i < j; i++ )
     {
         int         enum_type_id;
         const char* enum_ns;
         const char* enum_name = Engine->GetEnumByIndex( i, &enum_type_id, &enum_ns );
+        Str::Format( buf, "%s%s%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name );
+        IntStrMap&  value_names = cached_enum_names.insert( PAIR( string( buf ), IntStrMap() ) ).first->second;
         for( asUINT k = 0, l = Engine->GetEnumValueCount( enum_type_id ); k < l; k++ )
         {
             int         value;
             const char* value_name = Engine->GetEnumValueByIndex( enum_type_id, k, &value );
             Str::Format( buf, "%s%s%s::%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name, value_name );
             cached_enums.insert( PAIR( string( buf ), value ) );
+            value_names.insert( PAIR( value, string( value_name ) ) );
         }
     }
 
@@ -1956,6 +1954,16 @@ int Script::GetEnumValue( const char* enum_name, const char* value_name, bool& f
     Str::Append( buf, "::" );
     Str::Append( buf, value_name );
     return GetEnumValue( buf, fail );
+}
+
+const char* Script::GetEnumValueName( const char* enum_name, int value )
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    const auto& cached_enum_names = edata->CachedEnumNames;
+    auto        it = cached_enum_names.find( enum_name );
+    RUNTIME_ASSERT( it != cached_enum_names.end() );
+    auto        it_value = it->second.find( value );
+    return it_value != it->second.end() ? it_value->second.c_str() : Str::ItoA( value );
 }
 
 /************************************************************************/

@@ -181,9 +181,11 @@ string ParseLangKey( const char* str )
 
 DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data )
 {
-    IniParser fodlg( data );
+    IniParser fodlg;
+    fodlg.CollectContent();
+    fodlg.AppendStr( data );
 
-    #define LOAD_FAIL( err )           { WriteLog( "Dialog '%s' - %s\n", pack_name, err ); goto load_false; }
+    #define LOAD_FAIL( err )           { WriteLog( "Dialog '%s' - %s\n", pack_name, err ); delete pack; return nullptr; }
     #define VERIFY_STR_ID( str_id )    ( uint( str_id ) <= ~DLGID_MASK )
 
     DialogPack* pack = new DialogPack();
@@ -283,7 +285,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     {
         input >> dlg_id;
         if( input.eof() )
-            goto load_done;
+            break;
         if( input.fail() )
             LOAD_FAIL( "Bad dialog id number." );
         input >> text_id;
@@ -391,19 +393,13 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
             if( ch == '&' )         // End of all
             {
                 pack->Dialogs.push_back( current_dialog );
-                goto load_done;
+                break;
             }
         }
         pack->Dialogs.push_back( current_dialog );
     }
 
-load_done:
     return pack;
-
-load_false:
-    WriteLog( "Dialog '%s' - Bad node %d.\n", pack_name, dlg_id );
-    delete pack;
-    return nullptr;
 }
 
 DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )

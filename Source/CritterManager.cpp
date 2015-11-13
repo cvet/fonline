@@ -68,7 +68,9 @@ bool CritterManager::LoadProtos()
         ProtoCritter* proto = new ProtoCritter();
         proto->ProtoId = pid;
 
-        IniParser     focr( file.GetCStr() );
+        IniParser focr;
+        focr.CollectContent();
+        focr.AppendStr( file.GetCStr() );
         const StrMap* cr_app = focr.GetAppKeyValues( "Critter" );
         if( !cr_app || !proto->Props.LoadFromText( *cr_app ) )
             errors++;
@@ -161,7 +163,8 @@ void CritterManager::DeleteNpc( Critter* cr )
                 map->EraseCritterEvents( cr );
                 map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
             }
-            cr->SetMaps( 0, 0 );
+            cr->SetMapId( 0 );
+            cr->SetMapPid( 0 );
         }
 
         // Delete from global
@@ -272,22 +275,23 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     Job::PushBack( JOB_CRITTER, npc );
 
     npc->Props = proto->Props;
-    npc->Data.ProtoId = proto_id;
-    npc->Data.Cond = COND_LIFE;
-    npc->Data.Multihex = -1;
+    npc->Proto = proto;
+    npc->ProtoId = proto->ProtoId;
+    npc->SetCond( COND_LIFE );
 
     // Flags and coords
     Location* loc = map->GetLocation( true );
 
     if( dir >= DIRS_COUNT )
         dir = Random( 0, DIRS_COUNT - 1 );
-    npc->Data.Dir = dir;
-    npc->Data.WorldX = ( loc ? loc->Data.WX : 100 );
-    npc->Data.WorldY = ( loc ? loc->Data.WY : 100 );
+    npc->SetDir( dir );
+    npc->SetWorldX( loc ? loc->GetWorldX() : 100 );
+    npc->SetWorldY( loc ? loc->GetWorldY() : 100 );
     npc->SetHome( map->GetId(), hx, hy, dir );
-    npc->SetMaps( map->GetId(), map->GetPid() );
-    npc->Data.HexX = hx;
-    npc->Data.HexY = hy;
+    npc->SetMapId( map->GetId() );
+    npc->SetMapPid( map->GetProtoId() );
+    npc->SetHexX( hx );
+    npc->SetHexY( hy );
     npc->RefreshName();
 
     if( props_data )
@@ -330,20 +334,20 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     return npc;
 }
 
-bool CritterManager::RestoreNpc( uint id, CritData& data, Properties& props, Critter::CrTimeEventVec time_events )
+bool CritterManager::RestoreNpc( uint id, hash proto_id, Properties& props )
 {
-    ProtoCritter* proto = GetProto( data.ProtoId );
+    ProtoCritter* proto = GetProto( proto_id );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", Str::GetName( data.ProtoId ) );
+        WriteLog( "Proto critter '%s' is not loaded.\n", Str::GetName( proto_id ) );
         return false;
     }
 
     Npc* npc = new Npc( id );
-    npc->Data = data;
-    npc->Props = props;
-
     SYNC_LOCK( npc );
+    npc->Props = props;
+    npc->Proto = proto;
+    npc->ProtoId = proto_id;
     EntityMngr.RegisterEntity( npc );
     Job::PushBack( JOB_CRITTER, npc );
     return true;

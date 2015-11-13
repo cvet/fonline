@@ -43,7 +43,8 @@ void IniParser::ParseStr( const char* str )
         cur_app = &it_app->second;
 
     string app_content;
-    app_content.reserve( 0xFFFF );
+    if( collectContent )
+        app_content.reserve( 0xFFFF );
 
     istrstream istr( str );
     char       line[ MAX_FOTEXT ];
@@ -65,8 +66,11 @@ void IniParser::ParseStr( const char* str )
                 continue;
 
             // Store current section content
-            ( *cur_app )[ "" ] = app_content;
-            app_content.clear();
+            if( collectContent )
+            {
+                ( *cur_app )[ "" ] = app_content;
+                app_content.clear();
+            }
 
             // Add new section
             cur_app = &appKeyValues.insert( PAIR( string( buf ), StrMap() ) )->second;
@@ -75,7 +79,8 @@ void IniParser::ParseStr( const char* str )
         else
         {
             // Store raw content
-            app_content.append( line ).append( "\n" );
+            if( collectContent )
+                app_content.append( line ).append( "\n" );
 
             // Cut comments
             Str::Trim( line );
@@ -109,23 +114,31 @@ void IniParser::ParseStr( const char* str )
     }
 
     // Store current section content
-    ( *cur_app )[ "" ] = app_content;
+    if( collectContent )
+        ( *cur_app )[ "" ] = app_content;
 }
 
 bool IniParser::SaveFile( const char* fname, int path_type )
 {
     string str;
-    str.reserve( 0xFFFF );
+    str.reserve( 10000000 );
     for( const auto& app : appKeyValues )
     {
         str.append( string( "[" ).append( app.first ).append( "]" ).append( "\n" ) );
         for( const auto& kv : app.second )
-            str.append( string( kv.first ).append( " = " ).append( kv.second ).append( "\n" ) );
+            if( !kv.first.empty() )
+                str.append( string( kv.first ).append( " = " ).append( kv.second ).append( "\n" ) );
+        str.append( "\n" );
     }
 
-    FileManager fm;
-    fm.SetData( (void*) str.c_str(), str.length() );
-    return fm.SaveOutBufToFile( fname, path_type );
+    char  path[ MAX_FOTEXT ];
+    FileManager::GetWritePath( fname, path_type, path );
+    void* f = FileOpen( path, true );
+    if( !f )
+        return false;
+    bool result = FileWrite( f, (void*) str.c_str(), (uint) str.length() );
+    FileClose( f );
+    return result;
 }
 
 void IniParser::Clear()
@@ -151,16 +164,16 @@ string* IniParser::GetRawValue( const char* app_name, const char* key_name )
     return &it_key->second;
 }
 
-int IniParser::GetInt( const char* app_name, const char* key_name, int def_val /* = 0 */  )
-{
-    string* str = GetRawValue( app_name, key_name );
-    return str ? Str::AtoI( str->c_str() ) : def_val;
-}
-
 const char* IniParser::GetStr( const char* app_name, const char* key_name, const char* def_val /* = nullptr */ )
 {
     string* str = GetRawValue( app_name, key_name );
     return str ? str->c_str() : def_val;
+}
+
+int IniParser::GetInt( const char* app_name, const char* key_name, int def_val /* = 0 */  )
+{
+    string* str = GetRawValue( app_name, key_name );
+    return str ? Str::AtoI( str->c_str() ) : def_val;
 }
 
 void IniParser::SetStr( const char* app_name, const char* key_name, const char* val )
@@ -176,6 +189,32 @@ void IniParser::SetStr( const char* app_name, const char* key_name, const char* 
     {
         it_app->second[ key_name ] = val;
     }
+}
+
+void IniParser::SetInt( const char* app_name, const char* key_name, int val )
+{
+    SetStr( app_name, key_name, Str::ItoA( val ) );
+}
+
+StrMap& IniParser::GetApp( const char* app_name )
+{
+    auto& it = appKeyValues.find( app_name );
+    return it->second;
+}
+
+void IniParser::GetApps( const char* app_name, PStrMapVec& key_values )
+{
+    size_t count = appKeyValues.count( app_name );
+    auto   it = appKeyValues.find( app_name );
+    key_values.reserve( key_values.size() + count );
+    for( size_t i = 0; i < count; i++, it++ )
+        key_values.push_back( &it->second );
+}
+
+StrMap& IniParser::SetApp( const char* app_name )
+{
+    auto& it = appKeyValues.insert( PAIR( string( app_name ), StrMap() ) );
+    return it->second;
 }
 
 bool IniParser::IsApp( const char* app_name )
@@ -216,6 +255,8 @@ const StrMap* IniParser::GetAppKeyValues( const char* app_name )
 
 const char* IniParser::GetAppContent( const char* app_name )
 {
+    RUNTIME_ASSERT( collectContent );
+
     auto it_app = appKeyValues.find( app_name );
     if( it_app == appKeyValues.end() )
         return nullptr;

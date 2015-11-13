@@ -104,8 +104,8 @@ public:
     static Mutex       HolodiskLocker;
     static uint        LastHoloId;
 
-    static void      SaveHoloInfoFile();
-    static bool      LoadHoloInfoFile( void* f, uint version );
+    static void      SaveHoloInfoFile( IniParser& data );
+    static bool      LoadHoloInfoFile( IniParser& data );
     static HoloInfo* GetHoloInfo( uint id )
     {
         auto it = HolodiskInfo.find( id );
@@ -183,14 +183,12 @@ public:
 
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks = true );
-    static bool  TransferAllItems();
     static void  OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemCount( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemChangeView( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void  OnSetItemTrapValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Npc
     static void ProcessAI( Npc* npc );
@@ -201,7 +199,6 @@ public:
     static bool AI_Attack( Npc* npc, Map* map, uchar mode, uint targ_id );
     static bool AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, hash pid, uint use_item_id );
     static bool AI_ReloadWeapon( Npc* npc, Map* map, Item* weap, uint ammo_id );
-    static bool TransferAllNpc();
     static void ProcessCritter( Critter* cr );
     static bool Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg );
     static bool Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck );
@@ -230,8 +227,8 @@ public:
     static void LogToClients( const char* str );
 
     // Game time
-    static void SaveGameInfoFile();
-    static bool LoadGameInfoFile( void* f, uint version );
+    static void SaveGameInfoFile( IniParser& data );
+    static bool LoadGameInfoFile( IniParser& data );
     static void InitGameTime();
     static void SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second );
 
@@ -291,59 +288,37 @@ public:
     #endif
 
     // Dump save/load
-    struct ClientSaveData
+    #define WORLD_SAVE_MAX_INDEX    ( 9999 )
+
+    struct EntityDump
     {
-        char                    Name[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        char                    PasswordHash[ PASS_HASH_SIZE ];
-        CritData                Data;
-        Properties*             Props;
-        Critter::CrTimeEventVec TimeEvents;
-
-        ClientSaveData()
-        {
-            Props = nullptr;
-            Clear();
-        }
-
-        void Clear()
-        {
-            memzero( Name, sizeof( Name ) );
-            memzero( PasswordHash, sizeof( PasswordHash ) );
-            memzero( &Data, sizeof( Data ) );
-            TimeEvents.clear();
-        }
+        bool        IsClient;
+        string      TypeName;
+        Properties* Props;
+        StrMap      ExtraData;
     };
-    typedef vector< ClientSaveData > ClientSaveDataVec;
-    static ClientSaveDataVec ClientsSaveData;
-    static size_t            ClientsSaveDataCount;
+    typedef vector< EntityDump* > EntityDumpVec;
 
-    #define WORLD_SAVE_MAX_INDEX           ( 9999 )
-    #define WORLD_SAVE_DATA_BUFFER_SIZE    ( 10000000 )  // 10mb
-    static PUCharVec  WorldSaveData;
-    static size_t     WorldSaveDataBufCount, WorldSaveDataBufFreeSize;
+    static uint          SaveWorldIndex, SaveWorldTime, SaveWorldNextTick;
+    static UIntVec       SaveWorldDeleteIndexes;
+    static EntityDumpVec DumpedEntities;
+    static Thread        DumpThread;
 
-    static uint       SaveWorldIndex, SaveWorldTime, SaveWorldNextTick;
-    static UIntVec    SaveWorldDeleteIndexes;
-    static void*      DumpFile;
-    static MutexEvent DumpBeginEvent, DumpEndEvent;
-    static Thread     DumpThread;
-
-    static bool SaveClient( Client* cl, bool deferred );
+    static bool SaveClient( Client* cl );
     static bool LoadClient( Client* cl );
     static bool NewWorld();
     static void SaveWorld( const char* fname );
     static bool LoadWorld( const char* fname );
     static void UnloadWorld();
-    static void AddWorldSaveData( void* data, size_t size );
-    static void AddClientSaveData( Client* cl );
+    static void DumpEntity( Entity* entity );
     static void Dump_Work( void* data );
 
     // Access
     static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );
 
     // Banned
-    #define BANS_FNAME_ACTIVE              "Active.txt"
-    #define BANS_FNAME_EXPIRED             "Expired.txt"
+    #define BANS_FNAME_ACTIVE       "Active.txt"
+    #define BANS_FNAME_EXPIRED      "Expired.txt"
     struct ClientBanned
     {
         DateTimeStamp BeginTime;
@@ -361,21 +336,13 @@ public:
     static ClientBannedVec Banned;
     static Mutex           BannedLocker;
 
-    static ClientBanned* GetBanByName( const char* name )
-    {
-        auto it = std::find( Banned.begin(), Banned.end(), name );
-        return it != Banned.end() ? &( *it ) : nullptr;
-    }
-    static ClientBanned* GetBanByIp( uint ip )
-    {
-        auto it = std::find( Banned.begin(), Banned.end(), ip );
-        return it != Banned.end() ? &( *it ) : nullptr;
-    }
-    static uint GetBanTime( ClientBanned& ban );
-    static void ProcessBans();
-    static void SaveBan( ClientBanned& ban, bool expired );
-    static void SaveBans();
-    static void LoadBans();
+    static ClientBanned* GetBanByName( const char* name );
+    static ClientBanned* GetBanByIp( uint ip );
+    static uint          GetBanTime( ClientBanned& ban );
+    static void          ProcessBans();
+    static void          SaveBan( ClientBanned& ban, bool expired );
+    static void          SaveBans();
+    static void          LoadBans();
 
     // Clients data
     struct ClientData
@@ -420,9 +387,10 @@ public:
     // Singleplayer save
     struct SingleplayerSave_
     {
-        bool           Valid;
-        ClientSaveData CrData;
-        UCharVec       PicData;
+        bool        Valid;
+        string      Name;
+        Properties* CrProps;
+        UCharVec    PicData;
     } static SingleplayerSave;
 
     // Brute force prevention
@@ -454,10 +422,6 @@ public:
         static bool  Item_SetScript( Item* item, ScriptString* func_name );
         static hash  Item_GetScriptId( Item* item );
         static bool  Item_SetEvent( Item* item, int event_type, ScriptString* func_name );
-        static hash  Item_get_ProtoId( Item* item );
-        static int   Item_get_Type( Item* item );
-        static uint  Item_GetCount( Item* item );
-        static void  Item_SetCount( Item* item, uint count );
         static uint  Item_GetCost( Item* item );
         static Map*  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static bool  Item_ChangeProto( Item* item, hash pid );
@@ -494,8 +458,6 @@ public:
         static bool         Cl_SetAccess( Critter* cl, int access );
         static bool         Crit_SetEvent( Critter* cr, int event_type, ScriptString* func_name );
         static Map*         Crit_GetMap( Critter* cr );
-        static uint         Crit_GetMapId( Critter* cr );
-        static hash         Crit_GetMapProtoId( Critter* cr );
         static bool         Crit_ChangeCrType( Critter* cr, uint new_type );
         static void         Cl_DropTimers( Critter* cl );
         static bool         Crit_MoveRandom( Critter* cr );
@@ -582,15 +544,12 @@ public:
         static void Cl_Disconnect( Critter* cl );
 
         static bool Crit_SetScript( Critter* cr, ScriptString* func_name );
-        static hash Crit_get_ProtoId( Critter* cr );
         static uint Crit_GetMultihex( Critter* cr );
         static void Crit_SetMultihex( Critter* cr, int value );
 
         static void Crit_AddEnemyToStack( Critter* cr, uint critter_id );
         static bool Crit_CheckEnemyInStack( Critter* cr, uint critter_id );
         static void Crit_EraseEnemyFromStack( Critter* cr, uint critter_id );
-        static void Crit_ChangeEnemyStackSize( Critter* cr, uint new_size );
-        static void Crit_GetEnemyStack( Critter* cr, ScriptArray& arr );
         static void Crit_ClearEnemyStack( Critter* cr );
         static void Crit_ClearEnemyStackNpc( Critter* cr );
 
@@ -648,29 +607,14 @@ public:
         static void Crit_EventTurnBasedProcess( Critter* cr, Map* map, bool begin_turn );
         static void Crit_EventSmthTurnBasedProcess( Critter* cr, Critter* from_cr, Map* map, bool begin_turn );
 
-        static uint       Map_GetId( Map* map );
-        static hash       Map_get_ProtoId( Map* map );
         static Location*  Map_GetLocation( Map* map );
         static bool       Map_SetScript( Map* map, ScriptString* func_name );
-        static hash       Map_GetScriptId( Map* map );
         static bool       Map_SetEvent( Map* map, int event_type, ScriptString* func_name );
         static void       Map_SetLoopTime( Map* map, uint loop_num, uint ms );
-        static uchar      Map_GetRain( Map* map );
-        static void       Map_SetRain( Map* map, uchar capacity );
-        static int        Map_GetTime( Map* map );
-        static void       Map_SetTime( Map* map, int time );
-        static uint       Map_GetDayTime( Map* map, uint day_part );
-        static void       Map_SetDayTime( Map* map, uint day_part, uint time );
-        static void       Map_GetDayColor( Map* map, uint day_part, uchar& r, uchar& g, uchar& b );
-        static void       Map_SetDayColor( Map* map, uint day_part, uchar r, uchar g, uchar b );
-        static void       Map_SetTurnBasedAvailability( Map* map, bool value );
-        static bool       Map_IsTurnBasedAvailability( Map* map );
         static void       Map_BeginTurnBased( Map* map, Critter* first_turn_crit );
         static bool       Map_IsTurnBased( Map* map );
         static void       Map_EndTurnBased( Map* map );
         static int        Map_GetTurnBasedSequence( Map* map, ScriptArray& critters_ids );
-        static void       Map_SetData( Map* map, uint index, int value );
-        static int        Map_GetData( Map* map, uint index );
         static Item*      Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count );
         static uint       Map_GetItemsHex( Map* map, ushort hx, ushort hy, ScriptArray* items );
         static uint       Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid, ScriptArray* items );
@@ -736,7 +680,6 @@ public:
         static void Map_EventTurnBasedEnd( Map* map );
         static void Map_EventTurnBasedProcess( Map* map, Critter* cr, bool begin_turn );
 
-        static hash Location_get_ProtoId( Location* loc );
         static bool Location_SetEvent( Location* loc, int event_type, ScriptString* func_name );
         static uint Location_GetMapCount( Location* loc );
         static Map* Location_GetMap( Location* loc, hash map_pid );
@@ -750,30 +693,29 @@ public:
         static void Location_EventFinish( Location* loc, bool deleted );
         static bool Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance );
 
-        static ProtoItem* Global_GetProtoItem( hash pid );
-        static Item*      Global_GetItem( uint item_id );
-        static uint       Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );
-        static void       Global_MoveItemCr( Item* item, uint count, Critter* to_cr );
-        static void       Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
-        static void       Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id );
-        static void       Global_MoveItemsCr( ScriptArray& items, Critter* to_cr );
-        static void       Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy );
-        static void       Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id );
-        static void       Global_DeleteItem( Item* item );
-        static void       Global_DeleteItemById( uint item_id );
-        static void       Global_DeleteItems( ScriptArray& items );
-        static void       Global_DeleteItemsById( ScriptArray& item_ids );
-        static void       Global_DeleteNpc( Critter* npc );
-        static void       Global_DeleteNpcById( uint npc_id );
-        static void       Global_RadioMessage( ushort channel, ScriptString& text );
-        static void       Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str );
-        static void       Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, ScriptString* lexems );
-        static uint       Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
-        static void       Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
-        static uint       Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, ScriptArray* critters );
-        static void       Global_DeleteLocation( Location* loc );
-        static void       Global_DeleteLocationById( uint loc_id );
-        // static void*          Global_GetProtoCritter( hash proto_id );
+        static ProtoItem*    Global_GetProtoItem( hash pid );
+        static Item*         Global_GetItem( uint item_id );
+        static uint          Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );
+        static void          Global_MoveItemCr( Item* item, uint count, Critter* to_cr );
+        static void          Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
+        static void          Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id );
+        static void          Global_MoveItemsCr( ScriptArray& items, Critter* to_cr );
+        static void          Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy );
+        static void          Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id );
+        static void          Global_DeleteItem( Item* item );
+        static void          Global_DeleteItemById( uint item_id );
+        static void          Global_DeleteItems( ScriptArray& items );
+        static void          Global_DeleteItemsById( ScriptArray& item_ids );
+        static void          Global_DeleteNpc( Critter* npc );
+        static void          Global_DeleteNpcById( uint npc_id );
+        static void          Global_RadioMessage( ushort channel, ScriptString& text );
+        static void          Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str );
+        static void          Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, ScriptString* lexems );
+        static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
+        static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
+        static uint          Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, ScriptArray* critters );
+        static void          Global_DeleteLocation( Location* loc );
+        static void          Global_DeleteLocationById( uint loc_id );
         static Critter*      Global_GetCritter( uint crid );
         static CraftItem*    Global_GetCraftItem( uint num );
         static Critter*      Global_GetPlayer( ScriptString& name );

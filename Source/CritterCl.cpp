@@ -16,6 +16,20 @@ bool   CritterCl::SlotEnabled[ 0x100 ];
 IntSet CritterCl::RegProperties;
 
 PROPERTIES_IMPL( CritterCl );
+CLASS_PROPERTY_IMPL( CritterCl, HexX );
+CLASS_PROPERTY_IMPL( CritterCl, HexY );
+CLASS_PROPERTY_IMPL( CritterCl, Dir );
+CLASS_PROPERTY_IMPL( CritterCl, CrType );
+CLASS_PROPERTY_IMPL( CritterCl, CrTypeAlias );
+CLASS_PROPERTY_IMPL( CritterCl, Cond );
+CLASS_PROPERTY_IMPL( CritterCl, MultihexBase );
+CLASS_PROPERTY_IMPL( CritterCl, Anim1Life );
+CLASS_PROPERTY_IMPL( CritterCl, Anim1Knockout );
+CLASS_PROPERTY_IMPL( CritterCl, Anim1Dead );
+CLASS_PROPERTY_IMPL( CritterCl, Anim2Life );
+CLASS_PROPERTY_IMPL( CritterCl, Anim2Knockout );
+CLASS_PROPERTY_IMPL( CritterCl, Anim2Dead );
+CLASS_PROPERTY_IMPL( CritterCl, Anim2KnockoutEnd );
 CLASS_PROPERTY_IMPL( CritterCl, LookDistance );
 CLASS_PROPERTY_IMPL( CritterCl, Anim3dLayer );
 CLASS_PROPERTY_IMPL( CritterCl, BaseCrType );
@@ -67,15 +81,11 @@ CLASS_PROPERTY_IMPL( CritterCl, PerkSilentRunning );
 
 CritterCl::CritterCl( uint id ): Entity( id, EntityType::CritterCl, PropertiesRegistrator )
 {
-    CrDir = 0;
     SprId = 0;
     Pid = 0;
     NameColor = 0;
     ContourColor = 0;
-    Cond = 0;
-    Anim1Life = Anim1Knockout = Anim1Dead = Anim2Life = Anim2Knockout = Anim2Dead = 0;
     Flags = 0;
-    CrType = CrTypeAlias = 0;
     curSpr = 0;
     lastEndSpr = 0;
     animStartTick = 0;
@@ -102,16 +112,17 @@ CritterCl::CritterCl( uint id ): Entity( id, EntityType::CritterCl, PropertiesRe
     OxExtSpeed = OyExtSpeed = 0;
     OffsExtNextTick = 0;
     Anim3d = Anim3dStay = nullptr;
-    Multihex = 0;
     Name = ScriptString::Create();
     NameOnHead = ScriptString::Create();
     Avatar = ScriptString::Create();
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = DefItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
-    DefItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
-    DefItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
-    DefItemSlotHand->AccCritter.Slot = SLOT_HAND1;
-    DefItemSlotArmor->AccCritter.Slot = SLOT_ARMOR;
+    DefItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
+    DefItemSlotArmor->SetAccessory( ITEM_ACCESSORY_CRITTER );
+    DefItemSlotHand->SetCritId( id );
+    DefItemSlotArmor->SetCritId( id );
+    DefItemSlotHand->SetCritSlot( SLOT_HAND1 );
+    DefItemSlotArmor->SetCritSlot( SLOT_ARMOR );
     tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
     memzero( &stayAnim, sizeof( stayAnim ) );
     DrawEffect = Effect::Critter;
@@ -185,11 +196,11 @@ uchar CritterCl::GetFadeAlpha()
 
 void CritterCl::AddItem( Item* item )
 {
-    item->Accessory = ITEM_ACCESSORY_CRITTER;
-    item->AccCritter.Id = this->Id;
+    item->SetAccessory( ITEM_ACCESSORY_CRITTER );
+    item->SetCritId( Id );
 
     bool anim_stay = true;
-    switch( item->AccCritter.Slot )
+    switch( item->GetCritSlot() )
     {
     case SLOT_HAND1:
         ItemSlotMain = item;
@@ -226,7 +237,10 @@ void CritterCl::DeleteItem( Item* item, bool animate )
         ItemSlotExt = DefItemSlotHand;
     if( ItemSlotArmor == item )
         ItemSlotArmor = DefItemSlotArmor;
-    item->Accessory = ITEM_ACCESSORY_NONE;
+
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
+    item->SetCritId( 0 );
+    item->SetCritSlot( 0 );
 
     auto it = std::find( InvItems.begin(), InvItems.end(), item );
     RUNTIME_ASSERT( it != InvItems.end() );
@@ -287,7 +301,7 @@ Item* CritterCl::GetItemByPidInvPriority( hash item_pid )
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
             {
-                if( item->AccCritter.Slot == SLOT_INV )
+                if( item->GetCritSlot() == SLOT_INV )
                     return item;
                 another_slot = item;
             }
@@ -302,7 +316,7 @@ Item* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetProtoId() == item_pid && item->AccCritter.Slot == slot )
+        if( item->GetProtoId() == item_pid && item->GetCritSlot() == slot )
             return item;
     }
     return nullptr;
@@ -319,7 +333,7 @@ Item* CritterCl::GetAmmo( uint caliber )
 Item* CritterCl::GetItemSlot( int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->AccCritter.Slot == slot )
+        if( ( *it )->GetCritSlot() == slot )
             return *it;
     return nullptr;
 }
@@ -329,7 +343,7 @@ void CritterCl::GetItemsSlot( int slot, ItemVec& items )
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( slot == -1 || item->AccCritter.Slot == slot )
+        if( slot == -1 || item->GetCritSlot() == slot )
             items.push_back( item );
     }
 }
@@ -367,7 +381,7 @@ bool CritterCl::IsCanSortItems()
     uint inv_items = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
-        if( ( *it )->AccCritter.Slot != SLOT_INV )
+        if( ( *it )->GetCritSlot() != SLOT_INV )
             continue;
         inv_items++;
         if( inv_items > 1 )
@@ -409,7 +423,7 @@ void CritterCl::GetInvItems( ItemVec& items )
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccCritter.Slot == SLOT_INV )
+        if( item->GetCritSlot() == SLOT_INV )
             items.push_back( item );
     }
 
@@ -428,7 +442,7 @@ uint CritterCl::GetItemsCountInv()
 {
     uint res = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->AccCritter.Slot == SLOT_INV )
+        if( ( *it )->GetCritSlot() == SLOT_INV )
             res++;
     return res;
 }
@@ -577,8 +591,8 @@ uint CritterCl::GetUseDist()
 
 uint CritterCl::GetMultihex()
 {
-    int mh = Multihex;
-    if( mh < 0 )
+    int mh = GetMultihexBase();
+    if( mh == 0 )
         mh = CritType::GetMultihex( GetCrType() );
     return CLAMP( mh, 0, MAX_HEX_OFFSET );
 }
@@ -644,7 +658,7 @@ void CritterCl::DrawStay( Rect r )
         staySprTick = Timer::FastTick();
     }
 
-    int  dir = ( !IsLife() ? CrDir : staySprDir );
+    int  dir = ( !IsLife() ? GetDir() : staySprDir );
     uint anim1 = GetAnim1();
     uint anim2 = GetAnim2();
 
@@ -773,10 +787,10 @@ bool CritterCl::IsLastHexes()
 
 void CritterCl::FixLastHexes()
 {
-    if( IsLastHexes() && LastHexX[ LastHexX.size() - 1 ] == HexX && LastHexY[ LastHexY.size() - 1 ] == HexY )
+    if( IsLastHexes() && LastHexX[ LastHexX.size() - 1 ] == GetHexX() && LastHexY[ LastHexY.size() - 1 ] == GetHexY() )
         return;
-    LastHexX.push_back( HexX );
-    LastHexY.push_back( HexY );
+    LastHexX.push_back( GetHexX() );
+    LastHexY.push_back( GetHexY() );
 }
 
 ushort CritterCl::PopLastHexX()
@@ -797,7 +811,8 @@ void CritterCl::Move( int dir )
 {
     if( dir < 0 || dir >= DIRS_COUNT || !CritType::IsCanRotate( GetCrType() ) )
         dir = 0;
-    CrDir = dir;
+
+    SetDir( dir );
 
     uint crtype = GetCrType();
     int  time_move = 0;
@@ -978,16 +993,16 @@ void CritterCl::Action( int action, int action_ext, Item* item, bool local_call 
     switch( action )
     {
     case ACTION_KNOCKOUT:
-        Cond = COND_KNOCKOUT;
-        Anim2Knockout = action_ext;
+        SetCond( COND_KNOCKOUT );
+        SetAnim2Knockout( action_ext );
         break;
     case ACTION_STANDUP:
-        Cond = COND_LIFE;
+        SetCond( COND_LIFE );
         break;
     case ACTION_DEAD:
     {
-        Cond = COND_DEAD;
-        Anim2Dead = action_ext;
+        SetCond( COND_DEAD );
+        SetAnim2Dead( action_ext );
         CritterAnim* anim = GetCurAnim();
         needReSet = true;
         reSetTick = Timer::GameTick() + ( anim && anim->Anim ? anim->Anim->Ticks : 1000 );
@@ -1000,7 +1015,7 @@ void CritterCl::Action( int action, int action_ext, Item* item, bool local_call 
         SETFLAG( Flags, FCRIT_DISCONNECT );
         break;
     case ACTION_RESPAWN:
-        Cond = COND_LIFE;
+        SetCond( COND_LIFE );
         Alpha = 0;
         SetFade( true );
         AnimateStay();
@@ -1109,7 +1124,7 @@ void CritterCl::AnimateStay()
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, CrDir );
+        AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, GetDir() );
         if( !anim )
             anim = ResMngr.CritterDefaultAnim;
 
@@ -1121,7 +1136,7 @@ void CritterCl::AnimateStay()
             stayAnim.AnimTick = anim->Ticks;
             stayAnim.BeginFrm = 0;
             stayAnim.EndFrm = anim->GetCnt() - 1;
-            if( Cond == COND_DEAD )
+            if( GetCond() == COND_DEAD )
                 stayAnim.BeginFrm = stayAnim.EndFrm;
             curSpr = stayAnim.BeginFrm;
         }
@@ -1151,7 +1166,7 @@ void CritterCl::AnimateStay()
         ProcessAnim( true, false, anim1, anim2, nullptr );
         SetOffs( 0, 0, true );
 
-        if( Cond == COND_LIFE || Cond == COND_KNOCKOUT )
+        if( GetCond() == COND_LIFE || GetCond() == COND_KNOCKOUT )
             Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), IsCombatMode() ? ANIMATION_COMBAT : 0 );
         else
             Anim3d->SetAnimation( anim1, anim2, GetLayers3dData(), ( ANIMATION_STAY | ANIMATION_PERIOD( 100 ) ) | ( IsCombatMode() ? ANIMATION_COMBAT : 0 ) );
@@ -1202,29 +1217,19 @@ bool CritterCl::IsFree()
     return Timer::GameTick() - StartTick >= TickCount;
 }
 
-uint CritterCl::GetCrType()
-{
-    return CrType;
-}
-
-uint CritterCl::GetCrTypeAlias()
-{
-    return CritType::GetAlias( GetCrType() );
-}
-
 uint CritterCl::GetAnim1( Item* anim_item /* = NULL */ )
 {
     if( !anim_item )
         anim_item = ItemSlotMain;
 
-    switch( Cond )
+    switch( GetCond() )
     {
     case COND_LIFE:
-        return Anim1Life | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Life() | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     case COND_KNOCKOUT:
-        return Anim1Knockout | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Knockout() | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     case COND_DEAD:
-        return Anim1Dead | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Dead() | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
     default:
         break;
     }
@@ -1233,14 +1238,14 @@ uint CritterCl::GetAnim1( Item* anim_item /* = NULL */ )
 
 uint CritterCl::GetAnim2()
 {
-    switch( Cond )
+    switch( GetCond() )
     {
     case COND_LIFE:
-        return Anim2Life ? Anim2Life : ( ( IsCombatMode() && GameOpt.Anim2CombatIdle ) ? GameOpt.Anim2CombatIdle : ANIM2_IDLE );
+        return GetAnim2Life() ? GetAnim2Life() : ( ( IsCombatMode() && GameOpt.Anim2CombatIdle ) ? GameOpt.Anim2CombatIdle : ANIM2_IDLE );
     case COND_KNOCKOUT:
-        return Anim2Knockout ? Anim2Knockout : ANIM2_IDLE_PRONE_FRONT;
+        return GetAnim2Knockout() ? GetAnim2Knockout() : ANIM2_IDLE_PRONE_FRONT;
     case COND_DEAD:
-        return Anim2Dead ? Anim2Dead : ANIM2_DEAD_FRONT;
+        return GetAnim2Dead() ? GetAnim2Dead() : ANIM2_DEAD_FRONT;
     default:
         break;
     }
@@ -1284,23 +1289,23 @@ bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
     return ResMngr.GetCrit2dAnim( GetCrType(), anim1, anim2, GetDir() ) != nullptr;
 }
 
-void CritterCl::SetCrType( uint type )
+void CritterCl::ChangeCrType( uint type )
 {
-    CrType = type;
-    CrTypeAlias = CritType::GetAlias( type );
+    SetCrType( type );
+    SetCrTypeAlias( CritType::GetAlias( type ) );
 
     // Check 3d availability
     SprMngr.FreePure3dAnimation( Anim3d );
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = nullptr;
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( CrType ) ), PT_ART_CRITTERS, true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( type ) ), PT_ART_CRITTERS, true );
     if( anim3d )
     {
         Anim3d = anim3d;
-        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( CrType ) ), PT_ART_CRITTERS, false );
+        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( type ) ), PT_ART_CRITTERS, false );
 
-        Anim3d->SetDir( CrDir );
+        Anim3d->SetDir( GetDir() );
         SprId = Anim3d->SprId;
 
         Anim3d->SetAnimation( ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0 );
@@ -1314,13 +1319,13 @@ void CritterCl::SetCrType( uint type )
     SprMngr.PopAtlasType();
 }
 
-void CritterCl::SetDir( uchar dir, bool animate /* = true */ )
+void CritterCl::ChangeDir( uchar dir, bool animate /* = true */ )
 {
     if( dir >= DIRS_COUNT || !CritType::IsCanRotate( GetCrType() ) )
         dir = 0;
-    if( CrDir == dir )
+    if( GetDir() == dir )
         return;
-    CrDir = dir;
+    SetDir( dir );
     if( Anim3d )
         Anim3d->SetDir( dir );
     if( animate && !IsAnim() )
@@ -1432,7 +1437,7 @@ void CritterCl::Process()
 
     // Battle 3d mode
     // Todo: do same for 2d animations
-    if( Anim3d && GameOpt.Anim2CombatIdle && !animSequence.size() && Cond == COND_LIFE && !Anim2Life )
+    if( Anim3d && GameOpt.Anim2CombatIdle && !animSequence.size() && GetCond() == COND_LIFE && !GetAnim2Life() )
     {
         if( GameOpt.Anim2CombatBegin && IsCombatMode() && Anim3d->GetAnim2() != (int) GameOpt.Anim2CombatIdle )
             Animate( 0, GameOpt.Anim2CombatBegin, nullptr );
@@ -1443,7 +1448,7 @@ void CritterCl::Process()
     // Fidget animation
     if( Timer::GameTick() >= tickFidget )
     {
-        if( !animSequence.size() && Cond == COND_LIFE && IsFree() && !MoveSteps.size() && !IsCombatMode() )
+        if( !animSequence.size() && GetCond() == COND_LIFE && IsFree() && !MoveSteps.size() && !IsCombatMode() )
             Action( ACTION_FIDGET, 0, nullptr );
         tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
     }
@@ -1468,7 +1473,7 @@ void CritterCl::SetOffs( short set_ox, short set_oy, bool move_text )
                 textRect.T += SprMngr.GetSpriteInfo( SprId )->Height / 6;
         }
         if( IsChosen() )
-            SprMngr.SetEgg( HexX, HexY, SprDraw );
+            SprMngr.SetEgg( GetHexX(), GetHexY(), SprDraw );
     }
 }
 
@@ -1484,7 +1489,7 @@ void CritterCl::SetSprRect()
         textRect.B += DRect.T - old.T;
 
         if( IsChosen() )
-            SprMngr.SetEgg( HexX, HexY, SprDraw );
+            SprMngr.SetEgg( GetHexX(), GetHexY(), SprDraw );
     }
 }
 

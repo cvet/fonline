@@ -12,11 +12,12 @@
 
 Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor ): Props( registartor ), Id( id ), Type( type )
 {
-    RUNTIME_ASSERT( Type != EntityType::Invalid );
+    RUNTIME_ASSERT( Type != EntityType::None );
 
     RefCounter = 1;
     IsDestroyed = false;
     IsDestroying = false;
+    ProtoId = 0;
 }
 
 uint Entity::GetId()

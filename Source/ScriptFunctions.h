@@ -6,6 +6,16 @@
 # include "SHA/sha2.h"
 #endif
 
+template< class A, class B >
+static B* RefCast( A* a )
+{
+    if( !a )
+        return nullptr;
+    B* b = (B*) a;
+    b->AddRef();
+    return b;
+}
+
 int Global_Random( int min, int max )
 {
     static Randomizer script_randomizer;

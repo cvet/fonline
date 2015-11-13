@@ -181,13 +181,14 @@ bool MapManager::LoadLocationsProtos()
 
 bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
 {
-    // Parse as INI
-    IniParser ploc_data( file.GetCStr() );
+    // Parse
+    IniParser ploc_data;
+    ploc_data.CollectContent();
+    ploc_data.AppendStr( file.GetCStr() );
 
     // Parameters
     ProtoLocation* ploc = new ProtoLocation();
-    ploc->Name = loc_name;
-    ploc->LocPid = Str::GetHash( loc_name );
+    ploc->ProtoId = Str::GetHash( loc_name );
     ploc->Radius = ploc_data.GetInt( "Main", "Size", 24 );
     ploc->MaxPlayers = ploc_data.GetInt( "Main", "MaxPlayers", 0 );
     ploc->Visible = ( ploc_data.GetInt( "Main", "Visible", 0 ) != 0 );
@@ -233,14 +234,14 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         if( !protoMaps.count( map_pid ) )
         {
             ProtoMap* pmap = new ProtoMap();
-            if( !pmap->Init( map_name ) || pmap->GetPid() != map_pid )
+            if( !pmap->Init( map_name ) || pmap->GetProtoId() != map_pid )
             {
                 WriteLog( "Load proto map '%s' in location '%s' fail.\n", map_name, loc_name );
                 delete pmap;
                 return false;
             }
 
-            protoMaps.insert( PAIR( pmap->GetPid(), pmap ) );
+            protoMaps.insert( PAIR( pmap->GetProtoId(), pmap ) );
         }
 
         ploc->ProtoMapPids.push_back( map_pid );
@@ -324,7 +325,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
         while( str_num = temp_msg.GetStrNumUpper( str_num ) )
         {
             uint count = temp_msg.Count( str_num );
-            uint new_str_num = LOC_STR_ID( ploc->LocPid, str_num );
+            uint new_str_num = LOC_STR_ID( ploc->ProtoId, str_num );
             for( uint n = 0; n < count; n++ )
                 msg->AddStr( new_str_num, temp_msg.GetStr( str_num, n ) );
         }
@@ -339,7 +340,7 @@ bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
     }
 
     // Add to collection
-    protoLoc.insert( PAIR( ploc->LocPid, ploc ) );
+    protoLoc.insert( PAIR( ploc->ProtoId, ploc ) );
 
     return true;
 }
@@ -357,7 +358,7 @@ int MapManager::ReloadMaps( const char* map_name )
             ProtoMap*   pmap = new ProtoMap();
             if( pmap->Init( map_name ) )
             {
-                protoMaps[ pmap->GetPid() ] = pmap;
+                protoMaps[ pmap->GetProtoId() ] = pmap;
             }
             else
             {
@@ -371,7 +372,7 @@ int MapManager::ReloadMaps( const char* map_name )
         ProtoMap* pmap = new ProtoMap();
         if( pmap->Init( map_name ) )
         {
-            protoMaps[ pmap->GetPid() ] = pmap;
+            protoMaps[ pmap->GetProtoId() ] = pmap;
         }
         else
         {
@@ -382,48 +383,20 @@ int MapManager::ReloadMaps( const char* map_name )
     return fails;
 }
 
-bool MapManager::RestoreLocation( uint id, Location::LocData& data, Properties& props, UIntVec& map_ids, vector< Map::MapData >& map_datas, vector< Properties* > map_props )
+bool MapManager::RestoreLocation( uint id, hash proto_id, Properties& props )
 {
-    // Check pids
-    if( !GetProtoLocation( data.LocPid ) )
+    ProtoLocation* proto = GetProtoLocation( proto_id );
+    if( !proto )
     {
-        WriteLog( "Proto location '%s' is not loaded.\n", Str::GetName( data.LocPid ) );
+        WriteLog( "Location proto '%s' is not loaded.\n", Str::GetName( proto_id ) );
         return false;
     }
-    bool map_fail = false;
-    for( size_t j = 0; j < map_datas.size(); j++ )
-    {
-        if( !GetProtoMap( map_datas[ j ].MapPid ) )
-        {
-            WriteLog( "Proto map '%s' of proto location '%s' is not loaded.\n", Str::GetName( map_datas[ j ].MapPid ), Str::GetName( data.LocPid ) );
-            map_fail = true;
-        }
-    }
-    if( map_fail )
-        return false;
 
-    // Try create
-    Location* loc = CreateLocation( data.LocPid, data.WX, data.WY, id );
-    if( !loc )
-    {
-        WriteLog( "Can't create location '%s'.\n", Str::GetName( data.LocPid ) );
-        return false;
-    }
-    loc->Data = data;
+    Location* loc = new Location( id, proto, 0, 0 );
+    SYNC_LOCK( loc );
     loc->Props = props;
-
-    for( size_t j = 0; j < map_datas.size(); j++ )
-    {
-        Map* map = CreateMap( map_datas[ j ].MapPid, loc, map_ids[ j ] );
-        if( !map )
-        {
-            WriteLog( "Can't create map '%s' for location '%s'.\n", Str::GetName( map_datas[ j ].MapPid ), Str::GetName( data.LocPid ) );
-            return false;
-        }
-        map->Data = map_datas[ j ];
-        map->Props = *map_props[ j ];
-        SAFEDEL( map_props[ j ] );
-    }
+    loc->ProtoId = proto_id;
+    EntityMngr.RegisterEntity( loc );
     return true;
 }
 
@@ -446,8 +419,8 @@ string MapManager::GetLocationsMapsStatistics()
     {
         Location* loc = (Location*) *it;
         Str::Format( str, "%-20s %-10u   %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
-                     loc->Proto->Name.c_str(), loc->GetId(), loc->Data.WX, loc->Data.WY, loc->Data.Radius, loc->Data.Color, loc->Data.Visible ? "true" : "false",
-                     loc->Data.GeckVisible ? "true" : "false", loc->GeckCount, loc->Data.AutoGarbage ? "true" : "false", loc->Data.ToGarbage ? "true" : "false" );
+                     loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetVisible() ? "true" : "false",
+                     loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false" );
         result += str;
 
         MapVec& maps = loc->GetMapsNoLock();
@@ -456,9 +429,9 @@ string MapManager::GetLocationsMapsStatistics()
         {
             Map* map = *it_;
             Str::Format( str, "     %2u) %-20s %-9u   %-4d %-4u %-9s %-6s %-50s\n",
-                         map_index, map->Proto->GetName(), map->GetId(), map->GetTime(), map->GetRain(),
-                         map->Data.IsTurnBasedAviable ? "true" : "false", map->IsTurnBasedOn ? "true" : "false",
-                         map->Data.ScriptId ? Script::GetScriptFuncName( map->Data.ScriptId ).c_str() : "" );
+                         map_index, map->Proto->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
+                         map->GetIsTurnBasedAviable() ? "true" : "false", map->IsTurnBasedOn ? "true" : "false",
+                         map->GetScriptId() ? Str::GetName( map->GetScriptId() ) : "" );
             result += str;
             map_index++;
         }
@@ -490,10 +463,10 @@ ProtoLocation* MapManager::GetProtoLocationByIndex( uint index )
     return it != protoLoc.end() ? it->second : nullptr;
 }
 
-Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint loc_id )
+Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
 {
-    ProtoLocation* loc_proto = GetProtoLocation( loc_pid );
-    if( !loc_proto )
+    ProtoLocation* proto = GetProtoLocation( loc_pid );
+    if( !proto )
     {
         WriteLogF( _FUNC_, " - Location proto '%s' is not loaded.\n", Str::GetName( loc_pid ) );
         return nullptr;
@@ -505,28 +478,20 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
         return nullptr;
     }
 
-    Location* loc = nullptr;
-    if( !loc_id )
+    Location* loc = new Location( 0, proto, wx, wy );
+    for( uint i = 0; i < loc->Proto->ProtoMapPids.size(); ++i )
     {
-        loc = new Location( 0, protoLoc[ loc_pid ], wx, wy );
-        for( uint i = 0; i < loc->Proto->ProtoMapPids.size(); ++i )
+        hash map_pid = loc->Proto->ProtoMapPids[ i ];
+        Map* map = CreateMap( map_pid, loc );
+        if( !map )
         {
-            hash map_pid = loc->Proto->ProtoMapPids[ i ];
-            Map* map = CreateMap( map_pid, loc, 0 );
-            if( !map )
-            {
-                WriteLogF( _FUNC_, " - Create map '%s' fail.\n", Str::GetName( map_pid ) );
-                MapVec& maps = loc->GetMapsNoLock();
-                for( auto it = maps.begin(); it != maps.end(); ++it )
-                    ( *it )->Release();
-                loc->Release();
-                return nullptr;
-            }
+            WriteLogF( _FUNC_, " - Create map '%s' fail.\n", Str::GetName( map_pid ) );
+            MapVec& maps = loc->GetMapsNoLock();
+            for( auto it = maps.begin(); it != maps.end(); ++it )
+                ( *it )->Release();
+            loc->Release();
+            return nullptr;
         }
-    }
-    else
-    {
-        loc = new Location( loc_id, protoLoc[ loc_pid ], wx, wy );
     }
 
     SYNC_LOCK( loc );
@@ -537,10 +502,11 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
     {
         Map* map = *it;
+        map->SetLocId( loc->GetId() );
         if( !map->Generate() )
         {
-            WriteLogF( _FUNC_, " - Generate map '%s' fail.\n", Str::GetName( map->GetPid() ) );
-            loc->Data.ToGarbage = true;
+            WriteLogF( _FUNC_, " - Generate map '%s' fail.\n", Str::GetName( map->GetProtoId() ) );
+            loc->SetToGarbage( true );
             MapMngr.RunGarbager();
             return nullptr;
         }
@@ -549,26 +515,42 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy, uint l
     return loc;
 }
 
-Map* MapManager::CreateMap( hash map_pid, Location* loc, uint map_id )
+Map* MapManager::CreateMap( hash proto_id, Location* loc )
 {
-    ProtoMap* proto_map = GetProtoMap( map_pid );
+    ProtoMap* proto_map = GetProtoMap( proto_id );
     if( !proto_map )
     {
-        WriteLogF( _FUNC_, " - Proto map '%s' is not loaded.\n", Str::GetName( map_pid ) );
+        WriteLogF( _FUNC_, " - Proto map '%s' is not loaded.\n", Str::GetName( proto_id ) );
         return nullptr;
     }
 
-    Map* map = new Map( map_id ? map_id : 0, protoMaps[ map_pid ], loc );
-
-    SYNC_LOCK( loc );
-    loc->GetMapsNoLock().push_back( map );
-
+    Map* map = new Map( 0, proto_map, loc );
     SYNC_LOCK( map );
+    SYNC_LOCK( loc );
+    MapVec& maps = loc->GetMapsNoLock();
+    map->SetLocId( loc->GetId() );
+    map->SetLocMapIndex( (uint) maps.size() );
+    maps.push_back( map );
     Job::PushBack( JOB_MAP, map );
-
     EntityMngr.RegisterEntity( map );
-
     return map;
+}
+
+bool MapManager::RestoreMap( uint id, hash proto_id, Properties& props )
+{
+    ProtoMap* proto = GetProtoMap( proto_id );
+    if( !proto )
+    {
+        WriteLog( "Map proto '%s' is not loaded.\n", Str::GetName( proto_id ) );
+        return false;
+    }
+
+    Map* map = new Map( id, proto, nullptr );
+    SYNC_LOCK( map );
+    map->Props = props;
+    EntityMngr.RegisterEntity( map );
+    Job::PushBack( JOB_MAP, map );
+    return true;
 }
 
 Map* MapManager::GetMap( uint map_id, bool sync_lock )
@@ -666,7 +648,7 @@ void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc
     for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
         Location* loc = *it;
-        if( loc->IsVisible() && IsIntersectZone( wx, wy, 0, loc->Data.WX, loc->Data.WY, loc->GetRadius(), zone_radius ) )
+        if( loc->IsLocVisible() && IsIntersectZone( wx, wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), zone_radius ) )
             loc_ids.push_back( loc->GetId() );
     }
 }
@@ -699,7 +681,7 @@ void MapManager::LocationGarbager()
         for( auto it = locs.begin(); it != locs.end(); ++it )
         {
             Location* loc = *it;
-            if( loc->Data.AutoGarbage && loc->IsCanDelete() )
+            if( loc->GetAutoGarbage() && loc->IsCanDelete() )
             {
                 if( !gmap_players )
                 {
@@ -929,10 +911,10 @@ void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type 
         for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
         {
             Critter* cr = *it;
-            if( cur_wxi != cr->Data.WorldX || cur_wyi != cr->Data.WorldY )
+            if( cur_wxi != cr->GetWorldX() || cur_wyi != cr->GetWorldY() )
             {
-                cr->Data.WorldX = cur_wxi;
-                cr->Data.WorldY = cur_wyi;
+                cr->SetWorldX( cur_wxi );
+                cr->SetWorldY( cur_wyi );
                 cr->Send_GlobalInfo( GM_INFO_GROUP_PARAM );
             }
         }
@@ -1097,17 +1079,17 @@ void MapManager::GM_GroupStartMove( Critter* cr )
         return;
     }
 
-    cr->Data.HexX = 0;
-    cr->Data.HexY = 0;
+    cr->SetHexX( 0 );
+    cr->SetHexY( 0 );
     cr->GroupMove = cr->GroupSelf;
     GlobalMapGroup* group = cr->GroupMove;
     group->Clear();
-    group->CurX = (float) cr->Data.WorldX;
-    group->CurY = (float) cr->Data.WorldY;
+    group->CurX = (float) cr->GetWorldX();
+    group->CurY = (float) cr->GetWorldY();
     group->ToX = group->CurX;
     group->ToY = group->CurY;
     group->Speed = 0.0f;
-    cr->Data.GlobalGroupUid++;
+    cr->SetGlobalGroupUid( cr->GetGlobalGroupUid() + 1 );
 
     Item* car = cr->GetItemCar();
     if( car )
@@ -1148,16 +1130,15 @@ void MapManager::GM_AddCritToGroup( Critter* cr, uint rule_id )
     group->SyncLockGroup();
 
     UNSETFLAG( cr->Flags, FCRIT_RULEGROUP );
-    cr->Data.WorldX = (uint) group->CurX;
-    cr->Data.WorldY = (uint) group->CurY;
-    cr->Data.HexX = ( rule_id >> 16 ) & 0xFFFF;
-    cr->Data.HexY = rule_id & 0xFFFF;
+    cr->SetWorldX( (uint) group->CurX );
+    cr->SetWorldY( (uint) group->CurY );
+    cr->SetGlobalGroupRuleId( rule_id );
 
     for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
         ( *it )->Send_AddCritter( cr );
     group->AddCrit( cr );
     cr->GroupMove = group;
-    cr->Data.GlobalGroupUid = rule->Data.GlobalGroupUid;
+    cr->SetGlobalGroupUid( rule->GetGlobalGroupUid() );
 }
 
 void MapManager::GM_LeaveGroup( Critter* cr )
@@ -1260,7 +1241,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
 
     if( car )
     {
-        car_owner = group->GetCritter( car->AccCritter.Id );
+        car_owner = group->GetCritter( car->GetCritId() );
         if( !car_owner )
         {
             WriteLogF( _FUNC_, " - Car owner not found, rule '%s'.\n", rule->GetInfo() );
@@ -1308,8 +1289,8 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
     CrVec transit_cr = group->CritMove;
 
     // Transit rule
-    rule->Data.WorldX = (uint) rule->GroupSelf->CurX;
-    rule->Data.WorldY = (uint) rule->GroupSelf->CurY;
+    rule->SetWorldX( (uint) rule->GroupSelf->CurX );
+    rule->SetWorldY( (uint) rule->GroupSelf->CurY );
     if( car )
         map->SetCritterCar( car_hx, car_hy, car_owner, car );
     if( !Transit( rule, map, hx, hy, dir, car ? 3 : 2, true ) )
@@ -1322,8 +1303,8 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
         if( cr == rule )
             continue;
 
-        cr->Data.WorldX = (uint) group->CurX;
-        cr->Data.WorldY = (uint) group->CurY;
+        cr->SetWorldX( (uint) group->CurX );
+        cr->SetWorldY( (uint) group->CurY );
 
         if( !Transit( cr, map, hx, hy, dir, car ? 3 : 2, true ) )
         {
@@ -1369,7 +1350,7 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
         return false;
     }
 
-    if( !force && DistSqrt( (uint) rule->GroupSelf->CurX, (uint) rule->GroupSelf->CurY, loc->Data.WX, loc->Data.WY ) > loc->GetRadius() )
+    if( !force && DistSqrt( (uint) rule->GroupSelf->CurX, (uint) rule->GroupSelf->CurY, loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
     {
         if( rule->IsPlayer() )
             rule->Send_GlobalLocation( loc, true );
@@ -2323,7 +2304,7 @@ bool MapManager::TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, 
 
     if( !loc->GetTransit( map, id_map, hx, hy, dir ) )
         return false;
-    if( loc->IsVisible() && cr->IsPlayer() )
+    if( loc->IsLocVisible() && cr->IsPlayer() )
     {
         ( (Client*) cr )->AddKnownLoc( loc->GetId() );
         if( loc->IsAutomaps() )
@@ -2364,7 +2345,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
 {
     // Check location deletion
     Location* loc = ( map ? map->GetLocation( true ) : nullptr );
-    if( loc && loc->Data.ToGarbage )
+    if( loc && loc->GetToGarbage() )
     {
         WriteLogF( _FUNC_, " - Transfer to deleted location, critter '%s'.\n", cr->GetInfo() );
         return false;
@@ -2417,11 +2398,11 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
 
         cr->LockMapTransfers++;
 
-        cr->Data.Dir = ( dir >= DIRS_COUNT ? 0 : dir );
+        cr->SetDir( dir >= DIRS_COUNT ? 0 : dir );
         bool is_dead = cr->IsDead();
         map->UnsetFlagCritter( old_hx, old_hy, multihex, is_dead );
-        cr->Data.HexX = hx;
-        cr->Data.HexY = hy;
+        cr->SetHexX( hx );
+        cr->SetHexY( hy );
         map->SetFlagCritter( hx, hy, multihex, is_dead );
         cr->SetBreakTime( 0 );
         cr->Send_CustomCommand( cr, OTHER_TELEPORT, ( cr->GetHexX() << 16 ) | ( cr->GetHexY() ) );
@@ -2438,7 +2419,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
     {
         cr->LockMapTransfers++;
 
-        if( !AddCrToMap( cr, map, hx, hy, radius ) )
+        if( !AddCrToMap( cr, map, hx, hy, radius, true ) )
         {
             cr->LockMapTransfers--;
             return false;
@@ -2454,7 +2435,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
         // Local
         else
         {
-            cr->Data.Dir = ( dir >= DIRS_COUNT ? 0 : dir );
+            cr->SetDir( dir >= DIRS_COUNT ? 0 : dir );
         }
 
         if( !old_map_id || old_map )
@@ -2480,24 +2461,27 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
     return true;
 }
 
-bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint radius )
+bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint radius, bool transit )
 {
     // Global map
     if( !map )
     {
-        cr->SetMaps( 0, 0 );
+        cr->SetMapId( 0 );
+        cr->SetMapPid( 0 );
         cr->SetTimeoutBattle( 0 );
         cr->SetTimeoutBattle( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
 
         cr->LockMapTransfers++;
-        cr->Data.LastMapHexX = cr->Data.HexX;
-        cr->Data.LastMapHexY = cr->Data.HexY;
-        // tx,ty == rule_id
-        uint to_group = ( tx << 16 ) | ty;
-        if( !to_group )
+        if( transit )
+        {
+            cr->SetLastMapHexX( cr->GetHexX() );
+            cr->SetLastMapHexY( cr->GetHexY() );
+        }
+        uint rule_id = cr->GetGlobalGroupRuleId();
+        if( !rule_id )
             GM_GroupStartMove( cr );
         else
-            GM_AddCritToGroup( cr, to_group );
+            GM_AddCritToGroup( cr, rule_id );
         cr->LockMapTransfers--;
     }
     // Local map
@@ -2513,11 +2497,15 @@ bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint r
         cr->LockMapTransfers++;
         cr->SetTimeoutBattle( 0 );
         cr->SetTimeoutTransfer( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
-        cr->SetMaps( map->GetId(), map->GetPid() );
-        cr->Data.LastMapHexX = cr->Data.HexX;
-        cr->Data.LastMapHexY = cr->Data.HexY;
-        cr->Data.HexX = tx;
-        cr->Data.HexY = ty;
+        cr->SetMapId( map->GetId() );
+        cr->SetMapPid( map->GetProtoId() );
+        if( transit )
+        {
+            cr->SetLastMapHexX( cr->GetHexX() );
+            cr->SetLastMapHexY( cr->GetHexY() );
+        }
+        cr->SetHexX( tx );
+        cr->SetHexY( ty );
         map->AddCritter( cr );
         cr->LockMapTransfers--;
     }

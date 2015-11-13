@@ -34,46 +34,6 @@
 #define CONVERT_GRAMM( x )                    ( ( x ) * 453 )
 #define RAD( deg )                            ( ( deg ) * 3.141592654f / 180.0f )
 
-// World dump versions
-#define WORLD_SAVE_V1                ( 0x01AB0F01 )
-#define WORLD_SAVE_V2                ( 0x01AB0F02 )
-#define WORLD_SAVE_V3                ( 0x01AB0F03 )
-#define WORLD_SAVE_V4                ( 0x01AB0F04 )
-#define WORLD_SAVE_V5                ( 0x01AB0F05 )
-#define WORLD_SAVE_V6                ( 0x01AB0F06 )
-#define WORLD_SAVE_V7                ( 0x01AB0F07 )
-#define WORLD_SAVE_V8                ( 0x01AB0F08 )
-#define WORLD_SAVE_V9                ( 0x01AB0F09 )
-#define WORLD_SAVE_V10               ( 0x01AB0F10 )
-#define WORLD_SAVE_V11               ( 0x01AB0F11 )
-#define WORLD_SAVE_V12               ( 0x01AB0F12 )
-#define WORLD_SAVE_V13               ( 0x01AB0F13 )
-#define WORLD_SAVE_V14               ( 0x01AB0F14 )
-#define WORLD_SAVE_V15               ( 0x01AB0F15 )
-#define WORLD_SAVE_V16               ( 0x01AB0F16 )
-#define WORLD_SAVE_V17               ( 0x01AB0F17 )
-#define WORLD_SAVE_V18               ( 0x01AB0F18 )
-#define WORLD_SAVE_V19               ( 0x01AB0F19 )
-#define WORLD_SAVE_V20               ( 0x01AB0F20 )
-#define WORLD_SAVE_V21               ( 0x01AB0F21 )
-#define WORLD_SAVE_V22               ( 0x01AB0F22 )
-#define WORLD_SAVE_V23               ( 0x01AB0F23 )
-#define WORLD_SAVE_V24               ( 0x01AB0F24 )
-#define WORLD_SAVE_V25               ( 0x01AB0F25 )
-#define WORLD_SAVE_V26               ( 0x01AB0F26 )
-#define WORLD_SAVE_LAST              WORLD_SAVE_V26
-#define SINGLEPLAYER_SAVE_V1         ( 1 )
-#define SINGLEPLAYER_SAVE_V2         ( 2 )
-#define SINGLEPLAYER_SAVE_LAST       ( SINGLEPLAYER_SAVE_V2 )
-
-// Client save
-#define CLIENT_SAVE_V1               ( 1 ) // Corrupted
-#define CLIENT_SAVE_V2               ( 2 )
-#define CLIENT_SAVE_V3               ( 3 )
-#define CLIENT_SAVE_V4               ( 4 )
-#define CLIENT_SAVE_LAST             ( CLIENT_SAVE_V4 )
-const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
-
 // Generic
 #define CLIENT_DATA                  "./Data/"
 #define WORLD_START_TIME             "07:00 30:10:2246 x00"

@@ -35,8 +35,8 @@ private:
     void   GetDeferredCallsList( IntVec& ids );
     void   Process();
     void   RunDeferredCall( DeferredCall& call );
-    void   SaveDeferredCalls( void ( * save_func )( void*, size_t ) );
-    bool   LoadDeferredCalls( void* f, uint version );
+    void   SaveDeferredCalls( IniParser& data );
+    bool   LoadDeferredCalls( IniParser& data );
     string GetStatistics();
 
 public:

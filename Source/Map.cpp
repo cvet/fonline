@@ -26,15 +26,23 @@ const char* MapEventFuncName[ MAP_EVENT_MAX ] =
 /************************************************************************/
 
 PROPERTIES_IMPL( Map );
+CLASS_PROPERTY_IMPL( Map, LocId );
+CLASS_PROPERTY_IMPL( Map, LocMapIndex );
+CLASS_PROPERTY_IMPL( Map, RainCapacity );
+CLASS_PROPERTY_IMPL( Map, IsTurnBasedAviable );
+CLASS_PROPERTY_IMPL( Map, CurDayTime );
+CLASS_PROPERTY_IMPL( Map, ScriptId );
+CLASS_PROPERTY_IMPL( Map, DayTime );
+CLASS_PROPERTY_IMPL( Map, DayColor );
 
 Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType::Map, PropertiesRegistrator )
 {
     RUNTIME_ASSERT( proto );
-    RUNTIME_ASSERT( location );
 
     MEMORY_PROCESS( MEMORY_MAP, sizeof( Map ) );
     MEMORY_PROCESS( MEMORY_MAP_FIELD, proto->Header.MaxHexX * proto->Header.MaxHexY );
 
+    ProtoId = proto->GetProtoId();
     Proto = proto;
     mapLocation = location;
 
@@ -58,11 +66,7 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     hexFlags = new uchar[ proto->Header.MaxHexX * proto->Header.MaxHexY ];
     memzero( hexFlags, proto->Header.MaxHexX * proto->Header.MaxHexY );
 
-    memzero( &Data, sizeof( Data ) );
-    Data.MapPid = proto->GetPid();
-    Data.MapTime = proto->Header.Time;
-    Data.MapRain = 0;
-    Data.IsTurnBasedAviable = false;
+    SetCurDayTime( proto->Header.Time );
 
     for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
         LoopWaitTick[ i ] = MAP_LOOP_DEFAULT_TICK;
@@ -110,10 +114,16 @@ bool Map::Generate()
 {
     // Map data
     dataLocker.Lock();
-    for( int i = 0; i < 4; i++ )
-        Data.MapDayTime[ i ] = Proto->Header.DayTime[ i ];
-    for( int i = 0; i < 12; i++ )
-        Data.MapDayColor[ i ] = Proto->Header.DayColor[ i ];
+    ScriptArray* day_time = Script::CreateArray( "int[]" );
+    day_time->Resize( 4 );
+    memcpy( day_time->At( 0 ), Proto->Header.DayColor, 16 );
+    SetDayTime( day_time );
+    day_time->Release();
+    ScriptArray* day_color = Script::CreateArray( "uint8[]" );
+    day_color->Resize( 12 );
+    memcpy( day_color->At( 0 ), Proto->Header.DayColor, 12 );
+    SetDayColor( day_color );
+    day_color->Release();
     dataLocker.Unlock();
 
     // Associated UID -> Item or Critter
@@ -140,11 +150,11 @@ bool Map::Generate()
         }
 
         // Check condition
-        if( mobj.MCritter.Cond != COND_LIFE && npc->Data.Cond == COND_LIFE && npc->GetMapId() == GetId() )
+        if( mobj.MCritter.Cond != COND_LIFE && npc->GetCond() == COND_LIFE && npc->GetMapId() == GetId() )
         {
-            npc->Data.Cond = CLAMP( mobj.MCritter.Cond, COND_LIFE, COND_DEAD );
+            npc->SetCond( CLAMP( mobj.MCritter.Cond, COND_LIFE, COND_DEAD ) );
 
-            if( npc->Data.Cond == COND_DEAD )
+            if( npc->GetCond() == COND_DEAD )
             {
                 npc->SetCurrentHp( GameOpt.DeadHitPoints - 1 );
                 if( !npc->GetReplicationTime() )
@@ -154,29 +164,29 @@ bool Map::Generate()
                 UnsetFlagCritter( npc->GetHexX(), npc->GetHexY(), multihex, false );
                 SetFlagCritter( npc->GetHexX(), npc->GetHexY(), multihex, true );
             }
-            else if( npc->Data.Cond == COND_KNOCKOUT )
+            else if( npc->GetCond() == COND_KNOCKOUT )
             {
                 npc->KnockoutAp = 10000;
             }
         }
 
         // Set condition animation
-        if( mobj.MCritter.Cond == npc->Data.Cond )
+        if( mobj.MCritter.Cond == npc->GetCond() )
         {
-            if( npc->Data.Cond == COND_LIFE )
+            if( npc->GetCond() == COND_LIFE )
             {
-                npc->Data.Anim1Life = mobj.MCritter.Anim1;
-                npc->Data.Anim2Life = mobj.MCritter.Anim2;
+                npc->SetAnim1Life( mobj.MCritter.Anim1 );
+                npc->SetAnim2Life( mobj.MCritter.Anim2 );
             }
-            else if( npc->Data.Cond == COND_KNOCKOUT )
+            else if( npc->GetCond() == COND_KNOCKOUT )
             {
-                npc->Data.Anim1Knockout = mobj.MCritter.Anim1;
-                npc->Data.Anim2Knockout = mobj.MCritter.Anim2;
+                npc->SetAnim1Knockout( mobj.MCritter.Anim1 );
+                npc->SetAnim2Knockout( mobj.MCritter.Anim2 );
             }
             else
             {
-                npc->Data.Anim1Dead = mobj.MCritter.Anim1;
-                npc->Data.Anim2Dead = mobj.MCritter.Anim2;
+                npc->SetAnim1Dead( mobj.MCritter.Anim1 );
+                npc->SetAnim2Dead( mobj.MCritter.Anim2 );
             }
         }
 
@@ -493,7 +503,8 @@ void Map::AddCritter( Critter* cr )
             mapNpcs.push_back( (Npc*) cr );
         mapCritters.push_back( cr );
 
-        cr->SetMaps( GetId(), GetPid() );
+        cr->SetMapId( GetId() );
+        cr->SetMapPid( GetProtoId() );
     }
 
     SetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
@@ -632,10 +643,10 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
         return;
     }
 
-    item->Accessory = ITEM_ACCESSORY_HEX;
-    item->AccHex.MapId = GetId();
-    item->AccHex.HexX = hx;
-    item->AccHex.HexY = hy;
+    item->SetAccessory( ITEM_ACCESSORY_HEX );
+    item->SetMapId( Id );
+    item->SetHexX( hx );
+    item->SetHexY( hy );
 
     hexItems.push_back( item );
     SetHexFlag( hx, hy, FH_ITEM );
@@ -670,10 +681,13 @@ void Map::EraseItem( uint item_id )
     Item* item = *it;
     hexItems.erase( it );
 
-    ushort hx = item->AccHex.HexX;
-    ushort hy = item->AccHex.HexY;
+    ushort hx = item->GetHexX();
+    ushort hy = item->GetHexY();
 
-    item->Accessory = ITEM_ACCESSORY_NONE;
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
+    item->SetMapId( 0 );
+    item->SetHexX( 0 );
+    item->SetHexY( 0 );
 
     if( item->GetIsGeck() )
         mapLocation->GeckCount--;
@@ -729,6 +743,8 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
         {
             Critter* cr = *it;
             cr->Send_Property( type, prop, entity );
+            if( type == NetProperty::Map && ( prop == Map::PropertyDayTime || prop == Map::PropertyDayColor ) )
+                cr->Send_GameInfo( nullptr );
         }
     }
     else
@@ -770,7 +786,7 @@ void Map::ChangeViewItem( Item* item )
                 }
                 else
                 {
-                    int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
+                    int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY() );
                     if( item->GetIsTrap() )
                         dist += item->GetTrapValue();
                     allowed = ( dist <= (int) cr->GetLookDistance() );
@@ -801,7 +817,7 @@ void Map::ChangeViewItem( Item* item )
                 }
                 else
                 {
-                    int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->AccHex.HexX, item->AccHex.HexY );
+                    int dist = DistGame( cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY() );
                     if( item->GetIsTrap() )
                         dist += item->GetTrapValue();
                     allowed = ( dist <= (int) cr->GetLookDistance() );
@@ -849,7 +865,7 @@ Item* Map::GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && ( item_pid == 0 || item->GetProtoId() == item_pid ) &&
+        if( item->GetHexX() == hx && item->GetHexY() == hy && ( item_pid == 0 || item->GetProtoId() == item_pid ) &&
             ( !picker || ( !item->GetIsHidden() && picker->CountIdVisItem( item->GetId() ) ) ) )
         {
             SYNC_LOCK( item );
@@ -864,7 +880,7 @@ Item* Map::GetItemDoor( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->IsDoor() )
+        if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsDoor() )
         {
             SYNC_LOCK( item );
             return item;
@@ -878,7 +894,7 @@ Item* Map::GetItemCar( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->IsCar() )
+        if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsCar() )
         {
             SYNC_LOCK( item );
             return item;
@@ -892,7 +908,7 @@ Item* Map::GetItemContainer( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->IsContainer() )
+        if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsContainer() )
         {
             SYNC_LOCK( item );
             return item;
@@ -906,7 +922,7 @@ Item* Map::GetItemGag( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->GetIsGag() )
+        if( item->GetHexX() == hx && item->GetHexY() == hy && item->GetIsGag() )
         {
             SYNC_LOCK( item );
             return item;
@@ -920,7 +936,7 @@ void Map::GetItemsHex( ushort hx, ushort hy, ItemVec& items, bool lock )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy )
+        if( item->GetHexX() == hx && item->GetHexY() == hy )
             items.push_back( item );
     }
 
@@ -934,7 +950,7 @@ void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& i
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( ( !pid || item->GetProtoId() == pid ) && DistGame( item->AccHex.HexX, item->AccHex.HexY, hx, hy ) <= radius )
+        if( ( !pid || item->GetProtoId() == pid ) && DistGame( item->GetHexX(), item->GetHexY(), hx, hy ) <= radius )
             items.push_back( item );
     }
 
@@ -976,7 +992,7 @@ void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps, bool lock )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && item->FuncId[ ITEM_EVENT_WALK ] > 0 )
+        if( item->GetHexX() == hx && item->GetHexY() == hy && item->FuncId[ ITEM_EVENT_WALK ] > 0 )
             traps.push_back( item );
     }
     if( !traps.size() )
@@ -996,7 +1012,7 @@ void Map::RecacheHexBlock( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy )
+        if( item->GetHexX() == hx && item->GetHexY() == hy )
         {
             if( !is_block && !item->GetIsNoBlock() )
                 is_block = true;
@@ -1018,7 +1034,7 @@ void Map::RecacheHexShoot( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy && !item->GetIsShootThru() )
+        if( item->GetHexX() == hx && item->GetHexY() == hy && !item->GetIsShootThru() )
         {
             SetHexFlag( hx, hy, FH_NRAKE_ITEM );
             break;
@@ -1037,7 +1053,7 @@ void Map::RecacheHexBlockShoot( ushort hx, ushort hy )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccHex.HexX == hx && item->AccHex.HexY == hy )
+        if( item->GetHexX() == hx && item->GetHexY() == hy )
         {
             if( !is_block && !item->GetIsNoBlock() )
                 is_block = true;
@@ -1519,8 +1535,8 @@ void Map::GetCritterCar( Critter* cr, Item* car )
         return;
 
     // Car position
-    ushort hx = car->AccHex.HexX;
-    ushort hy = car->AccHex.HexY;
+    ushort hx = car->GetHexX();
+    ushort hy = car->GetHexY();
 
     // Move car from map to inventory
     EraseItem( car->GetId() );
@@ -1650,10 +1666,10 @@ bool Map::SetScript( const char* script_name, bool first_time )
             WriteLogF( _FUNC_, " - Script '%s' bind fail, map '%s'.\n", script_name, GetName() );
             return false;
         }
-        Data.ScriptId = func_num;
+        SetScriptId( func_num );
     }
 
-    if( Data.ScriptId && Script::PrepareScriptFuncContext( Data.ScriptId, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
+    if( GetScriptId() && Script::PrepareScriptFuncContext( GetScriptId(), _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
     {
         Script::SetArgObject( this );
         Script::SetArgBool( first_time );
@@ -1746,126 +1762,6 @@ void Map::SetLoopTime( uint loop_num, uint ms )
     if( loop_num >= MAP_LOOP_FUNC_MAX )
         return;
     LoopWaitTick[ loop_num ] = ms;
-}
-
-uchar Map::GetRain()
-{
-    return Data.MapRain;
-}
-
-void Map::SetRain( uchar capacity )
-{
-    if( Data.MapRain == capacity )
-        return;
-    Data.MapRain = capacity;
-
-    SCOPE_LOCK( dataLocker );
-
-    for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
-    {
-        Client* cl = *it;
-        cl->Send_GameInfo( this );
-    }
-}
-
-int Map::GetTime()
-{
-    return Data.MapTime;
-}
-
-void Map::SetTime( int time )
-{
-    SCOPE_LOCK( dataLocker );
-
-    if( Data.MapTime == time )
-        return;
-    Data.MapTime = time;
-
-    for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
-    {
-        Client* cl = *it;
-        cl->Send_GameInfo( this );
-    }
-}
-
-uint Map::GetDayTime( uint day_part )
-{
-    SCOPE_LOCK( dataLocker );
-
-    uint result = ( day_part < 4 ? Data.MapDayTime[ day_part ] : 0 );
-    return result;
-}
-
-void Map::SetDayTime( uint day_part, uint time )
-{
-    if( day_part < 4 )
-    {
-        SCOPE_LOCK( dataLocker );
-
-        if( time >= 1440 )
-            time = 1439;
-        Data.MapDayTime[ day_part ] = time;
-        if( Data.MapDayTime[ 1 ] < Data.MapDayTime[ 0 ] )
-            Data.MapDayTime[ 1 ] = Data.MapDayTime[ 0 ];
-        if( Data.MapDayTime[ 2 ] < Data.MapDayTime[ 1 ] )
-            Data.MapDayTime[ 2 ] = Data.MapDayTime[ 1 ];
-        if( Data.MapDayTime[ 3 ] < Data.MapDayTime[ 2 ] )
-            Data.MapDayTime[ 3 ] = Data.MapDayTime[ 2 ];
-
-        for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
-        {
-            Client* cl = *it;
-            cl->Send_GameInfo( this );
-        }
-    }
-}
-
-void Map::GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b )
-{
-    if( day_part < 4 )
-    {
-        SCOPE_LOCK( dataLocker );
-
-        r = Data.MapDayColor[ 0 + day_part ];
-        g = Data.MapDayColor[ 4 + day_part ];
-        b = Data.MapDayColor[ 8 + day_part ];
-    }
-}
-
-void Map::SetDayColor( uint day_part, uchar r, uchar g, uchar b )
-{
-    if( day_part < 4 )
-    {
-        SCOPE_LOCK( dataLocker );
-
-        Data.MapDayColor[ 0 + day_part ] = r;
-        Data.MapDayColor[ 4 + day_part ] = g;
-        Data.MapDayColor[ 8 + day_part ] = b;
-
-        for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
-        {
-            Client* cl = *it;
-            cl->Send_GameInfo( this );
-        }
-    }
-}
-
-int Map::GetData( uint index )
-{
-    SCOPE_LOCK( dataLocker );
-
-    uint result = ( index < MAP_MAX_DATA ? Data.UserData[ index ] : 0 );
-    return result;
-}
-
-void Map::SetData( uint index, int value )
-{
-    if( index < MAP_MAX_DATA )
-    {
-        SCOPE_LOCK( dataLocker );
-
-        Data.UserData[ index ] = value;
-    }
 }
 
 void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text )
@@ -2195,21 +2091,28 @@ const char* LocationEventFuncName[ LOCATION_EVENT_MAX ] =
 };
 
 PROPERTIES_IMPL( Location );
+CLASS_PROPERTY_IMPL( Location, WorldX );
+CLASS_PROPERTY_IMPL( Location, WorldY );
+CLASS_PROPERTY_IMPL( Location, Radius );
+CLASS_PROPERTY_IMPL( Location, Visible );
+CLASS_PROPERTY_IMPL( Location, GeckVisible );
+CLASS_PROPERTY_IMPL( Location, AutoGarbage );
+CLASS_PROPERTY_IMPL( Location, ToGarbage );
+CLASS_PROPERTY_IMPL( Location, Color );
 
 Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Entity( id, EntityType::Location, PropertiesRegistrator )
 {
     RUNTIME_ASSERT( proto );
 
     Proto = proto;
-    memzero( &Data, sizeof( Data ) );
+    ProtoId = proto->ProtoId;
     memzero( FuncId, sizeof( FuncId ) );
-    Data.LocPid = Proto->LocPid;
-    Data.WX = wx;
-    Data.WY = wy;
-    Data.Radius = Proto->Radius;
-    Data.Visible = Proto->Visible;
-    Data.GeckVisible = Proto->GeckVisible;
-    Data.AutoGarbage = Proto->AutoGarbage;
+    SetWorldX( wx );
+    SetWorldY( wy );
+    SetRadius( Proto->Radius );
+    SetVisible( Proto->Visible );
+    SetGeckVisible( Proto->GeckVisible );
+    SetAutoGarbage( Proto->AutoGarbage );
     GeckCount = 0;
 }
 
@@ -2273,7 +2176,7 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
     for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
     {
         Map* map = *it;
-        if( map->GetPid() == mobj->MScenery.ToMap )
+        if( map->GetProtoId() == mobj->MScenery.ToMap )
         {
             to_map = map;
             break;

@@ -60,6 +60,8 @@ typedef map< size_t, string >    SizeTStrMap;
 typedef map< uint, int >         UIntIntMap;
 typedef map< hash, int >         HashIntMap;
 typedef map< hash, uint >        HashUIntMap;
+typedef map< int, string >       IntStrMap;
+typedef map< string, int >       StrIntMap;
 
 typedef multimap< uint, string > UIntStrMulMap;
 
@@ -82,6 +84,7 @@ typedef vector< size_t >         SizeVec;
 typedef vector< hash >           HashVec;
 typedef vector< HashVec >        HashVecVec;
 typedef vector< max_t >          MaxTVec;
+typedef vector< StrMap* >        PStrMapVec;
 
 typedef set< string >            StrSet;
 typedef set< uchar >             UCharSet;

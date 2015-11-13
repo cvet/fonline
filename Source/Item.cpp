@@ -166,6 +166,14 @@ PROPERTIES_IMPL( Item );
 CLASS_PROPERTY_IMPL( Item, ScriptId );
 CLASS_PROPERTY_IMPL( Item, LockerComplexity );
 #endif
+CLASS_PROPERTY_IMPL( Item, Accessory );
+CLASS_PROPERTY_IMPL( Item, MapId );
+CLASS_PROPERTY_IMPL( Item, HexX );
+CLASS_PROPERTY_IMPL( Item, HexY );
+CLASS_PROPERTY_IMPL( Item, CritId );
+CLASS_PROPERTY_IMPL( Item, CritSlot );
+CLASS_PROPERTY_IMPL( Item, ContainerId );
+CLASS_PROPERTY_IMPL( Item, ContainerStack );
 CLASS_PROPERTY_IMPL( Item, IsHidden );
 CLASS_PROPERTY_IMPL( Item, IsFlat );
 CLASS_PROPERTY_IMPL( Item, IsNoBlock );
@@ -205,6 +213,7 @@ CLASS_PROPERTY_IMPL( Item, LightIntensity );
 CLASS_PROPERTY_IMPL( Item, LightDistance );
 CLASS_PROPERTY_IMPL( Item, LightFlags );
 CLASS_PROPERTY_IMPL( Item, LightColor );
+CLASS_PROPERTY_IMPL( Item, Type );
 CLASS_PROPERTY_IMPL( Item, Count );
 CLASS_PROPERTY_IMPL( Item, Cost );
 CLASS_PROPERTY_IMPL( Item, Val0 );
@@ -240,9 +249,7 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
     MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() );
 
     Proto = nullptr;
-    Accessory = ITEM_ACCESSORY_NONE;
     ViewPlaceOnMap = false;
-    memzero( AccBuffer, sizeof( AccBuffer ) );
 
     #ifdef FONLINE_SERVER
     memzero( FuncId, sizeof( FuncId ) );
@@ -265,8 +272,10 @@ void Item::SetProto( ProtoItem* proto )
     if( proto == Proto )
         return;
 
+    ProtoId = proto->ProtoId;
     Proto = proto;
     Props = Proto->ItemPropsEntity.Props;
+    SetType( proto->GetType() );
 
     switch( GetType() )
     {
@@ -297,8 +306,6 @@ Item* Item::Clone()
 {
     RUNTIME_ASSERT( Type == EntityType::Item );
     Item* clone = new Item( Id, Proto );
-    clone->Accessory = Accessory;
-    memcpy( clone->AccBuffer, AccBuffer, sizeof( AccBuffer ) );
     clone->Props = Props;
     return clone;
 }
@@ -567,15 +574,13 @@ void Item::WeapLoadHolder()
 #ifdef FONLINE_SERVER
 void Item::ContAddItem( Item*& item, uint stack_id )
 {
-    if( !IsContainer() || !item )
-        return;
+    RUNTIME_ASSERT( IsContainer() );
+    RUNTIME_ASSERT( item );
 
     if( !ChildItems )
     {
         MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemMap ) );
         ChildItems = new ItemVec();
-        if( !ChildItems )
-            return;
     }
 
     if( item->IsStackable() )
@@ -590,7 +595,7 @@ void Item::ContAddItem( Item*& item, uint stack_id )
         }
     }
 
-    item->AccContainer.StackId = stack_id;
+    item->SetContainerStack( stack_id );
     item->SetSortValue( *ChildItems );
     ContSetItem( item );
 }
@@ -601,46 +606,28 @@ void Item::ContSetItem( Item* item )
     {
         MEMORY_PROCESS( MEMORY_ITEM, sizeof( ItemMap ) );
         ChildItems = new ItemVec();
-        if( !ChildItems )
-            return;
     }
 
-    if( std::find( ChildItems->begin(), ChildItems->end(), item ) != ChildItems->end() )
-    {
-        WriteLogF( _FUNC_, " - Item already added!\n" );
-        return;
-    }
+    RUNTIME_ASSERT( std::find( ChildItems->begin(), ChildItems->end(), item ) == ChildItems->end() );
 
     ChildItems->push_back( item );
-    item->Accessory = ITEM_ACCESSORY_CONTAINER;
-    item->AccContainer.ContainerId = GetId();
+    item->SetAccessory( ITEM_ACCESSORY_CONTAINER );
+    item->SetContainerId( Id );
 }
 
 void Item::ContEraseItem( Item* item )
 {
-    if( !IsContainer() )
-    {
-        WriteLogF( _FUNC_, " - Item is not container.\n" );
-        return;
-    }
-    if( !ChildItems )
-    {
-        WriteLogF( _FUNC_, " - Container items null ptr.\n" );
-        return;
-    }
-    if( !item )
-    {
-        WriteLogF( _FUNC_, " - Item null ptr.\n" );
-        return;
-    }
+    RUNTIME_ASSERT( IsContainer() );
+    RUNTIME_ASSERT( ChildItems );
+    RUNTIME_ASSERT( item );
 
     auto it = std::find( ChildItems->begin(), ChildItems->end(), item );
-    if( it != ChildItems->end() )
-        ChildItems->erase( it );
-    else
-        WriteLogF( _FUNC_, " - Item '%s' not found, id %u, container id %u.\n", item->GetName(), item->GetId(), GetId() );
+    RUNTIME_ASSERT( it != ChildItems->end() );
+    ChildItems->erase( it );
 
-    item->Accessory = ITEM_ACCESSORY_NONE;
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
+    item->SetContainerId( 0 );
+    item->SetContainerStack( 0 );
 
     if( ChildItems->empty() )
         SAFEDEL( ChildItems );
@@ -648,7 +635,10 @@ void Item::ContEraseItem( Item* item )
 
 Item* Item::ContGetItem( uint item_id, bool skip_hide )
 {
-    if( !IsContainer() || !ChildItems || !item_id )
+    RUNTIME_ASSERT( IsContainer() );
+    RUNTIME_ASSERT( item_id );
+
+    if( !ChildItems )
         return nullptr;
 
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
@@ -667,7 +657,9 @@ Item* Item::ContGetItem( uint item_id, bool skip_hide )
 
 void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
 {
-    if( !IsContainer() || !ChildItems )
+    RUNTIME_ASSERT( IsContainer() );
+
+    if( !ChildItems )
         return;
 
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
@@ -686,13 +678,15 @@ void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
 # pragma MESSAGE("Add explicit sync lock.")
 Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 {
-    if( !IsContainer() || !ChildItems )
+    RUNTIME_ASSERT( IsContainer() );
+
+    if( !ChildItems )
         return nullptr;
 
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetProtoId() == pid && ( stack_id == uint( -1 ) || item->AccContainer.StackId == stack_id ) )
+        if( item->GetProtoId() == pid && ( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id ) )
         {
             SYNC_LOCK( item );
             return item;
@@ -703,13 +697,15 @@ Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 
 void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
 {
-    if( !IsContainer() || !ChildItems )
+    RUNTIME_ASSERT( IsContainer() );
+
+    if( !ChildItems )
         return;
 
     for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
     {
         Item* item = *it;
-        if( stack_id == uint( -1 ) || item->AccContainer.StackId == stack_id )
+        if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
             items.push_back( item );
     }
 
@@ -721,8 +717,7 @@ void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
 
 bool Item::ContHaveFreeVolume( uint stack_id, uint volume )
 {
-    if( !IsContainer() )
-        return false;
+    RUNTIME_ASSERT( IsContainer() );
 
     uint max_volume = Proto->GetContainer_Volume();
     if( max_volume == 0 )
@@ -737,7 +732,7 @@ bool Item::ContHaveFreeVolume( uint stack_id, uint volume )
         for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
         {
             Item* item = *it;
-            if( stack_id == uint( -1 ) || item->AccContainer.StackId == stack_id )
+            if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
                 cur_volume += item->GetVolume();
         }
     }
@@ -746,11 +741,13 @@ bool Item::ContHaveFreeVolume( uint stack_id, uint volume )
 
 bool Item::ContIsItems()
 {
+    RUNTIME_ASSERT( IsContainer() );
     return ChildItems && ChildItems->size();
 }
 
 void Item::ContDeleteItems()
 {
+    RUNTIME_ASSERT( IsContainer() );
     while( ChildItems )
     {
         RUNTIME_ASSERT( !ChildItems->empty() );
@@ -764,24 +761,24 @@ Item* Item::GetChild( uint child_index )
     if( !pid )
         return nullptr;
 
-    if( Accessory == ITEM_ACCESSORY_HEX )
+    if( GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( AccHex.MapId );
+        Map* map = MapMngr.GetMap( GetMapId() );
         if( !map )
             return nullptr;
-        return map->GetItemChild( AccHex.HexX, AccHex.HexY, Proto, child_index );
+        return map->GetItemChild( GetHexX(), GetHexY(), Proto, child_index );
     }
-    else if( Accessory == ITEM_ACCESSORY_CRITTER )
+    else if( GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( AccCritter.Id, true );
+        Critter* cr = CrMngr.GetCritter( GetCritId(), true );
         if( cr )
             return cr->GetItemByPid( pid );
     }
-    else if( Accessory == ITEM_ACCESSORY_CONTAINER )
+    else if( GetAccessory() == ITEM_ACCESSORY_CONTAINER )
     {
-        Item* cont = ItemMngr.GetItem( AccContainer.ContainerId, true );
+        Item* cont = ItemMngr.GetItem( GetContainerId(), true );
         if( cont )
-            return cont->ContGetItemByPid( pid, AccContainer.StackId );
+            return cont->ContGetItemByPid( pid, GetContainerStack() );
     }
     return nullptr;
 }

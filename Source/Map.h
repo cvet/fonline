@@ -35,6 +35,14 @@ class Map: public Entity
 {
 public:
     PROPERTIES_HEADER();
+    CLASS_PROPERTY( uint, LocId );
+    CLASS_PROPERTY( uint, LocMapIndex );
+    CLASS_PROPERTY( uchar, RainCapacity );
+    CLASS_PROPERTY( bool, IsTurnBasedAviable );
+    CLASS_PROPERTY( int, CurDayTime );
+    CLASS_PROPERTY( hash, ScriptId );
+    CLASS_PROPERTY( ScriptArray *, DayTime );    // 4 int
+    CLASS_PROPERTY( ScriptArray *, DayColor );   // 12 uchar
 
     Map( uint id, ProtoMap* proto, Location* location );
     ~Map();
@@ -51,19 +59,6 @@ private:
     Location* mapLocation;
 
 public:
-    struct MapData
-    {
-        hash  MapPid;
-        uchar MapRain;
-        bool  IsTurnBasedAviable;
-        int   MapTime;
-        hash  ScriptId;
-        int   MapDayTime[ 4 ];
-        uchar MapDayColor[ 12 ];
-        uint  Reserved[ 20 ];
-        int   UserData[ MAP_MAX_DATA ];
-    } Data;
-
     ProtoMap* Proto;
 
     bool      NeedProcess;
@@ -79,19 +74,10 @@ public:
     void Unlock() { dataLocker.Unlock(); }
 
     Location* GetLocation( bool lock );
-    ushort    GetMaxHexX() { return Proto->Header.MaxHexX; }
-    ushort    GetMaxHexY() { return Proto->Header.MaxHexY; }
+    void      SetLocation( Location* loc ) { mapLocation = loc; }
+    ushort    GetMaxHexX()                 { return Proto->Header.MaxHexX; }
+    ushort    GetMaxHexY()                 { return Proto->Header.MaxHexY; }
     void      SetLoopTime( uint loop_num, uint ms );
-    uchar     GetRain();
-    void      SetRain( uchar capacity );
-    int       GetTime();
-    void      SetTime( int time );
-    uint      GetDayTime( uint day_part );
-    void      SetDayTime( uint day_part, uint time );
-    void      GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
-    void      SetDayColor( uint day_part, uchar r, uchar g, uchar b );
-    int       GetData( uint index );
-    void      SetData( uint index, int value );
 
     void SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text );
     void SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str );
@@ -101,8 +87,8 @@ public:
     bool GetStartCoordCar( ushort& hx, ushort& hy, ProtoItem* proto_item );
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
-    hash        GetPid()  { return Data.MapPid; }
-    const char* GetName() { return Str::GetName( Data.MapPid ); }
+    hash        GetProtoId() { return Proto->GetProtoId(); }
+    const char* GetName()    { return Str::GetName( Proto->GetProtoId() ); }
 
     void AddCritter( Critter* cr );
     void AddCritterEvents( Critter* cr );
@@ -230,8 +216,7 @@ typedef vector< Map* >    MapVec;
 class ProtoLocation
 {
 public:
-    hash        LocPid;
-    string      Name;
+    hash        ProtoId;
 
     uint        MaxPlayers;
     ushort      Radius;
@@ -260,6 +245,14 @@ class Location: public Entity
 {
 public:
     PROPERTIES_HEADER();
+    CLASS_PROPERTY( ushort, WorldX );
+    CLASS_PROPERTY( ushort, WorldY );
+    CLASS_PROPERTY( ushort, Radius );
+    CLASS_PROPERTY( bool, Visible );
+    CLASS_PROPERTY( bool, GeckVisible );
+    CLASS_PROPERTY( bool, AutoGarbage );
+    CLASS_PROPERTY( bool, ToGarbage );
+    CLASS_PROPERTY( uint, Color );
 
     Location( uint id, ProtoLocation* proto, ushort wx, ushort wy );
     ~Location();
@@ -270,29 +263,14 @@ private:
     MapVec locMaps;
 
 public:
-    struct LocData
-    {
-        hash   LocPid;
-        ushort WX;
-        ushort WY;
-        ushort Radius;
-        bool   Visible;
-        bool   GeckVisible;
-        bool   AutoGarbage;
-        bool   ToGarbage;
-        uint   Color;
-        uint   Reserved3[ 59 ];
-    } Data;
-
     ProtoLocation* Proto;
     volatile int   GeckCount;
     uint           FuncId[ LOCATION_EVENT_MAX ];
 
     void        Update();
-    bool        IsVisible()     { return Data.Visible || ( Data.GeckVisible && GeckCount > 0 ); }
-    hash        GetPid()        { return Data.LocPid; }
-    const char* GetName()       { return Str::GetName( Data.LocPid ); }
-    uint        GetRadius()     { return Data.Radius; }
+    bool        IsLocVisible()  { return GetVisible() || ( GetGeckVisible() && GeckCount > 0 ); }
+    hash        GetProtoId()    { return Proto->ProtoId; }
+    const char* GetName()       { return Str::GetName( GetProtoId() ); }
     MapVec&     GetMapsNoLock() { return locMaps; };
     void        GetMaps( MapVec& maps, bool lock );
     uint        GetMapsCount() { return (uint) locMaps.size(); }

@@ -27,7 +27,8 @@ struct EngineData
     map< string, pair< string, void* > > LoadedDlls;
     ScriptInvoker*                       Invoker;
     ScriptProfiler*                      Profiler;
-    map< string, int >                   CachedEnums;
+    StrIntMap                            CachedEnums;
+    map< string, IntStrMap >             CachedEnumNames;
 };
 
 struct ReservedScriptFunction
@@ -73,14 +74,14 @@ public:
     static ScriptInvoker* GetInvoker();
     static string         GetDeferredCallsStatistics();
     static void           ProcessDeferredCalls();
-    static void           SaveDeferredCalls( void ( * save_func )( void*, size_t ) );
-    static bool           LoadDeferredCalls( void* f, uint version );
+    static void           SaveDeferredCalls( IniParser& data );
+    static bool           LoadDeferredCalls( IniParser& data );
 
     static void   ProfilerContextCallback( asIScriptContext* ctx, void* obj );
     static string GetProfilerStatistics();
 
     static PropertyRegistrator* FindEntityRegistrator( const char* class_name );
-    static void                 RestoreEntity( const char* class_name, uint id, Properties& props );
+    static bool                 RestoreEntity( const char* class_name, uint id, Properties& props );
 
     static const char* GetActiveModuleName();
     static const char* GetActiveFuncName();
@@ -113,11 +114,11 @@ public:
     static hash               BindScriptFuncNumByFunc( asIScriptFunction* func );
     static uint               GetScriptFuncBindId( hash func_num );
     static bool               PrepareScriptFuncContext( hash func_num, const char* call_func, const char* ctx_info );
-    static string             GetScriptFuncName( hash func_num );
 
-    static void CacheEnumValues();
-    static int  GetEnumValue( const char* enum_value_name, bool& fail );
-    static int  GetEnumValue( const char* enum_name, const char* value_name, bool& fail );
+    static void        CacheEnumValues();
+    static int         GetEnumValue( const char* enum_value_name, bool& fail );
+    static int         GetEnumValue( const char* enum_name, const char* value_name, bool& fail );
+    static const char* GetEnumValueName( const char* enum_name, int value );
 
     // Script execution
     static void BeginExecution();

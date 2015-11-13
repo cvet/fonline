@@ -44,25 +44,40 @@ void FOServer::ProcessCritter( Critter* cr )
 
     // Internal misc/drugs time events
     // One event per cycle
-    if( !cr->CrTimeEvents.empty() )
+    if( cr->IsTE_FuncNum() )
     {
-        uint next_time = cr->CrTimeEvents[ 0 ].NextTime;
+        ScriptArray* te_next_time = cr->GetTE_NextTime();
+        uint         next_time = *(uint*) te_next_time->At( 0 );
         if( !next_time || ( !cr->IsTurnBased() && GameOpt.FullSecond >= next_time ) )
         {
-            Critter::CrTimeEvent me = cr->CrTimeEvents[ 0 ];
+            ScriptArray* te_func_num = cr->GetTE_FuncNum();
+            ScriptArray* te_rate = cr->GetTE_Rate();
+            ScriptArray* te_identifier = cr->GetTE_Identifier();
+            RUNTIME_ASSERT( te_next_time->GetSize() == te_func_num->GetSize() );
+            RUNTIME_ASSERT( te_func_num->GetSize() == te_rate->GetSize() );
+            RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
+            hash func_num = *(hash*) te_func_num->At( 0 );
+            uint rate = *(hash*) te_rate->At( 0 );
+            int  identifier = *(hash*) te_identifier->At( 0 );
+            te_func_num->Release();
+            te_rate->Release();
+            te_identifier->Release();
+
             cr->EraseCrTimeEvent( 0 );
-            uint                 time = GameOpt.TimeMultiplier * 1800; // 30 minutes on error
-            if( Script::PrepareScriptFuncContext( me.FuncNum, _FUNC_, cr->GetInfo() ) )
+
+            uint time = GameOpt.TimeMultiplier * 1800;             // 30 minutes on error
+            if( Script::PrepareScriptFuncContext( func_num, _FUNC_, cr->GetInfo() ) )
             {
                 Script::SetArgObject( cr );
-                Script::SetArgUInt( me.Identifier );
-                Script::SetArgAddress( &me.Rate );
+                Script::SetArgUInt( identifier );
+                Script::SetArgAddress( &rate );
                 if( Script::RunPrepared() )
                     time = Script::GetReturnedUInt();
             }
             if( time )
-                cr->AddCrTimeEvent( me.FuncNum, me.Rate, time, me.Identifier );
+                cr->AddCrTimeEvent( func_num, rate, time, identifier );
         }
+        te_next_time->Release();
     }
 
     // Global map
@@ -101,7 +116,7 @@ void FOServer::ProcessCritter( Critter* cr )
         // Kick from game
         if( cl->IsOffline() && cl->IsLife() && !IS_TIMEOUT( cl->GetTimeoutBattle() ) &&
             !cl->GetTimeoutRemoveFromGame() && cl->GetOfflineTime() >= GameOpt.MinimumOfflineTime &&
-            !MapMngr.IsProtoMapNoLogOut( cl->GetMapProtoId() ) )
+            !MapMngr.IsProtoMapNoLogOut( cl->GetMapPid() ) )
         {
             cl->RemoveFromGame();
         }
@@ -134,66 +149,34 @@ void FOServer::ProcessCritter( Critter* cr )
         cr->TryUpOnKnockout();
 }
 
-void FOServer::SaveHoloInfoFile()
+void FOServer::SaveHoloInfoFile( IniParser& data )
 {
-    uint count = (uint) HolodiskInfo.size();
-    AddWorldSaveData( &count, sizeof( count ) );
-    for( auto it = HolodiskInfo.begin(), end = HolodiskInfo.end(); it != end; ++it )
+    data.SetStr( "GeneralSettings", "LastHoloId", Str::UItoA( LastHoloId ) );
+
+    for( auto& holo : HolodiskInfo )
     {
-        uint      id = it->first;
-        HoloInfo* hi = it->second;
-        AddWorldSaveData( &id, sizeof( id ) );
-        AddWorldSaveData( &hi->CanRewrite, sizeof( hi->CanRewrite ) );
-        ushort title_len = (ushort) hi->Title.length();
-        AddWorldSaveData( &title_len, sizeof( title_len ) );
-        if( title_len )
-            AddWorldSaveData( (void*) hi->Title.c_str(), title_len );
-        ushort text_len = (ushort) hi->Text.length();
-        AddWorldSaveData( &text_len, sizeof( text_len ) );
-        if( text_len )
-            AddWorldSaveData( (void*) hi->Text.c_str(), text_len );
+        StrMap& kv = data.SetApp( "HoloInfo" );
+        kv[ "Id" ] = holo.first;
+        kv[ "CanWrite" ] = holo.second->CanRewrite;
+        kv[ "Title" ] = holo.second->Title;
+        kv[ "Text" ] = holo.second->Text;
     }
 }
 
-bool FOServer::LoadHoloInfoFile( void* f, uint version )
+bool FOServer::LoadHoloInfoFile( IniParser& data )
 {
-    LastHoloId = USER_HOLO_START_NUM;
+    LastHoloId = Str::AtoUI( data.GetStr( "GeneralSettings", "LastHoloId" ) );
 
-    uint count = 0;
-    if( !FileRead( f, &count, sizeof( count ) ) )
-        return false;
-    for( uint i = 0; i < count; i++ )
+    PStrMapVec holos;
+    data.GetApps( "HoloInfo", holos );
+    for( auto& pkv : holos )
     {
-        uint id;
-        if( !FileRead( f, &id, sizeof( id ) ) )
-            return false;
-        bool can_rw;
-        if( !FileRead( f, &can_rw, sizeof( can_rw ) ) )
-            return false;
-
-        ushort title_len;
-        char   title[ USER_HOLO_MAX_TITLE_LEN + 1 ] = { 0 };
-        if( !FileRead( f, &title_len, sizeof( title_len ) ) )
-            return false;
-        if( title_len >= USER_HOLO_MAX_TITLE_LEN )
-            title_len = USER_HOLO_MAX_TITLE_LEN;
-        if( title_len )
-            FileRead( f, title, title_len );
-        title[ title_len ] = 0;
-
-        ushort text_len;
-        char   text[ USER_HOLO_MAX_LEN + 1 ] = { 0 };
-        if( !FileRead( f, &text_len, sizeof( text_len ) ) )
-            return false;
-        if( text_len >= USER_HOLO_MAX_LEN )
-            text_len = USER_HOLO_MAX_LEN;
-        if( text_len )
-            FileRead( f, text, text_len );
-        text[ text_len ] = 0;
-
+        auto&       kv = *pkv;
+        uint        id = Str::AtoUI( kv[ "Id" ].c_str() );
+        bool        can_rw = Str::CompareCase( kv[ "CanWrite" ].c_str(), "True" );
+        const char* title = kv[ "Title" ].c_str();
+        const char* text = kv[ "Text" ].c_str();
         HolodiskInfo.insert( PAIR( id, new HoloInfo( can_rw, title, text ) ) );
-        if( id > LastHoloId )
-            LastHoloId = id;
     }
     return true;
 }
@@ -404,12 +387,12 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     cr->PrevHexX = fx;
     cr->PrevHexY = fy;
     cr->PrevHexTick = Timer::GameTick();
-    cr->Data.HexX = hx;
-    cr->Data.HexY = hy;
+    cr->SetHexX( hx );
+    cr->SetHexY( hy );
     map->SetFlagCritter( hx, hy, multihex, is_dead );
 
     // Set dir
-    cr->Data.Dir = dir;
+    cr->SetDir( dir );
 
     if( is_run )
     {
@@ -862,7 +845,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return false;
         }
 
-        if( !CheckDist( cr->GetHexX(), cr->GetHexY(), target_item->AccHex.HexX, target_item->AccHex.HexY, cr->GetUseDist() ) )
+        if( !CheckDist( cr->GetHexX(), cr->GetHexY(), target_item->GetHexX(), target_item->GetHexY(), cr->GetUseDist() ) )
         {
             cr->Send_XY( cr );
             WriteLogF( _FUNC_, " - Target item too far, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
@@ -1211,7 +1194,7 @@ void FOServer::RespawnCritter( Critter* cr )
     map->UnsetFlagCritter( hx, hy, multihex, true );
     map->SetFlagCritter( hx, hy, multihex, false );
 
-    cr->Data.Cond = COND_LIFE;
+    cr->SetCond( COND_LIFE );
     if( cr->GetCurrentHp() < 1 )
         cr->SetCurrentHp( 1 );
     cr->Send_Action( cr, ACTION_RESPAWN, 0, nullptr );
@@ -1267,8 +1250,8 @@ void FOServer::KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, ui
         uint multihex = cr->GetMultihex();
         bool is_dead = cr->IsDead();
         map->UnsetFlagCritter( x1, y1, multihex, is_dead );
-        cr->Data.HexX = x2;
-        cr->Data.HexY = y2;
+        cr->SetHexX( x2 );
+        cr->SetHexY( y2 );
         map->SetFlagCritter( x2, y2, multihex, is_dead );
     }
 
@@ -1492,7 +1475,9 @@ void FOServer::Process_CreateClient( Client* cl )
     Str::Copy( cl->Name, name );
 
     // Password hash
-    cl->Bin.Pop( cl->PassHash, PASS_HASH_SIZE );
+    char pass_hash[ PASS_HASH_SIZE ];
+    cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
+    cl->SetBinPassHash( pass_hash );
 
     // Receive params
     ushort props_count = 0;
@@ -1637,13 +1622,9 @@ void FOServer::Process_CreateClient( Client* cl )
     // Register
     cl->SetId( id );
     cl->RefreshName();
-    cl->Data.HexX = 0;
-    cl->Data.HexY = 0;
-    cl->Data.Dir = 0;
-    cl->Data.WorldX = GM_MAXX / 2;
-    cl->Data.WorldY = GM_MAXY / 2;
-    cl->Data.Cond = COND_LIFE;
-    cl->Data.Multihex = -1;
+    cl->SetWorldX( GM_MAXX / 2 );
+    cl->SetWorldY( GM_MAXY / 2 );
+    cl->SetCond( COND_LIFE );
 
     ScriptArray* arr_reg_ip = Script::CreateArray( "uint[]" );
     uint         reg_ip = cl->GetIp();
@@ -1659,8 +1640,8 @@ void FOServer::Process_CreateClient( Client* cl )
     // Assign base access
     cl->Access = ACCESS_DEFAULT;
 
-    // Fist save
-    if( !SaveClient( cl, false ) )
+    // First save
+    if( !SaveClient( cl ) )
     {
         WriteLogF( _FUNC_, " - First save fail.\n" );
         cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
@@ -1717,7 +1698,7 @@ void FOServer::Process_CreateClient( Client* cl )
 
     cl->AddRef();
     EntityMngr.RegisterEntity( cl );
-    MapMngr.AddCrToMap( cl, nullptr, 0, 0, 0 );
+    MapMngr.AddCrToMap( cl, nullptr, 0, 0, 0, false );
     Job::PushBack( JOB_CRITTER, cl );
 
     if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, cl->GetInfo() ) )
@@ -1726,24 +1707,23 @@ void FOServer::Process_CreateClient( Client* cl )
         Script::SetArgBool( true );
         Script::RunPrepared();
     }
-    SaveClient( cl, false );
+    SaveClient( cl );
 
     if( !Singleplayer )
     {
         ClientData* data = new ClientData();
         memzero( data, sizeof( ClientData ) );
         Str::Copy( data->ClientName, cl->Name );
-        memcpy( data->ClientPassHash, cl->PassHash, PASS_HASH_SIZE );
+        memcpy( data->ClientPassHash, pass_hash, PASS_HASH_SIZE );
 
         SCOPE_LOCK( ClientsDataLocker );
         ClientsData.insert( PAIR( cl->GetId(), data ) );
     }
     else
     {
-        ClientsSaveDataCount = 0;
-        AddClientSaveData( cl );
         SingleplayerSave.Valid = true;
-        SingleplayerSave.CrData = ClientsSaveData[ 0 ];
+        SingleplayerSave.Name = cl->Name;
+        SingleplayerSave.CrProps = &cl->Props;
         SingleplayerSave.PicData.clear();
     }
 }
@@ -1782,12 +1762,13 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     name[ sizeof( name ) - 1 ] = 0;
     Str::Copy( cl->Name, name );
     cl->Bin >> uid[ 1 ];
-    cl->Bin.Pop( cl->PassHash, PASS_HASH_SIZE );
+    char pass_hash[ PASS_HASH_SIZE ];
+    cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
 
     if( Singleplayer )
     {
         memzero( cl->Name, sizeof( cl->Name ) );
-        memzero( cl->PassHash, sizeof( cl->PassHash ) );
+        memzero( pass_hash, sizeof( pass_hash ) );
     }
 
     // Prevent brute force by name
@@ -1887,7 +1868,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         SCOPE_LOCK( ClientsDataLocker );
 
         ClientData* data_ = GetClientData( id );
-        if( !data_ || memcmp( cl->PassHash, data_->ClientPassHash, PASS_HASH_SIZE ) )
+        if( !data_ || memcmp( pass_hash, data_->ClientPassHash, PASS_HASH_SIZE ) )
         {
             // WriteLogF(_FUNC_," - Wrong name '%s' or password.\n",cl->Name);
             cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
@@ -1899,8 +1880,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     }
     else
     {
-        Str::Copy( data.ClientName, SingleplayerSave.CrData.Name );
-        id = MAKE_CLIENT_ID( SingleplayerSave.CrData.Name );
+        Str::Copy( data.ClientName, SingleplayerSave.Name.c_str() );
+        id = MAKE_CLIENT_ID( data.ClientName );
     }
 
     // Check for ban by name
@@ -2191,9 +2172,8 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         // Singleplayer data
         if( Singleplayer )
         {
-            Str::Copy( cl->Name, SingleplayerSave.CrData.Name );
-            cl->Data = SingleplayerSave.CrData.Data;
-            cl->CrTimeEvents = SingleplayerSave.CrData.TimeEvents;
+            Str::Copy( cl->Name, SingleplayerSave.Name.c_str() );
+            cl->Props = *SingleplayerSave.CrProps;
         }
 
         // Find in saved array
@@ -2215,22 +2195,11 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             WriteLogF( _FUNC_, " - Error load from data base, client '%s'.\n", cl->GetInfo() );
             cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
-            cl->SetMaps( 0, 0 );
             return;
         }
 
         if( cl_saved )
-        {
-            // Data
-            memcpy( &cl->Data, &cl_saved->Data, sizeof( cl->Data ) );
             cl->Props = cl_saved->Props;
-            size_t te_count = cl_saved->CrTimeEvents.size();
-            if( te_count )
-            {
-                cl->CrTimeEvents.resize( te_count );
-                memcpy( &cl->CrTimeEvents[ 0 ], &cl_saved->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
-            }
-        }
 
         // Find items
         ItemMngr.SetCritterItems( cl );
@@ -2239,43 +2208,39 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         Map* map = MapMngr.GetMap( cl->GetMapId() );
         if( cl->GetMapId() )
         {
-            if( !map || map->IsNoLogOut() || map->GetPid() != cl->GetMapProtoId() )
+            if( !map || map->IsNoLogOut() || map->GetProtoId() != cl->GetMapPid() )
             {
                 ushort hx, hy;
                 uchar  dir;
-                if( map && map->GetPid() == cl->GetMapProtoId() && map->GetStartCoord( hx, hy, dir, ENTIRE_LOG_OUT ) )
+                if( map && map->GetProtoId() == cl->GetMapPid() && map->GetStartCoord( hx, hy, dir, ENTIRE_LOG_OUT ) )
                 {
-                    cl->Data.HexX = hx;
-                    cl->Data.HexY = hy;
-                    cl->Data.Dir = dir;
+                    cl->SetHexX( hx );
+                    cl->SetHexY( hy );
+                    cl->SetDir( dir );
                 }
                 else
                 {
                     map = nullptr;
-                    cl->SetMaps( 0, 0 );
-                    cl->Data.HexX = 0;
-                    cl->Data.HexY = 0;
+                    cl->SetMapId( 0 );
+                    cl->SetMapPid( 0 );
+                    cl->SetHexX( 0 );
+                    cl->SetHexY( 0 );
                 }
             }
         }
 
         if( !cl->GetMapId() && ( cl->GetHexX() || cl->GetHexY() ) )
         {
-            uint     rule_id = ( cl->GetHexX() << 16 ) | cl->GetHexY();
-            Critter* rule = CrMngr.GetCritter( rule_id, false );
-            if( !rule || rule->GetMapId() || cl->Data.GlobalGroupUid != rule->Data.GlobalGroupUid )
-            {
-                cl->Data.HexX = 0;
-                cl->Data.HexY = 0;
-            }
+            Critter* rule = CrMngr.GetCritter( cl->GetGlobalGroupRuleId(), false );
+            if( !rule || rule->GetMapId() || cl->GetGlobalGroupUid() != rule->GetGlobalGroupUid() )
+                cl->SetGlobalGroupRuleId( 0 );
         }
 
-        if( !MapMngr.AddCrToMap( cl, map, cl->GetHexX(), cl->GetHexY(), 1 ) )
+        if( !MapMngr.AddCrToMap( cl, map, cl->GetHexX(), cl->GetHexY(), 1, false ) )
         {
             WriteLogF( _FUNC_, " - Error add critter to map, client '%s'.\n", cl->GetInfo() );
             cl->Send_TextMsg( cl, STR_NET_HEXES_BUSY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
-            cl->SetMaps( 0, 0 );
             return;
         }
 
@@ -2412,9 +2377,6 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
 
     if( save )
     {
-        ClientsSaveDataCount = 0;
-        AddClientSaveData( cl );
-        SingleplayerSave.CrData = ClientsSaveData[ 0 ];
         SingleplayerSave.PicData = pic_data;
 
         SaveWorld( fname );
@@ -2604,7 +2566,7 @@ void FOServer::Process_GiveMap( Client* cl )
         return;
     }
 
-    if( !automap && map_pid != cl->GetMapProtoId() && cl->ViewMapPid != map_pid )
+    if( !automap && map_pid != cl->GetMapPid() && cl->ViewMapPid != map_pid )
     {
         WriteLogF( _FUNC_, " - Request for loading incorrect map, client '%s'.\n", cl->GetInfo() );
         return;
@@ -2648,7 +2610,7 @@ void FOServer::Process_GiveMap( Client* cl )
 void FOServer::Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info )
 {
     uint   msg = NETMSG_MAP;
-    hash   map_pid = pmap->GetPid();
+    hash   map_pid = pmap->GetProtoId();
     ushort maxhx = pmap->Header.MaxHexX;
     ushort maxhy = pmap->Header.MaxHexY;
     uint   msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( map_pid ) + sizeof( maxhx ) + sizeof( maxhy ) + sizeof( send_info );
@@ -3058,7 +3020,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         {
             // Get item
             cont = ItemMngr.GetItem( cont_id, true );
-            if( !cont || cont->Accessory != ITEM_ACCESSORY_HEX || !cont->IsContainer() )
+            if( !cont || cont->GetAccessory() != ITEM_ACCESSORY_HEX || !cont->IsContainer() )
             {
                 cl->Send_ContainerInfo();
                 WriteLogF( _FUNC_, " - TRANSFER_HEX_CONT error.\n" );
@@ -3066,7 +3028,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check map
-            if( cont->AccHex.MapId != cl->GetMapId() )
+            if( cont->GetMapId() != cl->GetMapId() )
             {
                 cl->Send_ContainerInfo();
                 WriteLogF( _FUNC_, " - Attempt to take a subject from the container on other map.\n" );
@@ -3074,7 +3036,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check dist
-            if( !CheckDist( cl->GetHexX(), cl->GetHexY(), cont->AccHex.HexX, cont->AccHex.HexY, cl->GetUseDist() ) )
+            if( !CheckDist( cl->GetHexX(), cl->GetHexY(), cont->GetHexX(), cont->GetHexY(), cl->GetUseDist() ) )
             {
                 cl->Send_XY( cl );
                 cl->Send_ContainerInfo();
@@ -3241,7 +3203,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         {
             // Get item
             Item* item = cl->GetItem( item_id, true );
-            if( !item || item->AccCritter.Slot != SLOT_INV )
+            if( !item || item->GetCritSlot() != SLOT_INV )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_TextMsg( cl, STR_ITEM_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
@@ -3260,7 +3222,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check slot
-            if( item->AccCritter.Slot != SLOT_INV )
+            if( item->GetCritSlot() != SLOT_INV )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Cheat detected.", SAY_NETMSG );
@@ -3521,7 +3483,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         {
             // Get item
             Item* item = cl->GetItem( item_id, true );
-            if( !item || item->AccCritter.Slot != SLOT_INV )
+            if( !item || item->GetCritSlot() != SLOT_INV )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_TextMsg( cl, STR_ITEM_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
@@ -3540,7 +3502,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check slot
-            if( item->AccCritter.Slot != SLOT_INV )
+            if( item->GetCritSlot() != SLOT_INV )
             {
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Cheat detected.", SAY_NETMSG );
@@ -3640,7 +3602,7 @@ void FOServer::Process_Dir( Client* cl )
         return;
     }
 
-    cl->Data.Dir = dir;
+    cl->SetDir( dir );
     cl->SendA_Dir();
 }
 
@@ -4360,7 +4322,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         // Check for follow
         if( !rule->GroupMove->CheckForFollow( cl ) )
             break;
-        if( !CheckDist( rule->Data.LastMapHexX, rule->Data.LastMapHexY, cl->GetHexX(), cl->GetHexY(), FOLLOW_DIST + rule->GetMultihex() + cl->GetMultihex() ) )
+        if( !CheckDist( rule->GetLastMapHexX(), rule->GetLastMapHexY(), cl->GetHexX(), cl->GetHexY(), FOLLOW_DIST + rule->GetMultihex() + cl->GetMultihex() ) )
             break;
 
         // Transit
@@ -4419,7 +4381,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
 
         uint      loc_id = param1;
         Location* loc = MapMngr.GetLocation( loc_id );
-        if( !loc || DistSqrt( (int) cl->GroupMove->CurX, (int) cl->GroupMove->CurY, loc->Data.WX, loc->Data.WY ) > loc->GetRadius() )
+        if( !loc || DistSqrt( (int) cl->GroupMove->CurX, (int) cl->GroupMove->CurY, loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
             break;
 
         uint tick = Timer::FastTick();
@@ -4484,7 +4446,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
 
         uint      loc_id = param1;
         Location* loc = MapMngr.GetLocation( loc_id );
-        if( !loc || DistSqrt( (int) cl->GroupMove->CurX, (int) cl->GroupMove->CurY, loc->Data.WX, loc->Data.WY ) > loc->GetRadius() )
+        if( !loc || DistSqrt( (int) cl->GroupMove->CurX, (int) cl->GroupMove->CurY, loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
             break;
 
         uint entrance = param2;
@@ -4510,11 +4472,11 @@ void FOServer::Process_RuleGlobal( Client* cl )
         if( !map->GetStartCoord( hx, hy, dir, loc->Proto->Entrance[ entrance ].second ) )
             break;
 
-        cl->Data.HexX = hx;
-        cl->Data.HexY = hy;
-        cl->Data.Dir = dir;
+        cl->SetHexX( hx );
+        cl->SetHexY( hy );
+        cl->SetDir( dir );
         cl->ViewMapId = map->GetId();
-        cl->ViewMapPid = map->GetPid();
+        cl->ViewMapPid = map->GetProtoId();
         cl->ViewMapLook = cl->GetLookDistance();
         cl->ViewMapHx = hx;
         cl->ViewMapHy = hy;

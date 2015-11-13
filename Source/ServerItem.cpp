@@ -49,110 +49,6 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
     return item;
 }
 
-bool FOServer::TransferAllItems()
-{
-    WriteLog( "Transfer all items to npc, maps and containers...\n" );
-
-    // Transfer items
-    CrVec   critters;
-    CrMngr.GetCritters( critters, false );
-    ItemVec bad_items;
-    ItemVec game_items;
-    ItemMngr.GetGameItems( game_items );
-    for( auto it = game_items.begin(), end = game_items.end(); it != end; ++it )
-    {
-        Item* item = *it;
-
-        switch( item->Accessory )
-        {
-        case ITEM_ACCESSORY_CRITTER:
-        {
-            if( IS_CLIENT_ID( item->AccCritter.Id ) )
-                continue;                                                      // Skip player
-
-            Critter* npc = CrMngr.GetNpc( item->AccCritter.Id, false );
-            if( !npc )
-            {
-                WriteLog( "Item '%s' (%u) npc not found, id %u.\n", item->GetName(), item->GetId(), item->AccCritter.Id );
-                bad_items.push_back( item );
-                continue;
-            }
-
-            npc->SetItem( item );
-        }
-        break;
-        case ITEM_ACCESSORY_HEX:
-        {
-            Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
-            if( !map )
-            {
-                WriteLog( "Item '%s' (%u) map not found, map id %u, hx %u, hy %u.\n", item->GetName(), item->GetId(), item->AccHex.MapId, item->AccHex.HexX, item->AccHex.HexY );
-                bad_items.push_back( item );
-                continue;
-            }
-
-            if( item->AccHex.HexX >= map->GetMaxHexX() || item->AccHex.HexY >= map->GetMaxHexY() )
-            {
-                WriteLog( "Item '%s' (%u) invalid hex position, hx %u, hy %u.\n", item->GetName(), item->GetId(), item->AccHex.HexX, item->AccHex.HexY );
-                bad_items.push_back( item );
-                continue;
-            }
-
-            if( !item->Proto->IsItem() )
-            {
-                WriteLog( "Item '%s' (%u) is not item type %u.\n", item->GetName(), item->GetId(), item->GetType() );
-                bad_items.push_back( item );
-                continue;
-            }
-
-            map->SetItem( item, item->AccHex.HexX, item->AccHex.HexY );
-        }
-        break;
-        case ITEM_ACCESSORY_CONTAINER:
-        {
-            Item* cont = ItemMngr.GetItem( item->AccContainer.ContainerId, false );
-            if( !cont )
-            {
-                WriteLog( "Item '%s' (%u) container not found, container id %u.\n", item->GetName(), item->GetId(), item->AccContainer.ContainerId );
-                bad_items.push_back( item );
-                continue;
-            }
-
-            if( !cont->IsContainer() )
-            {
-                WriteLog( "Find item is not container, item '%s' (%u), type %u, id_cont %u, type_cont %u.\n", item->GetName(), item->GetId(), item->GetType(), cont->GetId(), cont->GetType() );
-                bad_items.push_back( item );
-                continue;
-            }
-
-            cont->ContSetItem( item );
-        }
-        break;
-        default:
-            WriteLog( "Unknown accessory id '%s' (%u), acc %u.\n", item->GetName(), item->Id, item->Accessory );
-            bad_items.push_back( item );
-            continue;
-        }
-    }
-
-    // Garbage bad items
-    for( auto it = bad_items.begin(), end = bad_items.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        ItemMngr.DeleteItem( item );
-    }
-
-    // Process visible for all npc
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        cr->ProcessVisibleItems();
-    }
-
-    WriteLog( "Transfer game items complete.\n" );
-    return true;
-}
-
 void FOServer::OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     Item* item = (Item*) entity;
@@ -161,11 +57,11 @@ void FOServer::OnSendItemValue( Entity* entity, Property* prop, void* cur_value,
     {
         bool is_public = ( prop->GetAccess() & Property::PublicMask ) != 0;
         bool is_protected = ( prop->GetAccess() & Property::ProtectedMask ) != 0;
-        if( item->Accessory == ITEM_ACCESSORY_CRITTER )
+        if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
         {
             if( is_public || is_protected )
             {
-                Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
+                Critter* cr = CrMngr.GetCritter( item->GetCritId(), false );
                 if( cr )
                 {
                     if( is_public || is_protected )
@@ -175,19 +71,19 @@ void FOServer::OnSendItemValue( Entity* entity, Property* prop, void* cur_value,
                 }
             }
         }
-        else if( item->Accessory == ITEM_ACCESSORY_HEX )
+        else if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
         {
             if( is_public )
             {
-                Map* map = MapMngr.GetMap( item->AccHex.MapId, false );
+                Map* map = MapMngr.GetMap( item->GetMapId(), false );
                 if( map )
                     map->SendProperty( NetProperty::MapItem, prop, item );
             }
         }
-        else if( item->Accessory == ITEM_ACCESSORY_CONTAINER )
+        else if( item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
         {
             #pragma MESSAGE( "Add container properties changing notifications." )
-            // Item* cont = ItemMngr.GetItem( item->AccContainer.ContainerId );
+            // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
         }
     }
 }
@@ -217,15 +113,15 @@ void FOServer::OnSetItemChangeView( Entity* entity, Property* prop, void* cur_va
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     Item* item = (Item*) entity;
 
-    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId );
+        Map* map = MapMngr.GetMap( item->GetMapId() );
         if( map )
             map->ChangeViewItem( item );
     }
-    else if( item->Accessory == ITEM_ACCESSORY_CRITTER && prop == Item::PropertyIsHidden )
+    else if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
+        Critter* cr = CrMngr.GetCritter( item->GetCritId(), false );
         if( cr )
         {
             bool value = *(bool*) cur_value;
@@ -244,9 +140,9 @@ void FOServer::OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_va
     Item* item = (Item*) entity;
     bool  value = *(bool*) cur_value;
 
-    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId );
+        Map* map = MapMngr.GetMap( item->GetMapId() );
         if( map )
         {
             bool recache_block = false;
@@ -257,7 +153,7 @@ void FOServer::OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_va
                 if( value )
                     recache_block = true;
                 else
-                    map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_BLOCK_ITEM );
+                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM );
             }
 
             else if( prop == Item::PropertyIsShootThru )
@@ -265,22 +161,22 @@ void FOServer::OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_va
                 if( value )
                     recache_shoot = true;
                 else
-                    map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_NRAKE_ITEM );
+                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_NRAKE_ITEM );
             }
             else if( prop == Item::PropertyIsGag )
             {
                 if( !value )
                     recache_block = true;
                 else
-                    map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_GAG_ITEM );
+                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_GAG_ITEM );
             }
 
             if( recache_block && recache_shoot )
-                map->RecacheHexBlockShoot( item->AccHex.HexX, item->AccHex.HexY );
+                map->RecacheHexBlockShoot( item->GetHexX(), item->GetHexY() );
             else if( recache_block )
-                map->RecacheHexBlock( item->AccHex.HexX, item->AccHex.HexY );
+                map->RecacheHexBlock( item->GetHexX(), item->GetHexY() );
             else if( recache_shoot )
-                map->RecacheHexShoot( item->AccHex.HexX, item->AccHex.HexY );
+                map->RecacheHexShoot( item->GetHexX(), item->GetHexY() );
         }
     }
 }
@@ -290,9 +186,9 @@ void FOServer::OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value,
     Item* item = (Item*) entity;
     bool  value = *(bool*) cur_value;
 
-    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId );
+        Map* map = MapMngr.GetMap( item->GetMapId() );
         if( map )
             map->GetLocation( false )->GeckCount += ( value ? 1 : -1 );
     }

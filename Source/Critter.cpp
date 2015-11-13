@@ -67,6 +67,34 @@ IntSet Critter::RegProperties;
 
 // Properties
 PROPERTIES_IMPL( Critter );
+CLASS_PROPERTY_IMPL( Critter, MapId );
+CLASS_PROPERTY_IMPL( Critter, MapPid );
+CLASS_PROPERTY_IMPL( Critter, HexX );
+CLASS_PROPERTY_IMPL( Critter, HexY );
+CLASS_PROPERTY_IMPL( Critter, Dir );
+CLASS_PROPERTY_IMPL( Critter, PassHash );
+CLASS_PROPERTY_IMPL( Critter, CrType );
+CLASS_PROPERTY_IMPL( Critter, Cond );
+CLASS_PROPERTY_IMPL( Critter, ClientToDelete );
+CLASS_PROPERTY_IMPL( Critter, MultihexBase );
+CLASS_PROPERTY_IMPL( Critter, WorldX );
+CLASS_PROPERTY_IMPL( Critter, WorldY );
+CLASS_PROPERTY_IMPL( Critter, GlobalGroupRuleId );
+CLASS_PROPERTY_IMPL( Critter, GlobalGroupUid );
+CLASS_PROPERTY_IMPL( Critter, LastMapHexX );
+CLASS_PROPERTY_IMPL( Critter, LastMapHexY );
+CLASS_PROPERTY_IMPL( Critter, Anim1Life );
+CLASS_PROPERTY_IMPL( Critter, Anim1Knockout );
+CLASS_PROPERTY_IMPL( Critter, Anim1Dead );
+CLASS_PROPERTY_IMPL( Critter, Anim2Life );
+CLASS_PROPERTY_IMPL( Critter, Anim2Knockout );
+CLASS_PROPERTY_IMPL( Critter, Anim2Dead );
+CLASS_PROPERTY_IMPL( Critter, Anim2KnockoutEnd );
+CLASS_PROPERTY_IMPL( Critter, GlobalMapFog );
+CLASS_PROPERTY_IMPL( Critter, TE_FuncNum );
+CLASS_PROPERTY_IMPL( Critter, TE_Rate );
+CLASS_PROPERTY_IMPL( Critter, TE_NextTime );
+CLASS_PROPERTY_IMPL( Critter, TE_Identifier );
 CLASS_PROPERTY_IMPL( Critter, LookDistance );
 CLASS_PROPERTY_IMPL( Critter, Charisma );
 CLASS_PROPERTY_IMPL( Critter, Intellect );
@@ -174,22 +202,22 @@ Critter::Critter( uint id, EntityType type ): Entity( id, type, PropertiesRegist
     DisableSend = 0;
     CanBeRemoved = false;
     NameStr = ScriptString::Create();
-    memzero( &Data, sizeof( Data ) );
     memzero( FuncId, sizeof( FuncId ) );
     GroupSelf = new GlobalMapGroup();
-    GroupSelf->CurX = (float) Data.WorldX;
-    GroupSelf->CurY = (float) Data.WorldY;
+    GroupSelf->CurX = (float) GetWorldX();
+    GroupSelf->CurY = (float) GetWorldY();
     GroupSelf->ToX = GroupSelf->CurX;
     GroupSelf->ToY = GroupSelf->CurY;
     GroupSelf->Speed = 0.0f;
     GroupSelf->Rule = this;
     ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = defItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
-    defItemSlotHand->Accessory = ITEM_ACCESSORY_CRITTER;
-    defItemSlotArmor->Accessory = ITEM_ACCESSORY_CRITTER;
-    defItemSlotHand->AccCritter.Slot = SLOT_HAND1;
-    defItemSlotArmor->AccCritter.Slot = SLOT_ARMOR;
-    GMapFog.Create( GM__MAXZONEX, GM__MAXZONEY, Data.GlobalMapFog );
+    defItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
+    defItemSlotArmor->SetAccessory( ITEM_ACCESSORY_CRITTER );
+    defItemSlotHand->SetCritId( id );
+    defItemSlotArmor->SetCritId( id );
+    defItemSlotHand->SetCritSlot( SLOT_HAND1 );
+    defItemSlotArmor->SetCritSlot( SLOT_ARMOR );
 }
 
 Critter::~Critter()
@@ -257,25 +285,25 @@ uint Critter::GetUseDist()
 
 uint Critter::GetMultihex()
 {
-    int mh = Data.Multihex;
-    if( mh < 0 )
+    uint mh = GetMultihexBase();
+    if( mh == 0 )
         mh = CritType::GetMultihex( GetCrType() );
     return CLAMP( mh, 0, MAX_HEX_OFFSET );
 }
 
 bool Critter::IsLife()
 {
-    return Data.Cond == COND_LIFE;
+    return GetCond() == COND_LIFE;
 }
 
 bool Critter::IsDead()
 {
-    return Data.Cond == COND_DEAD;
+    return GetCond() == COND_DEAD;
 }
 
 bool Critter::IsKnockout()
 {
-    return Data.Cond == COND_KNOCKOUT;
+    return GetCond() == COND_KNOCKOUT;
 }
 
 bool Critter::CheckFind( int find_type )
@@ -334,12 +362,6 @@ bool Critter::IsDmgArm()
 bool Critter::IsDmgTwoArm()
 {
     return GetIsDamagedRightArm() && GetIsDamagedLeftArm();
-}
-
-void Critter::SetMaps( uint map_id, hash map_pid )
-{
-    Data.MapId = map_id;
-    Data.MapPid = map_pid;
 }
 
 hash Critter::GetFavoriteItemPid( uchar slot )
@@ -887,7 +909,7 @@ void Critter::ProcessVisibleItems()
             }
             else
             {
-                int dist = DistGame( Data.HexX, Data.HexY, item->AccHex.HexX, item->AccHex.HexY );
+                int dist = DistGame( GetHexX(), GetHexY(), item->GetHexX(), item->GetHexY() );
                 if( item->GetIsTrap() )
                     dist += item->GetTrapValue();
                 allowed = look >= dist;
@@ -945,7 +967,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             continue;
         }
 
-        int dist = DistGame( hx, hy, cr->Data.HexX, cr->Data.HexY );
+        int dist = DistGame( hx, hy, cr->GetHexX(), cr->GetHexY() );
         int look_self = look;
 
         // Dir modifier
@@ -1030,7 +1052,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             }
             else
             {
-                int dist = DistGame( hx, hy, item->AccHex.HexX, item->AccHex.HexY );
+                int dist = DistGame( hx, hy, item->GetHexX(), item->GetHexY() );
                 if( item->GetIsTrap() )
                     dist += item->GetTrapValue();
                 allowed = look >= dist;
@@ -1270,7 +1292,7 @@ void Critter::AddItem( Item*& item, bool send )
     if( send )
     {
         Send_AddItem( item );
-        if( item->AccCritter.Slot != SLOT_INV )
+        if( item->GetCritSlot() != SLOT_INV )
             SendAA_MoveItem( item, ACTION_REFRESH, 0 );
     }
 
@@ -1286,48 +1308,35 @@ void Critter::AddItem( Item*& item, bool send )
 
 void Critter::SetItem( Item* item )
 {
-    if( !item || !item->Proto )
-    {
-        WriteLogF( _FUNC_, " - Item null ptr, critter '%s'.\n", GetInfo() );
-        return;
-    }
+    RUNTIME_ASSERT( item );
+    RUNTIME_ASSERT( item->Proto );
 
     if( item->IsCar() && GroupMove && !GroupMove->CarId )
         GroupMove->CarId = item->GetId();
     invItems.push_back( item );
-    item->AccCritter.Id = GetId();
 
-    if( item->Accessory != ITEM_ACCESSORY_CRITTER )
-    {
-        item->Accessory = ITEM_ACCESSORY_CRITTER;
-        item->AccCritter.Slot = SLOT_INV;
-    }
+    if( item->GetAccessory() != ITEM_ACCESSORY_CRITTER )
+        item->SetCritSlot( SLOT_INV );
+    item->SetAccessory( ITEM_ACCESSORY_CRITTER );
+    item->SetCritId( Id );
 
-    switch( item->AccCritter.Slot )
+    switch( item->GetCritSlot() )
     {
     case SLOT_INV:
-label_InvSlot:
-        item->AccCritter.Slot = SLOT_INV;
         break;
     case SLOT_HAND1:
-        if( ItemSlotMain->GetId() )
-            goto label_InvSlot;
-        if( item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->Proto->GetWeapon_Anim1() ) )
-            goto label_InvSlot;
+        RUNTIME_ASSERT( !ItemSlotMain->GetId() );
+        RUNTIME_ASSERT( !( item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->Proto->GetWeapon_Anim1() ) ) );
         ItemSlotMain = item;
         break;
     case SLOT_HAND2:
-        if( ItemSlotExt->GetId() )
-            goto label_InvSlot;
+        RUNTIME_ASSERT( !ItemSlotExt->GetId() );
         ItemSlotExt = item;
         break;
     case SLOT_ARMOR:
-        if( ItemSlotArmor->GetId() )
-            goto label_InvSlot;
-        if( !item->IsArmor() )
-            goto label_InvSlot;
-        if( !CritType::IsCanArmor( GetCrType() ) )
-            goto label_InvSlot;
+        RUNTIME_ASSERT( !ItemSlotArmor->GetId() );
+        RUNTIME_ASSERT( item->IsArmor() );
+        RUNTIME_ASSERT( CritType::IsCanArmor( GetCrType() ) );
         ItemSlotArmor = item;
         break;
     default:
@@ -1337,17 +1346,11 @@ label_InvSlot:
 
 void Critter::EraseItem( Item* item, bool send )
 {
-    if( !item )
-    {
-        WriteLogF( _FUNC_, " - Item null ptr, critter '%s'.\n", GetInfo() );
-        return;
-    }
+    RUNTIME_ASSERT( item );
 
     auto it = std::find( invItems.begin(), invItems.end(), item );
-    if( it != invItems.end() )
-        invItems.erase( it );
-    else
-        WriteLogF( _FUNC_, " - Item '%s' (%u) not found, critter '%s'.\n", item->GetName(), item->GetId(), GetInfo() );
+    RUNTIME_ASSERT( it != invItems.end() );
+    invItems.erase( it );
 
     if( !GetMapId() && GroupMove && GroupMove->CarId == item->GetId() )
     {
@@ -1355,15 +1358,15 @@ void Critter::EraseItem( Item* item, bool send )
         SendA_GlobalInfo( GroupMove, GM_INFO_GROUP_PARAM );
     }
 
-    item->Accessory = ITEM_ACCESSORY_NONE;
-    TakeDefaultItem( item->AccCritter.Slot );
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
+    TakeDefaultItem( item->GetCritSlot() );
     if( send )
         Send_EraseItem( item );
-    if( item->AccCritter.Slot != SLOT_INV )
+    if( item->GetCritSlot() != SLOT_INV )
         SendAA_MoveItem( item, ACTION_REFRESH, 0 );
 
-    uchar from_slot = item->AccCritter.Slot;
-    item->AccCritter.Slot = SLOT_GROUND;
+    uchar from_slot = item->GetCritSlot();
+    item->SetCritSlot( SLOT_GROUND );
     if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
     {
         Script::SetArgObject( this );
@@ -1377,6 +1380,7 @@ Item* Critter::GetItem( uint item_id, bool skip_hide )
 {
     if( !item_id )
         return nullptr;
+
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
@@ -1400,7 +1404,7 @@ Item* Critter::GetInvItem( uint item_id, int transfer_type )
         return nullptr;
 
     Item* item = GetItem( item_id, true );
-    if( !item || item->AccCritter.Slot != SLOT_INV ||
+    if( !item || item->GetCritSlot() != SLOT_INV ||
         ( transfer_type == TRANSFER_CRIT_LOOT && item->GetIsNoLoot() ) ||
         ( transfer_type == TRANSFER_CRIT_STEAL && item->GetIsNoSteal() ) )
         return nullptr;
@@ -1417,7 +1421,7 @@ void Critter::GetInvItems( ItemVec& items, int transfer_type, bool lock )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccCritter.Slot == SLOT_INV && !item->GetIsHidden() &&
+        if( item->GetCritSlot() == SLOT_INV && !item->GetIsHidden() &&
             !( transfer_type == TRANSFER_CRIT_LOOT && item->GetIsNoLoot() ) &&
             !( transfer_type == TRANSFER_CRIT_STEAL && item->GetIsNoSteal() ) )
             items.push_back( item );
@@ -1448,7 +1452,7 @@ Item* Critter::GetItemByPidSlot( hash item_pid, int slot )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetProtoId() == item_pid && item->AccCritter.Slot == slot )
+        if( item->GetProtoId() == item_pid && item->GetCritSlot() == slot )
         {
             SYNC_LOCK( item );
             return item;
@@ -1483,7 +1487,7 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
             {
-                if( item->AccCritter.Slot == SLOT_INV )
+                if( item->GetCritSlot() == SLOT_INV )
                 {
                     SYNC_LOCK( item );
                     return item;
@@ -1548,7 +1552,7 @@ Item* Critter::GetItemSlot( int slot )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->AccCritter.Slot == slot )
+        if( item->GetCritSlot() == slot )
         {
             SYNC_LOCK( item );
             return item;
@@ -1562,7 +1566,7 @@ void Critter::GetItemsSlot( int slot, ItemVec& items, bool lock )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( slot < 0 || item->AccCritter.Slot == slot )
+        if( slot < 0 || item->GetCritSlot() == slot )
             items.push_back( item );
     }
 
@@ -1630,9 +1634,9 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         return false;
     }
 
-    if( item->AccCritter.Slot != from_slot || from_slot == to_slot )
+    if( item->GetCritSlot() != from_slot || from_slot == to_slot )
     {
-        WriteLogF( _FUNC_, " - Wrong slots, from slot %u, from slot real %u, to slot %u, item id %u, critter '%s'.\n", from_slot, item->AccCritter.Slot, to_slot, item_id, GetInfo() );
+        WriteLogF( _FUNC_, " - Wrong slots, from slot %u, from slot real %u, to slot %u, item id %u, critter '%s'.\n", from_slot, item->GetCritSlot(), to_slot, item_id, GetInfo() );
         return false;
     }
 
@@ -1738,9 +1742,9 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
             ItemSlotArmor = item_swap;
     }
 
-    item->AccCritter.Slot = to_slot;
+    item->SetCritSlot( to_slot );
     if( item_swap )
-        item_swap->AccCritter.Slot = from_slot;
+        item_swap->SetCritSlot( from_slot );
 
     SendAA_MoveItem( item, ACTION_MOVE_ITEM, from_slot );
     item->EventMove( this, from_slot );
@@ -1822,9 +1826,9 @@ bool Critter::IsHaveGeckItem()
 
 void Critter::ToKnockout( uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy )
 {
-    Data.Cond = COND_KNOCKOUT;
-    Data.Anim2Knockout = anim2idle;
-    Data.Anim2KnockoutEnd = anim2end;
+    SetCond( COND_KNOCKOUT );
+    SetAnim2Knockout( anim2idle );
+    SetAnim2KnockoutEnd( anim2end );
     KnockoutAp = lost_ap;
     Send_Knockout( this, anim2begin, anim2idle, knock_hx, knock_hy );
     SendA_Knockout( anim2begin, anim2idle, knock_hx, knock_hy );
@@ -1854,8 +1858,8 @@ void Critter::TryUpOnKnockout()
         return;
 
     // Stand up
-    Data.Cond = COND_LIFE;
-    SendAA_Action( ACTION_STANDUP, Data.Anim2KnockoutEnd, nullptr );
+    SetCond( COND_LIFE );
+    SendAA_Action( ACTION_STANDUP, GetAnim2KnockoutEnd(), nullptr );
     SetBreakTime( GameOpt.Breaktime );
 }
 
@@ -1865,8 +1869,8 @@ void Critter::ToDead( uint anim2, bool send_all )
 
     if( GetCurrentHp() > 0 )
         SetCurrentHp( 0 );
-    Data.Cond = COND_DEAD;
-    Data.Anim2Dead = anim2;
+    SetCond( COND_DEAD );
+    SetAnim2Dead( anim2 );
 
     if( send_all )
         SendAA_Action( ACTION_DEAD, anim2, nullptr );
@@ -2959,7 +2963,7 @@ void Critter::SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool un
 
         if( dist == -1 )
             cr->Send_TextEx( from_id, str, str_len, how_say, intellect, unsafe_text );
-        else if( CheckDist( Data.HexX, Data.HexY, cr->Data.HexX, cr->Data.HexY, dist + cr->GetMultihex() ) )
+        else if( CheckDist( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex() ) )
             cr->Send_TextEx( from_id, str, str_len, how_say, intellect, unsafe_text );
     }
 }
@@ -2990,7 +2994,7 @@ void Critter::SendAA_Msg( CrVec& to_cr, uint num_str, uchar how_say, ushort num_
 
         if( dist == -1 )
             cr->Send_TextMsg( this, num_str, how_say, num_msg );
-        else if( CheckDist( Data.HexX, Data.HexY, cr->Data.HexX, cr->Data.HexY, dist + cr->GetMultihex() ) )
+        else if( CheckDist( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex() ) )
             cr->Send_TextMsg( this, num_str, how_say, num_msg );
     }
 }
@@ -3021,7 +3025,7 @@ void Critter::SendAA_MsgLex( CrVec& to_cr, uint num_str, uchar how_say, ushort n
 
         if( dist == -1 )
             cr->Send_TextMsgLex( this, num_str, how_say, num_msg, lexems );
-        else if( CheckDist( Data.HexX, Data.HexY, cr->Data.HexX, cr->Data.HexY, dist + cr->GetMultihex() ) )
+        else if( CheckDist( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex() ) )
             cr->Send_TextMsgLex( this, num_str, how_say, num_msg, lexems );
     }
 }
@@ -3056,7 +3060,7 @@ void Critter::SendA_Follow( uchar follow_type, hash map_pid, uint follow_wait )
             continue;
         if( cr->IsDead() || cr->IsKnockout() )
             continue;
-        if( !CheckDist( Data.LastMapHexX, Data.LastMapHexY, cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex() ) )
+        if( !CheckDist( GetLastMapHexX(), GetLastMapHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex() ) )
             continue;
         cr->Send_Follow( GetId(), follow_type, map_pid, follow_wait );
     }
@@ -3459,7 +3463,7 @@ bool Critter::CheckKnownLocByPid( hash loc_pid )
     for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
     {
         Location* loc = MapMngr.GetLocation( *(uint*) known_locs->At( i ) );
-        if( loc && loc->GetPid() == loc_pid )
+        if( loc && loc->GetProtoId() == loc_pid )
         {
             SAFEREL( known_locs );
             return true;
@@ -3503,37 +3507,76 @@ void Critter::AddCrTimeEvent( hash func_num, uint rate, uint duration, int ident
 {
     if( duration )
         duration += GameOpt.FullSecond;
-    auto it = CrTimeEvents.begin(), end = CrTimeEvents.end();
-    for( ; it != end; ++it )
-    {
-        CrTimeEvent& cte = *it;
-        if( duration < cte.NextTime )
-            break;
-    }
 
-    CrTimeEvent cte;
-    cte.FuncNum = func_num;
-    cte.Rate = rate;
-    cte.NextTime = duration;
-    cte.Identifier = identifier;
-    CrTimeEvents.insert( it, cte );
+    ScriptArray* te_next_time = GetTE_NextTime();
+    ScriptArray* te_func_num = GetTE_FuncNum();
+    ScriptArray* te_rate = GetTE_Rate();
+    ScriptArray* te_identifier = GetTE_Identifier();
+    RUNTIME_ASSERT( te_next_time->GetSize() == te_func_num->GetSize() );
+    RUNTIME_ASSERT( te_func_num->GetSize() == te_rate->GetSize() );
+    RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
+
+    uint i = 0;
+    for( uint j = te_func_num->GetSize(); i < j; i++ )
+        if( duration < *(uint*) te_next_time->At( i ) )
+            break;
+
+    te_next_time->InsertAt( i, &duration );
+    te_func_num->InsertAt( i, &func_num );
+    te_rate->InsertAt( i, &rate );
+    te_identifier->InsertAt( i, &identifier );
+
+    SetTE_NextTime( te_next_time );
+    SetTE_FuncNum( te_func_num );
+    SetTE_Rate( te_rate );
+    SetTE_Identifier( te_identifier );
+
+    te_next_time->Release();
+    te_func_num->Release();
+    te_rate->Release();
+    te_identifier->Release();
 }
 
 void Critter::EraseCrTimeEvent( int index )
 {
-    if( index >= (int) CrTimeEvents.size() )
-        return;
-    CrTimeEvents.erase( CrTimeEvents.begin() + index );
+    ScriptArray* te_next_time = GetTE_NextTime();
+    ScriptArray* te_func_num = GetTE_FuncNum();
+    ScriptArray* te_rate = GetTE_Rate();
+    ScriptArray* te_identifier = GetTE_Identifier();
+    RUNTIME_ASSERT( te_next_time->GetSize() == te_func_num->GetSize() );
+    RUNTIME_ASSERT( te_func_num->GetSize() == te_rate->GetSize() );
+    RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
+
+    if( index < (int) te_next_time->GetSize() )
+    {
+        te_next_time->RemoveAt( index );
+        te_func_num->RemoveAt( index );
+        te_rate->RemoveAt( index );
+        te_identifier->RemoveAt( index );
+
+        SetTE_NextTime( te_next_time );
+        SetTE_FuncNum( te_func_num );
+        SetTE_Rate( te_rate );
+        SetTE_Identifier( te_identifier );
+    }
+
+    te_next_time->Release();
+    te_func_num->Release();
+    te_rate->Release();
+    te_identifier->Release();
 }
 
 void Critter::ContinueTimeEvents( int offs_time )
 {
-    for( auto it = CrTimeEvents.begin(), end = CrTimeEvents.end(); it != end; ++it )
+    ScriptArray* te_next_time = GetTE_NextTime();
+    if( te_next_time->GetSize() > 0 )
     {
-        CrTimeEvent& cte = *it;
-        if( cte.NextTime )
-            cte.NextTime += offs_time;
+        for( uint i = 0, j = te_next_time->GetSize(); i < j; i++ )
+            *(uint*) te_next_time->At( i ) += offs_time;
+
+        SetTE_NextTime( te_next_time );
     }
+    te_next_time->Release();
 }
 
 /************************************************************************/
@@ -3569,7 +3612,6 @@ Client::Client(): Critter( 0, EntityType::Client )
     SETFLAG( Flags, FCRIT_PLAYER );
     Sock = INVALID_SOCKET;
     memzero( Name, sizeof( Name ) );
-    memzero( PassHash, sizeof( PassHash ) );
     Str::Copy( Name, "err" );
     pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
     Talk.Clear();
@@ -3701,6 +3743,27 @@ uint Client::GetOfflineTime()
     return Timer::FastTick() - DisconnectTick;
 }
 
+const char* Client::GetBinPassHash()
+{
+    static THREAD char pass_hash[ PASS_HASH_SIZE ];
+    ScriptString*      str = GetPassHash();
+    RUNTIME_ASSERT( str->length() == PASS_HASH_SIZE * 2 );
+    for( asUINT i = 0, j = str->length(); i < j; i += 2 )
+        pass_hash[ i / 2 ] = Str::StrToHex( str->c_str() + i );
+    str->Release();
+    return pass_hash;
+}
+
+void Client::SetBinPassHash( const char* pass_hash )
+{
+    ScriptString* str = ScriptString::Create();
+    str->rawResize( PASS_HASH_SIZE * 2 );
+    for( uint i = 0; i < PASS_HASH_SIZE; i++ )
+        Str::HexToStr( (uchar) pass_hash[ i ], (char*) str->c_str() + i * 2 );
+    SetPassHash( str );
+    str->Release();
+}
+
 bool Client::IsToPing()
 {
     return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick && !IS_TIMEOUT( GetTimeoutTransfer() ) && !Singleplayer;
@@ -3754,20 +3817,20 @@ void Client::Send_AddCritter( Critter* cr )
     Bout << cr->GetHexX();
     Bout << cr->GetHexY();
     Bout << cr->GetDir();
-    Bout << cr->Data.Cond;
-    Bout << cr->Data.Anim1Life;
-    Bout << cr->Data.Anim1Knockout;
-    Bout << cr->Data.Anim1Dead;
-    Bout << cr->Data.Anim2Life;
-    Bout << cr->Data.Anim2Knockout;
-    Bout << cr->Data.Anim2Dead;
+    Bout << cr->GetCond();
+    Bout << cr->GetAnim1Life();
+    Bout << cr->GetAnim1Knockout();
+    Bout << cr->GetAnim1Dead();
+    Bout << cr->GetAnim2Life();
+    Bout << cr->GetAnim2Knockout();
+    Bout << cr->GetAnim2Dead();
     Bout << cr->Flags;
-    Bout << cr->Data.Multihex;
+    Bout << cr->GetMultihexBase();
 
     if( is_npc )
     {
         Npc* npc = (Npc*) cr;
-        Bout << npc->Data.ProtoId;
+        Bout << npc->GetProtoId();
     }
     else
     {
@@ -3814,11 +3877,11 @@ void Client::Send_LoadMap( Map* map )
     if( map )
     {
         loc = map->GetLocation( false );
-        pid_map = map->GetPid();
-        pid_loc = loc->GetPid();
+        pid_map = map->GetProtoId();
+        pid_loc = loc->GetProtoId();
         map_index_in_loc = (uchar) loc->GetMapIndex( pid_map );
-        map_time = map->GetTime();
-        map_rain = map->GetRain();
+        map_time = map->GetCurDayTime();
+        map_rain = map->GetRainCapacity();
         hash_tiles = map->Proto->HashTiles;
         hash_walls = map->Proto->HashWalls;
         hash_scen = map->Proto->HashScen;
@@ -3905,7 +3968,7 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, Entity* enti
     switch( type )
     {
     case NetProperty::CritterItem:
-        Bout << ( (Item*) entity )->AccCritter.Id;
+        Bout << ( (Item*) entity )->GetCritId();
         Bout << entity->Id;
         break;
     case NetProperty::Critter:
@@ -4013,7 +4076,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     for( auto it = inv.begin(), end = inv.end(); it != end; ++it )
     {
         Item* item_ = *it;
-        uchar slot = item_->AccCritter.Slot;
+        uchar slot = item_->GetCritSlot();
         if( SlotEnabled[ slot ] && SlotDataSendEnabled[ slot ] )
             items.push_back( item_ );
     }
@@ -4038,7 +4101,7 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
         Item* item_ = items[ i ];
-        Bout << item_->AccCritter.Slot;
+        Bout << item_->GetCritSlot();
         Bout << item_->GetId();
         Bout << item_->GetProtoId();
         NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
@@ -4098,8 +4161,8 @@ void Client::Send_AddItemOnMap( Item* item )
     Bout << msg_len;
     Bout << item->GetId();
     Bout << item->GetProtoId();
-    Bout << item->AccHex.HexX;
-    Bout << item->AccHex.HexY;
+    Bout << item->GetHexX();
+    Bout << item->GetHexY();
     Bout << is_added;
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
@@ -4148,7 +4211,7 @@ void Client::Send_AddItem( Item* item )
     Bout << msg_len;
     Bout << item->GetId();
     Bout << item->GetProtoId();
-    Bout << item->AccCritter.Slot;
+    Bout << item->GetCritSlot();
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
 }
@@ -4313,15 +4376,15 @@ void Client::Send_GlobalInfo( uchar info_flags )
         {
             uint      loc_id = *(uint*) known_locs->At( i );
             Location* loc = MapMngr.GetLocation( loc_id );
-            if( loc && !loc->Data.ToGarbage )
+            if( loc && !loc->GetToGarbage() )
             {
                 i++;
                 Bout << loc_id;
-                Bout << loc->GetPid();
-                Bout << loc->Data.WX;
-                Bout << loc->Data.WY;
-                Bout << loc->Data.Radius;
-                Bout << loc->Data.Color;
+                Bout << loc->GetProtoId();
+                Bout << loc->GetWorldX();
+                Bout << loc->GetWorldY();
+                Bout << loc->GetRadius();
+                Bout << loc->GetColor();
                 Bout << (uchar) loc->Proto->Entrance.size();
             }
             else
@@ -4351,14 +4414,18 @@ void Client::Send_GlobalInfo( uchar info_flags )
         Bout << wait;
 
         if( car )
-            Bout << car->AccCritter.Id;
+            Bout << car->GetCritId();
         else
             Bout << (uint) 0;
     }
 
     if( FLAG( info_flags, GM_INFO_ZONES_FOG ) )
     {
-        Bout.Push( (char*) GMapFog.GetData(), GM_ZONES_FOG_SIZE );
+        ScriptArray* gmap_fog = GetGlobalMapFog();
+        if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
+            gmap_fog->Resize( GM_ZONES_FOG_SIZE );
+        Bout.Push( (char*) gmap_fog->At( 0 ), GM_ZONES_FOG_SIZE );
+        gmap_fog->Release();
     }
     BOUT_END( this );
 
@@ -4382,11 +4449,11 @@ void Client::Send_GlobalLocation( Location* loc, bool add )
     Bout << info_flags;
     Bout << add;
     Bout << loc->GetId();
-    Bout << loc->GetPid();
-    Bout << loc->Data.WX;
-    Bout << loc->Data.WY;
-    Bout << loc->Data.Radius;
-    Bout << loc->Data.Color;
+    Bout << loc->GetProtoId();
+    Bout << loc->GetWorldX();
+    Bout << loc->GetWorldY();
+    Bout << loc->GetRadius();
+    Bout << loc->GetColor();
     Bout << (uchar) loc->Proto->Entrance.size();
     BOUT_END( this );
 }
@@ -4502,14 +4569,31 @@ void Client::Send_GameInfo( Map* map )
 
     if( map )
         map->Lock();
-    int                time = ( map ? map->GetTime() : -1 );
-    uchar              rain = ( map ? map->GetRain() : 0 );
-    bool               turn_based = ( map ? map->IsTurnBasedOn : false );
-    bool               no_log_out = ( map ? map->IsNoLogOut() : true );
-    static const int   day_time_dummy[ 4 ] = { 0 };
-    static const uchar day_color_dummy[ 12 ] = { 0 };
-    const int*         day_time = ( map ? map->Data.MapDayTime : day_time_dummy );
-    const uchar*       day_color = ( map ? map->Data.MapDayColor : day_color_dummy );
+
+    int          time = ( map ? map->GetCurDayTime() : -1 );
+    uchar        rain = ( map ? map->GetRainCapacity() : 0 );
+    bool         turn_based = ( map ? map->IsTurnBasedOn : false );
+    bool         no_log_out = ( map ? map->IsNoLogOut() : true );
+
+    int          day_time[ 4 ];
+    uchar        day_color[ 12 ];
+    ScriptArray* day_time_arr = ( map ? map->GetDayTime() : nullptr );
+    ScriptArray* day_color_arr = ( map ? map->GetDayColor() : nullptr );
+    RUNTIME_ASSERT( !day_time_arr || day_time_arr->GetSize() == 0 || day_time_arr->GetSize() == 4 );
+    RUNTIME_ASSERT( !day_color_arr || day_color_arr->GetSize() == 0 || day_color_arr->GetSize() == 12 );
+    if( day_time_arr && day_time_arr->GetSize() > 0 )
+        memcpy( day_time, day_time_arr->At( 0 ), sizeof( day_time ) );
+    else
+        memzero( day_time, sizeof( day_time ) );
+    if( day_color_arr && day_color_arr->GetSize() > 0 )
+        memcpy( day_color, day_color_arr->At( 0 ), sizeof( day_color ) );
+    else
+        memzero( day_color, sizeof( day_color ) );
+    if( day_time_arr )
+        day_time_arr->Release();
+    if( day_color_arr )
+        day_color_arr->Release();
+
     if( map )
         map->Unlock();
 
@@ -4527,8 +4611,8 @@ void Client::Send_GameInfo( Map* map )
     Bout << rain;
     Bout << turn_based;
     Bout << no_log_out;
-    Bout.Push( (const char*) day_time, sizeof( day_time_dummy ) );
-    Bout.Push( (const char*) day_color, sizeof( day_color_dummy ) );
+    Bout.Push( (const char*) day_time, sizeof( day_time ) );
+    Bout.Push( (const char*) day_color, sizeof( day_color ) );
     BOUT_END( this );
 }
 
@@ -4792,7 +4876,7 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
             Location* loc_ = ( *locs )[ i ];
             HashVec&  automaps = loc_->GetAutomaps();
             Bout << loc_->GetId();
-            Bout << loc_->GetPid();
+            Bout << loc_->GetProtoId();
             Bout << (ushort) automaps.size();
             for( uint k = 0, l = (uint) automaps.size(); k < l; k++ )
             {
@@ -4815,7 +4899,7 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         Bout << (bool) false;        // Append this information
         Bout << (ushort) 1;
         Bout << loc->GetId();
-        Bout << loc->GetPid();
+        Bout << loc->GetProtoId();
         Bout << (ushort) automaps.size();
         for( uint i = 0, j = (uint) automaps.size(); i < j; i++ )
         {
@@ -5046,7 +5130,7 @@ void Client::Send_SomeItem( Item* item )
     Bout << msg_len;
     Bout << item->GetId();
     Bout << item->GetProtoId();
-    Bout << item->AccCritter.Slot;
+    Bout << item->GetCritSlot();
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
 }
@@ -5334,7 +5418,7 @@ void Npc::RefreshBag()
             pids[ item->GetProtoId() ] = item->GetCount();
 
         // Repair/reload item in slots
-        if( item->AccCritter.Slot != SLOT_INV )
+        if( item->GetCritSlot() != SLOT_INV )
         {
             if( item->IsDeteriorable() && item->IsBroken() )
                 item->Repair();

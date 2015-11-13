@@ -15,6 +15,11 @@ private:
     uint      entitiesCount[ (int) EntityType::Max ];
     Mutex     entitiesLocker;
 
+    bool LinkMaps();
+    bool LinkNpc();
+    bool LinkItems();
+    void InitAfterLoad();
+
 public:
     EntityManager();
 
@@ -33,9 +38,8 @@ public:
     Location* GetLocationByPid( hash pid, uint skip_count );
     void      GetLocations( LocVec& locations );
 
-    void SaveEntities( void ( * save_func )( void*, size_t ) );
-    bool LoadEntities( void* file, uint version );
-    void InitEntities();
+    void DumpEntities( void ( * dump_entity )( Entity* ), IniParser& data );
+    bool LoadEntities( IniParser& data );
     void FinishEntities();
     void ClearEntities();
 };

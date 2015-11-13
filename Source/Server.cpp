@@ -28,18 +28,11 @@ uint                        FOServer::NetIOThreadsCount = 0;
 ClVec                       FOServer::ConnectedClients;
 Mutex                       FOServer::ConnectedClientsLocker;
 FOServer::Statistics_       FOServer::Statistics;
-FOServer::ClientSaveDataVec FOServer::ClientsSaveData;
-size_t                      FOServer::ClientsSaveDataCount = 0;
-PUCharVec                   FOServer::WorldSaveData;
-size_t                      FOServer::WorldSaveDataBufCount = 0;
-size_t                      FOServer::WorldSaveDataBufFreeSize = 0;
-void*                       FOServer::DumpFile = nullptr;
-MutexEvent                  FOServer::DumpBeginEvent;
-MutexEvent                  FOServer::DumpEndEvent;
 uint                        FOServer::SaveWorldIndex = 0;
 uint                        FOServer::SaveWorldTime = 0;
 uint                        FOServer::SaveWorldNextTick = 0;
 UIntVec                     FOServer::SaveWorldDeleteIndexes;
+FOServer::EntityDumpVec     FOServer::DumpedEntities;
 Thread                      FOServer::DumpThread;
 Thread*                     FOServer::LogicThreads;
 uint                        FOServer::LogicThreadCount = 0;
@@ -93,23 +86,7 @@ void FOServer::Finish()
     ActiveInProcess = true;
 
     // World dumper
-    if( WorldSaveManager )
-    {
-        DumpEndEvent.Wait();
-        MEMORY_PROCESS( MEMORY_SAVE_DATA, -(int) ClientsSaveData.size() * sizeof( ClientSaveData ) );
-        ClientsSaveData.clear();
-        ClientsSaveDataCount = 0;
-        MEMORY_PROCESS( MEMORY_SAVE_DATA, -(int) WorldSaveData.size() * WORLD_SAVE_DATA_BUFFER_SIZE );
-        for( uint i = 0; i < WorldSaveData.size(); i++ )
-            delete[] WorldSaveData[ i ];
-        WorldSaveData.clear();
-        WorldSaveDataBufCount = 0;
-        WorldSaveDataBufFreeSize = 0;
-        DumpThread.Finish();
-    }
-    if( DumpFile )
-        FileClose( DumpFile );
-    DumpFile = nullptr;
+    DumpThread.Wait();
     SaveWorldIndex = 0;
     SaveWorldTime = 0;
     SaveWorldNextTick = 0;
@@ -208,8 +185,8 @@ string FOServer::GetIngamePlayersStatistics()
 
         Str::Format( str_loc, "%s (%u) %s (%u)", map ? loc->GetName() : "", map ? loc->GetId() : 0, map ? map->GetName() : "", map ? map->GetId() : 0 );
         Str::Format( str, "%-20s %-10u %-15s %-7s %-8s %-5u %-5u %s\n",
-                     cl->GetName(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->Data.Cond ],
-                     map ? cl->GetHexX() : cl->Data.WorldX, map ? cl->GetHexY() : cl->Data.WorldY, map ? str_loc : "Global map" );
+                     cl->GetName(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->GetCond() ],
+                     map ? cl->GetHexX() : cl->GetWorldX(), map ? cl->GetHexY() : cl->GetWorldY(), map ? str_loc : "Global map" );
         result += str;
     }
     return result;
@@ -273,11 +250,11 @@ void FOServer::RemoveClient( Client* cl )
     Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : nullptr );
     if( cl_ && cl_ == cl )
     {
-        cl->EventFinish( cl->Data.ClientToDelete );
+        cl->EventFinish( cl->GetClientToDelete() );
         if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cl->GetInfo() ) )
         {
             Script::SetArgObject( cl );
-            Script::SetArgBool( cl->Data.ClientToDelete );
+            Script::SetArgBool( cl->GetClientToDelete() );
             Script::RunPrepared();
         }
 
@@ -322,7 +299,7 @@ void FOServer::RemoveClient( Client* cl )
 
         // Deferred saving
         EraseSaveClient( cl->GetId() );
-        if( !cl->Data.ClientToDelete )
+        if( !cl->GetClientToDelete() )
             AddSaveClient( cl );
 
         EntityMngr.UnregisterEntity( cl );
@@ -338,7 +315,7 @@ void FOServer::RemoveClient( Client* cl )
         }
 
         // Full delete
-        if( cl->Data.ClientToDelete )
+        if( cl->GetClientToDelete() )
         {
             SaveClientsLocker.Lock();
             auto it = ClientsData.find( id );
@@ -411,7 +388,9 @@ void FOServer::EraseSaveClient( uint crid )
             it = SaveClients.erase( it );
         }
         else
+        {
             ++it;
+        }
     }
 }
 
@@ -454,7 +433,7 @@ void FOServer::MainLoop()
             cpu_set_t mask;
             CPU_ZERO( &mask );
             CPU_SET( i % CpuCount, &mask );
-            sched_setaffinity( LogicThreads[ i ].GetPid(), sizeof( mask ), &mask );
+            sched_setaffinity( LogicThreads[ i ].GetProtoId(), sizeof( mask ), &mask );
             #elif defined ( FO_OSX )
             // Todo: https://developer.apple.com/library/mac/#releasenotes/Performance/RN-AffinityAPI/index.html
             #endif
@@ -1986,7 +1965,7 @@ void FOServer::Process_Text( Client* cl )
     }
     else
     {
-        hash pid = cl->GetMapProtoId();
+        hash pid = cl->GetMapPid();
         for( uint i = 0; i < TextListeners.size(); i++ )
         {
             TextListen& tl = TextListeners[ i ];
@@ -2467,7 +2446,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         CHECK_ALLOW_COMMAND;
 
-        Location* loc = MapMngr.CreateLocation( pid, wx, wy, 0 );
+        Location* loc = MapMngr.CreateLocation( pid, wx, wy );
         if( !loc )
             logcb( "Location not created." );
         else
@@ -2969,20 +2948,20 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        if( memcmp( cl_->PassHash, pass_hash, PASS_HASH_SIZE ) )
+        if( memcmp( cl_->GetBinPassHash(), pass_hash, PASS_HASH_SIZE ) )
         {
             logcb( "Invalid password." );
         }
         else
         {
-            if( !cl_->Data.ClientToDelete )
+            if( !cl_->GetClientToDelete() )
             {
-                cl_->Data.ClientToDelete = true;
+                cl_->SetClientToDelete( true );
                 logcb( "Your account will be deleted after character exit from game." );
             }
             else
             {
-                cl_->Data.ClientToDelete = false;
+                cl_->SetClientToDelete( false );
                 logcb( "Deleting canceled." );
             }
         }
@@ -2998,7 +2977,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        if( memcmp( cl_->PassHash, pass_hash, PASS_HASH_SIZE ) )
+        if( memcmp( cl_->GetBinPassHash(), pass_hash, PASS_HASH_SIZE ) )
         {
             logcb( "Invalid current password." );
         }
@@ -3010,7 +2989,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             if( data )
             {
                 memcpy( data->ClientPassHash, new_pass_hash, PASS_HASH_SIZE );
-                memcpy( cl_->PassHash, new_pass_hash, PASS_HASH_SIZE );
+                cl_->SetBinPassHash( new_pass_hash );
                 logcb( "Password changed." );
             }
         }
@@ -3169,115 +3148,82 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     }
 }
 
-void FOServer::SaveGameInfoFile()
+void FOServer::SaveGameInfoFile( IniParser& data )
 {
+    StrMap& kv = data.GetApp( "GeneralSettings" );
+
     // Singleplayer info
-    uint sp = ( SingleplayerSave.Valid ? SINGLEPLAYER_SAVE_LAST : 0 );
-    AddWorldSaveData( &sp, sizeof( sp ) );
+    kv[ "Singleplayer" ] = ( SingleplayerSave.Valid ? "True" : "False" );
     if( SingleplayerSave.Valid )
     {
-        // Critter data
-        ClientSaveData& csd = SingleplayerSave.CrData;
-        AddWorldSaveData( csd.Name, sizeof( csd.Name ) );
-        AddWorldSaveData( &csd.Data, sizeof( csd.Data ) );
-        uint te_count = (uint) csd.TimeEvents.size();
-        AddWorldSaveData( &te_count, sizeof( te_count ) );
-        if( te_count )
-            AddWorldSaveData( &csd.TimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
+        StrMap& client_kv = data.SetApp( "Client" );
+        SingleplayerSave.CrProps->SaveToText( client_kv );
+        client_kv[ "$Id" ] = 1;
+        client_kv[ "$Name" ] = SingleplayerSave.Name;
 
-        // Picture data
-        uint pic_size = (uint) SingleplayerSave.PicData.size();
-        AddWorldSaveData( &pic_size, sizeof( pic_size ) );
-        if( pic_size )
-            AddWorldSaveData( &SingleplayerSave.PicData[ 0 ], pic_size );
+        string pic_data_str;
+        for( uchar& x : SingleplayerSave.PicData )
+            pic_data_str.append( Str::ItoA( x ) ).append( " " );
+        if( !SingleplayerSave.PicData.empty() )
+            pic_data_str.pop_back();
+        kv[ "SaveLoadPicture" ] = pic_data_str;
     }
 
-    // Time
-    AddWorldSaveData( &GameOpt.YearStart, sizeof( GameOpt.YearStart ) );
-    AddWorldSaveData( &GameOpt.Year, sizeof( GameOpt.Year ) );
-    AddWorldSaveData( &GameOpt.Month, sizeof( GameOpt.Month ) );
-    AddWorldSaveData( &GameOpt.Day, sizeof( GameOpt.Day ) );
-    AddWorldSaveData( &GameOpt.Hour, sizeof( GameOpt.Hour ) );
-    AddWorldSaveData( &GameOpt.Minute, sizeof( GameOpt.Minute ) );
-    AddWorldSaveData( &GameOpt.Second, sizeof( GameOpt.Second ) );
-    AddWorldSaveData( &GameOpt.TimeMultiplier, sizeof( GameOpt.TimeMultiplier ) );
+    // Real time
+    DateTimeStamp cur_time;
+    uint64        ft;
+    Timer::GetCurrentDateTime( cur_time );
+    Timer::DateTimeToFullTime( cur_time, ft );
+    kv[ "RealYear" ] = Str::ItoA( cur_time.Year );
+    kv[ "RealMonth" ] = Str::ItoA( cur_time.Month );
+    kv[ "RealDay" ] = Str::ItoA( cur_time.Day );
+    kv[ "RealHour" ] = Str::ItoA( cur_time.Hour );
+    kv[ "RealMinute" ] = Str::ItoA( cur_time.Minute );
+    kv[ "RealSecond" ] = Str::ItoA( cur_time.Second );
+    kv[ "SaveTimestamp" ] = Str::UI64toA( ft );
+
+    // Game time
+    kv[ "YearStart" ] = Str::ItoA( GameOpt.YearStart );
+    kv[ "Year" ] = Str::ItoA( GameOpt.Year );
+    kv[ "Month" ] = Str::ItoA( GameOpt.Month );
+    kv[ "Day" ] = Str::ItoA( GameOpt.Day );
+    kv[ "Hour" ] = Str::ItoA( GameOpt.Hour );
+    kv[ "Minute" ] = Str::ItoA( GameOpt.Minute );
+    kv[ "Second" ] = Str::ItoA( GameOpt.Second );
+    kv[ "TimeMultiplier" ] = Str::ItoA( GameOpt.TimeMultiplier );
 
     // Hashes
-    Str::SaveHashes( AddWorldSaveData );
+    Str::SaveHashes( data.SetApp( "Hashes" ) );
 }
 
-bool FOServer::LoadGameInfoFile( void* f, uint version )
+bool FOServer::LoadGameInfoFile( IniParser& data )
 {
     WriteLog( "Load game info...\n" );
 
+    StrMap& kv = data.GetApp( "GeneralSettings" );
+
     // Singleplayer info
-    uint sp = 0;
-    if( !FileRead( f, &sp, sizeof( sp ) ) )
-        return false;
-    if( sp != 0 )
+    if( kv.count( "Singleplayer" ) && Str::CompareCase( kv[ "Singleplayer" ].c_str(), "true" ) )
     {
-        // Critter data
-        ClientSaveData& csd = SingleplayerSave.CrData;
-        csd.Clear();
-
-        if( sp >= SINGLEPLAYER_SAVE_V2 )
-        {
-            if( !FileRead( f, csd.Name, sizeof( csd.Name ) ) )
-                return false;
-        }
-        else
-        {
-            if( !FileRead( f, csd.Name, MAX_NAME + 1 ) )
-                return false;
-            for( char* name = csd.Name; *name; name++ )
-                *name = ( ( ( *name >= 'A' && *name <= 'Z' ) || ( *name >= 'a' && *name <= 'z' ) ) ? *name : 'X' );
-        }
-
-        if( !FileRead( f, &csd.Data, sizeof( csd.Data ) ) )
-            return false;
-        uint te_count = (uint) csd.TimeEvents.size();
-        if( !FileRead( f, &te_count, sizeof( te_count ) ) )
-            return false;
-        if( te_count )
-        {
-            csd.TimeEvents.resize( te_count );
-            if( !FileRead( f, &csd.TimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) ) )
-                return false;
-        }
-
-        // Picture data
-        uint pic_size = 0;
-        if( !FileRead( f, &pic_size, sizeof( pic_size ) ) )
-            return false;
-        if( pic_size )
-        {
-            SingleplayerSave.PicData.resize( pic_size );
-            if( !FileRead( f, &SingleplayerSave.PicData[ 0 ], pic_size ) )
-                return false;
-        }
+        StrMap& client_kv = data.GetApp( "Client" );
+        SingleplayerSave.CrProps->LoadFromText( client_kv );
+        SingleplayerSave.Name = client_kv[ "$Name" ];
+        SingleplayerSave.Valid = true;
     }
-    SingleplayerSave.Valid = ( sp != 0 );
 
     // Time
-    if( !FileRead( f, &GameOpt.YearStart, sizeof( GameOpt.YearStart ) ) )
-        return false;
-    if( !FileRead( f, &GameOpt.Year, sizeof( GameOpt.Year ) ) )
-        return false;
-    if( !FileRead( f, &GameOpt.Month, sizeof( GameOpt.Month ) ) )
-        return false;
-    if( !FileRead( f, &GameOpt.Day, sizeof( GameOpt.Day ) ) )
-        return false;
-    if( !FileRead( f, &GameOpt.Hour, sizeof( GameOpt.Hour ) ) )
-        return false;
-    if( !FileRead( f, &GameOpt.Minute, sizeof( GameOpt.Minute ) ) )
-        return false;
-    if( !FileRead( f, &GameOpt.Second, sizeof( GameOpt.Second ) ) )
-        return false;
-    if( !FileRead( f, &GameOpt.TimeMultiplier, sizeof( GameOpt.TimeMultiplier ) ) )
-        return false;
+    GameOpt.YearStart = Str::AtoI( kv[ "YearStart" ].c_str() );
+    GameOpt.Year = Str::AtoI( kv[ "Year" ].c_str() );
+    GameOpt.Month = Str::AtoI( kv[ "Month" ].c_str() );
+    GameOpt.Day = Str::AtoI( kv[ "Day" ].c_str() );
+    GameOpt.Hour = Str::AtoI( kv[ "Hour" ].c_str() );
+    GameOpt.Minute = Str::AtoI( kv[ "Minute" ].c_str() );
+    GameOpt.Second = Str::AtoI( kv[ "Second" ].c_str() );
+    GameOpt.TimeMultiplier = Str::AtoI( kv[ "TimeMultiplier" ].c_str() );
+    InitGameTime();
 
     // Hashes
-    Str::LoadHashes( f, version );
+    Str::LoadHashes( data.GetApp( "Hashes" ) );
 
     WriteLog( "Load game info complete.\n" );
     return true;
@@ -3692,14 +3638,6 @@ bool FOServer::InitReal()
     ScriptSystemUpdate();
 
     // World saver
-    if( Singleplayer || !GameOpt.GameServer )
-        WorldSaveManager = 0;                // Disable deferred saving
-    if( WorldSaveManager )
-    {
-        DumpBeginEvent.Disallow();
-        DumpEndEvent.Allow();
-        DumpThread.Start( Dump_Work, "WorldSaveManager" );
-    }
     SaveWorldTime = cfg.GetInt( "", "WorldSaveTime", 60 ) * 60 * 1000;
     SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
 
@@ -3871,7 +3809,7 @@ bool FOServer::InitLangPacksLocations( LangPackVec& lang_packs )
                     continue;
 
                 if( lang.Msg[ TEXTMSG_LOCATIONS ].IsIntersects( *ploc->Texts[ i ] ) )
-                    WriteLog( "Warning! Location '%s' text intersection detected, send notification about this to developers.\n", ploc->Name.c_str() );
+                    WriteLog( "Warning! Location '%s' text intersection detected, send notification about this to developers.\n", Str::GetName( ploc->ProtoId ) );
 
                 lang.Msg[ TEXTMSG_LOCATIONS ] += *ploc->Texts[ i ];
             }
@@ -3961,6 +3899,18 @@ void FOServer::LogToClients( const char* str )
         if( LogClients.empty() )
             LogToFunc( &FOServer::LogToClients, false );
     }
+}
+
+FOServer::ClientBanned* FOServer::GetBanByName( const char* name )
+{
+    auto it = std::find( Banned.begin(), Banned.end(), name );
+    return it != Banned.end() ? &( *it ) : nullptr;
+}
+
+FOServer::ClientBanned* FOServer::GetBanByIp( uint ip )
+{
+    auto it = std::find( Banned.begin(), Banned.end(), ip );
+    return it != Banned.end() ? &( *it ) : nullptr;
 }
 
 uint FOServer::GetBanTime( ClientBanned& ban )
@@ -4192,38 +4142,12 @@ bool FOServer::LoadClientsData()
         FileManager::EraseExtension( name );
 
         // Take id and password from file
-        char  client_fname[ MAX_FOPATH ];
+        char      client_fname[ MAX_FOPATH ];
         Str::Format( client_fname, "%s%s", clients_path, client_name );
-        void* f = FileOpen( client_fname, false );
-        if( !f )
+        IniParser client_data;
+        if( !client_data.AppendFile( client_fname, PT_ROOT ) )
         {
             WriteLog( "Unable to open client save file '%s'.\n", client_fname );
-            errors++;
-            continue;
-        }
-
-        // Header - signature, password and id
-        char header[ 4 + PASS_HASH_SIZE + sizeof( uint ) ];
-        if( !FileRead( f, header, sizeof( header ) ) )
-        {
-            WriteLog( "Unable to read header of client save file '%s'.\n", client_fname );
-            errors++;
-            FileClose( f );
-            continue;
-        }
-        FileClose( f );
-
-        // Check client save version
-        int version = header[ 3 ];
-        if( !( header[ 0 ] == 'F' && header[ 1 ] == 'O' && header[ 2 ] == 0 ) )
-        {
-            WriteLog( "Save file '%s' file truncated.\n", client_fname );
-            errors++;
-            continue;
-        }
-        if( version < CLIENT_SAVE_V4 )
-        {
-            WriteLog( "Save file '%s' format not supported.\n", client_fname );
             errors++;
             continue;
         }
@@ -4233,8 +4157,12 @@ bool FOServer::LoadClientsData()
         RUNTIME_ASSERT( id != 0 );
 
         // Get password hash
+        const char* pass_hash_str = client_data.GetStr( "Client", "PassHash" );
+        RUNTIME_ASSERT( pass_hash_str );
+        RUNTIME_ASSERT( Str::Length( pass_hash_str ) == PASS_HASH_SIZE * 2 );
         char pass_hash[ PASS_HASH_SIZE ];
-        memcpy( pass_hash, header + 4, PASS_HASH_SIZE );
+        for( uint i = 0; i < PASS_HASH_SIZE; i++ )
+            pass_hash[ i ] = (char) Str::StrToHex( pass_hash_str + i * 2 );
 
         // Check uniqueness of id
         auto it = ClientsData.find( id );
@@ -4287,49 +4215,24 @@ FOServer::ClientData* FOServer::GetClientData( uint id )
     return it != ClientsData.end() ? it->second : nullptr;
 }
 
-bool FOServer::SaveClient( Client* cl, bool deferred )
+bool FOServer::SaveClient( Client* cl )
 {
     if( Singleplayer )
         return true;
 
-    if( Str::Compare( cl->Name, "err" ) || !cl->GetId() )
+    RUNTIME_ASSERT( !Str::Compare( cl->Name, "err" ) );
+    RUNTIME_ASSERT( cl->GetId() );
+
+    char fname[ MAX_FOPATH ];
+    Str::Copy( fname, cl->Name );
+    Str::Append( fname, ".foclient" );
+
+    IniParser data;
+    cl->Props.SaveToText( data.SetApp( "Client" ) );
+    if( !data.SaveFile( fname, PT_SERVER_CLIENTS ) )
     {
-        WriteLogF( _FUNC_, " - Trying save not valid client.\n" );
+        WriteLog( "Unable to save client '%s'.\n", fname );
         return false;
-    }
-
-    if( deferred && WorldSaveManager )
-    {
-        AddClientSaveData( cl );
-    }
-    else
-    {
-        char fname[ MAX_FOPATH ];
-        FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
-        Str::Append( fname, ".foclient" );
-        void* f = FileOpen( fname, true );
-        if( !f )
-        {
-            WriteLogF( _FUNC_, " - Unable to open client save file '%s'.\n", fname );
-            return false;
-        }
-
-        FileWrite( f, ClientSaveSignature, sizeof( ClientSaveSignature ) );
-        FileWrite( f, cl->PassHash, sizeof( cl->PassHash ) );
-        FileWrite( f, &cl->Data, sizeof( cl->Data ) );
-        #pragma MESSAGE( "Rework props storing workaround 1" )
-        static THREAD void* File = nullptr;
-        File = f;
-        auto                save_func = [] ( void* buf, size_t len )
-        {
-            FileWrite( File, buf, len );
-        };
-        cl->Props.Save( save_func );
-        uint te_count = (uint) cl->CrTimeEvents.size();
-        FileWrite( f, &te_count, sizeof( te_count ) );
-        if( te_count )
-            FileWrite( f, &cl->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
-        FileClose( f );
     }
     return true;
 }
@@ -4339,43 +4242,28 @@ bool FOServer::LoadClient( Client* cl )
     if( Singleplayer )
         return true;
 
-    char fname[ MAX_FOPATH ];
-    FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
-    Str::Append( fname, ".foclient" );
-    void* f = FileOpen( fname, false );
-    if( !f )
+    char      fname[ MAX_FOPATH ];
+    Str::Format( fname, "%s.foclient", cl->Name );
+    IniParser client_data( fname, PT_SERVER_CLIENTS );
+    if( !client_data.IsLoaded() )
     {
-        WriteLogF( _FUNC_, " - Unable to open client save file '%s'.\n", fname );
+        WriteLog(  "Unable to open client save file '%s'.\n", fname );
+        return false;
+    }
+    if( !client_data.IsApp( "Client" ) )
+    {
+        WriteLog( "Client save file '%s' truncated.\n", fname );
         return false;
     }
 
     // Read data
-    char signature[ 4 ];
-    if( !FileRead( f, signature, sizeof( signature ) ) )
-        goto label_FileTruncated;
-    if( !FileRead( f, cl->PassHash, sizeof( cl->PassHash ) ) )
-        goto label_FileTruncated;
-    if( !FileRead( f, &cl->Data, sizeof( cl->Data ) ) )
-        goto label_FileTruncated;
-    if( !cl->Props.Load( f, 0 ) )
-        goto label_FileTruncated;
-    uint te_count;
-    if( !FileRead( f, &te_count, sizeof( te_count ) ) )
-        goto label_FileTruncated;
-    if( te_count )
+    if( !cl->Props.LoadFromText( client_data.GetApp( "Client" ) ) )
     {
-        cl->CrTimeEvents.resize( te_count );
-        if( !FileRead( f, &cl->CrTimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) ) )
-            goto label_FileTruncated;
+        WriteLog( "Client save file '%s' truncated.\n", fname );
+        return false;
     }
-    FileClose( f );
 
     return true;
-
-label_FileTruncated:
-    WriteLogF( _FUNC_, " - Client save file '%s' truncated.\n", fname );
-    FileClose( f );
-    return false;
 }
 
 bool FOServer::NewWorld()
@@ -4404,32 +4292,13 @@ void FOServer::SaveWorld( const char* fname )
     if( !fname && Singleplayer )
         return;                           // Disable autosaving in singleplayer mode
 
-    double tick;
-    if( WorldSaveManager )
-    {
-        // Be sure what Dump_Work thread in wait state
-        DumpEndEvent.Wait();
-        DumpEndEvent.Disallow();
-        tick = Timer::AccurateTick();
-        WorldSaveDataBufCount = 0;
-        WorldSaveDataBufFreeSize = 0;
-        ClientsSaveDataCount = 0;
-    }
-    else
-    {
-        // Save directly to file
-        tick = Timer::AccurateTick();
-        char auto_fname[ MAX_FOPATH ];
-        Str::Format( auto_fname, "%sAuto%04d.foworld", FileManager::GetWritePath( "", PT_SERVER_SAVE ), SaveWorldIndex + 1 );
-        DumpFile = FileOpen( fname ? fname : auto_fname, true );
-        if( !DumpFile )
-        {
-            WriteLog( "Can't create dump file '%s'.\n", fname ? fname : auto_fname );
-            return;
-        }
-    }
+    // Wait previous saving
+    DumpThread.Wait();
 
-    // ServerFunctions.SaveWorld
+    // Time counter
+    double tick = Timer::AccurateTick();
+
+    // Script callback
     SaveWorldDeleteIndexes.clear();
     if( Script::PrepareContext( ServerFunctions.WorldSave, _FUNC_, "Game" ) )
     {
@@ -4441,63 +4310,44 @@ void FOServer::SaveWorld( const char* fname )
         delete_indexes->Release();
     }
 
-    // Version
-    uint version = WORLD_SAVE_LAST;
-    AddWorldSaveData( &version, sizeof( version ) );
-
-    // SaveGameInfoFile
-    SaveGameInfoFile();
-
-    // Entities
-    EntityMngr.SaveEntities( AddWorldSaveData );
-
-    // SaveHoloInfoFile
-    SaveHoloInfoFile();
-
-    // SaveTimeEventsFile
-    Script::SaveDeferredCalls( AddWorldSaveData );
-
-    // Global vars
-    Globals->Props.Save( AddWorldSaveData );
-
-    // End signature
-    AddWorldSaveData( &version, sizeof( version ) );
-
-    // SaveClient
-    ConnectedClientsLocker.Lock();
-    for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
+    // Make file name
+    char auto_fname[ MAX_FOPATH ];
+    if( !fname )
     {
-        Client* cl = *it;
-        if( cl->GetId() )
-            SaveClient( cl, true );
+        fname = Str::Format( auto_fname, "%sAuto%04d.foworld", FileManager::GetWritePath( "", PT_SERVER_SAVE ), SaveWorldIndex + 1 );
+        if( ++SaveWorldIndex >= WORLD_SAVE_MAX_INDEX )
+            SaveWorldIndex = 0;
     }
-    ConnectedClientsLocker.Unlock();
 
+    // Collect data
+    IniParser* data = new IniParser();
+    data->SetApp( "GeneralSettings" );
+    SaveGameInfoFile( *data );
+    SaveHoloInfoFile( *data );
+    Script::SaveDeferredCalls( *data );
+    DumpEntity( Globals );
+    EntityMngr.DumpEntities( DumpEntity, *data );
+    ConnectedClientsLocker.Lock();
+    for( auto& cl : ConnectedClients )
+        DumpEntity( cl );
+    ConnectedClientsLocker.Unlock();
     SaveClientsLocker.Lock();
-    for( auto it = SaveClients.begin(), end = SaveClients.end(); it != end; ++it )
+    for( auto& cl : SaveClients )
     {
-        Client* cl = *it;
-        SaveClient( cl, true );
+        DumpEntity( cl );
         cl->Release();
     }
     SaveClients.clear();
     SaveClientsLocker.Unlock();
 
-    // Finish collect data
-    if( WorldSaveManager )
-    {
-        // Awake Dump_Work
-        DumpBeginEvent.Allow();
-    }
+    // Flush on disk
+    const void* args[] = { data, Str::Duplicate( fname ) };
+    if( !Singleplayer )
+        DumpThread.Start( Dump_Work, "SaveWorld", args );
     else
-    {
-        FileClose( DumpFile );
-        DumpFile = nullptr;
-        SaveWorldIndex++;
-        if( SaveWorldIndex >= WORLD_SAVE_MAX_INDEX )
-            SaveWorldIndex = 0;
-    }
+        Dump_Work( args );
 
+    // Report
     WriteLog( "World saved in %g ms.\n", Timer::AccurateTick() - tick );
 }
 
@@ -4505,15 +4355,14 @@ bool FOServer::LoadWorld( const char* fname )
 {
     UnloadWorld();
 
-    void* f = nullptr;
+    IniParser data;
     if( !fname )
     {
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
         {
             char auto_fname[ MAX_FOPATH ];
-            Str::Format( auto_fname, "%sAuto%04d.foworld", FileManager::GetWritePath( "", PT_SERVER_SAVE ), i );
-            f = FileOpen( auto_fname, false );
-            if( f )
+            Str::Format( auto_fname, "Auto%04d.foworld", i );
+            if( data.AppendFile( auto_fname, PT_SERVER_SAVE ) )
             {
                 WriteLog( "Load world from dump file '%s'.\n", auto_fname );
                 SaveWorldIndex = i;
@@ -4521,7 +4370,7 @@ bool FOServer::LoadWorld( const char* fname )
             }
         }
 
-        if( !f )
+        if( !data.IsLoaded() )
         {
             WriteLog( "World dump file not found.\n" );
             SaveWorldIndex = 0;
@@ -4530,8 +4379,7 @@ bool FOServer::LoadWorld( const char* fname )
     }
     else
     {
-        f = FileOpen( fname, false );
-        if( !f )
+        if( !data.AppendFile( fname, PT_ROOT ) )
         {
             WriteLog( "World dump file '%s' not found.\n", fname );
             return false;
@@ -4540,63 +4388,17 @@ bool FOServer::LoadWorld( const char* fname )
         WriteLog( "Load world from dump file '%s'.\n", fname );
     }
 
-    // File begin
-    uint version = 0;
-    FileRead( f, &version, sizeof( version ) );
-    if( version != WORLD_SAVE_V1 && version != WORLD_SAVE_V2 && version != WORLD_SAVE_V3 && version != WORLD_SAVE_V4 &&
-        version != WORLD_SAVE_V5 && version != WORLD_SAVE_V6 && version != WORLD_SAVE_V7 && version != WORLD_SAVE_V8 &&
-        version != WORLD_SAVE_V9 && version != WORLD_SAVE_V10 && version != WORLD_SAVE_V11 && version != WORLD_SAVE_V12 &&
-        version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14 && version != WORLD_SAVE_V15 && version != WORLD_SAVE_V16 &&
-        version != WORLD_SAVE_V17 && version != WORLD_SAVE_V18 && version != WORLD_SAVE_V19 && version != WORLD_SAVE_V20 &&
-        version != WORLD_SAVE_V21 && version != WORLD_SAVE_V22 && version != WORLD_SAVE_V23 && version != WORLD_SAVE_V24 &&
-        version != WORLD_SAVE_V25 && version != WORLD_SAVE_V26 )
-    {
-        WriteLog( "Unknown version %u of world dump file.\n", version );
-        FileClose( f );
-        return false;
-    }
-    if( version < WORLD_SAVE_V26 )
-    {
-        WriteLog( "Version of save file is not supported.\n" );
-        FileClose( f );
-        return false;
-    }
-
     // Main data
-    if( !LoadGameInfoFile( f, version ) )
+    if( !LoadGameInfoFile( data ) )
         return false;
-    if( !EntityMngr.LoadEntities( f, version ) )
+    if( !LoadHoloInfoFile( data ) )
         return false;
-    if( !LoadHoloInfoFile( f, version ) )
+    if( !Script::LoadDeferredCalls( data ) )
         return false;
-    if( !Script::LoadDeferredCalls( f, version ) )
+    if( !Globals->Props.LoadFromText( data.GetApp( "Global" ) ) )
         return false;
-    if( !Globals->Props.Load( f, version ) )
+    if( !EntityMngr.LoadEntities( data ) )
         return false;
-
-    // File end
-    uint version_ = 0;
-    if( !FileRead( f, &version_, sizeof( version_ ) ) || version != version_ )
-    {
-        WriteLog( "World dump file truncated.\n" );
-        FileClose( f );
-        return false;
-    }
-    FileClose( f );
-
-    // Initialize data
-    InitGameTime();
-
-    // Transfer critter copies to maps
-    if( !TransferAllNpc() )
-        return false;
-
-    // Transfer items copies to critters and maps
-    if( !TransferAllItems() )
-        return false;
-
-    // Init scripts for entities
-    EntityMngr.InitEntities();
 
     // Start script
     if( !Script::PrepareContext( ServerFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
@@ -4640,142 +4442,103 @@ void FOServer::UnloadWorld()
     SingleplayerSave.Valid = false;
 }
 
-void FOServer::AddWorldSaveData( void* data, size_t size )
+void FOServer::DumpEntity( Entity* entity )
 {
-    if( !WorldSaveManager )
+    EntityDump* d = new EntityDump();
+
+    const char* type_name;
+    switch( entity->Type )
     {
-        FileWrite( DumpFile, data, (uint) size );
-        return;
+    case EntityType::Location:
+        type_name = "Location";
+        break;
+    case EntityType::Map:
+        type_name = "Map";
+        break;
+    case EntityType::Npc:
+        type_name = "Npc";
+        break;
+    case EntityType::Item:
+        type_name = "Item";
+        break;
+    case EntityType::Custom:
+        type_name = "Custom";
+        break;
+    case EntityType::Global:
+        type_name = "Global";
+        break;
+    case EntityType::Client:
+        type_name = "Client";
+        break;
+    default:
+        RUNTIME_ASSERT( !"Unreachable place" );
+        break;
     }
 
-    if( !WorldSaveDataBufFreeSize )
-    {
-        WorldSaveDataBufCount++;
-        WorldSaveDataBufFreeSize = WORLD_SAVE_DATA_BUFFER_SIZE;
+    d->IsClient = ( entity->Type == EntityType::Client );
+    d->TypeName = type_name;
+    d->Props = new Properties( entity->Props );
+    StrMap& kv = d->ExtraData;
+    if( entity->Id )
+        kv[ "$Id" ] = Str::UItoA( entity->Id );
+    if( entity->ProtoId )
+        kv[ "$Proto" ] = Str::GetName( entity->ProtoId );
+    if( entity->Type == EntityType::Custom )
+        kv[ "$ClassName" ] = ( (CustomEntity*) entity )->Props.GetClassName();
+    if( entity->Type == EntityType::Client )
+        d->TypeName = string( ( (Client*) entity )->Name ).append( ".foclient" );
 
-        if( WorldSaveDataBufCount >= WorldSaveData.size() )
-        {
-            MEMORY_PROCESS( MEMORY_SAVE_DATA, WORLD_SAVE_DATA_BUFFER_SIZE );
-            WorldSaveData.push_back( new uchar[ WORLD_SAVE_DATA_BUFFER_SIZE ] );
-        }
-    }
-
-    size_t flush = ( size <= WorldSaveDataBufFreeSize ? size : WorldSaveDataBufFreeSize );
-    if( flush )
-    {
-        uchar* ptr = WorldSaveData[ WorldSaveDataBufCount - 1 ];
-        memcpy( &ptr[ WORLD_SAVE_DATA_BUFFER_SIZE - WorldSaveDataBufFreeSize ], data, flush );
-        WorldSaveDataBufFreeSize -= flush;
-        if( !WorldSaveDataBufFreeSize )
-            AddWorldSaveData( ( (uchar*) data ) + flush, size - flush );
-    }
+    DumpedEntities.push_back( d );
 }
 
-void FOServer::AddClientSaveData( Client* cl )
+void FOServer::Dump_Work( void* args )
 {
-    if( ClientsSaveDataCount >= ClientsSaveData.size() )
+    double      tick = Timer::AccurateTick();
+    IniParser*  data = (IniParser*) ( (void**) args )[ 0 ];
+    const char* fname = (const char*) ( (void**) args )[ 1 ];
+
+    // Collect data
+    uint index = 0;
+    for( auto& d : DumpedEntities )
     {
-        ClientsSaveData.push_back( ClientSaveData() );
-        ClientsSaveData.back().Props = new Properties( Critter::PropertiesRegistrator );
-        MEMORY_PROCESS( MEMORY_SAVE_DATA, sizeof( ClientSaveData ) );
-    }
-
-    ClientSaveData& csd = ClientsSaveData[ ClientsSaveDataCount ];
-    memcpy( csd.Name, cl->Name, sizeof( csd.Name ) );
-    memcpy( csd.PasswordHash, cl->PassHash, sizeof( csd.PasswordHash ) );
-    memcpy( &csd.Data, &cl->Data, sizeof( cl->Data ) );
-    *csd.Props = cl->Props;
-    csd.TimeEvents = cl->CrTimeEvents;
-
-    ClientsSaveDataCount++;
-}
-
-void FOServer::Dump_Work( void* data )
-{
-    char fname[ MAX_FOPATH ];
-
-    while( true )
-    {
-        // Locks
-        DumpBeginEvent.Wait();
-        DumpBeginEvent.Disallow();
-
-        // Paths
-        char save_path[ MAX_FOPATH ];
-        FileManager::GetWritePath( "", PT_SERVER_SAVE, save_path );
-        char clients_path[ MAX_FOPATH ];
-        FileManager::GetWritePath( "", PT_SERVER_CLIENTS, clients_path );
-
-        // Save world data
-        void* fworld = FileOpen( Str::Format( fname, "%sAuto%04d.foworld", save_path, SaveWorldIndex + 1 ), true );
-        if( fworld )
+        if( d->IsClient )
         {
-            for( uint i = 0; i < WorldSaveDataBufCount; i++ )
-            {
-                uchar* ptr = WorldSaveData[ i ];
-                size_t flush = WORLD_SAVE_DATA_BUFFER_SIZE;
-                if( i == WorldSaveDataBufCount - 1 )
-                    flush -= WorldSaveDataBufFreeSize;
-                FileWrite( fworld, ptr, (uint) flush );
-                Thread::Sleep( 1 );
-            }
-            FileClose( fworld );
-            SaveWorldIndex++;
-            if( SaveWorldIndex >= WORLD_SAVE_MAX_INDEX )
-                SaveWorldIndex = 0;
+            IniParser client_data;
+            StrMap&   kv = client_data.SetApp( "Client" );
+            kv.insert( d->ExtraData.begin(), d->ExtraData.end() );
+            d->Props->SaveToText( kv );
+            if( !client_data.SaveFile( d->TypeName.c_str(), PT_SERVER_CLIENTS ) )
+                WriteLog( "Unable to save client to '%s'.\n", d->TypeName.c_str() );
+
+            // Sleep some time
+            Thread::Sleep( 1 );
         }
         else
         {
-            WriteLogF( _FUNC_, " - Can't create world dump file '%s'.\n", fname );
+            StrMap& kv = data->SetApp( d->TypeName.c_str() );
+            kv.insert( d->ExtraData.begin(), d->ExtraData.end() );
+            d->Props->SaveToText( kv );
+
+            // Sleep some time
+            if( index++ % 1000 == 0 )
+                Thread::Sleep( 1 );
         }
 
-        // Save clients data
-        for( uint i = 0; i < ClientsSaveDataCount; i++ )
-        {
-            ClientSaveData& csd = ClientsSaveData[ i ];
-
-            char            fname[ MAX_FOPATH ];
-            Str::Format( fname, "%s%s.foclient", clients_path, csd.Name );
-            void*           fc = FileOpen( fname, true );
-            if( !fc )
-            {
-                WriteLogF( _FUNC_, " - Unable to open client save file '%s'.\n", fname );
-                continue;
-            }
-
-            FileWrite( fc, ClientSaveSignature, sizeof( ClientSaveSignature ) );
-            FileWrite( fc, csd.PasswordHash, sizeof( csd.PasswordHash ) );
-            FileWrite( fc, &csd.Data, sizeof( csd.Data ) );
-            #pragma MESSAGE( "Rework props storing workaround 2" )
-            static THREAD void* File = nullptr;
-            File = fc;
-            auto                save_func = [] ( void* buf, size_t len )
-            {
-                FileWrite( File, buf, len );
-            };
-            csd.Props->Save( save_func );
-            uint te_count = (uint) csd.TimeEvents.size();
-            FileWrite( fc, &te_count, sizeof( te_count ) );
-            if( te_count )
-                FileWrite( fc, &csd.TimeEvents[ 0 ], te_count * sizeof( Critter::CrTimeEvent ) );
-            FileClose( fc );
-            Thread::Sleep( 1 );
-        }
-
-        // Clear old dump files
-        for( auto it = SaveWorldDeleteIndexes.begin(), end = SaveWorldDeleteIndexes.end(); it != end; ++it )
-        {
-            void* fold = FileOpen( Str::Format( fname, "%sAuto%04d.foworld", save_path, *it ), true );
-            if( fold )
-            {
-                FileClose( fold );
-                FileDelete( fname );
-            }
-        }
-
-        // Notify about end of processing
-        DumpEndEvent.Allow();
+        delete d->Props;
+        delete d;
     }
+    DumpedEntities.clear();
+
+    // Save world to file
+    if( !data->SaveFile( fname, PT_ROOT ) )
+        WriteLog( "Unable to save world to '%s'.\n", fname );
+
+    // Clean up
+    delete data;
+    delete[] fname;
+
+    // Report
+    WriteLog( "World flushed on disk in %g ms.\n", Timer::AccurateTick() - tick );
 }
 
 /************************************************************************/

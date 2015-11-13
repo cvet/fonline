@@ -131,7 +131,7 @@ void FOServer::ProcessAI( Npc* npc )
         // Set home direction
         else if( !npc->GetIsNoHome() && CritType::IsCanRotate( npc->GetCrType() ) && map->GetId() == npc->GetHomeMapId() && npc->GetDir() != npc->GetHomeDir() )
         {
-            npc->Data.Dir = npc->GetHomeDir();
+            npc->SetDir( npc->GetHomeDir() );
             npc->SendA_Dir();
             npc->SetWait( 200 );
             return;
@@ -146,12 +146,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotMain->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotMain->AccCritter.Slot, SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotMain->GetCritSlot(), SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && ( !favor_item->IsWeapon() || CritType::IsAnim1( npc->GetCrType(), favor_item->Proto->GetWeapon_Anim1() ) ) )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -161,12 +161,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotExt->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotExt->AccCritter.Slot, SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotExt->GetCritSlot(), SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->GetCount() );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_HAND2, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_HAND2, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -176,12 +176,12 @@ void FOServer::ProcessAI( Npc* npc )
             {
                 if( npc->ItemSlotArmor->GetId() )
                 {
-                    AI_MoveItem( npc, map, npc->ItemSlotArmor->AccCritter.Slot, SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->GetCount() );
+                    AI_MoveItem( npc, map, npc->ItemSlotArmor->GetCritSlot(), SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->GetCount() );
                     return;
                 }
                 else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && favor_item->IsArmor() && !favor_item->Proto->GetSlot() )
                 {
-                    AI_MoveItem( npc, map, favor_item->AccCritter.Slot, SLOT_ARMOR, favor_item->GetId(), favor_item->GetCount() );
+                    AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_ARMOR, favor_item->GetId(), favor_item->GetCount() );
                     return;
                 }
             }
@@ -438,7 +438,7 @@ void FOServer::ProcessAI( Npc* npc )
 /************************************************************************/
     case AI_PLANE_ATTACK:
     {
-        if( map->Data.IsTurnBasedAviable && !map->IsTurnBasedOn )
+        if( map->GetIsTurnBasedAviable() && !map->IsTurnBasedOn )
             map->BeginTurnBased( npc );
 
         /************************************************************************/
@@ -533,7 +533,7 @@ void FOServer::ProcessAI( Npc* npc )
                 // Show new
                 if( weap->GetId() )                       // Is no hands
                 {
-                    AI_MoveItem( npc, map, weap->AccCritter.Slot, SLOT_HAND1, weap->GetId(), weap->GetCount() );
+                    AI_MoveItem( npc, map, weap->GetCritSlot(), SLOT_HAND1, weap->GetId(), weap->GetCount() );
                     break;
                 }
             }
@@ -773,12 +773,12 @@ void FOServer::ProcessAI( Npc* npc )
         {
             if( plane->Walk.Dir < 6 )
             {
-                npc->Data.Dir = plane->Walk.Dir;
+                npc->SetDir( plane->Walk.Dir );
                 npc->SendA_Dir();
             }
             else if( plane->Walk.Cut )
             {
-                npc->Data.Dir = GetFarDir( npc->GetHexX(), npc->GetHexY(), plane->Walk.HexX, plane->Walk.HexY );
+                npc->SetDir( GetFarDir( npc->GetHexX(), npc->GetHexY(), plane->Walk.HexX, plane->Walk.HexY ) );
                 npc->SendA_Dir();
             }
 
@@ -837,7 +837,7 @@ void FOServer::ProcessAI( Npc* npc )
         }
         else
         {
-            npc->Data.Dir = GetFarDir( npc->GetHexX(), npc->GetHexY(), plane->Walk.HexX, plane->Walk.HexY );
+            npc->SetDir( GetFarDir( npc->GetHexX(), npc->GetHexY(), plane->Walk.HexX, plane->Walk.HexY ) );
             npc->SendA_Dir();
             if( AI_PickItem( npc, map, hx, hy, pid, use_item_id ) )
                 npc->NextPlane( REASON_SUCCESS );
@@ -935,72 +935,6 @@ bool FOServer::AI_ReloadWeapon( Npc* npc, Map* map, Item* weap, uint ammo_id )
     int ap_cost = npc->GetUseApCost( npc->ItemSlotMain, USE_RELOAD );
     CHECK_NPC_AP_R0( npc, map, ap_cost );
     return Act_Reload( npc, weap->GetId(), ammo_id );
-}
-
-bool FOServer::TransferAllNpc()
-{
-    WriteLog( "Transfer all npc to game...\n" );
-
-    int   errors = 0;
-    CrVec critters;
-    CrMngr.GetCritters( critters, false );
-    CrVec critters_groups;
-    critters_groups.reserve( critters.size() );
-
-    // Move all critters to local maps and global map rules
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( !cr->GetMapId() && ( cr->GetHexX() || cr->GetHexY() ) )
-        {
-            critters_groups.push_back( cr );
-            continue;
-        }
-
-        Map* map = MapMngr.GetMap( cr->GetMapId() );
-
-        if( cr->GetMapId() && !map )
-        {
-            WriteLog( "Map '%s' (%u) not found, critter '%s', hx %u, hy %u. Transfered to global map.\n", Str::GetName( cr->Data.MapPid ), cr->GetMapId(), cr->GetInfo(), cr->GetHexX(), cr->GetHexY() );
-            errors++;
-            cr->SetMaps( 0, 0 );
-            cr->Data.HexX = 0;
-            cr->Data.HexY = 0;
-        }
-
-        if( !MapMngr.AddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 2 ) )
-        {
-            WriteLog( "Error parsing npc to map '%s' (%u), critter '%s', hx %u, hy %u.\n", Str::GetName( cr->Data.MapPid ), cr->GetMapId(), cr->GetInfo(), cr->GetHexX(), cr->GetHexY() );
-            errors++;
-            continue;
-        }
-        cr->Data.GlobalGroupUid--;         // Restore group uid
-        if( map )
-            map->AddCritterEvents( cr );
-    }
-
-    // Move critters to global groups
-    for( auto it = critters_groups.begin(), end = critters_groups.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( !MapMngr.AddCrToMap( cr, nullptr, cr->GetHexX(), cr->GetHexY(), 2 ) )
-        {
-            WriteLog( "Error parsing npc to global group, critter '%s', map id %u, map pid %u, hx %u, hy %u.\n", cr->GetInfo(), cr->GetMapId(), cr->Data.MapPid, cr->GetHexX(), cr->GetHexY() );
-            errors++;
-            continue;
-        }
-    }
-
-    // Process critters visible
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        cr->ProcessVisibleCritters();
-        cr->ProcessVisibleItems();
-    }
-
-    WriteLog( "Transfer npc complete, errors %d.\n", errors );
-    return true;
 }
 
 bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg )
@@ -1589,9 +1523,9 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         if( !ignore_distance )
         {
             int dir = GetFarDir( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY() );
-            npc->Data.Dir = ReverseDir( dir );
+            npc->SetDir( ReverseDir( dir ) );
             npc->SendA_Dir();
-            cl->Data.Dir = dir;
+            cl->SetDir( dir );
             cl->SendA_Dir();
             cl->Send_Dir( cl );
         }

@@ -540,8 +540,6 @@ public:
 
         static bool  Item_IsStackable( Item* item );
         static bool  Item_IsDeteriorable( Item* item );
-        static hash  Item_get_ProtoId( Item* item );
-        static int   Item_get_Type( Item* item );
         static bool  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static void  Item_Animate( Item* item, uint from_frame, uint to_frame );
         static Item* Item_GetChild( Item* item, uint childIndex );

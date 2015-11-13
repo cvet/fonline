@@ -37,7 +37,7 @@ public:
     void SetCritterItems( Critter* cr );
 
     Item* CreateItem( hash pid, uint count = 0 );
-    bool  RestoreItem( uint id, hash pid, Properties& props, uchar acc, char* acc_buf );
+    bool  RestoreItem( uint id, hash proto_id, Properties& props );
     void  DeleteItem( Item* item );
 
     Item* SplitItem( Item* item, uint count );

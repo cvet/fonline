@@ -168,18 +168,18 @@ void Property::ReleaseComplexValue( void* value )
         RUNTIME_ASSERT( !"Unexpected type" );
 }
 
-uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& need_delete )
+uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& need_delete )
 {
     need_delete = false;
     if( dataType == Property::String )
     {
-        ScriptString* str = *(ScriptString**) base_ptr;
+        ScriptString* str = *(ScriptString**) pvalue;
         data_size = ( str ? str->length() : 0 );
         return data_size ? (uchar*) str->c_str() : nullptr;
     }
     else if( dataType == Property::Array )
     {
-        ScriptArray* arr = *(ScriptArray**) base_ptr;
+        ScriptArray* arr = *(ScriptArray**) pvalue;
         if( isArrayOfString )
         {
             data_size = 0;
@@ -225,7 +225,7 @@ uchar* Property::ExpandComplexValueData( void* base_ptr, uint& data_size, bool& 
     }
     else if( dataType == Property::Dict )
     {
-        ScriptDict* dict = *(ScriptDict**) base_ptr;
+        ScriptDict* dict = *(ScriptDict**) pvalue;
         if( isDictOfArray )
         {
             data_size = ( dict ? dict->GetSize() : 0 );
@@ -1008,6 +1008,35 @@ Properties::Properties( PropertyRegistrator* reg )
     }
 }
 
+Properties::Properties( const Properties& other )
+{
+    registrator = other.registrator;
+
+    // Copy POD data
+    if( !registrator->podDataPool.empty() )
+    {
+        podData = registrator->podDataPool.back();
+        registrator->podDataPool.pop_back();
+    }
+    else
+    {
+        podData = new uchar[ registrator->wholePodDataSize ];
+    }
+    memcpy( &podData[ 0 ], &other.podData[ 0 ], registrator->wholePodDataSize );
+
+    // Copy complex data
+    complexData.resize( other.complexData.size() );
+    complexDataSizes.resize( other.complexDataSizes.size() );
+    for( size_t i = 0; i < other.complexData.size(); i++ )
+    {
+        uint size = other.complexDataSizes[ i ];
+        complexDataSizes[ i ] = size;
+        complexData[ i ] = ( size ? new uchar[ size ] : NULL );
+        if( size )
+            memcpy( complexData[ i ], other.complexData[ i ], size );
+    }
+}
+
 Properties::~Properties()
 {
     registrator->podDataPool.push_back( podData );
@@ -1017,15 +1046,6 @@ Properties::~Properties()
         SAFEDELA( complexData[ i ] );
     complexData.clear();
     complexDataSizes.clear();
-
-    for( size_t i = 0; i < unresolvedProperties.size(); i++ )
-    {
-        SAFEDELA( unresolvedProperties[ i ]->Name );
-        SAFEDELA( unresolvedProperties[ i ]->TypeName );
-        SAFEDELA( unresolvedProperties[ i ]->Data );
-        SAFEDEL( unresolvedProperties[ i ] );
-    }
-    unresolvedProperties.clear();
 }
 
 Properties& Properties::operator=( const Properties& other )
@@ -1139,188 +1159,433 @@ void Properties::RestoreData( UCharVecVec& all_data )
     RestoreData( all_data_ext, all_data_sizes );
 }
 
-void Properties::Save( void ( * save_func )( void*, size_t ) )
+static const char* ReadToken( const char* str, string& result )
 {
-    RUNTIME_ASSERT( registrator->registrationFinished );
+    if( !*str )
+        return nullptr;
 
-    for( size_t i = 0, j = registrator->registeredProperties.size(); i < j; i++ )
+    const char* begin;
+    const char* s = str;
+
+    uint length;
+    Str::DecodeUTF8( s, &length );
+    while( length == 1 && ( *s == ' ' || *s == '\t' ) )
+        Str::DecodeUTF8( ++s, &length );
+
+    if( !*s )
+        return nullptr;
+
+    if( length == 1 && *s == '{' )
     {
-        Property* prop = registrator->registeredProperties[ i ];
-        if( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) )
-            continue;
+        s++;
+        begin = s;
 
-        uint   data_size;
-        uchar* data = prop->GetPropRawData( this, data_size );
-
-        bool all_zero = true;
-        for( uint i = 0; i < data_size; i++ )
+        int braces = 1;
+        while( *s )
         {
-            if( data[ i ] != 0 )
+            if( length == 1 && *s == '\\' )
             {
-                all_zero = false;
+                Str::DecodeUTF8( ++s, &length );
+                s += length;
+            }
+            else if( length == 1 && *s == '{' )
+            {
+                braces++;
+                s++;
+            }
+            else if( length == 1 && *s == '}' )
+            {
+                braces--;
+                if( braces == 0 )
+                    break;
+                s++;
+            }
+            else
+            {
+                s += length;
+            }
+            Str::DecodeUTF8( s, &length );
+        }
+    }
+    else
+    {
+        begin = s;
+        while( *s )
+        {
+            if( length == 1 && *s == '\\' )
+            {
+                Str::DecodeUTF8( ++s, &length );
+                s += length;
+            }
+            else if( length == 1 && ( *s == ' ' || *s == '\t' ) )
+            {
+                break;
+            }
+            else
+            {
+                s += length;
+            }
+            Str::DecodeUTF8( s, &length );
+        }
+    }
+
+    result.assign( begin, (uint) ( s - begin ) );
+    return *s ? s + 1 : s;
+}
+
+static string CodeString( const string& str, int deep )
+{
+    bool need_braces = false;
+    if( deep > 0 && ( str.empty() || str.find_first_of( " \t" ) != string::npos ) )
+        need_braces = true;
+    if( deep == 0 && ( str.find_first_of( " \t" ) == 0 || str.find_last_of( " \t" ) == str.length() - 1 ) )
+        need_braces = true;
+
+    string result;
+    result.reserve( str.length() * 2 );
+
+    if( need_braces )
+        result.append( "{" );
+
+    const char* s = str.c_str();
+    uint length;
+    while( *s )
+    {
+        Str::DecodeUTF8( s, &length );
+        if( length == 1 )
+        {
+            switch( *s )
+            {
+            case '\r':
+                break;
+            case '\n':
+                result.append( "\\n" );
+                break;
+            case '{':
+                result.append( "\\{" );
+                break;
+            case '}':
+                result.append( "\\}" );
+                break;
+            case '\\':
+                result.append( "\\\\" );
+                break;
+            default:
+                result.append( s, 1 );
                 break;
             }
         }
-
-        if( !all_zero )
+        else
         {
-            ushort name_len = (ushort) prop->propName.length();
-            save_func( &name_len, sizeof( name_len ) );
-            save_func( (void*) prop->propName.c_str(), name_len );
-            uchar type_name_len = (uchar) prop->typeName.length();
-            save_func( &type_name_len, sizeof( type_name_len ) );
-            save_func( (void*) prop->typeName.c_str(), type_name_len );
-            save_func( &data_size, sizeof( data_size ) );
-            save_func( data, data_size );
+            result.append( s, length );
         }
+
+        s += length;
     }
 
-    for( size_t i = 0, j = unresolvedProperties.size(); i < j; i++ )
-    {
-        UnresolvedProperty* unresolved_property = unresolvedProperties[ i ];
+    if( need_braces )
+        result.append( "}" );
 
-        ushort              name_len = ( ushort ) Str::Length( unresolved_property->Name );
-        save_func( &name_len, sizeof( name_len ) );
-        save_func( (void*) unresolved_property->Name, name_len );
-
-        uchar type_name_len = ( uchar ) Str::Length( unresolved_property->TypeName );
-        save_func( &type_name_len, sizeof( type_name_len ) );
-        save_func( (void*) unresolved_property->TypeName, type_name_len );
-
-        uint   data_size = unresolved_property->DataSize;
-        uchar* data = unresolved_property->Data;
-        save_func( &data_size, sizeof( data_size ) );
-        if( data_size )
-            save_func( data, data_size );
-    }
-
-    ushort end_mark = 0xFFFF;
-    save_func( &end_mark, sizeof( end_mark ) );
+    return result;
 }
 
-bool Properties::Load( void* file, uint version )
+static string DecodeString( const string& str )
 {
-    RUNTIME_ASSERT( registrator->registrationFinished );
+    if( str.empty() )
+        return str;
 
-    UCharVec data;
-    while( true )
+    string result;
+    result.reserve( str.length() );
+
+    const char* s = str.c_str();
+    uint length;
+
+    Str::DecodeUTF8( s, &length );
+    bool is_braces = ( length == 1 && *s == '{' );
+    if( is_braces )
+        s++;
+
+    while( *s )
     {
-        ushort name_len = 0;
-        if( !FileRead( file, &name_len, sizeof( name_len ) ) )
-            return false;
-
-        if( name_len == 0xFFFF )
-            break;
-
-        char   name[ MAX_FOTEXT ];
-        if( !FileRead( file, name, name_len ) )
-            return false;
-        name[ name_len ] = 0;
-
-        uchar type_name_len = 0;
-        if( !FileRead( file, &type_name_len, sizeof( type_name_len ) ) )
-            return false;
-
-        char  type_name[ MAX_FOTEXT ];
-        if( !FileRead( file, type_name, type_name_len ) )
-            return false;
-        type_name[ type_name_len ] = 0;
-
-        uint data_size = 0;
-        if( !FileRead( file, &data_size, sizeof( data_size ) ) )
-            return false;
-
-        data.resize( data_size );
-        if( data_size )
+        Str::DecodeUTF8( s, &length );
+        if( length == 1 && *s == '\\' )
         {
-            if( !FileRead( file, &data[ 0 ], data_size ) )
-                return false;
-        }
+            Str::DecodeUTF8( ++s, &length );
 
-        Property* prop = registrator->Find( name );
-        if( prop && Str::Compare( prop->typeName.c_str(), type_name ) )
-        {
-            prop->SetPropRawData( this, data_size ? &data[ 0 ] : nullptr, data_size );
+            switch( *s )
+            {
+            case 'n':
+                result.append( "\n" );
+                break;
+            default:
+                result.append( s, length );
+                break;
+            }
         }
         else
         {
-            UnresolvedProperty* unresolved_property = new UnresolvedProperty();
-            unresolved_property->Name = Str::Duplicate( name );
-            unresolved_property->TypeName = Str::Duplicate( type_name );
-            unresolved_property->DataSize = data_size;
-            unresolved_property->Data = ( data_size ? new uchar[ data_size ] : nullptr );
-            if( data_size )
-                memcpy( unresolved_property->Data, &data[ 0 ], data_size );
-            unresolvedProperties.push_back( unresolved_property );
+            result.append( s, length );
         }
+
+        s += length;
     }
-    return true;
+
+    if( is_braces && length == 1 && result.back() == '"' )
+        result.pop_back();
+
+    return result;
+}
+
+static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_hashes, bool& non_zero, int deep )
+{
+    if( !( type_id & asTYPEID_MASK_OBJECT ) )
+    {
+        RUNTIME_ASSERT( type_id != asTYPEID_VOID );
+
+        #define VALUE_AS( ctype )    ( *(ctype*) ( ptr ) )
+        #define CHECK_PRIMITIVE( astype, ctype, toa ) \
+            if( type_id == astype )                   \
+            {                                         \
+                if( VALUE_AS( ctype ) != 0 )          \
+                    non_zero = true;                  \
+                return toa( VALUE_AS( ctype ) );      \
+            }
+
+        if( is_hashes[ deep ] )
+        {
+            RUNTIME_ASSERT( type_id == asTYPEID_UINT32 );
+            if( VALUE_AS( hash ) != 0 )
+                non_zero = true;
+            return VALUE_AS( hash ) ? CodeString( Str::GetName( VALUE_AS( hash ) ), deep ) : CodeString( "", deep );
+        }
+
+        CHECK_PRIMITIVE( asTYPEID_BOOL, bool, Str::BtoA );
+        CHECK_PRIMITIVE( asTYPEID_INT8, char, Str::ItoA );
+        CHECK_PRIMITIVE( asTYPEID_INT16, short, Str::ItoA );
+        CHECK_PRIMITIVE( asTYPEID_INT32, int, Str::ItoA );
+        CHECK_PRIMITIVE( asTYPEID_INT64, int64, Str::I64toA );
+        CHECK_PRIMITIVE( asTYPEID_UINT8, uchar, Str::UItoA );
+        CHECK_PRIMITIVE( asTYPEID_UINT16, ushort, Str::UItoA );
+        CHECK_PRIMITIVE( asTYPEID_UINT32, uint, Str::UItoA );
+        CHECK_PRIMITIVE( asTYPEID_UINT64, uint64, Str::UI64toA );
+        CHECK_PRIMITIVE( asTYPEID_DOUBLE, double, Str::DFtoA );
+        CHECK_PRIMITIVE( asTYPEID_FLOAT, float, Str::FtoA );
+        if( VALUE_AS( int ) != 0 )
+            non_zero = true;
+        return Script::GetEnumValueName( Script::GetEngine()->GetTypeDeclaration( type_id ), VALUE_AS( int ) );
+
+        #undef VALUE_AS
+        #undef CHECK_PRIMITIVE
+    }
+    else if( Str::Compare( as_obj_type->GetName(), "string" ) )
+    {
+        ScriptString* str = (ScriptString*) ptr;
+        if( str->length() > 0 )
+            non_zero = true;
+        return CodeString( str->c_std_str(), deep );
+    }
+    else if( Str::Compare( as_obj_type->GetName(), "array" ) )
+    {
+        string result = ( deep > 0 ? "{" : "" );
+        ScriptArray* arr = (ScriptArray*) ptr;
+        asUINT arr_size = arr->GetSize();
+        if( arr_size > 0 )
+        {
+            non_zero = true;
+            int value_type_id = as_obj_type->GetSubTypeId( 0 );
+            asIObjectType* value_type = as_obj_type->GetSubType( 0 );
+            for( asUINT i = 0; i < arr_size; i++ )
+                result.append( WriteValue( arr->At( i ), value_type_id, value_type, is_hashes, non_zero, deep + 1 ) ).append( " " );
+            result.pop_back();
+        }
+        if( deep > 0 )
+            result.append( "}" );
+        return result;
+    }
+    else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
+    {
+        string result = ( deep > 0 ? "{" : "" );
+        ScriptDict* dict = (ScriptDict*) ptr;
+        if( dict->GetSize() > 0 )
+        {
+            non_zero = true;
+            int key_type_id = as_obj_type->GetSubTypeId( 0 );
+            int value_type_id = as_obj_type->GetSubTypeId( 1 );
+            asIObjectType* key_type = as_obj_type->GetSubType( 0 );
+            asIObjectType* value_type = as_obj_type->GetSubType( 1 );
+            vector< pair< void*, void* > > dict_map;
+            dict->GetMap( dict_map );
+            for( const auto& dict_kv : dict_map )
+            {
+                result.append( WriteValue( dict_kv.first, key_type_id, key_type, is_hashes, non_zero, deep + 1 ) ).append( " " );
+                result.append( WriteValue( dict_kv.second, value_type_id, value_type, is_hashes, non_zero, deep + 2 ) ).append( " " );
+            }
+            result.pop_back();
+        }
+        if( deep > 0 )
+            result.append( "}" );
+        return result;
+    }
+    RUNTIME_ASSERT( !"Unreachable place" );
+    return "";
+}
+
+static void* ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep, void* pod_buf )
+{
+    if( !( type_id & asTYPEID_MASK_OBJECT ) )
+    {
+        RUNTIME_ASSERT( type_id != asTYPEID_VOID );
+
+        #define CHECK_PRIMITIVE( astype, ctype, ato )   \
+            if( type_id == astype )                     \
+            {                                           \
+                ctype v = (ctype) ato( value );         \
+                memcpy( pod_buf, &v, sizeof( ctype ) ); \
+                return pod_buf;                         \
+            }
+
+        if( is_hashes[ deep ] )
+        {
+            RUNTIME_ASSERT( type_id == asTYPEID_UINT32 );
+            hash v = Str::GetHash( DecodeString( value ).c_str() );
+            memcpy( pod_buf, &v, sizeof( v ) );
+            return pod_buf;
+        }
+
+        CHECK_PRIMITIVE( asTYPEID_BOOL, bool, Str::AtoB );
+        CHECK_PRIMITIVE( asTYPEID_INT8, char, Str::AtoI );
+        CHECK_PRIMITIVE( asTYPEID_INT16, short, Str::AtoI );
+        CHECK_PRIMITIVE( asTYPEID_INT32, int, Str::AtoI );
+        CHECK_PRIMITIVE( asTYPEID_INT64, int64, Str::AtoI64 );
+        CHECK_PRIMITIVE( asTYPEID_UINT8, uchar, Str::AtoUI );
+        CHECK_PRIMITIVE( asTYPEID_UINT16, ushort, Str::AtoUI );
+        CHECK_PRIMITIVE( asTYPEID_UINT32, uint, Str::AtoUI );
+        CHECK_PRIMITIVE( asTYPEID_UINT64, uint64, Str::AtoUI64 );
+        CHECK_PRIMITIVE( asTYPEID_DOUBLE, double, Str::AtoDF );
+        CHECK_PRIMITIVE( asTYPEID_FLOAT, float, Str::AtoF );
+
+        bool fail = false;
+        int v = Script::GetEnumValue( Script::GetEngine()->GetTypeDeclaration( type_id ), value, fail );
+        memcpy( pod_buf, &v, sizeof( v ) );
+        return pod_buf;
+
+        #undef CHECK_PRIMITIVE
+    }
+    else if( Str::Compare( as_obj_type->GetName(), "string" ) )
+    {
+        return ScriptString::Create( DecodeString( value ) );
+    }
+    else if( Str::Compare( as_obj_type->GetName(), "array" ) )
+    {
+        ScriptArray* arr = ScriptArray::Create( as_obj_type );
+        int value_type_id = as_obj_type->GetSubTypeId( 0 );
+        asIObjectType* value_type = as_obj_type->GetSubType( 0 );
+        string str;
+        uchar arr_pod_buf[ 8 ];
+        while( value = ReadToken( value, str ) )
+        {
+            void* v = ReadValue( str.c_str(), value_type_id, value_type, is_hashes, deep + 1, arr_pod_buf );
+            arr->InsertLast( v );
+            if( v != arr_pod_buf )
+                Script::GetEngine()->ReleaseScriptObject( v, value_type );
+        }
+        return arr;
+    }
+    else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
+    {
+        ScriptDict* dict = ScriptDict::Create( as_obj_type );
+        int key_type_id = as_obj_type->GetSubTypeId( 0 );
+        int value_type_id = as_obj_type->GetSubTypeId( 1 );
+        asIObjectType* key_type = as_obj_type->GetSubType( 0 );
+        asIObjectType* value_type = as_obj_type->GetSubType( 1 );
+        string str1, str2;
+        uchar dict_pod_buf1[ 8 ];
+        uchar dict_pod_buf2[ 8 ];
+        while( ( value = ReadToken( value, str1 ) ) && ( value = ReadToken( value, str2 ) ) )
+        {
+            void* v1 = ReadValue( str1.c_str(), key_type_id, key_type, is_hashes, deep + 1, dict_pod_buf1 );
+            void* v2 = ReadValue( str2.c_str(), value_type_id, value_type, is_hashes, deep + 2, dict_pod_buf2 );
+            dict->Set( v1, v2 );
+            if( v1 != dict_pod_buf1 )
+                Script::GetEngine()->ReleaseScriptObject( v1, key_type );
+            if( v2 != dict_pod_buf2 )
+                Script::GetEngine()->ReleaseScriptObject( v2, value_type );
+        }
+        return dict;
+    }
+    RUNTIME_ASSERT( !"Unreachable place" );
+    return nullptr;
 }
 
 bool Properties::LoadFromText( const StrMap& key_values )
 {
     bool is_error = false;
-    for( auto it = key_values.begin(); it != key_values.end(); ++it )
+    for( const auto& kv : key_values )
     {
-        const char* key = it->first.c_str();
-        const char* value = it->second.c_str();
+        const char* key = kv.first.c_str();
+        const char* value = kv.second.c_str();
 
-        // Skip content
-        if( !key[ 0 ] )
+        // Skip technical fields
+        if( !key[ 0 ] || key[ 0 ] == '$' )
             continue;
 
+        // Find property
         Property* prop = registrator->Find( key );
-        if( !prop )
+        if( !prop || ( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) ) )
         {
-            WriteLog( "Property '%s' not found.\n", key );
-            is_error = true;
+            unresolvedProperties.insert( PAIR( kv.first, kv.second ) );
             continue;
         }
 
-        if( prop->IsPOD() )
-        {
-            uchar pod[ 8 ];
-            if( prop->isEnumDataType )
-            {
-                bool enum_error = false;
-                *(int*) pod = Script::GetEnumValue( prop->typeName.c_str(), value, enum_error );
-                if( enum_error )
-                {
-                    WriteLog( "Value '%s' of enum '%s' in property '%s' not found.\n", value, prop->typeName.c_str(), key );
-                    is_error = true;
-                }
-            }
-            else if( prop->isHash )
-            {
-                *(hash*) pod = Str::GetHash( value );
-            }
-            else
-            {
-                if( prop->baseSize == 1 )
-                    *(char*) pod = (char) ConvertParamValue( value, is_error );
-                else if( prop->baseSize == 2 )
-                    *(short*) pod = (short) ConvertParamValue( value, is_error );
-                else if( prop->baseSize == 4 )
-                    *(int*) pod = (int) ConvertParamValue( value, is_error );
-                else if( prop->baseSize == 8 )
-                    *(int64*) pod = (int64) ConvertParamValue( value, is_error );
-                else
-                    RUNTIME_ASSERT( !"Unreachable place" );
-            }
+        // Parse
+        uchar pod_buf[ 8 ];
+        bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1 };
+        void* complex_value = ReadValue( value, prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf );
 
-            prop->SetPropRawData( this, pod, prop->baseSize );
-        }
-        else if( prop->dataType == Property::String )
+        // Assign
+        if( prop->podDataOffset != uint( -1 ) )
         {
-            prop->SetPropRawData( this, (uchar*) value, Str::Length( value ) );
+            RUNTIME_ASSERT( complex_value == pod_buf );
+            prop->SetPropRawData( this, pod_buf, prop->baseSize );
         }
-        else
+        else if( prop->complexDataIndex != uint( -1 ) )
         {
-            WriteLog( "Property '%s' data type '%s' serialization is not supported.\n", key, prop->typeName.c_str() );
-            is_error = true;
+            bool need_delete;
+            uint data_size;
+            uchar* data = prop->ExpandComplexValueData( &complex_value, data_size, need_delete );
+            prop->SetPropRawData( this, data, data_size );
+            if( need_delete )
+                SAFEDELA( data );
+            prop->ReleaseComplexValue( complex_value );
         }
     }
     return !is_error;
+}
+
+void Properties::SaveToText( StrMap& key_values )
+{
+    for( auto& prop : registrator->registeredProperties )
+    {
+        if( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) )
+            continue;
+
+        uint data_size;
+        void* data = prop->GetPropRawData( this, data_size );
+
+        if( prop->complexDataIndex != uint( -1 ) )
+            data = prop->CreateComplexValue( (uchar*) data, data_size );
+
+        bool non_zero = false;
+        bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1 };
+        string value = WriteValue( data, prop->asObjTypeId, prop->asObjType, is_hashes, non_zero, 0 );
+        if( non_zero )
+            key_values.insert( PAIR( prop->propName, std::move( value ) ) );
+
+        if( prop->complexDataIndex != uint( -1 ) )
+            prop->ReleaseComplexValue( data );
+    }
+
+    key_values.insert( unresolvedProperties.begin(), unresolvedProperties.end() );
 }
 
 int Properties::GetValueAsInt( Entity* entity, int enum_value )
@@ -1449,6 +1714,7 @@ Property* PropertyRegistrator::Register(
     const char* type_name,
     const char* name,
     Property::AccessType access,
+    bool is_const,
     const char* group /* = NULL */,
     bool* generate_random_value /* = NULL */,
     int64* default_value /* = NULL */,
@@ -1493,6 +1759,8 @@ Property* PropertyRegistrator::Register(
     bool               is_dict_of_string = false;
     bool               is_dict_of_array = false;
     bool               is_dict_of_array_of_string = false;
+    bool               is_hash_sub0 = false;
+    bool               is_hash_sub1 = false;
     if( type_id & asTYPEID_OBJHANDLE )
     {
         WriteLogF( _FUNC_, " - Invalid property type '%s', handles not allowed.\n", type_name );
@@ -1540,6 +1808,8 @@ Property* PropertyRegistrator::Register(
             WriteLogF( _FUNC_, " - Invalid property type '%s', array elements must have POD/string type.\n", type_name );
             return nullptr;
         }
+
+        is_hash_sub0 = ( Str::Substring( type_name, "hash" ) != nullptr );
     }
     else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
     {
@@ -1566,6 +1836,9 @@ Property* PropertyRegistrator::Register(
                 return nullptr;
             }
         }
+
+        is_hash_sub0 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) != nullptr );
+        is_hash_sub1 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) == nullptr );
     }
     else
     {
@@ -1601,6 +1874,8 @@ Property* PropertyRegistrator::Register(
     if( !isServer && ( access & Property::ServerOnlyMask ) )
         disable_get = disable_set = true;
     if( !isServer && ( ( access & Property::PublicMask ) || ( access & Property::ProtectedMask ) ) && !( access & Property::ModifiableMask ) )
+        disable_set = true;
+    if( is_const )
         disable_set = true;
     #ifdef FONLINE_MAPPER
     disable_get = false;
@@ -1784,8 +2059,12 @@ Property* PropertyRegistrator::Register(
     prop->typeName = type_name;
     prop->dataType = data_type;
     prop->accessType = access;
+    prop->isConst = is_const;
+    prop->asObjTypeId = type_id;
     prop->asObjType = as_obj_type;
     prop->isHash = Str::Compare( type_name, "hash" );
+    prop->isHashSubType0 = is_hash_sub0;
+    prop->isHashSubType1 = is_hash_sub1;
     prop->isIntDataType = is_int_data_type;
     prop->isSignedIntDataType = is_signed_int_data_type;
     prop->isFloatDataType = is_float_data_type;

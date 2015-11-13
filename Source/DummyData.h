@@ -58,9 +58,12 @@ struct AIDataPlane
 struct Entity
 {
     int  Id;
+    int  ProtoId;
     int  RefCounter;
     int  IsDestroyed;
     int  IsDestroying;
+    int  Parent;
+    int  Children;
 
     void AddRef()  {}
     void Release() {}
@@ -68,8 +71,6 @@ struct Entity
 
 struct ProtoItem
 {
-    int  ProtoId;
-
     void AddRef()  {}
     void Release() {}
 };
@@ -187,26 +188,6 @@ struct MapObject
     void Release() {}
 };
 
-struct CritData
-{
-    int HexX;
-    int HexY;
-    int WorldX;
-    int WorldY;
-    int CrType;
-    int Dir;
-    int Cond;
-    int Anim1Life;
-    int Anim1Knockout;
-    int Anim1Dead;
-    int Anim2Life;
-    int Anim2Knockout;
-    int Anim2Dead;
-    int ShowCritterDist1;
-    int ShowCritterDist2;
-    int ShowCritterDist3;
-};
-
 struct Critter: public Entity
 {
     #ifdef BIND_CLIENT
@@ -240,17 +221,6 @@ typedef Critter CritterCl;
 
 struct Map: public Entity
 {
-    struct MapData
-    {
-        int MapPid;
-        int MapRain;
-        int IsTurnBasedAviable;
-        int MapTime;
-        int ScriptId;
-        int MapDayTime[ 4 ];
-        int MapDayColor[ 12 ];
-    } Data;
-
     int TurnBasedRound;
     int TurnBasedTurn;
     int TurnBasedWholeTurn;
@@ -258,21 +228,6 @@ struct Map: public Entity
 
 struct Location: public Entity
 {
-    struct LocData
-    {
-        int LocPid;
-        int WX;
-        int WY;
-        int Radius;
-        int Visible;
-        int GeckVisible;
-        int AutoGarbage;
-        int Reserved0;
-        int Color;
-        int Reserved3[ 10 ];
-        int MapIds[ 1 ];
-    } Data;
-
     int GeckCount;
 };
 
@@ -326,8 +281,6 @@ struct BindClass
     static void Item_SetScript()      {}
     static void Item_GetScriptId()    {}
     static void Item_SetEvent()       {}
-    static void Item_get_ProtoId()    {}
-    static void Item_get_Type()       {}
     static void Item_GetCost()        {}
     static void Item_GetMapPosition() {}
     static void Item_ChangeProto()    {}
@@ -366,8 +319,6 @@ struct BindClass
     static void Crit_SetLexems()                {}
     static void Crit_SetEvent()                 {}
     static void Crit_GetMap()                   {}
-    static void Crit_GetMapId()                 {}
-    static void Crit_GetMapProtoId()            {}
     static void Crit_ChangeCrType()             {}
     static void Cl_DropTimers()                 {}
     static void Crit_MoveRandom()               {}
@@ -454,7 +405,6 @@ struct BindClass
     static void Cl_Disconnect()      {}
 
     static void Crit_SetScript()   {}
-    static void Crit_get_ProtoId() {}
     static void Crit_GetMultihex() {}
     static void Crit_SetMultihex() {}
 
@@ -518,79 +468,65 @@ struct BindClass
     static void Crit_EventTurnBasedProcess()     {}
     static void Crit_EventSmthTurnBasedProcess() {}
 
-    static void Map_get_ProtoId()              {}
-    static void Map_GetLocation()              {}
-    static void Map_SetScript()                {}
-    static void Map_GetScriptId()              {}
-    static void Map_SetEvent()                 {}
-    static void Map_SetLoopTime()              {}
-    static void Map_GetRain()                  {}
-    static void Map_SetRain()                  {}
-    static void Map_GetTime()                  {}
-    static void Map_SetTime()                  {}
-    static void Map_GetDayTime()               {}
-    static void Map_SetDayTime()               {}
-    static void Map_GetDayColor()              {}
-    static void Map_SetDayColor()              {}
-    static void Map_SetTurnBasedAvailability() {}
-    static void Map_IsTurnBasedAvailability()  {}
-    static void Map_BeginTurnBased()           {}
-    static void Map_IsTurnBased()              {}
-    static void Map_EndTurnBased()             {}
-    static void Map_GetTurnBasedSequence()     {}
-    static void Map_SetData()                  {}
-    static void Map_GetData()                  {}
-    static void Map_AddItem()                  {}
-    static void Map_GetItemsHex()              {}
-    static void Map_GetItemsHexEx()            {}
-    static void Map_GetItemsByPid()            {}
-    static void Map_GetItemsByType()           {}
-    static void Map_GetItem()                  {}
-    static void Map_GetItemHex()               {}
-    static void Map_GetDoor()                  {}
-    static void Map_GetCar()                   {}
-    static void Map_GetSceneryHex()            {}
-    static void Map_GetSceneriesHex()          {}
-    static void Map_GetSceneriesHexEx()        {}
-    static void Map_GetSceneriesByPid()        {}
-    static void Map_GetCritterHex()            {}
-    static void Map_GetCritterById()           {}
-    static void Map_GetCritters()              {}
-    static void Map_GetCrittersByPids()        {}
-    static void Map_GetCrittersInPath()        {}
-    static void Map_GetCrittersInPathBlock()   {}
-    static void Map_GetCrittersWhoViewPath()   {}
-    static void Map_GetCrittersSeeing()        {}
-    static void Map_GetHexInPath()             {}
-    static void Map_GetHexInPathWall()         {}
-    static void Map_GetPathLengthHex()         {}
-    static void Map_GetPathLengthCr()          {}
-    static void Map_AddNpc()                   {}
-    static void Map_GetNpcCount()              {}
-    static void Map_GetNpc()                   {}
-    static void Map_CountEntire()              {}
-    static void Map_GetEntires()               {}
-    static void Map_GetEntireCoords()          {}
-    static void Map_GetEntireCoordsDir()       {}
-    static void Map_GetNearEntireCoords()      {}
-    static void Map_GetNearEntireCoordsDir()   {}
-    static void Map_IsHexPassed()              {}
-    static void Map_IsHexRaked()               {}
-    static void Map_SetText()                  {}
-    static void Map_SetTextMsg()               {}
-    static void Map_SetTextMsgLex()            {}
-    static void Map_RunEffect()                {}
-    static void Map_RunFlyEffect()             {}
-    static void Map_CheckPlaceForItem()        {}
-    static void Map_BlockHex()                 {}
-    static void Map_UnblockHex()               {}
-    static void Map_PlaySound()                {}
-    static void Map_PlaySoundRadius()          {}
-    static void Map_Reload()                   {}
-    static void Map_GetWidth()                 {}
-    static void Map_GetHeight()                {}
-    static void Map_MoveHexByDir()             {}
-    static void Map_VerifyTrigger()            {}
+    static void Map_GetLocation()            {}
+    static void Map_SetScript()              {}
+    static void Map_SetEvent()               {}
+    static void Map_SetLoopTime()            {}
+    static void Map_BeginTurnBased()         {}
+    static void Map_IsTurnBased()            {}
+    static void Map_EndTurnBased()           {}
+    static void Map_GetTurnBasedSequence()   {}
+    static void Map_AddItem()                {}
+    static void Map_GetItemsHex()            {}
+    static void Map_GetItemsHexEx()          {}
+    static void Map_GetItemsByPid()          {}
+    static void Map_GetItemsByType()         {}
+    static void Map_GetItem()                {}
+    static void Map_GetItemHex()             {}
+    static void Map_GetDoor()                {}
+    static void Map_GetCar()                 {}
+    static void Map_GetSceneryHex()          {}
+    static void Map_GetSceneriesHex()        {}
+    static void Map_GetSceneriesHexEx()      {}
+    static void Map_GetSceneriesByPid()      {}
+    static void Map_GetCritterHex()          {}
+    static void Map_GetCritterById()         {}
+    static void Map_GetCritters()            {}
+    static void Map_GetCrittersByPids()      {}
+    static void Map_GetCrittersInPath()      {}
+    static void Map_GetCrittersInPathBlock() {}
+    static void Map_GetCrittersWhoViewPath() {}
+    static void Map_GetCrittersSeeing()      {}
+    static void Map_GetHexInPath()           {}
+    static void Map_GetHexInPathWall()       {}
+    static void Map_GetPathLengthHex()       {}
+    static void Map_GetPathLengthCr()        {}
+    static void Map_AddNpc()                 {}
+    static void Map_GetNpcCount()            {}
+    static void Map_GetNpc()                 {}
+    static void Map_CountEntire()            {}
+    static void Map_GetEntires()             {}
+    static void Map_GetEntireCoords()        {}
+    static void Map_GetEntireCoordsDir()     {}
+    static void Map_GetNearEntireCoords()    {}
+    static void Map_GetNearEntireCoordsDir() {}
+    static void Map_IsHexPassed()            {}
+    static void Map_IsHexRaked()             {}
+    static void Map_SetText()                {}
+    static void Map_SetTextMsg()             {}
+    static void Map_SetTextMsgLex()          {}
+    static void Map_RunEffect()              {}
+    static void Map_RunFlyEffect()           {}
+    static void Map_CheckPlaceForItem()      {}
+    static void Map_BlockHex()               {}
+    static void Map_UnblockHex()             {}
+    static void Map_PlaySound()              {}
+    static void Map_PlaySoundRadius()        {}
+    static void Map_Reload()                 {}
+    static void Map_GetWidth()               {}
+    static void Map_GetHeight()              {}
+    static void Map_MoveHexByDir()           {}
+    static void Map_VerifyTrigger()          {}
 
     static void Map_EventFinish()           {}
     static void Map_EventLoop0()            {}
@@ -605,7 +541,6 @@ struct BindClass
     static void Map_EventTurnBasedEnd()     {}
     static void Map_EventTurnBasedProcess() {}
 
-    static void Location_get_ProtoId()   {}
     static void Location_SetEvent()      {}
     static void Location_GetMapCount()   {}
     static void Location_GetMap()        {}
@@ -641,7 +576,6 @@ struct BindClass
     static void Global_CreateLocation()         {}
     static void Global_DeleteLocation()         {}
     static void Global_DeleteLocationById()     {}
-    static void Global_GetProtoCritter()        {}
     static void Global_GetCritter()             {}
     static void Global_GetPlayer()              {}
     static void Global_GetPlayerId()            {}
@@ -718,8 +652,6 @@ struct BindClass
 
     static void Item_IsStackable()    {}
     static void Item_IsDeteriorable() {}
-    static void Item_get_ProtoId()    {}
-    static void Item_get_Type()       {}
     static void Item_GetMapPosition() {}
     static void Item_Animate()        {}
     static void Item_GetChild()       {}

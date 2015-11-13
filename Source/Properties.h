@@ -40,15 +40,6 @@ class Property;
 typedef void ( *NativeCallback )( Entity* entity, Property* prop, void* cur_value, void* old_value );
 typedef vector< NativeCallback > NativeCallbackVec;
 
-struct UnresolvedProperty
-{
-    char*  Name;
-    char*  TypeName;
-    uchar* Data;
-    uint   DataSize;
-};
-typedef vector< UnresolvedProperty* > UnresolvedPropertyVec;
-
 class PropertyRegistrator;
 class Properties;
 class Property
@@ -131,7 +122,7 @@ private:
 
     Property();
     void*  CreateComplexValue( uchar* data, uint data_size );
-    uchar* ExpandComplexValueData( void* base_ptr, uint& data_size, bool& need_delete );
+    uchar* ExpandComplexValueData( void* pvalue, uint& data_size, bool& need_delete );
     void   AddRefComplexValue( void* value );
     void   ReleaseComplexValue( void* value );
     void   GenericGet( Entity* entity, void* ret_value );
@@ -143,8 +134,11 @@ private:
     string         propName;
     string         typeName;
     DataType       dataType;
+    int            asObjTypeId;
     asIObjectType* asObjType;
     bool           isHash;
+    bool           isHashSubType0;
+    bool           isHashSubType1;
     bool           isIntDataType;
     bool           isSignedIntDataType;
     bool           isFloatDataType;
@@ -155,6 +149,7 @@ private:
     bool           isDictOfArray;
     bool           isDictOfArrayOfString;
     AccessType     accessType;
+    bool           isConst;
     bool           isReadable;
     bool           isWritable;
     bool           generateRandomValue;
@@ -192,29 +187,31 @@ class Properties
 
 public:
     Properties( PropertyRegistrator* reg );
+    Properties( const Properties& other );
     ~Properties();
     Properties& operator=( const Properties& other );
     void*       FindData( const char* property_name );
     uint        StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
     void        RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
     void        RestoreData( UCharVecVec& all_data );
-    void        Save( void ( * save_func )( void*, size_t ) );
-    bool        Load( void* file, uint version );
     bool        LoadFromText( const StrMap& key_values );
+    void        SaveToText( StrMap& key_values );
     static int  GetValueAsInt( Entity* entity, int enum_value );
     static void SetValueAsInt( Entity* entity, int enum_value, int value );
     static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
     string      GetClassName();
 
 private:
-    PropertyRegistrator*  registrator;
-    uchar*                podData;
-    PUCharVec             complexData;
-    UIntVec               complexDataSizes;
-    PUCharVec             storeData;
-    UIntVec               storeDataSizes;
-    UShortVec             storeDataComplexIndicies;
-    UnresolvedPropertyVec unresolvedProperties;
+    Properties();
+
+    PropertyRegistrator* registrator;
+    uchar*               podData;
+    PUCharVec            complexData;
+    UIntVec              complexDataSizes;
+    PUCharVec            storeData;
+    UIntVec              storeDataSizes;
+    UShortVec            storeDataComplexIndicies;
+    StrMap               unresolvedProperties;
 };
 
 class PropertyRegistrator
@@ -226,7 +223,7 @@ public:
     PropertyRegistrator( bool is_server, const char* class_name );
     ~PropertyRegistrator();
     bool      Init();
-    Property* Register( const char* type_name, const char* name, Property::AccessType access, const char* group = nullptr, bool* generate_random_value = nullptr, int64* default_value = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
+    Property* Register( const char* type_name, const char* name, Property::AccessType access, bool is_const, const char* group = nullptr, bool* generate_random_value = nullptr, int64* default_value = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
     void      SetDefaults( const char* group = nullptr, bool* generate_random_value = nullptr, int64* default_value = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
     void      FinishRegistration();
     uint      GetCount();

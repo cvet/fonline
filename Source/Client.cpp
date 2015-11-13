@@ -2694,8 +2694,8 @@ void FOClient::Net_SendMove( UCharVec steps )
 
     Bout << ( Chosen->IsRunning ? NETMSG_SEND_MOVE_RUN : NETMSG_SEND_MOVE_WALK );
     Bout << move_params;
-    Bout << Chosen->HexX;
-    Bout << Chosen->HexY;
+    Bout << Chosen->GetHexX();
+    Bout << Chosen->GetHexY();
 }
 
 void FOClient::Net_SendUseSkill( int skill, CritterCl* cr )
@@ -2807,7 +2807,7 @@ void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, Entity*
     switch( type )
     {
     case NetProperty::CritterItem:
-        Bout << ( (Item*) entity )->AccCritter.Id;
+        Bout << ( (Item*) entity )->GetCritId();
         Bout << entity->Id;
         break;
     case NetProperty::Critter:
@@ -3171,18 +3171,18 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     else
     {
         CritterCl* cr = new CritterCl( crid );
-        cr->HexX = hx;
-        cr->HexY = hy;
-        cr->CrDir = dir;
-        cr->Cond = cond;
-        cr->Anim1Life = anim1life;
-        cr->Anim1Knockout = anim1ko;
-        cr->Anim1Dead = anim1dead;
-        cr->Anim2Life = anim2life;
-        cr->Anim2Knockout = anim2ko;
-        cr->Anim2Dead = anim2dead;
+        cr->SetHexX( hx );
+        cr->SetHexY( hy );
+        cr->SetDir( dir );
+        cr->SetCond( cond );
+        cr->SetAnim1Life( anim1life );
+        cr->SetAnim1Knockout( anim1ko );
+        cr->SetAnim1Dead( anim1dead );
+        cr->SetAnim2Life( anim2life );
+        cr->SetAnim2Knockout( anim2ko );
+        cr->SetAnim2Dead( anim2dead );
         cr->Flags = flags;
-        cr->Multihex = multihex;
+        cr->SetMultihexBase( multihex );
         cr->Props.RestoreData( TempPropertiesData );
 
         if( is_npc )
@@ -3200,7 +3200,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
             *cr->Name = cl_name;
         }
 
-        cr->SetCrType( base_type );
+        cr->ChangeCrType( base_type );
         cr->Init();
 
         if( FLAG( cr->Flags, FCRIT_CHOSEN ) )
@@ -3799,14 +3799,9 @@ void FOClient::Net_OnSomeItem()
     SAFEREL( SomeItem );
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
-    if( !proto_item )
-    {
-        WriteLogF( _FUNC_, " - Proto item %u not found.\n", item_pid );
-        return;
-    }
-
+    RUNTIME_ASSERT( proto_item );
     SomeItem = new Item( item_id, proto_item );
-    SomeItem->AccCritter.Slot = slot;
+    SomeItem->SetCritSlot( slot );
     SomeItem->Props.RestoreData( TempPropertiesData );
 }
 
@@ -3850,7 +3845,7 @@ void FOClient::Net_OnCritterKnockout()
         return;
 
     cr->Action( ACTION_KNOCKOUT, anim2begin, nullptr, false );
-    cr->Anim2Knockout = anim2idle;
+    cr->SetAnim2Knockout( anim2idle );
 
     if( cr->GetHexX() != knock_hx || cr->GetHexY() != knock_hy )
     {
@@ -3919,7 +3914,7 @@ void FOClient::Net_OnCritterMoveItem()
             {
                 Item* item = new Item( slots_data_id[ i ], proto_item );
                 item->Props.RestoreData( slots_data_data[ i ] );
-                item->AccCritter.Slot = slots_data_slot[ i ];
+                item->SetCritSlot( slots_data_slot[ i ] );
                 cr->AddItem( item );
             }
         }
@@ -3982,18 +3977,18 @@ void FOClient::Net_OnCritterSetAnims()
     {
         if( cond == 0 || cond == COND_LIFE )
         {
-            cr->Anim1Life = anim1;
-            cr->Anim2Life = anim2;
+            cr->SetAnim1Life( anim1 );
+            cr->SetAnim2Life( anim2 );
         }
         else if( cond == 0 || cond == COND_KNOCKOUT )
         {
-            cr->Anim1Knockout = anim1;
-            cr->Anim2Knockout = anim2;
+            cr->SetAnim1Knockout( anim1 );
+            cr->SetAnim2Knockout( anim2 );
         }
         else if( cond == 0 || cond == COND_DEAD )
         {
-            cr->Anim1Dead = anim1;
-            cr->Anim2Dead = anim2;
+            cr->SetAnim1Dead( anim1 );
+            cr->SetAnim2Dead( anim2 );
         }
         if( !cr->IsAnim() )
             cr->AnimateStay();
@@ -4076,13 +4071,13 @@ void FOClient::Net_OnCustomCommand()
         break;
         case OTHER_BASE_TYPE:
         {
-            if( Chosen->Multihex < 0 && CritType::GetMultihex( Chosen->GetCrType() ) != CritType::GetMultihex( value ) )
+            if( Chosen->GetMultihexBase() < 0 && CritType::GetMultihex( Chosen->GetCrType() ) != CritType::GetMultihex( value ) )
             {
                 HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), CritType::GetMultihex( Chosen->GetCrType() ), false );
                 HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), CritType::GetMultihex( value ), true );
             }
 
-            Chosen->SetCrType( value );
+            Chosen->ChangeCrType( value );
             if( !Chosen->IsAnim() )
                 Chosen->Action( ACTION_REFRESH, 0, nullptr, false );
         }
@@ -4090,7 +4085,7 @@ void FOClient::Net_OnCustomCommand()
         case OTHER_MULTIHEX:
         {
             int old_mh = Chosen->GetMultihex();
-            Chosen->Multihex = value;
+            Chosen->SetMultihexBase( value );
             if( old_mh != (int) Chosen->GetMultihex() )
             {
                 HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), old_mh, false );
@@ -4139,8 +4134,8 @@ void FOClient::Net_OnCustomCommand()
                 if( !Chosen->IsDead() && cr )
                     DeleteCritter( cr->GetId() );
                 HexMngr.RemoveCritter( Chosen );
-                Chosen->HexX = hx;
-                Chosen->HexY = hy;
+                Chosen->SetHexX( hx );
+                Chosen->SetHexY( hy );
                 HexMngr.SetCritter( Chosen );
                 HexMngr.ScrollToHex( Chosen->GetHexX(), Chosen->GetHexY(), 0.1, true );
             }
@@ -4161,20 +4156,20 @@ void FOClient::Net_OnCustomCommand()
         }
         else if( index == OTHER_BASE_TYPE )
         {
-            if( cr->Multihex < 0 && CritType::GetMultihex( cr->GetCrType() ) != CritType::GetMultihex( value ) )
+            if( cr->GetMultihexBase() < 0 && CritType::GetMultihex( cr->GetCrType() ) != CritType::GetMultihex( value ) )
             {
                 HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), CritType::GetMultihex( cr->GetCrType() ), false );
                 HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), CritType::GetMultihex( value ), true );
             }
 
-            cr->SetCrType( value );
+            cr->ChangeCrType( value );
             if( !cr->IsAnim() )
                 cr->Action( ACTION_REFRESH, 0, nullptr, false );
         }
         else if( index == OTHER_MULTIHEX )
         {
             int old_mh = cr->GetMultihex();
-            cr->Multihex = value;
+            cr->SetMultihexBase( value );
             if( old_mh != (int) cr->GetMultihex() )
             {
                 HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), old_mh, false );
@@ -4318,22 +4313,19 @@ void FOClient::Net_OnChosenAddItem()
     uint  prev_light_hash = 0;
     if( prev_item )
     {
-        prev_slot = prev_item->AccCritter.Slot;
+        prev_slot = prev_item->GetCritSlot();
         prev_light_hash = prev_item->LightGetHash();
         Chosen->DeleteItem( prev_item, false );
     }
 
     ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
-    if( !proto_item )
-    {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
-        return;
-    }
+    RUNTIME_ASSERT( proto_item );
 
     Item* item = new Item( item_id, proto_item );
     item->Props.RestoreData( TempPropertiesData );
-    item->Accessory = ITEM_ACCESSORY_CRITTER;
-    item->AccCritter.Slot = slot;
+    item->SetAccessory( ITEM_ACCESSORY_CRITTER );
+    item->SetCritId( Chosen->GetId() );
+    item->SetCritSlot( slot );
 
     item->AddRef();
 
@@ -4378,7 +4370,7 @@ void FOClient::Net_OnChosenEraseItem()
 
     item->AddRef();
 
-    if( item->GetIsLight() && item->AccCritter.Slot != SLOT_INV )
+    if( item->GetIsLight() && item->GetCritSlot() != SLOT_INV )
         HexMngr.RebuildLight();
     Chosen->DeleteItem( item, true );
     CollectContItems();
@@ -4678,7 +4670,7 @@ void FOClient::Net_OnEndParseToGame()
     if( CurMapPid )
     {
         MoveDirs.clear();
-        HexMngr.FindSetCenter( Chosen->HexX, Chosen->HexY );
+        HexMngr.FindSetCenter( Chosen->GetHexX(), Chosen->GetHexY() );
         Chosen->AnimateStay();
         SndMngr.PlayAmbient( MsgLocations->GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
         ShowMainScreen( SCREEN_GAME );
@@ -7267,7 +7259,7 @@ label_EndMove:
         if( !item )
             break;
 
-        uchar from_slot = item->AccCritter.Slot;
+        uchar from_slot = item->GetCritSlot();
         if( from_slot == to_slot )
             break;
         if( to_slot != SLOT_GROUND && !CritterCl::SlotEnabled[ to_slot ] )
@@ -7370,9 +7362,9 @@ label_EndMove:
                     Chosen->ItemSlotArmor = item_swap;
             }
 
-            item->AccCritter.Slot = to_slot;
+            item->SetCritSlot( to_slot );
             if( item_swap )
-                item_swap->AccCritter.Slot = from_slot;
+                item_swap->SetCritSlot( from_slot );
 
             Chosen->Action( ACTION_MOVE_ITEM, from_slot, item );
             if( item_swap )
@@ -8794,9 +8786,9 @@ void FOClient::OnSendItemValue( Entity* entity, Property* prop, void* cur_value,
     #pragma MESSAGE( "Clean up client 0 and -1 item ids" )
     if( item->Id && item->Id != uint( -1 ) )
     {
-        if( item->Accessory == ITEM_ACCESSORY_CRITTER )
+        if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
         {
-            CritterCl* cr = Self->GetCritter( item->AccCritter.Id );
+            CritterCl* cr = Self->GetCritter( item->GetCritId() );
             if( cr && cr->IsChosen() )
                 Self->Net_SendProperty( NetProperty::ChosenItem, prop, item );
             else if( cr && prop->GetAccess() == Property::PublicFullModifiable )
@@ -8804,7 +8796,7 @@ void FOClient::OnSendItemValue( Entity* entity, Property* prop, void* cur_value,
             else
                 SCRIPT_ERROR_R( "Unable to send item (a critter) modifiable property '%s'", prop->GetName() );
         }
-        else if( item->Accessory == ITEM_ACCESSORY_HEX )
+        else if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
         {
             if( prop->GetAccess() == Property::PublicFullModifiable )
                 Self->Net_SendProperty( NetProperty::MapItem, prop, item );
@@ -8827,6 +8819,7 @@ void FOClient::OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, voi
     if( !unarmed )
         unarmed = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
     RUNTIME_ASSERT( unarmed );
+
     cr->DefItemSlotHand->SetProto( unarmed );
     cr->DefItemSlotHand->SetMode( 0 );
 }
@@ -8844,7 +8837,7 @@ void FOClient::OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, 
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
     Item* item = (Item*) entity;
-    if( item->Accessory == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
         ItemHex* hex_item = (ItemHex*) item;
         bool     rebuild_cache = false;
@@ -8875,7 +8868,7 @@ void FOClient::OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value,
 {
     Item* item = (Item*) entity;
 
-    if( item->Accessory == ITEM_ACCESSORY_HEX )
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
         ItemHex* hex_item = (ItemHex*) item;
         hex_item->RefreshAnim();
@@ -8888,7 +8881,7 @@ void FOClient::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_valu
 
     Item* item = (Item*) entity;
 
-    if( item->Accessory == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
     {
         ItemHex* hex_item = (ItemHex*) item;
         hex_item->SetAnimOffs();
@@ -9499,31 +9492,17 @@ bool FOClient::SScriptFunc::Item_IsDeteriorable( Item* item )
     return item->IsDeteriorable();
 }
 
-hash FOClient::SScriptFunc::Item_get_ProtoId( Item* item )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return item->GetProtoId();
-}
-
-int FOClient::SScriptFunc::Item_get_Type( Item* item )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return item->GetType();
-}
-
 bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
-    switch( item->Accessory )
+    switch( item->GetAccessory() )
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        CritterCl* cr = Self->GetCritter( item->AccCritter.Id );
+        CritterCl* cr = Self->GetCritter( item->GetCritId() );
         if( !cr )
             SCRIPT_ERROR_R0( "CritterCl accessory, CritterCl not found." );
         hx = cr->GetHexX();
@@ -9532,18 +9511,18 @@ bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        hx = item->AccHex.HexX;
-        hy = item->AccHex.HexY;
+        hx = item->GetHexX();
+        hy = item->GetHexY();
     }
     break;
     case ITEM_ACCESSORY_CONTAINER:
     {
 
-        if( item->GetId() == item->AccContainer.ContainerId )
-            SCRIPT_ERROR_R0( "Container accessory, Crosslinks." );
-        Item* cont = Self->GetItem( item->AccContainer.ContainerId );
+        if( item->GetId() == item->GetContainerId() )
+            SCRIPT_ERROR_R0( "Container accessory, crosslinks." );
+        Item* cont = Self->GetItem( item->GetContainerId() );
         if( !cont )
-            SCRIPT_ERROR_R0( "Container accessory, Container not found." );
+            SCRIPT_ERROR_R0( "Container accessory, container not found." );
         return Item_GetMapPosition( cont, hx, hy );             // Recursion
     }
     break;

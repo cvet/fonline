@@ -752,45 +752,69 @@ bool Str::IsNumber( const char* str )
     return is_number;
 }
 
-const char* Str::ItoA( int i )
+const char* Str::BtoA( bool value )
 {
     static THREAD char str[ 128 ];
-    sprintf( str, "%d", i );
+    sprintf( str, "%s", value ? "true" : "false" );
     return str;
 }
 
-const char* Str::I64toA( int64 i )
+const char* Str::ItoA( int value )
 {
     static THREAD char str[ 128 ];
-    #ifdef FO_WINDOWS
-    sprintf( str, "%I64d", i );
-    #else
-    sprintf( str, "%lld", i );
-    #endif
+    sprintf( str, "%d", value );
     return str;
 }
 
-const char* Str::UItoA( uint dw )
+const char* Str::UItoA( uint value )
 {
     static THREAD char str[ 128 ];
-    sprintf( str, "%u", dw );
+    sprintf( str, "%u", value );
     return str;
+}
+
+const char* Str::I64toA( int64 value )
+{
+    static THREAD char str[ 128 ];
+    sprintf( str, "%lld", value );
+    return str;
+}
+
+const char* Str::UI64toA( uint64 value )
+{
+    static THREAD char str[ 128 ];
+    sprintf( str, "%llu", value );
+    return str;
+}
+
+const char* Str::FtoA( float value )
+{
+    static THREAD char str[ 128 ];
+    sprintf( str, "%f", value );
+    return str;
+}
+
+const char* Str::DFtoA( double value )
+{
+    static THREAD char str[ 128 ];
+    sprintf( str, "%lf", value );
+    return str;
+}
+
+bool Str::AtoB( const char* str )
+{
+    if( Str::CompareCase( str, "True" ) )
+        return true;
+    if( Str::CompareCase( str, "False" ) )
+        return false;
+    return Str::AtoI( str ) != 0;
 }
 
 int Str::AtoI( const char* str )
 {
-    return (int) AtoI64( str );
-}
-
-int64 Str::AtoI64( const char* str )
-{
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return (int64) strtol( str + 2, nullptr, 16 );
-    #ifdef FO_WINDOWS
-    return _atoi64( str );
-    #else
-    return strtoll( str, nullptr, 10 );
-    #endif
+        return (uint) strtol( str + 2, nullptr, 16 );
+    return (uint) strtol( str, nullptr, 10 );
 }
 
 uint Str::AtoUI( const char* str )
@@ -798,6 +822,30 @@ uint Str::AtoUI( const char* str )
     if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
         return (uint) strtoul( str + 2, nullptr, 16 );
     return (uint) strtoul( str, nullptr, 10 );
+}
+
+int64 Str::AtoI64( const char* str )
+{
+    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
+        return strtoll( str + 2, nullptr, 16 );
+    return strtoll( str, nullptr, 10 );
+}
+
+uint64 Str::AtoUI64( const char* str )
+{
+    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
+        return strtoull( str + 2, nullptr, 16 );
+    return strtoull( str, nullptr, 10 );
+}
+
+float Str::AtoF( const char* str )
+{
+    return (float) atof( str );
+}
+
+double Str::AtoDF( const char* str )
+{
+    return atof( str );
 }
 
 void Str::HexToStr( uchar hex, char* str )
@@ -856,7 +904,7 @@ hash Str::GetHash( const char* name )
     uint        len = 0;
     const char* from = name;
     char*       to = name_;
-    for( ; *from; from++, to++, len++ )
+    for( ; *from && len < MAX_FOTEXT - 1; from++, to++, len++ )
         *to = ( *from != '\\' ? *from : '/' );
     *to = 0;
 
@@ -898,42 +946,32 @@ const char* Str::GetName( hash h )
     return it->second;
 }
 
-void Str::SaveHashes( void ( * save_func )( void*, size_t ) )
+void Str::SaveHashes( StrMap& hashes )
 {
     SCOPE_LOCK( HashNamesLocker );
 
-    for( auto it = HashNames.begin(); it != HashNames.end(); ++it )
-    {
-        const char* name = it->second;
-        uint        name_len = Str::Length( name );
-        if( name_len <= 255 )
-        {
-            uchar name_len_ = (uchar) name_len;
-            save_func( &name_len_, sizeof( name_len_ ) );
-            save_func( (void*) name, name_len );
-        }
-    }
-    uchar zero = 0;
-    save_func( &zero, sizeof( zero ) );
+    char buf[ MAX_FOTEXT ];
+    for( auto& kv : HashNames )
+        hashes[ Str::Format( buf, "%u", kv.first ) ] = kv.second;
 }
 
-void Str::LoadHashes( void* f, uint version )
+void Str::LoadHashes( StrMap& hashes )
 {
     SCOPE_LOCK( HashNamesLocker );
 
-    char buf[ 256 ];
-    while( true )
-    {
-        uchar name_len = 0;
-        FileRead( f, &name_len, sizeof( name_len ) );
-        if( !name_len )
-            break;
+    for( auto& kv : hashes )
+        GetHash( kv.second.c_str() );
 
-        FileRead( f, buf, name_len );
-        buf[ name_len ] = 0;
-
-        GetHash( buf );
-    }
+//    {
+//        hash h = Str::AtoUI( kv.first.c_str() );
+//        if( h )
+//        {
+//            auto ins = HashNames.insert( PAIR( h, nullptr ) );
+//            if( !ins.second )
+//                delete[] ins.first->second;
+//            ins.first->second = Str::Duplicate( kv.second.c_str() );
+//        }
+//    }
 }
 
 const char* Str::ParseLineDummy( const char* str )

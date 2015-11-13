@@ -387,9 +387,17 @@ public:
             is_defaults = true;
 
         // Property type and name
+        bool is_const = false;
         if( !is_defaults )
         {
-            str >> property_type_name >> property_name;
+            str >> property_type_name;
+            if( property_type_name == "const" )
+            {
+                is_const = true;
+                str >> property_type_name;
+            }
+
+            str >> property_name;
             if( property_name == "<" && !str.fail() )
             {
                 while( property_name != ">" && !str.fail() )
@@ -547,7 +555,7 @@ public:
         // Register
         if( !is_defaults )
         {
-            if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access,
+            if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access, is_const,
                                         group.length() > 0 ? group.c_str() : nullptr, generate_random_value ? &generate_random_value : nullptr,
                                         set_default_value ? &default_value : nullptr, check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr ) )
             {

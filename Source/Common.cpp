@@ -914,7 +914,6 @@ bool FOQuit = false;
 int  ServerGameSleep = 10;
 int  MemoryDebugLevel = 10;
 uint VarsGarbageTime = 3600000;
-bool WorldSaveManager = true;
 bool LogicMT = false;
 bool AllowServerNativeCalls = false;
 bool AllowClientNativeCalls = false;
@@ -924,7 +923,6 @@ void GetServerOptions()
     IniParser& cfg = IniParser::GetServerConfig();
     ServerGameSleep = cfg.GetInt( "", "GameSleep", 10 );
     Script::SetConcurrentExecution( cfg.GetInt( "", "ScriptConcurrentExecution", 0 ) != 0 );
-    WorldSaveManager = ( cfg.GetInt( "", "WorldSaveManager", 1 ) != 0 );
     AllowServerNativeCalls = ( cfg.GetInt( "", "AllowServerNativeCalls", 1 ) != 0 );
     AllowClientNativeCalls = ( cfg.GetInt( "", "AllowClientNativeCalls", 0 ) != 0 );
 }

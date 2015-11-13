@@ -15,6 +15,21 @@ class CritterCl: public Entity
 public:
     // Properties
     PROPERTIES_HEADER();
+    // Non sync
+    CLASS_PROPERTY( ushort, HexX );
+    CLASS_PROPERTY( ushort, HexY );
+    CLASS_PROPERTY( uchar, Dir );
+    CLASS_PROPERTY( uint, CrType );
+    CLASS_PROPERTY( uint, CrTypeAlias );
+    CLASS_PROPERTY( uchar, Cond );
+    CLASS_PROPERTY( int, MultihexBase );
+    CLASS_PROPERTY( uint, Anim1Life );
+    CLASS_PROPERTY( uint, Anim1Knockout );
+    CLASS_PROPERTY( uint, Anim1Dead );
+    CLASS_PROPERTY( uint, Anim2Life );
+    CLASS_PROPERTY( uint, Anim2Knockout );
+    CLASS_PROPERTY( uint, Anim2Dead );
+    CLASS_PROPERTY( uint, Anim2KnockoutEnd );
     // Core
     CLASS_PROPERTY( uint, LookDistance );
     CLASS_PROPERTY( ScriptArray *, Anim3dLayer );
@@ -68,22 +83,11 @@ public:
 
     // Data
     hash          Pid;
-    ushort        HexX, HexY;
-    uchar         CrDir;
     uint          NameColor;
     uint          ContourColor;
     UShortVec     LastHexX, LastHexY;
-    uchar         Cond;
-    uint          Anim1Life;
-    uint          Anim1Knockout;
-    uint          Anim1Dead;
-    uint          Anim2Life;
-    uint          Anim2Knockout;
-    uint          Anim2Dead;
     uint          Flags;
-    uint          CrType, CrTypeAlias;
     uint          ApRegenerationTick;
-    int           Multihex;
     Effect*       DrawEffect;
 
     ScriptString* Name;
@@ -107,16 +111,12 @@ public:
 
     uint        GetId()   { return Id; }
     const char* GetInfo() { return Name->c_str(); }
-    ushort      GetHexX() { return HexX; }
-    ushort      GetHexY() { return HexY; }
     bool        IsLastHexes();
     void        FixLastHexes();
     ushort      PopLastHexX();
     ushort      PopLastHexY();
-    void        SetCrType( uint type );
-    void        SetDir( uchar dir, bool animate = true );
-    uchar       GetDir() { return CrDir; }
-    uint        GetCrTypeAlias();
+    void        ChangeCrType( uint type );
+    void        ChangeDir( uchar dir, bool animate = true );
 
     void Animate( uint anim1, uint anim2, Item* item );
     void AnimateStay();
@@ -125,16 +125,15 @@ public:
     void DrawStay( Rect r );
 
     const char* GetName()    { return Name->c_str(); }
-    int         GetCond()    { return Cond; }
     bool        IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
     bool        IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }
     bool        IsChosen()   { return FLAG( Flags, FCRIT_CHOSEN ); }
     bool        IsGmapRule() { return FLAG( Flags, FCRIT_RULEGROUP ); }
     bool        IsOnline()   { return !FLAG( Flags, FCRIT_DISCONNECT ); }
     bool        IsOffline()  { return FLAG( Flags, FCRIT_DISCONNECT ); }
-    bool        IsLife()     { return Cond == COND_LIFE; }
-    bool        IsKnockout() { return Cond == COND_KNOCKOUT; }
-    bool        IsDead()     { return Cond == COND_DEAD; }
+    bool        IsLife()     { return GetCond() == COND_LIFE; }
+    bool        IsKnockout() { return GetCond() == COND_KNOCKOUT; }
+    bool        IsDead()     { return GetCond() == COND_DEAD; }
     bool        IsCanTalk();
     bool        IsCombatMode();
     bool        IsTurnBased();
@@ -143,10 +142,8 @@ public:
     uint GetAttackDist();
     uint GetUseDist();
     uint GetMultihex();
-
     uint GetMaxWeightKg();
     uint GetMaxVolume();
-    uint GetCrType();
     bool IsDmgLeg();
     bool IsDmgTwoLeg();
     bool IsDmgArm();

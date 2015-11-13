@@ -2582,7 +2582,7 @@ void FOClient::LMenuSet( uchar set_lmenu )
             if( inv_item->GetIsCanUse() || inv_item->GetIsCanUseOnSmth() )
                 LMenuNodes.push_back( LMENU_NODE_USE );
             LMenuNodes.push_back( LMENU_NODE_SKILL );
-            if( inv_item->AccCritter.Slot == SLOT_INV && Chosen->IsCanSortItems() )
+            if( inv_item->GetCritSlot() == SLOT_INV && Chosen->IsCanSortItems() )
             {
                 LMenuNodes.push_back( LMENU_NODE_SORT_UP );
                 LMenuNodes.push_back( LMENU_NODE_SORT_DOWN );
@@ -6393,120 +6393,73 @@ void FOClient::SaveLoadCollect()
 
     // For each all saves in folder
     StrVec fnames;
-    FileManager::GetFolderFileNames( FileManager::GetWritePath( "", PT_SAVE ), true, "fo", fnames );
-    PtrVec open_handles;
+    FileManager::GetFolderFileNames( FileManager::GetWritePath( "", PT_SAVE ), true, "foworld", fnames );
     for( uint i = 0; i < fnames.size(); i++ )
     {
         const string& fname = fnames[ i ];
 
         // Open file
-        void* f = FileOpen( FileManager::GetWritePath( fname.c_str(), PT_SAVE ), false );
-        if( !f )
+        IniParser save;
+        if( !save.AppendFile( FileManager::GetWritePath( fname.c_str(), PT_SAVE ), PT_ROOT ) )
             continue;
-        open_handles.push_back( f );
 
-        // Get file information
-        uint64 tw = FileGetWriteTime( f );
+        if( !save.IsApp( "GeneralSettings" ) || !save.IsApp( "Client" ) )
+            continue;
+        StrMap& settings = save.GetApp( "GeneralSettings" );
+        StrMap& client = save.GetApp( "Client" );
 
         // Read save data, offsets see SaveGameInfoFile in Server.cpp
         // Check singleplayer data
-        uint sp;
-        FileSetPointer( f, 4, SEEK_SET );
-        if( !FileRead( f, &sp, sizeof( sp ) ) )
+        if( !settings.count( "Singleplayer" ) || Str::CompareCase( settings[ "Singleplayer" ].c_str(), "true" ) )
             continue;
-        if( sp == 0 )
-            continue;               // Save not contain singleplayer data
 
         // Critter name
-        uint crname_size = UTF8_BUF_SIZE( MAX_NAME );
-        char crname[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        FileSetPointer( f, 8, SEEK_SET );
-        if( sp >= SINGLEPLAYER_SAVE_V2 )
-        {
-            if( !FileRead( f, crname, sizeof( crname ) ) )
-                continue;
-        }
-        else
-        {
-            crname_size = MAX_NAME + 1;
-            if( !FileRead( f, crname, MAX_NAME + 1 ) )
-                continue;
-            for( char* name = crname; *name; name++ )
-                *name = ( ( ( *name >= 'A' && *name <= 'Z' ) || ( *name >= 'a' && *name <= 'z' ) ) ? *name : 'X' );
-        }
+        if( !client.count( "$Name" ) )
+            continue;
+        string cr_name = client[ "$Name" ];
 
         // Map pid
-        hash map_pid;
-        FileSetPointer( f, 8 + crname_size + 68, SEEK_SET );
-        if( !FileRead( f, &map_pid, sizeof( map_pid ) ) )
+        if( !client.count( "MapPid" ) )
             continue;
-
-        // Calculate critter time events size
-        uint te_size;
-        FileSetPointer( f, 8 + crname_size + 7404 + 6944, SEEK_SET );
-        if( !FileRead( f, &te_size, sizeof( te_size ) ) )
-            continue;
-        te_size = te_size * 16 + 4;
+        hash map_pid = Str::GetHash( client[ "MapPid" ].c_str() );
 
         // Picture data
-        uint     pic_data_len;
         UCharVec pic_data;
-        FileSetPointer( f, 8 + crname_size + 7404 + 6944 + te_size, SEEK_SET );
-        if( !FileRead( f, &pic_data_len, sizeof( pic_data_len ) ) )
-            continue;
-        if( pic_data_len )
-        {
-            pic_data.resize( pic_data_len );
-            if( !FileRead( f, &pic_data[ 0 ], pic_data_len ) )
-                continue;
-        }
+        if( settings.count( "SaveLoadPicture" ) )
+            Str::ParseLine( settings[ "SaveLoadPicture" ].c_str(), ' ', pic_data, Str::AtoUI );
 
         // Game time
-        ushort year, month, day, hour, minute;
-        FileSetPointer( f, 8 + crname_size + 7404 + 6944 + te_size + 4 + pic_data_len + 2, SEEK_SET );
-        if( !FileRead( f, &year, sizeof( year ) ) )
-            continue;
-        if( !FileRead( f, &month, sizeof( month ) ) )
-            continue;
-        if( !FileRead( f, &day, sizeof( day ) ) )
-            continue;
-        if( !FileRead( f, &hour, sizeof( hour ) ) )
-            continue;
-        if( !FileRead( f, &minute, sizeof( minute ) ) )
-            continue;
+        ushort year = Str::AtoI( settings[ "Year" ].c_str() );
+        ushort month = Str::AtoI( settings[ "Month" ].c_str() );
+        ushort day = Str::AtoI( settings[ "Day" ].c_str() );
+        ushort hour = Str::AtoI( settings[ "Hour" ].c_str() );
+        ushort minute = Str::AtoI( settings[ "Minute" ].c_str() );
 
         // Extract name
-        char name[ MAX_FOPATH ];
-        Str::Copy( name, fname.c_str() );
-        if( Str::Length( name ) < 4 )
-            continue;
-        name[ Str::Length( name ) - 3 ] = 0; // Cut '.fo'
+        char save_name[ MAX_FOPATH ];
+        Str::Copy( save_name, fname.c_str() );
+        FileManager::EraseExtension( save_name );
 
         // Extract full path
         char fname_ex[ MAX_FOPATH ];
-        FileManager::GetWritePath( name, PT_SAVE, fname_ex );
+        FileManager::GetWritePath( save_name, PT_SAVE, fname_ex );
         ResolvePath( fname_ex );
         Str::Append( fname_ex, ".foworld" );
 
-        // Convert time
-        DateTimeStamp dt;
-        Timer::FullTimeToDateTime( tw, dt );
-
         // Fill slot data
         SaveLoadDataSlot slot;
-        slot.Name = name;
-        slot.Info = Str::FormatBuf( "%s\n%02d.%02d.%04d %02d:%02d:%02d\n", name, dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
-        slot.InfoExt = Str::FormatBuf( "%s\n%02d %3s %04d %02d%02d\n%s", crname,
-                                       day, MsgGame->GetStr( STR_MONTH( month ) ), year, hour, minute, MsgLocations->GetStr( STR_LOC_MAP_NAME( CurMapLocPid, CurMapIndexInLoc ) ) );
+        slot.Name = save_name;
+        slot.Info = Str::FormatBuf( "%s\n%02d.%02d.%04d %02d:%02d:%02d\n", save_name,
+                                    settings[ "RealDay" ].c_str(), settings[ "RealMonth" ].c_str(), settings[ "RealYear" ].c_str(),
+                                    settings[ "RealHour" ].c_str(), settings[ "RealMinute" ].c_str(), settings[ "RealSecond" ].c_str() );
+        slot.InfoExt = Str::FormatBuf( "%s\n%02d %3s %04d %02d%02d\n%s", cr_name.c_str(),
+                                       day, MsgGame->GetStr( STR_MONTH( month ) ), year, hour, minute,
+                                       MsgLocations->GetStr( STR_LOC_MAP_NAME( CurMapLocPid, CurMapIndexInLoc ) ) );
         slot.FileName = fname_ex;
-        slot.RealTime = tw;
+        slot.RealTime = Str::AtoUI64( settings[ "SaveTimestamp" ].c_str() );
         slot.PicData = pic_data;
         SaveLoadDataSlots.push_back( slot );
     }
-
-    // Close opened file handles
-    for( auto it = open_handles.begin(); it != open_handles.end(); ++it )
-        FileClose( *it );
 
     // Sort by creation time
     struct SortByTime

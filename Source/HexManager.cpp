@@ -1568,7 +1568,7 @@ void HexManager::CollectLightSources()
         for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
             Item* item = *it_;
-            if( item->GetIsLight() && item->AccCritter.Slot != SLOT_INV )
+            if( item->GetIsLight() && item->GetCritSlot() != SLOT_INV )
             {
                 lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags(), &cr->SprOx, &cr->SprOy ) );
                 added = true;
@@ -2663,8 +2663,8 @@ bool HexManager::TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bo
     if( cr->IsDead() )
     {
         RemoveCritter( cr );
-        cr->HexX = hx;
-        cr->HexY = hy;
+        cr->SetHexX( hx );
+        cr->SetHexY( hy );
         SetCritter( cr );
 
         if( cr->IsChosen() || cr->IsHaveLightSources() )
@@ -2691,8 +2691,8 @@ bool HexManager::TransitCritter( CritterCl* cr, int hx, int hy, bool animate, bo
 
     int old_hx = cr->GetHexX();
     int old_hy = cr->GetHexY();
-    cr->HexX = hx;
-    cr->HexY = hy;
+    cr->SetHexX( hx );
+    cr->SetHexY( hy );
     int dir = GetFarDir( old_hx, old_hy, hx, hy );
 
     if( animate )
@@ -4043,9 +4043,8 @@ bool HexManager::GetMapData( hash map_pid, ItemVec& items, ushort& maxhx, ushort
         if( proto_item )
         {
             Item* item = new Item( 0, proto_item );
-            item->Accessory = ITEM_ACCESSORY_NONE;
-            item->AccHex.HexX = scenwall.MapX;
-            item->AccHex.HexY = scenwall.MapY;
+            item->SetHexX( scenwall.MapX );
+            item->SetHexY( scenwall.MapY );
             items.push_back( item );
         }
     }
@@ -4260,9 +4259,9 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
 
             CritterCl* cr = new CritterCl( --any_id );
             cr->Props = proto->Props;
-            cr->SetCrType( proto->GetCrType() );
-            cr->HexX = o->MapX;
-            cr->HexY = o->MapY;
+            cr->ChangeCrType( proto->GetCrType() );
+            cr->SetHexX( o->MapX );
+            cr->SetHexY( o->MapY );
             cr->SetDir( (uchar) o->MCritter.Dir );
             cr->Pid = o->ProtoId;
             cr->Init();
@@ -4624,30 +4623,45 @@ void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
         mobj->MCritter.Cond = COND_LIFE;
 
     bool refresh = false;
-    if( cr->Cond != mobj->MCritter.Cond )
+    if( cr->GetCond() != mobj->MCritter.Cond )
     {
-        cr->Cond = mobj->MCritter.Cond;
-        cr->Anim1Life = 0;
-        cr->Anim1Knockout = 0;
-        cr->Anim1Dead = 0;
-        cr->Anim2Life = 0;
-        cr->Anim2Knockout = 0;
-        cr->Anim2Dead = 0;
+        cr->SetCond( mobj->MCritter.Cond );
+        cr->SetAnim1Life( 0 );
+        cr->SetAnim1Knockout( 0 );
+        cr->SetAnim1Dead( 0 );
+        cr->SetAnim2Life( 0 );
+        cr->SetAnim2Knockout( 0 );
+        cr->SetAnim2Dead( 0 );
         refresh = true;
     }
 
     if( cr->GetDir() != mobj->MCritter.Dir )
     {
-        cr->SetDir( mobj->MCritter.Dir, false );
+        cr->ChangeDir( mobj->MCritter.Dir, false );
         refresh = true;
     }
 
-    uint& anim1 = ( cr->Cond == COND_LIFE ? cr->Anim1Life : ( cr->Cond == COND_KNOCKOUT ? cr->Anim1Knockout : cr->Anim1Dead ) );
-    uint& anim2 = ( cr->Cond == COND_LIFE ? cr->Anim2Life : ( cr->Cond == COND_KNOCKOUT ? cr->Anim2Knockout : cr->Anim2Dead ) );
+    uint anim1 = ( cr->GetCond() == COND_LIFE ? cr->GetAnim1Life() : ( cr->GetCond() == COND_KNOCKOUT ? cr->GetAnim1Knockout() : cr->GetAnim1Dead() ) );
+    uint anim2 = ( cr->GetCond() == COND_LIFE ? cr->GetAnim2Life() : ( cr->GetCond() == COND_KNOCKOUT ? cr->GetAnim2Knockout() : cr->GetAnim2Dead() ) );
     if( anim1 != mobj->MCritter.Anim1 || anim2 != mobj->MCritter.Anim2 )
+    {
         refresh = true;
-    anim1 = mobj->MCritter.Anim1;
-    anim2 = mobj->MCritter.Anim2;
+        if( cr->GetCond() == COND_LIFE )
+        {
+            cr->SetAnim1Life( mobj->MCritter.Anim1 );
+            cr->SetAnim2Life( mobj->MCritter.Anim2 );
+        }
+        else if( cr->GetCond() == COND_LIFE )
+        {
+            cr->SetAnim1Knockout( mobj->MCritter.Anim1 );
+            cr->SetAnim2Knockout( mobj->MCritter.Anim2 );
+        }
+        else
+        {
+            cr->SetAnim1Dead( mobj->MCritter.Anim1 );
+            cr->SetAnim2Dead( mobj->MCritter.Anim2 );
+        }
+    }
 
     if( mobj->Props )
     {

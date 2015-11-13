@@ -8,6 +8,7 @@ class IniParser
 private:
     typedef multimap< string, StrMap > ValuesMap;
     ValuesMap appKeyValues;
+    bool      collectContent = false;
 
     void    ParseStr( const char* str );
     string* GetRawValue( const char* app_name, const char* key_name );
@@ -16,16 +17,22 @@ public:
     IniParser();
     IniParser( const char* str );
     IniParser( const char* fname, int path_type );
+    void CollectContent() { collectContent = true; }
     void AppendStr( const char* buf );
     bool AppendFile( const char* fname, int path_type );
     bool SaveFile( const char* fname, int path_type );
     void Clear();
     bool IsLoaded();
 
-    int         GetInt( const char* app_name, const char* key_name, int def_val = 0 );
     const char* GetStr( const char* app_name, const char* key_name, const char* def_val = nullptr );
+    int         GetInt( const char* app_name, const char* key_name, int def_val = 0 );
 
     void SetStr( const char* app_name, const char* key_name, const char* val );
+    void SetInt( const char* app_name, const char* key_name, int val );
+
+    StrMap& GetApp( const char* app_name );
+    void    GetApps( const char* app_name, PStrMapVec& key_values );
+    StrMap& SetApp( const char* app_name );
 
     bool IsApp( const char* app_name );
     bool IsKey( const char* app_name, const char* key_name );

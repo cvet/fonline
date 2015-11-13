@@ -160,17 +160,11 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call )
     }
 }
 
-void ScriptInvoker::SaveDeferredCalls( void ( * save_func )( void*, size_t ) )
+void ScriptInvoker::SaveDeferredCalls( IniParser& data )
 {
     SCOPE_LOCK( deferredCallsLocker );
 
-    save_func( &lastDeferredCallId, sizeof( lastDeferredCallId ) );
-
-    uint count = 0;
-    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
-        if( it->Saved )
-            count++;
-    save_func( &count, sizeof( count ) );
+    data.SetStr( "GeneralSettings", "LastDeferredCallId", Str::UItoA( lastDeferredCallId ) );
 
     uint tick = Timer::FastTick();
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
@@ -179,78 +173,55 @@ void ScriptInvoker::SaveDeferredCalls( void ( * save_func )( void*, size_t ) )
         if( !call.Saved )
             continue;
 
-        save_func( &call.Id, sizeof( call.Id ) );
-        save_func( &call.FuncNum, sizeof( call.FuncNum ) );
-        uint delay = ( call.FireTick > tick ? call.FireTick - tick : 0 );
-        save_func( &delay, sizeof( delay ) );
-        save_func( &call.IsValue, sizeof( call.IsValue ) );
+        StrMap& kv = data.SetApp( "DeferredCall" );
+
+        kv[ "Id" ] = Str::UItoA( call.Id );
+        kv[ "Script" ] = Str::GetName( call.FuncNum );
+        kv[ "Delay" ] = Str::UItoA( call.FireTick > tick ? call.FireTick - tick : 0 );
+
         if( call.IsValue )
-            save_func( &call.Value, sizeof( call.Value ) );
-        save_func( &call.IsValues, sizeof( call.IsValues ) );
+            kv[ "Value" ] = Str::ItoA( call.Value );
+
         if( call.IsValues )
         {
-            save_func( &call.ValuesSigned, sizeof( call.ValuesSigned ) );
-            uint values_size = (uint) ( call.IsValues ? call.Values.size() : 0 );
-            save_func( &values_size, sizeof( values_size ) );
-            if( values_size )
-                save_func( &call.Values[ 0 ], values_size * sizeof( int ) );
+            kv[ "ValuesSigned" ] = ( call.ValuesSigned ? "true" : "false" );
+            string values;
+            for( int v : call.Values )
+                values.append( Str::ItoA( v ) ).append( " " );
+            kv[ "Values" ] = values;
         }
     }
 }
 
-bool ScriptInvoker::LoadDeferredCalls( void* f, uint version )
+bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 {
     SCOPE_LOCK( deferredCallsLocker );
 
     WriteLog( "Load deferred calls...\n" );
 
-    if( !FileRead( f, &lastDeferredCallId, sizeof( lastDeferredCallId ) ) )
-        return false;
+    lastDeferredCallId = Str::AtoUI( data.GetStr( "GeneralSettings", "LastDeferredCallId" ) );
 
-    uint count = 0;
-    if( !FileRead( f, &count, sizeof( count ) ) )
-        return false;
-
+    PStrMapVec   deferred_calls;
+    data.GetApps( "DeferredCall", deferred_calls );
     uint         tick = Timer::FastTick();
     DeferredCall call;
-    for( uint i = 0; i < count; i++ )
+    for( auto& pkv : deferred_calls )
     {
-        if( !FileRead( f, &call.Id, sizeof( call.Id ) ) )
-            return false;
-        if( !FileRead( f, &call.FuncNum, sizeof( call.FuncNum ) ) )
-            return false;
+        auto& kv = *pkv;
 
-        if( !FileRead( f, &call.FireTick, sizeof( call.FireTick ) ) )
-            return false;
-        call.FireTick += tick;
+        call.Id = Str::AtoUI( kv[ "Id" ].c_str() );
+        call.FuncNum = Script::BindScriptFuncNumByScriptName( kv[ "Script" ].c_str(), "TODO" );
+        call.FireTick = tick + Str::AtoUI( kv[ "Delay" ].c_str() );
 
-        if( !FileRead( f, &call.IsValue, sizeof( call.IsValue ) ) )
-            return false;
-        if( call.IsValue )
-        {
-            if( !FileRead( f, &call.Value, sizeof( call.Value ) ) )
-                return false;
-        }
+        if( kv.count( "Value" ) )
+            call.Value = Str::AtoI( kv[ "Value" ].c_str() );
         else
-        {
             call.Value = 0;
-        }
 
-        if( !FileRead( f, &call.IsValues, sizeof( call.IsValues ) ) )
-            return false;
-        if( call.IsValues )
+        if( kv.count( "Values" ) )
         {
-            if( !FileRead( f, &call.ValuesSigned, sizeof( call.ValuesSigned ) ) )
-                return false;
-            uint values_size;
-            if( !FileRead( f, &values_size, sizeof( values_size ) ) )
-                return false;
-            if( values_size )
-            {
-                call.Values.resize( values_size );
-                if( !FileRead( f, &call.Values[ 0 ], values_size * sizeof( int ) ) )
-                    return false;
-            }
+            call.ValuesSigned = Str::CompareCase( kv[ "ValuesSigned" ].c_str(), "true" );
+            Str::ParseLine( kv[ "Values" ].c_str(), ' ', call.Values, Str::AtoI );
         }
         else
         {
@@ -268,7 +239,7 @@ bool ScriptInvoker::LoadDeferredCalls( void* f, uint version )
         deferredCalls.push_back( call );
     }
 
-    WriteLog( "Load deferred calls complete, count %u.\n", count );
+    WriteLog( "Load deferred calls complete, count %u.\n", (uint) deferredCalls.size() );
     return true;
 }
 

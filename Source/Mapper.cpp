@@ -3517,8 +3517,8 @@ void FOMapper::MoveMapObject( MapObject* mobj, ushort hx, ushort hy )
             if( cr && ( cr->IsDead() || !HexMngr.GetField( hx, hy ).Crit ) )
             {
                 HexMngr.RemoveCritter( cr );
-                cr->HexX = hx;
-                cr->HexY = hy;
+                cr->SetHexX( hx );
+                cr->SetHexY( hy );
                 mobj->MapX = hx;
                 mobj->MapY = hy;
                 HexMngr.SetCritter( cr );
@@ -3982,8 +3982,8 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
             else if( obj->IsNpc() )
             {
                 HexMngr.RemoveCritter( obj->MapNpc );
-                obj->MapNpc->HexX = hx;
-                obj->MapNpc->HexY = hy;
+                obj->MapNpc->SetHexX( hx );
+                obj->MapNpc->SetHexY( hy );
                 HexMngr.SetCritter( obj->MapNpc );
             }
             else
@@ -4261,11 +4261,11 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
 
     CritterCl* cr = new CritterCl( ++AnyId );
     cr->Props = proto->Props;
-    cr->SetCrType( proto->GetCrType() );
-    cr->HexX = hx;
-    cr->HexY = hy;
+    cr->ChangeCrType( proto->GetCrType() );
+    cr->SetHexX( hx );
+    cr->SetHexY( hy );
     cr->SetDir( NpcDir );
-    cr->Cond = COND_LIFE;
+    cr->SetCond( COND_LIFE );
     cr->Pid = pid;
     cr->Init();
 
@@ -4324,11 +4324,11 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
 
         CritterCl* cr = new CritterCl( ++AnyId );
         cr->Props = proto->Props;
-        cr->SetCrType( proto->GetCrType() );
-        cr->HexX = mobj->MapX;
-        cr->HexY = mobj->MapY;
+        cr->ChangeCrType( proto->GetCrType() );
+        cr->SetHexX( mobj->MapX );
+        cr->SetHexY( mobj->MapY );
         cr->SetDir( (uchar) mobj->MCritter.Dir );
-        cr->Cond = COND_LIFE;
+        cr->SetCond( COND_LIFE );
         cr->Pid = mobj->ProtoId;
         cr->Init();
         mobj->RunTime.MapObjId = cr->GetId();

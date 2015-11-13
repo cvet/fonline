@@ -104,9 +104,39 @@ public:
     // Properties
     PROPERTIES_HEADER();
     // Core
-    // Check properties in CritData
+    // CritData
+    CLASS_PROPERTY( uint, MapId );
+    CLASS_PROPERTY( hash, MapPid );
+    CLASS_PROPERTY( ushort, HexX );
+    CLASS_PROPERTY( ushort, HexY );
+    CLASS_PROPERTY( uchar, Dir );
+    CLASS_PROPERTY( ScriptString *, PassHash );
+    CLASS_PROPERTY( uint, CrType );
+    CLASS_PROPERTY( uint, CrTypeAlias );
+    CLASS_PROPERTY( uchar, Cond );
+    CLASS_PROPERTY( bool, ClientToDelete );
+    CLASS_PROPERTY( uint, MultihexBase );
+    CLASS_PROPERTY( ushort, WorldX );
+    CLASS_PROPERTY( ushort, WorldY );
+    CLASS_PROPERTY( uint, GlobalGroupRuleId );
+    CLASS_PROPERTY( uint, GlobalGroupUid );
+    CLASS_PROPERTY( ushort, LastMapHexX );
+    CLASS_PROPERTY( ushort, LastMapHexY );
+    CLASS_PROPERTY( uint, Anim1Life );
+    CLASS_PROPERTY( uint, Anim1Knockout );
+    CLASS_PROPERTY( uint, Anim1Dead );
+    CLASS_PROPERTY( uint, Anim2Life );
+    CLASS_PROPERTY( uint, Anim2Knockout );
+    CLASS_PROPERTY( uint, Anim2Dead );
+    CLASS_PROPERTY( uint, Anim2KnockoutEnd );
+    CLASS_PROPERTY( ScriptArray *, GlobalMapFog );
+    CLASS_PROPERTY( ScriptArray *, TE_FuncNum );    // hash
+    CLASS_PROPERTY( ScriptArray *, TE_Rate );       // uint
+    CLASS_PROPERTY( ScriptArray *, TE_NextTime );   // uint
+    CLASS_PROPERTY( ScriptArray *, TE_Identifier ); // int
+    // ...
     CLASS_PROPERTY( uint, LookDistance );
-    CLASS_PROPERTY( uint, FollowCrit );       // Rename to FollowCritterId
+    CLASS_PROPERTY( uint, FollowCrit );             // Rename to FollowCritterId
     CLASS_PROPERTY( hash, DialogId );
     CLASS_PROPERTY( bool, IsNoTalk );
     CLASS_PROPERTY( bool, IsNoBarter );
@@ -194,12 +224,11 @@ protected:
 
 public:
     // Data
-    CritData      Data;
     SyncObject    Sync;
+    ProtoCritter* Proto;
     bool          CritterIsNpc;
     uint          Flags;
     ScriptString* NameStr;
-    TwoBitMask    GMapFog;
     bool          IsRuning;
     uint          PrevHexTick;
     ushort        PrevHexX, PrevHexY;
@@ -211,7 +240,6 @@ public:
     static IntSet RegProperties;
 
     void DeleteInventory();
-    void SetMaps( uint map_id, hash map_pid );
     hash GetFavoriteItemPid( uchar slot );
     void SetFavoriteItemPid( uchar slot, hash pid );
 
@@ -270,6 +298,7 @@ public:
     Item* ItemSlotExt;
     Item* ItemSlotArmor;
 
+    hash     GetProtoId() { return Proto->ProtoId; }
     void     SyncLockItems();
     Item*    GetHandsItem() { return defItemSlotHand; }
     void     AddItem( Item*& item, bool send );
@@ -443,17 +472,11 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo();
 
-    bool        IsPlayer()      { return !CritterIsNpc; }
-    bool        IsNpc()         { return CritterIsNpc; }
-    uint        GetMapId()      { return Data.MapId; }
-    hash        GetMapProtoId() { return Data.MapPid; }
+    bool        IsPlayer() { return !CritterIsNpc; }
+    bool        IsNpc()    { return CritterIsNpc; }
     void        RefreshName();
     const char* GetName() { return NameStr->c_str(); }
     const char* GetInfo();
-    uint        GetCrType() { return Data.CrType; }
-    ushort      GetHexX()   { return Data.HexX; }
-    ushort      GetHexY()   { return Data.HexY; }
-    uchar       GetDir()    { return Data.Dir; }
     bool        IsCanWalk();
     bool        IsCanRun();
     uint        GetTimeWalk();
@@ -518,16 +541,6 @@ public:
     void EraseKnownLoc( uint loc_id );
 
     // Time events
-    struct CrTimeEvent
-    {
-        hash FuncNum;
-        uint Rate;
-        uint NextTime;
-        int  Identifier;
-    };
-    typedef vector< CrTimeEvent > CrTimeEventVec;
-    CrTimeEventVec CrTimeEvents;
-
     void AddCrTimeEvent( hash func_num, uint rate, uint duration, int identifier );
     void EraseCrTimeEvent( int index );
     void ContinueTimeEvents( int offs_time );
@@ -545,8 +558,7 @@ public:
     Client();
     ~Client();
 
-    char          Name[ UTF8_BUF_SIZE( MAX_NAME ) ]; // Saved
-    char          PassHash[ PASS_HASH_SIZE ];        // Saved
+    char          Name[ UTF8_BUF_SIZE( MAX_NAME ) ];
     uchar         Access;
     uint          LanguageMsg;
     uint          UID[ 5 ];
@@ -636,6 +648,8 @@ public:
     void        Disconnect();
     void        RemoveFromGame();
     uint        GetOfflineTime();
+    const char* GetBinPassHash();
+    void        SetBinPassHash( const char* pass_hash );
 
     // Ping
 private:

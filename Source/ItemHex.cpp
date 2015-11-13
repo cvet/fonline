@@ -10,9 +10,9 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* data, int hx, int hy, 
         Props.RestoreData( *data );
 
     // Init parent
-    Accessory = ITEM_ACCESSORY_HEX;
-    AccHex.HexX = hx;
-    AccHex.HexY = hy;
+    SetAccessory( ITEM_ACCESSORY_HEX );
+    SetHexX( hx );
+    SetHexY( hy );
 
     // Hex
     HexX = hx;

@@ -7,7 +7,7 @@
 
 enum class EntityType
 {
-    Invalid = 0,
+    None = 0,
     Custom,
     Item,
     Client,
@@ -35,9 +35,16 @@ public:
     Methods          Meths;
     const uint       Id;
     const EntityType Type;
+    hash             ProtoId;
     mutable long     RefCounter;
     bool             IsDestroyed;
     bool             IsDestroying;
+
+    // Entity*   Parent;
+    // EntityVec Children;
+    // void       SetParent( Entity* parent ) { Parent = parent; }
+    // EntityType GetParentType()             { return Parent ? Parent->Type : EntityType::None; }
+    // uint       GetParentId()               { return Parent ? Parent->Id : 0; }
 
     uint GetId();
     void SetId( uint id );

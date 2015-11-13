@@ -112,7 +112,9 @@ void ProtoMap::Clear()
 
 bool ProtoMap::LoadTextFormat( const char* buf )
 {
-    IniParser map_ini( buf );
+    IniParser map_ini;
+    map_ini.CollectContent();
+    map_ini.AppendStr( buf );
 
     // Header
     memzero( &Header, sizeof( Header ) );
@@ -491,6 +493,8 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                                 #ifndef FONLINE_MAPPER
                                 if( cur_prop )
                                 {
+                                    if( !Str::IsNumber( svalue ) )
+                                        Str::GetHash( svalue );
                                     if( cur_prop->IsHash() )
                                         mobj.Props->push_back( Str::GetHash( svalue ) );
                                     else if( cur_prop->IsEnum() )

@@ -769,11 +769,11 @@ bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptStr
         if( !item->FuncId[ event_type ] )
             SCRIPT_ERROR_R0( "Function not found." );
 
-        if( event_type == ITEM_EVENT_WALK && item->Accessory == ITEM_ACCESSORY_HEX )
+        if( event_type == ITEM_EVENT_WALK && item->GetAccessory() == ITEM_ACCESSORY_HEX )
         {
-            Map* map = MapMngr.GetMap( item->AccHex.MapId );
+            Map* map = MapMngr.GetMap( item->GetMapId() );
             if( map )
-                map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_WALK_ITEM );
+                map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_WALK_ITEM );
         }
     }
     else
@@ -781,20 +781,6 @@ bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptStr
         item->FuncId[ event_type ] = 0;
     }
     return true;
-}
-
-hash FOServer::SScriptFunc::Item_get_ProtoId( Item* item )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return item->GetProtoId();
-}
-
-int FOServer::SScriptFunc::Item_get_Type( Item* item )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return item->GetType();
 }
 
 uint FOServer::SScriptFunc::Item_GetCost( Item* item )
@@ -809,17 +795,17 @@ Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     Map* map = nullptr;
-    switch( item->Accessory )
+    switch( item->GetAccessory() )
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, true );
+        Critter* cr = CrMngr.GetCritter( item->GetCritId(), true );
         if( !cr )
             SCRIPT_ERROR_R0( "Critter accessory, critter not found." );
         if( !cr->GetMapId() )
         {
-            hx = cr->Data.WorldX;
-            hy = cr->Data.WorldY;
+            hx = cr->GetWorldX();
+            hy = cr->GetWorldY();
             return nullptr;
         }
         map = MapMngr.GetMap( cr->GetMapId(), true );
@@ -831,18 +817,18 @@ Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort&
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        map = MapMngr.GetMap( item->AccHex.MapId, true );
+        map = MapMngr.GetMap( item->GetMapId(), true );
         if( !map )
             SCRIPT_ERROR_R0( "Hex accessory, map not found." );
-        hx = item->AccHex.HexX;
-        hy = item->AccHex.HexY;
+        hx = item->GetHexX();
+        hy = item->GetHexY();
     }
     break;
     case ITEM_ACCESSORY_CONTAINER:
     {
-        if( item->GetId() == item->AccContainer.ContainerId )
+        if( item->GetId() == item->GetContainerId() )
             SCRIPT_ERROR_R0( "Container accessory, crosslink." );
-        Item* cont = ItemMngr.GetItem( item->AccContainer.ContainerId, false );
+        Item* cont = ItemMngr.GetItem( item->GetContainerId(), false );
         if( !cont )
             SCRIPT_ERROR_R0( "Container accessory, container not found." );
         return Item_GetMapPosition( cont, hx, hy );             // Recursion
@@ -867,10 +853,11 @@ bool FOServer::SScriptFunc::Item_ChangeProto( Item* item, hash pid )
 
     ProtoItem* old_proto_item = item->Proto;
     item->Proto = proto_item;
+    item->ProtoId = pid;
 
-    if( item->Accessory == ITEM_ACCESSORY_CRITTER )
+    if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( item->AccCritter.Id, false );
+        Critter* cr = CrMngr.GetCritter( item->GetCritId(), false );
         if( !cr )
             return true;
         item->Proto = old_proto_item;
@@ -879,13 +866,13 @@ bool FOServer::SScriptFunc::Item_ChangeProto( Item* item, hash pid )
         cr->Send_AddItem( item );
         cr->SendAA_MoveItem( item, ACTION_REFRESH, 0 );
     }
-    else if( item->Accessory == ITEM_ACCESSORY_HEX )
+    else if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
     {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId, true );
+        Map* map = MapMngr.GetMap( item->GetMapId(), true );
         if( !map )
             return true;
-        ushort hx = item->AccHex.HexX;
-        ushort hy = item->AccHex.HexY;
+        ushort hx = item->GetHexX();
+        ushort hy = item->GetHexY();
         item->Proto = old_proto_item;
         map->EraseItem( item->GetId() );
         item->Proto = proto_item;
@@ -898,17 +885,18 @@ void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_f
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    switch( item->Accessory )
+
+    switch( item->GetAccessory() )
     {
     case ITEM_ACCESSORY_CRITTER:
     {
-        //	Critter* cr=CrMngr.GetCrit(item->ACC_CRITTER.Id);
-        //	if(cr) cr->Send_AnimateItem(item,from_frm,to_frm);
+        // Critter* cr=CrMngr.GetCrit(item->ACC_CRITTER.Id);
+        // if(cr) cr->Send_AnimateItem(item,from_frm,to_frm);
     }
     break;
     case ITEM_ACCESSORY_HEX:
     {
-        Map* map = MapMngr.GetMap( item->AccHex.MapId );
+        Map* map = MapMngr.GetMap( item->GetMapId() );
         if( map )
             map->AnimateItem( item, from_frm, to_frm );
     }
@@ -963,17 +951,17 @@ bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
             item->SetIsLightThru( true );
         }
 
-        if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
+        if( item->GetAccessory() == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
         {
-            Map* map = MapMngr.GetMap( item->AccHex.MapId );
+            Map* map = MapMngr.GetMap( item->GetMapId() );
             if( map )
             {
                 if( recache_block && recache_shoot )
-                    map->RecacheHexBlockShoot( item->AccHex.HexX, item->AccHex.HexY );
+                    map->RecacheHexBlockShoot( item->GetHexX(), item->GetHexY() );
                 else if( recache_block )
-                    map->RecacheHexBlock( item->AccHex.HexX, item->AccHex.HexY );
+                    map->RecacheHexBlock( item->GetHexX(), item->GetHexY() );
                 else if( recache_shoot )
-                    map->RecacheHexShoot( item->AccHex.HexX, item->AccHex.HexY );
+                    map->RecacheHexShoot( item->GetHexX(), item->GetHexY() );
             }
         }
     }
@@ -1014,15 +1002,15 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
             item->SetIsLightThru( false );
         }
 
-        if( item->Accessory == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
+        if( item->GetAccessory() == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
         {
-            Map* map = MapMngr.GetMap( item->AccHex.MapId );
+            Map* map = MapMngr.GetMap( item->GetMapId() );
             if( map )
             {
                 if( recache_block )
-                    map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_BLOCK_ITEM );
+                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM );
                 if( recache_shoot )
-                    map->SetHexFlag( item->AccHex.HexX, item->AccHex.HexY, FH_NRAKE_ITEM );
+                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_NRAKE_ITEM );
             }
         }
     }
@@ -1290,20 +1278,6 @@ Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
     return MapMngr.GetMap( cr->GetMapId() );
 }
 
-uint FOServer::SScriptFunc::Crit_GetMapId( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->GetMapId();
-}
-
-hash FOServer::SScriptFunc::Crit_GetMapProtoId( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->GetMapProtoId();
-}
-
 bool FOServer::SScriptFunc::Crit_ChangeCrType( Critter* cr, uint new_type )
 {
     if( cr->IsDestroyed )
@@ -1315,7 +1289,7 @@ bool FOServer::SScriptFunc::Crit_ChangeCrType( Critter* cr, uint new_type )
 
     if( cr->GetCrType() != new_type )
     {
-        if( cr->Data.Multihex < 0 && cr->GetMapId() && !cr->IsDead() )
+        if( cr->GetMultihexBase() < 0 && cr->GetMapId() && !cr->IsDead() )
         {
             uint old_mh = CritType::GetMultihex( cr->GetCrType() );
             uint new_mh = CritType::GetMultihex( new_type );
@@ -1330,7 +1304,7 @@ bool FOServer::SScriptFunc::Crit_ChangeCrType( Critter* cr, uint new_type )
             }
         }
 
-        cr->Data.CrType = new_type;
+        cr->SetCrType( new_type );
         cr->Send_CustomCommand( cr, OTHER_BASE_TYPE, new_type );
         cr->SendA_CustomCommand( OTHER_BASE_TYPE, new_type );
     }
@@ -1390,14 +1364,14 @@ bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     if( hx != cr->GetHexX() || hy != cr->GetHexY() )
     {
-        if( dir < DIRS_COUNT && cr->Data.Dir != dir )
-            cr->Data.Dir = dir;
+        if( dir < DIRS_COUNT && cr->GetDir() != dir )
+            cr->SetDir( dir );
         if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, true ) )
             SCRIPT_ERROR_R0( "Transit fail." );
     }
-    else if( dir < DIRS_COUNT && cr->Data.Dir != dir )
+    else if( dir < DIRS_COUNT && cr->GetDir() != dir )
     {
-        cr->Data.Dir = dir;
+        cr->SetDir( dir );
         cr->Send_Dir( cr );
         cr->SendA_Dir();
     }
@@ -1423,8 +1397,8 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, usho
             MapMngr.GM_LeaveGroup( cr );
             return Crit_TransitToMapHex( cr, map_id, hx, hy, dir, true );
         }
-        if( dir < DIRS_COUNT && cr->Data.Dir != dir )
-            cr->Data.Dir = dir;
+        if( dir < DIRS_COUNT && cr->GetDir() != dir )
+            cr->SetDir( dir );
         if( !cr->GroupMove )
             SCRIPT_ERROR_R0( "Group nullptr." );
         if( !MapMngr.GM_GroupToMap( cr->GroupMove, map, 0, hx, hy, cr->GetDir() ) )
@@ -1434,26 +1408,28 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, usho
     {
         if( cr->GetMapId() != map_id || cr->GetHexX() != hx || cr->GetHexY() != hy )
         {
-            if( dir < DIRS_COUNT && cr->Data.Dir != dir )
-                cr->Data.Dir = dir;
+            if( dir < DIRS_COUNT && cr->GetDir() != dir )
+                cr->SetDir( dir );
             if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, true ) )
                 SCRIPT_ERROR_R0( "Transit from map to map fail." );
         }
-        else if( dir < DIRS_COUNT && cr->Data.Dir != dir )
+        else if( dir < DIRS_COUNT && cr->GetDir() != dir )
         {
-            cr->Data.Dir = dir;
+            cr->SetDir( dir );
             cr->Send_Dir( cr );
             cr->SendA_Dir();
         }
         else
+        {
             return true;
+        }
     }
 
     Location* loc = map->GetLocation( true );
-    if( loc && DistSqrt( cr->Data.WorldX, cr->Data.WorldY, loc->Data.WX, loc->Data.WY ) > loc->GetRadius() )
+    if( loc && DistSqrt( cr->GetWorldX(), cr->GetWorldY(), loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
     {
-        cr->Data.WorldX = loc->Data.WX;
-        cr->Data.WorldY = loc->Data.WY;
+        cr->SetWorldX( loc->GetWorldX() );
+        cr->SetWorldY( loc->GetWorldY() );
     }
     return true;
 }
@@ -1494,10 +1470,10 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, i
     }
 
     Location* loc = map->GetLocation( true );
-    if( loc && DistSqrt( cr->Data.WorldX, cr->Data.WorldY, loc->Data.WX, loc->Data.WY ) > loc->GetRadius() )
+    if( loc && DistSqrt( cr->GetWorldX(), cr->GetWorldY(), loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
     {
-        cr->Data.WorldX = loc->Data.WX;
-        cr->Data.WorldY = loc->Data.WY;
+        cr->SetWorldX( loc->GetWorldX() );
+        cr->SetWorldY( loc->GetWorldY() );
     }
 
     return true;
@@ -1724,7 +1700,7 @@ void FOServer::SScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, usho
         look = cr->GetLookDistance();
 
     cr->ViewMapId = map->GetId();
-    cr->ViewMapPid = map->GetPid();
+    cr->ViewMapPid = map->GetProtoId();
     cr->ViewMapLook = look;
     cr->ViewMapHx = hx;
     cr->ViewMapHy = hy;
@@ -1815,10 +1791,10 @@ void FOServer::SScriptFunc::Crit_SetDir( Critter* cr, uchar dir )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( dir >= DIRS_COUNT )
         SCRIPT_ERROR_R( "Invalid direction arg." );
-    if( cr->Data.Dir == dir )
+    if( cr->GetDir() == dir )
         return;                      // SCRIPT_ERROR_R("Direction already set.");
 
-    cr->Data.Dir = dir;
+    cr->SetDir( dir );
     if( cr->GetMapId() )
     {
         cr->Send_Dir( cr );
@@ -2173,11 +2149,11 @@ bool FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uint count
         SCRIPT_ERROR_R0( "Item not found." );
     if( !count )
         count = item->GetCount();
-    if( item->AccCritter.Slot == to_slot )
+    if( item->GetCritSlot() == to_slot )
         return true;                                    // SCRIPT_ERROR_R0("To slot arg is equal of current item slot.");
     if( count > item->GetCount() )
         SCRIPT_ERROR_R0( "Item count arg is greater than items count." );
-    bool result = cr->MoveItem( item->AccCritter.Slot, to_slot, item_id, count );
+    bool result = cr->MoveItem( item->GetCritSlot(), to_slot, item_id, count );
     if( !result )
         return false;             // SCRIPT_ERROR_R0("Fail to move item.");
     cr->Send_AddItem( item );
@@ -2396,18 +2372,18 @@ void FOServer::SScriptFunc::Crit_SetAnims( Critter* cr, int cond, uint anim1, ui
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cond == 0 || cond == COND_LIFE )
     {
-        cr->Data.Anim1Life = anim1;
-        cr->Data.Anim2Life = anim2;
+        cr->SetAnim1Life( anim1 );
+        cr->SetAnim2Life( anim2 );
     }
     if( cond == 0 || cond == COND_KNOCKOUT )
     {
-        cr->Data.Anim1Knockout = anim1;
-        cr->Data.Anim2Knockout = anim2;
+        cr->SetAnim1Knockout( anim1 );
+        cr->SetAnim2Knockout( anim2 );
     }
     if( cond == 0 || cond == COND_DEAD )
     {
-        cr->Data.Anim1Dead = anim1;
-        cr->Data.Anim2Dead = anim2;
+        cr->SetAnim1Dead( anim1 );
+        cr->SetAnim2Dead( anim2 );
     }
     cr->SendAA_SetAnims( cond, anim1, anim2 );
 }
@@ -2469,14 +2445,20 @@ bool FOServer::SScriptFunc::Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_
     if( !cr->GetMapId() )
         cr->Send_GlobalLocation( loc, true );
 
-    int zx = GM_ZONE( loc->Data.WX );
-    int zy = GM_ZONE( loc->Data.WY );
-    if( cr->GMapFog.Get2Bit( zx, zy ) == GM_FOG_FULL )
+    int          zx = GM_ZONE( loc->GetWorldX() );
+    int          zy = GM_ZONE( loc->GetWorldY() );
+    ScriptArray* gmap_fog = cr->GetGlobalMapFog();
+    if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
+        gmap_fog->Resize( GM_ZONES_FOG_SIZE );
+    TwoBitMask gmap_mask( GM__MAXZONEX, GM__MAXZONEY, (uchar*) gmap_fog->At( 0 ) );
+    if( gmap_mask.Get2Bit( zx, zy ) == GM_FOG_FULL )
     {
-        cr->GMapFog.Set2Bit( zx, zy, GM_FOG_HALF );
+        gmap_mask.Set2Bit( zx, zy, GM_FOG_HALF );
+        cr->SetGlobalMapFog( gmap_fog );
         if( !cr->GetMapId() )
-            cr->Send_GlobalMapFog( zx, zy, cr->GMapFog.Get2Bit( zx, zy ) );
+            cr->Send_GlobalMapFog( zx, zy, GM_FOG_HALF );
     }
+    gmap_fog->Release();
     return true;
 }
 
@@ -2506,9 +2488,18 @@ void FOServer::SScriptFunc::Crit_SetFog( Critter* cr, ushort zone_x, ushort zone
     if( fog < GM_FOG_FULL || fog > GM_FOG_NONE )
         SCRIPT_ERROR_R( "Invalid fog arg." );
 
-    cr->GMapFog.Set2Bit( zone_x, zone_y, fog );
-    if( !cr->GetMapId() )
-        cr->Send_GlobalMapFog( zone_x, zone_y, fog );
+    ScriptArray* gmap_fog = cr->GetGlobalMapFog();
+    if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
+        gmap_fog->Resize( GM_ZONES_FOG_SIZE );
+    TwoBitMask gmap_mask( GM__MAXZONEX, GM__MAXZONEY, (uchar*) gmap_fog->At( 0 ) );
+    if( gmap_mask.Get2Bit( zone_x, zone_y ) != fog )
+    {
+        gmap_mask.Set2Bit( zone_x, zone_y, fog );
+        cr->SetGlobalMapFog( gmap_fog );
+        if( !cr->GetMapId() )
+            cr->Send_GlobalMapFog( zone_x, zone_y, fog );
+    }
+    gmap_fog->Release();
 }
 
 int FOServer::SScriptFunc::Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_y )
@@ -2518,7 +2509,13 @@ int FOServer::SScriptFunc::Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_
     if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
         SCRIPT_ERROR_R0( "Invalid world map pos arg." );
 
-    return cr->GMapFog.Get2Bit( zone_x, zone_y );
+    ScriptArray* gmap_fog = cr->GetGlobalMapFog();
+    if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
+        gmap_fog->Resize( GM_ZONES_FOG_SIZE );
+    TwoBitMask gmap_mask( GM__MAXZONEX, GM__MAXZONEY, (uchar*) gmap_fog->At( 0 ) );
+    int        result = gmap_mask.Get2Bit( zone_x, zone_y );
+    gmap_fog->Release();
+    return result;
 }
 
 void FOServer::SScriptFunc::Cl_ShowContainer( Critter* cl, Critter* cr_cont, Item* item_cont, uchar transfer_type )
@@ -2610,13 +2607,6 @@ bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, ScriptString* func_name
     return true;
 }
 
-hash FOServer::SScriptFunc::Crit_get_ProtoId( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->Data.ProtoId;
-}
-
 uint FOServer::SScriptFunc::Crit_GetMultihex( Critter* cr )
 {
     if( cr->IsDestroyed )
@@ -2630,11 +2620,11 @@ void FOServer::SScriptFunc::Crit_SetMultihex( Critter* cr, int value )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( value < -1 || value > MAX_HEX_OFFSET )
         SCRIPT_ERROR_R( "Invalid multihex arg value." );
-    if( cr->Data.Multihex == value )
+    if( cr->GetMultihexBase() == value )
         return;
 
     uint old_mh = cr->GetMultihex();
-    cr->Data.Multihex = value;
+    cr->SetMultihexBase( value );
     uint new_mh = cr->GetMultihex();
 
     if( old_mh != new_mh && cr->GetMapId() && !cr->IsDead() )
@@ -2741,21 +2731,24 @@ uint FOServer::SScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, Scr
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    uint    index = 0;
-    UIntVec te_vec;
-    for( auto it = cr->CrTimeEvents.begin(), end = cr->CrTimeEvents.end(); it != end; ++it )
+
+    ScriptArray* te_identifier = cr->GetTE_Identifier();
+    UIntVec      te_vec;
+    for( uint i = 0, j = te_identifier->GetSize(); i < j; i++ )
     {
-        Critter::CrTimeEvent& cte = *it;
-        if( cte.Identifier == identifier )
-            te_vec.push_back( index );
-        index++;
+        if( *(int*) te_identifier->At( i ) == identifier )
+            te_vec.push_back( i );
     }
+    te_identifier->Release();
 
     uint size = (uint) te_vec.size();
     if( !size || ( !indexes && !durations && !rates ) )
         return size;
 
-    uint indexes_size = 0, durations_size = 0, rates_size = 0;
+    ScriptArray* te_next_time = nullptr;
+    ScriptArray* te_rate = nullptr;
+
+    uint         indexes_size = 0, durations_size = 0, rates_size = 0;
     if( indexes )
     {
         indexes_size = indexes->GetSize();
@@ -2763,25 +2756,41 @@ uint FOServer::SScriptFunc::Crit_GetTimeEvents( Critter* cr, int identifier, Scr
     }
     if( durations )
     {
+        te_next_time = cr->GetTE_NextTime();
+        RUNTIME_ASSERT( te_next_time->GetSize() == te_identifier->GetSize() );
         durations_size = durations->GetSize();
         durations->Resize( durations_size + size );
     }
     if( rates )
     {
+        te_rate = cr->GetTE_Rate();
+        RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
         rates_size = rates->GetSize();
         rates->Resize( rates_size + size );
     }
 
     for( uint i = 0; i < size; i++ )
     {
-        Critter::CrTimeEvent& cte = cr->CrTimeEvents[ te_vec[ i ] ];
         if( indexes )
+        {
             *(uint*) indexes->At( indexes_size + i ) = te_vec[ i ];
+        }
         if( durations )
-            *(uint*) durations->At( durations_size + i ) = ( cte.NextTime > GameOpt.FullSecond ? cte.NextTime - GameOpt.FullSecond : 0 );
+        {
+            uint next_time = *(uint*) te_next_time->At( te_vec[ i ] );
+            *(uint*) durations->At( durations_size + i ) = ( next_time > GameOpt.FullSecond ? next_time - GameOpt.FullSecond : 0 );
+        }
         if( rates )
-            *(uint*) rates->At( rates_size + i ) = cte.Rate;
+        {
+            *(uint*) rates->At( rates_size + i ) = *(uint*) te_rate->At( te_vec[ i ] );
+        }
     }
+
+    if( te_next_time )
+        te_next_time->Release();
+    if( te_rate )
+        te_rate->Release();
+
     return size;
 }
 
@@ -2793,21 +2802,25 @@ uint FOServer::SScriptFunc::Crit_GetTimeEventsArr( Critter* cr, ScriptArray& fin
     IntVec find_vec;
     Script::AssignScriptArrayInVector( find_vec, &find_identifiers );
 
-    uint    index = 0;
-    UIntVec te_vec;
-    for( auto it = cr->CrTimeEvents.begin(), end = cr->CrTimeEvents.end(); it != end; ++it )
+    ScriptArray* te_identifier = cr->GetTE_Identifier();
+    UIntVec      te_vec;
+    for( uint i = 0, j = te_identifier->GetSize(); i < j; i++ )
     {
-        Critter::CrTimeEvent& cte = *it;
-        if( std::find( find_vec.begin(), find_vec.end(), cte.Identifier ) != find_vec.end() )
-            te_vec.push_back( index );
-        index++;
+        if( std::find( find_vec.begin(), find_vec.end(), *(int*) te_identifier->At( i ) ) != find_vec.end() )
+            te_vec.push_back( i );
     }
 
     uint size = (uint) te_vec.size();
     if( !size || ( !identifiers && !indexes && !durations && !rates ) )
+    {
+        te_identifier->Release();
         return size;
+    }
 
-    uint identifiers_size = 0, indexes_size = 0, durations_size = 0, rates_size = 0;
+    ScriptArray* te_next_time = nullptr;
+    ScriptArray* te_rate = nullptr;
+
+    uint         identifiers_size = 0, indexes_size = 0, durations_size = 0, rates_size = 0;
     if( identifiers )
     {
         identifiers_size = identifiers->GetSize();
@@ -2820,27 +2833,46 @@ uint FOServer::SScriptFunc::Crit_GetTimeEventsArr( Critter* cr, ScriptArray& fin
     }
     if( durations )
     {
+        te_next_time = cr->GetTE_NextTime();
+        RUNTIME_ASSERT( te_next_time->GetSize() == te_identifier->GetSize() );
         durations_size = durations->GetSize();
         durations->Resize( durations_size + size );
     }
     if( rates )
     {
+        te_rate = cr->GetTE_Rate();
+        RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
         rates_size = rates->GetSize();
         rates->Resize( rates_size + size );
     }
 
     for( uint i = 0; i < size; i++ )
     {
-        Critter::CrTimeEvent& cte = cr->CrTimeEvents[ te_vec[ i ] ];
         if( identifiers )
-            *(int*) identifiers->At( identifiers_size + i ) = cte.Identifier;
+        {
+            *(int*) identifiers->At( identifiers_size + i ) = *(uint*) te_identifier->At( te_vec[ i ] );
+        }
         if( indexes )
+        {
             *(uint*) indexes->At( indexes_size + i ) = te_vec[ i ];
+        }
         if( durations )
-            *(uint*) durations->At( durations_size + i ) = ( cte.NextTime > GameOpt.FullSecond ? cte.NextTime - GameOpt.FullSecond : 0 );
+        {
+            uint next_time = *(uint*) te_next_time->At( te_vec[ i ] );
+            *(uint*) durations->At( durations_size + i ) = ( next_time > GameOpt.FullSecond ? next_time - GameOpt.FullSecond : 0 );
+        }
         if( rates )
-            *(uint*) rates->At( rates_size + i ) = cte.Rate;
+        {
+            *(uint*) rates->At( rates_size + i ) = *(uint*) te_rate->At( te_vec[ i ] );
+        }
     }
+
+    te_identifier->Release();
+    if( te_next_time )
+        te_next_time->Release();
+    if( te_rate )
+        te_rate->Release();
+
     return size;
 }
 
@@ -2848,18 +2880,35 @@ void FOServer::SScriptFunc::Crit_ChangeTimeEvent( Critter* cr, uint index, uint 
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( index >= cr->CrTimeEvents.size() )
+
+    ScriptArray* te_func_num = cr->GetTE_FuncNum();
+    ScriptArray* te_identifier = cr->GetTE_Identifier();
+    RUNTIME_ASSERT( te_func_num->GetSize() == te_identifier->GetSize() );
+    if( index >= te_func_num->GetSize() )
+    {
+        te_func_num->Release();
+        te_identifier->Release();
         SCRIPT_ERROR_R( "Index arg is greater than maximum time events." );
-    Critter::CrTimeEvent cte = cr->CrTimeEvents[ index ];
+    }
+
+    hash func_num = *(hash*) te_func_num->At( index );
+    int  identifier = *(int*) te_identifier->At( index );
+    te_func_num->Release();
+    te_identifier->Release();
+
     cr->EraseCrTimeEvent( index );
-    cr->AddCrTimeEvent( cte.FuncNum, new_rate, new_duration, cte.Identifier );
+    cr->AddCrTimeEvent( func_num, new_rate, new_duration, identifier );
 }
 
 void FOServer::SScriptFunc::Crit_EraseTimeEvent( Critter* cr, uint index )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( index >= cr->CrTimeEvents.size() )
+
+    ScriptArray* te_func_num = cr->GetTE_FuncNum();
+    uint         size = te_func_num->GetSize();
+    te_func_num->Release();
+    if( index >= size )
         SCRIPT_ERROR_R( "Index arg is greater than maximum time events." );
     cr->EraseCrTimeEvent( index );
 }
@@ -2868,18 +2917,42 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEvents( Critter* cr, int identifier )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    ScriptArray* te_next_time = cr->GetTE_NextTime();
+    ScriptArray* te_func_num = cr->GetTE_FuncNum();
+    ScriptArray* te_rate = cr->GetTE_Rate();
+    ScriptArray* te_identifier = cr->GetTE_Identifier();
+    RUNTIME_ASSERT( te_next_time->GetSize() == te_func_num->GetSize() );
+    RUNTIME_ASSERT( te_func_num->GetSize() == te_rate->GetSize() );
+    RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
+
     uint result = 0;
-    for( auto it = cr->CrTimeEvents.begin(); it != cr->CrTimeEvents.end();)
+    for( uint i = 0; i < te_identifier->GetSize();)
     {
-        Critter::CrTimeEvent& cte = *it;
-        if( cte.Identifier == identifier )
+        if( identifier == *(int*) te_identifier->At( i ) )
         {
-            it = cr->CrTimeEvents.erase( it );
             result++;
+            te_next_time->RemoveAt( i );
+            te_func_num->RemoveAt( i );
+            te_rate->RemoveAt( i );
+            te_identifier->RemoveAt( i );
         }
         else
-            ++it;
+        {
+            i++;
+        }
     }
+
+    cr->SetTE_NextTime( te_next_time );
+    cr->SetTE_FuncNum( te_func_num );
+    cr->SetTE_Rate( te_rate );
+    cr->SetTE_Identifier( te_identifier );
+
+    te_next_time->Release();
+    te_func_num->Release();
+    te_rate->Release();
+    te_identifier->Release();
+
     return result;
 }
 
@@ -2887,22 +2960,45 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, ScriptArray& i
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    IntVec identifiers_;
+    Script::AssignScriptArrayInVector( identifiers_, &identifiers );
+
+    ScriptArray* te_next_time = cr->GetTE_NextTime();
+    ScriptArray* te_func_num = cr->GetTE_FuncNum();
+    ScriptArray* te_rate = cr->GetTE_Rate();
+    ScriptArray* te_identifier = cr->GetTE_Identifier();
+    RUNTIME_ASSERT( te_next_time->GetSize() == te_func_num->GetSize() );
+    RUNTIME_ASSERT( te_func_num->GetSize() == te_rate->GetSize() );
+    RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
+
     uint result = 0;
-    for( int i = 0, j = identifiers.GetSize(); i < j; i++ )
+    for( uint i = 0; i < te_func_num->GetSize();)
     {
-        int identifier = *(int*) identifiers.At( i );
-        for( auto it = cr->CrTimeEvents.begin(); it != cr->CrTimeEvents.end();)
+        if( std::find( identifiers_.begin(), identifiers_.end(), *(int*) te_identifier->At( i ) ) != identifiers_.end() )
         {
-            Critter::CrTimeEvent& cte = *it;
-            if( cte.Identifier == identifier )
-            {
-                it = cr->CrTimeEvents.erase( it );
-                result++;
-            }
-            else
-                ++it;
+            result++;
+            te_next_time->RemoveAt( i );
+            te_func_num->RemoveAt( i );
+            te_rate->RemoveAt( i );
+            te_identifier->RemoveAt( i );
+        }
+        else
+        {
+            i++;
         }
     }
+
+    cr->SetTE_NextTime( te_next_time );
+    cr->SetTE_FuncNum( te_func_num );
+    cr->SetTE_Rate( te_rate );
+    cr->SetTE_Identifier( te_identifier );
+
+    te_next_time->Release();
+    te_func_num->Release();
+    te_rate->Release();
+    te_identifier->Release();
+
     return result;
 }
 
@@ -3322,20 +3418,6 @@ void FOServer::SScriptFunc::Crit_EventSmthTurnBasedProcess( Critter* cr, Critter
     cr->EventSmthTurnBasedProcess( from_cr, map, begin_turn );
 }
 
-uint FOServer::SScriptFunc::Map_GetId( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return map->GetId();
-}
-
-hash FOServer::SScriptFunc::Map_get_ProtoId( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return map->GetPid();
-}
-
 Location* FOServer::SScriptFunc::Map_GetLocation( Map* map )
 {
     if( map->IsDestroyed )
@@ -3357,16 +3439,9 @@ bool FOServer::SScriptFunc::Map_SetScript( Map* map, ScriptString* func_name )
     }
     else
     {
-        map->Data.ScriptId = 0;
+        map->SetScriptId( 0 );
     }
     return true;
-}
-
-hash FOServer::SScriptFunc::Map_GetScriptId( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return map->Data.ScriptId;
 }
 
 bool FOServer::SScriptFunc::Map_SetEvent( Map* map, int event_type, ScriptString* func_name )
@@ -3414,87 +3489,6 @@ void FOServer::SScriptFunc::Map_SetLoopTime( Map* map, uint loop_num, uint ms )
     map->SetLoopTime( loop_num, ms );
 }
 
-uchar FOServer::SScriptFunc::Map_GetRain( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return map->GetRain();
-}
-
-void FOServer::SScriptFunc::Map_SetRain( Map* map, uchar capacity )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    map->SetRain( capacity );
-}
-
-int FOServer::SScriptFunc::Map_GetTime( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return map->GetTime();
-}
-
-void FOServer::SScriptFunc::Map_SetTime( Map* map, int time )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    map->SetTime( time );
-}
-
-uint FOServer::SScriptFunc::Map_GetDayTime( Map* map, uint day_part )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( day_part >= 4 )
-        SCRIPT_ERROR_R0( "Invalid day part arg." );
-    return map->GetDayTime( day_part );
-}
-
-void FOServer::SScriptFunc::Map_SetDayTime( Map* map, uint day_part, uint time )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( day_part >= 4 )
-        SCRIPT_ERROR_R( "Invalid day part arg." );
-    if( time >= 1440 )
-        SCRIPT_ERROR_R( "Invalid time arg." );
-    map->SetDayTime( day_part, time );
-}
-
-void FOServer::SScriptFunc::Map_GetDayColor( Map* map, uint day_part, uchar& r, uchar& g, uchar& b )
-{
-    r = g = b = 0;
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( day_part >= 4 )
-        SCRIPT_ERROR_R( "Invalid day part arg." );
-    map->GetDayColor( day_part, r, g, b );
-}
-
-void FOServer::SScriptFunc::Map_SetDayColor( Map* map, uint day_part, uchar r, uchar g, uchar b )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( day_part >= 4 )
-        SCRIPT_ERROR_R( "Invalid day part arg." );
-    map->SetDayColor( day_part, r, g, b );
-}
-
-void FOServer::SScriptFunc::Map_SetTurnBasedAvailability( Map* map, bool value )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    map->Data.IsTurnBasedAviable = value;
-}
-
-bool FOServer::SScriptFunc::Map_IsTurnBasedAvailability( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return map->Data.IsTurnBasedAviable;
-}
-
 void FOServer::SScriptFunc::Map_BeginTurnBased( Map* map, Critter* first_turn_crit )
 {
     if( map->IsDestroyed )
@@ -3526,24 +3520,6 @@ int FOServer::SScriptFunc::Map_GetTurnBasedSequence( Map* map, ScriptArray& crit
         SCRIPT_ERROR_R0( "Map is not in turn based state." );
     Script::AppendVectorToArray( map->TurnSequence, &critters_ids );
     return ( map->TurnSequenceCur >= 0 && map->TurnSequenceCur < (int) map->TurnSequence.size() ) ? map->TurnSequenceCur : -1;
-}
-
-void FOServer::SScriptFunc::Map_SetData( Map* map, uint index, int value )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( index >= MAP_MAX_DATA )
-        SCRIPT_ERROR_R( "Index arg invalid value." );
-    map->SetData( index, value );
-}
-
-int FOServer::SScriptFunc::Map_GetData( Map* map, uint index )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( index >= MAP_MAX_DATA )
-        SCRIPT_ERROR_R0( "Index arg invalid value." );
-    return map->GetData( index );
 }
 
 Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count )
@@ -3761,7 +3737,7 @@ uint FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, hash pid, int find_
         for( auto it = map_npcs.begin(), end = map_npcs.end(); it != end; ++it )
         {
             Npc* npc = *it;
-            if( npc->Data.ProtoId == pid && npc->CheckFind( find_type ) )
+            if( npc->GetProtoId() == pid && npc->CheckFind( find_type ) )
                 cr_vec.push_back( npc );
         }
     }
@@ -4438,13 +4414,6 @@ void FOServer::SScriptFunc::Map_EventTurnBasedProcess( Map* map, Critter* cr, bo
     map->EventTurnBasedProcess( cr, begin_turn );
 }
 
-hash FOServer::SScriptFunc::Location_get_ProtoId( Location* loc )
-{
-    if( loc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return loc->GetPid();
-}
-
 bool FOServer::SScriptFunc::Location_SetEvent( Location* loc, int event_type, ScriptString* func_name )
 {
     if( loc->IsDestroyed )
@@ -4477,7 +4446,7 @@ Map* FOServer::SScriptFunc::Location_GetMap( Location* loc, hash map_pid )
     for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
     {
         Map* map = *it;
-        if( map->GetPid() == map_pid )
+        if( map->GetProtoId() == map_pid )
         {
             SYNC_LOCK( map );
             return map;
@@ -4797,12 +4766,9 @@ void FOServer::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, 
 uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, ScriptArray* critters )
 {
     // Create and generate location
-    Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy, 0 );
+    Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy );
     if( !loc )
-    {
-        WriteLogF( _FUNC_, " - Unable to create location '%s'.\n", Str::GetName( loc_pid ) );
         SCRIPT_ERROR_R0( "Unable to create location." );
-    }
 
     // Add Known locations to critters
     if( !critters )
@@ -4817,14 +4783,20 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
         if( loc->IsAutomaps() )
             cr->Send_AutomapsInfo( nullptr, loc );
 
-        ushort zx = GM_ZONE( loc->Data.WX );
-        ushort zy = GM_ZONE( loc->Data.WY );
-        if( cr->GMapFog.Get2Bit( zx, zy ) == GM_FOG_FULL )
+        ushort       zx = GM_ZONE( loc->GetWorldX() );
+        ushort       zy = GM_ZONE( loc->GetWorldY() );
+        ScriptArray* gmap_fog = cr->GetGlobalMapFog();
+        if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
+            gmap_fog->Resize( GM_ZONES_FOG_SIZE );
+        TwoBitMask gmap_mask( GM__MAXZONEX, GM__MAXZONEY, (uchar*) gmap_fog->At( 0 ) );
+        if( gmap_mask.Get2Bit( zx, zy ) == GM_FOG_FULL )
         {
-            cr->GMapFog.Set2Bit( zx, zy, GM_FOG_HALF );
+            gmap_mask.Set2Bit( zx, zy, GM_FOG_HALF );
+            cr->SetGlobalMapFog( gmap_fog );
             if( !cr->GetMapId() )
                 cr->Send_GlobalMapFog( zx, zy, GM_FOG_HALF );
         }
+        gmap_fog->Release();
     }
     return loc->GetId();
 }
@@ -4840,17 +4812,6 @@ void FOServer::SScriptFunc::Global_DeleteLocationById( uint loc_id )
     if( loc )
         MapMngr.DeleteLocation( loc, nullptr );
 }
-
-// void FOServer::SScriptFunc::Global_GetProtoCritter( hash proto_id, ScriptArray& data )
-// {
-//     CritData* data_ = CrMngr.GetProto( proto_id );
-//     if( !data_ )
-//         SCRIPT_ERROR_R( "Proto critter not found." );
-// //     IntVec data__;
-// //     data__.resize( MAX_PARAMS );
-// //     memcpy( &data__[ 0 ], data_->Params, sizeof( data_->Params ) );
-// //     Script::AppendVectorToArray( data__, &data );
-// }
 
 CraftItem* FOServer::SScriptFunc::Global_GetCraftItem( uint num )
 {
@@ -4900,7 +4861,7 @@ ScriptString* FOServer::SScriptFunc::Global_GetPlayerName( uint id )
     if( Singleplayer )
     {
         if( id == 1 )
-            return ScriptString::Create( SingleplayerSave.CrData.Name );
+            return ScriptString::Create( SingleplayerSave.Name );
         return nullptr;
     }
 
@@ -4957,7 +4918,7 @@ uint FOServer::SScriptFunc::Global_GetLocations( ushort wx, ushort wy, uint radi
     for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
         Location* loc = *it;
-        if( DistSqrt( wx, wy, loc->Data.WX, loc->Data.WY ) <= radius + loc->GetRadius() )
+        if( DistSqrt( wx, wy, loc->GetWorldX(), loc->GetWorldY() ) <= radius + loc->GetRadius() )
             locs_.push_back( loc );
     }
 
@@ -4979,8 +4940,8 @@ uint FOServer::SScriptFunc::Global_GetVisibleLocations( ushort wx, ushort wy, ui
     for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
         Location* loc = *it;
-        if( DistSqrt( wx, wy, loc->Data.WX, loc->Data.WY ) <= radius + loc->GetRadius() &&
-            ( loc->IsVisible() || ( cr && cr->IsPlayer() && ( (Client*) cr )->CheckKnownLocById( loc->GetId() ) ) ) )
+        if( DistSqrt( wx, wy, loc->GetWorldX(), loc->GetWorldY() ) <= radius + loc->GetRadius() &&
+            ( loc->IsLocVisible() || ( cr && cr->IsPlayer() && ( (Client*) cr )->CheckKnownLocById( loc->GetId() ) ) ) )
             locs_.push_back( loc );
     }
 
@@ -5273,14 +5234,16 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     else
         cl_map1.push_back( (Client*) cr2 );
 
-    cr1->SetMaps( map2->GetId(), map2->GetPid() );
-    cr2->SetMaps( map1->GetId(), map1->GetPid() );
+    cr1->SetMapId( map2->GetId() );
+    cr1->SetMapPid( map2->GetProtoId() );
+    cr2->SetMapId( map1->GetId() );
+    cr2->SetMapPid( map1->GetProtoId() );
 
     map2->Unlock();
     map1->Unlock();
 
     // Swap data
-    std::swap( cr1->Data, cr2->Data );
+    std::swap( cr1->Props, cr2->Props );
     std::swap( cr1->KnockoutAp, cr2->KnockoutAp );
     std::swap( cr1->Flags, cr2->Flags );
     SwapArray( cr1->FuncId, cr2->FuncId );
@@ -5289,7 +5252,6 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     std::swap( cr1->AccessContainerId, cr2->AccessContainerId );
     std::swap( cr1->ItemTransferCount, cr2->ItemTransferCount );
     std::swap( cr1->ApRegenerationTick, cr2->ApRegenerationTick );
-    std::swap( cr1->CrTimeEvents, cr2->CrTimeEvents );
 
     // Swap inventory
     if( with_inventory )
@@ -5413,7 +5375,7 @@ uint FOServer::SScriptFunc::Global_GetAllNpc( hash pid, ScriptArray* npc )
     for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
     {
         Npc* npc_ = *it;
-        if( !npc_->IsDestroyed && ( !pid || pid == npc_->Data.ProtoId ) )
+        if( !npc_->IsDestroyed && ( !pid || pid == npc_->GetProtoId() ) )
             npcs_.push_back( npc_ );
     }
     if( !npcs_.size() )
@@ -5432,7 +5394,7 @@ uint FOServer::SScriptFunc::Global_GetAllMaps( hash pid, ScriptArray* maps )
     for( auto it = maps_.begin(), end = maps_.end(); it != end; ++it )
     {
         Map* map = *it;
-        if( !pid || pid == map->GetPid() )
+        if( !pid || pid == map->GetProtoId() )
             maps__.push_back( map );
     }
 
@@ -5454,7 +5416,7 @@ uint FOServer::SScriptFunc::Global_GetAllLocations( hash pid, ScriptArray* locat
     for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
     {
         Location* loc = *it;
-        if( !pid || pid == loc->GetPid() )
+        if( !pid || pid == loc->GetProtoId() )
             locs_.push_back( loc );
     }
 
@@ -5469,7 +5431,7 @@ uint FOServer::SScriptFunc::Global_GetAllLocations( hash pid, ScriptArray* locat
 
 ScriptString* FOServer::SScriptFunc::Global_GetScriptName( hash script_id )
 {
-    return ScriptString::Create( Script::GetScriptFuncName( script_id ) );
+    return ScriptString::Create( Str::GetName( script_id ) );
 }
 
 void FOServer::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )

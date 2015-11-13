@@ -136,7 +136,7 @@ public:
 
     // Maps stuff
 public:
-    bool AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint radius );
+    bool AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint radius, bool transit );
     void EraseCrFromMap( Critter* cr, Map* map, ushort hex_x, ushort hex_y );
     bool TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, bool force );
     bool TransitToGlobal( Critter* cr, uint rule, uchar follow_type, bool force );
@@ -166,10 +166,10 @@ private:
     volatile bool runGarbager;
 
 public:
-    bool           RestoreLocation( uint id, Location::LocData& data, Properties& props, UIntVec& map_ids, vector< Map::MapData >& map_datas, vector< Properties* > map_props );
+    Location*      CreateLocation( hash proto_id, ushort wx, ushort wy );
+    bool           RestoreLocation( uint id, hash proto_id, Properties& props );
     ProtoLocation* GetProtoLocation( hash loc_pid );
     ProtoLocation* GetProtoLocationByIndex( uint index );
-    Location*      CreateLocation( hash loc_pid, ushort wx, ushort wy, uint loc_id );
     Location*      GetLocationByMap( uint map_id );
     Location*      GetLocation( uint loc_id );
     Location*      GetLocationByPid( hash loc_pid, uint skip_count );
@@ -185,7 +185,8 @@ private:
     uint        pathNumCur;
 
 public:
-    Map*         CreateMap( hash map_pid, Location* loc, uint map_id );
+    Map*         CreateMap( hash proto_id, Location* loc );
+    bool         RestoreMap( uint id, hash proto_id, Properties& props );
     Map*         GetMap( uint map_id, bool sync_lock = true );
     Map*         GetMapByPid( hash map_pid, uint skip_count );
     void         GetMaps( MapVec& maps, bool lock );
