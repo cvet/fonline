@@ -637,8 +637,8 @@ Animation3d* ResourceManager::GetCrit3dAnim( uint crtype, uint anim1, uint anim2
 
     if( crtype < critter3d.size() && critter3d[ crtype ] )
     {
-        critter3d[ crtype ]->SetAnimation( anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH );
         critter3d[ crtype ]->SetDir( dir );
+        critter3d[ crtype ]->SetAnimation( anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH );
         return critter3d[ crtype ];
     }
 

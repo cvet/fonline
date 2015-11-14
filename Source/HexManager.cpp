@@ -4258,12 +4258,12 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             }
 
             CritterCl* cr = new CritterCl( --any_id );
+            cr->ProtoId = o->ProtoId;
             cr->Props = proto->Props;
             cr->ChangeCrType( proto->GetCrType() );
             cr->SetHexX( o->MapX );
             cr->SetHexY( o->MapY );
             cr->SetDir( (uchar) o->MCritter.Dir );
-            cr->Pid = o->ProtoId;
             cr->Init();
             if( pitem_main )
                 cr->DefItemSlotHand->SetProto( pitem_main );

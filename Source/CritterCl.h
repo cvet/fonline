@@ -82,7 +82,6 @@ public:
     CLASS_PROPERTY( uchar, PerkSilentRunning );
 
     // Data
-    hash          Pid;
     uint          NameColor;
     uint          ContourColor;
     UShortVec     LastHexX, LastHexY;

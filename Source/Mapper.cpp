@@ -1463,7 +1463,7 @@ void FOMapper::MainLoop()
                 bool       err_move = ( ( !cr->IsRunning && !CritType::IsCanWalk( cr->GetCrType() ) ) || ( cr->IsRunning && !CritType::IsCanRun( cr->GetCrType() ) ) );
                 ushort     old_hx = cr->GetHexX();
                 ushort     old_hy = cr->GetHexY();
-                MapObject* mobj = FindMapObject( old_hx, old_hy, MAP_OBJECT_CRITTER, cr->Pid, false );
+                MapObject* mobj = FindMapObject( old_hx, old_hy, MAP_OBJECT_CRITTER, cr->ProtoId, false );
                 if( !err_move && mobj && HexMngr.TransitCritter( cr, cr->MoveSteps[ 0 ].first, cr->MoveSteps[ 0 ].second, true, false ) )
                 {
                     cr->MoveSteps.erase( cr->MoveSteps.begin() );
@@ -1518,7 +1518,7 @@ void FOMapper::MainLoop()
                 CritterCl* cr = it->second;
                 if( cr->SprDrawValid )
                 {
-                    MapObject* mobj = FindMapObject( cr->GetHexX(), cr->GetHexY(), MAP_OBJECT_CRITTER, cr->Pid, false );
+                    MapObject* mobj = FindMapObject( cr->GetHexX(), cr->GetHexY(), MAP_OBJECT_CRITTER, cr->ProtoId, false );
                     ProtoCritter*  proto = CrMngr.GetProto( mobj->ProtoId );
                     if( !mobj || !proto )
                         continue;
@@ -3658,7 +3658,7 @@ void FOMapper::SelectAddCrit( CritterCl* npc )
 {
     if( !npc )
         return;
-    MapObject* mobj = FindMapObject( npc->GetHexX(), npc->GetHexY(), MAP_OBJECT_CRITTER, npc->Pid, true );
+    MapObject* mobj = FindMapObject( npc->GetHexX(), npc->GetHexY(), MAP_OBJECT_CRITTER, npc->ProtoId, true );
     if( !mobj )
         return;
     SelectAdd( mobj );
@@ -4260,13 +4260,13 @@ void FOMapper::ParseNpc( hash pid, ushort hx, ushort hy )
     SelectClear();
 
     CritterCl* cr = new CritterCl( ++AnyId );
+    cr->ProtoId = pid;
     cr->Props = proto->Props;
     cr->ChangeCrType( proto->GetCrType() );
     cr->SetHexX( hx );
     cr->SetHexY( hy );
     cr->SetDir( NpcDir );
     cr->SetCond( COND_LIFE );
-    cr->Pid = pid;
     cr->Init();
 
     MapObject* mobj = new MapObject();
@@ -4323,13 +4323,13 @@ MapObject* FOMapper::ParseMapObj( MapObject* mobj )
         mobj->RunTime.FromMap = CurProtoMap;
 
         CritterCl* cr = new CritterCl( ++AnyId );
+        cr->ProtoId = mobj->ProtoId;
         cr->Props = proto->Props;
         cr->ChangeCrType( proto->GetCrType() );
         cr->SetHexX( mobj->MapX );
         cr->SetHexY( mobj->MapY );
         cr->SetDir( (uchar) mobj->MCritter.Dir );
         cr->SetCond( COND_LIFE );
-        cr->Pid = mobj->ProtoId;
         cr->Init();
         mobj->RunTime.MapObjId = cr->GetId();
         HexMngr.AddCritter( cr );
@@ -4627,7 +4627,7 @@ void FOMapper::CurMMouseDown()
                 int dir = o->MapNpc->GetDir() + 1;
                 if( dir >= DIRS_COUNT )
                     dir = 0;
-                o->MapNpc->SetDir( dir );
+                o->MapNpc->ChangeDir( dir );
                 o->MapObj->MCritter.Dir = dir;
             }
         }
@@ -6569,7 +6569,7 @@ MapObject* FOMapper::SScriptFunc::Global_GetMonitorObject( int x, int y, bool ig
     }
     else if( cr )
     {
-        mobj = Self->FindMapObject( cr->GetHexX(), cr->GetHexY(), MAP_OBJECT_CRITTER, cr->Pid, false );
+        mobj = Self->FindMapObject( cr->GetHexX(), cr->GetHexY(), MAP_OBJECT_CRITTER, cr->ProtoId, false );
     }
     return mobj;
 }

@@ -3144,7 +3144,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     Bin >> multihex;
 
     // Npc
-    hash npc_pid;
+    hash npc_pid = 0;
     if( is_npc )
         Bin >> npc_pid;
 
@@ -3171,6 +3171,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     else
     {
         CritterCl* cr = new CritterCl( crid );
+        cr->ProtoId = npc_pid;
         cr->SetHexX( hx );
         cr->SetHexY( hy );
         cr->SetDir( dir );
@@ -3187,7 +3188,6 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
         if( is_npc )
         {
-            cr->Pid = npc_pid;
             if( cr->GetDialogId() && MsgDlg->Count( STR_NPC_NAME( cr->GetDialogId() ) ) )
                 *cr->Name = MsgDlg->GetStr( STR_NPC_NAME( cr->GetDialogId() ) );
             else
@@ -3708,9 +3708,8 @@ void FOClient::Net_OnCritterDir()
     }
 
     CritterCl* cr = GetCritter( crid );
-    if( !cr )
-        return;
-    cr->SetDir( dir );
+    if( cr )
+        cr->ChangeDir( dir );
 }
 
 void FOClient::Net_OnCritterMove()
@@ -4222,7 +4221,7 @@ void FOClient::Net_OnCritterXY()
     }
 
     if( cr->GetDir() != dir )
-        cr->SetDir( dir );
+        cr->ChangeDir( dir );
 
     if( cr->GetHexX() != hx || cr->GetHexY() != hy )
     {
@@ -7015,7 +7014,7 @@ label_EndMove:
             if( dir < 0 )
                 dir = DIRS_COUNT - 1;
         }
-        Chosen->SetDir( dir );
+        Chosen->ChangeDir( dir );
         Net_SendDir();
     }
     break;
@@ -7218,7 +7217,7 @@ label_EndMove:
             uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy );
             if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy ) >= 1 && Chosen->GetDir() != dir )
             {
-                Chosen->SetDir( dir );
+                Chosen->ChangeDir( dir );
                 Net_SendDir();
             }
         }
@@ -7479,7 +7478,7 @@ label_EndMove:
             uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
             if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
             {
-                Chosen->SetDir( dir );
+                Chosen->ChangeDir( dir );
                 Net_SendDir();
             }
         }
@@ -7549,7 +7548,7 @@ label_EndMove:
                 uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), item->GetHexX(), item->GetHexY() );
                 if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), item->GetHexX(), item->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
                 {
-                    Chosen->SetDir( dir );
+                    Chosen->ChangeDir( dir );
                     Net_SendDir();
                 }
             }
@@ -7595,7 +7594,7 @@ label_EndMove:
         uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), item->GetHexX(), item->GetHexY() );
         if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), item->GetHexX(), item->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
         {
-            Chosen->SetDir( dir );
+            Chosen->ChangeDir( dir );
             Net_SendDir();
         }
 
@@ -7650,7 +7649,7 @@ label_EndMove:
         uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
         if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
         {
-            Chosen->SetDir( dir );
+            Chosen->ChangeDir( dir );
             Net_SendDir();
         }
 
@@ -7690,7 +7689,7 @@ label_EndMove:
         uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy );
         if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy ) >= 1 && Chosen->GetDir() != dir )
         {
-            Chosen->SetDir( dir );
+            Chosen->ChangeDir( dir );
             Net_SendDir();
         }
 
@@ -7737,7 +7736,7 @@ label_EndMove:
         uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
         if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
         {
-            Chosen->SetDir( dir );
+            Chosen->ChangeDir( dir );
             Net_SendDir();
         }
 
@@ -10184,7 +10183,7 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int find_type, S
         for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
         {
             CritterCl* cr = it->second;
-            if( cr->IsNpc() && cr->Pid == pid && cr->CheckFind( find_type ) )
+            if( cr->IsNpc() && cr->ProtoId == pid && cr->CheckFind( find_type ) )
                 cr_vec.push_back( cr );
         }
     }

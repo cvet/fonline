@@ -940,7 +940,7 @@ const char* Str::GetName( hash h )
     if( it == HashNames.end() )
     {
         static THREAD char error[ MAX_FOTEXT ];
-        Format( error, "(unknown hash %08X)", h );
+        Format( error, "(unknown hash %u)", h );
         return error;
     }
     return it->second;

@@ -4533,6 +4533,21 @@ void FOServer::Dump_Work( void* args )
     if( !data->SaveFile( fname, PT_ROOT ) )
         WriteLog( "Unable to save world to '%s'.\n", fname );
 
+    // Delete old dump files
+    for( uint index : SaveWorldDeleteIndexes )
+    {
+        char  dir[ MAX_FOTEXT ];
+        FileManager::ExtractDir( fname, dir );
+        char  path[ MAX_FOTEXT ];
+        void* f = FileOpen( Str::Format( path, "%sAuto%04d.foworld", dir, index ), false );
+        if( f )
+        {
+            FileClose( f );
+            FileDelete( path );
+        }
+    }
+    SaveWorldDeleteIndexes.clear();
+
     // Clean up
     delete data;
     delete[] fname;

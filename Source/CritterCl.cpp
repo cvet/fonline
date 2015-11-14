@@ -82,7 +82,6 @@ CLASS_PROPERTY_IMPL( CritterCl, PerkSilentRunning );
 CritterCl::CritterCl( uint id ): Entity( id, EntityType::CritterCl, PropertiesRegistrator )
 {
     SprId = 0;
-    Pid = 0;
     NameColor = 0;
     ContourColor = 0;
     Flags = 0;
@@ -1154,6 +1153,8 @@ void CritterCl::AnimateStay()
     }
     else
     {
+        Anim3d->SetDir( GetDir() );
+
         int scale_factor = GetScaleFactor();
         if( scale_factor != 0 )
         {

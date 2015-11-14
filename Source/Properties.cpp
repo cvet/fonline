@@ -1185,8 +1185,12 @@ static const char* ReadToken( const char* str, string& result )
         {
             if( length == 1 && *s == '\\' )
             {
-                Str::DecodeUTF8( ++s, &length );
-                s += length;
+                ++s;
+                if( *s )
+                {
+                    Str::DecodeUTF8( s, &length );
+                    s += length;
+                }
             }
             else if( length == 1 && *s == '{' )
             {
@@ -1317,7 +1321,17 @@ static string DecodeString( const string& str )
             case 'n':
                 result.append( "\n" );
                 break;
+            case '{':
+                result.append( "{" );
+                break;
+            case '}':
+                result.append( "\n" );
+                break;
+            case '\\':
+                result.append( "\\" );
+                break;
             default:
+                result.append( 1, '\\' );
                 result.append( s, length );
                 break;
             }
@@ -1330,7 +1344,7 @@ static string DecodeString( const string& str )
         s += length;
     }
 
-    if( is_braces && length == 1 && result.back() == '"' )
+    if( is_braces && length == 1 && result.back() == '}' )
         result.pop_back();
 
     return result;
