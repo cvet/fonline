@@ -302,6 +302,8 @@ void FOServer::RemoveClient( Client* cl )
         if( !cl->GetClientToDelete() )
             AddSaveClient( cl );
 
+        // Destroy
+        bool full_delete = cl->GetClientToDelete();
         EntityMngr.UnregisterEntity( cl );
         cl->IsDestroyed = true;
 
@@ -315,7 +317,7 @@ void FOServer::RemoveClient( Client* cl )
         }
 
         // Full delete
-        if( cl->GetClientToDelete() )
+        if( full_delete )
         {
             SaveClientsLocker.Lock();
             auto it = ClientsData.find( id );

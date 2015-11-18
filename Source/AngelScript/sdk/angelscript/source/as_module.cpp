@@ -506,12 +506,12 @@ bool asCModule::HasExternalReferences(bool shuttingDown)
 				return true;
 			else
 			{
-				asCString msg;
-				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
-				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
-
-				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, scriptFunctions[n]->GetName(), scriptFunctions[n]->GetFuncType());
-				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+//				asCString msg;
+//				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+//				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+//
+//				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, scriptFunctions[n]->GetName(), scriptFunctions[n]->GetFuncType());
+//				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
 			}
 		}
 
@@ -522,12 +522,12 @@ bool asCModule::HasExternalReferences(bool shuttingDown)
 				return true;
 			else
 			{
-				asCString msg;
-				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
-				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
-
-				msg.Format(TXT_PREV_TYPE_IS_NAMED_s, classTypes[n]->GetName());
-				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+//				asCString msg;
+//				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+//				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+//
+//				msg.Format(TXT_PREV_TYPE_IS_NAMED_s, classTypes[n]->GetName());
+//				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
 			}
 		}
 
@@ -538,12 +538,12 @@ bool asCModule::HasExternalReferences(bool shuttingDown)
 				return true;
 			else
 			{
-				asCString msg;
-				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
-				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
-
-				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, funcDefs[n]->GetName(), funcDefs[n]->GetFuncType());
-				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+//				asCString msg;
+//				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+//				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+//
+//				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, funcDefs[n]->GetName(), funcDefs[n]->GetFuncType());
+//				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
 			}
 		}
 
@@ -554,12 +554,12 @@ bool asCModule::HasExternalReferences(bool shuttingDown)
 				return true;
 			else
 			{
-				asCString msg;
-				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
-				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
-
-				msg.Format(TXT_PREV_TYPE_IS_NAMED_s, templateInstances[n]->GetName());
-				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+//				asCString msg;
+//				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+//				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+//
+//				msg.Format(TXT_PREV_TYPE_IS_NAMED_s, templateInstances[n]->GetName());
+//				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
 			}
 		}
 
