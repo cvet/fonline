@@ -364,7 +364,8 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 		asIScriptFunction *funcDef = engine->GetFuncdefByIndex(n);
 		asDWORD accessMask = funcDef->GetAccessMask();
 		const char *nameSpace = funcDef->GetNamespace();
-		if( nameSpace != currNamespace )
+		// Child funcdefs do not have any namespace, as they belong to the parent object
+		if( nameSpace && nameSpace != currNamespace )
 		{
 			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
@@ -690,6 +691,11 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 			decl = decl.substr(1, decl.length() - 2);
 			in::ReplaceSlashQuote(decl);
 
+			// Remove the $ that the engine prefixes the behaviours with
+			size_t n = decl.find("$");
+			if( n != string::npos )
+				decl[n] = ' ';
+
 			asEBehaviours behave = static_cast<asEBehaviours>(atol(behaviour.c_str()));
 			if( behave == asBEHAVE_TEMPLATE_CALLBACK )
 			{
@@ -796,7 +802,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 			// All properties must have different offsets in order to make them
 			// distinct, so we simply register them with an incremental offset.
 			// The pointer must also be non-null so we add 1 to have a value.
-			r = engine->RegisterGlobalProperty(decl.c_str(), reinterpret_cast<void*>(engine->GetGlobalPropertyCount()+1));
+			r = engine->RegisterGlobalProperty(decl.c_str(), reinterpret_cast<void*>(asPWORD(engine->GetGlobalPropertyCount()+1)));
 			if( r < 0 )
 			{
 				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Failed to register global property");

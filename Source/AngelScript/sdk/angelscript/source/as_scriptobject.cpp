@@ -200,7 +200,7 @@ void RegisterScriptObject(asCScriptEngine *engine)
 	UNUSED_VAR(r); // It is only used in debug mode
 	engine->scriptTypeBehaviours.engine = engine;
 	engine->scriptTypeBehaviours.flags = asOBJ_SCRIPT_OBJECT | asOBJ_REF | asOBJ_GC;
-	engine->scriptTypeBehaviours.name = "_builtin_object_";
+	engine->scriptTypeBehaviours.name = "$obj";
 #ifndef AS_MAX_PORTABILITY
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_CONSTRUCT, "void f(int&in)", asFUNCTION(ScriptObject_Construct), asCALL_CDECL_OBJLAST, 0); asASSERT( r >= 0 );
 	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_ADDREF, "void f()", asMETHOD(asCScriptObject,AddRef), asCALL_THISCALL, 0); asASSERT( r >= 0 );
@@ -271,13 +271,13 @@ asCScriptObject::asCScriptObject(asCObjectType *ot, bool doInitialize)
 			asCObjectProperty *prop = objType->properties[n];
 			if( prop->type.IsObject() && !prop->type.IsObjectHandle() )
 			{
-				if( prop->type.IsReference() || prop->type.GetObjectType()->flags & asOBJ_REF )
+				if( prop->type.IsReference() || prop->type.GetTypeInfo()->flags & asOBJ_REF )
 				{
 					asPWORD *ptr = reinterpret_cast<asPWORD*>(reinterpret_cast<asBYTE*>(this) + prop->byteOffset);
-					if( prop->type.GetObjectType()->flags & asOBJ_SCRIPT_OBJECT )
-						*ptr = (asPWORD)ScriptObjectFactory(prop->type.GetObjectType(), ot->engine);
+					if( prop->type.GetTypeInfo()->flags & asOBJ_SCRIPT_OBJECT )
+						*ptr = (asPWORD)ScriptObjectFactory(prop->type.GetTypeInfo(), ot->engine);
 					else
-						*ptr = (asPWORD)AllocateUninitializedObject(prop->type.GetObjectType(), ot->engine);
+						*ptr = (asPWORD)AllocateUninitializedObject(prop->type.GetTypeInfo(), ot->engine);
 				}
 			}
 		}
@@ -292,10 +292,10 @@ asCScriptObject::asCScriptObject(asCObjectType *ot, bool doInitialize)
 			asCObjectProperty *prop = objType->properties[n];
 			if( prop->type.IsObject() && !prop->type.IsObjectHandle() )
 			{
-				if( prop->type.IsReference() || (prop->type.GetObjectType()->flags & asOBJ_REF) )
+				if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
 				{
 					asPWORD *ptr = reinterpret_cast<asPWORD*>(reinterpret_cast<asBYTE*>(this) + prop->byteOffset);
-					*ptr = (asPWORD)AllocateUninitializedObject(prop->type.GetObjectType(), engine);
+					*ptr = (asPWORD)AllocateUninitializedObject(prop->type.GetTypeInfo()->CastToObjectType(), engine);
 				}
 			}
 		}
@@ -359,7 +359,7 @@ asCScriptObject::~asCScriptObject()
 		if( prop->type.IsObject() )
 		{
 			// Destroy the object
-			asCObjectType *propType = prop->type.GetObjectType();
+			asCObjectType *propType = prop->type.GetTypeInfo()->CastToObjectType();
 			if( prop->type.IsReference() || propType->flags & asOBJ_REF )
 			{
 				void **ptr = (void**)(((char*)this) + prop->byteOffset);
@@ -670,7 +670,7 @@ bool asCScriptObject::GetFlag()
 // interface
 int asCScriptObject::GetTypeId() const
 {
-	asCDataType dt = asCDataType::CreateObject(objType, false);
+	asCDataType dt = asCDataType::CreateType(objType, false);
 	return objType->engine->GetTypeIdFromDataType(dt);
 }
 
@@ -703,7 +703,7 @@ void *asCScriptObject::GetAddressOfProperty(asUINT prop)
 	// Objects are stored by reference, so this must be dereferenced
 	asCDataType *dt = &objType->properties[prop]->type;
 	if( dt->IsObject() && !dt->IsObjectHandle() &&
-		(dt->IsReference() || dt->GetObjectType()->flags & asOBJ_REF) )
+		(dt->IsReference() || dt->GetTypeInfo()->flags & asOBJ_REF) )
 		return *(void**)(((char*)this) + objType->properties[prop]->byteOffset);
 
 	return (void*)(((char*)this) + objType->properties[prop]->byteOffset);
@@ -720,7 +720,7 @@ void asCScriptObject::EnumReferences(asIScriptEngine *engine)
 			// TODO: gc: The members of the value type needs to be enumerated
 			//           too, since the value type may be holding a reference.
 			void *ptr;
-			if( prop->type.IsReference() || (prop->type.GetObjectType()->flags & asOBJ_REF) )
+			if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
 				ptr = *(void**)(((char*)this) + prop->byteOffset);
 			else
 				ptr = (void*)(((char*)this) + prop->byteOffset);
@@ -745,7 +745,7 @@ void asCScriptObject::ReleaseAllHandles(asIScriptEngine *engine)
 			void **ptr = (void**)(((char*)this) + prop->byteOffset);
 			if( *ptr )
 			{
-				asASSERT( (prop->type.GetObjectType()->flags & asOBJ_NOCOUNT) || prop->type.GetBehaviour()->release );
+				asASSERT( (prop->type.GetTypeInfo()->flags & asOBJ_NOCOUNT) || prop->type.GetBehaviour()->release );
 				if( prop->type.GetBehaviour()->release )
 					((asCScriptEngine*)engine)->CallObjectMethod(*ptr, prop->type.GetBehaviour()->release);
 				*ptr = 0;
@@ -787,13 +787,13 @@ asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 					void **src = (void**)(((char*)&other) + prop->byteOffset);
 					if( !prop->type.IsObjectHandle() )
 					{
-						if( prop->type.IsReference() || (prop->type.GetObjectType()->flags & asOBJ_REF) )
-							CopyObject(*src, *dst, prop->type.GetObjectType(), engine);
+						if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
+							CopyObject(*src, *dst, prop->type.GetTypeInfo()->CastToObjectType(), engine);
 						else
-							CopyObject(src, dst, prop->type.GetObjectType(), engine);
+							CopyObject(src, dst, prop->type.GetTypeInfo()->CastToObjectType(), engine);
 					}
 					else
-						CopyHandle((asPWORD*)src, (asPWORD*)dst, prop->type.GetObjectType(), engine);
+						CopyHandle((asPWORD*)src, (asPWORD*)dst, prop->type.GetTypeInfo()->CastToObjectType(), engine);
 				}
 				else
 				{
@@ -905,29 +905,29 @@ int asCScriptObject::CopyFrom(asIScriptObject *other)
 	return 0;
 }
 
-void *asCScriptObject::AllocateUninitializedObject(asCObjectType *objType, asCScriptEngine *engine)
+void *asCScriptObject::AllocateUninitializedObject(asCObjectType *in_objType, asCScriptEngine *engine)
 {
 	void *ptr = 0;
 
-	if( objType->flags & asOBJ_SCRIPT_OBJECT )
+	if( in_objType->flags & asOBJ_SCRIPT_OBJECT )
 	{
-		ptr = engine->CallAlloc(objType);
-		ScriptObject_ConstructUnitialized(objType, reinterpret_cast<asCScriptObject*>(ptr));
+		ptr = engine->CallAlloc(in_objType);
+		ScriptObject_ConstructUnitialized(in_objType, reinterpret_cast<asCScriptObject*>(ptr));
 	}
-	else if( objType->flags & asOBJ_TEMPLATE )
+	else if( in_objType->flags & asOBJ_TEMPLATE )
 	{
 		// Templates store the original factory that takes the object
 		// type as a hidden parameter in the construct behaviour
-		ptr = engine->CallGlobalFunctionRetPtr(objType->beh.construct, objType);
+		ptr = engine->CallGlobalFunctionRetPtr(in_objType->beh.construct, in_objType);
 	}
-	else if( objType->flags & asOBJ_REF )
+	else if( in_objType->flags & asOBJ_REF )
 	{
-		ptr = engine->CallGlobalFunctionRetPtr(objType->beh.factory);
+		ptr = engine->CallGlobalFunctionRetPtr(in_objType->beh.factory);
 	}
 	else
 	{
-		ptr = engine->CallAlloc(objType);
-		int funcIndex = objType->beh.construct;
+		ptr = engine->CallAlloc(in_objType);
+		int funcIndex = in_objType->beh.construct;
 		if( funcIndex )
 			engine->CallObjectMethod(ptr, funcIndex);
 	}
@@ -935,52 +935,52 @@ void *asCScriptObject::AllocateUninitializedObject(asCObjectType *objType, asCSc
 	return ptr;
 }
 
-void asCScriptObject::FreeObject(void *ptr, asCObjectType *objType, asCScriptEngine *engine)
+void asCScriptObject::FreeObject(void *ptr, asCObjectType *in_objType, asCScriptEngine *engine)
 {
-	if( objType->flags & asOBJ_REF )
+	if( in_objType->flags & asOBJ_REF )
 	{
-		asASSERT( (objType->flags & asOBJ_NOCOUNT) || objType->beh.release );
-		if( objType->beh.release )
-			engine->CallObjectMethod(ptr, objType->beh.release);
+		asASSERT( (in_objType->flags & asOBJ_NOCOUNT) || in_objType->beh.release );
+		if(in_objType->beh.release )
+			engine->CallObjectMethod(ptr, in_objType->beh.release);
 	}
 	else
 	{
-		if( objType->beh.destruct )
-			engine->CallObjectMethod(ptr, objType->beh.destruct);
+		if( in_objType->beh.destruct )
+			engine->CallObjectMethod(ptr, in_objType->beh.destruct);
 
 		engine->CallFree(ptr);
 	}
 }
 
-void asCScriptObject::CopyObject(void *src, void *dst, asCObjectType *objType, asCScriptEngine *engine)
+void asCScriptObject::CopyObject(void *src, void *dst, asCObjectType *in_objType, asCScriptEngine *engine)
 {
-	int funcIndex = objType->beh.copy;
+	int funcIndex = in_objType->beh.copy;
 	if( funcIndex )
 	{
-		asCScriptFunction *func = engine->scriptFunctions[objType->beh.copy];
+		asCScriptFunction *func = engine->scriptFunctions[in_objType->beh.copy];
 		if( func->funcType == asFUNC_SYSTEM )
 			engine->CallObjectMethod(dst, src, funcIndex);
 		else
 		{
 			// Call the script class' opAssign method
-			asASSERT( objType->flags & asOBJ_SCRIPT_OBJECT );
+			asASSERT(in_objType->flags & asOBJ_SCRIPT_OBJECT );
 			reinterpret_cast<asCScriptObject*>(dst)->CopyFrom(reinterpret_cast<asCScriptObject*>(src));
 		}
 	}
-	else if( objType->size && (objType->flags & asOBJ_POD) )
-		memcpy(dst, src, objType->size);
+	else if( in_objType->size && (in_objType->flags & asOBJ_POD) )
+		memcpy(dst, src, in_objType->size);
 }
 
-void asCScriptObject::CopyHandle(asPWORD *src, asPWORD *dst, asCObjectType *objType, asCScriptEngine *engine)
+void asCScriptObject::CopyHandle(asPWORD *src, asPWORD *dst, asCObjectType *in_objType, asCScriptEngine *engine)
 {
 	// asOBJ_NOCOUNT doesn't have addref or release behaviours
-	asASSERT( (objType->flags & asOBJ_NOCOUNT) || (objType->beh.release && objType->beh.addref) );
+	asASSERT( (in_objType->flags & asOBJ_NOCOUNT) || (in_objType->beh.release && in_objType->beh.addref) );
 
-	if( *dst && objType->beh.release )
-		engine->CallObjectMethod(*(void**)dst, objType->beh.release);
+	if( *dst && in_objType->beh.release )
+		engine->CallObjectMethod(*(void**)dst, in_objType->beh.release);
 	*dst = *src;
-	if( *dst && objType->beh.addref )
-		engine->CallObjectMethod(*(void**)dst, objType->beh.addref);
+	if( *dst && in_objType->beh.addref )
+		engine->CallObjectMethod(*(void**)dst, in_objType->beh.addref);
 }
 
 // TODO: weak: Should move to its own file

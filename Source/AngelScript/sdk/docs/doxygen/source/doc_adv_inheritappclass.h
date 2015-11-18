@@ -40,8 +40,25 @@ public:
   int m_value;
    
   // A factory function that can be used by the script side to create
-  static FooScripted *Factory();
-   
+  static FooScripted *Factory()
+  {
+    asIScriptContext *ctx = asGetActiveContext();
+
+    // Get the function that is calling the factory so we can be certain it is the FooScript script class
+    asIScriptFunction *func = ctx->GetFunction(0);
+    if( func->GetObjectType() == 0 || std::string(func->GetObjectType()->GetName()) != "FooScripted" )
+    {
+      ctx->SetException("Invalid attempt to manually instantiate FooScript_t");
+      return 0;
+    }
+
+    // Get the this pointer from the calling function so the FooScript C++
+    // class can be linked with the FooScript script class
+    asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(ctx->GetThisPointer(0));
+
+    return new FooScripted(obj);
+  }
+  
   // Reference counting
   void AddRef() 
   { 

@@ -126,7 +126,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			if( descr->parameterTypes[n].IsObject() && !descr->parameterTypes[n].IsObjectHandle() && !descr->parameterTypes[n].IsReference() )
 			{
 #ifdef COMPLEX_OBJS_PASSED_BY_REF
-				if( descr->parameterTypes[n].GetObjectType()->flags & COMPLEX_MASK )
+				if( descr->parameterTypes[n].GetTypeInfo()->flags & COMPLEX_MASK )
 				{
 					paramBuffer[dpos++] = args[spos++];
 					paramSize++;

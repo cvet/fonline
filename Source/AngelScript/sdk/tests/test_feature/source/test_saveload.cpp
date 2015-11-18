@@ -342,6 +342,74 @@ bool Test()
 	asIScriptEngine* engine;
 	asIScriptModule* mod;
 
+	// Test problem with scripts calling constructor with value type passed before reference
+	// http://www.gamedev.net/topic/671244-error-when-saving-bytecode-on-x64/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		// Turn off bytecode optimization to guarantee the scenario we're testing occurs
+		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false);
+
+		RegisterStdString(engine);
+
+		// Register additional constructor for test
+		r = engine->RegisterObjectBehaviour("string", asBEHAVE_CONSTRUCT, "void f(int, const string& in)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+
+		// TODO: runtime optimize: This code produces unoptimal bytecode with VAR, PshC4, GETREF. Should be transformed to PSF, PshC4
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"int main() \n"
+			"{ \n"
+			"  string s(1, ''); \n"
+			"  return 0; \n"
+			"} \n");
+		r = mod->Build();
+		if( r < 0 ) 
+			TEST_FAILED;
+
+		CBytecodeStream bc("blah");
+		r = mod->SaveByteCode(&bc);
+		if( r < 0 )
+			TEST_FAILED;
+
+		asIScriptFunction *func = mod->GetFunctionByName("main");
+		asBYTE expect[] = 
+			{	
+				asBC_JitEntry,asBC_SUSPEND,asBC_JitEntry,asBC_SUSPEND,asBC_JitEntry,asBC_STR,asBC_CALLSYS,asBC_JitEntry,asBC_PshRPtr,asBC_PSF,asBC_CALLSYS,asBC_JitEntry,asBC_PSF,asBC_PopPtr,asBC_VAR,asBC_SetV4,asBC_PshV4,asBC_GETREF,asBC_PSF,asBC_CALLSYS,asBC_JitEntry,asBC_PSF,asBC_CALLSYS,asBC_JitEntry,
+				asBC_SUSPEND,asBC_JitEntry,asBC_SetV4,asBC_PSF,asBC_CALLSYS,asBC_JitEntry,asBC_CpyVtoR4,asBC_JMP,asBC_RET
+			};
+		if( !ValidateByteCode(func, expect) )
+			TEST_FAILED;
+
+		// Make sure the asBC_GETREF instruction has the argument == 1
+		{
+			asUINT len;
+			asDWORD *bc = func->GetByteCode(&len);
+			if( asBC_WORDARG0(&bc[15+5*asBCTypeSize[asBCInfo[asBC_JitEntry].type]]) != 1 )
+				TEST_FAILED;
+		}
+
+		mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&bc);
+		if( r < 0 )
+			TEST_FAILED;
+
+		func = mod->GetFunctionByName("main");
+		if( !ValidateByteCode(func, expect) )
+			TEST_FAILED;
+
+		// Make sure the asBC_GETREF instruction has the argument == 1
+		{
+			asUINT len;
+			asDWORD *bc = func->GetByteCode(&len);
+			if( asBC_WORDARG0(&bc[15+5*asBCTypeSize[asBCInfo[asBC_JitEntry].type]]) != 1 )
+				TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test problem with saving/loading bytecode containing templates with multiple subtypes
 	// Reported by Phong Ba
 	{
@@ -421,7 +489,7 @@ bool Test()
 
 		engine->ShutDownAndRelease();
 
-		if( bout.buffer != "config (48, 0) : Warning : Cannot register template callback without the actual implementation\n" )
+		if( bout.buffer != "config (49, 0) : Warning : Cannot register template callback without the actual implementation\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -479,6 +547,7 @@ bool Test()
 					"ep 22 0\n"
 					"ep 23 0\n"
 					"ep 24 0\n"
+					"ep 25 0\n"
 					"\n"
 					"// Enums\n"
 					"\n"
@@ -686,7 +755,7 @@ bool Test()
 			TEST_FAILED;
 		
 		if( bout.buffer != " (0, 0) : Error   : Template type 'typeof' doesn't exist\n"
-						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 141\n" )
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 130\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1078,23 +1147,23 @@ bool Test()
 		mod->SaveByteCode(&stream2, true);
 
 #ifndef STREAM_TO_FILE
-		if( stream.buffer.size() != 2486 )
+		if( stream.buffer.size() != 2295 )
 			PRINTF("The saved byte code is not of the expected size. It is %d bytes\n", stream.buffer.size());
 		asUINT zeroes = stream.CountZeroes();
-		if( zeroes != 575 )
+		if( zeroes != 579 )
 		{
 			PRINTF("The saved byte code contains a different amount of zeroes than the expected. Counted %d\n", zeroes);
 			// Mac OS X PPC has more zeroes, probably due to the bool type being 4 bytes
 		}
 		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
-		if( crc32 != 0x8EE8BFA0 )
+		if( crc32 != 0xEDE1BB13 )
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 
 		// Without debug info
-		if( stream2.buffer.size() != 2084 )
+		if( stream2.buffer.size() != 1926 )
 			PRINTF("The saved byte code without debug info is not of the expected size. It is %d bytes\n", stream2.buffer.size());
 		zeroes = stream2.CountZeroes();
-		if( zeroes != 461 )
+		if( zeroes != 465 )
 			PRINTF("The saved byte code without debug info contains a different amount of zeroes than the expected. Counted %d\n", zeroes);
 #endif
 		// Test loading without releasing the engine first
@@ -1165,7 +1234,7 @@ bool Test()
 		mod->SaveByteCode(&streamTiny, true);
 		engine->Release();
 
-		asBYTE expected[] = {0x01,0x00,0x00,0x00,0x00,0x00,0x01,0x66,0x6E,0x01,0x66,0x00,0x40,0x50,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x02,0x3F,0x0A,0x00,0x00,0x00,0x00,0x00,0x01,0x72,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+		asBYTE expected[] = {0x01,0x00,0x00,0x00,0x00,0x00,0x01,0x66,0x02,0x66,0x00,0x40,0x50,0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x02,0x3F,0x0A,0x00,0x00,0x00,0x00,0x00,0x01,0x72,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 		bool match = true;
 		for( asUINT n = 0; n < streamTiny.buffer.size(); n++ )
 			if( streamTiny.buffer[n] != expected[n] )
@@ -2002,7 +2071,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != " (0, 0) : Error   : Attempting to instantiate invalid template type 'tmpl<int>'\n"
-			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 124\n" )
+			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 117\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -2301,7 +2370,7 @@ bool TestAndrewPrice()
 			TEST_FAILED;
 
 		if( bout.buffer != " (0, 0) : Error   : Template type 'array' doesn't exist\n"
-			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 15\n" )
+			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 13\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -2315,7 +2384,7 @@ bool TestAndrewPrice()
 			TEST_FAILED;
 
 		if( bout.buffer != " (0, 0) : Error   : Object type 'char_ptr' doesn't exist\n"
-						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 23\n" )
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 20\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

@@ -178,6 +178,9 @@ void DetectMemoryLeaks()
 	_CrtSetReportFile(_CRT_ASSERT,_CRTDBG_FILE_STDERR);
 
 	// Use _CrtSetBreakAlloc(n) to find a specific memory leak
+	// Remember to "Enable Windows Debug Heap Allocator" in the debug options on MSVC2015. Without it
+	// enabled the memory allocation numbers shifts randomly from one execution to another making it
+	// impossible to predict the correct number for a specific allocation.
 	//_CrtSetBreakAlloc(924);
 
 #endif

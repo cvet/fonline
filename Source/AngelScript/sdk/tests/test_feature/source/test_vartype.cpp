@@ -349,10 +349,10 @@ bool Test()
 	// Only when the expression is explicitly sent as @ should the type id be @
 	// const ? & in
 	// ? & in
-	// TODO: 2.29.0: Should have syntax to inform that only handle or only non-handle can be informed
-	//               Maybe 'const ? @ & in' for only handle 
-	//                     '? @- & in' for only non-handle
-	//                     '? @+ & in' for only handle with auto-handle
+	// TODO: Should have syntax to inform that only handle or only non-handle can be informed
+	//       Maybe 'const ? @ & in' for only handle 
+	//             '? @- & in' for only non-handle
+	//             '? @+ & in' for only handle with auto-handle
 	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
 	RegisterScriptString(engine);
@@ -379,10 +379,10 @@ bool Test()
 
 	// It must be possible to register with 'out' references
 	// ? & out
-	// TODO: 2.29.0: Should have syntax to inform that only handle or only non-handle can be informed
-	//               Maybe '? @ & out' for only handle
-	//                     '? @- & out' for non-handle
-	//                     '? @+ & out' for auto handle
+	// TODO: Should have syntax to inform that only handle or only non-handle can be informed
+	//       Maybe '? @ & out' for only handle
+	//             '? @- & out' for non-handle
+	//             '? @+ & out' for auto handle
 	r = engine->RegisterGlobalFunction("void testFuncO(?&out)", asFUNCTION(testFuncO), asCALL_GENERIC);
 	if( r < 0 ) TEST_FAILED;
 

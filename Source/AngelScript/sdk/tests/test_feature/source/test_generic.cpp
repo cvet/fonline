@@ -117,6 +117,15 @@ void nullPtr(asIScriptGeneric *gen)
 	assert(gen->GetReturnTypeId() == gen->GetEngine()->GetTypeIdByDecl("intf@"));
 }
 
+int extraValue = 42;
+void Generic_Functor(asIScriptGeneric *gen)
+{
+	// The auxiliary was informed by application when registering the function
+	int *value = reinterpret_cast<int*>(gen->GetAuxiliary());
+	assert(*value == 42);
+	*value = 24;
+}
+
 bool Test2();
 
 bool Test()
@@ -147,15 +156,29 @@ bool Test()
 	r = engine->RegisterInterface("intf");
 	r = engine->RegisterGlobalFunction("intf @nullPtr(intf @)", asFUNCTION(nullPtr), asCALL_GENERIC); assert( r >= 0 );
 
+	r = engine->RegisterGlobalFunction("void functor()", asFUNCTION(Generic_Functor), asCALL_GENERIC, &extraValue); assert(r >= 0);
+
 	COutStream out;
 	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	ExecuteString(engine, "test(func1(23, 23, \"test\"))");
+	r = ExecuteString(engine, "test(func1(23, 23, \"test\"))");
+	if(r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
-	ExecuteString(engine, "test(o.mthd1(23, 23))");
+	r = ExecuteString(engine, "test(o.mthd1(23, 23))");
+	if(r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
-	ExecuteString(engine, "o = o");
+	r = ExecuteString(engine, "o = o");
+	if(r != asEXECUTION_FINISHED)
+		TEST_FAILED;
 
-	ExecuteString(engine, "nullPtr(null)");
+	r = ExecuteString(engine, "nullPtr(null)");
+	if(r != asEXECUTION_FINISHED)
+		TEST_FAILED;
+
+	r = ExecuteString(engine, "functor()");
+	if(r != asEXECUTION_FINISHED || extraValue != 24)
+		TEST_FAILED;
 
 	engine->Release();
 

@@ -239,4 +239,36 @@ The special 'void' expression can be used as default argument to make an optiona
 </pre>
 
 
+
+\page doc_script_anonfunc Anonymous functions
+
+Anonymous functions, or lambdas as they are sometimes called, are functions that are 
+declared locally for use with \ref doc_datatypes_funcptr "function handles". 
+
+The following is a quick demonstration on how to use anonymous functions.
+
+<pre>
+  funcdef bool CMP(int first, int second);
+  
+  void main()
+  {
+    int valueA = 1, valueB = 2;
+    
+    bool result1 = func(valueA, valueB, function(a,b){ return a == b; });
+    bool result2 = func(valueA, valueB, function(a,b){ return a != b; });
+  }
+  
+  bool func(int a, int b, CMP \@f)
+  {
+    return f(a,b);
+  }
+</pre>
+
+The anonymous function takes on the signature of the function handle it is assigned to, 
+so the type of the arguments and the return type doesn't have to be explicitly declared.
+
+It is not yet possible for anonymous functions to access variables declared in the same 
+scope as the function, i.e. they cannot be used as closures.
+
+
 */

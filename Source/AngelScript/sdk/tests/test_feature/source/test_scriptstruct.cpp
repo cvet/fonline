@@ -515,8 +515,7 @@ bool Test()
 
 		if( bout.buffer != "test (2, 1) : Info    : Compiling void main()\n"
 						   "test (3, 5) : Error   : Abstract class 'A' cannot be instantiated\n"
-						   "test (5, 8) : Error   : Abstract class 'A' cannot be instantiated\n"
-						   "test (5, 8) : Error   : Can't implicitly convert from 'const int' to 'A@'.\n" )
+						   "test (5, 8) : Error   : Abstract class 'A' cannot be instantiated\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

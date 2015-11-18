@@ -357,7 +357,7 @@ bool Test2()
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
 
-		const char *script = "shared interface Simple { void function(int); }";
+		const char *script = "shared interface Simple { void func(int); }";
 		mod = engine->GetModule("a", asGM_ALWAYS_CREATE);
 		mod->AddScriptSection("script", script, strlen(script));
 		r = mod->Build();

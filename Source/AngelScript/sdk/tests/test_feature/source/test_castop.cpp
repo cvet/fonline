@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "../../../add_on/scriptdictionary/scriptdictionary.h"
 
 namespace TestCastOp
 {
@@ -139,9 +140,39 @@ bool Test()
 	CBufferedOutStream bout;
 	COutStream out;
 
-	// TODO: 2.30.0: What should the compiler do when the class has both a valid opCast method 
-	//               and a related class in a class hierarchy? Should prefer calling opCast, right?
-	//               How does C++ do it?
+	// TODO: What should the compiler do when the class has both a valid opCast method 
+	//       and a related class in a class hierarchy? Should prefer calling opCast, right?
+	//       How does C++ do it?
+
+	// Test using opImplConv on ref type stored in dictionary
+	// http://www.gamedev.net/topic/668972-getting-dictionary-addon-to-work-with-ref-counted-strings/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		int r = ExecuteString(engine, 
+			"dictionary dict; \n"
+			"@dict['foo'] = 'bar';\n"
+			"string t; \n"
+			"dict.get('foo', t); \n"
+			"assert( t == 'bar' ); \n"
+			"dictionaryValue val = dict['foo']; \n"
+			"t = cast<string>(val); \n"
+			"assert( t == 'bar' ); \n"
+			"t = string(val); \n"
+			"assert( t == 'bar' ); \n"
+			"string s = string(dict['foo']);\n"
+			"assert( s == 'bar' ); \n" 
+			);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// The cast op can be overloaded in script classes by implementing opCast and opImplCast
 	{

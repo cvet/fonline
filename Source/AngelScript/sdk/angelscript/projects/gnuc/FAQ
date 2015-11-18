@@ -3,10 +3,7 @@
 1. Why do you have to specify PREFIX= even when building
 when overriding the default ?
 
-2. Why is it angelscript_s and not just angelscript (as some
-might expect) ?
-
-3. When overriding the default prefix, how do you compile
+2. When overriding the default prefix, how do you compile
 and link my program ?
 
 --
@@ -26,20 +23,7 @@ example the link options might be :
 -langelscript_s -lpthread
 
 --
-2. Why is it angelscript_s and not just angelscript
-(like one might expect) ?
-
-In the case you want to statically link (generally in
-Linux it is preferred to use shared linking but there is
-always an exception) you would have a problem with the
-same name and path (name of library, two different
-types: archive and shared object). Since some might
-want to link statically and since Andreas told me that
-is the recommended way, I opted for angelscript_s for
-the shared object name.
-
---
-3. When overriding the default prefix, how do you compile
+2. When overriding the default prefix, how do you compile
 and link my program ?
 
 An example scenario is the following :
@@ -47,8 +31,8 @@ You installed into /opt which means the following
 files should exist :
 
 /opt/include/angelscript.h
-/opt/lib/libangelscript_s.so (which is a symbolic link
-to the current version installed)
+/opt/lib/libangelscript.so (which is a symbolic link to
+                            the current version installed)
 /opt/lib/libangelscript.a (the static library).
 
 If you #include angelscript.h you might normally
@@ -61,7 +45,7 @@ the compiler searches, you have to either use :
 
 #include "/opt/include/angelscript.h"
 (method one)
-or alternatively keep the include (using the angel brackets)
+or alternatively keep the include (using the angle brackets)
 but pass the include path (or paths actually but in this case
 path) to the compiler so it knows to search an additional
 location. If you're using g++ then the following option

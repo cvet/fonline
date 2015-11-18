@@ -64,7 +64,7 @@ static const char *correct =
 "  Module2:void Test3():8,3\n"
 "  Module2:void Test3():8,3\n"
 "  Module2:void Test3():9,3\n"
-"   (null):int[]@ factstub():0,0\n"
+"   (null):int[]@ $fact():0,0\n"
 "  Module2:void Test3():10,3\n"
 "--- exception ---\n"
 "desc: Index out of bounds\n"

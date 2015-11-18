@@ -32,11 +32,12 @@ float<br>
 for<br>
 from*<br>
 funcdef<br>
+function*<br>
 get*<br>
 if<br>
-import<br>
 </code></td>
 <td width=100 valign=top><code>
+import<br>
 in<br>
 inout<br>
 int<br>
@@ -48,9 +49,9 @@ int64<br>
 is<br>
 mixin<br>
 namespace<br>
-not<br>
 </code></td>
 <td width=100 valign=top><code>
+not<br>
 null<br>
 or<br>
 out<br>

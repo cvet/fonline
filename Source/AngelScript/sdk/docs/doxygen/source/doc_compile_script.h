@@ -34,7 +34,7 @@ void MessageCallback(const asSMessageInfo *msg, void *param)
 }
 
 // Set the message callback when creating the engine
-asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+asIScriptEngine *engine = asCreateScriptEngine();
 engine->SetMessageCallback(asFUNCTION(MessageCallback), 0, asCALL_CDECL);
 \endcode
 

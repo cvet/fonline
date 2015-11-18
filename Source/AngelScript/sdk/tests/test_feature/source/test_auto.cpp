@@ -15,6 +15,42 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
 
+	// Test that anonymous functions with auto generates proper error
+	// http://www.gamedev.net/topic/671632-auto-causes-crash-with-anonymous-functions/
+	{
+		const char *script =
+			"auto g_cb2 = function() {}; \n"
+			"auto @g_cb3 = function() {}; \n"
+			"void test() { \n"
+			" auto cb2 = function() {}; \n"
+			" auto @cb3 = function() {}; \n"
+			"} \n";
+
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", script);
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 6) : Info    : Compiling <auto> g_cb2\n"
+						   "test (1, 6) : Error   : Unable to resolve auto type\n"
+						   "test (2, 7) : Info    : Compiling <auto>@ g_cb3\n"
+						   "test (2, 7) : Error   : Unable to resolve auto type\n"
+						   "test (3, 1) : Info    : Compiling void test()\n"
+						   "test (4, 7) : Error   : Unable to resolve auto type\n"
+						   "test (5, 8) : Error   : Unable to resolve auto type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
 	//Test auto from literals
 	{
 		const char *script =
@@ -189,12 +225,9 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "test (1, 6) : Info    : Compiling <auto> x\n"
-						   "test (1, 10) : Error   : Use of uninitialized global variable 'y'.\n"
-						   "test (1, 10) : Error   : Use of uninitialized global variable 'y'.\n"
+						   "test (1, 10) : Error   : 'y' is not declared\n"
 						   "test (1, 17) : Info    : Compiling <auto> y\n"
-						   "test (1, 21) : Error   : Use of uninitialized global variable 'x'.\n"
-						   "test (1, 21) : Error   : Use of uninitialized global variable 'x'.\n"
-						   )
+						   "test (1, 21) : Error   : 'x' is not declared\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

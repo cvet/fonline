@@ -190,7 +190,10 @@ public:
   virtual ~CDebugger();
 
   // Register callbacks to handle to-string conversions of application types
-  typedef std::string (*ToStringCallback)(void *obj, bool expandMembers, CDebugger *dbg);
+  // The expandMembersLevel is a counter for how many recursive levels the members should be expanded.
+  // If the object that is being converted to a string has members of its own the callback should call
+  // the debugger's ToString passing in expandMembersLevel - 1.
+  typedef std::string (*ToStringCallback)(void *obj, int expandMembersLevel, CDebugger *dbg);
   virtual void RegisterToStringCallback(const asIObjectType *ot, ToStringCallback callback);
   
   // User interaction
@@ -215,7 +218,12 @@ public:
   // Helpers
   virtual bool InterpretCommand(const std::string &cmd, asIScriptContext *ctx);
   virtual bool CheckBreakPoint(asIScriptContext *ctx);
-  virtual std::string ToString(void *value, asUINT typeId, bool expandMembers, asIScriptEngine *engine);
+  virtual std::string ToString(void *value, asUINT typeId, int expandMembersLevel, asIScriptEngine *engine);
+  
+  // Optionally set the engine pointer in the debugger so it can be retrieved
+  // by callbacks that need it. This will hold a reference to the engine.
+  virtual void SetEngine(asIScriptEngine *engine);
+  virtual asIScriptEngine *GetEngine();
 };
 \endcode
 
@@ -891,6 +899,8 @@ so a port from script to C++ and vice versa might be easier if STL names are use
 \section doc_addon_dict_1 Public C++ interface
 
 \code
+typedef std::string dictKey;
+
 class CScriptDictionary
 {
 public:
@@ -905,25 +915,25 @@ public:
   CScriptDictionary &operator=(const CScriptDictionary &other);
 
   // Sets a key/value pair
-  void Set(const std::string &key, void *value, int typeId);
-  void Set(const std::string &key, asINT64 &value);
-  void Set(const std::string &key, double &value);
+  void Set(const dictKey &key, void *value, int typeId);
+  void Set(const dictKey &key, asINT64 &value);
+  void Set(const dictKey &key, double &value);
 
   // Gets the stored value. Returns false if the value isn't compatible with informed type  
-  bool Get(const std::string &key, void *value, int typeId) const;
-  bool Get(const std::string &key, asINT64 &value) const;
-  bool Get(const std::string &key, double &value) const;
+  bool Get(const dictKey &key, void *value, int typeId) const;
+  bool Get(const dictKey &key, asINT64 &value) const;
+  bool Get(const dictKey &key, double &value) const;
 
   // Index accessors. If the dictionary is not const it inserts the value if it doesn't already exist
   // If the dictionary is const then a script exception is set if it doesn't exist and a null pointer is returned
-  CScriptDictValue *operator[](const std::string &key);
-  const CScriptDictValue *operator[](const std::string &key) const;
+  CScriptDictValue *operator[](const dictKey &key);
+  const CScriptDictValue *operator[](const dictKey &key) const;
   
   // Returns the type id of the stored value, or negative if it doesn't exist
-  int  GetTypeId(const std::string &key) const;
+  int  GetTypeId(const dictKey &key) const;
 
   // Returns true if the key is set
-  bool Exists(const std::string &key) const;
+  bool Exists(const dictKey &key) const;
   
   // Returns true if the dictionary is empty
   bool IsEmpty() const;
@@ -932,7 +942,7 @@ public:
   asUINT GetSize() const;
   
   // Deletes the key
-  void Delete(const std::string &key);
+  void Delete(const dictKey &key);
   
   // Deletes all keys
   void DeleteAll();
@@ -951,11 +961,12 @@ public:
     bool operator!=(const CIterator &other) const;
 
     // Accessors
-    const std::string &GetKey() const;
-    int                GetTypeId() const;
-    bool               GetValue(asINT64 &value) const;
-    bool               GetValue(double &value) const;
-    bool               GetValue(void *value, int typeId) const;
+    const dictKey &GetKey() const;
+    int            GetTypeId() const;
+    bool           GetValue(asINT64 &value) const;
+    bool           GetValue(double &value) const;
+    bool           GetValue(void *value, int typeId) const;
+    const void *   GetAddressOfValue() const;
   };
   
   CIterator begin() const;

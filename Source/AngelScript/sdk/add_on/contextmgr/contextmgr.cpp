@@ -93,7 +93,7 @@ void ScriptCreateCoRoutine(asIScriptFunction *func, CScriptDictionary *arg)
 }
 
 #ifdef AS_MAX_PORTABILITY
-void ScriptYield_generic(asIScriptGeneric *gen)
+void ScriptYield_generic(asIScriptGeneric *)
 {
 	ScriptYield();
 }

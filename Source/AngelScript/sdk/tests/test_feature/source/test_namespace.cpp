@@ -12,6 +12,73 @@ bool Test()
 	CBufferedOutStream bout;
 
 	// Test bug with namespace
+	// http://www.gamedev.net/topic/672251-unknown-datatype-when-using-class-in-namespace/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace NS \n"
+			"{ \n"
+			"	class Foo \n"
+			"	{ \n"
+			"	} \n"
+			"	class Bar \n"
+			"	{ \n"
+			"		Foo@ foo = Foo(); \n"
+			"	} \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test nested namespace from within class method
+	// http://www.gamedev.net/topic/670858-nested-namespaces/
+	SKIP_ON_MAX_PORT
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		r = engine->SetDefaultNamespace("dev::log");
+		r = engine->RegisterGlobalFunction("void info(const ::string &in)", asFUNCTION(0), asCALL_CDECL); assert(r >= 0);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+				"class Test \n"
+				"{ \n"
+				"  void huh() \n"
+				"  { \n"
+				"    dev::log::info('Hi'); \n"
+				"  } \n"
+				"} \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test bug with namespace
 	// http://www.gamedev.net/topic/667516-namespace-bug/
 	SKIP_ON_MAX_PORT
 	{

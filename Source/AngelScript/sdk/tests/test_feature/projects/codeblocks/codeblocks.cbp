@@ -138,7 +138,6 @@
 		<Unit filename="../../source/test_exception.cpp" />
 		<Unit filename="../../source/test_exceptionmemory.cpp" />
 		<Unit filename="../../source/test_factory.cpp" />
-		<Unit filename="../../source/test_file.cpp" />
 		<Unit filename="../../source/test_float.cpp" />
 		<Unit filename="../../source/test_for.cpp" />
 		<Unit filename="../../source/test_funcoverload.cpp" />

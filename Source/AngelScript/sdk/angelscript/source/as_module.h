@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -189,11 +189,12 @@ public:
 	int  AddScriptFunction(int sectionIdx, int declaredAt, int id, const asCString &name, const asCDataType &returnType, const asCArray<asCDataType> &params, const asCArray<asCString> &paramNames, const asCArray<asETypeModifiers> &inOutFlags, const asCArray<asCString *> &defaultArgs, bool isInterface, asCObjectType *objType = 0, bool isConstMethod = false, bool isGlobalFunction = false, bool isPrivate = false, bool isProtected = false, bool isFinal = false, bool isOverride = false, bool isShared = false, asSNameSpace *ns = 0);
 	int  AddScriptFunction(asCScriptFunction *func);
 	int  AddImportedFunction(int id, const asCString &name, const asCDataType &returnType, const asCArray<asCDataType> &params, const asCArray<asETypeModifiers> &inOutFlags, const asCArray<asCString *> &defaultArgs, asSNameSpace *ns, const asCString &moduleName);
-	int  AddFuncDef(const asCString &name, asSNameSpace *ns);
+	int  AddFuncDef(const asCString &name, asSNameSpace *ns, asCObjectType *parent);
 #endif
 
 	int                GetNextImportedFunctionId();
 	asCScriptFunction *GetImportedFunction(int funcId) const;
+	asCTypeInfo       *GetType(const char *type, asSNameSpace *ns);
 	asCObjectType     *GetObjectType(const char *type, asSNameSpace *ns);
 	asCGlobalProperty *AllocateGlobalProperty(const char *name, const asCDataType &dt, asSNameSpace *ns);
 
@@ -223,7 +224,7 @@ public:
 	// This array holds class and interface types
 	asCArray<asCObjectType*>       classTypes; // increases ref count
 	// This array holds enum types
-	asCArray<asCObjectType*>       enumTypes; // increases ref count
+	asCArray<asCEnumType*>         enumTypes; // increases ref count
 	// This array holds typedefs
 	asCArray<asCObjectType*>       typeDefs; // increases ref count
 	// This array holds the funcdefs declared in the module

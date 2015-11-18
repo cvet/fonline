@@ -42,32 +42,63 @@ bool Test()
 	int r;
 	COutStream out;
 
- 	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	RegisterScriptArray(engine, true);
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-
-	RegisterScriptString_Generic(engine);
-	engine->RegisterGlobalFunction("void Assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
-	engine->RegisterGlobalFunction("void Print(const string &in)", asFUNCTION(Print_Generic), asCALL_GENERIC);
-
-	asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection(TESTNAME, script1, strlen(script1), 0);
-	r = mod->Build();
-	if( r < 0 )
+	// Basic for loops
 	{
-		TEST_FAILED;
-		PRINTF("%s: Failed to compile the script\n", TESTNAME);
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		RegisterScriptArray(engine, true);
+		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
+
+		RegisterScriptString_Generic(engine);
+		engine->RegisterGlobalFunction("void Assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		engine->RegisterGlobalFunction("void Print(const string &in)", asFUNCTION(Print_Generic), asCALL_GENERIC);
+
+		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, script1, strlen(script1), 0);
+		r = mod->Build();
+		if( r < 0 )
+		{
+			TEST_FAILED;
+			PRINTF("%s: Failed to compile the script\n", TESTNAME);
+		}
+		r = ExecuteString(engine, "Test()", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		// TODO: runtime optimize: bytecode compiler should optimize away the first jump
+		r = ExecuteString(engine, "bool called = false; for(;;) { called = true; break; } Assert( called );");
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		engine->Release();
 	}
-	r = ExecuteString(engine, "Test()", mod);
-	if( r != asEXECUTION_FINISHED )
-		TEST_FAILED;
 
-	// TODO: runtime optimize: bytecode compiler should optimize away the first jump
-	r = ExecuteString(engine, "bool called = false; for(;;) { called = true; break; } Assert( called );");
-	if( r != asEXECUTION_FINISHED )
-		TEST_FAILED;
+	// Test for-loop with multiple variables and increment statements
+	// http://www.gamedev.net/topic/668075-support-for-multiple-increment-statements-in-for-loop/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 
-	engine->Release();
+		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection(TESTNAME, 
+			"void func() \n"
+			"{ \n"
+			"  int result = 0; \n"
+			"  for( int a = 1, b = 1; a < 5 && b < 5; a++, b = a+1 ) \n"
+			"    result += a*b; \n"
+			"  assert( result == (1 + 6 + 12) ); \n"
+			"} \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "func()", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		engine->Release();
+	}
 
 	// Success
 	return fail;

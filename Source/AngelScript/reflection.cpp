@@ -3,12 +3,13 @@
 #include <assert.h>
 #include "as_objecttype.h"
 #include "as_scriptengine.h"
+#include "as_typeinfo.h"
 
 static asIObjectType* GetObjectTypeById( asIScriptEngine* engine, int typeId )
 {
     asCDataType dt = ( (asCScriptEngine*) engine )->GetDataTypeFromTypeId( typeId );
     if( dt.IsValid() )
-        return dt.GetObjectType();
+        return dt.GetTypeInfo();
     return NULL;
 }
 
@@ -81,7 +82,8 @@ bool ScriptType::IsInterface() const
 
 bool ScriptType::IsEnum() const
 {
-    return ObjType ? ( (asCObjectType*) ObjType )->enumValues.GetLength() > 0 : false;
+    asCEnumType* enum_type = ( (asCTypeInfo*) ObjType )->CastToEnumType();
+    return enum_type ? enum_type->enumValues.GetLength() > 0 : false;
 }
 
 bool ScriptType::IsFunction() const
@@ -234,25 +236,25 @@ ScriptString* ScriptType::GetPropertyDeclaration( uint index, bool include_names
 
 uint ScriptType::GetEnumLength() const
 {
-    asCObjectType* objTypeExt = (asCObjectType*) ObjType;
-    return (uint) objTypeExt->enumValues.GetLength();
+    asCEnumType* enum_type = ( (asCTypeInfo*) ObjType )->CastToEnumType();
+    return enum_type ? (uint) enum_type->enumValues.GetLength() : 0;
 }
 
 ScriptArray* ScriptType::GetEnumNames() const
 {
-    ScriptArray*   result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetObjectTypeByDecl( "string[]" ) );
-    asCObjectType* objTypeExt = (asCObjectType*) ObjType;
-    for( size_t i = 0, j = objTypeExt->enumValues.GetLength(); i < j; i++ )
-        result->InsertLast( ScriptString::Create( objTypeExt->enumValues[ i ]->name.AddressOf() ) );
+    asCEnumType* enum_type = ( (asCTypeInfo*) ObjType )->CastToEnumType();
+    ScriptArray* result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetObjectTypeByDecl( "string[]" ) );
+    for( size_t i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++ )
+        result->InsertLast( ScriptString::Create( enum_type->enumValues[ i ]->name.AddressOf() ) );
     return result;
 }
 
 ScriptArray* ScriptType::GetEnumValues() const
 {
-    ScriptArray*   result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetObjectTypeByDecl( "int[]" ) );
-    asCObjectType* objTypeExt = (asCObjectType*) ObjType;
-    for( size_t i = 0, j = objTypeExt->enumValues.GetLength(); i < j; i++ )
-        result->InsertLast( &objTypeExt->enumValues[ i ]->value );
+    asCEnumType* enum_type = ( (asCTypeInfo*) ObjType )->CastToEnumType();
+    ScriptArray* result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetObjectTypeByDecl( "int[]" ) );
+    for( size_t i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++ )
+        result->InsertLast( &enum_type->enumValues[ i ]->value );
     return result;
 }
 

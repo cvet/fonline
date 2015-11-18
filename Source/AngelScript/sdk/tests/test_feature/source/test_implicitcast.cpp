@@ -1,6 +1,7 @@
 #include <sstream>
 
 #include "utils.h"
+#include "../../../add_on/autowrapper/aswrappedcall.h"
 
 namespace TestImplicitCast
 {
@@ -463,9 +464,25 @@ bool Test()
 		RegisterStdString(engine);
 		r = engine->RegisterObjectMethod("type", "void opConv(?&out)", asFUNCTION(Type_castVar), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 
-		// TODO: runtime optimize: This code produces a lot of unecessary bytecode
 		r = ExecuteString(engine, "type t; t.v = 5; string s = string(t); assert( s == '5' );");
 		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		// The string(t), that actually calls t.opConv(string) should only create 1 temporary string value
+		mod->AddScriptSection("test", "void func() { type t; string(t); }");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		asIScriptFunction *func = mod->GetFunctionByDecl("void func()");
+		asBYTE expect[] = 
+			{
+				asBC_SUSPEND, asBC_PSF, asBC_CALLSYS, 
+				// TODO: optimize: The string object should be constructed before asBC_TYPEID, thus allow asBC_VAR and asBC_GETREF to be optimized to asBC_PSF
+				asBC_SUSPEND, asBC_TYPEID, asBC_VAR, asBC_PSF, asBC_PSF, asBC_CALLSYS, asBC_GETREF, asBC_CALLSYS, asBC_PSF, asBC_CALLSYS, 
+				asBC_SUSPEND, asBC_RET
+			};
+		if( !ValidateByteCode(func, expect) )
 			TEST_FAILED;
 
 		engine->Release();
@@ -1063,6 +1080,7 @@ static bool Test3()
 	engine->RegisterObjectMethod("MovieClip", "DisplayObject @opImplCast()", asFUNCTIONPR((refCast<MovieClip, DisplayObject>),(MovieClip*),DisplayObject*), asCALL_CDECL_OBJLAST);
  #else
 	engine->RegisterObjectMethod("MovieClip", "DisplayObject @opImplCast()", asFUNCTION((refCast<MovieClip, DisplayObject>)), asCALL_CDECL_OBJLAST);
+//	engine->RegisterObjectMethod("MovieClip", "DisplayObject @opImplCast()", WRAP_OBJ_LAST((refCast<MovieClip, DisplayObject>)), asCALL_GENERIC);
  #endif
 #endif
 

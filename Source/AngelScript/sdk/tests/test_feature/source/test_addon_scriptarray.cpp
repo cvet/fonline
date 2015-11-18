@@ -570,7 +570,6 @@ bool Test()
 		r = mod->Build();
 		if( r >= 0 ) TEST_FAILED;
 		if( bout.buffer != "Test_Addon_ScriptArray (1, 1) : Info    : Compiling void Test()\n"
-						   "Test_Addon_ScriptArray (3, 20) : Error   : Initialization lists cannot be used with 'array<int>@'\n"
 						   "Test_Addon_ScriptArray (4, 21) : Error   : Initialization lists cannot be used with 'int'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
@@ -1308,6 +1307,47 @@ bool Test()
 			TEST_FAILED;
 
 		engine->Release();
+	}
+
+	// Test arrays with asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE
+	// http://www.gamedev.net/topic/662655-array-of-arrays-with-asep-disallow-value-assign-for-ref-type-not-working/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		RegisterScriptArray(engine, false);
+
+		// array<array<float>> is not valid since it is not allowed to copy the subarray
+		// TODO: The error message should be clearer
+		bout.buffer = "";
+		r = ExecuteString(engine, "array<array<float>> a;");
+		if( r >= 0 )
+			TEST_FAILED;
+		if( bout.buffer != "array (0, 0) : Error   : The subtype has no default factory\n"
+						   "ExecuteString (1, 7) : Error   : Attempting to instantiate invalid template type 'array<array<float>>'\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// array<array<float>@> is valid, as the sub array is by handle
+		bout.buffer = "";
+		r = ExecuteString(engine, "array<array<float>@> a = { {1,2}, {2,3} }; \n"
+								  "assert( a.length() == 2 ); \n"
+								  "assert( a[0].length() == 2 ); \n"
+								  "assert( a[1].length() == 2 ); \n"
+								  "assert( a[1][1] == 3 ); \n");
+		if( r < 0 )
+			TEST_FAILED;
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
 	}
 
 	// Success

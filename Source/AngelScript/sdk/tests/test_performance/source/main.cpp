@@ -26,56 +26,56 @@ namespace TestGlobalVar    { void Test(double *time); }
 
 const int NUM_TESTS = 21;
 
-// Times for 2.30.0 (64bit)
+// Times for 2.30.1 (64bit, Intel i7)
 double testTimesOrig[NUM_TESTS] = 
 {
-1.375,  // Basic
-0.244,  // Basic2
-0.574,  // Call
-0.969,  // Call2
-2.127,  // Fib
-0.301,  // Int
-0.704,  // Intf
-0.670,  // Mthd
-1.502,  // String
-0.665,  // String2
-0.912,  // StringPooled
-1.049,  // ThisProp
-0.327,  // Vector3
-0.607,  // Assign.1
-0.970,  // Assign.2
-0.538,  // Assign.3
-0.761,  // Assign.4
-0.761,  // Assign.5
-1.526,  // Array.1
-1.222,  // Array.2
-0.635   // GlobalVar
+0.537,  // Basic
+0.142,  // Basic2
+0.283,  // Call
+0.416,  // Call2
+0.813,  // Fib
+0.112,  // Int
+0.314,  // Intf
+0.309,  // Mthd
+1.044,  // String
+0.345,  // String2
+0.391,  // StringPooled
+0.308,  // ThisProp
+0.158,  // Vector3
+0.200,  // Assign.1
+0.456,  // Assign.2
+0.241,  // Assign.3
+0.289,  // Assign.4
+0.290,  // Assign.5
+0.554,  // Array.1
+0.247,  // Array.2
+0.152   // GlobalVar
 };
 
-// Times for 2.30.1 WIP (64bit) (localized optimizations)
+// Times for 2.30.2 WIP (64bit, Intel i7) (localized optimizations)
 double testTimesOrig2[NUM_TESTS] = 
 {
-1.328,  // Basic
-0.244,  // Basic2
-0.574,  // Call
-0.969,  // Call2
-2.127,  // Fib
-0.301,  // Int
-0.704,  // Intf
-0.670,  // Mthd
-1.502,  // String
-0.647,  // String2
-0.912,  // StringPooled
-0.599,  // ThisProp
-0.327,  // Vector3
-0.595,  // Assign.1
-0.815,  // Assign.2
-0.538,  // Assign.3
-0.761,  // Assign.4
-0.761,  // Assign.5
-1.153,  // Array.1
-0.426,  // Array.2
-0.242   // GlobalVar
+0.537,  // Basic
+0.142,  // Basic2
+0.283,  // Call
+0.416,  // Call2
+0.813,  // Fib
+0.112,  // Int
+0.314,  // Intf
+0.309,  // Mthd
+1.044,  // String
+0.345,  // String2
+0.391,  // StringPooled
+0.308,  // ThisProp
+0.158,  // Vector3
+0.200,  // Assign.1
+0.456,  // Assign.2
+0.241,  // Assign.3
+0.289,  // Assign.4
+0.290,  // Assign.5
+0.554,  // Array.1
+0.247,  // Array.2
+0.152   // GlobalVar
 };
 
 double testTimesBest[NUM_TESTS];

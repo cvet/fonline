@@ -130,7 +130,7 @@ bool Test()
 			if( r >= 0 )
 				TEST_FAILED;
 			if( bout.buffer != " (2, 13) : Error   : Name conflict. 'Test' is a mixin class.\n"
-							   " (3, 5) : Error   : Name conflict. 'Test' is a mixin class.\n" )
+				               " (3, 5) : Error   : Name conflict. 'Test' is a mixin class.\n" )
 			{
 				PRINTF("%s", bout.buffer.c_str());
 				TEST_FAILED;

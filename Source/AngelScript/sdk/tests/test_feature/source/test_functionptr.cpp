@@ -1,4 +1,6 @@
 #include "utils.h"
+#include <strstream>
+#include "../../../add_on/scripthelper/scripthelper.h"
 
 namespace TestFunctionPtr
 {
@@ -27,6 +29,700 @@ bool Test()
 	asIScriptContext *ctx;
 	CBufferedOutStream bout;
 	const char *script;
+
+	// Test function pointers in ternary conditions
+	// http://www.gamedev.net/topic/672565-conditional-operator-is-unusable-with-functions/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"funcdef fd@ fd();\n"
+			"fd@ f() {\n"
+			"	return true ? f : f;\n" // should work
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		bout.buffer = "";
+		mod->AddScriptSection("test",
+			"int g(int) {\n"
+			"return 0;\n"
+			"}\n"
+			"void f() {\n"
+			"	true ? f : g;\n" // must detect that the signature differs
+			"}\n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (4, 1) : Info    : Compiling void f()\n"
+						   "test (5, 9) : Error   : Can't implicitly convert from 'g@' to 'f@&'.\n"
+						   "test (5, 2) : Error   : Both expressions must have the same type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		bout.buffer = "";
+		mod->AddScriptSection("test",
+			"int f(int) {\n"
+			"return 0;\n"
+			"}\n"
+			"void f() {\n"
+			"	true ? f : f;\n" // must detect that there are multiple matches for f
+			"}\n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (4, 1) : Info    : Compiling void f()\n"
+						   "test (5, 9) : Error   : Multiple matching signatures to '::f'\n"
+						   "test (5, 13) : Error   : Multiple matching signatures to '::f'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test declaring funcdefs as members of classes
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class MyObj { \n"
+			"  funcdef void Callback(); \n"            // Allow declaring funcdef as member
+			"  void Method(Callback@ cb) { \n"         // The class should see its own funcdef without need for scope
+			"    cb(); \n"
+			"    Callback @cb2 = cb; \n"               // The class should see its own funcdef without need for scope
+			"  } \n"
+			"  Callback @cb; \n"                       // The class should see its own funcdef without need for scope
+			"} \n"
+			"bool called = false; \n"
+			"void main() { \n"
+			"  MyObj test; \n"
+			"  MyObj::Callback @cb = Function; \n"     // Using the class name as scope can be used to identify the funcdef
+			"  test.Method(cb); \n"
+			"  assert( called ); \n"
+			"} \n"
+			"void Function() { called = true; } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// Saving and loading should also work
+		CBytecodeStream stream(__FILE__"1");
+		r = mod->SaveByteCode(&stream);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = mod->LoadByteCode(&stream);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// Test name conflict within class (funcdef vs funcdef, funcdef vs property, funcdef vs method)
+		bout.buffer = "";
+		mod->AddScriptSection("test",
+			"class MyObj { \n"
+			"  funcdef void a(); \n"
+			"  int a; \n"              // conflicts with first funcdef
+			"  void b() {} \n"         // conflicts with next funcdef
+			"  funcdef void b(); \n"
+			"  funcdef void a(); \n"   // conflicts with first funcdef
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test (6, 11) : Error   : Name conflict. 'a' is a funcdef.\n"
+			"test (4, 3) : Error   : Name conflict. 'b' is a funcdef.\n"
+			"test (3, 7) : Error   : Name conflict. 'a' is a funcdef.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test shared class with child funcdef. The funcdef must be shared automatically too
+		bout.buffer = "";
+		mod->AddScriptSection("test1",
+			"shared class MyObj { funcdef void CB(); } \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		mod = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test2",
+			"shared class MyObj { } \n"  // The shared class should automatically get the funcdef
+			"MyObj::CB @c; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		bout.buffer = "";
+		mod->AddScriptSection("test2",
+			"shared class MyObj { funcdef int CB(int); } \n"); // TODO: The compiler should detect that this is different
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		engine->DiscardModule("test1");
+		engine->DiscardModule("test2");
+
+		// Test inheriting from class with child funcdef
+		bout.buffer = "";
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test2",
+			"class Base { funcdef void A(); } \n"
+			"class Derived : Base { \n"
+			"  A @GetCallback() { return a; } \n" // should see the funcdef declared in base class
+			"  A @a; \n"
+			"} \n"
+			"void main() { \n"
+			"  Derived::A @a; \n" // should see the funcdef declared in base class
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test enumerating child types of MyObj (it must be possible to find the Callback. The declaration of the funcdef must be void MyObj::Callback())
+		asIObjectType *ot = mod->GetObjectTypeByName("Base");
+		if (ot == 0 || ot->GetChildFuncdefCount() != 1 ||
+			ot->GetChildFuncdef(0) == 0 ||
+			std::string(ot->GetChildFuncdef(0)->GetDeclaration()) != "void Base::A()")
+			TEST_FAILED;
+		ot = mod->GetObjectTypeByName("Derived");
+		if (ot == 0 || ot->GetChildFuncdefCount() != 0)
+			TEST_FAILED;
+
+		// Test appropriate error when the child type doesn't exist
+		bout.buffer = "";
+		mod->AddScriptSection("test2",
+			"class MyObj  { \n"
+			"  funcdef void A(); \n"
+			"} \n"
+			"void main() { \n"
+			"  MyObj::B @a; \n" // wrong child type
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test2 (4, 1) : Info    : Compiling void main()\n"
+			"test2 (5, 10) : Error   : Identifier 'B' is not a data type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test private and protected funcdefs (currently not supported)
+		// TODO: The error message could be better
+		bout.buffer = "";
+		mod->AddScriptSection("test2",
+			"class MyObj  { \n"
+			"  private funcdef void A(); \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test2 (2, 3) : Error   : Expected method or property\n"
+			"test2 (2, 3) : Error   : Instead found reserved keyword 'private'\n"
+			"test2 (3, 1) : Error   : Unexpected token '}'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test that it is possible to find the type MyObj::Callback when MyObj is not declared in global namespace
+		bout.buffer = "";
+		mod->AddScriptSection("test2",
+			"namespace Boo { \n"
+			"class MyObj  { \n"
+			"  funcdef void A(); \n"
+			"} \n"
+			"} \n"
+			"Boo::MyObj::A @a; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test that the child funcdef can use as returntype or parameter other child funcdefs of the same class without informing scope
+		bout.buffer = "";
+		mod->AddScriptSection("test2",
+			"class MyObj  { \n"
+			"  funcdef A@ B(); \n"  // This should be able to see the A funcdef too
+			"  funcdef void A(); \n"
+			"} \n"
+			"MyObj::B @b; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test funcdef in mixin class (currently not supported)
+		bout.buffer = "";
+		mod->AddScriptSection("test2",
+			"mixin class MyMix  { \n"
+			"  funcdef void A(); \n"
+			"} \n"
+			"class MyObj : MyMix {}\n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test2 (2, 11) : Error   : Mixin classes cannot have child types\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test funcdef in interface (currently not supported)
+		// TODO: Error message should be improved
+		bout.buffer = "";
+		mod->AddScriptSection("test2",
+			"interface MyMix  { \n"
+			"  funcdef void A(); \n"
+			"} \n"
+			"class MyObj : MyMix {}\n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test2 (2, 3) : Error   : Expected data type\n"
+			"test2 (2, 3) : Error   : Instead found reserved keyword 'funcdef'\n"
+			"test2 (3, 1) : Error   : Unexpected token '}'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test name conflict when derived class declares same funcdef as present in base class
+		bout.buffer = "";
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test2",
+			"class Base { \n"
+			"  A @GetCalback() { return null; } \n"
+			"  funcdef void A(); \n"
+			"} \n"
+			"class Derived : Base { \n"
+			"  A @GetCallback() override { return a; } \n"
+			"  funcdef int A(int); \n"
+			"  A @a; \n"
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test2 (5, 7) : Error   : Method 'Derived::A@ Derived::GetCallback()' marked as override but does not replace any base class or interface method\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test registering funcdef as child of application type: RegisterFuncdef("void MyObj::Callback()")
+		bout.buffer = "";
+		engine->RegisterObjectType("MyType", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterFuncdef("void MyType::Callback()");
+		engine->RegisterObjectMethod("MyType", "void SetCallback(Callback @)", asFUNCTION(0), asCALL_GENERIC);
+		mod->AddScriptSection("test", "MyType::Callback @cb;\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test GetTypeIdByDecl
+		int typeId = engine->GetTypeIdByDecl("MyType::Callback");
+		if (typeId < 0)
+			TEST_FAILED;
+		if (std::string(engine->GetTypeDeclaration(typeId)) != "MyType::Callback")
+			TEST_FAILED;
+
+		// Test WriteConfigToStream (try configurations with depency between types)
+		bout.buffer = "";
+		engine->RegisterObjectType("MyType2", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectType("MyType3", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterFuncdef("void MyType2::Callback(MyType3 @)");
+		engine->RegisterFuncdef("void MyType3::F(MyType2::Callback @)");
+		std::stringstream s;
+		WriteConfigToStream(engine, s);
+
+		asIScriptEngine *engine2 = asCreateScriptEngine();
+		engine2->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		r = ConfigEngineFromStream(engine2, s);
+		if (r < 0)
+			TEST_FAILED;
+		typeId = engine->GetTypeIdByDecl("MyType3::F");
+		asIScriptFunction *f = engine->GetFuncdefFromTypeId(typeId);
+		if (std::string(f->GetDeclaration()) != "void MyType3::F(MyType2::Callback@)")
+			TEST_FAILED;
+		if (f->GetParentType() == 0 || std::string(f->GetParentType()->GetName()) != "MyType3")
+			TEST_FAILED;
+		engine2->ShutDownAndRelease();
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test registering funcdef as child of template type: RegisterFuncdef("T Array<T>::Callback(T)")
+		// The template instance must create new funcdefs
+		bout.buffer = "";
+		RegisterScriptArray(engine, false);
+		r = engine->RegisterFuncdef("T &array<T>::MyCallback(const T&in)");
+		if (r < 0)
+			TEST_FAILED;
+		mod->AddScriptSection("name",
+			"int retval; \n"
+			"int &func(const int &in a) { retval = a; return retval; } \n"
+			"void main() \n"
+			"{ \n"
+			"  array<int>::MyCallback @cb = func; \n"
+			"  int val = 34; \n"
+			"  assert( 34 == cb(val) ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		r = ExecuteString(engine, "main();", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// Test 'array<int>::MyCallback @cb;' should give appropriate error when MyCallback is not child of array type
+		bout.buffer = "";
+		r = ExecuteString(engine, "array<int>::MyCallback2 @cb;");
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 13) : Error   : Identifier 'MyCallback2' is not a data type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test child funcdef in template where funcdef takes template subtype by @. Should fail when trying to instance template with value type
+		bout.buffer = "";
+		r = engine->RegisterFuncdef("T @array<T>::MyCallback2(T@)");
+		if (r < 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "array<float>::MyCallback2 @cb;");
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 7) : Error   : Attempting to instantiate invalid template type 'array<float>'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test RegisterFuncdef("void array<@>::CB()"); should give appropriate parser error
+		bout.buffer = "";
+		r = engine->RegisterFuncdef("void array<@>::CB()");
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "System function (1, 12) : Error   : Expected data type\n"
+						   "System function (1, 12) : Error   : Instead found '@'\n"
+						   " (0, 0) : Error   : Failed in call to function 'RegisterFuncdef' with 'void array<@>::CB()' (Code: -10)\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test that funcdefs from other namespaces are not visible
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace foo { funcdef void bar(); } \n"
+			"void main() { \n"
+			"  bar @b; \n"        // not visible
+			"  foo::bar @c; \n"   // visible
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (2, 1) : Info    : Compiling void main()\n"
+						   "test (3, 3) : Error   : Identifier 'bar' is not a data type in global namespace\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test lambdas
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		bout.buffer = "";
+
+		// Success scenarios
+		//---------------------
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("name",
+			"funcdef void CB0(); \n"
+			"funcdef void CB1(bool); \n"
+			"funcdef void CB2(int, int); \n"
+			"bool called = false; \n"
+			"void func() { \n"
+			"   CB0 @cb0 = function() {}; \n"          // The lambda takes on the signature of the funcdef it is assigned to
+			"   CB1 @cb1 = function(a) {}; \n"
+			"   CB2 @cb2 = function(a,b) {}; \n"
+			"   CB0 @a0 = cast<CB0>(function(){}); \n" // or if a cast to a funcdef
+			"   call(function(a) { called = a; }); \n" // or directly passed to a function expecting funcdef
+			"   assert( called ); \n"
+			"   call(function(a) { called = !a; }); \n"
+			"   assert( !called ); \n"
+			"} \n"
+			"void call(CB1@a) { a(true); } \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		// Test calling lambda function
+		r = ExecuteString(engine, "func()", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		// Saving and loading should also work
+		CBytecodeStream stream(__FILE__"1");
+		r = mod->SaveByteCode(&stream);
+		if( r < 0 )
+			TEST_FAILED;
+
+		r = mod->LoadByteCode(&stream);
+		if( r < 0 )
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "func()", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		// Test using lambda functions in asIScriptModule::CompileFunction()
+		asUINT funcCount = mod->GetFunctionCount();
+		r = ExecuteString(engine, "called = false; \n call(function(a) { called = a; }); \n assert( called );\n", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+		if( funcCount != mod->GetFunctionCount() )
+			TEST_FAILED;
+
+		// The keyword 'function' should not be reserved. Test "int c = function(a,b);". Should work normally
+		mod->AddScriptSection("test",
+			"int function(int,int) {return 0;}\n"
+			"void func() { \n"
+			"  int a = 0, b = 0; \n"
+			"  int c = function(a, b); \n"
+			"} \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		// Test using lambda functions in shared functions (the lambda's should be shared too). 
+		// The shared lambda should be included in the module that compiles the shared function that declared the lambda
+		asIScriptModule *mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod2->AddScriptSection("test",
+			"funcdef int CB1(int); \n"
+			"shared int sfunc(int a) { \n"
+			"  CB1 @c = function(a) {return a*a;}; \n"
+			"  return c(a); \n"
+			"} \n");
+		r = mod2->Build();
+		if( r < 0 ) 
+			TEST_FAILED;
+		mod->AddScriptSection("test",
+			"funcdef int CB1(int); \n"        // TODO: It shouldn't be necessary to declare this, but without it, it will not be saved with the bytecode, and thus the LoadByteCode will not be able to link the sfunc that uses it
+			"shared int sfunc(int a) {} \n"); // no need to implement it again
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+		r = ExecuteString(engine, "assert( sfunc(4) == 16 );", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		// Saving and loading should also work
+		CBytecodeStream stream2(__FILE__"1");
+		r = mod->SaveByteCode(&stream2);
+		if( r < 0 )
+			TEST_FAILED;
+		engine->DiscardModule("test2");
+		engine->DiscardModule("test");
+
+		mod = engine->GetModule("test3", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&stream2);
+		if( r < 0 )
+			TEST_FAILED;
+		r = ExecuteString(engine, "assert( sfunc(4) == 16 );", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		// Test lambda function in asIScriptModule::CompileGlobalVar()
+		r = mod->CompileGlobalVar("glob", "CB1 @g = function(a) {return a;};", 0);
+		if( r < 0 )
+			TEST_FAILED;
+		r = ExecuteString(engine, "assert( g(4) == 4 );", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		// No messages should have been generated until now
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// The global variable is holding a reference to the anonymous function,
+		// which is causing the module to believe it is still in use. So it is
+		// necessary to explicitly discard the module before reusing it
+		mod->Discard();
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+
+		// Error scenarios
+		//-------------------
+		// Test compiler error within lambda
+		bout.buffer = "";
+		mod->AddScriptSection("name", 
+			"funcdef void CB0(); \n"
+			"void func() { \n"
+			"  CB0 @c = function() { error }; \n"
+			"} \n");
+		r = mod->Build();
+		if( r >= 0 )
+			TEST_FAILED;
+		if( bout.buffer != "name (3, 23) : Info    : Compiling void $void func()$0()\n"
+						   "name (3, 31) : Error   : Expected ';'\n"
+						   "name (3, 31) : Error   : Instead found '}'\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Stand-alone lambda should generate appropriate error
+		bout.buffer = "";
+		r = ExecuteString(engine, "function(){};");
+		if( r >= 0 )
+			TEST_FAILED;
+		if( bout.buffer != "ExecuteString (1, 11) : Error   : Invalid expression: stand-alone anonymous function\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Test error when lambda has wrong number of parameters for funcdef
+		// Test error when attempting to call lambda through opCall post operator
+		bout.buffer = "";
+		mod->AddScriptSection("name", 
+			"funcdef void CB1(int); \n"
+			"void func() { \n"
+			"  CB1 @c = function() {}; \n"    // too few arguments
+			"  CB1 @d = function(a,b) {}; \n" // too many arguments
+			"  function(){}(); \n"            // directly calling the lambda is not allowed
+			"} \n");
+		r = mod->Build();
+		if( r >= 0 )
+			TEST_FAILED;
+		// TODO: The error messages should be more more explicit
+		if( bout.buffer != "name (2, 1) : Info    : Compiling void func()\n"
+						   "name (3, 23) : Error   : Can't implicitly convert from '$func@const' to 'CB1@&'.\n"
+						   "name (4, 21) : Error   : Can't implicitly convert from '$func@const' to 'CB1@&'.\n"
+						   "name (5, 15) : Error   : No matching signatures to '$func::opCall()'\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
+	// Test to make sure it is not possible to convert class method to primitive
+	// http://www.gamedev.net/topic/669352-can-cast-object-method-to-uint/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("name",
+			"class T { uint length() { return 42; } } \n"
+			"void func() { \n"
+			"   T t; \n"
+			"   uint a = uint( t.length ); \n"
+			"} \n");
+		r = mod->Build();
+		if( r >= 0 )
+			TEST_FAILED;
+
+		if( bout.buffer != "name (2, 1) : Info    : Compiling void func()\n"
+						   "name (4, 13) : Error   : Invalid operation on method\n" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
 
 	// Test assert failure with taking address of method on temporary object
 	// http://www.gamedev.net/topic/667853-assertion-failure-in-compiler-when-using-delegate/

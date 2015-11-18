@@ -74,7 +74,7 @@ bool Test()
 	int r;
 	COutStream out;
 	CBufferedOutStream bout;
- 	asIScriptEngine *engine = 0;
+	asIScriptEngine *engine = 0;
 	asIScriptContext *ctx;
 	asIScriptModule *mod;
 
@@ -168,7 +168,7 @@ bool Test()
 		// handle was placed on the GC, and these hold a reference to the engine. If this is not done the 
 		// engine will be kept alive forever
 		engine->ShutDownAndRelease();
-	} 
+	}
 
 	// Storing a function pointer in the dictionary
 	// http://www.gamedev.net/topic/662542-assert-assigning-from-one-dictionary-to-another/
@@ -498,6 +498,9 @@ bool Test()
 	// Test the STL iterator
 	{
 		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine); // Must register the dictionary so the cache is built
 		CScriptDictionary *dict = CScriptDictionary::Create(engine);
 		dict->Set("a", asINT64(1));
 		dict->Set("b", asINT64(2));

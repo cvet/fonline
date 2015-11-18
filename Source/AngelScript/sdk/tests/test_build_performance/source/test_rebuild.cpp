@@ -19,8 +19,7 @@ void Test()
 
 	printf("---------------------------------------------\n");
 	printf("%s\n\n", TESTNAME);
-	printf("AngelScript 2.30.0 WIP 0: 6.50 secs\n");
-	printf("AngelScript 2.30.0 WIP 1: 0.18 secs (redesigned clean-up of script code)\n");
+	printf("AngelScript 2.31.0: 0.844 secs\n");
 
 	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 
@@ -41,7 +40,7 @@ void Test()
 #ifdef _DEBUG
 	const int iterations = 10;
 #else
-	const int iterations = 500;
+	const int iterations = 5000;
 #endif
 
 	for( int n = 0; n < iterations; n++ )

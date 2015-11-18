@@ -15,6 +15,21 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
 
+	// Test named args with registered object behaviours
+	// http://www.gamedev.net/topic/672959-problem-with-named-parameters-and-object-behaviors/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		RegisterScriptArray(engine, false);
+
+		r = ExecuteString(engine, "array<int> a( length: 10, value: 1 );");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test old syntax
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);

@@ -1,8 +1,14 @@
-LOCAL_PATH:= $(call my-dir)/../../../source
+# This makefile assumes the ndk-build tool is executed from the sdk/angelscript/projects/android directory
+# Change the next line to full path if there are any errors to link or find files
+SDK_BASE_PATH := $(call my-dir)/../../../..
 
-commonSources:= as_callfunc_arm_gcc.S as_atomic.cpp as_builder.cpp as_bytecode.cpp as_callfunc.cpp as_callfunc_arm.cpp as_callfunc_mips.cpp as_callfunc_ppc.cpp as_callfunc_ppc_64.cpp as_callfunc_sh4.cpp as_callfunc_x86.cpp as_callfunc_x64_gcc.cpp as_compiler.cpp as_context.cpp as_configgroup.cpp as_datatype.cpp as_generic.cpp as_gc.cpp as_globalproperty.cpp as_memory.cpp as_module.cpp as_objecttype.cpp as_outputbuffer.cpp as_parser.cpp as_restore.cpp as_scriptcode.cpp as_scriptengine.cpp as_scriptfunction.cpp as_scriptnode.cpp as_scriptobject.cpp as_string.cpp as_string_util.cpp as_thread.cpp as_tokenizer.cpp as_typeinfo.cpp as_variablescope.cpp 
+ANGELSCRIPT_INCLUDE := $(SDK_BASE_PATH)/angelscript/include/
 
+# -----------------------------------------------------
+# Build the AngelScript library
+# -----------------------------------------------------
 include $(CLEAR_VARS)
+LOCAL_MODULE := libangelscript
 
 # Android API: Checks if can use pthreads. Version 2.3 fully supports threads and atomic instructions
 # ifeq ($(TARGET_PLATFORM),android-3)
@@ -30,7 +36,8 @@ include $(CLEAR_VARS)
 # endif
 
 LOCAL_CPP_FEATURES += rtti exceptions
-LOCAL_SRC_FILES := $(commonSources)
-LOCAL_MODULE:= libangelscript
-LOCAL_ARM_MODE:= arm
+LOCAL_SRC_FILES := $(wildcard $(SDK_BASE_PATH)/angelscript/source/*.S)
+LOCAL_SRC_FILES += $(wildcard $(SDK_BASE_PATH)/angelscript/source/*.cpp)
+LOCAL_PATH := .
+LOCAL_ARM_MODE := arm
 include $(BUILD_STATIC_LIBRARY)

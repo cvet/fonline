@@ -470,7 +470,7 @@ bool Test()
 				asIObjectType *type = 0;
 				engine->GetObjectInGC(i, 0, &obj, &type);
 
-				if( strcmp(type->GetName(), "_builtin_function_") == 0 )
+				if( strcmp(type->GetName(), "$func") == 0 )
 				{
 					asIScriptFunction *func = (asIScriptFunction*)obj;
 					PRINTF("func: %s\n", func->GetDeclaration());

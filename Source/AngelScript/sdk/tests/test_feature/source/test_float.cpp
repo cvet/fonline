@@ -133,14 +133,14 @@ bool Test()
 								  "assert( s == '2e-308' ); \n"
 								  "float f = 3.402823466e+38f; \n"
 								  "s = formatFloat(f, 'e'); \n"
-#if defined(__GNUC__) && !defined(_WIN32)
+#if defined(__GNUC__) && !defined(_WIN32) || _MSC_VER >= 1900
 								  "assert( s == '3e+38' ); \n"
 #else
 								  "assert( s == '3e+038' ); \n"
 #endif
 								  "f = 1.175494351e-38f; \n"
 								  "s = formatFloat(f, 'e'); \n"
-#if defined(__GNUC__) && !defined(_WIN32)
+#if defined(__GNUC__) && !defined(_WIN32) || _MSC_VER >= 1900
 								  "assert( s == '1e-38' ); \n"
 #else
 								  "assert( s == '1e-038' ); \n"

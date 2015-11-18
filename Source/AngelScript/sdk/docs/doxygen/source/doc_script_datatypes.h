@@ -117,8 +117,7 @@ initialization list. Example:
   array<int> a;           // A zero-length array of integers
   array<int> b(3);        // An array of integers with 3 elements
   array<int> c(3, 1);     // An array of integers with 3 elements, all set to 1 by default
-  array<int> d = {,3,4,}; // An array of integers with 4 elements, where
-                          // the second and third elements are initialized
+  array<int> d = {5,6,7}; // An array of integers with 3 elements with specific values
 </pre>
 
 Multidimensional arrays are supported as arrays of arrays, for example:
@@ -465,8 +464,9 @@ a default transformation of the primitive to a string.
  - string join(const array<string> &in arr, const string &in delimiter)
  - int64  parseInt(const string &in, uint base = 10, uint &out byteCount = 0)
  - double parseFloat(const string &in, uint &out byteCount = 0)
- - string formatInt(int64 val, const string &in options, uint width = 0)
- - string formatFloat(double val, const string &in options, uint width = 0, uint precision = 0)
+ - string formatInt(int64 val, const string &in options = '', uint width = 0)
+ - string formatUInt(uint64 val, const string &in options = '', uint width = 0)
+ - string formatFloat(double val, const string &in options = '', uint width = 0, uint precision = 0)
 
 The format functions takes a string that defines how the number should be formatted. The string
 is a combination of the following characters:
@@ -650,6 +650,8 @@ Here's an example that shows the syntax for using function handles
     return a > b;
   }
 </pre>
+
+\section doc_datatypes_delegate Delegates
 
 It is also possible to take function handles to class methods, but in this case the class method
 must be bound to the object instance that will be used for the call. To do this binding is called

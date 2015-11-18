@@ -473,8 +473,6 @@ r = engine->RegisterObjectMethod("mytype", "void MethodWrapper()", asFUNCTION(My
 
 \page doc_reg_objprop Registering object properties
 
-\todo It is now possible to use & in the property declaration
-
 Class member variables can be registered so that they can be directly
 accessed by the script without the need for any method calls.
 
@@ -486,6 +484,25 @@ struct MyStruct
 
 r = engine->RegisterObjectProperty("mytype", "int a", asOFFSET(MyStruct,a)); assert( r >= 0 );
 \endcode
+
+If a class member is indirect, i.e. the class holds a pointer to the member that is 
+allocated on the heap, then it is possible to registered the property using & to tell
+the script engine that an dereference is needed to access the member.
+
+\code
+struct MyStruct
+{
+  OtherStruct *a;
+};
+
+r = engine->RegisterObjectProperty("mytype", "othertype &a", asOFFSET(MyStruct,a)); assert( r >= 0 );
+\endcode
+
+Of course, the application must make sure the pointer is valid during the whole time 
+that it may be accessed from the script.
+
+
+\section doc_reg_objprop_accessor Property accessors
 
 It is also possible to expose properties through \ref doc_script_class_prop "property accessors", 
 which are a pair of class methods with prefixes get_ and set_ for getting and setting the property value. 

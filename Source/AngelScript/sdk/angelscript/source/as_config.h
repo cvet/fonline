@@ -844,7 +844,7 @@
 			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 			#define AS_X86
 			#undef AS_NO_THISCALL_FUNCTOR_METHOD
-		#elif defined(__LP64__) && !defined(__arm64__)
+		#elif defined(__LP64__) && !defined(__arm64__) && !defined(__PPC64__)
 			#define AS_X64_GCC
 			#undef AS_NO_THISCALL_FUNCTOR_METHOD
 			#define HAS_128_BIT_PRIMITIVES
@@ -854,7 +854,7 @@
 			// STDCALL is not available on 64bit Linux
 			#undef STDCALL
 			#define STDCALL
-		#elif defined(__ARMEL__) || defined(__arm__)
+		#elif (defined(__ARMEL__) || defined(__arm__)) && !(defined(__ARM_ARCH_4__) || defined(__ARM_ARCH_4T__))
 			#define AS_ARM
 
 			// TODO: The stack unwind on exceptions currently fails due to the assembler code in as_callfunc_arm_gcc.S
@@ -911,6 +911,16 @@
 				// For other ABIs the native calling convention is not available (yet)
 				#define AS_MAX_PORTABILITY
 			#endif
+		#elif defined(__PPC64)
+			// Support native calling conventions on Linux with PPC64
+			// TODO: This has not yet been confirmed to work
+			#define AS_PPC_64
+			#define SPLIT_OBJS_BY_MEMBER_TYPES
+			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
+			#define CDECL_RETURN_SIMPLE_IN_MEMORY
+			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+			#undef STDCALL
+			#define STDCALL
 		#else
 			#define AS_MAX_PORTABILITY
 		#endif
@@ -1011,6 +1021,9 @@
 		#if (defined(_ARM_) || defined(__arm__))
 			// Android ARM
 
+			// TODO: The stack unwind on exceptions currently fails due to the assembler code in as_callfunc_arm_gcc.S
+			#define AS_NO_EXCEPTIONS
+
 			#undef THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
 			#undef CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
 			#undef STDCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE
@@ -1036,6 +1049,26 @@
 			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 			#define AS_X86
 			#undef AS_NO_THISCALL_FUNCTOR_METHOD
+		#elif defined(__mips__)
+			#define AS_MIPS
+			#undef STDCALL
+			#define STDCALL
+
+			#ifdef _ABIO32
+				#define AS_MIPS
+
+				// All structures are returned in memory regardless of size or complexity
+				#define THISCALL_RETURN_SIMPLE_IN_MEMORY
+				#define	THISCALL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 0
+				#define CDECL_RETURN_SIMPLE_IN_MEMORY
+				#define CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 0
+				#define STDCALL_RETURN_SIMPLE_IN_MEMORY
+				#define CDECL_RETURN_SIMPLE_IN_MEMORY_MIN_SIZE 0
+				#undef AS_NO_THISCALL_FUNCTOR_METHOD
+			#else
+				// For other ABIs the native calling convention is not available (yet)
+				#define AS_MAX_PORTABILITY
+			#endif
 		#endif
 
 	// Haiku OS
@@ -1070,7 +1103,7 @@
 			// Support native calling conventions on Intel 32bit CPU
 			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 			#define AS_X86
-		#elif defined(__LP64__)
+		#elif defined(__x86_64__)
 			#define AS_X64_GCC
 			#define HAS_128_BIT_PRIMITIVES
 			#define SPLIT_OBJS_BY_MEMBER_TYPES

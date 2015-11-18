@@ -11,6 +11,7 @@ namespace TestManySymbols { void Test(); }
 namespace TestManyFuncs { void Test(); }
 namespace TestComplex { void Test(); }
 namespace TestRebuild { void Test(); }
+namespace TestHugeAPI { void Test(); }
 
 void DetectMemoryLeaks()
 {
@@ -38,6 +39,7 @@ int main(int argc, char **argv)
 	TestManyFuncs::Test();
 	TestComplex::Test();
 	TestRebuild::Test();
+	TestHugeAPI::Test();
 	
 	printf("--------------------------------------------\n");
 	printf("Press any key to quit.\n");

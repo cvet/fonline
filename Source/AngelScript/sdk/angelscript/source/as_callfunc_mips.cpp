@@ -54,7 +54,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#if !defined(AS_ANDROID)
 #include <regdef.h>
+#endif
 
 BEGIN_AS_NAMESPACE
 
@@ -86,8 +88,6 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 	asCScriptEngine *engine = context->m_engine;
 	asSSystemFunctionInterface *sysFunc = descr->sysFuncIntf;
 	int callConv = sysFunc->callConv;
-
-	// TODO: Mips does not yet support THISCALL_OBJFIRST/LAST
 
 	asQWORD retQW = 0;
 
@@ -135,7 +135,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		asCDataType &paramType = descr->parameterTypes[n];
 		if( paramType.IsObject() && !paramType.IsObjectHandle() && !paramType.IsReference() )
 		{
-			if( paramType.GetObjectType()->flags & COMPLEX_MASK )
+			if( paramType.GetTypeInfo()->flags & COMPLEX_MASK )
 			{
 				// The object is passed by reference
 				argBuffer[argOffset++] = args[spos++];
@@ -143,7 +143,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			else
 			{
 				// Ensure 8byte alignment for classes that need it
-				if( (paramType.GetObjectType()->flags & asOBJ_APP_CLASS_ALIGN8) && (argOffset & 1) )
+				if( (paramType.GetTypeInfo()->flags & asOBJ_APP_CLASS_ALIGN8) && (argOffset & 1) )
 					argOffset++;
 			
 				// Copy the object's memory to the buffer
@@ -557,7 +557,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			if( descr->parameterTypes[n].IsObject() && !descr->parameterTypes[n].IsObjectHandle() && !descr->parameterTypes[n].IsReference() )
 			{
 #ifdef COMPLEX_OBJS_PASSED_BY_REF
-				if( descr->parameterTypes[n].GetObjectType()->flags & COMPLEX_MASK )
+				if( descr->parameterTypes[n].GetTypeInfo()->flags & COMPLEX_MASK )
 				{
 					paramBuffer[dpos++] = args[spos++];
 					paramSize++;

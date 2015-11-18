@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2014 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -398,7 +398,8 @@ bool asCTokenizer::IsIdentifier(const char *source, size_t sourceLength, size_t 
 	// Starting with letter or underscore
 	if( (source[0] >= 'a' && source[0] <= 'z') ||
 		(source[0] >= 'A' && source[0] <= 'Z') ||
-		source[0] == '_' )
+		source[0] == '_' ||
+		(source[0] < 0 && engine->ep.allowUnicodeIdentifiers) )
 	{
 		tokenType   = ttIdentifier;
 		tokenLength = 1;
@@ -408,7 +409,8 @@ bool asCTokenizer::IsIdentifier(const char *source, size_t sourceLength, size_t 
 			if( (source[n] >= 'a' && source[n] <= 'z') ||
 				(source[n] >= 'A' && source[n] <= 'Z') ||
 				(source[n] >= '0' && source[n] <= '9') ||
-				source[n] == '_' )
+				source[n] == '_' ||
+				(source[n] < 0 && engine->ep.allowUnicodeIdentifiers) )
 				tokenLength++;
 			else
 				break;

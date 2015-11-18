@@ -47,12 +47,14 @@ BEGIN_AS_NAMESPACE
 
 struct asSTypeBehaviour;
 class asCScriptEngine;
-class asCObjectType;
+class asCTypeInfo;
 class asCScriptFunction;
 class asCModule;
+class asCObjectType;
+class asCEnumType;
 struct asSNameSpace;
 
-// TODO: refactor: Reference should not be part of the datatype. This should be stored separately, e.g. in asCTypeInfo
+// TODO: refactor: Reference should not be part of the datatype. This should be stored separately, e.g. in asCExprValue
 //                 MakeReference, MakeReadOnly, IsReference, IsReadOnly should be removed
 
 class asCDataType
@@ -67,9 +69,9 @@ public:
 	asCString Format(asSNameSpace *currNs, bool includeNamespace = false) const;
 
 	static asCDataType CreatePrimitive(eTokenType tt, bool isConst);
-	static asCDataType CreateObject(asCObjectType *ot, bool isConst);
+	static asCDataType CreateType(asCTypeInfo *ti, bool isConst);
 	static asCDataType CreateAuto(bool isConst);
-	static asCDataType CreateObjectHandle(asCObjectType *ot, bool isConst);
+	static asCDataType CreateObjectHandle(asCTypeInfo *ot, bool isConst);
 	static asCDataType CreateFuncDef(asCScriptFunction *ot);
 	static asCDataType CreateNullHandle();
 
@@ -118,7 +120,7 @@ public:
 
 	asCDataType        GetSubType(asUINT subtypeIndex = 0)    const;
 	eTokenType         GetTokenType()  const {return tokenType;}
-	asCObjectType     *GetObjectType() const {return objectType;}
+	asCTypeInfo       *GetTypeInfo() const { return typeInfo; }
 	asCScriptFunction *GetFuncDef()    const {return funcDef;}
 
 	int  GetSizeOnStackDWords()  const;
@@ -129,8 +131,8 @@ public:
 #endif
 
 	void SetTokenType(eTokenType tt)         {tokenType = tt;}
-	void SetObjectType(asCObjectType *obj)   {objectType = obj;}
-	void SetFuncDef(asCScriptFunction *func) {asASSERT(funcDef); funcDef = func; }
+	void SetTypeInfo(asCTypeInfo *ti)       {typeInfo = ti;}
+	void SetFuncDef(asCScriptFunction *func) {asASSERT(funcDef); funcDef = func;}
 
 	asCDataType &operator =(const asCDataType &);
 
@@ -141,7 +143,7 @@ protected:
 	eTokenType tokenType;
 
 	// Behaviour type
-	asCObjectType *objectType;
+	asCTypeInfo *typeInfo;
 	asCScriptFunction *funcDef;
 
 	// Top level

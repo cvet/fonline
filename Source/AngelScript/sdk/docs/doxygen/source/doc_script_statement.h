@@ -147,7 +147,7 @@ to true, the loop continues, otherwise it stops and the code will continue with 
 statement immediately following the loop.
 
 <pre>
-  // More compact loop, where condituion is checked before the logic is executed
+  // More compact loop, where condition is checked before the logic is executed
   for( int n = 0; n < 10; n++ ) 
   {
     // Do something
@@ -160,6 +160,9 @@ before the loop starts. Here it is possible to declare a variable that will be v
 only within the loop statement. The second part is the condition that must be satisfied
 for the loop to be executed. A blank expression here will always evaluate to true. The last 
 part is executed after the logic within the loop, e.g. used to increment an iteration variable. 
+
+Multiple variables can be declared in the <code>for</code> loop, separated by <code>,</code>. 
+Likewise, multiple increment expressions can be used in the last part by separating them with <code>,</code>.
 
 
 

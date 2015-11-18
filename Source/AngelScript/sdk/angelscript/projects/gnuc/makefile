@@ -18,20 +18,41 @@
 # coin-operated telephones. In fact
 # I still _miss_ the rotary telephone!
 
+
+## library names and versions
 LIBNAME=libangelscript
-SHLIB=$(LIBNAME)_s.so
+AS_VER:=$(shell awk -F\" '/\#define ANGELSCRIPT_VERSION_STRING/{print $$2}' ../../include/angelscript.h | cut -d" " -f1)
+SHLIB=$(LIBNAME).so.$(AS_VER)
 ARLIB=$(LIBNAME).a
 
+
+## install directories
 ifeq ($(PREFIX),)
 PREFIX=/usr/local
 endif
-INCLUDEDEST=$(PREFIX)/include/
-LIBRARYDEST=$(PREFIX)/lib/
+INCLUDEDIR_DEST=$(PREFIX)/include
+LIBDIR_DEST=$(PREFIX)/lib
+DOCDIR_BASEDIR=$(PREFIX)/share/doc/angelscript-$(AS_VER)
+DOXYGEN_DEST=$(DOCDIR_BASEDIR)/html
+SAMPLES_DEST=$(DOCDIR_BASEDIR)/samples
+
+
+## install commands
+INSTALL = install
+INSTALL_DIR = $(INSTALL) -d
+INSTALL_SHLIB = $(INSTALL) -m 755
+INSTALL_ARLIB = $(INSTALL) -m 644
+INSTALL_HEADER = $(INSTALL) -m 644
+CP_SYMLINK = cp --no-dereference --preserve=links
+CP_R = cp -R
+
 
 HEADER = angelscript.h
 SRCDIR = ../../source
 INCDIR = ../../include
 
+
+## platform specific settings
 ifeq ($(TARGETPLATFORM), iphone)
 	IPHONEBIN =  /Developer/Platforms/iPhoneOS.platform/Developer/usr/bin
 	OBJDIR = obj-iphone
@@ -66,9 +87,10 @@ else
 	CXXFLAGS += -Wall -fPIC -fno-strict-aliasing
 endif
 
-
+## toolchain
 AR ?= ar
 RANLIB ?= ranlib
+
 
 SRCNAMES = \
   as_atomic.cpp \
@@ -112,25 +134,24 @@ OBJ = $(addprefix $(OBJDIR)/, $(notdir $(SRCNAMES:.cpp=.o)))
 
 ifeq ($(TARGETPLATFORM), iphone)
 	OBJ += $(OBJDIR)/as_callfunc_arm_xcode.o
-else 
+else
 	OBJ += $(OBJDIR)/as_callfunc_arm_gcc.o
 endif
 
+
 default: all
 
-all: $(OBJDIR) $(LIBDIR) $(OBJ)
-	$(MAKE) $(OBJDIR) $(LIBDIR) $(OBJ)
-	$(AR) r $(LIBDIR)/$(ARLIB) $(OBJ)
-	$(RANLIB) $(LIBDIR)/$(ARLIB)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(LIBRARYDEST)$(LIBNAME)_s.so -o $(LIBDIR)/$(SHLIB) $(OBJ)
-	@echo -------------------------------------------------------------------
-	@echo Done. As root, type 'make install' to install the library.
+all: shared static
+
+shared: $(LIBDIR)/$(SHLIB) $(LIBDIR)/$(LIBNAME).so
+
+static: $(LIBDIR)/$(ARLIB)
 
 $(OBJDIR):
-	mkdir -p $(OBJDIR)
+	mkdir -p "$(OBJDIR)"
 
 $(LIBDIR):
-	mkdir -p $(LIBDIR)
+	mkdir -p "$(LIBDIR)"
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
@@ -141,32 +162,77 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.S
 $(OBJDIR)/%.o: $(SRCDIR)/%.s
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
+$(LIBDIR)/$(SHLIB): $(OBJ)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SHLIB) -o "$(LIBDIR)"/$(SHLIB) $(OBJ)
+
+$(LIBDIR)/$(LIBNAME).so: $(LIBDIR)/$(SHLIB)
+	@( cd "$(LIBDIR)" && ln -s $(SHLIB) $(LIBNAME).so )
+
+$(LIBDIR)/$(ARLIB): $(OBJ)
+	$(AR) r "$(LIBDIR)"/$(ARLIB) $(OBJ)
+	$(RANLIB) "$(LIBDIR)"/$(ARLIB)
+
+
+## install rules
+install_header: $(INCDIR)/$(HEADER)
+	$(INSTALL_DIR) "$(DESTDIR)/$(INCLUDEDIR_DEST)"
+	$(INSTALL_HEADER) "$(INCDIR)"/$(HEADER) "$(DESTDIR)/$(INCLUDEDIR_DEST)/"$(HEADER)
+
 install_shared:
-	@ver=`awk -F\" '/#define ANGELSCRIPT_VERSION_STRING/{print $$2}' ../../include/angelscript.h | cut -d" " -f1`; \
-	if [ "$$ver" = "" ]; then \
-		echo "Skipping creation of symbolic links..."; \
-	else \
-		( install -Dm 755 $(LIBDIR)/$(SHLIB) $(LIBRARYDEST)$(LIBNAME)_s-$$ver.so && \
-		ln -fs $(LIBRARYDEST)$(LIBNAME)_s-$$ver.so $(LIBRARYDEST)$(SHLIB) && \
-		ln -fs $(LIBRARYDEST)$(LIBNAME)_s-$$ver.so $(LIBRARYDEST)$(SHLIB).$$ver ) \
-	fi ;
+	$(INSTALL_DIR) "$(DESTDIR)/$(LIBDIR_DEST)"
+	$(INSTALL_SHLIB) "$(LIBDIR)"/$(SHLIB) "$(DESTDIR)/$(LIBDIR_DEST)/"$(SHLIB)
+	$(CP_SYMLINK) "$(LIBDIR)"/$(LIBNAME).so "$(DESTDIR)/$(LIBDIR_DEST)/"$(LIBNAME).so
 
+install_static: $(LIBDIR)/$(ARLIB) $(LIBDIR)/$(SHLIB)
+	$(INSTALL_DIR) "$(DESTDIR)/$(LIBDIR_DEST)"
+	$(INSTALL_ARLIB) "$(LIBDIR)"/$(ARLIB) "$(DESTDIR)/$(LIBDIR_DEST)/"$(ARLIB)
 
-clean:
-	rm -f $(OBJ) $(LIBDIR)/$(ARLIB) $(LIBDIR)/$(SHLIB)
+install_docs: ./../../../docs
+	$(INSTALL_DIR) "$(DESTDIR)/$(DOCDIR_BASEDIR)"
+	$(CP_R) ./../../../docs "$(DESTDIR)/$(DOXYGEN_DEST)"
 
-install: $(LIBDIR)/$(ARLIB) $(LIBDIR)/$(SHLIB)
-	@echo Installing to: $(LIBRARYDEST) and $(INCLUDEDEST)...
-	@echo -------------------------------------------------------------------
-	install -Dm 644 $(LIBDIR)/$(ARLIB) $(LIBRARYDEST)$(ARLIB)
-	install -Dm 644 $(INCDIR)/$(HEADER) $(INCLUDEDEST)$(HEADER)
-	$(MAKE) install_shared
-	@echo -------------------------------------------------------------------
-	@echo Angelscript library installed. Enjoy!
+install_samples: ./../../../samples
+	$(INSTALL_DIR) "$(DESTDIR)/$(DOCDIR_BASEDIR)"
+	$(CP_R) ./../../../samples "$(DESTDIR)/$(SAMPLES_DEST)"
+
+install_all: install_docs install_samples install
+
+install: install_header install_shared install_static
 
 uninstall:
-	rm -f $(INCLUDEDEST)$(HEADER) $(LIBRARYDEST)$(LIBNAME)*
-	@echo -------------------------------------------------------------------
-	@echo Angelscript library uninstalled.
+	rm -f "$(DESTDIR)/$(INCLUDEDIR_DEST)/$(HEADER)" "$(DESTDIR)/$(LIBDIR_DEST)"/$(LIBNAME)*
 
-.PHONY: all clean install uninstall
+help:
+	@echo -------------------------------------------------------------------
+	@echo 'BUILDING:'
+	@echo '  make all: build shared and static libs'
+	@echo '  make shared: build shared lib only'
+	@echo '  make static: build static lib only'
+	@echo
+	@echo 'INSTALLING:'
+	@echo '  make install: install headers, shared and static libs'
+	@echo '  make install_header: install only the headers'
+	@echo '  make install_shared: install only the shared libs'
+	@echo '  make install_static: install only the static libs'
+	@echo '  make install_docs: install only the documentation'
+	@echo '  make install_samples: install only the samples'
+	@echo '  make install_all: install everything, including docs and samples'
+	@echo
+	@echo 'PARAMETERS (pass to make, as in PARAM=value):'
+	@echo '  PREFIX: installation prefix (default /usr/local)'
+	@echo '  INCLUDEDIR_DEST: where to install headers (default PREFIX/include)'
+	@echo '  LIBDIR_DEST: where to install libraries (default PREFIX/lib)'
+	@echo '  DOCDIR_BASEDIR: where the basedir of the documentation lies'
+	@echo '                  (default PREFIX/share/doc/angelscript-AS_VER)'
+	@echo '  DOXYGEN_DEST: where to install doxygen documentation'
+	@echo '                (default DOCDIR_BASEDIR/html)'
+	@echo '  SAMPLES_DEST: where to install samples'
+	@echo '                (default DOCDIR_BASEDIR/samples)'
+	@echo '  DESTDIR: destination, prepended to PREFIX, usually used by'
+	@echo '           package managers (default empty)'
+	@echo -------------------------------------------------------------------
+
+clean:
+	rm -f $(OBJ) "$(LIBDIR)"/$(ARLIB) "$(LIBDIR)"/$(SHLIB) "$(LIBDIR)"/$(LIBNAME).so
+
+.PHONY: all clean install install_all install_docs install_header install_samples install_shared install_static shared static uninstall

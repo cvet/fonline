@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 	contextManager.SetGetTimeCallback((TIMEFUNC_t)&timeGetTime);
 
 	// Create the script engine
-	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	engine = asCreateScriptEngine();
 
 	if( engine == 0 )
 	{

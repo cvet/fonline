@@ -131,6 +131,7 @@ bool Test()
 			"  assert( t.friend is null ); \n"
 			"  @t.friend = t; \n"
 			"  assert( t.friend is t ); \n"
+			"  weakref<Test> f; \n"  // http://www.gamedev.net/topic/671908-bug-in-ascscriptenginegeneratetemplatefactorystub/
 			"} \n";
 
 		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);

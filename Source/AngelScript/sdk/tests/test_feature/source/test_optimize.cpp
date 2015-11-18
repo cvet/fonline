@@ -1138,9 +1138,55 @@ bool TestOptimize()
 		asIScriptFunction *func = mod->GetFunctionByName("main");
 		asBYTE expect[] = 
 			{
-				// TODO: runtime optimize: This bytecode sequence can be improved. VAR+GETOBJREF => PshVPtr
-				asBC_SUSPEND,asBC_PshGPtr,asBC_CHKREF,asBC_RefCpyV,asBC_PopPtr,asBC_VAR,asBC_GETOBJREF,asBC_CALL,asBC_FREE,
+				asBC_SUSPEND,asBC_PshGPtr,asBC_CHKREF,asBC_RefCpyV,asBC_PopPtr,asBC_PshVPtr,asBC_CALL,asBC_FREE,
 				asBC_SUSPEND,asBC_RET
+			};
+		if( !ValidateByteCode(func, expect) )
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if( r != asEXECUTION_FINISHED )
+			TEST_FAILED;
+
+		engine->Release();
+	}
+
+	// Test bytecode produced for common string operations
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		RegisterStdString(engine);
+
+		const char *script =
+			"void main() { \n"
+			"  string val = 'test'; \n" // initialization with a string constant
+			// TODO: optimize: The temporary string should only be destroyed after the call to assert,
+			//                 thus allowing the returned byte from == to be passed directly to the assert
+			//                 call.
+			// TODO: optimize: If there was some way of telling the compiler that the const reference
+			//                 to the string returned by the factory was safe to forward, then the compiler
+			//                 wouldn't have to make a copy into a temporary variable. With the current
+			//                 solution the benefit of the string pooling done by the string factory is
+			//                 often cancelled by the fact that the compiler is forced to make a copy of 
+			//                 the returned string reference anyway. In some cases the reference is used
+			//                 directly though, so the string pooling is not totally useless, e.g. in
+			//                 assignment, or when something is concatenated with the string constant.
+			"  assert( val == 'test' ); \n" // comparison with a string constant
+			"} \n";
+
+		asIScriptModule *mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", script);
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		asIScriptFunction *func = mod->GetFunctionByName("main");
+		asBYTE expect[] = 
+			{
+				asBC_SUSPEND, asBC_STR, asBC_CALLSYS, asBC_PshRPtr, asBC_PSF, asBC_CALLSYS,  
+				asBC_SUSPEND, asBC_STR, asBC_CALLSYS, asBC_PshRPtr, asBC_PSF, asBC_CALLSYS, asBC_PSF, asBC_PSF, asBC_CALLSYS, asBC_CpyRtoV4, asBC_PSF, asBC_CALLSYS, asBC_PshV4, asBC_CALLSYS,
+				asBC_SUSPEND, asBC_PSF, asBC_CALLSYS, asBC_RET
 			};
 		if( !ValidateByteCode(func, expect) )
 			TEST_FAILED;

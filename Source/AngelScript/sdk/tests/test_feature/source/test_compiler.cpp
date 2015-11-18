@@ -141,11 +141,6 @@ static void StringLengthGeneric(asIScriptGeneric * gen) {
   *static_cast<asUINT *>(gen->GetAddressOfReturnLocation()) = (asUINT)self->length();
 }
 
-static bool StringEquals(const std::string& lhs, const std::string& rhs)
-{
-    return lhs == rhs;
-}
-
 static void AddString2IntGeneric(asIScriptGeneric * gen) {
   string * a = static_cast<string *>(gen->GetObject());
   int * b = static_cast<int *>(gen->GetAddressOfArg(0));
@@ -217,9 +212,27 @@ bool Test()
 	COutStream out;
 	asIScriptModule *mod;
 
+	// Test unicode identifiers
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->SetEngineProperty(asEP_ALLOW_UNICODE_IDENTIFIERS, true);
+
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Jönsson {} \n"
+			"Jönsson jönsson; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test that script class isn't marked as garbage collected needlessly
 	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
 		RegisterScriptArray(engine, false);
 
@@ -250,7 +263,7 @@ bool Test()
 	// Warn if inner scope re-declares variable from outer scope
 	// http://www.gamedev.net/topic/660746-problem-with-random-float-value-on-android/
 	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 
 		RegisterScriptArray(engine, false);
@@ -282,7 +295,7 @@ bool Test()
 	// Give error if &out arg is called with non-lvalue expr
 	// http://www.gamedev.net/topic/660363-retrieving-an-array-of-strings-from-a-dictionary/
 	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 
 		RegisterStdString(engine);
@@ -314,7 +327,7 @@ bool Test()
 	// Test identity comparison with output handle
 	// http://www.gamedev.net/topic/660025-inconsistent-behavior-with-ref-type-and-out-references-to-handle-params/
 	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
 
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
@@ -347,7 +360,7 @@ bool Test()
 			"dictionary d1 = { {'arr', foo} };\n"
 			"array<string>@ s1 = array<string>@(d1['arr']);\n";
 
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		bout.buffer = "";
 
@@ -362,8 +375,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "test (3, 16) : Info    : Compiling array<string>@ s1\n"
-		                   "test (3, 21) : Error   : Can't construct handle 'array<string>@'. Use ref cast instead\n"
-		                   "test (3, 21) : Error   : Can't implicitly convert from 'const int' to 'array<string>@&'.\n" )
+		                   "test (3, 21) : Error   : Can't construct handle 'array<string>@'. Use ref cast instead\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -375,7 +387,7 @@ bool Test()
 	// Give proper error when declaring variable as only statement of an if
 	// http://www.gamedev.net/topic/653474-compile-error-in-if-statement-without-braces/
 	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		bout.buffer = "";
 
@@ -403,7 +415,7 @@ bool Test()
 	// Test appropriate error when attempting to declare variable as reference
 	// http://www.gamedev.net/topic/657196-problem-returning-reference-to-internal-members/
 	{
-		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine = asCreateScriptEngine();
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		bout.buffer = "";
 
@@ -843,8 +855,7 @@ bool Test()
 			TEST_FAILED;
 		
 		if( bout.buffer != "Test (1, 1) : Info    : Compiling void main()\n"
-						   "Test (2, 24) : Error   : No conversion from 'void' to 'ParticleEmitter@' available.\n"
-						   "Test (2, 24) : Error   : Can't implicitly convert from 'const int' to 'ParticleEmitter@&'.\n" )
+						   "Test (2, 24) : Error   : No conversion from 'void' to 'ParticleEmitter@' available.\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1150,6 +1161,10 @@ bool Test()
 			"void main() \n"
 			"{ \n"
 			"  dummy temp; \n"
+			// TODO: optimize: The temp string 'Return' is copied twice when calling alert. 
+			//                 This is because the function takes the string by value which currently 
+			//                 requires the object to be on the heap so it can be destroyed by the 
+			//                 called function. This will be modified in the future
 			"  alert('Return', test(temp)); \n"
 			"} \n"
 			"bool test(dummy x) \n"
@@ -1161,7 +1176,7 @@ bool Test()
 			"  assert( b == false ); \n"
 			"  assert( txt == 'Return' ); \n"
 			"} \n");
-		r = mod->Build(); // TODO: optimize: The temp string 'Return' is copied twice when calling alert
+		r = mod->Build(); 
 		if( r < 0 )
 			TEST_FAILED;
 		asIScriptContext *ctx = engine->CreateContext();
@@ -2231,11 +2246,11 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "ExecuteString (1, 19) : Error   : Expected ',' or ';'\n"
-						   "ExecuteString (1, 19) : Error   : Instead found 'p'\n"
+						   "ExecuteString (1, 19) : Error   : Instead found identifier 'p'\n"
 						   "ExecuteString (2, 13) : Error   : Expected ';'\n"
-						   "ExecuteString (2, 13) : Error   : Instead found 'p'\n"
+						   "ExecuteString (2, 13) : Error   : Instead found identifier 'p'\n"
 						   "ExecuteString (3, 18) : Error   : Expected ')'\n"
-						   "ExecuteString (3, 18) : Error   : Instead found 'p'\n" )
+						   "ExecuteString (3, 18) : Error   : Instead found identifier 'p'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -2814,7 +2829,7 @@ bool Test()
 	r = ExecuteString(engine, "class XXX { int a; }; XXX b;");
 	if( r >= 0 ) TEST_FAILED;
 	if( bout.buffer != "ExecuteString (1, 1) : Error   : Expected expression value\n"
-					   "ExecuteString (1, 1) : Error   : Instead found 'class'\n"
+					   "ExecuteString (1, 1) : Error   : Instead found reserved keyword 'class'\n"
 	                   "ExecuteString (1, 23) : Error   : Identifier 'XXX' is not a data type\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());

@@ -1015,6 +1015,21 @@ void asCByteCode::OptimizeLocally(const asCArray<int> &tempVariableOffsets)
 				ChangeFirstDeleteNext(curr, asBC_PSF);
 				instr = GoForward(curr);
 			}
+			// VAR a, GETOBJREF 0 -> PshVPtr a
+			else if( curr->next && curr->next->op == asBC_GETOBJREF && curr->next->wArg[0] == 0 )
+			{
+				ChangeFirstDeleteNext(curr, asBC_PshVPtr);
+				instr = GoForward(curr);
+			}
+			// VAR, PSF, GETREF {PTR_SIZE} -> PSF, PSF
+			if( curr->next && curr->next->op == asBC_PSF &&
+				curr->next->next && curr->next->next->op == asBC_GETREF &&
+				curr->next->next->wArg[0] == AS_PTR_SIZE )
+			{
+				curr->op = asBC_PSF;
+				DeleteInstruction(curr->next->next);
+				instr = GoForward(curr);
+			}
 		}
 	}
 
@@ -1030,7 +1045,7 @@ void asCByteCode::OptimizeLocally(const asCArray<int> &tempVariableOffsets)
 		short tempVar = last->wArg[0];
 		asCArray<short> freedVars;
 
-		asCByteInstruction *instr = last->prev;
+		instr = last->prev;
 		asASSERT( instr && instr->op == asBC_Block );
 		instr = instr->prev;
 		while( instr && instr->op == asBC_FREE )
@@ -2049,18 +2064,18 @@ void asCByteCode::PostProcess()
 }
 
 #ifdef AS_DEBUG
-void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScriptFunction *func)
+void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 {
 	_mkdir("AS_DEBUG");
 
-	asCString str = "AS_DEBUG/";
-	str += name;
+	asCString path = "AS_DEBUG/";
+	path += name;
 
 #if _MSC_VER >= 1500 && !defined(AS_MARMALADE)
 	FILE *file;
-	fopen_s(&file, str.AddressOf(), "w");
+	fopen_s(&file, path.AddressOf(), "w");
 #else
-	FILE *file = fopen(str.AddressOf(), "w");
+	FILE *file = fopen(path.AddressOf(), "w");
 #endif
 
 #if !defined(AS_XENON) // XBox 360: When running in DVD Emu, no write is allowed
@@ -2220,6 +2235,13 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScri
 				}
 				break;
 
+			case asBC_FuncPtr:
+				{
+					asCScriptFunction *f = *(asCScriptFunction**)ARG_DW(instr->arg);
+					fprintf(file, "   %-8s 0x%x          (func:%s)\n", asBCInfo[instr->op].name, (asUINT)*ARG_DW(instr->arg), f->GetDeclaration());
+				}
+				break;
+
 			case asBC_PshC4:
 			case asBC_Cast:
 				fprintf(file, "   %-8s 0x%x          (i:%d, f:%g)\n", asBCInfo[instr->op].name, (asUINT)*ARG_DW(instr->arg), *((int*) ARG_DW(instr->arg)), *((float*) ARG_DW(instr->arg)));
@@ -2269,8 +2291,15 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScri
 			{
 			case asBC_OBJTYPE:
 				{
-					asCObjectType *ot = *(asCObjectType**)ARG_DW(instr->arg);
+					asCObjectType *ot = *(asCObjectType**)ARG_QW(instr->arg);
 					fprintf(file, "   %-8s 0x%x          (type:%s)\n", asBCInfo[instr->op].name, (asUINT)*ARG_QW(instr->arg), ot->GetName());
+				}
+				break;
+
+			case asBC_FuncPtr:
+				{
+					asCScriptFunction *f = *(asCScriptFunction**)ARG_QW(instr->arg);
+					fprintf(file, "   %-8s 0x%x          (func:%s)\n", asBCInfo[instr->op].name, (asUINT)*ARG_QW(instr->arg), f->GetDeclaration());
 				}
 				break;
 	
@@ -2289,23 +2318,35 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScri
 
 		case asBCTYPE_wW_QW_ARG:
 		case asBCTYPE_rW_QW_ARG:
+			switch( instr->op )
+			{
+			case asBC_RefCpyV:
+			case asBC_FREE:
+				{
+					asCObjectType *ot = *(asCObjectType**)ARG_QW(instr->arg);
+					fprintf(file, "   %-8s v%d, 0x%x          (type:%s)\n", asBCInfo[instr->op].name, instr->wArg[0], (asUINT)*ARG_QW(instr->arg), ot->GetName());
+				}
+				break;
+
+			default:
 #ifdef __GNUC__
 #ifdef _LP64
-			fprintf(file, "   %-8s v%d, 0x%lx           (i:%ld, f:%g)\n", asBCInfo[instr->op].name, instr->wArg[0], *ARG_QW(instr->arg), *((asINT64*) ARG_QW(instr->arg)), *((double*) ARG_QW(instr->arg)));
+				fprintf(file, "   %-8s v%d, 0x%lx           (i:%ld, f:%g)\n", asBCInfo[instr->op].name, instr->wArg[0], *ARG_QW(instr->arg), *((asINT64*) ARG_QW(instr->arg)), *((double*) ARG_QW(instr->arg)));
 #else
-			fprintf(file, "   %-8s v%d, 0x%llx           (i:%lld, f:%g)\n", asBCInfo[instr->op].name, instr->wArg[0], *ARG_QW(instr->arg), *((asINT64*) ARG_QW(instr->arg)), *((double*) ARG_QW(instr->arg)));
+				fprintf(file, "   %-8s v%d, 0x%llx           (i:%lld, f:%g)\n", asBCInfo[instr->op].name, instr->wArg[0], *ARG_QW(instr->arg), *((asINT64*) ARG_QW(instr->arg)), *((double*) ARG_QW(instr->arg)));
 #endif
 #else
-			fprintf(file, "   %-8s v%d, 0x%I64x          (i:%I64d, f:%g)\n", asBCInfo[instr->op].name, instr->wArg[0], *ARG_QW(instr->arg), *((asINT64*) ARG_QW(instr->arg)), *((double*) ARG_QW(instr->arg)));
+				fprintf(file, "   %-8s v%d, 0x%I64x          (i:%I64d, f:%g)\n", asBCInfo[instr->op].name, instr->wArg[0], *ARG_QW(instr->arg), *((asINT64*) ARG_QW(instr->arg)), *((double*) ARG_QW(instr->arg)));
 #endif
+			}
 			break;
 
 		case asBCTYPE_DW_DW_ARG:
 			if( instr->op == asBC_ALLOC )
 			{
 				asCObjectType *ot = *(asCObjectType**)ARG_DW(instr->arg);
-				asCScriptFunction *func = engine->scriptFunctions[instr->wArg[0]];
-				fprintf(file, "   %-8s 0x%x, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(int*)ARG_DW(instr->arg), *(int*)(ARG_DW(instr->arg)+1), ot->GetName(), func ? func->GetDeclaration() : "{no func}");
+				asCScriptFunction *f = engine->scriptFunctions[instr->wArg[0]];
+				fprintf(file, "   %-8s 0x%x, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(int*)ARG_DW(instr->arg), *(int*)(ARG_DW(instr->arg)+1), ot->GetName(), f ? f->GetDeclaration() : "{no func}");
 			}
 			else
 				fprintf(file, "   %-8s %u, %d\n", asBCInfo[instr->op].name, *(int*)ARG_DW(instr->arg), *(int*)(ARG_DW(instr->arg)+1));
@@ -2319,15 +2360,15 @@ void asCByteCode::DebugOutput(const char *name, asCScriptEngine *engine, asCScri
 			if( instr->op == asBC_ALLOC )
 			{
 				asCObjectType *ot = *(asCObjectType**)ARG_QW(instr->arg);
-				asCScriptFunction *func = engine->scriptFunctions[instr->wArg[0]];
+				asCScriptFunction *f = engine->scriptFunctions[instr->wArg[0]];
 #ifdef __GNUC__
 #ifdef AS_64BIT_PTR
-				fprintf(file, "   %-8s 0x%lx, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(asINT64*)ARG_QW(instr->arg), *(int*)(ARG_DW(instr->arg)+2), ot->GetName(), func ? func->GetDeclaration() : "{no func}");
+				fprintf(file, "   %-8s 0x%lx, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(asINT64*)ARG_QW(instr->arg), *(int*)(ARG_DW(instr->arg)+2), ot->GetName(), f ? f->GetDeclaration() : "{no func}");
 #else
-				fprintf(file, "   %-8s 0x%llx, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(asINT64*)ARG_QW(instr->arg), *(int*)(ARG_DW(instr->arg)+2), ot->GetName(), func ? func->GetDeclaration() : "{no func}");
+				fprintf(file, "   %-8s 0x%llx, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(asINT64*)ARG_QW(instr->arg), *(int*)(ARG_DW(instr->arg)+2), ot->GetName(), f ? f->GetDeclaration() : "{no func}");
 #endif
 #else
-				fprintf(file, "   %-8s 0x%I64x, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(asINT64*)ARG_QW(instr->arg), *(int*)(ARG_DW(instr->arg)+2), ot->GetName(), func ? func->GetDeclaration() : "{no func}");
+				fprintf(file, "   %-8s 0x%I64x, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(asINT64*)ARG_QW(instr->arg), *(int*)(ARG_DW(instr->arg)+2), ot->GetName(), f ? f->GetDeclaration() : "{no func}");
 #endif
 			}
 			else

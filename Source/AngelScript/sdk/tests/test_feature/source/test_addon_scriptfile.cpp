@@ -43,9 +43,16 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		r = ExecuteString(engine, "main()", mod);
+		asIScriptContext *ctx = engine->CreateContext();
+		r = ExecuteString(engine, "main()", mod, ctx);
 		if( r != asEXECUTION_FINISHED )
-			TEST_FAILED;
+		{
+			if( r == asEXECUTION_EXCEPTION && ctx->GetExceptionLineNumber() == 4 )
+				PRINTF("Failed to find the sub directory 'scripts'. Are you running the test from the correct folder?\n");
+			else
+				TEST_FAILED;
+		}
+		ctx->Release();
 
 		if( bout.buffer != "" )
 		{

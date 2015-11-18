@@ -46,7 +46,7 @@ bool Test()
 		TEST_FAILED;
 	// TODO: The } token isn't unexpected, the parser is just not understanding that it is still inside the object declaration
 	if( bout.buffer != "TestParser (3, 17) : Error   : Expected ')' or ','\n"
-		               "TestParser (3, 17) : Error   : Instead found 'int'\n"
+		               "TestParser (3, 17) : Error   : Instead found reserved keyword 'int'\n"
 					   "TestParser (4, 1) : Error   : Unexpected token '}'\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());

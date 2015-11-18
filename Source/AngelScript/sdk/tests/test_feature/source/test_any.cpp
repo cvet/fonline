@@ -104,6 +104,25 @@ bool Test()
 	CBufferedOutStream bout;
 	asIScriptModule *mod;
 
+	// Test bug
+	// http://www.gamedev.net/topic/672536-patch-proposal-for-scriptany-add-on-issue/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptAny(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		r = ExecuteString(engine, 
+			"any myAny(10); \n"
+			"int myValue; \n"
+			"myAny.retrieve(myValue); \n"
+			"assert( myValue == 10 ); \n");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// ---------------------------------------------
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);

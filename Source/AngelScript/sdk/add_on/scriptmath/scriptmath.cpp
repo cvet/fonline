@@ -111,7 +111,7 @@ bool closeTo(float a, float b, float epsilon)
 	if( a == b ) return true;
 
 	// When very close to 0, we can use the absolute comparison
-	float diff = fabs(a - b);
+	float diff = fabsf(a - b);
 	if( (a == 0 || b == 0) && (diff < epsilon) )
 		return true;
 	

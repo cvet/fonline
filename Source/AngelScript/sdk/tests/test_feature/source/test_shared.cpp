@@ -141,7 +141,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != "B (3, 13) : Error   : Shared type 'ielement' doesn't match the original declaration in other module\n"
-                           "B (3, 18) : Error   : Shared type 'ielement' doesn't match the original declaration in other module\n" )
+		                   "B (3, 18) : Error   : Shared type 'ielement' doesn't match the original declaration in other module\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -287,11 +287,11 @@ bool Test()
 			"int var; \n"
 			"void gfunc() {} \n"
 			"shared void sfunc() \n"
-		    "{ \n"
+			"{ \n"
 			"  gfunc(); \n" // don't allow
 			"  T t; \n" // allow
 			"  ESHARED2 s; \n" // allow
-	        "} \n"
+			"} \n"
 			"enum ENOTSHARED { ENS1 = 1 } \n"
 			"shared enum ESHARED2 { ES21 = 0 } \n"
 			"const int g_cnst = 42; \n"
@@ -302,8 +302,8 @@ bool Test()
 		r = mod->Build();
 		if( r >= 0 ) 
 			TEST_FAILED;
-		if( bout.buffer != "a (32, 3) : Error   : Shared code cannot use non-shared type 'badIntf'\n"
-						   "a (3, 25) : Error   : Shared type cannot implement non-shared interface 'badIntf'\n"
+		if( bout.buffer != "a (3, 25) : Error   : Shared type cannot implement non-shared interface 'badIntf'\n"
+						   "a (32, 3) : Error   : Shared code cannot use non-shared type 'badIntf'\n"
 						   "a (35, 3) : Error   : Shared code cannot use non-shared type 'ENOTSHARED'\n"
 						   "a (5, 3) : Info    : Compiling void T::test()\n"
 						   "a (7, 5) : Error   : Shared code cannot access non-shared global variable 'var'\n"
@@ -313,12 +313,11 @@ bool Test()
 						   "a (15, 5) : Error   : Shared code cannot use non-shared type 'badIntf'\n"
 						   "a (17, 11) : Error   : Shared code cannot call non-shared function 'void gfunc()'\n"
 						   "a (18, 5) : Error   : Shared code cannot use non-shared type 'nonShared'\n"
-						   "a (18, 5) : Error   : Shared code cannot call non-shared function 'nonShared@ nonShared()'\n"
 						   "a (19, 5) : Error   : Shared code cannot call non-shared function 'void impfunc()'\n"
 						   "a (28, 3) : Info    : Compiling T::T(int)\n"
-		                   "a (30, 6) : Error   : Shared code cannot access non-shared global variable 'var'\n"
+						   "a (30, 6) : Error   : Shared code cannot access non-shared global variable 'var'\n"
 						   "a (43, 1) : Info    : Compiling void sfunc()\n"
-		                   "a (45, 3) : Error   : Shared code cannot call non-shared function 'void gfunc()'\n" )
+						   "a (45, 3) : Error   : Shared code cannot call non-shared function 'void gfunc()'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

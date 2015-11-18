@@ -225,7 +225,7 @@ bool Test()
 	{
 		TEST_FAILED;
 	}
-	// TODO: the function signature for the constructors/factories should carry the name of the object instead of _beh_0_
+	// TODO: the function signature for the constructors/factories should carry the name of the object instead of $beh0
 	if( bout.buffer != "ExecuteString (1, 13) : Error   : No matching signatures to 'complex(const int, const int, const int, const int)'\n"
 					   "ExecuteString (1, 13) : Info    : Candidates are:\n"
 					   "ExecuteString (1, 13) : Info    : complex::complex()\n"

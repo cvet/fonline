@@ -12,16 +12,22 @@ CDebugger::CDebugger()
 {
 	m_action = CONTINUE;
 	m_lastFunction = 0;
+	m_engine = 0;
 }
 
 CDebugger::~CDebugger()
 {
+	SetEngine(0);
 }
 
-string CDebugger::ToString(void *value, asUINT typeId, bool expandMembers, asIScriptEngine *engine)
+string CDebugger::ToString(void *value, asUINT typeId, int expandMembers, asIScriptEngine *engine)
 {
 	if( value == 0 )
 		return "<null>";
+
+	// If no engine pointer was provided use the default
+	if( engine == 0 )
+		engine = m_engine;
 
 	stringstream s;
 	if( typeId == asTYPEID_VOID )
@@ -62,14 +68,17 @@ string CDebugger::ToString(void *value, asUINT typeId, bool expandMembers, asISc
 		s << *(asUINT*)value;
 
 		// Check if the value matches one of the defined enums
-		for( int n = engine->GetEnumValueCount(typeId); n-- > 0; )
+		if( engine )
 		{
-			int enumVal;
-			const char *enumName = engine->GetEnumValueByIndex(typeId, n, &enumVal);
-			if( enumVal == *(int*)value )
+			for( int n = engine->GetEnumValueCount(typeId); n-- > 0; )
 			{
-				s << ", " << enumName;
-				break;
+				int enumVal;
+				const char *enumName = engine->GetEnumValueByIndex(typeId, n, &enumVal);
+				if( enumVal == *(int*)value )
+				{
+					s << ", " << enumName;
+					break;
+				}
 			}
 		}
 	}
@@ -85,12 +94,17 @@ string CDebugger::ToString(void *value, asUINT typeId, bool expandMembers, asISc
 		s << "{" << obj << "}";
 
 		// Print the members
-		if( obj && expandMembers )
+		if( obj && expandMembers > 0 )
 		{
 			asIObjectType *type = obj->GetObjectType();
 			for( asUINT n = 0; n < obj->GetPropertyCount(); n++ )
 			{
-				s << endl << "  " << type->GetPropertyDeclaration(n) << " = " << ToString(obj->GetAddressOfProperty(n), obj->GetPropertyTypeId(n), false, engine);
+				if( n == 0 )
+					s << " ";
+				else
+					s << ", ";
+
+				s << type->GetPropertyDeclaration(n) << " = " << ToString(obj->GetAddressOfProperty(n), obj->GetPropertyTypeId(n), expandMembers - 1, type->GetEngine());
 			}
 		}
 	}
@@ -102,35 +116,40 @@ string CDebugger::ToString(void *value, asUINT typeId, bool expandMembers, asISc
 
 		// Print the address for reference types so it will be
 		// possible to see when handles point to the same object
-		asIObjectType *type = engine->GetObjectTypeById(typeId);
-		if( type->GetFlags() & asOBJ_REF )
-			s << "{" << value << "}";
-
-		if( value )
+		if( engine )
 		{
-			// Check if there is a registered to-string callback
-			map<const asIObjectType*, ToStringCallback>::iterator it = m_toStringCallbacks.find(type);
-			if( it == m_toStringCallbacks.end() )
+			asIObjectType *type = engine->GetObjectTypeById(typeId);
+			if( type->GetFlags() & asOBJ_REF )
+				s << "{" << value << "}";
+
+			if( value )
 			{
-				// If the type is a template instance, there might be a
-				// to-string callback for the generic template type
-				if( type->GetFlags() & asOBJ_TEMPLATE )
+				// Check if there is a registered to-string callback
+				map<const asIObjectType*, ToStringCallback>::iterator it = m_toStringCallbacks.find(type);
+				if( it == m_toStringCallbacks.end() )
 				{
-					asIObjectType *tmplType = engine->GetObjectTypeByName(type->GetName());
-					it = m_toStringCallbacks.find(tmplType);
+					// If the type is a template instance, there might be a
+					// to-string callback for the generic template type
+					if( type->GetFlags() & asOBJ_TEMPLATE )
+					{
+						asIObjectType *tmplType = engine->GetObjectTypeByName(type->GetName());
+						it = m_toStringCallbacks.find(tmplType);
+					}
+				}
+
+				if( it != m_toStringCallbacks.end() )
+				{
+					if( type->GetFlags() & asOBJ_REF )
+						s << " ";
+
+					// Invoke the callback to get the string representation of this type
+					string str = it->second(value, expandMembers, this);
+					s << str;
 				}
 			}
-
-			if( it != m_toStringCallbacks.end() )
-			{
-				if( type->GetFlags() & asOBJ_REF )
-					s << endl;
-
-				// Invoke the callback to get the string representation of this type
-				string str = it->second(value, expandMembers, this);
-				s << str;
-			}
 		}
+		else
+			s << "{no engine}";
 	}
 
 	return s.str();
@@ -601,7 +620,9 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 			// TODO: If there is a [ after the identifier try to call the 'opIndex(expr) const' method 
 
 			stringstream s;
-			s << ToString(ptr, typeId, true, engine) << endl;
+			// TODO: Allow user to set if members should be expanded
+			// Expand members by default to 3 recursive levels only
+			s << ToString(ptr, typeId, 3, engine) << endl;
 			Output(s.str());
 		}
 	}
@@ -635,7 +656,9 @@ void CDebugger::ListMemberProperties(asIScriptContext *ctx)
 	if( ptr )
 	{
 		stringstream s;
-		s << "this = " << ToString(ptr, ctx->GetThisTypeId(), true, ctx->GetEngine()) << endl;
+		// TODO: Allow user to define if members should be expanded or not
+		// Expand members by default to 3 recursive levels only
+		s << "this = " << ToString(ptr, ctx->GetThisTypeId(), 3, ctx->GetEngine()) << endl;
 		Output(s.str());
 	}
 }
@@ -655,7 +678,11 @@ void CDebugger::ListLocalVariables(asIScriptContext *ctx)
 	for( asUINT n = 0; n < func->GetVarCount(); n++ )
 	{
 		if( ctx->IsVarInScope(n) )
-			s << func->GetVarDecl(n) << " = " << ToString(ctx->GetAddressOfVar(n), ctx->GetVarTypeId(n), false, ctx->GetEngine()) << endl;
+		{
+			// TODO: Allow user to set if members should be expanded or not
+			// Expand members by default to 3 recursive levels only
+			s << func->GetVarDecl(n) << " = " << ToString(ctx->GetAddressOfVar(n), ctx->GetVarTypeId(n), 3, ctx->GetEngine()) << endl;
+		}
 	}
 	Output(s.str());
 }
@@ -680,7 +707,9 @@ void CDebugger::ListGlobalVariables(asIScriptContext *ctx)
 	{
 		int typeId = 0;
 		mod->GetGlobalVar(n, 0, 0, &typeId);
-		s << mod->GetGlobalVarDeclaration(n) << " = " << ToString(mod->GetAddressOfGlobalVar(n), typeId, false, ctx->GetEngine()) << endl;
+		// TODO: Allow user to set how many recursive expansions should be done
+		// Expand members by default to 3 recursive levels only
+		s << mod->GetGlobalVarDeclaration(n) << " = " << ToString(mod->GetAddressOfGlobalVar(n), typeId, 3, ctx->GetEngine()) << endl;
 	}
 	Output(s.str());
 }
@@ -785,6 +814,23 @@ void CDebugger::Output(const string &str)
 {
 	// By default we just output to stdout
 	cout << str;
+}
+
+void CDebugger::SetEngine(asIScriptEngine *engine)
+{
+	if( m_engine != engine )
+	{
+		if( m_engine )
+			m_engine->Release();
+		m_engine = engine;
+		if( m_engine )
+			m_engine->AddRef();
+	}
+}
+
+asIScriptEngine *CDebugger::GetEngine()
+{
+	return m_engine;
 }
 
 END_AS_NAMESPACE

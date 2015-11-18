@@ -63,9 +63,9 @@ BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-//! Version 2.30.0
-#define ANGELSCRIPT_VERSION        23000
-#define ANGELSCRIPT_VERSION_STRING "2.30.0"
+//! Version 2.30.2
+#define ANGELSCRIPT_VERSION        23002
+#define ANGELSCRIPT_VERSION_STRING "2.30.2"
 
 // Data types
 
@@ -791,12 +791,18 @@ extern "C"
 	// Engine
 	//! \brief Creates the script engine.
 	//! \param[in] version The library version. Should always be \ref ANGELSCRIPT_VERSION.
-	//! \return A pointer to the script engine interface.
+	//! \return A pointer to the script engine interface, or null on error.
 	//!
 	//! Call this function to create a new script engine. When you're done with the
 	//! script engine, i.e. after you've executed all your scripts, you should call
-	//! \ref asIScriptEngine::Release "Release" on the pointer to free the engine object.
-	AS_API asIScriptEngine *asCreateScriptEngine(asDWORD version);
+	//! \ref asIScriptEngine::ShutDownAndRelease "ShutDownAndRelease" on the pointer
+	//! to cleanup any objects that may still be alive and free the engine object.
+	//!
+	//! The \a version argument is there to allow AngelScript to validate that the 
+	//! application has been compiled with the correct interface. This is especially
+	//! important when linking dynamically against the library. If the version is 
+	//! incorrect a null pointer is returned.
+	AS_API asIScriptEngine *asCreateScriptEngine(asDWORD version = ANGELSCRIPT_VERSION);
 	//! \brief Returns the version of the compiled library.
 	//! \return A null terminated string with the library version.
 	//!
@@ -958,21 +964,21 @@ BEGIN_AS_NAMESPACE
 template<typename T>
 asUINT asGetTypeTraits()
 {
-#if defined(_MSC_VER) || defined(_LIBCPP_TYPE_TRAITS)
-	// MSVC & XCode/Clang
+#if defined(_MSC_VER) || defined(_LIBCPP_TYPE_TRAITS) || (__GNUC__ >= 5)
+	// MSVC, XCode/Clang, and gnuc 5+
 	// C++11 compliant code
 	bool hasConstructor        = std::is_default_constructible<T>::value && !std::is_trivially_default_constructible<T>::value;
 	bool hasDestructor         = std::is_destructible<T>::value          && !std::is_trivially_destructible<T>::value;
 	bool hasAssignmentOperator = std::is_copy_assignable<T>::value       && !std::is_trivially_copy_assignable<T>::value;
 	bool hasCopyConstructor    = std::is_copy_constructible<T>::value    && !std::is_trivially_copy_constructible<T>::value;
 #elif defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
-	// gnuc 4.8+
-	// gnuc is using a mix of C++11 standard and pre-standard templates
+	// gnuc 4.8 is using a mix of C++11 standard and pre-standard templates
 	bool hasConstructor        = std::is_default_constructible<T>::value && !std::has_trivial_default_constructor<T>::value;
 	bool hasDestructor         = std::is_destructible<T>::value          && !std::is_trivially_destructible<T>::value;
 	bool hasAssignmentOperator = std::is_copy_assignable<T>::value       && !std::has_trivial_copy_assign<T>::value;
 	bool hasCopyConstructor    = std::is_copy_constructible<T>::value    && !std::has_trivial_copy_constructor<T>::value;
 #else
+	// All other compilers and versions are assumed to use non C++11 compliant code until proven otherwise
 	// Not fully C++11 compliant. The has_trivial checks were used while the standard was still
 	// being elaborated, but were then removed in favor of the above is_trivially checks
 	// http://stackoverflow.com/questions/12702103/writing-code-that-works-when-has-trivial-destructor-is-defined-instead-of-is
@@ -2627,12 +2633,18 @@ public:
 	//! \retval asERROR Invalid context object.
 	//!
 	//! Aborts the current execution of a script.
+	//!
+	//! If the call to Abort is done from within a function called by the
+	//! script, it will only take effect after that function returns.
 	virtual int             Abort() = 0;
 	//! \brief Suspends the execution, which can then be resumed by calling Execute again.
 	//! \return A negative value on error.
 	//! \retval asERROR Invalid context object.
 	//!
 	//! Suspends the current execution of a script. The execution can then be resumed by calling \ref Execute again.
+	//!
+	//! If the call to Suspend is done from within a function called by the 
+	//! script, it will only take effect after that function returns.
 	//!
 	//! \see \ref doc_call_script_func
 	virtual int             Suspend() = 0;
@@ -3619,13 +3631,16 @@ public:
 	//! \return A null terminated string with the name of the function.
 	virtual const char      *GetName() const = 0;
 	//! \brief Returns the namespace of the function.
-	//! \return The namespace of the function.
+	//! \return The namespace of the function, or null if not defined.
 	virtual const char      *GetNamespace() const = 0;
 	//! \brief Returns the function declaration
 	//! \param[in] includeObjectName Indicate whether the object name should be prepended to the function name
 	//! \param[in] includeNamespace Indicates whether the namespace should be prepended to the function name
 	//! \param[in] includeParamNames Indicates whether parameter names should be added to the declaration
-	//! \return A null terminated string with the function declaration.
+	//! \return A null terminated string with the function declaration. 
+	//!
+	//! The parameter names are not stored for \ref asFUNC_VIRTUAL "virtual methods". If you want to know the 
+	//! name of parameters to class methods, be sure to get the actual implementation rather than the virtual method.
 	virtual const char      *GetDeclaration(bool includeObjectName = true, bool includeNamespace = false, bool includeParamNames = false) const = 0;
 	//! \brief Returns true if the class method is read-only
 	//! \return True if the class method is read-only
@@ -3656,6 +3671,9 @@ public:
 	//! \param[out] defaultArg The default argument expression (or null if not defined).
 	//! \return A negative value on error.
 	//! \retval asINVALID_ARG The index is out of bounds.
+	//!
+	//! The parameter names are not stored for \ref asFUNC_VIRTUAL "virtual methods". If you want to know the 
+	//! name of parameters to class methods, be sure to get the actual implementation rather than the virtual method.
 	virtual int              GetParam(asUINT index, int *typeId, asDWORD *flags = 0, const char **name = 0, const char **defaultArg = 0) const = 0;
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.29.0, 2014-04-06
@@ -4464,8 +4482,10 @@ enum asEBCInstr
 	asBC_POWi64			= 198,
 	//! \brief Computes the power of for two uint64 values
 	asBC_POWu64			= 199,
+	//! \brief Call registered function with single 32bit integer argument. Suspend further execution if requested.
+	asBC_Thiscall1		= 200,
 
-	asBC_MAXBYTECODE	= 200,
+	asBC_MAXBYTECODE	= 201,
 
 	// Temporary tokens. Can't be output to the final program
 	asBC_VarDecl		= 251,
@@ -4795,8 +4815,8 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(POWdi,		wW_rW_rW_ARG,	0),
 	asBCINFO(POWi64,	wW_rW_rW_ARG,	0),
 	asBCINFO(POWu64,	wW_rW_rW_ARG,	0),
+	asBCINFO(Thiscall1, DW_ARG,			-AS_PTR_SIZE-1),
 
-	asBCINFO_DUMMY(200),
 	asBCINFO_DUMMY(201),
 	asBCINFO_DUMMY(202),
 	asBCINFO_DUMMY(203),

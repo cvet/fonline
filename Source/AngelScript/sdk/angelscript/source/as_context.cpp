@@ -134,17 +134,32 @@ public:
 
 #endif
 
+// interface
 AS_API asIScriptContext *asGetActiveContext()
 {
 	asCThreadLocalData *tld = asCThreadManager::GetLocalData();
-	if( tld->activeContexts.GetLength() == 0 )
+
+	// tld can be 0 if asGetActiveContext is called before any engine has been created.
+
+	// Observe! I've seen a case where an application linked with the library twice
+	// and thus ended up with two separate instances of the code and global variables.
+	// The application somehow mixed the two instances so that a function called from
+	// a script ended up calling asGetActiveContext from the other instance that had
+	// never been initialized.
+
+	if( tld == 0 || tld->activeContexts.GetLength() == 0 )
 		return 0;
 	return tld->activeContexts[tld->activeContexts.GetLength()-1];
 }
 
+// internal
+// Note: There is no asPopActiveContext(), just call tld->activeContexts.PopLast() instead
 asCThreadLocalData *asPushActiveContext(asIScriptContext *ctx)
 {
 	asCThreadLocalData *tld = asCThreadManager::GetLocalData();
+	asASSERT( tld );
+	if( tld == 0 )
+		return 0;
 	tld->activeContexts.PushLast(ctx);
 	return tld;
 }
@@ -1023,13 +1038,13 @@ int asCContext::SetArgObject(asUINT arg, void *obj)
 		if( dt->IsObjectHandle() )
 		{
 			// Increase the reference counter
-			asSTypeBehaviour *beh = &dt->GetObjectType()->beh;
+			asSTypeBehaviour *beh = &dt->GetTypeInfo()->CastToObjectType()->beh;
 			if( obj && beh->addref )
 				m_engine->CallObjectMethod(obj, beh->addref);
 		}
 		else
 		{
-			obj = m_engine->CreateScriptObjectCopy(obj, dt->GetObjectType());
+			obj = m_engine->CreateScriptObjectCopy(obj, dt->GetTypeInfo());
 		}
 	}
 
@@ -1304,12 +1319,13 @@ int asCContext::Execute()
 	}
 
 	// Pop the active context
-	asASSERT(tld->activeContexts[tld->activeContexts.GetLength()-1] == this);
-	tld->activeContexts.PopLast();
+	asASSERT(tld && tld->activeContexts[tld->activeContexts.GetLength()-1] == this);
+	if( tld )
+		tld->activeContexts.PopLast();
 
 	if( m_status == asEXECUTION_FINISHED )
 	{
-		m_regs.objectType = m_initialFunction->returnType.GetObjectType();
+		m_regs.objectType = m_initialFunction->returnType.GetTypeInfo();
 		return asEXECUTION_FINISHED;
 	}
 
@@ -4494,8 +4510,8 @@ void asCContext::CleanReturnObject()
 	if( m_initialFunction && m_initialFunction->DoesReturnOnStack() && m_status == asEXECUTION_FINISHED )
 	{
 		// If function returns on stack we need to call the destructor on the returned object
-		if( m_initialFunction->returnType.GetObjectType()->beh.destruct )
-			m_engine->CallObjectMethod(GetReturnObject(), m_initialFunction->returnType.GetObjectType()->beh.destruct);
+		if( m_initialFunction->returnType.GetTypeInfo()->CastToObjectType()->beh.destruct )
+			m_engine->CallObjectMethod(GetReturnObject(), m_initialFunction->returnType.GetTypeInfo()->CastToObjectType()->beh.destruct);
 
 		return;
 	}
@@ -4805,9 +4821,9 @@ void asCContext::CleanArgsOnStack()
 			{
 				// Call the object's destructor
 				asSTypeBehaviour *beh = func->parameterTypes[n].GetBehaviour();
-				if( func->parameterTypes[n].GetObjectType()->flags & asOBJ_REF )
+				if( func->parameterTypes[n].GetTypeInfo()->flags & asOBJ_REF )
 				{
-					asASSERT( (func->parameterTypes[n].GetObjectType()->flags & asOBJ_NOCOUNT) || beh->release );
+					asASSERT( (func->parameterTypes[n].GetTypeInfo()->flags & asOBJ_NOCOUNT) || beh->release );
 
 					if( beh->release )
 						m_engine->CallObjectMethod((void*)*(asPWORD*)&m_regs.stackPointer[offset], beh->release);
@@ -4915,9 +4931,9 @@ void asCContext::CleanStackFrame()
 			{
 				// Call the object's destructor
 				asSTypeBehaviour *beh = m_currentFunction->parameterTypes[n].GetBehaviour();
-				if( m_currentFunction->parameterTypes[n].GetObjectType()->flags & asOBJ_REF )
+				if( m_currentFunction->parameterTypes[n].GetTypeInfo()->flags & asOBJ_REF )
 				{
-					asASSERT( (m_currentFunction->parameterTypes[n].GetObjectType()->flags & asOBJ_NOCOUNT) || beh->release );
+					asASSERT( (m_currentFunction->parameterTypes[n].GetTypeInfo()->flags & asOBJ_NOCOUNT) || beh->release );
 
 					if( beh->release )
 						m_engine->CallObjectMethod((void*)*(asPWORD*)&m_regs.stackFramePointer[offset], beh->release);
@@ -4948,7 +4964,7 @@ int asCContext::GetExceptionLineNumber(int *column, const char **sectionName)
 
 	if( sectionName )
 	{
-		// The section index can be -1 if the exception was raised in a generated function, e.g. factstub for templates
+		// The section index can be -1 if the exception was raised in a generated function, e.g. $fact for templates
 		if( m_exceptionSectionIdx >= 0 )
 			*sectionName = m_engine->scriptSectionNames[m_exceptionSectionIdx]->AddressOf();
 		else
@@ -5111,7 +5127,7 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 
 	m_regs.valueRegister = gen.returnVal;
 	m_regs.objectRegister = gen.objectRegister;
-	m_regs.objectType = descr->returnType.GetObjectType();
+	m_regs.objectType = descr->returnType.GetTypeInfo();
 
 	// Clean up arguments
 	const asUINT cleanCount = sysFunc->cleanArgs.GetLength();
@@ -5228,7 +5244,7 @@ void *asCContext::GetAddressOfVar(asUINT varIndex, asUINT stackLevel)
 			!func->scriptData->variables[varIndex]->type.IsObjectHandle() )
 		{
 			onHeap = true;
-			if( func->scriptData->variables[varIndex]->type.GetObjectType()->GetFlags() & asOBJ_VALUE )
+			if( func->scriptData->variables[varIndex]->type.GetTypeInfo()->GetFlags() & asOBJ_VALUE )
 			{
 				for( asUINT n = 0; n < func->scriptData->objVariablePos.GetLength(); n++ )
 				{
@@ -5296,7 +5312,7 @@ int asCContext::GetThisTypeId(asUINT stackLevel)
 		return 0; // not in a method
 
 	// create a datatype
-	asCDataType dt = asCDataType::CreateObject((asCObjectType*)func->GetObjectType(), false);
+	asCDataType dt = asCDataType::CreateType((asCObjectType*)func->GetObjectType(), false);
 
 	// return a typeId from the data type
 	return m_engine->GetTypeIdFromDataType(dt);

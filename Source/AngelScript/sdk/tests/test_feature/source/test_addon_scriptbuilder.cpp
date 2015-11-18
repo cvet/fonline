@@ -167,6 +167,34 @@ bool Test()
 		TEST_FAILED;
 #endif
 
+#ifdef _WIN32
+	// On Windows the file names are case insensitive so the script builder 
+	// must do caseless comparison for duplicate included files
+	// http://www.gamedev.net/topic/669353-script-builder-addon-does-not-detect-duplicate-scripts-on-windows/
+	{
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		CScriptBuilder builder;
+		builder.StartNewModule(engine, "mod");
+		builder.AddSectionFromMemory("test1","#include 'blah.as'\n");
+		builder.AddSectionFromMemory("test2","#include 'BLAH.AS'\n");
+		r = builder.BuildModule();
+		if( r >= 0 )
+			TEST_FAILED;
+
+		// Should only get error for the first include
+		string error = GetCurrentDir() + "/blah.as (0, 0) : Error   : Failed to open script file '" + GetCurrentDir() + "/blah.as'\n"
+			           " (0, 0) : Error   : Nothing was built in the module\n";
+
+		if( bout.buffer != error )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+#endif
+
 	// Test proper error for missing include files
 	// http://www.gamedev.net/topic/661064-include-in-scriptbuilder-addon-may-report-wrong-path-on-error/
 	{
@@ -181,15 +209,13 @@ bool Test()
 		builder.AddSectionFromMemory("test4", "#include '../bin/scripts/include.as'\n");
 		r = builder.BuildModule();
 		if( r < 0 )
-			TEST_FAILED;
+			PRINTF("The build failed. Are you running the test from the correct path?\n");
+		// TODO: The error message should be shown as being from the file that included the other file. Line number should be where the #include directive was found
 		string error = GetCurrentDir() + "/rel_dir/missing_include.as (0, 0) : Error   : Failed to open script file '" + GetCurrentDir() + "/rel_dir/missing_include.as'\n"
 					   "/abs_dir/missing_inc.as (0, 0) : Error   : Failed to open script file '/abs_dir/missing_inc.as'\n"
 					   "c:/disk_path/missing_inc.as (0, 0) : Error   : Failed to open script file 'c:/disk_path/missing_inc.as'\n";
 		if( bout.buffer != error )
-		{
 			PRINTF("%s", bout.buffer.c_str());
-			TEST_FAILED;
-		}
 	}
 
 

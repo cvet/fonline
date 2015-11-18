@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "../../../add_on/debugger/debugger.h"
+#include "../../../add_on/scriptdictionary/scriptdictionary.h"
 #include <sstream>
 
 namespace Test_Addon_Debugger
@@ -37,7 +38,7 @@ public:
 		}
 	}
 
-	std::string ToString(void *value, asUINT typeId, bool expandMembers, asIScriptEngine *engine)
+	std::string ToString(void *value, asUINT typeId, int expandMembers, asIScriptEngine *engine)
 	{
 		// Let debugger do the rest
 		std::string str = CDebugger::ToString(value, typeId, expandMembers, engine);
@@ -92,7 +93,7 @@ public:
 		ctx->Suspend();
 	}
 
-	std::string ToString(void *value, asUINT typeId, bool expandMembers, asIScriptEngine *engine)
+	std::string ToString(void *value, asUINT typeId, int expandMembers, asIScriptEngine *engine)
 	{
 		// Let debugger do the rest
 		std::string str = CDebugger::ToString(value, typeId, expandMembers, engine);
@@ -102,29 +103,48 @@ public:
 		// test will be platform independent.
 		if( str.length() > 0 && str[0] == '{' )
 		{
-			if( lastAddress == "" )
+			size_t r = str.find('}', 1);
+			std::string addr = str.substr(0,r);
+			if( address1 == "" )
 			{
-				lastAddress = str.substr(1,str.find("}", 0));
-				return "{XXXXXXXX"+str.substr(lastAddress.length());
+				address1 = addr;
+				return "{XXXXXXXX}" + str.substr(r+1);
 			}
-			else if( str.substr(1,str.find("}", 0)) == lastAddress )
-				return "{XXXXXXXX"+str.substr(lastAddress.length());
+			else if( addr == address1 )
+				return "{XXXXXXXX}" + str.substr(r+1);
+			else if( address2 == "" )
+			{
+				address2 = addr;
+				return "{YYYYYYYY}" + str.substr(r+1);
+			}
+			else if( addr == address2 )
+				return "{YYYYYYYY}" + str.substr(r+1);
+			else if( address3 == "" )
+			{
+				address3 = addr;
+				return "{ZZZZZZZZ}" + str.substr(r+1);
+			}
+			else if( addr == address3 )
+				return "{ZZZZZZZZ}" + str.substr(r+1);
 			else
-				return str;
+				return "{........}" + str.substr(r+1);
 		}
 
 		return str;
 	}
 
-	std::string lastAddress;
 	std::string output;
+	std::string address1;
+	std::string address2;
+	std::string address3;
 };
 
-std::string StringToString(void *obj, bool /*expandMembers*/, CDebugger * /*dbg*/)
+std::string StringToString(void *obj, int /*expandMembers*/, CDebugger * /*dbg*/)
 {
 	std::string *val = reinterpret_cast<std::string*>(obj);
 	std::stringstream s;
 	s << "(len=" << val->length() << ") \"";
+	// TODO: How to allow user to define how many characters in the string that should be expanded?
 	if( val->length() < 20 )
 		s << *val << "\"";
 	else
@@ -132,20 +152,55 @@ std::string StringToString(void *obj, bool /*expandMembers*/, CDebugger * /*dbg*
 	return s.str();
 }
 
-std::string ArrayToString(void *obj, bool /*expandMembers*/, CDebugger *dbg)
+std::string ArrayToString(void *obj, int expandMembers, CDebugger *dbg)
 {
 	CScriptArray *arr = reinterpret_cast<CScriptArray*>(obj);
 
 	std::stringstream s;
 	s << "(len=" << arr->GetSize() << ") [";
+	// TODO: How to allow user to define how many elements in the array that should be expanded?
 	for( asUINT n = 0; n < arr->GetSize(); n++ )
 	{
-		s << dbg->ToString(arr->At(n), arr->GetElementTypeId(), false, arr->GetArrayObjectType()->GetEngine());
+		s << dbg->ToString(arr->At(n), arr->GetElementTypeId(), expandMembers - 1, arr->GetArrayObjectType()->GetEngine());
 		if( n < arr->GetSize()-1 )
 			s << ", ";
 	}
 	s << "]";
 
+	return s.str();
+}
+
+std::string DictionaryToString(void *obj, int expandMembers, CDebugger *dbg)
+{
+	CScriptDictionary *dic = reinterpret_cast<CScriptDictionary*>(obj);
+ 
+	std::stringstream s;
+	s << "(len=" << dic->GetSize() << ")";
+ 
+	if( expandMembers > 0 )
+	{
+		s << " [";
+		asUINT n = 0;
+		for( CScriptDictionary::CIterator it = dic->begin(); it != dic->end(); it++, n++ )
+		{
+			s << "[" << it.GetKey() << "] = ";
+
+			// Get the type and address of the value
+			const void *val = it.GetAddressOfValue();
+			int typeId = it.GetTypeId();
+
+			// Use the engine from the currently active context
+			asIScriptContext *ctx = asGetActiveContext();
+
+			// TODO: How to allow user to define how many elements in the array that should be expanded?
+			s << dbg->ToString(const_cast<void*>(val), typeId, expandMembers - 1, ctx ? ctx->GetEngine() : 0);
+			
+			if( n < dic->GetSize() - 1 )
+				s << ", ";
+		}
+		s << "]";
+	}
+ 
 	return s.str();
 }
 
@@ -158,6 +213,57 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptContext *ctx;
 	
+	// Test expanding a dictionary
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"array<int> b = {1,2,3,4,5,6,7,8,9,10}; \n"
+			"dictionary dica = {{'keya', 1234},{'keyb', 4321}}; \n"
+			"dictionary dicb = {{'key1', b},{'key2', @dica},{'key3','hello'}}; \n"
+			"void main() {} \n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		CMyDebugger2 debug;
+		debug.SetEngine(engine);
+		debug.RegisterToStringCallback(engine->GetObjectTypeByName("string"), StringToString);
+		debug.RegisterToStringCallback(engine->GetObjectTypeByName("array"), ArrayToString);
+		debug.RegisterToStringCallback(engine->GetObjectTypeByName("dictionary"), DictionaryToString);
+
+		ctx = engine->CreateContext();
+		ctx->SetLineCallback(asMETHOD(CMyDebugger, LineCallback), &debug, asCALL_THISCALL);
+
+		ctx->Prepare(mod->GetFunctionByName("main"));
+
+		debug.PrintValue("b", ctx);
+		debug.PrintValue("dica", ctx);
+		debug.PrintValue("dicb", ctx);
+
+		// TODO: Must not get into trouble expanding circular references infinitely
+
+		if( debug.output != "{XXXXXXXX} (len=10) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n"
+							"{YYYYYYYY} (len=2) [[keya] = 1234, [keyb] = 4321]\n"
+							"{........} (len=3) [[key1] = {ZZZZZZZZ} (len=10) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [key2] = {YYYYYYYY} (len=2) [[keya] = 1234, [keyb] = 4321], [key3] = (len=5) \"hello\"]\n" )
+		{
+			PRINTF("%s", debug.output.c_str());
+			TEST_FAILED;
+		}
+
+		ctx->Release();
+
+		engine->Release();
+	}
+
 	// Simulate a step-by-step execution with variable inspection
 	{
 		CMyDebugger debug;
@@ -218,7 +324,7 @@ bool Test()
 							"type@& g = {XXXXXXXX}\n"
 							"string glob = (len=4) \"test\"\n"
 							"script:3; void func(int, const int&in, string, const string&in, type@, type&inout, type@&in)\n"
-							"{unnamed}:0; int[]@ factstub(int&in) { repeat int }\n"
+							"{unnamed}:0; int[]@ $list(int&in) { repeat int }\n"
 							"int a = 1\n"
 							"const int& b = 2\n"
 							"string c = (len=1) \"c\"\n"
@@ -226,8 +332,7 @@ bool Test()
 							"type@ e = {XXXXXXXX}\n"
 							"type& f = {XXXXXXXX}\n"
 							"type@& g = {XXXXXXXX}\n"
-							"int[] arr = {YYYYYYYY}\n"
-							"(len=3) [1, 2, 3]\n"
+							"int[] arr = {YYYYYYYY} (len=3) [1, 2, 3]\n"
 							"string glob = (len=4) \"test\"\n"
 							"script:4; void func(int, const int&in, string, const string&in, type@, type&inout, type@&in)\n"
 							"type t = {XXXXXXXX}\n"
@@ -341,8 +446,7 @@ bool Test()
 							"24\n"
 							"Reached break point 1 in file 'test' at line 10\n"
 							"test:10; void Func()\n"
-							"{XXXXXXXX}\n"
-							"  int value = 42\n"
+							"{XXXXXXXX} int value = 42\n"
 							"24\n"
 							"3.14\n")
 		{

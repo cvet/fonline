@@ -7,17 +7,30 @@
 #ifndef __psp2__
 	#include <locale.h> // setlocale()
 #endif
-#include <map>      // std::map
 
 using namespace std;
-
-BEGIN_AS_NAMESPACE
 
 // This macro is used to avoid warnings about unused variables.
 // Usually where the variables are only used in debug mode.
 #define UNUSED_VAR(x) (void)(x)
 
 #if AS_USE_STRINGPOOL == 1
+
+#ifdef AS_CAN_USE_CPP11
+	// The string pool doesn't need to keep a specific order in the
+	// pool, so the unordered_map is faster than the ordinary map
+	#include <unordered_map>  // std::unordered_map
+BEGIN_AS_NAMESPACE
+	typedef unordered_map<const char *, string> map_t;
+END_AS_NAMESPACE
+#else
+	#include <map>      // std::map
+BEGIN_AS_NAMESPACE
+	typedef map<const char *, string> map_t;
+END_AS_NAMESPACE
+#endif
+
+BEGIN_AS_NAMESPACE
 
 // By keeping the literal strings in a pool the application
 // performance is improved as there are less string copies created.
@@ -49,22 +62,20 @@ static const string &StringFactory(asUINT length, const char *s)
 	}
 	asIScriptEngine *engine = ctx->GetEngine();
 
-	// TODO: runtime optimize: Use unordered_map if C++11 is supported, i.e. MSVC10+, gcc 4.?+
-	map<const char *, string> *pool = reinterpret_cast< map<const char *, string>* >(engine->GetUserData(STRING_POOL));
-
+	map_t *pool = reinterpret_cast< map_t* >(engine->GetUserData(STRING_POOL));
 	if( !pool )
 	{
 		// The string pool hasn't been created yet, so we'll create it now
 		asAcquireExclusiveLock();
 
 		// Make sure the string pool wasn't created while we were waiting for the lock
-		pool = reinterpret_cast< map<const char *, string>* >(engine->GetUserData(STRING_POOL));
+		pool = reinterpret_cast< map_t* >(engine->GetUserData(STRING_POOL));
 		if( !pool )
 		{
 			#if defined(__S3E__)
-			pool = new map<const char *, string>;
+			pool = new map_t;
 			#else
-			pool = new (nothrow) map<const char *, string>;
+			pool = new (nothrow) map_t;
 			#endif
 			if( pool == 0 )
 			{
@@ -82,7 +93,7 @@ static const string &StringFactory(asUINT length, const char *s)
 	asAcquireSharedLock();
 
 	// First check if a string object hasn't been created already
-	map<const char *, string>::iterator it;
+	map_t::iterator it;
 	it = pool->find(s);
 	if( it != pool->end() )
 	{
@@ -100,7 +111,7 @@ static const string &StringFactory(asUINT length, const char *s)
 	if( it == pool->end() )
 	{
 		// Create a new string object
-		it = pool->insert(map<const char *, string>::value_type(s, string(s, length))).first;
+		it = pool->insert(map_t::value_type(s, string(s, length))).first;
 	}
 
 	asReleaseExclusiveLock();
@@ -109,7 +120,7 @@ static const string &StringFactory(asUINT length, const char *s)
 
 static void CleanupEngineStringPool(asIScriptEngine *engine)
 {
-	map<const char *, string> *pool = reinterpret_cast< map<const char *, string>* >(engine->GetUserData(STRING_POOL));
+	map_t *pool = reinterpret_cast< map_t* >(engine->GetUserData(STRING_POOL));
 	if( pool )
 		delete pool;
 }
@@ -691,9 +702,9 @@ void RegisterStdString_Native(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("string", "int findFirst(const string &in, uint start = 0) const", asFUNCTION(StringFindFirst), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "int findLast(const string &in, int start = -1) const", asFUNCTION(StringFindLast), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 
-	r = engine->RegisterGlobalFunction("string formatInt(int64 val, const string &in options, uint width = 0)", asFUNCTION(formatInt), asCALL_CDECL); assert(r >= 0);
-	r = engine->RegisterGlobalFunction("string formatUInt(uint64 val, const string &in options, uint width = 0)", asFUNCTION(formatUInt), asCALL_CDECL); assert(r >= 0);
-	r = engine->RegisterGlobalFunction("string formatFloat(double val, const string &in options, uint width = 0, uint precision = 0)", asFUNCTION(formatFloat), asCALL_CDECL); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("string formatInt(int64 val, const string &in options = \"\", uint width = 0)", asFUNCTION(formatInt), asCALL_CDECL); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("string formatUInt(uint64 val, const string &in options = \"\", uint width = 0)", asFUNCTION(formatUInt), asCALL_CDECL); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("string formatFloat(double val, const string &in options = \"\", uint width = 0, uint precision = 0)", asFUNCTION(formatFloat), asCALL_CDECL); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("int64 parseInt(const string &in, uint base = 10, uint &out byteCount = 0)", asFUNCTION(parseInt), asCALL_CDECL); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("double parseFloat(const string &in, uint &out byteCount = 0)", asFUNCTION(parseFloat), asCALL_CDECL); assert(r >= 0);
 
@@ -1175,9 +1186,9 @@ void RegisterStdString_Generic(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("string", "int findFirst(const string &in, uint start = 0) const", asFUNCTION(StringFindFirst_Generic), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "int findLast(const string &in, int start = -1) const", asFUNCTION(StringFindLast_Generic), asCALL_GENERIC); assert( r >= 0 );
 
-	r = engine->RegisterGlobalFunction("string formatInt(int64 val, const string &in options, uint width = 0)", asFUNCTION(formatInt_Generic), asCALL_GENERIC); assert(r >= 0);
-	r = engine->RegisterGlobalFunction("string formatUInt(uint64 val, const string &in options, uint width = 0)", asFUNCTION(formatUInt_Generic), asCALL_GENERIC); assert(r >= 0);
-	r = engine->RegisterGlobalFunction("string formatFloat(double val, const string &in options, uint width = 0, uint precision = 0)", asFUNCTION(formatFloat_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("string formatInt(int64 val, const string &in options = \"\", uint width = 0)", asFUNCTION(formatInt_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("string formatUInt(uint64 val, const string &in options = \"\", uint width = 0)", asFUNCTION(formatUInt_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("string formatFloat(double val, const string &in options = \"\", uint width = 0, uint precision = 0)", asFUNCTION(formatFloat_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("int64 parseInt(const string &in, uint base = 10, uint &out byteCount = 0)", asFUNCTION(parseInt_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("double parseFloat(const string &in, uint &out byteCount = 0)", asFUNCTION(parseFloat_Generic), asCALL_GENERIC); assert(r >= 0);
 }

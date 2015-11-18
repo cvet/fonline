@@ -193,7 +193,7 @@ bool TestThiscallClass()
 
 	if( c2_2.a != 0xDEADC0DE01234567L )
 	{
-		PRINTF("%s: Failed to assign object returned from function. c2.a = %lx\n", TESTNAME, c2_2.a);
+		PRINTF("%s: Failed to assign object returned from function. c2.a = %llx\n", TESTNAME, c2_2.a);
 		TEST_FAILED;
 	}
 

@@ -79,8 +79,12 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 
 	// Backup stack pointer in R15 that is guaranteed to maintain its value over function calls
 		"  movq %%rsp, %%r15 \n"
+#ifdef __OPTIMIZE__
 	// Make sure the stack unwind logic knows we've backed up the stack pointer in register r15
+	// This should only be done if any optimization is done. If no optimization (-O0) is used,
+	// then the compiler already backups the rsp before entering the inline assembler code
 		" .cfi_def_cfa_register r15 \n"
+#endif
 
 	// Skip the first 128 bytes on the stack frame, called "red zone",  
 	// that might be used by the compiler to store temporary values
@@ -100,7 +104,7 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 		"  jle endstack \n"
 		"  subl $1, %%esi \n"
 		"  xorl %%edx, %%edx \n"
-		"  leaq	8(, %%rsi, 8), %%rcx \n"
+		"  leaq 8(, %%rsi, 8), %%rcx \n"
 		"loopstack: \n"
 		"  movq 112(%%r10, %%rdx), %%rax \n"
 		"  pushq %%rax \n"
@@ -132,8 +136,12 @@ static asQWORD __attribute__((noinline)) X64_CallFunction(const asQWORD *args, i
 
 	// Restore stack pointer
 		"  mov %%r15, %%rsp \n"
+#ifdef __OPTIMIZE__
 	// Inform the stack unwind logic that the stack pointer has been restored
+	// This should only be done if any optimization is done. If no optimization (-O0) is used,
+	// then the compiler already backups the rsp before entering the inline assembler code
 		" .cfi_def_cfa_register rsp \n"
+#endif
 
 	// Put return value in retQW1 and retQW2, using either RAX:RDX or XMM0:XMM1 depending on type of return value
 		"  movl %5, %%ecx \n"
@@ -337,7 +345,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		else
 		{
 			// An object is being passed by value
-			if( (parmType.GetObjectType()->flags & COMPLEX_MASK) ||
+			if( (parmType.GetTypeInfo()->flags & COMPLEX_MASK) ||
 			    parmType.GetSizeInMemoryDWords() > 4 )
 			{
 				// Copy the address of the object
@@ -345,8 +353,8 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 				memcpy(paramBuffer + argIndex, stack_pointer, sizeof(asQWORD));
 				argIndex++;
 			}
-			else if( (parmType.GetObjectType()->flags & asOBJ_APP_CLASS_ALLINTS) ||
-			         (parmType.GetObjectType()->flags & asOBJ_APP_PRIMITIVE) )
+			else if( (parmType.GetTypeInfo()->flags & asOBJ_APP_CLASS_ALLINTS) ||
+			         (parmType.GetTypeInfo()->flags & asOBJ_APP_PRIMITIVE) )
 			{
 				// Copy the value of the object
 				if( parmType.GetSizeInMemoryDWords() > 2 )
@@ -365,8 +373,8 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 				// Delete the original memory
 				engine->CallFree(*(void**)stack_pointer);
 			}
-			else if( (parmType.GetObjectType()->flags & asOBJ_APP_CLASS_ALLFLOATS) ||
-			         (parmType.GetObjectType()->flags & asOBJ_APP_FLOAT) )
+			else if( (parmType.GetTypeInfo()->flags & asOBJ_APP_CLASS_ALLFLOATS) ||
+			         (parmType.GetTypeInfo()->flags & asOBJ_APP_FLOAT) )
 			{
 				// Copy the value of the object
 				if( parmType.GetSizeInMemoryDWords() > 2 )

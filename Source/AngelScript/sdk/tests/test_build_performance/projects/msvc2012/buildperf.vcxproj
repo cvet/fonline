@@ -169,6 +169,7 @@
     <ClCompile Include="..\..\source\test_basic.cpp" />
     <ClCompile Include="..\..\source\test_big_arrays.cpp" />
     <ClCompile Include="..\..\source\test_complex.cpp" />
+    <ClCompile Include="..\..\source\test_huge_api.cpp" />
     <ClCompile Include="..\..\source\test_many_funcs.cpp" />
     <ClCompile Include="..\..\source\test_many_symbols.cpp" />
     <ClCompile Include="..\..\source\test_rebuild.cpp" />

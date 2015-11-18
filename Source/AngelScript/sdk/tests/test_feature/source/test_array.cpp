@@ -294,9 +294,11 @@ bool Test()
 	r = mod->Build();
 	if( r >= 0 ) TEST_FAILED;
 	if( bout.buffer != "TestArray (1, 1) : Info    : Compiling void Test()\n"
-	                   "TestArray (3, 15) : Error   : Initialization lists cannot be used with 'int[]@'\n"
 	                   "TestArray (4, 16) : Error   : Initialization lists cannot be used with 'int'\n" )
+	{
+		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;
+	}
 
 	// Array object must call default constructor of the script classes
 	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);

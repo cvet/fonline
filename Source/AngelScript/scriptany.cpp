@@ -150,6 +150,10 @@ void RegisterScriptAny_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectBehaviour( "any", asBEHAVE_FACTORY, "any@ f(?&in)", asFUNCTION( ScriptAnyFactory2_Generic ), asCALL_GENERIC );
     assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "any", asBEHAVE_FACTORY, "any@ f(const int64&in)", asFUNCTION( ScriptAnyFactory2_Generic ), asCALL_GENERIC );
+    assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "any", asBEHAVE_FACTORY, "any@ f(const double&in)", asFUNCTION( ScriptAnyFactory2_Generic ), asCALL_GENERIC );
+    assert( r >= 0 );
 
     r = engine->RegisterObjectBehaviour( "any", asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptAny, AddRef ), asCALL_THISCALL );
     assert( r >= 0 );
@@ -159,9 +163,9 @@ void RegisterScriptAny_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "any", "void store(?&in)", asMETHODPR( ScriptAny, Store, ( void*, int ), void ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "any", "void store(int64&in)", asMETHODPR( ScriptAny, Store, ( asINT64 & ), void ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "any", "void store(const int64&in)", asMETHODPR( ScriptAny, Store, ( asINT64 & ), void ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "any", "void store(double&in)", asMETHODPR( ScriptAny, Store, ( double& ), void ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "any", "void store(const double&in)", asMETHODPR( ScriptAny, Store, ( double& ), void ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "any", "bool retrieve(?&out)", asMETHODPR( ScriptAny, Retrieve, ( void*, int ) const, bool ), asCALL_THISCALL );
     assert( r >= 0 );
@@ -194,6 +198,10 @@ void RegisterScriptAny_Generic( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectBehaviour( "any", asBEHAVE_FACTORY, "any@ f(?&in)", asFUNCTION( ScriptAnyFactory2_Generic ), asCALL_GENERIC );
     assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "any", asBEHAVE_FACTORY, "any@ f(const int64&in)", asFUNCTION( ScriptAnyFactory2_Generic ), asCALL_GENERIC );
+    assert( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "any", asBEHAVE_FACTORY, "any@ f(const double&in)", asFUNCTION( ScriptAnyFactory2_Generic ), asCALL_GENERIC );
+    assert( r >= 0 );
 
     r = engine->RegisterObjectBehaviour( "any", asBEHAVE_ADDREF, "void f()", asFUNCTION( ScriptAny_AddRef_Generic ), asCALL_GENERIC );
     assert( r >= 0 );
@@ -203,9 +211,9 @@ void RegisterScriptAny_Generic( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "any", "void store(?&in)", asFUNCTION( ScriptAny_Store_Generic ), asCALL_GENERIC );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "any", "void store(int64&in)", asFUNCTION( ScriptAny_StoreInt_Generic ), asCALL_GENERIC );
+    r = engine->RegisterObjectMethod( "any", "void store(const int64&in)", asFUNCTION( ScriptAny_StoreInt_Generic ), asCALL_GENERIC );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "any", "void store(double&in)", asFUNCTION( ScriptAny_StoreFlt_Generic ), asCALL_GENERIC );
+    r = engine->RegisterObjectMethod( "any", "void store(const double&in)", asFUNCTION( ScriptAny_StoreFlt_Generic ), asCALL_GENERIC );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "any", "bool retrieve(?&out) const", asFUNCTION( ScriptAny_Retrieve_Generic ), asCALL_GENERIC );
     assert( r >= 0 );

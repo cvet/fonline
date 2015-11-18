@@ -146,13 +146,12 @@ bool TestVector3()
 	{
 		TEST_FAILED;
 	}
-	// TODO: the function signature for the constructors/factories should carry the name of the object instead of _beh_0_
+	// TODO: the function signature for the constructors/factories should carry the name of the object instead of $beh0
 	if( bout.buffer != "ExecuteString (1, 13) : Error   : No matching signatures to 'vector3(const int, const int, const int, const int)'\n"
 					   "ExecuteString (1, 13) : Info    : Candidates are:\n"
 					   "ExecuteString (1, 13) : Info    : vector3::vector3()\n"
-				   	   "ExecuteString (1, 13) : Info    : vector3::vector3(const vector3&in)\n"
-					   "ExecuteString (1, 13) : Info    : vector3::vector3(float, float = 0, float = 0)\n"
-	                   "ExecuteString (1, 13) : Error   : Can't implicitly convert from 'const int' to 'vector3'.\n" )
+					   "ExecuteString (1, 13) : Info    : vector3::vector3(const vector3&in)\n"
+					   "ExecuteString (1, 13) : Info    : vector3::vector3(float, float y = 0, float z = 0)\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());
 		TEST_FAILED;

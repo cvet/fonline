@@ -88,6 +88,46 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
 
+	// Test with namespace
+	// http://www.gamedev.net/topic/670216-patch-for-namespace-support-in-getsetters/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		RegisterScriptMath3D(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", 
+			"namespace nsTest {\n"
+			"   class Foo {\n"
+			"       Foo() { }\n"
+			"   }\n"
+			"}\n"
+			"class Test {\n"
+			"   nsTest::Foo@ mFoo = null;\n"
+			"   nsTest::Foo@ foo {\n"
+			"       get {\n"
+			"           if( this.mFoo is null )\n"
+			"              @this.mFoo = nsTest::Foo();\n"
+			"           return @this.mFoo;\n"
+			"       }\n"
+			"   }\n"
+			"}\n");
+		r = mod->Build();
+		if( r < 0 )
+			TEST_FAILED;
+
+		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
 	// Test compound assignment with get/set on object returned as handle from other get/set
 	// http://www.gamedev.net/topic/666081-virtual-property-compound-assignment-on-temporary-object-handle-v2300/
 	{
@@ -242,7 +282,7 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 		
-		// TODO: 2.30.0: Test with ++ too
+		// TODO: Test with ++ too
 		// This shall be expanded to "set_prop(get_prop() + 1)"
 /*		r = ExecuteString(engine, "prop++; assert( g_var == 2 );", mod);
 		if( r != asEXECUTION_FINISHED )

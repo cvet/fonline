@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 	int r;
 
 	// Create the script engine
-	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	engine = asCreateScriptEngine();
 	if( engine == 0 )
 	{
 		cout << "Failed to create script engine." << endl;

@@ -195,6 +195,27 @@ compile the native ARM assembler routines. For Windows Phone you should be able 
 
 
 
+\section doc_compile_size Size of the library
 
+The size of the library depends on many different factors, such as compiler brand, compiler flags, and also what features 
+of AngelScript that are included. However, to give an idea of how much space the library will take up on the disk and memory 
+I've compiled the \ref doc_samples_asrun "asrun sample" in a few different ways and noted down the size.
+
+<table>
+<tr><td><b>Options</b></td><td><b>Size of binary on disk</b></td></tr>
+<tr><td>32 bit / multithreaded dll / optimize for speed<br>Without including AngelScript</td><td>14KB</td></tr>
+<tr><td>32 bit / multithreaded dll / optimize for speed<br>Using AngelScript and add-ons</td><td>796KB</td></tr>
+<tr><td>32 bit / multithreaded dll / optimize for speed<br>AngelScript without compiler (AS_NO_COMPILER) and add-ons</td><td>453KB</td></tr>
+<tr><td>32 bit / multithreaded static / optimize for speed<br>Using AngelScript but without add-ons</td><td>867KB</td></tr>
+<tr><td>32 bit / multithreaded static / optimize for speed<br>Using AngelScript and add-ons</td><td>1015KB</td></tr>
+<tr><td>64 bit / multithreaded static / optimize for speed<br>Using AngelScript and add-ons</td><td>1336KB</td></tr>
+<tr><td>32 bit / multithreaded static / optimize for size<br>Using AngelScript and add-ons</td><td>797KB</td></tr>
+<tr><td>32 bit / multithreaded dll / optimize for size<br>Using AngelScript and add-ons</td><td>582KB</td></tr>
+</table>
+
+Based on this we can draw the conclusion that the engine and VM takes up about 300KB when optimized for speed, 
+the compiler adds another 350KB, and the add-ons yet another 150KB.
+
+\note These tests were made with MSVC 2012 and version 2.30.2 of the library.
 
 */

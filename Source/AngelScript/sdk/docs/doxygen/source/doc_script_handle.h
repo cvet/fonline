@@ -57,16 +57,25 @@ object is for example done like this:
   \@obj_h = \@obj;
 </pre>
 
+Note that the compiler can often implicitly determine that it is the handle of the
+object that is needed rather than the actual object itself. In these cases it is not
+necessary to explicitly prepend the expression with \@.
+
 An object handle can be compared against another object handle
 (of the same type) to verify if they are pointing to the same object or not.
 It can also be compared against null, which is a special keyword that
-represents an empty handle. This is done using the identity operator, <code>is</code>.
+represents an empty handle. This is done using the identity operator, <tt>is</tt>.
 
 <pre>
   object\@ obj_a, obj_b;
   if( obj_a is obj_b ) {}
   if( obj_a !is null ) {}
 </pre>
+
+Observe, the == and != operators will do a value comparison on the objects referred to 
+by the handles using the \ref doc_script_class_cmp_ops "opEquals" or \ref doc_script_class_cmp_ops "opCmp" 
+operator overloads. Though, if the expressions are prepended with @ the operators will have the
+same function as <tt>is</tt> and <tt>!is</tt>.
 
 \section doc_script_handle_2 Object life times
 

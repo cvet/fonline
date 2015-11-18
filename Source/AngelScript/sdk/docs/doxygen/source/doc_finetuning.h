@@ -27,13 +27,25 @@ The context object is a heavy weight object and you should avoid allocating new
 instances for each call. The object has been designed to be reused for multiple 
 calls.
 
+\subsection doc_finetuning_2_1 Context pool
+
 Ideally the application will keep a simple memory pool of allocated context 
 objects, where new objects are only allocated if the is no free objects in the 
 pool.
 
+By using the engine's \ref asIScriptEngine::SetContextCallbacks "context callbacks", 
+this context pool will also be automatically available to the engine for use in 
+internal calls and the add-ons. 
+
+The code that wants to use a context from the pool should use the 
+\ref asIScriptEngine::RequestContext "RequestContext" and \ref asIScriptEngine::ReturnContext "ReturnContext" methods
+instead of the \ref asIScriptEngine::CreateContext "CreateContext" method.
+
+Here's a simple implementation of a context pool.
+
 \code
 std::vector<asIScriptContext *> pool;
-asIScriptContext *GetContextFromPool()
+asIScriptContext *RequestContextCallback(asIScriptEngine *engine, void *param)
 {
   // Get a context from the pool, or create a new
   asIScriptContext *ctx = 0;
@@ -48,7 +60,7 @@ asIScriptContext *GetContextFromPool()
   return ctx;
 }
 
-void ReturnContextToPool(asIScriptContext *ctx)
+void ReturnContextToPool(asIScriptEngine *engine, asIScriptContext *ctx, void *param)
 {
   pool.push_back(ctx);
   
@@ -57,10 +69,14 @@ void ReturnContextToPool(asIScriptContext *ctx)
 }
 \endcode
 
+\subsection doc_finetuning_2_2 Nested calls
+
+Another form of reusing a context is to use nested calls. 
+
 Whenever an application registered function that is called from a script needs to 
 execute another script it can reuse the already active context for a nested call.
-This way it is not look for an available context from a pool or allocate a new context
-just for this call.
+This way it is not necessary to look for an available context from a pool or allocate 
+a new context just for this call.
 
 \code
 void Func()
