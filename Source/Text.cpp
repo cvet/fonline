@@ -812,16 +812,12 @@ bool Str::AtoB( const char* str )
 
 int Str::AtoI( const char* str )
 {
-    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return (uint) strtol( str + 2, nullptr, 16 );
-    return (uint) strtol( str, nullptr, 10 );
+    return (int) AtoI64( str );
 }
 
 uint Str::AtoUI( const char* str )
 {
-    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return (uint) strtoul( str + 2, nullptr, 16 );
-    return (uint) strtoul( str, nullptr, 10 );
+    return (uint) AtoI64( str );
 }
 
 int64 Str::AtoI64( const char* str )

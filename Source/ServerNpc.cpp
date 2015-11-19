@@ -1710,11 +1710,10 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
 
         // Set dialogs
         dialog_pack = DlgMngr.GetDialog( cl->Talk.DialogPackId );
-        dialogs = dialog_pack ? &dialog_pack->Dialogs : nullptr;
+        dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
         if( !dialogs || !dialogs->size() )
         {
             cl->CloseTalk();
-            npc->SendAA_Msg( npc->VisCr, STR_DIALOG_NO_DIALOGS, SAY_NORM, TEXTMSG_GAME );
             WriteLogF( _FUNC_, " - No dialogs, npc '%s', client '%s'.\n", npc->GetInfo(), cl->GetInfo() );
             return;
         }
@@ -1723,12 +1722,9 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
     {
         // Set dialogs
         dialog_pack = DlgMngr.GetDialog( id_npc_talk );
-        dialogs = dialog_pack ? &dialog_pack->Dialogs : nullptr;
+        dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
         if( !dialogs || !dialogs->size() )
         {
-            Map* map = MapMngr.GetMap( cl->GetMapId() );
-            if( map )
-                map->SetTextMsg( cl->Talk.TalkHexX, cl->Talk.TalkHexY, 0, TEXTMSG_GAME, STR_DIALOG_NO_DIALOGS );
             WriteLogF( _FUNC_, " - No dialogs, dialog '%s' hx %u, hy %u, client '%s'.\n", Str::GetName( id_npc_talk ), cl->Talk.TalkHexX, cl->Talk.TalkHexY, cl->GetInfo() );
             return;
         }
