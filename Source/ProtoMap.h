@@ -309,8 +309,6 @@ public:
     uchar*          HexFlags;
 
 private:
-    bool LoadCache( FileManager& fm );
-    void SaveCache( FileManager& fm );
     bool BindScripts( MapObjectPtrVec& mobjs );
     #endif
 

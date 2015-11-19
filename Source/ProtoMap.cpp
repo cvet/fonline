@@ -1226,206 +1226,6 @@ void ProtoMap::SaveTextFormat( FileManager& fm )
 #endif
 
 #ifdef FONLINE_SERVER
-bool ProtoMap::LoadCache( FileManager& fm )
-{
-    // Server version
-    uint version = fm.GetBEUInt();
-    if( version != FONLINE_VERSION )
-        return false;
-    fm.GetBEUInt();
-    fm.GetBEUInt();
-    fm.GetBEUInt();
-
-    // Header
-    if( !fm.CopyMem( &Header, sizeof( Header ) ) )
-        return false;
-
-    // Tiles
-    uint tiles_count = fm.GetBEUInt();
-    if( tiles_count )
-    {
-        Tiles.resize( tiles_count );
-        fm.CopyMem( &Tiles[ 0 ], tiles_count * sizeof( Tile ) );
-    }
-
-    // Critters
-    uint count = fm.GetBEUInt();
-    CrittersVec.reserve( count );
-    for( uint i = 0; i < count; i++ )
-    {
-        MapObject* mobj = new MapObject();
-        fm.CopyMem( mobj, sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
-        mobj->RunTime.RefCounter = 1;
-        if( mobj->Props )
-        {
-            mobj->AllocateProps();
-            uint size = fm.GetBEUInt();
-            mobj->Props = new IntVec();
-            mobj->Props->resize( size );
-            fm.CopyMem( &mobj->Props->at( 0 ), size * sizeof( int ) );
-        }
-        CrittersVec.push_back( mobj );
-    }
-
-    // Items
-    count = fm.GetBEUInt();
-    ItemsVec.reserve( count );
-    for( uint i = 0; i < count; i++ )
-    {
-        MapObject* mobj = new MapObject();
-        fm.CopyMem( mobj, sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
-        mobj->RunTime.RefCounter = 1;
-        ItemsVec.push_back( mobj );
-    }
-
-    // Scenery
-    count = fm.GetBEUInt();
-    SceneryVec.reserve( count );
-    for( uint i = 0; i < count; i++ )
-    {
-        MapObject* mobj = new MapObject();
-        fm.CopyMem( mobj, sizeof( MapObject ) );
-        mobj->RunTime.RefCounter = 1;
-        SceneryVec.push_back( mobj );
-    }
-
-    // Grids
-    count = fm.GetBEUInt();
-    GridsVec.reserve( count );
-    for( uint i = 0; i < count; i++ )
-    {
-        MapObject* mobj = new MapObject();
-        fm.CopyMem( mobj, sizeof( MapObject ) );
-        mobj->RunTime.RefCounter = 1;
-        GridsVec.push_back( mobj );
-    }
-
-    // Bind scripts
-    MapObjectPtrVec mobjects;
-    mobjects.insert( mobjects.end(), CrittersVec.begin(), CrittersVec.end() );
-    mobjects.insert( mobjects.end(), ItemsVec.begin(), ItemsVec.end() );
-    mobjects.insert( mobjects.end(), SceneryVec.begin(), SceneryVec.end() );
-    mobjects.insert( mobjects.end(), GridsVec.begin(), GridsVec.end() );
-    if( !BindScripts( mobjects ) )
-        return false;
-
-    // To send
-    count = fm.GetBEUInt();
-    if( count )
-    {
-        WallsToSend.resize( count );
-        if( !fm.CopyMem( &WallsToSend[ 0 ], count * sizeof( SceneryCl ) ) )
-            return false;
-    }
-    count = fm.GetBEUInt();
-    if( count )
-    {
-        SceneriesToSend.resize( count );
-        if( !fm.CopyMem( &SceneriesToSend[ 0 ], count * sizeof( SceneryCl ) ) )
-            return false;
-    }
-
-    // Hashes
-    HashTiles = fm.GetBEUInt();
-    HashWalls = fm.GetBEUInt();
-    HashScen = fm.GetBEUInt();
-
-    // Hex flags
-    HexFlags = new uchar[ Header.MaxHexX * Header.MaxHexY ];
-    if( !HexFlags )
-        return false;
-    if( !fm.CopyMem( HexFlags, Header.MaxHexX * Header.MaxHexY ) )
-        return false;
-
-    // Entires
-    count = fm.GetBEUInt();
-    if( count )
-    {
-        mapEntires.resize( count );
-        if( !fm.CopyMem( &mapEntires[ 0 ], count * sizeof( MapEntire ) ) )
-            return false;
-    }
-
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneriesToSend.capacity() * sizeof( SceneryCl ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) WallsToSend.capacity() * sizeof( SceneryCl ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) mapEntires.capacity() * sizeof( MapEntire ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) CrittersVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) ItemsVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneryVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) GridsVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) Header.MaxHexX * Header.MaxHexY );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) Tiles.capacity() * sizeof( Tile ) );
-    return true;
-}
-
-void ProtoMap::SaveCache( FileManager& fm )
-{
-    // Server version
-    fm.SetBEUInt( FONLINE_VERSION );
-    fm.SetBEUInt( 0 );
-    fm.SetBEUInt( 0 );
-    fm.SetBEUInt( 0 );
-
-    // Header
-    fm.SetData( &Header, sizeof( Header ) );
-
-    // Tiles
-    fm.SetBEUInt( (uint) Tiles.size() );
-    if( Tiles.size() )
-        fm.SetData( &Tiles[ 0 ], (uint) Tiles.size() * sizeof( Tile ) );
-
-    // Critters
-    fm.SetBEUInt( (uint) CrittersVec.size() );
-    for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
-    {
-        fm.SetData( *it, (uint) sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
-        if( ( *it )->Props && !( *it )->Props->empty() )
-        {
-            uint size = ( *it )->Props->size();
-            fm.SetBEUInt( size );
-            fm.SetData( &( *it )->Props->at( 0 ), size * sizeof( int ) );
-        }
-    }
-
-    // Items
-    fm.SetBEUInt( (uint) ItemsVec.size() );
-    for( auto it = ItemsVec.begin(), end = ItemsVec.end(); it != end; ++it )
-        fm.SetData( *it, (uint) sizeof( MapObject ) - sizeof( MapObject::_RunTime ) );
-
-    // Scenery
-    fm.SetBEUInt( (uint) SceneryVec.size() );
-    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
-        fm.SetData( *it, (uint) sizeof( MapObject ) );
-
-    // Grids
-    fm.SetBEUInt( (uint) GridsVec.size() );
-    for( auto it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
-        fm.SetData( *it, (uint) sizeof( MapObject ) );
-
-    // To send
-    fm.SetBEUInt( (uint) WallsToSend.size() );
-    fm.SetData( &WallsToSend[ 0 ], (uint) WallsToSend.size() * sizeof( SceneryCl ) );
-    fm.SetBEUInt( (uint) SceneriesToSend.size() );
-    fm.SetData( &SceneriesToSend[ 0 ], (uint) SceneriesToSend.size() * sizeof( SceneryCl ) );
-
-    // Hashes
-    fm.SetBEUInt( HashTiles );
-    fm.SetBEUInt( HashWalls );
-    fm.SetBEUInt( HashScen );
-
-    // Hex flags
-    fm.SetData( HexFlags, Header.MaxHexX * Header.MaxHexY );
-
-    // Entires
-    fm.SetBEUInt( (uint) mapEntires.size() );
-    fm.SetData( &mapEntires[ 0 ], (uint) mapEntires.size() * sizeof( MapEntire ) );
-
-    // Save
-    char fname[ MAX_FOPATH ];
-    Str::Format( fname, "%s.fomapb", pmapName.c_str() );
-    fm.SaveOutBufToFile( fname, PT_SERVER_CACHE );
-}
-
 bool ProtoMap::BindScripts( MapObjectPtrVec& mobjs )
 {
     int errors = 0;
@@ -1523,7 +1323,7 @@ bool ProtoMap::BindScripts( MapObjectPtrVec& mobjs )
 
 bool ProtoMap::Refresh()
 {
-    // Load text or binary
+    // Find file
     FilesCollection maps( "fomap" );
     const char* path;
     FileManager& map_file = maps.FindFile( pmapName.c_str(), &path );
@@ -1538,31 +1338,13 @@ bool ProtoMap::Refresh()
     FileManager::ExtractDir( path, dir );
     pmapDir = dir;
 
-    // Load from cache
-    #ifdef FONLINE_SERVER
-    FileManager cached;
-    if( cached.LoadFile( ( pmapName + ".fomapb" ).c_str(), PT_SERVER_CACHE ) )
-    {
-        uint64 last_write = map_file.GetWriteTime();
-        uint64 last_write_cache = cached.GetWriteTime();
-        if( last_write_cache >= last_write )
-        {
-            if( LoadCache( cached ) )
-                return true;
-        }
-    }
-    #endif
-
     // Load from file
-    if( !LoadTextFormat( (const char*) map_file.GetBuf() ) )
+    if( !LoadTextFormat( map_file.GetCStr() ) )
     {
         WriteLog( "Unable to load map '%s'.\n", pmapName.c_str() );
         return false;
     }
 
-    #ifdef FONLINE_SERVER
-    SaveCache( map_file );
-    #endif
     return true;
 }
 
