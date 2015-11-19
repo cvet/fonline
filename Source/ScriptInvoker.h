@@ -10,6 +10,7 @@ struct DeferredCall
     hash   FuncNum;
     uint   BindId;
     bool   IsValue;
+    bool   ValueSigned;
     int    Value;
     bool   IsValues;
     bool   ValuesSigned;

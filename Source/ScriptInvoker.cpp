@@ -26,11 +26,16 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
     {
         call.IsValue = true;
         call.Value = *value;
+        int value_type_id = 0;
+        func->GetParam( 0, &value_type_id );
+        RUNTIME_ASSERT( value_type_id == asTYPEID_INT32 || value_type_id == asTYPEID_UINT32 );
+        call.ValueSigned = ( value_type_id == asTYPEID_INT32 );
     }
     else
     {
         call.IsValue = false;
         call.Value = 0;
+        call.ValueSigned = false;
     }
     if( values )
     {
@@ -180,7 +185,10 @@ void ScriptInvoker::SaveDeferredCalls( IniParser& data )
         kv[ "Delay" ] = Str::UItoA( call.FireTick > tick ? call.FireTick - tick : 0 );
 
         if( call.IsValue )
+        {
+            kv[ "ValueSigned" ] = ( call.ValueSigned ? "true" : "false" );
             kv[ "Value" ] = Str::ItoA( call.Value );
+        }
 
         if( call.IsValues )
         {
@@ -201,6 +209,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 
     lastDeferredCallId = Str::AtoUI( data.GetStr( "GeneralSettings", "LastDeferredCallId" ) );
 
+    int          errors = 0;
     PStrMapVec   deferred_calls;
     data.GetApps( "DeferredCall", deferred_calls );
     uint         tick = Timer::FastTick();
@@ -210,15 +219,22 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         auto& kv = *pkv;
 
         call.Id = Str::AtoUI( kv[ "Id" ].c_str() );
-        call.FuncNum = Script::BindScriptFuncNumByScriptName( kv[ "Script" ].c_str(), "TODO" );
         call.FireTick = tick + Str::AtoUI( kv[ "Delay" ].c_str() );
 
-        if( kv.count( "Value" ) )
+        call.IsValue = ( kv.count( "Value" ) > 0 );
+        if( call.IsValue )
+        {
+            call.ValueSigned = Str::CompareCase( kv[ "ValueSigned" ].c_str(), "true" );
             call.Value = Str::AtoI( kv[ "Value" ].c_str() );
+        }
         else
+        {
+            call.ValueSigned = false;
             call.Value = 0;
+        }
 
-        if( kv.count( "Values" ) )
+        call.IsValues = ( kv.count( "Values" ) > 0 );
+        if( call.IsValues )
         {
             call.ValuesSigned = Str::CompareCase( kv[ "ValuesSigned" ].c_str(), "true" );
             Str::ParseLine( kv[ "Values" ].c_str(), ' ', call.Values, Str::AtoI );
@@ -229,18 +245,47 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
             call.Values.clear();
         }
 
-        call.BindId = Script::BindByFuncNum( call.FuncNum, false );
-        if( !call.BindId )
+        if( call.IsValue && call.IsValues )
         {
-            WriteLog( "Unable to bind script function '%s' for event %u. Skip event.\n", Str::GetName( call.FuncNum ), call.Id );
+            WriteLog( "Deferred call %u have value and values.\n", call.Id );
+            errors++;
             continue;
         }
 
+        const char* decl;
+        if( call.IsValue && call.ValueSigned )
+            decl = "void %s(int)";
+        else if( call.IsValue && !call.ValueSigned )
+            decl = "void %s(uint)";
+        else if( call.IsValues && call.ValuesSigned )
+            decl = "void %s(int[]&)";
+        else if( call.IsValues && !call.ValuesSigned )
+            decl = "void %s(uint[]&)";
+        else
+            decl = "void %s()";
+
+        call.FuncNum = Script::BindScriptFuncNumByScriptName( kv[ "Script" ].c_str(), decl );
+        if( !call.FuncNum )
+        {
+            WriteLog( "Unable to find function '%s' with declaration '%s' for deferred call %u.\n", kv[ "Script" ].c_str(), decl, call.Id );
+            errors++;
+            continue;
+        }
+
+        call.BindId = Script::BindByFuncNum( call.FuncNum, false );
+        if( !call.BindId )
+        {
+            WriteLog( "Unable to bind script function '%s' for deferred call %u.\n", Str::GetName( call.FuncNum ), call.Id );
+            errors++;
+            continue;
+        }
+
+        call.Saved = true;
         deferredCalls.push_back( call );
     }
 
     WriteLog( "Load deferred calls complete, count %u.\n", (uint) deferredCalls.size() );
-    return true;
+    return errors == 0;
 }
 
 string ScriptInvoker::GetStatistics()
