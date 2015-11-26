@@ -1753,6 +1753,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
             AnyFrames* anim = LoadAnimation( buf, path_type );
             if( !anim )
             {
+                WriteLog( "Anim '%s' not found.\n", buf );
                 load_fail = true;
                 break;
             }
