@@ -2,11 +2,7 @@
 #include "HexManager.h"
 #include "ResourceManager.h"
 #include "LineTracer.h"
-
-#ifdef FONLINE_MAPPER
-# include "CritterData.h"
-# include "CritterManager.h"
-#endif
+#include "ProtoManager.h"
 
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 # include "Script.h"
@@ -156,7 +152,7 @@ void Field::ProcessCache()
             {
                 Flags.IsWall = true;
                 Flags.IsWallTransp = item->GetIsLightThru();
-                Corner = item->Proto->GetCorner();
+                Corner = item->GetCorner();
                 if( pid == SP_SCEN_IBLOCK )
                     Flags.IsWallSAI = true;
             }
@@ -271,7 +267,6 @@ bool HexManager::Init()
     curPidMap = 0;
     curMapTime = -1;
     curHashTiles = 0;
-    curHashWalls = 0;
     curHashScen = 0;
     isShowCursor = false;
     cursorX = 0;
@@ -283,7 +278,6 @@ bool HexManager::Init()
 
     #ifdef FONLINE_MAPPER
     ClearSelTiles();
-    CurProtoMap = nullptr;
     #endif
 
     WriteLog( "Hex field initialization complete.\n" );
@@ -338,7 +332,7 @@ void HexManager::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
     bool raked = item->GetIsShootThru();
     bool light = item->GetIsLightThru();
-    FOREACH_PROTO_ITEM_LINES_WORK( item->Proto->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
                                    Field& field = GetField( hx, hy );
                                    field.Flags.IsNotPassed = true;
                                    if( !raked )
@@ -350,7 +344,7 @@ void HexManager::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
 
 void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
-    FOREACH_PROTO_ITEM_LINES_WORK( item->Proto->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
                                    GetField( hx, hy ).ProcessCache();
                                    );
 }
@@ -375,7 +369,7 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
         return 0;
     }
 
-    ProtoItem* proto = ItemMngr.GetProtoItem( pid );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Proto not found '%s'.\n", Str::GetName( pid ) );
@@ -403,22 +397,22 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
 
     // Parse
     Field&   f = GetField( hx, hy );
-    ItemHex* item = new ItemHex( id, proto, data, hx, hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
+    ItemHex* item = new ItemHex( id, proto, data, hx, hy, &f.ScrX, &f.ScrY );
     if( is_added )
         item->SetShowAnim();
     PushItem( item );
 
     // Check ViewField size
-    if( !ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetActualOffsetX(), item->GetActualOffsetY(), true ) )
+    if( !ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true ) )
     {
         // Draw
         if( GetHexToDraw( hx, hy ) && !item->GetIsHidden() && !item->IsFullyTransparent() )
         {
-            Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), hx, hy + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
+            Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), hx, hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                  f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                  &item->DrawEffect, &item->SprDrawValid );
             if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
-                spr.SetLight( item->Proto->GetCorner(), hexLight, maxHexX, maxHexY );
+                spr.SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
             item->SetSprite( &spr );
         }
 
@@ -454,7 +448,7 @@ void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, Item
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
 
-    if( item->Proto->IsBlockLines() )
+    if( item->IsBlockLines() )
         ReplaceItemBlocks( item->HexX, item->HexY, item );
     if( item->SprDrawValid )
         item->SprDraw->Unvalidate();
@@ -508,11 +502,11 @@ void HexManager::ProcessItems()
                 item->HexScrY = &f_.ScrY;
                 if( GetHexToDraw( step.first, step.second ) )
                 {
-                    item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), step.first, step.second + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
+                    item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), step.first, step.second + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                             f_.ScrX + HEX_OX, f_.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                             &item->DrawEffect, &item->SprDrawValid );
                     if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
-                        item->SprDraw->SetLight( item->Proto->GetCorner(), hexLight, maxHexX, maxHexY );
+                        item->SprDraw->SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
                 }
                 item->SetAnimOffs();
             }
@@ -541,7 +535,7 @@ void HexManager::PushItem( ItemHex* item )
     f.AddItem( item );
 
     // Blocks
-    if( item->Proto->IsBlockLines() )
+    if( item->IsBlockLines() )
         PlaceItemBlocks( hx, hy, item );
 
     // Sort
@@ -647,7 +641,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
         return false;
     }
 
-    ProtoItem* proto = ItemMngr.GetProtoItem( eff_pid );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( eff_pid );
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Proto '%s' not found.\n", Str::GetName( eff_pid ) );
@@ -655,7 +649,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
     }
 
     Field&   f = GetField( from_hx, from_hy );
-    ItemHex* item = new ItemHex( 0, proto, nullptr, from_hx, from_hy, 0, 0, &f.ScrX, &f.ScrY, 0 );
+    ItemHex* item = new ItemHex( 0, proto, nullptr, from_hx, from_hy, &f.ScrX, &f.ScrY );
 
     float    sx = 0;
     float    sy = 0;
@@ -679,11 +673,11 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
 
     if( GetHexToDraw( from_hx, from_hy ) )
     {
-        item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), from_hx, from_hy + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
+        item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), from_hx, from_hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                 f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                 &item->DrawEffect, &item->SprDrawValid );
         if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
-            item->SprDraw->SetLight( item->Proto->GetCorner(), hexLight, maxHexX, maxHexY );
+            item->SprDraw->SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
     }
 
     return true;
@@ -1008,11 +1002,11 @@ void HexManager::RebuildMap( int rx, int ry )
                         continue;
                     #endif
 
-                    Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->GetDrawOrderOffsetHexY(), item->SpriteCut,
+                    Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                       &item->DrawEffect, &item->SprDrawValid );
                     if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsScenOrGrid() ) )
-                        spr.SetLight( item->Proto->GetCorner(), hexLight, maxHexX, maxHexY );
+                        spr.SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
                     item->SetSprite( &spr );
                 }
             }
@@ -1080,14 +1074,6 @@ void HexManager::RebuildMap( int rx, int ry )
 
     screenHexX = rx;
     screenHexY = ry;
-
-    #ifdef FONLINE_MAPPER
-    if( CurProtoMap )
-    {
-        CurProtoMap->Header.WorkHexX = rx;
-        CurProtoMap->Header.WorkHexY = ry;
-    }
-    #endif
 }
 
 /************************************************************************/
@@ -1522,30 +1508,6 @@ void HexManager::CollectLightSources()
 {
     lightSources.clear();
 
-    #ifdef FONLINE_MAPPER
-    if( !CurProtoMap )
-        return;
-
-    for( auto it = CurProtoMap->MObjects.begin(), end = CurProtoMap->MObjects.end(); it != end; ++it )
-    {
-        MapObject* o = *it;
-        if( o->MapObjType == MAP_OBJECT_CRITTER || !o->LightIntensity )
-            continue;
-
-        bool allow_light = false;
-        if( o->MapObjType == MAP_OBJECT_ITEM && o->ContainerUID && o->MItem.ItemSlot != SLOT_INV )
-        {
-            allow_light = true;
-        }
-        else if( o->LightIntensity && !o->ContainerUID )
-        {
-            allow_light = true;
-        }
-
-        if( allow_light )
-            lightSources.push_back( LightSource( o->MapX, o->MapY, o->LightColor, o->LightDistance, o->LightIntensity, o->LightDirOff | ( ( o->LightDay & 3 ) << 6 ) ) );
-    }
-    #else
     if( !IsMapLoaded() )
         return;
 
@@ -1553,17 +1515,16 @@ void HexManager::CollectLightSources()
     lightSources = lightSourcesScen;
 
     // Items on ground
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    for( auto& item : hexItems )
     {
-        ItemHex* item = ( *it );
         if( item->IsItem() && item->GetIsLight() )
             lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
     }
 
     // Items in critters slots
-    for( auto it = allCritters.begin(), end = allCritters.end(); it != end; ++it )
+    for( auto& kv : allCritters )
     {
-        CritterCl* cr = it->second;
+        CritterCl* cr = kv.second;
         bool       added = false;
         for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
@@ -1576,10 +1537,11 @@ void HexManager::CollectLightSources()
         }
 
         // Default chosen light
+        #ifndef FONLINE_MAPPER
         if( cr->IsChosen() && !added )
             lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), GameOpt.ChosenLightColor, GameOpt.ChosenLightDistance, GameOpt.ChosenLightIntensity, GameOpt.ChosenLightFlags, &cr->SprOx, &cr->SprOy ) );
+        #endif
     }
-    #endif
 }
 
 /************************************************************************/
@@ -1632,7 +1594,7 @@ void HexManager::RebuildTiles()
                 {
                     Sprites&           tree = ( tile.Anim->GetCnt() == 1 && rtTiles ? tilesTree : tilesAnimatedTree );
                     #ifdef FONLINE_MAPPER
-                    ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
+                    ProtoMap::TileVec& tiles = GetTiles( hx, hy, false );
                     tree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : nullptr, &Effect::Tile, nullptr );
                     #else
                     tree.AddSprite( DRAW_ORDER_TILE + tile.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, nullptr, &Effect::Tile, nullptr );
@@ -1698,7 +1660,7 @@ void HexManager::RebuildRoof()
                     {
                         Sprites&           tree = ( roof.Anim->GetCnt() == 1 && rtRoof ? roofTree : roofAnimatedTree );
                         #ifdef FONLINE_MAPPER
-                        ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
+                        ProtoMap::TileVec& roofs = GetTiles( hx, hy, true );
                         tree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, &Effect::Roof, nullptr ).SetEgg( EGG_ALWAYS );
                         #else
                         tree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, &GameOpt.RoofAlpha, &Effect::Roof, nullptr ).SetEgg( EGG_ALWAYS );
@@ -1775,7 +1737,7 @@ bool HexManager::IsVisible( uint spr_id, int ox, int oy )
 
 bool HexManager::ProcessHexBorders( ItemHex* item )
 {
-    return ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetActualOffsetX(), item->GetActualOffsetY(), true );
+    return ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true );
 }
 
 bool HexManager::ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map )
@@ -3655,7 +3617,7 @@ bool HexManager::LoadMap( hash map_pid )
 
     if( fm.GetBEUInt() != CLIENT_MAP_FORMAT_VER )
     {
-        WriteLog( "Map FormatBuf is not supported.\n" );
+        WriteLog( "Map format is not supported.\n" );
         return false;
     }
 
@@ -3665,49 +3627,18 @@ bool HexManager::LoadMap( hash map_pid )
         return false;
     }
 
-    // Reserved
+    // Data
     ushort maxhx = fm.GetBEUShort();
-    if( maxhx == 0xAABB )
-        maxhx = 400;
     ushort maxhy = fm.GetBEUShort();
-    if( maxhy == 0xCCDD )
-        maxhy = 400;
-    fm.GetBEUInt();
-    fm.GetBEUInt();
-
-    uint tiles_count = fm.GetBEUInt();
-    uint walls_count = fm.GetBEUInt();
-    uint scen_count = fm.GetBEUInt();
-    uint tiles_len = fm.GetBEUInt();
-    uint walls_len = fm.GetBEUInt();
-    uint scen_len = fm.GetBEUInt();
-
-    if( tiles_count * sizeof( ProtoMap::Tile ) != tiles_len )
-    {
-        WriteLog( "Tiles data truncated.\n" );
-        return false;
-    }
-
-    if( walls_count * sizeof( SceneryCl ) != walls_len )
-    {
-        WriteLog( "Walls data truncated.\n" );
-        return false;
-    }
-
-    if( scen_count * sizeof( SceneryCl ) != scen_len )
-    {
-        WriteLog( "Scenery data truncated.\n" );
-        return false;
-    }
+    uint   tiles_len = fm.GetBEUInt();
+    uint   scen_len = fm.GetBEUInt();
 
     // Create field
     ResizeField( maxhx, maxhy );
 
     // Tiles
-    fm.SetCurPos( 0x2C );
-    curHashTiles = maxhx * maxhy;
-    Crypt.Crc32( fm.GetCurBuf(), tiles_len, curHashTiles );
-    for( uint i = 0; i < tiles_count; i++ )
+    curHashTiles = ( tiles_len ? Crypt.MurmurHash2( fm.GetCurBuf(), tiles_len ) : maxhx * maxhy );
+    for( uint i = 0; i < tiles_len / sizeof( ProtoMap::Tile ); i++ )
     {
         ProtoMap::Tile tile;
         if( !fm.CopyMem( &tile, sizeof( tile ) ) )
@@ -3741,50 +3672,36 @@ bool HexManager::LoadMap( hash map_pid )
         }
     }
 
-    // Walls
-    fm.SetCurPos( 0x2C + tiles_len );
-    curHashWalls = maxhx * maxhy;
-    Crypt.Crc32( fm.GetCurBuf(), walls_len, curHashWalls );
-
-    for( uint i = 0; i < walls_count; i++ )
-    {
-        SceneryCl cur_wall;
-        memzero( &cur_wall, sizeof( cur_wall ) );
-
-        if( !fm.CopyMem( &cur_wall, sizeof( cur_wall ) ) )
-        {
-            WriteLog( "Unable to read wall item.\n" );
-            continue;
-        }
-
-        if( !ParseScenery( cur_wall ) )
-        {
-            WriteLog( "Unable to parse wall item.\n" );
-            continue;
-        }
-    }
-
     // Scenery
-    fm.SetCurPos( 0x2C + tiles_len + walls_len );
-    curHashScen = maxhx * maxhy;
-    Crypt.Crc32( fm.GetCurBuf(), scen_len, curHashScen );
-
+    curHashScen = ( scen_len ? Crypt.MurmurHash2( fm.GetCurBuf(), scen_len ) : maxhx * maxhy );
+    const uchar* scen_data = fm.GetCurBuf();
+    uint         scen_count = *(uint*) scen_data;
+    scen_data += sizeof( uint );
     for( uint i = 0; i < scen_count; i++ )
     {
-        SceneryCl cur_scen;
-        memzero( &cur_scen, sizeof( cur_scen ) );
+        uint id = *(uint*) scen_data;
+        scen_data += sizeof( uint );
+        hash proto_id = *(hash*) scen_data;
+        scen_data += sizeof( hash );
 
-        if( !fm.CopyMem( &cur_scen, sizeof( cur_scen ) ) )
+        uint        datas_size = *(uint*) scen_data;
+        scen_data += sizeof( uint );
+        UCharVecVec props_data( datas_size );
+        for( uint i = 0; i < datas_size; i++ )
         {
-            WriteLog( "Unable to read scenery item.\n" );
-            continue;
+            uint data_size = *(uint*) scen_data;
+            scen_data += sizeof( uint );
+            if( data_size )
+            {
+                props_data[ i ].resize( data_size );
+                memcpy( &props_data[ i ][ 0 ], scen_data, data_size );
+                scen_data += data_size;
+            }
         }
+        Properties props( Item::PropertiesRegistrator );
+        props.RestoreData( props_data );
 
-        if( !ParseScenery( cur_scen ) )
-        {
-            WriteLog( "Unable to parse scenery item '%s'.\n", Str::GetName( cur_scen.ProtoId ) );
-            continue;
-        }
+        GenerateItem( id, proto_id, props );
     }
 
     // Scroll blocks borders
@@ -3834,7 +3751,6 @@ void HexManager::UnloadMap()
     curPidMap = 0;
     curMapTime = -1;
     curHashTiles = 0;
-    curHashWalls = 0;
     curHashScen = 0;
 
     crittersContour = 0;
@@ -3872,23 +3788,26 @@ void HexManager::UnloadMap()
 
     ResizeField( 0, 0 );
     DeleteCritters();
+
+    #ifdef FONLINE_MAPPER
+    TilesField.clear();
+    RoofsField.clear();
+    #endif
 }
 
-void HexManager::GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen )
+void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
 {
     WriteLog( "Get map info..." );
 
     hash_tiles = 0;
-    hash_walls = 0;
     hash_scen = 0;
 
     if( map_pid == curPidMap )
     {
         hash_tiles = curHashTiles;
-        hash_walls = curHashWalls;
         hash_scen = curHashScen;
 
-        WriteLog( "Hashes of loaded map: tiles %u, walls %u, scenery %u.\n", hash_tiles, hash_walls, hash_scen );
+        WriteLog( "Hashes of loaded map: tiles %u, scenery %u.\n", hash_tiles, hash_scen );
         return;
     }
 
@@ -3935,177 +3854,44 @@ void HexManager::GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, u
         return;
     }
 
-    // Reserved
+    // Data
     ushort maxhx = fm.GetBEUShort();
-    if( maxhx == 0xAABB )
-        maxhx = 400;
     ushort maxhy = fm.GetBEUShort();
-    if( maxhy == 0xCCDD )
-        maxhy = 400;
-    fm.GetBEUInt();
-    fm.GetBEUInt();
-    uint tiles_count = fm.GetBEUInt();
-    uint walls_count = fm.GetBEUInt();
-    uint scen_count = fm.GetBEUInt();
-    uint tiles_len = fm.GetBEUInt();
-    uint walls_len = fm.GetBEUInt();
-    uint scen_len = fm.GetBEUInt();
+    uint   tiles_len = fm.GetBEUInt();
+    uint   scen_len = fm.GetBEUInt();
 
-    // Data Check Sum
-    if( tiles_count * sizeof( ProtoMap::Tile ) != tiles_len )
-    {
-        WriteLog( "Invalid check sum tiles.\n" );
-        return;
-    }
-
-    if( walls_count * sizeof( SceneryCl ) != walls_len )
-    {
-        WriteLog( "Invalid check sum walls.\n" );
-        return;
-    }
-
-    if( scen_count * sizeof( SceneryCl ) != scen_len )
-    {
-        WriteLog( "Invalid check sum scenery.\n" );
-        return;
-    }
-
-    fm.SetCurPos( 0x2C );
-    hash_tiles = maxhx * maxhy;
-    Crypt.Crc32( fm.GetCurBuf(), tiles_len, hash_tiles );
-    fm.SetCurPos( 0x2C + tiles_len );
-    hash_walls = maxhx * maxhy;
-    Crypt.Crc32( fm.GetCurBuf(), walls_len, hash_walls );
-    fm.SetCurPos( 0x2C + tiles_len + walls_len );
-    hash_scen = maxhx * maxhy;
-    Crypt.Crc32( fm.GetCurBuf(), scen_len, hash_scen );
+    hash_tiles = ( tiles_len ? Crypt.MurmurHash2( fm.GetCurBuf(), tiles_len ) : maxhx * maxhy );
+    fm.GoForward( tiles_len );
+    hash_scen = ( scen_len ? Crypt.MurmurHash2( fm.GetCurBuf(), scen_len ) : maxhx * maxhy );
 
     WriteLog( "complete.\n" );
 }
 
-bool HexManager::GetMapData( hash map_pid, ItemVec& items, ushort& maxhx, ushort& maxhy )
+void HexManager::GenerateItem( uint id, hash proto_id, Properties& props )
 {
-    char map_name[ 256 ];
-    Str::Format( map_name, "map%u", map_pid );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
+    RUNTIME_ASSERT( proto );
 
-    uint   cache_len;
-    uchar* cache = Crypt.GetCache( map_name, cache_len );
-    if( !cache )
-        return false;
+    ItemHex* scenery = new ItemHex( id, proto, props );
+    Field&   f = GetField( scenery->GetHexX(), scenery->GetHexY() );
+    scenery->HexScrX = &f.ScrX;
+    scenery->HexScrY = &f.ScrY;
 
-    FileManager fm;
-    if( !fm.LoadStream( cache, cache_len ) )
+    if( scenery->GetIsLight() || scenery->GetLightIntensity() )
     {
-        delete[] cache;
-        return false;
-    }
-    delete[] cache;
-
-    uint   buf_len = fm.GetFsize();
-    uchar* buf = Crypt.Uncompress( fm.GetBuf(), buf_len, 50 );
-    if( !buf )
-        return false;
-
-    if( !fm.LoadStream( buf, buf_len ) )
-    {
-        delete[] buf;
-        return false;
-    }
-    delete[] buf;
-
-    if( fm.GetBEUInt() != CLIENT_MAP_FORMAT_VER )
-        return false;
-
-    fm.GetBEUInt();
-    maxhx = fm.GetBEUShort();
-    maxhy = fm.GetBEUShort();
-    fm.GetBEUInt();
-    fm.GetBEUInt();
-    fm.GetBEUInt();
-    uint walls_count = fm.GetBEUInt();
-    uint scen_count = fm.GetBEUInt();
-    uint tiles_len = fm.GetBEUInt();
-    uint walls_len = fm.GetBEUInt();
-
-    items.reserve( walls_count + scen_count );
-
-    // Walls
-    fm.SetCurPos( 0x2C + tiles_len );
-    for( uint i = 0; i < walls_count + scen_count; i++ )
-    {
-        if( i == walls_count )
-            fm.SetCurPos( 0x2C + tiles_len + walls_len );
-        SceneryCl scenwall;
-        if( !fm.CopyMem( &scenwall, sizeof( scenwall ) ) )
-            return false;
-
-        ProtoItem* proto_item = ItemMngr.GetProtoItem( scenwall.ProtoId );
-        if( proto_item )
-        {
-            Item* item = new Item( 0, proto_item );
-            item->SetHexX( scenwall.MapX );
-            item->SetHexY( scenwall.MapY );
-            items.push_back( item );
-        }
+        lightSourcesScen.push_back( LightSource( scenery->GetHexX(), scenery->GetHexY(), scenery->LightGetColor(),
+                                                 scenery->LightGetDistance(), scenery->LightGetIntensity(), scenery->LightGetFlags() ) );
     }
 
-    return true;
-}
-
-bool HexManager::ParseScenery( SceneryCl& scen )
-{
-    hash   pid = scen.ProtoId;
-    ushort hx = scen.MapX;
-    ushort hy = scen.MapY;
-
-    if( hx >= maxHexX || hy >= maxHexY )
-    {
-        WriteLogF( _FUNC_, " - Invalid coord %d:%d.\n", hx, hy );
-        return false;
-    }
-
-    ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
-    if( !proto_item )
-    {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
-        return false;
-    }
-
-    static uint scen_id = 0;
-    scen_id--;
-
-    ItemHex* scenery = new ItemHex( scen_id, proto_item, nullptr, hx, hy,
-                                    scen.OffsetX, scen.OffsetY, &GetField( hx, hy ).ScrX, &GetField( hx, hy ).ScrY,
-                                    scen.SpriteCut );
-    scenery->ScenFlags = scen.Flags;
-
-    // Mapper additional parameters
-    bool refresh_anim = false;
-    scenery->SetLightIntensity( scen.LightIntensity );
-    scenery->SetLightDistance( scen.LightDistance );
-    scenery->SetLightColor( scen.LightColor );
-    scenery->SetLightFlags( scen.LightFlags );
-    if( scen.PicMap )
-    {
-        scenery->SetPicMap( scen.PicMap );
-        refresh_anim = true;
-    }
-
-    if( scenery->GetIsLight() || scen.LightIntensity )
-        lightSourcesScen.push_back( LightSource( hx, hy, scenery->LightGetColor(), scenery->LightGetDistance(), scenery->LightGetIntensity(), scenery->LightGetFlags() ) );
-
-    scenery->RefreshAlpha();
-    if( refresh_anim )
-        scenery->RefreshAnim();
     PushItem( scenery );
+
     if( !scenery->GetIsHidden() && !scenery->IsFullyTransparent() )
-        ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scenery->GetActualOffsetX(), scenery->GetActualOffsetY(), false );
-    return true;
+        ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scenery->GetOffsetX(), scenery->GetOffsetY(), false );
 }
 
 int HexManager::GetDayTime()
 {
-    return ( GameOpt.Hour * 60 + GameOpt.Minute );
+    return GameOpt.Hour * 60 + GameOpt.Minute;
 }
 
 int HexManager::GetMapTime()
@@ -4138,31 +3924,50 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     WriteLog( "Create map from prototype.\n" );
 
     UnloadMap();
-    CurProtoMap = nullptr;
 
     if( curDataPrefix != GameOpt.MapDataPrefix->c_std_str() )
         ReloadSprites();
 
-    ResizeField( pmap.Header.MaxHexX, pmap.Header.MaxHexY );
+    ResizeField( pmap.GetWidth(), pmap.GetHeight() );
 
-    CurProtoMap = &pmap;
     curPidMap = 0xFFFF;
 
+    ScriptArray* dt = pmap.GetDayTime();
+    ScriptArray* dc = pmap.GetDayColor();
     for( int i = 0; i < 4; i++ )
-        dayTime[ i ] = pmap.Header.DayTime[ i ];
+        dayTime[ i ] = *(int*) dt->At( i );
     for( int i = 0; i < 12; i++ )
-        dayColor[ i ] = pmap.Header.DayColor[ i ];
+        dayColor[ i ] = *(uchar*) dc->At( i );
+    dt->Release();
+    dc->Release();
 
     // Tiles
-    for( ushort hy = 0; hy < pmap.Header.MaxHexY; hy++ )
+    ushort width = pmap.GetWidth();
+    ushort height = pmap.GetHeight();
+    TilesField.resize( width * height );
+    RoofsField.resize( width * height );
+    for( auto& tile : pmap.Tiles )
     {
-        for( ushort hx = 0; hx < pmap.Header.MaxHexX; hx++ )
+        if( !tile.IsRoof )
+        {
+            TilesField[ tile.HexY * width + tile.HexX ].push_back( tile );
+            TilesField[ tile.HexY * width + tile.HexX ].back().IsSelected = false;
+        }
+        else
+        {
+            RoofsField[ tile.HexY * width + tile.HexX ].push_back( tile );
+            RoofsField[ tile.HexY * width + tile.HexX ].back().IsSelected = false;
+        }
+    }
+    for( ushort hy = 0; hy < height; hy++ )
+    {
+        for( ushort hx = 0; hx < width; hx++ )
         {
             Field& f = GetField( hx, hy );
 
             for( int r = 0; r <= 1; r++ )     // Tile/roof
             {
-                ProtoMap::TileVec& tiles = pmap.GetTiles( hx, hy, r != 0 );
+                ProtoMap::TileVec& tiles = GetTiles( hx, hy, r != 0 );
 
                 for( uint i = 0, j = (uint) tiles.size(); i < j; i++ )
                 {
@@ -4178,117 +3983,93 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
         }
     }
 
-    // Objects
-    for( uint i = 0, j = (uint) pmap.MObjects.size(); i < j; i++ )
+    // Entities
+    for( auto& entity : pmap.AllEntities )
     {
-        MapObject* o = pmap.MObjects[ i ];
-        if( o->MapX >= maxHexX || o->MapY >= maxHexY )
+        if( entity->Type == EntityType::Item )
         {
-            WriteLog( "Invalid position of map object. Skip.\n" );
-            continue;
+            Item* entity_item = (Item*) entity;
+            if( entity_item->GetAccessory() == ITEM_ACCESSORY_HEX )
+                GenerateItem( entity_item->Id, entity_item->GetProtoId(), entity_item->Props );
         }
-
-        if( o->ContainerUID )
-            continue;
-
-        static uint any_id = 0x7FFFFFFF;
-        if( o->MapObjType == MAP_OBJECT_SCENERY )
+        else if( entity->Type == EntityType::Npc )
         {
-            SceneryCl s;
-            memzero( &s, sizeof( s ) );
-            s.ProtoId = o->ProtoId;
-            s.MapX = o->MapX;
-            s.MapY = o->MapY;
-            s.OffsetX = o->MScenery.OffsetX;
-            s.OffsetY = o->MScenery.OffsetY;
-            s.LightColor = o->LightColor;
-            s.LightDistance = o->LightDistance;
-            s.LightFlags = o->LightDirOff | ( ( o->LightDay & 3 ) << 6 );
-            s.LightIntensity = o->LightIntensity;
-            s.SpriteCut = o->MScenery.SpriteCut;
-            s.PicMap = o->MScenery.PicMap;
-
-            if( !ParseScenery( s ) )
-            {
-                WriteLog( "Unable to parse scen or wall object.\n" );
-                continue;
-            }
-            ItemHex* item = hexItems.back();
-            AffectItem( o, item );
-            o->RunTime.MapObjId = item->GetId();
-        }
-        else if( o->MapObjType == MAP_OBJECT_ITEM )
-        {
-            ProtoItem* proto = ItemMngr.GetProtoItem( o->ProtoId );
-            if( !proto )
-                continue;
-
-            Field&   f = GetField( o->MapX, o->MapY );
-            ItemHex* item = new ItemHex( --any_id, proto, nullptr, o->MapX, o->MapY, o->MItem.OffsetX, o->MItem.OffsetY, &f.ScrX, &f.ScrY, 0 );
-            PushItem( item );
-            AffectItem( o, item );
-            o->RunTime.MapObjId = item->Id;
-
-            ProcessHexBorders( item->SprId, item->GetActualOffsetX(), item->GetActualOffsetY(), false );
-        }
-        else if( o->MapObjType == MAP_OBJECT_CRITTER )
-        {
-            ProtoCritter* proto = CrMngr.GetProto( o->ProtoId );
-            if( !proto )
-            {
-                WriteLog( "Proto '%s' npc not found.\n", Str::GetName( o->ProtoId ) );
-                continue;
-            }
-
-            ProtoItem* pitem_main = nullptr;
-            ProtoItem* pitem_ext = nullptr;
-            ProtoItem* pitem_armor = nullptr;
-            for( uint k = 0, l = (uint) pmap.MObjects.size(); k < l; k++ )
-            {
-                MapObject* child = pmap.MObjects[ k ];
-                if( child->MapObjType == MAP_OBJECT_ITEM && child->ContainerUID && child->ContainerUID == o->UID )
-                {
-                    if( child->MItem.ItemSlot == SLOT_HAND1 )
-                        pitem_main = ItemMngr.GetProtoItem( child->ProtoId );
-                    else if( child->MItem.ItemSlot == SLOT_HAND2 )
-                        pitem_ext = ItemMngr.GetProtoItem( child->ProtoId );
-                    else if( child->MItem.ItemSlot == SLOT_ARMOR )
-                        pitem_armor = ItemMngr.GetProtoItem( child->ProtoId );
-                }
-            }
-
-            CritterCl* cr = new CritterCl( --any_id );
-            cr->ProtoId = o->ProtoId;
-            cr->Props = proto->Props;
-            cr->ChangeCrType( proto->GetCrType() );
-            cr->SetHexX( o->MapX );
-            cr->SetHexY( o->MapY );
-            cr->SetDir( (uchar) o->MCritter.Dir );
+            CritterCl* entity_cr = (CritterCl*) entity;
+            CritterCl* cr = new CritterCl( entity_cr->Id, (ProtoCritter*) entity_cr->Proto );
+            cr->ChangeCrType( cr->GetCrType() );
             cr->Init();
-            if( pitem_main )
-                cr->DefItemSlotHand->SetProto( pitem_main );
-            if( pitem_armor )
-                cr->DefItemSlotArmor->SetProto( pitem_armor );
-            AffectCritter( o, cr );
             AddCritter( cr );
-            o->RunTime.MapObjId = cr->Id;
+
+            // Add inventory items
+            for( auto& inv_entity : pmap.AllEntities )
+            {
+                if( inv_entity->Type != EntityType::Item )
+                    continue;
+                Item* inv_entity_item = (Item*) inv_entity;
+                if( inv_entity_item->GetAccessory() != ITEM_ACCESSORY_CRITTER )
+                    continue;
+                if( inv_entity_item->GetCritId() != cr->Id )
+                    continue;
+
+                Item* item = inv_entity_item->Clone();
+                cr->AddItem( item );
+            }
         }
     }
 
     ResizeView();
 
-    curHashTiles = 0xFFFF;
-    curHashWalls = 0xFFFF;
-    curHashScen = 0xFFFF;
+    curHashTiles = hash( -1 );
+    curHashScen = hash( -1 );
     WriteLog( "Create map from prototype complete.\n" );
     return true;
 }
 
+void HexManager::GetProtoMap( ProtoMap& pmap )
+{
+    pmap.SetWorkHexX( screenHexX );
+    pmap.SetWorkHexY( screenHexX );
+
+    // Fill entities
+    for( auto& entity : pmap.AllEntities )
+        entity->Release();
+    pmap.AllEntities.clear();
+    std::function< void(Entity*) > fill_recursively = [ &fill_recursively, &pmap ] ( Entity * entity )
+    {
+        pmap.AllEntities.push_back( entity );
+        for( auto& child : entity->GetChildren() )
+        {
+            pmap.AllEntities.push_back( child );
+            fill_recursively( child );
+        }
+    };
+    for( auto& kv : allCritters )
+        fill_recursively( kv.second );
+    for( auto& item : hexItems )
+        fill_recursively( item );
+
+    // Fill tiles
+    pmap.Tiles.clear();
+    ushort width = GetWidth();
+    ushort height = GetHeight();
+    TilesField.resize( width * height );
+    RoofsField.resize( width * height );
+    for( ushort hy = 0; hy < height; hy++ )
+    {
+        for( ushort hx = 0; hx < width; hx++ )
+        {
+            ProtoMap::TileVec& tiles = TilesField[ hy * width + hx ];
+            for( uint i = 0, j = (uint) tiles.size(); i < j; i++ )
+                pmap.Tiles.push_back( tiles[ i ] );
+            ProtoMap::TileVec& roofs = RoofsField[ hy * width + hx ];
+            for( uint i = 0, j = (uint) roofs.size(); i < j; i++ )
+                pmap.Tiles.push_back( roofs[ i ] );
+        }
+    }
+}
+
 void HexManager::ClearSelTiles()
 {
-    if( !CurProtoMap )
-        return;
-
     for( int hx = 0; hx < maxHexX; hx++ )
     {
         for( int hy = 0; hy < maxHexY; hy++ )
@@ -4296,7 +4077,7 @@ void HexManager::ClearSelTiles()
             Field& f = GetField( hx, hy );
             if( f.GetTilesCount( false ) )
             {
-                ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, false );
+                ProtoMap::TileVec& tiles = GetTiles( hx, hy, false );
                 for( uint i = 0; i < tiles.size();)
                 {
                     if( tiles[ i ].IsSelected )
@@ -4310,7 +4091,7 @@ void HexManager::ClearSelTiles()
             }
             if( f.GetTilesCount( true ) )
             {
-                ProtoMap::TileVec& roofs = CurProtoMap->GetTiles( hx, hy, true );
+                ProtoMap::TileVec& roofs = GetTiles( hx, hy, true );
                 for( uint i = 0; i < roofs.size();)
                 {
                     if( roofs[ i ].IsSelected )
@@ -4328,9 +4109,6 @@ void HexManager::ClearSelTiles()
 
 void HexManager::ParseSelTiles()
 {
-    if( !CurProtoMap )
-        return;
-
     bool borders_changed = false;
     for( int hx = 0; hx < maxHexX; hx++ )
     {
@@ -4340,7 +4118,7 @@ void HexManager::ParseSelTiles()
             {
                 bool               roof = ( r == 1 );
                 Field&             f = GetField( hx, hy );
-                ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, roof );
+                ProtoMap::TileVec& tiles = GetTiles( hx, hy, roof );
                 for( size_t i = 0; i < tiles.size();)
                 {
                     if( tiles[ i ].IsSelected )
@@ -4373,7 +4151,7 @@ void HexManager::SetTile( hash name, ushort hx, ushort hy, short ox, short oy, u
         EraseTile( hx, hy, layer, is_roof, ( uint ) - 1 );
 
     Field::Tile&       ftile = f.AddTile( anim, 0, 0, layer, is_roof );
-    ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, is_roof );
+    ProtoMap::TileVec& tiles = GetTiles( hx, hy, is_roof );
     tiles.push_back( ProtoMap::Tile( name, hx, hy, (char) ox, (char) oy, layer, is_roof ) );
     tiles.back().      IsSelected = select;
 
@@ -4400,7 +4178,7 @@ void HexManager::EraseTile( ushort hx, ushort hy, uchar layer, bool is_roof, uin
         if( tile.Layer == layer && i != skip_index )
         {
             f.EraseTile( i, is_roof );
-            ProtoMap::TileVec& tiles = CurProtoMap->GetTiles( hx, hy, is_roof );
+            ProtoMap::TileVec& tiles = GetTiles( hx, hy, is_roof );
             tiles.erase( tiles.begin() + i );
             break;
         }
@@ -4578,103 +4356,6 @@ void HexManager::MarkPassedHexes()
         }
     }
     RefreshMap();
-}
-
-void HexManager::AffectItem( MapObject* mobj, ItemHex* item )
-{
-    uint  old_spr_id = item->SprId;
-    short old_ox = item->GetActualOffsetX();
-    short old_oy = item->GetActualOffsetY();
-
-    mobj->LightIntensity = CLAMP( mobj->LightIntensity, -100, 100 );
-
-    item->SetLightIntensity( mobj->LightIntensity );
-    item->SetLightColor( mobj->LightColor );
-    item->SetLightFlags( mobj->LightDirOff | ( ( mobj->LightDay & 3 ) << 6 ) );
-    item->SetLightDistance( mobj->LightDistance );
-
-    mobj->MItem.PicMap = ( mobj->RunTime.PicMapName[ 0 ] ? Str::GetHash( mobj->RunTime.PicMapName ) : 0 );
-    mobj->MItem.PicInv = ( mobj->RunTime.PicInvName[ 0 ] ? Str::GetHash( mobj->RunTime.PicInvName ) : 0 );
-    item->SetPicMap( mobj->MItem.PicMap );
-    item->SetPicInv( mobj->MItem.PicInv );
-
-    item->SetOffsetX( mobj->MItem.OffsetX );
-    item->SetOffsetY( mobj->MItem.OffsetY );
-
-    if( item->IsHasLocker() )
-        item->SetLockerCondition( mobj->MItem.LockerCondition );
-
-    int cut = ( mobj->MScenery.SpriteCut ? mobj->MScenery.SpriteCut : item->Proto->GetSpriteCut() );
-    if( mobj->MapObjType == MAP_OBJECT_SCENERY && item->SpriteCut != cut )
-    {
-        item->SpriteCut = cut;
-        RefreshMap();
-    }
-
-    item->RefreshAnim();
-
-    if( item->SprId != old_spr_id || item->GetActualOffsetX() != old_ox || item->GetActualOffsetY() != old_oy )
-        ProcessHexBorders( item->SprId, item->GetActualOffsetX(), item->GetActualOffsetY(), true );
-}
-
-void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
-{
-    if( mobj->MCritter.Cond < COND_LIFE || mobj->MCritter.Cond > COND_DEAD )
-        mobj->MCritter.Cond = COND_LIFE;
-
-    bool refresh = false;
-    if( cr->GetCond() != mobj->MCritter.Cond )
-    {
-        cr->SetCond( mobj->MCritter.Cond );
-        cr->SetAnim1Life( 0 );
-        cr->SetAnim1Knockout( 0 );
-        cr->SetAnim1Dead( 0 );
-        cr->SetAnim2Life( 0 );
-        cr->SetAnim2Knockout( 0 );
-        cr->SetAnim2Dead( 0 );
-        refresh = true;
-    }
-
-    if( cr->GetDir() != mobj->MCritter.Dir )
-    {
-        cr->ChangeDir( mobj->MCritter.Dir, false );
-        refresh = true;
-    }
-
-    uint anim1 = ( cr->GetCond() == COND_LIFE ? cr->GetAnim1Life() : ( cr->GetCond() == COND_KNOCKOUT ? cr->GetAnim1Knockout() : cr->GetAnim1Dead() ) );
-    uint anim2 = ( cr->GetCond() == COND_LIFE ? cr->GetAnim2Life() : ( cr->GetCond() == COND_KNOCKOUT ? cr->GetAnim2Knockout() : cr->GetAnim2Dead() ) );
-    if( anim1 != mobj->MCritter.Anim1 || anim2 != mobj->MCritter.Anim2 )
-    {
-        refresh = true;
-        if( cr->GetCond() == COND_LIFE )
-        {
-            cr->SetAnim1Life( mobj->MCritter.Anim1 );
-            cr->SetAnim2Life( mobj->MCritter.Anim2 );
-        }
-        else if( cr->GetCond() == COND_LIFE )
-        {
-            cr->SetAnim1Knockout( mobj->MCritter.Anim1 );
-            cr->SetAnim2Knockout( mobj->MCritter.Anim2 );
-        }
-        else
-        {
-            cr->SetAnim1Dead( mobj->MCritter.Anim1 );
-            cr->SetAnim2Dead( mobj->MCritter.Anim2 );
-        }
-    }
-
-    if( mobj->Props )
-    {
-        for( size_t i = 0, j = mobj->Props->size() / 2; i < j; i++ )
-        {
-            bool dummy;
-            int  value = ConvertParamValue( mobj->Props->at( i * 2 + 1 )->c_str(), dummy );
-            Properties::SetValueAsIntByName( cr, mobj->Props->at( i * 2 )->c_str(), value );
-        }
-    }
-
-    if( refresh )
-        cr->AnimateStay();
 }
 
 #endif // FONLINE_MAPPER

@@ -191,25 +191,22 @@ set( COMMON_SOURCE
 )
 set( SERVER_CLIENT_MAPPER_SOURCE
 	${Assimp_SOURCE}
-	CritterManager.h
+	CritterData.h
 	CritterType.cpp CritterType.h
 	GraphicStructures.cpp GraphicStructures.h
 	Item.cpp Item.h
-	ItemManager.cpp ItemManager.h
 	LineTracer.h
 	MsgFiles.cpp MsgFiles.h
 	MsgStr.h
 	NetProtocol.h
+	ProtoManager.cpp ProtoManager.h
+	ProtoMap.cpp ProtoMap.h
 )
 set( SERVER_CLIENT_SOURCE
 	Access.h
 	BufferManager.cpp BufferManager.h
 	CraftManager.cpp CraftManager.h
 	DataMask.h
-)
-set( SERVER_MAPPER_SOURCE
-	CritterManager.cpp
-	ProtoMap.cpp ProtoMap.h
 )
 set( SERVER_ASCOMPILER_SOURCE
 	DummyData.h
@@ -224,6 +221,7 @@ set( CLIENT_MAPPER_SOURCE
 	HexManager.cpp HexManager.h
 	ItemHex.cpp ItemHex.h
 	Keyboard.cpp Keyboard.h
+	MapCl.cpp MapCl.h
 	ResourceManager.cpp ResourceManager.h
 	SpriteManager.cpp SpriteManager.h
 	SpriteManagerFont.cpp
@@ -234,14 +232,15 @@ set( SERVER_SOURCE
 	${COMMON_SOURCE}
 	${SERVER_CLIENT_MAPPER_SOURCE}
 	${SERVER_CLIENT_SOURCE}
-	${SERVER_MAPPER_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
 	${fbxsdk_SOURCE}
 	AI.cpp AI.h
 	Critter.cpp Critter.h
 	CritterData.h
+	CritterManager.h CritterManager.cpp
 	Dialogs.cpp Dialogs.h
 	EntityManager.cpp EntityManager.h
+	ItemManager.cpp ItemManager.h
 	Jobs.cpp Jobs.h
 	MainServer.cpp
 	Map.cpp Map.h
@@ -272,7 +271,6 @@ set( CLIENT_SOURCE
 set( MAPPER_SOURCE
 	${COMMON_SOURCE}
 	${SERVER_CLIENT_MAPPER_SOURCE}
-	${SERVER_MAPPER_SOURCE}
 	${CLIENT_MAPPER_SOURCE}
 	MainMapper.cpp
 	Mapper.cpp Mapper.h

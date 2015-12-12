@@ -1,78 +1,69 @@
-#include "Common.h"
 #include "ProtoMap.h"
-#include "ItemManager.h"
-#include "CritterManager.h"
+#include "ProtoManager.h"
 #include "Crypt.h"
 #include <strstream>
 #include "IniParser.h"
+#include "Script.h"
 
-#ifndef FONLINE_MAPPER
-# include "Script.h"
+#ifdef FONLINE_SERVER
+# include "Map.h"
 # include "Critter.h"
 #else
-# include "ResourceManager.h"
+# include "MapCl.h"
+# include "CritterCl.h"
 #endif
 
-#define FO_MAP_VERSION_TEXT1    ( 1 )
-#define FO_MAP_VERSION_TEXT2    ( 2 )
-#define FO_MAP_VERSION_TEXT3    ( 3 )
-#define FO_MAP_VERSION_TEXT4    ( 4 )
-#define FO_MAP_VERSION_TEXT5    ( 5 )
-#define FO_MAP_VERSION_TEXT6    ( 6 )
-#define FO_MAP_VERSION_TEXT7    ( 7 )
+#ifdef FONLINE_SERVER
+# define MUTUAL_CRITTER         Critter
+# define MUTUAL_CRITTER_TYPE    EntityType::Npc
+#else
+# define MUTUAL_CRITTER         CritterCl
+# define MUTUAL_CRITTER_TYPE    EntityType::CritterCl
+#endif
 
-#define APP_HEADER              "Header"
-#define APP_TILES               "Tiles"
-#define APP_OBJECTS             "Objects"
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, Width );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, Height );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, WorkHexX );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, WorkHexY );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, int, CurDayTime );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, hash, ScriptId );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ScriptArray *, DayTime );    // 4 int
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ScriptArray *, DayColor );   // 12 uchar
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, bool, IsNoLogOut );
 
-bool ProtoMap::Init( const char* name )
-{
-    Clear();
-    if( !name || !name[ 0 ] )
-        return false;
-
-    pmapName = name;
-    pmapPid = Str::GetHash( name );
-    if( !pmapPid )
-        return false;
-
-    #ifdef FONLINE_MAPPER
-    LastObjectUID = 0;
-    #endif
-
-    if( !Refresh() )
-    {
-        Clear();
-        return false;
-    }
-    return true;
-}
-
-void ProtoMap::Clear()
+ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, Map::PropertiesRegistrator )
 {
     #ifdef FONLINE_SERVER
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) SceneriesToSend.capacity() * sizeof( SceneryCl ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) WallsToSend.capacity() * sizeof( SceneryCl ) );
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) );
+    #endif
+
+    #ifdef FONLINE_MAPPER
+    LastEntityId = 0;
+    #endif
+}
+
+ProtoMap::~ProtoMap()
+{
+    #ifdef FONLINE_SERVER
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) sizeof( ProtoMap ) );
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) SceneryData.capacity() );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) mapEntires.capacity() * sizeof( MapEntire ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) CrittersVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) ItemsVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) SceneryVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) GridsVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) Header.MaxHexX * Header.MaxHexY );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) Tiles.capacity() * sizeof( MapEntire ) );
 
     SAFEDELA( HexFlags );
 
-    SceneriesToSend.clear();
-    WallsToSend.clear();
+    SceneryData.clear();
     mapEntires.clear();
 
     for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
         SAFEREL( *it );
     CrittersVec.clear();
-    for( auto it = ItemsVec.begin(), end = ItemsVec.end(); it != end; ++it )
+    for( auto it = HexItemsVec.begin(), end = HexItemsVec.end(); it != end; ++it )
         SAFEREL( *it );
-    ItemsVec.clear();
+    HexItemsVec.clear();
+    for( auto it = ChildItemsVec.begin(), end = ChildItemsVec.end(); it != end; ++it )
+        SAFEREL( *it );
+    ChildItemsVec.clear();
     for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
         SAFEREL( *it );
     SceneryVec.clear();
@@ -83,47 +74,228 @@ void ProtoMap::Clear()
 
     Tiles.clear();
     #ifdef FONLINE_MAPPER
-    for( auto it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
-    {
-        MapObject* mobj = *it;
-        mobj->RunTime.FromMap = nullptr;
-        mobj->RunTime.MapObjId = 0;
-        SAFEREL( mobj );
-    }
-    MObjects.clear();
-    TilesField.clear();
-    RoofsField.clear();
+    for( auto& entity : AllEntities )
+        entity->Release();
+    AllEntities.clear();
     #endif
-    memzero( &Header, sizeof( Header ) );
-    pmapName = "";
-    pmapPid = 0;
 
     #ifdef FONLINE_SERVER
-    CLEAN_CONTAINER( SceneriesToSend );
-    CLEAN_CONTAINER( WallsToSend );
+    CLEAN_CONTAINER( SceneryData );
     CLEAN_CONTAINER( mapEntires );
     CLEAN_CONTAINER( CrittersVec );
-    CLEAN_CONTAINER( ItemsVec );
+    CLEAN_CONTAINER( HexItemsVec );
+    CLEAN_CONTAINER( ChildItemsVec );
     CLEAN_CONTAINER( SceneryVec );
     CLEAN_CONTAINER( GridsVec );
     CLEAN_CONTAINER( Tiles );
     #endif
 }
 
+#ifdef FONLINE_MAPPER
+void ProtoMap::SaveTextFormat( IniParser& file )
+{
+    // Header
+    Props.SaveToText( file.SetApp( "ProtoMap" ), nullptr );
+
+    // Critters
+    for( auto& entity : AllEntities )
+    {
+        if( entity->Type == MUTUAL_CRITTER_TYPE )
+        {
+            StrMap& kv = file.SetApp( "Critter" );
+            kv[ "$Id" ] = Str::UItoA( entity->Id );
+            kv[ "$Proto" ] = entity->Proto->GetName();
+            entity->Props.SaveToText( kv, &entity->Proto->Props );
+        }
+    }
+
+    // Items
+    for( auto& entity : AllEntities )
+    {
+        if( entity->Type == EntityType::Item )
+        {
+            StrMap& kv = file.SetApp( "Item" );
+            kv[ "$Id" ] = Str::UItoA( entity->Id );
+            kv[ "$Proto" ] = entity->Proto->GetName();
+            entity->Props.SaveToText( kv, &entity->Proto->Props );
+        }
+    }
+
+    // Tiles
+    for( auto& tile : Tiles )
+    {
+        StrMap& kv = file.SetApp( "Tile" );
+        kv[ "PicMap" ] = Str::GetName( tile.Name );
+        kv[ "HexX" ] = Str::UItoA( tile.HexX );
+        kv[ "HexY" ] = Str::UItoA( tile.HexY );
+        if( tile.OffsX )
+            kv[ "OffsetX" ] = Str::ItoA( tile.OffsX );
+        if( tile.OffsY )
+            kv[ "OffsetY" ] = Str::ItoA( tile.OffsY );
+        if( tile.Layer )
+            kv[ "Layer" ] = Str::UItoA( tile.Layer );
+        if( tile.IsRoof )
+            kv[ "IsRoof" ] = Str::BtoA( tile.IsRoof );
+    }
+}
+#endif
+
 bool ProtoMap::LoadTextFormat( const char* buf )
 {
+    int       errors = 0;
+    EntityVec entities;
+
+    // Header
+    IniParser map_data;
+    map_data.AppendStr( buf );
+    if( !map_data.IsApp( "ProtoMap" ) )
+    {
+        WriteLog( "Invalid map format.\n" );
+        return false;
+    }
+    Props.LoadFromText( map_data.GetApp( "ProtoMap" ) );
+
+    // Critters
+    PStrMapVec npc_data;
+    map_data.GetApps( "Critter", npc_data );
+    for( auto& pkv : npc_data )
+    {
+        auto& kv = *pkv;
+        if( !kv.count( "$Id" ) || kv.count( "$Proto" ) )
+        {
+            WriteLog( "Proto critter invalid data.\n" );
+            errors++;
+            continue;
+        }
+
+        uint          id = Str::AtoUI( kv[ "$Id" ].c_str() );
+        hash          proto_id = Str::GetHash( kv[ "$Proto" ].c_str() );
+        ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
+        if( !proto )
+        {
+            WriteLog( "Proto critter '%s' not found.\n", Str::GetName( proto_id ) );
+            errors++;
+            continue;
+        }
+
+        #ifdef FONLINE_SERVER
+        Npc*       npc = new Npc( id, proto );
+        #else
+        CritterCl* npc = new CritterCl( id, proto );
+        #endif
+        if( !npc->Props.LoadFromText( kv ) )
+        {
+            WriteLog( "Unable to load critter '%s' properties.\n", Str::GetName( proto_id ) );
+            errors++;
+            continue;
+        }
+
+        entities.push_back( npc );
+    }
+
+    // Items
+    PStrMapVec items_data;
+    map_data.GetApps( "Item", items_data );
+    for( auto& pkv : items_data )
+    {
+        auto& kv = *pkv;
+        if( !kv.count( "$Id" ) || kv.count( "$Proto" ) )
+        {
+            WriteLog( "Proto item invalid data.\n" );
+            errors++;
+            continue;
+        }
+
+        uint       id = Str::AtoUI( kv[ "$Id" ].c_str() );
+        hash       proto_id = Str::GetHash( kv[ "$Proto" ].c_str() );
+        ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
+        if( !proto )
+        {
+            WriteLog( "Proto item '%s' not found.\n", Str::GetName( proto_id ) );
+            errors++;
+            continue;
+        }
+
+        Item* item = new Item( id, proto );
+        if( !item->Props.LoadFromText( kv ) )
+        {
+            WriteLog( "Unable to load item '%s' properties.\n", Str::GetName( proto_id ) );
+            errors++;
+            continue;
+        }
+
+        entities.push_back( item );
+    }
+
+    // Tiles
+    PStrMapVec tiles_data;
+    map_data.GetApps( "Tile", tiles_data );
+    for( auto& pkv : tiles_data )
+    {
+        auto& kv = *pkv;
+        if( !kv.count( "PicMap" ) || kv.count( "HexX" ) || kv.count( "HexY" ) )
+        {
+            WriteLog( "Tile invalid data.\n" );
+            errors++;
+            continue;
+        }
+
+        hash name = Str::GetHash( kv[ "PicMap" ].c_str() );
+        int  hx = Str::AtoI( kv[ "HexX" ].c_str() );
+        int  hy = Str::AtoI( kv[ "HexY" ].c_str() );
+        int  ox = ( kv.count( "OffsetX" ) ? Str::AtoI( kv[ "OffsetX" ].c_str() ) : 0 );
+        int  oy = ( kv.count( "OffsetY" ) ? Str::AtoI( kv[ "OffsetY" ].c_str() ) : 0 );
+        int  layer = ( kv.count( "Layer" ) ? Str::AtoI( kv[ "Layer" ].c_str() ) : 0 );
+        bool is_roof = ( kv.count( "IsRoof" ) ? Str::AtoB( kv[ "IsRoof" ].c_str() ) : false );
+        if( hx < 0 || hx >= GetWidth() || hy < 0 || hy > GetHeight() )
+        {
+            WriteLog( "Tile '%s' have wrong hex position %d %d.\n", Str::GetName( name ), hx, hy );
+            errors++;
+            continue;
+        }
+        if( layer < 0 || layer > 255 )
+        {
+            WriteLog( "Tile '%s' have wrong layer value %d.\n", Str::GetName( name ), layer );
+            errors++;
+            continue;
+        }
+
+        Tiles.push_back( Tile( name, hx, hy, ox, oy, layer, is_roof ) );
+    }
+
+    if( errors )
+        return false;
+    return OnAfterLoad( entities );
+}
+
+bool ProtoMap::LoadOldTextFormat( const char* buf )
+{
+    #define MAP_OBJECT_CRITTER                   ( 0 )
+    #define MAP_OBJECT_ITEM                      ( 1 )
+    #define MAP_OBJECT_SCENERY                   ( 2 )
+    #define FO_MAP_VERSION_TEXT1                 ( 1 )
+    #define FO_MAP_VERSION_TEXT2                 ( 2 )
+    #define FO_MAP_VERSION_TEXT3                 ( 3 )
+    #define FO_MAP_VERSION_TEXT4                 ( 4 )
+    #define FO_MAP_VERSION_TEXT5                 ( 5 )
+    #define FO_MAP_VERSION_TEXT6                 ( 6 )
+    #define FO_MAP_VERSION_TEXT7                 ( 7 )
+
     IniParser map_ini;
     map_ini.CollectContent();
     map_ini.AppendStr( buf );
 
     // Header
-    memzero( &Header, sizeof( Header ) );
-    const char* header_str = map_ini.GetAppContent( APP_HEADER );
+    const char* header_str = map_ini.GetAppContent( "Header" );
+    int         version = -1;
     if( header_str )
     {
         istrstream istr( header_str );
         string     field, value;
         int        ivalue;
+        string     script_name;
+        IntVec     vec = { 300, 600, 1140, 1380 };
+        UCharVec   vec2 = { 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29 };
         while( !istr.eof() && !istr.fail() )
         {
             istr >> field >> value;
@@ -132,7 +304,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                 ivalue = atoi( value.c_str() );
                 if( field == "Version" )
                 {
-                    Header.Version = ivalue;
+                    version = ivalue;
                     uint old_version = ( ivalue << 20 );
                     #define FO_MAP_VERSION_V6    ( 0xFE000000 )
                     #define FO_MAP_VERSION_V7    ( 0xFF000000 )
@@ -140,97 +312,89 @@ bool ProtoMap::LoadTextFormat( const char* buf )
                     #define FO_MAP_VERSION_V9    ( 0xFF200000 )
                     if( old_version == FO_MAP_VERSION_V6 || old_version == FO_MAP_VERSION_V7 ||
                         old_version == FO_MAP_VERSION_V8 || old_version == FO_MAP_VERSION_V9 )
-                    {
-                        Header.Version = FO_MAP_VERSION_TEXT1;
-                        Header.DayTime[ 0 ] = 300;
-                        Header.DayTime[ 1 ] = 600;
-                        Header.DayTime[ 2 ] = 1140;
-                        Header.DayTime[ 3 ] = 1380;
-                        Header.DayColor[ 0 ] = 18;
-                        Header.DayColor[ 1 ] = 128;
-                        Header.DayColor[ 2 ] = 103;
-                        Header.DayColor[ 3 ] = 51;
-                        Header.DayColor[ 4 ] = 18;
-                        Header.DayColor[ 5 ] = 128;
-                        Header.DayColor[ 6 ] = 95;
-                        Header.DayColor[ 7 ] = 40;
-                        Header.DayColor[ 8 ] = 53;
-                        Header.DayColor[ 9 ] = 128;
-                        Header.DayColor[ 10 ] = 86;
-                        Header.DayColor[ 11 ] = 29;
-                    }
+                        version = FO_MAP_VERSION_TEXT1;
                 }
                 else if( field == "MaxHexX" )
-                    Header.MaxHexX = ivalue;
+                    SetWidth( ivalue );
                 else if( field == "MaxHexY" )
-                    Header.MaxHexY = ivalue;
+                    SetHeight( ivalue );
                 else if( field == "WorkHexX" || field == "CenterX" )
-                    Header.WorkHexX = ivalue;
+                    SetWorkHexX( ivalue );
                 else if( field == "WorkHexY" || field == "CenterY" )
-                    Header.WorkHexY = ivalue;
+                    SetWorkHexY( ivalue );
                 else if( field == "Time" )
-                    Header.Time = ivalue;
+                    SetCurDayTime( ivalue );
                 else if( field == "NoLogOut" )
-                    Header.NoLogOut = ( ivalue != 0 );
+                    SetIsNoLogOut( ivalue != 0 );
                 else if( ( field == "ScriptModule" || field == "ScriptName" ) && value != "-" )
-                    Str::Copy( Header.ScriptModule, value.c_str() );
+                    script_name += value;
                 else if( field == "ScriptFunc" && value != "-" )
-                    Str::Copy( Header.ScriptFunc, value.c_str() );
+                    script_name.append( "@" ).append( value );
                 else if( field == "DayTime" )
                 {
-                    Header.DayTime[ 0 ] = ivalue;
-                    istr >> Header.DayTime[ 1 ];
-                    istr >> Header.DayTime[ 2 ];
-                    istr >> Header.DayTime[ 3 ];
+                    vec[ 0 ] = ivalue;
+                    istr >> vec[ 1 ];
+                    istr >> vec[ 2 ];
+                    istr >> vec[ 3 ];
                 }
                 else if( field == "DayColor0" )
                 {
-                    Header.DayColor[ 0 ] = ivalue;
+                    vec2[ 0 ] = ivalue;
                     istr >> ivalue;
-                    Header.DayColor[ 4 ] = ivalue;
+                    vec2[ 4 ] = ivalue;
                     istr >> ivalue;
-                    Header.DayColor[ 8 ] = ivalue;
+                    vec2[ 8 ] = ivalue;
                 }
                 else if( field == "DayColor1" )
                 {
-                    Header.DayColor[ 1 ] = ivalue;
+                    vec2[ 1 ] = ivalue;
                     istr >> ivalue;
-                    Header.DayColor[ 5 ] = ivalue;
+                    vec2[ 5 ] = ivalue;
                     istr >> ivalue;
-                    Header.DayColor[ 9 ] = ivalue;
+                    vec2[ 9 ] = ivalue;
                 }
                 else if( field == "DayColor2" )
                 {
-                    Header.DayColor[ 2 ] = ivalue;
+                    vec2[ 2 ] = ivalue;
                     istr >> ivalue;
-                    Header.DayColor[ 6 ] = ivalue;
+                    vec2[ 6 ] = ivalue;
                     istr >> ivalue;
-                    Header.DayColor[ 10 ] = ivalue;
+                    vec2[ 10 ] = ivalue;
                 }
                 else if( field == "DayColor3" )
                 {
-                    Header.DayColor[ 3 ] = ivalue;
+                    vec2[ 3 ] = ivalue;
                     istr >> ivalue;
-                    Header.DayColor[ 7 ] = ivalue;
+                    vec2[ 7 ] = ivalue;
                     istr >> ivalue;
-                    Header.DayColor[ 11 ] = ivalue;
+                    vec2[ 11 ] = ivalue;
                 }
             }
         }
+        if( !script_name.empty() )
+            SetScriptId( Str::GetHash( script_name.c_str() ) );
+        ScriptArray* arr = Script::CreateArray( "int[]" );
+        Script::AppendVectorToArray( vec, arr );
+        SetDayTime( arr );
+        arr->Release();
+        ScriptArray* arr2 = Script::CreateArray( "uint8[]" );
+        Script::AppendVectorToArray( vec2, arr2 );
+        SetDayColor( arr2 );
+        arr2->Release();
     }
-    if( ( Header.Version != FO_MAP_VERSION_TEXT1 && Header.Version != FO_MAP_VERSION_TEXT2 && Header.Version != FO_MAP_VERSION_TEXT3 &&
-          Header.Version != FO_MAP_VERSION_TEXT4 && Header.Version != FO_MAP_VERSION_TEXT5 && Header.Version != FO_MAP_VERSION_TEXT6 &&
-          Header.Version != FO_MAP_VERSION_TEXT7 ) ||
-        Header.MaxHexX < 1 || Header.MaxHexY < 1 )
+    if( ( version != FO_MAP_VERSION_TEXT1 && version != FO_MAP_VERSION_TEXT2 && version != FO_MAP_VERSION_TEXT3 &&
+          version != FO_MAP_VERSION_TEXT4 && version != FO_MAP_VERSION_TEXT5 && version != FO_MAP_VERSION_TEXT6 &&
+          version != FO_MAP_VERSION_TEXT7 ) ||
+        GetWidth() < 1 || GetHeight() < 1 )
         return false;
 
     // Tiles
-    const char* tiles_str = map_ini.GetAppContent( APP_TILES );
+    const char* tiles_str = map_ini.GetAppContent( "Tiles" );
     if( tiles_str )
     {
         istrstream istr( tiles_str );
         string     type;
-        if( Header.Version == FO_MAP_VERSION_TEXT1 )
+        if( version == FO_MAP_VERSION_TEXT1 )
         {
             string name;
 
@@ -239,7 +403,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             {
                 int hx, hy;
                 istr >> type >> hx >> hy >> name;
-                if( !istr.fail() && hx >= 0 && hx < Header.MaxHexX && hy >= 0 && hy < Header.MaxHexY )
+                if( !istr.fail() && hx >= 0 && hx < GetWidth() && hy >= 0 && hy < GetHeight() )
                 {
                     hx *= 2;
                     hy *= 2;
@@ -266,7 +430,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             while( !istr.eof() && !istr.fail() )
             {
                 istr >> type >> hx >> hy;
-                if( !istr.fail() && hx >= 0 && hx < Header.MaxHexX && hy >= 0 && hy < Header.MaxHexY )
+                if( !istr.fail() && hx >= 0 && hx < GetWidth() && hy >= 0 && hy < GetHeight() )
                 {
                     if( !type.compare( 0, 4, "tile" ) )
                         is_roof = false;
@@ -315,8 +479,20 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     }
 
     // Objects
-    MapObjectPtrVec mobjects;
-    const char* objects_str = map_ini.GetAppContent( APP_OBJECTS );
+    struct AdditionalFields
+    {
+        uint UID = 0;
+        uint ContainerUID = 0;
+        uint ParentUID = 0;
+        uint ParentChildIndex = 0;
+        string ScriptName;
+        string FuncName;
+        uint ParamsCount = 0;
+        uint Params[ 5 ];
+    };
+    vector< AdditionalFields > entities_addon;
+    EntityVec entities;
+    const char* objects_str = map_ini.GetAppContent( "Objects" );
     if( objects_str )
     {
         bool       fail = false;
@@ -324,9 +500,9 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         string     field;
         char       svalue[ MAX_FOTEXT ];
         int        ivalue;
-        #ifndef FONLINE_MAPPER
+        int        is_critter = false;
         Property*  cur_prop = nullptr;
-        #endif
+        uint       auto_id = uint( -1 );
         while( !istr.eof() && !istr.fail() )
         {
             istr >> field;
@@ -339,294 +515,218 @@ bool ProtoMap::LoadTextFormat( const char* buf )
 
                 if( field == "MapObjType" )
                 {
-                    MapObject* mobj = new MapObject();
-
-                    mobj->MapObjType = ivalue;
                     if( ivalue == MAP_OBJECT_CRITTER )
-                        mobj->MCritter.Cond = COND_LIFE;
-                    else if( ivalue != MAP_OBJECT_ITEM && ivalue != MAP_OBJECT_SCENERY )
-                        continue;
-
-                    mobjects.push_back( mobj );
+                    {
+                        is_critter = true;
+                    }
+                    else
+                    {
+                        RUNTIME_ASSERT( ivalue == MAP_OBJECT_ITEM || ivalue == MAP_OBJECT_SCENERY );
+                        is_critter = false;
+                    }
                 }
-                else if( mobjects.size() )
+                else
                 {
-                    MapObject& mobj = *mobjects.back();
-                    // Shared
-                    if( field == "ProtoId" )
+                    if( field == "ProtoId" || field == "ProtoName" )
                     {
-                        const char* proto_name = nullptr;
-                        if( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY )
-                            proto_name = ConvertProtoIdByInt( ivalue );
-                        else if( mobj.MapObjType == MAP_OBJECT_CRITTER )
-                            proto_name = ConvertProtoCritterIdByInt( ivalue );
-                        RUNTIME_ASSERT( proto_name );
-                        mobj.ProtoId = ( proto_name ? Str::GetHash( proto_name ) : ivalue );
-                        #ifdef FONLINE_MAPPER
-                        mobj.ProtoName = ScriptString::Create( proto_name ? proto_name : Str::ItoA( ivalue ) );
-                        #endif
-                        if( mobj.MapObjType == MAP_OBJECT_CRITTER && !CrMngr.GetProto( mobj.ProtoId ) )
+                        hash proto_id = 0;
+                        if( field == "ProtoId" )
                         {
-                            WriteLog( "Critter prototype '%s' (%u) not found.\n", proto_name, ivalue );
-                            fail = true;
+                            const char* proto_name = nullptr;
+                            if( !is_critter )
+                                proto_name = ConvertProtoIdByInt( ivalue );
+                            else
+                                proto_name = ConvertProtoCritterIdByInt( ivalue );
+                            RUNTIME_ASSERT( proto_name );
+                            proto_id = Str::GetHash( proto_name );
+                            if( is_critter && !ProtoMngr.GetProtoCritter( proto_id ) )
+                            {
+                                WriteLog( "Critter prototype '%s' (%u) not found.\n", proto_name, ivalue );
+                                fail = true;
+                            }
+                            else if( !is_critter && !ProtoMngr.GetProtoItem( proto_id ) )
+                            {
+                                WriteLog( "Item prototype '%s' (%u) not found.\n", proto_name, ivalue );
+                                fail = true;
+                            }
                         }
-                        else if( mobj.MapObjType != MAP_OBJECT_CRITTER && !ItemMngr.GetProtoItem( mobj.ProtoId ) )
+                        else if( field == "ProtoName" )
                         {
-                            WriteLog( "Item prototype '%s' (%u) not found.\n", proto_name, ivalue );
-                            fail = true;
+                            proto_id = Str::GetHash( svalue );
+                            if( is_critter && !ProtoMngr.GetProtoCritter( proto_id ) )
+                            {
+                                WriteLog( "Critter prototype '%s' not found.\n", svalue );
+                                fail = true;
+                            }
+                            else if( !is_critter && !ProtoMngr.GetProtoItem( proto_id ) )
+                            {
+                                WriteLog( "Item prototype '%s' not found.\n", svalue );
+                                fail = true;
+                            }
+                        }
+                        if( fail )
+                            break;
+
+                        if( is_critter )
+                        {
+                            #ifdef FONLINE_SERVER
+                            Npc* cr = new Npc( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
+                            #else
+                            CritterCl* cr = new CritterCl( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
+                            #endif
+                            cr->SetCond( COND_LIFE );
+                            entities.push_back( cr );
+                            entities_addon.push_back( AdditionalFields() );
+                        }
+                        else
+                        {
+                            Item* item = new Item( auto_id--, ProtoMngr.GetProtoItem( proto_id ) );
+                            entities.push_back( item );
+                            entities_addon.push_back( AdditionalFields() );
                         }
 
-                        // Fix scenery/item
-                        if( !fail && ( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY ) )
-                        {
-                            ProtoItem* proto = ItemMngr.GetProtoItem( mobj.ProtoId );
-                            if( mobj.MapObjType == MAP_OBJECT_ITEM && !proto->IsItem() )
-                                mobj.MapObjType = MAP_OBJECT_SCENERY;
-                            else if( mobj.MapObjType == MAP_OBJECT_SCENERY && proto->IsItem() )
-                                mobj.MapObjType = MAP_OBJECT_ITEM;
-                        }
+                        continue;
                     }
-                    else if( field == "ProtoName" )
-                    {
-                        mobj.ProtoId = Str::GetHash( svalue );
-                        #ifdef FONLINE_MAPPER
-                        mobj.ProtoName = ScriptString::Create( svalue );
-                        #endif
-                        if( mobj.MapObjType == MAP_OBJECT_CRITTER && !CrMngr.GetProto( mobj.ProtoId ) )
-                        {
-                            WriteLog( "Critter prototype '%s' not found.\n", svalue );
-                            fail = true;
-                        }
-                        else if( mobj.MapObjType != MAP_OBJECT_CRITTER && !ItemMngr.GetProtoItem( mobj.ProtoId ) )
-                        {
-                            WriteLog( "Item prototype '%s' not found.\n", svalue );
-                            fail = true;
-                        }
 
-                        // Fix scenery/item
-                        if( !fail && ( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY ) )
-                        {
-                            ProtoItem* proto = ItemMngr.GetProtoItem( mobj.ProtoId );
-                            if( mobj.MapObjType == MAP_OBJECT_ITEM && !proto->IsItem() )
-                                mobj.MapObjType = MAP_OBJECT_SCENERY;
-                            else if( mobj.MapObjType == MAP_OBJECT_SCENERY && proto->IsItem() )
-                                mobj.MapObjType = MAP_OBJECT_ITEM;
+                    #define SET_FIELD_CRITTER( field_name, prop )                         \
+                        if( field == field_name && is_critter )                           \
+                        {                                                                 \
+                            ( (MUTUAL_CRITTER*) entities.back() )->Set ## prop( ivalue ); \
+                            continue;                                                     \
                         }
-                    }
-                    else if( field == "MapX" )
-                        mobj.MapX = ivalue;
-                    else if( field == "MapY" )
-                        mobj.MapY = ivalue;
-                    else if( field == "UID" )
-                        mobj.UID = ivalue;
+                    #define SET_FIELD_ITEM( field_name, prop )                  \
+                        if( field == field_name && !is_critter )                \
+                        {                                                       \
+                            ( (Item*) entities.back() )->Set ## prop( ivalue ); \
+                            continue;                                           \
+                        }
+                    SET_FIELD_CRITTER( "MapX", HexX );
+                    SET_FIELD_CRITTER( "MapY", HexY );
+                    SET_FIELD_ITEM( "MapX", HexX );
+                    SET_FIELD_ITEM( "MapY", HexY );
+                    if( field == "UID" )
+                        entities_addon.back().UID = ivalue;
                     else if( field == "ContainerUID" )
-                        mobj.ContainerUID = ivalue;
+                        entities_addon.back().ContainerUID = ivalue;
                     else if( field == "ParentUID" )
-                        mobj.ParentUID = ivalue;
+                        entities_addon.back().ParentUID = ivalue;
                     else if( field == "ParentChildIndex" )
-                        mobj.ParentChildIndex = ivalue;
-                    else if( field == "LightColor" )
-                        mobj.LightColor = ivalue;
-                    else if( field == "LightDay" )
-                        mobj.LightDay = ivalue;
-                    else if( field == "LightDirOff" )
-                        mobj.LightDirOff = ivalue;
-                    else if( field == "LightDistance" )
-                        mobj.LightDistance = ivalue;
-                    else if( field == "LightIntensity" )
-                        mobj.LightIntensity = ivalue;
-                    else if( field == "ScriptName" )
-                        Str::Copy( mobj.ScriptName, svalue );
-                    else if( field == "FuncName" )
-                        Str::Copy( mobj.FuncName, svalue );
-                    else if( field == "UserData0" )
-                        mobj.UserData[ 0 ] = ivalue;
-                    else if( field == "UserData1" )
-                        mobj.UserData[ 1 ] = ivalue;
-                    else if( field == "UserData2" )
-                        mobj.UserData[ 2 ] = ivalue;
-                    else if( field == "UserData3" )
-                        mobj.UserData[ 3 ] = ivalue;
-                    else if( field == "UserData4" )
-                        mobj.UserData[ 4 ] = ivalue;
-                    else if( field == "UserData5" )
-                        mobj.UserData[ 5 ] = ivalue;
-                    else if( field == "UserData6" )
-                        mobj.UserData[ 6 ] = ivalue;
-                    else if( field == "UserData7" )
-                        mobj.UserData[ 7 ] = ivalue;
-                    else if( field == "UserData8" )
-                        mobj.UserData[ 8 ] = ivalue;
-                    else if( field == "UserData9" )
-                        mobj.UserData[ 9 ] = ivalue;
-                    // Critter
-                    else if( mobj.MapObjType == MAP_OBJECT_CRITTER )
+                        entities_addon.back().ParentChildIndex = ivalue;
+                    SET_FIELD_ITEM( "LightColor", LightColor );
+                    if( field == "LightDay" )
+                        ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ( ( ivalue & 3 ) << 6 ) );
+                    if( field == "LightDirOff" )
+                        ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ivalue );
+                    SET_FIELD_ITEM( "LightDistance", LightDistance );
+                    SET_FIELD_ITEM( "LightIntensity", LightIntensity );
+                    if( field == "ScriptName" )
+                        entities_addon.back().ScriptName = svalue;
+                    if( field == "FuncName" )
+                        entities_addon.back().FuncName = svalue;
+
+                    if( is_critter )
                     {
-                        if( field == "Critter_Dir" || field == "Dir" )
-                            mobj.MCritter.Dir = ivalue;
-                        else if( field == "Critter_Cond" )
-                            mobj.MCritter.Cond = ivalue;
-                        else if( field == "Critter_Anim1" )
-                            mobj.MCritter.Anim1 = ivalue;
-                        else if( field == "Critter_Anim2" )
-                            mobj.MCritter.Anim2 = ivalue;
-                        else if( field.size() >= 18 /* "Critter_ParamIndex" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
+                        SET_FIELD_CRITTER( "Critter_Dir", Dir );
+                        SET_FIELD_CRITTER( "Dir", Dir );
+                        SET_FIELD_CRITTER( "Critter_Cond", Cond );
+                        SET_FIELD_CRITTER( "Critter_Anim1", Anim1Life );
+                        SET_FIELD_CRITTER( "Critter_Anim2", Anim2Life );
+
+                        if( field.size() >= 18 /*"Critter_ParamIndex" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
                         {
                             if( field.substr( 13, 5 ) == "Index" )
                             {
-                                if( !mobj.Props )
-                                    mobj.AllocateProps();
-                                #ifndef FONLINE_MAPPER
-                                cur_prop = Critter::PropertiesRegistrator->Find( svalue );
-                                mobj.Props->push_back( cur_prop ? cur_prop->GetEnumValue() : -1 );
+                                cur_prop = MUTUAL_CRITTER::PropertiesRegistrator->Find( svalue );
                                 if( !cur_prop )
                                 {
                                     WriteLog( "Critter property '%s' not found.\n", svalue );
                                     fail = true;
                                 }
-                                #else
-                                mobj.Props->push_back( ScriptString::Create( svalue ) );
-                                #endif
                             }
-                            else if( mobj.Props && mobj.Props->size() % 2 == 1 )
+                            else
                             {
-                                #ifndef FONLINE_MAPPER
                                 if( cur_prop )
                                 {
                                     if( !Str::IsNumber( svalue ) )
                                         Str::GetHash( svalue );
                                     if( cur_prop->IsHash() )
-                                        mobj.Props->push_back( Str::GetHash( svalue ) );
+                                        cur_prop->SetPODValueAsInt( entities.back(), Str::GetHash( svalue ) );
                                     else if( cur_prop->IsEnum() )
-                                        mobj.Props->push_back( Script::GetEnumValue( cur_prop->GetTypeName(), svalue, fail ) );
+                                        cur_prop->SetPODValueAsInt( entities.back(), Script::GetEnumValue( cur_prop->GetTypeName(), svalue, fail ) );
                                     else
-                                        mobj.Props->push_back( ConvertParamValue( svalue, fail ) );
+                                        cur_prop->SetPODValueAsInt( entities.back(), ConvertParamValue( svalue, fail ) );
                                     cur_prop = nullptr;
                                 }
-                                else
-                                {
-                                    mobj.Props->push_back( 0 );
-                                }
-                                #else
-                                mobj.Props->push_back( ScriptString::Create( svalue ) );
-                                #endif
                             }
                         }
                     }
-                    // Item/Scenery
-                    else if( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY )
+                    else
                     {
-                        // Shared parameters
-                        if( field == "OffsetX" )
-                            mobj.MItem.OffsetX = ivalue;
-                        else if( field == "OffsetY" )
-                            mobj.MItem.OffsetY = ivalue;
-                        else if( field == "PicMapName" )
+                        SET_FIELD_ITEM( "OffsetX", OffsetX );
+                        SET_FIELD_ITEM( "OffsetY", OffsetY );
+                        SET_FIELD_ITEM( "PicMapName", PicMap );
+                        SET_FIELD_ITEM( "PicInvName", PicInv );
+
+                        if( field == "PicMapName" )
                         {
-                            #ifdef FONLINE_MAPPER
-                            Str::Copy( mobj.RunTime.PicMapName, svalue );
-                            #endif
-                            mobj.MItem.PicMap = Str::GetHash( svalue );
+                            ( (Item*) entities.back() )->SetPicMap( Str::GetHash( svalue ) );
                         }
                         else if( field == "PicInvName" )
                         {
-                            #ifdef FONLINE_MAPPER
-                            Str::Copy( mobj.RunTime.PicInvName, svalue );
-                            #endif
-                            mobj.MItem.PicInv = Str::GetHash( svalue );
+                            ( (Item*) entities.back() )->SetPicInv( Str::GetHash( svalue ) );
                         }
-                        // Item
-                        else if( mobj.MapObjType == MAP_OBJECT_ITEM )
+                        else
                         {
-                            if( field == "Item_Count" )
-                                mobj.MItem.Count = ivalue;
-                            else if( field == "Item_BrokenFlags" )
-                                mobj.MItem.BrokenFlags = ivalue;
-                            else if( field == "Item_BrokenCount" )
-                                mobj.MItem.BrokenCount = ivalue;
-                            else if( field == "Item_Deterioration" )
-                                mobj.MItem.Deterioration = ivalue;
-                            else if( field == "Item_ItemSlot" )
-                                mobj.MItem.ItemSlot = ivalue;
-                            else if( field == "Item_AmmoPid" )
-                            #ifndef FONLINE_MAPPER
-                                mobj.MItem.AmmoPid = Str::GetHash( svalue );
-                            #else
-                                mobj.MItem.AmmoPid = ScriptString::Create( svalue );
-                            #endif
-                            else if( field == "Item_AmmoCount" )
-                                mobj.MItem.AmmoCount = ivalue;
-                            else if( field == "Item_LockerDoorId" )
-                                mobj.MItem.LockerDoorId = ivalue;
-                            else if( field == "Item_LockerCondition" )
-                                mobj.MItem.LockerCondition = ivalue;
-                            else if( field == "Item_LockerComplexity" )
-                                mobj.MItem.LockerComplexity = ivalue;
-                            else if( field == "Item_TrapValue" )
-                                mobj.MItem.TrapValue = ivalue;
-                            else if( field == "Item_Val0" )
-                                mobj.MItem.Val[ 0 ] = ivalue;
-                            else if( field == "Item_Val1" )
-                                mobj.MItem.Val[ 1 ] = ivalue;
-                            else if( field == "Item_Val2" )
-                                mobj.MItem.Val[ 2 ] = ivalue;
-                            else if( field == "Item_Val3" )
-                                mobj.MItem.Val[ 3 ] = ivalue;
-                            else if( field == "Item_Val4" )
-                                mobj.MItem.Val[ 4 ] = ivalue;
-                            else if( field == "Item_Val5" )
-                                mobj.MItem.Val[ 5 ] = ivalue;
-                            else if( field == "Item_Val6" )
-                                mobj.MItem.Val[ 6 ] = ivalue;
-                            else if( field == "Item_Val7" )
-                                mobj.MItem.Val[ 7 ] = ivalue;
-                            else if( field == "Item_Val8" )
-                                mobj.MItem.Val[ 8 ] = ivalue;
-                            else if( field == "Item_Val9" )
-                                mobj.MItem.Val[ 9 ] = ivalue;
-                            // Deprecated
-                            else if( field == "Item_DeteorationFlags" )
-                                mobj.MItem.BrokenFlags = ivalue;
-                            else if( field == "Item_DeteorationCount" )
-                                mobj.MItem.BrokenCount = ivalue;
-                            else if( field == "Item_DeteorationValue" )
-                                mobj.MItem.Deterioration = ivalue;
-                            else if( field == "Item_InContainer" )
-                                mobj.ContainerUID = ivalue;
-                        }
-                        // Scenery
-                        else if( mobj.MapObjType == MAP_OBJECT_SCENERY )
-                        {
+                            SET_FIELD_ITEM( "Item_Count", Count );
+                            SET_FIELD_ITEM( "Item_BrokenFlags", BrokenFlags );
+                            SET_FIELD_ITEM( "Item_BrokenCount", BrokenFlags );
+                            SET_FIELD_ITEM( "Item_Deterioration", Deterioration );
+                            SET_FIELD_ITEM( "Item_ItemSlot", Slot );
+                            if( field == "Item_AmmoPid" )
+                                ( (Item*) entities.back() )->SetAmmoPid( Str::GetHash( svalue ) );
+                            SET_FIELD_ITEM( "Item_AmmoCount", AmmoCount );
+                            SET_FIELD_ITEM( "Item_LockerDoorId", LockerId );
+                            SET_FIELD_ITEM( "Item_LockerCondition", LockerCondition );
+                            SET_FIELD_ITEM( "Item_LockerComplexity", LockerComplexity );
+                            SET_FIELD_ITEM( "Item_TrapValue", TrapValue );
+                            SET_FIELD_ITEM( "Item_Val0", Val0 );
+                            SET_FIELD_ITEM( "Item_Val1", Val1 );
+                            SET_FIELD_ITEM( "Item_Val2", Val2 );
+                            SET_FIELD_ITEM( "Item_Val3", Val3 );
+                            SET_FIELD_ITEM( "Item_Val4", Val4 );
+                            SET_FIELD_ITEM( "Item_Val5", Val5 );
+                            SET_FIELD_ITEM( "Item_Val6", Val6 );
+                            SET_FIELD_ITEM( "Item_Val7", Val7 );
+                            SET_FIELD_ITEM( "Item_Val8", Val8 );
+                            SET_FIELD_ITEM( "Item_Val9", Val9 );
+                            SET_FIELD_ITEM( "Item_DeteorationFlags", BrokenFlags );
+                            SET_FIELD_ITEM( "Item_DeteorationCount", BrokenCount );
+                            SET_FIELD_ITEM( "Item_DeteorationValue", Deterioration );
+                            if( field == "Item_InContainer" )
+                                entities_addon.back().ContainerUID = ivalue;
+
                             if( field == "Scenery_CanUse" )
-                                mobj.MScenery.CanUse = ( ivalue != 0 );
-                            else if( field == "Scenery_CanTalk" )
-                                mobj.MScenery.CanTalk = ( ivalue != 0 );
-                            else if( field == "Scenery_TriggerNum" )
-                                mobj.MScenery.TriggerNum = ivalue;
-                            else if( field == "Scenery_ParamsCount" )
-                                mobj.MScenery.ParamsCount = ivalue;
-                            else if( field == "Scenery_Param0" )
-                                mobj.MScenery.Param[ 0 ] = ivalue;
-                            else if( field == "Scenery_Param1" )
-                                mobj.MScenery.Param[ 1 ] = ivalue;
-                            else if( field == "Scenery_Param2" )
-                                mobj.MScenery.Param[ 2 ] = ivalue;
-                            else if( field == "Scenery_Param3" )
-                                mobj.MScenery.Param[ 3 ] = ivalue;
-                            else if( field == "Scenery_Param4" )
-                                mobj.MScenery.Param[ 4 ] = ivalue;
-                            else if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
-                            #ifndef FONLINE_MAPPER
-                                mobj.MScenery.ToMap = Str::GetHash( svalue );
-                            #else
-                                mobj.MScenery.ToMap = ScriptString::Create( svalue );
-                            #endif
-                            else if( field == "Scenery_ToEntire" )
-                                mobj.MScenery.ToEntire = ivalue;
-                            else if( field == "Scenery_ToDir" )
-                                mobj.MScenery.ToDir = ivalue;
-                            else if( field == "Scenery_SpriteCut" )
-                                mobj.MScenery.SpriteCut = ivalue;
+                                ( (Item*) entities.back() )->SetIsCanUse( ivalue != 0 );
+                            if( field == "Scenery_CanTalk" )
+                                ( (Item*) entities.back() )->SetIsCanTalk( ivalue != 0 );
+                            SET_FIELD_ITEM( "Scenery_TriggerNum", BrokenFlags );
+                            if( field == "Scenery_ParamsCount" )
+                                entities_addon.back().ParamsCount = ivalue;
+                            if( field == "Scenery_Param0" )
+                                entities_addon.back().Params[ 0 ] = ivalue;
+                            if( field == "Scenery_Param1" )
+                                entities_addon.back().Params[ 1 ] = ivalue;
+                            if( field == "Scenery_Param2" )
+                                entities_addon.back().Params[ 2 ] = ivalue;
+                            if( field == "Scenery_Param3" )
+                                entities_addon.back().Params[ 3 ] = ivalue;
+                            if( field == "Scenery_Param4" )
+                                entities_addon.back().Params[ 4 ] = ivalue;
+                            if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
+                                ( (Item*) entities.back() )->SetGrid_ToMap( Str::GetHash( svalue ) );
+                            SET_FIELD_ITEM( "Scenery_ToEntire", Grid_ToMapEntire );
+                            SET_FIELD_ITEM( "Scenery_ToDir", Grid_ToMapDir );
+                            SET_FIELD_ITEM( "Scenery_SpriteCut", SpriteCut );
                         }
                     }
                 }
@@ -636,81 +736,121 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             return false;
     }
 
+    // Fix script name and params
+    for( size_t i = 0; i < entities.size(); i++ )
+    {
+        Entity* entity = entities[ i ];
+        AdditionalFields& entity_addon = entities_addon[ i ];
+        if( !entity_addon.ScriptName.empty() || !entity_addon.FuncName.empty() )
+        {
+            char script_name[ MAX_FOTEXT ] = { 0 };
+            Str::Copy( script_name, entity_addon.ScriptName.c_str() );
+            if( script_name[ 0 ] )
+                Str::Append( script_name, "@" );
+            Str::Append( script_name, entity_addon.FuncName.c_str() );
+            if( entity->Type == MUTUAL_CRITTER_TYPE )
+                ( (MUTUAL_CRITTER*) entity )->SetScriptId( Str::GetHash( script_name ) );
+            else if( entity->Type == EntityType::Item )
+                ( (Item*) entity )->SetScriptId( Str::GetHash( script_name ) );
+        }
+
+        if( entity_addon.ParamsCount )
+        {
+            RUNTIME_ASSERT( entity->Type == EntityType::Item );
+            RUNTIME_ASSERT( entity_addon.ParamsCount <= 5 );
+            ScriptArray* params = Script::CreateArray( "int[]" );
+            for( uint i = 0; i < entity_addon.ParamsCount; i++ )
+                params->InsertLast( &entity_addon.Params[ i ] );
+            ( (Item*) entity )->SetSceneryParams( params );
+            params->Release();
+        }
+    }
+
+    // Set accessory
+    for( size_t i = 0; i < entities.size(); i++ )
+    {
+        Entity* entity = entities[ i ];
+        if( entity->Type == EntityType::Item )
+            ( (Item*) entities[ i ] )->SetAccessory( ITEM_ACCESSORY_HEX );
+    }
+
     // Deprecated, add UIDs
-    if( Header.Version < FO_MAP_VERSION_TEXT4 )
+    if( version < FO_MAP_VERSION_TEXT4 )
     {
         uint uid = 0;
-        for( uint i = 0, j = (uint) mobjects.size(); i < j; i++ )
+        for( size_t i = 0; i < entities.size(); i++ )
         {
-            MapObject* mobj = mobjects[ i ];
+            Entity* entity = entities[ i ];
+            AdditionalFields& entity_addon = entities_addon[ i ];
 
             // Find item in container
-            if( mobj->MapObjType != MAP_OBJECT_ITEM || !mobj->ContainerUID )
+            if( entity->Type != EntityType::Item )
                 continue;
 
             // Find container
-            for( uint k = 0, l = (uint) mobjects.size(); k < l; k++ )
+            Item* entity_item = (Item*) entities[ i ];
+            ushort hx = entity_item->GetHexX();
+            ushort hy = entity_item->GetHexY();
+            for( size_t j = 0; j < entities.size(); j++ )
             {
-                MapObject* mobj_ = mobjects[ k ];
-                if( mobj_->MapX != mobj->MapX || mobj_->MapY != mobj->MapY )
+                Entity* entity_cont = entities[ j ];
+                AdditionalFields& entity_cont_addon = entities_addon[ j ];
+                if( entity_cont == entity )
                     continue;
-                if( mobj_->MapObjType != MAP_OBJECT_ITEM && mobj_->MapObjType != MAP_OBJECT_CRITTER )
+                if( entity_cont->Type == EntityType::Item && ( ( (Item*) entity_cont )->GetHexX() != hx || ( (Item*) entity_cont )->GetHexY() != hy ) )
                     continue;
-                if( mobj_ == mobj )
+                if( entity_cont->Type == MUTUAL_CRITTER_TYPE && ( ( (MUTUAL_CRITTER*) entity_cont )->GetHexX() != hx || ( (MUTUAL_CRITTER*) entity_cont )->GetHexY() != hy ) )
                     continue;
-                if( mobj_->MapObjType == MAP_OBJECT_ITEM )
-                {
-                    ProtoItem* proto_item = ItemMngr.GetProtoItem( mobj_->ProtoId );
-                    if( !proto_item || proto_item->GetType() != ITEM_TYPE_CONTAINER )
-                        continue;
-                }
-                if( !mobj_->UID )
-                    mobj_->UID = ++uid;
-                mobj->ContainerUID = mobj_->UID;
+                if( entity_cont->Type == EntityType::Item && ( (Item*) entity_cont )->GetType() != ITEM_TYPE_CONTAINER )
+                    continue;
+                if( !entity_cont_addon.UID )
+                    entity_cont_addon.UID = ++uid;
+                entity_addon.ContainerUID = entity_cont_addon.UID;
             }
         }
     }
 
     // Fix child objects positions
-    for( uint i = 0, j = (uint) mobjects.size(); i < j;)
+    for( size_t i = 0; i < entities.size(); i++ )
     {
-        MapObject* mobj_child = mobjects[ i ];
-        if( !mobj_child->ParentUID )
+        Entity* entity = entities[ i ];
+        AdditionalFields& entity_addon = entities_addon[ i ];
+        if( !entity_addon.ParentUID )
         {
             i++;
             continue;
         }
 
+        RUNTIME_ASSERT( entity->Type == EntityType::Item );
+        Item* entity_item = (Item*) entity;
         bool delete_child = true;
-        for( uint k = 0, l = (uint) mobjects.size(); k < l; k++ )
+        for( size_t j = 0; j < entities.size(); j++ )
         {
-            MapObject* mobj_parent = mobjects[ k ];
-            if( !mobj_parent->UID || mobj_parent->UID != mobj_child->ParentUID || mobj_parent == mobj_child )
+            Entity* entity_parent = entities[ j ];
+            AdditionalFields& entity_parent_addon = entities_addon[ j ];
+            if( !entity_parent_addon.UID || entity_parent_addon.UID != entity_addon.ParentUID || entity_parent == entity )
                 continue;
 
-            ProtoItem* proto_parent = ItemMngr.GetProtoItem( mobj_parent->ProtoId );
-            if( !proto_parent || !proto_parent->GetChildPid( mobj_child->ParentChildIndex ) )
+            RUNTIME_ASSERT( entity_parent->Type == EntityType::Item );
+            Item* entity_parent_item = (Item*) entity_parent;
+            if( !entity_parent_item->GetChildPid( entity_addon.ParentChildIndex ) )
                 break;
 
-            ushort child_hx = mobj_parent->MapX, child_hy = mobj_parent->MapY;
-            FOREACH_PROTO_ITEM_LINES( proto_parent->GetChildLinesStr( mobj_child->ParentChildIndex ), child_hx, child_hy, Header.MaxHexX, Header.MaxHexY );
+            ushort child_hx = entity_parent_item->GetHexX();
+            ushort child_hy = entity_parent_item->GetHexY();
+            FOREACH_PROTO_ITEM_LINES( entity_parent_item->GetChildLinesStr( entity_addon.ParentChildIndex ), child_hx, child_hy, GetWidth(), GetHeight() );
 
-            mobj_child->MapX = child_hx;
-            mobj_child->MapY = child_hy;
-            mobj_child->ProtoId = proto_parent->GetChildPid( mobj_child->ParentChildIndex );
-            #ifdef FONLINE_MAPPER
-            SAFEREL( mobj_child->ProtoName );
-            mobj_child->ProtoName = ScriptString::Create( Str::GetName( mobj_child->ProtoId ) );
-            #endif
+            entity_item->SetHexX( child_hx );
+            entity_item->SetHexY( child_hy );
+            RUNTIME_ASSERT( entity_item->GetProtoId() == entity_parent_item->GetChildPid( entity_addon.ParentChildIndex ) );
             delete_child = false;
             break;
         }
 
         if( delete_child )
         {
-            mobjects[ i ]->Release();
-            mobjects.erase( mobjects.begin() + i );
-            j = (uint) mobjects.size();
+            entities[ i ]->Release();
+            entities.erase( entities.begin() + i );
         }
         else
         {
@@ -718,601 +858,238 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         }
     }
 
+    return OnAfterLoad( entities );
+}
+
+bool ProtoMap::OnAfterLoad( EntityVec& entities )
+{
     #ifdef FONLINE_SERVER
     // Bind scripts
-    if( !BindScripts( mobjects ) )
+    if( !BindScripts( entities ) )
         return false;
 
     // Parse objects
-    WallsToSend.clear();
-    SceneriesToSend.clear();
-    ushort maxhx = Header.MaxHexX;
-    ushort maxhy = Header.MaxHexY;
-
-    HexFlags = new uchar[ Header.MaxHexX * Header.MaxHexY ];
+    ushort maxhx = GetWidth();
+    ushort maxhy = GetHeight();
+    HexFlags = new uchar[ GetWidth() * GetHeight() ];
     if( !HexFlags )
         return false;
-    memzero( HexFlags, Header.MaxHexX * Header.MaxHexY );
+    memzero( HexFlags, GetWidth() * GetHeight() );
 
-    for( auto it = mobjects.begin(), end = mobjects.end(); it != end; ++it )
+    uint scenery_count = 0;
+    UCharVec scenery_data;
+    for( auto& entity : entities )
     {
-        MapObject& mobj = *( *it );
-
-        if( mobj.MapObjType == MAP_OBJECT_CRITTER )
+        if( entity->Type == MUTUAL_CRITTER_TYPE )
         {
-            mobj.AddRef();
-            CrittersVec.push_back( &mobj );
-            continue;
-        }
-        else if( mobj.MapObjType == MAP_OBJECT_ITEM )
-        {
-            mobj.AddRef();
-            ItemsVec.push_back( &mobj );
+            entity->AddRef();
+            CrittersVec.push_back( (MUTUAL_CRITTER*) entity );
             continue;
         }
 
-        hash   pid = mobj.ProtoId;
-        ushort hx = mobj.MapX;
-        ushort hy = mobj.MapY;
+        RUNTIME_ASSERT( entity->Type == EntityType::Item );
+        Item* item = (Item*) entity;
+        int type = item->GetType();
+        hash pid = item->GetProtoId();
 
-        ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
-        if( !proto_item )
+        if( item->IsItem() )
         {
-            WriteLog( "Map '%s', unknown item '%s', hex x %u, hex y %u.\n", pmapName.c_str(), Str::GetName( pid ), hx, hy );
+            entity->AddRef();
+            if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
+                HexItemsVec.push_back( (Item*) entity );
+            else
+                ChildItemsVec.push_back( (Item*) entity );
             continue;
         }
 
+        RUNTIME_ASSERT( item->GetAccessory() == ITEM_ACCESSORY_HEX );
+
+        ushort hx = item->GetHexX();
+        ushort hy = item->GetHexY();
         if( hx >= maxhx || hy >= maxhy )
         {
-            WriteLog( "Invalid item '%s' position on map '%s', hex x %u, hex y %u.\n", Str::GetName( pid ), pmapName.c_str(), hx, hy );
+            WriteLog( "Invalid item '%s' position on map '%s', hex x %u, hex y %u.\n", item->GetName(), GetName(), hx, hy );
             continue;
         }
 
-        int type = proto_item->GetType();
-        switch( type )
+        if( pid == SP_GRID_ENTIRE )
         {
-        case ITEM_TYPE_WALL:
-        {
-            if( !Item::PropertyIsNoBlock->GetValue< bool >( &proto_item->ItemPropsEntity ) )
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemPropsEntity ) )
-            {
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
-            }
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_WALL );
-
-            // To client
-            SceneryCl cur_wall;
-            memzero( &cur_wall, sizeof( SceneryCl ) );
-
-            cur_wall.ProtoId = mobj.ProtoId;
-            cur_wall.MapX = mobj.MapX;
-            cur_wall.MapY = mobj.MapY;
-            cur_wall.OffsetX = mobj.MScenery.OffsetX;
-            cur_wall.OffsetY = mobj.MScenery.OffsetY;
-            cur_wall.LightColor = mobj.LightColor;
-            cur_wall.LightDistance = mobj.LightDistance;
-            cur_wall.LightFlags = mobj.LightDirOff | ( ( mobj.LightDay & 3 ) << 6 );
-            cur_wall.LightIntensity = mobj.LightIntensity;
-            cur_wall.PicMap = mobj.MScenery.PicMap;
-            cur_wall.SpriteCut = mobj.MScenery.SpriteCut;
-
-            WallsToSend.push_back( cur_wall );
+            mapEntires.push_back( MapEntire( hx, hy, item->GetGrid_ToMapDir(), item->GetGrid_ToMapEntire() ) );
+            continue;
         }
-        break;
-        case ITEM_TYPE_GENERIC:
-        case ITEM_TYPE_GRID:
-        {
-            if( pid == SP_GRID_ENTIRE )
-            {
-                mapEntires.push_back( MapEntire( hx, hy, mobj.MScenery.ToDir, mobj.MScenery.ToEntire ) );
-                continue;
-            }
 
+        if( type == ITEM_TYPE_WALL || type == ITEM_TYPE_GENERIC || type == ITEM_TYPE_GRID )
+        {
             if( type == ITEM_TYPE_GRID )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN_GRID );
-            if( !Item::PropertyIsNoBlock->GetValue< bool >( &proto_item->ItemPropsEntity ) )
+            if( !item->GetIsNoBlock() )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemPropsEntity ) )
+            if( !item->GetIsShootThru() )
             {
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
             }
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN );
+            if( type == ITEM_TYPE_WALL )
+                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_WALL );
+            else
+                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN );
 
-            // To server
             if( pid == SP_MISC_SCRBLOCK )
             {
                 // Block around
                 for( int k = 0; k < 6; k++ )
                 {
                     ushort hx_ = hx, hy_ = hy;
-                    MoveHexByDir( hx_, hy_, k, Header.MaxHexX, Header.MaxHexY );
+                    MoveHexByDir( hx_, hy_, k, GetWidth(), GetHeight() );
                     SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
                 }
             }
             else if( type == ITEM_TYPE_GRID )
             {
-                mobj.AddRef();
-                GridsVec.push_back( &mobj );
+                item->AddRef();
+                GridsVec.push_back( item );
             }
-            else                     // ITEM_TYPE_GENERIC
+            else if( type == ITEM_TYPE_GENERIC )
             {
-                // Bind script
-                if( proto_item->ScriptName.length() > 0 )
-                {
-                    Str::Copy( mobj.ScriptName, proto_item->ScriptName.c_str() );
-                    Str::Copy( mobj.FuncName, "" );
-                }
-
-                // Add to collection
-                mobj.AddRef();
-                SceneryVec.push_back( &mobj );
+                item->AddRef();
+                SceneryVec.push_back( item );
             }
 
             if( pid == SP_SCEN_TRIGGER )
             {
-                if( mobj.RunTime.BindScriptId )
+                if( item->GetScriptId() )
                     SETFLAG( HexFlags[ hy * maxhx + hx ], FH_TRIGGER );
-                continue;
             }
 
-            // To client
-            SceneryCl cur_scen;
-            memzero( &cur_scen, sizeof( SceneryCl ) );
-
-            // Flags
-            if( type == ITEM_TYPE_GENERIC && mobj.MScenery.CanUse )
-                SETFLAG( cur_scen.Flags, SCEN_CAN_USE );
-            if( type == ITEM_TYPE_GENERIC && mobj.MScenery.CanTalk )
-                SETFLAG( cur_scen.Flags, SCEN_CAN_TALK );
-            if( type == ITEM_TYPE_GRID && proto_item->GetGrid_Type() != GRID_EXITGRID )
-                SETFLAG( cur_scen.Flags, SCEN_CAN_USE );
-
-            // Other
-            cur_scen.ProtoId = mobj.ProtoId;
-            cur_scen.MapX = mobj.MapX;
-            cur_scen.MapY = mobj.MapY;
-            cur_scen.OffsetX = mobj.MScenery.OffsetX;
-            cur_scen.OffsetY = mobj.MScenery.OffsetY;
-            cur_scen.LightColor = mobj.LightColor;
-            cur_scen.LightDistance = mobj.LightDistance;
-            cur_scen.LightFlags = mobj.LightDirOff | ( ( mobj.LightDay & 3 ) << 6 );
-            cur_scen.LightIntensity = mobj.LightIntensity;
-            cur_scen.PicMap = mobj.MScenery.PicMap;
-            cur_scen.SpriteCut = mobj.MScenery.SpriteCut;
-
-            SceneriesToSend.push_back( cur_scen );
-        }
-        break;
-        default:
-            break;
+            // Data for client
+            if( pid != SP_SCEN_TRIGGER )
+            {
+                scenery_count++;
+                WriteData( scenery_data, item->Id );
+                WriteData( scenery_data, item->GetProtoId() );
+                PUCharVec* all_data;
+                UIntVec* all_data_sizes;
+                item->Props.StoreData( false, &all_data, &all_data_sizes );
+                WriteData( scenery_data, (uint) all_data->size() );
+                for( size_t i = 0; i < all_data->size(); i++ )
+                {
+                    WriteData( scenery_data, all_data_sizes->at( i ) );
+                    WriteDataArr( scenery_data, all_data->at( i ), all_data_sizes->at( i ) );
+                }
+            }
         }
     }
+    SceneryData.clear();
+    WriteData( SceneryData, scenery_count );
+    if( !scenery_data.empty() )
+        WriteDataArr( SceneryData, &scenery_data[ 0 ], scenery_data.size() );
 
-    for( auto it = mobjects.begin(), end = mobjects.end(); it != end; ++it )
-        SAFEREL( *it );
-    mobjects.clear();
+    for( auto& entity : entities )
+        entity->Release();
+    entities.clear();
 
     // Generate hashes
     HashTiles = maxhx * maxhy;
     if( Tiles.size() )
-        Crypt.Crc32( (uchar*) &Tiles[ 0 ], (uint) Tiles.size() * sizeof( Tile ), HashTiles );
-    HashWalls = maxhx * maxhy;
-    if( WallsToSend.size() )
-        Crypt.Crc32( (uchar*) &WallsToSend[ 0 ], (uint) WallsToSend.size() * sizeof( SceneryCl ), HashWalls );
+        HashTiles = Crypt.MurmurHash2( (uchar*) &Tiles[ 0 ], (uint) Tiles.size() * sizeof( Tile ) );
     HashScen = maxhx * maxhy;
-    if( SceneriesToSend.size() )
-        Crypt.Crc32( (uchar*) &SceneriesToSend[ 0 ], (uint) SceneriesToSend.size() * sizeof( SceneryCl ), HashScen );
+    if( SceneryData.size() )
+        HashScen = Crypt.MurmurHash2( (uchar*) &SceneryData[ 0 ], (uint) SceneryData.size() );
 
     // Shrink the vector capacities to fit their contents and reduce memory use
-    SceneryClVec( SceneriesToSend ).swap( SceneriesToSend );
-    SceneryClVec( WallsToSend ).swap( WallsToSend );
+    UCharVec( SceneryData ).swap( SceneryData );
     EntiresVec( mapEntires ).swap( mapEntires );
-    MapObjectPtrVec( CrittersVec ).swap( CrittersVec );
-    MapObjectPtrVec( ItemsVec ).swap( ItemsVec );
-    MapObjectPtrVec( SceneryVec ).swap( SceneryVec );
-    MapObjectPtrVec( GridsVec ).swap( GridsVec );
+    CrVec( CrittersVec ).swap( CrittersVec );
+    ItemVec( HexItemsVec ).swap( HexItemsVec );
+    ItemVec( ChildItemsVec ).swap( ChildItemsVec );
+    ItemVec( SceneryVec ).swap( SceneryVec );
+    ItemVec( GridsVec ).swap( GridsVec );
     TileVec( Tiles ).swap( Tiles );
 
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneriesToSend.capacity() * sizeof( SceneryCl ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) WallsToSend.capacity() * sizeof( SceneryCl ) );
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneryData.capacity() );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) mapEntires.capacity() * sizeof( MapEntire ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) CrittersVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) ItemsVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneryVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) GridsVec.size() * sizeof( MapObject ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) Header.MaxHexX * Header.MaxHexY );
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) GetWidth() * GetHeight() );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) Tiles.capacity() * sizeof( Tile ) );
     #endif
 
     #ifdef FONLINE_MAPPER
-    // Post process objects
-    for( uint i = 0, j = (uint) mobjects.size(); i < j; i++ )
-    {
-        MapObject* mobj = mobjects[ i ];
+    // Get lower id
+    LastEntityId = 0;
+    for( auto& entity : entities )
+        if( !LastEntityId || entity->Id < LastEntityId )
+            LastEntityId = entity->Id;
 
-        // Map link
-        mobj->RunTime.FromMap = this;
-
-        // Convert hashes to names
-        if( mobj->MapObjType == MAP_OBJECT_ITEM || mobj->MapObjType == MAP_OBJECT_SCENERY )
-        {
-            if( mobj->MItem.PicMap && !mobj->RunTime.PicMapName[ 0 ] )
-                Str::Copy( mobj->RunTime.PicMapName, Str::GetName( mobj->MItem.PicMap ) );
-            if( mobj->MItem.PicInv && !mobj->RunTime.PicInvName[ 0 ] )
-                Str::Copy( mobj->RunTime.PicInvName, Str::GetName( mobj->MItem.PicInv ) );
-        }
-
-        // Last UID
-        if( mobj->UID > LastObjectUID )
-            LastObjectUID = mobj->UID;
-    }
-
-    // Create cached fields
-    TilesField.resize( Header.MaxHexX * Header.MaxHexY );
-    RoofsField.resize( Header.MaxHexX * Header.MaxHexY );
-    for( uint i = 0, j = (uint) Tiles.size(); i < j; i++ )
-    {
-        if( !Tiles[ i ].IsRoof )
-        {
-            TilesField[ Tiles[ i ].HexY * Header.MaxHexX + Tiles[ i ].HexX ].push_back( Tiles[ i ] );
-            TilesField[ Tiles[ i ].HexY * Header.MaxHexX + Tiles[ i ].HexX ].back().IsSelected = false;
-        }
-        else
-        {
-            RoofsField[ Tiles[ i ].HexY * Header.MaxHexX + Tiles[ i ].HexX ].push_back( Tiles[ i ] );
-            RoofsField[ Tiles[ i ].HexY * Header.MaxHexX + Tiles[ i ].HexX ].back().IsSelected = false;
-        }
-    }
-    Tiles.clear();
-    TileVec( Tiles ).swap( Tiles );
-
-    MObjects = mobjects;
+    AllEntities = std::move( entities );
     #endif
 
     return true;
 }
 
-#ifdef FONLINE_MAPPER
-void WriteStr( FileManager& fm, const char* format, const char* field, ScriptString* str )
-{
-    if( !str || str->length() == 0 )
-        return;
-
-    char buf[ MAX_FOTEXT ];
-    Str::Copy( buf, str->c_str() );
-    Str::Trim( buf );
-
-    if( Str::Length( buf ) )
-        fm.SetStr( format, field, buf );
-}
-
-void ProtoMap::SaveTextFormat( FileManager& fm )
-{
-    // Header
-    fm.SetStr( "[%s]\n", APP_HEADER );
-    fm.SetStr( "%-20s %d\n", "Version", Header.Version );
-    fm.SetStr( "%-20s %d\n", "MaxHexX", Header.MaxHexX );
-    fm.SetStr( "%-20s %d\n", "MaxHexY", Header.MaxHexY );
-    fm.SetStr( "%-20s %d\n", "WorkHexX", Header.WorkHexX );
-    fm.SetStr( "%-20s %d\n", "WorkHexY", Header.WorkHexY );
-    fm.SetStr( "%-20s %s\n", "ScriptModule", Header.ScriptModule[ 0 ] ? Header.ScriptModule : "-" );
-    fm.SetStr( "%-20s %s\n", "ScriptFunc", Header.ScriptFunc[ 0 ] ? Header.ScriptFunc : "-" );
-    fm.SetStr( "%-20s %d\n", "NoLogOut", Header.NoLogOut );
-    fm.SetStr( "%-20s %d\n", "Time", Header.Time );
-    fm.SetStr( "%-20s %-4d %-4d %-4d %-4d\n", "DayTime", Header.DayTime[ 0 ], Header.DayTime[ 1 ], Header.DayTime[ 2 ], Header.DayTime[ 3 ] );
-    fm.SetStr( "%-20s %-3d %-3d %-3d\n", "DayColor0", Header.DayColor[ 0 ], Header.DayColor[ 4 ], Header.DayColor[ 8 ] );
-    fm.SetStr( "%-20s %-3d %-3d %-3d\n", "DayColor1", Header.DayColor[ 1 ], Header.DayColor[ 5 ], Header.DayColor[ 9 ] );
-    fm.SetStr( "%-20s %-3d %-3d %-3d\n", "DayColor2", Header.DayColor[ 2 ], Header.DayColor[ 6 ], Header.DayColor[ 10 ] );
-    fm.SetStr( "%-20s %-3d %-3d %-3d\n", "DayColor3", Header.DayColor[ 3 ], Header.DayColor[ 7 ], Header.DayColor[ 11 ] );
-    fm.SetStr( "\n" );
-
-    // Tiles
-    fm.SetStr( "[%s]\n", APP_TILES );
-    char tile_str[ 256 ];
-    for( uint i = 0, j = (uint) Tiles.size(); i < j; i++ )
-    {
-        Tile&       tile = Tiles[ i ];
-        const char* name = Str::GetName( tile.Name );
-        if( name )
-        {
-            bool has_offs = ( tile.OffsX || tile.OffsY );
-            bool has_layer = ( tile.Layer != 0 );
-
-            Str::Copy( tile_str, tile.IsRoof ? "roof" : "tile" );
-            if( has_offs || has_layer )
-                Str::Append( tile_str, "_" );
-            if( has_offs )
-                Str::Append( tile_str, "o" );
-            if( has_layer )
-                Str::Append( tile_str, "l" );
-
-            fm.SetStr( "%-10s %-4d %-4d ", tile_str, tile.HexX, tile.HexY );
-
-            if( has_offs )
-                fm.SetStr( "%-3d %-3d ", tile.OffsX, tile.OffsY );
-            else
-                fm.SetStr( "        " );
-
-            if( has_layer )
-                fm.SetStr( "%d ", tile.Layer );
-            else
-                fm.SetStr( "  " );
-
-            fm.SetStr( "%s\n", name );
-        }
-    }
-    fm.SetStr( "\n" );
-
-    // Objects
-    fm.SetStr( "[%s]\n", APP_OBJECTS );
-    for( uint k = 0; k < MObjects.size(); k++ )
-    {
-        MapObject& mobj = *MObjects[ k ];
-        // Shared
-        fm.SetStr( "%-20s %d\n", "MapObjType", mobj.MapObjType );
-        fm.SetStr( "%-20s %s\n", "ProtoName", mobj.ProtoName->c_str() );
-        if( mobj.MapX )
-            fm.SetStr( "%-20s %d\n", "MapX", mobj.MapX );
-        if( mobj.MapY )
-            fm.SetStr( "%-20s %d\n", "MapY", mobj.MapY );
-        if( mobj.UID )
-            fm.SetStr( "%-20s %d\n", "UID", mobj.UID );
-        if( mobj.ContainerUID )
-            fm.SetStr( "%-20s %d\n", "ContainerUID", mobj.ContainerUID );
-        if( mobj.ParentUID )
-            fm.SetStr( "%-20s %d\n", "ParentUID", mobj.ParentUID );
-        if( mobj.ParentChildIndex )
-            fm.SetStr( "%-20s %d\n", "ParentChildIndex", mobj.ParentChildIndex );
-        if( mobj.LightColor )
-            fm.SetStr( "%-20s %d\n", "LightColor", mobj.LightColor );
-        if( mobj.LightDay )
-            fm.SetStr( "%-20s %d\n", "LightDay", mobj.LightDay );
-        if( mobj.LightDirOff )
-            fm.SetStr( "%-20s %d\n", "LightDirOff", mobj.LightDirOff );
-        if( mobj.LightDistance )
-            fm.SetStr( "%-20s %d\n", "LightDistance", mobj.LightDistance );
-        if( mobj.LightIntensity )
-            fm.SetStr( "%-20s %d\n", "LightIntensity", mobj.LightIntensity );
-        if( mobj.ScriptName[ 0 ] )
-            fm.SetStr( "%-20s %s\n", "ScriptName", mobj.ScriptName );
-        if( mobj.FuncName[ 0 ] )
-            fm.SetStr( "%-20s %s\n", "FuncName", mobj.FuncName );
-        if( mobj.UserData[ 0 ] )
-            fm.SetStr( "%-20s %d\n", "UserData0", mobj.UserData[ 0 ] );
-        if( mobj.UserData[ 1 ] )
-            fm.SetStr( "%-20s %d\n", "UserData1", mobj.UserData[ 1 ] );
-        if( mobj.UserData[ 2 ] )
-            fm.SetStr( "%-20s %d\n", "UserData2", mobj.UserData[ 2 ] );
-        if( mobj.UserData[ 3 ] )
-            fm.SetStr( "%-20s %d\n", "UserData3", mobj.UserData[ 3 ] );
-        if( mobj.UserData[ 4 ] )
-            fm.SetStr( "%-20s %d\n", "UserData4", mobj.UserData[ 4 ] );
-        if( mobj.UserData[ 5 ] )
-            fm.SetStr( "%-20s %d\n", "UserData5", mobj.UserData[ 5 ] );
-        if( mobj.UserData[ 6 ] )
-            fm.SetStr( "%-20s %d\n", "UserData6", mobj.UserData[ 6 ] );
-        if( mobj.UserData[ 7 ] )
-            fm.SetStr( "%-20s %d\n", "UserData7", mobj.UserData[ 7 ] );
-        if( mobj.UserData[ 8 ] )
-            fm.SetStr( "%-20s %d\n", "UserData8", mobj.UserData[ 8 ] );
-        if( mobj.UserData[ 9 ] )
-            fm.SetStr( "%-20s %d\n", "UserData9", mobj.UserData[ 9 ] );
-        // Critter
-        if( mobj.MapObjType == MAP_OBJECT_CRITTER )
-        {
-            if( mobj.MCritter.Dir )
-                fm.SetStr( "%-20s %d\n", "Critter_Dir", mobj.MCritter.Dir );
-            if( mobj.MCritter.Cond )
-                fm.SetStr( "%-20s %d\n", "Critter_Cond", mobj.MCritter.Cond );
-            if( mobj.MCritter.Anim1 )
-                fm.SetStr( "%-20s %d\n", "Critter_Anim1", mobj.MCritter.Anim1 );
-            if( mobj.MCritter.Anim2 )
-                fm.SetStr( "%-20s %d\n", "Critter_Anim2", mobj.MCritter.Anim2 );
-            if( mobj.Props )
-            {
-                for( size_t i = 0, j = mobj.Props->size(); i < j; i += 2 )
-                {
-                    if( mobj.Props->at( i )->length() > 0 && mobj.Props->at( i + 1 )->length() > 0 )
-                    {
-                        char property_name[ MAX_FOTEXT ];
-                        char property_value[ MAX_FOTEXT ];
-                        Str::Copy( property_name, mobj.Props->at( i )->c_str() );
-                        Str::Copy( property_value, mobj.Props->at( i + 1 )->c_str() );
-                        Str::Trim( property_name );
-                        Str::Trim( property_value );
-                        if( Str::Length( property_name ) > 0 && Str::Length( property_value ) > 0 )
-                        {
-                            fm.SetStr( "%-20s %s\n", "Critter_ParamIndex", property_name );
-                            fm.SetStr( "%-20s %s\n", "Critter_ParamValue", property_value );
-                        }
-                    }
-                }
-            }
-        }
-        // Item
-        else if( mobj.MapObjType == MAP_OBJECT_ITEM || mobj.MapObjType == MAP_OBJECT_SCENERY )
-        {
-            if( mobj.MItem.OffsetX )
-                fm.SetStr( "%-20s %d\n", "OffsetX", mobj.MItem.OffsetX );
-            if( mobj.MItem.OffsetY )
-                fm.SetStr( "%-20s %d\n", "OffsetY", mobj.MItem.OffsetY );
-            if( mobj.RunTime.PicMapName[ 0 ] )
-                fm.SetStr( "%-20s %s\n", "PicMapName", mobj.RunTime.PicMapName );
-            if( mobj.RunTime.PicInvName[ 0 ] )
-                fm.SetStr( "%-20s %s\n", "PicInvName", mobj.RunTime.PicInvName );
-            if( mobj.MapObjType == MAP_OBJECT_ITEM )
-            {
-                if( mobj.MItem.Count )
-                    fm.SetStr( "%-20s %d\n", "Item_Count", mobj.MItem.Count );
-                if( mobj.MItem.BrokenFlags )
-                    fm.SetStr( "%-20s %d\n", "Item_BrokenFlags", mobj.MItem.BrokenFlags );
-                if( mobj.MItem.BrokenCount )
-                    fm.SetStr( "%-20s %d\n", "Item_BrokenCount", mobj.MItem.BrokenCount );
-                if( mobj.MItem.Deterioration )
-                    fm.SetStr( "%-20s %d\n", "Item_Deterioration", mobj.MItem.Deterioration );
-                if( mobj.MItem.ItemSlot )
-                    fm.SetStr( "%-20s %d\n", "Item_ItemSlot", mobj.MItem.ItemSlot );
-                if( mobj.MItem.AmmoPid )
-                    WriteStr( fm, "%-20s %s\n", "Item_AmmoPid", mobj.MItem.AmmoPid );
-                if( mobj.MItem.AmmoCount )
-                    fm.SetStr( "%-20s %d\n", "Item_AmmoCount", mobj.MItem.AmmoCount );
-                if( mobj.MItem.LockerDoorId )
-                    fm.SetStr( "%-20s %d\n", "Item_LockerDoorId", mobj.MItem.LockerDoorId );
-                if( mobj.MItem.LockerCondition )
-                    fm.SetStr( "%-20s %d\n", "Item_LockerCondition", mobj.MItem.LockerCondition );
-                if( mobj.MItem.LockerComplexity )
-                    fm.SetStr( "%-20s %d\n", "Item_LockerComplexity", mobj.MItem.LockerComplexity );
-                if( mobj.MItem.TrapValue )
-                    fm.SetStr( "%-20s %d\n", "Item_TrapValue", mobj.MItem.TrapValue );
-                if( mobj.MItem.Val[ 0 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val0", mobj.MItem.Val[ 0 ] );
-                if( mobj.MItem.Val[ 1 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val1", mobj.MItem.Val[ 1 ] );
-                if( mobj.MItem.Val[ 2 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val2", mobj.MItem.Val[ 2 ] );
-                if( mobj.MItem.Val[ 3 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val3", mobj.MItem.Val[ 3 ] );
-                if( mobj.MItem.Val[ 4 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val4", mobj.MItem.Val[ 4 ] );
-                if( mobj.MItem.Val[ 5 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val5", mobj.MItem.Val[ 5 ] );
-                if( mobj.MItem.Val[ 6 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val6", mobj.MItem.Val[ 6 ] );
-                if( mobj.MItem.Val[ 7 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val7", mobj.MItem.Val[ 7 ] );
-                if( mobj.MItem.Val[ 8 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val8", mobj.MItem.Val[ 8 ] );
-                if( mobj.MItem.Val[ 9 ] )
-                    fm.SetStr( "%-20s %d\n", "Item_Val9", mobj.MItem.Val[ 9 ] );
-            }
-            // Scenery
-            else if( mobj.MapObjType == MAP_OBJECT_SCENERY )
-            {
-                if( mobj.MScenery.CanUse )
-                    fm.SetStr( "%-20s %d\n", "Scenery_CanUse", mobj.MScenery.CanUse );
-                if( mobj.MScenery.CanTalk )
-                    fm.SetStr( "%-20s %d\n", "Scenery_CanTalk", mobj.MScenery.CanTalk );
-                if( mobj.MScenery.TriggerNum )
-                    fm.SetStr( "%-20s %d\n", "Scenery_TriggerNum", mobj.MScenery.TriggerNum );
-                if( mobj.MScenery.ParamsCount )
-                    fm.SetStr( "%-20s %d\n", "Scenery_ParamsCount", mobj.MScenery.ParamsCount );
-                if( mobj.MScenery.Param[ 0 ] )
-                    fm.SetStr( "%-20s %d\n", "Scenery_Param0", mobj.MScenery.Param[ 0 ] );
-                if( mobj.MScenery.Param[ 1 ] )
-                    fm.SetStr( "%-20s %d\n", "Scenery_Param1", mobj.MScenery.Param[ 1 ] );
-                if( mobj.MScenery.Param[ 2 ] )
-                    fm.SetStr( "%-20s %d\n", "Scenery_Param2", mobj.MScenery.Param[ 2 ] );
-                if( mobj.MScenery.Param[ 3 ] )
-                    fm.SetStr( "%-20s %d\n", "Scenery_Param3", mobj.MScenery.Param[ 3 ] );
-                if( mobj.MScenery.Param[ 4 ] )
-                    fm.SetStr( "%-20s %d\n", "Scenery_Param4", mobj.MScenery.Param[ 4 ] );
-                if( mobj.MScenery.ToMap )
-                    WriteStr( fm, "%-20s %s\n", "Scenery_ToMap", mobj.MScenery.ToMap );
-                if( mobj.MScenery.ToEntire )
-                    fm.SetStr( "%-20s %d\n", "Scenery_ToEntire", mobj.MScenery.ToEntire );
-                if( mobj.MScenery.ToDir )
-                    fm.SetStr( "%-20s %d\n", "Scenery_ToDir", mobj.MScenery.ToDir );
-                if( mobj.MScenery.SpriteCut )
-                    fm.SetStr( "%-20s %d\n", "Scenery_SpriteCut", mobj.MScenery.SpriteCut );
-            }
-        }
-        fm.SetStr( "\n" );
-    }
-    fm.SetStr( "\n" );
-}
-#endif
-
 #ifdef FONLINE_SERVER
-bool ProtoMap::BindScripts( MapObjectPtrVec& mobjs )
+bool ProtoMap::BindScripts( EntityVec& entities )
 {
     int errors = 0;
 
     // Map script
-    if( Header.ScriptModule[ 0 ] || Header.ScriptFunc[ 0 ] )
+    if( GetScriptId() )
     {
-        char script_name[ MAX_FOTEXT ];
-        Str::Copy( script_name, Header.ScriptModule );
-        if( script_name[ 0 ] )
-            Str::Append( script_name, "@" );
-        Str::Append( script_name, Header.ScriptFunc );
-        if( script_name[ 0 ] )
+        hash func_num = Script::BindScriptFuncNumByScriptName( Str::GetName( GetScriptId() ), "void %s(Map&,bool)" );
+        if( !func_num )
         {
-            hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Map&,bool)" );
-            if( !func_num )
-            {
-                WriteLog( "Map '%s', can't bind map function '%s'.\n", pmapName.c_str(), script_name );
-                errors++;
-            }
+            WriteLog( "Map '%s', can't bind map function '%s'.\n", GetName(), Str::GetName( GetScriptId() ) );
+            errors++;
         }
     }
 
-    // Objects scripts
-    for( auto& mobj : mobjs )
+    // Entities scripts
+    for( auto& entity : entities )
     {
-        mobj->RunTime.BindScriptId = 0;
-
-        char script_name[ MAX_FOTEXT ];
-        Str::Copy( script_name, mobj->ScriptName );
-        if( script_name[ 0 ] )
-            Str::Append( script_name, "@" );
-        Str::Append( script_name, mobj->FuncName );
-        if( !script_name[ 0 ] )
-            continue;
-
-        if( mobj->MapObjType == MAP_OBJECT_CRITTER )
+        if( entity->Type == MUTUAL_CRITTER_TYPE && ( (MUTUAL_CRITTER*) entity )->GetScriptId() )
         {
+            const char* script_name = Str::GetName( ( (MUTUAL_CRITTER*) entity )->GetScriptId() );
             hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Critter&,bool)" );
             if( !func_num )
             {
-                WriteLog( "Map '%s', can't bind critter function '%s'.\n", pmapName.c_str(), script_name );
+                WriteLog( "Map '%s', can't bind critter function '%s'.\n", GetName(), script_name );
                 errors++;
             }
         }
-        else if( mobj->MapObjType == MAP_OBJECT_ITEM )
+        else if( entity->Type == EntityType::Item && ( (Item*) entity )->IsItem() && ( (Item*) entity )->GetScriptId() )
         {
+            const char* script_name = Str::GetName( ( (Item*) entity )->GetScriptId() );
             hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Item&,bool)" );
             if( !func_num )
             {
-                WriteLog( "Map '%s', can't bind item function '%s'.\n", pmapName.c_str(), script_name );
+                WriteLog( "Map '%s', can't bind item function '%s'.\n", GetName(), script_name );
                 errors++;
             }
         }
-        else if( mobj->MapObjType == MAP_OBJECT_SCENERY )
+        else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsItem() && ( (Item*) entity )->GetScriptId() )
         {
-            # define BIND_SCENERY_FUNC( params )                                                                                                            \
-                if( mobj->ProtoId != SP_SCEN_TRIGGER )                                                                                                      \
-                    mobj->RunTime.BindScriptId = Script::BindByScriptName( script_name, "bool %s(Critter&,Scenery&,CritterProperty,Item@" params, false );  \
-                else                                                                                                                                        \
-                    mobj->RunTime.BindScriptId = Script::BindByScriptName( script_name, "void %s(Critter&,Scenery&,bool,uint8" params, false )
-            switch( mobj->MScenery.ParamsCount )
-            {
-            case 1:
-                BIND_SCENERY_FUNC( ",int)" );
-                break;
-            case 2:
-                BIND_SCENERY_FUNC( ",int,int)" );
-                break;
-            case 3:
-                BIND_SCENERY_FUNC( ",int,int,int)" );
-                break;
-            case 4:
-                BIND_SCENERY_FUNC( ",int,int,int,int)" );
-                break;
-            case 5:
-                BIND_SCENERY_FUNC( ",int,int,int,int,int)" );
-                break;
-            default:
-                BIND_SCENERY_FUNC( ")" );
-                break;
-            }
+            Item* item = (Item*) entity;
+            const char* script_name = Str::GetName( item->GetScriptId() );
+            uint bind_id = 0;
+            ScriptArray* params = item->GetSceneryParams();
+            uint params_count = params->GetSize();
+            params->Release();
+            # define BIND_SCENERY_FUNC( count, params )                                                                                  \
+                if( params_count == count )                                                                                              \
+                {                                                                                                                        \
+                    if( item->GetProtoId() != SP_SCEN_TRIGGER )                                                                          \
+                        bind_id = Script::BindByScriptName( script_name, "bool %s(Critter&,Item&,CritterProperty,Item@" params, true );  \
+                    else                                                                                                                 \
+                        bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,Item&,bool,uint8" params, true );             \
+                }
+            BIND_SCENERY_FUNC( 0, ")" );
+            BIND_SCENERY_FUNC( 1, ",int)" );
+            BIND_SCENERY_FUNC( 2, ",int,int)" );
+            BIND_SCENERY_FUNC( 3, ",int,int,int)" );
+            BIND_SCENERY_FUNC( 4, ",int,int,int,int)" );
+            BIND_SCENERY_FUNC( 5, ",int,int,int,int,int)" );
             # undef BIND_SCENERY_FUNC
-
-            if( !mobj->RunTime.BindScriptId )
+            if( !bind_id )
             {
-                WriteLog( "Map '%s', can't bind scenery function '%s'.\n", pmapName.c_str(), script_name );
+                WriteLog( "Map '%s', can't bind scenery function '%s'.\n", GetName(), script_name );
                 errors++;
             }
         }
@@ -1321,15 +1098,15 @@ bool ProtoMap::BindScripts( MapObjectPtrVec& mobjs )
 }
 #endif // FONLINE_SERVER
 
-bool ProtoMap::Refresh()
+bool ProtoMap::Load()
 {
     // Find file
     FilesCollection maps( "fomap" );
     const char* path;
-    FileManager& map_file = maps.FindFile( pmapName.c_str(), &path );
+    FileManager& map_file = maps.FindFile( GetName(), &path );
     if( !map_file.IsLoaded() )
     {
-        WriteLog( "Map '%s' not found.\n", pmapName.c_str() );
+        WriteLog( "Map '%s' not found.\n", GetName() );
         return false;
     }
 
@@ -1339,9 +1116,16 @@ bool ProtoMap::Refresh()
     pmapDir = dir;
 
     // Load from file
-    if( !LoadTextFormat( map_file.GetCStr() ) )
+    const char* data = map_file.GetCStr();
+    bool is_old_format = ( Str::Substring( data, "[Header]" ) && Str::Substring( data, "[Tiles]" ) && Str::Substring( data, "[Objects]" ) );
+    if( is_old_format && !LoadOldTextFormat( data ) )
     {
-        WriteLog( "Unable to load map '%s'.\n", pmapName.c_str() );
+        WriteLog( "Unable to load map '%s' from old map format.\n", GetName() );
+        return false;
+    }
+    else if( !is_old_format && !LoadTextFormat( data ) )
+    {
+        WriteLog( "Unable to load map '%s'.\n", GetName() );
         return false;
     }
 
@@ -1351,95 +1135,38 @@ bool ProtoMap::Refresh()
 #ifdef FONLINE_MAPPER
 void ProtoMap::GenNew()
 {
-    Clear();
-    Header.Version = FO_MAP_VERSION_TEXT7;
-    Header.MaxHexX = MAXHEX_DEF;
-    Header.MaxHexY = MAXHEX_DEF;
-    pmapName = "";
-    pmapPid = 0;
+    SetWidth( MAXHEX_DEF );
+    SetHeight( MAXHEX_DEF );
 
     // Morning	 5.00 -  9.59	 300 - 599
     // Day		10.00 - 18.59	 600 - 1139
     // Evening	19.00 - 22.59	1140 - 1379
     // Nigh		23.00 -  4.59	1380
-    Header.DayTime[ 0 ] = 300;
-    Header.DayTime[ 1 ] = 600;
-    Header.DayTime[ 2 ] = 1140;
-    Header.DayTime[ 3 ] = 1380;
-    Header.DayColor[ 0 ] = 18;
-    Header.DayColor[ 1 ] = 128;
-    Header.DayColor[ 2 ] = 103;
-    Header.DayColor[ 3 ] = 51;
-    Header.DayColor[ 4 ] = 18;
-    Header.DayColor[ 5 ] = 128;
-    Header.DayColor[ 6 ] = 95;
-    Header.DayColor[ 7 ] = 40;
-    Header.DayColor[ 8 ] = 53;
-    Header.DayColor[ 9 ] = 128;
-    Header.DayColor[ 10 ] = 86;
-    Header.DayColor[ 11 ] = 29;
-
-    # ifdef FONLINE_MAPPER
-    TilesField.resize( Header.MaxHexX * Header.MaxHexY );
-    RoofsField.resize( Header.MaxHexX * Header.MaxHexY );
-    # endif
+    IntVec vec = { 300, 600, 1140, 1380 };
+    UCharVec vec2 = { 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29 };
+    ScriptArray* arr = Script::CreateArray( "int[]" );
+    Script::AppendVectorToArray( vec, arr );
+    SetDayTime( arr );
+    arr->Release();
+    ScriptArray* arr2 = Script::CreateArray( "uint8[]" );
+    Script::AppendVectorToArray( vec2, arr2 );
+    SetDayColor( arr2 );
+    arr2->Release();
 }
 
 bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 {
-    // Fill tiles from cached fields
-    TilesField.resize( Header.MaxHexX * Header.MaxHexY );
-    RoofsField.resize( Header.MaxHexX * Header.MaxHexY );
-    for( ushort hy = 0; hy < Header.MaxHexY; hy++ )
-    {
-        for( ushort hx = 0; hx < Header.MaxHexX; hx++ )
-        {
-            TileVec& tiles = TilesField[ hy * Header.MaxHexX + hx ];
-            for( uint i = 0, j = (uint) tiles.size(); i < j; i++ )
-                Tiles.push_back( tiles[ i ] );
-            TileVec& roofs = RoofsField[ hy * Header.MaxHexX + hx ];
-            for( uint i = 0, j = (uint) roofs.size(); i < j; i++ )
-                Tiles.push_back( roofs[ i ] );
-        }
-    }
-
-    // Delete non used UIDs
-    for( uint i = 0, j = (uint) MObjects.size(); i < j; i++ )
-    {
-        MapObject* mobj = MObjects[ i ];
-        if( !mobj->UID )
-            continue;
-
-        bool founded = false;
-        for( uint k = 0, l = (uint) MObjects.size(); k < l; k++ )
-        {
-            MapObject* mobj_ = MObjects[ k ];
-            if( mobj_->ContainerUID == mobj->UID || mobj_->ParentUID == mobj->UID )
-            {
-                founded = true;
-                break;
-            }
-        }
-        if( !founded )
-            mobj->UID = 0;
-    }
-
     // Fill data
-    FileManager fm;
-    Header.Version = FO_MAP_VERSION_TEXT7;
-    SaveTextFormat( fm );
-    Tiles.clear();
+    IniParser file;
+    SaveTextFormat( file );
 
     // Save
-    string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : pmapName ) + ".fomap";
-    if( !fm.SaveOutBufToFile( save_fname.c_str(), PT_SERVER_MODULES ) )
+    string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : string( GetName() ) ) + ".fomap";
+    if( !file.SaveFile( save_fname.c_str(), PT_SERVER_MODULES ) )
     {
-        WriteLog( "Unable write file.\n" );
-        fm.ClearOutBuf();
+        WriteLog( "Unable write file '%s' in modules.\n", save_fname.c_str() );
         return false;
     }
-
-    fm.ClearOutBuf();
     return true;
 }
 
@@ -1455,7 +1182,7 @@ bool ProtoMap::IsMapFile( const char* fname )
         IniParser txt;
         if( !txt.AppendFile( fname, PT_ROOT ) )
             return false;
-        return txt.IsApp( APP_HEADER ) && txt.IsApp( APP_TILES ) && txt.IsApp( APP_OBJECTS );
+        return txt.IsApp( "Header" ) && txt.IsApp( "Tiles" ) && txt.IsApp( "Objects" );
     }
 
     return false;
@@ -1549,64 +1276,53 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear( uint num, uint num_ext, ushort hx,
 
 void ProtoMap::GetEntires( uint num, EntiresVec& entires )
 {
-    for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
-    {
-        MapEntire& entire = mapEntires[ i ];
+    for( auto& entire : mapEntires )
         if( num == uint( -1 ) || entire.Number == num )
             entires.push_back( entire );
-    }
 }
 
-MapObject* ProtoMap::GetMapScenery( ushort hx, ushort hy, hash pid )
+Item* ProtoMap::GetMapScenery( ushort hx, ushort hy, hash pid )
 {
-    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
-    {
-        MapObject* mobj = *it;
-        if( ( !pid || mobj->ProtoId == pid ) && mobj->MapX == hx && mobj->MapY == hy )
-            return mobj;
-    }
+    for( auto& item : SceneryVec )
+        if( ( !pid || item->GetProtoId() == pid ) && item->GetHexX() == hx && item->GetHexY() == hy )
+            return item;
     return nullptr;
 }
 
-void ProtoMap::GetMapSceneriesHex( ushort hx, ushort hy, MapObjectPtrVec& mobjs )
+void ProtoMap::GetMapSceneriesHex( ushort hx, ushort hy, ItemVec& items )
 {
-    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
-    {
-        MapObject* mobj = *it;
-        if( mobj->MapX == hx && mobj->MapY == hy )
-            mobjs.push_back( mobj );
-    }
+    for( auto& item : SceneryVec )
+        if( item->GetHexX() == hx && item->GetHexY() == hy )
+            items.push_back( item );
 }
 
-void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, hash pid, MapObjectPtrVec& mobjs )
+void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items )
 {
-    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
-    {
-        MapObject* mobj = *it;
-        if( ( !pid || mobj->ProtoId == pid ) && DistGame( mobj->MapX, mobj->MapY, hx, hy ) <= radius )
-            mobjs.push_back( mobj );
-    }
+    for( auto& item : SceneryVec )
+        if( ( !pid || item->GetProtoId() == pid ) && DistGame( item->GetHexX(), item->GetHexY(), hx, hy ) <= radius )
+            items.push_back( item );
 }
 
-void ProtoMap::GetMapSceneriesByPid( hash pid, MapObjectPtrVec& mobjs )
+void ProtoMap::GetMapSceneriesByPid( hash pid, ItemVec& items )
 {
-    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
-    {
-        MapObject* mobj = *it;
-        if( !pid || mobj->ProtoId == pid )
-            mobjs.push_back( mobj );
-    }
+    for( auto& item : SceneryVec )
+        if( !pid || item->GetProtoId()  == pid )
+            items.push_back( item );
 }
 
-MapObject* ProtoMap::GetMapGrid( ushort hx, ushort hy )
+Item* ProtoMap::GetMapGrid( ushort hx, ushort hy )
 {
-    for( auto it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
-    {
-        MapObject* mobj = *it;
-        if( mobj->MapX == hx && mobj->MapY == hy )
-            return mobj;
-    }
+    for( auto& item : GridsVec )
+        if( item->GetHexX() == hx && item->GetHexY() == hy )
+            return item;
     return nullptr;
 }
 
 #endif // FONLINE_SERVER
+
+CLASS_PROPERTY_ALIAS_IMPL( ProtoLocation, Location, ScriptArray *, MapProtos );
+
+ProtoLocation::ProtoLocation( hash pid ): ProtoEntity( pid, Location::PropertiesRegistrator )
+{
+    //
+}

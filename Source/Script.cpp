@@ -1050,17 +1050,10 @@ string Script::GetProfilerStatistics()
     return "Profiler not enabled.";
 }
 
-PropertyRegistrator* Script::FindEntityRegistrator( const char* class_name )
+bool Script::RestoreEntity( const char* class_name, uint id, const StrMap& props_data )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    return edata->PragmaCB->FindEntityRegistrator( class_name );
-}
-
-bool Script::RestoreEntity( const char* class_name, uint id, Properties& props )
-{
-    EngineData* edata = (EngineData*) Engine->GetUserData();
-    edata->PragmaCB->RestoreEntity( class_name, id, props );
-    return true;
+    return edata->PragmaCB->RestoreEntity( class_name, id, props_data );
 }
 
 const char* Script::GetActiveModuleName()

@@ -5,17 +5,16 @@
 #include "Keyboard.h"
 #include "SpriteManager.h"
 #include "HexManager.h"
-#include "ItemManager.h"
 #include "Item.h"
+#include "MapCl.h"
 #include "CritterCl.h"
 #include "Text.h"
-#include "CritterData.h"
-#include "CritterManager.h"
 #include "ResourceManager.h"
 #include "CritterType.h"
 #include "Script.h"
 #include "MsgFiles.h"
 #include "IniParser.h"
+#include "ProtoManager.h"
 
 // Fonts
 #define FONT_FO                        ( 0 )
@@ -37,7 +36,8 @@ public:
     bool             IsMapperStarted;
     static char      ServerWritePath[ MAX_FOPATH ];
     static char      ClientWritePath[ MAX_FOPATH ];
-    uint             AnyId;
+    PropertyVec      ShowCrProps;
+    PropertyVec      ShowItemProps;
 
     FOMapper();
     bool Init();
@@ -182,7 +182,7 @@ public:
 
     // Maps
     ProtoMapVec LoadedProtoMaps;
-    ProtoMap*   CurProtoMap;
+    ProtoMap*   ActiveProtoMap;
 
     // Tabs
     #define DEFAULT_SUB_TAB            "000 - all"
@@ -227,7 +227,7 @@ public:
     uint             TabIndex[ INT_MODE_COUNT ];
     int              InContScroll;
     int              ListScroll;
-    MapObject*       InContObject;
+    Item*            InContItem;
     bool             DrawRoof;
     int              TileLayer;
 
@@ -239,41 +239,9 @@ public:
     bool IsCritMode()   { return CurNpcProtos && CurProtoScroll; }
 
     // Select
-    Rect IntBSelectItem, IntBSelectScen, IntBSelectWall, IntBSelectCrit, IntBSelectTile, IntBSelectRoof;
-    bool IsSelectItem, IsSelectScen, IsSelectWall, IsSelectCrit, IsSelectTile, IsSelectRoof;
-
-    // Select Map Object
-    struct SelMapObj
-    {
-        MapObject*      MapObj;
-        ItemHex*        MapItem;
-        CritterCl*      MapNpc;
-        MapObjectPtrVec Childs;
-
-        SelMapObj( MapObject* mobj, ItemHex* itm ): MapObj( mobj ), MapItem( itm ), MapNpc( nullptr ) {}
-        SelMapObj( MapObject* mobj, CritterCl* npc ): MapObj( mobj ), MapItem( nullptr ), MapNpc( npc ) {}
-        SelMapObj( const SelMapObj& r )
-        {
-            MapObj = r.MapObj;
-            MapItem = r.MapItem;
-            MapNpc = r.MapNpc;
-            Childs = r.Childs;
-        }
-        SelMapObj& operator=( const SelMapObj& r )
-        {
-            MapObj = r.MapObj;
-            MapItem = r.MapItem;
-            MapNpc = r.MapNpc;
-            Childs = r.Childs;
-            return *this;
-        }
-        bool operator==( const MapObject* r ) { return MapObj == r; }
-        bool IsItem()                         { return MapItem != nullptr; }
-        bool IsNpc()                          { return MapNpc != nullptr; }
-        bool IsContainer()                    { return IsNpc() || ( IsItem() && MapItem->Proto->GetType() == ITEM_TYPE_CONTAINER ); }
-    };
-    typedef vector< SelMapObj > SelMapProtoItemVec;
-    SelMapProtoItemVec SelectedObj;
+    Rect      IntBSelectItem, IntBSelectScen, IntBSelectWall, IntBSelectCrit, IntBSelectTile, IntBSelectRoof;
+    bool      IsSelectItem, IsSelectScen, IsSelectWall, IsSelectCrit, IsSelectTile, IsSelectRoof;
+    EntityVec SelectedEntities;
 
     // Select Tile, Roof
     struct SelMapTile
@@ -282,42 +250,39 @@ public:
         bool   IsRoof;
 
         SelMapTile( ushort hx, ushort hy, bool is_roof ): HexX( hx ), HexY( hy ), IsRoof( is_roof ) {}
-        SelMapTile( const SelMapTile& r ) { memcpy( this, &r, sizeof( SelMapTile ) ); }
-        SelMapTile& operator=( const SelMapTile& r )
-        {
-            memcpy( this, &r, sizeof( SelMapTile ) );
-            return *this;
-        }
     };
     typedef vector< SelMapTile > SelMapTileVec;
     SelMapTileVec SelectedTile;
 
     // Select methods
-    MapObject* FindMapObject( ProtoMap& pmap, ushort hx, ushort hy, uchar mobj_type, hash pid, uint skip );
-    void       FindMapObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, uchar mobj_type, hash pid, MapObjectPtrVec& objects );
-    MapObject* FindMapObject( ushort hx, ushort hy, uchar mobj_type, hash pid, bool skip_selected );
-    void       UpdateMapObject( MapObject* mobj );
-    void       MoveMapObject( MapObject* mobj, ushort hx, ushort hy );
-    void       DeleteMapObject( MapObject* mobj );
-    void       SelectClear();
-    void       SelectAddItem( ItemHex* item );
-    void       SelectAddCrit( CritterCl* npc );
-    void       SelectAddTile( ushort hx, ushort hy, bool is_roof );
-    void       SelectAdd( MapObject* mobj, bool select_childs = true );
-    void       SelectErase( MapObject* mobj );
-    void       SelectAll();
-    bool       SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y );
-    void       SelectDelete();
+    void MoveEntity( Entity* entity, ushort hx, ushort hy );
+    void DeleteEntity( Entity* entity );
+    void SelectClear();
+    void SelectAddItem( ItemHex* item );
+    void SelectAddCrit( CritterCl* npc );
+    void SelectAddTile( ushort hx, ushort hy, bool is_roof );
+    void SelectAdd( Entity* entity );
+    void SelectErase( Entity* entity );
+    void SelectAll();
+    bool SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y );
+    void SelectDelete();
 
-    // Parse new
-    StrVec ShowCritterProps;
-
-    MapObject* ParseProto( hash pid, ushort hx, ushort hy, MapObject* owner, bool is_child = false );
-    void       ParseTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof );
-    void       ParseNpc( hash pid, ushort hx, ushort hy );
-    MapObject* ParseMapObj( MapObject* mobj );
+    // Entites creation
+    CritterCl* AddCritter( hash pid, ushort hx, ushort hy );
+    Item*      AddItem( hash pid, ushort hx, ushort hy, Entity* owner );
+    void       AddTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof );
+    Entity*    CloneEntity( Entity* entity );
 
     // Buffer
+    struct EntityBuf
+    {
+        ushort               HexX;
+        ushort               HexY;
+        EntityType           Type;
+        ProtoEntity*         Proto;
+        Properties*          Props;
+        vector< EntityBuf* > Children;
+    };
     struct TileBuf
     {
         hash   Name;
@@ -326,10 +291,11 @@ public:
         uchar  Layer;
         bool   IsRoof;
     };
-    typedef vector< TileBuf > TileBufVec;
+    typedef vector< TileBuf >   TileBufVec;
+    typedef vector< EntityBuf > EntityBufVec;
 
-    MapObjectPtrVec MapObjBuffer;
-    TileBufVec      TilesBuffer;
+    EntityBufVec EntitiesBuffer;
+    TileBufVec   TilesBuffer;
 
     void BufferCopy();
     void BufferCut();
@@ -347,8 +313,9 @@ public:
     bool       ObjToAll;
 
     void ObjDraw();
+    void DrawLine( const char* name, const char* text, bool is_const, Rect& r );
     void ObjKeyDown( uchar dik, const char* dik_text );
-    void ObjKeyDownA( MapObject* o, uchar dik, const char* dik_text );
+    void ObjKeyDownA( Entity* entity, uchar dik, const char* dik_text );
 
     // Console
     AnyFrames*       ConsolePic;
@@ -381,19 +348,6 @@ public:
         string Time;
 
         MessBoxMessage( int type, const char* mess, const char* time ): Type( type ), Mess( mess ), Time( time ) {}
-        MessBoxMessage( const MessBoxMessage& r )
-        {
-            Type = r.Type;
-            Mess = r.Mess;
-            Time = r.Time;
-        }
-        MessBoxMessage& operator=( const MessBoxMessage& r )
-        {
-            Type = r.Type;
-            Mess = r.Mess;
-            Time = r.Time;
-            return *this;
-        }
     };
     typedef vector< MessBoxMessage > MessBoxMessageVec;
 
@@ -418,59 +372,42 @@ public:
 
     struct SScriptFunc
     {
-        static ScriptString* MapperObject_opIndex( MapObject& mobj, int prop_enum );
-        static ScriptString* MapperObject_get_ScriptName( MapObject& mobj );
-        static void          MapperObject_set_ScriptName( MapObject& mobj, ScriptString* str );
-        static ScriptString* MapperObject_get_FuncName( MapObject& mobj );
-        static void          MapperObject_set_FuncName( MapObject& mobj, ScriptString* str );
-        static uchar         MapperObject_get_Critter_Cond( MapObject& mobj );
-        static void          MapperObject_set_Critter_Cond( MapObject& mobj, uchar value );
-        static ScriptString* MapperObject_get_PicMap( MapObject& mobj );
-        static void          MapperObject_set_PicMap( MapObject& mobj, ScriptString* str );
-        static ScriptString* MapperObject_get_PicInv( MapObject& mobj );
-        static void          MapperObject_set_PicInv( MapObject& mobj, ScriptString* str );
-        static void          MapperObject_Update( MapObject& mobj );
-        static MapObject*    MapperObject_AddChild( MapObject& mobj, hash pid );
-        static uint          MapperObject_GetChilds( MapObject& mobj, ScriptArray* objects );
-        static void          MapperObject_MoveToHex( MapObject& mobj, ushort hx, ushort hy );
-        static void          MapperObject_MoveToHexOffset( MapObject& mobj, int x, int y );
-        static void          MapperObject_MoveToDir( MapObject& mobj, uchar dir );
+        static Item* Item_AddChild( Item& item, hash pid );
+        static Item* Crit_AddChild( CritterCl& cr, hash pid );
+        static uint  Item_GetChildren( Item& item, ScriptArray* children );
+        static uint  Crit_GetChildren( CritterCl& cr, ScriptArray* children );
 
-        static ScriptString* MapperMap_get_Name( ProtoMap& pmap );
-        static MapObject*    MapperMap_AddObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, hash pid );
-        static MapObject*    MapperMap_GetObject( ProtoMap& pmap, ushort hx, ushort hy, int mobj_type, hash pid, uint skip );
-        static uint          MapperMap_GetObjects( ProtoMap& pmap, ushort hx, ushort hy, uint radius, int mobj_type, hash pid, ScriptArray* objects );
-        static void          MapperMap_UpdateObjects( ProtoMap& pmap );
-        static void          MapperMap_Resize( ProtoMap& pmap, ushort width, ushort height );
-        static uint          MapperMap_GetTilesCount( ProtoMap& pmap, ushort hx, ushort hy, bool roof );
-        static void          MapperMap_DeleteTile( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer );
-        static hash          MapperMap_GetTileHash( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer );
-        static void          MapperMap_AddTileHash( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, uint pic_hash );
-        static ScriptString* MapperMap_GetTileName( ProtoMap& pmap, ushort hx, ushort hy, bool roof, int layer );
-        static void          MapperMap_AddTileName( ProtoMap& pmap, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, ScriptString* pic_name );
-        static uint          MapperMap_GetDayTime( ProtoMap& pmap, uint day_part );
-        static void          MapperMap_SetDayTime( ProtoMap& pmap, uint day_part, uint time );
-        static void          MapperMap_GetDayColor( ProtoMap& pmap, uint day_part, uchar& r, uchar& g, uchar& b );
-        static void          MapperMap_SetDayColor( ProtoMap& pmap, uint day_part, uchar r, uchar g, uchar b );
-        static ScriptString* MapperMap_get_ScriptModule( ProtoMap& pmap );
-        static void          MapperMap_set_ScriptModule( ProtoMap& pmap, ScriptString* str );
-        static ScriptString* MapperMap_get_ScriptFunc( ProtoMap& pmap );
-        static void          MapperMap_set_ScriptFunc( ProtoMap& pmap, ScriptString* str );
+        static Item*      Global_AddItem( hash pid, ushort hx, ushort hy );
+        static CritterCl* Global_AddCritter( hash pid, ushort hx, ushort hy );
+        static Item*      Global_GetItemByHex( ushort hx, ushort hy );
+        static uint       Global_GetItemsByHex( ushort hx, ushort hy, ScriptArray* items );
+        static CritterCl* Global_GetCritterByHex( ushort hx, ushort hy, int find_type );
+        static uint       Global_GetCrittersByHex( ushort hx, ushort hy, int find_type, ScriptArray* critters );
+        static void       Global_MoveEntity( Entity& entity, ushort hx, ushort hy );
+        static void       Global_DeleteEntity( Entity& entity );
+        static void       Global_DeleteEntities( ScriptArray& entities );
+        static void       Global_SelectEntity( Entity& entity, bool set );
+        static void       Global_SelectEntities( ScriptArray& entities, bool set );
+        static Entity*    Global_GetSelectedEntity();
+        static uint       Global_GetSelectedEntities( ScriptArray* entities );
 
-        static void       Global_ShowProperty( int prop_enum );
-        static void       Global_AllowSlot( uchar index, bool enable_send );
-        static ProtoMap*  Global_LoadMap( ScriptString& file_name, int path_type );
-        static void       Global_UnloadMap( ProtoMap* pmap );
-        static bool       Global_SaveMap( ProtoMap* pmap, ScriptString* custom_name );
-        static bool       Global_ShowMap( ProtoMap* pmap );
-        static int        Global_GetLoadedMaps( ScriptArray* maps );
-        static uint       Global_GetMapFileNames( ScriptString* dir, ScriptArray* names );
-        static void       Global_DeleteObject( MapObject* mobj );
-        static void       Global_DeleteObjects( ScriptArray& objects );
-        static void       Global_SelectObject( MapObject* mobj, bool set );
-        static void       Global_SelectObjects( ScriptArray& objects, bool set );
-        static MapObject* Global_GetSelectedObject();
-        static uint       Global_GetSelectedObjects( ScriptArray* objects );
+        static uint          Global_GetTilesCount( ushort hx, ushort hy, bool roof );
+        static void          Global_DeleteTile( ushort hx, ushort hy, bool roof, int layer );
+        static hash          Global_GetTileHash( ushort hx, ushort hy, bool roof, int layer );
+        static void          Global_AddTileHash( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash pic_hash );
+        static ScriptString* Global_GetTileName( ushort hx, ushort hy, bool roof, int layer );
+        static void          Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, ScriptString* pic_name );
+
+        static void      Global_ShowCritterProperty( int prop_enum );
+        static void      Global_ShowItemProperty( int prop_enum );
+        static void      Global_AllowSlot( uchar index, bool enable_send );
+        static ProtoMap* Global_LoadMap( ScriptString& file_name, int path_type );
+        static void      Global_UnloadMap( ProtoMap* pmap );
+        static bool      Global_SaveMap( ProtoMap* pmap, ScriptString* custom_name );
+        static bool      Global_ShowMap( ProtoMap* pmap );
+        static int       Global_GetLoadedMaps( ScriptArray* maps );
+        static uint      Global_GetMapFileNames( ScriptString* dir, ScriptArray* names );
+        static void      Global_ResizeMap( ushort width, ushort height );
 
         static uint Global_TabGetTileDirs( int tab, ScriptArray* dir_names, ScriptArray* include_subdirs );
         static uint Global_TabGetItemPids( int tab, ScriptString* sub_tab, ScriptArray* item_pids );
@@ -506,11 +443,11 @@ public:
         static ScriptString* Global_ReplaceTextStr( ScriptString& text, ScriptString& replace, ScriptString& str );
         static ScriptString* Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i );
 
-        static void       Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
-        static uint       Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
-        static bool       Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
-        static bool       Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
-        static MapObject* Global_GetMonitorObject( int x, int y, bool ignore_interface );
+        static void    Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
+        static uint    Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
+        static bool    Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
+        static bool    Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
+        static Entity* Global_GetMonitorObject( int x, int y, bool ignore_interface );
 
         static uint Global_LoadSprite( ScriptString& spr_name, int path_index );
         static uint Global_LoadSpriteHash( uint name_hash );
@@ -525,7 +462,8 @@ public:
         static void Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
         static void Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags );
         static void Global_DrawPrimitive( int primitive_type, ScriptArray& data );
-        static void Global_DrawMapSprite( ushort hx, ushort hy, hash proto_id, uint spr_id, int spr_index, int ox, int oy );
+        static void Global_DrawMapSpriteProto( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, hash proto_id );
+        static void Global_DrawMapSpriteExt( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, bool is_flat, bool no_light, int draw_order, int draw_order_hy_offset, int corner, bool disable_egg, uint color, uint contour_color );
         static void Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
         static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
         static void Global_PushDrawScissor( int x, int y, int w, int h );
@@ -541,6 +479,9 @@ public:
         static uint          Global_GetCritterAlias( uint cr_type );
         static ScriptString* Global_GetCritterTypeName( uint cr_type );
         static ScriptString* Global_GetCritterSoundName( uint cr_type );
+
+        static Map*          ClientCurMap;
+        static Location*     ClientCurLocation;
     };
 };
 

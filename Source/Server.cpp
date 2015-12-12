@@ -136,9 +136,6 @@ void FOServer::Finish()
     // Managers
     EntityMngr.ClearEntities();
     AIMngr.Finish();
-    MapMngr.Finish();
-    CrMngr.Finish();
-    ItemMngr.Finish();
     DlgMngr.Finish();
     FinishScriptSystem();
     FinishLangPacks();
@@ -858,7 +855,9 @@ void FOServer::Net_Listen( void* )
             #endif
         }
 
-        Client* cl = new Client();
+        ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( Str::GetHash( "Player" ) );
+        RUNTIME_ASSERT( cl_proto );
+        Client*       cl = new Client( cl_proto );
 
         // Socket
         cl->Sock = sock;
@@ -2181,7 +2180,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             break;
         }
 
-        if( hex_x >= map->GetMaxHexX() || hex_y >= map->GetMaxHexY() )
+        if( hex_x >= map->GetWidth() || hex_y >= map->GetHeight() )
         {
             logcb( "Invalid hex position." );
             break;
@@ -2383,7 +2382,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ADMIN_PANEL;
 
         Map* map = MapMngr.GetMap( cl_->GetMapId() );
-        if( !map || hex_x >= map->GetMaxHexX() || hex_y >= map->GetMaxHexY() )
+        if( !map || hex_x >= map->GetWidth() || hex_y >= map->GetHeight() )
         {
             logcb( "Wrong hexes or critter on global map." );
             return;
@@ -2430,7 +2429,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ADMIN_PANEL;
 
         Map* map = MapMngr.GetMap( cl_->GetMapId() );
-        Npc* npc = CrMngr.CreateNpc( pid, nullptr, nullptr, nullptr, map, hex_x, hex_y, dir, true );
+        Npc* npc = CrMngr.CreateNpc( pid, nullptr, map, hex_x, hex_y, dir, true );
         if( !npc )
             logcb( "Npc not created." );
         else
@@ -2580,18 +2579,19 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             ResynchronizeLogicThreads();
     }
     break;
-    case CMD_RELOADLOCATIONS:
+    case COMMAND_RELOAD_PROTOS:
     {
         CHECK_ALLOW_COMMAND;
 
         SynchronizeLogicThreads();
 
-        if( MapMngr.LoadLocationsProtos() )
-            logcb( "Reload proto locations success." );
+        if( ProtoMngr.LoadProtosFromFiles() )
+            logcb( "Reload protos success." );
         else
-            logcb( "Reload proto locations fail." );
+            logcb( "Reload protos fail." );
 
         InitLangPacksLocations( LangPacks );
+        InitLangPacksItems( LangPacks );
         GenerateUpdateFiles();
 
         ResynchronizeLogicThreads();
@@ -3159,7 +3159,7 @@ void FOServer::SaveGameInfoFile( IniParser& data )
     if( SingleplayerSave.Valid )
     {
         StrMap& client_kv = data.SetApp( "Client" );
-        SingleplayerSave.CrProps->SaveToText( client_kv );
+        SingleplayerSave.CrProps->SaveToText( client_kv, nullptr );
         client_kv[ "$Id" ] = 1;
         client_kv[ "$Name" ] = SingleplayerSave.Name;
 
@@ -3398,12 +3398,6 @@ bool FOServer::InitReal()
     // Managers
     if( !AIMngr.Init() )
         return false;                    // NpcAi manager
-    if( !ItemMngr.Init() )
-        return false;                    // Item manager
-    if( !CrMngr.Init() )
-        return false;                    // Critter manager
-    if( !MapMngr.Init() )
-        return false;                    // Map manager
     if( !DlgMngr.LoadDialogs() )
         return false;                    // Dialog manager
     if( !InitCrafts( LangPacks ) )
@@ -3412,12 +3406,8 @@ bool FOServer::InitReal()
         return false;                    // Critter types
 
     // Prototypes
-    if( !ItemMngr.LoadProtos() )
-        return false;                          // Proto items
-    if( !CrMngr.LoadProtos() )
-        return false;                          // Proto critters
-    if( !MapMngr.LoadLocationsProtos() )
-        return false;                          // Proto locations and maps
+    if( !ProtoMngr.LoadProtosFromFiles() )
+        return false;
 
     // Language packs
     if( !InitLangPacksDialogs( LangPacks ) )
@@ -3750,10 +3740,10 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
     for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
         it->Msg[ TEXTMSG_DLG ].Clear();
 
-    ProtoCritterMap& all_protos = CrMngr.GetAllProtos();
-    for( auto it = all_protos.begin(); it != all_protos.end(); ++it )
+    auto& all_protos = ProtoMngr.GetProtoCritters();
+    for( auto& kv : all_protos )
     {
-        ProtoCritter* proto = it->second;
+        ProtoCritter* proto = kv.second;
         for( uint i = 0, j = (uint) proto->TextsLang.size(); i < j; i++ )
         {
             for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
@@ -3798,10 +3788,10 @@ bool FOServer::InitLangPacksLocations( LangPackVec& lang_packs )
     for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
         it->Msg[ TEXTMSG_LOCATIONS ].Clear();
 
-    ProtoLocation* ploc = nullptr;
-    uint           index = 0;
-    while( ploc = MapMngr.GetProtoLocationByIndex( index++ ) )
+    auto& protos = ProtoMngr.GetProtoLocations();
+    for( auto& kv : protos )
     {
+        ProtoLocation* ploc = kv.second;
         for( uint i = 0, j = (uint) ploc->TextsLang.size(); i < j; i++ )
         {
             for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
@@ -3826,10 +3816,10 @@ bool FOServer::InitLangPacksItems( LangPackVec& lang_packs )
     for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
         it->Msg[ TEXTMSG_ITEM ].Clear();
 
-    ProtoItemMap& all_protos = ItemMngr.GetAllProtos();
-    for( auto it = all_protos.begin(); it != all_protos.end(); ++it )
+    auto& protos = ProtoMngr.GetProtoItems();
+    for( auto& kv : protos )
     {
-        ProtoItem* proto = it->second;
+        ProtoItem* proto = kv.second;
         for( uint i = 0, j = (uint) proto->TextsLang.size(); i < j; i++ )
         {
             for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
@@ -4230,7 +4220,7 @@ bool FOServer::SaveClient( Client* cl )
     Str::Append( fname, ".foclient" );
 
     IniParser data;
-    cl->Props.SaveToText( data.SetApp( "Client" ) );
+    cl->Props.SaveToText( data.SetApp( "Client" ), &cl->Proto->Props );
     if( !data.SaveFile( fname, PT_SERVER_CLIENTS ) )
     {
         WriteLog( "Unable to save client '%s'.\n", fname );
@@ -4424,14 +4414,8 @@ void FOServer::UnloadWorld()
     Job::Erase( JOB_CRITTER );
     Job::Erase( JOB_MAP );
 
-    // Locations / maps
-    MapMngr.Clear();
-
-    // Critters
-    CrMngr.Clear();
-
     // Items
-    ItemMngr.Clear();
+    ItemMngr.RadioClear();
 
     // Entities
     EntityMngr.ClearEntities();
@@ -4480,11 +4464,12 @@ void FOServer::DumpEntity( Entity* entity )
     d->IsClient = ( entity->Type == EntityType::Client );
     d->TypeName = type_name;
     d->Props = new Properties( entity->Props );
+    d->ProtoProps = ( entity->Proto ? &entity->Proto->Props : nullptr );
     StrMap& kv = d->ExtraData;
     if( entity->Id )
         kv[ "$Id" ] = Str::UItoA( entity->Id );
-    if( entity->ProtoId )
-        kv[ "$Proto" ] = Str::GetName( entity->ProtoId );
+    if( entity->Proto )
+        kv[ "$Proto" ] = Str::GetName( entity->Proto->ProtoId );
     if( entity->Type == EntityType::Custom )
         kv[ "$ClassName" ] = ( (CustomEntity*) entity )->Props.GetClassName();
     if( entity->Type == EntityType::Client )
@@ -4508,7 +4493,7 @@ void FOServer::Dump_Work( void* args )
             IniParser client_data;
             StrMap&   kv = client_data.SetApp( "Client" );
             kv.insert( d->ExtraData.begin(), d->ExtraData.end() );
-            d->Props->SaveToText( kv );
+            d->Props->SaveToText( kv, d->ProtoProps );
             if( !client_data.SaveFile( d->TypeName.c_str(), PT_SERVER_CLIENTS ) )
                 WriteLog( "Unable to save client to '%s'.\n", d->TypeName.c_str() );
 
@@ -4519,7 +4504,7 @@ void FOServer::Dump_Work( void* args )
         {
             StrMap& kv = data->SetApp( d->TypeName.c_str() );
             kv.insert( d->ExtraData.begin(), d->ExtraData.end() );
-            d->Props->SaveToText( kv );
+            d->Props->SaveToText( kv, d->ProtoProps );
 
             // Sleep some time
             if( index++ % 1000 == 0 )
@@ -4741,7 +4726,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
 
     // Fill prototypes
     UCharVec proto_items_data;
-    ItemMngr.GetBinaryData( proto_items_data );
+    ProtoMngr.GetBinaryData( proto_items_data );
 
     memzero( &update_file, sizeof( update_file ) );
     update_file.Size = (uint) proto_items_data.size();
@@ -4749,11 +4734,8 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     memcpy( update_file.Data, &proto_items_data[ 0 ], update_file.Size );
     UpdateFiles.push_back( update_file );
 
-    char protos_cache_name[ MAX_FOPATH ];
-    Str::Format( protos_cache_name, CACHE_ITEM_PROTOS );
-
-    WriteData( UpdateFilesList, (short) Str::Length( protos_cache_name ) );
-    WriteDataArr( UpdateFilesList, protos_cache_name, Str::Length( protos_cache_name ) );
+    WriteData( UpdateFilesList, (short) Str::Length( CACHE_PROTOS ) );
+    WriteDataArr( UpdateFilesList, CACHE_PROTOS, Str::Length( CACHE_PROTOS ) );
     WriteData( UpdateFilesList, update_file.Size );
     WriteData( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
 

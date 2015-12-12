@@ -757,7 +757,7 @@ void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& 
             continue;
         if( i >= scroll && i < scroll + pos.H() / height )
         {
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetActualPicInv() );
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
             if( anim )
                 SprMngr.DrawSpriteSize( anim->GetCurSprId(), pos.L, pos.T + ( i2 * height ), pos.W(), height, false, true, item->GetInvColor() );
             i2++;
@@ -2001,8 +2001,8 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
             }
             cost += cost_ * item->GetCount();
         }
-        weigth += item->GetWeight();
-        volume += item->GetVolume();
+        weigth += item->GetWholeWeight();
+        volume += item->GetWholeVolume();
     }
 }
 
@@ -3475,7 +3475,7 @@ void FOClient::LmapPrepareMap()
         for( int i2 = by; i2 < ey; i2++ )
         {
             pix_y += LmapZoom;
-            if( i1 < 0 || i2 < 0 || i1 >= HexMngr.GetMaxHexX() || i2 >= HexMngr.GetMaxHexY() )
+            if( i1 < 0 || i2 < 0 || i1 >= HexMngr.GetWidth() || i2 >= HexMngr.GetHeight() )
                 continue;
 
             bool is_far = false;
@@ -4721,10 +4721,10 @@ void FOClient::PupDraw()
     // Info window
     if( PupTransferType == TRANSFER_HEX_CONT_UP || PupTransferType == TRANSFER_HEX_CONT_DOWN || PupTransferType == TRANSFER_FAR_CONT )
     {
-        ProtoItem* proto_item = ItemMngr.GetProtoItem( PupContPid );
+        ProtoItem* proto_item = ProtoMngr.GetProtoItem( PupContPid );
         if( proto_item )
         {
-            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->GetPicMap() );
+            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->Props.GetPropValue< hash >( Item::PropertyPicMap ) );
             if( anim )
                 SprMngr.DrawSpriteSize( anim->GetSprId( anim->GetCnt() - 1 ), PupWInfo[ 0 ] + PupX, PupWInfo[ 1 ] + PupY, PupWInfo.W(), PupWInfo.H(), false, true );
         }
@@ -5119,7 +5119,7 @@ void FOClient::CurDrawHand()
                 goto DrawCurHand;
             Item*      item = *it;
 
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetActualPicInv() );
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
             if( !anim )
                 goto DrawCurHand;
 
@@ -5137,7 +5137,7 @@ void FOClient::CurDrawHand()
         Item* item = GetContainerItem( IfaceHold == IFACE_PUP_CONT1 ? PupCont1 : PupCont2, PupHoldId );
         if( item )
         {
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetActualPicInv() );
+            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
             if( anim )
             {
                 if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
@@ -5939,7 +5939,7 @@ void FOClient::FixGenerateItems( HashVec& items_vec, UIntVec& val_vec, UCharVec&
                 str += MsgGame->GetStr( STR_AND );
         }
 
-        ProtoItem* proto = ItemMngr.GetProtoItem( items_vec[ i ] );
+        ProtoItem* proto = ProtoMngr.GetProtoItem( items_vec[ i ] );
         if( !proto )
             str += "???";
         else
@@ -5961,7 +5961,7 @@ void FOClient::FixGenerateItems( HashVec& items_vec, UIntVec& val_vec, UCharVec&
     x = FixWWin[ 0 ] + FixWWin.W() / 2 - FIX_DRAW_PIC_WIDTH / 2 * (uint) items_vec.size();
     for( uint i = 0, j = (uint) items_vec.size(); i < j; i++, x += FIX_DRAW_PIC_WIDTH )
     {
-        ProtoItem* proto = ItemMngr.GetProtoItem( items_vec[ i ] );
+        ProtoItem* proto = ProtoMngr.GetProtoItem( items_vec[ i ] );
         if( !proto )
             continue;
 

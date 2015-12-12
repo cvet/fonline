@@ -17,42 +17,56 @@ enum class EntityType
     CritterCl,
     ItemHex,
     Global,
-    ClientMap,
-    ClientLocation,
-    ProtoItem,
-    ProtoItemExt,
-    ProtoCritter,
     Max,
+};
+
+class Entity;
+typedef vector< Entity* >         EntityVec;
+typedef map< uint, Entity* >      EntityMap;
+class ProtoEntity;
+typedef vector< ProtoEntity* >    ProtoEntityVec;
+typedef map< hash, ProtoEntity* > ProtoEntityMap;
+
+class ProtoEntity
+{
+protected:
+    ProtoEntity( hash proto_id, PropertyRegistrator* registartor );
+    virtual ~ProtoEntity();
+
+public:
+    Properties   Props;
+    const hash   ProtoId;
+    mutable long RefCounter;
+
+    const char* GetName() const;
+    void        AddRef() const;
+    void        Release() const;
 };
 
 class Entity
 {
 protected:
-    Entity( uint id, EntityType type, PropertyRegistrator* registartor );
+    Entity( uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto );
+    ~Entity();
 
 public:
     Properties       Props;
     Methods          Meths;
     const uint       Id;
     const EntityType Type;
-    hash             ProtoId;
+    ProtoEntity*     Proto;
     mutable long     RefCounter;
     bool             IsDestroyed;
     bool             IsDestroying;
 
-    // Entity*   Parent;
-    // EntityVec Children;
-    // void       SetParent( Entity* parent ) { Parent = parent; }
-    // EntityType GetParentType()             { return Parent ? Parent->Type : EntityType::None; }
-    // uint       GetParentId()               { return Parent ? Parent->Id : 0; }
-
-    uint GetId();
-    void SetId( uint id );
-    void AddRef() const;
-    void Release() const;
+    uint        GetId() const;
+    void        SetId( uint id );
+    hash        GetProtoId() const;
+    const char* GetName() const;
+    void        AddRef() const;
+    void        Release() const;
+    EntityVec   GetChildren() const;
 };
-typedef vector< Entity* >    EntityVec;
-typedef map< uint, Entity* > EntityMap;
 
 class CustomEntity: public Entity
 {
@@ -69,21 +83,5 @@ public:
     GlobalVars();
 };
 extern GlobalVars* Globals;
-
-class ClientMap: public Entity
-{
-public:
-    PROPERTIES_HEADER();
-    ClientMap();
-};
-extern ClientMap* ClientCurMap;
-
-class ClientLocation: public Entity
-{
-public:
-    PROPERTIES_HEADER();
-    ClientLocation();
-};
-extern ClientLocation* ClientCurLocation;
 
 #endif // __ENTITY__

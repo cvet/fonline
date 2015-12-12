@@ -34,6 +34,12 @@
             class_name::PropertiesList.push_back( PAIR( # prop, &class_name::Property ## prop ) ); \
         }                                                                                          \
     } _ ## class_name ## Property ## prop ## Initializer
+#define CLASS_PROPERTY_ALIAS( prop_type, prop ) \
+    prop_type Get ## prop();                    \
+    void Set ## prop( prop_type value );
+#define CLASS_PROPERTY_ALIAS_IMPL( base_class_name, class_name, prop_type, prop )                                        \
+    prop_type base_class_name::Get ## prop() { return Props.GetPropValue< prop_type >( class_name::Property ## prop ); } \
+    void base_class_name::Set ## prop( prop_type value ) { Props.SetPropValue< prop_type >( class_name::Property ## prop, value ); }
 
 class Entity;
 class Property;
@@ -195,11 +201,51 @@ public:
     void        RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
     void        RestoreData( UCharVecVec& all_data );
     bool        LoadFromText( const StrMap& key_values );
-    void        SaveToText( StrMap& key_values );
+    void        SaveToText( StrMap& key_values, Properties* base );
+    bool        LoadPropertyFromText( Property* prop, const char* value );
+    string      SavePropertyToText( Property* prop, bool& non_zero );
     static int  GetValueAsInt( Entity* entity, int enum_value );
     static void SetValueAsInt( Entity* entity, int enum_value, int value );
     static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
     string      GetClassName();
+
+    template< typename T >
+    T GetPropValue( Property* prop )
+    {
+        RUNTIME_ASSERT( sizeof( T ) == prop->baseSize );
+        uint   data_size;
+        uchar* data = prop->GetPropRawData( this, data_size );
+        T      result;
+        if( prop->dataType != Property::DataType::POD )
+        {
+            void* p = prop->CreateComplexValue( data, data_size );
+            memcpy( &result, &p, sizeof( T ) );
+        }
+        else
+        {
+            memcpy( &result, data, sizeof( T ) );
+        }
+        return result;
+    }
+
+    template< typename T >
+    void SetPropValue( Property* prop, T value )
+    {
+        RUNTIME_ASSERT( sizeof( T ) == prop->baseSize );
+        if( prop->dataType != Property::DataType::POD )
+        {
+            bool   need_delete = false;
+            uint   data_size;
+            uchar* data = prop->ExpandComplexValueData( &value, data_size, need_delete );
+            prop->SetPropRawData( this, data, data_size );
+            if( need_delete )
+                delete[] data;
+        }
+        else
+        {
+            prop->SetPropRawData( this, (uchar*) &value, sizeof( T ) );
+        }
+    }
 
 private:
     Properties();

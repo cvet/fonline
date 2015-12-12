@@ -228,8 +228,7 @@ bool EntityManager::LoadEntities( IniParser& data )
 
             if( type == EntityType::Item )
             {
-                Properties props( Item::PropertiesRegistrator );
-                if( !props.LoadFromText( kv ) || !ItemMngr.RestoreItem( id, proto_id, props ) )
+                if( !ItemMngr.RestoreItem( id, proto_id, kv ) )
                 {
                     WriteLog( "Fail to restore item %u.\n", id );
                     continue;
@@ -237,8 +236,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             }
             else if( type == EntityType::Npc )
             {
-                Properties props( Critter::PropertiesRegistrator );
-                if( !props.LoadFromText( kv ) || !CrMngr.RestoreNpc( id, proto_id, props ) )
+                if( !CrMngr.RestoreNpc( id, proto_id, kv ) )
                 {
                     WriteLog( "Fail to restore npc %u.\n", id );
                     continue;
@@ -246,8 +244,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             }
             else if( type == EntityType::Location )
             {
-                Properties props( Location::PropertiesRegistrator );
-                if( !props.LoadFromText( kv ) || !MapMngr.RestoreLocation( id, proto_id, props ) )
+                if( !MapMngr.RestoreLocation( id, proto_id, kv ) )
                 {
                     WriteLog( "Fail to restore location %u.\n", id );
                     continue;
@@ -255,8 +252,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             }
             else if( type == EntityType::Map )
             {
-                Properties props( Map::PropertiesRegistrator );
-                if( !props.LoadFromText( kv ) || !MapMngr.RestoreMap( id, proto_id, props ) )
+                if( !MapMngr.RestoreMap( id, proto_id, kv ) )
                 {
                     WriteLog( "Fail to restore map %u.\n", id );
                     continue;
@@ -264,16 +260,8 @@ bool EntityManager::LoadEntities( IniParser& data )
             }
             else if( type == EntityType::Custom )
             {
-                const char*          class_name = kv[ "$ClassName" ].c_str();
-                PropertyRegistrator* registrator = Script::FindEntityRegistrator( class_name );
-                if( !registrator )
-                {
-                    WriteLog( "Fail to restore entity '%s' with id %u.\n", class_name, id );
-                    continue;
-                }
-
-                Properties props( registrator );
-                if( !props.LoadFromText( kv ) || !Script::RestoreEntity( class_name, id, props ) )
+                const char* class_name = kv[ "$ClassName" ].c_str();
+                if( !Script::RestoreEntity( class_name, id, kv ) )
                 {
                     WriteLog( "Fail to restore entity %u.\n", id );
                     continue;
@@ -375,14 +363,14 @@ bool EntityManager::LinkNpc()
         Map* map = MapMngr.GetMap( cr->GetMapId() );
         if( cr->GetMapId() && !map )
         {
-            WriteLog( "Map '%s' (%u) not found, critter '%s', hx %u, hy %u.\n", Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetInfo(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Map '%s' (%u) not found, critter '%s', hx %u, hy %u.\n", Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
 
         if( !MapMngr.AddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 2, false ) )
         {
-            WriteLog( "Error parsing npc to map '%s' (%u), critter '%s', hx %u, hy %u.\n", Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetInfo(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Error parsing npc '%s' (%u) to map '%s' (%u), hx %u, hy %u.\n", cr->GetName(), cr->GetId(), Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
@@ -401,7 +389,7 @@ bool EntityManager::LinkNpc()
         Critter* cr = *it;
         if( !MapMngr.AddCrToMap( cr, nullptr, 0, 0, 2, false ) )
         {
-            WriteLog( "Error parsing npc to global group, critter '%s', map id %u, map pid %u, hx %u, hy %u.\n", cr->GetInfo(), cr->GetMapId(), cr->GetMapPid(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Error parsing npc to global group, critter '%s', map id %u, map pid %u, hx %u, hy %u.\n", cr->GetName(), cr->GetMapId(), cr->GetMapPid(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
@@ -450,16 +438,16 @@ bool EntityManager::LinkItems()
                 continue;
             }
 
-            if( item->GetHexX() >= map->GetMaxHexX() || item->GetHexY() >= map->GetMaxHexY() )
+            if( item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight() )
             {
                 WriteLog( "Item '%s' (%u) invalid hex position, hx %u, hy %u.\n", item->GetName(), item->GetId(), item->GetHexX(), item->GetHexY() );
                 errors++;
                 continue;
             }
 
-            if( !item->Proto->IsItem() )
+            if( !item->IsItem() )
             {
-                WriteLog( "Item '%s' (%u) is not item type %u.\n", item->GetName(), item->GetId(), item->GetType() );
+                WriteLog( "Item '%s' (%u) is not item type %d.\n", item->GetName(), item->GetId(), item->GetType() );
                 errors++;
                 continue;
             }
@@ -473,13 +461,6 @@ bool EntityManager::LinkItems()
             if( !cont )
             {
                 WriteLog( "Item '%s' (%u) container not found, container id %u.\n", item->GetName(), item->GetId(), item->GetContainerId() );
-                errors++;
-                continue;
-            }
-
-            if( !cont->IsContainer() )
-            {
-                WriteLog( "Find item is not container, item '%s' (%u), type %u, id_cont %u, type_cont %u.\n", item->GetName(), item->GetId(), item->GetType(), cont->GetId(), cont->GetType() );
                 errors++;
                 continue;
             }

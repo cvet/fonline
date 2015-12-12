@@ -1,134 +1,11 @@
-#include "Common.h"
 #include "CritterManager.h"
-#include "ItemManager.h"
-#include "IniParser.h"
-
-#ifdef FONLINE_SERVER
-# include "Script.h"
-# include "MapManager.h"
-# include "EntityManager.h"
-#endif
+#include "Script.h"
+#include "MapManager.h"
+#include "EntityManager.h"
+#include "ProtoManager.h"
 
 CritterManager CrMngr;
 
-#define CRPROTO_APP    "Critter proto"
-
-bool CritterManager::Init()
-{
-    WriteLog( "Critter manager initialization...\n" );
-
-    allProtos.clear();
-    Clear();
-
-    WriteLog( "Critter manager initialization complete.\n" );
-    return true;
-}
-
-void CritterManager::Finish()
-{
-    WriteLog( "Critter manager finish...\n" );
-
-    allProtos.clear();
-    Clear();
-
-    WriteLog( "Critter manager finish complete.\n" );
-}
-
-void CritterManager::Clear()
-{
-    // ...
-}
-
-bool CritterManager::LoadProtos()
-{
-    WriteLog( "Load critter prototypes...\n" );
-
-    FilesCollection files = FilesCollection( "focr" );
-    uint            files_loaded = 0;
-    int             errors = 0;
-    while( files.IsNextFile() )
-    {
-        const char*  file_name;
-        FileManager& file = files.GetNextFile( &file_name );
-        if( !file.IsLoaded() )
-        {
-            WriteLog( "Unable to open file '%s'.\n", file_name );
-            errors++;
-            continue;
-        }
-
-        uint pid = Str::GetHash( file_name );
-        if( allProtos.count( pid ) )
-        {
-            WriteLog( "Proto critter '%s' already loaded.\n", file_name );
-            errors++;
-            continue;
-        }
-
-        ProtoCritter* proto = new ProtoCritter();
-        proto->ProtoId = pid;
-
-        IniParser focr;
-        focr.CollectContent();
-        focr.AppendStr( file.GetCStr() );
-        const StrMap* cr_app = focr.GetAppKeyValues( "Critter" );
-        if( !cr_app || !proto->Props.LoadFromText( *cr_app ) )
-            errors++;
-
-        // Texts
-        StrSet apps;
-        focr.GetAppNames( apps );
-        for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
-        {
-            const string& app_name = *it;
-            if( !( app_name.size() == 9 && app_name.find( "Text_" ) == 0 ) )
-                continue;
-
-            const char* app_content = focr.GetAppContent( app_name.c_str() );
-            RUNTIME_ASSERT( app_content );
-
-            FOMsg temp_msg;
-            if( !temp_msg.LoadFromString( app_content, Str::Length( app_content ) ) )
-                errors++;
-
-            FOMsg* msg = new FOMsg();
-            uint   str_num = 0;
-            while( str_num = temp_msg.GetStrNumUpper( str_num ) )
-            {
-                uint count = temp_msg.Count( str_num );
-                uint new_str_num = CR_STR_ID( proto->ProtoId, str_num );
-                for( uint n = 0; n < count; n++ )
-                    msg->AddStr( new_str_num, temp_msg.GetStr( str_num, n ) );
-            }
-
-            proto->TextsLang.push_back( *(uint*) app_name.substr( 5 ).c_str() );
-            proto->Texts.push_back( msg );
-        }
-
-        #ifdef FONLINE_MAPPER
-        proto->CollectionName = "all";
-        #endif
-
-        allProtos.insert( PAIR( proto->ProtoId, proto ) );
-        files_loaded++;
-    }
-
-    WriteLog( "Load critter prototypes complete, count %u.\n", files_loaded );
-    return errors == 0;
-}
-
-ProtoCritter* CritterManager::GetProto( hash proto_id )
-{
-    auto it = allProtos.find( proto_id );
-    return it != allProtos.end() ? it->second : nullptr;
-}
-
-ProtoCritterMap& CritterManager::GetAllProtos()
-{
-    return allProtos;
-}
-
-#ifdef FONLINE_SERVER
 void CritterManager::DeleteNpc( Critter* cr )
 {
     SYNC_LOCK( cr );
@@ -213,16 +90,16 @@ void CritterManager::DeleteNpc( Critter* cr )
     Job::DeferredRelease( cr );
 }
 
-Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script_name, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
+Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy )
 {
-    ProtoCritter* proto = GetProto( proto_id );
+    ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", Str::GetName( proto_id ) );
         return nullptr;
     }
 
-    if( !map || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
+    if( !map || hx >= map->GetWidth() || hy >= map->GetHeight() )
     {
         WriteLogF( _FUNC_, " - Wrong map values, hx %u, hy %u, map is nullptr '%s'.\n", hx, hy, !map ? "true" : "false" );
         return nullptr;
@@ -253,9 +130,9 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
             cur_step++;
             if( cur_step >= 18 )
                 cur_step = 0;
-            if( hx_ + sx[ cur_step ] < 0 || hx_ + sx[ cur_step ] >= map->GetMaxHexX() )
+            if( hx_ + sx[ cur_step ] < 0 || hx_ + sx[ cur_step ] >= map->GetWidth() )
                 continue;
-            if( hy_ + sy[ cur_step ] < 0 || hy_ + sy[ cur_step ] >= map->GetMaxHexY() )
+            if( hy_ + sy[ cur_step ] < 0 || hy_ + sy[ cur_step ] >= map->GetHeight() )
                 continue;
             if( !map->IsHexPassed( hx_ + sx[ cur_step ], hy_ + sy[ cur_step ] ) )
                 continue;
@@ -268,15 +145,14 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
         hy = hy_;
     }
 
-    Npc* npc = new Npc( 0 );
+    Npc* npc = new Npc( 0, proto );
+    if( props )
+        npc->Props = *props;
 
     SYNC_LOCK( npc );
     EntityMngr.RegisterEntity( npc );
     Job::PushBack( JOB_CRITTER, npc );
 
-    npc->Props = proto->Props;
-    npc->Proto = proto;
-    npc->ProtoId = proto->ProtoId;
     npc->SetCond( COND_LIFE );
 
     // Flags and coords
@@ -294,29 +170,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     npc->SetHexY( hy );
     npc->RefreshName();
 
-    if( props_data )
-    {
-        for( size_t i = 0, j = props_data->size() / 2; i < j; i++ )
-            Properties::SetValueAsInt( npc, props_data->at( i * 2 ), props_data->at( i * 2 + 1 ) );
-    }
-
     map->AddCritter( npc );
-
-    if( items_data )
-    {
-        for( size_t i = 0, j = items_data->size() / 3; i < j; i++ )
-        {
-            hash pid = items_data->at( i * 3 );
-            int  count = items_data->at( i * 3 + 1 );
-            int  slot = items_data->at( i * 3 + 2 );
-            if( pid != 0 && count > 0 && slot >= 0 && slot < 255 && Critter::SlotEnabled[ slot ] )
-            {
-                Item* item = ItemMngr.AddItemCritter( npc, pid, count );
-                if( item && slot != SLOT_INV )
-                    npc->MoveItem( SLOT_INV, slot, item->GetId(), item->GetCount() );
-            }
-        }
-    }
 
     if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, npc->GetInfo() ) )
     {
@@ -324,8 +178,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
         Script::SetArgBool( true );
         Script::RunPrepared();
     }
-    if( script_name && script_name[ 0 ] )
-        npc->SetScript( script_name, true );
+    npc->SetScript( nullptr, true );
     map->AddCritterEvents( npc );
 
     npc->RefreshBag();
@@ -334,20 +187,24 @@ Npc* CritterManager::CreateNpc( hash proto_id, IntVec* props_data, IntVec* items
     return npc;
 }
 
-bool CritterManager::RestoreNpc( uint id, hash proto_id, Properties& props )
+bool CritterManager::RestoreNpc( uint id, hash proto_id, const StrMap& props_data )
 {
-    ProtoCritter* proto = GetProto( proto_id );
+    ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
     {
         WriteLog( "Proto critter '%s' is not loaded.\n", Str::GetName( proto_id ) );
         return false;
     }
 
-    Npc* npc = new Npc( id );
+    Npc* npc = new Npc( id, proto );
+    if( !npc->Props.LoadFromText( props_data ) )
+    {
+        WriteLog( "Fail to restore properties for critter '%s' (%u).\n", Str::GetName( proto_id ), id );
+        npc->Release();
+        return false;
+    }
+
     SYNC_LOCK( npc );
-    npc->Props = props;
-    npc->Proto = proto;
-    npc->ProtoId = proto_id;
     EntityMngr.RegisterEntity( npc );
     Job::PushBack( JOB_CRITTER, npc );
     return true;
@@ -588,5 +445,3 @@ uint CritterManager::CrittersInGame()
 {
     return PlayersInGame() + NpcInGame();
 }
-
-#endif

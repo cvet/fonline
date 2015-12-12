@@ -1701,7 +1701,6 @@ static StrMap     PidNameToName;
 static UIntStrMap PidIdToName;
 static UIntStrMap PidCrIdToName;
 
-#include "ItemManager.h"
 static void GeneratePidMaps()
 {
     if( PidMapsGenerated )

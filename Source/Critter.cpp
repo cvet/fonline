@@ -6,8 +6,9 @@
 #include "CritterType.h"
 #include "Access.h"
 #include "CritterManager.h"
+#include "ProtoManager.h"
 
-ProtoCritter::ProtoCritter(): Entity( 0, EntityType::ProtoCritter, Critter::PropertiesRegistrator ) {}
+ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, Critter::PropertiesRegistrator ) {}
 
 const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
 {
@@ -175,7 +176,7 @@ CLASS_PROPERTY_IMPL( Critter, InternalBagItemCount );
 CLASS_PROPERTY_IMPL( Critter, ExternalBagCurrentSet );
 CLASS_PROPERTY_IMPL( Critter, FavoriteItemPid );
 
-Critter::Critter( uint id, EntityType type ): Entity( id, type, PropertiesRegistrator )
+Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, type, PropertiesRegistrator, proto )
 {
     CritterIsNpc = false;
     GroupMove = nullptr;
@@ -210,8 +211,8 @@ Critter::Critter( uint id, EntityType type ): Entity( id, type, PropertiesRegist
     GroupSelf->ToY = GroupSelf->CurY;
     GroupSelf->Speed = 0.0f;
     GroupSelf->Rule = this;
-    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor = defItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+    ItemSlotArmor = defItemSlotArmor = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     defItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
     defItemSlotArmor->SetAccessory( ITEM_ACCESSORY_CRITTER );
     defItemSlotHand->SetCritId( id );
@@ -1264,12 +1265,7 @@ void Critter::SyncLockItems()
 
 void Critter::AddItem( Item*& item, bool send )
 {
-    // Check
-    if( !item || !item->Proto )
-    {
-        WriteLogF( _FUNC_, " - Item null ptr, critter '%s'.\n", GetInfo() );
-        return;
-    }
+    RUNTIME_ASSERT( item );
 
     // Add
     if( item->IsStackable() )
@@ -1309,7 +1305,6 @@ void Critter::AddItem( Item*& item, bool send )
 void Critter::SetItem( Item* item )
 {
     RUNTIME_ASSERT( item );
-    RUNTIME_ASSERT( item->Proto );
 
     if( item->IsCar() && GroupMove && !GroupMove->CarId )
         GroupMove->CarId = item->GetId();
@@ -1326,7 +1321,7 @@ void Critter::SetItem( Item* item )
         break;
     case SLOT_HAND1:
         RUNTIME_ASSERT( !ItemSlotMain->GetId() );
-        RUNTIME_ASSERT( !( item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->Proto->GetWeapon_Anim1() ) ) );
+        RUNTIME_ASSERT( !( item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->GetWeapon_Anim1() ) ) );
         ItemSlotMain = item;
         break;
     case SLOT_HAND2:
@@ -1463,11 +1458,11 @@ Item* Critter::GetItemByPidSlot( hash item_pid, int slot )
 
 Item* Critter::GetItemByPidInvPriority( hash item_pid )
 {
-    ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
+    ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
     if( !proto_item )
         return nullptr;
 
-    if( proto_item->GetStackable() )
+    if( proto_item->Props.GetPropValue< bool >( Item::PropertyStackable ) )
     {
         for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         {
@@ -1510,10 +1505,10 @@ Item* Critter::GetAmmoForWeapon( Item* weap )
     Item* ammo = GetItemByPid( weap->GetAmmoPid() );
     if( ammo )
         return ammo;
-    ammo = GetItemByPid( weap->Proto->GetWeapon_DefaultAmmoPid() );
+    ammo = GetItemByPid( weap->GetWeapon_DefaultAmmoPid() );
     if( ammo )
         return ammo;
-    ammo = GetAmmo( weap->Proto->GetWeapon_Caliber() );
+    ammo = GetAmmo( weap->GetWeapon_Caliber() );
 
     // Already synchronized
     return ammo;
@@ -1524,7 +1519,7 @@ Item* Critter::GetAmmo( int caliber )
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetType() == ITEM_TYPE_AMMO && item->Proto->GetAmmo_Caliber() == caliber )
+        if( item->GetType() == ITEM_TYPE_AMMO && item->GetAmmo_Caliber() == caliber )
         {
             SYNC_LOCK( item );
             return item;
@@ -1779,9 +1774,9 @@ void Critter::TakeDefaultItem( uchar slot )
     if( slot == SLOT_HAND1 || slot == SLOT_HAND2 )
     {
         hash       hands_pid = GetHandsItemProtoId();
-        ProtoItem* proto_hand = ( hands_pid ? ItemMngr.GetProtoItem( hands_pid ) : nullptr );
+        ProtoItem* proto_hand = ( hands_pid ? ProtoMngr.GetProtoItem( hands_pid ) : nullptr );
         if( !proto_hand )
-            proto_hand = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
+            proto_hand = ProtoMngr.GetProtoItem( ITEM_DEF_SLOT );
         RUNTIME_ASSERT( proto_hand );
 
         defItemSlotHand->SetProto( proto_hand );
@@ -1790,9 +1785,9 @@ void Critter::TakeDefaultItem( uchar slot )
     else if( slot == SLOT_ARMOR )
     {
         hash       armor_pid = ITEM_DEF_ARMOR;
-        ProtoItem* proto_armor = ( armor_pid ? ItemMngr.GetProtoItem( armor_pid ) : nullptr );
+        ProtoItem* proto_armor = ( armor_pid ? ProtoMngr.GetProtoItem( armor_pid ) : nullptr );
         if( !proto_armor )
-            proto_armor = ItemMngr.GetProtoItem( ITEM_DEF_ARMOR );
+            proto_armor = ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR );
         RUNTIME_ASSERT( proto_armor );
 
         defItemSlotArmor->SetProto( proto_armor );
@@ -2170,7 +2165,7 @@ void Critter::EventMessage( Critter* from_cr, int num, int val )
     Script::RunPrepared();
 }
 
-bool Critter::EventUseItem( Item* item, Critter* on_critter, Item* on_item, MapObject* on_scenery )
+bool Critter::EventUseItem( Item* item, Critter* on_critter, Item* on_item, Item* on_scenery )
 {
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_USE_ITEM ) )
@@ -2210,7 +2205,7 @@ bool Critter::EventUseItemOnMe( Critter* who_use, Item* item )
     return result;
 }
 
-bool Critter::EventUseSkill( int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery )
+bool Critter::EventUseSkill( int skill, Critter* on_critter, Item* on_item, Item* on_scenery )
 {
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_USE_SKILL ) )
@@ -2363,7 +2358,7 @@ void Critter::EventSmthAttacked( Critter* from_cr, Critter* attacker )
     Script::RunPrepared();
 }
 
-void Critter::EventSmthUseItem( Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, MapObject* on_scenery )
+void Critter::EventSmthUseItem( Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, Item* on_scenery )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_USE_ITEM ) )
         return;
@@ -2376,7 +2371,7 @@ void Critter::EventSmthUseItem( Critter* from_cr, Item* item, Critter* on_critte
     Script::RunPrepared();
 }
 
-void Critter::EventSmthUseSkill( Critter* from_cr, int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery )
+void Critter::EventSmthUseSkill( Critter* from_cr, int skill, Critter* on_critter, Item* on_item, Item* on_scenery )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_USE_SKILL ) )
         return;
@@ -3221,7 +3216,7 @@ uint Critter::GetItemsWeight()
     {
         Item* item = *it;
         if( !item->GetIsHidden() )
-            res += item->GetWeight();
+            res += item->GetWholeWeight();
     }
     return res;
 }
@@ -3233,7 +3228,7 @@ uint Critter::GetItemsVolume()
     {
         Item* item = *it;
         if( !item->GetIsHidden() )
-            res += item->GetVolume();
+            res += item->GetWholeVolume();
     }
     return res;
 }
@@ -3587,7 +3582,7 @@ void Critter::ContinueTimeEvents( int offs_time )
 Client::SendCallback Client::SendData = nullptr;
 #endif
 
-Client::Client(): Critter( 0, EntityType::Client )
+Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
 {
     ZstrmInit = false;
     Access = ACCESS_DEFAULT;
@@ -3868,9 +3863,8 @@ void Client::Send_LoadMap( Map* map )
     uchar     map_index_in_loc = 0;
     int       map_time = -1;
     uchar     map_rain = 0;
-    uint      hash_tiles = 0;
-    uint      hash_walls = 0;
-    uint      hash_scen = 0;
+    hash      hash_tiles = 0;
+    hash      hash_scen = 0;
 
     if( !map )
         map = MapMngr.GetMap( GetMapId(), false );
@@ -3882,12 +3876,11 @@ void Client::Send_LoadMap( Map* map )
         map_index_in_loc = (uchar) loc->GetMapIndex( pid_map );
         map_time = map->GetCurDayTime();
         map_rain = map->GetRainCapacity();
-        hash_tiles = map->Proto->HashTiles;
-        hash_walls = map->Proto->HashWalls;
-        hash_scen = map->Proto->HashScen;
+        hash_tiles = map->GetProtoMap()->HashTiles;
+        hash_scen = map->GetProtoMap()->HashScen;
     }
 
-    uint       msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) * 2 + sizeof( uchar ) + sizeof( int ) + sizeof( uchar ) + sizeof( uint ) * 3;
+    uint       msg_len = sizeof( uint ) + sizeof( uint ) + sizeof( hash ) * 2 + sizeof( uchar ) + sizeof( int ) + sizeof( uchar ) + sizeof( hash ) * 2;
     PUCharVec* map_data;
     UIntVec*   map_data_sizes;
     PUCharVec* loc_data;
@@ -3908,7 +3901,6 @@ void Client::Send_LoadMap( Map* map )
     Bout << map_time;
     Bout << map_rain;
     Bout << hash_tiles;
-    Bout << hash_walls;
     Bout << hash_scen;
     if( map )
     {
@@ -4385,7 +4377,14 @@ void Client::Send_GlobalInfo( uchar info_flags )
                 Bout << loc->GetWorldY();
                 Bout << loc->GetRadius();
                 Bout << loc->GetColor();
-                Bout << (uchar) loc->Proto->Entrance.size();
+                uchar count = 0;
+                if( loc->IsMapEntrances() )
+                {
+                    ScriptArray* map_entrances = loc->GetMapEntrances();
+                    count = (uchar) ( map_entrances->GetSize() / 2 );
+                    map_entrances->Release();
+                }
+                Bout << count;
             }
             else
             {
@@ -4454,7 +4453,14 @@ void Client::Send_GlobalLocation( Location* loc, bool add )
     Bout << loc->GetWorldY();
     Bout << loc->GetRadius();
     Bout << loc->GetColor();
-    Bout << (uchar) loc->Proto->Entrance.size();
+    uchar count = 0;
+    if( loc->IsMapEntrances() )
+    {
+        ScriptArray* map_entrances = loc->GetMapEntrances();
+        count = (uchar) ( map_entrances->GetSize() / 2 );
+        map_entrances->Release();
+    }
+    Bout << count;
     BOUT_END( this );
 }
 
@@ -4573,7 +4579,7 @@ void Client::Send_GameInfo( Map* map )
     int          time = ( map ? map->GetCurDayTime() : -1 );
     uchar        rain = ( map ? map->GetRainCapacity() : 0 );
     bool         turn_based = ( map ? map->IsTurnBasedOn : false );
-    bool         no_log_out = ( map ? map->IsNoLogOut() : true );
+    bool         no_log_out = ( map ? map->GetIsNoLogOut() : true );
 
     int          day_time[ 4 ];
     uchar        day_color[ 12 ];
@@ -4863,7 +4869,13 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         for( uint i = 0, j = (uint) locs->size(); i < j; i++ )
         {
             Location* loc_ = ( *locs )[ i ];
-            msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) + ( sizeof( hash ) + sizeof( uchar ) ) * (uint) loc_->GetAutomaps().size();
+            msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( ushort );
+            if( loc_->IsAutomaps() )
+            {
+                ScriptArray* automaps = loc_->GetAutomaps();
+                msg_len += ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps->GetSize();
+                automaps->Release();
+            }
         }
 
         BOUT_BEGIN( this );
@@ -4874,24 +4886,36 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         for( uint i = 0, j = (uint) locs->size(); i < j; i++ )
         {
             Location* loc_ = ( *locs )[ i ];
-            HashVec&  automaps = loc_->GetAutomaps();
             Bout << loc_->GetId();
             Bout << loc_->GetProtoId();
-            Bout << (ushort) automaps.size();
-            for( uint k = 0, l = (uint) automaps.size(); k < l; k++ )
+            if( loc_->IsAutomaps() )
             {
-                Bout << automaps[ k ];
-                Bout << (uchar) loc_->GetMapIndex( automaps[ k ] );
+                ScriptArray* automaps = loc_->GetAutomaps();
+                Bout << (ushort) automaps->GetSize();
+                for( uint k = 0, l = (uint) automaps->GetSize(); k < l; k++ )
+                {
+                    hash pid = *(hash*) automaps->At( k );
+                    Bout << pid;
+                    Bout << (uchar) loc_->GetMapIndex( pid );
+                }
+                automaps->Release();
             }
+            else
+            {
+                Bout << (ushort) 0;
+            }
+
         }
         BOUT_END( this );
     }
 
     if( loc )
     {
-        HashVec& automaps = loc->GetAutomaps();
-        uint     msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort ) +
-                           sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) + ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps.size();
+        uint         msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort ) +
+                               sizeof( uint ) + sizeof( hash ) + sizeof( ushort );
+        ScriptArray* automaps = ( loc->IsAutomaps() ? loc->GetAutomaps() : nullptr );
+        if( automaps )
+            msg_len += ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps->GetSize();
 
         BOUT_BEGIN( this );
         Bout << NETMSG_AUTOMAPS_INFO;
@@ -4900,13 +4924,20 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         Bout << (ushort) 1;
         Bout << loc->GetId();
         Bout << loc->GetProtoId();
-        Bout << (ushort) automaps.size();
-        for( uint i = 0, j = (uint) automaps.size(); i < j; i++ )
+        Bout << (ushort) ( automaps ? automaps->GetSize() : 0 );
+        if( automaps )
         {
-            Bout << automaps[ i ];
-            Bout << (uchar) loc->GetMapIndex( automaps[ i ] );
+            for( uint i = 0, j = (uint) automaps->GetSize(); i < j; i++ )
+            {
+                hash pid = *(hash*) automaps->At( i );
+                Bout << pid;
+                Bout << (uchar) loc->GetMapIndex( pid );
+            }
         }
         BOUT_END( this );
+
+        if( automaps )
+            automaps->Release();
     }
 }
 
@@ -5387,7 +5418,7 @@ void Client::CloseTalk()
 /* NPC                                                                  */
 /************************************************************************/
 
-Npc::Npc( uint id ): Critter( id, EntityType::Npc )
+Npc::Npc( uint id, ProtoCritter* proto ): Critter( id, EntityType::Npc, proto )
 {
     NextRefreshBagTick = 0;
     CritterIsNpc = true;
@@ -5436,7 +5467,7 @@ void Npc::RefreshBag()
         {
             if( it->second <= need_count )
                 continue;
-            ProtoItem* proto_item = ItemMngr.GetProtoItem( it->first );
+            ProtoItem* proto_item = ProtoMngr.GetProtoItem( it->first );
             if( !proto_item || proto_item->GetStackable() )
                 continue;
             ItemMngr.SetItemCritter( this, it->first, need_count );

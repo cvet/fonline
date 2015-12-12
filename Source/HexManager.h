@@ -4,7 +4,6 @@
 #include "Common.h"
 #include "SpriteManager.h"
 #include "Item.h"
-#include "ItemManager.h"
 #include "CritterCl.h"
 #include "ItemHex.h"
 #include "ProtoMap.h"
@@ -155,8 +154,8 @@ public:
     Field& GetField( ushort hx, ushort hy )     { return hexField[ hy * maxHexX + hx ]; }
     bool&  GetHexToDraw( ushort hx, ushort hy ) { return hexToDraw[ hy * maxHexX + hx ]; }
     char&  GetHexTrack( ushort hx, ushort hy )  { return hexTrack[ hy * maxHexX + hx ]; }
-    ushort GetMaxHexX()                         { return maxHexX; }
-    ushort GetMaxHexY()                         { return maxHexY; }
+    ushort GetWidth()                           { return maxHexX; }
+    ushort GetHeight()                          { return maxHexY; }
     void   ClearHexToDraw()                     { memzero( hexToDraw, maxHexX * maxHexY * sizeof( bool ) ); }
     void   ClearHexTrack()                      { memzero( hexTrack, maxHexX * maxHexY * sizeof( char ) ); }
     void   SwitchShowTrack();
@@ -179,17 +178,15 @@ private:
     int   curMapTime;
     int   dayTime[ 4 ];
     uchar dayColor[ 12 ];
-    uint  curHashTiles;
-    uint  curHashWalls;
-    uint  curHashScen;
+    hash  curHashTiles;
+    hash  curHashScen;
 
 public:
     bool   IsMapLoaded() { return curPidMap != 0; }
     bool   LoadMap( hash map_pid );
     void   UnloadMap();
-    void   GetMapHash( hash map_pid, uint& hash_tiles, uint& hash_walls, uint& hash_scen );
-    bool   GetMapData( hash map_pid, ItemVec& items, ushort& maxhx, ushort& maxhy );
-    bool   ParseScenery( SceneryCl& scen );
+    void   GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen );
+    void   GenerateItem( uint id, hash proto_id, Properties& props );
     int    GetDayTime();
     int    GetMapTime();
     int*   GetMapDayTime();
@@ -408,9 +405,15 @@ public:
     // Proto map
     ProtoMap* CurProtoMap;
     bool SetProtoMap( ProtoMap& pmap );
+    void GetProtoMap( ProtoMap& pmap );
 
     // Selected tile, roof
 public:
+    typedef vector< ProtoMap::TileVec > TileVecVec;
+    TileVecVec TilesField;
+    TileVecVec RoofsField;
+    ProtoMap::TileVec& GetTiles( ushort hx, ushort hy, bool is_roof ) { return is_roof ? RoofsField[ hy * GetWidth() + hx ] : TilesField[ hy * GetWidth() + hx ]; }
+
     void ClearSelTiles();
     void ParseSelTiles();
     void SetTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select );
@@ -432,8 +435,6 @@ public:
 
     void GetHexesRect( const Rect& rect, UShortPairVec& hexes );
     void MarkPassedHexes();
-    void AffectItem( MapObject* mobj, ItemHex* item );
-    void AffectCritter( MapObject* mobj, CritterCl* cr );
     #endif // FONLINE_MAPPER
 
 };

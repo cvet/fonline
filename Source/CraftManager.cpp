@@ -1,11 +1,11 @@
 #include "Common.h"
 #include "CraftManager.h"
 #include "FileManager.h"
+#include "ProtoManager.h"
 
 #ifdef FONLINE_SERVER
 # include "Script.h"
 # include "Critter.h"
-# include "CritterManager.h"
 # include "ItemManager.h"
 #endif
 
@@ -130,7 +130,7 @@ void CraftItem::SetName( FOMsg& msg_game, FOMsg& msg_item )
     // Out items
     for( uint i = 0, j = (uint) OutItems.size(); i < j; i++ )
     {
-        ProtoItem* proto = ItemMngr.GetProtoItem( OutItems[ i ] );
+        ProtoItem* proto = ProtoMngr.GetProtoItem( OutItems[ i ] );
 
         if( !proto )
             *Name += "???";
@@ -1055,7 +1055,7 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
         {
             hash       pid = craft->OutItems[ i ];
             uint       count = craft->OutItemsVal[ i ];
-            ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
+            ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
             if( !proto_item )
                 continue;
 

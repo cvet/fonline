@@ -1,7 +1,7 @@
 #ifndef __GRAPHIC_STRUCTURES__
 #define __GRAPHIC_STRUCTURES__
 
-// #include "GL/glew.h"
+#include "GL/glew.h"
 #include "Defines.h"
 #include "Assimp/aiTypes.h"
 #include "Assimp/aiScene.h"

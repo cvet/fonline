@@ -3,7 +3,8 @@
 
 #include "Common.h"
 #include "Map.h"
-#include "IniParser.h"
+#include "Critter.h"
+#include "Item.h"
 
 class GlobalMapGroup
 {
@@ -79,7 +80,6 @@ struct TraceData
 #define FPATH_INVALID_HEXES          ( 11 )
 #define FPATH_TRACE_FAIL             ( 12 )
 #define FPATH_TRACE_TARG_NULL_PTR    ( 13 )
-#define FPATH_ALLOC_FAIL             ( 14 )
 
 struct PathFindData
 {
@@ -118,19 +118,9 @@ typedef vector< PathStep > PathStepVec;
 
 class MapManager
 {
-private:
-    ProtoMapMap protoMaps;
-    ProtoLocMap protoLoc;
-
 public:
     MapManager();
-    bool Init();
-    void Finish();
-    void Clear();
 
-    bool   LoadLocationsProtos();
-    bool   LoadLocationProto( const char* loc_name, FileManager& file );
-    int    ReloadMaps( const char* map_name );
     string GetLocationsMapsStatistics();
     bool   GenerateWorld();
 
@@ -166,18 +156,16 @@ private:
     volatile bool runGarbager;
 
 public:
-    Location*      CreateLocation( hash proto_id, ushort wx, ushort wy );
-    bool           RestoreLocation( uint id, hash proto_id, Properties& props );
-    ProtoLocation* GetProtoLocation( hash loc_pid );
-    ProtoLocation* GetProtoLocationByIndex( uint index );
-    Location*      GetLocationByMap( uint map_id );
-    Location*      GetLocation( uint loc_id );
-    Location*      GetLocationByPid( hash loc_pid, uint skip_count );
-    void           GetLocations( LocVec& locs, bool lock );
-    uint           GetLocationsCount();
-    void           LocationGarbager();
-    void           DeleteLocation( Location* loc, ClVec* gmap_players );
-    void           RunGarbager() { runGarbager = true; }
+    Location* CreateLocation( hash proto_id, ushort wx, ushort wy );
+    bool      RestoreLocation( uint id, hash proto_id, const StrMap& props_data );
+    Location* GetLocationByMap( uint map_id );
+    Location* GetLocation( uint loc_id );
+    Location* GetLocationByPid( hash loc_pid, uint skip_count );
+    void      GetLocations( LocVec& locs, bool lock );
+    uint      GetLocationsCount();
+    void      LocationGarbager();
+    void      DeleteLocation( Location* loc, ClVec* gmap_players );
+    void      RunGarbager() { runGarbager = true; }
 
     // Maps
 private:
@@ -186,12 +174,11 @@ private:
 
 public:
     Map*         CreateMap( hash proto_id, Location* loc );
-    bool         RestoreMap( uint id, hash proto_id, Properties& props );
+    bool         RestoreMap( uint id, hash proto_id, const StrMap& props_data );
     Map*         GetMap( uint map_id, bool sync_lock = true );
     Map*         GetMapByPid( hash map_pid, uint skip_count );
     void         GetMaps( MapVec& maps, bool lock );
     uint         GetMapsCount();
-    ProtoMap*    GetProtoMap( hash map_pid );
     bool         IsProtoMapNoLogOut( hash map_pid );
     void         TraceBullet( TraceData& trace );
     int          FindPath( PathFindData& pfd );

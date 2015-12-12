@@ -48,8 +48,7 @@ public:
     void                  Finish();
     bool                  IsError();
     PropertyRegistrator** GetPropertyRegistrators();
-    PropertyRegistrator*  FindEntityRegistrator( const char* class_name );
-    void                  RestoreEntity( const char* class_name, uint id, Properties& props );
+    bool                  RestoreEntity( const char* class_name, uint id, const StrMap& props_data );
 };
 
 #endif // __SCRIPT_PRAGMAS__

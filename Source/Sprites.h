@@ -48,6 +48,7 @@ public:
     void SetAlpha( uchar* alpha );
     void SetFlash( uint mask );
     void SetLight( int corner, uchar* light, int maxhx, int maxhy );
+    void SetFixedAlpha( uchar alpha );
 };
 typedef vector< Sprite* > SpriteVec;
 

@@ -697,8 +697,8 @@ void ScriptDict::GetMap( std::vector< std::pair< void*, void* > >& data )
 {
     DictMap* dict = (DictMap*) dictMap;
     data.reserve( data.size() + dict->size() );
-    for( const auto& it :* dict )
-        data.push_back( std::pair< void*, void* >( it.first, it.second ) );
+    for( const auto& kv :* dict )
+        data.push_back( std::pair< void*, void* >( kv.first, kv.second ) );
 }
 
 // internal

@@ -12,18 +12,22 @@ struct AnyFrames;
 
 class ItemHex: public Item
 {
+private:
+    ItemHex( uint id, ProtoItem* proto );
+    void AfterConstruction();
+
 public:
-    ItemHex( uint id, ProtoItem* proto, UCharVecVec* data, int hx, int hy, short scr_x, short scr_y, int* hex_scr_x, int* hex_scr_y, int cut );
+    ItemHex( uint id, ProtoItem* proto, Properties& props );
+    ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data );
+    ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y );
 
 public:
     uint       SprId;
     int        HexX, HexY;
     short      ScrX, ScrY;
     int*       HexScrX, * HexScrY;
-    int        SpriteCut;
     uchar      Alpha;
     AnyFrames* Anim;
-    uchar      ScenFlags;
     bool       SprDrawValid;
     Sprite*    SprDraw, * SprTemp;
     Effect*    DrawEffect;
@@ -37,26 +41,20 @@ private:
     uint  animNextTick;
 
 public:
-    bool   IsCanUseSkill() { return IsScenOrGrid() || IsItem(); }
-    bool   IsScenOrGrid()  { return Proto->IsScen() || Proto->IsGrid(); }
-    bool   IsItem()        { return Proto->IsItem(); }
-    bool   IsWall()        { return Proto->IsWall(); }
-    ushort GetHexX()       { return HexX; }
-    ushort GetHexY()       { return HexY; }
-    short  GetActualOffsetX();
-    short  GetActualOffsetY();
-    bool   IsAnimated()         { return isAnimated; }
-    bool   IsCanLook()          { return !( Proto->IsGrid() && Proto->GetGrid_Type() == GRID_EXITGRID ); }
-    bool   IsUsable()           { return !IsWall() && ( GetIsCanUse() || GetIsCanUseOnSmth() || GetIsCanPickUp() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_USE ) ) ); }
-    bool   IsTalkable()         { return !IsWall() && ( GetIsCanTalk() || ( IsScenOrGrid() && FLAG( ScenFlags, SCEN_CAN_TALK ) ) ); }
-    bool   IsDrawContour()      { return /*IsFocused && */ IsItem() && !GetIsNoHighlight() && !GetIsBadItem(); }
-    bool   IsTransparent()      { return maxAlpha < 0xFF; }
-    bool   IsFullyTransparent() { return maxAlpha == 0; }
-    void   RefreshAnim();
-    void   RestoreAlpha() { Alpha = maxAlpha; }
-    void   RefreshAlpha() { maxAlpha = ( IsColorize() ? GetAlpha() : 0xFF ); }
-    void   SetSprite( Sprite* spr );
-    int    GetEggType();
+    bool IsCanUseSkill()      { return IsScenOrGrid() || IsItem(); }
+    bool IsScenOrGrid()       { return IsScen() || IsGrid(); }
+    bool IsAnimated()         { return isAnimated; }
+    bool IsCanLook()          { return !( IsGrid() && GetGrid_Type() == GRID_EXITGRID ); }
+    bool IsUsable()           { return !IsWall() && ( GetIsCanUse() || GetIsCanUseOnSmth() || GetIsCanPickUp() ); }
+    bool IsTalkable()         { return !IsWall() && GetIsCanTalk(); }
+    bool IsDrawContour()      { return /*IsFocused && */ IsItem() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    bool IsTransparent()      { return maxAlpha < 0xFF; }
+    bool IsFullyTransparent() { return maxAlpha == 0; }
+    void RefreshAnim();
+    void RestoreAlpha() { Alpha = maxAlpha; }
+    void RefreshAlpha() { maxAlpha = ( IsColorize() ? GetAlpha() : 0xFF ); }
+    void SetSprite( Sprite* spr );
+    int  GetEggType();
 
     // Finish
 private:

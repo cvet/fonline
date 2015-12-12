@@ -149,7 +149,7 @@ void FOServer::ProcessAI( Npc* npc )
                     AI_MoveItem( npc, map, npc->ItemSlotMain->GetCritSlot(), SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
                     return;
                 }
-                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && ( !favor_item->IsWeapon() || CritType::IsAnim1( npc->GetCrType(), favor_item->Proto->GetWeapon_Anim1() ) ) )
+                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && ( !favor_item->IsWeapon() || CritType::IsAnim1( npc->GetCrType(), favor_item->GetWeapon_Anim1() ) ) )
                 {
                     AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
                     return;
@@ -179,7 +179,7 @@ void FOServer::ProcessAI( Npc* npc )
                     AI_MoveItem( npc, map, npc->ItemSlotArmor->GetCritSlot(), SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->GetCount() );
                     return;
                 }
-                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && favor_item->IsArmor() && !favor_item->Proto->GetSlot() )
+                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && favor_item->IsArmor() && !favor_item->GetSlot() )
                 {
                     AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_ARMOR, favor_item->GetId(), favor_item->GetCount() );
                     return;
@@ -348,9 +348,6 @@ void FOServer::ProcessAI( Npc* npc )
                 case FPATH_TRACE_FAIL:
                     reason = REASON_TRACE_FAIL;
                     break;
-                case FPATH_ALLOC_FAIL:
-                    reason = REASON_FIND_PATH_ERROR;
-                    break;
                 default:
                     reason = REASON_FIND_PATH_ERROR;
                     break;
@@ -502,13 +499,14 @@ void FOServer::ProcessAI( Npc* npc )
                     break;
                 }
 
-                ProtoItem* unarmed = ItemMngr.GetProtoItem( r2 );
+                ProtoItem* unarmed = ProtoMngr.GetProtoItem( r2 );
                 if( !unarmed || !unarmed->GetWeapon_IsUnarmed() )
-                    unarmed = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
+                    unarmed = ProtoMngr.GetProtoItem( ITEM_DEF_SLOT );
 
                 Item* def_item_main = npc->GetHandsItem();
                 if( def_item_main->Proto != unarmed )
                     def_item_main->SetProto( unarmed );
+
                 weap = def_item_main;
             }
             use = r1;
@@ -602,7 +600,7 @@ void FOServer::ProcessAI( Npc* npc )
             ushort    res_hx = t_hx;
             ushort    res_hy = t_hy;
             bool      is_run = plane->Attack.IsRun;
-            bool      is_range = ( ( use == 0 ? weap->Proto->GetWeapon_MaxDist_0() : ( use == 1 ? weap->Proto->GetWeapon_MaxDist_1() : weap->Proto->GetWeapon_MaxDist_2() ) ) > 2 );
+            bool      is_range = ( ( use == 0 ? weap->GetWeapon_MaxDist_0() : ( use == 1 ? weap->GetWeapon_MaxDist_1() : weap->GetWeapon_MaxDist_2() ) ) > 2 );
 
             TraceData trace;
             trace.TraceMap = map;
@@ -823,7 +821,7 @@ void FOServer::ProcessAI( Npc* npc )
         if( is_busy )
             break;
 
-        ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
+        ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
         if( !proto_item )
         {
             npc->NextPlane( REASON_SUCCESS );
@@ -2111,8 +2109,8 @@ void FOServer::Process_Barter( Client* cl )
                 base_cost++;
         }
         sale_cost += base_cost * sale_item_count[ i ];
-        sale_weight += item->Proto->GetWeight() * sale_item_count[ i ];
-        sale_volume += item->Proto->GetVolume() * sale_item_count[ i ];
+        sale_weight += item->GetWeight() * sale_item_count[ i ];
+        sale_volume += item->GetVolume() * sale_item_count[ i ];
         sale_items.push_back( item );
     }
 
@@ -2161,8 +2159,8 @@ void FOServer::Process_Barter( Client* cl )
                 base_cost++;
         }
         buy_cost += base_cost * buy_item_count[ i ];
-        buy_weight += item->Proto->GetWeight() * buy_item_count[ i ];
-        buy_volume += item->Proto->GetVolume() * buy_item_count[ i ];
+        buy_weight += item->GetWeight() * buy_item_count[ i ];
+        buy_volume += item->GetVolume() * buy_item_count[ i ];
         buy_items.push_back( item );
 
         if( buy_cost > sale_cost && !is_free )

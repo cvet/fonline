@@ -90,26 +90,82 @@ void IniParser::ParseStr( const char* str )
 
             // Parse key value
             char* begin = &line[ 0 ];
-            char* separator = Str::Substring( begin, "=" );
-            if( !separator )
-                continue;
+            char* value = nullptr;
 
-            // Parse key value
-            Str::CopyCount( buf, begin, (uint) ( separator - begin ) );
-            char* value = separator + 1;
-            Str::Trim( buf );
-            Str::Trim( value );
+            // Text format {}{}{}
+            if( begin[ 0 ] == '{' )
+            {
+                char* pbuf = begin;
+
+                // Skip '{'
+                pbuf++;
+                if( !*pbuf )
+                    continue;
+
+                // Goto '}'
+                const char* num1_begin = pbuf;
+                Str::GoTo( pbuf, '}', false );
+                if( !*pbuf )
+                    continue;
+                *pbuf = 0;
+                pbuf++;
+
+                // Parse number
+                uint num1 = (uint) ( Str::IsNumber( num1_begin ) ? Str::AtoI( num1_begin ) : Str::GetHash( num1_begin ) );
+
+                // Skip '{'
+                Str::GoTo( pbuf, '{', true );
+                if( !*pbuf )
+                    continue;
+
+                // Goto '}'
+                const char* num2_begin = pbuf;
+                Str::GoTo( pbuf, '}', false );
+                if( !*pbuf )
+                    continue;
+
+                *pbuf = 0;
+                pbuf++;
+
+                // Parse number
+                uint num2 = ( num2_begin[ 0 ] ? ( Str::IsNumber( num2_begin ) ? Str::AtoI( num2_begin ) : Str::GetHash( num2_begin ) ) : 0 );
+
+                // Goto '{'
+                Str::GoTo( pbuf, '{', true );
+                if( !*pbuf )
+                    continue;
+                // Find '}'
+                char* _pbuf = pbuf;
+                Str::GoTo( pbuf, '}', false );
+                if( !*pbuf )
+                    continue;
+
+                *pbuf = 0;
+                pbuf++;
+                uint num = num1 + num2;
+                if( !num )
+                    continue;
+
+                Str::Copy( buf, Str::UItoA( num ) );
+                value = _pbuf;
+            }
+            else
+            {
+                // Key value format
+                char* separator = Str::Substring( begin, "=" );
+                if( !separator )
+                    continue;
+
+                // Parse key value
+                Str::CopyCount( buf, begin, (uint) ( separator - begin ) );
+                value = separator + 1;
+                Str::Trim( buf );
+                Str::Trim( value );
+            }
 
             // Store entire
             if( buf[ 0 ] )
-            {
-                if( Str::CompareCase( value, "True" ) )
-                    ( *cur_app )[ buf ] = "1";
-                else if( Str::CompareCase( value, "False" ) )
-                    ( *cur_app )[ buf ] = "0";
-                else
-                    ( *cur_app )[ buf ] = value;
-            }
+                ( *cur_app )[ buf ] = value;
         }
     }
 
@@ -173,6 +229,10 @@ const char* IniParser::GetStr( const char* app_name, const char* key_name, const
 int IniParser::GetInt( const char* app_name, const char* key_name, int def_val /* = 0 */  )
 {
     string* str = GetRawValue( app_name, key_name );
+    if( str && str->length() == 4 && Str::CompareCase( str->c_str(), "true" ) )
+        return 1;
+    if( str && str->length() == 5 && Str::CompareCase( str->c_str(), "false" ) )
+        return 0;
     return str ? Str::AtoI( str->c_str() ) : def_val;
 }
 

@@ -83,7 +83,6 @@ class Client;
 class Npc;
 class Map;
 class Location;
-class MapObject;
 class GlobalMapGroup;
 
 typedef Critter*              CritterPtr;
@@ -219,13 +218,12 @@ public:
     CLASS_PROPERTY( uchar, PerkSilentRunning );
 
 protected:
-    Critter( uint id, EntityType type );
+    Critter( uint id, EntityType type, ProtoCritter* proto );
     ~Critter();
 
 public:
     // Data
     SyncObject    Sync;
-    ProtoCritter* Proto;
     bool          CritterIsNpc;
     uint          Flags;
     ScriptString* NameStr;
@@ -298,7 +296,6 @@ public:
     Item* ItemSlotExt;
     Item* ItemSlotArmor;
 
-    hash     GetProtoId() { return Proto->ProtoId; }
     void     SyncLockItems();
     Item*    GetHandsItem() { return defItemSlotHand; }
     void     AddItem( Item*& item, bool send );
@@ -351,9 +348,9 @@ public:
     bool EventAttacked( Critter* attacker );
     bool EventStealing( Critter* thief, Item* item, uint count );
     void EventMessage( Critter* from_cr, int num, int val );
-    bool EventUseItem( Item* item, Critter* on_critter, Item* on_item, MapObject* on_scenery );
+    bool EventUseItem( Item* item, Critter* on_critter, Item* on_item, Item* on_scenery );
     bool EventUseItemOnMe( Critter* who_use, Item* item );
-    bool EventUseSkill( int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery );
+    bool EventUseSkill( int skill, Critter* on_critter, Item* on_item, Item* on_scenery );
     bool EventUseSkillOnMe( Critter* who_use, int skill );
     void EventDropItem( Item* item );
     void EventMoveItem( Item* item, uchar from_slot );
@@ -362,8 +359,8 @@ public:
     void EventSmthStealing( Critter* from_cr, Critter* thief, bool success, Item* item, uint count );
     void EventSmthAttack( Critter* from_cr, Critter* target );
     void EventSmthAttacked( Critter* from_cr, Critter* attacker );
-    void EventSmthUseItem( Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, MapObject* on_scenery );
-    void EventSmthUseSkill( Critter* from_cr, int skill, Critter* on_critter, Item* on_item, MapObject* on_scenery );
+    void EventSmthUseItem( Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, Item* on_scenery );
+    void EventSmthUseSkill( Critter* from_cr, int skill, Critter* on_critter, Item* on_item, Item* on_scenery );
     void EventSmthDropItem( Critter* from_cr, Item* item );
     void EventSmthMoveItem( Critter* from_cr, Item* item, uchar from_slot );
     void EventSmthKnockout( Critter* from_cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist );
@@ -475,7 +472,6 @@ public:
     bool        IsPlayer() { return !CritterIsNpc; }
     bool        IsNpc()    { return CritterIsNpc; }
     void        RefreshName();
-    const char* GetName() { return NameStr->c_str(); }
     const char* GetInfo();
     bool        IsCanWalk();
     bool        IsCanRun();
@@ -555,7 +551,7 @@ public:
 class Client: public Critter
 {
 public:
-    Client();
+    Client( ProtoCritter* proto );
     ~Client();
 
     char          Name[ UTF8_BUF_SIZE( MAX_NAME ) ];
@@ -726,10 +722,9 @@ public:
     struct BarterItem
     {
         uint Id;
-        hash Pid;
         uint Count;
         bool operator==( uint id ) { return Id == id; }
-        BarterItem( uint id, hash pid, uint count ): Id( id ), Pid( pid ), Count( count ) {}
+        BarterItem( uint id, uint count ): Id( id ), Count( count ) {}
     };
     typedef vector< BarterItem > BarterItemVec;
     BarterItemVec BarterItems;
@@ -761,7 +756,7 @@ public:
 class Npc: public Critter
 {
 public:
-    Npc( uint id );
+    Npc( uint id, ProtoCritter* proto );
     ~Npc();
 
     // Bags

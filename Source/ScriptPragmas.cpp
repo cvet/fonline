@@ -2,6 +2,7 @@
 #include "ScriptPragmas.h"
 #include "angelscript.h"
 #include "Script.h"
+#include "ProtoManager.h"
 
 // #pragma ignore "other_pragma"
 // #pragma other_pragma "arguments" <- not processed
@@ -202,11 +203,17 @@ public:
         return entity;
     }
 
-    void RestoreEntity( uint id, Properties& props )
+    bool RestoreEntity( uint id, const StrMap& props_data )
     {
         CustomEntity* entity = new CustomEntity( id, SubType, Registrator );
-        entity->Props = props;
+        if( !entity->Props.LoadFromText( props_data ) )
+        {
+            WriteLog( "Fail to restore properties for custom entity '%s' (%u).\n", Registrator->GetClassName().c_str(), id );
+            entity->Release();
+            return false;
+        }
         EntityMngr.RegisterEntity( entity );
+        return true;
     }
 
     void DeleteEntity( CustomEntity* entity )
@@ -234,11 +241,11 @@ public:
     }
 
     #else
-    CustomEntity* CreateEntity()                              { return nullptr; }
-    void          RestoreEntity( uint id, Properties& props ) {}
-    void          DeleteEntity( CustomEntity* entity )        {}
-    void          DeleteEntityById( uint id )                 {}
-    CustomEntity* GetEntity( uint id )                        { return nullptr; }
+    CustomEntity* CreateEntity()                                     { return nullptr; }
+    bool          RestoreEntity( uint id, const StrMap& props_data ) { return false; }
+    void          DeleteEntity( CustomEntity* entity )               {}
+    void          DeleteEntityById( uint id )                        {}
+    CustomEntity* GetEntity( uint id )                               { return nullptr; }
     #endif
 };
 
@@ -325,16 +332,10 @@ public:
         return true;
     }
 
-    PropertyRegistrator* FindEntityRegistrator( const char* class_name )
-    {
-        auto it = entityCreators.find( class_name );
-        return it != entityCreators.end() ? it->second->Registrator : nullptr;
-    }
-
-    void RestoreEntity( const char* class_name, uint id, Properties& props )
+    bool RestoreEntity( const char* class_name, uint id, const StrMap& props_data )
     {
         EntityCreator* entity_creator = entityCreators[ class_name ];
-        entity_creator->RestoreEntity( id, props );
+        return entity_creator->RestoreEntity( id, props_data );
     }
 };
 
@@ -351,20 +352,19 @@ public:
         bool is_server = ( pragma_type == PRAGMA_SERVER );
         bool is_mapper = ( pragma_type == PRAGMA_MAPPER );
 
-        propertyRegistrators = new PropertyRegistrator*[ 6 ];
+        propertyRegistrators = new PropertyRegistrator*[ 5 ];
         propertyRegistrators[ 0 ] = new PropertyRegistrator( is_server || is_mapper, "GlobalVars" );
         propertyRegistrators[ 1 ] = new PropertyRegistrator( is_server || is_mapper, "Critter" );
         propertyRegistrators[ 2 ] = new PropertyRegistrator( is_server || is_mapper, "Item" );
-        propertyRegistrators[ 3 ] = new PropertyRegistrator( is_server || is_mapper, "ProtoItem" );
-        propertyRegistrators[ 4 ] = new PropertyRegistrator( is_server || is_mapper, "Map" );
-        propertyRegistrators[ 5 ] = new PropertyRegistrator( is_server || is_mapper, "Location" );
+        propertyRegistrators[ 3 ] = new PropertyRegistrator( is_server || is_mapper, "Map" );
+        propertyRegistrators[ 4 ] = new PropertyRegistrator( is_server || is_mapper, "Location" );
 
         entitiesRegistrators = entities_registrators;
     }
 
     ~PropertyPragma()
     {
-        for( int i = 0; i < 6; i++ )
+        for( int i = 0; i < 5; i++ )
             SAFEDEL( propertyRegistrators[ i ] );
         SAFEDEL( propertyRegistrators );
     }
@@ -539,12 +539,10 @@ public:
             registrator = propertyRegistrators[ 1 ];
         else if( class_name == "Item" )
             registrator = propertyRegistrators[ 2 ];
-        else if( class_name == "ProtoItem" )
-            registrator = propertyRegistrators[ 3 ];
         else if( class_name == "Map" )
-            registrator = propertyRegistrators[ 4 ];
+            registrator = propertyRegistrators[ 3 ];
         else if( class_name == "Location" )
-            registrator = propertyRegistrators[ 5 ];
+            registrator = propertyRegistrators[ 4 ];
         else if( entitiesRegistrators->entityCreators.count( class_name ) )
             registrator = entitiesRegistrators->entityCreators[ class_name ]->Registrator;
         else
@@ -597,9 +595,8 @@ public:
         methodRegistrator[ 0 ] = new MethodRegistrator( is_server || is_mapper, "GlobalVars" );
         methodRegistrator[ 1 ] = new MethodRegistrator( is_server || is_mapper, "Critter" );
         methodRegistrator[ 2 ] = new MethodRegistrator( is_server || is_mapper, "Item" );
-        methodRegistrator[ 3 ] = new MethodRegistrator( is_server || is_mapper, "ProtoItem" );
-        methodRegistrator[ 4 ] = new MethodRegistrator( is_server || is_mapper, "Map" );
-        methodRegistrator[ 5 ] = new MethodRegistrator( is_server || is_mapper, "Location" );
+        methodRegistrator[ 3 ] = new MethodRegistrator( is_server || is_mapper, "Map" );
+        methodRegistrator[ 4 ] = new MethodRegistrator( is_server || is_mapper, "Location" );
 
         entitiesRegistrators = entities_registrators;
     }
@@ -660,12 +657,10 @@ public:
             registrator = methodRegistrator[ 1 ];
         else if( class_name == "Item" )
             registrator = methodRegistrator[ 2 ];
-        else if( class_name == "ProtoItem" )
-            registrator = methodRegistrator[ 3 ];
         else if( class_name == "Map" )
-            registrator = methodRegistrator[ 4 ];
+            registrator = methodRegistrator[ 3 ];
         else if( class_name == "Location" )
-            registrator = methodRegistrator[ 5 ];
+            registrator = methodRegistrator[ 4 ];
         // else if (entitiesRegistrators->entityCreators.count(class_name))
         //	registrator = entitiesRegistrators->entityCreators[class_name]->Registrator;
         else
@@ -692,9 +687,6 @@ public:
 // #pragma content Group fileName
 #ifdef FONLINE_SERVER
 # include "Dialogs.h"
-# include "ItemManager.h"
-# include "CritterManager.h"
-# include "MapManager.h"
 #endif
 
 class ContentPragma
@@ -791,7 +783,7 @@ public:
         }
         for( auto it = filesToCheck[ 1 ].begin(); it != filesToCheck[ 1 ].end(); ++it )
         {
-            if( !ItemMngr.GetProtoItem( it->second ) )
+            if( !ProtoMngr.GetProtoItem( it->second ) )
             {
                 WriteLog( "Item file '%s' not found.\n", it->first.c_str() );
                 errors++;
@@ -799,7 +791,7 @@ public:
         }
         for( auto it = filesToCheck[ 2 ].begin(); it != filesToCheck[ 2 ].end(); ++it )
         {
-            if( !CrMngr.GetProto( it->second ) )
+            if( !ProtoMngr.GetProtoCritter( it->second ) )
             {
                 WriteLog( "Critter file '%s' not found.\n", it->first.c_str() );
                 errors++;
@@ -807,7 +799,7 @@ public:
         }
         for( auto it = filesToCheck[ 3 ].begin(); it != filesToCheck[ 3 ].end(); ++it )
         {
-            if( !MapMngr.GetProtoLocation( it->second ) )
+            if( !ProtoMngr.GetProtoLocation( it->second ) )
             {
                 WriteLog( "Location file '%s' not found.\n", it->first.c_str() );
                 errors++;
@@ -815,7 +807,7 @@ public:
         }
         for( auto it = filesToCheck[ 4 ].begin(); it != filesToCheck[ 4 ].end(); ++it )
         {
-            if( !MapMngr.GetProtoMap( it->second ) )
+            if( !ProtoMngr.GetProtoMap( it->second ) )
             {
                 WriteLog( "Map file '%s' not found.\n", it->first.c_str() );
                 errors++;
@@ -989,12 +981,7 @@ PropertyRegistrator** ScriptPragmaCallback::GetPropertyRegistrators()
     return propertyPragma->GetPropertyRegistrators();
 }
 
-PropertyRegistrator* ScriptPragmaCallback::FindEntityRegistrator( const char* class_name )
+bool ScriptPragmaCallback::RestoreEntity( const char* class_name, uint id, const StrMap& props_data )
 {
-    return entityPragma->FindEntityRegistrator( class_name );
-}
-
-void ScriptPragmaCallback::RestoreEntity( const char* class_name, uint id, Properties& props )
-{
-    entityPragma->RestoreEntity( class_name, id, props );
+    return entityPragma->RestoreEntity( class_name, id, props_data );
 }

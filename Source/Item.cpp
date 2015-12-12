@@ -1,11 +1,12 @@
 #include "Common.h"
 #include "Item.h"
-#include "ItemManager.h"
+#include "ProtoManager.h"
 
 #ifdef FONLINE_SERVER
 # include "Script.h"
 # include "MapManager.h"
 # include "CritterManager.h"
+# include "ItemManager.h"
 # include "AI.h"
 #endif
 
@@ -21,151 +22,142 @@ const char* ItemEventFuncName[ ITEM_EVENT_MAX ] =
     "void %s(Item&,Critter&,bool,uint8)",              // ITEM_EVENT_WALK
 };
 
-PROPERTIES_IMPL( ProtoItem );
-CLASS_PROPERTY_IMPL( ProtoItem, PicMap );
-CLASS_PROPERTY_IMPL( ProtoItem, PicInv );
-CLASS_PROPERTY_IMPL( ProtoItem, OffsetX );
-CLASS_PROPERTY_IMPL( ProtoItem, OffsetY );
-CLASS_PROPERTY_IMPL( ProtoItem, Cost );
-CLASS_PROPERTY_IMPL( ProtoItem, LightIntensity );
-CLASS_PROPERTY_IMPL( ProtoItem, LightDistance );
-CLASS_PROPERTY_IMPL( ProtoItem, LightFlags );
-CLASS_PROPERTY_IMPL( ProtoItem, LightColor );
-CLASS_PROPERTY_IMPL( ProtoItem, Type );
-CLASS_PROPERTY_IMPL( ProtoItem, Stackable );
-CLASS_PROPERTY_IMPL( ProtoItem, Deteriorable );
-CLASS_PROPERTY_IMPL( ProtoItem, GroundLevel );
-CLASS_PROPERTY_IMPL( ProtoItem, Corner );
-CLASS_PROPERTY_IMPL( ProtoItem, Slot );
-CLASS_PROPERTY_IMPL( ProtoItem, Weight );
-CLASS_PROPERTY_IMPL( ProtoItem, Volume );
-CLASS_PROPERTY_IMPL( ProtoItem, SoundId );
-CLASS_PROPERTY_IMPL( ProtoItem, Material );
-CLASS_PROPERTY_IMPL( ProtoItem, DisableEgg );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimWaitBase );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimWaitRndMin );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimWaitRndMax );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimStay_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimStay_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimShow_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimShow_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimHide_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, AnimHide_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, SpriteCut );
-CLASS_PROPERTY_IMPL( ProtoItem, DrawOrderOffsetHexY );
-CLASS_PROPERTY_IMPL( ProtoItem, IndicatorMax );
-CLASS_PROPERTY_IMPL( ProtoItem, HolodiskNum );
-CLASS_PROPERTY_IMPL( ProtoItem, BlockLines );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildPid_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildPid_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildPid_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildPid_3 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildPid_4 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildLines_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildLines_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildLines_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildLines_3 );
-CLASS_PROPERTY_IMPL( ProtoItem, ChildLines_4 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_IsUnarmed );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_UnarmedMinAgility );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_UnarmedMinUnarmed );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_UnarmedMinLevel );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Anim1 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_MaxAmmoCount );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Caliber );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_DefaultAmmoPid );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_MinStrength );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Perk );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_IsTwoHanded );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_ActiveUses );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Skill_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Skill_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Skill_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_PicUse_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_PicUse_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_PicUse_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_MaxDist_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_MaxDist_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_MaxDist_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Round_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Round_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Round_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_ApCost_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_ApCost_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_ApCost_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Aim_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Aim_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_Aim_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_SoundId_0 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_SoundId_1 );
-CLASS_PROPERTY_IMPL( ProtoItem, Weapon_SoundId_2 );
-CLASS_PROPERTY_IMPL( ProtoItem, Ammo_Caliber );
-CLASS_PROPERTY_IMPL( ProtoItem, Door_NoBlockMove );
-CLASS_PROPERTY_IMPL( ProtoItem, Door_NoBlockShoot );
-CLASS_PROPERTY_IMPL( ProtoItem, Door_NoBlockLight );
-CLASS_PROPERTY_IMPL( ProtoItem, Container_Volume );
-CLASS_PROPERTY_IMPL( ProtoItem, Container_Changeble );
-CLASS_PROPERTY_IMPL( ProtoItem, Container_CannotPickUp );
-CLASS_PROPERTY_IMPL( ProtoItem, Container_MagicHandsGrnd );
-CLASS_PROPERTY_IMPL( ProtoItem, Locker_Condition );
-CLASS_PROPERTY_IMPL( ProtoItem, Grid_Type );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_Speed );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_Passability );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_DeteriorationRate );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_CrittersCapacity );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_TankVolume );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_MaxDeterioration );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_FuelConsumption );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_Entrance );
-CLASS_PROPERTY_IMPL( ProtoItem, Car_MovementType );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Type );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Grid_Type );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicMap );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicInv );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Stackable );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Deteriorable );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Weapon_IsUnarmed );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Weapon_Anim1 );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, short, OffsetX );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, short, OffsetY );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, Slot );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, char, LightIntensity );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, LightDistance );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, LightFlags );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, LightColor );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsCanPickUp );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Count );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsFlat );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, char, DrawOrderOffsetHexY );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Corner );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, DisableEgg );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsBadItem );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsColorize );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnim );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnimExt );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay_0 );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay_1 );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, ScriptString *, BlockLines );
 
-ProtoItem::ProtoItem( hash pid ): Entity( 0, EntityType::ProtoItem, PropertiesRegistrator ) // , ItemPropsEntity( Item::PropertiesRegistrator )
+ProtoItem::ProtoItem( hash pid ): ProtoEntity( pid, Item::PropertiesRegistrator )
 {
-    ProtoId = pid;
     InstanceCount = 0;
 }
 
-ProtoItem::ProtoItemExt::ProtoItemExt(): Entity( 0, EntityType::ProtoItemExt, Item::PropertiesRegistrator )
-{
-    //
-}
-
-hash ProtoItem::GetChildPid( uint index )
-{
-    if( index == 0 )
-        return GetChildPid_0();
-    else if( index == 1 )
-        return GetChildPid_1();
-    else if( index == 2 )
-        return GetChildPid_2();
-    else if( index == 3 )
-        return GetChildPid_3();
-    else if( index == 4 )
-        return GetChildPid_4();
-    return 0;
-}
-
-ScriptString* ProtoItem::GetChildLinesStr( uint index )
-{
-    ScriptString* result = nullptr;
-    if( index == 0 )
-        result = GetChildLines_0();
-    else if( index == 1 )
-        result = GetChildLines_1();
-    else if( index == 2 )
-        result = GetChildLines_2();
-    else if( index == 3 )
-        result = GetChildLines_3();
-    else if( index == 4 )
-        result = GetChildLines_4();
-    return result;
-}
-
 PROPERTIES_IMPL( Item );
-#ifdef FONLINE_SERVER
+CLASS_PROPERTY_IMPL( Item, TriggerNum );
+CLASS_PROPERTY_IMPL( Item, PicMap );
+CLASS_PROPERTY_IMPL( Item, PicInv );
+CLASS_PROPERTY_IMPL( Item, OffsetX );
+CLASS_PROPERTY_IMPL( Item, OffsetY );
+CLASS_PROPERTY_IMPL( Item, Cost );
+CLASS_PROPERTY_IMPL( Item, LightIntensity );
+CLASS_PROPERTY_IMPL( Item, LightDistance );
+CLASS_PROPERTY_IMPL( Item, LightFlags );
+CLASS_PROPERTY_IMPL( Item, LightColor );
+CLASS_PROPERTY_IMPL( Item, Type );
+CLASS_PROPERTY_IMPL( Item, Stackable );
+CLASS_PROPERTY_IMPL( Item, Deteriorable );
+CLASS_PROPERTY_IMPL( Item, GroundLevel );
+CLASS_PROPERTY_IMPL( Item, Corner );
+CLASS_PROPERTY_IMPL( Item, Slot );
+CLASS_PROPERTY_IMPL( Item, Weight );
+CLASS_PROPERTY_IMPL( Item, Volume );
+CLASS_PROPERTY_IMPL( Item, SoundId );
+CLASS_PROPERTY_IMPL( Item, Material );
+CLASS_PROPERTY_IMPL( Item, DisableEgg );
+CLASS_PROPERTY_IMPL( Item, AnimWaitBase );
+CLASS_PROPERTY_IMPL( Item, AnimWaitRndMin );
+CLASS_PROPERTY_IMPL( Item, AnimWaitRndMax );
+CLASS_PROPERTY_IMPL( Item, AnimStay_0 );
+CLASS_PROPERTY_IMPL( Item, AnimStay_1 );
+CLASS_PROPERTY_IMPL( Item, AnimShow_0 );
+CLASS_PROPERTY_IMPL( Item, AnimShow_1 );
+CLASS_PROPERTY_IMPL( Item, AnimHide_0 );
+CLASS_PROPERTY_IMPL( Item, AnimHide_1 );
+CLASS_PROPERTY_IMPL( Item, SpriteCut );
+CLASS_PROPERTY_IMPL( Item, DrawOrderOffsetHexY );
+CLASS_PROPERTY_IMPL( Item, IndicatorMax );
+CLASS_PROPERTY_IMPL( Item, BlockLines );
+CLASS_PROPERTY_IMPL( Item, ChildPid_0 );
+CLASS_PROPERTY_IMPL( Item, ChildPid_1 );
+CLASS_PROPERTY_IMPL( Item, ChildPid_2 );
+CLASS_PROPERTY_IMPL( Item, ChildPid_3 );
+CLASS_PROPERTY_IMPL( Item, ChildPid_4 );
+CLASS_PROPERTY_IMPL( Item, ChildLines_0 );
+CLASS_PROPERTY_IMPL( Item, ChildLines_1 );
+CLASS_PROPERTY_IMPL( Item, ChildLines_2 );
+CLASS_PROPERTY_IMPL( Item, ChildLines_3 );
+CLASS_PROPERTY_IMPL( Item, ChildLines_4 );
+CLASS_PROPERTY_IMPL( Item, Weapon_IsUnarmed );
+CLASS_PROPERTY_IMPL( Item, Weapon_UnarmedMinAgility );
+CLASS_PROPERTY_IMPL( Item, Weapon_UnarmedMinUnarmed );
+CLASS_PROPERTY_IMPL( Item, Weapon_UnarmedMinLevel );
+CLASS_PROPERTY_IMPL( Item, Weapon_Anim1 );
+CLASS_PROPERTY_IMPL( Item, Weapon_MaxAmmoCount );
+CLASS_PROPERTY_IMPL( Item, Weapon_Caliber );
+CLASS_PROPERTY_IMPL( Item, Weapon_DefaultAmmoPid );
+CLASS_PROPERTY_IMPL( Item, Weapon_MinStrength );
+CLASS_PROPERTY_IMPL( Item, Weapon_Perk );
+CLASS_PROPERTY_IMPL( Item, Weapon_IsTwoHanded );
+CLASS_PROPERTY_IMPL( Item, Weapon_ActiveUses );
+CLASS_PROPERTY_IMPL( Item, Weapon_Skill_0 );
+CLASS_PROPERTY_IMPL( Item, Weapon_Skill_1 );
+CLASS_PROPERTY_IMPL( Item, Weapon_Skill_2 );
+CLASS_PROPERTY_IMPL( Item, Weapon_PicUse_0 );
+CLASS_PROPERTY_IMPL( Item, Weapon_PicUse_1 );
+CLASS_PROPERTY_IMPL( Item, Weapon_PicUse_2 );
+CLASS_PROPERTY_IMPL( Item, Weapon_MaxDist_0 );
+CLASS_PROPERTY_IMPL( Item, Weapon_MaxDist_1 );
+CLASS_PROPERTY_IMPL( Item, Weapon_MaxDist_2 );
+CLASS_PROPERTY_IMPL( Item, Weapon_Round_0 );
+CLASS_PROPERTY_IMPL( Item, Weapon_Round_1 );
+CLASS_PROPERTY_IMPL( Item, Weapon_Round_2 );
+CLASS_PROPERTY_IMPL( Item, Weapon_ApCost_0 );
+CLASS_PROPERTY_IMPL( Item, Weapon_ApCost_1 );
+CLASS_PROPERTY_IMPL( Item, Weapon_ApCost_2 );
+CLASS_PROPERTY_IMPL( Item, Weapon_Aim_0 );
+CLASS_PROPERTY_IMPL( Item, Weapon_Aim_1 );
+CLASS_PROPERTY_IMPL( Item, Weapon_Aim_2 );
+CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_0 );
+CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_1 );
+CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_2 );
+CLASS_PROPERTY_IMPL( Item, Ammo_Caliber );
+CLASS_PROPERTY_IMPL( Item, Door_NoBlockMove );
+CLASS_PROPERTY_IMPL( Item, Door_NoBlockShoot );
+CLASS_PROPERTY_IMPL( Item, Door_NoBlockLight );
+CLASS_PROPERTY_IMPL( Item, Container_Volume );
+CLASS_PROPERTY_IMPL( Item, Container_Changeble );
+CLASS_PROPERTY_IMPL( Item, Container_CannotPickUp );
+CLASS_PROPERTY_IMPL( Item, Container_MagicHandsGrnd );
+CLASS_PROPERTY_IMPL( Item, Locker_Condition );
+CLASS_PROPERTY_IMPL( Item, Grid_Type );
+CLASS_PROPERTY_IMPL( Item, Grid_ToMap );
+CLASS_PROPERTY_IMPL( Item, Grid_ToMapEntire );
+CLASS_PROPERTY_IMPL( Item, Grid_ToMapDir );
+CLASS_PROPERTY_IMPL( Item, Car_Speed );
+CLASS_PROPERTY_IMPL( Item, Car_Passability );
+CLASS_PROPERTY_IMPL( Item, Car_DeteriorationRate );
+CLASS_PROPERTY_IMPL( Item, Car_CrittersCapacity );
+CLASS_PROPERTY_IMPL( Item, Car_TankVolume );
+CLASS_PROPERTY_IMPL( Item, Car_MaxDeterioration );
+CLASS_PROPERTY_IMPL( Item, Car_FuelConsumption );
+CLASS_PROPERTY_IMPL( Item, Car_Entrance );
+CLASS_PROPERTY_IMPL( Item, Car_MovementType );
+CLASS_PROPERTY_IMPL( Item, SceneryParams );
 CLASS_PROPERTY_IMPL( Item, ScriptId );
-CLASS_PROPERTY_IMPL( Item, LockerComplexity );
-#endif
 CLASS_PROPERTY_IMPL( Item, Accessory );
 CLASS_PROPERTY_IMPL( Item, MapId );
 CLASS_PROPERTY_IMPL( Item, HexX );
@@ -206,16 +198,8 @@ CLASS_PROPERTY_IMPL( Item, IsHolodisk );
 CLASS_PROPERTY_IMPL( Item, IsRadio );
 CLASS_PROPERTY_IMPL( Item, SortValue );
 CLASS_PROPERTY_IMPL( Item, Indicator );
-CLASS_PROPERTY_IMPL( Item, PicMap );
-CLASS_PROPERTY_IMPL( Item, PicInv );
 CLASS_PROPERTY_IMPL( Item, Mode );
-CLASS_PROPERTY_IMPL( Item, LightIntensity );
-CLASS_PROPERTY_IMPL( Item, LightDistance );
-CLASS_PROPERTY_IMPL( Item, LightFlags );
-CLASS_PROPERTY_IMPL( Item, LightColor );
-CLASS_PROPERTY_IMPL( Item, Type );
 CLASS_PROPERTY_IMPL( Item, Count );
-CLASS_PROPERTY_IMPL( Item, Cost );
 CLASS_PROPERTY_IMPL( Item, Val0 );
 CLASS_PROPERTY_IMPL( Item, Val1 );
 CLASS_PROPERTY_IMPL( Item, Val2 );
@@ -234,32 +218,53 @@ CLASS_PROPERTY_IMPL( Item, AmmoCount );
 CLASS_PROPERTY_IMPL( Item, TrapValue );
 CLASS_PROPERTY_IMPL( Item, LockerId );
 CLASS_PROPERTY_IMPL( Item, LockerCondition );
+CLASS_PROPERTY_IMPL( Item, LockerComplexity );
 CLASS_PROPERTY_IMPL( Item, HolodiskNum );
 CLASS_PROPERTY_IMPL( Item, RadioChannel );
 CLASS_PROPERTY_IMPL( Item, RadioFlags );
 CLASS_PROPERTY_IMPL( Item, RadioBroadcastSend );
 CLASS_PROPERTY_IMPL( Item, RadioBroadcastRecv );
-CLASS_PROPERTY_IMPL( Item, OffsetX );
-CLASS_PROPERTY_IMPL( Item, OffsetY );
 
-Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, PropertiesRegistrator )
+Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, PropertiesRegistrator, proto )
 {
     RUNTIME_ASSERT( proto );
 
     MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() );
 
-    Proto = nullptr;
+    ChildItems = nullptr;
     ViewPlaceOnMap = false;
 
     #ifdef FONLINE_SERVER
     memzero( FuncId, sizeof( FuncId ) );
+    SceneryScriptBindId = 0;
     ViewByCritter = nullptr;
-    ChildItems = nullptr;
     #endif
 
-    SetProto( proto );
     if( GetCount() == 0 )
         SetCount( 1 );
+
+    switch( GetType() )
+    {
+    case ITEM_TYPE_WEAPON:
+        SetAmmoCount( GetWeapon_MaxAmmoCount() );
+        SetAmmoPid( Str::GetHash( ConvertProtoIdByInt( GetWeapon_DefaultAmmoPid() ) ) );
+        break;
+    case ITEM_TYPE_DOOR:
+        SetIsGag( true );
+        if( !GetDoor_NoBlockMove() )
+            SetIsNoBlock( false );
+        if( !GetDoor_NoBlockShoot() )
+            SetIsShootThru( false );
+        if( !GetDoor_NoBlockLight() )
+            SetIsLightThru( false );
+        SetLockerCondition( GetLocker_Condition() );
+        break;
+    case  ITEM_TYPE_CONTAINER:
+        SetLockerCondition( GetLocker_Condition() );
+        break;
+    default:
+        break;
+    }
 }
 
 Item::~Item()
@@ -269,43 +274,48 @@ Item::~Item()
 
 void Item::SetProto( ProtoItem* proto )
 {
-    if( proto == Proto )
-        return;
-
-    ProtoId = proto->ProtoId;
+    RUNTIME_ASSERT( proto );
+    Proto->Release();
     Proto = proto;
-    Props = Proto->ItemPropsEntity.Props;
-    SetType( proto->GetType() );
+    Props = proto->Props;
+}
 
-    switch( GetType() )
-    {
-    case ITEM_TYPE_WEAPON:
-        SetAmmoCount( Proto->GetWeapon_MaxAmmoCount() );
-        SetAmmoPid( Str::GetHash( ConvertProtoIdByInt( Proto->GetWeapon_DefaultAmmoPid() ) ) );
-        break;
-    case ITEM_TYPE_DOOR:
-        SetIsGag( true );
-        if( !Proto->GetDoor_NoBlockMove() )
-            SetIsNoBlock( false );
-        if( !Proto->GetDoor_NoBlockShoot() )
-            SetIsShootThru( false );
-        if( !Proto->GetDoor_NoBlockLight() )
-            SetIsLightThru( false );
-        SetLockerCondition( Proto->GetLocker_Condition() );
-        break;
-    case  ITEM_TYPE_CONTAINER:
-        SetLockerCondition( Proto->GetLocker_Condition() );
-        break;
-    default:
-        break;
-    }
+hash Item::GetChildPid( uint index )
+{
+    if( index == 0 )
+        return GetChildPid_0();
+    else if( index == 1 )
+        return GetChildPid_1();
+    else if( index == 2 )
+        return GetChildPid_2();
+    else if( index == 3 )
+        return GetChildPid_3();
+    else if( index == 4 )
+        return GetChildPid_4();
+    return 0;
+}
+
+ScriptString* Item::GetChildLinesStr( uint index )
+{
+    ScriptString* result = nullptr;
+    if( index == 0 )
+        result = GetChildLines_0();
+    else if( index == 1 )
+        result = GetChildLines_1();
+    else if( index == 2 )
+        result = GetChildLines_2();
+    else if( index == 3 )
+        result = GetChildLines_3();
+    else if( index == 4 )
+        result = GetChildLines_4();
+    return result;
 }
 
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 Item* Item::Clone()
 {
     RUNTIME_ASSERT( Type == EntityType::Item );
-    Item* clone = new Item( Id, Proto );
+    Item* clone = new Item( Id, (ProtoItem*) Proto );
     clone->Props = Props;
     return clone;
 }
@@ -367,7 +377,7 @@ bool Item::EventAttack( Critter* cr, Critter* target )
     return result;
 }
 
-bool Item::EventUse( Critter* cr, Critter* on_critter, Item* on_item, MapObject* on_scenery )
+bool Item::EventUse( Critter* cr, Critter* on_critter, Item* on_item, Item* on_scenery )
 {
     bool result = false;
     if( PrepareScriptFunc( ITEM_EVENT_USE ) )
@@ -507,26 +517,26 @@ void Item::SetWeaponMode( uchar mode )
         switch( use )
         {
         case USE_PRIMARY:
-            if( Proto->GetWeapon_ActiveUses() & 0x1 )
+            if( GetWeapon_ActiveUses() & 0x1 )
                 break;
             use = 0xF;
             aim = 0;
             break;
         case USE_SECONDARY:
-            if( Proto->GetWeapon_ActiveUses() & 0x2 )
+            if( GetWeapon_ActiveUses() & 0x2 )
                 break;
             use = USE_PRIMARY;
             aim = 0;
             break;
         case USE_THIRD:
-            if( Proto->GetWeapon_ActiveUses() & 0x4 )
+            if( GetWeapon_ActiveUses() & 0x4 )
                 break;
             use = USE_PRIMARY;
             aim = 0;
             break;
         case USE_RELOAD:
             aim = 0;
-            if( Proto->GetWeapon_MaxAmmoCount() )
+            if( GetWeapon_MaxAmmoCount() )
                 break;
             use = USE_PRIMARY;
             break;
@@ -542,7 +552,7 @@ void Item::SetWeaponMode( uchar mode )
             break;
         }
 
-        if( use < MAX_USES && aim && !( use == 0 ? Proto->GetWeapon_Aim_0() : ( use == 1 ? Proto->GetWeapon_Aim_1() : Proto->GetWeapon_Aim_2() ) ) )
+        if( use < MAX_USES && aim && !( use == 0 ? GetWeapon_Aim_0() : ( use == 1 ? GetWeapon_Aim_1() : GetWeapon_Aim_2() ) ) )
             aim = 0;
         mode = ( aim << 4 ) | ( use & 0xF );
     }
@@ -552,12 +562,12 @@ void Item::SetWeaponMode( uchar mode )
 
 uint Item::GetCost1st()
 {
-    uint cost = ( GetCost() ? GetCost() : Proto->GetCost() );
+    uint cost = ( GetCost() ? GetCost() : GetCost() );
     if( IsWeapon() && GetAmmoCount() )
     {
-        ProtoItem* ammo = ItemMngr.GetProtoItem( GetAmmoPid() );
+        ProtoItem* ammo = ProtoMngr.GetProtoItem( GetAmmoPid() );
         if( ammo )
-            cost += ammo->GetCost() * GetAmmoCount();
+            cost += ammo->Props.GetPropValue< uint >( Item::PropertyCost ) * GetAmmoCount();
     }
     if( !cost )
         cost = 1;
@@ -567,14 +577,13 @@ uint Item::GetCost1st()
 void Item::WeapLoadHolder()
 {
     if( !GetAmmoPid() )
-        SetAmmoPid( Proto->GetWeapon_DefaultAmmoPid() );
-    SetAmmoCount( (ushort) Proto->GetWeapon_MaxAmmoCount() );
+        SetAmmoPid( GetWeapon_DefaultAmmoPid() );
+    SetAmmoCount( (ushort) GetWeapon_MaxAmmoCount() );
 }
 
 #ifdef FONLINE_SERVER
 void Item::ContAddItem( Item*& item, uint stack_id )
 {
-    RUNTIME_ASSERT( IsContainer() );
     RUNTIME_ASSERT( item );
 
     if( !ChildItems )
@@ -617,7 +626,6 @@ void Item::ContSetItem( Item* item )
 
 void Item::ContEraseItem( Item* item )
 {
-    RUNTIME_ASSERT( IsContainer() );
     RUNTIME_ASSERT( ChildItems );
     RUNTIME_ASSERT( item );
 
@@ -635,7 +643,6 @@ void Item::ContEraseItem( Item* item )
 
 Item* Item::ContGetItem( uint item_id, bool skip_hide )
 {
-    RUNTIME_ASSERT( IsContainer() );
     RUNTIME_ASSERT( item_id );
 
     if( !ChildItems )
@@ -657,8 +664,6 @@ Item* Item::ContGetItem( uint item_id, bool skip_hide )
 
 void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
 {
-    RUNTIME_ASSERT( IsContainer() );
-
     if( !ChildItems )
         return;
 
@@ -678,8 +683,6 @@ void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
 # pragma MESSAGE("Add explicit sync lock.")
 Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 {
-    RUNTIME_ASSERT( IsContainer() );
-
     if( !ChildItems )
         return nullptr;
 
@@ -697,8 +700,6 @@ Item* Item::ContGetItemByPid( hash pid, uint stack_id )
 
 void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
 {
-    RUNTIME_ASSERT( IsContainer() );
-
     if( !ChildItems )
         return;
 
@@ -717,9 +718,7 @@ void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
 
 bool Item::ContHaveFreeVolume( uint stack_id, uint volume )
 {
-    RUNTIME_ASSERT( IsContainer() );
-
-    uint max_volume = Proto->GetContainer_Volume();
+    uint max_volume = GetContainer_Volume();
     if( max_volume == 0 )
         return true;
 
@@ -733,7 +732,7 @@ bool Item::ContHaveFreeVolume( uint stack_id, uint volume )
         {
             Item* item = *it;
             if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
-                cur_volume += item->GetVolume();
+                cur_volume += item->GetWholeVolume();
         }
     }
     return max_volume >= cur_volume + volume;
@@ -741,13 +740,11 @@ bool Item::ContHaveFreeVolume( uint stack_id, uint volume )
 
 bool Item::ContIsItems()
 {
-    RUNTIME_ASSERT( IsContainer() );
     return ChildItems && ChildItems->size();
 }
 
 void Item::ContDeleteItems()
 {
-    RUNTIME_ASSERT( IsContainer() );
     while( ChildItems )
     {
         RUNTIME_ASSERT( !ChildItems->empty() );
@@ -757,7 +754,7 @@ void Item::ContDeleteItems()
 
 Item* Item::GetChild( uint child_index )
 {
-    hash pid = ( child_index == 0 ? Proto->GetChildPid_0() : ( child_index == 1 ? Proto->GetChildPid_1() : Proto->GetChildPid_2() ) );
+    hash pid = ( child_index == 0 ? GetChildPid_0() : ( child_index == 1 ? GetChildPid_1() : GetChildPid_2() ) );
     if( !pid )
         return nullptr;
 
@@ -766,7 +763,7 @@ Item* Item::GetChild( uint child_index )
         Map* map = MapMngr.GetMap( GetMapId() );
         if( !map )
             return nullptr;
-        return map->GetItemChild( GetHexX(), GetHexY(), Proto, child_index );
+        return map->GetItemChild( GetHexX(), GetHexY(), this, child_index );
     }
     else if( GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
@@ -782,25 +779,69 @@ Item* Item::GetChild( uint child_index )
     }
     return nullptr;
 }
+
+#else
+
+void Item::ContSetItem( Item* item )
+{
+    if( !ChildItems )
+        ChildItems = new ItemVec();
+
+    RUNTIME_ASSERT( std::find( ChildItems->begin(), ChildItems->end(), item ) == ChildItems->end() );
+
+    ChildItems->push_back( item );
+    item->SetAccessory( ITEM_ACCESSORY_CONTAINER );
+    item->SetContainerId( Id );
+}
+
+void Item::ContEraseItem( Item* item )
+{
+    RUNTIME_ASSERT( ChildItems );
+    RUNTIME_ASSERT( item );
+
+    auto it = std::find( ChildItems->begin(), ChildItems->end(), item );
+    RUNTIME_ASSERT( it != ChildItems->end() );
+    ChildItems->erase( it );
+
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
+    item->SetContainerId( 0 );
+    item->SetContainerStack( 0 );
+
+    if( ChildItems->empty() )
+        SAFEDEL( ChildItems );
+}
+
+void Item::ContGetItems( ItemVec& items, uint stack_id )
+{
+    if( !ChildItems )
+        return;
+
+    for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
+    {
+        Item* item = *it;
+        if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
+            items.push_back( item );
+    }
+}
 #endif // FONLINE_SERVER
 
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 # include "ResourceManager.h"
 # include "SpriteManager.h"
 
-uint ProtoItem::GetCurSprId()
+uint Item::GetCurSprId()
 {
     AnyFrames* anim = ResMngr.GetItemAnim( GetPicMap() );
     if( !anim )
         return 0;
 
     uint beg = 0, end = 0;
-    if( Item::PropertyIsShowAnim->GetValue< bool >( &ItemPropsEntity ) )
+    if( GetIsShowAnim() )
     {
         beg = 0;
         end = anim->CntFrm - 1;
     }
-    if( Item::PropertyIsShowAnimExt->GetValue< bool >( &ItemPropsEntity ) )
+    if( GetIsShowAnimExt() )
     {
         beg = GetAnimStay_0();
         end = GetAnimStay_1();
@@ -817,9 +858,9 @@ uint ProtoItem::GetCurSprId()
     return anim->Ind[ beg + ( ( Timer::GameTick() % ticks ) * 100 / ticks ) * count / 100 ];
 }
 
-uint Item::GetCurSprId()
+uint ProtoItem::GetCurSprId()
 {
-    AnyFrames* anim = ResMngr.GetItemAnim( GetActualPicMap() );
+    AnyFrames* anim = ResMngr.GetItemAnim( GetPicMap() );
     if( !anim )
         return 0;
 
@@ -831,8 +872,8 @@ uint Item::GetCurSprId()
     }
     if( GetIsShowAnimExt() )
     {
-        beg = Proto->GetAnimStay_0();
-        end = Proto->GetAnimStay_1();
+        beg = GetAnimStay_0();
+        end = GetAnimStay_1();
     }
     if( beg >= anim->CntFrm )
         beg = anim->CntFrm - 1;

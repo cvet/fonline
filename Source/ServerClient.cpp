@@ -300,7 +300,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
 
     // Check
     Map* map = MapMngr.GetMap( map_id, true );
-    if( !map || map_id != cr->GetMapId() || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
+    if( !map || map_id != cr->GetMapId() || hx >= map->GetWidth() || hy >= map->GetHeight() )
         return false;
 
     // Check turn based
@@ -504,7 +504,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( weap->Proto->GetWeapon_IsTwoHanded() && cr->IsDmgArm() )
+    if( weap->GetWeapon_IsTwoHanded() && cr->IsDmgArm() )
     {
         WriteLogF( _FUNC_, " - Critter is damaged arm on two hands weapon, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
         return false;
@@ -525,7 +525,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( !( weap->Proto->GetWeapon_ActiveUses() & ( 1 << use ) ) )
+    if( !( weap->GetWeapon_ActiveUses() & ( 1 << use ) ) )
     {
         WriteLogF( _FUNC_, " - Use %u is not aviable, critter '%s', target critter '%s'.\n", use, cr->GetInfo(), t_cr->GetInfo() );
         return false;
@@ -555,9 +555,9 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( !CritType::IsAnim1( cr->GetCrType(), weap->Proto->GetWeapon_Anim1() ) )
+    if( !CritType::IsAnim1( cr->GetCrType(), weap->GetWeapon_Anim1() ) )
     {
-        WriteLogF( _FUNC_, " - Anim1 is not available for this critter type, crtype %u, anim1 %d, critter '%s', target critter '%s'.\n", cr->GetCrType(), weap->Proto->GetWeapon_Anim1(), cr->GetInfo(), t_cr->GetInfo() );
+        WriteLogF( _FUNC_, " - Anim1 is not available for this critter type, crtype %u, anim1 %d, critter '%s', target critter '%s'.\n", cr->GetCrType(), weap->GetWeapon_Anim1(), cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
@@ -575,7 +575,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     trace.BeginHy = hy;
     trace.EndHx = tx;
     trace.EndHy = ty;
-    trace.Dist = ( ( use == 0 ? weap->Proto->GetWeapon_MaxDist_0() : ( use == 1 ? weap->Proto->GetWeapon_MaxDist_1() : weap->Proto->GetWeapon_MaxDist_2() ) ) > 2 ? max_dist : 0 );
+    trace.Dist = ( ( use == 0 ? weap->GetWeapon_MaxDist_0() : ( use == 1 ? weap->GetWeapon_MaxDist_1() : weap->GetWeapon_MaxDist_2() ) ) > 2 ? max_dist : 0 );
     trace.FindCr = t_cr;
     MapMngr.TraceBullet( trace );
     if( !trace.IsCritterFounded )
@@ -596,11 +596,11 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     ProtoItem* ammo = nullptr;
     if( weap->WeapGetAmmoCaliber() && weap->WeapGetMaxAmmoCount() )
     {
-        ammo = ItemMngr.GetProtoItem( weap->GetAmmoPid() );
+        ammo = ProtoMngr.GetProtoItem( weap->GetAmmoPid() );
         if( !ammo )
         {
-            weap->SetAmmoPid( weap->Proto->GetWeapon_DefaultAmmoPid() );
-            ammo = ItemMngr.GetProtoItem( weap->GetAmmoPid() );
+            weap->SetAmmoPid( weap->GetWeapon_DefaultAmmoPid() );
+            ammo = ProtoMngr.GetProtoItem( weap->GetAmmoPid() );
         }
 
         if( !ammo )
@@ -609,7 +609,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
             return false;
         }
 
-        if( !ammo->IsAmmo() )
+        if( ammo->GetType() != ITEM_TYPE_AMMO )
         {
             WriteLogF( _FUNC_, " - Critter weapon ammo is not ammo type, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
             return false;
@@ -626,7 +626,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         }
     }
 
-    ushort ammo_round = ( use == 0 ? weap->Proto->GetWeapon_Round_0() : ( use == 1 ? weap->Proto->GetWeapon_Round_1() : weap->Proto->GetWeapon_Round_2() ) );
+    ushort ammo_round = ( use == 0 ? weap->GetWeapon_Round_0() : ( use == 1 ? weap->GetWeapon_Round_1() : weap->GetWeapon_Round_2() ) );
     if( !ammo_round )
         ammo_round = 1;
 
@@ -651,12 +651,14 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     // Run script
     if( Script::PrepareContext( ServerFunctions.CritterAttack, _FUNC_, cr->GetInfo() ) )
     {
+        Item* ammo_proto = new Item( 0, ammo );
         Script::SetArgObject( cr );
         Script::SetArgObject( t_cr );
-        Script::SetArgObject( weap->Proto );
+        Script::SetArgObject( weap );
         Script::SetArgUChar( MAKE_ITEM_MODE( use, aim ) );
-        Script::SetArgObject( ammo );
+        Script::SetArgObject( ammo_proto );
         Script::RunPrepared();
+        ammo_proto->Release();
     }
     return true;
 }
@@ -763,9 +765,9 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     }
     cr->SubAp( ap_cost );
 
-    Critter*   target_cr = nullptr;
-    Item*      target_item = nullptr;
-    MapObject* target_scen = nullptr;
+    Critter* target_cr = nullptr;
+    Item*    target_item = nullptr;
+    Item*    target_scen = nullptr;
 
     if( target_type == TARGET_CRITTER )
     {
@@ -876,20 +878,20 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return false;
         }
 
-        ProtoItem* proto_scenery = ItemMngr.GetProtoItem( target_pid );
+        ProtoItem* proto_scenery = ProtoMngr.GetProtoItem( target_pid );
         if( !proto_scenery )
         {
             WriteLogF( _FUNC_, " - Proto scenery '%s' not found, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
             return false;
         }
 
-        if( !proto_scenery->IsScen() )
+        if( !proto_scenery->IsGeneric() )
         {
             WriteLogF( _FUNC_, " - Target scenery '%s' is not scenery, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
             return false;
         }
 
-        target_scen = map->Proto->GetMapScenery( hx, hy, target_pid );
+        target_scen = map->GetProtoMap()->GetMapScenery( hx, hy, target_pid );
         if( !target_scen )
         {
             WriteLogF( _FUNC_, " - Scenery '%s' not found on map, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
@@ -916,11 +918,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             else if( target_cr )
                 cr->SendAA_Action( ACTION_USE_SKILL, skill, nullptr );
             else if( target_scen )
-            {
-                Item* item_scenery = new Item( uint( -1 ), ItemMngr.GetProtoItem( target_scen->ProtoId ) );
-                cr->SendAA_Action( ACTION_USE_SKILL, skill, item_scenery );
-                SAFEREL( item_scenery );
-            }
+                cr->SendAA_Action( ACTION_USE_SKILL, skill, target_scen );
         }
     }
 
@@ -929,16 +927,21 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         map->EndCritterTurn();
 
     // Scenery
-    if( target_scen && target_scen->RunTime.BindScriptId > 0 )
+    if( target_scen && target_scen->SceneryScriptBindId != 0 )
     {
-        if( !Script::PrepareContext( target_scen->RunTime.BindScriptId, _FUNC_, cr->GetInfo() ) )
+        if( !Script::PrepareContext( target_scen->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
             return false;
         Script::SetArgObject( cr );
         Script::SetArgObject( target_scen );
         Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
         Script::SetArgObject( item );
-        for( int i = 0, j = MIN( target_scen->MScenery.ParamsCount, 5 ); i < j; i++ )
-            Script::SetArgUInt( target_scen->MScenery.Param[ i ] );
+        if( target_scen->IsSceneryParams() )
+        {
+            ScriptArray* scenery_params = target_scen->GetSceneryParams();
+            for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
+                Script::SetArgUInt( *(int*) scenery_params->At( i ) );
+            scenery_params->Release();
+        }
         if( Script::RunPrepared() && Script::GetReturnedBool() )
             return true;
     }
@@ -1025,7 +1028,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
     }
     cr->SubAp( ap_cost );
 
-    if( hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
+    if( hx >= map->GetWidth() || hy >= map->GetHeight() )
         return false;
 
     if( !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetUseDist() ) )
@@ -1035,7 +1038,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
         return false;
     }
 
-    ProtoItem* proto = ItemMngr.GetProtoItem( pid );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Proto item '%s' not found, critter '%s'.\n", Str::GetName( pid ), cr->GetInfo() );
@@ -1070,29 +1073,32 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
         cr->Send_TextMsg( cr, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
     }
-    else if( proto->IsScen() )
+    else if( proto->IsGeneric() )
     {
-        MapObject* pick_scenery = map->Proto->GetMapScenery( hx, hy, pid );
+        Item* pick_scenery = map->GetProtoMap()->GetMapScenery( hx, hy, pid );
         if( !pick_scenery )
         {
             cr->Send_Text( cr, "Scenery not found, maybe map outdated.", SAY_NETMSG );
             return false;
         }
 
-        Item* pick_item = new Item( uint( -1 ), proto );
-        cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_item );
-        SAFEREL( pick_item )
+        cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_scenery );
 
-        if( proto->IsScen() && pick_scenery->RunTime.BindScriptId > 0 )
+        if( pick_scenery->SceneryScriptBindId )
         {
-            if( !Script::PrepareContext( pick_scenery->RunTime.BindScriptId, _FUNC_, cr->GetInfo() ) )
+            if( !Script::PrepareContext( pick_scenery->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
                 return false;
             Script::SetArgObject( cr );
             Script::SetArgObject( pick_scenery );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
             Script::SetArgObject( nullptr );
-            for( int i = 0, j = MIN( pick_scenery->MScenery.ParamsCount, 5 ); i < j; i++ )
-                Script::SetArgUInt( pick_scenery->MScenery.Param[ i ] );
+            if( pick_scenery->IsSceneryParams() )
+            {
+                ScriptArray* scenery_params = pick_scenery->GetSceneryParams();
+                for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
+                    Script::SetArgUInt( *(int*) scenery_params->At( i ) );
+                scenery_params->Release();
+            }
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return true;
         }
@@ -1228,7 +1234,7 @@ void FOServer::KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, ui
     int  y2 = knock_hy;
 
     Map* map = MapMngr.GetMap( cr->GetMapId() );
-    if( !map || x2 >= map->GetMaxHexX() || y2 >= map->GetMaxHexY() )
+    if( !map || x2 >= map->GetWidth() || y2 >= map->GetHeight() )
         return;
 
     TraceData td;
@@ -1271,8 +1277,8 @@ bool FOServer::MoveRandom( Critter* cr )
         return false;
 
     uint   multihex = cr->GetMultihex();
-    ushort maxhx = map->GetMaxHexX();
-    ushort maxhy = map->GetMaxHexY();
+    ushort maxhx = map->GetWidth();
+    ushort maxhy = map->GetHeight();
 
     for( int i = 0; i < 6; i++ )
     {
@@ -1305,29 +1311,39 @@ bool FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
     bool result = false;
     if( map->IsHexTrigger( from_hx, from_hy ) || map->IsHexTrigger( to_hx, to_hy ) )
     {
-        MapObject* out_trigger = map->Proto->GetMapScenery( from_hx, from_hy, SP_SCEN_TRIGGER );
-        MapObject* in_trigger = map->Proto->GetMapScenery( to_hx, to_hy, SP_SCEN_TRIGGER );
-        if( !( out_trigger && in_trigger && out_trigger->MScenery.TriggerNum == in_trigger->MScenery.TriggerNum ) )
+        Item* out_trigger = map->GetProtoMap()->GetMapScenery( from_hx, from_hy, SP_SCEN_TRIGGER );
+        Item* in_trigger = map->GetProtoMap()->GetMapScenery( to_hx, to_hy, SP_SCEN_TRIGGER );
+        if( !( out_trigger && in_trigger && out_trigger->GetTriggerNum() == in_trigger->GetTriggerNum() ) )
         {
-            if( out_trigger && Script::PrepareContext( out_trigger->RunTime.BindScriptId, _FUNC_, cr->GetInfo() ) )
+            if( out_trigger && Script::PrepareContext( out_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
             {
                 Script::SetArgObject( cr );
                 Script::SetArgObject( out_trigger );
                 Script::SetArgBool( false );
                 Script::SetArgUChar( dir );
-                for( int i = 0, j = MIN( out_trigger->MScenery.ParamsCount, 5 ); i < j; i++ )
-                    Script::SetArgUInt( out_trigger->MScenery.Param[ i ] );
+                if( out_trigger->IsSceneryParams() )
+                {
+                    ScriptArray* scenery_params = out_trigger->GetSceneryParams();
+                    for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
+                        Script::SetArgUInt( *(int*) scenery_params->At( i ) );
+                    scenery_params->Release();
+                }
                 if( Script::RunPrepared() )
                     result = true;
             }
-            if( in_trigger && Script::PrepareContext( in_trigger->RunTime.BindScriptId, _FUNC_, cr->GetInfo() ) )
+            if( in_trigger && Script::PrepareContext( in_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
             {
                 Script::SetArgObject( cr );
                 Script::SetArgObject( in_trigger );
                 Script::SetArgBool( true );
                 Script::SetArgUChar( dir );
-                for( int i = 0, j = MIN( in_trigger->MScenery.ParamsCount, 5 ); i < j; i++ )
-                    Script::SetArgUInt( in_trigger->MScenery.Param[ i ] );
+                if( in_trigger->IsSceneryParams() )
+                {
+                    ScriptArray* scenery_params = in_trigger->GetSceneryParams();
+                    for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
+                        Script::SetArgUInt( *(int*) scenery_params->At( i ) );
+                    scenery_params->Release();
+                }
                 if( Script::RunPrepared() )
                     result = true;
             }
@@ -2208,7 +2224,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         Map* map = MapMngr.GetMap( cl->GetMapId() );
         if( cl->GetMapId() )
         {
-            if( !map || map->IsNoLogOut() || map->GetProtoId() != cl->GetMapPid() )
+            if( !map || map->GetIsNoLogOut() || map->GetProtoId() != cl->GetMapPid() )
             {
                 ushort hx, hy;
                 uchar  dir;
@@ -2536,15 +2552,13 @@ void FOServer::Process_GiveMap( Client* cl )
     bool automap;
     hash map_pid;
     uint loc_id;
-    uint hash_tiles;
-    uint hash_walls;
-    uint hash_scen;
+    hash hash_tiles;
+    hash hash_scen;
 
     cl->Bin >> automap;
     cl->Bin >> map_pid;
     cl->Bin >> loc_id;
     cl->Bin >> hash_tiles;
-    cl->Bin >> hash_walls;
     cl->Bin >> hash_scen;
     CHECK_IN_BUFF_ERROR( cl );
 
@@ -2558,7 +2572,7 @@ void FOServer::Process_GiveMap( Client* cl )
         cl->LastSendedMapTick = tick;
     }
 
-    ProtoMap* pmap = MapMngr.GetProtoMap( map_pid );
+    ProtoMap* pmap = ProtoMngr.GetProtoMap( map_pid );
     if( !pmap )
     {
         WriteLogF( _FUNC_, " - Map prototype not found, client '%s'.\n", cl->GetInfo() );
@@ -2581,22 +2595,28 @@ void FOServer::Process_GiveMap( Client* cl )
         }
 
         Location* loc = MapMngr.GetLocation( loc_id );
-        if( !loc || !loc->IsAutomap( map_pid ) )
+        if( !loc )
+        {
+            WriteLogF( _FUNC_, " - Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
+            return;
+        }
+
+        bool         found = false;
+        ScriptArray* automaps = ( loc->IsAutomaps() ? loc->GetAutomaps() : nullptr );
+        if( automaps )
+        {
+            for( uint i = 0, j = automaps->GetSize(); i < j && !found; i++ )
+                if( *(hash*) automaps->At( i ) == map_pid )
+                    found = true;
+        }
+        if( !found )
         {
             WriteLogF( _FUNC_, " - Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
             return;
         }
     }
 
-    uchar send_info = 0;
-    if( pmap->HashTiles != hash_tiles )
-        SETFLAG( send_info, SENDMAP_TILES );
-    if( pmap->HashWalls != hash_walls )
-        SETFLAG( send_info, SENDMAP_WALLS );
-    if( pmap->HashScen != hash_scen )
-        SETFLAG( send_info, SENDMAP_SCENERY );
-
-    Send_MapData( cl, pmap, send_info );
+    Send_MapData( cl, pmap, pmap->HashTiles != hash_tiles, pmap->HashScen != hash_scen );
 
     if( !automap )
     {
@@ -2607,20 +2627,18 @@ void FOServer::Process_GiveMap( Client* cl )
     }
 }
 
-void FOServer::Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info )
+void FOServer::Send_MapData( Client* cl, ProtoMap* pmap, bool send_tiles, bool send_scenery )
 {
     uint   msg = NETMSG_MAP;
-    hash   map_pid = pmap->GetProtoId();
-    ushort maxhx = pmap->Header.MaxHexX;
-    ushort maxhy = pmap->Header.MaxHexY;
-    uint   msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( map_pid ) + sizeof( maxhx ) + sizeof( maxhy ) + sizeof( send_info );
+    hash   map_pid = pmap->ProtoId;
+    ushort maxhx = pmap->GetWidth();
+    ushort maxhy = pmap->GetHeight();
+    uint   msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( map_pid ) + sizeof( maxhx ) + sizeof( maxhy ) + sizeof( bool ) * 2;
 
-    if( FLAG( send_info, SENDMAP_TILES ) )
+    if( send_tiles )
         msg_len += sizeof( uint ) + (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile );
-    if( FLAG( send_info, SENDMAP_WALLS ) )
-        msg_len += sizeof( uint ) + (uint) pmap->WallsToSend.size() * sizeof( SceneryCl );
-    if( FLAG( send_info, SENDMAP_SCENERY ) )
-        msg_len += sizeof( uint ) + (uint) pmap->SceneriesToSend.size() * sizeof( SceneryCl );
+    if( send_scenery )
+        msg_len += sizeof( uint ) + (uint) pmap->SceneryData.size();
 
     // Header
     BOUT_BEGIN( cl );
@@ -2629,30 +2647,19 @@ void FOServer::Send_MapData( Client* cl, ProtoMap* pmap, uchar send_info )
     cl->Bout << map_pid;
     cl->Bout << maxhx;
     cl->Bout << maxhy;
-    cl->Bout << send_info;
-
-    // Tiles
-    if( FLAG( send_info, SENDMAP_TILES ) )
+    cl->Bout << send_tiles;
+    cl->Bout << send_scenery;
+    if( send_tiles )
     {
-        cl->Bout << (uint) pmap->Tiles.size();
+        cl->Bout << (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile );
         if( pmap->Tiles.size() )
             cl->Bout.Push( (char*) &pmap->Tiles[ 0 ], (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
     }
-
-    // Walls
-    if( FLAG( send_info, SENDMAP_WALLS ) )
+    if( send_scenery )
     {
-        cl->Bout << (uint) pmap->WallsToSend.size();
-        if( pmap->WallsToSend.size() )
-            cl->Bout.Push( (char*) &pmap->WallsToSend[ 0 ], (uint) pmap->WallsToSend.size() * sizeof( SceneryCl ) );
-    }
-
-    // Scenery
-    if( FLAG( send_info, SENDMAP_SCENERY ) )
-    {
-        cl->Bout << (uint) pmap->SceneriesToSend.size();
-        if( pmap->SceneriesToSend.size() )
-            cl->Bout.Push( (char*) &pmap->SceneriesToSend[ 0 ], (uint) pmap->SceneriesToSend.size() * sizeof( SceneryCl ) );
+        cl->Bout << (uint) pmap->SceneryData.size();
+        if( pmap->SceneryData.size() )
+            cl->Bout.Push( (char*) &pmap->SceneryData[ 0 ], (uint) pmap->SceneryData.size() );
     }
     BOUT_END( cl );
 }
@@ -3045,7 +3052,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check for close
-            if( cont->Proto->GetContainer_Changeble() && !cont->LockerIsOpen() )
+            if( cont->GetContainer_Changeble() && !cont->LockerIsOpen() )
             {
                 cl->Send_ContainerInfo();
                 WriteLogF( _FUNC_, " - Container is not open.\n" );
@@ -3102,14 +3109,14 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check weight
-            if( cl->GetFreeWeight() < (int) ( item->GetWeight1st() * item_count ) )
+            if( cl->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
                 break;
             }
 
             // Check volume
-            if( cl->GetFreeVolume() < (int) ( item->GetVolume1st() * item_count ) )
+            if( cl->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
                 break;
@@ -3155,8 +3162,8 @@ void FOServer::Process_ContainerItem( Client* cl )
             for( auto it = items.begin(), end = items.end(); it != end; ++it )
             {
                 Item* item = *it;
-                weight += item->GetWeight();
-                volume += item->GetVolume();
+                weight += item->GetWholeWeight();
+                volume += item->GetWholeVolume();
             }
 
             if( cl->GetFreeWeight() < (int) weight )
@@ -3231,7 +3238,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check volume
-            if( !cont->ContHaveFreeVolume( 0, item->GetVolume1st() * item_count ) )
+            if( !cont->ContHaveFreeVolume( 0, item->GetVolume() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
                 break;
@@ -3369,14 +3376,14 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check weight
-            if( cl->GetFreeWeight() < (int) ( item->GetWeight1st() * item_count ) )
+            if( cl->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
                 break;
             }
 
             // Check volume
-            if( cl->GetFreeVolume() < (int) ( item->GetVolume1st() * item_count ) )
+            if( cl->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
                 break;
@@ -3436,8 +3443,8 @@ void FOServer::Process_ContainerItem( Client* cl )
             uint weight = 0, volume = 0;
             for( uint i = 0, j = (uint) items.size(); i < j; ++i )
             {
-                weight += items[ i ]->GetWeight();
-                volume += items[ i ]->GetVolume();
+                weight += items[ i ]->GetWholeWeight();
+                volume += items[ i ]->GetWholeVolume();
             }
 
             if( cl->GetFreeWeight() < (int) weight )
@@ -3511,12 +3518,12 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check weight, volume
-            if( cr->GetFreeWeight() < (int) ( item->GetWeight1st() * item_count ) )
+            if( cr->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
                 break;
             }
-            if( cr->GetFreeVolume() < (int) ( item->GetVolume1st() * item_count ) )
+            if( cr->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
                 break;
@@ -3908,16 +3915,16 @@ void FOServer::Process_PlayersBarter( Client* cl )
             for( uint i = 0; i < cl->BarterItems.size(); i++ )
             {
                 Client::BarterItem& barter_item = cl->BarterItems[ i ];
-                ProtoItem*          proto_item = ItemMngr.GetProtoItem( barter_item.Pid );
-                weigth += proto_item->GetWeight() * barter_item.Count;
+                Item*               item = cl->GetItem( barter_item.Id, true );
+                weigth += item->GetWeight() * barter_item.Count;
             }
             // Opponent
             uint weigth_ = 0;
             for( uint i = 0; i < opponent->BarterItems.size(); i++ )
             {
                 Client::BarterItem& barter_item = opponent->BarterItems[ i ];
-                ProtoItem*          proto_item = ItemMngr.GetProtoItem( barter_item.Pid );
-                weigth_ += proto_item->GetWeight() * barter_item.Count;
+                Item*               item = opponent->GetItem( barter_item.Id, true );
+                weigth_ += item->GetWeight() * barter_item.Count;
             }
             // Check
             if( cl->GetFreeWeight() + (int) weigth < (int) weigth_ )
@@ -4017,7 +4024,7 @@ label_EndOffer:
                 return;
             }
             if( !barter_item )
-                barter_cl->BarterItems.push_back( Client::BarterItem( item->GetId(), item->GetProtoId(), param_ext ) );
+                barter_cl->BarterItems.push_back( Client::BarterItem( item->GetId(), param_ext ) );
             else
                 barter_item->Count += param_ext;
         }
@@ -4393,14 +4400,17 @@ void FOServer::Process_RuleGlobal( Client* cl )
         cl->LastSendEntrancesLocId = loc_id;
         cl->LastSendEntrancesTick = tick;
 
-        if( loc->Proto->EntranceScriptBindId )
+        if( loc->EntranceScriptBindId )
         {
             uchar        count = 0;
             uchar        show[ 0x100 ];
             ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
             if( !arr )
                 break;
-            for( uchar i = 0, j = (uchar) loc->Proto->Entrance.size(); i < j; i++ )
+            ScriptArray* map_entrances = loc->GetMapEntrances();
+            uchar        map_entrances_size = (uchar) ( map_entrances->GetSize() / 2 );
+            map_entrances->Release();
+            for( uchar i = 0; i < map_entrances_size; i++ )
             {
                 if( MapMngr.GM_CheckEntrance( loc, arr, i ) )
                 {
@@ -4424,9 +4434,11 @@ void FOServer::Process_RuleGlobal( Client* cl )
         }
         else
         {
-            uint  msg = NETMSG_GLOBAL_ENTRANCES;
-            uchar count = (uchar) loc->Proto->Entrance.size();
-            uint  msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( loc_id ) + sizeof( count ) + sizeof( uchar ) * count;
+            uint         msg = NETMSG_GLOBAL_ENTRANCES;
+            ScriptArray* map_entrances = loc->GetMapEntrances();
+            uchar        count = (uchar) ( map_entrances->GetSize() / 2 );
+            map_entrances->Release();
+            uint         msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( loc_id ) + sizeof( count ) + sizeof( uchar ) * count;
 
             BOUT_BEGIN( cl );
             cl->Bout << msg;
@@ -4449,10 +4461,19 @@ void FOServer::Process_RuleGlobal( Client* cl )
         if( !loc || DistSqrt( (int) cl->GroupMove->CurX, (int) cl->GroupMove->CurY, loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
             break;
 
-        uint entrance = param2;
-        if( entrance >= loc->Proto->Entrance.size() )
+        ScriptArray* map_entrances = loc->GetMapEntrances();
+        uchar        count = (uchar) ( map_entrances->GetSize() / 2 );
+        uint         entrance = param2;
+        if( entrance >= count )
+        {
+            map_entrances->Release();
             break;
-        if( loc->Proto->EntranceScriptBindId )
+        }
+        hash entrance_map = *(hash*) map_entrances->At( entrance * 2 );
+        hash entrance_entire = *(hash*) map_entrances->At( entrance * 2 + 1 );
+        map_entrances->Release();
+
+        if( loc->EntranceScriptBindId )
         {
             ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
             if( !arr )
@@ -4463,13 +4484,13 @@ void FOServer::Process_RuleGlobal( Client* cl )
                 break;
         }
 
-        Map* map = loc->GetMap( loc->Proto->Entrance[ entrance ].first );
+        Map* map = loc->GetMapByPid( entrance_map );
         if( !map )
             break;
 
         uchar  dir;
         ushort hx, hy;
-        if( !map->GetStartCoord( hx, hy, dir, loc->Proto->Entrance[ entrance ].second ) )
+        if( !map->GetStartCoord( hx, hy, dir, entrance_entire ) )
             break;
 
         cl->SetHexX( hx );
@@ -4693,10 +4714,11 @@ void FOServer::OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, voi
     Critter*   cr = (Critter*) entity;
     hash       value = *(hash*) cur_value;
 
-    ProtoItem* unarmed = ItemMngr.GetProtoItem( value ? value : ITEM_DEF_SLOT );
+    ProtoItem* unarmed = ProtoMngr.GetProtoItem( value ? value : ITEM_DEF_SLOT );
     if( !unarmed )
-        unarmed = ItemMngr.GetProtoItem( ITEM_DEF_SLOT );
+        unarmed = ProtoMngr.GetProtoItem( ITEM_DEF_SLOT );
     RUNTIME_ASSERT( unarmed );
+
     cr->GetHandsItem()->SetProto( unarmed );
     cr->GetHandsItem()->SetMode( 0 );
 }

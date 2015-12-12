@@ -2,36 +2,14 @@
 #define __CRITTER_MANAGER__
 
 #include "Common.h"
-#include "CritterData.h"
-
-#ifdef FONLINE_SERVER
-# include "Critter.h"
-#else
-# include "CritterCl.h"
-#endif
-
+#include "Map.h"
+#include "Critter.h"
 
 class CritterManager
 {
-private:
-    ProtoCritterMap allProtos;
-
 public:
-    CritterManager() { MEMORY_PROCESS( MEMORY_STATIC, sizeof( CritterManager ) ); }
-    ~CritterManager() { MEMORY_PROCESS( MEMORY_STATIC, -(int) sizeof( CritterManager ) ); }
-
-    bool Init();
-    void Finish();
-    void Clear();
-
-    bool             LoadProtos();
-    ProtoCritter*    GetProto( hash proto_id );
-    ProtoCritterMap& GetAllProtos();
-
-    #ifdef FONLINE_SERVER
-public:
-    Npc* CreateNpc( hash proto_id, IntVec* props_data, IntVec* items_data, const char* script_name, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
-    bool RestoreNpc( uint id, hash proto_id, Properties& props );
+    Npc* CreateNpc( hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
+    bool RestoreNpc( uint id, hash proto_id, const StrMap& props_data );
     void DeleteNpc( Critter* cr );
 
     void     GetCritters( CrVec& critters, bool sync_lock );
@@ -46,7 +24,6 @@ public:
     uint PlayersInGame();
     uint NpcInGame();
     uint CrittersInGame();
-    #endif // FONLINE_SERVER
 };
 
 extern CritterManager CrMngr;

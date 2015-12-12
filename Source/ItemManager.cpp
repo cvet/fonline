@@ -1,246 +1,11 @@
-#include "Common.h"
 #include "ItemManager.h"
-#include "IniParser.h"
-#include "MsgFiles.h"
-
-#ifdef FONLINE_SERVER
-# include "Critter.h"
-# include "Map.h"
-# include "CritterManager.h"
-# include "MapManager.h"
-# include "Script.h"
-# include "EntityManager.h"
-#endif
-
-#ifdef FONLINE_MAPPER
-# include "Script.h"
-#endif
+#include "ProtoManager.h"
+#include "CritterManager.h"
+#include "MapManager.h"
+#include "EntityManager.h"
 
 ItemManager ItemMngr;
 
-bool ItemManager::Init()
-{
-    WriteLog( "Item manager initialization...\n" );
-
-    Clear();
-    allProtos.clear();
-
-    WriteLog( "Item manager initialization complete.\n" );
-    return true;
-}
-
-void ItemManager::Finish()
-{
-    WriteLog( "Item manager finish...\n" );
-
-    Clear();
-    allProtos.clear();
-
-    WriteLog( "Item manager finish complete.\n" );
-}
-
-void ItemManager::Clear()
-{
-    #ifdef FONLINE_SERVER
-    radioItems.clear();
-    #endif
-}
-
-bool ItemManager::LoadProtos()
-{
-    WriteLog( "Load item prototypes...\n" );
-
-    FilesCollection files = FilesCollection( "foitem" );
-    uint            files_loaded = 0;
-    int             errors = 0;
-    while( files.IsNextFile() )
-    {
-        const char*  file_name;
-        FileManager& file = files.GetNextFile( &file_name );
-        if( !file.IsLoaded() )
-        {
-            WriteLog( "Unable to open file '%s'.\n", file_name );
-            errors++;
-            continue;
-        }
-
-        uint pid = Str::GetHash( file_name );
-        if( allProtos.count( pid ) )
-        {
-            WriteLog( "Proto item '%s' already loaded.\n", file_name );
-            errors++;
-            continue;
-        }
-
-        ProtoItem* proto = new ProtoItem( pid );
-
-        IniParser  foitem;
-        foitem.CollectContent();
-        foitem.AppendStr( file.GetCStr() );
-        const StrMap* item_app = foitem.GetAppKeyValues( "Item" );
-        if( !item_app || !proto->ItemPropsEntity.Props.LoadFromText( *item_app ) )
-            errors++;
-        const StrMap* proto_item_app = foitem.GetAppKeyValues( "ProtoItem" );
-        if( !proto_item_app || !proto->Props.LoadFromText( *proto_item_app ) )
-            errors++;
-
-        // Texts
-        StrSet apps;
-        foitem.GetAppNames( apps );
-        for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
-        {
-            const string& app_name = *it;
-            if( !( app_name.size() == 9 && app_name.find( "Text_" ) == 0 ) )
-                continue;
-
-            const char* app_content = foitem.GetAppContent( app_name.c_str() );
-            RUNTIME_ASSERT( app_content );
-
-            FOMsg temp_msg;
-            temp_msg.LoadFromString( app_content, Str::Length( app_content ) );
-
-            FOMsg* msg = new FOMsg();
-            uint   str_num = 0;
-            while( ( str_num = temp_msg.GetStrNumUpper( str_num ) ) )
-            {
-                uint count = temp_msg.Count( str_num );
-                uint new_str_num = ITEM_STR_ID( proto->ProtoId, str_num );
-                for( uint n = 0; n < count; n++ )
-                    msg->AddStr( new_str_num, temp_msg.GetStr( str_num, n ) );
-            }
-
-            proto->TextsLang.push_back( *(uint*) app_name.substr( 5 ).c_str() );
-            proto->Texts.push_back( msg );
-        }
-
-        #ifdef FONLINE_MAPPER
-        switch( proto->GetType() )
-        {
-        case ITEM_TYPE_ARMOR:
-            proto->CollectionName = "armor";
-            break;
-        case ITEM_TYPE_DRUG:
-            proto->CollectionName = "drug";
-            break;
-        case ITEM_TYPE_WEAPON:
-            proto->CollectionName = "weapon";
-            break;
-        case ITEM_TYPE_AMMO:
-            proto->CollectionName = "ammo";
-            break;
-        case ITEM_TYPE_MISC:
-            proto->CollectionName = "misc";
-            break;
-        case ITEM_TYPE_KEY:
-            proto->CollectionName = "key";
-            break;
-        case ITEM_TYPE_CONTAINER:
-            proto->CollectionName = "container";
-            break;
-        case ITEM_TYPE_DOOR:
-            proto->CollectionName = "door";
-            break;
-        case ITEM_TYPE_GRID:
-            proto->CollectionName = "grid";
-            break;
-        case ITEM_TYPE_GENERIC:
-            proto->CollectionName = "generic";
-            break;
-        case ITEM_TYPE_WALL:
-            proto->CollectionName = "wall";
-            break;
-        case ITEM_TYPE_CAR:
-            proto->CollectionName = "car";
-            break;
-        default:
-            proto->CollectionName = "other";
-            break;
-        }
-        #endif
-
-        allProtos.insert( PAIR( proto->ProtoId, proto ) );
-        files_loaded++;
-    }
-
-    WriteLog( "Load item prototypes complete, count %u.\n", files_loaded );
-    return errors == 0;
-}
-
-ProtoItem* ItemManager::GetProtoItem( hash pid )
-{
-    auto it = allProtos.find( pid );
-    return it != allProtos.end() ? it->second : nullptr;
-}
-
-ProtoItemMap& ItemManager::GetAllProtos()
-{
-    return allProtos;
-}
-
-void ItemManager::GetBinaryData( UCharVec& data )
-{
-    data.resize( 0 );
-    WriteData( data, (uint) allProtos.size() );
-    for( auto it = allProtos.begin(), end = allProtos.end(); it != end; ++it )
-    {
-        hash       proto_id = it->first;
-        ProtoItem* proto_item = it->second;
-        WriteData( data, proto_id );
-        for( uint part = 0; part < 2; part++ )
-        {
-            Properties& props = ( part == 0 ? proto_item->Props : proto_item->ItemPropsEntity.Props );
-            PUCharVec*  props_data;
-            UIntVec*    props_data_sizes;
-            props.StoreData( true, &props_data, &props_data_sizes );
-            WriteData( data, (ushort) props_data->size() );
-            for( size_t i = 0; i < props_data->size(); i++ )
-            {
-                uint cur_size = props_data_sizes->at( i );
-                WriteData( data, cur_size );
-                WriteDataArr( data, props_data->at( i ), cur_size );
-            }
-        }
-    }
-
-    Crypt.Compress( data );
-}
-
-void ItemManager::SetBinaryData( UCharVec& data )
-{
-    allProtos.clear();
-
-    if( !Crypt.Uncompress( data, 15 ) )
-        return;
-    if( data.size() < sizeof( uint ) )
-        return;
-
-    PUCharVec props_data;
-    UIntVec   props_data_sizes;
-    uint      read_pos = 0;
-    uint      protos_count = ReadData< uint >( data, read_pos );
-    for( uint i = 0; i < protos_count; i++ )
-    {
-        hash       pid = ReadData< hash >( data, read_pos );
-        ProtoItem* proto_item = new ProtoItem( pid );
-        for( uint part = 0; part < 2; part++ )
-        {
-            Properties& props = ( part == 0 ? proto_item->Props : proto_item->ItemPropsEntity.Props );
-            uint        data_count = ReadData< ushort >( data, read_pos );
-            props_data.resize( data_count );
-            props_data_sizes.resize( data_count );
-            for( uint j = 0; j < data_count; j++ )
-            {
-                props_data_sizes[ j ] = ReadData< uint >( data, read_pos );
-                props_data[ j ] = ReadDataArr< uchar >( data, props_data_sizes[ j ], read_pos );
-            }
-            props.RestoreData( props_data, props_data_sizes );
-        }
-        RUNTIME_ASSERT( !allProtos.count( proto_item->ProtoId ) );
-        allProtos.insert( PAIR( proto_item->ProtoId, proto_item ) );
-    }
-}
-
-#ifdef FONLINE_SERVER
 void ItemManager::GetGameItems( ItemVec& items )
 {
     EntityMngr.GetItems( items );
@@ -269,7 +34,7 @@ void ItemManager::SetCritterItems( Critter* cr )
 
 Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
 {
-    ProtoItem* proto = GetProtoItem( pid );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
@@ -291,21 +56,21 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
         RadioRegister( item, true );
 
     // Prototype script
-    if( proto->ScriptName.length() > 0 )         // Only for new items
+    item->SetScript( nullptr, true );
+
+    // Verify destroying
+    if( item->IsDestroyed )
     {
-        item->SetScript( proto->ScriptName.c_str(), true );
-        if( item->IsDestroyed )
-        {
-            WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization.\n", Str::GetName( pid ) );
-            return nullptr;
-        }
+        WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization.\n", Str::GetName( pid ) );
+        return nullptr;
     }
+
     return item;
 }
 
-bool ItemManager::RestoreItem( uint id, hash proto_id, Properties& props )
+bool ItemManager::RestoreItem( uint id, hash proto_id, const StrMap& props_data )
 {
-    ProtoItem* proto = GetProtoItem( proto_id );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
     if( !proto )
     {
         WriteLog( "Proto item '%s' is not loaded.\n", Str::GetName( proto_id ) );
@@ -313,9 +78,14 @@ bool ItemManager::RestoreItem( uint id, hash proto_id, Properties& props )
     }
 
     Item* item = new Item( id, proto );
+    if( !item->Props.LoadFromText( props_data ) )
+    {
+        WriteLog( "Fail to restore properties for item '%s' (%u).\n", Str::GetName( proto_id ), id );
+        item->Release();
+        return false;
+    }
+
     SYNC_LOCK( item );
-    item->Props = props;
-    item->ProtoId = proto_id;
     EntityMngr.RegisterEntity( item );
     return true;
 }
@@ -342,13 +112,13 @@ void ItemManager::DeleteItem( Item* item )
     }
 
     // Tear off from environment
-    while( item->GetAccessory() != ITEM_ACCESSORY_NONE || ( item->IsContainer() && item->ContIsItems() ) )
+    while( item->GetAccessory() != ITEM_ACCESSORY_NONE || item->ContIsItems() )
     {
         // Delete from owner
         EraseItemHolder( item );
 
-        // Delete container items
-        if( item->IsContainer() )
+        // Delete child items
+        if( item->ContIsItems() )
             item->ContDeleteItems();
     }
 
@@ -504,8 +274,7 @@ void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id
 
 Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stack_id )
 {
-    if( !cont || !cont->IsContainer() )
-        return nullptr;
+    RUNTIME_ASSERT( cont );
 
     Item* item = cont->ContGetItemByPid( pid, stack_id );
     Item* result = nullptr;
@@ -533,11 +302,11 @@ Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stac
     }
     else
     {
-        ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
+        ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
         if( !proto_item )
             return result;
 
-        if( proto_item->GetStackable() )
+        if( proto_item->Props.GetPropValue< bool >( Item::PropertyStackable ) )
         {
             item = ItemMngr.CreateItem( pid, count );
             if( !item )
@@ -594,7 +363,7 @@ Item* ItemManager::AddItemCritter( Critter* cr, hash pid, uint count )
     }
     else
     {
-        ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
+        ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
         if( !proto_item )
             return result;
 
@@ -726,9 +495,6 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_
 
 bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint item_id, uint count, uint stack_id )
 {
-    if( !to_cont->IsContainer() )
-        return false;
-
     Item* item = from_cr->GetItem( item_id, false );
     if( !item )
         return false;
@@ -769,9 +535,6 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
 
 bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint item_id, uint count )
 {
-    if( !from_cont->IsContainer() )
-        return false;
-
     Item* item = from_cont->ContGetItem( item_id, false );
     if( !item )
         return false;
@@ -811,8 +574,6 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint
 
 bool ItemManager::MoveItemsContainers( Item* from_cont, Item* to_cont, uint from_stack_id, uint to_stack_id )
 {
-    if( !from_cont->IsContainer() || !to_cont->IsContainer() )
-        return false;
     if( !from_cont->ContIsItems() )
         return true;
 
@@ -830,8 +591,6 @@ bool ItemManager::MoveItemsContainers( Item* from_cont, Item* to_cont, uint from
 
 bool ItemManager::MoveItemsContToCritter( Item* from_cont, Critter* to_cr, uint stack_id )
 {
-    if( !from_cont->IsContainer() )
-        return false;
     if( !from_cont->ContIsItems() )
         return true;
 
@@ -845,6 +604,13 @@ bool ItemManager::MoveItemsContToCritter( Item* from_cont, Critter* to_cr, uint 
     }
 
     return true;
+}
+
+void ItemManager::RadioClear()
+{
+    SCOPE_LOCK( radioItemsLocker );
+
+    radioItems.clear();
 }
 
 void ItemManager::RadioRegister( Item* radio, bool add )
@@ -1028,13 +794,12 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
         }
     }
 }
-#endif // FONLINE_SERVER
 
 void ItemManager::ChangeItemStatistics( hash pid, int val )
 {
     SCOPE_LOCK( itemCountLocker );
 
-    ProtoItem* proto = GetProtoItem( pid );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( proto )
         proto->InstanceCount += (int64) val;
 }
@@ -1043,7 +808,7 @@ int64 ItemManager::GetItemStatistics( hash pid )
 {
     SCOPE_LOCK( itemCountLocker );
 
-    ProtoItem* proto = GetProtoItem( pid );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     return proto ? proto->InstanceCount : 0;
 }
 
@@ -1052,9 +817,10 @@ string ItemManager::GetItemsStatistics()
     itemCountLocker.Lock();
 
     vector< ProtoItem* > protos;
-    protos.reserve( allProtos.size() );
-    for( auto it = allProtos.begin(), end = allProtos.end(); it != end; ++it )
-        protos.push_back( it->second );
+    auto&                proto_items = ProtoMngr.GetProtoItems();
+    protos.reserve( proto_items.size() );
+    for( auto& kv : proto_items )
+        protos.push_back( kv.second );
 
     itemCountLocker.Unlock();
 
@@ -1068,12 +834,8 @@ string ItemManager::GetItemsStatistics()
     for( auto it = protos.begin(), end = protos.end(); it != end; ++it )
     {
         ProtoItem* proto_item = *it;
-        if( proto_item->IsItem() )
-        {
-            const char* s = Str::GetName( proto_item->ProtoId );
-            Str::Format( str, "%-40s %-20s\n", s ? s : Str::ItoA( proto_item->ProtoId ), Str::I64toA( proto_item->InstanceCount ) );
-            result += str;
-        }
+        Str::Format( str, "%-40s %-20s\n", proto_item->GetName(), Str::I64toA( proto_item->InstanceCount ) );
+        result += str;
     }
     return result;
 }

@@ -6,14 +6,44 @@
 # include "SHA/sha2.h"
 #endif
 
-template< class A, class B >
-static B* RefCast( A* a )
+template< class T >
+static Entity* EntityDownCast( T* a )
 {
     if( !a )
         return nullptr;
-    B* b = (B*) a;
+    Entity* b = (Entity*) a;
     b->AddRef();
     return b;
+}
+
+template< class T >
+static T* EntityUpCast( Entity* a )
+{
+    if( !a )
+        return nullptr;
+    #define CHECK_CAST( cast_class, entity_type )                                         \
+        if( std::is_same< T, cast_class >::value && (EntityType) a->Type == entity_type ) \
+        {                                                                                 \
+            T* b = (T*) a;                                                                \
+            b->AddRef();                                                                  \
+            return b;                                                                     \
+        }
+    #if defined ( FONLINE_SERVER )
+    CHECK_CAST( Location, EntityType::Location );
+    CHECK_CAST( Map, EntityType::Map );
+    CHECK_CAST( Critter, EntityType::Npc );
+    CHECK_CAST( Critter, EntityType::Client );
+    CHECK_CAST( Item, EntityType::Item );
+    CHECK_CAST( Item, EntityType::ItemHex );
+    #elif defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
+    CHECK_CAST( Location, EntityType::Location );
+    CHECK_CAST( Map, EntityType::Map );
+    CHECK_CAST( CritterCl, EntityType::CritterCl );
+    CHECK_CAST( Item, EntityType::Item );
+    CHECK_CAST( Item, EntityType::ItemHex );
+    #endif
+    #undef CHECK_CAST
+    return nullptr;
 }
 
 int Global_Random( int min, int max )
@@ -302,5 +332,15 @@ void Global_OpenLink( ScriptString& link )
     ShellExecute( nullptr, "open", link.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
     #else
     system( ( string( "xdg-open " ) + link.c_std_str() ).c_str() );
+    #endif
+}
+
+Item* Global_GetProtoItem( hash pid )
+{
+    #ifndef FONLINE_SCRIPT_COMPILER
+    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
+    return proto != nullptr ? new Item( 0, proto ) : nullptr;
+    #else
+    return nullptr;
     #endif
 }

@@ -1,16 +1,15 @@
 #include "Common.h"
 #include "Server.h"
 
-
 Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks /* = true */ )
 {
     // Checks
-    ProtoItem* proto_item = ItemMngr.GetProtoItem( pid );
+    ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     if( !proto_item || !count )
         return nullptr;
 
     // Check blockers
-    if( check_blocks && proto_item->IsBlockLines() && !map->IsPlaceForItem( hx, hy, proto_item ) )
+    if( check_blocks && !map->IsPlaceForProtoItem( hx, hy, proto_item ) )
         return nullptr;
 
     // Create instance
@@ -28,16 +27,16 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
     // Create childs
     for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
     {
-        hash child_pid = item->Proto->GetChildPid( i );
+        hash child_pid = item->GetChildPid( i );
         if( !child_pid )
             continue;
 
-        ProtoItem* child = ItemMngr.GetProtoItem( child_pid );
+        ProtoItem* child = ProtoMngr.GetProtoItem( child_pid );
         if( !child )
             continue;
 
         ushort child_hx = hx, child_hy = hy;
-        FOREACH_PROTO_ITEM_LINES( item->Proto->GetChildLinesStr( i ), child_hx, child_hy, map->GetMaxHexX(), map->GetMaxHexY() );
+        FOREACH_PROTO_ITEM_LINES( item->GetChildLinesStr( i ), child_hx, child_hy, map->GetWidth(), map->GetHeight() );
 
         CreateItemOnHex( map, child_hx, child_hy, child_pid, 1, false );
     }

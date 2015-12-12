@@ -2,15 +2,21 @@
 #include "CritterCl.h"
 #include "CritterType.h"
 #include "ResourceManager.h"
-#include "ItemManager.h"
-#include "CritterData.h"
+#include "ProtoManager.h"
 
 #ifdef FONLINE_CLIENT
 # include "SoundManager.h"
 # include "Script.h"
 #endif
 
-ProtoCritter::ProtoCritter(): Entity( 0, EntityType::ProtoCritter, CritterCl::PropertiesRegistrator ) {}
+ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, CritterCl::PropertiesRegistrator ) {}
+
+#ifdef FONLINE_MAPPER
+uint ProtoCritter::GetCrType()
+{
+    return Props.GetPropValue< uint >( CritterCl::PropertyBaseCrType );
+}
+#endif
 
 bool   CritterCl::SlotEnabled[ 0x100 ];
 IntSet CritterCl::RegProperties;
@@ -30,6 +36,7 @@ CLASS_PROPERTY_IMPL( CritterCl, Anim2Life );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2Knockout );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2Dead );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2KnockoutEnd );
+CLASS_PROPERTY_IMPL( CritterCl, ScriptId );
 CLASS_PROPERTY_IMPL( CritterCl, LookDistance );
 CLASS_PROPERTY_IMPL( CritterCl, Anim3dLayer );
 CLASS_PROPERTY_IMPL( CritterCl, BaseCrType );
@@ -79,7 +86,7 @@ CLASS_PROPERTY_IMPL( CritterCl, PerkQuickPockets );
 CLASS_PROPERTY_IMPL( CritterCl, PerkMasterTrader );
 CLASS_PROPERTY_IMPL( CritterCl, PerkSilentRunning );
 
-CritterCl::CritterCl( uint id ): Entity( id, EntityType::CritterCl, PropertiesRegistrator )
+CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterCl, PropertiesRegistrator, proto )
 {
     SprId = 0;
     NameColor = 0;
@@ -114,8 +121,8 @@ CritterCl::CritterCl( uint id ): Entity( id, EntityType::CritterCl, PropertiesRe
     Name = ScriptString::Create();
     NameOnHead = ScriptString::Create();
     Avatar = ScriptString::Create();
-    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor = DefItemSlotArmor = new Item( 0, ItemMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
+    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_SLOT ) );
+    ItemSlotArmor = DefItemSlotArmor = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     DefItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
     DefItemSlotArmor->SetAccessory( ITEM_ACCESSORY_CRITTER );
     DefItemSlotHand->SetCritId( id );
@@ -147,7 +154,7 @@ void CritterCl::Init()
     arr->Release();
     #endif
 
-    ProtoItem* unarmed = ItemMngr.GetProtoItem( GetHandsItemProtoId() );
+    ProtoItem* unarmed = ProtoMngr.GetProtoItem( GetHandsItemProtoId() );
     if( unarmed )
     {
         ItemSlotMain->SetProto( unarmed );
@@ -279,7 +286,7 @@ Item* CritterCl::GetItemByPid( hash item_pid )
 
 Item* CritterCl::GetItemByPidInvPriority( hash item_pid )
 {
-    ProtoItem* proto_item = ItemMngr.GetProtoItem( item_pid );
+    ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
     if( !proto_item )
         return nullptr;
 
@@ -324,7 +331,7 @@ Item* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
 Item* CritterCl::GetAmmo( uint caliber )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->IsAmmo() && ( *it )->Proto->GetAmmo_Caliber() == (int) caliber )
+        if( ( *it )->IsAmmo() && ( *it )->GetAmmo_Caliber() == (int) caliber )
             return *it;
     return nullptr;
 }
@@ -450,7 +457,7 @@ uint CritterCl::GetItemsWeight()
 {
     uint res = 0;
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        res += ( *it )->GetWeight();
+        res += ( *it )->GetWholeWeight();
     return res;
 }
 
@@ -463,7 +470,7 @@ uint CritterCl::GetItemsVolume()
 {
     uint res = 0;
     for( auto it = InvItems.begin(); it != InvItems.end(); ++it )
-        res += ( *it )->GetVolume();
+        res += ( *it )->GetWholeVolume();
     return res;
 }
 
@@ -512,7 +519,7 @@ bool CritterCl::IsItemAim( uchar num_slot )
     if( !item )
         return false;
     if( item->IsWeapon() && use < MAX_USES )
-        return ( use == 0 ? item->Proto->GetWeapon_Aim_0() : ( use == 1 ? item->Proto->GetWeapon_Aim_1() : item->Proto->GetWeapon_Aim_2() ) ) != 0;
+        return ( use == 0 ? item->GetWeapon_Aim_0() : ( use == 1 ? item->GetWeapon_Aim_1() : item->GetWeapon_Aim_2() ) ) != 0;
     return false;
 }
 
@@ -731,19 +738,19 @@ void CritterCl::NextRateItem( bool prev )
                 switch( GetUse() )
                 {
                 case USE_PRIMARY:
-                    if( ItemSlotMain->Proto->GetWeapon_ActiveUses() & 0x1 )
+                    if( ItemSlotMain->GetWeapon_ActiveUses() & 0x1 )
                         break;
                     continue;
                 case USE_SECONDARY:
-                    if( ItemSlotMain->Proto->GetWeapon_ActiveUses() & 0x2 )
+                    if( ItemSlotMain->GetWeapon_ActiveUses() & 0x2 )
                         break;
                     continue;
                 case USE_THIRD:
-                    if( ItemSlotMain->Proto->GetWeapon_ActiveUses() & 0x4 )
+                    if( ItemSlotMain->GetWeapon_ActiveUses() & 0x4 )
                         break;
                     continue;
                 case USE_RELOAD:
-                    if( ItemSlotMain->Proto->GetWeapon_MaxAmmoCount() )
+                    if( ItemSlotMain->GetWeapon_MaxAmmoCount() )
                         break;
                     continue;
                 case USE_USE:
@@ -773,9 +780,9 @@ Item* CritterCl::GetAmmoAvialble( Item* weap )
 {
     Item* ammo = GetItemByPid( weap->GetAmmoPid() );
     if( !ammo && weap->WeapIsEmpty() )
-        ammo = GetItemByPid( weap->Proto->GetWeapon_DefaultAmmoPid() );
+        ammo = GetItemByPid( weap->GetWeapon_DefaultAmmoPid() );
     if( !ammo && weap->WeapIsEmpty() )
-        ammo = GetAmmo( weap->Proto->GetWeapon_Caliber() );
+        ammo = GetAmmo( weap->GetWeapon_Caliber() );
     return ammo;
 }
 
@@ -1226,11 +1233,11 @@ uint CritterCl::GetAnim1( Item* anim_item /* = NULL */ )
     switch( GetCond() )
     {
     case COND_LIFE:
-        return GetAnim1Life() | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Life() | ( anim_item->IsWeapon() ? anim_item->GetWeapon_Anim1() : ANIM1_UNARMED );
     case COND_KNOCKOUT:
-        return GetAnim1Knockout() | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Knockout() | ( anim_item->IsWeapon() ? anim_item->GetWeapon_Anim1() : ANIM1_UNARMED );
     case COND_DEAD:
-        return GetAnim1Dead() | ( anim_item->IsWeapon() ? anim_item->Proto->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Dead() | ( anim_item->IsWeapon() ? anim_item->GetWeapon_Anim1() : ANIM1_UNARMED );
     default:
         break;
     }

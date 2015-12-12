@@ -114,6 +114,22 @@ void Sprite::SetLight( int corner, uchar* light, int maxhx, int maxhy )
     Valid = true;
 }
 
+void Sprite::SetFixedAlpha( uchar alpha )
+{
+    if( !Valid )
+        return;
+    Valid = false;
+
+    Alpha = ( (uchar*) &Color ) + 3;
+    *Alpha = alpha;
+
+    if( Parent )
+        Parent->SetFixedAlpha( alpha );
+    if( Child )
+        Child->SetFixedAlpha( alpha );
+    Valid = true;
+}
+
 SpriteVec Sprites::spritesPool;
 void Sprites::GrowPool( uint size )
 {

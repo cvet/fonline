@@ -1,11 +1,10 @@
-#include "Common.h"
 #include "MapManager.h"
-#include "Log.h"
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Script.h"
 #include "LineTracer.h"
 #include "EntityManager.h"
+#include "ProtoManager.h"
 
 MapManager MapMngr;
 
@@ -115,33 +114,11 @@ MapManager::MapManager(): runGarbager( true )
 {
     MEMORY_PROCESS( MEMORY_STATIC, sizeof( MapManager ) );
     MEMORY_PROCESS( MEMORY_STATIC, ( FPATH_MAX_PATH * 2 + 2 ) * ( FPATH_MAX_PATH * 2 + 2 ) ); // Grid, see below
-}
-
-bool MapManager::Init()
-{
-    WriteLog( "Map manager initialization...\n" );
 
     pathNumCur = 0;
     for( int i = 1; i < FPATH_DATA_SIZE; i++ )
         pathesPool[ i ].reserve( 100 );
 
-    WriteLog( "Map manager initialization complete.\n" );
-    return true;
-}
-
-void MapManager::Finish()
-{
-    WriteLog( "Map manager finish...\n" );
-
-    #pragma MESSAGE( "Ref counting for protos." )
-    protoMaps.clear();
-    protoLoc.clear();
-
-    WriteLog( "Map manager finish complete.\n" );
-}
-
-void MapManager::Clear()
-{
     runGarbager = false;
 }
 
@@ -153,239 +130,9 @@ UIntPair EntranceParser( const char* str )
     return UIntPair( val1, val2 );
 }
 
-bool MapManager::LoadLocationsProtos()
+bool MapManager::RestoreLocation( uint id, hash proto_id, const StrMap& props_data )
 {
-    WriteLog( "Load location and map prototypes...\n" );
-
-    FilesCollection files = FilesCollection( "foloc" );
-    uint            files_loaded = 0;
-    while( files.IsNextFile() )
-    {
-        const char*  name;
-        FileManager& file = files.GetNextFile( &name );
-        if( !file.IsLoaded() )
-        {
-            WriteLog( "Unable to open location file '%s'.\n", name );
-            continue;
-        }
-
-        if( !LoadLocationProto( name, file ) )
-            continue;
-
-        files_loaded++;
-    }
-
-    WriteLog( "Load location and map prototypes complete, count %u.\n", files_loaded );
-    return files_loaded == files.GetFilesCount();
-}
-
-bool MapManager::LoadLocationProto( const char* loc_name, FileManager& file )
-{
-    // Parse
-    IniParser ploc_data;
-    ploc_data.CollectContent();
-    ploc_data.AppendStr( file.GetCStr() );
-
-    // Parameters
-    ProtoLocation* ploc = new ProtoLocation();
-    ploc->ProtoId = Str::GetHash( loc_name );
-    ploc->Radius = ploc_data.GetInt( "Main", "Size", 24 );
-    ploc->MaxPlayers = ploc_data.GetInt( "Main", "MaxPlayers", 0 );
-    ploc->Visible = ( ploc_data.GetInt( "Main", "Visible", 0 ) != 0 );
-    ploc->GeckVisible = ( ploc_data.GetInt( "Main", "GeckVisible", 0 ) != 0 );
-    ploc->AutoGarbage = ( ploc_data.GetInt( "Main", "AutoGarbage", 1 ) != 0 );
-
-    // Maps
-    bool load_maps_fail = false;
-    uint map_index = 0;
-    while( true )
-    {
-        char key[ MAX_FOTEXT ];
-        Str::Format( key, "Map_%u", map_index++ );
-
-        const char* map_name_ = ploc_data.GetStr( "Main", key );
-        if( !map_name_ )
-            break;
-        char map_name[ MAX_FOTEXT ];
-        Str::Copy( map_name, map_name_ );
-
-        load_maps_fail = true;
-
-        uint len = Str::Length( map_name );
-        bool is_automap = false;
-        if( map_name[ len - 1 ] == '*' )
-        {
-            if( len == 1 )
-            {
-                WriteLog( "Invalid map name for index %d in location '%s'.\n", map_index, loc_name );
-                break;
-            }
-            is_automap = true;
-            map_name[ len - 1 ] = 0;
-        }
-
-        hash map_pid = Str::GetHash( map_name );
-        if( !map_pid )
-        {
-            WriteLog( "Invalid hash for map name '%s' in location '%s'.\n", map_name, loc_name );
-            return false;
-        }
-
-        if( !protoMaps.count( map_pid ) )
-        {
-            ProtoMap* pmap = new ProtoMap();
-            if( !pmap->Init( map_name ) || pmap->GetProtoId() != map_pid )
-            {
-                WriteLog( "Load proto map '%s' in location '%s' fail.\n", map_name, loc_name );
-                delete pmap;
-                return false;
-            }
-
-            protoMaps.insert( PAIR( pmap->GetProtoId(), pmap ) );
-        }
-
-        ploc->ProtoMapPids.push_back( map_pid );
-        if( is_automap )
-            ploc->AutomapsPids.push_back( map_pid );
-
-        load_maps_fail = false;
-    }
-
-    // Entrances
-    bool load_entrances_fail = false;
-    uint entrance_index = 0;
-    while( true )
-    {
-        char        key[ MAX_FOTEXT ];
-        Str::Format( key, "Entrance_%u", entrance_index++ );
-        const char* entrance_text = ploc_data.GetStr( "Main", key );
-        if( !entrance_text )
-            break;
-
-        char map_name[ MAX_FOTEXT ];
-        char entire_name[ MAX_FOTEXT ];
-        if( sscanf( entrance_text, "%s%s", map_name, entire_name ) != 2 )
-        {
-            WriteLog( "Can't parse entrance data '%s' in location '%s'.\n", entrance_text, loc_name );
-            return false;
-        }
-
-        hash map_hash = Str::GetHash( map_name );
-        auto it = std::find( ploc->ProtoMapPids.begin(), ploc->ProtoMapPids.end(), map_hash );
-        if( it == ploc->ProtoMapPids.end() )
-        {
-            WriteLog( "Invalid entrance proto map '%s' in location '%s'.\n", map_name, loc_name );
-            return false;
-        }
-
-        uint map_index = ( uint ) std::distance( ploc->ProtoMapPids.begin(), it );
-        ploc->Entrance.push_back( PAIR( map_index, (uint) ConvertParamValue( entire_name, load_entrances_fail ) ) );
-    }
-    if( load_entrances_fail )
-    {
-        WriteLog( "Load location '%s' entrances fail.\n", loc_name );
-        return false;
-    }
-
-    // Entrance function
-    const char* script = ploc_data.GetStr( "Main", "EntranceScript" );
-    if( script && script[ 0 ] != '-' )
-    {
-        int bind_id = Script::BindByScriptName( script, "bool %s(Location&,Critter@[]&,uint8)", false );
-        if( bind_id <= 0 )
-        {
-            WriteLog( "Function '%s' not found in location '%s'.\n", script, loc_name );
-            return false;
-        }
-
-        ploc->EntranceScriptBindId = bind_id;
-    }
-    else
-    {
-        ploc->EntranceScriptBindId = 0;
-    }
-
-    // Texts
-    bool   load_texts_fail = false;
-    StrSet apps;
-    ploc_data.GetAppNames( apps );
-    for( auto it = apps.begin(), end = apps.end(); it != end; ++it )
-    {
-        const string& app_name = *it;
-        if( !( app_name.size() == 9 && app_name.find( "Text_" ) == 0 ) )
-            continue;
-
-        const char* app_content = ploc_data.GetAppContent( app_name.c_str() );
-        FOMsg       temp_msg;
-        if( !temp_msg.LoadFromString( app_content, Str::Length( app_content ) ) )
-            load_texts_fail = true;
-
-        FOMsg* msg = new FOMsg();
-        uint   str_num = 0;
-        while( str_num = temp_msg.GetStrNumUpper( str_num ) )
-        {
-            uint count = temp_msg.Count( str_num );
-            uint new_str_num = LOC_STR_ID( ploc->ProtoId, str_num );
-            for( uint n = 0; n < count; n++ )
-                msg->AddStr( new_str_num, temp_msg.GetStr( str_num, n ) );
-        }
-
-        ploc->TextsLang.push_back( *(uint*) app_name.substr( 5 ).c_str() );
-        ploc->Texts.push_back( msg );
-    }
-    if( load_texts_fail )
-    {
-        WriteLog( "Load location '%s' text fail.\n", loc_name );
-        return false;
-    }
-
-    // Add to collection
-    protoLoc.insert( PAIR( ploc->ProtoId, ploc ) );
-
-    return true;
-}
-
-int MapManager::ReloadMaps( const char* map_name )
-{
-    #pragma MESSAGE( "Proto map leak, add reference counter." )
-    int fails = 0;
-    if( !map_name )
-    {
-        ProtoMapMap proto_maps = protoMaps;
-        for( auto it = proto_maps.begin(); it != proto_maps.end(); ++it )
-        {
-            const char* map_name = it->second->GetName();
-            ProtoMap*   pmap = new ProtoMap();
-            if( pmap->Init( map_name ) )
-            {
-                protoMaps[ pmap->GetProtoId() ] = pmap;
-            }
-            else
-            {
-                delete pmap;
-                fails++;
-            }
-        }
-    }
-    else
-    {
-        ProtoMap* pmap = new ProtoMap();
-        if( pmap->Init( map_name ) )
-        {
-            protoMaps[ pmap->GetProtoId() ] = pmap;
-        }
-        else
-        {
-            delete pmap;
-            fails++;
-        }
-    }
-    return fails;
-}
-
-bool MapManager::RestoreLocation( uint id, hash proto_id, Properties& props )
-{
-    ProtoLocation* proto = GetProtoLocation( proto_id );
+    ProtoLocation* proto = ProtoMngr.GetProtoLocation( proto_id );
     if( !proto )
     {
         WriteLog( "Location proto '%s' is not loaded.\n", Str::GetName( proto_id ) );
@@ -393,9 +140,15 @@ bool MapManager::RestoreLocation( uint id, hash proto_id, Properties& props )
     }
 
     Location* loc = new Location( id, proto, 0, 0 );
+    if( !loc->Props.LoadFromText( props_data ) )
+    {
+        WriteLog( "Fail to restore properties for location '%s' (%u).\n", Str::GetName( proto_id ), id );
+        loc->Release();
+        return false;
+    }
+
     SYNC_LOCK( loc );
-    loc->Props = props;
-    loc->ProtoId = proto_id;
+    loc->BindScript();
     EntityMngr.RegisterEntity( loc );
     return true;
 }
@@ -413,13 +166,13 @@ string MapManager::GetLocationsMapsStatistics()
     result = str;
     Str::Format( str, "Maps count: %u\n", (uint) maps.size() );
     result += str;
-    result += "Location             Id           X     Y     Radius Color    Visible GeckVisible GeckCount AutoGarbage ToGarbage\n";
+    result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain TbAviable TbOn   Script\n";
     for( auto it = locations.begin(), end = locations.end(); it != end; ++it )
     {
         Location* loc = (Location*) *it;
         Str::Format( str, "%-20s %-10u   %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
-                     loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetVisible() ? "true" : "false",
+                     loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false",
                      loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false" );
         result += str;
 
@@ -429,7 +182,7 @@ string MapManager::GetLocationsMapsStatistics()
         {
             Map* map = *it_;
             Str::Format( str, "     %2u) %-20s %-9u   %-4d %-4u %-9s %-6s %-50s\n",
-                         map_index, map->Proto->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
+                         map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
                          map->GetIsTurnBasedAviable() ? "true" : "false", map->IsTurnBasedOn ? "true" : "false",
                          map->GetScriptId() ? Str::GetName( map->GetScriptId() ) : "" );
             result += str;
@@ -449,23 +202,9 @@ bool MapManager::GenerateWorld()
     return false;
 }
 
-ProtoLocation* MapManager::GetProtoLocation( hash loc_pid )
-{
-    auto it = protoLoc.find( loc_pid );
-    return it != protoLoc.end() ? it->second : nullptr;
-}
-
-ProtoLocation* MapManager::GetProtoLocationByIndex( uint index )
-{
-    auto it = protoLoc.begin();
-    while( index-- && it != protoLoc.end() )
-        ++it;
-    return it != protoLoc.end() ? it->second : nullptr;
-}
-
 Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
 {
-    ProtoLocation* proto = GetProtoLocation( loc_pid );
+    ProtoLocation* proto = ProtoMngr.GetProtoLocation( loc_pid );
     if( !proto )
     {
         WriteLogF( _FUNC_, " - Location proto '%s' is not loaded.\n", Str::GetName( loc_pid ) );
@@ -478,21 +217,25 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
         return nullptr;
     }
 
-    Location* loc = new Location( 0, proto, wx, wy );
-    for( uint i = 0; i < loc->Proto->ProtoMapPids.size(); ++i )
+    Location*    loc = new Location( 0, proto, wx, wy );
+    ScriptArray* pids = loc->GetMapProtos();
+    for( uint i = 0, j = pids->GetSize(); i < j; i++ )
     {
-        hash map_pid = loc->Proto->ProtoMapPids[ i ];
+        hash map_pid = *(hash*) pids->At( i );
         Map* map = CreateMap( map_pid, loc );
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Create map '%s' fail.\n", Str::GetName( map_pid ) );
+            WriteLogF( _FUNC_, " - Create map '%s' for location '%s' fail.\n", Str::GetName( map_pid ), Str::GetName( loc_pid ) );
             MapVec& maps = loc->GetMapsNoLock();
-            for( auto it = maps.begin(); it != maps.end(); ++it )
-                ( *it )->Release();
+            for( auto& map : maps )
+                map->Release();
             loc->Release();
+            pids->Release();
             return nullptr;
         }
     }
+    pids->Release();
+    loc->BindScript();
 
     SYNC_LOCK( loc );
     EntityMngr.RegisterEntity( loc );
@@ -517,7 +260,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
 
 Map* MapManager::CreateMap( hash proto_id, Location* loc )
 {
-    ProtoMap* proto_map = GetProtoMap( proto_id );
+    ProtoMap* proto_map = ProtoMngr.GetProtoMap( proto_id );
     if( !proto_map )
     {
         WriteLogF( _FUNC_, " - Proto map '%s' is not loaded.\n", Str::GetName( proto_id ) );
@@ -536,9 +279,9 @@ Map* MapManager::CreateMap( hash proto_id, Location* loc )
     return map;
 }
 
-bool MapManager::RestoreMap( uint id, hash proto_id, Properties& props )
+bool MapManager::RestoreMap( uint id, hash proto_id, const StrMap& props_data )
 {
-    ProtoMap* proto = GetProtoMap( proto_id );
+    ProtoMap* proto = ProtoMngr.GetProtoMap( proto_id );
     if( !proto )
     {
         WriteLog( "Map proto '%s' is not loaded.\n", Str::GetName( proto_id ) );
@@ -546,8 +289,14 @@ bool MapManager::RestoreMap( uint id, hash proto_id, Properties& props )
     }
 
     Map* map = new Map( id, proto, nullptr );
+    if( !map->Props.LoadFromText( props_data ) )
+    {
+        WriteLog( "Fail to restore properties for map '%s' (%u).\n", Str::GetName( proto_id ), id );
+        map->Release();
+        return false;
+    }
+
     SYNC_LOCK( map );
-    map->Props = props;
     EntityMngr.RegisterEntity( map );
     Job::PushBack( JOB_MAP, map );
     return true;
@@ -589,16 +338,10 @@ uint MapManager::GetMapsCount()
     return EntityMngr.GetEntitiesCount( EntityType::Map );
 }
 
-ProtoMap* MapManager::GetProtoMap( hash map_pid )
-{
-    auto it = protoMaps.find( map_pid );
-    return it != protoMaps.end() ? it->second : nullptr;
-}
-
 bool MapManager::IsProtoMapNoLogOut( hash map_pid )
 {
-    ProtoMap* pmap = GetProtoMap( map_pid );
-    return pmap ? pmap->Header.NoLogOut : false;
+    ProtoMap* pmap = ProtoMngr.GetProtoMap( map_pid );
+    return pmap ? pmap->GetIsNoLogOut() : false;
 }
 
 Location* MapManager::GetLocationByMap( uint map_id )
@@ -1022,10 +765,10 @@ void MapManager::GM_GlobalInvite( GlobalMapGroup* group, int combat_mode )
 
 bool MapManager::GM_CheckEntrance( Location* loc, ScriptArray* arr, uchar entrance )
 {
-    if( !loc->Proto->EntranceScriptBindId )
+    if( !loc->EntranceScriptBindId )
         return true;
 
-    if( Script::PrepareContext( loc->Proto->EntranceScriptBindId, _FUNC_, ( *(Critter**) arr->At( 0 ) )->GetInfo() ) )
+    if( Script::PrepareContext( loc->EntranceScriptBindId, _FUNC_, ( *(Critter**) arr->At( 0 ) )->GetInfo() ) )
     {
         Script::SetArgObject( loc );
         Script::SetArgObject( arr );
@@ -1249,11 +992,11 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
         }
     }
 
-    if( mx >= map->GetMaxHexX() || my >= map->GetMaxHexY() || mdir >= DIRS_COUNT )
+    if( mx >= map->GetWidth() || my >= map->GetHeight() || mdir >= DIRS_COUNT )
     {
         if( car )
         {
-            if( !map->GetStartCoordCar( car_hx, car_hy, car->Proto ) )
+            if( !map->GetStartCoordCar( car_hx, car_hy, car ) )
             {
                 rule->Send_TextMsg( rule, STR_GLOBAL_CAR_PLACE_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
                 return false;
@@ -1277,7 +1020,7 @@ bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, us
         hx = mx;
         hy = my;
         dir = mdir;
-        if( car && !map->GetStartCoordCar( car_hx, car_hy, car->Proto ) )
+        if( car && !map->GetStartCoordCar( car_hx, car_hy, car ) )
         {
             rule->Send_TextMsg( rule, STR_GLOBAL_CAR_PLACE_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
             return false;
@@ -1372,13 +1115,18 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
         return false;
     }
 
-    if( entrance >= loc->Proto->Entrance.size() )
+    ScriptArray* map_entrances = loc->GetMapEntrances();
+    if( entrance >= map_entrances->GetSize() / 2 )
     {
         WriteLogF( _FUNC_, " - Invalid entrance, critter '%s'.\n", rule->GetInfo() );
+        map_entrances->Release();
         return false;
     }
+    hash entrance_map = *(hash*) map_entrances->At( entrance * 2 );
+    hash entrance_entire = *(hash*) map_entrances->At( entrance * 2 + 1 );
+    map_entrances->Release();
 
-    if( loc->Proto->EntranceScriptBindId )
+    if( loc->EntranceScriptBindId )
     {
         ScriptArray* group = GM_CreateGroupArray( rule->GroupMove );
         if( !group )
@@ -1400,10 +1148,7 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
     if( !result )
         return false;  // Group is not allowed to enter
 
-    uint count = loc->Proto->Entrance[ entrance ].first;
-    uint entire = loc->Proto->Entrance[ entrance ].second;
-
-    Map* map = loc->GetMap( count );
+    Map* map = loc->GetMapByPid( entrance_map );
     if( !map )
     {
         if( rule->IsPlayer() )
@@ -1412,7 +1157,7 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
         return false;
     }
 
-    return GM_GroupToMap( rule->GroupMove, map, entire, -1, -1, -1 );
+    return GM_GroupToMap( rule->GroupMove, map, entrance_entire, -1, -1, -1 );
 }
 
 void MapManager::GM_GroupSetMove( GlobalMapGroup* group, float to_x, float to_y, float speed )
@@ -1445,8 +1190,8 @@ void MapManager::GM_GroupSetMove( GlobalMapGroup* group, float to_x, float to_y,
 void MapManager::TraceBullet( TraceData& trace )
 {
     Map*   map = trace.TraceMap;
-    ushort maxhx = map->GetMaxHexX();
-    ushort maxhy = map->GetMaxHexY();
+    ushort maxhx = map->GetWidth();
+    ushort maxhy = map->GetHeight();
     ushort hx = trace.BeginHx;
     ushort hy = trace.BeginHy;
     ushort tx = trace.EndHx;
@@ -1553,11 +1298,7 @@ int MapManager::FindPath( PathFindData& pfd )
 {
     // Allocate temporary grid
     if( !Grid )
-    {
         Grid = new short[ ( FPATH_MAX_PATH * 2 + 2 ) * ( FPATH_MAX_PATH * 2 + 2 ) ];
-        if( !Grid )
-            return FPATH_ALLOC_FAIL;
-    }
 
     // Data
     uint   map_id = pfd.MapId;
@@ -1580,8 +1321,8 @@ int MapManager::FindPath( PathFindData& pfd )
     Map* map = GetMap( map_id );
     if( !map )
         return FPATH_MAP_NOT_FOUND;
-    ushort maxhx = map->GetMaxHexX();
-    ushort maxhy = map->GetMaxHexY();
+    ushort maxhx = map->GetWidth();
+    ushort maxhy = map->GetHeight();
 
     if( from_hx >= maxhx || from_hy >= maxhy || to_hx >= maxhx || to_hy >= maxhy )
         return FPATH_INVALID_HEXES;
@@ -2389,7 +2130,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
             return true;
 
         // Local
-        if( !map || hx >= map->GetMaxHexX() || hy >= map->GetMaxHexY() )
+        if( !map || hx >= map->GetWidth() || hy >= map->GetHeight() )
             return false;
 
         uint multihex = cr->GetMultihex();
@@ -2487,12 +2228,18 @@ bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint r
     // Local map
     else
     {
-        if( tx >= map->GetMaxHexX() || ty >= map->GetMaxHexY() )
+        if( tx >= map->GetWidth() || ty >= map->GetHeight() )
+        {
+            WriteLog( "Invalid map position %u %u, map width %u and height %u.\n", tx, ty, map->GetWidth(), map->GetHeight() );
             return false;
+        }
 
         uint multihex = cr->GetMultihex();
         if( !map->FindStartHex( tx, ty, multihex, radius, true ) && !map->FindStartHex( tx, ty, multihex, radius, false ) )
+        {
+            WriteLog( "Start hex for position %u %u and rasius %u not found.\n", tx, ty, radius );
             return false;
+        }
 
         cr->LockMapTransfers++;
         cr->SetTimeoutBattle( 0 );

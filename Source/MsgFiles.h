@@ -52,6 +52,7 @@ public:
     bool LoadFromBinaryData( const UCharVec& data );
     bool LoadFromFile( const char* fname, int path_type );
     bool LoadFromString( const char* str, uint str_len );
+    void LoadFromMap( const StrMap& kv );
     bool SaveToFile( const char* fname, int path_type );
     void Clear();
 

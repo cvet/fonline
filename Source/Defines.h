@@ -59,10 +59,6 @@
 #define AGGRESSOR_TICK               ( 60000 )
 #define MAX_ENEMY_STACK              ( 30 )
 
-// SceneryCl flags
-#define SCEN_CAN_USE                 ( 0x01 )
-#define SCEN_CAN_TALK                ( 0x02 )
-
 // Maps
 #define TIME_CAN_FOLLOW_GM           ( 20000 ) // Can less than Map timeout
 
@@ -77,11 +73,6 @@
 // Type entires
 #define ENTIRE_DEFAULT               ( 0 )
 #define ENTIRE_LOG_OUT               ( 241 )
-
-// Sendmap info
-#define SENDMAP_TILES                BIN8( 00000001 )
-#define SENDMAP_WALLS                BIN8( 00000010 )
-#define SENDMAP_SCENERY              BIN8( 00000100 )
 
 // Ping
 #define PING_PING                    ( 0 )
@@ -251,7 +242,7 @@
 #define FH_NOSHOOT                   BIN16( 00100000, 00000010 )
 
 // Client map
-#define CLIENT_MAP_FORMAT_VER        ( 8 )
+#define CLIENT_MAP_FORMAT_VER        ( 9 )
 
 // Coordinates
 #define MAXHEX_DEF                   ( 200 )
@@ -454,7 +445,7 @@
 #define CACHE_MAGIC_CHAR             "*"
 #define CACHE_HASH_APPENDIX          "_hash"
 #define CACHE_MSG_PREFIX             CACHE_MAGIC_CHAR "msg"
-#define CACHE_ITEM_PROTOS            CACHE_MAGIC_CHAR "_item_protos"
+#define CACHE_PROTOS                 CACHE_MAGIC_CHAR "protos"
 
 // Corner type
 #define CORNER_NORTH_SOUTH           ( 0 )

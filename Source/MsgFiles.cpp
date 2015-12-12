@@ -346,6 +346,16 @@ bool FOMsg::LoadFromString( const char* str, uint str_len )
     return !fail;
 }
 
+void FOMsg::LoadFromMap( const StrMap& kv )
+{
+    for( auto& kv_ : kv )
+    {
+        uint num = Str::AtoUI( kv_.first.c_str() );
+        if( num )
+            AddStr( num, kv_.second );
+    }
+}
+
 bool FOMsg::SaveToFile( const char* fname, int path_type )
 {
     string str;

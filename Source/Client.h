@@ -7,7 +7,6 @@
 #include "SoundManager.h"
 #include "HexManager.h"
 #include "Item.h"
-#include "ItemManager.h"
 #include "CritterCl.h"
 #include "NetProtocol.h"
 #include "BufferManager.h"
@@ -21,6 +20,8 @@
 #include "IniParser.h"
 #include "MsgFiles.h"
 #include "scriptdictionary.h"
+#include "MapCl.h"
+#include "ProtoManager.h"
 
 // Video
 #include "Theora/theoradec.h"
@@ -150,7 +151,7 @@ public:
     void Net_SendBarter( uint npc_id, ItemVec& cont_sale, ItemVec& cont_buy );
     void Net_SendGetGameInfo();
     void Net_SendRuleGlobal( uchar command, uint param1 = 0, uint param2 = 0 );
-    void Net_SendGiveMap( bool automap, hash map_pid, uint loc_id, uint tiles_hash, uint walls_hash, uint scen_hash );
+    void Net_SendGiveMap( bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash );
     void Net_SendLoadMapOk();
     void Net_SendText( const char* send_str, uchar how_say );
     void Net_SendDir();
@@ -512,37 +513,36 @@ public:
         static bool Crit_IsFree( CritterCl* cr );
         static bool Crit_IsBusy( CritterCl* cr );
 
-        static bool       Crit_IsAnim3d( CritterCl* cr );
-        static bool       Crit_IsAnimAviable( CritterCl* cr, uint anim1, uint anim2 );
-        static bool       Crit_IsAnimPlaying( CritterCl* cr );
-        static uint       Crit_GetAnim1( CritterCl* cr );
-        static void       Crit_Animate( CritterCl* cr, uint anim1, uint anim2 );
-        static void       Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, Item* item );
-        static void       Crit_ClearAnim( CritterCl* cr );
-        static void       Crit_Wait( CritterCl* cr, uint ms );
-        static uint       Crit_ItemsCount( CritterCl* cr );
-        static uint       Crit_ItemsWeight( CritterCl* cr );
-        static uint       Crit_ItemsVolume( CritterCl* cr );
-        static uint       Crit_CountItem( CritterCl* cr, hash proto_id );
-        static uint       Crit_CountItemByType( CritterCl* cr, uchar type );
-        static Item*      Crit_GetItem( CritterCl* cr, hash proto_id, int slot );
-        static Item*      Crit_GetItemById( CritterCl* cr, uint item_id );
-        static uint       Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items );
-        static uint       Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items );
-        static ProtoItem* Crit_GetSlotProto( CritterCl* cr, int slot, uchar& mode );
-        static void       Crit_SetVisible( CritterCl* cr, bool visible );
-        static bool       Crit_GetVisible( CritterCl* cr );
-        static void       Crit_set_ContourColor( CritterCl* cr, uint value );
-        static uint       Crit_get_ContourColor( CritterCl* cr );
-        static uint       Crit_GetMultihex( CritterCl* cr );
-        static bool       Crit_IsTurnBasedTurn( CritterCl* cr );
-        static void       Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines );
+        static bool  Crit_IsAnim3d( CritterCl* cr );
+        static bool  Crit_IsAnimAviable( CritterCl* cr, uint anim1, uint anim2 );
+        static bool  Crit_IsAnimPlaying( CritterCl* cr );
+        static uint  Crit_GetAnim1( CritterCl* cr );
+        static void  Crit_Animate( CritterCl* cr, uint anim1, uint anim2 );
+        static void  Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, Item* item );
+        static void  Crit_ClearAnim( CritterCl* cr );
+        static void  Crit_Wait( CritterCl* cr, uint ms );
+        static uint  Crit_ItemsCount( CritterCl* cr );
+        static uint  Crit_ItemsWeight( CritterCl* cr );
+        static uint  Crit_ItemsVolume( CritterCl* cr );
+        static uint  Crit_CountItem( CritterCl* cr, hash proto_id );
+        static uint  Crit_CountItemByType( CritterCl* cr, uchar type );
+        static Item* Crit_GetItem( CritterCl* cr, hash proto_id, int slot );
+        static Item* Crit_GetItemById( CritterCl* cr, uint item_id );
+        static uint  Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items );
+        static uint  Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items );
+        static Item* Crit_GetSlotItem( CritterCl* cr, int slot );
+        static void  Crit_SetVisible( CritterCl* cr, bool visible );
+        static bool  Crit_GetVisible( CritterCl* cr );
+        static void  Crit_set_ContourColor( CritterCl* cr, uint value );
+        static uint  Crit_get_ContourColor( CritterCl* cr );
+        static uint  Crit_GetMultihex( CritterCl* cr );
+        static bool  Crit_IsTurnBasedTurn( CritterCl* cr );
+        static void  Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines );
 
-        static bool  Item_IsStackable( Item* item );
-        static bool  Item_IsDeteriorable( Item* item );
         static bool  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static void  Item_Animate( Item* item, uint from_frame, uint to_frame );
         static Item* Item_GetChild( Item* item, uint childIndex );
+        static uint  Item_GetItems( Item* cont, uint stack_id, ScriptArray* items );
 
         static ScriptString* Global_CustomCall( ScriptString& command, ScriptString& separator );
         static CritterCl*    Global_GetChosen();
@@ -624,7 +624,8 @@ public:
         static void Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
         static void Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags );
         static void Global_DrawPrimitive( int primitive_type, ScriptArray& data );
-        static void Global_DrawMapSprite( ushort hx, ushort hy, hash proto_id, uint spr_id, int frame_index, int ox, int oy );
+        static void Global_DrawMapSpriteProto( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, hash proto_id );
+        static void Global_DrawMapSpriteExt( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, bool is_flat, bool no_light, int draw_order, int draw_order_hy_offset, int corner, bool disable_egg, uint color, uint contour_color );
         static void Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
         static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
         static void Global_PushDrawScissor( int x, int y, int w, int h );
@@ -674,6 +675,8 @@ public:
         static int&          GmapOffsetX, & GmapOffsetY;
         static int&          GmapGroupCurX, & GmapGroupCurY, & GmapGroupToX, & GmapGroupToY;
         static float&        GmapGroupSpeed;
+        static Map*          ClientCurMap;
+        static Location*     ClientCurLocation;
     } ScriptFunc;
 
     static int SpritesCanDraw;

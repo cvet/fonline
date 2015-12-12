@@ -6,9 +6,9 @@
 #include "SpriteManager.h"
 #include "BufferManager.h"
 #include "Item.h"
-#include "ItemManager.h"
 #include "3dStuff.h"
 #include "Entity.h"
+#include "CritterData.h"
 
 class CritterCl: public Entity
 {
@@ -31,6 +31,7 @@ public:
     CLASS_PROPERTY( uint, Anim2Dead );
     CLASS_PROPERTY( uint, Anim2KnockoutEnd );
     // Core
+    CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( uint, LookDistance );
     CLASS_PROPERTY( ScriptArray *, Anim3dLayer );
     CLASS_PROPERTY( hash, DialogId );
@@ -103,7 +104,7 @@ public:
     static bool   SlotEnabled[ 0x100 ];
     static IntSet RegProperties;
 
-    CritterCl( uint id );
+    CritterCl( uint id, ProtoCritter* proto );
     ~CritterCl();
     void Init();
     void Finish();
@@ -154,46 +155,43 @@ public:
 
     // Items
 public:
-    void       AddItem( Item* item );
-    void       DeleteItem( Item* item, bool animate );
-    void       DeleteAllItems();
-    Item*      GetItem( uint item_id );
-    Item*      GetItemByPid( hash item_pid );
-    Item*      GetItemByPidInvPriority( hash item_pid );
-    Item*      GetItemByPidSlot( hash item_pid, int slot );
-    Item*      GetAmmo( uint caliber );
-    Item*      GetItemSlot( int slot );
-    void       GetItemsSlot( int slot, ItemVec& items );
-    void       GetItemsType( int slot, ItemVec& items );
-    uint       CountItemPid( hash item_pid );
-    uint       CountItemType( uchar type );
-    bool       IsCanSortItems();
-    Item*      GetItemHighSortValue();
-    Item*      GetItemLowSortValue();
-    void       GetInvItems( ItemVec& items );
-    uint       GetItemsCount();
-    uint       GetItemsCountInv();
-    uint       GetItemsWeight();
-    uint       GetItemsWeightKg();
-    uint       GetItemsVolume();
-    int        GetFreeWeight();
-    int        GetFreeVolume();
-    bool       IsHaveLightSources();
-    Item*      GetSlotUse( uchar num_slot, uchar& use );
-    bool       IsItemAim( uchar num_slot );
-    uchar      GetUse()      { return ItemSlotMain->GetMode() & 0xF; }
-    uchar      GetFullRate() { return ItemSlotMain->GetMode(); }
-    void       NextRateItem( bool prev );
-    uchar      GetAim() { return ( ItemSlotMain->GetMode() >> 4 ) & 0xF; }
-    bool       IsAim()  { return GetAim() > 0; }
-    void       SetAim( uchar hit_location );
-    uint       GetUseApCost( Item* item, uchar rate );
-    ProtoItem* GetProtoMain() { return ItemSlotMain->Proto; }
-    ProtoItem* GetProtoExt()  { return ItemSlotExt->Proto; }
-    ProtoItem* GetProtoArm()  { return ItemSlotArmor->Proto; }
-    Item*      GetAmmoAvialble( Item* weap );
-    bool       IsOverweight()       { return (int) GetItemsWeight() > GetCarryWeight(); }
-    bool       IsDoubleOverweight() { return (int) GetItemsWeight() > GetCarryWeight() * 2; }
+    void  AddItem( Item* item );
+    void  DeleteItem( Item* item, bool animate );
+    void  DeleteAllItems();
+    Item* GetItem( uint item_id );
+    Item* GetItemByPid( hash item_pid );
+    Item* GetItemByPidInvPriority( hash item_pid );
+    Item* GetItemByPidSlot( hash item_pid, int slot );
+    Item* GetAmmo( uint caliber );
+    Item* GetItemSlot( int slot );
+    void  GetItemsSlot( int slot, ItemVec& items );
+    void  GetItemsType( int slot, ItemVec& items );
+    uint  CountItemPid( hash item_pid );
+    uint  CountItemType( uchar type );
+    bool  IsCanSortItems();
+    Item* GetItemHighSortValue();
+    Item* GetItemLowSortValue();
+    void  GetInvItems( ItemVec& items );
+    uint  GetItemsCount();
+    uint  GetItemsCountInv();
+    uint  GetItemsWeight();
+    uint  GetItemsWeightKg();
+    uint  GetItemsVolume();
+    int   GetFreeWeight();
+    int   GetFreeVolume();
+    bool  IsHaveLightSources();
+    Item* GetSlotUse( uchar num_slot, uchar& use );
+    bool  IsItemAim( uchar num_slot );
+    uchar GetUse()      { return ItemSlotMain->GetMode() & 0xF; }
+    uchar GetFullRate() { return ItemSlotMain->GetMode(); }
+    void  NextRateItem( bool prev );
+    uchar GetAim() { return ( ItemSlotMain->GetMode() >> 4 ) & 0xF; }
+    bool  IsAim()  { return GetAim() > 0; }
+    void  SetAim( uchar hit_location );
+    uint  GetUseApCost( Item* item, uchar rate );
+    Item* GetAmmoAvialble( Item* weap );
+    bool  IsOverweight()       { return (int) GetItemsWeight() > GetCarryWeight(); }
+    bool  IsDoubleOverweight() { return (int) GetItemsWeight() > GetCarryWeight() * 2; }
 
     // Moving
 public:

@@ -18,15 +18,15 @@ BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
     BIND_ASSERT( engine->RegisterObjectBehaviour( class_name, asBEHAVE_ADDREF, "void f()", asMETHOD( Entity, AddRef ), asCALL_THISCALL ) );   \
     BIND_ASSERT( engine->RegisterObjectBehaviour( class_name, asBEHAVE_RELEASE, "void f()", asMETHOD( Entity, Release ), asCALL_THISCALL ) ); \
     BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const uint Id", OFFSETOF( Entity, Id ) ) );                                     \
-    BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const hash ProtoId", OFFSETOF( Entity, ProtoId ) ) );                           \
+    BIND_ASSERT( engine->RegisterObjectMethod( class_name, "hash get_ProtoId() const", asMETHOD( Entity, GetProtoId ), asCALL_THISCALL ) );   \
     BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const bool IsDestroyed", OFFSETOF( Entity, IsDestroyed ) ) );                   \
     BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const bool IsDestroying", OFFSETOF( Entity, IsDestroying ) ) );                 \
     BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const int RefCounter", OFFSETOF( Entity, RefCounter ) ) );
 /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "Entity@ Parent", OFFSETOF( Entity, Parent ) ) );*/
 /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const Entity@[] Children", OFFSETOF( Entity, Children ) ) );*/
-#define REGISTER_ENTITY_CAST( class_name, real_class )    // None
-/*BIND_ASSERT( engine->RegisterObjectMethod( "Entity", class_name "@ opCast()", asFUNCTION( ( RefCast< Entity, real_class > ) ), asCALL_CDECL_OBJFIRST ) );*/
-/*BIND_ASSERT( engine->RegisterObjectMethod( class_name, "Entity@ opImplCast()", asFUNCTION( ( RefCast< real_class, Entity > ) ), asCALL_CDECL_OBJFIRST ) );*/
+#define REGISTER_ENTITY_CAST( class_name, real_class )                                                                                                    \
+    BIND_ASSERT( engine->RegisterObjectMethod( "Entity", class_name "@ opCast()", asFUNCTION( ( EntityUpCast< real_class >) ), asCALL_CDECL_OBJFIRST ) ); \
+    BIND_ASSERT( engine->RegisterObjectMethod( class_name, "Entity@ opImplCast()", asFUNCTION( ( EntityDownCast< real_class >) ), asCALL_CDECL_OBJFIRST ) );
 REGISTER_ENTITY( "Entity" );
 
 // Global vars
@@ -36,18 +36,12 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "GlobalVars@ Globals", &Globals ) )
 // Map and location for client and mapper
 #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
 BIND_ASSERT( engine->RegisterObjectType( "Map", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &ClientCurMap ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &BIND_CLASS ClientCurMap ) );
 BIND_ASSERT( engine->RegisterObjectType( "Location", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "Location@ CurLocation", &ClientCurLocation ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "Location@ CurLocation", &BIND_CLASS ClientCurLocation ) );
 #endif
 
-// Item prototype
-REGISTER_ENTITY( "ProtoItem" );
-REGISTER_ENTITY_CAST( "ProtoItem", ProtoItem );
-
 #ifdef BIND_SERVER
-BIND_ASSERT( engine->RegisterObjectMethod( "ProtoItem", "string@ GetScriptName() const", asFUNCTION( BIND_CLASS ProtoItem_GetScriptName ), asCALL_CDECL_OBJFIRST ) );
-
 /************************************************************************/
 /* Types                                                                */
 /************************************************************************/
@@ -63,9 +57,6 @@ REGISTER_ENTITY_CAST( "Location", Location );
 BIND_ASSERT( engine->RegisterObjectType( "NpcPlane", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_ADDREF, "void f()", asMETHOD( AIDataPlane, AddRef ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_RELEASE, "void f()", asMETHOD( AIDataPlane, Release ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectType( "Scenery", 0, asOBJ_REF ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "Scenery", asBEHAVE_ADDREF, "void f()", asMETHOD( MapObject, AddRef ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "Scenery", asBEHAVE_RELEASE, "void f()", asMETHOD( MapObject, Release ), asCALL_THISCALL ) );
 
 /************************************************************************/
 /* Synchronizer                                                         */
@@ -117,23 +108,19 @@ BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "bool Misc_SetScript(stri
 /* Item                                                                 */
 /************************************************************************/
 // Methods
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool IsStackable() const", asFUNCTION( BIND_CLASS Item_IsStackable ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool IsDeteriorable() const", asFUNCTION( BIND_CLASS Item_IsDeteriorable ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetScript(string@+ script)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "hash GetScriptId() const", asFUNCTION( BIND_CLASS Item_GetScriptId ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Item_SetEvent ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetCost() const", asFUNCTION( BIND_CLASS Item_GetCost ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddItem(hash protoId, uint count, uint specialId)", asFUNCTION( BIND_CLASS Container_AddItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetItem(hash protoId, uint specialId) const", asFUNCTION( BIND_CLASS Container_GetItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetItems(uint specialId, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Container_GetItems ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetWholeCost() const", asFUNCTION( BIND_CLASS Item_GetWholeCost ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetItems(uint stackId, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Map@+ GetMapPosition(uint16& hexX, uint16& hexY) const", asFUNCTION( BIND_CLASS Item_GetMapPosition ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool ChangeProto(hash protoId) const", asFUNCTION( BIND_CLASS Item_ChangeProto ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint fromFrame, uint toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetChild(uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter& cr, int skill, Item@+ item)", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Item_EventFinish ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventAttack(Critter& attacker, Critter& target)", asFUNCTION( BIND_CLASS Item_EventAttack ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventUse(Critter& cr, Critter@+ onCritter, Item@+ onItem, Scenery@+ onScenery)", asFUNCTION( BIND_CLASS Item_EventUse ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventUse(Critter& cr, Critter@+ onCritter, Item@+ onItem, Item@+ onScenery)", asFUNCTION( BIND_CLASS Item_EventUse ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventUseOnMe(Critter& cr, Item@+ usedItem)", asFUNCTION( BIND_CLASS Item_EventUseOnMe ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventSkill(Critter& cr, int skill)", asFUNCTION( BIND_CLASS Item_EventSkill ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventDrop(Critter& cr)", asFUNCTION( BIND_CLASS Item_EventDrop ), asCALL_CDECL_OBJFIRST ) );
@@ -141,8 +128,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventMove(Critter& cr, 
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventWalk(Critter& cr, bool entered, uint8 dir)", asFUNCTION( BIND_CLASS Item_EventWalk ), asCALL_CDECL_OBJFIRST ) );
 
 // Parameters
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const ProtoItem@ Proto", OFFSETOF( Item, Proto ) ) );
-
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerOpen()", asFUNCTION( BIND_CLASS Item_LockerOpen ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerClose()", asFUNCTION( BIND_CLASS Item_LockerClose ), asCALL_CDECL_OBJFIRST ) );
 
@@ -166,15 +151,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetNeedParams(arra
 BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetNeedTools(array<hash>@+ pids, array<uint>@+ values, array<bool>@+ ors)", asFUNCTION( BIND_CLASS CraftItem_GetNeedTools ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetNeedItems(array<hash>@+ pids, array<uint>@+ values, array<bool>@+ ors)", asFUNCTION( BIND_CLASS CraftItem_GetNeedItems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetOutItems(array<hash>@+ pids, array<uint>@+ values)", asFUNCTION( BIND_CLASS CraftItem_GetOutItems ), asCALL_CDECL_OBJFIRST ) );
-
-/************************************************************************/
-/* Scenery                                                              */
-/************************************************************************/
-BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const hash ProtoId", OFFSETOF( MapObject, ProtoId ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 HexX", OFFSETOF( MapObject, MapX ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 HexY", OFFSETOF( MapObject, MapY ) ) );
-
-BIND_ASSERT( engine->RegisterObjectMethod( "Scenery", "bool CallSceneryFunction(Critter& cr, int skill, Item@+ item)", asFUNCTION( BIND_CLASS Scen_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
 
 /************************************************************************/
 /* Critter                                                              */
@@ -232,7 +208,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItem(hash proto
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItemById(uint itemId) const", asFUNCTION( BIND_CLASS Crit_GetItemById ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetItems(int slot, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Crit_GetItems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetItemsByType(int type, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Crit_GetItemsByType ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "ProtoItem@+ GetSlotProto(int slot, uint8& mode) const", asFUNCTION( BIND_CLASS Crit_GetSlotProto ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetSlotItem(int slot) const", asFUNCTION( BIND_CLASS Crit_GetSlotItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveItem(uint itemId, uint count, uint8 toSlot)", asFUNCTION( BIND_CLASS Crit_MoveItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool PickItem(uint16 hexX, uint16 hexY, hash protoId)", asFUNCTION( BIND_CLASS Crit_PickItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetFavoriteItem(int slot, hash pid)", asFUNCTION( BIND_CLASS Crit_SetFavoriteItem ), asCALL_CDECL_OBJFIRST ) );
@@ -323,9 +299,9 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventAttack(Critter&
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventAttacked(Critter@+ attacker)", asFUNCTION( BIND_CLASS Crit_EventAttacked ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventStealing(Critter& thief, Item& item, uint count)", asFUNCTION( BIND_CLASS Crit_EventStealing ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventMessage(Critter& fromCr, int message, int value)", asFUNCTION( BIND_CLASS Crit_EventMessage ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseItem(Item& item, Critter@+ onCritter, Item@+ onItem, Scenery@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventUseItem ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseItem(Item& item, Critter@+ onCritter, Item@+ onItem, Item@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventUseItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseItemOnMe(Critter& whoUse, Item& item)", asFUNCTION( BIND_CLASS Crit_EventUseItemOnMe ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseSkill(int skill, Critter@+ onCritter, Item@+ onItem, Scenery@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventUseSkill ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseSkill(int skill, Critter@+ onCritter, Item@+ onItem, Item@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventUseSkill ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseSkillOnMe(Critter& whoUse, int skill)", asFUNCTION( BIND_CLASS Crit_EventUseSkillOnMe ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventDropItem(Item& item)", asFUNCTION( BIND_CLASS Crit_EventDropItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventMoveItem(Item& item, uint8 fromSlot)", asFUNCTION( BIND_CLASS Crit_EventMoveItem ), asCALL_CDECL_OBJFIRST ) );
@@ -334,8 +310,8 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthDead(Critte
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthStealing(Critter& fromCr, Critter& thief, bool success, Item& item, uint count)", asFUNCTION( BIND_CLASS Crit_EventSmthStealing ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthAttack(Critter& fromCr, Critter& target)", asFUNCTION( BIND_CLASS Crit_EventSmthAttack ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthAttacked(Critter& fromCr, Critter@+ attacker)", asFUNCTION( BIND_CLASS Crit_EventSmthAttacked ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthUseItem(Critter& fromCr, Item& item, Critter@+ onCritter, Item@+ onItem, Scenery@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventSmthUseItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthUseSkill(Critter& fromCr, int skill, Critter@+ onCritter, Item@+ onItem, Scenery@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventSmthUseSkill ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthUseItem(Critter& fromCr, Item& item, Critter@+ onCritter, Item@+ onItem, Item@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventSmthUseItem ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthUseSkill(Critter& fromCr, int skill, Critter@+ onCritter, Item@+ onItem, Item@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventSmthUseSkill ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthDropItem(Critter& fromCr, Item& item)", asFUNCTION( BIND_CLASS Crit_EventSmthDropItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthMoveItem(Critter& fromCr, Item& item, uint8 fromSlot)", asFUNCTION( BIND_CLASS Crit_EventSmthMoveItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthKnockout(Critter& fromCr, uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint knockDist)", asFUNCTION( BIND_CLASS Crit_EventSmthKnockout ), asCALL_CDECL_OBJFIRST ) );
@@ -366,7 +342,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool IsTurnBased() const", as
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EndTurnBased()", asFUNCTION( BIND_CLASS Map_EndTurnBased ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "int GetTurnBasedSequence(uint[]& crittersIds) const", asFUNCTION( BIND_CLASS Map_GetTurnBasedSequence ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
-// BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItemFromScenery(uint16 hexX, uint16 hexY, hash protoId)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetItem(uint itemId) const", asFUNCTION( BIND_CLASS Map_GetItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetItem(uint16 hexX, uint16 hexY, hash protoId) const", asFUNCTION( BIND_CLASS Map_GetItemHex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetItems(uint16 hexX, uint16 hexY, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Map_GetItemsHex ), asCALL_CDECL_OBJFIRST ) );
@@ -375,10 +350,10 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetItems(hash protoId, I
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetItemsByType(int type, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Map_GetItemsByType ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetDoor(uint16 hexX, uint16 hexY) const", asFUNCTION( BIND_CLASS Map_GetDoor ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetCar(uint16 hexX, uint16 hexY) const", asFUNCTION( BIND_CLASS Map_GetCar ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Scenery@+ GetScenery(uint16 hexX, uint16 hexY, hash protoId) const", asFUNCTION( BIND_CLASS Map_GetSceneryHex ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(uint16 hexX, uint16 hexY, Scenery@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesHex ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(uint16 hexX, uint16 hexY, uint radius, hash protoId, Scenery@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesHexEx ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(hash protoId, Scenery@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesByPid ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetScenery(uint16 hexX, uint16 hexY, hash protoId) const", asFUNCTION( BIND_CLASS Map_GetSceneryHex ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(uint16 hexX, uint16 hexY, Item@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesHex ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(uint16 hexX, uint16 hexY, uint radius, hash protoId, Item@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesHexEx ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(hash protoId, Item@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesByPid ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ GetCritter(uint16 hexX, uint16 hexY) const", asFUNCTION( BIND_CLASS Map_GetCritterHex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ GetCritter(uint critterId) const", asFUNCTION( BIND_CLASS Map_GetCritterById ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetCrittersHex(uint16 hexX, uint16 hexY, uint radius, int findType, Critter@[]@+ critters) const", asFUNCTION( BIND_CLASS Map_GetCritters ), asCALL_CDECL_OBJFIRST ) );
@@ -392,7 +367,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void GetHexCoordWall(uint16 f
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut) const", asFUNCTION( BIND_CLASS Map_GetPathLengthHex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetPathLength(Critter& cr, uint16 toHx, uint16 toHy, uint cut) const", asFUNCTION( BIND_CLASS Map_GetPathLengthCr ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool VerifyTrigger(Critter& cr, uint16 hexX, uint16 hexY, uint8 dir)", asFUNCTION( BIND_CLASS Map_VerifyTrigger ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, int[]@+ params, int[]@+ items, string@+ script)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetNpcCount(int npcRole, int findType) const", asFUNCTION( BIND_CLASS Map_GetNpcCount ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ GetNpc(int npcRole, int findType, uint skipCount) const", asFUNCTION( BIND_CLASS Map_GetNpc ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint CountEntire(int entire) const", asFUNCTION( BIND_CLASS Map_CountEntire ), asCALL_CDECL_OBJFIRST ) );
@@ -443,10 +418,9 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetMapCount() const
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "Map@+ GetMap(hash mapPid) const", asFUNCTION( BIND_CLASS Location_GetMap ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "Map@+ GetMapByIndex(uint index) const", asFUNCTION( BIND_CLASS Location_GetMapByIndex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetMaps(Map@[]@+ maps) const", asFUNCTION( BIND_CLASS Location_GetMaps ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool GetEntrance(uint entrance, uint& mapIndex, uint& entire) const", asFUNCTION( BIND_CLASS Location_GetEntrance ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetEntrances(uint[]@+ mapsIndex, uint[]@+ entires) const", asFUNCTION( BIND_CLASS Location_GetEntrance ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool GetEntrance(uint entrance, uint& mapIndex, hash& entire) const", asFUNCTION( BIND_CLASS Location_GetEntrance ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetEntrances(uint[]@+ mapsIndex, hash[]@+ entires) const", asFUNCTION( BIND_CLASS Location_GetEntrances ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool Reload()", asFUNCTION( BIND_CLASS Location_Reload ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Location", "void Update()", asFUNCTION( BIND_CLASS Location_Update ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Location_EventFinish ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool EventEnter(Critter@[]& group, uint8 entrance)", asFUNCTION( BIND_CLASS Location_EventEnter ), asCALL_CDECL_OBJFIRST ) );
@@ -544,7 +518,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItem(hash proto
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItemById(uint itemId) const", asFUNCTION( BIND_CLASS Crit_GetItemById ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetItems(int slot, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Crit_GetItems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetItemsByType(int type, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Crit_GetItemsByType ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "ProtoItem@+ GetSlotProto(int slot, uint8& mode) const", asFUNCTION( BIND_CLASS Crit_GetSlotProto ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetSlotItem(int slot) const", asFUNCTION( BIND_CLASS Crit_GetSlotItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetVisible(bool visible)", asFUNCTION( BIND_CLASS Crit_SetVisible ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool GetVisible() const", asFUNCTION( BIND_CLASS Crit_GetVisible ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void set_ContourColor(uint value)", asFUNCTION( BIND_CLASS Crit_set_ContourColor ), asCALL_CDECL_OBJFIRST ) );
@@ -559,12 +533,9 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string@ NameOnHead", OF
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string@ Avatar", OFFSETOF( CritterCl, Avatar ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "uint NameColor", OFFSETOF( CritterCl, NameColor ) ) );
 
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool IsStackable() const", asFUNCTION( BIND_CLASS Item_IsStackable ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool IsDeteriorable() const", asFUNCTION( BIND_CLASS Item_IsDeteriorable ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool GetMapPosition(uint16& hexX, uint16& hexY) const", asFUNCTION( BIND_CLASS Item_GetMapPosition ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint fromFrame, uint toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
-
-BIND_ASSERT( engine->RegisterObjectProperty( "Item", "const ProtoItem@ Proto", OFFSETOF( Item, Proto ) ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetItems(uint stackId, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ CustomCall(string& command, string& separator = \" \")", asFUNCTION( BIND_CLASS Global_CustomCall ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetChosen()", asFUNCTION( BIND_CLASS Global_GetChosen ), asCALL_CDECL ) );
@@ -800,149 +771,42 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationHated", &GameOpt.R
 #endif
 
 #ifdef BIND_MAPPER
-BIND_ASSERT( engine->RegisterObjectType( "MapperObject", 0, asOBJ_REF ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperObject", asBEHAVE_ADDREF, "void f()", asMETHOD( MapObject, AddRef ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperObject", asBEHAVE_RELEASE, "void f()", asMETHOD( MapObject, Release ), asCALL_THISCALL ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddChild(uint16 hexX, uint16 hexY, int mapObjType, hash pid)", asFUNCTION( BIND_CLASS Item_AddChild ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ AddChild(uint16 hexX, uint16 hexY, int mapObjType, hash pid, uint skip) const", asFUNCTION( BIND_CLASS Crit_AddChild ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetChildren(uint16 hexX, uint16 hexY, Item@[]@+ children) const", asFUNCTION( BIND_CLASS Item_GetChildren ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetChildren(uint16 hexX, uint16 hexY, Item@[]@+ children) const", asFUNCTION( BIND_CLASS Crit_GetChildren ), asCALL_CDECL_OBJFIRST ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ AddItem(hash protoId, uint16 hexX, uint16 hexY)", asFUNCTION( BIND_CLASS Global_AddItem ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ AddCritter(hash protoId, uint16 hexX, uint16 hexY)", asFUNCTION( BIND_CLASS Global_AddCritter ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetItemByHex(uint16 hexX, uint16 hexY)", asFUNCTION( BIND_CLASS Global_GetItemByHex ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetItemsByHex(uint16 hexX, uint16 hexY, Item@[]@+ items)", asFUNCTION( BIND_CLASS Global_GetItemsByHex ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetCritterByHex(uint16 hexX, uint16 hexY, int findType)", asFUNCTION( BIND_CLASS Global_GetCritterByHex ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void GetCrittersByHex(uint16 hexX, uint16 hexY, int findType, Critter@[]@+ critters)", asFUNCTION( BIND_CLASS Global_GetCrittersByHex ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveEntity(Entity& entity, uint16 hexX, uint16 hexY)", asFUNCTION( BIND_CLASS Global_MoveEntity ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteEntity(Entity& entity)", asFUNCTION( BIND_CLASS Global_DeleteEntity ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteEntities(Entity@[]& entities)", asFUNCTION( BIND_CLASS Global_DeleteEntities ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void SelectEntity(Entity& entity, bool set)", asFUNCTION( BIND_CLASS Global_SelectEntity ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void SelectEntities(Entity@[]& entities, bool set)", asFUNCTION( BIND_CLASS Global_SelectEntities ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "Entity@+ GetSelectedEntity()", asFUNCTION( BIND_CLASS Global_GetSelectedEntity ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSelectedEntities(Entity@[]@+ entities)", asFUNCTION( BIND_CLASS Global_GetSelectedEntities ), asCALL_CDECL ) );
+
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTilesCount(uint16 hexX, uint16 hexY, bool roof)", asFUNCTION( BIND_CLASS Global_GetTilesCount ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteTile(uint16 hexX, uint16 hexY, bool roof, int layer)", asFUNCTION( BIND_CLASS Global_DeleteTile ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetTile(uint16 hexX, uint16 hexY, bool roof, int layer)", asFUNCTION( BIND_CLASS Global_GetTileHash ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void AddTile(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, hash picHash)", asFUNCTION( BIND_CLASS Global_AddTileHash ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetTileName(uint16 hexX, uint16 hexY, bool roof, int layer)", asFUNCTION( BIND_CLASS Global_GetTileName ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void AddTileName(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, string@+ picName)", asFUNCTION( BIND_CLASS Global_AddTileName ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterObjectType( "MapperMap", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperMap", asBEHAVE_ADDREF, "void f()", asMETHOD( ProtoMap, AddRef ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperMap", asBEHAVE_RELEASE, "void f()", asMETHOD( ProtoMap, Release ), asCALL_THISCALL ) );
-
-// MapperObject
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "string& opIndex(int prop)", asFUNCTION( BIND_CLASS MapperObject_opIndex ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void Update() const", asFUNCTION( BIND_CLASS MapperObject_Update ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "MapperObject@+ AddChild(hash pid)", asFUNCTION( BIND_CLASS MapperObject_AddChild ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "uint GetChilds(MapperObject@[]@+ objects) const", asFUNCTION( BIND_CLASS MapperObject_GetChilds ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "string@ get_ScriptName() const", asFUNCTION( BIND_CLASS MapperObject_get_ScriptName ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void set_ScriptName(const string& name)", asFUNCTION( BIND_CLASS MapperObject_set_ScriptName ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "string@ get_FuncName() const", asFUNCTION( BIND_CLASS MapperObject_get_FuncName ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void set_FuncName(const string& name)", asFUNCTION( BIND_CLASS MapperObject_set_FuncName ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "uint8 get_Critter_Cond() const", asFUNCTION( BIND_CLASS MapperObject_get_Critter_Cond ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void set_Critter_Cond(uint8 value)", asFUNCTION( BIND_CLASS MapperObject_set_Critter_Cond ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void MoveToHex(uint16 hexX, uint16 hexY)", asFUNCTION( BIND_CLASS MapperObject_MoveToHex ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void MoveToHexOffset(int x, int y)", asFUNCTION( BIND_CLASS MapperObject_MoveToHexOffset ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void MoveToDir(uint8 dir)", asFUNCTION( BIND_CLASS MapperObject_MoveToDir ), asCALL_CDECL_OBJFIRST ) );
-
-// Generic
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint8 MapObjType", OFFSETOF( MapObject, MapObjType ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const hash ProtoId", OFFSETOF( MapObject, ProtoId ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const string& ProtoName", OFFSETOF( MapObject, ProtoName ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint16 MapX", OFFSETOF( MapObject, MapX ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint16 MapY", OFFSETOF( MapObject, MapY ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint UID", OFFSETOF( MapObject, UID ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint ContainerUID", OFFSETOF( MapObject, ContainerUID ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint ParentUID", OFFSETOF( MapObject, ParentUID ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "const uint ParentChildIndex", OFFSETOF( MapObject, ParentChildIndex ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint LightColor", OFFSETOF( MapObject, LightColor ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 LightDay", OFFSETOF( MapObject, LightDay ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 LightDirOff", OFFSETOF( MapObject, LightDirOff ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 LightDistance", OFFSETOF( MapObject, LightDistance ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int8 LightIntensity", OFFSETOF( MapObject, LightIntensity ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData0", OFFSETOF( MapObject, UserData[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData1", OFFSETOF( MapObject, UserData[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData2", OFFSETOF( MapObject, UserData[ 2 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData3", OFFSETOF( MapObject, UserData[ 3 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData4", OFFSETOF( MapObject, UserData[ 4 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData5", OFFSETOF( MapObject, UserData[ 5 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData6", OFFSETOF( MapObject, UserData[ 6 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData7", OFFSETOF( MapObject, UserData[ 7 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData8", OFFSETOF( MapObject, UserData[ 8 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int UserData9", OFFSETOF( MapObject, UserData[ 9 ] ) ) );
-
-// Critter
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Dir", OFFSETOF( MapObject, MCritter.Dir ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Cond", OFFSETOF( MapObject, MCritter.Cond ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Anim1", OFFSETOF( MapObject, MCritter.Anim1 ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Critter_Anim2", OFFSETOF( MapObject, MCritter.Anim2 ) ) );
-
-// Item/critter shared parameters
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int16 OffsetX", OFFSETOF( MapObject, MItem.OffsetX ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int16 OffsetY", OFFSETOF( MapObject, MItem.OffsetY ) ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "string@ get_PicMap() const", asFUNCTION( BIND_CLASS MapperObject_get_PicMap ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void set_PicMap(const string& name)", asFUNCTION( BIND_CLASS MapperObject_set_PicMap ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "string@ get_PicInv() const", asFUNCTION( BIND_CLASS MapperObject_get_PicInv ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperObject", "void set_PicInv(const string& name)", asFUNCTION( BIND_CLASS MapperObject_set_PicInv ), asCALL_CDECL_OBJFIRST ) );
-
-// Item
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint Item_Count", OFFSETOF( MapObject, MItem.Count ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Item_BrokenFlags", OFFSETOF( MapObject, MItem.BrokenFlags ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Item_BrokenCount", OFFSETOF( MapObject, MItem.BrokenCount ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint16 Item_Deterioration", OFFSETOF( MapObject, MItem.Deterioration ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Item_ItemSlot", OFFSETOF( MapObject, MItem.ItemSlot ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "string@ Item_AmmoPid", OFFSETOF( MapObject, MItem.AmmoPid ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint Item_AmmoCount", OFFSETOF( MapObject, MItem.AmmoCount ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint Item_LockerDoorId", OFFSETOF( MapObject, MItem.LockerDoorId ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint16 Item_LockerCondition", OFFSETOF( MapObject, MItem.LockerCondition ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint16 Item_LockerComplexity", OFFSETOF( MapObject, MItem.LockerComplexity ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int16 Item_TrapValue", OFFSETOF( MapObject, MItem.TrapValue ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val0", OFFSETOF( MapObject, MItem.Val[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val1", OFFSETOF( MapObject, MItem.Val[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val2", OFFSETOF( MapObject, MItem.Val[ 2 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val3", OFFSETOF( MapObject, MItem.Val[ 3 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val4", OFFSETOF( MapObject, MItem.Val[ 4 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val5", OFFSETOF( MapObject, MItem.Val[ 5 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val6", OFFSETOF( MapObject, MItem.Val[ 6 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val7", OFFSETOF( MapObject, MItem.Val[ 7 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val8", OFFSETOF( MapObject, MItem.Val[ 8 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Item_Val9", OFFSETOF( MapObject, MItem.Val[ 9 ] ) ) );
-
-// Scenery
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "bool Scenery_CanUse", OFFSETOF( MapObject, MScenery.CanUse ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "bool Scenery_CanTalk", OFFSETOF( MapObject, MScenery.CanTalk ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint Scenery_TriggerNum", OFFSETOF( MapObject, MScenery.TriggerNum ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Scenery_ParamsCount", OFFSETOF( MapObject, MScenery.ParamsCount ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Scenery_Param0", OFFSETOF( MapObject, MScenery.Param[ 0 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Scenery_Param1", OFFSETOF( MapObject, MScenery.Param[ 1 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Scenery_Param2", OFFSETOF( MapObject, MScenery.Param[ 2 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Scenery_Param3", OFFSETOF( MapObject, MScenery.Param[ 3 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "int Scenery_Param4", OFFSETOF( MapObject, MScenery.Param[ 4 ] ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "string@ Scenery_ToMap", OFFSETOF( MapObject, MScenery.ToMap ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint Scenery_ToEntire", OFFSETOF( MapObject, MScenery.ToEntire ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Scenery_ToDir", OFFSETOF( MapObject, MScenery.ToDir ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperObject", "uint8 Scenery_SpriteCut", OFFSETOF( MapObject, MScenery.SpriteCut ) ) );
-
-// MapperMap
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "MapperObject@+ AddObject(uint16 hexX, uint16 hexY, int mapObjType, hash pid)", asFUNCTION( BIND_CLASS MapperMap_AddObject ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "MapperObject@+ GetObject(uint16 hexX, uint16 hexY, int mapObjType, hash pid, uint skip) const", asFUNCTION( BIND_CLASS MapperMap_GetObject ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "uint GetObjects(uint16 hexX, uint16 hexY, uint radius, int mapObjType, hash pid, MapperObject@[]@+ objects) const", asFUNCTION( BIND_CLASS MapperMap_GetObjects ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void UpdateObjects() const", asFUNCTION( BIND_CLASS MapperMap_UpdateObjects ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void Resize(uint16 width, uint16 height)", asFUNCTION( BIND_CLASS MapperMap_Resize ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "uint GetTilesCount(uint16 hexX, uint16 hexY, bool roof) const", asFUNCTION( BIND_CLASS MapperMap_GetTilesCount ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void DeleteTile(uint16 hexX, uint16 hexY, bool roof, int layer)", asFUNCTION( BIND_CLASS MapperMap_DeleteTile ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "hash GetTile(uint16 hexX, uint16 hexY, bool roof, int layer) const", asFUNCTION( BIND_CLASS MapperMap_GetTileHash ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void AddTile(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, hash picHash)", asFUNCTION( BIND_CLASS MapperMap_AddTileHash ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ GetTileName(uint16 hexX, uint16 hexY, bool roof, int layer) const", asFUNCTION( BIND_CLASS MapperMap_GetTileName ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void AddTileName(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, string@+ picName)", asFUNCTION( BIND_CLASS MapperMap_AddTileName ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "uint GetDayTime(uint dayPart) const", asFUNCTION( BIND_CLASS MapperMap_GetDayTime ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void SetDayTime(uint dayPart, uint time)", asFUNCTION( BIND_CLASS MapperMap_SetDayTime ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b) const", asFUNCTION( BIND_CLASS MapperMap_GetDayColor ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void SetDayColor(uint dayPart, uint8 r, uint8 g, uint8 b)", asFUNCTION( BIND_CLASS MapperMap_SetDayColor ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "const uint16 Width", OFFSETOF( ProtoMap, Header.MaxHexX ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "const uint16 Height", OFFSETOF( ProtoMap, Header.MaxHexY ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "const int WorkHexX", OFFSETOF( ProtoMap, Header.WorkHexX ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "const int WorkHexY", OFFSETOF( ProtoMap, Header.WorkHexY ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "int Time", OFFSETOF( ProtoMap, Header.Time ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "MapperMap", "bool NoLogOut", OFFSETOF( ProtoMap, Header.NoLogOut ) ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ get_Name()", asFUNCTION( BIND_CLASS MapperMap_get_Name ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ get_ScriptModule() const", asFUNCTION( BIND_CLASS MapperMap_get_ScriptModule ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void set_ScriptModule(const string& name)", asFUNCTION( BIND_CLASS MapperMap_set_ScriptModule ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "string@ get_ScriptFunc() const", asFUNCTION( BIND_CLASS MapperMap_get_ScriptFunc ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "MapperMap", "void set_ScriptFunc(const string& name)", asFUNCTION( BIND_CLASS MapperMap_set_ScriptFunc ), asCALL_CDECL_OBJFIRST ) );
-
-// Global
-BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowProperty(int prop)", asFUNCTION( BIND_CLASS Global_ShowProperty ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "MapperMap@+ LoadMap(string& fileName, int pathType)", asFUNCTION( BIND_CLASS Global_LoadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void UnloadMap(MapperMap@+ map)", asFUNCTION( BIND_CLASS Global_UnloadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(MapperMap@+ map, string@+ customName = null)", asFUNCTION( BIND_CLASS Global_SaveMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool ShowMap(MapperMap@+ map)", asFUNCTION( BIND_CLASS Global_ShowMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetLoadedMaps(MapperMap@[]@+ maps)", asFUNCTION( BIND_CLASS Global_GetLoadedMaps ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMapFileNames(string@+ dir, string@[]@+ names)", asFUNCTION( BIND_CLASS Global_GetMapFileNames ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteObject(MapperObject@+ obj)", asFUNCTION( BIND_CLASS Global_DeleteObject ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteObjects(MapperObject@[]& objects)", asFUNCTION( BIND_CLASS Global_DeleteObjects ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void SelectObject(MapperObject@+ obj, bool set)", asFUNCTION( BIND_CLASS Global_SelectObject ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void SelectObjects(MapperObject@[]& objects, bool set)", asFUNCTION( BIND_CLASS Global_SelectObjects ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "MapperObject@+ GetSelectedObject()", asFUNCTION( BIND_CLASS Global_GetSelectedObject ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSelectedObjects(MapperObject@[]@+ objects)", asFUNCTION( BIND_CLASS Global_GetSelectedObjects ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ResizeMap(uint16 width, uint16 height)", asFUNCTION( BIND_CLASS Global_ResizeMap ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint TabGetTileDirs(int tab, string@[]@+ dirNames, bool[]@+ includeSubdirs)", asFUNCTION( BIND_CLASS Global_TabGetTileDirs ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint TabGetItemPids(int tab, string@+ subTab, hash[]@+ itemPids)", asFUNCTION( BIND_CLASS Global_TabGetItemPids ), asCALL_CDECL ) );
@@ -984,7 +848,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "string@ ReplaceText(const string& 
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreen(uint16 hexX, uint16 hexY, uint speed, bool canStop = false)", asFUNCTION( BIND_CLASS Global_MoveScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "MapperObject@+ GetMonitorObject(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorObject ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "MapperObject@+ GetMonitorObject(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorObject ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetIfaceIniStr(string& key)", asFUNCTION( BIND_CLASS Global_GetIfaceIniStr ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fontFileName)", asFUNCTION( BIND_CLASS Global_LoadFont ), asCALL_CDECL ) );
@@ -1016,7 +880,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int fr
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSpritePattern(uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color = 0)", asFUNCTION( BIND_CLASS Global_DrawSpritePattern ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawText(string& text, int x, int y, int w, int h, uint color, int font, int flags)", asFUNCTION( BIND_CLASS Global_DrawText ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawPrimitive(int primitiveType, int[]& data)", asFUNCTION( BIND_CLASS Global_DrawPrimitive ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(uint16 hx, uint16 hy, hash effectPid, uint sprId, int frameIndex, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_DrawMapSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSpriteProto(uint16 hx, uint16 hy, uint sprId, int frameIndex, int offsX, int offsY, hash protoId)", asFUNCTION( BIND_CLASS Global_DrawMapSpriteProto ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSpriteExt(uint16 hx, uint16 hy, uint sprId, int frameIndex, int offsX, int offsY, bool isFlat, bool noLight, int drawOrder, int drawOrderHyOffset, int corner, bool disableEgg, uint color, uint contourColor)", asFUNCTION( BIND_CLASS Global_DrawMapSpriteExt ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter2d ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2, const int[]@+ layers, const float[]@+ position, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter3d ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void PushDrawScissor(int x, int y, int w, int h)", asFUNCTION( BIND_CLASS Global_PushDrawScissor ), asCALL_CDECL ) );
@@ -1142,7 +1007,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "float __MapCameraAngle", &GameOpt.
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapSmoothPath", &GameOpt.MapSmoothPath ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __MapDataPrefix", &GameOpt.MapDataPrefix ) );
 
-BIND_ASSERT( engine->RegisterGlobalFunction( "ProtoItem@+ GetProtoItem(hash protoId)", asFUNCTION( BIND_CLASS Global_GetProtoItem ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadDataFile(string& dataFileName)", asFUNCTION( BIND_CLASS Global_LoadDataFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, bool enableSend)", asFUNCTION( BIND_CLASS Global_AllowSlot ), asCALL_CDECL ) );
 
@@ -1170,6 +1034,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(const string&
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ SHA1(const string& text)", asFUNCTION( Global_SHA1 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ SHA2(const string& text)", asFUNCTION( Global_SHA2 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(const string& link)", asFUNCTION( Global_OpenLink ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId)", asFUNCTION( BIND_CLASS Global_GetProtoItem ), asCALL_CDECL ) );
 
 // Invoker
 BIND_ASSERT( engine->RegisterFuncdef( "void CallFunc()" ) );
@@ -1201,13 +1066,16 @@ BIND_ASSERT_EXT( registrators[ 1 ]->Init() );
 BIND_ASSERT_EXT( registrators[ 2 ]->Init() );
 BIND_ASSERT_EXT( registrators[ 3 ]->Init() );
 BIND_ASSERT_EXT( registrators[ 4 ]->Init() );
-BIND_ASSERT_EXT( registrators[ 5 ]->Init() );
 
 #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
 BIND_ASSERT( engine->RegisterGlobalFunction( "void AddRegistrationProperty(CritterProperty prop)", asFUNCTION( BIND_CLASS Global_AddRegistrationProperty ), asCALL_CDECL ) );
 
 void* reg_props = engine->CreateScriptObject( engine->GetObjectTypeByDecl( "CritterProperty[]" ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "CritterProperty[] CritterPropertyRegProperties", reg_props ) );
+#endif
+#if defined ( BIND_MAPPER )
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowCritterProperty(CritterProperty prop)", asFUNCTION( BIND_CLASS Global_ShowCritterProperty ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowItemProperty(ItemProperty prop)", asFUNCTION( BIND_CLASS Global_ShowItemProperty ), asCALL_CDECL ) );
 #endif
 
 /************************************************************************/

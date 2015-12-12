@@ -80,8 +80,7 @@ public:
     static void   ProfilerContextCallback( asIScriptContext* ctx, void* obj );
     static string GetProfilerStatistics();
 
-    static PropertyRegistrator* FindEntityRegistrator( const char* class_name );
-    static bool                 RestoreEntity( const char* class_name, uint id, Properties& props );
+    static bool RestoreEntity( const char* class_name, uint id, const StrMap& props_data );
 
     static const char* GetActiveModuleName();
     static const char* GetActiveFuncName();

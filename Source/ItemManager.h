@@ -1,43 +1,20 @@
 #ifndef __ITEM_MANAGER__
 #define __ITEM_MANAGER__
 
-#include "Defines.h"
+#include "Common.h"
 #include "Item.h"
-
-#ifdef FONLINE_SERVER
-class Critter;
-class Map;
-#endif
+#include "Critter.h"
+#include "Map.h"
 
 class ItemManager
 {
-private:
-    ProtoItemMap allProtos;
-
-public:
-    bool Init();
-    void Finish();
-    void Clear();
-    bool LoadProtos();
-
-    #ifdef FONLINE_OBJECT_EDITOR
-    void SaveProtos( const char* full_path );
-    void SaveProtos( ProtoItemVec& protos, const char* full_path );
-    #endif
-
-    ProtoItem*    GetProtoItem( hash pid );
-    ProtoItemMap& GetAllProtos();
-    void          GetBinaryData( UCharVec& data );
-    void          SetBinaryData( UCharVec& data );
-
-    #ifdef FONLINE_SERVER
 public:
     void GetGameItems( ItemVec& items );
     uint GetItemsCount();
     void SetCritterItems( Critter* cr );
 
     Item* CreateItem( hash pid, uint count = 0 );
-    bool  RestoreItem( uint id, hash proto_id, Properties& props );
+    bool  RestoreItem( uint id, hash proto_id, const StrMap& props_data );
     void  DeleteItem( Item* item );
 
     Item* SplitItem( Item* item, uint count );
@@ -64,10 +41,10 @@ private:
     Mutex   radioItemsLocker;
 
 public:
+    void RadioClear();
     void RadioRegister( Item* radio, bool add );
     void RadioSendText( Critter* cr, const char* text, ushort text_len, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels );
     void RadioSendTextEx( ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const char* text, ushort text_len, ushort intellect, bool unsafe_text, ushort text_msg, uint num_str, const char* lexems );
-    #endif // FONLINE_SERVER
 
     // Items statistics
 private:
@@ -77,8 +54,6 @@ public:
     void   ChangeItemStatistics( hash pid, int val );
     int64  GetItemStatistics( hash pid );
     string GetItemsStatistics();
-
-    ItemManager() { MEMORY_PROCESS( MEMORY_STATIC, sizeof( ItemManager ) ); };
 };
 
 extern ItemManager ItemMngr;

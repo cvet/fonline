@@ -57,6 +57,7 @@ struct AIDataPlane
 
 struct Entity
 {
+    int  Type;
     int  Id;
     int  ProtoId;
     int  RefCounter;
@@ -65,18 +66,15 @@ struct Entity
     int  Parent;
     int  Children;
 
-    void AddRef()  {}
-    void Release() {}
-};
-
-struct ProtoItem
-{
-    void AddRef()  {}
-    void Release() {}
+    void AddRef()     {}
+    void Release()    {}
+    void GetProtoId() {}
 };
 
 struct Item: public Entity
 {
+    Item( uint id, void* proto ) {}
+
     int Proto;
     int ViewByCritter;
     int ViewPlaceOnMap;
@@ -101,91 +99,6 @@ struct Item: public Entity
         int ContainerId;
         int StackId;
     } AccContainer;
-};
-
-struct MapObject
-{
-    int MapObjType;
-    int ProtoId;
-    int ProtoName;
-    int MapX;
-    int MapY;
-
-    int UID;
-    int ContainerUID;
-    int ParentUID;
-    int ParentChildIndex;
-
-    int LightColor;
-    int LightDay;
-    int LightDirOff;
-    int LightDistance;
-    int LightIntensity;
-
-    int UserData[ 10 ];
-
-    struct
-    {
-        int Dir;
-        int Cond;
-        int Anim1;
-        int Anim2;
-        int Params[ 1000 ];
-    } MCritter;
-
-    struct
-    {
-        int OffsetX;
-        int OffsetY;
-        int PicMap;
-        int PicInv;
-
-        int Count;
-
-        int BrokenFlags;
-        int BrokenCount;
-        int Deterioration;
-
-        int InContainer;
-        int ItemSlot;
-
-        int AmmoPid;
-        int AmmoCount;
-
-        int LockerDoorId;
-        int LockerCondition;
-        int LockerComplexity;
-
-        int TrapValue;
-
-        int Val[ 10 ];
-    } MItem;
-
-    struct
-    {
-        int OffsetX;
-        int OffsetY;
-        int PicMap;
-        int PicInv;
-
-        int CanUse;
-        int CanTalk;
-        int TriggerNum;
-
-        int ParamsCount;
-        int Param[ 5 ];
-
-        int ToMap;
-        int ToEntire;
-        int ToMapX;
-        int ToMapY;
-        int ToDir;
-
-        int SpriteCut;
-    } MScenery;
-
-    void AddRef()  {}
-    void Release() {}
 };
 
 struct Critter: public Entity
@@ -231,22 +144,6 @@ struct Location: public Entity
     int GeckCount;
 };
 
-struct ProtoMap
-{
-    struct
-    {
-        int MaxHexX;
-        int MaxHexY;
-        int WorkHexX;
-        int WorkHexY;
-        int Time;
-        int NoLogOut;
-    } Header;
-
-    void AddRef()  {}
-    void Release() {}
-};
-
 struct CraftItem
 {
     int  Num;
@@ -259,11 +156,15 @@ struct CraftItem
     void Release() {}
 };
 
+struct ProtoMap
+{
+    void AddRef()  {}
+    void Release() {}
+};
+
 struct BindClass
 {
     #ifdef BIND_SERVER
-    static void ProtoItem_GetScriptName() {}
-
     static void Synchronizer_Constructor( void* ) {}
     static void Synchronizer_Destructor( void* )  {}
 
@@ -272,22 +173,18 @@ struct BindClass
     static void NpcPlane_GetChild()       {}
     static void NpcPlane_Misc_SetScript() {}
 
-    static void Container_AddItem()  {}
-    static void Container_GetItems() {}
-    static void Container_GetItem()  {}
-
-    static void Item_IsStackable()    {}
-    static void Item_IsDeteriorable() {}
-    static void Item_SetScript()      {}
-    static void Item_GetScriptId()    {}
-    static void Item_SetEvent()       {}
-    static void Item_GetCost()        {}
-    static void Item_GetMapPosition() {}
-    static void Item_ChangeProto()    {}
-    static void Item_Animate()        {}
-    static void Item_GetChild()       {}
-    static void Item_LockerOpen()     {}
-    static void Item_LockerClose()    {}
+    static void Item_AddItem()             {}
+    static void Item_GetItems()            {}
+    static void Item_SetScript()           {}
+    static void Item_SetEvent()            {}
+    static void Item_GetWholeCost()        {}
+    static void Item_GetMapPosition()      {}
+    static void Item_ChangeProto()         {}
+    static void Item_Animate()             {}
+    static void Item_GetChild()            {}
+    static void Item_CallSceneryFunction() {}
+    static void Item_LockerOpen()          {}
+    static void Item_LockerClose()         {}
 
     static void Item_EventFinish()  {}
     static void Item_EventAttack()  {}
@@ -303,8 +200,6 @@ struct BindClass
     static void CraftItem_GetNeedTools()  {}
     static void CraftItem_GetNeedItems()  {}
     static void CraftItem_GetOutItems()   {}
-
-    static void Scen_CallSceneryFunction() {}
 
     static void Crit_IsPlayer()                 {}
     static void Crit_IsNpc()                    {}
@@ -371,7 +266,7 @@ struct BindClass
     static void Crit_GetItemById()              {}
     static void Crit_GetItems()                 {}
     static void Crit_GetItemsByType()           {}
-    static void Crit_GetSlotProto()             {}
+    static void Crit_GetSlotItem()              {}
     static void Crit_MoveItem()                 {}
 
     static void Npc_ErasePlane()           {}
@@ -549,7 +444,6 @@ struct BindClass
     static void Location_GetEntrance()   {}
     static void Location_GetEntrances()  {}
     static void Location_Reload()        {}
-    static void Location_Update()        {}
 
     static void Location_EventFinish() {}
     static void Location_EventEnter()  {}
@@ -641,7 +535,7 @@ struct BindClass
     static void Crit_GetItemById()      {}
     static void Crit_GetItems()         {}
     static void Crit_GetItemsByType()   {}
-    static void Crit_GetSlotProto()     {}
+    static void Crit_GetSlotItem()      {}
     static void Crit_SetVisible()       {}
     static void Crit_GetVisible()       {}
     static void Crit_set_ContourColor() {}
@@ -650,8 +544,7 @@ struct BindClass
     static void Crit_IsTurnBasedTurn()  {}
     static void Crit_GetNameTextInfo()  {}
 
-    static void Item_IsStackable()    {}
-    static void Item_IsDeteriorable() {}
+    static void Item_GetItems()       {}
     static void Item_GetMapPosition() {}
     static void Item_Animate()        {}
     static void Item_GetChild()       {}
@@ -723,6 +616,8 @@ struct BindClass
     static int  GmapOffsetX, GmapOffsetY;
     static int  GmapGroupCurX, GmapGroupCurY, GmapGroupToX, GmapGroupToY;
     static int  GmapGroupSpeed;
+    static int  ClientCurMap;
+    static int  ClientCurLocation;
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
@@ -748,62 +643,43 @@ struct BindClass
     #endif
 
     #ifdef BIND_MAPPER
-    static void MapperObject_opIndex()          {}
-    static void MapperObject_get_ScriptName()   {}
-    static void MapperObject_set_ScriptName()   {}
-    static void MapperObject_get_FuncName()     {}
-    static void MapperObject_set_FuncName()     {}
-    static void MapperObject_get_Critter_Cond() {}
-    static void MapperObject_set_Critter_Cond() {}
-    static void MapperObject_get_PicMap()       {}
-    static void MapperObject_set_PicMap()       {}
-    static void MapperObject_get_PicInv()       {}
-    static void MapperObject_set_PicInv()       {}
-    static void MapperObject_Update()           {}
-    static void MapperObject_AddChild()         {}
-    static void MapperObject_GetChilds()        {}
-    static void MapperObject_MoveToHex()        {}
-    static void MapperObject_MoveToHexOffset()  {}
-    static void MapperObject_MoveToDir()        {}
+    static void Item_AddChild()    {}
+    static void Crit_AddChild()    {}
+    static void Item_GetChildren() {}
+    static void Crit_GetChildren() {}
 
-    static void MapperMap_get_Name()         {}
-    static void MapperMap_AddObject()        {}
-    static void MapperMap_GetObject()        {}
-    static void MapperMap_GetObjects()       {}
-    static void MapperMap_UpdateObjects()    {}
-    static void MapperMap_Resize()           {}
-    static void MapperMap_GetTilesCount()    {}
-    static void MapperMap_DeleteTile()       {}
-    static void MapperMap_GetTileHash()      {}
-    static void MapperMap_AddTileHash()      {}
-    static void MapperMap_GetTileName()      {}
-    static void MapperMap_AddTileName()      {}
-    static void MapperMap_GetTerrainName()   {}
-    static void MapperMap_SetTerrainName()   {}
-    static void MapperMap_GetDayTime()       {}
-    static void MapperMap_SetDayTime()       {}
-    static void MapperMap_GetDayColor()      {}
-    static void MapperMap_SetDayColor()      {}
-    static void MapperMap_get_ScriptModule() {}
-    static void MapperMap_set_ScriptModule() {}
-    static void MapperMap_get_ScriptFunc()   {}
-    static void MapperMap_set_ScriptFunc()   {}
+    static void Global_AddItem()             {}
+    static void Global_AddCritter()          {}
+    static void Global_GetItemByHex()        {}
+    static void Global_GetItemsByHex()       {}
+    static void Global_GetCritterByHex()     {}
+    static void Global_GetCrittersByHex()    {}
+    static void Global_MoveEntity()          {}
+    static void Global_DeleteEntity()        {}
+    static void Global_DeleteEntities()      {}
+    static void Global_SelectEntity()        {}
+    static void Global_SelectEntities()      {}
+    static void Global_GetSelectedEntity()   {}
+    static void Global_GetSelectedEntities() {}
 
-    static void Global_ShowProperty()       {}
-    static void Global_GetFastPrototypes()  {}
-    static void Global_SetFastPrototypes()  {}
-    static void Global_LoadMap()            {}
-    static void Global_UnloadMap()          {}
-    static void Global_SaveMap()            {}
-    static void Global_ShowMap()            {}
-    static void Global_GetLoadedMaps()      {}
-    static void Global_GetMapFileNames()    {}
-    static void Global_DeleteObject()       {}
-    static void Global_DeleteObjects()      {}
-    static void Global_SelectObject()       {}
-    static void Global_SelectObjects()      {}
-    static void Global_GetSelectedObject()  {}
-    static void Global_GetSelectedObjects() {}
+    static void Global_GetTilesCount() {}
+    static void Global_DeleteTile()    {}
+    static void Global_GetTileHash()   {}
+    static void Global_AddTileHash()   {}
+    static void Global_GetTileName()   {}
+    static void Global_AddTileName()   {}
+
+    static void Global_ShowCritterProperty() {}
+    static void Global_ShowItemProperty()    {}
+    static void Global_GetFastPrototypes()   {}
+    static void Global_SetFastPrototypes()   {}
+    static void Global_LoadMap()             {}
+    static void Global_UnloadMap()           {}
+    static void Global_SaveMap()             {}
+    static void Global_ShowMap()             {}
+    static void Global_GetLoadedMaps()       {}
+    static void Global_GetMapFileNames()     {}
+    static void Global_ResizeMap()           {}
 
     static void Global_TabGetTileDirs()    {}
     static void Global_TabGetItemPids()    {}
@@ -827,6 +703,9 @@ struct BindClass
     static void Global_GetCritterSoundName() {}
 
     static void Global_GetMonitorObject() {}
+
+    static int  ClientCurMap;
+    static int  ClientCurLocation;
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
@@ -863,7 +742,8 @@ struct BindClass
     static void Global_DrawSpriteSizeOffs() {}
     static void Global_DrawText()           {}
     static void Global_DrawPrimitive()      {}
-    static void Global_DrawMapSprite()      {}
+    static void Global_DrawMapSpriteProto() {}
+    static void Global_DrawMapSpriteExt()   {}
     static void Global_DrawCritter2d()      {}
     static void Global_DrawCritter3d()      {}
     static void Global_PushDrawScissor()    {}
@@ -879,9 +759,9 @@ struct BindClass
     static void Global_ChangeZoom()         {}
     #endif
 
-    static void Global_GetProtoItem() {}
     static void Global_LoadDataFile() {}
     static void Global_AllowSlot()    {}
+    static void Global_GetProtoItem() {}
 };
 
 #include "ScriptFunctions.h"
@@ -898,4 +778,11 @@ int BindClass::GmapGroupCurY;
 int BindClass::GmapGroupToX;
 int BindClass::GmapGroupToY;
 int BindClass::GmapGroupSpeed;
+int BindClass::ClientCurMap;
+int BindClass::ClientCurLocation;
+#endif
+
+#ifdef BIND_MAPPER
+int BindClass::ClientCurMap;
+int BindClass::ClientCurLocation;
 #endif

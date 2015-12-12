@@ -26,6 +26,10 @@ const char* MapEventFuncName[ MAP_EVENT_MAX ] =
 /************************************************************************/
 
 PROPERTIES_IMPL( Map );
+CLASS_PROPERTY_IMPL( Map, Width );
+CLASS_PROPERTY_IMPL( Map, Height );
+CLASS_PROPERTY_IMPL( Map, WorkHexX );
+CLASS_PROPERTY_IMPL( Map, WorkHexY );
 CLASS_PROPERTY_IMPL( Map, LocId );
 CLASS_PROPERTY_IMPL( Map, LocMapIndex );
 CLASS_PROPERTY_IMPL( Map, RainCapacity );
@@ -34,16 +38,15 @@ CLASS_PROPERTY_IMPL( Map, CurDayTime );
 CLASS_PROPERTY_IMPL( Map, ScriptId );
 CLASS_PROPERTY_IMPL( Map, DayTime );
 CLASS_PROPERTY_IMPL( Map, DayColor );
+CLASS_PROPERTY_IMPL( Map, IsNoLogOut );
 
-Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType::Map, PropertiesRegistrator )
+Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType::Map, PropertiesRegistrator, proto )
 {
     RUNTIME_ASSERT( proto );
 
     MEMORY_PROCESS( MEMORY_MAP, sizeof( Map ) );
-    MEMORY_PROCESS( MEMORY_MAP_FIELD, proto->Header.MaxHexX * proto->Header.MaxHexY );
+    MEMORY_PROCESS( MEMORY_MAP_FIELD, GetWidth() * GetHeight() );
 
-    ProtoId = proto->GetProtoId();
-    Proto = proto;
     mapLocation = location;
 
     hexFlags = nullptr;
@@ -63,10 +66,9 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     memzero( LoopLastTick, sizeof( LoopLastTick ) );
     memzero( LoopWaitTick, sizeof( LoopWaitTick ) );
 
-    hexFlags = new uchar[ proto->Header.MaxHexX * proto->Header.MaxHexY ];
-    memzero( hexFlags, proto->Header.MaxHexX * proto->Header.MaxHexY );
-
-    SetCurDayTime( proto->Header.Time );
+    hexFlagsSize = GetWidth() * GetHeight();
+    hexFlags = new uchar[ hexFlagsSize ];
+    memzero( hexFlags, hexFlagsSize );
 
     for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
         LoopWaitTick[ i ] = MAP_LOOP_DEFAULT_TICK;
@@ -75,8 +77,9 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
 Map::~Map()
 {
     MEMORY_PROCESS( MEMORY_MAP, -(int) sizeof( Map ) );
-    MEMORY_PROCESS( MEMORY_MAP_FIELD, -( Proto->Header.MaxHexX * Proto->Header.MaxHexY ) );
+    MEMORY_PROCESS( MEMORY_MAP_FIELD, -hexFlagsSize );
     SAFEDELA( hexFlags );
+    hexFlagsSize = 0;
 }
 
 void Map::DeleteContent()
@@ -102,58 +105,22 @@ void Map::DeleteContent()
     }
 }
 
-struct ItemNpcPtr
-{
-    Item* item;
-    Npc*  npc;
-    ItemNpcPtr( Item* i, Npc* n ): item( i ), npc( n ) {}
-};
-typedef map< uint, ItemNpcPtr > UIDtoPtrMap;
-
 bool Map::Generate()
 {
-    // Map data
-    dataLocker.Lock();
-    ScriptArray* day_time = Script::CreateArray( "int[]" );
-    day_time->Resize( 4 );
-    memcpy( day_time->At( 0 ), Proto->Header.DayColor, 16 );
-    SetDayTime( day_time );
-    day_time->Release();
-    ScriptArray* day_color = Script::CreateArray( "uint8[]" );
-    day_color->Resize( 12 );
-    memcpy( day_color->At( 0 ), Proto->Header.DayColor, 12 );
-    SetDayColor( day_color );
-    day_color->Release();
-    dataLocker.Unlock();
-
-    // Associated UID -> Item or Critter
-    UIDtoPtrMap UIDtoPtr;
-
     // Generate npc
-    for( auto it = Proto->CrittersVec.begin(), end = Proto->CrittersVec.end(); it != end; ++it )
+    for( auto& base_cr : GetProtoMap()->CrittersVec )
     {
-        MapObject& mobj = *( *it );
-
-        // Make script name
-        char script_name[ MAX_FOTEXT ];
-        Str::Copy( script_name, mobj.ScriptName );
-        if( script_name[ 0 ] )
-            Str::Append( script_name, "@" );
-        Str::Append( script_name, mobj.FuncName );
-
         // Create npc
-        Npc* npc = CrMngr.CreateNpc( mobj.ProtoId, mobj.Props, nullptr, script_name[ 0 ] ? script_name : nullptr, this, mobj.MapX, mobj.MapY, (uchar) mobj.MCritter.Dir, true );
+        Npc* npc = CrMngr.CreateNpc( base_cr->GetProtoId(), &base_cr->Props, this, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true );
         if( !npc )
         {
-            WriteLogF( _FUNC_, " - Create npc '%s' on map '%s' fail, continue generate.\n", Str::GetName( mobj.ProtoId ), GetName() );
+            WriteLogF( _FUNC_, " - Create npc '%s' on map '%s' fail, continue generate.\n", base_cr->GetName(), GetName() );
             continue;
         }
 
         // Check condition
-        if( mobj.MCritter.Cond != COND_LIFE && npc->GetCond() == COND_LIFE && npc->GetMapId() == GetId() )
+        if( npc->GetCond() != COND_LIFE )
         {
-            npc->SetCond( CLAMP( mobj.MCritter.Cond, COND_LIFE, COND_DEAD ) );
-
             if( npc->GetCond() == COND_DEAD )
             {
                 npc->SetCurrentHp( GameOpt.DeadHitPoints - 1 );
@@ -169,173 +136,81 @@ bool Map::Generate()
                 npc->KnockoutAp = 10000;
             }
         }
-
-        // Set condition animation
-        if( mobj.MCritter.Cond == npc->GetCond() )
-        {
-            if( npc->GetCond() == COND_LIFE )
-            {
-                npc->SetAnim1Life( mobj.MCritter.Anim1 );
-                npc->SetAnim2Life( mobj.MCritter.Anim2 );
-            }
-            else if( npc->GetCond() == COND_KNOCKOUT )
-            {
-                npc->SetAnim1Knockout( mobj.MCritter.Anim1 );
-                npc->SetAnim2Knockout( mobj.MCritter.Anim2 );
-            }
-            else
-            {
-                npc->SetAnim1Dead( mobj.MCritter.Anim1 );
-                npc->SetAnim2Dead( mobj.MCritter.Anim2 );
-            }
-        }
-
-        // Store UID association
-        if( mobj.UID )
-            UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( nullptr, npc ) ) );
     }
 
-    // Generate items
-    for( auto it = Proto->ItemsVec.begin(), end = Proto->ItemsVec.end(); it != end; ++it )
+    // Generate hex items
+    for( auto& base_item : GetProtoMap()->HexItemsVec )
     {
-        MapObject& mobj = *( *it );
-        hash       pid = mobj.ProtoId;
-        ProtoItem* proto = ItemMngr.GetProtoItem( pid );
-        if( !proto )
-        {
-            WriteLogF( _FUNC_, " - Proto item '%s' on map '%s' not found, continue generate.\n", Str::GetName( pid ), GetName() );
-            continue;
-        }
-
-        if( !proto->IsItem() )
-            continue;
-
-        Npc*  cr_cont = nullptr;
-        Item* item_cont = nullptr;
-
-        // Find container
-        if( mobj.ContainerUID )
-        {
-            auto it = UIDtoPtr.find( mobj.ContainerUID );
-            if( it == UIDtoPtr.end() )
-                continue;
-            cr_cont = it->second.npc;
-            item_cont = it->second.item;
-        }
-
         // Create item
-        Item* item = ItemMngr.CreateItem( pid );
+        Item* item = ItemMngr.CreateItem( base_item->GetProtoId() );
         if( !item )
         {
-            WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", Str::GetName( pid ), GetName() );
+            WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
-
-        // Script values
-        item->SetVal0( mobj.MItem.Val[ 0 ] );
-        item->SetVal1( mobj.MItem.Val[ 1 ] );
-        item->SetVal2( mobj.MItem.Val[ 2 ] );
-        item->SetVal3( mobj.MItem.Val[ 3 ] );
-        item->SetVal4( mobj.MItem.Val[ 4 ] );
-        item->SetVal5( mobj.MItem.Val[ 5 ] );
-        item->SetVal6( mobj.MItem.Val[ 6 ] );
-        item->SetVal7( mobj.MItem.Val[ 7 ] );
-        item->SetVal8( mobj.MItem.Val[ 8 ] );
-        item->SetVal9( mobj.MItem.Val[ 9 ] );
-
-        // Deterioration
-        if( item->IsDeteriorable() )
-        {
-            item->SetBrokenFlags( mobj.MItem.BrokenFlags );
-            item->SetBrokenCount( mobj.MItem.BrokenCount );
-            item->SetDeterioration( mobj.MItem.Deterioration );
-        }
-
-        // Stacking
-        if( item->IsStackable() )
-        {
-            if( mobj.MItem.Count > 1 )
-                item->SetCount( mobj.MItem.Count );
-        }
-
-        // Trap value
-        if( mobj.MItem.TrapValue )
-            item->SetTrapValue( mobj.MItem.TrapValue );
+        item->Props = base_item->Props;
 
         // Other values
-        item->SetOffsetX( mobj.MItem.OffsetX );
-        item->SetOffsetY( mobj.MItem.OffsetY );
-        item->SetAmmoPid( mobj.MItem.AmmoPid );
-        item->SetAmmoCount( mobj.MItem.AmmoCount );
-        item->SetLockerId( mobj.MItem.LockerDoorId );
-        item->SetLockerCondition( mobj.MItem.LockerCondition );
-        item->SetLockerComplexity( mobj.MItem.LockerComplexity );
         if( item->IsDoor() && FLAG( item->GetLockerCondition(), LOCKER_ISOPEN ) )
         {
-            if( !item->Proto->GetDoor_NoBlockMove() )
+            if( !item->GetDoor_NoBlockMove() )
                 item->SetIsNoBlock( true );
-            if( !item->Proto->GetDoor_NoBlockShoot() )
+            if( !item->GetDoor_NoBlockShoot() )
                 item->SetIsShootThru( true );
-            if( !item->Proto->GetDoor_NoBlockLight() )
+            if( !item->GetDoor_NoBlockLight() )
                 item->SetIsLightThru( true );
         }
 
-        // Mapper additional parameters
-        if( mobj.MItem.PicMap )
-            item->SetPicMap( mobj.MItem.PicMap );
-
-        // Store UID association
-        if( mobj.UID )
-            UIDtoPtr.insert( PAIR( mobj.UID, ItemNpcPtr( item, nullptr ) ) );
-
-        // Transfer to container
-        if( mobj.ContainerUID )
+        if( !AddItem( item, item->GetHexX(), item->GetHexY() ) )
         {
-            if( cr_cont )
-            {
-                cr_cont->AddItem( item, false );
-                if( mobj.MItem.ItemSlot == SLOT_HAND1 )
-                    cr_cont->SetFavoriteItemPid( SLOT_HAND1, item->GetProtoId() );
-                else if( mobj.MItem.ItemSlot == SLOT_HAND2 )
-                    cr_cont->SetFavoriteItemPid( SLOT_HAND2, item->GetProtoId() );
-                else if( mobj.MItem.ItemSlot == SLOT_ARMOR )
-                    cr_cont->SetFavoriteItemPid( SLOT_ARMOR, item->GetProtoId() );
-            }
-            else if( item_cont )
-            {
-                item_cont->ContAddItem( item, 0 );
-            }
+            WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failure, continue generate.\n", item->GetName(), GetName() );
+            ItemMngr.DeleteItem( item );
+            continue;
         }
-        // Transfer to hex
+    }
+
+    // Add children items
+    for( auto& base_item : GetProtoMap()->ChildItemsVec )
+    {
+        // Create item
+        Item* item = ItemMngr.CreateItem( base_item->GetProtoId() );
+        if( !item )
+        {
+            WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
+            continue;
+        }
+        item->Props = base_item->Props;
+
+        // Add to parent
+        if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
+        {
+            Critter* cr_cont = GetCritter( base_item->GetCritId(), true );
+            cr_cont->AddItem( item, false );
+            if( item->GetCritSlot() == SLOT_HAND1 )
+                cr_cont->SetFavoriteItemPid( SLOT_HAND1, item->GetProtoId() );
+            else if( item->GetCritSlot() == SLOT_HAND2 )
+                cr_cont->SetFavoriteItemPid( SLOT_HAND2, item->GetProtoId() );
+            else if( item->GetCritSlot() == SLOT_ARMOR )
+                cr_cont->SetFavoriteItemPid( SLOT_ARMOR, item->GetProtoId() );
+        }
+        else if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
+        {
+            Item* item_cont = GetItem( base_item->GetContainerId() );
+            item_cont->ContAddItem( item, 0 );
+        }
         else
         {
-            if( !AddItem( item, mobj.MapX, mobj.MapY ) )
-            {
-                WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failure, continue generate.\n", Str::GetName( pid ), GetName() );
-                ItemMngr.DeleteItem( item );
-                continue;
-            }
+            RUNTIME_ASSERT( !"Unreachable place" );
         }
-
-        // Script
-        char script_name[ MAX_FOTEXT ] = { 0 };
-        Str::Copy( script_name, mobj.ScriptName );
-        if( script_name[ 0 ] )
-            Str::Append( script_name, "@" );
-        Str::Append( script_name, mobj.FuncName );
-        if( script_name[ 0 ] )
-            item->SetScript( script_name, true );
     }
 
     // Npc initialization
     PcVec npcs;
     GetNpcs( npcs, true );
 
-    for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
+    // Generate internal bag
+    for( auto& npc : npcs )
     {
-        Npc* npc = *it;
-
-        // Generate internal bag
         ItemVec& items = npc->GetInventory();
         if( !npc->GetBagId() && !items.empty() )
         {
@@ -357,21 +232,18 @@ bool Map::Generate()
             SAFEREL( item_pid );
             SAFEREL( item_count );
         }
+    }
 
-        // Visible
+    // Visible
+    for( auto& npc : npcs )
+    {
         npc->ProcessVisibleCritters();
         npc->ProcessVisibleItems();
     }
 
     // Map script
-    if( Proto->Header.ScriptModule[ 0 ] && Proto->Header.ScriptFunc[ 0 ] )
-    {
-        char script_name[ MAX_FOTEXT ];
-        Str::Copy( script_name, Proto->Header.ScriptModule );
-        Str::Append( script_name, "@" );
-        Str::Append( script_name, Proto->Header.ScriptFunc );
-        SetScript( script_name, true );
-    }
+    SetScript( nullptr, true );
+
     return true;
 }
 
@@ -404,7 +276,7 @@ Location* Map::GetLocation( bool lock )
 bool Map::GetStartCoord( ushort& hx, ushort& hy, uchar& dir, uint entire )
 {
     ProtoMap::MapEntire* ent;
-    ent = Proto->GetEntireRandom( entire );
+    ent = GetProtoMap()->GetEntireRandom( entire );
 
     if( !ent )
         return false;
@@ -413,26 +285,26 @@ bool Map::GetStartCoord( ushort& hx, ushort& hy, uchar& dir, uint entire )
     hy = ent->HexY;
     dir = ent->Dir;
 
-    if( hx >= GetMaxHexX() || hy >= GetMaxHexY() )
+    if( hx >= GetWidth() || hy >= GetHeight() )
         return false;
     if( dir >= DIRS_COUNT )
         dir = Random( 0, DIRS_COUNT - 1 );
     return true;
 }
 
-bool Map::GetStartCoordCar( ushort& hx, ushort& hy, ProtoItem* proto_item )
+bool Map::GetStartCoordCar( ushort& hx, ushort& hy, Item* item )
 {
-    if( !proto_item->IsCar() )
+    if( !item->IsCar() )
         return false;
 
     ProtoMap::EntiresVec entires;
-    Proto->GetEntires( proto_item->GetCar_Entrance(), entires );
+    GetProtoMap()->GetEntires( item->GetCar_Entrance(), entires );
     std::random_shuffle( entires.begin(), entires.end() );
 
     for( int i = 0, j = (uint) entires.size(); i < j; i++ )
     {
         ProtoMap::MapEntire* ent = &entires[ i ];
-        if( ent->HexX < GetMaxHexX() && ent->HexY < GetMaxHexY() && IsPlaceForItem( ent->HexX, ent->HexY, proto_item ) )
+        if( ent->HexX < GetWidth() && ent->HexY < GetHeight() && IsPlaceForItem( ent->HexX, ent->HexY, item ) )
         {
             hx = ent->HexX;
             hy = ent->HexY;
@@ -469,7 +341,7 @@ bool Map::FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius,
         short nx = hx_ + sx[ cur_step ];
         short ny = hy_ + sy[ cur_step ];
 
-        if( nx < 0 || nx >= GetMaxHexX() || ny < 0 || ny >= GetMaxHexY() )
+        if( nx < 0 || nx >= GetWidth() || ny < 0 || ny >= GetHeight() )
             continue;
         if( !IsHexesPassed( nx, ny, multihex ) )
             continue;
@@ -583,9 +455,9 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
 {
     if( !item )
         return false;
-    if( !item->Proto->IsItem() )
+    if( !item->IsItem() )
         return false;
-    if( hx >= GetMaxHexX() || hy >= GetMaxHexY() )
+    if( hx >= GetWidth() || hy >= GetHeight() )
         return false;
 
     SetItem( item, hx, hy );
@@ -657,8 +529,8 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
         SetHexFlag( hx, hy, FH_NRAKE_ITEM );
     if( item->GetIsGag() )
         SetHexFlag( hx, hy, FH_GAG_ITEM );
-    if( item->Proto->IsBlockLines() )
-        PlaceItemBlocks( hx, hy, item->Proto );
+    if( item->IsBlockLines() )
+        PlaceItemBlocks( hx, hy, item );
 
     if( item->FuncId[ ITEM_EVENT_WALK ] > 0 )
         SetHexFlag( hx, hy, FH_WALK_ITEM );
@@ -697,8 +569,8 @@ void Map::EraseItem( uint item_id )
         RecacheHexBlock( hx, hy );
     else if( !item->GetIsShootThru() )
         RecacheHexShoot( hx, hy );
-    if( item->Proto->IsBlockLines() )
-        ReplaceItemBlocks( hx, hy, item->Proto );
+    if( item->IsBlockLines() )
+        ReplaceItemBlocks( hx, hy, item );
 
     // Process critters view
     CrVec critters;
@@ -1075,17 +947,17 @@ void Map::RecacheHexBlockShoot( ushort hx, ushort hy )
 
 ushort Map::GetHexFlags( ushort hx, ushort hy )
 {
-    return ( hexFlags[ hy * GetMaxHexX() + hx ] << 8 ) | Proto->HexFlags[ hy * GetMaxHexX() + hx ];
+    return ( hexFlags[ hy * GetWidth() + hx ] << 8 ) | GetProtoMap()->HexFlags[ hy * GetWidth() + hx ];
 }
 
 void Map::SetHexFlag( ushort hx, ushort hy, uchar flag )
 {
-    SETFLAG( hexFlags[ hy * GetMaxHexX() + hx ], flag );
+    SETFLAG( hexFlags[ hy * GetWidth() + hx ], flag );
 }
 
 void Map::UnsetHexFlag( ushort hx, ushort hy, uchar flag )
 {
-    UNSETFLAG( hexFlags[ hy * GetMaxHexX() + hx ], flag );
+    UNSETFLAG( hexFlags[ hy * GetWidth() + hx ], flag );
 }
 
 bool Map::IsHexPassed( ushort hx, ushort hy )
@@ -1110,8 +982,8 @@ bool Map::IsHexesPassed( ushort hx, ushort hy, uint radius )
     short* sx, * sy;
     GetHexOffsets( hx & 1, sx, sy );
     uint   count = NumericalNumber( radius ) * DIRS_COUNT;
-    short  maxhx = GetMaxHexX();
-    short  maxhy = GetMaxHexY();
+    short  maxhx = GetWidth();
+    short  maxhy = GetHeight();
     for( uint i = 0; i < count; i++ )
     {
         short hx_ = (short) hx + sx[ i ];
@@ -1133,7 +1005,7 @@ bool Map::IsMovePassed( ushort hx, ushort hy, uchar dir, uint multihex )
     int hx_ = hx, hy_ = hy;
     for( uint k = 0; k < multihex; k++ )
         MoveHexByDirUnsafe( hx_, hy_, dir );
-    if( hx_ < 0 || hy_ < 0 || hx_ >= GetMaxHexX() || hy_ >= GetMaxHexY() )
+    if( hx_ < 0 || hy_ < 0 || hx_ >= GetWidth() || hy_ >= GetHeight() )
         return false;
     if( !IsHexPassed( hx_, hy_ ) )
         return false;
@@ -1169,9 +1041,9 @@ bool Map::IsMovePassed( ushort hx, ushort hy, uchar dir, uint multihex )
 bool Map::IsFlagCritter( ushort hx, ushort hy, bool dead )
 {
     if( dead )
-        return FLAG( hexFlags[ hy * GetMaxHexX() + hx ], FH_DEAD_CRITTER );
+        return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_DEAD_CRITTER );
     else
-        return FLAG( hexFlags[ hy * GetMaxHexX() + hx ], FH_CRITTER );
+        return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_CRITTER );
 }
 
 void Map::SetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead )
@@ -1189,8 +1061,8 @@ void Map::SetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead )
             short* sx, * sy;
             GetHexOffsets( hx & 1, sx, sy );
             int    count = NumericalNumber( multihex ) * DIRS_COUNT;
-            short  maxhx = GetMaxHexX();
-            short  maxhy = GetMaxHexY();
+            short  maxhx = GetWidth();
+            short  maxhy = GetHeight();
             for( int i = 0; i < count; i++ )
             {
                 short hx_ = (short) hx + sx[ i ];
@@ -1229,8 +1101,8 @@ void Map::UnsetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead )
             short* sx, * sy;
             GetHexOffsets( hx & 1, sx, sy );
             int    count = NumericalNumber( multihex ) * DIRS_COUNT;
-            short  maxhx = GetMaxHexX();
-            short  maxhy = GetMaxHexY();
+            short  maxhx = GetWidth();
+            short  maxhy = GetHeight();
             for( int i = 0; i < count; i++ )
             {
                 short hx_ = (short) hx + sx[ i ];
@@ -1546,7 +1418,7 @@ void Map::GetCritterCar( Critter* cr, Item* car )
     // Move car bags from map to inventory
     for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
     {
-        Item* child = GetItemChild( hx, hy, car->Proto, i );
+        Item* child = GetItemChild( hx, hy, car, i );
         if( !child )
             continue;
 
@@ -1559,7 +1431,7 @@ void Map::GetCritterCar( Critter* cr, Item* car )
 void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
 {
     // Check
-    if( hx >= GetMaxHexX() || hy >= GetMaxHexY() || !cr || !car || !car->IsCar() )
+    if( hx >= GetWidth() || hy >= GetHeight() || !cr || !car || !car->IsCar() )
     {
         WriteLogF( _FUNC_, " - Generic error, hx %u, hy %u, critter pointer '%p', car pointer '%p', is car %d.\n", hx, hy, cr, car, car && car->IsCar() ? 1 : 0 );
         return;
@@ -1573,7 +1445,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
     // Move car bags from inventory to map
     for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
     {
-        hash child_pid = car->Proto->GetChildPid( i );
+        hash child_pid = car->GetChildPid( i );
         if( !child_pid )
             continue;
 
@@ -1584,19 +1456,19 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
         // Move to position
         ushort child_hx = hx;
         ushort child_hy = hy;
-        FOREACH_PROTO_ITEM_LINES( car->Proto->GetChildLinesStr( i ), child_hx, child_hy, GetMaxHexX(), GetMaxHexY() );
+        FOREACH_PROTO_ITEM_LINES( car->GetChildLinesStr( i ), child_hx, child_hy, GetWidth(), GetHeight() );
         cr->EraseItem( child, false );
         child->SetIsHidden( false );
         AddItem( child, child_hx, child_hy );
     }
 }
 
-bool Map::IsPlaceForItem( ushort hx, ushort hy, ProtoItem* proto_item )
+bool Map::IsPlaceForItem( ushort hx, ushort hy, Item* item )
 {
     if( !IsHexPassed( hx, hy ) )
         return false;
 
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
                                    if( IsHexCritter( hx, hy ) )
                                        return false;
                                    // if( !IsHexPassed( hx, hy ) )
@@ -1606,20 +1478,34 @@ bool Map::IsPlaceForItem( ushort hx, ushort hy, ProtoItem* proto_item )
     return true;
 }
 
-void Map::PlaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
+bool Map::IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item )
 {
-    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemPropsEntity );
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    if( !IsHexPassed( hx, hy ) )
+        return false;
+
+    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                                   if( IsHexCritter( hx, hy ) )
+                                       return false;
+                                   // if( !IsHexPassed( hx, hy ) )
+                                   //    return false;
+                                   );
+    return true;
+}
+
+void Map::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
+{
+    bool raked = item->GetIsShootThru();
+    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
                                    SetHexFlag( hx, hy, FH_BLOCK_ITEM );
                                    if( !raked )
                                        SetHexFlag( hx, hy, FH_NRAKE_ITEM );
                                    );
 }
 
-void Map::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
+void Map::ReplaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
-    bool raked = Item::PropertyIsShootThru->GetValue< bool >( &proto_item->ItemPropsEntity );
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetMaxHexX(), GetMaxHexY(),
+    bool raked = item->GetIsShootThru();
+    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
                                    UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
                                    if( !raked )
                                    {
@@ -1635,15 +1521,15 @@ void Map::ReplaceItemBlocks( ushort hx, ushort hy, ProtoItem* proto_item )
                                    );
 }
 
-Item* Map::GetItemChild( ushort hx, ushort hy, ProtoItem* proto_item, uint child_index )
+Item* Map::GetItemChild( ushort hx, ushort hy, Item* item, uint child_index )
 {
     // Get child pid
-    hash child_pid = proto_item->GetChildPid( child_index );
+    hash child_pid = item->GetChildPid( child_index );
     if( !child_pid )
         return nullptr;
 
     // Move to position
-    FOREACH_PROTO_ITEM_LINES( proto_item->GetChildLinesStr( child_index ), hx, hy, GetMaxHexX(), GetMaxHexY() );
+    FOREACH_PROTO_ITEM_LINES( item->GetChildLinesStr( child_index ), hx, hy, GetWidth(), GetHeight() );
 
     // Find on map
     return GetItemHex( hx, hy, child_pid, nullptr );
@@ -1766,7 +1652,7 @@ void Map::SetLoopTime( uint loop_num, uint ms )
 
 void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text )
 {
-    if( hx >= GetMaxHexX() || hy >= GetMaxHexY() )
+    if( hx >= GetWidth() || hy >= GetHeight() )
         return;
 
     SCOPE_LOCK( dataLocker );
@@ -1781,7 +1667,7 @@ void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort te
 
 void Map::SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str )
 {
-    if( hx >= GetMaxHexX() || hy >= GetMaxHexY() || !num_str )
+    if( hx >= GetWidth() || hy >= GetHeight() || !num_str )
         return;
 
     SCOPE_LOCK( dataLocker );
@@ -1796,7 +1682,7 @@ void Map::SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint nu
 
 void Map::SetTextMsgLex( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len )
 {
-    if( hx >= GetMaxHexX() || hy >= GetMaxHexY() || !num_str )
+    if( hx >= GetWidth() || hy >= GetHeight() || !num_str )
         return;
 
     SCOPE_LOCK( dataLocker );
@@ -2091,28 +1977,24 @@ const char* LocationEventFuncName[ LOCATION_EVENT_MAX ] =
 };
 
 PROPERTIES_IMPL( Location );
+CLASS_PROPERTY_IMPL( Location, MapProtos );
+CLASS_PROPERTY_IMPL( Location, MapEntrances );
+CLASS_PROPERTY_IMPL( Location, Automaps );
+CLASS_PROPERTY_IMPL( Location, MaxPlayers );
+CLASS_PROPERTY_IMPL( Location, AutoGarbage );
+CLASS_PROPERTY_IMPL( Location, GeckVisible );
+CLASS_PROPERTY_IMPL( Location, EntranceScript );
 CLASS_PROPERTY_IMPL( Location, WorldX );
 CLASS_PROPERTY_IMPL( Location, WorldY );
 CLASS_PROPERTY_IMPL( Location, Radius );
-CLASS_PROPERTY_IMPL( Location, Visible );
-CLASS_PROPERTY_IMPL( Location, GeckVisible );
-CLASS_PROPERTY_IMPL( Location, AutoGarbage );
+CLASS_PROPERTY_IMPL( Location, Hidden );
 CLASS_PROPERTY_IMPL( Location, ToGarbage );
 CLASS_PROPERTY_IMPL( Location, Color );
 
-Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Entity( id, EntityType::Location, PropertiesRegistrator )
+Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Entity( id, EntityType::Location, PropertiesRegistrator, proto )
 {
     RUNTIME_ASSERT( proto );
-
-    Proto = proto;
-    ProtoId = proto->ProtoId;
     memzero( FuncId, sizeof( FuncId ) );
-    SetWorldX( wx );
-    SetWorldY( wy );
-    SetRadius( Proto->Radius );
-    SetVisible( Proto->Visible );
-    SetGeckVisible( Proto->GeckVisible );
-    SetAutoGarbage( Proto->AutoGarbage );
     GeckCount = 0;
 }
 
@@ -2121,16 +2003,13 @@ Location::~Location()
     //
 }
 
-void Location::Update()
+void Location::BindScript()
 {
-    ClVec players;
-    CrMngr.GetClients( players, true );
-
-    for( auto it = players.begin(), end = players.end(); it != end; ++it )
+    EntranceScriptBindId = 0;
+    if( GetEntranceScript() )
     {
-        Client* cl = *it;
-        if( !cl->GetMapId() && cl->CheckKnownLocById( GetId() ) )
-            cl->Send_GlobalLocation( this, true );
+        const char* script_name = Str::GetName( GetEntranceScript() );
+        EntranceScriptBindId = Script::BindByScriptName( script_name, "bool %s(Location&, Critter@[]&, uint8 entranceIndex)", false );
     }
 }
 
@@ -2138,45 +2017,64 @@ void Location::GetMaps( MapVec& maps, bool lock )
 {
     maps = locMaps;
     if( lock )
-        for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
-            SYNC_LOCK( *it );
+        for( auto& map : maps )
+            SYNC_LOCK( map );
 }
 
-Map* Location::GetMap( uint count )
+Map* Location::GetMapByIndex( uint index )
 {
-    if( count >= locMaps.size() )
+    if( index >= locMaps.size() )
         return nullptr;
-    Map* map = locMaps[ count ];
+    Map* map = locMaps[ index ];
     SYNC_LOCK( map );
     return map;
 }
 
+Map* Location::GetMapByPid( hash map_pid )
+{
+    for( auto& map : locMaps )
+    {
+        if( map->GetProtoId() == map_pid )
+        {
+            SYNC_LOCK( map );
+            return map;
+        }
+    }
+    return nullptr;
+}
+
 uint Location::GetMapIndex( hash map_pid )
 {
-    auto it = std::find( Proto->ProtoMapPids.begin(), Proto->ProtoMapPids.end(), map_pid );
-    return ( uint ) std::distance( Proto->ProtoMapPids.begin(), it );
+    uint index = 0;
+    for( auto& map : locMaps )
+    {
+        if( map->GetProtoId() == map_pid )
+            return index;
+        index++;
+    }
+    return uint( -1 );
 }
 
 bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir )
 {
-    if( !from_map || hx >= from_map->GetMaxHexX() || hy >= from_map->GetMaxHexY() )
+    if( !from_map || hx >= from_map->GetWidth() || hy >= from_map->GetHeight() )
         return false;
 
-    MapObject* mobj = from_map->Proto->GetMapGrid( hx, hy );
-    if( !mobj )
+    Item* grid = from_map->GetProtoMap()->GetMapGrid( hx, hy );
+    if( !grid )
         return false;
 
-    if( mobj->MScenery.ToMap == 0 )
+    hash grid_to_map = grid->GetGrid_ToMap();
+    if( grid_to_map == 0 )
     {
         id_map = 0;
         return true;
     }
 
     Map* to_map = nullptr;
-    for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
+    for( auto& map : locMaps )
     {
-        Map* map = *it;
-        if( map->GetProtoId() == mobj->MScenery.ToMap )
+        if( map->GetProtoId() == grid_to_map )
         {
             to_map = map;
             break;
@@ -2189,7 +2087,8 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
 
     id_map = to_map->GetId();
 
-    ProtoMap::MapEntire* ent = to_map->Proto->GetEntire( mobj->MScenery.ToEntire, 0 );
+    hash                 grid_to_map_entire = grid->GetGrid_ToMapEntire();
+    ProtoMap::MapEntire* ent = to_map->GetProtoMap()->GetEntire( grid_to_map_entire, 0 );
     if( !ent )
         return false;
 
@@ -2199,54 +2098,47 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
 
     if( dir >= DIRS_COUNT )
         dir = Random( 0, DIRS_COUNT - 1 );
-    if( hx >= to_map->GetMaxHexX() || hy >= to_map->GetMaxHexY() )
+    if( hx >= to_map->GetWidth() || hy >= to_map->GetHeight() )
         return false;
     return true;
 }
 
 bool Location::IsCanEnter( uint players_count )
 {
-    if( !Proto->MaxPlayers )
+    uint max_palyers = GetMaxPlayers();
+    if( !max_palyers )
         return true;
 
-    for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
+    for( auto& map : locMaps )
     {
-        Map* map = *it;
         players_count += map->GetPlayersCount();
+        if( players_count >= max_palyers )
+            return false;
     }
-    return players_count <= Proto->MaxPlayers;
+    return true;
 }
 
 bool Location::IsNoCrit()
 {
-    for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
-    {
-        Map* map = *it;
+    for( auto& map : locMaps )
         if( map->GetCrittersCount() )
             return false;
-    }
     return true;
 }
 
 bool Location::IsNoPlayer()
 {
-    for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
-    {
-        Map* map = *it;
+    for( auto& map : locMaps )
         if( map->GetPlayersCount() )
             return false;
-    }
     return true;
 }
 
 bool Location::IsNoNpc()
 {
-    for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
-    {
-        Map* map = *it;
+    for( auto& map : locMaps )
         if( map->GetNpcsCount() )
             return false;
-    }
     return true;
 }
 
@@ -2256,19 +2148,14 @@ bool Location::IsCanDelete()
         return false;
 
     // Check for players
-    for( auto it = locMaps.begin(), end = locMaps.end(); it != end; ++it )
-    {
-        Map* map = *it;
+    for( auto& map : locMaps )
         if( map->GetPlayersCount() )
             return false;
-    }
 
     // Check for npc
     MapVec maps = locMaps;
-    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
+    for( auto& map : maps )
     {
-        Map*  map = *it;
-
         PcVec npcs;
         map->GetNpcs( npcs, true );
 

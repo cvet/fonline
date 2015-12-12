@@ -890,15 +890,14 @@
 #define NETMSG_SEND_GIVE_MAP                  MAKE_NETMSG_HEADER( 123 )
 #define NETMSG_SEND_GIVE_MAP_SIZE                        \
     ( sizeof( uint ) + sizeof( bool ) + sizeof( hash ) + \
-      sizeof( uint ) + sizeof( uint ) * 3 )
+      sizeof( uint ) + sizeof( hash ) * 2 )
 // ////////////////////////////////////////////////////////////////////////
 // Request on map data, on map loading or for automap
 // bool automap
 // hash map_pid
 // uint loc_id
-// uint ver_tiles
-// uint ver_walls
-// uint ver_scen
+// hash tiles_hash
+// hash scen_hash
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_LOAD_MAP_OK               MAKE_NETMSG_HEADER( 124 )
