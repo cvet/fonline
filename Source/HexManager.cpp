@@ -3990,7 +3990,25 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
         {
             Item* entity_item = (Item*) entity;
             if( entity_item->GetAccessory() == ITEM_ACCESSORY_HEX )
+            {
                 GenerateItem( entity_item->Id, entity_item->GetProtoId(), entity_item->Props );
+            }
+            else if( entity_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
+            {
+                CritterCl* cr = GetCritter( entity_item->GetCritId() );
+                if( cr )
+                    cr->AddItem( entity_item->Clone() );
+            }
+            else if( entity_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
+            {
+                Item* cont = GetItemById( entity_item->GetContainerId() );
+                if( cont )
+                    cont->ContSetItem( entity_item->Clone() );
+            }
+            else
+            {
+                RUNTIME_ASSERT( !"Unreachable place" );
+            }
         }
         else if( entity->Type == EntityType::CritterCl )
         {
@@ -3999,21 +4017,6 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             cr->Props = entity_cr->Props;
             cr->Init();
             AddCritter( cr );
-
-            // Add inventory items
-            for( auto& inv_entity : pmap.AllEntities )
-            {
-                if( inv_entity->Type != EntityType::Item )
-                    continue;
-                Item* inv_entity_item = (Item*) inv_entity;
-                if( inv_entity_item->GetAccessory() != ITEM_ACCESSORY_CRITTER )
-                    continue;
-                if( inv_entity_item->GetCritId() != cr->Id )
-                    continue;
-
-                Item* item = inv_entity_item->Clone();
-                cr->AddItem( item );
-            }
         }
         else
         {
@@ -4048,6 +4051,11 @@ void HexManager::GetProtoMap( ProtoMap& pmap )
         else
             RUNTIME_ASSERT( !"Unreachable place" );
         store_entity->Props = entity->Props;
+        if( entity->Type == EntityType::CritterCl )
+        {
+            ( (CritterCl*) store_entity )->SetCrType( 0 );
+            ( (CritterCl*) store_entity )->SetCrTypeAlias( 0 );
+        }
         pmap.AllEntities.push_back( store_entity );
         for( auto& child : entity->GetChildren() )
         {

@@ -810,8 +810,8 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         }
     }
 
-    // Fix child objects positions
-    for( size_t i = 0; i < entities.size(); i++ )
+    // Fix children positions
+    for( size_t i = 0; i < entities.size();)
     {
         Entity* entity = entities[ i ];
         AdditionalFields& entity_addon = entities_addon[ i ];
@@ -855,6 +855,41 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         else
         {
             i++;
+        }
+    }
+
+    // Fix children
+    for( size_t i = 0; i < entities.size(); i++ )
+    {
+        Entity* entity = entities[ i ];
+        AdditionalFields& entity_addon = entities_addon[ i ];
+        if( !entity_addon.ContainerUID )
+            continue;
+
+        RUNTIME_ASSERT( entity->Type == EntityType::Item );
+        Item* entity_item = (Item*) entity;
+        entity_item->SetHexX( 0 );
+        entity_item->SetHexY( 0 );
+
+        bool delete_child = true;
+        for( size_t j = 0; j < entities.size(); j++ )
+        {
+            Entity* entity_parent = entities[ j ];
+            AdditionalFields& entity_parent_addon = entities_addon[ j ];
+            if( !entity_parent_addon.UID || entity_parent_addon.UID != entity_addon.ContainerUID || entity_parent == entity )
+                continue;
+
+            if( entity_parent->Type == EntityType::CritterCl )
+            {
+                entity_item->SetAccessory( ITEM_ACCESSORY_CRITTER );
+                entity_item->SetCritId( entity_parent->Id );
+            }
+            else if( entity_parent->Type == EntityType::Item )
+            {
+                entity_item->SetAccessory( ITEM_ACCESSORY_CONTAINER );
+                entity_item->SetContainerId( entity_parent->Id );
+            }
+            break;
         }
     }
 

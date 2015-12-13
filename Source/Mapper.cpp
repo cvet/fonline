@@ -2048,7 +2048,7 @@ void FOMapper::ObjDraw()
         }
     }
 
-    DrawLine( "Id", Str::UItoA( entity->Id ), true, r );
+    DrawLine( "Id", string( Str::UItoA( entity->Id ) ).append( " (" ).append( Str::ItoA( entity->Id ) ).append( ")" ).c_str(), true, r );
     DrawLine( "ProtoName", Str::GetName( entity->GetProtoId() ), true, r );
     if( cr )
         DrawLine( "Type", "Critter", true, r );
@@ -2740,7 +2740,7 @@ void FOMapper::IntLMouseUp()
             }
 
             // Crits or item container
-            if( SelectedEntities.size() )
+            if( !SelectedEntities.empty() && !SelectedEntities[ 0 ]->GetChildren().empty() )
                 IntSetMode( INT_MODE_INCONT );
         }
 
