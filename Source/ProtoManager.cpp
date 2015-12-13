@@ -48,6 +48,20 @@ static void ReadProtosFromBinary( UCharVec& data, uint& pos, map< hash, T* >& pr
     }
 }
 
+static void InsertMapValues( const StrMap& from_kv, StrMap& to_kv, bool overwrite )
+{
+    for( auto& kv : from_kv )
+    {
+        if( !kv.first.empty() && kv.first[ 0 ] != '$' )
+        {
+            if( overwrite )
+                to_kv.insert_or_assign( kv.first, kv.second );
+            else
+                to_kv.insert( PAIR( kv.first, kv.second ) );
+        }
+    }
+}
+
 #pragma warning( disable : 4503 )
 template< class T >
 static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >& protos, int& errors )
@@ -82,7 +96,7 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
             hash        pid = Str::GetHash( name );
             if( files_protos.count( pid ) )
             {
-                WriteLog( "Proto item '%s' already loaded.\n", name );
+                WriteLog( "Proto '%s' already loaded.\n", name );
                 errors++;
                 continue;
             }
@@ -107,10 +121,47 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
 
         if( protos_data.empty() )
         {
-            WriteLog( "File '%s' does not contain any prototype.\n", file_name );
+            WriteLog( "File '%s' does not contain any proto.\n", file_name );
             errors++;
         }
     }
+    if( errors )
+        return;
+
+    // Injection
+    auto injection = [ &files_protos, &errors ] ( const char* key_name, bool overwrite )
+    {
+        for( auto& inject_kv : files_protos )
+        {
+            if( inject_kv.second.count( key_name ) )
+            {
+                StrVec inject_names;
+                Str::ParseLine( inject_kv.second[ key_name ].c_str(), ' ', inject_names, Str::ParseLineDummy );
+                for( auto& inject_name : inject_names )
+                {
+                    if( inject_name == "All" )
+                    {
+                        for( auto& kv : files_protos )
+                            if( kv.first != inject_kv.first )
+                                InsertMapValues( inject_kv.second, kv.second, overwrite );
+                    }
+                    else
+                    {
+                        hash inject_name_hash = Str::GetHash( inject_name.c_str() );
+                        if( !files_protos.count( inject_name_hash ) )
+                        {
+                            WriteLog( "Proto '%s' not found for injection from proto '%s'.\n", inject_name.c_str(), Str::GetName( inject_kv.first ) );
+                            errors++;
+                            continue;
+                        }
+                        InsertMapValues( inject_kv.second, files_protos[ inject_name_hash ], overwrite );
+                    }
+                }
+            }
+        }
+    };
+    injection( "$Inject", false );
+    injection( "$InjectOverride", true );
     if( errors )
         return;
 
@@ -125,7 +176,7 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
         StrMap                                      final_kv = kv.second;
         std::function< bool(const char*, StrMap&) > fill_parent = [ &fill_parent, &base_name, &files_protos, &final_kv ] ( const char* name, StrMap & cur_kv )
         {
-            const char* parent_name_line = ( cur_kv.count( "Parent" ) ? cur_kv[ "Parent" ].c_str() : "" );
+            const char* parent_name_line = ( cur_kv.count( "$Parent" ) ? cur_kv[ "$Parent" ].c_str() : "" );
             StrVec      parent_names;
             Str::ParseLine( parent_name_line, ' ', parent_names, Str::ParseLineDummy );
             for( auto& parent_name : parent_names )
@@ -135,13 +186,13 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
                 if( parent == files_protos.end() )
                 {
                     if( base_name == name )
-                        WriteLog( "Proto item '%s' fail to load parent '%s'.\n", base_name, parent_name.c_str() );
+                        WriteLog( "Proto '%s' fail to load parent '%s'.\n", base_name, parent_name.c_str() );
                     else
-                        WriteLog( "Proto item '%s' fail to load parent '%s' for proto '%s'.\n", base_name, parent_name.c_str(), name );
+                        WriteLog( "Proto '%s' fail to load parent '%s' for proto '%s'.\n", base_name, parent_name.c_str(), name );
                     return false;
                 }
 
-                final_kv.insert( parent->second.begin(), parent->second.end() );
+                InsertMapValues( parent->second, final_kv, false );
                 if( !fill_parent( parent_name.c_str(), parent->second ) )
                     return false;
             }
