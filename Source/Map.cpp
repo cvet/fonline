@@ -107,6 +107,8 @@ void Map::DeleteContent()
 
 bool Map::Generate()
 {
+    UIntMap id_map;
+
     // Generate npc
     for( auto& base_cr : GetProtoMap()->CrittersVec )
     {
@@ -117,6 +119,7 @@ bool Map::Generate()
             WriteLogF( _FUNC_, " - Create npc '%s' on map '%s' fail, continue generate.\n", base_cr->GetName(), GetName() );
             continue;
         }
+        id_map.insert( PAIR( base_cr->GetId(), npc->GetId() ) );
 
         // Check condition
         if( npc->GetCond() != COND_LIFE )
@@ -148,6 +151,7 @@ bool Map::Generate()
             WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
+        id_map.insert( PAIR( base_item->GetId(), item->GetId() ) );
         item->Props = base_item->Props;
 
         // Other values
@@ -172,6 +176,18 @@ bool Map::Generate()
     // Add children items
     for( auto& base_item : GetProtoMap()->ChildItemsVec )
     {
+        // Map id
+        uint parent_id = 0;
+        if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
+            parent_id = base_item->GetCritId();
+        else if( base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
+            parent_id = base_item->GetContainerId();
+        else
+            RUNTIME_ASSERT( !"Unreachable place" );
+        if( !id_map.count( parent_id ) )
+            continue;
+        parent_id = id_map[ parent_id ];
+
         // Create item
         Item* item = ItemMngr.CreateItem( base_item->GetProtoId() );
         if( !item )
@@ -184,7 +200,8 @@ bool Map::Generate()
         // Add to parent
         if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
         {
-            Critter* cr_cont = GetCritter( base_item->GetCritId(), true );
+            Critter* cr_cont = GetCritter( parent_id, true );
+            RUNTIME_ASSERT( cr_cont );
             cr_cont->AddItem( item, false );
             if( item->GetCritSlot() == SLOT_HAND1 )
                 cr_cont->SetFavoriteItemPid( SLOT_HAND1, item->GetProtoId() );
@@ -193,9 +210,10 @@ bool Map::Generate()
             else if( item->GetCritSlot() == SLOT_ARMOR )
                 cr_cont->SetFavoriteItemPid( SLOT_ARMOR, item->GetProtoId() );
         }
-        else if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
+        else if( base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
         {
-            Item* item_cont = GetItem( base_item->GetContainerId() );
+            Item* item_cont = GetItem( parent_id );
+            RUNTIME_ASSERT( item_cont );
             item_cont->ContAddItem( item, 0 );
         }
         else

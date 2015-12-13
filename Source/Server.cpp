@@ -3952,15 +3952,15 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
 
     fm.SetStr( "[Ban]\n" );
     if( ban.ClientName[ 0 ] )
-        fm.SetStr( "User=%s\n", ban.ClientName );
+        fm.SetStr( "User = %s\n", ban.ClientName );
     if( ban.ClientIp )
-        fm.SetStr( "UserIp=%u\n", ban.ClientIp );
-    fm.SetStr( "BeginTime=%u %u %u %u %u\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute );
-    fm.SetStr( "EndTime=%u %u %u %u %u\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute );
+        fm.SetStr( "UserIp = %u\n", ban.ClientIp );
+    fm.SetStr( "BeginTime = %u %u %u %u %u\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute );
+    fm.SetStr( "EndTime = %u %u %u %u %u\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute );
     if( ban.BannedBy[ 0 ] )
-        fm.SetStr( "BannedBy=%s\n", ban.BannedBy );
+        fm.SetStr( "BannedBy = %s\n", ban.BannedBy );
     if( ban.BanInfo[ 0 ] )
-        fm.SetStr( "Comment=%s\n", ban.BanInfo );
+        fm.SetStr( "Comment = %s\n", ban.BanInfo );
     fm.SetStr( "\n" );
 
     if( !fm.SaveOutBufToFile( fname, PT_SERVER_BANS ) )
@@ -3977,15 +3977,15 @@ void FOServer::SaveBans()
         ClientBanned& ban = *it;
         fm.SetStr( "[Ban]\n" );
         if( ban.ClientName[ 0 ] )
-            fm.SetStr( "User=%s\n", ban.ClientName );
+            fm.SetStr( "User = %s\n", ban.ClientName );
         if( ban.ClientIp )
-            fm.SetStr( "UserIp=%u\n", ban.ClientIp );
-        fm.SetStr( "BeginTime=%u %u %u %u %u\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute );
-        fm.SetStr( "EndTime=%u %u %u %u %u\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute );
+            fm.SetStr( "UserIp = %u\n", ban.ClientIp );
+        fm.SetStr( "BeginTime = %u %u %u %u %u\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute );
+        fm.SetStr( "EndTime = %u %u %u %u %u\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute );
         if( ban.BannedBy[ 0 ] )
-            fm.SetStr( "BannedBy=%s\n", ban.BannedBy );
+            fm.SetStr( "BannedBy = %s\n", ban.BannedBy );
         if( ban.BanInfo[ 0 ] )
-            fm.SetStr( "Comment=%s\n", ban.BanInfo );
+            fm.SetStr( "Comment = %s\n", ban.BanInfo );
         fm.SetStr( "\n" );
     }
 
@@ -4494,6 +4494,7 @@ void FOServer::Dump_Work( void* args )
             StrMap&   kv = client_data.SetApp( "Client" );
             kv.insert( d->ExtraData.begin(), d->ExtraData.end() );
             d->Props->SaveToText( kv, d->ProtoProps );
+            RUNTIME_ASSERT( !Str::Compare( d->TypeName.c_str(), "err.foclient" ) );
             if( !client_data.SaveFile( d->TypeName.c_str(), PT_SERVER_CLIENTS ) )
                 WriteLog( "Unable to save client to '%s'.\n", d->TypeName.c_str() );
 

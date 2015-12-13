@@ -3796,7 +3796,7 @@ void Client::Send_AddCritter( Critter* cr )
     bool is_npc = cr->IsNpc();
     uint msg = ( is_npc ? NETMSG_ADD_NPC : NETMSG_ADD_PLAYER );
     uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) * 2 +
-                   sizeof( uchar ) + sizeof( uchar ) + sizeof( uint ) * 6 + sizeof( uint ) + sizeof( short ) +
+                   sizeof( uchar ) + sizeof( int ) + sizeof( uint ) * 6 + sizeof( uint ) + sizeof( short ) +
                    ( is_npc ? sizeof( hash ) : UTF8_BUF_SIZE( MAX_NAME ) );
 
     PUCharVec* data;

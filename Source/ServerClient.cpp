@@ -2059,12 +2059,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
     // Find in players in game
     Client* cl_old = CrMngr.GetPlayer( id, true );
-    if( cl == cl_old )
-    {
-        WriteLogF( _FUNC_, " - Find same ptr, client '%s'.\n", cl->Name );
-        cl->Disconnect();
-        return;
-    }
+    RUNTIME_ASSERT( cl != cl_old );
 
     // Avatar in game
     if( cl_old )
