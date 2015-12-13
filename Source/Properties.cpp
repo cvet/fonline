@@ -985,27 +985,6 @@ Properties::Properties( PropertyRegistrator* reg )
     // Complex data
     complexData.resize( registrator->complexPropertiesCount );
     complexDataSizes.resize( registrator->complexPropertiesCount );
-
-    // Set default values
-    for( size_t i = 0, j = registrator->registeredProperties.size(); i < j; i++ )
-    {
-        Property* prop = registrator->registeredProperties[ i ];
-        if( prop->podDataOffset == uint( -1 ) )
-            continue;
-
-        // Todo: complex string value
-
-        if( prop->setDefaultValue )
-        {
-            memcpy( &podData[ prop->podDataOffset ], &prop->defaultValue, prop->baseSize );
-        }
-        else if( prop->generateRandomValue )
-        {
-            // Todo: fix min/max
-            for( uint i = 0; i < prop->baseSize; i++ )
-                podData[ prop->podDataOffset + i ] = Random( 0, 255 );
-        }
-    }
 }
 
 Properties::Properties( const Properties& other )
@@ -1698,8 +1677,6 @@ PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_cla
     wholePodDataSize = 0;
     complexPropertiesCount = 0;
     defaultGroup = nullptr;
-    defaultGenerateRandomValue = nullptr;
-    defaultDefaultValue = nullptr;
     defaultMinValue = nullptr;
     defaultMaxValue = nullptr;
 }
@@ -1773,8 +1750,6 @@ Property* PropertyRegistrator::Register(
     Property::AccessType access,
     bool is_const,
     const char* group /* = NULL */,
-    bool* generate_random_value /* = NULL */,
-    int64* default_value /* = NULL */,
     int64* min_value /* = NULL */,
     int64* max_value /* = NULL */
     )
@@ -1787,8 +1762,6 @@ Property* PropertyRegistrator::Register(
 
     // Check defaults
     group = ( group ? group : defaultGroup );
-    generate_random_value = ( generate_random_value ? generate_random_value : defaultGenerateRandomValue );
-    default_value = ( default_value ? default_value : defaultDefaultValue );
     min_value = ( min_value ? min_value : defaultMinValue );
     max_value = ( max_value ? max_value : defaultMaxValue );
 
@@ -2133,11 +2106,8 @@ Property* PropertyRegistrator::Register(
     prop->isDictOfArrayOfString = is_dict_of_array_of_string;
     prop->isReadable = !disable_get;
     prop->isWritable = !disable_set;
-    prop->generateRandomValue = ( generate_random_value ? *generate_random_value : false );
-    prop->setDefaultValue = ( default_value != nullptr );
     prop->checkMinValue = ( min_value != nullptr && ( is_int_data_type || is_float_data_type ) );
     prop->checkMaxValue = ( max_value != nullptr && ( is_int_data_type || is_float_data_type ) );
-    prop->defaultValue = ( default_value ? *default_value : 0 );
     prop->minValue = ( min_value ? *min_value : 0 );
     prop->maxValue = ( max_value ? *max_value : 0 );
 
@@ -2151,24 +2121,16 @@ Property* PropertyRegistrator::Register(
 
 void PropertyRegistrator::SetDefaults(
     const char* group /* = NULL */,
-    bool* generate_random_value /* = NULL */,
-    int64* default_value /* = NULL */,
     int64* min_value /* = NULL */,
     int64* max_value     /* = NULL */
     )
 {
     SAFEDELA( defaultGroup );
-    SAFEDEL( defaultGenerateRandomValue );
-    SAFEDEL( defaultDefaultValue );
     SAFEDEL( defaultMinValue );
     SAFEDEL( defaultMaxValue );
 
     if( group )
         defaultGroup = Str::Duplicate( group );
-    if( generate_random_value )
-        defaultGenerateRandomValue = new bool(*generate_random_value);
-    if( default_value )
-        defaultDefaultValue = new int64( *default_value );
     if( min_value )
         defaultMinValue = new int64( *min_value );
     if( max_value )

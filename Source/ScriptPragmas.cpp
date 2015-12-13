@@ -469,9 +469,6 @@ public:
         // Parse options
         bool   fail = false;
         string group;
-        bool   generate_random_value = false;
-        bool   set_default_value = false;
-        int64  default_value = 0;
         bool   check_min_value = false;
         int64  min_value = 0;
         bool   check_max_value = false;
@@ -497,11 +494,6 @@ public:
             {
                 group = opt_svalue;
             }
-            else if( Str::Compare( opt_name, "Default" ) )
-            {
-                set_default_value = true;
-                default_value = ConvertParamValue( opt_svalue.c_str(), fail );
-            }
             else if( Str::Compare( opt_name, "Min" ) )
             {
                 check_min_value = true;
@@ -511,10 +503,6 @@ public:
             {
                 check_max_value = true;
                 max_value = ConvertParamValue( opt_svalue.c_str(), fail );
-            }
-            else if( Str::Compare( opt_name, "Random" ) )
-            {
-                generate_random_value = ( ConvertParamValue( opt_svalue.c_str(), fail ) != 0 );
             }
             else if( Str::Compare( opt_name, "GetCallabck" ) )
             {
@@ -554,8 +542,8 @@ public:
         if( !is_defaults )
         {
             if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access, is_const,
-                                        group.length() > 0 ? group.c_str() : nullptr, generate_random_value ? &generate_random_value : nullptr,
-                                        set_default_value ? &default_value : nullptr, check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr ) )
+                                        group.length() > 0 ? group.c_str() : nullptr,
+                                        check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr ) )
             {
                 WriteLog( "Unable to register 'property' pragma '%s'.\n", text.c_str() );
                 return false;
@@ -565,8 +553,8 @@ public:
         // Work with defaults
         if( is_defaults )
         {
-            registrator->SetDefaults( group.length() > 0 ? group.c_str() : nullptr, generate_random_value ? &generate_random_value : nullptr,
-                                      set_default_value ? &default_value : nullptr, check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr );
+            registrator->SetDefaults( group.length() > 0 ? group.c_str() : nullptr,
+                                      check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr );
         }
 
         return true;
