@@ -3992,11 +3992,11 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
             if( entity_item->GetAccessory() == ITEM_ACCESSORY_HEX )
                 GenerateItem( entity_item->Id, entity_item->GetProtoId(), entity_item->Props );
         }
-        else if( entity->Type == EntityType::Npc )
+        else if( entity->Type == EntityType::CritterCl )
         {
             CritterCl* entity_cr = (CritterCl*) entity;
             CritterCl* cr = new CritterCl( entity_cr->Id, (ProtoCritter*) entity_cr->Proto );
-            cr->ChangeCrType( cr->GetCrType() );
+            cr->Props = entity_cr->Props;
             cr->Init();
             AddCritter( cr );
 
@@ -4015,6 +4015,10 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
                 cr->AddItem( item );
             }
         }
+        else
+        {
+            RUNTIME_ASSERT( !"Unreachable place" );
+        }
     }
 
     ResizeView();
@@ -4028,7 +4032,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
 void HexManager::GetProtoMap( ProtoMap& pmap )
 {
     pmap.SetWorkHexX( screenHexX );
-    pmap.SetWorkHexY( screenHexX );
+    pmap.SetWorkHexY( screenHexY );
 
     // Fill entities
     for( auto& entity : pmap.AllEntities )
@@ -4036,10 +4040,18 @@ void HexManager::GetProtoMap( ProtoMap& pmap )
     pmap.AllEntities.clear();
     std::function< void(Entity*) > fill_recursively = [ &fill_recursively, &pmap ] ( Entity * entity )
     {
-        pmap.AllEntities.push_back( entity );
+        Entity* store_entity = nullptr;
+        if( entity->Type == EntityType::ItemHex || entity->Type == EntityType::Item )
+            store_entity = new Item( entity->Id, (ProtoItem*) entity->Proto );
+        else if( entity->Type == EntityType::CritterCl )
+            store_entity = new CritterCl( entity->Id, (ProtoCritter*) entity->Proto );
+        else
+            RUNTIME_ASSERT( !"Unreachable place" );
+        store_entity->Props = entity->Props;
+        pmap.AllEntities.push_back( store_entity );
         for( auto& child : entity->GetChildren() )
         {
-            pmap.AllEntities.push_back( child );
+            RUNTIME_ASSERT( child->Type == EntityType::Item );
             fill_recursively( child );
         }
     };

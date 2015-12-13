@@ -3155,7 +3155,7 @@ void FOServer::SaveGameInfoFile( IniParser& data )
     StrMap& kv = data.GetApp( "GeneralSettings" );
 
     // Singleplayer info
-    kv[ "Singleplayer" ] = ( SingleplayerSave.Valid ? "True" : "False" );
+    kv[ "Singleplayer" ] = ( SingleplayerSave.Valid ? "true" : "false" );
     if( SingleplayerSave.Valid )
     {
         StrMap& client_kv = data.SetApp( "Client" );

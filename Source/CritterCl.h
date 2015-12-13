@@ -21,7 +21,7 @@ public:
     CLASS_PROPERTY( uchar, Dir );
     CLASS_PROPERTY( uint, CrType );
     CLASS_PROPERTY( uint, CrTypeAlias );
-    CLASS_PROPERTY( uchar, Cond );
+    CLASS_PROPERTY( int, Cond );
     CLASS_PROPERTY( int, MultihexBase );
     CLASS_PROPERTY( uint, Anim1Life );
     CLASS_PROPERTY( uint, Anim1Knockout );
@@ -58,7 +58,7 @@ public:
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
     // Exclude
-    CLASS_PROPERTY( int, BaseCrType );          // Mapper character base type
+    CLASS_PROPERTY( uint, BaseCrType );         // Mapper character base type
     CLASS_PROPERTY( int, Experience );          // Craft
     CLASS_PROPERTY( uint, TimeoutSkScience );   // Craft
     CLASS_PROPERTY( uint, TimeoutSkRepair );    // Craft

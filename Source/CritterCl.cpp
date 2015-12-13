@@ -12,10 +12,7 @@
 ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, CritterCl::PropertiesRegistrator ) {}
 
 #ifdef FONLINE_MAPPER
-uint ProtoCritter::GetCrType()
-{
-    return Props.GetPropValue< uint >( CritterCl::PropertyBaseCrType );
-}
+CLASS_PROPERTY_ALIAS_IMPL( ProtoCritter, CritterCl, uint, BaseCrType );
 #endif
 
 bool   CritterCl::SlotEnabled[ 0x100 ];
@@ -133,6 +130,14 @@ CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::Cr
     memzero( &stayAnim, sizeof( stayAnim ) );
     DrawEffect = Effect::Critter;
     memzero( anim3dLayers, sizeof( anim3dLayers ) );
+    textOnHeadColor = COLOR_CRITTER_NAME;
+
+    #ifdef FONLINE_CLIENT
+    ScriptArray* arr = Script::CreateArray( "int[]" );
+    arr->Resize( LAYERS3D_COUNT );
+    SetAnim3dLayer( arr );
+    arr->Release();
+    #endif
 }
 
 CritterCl::~CritterCl()
@@ -147,12 +152,7 @@ CritterCl::~CritterCl()
 
 void CritterCl::Init()
 {
-    #ifdef FONLINE_CLIENT
-    ScriptArray* arr = Script::CreateArray( "int[]" );
-    arr->Resize( LAYERS3D_COUNT );
-    SetAnim3dLayer( arr );
-    arr->Release();
-    #endif
+    ChangeCrType( GetBaseCrType() );
 
     ProtoItem* unarmed = ProtoMngr.GetProtoItem( GetHandsItemProtoId() );
     if( unarmed )
@@ -160,8 +160,6 @@ void CritterCl::Init()
         ItemSlotMain->SetProto( unarmed );
         ItemSlotMain->SetMode( GetHandsItemMode() );
     }
-
-    textOnHeadColor = COLOR_CRITTER_NAME;
 
     AnimateStay();
 

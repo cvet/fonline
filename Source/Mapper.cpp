@@ -1875,7 +1875,7 @@ void FOMapper::IntDraw()
         {
             ProtoCritter* proto = ( *CurNpcProtos )[ i ];
 
-            uint      spr_id = ResMngr.GetCritSprId( proto->GetCrType(), 1, 1, NpcDir, nullptr ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+            uint      spr_id = ResMngr.GetCritSprId( proto->GetBaseCrType(), 1, 1, NpcDir, nullptr ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if( !spr_id )
                 continue;
 
@@ -2054,7 +2054,7 @@ void FOMapper::ObjDraw()
         DrawLine( "Type", "Critter", true, r );
     else if( item && item->IsItem() )
         DrawLine( "Type", "Item", true, r );
-    else if( item && item->IsScen() )
+    else if( item && !item->IsItem() )
         DrawLine( "Type", "Scenery", true, r );
     else
         RUNTIME_ASSERT( !"Unreachable place" );
@@ -2063,8 +2063,7 @@ void FOMapper::ObjDraw()
     {
         for( auto& prop : ShowCrProps )
         {
-            bool non_zero = false;
-            string value = cr->Props.SavePropertyToText( prop, non_zero );
+            string value = cr->Props.SavePropertyToText( prop );
             DrawLine( prop->GetName(), value.c_str(), true, r );
         }
     }
@@ -2072,8 +2071,7 @@ void FOMapper::ObjDraw()
     {
         for( auto& prop : ShowItemProps )
         {
-            bool non_zero = false;
-            string value = item->Props.SavePropertyToText( prop, non_zero );
+            string value = item->Props.SavePropertyToText( prop );
             DrawLine( prop->GetName(), value.c_str(), true, r );
         }
     }
@@ -2134,9 +2132,8 @@ void FOMapper::ObjKeyDownA( Entity* entity, uchar dik, const char* dik_text )
     PropertyVec& props = ( entity->Type == EntityType::CritterCl ? ShowCrProps : ShowItemProps );
     if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) props.size() )
     {
-        bool non_zero = false;
         Property* prop = props[ ObjCurLine - start_line ];
-        string value = entity->Props.SavePropertyToText( prop, non_zero );
+        string value = entity->Props.SavePropertyToText( prop );
         Keyb::GetChar( dik, dik_text, value, nullptr, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
         entity->Props.LoadPropertyFromText( prop, value.c_str() );
     }
@@ -3389,14 +3386,9 @@ CritterCl* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
     if( HexMngr.GetField( hx, hy ).Crit )
         return nullptr;
 
-    uint spr_id = ResMngr.GetCritSprId( proto->GetCrType(), 1, 1, NpcDir );
-    if( !spr_id )
-        return nullptr;
-
     SelectClear();
 
     CritterCl* cr = new CritterCl( --ActiveProtoMap->LastEntityId, proto );
-    cr->ChangeCrType( proto->GetCrType() );
     cr->SetHexX( hx );
     cr->SetHexY( hy );
     cr->SetDir( NpcDir );
@@ -3524,7 +3516,6 @@ Entity* FOMapper::CloneEntity( Entity* entity )
         cr->Props = ( (CritterCl*) entity )->Props;
         cr->SetHexX( hx );
         cr->SetHexY( hy );
-        cr->ChangeCrType( cr->GetCrType() );
         cr->Init();
         HexMngr.AddCritter( cr );
         SelectAdd( cr );
@@ -3668,7 +3659,6 @@ void FOMapper::BufferPaste( int hx, int hy )
             cr->Props = *entity_buf.Props;
             cr->SetHexX( hx );
             cr->SetHexY( hy );
-            cr->ChangeCrType( cr->GetCrType() );
             cr->Init();
             HexMngr.AddCritter( cr );
             SelectAdd( cr );
@@ -3795,7 +3785,7 @@ void FOMapper::CurDraw()
         }
         else if( IsCritMode() && CurNpcProtos->size() )
         {
-            uint spr_id = ResMngr.GetCritSprId( ( *CurNpcProtos )[ GetTabIndex() ]->GetCrType(), 1, 1, NpcDir );
+            uint spr_id = ResMngr.GetCritSprId( ( *CurNpcProtos )[ GetTabIndex() ]->GetBaseCrType(), 1, 1, NpcDir );
             if( !spr_id )
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId( 0 );
 

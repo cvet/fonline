@@ -1942,6 +1942,9 @@ int Script::GetEnumValue( const char* enum_value_name, bool& fail )
 
 int Script::GetEnumValue( const char* enum_name, const char* value_name, bool& fail )
 {
+    if( Str::IsNumber( value_name ) )
+        return Str::AtoI( value_name );
+
     char buf[ MAX_FOTEXT ];
     Str::Copy( buf, enum_name );
     Str::Append( buf, "::" );

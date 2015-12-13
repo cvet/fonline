@@ -203,7 +203,7 @@ public:
     bool        LoadFromText( const StrMap& key_values );
     void        SaveToText( StrMap& key_values, Properties* base );
     bool        LoadPropertyFromText( Property* prop, const char* value );
-    string      SavePropertyToText( Property* prop, bool& non_zero );
+    string      SavePropertyToText( Property* prop );
     static int  GetValueAsInt( Entity* entity, int enum_value );
     static void SetValueAsInt( Entity* entity, int enum_value, int value );
     static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );

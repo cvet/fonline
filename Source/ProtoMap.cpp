@@ -161,7 +161,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     for( auto& pkv : npc_data )
     {
         auto& kv = *pkv;
-        if( !kv.count( "$Id" ) || kv.count( "$Proto" ) )
+        if( !kv.count( "$Id" ) || !kv.count( "$Proto" ) )
         {
             WriteLog( "Proto critter invalid data.\n" );
             errors++;
@@ -199,7 +199,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     for( auto& pkv : items_data )
     {
         auto& kv = *pkv;
-        if( !kv.count( "$Id" ) || kv.count( "$Proto" ) )
+        if( !kv.count( "$Id" ) || !kv.count( "$Proto" ) )
         {
             WriteLog( "Proto item invalid data.\n" );
             errors++;
@@ -233,7 +233,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
     for( auto& pkv : tiles_data )
     {
         auto& kv = *pkv;
-        if( !kv.count( "PicMap" ) || kv.count( "HexX" ) || kv.count( "HexY" ) )
+        if( !kv.count( "PicMap" ) || !kv.count( "HexX" ) || !kv.count( "HexY" ) )
         {
             WriteLog( "Tile invalid data.\n" );
             errors++;

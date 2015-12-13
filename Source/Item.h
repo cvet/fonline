@@ -254,7 +254,7 @@ public:
     CLASS_PROPERTY( uint, Car_MovementType );
     CLASS_PROPERTY( ScriptArray *, SceneryParams );
     CLASS_PROPERTY( hash, ScriptId );
-    CLASS_PROPERTY( char, Accessory );
+    CLASS_PROPERTY( int, Accessory ); // enum ItemOwnership
     CLASS_PROPERTY( uint, MapId );
     CLASS_PROPERTY( ushort, HexX );
     CLASS_PROPERTY( ushort, HexY );

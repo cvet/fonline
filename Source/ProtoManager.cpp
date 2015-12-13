@@ -300,6 +300,7 @@ bool ProtoManager::LoadProtosFromFiles()
     }
 
     // Load maps data
+    #ifdef FONLINE_SERVER
     for( auto& kv : mapProtos )
     {
         if( !kv.second->Load() )
@@ -308,6 +309,7 @@ bool ProtoManager::LoadProtosFromFiles()
             errors++;
         }
     }
+    #endif
 
     WriteLog( "Load prototypes complete, count %u.\n", (uint) ( itemProtos.size() + crProtos.size() + mapProtos.size() + locProtos.size() ) );
     return errors == 0;

@@ -112,7 +112,7 @@ public:
     CLASS_PROPERTY( ScriptString *, PassHash );
     CLASS_PROPERTY( uint, CrType );
     CLASS_PROPERTY( uint, CrTypeAlias );
-    CLASS_PROPERTY( uchar, Cond );
+    CLASS_PROPERTY( int, Cond ); // enum CritterCondition
     CLASS_PROPERTY( bool, ClientToDelete );
     CLASS_PROPERTY( uint, MultihexBase );
     CLASS_PROPERTY( ushort, WorldX );

@@ -3168,6 +3168,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         ProtoCritter* proto = ProtoMngr.GetProtoCritter( is_npc ? npc_pid : Str::GetHash( "Player" ) );
         RUNTIME_ASSERT( proto );
         CritterCl*    cr = new CritterCl( crid, proto );
+        cr->Props.RestoreData( TempPropertiesData );
         cr->SetHexX( hx );
         cr->SetHexY( hy );
         cr->SetDir( dir );
@@ -3180,7 +3181,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         cr->SetAnim2Dead( anim2dead );
         cr->Flags = flags;
         cr->SetMultihexBase( multihex );
-        cr->Props.RestoreData( TempPropertiesData );
+        cr->SetBaseCrType( base_type );
 
         if( is_npc )
         {
@@ -3196,7 +3197,6 @@ void FOClient::Net_OnAddCritter( bool is_npc )
             *cr->Name = cl_name;
         }
 
-        cr->ChangeCrType( base_type );
         cr->Init();
 
         if( FLAG( cr->Flags, FCRIT_CHOSEN ) )

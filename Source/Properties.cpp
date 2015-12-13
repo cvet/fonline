@@ -1242,7 +1242,7 @@ static string CodeString( const string& str, int deep )
     bool need_braces = false;
     if( deep > 0 && ( str.empty() || str.find_first_of( " \t" ) != string::npos ) )
         need_braces = true;
-    if( deep == 0 && ( str.find_first_of( " \t" ) == 0 || str.find_last_of( " \t" ) == str.length() - 1 ) )
+    if( deep == 0 && !str.empty() && ( str.find_first_of( " \t" ) == 0 || str.find_last_of( " \t" ) == str.length() - 1 ) )
         need_braces = true;
 
     string result;
@@ -1350,7 +1350,7 @@ static string DecodeString( const string& str )
     return result;
 }
 
-static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_hashes, bool& non_zero, int deep )
+static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep )
 {
     if( !( type_id & asTYPEID_MASK_OBJECT ) )
     {
@@ -1359,17 +1359,11 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
         #define VALUE_AS( ctype )    ( *(ctype*) ( ptr ) )
         #define CHECK_PRIMITIVE( astype, ctype, toa ) \
             if( type_id == astype )                   \
-            {                                         \
-                if( VALUE_AS( ctype ) != 0 )          \
-                    non_zero = true;                  \
-                return toa( VALUE_AS( ctype ) );      \
-            }
+                return toa( VALUE_AS( ctype ) );
 
         if( is_hashes[ deep ] )
         {
             RUNTIME_ASSERT( type_id == asTYPEID_UINT32 );
-            if( VALUE_AS( hash ) != 0 )
-                non_zero = true;
             return VALUE_AS( hash ) ? CodeString( Str::GetName( VALUE_AS( hash ) ), deep ) : CodeString( "", deep );
         }
 
@@ -1384,8 +1378,6 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
         CHECK_PRIMITIVE( asTYPEID_UINT64, uint64, Str::UI64toA );
         CHECK_PRIMITIVE( asTYPEID_DOUBLE, double, Str::DFtoA );
         CHECK_PRIMITIVE( asTYPEID_FLOAT, float, Str::FtoA );
-        if( VALUE_AS( int ) != 0 )
-            non_zero = true;
         return Script::GetEnumValueName( Script::GetEngine()->GetTypeDeclaration( type_id ), VALUE_AS( int ) );
 
         #undef VALUE_AS
@@ -1394,8 +1386,6 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
     else if( Str::Compare( as_obj_type->GetName(), "string" ) )
     {
         ScriptString* str = (ScriptString*) ptr;
-        if( str->length() > 0 )
-            non_zero = true;
         return CodeString( str->c_std_str(), deep );
     }
     else if( Str::Compare( as_obj_type->GetName(), "array" ) )
@@ -1405,11 +1395,10 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
         asUINT arr_size = arr->GetSize();
         if( arr_size > 0 )
         {
-            non_zero = true;
             int value_type_id = as_obj_type->GetSubTypeId( 0 );
             asIObjectType* value_type = as_obj_type->GetSubType( 0 );
             for( asUINT i = 0; i < arr_size; i++ )
-                result.append( WriteValue( arr->At( i ), value_type_id, value_type, is_hashes, non_zero, deep + 1 ) ).append( " " );
+                result.append( WriteValue( arr->At( i ), value_type_id, value_type, is_hashes, deep + 1 ) ).append( " " );
             result.pop_back();
         }
         if( deep > 0 )
@@ -1422,7 +1411,6 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
         ScriptDict* dict = (ScriptDict*) ptr;
         if( dict->GetSize() > 0 )
         {
-            non_zero = true;
             int key_type_id = as_obj_type->GetSubTypeId( 0 );
             int value_type_id = as_obj_type->GetSubTypeId( 1 );
             asIObjectType* key_type = as_obj_type->GetSubType( 0 );
@@ -1431,8 +1419,8 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
             dict->GetMap( dict_map );
             for( const auto& dict_kv : dict_map )
             {
-                result.append( WriteValue( dict_kv.first, key_type_id, key_type, is_hashes, non_zero, deep + 1 ) ).append( " " );
-                result.append( WriteValue( dict_kv.second, value_type_id, value_type, is_hashes, non_zero, deep + 2 ) ).append( " " );
+                result.append( WriteValue( dict_kv.first, key_type_id, key_type, is_hashes, deep + 1 ) ).append( " " );
+                result.append( WriteValue( dict_kv.second, value_type_id, value_type, is_hashes, deep + 2 ) ).append( " " );
             }
             result.pop_back();
         }
@@ -1584,12 +1572,24 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
                     continue;
             }
         }
+        else
+        {
+            if( prop->podDataOffset != uint( -1 ) )
+            {
+                uint64 pod_zero = 0;
+                RUNTIME_ASSERT( prop->baseSize <= sizeof( pod_zero ) );
+                if( !memcmp( &podData[ prop->podDataOffset ], &pod_zero, prop->baseSize ) )
+                    continue;
+            }
+            else
+            {
+                if( !complexDataSizes[ prop->complexDataIndex ] )
+                    continue;
+            }
+        }
 
         // Serialize to text and store in map
-        bool non_zero = false;
-        string value = SavePropertyToText( prop, non_zero );
-        if( non_zero )
-            key_values.insert( PAIR( prop->propName, std::move( value ) ) );
+        key_values.insert( PAIR( prop->propName, SavePropertyToText( prop ) ) );
     }
 
     // Unresolved properties stays too
@@ -1626,7 +1626,7 @@ bool Properties::LoadPropertyFromText( Property* prop, const char* value )
     return !is_error;
 }
 
-string Properties::SavePropertyToText( Property* prop, bool& non_zero )
+string Properties::SavePropertyToText( Property* prop )
 {
     RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) );
 
@@ -1637,7 +1637,7 @@ string Properties::SavePropertyToText( Property* prop, bool& non_zero )
         data = prop->CreateComplexValue( (uchar*) data, data_size );
 
     bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1 };
-    string value = WriteValue( data, prop->asObjTypeId, prop->asObjType, is_hashes, non_zero, 0 );
+    string value = WriteValue( data, prop->asObjTypeId, prop->asObjType, is_hashes, 0 );
 
     if( prop->complexDataIndex != uint( -1 ) )
         prop->ReleaseComplexValue( data );
