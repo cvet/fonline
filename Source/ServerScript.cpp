@@ -3616,7 +3616,7 @@ int FOServer::SScriptFunc::Map_GetTurnBasedSequence( Map* map, ScriptArray& crit
     return ( map->TurnSequenceCur >= 0 && map->TurnSequenceCur < (int) map->TurnSequence.size() ) ? map->TurnSequenceCur : -1;
 }
 
-Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count )
+Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count, ScriptDict* props )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -3630,7 +3630,16 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
 
     if( !count )
         count = 1;
-    return CreateItemOnHex( map, hx, hy, proto_id, count );
+    if( props )
+    {
+        Properties props_( Item::PropertiesRegistrator );
+        for( uint i = 0, j = props->GetSize(); i < j; i++ )
+            if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
+                return nullptr;
+
+        return CreateItemOnHex( map, hx, hy, proto_id, count, &props_, true );
+    }
+    return CreateItemOnHex( map, hx, hy, proto_id, count, nullptr, true );
 }
 
 uint FOServer::SScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushort hy, ScriptArray* items )
@@ -4063,7 +4072,7 @@ uint FOServer::SScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort t
     return (uint) path.size();
 }
 
-Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir )
+Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptDict* props )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -4072,7 +4081,21 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     if( !ProtoMngr.GetProtoCritter( proto_id ) )
         SCRIPT_ERROR_R0( "Proto '%s' not found.", Str::GetName( proto_id ) );
 
-    Critter* npc = CrMngr.CreateNpc( proto_id, nullptr, map, hx, hy, dir, false );
+    Critter* npc = nullptr;
+    if( props )
+    {
+        Properties props_( Critter::PropertiesRegistrator );
+        for( uint i = 0, j = props->GetSize(); i < j; i++ )
+            if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
+                return nullptr;
+
+        npc = CrMngr.CreateNpc( proto_id, &props_, map, hx, hy, dir, false );
+    }
+    else
+    {
+        npc = CrMngr.CreateNpc( proto_id, nullptr, map, hx, hy, dir, false );
+    }
+
     if( !npc )
         SCRIPT_ERROR_R0( "Create npc fail." );
     return npc;

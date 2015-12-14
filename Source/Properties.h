@@ -204,6 +204,7 @@ public:
     static int  GetValueAsInt( Entity* entity, int enum_value );
     static void SetValueAsInt( Entity* entity, int enum_value, int value );
     static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
+    static bool SetValueAsIntProps( Properties* props, int enum_value, int value );
     string      GetClassName();
 
     template< typename T >

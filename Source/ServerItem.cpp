@@ -1,7 +1,7 @@
 #include "Common.h"
 #include "Server.h"
 
-Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks /* = true */ )
+Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks )
 {
     // Checks
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
@@ -13,7 +13,7 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
         return nullptr;
 
     // Create instance
-    Item* item = ItemMngr.CreateItem( pid, count );
+    Item* item = ItemMngr.CreateItem( pid, count, props );
     if( !item )
         return nullptr;
 
@@ -38,12 +38,12 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
         ushort child_hx = hx, child_hy = hy;
         FOREACH_PROTO_ITEM_LINES( item->GetChildLinesStr( i ), child_hx, child_hy, map->GetWidth(), map->GetHeight() );
 
-        CreateItemOnHex( map, child_hx, child_hy, child_pid, 1, false );
+        CreateItemOnHex( map, child_hx, child_hy, child_pid, 1, nullptr, false );
     }
 
     // Recursive non-stacked items
     if( !proto_item->GetStackable() && count > 1 )
-        return CreateItemOnHex( map, hx, hy, pid, count - 1 );
+        return CreateItemOnHex( map, hx, hy, pid, count - 1, props, true );
 
     return item;
 }

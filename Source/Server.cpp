@@ -2388,7 +2388,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             return;
         }
 
-        if( !CreateItemOnHex( map, hex_x, hex_y, pid, count ) )
+        if( !CreateItemOnHex( map, hex_x, hex_y, pid, count, nullptr, true ) )
         {
             logcb( "Item(s) not added." );
         }

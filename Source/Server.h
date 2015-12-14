@@ -183,7 +183,7 @@ public:
     static void OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Items
-    static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, bool check_blocks = true );
+    static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks );
     static void  OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemCount( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemChangeView( Entity* entity, Property* prop, void* cur_value, void* old_value );
@@ -609,7 +609,7 @@ public:
         static bool      Map_IsTurnBased( Map* map );
         static void      Map_EndTurnBased( Map* map );
         static int       Map_GetTurnBasedSequence( Map* map, ScriptArray& critters_ids );
-        static Item*     Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count );
+        static Item*     Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count, ScriptDict* props );
         static uint      Map_GetItemsHex( Map* map, ushort hx, ushort hy, ScriptArray* items );
         static uint      Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid, ScriptArray* items );
         static uint      Map_GetItemsByPid( Map* map, hash pid, ScriptArray* items );
@@ -634,7 +634,7 @@ public:
         static void      Map_GetHexInPathWall( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
         static uint      Map_GetPathLengthHex( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static uint      Map_GetPathLengthCr( Map* map, Critter* cr, ushort to_hx, ushort to_hy, uint cut );
-        static Critter*  Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir );
+        static Critter*  Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptDict* props );
         static uint      Map_GetNpcCount( Map* map, int npc_role, int find_type );
         static Critter*  Map_GetNpc( Map* map, int npc_role, int find_type, uint skip_count );
         static uint      Map_CountEntire( Map* map, int entire );

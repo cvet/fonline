@@ -343,7 +343,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void BeginTurnBased(Critter@+
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool IsTurnBased() const", asFUNCTION( BIND_CLASS Map_IsTurnBased ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EndTurnBased()", asFUNCTION( BIND_CLASS Map_EndTurnBased ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "int GetTurnBasedSequence(uint[]& crittersIds) const", asFUNCTION( BIND_CLASS Map_GetTurnBasedSequence ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
+// In bottom BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict< ItemProperty, int >@+ props = nullptr)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetItem(uint itemId) const", asFUNCTION( BIND_CLASS Map_GetItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetItem(uint16 hexX, uint16 hexY, hash protoId) const", asFUNCTION( BIND_CLASS Map_GetItemHex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetItems(uint16 hexX, uint16 hexY, Item@[]@+ items) const", asFUNCTION( BIND_CLASS Map_GetItemsHex ), asCALL_CDECL_OBJFIRST ) );
@@ -369,7 +369,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void GetHexCoordWall(uint16 f
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut) const", asFUNCTION( BIND_CLASS Map_GetPathLengthHex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetPathLength(Critter& cr, uint16 toHx, uint16 toHy, uint cut) const", asFUNCTION( BIND_CLASS Map_GetPathLengthCr ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool VerifyTrigger(Critter& cr, uint16 hexX, uint16 hexY, uint8 dir)", asFUNCTION( BIND_CLASS Map_VerifyTrigger ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
+// In bottom BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict< CritterProperty, int >@+ props = nullptr)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetNpcCount(int npcRole, int findType) const", asFUNCTION( BIND_CLASS Map_GetNpcCount ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ GetNpc(int npcRole, int findType, uint skipCount) const", asFUNCTION( BIND_CLASS Map_GetNpc ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint CountEntire(int entire) const", asFUNCTION( BIND_CLASS Map_CountEntire ), asCALL_CDECL_OBJFIRST ) );
@@ -1078,6 +1078,10 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "CritterProperty[] CritterPropertyR
 #if defined ( BIND_MAPPER )
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowCritterProperty(CritterProperty prop)", asFUNCTION( BIND_CLASS Global_ShowCritterProperty ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowItemProperty(ItemProperty prop)", asFUNCTION( BIND_CLASS Global_ShowItemProperty ), asCALL_CDECL ) );
+#endif
+#if defined ( BIND_SERVER )
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict< CritterProperty, int >@+ props = nullptr)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict< ItemProperty, int >@+ props = nullptr)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
 #endif
 
 /************************************************************************/

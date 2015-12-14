@@ -1664,6 +1664,51 @@ bool Properties::SetValueAsIntByName( Entity* entity, const char* enum_name, int
     return true;
 }
 
+bool Properties::SetValueAsIntProps( Properties* props, int enum_value, int value )
+{
+    Property* prop = props->registrator->FindByEnum( enum_value );
+    if( !prop )
+        SCRIPT_ERROR_R0( "Enum '%d' not found", enum_value );
+    if( !prop->IsPOD() )
+        SCRIPT_ERROR_R0( "Can't set integer value to non POD property '%s'", prop->GetName() );
+    if( !prop->IsWritable() )
+        SCRIPT_ERROR_R0( "Can't set integer value to non writable property '%s'", prop->GetName() );
+
+    if( prop->isBoolDataType )
+    {
+        props->SetPropValue< bool >( prop, value != 0 );
+    }
+    else if( prop->isFloatDataType )
+    {
+        if( prop->baseSize == 4 )
+            props->SetPropValue< float >( prop, (float) value );
+        else if( prop->baseSize == 8 )
+            props->SetPropValue< double >( prop, (double) value );
+    }
+    else if( prop->isSignedIntDataType )
+    {
+        if( prop->baseSize == 1 )
+            props->SetPropValue< char >( prop, (char) value );
+        else if( prop->baseSize == 2 )
+            props->SetPropValue< short >( prop, (short) value );
+        else if( prop->baseSize == 4 )
+            props->SetPropValue< int >( prop, (int) value );
+        else if( prop->baseSize == 8 )
+            props->SetPropValue< int64 >( prop, (int64) value );
+    }
+    else
+    {
+        if( prop->baseSize == 1 )
+            props->SetPropValue< uchar >( prop, (uchar) value );
+        else if( prop->baseSize == 2 )
+            props->SetPropValue< ushort >( prop, (ushort) value );
+        else if( prop->baseSize == 4 )
+            props->SetPropValue< uint >( prop, (uint) value );
+        else if( prop->baseSize == 8 )
+            props->SetPropValue< uint64 >( prop, (uint64) value );
+    }
+}
+
 string Properties::GetClassName()
 {
     return registrator->scriptClassName;
