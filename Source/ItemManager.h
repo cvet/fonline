@@ -13,7 +13,7 @@ public:
     uint GetItemsCount();
     void SetCritterItems( Critter* cr );
 
-    Item* CreateItem( hash pid, uint count = 0 );
+    Item* CreateItem( hash pid, uint count = 0, Properties* props = nullptr );
     bool  RestoreItem( uint id, hash proto_id, const StrMap& props_data );
     void  DeleteItem( Item* item );
 

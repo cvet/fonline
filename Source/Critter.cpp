@@ -1462,7 +1462,7 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
     if( !proto_item )
         return nullptr;
 
-    if( proto_item->Props.GetPropValue< bool >( Item::PropertyStackable ) )
+    if( proto_item->GetStackable() )
     {
         for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         {

@@ -32,7 +32,7 @@ void ItemManager::SetCritterItems( Critter* cr )
     }
 }
 
-Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
+Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props /* = nullptr */ )
 {
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
@@ -42,6 +42,8 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */ )
     }
 
     Item* item = new Item( 0, proto );
+    if( props )
+        item->Props = *props;
     SYNC_LOCK( item );
 
     // Main collection
@@ -154,7 +156,7 @@ Item* ItemManager::SplitItem( Item* item, uint count )
         return nullptr;
     }
 
-    Item* new_item = CreateItem( item->GetProtoId() ); // Ignore init script
+    Item* new_item = CreateItem( item->GetProtoId(), count, &item->Props ); // Ignore init script
     if( !new_item )
     {
         WriteLogF( _FUNC_, " - Create item '%s' fail, count %u.\n", item->GetName(), count );
@@ -162,8 +164,6 @@ Item* ItemManager::SplitItem( Item* item, uint count )
     }
 
     item->ChangeCount( -(int) count );
-    new_item->Props = item->Props;
-    new_item->SetCount( count );
 
     // Radio collection
     if( new_item->GetIsRadio() )
@@ -306,7 +306,7 @@ Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stac
         if( !proto_item )
             return result;
 
-        if( proto_item->Props.GetPropValue< bool >( Item::PropertyStackable ) )
+        if( proto_item->GetStackable() )
         {
             item = ItemMngr.CreateItem( pid, count );
             if( !item )

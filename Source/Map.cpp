@@ -145,14 +145,13 @@ bool Map::Generate()
     for( auto& base_item : GetProtoMap()->HexItemsVec )
     {
         // Create item
-        Item* item = ItemMngr.CreateItem( base_item->GetProtoId() );
+        Item* item = ItemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
         if( !item )
         {
             WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
         id_map.insert( PAIR( base_item->GetId(), item->GetId() ) );
-        item->Props = base_item->Props;
 
         // Other values
         if( item->IsDoor() && FLAG( item->GetLockerCondition(), LOCKER_ISOPEN ) )
@@ -189,13 +188,12 @@ bool Map::Generate()
         parent_id = id_map[ parent_id ];
 
         // Create item
-        Item* item = ItemMngr.CreateItem( base_item->GetProtoId() );
+        Item* item = ItemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
         if( !item )
         {
             WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
-        item->Props = base_item->Props;
 
         // Add to parent
         if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )

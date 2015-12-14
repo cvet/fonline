@@ -126,6 +126,7 @@ public:
     CLASS_PROPERTY_ALIAS( uchar, LightFlags );
     CLASS_PROPERTY_ALIAS( uint, LightColor );
     CLASS_PROPERTY_ALIAS( bool, IsCanPickUp );
+    CLASS_PROPERTY_ALIAS( uint, Cost );
     CLASS_PROPERTY_ALIAS( uint, Count );
     CLASS_PROPERTY_ALIAS( bool, IsFlat );
     CLASS_PROPERTY_ALIAS( char, DrawOrderOffsetHexY );

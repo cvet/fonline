@@ -38,6 +38,7 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, LightDistance );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, LightFlags );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, LightColor );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsCanPickUp );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Cost );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Count );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsFlat );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, char, DrawOrderOffsetHexY );
@@ -567,7 +568,7 @@ uint Item::GetCost1st()
     {
         ProtoItem* ammo = ProtoMngr.GetProtoItem( GetAmmoPid() );
         if( ammo )
-            cost += ammo->Props.GetPropValue< uint >( Item::PropertyCost ) * GetAmmoCount();
+            cost += ammo->GetCost() * GetAmmoCount();
     }
     if( !cost )
         cost = 1;

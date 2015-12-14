@@ -4724,7 +4724,7 @@ void FOClient::PupDraw()
         ProtoItem* proto_item = ProtoMngr.GetProtoItem( PupContPid );
         if( proto_item )
         {
-            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->Props.GetPropValue< hash >( Item::PropertyPicMap ) );
+            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->GetPicMap() );
             if( anim )
                 SprMngr.DrawSpriteSize( anim->GetSprId( anim->GetCnt() - 1 ), PupWInfo[ 0 ] + PupX, PupWInfo[ 1 ] + PupY, PupWInfo.W(), PupWInfo.H(), false, true );
         }
