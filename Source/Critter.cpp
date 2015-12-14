@@ -31,9 +31,9 @@ const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
     "bool %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_ATTACKED
     "void %s(Critter&,Critter&,bool,Item&,uint)",                                 // CRITTER_EVENT_STEALING
     "void %s(Critter&,Critter&,int,int)",                                         // CRITTER_EVENT_MESSAGE
-    "bool %s(Critter&,Item&,Critter@,Item@,Scenery@)",                            // CRITTER_EVENT_USE_ITEM
+    "bool %s(Critter&,Item&,Critter@,Item@,Item@)",                               // CRITTER_EVENT_USE_ITEM
     "bool %s(Critter&,Critter&,Item&)",                                           // CRITTER_EVENT_USE_ITEM_ON_ME
-    "bool %s(Critter&,CritterProperty,Critter@,Item@,Scenery@)",                  // CRITTER_EVENT_USE_SKILL
+    "bool %s(Critter&,CritterProperty,Critter@,Item@,Item@)",                     // CRITTER_EVENT_USE_SKILL
     "bool %s(Critter&,Critter&,CritterProperty)",                                 // CRITTER_EVENT_USE_SKILL_ON_ME
     "void %s(Critter&,Item&)",                                                    // CRITTER_EVENT_DROP_ITEM
     "void %s(Critter&,Item&,uint8)",                                              // CRITTER_EVENT_MOVE_ITEM
@@ -42,8 +42,8 @@ const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
     "void %s(Critter&,Critter&,Critter&,bool,Item&,uint)",                        // CRITTER_EVENT_SMTH_STEALING
     "void %s(Critter&,Critter&,Critter&)",                                        // CRITTER_EVENT_SMTH_ATTACK
     "void %s(Critter&,Critter&,Critter&)",                                        // CRITTER_EVENT_SMTH_ATTACKED
-    "void %s(Critter&,Critter&,Item&,Critter@,Item@,Scenery@)",                   // CRITTER_EVENT_SMTH_USE_ITEM
-    "void %s(Critter&,Critter&,CritterProperty,Critter@,Item@,Scenery@)",         // CRITTER_EVENT_SMTH_USE_SKILL
+    "void %s(Critter&,Critter&,Item&,Critter@,Item@,Item@)",                      // CRITTER_EVENT_SMTH_USE_ITEM
+    "void %s(Critter&,Critter&,CritterProperty,Critter@,Item@,Item@)",            // CRITTER_EVENT_SMTH_USE_SKILL
     "void %s(Critter&,Critter&,Item&)",                                           // CRITTER_EVENT_SMTH_DROP_ITEM
     "void %s(Critter&,Critter&,Item&,uint8)",                                     // CRITTER_EVENT_SMTH_MOVE_ITEM
     "void %s(Critter&,Critter&,uint,uint,uint,uint,uint)",                        // CRITTER_EVENT_SMTH_KNOCKOUT

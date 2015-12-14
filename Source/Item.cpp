@@ -14,7 +14,7 @@ const char* ItemEventFuncName[ ITEM_EVENT_MAX ] =
 {
     "void %s(Item&,bool)",                             // ITEM_EVENT_FINISH
     "bool %s(Item&,Critter&,Critter&)",                // ITEM_EVENT_ATTACK
-    "bool %s(Item&,Critter&,Critter@,Item@,Scenery@)", // ITEM_EVENT_USE
+    "bool %s(Item&,Critter&,Critter@,Item@,Item@)",    // ITEM_EVENT_USE
     "bool %s(Item&,Critter&,Item@)",                   // ITEM_EVENT_USE_ON_ME
     "bool %s(Item&,Critter&,CritterProperty)",         // ITEM_EVENT_SKILL
     "void %s(Item&,Critter&)",                         // ITEM_EVENT_DROP
