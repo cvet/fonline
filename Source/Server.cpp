@@ -3193,9 +3193,6 @@ void FOServer::SaveGameInfoFile( IniParser& data )
     kv[ "Minute" ] = Str::ItoA( GameOpt.Minute );
     kv[ "Second" ] = Str::ItoA( GameOpt.Second );
     kv[ "TimeMultiplier" ] = Str::ItoA( GameOpt.TimeMultiplier );
-
-    // Hashes
-    Str::SaveHashes( data.SetApp( "Hashes" ) );
 }
 
 bool FOServer::LoadGameInfoFile( IniParser& data )
@@ -3223,9 +3220,6 @@ bool FOServer::LoadGameInfoFile( IniParser& data )
     GameOpt.Second = Str::AtoI( kv[ "Second" ].c_str() );
     GameOpt.TimeMultiplier = Str::AtoI( kv[ "TimeMultiplier" ].c_str() );
     InitGameTime();
-
-    // Hashes
-    Str::LoadHashes( data.GetApp( "Hashes" ) );
 
     WriteLog( "Load game info complete.\n" );
     return true;
@@ -4331,6 +4325,7 @@ void FOServer::SaveWorld( const char* fname )
     }
     SaveClients.clear();
     SaveClientsLocker.Unlock();
+    Str::SaveHashes( data->SetApp( "Hashes" ) );
 
     // Flush on disk
     const void* args[] = { data, Str::Duplicate( fname ) };
@@ -4381,6 +4376,7 @@ bool FOServer::LoadWorld( const char* fname )
     }
 
     // Main data
+    Str::LoadHashes( data.GetApp( "Hashes" ) );
     if( !LoadGameInfoFile( data ) )
         return false;
     if( !LoadHoloInfoFile( data ) )

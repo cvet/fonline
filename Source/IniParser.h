@@ -6,9 +6,11 @@
 class IniParser
 {
 private:
-    typedef multimap< string, StrMap > ValuesMap;
-    ValuesMap appKeyValues;
-    bool      collectContent = false;
+    typedef multimap< string, StrMap >          ValuesMap;
+    typedef vector< ValuesMap::const_iterator > ValuesMapItVec;
+    ValuesMap      appKeyValues;
+    ValuesMapItVec appKeyValuesOrder;
+    bool           collectContent = false;
 
     void    ParseStr( const char* str );
     string* GetRawValue( const char* app_name, const char* key_name );

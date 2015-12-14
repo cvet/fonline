@@ -38,9 +38,15 @@ void IniParser::ParseStr( const char* str )
     StrMap* cur_app;
     auto    it_app = appKeyValues.find( "" );
     if( it_app == appKeyValues.end() )
-        cur_app = &appKeyValues.insert( PAIR( string( "" ), StrMap() ) )->second;
+    {
+        auto& it = appKeyValues.insert( PAIR( string( "" ), StrMap() ) );
+        appKeyValuesOrder.push_back( it );
+        cur_app = &it->second;
+    }
     else
+    {
         cur_app = &it_app->second;
+    }
 
     string app_content;
     if( collectContent )
@@ -73,7 +79,9 @@ void IniParser::ParseStr( const char* str )
             }
 
             // Add new section
-            cur_app = &appKeyValues.insert( PAIR( string( buf ), StrMap() ) )->second;
+            auto& it = appKeyValues.insert( PAIR( string( buf ), StrMap() ) );
+            appKeyValuesOrder.push_back( it );
+            cur_app = &it->second;
         }
         // Section content
         else
@@ -178,8 +186,9 @@ bool IniParser::SaveFile( const char* fname, int path_type )
 {
     string str;
     str.reserve( 10000000 );
-    for( const auto& app : appKeyValues )
+    for( auto& app_it : appKeyValuesOrder )
     {
+        auto& app = *app_it;
         str.append( string( "[" ).append( app.first ).append( "]" ).append( "\n" ) );
         for( const auto& kv : app.second )
             if( !kv.first.empty() )
@@ -200,6 +209,7 @@ bool IniParser::SaveFile( const char* fname, int path_type )
 void IniParser::Clear()
 {
     appKeyValues.clear();
+    appKeyValuesOrder.clear();
 }
 
 bool IniParser::IsLoaded()
@@ -243,7 +253,8 @@ void IniParser::SetStr( const char* app_name, const char* key_name, const char* 
     {
         StrMap key_values;
         key_values[ key_name ] = val;
-        appKeyValues.insert( PAIR( string( app_name ), key_values ) );
+        auto&  it = appKeyValues.insert( PAIR( string( app_name ), key_values ) );
+        appKeyValuesOrder.push_back( it );
     }
     else
     {
@@ -274,6 +285,7 @@ void IniParser::GetApps( const char* app_name, PStrMapVec& key_values )
 StrMap& IniParser::SetApp( const char* app_name )
 {
     auto& it = appKeyValues.insert( PAIR( string( app_name ), StrMap() ) );
+    appKeyValuesOrder.push_back( it );
     return it->second;
 }
 
@@ -304,6 +316,9 @@ void IniParser::GotoNextApp( const char* app_name )
     if( it_app == appKeyValues.end() )
         return;
 
+    auto& order_it = std::find( appKeyValuesOrder.begin(), appKeyValuesOrder.end(), it_app );
+    RUNTIME_ASSERT( order_it != appKeyValuesOrder.end() );
+    appKeyValuesOrder.erase( order_it );
     appKeyValues.erase( it_app );
 }
 

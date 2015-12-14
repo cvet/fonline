@@ -3123,11 +3123,11 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     Bin >> hy;
     Bin >> dir;
 
-    int   cond;
-    uint  anim1life, anim1ko, anim1dead;
-    uint  anim2life, anim2ko, anim2dead;
-    uint  flags;
-    int   multihex;
+    int  cond;
+    uint anim1life, anim1ko, anim1dead;
+    uint anim2life, anim2ko, anim2dead;
+    uint flags;
+    int  multihex;
     Bin >> cond;
     Bin >> anim1life;
     Bin >> anim1ko;
