@@ -1080,8 +1080,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowCritterProperty(CritterPr
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowItemProperty(ItemProperty prop)", asFUNCTION( BIND_CLASS Global_ShowItemProperty ), asCALL_CDECL ) );
 #endif
 #if defined ( BIND_SERVER )
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict< CritterProperty, int >@+ props = nullptr)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict< ItemProperty, int >@+ props = nullptr)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict< CritterProperty, int >@+ props = null)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict< ItemProperty, int >@+ props = null)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
 #endif
 
 /************************************************************************/
