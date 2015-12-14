@@ -4325,7 +4325,6 @@ void FOServer::SaveWorld( const char* fname )
     }
     SaveClients.clear();
     SaveClientsLocker.Unlock();
-    Str::SaveHashes( data->SetApp( "Hashes" ) );
 
     // Flush on disk
     const void* args[] = { data, Str::Duplicate( fname ) };
@@ -4512,6 +4511,9 @@ void FOServer::Dump_Work( void* args )
         delete d;
     }
     DumpedEntities.clear();
+
+    // Save hashes
+    Str::SaveHashes( data->SetApp( "Hashes" ) );
 
     // Save world to file
     if( !data->SaveFile( fname, PT_ROOT ) )
