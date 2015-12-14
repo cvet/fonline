@@ -161,7 +161,6 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
         }
     };
     injection( "$Inject", false );
-    injection( "$InjectOverride", true );
     if( errors )
         return;
 
@@ -173,7 +172,7 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
         RUNTIME_ASSERT( protos.count( pid ) == 0 );
 
         // Fill content from parents
-        StrMap                                      final_kv = kv.second;
+        StrMap                                      final_kv;
         std::function< bool(const char*, StrMap&) > fill_parent = [ &fill_parent, &base_name, &files_protos, &final_kv ] ( const char* name, StrMap & cur_kv )
         {
             const char* parent_name_line = ( cur_kv.count( "$Parent" ) ? cur_kv[ "$Parent" ].c_str() : "" );
@@ -192,14 +191,20 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
                     return false;
                 }
 
-                InsertMapValues( parent->second, final_kv, false );
                 if( !fill_parent( parent_name.c_str(), parent->second ) )
                     return false;
+                InsertMapValues( parent->second, final_kv, true );
             }
             return true;
         };
         if( !fill_parent( base_name, final_kv ) )
             continue;
+        InsertMapValues( kv.second, final_kv, true );
+
+        // Final injection
+        injection( "$InjectOverride", true );
+        if( errors )
+            return;
 
         // Create proto
         T* proto = new T( pid );
