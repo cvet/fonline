@@ -1107,13 +1107,13 @@ bool ProtoMap::BindScripts( EntityVec& entities )
             ScriptArray* params = item->GetSceneryParams();
             uint params_count = params->GetSize();
             params->Release();
-            # define BIND_SCENERY_FUNC( count, params )                                                                                  \
-                if( params_count == count )                                                                                              \
-                {                                                                                                                        \
-                    if( item->GetProtoId() != SP_SCEN_TRIGGER )                                                                          \
-                        bind_id = Script::BindByScriptName( script_name, "bool %s(Critter&,Item&,CritterProperty,Item@" params, true );  \
-                    else                                                                                                                 \
-                        bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,Item&,bool,uint8" params, true );             \
+            # define BIND_SCENERY_FUNC( count, params )                                                                                   \
+                if( params_count == count )                                                                                               \
+                {                                                                                                                         \
+                    if( item->GetProtoId() != SP_SCEN_TRIGGER )                                                                           \
+                        bind_id = Script::BindByScriptName( script_name, "bool %s(Critter&,Item&,CritterProperty,Item@" params, false );  \
+                    else                                                                                                                  \
+                        bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,Item&,bool,uint8" params, false );             \
                 }
             BIND_SCENERY_FUNC( 0, ")" );
             BIND_SCENERY_FUNC( 1, ",int)" );
@@ -1127,6 +1127,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
                 WriteLog( "Map '%s', can't bind scenery function '%s'.\n", GetName(), script_name );
                 errors++;
             }
+            item->SceneryScriptBindId = bind_id;
         }
     }
     return errors == 0;
