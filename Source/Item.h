@@ -242,7 +242,7 @@ public:
     CLASS_PROPERTY( ushort, Locker_Condition );
     CLASS_PROPERTY( int, Grid_Type );
     CLASS_PROPERTY( hash, Grid_ToMap );
-    CLASS_PROPERTY( hash, Grid_ToMapEntire );
+    CLASS_PROPERTY( int, Grid_ToMapEntire );
     CLASS_PROPERTY( uchar, Grid_ToMapDir );
     CLASS_PROPERTY( uint, Car_Speed );
     CLASS_PROPERTY( uint, Car_Passability );
