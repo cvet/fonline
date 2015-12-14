@@ -133,6 +133,7 @@ public:
     static void              SetArgFloat( float value );
     static void              SetArgDouble( double value );
     static void              SetArgObject( void* value );
+    static void              SetArgEntity( Entity* value );
     static void              SetArgAddress( void* value );
     static bool              RunPrepared();
     static asIScriptContext* SuspendCurrentContext( uint time );

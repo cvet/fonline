@@ -20,7 +20,7 @@ void CritterManager::DeleteNpc( Critter* cr )
     cr->EventFinish( true );
     if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
     {
-        Script::SetArgObject( cr );
+        Script::SetArgEntity( cr );
         Script::SetArgBool( true );
         Script::RunPrepared();
     }
@@ -174,7 +174,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
 
     if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, npc->GetInfo() ) )
     {
-        Script::SetArgObject( npc );
+        Script::SetArgEntity( npc );
         Script::SetArgBool( true );
         Script::RunPrepared();
     }

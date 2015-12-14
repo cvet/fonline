@@ -1985,9 +1985,9 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
                 CritterCl* npc = GetCritter( PupContId );
                 if( Chosen && npc && Script::PrepareContext( ClientFunctions.ItemCost, _FUNC_, Chosen->GetInfo() ) )
                 {
-                    Script::SetArgObject( item );
-                    Script::SetArgObject( Chosen );
-                    Script::SetArgObject( npc );
+                    Script::SetArgEntity( item );
+                    Script::SetArgEntity( Chosen );
+                    Script::SetArgEntity( npc );
                     Script::SetArgBool( sell );
                     if( Script::RunPrepared() )
                         cost_ = Script::GetReturnedUInt();
@@ -2668,8 +2668,8 @@ void FOClient::LMenuSet( uchar set_lmenu )
         {
             ScriptArray* arr = Script::CreateArray( "int[]" );
             Script::AppendVectorToArray( LMenuNodes, arr );
-            Script::SetArgObject( cr );
-            Script::SetArgObject( item ? item : cont_item );
+            Script::SetArgEntity( cr );
+            Script::SetArgEntity( item ? item : cont_item );
             Script::SetArgObject( arr );
             Script::RunPrepared();
             Script::AssignScriptArrayInVector( LMenuNodes, arr );
@@ -2778,8 +2778,8 @@ void FOClient::LMenuMouseUp()
     if( Script::PrepareContext( ClientFunctions.LMenuNodeSelect, _FUNC_, "Game" ) )
     {
         Script::SetArgUInt( *it_l );
-        Script::SetArgObject( cr );
-        Script::SetArgObject( item ? item : cont_item );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( item ? item : cont_item );
         if( Script::RunPrepared() && Script::GetReturnedBool() )
         {
             LMenuSet( LMENU_OFF );

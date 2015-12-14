@@ -598,8 +598,8 @@ void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type 
     if( global_process && Script::PrepareContext( ServerFunctions.GlobalProcess, _FUNC_, rule->GetInfo() ) )
     {
         Script::SetArgUInt( type );
-        Script::SetArgObject( cr );
-        Script::SetArgObject( group->GetCar() );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( group->GetCar() );
         Script::SetArgAddress( &cur_wx );
         Script::SetArgAddress( &cur_wy );
         Script::SetArgAddress( &to_wx );
@@ -737,8 +737,8 @@ void MapManager::GM_GlobalInvite( GlobalMapGroup* group, int combat_mode )
 
     if( global_invite && Script::PrepareContext( ServerFunctions.GlobalInvite, _FUNC_, rule->GetInfo() ) )
     {
-        Script::SetArgObject( rule );
-        Script::SetArgObject( group->GetCar() );
+        Script::SetArgEntity( rule );
+        Script::SetArgEntity( group->GetCar() );
         Script::SetArgUInt( encounter_descriptor );
         Script::SetArgUInt( combat_mode );
         Script::SetArgAddress( &map_id );
@@ -770,7 +770,7 @@ bool MapManager::GM_CheckEntrance( Location* loc, ScriptArray* arr, uchar entran
 
     if( Script::PrepareContext( loc->EntranceScriptBindId, _FUNC_, ( *(Critter**) arr->At( 0 ) )->GetInfo() ) )
     {
-        Script::SetArgObject( loc );
+        Script::SetArgEntity( loc );
         Script::SetArgObject( arr );
         Script::SetArgUChar( entrance );
         if( Script::RunPrepared() )

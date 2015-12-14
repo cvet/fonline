@@ -3210,7 +3210,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
         if( Script::PrepareContext( ClientFunctions.CritterIn, _FUNC_, "Game" ) )
         {
-            Script::SetArgObject( cr );
+            Script::SetArgEntity( cr );
             Script::RunPrepared();
         }
 
@@ -3234,7 +3234,7 @@ void FOClient::Net_OnRemoveCritter()
 
     if( Script::PrepareContext( ClientFunctions.CritterOut, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( cr );
+        Script::SetArgEntity( cr );
         Script::RunPrepared();
     }
 }
@@ -4336,7 +4336,7 @@ void FOClient::Net_OnChosenAddItem()
 
     if( !InitialItemsSend && Script::PrepareContext( ClientFunctions.ItemInvIn, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( item );
+        Script::SetArgEntity( item );
         Script::RunPrepared();
     }
 
@@ -4372,7 +4372,7 @@ void FOClient::Net_OnChosenEraseItem()
 
     if( Script::PrepareContext( ClientFunctions.ItemInvOut, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( item );
+        Script::SetArgEntity( item );
         Script::RunPrepared();
     }
 
@@ -4430,7 +4430,7 @@ void FOClient::Net_OnAddItemOnMap()
     Item* item = HexMngr.GetItemById( item_id );
     if( item && Script::PrepareContext( ClientFunctions.ItemMapIn, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( item );
+        Script::SetArgEntity( item );
         Script::RunPrepared();
     }
 
@@ -4451,7 +4451,7 @@ void FOClient::Net_OnEraseItemFromMap()
     Item* item = HexMngr.GetItemById( item_id );
     if( item && Script::PrepareContext( ClientFunctions.ItemMapOut, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( item );
+        Script::SetArgEntity( item );
         Script::RunPrepared();
     }
 
@@ -4790,8 +4790,8 @@ void FOClient::Net_OnProperty( uint data_size )
 
     if( type == NetProperty::MapItem && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( entity );
-        Script::SetArgObject( entity );
+        Script::SetArgEntity( entity );
+        Script::SetArgEntity( entity );
         Script::RunPrepared();
     }
 
@@ -7220,10 +7220,10 @@ label_EndMove:
         bool  allow = false;
         if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
         {
-            Script::SetArgObject( Chosen );
-            Script::SetArgObject( item );
+            Script::SetArgEntity( Chosen );
+            Script::SetArgEntity( item );
             Script::SetArgUChar( to_slot );
-            Script::SetArgObject( item_swap );
+            Script::SetArgEntity( item_swap );
             if( Script::RunPrepared() )
                 allow = Script::GetReturnedBool();
         }
@@ -7236,10 +7236,10 @@ label_EndMove:
                 bool allow1 = false;
                 if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
                 {
-                    Script::SetArgObject( Chosen );
-                    Script::SetArgObject( item_swap );
+                    Script::SetArgEntity( Chosen );
+                    Script::SetArgEntity( item_swap );
                     Script::SetArgUChar( SLOT_INV );
-                    Script::SetArgObject( nullptr );
+                    Script::SetArgEntity( nullptr );
                     if( Script::RunPrepared() )
                         allow1 = Script::GetReturnedBool();
                 }
@@ -7248,10 +7248,10 @@ label_EndMove:
                 bool allow2 = false;
                 if( allow1 && Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
                 {
-                    Script::SetArgObject( Chosen );
-                    Script::SetArgObject( item );
+                    Script::SetArgEntity( Chosen );
+                    Script::SetArgEntity( item );
                     Script::SetArgUChar( to_slot );
-                    Script::SetArgObject( nullptr );
+                    Script::SetArgEntity( nullptr );
                     if( Script::RunPrepared() )
                         allow2 = Script::GetReturnedBool();
                 }
@@ -7951,7 +7951,7 @@ const char* FOClient::FmtCritLook( CritterCl* cr, int look_type )
 {
     if( Script::PrepareContext( ClientFunctions.CritterLook, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( cr );
+        Script::SetArgEntity( cr );
         Script::SetArgUInt( look_type );
         if( Script::RunPrepared() )
         {
@@ -7972,7 +7972,7 @@ const char* FOClient::FmtItemLook( Item* item, int look_type )
 {
     if( Script::PrepareContext( ClientFunctions.ItemLook, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( item );
+        Script::SetArgEntity( item );
         Script::SetArgUInt( look_type );
         if( Script::RunPrepared() )
         {
@@ -9108,9 +9108,9 @@ int FOClient::ScriptGetHitProc( CritterCl* cr, int hit_location )
 
     if( Script::PrepareContext( ClientFunctions.ToHit, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( Chosen );
-        Script::SetArgObject( cr );
-        Script::SetArgObject( proto_item );
+        Script::SetArgEntity( Chosen );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( Chosen->ItemSlotMain );
         Script::SetArgUChar( MAKE_ITEM_MODE( use, hit_location ) );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
@@ -9133,8 +9133,8 @@ void FOClient::OnItemInvChanged( Item* old_item, Item* item )
 {
     if( Script::PrepareContext( ClientFunctions.ItemInvChanged, _FUNC_, "Game" ) )
     {
-        Script::SetArgObject( old_item );
-        Script::SetArgObject( item );
+        Script::SetArgEntity( old_item );
+        Script::SetArgEntity( item );
         Script::RunPrepared();
     }
     old_item->Release();

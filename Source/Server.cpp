@@ -250,7 +250,7 @@ void FOServer::RemoveClient( Client* cl )
         cl->EventFinish( cl->GetClientToDelete() );
         if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cl->GetInfo() ) )
         {
-            Script::SetArgObject( cl );
+            Script::SetArgEntity( cl );
             Script::SetArgBool( cl->GetClientToDelete() );
             Script::RunPrepared();
         }
@@ -1986,7 +1986,7 @@ void FOServer::Process_Text( Client* cl )
     {
         if( Script::PrepareContext( listen_func_id[ i ], _FUNC_, cl->GetInfo() ) )
         {
-            Script::SetArgObject( cl );
+            Script::SetArgEntity( cl );
             Script::SetArgObject( listen_str[ i ] );
             Script::RunPrepared();
         }
@@ -2013,7 +2013,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     if( Script::PrepareContext( ServerFunctions.PlayerAllowCommand, _FUNC_, cl_ ? cl_->GetInfo() : "AdminPanel" ) )
     {
         ScriptString* sstr = ( cl_ ? nullptr : ScriptString::Create( admin_panel ) );
-        Script::SetArgObject( cl_ );
+        Script::SetArgEntity( cl_ );
         Script::SetArgObject( sstr );
         Script::SetArgUChar( cmd );
         if( Script::RunPrepared() && Script::GetReturnedBool() )
@@ -2349,7 +2349,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         if( wanted_access != -1 && Script::PrepareContext( ServerFunctions.PlayerGetAccess, _FUNC_, cl_->GetInfo() ) )
         {
             ScriptString* pass = ScriptString::Create( pasw_access );
-            Script::SetArgObject( cl_ );
+            Script::SetArgEntity( cl_ );
             Script::SetArgUInt( wanted_access );
             Script::SetArgObject( pass );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
@@ -2565,7 +2565,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             break;
         }
 
-        Script::SetArgObject( cl_ );
+        Script::SetArgEntity( cl_ );
         Script::SetArgUInt( param0 );
         Script::SetArgUInt( param1 );
         Script::SetArgUInt( param2 );

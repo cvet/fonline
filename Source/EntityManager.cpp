@@ -515,7 +515,7 @@ void EntityManager::InitAfterLoad()
             npc->RefreshName();
             if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, npc->GetInfo() ) )
             {
-                Script::SetArgObject( npc );
+                Script::SetArgEntity( npc );
                 Script::SetArgBool( false );
                 Script::RunPrepared();
             }
@@ -556,7 +556,7 @@ void EntityManager::FinishEntities()
             cr->EventFinish( false );
             if( !cr->IsDestroyed && Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
             {
-                Script::SetArgObject( cr );
+                Script::SetArgEntity( cr );
                 Script::SetArgBool( false );
                 Script::RunPrepared();
             }
@@ -569,7 +569,7 @@ void EntityManager::FinishEntities()
 //                              cr->EventFinish( to_delete );
 //                              if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
 //                              {
-//                                      Script::SetArgObject( cr );
+//                                      Script::SetArgEntity( cr );
 //                                      Script::SetArgBool( to_delete );
 //                                      Script::RunPrepared();
 //                              }

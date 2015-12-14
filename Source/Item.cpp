@@ -338,7 +338,7 @@ bool Item::SetScript( const char* script_name, bool first_time )
 
     if( GetScriptId() && Script::PrepareScriptFuncContext( GetScriptId(), _FUNC_, Str::FormatBuf( "Item '%s' (%u)", GetName(), GetId() ) ) )
     {
-        Script::SetArgObject( this );
+        Script::SetArgEntity( this );
         Script::SetArgBool( first_time );
         Script::RunPrepared();
     }
@@ -358,7 +358,7 @@ void Item::EventFinish( bool deleted )
 {
     if( PrepareScriptFunc( ITEM_EVENT_FINISH ) )
     {
-        Script::SetArgObject( this );
+        Script::SetArgEntity( this );
         Script::SetArgBool( deleted );
         Script::RunPrepared();
     }
@@ -369,9 +369,9 @@ bool Item::EventAttack( Critter* cr, Critter* target )
     bool result = false;
     if( PrepareScriptFunc( ITEM_EVENT_ATTACK ) )
     {
-        Script::SetArgObject( this );
-        Script::SetArgObject( cr );
-        Script::SetArgObject( target );
+        Script::SetArgEntity( this );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( target );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -383,11 +383,11 @@ bool Item::EventUse( Critter* cr, Critter* on_critter, Item* on_item, Item* on_s
     bool result = false;
     if( PrepareScriptFunc( ITEM_EVENT_USE ) )
     {
-        Script::SetArgObject( this );
-        Script::SetArgObject( cr );
-        Script::SetArgObject( on_critter );
-        Script::SetArgObject( on_item );
-        Script::SetArgObject( on_scenery );
+        Script::SetArgEntity( this );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( on_critter );
+        Script::SetArgEntity( on_item );
+        Script::SetArgEntity( on_scenery );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -399,9 +399,9 @@ bool Item::EventUseOnMe( Critter* cr, Item* used_item )
     bool result = false;
     if( PrepareScriptFunc( ITEM_EVENT_USE_ON_ME ) )
     {
-        Script::SetArgObject( this );
-        Script::SetArgObject( cr );
-        Script::SetArgObject( used_item );
+        Script::SetArgEntity( this );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( used_item );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -413,8 +413,8 @@ bool Item::EventSkill( Critter* cr, int skill )
     bool result = false;
     if( PrepareScriptFunc( ITEM_EVENT_SKILL ) )
     {
-        Script::SetArgObject( this );
-        Script::SetArgObject( cr );
+        Script::SetArgEntity( this );
+        Script::SetArgEntity( cr );
         Script::SetArgUInt( skill );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
@@ -426,8 +426,8 @@ void Item::EventDrop( Critter* cr )
 {
     if( !PrepareScriptFunc( ITEM_EVENT_DROP ) )
         return;
-    Script::SetArgObject( this );
-    Script::SetArgObject( cr );
+    Script::SetArgEntity( this );
+    Script::SetArgEntity( cr );
     Script::RunPrepared();
 }
 
@@ -435,8 +435,8 @@ void Item::EventMove( Critter* cr, uchar from_slot )
 {
     if( !PrepareScriptFunc( ITEM_EVENT_MOVE ) )
         return;
-    Script::SetArgObject( this );
-    Script::SetArgObject( cr );
+    Script::SetArgEntity( this );
+    Script::SetArgEntity( cr );
     Script::SetArgUChar( from_slot );
     Script::RunPrepared();
 }
@@ -445,8 +445,8 @@ void Item::EventWalk( Critter* cr, bool entered, uchar dir )
 {
     if( !PrepareScriptFunc( ITEM_EVENT_WALK ) )
         return;
-    Script::SetArgObject( this );
-    Script::SetArgObject( cr );   // Saved in Act_Move
+    Script::SetArgEntity( this );
+    Script::SetArgEntity( cr );   // Saved in Act_Move
     Script::SetArgBool( entered );
     Script::SetArgUChar( dir );
     Script::RunPrepared();

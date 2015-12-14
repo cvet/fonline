@@ -2220,6 +2220,18 @@ void Script::SetArgObject( void* value )
     CurrentArg++;
 }
 
+void Script::SetArgEntity( Entity* value )
+{
+    RUNTIME_ASSERT( !value || !value->IsDestroyed );
+    RUNTIME_ASSERT( !value || !value->IsDestroying );
+
+    if( ScriptCall )
+        CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
+    else
+        NativeArgs[ CurrentArg ] = (size_t) value;
+    CurrentArg++;
+}
+
 void Script::SetArgAddress( void* value )
 {
     if( ScriptCall )

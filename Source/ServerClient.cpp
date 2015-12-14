@@ -15,7 +15,7 @@ void FOServer::ProcessCritter( Critter* cr )
     {
         if( Script::PrepareContext( ServerFunctions.CritterIdle, _FUNC_, cr->GetInfo() ) )
         {
-            Script::SetArgObject( cr );
+            Script::SetArgEntity( cr );
             Script::RunPrepared();
         }
         cr->GlobalIdleNextTick = tick + GameOpt.CritterIdleTick;
@@ -68,7 +68,7 @@ void FOServer::ProcessCritter( Critter* cr )
             uint time = GameOpt.TimeMultiplier * 1800;             // 30 minutes on error
             if( Script::PrepareScriptFuncContext( func_num, _FUNC_, cr->GetInfo() ) )
             {
-                Script::SetArgObject( cr );
+                Script::SetArgEntity( cr );
                 Script::SetArgUInt( identifier );
                 Script::SetArgAddress( &rate );
                 if( Script::RunPrepared() )
@@ -652,11 +652,11 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     if( Script::PrepareContext( ServerFunctions.CritterAttack, _FUNC_, cr->GetInfo() ) )
     {
         Item* ammo_proto = new Item( 0, ammo );
-        Script::SetArgObject( cr );
-        Script::SetArgObject( t_cr );
-        Script::SetArgObject( weap );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( t_cr );
+        Script::SetArgEntity( weap );
         Script::SetArgUChar( MAKE_ITEM_MODE( use, aim ) );
-        Script::SetArgObject( ammo_proto );
+        Script::SetArgEntity( ammo_proto );
         Script::RunPrepared();
         ammo_proto->Release();
     }
@@ -721,9 +721,9 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
 
     if( !Script::PrepareContext( ServerFunctions.CritterReloadWeapon, _FUNC_, cr->GetInfo() ) )
         return false;
-    Script::SetArgObject( cr );
-    Script::SetArgObject( weap );
-    Script::SetArgObject( ammo );
+    Script::SetArgEntity( cr );
+    Script::SetArgEntity( weap );
+    Script::SetArgEntity( ammo );
     if( !Script::RunPrepared() )
         return false;
 
@@ -931,10 +931,10 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     {
         if( !Script::PrepareContext( target_scen->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
             return false;
-        Script::SetArgObject( cr );
-        Script::SetArgObject( target_scen );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( target_scen );
         Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
-        Script::SetArgObject( item );
+        Script::SetArgEntity( item );
         if( target_scen->IsSceneryParams() )
         {
             ScriptArray* scenery_params = target_scen->GetSceneryParams();
@@ -959,11 +959,11 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return true;
         if( Script::PrepareContext( ServerFunctions.CritterUseItem, _FUNC_, cr->GetInfo() ) )
         {
-            Script::SetArgObject( cr );
-            Script::SetArgObject( item );
-            Script::SetArgObject( target_cr );
-            Script::SetArgObject( target_item );
-            Script::SetArgObject( target_scen );
+            Script::SetArgEntity( cr );
+            Script::SetArgEntity( item );
+            Script::SetArgEntity( target_cr );
+            Script::SetArgEntity( target_item );
+            Script::SetArgEntity( target_scen );
             Script::SetArgUInt( param );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return true;
@@ -991,11 +991,11 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return true;
         if( !Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cr->GetInfo() ) )
             return false;
-        Script::SetArgObject( cr );
+        Script::SetArgEntity( cr );
         Script::SetArgUInt( skill );
-        Script::SetArgObject( target_cr );
-        Script::SetArgObject( target_item );
-        Script::SetArgObject( target_scen );
+        Script::SetArgEntity( target_cr );
+        Script::SetArgEntity( target_item );
+        Script::SetArgEntity( target_scen );
         if( Script::RunPrepared() && Script::GetReturnedBool() )
             return true;
 
@@ -1062,11 +1062,11 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
             return true;
         if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cr->GetInfo() ) )
         {
-            Script::SetArgObject( cr );
+            Script::SetArgEntity( cr );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
-            Script::SetArgObject( nullptr );
-            Script::SetArgObject( pick_item );
-            Script::SetArgObject( nullptr );
+            Script::SetArgEntity( nullptr );
+            Script::SetArgEntity( pick_item );
+            Script::SetArgEntity( nullptr );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return true;
         }
@@ -1088,10 +1088,10 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
         {
             if( !Script::PrepareContext( pick_scenery->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
                 return false;
-            Script::SetArgObject( cr );
-            Script::SetArgObject( pick_scenery );
+            Script::SetArgEntity( cr );
+            Script::SetArgEntity( pick_scenery );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
-            Script::SetArgObject( nullptr );
+            Script::SetArgEntity( nullptr );
             if( pick_scenery->IsSceneryParams() )
             {
                 ScriptArray* scenery_params = pick_scenery->GetSceneryParams();
@@ -1107,11 +1107,11 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
             return true;
         if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cr->GetInfo() ) )
         {
-            Script::SetArgObject( cr );
+            Script::SetArgEntity( cr );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
-            Script::SetArgObject( nullptr );
-            Script::SetArgObject( nullptr );
-            Script::SetArgObject( pick_scenery );
+            Script::SetArgEntity( nullptr );
+            Script::SetArgEntity( nullptr );
+            Script::SetArgEntity( pick_scenery );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return true;
         }
@@ -1173,8 +1173,8 @@ void FOServer::KillCritter( Critter* cr, uint anim2, Critter* attacker )
         map->EventCritterDead( cr, attacker );
     if( Script::PrepareContext( ServerFunctions.CritterDead, _FUNC_, cr->GetInfo() ) )
     {
-        Script::SetArgObject( cr );
-        Script::SetArgObject( attacker );
+        Script::SetArgEntity( cr );
+        Script::SetArgEntity( attacker );
         Script::RunPrepared();
     }
 }
@@ -1208,7 +1208,7 @@ void FOServer::RespawnCritter( Critter* cr )
     cr->EventRespawn();
     if( Script::PrepareContext( ServerFunctions.CritterRespawn, _FUNC_, cr->GetInfo() ) )
     {
-        Script::SetArgObject( cr );
+        Script::SetArgEntity( cr );
         Script::RunPrepared();
     }
 }
@@ -1317,8 +1317,8 @@ bool FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
         {
             if( out_trigger && Script::PrepareContext( out_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
             {
-                Script::SetArgObject( cr );
-                Script::SetArgObject( out_trigger );
+                Script::SetArgEntity( cr );
+                Script::SetArgEntity( out_trigger );
                 Script::SetArgBool( false );
                 Script::SetArgUChar( dir );
                 if( out_trigger->IsSceneryParams() )
@@ -1333,8 +1333,8 @@ bool FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
             }
             if( in_trigger && Script::PrepareContext( in_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
             {
-                Script::SetArgObject( cr );
-                Script::SetArgObject( in_trigger );
+                Script::SetArgEntity( cr );
+                Script::SetArgEntity( in_trigger );
                 Script::SetArgBool( true );
                 Script::SetArgUChar( dir );
                 if( in_trigger->IsSceneryParams() )
@@ -1719,7 +1719,7 @@ void FOServer::Process_CreateClient( Client* cl )
 
     if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, cl->GetInfo() ) )
     {
-        Script::SetArgObject( cl );
+        Script::SetArgEntity( cl );
         Script::SetArgBool( true );
         Script::RunPrepared();
     }
@@ -2283,7 +2283,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         }
         if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, cl->GetInfo() ) )
         {
-            Script::SetArgObject( cl );
+            Script::SetArgEntity( cl );
             Script::SetArgBool( false );
             Script::RunPrepared();
         }
@@ -2917,11 +2917,11 @@ void FOServer::Process_PickCritter( Client* cl )
             return;
         if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
         {
-            Script::SetArgObject( cl );
+            Script::SetArgEntity( cl );
             Script::SetArgUInt( SKILL_LOOT_CRITTER );
-            Script::SetArgObject( cr );
-            Script::SetArgObject( nullptr );
-            Script::SetArgObject( nullptr );
+            Script::SetArgEntity( cr );
+            Script::SetArgEntity( nullptr );
+            Script::SetArgEntity( nullptr );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return;
         }
@@ -2948,11 +2948,11 @@ void FOServer::Process_PickCritter( Client* cl )
             return;
         if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
         {
-            Script::SetArgObject( cl );
+            Script::SetArgEntity( cl );
             Script::SetArgUInt( SKILL_PUSH_CRITTER );
-            Script::SetArgObject( cr );
-            Script::SetArgObject( nullptr );
-            Script::SetArgObject( nullptr );
+            Script::SetArgEntity( cr );
+            Script::SetArgEntity( nullptr );
+            Script::SetArgEntity( nullptr );
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return;
         }
@@ -3124,11 +3124,11 @@ void FOServer::Process_ContainerItem( Client* cl )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
-                Script::SetArgObject( cl );
+                Script::SetArgEntity( cl );
                 Script::SetArgUInt( SKILL_TAKE_CONT );
-                Script::SetArgObject( nullptr );
-                Script::SetArgObject( item );
-                Script::SetArgObject( nullptr );
+                Script::SetArgEntity( nullptr );
+                Script::SetArgEntity( item );
+                Script::SetArgEntity( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3180,11 +3180,11 @@ void FOServer::Process_ContainerItem( Client* cl )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
-                Script::SetArgObject( cl );
+                Script::SetArgEntity( cl );
                 Script::SetArgUInt( SKILL_TAKE_ALL_CONT );
-                Script::SetArgObject( nullptr );
-                Script::SetArgObject( cont );
-                Script::SetArgObject( nullptr );
+                Script::SetArgEntity( nullptr );
+                Script::SetArgEntity( cont );
+                Script::SetArgEntity( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3246,11 +3246,11 @@ void FOServer::Process_ContainerItem( Client* cl )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
-                Script::SetArgObject( cl );
+                Script::SetArgEntity( cl );
                 Script::SetArgUInt( SKILL_PUT_CONT );
-                Script::SetArgObject( nullptr );
-                Script::SetArgObject( item );
-                Script::SetArgObject( nullptr );
+                Script::SetArgEntity( nullptr );
+                Script::SetArgEntity( item );
+                Script::SetArgEntity( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3402,11 +3402,11 @@ void FOServer::Process_ContainerItem( Client* cl )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
-                Script::SetArgObject( cl );
+                Script::SetArgEntity( cl );
                 Script::SetArgUInt( SKILL_TAKE_CONT );
-                Script::SetArgObject( nullptr );
-                Script::SetArgObject( item );
-                Script::SetArgObject( nullptr );
+                Script::SetArgEntity( nullptr );
+                Script::SetArgEntity( item );
+                Script::SetArgEntity( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3461,11 +3461,11 @@ void FOServer::Process_ContainerItem( Client* cl )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
-                Script::SetArgObject( cl );
+                Script::SetArgEntity( cl );
                 Script::SetArgUInt( SKILL_TAKE_ALL_CONT );
-                Script::SetArgObject( cr );
-                Script::SetArgObject( nullptr );
-                Script::SetArgObject( nullptr );
+                Script::SetArgEntity( cr );
+                Script::SetArgEntity( nullptr );
+                Script::SetArgEntity( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3542,11 +3542,11 @@ void FOServer::Process_ContainerItem( Client* cl )
                 return;
             if( Script::PrepareContext( ServerFunctions.CritterUseSkill, _FUNC_, cl->GetInfo() ) )
             {
-                Script::SetArgObject( cl );
+                Script::SetArgEntity( cl );
                 Script::SetArgUInt( SKILL_PUT_CONT );
-                Script::SetArgObject( nullptr );
-                Script::SetArgObject( item );
-                Script::SetArgObject( nullptr );
+                Script::SetArgEntity( nullptr );
+                Script::SetArgEntity( item );
+                Script::SetArgEntity( nullptr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     return;
             }
@@ -3715,7 +3715,7 @@ void FOServer::Process_LevelUp( Client* cl )
     {
         if( Script::PrepareContext( ServerFunctions.PlayerLevelUp, _FUNC_, cl->GetInfo() ) )
         {
-            Script::SetArgObject( cl );
+            Script::SetArgEntity( cl );
             Script::SetArgUInt( skills[ i * 2 ] );
             Script::SetArgUInt( skills[ i * 2 + 1 ] );
             Script::SetArgUInt( 0 );
@@ -3725,7 +3725,7 @@ void FOServer::Process_LevelUp( Client* cl )
 
     if( Script::PrepareContext( ServerFunctions.PlayerLevelUp, _FUNC_, cl->GetInfo() ) )
     {
-        Script::SetArgObject( cl );
+        Script::SetArgEntity( cl );
         Script::SetArgUInt( 0 );
         Script::SetArgUInt( 0 );
         Script::SetArgUInt( perk_up );
@@ -4074,7 +4074,7 @@ void FOServer::Process_ScreenAnswer( Client* cl )
 
     if( !Script::PrepareContext( bind_id, _FUNC_, cl->GetInfo() ) )
         return;
-    Script::SetArgObject( cl );
+    Script::SetArgEntity( cl );
     Script::SetArgUInt( answer_i );
     ScriptString* lexems = ScriptString::Create( answer_s );
     Script::SetArgObject( lexems );
@@ -4192,7 +4192,7 @@ void FOServer::Process_RunServerScript( Client* cl )
     uint bind_id = Script::BindByModuleFuncName( module_name, func_name, "void %s(Critter&,int,int,int,string@,int[]@)", true );
     if( bind_id && Script::PrepareContext( bind_id, _FUNC_, cl->GetInfo() ) )
     {
-        Script::SetArgObject( cl );
+        Script::SetArgEntity( cl );
         Script::SetArgUInt( p0 );
         Script::SetArgUInt( p1 );
         Script::SetArgUInt( p2 );
@@ -4228,8 +4228,8 @@ void FOServer::Process_KarmaVoting( Client* cl )
 
     if( Script::PrepareContext( ServerFunctions.KarmaVoting, _FUNC_, cl->GetInfo() ) )
     {
-        Script::SetArgObject( cl );
-        Script::SetArgObject( cr );
+        Script::SetArgEntity( cl );
+        Script::SetArgEntity( cr );
         Script::SetArgBool( is_up );
         Script::RunPrepared();
     }

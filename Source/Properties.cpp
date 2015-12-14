@@ -400,7 +400,7 @@ void Property::GenericGet( Entity* entity, void* ret_value )
         if( Script::PrepareContext( getCallback, _FUNC_, GetName() ) )
         {
             if( getCallbackArgs > 0 )
-                Script::SetArgObject( entity );
+                Script::SetArgEntity( entity );
             if( getCallbackArgs > 1 )
                 Script::SetArgUInt( enumValue );
             if( Script::RunPrepared() )
@@ -627,7 +627,7 @@ void Property::GenericSet( Entity* entity, void* new_value )
         {
             if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
             {
-                Script::SetArgObject( entity );
+                Script::SetArgEntity( entity );
                 if( setCallbacksArgs[ i ] > 1 )
                 {
                     Script::SetArgUInt( enumValue );

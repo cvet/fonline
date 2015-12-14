@@ -418,7 +418,7 @@ void FOServer::ProcessAI( Npc* npc )
             plane->Misc.ScriptBindId = 0;
             if( Script::PrepareContext( bind_id, _FUNC_, npc->GetInfo() ) )
             {
-                Script::SetArgObject( npc );
+                Script::SetArgEntity( npc );
                 Script::RunPrepared();
             }
         }
@@ -1614,8 +1614,8 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext( cl->Talk.CurDialog.DlgScript, _FUNC_, cl->GetInfo() ) )
     {
         ScriptString* lexems = ScriptString::Create();
-        Script::SetArgObject( cl );
-        Script::SetArgObject( npc );
+        Script::SetArgEntity( cl );
+        Script::SetArgEntity( npc );
         Script::SetArgObject( lexems );
         cl->Talk.Locked = true;
         if( Script::RunPrepared() && lexems->length() <= MAX_DLG_LEXEMS_TEXT )
@@ -1746,8 +1746,8 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
             ScriptString* str_ = ScriptString::Create( str );
             if( !Script::PrepareContext( cur_dialog->DlgScript, _FUNC_, cl->GetInfo() ) )
                 return;
-            Script::SetArgObject( cl );
-            Script::SetArgObject( npc );
+            Script::SetArgEntity( cl );
+            Script::SetArgEntity( npc );
             Script::SetArgObject( str_ );
 
             cl->Talk.Locked = true;
@@ -1898,8 +1898,8 @@ label_Barter:
     if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext( cl->Talk.CurDialog.DlgScript, _FUNC_, cl->GetInfo() ) )
     {
         ScriptString* lexems = ScriptString::Create();
-        Script::SetArgObject( cl );
-        Script::SetArgObject( npc );
+        Script::SetArgEntity( cl );
+        Script::SetArgEntity( npc );
         Script::SetArgObject( lexems );
         cl->Talk.Locked = true;
         if( Script::RunPrepared() && lexems->length() <= MAX_DLG_LEXEMS_TEXT )
@@ -2094,9 +2094,9 @@ void FOServer::Process_Barter( Client* cl )
         {
             if( Script::PrepareContext( ServerFunctions.ItemCost, _FUNC_, cl->GetInfo() ) )
             {
-                Script::SetArgObject( item );
-                Script::SetArgObject( cl );
-                Script::SetArgObject( npc );
+                Script::SetArgEntity( item );
+                Script::SetArgEntity( cl );
+                Script::SetArgEntity( npc );
                 Script::SetArgBool( true );
                 if( Script::RunPrepared() )
                     base_cost = Script::GetReturnedUInt();
@@ -2144,9 +2144,9 @@ void FOServer::Process_Barter( Client* cl )
         {
             if( Script::PrepareContext( ServerFunctions.ItemCost, _FUNC_, cl->GetInfo() ) )
             {
-                Script::SetArgObject( item );
-                Script::SetArgObject( cl );
-                Script::SetArgObject( npc );
+                Script::SetArgEntity( item );
+                Script::SetArgEntity( cl );
+                Script::SetArgEntity( npc );
                 Script::SetArgBool( false );
                 if( Script::RunPrepared() )
                     base_cost = Script::GetReturnedUInt();
@@ -2207,8 +2207,8 @@ void FOServer::Process_Barter( Client* cl )
         Script::SetArgObject( sale_items_count_ );
         Script::SetArgObject( buy_items_ );
         Script::SetArgObject( buy_items_count_ );
-        Script::SetArgObject( cl );
-        Script::SetArgObject( npc );
+        Script::SetArgEntity( cl );
+        Script::SetArgEntity( npc );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
 

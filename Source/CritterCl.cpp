@@ -559,8 +559,8 @@ uint CritterCl::GetUseApCost( Item* item, uchar rate )
     #ifdef FONLINE_CLIENT
     if( Script::PrepareContext( ClientFunctions.GetUseApCost, _FUNC_, GetInfo() ) )
     {
-        Script::SetArgObject( this );
-        Script::SetArgObject( item );
+        Script::SetArgEntity( this );
+        Script::SetArgEntity( item );
         Script::SetArgUChar( rate );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
@@ -578,8 +578,8 @@ uint CritterCl::GetAttackDist()
     #ifdef FONLINE_CLIENT
     if( Script::PrepareContext( ClientFunctions.GetAttackDistantion, _FUNC_, GetInfo() ) )
     {
-        Script::SetArgObject( this );
-        Script::SetArgObject( weap );
+        Script::SetArgEntity( this );
+        Script::SetArgEntity( weap );
         Script::SetArgUChar( use );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
@@ -986,10 +986,10 @@ void CritterCl::Action( int action, int action_ext, Item* item, bool local_call 
     if( Script::PrepareContext( ClientFunctions.CritterAction, _FUNC_, GetInfo() ) )
     {
         Script::SetArgBool( local_call );
-        Script::SetArgObject( this );
+        Script::SetArgEntity( this );
         Script::SetArgUInt( action );
         Script::SetArgUInt( action_ext );
-        Script::SetArgObject( item );
+        Script::SetArgEntity( item );
         Script::RunPrepared();
     }
     #endif
@@ -1264,10 +1264,10 @@ void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim
     if( Script::PrepareContext( is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess, _FUNC_, GetInfo() ) )
     {
         Script::SetArgBool( animate_stay );
-        Script::SetArgObject( this );
+        Script::SetArgEntity( this );
         Script::SetArgUInt( anim1 );
         Script::SetArgUInt( anim2 );
-        Script::SetArgObject( item );
+        Script::SetArgEntity( item );
         Script::RunPrepared();
     }
     #endif

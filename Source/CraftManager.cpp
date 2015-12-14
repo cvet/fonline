@@ -743,7 +743,7 @@ bool CallFixBoyScript( CraftItem* craft, Critter* cr, uint stage, uint& flags )
 {
     if( !Script::PrepareContext( craft->ScriptBindId, _FUNC_, cr->GetInfo() ) )
         return false;
-    Script::SetArgObject( cr );
+    Script::SetArgEntity( cr );
     Script::SetArgUInt( stage );
     Script::SetArgObject( craft );
 
@@ -1094,7 +1094,7 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
             Script::SetArgObject( crafted_ );
             Script::SetArgObject( crafted_count_ );
             Script::SetArgObject( sub_items_ );
-            Script::SetArgObject( cr );
+            Script::SetArgEntity( cr );
             Script::RunPrepared();
 
             crafted_->Release();
