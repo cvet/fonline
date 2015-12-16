@@ -495,9 +495,9 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
                 {
                     if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
-                        Script::SetArgEntity( this );
-                        Script::SetArgEntity( cr );
-                        Script::SetArgEntity( item );
+                        Script::SetArgEntityOK( this );
+                        Script::SetArgEntityOK( cr );
+                        Script::SetArgEntityOK( item );
                         if( Script::RunPrepared() )
                             allowed = Script::GetReturnedBool();
                     }
@@ -665,9 +665,9 @@ void Map::ChangeViewItem( Item* item )
                 {
                     if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
-                        Script::SetArgEntity( this );
-                        Script::SetArgEntity( cr );
-                        Script::SetArgEntity( item );
+                        Script::SetArgEntityOK( this );
+                        Script::SetArgEntityOK( cr );
+                        Script::SetArgEntityOK( item );
                         if( Script::RunPrepared() )
                             allowed = Script::GetReturnedBool();
                     }
@@ -696,9 +696,9 @@ void Map::ChangeViewItem( Item* item )
                 {
                     if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
                     {
-                        Script::SetArgEntity( this );
-                        Script::SetArgEntity( cr );
-                        Script::SetArgEntity( item );
+                        Script::SetArgEntityOK( this );
+                        Script::SetArgEntityOK( cr );
+                        Script::SetArgEntityOK( item );
                         if( Script::RunPrepared() )
                             allowed = Script::GetReturnedBool();
                     }
@@ -1584,7 +1584,7 @@ void Map::EventFinish( bool to_delete )
 {
     if( PrepareScriptFunc( MAP_EVENT_FINISH ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgBool( to_delete );
         Script::RunPrepared();
     }
@@ -1594,7 +1594,7 @@ void Map::EventLoop( int loop_num )
 {
     if( PrepareScriptFunc( MAP_EVENT_LOOP_0 + loop_num ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::RunPrepared();
     }
 }
@@ -1603,8 +1603,8 @@ void Map::EventInCritter( Critter* cr )
 {
     if( PrepareScriptFunc( MAP_EVENT_IN_CRITTER ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( cr );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( cr );
         Script::RunPrepared();
     }
 }
@@ -1613,8 +1613,8 @@ void Map::EventOutCritter( Critter* cr )
 {
     if( PrepareScriptFunc( MAP_EVENT_OUT_CRITTER ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( cr );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( cr );
         Script::RunPrepared();
     }
 }
@@ -1623,9 +1623,9 @@ void Map::EventCritterDead( Critter* cr, Critter* killer )
 {
     if( PrepareScriptFunc( MAP_EVENT_CRITTER_DEAD ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( cr );
-        Script::SetArgEntity( killer );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( cr );
+        Script::SetArgEntityEvent( killer );
         Script::RunPrepared();
     }
 }
@@ -1634,7 +1634,7 @@ void Map::EventTurnBasedBegin()
 {
     if( PrepareScriptFunc( MAP_EVENT_TURN_BASED_BEGIN ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::RunPrepared();
     }
 }
@@ -1643,7 +1643,7 @@ void Map::EventTurnBasedEnd()
 {
     if( PrepareScriptFunc( MAP_EVENT_TURN_BASED_BEGIN ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::RunPrepared();
     }
 }
@@ -1652,8 +1652,8 @@ void Map::EventTurnBasedProcess( Critter* cr, bool begin_turn )
 {
     if( PrepareScriptFunc( MAP_EVENT_TURN_BASED_BEGIN ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( cr );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( cr );
         Script::SetArgBool( begin_turn );
         Script::RunPrepared();
     }
@@ -2196,7 +2196,7 @@ void Location::EventFinish( bool to_delete )
 {
     if( PrepareScriptFunc( LOCATION_EVENT_FINISH ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgBool( to_delete );
         Script::RunPrepared();
     }
@@ -2206,7 +2206,7 @@ bool Location::EventEnter( ScriptArray* group, uchar entrance )
 {
     if( PrepareScriptFunc( LOCATION_EVENT_ENTER ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgObject( group );
         Script::SetArgUChar( entrance );
         if( Script::RunPrepared() )

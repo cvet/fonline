@@ -257,8 +257,8 @@ uint Critter::GetUseApCost( Item* weap, int use )
 {
     if( Script::PrepareContext( ServerFunctions.GetUseApCost, _FUNC_, GetInfo() ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( weap );
+        Script::SetArgEntityOK( this );
+        Script::SetArgEntityOK( weap );
         Script::SetArgUChar( use );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
@@ -270,8 +270,8 @@ uint Critter::GetAttackDist( Item* weap, int use )
 {
     if( Script::PrepareContext( ServerFunctions.GetAttackDistantion, _FUNC_, GetInfo() ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( weap );
+        Script::SetArgEntityOK( this );
+        Script::SetArgEntityOK( weap );
         Script::SetArgUChar( use );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
@@ -901,9 +901,9 @@ void Critter::ProcessVisibleItems()
             {
                 if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, GetInfo() ) )
                 {
-                    Script::SetArgEntity( map );
-                    Script::SetArgEntity( this );
-                    Script::SetArgEntity( item );
+                    Script::SetArgEntityOK( map );
+                    Script::SetArgEntityOK( this );
+                    Script::SetArgEntityOK( item );
                     if( Script::RunPrepared() )
                         allowed = Script::GetReturnedBool();
                 }
@@ -1044,9 +1044,9 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             {
                 if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, GetInfo() ) )
                 {
-                    Script::SetArgEntity( map );
-                    Script::SetArgEntity( this );
-                    Script::SetArgEntity( item );
+                    Script::SetArgEntityOK( map );
+                    Script::SetArgEntityOK( this );
+                    Script::SetArgEntityOK( item );
                     if( Script::RunPrepared() )
                         allowed = Script::GetReturnedBool();
                 }
@@ -1295,8 +1295,8 @@ void Critter::AddItem( Item*& item, bool send )
     // Change item
     if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( this );
+        Script::SetArgEntityOK( item );
         Script::SetArgUChar( SLOT_GROUND );
         Script::RunPrepared();
     }
@@ -1364,8 +1364,8 @@ void Critter::EraseItem( Item* item, bool send )
     item->SetCritSlot( SLOT_GROUND );
     if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( this );
+        Script::SetArgEntityOK( item );
         Script::SetArgUChar( from_slot );
         Script::RunPrepared();
     }
@@ -1645,10 +1645,10 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
     bool  allow = false;
     if( Script::PrepareContext( ServerFunctions.CritterCheckMoveItem, _FUNC_, GetInfo() ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( this );
+        Script::SetArgEntityOK( item );
         Script::SetArgUChar( to_slot );
-        Script::SetArgEntity( item_swap );
+        Script::SetArgEntityOK( item_swap );
         if( Script::RunPrepared() )
             allow = Script::GetReturnedBool();
     }
@@ -1922,7 +1922,7 @@ void Critter::EventIdle()
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_IDLE ) )
         return;
-    Script::SetArgEntity( this );
+    Script::SetArgEntityEvent( this );
     Script::RunPrepared();
 }
 
@@ -1930,7 +1930,7 @@ void Critter::EventFinish( bool deleted )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_FINISH ) )
         return;
-    Script::SetArgEntity( this );
+    Script::SetArgEntityEvent( this );
     Script::SetArgBool( deleted );
     Script::RunPrepared();
 }
@@ -1939,8 +1939,8 @@ void Critter::EventDead( Critter* killer )
 {
     if( PrepareScriptFunc( CRITTER_EVENT_DEAD ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( killer );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( killer );
         Script::RunPrepared();
     }
 
@@ -1958,7 +1958,7 @@ void Critter::EventRespawn()
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_RESPAWN ) )
         return;
-    Script::SetArgEntity( this );
+    Script::SetArgEntityEvent( this );
     Script::RunPrepared();
 }
 
@@ -1966,8 +1966,8 @@ void Critter::EventShowCritter( Critter* cr )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_CRITTER ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr );
     Script::RunPrepared();
 }
 
@@ -1975,8 +1975,8 @@ void Critter::EventShowCritter1( Critter* cr )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_CRITTER_1 ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr );
     Script::RunPrepared();
 }
 
@@ -1984,8 +1984,8 @@ void Critter::EventShowCritter2( Critter* cr )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_CRITTER_2 ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr );
     Script::RunPrepared();
 }
 
@@ -1993,8 +1993,8 @@ void Critter::EventShowCritter3( Critter* cr )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_CRITTER_3 ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr );
     Script::RunPrepared();
 }
 
@@ -2002,8 +2002,8 @@ void Critter::EventHideCritter( Critter* cr )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_CRITTER ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr );
     Script::RunPrepared();
 }
 
@@ -2011,8 +2011,8 @@ void Critter::EventHideCritter1( Critter* cr )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_CRITTER_1 ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr );
     Script::RunPrepared();
 }
 
@@ -2020,8 +2020,8 @@ void Critter::EventHideCritter2( Critter* cr )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_CRITTER_2 ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr );
     Script::RunPrepared();
 }
 
@@ -2029,8 +2029,8 @@ void Critter::EventHideCritter3( Critter* cr )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_CRITTER_3 ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr );
     Script::RunPrepared();
 }
 
@@ -2038,10 +2038,10 @@ void Critter::EventShowItemOnMap( Item* item, bool added, Critter* dropper )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_ITEM_ON_MAP ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( item );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( item );
     Script::SetArgBool( added );
-    Script::SetArgEntity( dropper );
+    Script::SetArgEntityEvent( dropper );
     Script::RunPrepared();
 }
 
@@ -2049,8 +2049,8 @@ void Critter::EventChangeItemOnMap( Item* item )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_CHANGE_ITEM_ON_MAP ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( item );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( item );
     Script::RunPrepared();
 }
 
@@ -2058,10 +2058,10 @@ void Critter::EventHideItemOnMap( Item* item, bool removed, Critter* picker )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_ITEM_ON_MAP ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( item );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( item );
     Script::SetArgBool( removed );
-    Script::SetArgEntity( picker );
+    Script::SetArgEntityEvent( picker );
     Script::RunPrepared();
 }
 
@@ -2070,8 +2070,8 @@ bool Critter::EventAttack( Critter* target )
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_ATTACK ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( target );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( target );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -2092,8 +2092,8 @@ bool Critter::EventAttacked( Critter* attacker )
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_ATTACKED ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( attacker );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( attacker );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -2134,10 +2134,10 @@ bool Critter::EventStealing( Critter* thief, Item* item, uint count )
 
     if( PrepareScriptFunc( CRITTER_EVENT_STEALING ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( thief );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( thief );
         Script::SetArgBool( success );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityEvent( item );
         Script::SetArgUInt( count );
         Script::RunPrepared();
     }
@@ -2158,8 +2158,8 @@ void Critter::EventMessage( Critter* from_cr, int num, int val )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_MESSAGE ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
     Script::SetArgUInt( num );
     Script::SetArgUInt( val );
     Script::RunPrepared();
@@ -2170,11 +2170,11 @@ bool Critter::EventUseItem( Item* item, Critter* on_critter, Item* on_item, Item
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_USE_ITEM ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( item );
-        Script::SetArgEntity( on_critter );
-        Script::SetArgEntity( on_item );
-        Script::SetArgEntity( on_scenery );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( item );
+        Script::SetArgEntityEvent( on_critter );
+        Script::SetArgEntityEvent( on_item );
+        Script::SetArgEntityEvent( on_scenery );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -2196,9 +2196,9 @@ bool Critter::EventUseItemOnMe( Critter* who_use, Item* item )
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_USE_ITEM_ON_ME ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( who_use );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( who_use );
+        Script::SetArgEntityEvent( item );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -2210,11 +2210,11 @@ bool Critter::EventUseSkill( int skill, Critter* on_critter, Item* on_item, Item
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_USE_SKILL ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgUInt( skill );
-        Script::SetArgEntity( on_critter );
-        Script::SetArgEntity( on_item );
-        Script::SetArgEntity( on_scenery );
+        Script::SetArgEntityEvent( on_critter );
+        Script::SetArgEntityEvent( on_item );
+        Script::SetArgEntityEvent( on_scenery );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
     }
@@ -2236,8 +2236,8 @@ bool Critter::EventUseSkillOnMe( Critter* who_use, int skill )
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_USE_SKILL_ON_ME ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( who_use );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( who_use );
         Script::SetArgUInt( skill );
         if( Script::RunPrepared() )
             result = Script::GetReturnedBool();
@@ -2249,8 +2249,8 @@ void Critter::EventDropItem( Item* item )
 {
     if( PrepareScriptFunc( CRITTER_EVENT_DROP_ITEM ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( item );
         Script::RunPrepared();
     }
 
@@ -2268,16 +2268,16 @@ void Critter::EventMoveItem( Item* item, uchar from_slot )
 {
     if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( this );
+        Script::SetArgEntityOK( item );
         Script::SetArgUChar( from_slot );
         Script::RunPrepared();
     }
 
     if( PrepareScriptFunc( CRITTER_EVENT_MOVE_ITEM ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( item );
         Script::SetArgUChar( from_slot );
         Script::RunPrepared();
     }
@@ -2296,7 +2296,7 @@ void Critter::EventKnockout( uint anim2begin, uint anim2idle, uint anim2end, uin
 {
     if( PrepareScriptFunc( CRITTER_EVENT_KNOCKOUT ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgUInt( anim2begin );
         Script::SetArgUInt( anim2idle );
         Script::SetArgUInt( anim2end );
@@ -2319,9 +2319,9 @@ void Critter::EventSmthDead( Critter* from_cr, Critter* killer )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_DEAD ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
-    Script::SetArgEntity( killer );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
+    Script::SetArgEntityEvent( killer );
     Script::RunPrepared();
 }
 
@@ -2329,11 +2329,11 @@ void Critter::EventSmthStealing( Critter* from_cr, Critter* thief, bool success,
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_STEALING ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
-    Script::SetArgEntity( thief );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
+    Script::SetArgEntityEvent( thief );
     Script::SetArgBool( success );
-    Script::SetArgEntity( item );
+    Script::SetArgEntityEvent( item );
     Script::SetArgUInt( count );
     Script::RunPrepared();
 }
@@ -2342,9 +2342,9 @@ void Critter::EventSmthAttack( Critter* from_cr, Critter* target )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_ATTACK ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
-    Script::SetArgEntity( target );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
+    Script::SetArgEntityEvent( target );
     Script::RunPrepared();
 }
 
@@ -2352,9 +2352,9 @@ void Critter::EventSmthAttacked( Critter* from_cr, Critter* attacker )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_ATTACKED ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
-    Script::SetArgEntity( attacker );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
+    Script::SetArgEntityEvent( attacker );
     Script::RunPrepared();
 }
 
@@ -2362,12 +2362,12 @@ void Critter::EventSmthUseItem( Critter* from_cr, Item* item, Critter* on_critte
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_USE_ITEM ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
-    Script::SetArgEntity( item );
-    Script::SetArgEntity( on_critter );
-    Script::SetArgEntity( on_item );
-    Script::SetArgEntity( on_scenery );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
+    Script::SetArgEntityEvent( item );
+    Script::SetArgEntityEvent( on_critter );
+    Script::SetArgEntityEvent( on_item );
+    Script::SetArgEntityEvent( on_scenery );
     Script::RunPrepared();
 }
 
@@ -2375,12 +2375,12 @@ void Critter::EventSmthUseSkill( Critter* from_cr, int skill, Critter* on_critte
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_USE_SKILL ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
     Script::SetArgUInt( skill );
-    Script::SetArgEntity( on_critter );
-    Script::SetArgEntity( on_item );
-    Script::SetArgEntity( on_scenery );
+    Script::SetArgEntityEvent( on_critter );
+    Script::SetArgEntityEvent( on_item );
+    Script::SetArgEntityEvent( on_scenery );
     Script::RunPrepared();
 }
 
@@ -2388,9 +2388,9 @@ void Critter::EventSmthDropItem( Critter* from_cr, Item* item )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_DROP_ITEM ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
-    Script::SetArgEntity( item );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
+    Script::SetArgEntityEvent( item );
     Script::RunPrepared();
 }
 
@@ -2398,9 +2398,9 @@ void Critter::EventSmthMoveItem( Critter* from_cr, Item* item, uchar from_slot )
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_MOVE_ITEM ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
-    Script::SetArgEntity( item );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
+    Script::SetArgEntityEvent( item );
     Script::SetArgUChar( from_slot );
     Script::RunPrepared();
 }
@@ -2409,8 +2409,8 @@ void Critter::EventSmthKnockout( Critter* from_cr, uint anim2begin, uint anim2id
 {
     if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_KNOCKOUT ) )
         return;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( from_cr );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( from_cr );
     Script::SetArgUInt( anim2begin );
     Script::SetArgUInt( anim2idle );
     Script::SetArgUInt( anim2end );
@@ -2423,11 +2423,11 @@ int Critter::EventPlaneBegin( AIDataPlane* plane, int reason, Critter* some_cr, 
 {
     if( PrepareScriptFunc( CRITTER_EVENT_PLANE_BEGIN ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgObject( plane );
         Script::SetArgUInt( reason );
-        Script::SetArgEntity( some_cr );
-        Script::SetArgEntity( some_item );
+        Script::SetArgEntityEvent( some_cr );
+        Script::SetArgEntityEvent( some_item );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
     }
@@ -2438,11 +2438,11 @@ int Critter::EventPlaneEnd( AIDataPlane* plane, int reason, Critter* some_cr, It
 {
     if( PrepareScriptFunc( CRITTER_EVENT_PLANE_END ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgObject( plane );
         Script::SetArgUInt( reason );
-        Script::SetArgEntity( some_cr );
-        Script::SetArgEntity( some_item );
+        Script::SetArgEntityEvent( some_cr );
+        Script::SetArgEntityEvent( some_item );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
     }
@@ -2453,7 +2453,7 @@ int Critter::EventPlaneRun( AIDataPlane* plane, int reason, uint& p0, uint& p1, 
 {
     if( PrepareScriptFunc( CRITTER_EVENT_PLANE_RUN ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgObject( plane );
         Script::SetArgUInt( reason );
         Script::SetArgAddress( &p0 );
@@ -2486,8 +2486,8 @@ bool Critter::EventTalk( Critter* cr_talk, bool attach, uint talk_count )
         return true;
     if( !PrepareScriptFunc( CRITTER_EVENT_TALK ) )
         return false;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr_talk );
+    Script::SetArgEntityEvent( this );
+    Script::SetArgEntityEvent( cr_talk );
     Script::SetArgBool( attach );
     Script::SetArgUInt( talk_count );
     if( Script::RunPrepared() )
@@ -2500,9 +2500,9 @@ bool Critter::EventGlobalProcess( int type, Item* car, float& x, float& y, float
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_GLOBAL_PROCESS ) )
     {
-        Script::SetArgEntity( this );
+        Script::SetArgEntityEvent( this );
         Script::SetArgUInt( type );
-        Script::SetArgEntity( car );
+        Script::SetArgEntityEvent( car );
         Script::SetArgAddress( &x );
         Script::SetArgAddress( &y );
         Script::SetArgAddress( &to_x );
@@ -2521,8 +2521,8 @@ bool Critter::EventGlobalInvite( Item* car, uint encounter_descriptor, int comba
     bool result = false;
     if( PrepareScriptFunc( CRITTER_EVENT_GLOBAL_INVITE ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( car );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( car );
         Script::SetArgUInt( encounter_descriptor );
         Script::SetArgUInt( combat_mode );
         Script::SetArgAddress( &map_id );
@@ -2539,8 +2539,8 @@ void Critter::EventTurnBasedProcess( Map* map, bool begin_turn )
 {
     if( PrepareScriptFunc( CRITTER_EVENT_TURN_BASED_PROCESS ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( map );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( map );
         Script::SetArgBool( begin_turn );
         Script::RunPrepared();
     }
@@ -2559,9 +2559,9 @@ void Critter::EventSmthTurnBasedProcess( Critter* from_cr, Map* map, bool begin_
 {
     if( PrepareScriptFunc( CRITTER_EVENT_SMTH_TURN_BASED_PROCESS ) )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( from_cr );
-        Script::SetArgEntity( map );
+        Script::SetArgEntityEvent( this );
+        Script::SetArgEntityEvent( from_cr );
+        Script::SetArgEntityEvent( map );
         Script::SetArgBool( begin_turn );
         Script::RunPrepared();
     }

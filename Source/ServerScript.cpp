@@ -156,8 +156,8 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.CritterIdle, "critter_idle", "void %s(Critter&)" },
         { &ServerFunctions.CritterDead, "critter_dead", "void %s(Critter&,Critter@)" },
         { &ServerFunctions.CritterRespawn, "critter_respawn", "void %s(Critter&)" },
-        { &ServerFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(Critter&,Item&,uint8,Item@)" },
-        { &ServerFunctions.CritterMoveItem, "critter_move_item", "void %s(Critter&,Item&,uint8)" },
+        { &ServerFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(const Critter&,const Item&,uint8,const Item@)" },
+        { &ServerFunctions.CritterMoveItem, "critter_move_item", "void %s(const Critter&,const Item&,uint8)" },
         { &ServerFunctions.MapCritterIn, "map_critter_in", "void %s(Map&,Critter&)" },
         { &ServerFunctions.MapCritterOut, "map_critter_out", "void %s(Map&,Critter&)" },
         { &ServerFunctions.NpcPlaneBegin, "npc_plane_begin", "bool %s(Critter&,NpcPlane&,int,Critter@,Item@)" },
@@ -178,9 +178,9 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.PlayerLogin, "player_login", "bool %s(uint,string&,uint,uint&,uint&,string&)" },
         { &ServerFunctions.PlayerGetAccess, "player_getaccess", "bool %s(Critter&,int,string&)" },
         { &ServerFunctions.PlayerAllowCommand, "player_allowcommand", "bool %s(Critter@,string@,uint8)" },
-        { &ServerFunctions.CheckTrapLook, "check_trap_look", "bool %s(Map&,Critter&,Item&)" },
-        { &ServerFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(Critter&,Item&,uint8)" },
-        { &ServerFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(Critter&,Item&,uint8)" },
+        { &ServerFunctions.CheckTrapLook, "check_trap_look", "bool %s(const Map&,const Critter&,const Item&)" },
+        { &ServerFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(const Critter&,const Item&,uint8)" },
+        { &ServerFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(const Critter&,const Item&,uint8)" },
     };
     if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
     {

@@ -135,6 +135,7 @@ public:
     static void              SetArgObject( void* value );
     static void              SetArgEntity( Entity* value );
     static void              SetArgEntityOK( Entity* value );
+    static void              SetArgEntityEvent( Entity* value );
     static void              SetArgAddress( void* value );
     static bool              RunPrepared();
     static void              RunPreparedSuspend();

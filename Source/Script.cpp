@@ -2260,6 +2260,26 @@ void Script::SetArgEntityOK( Entity* value )
     CurrentArg++;
 }
 
+void Script::SetArgEntityEvent( Entity* value )
+{
+    RUNTIME_ASSERT( !value || !value->IsDestroyed );
+
+    if( ScriptCall )
+    {
+        if( value )
+        {
+            ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
+            ctx_data->EntitiesArgs[ ctx_data->EntitiesArgsCount++ ] = value;
+        }
+        CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
+    }
+    else
+    {
+        NativeArgs[ CurrentArg ] = (size_t) value;
+    }
+    CurrentArg++;
+}
+
 void Script::SetArgAddress( void* value )
 {
     if( ScriptCall )
