@@ -5180,9 +5180,10 @@ void FOMapper::SScriptFunc::Global_TabSetName( int tab, ScriptString* tab_name )
     Self->TabsName[ tab ] = ( tab_name ? tab_name->c_std_str() : "" );
 }
 
-ProtoItem* FOMapper::SScriptFunc::Global_GetProtoItem( hash proto_id )
+Item* FOMapper::SScriptFunc::Global_GetProtoItem( hash proto_id )
 {
-    return ProtoMngr.GetProtoItem( proto_id );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
+    return proto ? new Item( 0, proto ) : nullptr;
 }
 
 void FOMapper::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )

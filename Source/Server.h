@@ -684,7 +684,7 @@ public:
         static void Location_EventFinish( Location* loc, bool deleted );
         static bool Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance );
 
-        static ProtoItem*    Global_GetProtoItem( hash pid );
+        static Item*         Global_GetProtoItem( hash pid );
         static Item*         Global_GetItem( uint item_id );
         static uint          Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );
         static void          Global_MoveItemCr( Item* item, uint count, Critter* to_cr );

@@ -589,7 +589,7 @@ public:
         static uint          Global_GetDayTime( uint day_part );
         static void          Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
 
-        static ProtoItem*    Global_GetProtoItem( hash proto_id );
+        static Item*         Global_GetProtoItem( hash proto_id );
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );

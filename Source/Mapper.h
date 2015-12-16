@@ -419,7 +419,7 @@ public:
         static void Global_TabSelect( int tab, ScriptString* sub_tab, bool show );
         static void Global_TabSetName( int tab, ScriptString* tab_name );
 
-        static ProtoItem*    Global_GetProtoItem( hash proto_id );
+        static Item*         Global_GetProtoItem( hash proto_id );
         static void          Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static ScriptString* Global_GetIfaceIniStr( ScriptString& key );

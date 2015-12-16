@@ -4683,9 +4683,10 @@ uint FOServer::SScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter*
     return DistGame( cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY() );
 }
 
-ProtoItem* FOServer::SScriptFunc::Global_GetProtoItem( hash pid )
+Item* FOServer::SScriptFunc::Global_GetProtoItem( hash pid )
 {
-    return ProtoMngr.GetProtoItem( pid );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
+    return proto ? new Item( 0, proto ) : nullptr;
 }
 
 Item* FOServer::SScriptFunc::Global_GetItem( uint item_id )

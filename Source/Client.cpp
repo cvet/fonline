@@ -4363,17 +4363,18 @@ void FOClient::Net_OnChosenEraseItem()
         return;
     }
 
-    if( Script::PrepareContext( ClientFunctions.ItemInvOut, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( item );
-        Script::RunPrepared();
-    }
-
-    bool rebuild_light = ( item->GetIsLight() && item->GetCritSlot() != SLOT_INV );
+    Item* clone = item->Clone();
+    bool  rebuild_light = ( item->GetIsLight() && item->GetCritSlot() != SLOT_INV );
     Chosen->DeleteItem( item, true );
     if( rebuild_light )
         HexMngr.RebuildLight();
     CollectContItems();
+    if( Script::PrepareContext( ClientFunctions.ItemInvOut, _FUNC_, "Game" ) )
+    {
+        Script::SetArgEntityOK( clone );
+        Script::RunPrepared();
+    }
+    clone->Release();
 }
 
 void FOClient::Net_OnAllItemsSend()
@@ -10479,9 +10480,10 @@ void FOClient::SScriptFunc::Global_GetDayColor( uint day_part, uchar& r, uchar& 
     }
 }
 
-ProtoItem* FOClient::SScriptFunc::Global_GetProtoItem( hash proto_id )
+Item* FOClient::SScriptFunc::Global_GetProtoItem( hash proto_id )
 {
-    return ProtoMngr.GetProtoItem( proto_id );
+    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
+    return proto ? new Item( 0, proto ) : nullptr;
 }
 
 uint FOClient::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
