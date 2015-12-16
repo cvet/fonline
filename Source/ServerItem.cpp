@@ -48,7 +48,7 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
     return item;
 }
 
-void FOServer::OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendItemValue( Entity* entity, Property* prop )
 {
     Item* item = (Item*) entity;
     #pragma MESSAGE( "Clean up server 0 and -1 item ids" )

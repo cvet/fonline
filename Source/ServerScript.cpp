@@ -137,7 +137,7 @@ bool FOServer::InitScriptSystem()
     // Bind game functions
     ReservedScriptFunction BindGameFunc[] =
     {
-        { &ServerFunctions.Init, "init", "void %s()" },
+        { &ServerFunctions.Init, "init", "bool %s()" },
         { &ServerFunctions.Start, "start", "bool %s()" },
         { &ServerFunctions.GetStartTime, "get_start_time", "void %s(uint16&,uint16&,uint16&,uint16&,uint16&,uint16&)" },
         { &ServerFunctions.GenerateWorld, "generate_world", "bool %s()" },
@@ -4380,22 +4380,6 @@ bool FOServer::SScriptFunc::Map_Reload( Map* map )
     return true;
 }
 
-ushort FOServer::SScriptFunc::Map_GetWidth( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return map->GetWidth();
-}
-
-ushort FOServer::SScriptFunc::Map_GetHeight( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return map->GetHeight();
-}
-
 void FOServer::SScriptFunc::Map_MoveHexByDir( Map* map, ushort& hx, ushort& hy, uchar dir, uint steps )
 {
     if( map->IsDestroyed )
@@ -5617,14 +5601,14 @@ bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, 
     return true;
 }
 
-bool FOServer::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func )
+bool FOServer::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred )
 {
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
-    string result = prop->AddSetCallback( script_func.c_str() );
+    string result = prop->AddSetCallback( script_func.c_str(), deferred );
     if( result != "" )
         SCRIPT_ERROR_R0( result.c_str() );
     return true;

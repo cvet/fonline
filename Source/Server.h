@@ -173,10 +173,10 @@ public:
 //	void GlobalEventCritterIdle(Critter* cr);
 //	void GlobalEventCritterDead(Critter* cr);
 
-    static void OnSendGlobalValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSendCritterValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSendMapValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSendLocationValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendGlobalValue( Entity* entity, Property* prop );
+    static void OnSendCritterValue( Entity* entity, Property* prop );
+    static void OnSendMapValue( Entity* entity, Property* prop );
+    static void OnSendLocationValue( Entity* entity, Property* prop );
 
     // Critters
     static void OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value );
@@ -184,7 +184,7 @@ public:
 
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks );
-    static void  OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSendItemValue( Entity* entity, Property* prop );
     static void  OnSetItemCount( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemChangeView( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value );
@@ -656,8 +656,6 @@ public:
         static void      Map_PlaySound( Map* map, ScriptString& sound_name );
         static void      Map_PlaySoundRadius( Map* map, ScriptString& sound_name, ushort hx, ushort hy, uint radius );
         static bool      Map_Reload( Map* map );
-        static ushort    Map_GetWidth( Map* map );
-        static ushort    Map_GetHeight( Map* map );
         static void      Map_MoveHexByDir( Map* map, ushort& hx, ushort& hy, uchar dir, uint steps );
         static bool      Map_VerifyTrigger( Map* map, Critter* cr, ushort hx, ushort hy, uchar dir );
 
@@ -742,7 +740,7 @@ public:
         static ScriptString* Global_GetScriptName( hash script_id );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
         static bool          Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func );
-        static bool          Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func );
+        static bool          Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred );
         static void          Global_AllowSlot( uchar index, bool enable_send );
         static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( ScriptString& dat_name );

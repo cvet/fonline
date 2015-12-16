@@ -43,6 +43,7 @@
 
 class Entity;
 class Property;
+typedef void ( *NativeSendCallback )( Entity* entity, Property* prop );
 typedef void ( *NativeCallback )( Entity* entity, Property* prop, void* cur_value, void* old_value );
 typedef vector< NativeCallback > NativeCallbackVec;
 
@@ -92,7 +93,6 @@ public:
     bool           IsEnum();
     bool           IsReadable();
     bool           IsWritable();
-    void           SetSendIgnore( Entity* entity );
 
     template< typename T >
     T GetValue( Entity* entity )
@@ -115,7 +115,7 @@ public:
     int    GetPODValueAsInt( Entity* entity );
     void   SetPODValueAsInt( Entity* entity, int value );
     string SetGetCallback( const char* script_func );
-    string AddSetCallback( const char* script_func );
+    string AddSetCallback( const char* script_func, bool deferred );
 
 private:
     enum DataType
@@ -174,12 +174,10 @@ private:
     uint                 getCallbackArgs;
     UIntVec              setCallbacks;
     IntVec               setCallbacksArgs;
-    bool                 setCallbacksAnyOldValue;
+    BoolVec              setCallbacksDeferred;
+    bool                 setCallbacksAnyNewValue;
     NativeCallback       nativeSetCallback;
-    NativeCallback       nativeSendCallback;
-    bool                 getCallbackLocked;
-    bool                 setCallbackLocked;
-    Entity*              sendIgnoreEntity;
+    NativeSendCallback   nativeSendCallback;
 };
 typedef vector< Property* > PropertyVec;
 
@@ -206,6 +204,7 @@ public:
     static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
     static bool SetValueAsIntProps( Properties* props, int enum_value, int value );
     string      GetClassName();
+    void        SetSendIgnore( Entity* entity );
 
     template< typename T >
     T GetPropValue( Property* prop )
@@ -256,6 +255,9 @@ private:
     UIntVec              storeDataSizes;
     UShortVec            storeDataComplexIndicies;
     StrMap               unresolvedProperties;
+    bool                 getCallbackLocked;
+    bool                 setCallbackLocked;
+    Entity*              sendIgnoreEntity;
 };
 
 class PropertyRegistrator
@@ -275,7 +277,7 @@ public:
     Property* FindByEnum( int enum_value );
     Property* Get( uint property_index );
     void      SetNativeSetCallback( const char* property_name, NativeCallback callback );
-    void      SetNativeSendCallback( NativeCallback callback );
+    void      SetNativeSendCallback( NativeSendCallback callback );
     uint      GetWholeDataSize();
     string    GetClassName();
 

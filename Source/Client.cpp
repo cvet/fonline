@@ -3210,7 +3210,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
         if( Script::PrepareContext( ClientFunctions.CritterIn, _FUNC_, "Game" ) )
         {
-            Script::SetArgEntity( cr );
+            Script::SetArgEntityOK( cr );
             Script::RunPrepared();
         }
 
@@ -3234,7 +3234,7 @@ void FOClient::Net_OnRemoveCritter()
 
     if( Script::PrepareContext( ClientFunctions.CritterOut, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( cr );
+        Script::SetArgEntityOK( cr );
         Script::RunPrepared();
     }
 }
@@ -4336,7 +4336,7 @@ void FOClient::Net_OnChosenAddItem()
 
     if( !InitialItemsSend && Script::PrepareContext( ClientFunctions.ItemInvIn, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( item );
         Script::RunPrepared();
     }
 
@@ -4372,7 +4372,7 @@ void FOClient::Net_OnChosenEraseItem()
 
     if( Script::PrepareContext( ClientFunctions.ItemInvOut, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( item );
         Script::RunPrepared();
     }
 
@@ -4430,7 +4430,7 @@ void FOClient::Net_OnAddItemOnMap()
     Item* item = HexMngr.GetItemById( item_id );
     if( item && Script::PrepareContext( ClientFunctions.ItemMapIn, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( item );
         Script::RunPrepared();
     }
 
@@ -4451,7 +4451,7 @@ void FOClient::Net_OnEraseItemFromMap()
     Item* item = HexMngr.GetItemById( item_id );
     if( item && Script::PrepareContext( ClientFunctions.ItemMapOut, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( item );
         Script::RunPrepared();
     }
 
@@ -4784,14 +4784,14 @@ void FOClient::Net_OnProperty( uint data_size )
     if( !prop || !entity )
         return;
 
-    prop->SetSendIgnore( entity );
+    entity->Props.SetSendIgnore( entity );
     prop->SetData( entity, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : nullptr, (uint) TempPropertyData.size() );
-    prop->SetSendIgnore( nullptr );
+    entity->Props.SetSendIgnore( nullptr );
 
     if( type == NetProperty::MapItem && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( entity );
-        Script::SetArgEntity( entity );
+        Script::SetArgEntityOK( entity );
+        Script::SetArgEntityOK( entity );
         Script::RunPrepared();
     }
 
@@ -7220,10 +7220,10 @@ label_EndMove:
         bool  allow = false;
         if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
         {
-            Script::SetArgEntity( Chosen );
-            Script::SetArgEntity( item );
+            Script::SetArgEntityOK( Chosen );
+            Script::SetArgEntityOK( item );
             Script::SetArgUChar( to_slot );
-            Script::SetArgEntity( item_swap );
+            Script::SetArgEntityOK( item_swap );
             if( Script::RunPrepared() )
                 allow = Script::GetReturnedBool();
         }
@@ -7236,10 +7236,10 @@ label_EndMove:
                 bool allow1 = false;
                 if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
                 {
-                    Script::SetArgEntity( Chosen );
-                    Script::SetArgEntity( item_swap );
+                    Script::SetArgEntityOK( Chosen );
+                    Script::SetArgEntityOK( item_swap );
                     Script::SetArgUChar( SLOT_INV );
-                    Script::SetArgEntity( nullptr );
+                    Script::SetArgEntityOK( nullptr );
                     if( Script::RunPrepared() )
                         allow1 = Script::GetReturnedBool();
                 }
@@ -7248,10 +7248,10 @@ label_EndMove:
                 bool allow2 = false;
                 if( allow1 && Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
                 {
-                    Script::SetArgEntity( Chosen );
-                    Script::SetArgEntity( item );
+                    Script::SetArgEntityOK( Chosen );
+                    Script::SetArgEntityOK( item );
                     Script::SetArgUChar( to_slot );
-                    Script::SetArgEntity( nullptr );
+                    Script::SetArgEntityOK( nullptr );
                     if( Script::RunPrepared() )
                         allow2 = Script::GetReturnedBool();
                 }
@@ -7951,7 +7951,7 @@ const char* FOClient::FmtCritLook( CritterCl* cr, int look_type )
 {
     if( Script::PrepareContext( ClientFunctions.CritterLook, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( cr );
+        Script::SetArgEntityOK( cr );
         Script::SetArgUInt( look_type );
         if( Script::RunPrepared() )
         {
@@ -7972,7 +7972,7 @@ const char* FOClient::FmtItemLook( Item* item, int look_type )
 {
     if( Script::PrepareContext( ClientFunctions.ItemLook, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( item );
         Script::SetArgUInt( look_type );
         if( Script::RunPrepared() )
         {
@@ -8712,7 +8712,7 @@ void FOClient::AnimProcess()
     }
 }
 
-void FOClient::OnSendGlobalValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendGlobalValue( Entity* entity, Property* prop )
 {
     if( prop->GetAccess() == Property::PublicFullModifiable )
         Self->Net_SendProperty( NetProperty::Global, prop, Globals );
@@ -8720,7 +8720,7 @@ void FOClient::OnSendGlobalValue( Entity* entity, Property* prop, void* cur_valu
         SCRIPT_ERROR_R( "Unable to send global modifiable property '%s'", prop->GetName() );
 }
 
-void FOClient::OnSendCritterValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendCritterValue( Entity* entity, Property* prop )
 {
     CritterCl* cr = (CritterCl*) entity;
     if( cr->IsChosen() )
@@ -8731,7 +8731,7 @@ void FOClient::OnSendCritterValue( Entity* entity, Property* prop, void* cur_val
         SCRIPT_ERROR_R( "Unable to send critter modifiable property '%s'", prop->GetName() );
 }
 
-void FOClient::OnSendItemValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendItemValue( Entity* entity, Property* prop )
 {
     Item* item = (Item*) entity;
     #pragma MESSAGE( "Clean up client 0 and -1 item ids" )
@@ -8856,7 +8856,7 @@ void FOClient::OnSetItemLockerCondition( Entity* entity, Property* prop, void* c
     }
 }
 
-void FOClient::OnSendMapValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendMapValue( Entity* entity, Property* prop )
 {
     if( prop->GetAccess() == Property::PublicFullModifiable )
         Self->Net_SendProperty( NetProperty::Map, prop, Globals );
@@ -8864,7 +8864,7 @@ void FOClient::OnSendMapValue( Entity* entity, Property* prop, void* cur_value, 
         SCRIPT_ERROR_R( "Unable to send map modifiable property '%s'", prop->GetName() );
 }
 
-void FOClient::OnSendLocationValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSendLocationValue( Entity* entity, Property* prop )
 {
     if( prop->GetAccess() == Property::PublicFullModifiable )
         Self->Net_SendProperty( NetProperty::Location, prop, Globals );
@@ -9108,9 +9108,9 @@ int FOClient::ScriptGetHitProc( CritterCl* cr, int hit_location )
 
     if( Script::PrepareContext( ClientFunctions.ToHit, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( Chosen );
-        Script::SetArgEntity( cr );
-        Script::SetArgEntity( Chosen->ItemSlotMain );
+        Script::SetArgEntityOK( Chosen );
+        Script::SetArgEntityOK( cr );
+        Script::SetArgEntityOK( Chosen->ItemSlotMain );
         Script::SetArgUChar( MAKE_ITEM_MODE( use, hit_location ) );
         if( Script::RunPrepared() )
             return Script::GetReturnedUInt();
@@ -9133,8 +9133,8 @@ void FOClient::OnItemInvChanged( Item* old_item, Item* item )
 {
     if( Script::PrepareContext( ClientFunctions.ItemInvChanged, _FUNC_, "Game" ) )
     {
-        Script::SetArgEntity( old_item );
-        Script::SetArgEntity( item );
+        Script::SetArgEntityOK( old_item );
+        Script::SetArgEntityOK( item );
         Script::RunPrepared();
     }
     old_item->Release();
@@ -10823,14 +10823,14 @@ bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, 
     return true;
 }
 
-bool FOClient::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func )
+bool FOClient::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred )
 {
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
-    string result = prop->AddSetCallback( script_func.c_str() );
+    string result = prop->AddSetCallback( script_func.c_str(), deferred );
     if( result != "" )
         SCRIPT_ERROR_R0( result.c_str() );
     return true;

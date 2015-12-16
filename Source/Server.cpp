@@ -3420,8 +3420,8 @@ bool FOServer::InitReal()
         return false;
 
     // Initialization script
-    Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" );
-    Script::RunPrepared();
+    if( !Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+        return false;
 
     // Update files
     GenerateUpdateFiles( true );
@@ -4277,6 +4277,9 @@ void FOServer::SaveWorld( const char* fname )
         return;
     if( !fname && Singleplayer )
         return;                           // Disable autosaving in singleplayer mode
+
+    // Do nessesary stuff before save
+    Script::RunMandatorySuspended();
 
     // Wait previous saving
     DumpThread.Wait();

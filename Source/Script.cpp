@@ -2204,10 +2204,7 @@ void Script::SetArgDouble( double value )
     if( ScriptCall )
         CurrentCtx->SetArgDouble( (asUINT) CurrentArg, value );
     else
-    {
-        *( (double*) &NativeArgs[ CurrentArg ] ) = value;
-        CurrentArg++;
-    }
+        *( (double*) &NativeArgs[ CurrentArg++ ] ) = value;
     CurrentArg++;
 }
 
@@ -2223,7 +2220,17 @@ void Script::SetArgObject( void* value )
 void Script::SetArgEntity( Entity* value )
 {
     RUNTIME_ASSERT( !value || !value->IsDestroyed );
-    RUNTIME_ASSERT( !value || !value->IsDestroying );
+
+    if( ScriptCall )
+        CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
+    else
+        NativeArgs[ CurrentArg ] = (size_t) value;
+    CurrentArg++;
+}
+
+void Script::SetArgEntityOK( Entity* value )
+{
+    RUNTIME_ASSERT( !value || !value->IsDestroyed );
 
     if( ScriptCall )
         CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
@@ -2419,6 +2426,21 @@ bool Script::RunPrepared()
     return true;
 }
 
+void Script::RunPreparedSuspend()
+{
+    RUNTIME_ASSERT( ScriptCall );
+    RUNTIME_ASSERT( CurrentCtx );
+
+    asIScriptContext* ctx = CurrentCtx;
+    ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
+    uint              tick = Timer::FastTick();
+    CurrentCtx = nullptr;
+    ctx_data->StartTick = tick;
+    ctx_data->Parent = asGetActiveContext();
+    *(uint64*) RetValue = 0;
+    EndExecution();
+}
+
 asIScriptContext* Script::SuspendCurrentContext( uint time )
 {
     asIScriptContext* ctx = asGetActiveContext();
@@ -2429,7 +2451,7 @@ asIScriptContext* Script::SuspendCurrentContext( uint time )
         SCRIPT_ERROR_R0( "Can't yield context which must return value." );
     ctx->Suspend();
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-    ctx_data->SuspendEndTick = ( time != uint( -1 ) ? Timer::FastTick() + time : uint( -1 ) );
+    ctx_data->SuspendEndTick = ( time != uint( -1 ) ? ( time ? Timer::FastTick() + time : 0 ) : uint( -1 ) );
     return ctx;
 }
 
@@ -2456,20 +2478,57 @@ void Script::RunSuspended()
         {
             asIScriptContext* ctx = *it;
             ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
-            if( ctx->GetState() == asEXECUTION_SUSPENDED && ctx_data->SuspendEndTick != uint( -1 ) && tick >= ctx_data->SuspendEndTick )
+            if( ( ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED ) &&
+                ctx_data->SuspendEndTick != uint( -1 ) && tick >= ctx_data->SuspendEndTick )
+            {
                 resume_contexts.push_back( ctx );
+            }
         }
 
         if( resume_contexts.empty() )
             return;
     }
 
-    for( auto it = resume_contexts.begin(); it != resume_contexts.end(); ++it )
+    // Resume
+    for( auto& ctx : resume_contexts )
     {
-        asIScriptContext* ctx = *it;
         CurrentCtx = ctx;
         ScriptCall = true;
         RunPrepared();
+    }
+}
+
+void Script::RunMandatorySuspended()
+{
+    while( true )
+    {
+        // Collect contexts to resume
+        ContextVec resume_contexts;
+        {
+            SCOPE_LOCK( ContextsLocker );
+
+            if( BusyContexts.empty() )
+                break;
+
+            for( auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it )
+            {
+                asIScriptContext* ctx = *it;
+                ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
+                if( ( ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED ) && ctx_data->SuspendEndTick == 0 )
+                    resume_contexts.push_back( ctx );
+            }
+
+            if( resume_contexts.empty() )
+                break;
+        }
+
+        // Resume
+        for( auto& ctx : resume_contexts )
+        {
+            CurrentCtx = ctx;
+            ScriptCall = true;
+            RunPrepared();
+        }
     }
 }
 

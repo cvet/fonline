@@ -152,6 +152,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     }
 
     // Finish script
+    Script::RunMandatorySuspended();
     if( Script::PrepareContext( ClientFunctions.Finish, _FUNC_, "Game" ) )
         Script::RunPrepared();
 

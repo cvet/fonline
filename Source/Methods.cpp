@@ -27,7 +27,7 @@ void Method::Wrap( asIScriptGeneric* gen )
         if( Script::PrepareContext( bind_ids[ cbk ], _FUNC_, "Method" ) )
         {
             // First arg is entity
-            Script::SetArgEntity( entity );
+            Script::SetArgEntityOK( entity );
 
             // Arguments
             int arg_count = gen->GetArgCount();
@@ -56,6 +56,9 @@ void Method::Wrap( asIScriptGeneric* gen )
             {
                 Script::RunPrepared();
             }
+
+            if( entity->IsDestroyed )
+                break;
         }
     }
 }

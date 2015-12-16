@@ -11,10 +11,7 @@ Property::Property()
 {
     nativeSendCallback = nullptr;
     nativeSetCallback = nullptr;
-    setCallbacksAnyOldValue = false;
-    getCallbackLocked = false;
-    setCallbackLocked = false;
-    sendIgnoreEntity = nullptr;
+    setCallbacksAnyNewValue = false;
 }
 
 void* Property::CreateComplexValue( uchar* data, uint data_size )
@@ -388,24 +385,24 @@ void Property::GenericGet( Entity* entity, void* ret_value )
                             typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
         }
 
-        if( getCallbackLocked )
+        if( properties->getCallbackLocked )
         {
             memzero( ret_value, baseSize );
             SCRIPT_ERROR_R( "Recursive call for virtual property '%s %s::%s'.",
                             typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
         }
 
-        getCallbackLocked = true;
+        properties->getCallbackLocked = true;
 
         if( Script::PrepareContext( getCallback, _FUNC_, GetName() ) )
         {
             if( getCallbackArgs > 0 )
-                Script::SetArgEntity( entity );
+                Script::SetArgEntityOK( entity );
             if( getCallbackArgs > 1 )
                 Script::SetArgUInt( enumValue );
             if( Script::RunPrepared() )
             {
-                getCallbackLocked = false;
+                properties->getCallbackLocked = false;
 
                 memcpy( ret_value, Script::GetReturnedRawAddress(), baseSize );
                 if( !IsPOD() )
@@ -420,7 +417,7 @@ void Property::GenericGet( Entity* entity, void* ret_value )
             }
         }
 
-        getCallbackLocked = false;
+        properties->getCallbackLocked = false;
 
         // Error
         memzero( ret_value, baseSize );
@@ -455,25 +452,97 @@ void Property::GenericSet( Entity* entity, void* new_value )
                         typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
     }
 
-    // Get current POD value
-    void* cur_value;
+    // Get current value
+    void*  cur_pod_value = nullptr;
+    uint64 old_pod_value = 0;
+    bool   new_value_data_need_delete = false;
+    uint   new_value_data_size = 0;
+    uchar* new_value_data = nullptr;
     if( dataType == Property::POD )
     {
         RUNTIME_ASSERT( podDataOffset != uint( -1 ) );
-        cur_value = &properties->podData[ podDataOffset ];
+        cur_pod_value = &properties->podData[ podDataOffset ];
 
+        // Ignore void calls
+        if( !memcmp( new_value, cur_pod_value, baseSize ) )
+            return;
+
+        // Store old value for native callbacks
+        memcpy( &old_pod_value, cur_pod_value, baseSize );
+    }
+    else
+    {
+        RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
+
+        // Expand new value data for comparison
+        new_value_data = ExpandComplexValueData( new_value, new_value_data_size, new_value_data_need_delete );
+
+        // Get current data for comparison
+        uint   cur_value_data_size = properties->complexDataSizes[ complexDataIndex ];
+        uchar* cur_value_data = properties->complexData[ complexDataIndex ];
+
+        // Compare for ignore void calls
+        bool void_call = false;
+        if( new_value_data_size == cur_value_data_size && ( cur_value_data_size == 0 || !memcmp( new_value_data, cur_value_data, cur_value_data_size ) ) )
+            void_call = true;
+
+        // Deallocate data
+        if( new_value_data_need_delete && new_value_data_size && ( setCallbacksAnyNewValue || void_call ) )
+            SAFEDELA( new_value_data );
+
+        // Ignore void calls
+        if( void_call )
+            return;
+    }
+
+    // Script callbacks
+    if( !setCallbacks.empty() )
+    {
+        RUNTIME_ASSERT( !properties->setCallbackLocked );
+        properties->setCallbackLocked = true;
+        for( size_t i = 0; i < setCallbacks.size(); i++ )
+        {
+            if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
+            {
+                Script::SetArgEntityOK( entity );
+                if( setCallbacksArgs[ i ] > 1 )
+                {
+                    Script::SetArgUInt( enumValue );
+                    if( setCallbacksArgs[ i ] == 3 )
+                        Script::SetArgAddress( new_value );
+                }
+                else if( setCallbacksArgs[ i ] < -1 )
+                {
+                    Script::SetArgAddress( new_value );
+                    if( setCallbacksArgs[ i ] == -3 )
+                        Script::SetArgUInt( enumValue );
+                }
+
+                bool run_ok = true;
+                if( setCallbacksDeferred[ i ] )
+                    Script::RunPreparedSuspend();
+                else
+                    run_ok = Script::RunPrepared();
+                RUNTIME_ASSERT( !entity->IsDestroyed );
+                if( !run_ok )
+                    break;
+            }
+        }
+        properties->setCallbackLocked = false;
+    }
+
+    // Check min/max for POD value and store
+    if( dataType == Property::POD )
+    {
         // Clamp
         if( checkMaxValue )
         {
-            #define CHECK_MAX_VALUE( type )           \
-                do {                                  \
-                    type max_v = (type) maxValue;     \
-                    if( *(type*) new_value > max_v )  \
-                    {                                 \
-                        GenericSet( entity, &max_v ); \
-                        return;                       \
-                    }                                 \
-                }                                     \
+            #define CHECK_MAX_VALUE( type )          \
+                do {                                 \
+                    type max_v = (type) maxValue;    \
+                    if( *(type*) new_value > max_v ) \
+                        *(type*) new_value = max_v;  \
+                }                                    \
                 while( 0 )
             if( isIntDataType && isSignedIntDataType )
             {
@@ -508,15 +577,12 @@ void Property::GenericSet( Entity* entity, void* new_value )
         }
         if( checkMinValue )
         {
-            #define CHECK_MIN_VALUE( type )           \
-                do {                                  \
-                    type min_v = (type) minValue;     \
-                    if( *(type*) new_value < min_v )  \
-                    {                                 \
-                        GenericSet( entity, &min_v ); \
-                        return;                       \
-                    }                                 \
-                }                                     \
+            #define CHECK_MIN_VALUE( type )          \
+                do {                                 \
+                    type min_v = (type) minValue;    \
+                    if( *(type*) new_value < min_v ) \
+                        *(type*) new_value = min_v;  \
+                }                                    \
                 while( 0 )
             if( isIntDataType && isSignedIntDataType )
             {
@@ -551,21 +617,21 @@ void Property::GenericSet( Entity* entity, void* new_value )
         }
 
         // Ignore void calls
-        if( !memcmp( new_value, cur_value, baseSize ) )
+        if( !memcmp( new_value, cur_pod_value, baseSize ) )
             return;
+
+        // Store
+        memcpy( cur_pod_value, new_value, baseSize );
     }
 
-    // Get current complex value
-    void* complex_value = nullptr;
-    void* cur_complex_value = nullptr;
+    // Store complex value
     if( dataType != Property::POD )
     {
         RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
 
         // Expand new value data for comparison
-        bool   need_delete;
-        uint   new_value_data_size;
-        uchar* new_value_data = ExpandComplexValueData( new_value, new_value_data_size, need_delete );
+        if( !new_value_data )
+            new_value_data = ExpandComplexValueData( new_value, new_value_data_size, new_value_data_need_delete );
 
         // Get current data for comparison
         uint   cur_value_data_size = properties->complexDataSizes[ complexDataIndex ];
@@ -573,22 +639,17 @@ void Property::GenericSet( Entity* entity, void* new_value )
 
         // Compare for ignore void calls
         if( new_value_data_size == cur_value_data_size && ( cur_value_data_size == 0 || !memcmp( new_value_data, cur_value_data, cur_value_data_size ) ) )
-            return;
-
-        // Only now create temporary value for use in callbacks as old value
-        // Ignore creating complex values for engine callbacks
-        if( !setCallbackLocked && !setCallbacks.empty() && setCallbacksAnyOldValue )
         {
-            uchar* data = properties->complexData[ complexDataIndex ];
-            uint   data_size = properties->complexDataSizes[ complexDataIndex ];
-            complex_value = cur_complex_value = CreateComplexValue( data, data_size );
+            // Deallocate data
+            if( new_value_data_need_delete && new_value_data_size )
+                SAFEDELA( new_value_data );
+            return;
         }
-        cur_value = &cur_complex_value;
 
         // Copy new property data
-        if( properties->complexDataSizes[ complexDataIndex ] != new_value_data_size && new_value_data_size && need_delete )
+        if( properties->complexDataSizes[ complexDataIndex ] != new_value_data_size && new_value_data_size && new_value_data_need_delete )
         {
-            need_delete = false;
+            new_value_data_need_delete = false;
             SAFEDELA( properties->complexData[ complexDataIndex ] );
             properties->complexDataSizes[ complexDataIndex ] = new_value_data_size;
             properties->complexData[ complexDataIndex ] = new_value_data;
@@ -607,67 +668,32 @@ void Property::GenericSet( Entity* entity, void* new_value )
         }
 
         // Deallocate data
-        if( need_delete && new_value_data_size )
+        if( new_value_data_need_delete && new_value_data_size )
             SAFEDELA( new_value_data );
     }
 
-    // Store old value
-    uint64 old_value = 0;
-    memcpy( &old_value, cur_value, baseSize );
-
-    // Assign value
-    memcpy( cur_value, new_value, baseSize );
-
-    // Set callbacks
-    if( !setCallbacks.empty() && !setCallbackLocked )
+    // Native set callbacks
+    if( nativeSetCallback || !PropertyRegistrator::GlobalSetCallbacks.empty() )
     {
-        setCallbackLocked = true;
+        if( nativeSetCallback )
+            nativeSetCallback( entity, this, new_value, &old_pod_value );
+        for( size_t i = 0, j = PropertyRegistrator::GlobalSetCallbacks.size(); i < j; i++ )
+            PropertyRegistrator::GlobalSetCallbacks[ i ] ( entity, this, new_value, &old_pod_value );
 
-        for( size_t i = 0; i < setCallbacks.size(); i++ )
-        {
-            if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
-            {
-                Script::SetArgEntity( entity );
-                if( setCallbacksArgs[ i ] > 1 )
-                {
-                    Script::SetArgUInt( enumValue );
-                    if( setCallbacksArgs[ i ] == 3 )
-                        Script::SetArgAddress( &old_value );
-                }
-                else if( setCallbacksArgs[ i ] < -1 )
-                {
-                    Script::SetArgAddress( &old_value );
-                    if( setCallbacksArgs[ i ] == -3 )
-                        Script::SetArgUInt( enumValue );
-                }
-
-                if( !Script::RunPrepared() )
-                    break;
-            }
-        }
-
-        setCallbackLocked = false;
+        // Maybe callback reset value
+        if( dataType == Property::POD && !memcmp( new_value, &old_pod_value, baseSize ) )
+            return;
     }
 
-    // Native set callbacks
-    if( nativeSetCallback && !setCallbackLocked )
-        nativeSetCallback( entity, this, cur_value, &old_value );
-    for( size_t i = 0, j = PropertyRegistrator::GlobalSetCallbacks.size(); i < j; i++ )
-        PropertyRegistrator::GlobalSetCallbacks[ i ] ( entity, this, cur_value, &old_value );
-
     // Native send callback
-    if( nativeSendCallback && entity != sendIgnoreEntity && !setCallbackLocked )
+    if( nativeSendCallback && entity != properties->sendIgnoreEntity )
     {
         if( ( properties->registrator->isServer && ( accessType & ( Property::PublicMask | Property::ProtectedMask ) ) ) ||
             ( !properties->registrator->isServer && ( accessType & Property::ModifiableMask ) ) )
         {
-            nativeSendCallback( entity, this, cur_value, &old_value );
+            nativeSendCallback( entity, this );
         }
     }
-
-    // Reference counting
-    if( complex_value )
-        ReleaseComplexValue( complex_value );
 }
 
 const char* Property::GetName()
@@ -870,21 +896,16 @@ void Property::SetPODValueAsInt( Entity* entity, int value )
     }
 }
 
-void Property::SetSendIgnore( Entity* entity )
-{
-    sendIgnoreEntity = entity;
-}
-
 string Property::SetGetCallback( const char* script_func )
 {
     // Todo: Check can get
 
     char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "%s%s %s(%s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
+    Str::Format( decl, "%s%s %s(const %s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
     uint bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
     if( !bind_id )
     {
-        Str::Format( decl, "%s%s %s(%s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
+        Str::Format( decl, "%s%s %s(const %s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
         bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
         if( !bind_id )
         {
@@ -903,28 +924,26 @@ string Property::SetGetCallback( const char* script_func )
     return "";
 }
 
-string Property::AddSetCallback( const char* script_func )
+string Property::AddSetCallback( const char* script_func, bool deferred )
 {
-    // Todo: Check can set
-
     char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "void %s(%s&,%s,%s&)", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
-    uint  bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
+    Str::Format( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
+    uint  bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
     if( !bind_id )
     {
-        Str::Format( decl, "void %s(%s&,%s&,%s)", "%s", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
-        bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
+        Str::Format( decl, "void %s(%s%s&,%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
+        bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
         if( !bind_id )
         {
-            Str::Format( decl, "void %s(%s&,%s)", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
+            Str::Format( decl, "void %s(%s%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
             bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
             if( !bind_id )
             {
-                Str::Format( decl, "void %s(%s&,%s&)", "%s", registrator->scriptClassName.c_str(), typeName.c_str() );
-                bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
+                Str::Format( decl, "void %s(%s%s&,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str() );
+                bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
                 if( !bind_id )
                 {
-                    Str::Format( decl, "void %s(%s&)", "%s", registrator->scriptClassName.c_str() );
+                    Str::Format( decl, "void %s(%s%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str() );
                     bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
                     if( !bind_id )
                     {
@@ -940,7 +959,7 @@ string Property::AddSetCallback( const char* script_func )
                 else
                 {
                     setCallbacksArgs.push_back( -2 );
-                    setCallbacksAnyOldValue = true;
+                    setCallbacksAnyNewValue = true;
                 }
             }
             else
@@ -951,16 +970,17 @@ string Property::AddSetCallback( const char* script_func )
         else
         {
             setCallbacksArgs.push_back( -3 );
-            setCallbacksAnyOldValue = true;
+            setCallbacksAnyNewValue = true;
         }
     }
     else
     {
         setCallbacksArgs.push_back( 3 );
-        setCallbacksAnyOldValue = true;
+        setCallbacksAnyNewValue = true;
     }
 
     setCallbacks.push_back( bind_id );
+    setCallbacksDeferred.push_back( deferred );
     return "";
 }
 
@@ -969,6 +989,10 @@ Properties::Properties( PropertyRegistrator* reg )
     registrator = reg;
     RUNTIME_ASSERT( registrator );
     RUNTIME_ASSERT( registrator->registrationFinished );
+
+    getCallbackLocked = false;
+    setCallbackLocked = false;
+    sendIgnoreEntity = nullptr;
 
     // Allocate POD data
     if( !registrator->podDataPool.empty() )
@@ -1707,11 +1731,17 @@ bool Properties::SetValueAsIntProps( Properties* props, int enum_value, int valu
         else if( prop->baseSize == 8 )
             props->SetPropValue< uint64 >( prop, (uint64) value );
     }
+    return true;
 }
 
 string Properties::GetClassName()
 {
     return registrator->scriptClassName;
+}
+
+void Properties::SetSendIgnore( Entity* entity )
+{
+    sendIgnoreEntity = entity;
 }
 
 PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_class_name )
@@ -1770,7 +1800,7 @@ bool PropertyRegistrator::Init()
     }
 
     char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "int GetAsInt(%s)", enum_type.c_str() );
+    Str::Format( decl, "int GetAsInt(%s) const", enum_type.c_str() );
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::GetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
@@ -2235,7 +2265,7 @@ void PropertyRegistrator::SetNativeSetCallback( const char* property_name, Nativ
     Find( property_name )->nativeSetCallback = callback;
 }
 
-void PropertyRegistrator::SetNativeSendCallback( NativeCallback callback )
+void PropertyRegistrator::SetNativeSendCallback( NativeSendCallback callback )
 {
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
         registeredProperties[ i ]->nativeSendCallback = callback;

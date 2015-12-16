@@ -50,9 +50,9 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
         call.ValuesSigned = false;
     }
 
-    if( delay == uint( -1 ) )
+    if( delay == 0 || delay == uint( -1 ) )
     {
-        RunDeferredCall( call );
+        RunDeferredCall( call, delay == 0 );
     }
     else
     {
@@ -130,7 +130,7 @@ void ScriptInvoker::Process()
                 it = deferredCalls.erase( it );
                 deferredCallsLocker.Unlock();
 
-                RunDeferredCall( call );
+                RunDeferredCall( call, false );
                 done = false;
                 break;
             }
@@ -141,7 +141,7 @@ void ScriptInvoker::Process()
     }
 }
 
-void ScriptInvoker::RunDeferredCall( DeferredCall& call )
+void ScriptInvoker::RunDeferredCall( DeferredCall& call, bool run_suspended )
 {
     if( Script::PrepareContext( call.BindId, _FUNC_, "Invoker" ) )
     {
@@ -155,12 +155,18 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call )
             ScriptArray* arr = Script::CreateArray( call.ValuesSigned ? "int[]" : "uint[]" );
             Script::AppendVectorToArray( call.Values, arr );
             Script::SetArgObject( arr );
-            Script::RunPrepared();
+            if( run_suspended )
+                Script::RunPreparedSuspend();
+            else
+                Script::RunPrepared();
             arr->Release();
         }
         else
         {
-            Script::RunPrepared();
+            if( run_suspended )
+                Script::RunPreparedSuspend();
+            else
+                Script::RunPrepared();
         }
     }
 }
@@ -175,6 +181,8 @@ void ScriptInvoker::SaveDeferredCalls( IniParser& data )
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
         DeferredCall& call = *it;
+        RUNTIME_ASSERT( call.FireTick != 0 );
+        RUNTIME_ASSERT( call.FireTick != uint( -1 ) );
         if( !call.Saved )
             continue;
 

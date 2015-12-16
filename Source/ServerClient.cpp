@@ -4654,7 +4654,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     prop->SetData( entity, !data.empty() ? &data[ 0 ] : nullptr, (uint) data.size() );
 }
 
-void FOServer::OnSendGlobalValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendGlobalValue( Entity* entity, Property* prop )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
@@ -4668,7 +4668,7 @@ void FOServer::OnSendGlobalValue( Entity* entity, Property* prop, void* cur_valu
     }
 }
 
-void FOServer::OnSendCritterValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendCritterValue( Entity* entity, Property* prop )
 {
     Critter* cr = (Critter*) entity;
 
@@ -4680,7 +4680,7 @@ void FOServer::OnSendCritterValue( Entity* entity, Property* prop, void* cur_val
         cr->SendA_Property( NetProperty::Critter, prop, cr );
 }
 
-void FOServer::OnSendMapValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendMapValue( Entity* entity, Property* prop )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
@@ -4689,7 +4689,7 @@ void FOServer::OnSendMapValue( Entity* entity, Property* prop, void* cur_value, 
     }
 }
 
-void FOServer::OnSendLocationValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOServer::OnSendLocationValue( Entity* entity, Property* prop )
 {
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {

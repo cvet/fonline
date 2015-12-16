@@ -418,8 +418,6 @@ struct BindClass
     static void Map_PlaySound()              {}
     static void Map_PlaySoundRadius()        {}
     static void Map_Reload()                 {}
-    static void Map_GetWidth()               {}
-    static void Map_GetHeight()              {}
     static void Map_MoveHexByDir()           {}
     static void Map_VerifyTrigger()          {}
 

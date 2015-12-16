@@ -45,6 +45,7 @@ int main( int argc, char** argv )
         mapper->MainLoop();
 
     // Finish script
+    Script::RunMandatorySuspended();
     if( Script::PrepareContext( MapperFunctions.Finish, _FUNC_, "Game" ) )
         Script::RunPrepared();
 
