@@ -128,7 +128,7 @@ public:
     static void KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy );
     static bool MoveRandom( Critter* cr );
     static bool RegenerateMap( Map* map );
-    static bool VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
+    static void VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
 
     // Scripting
     static Pragmas ServerPropertyPragmas;
@@ -657,7 +657,7 @@ public:
         static void      Map_PlaySoundRadius( Map* map, ScriptString& sound_name, ushort hx, ushort hy, uint radius );
         static bool      Map_Reload( Map* map );
         static void      Map_MoveHexByDir( Map* map, ushort& hx, ushort& hy, uchar dir, uint steps );
-        static bool      Map_VerifyTrigger( Map* map, Critter* cr, ushort hx, ushort hy, uchar dir );
+        static void      Map_VerifyTrigger( Map* map, Critter* cr, ushort hx, ushort hy, uchar dir );
 
         static void Map_EventFinish( Map* map, bool deleted );
         static void Map_EventLoop0( Map* map );

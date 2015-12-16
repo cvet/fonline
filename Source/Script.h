@@ -142,6 +142,7 @@ public:
     static void              ResumeContext( asIScriptContext* ctx );
     static void              RunSuspended();
     static void              RunMandatorySuspended();
+    static bool              CheckContextEntities( asIScriptContext* ctx );
     static uint              GetReturnedUInt();
     static bool              GetReturnedBool();
     static void*             GetReturnedObject();

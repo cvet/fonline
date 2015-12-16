@@ -651,14 +651,15 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     // Run script
     if( Script::PrepareContext( ServerFunctions.CritterAttack, _FUNC_, cr->GetInfo() ) )
     {
-        Item* ammo_proto = new Item( 0, ammo );
+        Item* ammo_proto = ( ammo ? new Item( 0, ammo ) : nullptr );
         Script::SetArgEntity( cr );
         Script::SetArgEntity( t_cr );
         Script::SetArgEntity( weap );
         Script::SetArgUChar( MAKE_ITEM_MODE( use, aim ) );
         Script::SetArgEntity( ammo_proto );
         Script::RunPrepared();
-        ammo_proto->Release();
+        if( ammo_proto )
+            ammo_proto->Release();
     }
     return true;
 }
@@ -935,13 +936,6 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         Script::SetArgEntity( target_scen );
         Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
         Script::SetArgEntity( item );
-        if( target_scen->IsSceneryParams() )
-        {
-            ScriptArray* scenery_params = target_scen->GetSceneryParams();
-            for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
-                Script::SetArgUInt( *(int*) scenery_params->At( i ) );
-            scenery_params->Release();
-        }
         if( Script::RunPrepared() && Script::GetReturnedBool() )
             return true;
     }
@@ -1092,13 +1086,6 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
             Script::SetArgEntity( pick_scenery );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
             Script::SetArgEntity( nullptr );
-            if( pick_scenery->IsSceneryParams() )
-            {
-                ScriptArray* scenery_params = pick_scenery->GetSceneryParams();
-                for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
-                    Script::SetArgUInt( *(int*) scenery_params->At( i ) );
-                scenery_params->Release();
-            }
             if( Script::RunPrepared() && Script::GetReturnedBool() )
                 return true;
         }
@@ -1305,51 +1292,32 @@ bool FOServer::RegenerateMap( Map* map )
     return true;
 }
 
-bool FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir )
+void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir )
 {
-    // Triggers
-    bool result = false;
     if( map->IsHexTrigger( from_hx, from_hy ) || map->IsHexTrigger( to_hx, to_hy ) )
     {
         Item* out_trigger = map->GetProtoMap()->GetMapScenery( from_hx, from_hy, SP_SCEN_TRIGGER );
         Item* in_trigger = map->GetProtoMap()->GetMapScenery( to_hx, to_hy, SP_SCEN_TRIGGER );
         if( !( out_trigger && in_trigger && out_trigger->GetTriggerNum() == in_trigger->GetTriggerNum() ) )
         {
-            if( out_trigger && Script::PrepareContext( out_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
+            if( out_trigger && out_trigger->SceneryScriptBindId && Script::PrepareContext( out_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
             {
-                Script::SetArgEntity( cr );
-                Script::SetArgEntity( out_trigger );
+                Script::SetArgEntityOK( cr );
+                Script::SetArgEntityOK( out_trigger );
                 Script::SetArgBool( false );
                 Script::SetArgUChar( dir );
-                if( out_trigger->IsSceneryParams() )
-                {
-                    ScriptArray* scenery_params = out_trigger->GetSceneryParams();
-                    for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
-                        Script::SetArgUInt( *(int*) scenery_params->At( i ) );
-                    scenery_params->Release();
-                }
-                if( Script::RunPrepared() )
-                    result = true;
+                Script::RunPreparedSuspend();
             }
-            if( in_trigger && Script::PrepareContext( in_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
+            if( in_trigger && in_trigger->SceneryScriptBindId && Script::PrepareContext( in_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
             {
-                Script::SetArgEntity( cr );
-                Script::SetArgEntity( in_trigger );
+                Script::SetArgEntityOK( cr );
+                Script::SetArgEntityOK( in_trigger );
                 Script::SetArgBool( true );
                 Script::SetArgUChar( dir );
-                if( in_trigger->IsSceneryParams() )
-                {
-                    ScriptArray* scenery_params = in_trigger->GetSceneryParams();
-                    for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
-                        Script::SetArgUInt( *(int*) scenery_params->At( i ) );
-                    scenery_params->Release();
-                }
-                if( Script::RunPrepared() )
-                    result = true;
+                Script::RunPreparedSuspend();
             }
         }
     }
-    return result;
 }
 
 void FOServer::Process_Update( Client* cl )

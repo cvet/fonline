@@ -890,13 +890,6 @@ bool FOServer::SScriptFunc::Item_CallSceneryFunction( Item* scenery, Critter* cr
     Script::SetArgEntity( scenery );
     Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
     Script::SetArgEntity( item );
-    if( scenery->IsSceneryParams() )
-    {
-        ScriptArray* scenery_params = scenery->GetSceneryParams();
-        for( int i = 0, j = scenery_params->GetSize(); i < j; i++ )
-            Script::SetArgUInt( *(int*) scenery_params->At( i ) );
-        scenery_params->Release();
-    }
     return Script::RunPrepared() && Script::GetReturnedBool();
 }
 
@@ -4402,20 +4395,20 @@ void FOServer::SScriptFunc::Map_MoveHexByDir( Map* map, ushort& hx, ushort& hy, 
     }
 }
 
-bool FOServer::SScriptFunc::Map_VerifyTrigger( Map* map, Critter* cr, ushort hx, ushort hy, uchar dir )
+void FOServer::SScriptFunc::Map_VerifyTrigger( Map* map, Critter* cr, ushort hx, ushort hy, uchar dir )
 {
     if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Critter arg is destroyed." );
+        SCRIPT_ERROR_R( "Critter arg is destroyed." );
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
-        SCRIPT_ERROR_R0( "Invalid hexes args." );
+        SCRIPT_ERROR_R( "Invalid hexes args." );
     if( dir >= DIRS_COUNT )
-        SCRIPT_ERROR_R0( "Invalid dir arg." );
+        SCRIPT_ERROR_R( "Invalid dir arg." );
 
     ushort from_hx = hx, from_hy = hy;
     MoveHexByDir( from_hx, from_hy, ReverseDir( dir ), map->GetWidth(), map->GetHeight() );
-    return VerifyTrigger( map, cr, from_hx, from_hy, hx, hy, dir );
+    VerifyTrigger( map, cr, from_hx, from_hy, hx, hy, dir );
 }
 
 void FOServer::SScriptFunc::Map_EventFinish( Map* map, bool deleted )

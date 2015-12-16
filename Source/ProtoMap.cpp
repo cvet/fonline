@@ -1104,24 +1104,10 @@ bool ProtoMap::BindScripts( EntityVec& entities )
             Item* item = (Item*) entity;
             const char* script_name = Str::GetName( item->GetScriptId() );
             uint bind_id = 0;
-            ScriptArray* params = item->GetSceneryParams();
-            uint params_count = params->GetSize();
-            params->Release();
-            # define BIND_SCENERY_FUNC( count, params )                                                                                   \
-                if( params_count == count )                                                                                               \
-                {                                                                                                                         \
-                    if( item->GetProtoId() != SP_SCEN_TRIGGER )                                                                           \
-                        bind_id = Script::BindByScriptName( script_name, "bool %s(Critter&,Item&,CritterProperty,Item@" params, false );  \
-                    else                                                                                                                  \
-                        bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,Item&,bool,uint8" params, false );             \
-                }
-            BIND_SCENERY_FUNC( 0, ")" );
-            BIND_SCENERY_FUNC( 1, ",int)" );
-            BIND_SCENERY_FUNC( 2, ",int,int)" );
-            BIND_SCENERY_FUNC( 3, ",int,int,int)" );
-            BIND_SCENERY_FUNC( 4, ",int,int,int,int)" );
-            BIND_SCENERY_FUNC( 5, ",int,int,int,int,int)" );
-            # undef BIND_SCENERY_FUNC
+            if( item->GetProtoId() != SP_SCEN_TRIGGER )
+                bind_id = Script::BindByScriptName( script_name, "bool %s(Critter&,Item&,CritterProperty,Item@)", false );
+            else
+                bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,Item&,bool,uint8)", false );
             if( !bind_id )
             {
                 WriteLog( "Map '%s', can't bind scenery function '%s'.\n", GetName(), script_name );

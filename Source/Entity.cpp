@@ -121,7 +121,9 @@ void Entity::Release() const
 {
     if( !InterlockedDecrement( &RefCounter ) )
     {
-        if( Type == EntityType::Custom )
+        if( Type == EntityType::Global )
+            delete (GlobalVars*) this;
+        else if( Type == EntityType::Custom )
             delete (CustomEntity*) this;
         #if defined ( FONLINE_SERVER )
         else if( Type == EntityType::Item )

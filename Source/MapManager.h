@@ -52,7 +52,7 @@ struct TraceData
     bool        IsCheckTeam;
     uint        BaseCrTeamId;
     bool        LastPassedSkipCritters;
-    bool        ( * HexCallback )( Map*, Critter*, ushort, ushort, ushort, ushort, uchar );
+    void        ( * HexCallback )( Map*, Critter*, ushort, ushort, ushort, ushort, uchar );
     // Output
     CrVec*      Critters;
     UShortPair* PreBlock;
