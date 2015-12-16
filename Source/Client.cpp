@@ -4363,20 +4363,17 @@ void FOClient::Net_OnChosenEraseItem()
         return;
     }
 
-    item->AddRef();
-
-    if( item->GetIsLight() && item->GetCritSlot() != SLOT_INV )
-        HexMngr.RebuildLight();
-    Chosen->DeleteItem( item, true );
-    CollectContItems();
-
     if( Script::PrepareContext( ClientFunctions.ItemInvOut, _FUNC_, "Game" ) )
     {
         Script::SetArgEntityOK( item );
         Script::RunPrepared();
     }
 
-    item->Release();
+    bool rebuild_light = ( item->GetIsLight() && item->GetCritSlot() != SLOT_INV );
+    Chosen->DeleteItem( item, true );
+    if( rebuild_light )
+        HexMngr.RebuildLight();
+    CollectContItems();
 }
 
 void FOClient::Net_OnAllItemsSend()

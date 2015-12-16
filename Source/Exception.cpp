@@ -23,9 +23,10 @@ void SetExceptionsRussianText()
     DumpMess = DumpMessRus;
 }
 
-char AppName[ 128 ] = { 0 };
-char AppVer[ 128 ] = { 0 };
-char ManualDumpAppendix[ 128 ] = { 0 };
+char AppName[ MAX_FOTEXT ] = { 0 };
+char AppVer[ MAX_FOTEXT ] = { 0 };
+char ManualDumpAppendix[ MAX_FOTEXT ] = { 0 };
+char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
 
 #ifdef FO_WINDOWS
 
@@ -102,6 +103,9 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     if( f )
     {
         // Generic info
+        fprintf( f, "Message\n" );
+        fprintf( f, "%s\n", ManualDumpMessage );
+        fprintf( f, "\n" );
         fprintf( f, "Application\n" );
         fprintf( f, "\tName        %s\n", AppName );
         fprintf( f, "\tVersion     %s\n",  AppVer );
@@ -512,9 +516,10 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     return retval;
 }
 
-void CreateDump( const char* appendix )
+void CreateDump( const char* appendix, const char* message )
 {
     Str::Copy( ManualDumpAppendix, appendix );
+    Str::Copy( ManualDumpMessage, message );
 
     # ifndef EXCEPTION_MINIDUMP
     TopLevelFilterReadableDump( nullptr );
@@ -587,9 +592,11 @@ void CatchExceptions( const char* app_name, int app_ver )
     }
 }
 
-void CreateDump( const char* appendix )
+void CreateDump( const char* appendix, const char* message )
 {
     Str::Copy( ManualDumpAppendix, appendix );
+    Str::Copy( ManualDumpMessage, message );
+
     TerminationHandler( 0, nullptr, nullptr );
 }
 
@@ -616,6 +623,9 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     if( f )
     {
         // Generic info
+        fprintf( f, "Message\n" );
+        fprintf( f, "\t%s\n", ManualDumpMessage );
+        fprintf( f, "\n" );
         fprintf( f, "Application\n" );
         fprintf( f, "\tName        %s\n", AppName );
         fprintf( f, "\tVersion     %s\n",  AppVer );
@@ -735,7 +745,7 @@ bool RaiseAssert( const char* message, const char* file, int line )
     char file_[ MAX_FOPATH ];
     FileManager::ExtractFileName( file, file_ );
     Str::Format( buf, "AssertFailed_v%u_%s(%u)", FONLINE_VERSION, file_, line );
-    CreateDump( buf );
+    CreateDump( buf, message );
 
     // Show message
     Str::Format( buf, "Assert failed!\nVersion: %u\nFile: %s (%u)\n\n%s", FONLINE_VERSION, file_, line, message );

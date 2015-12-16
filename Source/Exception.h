@@ -6,7 +6,7 @@
 
 void CatchExceptions( const char* app_name, int app_ver );
 void SetExceptionsRussianText();
-void CreateDump( const char* appendix );
+void CreateDump( const char* appendix, const char* message );
 bool RaiseAssert( const char* message, const char* file, int line );
 
 #endif // ___EXCEPTION___

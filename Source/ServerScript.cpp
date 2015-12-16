@@ -3615,10 +3615,10 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
-    ProtoItem* proto_item = ProtoMngr.GetProtoItem( proto_id );
-    if( !proto_item )
+    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
+    if( !proto )
         SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", Str::GetName( proto_id ) );
-    if( !map->IsPlaceForProtoItem( hx, hy, proto_item ) )
+    if( !map->IsPlaceForProtoItem( hx, hy, proto ) )
         SCRIPT_ERROR_R0( "No place for item." );
 
     if( !count )
@@ -3626,6 +3626,7 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
     if( props )
     {
         Properties props_( Item::PropertiesRegistrator );
+        props_ = proto->Props;
         for( uint i = 0, j = props->GetSize(); i < j; i++ )
             if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
                 return nullptr;
@@ -4071,13 +4072,15 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
-    if( !ProtoMngr.GetProtoCritter( proto_id ) )
+    ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
+    if( !proto )
         SCRIPT_ERROR_R0( "Proto '%s' not found.", Str::GetName( proto_id ) );
 
     Critter* npc = nullptr;
     if( props )
     {
         Properties props_( Critter::PropertiesRegistrator );
+        props_ = proto->Props;
         for( uint i = 0, j = props->GetSize(); i < j; i++ )
             if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
                 return nullptr;

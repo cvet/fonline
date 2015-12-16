@@ -946,7 +946,7 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
     WriteLog( "%s", buf );
 
     #ifndef FONLINE_SERVER
-    CreateDump( "ScriptException" );
+    CreateDump( "ScriptException", buf );
     ShowMessage( buf );
     ExitProcess( 0 );
     #endif

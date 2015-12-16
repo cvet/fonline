@@ -433,7 +433,7 @@ void GUICallback( Fl_Widget* widget, void* data )
     }
     else if( widget == GuiBtnCreateDump )
     {
-        CreateDump( "ManualDump" );
+        CreateDump( "ManualDump", "Manual" );
     }
     else if( widget == GuiBtnMemory )
     {
