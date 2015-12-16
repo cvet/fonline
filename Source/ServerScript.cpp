@@ -164,7 +164,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.NpcPlaneEnd, "npc_plane_end", "bool %s(Critter&,NpcPlane&,int,Critter@,Item@)" },
         { &ServerFunctions.NpcPlaneRun, "npc_plane_run", "bool %s(Critter&,NpcPlane&,int,uint&,uint&,uint&)" },
         { &ServerFunctions.KarmaVoting, "karma_voting", "void %s(Critter&,Critter&,bool)" },
-        { &ServerFunctions.CheckLook, "check_look", "bool %s(Map&,Critter&,Critter&)" },
+        { &ServerFunctions.CheckLook, "check_look", "bool %s(const Map&,const Critter&,const Critter&)" },
         { &ServerFunctions.ItemCost, "item_cost", "uint %s(Item&,Critter&,Critter&,bool)" },
         { &ServerFunctions.ItemsBarter, "items_barter", "bool %s(Item@[]&,uint[]&,Item@[]&,uint[]&,Critter&,Critter&)" },
         { &ServerFunctions.ItemsCrafted, "items_crafted", "void %s(Item@[]&,uint[]&,Item@[]&,Critter&)" },

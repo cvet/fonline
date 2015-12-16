@@ -505,18 +505,18 @@ void Critter::ProcessVisibleCritters()
             bool allow_self = true;
             if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
             {
-                Script::SetArgEntity( map );
-                Script::SetArgEntity( this );
-                Script::SetArgEntity( cr );
+                Script::SetArgEntityOK( map );
+                Script::SetArgEntityOK( this );
+                Script::SetArgEntityOK( cr );
                 if( Script::RunPrepared() )
                     allow_self = Script::GetReturnedBool();
             }
             bool allow_opp = true;
             if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
             {
-                Script::SetArgEntity( map );
-                Script::SetArgEntity( cr );
-                Script::SetArgEntity( this );
+                Script::SetArgEntityOK( map );
+                Script::SetArgEntityOK( cr );
+                Script::SetArgEntityOK( this );
                 if( Script::RunPrepared() )
                     allow_opp = Script::GetReturnedBool();
             }
@@ -959,9 +959,9 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
         {
             if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
             {
-                Script::SetArgEntity( map );
-                Script::SetArgEntity( this );
-                Script::SetArgEntity( cr );
+                Script::SetArgEntityOK( map );
+                Script::SetArgEntityOK( this );
+                Script::SetArgEntityOK( cr );
                 if( Script::RunPrepared() && Script::GetReturnedBool() )
                     Send_AddCritter( cr );
             }

@@ -68,7 +68,8 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, Properties& props ): ItemHex( id, p
 
 ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data ): ItemHex( id, proto )
 {
-    Props.RestoreData( *props_data );
+    if( props_data )
+        Props.RestoreData( *props_data );
     AfterConstruction();
 }
 
