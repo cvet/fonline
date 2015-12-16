@@ -885,8 +885,6 @@ void Script::ReturnContext( asIScriptContext* ctx )
     FreeContexts.push_back( ctx );
 
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-    for( uint i = 0; i < ctx_data->EntitiesArgsCount; i++ )
-        ctx_data->EntitiesArgs[ i ]->Release();
     memzero( ctx_data, sizeof( ContextData ) );
 }
 
@@ -2231,7 +2229,6 @@ void Script::SetArgEntity( Entity* value )
         {
             ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
             ctx_data->EntitiesArgs[ ctx_data->EntitiesArgsCount++ ] = value;
-            value->AddRef();
         }
         CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
     }
@@ -2392,7 +2389,6 @@ bool Script::RunPrepared()
     if( ScriptCall )
     {
         RUNTIME_ASSERT( CurrentCtx );
-        RUNTIME_ASSERT( CheckContextEntities( CurrentCtx ) );
         asIScriptContext* ctx = CurrentCtx;
         ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
         uint              tick = Timer::FastTick();
@@ -2517,17 +2513,16 @@ void Script::RunSuspended()
     // Resume
     for( auto& ctx : resume_contexts )
     {
-        if( CheckContextEntities( ctx ) )
-        {
-            BeginExecution();
-            CurrentCtx = ctx;
-            ScriptCall = true;
-            RunPrepared();
-        }
-        else
+        if( ctx->GetState() == asEXECUTION_PREPARED && !CheckContextEntities( ctx ) )
         {
             ReturnContext( ctx );
+            continue;
         }
+
+        BeginExecution();
+        CurrentCtx = ctx;
+        ScriptCall = true;
+        RunPrepared();
     }
 }
 
@@ -2559,17 +2554,16 @@ void Script::RunMandatorySuspended()
         // Resume
         for( auto& ctx : resume_contexts )
         {
-            if( CheckContextEntities( ctx ) )
-            {
-                BeginExecution();
-                CurrentCtx = ctx;
-                ScriptCall = true;
-                RunPrepared();
-            }
-            else
+            if( ctx->GetState() == asEXECUTION_PREPARED && !CheckContextEntities( ctx ) )
             {
                 ReturnContext( ctx );
+                continue;
             }
+
+            BeginExecution();
+            CurrentCtx = ctx;
+            ScriptCall = true;
+            RunPrepared();
         }
 
         // Detect recursion
