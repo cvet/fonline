@@ -55,7 +55,7 @@ static void InsertMapValues( const StrMap& from_kv, StrMap& to_kv, bool overwrit
         if( !kv.first.empty() && kv.first[ 0 ] != '$' )
         {
             if( overwrite )
-                to_kv.insert_or_assign( kv.first, kv.second );
+                to_kv[ kv.first ] = kv.second;
             else
                 to_kv.insert( PAIR( kv.first, kv.second ) );
         }
@@ -180,8 +180,8 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
             Str::ParseLine( parent_name_line, ' ', parent_names, Str::ParseLineDummy );
             for( auto& parent_name : parent_names )
             {
-                hash  parent_pid = Str::GetHash( parent_name.c_str() );
-                auto& parent = files_protos.find( parent_pid );
+                hash parent_pid = Str::GetHash( parent_name.c_str() );
+                auto parent = files_protos.find( parent_pid );
                 if( parent == files_protos.end() )
                 {
                     if( base_name == name )

@@ -3677,7 +3677,6 @@ void FOMapper::BufferPaste( int hx, int hy )
         {
             for( auto& child_buf : entity_buf->Children )
             {
-                EntityBuf* child_buf = new EntityBuf();
                 RUNTIME_ASSERT( child_buf->Type == EntityType::Item );
                 Item* child = new Item( --pmap->LastEntityId, (ProtoItem*) child_buf->Proto );
                 child->Props = *child_buf->Props;

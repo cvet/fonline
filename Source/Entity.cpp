@@ -106,10 +106,10 @@ EntityVec Entity::GetChildren() const
     # endif
     if( Type == EntityType::Item || Type == EntityType::ItemHex )
     {
-        Item* item = (Item*) this;
-        if( item->ChildItems )
+        Item* cont = (Item*) this;
+        if( cont->ChildItems )
         {
-            for( auto& item :* item->ChildItems )
+            for( auto& item :* cont->ChildItems )
                 children.push_back( item );
         }
     }

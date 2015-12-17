@@ -805,8 +805,8 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationHated", &GameOpt.R
 #endif
 
 #ifdef BIND_MAPPER
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddChild(uint16 hexX, uint16 hexY, int mapObjType, hash pid)", asFUNCTION( BIND_CLASS Item_AddChild ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ AddChild(uint16 hexX, uint16 hexY, int mapObjType, hash pid, uint skip) const", asFUNCTION( BIND_CLASS Crit_AddChild ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddChild(hash pid)", asFUNCTION( BIND_CLASS Item_AddChild ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ AddChild(hash pid) const", asFUNCTION( BIND_CLASS Crit_AddChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetChildren(uint16 hexX, uint16 hexY, array<Item@>@+ children)", asFUNCTION( BIND_CLASS Item_GetChildren ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetChildren(uint16 hexX, uint16 hexY, array<const Item@>@+ children) const", asFUNCTION( BIND_CLASS Item_GetChildren ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetChildren(uint16 hexX, uint16 hexY, array<Item@>@+ children)", asFUNCTION( BIND_CLASS Crit_GetChildren ), asCALL_CDECL_OBJFIRST ) );

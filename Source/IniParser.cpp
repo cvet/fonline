@@ -39,7 +39,7 @@ void IniParser::ParseStr( const char* str )
     auto    it_app = appKeyValues.find( "" );
     if( it_app == appKeyValues.end() )
     {
-        auto& it = appKeyValues.insert( PAIR( string( "" ), StrMap() ) );
+        auto it = appKeyValues.insert( PAIR( string( "" ), StrMap() ) );
         appKeyValuesOrder.push_back( it );
         cur_app = &it->second;
     }
@@ -79,7 +79,7 @@ void IniParser::ParseStr( const char* str )
             }
 
             // Add new section
-            auto& it = appKeyValues.insert( PAIR( string( buf ), StrMap() ) );
+            auto it = appKeyValues.insert( PAIR( string( buf ), StrMap() ) );
             appKeyValuesOrder.push_back( it );
             cur_app = &it->second;
         }
@@ -253,7 +253,7 @@ void IniParser::SetStr( const char* app_name, const char* key_name, const char* 
     {
         StrMap key_values;
         key_values[ key_name ] = val;
-        auto&  it = appKeyValues.insert( PAIR( string( app_name ), key_values ) );
+        auto   it = appKeyValues.insert( PAIR( string( app_name ), key_values ) );
         appKeyValuesOrder.push_back( it );
     }
     else
@@ -269,7 +269,7 @@ void IniParser::SetInt( const char* app_name, const char* key_name, int val )
 
 StrMap& IniParser::GetApp( const char* app_name )
 {
-    auto& it = appKeyValues.find( app_name );
+    auto it = appKeyValues.find( app_name );
     return it->second;
 }
 
@@ -284,7 +284,7 @@ void IniParser::GetApps( const char* app_name, PStrMapVec& key_values )
 
 StrMap& IniParser::SetApp( const char* app_name )
 {
-    auto& it = appKeyValues.insert( PAIR( string( app_name ), StrMap() ) );
+    auto it = appKeyValues.insert( PAIR( string( app_name ), StrMap() ) );
     appKeyValuesOrder.push_back( it );
     return it->second;
 }
@@ -316,9 +316,9 @@ void IniParser::GotoNextApp( const char* app_name )
     if( it_app == appKeyValues.end() )
         return;
 
-    auto& order_it = std::find( appKeyValuesOrder.begin(), appKeyValuesOrder.end(), it_app );
-    RUNTIME_ASSERT( order_it != appKeyValuesOrder.end() );
-    appKeyValuesOrder.erase( order_it );
+    auto it = std::find( appKeyValuesOrder.begin(), appKeyValuesOrder.end(), it_app );
+    RUNTIME_ASSERT( it != appKeyValuesOrder.end() );
+    appKeyValuesOrder.erase( it );
     appKeyValues.erase( it_app );
 }
 
