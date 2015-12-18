@@ -385,14 +385,14 @@ void Property::GenericGet( Entity* entity, void* ret_value )
                             typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
         }
 
-        if( properties->getCallbackLocked )
+        if( properties->getCallbackLocked[ getIndex ] )
         {
             memzero( ret_value, baseSize );
             SCRIPT_ERROR_R( "Recursive call for virtual property '%s %s::%s'.",
                             typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
         }
 
-        properties->getCallbackLocked = true;
+        properties->getCallbackLocked[ getIndex ] = true;
 
         if( Script::PrepareContext( getCallback, _FUNC_, GetName() ) )
         {
@@ -402,7 +402,7 @@ void Property::GenericGet( Entity* entity, void* ret_value )
                 Script::SetArgUInt( enumValue );
             if( Script::RunPrepared() )
             {
-                properties->getCallbackLocked = false;
+                properties->getCallbackLocked[ getIndex ] = false;
 
                 memcpy( ret_value, Script::GetReturnedRawAddress(), baseSize );
                 if( !IsPOD() )
@@ -417,7 +417,7 @@ void Property::GenericGet( Entity* entity, void* ret_value )
             }
         }
 
-        properties->getCallbackLocked = false;
+        properties->getCallbackLocked[ getIndex ] = false;
 
         // Error
         memzero( ret_value, baseSize );
@@ -498,8 +498,6 @@ void Property::GenericSet( Entity* entity, void* new_value )
     // Script callbacks
     if( !setCallbacks.empty() )
     {
-        RUNTIME_ASSERT( !properties->setCallbackLocked );
-        properties->setCallbackLocked = true;
         for( size_t i = 0; i < setCallbacks.size(); i++ )
         {
             if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
@@ -528,7 +526,6 @@ void Property::GenericSet( Entity* entity, void* new_value )
                     break;
             }
         }
-        properties->setCallbackLocked = false;
     }
 
     // Check min/max for POD value and store
@@ -686,7 +683,7 @@ void Property::GenericSet( Entity* entity, void* new_value )
     }
 
     // Native send callback
-    if( nativeSendCallback && entity != properties->sendIgnoreEntity )
+    if( nativeSendCallback && !( this == properties->sendIgnoreProperty && entity == properties->sendIgnoreEntity ) )
     {
         if( ( properties->registrator->isServer && ( accessType & ( Property::PublicMask | Property::ProtectedMask ) ) ) ||
             ( !properties->registrator->isServer && ( accessType & Property::ModifiableMask ) ) )
@@ -990,9 +987,10 @@ Properties::Properties( PropertyRegistrator* reg )
     RUNTIME_ASSERT( registrator );
     RUNTIME_ASSERT( registrator->registrationFinished );
 
-    getCallbackLocked = false;
-    setCallbackLocked = false;
+    getCallbackLocked = new bool[ registrator->getPropertiesCount ];
+    memzero( getCallbackLocked, registrator->getPropertiesCount * sizeof( bool ) );
     sendIgnoreEntity = nullptr;
+    sendIgnoreProperty = nullptr;
 
     // Allocate POD data
     if( !registrator->podDataPool.empty() )
@@ -1011,25 +1009,12 @@ Properties::Properties( PropertyRegistrator* reg )
     complexDataSizes.resize( registrator->complexPropertiesCount );
 }
 
-Properties::Properties( const Properties& other )
+Properties::Properties( const Properties& other ): Properties( other.registrator )
 {
-    registrator = other.registrator;
-
     // Copy POD data
-    if( !registrator->podDataPool.empty() )
-    {
-        podData = registrator->podDataPool.back();
-        registrator->podDataPool.pop_back();
-    }
-    else
-    {
-        podData = new uchar[ registrator->wholePodDataSize ];
-    }
     memcpy( &podData[ 0 ], &other.podData[ 0 ], registrator->wholePodDataSize );
 
     // Copy complex data
-    complexData.resize( other.complexData.size() );
-    complexDataSizes.resize( other.complexDataSizes.size() );
     for( size_t i = 0; i < other.complexData.size(); i++ )
     {
         uint size = other.complexDataSizes[ i ];
@@ -1042,6 +1027,8 @@ Properties::Properties( const Properties& other )
 
 Properties::~Properties()
 {
+    delete[] getCallbackLocked;
+
     registrator->podDataPool.push_back( podData );
     podData = nullptr;
 
@@ -1366,7 +1353,8 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
 
         if( is_hashes[ deep ] )
         {
-            RUNTIME_ASSERT( type_id == asTYPEID_UINT32 );
+            if( type_id != asTYPEID_UINT32 )
+                RUNTIME_ASSERT( type_id == asTYPEID_UINT32 );
             return VALUE_AS( hash ) ? CodeString( Str::GetName( VALUE_AS( hash ) ), deep ) : CodeString( "", deep );
         }
 
@@ -1437,6 +1425,8 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
 
 static void* ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error )
 {
+    RUNTIME_ASSERT( deep <= 3 );
+
     if( !( type_id & asTYPEID_MASK_OBJECT ) )
     {
         RUNTIME_ASSERT( type_id != asTYPEID_VOID );
@@ -1606,7 +1596,7 @@ bool Properties::LoadPropertyFromText( Property* prop, const char* value )
 
     // Parse
     uchar pod_buf[ 8 ];
-    bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1 };
+    bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
     void* complex_value = ReadValue( value, prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error );
 
     // Assign
@@ -1639,7 +1629,7 @@ string Properties::SavePropertyToText( Property* prop )
     if( prop->complexDataIndex != uint( -1 ) )
         data = prop->CreateComplexValue( (uchar*) data, data_size );
 
-    bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1 };
+    bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
     string value = WriteValue( data, prop->asObjTypeId, prop->asObjType, is_hashes, 0 );
 
     if( prop->complexDataIndex != uint( -1 ) )
@@ -1739,9 +1729,21 @@ string Properties::GetClassName()
     return registrator->scriptClassName;
 }
 
-void Properties::SetSendIgnore( Entity* entity )
+void Properties::SetSendIgnore( Property* prop, Entity* entity )
 {
+    if( prop )
+    {
+        RUNTIME_ASSERT( sendIgnoreEntity == nullptr );
+        RUNTIME_ASSERT( sendIgnoreProperty == nullptr );
+    }
+    else
+    {
+        RUNTIME_ASSERT( sendIgnoreEntity != nullptr );
+        RUNTIME_ASSERT( sendIgnoreProperty != nullptr );
+    }
+
     sendIgnoreEntity = entity;
+    sendIgnoreProperty = prop;
 }
 
 PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_class_name )
@@ -1754,6 +1756,7 @@ PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_cla
     defaultGroup = nullptr;
     defaultMinValue = nullptr;
     defaultMaxValue = nullptr;
+    getPropertiesCount = 0;
 }
 
 PropertyRegistrator::~PropertyRegistrator()
@@ -1866,6 +1869,7 @@ Property* PropertyRegistrator::Register(
     bool               is_dict_of_array_of_string = false;
     bool               is_hash_sub0 = false;
     bool               is_hash_sub1 = false;
+    bool               is_hash_sub2 = false;
     if( type_id & asTYPEID_OBJHANDLE )
     {
         WriteLogF( _FUNC_, " - Invalid property type '%s', handles not allowed.\n", type_name );
@@ -1943,7 +1947,8 @@ Property* PropertyRegistrator::Register(
         }
 
         is_hash_sub0 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) != nullptr );
-        is_hash_sub1 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) == nullptr );
+        is_hash_sub1 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) == nullptr && !is_dict_of_array );
+        is_hash_sub2 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) == nullptr && is_dict_of_array );
     }
     else
     {
@@ -2152,6 +2157,7 @@ Property* PropertyRegistrator::Register(
     // Make entry
     prop->registrator = this;
     prop->regIndex = reg_index;
+    prop->getIndex = ( !disable_get ? getPropertiesCount++ : uint( -1 ) );
     prop->enumValue = enum_value;
     prop->complexDataIndex = complex_data_index;
     prop->podDataOffset = data_base_offset;
@@ -2170,6 +2176,7 @@ Property* PropertyRegistrator::Register(
     prop->isHash = Str::Compare( type_name, "hash" );
     prop->isHashSubType0 = is_hash_sub0;
     prop->isHashSubType1 = is_hash_sub1;
+    prop->isHashSubType2 = is_hash_sub2;
     prop->isIntDataType = is_int_data_type;
     prop->isSignedIntDataType = is_signed_int_data_type;
     prop->isFloatDataType = is_float_data_type;

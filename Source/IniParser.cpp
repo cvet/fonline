@@ -52,11 +52,18 @@ void IniParser::ParseStr( const char* str )
     if( collectContent )
         app_content.reserve( 0xFFFF );
 
+    bool       show = Str::Substring( str, "[GeneralSettings]" ) != nullptr;
     istrstream istr( str );
-    char       line[ MAX_FOTEXT ];
+    CharVec    big_buf( 1000000 );
+    char*      line = &big_buf[ 0 ];
     char       buf[ MAX_FOTEXT ];
-    while( istr.getline( line, MAX_FOTEXT ) )
+    while( true )
     {
+        istr.getline( line, 1000000 );
+        if( istr.eof() )
+            break;
+        RUNTIME_ASSERT( !istr.fail() );
+
         // New section
         if( line[ 0 ] == '[' )
         {
@@ -270,6 +277,7 @@ void IniParser::SetInt( const char* app_name, const char* key_name, int val )
 StrMap& IniParser::GetApp( const char* app_name )
 {
     auto it = appKeyValues.find( app_name );
+    RUNTIME_ASSERT( it != appKeyValues.end() );
     return it->second;
 }
 

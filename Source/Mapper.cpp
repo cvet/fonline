@@ -4442,7 +4442,7 @@ void FOMapper::RunMapLoadScript( ProtoMap* pmap )
 
     if( MapperFunctions.MapLoad && Script::PrepareContext( MapperFunctions.MapLoad, _FUNC_, "Mapper " ) )
     {
-        Script::SetArgObject( pmap );
+        Script::SetArgPtr( pmap );
         Script::RunPrepared();
     }
 }
@@ -4454,7 +4454,7 @@ void FOMapper::RunMapSaveScript( ProtoMap* pmap )
 
     if( MapperFunctions.MapSave && Script::PrepareContext( MapperFunctions.MapSave, _FUNC_, "Mapper " ) )
     {
-        Script::SetArgObject( pmap );
+        Script::SetArgPtr( pmap );
         Script::RunPrepared();
     }
 }

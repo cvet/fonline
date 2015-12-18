@@ -19,7 +19,6 @@
 #include "zlib.h"
 #include "IniParser.h"
 #include "MsgFiles.h"
-#include "scriptdictionary.h"
 #include "MapCl.h"
 #include "ProtoManager.h"
 

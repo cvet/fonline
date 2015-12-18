@@ -94,8 +94,16 @@ struct ContextData
     char              Info[ MAX_FOTEXT ];
     uint              StartTick;
     uint              SuspendEndTick;
-    Entity*           EntitiesArgs[ 100 ];
-    uint              EntitiesArgsCount;
+    Entity*           EntityArgs[ 20 ];
+    uint              EntityArgsCount;
+    ScriptString*     StringArgs[ 20 ];
+    uint              StringArgsCount;
+    ScriptArray*      ArrayArgs[ 20 ];
+    uint              ArrayArgsCount;
+    ScriptDict*       DictArgs[ 20 ];
+    uint              DictArgsCount;
+    ScriptDictionary* DictionaryArgs[ 20 ];
+    uint              DictionaryArgsCount;
     asIScriptContext* Parent;
 };
 static ContextVec FreeContexts;
@@ -219,7 +227,7 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
         }
         static void ScriptSetArgObject( void* value )
         {
-            Script::SetArgObject( value );
+            Script::SetArgPtr( value );
         }
         static void ScriptSetArgAddress( void* value )
         {
@@ -885,6 +893,16 @@ void Script::ReturnContext( asIScriptContext* ctx )
     FreeContexts.push_back( ctx );
 
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
+    for( uint i = 0; i < ctx_data->EntityArgsCount; i++ )
+        ctx_data->EntityArgs[ i ]->Release();
+    for( uint i = 0; i < ctx_data->StringArgsCount; i++ )
+        ctx_data->StringArgs[ i ]->Release();
+    for( uint i = 0; i < ctx_data->ArrayArgsCount; i++ )
+        ctx_data->ArrayArgs[ i ]->Release();
+    for( uint i = 0; i < ctx_data->DictArgsCount; i++ )
+        ctx_data->DictArgs[ i ]->Release();
+    for( uint i = 0; i < ctx_data->DictionaryArgsCount; i++ )
+        ctx_data->DictionaryArgs[ i ]->Release();
     memzero( ctx_data, sizeof( ContextData ) );
 }
 
@@ -2210,13 +2228,57 @@ void Script::SetArgDouble( double value )
     CurrentArg++;
 }
 
-void Script::SetArgObject( void* value )
+void Script::SetArgPtr( void* value )
 {
     if( ScriptCall )
         CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
     else
         NativeArgs[ CurrentArg ] = (size_t) value;
     CurrentArg++;
+}
+
+void Script::SetArgObject( ScriptString* value )
+{
+    if( value )
+    {
+        ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
+        ctx_data->StringArgs[ ctx_data->StringArgsCount++ ] = value;
+        value->AddRef();
+    }
+    SetArgPtr( value );
+}
+
+void Script::SetArgObject( ScriptArray* value )
+{
+    if( value )
+    {
+        ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
+        ctx_data->ArrayArgs[ ctx_data->ArrayArgsCount++ ] = value;
+        value->AddRef();
+    }
+    SetArgPtr( value );
+}
+
+void Script::SetArgObject( ScriptDict* value )
+{
+    if( value )
+    {
+        ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
+        ctx_data->DictArgs[ ctx_data->DictArgsCount++ ] = value;
+        value->AddRef();
+    }
+    SetArgPtr( value );
+}
+
+void Script::SetArgObject( ScriptDictionary* value )
+{
+    if( value )
+    {
+        ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
+        ctx_data->DictionaryArgs[ ctx_data->DictionaryArgsCount++ ] = value;
+        value->AddRef();
+    }
+    SetArgPtr( value );
 }
 
 void Script::SetArgEntity( Entity* value )
@@ -2228,7 +2290,8 @@ void Script::SetArgEntity( Entity* value )
         if( value )
         {
             ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
-            ctx_data->EntitiesArgs[ ctx_data->EntitiesArgsCount++ ] = value;
+            ctx_data->EntityArgs[ ctx_data->EntityArgsCount++ ] = value;
+            value->AddRef();
         }
         CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
     }
@@ -2248,7 +2311,7 @@ void Script::SetArgEntityOK( Entity* value )
         if( value )
         {
             ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
-            ctx_data->EntitiesArgs[ ctx_data->EntitiesArgsCount++ ] = value;
+            ctx_data->EntityArgs[ ctx_data->EntityArgsCount++ ] = value;
             value->AddRef();
         }
         CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
@@ -2269,7 +2332,8 @@ void Script::SetArgEntityEvent( Entity* value )
         if( value )
         {
             ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
-            ctx_data->EntitiesArgs[ ctx_data->EntitiesArgsCount++ ] = value;
+            ctx_data->EntityArgs[ ctx_data->EntityArgsCount++ ] = value;
+            value->AddRef();
         }
         CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
     }
@@ -2595,8 +2659,8 @@ void Script::RunMandatorySuspended()
 bool Script::CheckContextEntities( asIScriptContext* ctx )
 {
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-    for( uint i = 0; i < ctx_data->EntitiesArgsCount; i++ )
-        if( ctx_data->EntitiesArgs[ i ]->IsDestroyed )
+    for( uint i = 0; i < ctx_data->EntityArgsCount; i++ )
+        if( ctx_data->EntityArgs[ i ]->IsDestroyed )
             return false;
     return true;
 }

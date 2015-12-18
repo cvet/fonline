@@ -634,7 +634,7 @@ public:
         static void      Map_GetHexInPathWall( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
         static uint      Map_GetPathLengthHex( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static uint      Map_GetPathLengthCr( Map* map, Critter* cr, ushort to_hx, ushort to_hy, uint cut );
-        static Critter*  Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptDict* props );
+        static Critter*  Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* props, ScriptString* script );
         static uint      Map_GetNpcCount( Map* map, int npc_role, int find_type );
         static Critter*  Map_GetNpc( Map* map, int npc_role, int find_type, uint skip_count );
         static uint      Map_CountEntire( Map* map, int entire );

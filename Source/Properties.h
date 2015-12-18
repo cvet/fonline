@@ -145,6 +145,7 @@ private:
     bool           isHash;
     bool           isHashSubType0;
     bool           isHashSubType1;
+    bool           isHashSubType2;
     bool           isIntDataType;
     bool           isSignedIntDataType;
     bool           isFloatDataType;
@@ -166,6 +167,7 @@ private:
     // Dynamic data
     PropertyRegistrator* registrator;
     uint                 regIndex;
+    uint                 getIndex;
     int                  enumValue;
     uint                 podDataOffset;
     uint                 complexDataIndex;
@@ -204,7 +206,7 @@ public:
     static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
     static bool SetValueAsIntProps( Properties* props, int enum_value, int value );
     string      GetClassName();
-    void        SetSendIgnore( Entity* entity );
+    void        SetSendIgnore( Property* prop, Entity* entity );
 
     template< typename T >
     T GetPropValue( Property* prop )
@@ -255,9 +257,9 @@ private:
     UIntVec              storeDataSizes;
     UShortVec            storeDataComplexIndicies;
     StrMap               unresolvedProperties;
-    bool                 getCallbackLocked;
-    bool                 setCallbackLocked;
+    bool*                getCallbackLocked;
     Entity*              sendIgnoreEntity;
+    Property*            sendIgnoreProperty;
 };
 
 class PropertyRegistrator
@@ -290,6 +292,7 @@ private:
     PropertyVec                 registeredProperties;
     string                      enumTypeName;
     map< string, ScriptArray* > enumGroups;
+    uint                        getPropertiesCount;
 
     // POD info
     uint      wholePodDataSize;

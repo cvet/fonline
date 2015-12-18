@@ -906,10 +906,8 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
     // Parse objects
     ushort maxhx = GetWidth();
     ushort maxhy = GetHeight();
-    HexFlags = new uchar[ GetWidth() * GetHeight() ];
-    if( !HexFlags )
-        return false;
-    memzero( HexFlags, GetWidth() * GetHeight() );
+    HexFlags = new uchar[ maxhx * maxhy ];
+    memzero( HexFlags, maxhx * maxhy );
 
     uint scenery_count = 0;
     UCharVec scenery_data;
@@ -1105,9 +1103,9 @@ bool ProtoMap::BindScripts( EntityVec& entities )
             const char* script_name = Str::GetName( item->GetScriptId() );
             uint bind_id = 0;
             if( item->GetProtoId() != SP_SCEN_TRIGGER )
-                bind_id = Script::BindByScriptName( script_name, "bool %s(Critter&,Item&,CritterProperty,Item@)", false );
+                bind_id = Script::BindByScriptName( script_name, "bool %s(Critter&,const Item&,CritterProperty,Item@)", false );
             else
-                bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,Item&,bool,uint8)", false );
+                bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,const Item&,bool,uint8)", false );
             if( !bind_id )
             {
                 WriteLog( "Map '%s', can't bind scenery function '%s'.\n", GetName(), script_name );

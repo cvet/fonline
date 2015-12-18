@@ -17,8 +17,8 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
     RUNTIME_ASSERT( bind_id );
 
     DeferredCall call;
-    call.Id = ++lastDeferredCallId;
-    call.FireTick = Timer::FastTick() + delay;
+    call.Id = 0;
+    call.FireTick = ( delay ? Timer::FastTick() + delay : 0 );
     call.FuncNum = func_num;
     call.BindId = bind_id;
     call.Saved = saved;
@@ -50,12 +50,13 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
         call.ValuesSigned = false;
     }
 
-    if( delay == 0 || delay == uint( -1 ) )
+    if( delay == 0 )
     {
-        RunDeferredCall( call, delay == 0 );
+        RunDeferredCall( call );
     }
     else
     {
+        call.Id = ++lastDeferredCallId;
         SCOPE_LOCK( deferredCallsLocker );
         deferredCalls.push_back( call );
     }
@@ -124,13 +125,14 @@ void ScriptInvoker::Process()
         uint tick = Timer::FastTick();
         for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
         {
+            RUNTIME_ASSERT( it->FireTick != 0 );
             if( tick >= it->FireTick )
             {
                 DeferredCall call = *it;
                 it = deferredCalls.erase( it );
                 deferredCallsLocker.Unlock();
 
-                RunDeferredCall( call, false );
+                RunDeferredCall( call );
                 done = false;
                 break;
             }
@@ -141,7 +143,7 @@ void ScriptInvoker::Process()
     }
 }
 
-void ScriptInvoker::RunDeferredCall( DeferredCall& call, bool run_suspended )
+void ScriptInvoker::RunDeferredCall( DeferredCall& call )
 {
     if( Script::PrepareContext( call.BindId, _FUNC_, "Invoker" ) )
     {
@@ -155,7 +157,7 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call, bool run_suspended )
             ScriptArray* arr = Script::CreateArray( call.ValuesSigned ? "int[]" : "uint[]" );
             Script::AppendVectorToArray( call.Values, arr );
             Script::SetArgObject( arr );
-            if( run_suspended )
+            if( call.FireTick == 0 )
                 Script::RunPreparedSuspend();
             else
                 Script::RunPrepared();
@@ -163,7 +165,7 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call, bool run_suspended )
         }
         else
         {
-            if( run_suspended )
+            if( call.FireTick == 0 )
                 Script::RunPreparedSuspend();
             else
                 Script::RunPrepared();
@@ -182,7 +184,6 @@ void ScriptInvoker::SaveDeferredCalls( IniParser& data )
     {
         DeferredCall& call = *it;
         RUNTIME_ASSERT( call.FireTick != 0 );
-        RUNTIME_ASSERT( call.FireTick != uint( -1 ) );
         if( !call.Saved )
             continue;
 
@@ -228,6 +229,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 
         call.Id = Str::AtoUI( kv[ "Id" ].c_str() );
         call.FireTick = tick + Str::AtoUI( kv[ "Delay" ].c_str() );
+        RUNTIME_ASSERT( call.FireTick != 0 );
 
         call.IsValue = ( kv.count( "Value" ) > 0 );
         if( call.IsValue )

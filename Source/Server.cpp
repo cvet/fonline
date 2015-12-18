@@ -4311,6 +4311,7 @@ void FOServer::SaveWorld( const char* fname )
     // Collect data
     IniParser* data = new IniParser();
     data->SetApp( "GeneralSettings" );
+    data->SetApp( "Globals" );
     SaveGameInfoFile( *data );
     SaveHoloInfoFile( *data );
     Script::SaveDeferredCalls( *data );

@@ -2424,7 +2424,7 @@ int Critter::EventPlaneBegin( AIDataPlane* plane, int reason, Critter* some_cr, 
     if( PrepareScriptFunc( CRITTER_EVENT_PLANE_BEGIN ) )
     {
         Script::SetArgEntityEvent( this );
-        Script::SetArgObject( plane );
+        Script::SetArgPtr( plane );
         Script::SetArgUInt( reason );
         Script::SetArgEntityEvent( some_cr );
         Script::SetArgEntityEvent( some_item );
@@ -2439,7 +2439,7 @@ int Critter::EventPlaneEnd( AIDataPlane* plane, int reason, Critter* some_cr, It
     if( PrepareScriptFunc( CRITTER_EVENT_PLANE_END ) )
     {
         Script::SetArgEntityEvent( this );
-        Script::SetArgObject( plane );
+        Script::SetArgPtr( plane );
         Script::SetArgUInt( reason );
         Script::SetArgEntityEvent( some_cr );
         Script::SetArgEntityEvent( some_item );
@@ -2454,7 +2454,7 @@ int Critter::EventPlaneRun( AIDataPlane* plane, int reason, uint& p0, uint& p1, 
     if( PrepareScriptFunc( CRITTER_EVENT_PLANE_RUN ) )
     {
         Script::SetArgEntityEvent( this );
-        Script::SetArgObject( plane );
+        Script::SetArgPtr( plane );
         Script::SetArgUInt( reason );
         Script::SetArgAddress( &p0 );
         Script::SetArgAddress( &p1 );
@@ -5618,7 +5618,7 @@ bool Npc::AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some
     if( result == PLANE_RUN_GLOBAL && Script::PrepareContext( ServerFunctions.NpcPlaneBegin, _FUNC_, GetInfo() ) )
     {
         Script::SetArgEntity( this );
-        Script::SetArgObject( plane );
+        Script::SetArgPtr( plane );
         Script::SetArgUInt( reason );
         Script::SetArgEntity( some_cr );
         Script::SetArgEntity( some_item );
@@ -5676,7 +5676,7 @@ void Npc::NextPlane( int reason, Critter* some_cr, Item* some_item )
     if( result == PLANE_RUN_GLOBAL && Script::PrepareContext( ServerFunctions.NpcPlaneEnd, _FUNC_, GetInfo() ) )
     {
         Script::SetArgEntity( this );
-        Script::SetArgObject( last );
+        Script::SetArgPtr( last );
         Script::SetArgUInt( reason );
         Script::SetArgEntity( some_cr );
         Script::SetArgEntity( some_item );
@@ -5720,7 +5720,7 @@ bool Npc::RunPlane( int reason, uint& r0, uint& r1, uint& r2 )
     if( result == PLANE_RUN_GLOBAL && Script::PrepareContext( ServerFunctions.NpcPlaneRun, _FUNC_, GetInfo() ) )
     {
         Script::SetArgEntity( this );
-        Script::SetArgObject( last );
+        Script::SetArgPtr( last );
         Script::SetArgUInt( reason );
         Script::SetArgAddress( &r0 );
         Script::SetArgAddress( &r1 );

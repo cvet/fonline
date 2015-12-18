@@ -745,7 +745,7 @@ bool CallFixBoyScript( CraftItem* craft, Critter* cr, uint stage, uint& flags )
         return false;
     Script::SetArgEntityOK( cr );
     Script::SetArgUInt( stage );
-    Script::SetArgObject( craft );
+    Script::SetArgPtr( craft );
 
     if( !Script::RunPrepared() )
         return false;

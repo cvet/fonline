@@ -9,6 +9,7 @@
 #include "scriptarray.h"
 #include "scriptstring.h"
 #include "scriptdict.h"
+#include "scriptdictionary.h"
 #include "preprocessor.h"
 #include <vector>
 #include <string>
@@ -132,7 +133,11 @@ public:
     static void              SetArgBool( bool value );
     static void              SetArgFloat( float value );
     static void              SetArgDouble( double value );
-    static void              SetArgObject( void* value );
+    static void              SetArgPtr( void* value );
+    static void              SetArgObject( ScriptString* value );
+    static void              SetArgObject( ScriptArray* value );
+    static void              SetArgObject( ScriptDict* value );
+    static void              SetArgObject( ScriptDictionary* value );
     static void              SetArgEntity( Entity* value );
     static void              SetArgEntityOK( Entity* value );
     static void              SetArgEntityEvent( Entity* value );

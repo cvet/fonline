@@ -148,8 +148,8 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.CritterAttack, "critter_attack", "void %s(Critter&,Critter&,Item&,uint8,const Item@)" },
         { &ServerFunctions.CritterAttacked, "critter_attacked", "void %s(Critter&,Critter&)" },
         { &ServerFunctions.CritterStealing, "critter_stealing", "bool %s(Critter&,Critter&,Item&,uint)" },
-        { &ServerFunctions.CritterUseItem, "critter_use_item", "bool %s(Critter&,Item&,Critter@,Item@,Item@,uint)" },
-        { &ServerFunctions.CritterUseSkill, "critter_use_skill", "bool %s(Critter&,CritterProperty,Critter@,Item@,Item@)" },
+        { &ServerFunctions.CritterUseItem, "critter_use_item", "bool %s(Critter&,Item&,Critter@,Item@,const Item@,uint)" },
+        { &ServerFunctions.CritterUseSkill, "critter_use_skill", "bool %s(Critter&,CritterProperty,Critter@,Item@,const Item@)" },
         { &ServerFunctions.CritterReloadWeapon, "critter_reload_weapon", "void %s(Critter&,Item&,Item@)" },
         { &ServerFunctions.CritterInit, "critter_init", "void %s(Critter&,bool)" },
         { &ServerFunctions.CritterFinish, "critter_finish", "void %s(Critter&,bool)" },
@@ -2511,7 +2511,7 @@ void FOServer::SScriptFunc::Crit_SetFog( Critter* cr, ushort zone_x, ushort zone
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
-        SCRIPT_ERROR_R( "Invalid world map pos arg." );
+        SCRIPT_ERROR_R( "Invalid world map pos %u %u arg.", zone_x, zone_y );
     if( fog < GM_FOG_FULL || fog > GM_FOG_NONE )
         SCRIPT_ERROR_R( "Invalid fog arg." );
 
@@ -2534,7 +2534,7 @@ int FOServer::SScriptFunc::Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
-        SCRIPT_ERROR_R0( "Invalid world map pos arg." );
+        SCRIPT_ERROR_R0( "Invalid world map pos %u %u arg.", zone_x, zone_y );
 
     ScriptArray* gmap_fog = cr->GetGlobalMapFog();
     if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
@@ -4066,7 +4066,7 @@ uint FOServer::SScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort t
     return (uint) path.size();
 }
 
-Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptDict* props )
+Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* props, ScriptString* script )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -4075,15 +4075,26 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
         SCRIPT_ERROR_R0( "Proto '%s' not found.", Str::GetName( proto_id ) );
+    if( script && !Script::BindByFuncNameInRuntime( script->c_str(), "void %s(Critter&,bool)", true, true ) )
+        SCRIPT_ERROR_R0( "Invalid script '%s'.", script->c_str() );
 
     Critter* npc = nullptr;
-    if( props )
+    if( props || script )
     {
         Properties props_( Critter::PropertiesRegistrator );
         props_ = proto->Props;
-        for( uint i = 0, j = props->GetSize(); i < j; i++ )
-            if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
-                return nullptr;
+        if( props )
+        {
+            for( uint i = 0, j = props->GetSize() / 2; i < j; i++ )
+                if( !Properties::SetValueAsIntProps( &props_, *(int*) props->At( i * 2 ), *(int*) props->At( i * 2 + 1 ) ) )
+                    return nullptr;
+        }
+        if( script )
+        {
+            char script_name[ MAX_FOTEXT ];
+            Script::MakeScriptNameInRuntime( script->c_str(), script_name );
+            Properties::SetValueAsIntProps( &props_, Critter::PropertyScriptId->GetEnumValue(), Str::GetHash( script_name ) );
+        }
 
         npc = CrMngr.CreateNpc( proto_id, &props_, map, hx, hy, dir, false );
     }
@@ -4900,7 +4911,7 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
     // Create and generate location
     Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy );
     if( !loc )
-        SCRIPT_ERROR_R0( "Unable to create location." );
+        SCRIPT_ERROR_R0( "Unable to create location '%s'.", Str::GetName( loc_pid ) );
 
     // Add known locations to critters
     if( !critters )
