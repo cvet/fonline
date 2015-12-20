@@ -57,13 +57,8 @@ void IniParser::ParseStr( const char* str )
     CharVec    big_buf( 1000000 );
     char*      line = &big_buf[ 0 ];
     char       buf[ MAX_FOTEXT ];
-    while( true )
+    while( istr.getline( line, 1000000 ) )
     {
-        istr.getline( line, 1000000 );
-        if( istr.eof() )
-            break;
-        RUNTIME_ASSERT( !istr.fail() );
-
         // New section
         if( line[ 0 ] == '[' )
         {
@@ -183,6 +178,7 @@ void IniParser::ParseStr( const char* str )
                 ( *cur_app )[ buf ] = value;
         }
     }
+    RUNTIME_ASSERT( istr.eof() );
 
     // Store current section content
     if( collectContent )

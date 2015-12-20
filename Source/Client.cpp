@@ -5215,8 +5215,7 @@ void FOClient::Net_OnMap()
 
     if( tiles && scen )
     {
-        fm.ClearOutBuf();
-
+        fm.UnloadFile();
         fm.SetBEUInt( CLIENT_MAP_FORMAT_VER );
         fm.SetBEUInt( map_pid );
         fm.SetBEUShort( maxhx );
@@ -5234,16 +5233,14 @@ void FOClient::Net_OnMap()
         {
             WriteLog( "Failed to compress data '%s', disconnect.\n", map_name );
             NetDisconnect();
-            fm.ClearOutBuf();
             return;
         }
 
-        fm.ClearOutBuf();
+        fm.UnloadFile();
         fm.SetData( buf, obuf_len );
         delete[] buf;
 
         Crypt.SetCache( map_name, fm.GetOutBuf(), fm.GetOutBufLen() );
-        fm.ClearOutBuf();
     }
     else
     {

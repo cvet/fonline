@@ -183,8 +183,8 @@ FileManager* ResourceConverter::ConvertImage( const char* name, FileManager& fil
 FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
 {
     // Result bone
-    Bone*  root_bone = nullptr;
-    PtrVec loaded_animations;
+    Bone*      root_bone = nullptr;
+    AnimSetVec loaded_animations;
 
     // FBX loader
     const char* ext = FileManager::GetExtension( name );
@@ -494,11 +494,11 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
     root_bone->Save( *converted_file );
     converted_file->SetBEUInt( (uint) loaded_animations.size() );
     for( size_t i = 0; i < loaded_animations.size(); i++ )
-        ( (AnimSet*) loaded_animations[ i ] )->Save( *converted_file );
+        loaded_animations[ i ]->Save( *converted_file );
 
     delete root_bone;
     for( size_t i = 0; i < loaded_animations.size(); i++ )
-        delete (AnimSet*) loaded_animations[ i ];
+        delete loaded_animations[ i ];
 
     return converted_file;
 }

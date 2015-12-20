@@ -233,7 +233,7 @@ public:
     CLASS_PROPERTY( bool, ToGarbage );
     CLASS_PROPERTY( uint, Color );
 
-    Location( uint id, ProtoLocation* proto, ushort wx, ushort wy );
+    Location( uint id, ProtoLocation* proto );
     ~Location();
 
     SyncObject Sync;

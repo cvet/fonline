@@ -440,6 +440,8 @@ typedef vector< CombinedMesh* > CombinedMeshVec;
 
 struct Bone
 {
+    ~Bone();
+
     uint        NameHash;
     Matrix      TransformationMatrix;
     Matrix      GlobalTransformationMatrix;

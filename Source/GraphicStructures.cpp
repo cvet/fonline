@@ -317,6 +317,13 @@ void CombinedMesh::Finalize()
 // Bone
 //
 
+Bone::~Bone()
+{
+    SAFEDEL( Mesh );
+    for( auto& child : Children )
+        delete child;
+}
+
 Bone* Bone::Find( uint name_hash )
 {
     if( NameHash == name_hash )

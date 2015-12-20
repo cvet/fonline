@@ -76,7 +76,6 @@ public:
 
     void   SwitchToRead();
     void   SwitchToWrite();
-    void   ClearOutBuf();
     bool   ResizeOutBuf();
     void   SetPosOutBuf( uint pos );
     bool   SaveOutBufToFile( const char* fname, int path_type );

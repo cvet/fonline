@@ -139,7 +139,7 @@ bool MapManager::RestoreLocation( uint id, hash proto_id, const StrMap& props_da
         return false;
     }
 
-    Location* loc = new Location( id, proto, 0, 0 );
+    Location* loc = new Location( id, proto );
     if( !loc->Props.LoadFromText( props_data ) )
     {
         WriteLog( "Fail to restore properties for location '%s' (%u).\n", Str::GetName( proto_id ), id );
@@ -217,7 +217,9 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
         return nullptr;
     }
 
-    Location*    loc = new Location( 0, proto, wx, wy );
+    Location* loc = new Location( 0, proto );
+    loc->SetWorldX( wx );
+    loc->SetWorldY( wy );
     ScriptArray* pids = loc->GetMapProtos();
     for( uint i = 0, j = pids->GetSize(); i < j; i++ )
     {

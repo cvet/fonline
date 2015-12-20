@@ -2007,7 +2007,7 @@ CLASS_PROPERTY_IMPL( Location, Hidden );
 CLASS_PROPERTY_IMPL( Location, ToGarbage );
 CLASS_PROPERTY_IMPL( Location, Color );
 
-Location::Location( uint id, ProtoLocation* proto, ushort wx, ushort wy ): Entity( id, EntityType::Location, PropertiesRegistrator, proto )
+Location::Location( uint id, ProtoLocation* proto ): Entity( id, EntityType::Location, PropertiesRegistrator, proto )
 {
     RUNTIME_ASSERT( proto );
     memzero( FuncId, sizeof( FuncId ) );

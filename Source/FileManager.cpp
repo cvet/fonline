@@ -75,7 +75,6 @@ FileManager::FileManager()
 FileManager::~FileManager()
 {
     UnloadFile();
-    ClearOutBuf();
 }
 
 void FileManager::InitDataFiles( const char* path )
@@ -171,6 +170,10 @@ void FileManager::UnloadFile()
     SAFEDELA( fileBuf );
     fileSize = 0;
     curPos = 0;
+    SAFEDELA( dataOutBuf );
+    posOutBuf = 0;
+    lenOutBuf = 0;
+    endOutBuf = 0;
 }
 
 uchar* FileManager::ReleaseBuffer()
@@ -472,14 +475,6 @@ void FileManager::SwitchToWrite()
     posOutBuf = fileSize;
     fileSize = 0;
     curPos = 0;
-}
-
-void FileManager::ClearOutBuf()
-{
-    SAFEDELA( dataOutBuf );
-    posOutBuf = 0;
-    lenOutBuf = 0;
-    endOutBuf = 0;
 }
 
 bool FileManager::ResizeOutBuf()

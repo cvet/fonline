@@ -4319,7 +4319,8 @@ void FOServer::SaveWorld( const char* fname )
     EntityMngr.DumpEntities( DumpEntity, *data );
     ConnectedClientsLocker.Lock();
     for( auto& cl : ConnectedClients )
-        DumpEntity( cl );
+        if( cl->Id )
+            DumpEntity( cl );
     ConnectedClientsLocker.Unlock();
     SaveClientsLocker.Lock();
     for( auto& cl : SaveClients )
