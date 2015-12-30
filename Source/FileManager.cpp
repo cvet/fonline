@@ -199,6 +199,9 @@ bool FileManager::LoadFile( const char* path, int path_type, bool no_read_data /
         Str::Copy( data_path, PathList[ path_type ] );
         Str::Append( data_path, path );
         FormatPath( data_path );
+        char data_path_lower[ MAX_FOPATH ];
+        Str::Copy( data_path_lower, data_path );
+        Str::Lower( data_path_lower );
 
         // Find file in every data file
         for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
@@ -206,7 +209,7 @@ bool FileManager::LoadFile( const char* path, int path_type, bool no_read_data /
             DataFile* dat = *it;
             if( !no_read_data )
             {
-                fileBuf = dat->OpenFile( data_path, fileSize, writeTime );
+                fileBuf = dat->OpenFile( data_path, data_path_lower, fileSize, writeTime );
                 if( fileBuf )
                 {
                     curPos = 0;
@@ -215,7 +218,7 @@ bool FileManager::LoadFile( const char* path, int path_type, bool no_read_data /
             }
             else
             {
-                if( dat->IsFilePresent( data_path, fileSize, writeTime ) )
+                if( dat->IsFilePresent( data_path, data_path_lower, fileSize, writeTime ) )
                     return true;
             }
         }

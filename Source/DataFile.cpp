@@ -12,15 +12,20 @@
 /* Folder/Dat/Zip loaders                                               */
 /************************************************************************/
 
-template< class T >
-void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, const char* ext, StrVec& result )
+typedef vector< pair< string, string > > FileNameVec;
+
+static void GetFileNames_( const FileNameVec& fnames, const char* path, bool include_subdirs, const char* ext, StrVec& result )
 {
     char        path_[ MAX_FOPATH ];
     size_t      len = 0;
     const char* from = path;
     char*       to = path_;
     for( ; *from; from++, to++, len++ )
+    {
         *to = ( *from != '\\' ? *from : '/' );
+        if( *to >= 'A' && *to <= 'Z' )
+            *to += 0x20;
+    }
     *to = 0;
 
     if( len > 0 && path_[ len - 1 ] != '/' )
@@ -29,18 +34,17 @@ void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, 
         path_[ len ] = 0;
     }
 
-    for( auto it = index_map.begin(), end = index_map.end(); it != end; ++it )
+    for( auto& fname : fnames )
     {
-        bool          add = false;
-        const string& fname = it->first;
-        if( !fname.compare( 0, len, path_ ) && ( include_subdirs ||
-                                                 ( len > 0 && fname.find_last_of( '/' ) < len ) ||
-                                                 ( len == 0 && fname.find_last_of( '/' ) == string::npos ) ) )
+        bool add = false;
+        if( !fname.first.compare( 0, len, path_ ) && ( include_subdirs ||
+                                                       ( len > 0 && fname.first.find_last_of( '/' ) < len ) ||
+                                                       ( len == 0 && fname.first.find_last_of( '/' ) == string::npos ) ) )
         {
             if( ext && *ext )
             {
-                size_t pos = fname.find_last_of( '.' );
-                if( pos != string::npos && Str::CompareCase( &fname.c_str()[ pos + 1 ], ext ) )
+                size_t pos = fname.first.find_last_of( '.' );
+                if( pos != string::npos && Str::CompareCase( &fname.first.c_str()[ pos + 1 ], ext ) )
                     add = true;
             }
             else
@@ -48,8 +52,8 @@ void GetFileNames_( const T& index_map, const char* path, bool include_subdirs, 
                 add = true;
             }
         }
-        if( add && std::find( result.begin(), result.end(), fname ) == result.end() )
-            result.push_back( fname );
+        if( add && std::find( result.begin(), result.end(), fname.second ) == result.end() )
+            result.push_back( fname.second );
     }
 }
 
@@ -66,18 +70,19 @@ private:
     typedef map< string, FileEntry > IndexMap;
 
     #ifndef DISABLE_FOLDER_CACHING
-    IndexMap filesTree;
+    IndexMap    filesTree;
+    FileNameVec filesTreeNames;
     #endif
-    string   basePath;
+    string      basePath;
 
-    void CollectFilesTree( IndexMap& files_tree );
+    void CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree_names );
 
 public:
     bool Init( const char* fname );
 
     const string& GetPackName() { return basePath; }
-    bool          IsFilePresent( const char* path, uint& size, uint64& write_time );
-    uchar*        OpenFile( const char* path, uint& size, uint64& write_time );
+    bool          IsFilePresent( const char* path, const char* path_lower, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time );
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
 };
 
@@ -86,12 +91,13 @@ class FalloutDatFile: public DataFile
 private:
     typedef map< string, uchar* > IndexMap;
 
-    IndexMap filesTree;
-    string   fileName;
-    uchar*   memTree;
-    void*    datHandle;
-    uint64   writeTime;
-    uint     fileSize;
+    IndexMap    filesTree;
+    FileNameVec filesTreeNames;
+    string      fileName;
+    uchar*      memTree;
+    void*       datHandle;
+    uint64      writeTime;
+    uint        fileSize;
 
     bool ReadTree();
 
@@ -100,9 +106,9 @@ public:
     ~FalloutDatFile();
 
     const string& GetPackName() { return fileName; }
-    bool          IsFilePresent( const char* path, uint& size, uint64& write_time );
-    uchar*        OpenFile( const char* path, uint& size, uint64& write_time );
-    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTree, path, include_subdirs, ext, result ); }
+    bool          IsFilePresent( const char* path, const char* path_lower, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time );
+    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTreeNames, path, include_subdirs, ext, result ); }
 };
 
 class ZipFile: public DataFile
@@ -115,11 +121,12 @@ private:
     };
     typedef map< string, ZipFileInfo > IndexMap;
 
-    IndexMap filesTree;
-    string   fileName;
-    unzFile  zipHandle;
-    uint64   writeTime;
-    uint     fileSize;
+    IndexMap    filesTree;
+    FileNameVec filesTreeNames;
+    string      fileName;
+    unzFile     zipHandle;
+    uint64      writeTime;
+    uint        fileSize;
 
     bool ReadTree();
 
@@ -128,9 +135,9 @@ public:
     ~ZipFile();
 
     const string& GetPackName() { return fileName; }
-    bool          IsFilePresent( const char* path, uint& size, uint64& write_time );
-    uchar*        OpenFile( const char* path, uint& size, uint64& write_time );
-    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTree, path, include_subdirs, ext, result ); }
+    bool          IsFilePresent( const char* path, const char* path_lower, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time );
+    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTreeNames, path, include_subdirs, ext, result ); }
 };
 
 /************************************************************************/
@@ -191,20 +198,22 @@ bool FolderFile::Init( const char* fname )
 {
     basePath = fname;
     #ifndef DISABLE_FOLDER_CACHING
-    CollectFilesTree( filesTree );
+    CollectFilesTree( filesTree, filesTreeNames );
     #endif
 
     return true;
 }
 
-void FolderFile::CollectFilesTree( IndexMap& files_tree )
+void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree_names )
 {
     files_tree.clear();
+    files_tree_names.clear();
 
     StrVec      files;
     FindDataVec find_data;
     FileManager::GetFolderFileNames( basePath.c_str(), true, nullptr, files, &find_data );
 
+    char name_lower[ MAX_FOTEXT ];
     for( size_t i = 0, j = files.size(); i < j; i++ )
     {
         FileEntry fe;
@@ -213,14 +222,17 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree )
         fe.FileSize = find_data[ i ].FileSize;
         fe.WriteTime = find_data[ i ].WriteTime;
 
-        files_tree.insert( PAIR( files[ i ], fe ) );
+        Str::Copy( name_lower, files[ i ].c_str() );
+        Str::Lower( name_lower );
+        files_tree.insert( PAIR( string( name_lower ), fe ) );
+        files_tree_names.push_back( PAIR( string( name_lower ), files[ i ] ) );
     }
 }
 
-bool FolderFile::IsFilePresent( const char* path, uint& size, uint64& write_time )
+bool FolderFile::IsFilePresent( const char* path, const char* path_lower, uint& size, uint64& write_time )
 {
     #ifndef DISABLE_FOLDER_CACHING
-    auto it = filesTree.find( path );
+    auto it = filesTree.find( path_lower );
     if( it == filesTree.end() )
         return nullptr;
 
@@ -243,10 +255,10 @@ bool FolderFile::IsFilePresent( const char* path, uint& size, uint64& write_time
     #endif
 }
 
-uchar* FolderFile::OpenFile( const char* path, uint& size, uint64& write_time )
+uchar* FolderFile::OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time )
 {
     #ifndef DISABLE_FOLDER_CACHING
-    auto it = filesTree.find( path );
+    auto it = filesTree.find( path_lower );
     if( it == filesTree.end() )
         return nullptr;
 
@@ -294,16 +306,16 @@ uchar* FolderFile::OpenFile( const char* path, uint& size, uint64& write_time )
 void FolderFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
 {
     #ifndef DISABLE_FOLDER_CACHING
-    IndexMap& files_tree = filesTree;
+    IndexMap&    files_tree = filesTree;
+    FileNameVec& files_tree_names = filesTreeNames;
     #else
-    IndexMap  files_tree;
-    CollectFilesTree( files_tree );
+    IndexMap     files_tree;
+    FileNameVec  files_tree_names;
+    CollectFilesTree( files_tree, files_tree_names );
     #endif
 
     StrVec result_;
-    GetFileNames_( files_tree, path, include_subdirs, ext, result_ );
-    for( size_t i = 0, j = result_.size(); i < j; i++ )
-        result_[ i ] = files_tree[ result_[ i ] ].ShortFileName;
+    GetFileNames_( files_tree_names, path, include_subdirs, ext, result_ );
     if( !result_.empty() )
         result.insert( result.begin(), result_.begin(), result_.end() );
 }
@@ -381,6 +393,7 @@ bool FalloutDatFile::ReadTree()
 
         // Indexing tree
         char   name[ MAX_FOPATH ];
+        char   name_lower[ MAX_FOPATH ];
         uchar* ptr = memTree;
         uchar* end_ptr = memTree + tree_size;
         while( true )
@@ -393,10 +406,12 @@ bool FalloutDatFile::ReadTree()
                 memcpy( name, ptr + 4, fnsz );
                 name[ fnsz ] = 0;
                 NormalizePathSlashes( name );
-                Str::Lower( name );
+                Str::Copy( name_lower, name );
+                Str::Lower( name_lower );
                 if( type == 2 )
                     *( ptr + 4 + fnsz + 7 ) = 1;               // Compressed
-                filesTree.insert( PAIR( string( name ), ptr + 4 + fnsz + 7 ) );
+                filesTree.insert( PAIR( string( name_lower ), ptr + 4 + fnsz + 7 ) );
+                filesTreeNames.push_back( PAIR( string( name_lower ), string( name ) ) );
             }
 
             if( ptr + fnsz + 24 >= end_ptr )
@@ -446,6 +461,7 @@ bool FalloutDatFile::ReadTree()
 
     // Indexing tree
     char   name[ MAX_FOPATH ];
+    char   name_lower[ MAX_FOPATH ];
     uchar* ptr = memTree;
     uchar* end_ptr = memTree + tree_size;
     while( true )
@@ -457,8 +473,10 @@ bool FalloutDatFile::ReadTree()
             memcpy( name, ptr + 4, fnsz );
             name[ fnsz ] = 0;
             NormalizePathSlashes( name );
-            Str::Lower( name );
-            filesTree.insert( PAIR( string( name ), ptr + 4 + fnsz ) );
+            Str::Copy( name_lower, name );
+            Str::Lower( name_lower );
+            filesTree.insert( PAIR( string( name_lower ), ptr + 4 + fnsz ) );
+            filesTreeNames.push_back( PAIR( string( name_lower ), string( name ) ) );
         }
 
         if( ptr + fnsz + 17 >= end_ptr )
@@ -469,12 +487,12 @@ bool FalloutDatFile::ReadTree()
     return true;
 }
 
-bool FalloutDatFile::IsFilePresent( const char* path, uint& size, uint64& write_time )
+bool FalloutDatFile::IsFilePresent( const char* path, const char* path_lower, uint& size, uint64& write_time )
 {
     if( !datHandle )
         return false;
 
-    if( filesTree.find( path ) != filesTree.end() )
+    if( filesTree.find( path_lower ) != filesTree.end() )
     {
         size = fileSize;
         write_time = writeTime;
@@ -483,12 +501,12 @@ bool FalloutDatFile::IsFilePresent( const char* path, uint& size, uint64& write_
     return false;
 }
 
-uchar* FalloutDatFile::OpenFile( const char* path, uint& size, uint64& write_time )
+uchar* FalloutDatFile::OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time )
 {
     if( !datHandle )
         return nullptr;
 
-    auto it = filesTree.find( path );
+    auto it = filesTree.find( path_lower );
     if( it == filesTree.end() )
         return nullptr;
 
@@ -726,7 +744,8 @@ bool ZipFile::ReadTree()
     ZipFileInfo   zip_info;
     unz_file_pos  pos;
     unz_file_info info;
-    char          name[ MAX_FOPATH ] = { 0 };
+    char          name[ MAX_FOPATH ];
+    char          name_lower[ MAX_FOPATH ];
     for( uLong i = 0; i < gi.number_entry; i++ )
     {
         if( unzGetFilePos( zipHandle, &pos ) != UNZ_OK )
@@ -737,9 +756,12 @@ bool ZipFile::ReadTree()
         if( !( info.external_fa & 0x10 ) )   // Not folder
         {
             NormalizePathSlashes( name );
+            Str::Copy( name_lower, name );
+            Str::Lower( name_lower );
             zip_info.Pos = pos;
             zip_info.UncompressedSize = (int) info.uncompressed_size;
-            filesTree.insert( PAIR( string( name ), zip_info ) );
+            filesTree.insert( PAIR( string( name_lower ), zip_info ) );
+            filesTreeNames.push_back( PAIR( string( name_lower ), string( name ) ) );
         }
 
         if( i + 1 < gi.number_entry && unzGoToNextFile( zipHandle ) != UNZ_OK )
@@ -749,12 +771,12 @@ bool ZipFile::ReadTree()
     return true;
 }
 
-bool ZipFile::IsFilePresent( const char* path, uint& size, uint64& write_time )
+bool ZipFile::IsFilePresent( const char* path, const char* path_lower, uint& size, uint64& write_time )
 {
     if( !zipHandle )
         return false;
 
-    if( filesTree.find( path ) != filesTree.end() )
+    if( filesTree.find( path_lower ) != filesTree.end() )
     {
         size = fileSize;
         write_time = writeTime;
@@ -763,12 +785,12 @@ bool ZipFile::IsFilePresent( const char* path, uint& size, uint64& write_time )
     return false;
 }
 
-uchar* ZipFile::OpenFile( const char* path, uint& size, uint64& write_time )
+uchar* ZipFile::OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time )
 {
     if( !zipHandle )
         return nullptr;
 
-    auto it = filesTree.find( path );
+    auto it = filesTree.find( path_lower );
     if( it == filesTree.end() )
         return nullptr;
 

@@ -276,6 +276,7 @@ Item::~Item()
 void Item::SetProto( ProtoItem* proto )
 {
     RUNTIME_ASSERT( proto );
+    proto->AddRef();
     Proto->Release();
     Proto = proto;
     Props = proto->Props;

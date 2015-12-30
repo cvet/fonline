@@ -2510,10 +2510,10 @@ void FOServer::SScriptFunc::Crit_SetFog( Critter* cr, ushort zone_x, ushort zone
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
-        SCRIPT_ERROR_R( "Invalid world map pos %u %u arg.", zone_x, zone_y );
     if( fog < GM_FOG_FULL || fog > GM_FOG_NONE )
         SCRIPT_ERROR_R( "Invalid fog arg." );
+    if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
+        return;
 
     ScriptArray* gmap_fog = cr->GetGlobalMapFog();
     if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
@@ -2534,7 +2534,7 @@ int FOServer::SScriptFunc::Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
-        SCRIPT_ERROR_R0( "Invalid world map pos %u %u arg.", zone_x, zone_y );
+        return GM_FOG_FULL;
 
     ScriptArray* gmap_fog = cr->GetGlobalMapFog();
     if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )

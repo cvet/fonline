@@ -68,15 +68,18 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, Properties& props ): ItemHex( id, p
 
 ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data ): ItemHex( id, proto )
 {
-    if( props_data )
-        Props.RestoreData( *props_data );
+    RUNTIME_ASSERT( props_data );
+    Props.RestoreData( *props_data );
     AfterConstruction();
 }
 
-ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y ): ItemHex( id, proto, props_data )
+ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, int hy, int* hex_scr_x, int* hex_scr_y ): ItemHex( id, proto )
 {
+    if( props_data )
+        Props.RestoreData( *props_data );
     SetHexX( hx );
     SetHexY( hy );
+    SetAccessory( ITEM_ACCESSORY_HEX );
     HexScrX = hex_scr_x;
     HexScrY = hex_scr_y;
     AfterConstruction();
