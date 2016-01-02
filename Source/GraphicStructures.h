@@ -134,7 +134,7 @@ typedef vector< PointVec >  PointVecVec;
 
 struct EffectDefault
 {
-    enum EType { String, Floats, Dword };
+    enum EType { String, Float, Int };
     char*  Name;
     EType  Type;
     uchar* Data;

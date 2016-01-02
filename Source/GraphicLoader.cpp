@@ -629,6 +629,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
     // Set defaults
     if( defaults )
     {
+        GL( glUseProgram( program ) );
         for( uint d = 0; d < defaults_count; d++ )
         {
             EffectDefault& def = defaults[ d ];
@@ -642,16 +643,17 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
             {
             case EffectDefault::String:
                 break;
-            case EffectDefault::Floats:
-                GL( glUniform1fv( location, def.Size / sizeof( GLfloat ), (GLfloat*) def.Data ) );
+            case EffectDefault::Float:
+                GL( glUniform1fv( location, def.Size / sizeof( float ), (GLfloat*) def.Data ) );
                 break;
-            case EffectDefault::Dword:
-                GL( glUniform1i( location, *(GLint*) def.Data ) );
+            case EffectDefault::Int:
+                GL( glUniform1iv( location, def.Size / sizeof( int ), (GLint*) def.Data ) );
                 break;
             default:
                 break;
             }
         }
+        GL( glUseProgram( 0 ) );
     }
 
     effect_pass.Program = program;

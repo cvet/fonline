@@ -1503,8 +1503,10 @@ bool Animation3dEntity::Load( const char* name )
             }
             else if( Str::Compare( token, "Root" ) )
             {
-                if( layer < 0 )
+                if( layer == -1 )
+                {
                     link = &animDataDefault;
+                }
                 else if( !layer_val )
                 {
                     WriteLogF( _FUNC_, " - Wrong layer '%d' zero value.\n", layer );
@@ -1899,9 +1901,9 @@ bool Animation3dEntity::Load( const char* name )
                     data = (uchar*) Str::Duplicate( def_value );
                     data_len = Str::Length( (char*) data );
                 }
-                else if( Str::Compare( buf, "Floats" ) )
+                else if( Str::Compare( buf, "Float" ) || Str::Compare( buf, "Floats" ) )
                 {
-                    type = EffectDefault::Floats;
+                    type = EffectDefault::Float;
                     StrVec floats;
                     Str::ParseLine( def_value, '-', floats, Str::ParseLineDummy );
                     if( floats.empty() )
@@ -1909,17 +1911,24 @@ bool Animation3dEntity::Load( const char* name )
                     data_len = (uint) floats.size() * sizeof( float );
                     data = new uchar[ data_len ];
                     for( uint i = 0, j = (uint) floats.size(); i < j; i++ )
-                        ( (float*) data )[ i ] = (float) atof( floats[ i ].c_str() );
+                        ( (float*) data )[ i ] = Str::AtoF( floats[ i ].c_str() );
                 }
-                else if( Str::Compare( buf, "Dword" ) )
+                else if( Str::Compare( buf, "Int" ) || Str::Compare( buf, "Dword" ) )
                 {
-                    type = EffectDefault::Dword;
-                    data_len = sizeof( uint );
+                    type = EffectDefault::Int;
+                    StrVec ints;
+                    Str::ParseLine( def_value, '-', ints, Str::ParseLineDummy );
+                    if( ints.empty() )
+                        continue;
+                    data_len = (uint) ints.size() * sizeof( int );
                     data = new uchar[ data_len ];
-                    *( (uint*) data ) = (uint) ConvertParamValue( def_value, convert_value_fail );
+                    for( uint i = 0, j = (uint) ints.size(); i < j; i++ )
+                        ( (int*) data )[ i ] = (int) ConvertParamValue( ints[ i ].c_str(), convert_value_fail );
                 }
                 else
+                {
                     continue;
+                }
 
                 EffectDefault* tmp = cur_effect->Defaults;
                 cur_effect->Defaults = new EffectDefault[ cur_effect->DefaultsCount + 1 ];
