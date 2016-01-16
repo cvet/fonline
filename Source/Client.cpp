@@ -7279,9 +7279,14 @@ label_EndMove:
         {
             Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
             if( item_count < item->GetCount() )
+            {
                 item->ChangeCount( -(int) item_count );
+            }
             else
+            {
                 Chosen->DeleteItem( item, true );
+                item = nullptr;
+            }
         }
         else
         {

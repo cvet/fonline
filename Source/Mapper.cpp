@@ -3619,7 +3619,7 @@ void FOMapper::BufferCut()
     SelectDelete();
 }
 
-void FOMapper::BufferPaste( int hx, int hy )
+void FOMapper::BufferPaste( int, int )
 {
     if( !ActiveProtoMap )
         return;
@@ -3631,6 +3631,9 @@ void FOMapper::BufferPaste( int hx, int hy )
     {
         if( entity_buf.HexX >= HexMngr.GetWidth() || entity_buf.HexY >= HexMngr.GetHeight() )
             continue;
+
+        ushort hx = entity_buf.HexX;
+        ushort hy = entity_buf.HexY;
 
         Entity* owner = nullptr;
         if( entity_buf.Type == EntityType::CritterCl )

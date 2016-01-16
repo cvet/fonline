@@ -2143,7 +2143,7 @@ Item* FOServer::SScriptFunc::Crit_GetSlotItem( Critter* cr, int slot )
         break;
     }
 
-    if( !item->GetId() && ( item == cr->ItemSlotMain || item == cr->ItemSlotExt ) )
+    if( item && !item->GetId() && ( item == cr->ItemSlotMain || item == cr->ItemSlotExt ) )
         item->SetMode( cr->GetHandsItemMode() );
     return item;
 }
