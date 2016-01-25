@@ -54,7 +54,6 @@ public:
     int DrawCrExtInfo;
 
     // Game color
-    uint DayTime;
     void ChangeGameTime();
 
     // MSG File

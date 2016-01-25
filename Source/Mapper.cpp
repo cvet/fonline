@@ -230,7 +230,6 @@ bool FOMapper::Init()
         return false;
     HexMngr.ReloadSprites();
     HexMngr.SwitchShowTrack();
-    DayTime = 432720;
     ChangeGameTime();
 
     if( Str::Substring( CommandLine, "-Map" ) )
@@ -516,8 +515,6 @@ void FOMapper::Finish()
 
 void FOMapper::ChangeGameTime()
 {
-    GameOpt.Minute = DayTime % 60;
-    GameOpt.Hour = DayTime / 60 % 24;
     uint color = GetColorDay( HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr );
     SprMngr.SetSpritesColor( COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF ) );
     HexMngr.RefreshMap();
@@ -838,14 +835,20 @@ void FOMapper::ParseKeyboard()
             case DIK_ADD:
                 if( !ConsoleEdit && SelectedEntities.empty() )
                 {
-                    DayTime += 60;
+                    int day_time = HexMngr.GetDayTime();
+                    day_time += 60;
+                    GameOpt.Minute = day_time % 60;
+                    GameOpt.Hour = day_time / 60 % 24;
                     ChangeGameTime();
                 }
                 break;
             case DIK_SUBTRACT:
                 if( !ConsoleEdit && SelectedEntities.empty() )
                 {
-                    DayTime -= 60;
+                    int day_time = HexMngr.GetDayTime();
+                    day_time -= 60;
+                    GameOpt.Minute = day_time % 60;
+                    GameOpt.Hour = day_time / 60 % 24;
                     ChangeGameTime();
                 }
                 break;
@@ -879,14 +882,20 @@ void FOMapper::ParseKeyboard()
             case DIK_ADD:
                 if( !ConsoleEdit && SelectedEntities.empty() )
                 {
-                    DayTime += 1;
+                    int day_time = HexMngr.GetDayTime();
+                    day_time += 1;
+                    GameOpt.Minute = day_time % 60;
+                    GameOpt.Hour = day_time / 60 % 24;
                     ChangeGameTime();
                 }
                 break;
             case DIK_SUBTRACT:
                 if( !ConsoleEdit && SelectedEntities.empty() )
                 {
-                    DayTime -= 1;
+                    int day_time = HexMngr.GetDayTime();
+                    day_time -= 60;
+                    GameOpt.Minute = day_time % 60;
+                    GameOpt.Hour = day_time / 60 % 24;
                     ChangeGameTime();
                 }
                 break;
@@ -1992,6 +2001,7 @@ void FOMapper::IntDraw()
         ushort hx, hy;
         if( HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy ) )
             hex_thru = true;
+        int day_time = HexMngr.GetDayTime();
         SprMngr.DrawStr( Rect( GameOpt.ScreenWidth - 100, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ),
                          Str::FormatBuf(
                              "Map '%s'\n"
@@ -2002,7 +2012,7 @@ void FOMapper::IntDraw()
                              "%s",
                              ActiveProtoMap->GetName(),
                              hex_thru ? hx : -1, hex_thru ? hy : -1,
-                             DayTime / 60 % 24, DayTime % 60,
+                             day_time / 60 % 24, day_time % 60,
                              GameOpt.FPS,
                              TileLayer,
                              GameOpt.ScrollCheck ? "Scroll check" : "" ),

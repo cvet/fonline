@@ -3932,6 +3932,12 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
 
     curPidMap = 0xFFFF;
 
+    int day_time = pmap.GetCurDayTime();
+    GameOpt.Minute = day_time % 60;
+    GameOpt.Hour = day_time / 60 % 24;
+    uint color = GetColorDay( GetMapDayTime(), GetMapDayColor(), GetMapTime(), nullptr );
+    SprMngr.SetSpritesColor( COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF ) );
+
     ScriptArray* dt = pmap.GetDayTime();
     ScriptArray* dc = pmap.GetDayColor();
     for( int i = 0; i < 4; i++ )
@@ -4036,6 +4042,7 @@ void HexManager::GetProtoMap( ProtoMap& pmap )
 {
     pmap.SetWorkHexX( screenHexX );
     pmap.SetWorkHexY( screenHexY );
+    pmap.SetCurDayTime( GetDayTime() );
 
     // Fill entities
     for( auto& entity : pmap.AllEntities )
