@@ -308,13 +308,17 @@ public:
     int        ObjX, ObjY;
     int        ItemVectX, ItemVectY;
     int        ObjCurLine;
+    bool       ObjCurLineIsConst;
+    string     ObjCurLineInitValue;
+    string     ObjCurLineValue;
     bool       ObjVisible, ObjFix;
     bool       ObjToAll;
 
     void ObjDraw();
-    void DrawLine( const char* name, const char* text, bool is_const, Rect& r );
+    void DrawLine( const char* name, const char* type_name, const char* text, bool is_const, Rect& r );
     void ObjKeyDown( uchar dik, const char* dik_text );
-    void ObjKeyDownA( Entity* entity, uchar dik, const char* dik_text );
+    void ObjKeyDownApply( Entity* entity );
+    void SelectEntityProp( int line );
 
     // Console
     AnyFrames*       ConsolePic;

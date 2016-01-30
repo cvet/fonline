@@ -454,6 +454,7 @@ int FOMapper::InitIface()
     ItemVectX = 0;
     ItemVectY = 0;
     ObjCurLine = 0;
+    ObjCurLineIsConst = false;
     ObjVisible = true;
     ObjFix = false;
     ObjToAll = false;
@@ -464,7 +465,7 @@ int FOMapper::InitIface()
     ConsoleTextX = ini.GetInt( "", "ConsoleTextX", 0 );
     ConsoleTextY = ini.GetInt( "", "ConsoleTextY", 0 );
 
-    ConsoleEdit = 0;
+    ConsoleEdit = false;
     ConsoleLastKey = 0;
     ConsoleLastKeyText = "";
     ConsoleKeyTick = 0;
@@ -989,29 +990,33 @@ void FOMapper::ParseKeyboard()
         // Key down
         if( dikdw )
         {
-            ConsoleKeyDown( dikdw, event_text );
-
-            if( !ConsoleEdit )
+            if( ObjVisible && !SelectedEntities.empty() )
             {
-                switch( dikdw )
-                {
-                case DIK_LEFT:
-                    GameOpt.ScrollKeybLeft = true;
-                    break;
-                case DIK_RIGHT:
-                    GameOpt.ScrollKeybRight = true;
-                    break;
-                case DIK_UP:
-                    GameOpt.ScrollKeybUp = true;
-                    break;
-                case DIK_DOWN:
-                    GameOpt.ScrollKeybDown = true;
-                    break;
-                default:
-                    break;
-                }
-
                 ObjKeyDown( dikdw, event_text );
+            }
+            else
+            {
+                ConsoleKeyDown( dikdw, event_text );
+                if( !ConsoleEdit )
+                {
+                    switch( dikdw )
+                    {
+                    case DIK_LEFT:
+                        GameOpt.ScrollKeybLeft = true;
+                        break;
+                    case DIK_RIGHT:
+                        GameOpt.ScrollKeybRight = true;
+                        break;
+                    case DIK_UP:
+                        GameOpt.ScrollKeybUp = true;
+                        break;
+                    case DIK_DOWN:
+                        GameOpt.ScrollKeybDown = true;
+                        break;
+                    default:
+                        break;
+                    }
+                }
             }
         }
 
@@ -2058,14 +2063,14 @@ void FOMapper::ObjDraw()
         }
     }
 
-    DrawLine( "Id", string( Str::UItoA( entity->Id ) ).append( " (" ).append( Str::ItoA( entity->Id ) ).append( ")" ).c_str(), true, r );
-    DrawLine( "ProtoName", Str::GetName( entity->GetProtoId() ), true, r );
+    DrawLine( "Id", nullptr, string( Str::UItoA( entity->Id ) ).append( " (" ).append( Str::ItoA( entity->Id ) ).append( ")" ).c_str(), true, r );
+    DrawLine( "ProtoName", nullptr, Str::GetName( entity->GetProtoId() ), true, r );
     if( cr )
-        DrawLine( "Type", "Critter", true, r );
+        DrawLine( "Type", nullptr, "Critter", true, r );
     else if( item && item->IsItem() )
-        DrawLine( "Type", "Item", true, r );
+        DrawLine( "Type", nullptr, "Item", true, r );
     else if( item && !item->IsItem() )
-        DrawLine( "Type", "Scenery", true, r );
+        DrawLine( "Type", nullptr, "Scenery", true, r );
     else
         RUNTIME_ASSERT( !"Unreachable place" );
 
@@ -2074,7 +2079,7 @@ void FOMapper::ObjDraw()
         for( auto& prop : ShowCrProps )
         {
             string value = cr->Props.SavePropertyToText( prop );
-            DrawLine( prop->GetName(), value.c_str(), true, r );
+            DrawLine( prop->GetName(), prop->GetTypeName(), value.c_str(), prop->IsConst(), r );
         }
     }
     else if( item )
@@ -2082,70 +2087,115 @@ void FOMapper::ObjDraw()
         for( auto& prop : ShowItemProps )
         {
             string value = item->Props.SavePropertyToText( prop );
-            DrawLine( prop->GetName(), value.c_str(), true, r );
+            DrawLine( prop->GetName(), prop->GetTypeName(), value.c_str(), prop->IsConst(), r );
         }
     }
 }
 
-void FOMapper::DrawLine( const char* name, const char* text, bool is_const, Rect& r )
+void FOMapper::DrawLine( const char* name, const char* type_name, const char* text, bool is_const, Rect& r )
 {
     uint col = COLOR_TEXT;
     int x = r.L;
     int y = r.T;
     int w = r.W();
     int h = r.H();
-    char str_[ 256 ];
+    char str[ MAX_FOTEXT ];
     col = COLOR_TEXT;
-    if( ObjCurLine == ( y - ObjWWork[ 1 ] - ObjY ) / DRAW_NEXT_HEIGHT )
-        col = COLOR_TEXT_RED;
     if( is_const )
+        col = COLOR_TEXT_DWHITE;
+    if( ObjCurLine == ( y - ObjWWork[ 1 ] - ObjY ) / DRAW_NEXT_HEIGHT )
+    {
         col = COLOR_TEXT_WHITE;
-    Str::Copy( str_, name );
-    Str::Append( str_, "...................................................." );
-    SprMngr.DrawStr( Rect( Rect( x, y, x + w / 3, y + h ), 0, 0 ), str_, FT_NOBREAK, col );
-    Str::Copy( str_, text ? text : "" );
-    SprMngr.DrawStr( Rect( Rect( x + w / 3, y, x + w, y + h ), 0, 0 ), str_, FT_NOBREAK, col );
+        if( !is_const && ObjCurLineValue != ObjCurLineInitValue )
+        {
+            col = COLOR_TEXT_RED;
+            text = ObjCurLineValue.c_str();
+        }
+    }
+    Str::Format( str, "%s%s%s%s", name, type_name ? " (" : "", type_name ? type_name : "", type_name ? ")" : "" );
+    // Str::Copy( str, name );
+    Str::Append( str, "...................................................." );
+    SprMngr.DrawStr( Rect( Rect( x, y, x + w / 2, y + h ), 0, 0 ), str, FT_NOBREAK, col );
+    Str::Copy( str, text ? text : "" );
+    SprMngr.DrawStr( Rect( Rect( x + w / 2, y, x + w, y + h ), 0, 0 ), str, FT_NOBREAK, col );
     r.T += DRAW_NEXT_HEIGHT;
     r.B += DRAW_NEXT_HEIGHT;
 }
 
 void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
 {
-    if( !ObjVisible )
-        return;
-    if( ConsoleEdit )
-        return;
-    if( SelectedEntities.empty() )
-        return;
-
-    HexMngr.RebuildLight();
-
-    if( IntMode == INT_MODE_INCONT && InContItem )
+    if( dik == DIK_RETURN || dik == DIK_NUMPADENTER )
     {
-        ObjKeyDownA( InContItem, dik, dik_text );
-        return;
+        if( ObjCurLineInitValue != ObjCurLineValue )
+        {
+            if( IntMode == INT_MODE_INCONT && InContItem )
+            {
+                ObjKeyDownApply( InContItem );
+            }
+            else
+            {
+                Entity* main_entity = SelectedEntities[ 0 ];
+                for( uint i = 0, j = ObjToAll ? (uint) SelectedEntities.size() : 1; i < j; i++ )    // At least one time
+                {
+                    Entity* entity = SelectedEntities[ i ];
+                    if( main_entity->Type == entity->Type )
+                        ObjKeyDownApply( entity );
+                }
+            }
+
+            SelectEntityProp( ObjCurLine );
+            HexMngr.RebuildLight();
+        }
     }
-
-    Entity* main_entity = SelectedEntities[ 0 ];
-    for( uint i = 0, j = ObjToAll ? (uint) SelectedEntities.size() : 1; i < j; i++ )    // At least one time
+    else if( dik == DIK_UP )
     {
-        Entity* entity = SelectedEntities[ i ];
-        if( main_entity->Type == entity->Type )
-            ObjKeyDownA( entity, dik, dik_text );
+        SelectEntityProp( ObjCurLine - 1 );
+    }
+    else if( dik == DIK_DOWN )
+    {
+        SelectEntityProp( ObjCurLine + 1 );
+    }
+    else if( dik == DIK_ESCAPE )
+    {
+        ObjCurLineValue = ObjCurLineInitValue;
+    }
+    else
+    {
+        if( !ObjCurLineIsConst )
+            Keyb::GetChar( dik, dik_text, ObjCurLineValue, nullptr, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
     }
 }
 
-void FOMapper::ObjKeyDownA( Entity* entity, uchar dik, const char* dik_text )
+void FOMapper::ObjKeyDownApply( Entity* entity )
 {
-    RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
     const int start_line = 3;
+    RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
     PropertyVec& props = ( entity->Type == EntityType::CritterCl ? ShowCrProps : ShowItemProps );
     if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) props.size() )
+        if( !entity->Props.LoadPropertyFromText( props[ ObjCurLine - start_line ], ObjCurLineValue.c_str() ) )
+            entity->Props.LoadPropertyFromText( props[ ObjCurLine - start_line ], ObjCurLineInitValue.c_str() );
+}
+
+void FOMapper::SelectEntityProp( int line )
+{
+    const int start_line = 3;
+    ObjCurLine = line;
+    if( ObjCurLine < 0 )
+        ObjCurLine = 0;
+    ObjCurLineInitValue = ObjCurLineValue = "";
+    ObjCurLineIsConst = true;
+    if( !SelectedEntities.empty() )
     {
-        Property* prop = props[ ObjCurLine - start_line ];
-        string value = entity->Props.SavePropertyToText( prop );
-        Keyb::GetChar( dik, dik_text, value, nullptr, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
-        entity->Props.LoadPropertyFromText( prop, value.c_str() );
+        Entity* entity = ( IntMode == INT_MODE_INCONT && InContItem ? InContItem : SelectedEntities[ 0 ] );
+        RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
+        PropertyVec& props = ( entity->Type == EntityType::CritterCl ? ShowCrProps : ShowItemProps );
+        if( ObjCurLine - start_line >= (int) props.size() )
+            ObjCurLine = (int) props.size() + start_line - 1;
+        if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) props.size() )
+        {
+            ObjCurLineInitValue = ObjCurLineValue = entity->Props.SavePropertyToText( props[ ObjCurLine - start_line ] );
+            ObjCurLineIsConst = props[ ObjCurLine - start_line ]->IsConst();
+        }
     }
 }
 
@@ -2268,8 +2318,7 @@ void FOMapper::IntLMouseDown()
     {
         if( IsCurInRect( ObjWWork, ObjX, ObjY ) )
         {
-            ObjCurLine = ( GameOpt.MouseY - ObjY - ObjWWork[ 1 ] ) / DRAW_NEXT_HEIGHT;
-            //		return;
+            SelectEntityProp( ( GameOpt.MouseY - ObjY - ObjWWork[ 1 ] ) / DRAW_NEXT_HEIGHT );
         }
 
         if( IsCurInRect( ObjBToAll, ObjX, ObjY ) )
@@ -2372,7 +2421,10 @@ void FOMapper::IntLMouseDown()
             if( !children.empty() )
             {
                 if( ind < (int) children.size() )
+                {
                     InContItem = (Item*) children[ ind ];
+                    SelectEntityProp( ObjCurLine );
+                }
 
                 // Delete child
                 if( Keyb::AltDwn && InContItem )
@@ -3045,6 +3097,8 @@ void FOMapper::SelectAddTile( ushort hx, ushort hy, bool is_roof )
 void FOMapper::SelectAdd( Entity* entity )
 {
     SelectedEntities.push_back( entity );
+    if( SelectedEntities.size() == 1 )
+        SelectEntityProp( ObjCurLine );
 
     if( entity->Type == EntityType::CritterCl )
         ( (CritterCl*) entity )->Alpha = SELECT_ALPHA;

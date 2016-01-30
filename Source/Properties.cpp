@@ -758,6 +758,11 @@ bool Property::IsWritable()
     return isWritable;
 }
 
+bool Property::IsConst()
+{
+    return isConst;
+}
+
 uchar* Property::GetRawData( Entity* entity, uint& data_size )
 {
     return GetPropRawData( &entity->Props, data_size );

@@ -93,6 +93,7 @@ public:
     bool           IsEnum();
     bool           IsReadable();
     bool           IsWritable();
+    bool           IsConst();
 
     template< typename T >
     T GetValue( Entity* entity )
