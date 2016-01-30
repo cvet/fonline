@@ -92,7 +92,7 @@ void FOServer::OnSetItemCount( Entity* entity, Property* prop, void* cur_value, 
     Item* item = (Item*) entity;
     uint  cur = *(uint*) cur_value;
     uint  old = *(uint*) old_value;
-    if( (int) cur > 0 && ( item->IsStackable() || cur == 1 ) )
+    if( (int) cur > 0 && ( item->GetStackable() || cur == 1 ) )
     {
         int diff = (int) item->GetCount() - (int) old;
         ItemMngr.ChangeItemStatistics( item->GetProtoId(), diff );
@@ -100,7 +100,7 @@ void FOServer::OnSetItemCount( Entity* entity, Property* prop, void* cur_value, 
     else
     {
         item->SetCount( old );
-        if( !item->IsStackable() )
+        if( !item->GetStackable() )
             SCRIPT_ERROR_R( "Trying to change count of not stackable item." );
         else
             SCRIPT_ERROR_R( "Item count can't be zero or negative (%d).", (int) cur );

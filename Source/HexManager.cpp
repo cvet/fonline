@@ -448,7 +448,7 @@ void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, Item
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
 
-    if( item->IsBlockLines() )
+    if( item->IsNonEmptyBlockLines() )
         ReplaceItemBlocks( item->HexX, item->HexY, item );
     if( item->SprDrawValid )
         item->SprDraw->Unvalidate();
@@ -535,7 +535,7 @@ void HexManager::PushItem( ItemHex* item )
     f.AddItem( item );
 
     // Blocks
-    if( item->IsBlockLines() )
+    if( item->IsNonEmptyBlockLines() )
         PlaceItemBlocks( hx, hy, item );
 
     // Sort

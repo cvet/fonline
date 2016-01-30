@@ -1567,7 +1567,10 @@ void FOServer::Process( ClientPtr& cl )
                 {
                     static void Message( const char* str )
                     {
-                        cl_->Send_Text( cl_, str, SAY_NETMSG );
+                        char buf[ MAX_FOTEXT ];
+                        Str::Copy( buf, str );
+                        Str::Trim( buf );
+                        cl_->Send_Text( cl_, buf, SAY_NETMSG );
                     }
                 };
                 cl_ = cl;

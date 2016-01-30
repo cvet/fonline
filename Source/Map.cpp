@@ -545,7 +545,7 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
         SetHexFlag( hx, hy, FH_NRAKE_ITEM );
     if( item->GetIsGag() )
         SetHexFlag( hx, hy, FH_GAG_ITEM );
-    if( item->IsBlockLines() )
+    if( item->IsNonEmptyBlockLines() )
         PlaceItemBlocks( hx, hy, item );
 
     if( item->FuncId[ ITEM_EVENT_WALK ] > 0 )
@@ -585,7 +585,7 @@ void Map::EraseItem( uint item_id )
         RecacheHexBlock( hx, hy );
     else if( !item->GetIsShootThru() )
         RecacheHexShoot( hx, hy );
-    if( item->IsBlockLines() )
+    if( item->IsNonEmptyBlockLines() )
         ReplaceItemBlocks( hx, hy, item );
 
     // Process critters view

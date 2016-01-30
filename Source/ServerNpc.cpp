@@ -2082,7 +2082,7 @@ void FOServer::Process_Barter( Client* cl )
             return;
         }
 
-        if( sale_item_count[ i ] > 1 && !item->IsStackable() )
+        if( sale_item_count[ i ] > 1 && !item->GetStackable() )
         {
             WriteLogF( _FUNC_, " - Sale item is not stackable, id %u, count %u, client '%s', npc '%s'.\n", sale_item_id[ i ], sale_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
             cl->Send_ContainerInfo();
@@ -2132,7 +2132,7 @@ void FOServer::Process_Barter( Client* cl )
             return;
         }
 
-        if( buy_item_count[ i ] > 1 && !item->IsStackable() )
+        if( buy_item_count[ i ] > 1 && !item->GetStackable() )
         {
             WriteLogF( _FUNC_, " - Buy item is not stackable, id %u, count %u, client '%s', npc '%s'.\n", buy_item_id[ i ], buy_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
             cl->Send_ContainerInfo();

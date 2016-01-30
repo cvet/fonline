@@ -24,7 +24,7 @@
     static Property * Property ## prop;                                                                         \
     inline prop_type Get ## prop() { return Property ## prop->GetValue< prop_type >( this ); }                  \
     inline void      Set ## prop( prop_type value ) { Property ## prop->SetValue< prop_type >( this, value ); } \
-    inline bool      Is ## prop() { uint data_size = 0; Property ## prop->GetRawData( this, data_size ); return data_size > 0; }
+    inline bool      IsNonEmpty ## prop() { uint data_size = 0; Property ## prop->GetRawData( this, data_size ); return data_size > 0; }
 #define CLASS_PROPERTY_IMPL( class_name, prop )                                                    \
     Property * class_name::Property ## prop;                                                       \
     struct _ ## class_name ## Property ## prop ## Initializer                                      \

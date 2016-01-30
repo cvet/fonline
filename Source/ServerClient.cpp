@@ -44,7 +44,7 @@ void FOServer::ProcessCritter( Critter* cr )
 
     // Internal misc/drugs time events
     // One event per cycle
-    if( cr->IsTE_FuncNum() )
+    if( cr->IsNonEmptyTE_FuncNum() )
     {
         ScriptArray* te_next_time = cr->GetTE_NextTime();
         uint         next_time = *(uint*) te_next_time->At( 0 );
@@ -2565,7 +2565,7 @@ void FOServer::Process_GiveMap( Client* cl )
         }
 
         bool         found = false;
-        ScriptArray* automaps = ( loc->IsAutomaps() ? loc->GetAutomaps() : nullptr );
+        ScriptArray* automaps = ( loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr );
         if( automaps )
         {
             for( uint i = 0, j = automaps->GetSize(); i < j && !found; i++ )

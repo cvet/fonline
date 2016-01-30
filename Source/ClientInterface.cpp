@@ -831,9 +831,9 @@ void FOClient::CollectContItems()
                 item_->Props = item->Props;
                 item_->SetCount( count );
 
-                if( item->IsStackable() )
+                if( item->GetStackable() )
                     item->ChangeCount( -(int) item_->GetCount() );
-                if( !item->IsStackable() || !item->GetCount() )
+                if( !item->GetStackable() || !item->GetCount() )
                 {
                     item->Release();
                     it = InvContInit.erase( it );
@@ -1922,7 +1922,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     if( item->GetCount() < item_count )
         return;
 
-    if( item->IsStackable() )
+    if( item->GetStackable() )
     {
         auto it_to = PtrCollectionFind( to_cont->begin(), to_cont->end(), item->GetId() );
         if( it_to != to_cont->end() )
@@ -1940,7 +1940,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     }
 
     item->ChangeCount( -(int) item_count );
-    if( !item->GetCount() || !item->IsStackable() )
+    if( !item->GetCount() || !item->GetStackable() )
     {
         item->Release();
         from_cont->erase( it );
@@ -2997,7 +2997,7 @@ void FOClient::LMenuMouseUp()
                 break;
             if( !Chosen->IsLife() || !Chosen->IsFree() )
                 break;
-            if( cont_item->IsStackable() && cont_item->GetCount() > 1 )
+            if( cont_item->GetStackable() && cont_item->GetCount() > 1 )
                 SplitStart( cont_item->GetId(), ITEMS_CHOSEN_ALL );
             else
                 AddActionBack( CHOSEN_MOVE_ITEM, cont_item->GetId(), cont_item->GetCount(), SLOT_GROUND );
@@ -5038,7 +5038,7 @@ void FOClient::PupTransfer( uint item_id, int item_cont, uint count )
             return;
         Item* item = *it;
 
-        if( item->IsStackable() && count < item->GetCount() )
+        if( item->GetStackable() && count < item->GetCount() )
         {
             item->ChangeCount( -(int) count );
         }

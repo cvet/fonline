@@ -1268,7 +1268,7 @@ void Critter::AddItem( Item*& item, bool send )
     RUNTIME_ASSERT( item );
 
     // Add
-    if( item->IsStackable() )
+    if( item->GetStackable() )
     {
         Item* item_already = GetItemByPid( item->GetProtoId() );
         if( item_already )
@@ -1670,7 +1670,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
             return false;
         }
 
-        bool full_drop = ( !item->IsStackable() || count >= item->GetCount() );
+        bool full_drop = ( !item->GetStackable() || count >= item->GetCount() );
         if( !full_drop )
         {
             if( GetMapId() )
@@ -3106,7 +3106,7 @@ void Critter::Send_AllAutomapsInfo()
     {
         uint      loc_id = *(uint*) known_locs->At( i );
         Location* loc = MapMngr.GetLocation( loc_id );
-        if( loc && loc->IsAutomaps() )
+        if( loc && loc->IsNonEmptyAutomaps() )
             locs.push_back( loc );
     }
     SAFEREL( known_locs );
@@ -4378,7 +4378,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
                 Bout << loc->GetRadius();
                 Bout << loc->GetColor();
                 uchar count = 0;
-                if( loc->IsMapEntrances() )
+                if( loc->IsNonEmptyMapEntrances() )
                 {
                     ScriptArray* map_entrances = loc->GetMapEntrances();
                     count = (uchar) ( map_entrances->GetSize() / 2 );
@@ -4454,7 +4454,7 @@ void Client::Send_GlobalLocation( Location* loc, bool add )
     Bout << loc->GetRadius();
     Bout << loc->GetColor();
     uchar count = 0;
-    if( loc->IsMapEntrances() )
+    if( loc->IsNonEmptyMapEntrances() )
     {
         ScriptArray* map_entrances = loc->GetMapEntrances();
         count = (uchar) ( map_entrances->GetSize() / 2 );
@@ -4870,7 +4870,7 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         {
             Location* loc_ = ( *locs )[ i ];
             msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( ushort );
-            if( loc_->IsAutomaps() )
+            if( loc_->IsNonEmptyAutomaps() )
             {
                 ScriptArray* automaps = loc_->GetAutomaps();
                 msg_len += ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps->GetSize();
@@ -4888,7 +4888,7 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
             Location* loc_ = ( *locs )[ i ];
             Bout << loc_->GetId();
             Bout << loc_->GetProtoId();
-            if( loc_->IsAutomaps() )
+            if( loc_->IsNonEmptyAutomaps() )
             {
                 ScriptArray* automaps = loc_->GetAutomaps();
                 Bout << (ushort) automaps->GetSize();
@@ -4913,7 +4913,7 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
     {
         uint         msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort ) +
                                sizeof( uint ) + sizeof( hash ) + sizeof( ushort );
-        ScriptArray* automaps = ( loc->IsAutomaps() ? loc->GetAutomaps() : nullptr );
+        ScriptArray* automaps = ( loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr );
         if( automaps )
             msg_len += ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps->GetSize();
 
@@ -5451,7 +5451,7 @@ void Npc::RefreshBag()
         // Repair/reload item in slots
         if( item->GetCritSlot() != SLOT_INV )
         {
-            if( item->IsDeteriorable() && item->IsBroken() )
+            if( item->GetDeteriorable() && item->IsBroken() )
                 item->Repair();
             if( item->IsWeapon() && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty() )
                 item->WeapLoadHolder();

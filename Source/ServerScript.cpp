@@ -2467,7 +2467,7 @@ bool FOServer::SScriptFunc::Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_
         SCRIPT_ERROR_R0( "Location not found." );
 
     cr->AddKnownLoc( loc->GetId() );
-    if( loc->IsAutomaps() )
+    if( loc->IsNonEmptyAutomaps() )
         cr->Send_AutomapsInfo( nullptr, loc );
     if( !cr->GetMapId() )
         cr->Send_GlobalLocation( loc, true );
@@ -4923,7 +4923,7 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
         cr->AddKnownLoc( loc->GetId() );
         if( !cr->GetMapId() )
             cr->Send_GlobalLocation( loc, true );
-        if( loc->IsAutomaps() )
+        if( loc->IsNonEmptyAutomaps() )
             cr->Send_AutomapsInfo( nullptr, loc );
 
         ushort       zx = GM_ZONE( loc->GetWorldX() );

@@ -594,7 +594,7 @@ void Item::ContAddItem( Item*& item, uint stack_id )
         ChildItems = new ItemVec();
     }
 
-    if( item->IsStackable() )
+    if( item->GetStackable() )
     {
         Item* item_ = ContGetItemByPid( item->GetProtoId(), stack_id );
         if( item_ )

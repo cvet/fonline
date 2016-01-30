@@ -5726,7 +5726,7 @@ void FOClient::Net_OnPlayersBarter()
                 ( *it_ )->ChangeCount( param_ext );
             }
             citem->ChangeCount( -(int) param_ext );
-            if( !citem->GetCount() || !citem->IsStackable() )
+            if( !citem->GetCount() || !citem->GetStackable() )
             {
                 citem->Release();
                 cont.erase( it );
@@ -5776,7 +5776,7 @@ void FOClient::Net_OnPlayersBarter()
                 ( *it_ )->ChangeCount( param_ext );
             }
             citem->ChangeCount( -(int) param_ext );
-            if( !citem->GetCount() || !citem->IsStackable() )
+            if( !citem->GetCount() || !citem->GetStackable() )
             {
                 citem->Release();
                 cont_o.erase( it );
@@ -5791,7 +5791,7 @@ void FOClient::Net_OnPlayersBarter()
                 break;
             }
             citem->ChangeCount( -(int) param_ext );
-            if( !citem->GetCount() || !citem->IsStackable() )
+            if( !citem->GetCount() || !citem->GetStackable() )
             {
                 auto it = PtrCollectionFind( cont_o.begin(), cont_o.end(), param );
                 ( *it )->Release();
@@ -7060,7 +7060,7 @@ label_EndMove:
                 AddMess( FOMB_GAME, FmtCombatText( STR_COMBAT_NEED_DMG_TWO_ARMS ) );
                 break;
             }
-            if( item->IsDeteriorable() && item->IsBroken() )
+            if( item->GetDeteriorable() && item->IsBroken() )
             {
                 AddMess( FOMB_GAME, FmtGameText( STR_INV_WEAR_WEAPON_BROKEN ) );
                 break;

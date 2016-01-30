@@ -2050,7 +2050,7 @@ bool MapManager::TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, 
     if( loc->IsLocVisible() && cr->IsPlayer() )
     {
         ( (Client*) cr )->AddKnownLoc( loc->GetId() );
-        if( loc->IsAutomaps() )
+        if( loc->IsNonEmptyAutomaps() )
             cr->Send_AutomapsInfo( nullptr, loc );
     }
     cr->SetTimeoutTransfer( 0 );

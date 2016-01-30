@@ -143,7 +143,7 @@ void ItemManager::DeleteItem( Item* item )
 
 Item* ItemManager::SplitItem( Item* item, uint count )
 {
-    if( !item->IsStackable() )
+    if( !item->GetStackable() )
     {
         WriteLogF( _FUNC_, " - Splitted item '%s' is not stackable, id %u.\n", item->GetName(), item->GetId() );
         return nullptr;
@@ -223,7 +223,7 @@ void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
     if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER && item->GetCritId() == to_cr->GetId() )
         return;
 
-    if( count >= item->GetCount() || !item->IsStackable() )
+    if( count >= item->GetCount() || !item->GetStackable() )
     {
         EraseItemHolder( item );
         to_cr->AddItem( item, true );
@@ -241,7 +241,7 @@ void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, u
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy )
         return;
 
-    if( count >= item->GetCount() || !item->IsStackable() )
+    if( count >= item->GetCount() || !item->GetStackable() )
     {
         EraseItemHolder( item );
         to_map->AddItem( item, to_hx, to_hy );
@@ -259,7 +259,7 @@ void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id
     if( item->GetAccessory() == ITEM_ACCESSORY_CONTAINER && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id )
         return;
 
-    if( count >= item->GetCount() || !item->IsStackable() )
+    if( count >= item->GetCount() || !item->GetStackable() )
     {
         EraseItemHolder( item );
         to_cont->ContAddItem( item, stack_id );
@@ -281,7 +281,7 @@ Item* ItemManager::AddItemContainer( Item* cont, hash pid, uint count, uint stac
 
     if( item )
     {
-        if( item->IsStackable() )
+        if( item->GetStackable() )
         {
             item->ChangeCount( count );
             result = item;
@@ -340,26 +340,10 @@ Item* ItemManager::AddItemCritter( Critter* cr, hash pid, uint count )
     Item* item = cr->GetItemByPid( pid );
     Item* result = nullptr;
 
-    if( item )
+    if( item && item->GetStackable() )
     {
-        if( item->IsStackable() )
-        {
-            item->ChangeCount( count );
-            result = item;
-        }
-        else
-        {
-            if( count > MAX_ADDED_NOGROUP_ITEMS )
-                count = MAX_ADDED_NOGROUP_ITEMS;
-            for( uint i = 0; i < count; ++i )
-            {
-                item = ItemMngr.CreateItem( pid );
-                if( !item )
-                    break;
-                cr->AddItem( item, true );
-                result = item;
-            }
-        }
+        item->ChangeCount( count );
+        result = item;
     }
     else
     {
@@ -402,7 +386,7 @@ bool ItemManager::SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* er
     if( !item )
         return true;
 
-    if( item->IsStackable() )
+    if( item->GetStackable() )
     {
         if( count >= item->GetCount() )
         {
@@ -463,7 +447,7 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_
     if( !count || count > item->GetCount() )
         count = item->GetCount();
 
-    if( item->IsStackable() && item->GetCount() > count )
+    if( item->GetStackable() && item->GetCount() > count )
     {
         Item* item_ = to_cr->GetItemByPid( item->GetProtoId() );
         if( !item_ )
@@ -502,7 +486,7 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
     if( !count || count > item->GetCount() )
         count = item->GetCount();
 
-    if( item->IsStackable() && item->GetCount() > count )
+    if( item->GetStackable() && item->GetCount() > count )
     {
         Item* item_ = to_cont->ContGetItemByPid( item->GetProtoId(), stack_id );
         if( !item_ )
@@ -542,7 +526,7 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint
     if( !count || count > item->GetCount() )
         count = item->GetCount();
 
-    if( item->IsStackable() && item->GetCount() > count )
+    if( item->GetStackable() && item->GetCount() > count )
     {
         Item* item_ = to_cr->GetItemByPid( item->GetProtoId() );
         if( !item_ )
