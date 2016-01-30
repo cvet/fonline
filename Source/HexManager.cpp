@@ -2097,8 +2097,8 @@ void HexManager::SetFog( PointVec& look_points, PointVec& shoot_points, short* o
 
     fogOffsX = offs_x;
     fogOffsY = offs_y;
-    fogLastOffsX = *fogOffsX;
-    fogLastOffsY = *fogOffsY;
+    fogLastOffsX = ( fogOffsX ? *fogOffsX : 0 );
+    fogLastOffsY = ( fogOffsY ? *fogOffsY : 0 );
     fogForceRerender = true;
     fogLookPoints = look_points;
     fogShootPoints = shoot_points;

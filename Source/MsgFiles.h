@@ -42,7 +42,7 @@ public:
     uint        GetStrNumLower( uint num );
     int         GetInt( uint num );
     uint        GetBinary( uint num, UCharVec& data );
-    int         Count( uint num );
+    uint        Count( uint num );
     void        EraseStr( uint num );
     uint        GetSize();
     bool        IsIntersects( const FOMsg& other );

@@ -161,9 +161,9 @@ uint FOMsg::GetBinary( uint num, UCharVec& data  )
     return len;
 }
 
-int FOMsg::Count( uint num )
+uint FOMsg::Count( uint num )
 {
-    return num ? (uint) strData.count( num ) : 0;
+    return (uint) strData.count( num );
 }
 
 void FOMsg::EraseStr( uint num )
