@@ -223,10 +223,16 @@ bool FOServer::PostInitScriptSystem()
 {
     EngineData* ed = (EngineData*) Script::GetEngine()->GetUserData();
     if( ed->PragmaCB->IsError() )
+    {
+        WriteLog( "Error in pragma(s) during loading.\n" );
         return false;
+    }
     ed->PragmaCB->Finish();
     if( ed->PragmaCB->IsError() )
+    {
+        WriteLog( "Error in pragma(s) after finalization.\n" );
         return false;
+    }
     return true;
 }
 

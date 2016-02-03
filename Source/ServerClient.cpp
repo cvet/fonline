@@ -32,7 +32,10 @@ void FOServer::ProcessCritter( Critter* cr )
             uint delta = tick - cr->ApRegenerationTick;
             if( delta >= 500 )
             {
-                cr->SetCurrentAp( cr->GetCurrentAp() + max_ap * delta / GameOpt.ApRegeneration );
+                uint ap_regeneration = cr->GetApRegenerationTime();
+                if( !ap_regeneration )
+                    ap_regeneration = GameOpt.ApRegeneration;
+                cr->SetCurrentAp( cr->GetCurrentAp() + max_ap * delta / ap_regeneration );
                 if( cr->GetCurrentAp() > max_ap )
                     cr->SetCurrentAp( max_ap );
                 cr->ApRegenerationTick = tick;

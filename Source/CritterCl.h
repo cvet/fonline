@@ -41,6 +41,7 @@ public:
     CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
     CLASS_PROPERTY( int, CurrentAp );
+    CLASS_PROPERTY( uint, ApRegenerationTime );
     CLASS_PROPERTY( int, ActionPoints );
     CLASS_PROPERTY( int, MoveAp );
     CLASS_PROPERTY( int, MaxMoveAp );

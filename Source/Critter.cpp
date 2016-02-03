@@ -116,6 +116,7 @@ CLASS_PROPERTY_IMPL( Critter, CarryWeight );
 CLASS_PROPERTY_IMPL( Critter, CurrentHp );
 CLASS_PROPERTY_IMPL( Critter, ActionPoints );
 CLASS_PROPERTY_IMPL( Critter, CurrentAp );
+CLASS_PROPERTY_IMPL( Critter, ApRegenerationTime );
 CLASS_PROPERTY_IMPL( Critter, MaxMoveAp );
 CLASS_PROPERTY_IMPL( Critter, MoveAp );
 CLASS_PROPERTY_IMPL( Critter, TurnBasedAc );

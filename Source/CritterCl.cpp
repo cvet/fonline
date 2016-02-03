@@ -49,6 +49,7 @@ CLASS_PROPERTY_IMPL( CritterCl, CarryWeight );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentHp );
 CLASS_PROPERTY_IMPL( CritterCl, ActionPoints );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentAp );
+CLASS_PROPERTY_IMPL( CritterCl, ApRegenerationTime );
 CLASS_PROPERTY_IMPL( CritterCl, MaxMoveAp );
 CLASS_PROPERTY_IMPL( CritterCl, MoveAp );
 CLASS_PROPERTY_IMPL( CritterCl, ReplicationMoney );

@@ -3424,7 +3424,10 @@ bool FOServer::InitReal()
 
     // Initialization script
     if( !Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    {
+        WriteLog( "Initialization script return false.\n" );
         return false;
+    }
 
     // Update files
     GenerateUpdateFiles( true );

@@ -144,6 +144,7 @@ public:
     CLASS_PROPERTY( int, CurrentHp );    // CurHp, CurAp, CurMoveAp or MaximumHp, MaximumAp, MaximumMoveAp?
     // CLASS_PROPERTY( int, MaxHp ); Need?
     CLASS_PROPERTY( int, CurrentAp );
+    CLASS_PROPERTY( uint, ApRegenerationTime );
     CLASS_PROPERTY( int, ActionPoints ); // Rename MaxAp
     CLASS_PROPERTY( int, MoveAp );       // Rename CurrentMoveAp
     CLASS_PROPERTY( int, MaxMoveAp );

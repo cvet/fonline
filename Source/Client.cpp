@@ -6658,14 +6658,19 @@ void FOClient::CrittersProcess()
     {
         uint tick = Timer::GameTick();
         if( !Chosen->ApRegenerationTick )
+        {
             Chosen->ApRegenerationTick = tick;
+        }
         else
         {
             uint delta = tick - Chosen->ApRegenerationTick;
             if( delta >= 500 )
             {
-                int max_ap = Chosen->GetActionPoints() * AP_DIVIDER;
-                Chosen->SetCurrentAp( Chosen->GetCurrentAp() + max_ap * delta / GameOpt.ApRegeneration );
+                int  max_ap = Chosen->GetActionPoints() * AP_DIVIDER;
+                uint ap_regeneration = Chosen->GetApRegenerationTime();
+                if( !ap_regeneration )
+                    ap_regeneration = GameOpt.ApRegeneration;
+                Chosen->SetCurrentAp( Chosen->GetCurrentAp() + max_ap * delta / ap_regeneration );
                 if( Chosen->GetCurrentAp() > max_ap )
                     Chosen->SetCurrentAp( max_ap );
                 Chosen->ApRegenerationTick = tick;
