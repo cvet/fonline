@@ -175,6 +175,9 @@ bool FOMapper::Init()
     if( !CurLang.LoadFromFiles( lang_name ) )
         return false;
 
+    // Workaround to generate pid maps from server dir
+    ConvertProtoIdByInt( 0 );
+
     // Critter types
     CritType::InitFromFile( nullptr );
 
