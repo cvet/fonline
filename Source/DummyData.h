@@ -667,17 +667,15 @@ struct BindClass
     static void Global_GetTileName()   {}
     static void Global_AddTileName()   {}
 
-    static void Global_ShowCritterProperty() {}
-    static void Global_ShowItemProperty()    {}
-    static void Global_GetFastPrototypes()   {}
-    static void Global_SetFastPrototypes()   {}
-    static void Global_LoadMap()             {}
-    static void Global_UnloadMap()           {}
-    static void Global_SaveMap()             {}
-    static void Global_ShowMap()             {}
-    static void Global_GetLoadedMaps()       {}
-    static void Global_GetMapFileNames()     {}
-    static void Global_ResizeMap()           {}
+    static void Global_GetFastPrototypes() {}
+    static void Global_SetFastPrototypes() {}
+    static void Global_LoadMap()           {}
+    static void Global_UnloadMap()         {}
+    static void Global_SaveMap()           {}
+    static void Global_ShowMap()           {}
+    static void Global_GetLoadedMaps()     {}
+    static void Global_GetMapFileNames()   {}
+    static void Global_ResizeMap()         {}
 
     static void Global_TabGetTileDirs()    {}
     static void Global_TabGetItemPids()    {}

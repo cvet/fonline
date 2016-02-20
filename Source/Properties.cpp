@@ -1061,6 +1061,11 @@ Properties& Properties::operator=( const Properties& other )
     return *this;
 }
 
+Property* Properties::FindByEnum( int enum_value )
+{
+    return registrator->FindByEnum( enum_value );
+}
+
 void* Properties::FindData( const char* property_name )
 {
     if( !registrator )
@@ -1596,6 +1601,8 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
 
 bool Properties::LoadPropertyFromText( Property* prop, const char* value )
 {
+    RUNTIME_ASSERT( prop );
+    RUNTIME_ASSERT( registrator == prop->registrator );
     RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) );
     bool is_error = false;
 
@@ -1626,6 +1633,8 @@ bool Properties::LoadPropertyFromText( Property* prop, const char* value )
 
 string Properties::SavePropertyToText( Property* prop )
 {
+    RUNTIME_ASSERT( prop );
+    RUNTIME_ASSERT( registrator == prop->registrator );
     RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) );
 
     uint data_size;

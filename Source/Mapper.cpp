@@ -2077,20 +2077,16 @@ void FOMapper::ObjDraw()
     else
         RUNTIME_ASSERT( !"Unreachable place" );
 
-    if( cr )
+    for( auto& prop : ShowProps )
     {
-        for( auto& prop : ShowCrProps )
+        if( prop )
         {
-            string value = cr->Props.SavePropertyToText( prop );
+            string value = entity->Props.SavePropertyToText( prop );
             DrawLine( prop->GetName(), prop->GetTypeName(), value.c_str(), prop->IsConst(), r );
         }
-    }
-    else if( item )
-    {
-        for( auto& prop : ShowItemProps )
+        else
         {
-            string value = item->Props.SavePropertyToText( prop );
-            DrawLine( prop->GetName(), prop->GetTypeName(), value.c_str(), prop->IsConst(), r );
+            DrawLine( "-----------------------------------------------", "", "", true, r );
         }
     }
 }
@@ -2173,10 +2169,9 @@ void FOMapper::ObjKeyDownApply( Entity* entity )
 {
     const int start_line = 3;
     RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
-    PropertyVec& props = ( entity->Type == EntityType::CritterCl ? ShowCrProps : ShowItemProps );
-    if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) props.size() )
-        if( !entity->Props.LoadPropertyFromText( props[ ObjCurLine - start_line ], ObjCurLineValue.c_str() ) )
-            entity->Props.LoadPropertyFromText( props[ ObjCurLine - start_line ], ObjCurLineInitValue.c_str() );
+    if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) ShowProps.size() )
+        if( ShowProps[ ObjCurLine - start_line ] && !entity->Props.LoadPropertyFromText( ShowProps[ ObjCurLine - start_line ], ObjCurLineValue.c_str() ) )
+            entity->Props.LoadPropertyFromText( ShowProps[ ObjCurLine - start_line ], ObjCurLineInitValue.c_str() );
 }
 
 void FOMapper::SelectEntityProp( int line )
@@ -2191,13 +2186,12 @@ void FOMapper::SelectEntityProp( int line )
     {
         Entity* entity = ( IntMode == INT_MODE_INCONT && InContItem ? InContItem : SelectedEntities[ 0 ] );
         RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
-        PropertyVec& props = ( entity->Type == EntityType::CritterCl ? ShowCrProps : ShowItemProps );
-        if( ObjCurLine - start_line >= (int) props.size() )
-            ObjCurLine = (int) props.size() + start_line - 1;
-        if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) props.size() )
+        if( ObjCurLine - start_line >= (int) ShowProps.size() )
+            ObjCurLine = (int) ShowProps.size() + start_line - 1;
+        if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) ShowProps.size() && ShowProps[ ObjCurLine - start_line ] )
         {
-            ObjCurLineInitValue = ObjCurLineValue = entity->Props.SavePropertyToText( props[ ObjCurLine - start_line ] );
-            ObjCurLineIsConst = props[ ObjCurLine - start_line ]->IsConst();
+            ObjCurLineInitValue = ObjCurLineValue = entity->Props.SavePropertyToText( ShowProps[ ObjCurLine - start_line ] );
+            ObjCurLineIsConst = ShowProps[ ObjCurLine - start_line ]->IsConst();
         }
     }
 }
@@ -3100,8 +3094,27 @@ void FOMapper::SelectAddTile( ushort hx, ushort hy, bool is_roof )
 void FOMapper::SelectAdd( Entity* entity )
 {
     SelectedEntities.push_back( entity );
+
     if( SelectedEntities.size() == 1 )
+    {
+        ShowProps.clear();
+        if( Script::PrepareContext( MapperFunctions.InspectorProperties, _FUNC_, "Mapper" ) )
+        {
+            ScriptArray* arr = Script::CreateArray( "int[]" );
+            RUNTIME_ASSERT( arr );
+            Script::SetArgEntityOK( entity );
+            Script::SetArgObject( arr );
+            if( Script::RunPrepared() )
+            {
+                IntVec enum_values;
+                Script::AssignScriptArrayInVector( enum_values, arr );
+                for( auto enum_value : enum_values )
+                    ShowProps.push_back( enum_value ? entity->Props.FindByEnum( enum_value ) : nullptr );
+            }
+            arr->Release();
+        }
         SelectEntityProp( ObjCurLine );
+    }
 
     if( entity->Type == EntityType::CritterCl )
         ( (CritterCl*) entity )->Alpha = SELECT_ALPHA;
@@ -4468,6 +4481,7 @@ bool FOMapper::InitScriptSystem()
         { &MapperFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(uint,uint&,uint&,uint&,uint&,uint&)" },
         { &MapperFunctions.MapLoad, "map_load", "void %s(MapperMap&)" },
         { &MapperFunctions.MapSave, "map_save", "void %s(MapperMap&)" },
+        { &MapperFunctions.InspectorProperties, "inspector_properties", "void %s(Entity&, int[]&)" },
     };
     if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
     {
@@ -4816,24 +4830,6 @@ void FOMapper::SScriptFunc::Global_AddTileName( ushort hx, ushort hy, int ox, in
 
     hash pic_hash = Str::GetHash( pic_name->c_str() );
     Self->HexMngr.SetTile( pic_hash, hx, hy, ox, oy, layer, roof, false );
-}
-
-void FOMapper::SScriptFunc::Global_ShowCritterProperty( int prop_enum )
-{
-    Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum );
-    if( !prop )
-        SCRIPT_ERROR_R( "Property not found." );
-
-    Self->ShowCrProps.push_back( prop );
-}
-
-void FOMapper::SScriptFunc::Global_ShowItemProperty( int prop_enum )
-{
-    Property* prop = Item::PropertiesRegistrator->FindByEnum( prop_enum );
-    if( !prop )
-        SCRIPT_ERROR_R( "Property not found." );
-
-    Self->ShowItemProps.push_back( prop );
 }
 
 void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )

@@ -194,6 +194,7 @@ public:
     Properties( const Properties& other );
     ~Properties();
     Properties& operator=( const Properties& other );
+    Property*   FindByEnum( int enum_value );
     void*       FindData( const char* property_name );
     uint        StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
     void        RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );

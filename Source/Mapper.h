@@ -36,8 +36,7 @@ public:
     bool             IsMapperStarted;
     static char      ServerWritePath[ MAX_FOPATH ];
     static char      ClientWritePath[ MAX_FOPATH ];
-    PropertyVec      ShowCrProps;
-    PropertyVec      ShowItemProps;
+    PropertyVec      ShowProps;
 
     FOMapper();
     bool Init();
@@ -401,8 +400,6 @@ public:
         static ScriptString* Global_GetTileName( ushort hx, ushort hy, bool roof, int layer );
         static void          Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, ScriptString* pic_name );
 
-        static void      Global_ShowCritterProperty( int prop_enum );
-        static void      Global_ShowItemProperty( int prop_enum );
         static void      Global_AllowSlot( uchar index, bool enable_send );
         static ProtoMap* Global_LoadMap( ScriptString& file_name, int path_type );
         static void      Global_UnloadMap( ProtoMap* pmap );
