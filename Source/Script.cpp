@@ -15,6 +15,10 @@
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include <strstream>
 
+#if defined ( FO_X86 ) && !defined ( FO_OSX_IOS )
+# define ALLOW_NATIVE_CALLS
+#endif
+
 static const char* ContextStatesStr[] =
 {
     "Finished",
@@ -150,6 +154,15 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
                                                  Preprocessor::DeleteLineNumberTranslator( (Preprocessor::LineNumberTranslator*) module->GetUserData() );
                                                  module->SetUserData( nullptr );
                                              } );
+    Engine->SetFunctionUserDataCleanupCallback([] ( asIScriptFunction * func )
+                                               {
+                                                   hash* func_num_ptr = (hash*) func->GetUserData();
+                                                   if( func_num_ptr )
+                                                   {
+                                                       delete func_num_ptr;
+                                                       func->SetUserData( nullptr );
+                                                   }
+                                               } );
 
     while( FreeContexts.size() < 10 )
         CreateContext();
@@ -817,7 +830,11 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
     EngineData* edata = new EngineData();
     edata->PragmaCB = pragma_callback;
     edata->DllTarget = dll_target;
+    #ifdef ALLOW_NATIVE_CALLS
     edata->AllowNativeCalls = allow_native_calls;
+    #else
+    edata->AllowNativeCalls = false;
+    #endif
     edata->Invoker = new ScriptInvoker();
     edata->Profiler = nullptr;
     engine->SetUserData( edata );
@@ -1770,18 +1787,17 @@ void Script::MakeScriptNameInRuntime( const char* func_name, char(&script_name)[
 
 hash Script::GetFuncNum( asIScriptFunction* func )
 {
-    uint64 h = (uint64) func->GetUserData();
-    hash   func_num = (hash) h;
-    if( !func_num )
+    hash* func_num_ptr = (hash*) func->GetUserData();
+    if( !func_num_ptr )
     {
         char script_name[ MAX_FOTEXT ];
         Str::Copy( script_name, func->GetModuleName() );
         Str::Append( script_name, "@" );
         Str::Append( script_name, func->GetName() );
-        func_num = Str::GetHash( script_name );
-        func->SetUserData( (void*) func_num );
+        func_num_ptr = new hash( Str::GetHash( script_name ) );
+        func->SetUserData( func_num_ptr );
     }
-    return func_num;
+    return *func_num_ptr;
 }
 
 asIScriptFunction* Script::FindFunc( hash func_num )
@@ -1940,7 +1956,7 @@ void Script::CacheEnumValues()
         {
             RUNTIME_ASSERT( type_id == asTYPEID_UINT32 ); // hash
             Str::Format( buf, "%s::%s", ns, name );
-            cached_enums.insert( PAIR( string( buf ), int(value) ) );
+            cached_enums.insert( PAIR( string( buf ), (int) *value ) );
         }
     }
 }
@@ -2354,15 +2370,16 @@ void Script::SetArgAddress( void* value )
 }
 
 // Taked from AS sources
-#if defined ( FO_MSVC )
+#ifdef ALLOW_NATIVE_CALLS
+# if defined ( FO_MSVC )
 static uint64 CallCDeclFunction32( const size_t* args, size_t paramSize, size_t func )
-#else
+# else
 static uint64 __attribute( ( __noinline__ ) ) CallCDeclFunction32( const size_t * args, size_t paramSize, size_t func )
-#endif
+# endif
 {
     volatile uint64 retQW = 0;
 
-    #if defined ( FO_MSVC ) && defined ( FO_X86 )
+    # if defined ( FO_MSVC )
     // Copy the data to the real stack. If we fail to do
     // this we may run into trouble in case of exceptions.
     __asm
@@ -2402,7 +2419,7 @@ endcopy:
         pop  ecx
     }
 
-    #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
+    # elif defined ( FO_GCC )
     // It is not possible to rely on ESP or BSP to refer to variables or arguments on the stack
     // depending on compiler settings BSP may not even be used, and the ESP is not always on the
     // same offset from the local variables. Because the code adjusts the ESP register it is not
@@ -2461,12 +2478,13 @@ endcopy:
         : "d" ( a ), "m" ( retQW )          // input - pass pointer of args in edx, pass pointer of retQW in memory argument
         : "%eax", "%ecx"                    // clobber
         );
-    #else
-    UNUSED_VARIABLE( retQW );
-    #endif
+    # else
+    #  error Invalid configuration
+    # endif
 
     return retQW;
 }
+#endif
 
 bool Script::RunPrepared()
 {
@@ -2524,7 +2542,11 @@ bool Script::RunPrepared()
     }
     else
     {
+        #ifdef ALLOW_NATIVE_CALLS
         *(uint64*) RetValue = CallCDeclFunction32( NativeArgs, CurrentArg * 4, NativeFuncAddr );
+        #else
+        RUNTIME_ASSERT( !"Native calls is not allowed" );
+        #endif
     }
 
     EndExecution();

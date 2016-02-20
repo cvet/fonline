@@ -6424,7 +6424,6 @@ void FOClient::SaveLoadCollect()
         // Map pid
         if( !client.count( "MapPid" ) )
             continue;
-        hash map_pid = Str::GetHash( client[ "MapPid" ].c_str() );
 
         // Picture data
         UCharVec pic_data;

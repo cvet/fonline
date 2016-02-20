@@ -871,7 +871,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         entity_item->SetHexX( 0 );
         entity_item->SetHexY( 0 );
 
-        bool delete_child = true;
         for( size_t j = 0; j < entities.size(); j++ )
         {
             Entity* entity_parent = entities[ j ];

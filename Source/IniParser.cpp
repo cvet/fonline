@@ -52,7 +52,6 @@ void IniParser::ParseStr( const char* str )
     if( collectContent )
         app_content.reserve( 0xFFFF );
 
-    bool       show = Str::Substring( str, "[GeneralSettings]" ) != nullptr;
     istrstream istr( str );
     CharVec    big_buf( 1000000 );
     char*      line = &big_buf[ 0 ];

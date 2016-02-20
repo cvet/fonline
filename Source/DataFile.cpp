@@ -306,7 +306,6 @@ uchar* FolderFile::OpenFile( const char* path, const char* path_lower, uint& siz
 void FolderFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
 {
     #ifndef DISABLE_FOLDER_CACHING
-    IndexMap&    files_tree = filesTree;
     FileNameVec& files_tree_names = filesTreeNames;
     #else
     IndexMap     files_tree;

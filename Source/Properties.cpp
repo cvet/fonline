@@ -1481,7 +1481,7 @@ static void* ReadValue( const char* value, int type_id, asIObjectType* as_obj_ty
         asIObjectType* value_type = as_obj_type->GetSubType( 0 );
         string str;
         uchar arr_pod_buf[ 8 ];
-        while( value = ReadToken( value, str ) )
+        while( ( value = ReadToken( value, str ) ) )
         {
             void* v = ReadValue( str.c_str(), value_type_id, value_type, is_hashes, deep + 1, arr_pod_buf, is_error );
             arr->InsertLast( v );

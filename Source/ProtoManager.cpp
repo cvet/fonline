@@ -88,7 +88,6 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
         fopro.GetApps( app_name, protos_data );
         if( std::is_same< T, ProtoMap >::value && protos_data.empty() )
             fopro.GetApps( "Header", protos_data );
-        bool texts_once = false;
         for( auto& pkv : protos_data )
         {
             auto&       kv = *pkv;
