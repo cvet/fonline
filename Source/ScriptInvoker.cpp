@@ -147,29 +147,26 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call )
 {
     if( Script::PrepareContext( call.BindId, _FUNC_, "Invoker" ) )
     {
+        ScriptArray* arr = nullptr;
+
         if( call.IsValue )
         {
             Script::SetArgUInt( call.Value );
-            Script::RunPrepared();
         }
         else if( call.IsValues )
         {
-            ScriptArray* arr = Script::CreateArray( call.ValuesSigned ? "int[]" : "uint[]" );
+            arr = Script::CreateArray( call.ValuesSigned ? "int[]" : "uint[]" );
             Script::AppendVectorToArray( call.Values, arr );
             Script::SetArgObject( arr );
-            if( call.FireTick == 0 )
-                Script::RunPreparedSuspend();
-            else
-                Script::RunPrepared();
-            arr->Release();
         }
+
+        if( call.FireTick == 0 )
+            Script::RunPreparedSuspend();
         else
-        {
-            if( call.FireTick == 0 )
-                Script::RunPreparedSuspend();
-            else
-                Script::RunPrepared();
-        }
+            Script::RunPrepared();
+
+        if( arr )
+            arr->Release();
     }
 }
 
