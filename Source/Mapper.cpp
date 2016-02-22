@@ -2170,8 +2170,23 @@ void FOMapper::ObjKeyDownApply( Entity* entity )
     const int start_line = 3;
     RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
     if( ObjCurLine >= start_line && ObjCurLine - start_line < (int) ShowProps.size() )
-        if( ShowProps[ ObjCurLine - start_line ] && !entity->Props.LoadPropertyFromText( ShowProps[ ObjCurLine - start_line ], ObjCurLineValue.c_str() ) )
-            entity->Props.LoadPropertyFromText( ShowProps[ ObjCurLine - start_line ], ObjCurLineInitValue.c_str() );
+    {
+        Property* prop = ShowProps[ ObjCurLine - start_line ];
+        if( prop )
+        {
+            if( entity->Props.LoadPropertyFromText( prop, ObjCurLineValue.c_str() ) )
+            {
+                if( entity->Type == EntityType::ItemHex && ( prop == ItemHex::PropertyOffsetX || prop == ItemHex::PropertyOffsetY ) )
+                    ( (ItemHex*) entity )->SetAnimOffs();
+                if( entity->Type == EntityType::ItemHex && prop == ItemHex::PropertyPicMap )
+                    ( (ItemHex*) entity )->RefreshAnim();
+            }
+            else
+            {
+                entity->Props.LoadPropertyFromText( prop, ObjCurLineInitValue.c_str() );
+            }
+        }
+    }
 }
 
 void FOMapper::SelectEntityProp( int line )
