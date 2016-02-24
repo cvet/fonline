@@ -18,6 +18,7 @@ FOMapper::FOMapper()
     Animations.resize( 10000 );
     ConsoleHistory.clear();
     ConsoleHistoryCur = 0;
+    InspectorEntity = nullptr;
 }
 
 bool FOMapper::Init()
@@ -2032,12 +2033,10 @@ void FOMapper::ObjDraw()
 {
     if( !ObjVisible )
         return;
-    if( SelectedEntities.empty() )
-        return;
 
-    Entity* entity = SelectedEntities[ 0 ];
-    if( IntMode == INT_MODE_INCONT && InContItem )
-        entity = InContItem;
+    Entity* entity = GetInspectorEntity();
+    if( !entity )
+        return;
 
     Item* item = ( entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex ? (Item*) entity : nullptr );
     CritterCl* cr = ( entity->Type == EntityType::CritterCl ? (CritterCl*) entity : nullptr );
@@ -2127,19 +2126,15 @@ void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
     {
         if( ObjCurLineInitValue != ObjCurLineValue )
         {
-            if( IntMode == INT_MODE_INCONT && InContItem )
+            Entity* entity = GetInspectorEntity();
+            RUNTIME_ASSERT( entity );
+            ObjKeyDownApply( entity );
+
+            if( !SelectedEntities.empty() && SelectedEntities[ 0 ] == entity && ObjToAll )
             {
-                ObjKeyDownApply( InContItem );
-            }
-            else
-            {
-                Entity* main_entity = SelectedEntities[ 0 ];
-                for( uint i = 0, j = ObjToAll ? (uint) SelectedEntities.size() : 1; i < j; i++ )    // At least one time
-                {
-                    Entity* entity = SelectedEntities[ i ];
-                    if( main_entity->Type == entity->Type )
-                        ObjKeyDownApply( entity );
-                }
+                for( size_t i = 1; i < SelectedEntities.size(); i++ )
+                    if( SelectedEntities[ i ]->Type == entity->Type )
+                        ObjKeyDownApply( SelectedEntities[ i ] );
             }
 
             SelectEntityProp( ObjCurLine );
@@ -2197,9 +2192,10 @@ void FOMapper::SelectEntityProp( int line )
         ObjCurLine = 0;
     ObjCurLineInitValue = ObjCurLineValue = "";
     ObjCurLineIsConst = true;
-    if( !SelectedEntities.empty() )
+
+    Entity* entity = GetInspectorEntity();
+    if( entity )
     {
-        Entity* entity = ( IntMode == INT_MODE_INCONT && InContItem ? InContItem : SelectedEntities[ 0 ] );
         RUNTIME_ASSERT( entity->Type == EntityType::CritterCl || entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex );
         if( ObjCurLine - start_line >= (int) ShowProps.size() )
             ObjCurLine = (int) ShowProps.size() + start_line - 1;
@@ -2209,6 +2205,35 @@ void FOMapper::SelectEntityProp( int line )
             ObjCurLineIsConst = ShowProps[ ObjCurLine - start_line ]->IsConst();
         }
     }
+}
+
+Entity* FOMapper::GetInspectorEntity()
+{
+    Entity* entity = ( IntMode == INT_MODE_INCONT && InContItem ? InContItem : ( !SelectedEntities.empty() ? SelectedEntities[ 0 ] : nullptr ) );
+    if( entity == InspectorEntity )
+        return entity;
+
+    InspectorEntity = entity;
+    ShowProps.clear();
+
+    if( entity && Script::PrepareContext( MapperFunctions.InspectorProperties, _FUNC_, "Mapper" ) )
+    {
+        ScriptArray* arr = Script::CreateArray( "int[]" );
+        RUNTIME_ASSERT( arr );
+        Script::SetArgEntityOK( entity );
+        Script::SetArgObject( arr );
+        if( Script::RunPrepared() )
+        {
+            IntVec enum_values;
+            Script::AssignScriptArrayInVector( enum_values, arr );
+            for( auto enum_value : enum_values )
+                ShowProps.push_back( enum_value ? entity->Props.FindByEnum( enum_value ) : nullptr );
+        }
+        arr->Release();
+    }
+
+    SelectEntityProp( ObjCurLine );
+    return entity;
 }
 
 void FOMapper::IntLMouseDown()
@@ -2433,10 +2458,7 @@ void FOMapper::IntLMouseDown()
             if( !children.empty() )
             {
                 if( ind < (int) children.size() )
-                {
                     InContItem = (Item*) children[ ind ];
-                    SelectEntityProp( ObjCurLine );
-                }
 
                 // Delete child
                 if( Keyb::AltDwn && InContItem )
@@ -2749,7 +2771,7 @@ void FOMapper::IntLMouseUp()
                         }
                     }
                 }
-                else                 // SELECT_TYPE_NEW
+                else                                                                      // SELECT_TYPE_NEW
                 {
                     HexMngr.GetHexesRect( Rect( SelectHX1, SelectHY1, SelectHX2, SelectHY2 ), h );
                 }
@@ -3110,27 +3132,6 @@ void FOMapper::SelectAdd( Entity* entity )
 {
     SelectedEntities.push_back( entity );
 
-    if( SelectedEntities.size() == 1 )
-    {
-        ShowProps.clear();
-        if( Script::PrepareContext( MapperFunctions.InspectorProperties, _FUNC_, "Mapper" ) )
-        {
-            ScriptArray* arr = Script::CreateArray( "int[]" );
-            RUNTIME_ASSERT( arr );
-            Script::SetArgEntityOK( entity );
-            Script::SetArgObject( arr );
-            if( Script::RunPrepared() )
-            {
-                IntVec enum_values;
-                Script::AssignScriptArrayInVector( enum_values, arr );
-                for( auto enum_value : enum_values )
-                    ShowProps.push_back( enum_value ? entity->Props.FindByEnum( enum_value ) : nullptr );
-            }
-            arr->Release();
-        }
-        SelectEntityProp( ObjCurLine );
-    }
-
     if( entity->Type == EntityType::CritterCl )
         ( (CritterCl*) entity )->Alpha = SELECT_ALPHA;
     if( entity->Type == EntityType::ItemHex )
@@ -3262,7 +3263,7 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
                 hy += offs_hy;
             }
             if( hx < 0 || hy < 0 || hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() )
-                return false;                                                                                  // Disable moving
+                return false;                                                // Disable moving
         }
 
         // Tiles
@@ -3515,7 +3516,8 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
         return nullptr;
 
     // Clear selection
-    SelectClear();
+    if( !owner )
+        SelectClear();
 
     // Create
     Item* item;
@@ -3554,6 +3556,11 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
     {
         SelectAdd( item );
         CurMode = CUR_MODE_DEFAULT;
+    }
+    else
+    {
+        IntSetMode( INT_MODE_INCONT );
+        InContItem = item;
     }
 
     return item;
@@ -4390,9 +4397,9 @@ void FOMapper::MessBoxGenerate()
             continue;
         // Add to message box
         if( GameOpt.MsgboxInvert )
-            MessBoxCurText += m.Mess;                      // Back
+            MessBoxCurText += m.Mess;                                                                                       // Back
         else
-            MessBoxCurText = m.Mess + MessBoxCurText;      // Front
+            MessBoxCurText = m.Mess + MessBoxCurText;                                                                       // Front
         i++;
         if( i >= max_lines )
             break;
@@ -4902,7 +4909,7 @@ bool FOMapper::SScriptFunc::Global_ShowMap( ProtoMap* pmap )
     if( !pmap )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
     if( Self->ActiveProtoMap == pmap )
-        return true;                             // Already
+        return true;                                                                       // Already
 
     Self->SelectClear();
     if( !Self->HexMngr.SetProtoMap( *pmap ) )

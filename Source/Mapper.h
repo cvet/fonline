@@ -312,12 +312,14 @@ public:
     string     ObjCurLineValue;
     bool       ObjVisible, ObjFix;
     bool       ObjToAll;
+    Entity*    InspectorEntity;
 
-    void ObjDraw();
-    void DrawLine( const char* name, const char* type_name, const char* text, bool is_const, Rect& r );
-    void ObjKeyDown( uchar dik, const char* dik_text );
-    void ObjKeyDownApply( Entity* entity );
-    void SelectEntityProp( int line );
+    void    ObjDraw();
+    void    DrawLine( const char* name, const char* type_name, const char* text, bool is_const, Rect& r );
+    void    ObjKeyDown( uchar dik, const char* dik_text );
+    void    ObjKeyDownApply( Entity* entity );
+    void    SelectEntityProp( int line );
+    Entity* GetInspectorEntity();
 
     // Console
     AnyFrames*       ConsolePic;
