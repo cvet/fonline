@@ -191,6 +191,7 @@ set( COMMON_SOURCE
 )
 set( SERVER_CLIENT_MAPPER_SOURCE
 	${Assimp_SOURCE}
+	3dAnimation.h
 	CritterData.h
 	CritterType.cpp CritterType.h
 	GraphicStructures.cpp GraphicStructures.h
@@ -212,7 +213,6 @@ set( SERVER_ASCOMPILER_SOURCE
 	DummyData.h
 )
 set( CLIENT_MAPPER_SOURCE
-	3dAnimation.h
 	3dStuff.cpp 3dStuff.h
 	CritterCl.cpp CritterCl.h
 	F2Palette.h
@@ -227,10 +227,14 @@ set( CLIENT_MAPPER_SOURCE
 	SpriteManagerFont.cpp
 	Sprites.cpp Sprites.h
 )
+set( SERVER_MAPPER_SOURCE
+	ResourceConverter.h ResourceConverter.cpp
+)
 
 set( SERVER_SOURCE
 	${COMMON_SOURCE}
 	${SERVER_CLIENT_MAPPER_SOURCE}
+	${SERVER_MAPPER_SOURCE}
 	${SERVER_CLIENT_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
 	${fbxsdk_SOURCE}
@@ -246,7 +250,6 @@ set( SERVER_SOURCE
 	Map.cpp Map.h
 	MapManager.cpp MapManager.h
 	Mutex.h
-	ResourceConverter.h ResourceConverter.cpp
 	Server.cpp Server.h
 	ServerClient.cpp
 	ServerItem.cpp
@@ -271,7 +274,9 @@ set( CLIENT_SOURCE
 set( MAPPER_SOURCE
 	${COMMON_SOURCE}
 	${SERVER_CLIENT_MAPPER_SOURCE}
+	${SERVER_MAPPER_SOURCE}
 	${CLIENT_MAPPER_SOURCE}
+	${fbxsdk_SOURCE}
 	MainMapper.cpp
 	Mapper.cpp Mapper.h
 )
@@ -329,7 +334,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../LFO/Tools/Mapper/" )
 	set_target_properties( Mapper PROPERTIES ${RO1} ${MAPPER_OUTPUT} ${RO2} ${MAPPER_OUTPUT} ${RO3} ${MAPPER_OUTPUT} ${RO4} ${MAPPER_OUTPUT} )
 	set_target_properties( Mapper PROPERTIES COMPILE_FLAGS "${MAPPER_DEFINES}" )
-	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK}" "${GL}" "GLExt" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SDL2main" "SDL2-static" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "${GL}" "GLExt" "${CMAKE_DL_LIBS}" )
 
 	add_executable( ASCompiler ${ASCOMPILER_SOURCE} )
 	set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../LFO/Tools/ASCompiler/" )

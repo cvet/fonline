@@ -2,6 +2,7 @@
 #include "Mapper.h"
 #include "Script.h"
 #include "ScriptFunctions.h"
+#include "ResourceConverter.h"
 
 bool      FOMapper::SpritesCanDraw = false;
 FOMapper* FOMapper::Self = nullptr;
@@ -123,11 +124,20 @@ bool FOMapper::Init()
     // Sprite manager
     if( !SprMngr.Init() )
         return false;
+
+    // Resources
+    FileManager::SetCurrentDir( ServerWritePath, "./" );
+    bool something_changed = ResourceConverter::Generate();
+    FileManager::SetCurrentDir( ClientWritePath, "./" );
+    if( something_changed )
+        FileManager::InitDataFiles( CLIENT_DATA );
+
+    // Default effects
     if( !GraphicLoader::LoadDefaultEffects() )
         return false;
-    SprMngr.PushAtlasType( RES_ATLAS_STATIC );
 
     // Fonts
+    SprMngr.PushAtlasType( RES_ATLAS_STATIC );
     if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault", false ) )
         return false;
     if( !SprMngr.LoadFontFO( FONT_NUM, "Numbers", true ) )

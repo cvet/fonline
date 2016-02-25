@@ -6,9 +6,10 @@
 class ResourceConverter
 {
 public:
-    static FileManager* Convert( const char* name, FileManager& file );
+    static bool Generate();
 
 private:
+    static FileManager* Convert( const char* name, FileManager& file );
     static FileManager* ConvertImage( const char* name, FileManager& file );
     static FileManager* Convert3d( const char* name, FileManager& file );
 };
