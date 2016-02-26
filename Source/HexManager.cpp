@@ -1512,14 +1512,18 @@ void HexManager::CollectLightSources()
         return;
 
     // Scenery
+    #ifndef FONLINE_MAPPER
     lightSources = lightSourcesScen;
+    #else
+    for( auto& item : hexItems )
+        if( !item->IsItem() && item->GetIsLight() )
+            lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
+    #endif
 
     // Items on ground
     for( auto& item : hexItems )
-    {
         if( item->IsItem() && item->GetIsLight() )
             lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
-    }
 
     // Items in critters slots
     for( auto& kv : allCritters )
@@ -3877,7 +3881,7 @@ void HexManager::GenerateItem( uint id, hash proto_id, Properties& props )
     scenery->HexScrX = &f.ScrX;
     scenery->HexScrY = &f.ScrY;
 
-    if( scenery->GetIsLight() || scenery->GetLightIntensity() )
+    if( scenery->GetIsLight() )
     {
         lightSourcesScen.push_back( LightSource( scenery->GetHexX(), scenery->GetHexY(), scenery->LightGetColor(),
                                                  scenery->LightGetDistance(), scenery->LightGetIntensity(), scenery->LightGetFlags() ) );
@@ -3930,7 +3934,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
 
     ResizeField( pmap.GetWidth(), pmap.GetHeight() );
 
-    curPidMap = 0xFFFF;
+    curPidMap = 1;
 
     int day_time = pmap.GetCurDayTime();
     GameOpt.Minute = day_time % 60;
