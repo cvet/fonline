@@ -197,20 +197,34 @@ bool FOMapper::Init()
         return false;
 
     // Initialize tabs
-    const ProtoCritterMap& cr_protos = ProtoMngr.GetProtoCritters();
-    for( auto it = cr_protos.begin(), end = cr_protos.end(); it != end; ++it )
+    const auto& cr_protos = ProtoMngr.GetProtoCritters();
+    for( auto& kv : cr_protos )
     {
-        ProtoCritter* proto = it->second;
+        ProtoCritter* proto = kv.second;
         Tabs[ INT_MODE_CRIT ][ DEFAULT_SUB_TAB ].NpcProtos.push_back( proto );
         Tabs[ INT_MODE_CRIT ][ proto->CollectionName ].NpcProtos.push_back( proto );
     }
+    for( auto& kv : Tabs[ INT_MODE_CRIT ] )
+    {
+        std::sort( kv.second.NpcProtos.begin(), kv.second.NpcProtos.end(), [] ( ProtoCritter * a, ProtoCritter * b )
+                   {
+                       return strcmp( a->GetName(), b->GetName() );
+                   } );
+    }
 
-    auto& item_protos = ProtoMngr.GetProtoItems();
+    const auto& item_protos = ProtoMngr.GetProtoItems();
     for( auto& kv : item_protos )
     {
         ProtoItem* proto = kv.second;
         Tabs[ INT_MODE_ITEM ][ DEFAULT_SUB_TAB ].ItemProtos.push_back( proto );
         Tabs[ INT_MODE_ITEM ][ proto->CollectionName ].ItemProtos.push_back( proto );
+    }
+    for( auto& kv : Tabs[ INT_MODE_ITEM ] )
+    {
+        std::sort( kv.second.ItemProtos.begin(), kv.second.ItemProtos.end(), [] ( ProtoItem * a, ProtoItem * b )
+                   {
+                       return strcmp( a->GetName(), b->GetName() );
+                   } );
     }
 
     for( int i = 0; i < TAB_COUNT; i++ )
@@ -223,7 +237,7 @@ bool FOMapper::Init()
     TabsTiles[ INT_MODE_TILE ].TileDirs.push_back( FileManager::GetDataPath( "", PT_ART_TILES ) );
     TabsTiles[ INT_MODE_TILE ].TileSubDirs.push_back( true );
 
-    // Initialize tabs scroll and names
+// Initialize tabs scroll and names
     memzero( TabsScroll, sizeof( TabsScroll ) );
     for( int i = INT_MODE_CUSTOM0; i <= INT_MODE_CUSTOM9; i++ )
         TabsName[ i ] = "-";
@@ -236,10 +250,10 @@ bool FOMapper::Init()
     TabsName[ INT_MODE_MESS ] = "Msg";
     TabsName[ INT_MODE_LIST ] = "Maps";
 
-    // Restore to client path
+// Restore to client path
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
-    // Hex manager
+// Hex manager
     if( !HexMngr.Init() )
         return false;
     HexMngr.ReloadSprites();
@@ -287,23 +301,23 @@ bool FOMapper::Init()
         }
     }
 
-    // Start script
+// Start script
     RunStartScript();
 
-    // 3d initialization
+// 3d initialization
     if( GameOpt.Enable3dRendering && !Animation3d::StartUp() )
     {
         WriteLog( "Can't initialize 3d rendering stuff.\n" );
         return false;
     }
 
-    // Refresh resources after start script executed
+// Refresh resources after start script executed
     ResMngr.Refresh();
     for( int tab = 0; tab < TAB_COUNT; tab++ )
         RefreshTiles( tab );
     RefreshCurProtos();
 
-    // Load console history
+// Load console history
     string history_str = Crypt.GetCache( "mapper_console" );
     size_t pos = 0, prev = 0, count = 0;
     while( ( pos = history_str.find( "\n", prev ) ) != std::string::npos )

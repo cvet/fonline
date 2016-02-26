@@ -64,8 +64,10 @@ static void InsertMapValues( const StrMap& from_kv, StrMap& to_kv, bool overwrit
 
 #pragma warning( disable : 4503 )
 template< class T >
-static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >& protos, int& errors )
+static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& protos )
 {
+    int errors = 0;
+
     // Collect data
     FilesCollection                    files = FilesCollection( ext );
     map< hash, StrMap >                files_protos;
@@ -125,7 +127,7 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
         }
     }
     if( errors )
-        return;
+        return errors;
 
     // Injection
     auto injection = [ &files_protos, &errors ] ( const char* key_name, bool overwrite )
@@ -161,7 +163,7 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
     };
     injection( "$Inject", false );
     if( errors )
-        return;
+        return errors;
 
     // Protos
     for( auto& kv : files_protos )
@@ -171,7 +173,7 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
         RUNTIME_ASSERT( protos.count( pid ) == 0 );
 
         // Fill content from parents
-        StrMap                                      final_kv;
+        StrMap                                      final_kv = kv.second;
         std::function< bool(const char*, StrMap&) > fill_parent = [ &fill_parent, &base_name, &files_protos, &final_kv ] ( const char* name, StrMap & cur_kv )
         {
             const char* parent_name_line = ( cur_kv.count( "$Parent" ) ? cur_kv[ "$Parent" ].c_str() : "" );
@@ -197,13 +199,15 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
             return true;
         };
         if( !fill_parent( base_name, final_kv ) )
+        {
+            errors++;
             continue;
-        InsertMapValues( kv.second, final_kv, true );
+        }
 
         // Final injection
         injection( "$InjectOverride", true );
         if( errors )
-            return;
+            return errors;
 
         // Create proto
         T* proto = new T( pid );
@@ -218,12 +222,13 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
         protos.insert( PAIR( pid, proto ) );
     }
     if( errors )
-        return;
+        return errors;
 
     // Texts
     for( auto& kv : files_texts )
     {
         T* proto = protos[ kv.first ];
+        RUNTIME_ASSERT( proto );
         for( auto& text : kv.second )
         {
             FOMsg temp_msg;
@@ -249,6 +254,8 @@ static void ParseProtos( const char* ext, const char* app_name, map< hash, T* >&
             proto->Texts.push_back( msg );
         }
     }
+
+    return errors;
 }
 
 void ProtoManager::ClearProtos()
@@ -271,10 +278,10 @@ bool ProtoManager::LoadProtosFromFiles()
 
     // Load protos
     int errors = 0;
-    ParseProtos( "foitem", "ProtoItem", itemProtos, errors );
-    ParseProtos( "focr", "ProtoCritter", crProtos, errors );
-    ParseProtos( "fomap", "ProtoMap", mapProtos, errors );
-    ParseProtos( "foloc", "ProtoLocation", locProtos, errors );
+    errors += ParseProtos( "foitem", "ProtoItem", itemProtos );
+    errors += ParseProtos( "focr", "ProtoCritter", crProtos );
+    errors += ParseProtos( "fomap", "ProtoMap", mapProtos );
+    errors += ParseProtos( "foloc", "ProtoLocation", locProtos );
 
     // Mapper collections
     #ifdef FONLINE_MAPPER
