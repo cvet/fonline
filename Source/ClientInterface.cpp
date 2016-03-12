@@ -3256,8 +3256,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         DlgMouseMove( true );
         break;
     case SCREEN__BARTER:
-        BarterHoldId = 0;
-        BarterIsPlayers = false;
         break;
     case SCREEN__FIX_BOY:
         FixMode = FIX_MODE_LIST;

@@ -5829,6 +5829,9 @@ void FOClient::Net_OnPlayersBarter()
         Net_SendPlayersBarter( BARTER_END, 0, 0 );
         break;
     }
+
+    if( Script::PrepareContext( ClientFunctions.ContainerChanged, _FUNC_, "Game" ) )
+        Script::RunPrepared();
 }
 
 void FOClient::Net_OnPlayersBarterSetHide()
@@ -9926,6 +9929,9 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else if( cmd == "DialogAnswer" && args.size() >= 4 )
     {
+        if( Self->IsScreenPlayersBarter() )
+            return;
+
         bool is_npc = Str::Compare( args[ 1 ].c_str(), "true" );
         uint talker_id = Str::AtoI( args[ 2 ].c_str() );
         uint answer_index = Str::AtoI( args[ 3 ].c_str() );
