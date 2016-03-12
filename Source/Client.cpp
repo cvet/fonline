@@ -9929,13 +9929,11 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else if( cmd == "DialogAnswer" && args.size() >= 4 )
     {
-        if( Self->IsScreenPlayersBarter() )
-            return;
-
         bool is_npc = Str::Compare( args[ 1 ].c_str(), "true" );
         uint talker_id = Str::AtoI( args[ 2 ].c_str() );
         uint answer_index = Str::AtoI( args[ 3 ].c_str() );
-        Self->Net_SendTalk( is_npc, talker_id, answer_index );
+        if( !Self->IsScreenPlayersBarter() )
+            Self->Net_SendTalk( is_npc, talker_id, answer_index );
     }
     else if( cmd == "DialogSay" )
     {
