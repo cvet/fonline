@@ -659,6 +659,7 @@ struct GameOptions
     uchar         ChosenLightDistance;
     int           ChosenLightIntensity;
     uchar         ChosenLightFlags;
+    bool          EnableIntellectWords;
 
     // Mapper
     ScriptString* ClientPath;

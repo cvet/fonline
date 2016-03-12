@@ -8079,6 +8079,10 @@ PCharPairVec::iterator FOClient::FindIntellectWord( const char* word, PCharPairV
 
 void FOClient::FmtTextIntellect( char* str, ushort intellect )
 {
+    uchar intellegence = intellect & 0xF;
+    if( !intellect || intellegence >= 5 )
+        return;
+
     static bool is_parsed = false;
     if( !is_parsed )
     {
@@ -8088,10 +8092,6 @@ void FOClient::FmtTextIntellect( char* str, ushort intellect )
     }
 
     if( IntellectWords.empty() && IntellectSymbols.empty() )
-        return;
-
-    uchar intellegence = intellect & 0xF;
-    if( !intellect || intellegence >= 5 )
         return;
 
     int word_proc;

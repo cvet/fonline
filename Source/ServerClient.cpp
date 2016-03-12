@@ -127,7 +127,7 @@ void FOServer::ProcessCritter( Critter* cr )
         // Cache intelligence for GetSayIntellect, every 3 seconds
         if( tick >= cl->CacheValuesNextTick )
         {
-            cl->IntellectCacheValue = ( tick & 0xFFF0 ) | cl->GetIntellect();
+            cl->IntellectCacheValue = ( GameOpt.EnableIntellectWords ? ( tick & 0xFFF0 ) | cl->GetIntellect() : 0 );
             cl->LookCacheValue = cl->GetLookDistance();
             cl->CacheValuesNextTick = tick + 3000;
         }

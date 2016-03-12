@@ -780,6 +780,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __MinimumOfflineTime", &GameO
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GameServer", &GameOpt.GameServer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __UpdateServer", &GameOpt.UpdateServer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __CommandLine", &GameOpt.CommandLine ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "bool __EnableIntellectWords", &GameOpt.EnableIntellectWords ) );
 
 # ifdef BIND_SERVER
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GenerateWorldDisabled", &GameOpt.GenerateWorldDisabled ) );
