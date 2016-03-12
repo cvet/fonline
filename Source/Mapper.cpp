@@ -4789,7 +4789,7 @@ void FOMapper::SScriptFunc::Global_DeleteTile( ushort hx, ushort hy, bool roof, 
             if( tiles[ i ].Layer == layer )
             {
                 tiles.erase( tiles.begin() + i );
-                f.EraseTile( i, roof );
+                f.EraseTile( (uint) i, roof );
                 deleted = true;
                 break;
             }

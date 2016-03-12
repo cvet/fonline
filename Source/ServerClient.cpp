@@ -2617,7 +2617,7 @@ void FOServer::Send_MapData( Client* cl, ProtoMap* pmap, bool send_tiles, bool s
     cl->Bout << send_scenery;
     if( send_tiles )
     {
-        cl->Bout << (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile );
+        cl->Bout << (uint) ( pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
         if( pmap->Tiles.size() )
             cl->Bout.Push( (char*) &pmap->Tiles[ 0 ], (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
     }

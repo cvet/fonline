@@ -1064,7 +1064,7 @@ Thread AdminManagerThread;
 
 void InitAdminManager( IniParser* cfg )
 {
-    uint port = 0;
+    ushort port = 0;
     if( !cfg )
     {
         IniParser& cfg_ = IniParser::GetServerConfig();
@@ -1083,12 +1083,15 @@ void InitAdminManager( IniParser* cfg )
     if( port )
     {
         AdminManagerThread.Finish();
-        AdminManagerThread.Start( AdminManager, "AdminPanelManager", (void*) port );
+        AdminManagerThread.Start( AdminManager, "AdminPanelManager", new ushort( port ) );
     }
 }
 
 void AdminManager( void* port_ )
 {
+    ushort port = *(ushort*) port_;
+    delete (ushort*) port_;
+
     // Listen socket
     #ifdef FO_WINDOWS
     WSADATA wsa;
@@ -1108,7 +1111,7 @@ void AdminManager( void* port_ )
     setsockopt( listen_sock, SOL_SOCKET, SO_REUSEADDR, (char*) &opt, sizeof( opt ) );
     sockaddr_in sin;
     sin.sin_family = AF_INET;
-    sin.sin_port = htons( (ushort) (size_t) port_ );
+    sin.sin_port = htons( port );
     sin.sin_addr.s_addr = INADDR_ANY;
     if( ::bind( listen_sock, (sockaddr*) &sin, sizeof( sin ) ) == SOCKET_ERROR )
     {

@@ -244,7 +244,7 @@ ScriptArray* ScriptType::GetEnumNames() const
 {
     asCEnumType* enum_type = ( (asCTypeInfo*) ObjType )->CastToEnumType();
     ScriptArray* result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetObjectTypeByDecl( "string[]" ) );
-    for( size_t i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++ )
+    for( asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++ )
         result->InsertLast( ScriptString::Create( enum_type->enumValues[ i ]->name.AddressOf() ) );
     return result;
 }
@@ -253,7 +253,7 @@ ScriptArray* ScriptType::GetEnumValues() const
 {
     asCEnumType* enum_type = ( (asCTypeInfo*) ObjType )->CastToEnumType();
     ScriptArray* result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetObjectTypeByDecl( "int[]" ) );
-    for( size_t i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++ )
+    for( asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++ )
         result->InsertLast( &enum_type->enumValues[ i ]->value );
     return result;
 }

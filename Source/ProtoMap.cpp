@@ -1014,7 +1014,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
     SceneryData.clear();
     WriteData( SceneryData, scenery_count );
     if( !scenery_data.empty() )
-        WriteDataArr( SceneryData, &scenery_data[ 0 ], scenery_data.size() );
+        WriteDataArr( SceneryData, &scenery_data[ 0 ], (uint) scenery_data.size() );
 
     for( auto& entity : entities )
         entity->Release();

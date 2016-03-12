@@ -94,6 +94,7 @@ set( SKIP_INSTALL_ALL ON )
 set( SDL_DIR "SDL2" ) # SDL2-2.0.3
 set( SDL_SHARED OFF CACHE STRING "" FORCE )
 set( RENDER_D3D OFF CACHE STRING "" FORCE )
+set( LIBC ON CACHE STRING "" FORCE )
 add_subdirectory( "${SDL_DIR}" )
 
 set( FLTK_DIR "FLTK" ) # fltk-1.3.3
