@@ -2014,11 +2014,6 @@ void HexManager::GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y )
     GetHexInterval( center_hx, center_hy, hx, hy, x, y );
     x += center_hex.ScrX;
     y += center_hex.ScrY;
-
-//	x+=center_hex.ScrX+GameOpt.ScrOx;
-//	y+=center_hex.ScrY+GameOpt.ScrOy;
-//	x/=GameOpt.SpritesZoom;
-//	y/=GameOpt.SpritesZoom;
 }
 
 void HexManager::DrawMap()
