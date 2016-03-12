@@ -2030,8 +2030,8 @@ void HexManager::DrawMap()
     PrepareFogToDraw();
 
     // Prerendered offsets
-    int  ox = rtScreenOX - (int) ( (float) GameOpt.ScrOx / GameOpt.SpritesZoom + 0.5f );
-    int  oy = rtScreenOY - (int) ( (float) GameOpt.ScrOy / GameOpt.SpritesZoom + 0.5f );
+    int  ox = rtScreenOX - (int) roundf( (float) GameOpt.ScrOx / GameOpt.SpritesZoom );
+    int  oy = rtScreenOY - (int) roundf( (float) GameOpt.ScrOy / GameOpt.SpritesZoom );
     Rect prerenderedRect = Rect( ox, oy, ox + GameOpt.ScreenWidth, oy + GameOpt.ScreenHeight );
 
     // Separate render target
