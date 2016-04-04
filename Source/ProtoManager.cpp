@@ -173,7 +173,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
         RUNTIME_ASSERT( protos.count( pid ) == 0 );
 
         // Fill content from parents
-        StrMap                                      final_kv = kv.second;
+        StrMap                                      final_kv;
         std::function< bool(const char*, StrMap&) > fill_parent = [ &fill_parent, &base_name, &files_protos, &final_kv ] ( const char* name, StrMap & cur_kv )
         {
             const char* parent_name_line = ( cur_kv.count( "$Parent" ) ? cur_kv[ "$Parent" ].c_str() : "" );
@@ -203,6 +203,9 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
             errors++;
             continue;
         }
+
+        // Actual content
+        InsertMapValues( kv.second, final_kv, true );
 
         // Final injection
         injection( "$InjectOverride", true );
