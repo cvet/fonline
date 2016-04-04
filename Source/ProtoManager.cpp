@@ -198,7 +198,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
             }
             return true;
         };
-        if( !fill_parent( base_name, final_kv ) )
+        if( !fill_parent( base_name, kv.second ) )
         {
             errors++;
             continue;
