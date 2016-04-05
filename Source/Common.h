@@ -729,8 +729,8 @@ struct GameOptions
 #define INDICATOR_NUMBERS    ( 1 )
 #define INDICATOR_BOTH       ( 2 )
 // Zoom
-#define MIN_ZOOM             ( 0.2f )
-#define MAX_ZOOM             ( 10.0f )
+#define MIN_ZOOM             ( 0.1f )
+#define MAX_ZOOM             ( 20.0f )
 
 /************************************************************************/
 /* Auto pointers                                                        */
