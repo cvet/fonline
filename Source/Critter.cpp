@@ -1642,6 +1642,12 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         return false;
     }
 
+    if( to_slot == SLOT_GROUND && !ItemMngr.ItemCheckMove( item, item->GetCount(), this, this ) )
+    {
+        WriteLogF( _FUNC_, " - Move item is not allwed, critter '%s'.\n", to_slot, GetInfo() );
+        return;
+    }
+
     Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : nullptr );
     bool  allow = false;
     if( Script::PrepareContext( ServerFunctions.CritterCheckMoveItem, _FUNC_, GetInfo() ) )

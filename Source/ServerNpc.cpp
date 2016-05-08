@@ -910,7 +910,7 @@ bool FOServer::AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, 
 {
     bool is_castling = ( ( from_slot == SLOT_HAND1 && to_slot == SLOT_HAND2 ) || ( from_slot == SLOT_HAND2 && to_slot == SLOT_HAND1 ) );
     uint ap_cost = ( is_castling ? 0 : npc->GetApCostMoveItemInventory() );
-    if( to_slot == 0xFF )
+    if( to_slot == SLOT_GROUND )
         ap_cost = npc->GetApCostDropItem();
     CHECK_NPC_AP_R0( npc, map, ap_cost );
 
@@ -2098,6 +2098,13 @@ void FOServer::Process_Barter( Client* cl )
             return;
         }
 
+        if( !ItemMngr.ItemCheckMove( item, sale_item_count[ i ], cl, npc ) )
+        {
+            WriteLogF( _FUNC_, " - Sale item is not allowed to move, id %u, count %u, client '%s', npc '%s'.\n", sale_item_id[ i ], sale_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
+            cl->Send_ContainerInfo();
+            return;
+        }
+
         uint base_cost = item->GetCost1st();
         if( GameOpt.CustomItemCost )
         {
@@ -2144,6 +2151,13 @@ void FOServer::Process_Barter( Client* cl )
         if( buy_item_count[ i ] > 1 && !item->GetStackable() )
         {
             WriteLogF( _FUNC_, " - Buy item is not stackable, id %u, count %u, client '%s', npc '%s'.\n", buy_item_id[ i ], buy_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
+            cl->Send_ContainerInfo();
+            return;
+        }
+
+        if( !ItemMngr.ItemCheckMove( item, buy_item_count[ i ], npc, cl ) )
+        {
+            WriteLogF( _FUNC_, " - Buy item is not allowed to move, id %u, count %u, client '%s', npc '%s'.\n", buy_item_id[ i ], buy_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
             cl->Send_ContainerInfo();
             return;
         }
@@ -2237,14 +2251,16 @@ void FOServer::Process_Barter( Client* cl )
     // From Player to Npc
     for( int i = 0; i < sale_count; ++i )
     {
-        if( !ItemMngr.MoveItemCritters( cl, npc, sale_item_id[ i ], sale_item_count[ i ] ) )
+        Item* item = cl->GetItem( sale_item_id[ i ], true );
+        if( !ItemMngr.MoveItemCritters( cl, npc, item, sale_item_count[ i ] ) )
             WriteLogF( _FUNC_, " - Transfer item, from player to npc, fail, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
     }
 
     // From Npc to Player
     for( int i = 0; i < buy_count; ++i )
     {
-        if( !ItemMngr.MoveItemCritters( npc, cl, buy_item_id[ i ], buy_item_count[ i ] ) )
+        Item* item = npc->GetItem( buy_item_id[ i ], true );
+        if( !ItemMngr.MoveItemCritters( npc, cl, item, buy_item_count[ i ] ) )
             WriteLogF( _FUNC_, " - Transfer item, from player to npc, fail, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
     }
 

@@ -313,6 +313,7 @@ struct ClientScriptFunctions
     int ItemLook;
     int CritterLook;
     int GetElevator;
+    int ItemCheckMove;
     int ItemCost;
     int GetTimeouts;
     int CritterAction;
@@ -404,6 +405,7 @@ struct ServerScriptFunctions
     int NpcPlaneRun;
     int KarmaVoting;
     int CheckLook;
+    int ItemCheckMove;
     int ItemCost;
     int ItemsBarter;
     int ItemsCrafted;

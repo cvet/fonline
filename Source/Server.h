@@ -687,12 +687,12 @@ public:
         static Item*         Global_GetProtoItem( hash pid );
         static Item*         Global_GetItem( uint item_id );
         static uint          Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );
-        static void          Global_MoveItemCr( Item* item, uint count, Critter* to_cr );
-        static void          Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
-        static void          Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id );
-        static void          Global_MoveItemsCr( ScriptArray& items, Critter* to_cr );
-        static void          Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy );
-        static void          Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id );
+        static void          Global_MoveItemCr( Item* item, uint count, Critter* to_cr, bool skip_checks );
+        static void          Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks );
+        static void          Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks );
+        static void          Global_MoveItemsCr( ScriptArray& items, Critter* to_cr, bool skip_checks );
+        static void          Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks );
+        static void          Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id, bool skip_checks );
         static void          Global_DeleteItem( Item* item );
         static void          Global_DeleteItemById( uint item_id );
         static void          Global_DeleteItems( ScriptArray& items );

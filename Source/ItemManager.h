@@ -8,6 +8,10 @@
 
 class ItemManager
 {
+private:
+    Entity* GetItemHolder( Item* item );
+    void    EraseItemHolder( Item* item, Entity* parent );
+
 public:
     void GetGameItems( ItemVec& items );
     uint GetItemsCount();
@@ -20,20 +24,20 @@ public:
     Item* SplitItem( Item* item, uint count );
     Item* GetItem( uint item_id, bool sync_lock );
 
-    void EraseItemHolder( Item* item );
-    void MoveItem( Item* item, uint count, Critter* to_cr );
-    void MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy );
-    void MoveItem( Item* item, uint count, Item* to_cont, uint stack_id );
+    void MoveItem( Item* item, uint count, Critter* to_cr, bool skip_checks );
+    void MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks );
+    void MoveItem( Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks );
 
     Item* AddItemContainer( Item* cont, hash pid, uint count, uint stack_id );
     Item* AddItemCritter( Critter* cr, hash pid, uint count );
     bool  SubItemCritter( Critter* cr, hash pid, uint count, ItemVec* erased_items = nullptr );
     bool  SetItemCritter( Critter* cr, hash pid, uint count );
-    bool  MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_id, uint count );
-    bool  MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint item_id, uint count, uint stack_id );
-    bool  MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint item_id, uint count );
-    bool  MoveItemsContainers( Item* from_cont, Item* to_cont, uint from_stack_id, uint to_stack_id );
-    bool  MoveItemsContToCritter( Item* from_cont, Critter* to_cr, uint stack_id );
+
+    bool ItemCheckMove( Item* item, uint count, Entity* from, Entity* to );
+    void FilterMoveItems( ItemVec& items, Entity* from, Entity* to );
+    bool MoveItemCritters( Critter* from_cr, Critter* to_cr, Item* item, uint count );
+    bool MoveItemCritterToCont( Critter* from_cr, Item* to_cont, Item* item, uint count, uint stack_id );
+    bool MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, Item* item, uint count );
 
     // Radio
 private:

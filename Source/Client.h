@@ -1061,7 +1061,7 @@ public:
            PupBScrUp1, PupBScrDw1, PupBScrUp2, PupBScrDw2, PupBNextCritLeft, PupBNextCritRight;
     int    PupHeightItem1, PupHeightItem2;
     uchar  PupTransferType;
-    uint   PupContId, PupClosedContId, PupLastPutId;
+    uint   PupContId;
     hash   PupContPid;
     uint   PupCount;
     ushort PupSize;
@@ -1072,7 +1072,6 @@ public:
     void       PupLMouseDown();
     void       PupLMouseUp();
     void       PupRMouseDown();
-    void       PupTransfer( uint item_id, int cont, uint count );
     CritVec&   PupGetLootCrits();
     CritterCl* PupGetLootCrit( int scroll );
 

@@ -3078,14 +3078,14 @@ void FOServer::Process_ContainerItem( Client* cl )
             if( cl->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             // Check volume
             if( cl->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             // Script events
@@ -3105,7 +3105,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Transfer
-            if( !ItemMngr.MoveItemCritterFromCont( cont, cl, item->GetId(), item_count ) )
+            if( !ItemMngr.MoveItemCritterFromCont( cont, cl, item, item_count ) )
                 WriteLogF( _FUNC_, " - Transfer item, from container to player (get), fail.\n" );
         }
         break;
@@ -3117,6 +3117,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             // Get items
             ItemVec items;
             cont->ContGetAllItems( items, true, true );
+            ItemMngr.FilterMoveItems( items, cont, cl );
             if( items.empty() )
             {
                 cl->Send_ContainerInfo();
@@ -3135,13 +3136,13 @@ void FOServer::Process_ContainerItem( Client* cl )
             if( cl->GetFreeWeight() < (int) weight )
             {
                 cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             if( cl->GetFreeVolume() < (int) volume )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             // Script events
@@ -3207,7 +3208,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             if( !cont->ContHaveFreeVolume( 0, item->GetVolume() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             // Script events
@@ -3227,7 +3228,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Transfer
-            if( !ItemMngr.MoveItemCritterToCont( cl, cont, item->GetId(), item_count, 0 ) )
+            if( !ItemMngr.MoveItemCritterToCont( cl, cont, item, item_count, 0 ) )
                 WriteLogF( _FUNC_, " - Transfer item, from player to container (put), fail.\n" );
         }
         break;
@@ -3345,14 +3346,14 @@ void FOServer::Process_ContainerItem( Client* cl )
             if( cl->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             // Check volume
             if( cl->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             // Process steal
@@ -3383,7 +3384,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Transfer
-            if( !ItemMngr.MoveItemCritters( cr, cl, item->GetId(), item_count ) )
+            if( !ItemMngr.MoveItemCritters( cr, cl, item, item_count ) )
                 WriteLogF( _FUNC_, " - Transfer item, from player to player (get), fail.\n" );
         }
         break;
@@ -3402,6 +3403,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             // Get items
             ItemVec items;
             cr->GetInvItems( items, transfer_type, true );
+            ItemMngr.FilterMoveItems( items, cr, cl );
             if( items.empty() )
                 return;
 
@@ -3416,13 +3418,13 @@ void FOServer::Process_ContainerItem( Client* cl )
             if( cl->GetFreeWeight() < (int) weight )
             {
                 cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             if( cl->GetFreeVolume() < (int) volume )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             // Script events
@@ -3487,12 +3489,12 @@ void FOServer::Process_ContainerItem( Client* cl )
             if( cr->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
             if( cr->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
             {
                 cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                break;
+                return;
             }
 
             // Steal process
@@ -3523,7 +3525,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Transfer
-            if( !ItemMngr.MoveItemCritters( cl, cr, item->GetId(), item_count ) )
+            if( !ItemMngr.MoveItemCritters( cl, cr, item, item_count ) )
                 WriteLogF( _FUNC_, " - transfer item, from player to player (put), fail.\n" );
         }
         break;
@@ -3909,14 +3911,16 @@ void FOServer::Process_PlayersBarter( Client* cl )
             for( uint i = 0; i < cl->BarterItems.size(); i++ )
             {
                 Client::BarterItem& bitem = cl->BarterItems[ i ];
-                if( !ItemMngr.MoveItemCritters( cl, opponent, bitem.Id, bitem.Count ) )
+                Item*               item = cl->GetItem( bitem.Id, true );
+                if( !ItemMngr.MoveItemCritters( cl, opponent, item, bitem.Count ) )
                     WriteLogF( _FUNC_, " - transfer item, from player to player_, fail.\n" );
             }
             // Player_
             for( uint i = 0; i < opponent->BarterItems.size(); i++ )
             {
                 Client::BarterItem& bitem = opponent->BarterItems[ i ];
-                if( !ItemMngr.MoveItemCritters( opponent, cl, bitem.Id, bitem.Count ) )
+                Item*               item = opponent->GetItem( bitem.Id, true );
+                if( !ItemMngr.MoveItemCritters( opponent, cl, item, bitem.Count ) )
                     WriteLogF( _FUNC_, " - transfer item, from player_ to player, fail.\n" );
             }
 
@@ -3964,7 +3968,6 @@ label_EndOffer:
 
         if( barter_cl == opponent && opponent->BarterHide )
         {
-            cl->Send_Text( cl, "Cheat fail.", SAY_NETMSG );
             WriteLogF( _FUNC_, " - Player try operate opponent inventory in hide mode, player '%s', opponent '%s'.\n", cl->GetInfo(), opponent->GetInfo() );
             return;
         }
@@ -3983,6 +3986,13 @@ label_EndOffer:
         if( is_set )
         {
             if( param_ext > item->GetCount() - ( barter_item ? barter_item->Count : 0 ) )
+            {
+                barter_cl->BarterEraseItem( param );
+                cl->BarterRefresh( opponent );
+                opponent->BarterRefresh( cl );
+                return;
+            }
+            if( !ItemMngr.ItemCheckMove( item, param_ext + ( barter_item ? barter_item->Count : 0 ), barter_cl, barter_cl != cl ? cl : opponent ) )
             {
                 barter_cl->BarterEraseItem( param );
                 cl->BarterRefresh( opponent );

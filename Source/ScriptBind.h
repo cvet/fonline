@@ -25,9 +25,11 @@ BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
     BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const int RefCounter", OFFSETOF( Entity, RefCounter ) ) );
 /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "Entity@ Parent", OFFSETOF( Entity, Parent ) ) );*/
 /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const array<Entity@> Children", OFFSETOF( Entity, Children ) ) );*/
-#define REGISTER_ENTITY_CAST( class_name, real_class )                                                                                                    \
-    BIND_ASSERT( engine->RegisterObjectMethod( "Entity", class_name "@ opCast()", asFUNCTION( ( EntityUpCast< real_class >) ), asCALL_CDECL_OBJFIRST ) ); \
-    BIND_ASSERT( engine->RegisterObjectMethod( class_name, "Entity@ opImplCast()", asFUNCTION( ( EntityDownCast< real_class >) ), asCALL_CDECL_OBJFIRST ) );
+#define REGISTER_ENTITY_CAST( class_name, real_class )                                                                                                                   \
+    BIND_ASSERT( engine->RegisterObjectMethod( "Entity", class_name "@ opCast()", asFUNCTION( ( EntityUpCast< real_class >) ), asCALL_CDECL_OBJFIRST ) );                \
+    BIND_ASSERT( engine->RegisterObjectMethod( "Entity", "const " class_name "@ opCast() const", asFUNCTION( ( EntityUpCast< real_class >) ), asCALL_CDECL_OBJFIRST ) ); \
+    BIND_ASSERT( engine->RegisterObjectMethod( class_name, "Entity@ opImplCast()", asFUNCTION( ( EntityDownCast< real_class >) ), asCALL_CDECL_OBJFIRST ) );             \
+    BIND_ASSERT( engine->RegisterObjectMethod( class_name, "const Entity@ opImplCast() const", asFUNCTION( ( EntityDownCast< real_class >) ), asCALL_CDECL_OBJFIRST ) );
 REGISTER_ENTITY( "Entity" );
 
 // Global vars
@@ -457,12 +459,12 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool EventEnter(array<Cr
 /* Global                                                               */
 /************************************************************************/
 BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetItem(uint itemId)", asFUNCTION( BIND_CLASS Global_GetItem ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item& item, uint count, Critter& toCr)", asFUNCTION( BIND_CLASS Global_MoveItemCr ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item& item, uint count, Item& toCont, uint stackId)", asFUNCTION( BIND_CLASS Global_MoveItemCont ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item& item, uint count, Map& toMap, uint16 toHx, uint16 toHy)", asFUNCTION( BIND_CLASS Global_MoveItemMap ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(array<Item@>& items, Critter& toCr)", asFUNCTION( BIND_CLASS Global_MoveItemsCr ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(array<Item@>& items, Item& toCont, uint stackId)", asFUNCTION( BIND_CLASS Global_MoveItemsCont ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(array<Item@>& items, Map& toMap, uint16 toHx, uint16 toHy)", asFUNCTION( BIND_CLASS Global_MoveItemsMap ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item& item, uint count, Critter& toCr, bool skipChecks = false)", asFUNCTION( BIND_CLASS Global_MoveItemCr ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item& item, uint count, Item& toCont, uint stackId, bool skipChecks = false)", asFUNCTION( BIND_CLASS Global_MoveItemCont ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item& item, uint count, Map& toMap, uint16 toHx, uint16 toHy, bool skipChecks = false)", asFUNCTION( BIND_CLASS Global_MoveItemMap ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(const array<Item@>& items, Critter& toCr, bool skipChecks = false)", asFUNCTION( BIND_CLASS Global_MoveItemsCr ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(const array<Item@>& items, Item& toCont, uint stackId, bool skipChecks = false)", asFUNCTION( BIND_CLASS Global_MoveItemsCont ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItems(const array<Item@>& items, Map& toMap, uint16 toHx, uint16 toHy, bool skipChecks = false)", asFUNCTION( BIND_CLASS Global_MoveItemsMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItem(Item& item)", asFUNCTION( BIND_CLASS Global_DeleteItem ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItem(uint itemId)", asFUNCTION( BIND_CLASS Global_DeleteItemById ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItems(array<Item@>& items)", asFUNCTION( BIND_CLASS Global_DeleteItems ), asCALL_CDECL ) );

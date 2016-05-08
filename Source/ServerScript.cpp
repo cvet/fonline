@@ -165,6 +165,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.NpcPlaneRun, "npc_plane_run", "bool %s(Critter&,NpcPlane&,int,uint&,uint&,uint&)" },
         { &ServerFunctions.KarmaVoting, "karma_voting", "void %s(Critter&,Critter&,bool)" },
         { &ServerFunctions.CheckLook, "check_look", "bool %s(const Map&,const Critter&,const Critter&)" },
+        { &ServerFunctions.ItemCheckMove, "item_check_move", "bool %s(const Item&,int,const Entity&,const Entity&)" },
         { &ServerFunctions.ItemCost, "item_cost", "uint %s(Item&,Critter&,Critter&,bool)" },
         { &ServerFunctions.ItemsBarter, "items_barter", "bool %s(Item@[]&,uint[]&,Item@[]&,uint[]&,Critter&,Critter&)" },
         { &ServerFunctions.ItemsCrafted, "items_crafted", "void %s(Item@[]&,uint[]&,Item@[]&,Critter&)" },
@@ -4717,7 +4718,7 @@ Item* FOServer::SScriptFunc::Global_GetItem( uint item_id )
     return item;
 }
 
-void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* to_cr )
+void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* to_cr, bool skip_checks )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Item arg is destroyed." );
@@ -4729,10 +4730,10 @@ void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* 
     if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
 
-    ItemMngr.MoveItem( item, count, to_cr );
+    ItemMngr.MoveItem( item, count, to_cr, skip_checks );
 }
 
-void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy )
+void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Item arg is destroyed." );
@@ -4746,10 +4747,10 @@ void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_
     if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
 
-    ItemMngr.MoveItem( item, count, to_map, to_hx, to_hy );
+    ItemMngr.MoveItem( item, count, to_map, to_hx, to_hy, skip_checks );
 }
 
-void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id )
+void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Item arg is destroyed." );
@@ -4761,10 +4762,10 @@ void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* t
     if( count > item->GetCount() )
         SCRIPT_ERROR_R( "Count arg is greater than maximum." );
 
-    ItemMngr.MoveItem( item, count, to_cont, stack_id );
+    ItemMngr.MoveItem( item, count, to_cont, stack_id, skip_checks );
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsCr( ScriptArray& items, Critter* to_cr )
+void FOServer::SScriptFunc::Global_MoveItemsCr( ScriptArray& items, Critter* to_cr, bool skip_checks )
 {
     if( to_cr->IsDestroyed )
         SCRIPT_ERROR_R( "Critter arg is destroyed." );
@@ -4774,11 +4775,12 @@ void FOServer::SScriptFunc::Global_MoveItemsCr( ScriptArray& items, Critter* to_
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsDestroyed )
             continue;
-        ItemMngr.MoveItem( item, item->GetCount(), to_cr );
+
+        ItemMngr.MoveItem( item, item->GetCount(), to_cr, skip_checks );
     }
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy )
+void FOServer::SScriptFunc::Global_MoveItemsMap( ScriptArray& items, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
 {
     if( to_map->IsDestroyed )
         SCRIPT_ERROR_R( "Container arg is destroyed." );
@@ -4790,11 +4792,12 @@ void FOServer::SScriptFunc::Global_MoveItemsMap( ScriptArray& items, Map* to_map
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsDestroyed )
             continue;
-        ItemMngr.MoveItem( item, item->GetCount(), to_map, to_hx, to_hy );
+
+        ItemMngr.MoveItem( item, item->GetCount(), to_map, to_hx, to_hy, skip_checks );
     }
 }
 
-void FOServer::SScriptFunc::Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id )
+void FOServer::SScriptFunc::Global_MoveItemsCont( ScriptArray& items, Item* to_cont, uint stack_id, bool skip_checks )
 {
     if( to_cont->IsDestroyed )
         SCRIPT_ERROR_R( "Container arg is destroyed." );
@@ -4804,7 +4807,8 @@ void FOServer::SScriptFunc::Global_MoveItemsCont( ScriptArray& items, Item* to_c
         Item* item = *(Item**) items.At( i );
         if( !item || item->IsDestroyed )
             continue;
-        ItemMngr.MoveItem( item, item->GetCount(), to_cont, stack_id );
+
+        ItemMngr.MoveItem( item, item->GetCount(), to_cont, stack_id, skip_checks );
     }
 }
 

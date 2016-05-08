@@ -3,8 +3,60 @@
 #include "CritterManager.h"
 #include "MapManager.h"
 #include "EntityManager.h"
+#include "Script.h"
 
 ItemManager ItemMngr;
+
+Entity* ItemManager::GetItemHolder( Item* item )
+{
+    switch( item->GetAccessory() )
+    {
+    case ITEM_ACCESSORY_CRITTER:
+        return CrMngr.GetCritter( item->GetCritId(), true );
+    case ITEM_ACCESSORY_HEX:
+        return MapMngr.GetMap( item->GetMapId(), true );
+    case ITEM_ACCESSORY_CONTAINER:
+        return ItemMngr.GetItem( item->GetContainerId(), true );
+    default:
+        break;
+    }
+    return nullptr;
+}
+
+void ItemManager::EraseItemHolder( Item* item, Entity* holder )
+{
+    switch( item->GetAccessory() )
+    {
+    case ITEM_ACCESSORY_CRITTER:
+    {
+        if( holder )
+            ( (Critter*) holder )->EraseItem( item, true );
+        else if( item->GetIsRadio() )
+            ItemMngr.RadioRegister( item, true );
+        item->SetCritId( 0 );
+        item->SetCritSlot( 0 );
+    }
+    break;
+    case ITEM_ACCESSORY_HEX:
+    {
+        if( holder )
+            ( (Map*) holder )->EraseItem( item->GetId() );
+        item->SetMapId( 0 );
+    }
+    break;
+    case ITEM_ACCESSORY_CONTAINER:
+    {
+        if( holder )
+            ( (Item*) holder )->ContEraseItem( item );
+        item->SetContainerId( 0 );
+        item->SetContainerStack( 0 );
+    }
+    break;
+    default:
+        break;
+    }
+    item->SetAccessory( ITEM_ACCESSORY_NONE );
+}
 
 void ItemManager::GetGameItems( ItemVec& items )
 {
@@ -117,7 +169,7 @@ void ItemManager::DeleteItem( Item* item )
     while( item->GetAccessory() != ITEM_ACCESSORY_NONE || item->ContIsItems() )
     {
         // Delete from owner
-        EraseItemHolder( item );
+        EraseItemHolder( item, GetItemHolder( item ) );
 
         // Delete child items
         if( item->ContIsItems() )
@@ -180,52 +232,21 @@ Item* ItemManager::GetItem( uint item_id, bool sync_lock )
     return item;
 }
 
-void ItemManager::EraseItemHolder( Item* item )
-{
-    switch( item->GetAccessory() )
-    {
-    case ITEM_ACCESSORY_CRITTER:
-    {
-        Critter* cr = CrMngr.GetCritter( item->GetCritId(), true );
-        if( cr )
-            cr->EraseItem( item, true );
-        else if( item->GetIsRadio() )
-            ItemMngr.RadioRegister( item, true );
-        item->SetCritId( 0 );
-        item->SetCritSlot( 0 );
-    }
-    break;
-    case ITEM_ACCESSORY_HEX:
-    {
-        Map* map = MapMngr.GetMap( item->GetMapId(), true );
-        if( map )
-            map->EraseItem( item->GetId() );
-        item->SetMapId( 0 );
-    }
-    break;
-    case ITEM_ACCESSORY_CONTAINER:
-    {
-        Item* cont = ItemMngr.GetItem( item->GetContainerId(), true );
-        if( cont )
-            cont->ContEraseItem( item );
-        item->SetContainerId( 0 );
-        item->SetContainerStack( 0 );
-    }
-    break;
-    default:
-        break;
-    }
-    item->SetAccessory( ITEM_ACCESSORY_NONE );
-}
-
-void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
+void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr, bool skip_checks )
 {
     if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER && item->GetCritId() == to_cr->GetId() )
         return;
 
+    Entity* holder = GetItemHolder( item );
+    if( !holder )
+        return;
+
+    if( !skip_checks && !ItemCheckMove( item, count, holder, to_cr ) )
+        return;
+
     if( count >= item->GetCount() || !item->GetStackable() )
     {
-        EraseItemHolder( item );
+        EraseItemHolder( item, holder );
         to_cr->AddItem( item, true );
     }
     else
@@ -236,14 +257,21 @@ void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr )
     }
 }
 
-void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy )
+void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
 {
     if( item->GetAccessory() == ITEM_ACCESSORY_HEX && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy )
         return;
 
+    Entity* holder = GetItemHolder( item );
+    if( !holder )
+        return;
+
+    if( !skip_checks && !ItemCheckMove( item, count, holder, to_map ) )
+        return;
+
     if( count >= item->GetCount() || !item->GetStackable() )
     {
-        EraseItemHolder( item );
+        EraseItemHolder( item, holder );
         to_map->AddItem( item, to_hx, to_hy );
     }
     else
@@ -254,14 +282,21 @@ void ItemManager::MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, u
     }
 }
 
-void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id )
+void ItemManager::MoveItem( Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks )
 {
     if( item->GetAccessory() == ITEM_ACCESSORY_CONTAINER && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id )
         return;
 
+    Entity* holder = GetItemHolder( item );
+    if( !holder )
+        return;
+
+    if( !skip_checks && !ItemCheckMove( item, count, holder, to_cont ) )
+        return;
+
     if( count >= item->GetCount() || !item->GetStackable() )
     {
-        EraseItemHolder( item );
+        EraseItemHolder( item, holder );
         to_cont->ContAddItem( item, stack_id );
     }
     else
@@ -438,14 +473,40 @@ bool ItemManager::SetItemCritter( Critter* cr, hash pid, uint count )
     return true;
 }
 
-bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_id, uint count )
+bool ItemManager::ItemCheckMove( Item* item, uint count, Entity* from, Entity* to )
 {
-    Item* item = from_cr->GetItem( item_id, false );
-    if( !item )
-        return false;
+    if( Script::PrepareContext( ServerFunctions.ItemCheckMove, _FUNC_, "Game" ) )
+    {
+        Script::SetArgEntityOK( item );
+        Script::SetArgUInt( count );
+        Script::SetArgEntityOK( from );
+        Script::SetArgEntityOK( to );
+        if( Script::RunPrepared() && Script::GetReturnedBool() )
+            return true;
+    }
+    return false;
+}
 
-    if( !count || count > item->GetCount() )
-        count = item->GetCount();
+void ItemManager::FilterMoveItems( ItemVec& items, Entity* from, Entity* to )
+{
+    for( auto it = items.begin(); it != items.end();)
+    {
+        Item* item = *it;
+        if( !ItemCheckMove( item, item->GetCount(), from, to ) )
+            it = items.erase( it );
+        else
+            ++it;
+    }
+}
+
+bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, Item* item, uint count )
+{
+    RUNTIME_ASSERT( item );
+    RUNTIME_ASSERT( count > 0 );
+    RUNTIME_ASSERT( count <= item->GetCount() );
+
+    if( !ItemCheckMove( item, count, from_cr, to_cr ) )
+        return false;
 
     if( item->GetStackable() && item->GetCount() > count )
     {
@@ -477,14 +538,14 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, uint item_
     return true;
 }
 
-bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint item_id, uint count, uint stack_id )
+bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, Item* item, uint count, uint stack_id )
 {
-    Item* item = from_cr->GetItem( item_id, false );
-    if( !item )
-        return false;
+    RUNTIME_ASSERT( item );
+    RUNTIME_ASSERT( count > 0 );
+    RUNTIME_ASSERT( count <= item->GetCount() );
 
-    if( !count || count > item->GetCount() )
-        count = item->GetCount();
+    if( !ItemCheckMove( item, count, from_cr, to_cont ) )
+        return false;
 
     if( item->GetStackable() && item->GetCount() > count )
     {
@@ -517,14 +578,14 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, uint i
     return true;
 }
 
-bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint item_id, uint count )
+bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, Item* item, uint count )
 {
-    Item* item = from_cont->ContGetItem( item_id, false );
-    if( !item )
-        return false;
+    RUNTIME_ASSERT( item );
+    RUNTIME_ASSERT( count > 0 );
+    RUNTIME_ASSERT( count <= item->GetCount() );
 
-    if( !count || count > item->GetCount() )
-        count = item->GetCount();
+    if( !ItemCheckMove( item, count, from_cont, to_cr ) )
+        return false;
 
     if( item->GetStackable() && item->GetCount() > count )
     {
@@ -549,40 +610,6 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, uint
     }
     else
     {
-        from_cont->ContEraseItem( item );
-        to_cr->AddItem( item, true );
-    }
-
-    return true;
-}
-
-bool ItemManager::MoveItemsContainers( Item* from_cont, Item* to_cont, uint from_stack_id, uint to_stack_id )
-{
-    if( !from_cont->ContIsItems() )
-        return true;
-
-    ItemVec items;
-    from_cont->ContGetItems( items, from_stack_id, true );
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        from_cont->ContEraseItem( item );
-        to_cont->ContAddItem( item, to_stack_id );
-    }
-
-    return true;
-}
-
-bool ItemManager::MoveItemsContToCritter( Item* from_cont, Critter* to_cr, uint stack_id )
-{
-    if( !from_cont->ContIsItems() )
-        return true;
-
-    ItemVec items;
-    from_cont->ContGetItems( items, stack_id, true );
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
-    {
-        Item* item = *it;
         from_cont->ContEraseItem( item );
         to_cr->AddItem( item, true );
     }

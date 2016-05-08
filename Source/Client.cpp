@@ -5519,7 +5519,6 @@ void FOClient::Net_OnContainerInfo()
         PupCont2Init = item_container;
         item_container.clear();
         PupScrollCrit = 0;
-        PupLastPutId = 0;
 
         if( open_screen )
         {
@@ -7219,6 +7218,24 @@ label_EndMove:
         if( to_slot != SLOT_GROUND && !CritterCl::SlotEnabled[ to_slot ] )
             break;
 
+        if( to_slot == SLOT_GROUND )
+        {
+            RUNTIME_ASSERT( item_count == item->GetCount() );
+
+            bool allow = false;
+            if( Script::PrepareContext( ClientFunctions.ItemCheckMove, _FUNC_, "Game" ) )
+            {
+                Script::SetArgEntityOK( item );
+                Script::SetArgUInt( item_count );
+                Script::SetArgEntityOK( Chosen );
+                Script::SetArgEntityOK( Chosen );
+                if( Script::RunPrepared() )
+                    allow = Script::GetReturnedBool();
+            }
+            if( !allow )
+                break;
+        }
+
         Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? Chosen->GetItemSlot( to_slot ) : nullptr );
         bool  allow = false;
         if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
@@ -7356,11 +7373,15 @@ label_EndMove:
         uint item_cont = (uint) act.Param[ 1 ];
         uint count = (uint) act.Param[ 2 ];
 
-        CHECK_NEED_AP( Chosen->GetApCostMoveItemContainer() );
+        RUNTIME_ASSERT( item_cont == ITEMS_PICKUP || item_cont == ITEMS_PICKUP_FROM );
+        RUNTIME_ASSERT( count > 0 );
 
-        Item* item = GetContainerItem( item_cont == ITEMS_PICKUP ? InvContInit : PupCont2Init, item_id );
-        if( !item )
+        ItemVec& cont = ( item_cont == ITEMS_PICKUP ? InvContInit : PupCont2Init );
+        auto     it = PtrCollectionFind( cont.begin(), cont.end(), item_id );
+        if( it == cont.end() )
             break;
+
+        Item* item = *it;
         if( count > item->GetCount() )
             break;
 
@@ -7378,9 +7399,43 @@ label_EndMove:
             }
         }
 
+        Entity* cont_entity = nullptr;
+        if( PupTransferType == TRANSFER_CRIT_LOOT || PupTransferType == TRANSFER_CRIT_STEAL || PupTransferType == TRANSFER_FAR_CRIT )
+            cont_entity = GetCritter( PupContId );
+        else if( PupTransferType == TRANSFER_HEX_CONT_UP || PupTransferType == TRANSFER_HEX_CONT_DOWN || PupTransferType == TRANSFER_SELF_CONT || PupTransferType == TRANSFER_FAR_CONT )
+            cont_entity = GetItem( PupContId );
+
+        bool allow = false;
+        if( Script::PrepareContext( ClientFunctions.ItemCheckMove, _FUNC_, "Game" ) )
+        {
+            Script::SetArgEntityOK( item );
+            Script::SetArgUInt( count );
+            Script::SetArgEntityOK( item_cont == ITEMS_PICKUP ? Chosen : cont_entity );
+            Script::SetArgEntityOK( item_cont == ITEMS_PICKUP ? cont_entity : Chosen );
+            if( Script::RunPrepared() )
+                allow = Script::GetReturnedBool();
+        }
+        if( !allow )
+            break;
+
+        CHECK_NEED_AP( Chosen->GetApCostMoveItemContainer() );
+
         Chosen->Action( ACTION_OPERATE_CONTAINER, PupTransferType * 10 + ( item_cont == ITEMS_PICKUP_FROM ? 0 : 2 ), item );
-        PupTransfer( item_id, item_cont, count );
         Chosen->SubAp( Chosen->GetApCostMoveItemContainer() );
+
+        if( item->GetStackable() && count < item->GetCount() )
+        {
+            item->ChangeCount( -(int) count );
+        }
+        else
+        {
+            item->Release();
+            cont.erase( it );
+        }
+        CollectContItems();
+
+        uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
+        Net_SendItemCont( PupTransferType, PupContId, item_id, count, take_flags );
     }
     break;
     case CHOSEN_TAKE_ALL:
@@ -7393,10 +7448,11 @@ label_EndMove:
         uint c, w, v;
         ContainerCalcInfo( PupCont2Init, c, w, v, MAX_INT, false );
         if( Chosen->GetFreeWeight() < (int) w )
+        {
             AddMess( FOMB_GAME, MsgGame->GetStr( STR_BARTER_OVERWEIGHT ) );
+            break;
+        }
         else if( Chosen->GetFreeVolume() < (int) v )
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_BARTER_OVERSIZE ) );
-        else
         {
             Item::ClearItems( PupCont2Init );
             PupCount = 0;
@@ -7405,6 +7461,11 @@ label_EndMove:
             Chosen->SubAp( Chosen->GetApCostMoveItemContainer() );
             CollectContItems();
         }
+
+        Net_SendItemCont( PupTransferType, PupContId, PupHoldId, 0, CONT_GETALL );
+        Chosen->Action( ACTION_OPERATE_CONTAINER, PupTransferType * 10 + 1, nullptr );
+        Chosen->SubAp( Chosen->GetApCostMoveItemContainer() );
+        WaitPing();
     }
     break;
     case CHOSEN_USE_SKL_ON_CRITTER:
@@ -7447,7 +7508,6 @@ label_EndMove:
         Chosen->Action( ACTION_USE_SKILL, skill, nullptr );
         Net_SendUseSkill( skill, cr );
         Chosen->SubAp( Chosen->GetApCostUseSkill() );
-        WaitPing();
     }
     break;
     case CHOSEN_USE_SKL_ON_ITEM:
@@ -7519,7 +7579,6 @@ label_EndMove:
 
         Chosen->Action( ACTION_USE_SKILL, skill, item_action );
         Chosen->SubAp( Chosen->GetApCostUseSkill() );
-        WaitPing();
     }
     break;
     case CHOSEN_USE_SKL_ON_SCEN:
@@ -7561,7 +7620,6 @@ label_EndMove:
         Chosen->Action( ACTION_USE_SKILL, skill, item );
         Net_SendUseSkill( skill, item );
         Chosen->SubAp( Chosen->GetApCostUseSkill() );
-        // WaitPing();
     }
     break;
     case CHOSEN_TALK_NPC:
@@ -7614,7 +7672,6 @@ label_EndMove:
         }
 
         Net_SendTalk( true, cr->GetId(), ANSWER_BEGIN );
-        WaitPing();
     }
     break;
     case CHOSEN_PICK_ITEM:
@@ -7656,7 +7713,6 @@ label_EndMove:
         Net_SendPickItem( hx, hy, pid );
         Chosen->Action( ACTION_PICK_ITEM, 0, item );
         Chosen->SubAp( Chosen->GetApCostPickItem() );
-        // WaitPing();
     }
     break;
     case CHOSEN_PICK_CRIT:
@@ -9047,6 +9103,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.ItemLook, "item_description", "string@ %s(Item&,int)" },
         { &ClientFunctions.CritterLook, "critter_description", "string@ %s(Critter&,int)" },
         { &ClientFunctions.GetElevator, "get_elevator", "bool %s(uint,uint[]&)" },
+        { &ClientFunctions.ItemCheckMove, "item_check_move", "bool %s(const Item&,int,const Entity&,const Entity&)" },
         { &ClientFunctions.ItemCost, "item_cost", "uint %s(Item&,Critter&,Critter&,bool)" },
         { &ClientFunctions.GetTimeouts, "get_available_timeouts", "void %s(CritterProperty[]&)" },
         { &ClientFunctions.CritterAction, "critter_action", "void %s(bool,Critter&,int,int,Item@)" },
@@ -9056,7 +9113,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.CritterAnimation, "critter_animation", "string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)" },
         { &ClientFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(int,uint,uint,uint,uint&,uint&,uint&)" },
         { &ClientFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(uint,uint&,uint&,uint&,uint&,uint&)" },
-        { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(Critter&,Item&,uint8,Item@)" },
+        { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(const Critter&,const Item&,uint8,const Item@)" },
         { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(const Critter&,const Item&,uint8)" },
         { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(Critter&,Item&,uint8)" },
         { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },

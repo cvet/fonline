@@ -345,7 +345,6 @@ int FOClient::InitIface()
     PupContPid = 0;
     PupCount = 0;
     Item::ClearItems( PupCont2 );
-    PupLastPutId = 0;
 
     // Pipboy
     Automaps.clear();
@@ -5010,46 +5009,6 @@ void FOClient::PupMouseMove()
 void FOClient::PupRMouseDown()
 {
     SetCurCastling( CUR_DEFAULT, CUR_HAND );
-}
-
-void FOClient::PupTransfer( uint item_id, int item_cont, uint count )
-{
-    if( !count )
-        return;
-
-    // From Chosen to container
-    if( item_cont == ITEMS_PICKUP )
-    {
-        Item* item = Chosen->GetItem( item_id );
-        if( !item )
-            return;
-
-        PupLastPutId = item_id;
-        Net_SendItemCont( PupTransferType, PupContId, item_id, count, CONT_PUT );
-        WaitPing();
-    }
-    // From container to Chosen
-    else if( item_cont == ITEMS_PICKUP_FROM )
-    {
-        auto it = PtrCollectionFind( PupCont2Init.begin(), PupCont2Init.end(), item_id );
-        if( it == PupCont2Init.end() )
-            return;
-        Item* item = *it;
-
-        if( item->GetStackable() && count < item->GetCount() )
-        {
-            item->ChangeCount( -(int) count );
-        }
-        else
-        {
-            ( *it )->Release();
-            PupCont2Init.erase( it );
-        }
-
-        Net_SendItemCont( PupTransferType, PupContId, item_id, count, CONT_GET );
-        WaitPing();
-    }
-    CollectContItems();
 }
 
 CritVec& FOClient::PupGetLootCrits()
