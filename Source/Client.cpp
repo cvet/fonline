@@ -1078,7 +1078,6 @@ int FOClient::MainLoop()
     // Process
     SoundProcess();
     AnimProcess();
-    IboxProcess();
     CHECK_MULTIPLY_WINDOWS1;
 
     // Game time
@@ -1382,19 +1381,9 @@ void FOClient::ParseKeyboard()
         MainWindowKeyboardEvents.clear();
         MainWindowKeyboardEventsText.clear();
         Keyb::Lost();
-        Timer::StartAccelerator( ACCELERATE_NONE );
         if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
             Script::RunPrepared();
         return;
-    }
-
-    // Accelerators
-    if( !IsCurMode( CUR_WAIT ) )
-    {
-        if( Timer::ProcessAccelerator( ACCELERATE_PAGE_UP ) )
-            ProcessMouseWheel( 1 );
-        if( Timer::ProcessAccelerator( ACCELERATE_PAGE_DOWN ) )
-            ProcessMouseWheel( -1 );
     }
 
     // Get buffered data
@@ -1476,49 +1465,9 @@ void FOClient::ParseMouse()
     {
         MainWindowMouseEvents.clear();
         IfaceHold = IFACE_NONE;
-        Timer::StartAccelerator( ACCELERATE_NONE );
         if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
             Script::RunPrepared();
         return;
-    }
-
-    // Accelerators
-    if( Timer::GetAcceleratorNum() != ACCELERATE_NONE && !IsCurMode( CUR_WAIT ) )
-    {
-        int iface_hold = IfaceHold;
-        if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRUP1 ) )
-            PupLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRDOWN1 ) )
-            PupLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRUP2 ) )
-            PupLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_PUP_SCRDOWN2 ) )
-            PupLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT1SU ) )
-            DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT1SD ) )
-            DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT2SU ) )
-            DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT2SD ) )
-            DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT1OSU ) )
-            DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT1OSD ) )
-            DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT2OSU ) )
-            DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_BARTER_CONT2OSD ) )
-            DlgLMouseUp( false );
-        else if( Timer::ProcessAccelerator( ACCELERATE_DLG_TEXT_UP ) )
-            DlgLMouseUp( true );
-        else if( Timer::ProcessAccelerator( ACCELERATE_DLG_TEXT_DOWN ) )
-            DlgLMouseUp( true );
-        else if( Timer::ProcessAccelerator( ACCELERATE_SAVE_LOAD_SCR_UP ) )
-            SaveLoadLMouseUp();
-        else if( Timer::ProcessAccelerator( ACCELERATE_SAVE_LOAD_SCR_DN ) )
-            SaveLoadLMouseUp();
-        IfaceHold = iface_hold;
     }
 
     // Mouse move
@@ -1635,57 +1584,6 @@ void FOClient::ProcessMouseWheel( int data )
                         GmapTabsScrY = GmapWTab.H() * tabs_count;
                 }
             }
-        }
-    }
-    else if( screen == SCREEN__DIALOG )
-    {
-        if( IsCurInRect( DlgWText, DlgX, DlgY ) )
-        {
-            if( data > 0 && DlgMainTextCur > 0 )
-                DlgMainTextCur--;
-            else if( data < 0 && DlgMainTextCur < DlgMainTextLinesReal - DlgMainTextLinesRect )
-                DlgMainTextCur++;
-        }
-        else if( IsCurInRect( DlgAnswText, DlgX, DlgY ) )
-        {
-            DlgCollectAnswers( data < 0 );
-        }
-    }
-    else if( screen == SCREEN__BARTER )
-    {
-        if( IsCurInRect( BarterWCont1, DlgX, DlgY ) )
-            ContainerWheelScroll( (int) BarterCont1.size(), BarterWCont1.H(), BarterCont1HeightItem, BarterScroll1, data );
-        else if( IsCurInRect( BarterWCont2, DlgX, DlgY ) )
-            ContainerWheelScroll( (int) BarterCont2.size(), BarterWCont2.H(), BarterCont2HeightItem, BarterScroll2, data );
-        else if( IsCurInRect( BarterWCont1o, DlgX, DlgY ) )
-            ContainerWheelScroll( (int) BarterCont1o.size(), BarterWCont1o.H(), BarterCont1oHeightItem, BarterScroll1o, data );
-        else if( IsCurInRect( BarterWCont2o, DlgX, DlgY ) )
-            ContainerWheelScroll( (int) BarterCont2o.size(), BarterWCont2o.H(), BarterCont2oHeightItem, BarterScroll2o, data );
-        else if( IsCurInRect( DlgWText, DlgX, DlgY ) )
-        {
-            if( data > 0 && DlgMainTextCur > 0 )
-                DlgMainTextCur--;
-            else if( data < 0 && DlgMainTextCur < DlgMainTextLinesReal - DlgMainTextLinesRect )
-                DlgMainTextCur++;
-        }
-    }
-    else if( screen == SCREEN__PICKUP )
-    {
-        if( IsCurInRect( PupWCont1, PupX, PupY ) )
-            ContainerWheelScroll( (int) PupCont1.size(), PupWCont1.H(), PupHeightItem1, PupScroll1, data );
-        else if( IsCurInRect( PupWCont2, PupX, PupY ) )
-            ContainerWheelScroll( (int) PupCont2.size(), PupWCont2.H(), PupHeightItem2, PupScroll2, data );
-    }
-    else if( screen == SCREEN__MINI_MAP )
-    {
-        if( IsCurInRect( LmapWMap, LmapX, LmapY ) )
-        {
-            if( data > 0 )
-                LmapZoom++;
-            else
-                LmapZoom--;
-            LmapZoom = CLAMP( LmapZoom, 2, 13 );
-            LmapPrepareMap();
         }
     }
     else if( screen == SCREEN__SAVE_LOAD )
@@ -3440,45 +3338,6 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
         {
             AddMess( mess_type, FmtGameText( fstr_mb, crit_name.c_str(), fstr ) );
         }
-
-        if( IsScreenPlayersBarter() && Chosen && ( crid == BarterOpponentId || crid == Chosen->GetId() ) )
-        {
-            if( how_say == SAY_NETMSG || how_say == SAY_RADIO )
-                BarterText += FmtGameText( fstr_mb, fstr );
-            else
-                BarterText += FmtGameText( fstr_mb, crit_name.c_str(), fstr );
-            BarterText += "\n";
-            BarterText += Str::FormatBuf( "|%u ", COLOR_TEXT );
-            DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
-        }
-    }
-
-    // Dialog text
-    bool is_dialog = IsScreenPresent( SCREEN__DIALOG );
-    bool is_barter = IsScreenPresent( SCREEN__BARTER );
-    if( ( how_say == SAY_DIALOG || how_say == SAY_APPEND ) && ( is_dialog || is_barter ) )
-    {
-        CritterCl* npc = GetCritter( DlgNpcId );
-        FormatTags( fstr, Chosen, npc, "" );
-
-        if( is_dialog )
-        {
-            if( how_say == SAY_APPEND )
-                DlgMainText += fstr;
-            else
-                DlgMainText = fstr;
-            DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, DlgMainText.c_str() );
-        }
-        else if( is_barter )
-        {
-            if( how_say == SAY_APPEND )
-                BarterText += fstr;
-            else
-                BarterText = fstr;
-            DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
-        }
-        if( how_say != SAY_APPEND )
-            DlgMainTextCur = 0;
     }
 
     // Encounter question
@@ -4816,11 +4675,6 @@ void FOClient::Net_OnChosenTalk()
     Bin >> talk_id;
     Bin >> count_answ;
 
-    DlgCurAnswPage = 0;
-    DlgMaxAnswPage = 0;
-    DlgAllAnswers.clear();
-    DlgAnswers.clear();
-
     if( !count_answ )
     {
         // End dialog or barter
@@ -4846,20 +4700,8 @@ void FOClient::Net_OnChosenTalk()
     DlgNpcId = talk_id;
     CritterCl* npc = ( is_npc ? GetCritter( talk_id ) : nullptr );
 
-    // Avatar
-    DlgAvatarPic = nullptr;
-    if( npc && npc->Avatar->length() )
-        DlgAvatarPic = ResMngr.GetAnim( Str::GetHash( npc->Avatar->c_str() ), RES_ATLAS_DYNAMIC );
-
     // Main text
     Bin >> text_id;
-
-    char str[ MAX_FOTEXT ];
-    Str::Copy( str, MsgDlg->GetStr( text_id ) );
-    FormatTags( str, Chosen, npc, lexems );
-    DlgMainText = str;
-    DlgMainTextCur = 0;
-    DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, str );
 
     // Answers
     UIntVec answers_texts;
@@ -4869,13 +4711,10 @@ void FOClient::Net_OnChosenTalk()
         answers_texts.push_back( text_id );
     }
 
-    const char    answ_beg[] = { ' ', ' ', (char) 0xE2, (char) 0x80, (char) 0xA2, ' ', 0 };
-    const char    page_up[] = { 24, 24, 24, 0 };
-    const int     page_up_height = SprMngr.GetLinesHeight( DlgAnswText.W(), 0, page_up );
-    const char    page_down[] = { 25, 25, 25, 0 };
-    const int     page_down_height = SprMngr.GetLinesHeight( DlgAnswText.W(), 0, page_down );
-
-    ScriptString* text_to_script = ScriptString::Create( DlgMainText );
+    char str[ MAX_FOTEXT ];
+    Str::Copy( str, MsgDlg->GetStr( text_id ) );
+    FormatTags( str, Chosen, npc, lexems );
+    ScriptString* text_to_script = ScriptString::Create( str );
     ScriptArray*  answers_to_script = Script::CreateArray( "string@[]" );
     for( size_t i = 0; i < answers_texts.size(); i++ )
     {
@@ -4886,78 +4725,10 @@ void FOClient::Net_OnChosenTalk()
         sstr->Release();
     }
 
-    int line = 0, height = 0, page = 0, answ = 0;
-    while( true )
-    {
-        Rect pos(
-            DlgAnswText.L + DlgNextAnswX * line,
-            DlgAnswText.T + DlgNextAnswY * line + height,
-            DlgAnswText.R + DlgNextAnswX * line,
-            DlgAnswText.T + DlgNextAnswY * line + height );
-
-        // Up arrow
-        if( page && !line )
-        {
-            height += page_up_height;
-            pos.B += page_up_height;
-            line++;
-            DlgAllAnswers.push_back( Answer( page, pos, page_up, -1 ) );
-            continue;
-        }
-
-        Str::Copy( str, MsgDlg->GetStr( answers_texts[ answ ] ) );
-        FormatTags( str, Chosen, npc, lexems );
-        Str::Insert( str, answ_beg );      // TODO: GetStr
-
-        height += SprMngr.GetLinesHeight( DlgAnswText.W(), 0, str );
-        pos.B = DlgAnswText.T + DlgNextAnswY * line + height;
-
-        if( pos.B >= DlgAnswText.B && line > 1 )
-        {
-            // Down arrow
-            Answer& answ_prev = DlgAllAnswers.back();
-            if( line > 2 && DlgAnswText.B - answ_prev.Position.B < page_down_height )     // Check free space
-            {
-                // Not enough space
-                // Migrate last answer to next page
-                DlgAllAnswers.pop_back();
-                pos = answ_prev.Position;
-                pos.B = pos.T + page_down_height;
-                DlgAllAnswers.push_back( Answer( page, pos, page_down, -2 ) );
-                answ--;
-            }
-            else
-            {
-                // Add down arrow
-                pos.B = pos.T + page_down_height;
-                DlgAllAnswers.push_back( Answer( page, pos, page_down, -2 ) );
-            }
-
-            page++;
-            height = 0;
-            line = 0;
-            DlgMaxAnswPage = page;
-        }
-        else
-        {
-            // Answer
-            DlgAllAnswers.push_back( Answer( page, pos, str, answ ) );
-            line++;
-            answ++;
-            if( answ >= count_answ )
-                break;
-        }
-    }
-
     Bin >> talk_time;
 
     CHECK_IN_BUFF_ERROR;
 
-    DlgCollectAnswers( false );
-    if( talk_time )
-        DlgEndTick = Timer::GameTick() + talk_time;
-    else
-        DlgEndTick = 0;
     if( IsScreenPresent( SCREEN__BARTER ) )
         HideScreen( SCREEN__BARTER );
 
@@ -5472,10 +5243,6 @@ void FOClient::Net_OnContainerInfo()
     }
 
     Item::SortItems( item_container );
-    if( talk_time )
-        DlgEndTick = Timer::GameTick() + talk_time;
-    else
-        DlgEndTick = 0;
     PupContId = cont_id;
     PupContPid = 0;
 
@@ -5483,12 +5250,9 @@ void FOClient::Net_OnContainerInfo()
     {
         PupTransferType = transfer_type;
         BarterK = (ushort) cont_pid;
-        BarterCount = items_count;
         Item::ClearItems( BarterCont2Init );
         BarterCont2Init = item_container;
         item_container.clear();
-        BarterScroll1o = 0;
-        BarterScroll2o = 0;
         Item::ClearItems( BarterCont1oInit );
         Item::ClearItems( BarterCont2oInit );
 
@@ -5503,11 +5267,6 @@ void FOClient::Net_OnContainerInfo()
                 ShowScreen( SCREEN__BARTER, dict );
                 dict->Release();
             }
-            BarterScroll1 = 0;
-            BarterScroll2 = 0;
-            BarterText = "";
-            DlgMainTextCur = 0;
-            DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
         }
     }
     else
@@ -5518,7 +5277,6 @@ void FOClient::Net_OnContainerInfo()
         Item::ClearItems( PupCont2Init );
         PupCont2Init = item_container;
         item_container.clear();
-        PupScrollCrit = 0;
 
         if( open_screen )
         {
@@ -5535,21 +5293,6 @@ void FOClient::Net_OnContainerInfo()
                 dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
                 ShowScreen( SCREEN__PICKUP, dict );
                 dict->Release();
-            }
-            PupScroll1 = 0;
-            PupScroll2 = 0;
-        }
-
-        if( PupTransferType == TRANSFER_CRIT_LOOT )
-        {
-            CritVec& loot = PupGetLootCrits();
-            for( uint i = 0, j = (uint) loot.size(); i < j; i++ )
-            {
-                if( loot[ i ]->GetId() == PupContId )
-                {
-                    PupScrollCrit = i;
-                    break;
-                }
             }
         }
     }
@@ -5627,12 +5370,7 @@ void FOClient::Net_OnPlayersBarter()
         CritterCl* cr = GetCritter( param );
         if( !cr )
             break;
-        BarterText = FmtGameText( STR_BARTER_BEGIN, cr->GetName(),
-                                  !FLAG( param_ext, 1 ) ? MsgGame->GetStr( STR_BARTER_OPEN_MODE ) : MsgGame->GetStr( STR_BARTER_HIDE_MODE ),
-                                  !FLAG( param_ext, 2 ) ? MsgGame->GetStr( STR_BARTER_OPEN_MODE ) : MsgGame->GetStr( STR_BARTER_HIDE_MODE ) );
-        BarterText += "\n";
-        DlgMainTextCur = 0;
-        DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
+
         param_ext = ( FLAG( param_ext, 2 ) ? true : false );
     }
     case BARTER_REFRESH:
@@ -5645,7 +5383,6 @@ void FOClient::Net_OnPlayersBarter()
             HideScreen( SCREEN__DIALOG );
 
         BarterIsPlayers = true;
-        BarterOpponentId = param;
         BarterOpponentHide = ( param_ext != 0 );
         BarterOffer = false;
         BarterOpponentOffer = false;
@@ -5657,7 +5394,7 @@ void FOClient::Net_OnPlayersBarter()
         if( !IsScreenPresent( SCREEN__BARTER ) )
         {
             ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-            dict->Set( "CritterId", &BarterOpponentId, asTYPEID_UINT32 );
+            dict->Set( "CritterId", &param, asTYPEID_UINT32 );
             ShowScreen( SCREEN__BARTER, dict );
             dict->Release();
         }
@@ -5812,16 +5549,6 @@ void FOClient::Net_OnPlayersBarter()
             BarterOffer = ( param != 0 );
         else
             BarterOpponentOffer = ( param != 0 );
-
-        if( BarterOpponentOffer && !BarterOffer )
-        {
-            CritterCl* cr = GetCritter( BarterOpponentId );
-            if( !cr )
-                break;
-            BarterText += FmtGameText( STR_BARTER_READY_OFFER, cr->GetName() );
-            BarterText += "\n";
-            DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
-        }
     }
     break;
     default:
@@ -7462,7 +7189,7 @@ label_EndMove:
             CollectContItems();
         }
 
-        Net_SendItemCont( PupTransferType, PupContId, PupHoldId, 0, CONT_GETALL );
+        Net_SendItemCont( PupTransferType, PupContId, 0, 0, CONT_GETALL );
         Chosen->Action( ACTION_OPERATE_CONTAINER, PupTransferType * 10 + 1, nullptr );
         Chosen->SubAp( Chosen->GetApCostMoveItemContainer() );
         WaitPing();
@@ -7824,31 +7551,9 @@ void FOClient::TryExit()
         case SCREEN__TOWN_VIEW:
             Net_SendRefereshMe();
             break;
-        case SCREEN__DIALOG:
-            DlgKeyDown( true, DIK_ESCAPE, "" );
-            break;
-        case SCREEN__BARTER:
-            DlgKeyDown( false, DIK_ESCAPE, "" );
-            break;
         case SCREEN__DIALOGBOX:
             if( DlgboxType >= DIALOGBOX_ENCOUNTER_ANY && DlgboxType <= DIALOGBOX_ENCOUNTER_TB )
                 Net_SendRuleGlobal( GM_CMD_ANSWER, -1 );
-        case SCREEN__PERK:
-        case SCREEN__ELEVATOR:
-        case SCREEN__SAY:
-        case SCREEN__SKILLBOX:
-        case SCREEN__USE:
-        case SCREEN__AIM:
-        case SCREEN__INVENTORY:
-        case SCREEN__PICKUP:
-        case SCREEN__MINI_MAP:
-        case SCREEN__CHARACTER:
-        case SCREEN__PIP_BOY:
-        case SCREEN__FIX_BOY:
-        case SCREEN__MENU_OPTION:
-        case SCREEN__SAVE_LOAD:
-        case SCREEN__CREDITS:
-        case SCREEN__SPLIT:
         default:
             ShowScreen( SCREEN_NONE );
             break;
@@ -9881,10 +9586,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->LMenuDraw();
     }
-    else if( cmd == "CurDrawHand" )
-    {
-        Self->CurDrawHand();
-    }
     else if( cmd == "SetMousePos" )
     {
         int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
@@ -10020,8 +9721,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         y = Str::AtoI( args[ 3 ].c_str() );
         x2 = x + Str::AtoI( args[ 4 ].c_str() );
         y2 = y + Str::AtoI( args[ 5 ].c_str() );
-        Self->LmapX = 0;
-        Self->LmapY = 0;
+
         if( zoom != Self->LmapZoom || x != Self->LmapWMap[ 0 ] || y != Self->LmapWMap[ 1 ] || x2 != Self->LmapWMap[ 2 ] || y2 != Self->LmapWMap[ 3 ] )
         {
             Self->LmapZoom = zoom;
@@ -10035,6 +9735,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         {
             Self->LmapPrepareMap();
         }
+
         SprMngr.DrawPoints( Self->LmapPrepPix, PRIMITIVE_LINELIST );
     }
     else if( cmd == "DialogBoxAnswer" && args.size() == 2 )
@@ -11396,22 +11097,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = 0;
         y = 0;
         break;
-    case SCREEN__PICKUP:
-        x = Self->PupX;
-        y = Self->PupY;
-        break;
-    case SCREEN__MINI_MAP:
-        x = Self->LmapX;
-        y = Self->LmapY;
-        break;
-    case SCREEN__DIALOG:
-        x = Self->DlgX;
-        y = Self->DlgY;
-        break;
-    case SCREEN__BARTER:
-        x = Self->DlgX;
-        y = Self->DlgY;
-        break;
     case SCREEN__FIX_BOY:
         x = Self->FixX;
         y = Self->FixY;
@@ -11463,18 +11148,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN_WAIT:
         Self->WaitDraw();
-        break;
-    case SCREEN__PICKUP:
-        Self->PupDraw();
-        break;
-    case SCREEN__MINI_MAP:
-        Self->LmapDraw();
-        break;
-    case SCREEN__DIALOG:
-        Self->DlgDraw( true );
-        break;
-    case SCREEN__BARTER:
-        Self->DlgDraw( false );
         break;
     case SCREEN__FIX_BOY:
         Self->FixDraw();
@@ -11541,44 +11214,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->GmapRMouseUp();
         else if( move )
             Self->GmapMouseMove();
-        break;
-    case SCREEN__PICKUP:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->PupLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->PupLMouseUp();
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->PupRMouseDown();
-        else if( move )
-            Self->PupMouseMove();
-        break;
-    case SCREEN__MINI_MAP:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->LmapLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->LmapLMouseUp();
-        else if( move )
-            Self->LmapMouseMove();
-        break;
-    case SCREEN__DIALOG:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->DlgLMouseDown( true );
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->DlgLMouseUp( true );
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->DlgRMouseDown( true );
-        else if( move )
-            Self->DlgMouseMove( true );
-        break;
-    case SCREEN__BARTER:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->DlgLMouseDown( false );
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->DlgLMouseUp( false );
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->DlgRMouseDown( false );
-        else if( move )
-            Self->DlgMouseMove( false );
         break;
     case SCREEN__FIX_BOY:
         if( button == MOUSE_BUTTON_LEFT && down )
@@ -11660,9 +11295,7 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
         break;
     }
 
-    if( button == MOUSE_BUTTON_LEFT && !down )
-        Timer::StartAccelerator( ACCELERATE_NONE );
-    else if( ( button == MOUSE_BUTTON_WHEEL_DOWN || button == MOUSE_BUTTON_WHEEL_UP ) && down )
+    if( ( button == MOUSE_BUTTON_WHEEL_DOWN || button == MOUSE_BUTTON_WHEEL_UP ) && down )
         Self->ProcessMouseWheel( button == MOUSE_BUTTON_WHEEL_DOWN ? -1 : 1 );
     else if( move )
         Self->ProcessMouseScroll();
@@ -11681,14 +11314,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
         break;
     case SCREEN_WAIT:
         break;
-    case SCREEN__DIALOG:
-        if( down )
-            Self->DlgKeyDown( true, key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__BARTER:
-        if( down )
-            Self->DlgKeyDown( false, key, text ? text->c_str() : "" );
-        break;
     case SCREEN__SAY:
         if( down )
             Self->SayKeyDown( key, text ? text->c_str() : "" );
@@ -11704,9 +11329,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
     default:
         break;
     }
-
-    if( !down )
-        Timer::StartAccelerator( ACCELERATE_NONE );
 }
 
 bool FOClient::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int& y )

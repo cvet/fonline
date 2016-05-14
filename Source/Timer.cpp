@@ -32,12 +32,6 @@ double        InitialAccurateTick = 0;
 # endif
 #endif
 
-#define MAX_ACCELERATE_TICK    ( 500 )
-#define MIN_ACCELERATE_TICK    ( 40 )
-int  AcceleratorNum = 0;
-uint AcceleratorLastTick = 0;
-uint AcceleratorAccelerate = 0;
-
 void Timer::Init()
 {
     #ifdef FO_WINDOWS
@@ -110,31 +104,6 @@ void Timer::SetGamePause( bool pause )
 bool Timer::IsGamePaused()
 {
     return GameTickPaused;
-}
-
-void Timer::StartAccelerator( int num )
-{
-    AcceleratorNum = num;
-    AcceleratorLastTick = FastTick();
-    AcceleratorAccelerate = MAX_ACCELERATE_TICK;
-}
-
-bool Timer::ProcessAccelerator( int num )
-{
-    if( AcceleratorNum != num )
-        return false;
-    if( AcceleratorLastTick + AcceleratorAccelerate > FastTick() )
-        return false;
-    // AcceleratorData[num].Accelerate/=2;
-    // if(AcceleratorData[num].Accelerate<MIN_ACCELERATE_TICK) AcceleratorData[num].Accelerate=MIN_ACCELERATE_TICK;
-    AcceleratorAccelerate = MIN_ACCELERATE_TICK;
-    AcceleratorLastTick = FastTick();
-    return true;
-}
-
-int Timer::GetAcceleratorNum()
-{
-    return AcceleratorNum;
 }
 
 void Timer::GetCurrentDateTime( DateTimeStamp& dt )

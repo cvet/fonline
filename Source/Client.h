@@ -785,52 +785,11 @@ public:
 /************************************************************************/
 /* Dialog                                                               */
 /************************************************************************/
-    AnyFrames* DlgPMain, * DlgPAnsw, * DlgPBBarter, * DlgPBSay, * DlgAvatarPic;
-    int        DlgNextAnswX, DlgNextAnswY;
-    int        DlgCurAnsw, DlgHoldAnsw;
-    uint       DlgCurAnswPage, DlgMaxAnswPage;
-    int        DlgVectX, DlgVectY;
-    uchar      DlgIsNpc;
-    uint       DlgNpcId;
-    uint       DlgEndTick;
-
-    struct Answer
-    {
-        uint   Page;
-        Rect   Position;
-        string Text;
-        int    AnswerNum;      // -1 prev page, -2 next page
-
-        Answer( uint page, Rect pos, string text, uint answer_num ): Page( page ), Position( pos ), Text( text ), AnswerNum( answer_num ) {}
-    };
-    vector< Answer > DlgAllAnswers, DlgAnswers;
-
-    string           DlgMainText;
-    int              DlgMainTextCur, DlgMainTextLinesReal, DlgMainTextLinesRect;
-    int              DlgX, DlgY;
-    Rect             DlgWMain, DlgWText, DlgBScrUp, DlgBScrDn, DlgAnsw, DlgAnswText, DlgWMoney, DlgBBarter,
-                     DlgBBarterText, DlgBSay, DlgBSayText, DlgWAvatar, DlgWTimer;
-
-    // Barter
-    AnyFrames* BarterPMain, * BarterPBOfferDn, * BarterPBTalkDn,
-    * BarterPBC1ScrUpDn, * BarterPBC2ScrUpDn, * BarterPBC1oScrUpDn, * BarterPBC2oScrUpDn,
-    * BarterPBC1ScrDnDn, * BarterPBC2ScrDnDn, * BarterPBC1oScrDnDn, * BarterPBC2oScrDnDn;
-    Rect BarterWMain, BarterBOffer, BarterBOfferText, BarterBTalk, BarterBTalkText, BarterWCont1Pic, BarterWCont2Pic,
-         BarterWCont1, BarterWCont2, BarterWCont1o, BarterWCont2o,
-         BarterBCont1ScrUp, BarterBCont2ScrUp, BarterBCont1oScrUp, BarterBCont2oScrUp,
-         BarterBCont1ScrDn, BarterBCont2ScrDn, BarterBCont1oScrDn, BarterBCont2oScrDn,
-         BarterWCost1, BarterWCost2, BarterWChosen, BarterWCritter;
+    uchar  DlgIsNpc;
+    uint   DlgNpcId;
     uint   BarterPlayerId;
-    int    BarterCont1HeightItem, BarterCont2HeightItem,
-           BarterCont1oHeightItem, BarterCont2oHeightItem;
-    int    BarterScroll1, BarterScroll2, BarterScroll1o, BarterScroll2o;
-    uint   BarterHoldId;
-    uint   BarterCount;
     ushort BarterK;
-    string BarterText;
-    // Players barter extra
-    uint   BarterOpponentId;
-    bool   BarterIsPlayers, BarterHide, BarterOpponentHide, BarterOffer, BarterOpponentOffer;
+    bool   BarterIsPlayers, BarterOpponentHide, BarterOffer, BarterOpponentOffer;
 
     bool IsScreenPlayersBarter();
     void BarterTryOffer();
@@ -838,32 +797,18 @@ public:
     void ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell );
     void FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl * player, CritterCl * npc, const char* lexems );
 
-    void DlgDraw( bool is_dialog );
-    void DlgMouseMove( bool is_dialog );
-    void DlgLMouseDown( bool is_dialog );
-    void DlgLMouseUp( bool is_dialog );
-    void DlgRMouseDown( bool is_dialog );
-    void DlgKeyDown( bool is_dialog, uchar dik, const char* dik_text );
-    void DlgCollectAnswers( bool next );
-
 /************************************************************************/
 /* Mini-map                                                             */
 /************************************************************************/
     #define MINIMAP_PREPARE_TICK    ( 1000 )
-    AnyFrames* LmapPMain, * LmapPBOkDw, * LmapPBScanDw, * LmapPBLoHiDw, * LmapPPix;
-    PointVec   LmapPrepPix;
-    Rect       LmapMain, LmapWMap, LmapBOk, LmapBScan, LmapBLoHi;
-    short      LmapX, LmapY;
-    int        LmapVectX, LmapVectY;
-    int        LmapZoom;
-    bool       LmapSwitchHi;
-    uint       LmapPrepareNextTick;
+
+    PointVec LmapPrepPix;
+    Rect     LmapWMap;
+    int      LmapZoom;
+    bool     LmapSwitchHi;
+    uint     LmapPrepareNextTick;
 
     void LmapPrepareMap();
-    void LmapDraw();
-    void LmapLMouseDown();
-    void LmapMouseMove();
-    void LmapLMouseUp();
 
 /************************************************************************/
 /* Global map                                                           */
@@ -1276,7 +1221,6 @@ public:
     void IboxLMouseUp();
     void IboxKeyDown( uchar dik, const char* dik_text );
     void IboxKeyUp( uchar dik );
-    void IboxProcess();
     void IboxMouseMove();
 
 /************************************************************************/
@@ -1321,12 +1265,6 @@ public:
     void SaveLoadLMouseDown();
     void SaveLoadLMouseUp();
     void SaveLoadMouseMove();
-
-/************************************************************************/
-/* Cursor                                                               */
-/************************************************************************/
-    AnyFrames* CurPDef, * CurPHand;
-    void CurDrawHand();
 
 /************************************************************************/
 /* Generic                                                              */
@@ -1503,30 +1441,6 @@ public:
 #define IFACE_USE_CANCEL               ( 43 )
 #define IFACE_USE_MAIN                 ( 44 )
 #define IFACE_GAME_MNEXT               ( 60 )
-#define IFACE_DLG_MAIN                 ( 100 )
-#define IFACE_DLG_SCR_UP               ( 101 )
-#define IFACE_DLG_SCR_DN               ( 102 )
-#define IFACE_DLG_ANSWER               ( 103 )
-#define IFACE_DLG_BARTER               ( 104 )
-#define IFACE_DLG_SAY                  ( 105 )
-#define IFACE_BARTER_OFFER             ( 106 )
-#define IFACE_BARTER_TALK              ( 107 )
-#define IFACE_BARTER_CONT1             ( 370 )
-#define IFACE_BARTER_CONT2             ( 371 )
-#define IFACE_BARTER_CONT1O            ( 372 )
-#define IFACE_BARTER_CONT2O            ( 373 )
-#define IFACE_BARTER_CONT1SU           ( 112 )
-#define IFACE_BARTER_CONT1SD           ( 113 )
-#define IFACE_BARTER_CONT2SU           ( 114 )
-#define IFACE_BARTER_CONT2SD           ( 115 )
-#define IFACE_BARTER_CONT1OSU          ( 116 )
-#define IFACE_BARTER_CONT1OSD          ( 117 )
-#define IFACE_BARTER_CONT2OSU          ( 118 )
-#define IFACE_BARTER_CONT2OSD          ( 119 )
-#define IFACE_LMAP_OK                  ( 120 )
-#define IFACE_LMAP_SCAN                ( 121 )
-#define IFACE_LMAP_LOHI                ( 122 )
-#define IFACE_LMAP_MAIN                ( 123 )
 #define IFACE_GMAP_MAP                 ( 140 )
 #define IFACE_GMAP_TOWN                ( 141 )
 #define IFACE_GMAP_TABBTN              ( 142 )
@@ -1555,17 +1469,6 @@ public:
 #define IFACE_AIM_EYES                 ( 287 )
 #define IFACE_AIM_GROIN                ( 288 )
 #define IFACE_AIM_MAIN                 ( 289 )
-#define IFACE_PUP_CONT1                ( 300 )
-#define IFACE_PUP_CONT2                ( 301 )
-#define IFACE_PUP_OK                   ( 302 )
-#define IFACE_PUP_SCRUP1               ( 303 )
-#define IFACE_PUP_SCRDOWN1             ( 304 )
-#define IFACE_PUP_SCRUP2               ( 305 )
-#define IFACE_PUP_SCRDOWN2             ( 306 )
-#define IFACE_PUP_TAKEALL              ( 307 )
-#define IFACE_PUP_SCRCR_L              ( 308 )
-#define IFACE_PUP_SCRCR_R              ( 309 )
-#define IFACE_PUP_MAIN                 ( 310 )
 #define IFACE_DIALOG_BTN               ( 320 )
 #define IFACE_DIALOG_MAIN              ( 321 )
 #define IFACE_ELEVATOR_MAIN            ( 330 )
@@ -1594,29 +1497,6 @@ public:
 #define IFACE_SAVELOAD_SCR_DN          ( 442 )
 #define IFACE_SAVELOAD_DONE            ( 443 )
 #define IFACE_SAVELOAD_BACK            ( 444 )
-
-#define ACCELERATE_NONE                ( 0 )
-#define ACCELERATE_CONSOLE             ( 1 )
-#define ACCELERATE_IBOX                ( 2 )
-#define ACCELERATE_PAGE_UP             ( 3 )
-#define ACCELERATE_PAGE_DOWN           ( 4 )
-#define ACCELERATE_TIMER_DOWN          ( 9 )
-#define ACCELERATE_PUP_SCRUP1          ( 14 )
-#define ACCELERATE_PUP_SCRDOWN1        ( 15 )
-#define ACCELERATE_PUP_SCRUP2          ( 16 )
-#define ACCELERATE_PUP_SCRDOWN2        ( 17 )
-#define ACCELERATE_BARTER_CONT1SU      ( 24 )
-#define ACCELERATE_BARTER_CONT1SD      ( 25 )
-#define ACCELERATE_BARTER_CONT2SU      ( 26 )
-#define ACCELERATE_BARTER_CONT2SD      ( 27 )
-#define ACCELERATE_BARTER_CONT1OSU     ( 28 )
-#define ACCELERATE_BARTER_CONT1OSD     ( 29 )
-#define ACCELERATE_BARTER_CONT2OSU     ( 30 )
-#define ACCELERATE_BARTER_CONT2OSD     ( 31 )
-#define ACCELERATE_DLG_TEXT_UP         ( 34 )
-#define ACCELERATE_DLG_TEXT_DOWN       ( 35 )
-#define ACCELERATE_SAVE_LOAD_SCR_UP    ( 36 )
-#define ACCELERATE_SAVE_LOAD_SCR_DN    ( 37 )
 
 // Sounds
 #define SND_BUTTON1_IN                 "BUTIN1"

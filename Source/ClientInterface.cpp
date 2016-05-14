@@ -147,76 +147,8 @@ int FOClient::InitIface()
     IfaceHold = IFACE_NONE;
     TargetSmth.Clear();
 
-    // Dialog
-    DlgCurAnswPage = 0;
-    DlgMaxAnswPage = 0;
-    DlgCurAnsw = -1;
-    DlgHoldAnsw = -1;
-    DlgVectX = 0;
-    DlgVectY = 0;
-    DlgIsNpc = 0;
-    DlgNpcId = 0;
-    DlgEndTick = 0;
-    DlgMainText = "";
-    DlgMainTextCur = 0;
-    DlgMainTextLinesReal = 1;
-    IfaceLoadRect( DlgWMain, "DlgMain" );
-    IfaceLoadRect( DlgWText, "DlgText" );
-    DlgMainTextLinesRect = SprMngr.GetLinesCount( 0, DlgWText.H(), nullptr );
-    IfaceLoadRect( DlgBScrUp, "DlgScrUp" );
-    IfaceLoadRect( DlgBScrDn, "DlgScrDn" );
-    IfaceLoadRect( DlgAnsw, "DlgAnsw" );
-    IfaceLoadRect2( DlgAnswText, "DlgAnswText", DlgAnsw[ 0 ], DlgAnsw[ 1 ] );
-    IfaceLoadRect2( DlgWMoney, "DlgMoney", DlgAnsw[ 0 ], DlgAnsw[ 1 ] );
-    IfaceLoadRect2( DlgBBarter, "DlgBarter", DlgAnsw[ 0 ], DlgAnsw[ 1 ] );
-    IfaceLoadRect2( DlgBBarterText, "DlgBarterText", DlgAnsw[ 0 ], DlgAnsw[ 1 ] );
-    IfaceLoadRect2( DlgBSay, "DlgSay", DlgAnsw[ 0 ], DlgAnsw[ 1 ] );
-    IfaceLoadRect2( DlgBSayText, "DlgSayText", DlgAnsw[ 0 ], DlgAnsw[ 1 ] );
-    IfaceLoadRect( DlgWAvatar, "DlgAvatar" );
-    IfaceLoadRect( DlgWTimer, "DlgTimer" );
-    DlgNextAnswX = IfaceIni.GetInt( "", "DlgNextAnswX", 1 );
-    DlgNextAnswY = IfaceIni.GetInt( "", "DlgNextAnswY", 1 );
-    DlgX = IfaceIni.GetInt( "", "DlgX", -1 );
-    if( DlgX == -1 )
-        DlgX = GameOpt.ScreenWidth / 2 - DlgWMain[ 2 ] / 2;
-    DlgY = IfaceIni.GetInt( "", "DlgY", -1 );
-    if( DlgY == -1 )
-        DlgY = GameOpt.ScreenHeight / 2 - DlgWMain[ 3 ] / 2;
     // Barter
     BarterPlayerId = 0;
-    IfaceLoadRect( BarterWMain, "BarterMain" );
-    IfaceLoadRect2( BarterBOffer, "BarterOffer", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBOfferText, "BarterOfferText", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBTalk, "BarterTalk", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBTalkText, "BarterTalkText", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCont1Pic, "BarterCont1Pic", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCont2Pic, "BarterCont2Pic", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCont1, "BarterCont1", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCont2, "BarterCont2", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCont1o, "BarterCont1o", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCont2o, "BarterCont2o", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBCont1ScrUp, "BarterCont1ScrUp", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBCont2ScrUp, "BarterCont2ScrUp", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBCont1oScrUp, "BarterCont1oScrUp", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBCont2oScrUp, "BarterCont2oScrUp", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBCont1ScrDn, "BarterCont1ScrDn", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBCont2ScrDn, "BarterCont2ScrDn", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBCont1oScrDn, "BarterCont1oScrDn", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterBCont2oScrDn, "BarterCont2oScrDn", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCost1, "BarterCost1", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCost2, "BarterCost2", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWChosen, "BarterChosen", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    IfaceLoadRect2( BarterWCritter, "BarterCritter", BarterWMain[ 0 ], BarterWMain[ 1 ] );
-    BarterCont1HeightItem = IfaceIni.GetInt( "", "BarterCont1ItemHeight", 30 );
-    BarterCont2HeightItem = IfaceIni.GetInt( "", "BarterCont2ItemHeight", 30 );
-    BarterCont1oHeightItem = IfaceIni.GetInt( "", "BarterCont1oItemHeight", 30 );
-    BarterCont2oHeightItem = IfaceIni.GetInt( "", "BarterCont2oItemHeight", 30 );
-    BarterHoldId = 0;
-    BarterCount = 0;
-    BarterScroll1 = 0;
-    BarterScroll2 = 0;
-    BarterScroll1o = 0;
-    BarterScroll2o = 0;
     BarterK = 0;
     BarterIsPlayers = false;
     BarterOpponentHide = false;
@@ -238,18 +170,9 @@ int FOClient::InitIface()
     LMenuNodes.push_back( LMENU_NODE_LOOK );
 
     // Minimap
-    LmapX = IfaceIni.GetInt( "", "LmapX", 100 );
-    LmapY = IfaceIni.GetInt( "", "LmapY", 100 );
-    LmapVectX = 0;
-    LmapVectY = 0;
     LmapZoom = 2;
     LmapSwitchHi = false;
     LmapPrepareNextTick = 0;
-    IfaceLoadRect( LmapMain, "LmapMain" );
-    IfaceLoadRect( LmapWMap, "LmapMap" );
-    IfaceLoadRect( LmapBOk, "LmapOk" );
-    IfaceLoadRect( LmapBScan, "LmapScan" );
-    IfaceLoadRect( LmapBLoHi, "LmapLoHi" );
 
     // Town view
     IfaceLoadRect( TViewWMain, "TViewMain" );
@@ -318,28 +241,6 @@ int FOClient::InitIface()
     GmapZoom = 1.0f;
 
     // PickUp
-    IfaceLoadRect( PupWMain, "PupMain" );
-    IfaceLoadRect( PupWInfo, "PupInfo" );
-    IfaceLoadRect( PupWCont1, "PupCont1" );
-    IfaceLoadRect( PupWCont2, "PupCont2" );
-    IfaceLoadRect( PupBTakeAll, "PupTakeAll" );
-    IfaceLoadRect( PupBOk, "PupOk" );
-    IfaceLoadRect( PupBScrUp1, "PupScrUp1" );
-    IfaceLoadRect( PupBScrDw1, "PupScrDw1" );
-    IfaceLoadRect( PupBScrUp2, "PupScrUp2" );
-    IfaceLoadRect( PupBScrDw2, "PupScrDw2" );
-    IfaceLoadRect( PupBNextCritLeft, "PupNextCritLeft" );
-    IfaceLoadRect( PupBNextCritRight, "PupNextCritRight" );
-    PupX = ( GameOpt.ScreenWidth - PupWMain.W() ) / 2;
-    PupY = ( GameOpt.ScreenHeight - PupWMain.H() ) / 2;
-    PupHeightItem1 = IfaceIni.GetInt( "", "PupHeightCont1", 0 );
-    PupHeightItem2 = IfaceIni.GetInt( "", "PupHeightCont2", 0 );
-    PupHoldId = 0;
-    PupScroll1 = 0;
-    PupScroll2 = 0;
-    PupScrollCrit = 0;
-    PupVectX = 0;
-    PupVectY = 0;
     PupTransferType = 0;
     PupContId = 0;
     PupContPid = 0;
@@ -524,34 +425,6 @@ int FOClient::InitIface()
     // Hex field sprites
     HexMngr.ReloadSprites();
 
-    // Dialog
-    IfaceLoadSpr( DlgPMain, "DlgMainPic" );
-    IfaceLoadSpr( DlgPAnsw, "DlgAnswPic" );
-    IfaceLoadSpr( DlgPBBarter, "DlgBarterPicDn" );
-    IfaceLoadSpr( DlgPBSay, "DlgSayPicDn" );
-    DlgAvatarPic = nullptr;
-    // Barter
-    IfaceLoadSpr( BarterPMain, "BarterMainPic" );
-    IfaceLoadSpr( BarterPBOfferDn, "BarterOfferPic" );
-    IfaceLoadSpr( BarterPBTalkDn, "BarterTalkPic" );
-    IfaceLoadSpr( BarterPBC1ScrUpDn, "BarterCont1ScrUpPicDn" );
-    IfaceLoadSpr( BarterPBC2ScrUpDn, "BarterCont2ScrUpPicDn" );
-    IfaceLoadSpr( BarterPBC1oScrUpDn, "BarterCont1oScrUpPicDn" );
-    IfaceLoadSpr( BarterPBC2oScrUpDn, "BarterCont2oScrUpPicDn" );
-    IfaceLoadSpr( BarterPBC1ScrDnDn, "BarterCont1ScrDnPicDn" );
-    IfaceLoadSpr( BarterPBC2ScrDnDn, "BarterCont2ScrDnPicDn" );
-    IfaceLoadSpr( BarterPBC1oScrDnDn, "BarterCont1oScrDnPicDn" );
-    IfaceLoadSpr( BarterPBC2oScrDnDn, "BarterCont2oScrDnPicDn" );
-
-    // Cursors
-    CurPDef = SprMngr.LoadAnimation( "cursor_default.png", PT_ART_INTRFACE, true );
-    CurPHand = SprMngr.LoadAnimation( "cursor_hand.png", PT_ART_INTRFACE, true );
-    if( !LMenuOX && !LMenuOY )
-    {
-        SpriteInfo* si_cur = SprMngr.GetSpriteInfo( CurPDef->GetSprId( 0 ) );
-        LMenuOX = ( si_cur ? si_cur->Width : 0 );
-    }
-
     // LMenu
     IfaceLoadSpr( LmenuPTalkOff, "LMenuTalkPic" );
     IfaceLoadSpr( LmenuPTalkOn, "LMenuTalkPicDn" );
@@ -594,15 +467,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( LmenuPVoteDownOff, "LMenuVoteDownPic" );
     IfaceLoadSpr( LmenuPVoteDownOn, "LMenuVoteDownPicDn" );
 
-    // MiniMap
-    IfaceLoadSpr( LmapPMain, "LmapMainPic" );
-    IfaceLoadSpr( LmapPBOkDw, "LmapOkPicDn" );
-    IfaceLoadSpr( LmapPBScanDw, "LmapScanPicDn" );
-    IfaceLoadSpr( LmapPBLoHiDw, "LmapLoHiPicDn" );
-    LmapPPix = SprMngr.LoadAnimation( "green_pix.png", PT_ART_INTRFACE, true );
-    if( !LmapPPix )
-        return __LINE__;
-
     // Town view
     IfaceLoadSpr( TViewWMainPic, "TViewMainPic" );
     IfaceLoadSpr( TViewBBackPicDn, "TViewBackPicDn" );
@@ -639,23 +503,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( GmapBFixPicDown, "GmapFixPicDn" );
     IfaceLoadSpr( GmapPLightPic0, "GmapLightPic0" );
     IfaceLoadSpr( GmapPLightPic1, "GmapLightPic1" );
-
-    // PickUp
-    IfaceLoadSpr( PupPMain, "PupMainPic" );
-    IfaceLoadSpr( PupPTakeAllOn, "PupTAPicDn" );
-    IfaceLoadSpr( PupPBOkOn, "PupOkPicDn" );
-    IfaceLoadSpr( PupPBScrUpOn1, "PupScrUp1PicDn" );
-    IfaceLoadSpr( PupPBScrUpOff1, "PupScrUp1PicOff" );
-    IfaceLoadSpr( PupPBScrDwOn1, "PupScrDw1PicDn" );
-    IfaceLoadSpr( PupPBScrDwOff1, "PupScrDw1PicOff" );
-    IfaceLoadSpr( PupPBScrUpOn2, "PupScrUp2PicDn" );
-    IfaceLoadSpr( PupPBScrUpOff2, "PupScrUp2PicOff" );
-    IfaceLoadSpr( PupPBScrDwOn2, "PupScrDw2PicDn" );
-    IfaceLoadSpr( PupPBScrDwOff2, "PupScrDw2PicOff" );
-    IfaceLoadSpr( PupBNextCritLeftPicUp, "PupNextCritLeftPic" );
-    IfaceLoadSpr( PupBNextCritLeftPicDown, "PupNextCritLeftPicDn" );
-    IfaceLoadSpr( PupBNextCritRightPicUp, "PupNextCritRightPic" );
-    IfaceLoadSpr( PupBNextCritRightPicDown, "PupNextCritRightPicDn" );
 
     // Aim
     IfaceLoadSpr( AimPWMain, "AimMainPic" );
@@ -1218,628 +1065,6 @@ bool FOClient::LoginCheckData()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::DlgDraw( bool is_dialog )
-{
-    SprMngr.DrawSprite( DlgPMain, DlgX, DlgY );
-    if( !BarterIsPlayers && DlgAvatarPic )
-        SprMngr.DrawSpriteSize( DlgAvatarPic, DlgWAvatar.L + DlgX, DlgWAvatar.T + DlgY, DlgWAvatar.W(), DlgWAvatar.H(), true, true );
-    if( !Chosen )
-        return;
-
-    // Main pic
-    if( is_dialog )
-        SprMngr.DrawSprite( DlgPAnsw, DlgAnsw[ 0 ] + DlgX, DlgAnsw[ 1 ] + DlgY );
-    else
-        SprMngr.DrawSprite( BarterPMain, BarterWMain[ 0 ] + DlgX, BarterWMain[ 1 ] + DlgY );
-
-    // Text scroll
-    const char scr_up[] = { 24, 0 };
-    const char scr_down[] = { 25, 0 };
-    if( DlgMainTextCur )
-        SprMngr.DrawStr( Rect( DlgBScrUp, DlgX, DlgY ), scr_up, 0, IfaceHold == IFACE_DLG_SCR_UP ? COLOR_TEXT_DGREEN : COLOR_TEXT );
-    if( DlgMainTextCur < DlgMainTextLinesReal - DlgMainTextLinesRect )
-        SprMngr.DrawStr( Rect( DlgBScrDn, DlgX, DlgY ), scr_down, 0, IfaceHold == IFACE_DLG_SCR_DN ? COLOR_TEXT_DGREEN : COLOR_TEXT );
-
-    // Dialog
-    if( is_dialog )
-    {
-        switch( IfaceHold )
-        {
-        case IFACE_DLG_BARTER:
-            SprMngr.DrawSprite( DlgPBBarter, DlgBBarter[ 0 ] + DlgX, DlgBBarter[ 1 ] + DlgY );
-            break;
-        case IFACE_DLG_SAY:
-            SprMngr.DrawSprite( DlgPBSay, DlgBSay[ 0 ] + DlgX, DlgBSay[ 1 ] + DlgY );
-            break;
-        default:
-            break;
-        }
-
-        // Texts
-        SprMngr.DrawStr( Rect( DlgBBarterText, DlgX, DlgY ), MsgGame->GetStr( STR_DIALOG_BARTER ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        SprMngr.DrawStr( Rect( DlgBSayText, DlgX, DlgY ), MsgGame->GetStr( STR_DIALOG_SAY ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-        // Npc text
-        SprMngr.DrawStr( Rect( DlgWText, DlgX, DlgY ), DlgMainText.c_str(), FT_SKIPLINES( DlgMainTextCur ), COLOR_TEXT );
-
-        // Answers
-        for( uint i = 0; i < DlgAnswers.size(); i++ )
-        {
-            Answer& a = DlgAnswers[ i ];
-            if( i == (uint) DlgCurAnsw )
-                SprMngr.DrawStr( Rect( a.Position, DlgX, DlgY ), DlgAnswers[ i ].Text.c_str(), a.AnswerNum < 0 ? FT_CENTERX : 0, IfaceHold == IFACE_DLG_ANSWER && DlgCurAnsw == DlgHoldAnsw ? COLOR_TEXT_DDGREEN : ( IfaceHold != IFACE_DLG_ANSWER ? COLOR_TEXT_DGREEN : COLOR_TEXT ) );
-            else
-                SprMngr.DrawStr( Rect( a.Position, DlgX, DlgY ), DlgAnswers[ i ].Text.c_str(), a.AnswerNum < 0 ? FT_CENTERX : 0, COLOR_TEXT );
-        }
-
-        // Chosen money
-        // if( Chosen )
-        //    SprMngr.DrawStr( Rect( DlgWMoney, DlgX, DlgY ), Chosen->GetMoneyStr(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
-    }
-    // Barter
-    else
-    {
-        if( BarterIsPlayers && BarterOffer )
-            SprMngr.DrawSprite( BarterPBOfferDn, BarterBOffer[ 0 ] + DlgX, BarterBOffer[ 1 ] + DlgY );
-
-        switch( IfaceHold )
-        {
-        case IFACE_BARTER_OFFER:
-            SprMngr.DrawSprite( BarterPBOfferDn, BarterBOffer[ 0 ] + DlgX, BarterBOffer[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_TALK:
-            SprMngr.DrawSprite( BarterPBTalkDn, BarterBTalk[ 0 ] + DlgX, BarterBTalk[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_CONT1SU:
-            SprMngr.DrawSprite( BarterPBC1ScrUpDn, BarterBCont1ScrUp[ 0 ] + DlgX, BarterBCont1ScrUp[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_CONT1SD:
-            SprMngr.DrawSprite( BarterPBC1ScrDnDn, BarterBCont1ScrDn[ 0 ] + DlgX, BarterBCont1ScrDn[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_CONT2SU:
-            SprMngr.DrawSprite( BarterPBC2ScrUpDn, BarterBCont2ScrUp[ 0 ] + DlgX, BarterBCont2ScrUp[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_CONT2SD:
-            SprMngr.DrawSprite( BarterPBC2ScrDnDn, BarterBCont2ScrDn[ 0 ] + DlgX, BarterBCont2ScrDn[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_CONT1OSU:
-            SprMngr.DrawSprite( BarterPBC1oScrUpDn, BarterBCont1oScrUp[ 0 ] + DlgX, BarterBCont1oScrUp[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_CONT1OSD:
-            SprMngr.DrawSprite( BarterPBC1oScrDnDn, BarterBCont1oScrDn[ 0 ] + DlgX, BarterBCont1oScrDn[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_CONT2OSU:
-            SprMngr.DrawSprite( BarterPBC2oScrUpDn, BarterBCont2oScrUp[ 0 ] + DlgX, BarterBCont2oScrUp[ 1 ] + DlgY );
-            break;
-        case IFACE_BARTER_CONT2OSD:
-            SprMngr.DrawSprite( BarterPBC2oScrDnDn, BarterBCont2oScrDn[ 0 ] + DlgX, BarterBCont2oScrDn[ 1 ] + DlgY );
-            break;
-        default:
-            break;
-        }
-
-        Chosen->DrawStay( Rect( BarterWChosen, DlgX, DlgY ) );
-        CritterCl* cr = GetCritter( BarterIsPlayers ? BarterOpponentId : DlgNpcId );
-        if( cr )
-            cr->DrawStay( Rect( BarterWCritter, DlgX, DlgY ) );
-
-        SprMngr.Flush();
-
-        // Items
-        ContainerDraw( Rect( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1, IfaceHold == IFACE_BARTER_CONT1 ? BarterHoldId : 0 );
-        ContainerDraw( Rect( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2, IfaceHold == IFACE_BARTER_CONT2 ? BarterHoldId : 0 );
-        ContainerDraw( Rect( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o, IfaceHold == IFACE_BARTER_CONT1O ? BarterHoldId : 0 );
-        ContainerDraw( Rect( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o, IfaceHold == IFACE_BARTER_CONT2O ? BarterHoldId : 0 );
-
-        // Info
-        SprMngr.DrawStr( Rect( BarterBOfferText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_OFFER ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        if( BarterIsPlayers )
-        {
-            SprMngr.DrawStr( Rect( BarterBTalkText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_END ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-            SprMngr.DrawStr( Rect( DlgWText, DlgX, DlgY ), BarterText.c_str(), FT_UPPER );
-        }
-        else
-        {
-            SprMngr.DrawStr( Rect( BarterBTalkText, DlgX, DlgY ), MsgGame->GetStr( STR_BARTER_TALK ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-            SprMngr.DrawStr( Rect( DlgWText, DlgX, DlgY ), BarterText.c_str(), 0 );
-        }
-
-        // Cost
-        uint c1, w1, v1, c2, w2, v2;
-        ContainerCalcInfo( BarterCont1o, c1, w1, v1, -BarterK, true );
-        ContainerCalcInfo( BarterCont2o, c2, w2, v2, Chosen->GetPerkMasterTrader() ? 0 : BarterK, false );
-        if( !BarterIsPlayers && BarterK )
-        {
-            SprMngr.DrawStr( Rect( BarterWCost1, DlgX, DlgY ), Str::FormatBuf( "$%u", c1 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
-            SprMngr.DrawStr( Rect( BarterWCost2, DlgX, DlgY ), Str::FormatBuf( "$%u", c2 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
-        }
-        else
-        {
-            SprMngr.DrawStr( Rect( BarterWCost1, DlgX, DlgY ), Str::FormatBuf( "%u", w1 / 1000 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
-            SprMngr.DrawStr( Rect( BarterWCost2, DlgX, DlgY ), Str::FormatBuf( "%u", w2 / 1000 ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_WHITE ); // BarterCost1<BarterCost2?COLOR_TEXT_RED:COLOR_TEXT_WHITE);
-        }
-        // Overweight, oversize indicate
-        if( Chosen->GetFreeWeight() + (int) w1 < (int) w2 )
-            SprMngr.DrawStr( Rect( DlgWText.L, DlgWText.B - 5, DlgWText.R, DlgWText.B + 10, DlgX, DlgY ), MsgGame->GetStr( STR_OVERWEIGHT_TITLE ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_DDGREEN );
-        else if( Chosen->GetFreeVolume() + (int) v1 < (int) v2 )
-            SprMngr.DrawStr( Rect( DlgWText.L, DlgWText.B - 5, DlgWText.R, DlgWText.B + 10, DlgX, DlgY ), MsgGame->GetStr( STR_OVERVOLUME_TITLE ), FT_NOBREAK | FT_CENTERX, COLOR_TEXT_DDGREEN );
-    }
-
-    // Timer
-    if( !BarterIsPlayers && DlgEndTick && DlgEndTick > Timer::GameTick() )
-        SprMngr.DrawStr( Rect( DlgWTimer, DlgX, DlgY ), Str::FormatBuf( "%u", ( DlgEndTick - Timer::GameTick() ) / 1000 ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_DGREEN );
-}
-
-void FOClient::DlgLMouseDown( bool is_dialog )
-{
-    IfaceHold = IFACE_NONE;
-    BarterHoldId = 0;
-
-    if( !IsCurInRect( DlgWMain, DlgX, DlgY ) )
-        return;
-
-    if( IsCurInRect( DlgBScrUp, DlgX, DlgY ) )
-    {
-        if( DlgMainTextCur > 0 )
-        {
-            IfaceHold = IFACE_DLG_SCR_UP;
-            Timer::StartAccelerator( ACCELERATE_DLG_TEXT_UP );
-        }
-    }
-    else if( IsCurInRect( DlgBScrDn, DlgX, DlgY ) )
-    {
-        if( DlgMainTextCur < DlgMainTextLinesReal - DlgMainTextLinesRect )
-        {
-            IfaceHold = IFACE_DLG_SCR_DN;
-            Timer::StartAccelerator( ACCELERATE_DLG_TEXT_DOWN );
-        }
-    }
-
-    // Dialog
-    if( is_dialog && IsCurInRect( DlgWMain, DlgX, DlgY ) )
-    {
-        if( IsCurInRect( DlgAnswText, DlgX, DlgY ) )
-        {
-            IfaceHold = IFACE_DLG_ANSWER;
-            DlgHoldAnsw = DlgCurAnsw;
-        }
-        else if( IsCurInRect( DlgBBarter, DlgX, DlgY ) )
-            IfaceHold = IFACE_DLG_BARTER;
-        else if( IsCurInRect( DlgBSay, DlgX, DlgY ) )
-            IfaceHold = IFACE_DLG_SAY;
-    }
-    // Barter
-    else if( !is_dialog && IsCurInRect( BarterWMain, DlgX, DlgY ) )
-    {
-        if( IsCurInRect( BarterWCont1, DlgX, DlgY ) )
-        {
-            BarterHoldId = GetCurContainerItemId( Rect( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1 );
-            if( !BarterHoldId )
-                return;
-            IfaceHold = IFACE_BARTER_CONT1;
-        }
-        else if( IsCurInRect( BarterWCont2, DlgX, DlgY ) )
-        {
-            if( !( BarterIsPlayers && BarterOpponentHide ) )
-            {
-                BarterHoldId = GetCurContainerItemId( Rect( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2 );
-                if( !BarterHoldId )
-                    return;
-                IfaceHold = IFACE_BARTER_CONT2;
-            }
-        }
-        else if( IsCurInRect( BarterWCont1o, DlgX, DlgY ) )
-        {
-            BarterHoldId = GetCurContainerItemId( Rect( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o );
-            if( !BarterHoldId )
-                return;
-            IfaceHold = IFACE_BARTER_CONT1O;
-        }
-        else if( IsCurInRect( BarterWCont2o, DlgX, DlgY ) )
-        {
-            if( !( BarterIsPlayers && BarterOpponentHide ) )
-            {
-                BarterHoldId = GetCurContainerItemId( Rect( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o );
-                if( !BarterHoldId )
-                    return;
-                IfaceHold = IFACE_BARTER_CONT2O;
-            }
-        }
-        else if( IsCurInRect( BarterBOffer, DlgX, DlgY ) )
-            IfaceHold = IFACE_BARTER_OFFER;
-        else if( IsCurInRect( BarterBTalk, DlgX, DlgY ) )
-            IfaceHold = IFACE_BARTER_TALK;
-        else if( IsCurInRect( BarterBCont1ScrUp, DlgX, DlgY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_BARTER_CONT1SU );
-            IfaceHold = IFACE_BARTER_CONT1SU;
-        }
-        else if( IsCurInRect( BarterBCont1ScrDn, DlgX, DlgY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_BARTER_CONT1SD );
-            IfaceHold = IFACE_BARTER_CONT1SD;
-        }
-        else if( IsCurInRect( BarterBCont2ScrUp, DlgX, DlgY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_BARTER_CONT2SU );
-            IfaceHold = IFACE_BARTER_CONT2SU;
-        }
-        else if( IsCurInRect( BarterBCont2ScrDn, DlgX, DlgY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_BARTER_CONT2SD );
-            IfaceHold = IFACE_BARTER_CONT2SD;
-        }
-        else if( IsCurInRect( BarterBCont1oScrUp, DlgX, DlgY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_BARTER_CONT1OSU );
-            IfaceHold = IFACE_BARTER_CONT1OSU;
-        }
-        else if( IsCurInRect( BarterBCont1oScrDn, DlgX, DlgY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_BARTER_CONT1OSD );
-            IfaceHold = IFACE_BARTER_CONT1OSD;
-        }
-        else if( IsCurInRect( BarterBCont2oScrUp, DlgX, DlgY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_BARTER_CONT2OSU );
-            IfaceHold = IFACE_BARTER_CONT2OSU;
-        }
-        else if( IsCurInRect( BarterBCont2oScrDn, DlgX, DlgY ) )
-        {
-            Timer::StartAccelerator( ACCELERATE_BARTER_CONT2OSD );
-            IfaceHold = IFACE_BARTER_CONT2OSD;
-        }
-        else if( IsCurInRect( DlgBScrUp, DlgX, DlgY ) && BarterIsPlayers )
-            IfaceHold = IFACE_DLG_SCR_UP;
-        else if( IsCurInRect( DlgBScrDn, DlgX, DlgY ) && BarterIsPlayers )
-            IfaceHold = IFACE_DLG_SCR_DN;
-
-        if( IsCurMode( CUR_DEFAULT ) && ( IfaceHold == IFACE_BARTER_CONT1 || IfaceHold == IFACE_BARTER_CONT2 || IfaceHold == IFACE_BARTER_CONT1O || IfaceHold == IFACE_BARTER_CONT2O ) )
-        {
-            IfaceHold = IFACE_NONE;
-            LMenuTryActivate();
-            return;
-        }
-    }
-
-    if( IfaceHold == IFACE_NONE )
-    {
-        DlgVectX = GameOpt.MouseX - DlgX;
-        DlgVectY = GameOpt.MouseY - DlgY;
-        IfaceHold = IFACE_DLG_MAIN;
-    }
-}
-
-void FOClient::DlgLMouseUp( bool is_dialog )
-{
-    if( !Chosen )
-        return;
-
-    if( IfaceHold == IFACE_DLG_SCR_UP && IsCurInRect( DlgBScrUp, DlgX, DlgY ) )
-    {
-        if( DlgMainTextCur > 0 )
-            DlgMainTextCur--;
-    }
-    else if( IfaceHold == IFACE_DLG_SCR_DN && IsCurInRect( DlgBScrDn, DlgX, DlgY ) )
-    {
-        if( DlgMainTextCur < DlgMainTextLinesReal - DlgMainTextLinesRect )
-            DlgMainTextCur++;
-    }
-
-    if( is_dialog )
-    {
-        if( IfaceHold == IFACE_DLG_ANSWER && IsCurInRect( DlgAnswText, DlgX, DlgY ) )
-        {
-            if( DlgCurAnsw == DlgHoldAnsw && DlgCurAnsw >= 0 && DlgCurAnsw < (int) DlgAnswers.size() && IsCurInRect( DlgAnswers[ DlgCurAnsw ].Position, DlgX, DlgY ) )
-            {
-                if( DlgAnswers[ DlgCurAnsw ].AnswerNum < 0 )
-                {
-                    DlgCollectAnswers( DlgAnswers[ DlgCurAnsw ].AnswerNum == -2 );
-                }
-                else
-                {
-                    Net_SendTalk( DlgIsNpc, DlgNpcId, DlgAnswers[ DlgCurAnsw ].AnswerNum );
-                    WaitPing();
-                }
-            }
-        }
-        else if( IfaceHold == IFACE_DLG_BARTER && IsCurInRect( DlgBBarter, DlgX, DlgY ) )
-        {
-            CritterCl* cr = GetCritter( DlgNpcId );
-            if( !cr || cr->GetIsNoBarter() )
-            {
-                DlgMainText = MsgGame->GetStr( STR_BARTER_NO_BARTER_MODE );
-                DlgMainTextCur = 0;
-                DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, DlgMainText.c_str() );
-            }
-            else
-            {
-                Net_SendTalk( DlgIsNpc, DlgNpcId, ANSWER_BARTER );
-                WaitPing();
-                HideScreen( SCREEN__DIALOG );
-                ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-                dict->Set( "CritterId", &DlgNpcId, asTYPEID_UINT32 );
-                ShowScreen( SCREEN__BARTER, dict );
-                dict->Release();
-                CollectContItems();
-                Item::ClearItems( BarterCont1o );
-                Item::ClearItems( BarterCont2 );
-                Item::ClearItems( BarterCont2o );
-                BarterText = "";
-                DlgMainTextCur = 0;
-                DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
-            }
-        }
-        else if( IfaceHold == IFACE_DLG_SAY && IsCurInRect( DlgBSay, DlgX, DlgY ) )
-        {
-            ShowScreen( SCREEN__SAY );
-            SayType = DIALOGSAY_TEXT;
-            SayText = "";
-        }
-    }
-    else
-    {
-        if( IfaceHold == IFACE_BARTER_CONT1 )
-        {
-            if( IsCurInRect( BarterWCont1o, DlgX, DlgY ) )
-            {
-                auto it = PtrCollectionFind( BarterCont1.begin(), BarterCont1.end(), BarterHoldId );
-                if( it != BarterCont1.end() )
-                {
-                    Item* item = *it;
-                    if( item->GetCount() > 1 )
-                        SplitStart( BarterHoldId, ITEMS_BARTER );
-                    else
-                        BarterTransfer( BarterHoldId, ITEMS_BARTER, item->GetCount() );
-                }
-            }
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT2 )
-        {
-            if( IsCurInRect( BarterWCont2o, DlgX, DlgY ) && !( BarterIsPlayers && BarterOpponentHide ) )
-            {
-                auto it = PtrCollectionFind( BarterCont2.begin(), BarterCont2.end(), BarterHoldId );
-                if( it != BarterCont2.end() )
-                {
-                    Item* item = *it;
-                    if( item->GetCount() > 1 )
-                        SplitStart( BarterHoldId, ITEMS_BARTER_OPPONENT );
-                    else
-                        BarterTransfer( BarterHoldId, ITEMS_BARTER_OPPONENT, item->GetCount() );
-                }
-            }
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT1O )
-        {
-            if( IsCurInRect( BarterWCont1, DlgX, DlgY ) )
-            {
-                auto it = PtrCollectionFind( BarterCont1o.begin(), BarterCont1o.end(), BarterHoldId );
-                if( it != BarterCont1o.end() )
-                {
-                    Item* item = *it;
-                    if( item->GetCount() > 1 )
-                        SplitStart( BarterHoldId, ITEMS_BARTER_OFFER );
-                    else
-                        BarterTransfer( BarterHoldId, ITEMS_BARTER_OFFER, item->GetCount() );
-                }
-            }
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT2O )
-        {
-            if( IsCurInRect( BarterWCont2, DlgX, DlgY ) && !( BarterIsPlayers && BarterOpponentHide ) )
-            {
-                auto it = PtrCollectionFind( BarterCont2o.begin(), BarterCont2o.end(), BarterHoldId );
-                if( it != BarterCont2o.end() )
-                {
-                    Item* item = *it;
-                    if( item->GetCount() > 1 )
-                        SplitStart( BarterHoldId, ITEMS_BARTER_OPPONENT_OFFER );
-                    else
-                        BarterTransfer( BarterHoldId, ITEMS_BARTER_OPPONENT_OFFER, item->GetCount() );
-                }
-            }
-        }
-        else if( IfaceHold == IFACE_BARTER_OFFER && IsCurInRect( BarterBOffer, DlgX, DlgY ) )
-        {
-            BarterTryOffer();
-        }
-        else if( IfaceHold == IFACE_BARTER_TALK && IsCurInRect( BarterBTalk, DlgX, DlgY ) )
-        {
-            if( BarterIsPlayers )
-            {
-                Net_SendPlayersBarter( BARTER_END, 0, 0 );
-                ShowScreen( SCREEN_NONE );
-            }
-            else
-            {
-                Net_SendTalk( DlgIsNpc, DlgNpcId, ANSWER_BEGIN );
-                WaitPing();
-            }
-            CollectContItems();
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT1SU && IsCurInRect( BarterBCont1ScrUp, DlgX, DlgY ) )
-        {
-            if( BarterScroll1 > 0 )
-                BarterScroll1--;
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT1SD && IsCurInRect( BarterBCont1ScrDn, DlgX, DlgY ) )
-        {
-            if( BarterScroll1 < (int) Chosen->GetItemsCountInv() - ( BarterWCont1[ 3 ] - BarterWCont1[ 1 ] ) / BarterCont1HeightItem - (int) BarterCont1o.size() )
-                BarterScroll1++;
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT2SU && IsCurInRect( BarterBCont2ScrUp, DlgX, DlgY ) )
-        {
-            if( BarterScroll2 > 0 )
-                BarterScroll2--;
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT2SD && IsCurInRect( BarterBCont2ScrDn, DlgX, DlgY ) )
-        {
-            if( BarterScroll2 < (int) BarterCont2.size() - ( BarterWCont2[ 3 ] - BarterWCont2[ 1 ] ) / BarterCont2HeightItem )
-                BarterScroll2++;
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT1OSU && IsCurInRect( BarterBCont1oScrUp, DlgX, DlgY ) )
-        {
-            if( BarterScroll1o > 0 )
-                BarterScroll1o--;
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT1OSD && IsCurInRect( BarterBCont1oScrDn, DlgX, DlgY ) )
-        {
-            if( BarterScroll1o < (int) BarterCont1o.size() - ( BarterWCont1o[ 3 ] - BarterWCont1o[ 1 ] ) / BarterCont1oHeightItem )
-                BarterScroll1o++;
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT2OSU && IsCurInRect( BarterBCont2oScrUp, DlgX, DlgY ) )
-        {
-            if( BarterScroll2o > 0 )
-                BarterScroll2o--;
-        }
-        else if( IfaceHold == IFACE_BARTER_CONT2OSD && IsCurInRect( BarterBCont2oScrDn, DlgX, DlgY ) )
-        {
-            if( BarterScroll2o < (int) BarterCont2o.size() - ( BarterWCont2o[ 3 ] - BarterWCont2o[ 1 ] ) / BarterCont2oHeightItem )
-                BarterScroll2o++;
-        }
-    }
-
-    IfaceHold = IFACE_NONE;
-    BarterHoldId = 0;
-}
-
-void FOClient::DlgMouseMove( bool is_dialog )
-{
-    if( is_dialog )
-    {
-        DlgCurAnsw = -1;
-        for( uint i = 0; i < DlgAnswers.size(); i++ )
-        {
-            if( IsCurInRect( DlgAnswers[ i ].Position, DlgX, DlgY ) )
-            {
-                DlgCurAnsw = i;
-                break;
-            }
-        }
-    }
-
-    if( IfaceHold == IFACE_DLG_MAIN )
-    {
-        DlgX = GameOpt.MouseX - DlgVectX;
-        DlgY = GameOpt.MouseY - DlgVectY;
-
-        if( DlgX < 0 )
-            DlgX = 0;
-        if( DlgX + DlgWMain[ 2 ] > GameOpt.ScreenWidth )
-            DlgX = GameOpt.ScreenWidth - DlgWMain[ 2 ];
-        if( DlgY < 0 )
-            DlgY = 0;
-        if( DlgY + DlgWMain[ 3 ] > GameOpt.ScreenHeight )
-            DlgY = GameOpt.ScreenHeight - DlgWMain[ 3 ];
-    }
-}
-
-void FOClient::DlgRMouseDown( bool is_dialog )
-{
-    if( !is_dialog )
-        SetCurCastling( CUR_DEFAULT, CUR_HAND );
-}
-
-void FOClient::DlgKeyDown( bool is_dialog, uchar dik, const char* dik_text )
-{
-    int num = -1;
-    switch( dik )
-    {
-    case DIK_ESCAPE:
-    case DIK_0:
-    case DIK_NUMPAD0:
-        if( BarterIsPlayers )
-        {
-            Net_SendPlayersBarter( BARTER_END, 0, 0 );
-            ShowScreen( SCREEN_NONE );
-        }
-        else
-        {
-            Net_SendTalk( DlgIsNpc, DlgNpcId, ANSWER_END );
-            WaitPing();
-        }
-        CollectContItems();
-        return;
-    case DIK_INSERT:
-        BarterTryOffer();
-        return;
-    case DIK_1:
-    case DIK_NUMPAD1:
-        num = 0;
-        break;
-    case DIK_2:
-    case DIK_NUMPAD2:
-        num = 1;
-        break;
-    case DIK_3:
-    case DIK_NUMPAD3:
-        num = 2;
-        break;
-    case DIK_4:
-    case DIK_NUMPAD4:
-        num = 3;
-        break;
-    case DIK_5:
-    case DIK_NUMPAD5:
-        num = 4;
-        break;
-    case DIK_6:
-    case DIK_NUMPAD6:
-        num = 5;
-        break;
-    case DIK_7:
-    case DIK_NUMPAD7:
-        num = 6;
-        break;
-    case DIK_8:
-    case DIK_NUMPAD8:
-        num = 7;
-        break;
-    case DIK_9:
-    case DIK_NUMPAD9:
-        num = 8;
-        break;
-    case DIK_UP:
-        DlgCollectAnswers( false );
-        return;
-    case DIK_DOWN:
-        DlgCollectAnswers( true );
-        return;
-    default:
-        return;
-    }
-
-    if( is_dialog && num < (int) DlgAnswers.size() )
-    {
-        if( DlgAnswers[ num ].AnswerNum < 0 )
-        {
-            DlgCollectAnswers( DlgAnswers[ num ].AnswerNum == -2 );
-        }
-        else
-        {
-            Net_SendTalk( DlgIsNpc, DlgNpcId, DlgAnswers[ num ].AnswerNum );
-            WaitPing();
-        }
-    }
-}
-
-void FOClient::DlgCollectAnswers( bool next )
-{
-    if( next && DlgCurAnswPage < DlgMaxAnswPage )
-        DlgCurAnswPage++;
-    if( !next && DlgCurAnswPage > 0 )
-        DlgCurAnswPage--;
-
-    DlgAnswers.clear();
-    for( uint i = 0, j = (uint) DlgAllAnswers.size(); i < j; i++ )
-    {
-        Answer& a = DlgAllAnswers[ i ];
-        if( a.Page == DlgCurAnswPage )
-            DlgAnswers.push_back( a );
-    }
-    DlgMouseMove( true );
-}
-
 bool FOClient::IsScreenPlayersBarter()
 {
     return IsScreenPresent( SCREEN__BARTER ) && BarterIsPlayers;
@@ -1864,20 +1089,11 @@ void FOClient::BarterTryOffer()
         ContainerCalcInfo( BarterCont1oInit, c1, w1, v1, -BarterK, true );
         ContainerCalcInfo( BarterCont2oInit, c2, w2, v2, Chosen->GetPerkMasterTrader() ? 0 : BarterK, false );
 
-        if( c1 < c2 && BarterK )
-            BarterText = MsgGame->GetStr( STR_BARTER_BAD_OFFER );
-        else if( Chosen->GetFreeWeight() + w1 < w2 )
-            BarterText = MsgGame->GetStr( STR_BARTER_OVERWEIGHT );
-        else if( Chosen->GetFreeVolume() + v1 < v2 )
-            BarterText = MsgGame->GetStr( STR_BARTER_OVERSIZE );
-        else
+        if( !( c1 < c2 && BarterK ) && Chosen->GetFreeWeight() + w1 >= w2 && Chosen->GetFreeVolume() + v1 >= v2 )
         {
             Net_SendBarter( DlgNpcId, BarterCont1oInit, BarterCont2oInit );
             WaitPing();
-            return;
         }
-        DlgMainTextCur = 0;
-        DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
     }
 }
 
@@ -2266,35 +1482,7 @@ void FOClient::LMenuTryCreate()
         {
             Item* cont_item = GetTargetContItem();
             if( cont_item )
-            {
-                if( GetActiveScreen() == SCREEN__BARTER )
-                {
-                    if( BarterIsPlayers )
-                    {
-                        const char* str = FmtItemLook( cont_item, ITEM_LOOK_DEFAULT );
-                        if( str )
-                        {
-                            BarterText += str;
-                            BarterText += "\n";
-                            DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
-                        }
-                    }
-                    else
-                    {
-                        const char* str = FmtItemLook( cont_item, ITEM_LOOK_DEFAULT );
-                        if( str )
-                        {
-                            BarterText = FmtItemLook( cont_item, ITEM_LOOK_BARTER );
-                            DlgMainTextCur = 0;
-                            DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
-                        }
-                    }
-                }
-                else
-                {
-                    AddMess( FOMB_VIEW, FmtItemLook( cont_item, ITEM_LOOK_ONLY_NAME ) );
-                }
-            }
+                AddMess( FOMB_VIEW, FmtItemLook( cont_item, ITEM_LOOK_ONLY_NAME ) );
             last_look = TargetSmth;
         }
 
@@ -2362,47 +1550,7 @@ void FOClient::LMenuCollect()
     }
 
     int screen = GetActiveScreen();
-    if( screen )
-    {
-        switch( screen )
-        {
-        case SCREEN__BARTER:
-        {
-            int  cont_type = 0;
-            uint item_id = GetCurContainerItemId( Rect( BarterWCont1, DlgX, DlgY ), BarterCont1HeightItem, BarterScroll1, BarterCont1 );
-            if( !item_id )
-                item_id = GetCurContainerItemId( Rect( BarterWCont2, DlgX, DlgY ), BarterCont2HeightItem, BarterScroll2, BarterCont2 );
-            if( !item_id )
-            {
-                cont_type = 1;
-                item_id = GetCurContainerItemId( Rect( BarterWCont1o, DlgX, DlgY ), BarterCont1oHeightItem, BarterScroll1o, BarterCont1o );
-                if( !item_id )
-                    item_id = GetCurContainerItemId( Rect( BarterWCont2o, DlgX, DlgY ), BarterCont2oHeightItem, BarterScroll2o, BarterCont2o );
-            }
-            if( !item_id )
-                break;
-
-            TargetSmth.SetContItem( item_id, cont_type );
-            LMenuSet( LMENU_ITEM_INV );
-        }
-        break;
-        case SCREEN__PICKUP:
-        {
-            uint item_id = GetCurContainerItemId( Rect( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1 );
-            if( !item_id )
-                item_id = GetCurContainerItemId( Rect( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2 );
-            if( !item_id )
-                break;
-
-            TargetSmth.SetContItem( item_id, 0 );
-            LMenuSet( LMENU_ITEM_INV );
-        }
-        break;
-        default:
-            break;
-        }
-    }
-    else
+    if( !screen )
     {
         switch( GetMainScreen() )
         {
@@ -2965,30 +2113,7 @@ void FOClient::LMenuMouseUp()
         switch( *it_l )
         {
         case LMENU_NODE_LOOK:
-            if( GetActiveScreen() == SCREEN__BARTER )
-            {
-                if( BarterIsPlayers )
-                {
-                    const char* str = FmtItemLook( cont_item, ITEM_LOOK_DEFAULT );
-                    if( str )
-                    {
-                        BarterText += str;
-                        BarterText += "\n";
-                        DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
-                    }
-                }
-                else
-                {
-                    const char* str = FmtItemLook( cont_item, ITEM_LOOK_BARTER );
-                    if( str )
-                    {
-                        BarterText = str;
-                        DlgMainTextCur = 0;
-                        DlgMainTextLinesReal = SprMngr.GetLinesCount( DlgWText.W(), 0, BarterText.c_str() );
-                    }
-                }
-            }
-            else if( GetActiveScreen() == SCREEN__PICKUP )
+            if( GetActiveScreen() == SCREEN__PICKUP )
                 AddMess( FOMB_VIEW, FmtItemLook( cont_item, ITEM_LOOK_DEFAULT ) );
             break;
         case LMENU_NODE_DROP:
@@ -3222,7 +2347,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
 {
     SmthSelected smth = TargetSmth;
     IfaceHold = IFACE_NONE;
-    Timer::StartAccelerator( ACCELERATE_NONE );
     DropScroll();
 
     if( screen == SCREEN_NONE )
@@ -3243,16 +2367,9 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         break;
     case SCREEN__PICKUP:
         CollectContItems();
-        PupScroll1 = 0;
-        PupScroll2 = 0;
-        PupMouseMove();
         break;
     case SCREEN__MINI_MAP:
         LmapPrepareMap();
-        LmapMouseMove();
-        break;
-    case SCREEN__DIALOG:
-        DlgMouseMove( true );
         break;
     case SCREEN__BARTER:
         break;
@@ -3454,10 +2571,10 @@ void FOClient::SetCurPos( int x, int y )
 
 void FOClient::LmapPrepareMap()
 {
+    LmapPrepPix.clear();
+
     if( !Chosen )
         return;
-
-    LmapPrepPix.clear();
 
     int  maxpixx = ( LmapWMap[ 2 ] - LmapWMap[ 0 ] ) / 2 / LmapZoom;
     int  maxpixy = ( LmapWMap[ 3 ] - LmapWMap[ 1 ] ) / 2 / LmapZoom;
@@ -3487,8 +2604,8 @@ void FOClient::LmapPrepareMap()
             if( f.Crit )
             {
                 cur_color = ( f.Crit == Chosen ? 0xFF0000FF : ( f.Crit->GetFollowCrit() == Chosen->GetId() ? 0xFFFF00FF : 0xFFFF0000 ) );
-                LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y, cur_color, &LmapX, &LmapY ) );
-                LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color, &LmapX, &LmapY ) );
+                LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y, cur_color ) );
+                LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color ) );
             }
             else if( f.Flags.IsExitGrid )
             {
@@ -3509,86 +2626,14 @@ void FOClient::LmapPrepareMap()
 
             if( is_far )
                 cur_color = COLOR_CHANGE_ALPHA( cur_color, 0x22 );
-            LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y, cur_color, &LmapX, &LmapY ) );
-            LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color, &LmapX, &LmapY ) );
+            LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y, cur_color ) );
+            LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color ) );
         }
         pix_x -= LmapZoom;
         pix_y = 0;
     }
 
     LmapPrepareNextTick = Timer::FastTick() + MINIMAP_PREPARE_TICK;
-}
-
-void FOClient::LmapDraw()
-{
-    if( Timer::FastTick() >= LmapPrepareNextTick )
-        LmapPrepareMap();
-
-    SprMngr.DrawSprite( LmapPMain, LmapMain[ 0 ] + LmapX, LmapMain[ 1 ] + LmapY );
-    SprMngr.DrawPoints( LmapPrepPix, PRIMITIVE_LINELIST );
-    SprMngr.DrawStr( Rect( LmapWMap[ 0 ] + LmapX, LmapWMap[ 1 ] + LmapY, LmapWMap[ 0 ] + LmapX + 100, LmapWMap[ 1 ] + LmapY + 15 ), Str::FormatBuf( "Zoom: %d", LmapZoom - 1 ), 0 );
-    if( IfaceHold == IFACE_LMAP_OK )
-        SprMngr.DrawSprite( LmapPBOkDw, LmapBOk[ 0 ] + LmapX, LmapBOk[ 1 ] + LmapY );
-    if( IfaceHold == IFACE_LMAP_SCAN )
-        SprMngr.DrawSprite( LmapPBScanDw, LmapBScan[ 0 ] + LmapX, LmapBScan[ 1 ] + LmapY );
-    if( LmapSwitchHi )
-        SprMngr.DrawSprite( LmapPBLoHiDw, LmapBLoHi[ 0 ] + LmapX, LmapBLoHi[ 1 ] + LmapY );
-}
-
-void FOClient::LmapLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    if( IsCurInRect( LmapBOk, LmapX, LmapY ) )
-        IfaceHold = IFACE_LMAP_OK;
-    else if( IsCurInRect( LmapBScan, LmapX, LmapY ) )
-        IfaceHold = IFACE_LMAP_SCAN;
-    else if( IsCurInRect( LmapBLoHi, LmapX, LmapY ) )
-        IfaceHold = IFACE_LMAP_LOHI;
-    else if( IsCurInRect( LmapMain, LmapX, LmapY ) )
-    {
-        LmapVectX = GameOpt.MouseX - LmapX;
-        LmapVectY = GameOpt.MouseY - LmapY;
-        IfaceHold = IFACE_LMAP_MAIN;
-    }
-}
-
-void FOClient::LmapMouseMove()
-{
-    if( IfaceHold == IFACE_LMAP_MAIN )
-    {
-        LmapX = GameOpt.MouseX - LmapVectX;
-        LmapY = GameOpt.MouseY - LmapVectY;
-        if( LmapX < 0 )
-            LmapX = 0;
-        if( LmapX + LmapMain[ 2 ] > GameOpt.ScreenWidth )
-            LmapX = GameOpt.ScreenWidth - LmapMain[ 2 ];
-        if( LmapY < 0 )
-            LmapY = 0;
-        if( LmapY + LmapMain[ 3 ] > GameOpt.ScreenHeight )
-            LmapY = GameOpt.ScreenHeight - LmapMain[ 3 ];
-    }
-}
-
-void FOClient::LmapLMouseUp()
-{
-    if( IsCurInRect( LmapBOk, LmapX, LmapY ) && IfaceHold == IFACE_LMAP_OK )
-    {
-        ShowScreen( SCREEN_NONE );
-    }
-    if( IsCurInRect( LmapBScan, LmapX, LmapY ) && IfaceHold == IFACE_LMAP_SCAN )
-    {
-        LmapZoom = LmapZoom * 3 / 2;
-        if( LmapZoom > 13 )
-            LmapZoom = 2;
-        LmapPrepareMap();
-    }
-    if( IsCurInRect( LmapBLoHi, LmapX, LmapY ) && IfaceHold == IFACE_LMAP_LOHI )
-    {
-        LmapSwitchHi = !LmapSwitchHi;
-        LmapPrepareMap();
-    }
-
-    IfaceHold = IFACE_NONE;
 }
 
 // ==============================================================================================================================
@@ -4008,7 +3053,7 @@ void FOClient::GmapDraw()
                 }
             }
 
-            SpriteInfo* si = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() );
+            /*SpriteInfo* si = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() );
             if( Chosen )
             {
                 SprMngr.DrawStr( Rect( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ), cur_loc ?
@@ -4019,7 +3064,7 @@ void FOClient::GmapDraw()
             {
                 SprMngr.DrawStr( Rect( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ),
                                  FmtGameText( STR_GMAP_LOC_INFO, MsgLocations->GetStr( STR_LOC_NAME( cur_loc->LocPid ) ), MsgLocations->GetStr( STR_LOC_INFO( cur_loc->LocPid ) ) ), 0 );
-            }
+            }*/
         }
     }
 
@@ -4705,414 +3750,6 @@ AnyFrames* FOClient::AimGetPic( CritterCl* cr, const char* ext )
     if( !anim )
         anim = ResMngr.GetAnim( Str::GetHash( aim_name_alias ), RES_ATLAS_DYNAMIC );
     return anim;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::PupDraw()
-{
-    SprMngr.DrawSprite( PupPMain, PupX, PupY );
-
-    if( !Chosen )
-        return;
-
-    // Info window
-    if( PupTransferType == TRANSFER_HEX_CONT_UP || PupTransferType == TRANSFER_HEX_CONT_DOWN || PupTransferType == TRANSFER_FAR_CONT )
-    {
-        ProtoItem* proto_item = ProtoMngr.GetProtoItem( PupContPid );
-        if( proto_item )
-        {
-            AnyFrames* anim = ResMngr.GetItemAnim( proto_item->GetPicMap() );
-            if( anim )
-                SprMngr.DrawSpriteSize( anim->GetSprId( anim->GetCnt() - 1 ), PupWInfo[ 0 ] + PupX, PupWInfo[ 1 ] + PupY, PupWInfo.W(), PupWInfo.H(), false, true );
-        }
-    }
-    else if( PupTransferType == TRANSFER_CRIT_STEAL || PupTransferType == TRANSFER_CRIT_LOOT || PupTransferType == TRANSFER_FAR_CRIT )
-    {
-        CritterCl* cr = HexMngr.GetCritter( PupContId );
-        if( cr )
-            cr->DrawStay( Rect( PupWInfo, PupX, PupY ) );
-    }
-
-    // Button Ok
-    if( IfaceHold == IFACE_PUP_OK )
-        SprMngr.DrawSprite( PupPBOkOn, PupBOk[ 0 ] + PupX, PupBOk[ 1 ] + PupY );
-
-    // Button Take All
-    if( IfaceHold == IFACE_PUP_TAKEALL )
-        SprMngr.DrawSprite( PupPTakeAllOn, PupBTakeAll[ 0 ] + PupX, PupBTakeAll[ 1 ] + PupY );
-
-    // Scrolling Buttons Window 1
-    if( PupScroll1 <= 0 )
-        SprMngr.DrawSprite( PupPBScrUpOff1, PupBScrUp1[ 0 ] + PupX, PupBScrUp1[ 1 ] + PupY );
-    else if( IfaceHold == IFACE_PUP_SCRUP1 )
-        SprMngr.DrawSprite( PupPBScrUpOn1, PupBScrUp1[ 0 ] + PupX, PupBScrUp1[ 1 ] + PupY );
-
-    int count_items = (int) Chosen->GetItemsCountInv();
-    if( PupScroll1 >= count_items - ( PupWCont1[ 3 ] - PupWCont1[ 1 ] ) / PupHeightItem1 )
-        SprMngr.DrawSprite( PupPBScrDwOff1, PupBScrDw1[ 0 ] + PupX, PupBScrDw1[ 1 ] + PupY );
-    else if( IfaceHold == IFACE_PUP_SCRDOWN1 )
-        SprMngr.DrawSprite( PupPBScrDwOn1, PupBScrDw1[ 0 ] + PupX, PupBScrDw1[ 1 ] + PupY );
-
-    // Scrolling Buttons Window 2
-    if( PupScroll2 <= 0 )
-        SprMngr.DrawSprite( PupPBScrUpOff2, PupBScrUp2[ 0 ] + PupX, PupBScrUp2[ 1 ] + PupY );
-    else if( IfaceHold == IFACE_PUP_SCRUP2 )
-        SprMngr.DrawSprite( PupPBScrUpOn2, PupBScrUp2[ 0 ] + PupX, PupBScrUp2[ 1 ] + PupY );
-
-    count_items = (int) PupCont2.size();
-    if( PupScroll2 >= count_items - ( PupWCont2[ 3 ] - PupWCont2[ 1 ] ) / PupHeightItem2 )
-        SprMngr.DrawSprite( PupPBScrDwOff2, PupBScrDw2[ 0 ] + PupX, PupBScrDw2[ 1 ] + PupY );
-    else if( IfaceHold == IFACE_PUP_SCRDOWN2 )
-        SprMngr.DrawSprite( PupPBScrDwOn2, PupBScrDw2[ 0 ] + PupX, PupBScrDw2[ 1 ] + PupY );
-
-    // Scrolling critters
-    if( PupGetLootCrits().size() > 1 )
-    {
-        if( IfaceHold == IFACE_PUP_SCRCR_L )
-            SprMngr.DrawSprite( PupBNextCritLeftPicDown, PupBNextCritLeft[ 0 ] + PupX, PupBNextCritLeft[ 1 ] + PupY );
-        else
-            SprMngr.DrawSprite( PupBNextCritLeftPicUp, PupBNextCritLeft[ 0 ] + PupX, PupBNextCritLeft[ 1 ] + PupY );
-
-        if( IfaceHold == IFACE_PUP_SCRCR_R )
-            SprMngr.DrawSprite( PupBNextCritRightPicDown, PupBNextCritRight[ 0 ] + PupX, PupBNextCritRight[ 1 ] + PupY );
-        else
-            SprMngr.DrawSprite( PupBNextCritRightPicUp, PupBNextCritRight[ 0 ] + PupX, PupBNextCritRight[ 1 ] + PupY );
-    }
-
-    // Items
-    ContainerDraw( Rect( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1, IfaceHold == IFACE_PUP_CONT1 ? PupHoldId : 0 );
-    ContainerDraw( Rect( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2, IfaceHold == IFACE_PUP_CONT2 ? PupHoldId : 0 );
-}
-
-void FOClient::PupLMouseDown()
-{
-    PupHoldId = 0;
-    IfaceHold = IFACE_NONE;
-    if( !Chosen )
-        return;
-
-    if( IsCurInRect( PupWCont1, PupX, PupY ) )
-    {
-        PupHoldId = GetCurContainerItemId( Rect( PupWCont1, PupX, PupY ), PupHeightItem1, PupScroll1, PupCont1 );
-        if( PupHoldId )
-            IfaceHold = IFACE_PUP_CONT1;
-    }
-    else if( IsCurInRect( PupWCont2, PupX, PupY ) )
-    {
-        PupHoldId = GetCurContainerItemId( Rect( PupWCont2, PupX, PupY ), PupHeightItem2, PupScroll2, PupCont2 );
-        if( PupHoldId )
-            IfaceHold = IFACE_PUP_CONT2;
-    }
-    else if( IsCurInRect( PupBOk, PupX, PupY ) )
-        IfaceHold = IFACE_PUP_OK;
-    else if( IsCurInRect( PupBScrUp1, PupX, PupY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_PUP_SCRUP1 );
-        IfaceHold = IFACE_PUP_SCRUP1;
-    }
-    else if( IsCurInRect( PupBScrDw1, PupX, PupY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_PUP_SCRDOWN1 );
-        IfaceHold = IFACE_PUP_SCRDOWN1;
-    }
-    else if( IsCurInRect( PupBScrUp2, PupX, PupY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_PUP_SCRUP2 );
-        IfaceHold = IFACE_PUP_SCRUP2;
-    }
-    else if( IsCurInRect( PupBScrDw2, PupX, PupY ) )
-    {
-        Timer::StartAccelerator( ACCELERATE_PUP_SCRDOWN2 );
-        IfaceHold = IFACE_PUP_SCRDOWN2;
-    }
-    else if( IsCurInRect( PupBTakeAll, PupX, PupY ) )
-        IfaceHold = IFACE_PUP_TAKEALL;
-    else if( IsCurInRect( PupBNextCritLeft, PupX, PupY ) && PupGetLootCrits().size() > 1 )
-    {
-        if( Chosen->IsFree() && ChosenAction.empty() )
-            IfaceHold = IFACE_PUP_SCRCR_L;
-    }
-    else if( IsCurInRect( PupBNextCritRight, PupX, PupY ) && PupGetLootCrits().size() > 1 )
-    {
-        if( Chosen->IsFree() && ChosenAction.empty() )
-            IfaceHold = IFACE_PUP_SCRCR_R;
-    }
-    else if( IsCurInRect( PupWMain, PupX, PupY ) )
-    {
-        PupVectX = GameOpt.MouseX - PupX;
-        PupVectY = GameOpt.MouseY - PupY;
-        IfaceHold = IFACE_PUP_MAIN;
-    }
-
-    if( IsCurMode( CUR_DEFAULT ) && ( IfaceHold == IFACE_PUP_CONT1 || IfaceHold == IFACE_PUP_CONT2 ) )
-    {
-        IfaceHold = IFACE_NONE;
-        LMenuTryActivate();
-    }
-}
-
-void FOClient::PupLMouseUp()
-{
-    if( !Chosen )
-        IfaceHold = IFACE_NONE;
-
-    switch( IfaceHold )
-    {
-    case IFACE_PUP_CONT2:
-    {
-        if( !IsCurInRect( PupWCont1, PupX, PupY ) )
-            break;
-
-        auto it = PtrCollectionFind( PupCont2.begin(), PupCont2.end(), PupHoldId );
-        if( it != PupCont2.end() )
-        {
-            Item* item = *it;
-            if( item->GetCount() > 1 )
-                SplitStart( PupHoldId, IFACE_PUP_CONT2 );
-            else
-                SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT2, 1 );
-        }
-    }
-    break;
-    case IFACE_PUP_CONT1:
-    {
-        if( !IsCurInRect( PupWCont2, PupX, PupY ) )
-            break;
-
-        auto it = PtrCollectionFind( PupCont1.begin(), PupCont1.end(), PupHoldId );
-        if( it != PupCont1.end() )
-        {
-            Item* item = *it;
-            if( item->GetCount() > 1 )
-                SplitStart( PupHoldId, IFACE_PUP_CONT1 );
-            else
-                SetAction( CHOSEN_MOVE_ITEM_CONT, PupHoldId, IFACE_PUP_CONT1, 1 );
-        }
-    }
-    break;
-    case IFACE_PUP_OK:
-    {
-        if( !IsCurInRect( PupBOk, PupX, PupY ) )
-            break;
-        ShowScreen( SCREEN_NONE );
-    }
-    break;
-    case IFACE_PUP_SCRUP1:
-    {
-        if( !IsCurInRect( PupBScrUp1, PupX, PupY ) )
-            break;
-        if( PupScroll1 > 0 )
-            PupScroll1--;
-    }
-    break;
-    case IFACE_PUP_SCRDOWN1:
-    {
-        if( !IsCurInRect( PupBScrDw1, PupX, PupY ) )
-            break;
-        if( PupScroll1 < (int) Chosen->GetItemsCountInv() - ( PupWCont2[ 3 ] - PupWCont2[ 1 ] ) / PupHeightItem2 )
-            PupScroll1++;
-    }
-    break;
-    case IFACE_PUP_SCRUP2:
-    {
-        if( !IsCurInRect( PupBScrUp2, PupX, PupY ) )
-            break;
-        if( PupScroll2 > 0 )
-            PupScroll2--;
-    }
-    break;
-    case IFACE_PUP_SCRDOWN2:
-    {
-        if( !IsCurInRect( PupBScrDw2, PupX, PupY ) )
-            break;
-        if( PupScroll2 < (int) PupCont2.size() - ( PupWCont1[ 3 ] - PupWCont1[ 1 ] ) / PupHeightItem1 )
-            PupScroll2++;
-    }
-    break;
-    case IFACE_PUP_TAKEALL:
-    {
-        if( PupTransferType == TRANSFER_CRIT_STEAL )
-            break;
-        if( !IsCurInRect( PupBTakeAll, PupX, PupY ) )
-            break;
-        SetAction( CHOSEN_TAKE_ALL );
-    }
-    break;
-    case IFACE_PUP_SCRCR_L:
-    {
-        if( !IsCurInRect( PupBNextCritLeft, PupX, PupY ) )
-            break;
-        if( !Chosen->IsFree() || !ChosenAction.empty() )
-            break;
-        uint cnt = (uint) PupGetLootCrits().size();
-        if( cnt < 2 )
-            break;
-        if( !PupScrollCrit )
-            PupScrollCrit = cnt - 1;
-        else
-            PupScrollCrit--;
-        CritterCl* cr = PupGetLootCrit( PupScrollCrit );
-        if( !cr )
-            break;
-        SetAction( CHOSEN_PICK_CRIT, cr->GetId(), 0 );
-    }
-    break;
-    case IFACE_PUP_SCRCR_R:
-    {
-        if( !IsCurInRect( PupBNextCritRight, PupX, PupY ) )
-            break;
-        if( !Chosen->IsFree() || !ChosenAction.empty() )
-            break;
-        uint cnt = (uint) PupGetLootCrits().size();
-        if( cnt < 2 )
-            break;
-        if( PupScrollCrit + 1 >= (int) cnt )
-            PupScrollCrit = 0;
-        else
-            PupScrollCrit++;
-        CritterCl* cr = PupGetLootCrit( PupScrollCrit );
-        if( !cr )
-            break;
-        SetAction( CHOSEN_PICK_CRIT, cr->GetId(), 0 );
-    }
-    break;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-    PupHoldId = 0;
-}
-
-void FOClient::PupMouseMove()
-{
-    if( IfaceHold == IFACE_PUP_MAIN )
-    {
-        PupX = GameOpt.MouseX - PupVectX;
-        PupY = GameOpt.MouseY - PupVectY;
-
-        if( PupX < 0 )
-            PupX = 0;
-        if( PupX + PupWMain[ 2 ] > GameOpt.ScreenWidth )
-            PupX = GameOpt.ScreenWidth - PupWMain[ 2 ];
-        if( PupY < 0 )
-            PupY = 0;
-        // if(PupY+PupWMain[3]>IntY) PupY=IntY-PupWMain[3];
-        if( PupY + PupWMain[ 3 ] > GameOpt.ScreenHeight )
-            PupY = GameOpt.ScreenHeight - PupWMain[ 3 ];
-    }
-}
-
-void FOClient::PupRMouseDown()
-{
-    SetCurCastling( CUR_DEFAULT, CUR_HAND );
-}
-
-CritVec& FOClient::PupGetLootCrits()
-{
-    static CritVec loot;
-    loot.clear();
-    if( PupTransferType != TRANSFER_CRIT_LOOT )
-        return loot;
-    CritterCl* loot_cr = HexMngr.GetCritter( PupContId );
-    if( !loot_cr || !loot_cr->IsDead() )
-        return loot;
-    Field& f = HexMngr.GetField( loot_cr->GetHexX(), loot_cr->GetHexY() );
-    if( f.DeadCrits )
-    {
-        for( uint i = 0, j = (uint) f.DeadCrits->size(); i < j; i++ )
-            if( !f.DeadCrits->at( i )->GetIsNoLoot() )
-                loot.push_back( f.DeadCrits->at( i ) );
-    }
-    return loot;
-}
-
-CritterCl* FOClient::PupGetLootCrit( int scroll )
-{
-    CritVec& loot = PupGetLootCrits();
-    for( uint i = 0, j = (uint) loot.size(); i < j; i++ )
-        if( i == (uint) scroll )
-            return loot[ i ];
-    return nullptr;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::CurDrawHand()
-{
-    if( !Chosen )
-        return;
-
-    SpriteInfo* si = nullptr;
-    int         x = 0, y = 0;
-
-    if( GetActiveScreen() == SCREEN__BARTER )
-    {
-        if( IfaceHold && BarterHoldId )
-        {
-            ItemVec* cont = nullptr;
-            switch( IfaceHold )
-            {
-            case IFACE_BARTER_CONT1:
-                cont = &InvContInit;
-                break;
-            case IFACE_BARTER_CONT2:
-                cont = &BarterCont2Init;
-                break;
-            case IFACE_BARTER_CONT1O:
-                cont = &BarterCont1oInit;
-                break;
-            case IFACE_BARTER_CONT2O:
-                cont = &BarterCont2oInit;
-                break;
-            default:
-                goto DrawCurHand;
-            }
-
-            auto it = PtrCollectionFind( cont->begin(), cont->end(), BarterHoldId );
-            if( it == cont->end() )
-                goto DrawCurHand;
-            Item*      item = *it;
-
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
-            if( !anim )
-                goto DrawCurHand;
-
-            if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
-                goto DrawCurHand;
-            x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-            y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
-            SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
-        }
-        else
-            goto DrawCurHand;
-    }
-    else if( GetActiveScreen() == SCREEN__PICKUP && PupHoldId )
-    {
-        Item* item = GetContainerItem( IfaceHold == IFACE_PUP_CONT1 ? PupCont1 : PupCont2, PupHoldId );
-        if( item )
-        {
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
-            if( anim )
-            {
-                if( !( si = SprMngr.GetSpriteInfo( anim->GetCurSprId() ) ) )
-                    return;
-                x = GameOpt.MouseX - ( si->Width / 2 ) + si->OffsX;
-                y = GameOpt.MouseY - ( si->Height / 2 ) + si->OffsY;
-                SprMngr.DrawSprite( anim, x, y, item->GetInvColor() );
-            }
-        }
-    }
-
-DrawCurHand:
-    if( !( si = SprMngr.GetSpriteInfo( CurPHand->GetCurSprId() ) ) )
-        return;
-    SprMngr.DrawSprite( CurPHand, GameOpt.MouseX, GameOpt.MouseY );
 }
 
 // ==============================================================================================================================
@@ -6303,24 +4940,12 @@ void FOClient::IboxKeyDown( uchar dik, const char* dik_text )
         return;
     IboxLastKey = dik;
     IboxLastKeyText = dik_text;
-    Timer::StartAccelerator( ACCELERATE_IBOX );
 }
 
 void FOClient::IboxKeyUp( uchar dik )
 {
     IboxLastKey = 0;
     IboxLastKeyText = "";
-}
-
-void FOClient::IboxProcess()
-{
-    if( IboxLastKey && Timer::ProcessAccelerator( ACCELERATE_IBOX ) )
-    {
-        if( IfaceHold == IFACE_IBOX_TITLE )
-            Keyb::GetChar( IboxLastKey, IboxLastKeyText.c_str(), IboxTitle, &IboxTitleCur, USER_HOLO_MAX_TITLE_LEN, KIF_NO_SPEC_SYMBOLS );
-        else if( IfaceHold == IFACE_IBOX_TEXT )
-            Keyb::GetChar( IboxLastKey, IboxLastKeyText.c_str(), IboxText, &IboxTextCur, USER_HOLO_MAX_LEN, 0 );
-    }
 }
 
 void FOClient::IboxMouseMove()
@@ -6615,15 +5240,9 @@ void FOClient::SaveLoadLMouseDown()
         return;
 
     if( IsCurInRect( SaveLoadScrUp, ox, oy ) )
-    {
         IfaceHold = IFACE_SAVELOAD_SCR_UP;
-        Timer::StartAccelerator( ACCELERATE_SAVE_LOAD_SCR_UP );
-    }
     else if( IsCurInRect( SaveLoadScrDown, ox, oy ) )
-    {
         IfaceHold = IFACE_SAVELOAD_SCR_DN;
-        Timer::StartAccelerator( ACCELERATE_SAVE_LOAD_SCR_DN );
-    }
     else if( IsCurInRect( SaveLoadDone, ox, oy ) )
         IfaceHold = IFACE_SAVELOAD_DONE;
     else if( IsCurInRect( SaveLoadBack, ox, oy ) )
