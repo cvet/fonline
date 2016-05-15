@@ -1352,7 +1352,7 @@ void FOClient::LMenuTryCreate()
         if( !LMenuCurNodes )
             return;
 
-        SndMngr.PlaySound( SND_LMENU );
+        SndMngr.PlaySound( "IACCUXX1" );
         int height = (int) LMenuCurNodes->size() * LMenuNodeHeight;
         if( LMenuY + height > GameOpt.ScreenHeight )
             LMenuY -= LMenuY + height - GameOpt.ScreenHeight;

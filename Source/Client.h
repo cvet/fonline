@@ -1184,9 +1184,7 @@ public:
 #define SCREEN__SPLIT                  ( 20 )
 #define SCREEN__TIMER                  ( 21 )
 #define SCREEN__DIALOGBOX              ( 22 )
-#define SCREEN__ELEVATOR               ( 23 )
 #define SCREEN__GM_TOWN                ( 28 )
-#define SCREEN__INPUT_BOX              ( 29 )
 #define SCREEN__SKILLBOX               ( 30 )
 #define SCREEN__USE                    ( 31 )
 #define SCREEN__TOWN_VIEW              ( 33 )
@@ -1301,18 +1299,5 @@ public:
 #define IFACE_SAVELOAD_SCR_DN          ( 442 )
 #define IFACE_SAVELOAD_DONE            ( 443 )
 #define IFACE_SAVELOAD_BACK            ( 444 )
-
-// Sounds
-#define SND_BUTTON1_IN                 "BUTIN1"
-#define SND_BUTTON2_IN                 "BUTIN2"
-#define SND_BUTTON3_IN                 "BUTIN3"
-#define SND_BUTTON4_IN                 "BUTIN4"
-#define SND_BUTTON1_OUT                "BUTOUT1"
-#define SND_BUTTON2_OUT                "BUTOUT2"
-#define SND_BUTTON3_OUT                "BUTOUT3"
-#define SND_BUTTON4_OUT                "BUTOUT4"
-#define SND_LMENU                      "IACCUXX1"
-#define SND_COMBAT_MODE_ON             "ICIBOXX1"
-#define SND_COMBAT_MODE_OFF            "ICIBCXX1"
 
 #endif // __CLIENT__
