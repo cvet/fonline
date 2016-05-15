@@ -309,7 +309,6 @@ struct ClientScriptFunctions
     int ToHit;
     int HitAim;
     int CombatResult;
-    int GenericDesc;
     int ItemLook;
     int CritterLook;
     int GetElevator;
@@ -661,7 +660,6 @@ struct GameOptions
     uchar         ChosenLightDistance;
     int           ChosenLightIntensity;
     uchar         ChosenLightFlags;
-    bool          EnableIntellectWords;
 
     // Mapper
     ScriptString* ClientPath;

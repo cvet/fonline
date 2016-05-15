@@ -422,10 +422,6 @@
 #define STR_SCORES_TITLE( score )                    ( 13000 + ( score ) * 10 )
 #define STR_SCORES_NAME( score )                     ( 13000 + ( score ) * 10 + 1 )
 
-// Intellect words
-#define STR_INTELLECT_WORDS                ( 1999000000 )
-#define STR_INTELLECT_SYMBOLS              ( 1999000001 )
-
 // Help
 #define STR_GAME_HELP                      ( 2000000000 )
 

@@ -48,7 +48,7 @@ public:
     void RadioClear();
     void RadioRegister( Item* radio, bool add );
     void RadioSendText( Critter* cr, const char* text, ushort text_len, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels );
-    void RadioSendTextEx( ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const char* text, ushort text_len, ushort intellect, bool unsafe_text, ushort text_msg, uint num_str, const char* lexems );
+    void RadioSendTextEx( ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const char* text, ushort text_len, bool unsafe_text, ushort text_msg, uint num_str, const char* lexems );
 
     // Items statistics
 private:

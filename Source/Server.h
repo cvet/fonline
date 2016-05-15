@@ -72,7 +72,6 @@ public:
     static void Process_Craft( Client* cl );
     static void Process_Ping( Client* cl );
     static void Process_PlayersBarter( Client* cl );
-    static void Process_ScreenAnswer( Client* cl );
     static void Process_Combat( Client* cl );
     static void Process_RunServerScript( Client* cl );
     static void Process_KarmaVoting( Client* cl );
@@ -147,10 +146,6 @@ public:
     static bool RequestReloadClientScripts;
     static bool ReloadClientScripts();
     static bool ReloadMapperScripts();
-
-    // Pragma callbacks
-    static bool PragmaCallbackCrData( const char* text );
-    static bool PragmaCallbackCrClData( const char* text );
 
     // Text listen
     #define TEXT_LISTEN_FIRST_STR_MAX_LEN    ( 63 )
@@ -533,7 +528,6 @@ public:
         static int  Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_y );
 
         static void Cl_ShowContainer( Critter* cl, Critter* cr_cont, Item* item_cont, uchar transfer_type );
-        static void Cl_ShowScreen( Critter* cl, int screen_type, uint param, ScriptString* func_name );
         static void Cl_RunClientScript( Critter* cl, ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
         static void Cl_Disconnect( Critter* cl );
 

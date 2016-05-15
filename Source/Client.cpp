@@ -739,18 +739,6 @@ void FOClient::Finish()
 
     SAFEDELA( ComBuf );
 
-    for( auto it = IntellectWords.begin(), end = IntellectWords.end(); it != end; ++it )
-    {
-        delete[] it->first;
-        delete[] it->second;
-    }
-    IntellectWords.clear();
-    for( auto it = IntellectSymbols.begin(), end = IntellectSymbols.end(); it != end; ++it )
-    {
-        delete[] it->first;
-        delete[] it->second;
-    }
-    IntellectSymbols.clear();
     FileManager::ClearDataFiles();
 
     Active = false;
@@ -1108,9 +1096,6 @@ int FOClient::MainLoop()
         HexMngr.ProcessRain();
         LMenuTryCreate();
     }
-
-    if( IsScreenPresent( SCREEN__ELEVATOR ) )
-        ElevatorProcess();
 
     CHECK_MULTIPLY_WINDOWS2;
 
@@ -2320,9 +2305,6 @@ void FOClient::NetProcess()
         case NETMSG_PLAYERS_BARTER_SET_HIDE:
             Net_OnPlayersBarterSetHide();
             break;
-        case NETMSG_SHOW_SCREEN:
-            Net_OnShowScreen();
-            break;
         case NETMSG_RUN_CLIENT_SCRIPT:
             Net_OnRunClientScript();
             break;
@@ -2881,17 +2863,6 @@ void FOClient::Net_SendPlayersBarter( uchar barter, uint param, uint param_ext )
     Bout << param_ext;
 }
 
-void FOClient::Net_SendScreenAnswer( uint answer_i, const char* answer_s )
-{
-    char answer_s_buf[ MAX_SAY_NPC_TEXT + 1 ];
-    memzero( answer_s_buf, sizeof( answer_s_buf ) );
-    Str::Copy( answer_s_buf, MAX_SAY_NPC_TEXT + 1, answer_s );
-
-    Bout << NETMSG_SEND_SCREEN_ANSWER;
-    Bout << answer_i;
-    Bout.Push( answer_s_buf, MAX_SAY_NPC_TEXT );
-}
-
 void FOClient::Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text )
 {
     if( !holodisk || !title || !text )
@@ -3142,7 +3113,6 @@ void FOClient::Net_OnText()
     uint   msg_len;
     uint   crid;
     uchar  how_say;
-    ushort intellect;
     bool   unsafe_text;
     ushort len;
     char   str[ MAX_FOTEXT + 1 ];
@@ -3150,7 +3120,6 @@ void FOClient::Net_OnText()
     Bin >> msg_len;
     Bin >> crid;
     Bin >> how_say;
-    Bin >> intellect;
     Bin >> unsafe_text;
 
     Bin >> len;
@@ -3170,7 +3139,7 @@ void FOClient::Net_OnText()
     if( unsafe_text )
         Keyb::EraseInvalidChars( str, KIF_NO_SPEC_SYMBOLS );
 
-    OnText( str, crid, how_say, intellect );
+    OnText( str, crid, how_say );
 }
 
 void FOClient::Net_OnTextMsg( bool with_lexems )
@@ -3219,18 +3188,18 @@ void FOClient::Net_OnTextMsg( bool with_lexems )
     {
         char str[ MAX_FOTEXT ];
         Str::Copy( str, GetHoloText( num_str ) );
-        OnText( str, crid, how_say, 10 );
+        OnText( str, crid, how_say );
     }
     else if( msg.Count( num_str ) )
     {
         char str[ MAX_FOTEXT ];
         Str::Copy( str, msg.GetStr( num_str ) );
         FormatTags( str, Chosen, GetCritter( crid ), lexems );
-        OnText( str, crid, how_say, 10 );
+        OnText( str, crid, how_say );
     }
 }
 
-void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect )
+void FOClient::OnText( const char* str, uint crid, int how_say )
 {
     char fstr[ MAX_FOTEXT ];
     Str::Copy( fstr, str );
@@ -3257,10 +3226,6 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
         if( !len )
             return;
     }
-
-    // Intellect format
-    if( how_say >= SAY_NORM && how_say <= SAY_RADIO )
-        FmtTextIntellect( fstr, intellect );
 
     // Type stream
     uint fstr_cr = 0;
@@ -3343,8 +3308,6 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
     // Encounter question
     if( how_say >= SAY_ENCOUNTER_ANY && how_say <= SAY_ENCOUNTER_TB && IsMainScreen( SCREEN_GLOBAL_MAP ) )
     {
-        DlgboxSelectedButton = 0;
-
         if( how_say == SAY_ENCOUNTER_ANY )
         {
             DlgboxType = DIALOGBOX_ENCOUNTER_ANY;
@@ -3377,28 +3340,10 @@ void FOClient::OnText( const char* str, uint crid, int how_say, ushort intellect
     if( how_say == SAY_FIX_RESULT )
         FixResultStr = fstr;
 
-    // Dialogbox
-    if( how_say == SAY_DIALOGBOX_TEXT )
-    {
-        Str::Copy( DlgboxText, fstr );
-        ShowDialogBox();
-    }
-    else if( how_say >= SAY_DIALOGBOX_BUTTON( 0 ) && how_say < SAY_DIALOGBOX_BUTTON( MAX_DLGBOX_BUTTONS ) )
-    {
-        DlgboxButtonText[ how_say - SAY_DIALOGBOX_BUTTON( 0 ) ] = fstr;
-        ShowDialogBox();
-    }
-
-    // Say box
-    if( how_say == SAY_SAY_TITLE )
-        SayTitle = fstr;
-    else if( how_say == SAY_SAY_TEXT )
-        SayText = fstr;
-
     FlashGameWindow();
 }
 
-void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color, ushort intellect )
+void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color )
 {
     uint          len = Str::Length( str );
     uint          text_delay = GameOpt.TextDelay + len * 100;
@@ -3418,12 +3363,6 @@ void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color, ush
         }
     }
 
-    char fstr[ MAX_FOTEXT ];
-    Str::Copy( fstr, sstr->c_str() );
-    sstr->Release();
-
-    FmtTextIntellect( fstr, intellect );
-
     MapText t;
     t.HexX = hx;
     t.HexY = hy;
@@ -3431,13 +3370,15 @@ void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color, ush
     t.Fade = false;
     t.StartTick = Timer::GameTick();
     t.Tick = text_delay;
-    t.Text = fstr;
+    t.Text = sstr->c_std_str();
     t.Pos = HexMngr.GetRectForText( hx, hy );
     t.EndPos = t.Pos;
     auto it = std::find( GameMapTexts.begin(), GameMapTexts.end(), t );
     if( it != GameMapTexts.end() )
         GameMapTexts.erase( it );
     GameMapTexts.push_back( t );
+
+    sstr->Release();
 
     FlashGameWindow();
 }
@@ -3449,7 +3390,6 @@ void FOClient::Net_OnMapText()
     uint   color;
     ushort len;
     char   str[ MAX_FOTEXT + 1 ];
-    ushort intellect;
     bool   unsafe_text;
 
     Bin >> msg_len;
@@ -3463,7 +3403,6 @@ void FOClient::Net_OnMapText()
         Bin.Pop( Str::GetBigBuf(), len - MAX_FOTEXT );
     str[ MIN( len, ushort( MAX_FOTEXT ) ) ] = 0;
 
-    Bin >> intellect;
     Bin >> unsafe_text;
 
     CHECK_IN_BUFF_ERROR;
@@ -3477,7 +3416,7 @@ void FOClient::Net_OnMapText()
     if( unsafe_text )
         Keyb::EraseInvalidChars( str, KIF_NO_SPEC_SYMBOLS );
 
-    OnMapText( str, hx, hy, color, intellect );
+    OnMapText( str, hx, hy, color );
 }
 
 void FOClient::Net_OnMapTextMsg()
@@ -3505,7 +3444,7 @@ void FOClient::Net_OnMapTextMsg()
     Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ) );
     FormatTags( str, Chosen, nullptr, "" );
 
-    OnMapText( str, hx, hy, color, 0 );
+    OnMapText( str, hx, hy, color );
 }
 
 void FOClient::Net_OnMapTextMsgLex()
@@ -3544,7 +3483,7 @@ void FOClient::Net_OnMapTextMsgLex()
     Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ) );
     FormatTags( str, Chosen, nullptr, lexems );
 
-    OnMapText( str, hx, hy, color, 0 );
+    OnMapText( str, hx, hy, color );
 }
 
 void FOClient::Net_OnCritterDir()
@@ -5025,9 +4964,6 @@ void FOClient::Net_OnMap()
     SAFEDELA( tiles_data );
     SAFEDELA( scen_data );
 
-    AutomapWaitPids.erase( map_pid );
-    AutomapReceivedPids.insert( map_pid );
-
     WriteLog( "Map saved.\n" );
 }
 
@@ -5316,7 +5252,6 @@ void FOClient::Net_OnFollow()
 
     CHECK_IN_BUFF_ERROR;
 
-    DlgboxSelectedButton = 0;
     DlgboxType = DIALOGBOX_FOLLOW;
     FollowRuleId = rule;
     FollowType = follow_type;
@@ -5412,7 +5347,6 @@ void FOClient::Net_OnPlayersBarter()
         if( !cr )
             break;
 
-        DlgboxSelectedButton = 0;
         DlgboxType = DIALOGBOX_BARTER;
         PBarterPlayerId = param;
         BarterOpponentHide = ( param_ext != 0 );
@@ -5603,101 +5537,6 @@ void FOClient::Net_OnPlayersBarterSetHide()
         citem->SetCount( new_count );
     }
     CollectContItems();
-}
-
-void FOClient::Net_OnShowScreen()
-{
-    int  screen_type;
-    uint param;
-    bool need_answer;
-    Bin >> screen_type;
-    Bin >> param;
-    Bin >> need_answer;
-
-    CHECK_IN_BUFF_ERROR;
-
-    // Close current
-    switch( screen_type )
-    {
-    case SHOW_SCREEN_TIMER:
-    case SHOW_SCREEN_DIALOGBOX:
-    case SHOW_SCREEN_SKILLBOX:
-    case SHOW_SCREEN_BAG:
-    case SHOW_SCREEN_SAY:
-        ShowScreen( SCREEN_NONE );
-        break;
-    default:
-        ShowScreen( SCREEN_NONE );
-        break;
-    }
-
-    // Open new
-    switch( screen_type )
-    {
-    case SHOW_SCREEN_TIMER:
-    {
-        ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-        dict->Set( "TargetItemId", &param, asTYPEID_UINT32 );
-        ShowScreen( SCREEN__TIMER, dict );
-        dict->Release();
-    }
-    break;
-    case SHOW_SCREEN_DIALOGBOX:
-    {
-        DlgboxSelectedButton = 0;
-        DlgboxWait = 0;
-        DlgboxText[ 0 ] = 0;
-        DlgboxType = DIALOGBOX_MANUAL;
-        if( param >= MAX_DLGBOX_BUTTONS )
-            param = MAX_DLGBOX_BUTTONS - 1;
-        DlgboxButtonsCount = param + 1;
-        for( uint i = 0; i < DlgboxButtonsCount; i++ )
-            DlgboxButtonText[ i ] = "";
-        DlgboxButtonText[ param ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
-        ShowDialogBox();
-    }
-    break;
-    case SHOW_SCREEN_SKILLBOX:
-        ShowScreen( SCREEN__SKILLBOX );
-        break;
-    case SHOW_SCREEN_BAG:
-        ShowScreen( SCREEN__USE );
-        break;
-    case SHOW_SCREEN_SAY:
-        ShowScreen( SCREEN__SAY );
-        SayType = DIALOGSAY_TEXT;
-        SayText = "";
-        if( param )
-            SayOnlyNumbers = true;
-        break;
-    case SHOW_ELEVATOR:
-        ElevatorGenerate( param );
-        break;
-    // Just open
-    case SHOW_SCREEN_INVENTORY:
-        ShowScreen( SCREEN__INVENTORY );
-        return;
-    case SHOW_SCREEN_CHARACTER:
-        ShowScreen( SCREEN__CHARACTER );
-        return;
-    case SHOW_SCREEN_FIXBOY:
-        ShowScreen( SCREEN__FIX_BOY );
-        return;
-    case SHOW_SCREEN_PIPBOY:
-        ShowScreen( SCREEN__PIP_BOY );
-        return;
-    case SHOW_SCREEN_MINIMAP:
-        ShowScreen( SCREEN__MINI_MAP );
-        return;
-    case SHOW_SCREEN_CLOSE:
-        return;
-    default:
-        return;
-    }
-
-    ShowScreenType = screen_type;
-    ShowScreenParam = param;
-    ShowScreenNeedAnswer = need_answer;
 }
 
 void FOClient::Net_OnRunClientScript()
@@ -5964,16 +5803,7 @@ void FOClient::Net_OnAutomapsInfo()
     Bin >> clear;
 
     if( clear )
-    {
         Automaps.clear();
-        AutomapWaitPids.clear();
-        AutomapReceivedPids.clear();
-        AutomapPoints.clear();
-        AutomapCurMapPid = 0;
-        AutomapScrX = 0.0f;
-        AutomapScrY = 0.0f;
-        AutomapZoom = 1.0f;
-    }
 
     Bin >> locs_count;
     for( ushort i = 0; i < locs_count; i++ )
@@ -6048,14 +5878,12 @@ void FOClient::Net_OnViewMap()
     ShowMainScreen( SCREEN_GAME );
     ScreenFadeOut();
     HexMngr.RebuildLight();
-    ShowScreen( SCREEN__TOWN_VIEW );
 
-    if( loc_id )
-    {
-        TViewType = TOWN_VIEW_FROM_GLOBAL;
-        TViewGmapLocId = loc_id;
-        TViewGmapLocEntrance = loc_ent;
-    }
+    ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+    dict->Set( "LocationId", &loc_id, asTYPEID_UINT32 );
+    dict->Set( "LocationEntrance", &loc_ent, asTYPEID_UINT32 );
+    ShowScreen( SCREEN__TOWN_VIEW, dict );
+    dict->Release();
 }
 
 void FOClient::Net_OnCraftAsk()
@@ -7692,30 +7520,6 @@ const char* FOClient::FmtCombatText( uint str_num, ... )
     return res;
 }
 
-const char* FOClient::FmtGenericDesc( int desc_type, int& ox, int& oy )
-{
-    ox = 0;
-    oy = 0;
-    if( Script::PrepareContext( ClientFunctions.GenericDesc, _FUNC_, "Game" ) )
-    {
-        Script::SetArgUInt( desc_type );
-        Script::SetArgAddress( &ox );
-        Script::SetArgAddress( &oy );
-        if( Script::RunPrepared() )
-        {
-            ScriptString* result = (ScriptString*) Script::GetReturnedObject();
-            if( result )
-            {
-                static char str[ MAX_FOTEXT ];
-                Str::Copy( str, result->c_str() );
-                return str[ 0 ] ? str : nullptr;
-            }
-        }
-    }
-
-    return Str::FormatBuf( "<error>" );
-}
-
 const char* FOClient::FmtCritLook( CritterCl* cr, int look_type )
 {
     if( Script::PrepareContext( ClientFunctions.CritterLook, _FUNC_, "Game" ) )
@@ -7756,192 +7560,6 @@ const char* FOClient::FmtItemLook( Item* item, int look_type )
     }
 
     return MsgGame->GetStr( STR_ITEM_LOOK_NOTHING );
-}
-
-void FOClient::ParseIntellectWords( const char* words, PCharPairVec& text )
-{
-    char* w = (char*) words;
-    Str::SkipLine( w );
-
-    bool parse_in = true;
-    char in[ MAX_FOTEXT ] = { 0 };
-    char out[ MAX_FOTEXT ] = { 0 };
-
-    while( true )
-    {
-        if( *w == 0 )
-            break;
-
-        if( *w == '\n' || *w == '\r' )
-        {
-            Str::SkipLine( w );
-            parse_in = true;
-
-            uint in_len = Str::Length( in ) + 1;
-            uint out_len = Str::Length( out ) + 1;
-            if( in_len < 2 )
-                continue;
-
-            char* in_ = new char[ in_len ];
-            char* out_ = new char[ out_len ];
-            Str::Copy( in_, in_len, in );
-            Str::Copy( out_, out_len, out );
-
-            text.push_back( PAIR( in_, out_ ) );
-            in[ 0 ] = 0;
-            out[ 0 ] = 0;
-            continue;
-        }
-
-        if( *w == ' ' && *( w + 1 ) == ' ' && parse_in )
-        {
-            if( !Str::Length( in ) )
-            {
-                Str::SkipLine( w );
-            }
-            else
-            {
-                w += 2;
-                parse_in = false;
-            }
-            continue;
-        }
-
-        strncat( parse_in ? in : out, w, 1 );
-        w++;
-    }
-}
-
-PCharPairVec::iterator FOClient::FindIntellectWord( const char* word, PCharPairVec& text, Randomizer& rnd )
-{
-    auto it = text.begin();
-    auto end = text.end();
-    for( ; it != end; ++it )
-    {
-        if( Str::CompareCaseUTF8( word, it->first ) )
-            break;
-    }
-
-    if( it != end )
-    {
-        auto it_ = it;
-        it++;
-        int  cnt = 0;
-        for( ; it != end; ++it )
-        {
-            if( Str::CompareCaseUTF8( ( *it_ ).first, it->first ) )
-                cnt++;
-            else
-                break;
-        }
-        it_ += rnd.Random( 0, cnt );
-        it = it_;
-    }
-
-    return it;
-}
-
-void FOClient::FmtTextIntellect( char* str, ushort intellect )
-{
-    uchar intellegence = intellect & 0xF;
-    if( !intellect || intellegence >= 5 )
-        return;
-
-    static bool is_parsed = false;
-    if( !is_parsed )
-    {
-        ParseIntellectWords( MsgGame->GetStr( STR_INTELLECT_WORDS ), IntellectWords );
-        ParseIntellectWords( MsgGame->GetStr( STR_INTELLECT_SYMBOLS ), IntellectSymbols );
-        is_parsed = true;
-    }
-
-    if( IntellectWords.empty() && IntellectSymbols.empty() )
-        return;
-
-    int word_proc;
-    int symbol_proc;
-    switch( intellegence )
-    {
-    default:
-    case 1:
-        word_proc = 100;
-        symbol_proc = 20;
-        break;
-    case 2:
-        word_proc = 80;
-        symbol_proc = 15;
-        break;
-    case 3:
-        word_proc = 60;
-        symbol_proc = 10;
-        break;
-    case 4:
-        word_proc = 30;
-        symbol_proc = 5;
-        break;
-    }
-
-    Randomizer rnd( ( intellect << 16 ) | intellect );
-
-    char       word[ 1024 ] = { 0 };
-    while( true )
-    {
-        while( *str )
-        {
-            uint length;
-            Str::DecodeUTF8( str, &length );
-            if( length == 1 && !( ( *str >= 'a' && *str <= 'z' ) || ( *str >= 'A' && *str <= 'Z' ) ) )
-                break;
-            strncat( word, str, length );
-            str += length;
-        }
-
-        uint len = Str::Length( word );
-        if( len )
-        {
-            auto it = FindIntellectWord( word, IntellectWords, rnd );
-            if( it != IntellectWords.end() && rnd.Random( 1, 100 ) <= word_proc )
-            {
-                Str::EraseInterval( str - len, len );
-                Str::Insert( str - len, it->second );
-                str = str - len + Str::Length( it->second );
-            }
-            else
-            {
-                for( char* s = str - len; s < str;)
-                {
-                    if( rnd.Random( 1, 100 ) > symbol_proc )
-                        continue;
-
-                    uint length;
-                    Str::DecodeUTF8( s, &length );
-                    strncpy( word, s, length );
-                    word[ length ] = 0;
-
-                    it = FindIntellectWord( word, IntellectSymbols, rnd );
-                    if( it != IntellectSymbols.end() )
-                    {
-                        uint f_len = Str::Length( it->first );
-                        uint s_len = Str::Length( it->second );
-                        Str::EraseInterval( s, f_len );
-                        Str::Insert( s, it->second );
-                        str -= f_len;
-                        str += s_len;
-                    }
-
-                    s += length;
-                }
-            }
-            word[ 0 ] = 0;
-        }
-
-        if( *str == 0 )
-            break;
-
-        uint length;
-        Str::DecodeUTF8( str, &length );
-        str += length;
-    }
 }
 
 void FOClient::SoundProcess()
@@ -8804,7 +8422,6 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.ToHit, "to_hit", "int %s(Critter&,Critter&,ProtoItem&,uint8)" },
         { &ClientFunctions.HitAim, "hit_aim", "void %s(uint8&)" },
         { &ClientFunctions.CombatResult, "combat_result", "void %s(uint[]&)" },
-        { &ClientFunctions.GenericDesc, "generic_description", "string@ %s(int,int&,int&)" },
         { &ClientFunctions.ItemLook, "item_description", "string@ %s(Item&,int)" },
         { &ClientFunctions.CritterLook, "critter_description", "string@ %s(Critter&,int)" },
         { &ClientFunctions.GetElevator, "get_elevator", "bool %s(uint,uint[]&)" },
@@ -9740,8 +9357,27 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else if( cmd == "DialogBoxAnswer" && args.size() == 2 )
     {
-        Self->DlgboxSelectedButton = Str::AtoI( args[ 1 ].c_str() );
-        Self->DlgboxAnswer();
+        Self->DlgboxAnswer( Str::AtoI( args[ 1 ].c_str() ) );
+    }
+    else if( cmd == "RefreshMe" )
+    {
+        Self->Net_SendRefereshMe();
+    }
+    else if( cmd == "RuleGlobal" && args.size() == 4 )
+    {
+        int  type = Str::AtoUI( args[ 1 ].c_str() );
+        uint param1 = Str::AtoUI( args[ 2 ].c_str() );
+        uint param2 = Str::AtoUI( args[ 3 ].c_str() );
+        Self->Net_SendRuleGlobal( type, param1, param2 );
+    }
+    else if( cmd == "SetCrittersContour" && args.size() == 2 )
+    {
+        int countour_type = Str::AtoI( args[ 1 ].c_str() );
+        Self->HexMngr.SetCrittersContour( countour_type );
+    }
+    else if( cmd == "SaveGame" && args.size() == 2 )
+    {
+        Self->SaveLoadSaveGame( args[ 1 ].c_str() );
     }
     else
     {
@@ -11101,22 +10737,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = Self->FixX;
         y = Self->FixY;
         break;
-    case SCREEN__AIM:
-        x = Self->AimX;
-        y = Self->AimY;
-        break;
-    case SCREEN__DIALOGBOX:
-        x = Self->DlgboxX;
-        y = Self->DlgboxY;
-        break;
-    case SCREEN__ELEVATOR:
-        x = Self->ElevatorX;
-        y = Self->ElevatorY;
-        break;
-    case SCREEN__SAY:
-        x = Self->SayX;
-        y = Self->SayY;
-        break;
     case SCREEN__GM_TOWN:
         x = 0;
         y = 0;
@@ -11140,9 +10760,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
 {
     switch( screen )
     {
-    case SCREEN__CREDITS:
-        Self->CreditsDraw();
-        break;
     case SCREEN_GLOBAL_MAP:
         Self->GmapDraw();
         break;
@@ -11152,26 +10769,11 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
     case SCREEN__FIX_BOY:
         Self->FixDraw();
         break;
-    case SCREEN__AIM:
-        Self->AimDraw();
-        break;
-    case SCREEN__DIALOGBOX:
-        Self->DlgboxDraw();
-        break;
-    case SCREEN__ELEVATOR:
-        Self->ElevatorDraw();
-        break;
-    case SCREEN__SAY:
-        Self->SayDraw();
-        break;
     case SCREEN__GM_TOWN:
         Self->GmapTownDraw();
         break;
     case SCREEN__INPUT_BOX:
         Self->IboxDraw();
-        break;
-    case SCREEN__TOWN_VIEW:
-        Self->TViewDraw();
         break;
     case SCREEN__SAVE_LOAD:
         Self->SaveLoadDraw();
@@ -11188,9 +10790,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
 
     switch( screen )
     {
-    case SCREEN__CREDITS:
-        Self->TryExit();
-        break;
     case SCREEN_GAME:
         if( button == MOUSE_BUTTON_LEFT && down )
             Self->GameLMouseDown();
@@ -11223,38 +10822,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
         else if( move )
             Self->FixMouseMove();
         break;
-    case SCREEN__AIM:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->AimLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->AimLMouseUp();
-        else if( move )
-            Self->AimMouseMove();
-        break;
-    case SCREEN__DIALOGBOX:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->DlgboxLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->DlgboxLMouseUp();
-        else if( move )
-            Self->DlgboxMouseMove();
-        break;
-    case SCREEN__ELEVATOR:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->ElevatorLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->ElevatorLMouseUp();
-        else if( move )
-            Self->ElevatorMouseMove();
-        break;
-    case SCREEN__SAY:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->SayLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->SayLMouseUp();
-        else if( move )
-            Self->SayMouseMove();
-        break;
     case SCREEN__GM_TOWN:
         if( button == MOUSE_BUTTON_LEFT && down )
             Self->GmapLMouseDown();
@@ -11272,16 +10839,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->IboxLMouseDown();
         else if( button == MOUSE_BUTTON_LEFT && !down )
             Self->IboxLMouseUp();
-        break;
-    case SCREEN__TOWN_VIEW:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->TViewLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->TViewLMouseUp();
-        else if( button == MOUSE_BUTTON_MIDDLE && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
-            Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
-        else if( move )
-            Self->TViewMouseMove();
         break;
     case SCREEN__SAVE_LOAD:
         if( button == MOUSE_BUTTON_LEFT && down )
@@ -11305,26 +10862,15 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
 {
     switch( screen )
     {
-    case SCREEN__CREDITS:
-        Self->TryExit();
-        break;
     case SCREEN_GAME:
         if( down )
             Self->GameKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN_WAIT:
-        break;
-    case SCREEN__SAY:
-        if( down )
-            Self->SayKeyDown( key, text ? text->c_str() : "" );
         break;
     case SCREEN__INPUT_BOX:
         if( down )
             Self->IboxKeyDown( key, text ? text->c_str() : "" );
         else if( !down )
             Self->IboxKeyUp( key );
-        break;
-    case SCREEN__SAVE_LOAD:
         break;
     default:
         break;

@@ -316,10 +316,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_GIVE_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_LOAD_MAP_OK:
         return ( NETMSG_SEND_LOAD_MAP_OK_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SHOW_SCREEN:
-        return ( NETMSG_SHOW_SCREEN_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_SCREEN_ANSWER:
-        return ( NETMSG_SEND_SCREEN_ANSWER_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_DROP_TIMERS:
         return ( NETMSG_DROP_TIMERS_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_REFRESH_ME:
@@ -603,12 +599,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_SEND_LOAD_MAP_OK:
         size = NETMSG_SEND_LOAD_MAP_OK_SIZE;
-        break;
-    case NETMSG_SHOW_SCREEN:
-        size = NETMSG_SHOW_SCREEN_SIZE;
-        break;
-    case NETMSG_SEND_SCREEN_ANSWER:
-        size = NETMSG_SEND_SCREEN_ANSWER_SIZE;
         break;
     case NETMSG_DROP_TIMERS:
         size = NETMSG_DROP_TIMERS_SIZE;

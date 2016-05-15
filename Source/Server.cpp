@@ -1704,12 +1704,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_SCREEN_ANSWER:
-            {
-                Process_ScreenAnswer( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_REFRESH_ME:
             {
                 cl->Send_LoadMap( nullptr );
@@ -1918,7 +1912,7 @@ void FOServer::Process_Text( Client* cl )
         if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_WHISP, true );
         else
-            cl->Send_TextEx( cl->GetId(), str, len, SAY_WHISP, cl->IntellectCacheValue, true );
+            cl->Send_TextEx( cl->GetId(), str, len, SAY_WHISP, true );
     }
     break;
     case SAY_SOCIAL:
@@ -1931,7 +1925,7 @@ void FOServer::Process_Text( Client* cl )
         if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_WHISP, true );
         else
-            cl->Send_TextEx( cl->GetId(), str, len, SAY_WHISP, cl->IntellectCacheValue, true );
+            cl->Send_TextEx( cl->GetId(), str, len, SAY_WHISP, true );
 
         ItemMngr.RadioSendText( cl, str, len, true, 0, 0, channels );
         if( channels.empty() )
@@ -3879,7 +3873,7 @@ void FOServer::LogToClients( const char* str )
             Client* cl = *it;
             if( cl->IsOnline() )
             {
-                cl->Send_TextEx( 0, str, str_len, SAY_NETMSG, 10, false );
+                cl->Send_TextEx( 0, str, str_len, SAY_NETMSG, false );
                 ++it;
             }
             else

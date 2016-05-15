@@ -295,7 +295,6 @@ struct BindClass
     static void Crit_GetFog()        {}
 
     static void Cl_ShowContainer()   {}
-    static void Cl_ShowScreen()      {}
     static void Cl_RunClientScript() {}
     static void Cl_Disconnect()      {}
 

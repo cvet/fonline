@@ -174,20 +174,6 @@ int FOClient::InitIface()
     LmapSwitchHi = false;
     LmapPrepareNextTick = 0;
 
-    // Town view
-    IfaceLoadRect( TViewWMain, "TViewMain" );
-    IfaceLoadRect( TViewBBack, "TViewBack" );
-    IfaceLoadRect( TViewBEnter, "TViewEnter" );
-    IfaceLoadRect( TViewBContours, "TViewContours" );
-    TViewX = GameOpt.ScreenWidth - TViewWMain.W() - 10;
-    TViewY = 10;
-    TViewVectX = 0;
-    TViewVectY = 0;
-    TViewShowCountours = false;
-    TViewType = TOWN_VIEW_FROM_NONE;
-    TViewGmapLocId = 0;
-    TViewGmapLocEntrance = 0;
-
     // Global map
     const char* tiles_pic = IfaceIni.GetStr( "", "GmapTilesPic" );
     if( !tiles_pic )
@@ -249,99 +235,6 @@ int FOClient::InitIface()
 
     // Pipboy
     Automaps.clear();
-    AutomapWaitPids.clear();
-    AutomapReceivedPids.clear();
-    AutomapPoints.clear();
-    AutomapCurMapPid = 0;
-    AutomapScrX = 0.0f;
-    AutomapScrY = 0.0f;
-    AutomapZoom = 1.0f;
-
-    // Aim
-    IfaceLoadRect( AimWMain, "AimMain" );
-    IfaceLoadRect( AimBCancel, "AimCancel" );
-    IfaceLoadRect( AimWHeadT, "AimHeadText" );
-    IfaceLoadRect( AimWLArmT, "AimLArmText" );
-    IfaceLoadRect( AimWRArmT, "AimRArmText" );
-    IfaceLoadRect( AimWTorsoT, "AimTorsoText" );
-    IfaceLoadRect( AimWRLegT, "AimRLegText" );
-    IfaceLoadRect( AimWLLegT, "AimLLegText" );
-    IfaceLoadRect( AimWEyesT, "AimEyesText" );
-    IfaceLoadRect( AimWGroinT, "AimGroinText" );
-    IfaceLoadRect( AimWHeadP, "AimHeadProc" );
-    IfaceLoadRect( AimWLArmP, "AimLArmProc" );
-    IfaceLoadRect( AimWRArmP, "AimRArmProc" );
-    IfaceLoadRect( AimWTorsoP, "AimTorsoProc" );
-    IfaceLoadRect( AimWRLegP, "AimRLegProc" );
-    IfaceLoadRect( AimWLLegP, "AimLLegProc" );
-    IfaceLoadRect( AimWEyesP, "AimEyesProc" );
-    IfaceLoadRect( AimWGroinP, "AimGroinProc" );
-    AimPicX = IfaceIni.GetInt( "", "AimPicX", 0 );
-    AimPicY = IfaceIni.GetInt( "", "AimPicY", 0 );
-    AimX = ( GameOpt.ScreenWidth - AimWMain.W() ) / 2;
-    AimY = ( GameOpt.ScreenHeight - AimWMain.H() ) / 2;
-    AimVectX = 0;
-    AimVectY = 0;
-    AimPic = nullptr;
-    AimTargetId = 0;
-
-    // Dialog box
-    IfaceLoadRect( DlgboxWTop, "DlgboxTop" );
-    IfaceLoadRect( DlgboxWMiddle, "DlgboxMiddle" );
-    IfaceLoadRect( DlgboxWBottom, "DlgboxBottom" );
-    IfaceLoadRect( DlgboxWText, "DlgboxText" );
-    IfaceLoadRect( DlgboxBButton, "DlgboxButton" );
-    IfaceLoadRect( DlgboxBButtonText, "DlgboxButtonText" );
-    DlgboxX = ( GameOpt.ScreenWidth - DlgboxWTop.W() ) / 2;
-    DlgboxY = ( GameOpt.ScreenHeight - DlgboxWTop.H() ) / 2;
-    DlgboxVectX = 0;
-    DlgboxVectY = 0;
-    FollowRuleId = 0;
-    DlgboxType = DIALOGBOX_NONE;
-    FollowMap = 0;
-    DlgboxWait = 0;
-    memzero( DlgboxText, sizeof( DlgboxText ) );
-    FollowType = 0;
-    DlgboxButtonsCount = 0;
-    DlgboxSelectedButton = 0;
-    FollowType = 0;
-    FollowRuleId = 0;
-    FollowMap = 0;
-    PBarterPlayerId = 0;
-    PBarterHide = false;
-
-    // Elevator
-    ElevatorMainPic = 0;
-    ElevatorExtPic = 0;
-    ElevatorIndicatorAnim = 0;
-    ElevatorButtonPicDown = 0;
-    ElevatorButtonsCount = 0;
-    ElevatorType = 0;
-    ElevatorLevelsCount = 0;
-    ElevatorStartLevel = 0;
-    ElevatorCurrentLevel = 0;
-    ElevatorX = 0;
-    ElevatorY = 0;
-    ElevatorVectX = 0;
-    ElevatorVectY = 0;
-    ElevatorSelectedButton = -1;
-    ElevatorAnswerDone = false;
-    ElevatorSendAnswerTick = 0;
-
-    // Say box
-    IfaceLoadRect( SayWMain, "SayMain" );
-    IfaceLoadRect( SayWMainText, "SayMainText" );
-    IfaceLoadRect( SayWSay, "SaySay" );
-    IfaceLoadRect( SayBOk, "SayOk" );
-    IfaceLoadRect( SayBOkText, "SayOkText" );
-    IfaceLoadRect( SayBCancel, "SayCancel" );
-    IfaceLoadRect( SayBCancelText, "SayCancelText" );
-    SayX = ( GameOpt.ScreenWidth - SayWMain.W() ) / 2;
-    SayY = ( GameOpt.ScreenHeight - SayWMain.H() ) / 2;
-    SayVectX = 0;
-    SayVectY = 0;
-    SayType = DIALOGSAY_NONE;
-    SayText = "";
 
     // FixBoy
     IfaceLoadRect( FixWMain, "FixMain" );
@@ -467,12 +360,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( LmenuPVoteDownOff, "LMenuVoteDownPic" );
     IfaceLoadSpr( LmenuPVoteDownOn, "LMenuVoteDownPicDn" );
 
-    // Town view
-    IfaceLoadSpr( TViewWMainPic, "TViewMainPic" );
-    IfaceLoadSpr( TViewBBackPicDn, "TViewBackPicDn" );
-    IfaceLoadSpr( TViewBEnterPicDn, "TViewEnterPicDn" );
-    IfaceLoadSpr( TViewBContoursPicDn, "TViewContoursPicDn" );
-
     // Global map
     IfaceLoadSpr( GmapWMainPic, "GmapMainPic" );
     IfaceLoadSpr( GmapPBTownDw, "GmapTownPicDn" );
@@ -503,21 +390,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( GmapBFixPicDown, "GmapFixPicDn" );
     IfaceLoadSpr( GmapPLightPic0, "GmapLightPic0" );
     IfaceLoadSpr( GmapPLightPic1, "GmapLightPic1" );
-
-    // Aim
-    IfaceLoadSpr( AimPWMain, "AimMainPic" );
-    IfaceLoadSpr( AimPBCancelDn, "AimCancelPicDn" );
-
-    // Dialog box
-    IfaceLoadSpr( DlgboxWTopPicNone, "DlgboxTopPic" );
-    IfaceLoadSpr( DlgboxWMiddlePicNone, "DlgboxMiddlePic" );
-    IfaceLoadSpr( DlgboxWBottomPicNone, "DlgboxBottomPic" );
-    IfaceLoadSpr( DlgboxBButtonPicDown, "DlgboxButtonPicDn" );
-
-    // Say box
-    IfaceLoadSpr( SayWMainPicNone, "SayMainPic" );
-    IfaceLoadSpr( SayBOkPicDown, "SayOkPicDn" );
-    IfaceLoadSpr( SayBCancelPicDown, "SayCancelPicDn" );
 
     // FixBoy
     IfaceLoadSpr( FixMainPic, "FixMainPic" );
@@ -2357,14 +2229,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
 
     switch( screen )
     {
-    case SCREEN__CREDITS:
-        CreditsNextTick = Timer::FastTick();
-        CreditsYPos = GameOpt.ScreenHeight;
-        CreaditsExt = Keyb::ShiftDwn;
-        break;
-    case SCREEN__INVENTORY:
-        CollectContItems();
-        break;
     case SCREEN__PICKUP:
         CollectContItems();
         break;
@@ -2378,30 +2242,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         FixCurCraft = -1;
         FixGenerate( FIX_MODE_LIST );
         FixMouseMove();
-        break;
-    case SCREEN__AIM:
-    {
-        AimTargetId = 0;
-        if( !smth.IsCritter() )
-            break;
-        CritterCl* cr = GetCritter( smth.GetId() );
-        if( !cr )
-            break;
-        AimTargetId = cr->GetId();
-        AimPic = AimGetPic( cr, "frm" );
-        if( !AimPic )
-            AimPic = AimGetPic( cr, "png" );
-        if( !AimPic )
-            AimPic = AimGetPic( cr, "bmp" );
-        AimMouseMove();
-    }
-    break;
-    case SCREEN__SAY:
-        SayType = DIALOGSAY_NONE;
-        SayTitle = MsgGame->GetStr( STR_SAY_TITLE );
-        SayOnlyNumbers = false;
-        break;
-    case SCREEN__DIALOGBOX:
         break;
     case SCREEN__GM_TOWN:
     {
@@ -2461,12 +2301,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         IboxTitleCur = 0;
         IboxTextCur = 0;
         break;
-    case SCREEN__TOWN_VIEW:
-        TViewShowCountours = false;
-        TViewType = TOWN_VIEW_FROM_NONE;
-        TViewGmapLocId = 0;
-        TViewGmapLocEntrance = 0;
-        break;
     case SCREEN__SAVE_LOAD:
         SaveLoadCollect();
         if( SaveLoadLoginScreen )
@@ -2498,10 +2332,6 @@ void FOClient::HideScreen( int screen )
             if( SaveLoadLoginScreen )
                 ScreenFadeOut();
             SaveLoadDataSlots.clear();
-        }
-        else if( screen == SCREEN__SAY && SayType == DIALOGSAY_SAVE )
-        {
-            SaveLoadShowDraft();
         }
     }
 
@@ -3054,17 +2884,17 @@ void FOClient::GmapDraw()
             }
 
             /*SpriteInfo* si = SprMngr.GetSpriteInfo( CurPDef->GetCurSprId() );
-            if( Chosen )
-            {
+               if( Chosen )
+               {
                 SprMngr.DrawStr( Rect( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ), cur_loc ?
                                  FmtGameText( STR_GMAP_CUR_LOC_INFO, cx, cy, GM_ZONE( cx ), GM_ZONE( cy ), MsgLocations->GetStr( STR_LOC_NAME( cur_loc->LocPid ) ), MsgLocations->GetStr( STR_LOC_INFO( cur_loc->LocPid ) ) ) :
                                  FmtGameText( STR_GMAP_CUR_INFO, cx, cy, GM_ZONE( cx ), GM_ZONE( cy ) ), 0 );
-            }
-            else if( cur_loc )
-            {
+               }
+               else if( cur_loc )
+               {
                 SprMngr.DrawStr( Rect( GameOpt.MouseX + si->Width, GameOpt.MouseY + si->Height, GameOpt.MouseX + si->Width + 200, GameOpt.MouseY + si->Height + 500 ),
                                  FmtGameText( STR_GMAP_LOC_INFO, MsgLocations->GetStr( STR_LOC_NAME( cur_loc->LocPid ) ), MsgLocations->GetStr( STR_LOC_INFO( cur_loc->LocPid ) ) ), 0 );
-            }*/
+               }*/
         }
     }
 
@@ -3328,16 +3158,6 @@ void FOClient::GmapLMouseUp()
             }
         }
     }
-    else if( IfaceHold == IFACE_GMAP_INV && IsCurInRect( GmapBInv ) )
-        ShowScreen( SCREEN__INVENTORY );
-    else if( IfaceHold == IFACE_GMAP_MENU && IsCurInRect( GmapBMenu ) )
-        ShowScreen( SCREEN__MENU_OPTION );
-    else if( IfaceHold == IFACE_GMAP_CHA && IsCurInRect( GmapBCha ) )
-        ShowScreen( SCREEN__CHARACTER );
-    else if( IfaceHold == IFACE_GMAP_PIP && IsCurInRect( GmapBPip ) )
-        ShowScreen( SCREEN__PIP_BOY );
-    else if( IfaceHold == IFACE_GMAP_FIX && IsCurInRect( GmapBFix ) )
-        ShowScreen( SCREEN__FIX_BOY );
 
     IfaceHold = IFACE_NONE;
 }
@@ -3455,307 +3275,6 @@ uint FOClient::GmapGetMouseTabLocId()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::CreditsDraw()
-{
-    SprMngr.DrawStr( Rect( 0, CreditsYPos, GameOpt.ScreenWidth, GameOpt.ScreenHeight + 50 ),
-                     MsgGame->GetStr( CreaditsExt ? STR_GAME_CREDITS_EXT : STR_GAME_CREDITS ), FT_CENTERX, COLOR_TEXT, FONT_BIG );
-
-    if( Timer::FastTick() >= CreditsNextTick )
-    {
-        CreditsYPos--;
-        uint wait = MsgGame->GetInt( STR_GAME_CREDITS_SPEED );
-        wait = CLAMP( wait, 10, 1000 );
-        CreditsNextTick = Timer::FastTick() + wait;
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::TViewDraw()
-{
-    SprMngr.DrawSprite( TViewWMainPic, TViewWMain[ 0 ] + TViewX, TViewWMain[ 1 ] + TViewY );
-
-    if( IfaceHold == IFACE_TOWN_VIEW_BACK )
-        SprMngr.DrawSprite( TViewBBackPicDn, TViewBBack[ 0 ] + TViewX, TViewBBack[ 1 ] + TViewY );
-    if( IfaceHold == IFACE_TOWN_VIEW_ENTER )
-        SprMngr.DrawSprite( TViewBEnterPicDn, TViewBEnter[ 0 ] + TViewX, TViewBEnter[ 1 ] + TViewY );
-    if( IfaceHold == IFACE_TOWN_VIEW_CONTOUR || TViewShowCountours )
-        SprMngr.DrawSprite( TViewBContoursPicDn, TViewBContours[ 0 ] + TViewX, TViewBContours[ 1 ] + TViewY );
-
-    SprMngr.DrawStr( Rect( TViewBBack, TViewX, IfaceHold == IFACE_TOWN_VIEW_BACK ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_BACK ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( TViewBEnter, TViewX, IfaceHold == IFACE_TOWN_VIEW_ENTER ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_ENTER ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( TViewBContours, TViewX, IfaceHold == IFACE_TOWN_VIEW_CONTOUR || TViewShowCountours ? TViewY - 1 : TViewY ), MsgGame->GetStr( STR_TOWN_VIEW_CONTOURS ), FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-}
-
-void FOClient::TViewLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( IsCurInRect( TViewBBack, TViewX, TViewY ) )
-        IfaceHold = IFACE_TOWN_VIEW_BACK;
-    else if( IsCurInRect( TViewBEnter, TViewX, TViewY ) )
-        IfaceHold = IFACE_TOWN_VIEW_ENTER;
-    else if( IsCurInRect( TViewBContours, TViewX, TViewY ) )
-        IfaceHold = IFACE_TOWN_VIEW_CONTOUR;
-    else if( IsCurInRect( TViewWMain, TViewX, TViewY ) )
-    {
-        TViewVectX = GameOpt.MouseX - TViewX;
-        TViewVectY = GameOpt.MouseY - TViewY;
-        IfaceHold = IFACE_TOWN_VIEW_MAIN;
-    }
-}
-
-void FOClient::TViewLMouseUp()
-{
-    if( IfaceHold == IFACE_TOWN_VIEW_BACK && IsCurInRect( TViewBBack, TViewX, TViewY ) )
-    {
-        // Back
-        Net_SendRefereshMe();
-    }
-    else if( IfaceHold == IFACE_TOWN_VIEW_ENTER && IsCurInRect( TViewBEnter, TViewX, TViewY ) )
-    {
-        // Enter to map
-        if( TViewType == TOWN_VIEW_FROM_GLOBAL )
-            Net_SendRuleGlobal( GM_CMD_TOLOCAL, TViewGmapLocId, TViewGmapLocEntrance );
-    }
-    else if( IfaceHold == IFACE_TOWN_VIEW_CONTOUR && IsCurInRect( TViewBContours, TViewX, TViewY ) )
-    {
-        if( !TViewShowCountours )
-        {
-            // Show contours
-            HexMngr.SetCrittersContour( CONTOUR_CUSTOM );
-        }
-        else
-        {
-            // Hide contours
-            HexMngr.SetCrittersContour( 0 );
-        }
-        TViewShowCountours = !TViewShowCountours;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::TViewMouseMove()
-{
-    if( IfaceHold == IFACE_TOWN_VIEW_MAIN )
-    {
-        TViewX = GameOpt.MouseX - TViewVectX;
-        TViewY = GameOpt.MouseY - TViewVectY;
-
-        if( TViewX < 0 )
-            TViewX = 0;
-        if( TViewX + TViewWMain[ 2 ] > GameOpt.ScreenWidth )
-            TViewX = GameOpt.ScreenWidth - TViewWMain[ 2 ];
-        if( TViewY < 0 )
-            TViewY = 0;
-        if( TViewY + TViewWMain[ 3 ] > GameOpt.ScreenHeight )
-            TViewY = GameOpt.ScreenHeight - TViewWMain[ 3 ];
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::AimDraw()
-{
-    SprMngr.DrawSprite( AimPWMain, AimWMain[ 0 ] + AimX, AimWMain[ 1 ] + AimY );
-
-    if( AimPic )
-        SprMngr.DrawSprite( AimPic, AimWMain[ 0 ] + AimPicX + AimX, AimWMain[ 1 ] + AimPicY + AimY );
-    if( IfaceHold == IFACE_AIM_CANCEL )
-        SprMngr.DrawSprite( AimPBCancelDn, AimBCancel[ 0 ] + AimX, AimBCancel[ 1 ] + AimY );
-
-    SprMngr.Flush();
-
-    CritterCl* cr = GetCritter( AimTargetId );
-    if( !Chosen || !cr )
-        return;
-
-    if( GameOpt.ApCostAimArms == GameOpt.ApCostAimTorso && GameOpt.ApCostAimTorso == GameOpt.ApCostAimLegs && GameOpt.ApCostAimLegs == GameOpt.ApCostAimGroin && GameOpt.ApCostAimGroin == GameOpt.ApCostAimEyes && GameOpt.ApCostAimEyes == GameOpt.ApCostAimHead )
-    {
-        SprMngr.DrawStr( Rect( AimWHeadT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_HEAD - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_HEAD ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWLArmT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_ARM - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LARM ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWRArmT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_ARM - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_RARM ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWTorsoT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_TORSO - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_TORSO ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWRLegT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_LEG - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_RLEG ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWLLegT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_LEG - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LLEG ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWEyesT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_EYES - 1 ) ), FT_NOBREAK, IfaceHold == IFACE_AIM_EYES ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWGroinT, AimX, AimY ), Str::FormatBuf( "%s", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_GROIN - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_GROIN ? COLOR_TEXT_RED : COLOR_TEXT );
-    }
-    else
-    {
-        SprMngr.DrawStr( Rect( AimWHeadT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_HEAD - 1 ), GameOpt.ApCostAimHead ), FT_NOBREAK, IfaceHold == IFACE_AIM_HEAD ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWLArmT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimArms, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_ARM - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LARM ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWRArmT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_ARM - 1 ), GameOpt.ApCostAimArms ), FT_NOBREAK, IfaceHold == IFACE_AIM_RARM ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWTorsoT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimTorso, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_TORSO - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_TORSO ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWRLegT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_RIGHT_LEG - 1 ), GameOpt.ApCostAimLegs ), FT_NOBREAK, IfaceHold == IFACE_AIM_RLEG ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWLLegT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimLegs, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_LEFT_LEG - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_LLEG ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWEyesT, AimX, AimY ), Str::FormatBuf( "%s (%u)", MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_EYES - 1 ), GameOpt.ApCostAimEyes ), FT_NOBREAK, IfaceHold == IFACE_AIM_EYES ? COLOR_TEXT_RED : COLOR_TEXT );
-        SprMngr.DrawStr( Rect( AimWGroinT, AimX, AimY ), Str::FormatBuf( "(%u) %s", GameOpt.ApCostAimGroin, MsgCombat->GetStr( 1000 + cr->GetCrTypeAlias() * 10 + HIT_LOCATION_GROIN - 1 ) ), FT_NOBREAK | FT_CENTERR, IfaceHold == IFACE_AIM_GROIN ? COLOR_TEXT_RED : COLOR_TEXT );
-    }
-
-    bool zero = !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), Chosen->GetAttackDist(), 0.0f, cr, false, nullptr, 0, nullptr, nullptr, nullptr, true );
-    SprMngr.DrawStr( Rect( AimWHeadP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_HEAD ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( Rect( AimWLArmP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_LEFT_ARM ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( Rect( AimWRArmP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_RIGHT_ARM ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( Rect( AimWTorsoP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_TORSO ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( Rect( AimWRLegP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_RIGHT_LEG ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( Rect( AimWLLegP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_LEFT_LEG ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( Rect( AimWEyesP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_EYES ) ), FT_NOBREAK | FT_CENTERX );
-    SprMngr.DrawStr( Rect( AimWGroinP, AimX, AimY ), Str::ItoA( zero ? 0 : ScriptGetHitProc( cr, HIT_LOCATION_GROIN ) ), FT_NOBREAK | FT_CENTERX );
-}
-
-void FOClient::AimLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( IsCurInRect( AimBCancel, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_CANCEL;
-    else if( IsCurInRect( AimWHeadT, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_HEAD;
-    else if( IsCurInRect( AimWLArmT, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_LARM;
-    else if( IsCurInRect( AimWRArmT, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_RARM;
-    else if( IsCurInRect( AimWTorsoT, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_TORSO;
-    else if( IsCurInRect( AimWRLegT, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_RLEG;
-    else if( IsCurInRect( AimWLLegT, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_LLEG;
-    else if( IsCurInRect( AimWEyesT, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_EYES;
-    else if( IsCurInRect( AimWGroinT, AimX, AimY ) )
-        IfaceHold = IFACE_AIM_GROIN;
-    else if( IsCurInRect( AimWMain, AimX, AimY ) )
-    {
-        AimVectX = GameOpt.MouseX - AimX;
-        AimVectY = GameOpt.MouseY - AimY;
-        IfaceHold = IFACE_AIM_MAIN;
-    }
-}
-
-void FOClient::AimLMouseUp()
-{
-    if( !Chosen )
-        return;
-
-    switch( IfaceHold )
-    {
-    case IFACE_AIM_CANCEL:
-        if( !IsCurInRect( AimBCancel, AimX, AimY ) )
-            break;
-        ShowScreen( SCREEN_NONE );
-        break;
-    case IFACE_AIM_HEAD:
-        if( !IsCurInRect( AimWHeadT, AimX, AimY ) )
-            break;
-        Chosen->SetAim( HIT_LOCATION_HEAD );
-        goto Label_Attack;
-        break;
-    case IFACE_AIM_LARM:
-        if( !IsCurInRect( AimWLArmT, AimX, AimY ) )
-            break;
-        Chosen->SetAim( HIT_LOCATION_LEFT_ARM );
-        goto Label_Attack;
-        break;
-    case IFACE_AIM_RARM:
-        if( !IsCurInRect( AimWRArmT, AimX, AimY ) )
-            break;
-        Chosen->SetAim( HIT_LOCATION_RIGHT_ARM );
-        goto Label_Attack;
-        break;
-    case IFACE_AIM_TORSO:
-        if( !IsCurInRect( AimWTorsoT, AimX, AimY ) )
-            break;
-        Chosen->SetAim( HIT_LOCATION_TORSO );
-        goto Label_Attack;
-        break;
-    case IFACE_AIM_RLEG:
-        if( !IsCurInRect( AimWRLegT, AimX, AimY ) )
-            break;
-        Chosen->SetAim( HIT_LOCATION_RIGHT_LEG );
-        goto Label_Attack;
-        break;
-    case IFACE_AIM_LLEG:
-        if( !IsCurInRect( AimWLLegT, AimX, AimY ) )
-            break;
-        Chosen->SetAim( HIT_LOCATION_LEFT_LEG );
-        goto Label_Attack;
-        break;
-    case IFACE_AIM_EYES:
-        if( !IsCurInRect( AimWEyesT, AimX, AimY ) )
-            break;
-        Chosen->SetAim( HIT_LOCATION_EYES );
-        goto Label_Attack;
-        break;
-    case IFACE_AIM_GROIN:
-        if( !IsCurInRect( AimWGroinT, AimX, AimY ) )
-            break;
-        Chosen->SetAim( HIT_LOCATION_GROIN );
-        goto Label_Attack;
-        break;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-    return;
-
-Label_Attack:
-    CritterCl * cr = GetCritter( AimTargetId );
-    if( cr )
-        SetAction( CHOSEN_USE_ITEM, Chosen->ItemSlotMain->GetId(), 0, TARGET_CRITTER, AimTargetId, Chosen->GetFullRate() );
-
-    IfaceHold = IFACE_NONE;
-    if( !Keyb::ShiftDwn )
-    {
-        ShowScreen( SCREEN_NONE );
-        SetCurMode( CUR_USE_WEAPON );
-    }
-}
-
-void FOClient::AimMouseMove()
-{
-    if( IfaceHold == IFACE_AIM_MAIN )
-    {
-        AimX = GameOpt.MouseX - AimVectX;
-        AimY = GameOpt.MouseY - AimVectY;
-
-        if( AimX < 0 )
-            AimX = 0;
-        if( AimX + AimWMain[ 2 ] > GameOpt.ScreenWidth )
-            AimX = GameOpt.ScreenWidth - AimWMain[ 2 ];
-        if( AimY < 0 )
-            AimY = 0;
-        if( AimY + AimWMain[ 3 ] > GameOpt.ScreenHeight )
-            AimY = GameOpt.ScreenHeight - AimWMain[ 3 ];
-    }
-}
-
-AnyFrames* FOClient::AimGetPic( CritterCl* cr, const char* ext )
-{
-    // Make names
-    char aim_name[ MAX_FOPATH ];
-    char aim_name_alias[ MAX_FOPATH ];
-    Str::Format( aim_name, "%s%sna.%s", FileManager::GetDataPath( "", PT_ART_CRITTERS ), CritType::GetName( cr->GetCrType() ), ext );
-    Str::Format( aim_name_alias, "%s%sna.%s", FileManager::GetDataPath( "", PT_ART_CRITTERS ), CritType::GetName( cr->GetCrTypeAlias() ), ext );
-
-    // Load
-    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( aim_name ), RES_ATLAS_DYNAMIC );
-    if( !anim )
-        anim = ResMngr.GetAnim( Str::GetHash( aim_name_alias ), RES_ATLAS_DYNAMIC );
-    return anim;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::ShowDialogBox()
 {
     ScriptArray* button_texts = Script::CreateArray( "string@[]" );
@@ -3782,83 +3301,9 @@ void FOClient::ShowDialogBox()
     dict->Release();
 }
 
-void FOClient::DlgboxDraw()
+void FOClient::DlgboxAnswer( int selected )
 {
-    // Check for end time
-    if( DlgboxWait && Timer::GameTick() > DlgboxWait )
-    {
-        ShowScreen( SCREEN_NONE );
-        return;
-    }
-
-    SprMngr.DrawSprite( DlgboxWTopPicNone, DlgboxWTop[ 0 ] + DlgboxX, DlgboxWTop[ 1 ] + DlgboxY );
-    SprMngr.DrawStr( Rect( DlgboxWText, DlgboxX, DlgboxY ), DlgboxText, 0 );
-    uint y_offs = DlgboxWTop.H();
-    for( uint i = 0; i < DlgboxButtonsCount; i++ )
-    {
-        SprMngr.DrawSprite( DlgboxWMiddlePicNone, DlgboxWMiddle[ 0 ] + DlgboxX, DlgboxWMiddle[ 1 ] + DlgboxY + y_offs );
-        if( IfaceHold == IFACE_DIALOG_BTN && i == DlgboxSelectedButton )
-            SprMngr.DrawSprite( DlgboxBButtonPicDown, DlgboxBButton[ 0 ] + DlgboxX, DlgboxBButton[ 1 ] + DlgboxY + y_offs );
-        SprMngr.DrawStr( Rect( DlgboxBButtonText, DlgboxX, DlgboxY + y_offs ), DlgboxButtonText[ i ].c_str(), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-        y_offs += DlgboxWMiddle.H();
-    }
-    SprMngr.DrawSprite( DlgboxWBottomPicNone, DlgboxWTop[ 0 ] + DlgboxX, DlgboxWTop[ 1 ] + DlgboxY + y_offs );
-}
-
-void FOClient::DlgboxLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    uint y_offs = DlgboxWTop.H();
-    for( uint i = 0; i < DlgboxButtonsCount; i++ )
-    {
-        if( IsCurInRect( DlgboxBButton, DlgboxX, DlgboxY + y_offs ) )
-        {
-            DlgboxSelectedButton = i;
-            IfaceHold = IFACE_DIALOG_BTN;
-            return;
-        }
-        if( IsCurInRect( DlgboxWMiddle, DlgboxX, DlgboxY + y_offs ) )
-        {
-            DlgboxVectX = GameOpt.MouseX - DlgboxX;
-            DlgboxVectY = GameOpt.MouseY - DlgboxY;
-            IfaceHold = IFACE_DIALOG_MAIN;
-            return;
-        }
-        y_offs += DlgboxWMiddle.H();
-    }
-
-    if( IsCurInRect( DlgboxWTop, DlgboxX, DlgboxY ) || IsCurInRect( DlgboxWBottom, DlgboxX, DlgboxY + y_offs ) )
-    {
-        DlgboxVectX = GameOpt.MouseX - DlgboxX;
-        DlgboxVectY = GameOpt.MouseY - DlgboxY;
-        IfaceHold = IFACE_DIALOG_MAIN;
-    }
-}
-
-void FOClient::DlgboxLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_DIALOG_BTN:
-        if( !IsCurInRect( DlgboxBButton, DlgboxX, DlgboxY + DlgboxWTop.H() + DlgboxSelectedButton * DlgboxWMiddle.H() ) )
-            break;
-
-        DlgboxAnswer();
-
-        DlgboxType = DIALOGBOX_NONE;
-        ShowScreen( SCREEN_NONE );
-        break;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::DlgboxAnswer()
-{
-    if( DlgboxSelectedButton == DlgboxButtonsCount - 1 )
+    if( selected == DlgboxButtonsCount - 1 )
     {
         if( DlgboxType >= DIALOGBOX_ENCOUNTER_ANY && DlgboxType <= DIALOGBOX_ENCOUNTER_TB )
             Net_SendRuleGlobal( GM_CMD_ANSWER, -1 );
@@ -3871,14 +3316,14 @@ void FOClient::DlgboxAnswer()
     }
     else if( DlgboxType == DIALOGBOX_BARTER )
     {
-        if( DlgboxSelectedButton == 0 )
+        if( selected == 0 )
             Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, false );
         else
             Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, true );
     }
     else if( DlgboxType == DIALOGBOX_ENCOUNTER_ANY )
     {
-        if( DlgboxSelectedButton == 0 )
+        if( selected == 0 )
             Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_REAL_TIME );
         else
             Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_TURN_BASED );
@@ -3891,389 +3336,7 @@ void FOClient::DlgboxAnswer()
     {
         Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_TURN_BASED );
     }
-    else if( DlgboxType == DIALOGBOX_MANUAL )
-    {
-        if( ShowScreenType && ShowScreenNeedAnswer )
-            Net_SendScreenAnswer( DlgboxSelectedButton, "" );
-    }
 }
-
-void FOClient::DlgboxMouseMove()
-{
-    if( IfaceHold == IFACE_DIALOG_MAIN )
-    {
-        DlgboxX = GameOpt.MouseX - DlgboxVectX;
-        DlgboxY = GameOpt.MouseY - DlgboxVectY;
-
-        int height = DlgboxWTop.H() + DlgboxButtonsCount* DlgboxWMiddle.H() + DlgboxWBottom.H();
-        if( DlgboxX < 0 )
-            DlgboxX = 0;
-        if( DlgboxX + DlgboxWTop[ 2 ] > GameOpt.ScreenWidth )
-            DlgboxX = GameOpt.ScreenWidth - DlgboxWTop[ 2 ];
-        if( DlgboxY < 0 )
-            DlgboxY = 0;
-        if( DlgboxY + height > GameOpt.ScreenHeight )
-            DlgboxY = GameOpt.ScreenHeight - height;
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::ElevatorDraw()
-{
-    if( ElevatorMainPic )
-        SprMngr.DrawSprite( ElevatorMainPic, ElevatorMain[ 0 ] + ElevatorX, ElevatorMain[ 1 ] + ElevatorY );
-    if( ElevatorExtPic )
-        SprMngr.DrawSprite( ElevatorExtPic, ElevatorExt[ 0 ] + ElevatorX, ElevatorExt[ 1 ] + ElevatorY );
-    if( ElevatorIndicatorAnim )
-        SprMngr.DrawSprite( AnimGetCurSpr( ElevatorIndicatorAnim ), ElevatorIndicator[ 0 ] + ElevatorX, ElevatorIndicator[ 1 ] + ElevatorY );
-
-    if( IfaceHold == IFACE_ELEVATOR_BTN || ElevatorAnswerDone )
-    {
-        for( uint i = 0; i < ElevatorButtonsCount; i++ )
-        {
-            Rect& r = ElevatorButtons[ i ];
-            if( i == (uint) ElevatorSelectedButton && ElevatorButtonPicDown )
-                SprMngr.DrawSprite( ElevatorButtonPicDown, r[ 0 ] + ElevatorX, r[ 1 ] + ElevatorY );
-        }
-    }
-}
-
-void FOClient::ElevatorLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-
-    if( !ElevatorAnswerDone && ( ElevatorSelectedButton = ElevatorGetCurButton() ) != -1 )
-    {
-        IfaceHold = IFACE_ELEVATOR_BTN;
-    }
-    else if( IsCurInRect( ElevatorMain, ElevatorX, ElevatorY ) )
-    {
-        ElevatorVectX = GameOpt.MouseX - ElevatorX;
-        ElevatorVectY = GameOpt.MouseY - ElevatorY;
-        IfaceHold = IFACE_ELEVATOR_MAIN;
-    }
-}
-
-void FOClient::ElevatorLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_ELEVATOR_BTN:
-        if( ElevatorAnswerDone )
-            break;
-        if( ElevatorSelectedButton != ElevatorGetCurButton() )
-            break;
-        if( ElevatorStartLevel + ElevatorSelectedButton != ElevatorCurrentLevel && ShowScreenType && ShowScreenNeedAnswer )
-        {
-            ElevatorAnswerDone = true;
-            ElevatorSendAnswerTick = Timer::GameTick();
-            int        diff = abs( (int) ElevatorCurrentLevel - int(ElevatorStartLevel + ElevatorSelectedButton) );
-            AnyFrames* anim = AnimGetFrames( ElevatorIndicatorAnim );
-            if( anim )
-                ElevatorSendAnswerTick += anim->Ticks / anim->GetCnt() * ( anim->GetCnt() * Procent( ElevatorLevelsCount - 1, diff ) / 100 );
-            AnimRun( ElevatorIndicatorAnim, ElevatorStartLevel + ElevatorSelectedButton < ElevatorCurrentLevel ? ANIMRUN_FROM_END : ANIMRUN_TO_END );
-            return;
-        }
-        ShowScreen( SCREEN_NONE );
-        break;
-    default:
-        break;
-    }
-
-    if( !ElevatorAnswerDone )
-        ElevatorSelectedButton = -1;
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::ElevatorMouseMove()
-{
-    if( IfaceHold == IFACE_ELEVATOR_MAIN )
-    {
-        ElevatorX = GameOpt.MouseX - ElevatorVectX;
-        ElevatorY = GameOpt.MouseY - ElevatorVectY;
-
-        if( ElevatorX < 0 )
-            ElevatorX = 0;
-        if( ElevatorX + ElevatorMain[ 2 ] > GameOpt.ScreenWidth )
-            ElevatorX = GameOpt.ScreenWidth - ElevatorMain[ 2 ];
-        if( ElevatorY < 0 )
-            ElevatorY = 0;
-        if( ElevatorY + ElevatorMain[ 3 ] > GameOpt.ScreenHeight )
-            ElevatorY = GameOpt.ScreenHeight - ElevatorMain[ 3 ];
-    }
-}
-
-void FOClient::ElevatorGenerate( uint param )
-{
-    ElevatorMainPic = nullptr;
-    ElevatorExtPic = nullptr;
-    ElevatorButtonPicDown = nullptr;
-    ElevatorIndicatorAnim = 0;
-    ElevatorButtonsCount = 0;
-    ElevatorLevelsCount = 0;
-    ElevatorStartLevel = 0;
-    ElevatorCurrentLevel = 0;
-
-    if( !Script::PrepareContext( ClientFunctions.GetElevator, _FUNC_, "Game" ) )
-        return;
-    ScriptArray* arr = Script::CreateArray( "int[]" );
-    if( !arr )
-        return;
-    Script::SetArgUInt( param );
-    Script::SetArgObject( arr );
-    if( !Script::RunPrepared() || !Script::GetReturnedBool() )
-    {
-        arr->Release();
-        return;
-    }
-
-    uint added_buttons = 0;
-    uint main_pic = 0, ext_pic = 0, button_pic = 0;
-    for( int i = 0, j = arr->GetSize(); i < j; i++ )
-    {
-        if( i > 100 )
-            break;
-
-        uint val = *(uint*) arr->At( i );
-        switch( i )
-        {
-        case 0:
-            ElevatorCurrentLevel = val;
-            break;
-        case 1:
-            ElevatorStartLevel = val;
-            break;
-        case 2:
-            ElevatorLevelsCount = val;
-            break;
-        case 3:
-            main_pic = val;
-            break;
-        case 4:
-            ElevatorMain.R = val;
-            break;
-        case 5:
-            ElevatorMain.B = val;
-            break;
-        case 6:
-            ext_pic = val;
-            break;
-        case 7:
-            ElevatorExt.L = val;
-            break;
-        case 8:
-            ElevatorExt.T = val;
-            break;
-        case 9:
-            ElevatorIndicatorAnim = val;
-            break;
-        case 10:
-            ElevatorIndicator.L = val;
-            break;
-        case 11:
-            ElevatorIndicator.T = val;
-            break;
-        case 12:
-            button_pic = val;
-            break;
-        case 13:
-            ElevatorButtonsCount = val;
-            break;
-        default:
-            ElevatorButtons[ ( i - 14 ) / 4 ][ ( i - 14 ) % 4 ] = val;
-            if( ( i - 14 ) % 4 == 3 )
-                added_buttons++;
-            break;
-        }
-    }
-
-    arr->Release();
-    if( !ElevatorLevelsCount || ElevatorLevelsCount > MAX_DLGBOX_BUTTONS )
-        return;
-    if( ElevatorCurrentLevel < ElevatorStartLevel || ElevatorCurrentLevel >= ElevatorStartLevel + ElevatorLevelsCount )
-        return;
-    if( ElevatorButtonsCount > MAX_DLGBOX_BUTTONS || ElevatorButtonsCount != added_buttons )
-        return;
-    if( main_pic && !( ElevatorMainPic = ResMngr.GetIfaceAnim( main_pic ) ) )
-        return;
-    if( ext_pic && !( ElevatorExtPic = ResMngr.GetIfaceAnim( ext_pic ) ) )
-        return;
-    if( button_pic && !( ElevatorButtonPicDown = ResMngr.GetIfaceAnim( button_pic ) ) )
-        return;
-    if( ElevatorIndicatorAnim && !( ElevatorIndicatorAnim = AnimLoad( ElevatorIndicatorAnim, RES_ATLAS_STATIC ) ) )
-        return;
-
-    AnimRun( ElevatorIndicatorAnim, ANIMRUN_SET_FRM( AnimGetSprCount( ElevatorIndicatorAnim ) * Procent( ElevatorLevelsCount - 1, ElevatorCurrentLevel - ElevatorStartLevel ) / 100 ) | ANIMRUN_STOP );
-    ElevatorX = ( GameOpt.ScreenWidth - ElevatorMain.W() ) / 2;
-    ElevatorY = ( GameOpt.ScreenHeight - ElevatorMain.H() ) / 2;
-    ElevatorAnswerDone = false;
-    ElevatorSendAnswerTick = 0;
-    ShowScreen( SCREEN__ELEVATOR );
-}
-
-void FOClient::ElevatorProcess()
-{
-    if( ElevatorAnswerDone && Timer::GameTick() >= ElevatorSendAnswerTick )
-    {
-        AnimRun( ElevatorIndicatorAnim, ANIMRUN_SET_FRM( AnimGetSprCount( ElevatorIndicatorAnim ) * Procent( ElevatorLevelsCount - 1, ElevatorSelectedButton ) / 100 ) | ANIMRUN_STOP );
-        if( ShowScreenNeedAnswer )
-        {
-            Net_SendScreenAnswer( ElevatorStartLevel + ElevatorSelectedButton, "" );
-            ShowScreenNeedAnswer = false;
-            ElevatorSendAnswerTick += 1000;
-            WaitPing();
-        }
-        else
-        {
-            ShowScreen( SCREEN_NONE );
-        }
-    }
-}
-
-int FOClient::ElevatorGetCurButton()
-{
-    if( ElevatorButtonPicDown )
-    {
-        for( uint i = 0; i < ElevatorButtonsCount; i++ )
-            if( IsCurInRectNoTransp( ElevatorButtonPicDown->GetCurSprId(), ElevatorButtons[ i ], ElevatorX, ElevatorY ) )
-                return i;
-    }
-    return -1;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::SayDraw()
-{
-    SprMngr.DrawSprite( SayWMainPicNone, SayWMain[ 0 ] + SayX, SayWMain[ 1 ] + SayY );
-    switch( IfaceHold )
-    {
-    case IFACE_SAY_OK:
-        SprMngr.DrawSprite( SayBOkPicDown, SayBOk[ 0 ] + SayX, SayBOk[ 1 ] + SayY );
-        break;
-    case IFACE_SAY_CANCEL:
-        SprMngr.DrawSprite( SayBCancelPicDown, SayBCancel[ 0 ] + SayX, SayBCancel[ 1 ] + SayY );
-        break;
-    default:
-        break;
-    }
-
-    SprMngr.DrawStr( Rect( SayWMainText, SayX, SayY ), SayTitle.c_str(), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SayBOkText, SayX, SayY ), MsgGame->GetStr( STR_SAY_OK ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SayBCancelText, SayX, SayY ), MsgGame->GetStr( STR_SAY_CANCEL ), FT_CENTERX | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SayWSay, SayX, SayY ), SayText.c_str(), FT_NOBREAK | FT_CENTERY );
-}
-
-void FOClient::SayLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    if( !IsCurInRect( SayWMain, SayX, SayY ) )
-        return;
-
-    if( IsCurInRect( SayBOk, SayX, SayY ) )
-        IfaceHold = IFACE_SAY_OK;
-    else if( IsCurInRect( SayBCancel, SayX, SayY ) )
-        IfaceHold = IFACE_SAY_CANCEL;
-
-    if( IfaceHold != IFACE_NONE )
-        return;
-    SayVectX = GameOpt.MouseX - SayX;
-    SayVectY = GameOpt.MouseY - SayY;
-    IfaceHold = IFACE_SAY_MAIN;
-}
-
-void FOClient::SayLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_SAY_OK:
-        if( !IsCurInRect( SayBOk, SayX, SayY ) )
-            break;
-        if( SayText.empty() )
-            break;
-        if( ShowScreenType )
-        {
-            if( ShowScreenNeedAnswer )
-                Net_SendScreenAnswer( 0, SayText.c_str() );
-        }
-        else
-        {
-            if( SayType == DIALOGSAY_TEXT )
-                Net_SendSayNpc( DlgIsNpc, DlgNpcId, SayText.c_str() );
-            else if( SayType == DIALOGSAY_SAVE )
-                SaveLoadSaveGame( SayText.c_str() );
-        }
-        ShowScreen( SCREEN_NONE );
-        WaitPing();
-        return;
-    case IFACE_SAY_CANCEL:
-        if( !IsCurInRect( SayBCancel, SayX, SayY ) )
-            break;
-        ShowScreen( SCREEN_NONE );
-        return;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::SayMouseMove()
-{
-    if( IfaceHold == IFACE_SAY_MAIN )
-    {
-        SayX = GameOpt.MouseX - SayVectX;
-        SayY = GameOpt.MouseY - SayVectY;
-
-        if( SayX < 0 )
-            SayX = 0;
-        if( SayX + SayWMain[ 2 ] > GameOpt.ScreenWidth )
-            SayX = GameOpt.ScreenWidth - SayWMain[ 2 ];
-        if( SayY < 0 )
-            SayY = 0;
-        if( SayY + SayWMain[ 3 ] > GameOpt.ScreenHeight )
-            SayY = GameOpt.ScreenHeight - SayWMain[ 3 ];
-    }
-}
-
-void FOClient::SayKeyDown( uchar dik, const char* dik_text )
-{
-    if( dik == DIK_RETURN || dik == DIK_NUMPADENTER )
-    {
-        if( SayText.empty() )
-            return;
-        if( ShowScreenType )
-        {
-            if( ShowScreenNeedAnswer )
-                Net_SendScreenAnswer( 0, SayText.c_str() );
-        }
-        else
-        {
-            if( SayType == DIALOGSAY_TEXT )
-                Net_SendSayNpc( DlgIsNpc, DlgNpcId, SayText.c_str() );
-            else if( SayType == DIALOGSAY_SAVE )
-                SaveLoadSaveGame( SayText.c_str() );
-        }
-        ShowScreen( SCREEN_NONE );
-        WaitPing();
-        return;
-    }
-
-    if( SayType == DIALOGSAY_TEXT )
-        Keyb::GetChar( dik, dik_text, SayText, nullptr, MAX_SAY_NPC_TEXT, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_NO_SPEC_SYMBOLS );
-    else if( SayType == DIALOGSAY_SAVE )
-        Keyb::GetChar( dik, dik_text, SayText, nullptr, MAX_FOPATH, SayOnlyNumbers ? KIF_ONLY_NUMBERS : KIF_FILE_NAME );
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::WaitDraw()
 {
     SprMngr.DrawSpriteSize( WaitPic, 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight, true, true );
@@ -5141,16 +4204,16 @@ void FOClient::SaveLoadProcessDone()
     {
         SaveLoadProcessDraft = true;
 
-        ShowScreen( SCREEN__SAY );
-        SayType = DIALOGSAY_SAVE;
-        SayTitle = MsgGame->GetStr( STR_SAVE_LOAD_TYPE_RECORD_NAME );
-        SayText = "";
-        SayOnlyNumbers = false;
+        // ShowScreen( SCREEN__SAY );
+        // SayType = DIALOGSAY_SAVE;
+        // SayTitle = MsgGame->GetStr( STR_SAVE_LOAD_TYPE_RECORD_NAME );
+        // SayText = "";
+        // SayOnlyNumbers = false;
 
         SaveLoadFileName = "";
         if( SaveLoadSlotIndex >= 0 && SaveLoadSlotIndex < (int) SaveLoadDataSlots.size() )
         {
-            SayText = SaveLoadDataSlots[ SaveLoadSlotIndex ].Name;
+            // SayText = SaveLoadDataSlots[ SaveLoadSlotIndex ].Name;
             SaveLoadFileName = SaveLoadDataSlots[ SaveLoadSlotIndex ].FileName;
         }
     }

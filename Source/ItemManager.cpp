@@ -664,12 +664,12 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     {
         RadioSendTextEx( channels[ i ],
                          radios[ i ]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(),
-                         text, text_len, cr->IntellectCacheValue, unsafe_text, text_msg, num_str, nullptr );
+                         text, text_len, unsafe_text, text_msg, num_str, nullptr );
     }
 }
 
 void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy,
-                                   const char* text, ushort text_len, ushort intellect, bool unsafe_text,
+                                   const char* text, ushort text_len, bool unsafe_text,
                                    ushort text_msg, uint num_str, const char* lexems )
 {
     // Broadcast
@@ -759,7 +759,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                     }
 
                     if( text )
-                        cl->Send_TextEx( radio->GetId(), text, text_len, SAY_RADIO, intellect, unsafe_text );
+                        cl->Send_TextEx( radio->GetId(), text, text_len, SAY_RADIO, unsafe_text );
                     else if( lexems )
                         cl->Send_TextMsgLex( radio->GetId(), num_str, SAY_RADIO, text_msg, lexems );
                     else
@@ -795,7 +795,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                     }
 
                     if( text )
-                        map->SetText( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, text_len, intellect, unsafe_text );
+                        map->SetText( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, text_len, unsafe_text );
                     else if( lexems )
                         map->SetTextMsgLex( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str, lexems, Str::Length( lexems ) );
                     else

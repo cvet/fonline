@@ -265,7 +265,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetFog(uint16 zoneX,
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int GetFog(uint16 zoneX, uint16 zoneY) const", asFUNCTION( BIND_CLASS Crit_GetFog ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ShowContainer(Critter@+ contCr, Item@+ contItem, uint8 transferType)", asFUNCTION( BIND_CLASS Cl_ShowContainer ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ShowScreen(int screenType, uint param, string@+ funcName)", asFUNCTION( BIND_CLASS Cl_ShowScreen ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void RunClientScript(string& funcName, int p0, int p1, int p2, string@+ p3, array<int>@+ p4)", asFUNCTION( BIND_CLASS Cl_RunClientScript ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Disconnect()", asFUNCTION( BIND_CLASS Cl_Disconnect ), asCALL_CDECL_OBJFIRST ) );
 
@@ -782,7 +781,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __MinimumOfflineTime", &GameO
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GameServer", &GameOpt.GameServer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __UpdateServer", &GameOpt.UpdateServer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __CommandLine", &GameOpt.CommandLine ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __EnableIntellectWords", &GameOpt.EnableIntellectWords ) );
 
 # ifdef BIND_SERVER
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GenerateWorldDisabled", &GameOpt.GenerateWorldDisabled ) );

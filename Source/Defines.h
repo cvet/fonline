@@ -98,13 +98,7 @@
 #define SAY_ENCOUNTER_RT             ( 15 )
 #define SAY_ENCOUNTER_TB             ( 16 )
 #define SAY_FIX_RESULT               ( 17 )
-#define SAY_DIALOGBOX_TEXT           ( 18 )
-#define SAY_DIALOGBOX_BUTTON( b )             ( 19 + ( b ) ) // Max 20 buttons (0..19)
-#define SAY_SAY_TITLE                ( 39 )
-#define SAY_SAY_TEXT                 ( 40 )
 #define SAY_FLASH_WINDOW             ( 41 )
-
-#define MAX_DLGBOX_BUTTONS           ( 20 )
 
 // Transfer types
 #define TRANSFER_CLOSE               ( 0 )
@@ -175,7 +169,7 @@
 #define GM_MAX_GROUP_COUNT           ( GameOpt.GlobalMapMaxGroupCount )
 #define GM_ANSWER_WAIT_TIME          ( 20000 )
 #define GM_LIGHT_TIME                ( 5000 )
-#define GM_ZONE( x )                          ( ( x ) / GM_ZONE_LEN )
+#define GM_ZONE( x )                     ( ( x ) / GM_ZONE_LEN )
 #define GM_ENTRANCES_SEND_TIME       ( 60000 )
 #define GM_TRACE_TIME                ( 1000 )
 
@@ -264,8 +258,8 @@
 
 // Critters
 #define MAX_CRIT_TYPES               ( 1000 )
-#define MAKE_CLIENT_ID( name )                ( ( 1 << 31 ) | Str::GetHash( name ) )
-#define IS_CLIENT_ID( id )                    ( ( ( id ) >> 31 ) != 0 )
+#define MAKE_CLIENT_ID( name )           ( ( 1 << 31 ) | Str::GetHash( name ) )
+#define IS_CLIENT_ID( id )               ( ( ( id ) >> 31 ) != 0 )
 #define MAX_ANSWERS                  ( 100 )
 #define PROCESS_TALK_TICK            ( 1000 )
 #define TURN_BASED_TIMEOUT           ( 1000 )
@@ -342,9 +336,9 @@
 #define SHOW_SCREEN_MINIMAP          ( 11 )   // Mini-map.
 
 // Timeouts
-#define IS_TIMEOUT( to )                      ( ( to ) > GameOpt.FullSecond )
+#define IS_TIMEOUT( to )                 ( ( to ) > GameOpt.FullSecond )
 #define TB_BATTLE_TIMEOUT            ( GameOpt.FullSecond + 100000000 )
-#define TB_BATTLE_TIMEOUT_CHECK( to )         ( ( to ) > GameOpt.FullSecond && ( to ) - GameOpt.FullSecond > 10000000 )
+#define TB_BATTLE_TIMEOUT_CHECK( to )    ( ( to ) > GameOpt.FullSecond && ( to ) - GameOpt.FullSecond > 10000000 )
 
 // Special send params
 #define OTHER_BREAK_TIME             ( 0 )

@@ -1302,7 +1302,6 @@ GameOptions::GameOptions()
     ChosenLightDistance = 4;
     ChosenLightIntensity = 2500;
     ChosenLightFlags = 0;
-    EnableIntellectWords = false;
 
     // Mapper
     ClientPath = ScriptString::Create( "./" );

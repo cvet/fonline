@@ -91,10 +91,6 @@ public:
     bool           UpdateFileActive;
     void*          UpdateFileTemp;
 
-    int            ShowScreenType;
-    uint           ShowScreenParam;
-    bool           ShowScreenNeedAnswer;
-
     void UpdateFiles( bool early_call );
     void UpdateFilesAddText( uint num_str, const char* num_str_str );
     void UpdateFilesAbort( uint num_str, const char* num_str_str );
@@ -160,7 +156,6 @@ public:
     void Net_SendCraft( uint craft_num );
     void Net_SendPing( uchar ping );
     void Net_SendPlayersBarter( uchar barter, uint param, uint param_ext );
-    void Net_SendScreenAnswer( uint answer_i, const char* answer_s );
     void Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text );
     void Net_SendGetUserHoloStr( uint str_num );
     void Net_SendCombat( uchar type, int val );
@@ -220,7 +215,6 @@ public:
     void Net_OnFollow();
     void Net_OnPlayersBarter();
     void Net_OnPlayersBarterSetHide();
-    void Net_OnShowScreen();
     void Net_OnRunClientScript();
     void Net_OnDropTimers();
     void Net_OnCheckUID3();
@@ -234,8 +228,8 @@ public:
     void Net_OnCheckUID4();
     void Net_OnViewMap();
 
-    void OnText( const char* str, uint crid, int how_say, ushort intellect );
-    void OnMapText( const char* str, ushort hx, ushort hy, uint color, ushort intellect );
+    void OnText( const char* str, uint crid, int how_say );
+    void OnMapText( const char* str, ushort hx, ushort hy, uint color );
 
     void WaitPing();
 
@@ -255,37 +249,23 @@ public:
     const char* FmtGameText( uint str_num, ... );
     const char* FmtCombatText( uint str_num, ... );
 
-    #define DESC_INVENTORY_MAIN       ( 0 )
-    #define DESC_INVENTORY_SPECIAL    ( 1 )
-    #define DESC_INVENTORY_STATS      ( 2 )
-    #define DESC_INVENTORY_RESIST     ( 3 )
-    const char* FmtGenericDesc( int desc_type, int& ox, int& oy );
-
-    #define CRITTER_ONLY_NAME         ( 0 )
-    #define CRITTER_LOOK_SHORT        ( 1 )
-    #define CRITTER_LOOK_FULL         ( 2 )
+    #define CRITTER_ONLY_NAME      ( 0 )
+    #define CRITTER_LOOK_SHORT     ( 1 )
+    #define CRITTER_LOOK_FULL      ( 2 )
     const char* FmtCritLook( CritterCl* cr, int look_type );
 
-    #define ITEM_LOOK_DEFAULT         ( 0 )
-    #define ITEM_LOOK_ONLY_NAME       ( 1 )
-    #define ITEM_LOOK_MAP             ( 2 )
-    #define ITEM_LOOK_BARTER          ( 3 )
-    #define ITEM_LOOK_INVENTORY       ( 4 )
-    #define ITEM_LOOK_WM_CAR          ( 5 )
+    #define ITEM_LOOK_DEFAULT      ( 0 )
+    #define ITEM_LOOK_ONLY_NAME    ( 1 )
+    #define ITEM_LOOK_MAP          ( 2 )
+    #define ITEM_LOOK_BARTER       ( 3 )
+    #define ITEM_LOOK_INVENTORY    ( 4 )
+    #define ITEM_LOOK_WM_CAR       ( 5 )
     const char* FmtItemLook( Item* item, int look_type );
 
-    // Intellect text
-    PCharPairVec IntellectWords;
-    PCharPairVec IntellectSymbols;
-
-    void                   ParseIntellectWords( const char* words, PCharPairVec& text );
-    PCharPairVec::iterator FindIntellectWord( const char* word, PCharPairVec& text, Randomizer& rnd );
-    void                   FmtTextIntellect( char* str, ushort intellect );
-
-    #define SMTH_NONE                 ( 0 )
-    #define SMTH_CRITTER              ( 1 )
-    #define SMTH_ITEM                 ( 3 )
-    #define SMTH_CONT_ITEM            ( 4 )
+    #define SMTH_NONE              ( 0 )
+    #define SMTH_CRITTER           ( 1 )
+    #define SMTH_ITEM              ( 3 )
+    #define SMTH_CONT_ITEM         ( 4 )
     class SmthSelected
     {
 private:
@@ -473,7 +453,6 @@ public:
     void ScreenFadeOut() { ScreenFade( 1000, COLOR_RGBA( 255, 0, 0, 0 ), COLOR_RGBA( 0, 0, 0, 0 ), false ); }
     void ScreenFade( uint time, uint from_color, uint to_color, bool push_back );
     void ScreenQuake( int noise, uint time );
-    void ScreenMirror();
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
     void ProcessScreenEffectMirror();
@@ -495,11 +474,10 @@ public:
 /************************************************************************/
 /* Scripting                                                            */
 /************************************************************************/
-    bool        ReloadScripts();
-    int         ScriptGetHitProc( CritterCl* cr, int hit_location );
-    void        DrawIfaceLayer( uint layer );
-    static bool PragmaCallbackCrData( const char* text );
-    void        OnItemInvChanged( Item* old_item, Item* new_item );
+    bool ReloadScripts();
+    int  ScriptGetHitProc( CritterCl* cr, int hit_location );
+    void DrawIfaceLayer( uint layer );
+    void OnItemInvChanged( Item* old_item, Item* new_item );
 
     struct SScriptFunc
     {
@@ -915,33 +893,6 @@ public:
         } while( 0 )
 
 /************************************************************************/
-/* Credits                                                              */
-/************************************************************************/
-    uint CreditsNextTick, CreditsMoveTick;
-    int  CreditsYPos;
-    bool CreaditsExt;
-
-    void CreditsDraw();
-
-/************************************************************************/
-/* Town view                                                            */
-/************************************************************************/
-    AnyFrames* TViewWMainPic, * TViewBBackPicDn, * TViewBEnterPicDn, * TViewBContoursPicDn;
-    Rect       TViewWMain, TViewBBack, TViewBEnter, TViewBContours;
-    int        TViewX, TViewY, TViewVectX, TViewVectY;
-    bool       TViewShowCountours;
-
-    #define TOWN_VIEW_FROM_NONE        ( 0 )
-    #define TOWN_VIEW_FROM_GLOBAL      ( 1 )
-    int  TViewType;
-    uint TViewGmapLocId, TViewGmapLocEntrance;    // TOWN_VIEW_FROM_GLOBAL
-
-    void TViewDraw();
-    void TViewLMouseDown();
-    void TViewLMouseUp();
-    void TViewMouseMove();
-
-/************************************************************************/
 /* PipBoy                                                               */
 /************************************************************************/
     // HoloInfo
@@ -963,32 +914,6 @@ public:
     typedef vector< Automap > AutomapVec;
 
     AutomapVec Automaps;
-    Automap    AutomapSelected;
-    HashSet    AutomapWaitPids;
-    HashSet    AutomapReceivedPids;
-    PointVec   AutomapPoints;
-    hash       AutomapCurMapPid;
-    float      AutomapScrX, AutomapScrY;
-    float      AutomapZoom;
-
-/************************************************************************/
-/* Aim                                                                  */
-/************************************************************************/
-    AnyFrames* AimPWMain, * AimPBCancelDn, * AimPic;
-    int        AimX, AimY;
-    int        AimVectX, AimVectY;
-    int        AimPicX, AimPicY;
-    Rect       AimWMain, AimBCancel,
-               AimWHeadT, AimWLArmT, AimWRArmT, AimWTorsoT, AimWRLegT, AimWLLegT, AimWEyesT, AimWGroinT,
-               AimWHeadP, AimWLArmP, AimWRArmP, AimWTorsoP, AimWRLegP, AimWLLegP, AimWEyesP, AimWGroinP;
-    int  AimHeadP, AimLArmP, AimRArmP, AimTorsoP, AimRLegP, AimLLegP, AimEyesP, AimGroinP;
-    uint AimTargetId;
-
-    void       AimDraw();
-    void       AimLMouseDown();
-    void       AimLMouseUp();
-    void       AimMouseMove();
-    AnyFrames* AimGetPic( CritterCl* cr, const char* ext );
 
 /************************************************************************/
 /* PickUp                                                               */
@@ -1021,25 +946,19 @@ public:
     CritterCl* PupGetLootCrit( int scroll );
 
 /************************************************************************/
-/* Dialog box                                                           */
+/* DialogBox                                                            */
 /************************************************************************/
-    AnyFrames* DlgboxWTopPicNone, * DlgboxWMiddlePicNone, * DlgboxWBottomPicNone, * DlgboxBButtonPicDown;
-    Rect       DlgboxWTop, DlgboxWMiddle, DlgboxWBottom, DlgboxWText, DlgboxBButton, DlgboxBButtonText;
-    int        DlgboxX, DlgboxY;
-    int        DlgboxVectX, DlgboxVectY;
-    uchar      DlgboxType;
     #define DIALOGBOX_NONE             ( 0 )
     #define DIALOGBOX_FOLLOW           ( 1 )
     #define DIALOGBOX_BARTER           ( 2 )
     #define DIALOGBOX_ENCOUNTER_ANY    ( 3 )
     #define DIALOGBOX_ENCOUNTER_RT     ( 4 )
     #define DIALOGBOX_ENCOUNTER_TB     ( 5 )
-    #define DIALOGBOX_MANUAL           ( 6 )
+    uchar  DlgboxType;
     uint   DlgboxWait;
     char   DlgboxText[ MAX_FOTEXT ];
-    string DlgboxButtonText[ MAX_DLGBOX_BUTTONS ];
+    string DlgboxButtonText[ 100 ];
     uint   DlgboxButtonsCount;
-    uint   DlgboxSelectedButton;
     // For follow
     uchar  FollowType;
     uint   FollowRuleId;
@@ -1049,54 +968,7 @@ public:
     bool   PBarterHide;
 
     void ShowDialogBox();
-    void DlgboxDraw();
-    void DlgboxLMouseDown();
-    void DlgboxLMouseUp();
-    void DlgboxAnswer();
-    void DlgboxMouseMove();
-
-/************************************************************************/
-/* Elevator                                                             */
-/************************************************************************/
-    AnyFrames* ElevatorMainPic, * ElevatorExtPic, * ElevatorButtonPicDown;
-    uint       ElevatorIndicatorAnim;
-    Rect       ElevatorMain, ElevatorExt, ElevatorIndicator;
-    uint       ElevatorButtonsCount;
-    Rect       ElevatorButtons[ MAX_DLGBOX_BUTTONS ];
-    uint       ElevatorType, ElevatorLevelsCount, ElevatorStartLevel, ElevatorCurrentLevel;
-    int        ElevatorX, ElevatorY, ElevatorVectX, ElevatorVectY;
-    int        ElevatorSelectedButton;
-    bool       ElevatorAnswerDone;
-    uint       ElevatorSendAnswerTick;
-
-    void ElevatorDraw();
-    void ElevatorLMouseDown();
-    void ElevatorLMouseUp();
-    void ElevatorMouseMove();
-    void ElevatorGenerate( uint param );
-    void ElevatorProcess();
-    int  ElevatorGetCurButton();
-
-/************************************************************************/
-/* Say dialog                                                           */
-/************************************************************************/
-    AnyFrames* SayWMainPicNone, * SayBOkPicDown, * SayBCancelPicDown;
-    int        SayX, SayY;
-    int        SayVectX, SayVectY;
-    Rect       SayWMain, SayWMainText, SayWSay, SayBOk, SayBOkText, SayBCancel, SayBCancelText;
-    uchar      SayType;
-    bool       SayOnlyNumbers;
-    #define DIALOGSAY_NONE             ( 0 )
-    #define DIALOGSAY_TEXT             ( 1 )
-    #define DIALOGSAY_SAVE             ( 2 )
-    string SayTitle;
-    string SayText;
-
-    void SayDraw();
-    void SayLMouseDown();
-    void SayLMouseUp();
-    void SayMouseMove();
-    void SayKeyDown( uchar dik, const char* dik_text );
+    void DlgboxAnswer( int selected );
 
 /************************************************************************/
 /* Wait                                                                 */
@@ -1108,7 +980,6 @@ public:
 /************************************************************************/
 /* Split                                                                */
 /************************************************************************/
-
     void SplitStart( uint item_id, int item_cont );
 
 /************************************************************************/
@@ -1327,15 +1198,11 @@ public:
 #define SCREEN_GLOBAL_MAP              ( 4 )
 #define SCREEN_WAIT                    ( 5 )
 // Secondary screens
-#define SCREEN__CREDITS                ( 8 )
-#define SCREEN__OPTIONS                ( 9 )
-#define SCREEN__INVENTORY              ( 10 )
 #define SCREEN__PICKUP                 ( 11 )
 #define SCREEN__MINI_MAP               ( 12 )
 #define SCREEN__CHARACTER              ( 13 )
 #define SCREEN__DIALOG                 ( 14 )
 #define SCREEN__BARTER                 ( 15 )
-#define SCREEN__PIP_BOY                ( 16 )
 #define SCREEN__FIX_BOY                ( 17 )
 #define SCREEN__MENU_OPTION            ( 18 )
 #define SCREEN__AIM                    ( 19 )
@@ -1343,12 +1210,10 @@ public:
 #define SCREEN__TIMER                  ( 21 )
 #define SCREEN__DIALOGBOX              ( 22 )
 #define SCREEN__ELEVATOR               ( 23 )
-#define SCREEN__SAY                    ( 24 )
 #define SCREEN__GM_TOWN                ( 28 )
 #define SCREEN__INPUT_BOX              ( 29 )
 #define SCREEN__SKILLBOX               ( 30 )
 #define SCREEN__USE                    ( 31 )
-#define SCREEN__PERK                   ( 32 )
 #define SCREEN__TOWN_VIEW              ( 33 )
 #define SCREEN__SAVE_LOAD              ( 34 )
 

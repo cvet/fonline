@@ -98,7 +98,6 @@ CLASS_PROPERTY_IMPL( Critter, TE_NextTime );
 CLASS_PROPERTY_IMPL( Critter, TE_Identifier );
 CLASS_PROPERTY_IMPL( Critter, LookDistance );
 CLASS_PROPERTY_IMPL( Critter, Charisma );
-CLASS_PROPERTY_IMPL( Critter, Intellect );
 CLASS_PROPERTY_IMPL( Critter, Experience );
 CLASS_PROPERTY_IMPL( Critter, DialogId );
 CLASS_PROPERTY_IMPL( Critter, BagId );
@@ -188,7 +187,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     waitEndTick = 0;
     KnockoutAp = 0;
     CacheValuesNextTick = 0;
-    IntellectCacheValue = 0;
     Flags = 0;
     AccessContainerId = 0;
     ItemTransferCount = 0;
@@ -2689,10 +2687,10 @@ void Critter::Send_Text( Critter* from_cr, const char* s_str, uchar how_say )
     if( IsPlayer() )
         ( (Client*) this )->Send_Text( from_cr, s_str, how_say );
 }
-void Critter::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, ushort intellect, bool unsafe_text )
+void Critter::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, bool unsafe_text )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_TextEx( from_id, s_str, str_len, how_say, intellect, unsafe_text );
+        ( (Client*) this )->Send_TextEx( from_id, s_str, str_len, how_say, unsafe_text );
 }
 void Critter::Send_TextMsg( Critter* from_cr, uint str_num, uchar how_say, ushort num_msg )
 {
@@ -2941,10 +2939,9 @@ void Critter::SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool un
 
     ushort str_len = Str::Length( str );
     uint   from_id = GetId();
-    ushort intellect = ( how_say >= SAY_NORM && how_say <= SAY_RADIO ? IntellectCacheValue : 0 );
 
     if( IsPlayer() )
-        Send_TextEx( from_id, str, str_len, how_say, intellect, unsafe_text );
+        Send_TextEx( from_id, str, str_len, how_say, unsafe_text );
 
     if( to_cr.empty() )
         return;
@@ -2964,9 +2961,9 @@ void Critter::SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool un
         // SYNC_LOCK(cr);
 
         if( dist == -1 )
-            cr->Send_TextEx( from_id, str, str_len, how_say, intellect, unsafe_text );
+            cr->Send_TextEx( from_id, str, str_len, how_say, unsafe_text );
         else if( CheckDist( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex() ) )
-            cr->Send_TextEx( from_id, str, str_len, how_say, intellect, unsafe_text );
+            cr->Send_TextEx( from_id, str, str_len, how_say, unsafe_text );
     }
 }
 
@@ -3602,7 +3599,6 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
     LastSendCraftTick = 0;
     LastSendEntrancesTick = 0;
     LastSendEntrancesLocId = 0;
-    ScreenCallbackBindId = 0;
     LastSendedMapTick = 0;
     RadioMessageSended = 0;
     UpdateFileIndex = -1;
@@ -4637,24 +4633,22 @@ void Client::Send_Text( Critter* from_cr, const char* s_str, uchar how_say )
         return;
     ushort s_len = Str::Length( s_str );
     uint   from_id = ( from_cr ? from_cr->GetId() : 0 );
-    ushort intellect = ( from_cr && how_say >= SAY_NORM && how_say <= SAY_RADIO ? from_cr->IntellectCacheValue : 0 );
-    Send_TextEx( from_id, s_str, s_len, how_say, intellect, false );
+    Send_TextEx( from_id, s_str, s_len, how_say, false );
 }
 
-void Client::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, ushort intellect, bool unsafe_text )
+void Client::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, bool unsafe_text )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( from_id ) + sizeof( how_say ) +
-                   sizeof( intellect ) + sizeof( unsafe_text ) + sizeof( str_len ) + str_len;
+                   sizeof( unsafe_text ) + sizeof( str_len ) + str_len;
 
     BOUT_BEGIN( this );
     Bout << NETMSG_CRITTER_TEXT;
     Bout << msg_len;
     Bout << from_id;
     Bout << how_say;
-    Bout << intellect;
     Bout << unsafe_text;
     Bout << str_len;
     Bout.Push( s_str, str_len );
@@ -4751,13 +4745,13 @@ void Client::Send_TextMsgLex( uint from_id, uint num_str, uchar how_say, ushort 
     BOUT_END( this );
 }
 
-void Client::Send_MapText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text )
+void Client::Send_MapText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( hx ) + sizeof( hy ) + sizeof( color ) +
-                   sizeof( text_len ) + text_len + sizeof( intellect ) + sizeof( unsafe_text );
+                   sizeof( text_len ) + text_len + sizeof( unsafe_text );
 
     BOUT_BEGIN( this );
     Bout << NETMSG_MAP_TEXT;
@@ -4767,7 +4761,6 @@ void Client::Send_MapText( ushort hx, ushort hy, uint color, const char* text, u
     Bout << color;
     Bout << text_len;
     Bout.Push( text, text_len );
-    Bout << intellect;
     Bout << unsafe_text;
     BOUT_END( this );
 }
@@ -5050,19 +5043,6 @@ void Client::Send_PlayersBarterSetHide( Item* item, uint count )
     Bout << item->GetProtoId();
     Bout << count;
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
-    BOUT_END( this );
-}
-
-void Client::Send_ShowScreen( int screen_type, uint param, bool need_answer )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_SHOW_SCREEN;
-    Bout << screen_type;
-    Bout << param;
-    Bout << need_answer;
     BOUT_END( this );
 }
 

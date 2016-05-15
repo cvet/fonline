@@ -1666,7 +1666,7 @@ void Map::SetLoopTime( uint loop_num, uint ms )
     LoopWaitTick[ loop_num ] = ms;
 }
 
-void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text )
+void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text )
 {
     if( hx >= GetWidth() || hy >= GetHeight() )
         return;
@@ -1677,7 +1677,7 @@ void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort te
     {
         Client* cl = *it;
         if( cl->LookCacheValue >= DistGame( hx, hy, cl->GetHexX(), cl->GetHexY() ) )
-            cl->Send_MapText( hx, hy, color, text, text_len, intellect, unsafe_text );
+            cl->Send_MapText( hx, hy, color, text, text_len, unsafe_text );
     }
 }
 

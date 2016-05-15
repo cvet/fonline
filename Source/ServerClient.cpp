@@ -124,10 +124,10 @@ void FOServer::ProcessCritter( Critter* cr )
             cl->RemoveFromGame();
         }
 
-        // Cache intelligence for GetSayIntellect, every 3 seconds
+        // Cache look distance
+        #pragma MESSAGE("Disable look distance caching")
         if( tick >= cl->CacheValuesNextTick )
         {
-            cl->IntellectCacheValue = ( GameOpt.EnableIntellectWords ? ( tick & 0xFFF0 ) | cl->GetIntellect() : 0 );
             cl->LookCacheValue = cl->GetLookDistance();
             cl->CacheValuesNextTick = tick + 3000;
         }
@@ -4034,33 +4034,6 @@ label_EndOffer:
         else
             opponent->Send_PlayersBarter( barter, param, param_ext );
     }
-}
-
-void FOServer::Process_ScreenAnswer( Client* cl )
-{
-    uint answer_i;
-    char answer_s[ MAX_SAY_NPC_TEXT + 1 ];
-    cl->Bin >> answer_i;
-    cl->Bin.Pop( answer_s, MAX_SAY_NPC_TEXT );
-    answer_s[ MAX_SAY_NPC_TEXT ] = 0;
-
-    if( !cl->ScreenCallbackBindId )
-    {
-        WriteLogF( _FUNC_, " - Client '%s' answered on not not specified screen.\n", cl->GetInfo() );
-        return;
-    }
-
-    uint bind_id = cl->ScreenCallbackBindId;
-    cl->ScreenCallbackBindId = 0;
-
-    if( !Script::PrepareContext( bind_id, _FUNC_, cl->GetInfo() ) )
-        return;
-    Script::SetArgEntity( cl );
-    Script::SetArgUInt( answer_i );
-    ScriptString* lexems = ScriptString::Create( answer_s );
-    Script::SetArgObject( lexems );
-    Script::RunPrepared();
-    lexems->Release();
 }
 
 void FOServer::Process_Combat( Client* cl )

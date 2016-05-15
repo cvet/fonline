@@ -185,7 +185,6 @@ public:
     CLASS_PROPERTY( int, BarterCoefficient );
     // Exclude
     CLASS_PROPERTY( int, Charisma );            // Used in check next rule on global map
-    CLASS_PROPERTY( int, Intellect );           // Intellect worlds system
     CLASS_PROPERTY( int, ReplicationTime );     // Used in map dead npc generation
     CLASS_PROPERTY( int, Experience );          // Craft
     CLASS_PROPERTY( uint, TimeoutSkScience );   // Craft
@@ -385,9 +384,8 @@ public:
     void ToDead( uint anim2, bool send_all );
 
     // Cached values to avoid synchronization
-    uint   CacheValuesNextTick;
-    ushort IntellectCacheValue; // Players talking
-    uint   LookCacheValue;      // Critter::GetLook()
+    uint CacheValuesNextTick;
+    uint LookCacheValue;        // Critter::GetLook()
 
     // Break time
 private:
@@ -429,7 +427,7 @@ public:
     void Send_Talk();
     void Send_GameInfo( Map* map );
     void Send_Text( Critter* from_cr, const char* s_str, uchar how_say );
-    void Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, ushort intellect, bool unsafe_text );
+    void Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, bool unsafe_text );
     void Send_TextMsg( Critter* from_cr, uint str_num, uchar how_say, ushort num_msg );
     void Send_TextMsg( uint from_id, uint str_num, uchar how_say, ushort num_msg );
     void Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
@@ -683,7 +681,7 @@ public:
     void Send_Talk();
     void Send_GameInfo( Map* map );
     void Send_Text( Critter* from_cr, const char* s_str, uchar how_say );
-    void Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, ushort intellect, bool unsafe_text );
+    void Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, bool unsafe_text );
     void Send_TextMsg( Critter* from_cr, uint str_num, uchar how_say, ushort num_msg );
     void Send_TextMsg( uint from_id, uint str_num, uchar how_say, ushort num_msg );
     void Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
@@ -701,7 +699,7 @@ public:
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );
     void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
-    void Send_MapText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, ushort intellect, bool unsafe_text );
+    void Send_MapText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text );
     void Send_MapTextMsg( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str );
     void Send_MapTextMsgLex( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len );
     void Send_UserHoloStr( uint str_num, const char* text, ushort text_len );
@@ -749,9 +747,6 @@ public:
     bool IsTalking() { return Talk.TalkType != TALK_NONE; }
     void ProcessTalk( bool force );
     void CloseTalk();
-
-    // Screen callback
-    uint ScreenCallbackBindId;
 };
 
 class Npc: public Critter

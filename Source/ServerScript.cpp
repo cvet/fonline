@@ -2579,26 +2579,6 @@ void FOServer::SScriptFunc::Cl_ShowContainer( Critter* cl, Critter* cr_cont, Ite
     }
 }
 
-void FOServer::SScriptFunc::Cl_ShowScreen( Critter* cl, int screen_type, uint param, ScriptString* func_name )
-{
-    if( cl->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( !cl->IsPlayer() )
-        return;                     // SCRIPT_ERROR_R("Critter is not player.");
-
-    uint bind_id = 0;
-    if( func_name && func_name->length() )
-    {
-        bind_id = Script::BindByFuncNameInRuntime( func_name->c_str(), "void %s(Critter&,uint,string&)", false );
-        if( !bind_id )
-            SCRIPT_ERROR_R( "Function not found." );
-    }
-
-    Client* cl_ = (Client*) cl;
-    cl_->ScreenCallbackBindId = bind_id;
-    cl_->Send_ShowScreen( screen_type, param, bind_id != 0 );
-}
-
 void FOServer::SScriptFunc::Cl_RunClientScript( Critter* cl, ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
 {
     if( cl->IsDestroyed )
@@ -4258,7 +4238,7 @@ void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, u
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( hex_x >= map->GetWidth() || hex_y >= map->GetHeight() )
         SCRIPT_ERROR_R( "Invalid hexes args." );
-    map->SetText( hex_x, hex_y, color, text.c_str(), (ushort) text.c_std_str().length(), 0, false );
+    map->SetText( hex_x, hex_y, color, text.c_str(), (ushort) text.c_std_str().length(), false );
 }
 
 void FOServer::SScriptFunc::Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num )
@@ -4863,17 +4843,17 @@ void FOServer::SScriptFunc::Global_DeleteNpcById( uint npc_id )
 
 void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, ScriptString& text )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (uint) text.length(), 0, false, 0, 0, nullptr );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (uint) text.length(), false, 0, 0, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, 0, false, text_msg, num_str, nullptr );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, false, text_msg, num_str, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, ScriptString* lexems )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, 0, false, text_msg, num_str, lexems && lexems->length() ? lexems->c_str() : nullptr );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, false, text_msg, num_str, lexems && lexems->length() ? lexems->c_str() : nullptr );
 }
 
 uint FOServer::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
