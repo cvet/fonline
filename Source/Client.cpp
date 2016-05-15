@@ -7079,20 +7079,6 @@ label_EndMove:
                 break;
             item_action = item;
 
-            if( item->GetIsHolodisk() )
-            {
-                ShowScreen( SCREEN__INPUT_BOX );
-                IboxMode = IBOX_MODE_HOLO;
-                IboxHolodiskId = item->GetId();
-                IboxTitle = GetHoloText( STR_HOLO_INFO_NAME( item->GetHolodiskNum() ) );
-                IboxText = GetHoloText( STR_HOLO_INFO_DESC( item->GetHolodiskNum() ) );
-                if( IboxTitle.length() > USER_HOLO_MAX_TITLE_LEN )
-                    IboxTitle.resize( USER_HOLO_MAX_TITLE_LEN );
-                if( IboxText.length() > USER_HOLO_MAX_LEN )
-                    IboxText.resize( USER_HOLO_MAX_LEN );
-                break;
-            }
-
             CHECK_NEED_AP( Chosen->GetApCostUseSkill() );
             Net_SendUseSkill( skill, item );
         }
@@ -7323,23 +7309,6 @@ label_EndMove:
         }
         Chosen->SubAp( Chosen->GetApCostPickCritter() );
         WaitPing();
-    }
-    break;
-    case CHOSEN_WRITE_HOLO:
-    {
-        uint holodisk_id = (uint) act.Param[ 0 ];
-        if( holodisk_id != IboxHolodiskId )
-            break;
-        Item* holo = Chosen->GetItem( IboxHolodiskId );
-        if( !holo->GetIsHolodisk() )
-            break;
-        const char* old_title = GetHoloText( STR_HOLO_INFO_NAME( holo->GetHolodiskNum() ) );
-        const char* old_text = GetHoloText( STR_HOLO_INFO_DESC( holo->GetHolodiskNum() ) );
-        if( holo && IboxTitle.length() && IboxText.length() && ( IboxTitle != old_title || IboxText != old_text ) )
-        {
-            Net_SendSetUserHoloStr( holo, IboxTitle.c_str(), IboxText.c_str() );
-            Chosen->Action( ACTION_USE_ITEM, 0, holo );
-        }
     }
     break;
     }
@@ -9379,6 +9348,13 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->SaveLoadSaveGame( args[ 1 ].c_str() );
     }
+    else if( cmd == "WriteHolo" && args.size() == 4 )
+    {
+        uint  item_id = Str::AtoUI( args[ 1 ].c_str() );
+        Item* holo = Self->Chosen->GetItem( item_id );
+        if( holo )
+            Self->Net_SendSetUserHoloStr( holo, args[ 2 ].c_str(), args[ 3 ].c_str() );
+    }
     else
     {
         SCRIPT_ERROR_R0( "Invalid custom call command." );
@@ -10741,10 +10717,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = 0;
         y = 0;
         break;
-    case SCREEN__INPUT_BOX:
-        x = Self->IboxX;
-        y = Self->IboxY;
-        break;
     case SCREEN__SAVE_LOAD:
         x = Self->SaveLoadX;
         y = Self->SaveLoadY;
@@ -10771,9 +10743,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__GM_TOWN:
         Self->GmapTownDraw();
-        break;
-    case SCREEN__INPUT_BOX:
-        Self->IboxDraw();
         break;
     case SCREEN__SAVE_LOAD:
         Self->SaveLoadDraw();
@@ -10834,12 +10803,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
         else if( move )
             Self->GmapMouseMove();
         break;
-    case SCREEN__INPUT_BOX:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->IboxLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->IboxLMouseUp();
-        break;
     case SCREEN__SAVE_LOAD:
         if( button == MOUSE_BUTTON_LEFT && down )
             Self->SaveLoadLMouseDown();
@@ -10865,12 +10828,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar k
     case SCREEN_GAME:
         if( down )
             Self->GameKeyDown( key, text ? text->c_str() : "" );
-        break;
-    case SCREEN__INPUT_BOX:
-        if( down )
-            Self->IboxKeyDown( key, text ? text->c_str() : "" );
-        else if( !down )
-            Self->IboxKeyUp( key );
         break;
     default:
         break;

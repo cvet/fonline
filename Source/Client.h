@@ -1070,31 +1070,6 @@ public:
     void FixMouseMove();
 
 /************************************************************************/
-/* Input Box                                                            */
-/************************************************************************/
-    int IboxMode;
-    #define IBOX_MODE_NONE             ( 0 )
-    #define IBOX_MODE_HOLO             ( 1 )
-
-    AnyFrames* IboxWMainPicNone, * IboxBDonePicDown, * IboxBCancelPicDown;
-    Rect       IboxWMain, IboxWTitle, IboxWText, IboxBDone, IboxBDoneText, IboxBCancel, IboxBCancelText;
-    int        IboxX, IboxY, IboxVectX, IboxVectY;
-    string     IboxTitle, IboxText;
-    uint       IboxTitleCur, IboxTextCur;
-    uchar      IboxLastKey;
-    string     IboxLastKeyText;
-
-    // Holodisk
-    uint IboxHolodiskId;
-
-    void IboxDraw();
-    void IboxLMouseDown();
-    void IboxLMouseUp();
-    void IboxKeyDown( uchar dik, const char* dik_text );
-    void IboxKeyUp( uchar dik );
-    void IboxMouseMove();
-
-/************************************************************************/
 /* Save/Load                                                            */
 /************************************************************************/
     #define SAVE_LOAD_IMAGE_WIDTH      ( 400 )
@@ -1300,11 +1275,6 @@ public:
 
 // Interface elements
 #define IFACE_NONE                     ( 0 )
-#define IFACE_USE_INV                  ( 40 )
-#define IFACE_USE_SCRUP                ( 41 )
-#define IFACE_USE_SCRDW                ( 42 )
-#define IFACE_USE_CANCEL               ( 43 )
-#define IFACE_USE_MAIN                 ( 44 )
 #define IFACE_GAME_MNEXT               ( 60 )
 #define IFACE_GMAP_MAP                 ( 140 )
 #define IFACE_GMAP_TOWN                ( 141 )
@@ -1320,43 +1290,12 @@ public:
 #define IFACE_GMAP_PIP                 ( 151 )
 #define IFACE_GMAP_FIX                 ( 152 )
 #define IFACE_GMAP_MOVE_MAP            ( 153 )
-#define IFACE_TOWN_VIEW_MAIN           ( 250 )
-#define IFACE_TOWN_VIEW_BACK           ( 251 )
-#define IFACE_TOWN_VIEW_ENTER          ( 252 )
-#define IFACE_TOWN_VIEW_CONTOUR        ( 253 )
-#define IFACE_AIM_CANCEL               ( 280 )
-#define IFACE_AIM_HEAD                 ( 281 )
-#define IFACE_AIM_LARM                 ( 282 )
-#define IFACE_AIM_RARM                 ( 283 )
-#define IFACE_AIM_TORSO                ( 284 )
-#define IFACE_AIM_RLEG                 ( 285 )
-#define IFACE_AIM_LLEG                 ( 286 )
-#define IFACE_AIM_EYES                 ( 287 )
-#define IFACE_AIM_GROIN                ( 288 )
-#define IFACE_AIM_MAIN                 ( 289 )
-#define IFACE_DIALOG_BTN               ( 320 )
-#define IFACE_DIALOG_MAIN              ( 321 )
-#define IFACE_ELEVATOR_MAIN            ( 330 )
-#define IFACE_ELEVATOR_BTN             ( 331 )
-#define IFACE_SAY_OK                   ( 340 )
-#define IFACE_SAY_CANCEL               ( 341 )
-#define IFACE_SAY_MAIN                 ( 342 )
-#define IFACE_TIMER_MAIN               ( 380 )
-#define IFACE_TIMER_UP                 ( 381 )
-#define IFACE_TIMER_DOWN               ( 382 )
-#define IFACE_TIMER_DONE               ( 383 )
-#define IFACE_TIMER_CANCEL             ( 384 )
 #define IFACE_FIX_DONE                 ( 400 )
 #define IFACE_FIX_SCRUP                ( 401 )
 #define IFACE_FIX_SCRDN                ( 402 )
 #define IFACE_FIX_CHOOSE               ( 403 )
 #define IFACE_FIX_FIX                  ( 404 )
 #define IFACE_FIX_MAIN                 ( 405 )
-#define IFACE_IBOX_DONE                ( 420 )
-#define IFACE_IBOX_CANCEL              ( 421 )
-#define IFACE_IBOX_TITLE               ( 422 )
-#define IFACE_IBOX_TEXT                ( 423 )
-#define IFACE_IBOX_MAIN                ( 424 )
 #define IFACE_SAVELOAD_MAIN            ( 440 )
 #define IFACE_SAVELOAD_SCR_UP          ( 441 )
 #define IFACE_SAVELOAD_SCR_DN          ( 442 )

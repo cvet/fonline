@@ -256,27 +256,6 @@ int FOClient::InitIface()
     FixShowCraft.clear();
     FixNextShowCraftTick = 0;
 
-    // Input box
-    IfaceLoadRect( IboxWMain, "IboxMain" );
-    IfaceLoadRect( IboxWTitle, "IboxTitle" );
-    IfaceLoadRect( IboxWText, "IboxText" );
-    IfaceLoadRect( IboxBDone, "IboxDone" );
-    IfaceLoadRect( IboxBDoneText, "IboxDoneText" );
-    IfaceLoadRect( IboxBCancel, "IboxCancel" );
-    IfaceLoadRect( IboxBCancelText, "IboxCancelText" );
-    IboxMode = IBOX_MODE_NONE;
-    IboxX = ( GameOpt.ScreenWidth - IboxWMain.W() ) / 2;
-    IboxY = ( GameOpt.ScreenHeight - IboxWMain.H() ) / 2;
-    IboxVectX = 0;
-    IboxVectY = 0;
-    IboxTitle = "";
-    IboxText = "";
-    IboxTitleCur = 0;
-    IboxTextCur = 0;
-    IboxLastKey = 0;
-    IboxLastKeyText = "";
-    IboxHolodiskId = 0;
-
     // Save/Load
     IfaceLoadRect( SaveLoadMain, "SaveLoadMain" );
     IfaceLoadRect( SaveLoadText, "SaveLoadText" );
@@ -397,11 +376,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( FixPBScrDnDn, "FixScrDnPicDn" );
     IfaceLoadSpr( FixPBDoneDn, "FixDonePicDn" );
     IfaceLoadSpr( FixPBFixDn, "FixFixPicDn" );
-
-    // Input box
-    IfaceLoadSpr( IboxWMainPicNone, "IboxMainPic" );
-    IfaceLoadSpr( IboxBDonePicDown, "IboxDonePicDn" );
-    IfaceLoadSpr( IboxBCancelPicDown, "IboxCancelPicDn" );
 
     // Save/Load
     IfaceLoadSpr( SaveLoadMainPic, "SaveLoadMainPic" );
@@ -2295,12 +2269,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         }
     }
     break;
-    case SCREEN__INPUT_BOX:
-        IboxMode = IBOX_MODE_NONE;
-        IboxHolodiskId = 0;
-        IboxTitleCur = 0;
-        IboxTextCur = 0;
-        break;
     case SCREEN__SAVE_LOAD:
         SaveLoadCollect();
         if( SaveLoadLoginScreen )
@@ -3903,129 +3871,6 @@ void FOClient::FixMouseMove()
             FixY = 0;
         if( FixY + FixWMain[ 3 ] > GameOpt.ScreenHeight )
             FixY = GameOpt.ScreenHeight - FixWMain[ 3 ];
-    }
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::IboxDraw()
-{
-    SprMngr.DrawSprite( IboxWMainPicNone, IboxWMain[ 0 ] + IboxX, IboxWMain[ 1 ] + IboxY );
-
-    switch( IfaceHold )
-    {
-    case IFACE_IBOX_DONE:
-        SprMngr.DrawSprite( IboxBDonePicDown, IboxBDone[ 0 ] + IboxX, IboxBDone[ 1 ] + IboxY );
-        break;
-    case IFACE_IBOX_CANCEL:
-        SprMngr.DrawSprite( IboxBCancelPicDown, IboxBCancel[ 0 ] + IboxX, IboxBCancel[ 1 ] + IboxY );
-        break;
-    default:
-        break;
-    }
-
-    char* buf = (char*) Str::FormatBuf( "%s", IboxTitle.c_str() );
-    if( IfaceHold == IFACE_IBOX_TITLE )
-        Str::Insert( &buf[ IboxTitleCur ], Timer::FastTick() % 798 < 399 ? "!" : "." );
-    SprMngr.DrawStr( Rect( IboxWTitle, IboxX, IboxY ), buf, FT_NOBREAK | FT_CENTERY );
-    buf = (char*) Str::FormatBuf( "%s", IboxText.c_str() );
-    if( IfaceHold == IFACE_IBOX_TEXT )
-        Str::Insert( &buf[ IboxTextCur ], Timer::FastTick() % 798 < 399 ? "." : "!" );
-    SprMngr.DrawStr( Rect( IboxWText, IboxX, IboxY ), buf, 0 );
-
-    SprMngr.DrawStr( Rect( IboxBDoneText, IboxX, IboxY ), MsgGame->GetStr( STR_INPUT_BOX_WRITE ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( IboxBCancelText, IboxX, IboxY ), MsgGame->GetStr( STR_INPUT_BOX_BACK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-}
-
-void FOClient::IboxLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    if( !IsCurInRect( IboxWMain, IboxX, IboxY ) )
-        return;
-
-    if( IsCurInRect( IboxWTitle, IboxX, IboxY ) )
-        IfaceHold = IFACE_IBOX_TITLE;
-    else if( IsCurInRect( IboxWText, IboxX, IboxY ) )
-        IfaceHold = IFACE_IBOX_TEXT;
-    else if( IsCurInRect( IboxBDone, IboxX, IboxY ) )
-        IfaceHold = IFACE_IBOX_DONE;
-    else if( IsCurInRect( IboxBCancel, IboxX, IboxY ) )
-        IfaceHold = IFACE_IBOX_CANCEL;
-
-    if( IfaceHold == IFACE_NONE )
-    {
-        IboxVectX = GameOpt.MouseX - IboxX;
-        IboxVectY = GameOpt.MouseY - IboxY;
-        IfaceHold = IFACE_IBOX_MAIN;
-    }
-}
-
-void FOClient::IboxLMouseUp()
-{
-    switch( IfaceHold )
-    {
-    case IFACE_IBOX_DONE:
-    {
-        if( !IsCurInRect( IboxBDone, IboxX, IboxY ) )
-            break;
-        AddActionBack( CHOSEN_WRITE_HOLO, IboxHolodiskId );
-        ShowScreen( SCREEN_NONE );
-    }
-    break;
-    case IFACE_IBOX_CANCEL:
-    {
-        if( !IsCurInRect( IboxBCancel, IboxX, IboxY ) )
-            break;
-        ShowScreen( SCREEN_NONE );
-    }
-    break;
-    case IFACE_IBOX_TITLE:
-    case IFACE_IBOX_TEXT:
-        return;
-    default:
-        break;
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::IboxKeyDown( uchar dik, const char* dik_text )
-{
-    if( IfaceHold == IFACE_IBOX_TITLE )
-        Keyb::GetChar( dik, dik_text, IboxTitle, &IboxTitleCur, USER_HOLO_MAX_TITLE_LEN, KIF_NO_SPEC_SYMBOLS );
-    else if( IfaceHold == IFACE_IBOX_TEXT )
-        Keyb::GetChar( dik, dik_text, IboxText, &IboxTextCur, USER_HOLO_MAX_LEN, 0 );
-    else
-        return;
-    if( dik == DIK_PAUSE )
-        return;
-    IboxLastKey = dik;
-    IboxLastKeyText = dik_text;
-}
-
-void FOClient::IboxKeyUp( uchar dik )
-{
-    IboxLastKey = 0;
-    IboxLastKeyText = "";
-}
-
-void FOClient::IboxMouseMove()
-{
-    if( IfaceHold == IFACE_IBOX_MAIN )
-    {
-        IboxX = GameOpt.MouseX - IboxVectX;
-        IboxY = GameOpt.MouseY - IboxVectY;
-
-        if( IboxX < 0 )
-            IboxX = 0;
-        if( IboxX + IboxWMain[ 2 ] > GameOpt.ScreenWidth )
-            IboxX = GameOpt.ScreenWidth - IboxWMain[ 2 ];
-        if( IboxY < 0 )
-            IboxY = 0;
-        if( IboxY + IboxWMain[ 3 ] > GameOpt.ScreenHeight )
-            IboxY = GameOpt.ScreenHeight - IboxWMain[ 3 ];
     }
 }
 
