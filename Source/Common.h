@@ -327,8 +327,6 @@ struct ClientScriptFunctions
     int GetAttackDistantion;
     int CheckInterfaceHit;
     int GetContItem;
-    int LMenuCollectNodes;
-    int LMenuNodeSelect;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions
@@ -623,7 +621,6 @@ struct GameOptions
     uint          DoubleClickTime;
     uchar         RoofAlpha;
     bool          HideCursor;
-    bool          DisableLMenu;
     bool          DisableMouseEvents;
     bool          DisableKeyboardEvents;
     bool          HidePassword;

@@ -101,8 +101,6 @@ FOClient::FOClient()
     DaySumRGB = 0;
     CurMode = CUR_DEFAULT;
     CurModeLast = CUR_DEFAULT;
-    LMenuActive = false;
-    LMenuMode = LMENU_OFF;
 
     GmapCar.Car = nullptr;
     Animations.resize( 10000 );
@@ -120,9 +118,6 @@ FOClient::FOClient()
 
     SomeItem = nullptr;
     CurUseSkill = 0;
-
-    LMenuOX = 0;
-    LMenuOY = 0;
 }
 
 uint* UID1;
@@ -1071,23 +1066,12 @@ int FOClient::MainLoop()
     if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
     {
         CrittersProcess();
-        LMenuTryCreate();
     }
     else if( IsMainScreen( SCREEN_GAME ) && HexMngr.IsMapLoaded() )
     {
-        int screen = GetActiveScreen();
-        if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW || HexMngr.AutoScroll.Active )
-        {
-            if( HexMngr.Scroll() )
-            {
-                LMenuSet( LMENU_OFF );
-                LookBordersPrepare();
-            }
-        }
         CrittersProcess();
         HexMngr.ProcessItems();
         HexMngr.ProcessRain();
-        LMenuTryCreate();
     }
 
     CHECK_MULTIPLY_WINDOWS2;
@@ -1452,16 +1436,11 @@ void FOClient::ParseMouse()
     static int old_cur_y = GameOpt.MouseY;
     if( old_cur_x != GameOpt.MouseX || old_cur_y != GameOpt.MouseY )
     {
-        // Script handler
-        if( Script::PrepareContext( ClientFunctions.MouseMove, _FUNC_, "Game" ) )
-            Script::RunPrepared();
-
-        // Engine handlers
-        LMenuMouseMove();
-
-        // Store last position to avid redundant calls
         old_cur_x = GameOpt.MouseX;
         old_cur_y = GameOpt.MouseY;
+
+        if( Script::PrepareContext( ClientFunctions.MouseMove, _FUNC_, "Game" ) )
+            Script::RunPrepared();
     }
 
     // Get buffered data
@@ -1486,10 +1465,6 @@ void FOClient::ParseMouse()
             }
             continue;
         }
-
-        // Engine handlers
-        if( event == SDL_MOUSEBUTTONUP )
-            LMenuMouseUp();
 
         // Scripts
         if( event == SDL_MOUSEBUTTONDOWN && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
@@ -7228,7 +7203,7 @@ void FOClient::TryExit()
 
 void FOClient::ProcessMouseScroll()
 {
-    if( IsLMenu() || !GameOpt.MouseScroll )
+    if( !GameOpt.MouseScroll )
         return;
 
     if( GameOpt.MouseX >= GameOpt.ScreenWidth - 1 )
@@ -8254,8 +8229,6 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(Critter&,Item&,uint8)" },
         { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },
         { &ClientFunctions.GetContItem, "get_cont_item", "bool %s(uint&,bool&)" },
-        { &ClientFunctions.LMenuCollectNodes, "lmenu_collect_nodes", "void %s(Critter@,Item@,int[]&)" },
-        { &ClientFunctions.LMenuNodeSelect, "lmenu_node_select", "bool %s(int,Critter@,Item@)" },
     };
     if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
         errors++;
@@ -9009,10 +8982,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->ProcessMouseScroll();
     }
-    else if( cmd == "LMenuDraw" )
-    {
-        Self->LMenuDraw();
-    }
     else if( cmd == "SetMousePos" )
     {
         int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
@@ -9031,23 +9000,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uint item_id = Str::AtoI( args[ 1 ].c_str() );
         int  item_cont = Str::AtoI( args[ 2 ].c_str() );
         Self->SplitStart( item_id, item_cont );
-    }
-    else if( cmd == "IsLMenu" )
-    {
-        return ScriptString::Create( Self->IsLMenu() ? "true" : "false" );
-    }
-    else if( cmd == "IsLMenuNodes" )
-    {
-        return ScriptString::Create( Self->LMenuCurNodes ? "true" : "false" );
-    }
-    else if( cmd == "LMenuTryActivate" )
-    {
-        Self->LMenuTryActivate();
-    }
-    else if( cmd == "LMenuSetOffsets" )
-    {
-        Self->LMenuOX = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
-        Self->LMenuOY = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
     }
     else if( cmd == "AssignSkillPoints" )
     {

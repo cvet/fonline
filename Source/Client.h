@@ -716,41 +716,6 @@ public:
     void GameLMouseDown();
 
 /************************************************************************/
-/* LMenu                                                                */
-/************************************************************************/
-    AnyFrames* LmenuPTalkOff, * LmenuPTalkOn, * LmenuPLookOff, * LmenuPLookOn, * LmenuPBreakOff, * LmenuPBreakOn,
-    * LmenuPUseOff, * LmenuPUseOn, * LmenuPGMFollowOff, * LmenuPGMFollowOn,
-    * LmenuPRotateOn, * LmenuPRotateOff, * LmenuPDropOn, * LmenuPDropOff, * LmenuPUnloadOn, * LmenuPUnloadOff,
-    * LmenuPSortUpOn, * LmenuPSortUpOff, * LmenuPSortDownOn, * LmenuPSortDownOff,
-    * LmenuPPickItemOn, * LmenuPPickItemOff, * LmenuPPushOn, * LmenuPPushOff,
-    * LmenuPBagOn, * LmenuPBagOff, * LmenuPSkillOn, * LmenuPSkillOff,
-    * LmenuPBarterOpenOn, * LmenuPBarterOpenOff, * LmenuPBarterHideOn, * LmenuPBarterHideOff,
-    * LmenuPGmapKickOff, * LmenuPGmapKickOn, * LmenuPGmapRuleOff, * LmenuPGmapRuleOn,
-    * LmenuPVoteUpOff, * LmenuPVoteUpOn, * LmenuPVoteDownOff, * LmenuPVoteDownOn;
-
-    bool     LMenuActive;
-    bool     LMenuTryActivated;
-    uint     LMenuStartTime;
-    int      LMenuX, LMenuY, LMenuRestoreCurX, LMenuRestoreCurY;
-    int      LMenuOX, LMenuOY;
-    int      LMenuHeightOffset;
-    int      LMenuNodeHeight;
-    UIntVec* LMenuCurNodes;
-    int      LMenuCurNode;
-    UIntVec  LMenuNodes;
-    int      LMenuMode;
-
-    bool IsLMenu();
-    void LMenuTryActivate();
-    void LMenuStayOff();
-    void LMenuTryCreate();
-    void LMenuCollect();
-    void LMenuSet( uchar set_lmenu );
-    void LMenuDraw();
-    void LMenuMouseMove();
-    void LMenuMouseUp();
-
-/************************************************************************/
 /* Dialog                                                               */
 /************************************************************************/
     uchar  DlgIsNpc;
@@ -1022,37 +987,6 @@ public:
 #define CUR_USE_SKILL                  ( 4 )
 #define CUR_WAIT                       ( 5 )
 #define CUR_HAND                       ( 6 )
-
-// Lmenu
-#define LMENU_SHOW_TIME                ( 400 )
-#define LMENU_OFF                      ( 0 )
-#define LMENU_PLAYER                   ( 1 )
-#define LMENU_NPC                      ( 2 )
-#define LMENU_ITEM                     ( 3 )
-#define LMENU_ITEM_INV                 ( 4 )
-#define LMENU_GMAP_CRIT                ( 5 )
-// Lmenu Nodes
-#define LMENU_NODE_LOOK                ( 0 )
-#define LMENU_NODE_TALK                ( 1 )
-#define LMENU_NODE_BREAK               ( 2 )
-#define LMENU_NODE_PICK                ( 3 )
-#define LMENU_NODE_GMFOLLOW            ( 4 )
-#define LMENU_NODE_ROTATE              ( 5 )
-#define LMENU_NODE_DROP                ( 6 )
-#define LMENU_NODE_UNLOAD              ( 7 )
-#define LMENU_NODE_USE                 ( 8 )
-#define LMENU_NODE_SORT_UP             ( 10 )
-#define LMENU_NODE_SORT_DOWN           ( 11 )
-#define LMENU_NODE_PICK_ITEM           ( 12 )
-#define LMENU_NODE_PUSH                ( 13 )
-#define LMENU_NODE_BAG                 ( 14 )
-#define LMENU_NODE_SKILL               ( 15 )
-#define LMENU_NODE_BARTER_OPEN         ( 16 )
-#define LMENU_NODE_BARTER_HIDE         ( 17 )
-#define LMENU_NODE_GMAP_KICK           ( 18 )
-#define LMENU_NODE_GMAP_RULE           ( 19 )
-#define LMENU_NODE_VOTE_UP             ( 20 )
-#define LMENU_NODE_VOTE_DOWN           ( 21 )
 
 // Chosen actions
 #define CHOSEN_NONE                    ( 0 )  //

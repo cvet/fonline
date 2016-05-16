@@ -1266,7 +1266,6 @@ GameOptions::GameOptions()
     DoubleClickTime = 0;
     RoofAlpha = 200;
     HideCursor = false;
-    DisableLMenu = false;
     DisableMouseEvents = false;
     DisableKeyboardEvents = false;
     HidePassword = true;

@@ -909,7 +909,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __HideCursor", &GameOpt.HideC
 BIND_ASSERT( engine->RegisterGlobalProperty( "const int __ScreenWidth", &GameOpt.ScreenWidth ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "const int __ScreenHeight", &GameOpt.ScreenHeight ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __MultiSampling", &GameOpt.MultiSampling ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableLMenu", &GameOpt.DisableLMenu ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableMouseEvents", &GameOpt.DisableMouseEvents ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableKeyboardEvents", &GameOpt.DisableKeyboardEvents ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __HidePassword", &GameOpt.HidePassword ) );
