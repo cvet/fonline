@@ -237,39 +237,13 @@ int FOClient::InitIface()
     Automaps.clear();
 
     // Save/Load
-    IfaceLoadRect( SaveLoadMain, "SaveLoadMain" );
-    IfaceLoadRect( SaveLoadText, "SaveLoadText" );
-    IfaceLoadRect( SaveLoadScrUp, "SaveLoadScrUp" );
-    IfaceLoadRect( SaveLoadScrDown, "SaveLoadScrDown" );
-    IfaceLoadRect( SaveLoadSlots, "SaveLoadSlots" );
-    IfaceLoadRect( SaveLoadPic, "SaveLoadPic" );
-    IfaceLoadRect( SaveLoadInfo, "SaveLoadInfo" );
-    IfaceLoadRect( SaveLoadDone, "SaveLoadDone" );
-    IfaceLoadRect( SaveLoadDoneText, "SaveLoadDoneText" );
-    IfaceLoadRect( SaveLoadBack, "SaveLoadBack" );
-    IfaceLoadRect( SaveLoadBackText, "SaveLoadBackText" );
-    SaveLoadCX = ( GameOpt.ScreenWidth - SaveLoadMain.W() ) / 2;
-    SaveLoadCY = ( GameOpt.ScreenHeight - SaveLoadMain.H() ) / 2;
-    SaveLoadX = SaveLoadCX;
-    SaveLoadY = SaveLoadCY;
-    SaveLoadVectX = 0;
-    SaveLoadVectY = 0;
-    SaveLoadLoginScreen = false;
-    SaveLoadSave = false;
-    SaveLoadClickSlotTick = 0;
-    SaveLoadClickSlotIndex = 0;
-    SaveLoadSlotIndex = 0;
-    SaveLoadSlotScroll = 0;
-    SaveLoadSlotsMax = 0;
-    SaveLoadDataSlots.clear();
-    // Save/load surface creating
     if( Singleplayer )
     {
-        if( !SaveLoadDraft )
-            SaveLoadDraft = SprMngr.CreateRenderTarget( false, false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
+        SaveLoadDataSlots.clear();
+        SaveLoadDraft = SprMngr.CreateRenderTarget( false, false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
+        SaveLoadProcessDraft = false;
+        SaveLoadDraftValid = false;
     }
-    SaveLoadProcessDraft = false;
-    SaveLoadDraftValid = false;
 
 /************************************************************************/
 /* Sprites                                                              */
@@ -349,13 +323,6 @@ int FOClient::InitIface()
     IfaceLoadSpr( GmapBFixPicDown, "GmapFixPicDn" );
     IfaceLoadSpr( GmapPLightPic0, "GmapLightPic0" );
     IfaceLoadSpr( GmapPLightPic1, "GmapLightPic1" );
-
-    // Save/Load
-    IfaceLoadSpr( SaveLoadMainPic, "SaveLoadMainPic" );
-    IfaceLoadSpr( SaveLoadScrUpPicDown, "SaveLoadScrUpPicDn" );
-    IfaceLoadSpr( SaveLoadScrDownPicDown, "SaveLoadScrDownPicDn" );
-    IfaceLoadSpr( SaveLoadDonePicDown, "SaveLoadDonePicDn" );
-    IfaceLoadSpr( SaveLoadBackPicDown, "SaveLoadBackPicDn" );
 
     WriteLog( "Interface initialization complete.\n" );
     return 0;
@@ -2236,11 +2203,6 @@ void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
         }
     }
     break;
-    case SCREEN__SAVE_LOAD:
-        SaveLoadCollect();
-        if( SaveLoadLoginScreen )
-            ScreenFadeOut();
-        break;
     default:
         break;
     }
@@ -2256,19 +2218,6 @@ void FOClient::HideScreen( int screen )
         screen = GetActiveScreen();
     if( screen == SCREEN_NONE )
         return;
-
-    if( Singleplayer )
-    {
-        if( SingleplayerData.Pause && screen == SCREEN__MENU_OPTION )
-            SingleplayerData.Pause = false;
-
-        if( screen == SCREEN__SAVE_LOAD )
-        {
-            if( SaveLoadLoginScreen )
-                ScreenFadeOut();
-            SaveLoadDataSlots.clear();
-        }
-    }
 
     RunScreenScript( false, screen, nullptr );
 }
@@ -3336,14 +3285,14 @@ void FOClient::SplitStart( uint item_id, int item_cont )
 #define SAVE_LOAD_LINES_PER_SLOT    ( 3 )
 void FOClient::SaveLoadCollect()
 {
-    // Collect singleplayer saves
-    SaveLoadDataSlots.clear();
+    /*// Collect singleplayer saves
+       SaveLoadDataSlots.clear();
 
-    // For each all saves in folder
-    StrVec fnames;
-    FileManager::GetFolderFileNames( FileManager::GetWritePath( "", PT_SAVE ), true, "foworld", fnames );
-    for( uint i = 0; i < fnames.size(); i++ )
-    {
+       // For each all saves in folder
+       StrVec fnames;
+       FileManager::GetFolderFileNames( FileManager::GetWritePath( "", PT_SAVE ), true, "foworld", fnames );
+       for( uint i = 0; i < fnames.size(); i++ )
+       {
         const string& fname = fnames[ i ];
 
         // Open file
@@ -3406,64 +3355,64 @@ void FOClient::SaveLoadCollect()
         slot.RealTime = Str::AtoUI64( settings[ "SaveTimestamp" ].c_str() );
         slot.PicData = pic_data;
         SaveLoadDataSlots.push_back( slot );
-    }
+       }
 
-    // Sort by creation time
-    struct SortByTime
-    {
+       // Sort by creation time
+       struct SortByTime
+       {
         static bool Do( const SaveLoadDataSlot& l, const SaveLoadDataSlot& r ) { return l.RealTime > r.RealTime; }
-    };
-    std::sort( SaveLoadDataSlots.begin(), SaveLoadDataSlots.end(), SortByTime::Do );
+       };
+       std::sort( SaveLoadDataSlots.begin(), SaveLoadDataSlots.end(), SortByTime::Do );
 
-    // Set scroll data
-    SaveLoadSlotScroll = 0;
-    SaveLoadSlotsMax = SaveLoadSlots.H() / SprMngr.GetLinesHeight( 0, 0, "" ) / SAVE_LOAD_LINES_PER_SLOT;
+       // Set scroll data
+       SaveLoadSlotScroll = 0;
+       SaveLoadSlotsMax = SaveLoadSlots.H() / SprMngr.GetLinesHeight( 0, 0, "" ) / SAVE_LOAD_LINES_PER_SLOT;
 
-    // Show actual draft
-    SaveLoadShowDraft();
+       // Show actual draft
+       SaveLoadShowDraft();*/
 }
 
 void FOClient::SaveLoadSaveGame( const char* name )
 {
-    // Get name of new save
-    char fname[ MAX_FOPATH ];
-    FileManager::GetWritePath( "", PT_SAVE, fname );
-    ResolvePath( fname );
-    Str::Append( fname, name );
-    Str::Append( fname, ".foworld" );
+    /*// Get name of new save
+       char fname[ MAX_FOPATH ];
+       FileManager::GetWritePath( "", PT_SAVE, fname );
+       ResolvePath( fname );
+       Str::Append( fname, name );
+       Str::Append( fname, ".foworld" );
 
-    // Delete old files
-    if( SaveLoadFileName != "" )
+       // Delete old files
+       if( SaveLoadFileName != "" )
         FileDelete( SaveLoadFileName.c_str() );
-    FileDelete( fname );
+       FileDelete( fname );
 
-    // Get image data from surface
-    UCharVec pic_data;
-    if( SaveLoadDraftValid )
-    {
+       // Get image data from surface
+       UCharVec pic_data;
+       if( SaveLoadDraftValid )
+       {
         // Get data
         pic_data.resize( SAVE_LOAD_IMAGE_WIDTH * SAVE_LOAD_IMAGE_HEIGHT * 3 );
         GL( glBindTexture( GL_TEXTURE_2D, SaveLoadDraft->TargetTexture->Id ) );
         GL( glGetTexImage( GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, &pic_data[ 0 ] ) );
         GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
-    }
+       }
 
-    // Send request
-    Net_SendSaveLoad( true, fname, &pic_data );
+       // Send request
+       Net_SendSaveLoad( true, fname, &pic_data );
 
-    // Close save/load screen
-    ShowScreen( SCREEN_NONE );
+       // Close save/load screen
+       ShowScreen( SCREEN_NONE );*/
 }
 
 void FOClient::SaveLoadFillDraft()
 {
-    SaveLoadProcessDraft = false;
-    SaveLoadDraftValid = false;
-    int           w = 0, h = 0;
-    SDL_GetWindowSize( MainWindow, &w, &h );
-    RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, false, w, h, true );
-    if( rt )
-    {
+    /*SaveLoadProcessDraft = false;
+       SaveLoadDraftValid = false;
+       int           w = 0, h = 0;
+       SDL_GetWindowSize( MainWindow, &w, &h );
+       RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, false, w, h, true );
+       if( rt )
+       {
         GL( glBindTexture( GL_TEXTURE_2D, rt->TargetTexture->Id ) );
         GL( glCopyTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h ) );
         GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
@@ -3472,14 +3421,14 @@ void FOClient::SaveLoadFillDraft()
         SprMngr.PopRenderTarget();
         SprMngr.DeleteRenderTarget( rt );
         SaveLoadDraftValid = true;
-    }
+       }*/
 }
 
 void FOClient::SaveLoadShowDraft()
 {
-    SaveLoadDraftValid = false;
-    if( SaveLoadSlotIndex >= 0 && SaveLoadSlotIndex < (int) SaveLoadDataSlots.size() )
-    {
+    /*SaveLoadDraftValid = false;
+       if( SaveLoadSlotIndex >= 0 && SaveLoadSlotIndex < (int) SaveLoadDataSlots.size() )
+       {
         // Get surface from image data
         SaveLoadDataSlot& slot = SaveLoadDataSlots[ SaveLoadSlotIndex ];
         if( slot.PicData.size() == SAVE_LOAD_IMAGE_WIDTH * SAVE_LOAD_IMAGE_HEIGHT * 3 )
@@ -3490,18 +3439,18 @@ void FOClient::SaveLoadShowDraft()
             GL( glBindTexture( GL_TEXTURE_2D, 0 ) );
             SaveLoadDraftValid = true;
         }
-    }
-    else if( SaveLoadSave && SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() )
-    {
+       }
+       else if( SaveLoadSave && SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() )
+       {
         // Process SaveLoadFillDraft
         SaveLoadProcessDraft = true;
-    }
+       }*/
 }
 
 void FOClient::SaveLoadProcessDone()
 {
-    if( SaveLoadSave )
-    {
+    /*if( SaveLoadSave )
+       {
         SaveLoadProcessDraft = true;
 
         // ShowScreen( SCREEN__SAY );
@@ -3516,9 +3465,9 @@ void FOClient::SaveLoadProcessDone()
             // SayText = SaveLoadDataSlots[ SaveLoadSlotIndex ].Name;
             SaveLoadFileName = SaveLoadDataSlots[ SaveLoadSlotIndex ].FileName;
         }
-    }
-    else if( SaveLoadSlotIndex >= 0 && SaveLoadSlotIndex < (int) SaveLoadDataSlots.size() )
-    {
+       }
+       else if( SaveLoadSlotIndex >= 0 && SaveLoadSlotIndex < (int) SaveLoadDataSlots.size() )
+       {
         if( !IsConnected )
         {
             SaveLoadFileName = SaveLoadDataSlots[ SaveLoadSlotIndex ].FileName;
@@ -3530,159 +3479,7 @@ void FOClient::SaveLoadProcessDone()
             ShowScreen( SCREEN_NONE );
             WaitPing();
         }
-    }
-}
-
-void FOClient::SaveLoadDraw()
-{
-    int ox = ( SaveLoadLoginScreen ? SaveLoadCX : SaveLoadX );
-    int oy = ( SaveLoadLoginScreen ? SaveLoadCY : SaveLoadY );
-
-    if( SaveLoadLoginScreen )
-    {
-        GL( glClear( GL_COLOR_BUFFER_BIT ) );
-    }
-    SprMngr.DrawSprite( SaveLoadMainPic, SaveLoadMain[ 0 ] + ox, SaveLoadMain[ 1 ] + oy );
-
-    if( IfaceHold == IFACE_SAVELOAD_SCR_UP )
-        SprMngr.DrawSprite( SaveLoadScrUpPicDown, SaveLoadScrUp[ 0 ] + ox, SaveLoadScrUp[ 1 ] + oy );
-    else if( IfaceHold == IFACE_SAVELOAD_SCR_DN )
-        SprMngr.DrawSprite( SaveLoadScrDownPicDown, SaveLoadScrDown[ 0 ] + ox, SaveLoadScrDown[ 1 ] + oy );
-    else if( IfaceHold == IFACE_SAVELOAD_DONE )
-        SprMngr.DrawSprite( SaveLoadDonePicDown, SaveLoadDone[ 0 ] + ox, SaveLoadDone[ 1 ] + oy );
-    else if( IfaceHold == IFACE_SAVELOAD_BACK )
-        SprMngr.DrawSprite( SaveLoadBackPicDown, SaveLoadBack[ 0 ] + ox, SaveLoadBack[ 1 ] + oy );
-
-    SprMngr.DrawStr( Rect( SaveLoadText, ox, oy ), MsgGame->GetStr( SaveLoadSave ? STR_SAVE_LOAD_SAVE : STR_SAVE_LOAD_LOAD ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SaveLoadDoneText, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_DONE ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-    SprMngr.DrawStr( Rect( SaveLoadBackText, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_BACK ), FT_NOBREAK | FT_CENTERY, COLOR_TEXT_SAND, FONT_FAT );
-
-    // Slots
-    int line_height = SprMngr.GetLinesHeight( 0, 0, "" );
-    int cur = 0;
-    for( int i = SaveLoadSlotScroll, j = (int) SaveLoadDataSlots.size(); i < j; i++ )
-    {
-        SaveLoadDataSlot& slot = SaveLoadDataSlots[ i ];
-        SprMngr.DrawStr( Rect( SaveLoadSlots, ox, oy + cur * line_height * SAVE_LOAD_LINES_PER_SLOT ),
-                         slot.Info.c_str(), FT_NOBREAK_LINE, i == SaveLoadSlotIndex ? COLOR_TEXT_DDGREEN : COLOR_TEXT );
-        if( ++cur >= SaveLoadSlotsMax )
-            break;
-    }
-    if( SaveLoadSave && SaveLoadSlotScroll <= (int) SaveLoadDataSlots.size() && cur <= SaveLoadSlotsMax - 1 )
-    {
-        SprMngr.DrawStr( Rect( SaveLoadSlots, ox, oy + cur * line_height * SAVE_LOAD_LINES_PER_SLOT ),
-                         MsgGame->GetStr( STR_SAVE_LOAD_NEW_RECORD ), FT_NOBREAK_LINE, SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() ? COLOR_TEXT_DDGREEN : COLOR_TEXT );
-    }
-
-    // Selected slot ext info
-    if( SaveLoadSlotIndex >= 0 && SaveLoadSlotIndex < (int) SaveLoadDataSlots.size() )
-    {
-        SaveLoadDataSlot& slot = SaveLoadDataSlots[ SaveLoadSlotIndex ];
-        SprMngr.DrawStr( Rect( SaveLoadInfo, ox, oy ), slot.InfoExt.c_str(), FT_CENTERY | FT_NOBREAK_LINE );
-    }
-    if( SaveLoadSave && SaveLoadSlotIndex == (int) SaveLoadDataSlots.size() )
-    {
-        SprMngr.DrawStr( Rect( SaveLoadInfo, ox, oy ), MsgGame->GetStr( STR_SAVE_LOAD_NEW_RECORD ), FT_CENTERY | FT_NOBREAK_LINE );
-    }
-
-    // Draw preview draft
-    if( SaveLoadDraftValid )
-    {
-        Rect dst( SaveLoadPic.L + ox, SaveLoadPic.T + oy, SaveLoadPic.R + ox, SaveLoadPic.B + oy );
-        SprMngr.DrawRenderTarget( SaveLoadDraft, false, nullptr, &dst );
-    }
-}
-
-void FOClient::SaveLoadLMouseDown()
-{
-    IfaceHold = IFACE_NONE;
-    int ox = ( SaveLoadLoginScreen ? SaveLoadCX : SaveLoadX );
-    int oy = ( SaveLoadLoginScreen ? SaveLoadCY : SaveLoadY );
-
-    if( !IsCurInRectNoTransp( SaveLoadMainPic->GetCurSprId(), SaveLoadMain, ox, oy ) )
-        return;
-
-    if( IsCurInRect( SaveLoadScrUp, ox, oy ) )
-        IfaceHold = IFACE_SAVELOAD_SCR_UP;
-    else if( IsCurInRect( SaveLoadScrDown, ox, oy ) )
-        IfaceHold = IFACE_SAVELOAD_SCR_DN;
-    else if( IsCurInRect( SaveLoadDone, ox, oy ) )
-        IfaceHold = IFACE_SAVELOAD_DONE;
-    else if( IsCurInRect( SaveLoadBack, ox, oy ) )
-        IfaceHold = IFACE_SAVELOAD_BACK;
-    else if( IsCurInRect( SaveLoadSlots, ox, oy ) )
-    {
-        int line_height = SprMngr.GetLinesHeight( 0, 0, "" );
-        int line = ( GameOpt.MouseY - SaveLoadSlots.T - oy ) / line_height;
-        int index = line / SAVE_LOAD_LINES_PER_SLOT;
-        if( index < SaveLoadSlotsMax )
-        {
-            SaveLoadSlotIndex = index + SaveLoadSlotScroll;
-            SaveLoadShowDraft();
-
-            if( SaveLoadSlotIndex == SaveLoadClickSlotIndex && Timer::FastTick() - SaveLoadClickSlotTick <= GetDoubleClickTicks() )
-            {
-                SaveLoadProcessDone();
-            }
-            else
-            {
-                SaveLoadClickSlotIndex = SaveLoadSlotIndex;
-                SaveLoadClickSlotTick = Timer::FastTick();
-            }
-        }
-    }
-    else if( !SaveLoadLoginScreen )
-    {
-        SaveLoadVectX = GameOpt.MouseX - SaveLoadX;
-        SaveLoadVectY = GameOpt.MouseY - SaveLoadY;
-        IfaceHold = IFACE_SAVELOAD_MAIN;
-    }
-}
-
-void FOClient::SaveLoadLMouseUp()
-{
-    int ox = ( SaveLoadLoginScreen ? SaveLoadCX : SaveLoadX );
-    int oy = ( SaveLoadLoginScreen ? SaveLoadCY : SaveLoadY );
-
-    if( IfaceHold == IFACE_SAVELOAD_SCR_UP && IsCurInRect( SaveLoadScrUp, ox, oy ) )
-    {
-        if( SaveLoadSlotScroll > 0 )
-            SaveLoadSlotScroll--;
-    }
-    else if( IfaceHold == IFACE_SAVELOAD_SCR_DN && IsCurInRect( SaveLoadScrDown, ox, oy ) )
-    {
-        int max = (int) SaveLoadDataSlots.size() - SaveLoadSlotsMax + ( SaveLoadSave ? 1 : 0 );
-        if( SaveLoadSlotScroll < max )
-            SaveLoadSlotScroll++;
-    }
-    else if( IfaceHold == IFACE_SAVELOAD_DONE && IsCurInRect( SaveLoadDone, ox, oy ) )
-    {
-        SaveLoadProcessDone();
-    }
-    else if( IfaceHold == IFACE_SAVELOAD_BACK && IsCurInRect( SaveLoadBack, ox, oy ) )
-    {
-        ShowScreen( SCREEN_NONE );
-    }
-
-    IfaceHold = IFACE_NONE;
-}
-
-void FOClient::SaveLoadMouseMove()
-{
-    if( IfaceHold == IFACE_SAVELOAD_MAIN )
-    {
-        SaveLoadX = GameOpt.MouseX - SaveLoadVectX;
-        SaveLoadY = GameOpt.MouseY - SaveLoadVectY;
-
-        if( SaveLoadX < 0 )
-            SaveLoadX = 0;
-        if( SaveLoadX + SaveLoadMain[ 2 ] > GameOpt.ScreenWidth )
-            SaveLoadX = GameOpt.ScreenWidth - SaveLoadMain[ 2 ];
-        if( SaveLoadY < 0 )
-            SaveLoadY = 0;
-        if( SaveLoadY + SaveLoadMain[ 3 ] > GameOpt.ScreenHeight )
-            SaveLoadY = GameOpt.ScreenHeight - SaveLoadMain[ 3 ];
-    }
+       }*/
 }
 
 // ==============================================================================================================================

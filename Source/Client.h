@@ -983,14 +983,7 @@ public:
     #define SAVE_LOAD_IMAGE_WIDTH      ( 400 )
     #define SAVE_LOAD_IMAGE_HEIGHT     ( 300 )
 
-    AnyFrames*    SaveLoadMainPic, * SaveLoadScrUpPicDown, * SaveLoadScrDownPicDown,
-    * SaveLoadDonePicDown, * SaveLoadBackPicDown;
-    Rect          SaveLoadMain, SaveLoadText, SaveLoadScrUp, SaveLoadScrDown, SaveLoadSlots, SaveLoadPic,
-                  SaveLoadInfo, SaveLoadDone, SaveLoadDoneText, SaveLoadBack, SaveLoadBackText;
-    int           SaveLoadX, SaveLoadY, SaveLoadCX, SaveLoadCY, SaveLoadVectX, SaveLoadVectY;
-    bool          SaveLoadLoginScreen, SaveLoadSave;
     bool          SaveLoadProcessDraft, SaveLoadDraftValid;
-
     RenderTarget* SaveLoadDraft;
 
     struct SaveLoadDataSlot
@@ -1004,21 +997,12 @@ public:
     };
     typedef vector< SaveLoadDataSlot > SaveLoadDataSlotVec;
     SaveLoadDataSlotVec SaveLoadDataSlots;
-    uint                SaveLoadClickSlotTick;
-    int                 SaveLoadSlotIndex, SaveLoadClickSlotIndex;
-    int                 SaveLoadSlotScroll, SaveLoadSlotsMax;
-    string              SaveLoadFileName;
 
     void SaveLoadCollect();
     void SaveLoadSaveGame( const char* name );
     void SaveLoadFillDraft();
     void SaveLoadShowDraft();
     void SaveLoadProcessDone();
-
-    void SaveLoadDraw();
-    void SaveLoadLMouseDown();
-    void SaveLoadLMouseUp();
-    void SaveLoadMouseMove();
 
 /************************************************************************/
 /* Generic                                                              */
@@ -1095,7 +1079,6 @@ public:
 #define SCREEN__SKILLBOX               ( 30 )
 #define SCREEN__USE                    ( 31 )
 #define SCREEN__TOWN_VIEW              ( 33 )
-#define SCREEN__SAVE_LOAD              ( 34 )
 
 // Cur modes
 #define CUR_DEFAULT                    ( 0 )
@@ -1195,10 +1178,5 @@ public:
 #define IFACE_GMAP_PIP                 ( 151 )
 #define IFACE_GMAP_FIX                 ( 152 )
 #define IFACE_GMAP_MOVE_MAP            ( 153 )
-#define IFACE_SAVELOAD_MAIN            ( 440 )
-#define IFACE_SAVELOAD_SCR_UP          ( 441 )
-#define IFACE_SAVELOAD_SCR_DN          ( 442 )
-#define IFACE_SAVELOAD_DONE            ( 443 )
-#define IFACE_SAVELOAD_BACK            ( 444 )
 
 #endif // __CLIENT__

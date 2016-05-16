@@ -1039,8 +1039,8 @@ int FOClient::MainLoop()
             Net_SendLogIn( GameOpt.Name->c_str(), Password.c_str() );
         else if( reason == INIT_NET_REASON_REG )
             Net_SendCreatePlayer();
-        else if( reason == INIT_NET_REASON_LOAD )
-            Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
+        // else if( reason == INIT_NET_REASON_LOAD )
+        //    Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
         else if( reason != INIT_NET_REASON_CUSTOM )
             RUNTIME_ASSERT( !"Unreachable place" );
     }
@@ -1562,26 +1562,6 @@ void FOClient::ProcessMouseWheel( int data )
                     if( GmapTabNextY && GmapTabsScrY > GmapWTab.H() * tabs_count )
                         GmapTabsScrY = GmapWTab.H() * tabs_count;
                 }
-            }
-        }
-    }
-    else if( screen == SCREEN__SAVE_LOAD )
-    {
-        int ox = ( SaveLoadLoginScreen ? SaveLoadCX : SaveLoadX );
-        int oy = ( SaveLoadLoginScreen ? SaveLoadCY : SaveLoadY );
-
-        if( IsCurInRect( SaveLoadSlots, ox, oy ) )
-        {
-            if( data > 0 )
-            {
-                if( SaveLoadSlotScroll > 0 )
-                    SaveLoadSlotScroll--;
-            }
-            else
-            {
-                int max = (int) SaveLoadDataSlots.size() - SaveLoadSlotsMax + ( SaveLoadSave ? 1 : 0 );
-                if( SaveLoadSlotScroll < max )
-                    SaveLoadSlotScroll++;
             }
         }
     }
@@ -9138,18 +9118,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         Self->LMenuOX = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
         Self->LMenuOY = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
     }
-    else if( cmd == "SaveGame" )
-    {
-        Self->SaveLoadLoginScreen = false;
-        Self->SaveLoadSave = true;
-        Self->ShowScreen( SCREEN__SAVE_LOAD );
-    }
-    else if( cmd == "LoadGame" )
-    {
-        Self->SaveLoadLoginScreen = false;
-        Self->SaveLoadSave = false;
-        Self->ShowScreen( SCREEN__SAVE_LOAD );
-    }
     else if( cmd == "AssignSkillPoints" )
     {
         IntVec props_data;
@@ -9284,6 +9252,12 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         Item* holo = Self->Chosen->GetItem( item_id );
         if( holo )
             Self->Net_SendSetUserHoloStr( holo, args[ 2 ].c_str(), args[ 3 ].c_str() );
+    }
+    else if( cmd == "SingleplayerPause" && args.size() == 2 )
+    {
+        bool pause = Str::AtoB( args[ 1 ].c_str() );
+        if( Singleplayer )
+            SingleplayerData.Pause = pause;
     }
     else
     {
@@ -10643,10 +10617,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = 0;
         y = 0;
         break;
-    case SCREEN__SAVE_LOAD:
-        x = Self->SaveLoadX;
-        y = Self->SaveLoadY;
-        break;
     default:
         x = 0;
         y = 0;
@@ -10666,9 +10636,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN__GM_TOWN:
         Self->GmapTownDraw();
-        break;
-    case SCREEN__SAVE_LOAD:
-        Self->SaveLoadDraw();
         break;
     default:
         break;
@@ -10717,14 +10684,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->GmapRMouseUp();
         else if( move )
             Self->GmapMouseMove();
-        break;
-    case SCREEN__SAVE_LOAD:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->SaveLoadLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->SaveLoadLMouseUp();
-        else if( move )
-            Self->SaveLoadMouseMove();
         break;
     default:
         break;
