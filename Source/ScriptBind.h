@@ -138,27 +138,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerOpen()", asFUNCTI
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerClose()", asFUNCTION( BIND_CLASS Item_LockerClose ), asCALL_CDECL_OBJFIRST ) );
 
 /************************************************************************/
-/* CraftItem
-   /************************************************************************/
-BIND_ASSERT( engine->RegisterObjectType( "CraftItem", 0, asOBJ_REF ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "CraftItem", asBEHAVE_ADDREF, "void f()", asMETHOD( CraftItem, AddRef ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "CraftItem", asBEHAVE_RELEASE, "void f()", asMETHOD( CraftItem, Release ), asCALL_THISCALL ) );
-
-// Properties
-BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const uint Num", OFFSETOF( CraftItem, Num ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string@ Name", OFFSETOF( CraftItem, Name ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string@ Info", OFFSETOF( CraftItem, Info ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const uint Experience", OFFSETOF( CraftItem, Experience ) ) );
-BIND_ASSERT( engine->RegisterObjectProperty( "CraftItem", "const string@ Script", OFFSETOF( CraftItem, Script ) ) );
-
-// Methods
-BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetShowParams(array<uint>@+ nums, array<int>@+ values, array<bool>@+ ors)", asFUNCTION( BIND_CLASS CraftItem_GetShowParams ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetNeedParams(array<uint>@+ nums, array<int>@+ values, array<bool>@+ ors)", asFUNCTION( BIND_CLASS CraftItem_GetNeedParams ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetNeedTools(array<hash>@+ pids, array<uint>@+ values, array<bool>@+ ors)", asFUNCTION( BIND_CLASS CraftItem_GetNeedTools ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetNeedItems(array<hash>@+ pids, array<uint>@+ values, array<bool>@+ ors)", asFUNCTION( BIND_CLASS CraftItem_GetNeedItems ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "CraftItem", "uint GetOutItems(array<hash>@+ pids, array<uint>@+ values)", asFUNCTION( BIND_CLASS CraftItem_GetOutItems ), asCALL_CDECL_OBJFIRST ) );
-
-/************************************************************************/
 /* Critter                                                              */
 /************************************************************************/
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsPlayer() const", asFUNCTION( BIND_CLASS Crit_IsPlayer ), asCALL_CDECL_OBJFIRST ) );
@@ -511,7 +490,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadImage(uint index, string@
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetImageColor(uint index, uint x, uint y)", asFUNCTION( BIND_CLASS Global_GetImageColor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Synchronize()", asFUNCTION( BIND_CLASS Global_Synchronize ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Resynchronize()", asFUNCTION( BIND_CLASS Global_Resynchronize ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "CraftItem@ GetCraftItem(uint num)", asFUNCTION( BIND_CLASS Global_GetCraftItem ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", asFUNCTION( BIND_CLASS Global_SetTime ), asCALL_CDECL ) );
 #endif
 

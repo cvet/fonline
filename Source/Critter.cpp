@@ -98,7 +98,6 @@ CLASS_PROPERTY_IMPL( Critter, TE_NextTime );
 CLASS_PROPERTY_IMPL( Critter, TE_Identifier );
 CLASS_PROPERTY_IMPL( Critter, LookDistance );
 CLASS_PROPERTY_IMPL( Critter, Charisma );
-CLASS_PROPERTY_IMPL( Critter, Experience );
 CLASS_PROPERTY_IMPL( Critter, DialogId );
 CLASS_PROPERTY_IMPL( Critter, BagId );
 CLASS_PROPERTY_IMPL( Critter, NpcRole );
@@ -129,8 +128,6 @@ CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
 CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
 CLASS_PROPERTY_IMPL( Critter, TimeoutKarmaVoting );
-CLASS_PROPERTY_IMPL( Critter, TimeoutSkScience );
-CLASS_PROPERTY_IMPL( Critter, TimeoutSkRepair );
 CLASS_PROPERTY_IMPL( Critter, DefaultCombat );
 CLASS_PROPERTY_IMPL( Critter, IsUnlimitedAmmo );
 CLASS_PROPERTY_IMPL( Critter, IsNoUnarmed );
@@ -3596,7 +3593,6 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
     IsDisconnected = false;
     DisconnectTick = 0;
     DisableZlib = false;
-    LastSendCraftTick = 0;
     LastSendEntrancesTick = 0;
     LastSendEntrancesLocId = 0;
     LastSendedMapTick = 0;
@@ -5271,7 +5267,6 @@ void Client::BarterEraseItem( uint item_id )
 
 void Client::DropTimers( bool send )
 {
-    LastSendCraftTick = 0;
     LastSendEntrancesTick = 0;
     LastSendEntrancesLocId = 0;
     if( send )

@@ -3706,60 +3706,6 @@ void FOServer::Process_LevelUp( Client* cl )
     }
 }
 
-void FOServer::Process_CraftAsk( Client* cl )
-{
-    uint tick = Timer::FastTick();
-    if( tick < cl->LastSendCraftTick + CRAFT_SEND_TIME )
-    {
-        WriteLogF( _FUNC_, " - Client '%s' ignore send craft timeout.\n", cl->GetInfo() );
-        return;
-    }
-    cl->LastSendCraftTick = tick;
-
-    uint   msg_len;
-    ushort count;
-    cl->Bin >> msg_len;
-    cl->Bin >> count;
-
-    UIntVec numbers;
-    numbers.reserve( count );
-    for( int i = 0; i < count; i++ )
-    {
-        uint craft_num;
-        cl->Bin >> craft_num;
-        if( MrFixit.IsShowCraft( cl, craft_num ) )
-            numbers.push_back( craft_num );
-    }
-    CHECK_IN_BUFF_ERROR( cl );
-
-    uint msg = NETMSG_CRAFT_ASK;
-    count = (ushort) numbers.size();
-    msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( count ) + sizeof( uint ) * count;
-
-    BOUT_BEGIN( cl );
-    cl->Bout << msg;
-    cl->Bout << msg_len;
-    cl->Bout << count;
-    for( uint i = 0, j = (uint) numbers.size(); i < j; i++ )
-        cl->Bout << numbers[ i ];
-    BOUT_END( cl );
-}
-
-void FOServer::Process_Craft( Client* cl )
-{
-    uint craft_num;
-
-    cl->Bin >> craft_num;
-    CHECK_IN_BUFF_ERROR( cl );
-
-    uchar res = MrFixit.ProcessCraft( cl, craft_num );
-
-    BOUT_BEGIN( cl );
-    cl->Bout << NETMSG_CRAFT_RESULT;
-    cl->Bout << res;
-    BOUT_END( cl );
-}
-
 void FOServer::Process_Ping( Client* cl )
 {
     uchar ping;

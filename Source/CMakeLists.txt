@@ -207,7 +207,6 @@ set( SERVER_CLIENT_MAPPER_SOURCE
 set( SERVER_CLIENT_SOURCE
 	Access.h
 	BufferManager.cpp BufferManager.h
-	CraftManager.cpp CraftManager.h
 	DataMask.h
 )
 set( SERVER_ASCOMPILER_SOURCE

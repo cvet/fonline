@@ -11,7 +11,6 @@
 #include "NetProtocol.h"
 #include "BufferManager.h"
 #include "Text.h"
-#include "CraftManager.h"
 #include "ResourceManager.h"
 #include "CritterType.h"
 #include "DataMask.h"
@@ -152,8 +151,6 @@ public:
     void Net_SendDir();
     void Net_SendMove( UCharVec steps );
     void Net_SendLevelUp( int perk_up, IntVec* props_data );
-    void Net_SendCraftAsk( UIntVec numbers );
-    void Net_SendCraft( uint craft_num );
     void Net_SendPing( uchar ping );
     void Net_SendPlayersBarter( uchar barter, uint param, uint param_ext );
     void Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text );
@@ -197,8 +194,6 @@ public:
 
     void Net_OnCritterXY();
     void Net_OnAllProperties();
-    void Net_OnCraftAsk();
-    void Net_OnCraftResult();
     void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();
     void Net_OnChosenEraseItem();
@@ -243,7 +238,7 @@ public:
 
     // MSG File
     LanguagePack CurLang;
-    FOMsg*       MsgText, * MsgDlg, * MsgItem, * MsgGame, * MsgLocations, * MsgCombat, * MsgHolo, * MsgUserHolo, * MsgCraft, * MsgInternal;
+    FOMsg*       MsgText, * MsgDlg, * MsgItem, * MsgGame, * MsgLocations, * MsgCombat, * MsgHolo, * MsgUserHolo, * MsgInternal;
 
     const char* GetHoloText( uint str_num );
     const char* FmtGameText( uint str_num, ... );
@@ -983,93 +978,6 @@ public:
     void SplitStart( uint item_id, int item_cont );
 
 /************************************************************************/
-/* FixBoy                                                               */
-/************************************************************************/
-    int FixMode;
-    #define FIX_MODE_LIST              ( 0 )
-    #define FIX_MODE_FIXIT             ( 1 )
-    #define FIX_MODE_RESULT            ( 2 )
-
-    AnyFrames* FixMainPic, * FixPBDoneDn, * FixPBScrUpDn, * FixPBScrDnDn, * FixPBFixDn;
-    Rect       FixWMain, FixBDone, FixBScrUp, FixBScrDn, FixWWin, FixBFix;
-    int        FixX, FixY, FixVectX, FixVectY;
-    int        FixCurCraft;
-
-    struct SCraft
-    {
-        Rect   Pos;
-        string Name;
-        uint   Num;
-        bool   IsTrue;
-
-        SCraft( Rect& pos, const string& name, uint num, bool is_true )
-        {
-            Pos = pos;
-            Name = name;
-            Num = num;
-            IsTrue = is_true;
-        }
-        SCraft( const SCraft& _right )
-        {
-            Pos = _right.Pos;
-            Name = _right.Name;
-            Num = _right.Num;
-            IsTrue = _right.IsTrue;
-        }
-        SCraft& operator=( const SCraft& _right )
-        {
-            Pos = _right.Pos;
-            Name = _right.Name;
-            Num = _right.Num;
-            IsTrue = _right.IsTrue;
-            return *this;
-        }
-    };
-    typedef vector< SCraft >    SCraftVec;
-    typedef vector< SCraftVec > SCraftVecVec;
-
-    SCraftVecVec FixCraftLst;
-    int          FixScrollLst;
-    SCraftVecVec FixCraftFix;
-    int          FixScrollFix;
-    uchar        FixResult;
-
-    struct FixDrawComponent
-    {
-        bool       IsText;
-        Rect       Place;
-
-        string     Text;
-        AnyFrames* Anim;
-
-        FixDrawComponent( Rect& r, string& text ): IsText( true ), Anim( nullptr )
-        {
-            Place = r;
-            Text = text;
-        }
-        FixDrawComponent( Rect& r, AnyFrames* anim ): IsText( false ), Anim( anim ) { Place = r; }
-    };
-    typedef vector< FixDrawComponent* > FixDrawComponentVec;
-    #define FIX_DRAW_PIC_WIDTH         ( 40 )
-    #define FIX_DRAW_PIC_HEIGHT        ( 40 )
-
-    FixDrawComponentVec FixDrawComp;
-    string              FixResultStr;
-    UIntSet             FixShowCraft;
-    uint                FixNextShowCraftTick;
-
-    void       FixGenerate( int fix_mode );
-    void       FixGenerateStrLine( string& str, Rect& r );
-    void       FixGenerateItems( HashVec& items_vec, UIntVec& val_vec, UCharVec& or_vec, string& str, Rect& r, int& x );
-    int        GetMouseCraft();
-    SCraftVec* GetCurSCrafts();
-
-    void FixDraw();
-    void FixLMouseDown();
-    void FixLMouseUp();
-    void FixMouseMove();
-
-/************************************************************************/
 /* Save/Load                                                            */
 /************************************************************************/
     #define SAVE_LOAD_IMAGE_WIDTH      ( 400 )
@@ -1178,7 +1086,6 @@ public:
 #define SCREEN__CHARACTER              ( 13 )
 #define SCREEN__DIALOG                 ( 14 )
 #define SCREEN__BARTER                 ( 15 )
-#define SCREEN__FIX_BOY                ( 17 )
 #define SCREEN__MENU_OPTION            ( 18 )
 #define SCREEN__AIM                    ( 19 )
 #define SCREEN__SPLIT                  ( 20 )
@@ -1288,12 +1195,6 @@ public:
 #define IFACE_GMAP_PIP                 ( 151 )
 #define IFACE_GMAP_FIX                 ( 152 )
 #define IFACE_GMAP_MOVE_MAP            ( 153 )
-#define IFACE_FIX_DONE                 ( 400 )
-#define IFACE_FIX_SCRUP                ( 401 )
-#define IFACE_FIX_SCRDN                ( 402 )
-#define IFACE_FIX_CHOOSE               ( 403 )
-#define IFACE_FIX_FIX                  ( 404 )
-#define IFACE_FIX_MAIN                 ( 405 )
 #define IFACE_SAVELOAD_MAIN            ( 440 )
 #define IFACE_SAVELOAD_SCR_UP          ( 441 )
 #define IFACE_SAVELOAD_SCR_DN          ( 442 )

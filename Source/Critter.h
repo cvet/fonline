@@ -186,9 +186,6 @@ public:
     // Exclude
     CLASS_PROPERTY( int, Charisma );            // Used in check next rule on global map
     CLASS_PROPERTY( int, ReplicationTime );     // Used in map dead npc generation
-    CLASS_PROPERTY( int, Experience );          // Craft
-    CLASS_PROPERTY( uint, TimeoutSkScience );   // Craft
-    CLASS_PROPERTY( uint, TimeoutSkRepair );    // Craft
     CLASS_PROPERTY( hash, BagId );              // Bags (migrate bags to scripts)
     CLASS_PROPERTY( uint, LastWeaponId );       // Bags
     CLASS_PROPERTY( bool, IsNoItemGarbager );   // Bags
@@ -735,7 +732,7 @@ public:
     void        BarterEraseItem( uint item_id );
 
     // Timers
-    uint LastSendCraftTick, LastSendEntrancesTick, LastSendEntrancesLocId;
+    uint LastSendEntrancesTick, LastSendEntrancesLocId;
     void DropTimers( bool send );
 
     // Dialogs

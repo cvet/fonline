@@ -13,7 +13,6 @@ const char* TextMsgFileName[ TEXTMSG_COUNT ] =
     "FOCOMBAT.MSG",
     "FOQUEST.MSG",
     "FOHOLO.MSG",
-    "FOCRAFT.MSG",
     "FOINTERNAL.MSG",
     "FOLOCATIONS.MSG",
 };
@@ -406,10 +405,6 @@ int FOMsg::GetMsgType( const char* type_name )
         return TEXTMSG_QUEST;
     else if( Str::CompareCase( type_name, "holo" ) )
         return TEXTMSG_HOLO;
-    else if( Str::CompareCase( type_name, "craft" ) )
-        return TEXTMSG_CRAFT;
-    else if( Str::CompareCase( type_name, "fix" ) )
-        return TEXTMSG_CRAFT;
     else if( Str::CompareCase( type_name, "internal" ) )
         return TEXTMSG_INTERNAL;
     return -1;

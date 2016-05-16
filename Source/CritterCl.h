@@ -60,9 +60,6 @@ public:
     CLASS_PROPERTY( uchar, HandsItemMode );
     // Exclude
     CLASS_PROPERTY( uint, BaseCrType );         // Mapper character base type
-    CLASS_PROPERTY( int, Experience );          // Craft
-    CLASS_PROPERTY( uint, TimeoutSkScience );   // Craft
-    CLASS_PROPERTY( uint, TimeoutSkRepair );    // Craft
     CLASS_PROPERTY( int, ReplicationMoney );    // GUI
     CLASS_PROPERTY( int, ReplicationCost );     // GUI
     CLASS_PROPERTY( int, ReplicationCount );    // GUI

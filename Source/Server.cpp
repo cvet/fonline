@@ -1584,19 +1584,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_CRAFT_ASK:
-            {
-                Process_CraftAsk( cl );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_CRAFT:
-            {
-                CHECK_BUSY_AND_LIFE;
-                Process_Craft( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_DIR:
             {
                 CHECK_BUSY_AND_LIFE;
@@ -2754,7 +2741,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         SynchronizeLogicThreads();
 
         LangPackVec lang_packs;
-        if( InitLangPacks( lang_packs ) && InitLangPacksDialogs( lang_packs ) && InitLangPacksLocations( lang_packs ) && InitLangPacksItems( lang_packs ) && InitCrafts( lang_packs ) )
+        if( InitLangPacks( lang_packs ) && InitLangPacksDialogs( lang_packs ) && InitLangPacksLocations( lang_packs ) && InitLangPacksItems( lang_packs ) )
         {
             LangPacks = lang_packs;
             GenerateUpdateFiles();
@@ -3391,8 +3378,6 @@ bool FOServer::InitReal()
         return false;                    // NpcAi manager
     if( !DlgMngr.LoadDialogs() )
         return false;                    // Dialog manager
-    if( !InitCrafts( LangPacks ) )
-        return false;                    // MrFixit
     if( !InitLangCrTypes( LangPacks ) )
         return false;                    // Critter types
 
@@ -3644,44 +3629,6 @@ bool FOServer::InitReal()
     }
     #endif
 
-    return true;
-}
-
-bool FOServer::InitCrafts( LangPackVec& lang_packs )
-{
-    WriteLog( "FixBoy load crafts...\n" );
-    MrFixit.Finish();
-
-    LanguagePack* main_lang = nullptr;
-    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
-    {
-        LanguagePack& lang = *it;
-
-        if( it == lang_packs.begin() )
-        {
-            if( !MrFixit.LoadCrafts( lang.Msg[ TEXTMSG_CRAFT ] ) )
-            {
-                WriteLogF( _FUNC_, " - Unable to load crafts from '%s'.\n", lang.NameStr );
-                return false;
-            }
-            main_lang = &lang;
-            continue;
-        }
-
-        CraftManager mr_fixit;
-        if( !mr_fixit.LoadCrafts( lang.Msg[ TEXTMSG_CRAFT ] ) )
-        {
-            WriteLogF( _FUNC_, " - Unable to load crafts from '%s'.\n", lang.NameStr );
-            return false;
-        }
-
-        if( !( MrFixit == mr_fixit ) )
-        {
-            WriteLogF( _FUNC_, " - Compare crafts fail: '%s' with '%s'.\n", main_lang->NameStr, lang.NameStr );
-            return false;
-        }
-    }
-    WriteLog( "FixBoy load crafts complete.\n" );
     return true;
 }
 

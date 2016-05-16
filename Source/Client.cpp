@@ -309,7 +309,6 @@ bool FOClient::Init()
     MsgLocations = &CurLang.Msg[ TEXTMSG_LOCATIONS ];
     MsgCombat = &CurLang.Msg[ TEXTMSG_COMBAT ];
     MsgHolo = &CurLang.Msg[ TEXTMSG_HOLO ];
-    MsgCraft = &CurLang.Msg[ TEXTMSG_CRAFT ];
     MsgInternal = &CurLang.Msg[ TEXTMSG_INTERNAL ];
     MsgUserHolo = new FOMsg();
     MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE, PT_TEXTS );
@@ -445,10 +444,6 @@ bool FOClient::Init()
     UCharVec protos_data;
     Crypt.GetCache( CACHE_PROTOS, protos_data );
     ProtoMngr.LoadProtosFromBinaryData( protos_data );
-
-    // MrFixit
-    MrFixit.LoadCrafts( *MsgCraft );
-    MrFixit.GenerateNames( *MsgGame, *MsgItem );  // After Item manager init
 
     // Hex manager
     if( !HexMngr.Init() )
@@ -734,7 +729,6 @@ void FOClient::Finish()
     HexMngr.Finish();
     SprMngr.Finish();
     SndMngr.Finish();
-    MrFixit.Finish();
     Script::Finish();
 
     SAFEDELA( ComBuf );
@@ -2235,12 +2229,6 @@ void FOClient::NetProcess()
             Net_OnAllProperties();
             break;
 
-        case NETMSG_CRAFT_ASK:
-            Net_OnCraftAsk();
-            break;
-        case NETMSG_CRAFT_RESULT:
-            Net_OnCraftResult();
-            break;
         case NETMSG_CLEAR_ITEMS:
             Net_OnChosenClearItems();
             break;
@@ -2831,24 +2819,6 @@ void FOClient::Net_SendLevelUp( int perk_up, IntVec* props_data )
     Bout << perk_up;
 }
 
-void FOClient::Net_SendCraftAsk( UIntVec numbers )
-{
-    ushort count = (ushort) numbers.size();
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( count ) + sizeof( uint ) * count;
-    Bout << NETMSG_CRAFT_ASK;
-    Bout << msg_len;
-    Bout << count;
-    for( int i = 0; i < count; i++ )
-        Bout << numbers[ i ];
-    FixNextShowCraftTick = Timer::FastTick() + CRAFT_SEND_TIME;
-}
-
-void FOClient::Net_SendCraft( uint craft_num )
-{
-    Bout << NETMSG_SEND_CRAFT;
-    Bout << craft_num;
-}
-
 void FOClient::Net_SendPing( uchar ping )
 {
     Bout << NETMSG_PING;
@@ -3335,10 +3305,6 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
 
         ShowDialogBox();
     }
-
-    // FixBoy result
-    if( how_say == SAY_FIX_RESULT )
-        FixResultStr = fstr;
 
     FlashGameWindow();
 }
@@ -5601,7 +5567,6 @@ void FOClient::Net_OnRunClientScript()
 
 void FOClient::Net_OnDropTimers()
 {
-    FixNextShowCraftTick = 0;
     GmapNextShowEntrancesTick = 0;
     GmapShowEntrancesLocId = 0;
 }
@@ -5884,41 +5849,6 @@ void FOClient::Net_OnViewMap()
     dict->Set( "LocationEntrance", &loc_ent, asTYPEID_UINT32 );
     ShowScreen( SCREEN__TOWN_VIEW, dict );
     dict->Release();
-}
-
-void FOClient::Net_OnCraftAsk()
-{
-    uint   msg_len;
-    ushort count;
-    Bin >> msg_len;
-    Bin >> count;
-
-    FixShowCraft.clear();
-    for( int i = 0; i < count; i++ )
-    {
-        uint craft_num;
-        Bin >> craft_num;
-        FixShowCraft.insert( craft_num );
-    }
-
-    CHECK_IN_BUFF_ERROR;
-
-    if( IsScreenPresent( SCREEN__FIX_BOY ) && FixMode == FIX_MODE_LIST )
-        FixGenerate( FIX_MODE_LIST );
-}
-
-void FOClient::Net_OnCraftResult()
-{
-    uchar craft_result;
-    Bin >> craft_result;
-
-    CHECK_IN_BUFF_ERROR;
-
-    if( craft_result != CRAFT_RESULT_NONE )
-    {
-        FixResult = craft_result;
-        FixGenerate( FIX_MODE_RESULT );
-    }
 }
 
 void FOClient::SetGameColor( uint color )
@@ -10709,10 +10639,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
         x = 0;
         y = 0;
         break;
-    case SCREEN__FIX_BOY:
-        x = Self->FixX;
-        y = Self->FixY;
-        break;
     case SCREEN__GM_TOWN:
         x = 0;
         y = 0;
@@ -10737,9 +10663,6 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
         break;
     case SCREEN_WAIT:
         Self->WaitDraw();
-        break;
-    case SCREEN__FIX_BOY:
-        Self->FixDraw();
         break;
     case SCREEN__GM_TOWN:
         Self->GmapTownDraw();
@@ -10782,14 +10705,6 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
             Self->GmapRMouseUp();
         else if( move )
             Self->GmapMouseMove();
-        break;
-    case SCREEN__FIX_BOY:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->FixLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->FixLMouseUp();
-        else if( move )
-            Self->FixMouseMove();
         break;
     case SCREEN__GM_TOWN:
         if( button == MOUSE_BUTTON_LEFT && down )

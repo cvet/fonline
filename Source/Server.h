@@ -10,7 +10,6 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Dialogs.h"
-#include "CraftManager.h"
 #include "CritterType.h"
 #include "NetProtocol.h"
 #include "Access.h"
@@ -68,8 +67,6 @@ public:
     static void Process_SetUserHoloStr( Client* cl );
     static void Process_GetUserHoloStr( Client* cl );
     static void Process_LevelUp( Client* cl );
-    static void Process_CraftAsk( Client* cl );
-    static void Process_Craft( Client* cl );
     static void Process_Ping( Client* cl );
     static void Process_PlayersBarter( Client* cl );
     static void Process_Combat( Client* cl );
@@ -230,7 +227,6 @@ public:
 
     // Lang packs
     static LangPackVec LangPacks;     // Todo: synchronize
-    static bool InitCrafts( LangPackVec& lang_packs );
     static bool InitLangPacks( LangPackVec& lang_packs );
     static bool InitLangPacksDialogs( LangPackVec& lang_packs );
     static bool InitLangPacksLocations( LangPackVec& lang_packs );
@@ -429,12 +425,6 @@ public:
         static void Item_EventDrop( Item* item, Critter* cr );
         static void Item_EventMove( Item* item, Critter* cr, uchar from_slot );
         static void Item_EventWalk( Item* item, Critter* cr, bool entered, uchar dir );
-
-        static uint CraftItem_GetShowParams( CraftItem* craft, ScriptArray* nums, ScriptArray* vals, ScriptArray* ors );
-        static uint CraftItem_GetNeedParams( CraftItem* craft, ScriptArray* nums, ScriptArray* vals, ScriptArray* ors );
-        static uint CraftItem_GetNeedTools( CraftItem* craft, ScriptArray* pids, ScriptArray* vals, ScriptArray* ors );
-        static uint CraftItem_GetNeedItems( CraftItem* craft, ScriptArray* pids, ScriptArray* vals, ScriptArray* ors );
-        static uint CraftItem_GetOutItems( CraftItem* craft, ScriptArray* pids, ScriptArray* vals );
 
         static bool         Crit_IsPlayer( Critter* cr );
         static bool         Crit_IsNpc( Critter* cr );
@@ -702,7 +692,6 @@ public:
         static void          Global_DeleteLocation( Location* loc );
         static void          Global_DeleteLocationById( uint loc_id );
         static Critter*      Global_GetCritter( uint crid );
-        static CraftItem*    Global_GetCraftItem( uint num );
         static Critter*      Global_GetPlayer( ScriptString& name );
         static uint          Global_GetPlayerId( ScriptString& name );
         static ScriptString* Global_GetPlayerName( uint id );

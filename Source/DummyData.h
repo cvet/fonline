@@ -195,12 +195,6 @@ struct BindClass
     static void Item_EventMove()    {}
     static void Item_EventWalk()    {}
 
-    static void CraftItem_GetShowParams() {}
-    static void CraftItem_GetNeedParams() {}
-    static void CraftItem_GetNeedTools()  {}
-    static void CraftItem_GetNeedItems()  {}
-    static void CraftItem_GetOutItems()   {}
-
     static void Crit_IsPlayer()                 {}
     static void Crit_IsNpc()                    {}
     static void Crit_IsCanWalk()                {}
@@ -636,7 +630,6 @@ struct BindClass
     static void Global_GetCritterTypeName()      {}
     static void Global_GetCritterSoundName()     {}
     static void Global_GetGlobalMapRelief()      {}
-    static void Global_GetCraftItem()            {}
     #endif
 
     #ifdef BIND_MAPPER

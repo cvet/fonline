@@ -256,10 +256,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_CRITTER_XY_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CUSTOM_COMMAND:
         return ( NETMSG_CUSTOM_COMMAND_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_CRAFT:
-        return ( NETMSG_SEND_CRAFT_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_CRAFT_RESULT:
-        return ( NETMSG_CRAFT_RESULT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CLEAR_ITEMS:
         return ( NETMSG_CLEAR_ITEMS_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_REMOVE_ITEM:
@@ -408,7 +404,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_MAP_TEXT:
     case NETMSG_MAP_TEXT_MSG_LEX:
     case NETMSG_SEND_LEVELUP:
-    case NETMSG_CRAFT_ASK:
     case NETMSG_ADD_ITEM:
     case NETMSG_ADD_ITEM_ON_MAP:
     case NETMSG_SOME_ITEM:
@@ -509,12 +504,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_CUSTOM_COMMAND:
         size = NETMSG_CUSTOM_COMMAND_SIZE;
-        break;
-    case NETMSG_SEND_CRAFT:
-        size = NETMSG_SEND_CRAFT_SIZE;
-        break;
-    case NETMSG_CRAFT_RESULT:
-        size = NETMSG_CRAFT_RESULT_SIZE;
         break;
     case NETMSG_CLEAR_ITEMS:
         size = NETMSG_CLEAR_ITEMS_SIZE;
@@ -710,7 +699,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_MAP_TEXT:
     case NETMSG_MAP_TEXT_MSG_LEX:
     case NETMSG_SEND_LEVELUP:
-    case NETMSG_CRAFT_ASK:
     case NETMSG_CONTAINER_INFO:
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_COMBAT_RESULTS:

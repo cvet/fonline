@@ -38,7 +38,6 @@
 #define CLIENT_DATA                  "./Data/"
 #define WORLD_START_TIME             "07:00 30:10:2246 x00"
 #define MAX_FOPATH                   UTF8_BUF_SIZE( 1024 )
-#define CRAFT_SEND_TIME              ( 60000 )
 #define MAX_HOLO_INFO                ( 250 )
 #define AMBIENT_SOUND_TIME           ( 60000 ) // Random(X/2,X);
 #define EFFECT_SCRIPT_VALUES         ( 10 )
@@ -97,7 +96,6 @@
 #define SAY_ENCOUNTER_ANY            ( 14 )
 #define SAY_ENCOUNTER_RT             ( 15 )
 #define SAY_ENCOUNTER_TB             ( 16 )
-#define SAY_FIX_RESULT               ( 17 )
 #define SAY_FLASH_WINDOW             ( 41 )
 
 // Transfer types
@@ -128,12 +126,6 @@
 // Pick types
 #define PICK_CRIT_LOOT               ( 0 )
 #define PICK_CRIT_PUSH               ( 1 )
-
-// Craft results
-#define CRAFT_RESULT_NONE            ( 0 )
-#define CRAFT_RESULT_SUCC            ( 1 )
-#define CRAFT_RESULT_FAIL            ( 2 )
-#define CRAFT_RESULT_TIMEOUT         ( 3 )
 
 // Critters
 #define CRITTER_INV_VOLUME           ( 1000 )
