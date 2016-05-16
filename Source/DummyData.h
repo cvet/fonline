@@ -603,8 +603,6 @@ struct BindClass
 
     static int  ConsoleActive;
     static int  GmapActive, GmapWait;
-    static int  GmapZoom;
-    static int  GmapOffsetX, GmapOffsetY;
     static int  GmapGroupCurX, GmapGroupCurY, GmapGroupToX, GmapGroupToY;
     static int  GmapGroupSpeed;
     static int  ClientCurMap;
@@ -758,9 +756,6 @@ struct BindClass
 int BindClass::ConsoleActive;
 int BindClass::GmapActive;
 int BindClass::GmapWait;
-int BindClass::GmapZoom;
-int BindClass::GmapOffsetX;
-int BindClass::GmapOffsetY;
 int BindClass::GmapGroupCurX;
 int BindClass::GmapGroupCurY;
 int BindClass::GmapGroupToX;

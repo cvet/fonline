@@ -1071,7 +1071,6 @@ int FOClient::MainLoop()
     if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
     {
         CrittersProcess();
-        GmapProcess();
         LMenuTryCreate();
     }
     else if( IsMainScreen( SCREEN_GAME ) && HexMngr.IsMapLoaded() )
@@ -1443,7 +1442,6 @@ void FOClient::ParseMouse()
     if( !( SDL_GetWindowFlags( MainWindow ) & SDL_WINDOW_INPUT_FOCUS ) )
     {
         MainWindowMouseEvents.clear();
-        IfaceHold = IFACE_NONE;
         if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
             Script::RunPrepared();
         return;
@@ -1520,51 +1518,6 @@ void ContainerWheelScroll( int items_count, int cont_height, int item_height, in
         cont_scroll = 0;
     else if( cont_scroll > items_count - height_items )
         cont_scroll = MAX( 0, items_count - height_items );
-}
-
-void FOClient::ProcessMouseWheel( int data )
-{
-    int screen = GetActiveScreen();
-    if( screen == SCREEN_NONE || screen == SCREEN__TOWN_VIEW )
-    {
-        if( IsMainScreen( SCREEN_GLOBAL_MAP ) )
-        {
-            GmapChangeZoom( (float) -data / 20.0f );
-            if( IsCurInRect( GmapWTabs ) )
-            {
-                if( data > 0 )
-                {
-                    if( GmapTabNextX )
-                        GmapTabsScrX -= 26;
-                    if( GmapTabNextY )
-                        GmapTabsScrY -= 26;
-                    if( GmapTabsScrX < 0 )
-                        GmapTabsScrX = 0;
-                    if( GmapTabsScrY < 0 )
-                        GmapTabsScrY = 0;
-                }
-                else
-                {
-                    if( GmapTabNextX )
-                        GmapTabsScrX += 26;
-                    if( GmapTabNextY )
-                        GmapTabsScrY += 26;
-
-                    int tabs_count = 0;
-                    for( uint i = 0, j = (uint) GmapLoc.size(); i < j; i++ )
-                    {
-                        GmapLocation& loc = GmapLoc[ i ];
-                        if( MsgLocations->Count( STR_LOC_LABEL_PIC( loc.LocPid ) ) && ResMngr.GetIfaceAnim( Str::GetHash( MsgLocations->GetStr( STR_LOC_LABEL_PIC( loc.LocPid ) ) ) ) )
-                            tabs_count++;
-                    }
-                    if( GmapTabNextX && GmapTabsScrX > GmapWTab.W() * tabs_count )
-                        GmapTabsScrX = GmapWTab.W() * tabs_count;
-                    if( GmapTabNextY && GmapTabsScrY > GmapWTab.H() * tabs_count )
-                        GmapTabsScrY = GmapWTab.H() * tabs_count;
-                }
-            }
-        }
-    }
 }
 
 bool FOClient::NetConnect( const char* host, ushort port )
@@ -4718,7 +4671,6 @@ void FOClient::Net_OnLoadMap()
     }
 
     GameOpt.SpritesZoom = 1.0f;
-    GmapZoom = 1.0f;
 
     CurMapPid = map_pid;
     CurMapLocPid = loc_pid;
@@ -4729,8 +4681,6 @@ void FOClient::Net_OnLoadMap()
     ShowMainScreen( SCREEN_WAIT );
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
-    for( size_t i = 0, j = GmapPic.size(); i < j; i++ )
-        GmapPic[ i ] = nullptr;
 
     DropScroll();
     IsTurnBased = false;
@@ -4996,21 +4946,6 @@ void FOClient::Net_OnGlobalInfo()
             GmapGroupRealOldY = GmapGroupRealCurY;
             GmapGroupCurX = GmapGroupRealCurX;
             GmapGroupCurY = GmapGroupRealCurY;
-            GmapOffsetX = ( GmapWMap[ 2 ] - GmapWMap[ 0 ] ) / 2 + GmapWMap[ 0 ] - GmapGroupCurX;
-            GmapOffsetY = ( GmapWMap[ 3 ] - GmapWMap[ 1 ] ) / 2 + GmapWMap[ 1 ] - GmapGroupCurY;
-            GmapTrace.clear();
-
-            int w = GM_MAXX;
-            int h = GM_MAXY;
-            if( GmapOffsetX > GmapWMap[ 0 ] )
-                GmapOffsetX = GmapWMap[ 0 ];
-            if( GmapOffsetY > GmapWMap[ 1 ] )
-                GmapOffsetY = GmapWMap[ 1 ];
-            if( GmapOffsetX < GmapWMap[ 2 ] - w )
-                GmapOffsetX = GmapWMap[ 2 ] - w;
-            if( GmapOffsetY < GmapWMap[ 3 ] - h )
-                GmapOffsetY = GmapWMap[ 3 ] - h;
-
             SetCurMode( CUR_DEFAULT );
         }
 
@@ -9039,10 +8974,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->GameLMouseDown();
     }
-    else if( cmd == "GameLMouseUp" )
-    {
-        Self->GameLMouseUp();
-    }
     else if( cmd == "NextCursor" )
     {
         switch( Self->GetCurMode() )
@@ -9132,19 +9063,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         int perk = Str::AtoI( args[ 1 ].c_str() );
         Self->Net_SendLevelUp( perk, nullptr );
-    }
-    else if( cmd == "GmapHome" )
-    {
-        GmapOffsetX = Self->GmapWMap.W() / 2 + Self->GmapWMap[ 0 ] - (int) ( GmapGroupCurX / GmapZoom );
-        GmapOffsetY = Self->GmapWMap.H() / 2 + Self->GmapWMap[ 1 ] - (int) ( GmapGroupCurY / GmapZoom );
-        if( GmapOffsetX > Self->GmapWMap[ 0 ] )
-            GmapOffsetX = Self->GmapWMap[ 0 ];
-        if( GmapOffsetY > Self->GmapWMap[ 1 ] )
-            GmapOffsetY = Self->GmapWMap[ 1 ];
-        if( GmapOffsetX < Self->GmapWMap[ 2 ] - (int) ( GM_MAXX / GmapZoom ) )
-            GmapOffsetX = Self->GmapWMap[ 2 ] - (int) ( GM_MAXX / GmapZoom );
-        if( GmapOffsetY < Self->GmapWMap[ 3 ] - (int) ( GM_MAXY / GmapZoom ) )
-            GmapOffsetY = Self->GmapWMap[ 3 ] - (int) ( GM_MAXY / GmapZoom );
     }
     else if( cmd == "SaveLog" && args.size() == 3 )
     {
@@ -10605,10 +10523,6 @@ void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, in
 {
     switch( screen )
     {
-    case SCREEN_GLOBAL_MAP:
-        x = Self->GmapX;
-        y = Self->GmapY;
-        break;
     case SCREEN_WAIT:
         x = 0;
         y = 0;
@@ -10628,14 +10542,8 @@ void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
 {
     switch( screen )
     {
-    case SCREEN_GLOBAL_MAP:
-        Self->GmapDraw();
-        break;
     case SCREEN_WAIT:
         Self->WaitDraw();
-        break;
-    case SCREEN__GM_TOWN:
-        Self->GmapTownDraw();
         break;
     default:
         break;
@@ -10652,46 +10560,14 @@ void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int b
     case SCREEN_GAME:
         if( button == MOUSE_BUTTON_LEFT && down )
             Self->GameLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down && Self->IfaceHold == IFACE_NONE )
-            Self->GameLMouseUp();
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->GameRMouseDown();
-        else if( button == MOUSE_BUTTON_RIGHT && !down )
-            Self->GameRMouseUp();
         else if( button == MOUSE_BUTTON_MIDDLE && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
             Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
-        break;
-    case SCREEN_GLOBAL_MAP:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->GmapLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->GmapLMouseUp();
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->GmapRMouseDown();
-        else if( button == MOUSE_BUTTON_RIGHT && !down )
-            Self->GmapRMouseUp();
-        else if( move )
-            Self->GmapMouseMove();
-        break;
-    case SCREEN__GM_TOWN:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->GmapLMouseDown();
-        else if( button == MOUSE_BUTTON_LEFT && !down )
-            Self->GmapLMouseUp();
-        else if( button == MOUSE_BUTTON_RIGHT && down )
-            Self->GmapRMouseDown();
-        else if( button == MOUSE_BUTTON_RIGHT && !down )
-            Self->GmapRMouseUp();
-        else if( move )
-            Self->GmapMouseMove();
         break;
     default:
         break;
     }
 
-    if( ( button == MOUSE_BUTTON_WHEEL_DOWN || button == MOUSE_BUTTON_WHEEL_UP ) && down )
-        Self->ProcessMouseWheel( button == MOUSE_BUTTON_WHEEL_DOWN ? -1 : 1 );
-    else if( move )
+    if( move )
         Self->ProcessMouseScroll();
 }
 
@@ -10887,9 +10763,6 @@ void FOClient::SScriptFunc::Global_SetUserConfig( ScriptArray& key_values )
 
 bool&     FOClient::SScriptFunc::GmapActive = FOClient::GmapActive;
 bool&     FOClient::SScriptFunc::GmapWait = FOClient::GmapWait;
-float&    FOClient::SScriptFunc::GmapZoom = FOClient::GmapZoom;
-int&      FOClient::SScriptFunc::GmapOffsetX = FOClient::GmapOffsetX;
-int&      FOClient::SScriptFunc::GmapOffsetY = FOClient::GmapOffsetY;
 int&      FOClient::SScriptFunc::GmapGroupCurX = FOClient::GmapGroupCurX;
 int&      FOClient::SScriptFunc::GmapGroupCurY = FOClient::GmapGroupCurY;
 int&      FOClient::SScriptFunc::GmapGroupToX = FOClient::GmapGroupToX;

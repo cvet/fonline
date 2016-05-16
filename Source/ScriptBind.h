@@ -635,9 +635,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void SetUserConfig(array<string>& 
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GmapActive", &BIND_CLASS GmapActive ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GmapWait", &BIND_CLASS GmapWait ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "float __GmapZoom", &BIND_CLASS GmapZoom ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __GmapOffsetX", &BIND_CLASS GmapOffsetX ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __GmapOffsetY", &BIND_CLASS GmapOffsetY ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __GmapGroupCurX", &BIND_CLASS GmapGroupCurX ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __GmapGroupCurY", &BIND_CLASS GmapGroupCurY ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __GmapGroupToX", &BIND_CLASS GmapGroupToX ) );

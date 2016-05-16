@@ -642,9 +642,8 @@ public:
         static void          Global_EraseCacheData( const ScriptString& name );
         static void          Global_SetUserConfig( ScriptArray& key_values );
 
-        static bool&         GmapActive, & GmapWait;
-        static float&        GmapZoom;
-        static int&          GmapOffsetX, & GmapOffsetY;
+        static bool&         GmapActive;
+        static bool&         GmapWait;
         static int&          GmapGroupCurX, & GmapGroupCurY, & GmapGroupToX, & GmapGroupToY;
         static float&        GmapGroupSpeed;
         static Map*          ClientCurMap;
@@ -656,7 +655,6 @@ public:
 /************************************************************************/
 /* Interface                                                            */
 /************************************************************************/
-    int       IfaceHold;
     StrVec    IfaceIniNames;
     IniParser IfaceIni;
 
@@ -716,9 +714,6 @@ public:
     void GameDraw();
     void GameKeyDown( uchar dik, const char* dik_text );
     void GameLMouseDown();
-    void GameLMouseUp();
-    void GameRMouseDown();
-    void GameRMouseUp();
 
 /************************************************************************/
 /* LMenu                                                                */
@@ -773,7 +768,7 @@ public:
 /************************************************************************/
 /* Mini-map                                                             */
 /************************************************************************/
-    #define MINIMAP_PREPARE_TICK    ( 1000 )
+    #define MINIMAP_PREPARE_TICK       ( 1000 )
 
     PointVec LmapPrepPix;
     Rect     LmapWMap;
@@ -786,40 +781,13 @@ public:
 /************************************************************************/
 /* Global map                                                           */
 /************************************************************************/
-    uint         GmapTilesX, GmapTilesY;
-    AnimVec      GmapPic;
-    char         GmapTilesPic[ MAX_FOPATH ];
-
-    uint         GmapWDayTimeAnim;
-    AnyFrames*   GmapPBTownDw, * GmapWMainPic, * GmapPGr, * GmapPTarg, * GmapPStay, * GmapPStayDn, * GmapPStayMask, * GmapLocPic;
-    AnyFrames*   GmapPTownInPic, * GmapPTownInPicDn, * GmapPTownInPicMask, * GmapPTownViewPic, * GmapPTownViewPicDn, * GmapPTownViewPicMask;
-    int          GmapPTownInOffsX, GmapPTownInOffsY, GmapPTownViewOffsX, GmapPTownViewOffsY;
-    AnyFrames*   GmapPFollowCrit, * GmapPFollowCritSelf;
-    AnyFrames*   GmapPWTab, * GmapPWBlankTab, * GmapPBTabLoc, * GmapPTabScrUpDw, * GmapPTabScrDwDw;
-    AnyFrames*   GmapBInvPicDown, * GmapBMenuPicDown, * GmapBChaPicDown, * GmapBPipPicDown, * GmapBFixPicDown;
-    AnyFrames*   GmapPLightPic0, * GmapPLightPic1;
-    int          GmapX, GmapY, GmapVectX, GmapVectY, GmapWNameStepX, GmapWNameStepY;
-    Rect         GmapWMain, GmapWMap, GmapBTown, GmapWName, GmapWCar, GmapWLock, GmapWTime, GmapWDayTime;
-    Rect         GmapBInv, GmapBMenu, GmapBCha, GmapBPip, GmapBFix;
-    PointVec     GmapMapCutOff;
-    static bool  GmapActive;
-    static float GmapZoom;
-    static int   GmapOffsetX, GmapOffsetY;
+    static bool GmapActive;
 
     void GmapNullParams();
-    void GmapProcess();
 
-    // Town
-    AnyFrames* GmapTownPic;
-    Rect       GmapTownPicPos;
-    IntRectVec GmapTownButtonPos;
-    IntRectVec GmapTownTextPos;
-    StrVec     GmapTownText;
-    int        GmapTownCurButton;
     uint       GmapNextShowEntrancesTick;
     uint       GmapShowEntrancesLocId;
     bool       GmapShowEntrances[ 0x100 ];
-
     // Mask
     TwoBitMask GmapFog;
     PointVec   GmapFogPix;
@@ -840,9 +808,6 @@ public:
     GmapLocationVec GmapLoc;
     GmapLocation    GmapTownLoc;
 
-    // Trace
-    IntPairVec GmapTrace;
-
     // Params
     uint         GmapMoveTick;
     int          GmapGroupRealOldX, GmapGroupRealOldY, GmapGroupRealCurX, GmapGroupRealCurY;
@@ -856,36 +821,6 @@ public:
         uint  MasterId;
         Item* Car;
     } GmapCar;
-
-    // Tabs
-    Rect GmapWTabs, GmapWTab, GmapWTabLoc, GmapBTabLoc, GmapBTabsScrUp, GmapBTabsScrDn;
-    int  GmapTabNextX, GmapTabNextY, GmapTabsScrX, GmapTabsScrY;
-    uint GmapCurHoldBLocId;
-    uint GmapTabsLastScr;
-    int  GmapHoldX, GmapHoldY;
-
-    void  GmapDraw();
-    void  GmapTownDraw();
-    void  GmapLMouseDown();
-    void  GmapLMouseUp();
-    void  GmapRMouseDown();
-    void  GmapRMouseUp();
-    void  GmapMouseMove();
-    void  GmapChangeZoom( float offs, bool revert = false );
-    Item* GmapGetCar();
-    uint  GmapGetMouseTabLocId();
-
-    #define GMAP_CHECK_MAPSCR                                                \
-        do {                                                                 \
-            if( GmapOffsetX > GmapWMap[ 0 ] )                                \
-                GmapOffsetX = GmapWMap[ 0 ];                                 \
-            if( GmapOffsetY > GmapWMap[ 1 ] )                                \
-                GmapOffsetY = GmapWMap[ 1 ];                                 \
-            if( GmapOffsetX < GmapWMap[ 2 ] - (int) ( GM_MAXX / GmapZoom ) ) \
-                GmapOffsetX = GmapWMap[ 2 ] - (int) ( GM_MAXX / GmapZoom );  \
-            if( GmapOffsetY < GmapWMap[ 3 ] - (int) ( GM_MAXY / GmapZoom ) ) \
-                GmapOffsetY = GmapWMap[ 3 ] - (int) ( GM_MAXY / GmapZoom );  \
-        } while( 0 )
 
 /************************************************************************/
 /* PipBoy                                                               */
@@ -1010,7 +945,6 @@ public:
     uint DaySumRGB;
 
     void SetDayTime( bool refresh );
-    void ProcessMouseWheel( int data );
     void SetGameColor( uint color );
 
     CritterCl* Chosen;
@@ -1160,23 +1094,5 @@ public:
 #define ITEMS_BARTER_OPPONENT_OFFER    ( 6 )
 #define ITEMS_PICKUP                   ( 7 )
 #define ITEMS_PICKUP_FROM              ( 8 )
-
-// Interface elements
-#define IFACE_NONE                     ( 0 )
-#define IFACE_GAME_MNEXT               ( 60 )
-#define IFACE_GMAP_MAP                 ( 140 )
-#define IFACE_GMAP_TOWN                ( 141 )
-#define IFACE_GMAP_TABBTN              ( 142 )
-#define IFACE_GMAP_TABSCRUP            ( 143 )
-#define IFACE_GMAP_TABSCRDW            ( 144 )
-#define IFACE_GMAP_TOLOC               ( 145 )
-#define IFACE_GMAP_TOWN_BUT            ( 146 )
-#define IFACE_GMAP_VIEW_BUT            ( 147 )
-#define IFACE_GMAP_INV                 ( 148 )
-#define IFACE_GMAP_MENU                ( 149 )
-#define IFACE_GMAP_CHA                 ( 150 )
-#define IFACE_GMAP_PIP                 ( 151 )
-#define IFACE_GMAP_FIX                 ( 152 )
-#define IFACE_GMAP_MOVE_MAP            ( 153 )
 
 #endif // __CLIENT__
