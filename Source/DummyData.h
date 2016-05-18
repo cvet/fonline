@@ -572,34 +572,31 @@ struct BindClass
     static void Global_GetGameTime()            {}
     static void Global_Preload3dFiles()         {}
 
-    static void Global_RunServerScript()            {}
-    static void Global_RunServerScriptUnsafe()      {}
-    static void Global_ShowScreen()                 {}
-    static void Global_HideScreen()                 {}
-    static void Global_GetHardcodedScreenPos()      {}
-    static void Global_DrawHardcodedScreen()        {}
-    static void Global_HandleHardcodedScreenMouse() {}
-    static void Global_HandleHardcodedScreenKey()   {}
-    static void Global_GetMonitorItem()             {}
-    static void Global_GetMonitorCritter()          {}
-    static void Global_GetMapWidth()                {}
-    static void Global_GetMapHeight()               {}
-    static void Global_GetCurrentCursor()           {}
-    static void Global_GetLastCursor()              {}
-    static void Global_ChangeCursor()               {}
-    static void Global_WaitPing()                   {}
-    static void Global_SetEffect()                  {}
-    static void Global_RefreshMap()                 {}
-    static void Global_SaveScreenshot()             {}
-    static void Global_SaveText()                   {}
-    static void Global_SetCacheData()               {}
-    static void Global_SetCacheDataSize()           {}
-    static void Global_GetCacheData()               {}
-    static void Global_SetCacheDataStr()            {}
-    static void Global_GetCacheDataStr()            {}
-    static void Global_IsCacheData()                {}
-    static void Global_EraseCacheData()             {}
-    static void Global_SetUserConfig()              {}
+    static void Global_RunServerScript()       {}
+    static void Global_RunServerScriptUnsafe() {}
+    static void Global_ShowScreen()            {}
+    static void Global_HideScreen()            {}
+    static void Global_GetMonitorItem()        {}
+    static void Global_GetMonitorCritter()     {}
+    static void Global_GetMonitorEntity()      {}
+    static void Global_GetMapWidth()           {}
+    static void Global_GetMapHeight()          {}
+    static void Global_GetCurrentCursor()      {}
+    static void Global_GetLastCursor()         {}
+    static void Global_ChangeCursor()          {}
+    static void Global_WaitPing()              {}
+    static void Global_SetEffect()             {}
+    static void Global_RefreshMap()            {}
+    static void Global_SaveScreenshot()        {}
+    static void Global_SaveText()              {}
+    static void Global_SetCacheData()          {}
+    static void Global_SetCacheDataSize()      {}
+    static void Global_GetCacheData()          {}
+    static void Global_SetCacheDataStr()       {}
+    static void Global_GetCacheDataStr()       {}
+    static void Global_IsCacheData()           {}
+    static void Global_EraseCacheData()        {}
+    static void Global_SetUserConfig()         {}
 
     static int  ConsoleActive;
     static int  GmapActive, GmapWait;
@@ -688,6 +685,7 @@ struct BindClass
     static void Global_GetCritterTypeName()  {}
     static void Global_GetCritterSoundName() {}
 
+    static void Global_GetIfaceIniStr()   {}
     static void Global_GetMonitorObject() {}
 
     static int  ClientCurMap;
@@ -711,8 +709,6 @@ struct BindClass
     static void Global_ReplaceTextInt()     {}
     static void Global_MoveScreen()         {}
     static void Global_MoveHexByDir()       {}
-    static void Global_AppendIfaceIni()     {}
-    static void Global_GetIfaceIniStr()     {}
     static void Global_LoadSprite()         {}
     static void Global_LoadSpriteHash()     {}
     static void Global_GetSpriteWidth()     {}
@@ -745,9 +741,10 @@ struct BindClass
     static void Global_ChangeZoom()         {}
     #endif
 
-    static void Global_LoadDataFile() {}
-    static void Global_AllowSlot()    {}
-    static void Global_GetProtoItem() {}
+    static void Global_LoadDataFile()  {}
+    static void Global_AllowSlot()     {}
+    static void Global_GetProtoItem()  {}
+    static void Global_GetDistantion() {}
 };
 
 #include "ScriptFunctions.h"

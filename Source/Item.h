@@ -140,10 +140,11 @@ public:
     CLASS_PROPERTY_ALIAS( uchar, AnimStay_1 );
     CLASS_PROPERTY_ALIAS( ScriptString *, BlockLines );
 
-    bool IsItem()      { return !IsGeneric() && !IsWall() && !IsGrid(); }
-    bool IsGeneric()   { return GetType() == ITEM_TYPE_GENERIC; }
-    bool IsWall()      { return GetType() == ITEM_TYPE_WALL; }
-    bool IsGrid()      { return GetType() == ITEM_TYPE_GRID; }
+    bool IsScenery() { return IsGeneric() || IsWall() || IsGrid(); }
+    bool IsGeneric() { return GetType() == ITEM_TYPE_GENERIC; }
+    bool IsWall()    { return GetType() == ITEM_TYPE_WALL; }
+    bool IsGrid()    { return GetType() == ITEM_TYPE_GRID; }
+
     bool IsWeapon()    { return GetType() == ITEM_TYPE_WEAPON; }
     bool IsArmor()     { return GetType() == ITEM_TYPE_ARMOR; }
     bool IsContainer() { return GetType() == ITEM_TYPE_CONTAINER; }
@@ -375,10 +376,10 @@ public:
     static void ClearItems( ItemVec& items );
 
     // All
-    bool IsItem() { return !IsScen() && !IsWall() && !IsGrid(); }
-    bool IsScen() { return GetType() == ITEM_TYPE_GENERIC; }
-    bool IsWall() { return GetType() == ITEM_TYPE_WALL; }
-    bool IsGrid() { return GetType() == ITEM_TYPE_GRID; }
+    bool IsScenery() { return IsGeneric() || IsWall() || IsGrid(); }
+    bool IsGeneric() { return GetType() == ITEM_TYPE_GENERIC; }
+    bool IsWall()    { return GetType() == ITEM_TYPE_WALL; }
+    bool IsGrid()    { return GetType() == ITEM_TYPE_GRID; }
 
     void ChangeCount( int val );
     void SetWeaponMode( uchar mode );

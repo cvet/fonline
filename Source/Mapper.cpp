@@ -1855,7 +1855,7 @@ void FOMapper::IntDraw()
             uint       col = ( i == (int) GetTabIndex() ? COLOR_IFACE_RED : COLOR_IFACE );
             SprMngr.DrawSpriteSize( proto_item->GetCurSprId(), x, y, w, h / 2, false, true, col );
 
-            if( proto_item->IsItem() )
+            if( !proto_item->IsScenery() )
             {
                 AnyFrames* anim = ResMngr.GetInvAnim( proto_item->GetPicInv() );
                 if( anim )
@@ -2081,7 +2081,7 @@ void FOMapper::ObjDraw()
             anim = ResMngr.ItemHexDefaultAnim;
         SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true );
 
-        if( item->IsItem() )
+        if( !item->IsScenery() )
         {
             AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
             if( anim )
@@ -2093,9 +2093,9 @@ void FOMapper::ObjDraw()
     DrawLine( "ProtoName", nullptr, Str::GetName( entity->GetProtoId() ), true, r );
     if( cr )
         DrawLine( "Type", nullptr, "Critter", true, r );
-    else if( item && item->IsItem() )
+    else if( item && !item->IsScenery() )
         DrawLine( "Type", nullptr, "Item", true, r );
-    else if( item && !item->IsItem() )
+    else if( item && item->IsScenery() )
         DrawLine( "Type", nullptr, "Scenery", true, r );
     else
         RUNTIME_ASSERT( !"Unreachable place" );
@@ -2826,9 +2826,9 @@ void FOMapper::IntLMouseUp()
                     if( !GameOpt.ShowFast && HexMngr.IsFastPid( pid ) )
                         continue;
 
-                    if( items[ k ]->IsItem() && IsSelectItem && GameOpt.ShowItem )
+                    if( !items[ k ]->IsScenery() && IsSelectItem && GameOpt.ShowItem )
                         SelectAddItem( items[ k ] );
-                    else if( items[ k ]->IsScenOrGrid() && IsSelectScen && GameOpt.ShowScen )
+                    else if( items[ k ]->IsGenericOrGrid() && IsSelectScen && GameOpt.ShowScen )
                         SelectAddItem( items[ k ] );
                     else if( items[ k ]->IsWall() && IsSelectWall && GameOpt.ShowWall )
                         SelectAddItem( items[ k ] );
@@ -3197,9 +3197,9 @@ void FOMapper::SelectAll()
         if( HexMngr.IsIgnorePid( items[ i ]->GetProtoId() ) )
             continue;
 
-        if( items[ i ]->IsItem() && IsSelectItem && GameOpt.ShowItem )
+        if( !items[ i ]->IsScenery() && IsSelectItem && GameOpt.ShowItem )
             SelectAddItem( items[ i ] );
-        else if( items[ i ]->IsScenOrGrid() && IsSelectScen && GameOpt.ShowScen )
+        else if( items[ i ]->IsGenericOrGrid() && IsSelectScen && GameOpt.ShowScen )
             SelectAddItem( items[ i ] );
         else if( items[ i ]->IsWall() && IsSelectWall && GameOpt.ShowWall )
             SelectAddItem( items[ i ] );
@@ -3536,7 +3536,7 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
         return nullptr;
     if( !owner && ( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() ) )
         return nullptr;
-    if( !proto_item->IsItem() && owner )
+    if( proto_item->IsScenery() && owner )
         return nullptr;
 
     // Clear selection
@@ -4603,7 +4603,7 @@ void FOMapper::DrawIfaceLayer( uint layer )
 Item* FOMapper::SScriptFunc::Item_AddChild( Item& item, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
-    if( !proto_item || !proto_item->IsItem() )
+    if( !proto_item || proto_item->IsScenery() )
         SCRIPT_ERROR_R0( "Added child is not item." );
 
     return Self->AddItem( pid, 0, 0, &item );
@@ -4612,7 +4612,7 @@ Item* FOMapper::SScriptFunc::Item_AddChild( Item& item, hash pid )
 Item* FOMapper::SScriptFunc::Crit_AddChild( CritterCl& cr, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
-    if( !proto_item || !proto_item->IsItem() )
+    if( !proto_item || proto_item->IsScenery() )
         SCRIPT_ERROR_R0( "Added child is not item." );
 
     return Self->AddItem( pid, 0, 0, &cr );
@@ -5291,12 +5291,6 @@ void FOMapper::SScriptFunc::Global_TabSetName( int tab, ScriptString* tab_name )
     Self->TabsName[ tab ] = ( tab_name ? tab_name->c_std_str() : "" );
 }
 
-Item* FOMapper::SScriptFunc::Global_GetProtoItem( hash proto_id )
-{
-    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
-    return proto ? new Item( 0, proto ) : nullptr;
-}
-
 void FOMapper::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )
 {
     if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
@@ -5843,7 +5837,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSpriteProto( ushort hx, ushort hy, uin
 
     uint color = ( proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0 );
     bool is_flat = proto_item->GetIsFlat();
-    bool is_item = proto_item->IsItem();
+    bool is_item = !proto_item->IsScenery();
     bool no_light = ( is_flat && !is_item );
     int  draw_order = ( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) );
     int  draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();

@@ -67,7 +67,7 @@
 #define DRAW_ORDER_CRITTER         ( DRAW_ORDER + 9 )
 #define DRAW_ORDER_RAIN            ( DRAW_ORDER + 12 )
 #define DRAW_ORDER_LAST            ( 39 )
-#define DRAW_ORDER_ITEM_AUTO( i )     ( i->GetIsFlat() ? ( i->IsItem() ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( i->IsItem() ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) )
+#define DRAW_ORDER_ITEM_AUTO( i )     ( i->GetIsFlat() ? ( !i->IsScenery() ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( !i->IsScenery() ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) )
 #define DRAW_ORDER_CRIT_AUTO( c )     ( c->IsDead() && !c->GetIsNoFlatten() ? DRAW_ORDER_DEAD_CRITTER : DRAW_ORDER_CRITTER )
 
 // Sprites cutting

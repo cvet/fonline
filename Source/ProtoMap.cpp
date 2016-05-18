@@ -924,7 +924,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
         int type = item->GetType();
         hash pid = item->GetProtoId();
 
-        if( item->IsItem() )
+        if( !item->IsScenery() )
         {
             entity->AddRef();
             if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
@@ -1086,7 +1086,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
                 errors++;
             }
         }
-        else if( entity->Type == EntityType::Item && ( (Item*) entity )->IsItem() && ( (Item*) entity )->GetScriptId() )
+        else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
         {
             const char* script_name = Str::GetName( ( (Item*) entity )->GetScriptId() );
             hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Item&,bool)" );
@@ -1096,7 +1096,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
                 errors++;
             }
         }
-        else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsItem() && ( (Item*) entity )->GetScriptId() )
+        else if( entity->Type == EntityType::Item && ( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
         {
             Item* item = (Item*) entity;
             const char* script_name = Str::GetName( item->GetScriptId() );

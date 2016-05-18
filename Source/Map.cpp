@@ -471,7 +471,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
 {
     if( !item )
         return false;
-    if( !item->IsItem() )
+    if( item->IsScenery() )
         return false;
     if( hx >= GetWidth() || hy >= GetHeight() )
         return false;

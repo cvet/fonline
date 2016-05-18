@@ -41,13 +41,13 @@ private:
     uint  animNextTick;
 
 public:
-    bool IsCanUseSkill()      { return IsScenOrGrid() || IsItem(); }
-    bool IsScenOrGrid()       { return IsScen() || IsGrid(); }
+    bool IsCanUseSkill()      { return IsGenericOrGrid() || !IsScenery(); }
+    bool IsGenericOrGrid()    { return IsGeneric() || IsGrid(); }
     bool IsAnimated()         { return isAnimated; }
     bool IsCanLook()          { return !( IsGrid() && GetGrid_Type() == GRID_EXITGRID ); }
     bool IsUsable()           { return !IsWall() && ( GetIsCanUse() || GetIsCanUseOnSmth() || GetIsCanPickUp() ); }
     bool IsTalkable()         { return !IsWall() && GetIsCanTalk(); }
-    bool IsDrawContour()      { return /*IsFocused && */ IsItem() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    bool IsDrawContour()      { return /*IsFocused && */ !IsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     bool IsTransparent()      { return maxAlpha < 0xFF; }
     bool IsFullyTransparent() { return maxAlpha == 0; }
     void RefreshAnim();

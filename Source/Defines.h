@@ -120,8 +120,6 @@
 #define TARGET_SELF_ITEM             ( 1 )
 #define TARGET_CRITTER               ( 2 )
 #define TARGET_ITEM                  ( 3 )
-#define TARGET_SCENERY               ( 4 )
-#define TARGET_HEX                   ( 5 ) // Todo:
 
 // Pick types
 #define PICK_CRIT_LOOT               ( 0 )

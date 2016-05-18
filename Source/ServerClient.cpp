@@ -838,68 +838,53 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return false;
         }
 
-        target_item = map->GetItem( target_id );
-        if( !target_item )
+        ProtoItem* proto = ProtoMngr.GetProtoItem( target_pid );
+        if( !proto )
         {
-            WriteLogF( _FUNC_, " - Target item not found, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
+            WriteLogF( _FUNC_, " - Proto '%s' not found, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
             return false;
         }
 
-        if( target_item->GetIsHidden() )
+        if( !proto->IsScenery() )
         {
-            WriteLogF( _FUNC_, " - Target item is hidden, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
-            return false;
-        }
+            target_item = map->GetItem( target_id );
+            if( !target_item )
+            {
+                WriteLogF( _FUNC_, " - Target item not found, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
+                return false;
+            }
 
-        if( !CheckDist( cr->GetHexX(), cr->GetHexY(), target_item->GetHexX(), target_item->GetHexY(), cr->GetUseDist() ) )
-        {
-            cr->Send_XY( cr );
-            WriteLogF( _FUNC_, " - Target item too far, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
-            return false;
-        }
-    }
-    else if( target_type == TARGET_SCENERY )
-    {
-        if( !cr->GetMapId() )
-        {
-            WriteLogF( _FUNC_, " - Can't get scenery, critter '%s' on global map.\n", cr->GetInfo() );
-            return false;
-        }
+            if( target_item->GetIsHidden() )
+            {
+                WriteLogF( _FUNC_, " - Target item is hidden, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
+                return false;
+            }
 
-        if( !map )
-        {
-            WriteLogF( _FUNC_, " - Map not found_, map id %u, critter '%s'.\n", cr->GetMapId(), cr->GetInfo() );
-            return false;
+            if( !CheckDist( cr->GetHexX(), cr->GetHexY(), target_item->GetHexX(), target_item->GetHexY(), cr->GetUseDist() ) )
+            {
+                cr->Send_XY( cr );
+                WriteLogF( _FUNC_, " - Target item too far, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
+                return false;
+            }
         }
-
-        ushort hx = target_id >> 16;
-        ushort hy = target_id & 0xFFFF;
-
-        if( !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetUseDist() ) )
+        else
         {
-            cr->Send_XY( cr );
-            WriteLogF( _FUNC_, " - Target scenery too far, critter '%s', hx %u, hy %u.\n", cr->GetInfo(), hx, hy );
-            return false;
-        }
+            ushort hx = target_id >> 16;
+            ushort hy = target_id & 0xFFFF;
 
-        ProtoItem* proto_scenery = ProtoMngr.GetProtoItem( target_pid );
-        if( !proto_scenery )
-        {
-            WriteLogF( _FUNC_, " - Proto scenery '%s' not found, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
-            return false;
-        }
+            if( !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetUseDist() ) )
+            {
+                cr->Send_XY( cr );
+                WriteLogF( _FUNC_, " - Target scenery too far, critter '%s', hx %u, hy %u.\n", cr->GetInfo(), hx, hy );
+                return false;
+            }
 
-        if( !proto_scenery->IsGeneric() )
-        {
-            WriteLogF( _FUNC_, " - Target scenery '%s' is not scenery, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
-            return false;
-        }
-
-        target_scen = map->GetProtoMap()->GetMapScenery( hx, hy, target_pid );
-        if( !target_scen )
-        {
-            WriteLogF( _FUNC_, " - Scenery '%s' not found on map, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
-            return false;
+            target_scen = map->GetProtoMap()->GetMapScenery( hx, hy, target_pid );
+            if( !target_scen )
+            {
+                WriteLogF( _FUNC_, " - Scenery '%s' not found on map, critter '%s'.\n", Str::GetName( target_pid ), cr->GetInfo() );
+                return false;
+            }
         }
     }
     else
@@ -1045,7 +1030,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
     if( map->IsTurnBasedOn && !cr->GetAllAp() )
         map->EndCritterTurn();
 
-    if( proto->IsItem() )
+    if( !proto->IsScenery() )
     {
         Item* pick_item = map->GetItemHex( hx, hy, pid, cr->IsPlayer() ? cr : nullptr );
         if( !pick_item )
@@ -2806,10 +2791,10 @@ void FOServer::Process_UseItem( Client* cl )
     {
         if( !item_id )
             return;
-        if( target_type != TARGET_CRITTER && target_type != TARGET_ITEM && target_type != TARGET_SCENERY &&
+        if( target_type != TARGET_CRITTER && target_type != TARGET_ITEM &&
             target_type != TARGET_SELF && target_type != TARGET_SELF_ITEM )
             return;
-        if( !cl->GetMapId() && ( target_type == TARGET_ITEM || target_type == TARGET_SCENERY ) )
+        if( !cl->GetMapId() && target_type == TARGET_ITEM )
             return;
         if( !Act_Use( cl, item_id, -1, target_type, target_id, target_pid, param ) )
             cl->Send_TextMsg( cl, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
@@ -3546,16 +3531,16 @@ void FOServer::Process_UseSkill( Client* cl )
 {
     int   skill;
     uchar targ_type;
-    uint  target_id;
     hash  target_pid;
+    uint  target_id;
 
     cl->Bin >> skill;
     cl->Bin >> targ_type;
-    cl->Bin >> target_id;
     cl->Bin >> target_pid;
+    cl->Bin >> target_id;
     CHECK_IN_BUFF_ERROR( cl );
 
-    if( targ_type > TARGET_SCENERY )
+    if( targ_type > TARGET_ITEM )
     {
         WriteLogF( _FUNC_, " - Invalid target type %u, client '%s'.\n", targ_type, cl->GetInfo() );
         return;

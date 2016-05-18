@@ -702,7 +702,6 @@ public:
     void Send_UserHoloStr( uint str_num, const char* text, ushort text_len );
     void Send_PlayersBarter( uchar barter, uint param, uint param_ext );
     void Send_PlayersBarterSetHide( Item* item, uint count );
-    void Send_ShowScreen( int screen_type, uint param, bool need_answer );
     void Send_RunClientScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
     void Send_DropTimers();
     void Send_ViewMap();

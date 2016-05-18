@@ -24,6 +24,84 @@
 // Video
 #include "Theora/theoradec.h"
 
+// Fonts
+#define FONT_FO                        ( 0 )
+#define FONT_NUM                       ( 1 )
+#define FONT_BIG_NUM                   ( 2 )
+#define FONT_SAND_NUM                  ( 3 )
+#define FONT_SPECIAL                   ( 4 )
+#define FONT_DEFAULT                   ( 5 )
+#define FONT_THIN                      ( 6 )
+#define FONT_FAT                       ( 7 )
+#define FONT_BIG                       ( 8 )
+
+// Screens
+#define SCREEN_NONE                    ( 0 )
+// Primary screens
+#define SCREEN_LOGIN                   ( 1 )
+#define SCREEN_REGISTRATION            ( 2 )
+#define SCREEN_GAME                    ( 3 )
+#define SCREEN_GLOBAL_MAP              ( 4 )
+#define SCREEN_WAIT                    ( 5 )
+// Secondary screens
+#define SCREEN__PICKUP                 ( 11 )
+#define SCREEN__DIALOG                 ( 14 )
+#define SCREEN__BARTER                 ( 15 )
+#define SCREEN__MENU_OPTION            ( 18 )
+#define SCREEN__SPLIT                  ( 20 )
+#define SCREEN__TIMER                  ( 21 )
+#define SCREEN__DIALOGBOX              ( 22 )
+#define SCREEN__TOWN_VIEW              ( 33 )
+
+// Cur modes
+#define CUR_DEFAULT                    ( 0 )
+#define CUR_MOVE                       ( 1 )
+#define CUR_USE_ITEM                   ( 2 )
+#define CUR_USE_WEAPON                 ( 3 )
+#define CUR_USE_SKILL                  ( 4 )
+#define CUR_WAIT                       ( 5 )
+
+// Chosen actions
+#define CHOSEN_NONE                    ( 0 )  //
+#define CHOSEN_MOVE                    ( 1 )  // HexX, HexY, Is run, Cut path, Wait double click, Double click tick
+#define CHOSEN_MOVE_TO_CRIT            ( 2 )  // Critter id, None, Is run, Cut path, Wait double click, Double click tick
+#define CHOSEN_DIR                     ( 3 )  // 0 (CW) or 1 (CCW)
+#define CHOSEN_USE_ITEM                ( 6 )  // Item id, -, Target type, Target id, Item mode, Some param (timer)
+#define CHOSEN_MOVE_ITEM               ( 7 )  // Item id, Item count, To slot, Is barter container, Is second try
+#define CHOSEN_MOVE_ITEM_CONT          ( 8 )  // From container, Item id, Count
+#define CHOSEN_TAKE_ALL                ( 9 )  //
+#define CHOSEN_PUT_ALL                 ( 10 ) //
+#define CHOSEN_USE_SKL_ON_CRITTER      ( 11 ) // Skill, Critter id
+#define CHOSEN_USE_SKL_ON_ITEM         ( 12 ) // Is inventory, Skill index, Item id
+#define CHOSEN_USE_SKL_ON_SCEN         ( 13 ) // Skill, Pid, HexX, HexY
+#define CHOSEN_TALK_NPC                ( 14 ) // Critter id
+#define CHOSEN_PICK_ITEM               ( 15 ) // Pid, HexX, HexY
+#define CHOSEN_PICK_CRIT               ( 16 ) // Critter id, (loot - 0, push - 1)
+
+// Proxy types
+#define PROXY_SOCKS4                   ( 1 )
+#define PROXY_SOCKS5                   ( 2 )
+#define PROXY_HTTP                     ( 3 )
+
+// InitNetReason
+#define INIT_NET_REASON_NONE           ( 0 )
+#define INIT_NET_REASON_LOGIN          ( 1 )
+#define INIT_NET_REASON_REG            ( 2 )
+#define INIT_NET_REASON_LOAD           ( 3 )
+#define INIT_NET_REASON_LOGIN2         ( 4 )
+#define INIT_NET_REASON_CUSTOM         ( 5 )
+
+// Items collections
+#define ITEMS_CHOSEN_ALL               ( 0 )
+#define ITEMS_INVENTORY                ( 1 )
+#define ITEMS_USE                      ( 2 )
+#define ITEMS_BARTER                   ( 3 )
+#define ITEMS_BARTER_OFFER             ( 4 )
+#define ITEMS_BARTER_OPPONENT          ( 5 )
+#define ITEMS_BARTER_OPPONENT_OFFER    ( 6 )
+#define ITEMS_PICKUP                   ( 7 )
+#define ITEMS_PICKUP_FROM              ( 8 )
+
 class FOClient
 {
 public:
@@ -32,9 +110,6 @@ public:
     bool Init();
     void Finish();
     void TryExit();
-    bool IsScroll() { return GameOpt.ScrollMouseUp || GameOpt.ScrollMouseRight || GameOpt.ScrollMouseDown || GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybUp || GameOpt.ScrollKeybRight || GameOpt.ScrollKeybDown || GameOpt.ScrollKeybLeft; }
-    void ProcessMouseScroll();
-    void DropScroll();
     bool IsCurInWindow();
     void FlashGameWindow();
     int  MainLoop();
@@ -48,18 +123,22 @@ public:
     hash       CurMapLocPid;
     uint       CurMapIndexInLoc;
     StrVec     Preload3dFiles;
+    IntVec     RegProps;
+    max_t      CurUseSkill;
+    uint       CurUseItem;
 
-    int        ScreenModeMain;
+    // Screen
+    int ScreenModeMain;
     void ShowMainScreen( int new_screen, ScriptDictionary* params = nullptr );
     int  GetMainScreen()                  { return ScreenModeMain; }
     bool IsMainScreen( int check_screen ) { return check_screen == ScreenModeMain; }
-
     void ShowScreen( int screen, ScriptDictionary* params = nullptr );
     void HideScreen( int screen );
     int  GetActiveScreen( IntVec** screens = nullptr );
     bool IsScreenPresent( int screen );
     void RunScreenScript( bool show, int screen, ScriptDictionary* params );
 
+    // Cursor
     int CurMode, CurModeLast;
     void SetCurMode( int new_cur );
     int  GetCurMode() { return CurMode; };
@@ -68,9 +147,11 @@ public:
     bool IsCurMode( int check_cur ) { return ( check_cur == CurMode ); }
     void SetCurPos( int x, int y );
 
+    // Input
     void ParseKeyboard();
     void ParseMouse();
 
+    // Update files
     struct UpdateFile
     {
         uint   Index;
@@ -95,6 +176,7 @@ public:
     void UpdateFilesAbort( uint num_str, const char* num_str_str );
     void UpdateFilesWait( uint time );
 
+    // Network
     char*         ComBuf;
     uint          ComLen;
     BufferManager Bin;
@@ -116,9 +198,6 @@ public:
     UCharVecVec   TempPropertiesData;
     UCharVecVec   TempPropertiesDataExt;
     UCharVec      TempPropertyData;
-    IntVec        RegProps;
-    int           CurUseSkill;
-    uint          CurUseItem;
 
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
@@ -238,7 +317,7 @@ public:
 
     // MSG File
     LanguagePack CurLang;
-    FOMsg*       MsgText, * MsgDlg, * MsgItem, * MsgGame, * MsgLocations, * MsgCombat, * MsgHolo, * MsgUserHolo, * MsgInternal;
+    FOMsg*       MsgUserHolo;
 
     const char* GetHoloText( uint str_num );
     const char* FmtGameText( uint str_num, ... );
@@ -256,54 +335,6 @@ public:
     #define ITEM_LOOK_INVENTORY    ( 4 )
     #define ITEM_LOOK_WM_CAR       ( 5 )
     const char* FmtItemLook( Item* item, int look_type );
-
-    #define SMTH_NONE              ( 0 )
-    #define SMTH_CRITTER           ( 1 )
-    #define SMTH_ITEM              ( 3 )
-    #define SMTH_CONT_ITEM         ( 4 )
-    class SmthSelected
-    {
-private:
-        int  smthType;
-        uint smthId;
-        int  smthParam;
-public:
-        SmthSelected() { Clear(); }
-        bool operator!=( const SmthSelected& r ) { return smthType != r.smthType || smthId != r.smthId || smthParam != r.smthParam; }
-        bool operator==( const SmthSelected& r ) { return smthType == r.smthType && smthId == r.smthId && smthParam == r.smthParam; }
-        void Clear()
-        {
-            smthType = SMTH_NONE;
-            smthId = 0;
-            smthParam = 0;
-        }
-        bool IsSmth()     { return smthType != SMTH_NONE; }
-        bool IsCritter()  { return smthType == SMTH_CRITTER; }
-        bool IsItem()     { return smthType == SMTH_ITEM; }
-        bool IsContItem() { return smthType == SMTH_CONT_ITEM; }
-        void SetCritter( uint id )
-        {
-            smthType = SMTH_CRITTER;
-            smthId = id;
-            smthParam = 0;
-        }
-        void SetItem( uint id )
-        {
-            smthType = SMTH_ITEM;
-            smthId = id;
-            smthParam = 0;
-        }
-        void SetContItem( uint id, int cont_type )
-        {
-            smthType = SMTH_CONT_ITEM;
-            smthId = id;
-            smthParam = cont_type;
-        }
-        uint GetId()    { return smthId; }
-        int  GetParam() { return smthParam; }
-    };
-    SmthSelected TargetSmth;
-    Item* GetTargetContItem();
 
     struct ActionEvent
     {
@@ -337,6 +368,20 @@ public:
     void ChosenChangeSlot();
     void CrittersProcess();
     void TryPickItemOnGround();
+
+    // Properties callbacks
+    static void OnSendGlobalValue( Entity* entity, Property* prop );
+    static void OnSendCritterValue( Entity* entity, Property* prop );
+    static void OnSendItemValue( Entity* entity, Property* prop );
+    static void OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemLockerCondition( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSendMapValue( Entity* entity, Property* prop );
+    static void OnSendLocationValue( Entity* entity, Property* prop );
 
 /************************************************************************/
 /* Video                                                                */
@@ -452,25 +497,10 @@ public:
     void ProcessScreenEffectQuake();
     void ProcessScreenEffectMirror();
 
-    // Properties callbacks
-    static void OnSendGlobalValue( Entity* entity, Property* prop );
-    static void OnSendCritterValue( Entity* entity, Property* prop );
-    static void OnSendItemValue( Entity* entity, Property* prop );
-    static void OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemLockerCondition( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSendMapValue( Entity* entity, Property* prop );
-    static void OnSendLocationValue( Entity* entity, Property* prop );
-
 /************************************************************************/
 /* Scripting                                                            */
 /************************************************************************/
     bool ReloadScripts();
-    int  ScriptGetHitProc( CritterCl* cr, int hit_location );
     void DrawIfaceLayer( uint layer );
     void OnItemInvChanged( Item* old_item, Item* new_item );
 
@@ -561,7 +591,6 @@ public:
         static uint          Global_GetDayTime( uint day_part );
         static void          Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
 
-        static Item*         Global_GetProtoItem( hash proto_id );
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
@@ -605,22 +634,17 @@ public:
 
         static void          Global_ShowScreen( int screen, ScriptDictionary* params );
         static void          Global_HideScreen( int screen );
-        static void          Global_GetHardcodedScreenPos( int screen, int& x, int& y );
-        static void          Global_DrawHardcodedScreen( int screen );
-        static void          Global_HandleHardcodedScreenMouse( int screen, int button, bool down, bool move );
-        static void          Global_HandleHardcodedScreenKey( int screen, uchar key, ScriptString* text, bool down );
         static bool          Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
         static bool          Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
         static Item*         Global_GetMonitorItem( int x, int y, bool ignore_interface );
         static CritterCl*    Global_GetMonitorCritter( int x, int y, bool ignore_interface );
+        static Entity*       Global_GetMonitorEntity( int x, int y, bool ignore_interface );
         static ushort        Global_GetMapWidth();
         static ushort        Global_GetMapHeight();
         static int           Global_GetCurrentCursor();
         static int           Global_GetLastCursor();
         static void          Global_ChangeCursor( int cursor, uint context_id );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
-        static bool          Global_AppendIfaceIni( ScriptString& ini_name );
-        static ScriptString* Global_GetIfaceIniStr( ScriptString& key );
         static void          Global_Preload3dFiles( ScriptArray& fnames, int path_type );
         static void          Global_WaitPing();
         static bool          Global_LoadFont( int font, ScriptString& font_fname );
@@ -655,25 +679,9 @@ public:
 /************************************************************************/
 /* Interface                                                            */
 /************************************************************************/
-    StrVec    IfaceIniNames;
-    IniParser IfaceIni;
-
-    bool AppendIfaceIni( const char* ini_name );
-    void AppendIfaceIni( uchar* data, uint len );
     int  InitIface();
-    bool IfaceLoadRect( Rect& comp, const char* name );
-    void IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy );
-    void IfaceLoadSpr( AnyFrames*& comp, const char* name );
-    void IfaceLoadAnim( uint& comp, const char* name );
-    void IfaceLoadArray( IntVec& arr, const char* name );
-
-    bool IsCurInRect( const Rect& rect, int ax, int ay )                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L + ax && GameOpt.MouseY >= rect.T + ay && GameOpt.MouseX <= rect.R + ax && GameOpt.MouseY <= rect.B + ay ); }
-    bool IsCurInRect( const Rect& rect )                                { return !rect.IsZero() && ( GameOpt.MouseX >= rect.L && GameOpt.MouseY >= rect.T && GameOpt.MouseX <= rect.R && GameOpt.MouseY <= rect.B ); }
-    bool IsCurInRectNoTransp( uint spr_id, Rect& rect, int ax, int ay ) { return IsCurInRect( rect, ax, ay ) && SprMngr.IsPixNoTransp( spr_id, GameOpt.MouseX - rect.L - ax, GameOpt.MouseY - rect.T - ay, false ); }
     bool IsCurInInterface( int x, int y );
     bool GetCurHex( ushort& hx, ushort& hy, bool ignore_interface );
-
-    void DrawIndicator( Rect& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left );
 
     // Initial state
     ItemVec InvContInit;
@@ -684,13 +692,12 @@ public:
     ItemVec BarterCont1o, BarterCont2, BarterCont2o;
     ItemVec PupCont2;
 
-    uint  GetCurContainerItemId( const Rect& pos, int height, int scroll, ItemVec& cont );
-    void  ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& cont, uint skip_id );
     Item* GetContainerItem( ItemVec& cont, uint id );
     void  CollectContItems();
     void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
-    bool  LoginCheckData();
-    bool  RegCheckData();
+
+    bool LoginCheckData();
+    bool RegCheckData();
 
 /************************************************************************/
 /* Game                                                                 */
@@ -712,8 +719,6 @@ public:
     uint       GameMouseStay;
 
     void GameDraw();
-    void GameKeyDown( uchar dik, const char* dik_text );
-    void GameLMouseDown();
 
 /************************************************************************/
 /* Dialog                                                               */

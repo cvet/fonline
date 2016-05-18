@@ -296,15 +296,6 @@ bool FOClient::Init()
     const char* lang_name = cfg.GetStr( "", "Language", DEFAULT_LANGUAGE );
 
     CurLang.LoadFromCache( lang_name );
-
-    MsgText = &CurLang.Msg[ TEXTMSG_TEXT ];
-    MsgDlg = &CurLang.Msg[ TEXTMSG_DLG ];
-    MsgItem = &CurLang.Msg[ TEXTMSG_ITEM ];
-    MsgGame = &CurLang.Msg[ TEXTMSG_GAME ];
-    MsgLocations = &CurLang.Msg[ TEXTMSG_LOCATIONS ];
-    MsgCombat = &CurLang.Msg[ TEXTMSG_COMBAT ];
-    MsgHolo = &CurLang.Msg[ TEXTMSG_HOLO ];
-    MsgInternal = &CurLang.Msg[ TEXTMSG_INTERNAL ];
     MsgUserHolo = new FOMsg();
     MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE, PT_TEXTS );
 
@@ -347,7 +338,7 @@ bool FOClient::Init()
     GameOpt.MouseY = CLAMP( my, 0, sh - 1 );
 
     // CritterCl types
-    CritType::InitFromMsg( MsgInternal );
+    CritType::InitFromMsg( &CurLang.Msg[ TEXTMSG_INTERNAL ] );
 
     // Resource manager
     ResMngr.Refresh();
@@ -359,10 +350,6 @@ bool FOClient::Init()
     SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
     WaitDraw();
     SprMngr.EndScene();
-
-    // Base ini options
-    if( !AppendIfaceIni( nullptr ) )
-        return false;
 
     // Scripts
     if( !ReloadScripts() )
@@ -376,7 +363,7 @@ bool FOClient::Init()
     // Modules initialization
     if( !Script::RunModuleInitFunctions() )
     {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
 
@@ -474,11 +461,11 @@ bool FOClient::Init()
     // Intro
     else if( !Str::Substring( CommandLine, "-SkipIntro" ) )
     {
-        if( MsgGame->Count( STR_MUSIC_MAIN_THEME ) )
-            MusicAfterVideo = MsgGame->GetStr( STR_MUSIC_MAIN_THEME );
+        if( CurLang.Msg[ TEXTMSG_GAME ].Count( STR_MUSIC_MAIN_THEME ) )
+            MusicAfterVideo = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_MUSIC_MAIN_THEME );
         for( uint i = STR_VIDEO_INTRO_BEGIN; i < STR_VIDEO_INTRO_END; i++ )
-            if( MsgGame->Count( i ) )
-                AddVideo( MsgGame->GetStr( i, 0 ), true, false );
+            if( CurLang.Msg[ TEXTMSG_GAME ].Count( i ) )
+                AddVideo( CurLang.Msg[ TEXTMSG_GAME ].GetStr( i, 0 ), true, false );
 
         if( !IsVideoPlayed() )
         {
@@ -493,8 +480,8 @@ bool FOClient::Init()
     else
     {
         ScreenFadeOut();
-        if( MsgGame->Count( STR_MUSIC_MAIN_THEME ) )
-            SndMngr.PlayMusic( MsgGame->GetStr( STR_MUSIC_MAIN_THEME ) );
+        if( CurLang.Msg[ TEXTMSG_GAME ].Count( STR_MUSIC_MAIN_THEME ) )
+            SndMngr.PlayMusic( CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_MUSIC_MAIN_THEME ) );
     }
 
     // Disable dumps if multiple window detected
@@ -988,13 +975,6 @@ int FOClient::MainLoop()
     {
         #ifdef FO_WINDOWS
         bool pause = SingleplayerData.Pause;
-        if( !pause )
-        {
-            int main_screen = GetMainScreen();
-            if( ( main_screen != SCREEN_GAME && main_screen != SCREEN_GLOBAL_MAP && main_screen != SCREEN_WAIT ) || IsScreenPresent( SCREEN__MENU_OPTION ) )
-                pause = true;
-        }
-
         SingleplayerData.Lock();         // Read data
         if( pause != SingleplayerData.Pause )
         {
@@ -1025,7 +1005,7 @@ int FOClient::MainLoop()
         if( !NetConnect( GameOpt.Host->c_str(), GameOpt.Port ) )
         {
             ShowMainScreen( SCREEN_LOGIN );
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONN_FAIL ) );
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_FAIL ) );
             return 1;
         }
 
@@ -2324,7 +2304,7 @@ void FOClient::Net_SendLogIn( const char* name, const char* pass )
     Bout.Push( dummy, 100 );
 
     if( !Singleplayer && name )
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONN_SUCCESS ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_SUCCESS ) );
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -2483,21 +2463,13 @@ void FOClient::Net_SendUseSkill( int skill, ItemHex* item )
 {
     Bout << NETMSG_SEND_USE_SKILL;
     Bout << skill;
+    Bout << (uchar) TARGET_ITEM;
+    Bout << item->GetProtoId();
 
-    if( item->IsScenOrGrid() )
-    {
-        uint hex = ( item->GetHexX() << 16 ) | item->GetHexY();
-
-        Bout << (uchar) TARGET_SCENERY;
-        Bout << hex;
-        Bout << item->GetProtoId();
-    }
+    if( item->IsScenery() )
+        Bout << (uint) ( ( item->GetHexX() << 16 ) | item->GetHexY() );
     else
-    {
-        Bout << (uchar) TARGET_ITEM;
         Bout << item->GetId();
-        Bout << (hash) 0;
-    }
 }
 
 void FOClient::Net_SendUseSkill( int skill, Item* item )
@@ -2828,7 +2800,7 @@ void FOClient::Net_OnWrongNetProto()
     if( UpdateFilesInProgress )
         UpdateFilesAbort( STR_CLIENT_OUTDATED, "Client outdated!" );
     else
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_CLIENT_OUTDATED ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_CLIENT_OUTDATED ) );
 }
 
 void FOClient::Net_OnLoginSuccess()
@@ -2836,7 +2808,7 @@ void FOClient::Net_OnLoginSuccess()
     WriteLog( "Authentication success.\n" );
 
     if( !Singleplayer )
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_LOGINOK ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_LOGINOK ) );
 
     // Set encrypt keys
     uint msg_len;
@@ -2932,12 +2904,12 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
         if( is_npc )
         {
-            if( cr->GetDialogId() && MsgDlg->Count( STR_NPC_NAME( cr->GetDialogId() ) ) )
-                *cr->Name = MsgDlg->GetStr( STR_NPC_NAME( cr->GetDialogId() ) );
+            if( cr->GetDialogId() && CurLang.Msg[ TEXTMSG_DLG ].Count( STR_NPC_NAME( cr->GetDialogId() ) ) )
+                *cr->Name = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_NAME( cr->GetDialogId() ) );
             else
-                *cr->Name = MsgDlg->GetStr( STR_NPC_PID_NAME( npc_pid ) );
-            if( MsgDlg->Count( STR_NPC_AVATAR( cr->GetDialogId() ) ) )
-                *cr->Avatar = MsgDlg->GetStr( STR_NPC_AVATAR( cr->GetDialogId() ) );
+                *cr->Name = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_PID_NAME( npc_pid ) );
+            if( CurLang.Msg[ TEXTMSG_DLG ].Count( STR_NPC_AVATAR( cr->GetDialogId() ) ) )
+                *cr->Avatar = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_AVATAR( cr->GetDialogId() ) );
         }
         else
         {
@@ -3189,23 +3161,23 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
         if( how_say == SAY_ENCOUNTER_ANY )
         {
             DlgboxType = DIALOGBOX_ENCOUNTER_ANY;
-            DlgboxButtonText[ 0 ] = MsgGame->GetStr( STR_DIALOGBOX_ENCOUNTER_RT );
-            DlgboxButtonText[ 1 ] = MsgGame->GetStr( STR_DIALOGBOX_ENCOUNTER_TB );
-            DlgboxButtonText[ 2 ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
+            DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_ENCOUNTER_RT );
+            DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_ENCOUNTER_TB );
+            DlgboxButtonText[ 2 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
             DlgboxButtonsCount = 3;
         }
         else if( how_say == SAY_ENCOUNTER_RT )
         {
             DlgboxType = DIALOGBOX_ENCOUNTER_RT;
-            DlgboxButtonText[ 0 ] = MsgGame->GetStr( STR_DIALOGBOX_ENCOUNTER_RT );
-            DlgboxButtonText[ 1 ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
+            DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_ENCOUNTER_RT );
+            DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
             DlgboxButtonsCount = 2;
         }
         else
         {
             DlgboxType = DIALOGBOX_ENCOUNTER_TB;
-            DlgboxButtonText[ 0 ] = MsgGame->GetStr( STR_DIALOGBOX_ENCOUNTER_TB );
-            DlgboxButtonText[ 1 ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
+            DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_ENCOUNTER_TB );
+            DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
             DlgboxButtonsCount = 2;
         }
         DlgboxWait = Timer::GameTick() + GM_ANSWER_WAIT_TIME;
@@ -3784,7 +3756,7 @@ void FOClient::Net_OnCustomCommand()
             for( auto it = items.begin(), end = items.end(); it != end; ++it )
             {
                 ItemHex* item = *it;
-                if( item->IsItem() )
+                if( !item->IsScenery() )
                     HexMngr.DeleteItem( *it, true );
             }
         }
@@ -4335,7 +4307,7 @@ void FOClient::Net_OnEndParseToGame()
         MoveDirs.clear();
         HexMngr.FindSetCenter( Chosen->GetHexX(), Chosen->GetHexY() );
         Chosen->AnimateStay();
-        SndMngr.PlayAmbient( MsgLocations->GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
+        SndMngr.PlayAmbient( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
         ShowMainScreen( SCREEN_GAME );
         HexMngr.RebuildLight();
     }
@@ -4345,9 +4317,9 @@ void FOClient::Net_OnEndParseToGame()
     }
 
     if( IsVideoPlayed() )
-        MusicAfterVideo = MsgLocations->GetStr( STR_LOC_MAP_MUSIC( CurMapLocPid, CurMapIndexInLoc ) );
+        MusicAfterVideo = CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_MUSIC( CurMapLocPid, CurMapIndexInLoc ) );
     else
-        SndMngr.PlayMusic( MsgLocations->GetStr( STR_LOC_MAP_MUSIC( CurMapLocPid, CurMapIndexInLoc ) ) );
+        SndMngr.PlayMusic( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_MUSIC( CurMapLocPid, CurMapIndexInLoc ) ) );
 
     WriteLog( "Entering to game complete.\n" );
 }
@@ -4525,13 +4497,13 @@ void FOClient::Net_OnChosenTalk()
     }
 
     char str[ MAX_FOTEXT ];
-    Str::Copy( str, MsgDlg->GetStr( text_id ) );
+    Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( text_id ) );
     FormatTags( str, Chosen, npc, lexems );
     ScriptString* text_to_script = ScriptString::Create( str );
     ScriptArray*  answers_to_script = Script::CreateArray( "string@[]" );
     for( size_t i = 0; i < answers_texts.size(); i++ )
     {
-        Str::Copy( str, MsgDlg->GetStr( answers_texts[ i ] ) );
+        Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( answers_texts[ i ] ) );
         FormatTags( str, Chosen, npc, lexems );
         ScriptString* sstr = ScriptString::Create( str );
         answers_to_script->InsertLast( &sstr );
@@ -4657,7 +4629,6 @@ void FOClient::Net_OnLoadMap()
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
 
-    DropScroll();
     IsTurnBased = false;
 
     // Global
@@ -5117,10 +5088,10 @@ void FOClient::Net_OnFollow()
     // Find rule
     char       cr_name[ 64 ];
     CritterCl* cr = GetCritter( rule );
-    Str::Copy( cr_name, cr ? cr->GetName() : MsgGame->GetStr( STR_FOLLOW_UNKNOWN_CRNAME ) );
+    Str::Copy( cr_name, cr ? cr->GetName() : CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_FOLLOW_UNKNOWN_CRNAME ) );
     // Find map
     char map_name[ 64 ];
-    Str::Copy( map_name, map_pid ? "local map" : MsgGame->GetStr( STR_FOLLOW_GMNAME ) );
+    Str::Copy( map_name, map_pid ? "local map" : CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_FOLLOW_GMNAME ) );
 
     switch( FollowType )
     {
@@ -5136,8 +5107,8 @@ void FOClient::Net_OnFollow()
         break;
     }
 
-    DlgboxButtonText[ 0 ] = MsgGame->GetStr( STR_DIALOGBOX_FOLLOW );
-    DlgboxButtonText[ 1 ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
+    DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_FOLLOW );
+    DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
     DlgboxButtonsCount = 2;
 
     ShowDialogBox();
@@ -5194,7 +5165,7 @@ void FOClient::Net_OnPlayersBarter()
     case BARTER_END:
     {
         if( IsScreenPlayersBarter() )
-            ShowScreen( SCREEN_NONE );
+            HideScreen( SCREEN_NONE );
     }
     break;
     case BARTER_TRY:
@@ -5207,11 +5178,11 @@ void FOClient::Net_OnPlayersBarter()
         PBarterPlayerId = param;
         BarterOpponentHide = ( param_ext != 0 );
         PBarterHide = BarterOpponentHide;
-        Str::Copy( DlgboxText, FmtGameText( STR_BARTER_DIALOGBOX, cr->GetName(), !BarterOpponentHide ? MsgGame->GetStr( STR_BARTER_OPEN_MODE ) : MsgGame->GetStr( STR_BARTER_HIDE_MODE ) ) );
+        Str::Copy( DlgboxText, FmtGameText( STR_BARTER_DIALOGBOX, cr->GetName(), !BarterOpponentHide ? CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_BARTER_OPEN_MODE ) : CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_BARTER_HIDE_MODE ) ) );
         DlgboxWait = Timer::GameTick() + 20000;
-        DlgboxButtonText[ 0 ] = MsgGame->GetStr( STR_DIALOGBOX_BARTER_OPEN );
-        DlgboxButtonText[ 1 ] = MsgGame->GetStr( STR_DIALOGBOX_BARTER_HIDE );
-        DlgboxButtonText[ 2 ] = MsgGame->GetStr( STR_DIALOGBOX_CANCEL );
+        DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_BARTER_OPEN );
+        DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_BARTER_HIDE );
+        DlgboxButtonText[ 2 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
         DlgboxButtonsCount = 3;
 
         ShowDialogBox();
@@ -5684,7 +5655,7 @@ void FOClient::Net_OnAutomapsInfo()
             Automap amap;
             amap.LocId = loc_id;
             amap.LocPid = loc_pid;
-            amap.LocName = MsgLocations->GetStr( STR_LOC_NAME( loc_pid ) );
+            amap.LocName = CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_NAME( loc_pid ) );
 
             for( ushort j = 0; j < maps_count; j++ )
             {
@@ -5694,7 +5665,7 @@ void FOClient::Net_OnAutomapsInfo()
                 Bin >> map_index_in_loc;
 
                 amap.MapPids.push_back( map_pid );
-                amap.MapNames.push_back( MsgLocations->GetStr( STR_LOC_MAP_NAME( loc_pid, map_index_in_loc ) ) );
+                amap.MapNames.push_back( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_NAME( loc_pid, map_index_in_loc ) ) );
             }
 
             if( it != Automaps.end() )
@@ -5729,7 +5700,7 @@ void FOClient::Net_OnViewMap()
         return;
 
     HexMngr.FindSetCenter( hx, hy );
-    SndMngr.PlayAmbient( MsgLocations->GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
+    SndMngr.PlayAmbient( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
     ShowMainScreen( SCREEN_GAME );
     ScreenFadeOut();
     HexMngr.RebuildLight();
@@ -5774,13 +5745,13 @@ bool FOClient::RegCheckData()
     if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
         name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_NAME ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_NAME ) );
         return false;
     }
 
     if( !Str::IsValidUTF8( GameOpt.RegName->c_str() ) || Str::Substring( GameOpt.RegName->c_str(), "*" ) )
     {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_NAME_WRONG_CHARS ) );
         return false;
     }
 
@@ -5791,13 +5762,13 @@ bool FOClient::RegCheckData()
         if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
             pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
         {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_PASS ) );
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_PASS ) );
             return false;
         }
 
         if( !Str::IsValidUTF8( GameOpt.RegPassword->c_str() ) || Str::Substring( GameOpt.RegPassword->c_str(), "*" ) )
         {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_PASS_WRONG_CHARS ) );
             return false;
         }
     }
@@ -5821,71 +5792,6 @@ void FOClient::SetDayTime( bool refresh )
         old_color = color;
         SetGameColor( old_color );
     }
-}
-
-Item* FOClient::GetTargetContItem()
-{
-    if( !TargetSmth.IsContItem() )
-        return nullptr;
-
-    // Script stuff
-    if( TargetSmth.GetParam() > 1 )
-    {
-        uint  item_id = TargetSmth.GetId();
-        Item* item = nullptr;
-        if( TargetSmth.GetParam() == 2 )
-        {
-            if( Chosen )
-                item = Chosen->GetItem( item_id );
-        }
-        else
-        {
-            CritMap& critters = HexMngr.GetCritters();
-            for( auto it = critters.begin(), end = critters.end(); it != end && !item; ++it )
-                item = it->second->GetItem( item_id );
-        }
-        if( !item )
-            TargetSmth.Clear();
-        return item;
-    }
-
-    // Hardcoded stuff
-    #define TRY_SEARCH_IN_CONT( cont )                                        \
-        do {                                                                  \
-            auto it = PtrCollectionFind( cont.begin(), cont.end(), item_id ); \
-            if( it != cont.end() )                                            \
-                return *it;                                                   \
-        }                                                                     \
-        while( 0 )
-
-    uint item_id = TargetSmth.GetId();
-    if( GetActiveScreen() != SCREEN_NONE )
-    {
-        switch( GetActiveScreen() )
-        {
-        case SCREEN__USE:
-            TRY_SEARCH_IN_CONT( UseCont );
-            break;
-        case SCREEN__PICKUP:
-            TRY_SEARCH_IN_CONT( PupCont1 );
-            TRY_SEARCH_IN_CONT( PupCont2 );
-            break;
-        case SCREEN__BARTER:
-            if( TargetSmth.GetParam() == 0 )
-                TRY_SEARCH_IN_CONT( BarterCont1 );
-            if( TargetSmth.GetParam() == 0 )
-                TRY_SEARCH_IN_CONT( BarterCont2 );
-            if( TargetSmth.GetParam() == 1 )
-                TRY_SEARCH_IN_CONT( BarterCont1o );
-            if( TargetSmth.GetParam() == 1 )
-                TRY_SEARCH_IN_CONT( BarterCont2o );
-            break;
-        default:
-            break;
-        }
-    }
-    TargetSmth.Clear();
-    return nullptr;
 }
 
 void FOClient::AddAction( bool to_front, ActionEvent act )
@@ -6163,7 +6069,7 @@ void FOClient::CrittersProcess()
 
         if( Chosen->IsDoubleOverweight() )
         {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_OVERWEIGHT_TITLE ) );
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_OVERWEIGHT_TITLE ) );
             SetAction( CHOSEN_NONE );
             goto label_EndMove;
         }
@@ -6191,7 +6097,7 @@ void FOClient::CrittersProcess()
 
         if( !is_run && ( !CritType::IsCanWalk( Chosen->GetCrType() ) || Chosen->GetIsNoWalk() ) )
         {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_CRITTER_CANT_MOVE ) );
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_CRITTER_CANT_MOVE ) );
             SetAction( CHOSEN_NONE );
             goto label_EndMove;
         }
@@ -6375,8 +6281,6 @@ label_EndMove:
             target_cr = GetCritter( target_id );
         else if( target_type == TARGET_ITEM )
             target_item = GetItem( target_id );
-        else if( target_type == TARGET_SCENERY )
-            target_item = GetItem( target_id );
         else
             break;
         if( target_type == TARGET_CRITTER && Chosen == target_cr )
@@ -6388,8 +6292,6 @@ label_EndMove:
         if( target_type == TARGET_CRITTER && !target_cr )
             break;
         else if( target_type == TARGET_ITEM && !target_item )
-            break;
-        else if( target_type == TARGET_SCENERY && !target_item )
             break;
         if( target_type != TARGET_CRITTER && !item->GetId() )
             break;
@@ -6537,7 +6439,7 @@ label_EndMove:
                         AddActionBack( act );
                     return;
                 }
-                AddMess( FOMB_GAME, MsgGame->GetStr( STR_FINDPATH_AIMBLOCK ) );
+                AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_FINDPATH_AIMBLOCK ) );
                 break;
             }
 
@@ -6554,7 +6456,7 @@ label_EndMove:
         // Use
         CHECK_NEED_AP( ap_cost );
 
-        if( target_item && target_item->IsScenOrGrid() )
+        if( target_item && target_item->IsGenericOrGrid() )
             Net_SendUseItem( ap_cost, item_id, rate, target_type, ( target_item->GetHexX() << 16 ) | ( target_item->GetHexY() & 0xFFFF ), target_item->GetProtoId(), param );
         else
             Net_SendUseItem( ap_cost, item_id, rate, target_type, target_id, 0, param );  // Item or critter
@@ -6764,12 +6666,12 @@ label_EndMove:
         {
             if( Chosen->GetFreeWeight() < (int) ( item->GetWeight() * count ) )
             {
-                AddMess( FOMB_GAME, MsgGame->GetStr( STR_OVERWEIGHT ) );
+                AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_OVERWEIGHT ) );
                 break;
             }
             if( Chosen->GetFreeVolume() < (int) ( item->GetVolume() * count ) )
             {
-                AddMess( FOMB_GAME, MsgGame->GetStr( STR_OVERVOLUME ) );
+                AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_OVERVOLUME ) );
                 break;
             }
         }
@@ -6824,7 +6726,7 @@ label_EndMove:
         ContainerCalcInfo( PupCont2Init, c, w, v, MAX_INT, false );
         if( Chosen->GetFreeWeight() < (int) w )
         {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_BARTER_OVERWEIGHT ) );
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_BARTER_OVERWEIGHT ) );
             break;
         }
         else if( Chosen->GetFreeVolume() < (int) v )
@@ -7020,7 +6922,7 @@ label_EndMove:
 
         if( !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), talk_distance + Chosen->GetMultihex(), 0.0f, cr, false, nullptr, 0, nullptr, nullptr, nullptr, true ) )
         {
-            AddMess( FOMB_GAME, MsgGame->GetStr( STR_FINDPATH_AIMBLOCK ) );
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_FINDPATH_AIMBLOCK ) );
             break;
         }
 
@@ -7163,8 +7065,6 @@ void FOClient::TryExit()
     {
         switch( active )
         {
-        case SCREEN__TIMER:
-            break;
         case SCREEN__TOWN_VIEW:
             Net_SendRefereshMe();
             break;
@@ -7172,7 +7072,7 @@ void FOClient::TryExit()
             if( DlgboxType >= DIALOGBOX_ENCOUNTER_ANY && DlgboxType <= DIALOGBOX_ENCOUNTER_TB )
                 Net_SendRuleGlobal( GM_CMD_ANSWER, -1 );
         default:
-            ShowScreen( SCREEN_NONE );
+            HideScreen( SCREEN_NONE );
             break;
         }
     }
@@ -7199,44 +7099,6 @@ void FOClient::TryExit()
             break;
         }
     }
-}
-
-void FOClient::ProcessMouseScroll()
-{
-    if( !GameOpt.MouseScroll )
-        return;
-
-    if( GameOpt.MouseX >= GameOpt.ScreenWidth - 1 )
-        GameOpt.ScrollMouseRight = true;
-    else
-        GameOpt.ScrollMouseRight = false;
-
-    if( GameOpt.MouseX <= 0 )
-        GameOpt.ScrollMouseLeft = true;
-    else
-        GameOpt.ScrollMouseLeft = false;
-
-    if( GameOpt.MouseY >= GameOpt.ScreenHeight - 1 )
-        GameOpt.ScrollMouseDown = true;
-    else
-        GameOpt.ScrollMouseDown = false;
-
-    if( GameOpt.MouseY <= 0 )
-        GameOpt.ScrollMouseUp = true;
-    else
-        GameOpt.ScrollMouseUp = false;
-}
-
-void FOClient::DropScroll()
-{
-    GameOpt.ScrollMouseUp = false;
-    GameOpt.ScrollMouseRight = false;
-    GameOpt.ScrollMouseDown = false;
-    GameOpt.ScrollMouseLeft = false;
-    GameOpt.ScrollKeybUp = false;
-    GameOpt.ScrollKeybRight = false;
-    GameOpt.ScrollKeybDown = false;
-    GameOpt.ScrollKeybLeft = false;
 }
 
 bool FOClient::IsCurInWindow()
@@ -7275,7 +7137,7 @@ const char* FOClient::GetHoloText( uint str_num )
         }
         return MsgUserHolo->GetStr( str_num );
     }
-    return MsgHolo->GetStr( str_num );
+    return CurLang.Msg[ TEXTMSG_HOLO ].GetStr( str_num );
 }
 
 const char* FOClient::FmtGameText( uint str_num, ... )
@@ -7283,7 +7145,7 @@ const char* FOClient::FmtGameText( uint str_num, ... )
     static char res[ MAX_FOTEXT ];
     static char str[ MAX_FOTEXT ];
 
-    Str::Copy( str, MsgGame->GetStr( str_num ) );
+    Str::Copy( str, CurLang.Msg[ TEXTMSG_GAME ].GetStr( str_num ) );
     Str::Replacement( str, '\\', 'n', '\n' );
 
     va_list list;
@@ -7299,7 +7161,7 @@ const char* FOClient::FmtCombatText( uint str_num, ... )
     static char res[ MAX_FOTEXT ];
     static char str[ MAX_FOTEXT ];
 
-    Str::Copy( str, MsgCombat->GetStr( str_num ) );
+    Str::Copy( str, CurLang.Msg[ TEXTMSG_COMBAT ].GetStr( str_num ) );
 
     va_list list;
     va_start( list, str_num );
@@ -7327,7 +7189,7 @@ const char* FOClient::FmtCritLook( CritterCl* cr, int look_type )
         }
     }
 
-    return MsgGame->GetStr( STR_CRIT_LOOK_NOTHING );
+    return CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_CRIT_LOOK_NOTHING );
 }
 
 const char* FOClient::FmtItemLook( Item* item, int look_type )
@@ -7348,7 +7210,7 @@ const char* FOClient::FmtItemLook( Item* item, int look_type )
         }
     }
 
-    return MsgGame->GetStr( STR_ITEM_LOOK_NOTHING );
+    return CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_ITEM_LOOK_NOTHING );
 }
 
 void FOClient::SoundProcess()
@@ -7358,7 +7220,7 @@ void FOClient::SoundProcess()
     if( Timer::GameTick() > next_ambient )
     {
         if( IsMainScreen( SCREEN_GAME ) )
-            SndMngr.PlayAmbient( MsgLocations->GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
+            SndMngr.PlayAmbient( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
         next_ambient = Timer::GameTick() + Random( AMBIENT_SOUND_TIME / 2, AMBIENT_SOUND_TIME );
     }
 }
@@ -8062,7 +7924,7 @@ bool FOClient::ReloadScripts()
         !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES + 2 ) )
     {
         WriteLog( "Main script section not found in MSG.\n" );
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
 
@@ -8072,7 +7934,7 @@ bool FOClient::ReloadScripts()
     if( !Script::Init( pragma_callback, "CLIENT", true, 0, 0, false ) )
     {
         WriteLog( "Unable to start script engine.\n" );
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
 
@@ -8090,7 +7952,7 @@ bool FOClient::ReloadScripts()
     if( bind_errors )
     {
         WriteLog( "Bind fail, errors %d.\n", bind_errors );
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
 
@@ -8208,7 +8070,6 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.InMessage, "in_message", "bool %s(string&,int&,uint&,uint&)" },
         { &ClientFunctions.OutMessage, "out_message", "bool %s(string&,int&)" },
         { &ClientFunctions.MessageBox, "message_box", "void %s(string&,int,bool)" },
-        { &ClientFunctions.ToHit, "to_hit", "int %s(Critter&,Critter&,ProtoItem&,uint8)" },
         { &ClientFunctions.HitAim, "hit_aim", "void %s(uint8&)" },
         { &ClientFunctions.CombatResult, "combat_result", "void %s(uint[]&)" },
         { &ClientFunctions.ItemLook, "item_description", "string@ %s(Item&,int)" },
@@ -8269,27 +8130,6 @@ bool FOClient::ReloadScripts()
 
     WriteLog( "Load scripts complete.\n" );
     return true;
-}
-
-int FOClient::ScriptGetHitProc( CritterCl* cr, int hit_location )
-{
-    if( !Chosen )
-        return 0;
-    int        use = Chosen->GetUse();
-    ProtoItem* proto_item = Chosen->ItemSlotMain->GetProtoItem();
-    if( !proto_item->IsWeapon() || !Chosen->ItemSlotMain->WeapIsUseAviable( use ) )
-        return 0;
-
-    if( Script::PrepareContext( ClientFunctions.ToHit, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( Chosen );
-        Script::SetArgEntityOK( cr );
-        Script::SetArgEntityOK( Chosen->ItemSlotMain );
-        Script::SetArgUChar( MAKE_ITEM_MODE( use, hit_location ) );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return 0;
 }
 
 void FOClient::DrawIfaceLayer( uint layer )
@@ -8943,10 +8783,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->Chosen->NextRateItem( args.size() >= 2 && args[ 1 ] == "Prev" ? true : false );
     }
-    else if( cmd == "GameLMouseDown" )
-    {
-        Self->GameLMouseDown();
-    }
     else if( cmd == "NextCursor" )
     {
         switch( Self->GetCurMode() )
@@ -8977,10 +8813,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "TryPickItemOnGround" )
     {
         Self->TryPickItemOnGround();
-    }
-    else if( cmd == "ProcessMouseScroll" )
-    {
-        Self->ProcessMouseScroll();
     }
     else if( cmd == "SetMousePos" )
     {
@@ -9128,6 +8960,10 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         bool pause = Str::AtoB( args[ 1 ].c_str() );
         if( Singleplayer )
             SingleplayerData.Pause = pause;
+    }
+    else if( cmd == "DrawWait" )
+    {
+        Self->WaitDraw();
     }
     else
     {
@@ -9635,12 +9471,6 @@ void FOClient::SScriptFunc::Global_GetDayColor( uint day_part, uchar& r, uchar& 
     }
 }
 
-Item* FOClient::SScriptFunc::Global_GetProtoItem( hash proto_id )
-{
-    ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
-    return proto ? new Item( 0, proto ) : nullptr;
-}
-
 uint FOClient::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
 {
     if( !year )
@@ -9696,16 +9526,6 @@ void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
     {
         MoveHexByDir( hx, hy, dir, Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight() );
     }
-}
-
-bool FOClient::SScriptFunc::Global_AppendIfaceIni( ScriptString& ini_name )
-{
-    return Self->AppendIfaceIni( ini_name.c_str() );
-}
-
-ScriptString* FOClient::SScriptFunc::Global_GetIfaceIniStr( ScriptString& key )
-{
-    return ScriptString::Create( Self->IfaceIni.GetStr( "", key.c_str(), "" ) );
 }
 
 void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames, int path_type )
@@ -10293,7 +10113,7 @@ void FOClient::SScriptFunc::Global_DrawMapSpriteProto( ushort hx, ushort hy, uin
 
     uint color = ( proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0 );
     bool is_flat = proto_item->GetIsFlat();
-    bool is_item = proto_item->IsItem();
+    bool is_item = !proto_item->IsScenery();
     bool no_light = ( is_flat && !is_item );
     int  draw_order = ( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) );
     int  draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
@@ -10462,78 +10282,15 @@ void FOClient::SScriptFunc::Global_ShowScreen( int screen, ScriptDictionary* par
 {
     if( screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT )
         Self->ShowMainScreen( screen, params );
-    else
+    else if( screen != SCREEN_NONE )
         Self->ShowScreen( screen, params );
+    else
+        Self->HideScreen( screen );
 }
 
 void FOClient::SScriptFunc::Global_HideScreen( int screen )
 {
     Self->HideScreen( screen );
-}
-
-void FOClient::SScriptFunc::Global_GetHardcodedScreenPos( int screen, int& x, int& y )
-{
-    switch( screen )
-    {
-    case SCREEN_WAIT:
-        x = 0;
-        y = 0;
-        break;
-    case SCREEN__GM_TOWN:
-        x = 0;
-        y = 0;
-        break;
-    default:
-        x = 0;
-        y = 0;
-        break;
-    }
-}
-
-void FOClient::SScriptFunc::Global_DrawHardcodedScreen( int screen )
-{
-    switch( screen )
-    {
-    case SCREEN_WAIT:
-        Self->WaitDraw();
-        break;
-    default:
-        break;
-    }
-}
-
-void FOClient::SScriptFunc::Global_HandleHardcodedScreenMouse( int screen, int button, bool down, bool move )
-{
-    if( move )
-        button = -1;
-
-    switch( screen )
-    {
-    case SCREEN_GAME:
-        if( button == MOUSE_BUTTON_LEFT && down )
-            Self->GameLMouseDown();
-        else if( button == MOUSE_BUTTON_MIDDLE && GameOpt.MapZooming && GameOpt.SpritesZoomMin != GameOpt.SpritesZoomMax )
-            Self->HexMngr.ChangeZoom( 0 ), Self->RebuildLookBorders = true;
-        break;
-    default:
-        break;
-    }
-
-    if( move )
-        Self->ProcessMouseScroll();
-}
-
-void FOClient::SScriptFunc::Global_HandleHardcodedScreenKey( int screen, uchar key, ScriptString* text, bool down )
-{
-    switch( screen )
-    {
-    case SCREEN_GAME:
-        if( down )
-            Self->GameKeyDown( key, text ? text->c_str() : "" );
-        break;
-    default:
-        break;
-    }
 }
 
 bool FOClient::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int& y )
@@ -10575,10 +10332,8 @@ Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y, bool ignore_in
     if( !ignore_interface && Self->IsCurInInterface( x, y ) )
         return nullptr;
 
-    ItemHex*   item;
-    CritterCl* cr;
-    Self->HexMngr.GetSmthPixel( x, y, item, cr );
-    return item;
+    bool item_egg;
+    return Self->HexMngr.GetItemPixel( x, y, item_egg );
 }
 
 CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter( int x, int y, bool ignore_interface )
@@ -10586,10 +10341,18 @@ CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter( int x, int y, bool i
     if( !ignore_interface && Self->IsCurInInterface( x, y ) )
         return nullptr;
 
+    return Self->HexMngr.GetCritterPixel( x, y, false );
+}
+
+Entity* FOClient::SScriptFunc::Global_GetMonitorEntity( int x, int y, bool ignore_interface )
+{
+    if( !ignore_interface && Self->IsCurInInterface( x, y ) )
+        return nullptr;
+
     ItemHex*   item;
     CritterCl* cr;
     Self->HexMngr.GetSmthPixel( x, y, item, cr );
-    return cr;
+    return item ? (Entity*) item : (Entity*) cr;
 }
 
 ushort FOClient::SScriptFunc::Global_GetMapWidth()

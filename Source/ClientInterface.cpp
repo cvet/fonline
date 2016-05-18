@@ -5,146 +5,9 @@
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-bool FOClient::IfaceLoadRect( Rect& comp, const char* name )
-{
-    const char* res = IfaceIni.GetStr( "", name );
-    if( !res )
-        return false;
-
-    if( sscanf( res, "%d%d%d%d", &comp[ 0 ], &comp[ 1 ], &comp[ 2 ], &comp[ 3 ] ) != 4 )
-    {
-        comp.Clear();
-        WriteLog( "Unable to parse signature '%s'.\n", name );
-        return false;
-    }
-
-    return true;
-}
-
-void FOClient::IfaceLoadRect2( Rect& comp, const char* name, int ox, int oy )
-{
-    if( IfaceLoadRect( comp, name ) )
-        comp = Rect( comp, ox, oy );
-}
-
-void FOClient::IfaceLoadSpr( AnyFrames*& comp, const char* name )
-{
-    const char* res = IfaceIni.GetStr( "", name, "none.png" );
-    comp = SprMngr.LoadAnimation( res, PT_ART_INTRFACE, true );
-}
-
-void FOClient::IfaceLoadAnim( uint& comp, const char* name )
-{
-    const char* res = IfaceIni.GetStr( "", name, "none.png" );
-    comp = AnimLoad( res, PT_ART_INTRFACE, RES_ATLAS_STATIC );
-}
-
-void FOClient::IfaceLoadArray( IntVec& arr, const char* name )
-{
-    const char* res = IfaceIni.GetStr( "", name );
-    if( res )
-        Str::ParseLine( res, ' ', arr, Str::AtoI );
-}
-
-bool FOClient::AppendIfaceIni( const char* ini_name )
-{
-    // Process names collection
-    static char default_name[] = "default.ini";
-    if( !ini_name || !ini_name[ 0 ] )
-        ini_name = default_name;
-
-    bool founded = false;
-    for( uint i = 0, j = (uint) IfaceIniNames.size(); i < j; i++ )
-    {
-        if( Str::CompareCase( IfaceIniNames[ i ].c_str(), ini_name ) )
-        {
-            founded = true;
-            break;
-        }
-    }
-    if( !founded )
-        IfaceIniNames.push_back( string( ini_name ) );
-
-    // Build ini file
-    IfaceIni.Clear();
-    for( uint i = 0, j = (uint) IfaceIniNames.size(); i < j; i++ )
-    {
-        // Create name
-        char file_name[ MAX_FOPATH ];
-        Str::Copy( file_name, IfaceIniNames[ i ].c_str() );
-        if( !Str::Substring( ini_name, "\\" ) && !Str::Substring( ini_name, "/" ) )
-            FileManager::GetDataPath( file_name, PT_ART_INTRFACE, file_name );
-        NormalizePathSlashes( file_name );
-        char file_name_lower[ MAX_FOPATH ];
-        Str::Copy( file_name_lower, file_name );
-        Str::Lower( file_name_lower );
-
-        // Data files
-        DataFileVec& data_files = FileManager::GetDataFiles();
-        for( int k = (int) data_files.size() - 1; k >= 0; k-- )
-        {
-            DataFile* data_file = data_files[ k ];
-            uint      len;
-            uint64    write_time;
-            uchar*    data = data_file->OpenFile( file_name, file_name_lower, len, write_time );
-            if( data )
-            {
-                AppendIfaceIni( data, len );
-                delete[] data;
-            }
-        }
-    }
-
-    return true;
-}
-
-void FOClient::AppendIfaceIni( uchar* data, uint len )
-{
-    typedef multimap< int, char* > IniMMap;
-    IniMMap sections;
-
-    int     w = 0, h = 0;
-    char*   begin = (char*) data;
-    char*   end = Str::Substring( begin, "\nresolution " );
-    while( true )
-    {
-        if( w <= GameOpt.ScreenWidth && h <= GameOpt.ScreenHeight )
-        {
-            uint  l = (uint) ( end ? (size_t) end - (size_t) begin : (size_t) ( data + len ) - (size_t) begin );
-            char* buf = new char[ l + 1 ];
-            memcpy( buf, begin, l );
-            buf[ l ] = 0;
-            sections.insert( PAIR( w, buf ) );
-        }
-
-        if( !end )
-            break;
-
-        end += Str::Length( "\nresolution " );
-        if( sscanf( end, "%d%d", &w, &h ) != 2 )
-            break;
-        Str::GoTo( end, '\n', true );
-
-        begin = end;
-        end = Str::Substring( begin, "\nresolution " );
-    }
-
-    for( auto it = sections.begin(), end = sections.end(); it != end; ++it )
-    {
-        IfaceIni.AppendStr( it->second );
-        delete[] it->second;
-    }
-}
-
 int FOClient::InitIface()
 {
     WriteLog( "Interface initialization...\n" );
-
-/************************************************************************/
-/* Data                                                                 */
-/************************************************************************/
-    // Other
-    TargetSmth.Clear();
 
     // Barter
     BarterPlayerId = 0;
@@ -181,104 +44,11 @@ int FOClient::InitIface()
         SaveLoadDraftValid = false;
     }
 
-/************************************************************************/
-/* Sprites                                                              */
-/************************************************************************/
     // Hex field sprites
     HexMngr.ReloadSprites();
 
     WriteLog( "Interface initialization complete.\n" );
     return 0;
-}
-
-#define INDICATOR_CHANGE_TICK    ( 35 )
-void FOClient::DrawIndicator( Rect& rect, PointVec& points, uint color, int procent, uint& tick, bool is_vertical, bool from_top_or_left )
-{
-    if( Timer::GameTick() >= tick )
-    {
-        uint points_count = ( is_vertical ? rect.H() : rect.W() ) / 2 * procent / 100;
-        if( !points_count && procent )
-            points_count = 1;
-        if( points.size() != points_count )
-        {
-            if( points_count > (uint) points.size() )
-                points_count = (uint) points.size() + 1;
-            else
-                points_count = (uint) points.size() - 1;
-            points.resize( points_count );
-            for( uint i = 0; i < points_count; i++ )
-            {
-                if( is_vertical )
-                {
-                    if( from_top_or_left )
-                        points[ i ] = PrepPoint( rect[ 0 ], rect[ 1 ] + i * 2, color, nullptr, nullptr );
-                    else
-                        points[ i ] = PrepPoint( rect[ 0 ], rect[ 3 ] - i * 2, color, nullptr, nullptr );
-                }
-                else
-                {
-                    if( from_top_or_left )
-                        points[ i ] = PrepPoint( rect[ 0 ] + i * 2, rect[ 1 ], color, nullptr, nullptr );
-                    else
-                        points[ i ] = PrepPoint( rect[ 2 ] - i * 2, rect[ 1 ], color, nullptr, nullptr );
-                }
-            }
-        }
-        tick = Timer::GameTick() + INDICATOR_CHANGE_TICK;
-    }
-    if( points.size() > 0 )
-        SprMngr.DrawPoints( points, PRIMITIVE_POINTLIST );
-}
-
-uint FOClient::GetCurContainerItemId( const Rect& pos, int height, int scroll, ItemVec& cont )
-{
-    if( !IsCurInRect( pos ) )
-        return 0;
-    auto it = cont.begin();
-    int  pos_cur = ( GameOpt.MouseY - pos.T ) / height;
-    for( int i = 0; it != cont.end(); ++it, ++i )
-    {
-        if( i - scroll != pos_cur )
-            continue;
-        return ( *it )->GetId();
-    }
-    return 0;
-}
-
-void FOClient::ContainerDraw( const Rect& pos, int height, int scroll, ItemVec& cont, uint skip_id )
-{
-    int i = 0, i2 = 0;
-    for( auto it = cont.begin(), end = cont.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetId() == skip_id )
-            continue;
-        if( i >= scroll && i < scroll + pos.H() / height )
-        {
-            AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
-            if( anim )
-                SprMngr.DrawSpriteSize( anim->GetCurSprId(), pos.L, pos.T + ( i2 * height ), pos.W(), height, false, true, item->GetInvColor() );
-            i2++;
-        }
-        i++;
-    }
-
-    SprMngr.Flush();
-
-    i = 0, i2 = 0;
-    for( auto it = cont.begin(), end = cont.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetId() == skip_id )
-            continue;
-        if( i >= scroll && i < scroll + pos.H() / height )
-        {
-            if( item->GetCount() > 1 )
-                SprMngr.DrawStr( Rect( pos.L, pos.T + ( i2 * height ), pos.R, pos.T + ( i2 * height ) + height ), Str::FormatBuf( "x%u", item->GetCount() ), 0, COLOR_TEXT_WHITE );
-            i2++;
-        }
-        i++;
-    }
 }
 
 Item* FOClient::GetContainerItem( ItemVec& cont, uint id )
@@ -453,117 +223,6 @@ void FOClient::GameDraw()
     }
 }
 
-void FOClient::GameKeyDown( uchar dik, const char* dik_text )
-{
-    if( Keyb::CtrlDwn || Keyb::ShiftDwn || Keyb::AltDwn )
-        return;
-
-    switch( dik )
-    {
-    case DIK_EQUALS:
-    case DIK_ADD:
-        GameOpt.Light += 5;
-        if( GameOpt.Light > 50 )
-            GameOpt.Light = 50;
-        SetDayTime( true );
-        break;
-    case DIK_MINUS:
-    case DIK_SUBTRACT:
-        GameOpt.Light -= 5;
-        if( GameOpt.Light < 0 )
-            GameOpt.Light = 0;
-        SetDayTime( true );
-        break;
-    default:
-        break;
-    }
-}
-
-void FOClient::GameLMouseDown()
-{
-    if( !Chosen )
-        return;
-
-    if( IsCurMode( CUR_MOVE ) )
-    {
-        ActionEvent* act = ( IsAction( CHOSEN_MOVE ) ? &ChosenAction[ 0 ] : nullptr );
-        ushort       hx, hy;
-        if( act && Timer::FastTick() - act->Param[ 5 ] < ( GameOpt.DoubleClickTime ? GameOpt.DoubleClickTime : GetDoubleClickTicks() ) )
-        {
-            act->Param[ 2 ] = ( GameOpt.AlwaysRun ? 0 : 1 );
-            act->Param[ 4 ] = 0;
-        }
-        else if( GetCurHex( hx, hy, false ) && Chosen )
-        {
-            uint dist = DistGame( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy );
-            bool is_run = ( Keyb::ShiftDwn ? ( !GameOpt.AlwaysRun ) : ( GameOpt.AlwaysRun && dist >= GameOpt.AlwaysRunMoveDist ) );
-            SetAction( CHOSEN_MOVE, hx, hy, is_run, 0, act ? 0 : 1, Timer::FastTick() );
-        }
-    }
-    else if( IsCurMode( CUR_USE_ITEM ) || IsCurMode( CUR_USE_WEAPON ) )
-    {
-        bool  is_attack = IsCurMode( CUR_USE_WEAPON );
-        Item* use_item = ( !is_attack && CurUseItem != 0 ? Chosen->GetItem( CurUseItem ) : Chosen->ItemSlotMain );
-        if( use_item )
-        {
-            CritterCl* cr = nullptr;
-            ItemHex*   item = nullptr;
-            if( is_attack )
-                cr = HexMngr.GetCritterPixel( GameOpt.MouseX, GameOpt.MouseY, true );
-            else
-                HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
-
-            if( cr )
-            {
-                // Memory target id
-                TargetSmth.SetCritter( cr->GetId() );
-
-                // Aim shoot
-                if( is_attack && Chosen->IsAim() )
-                {
-                    if( !CritType::IsCanAim( Chosen->GetCrType() ) )
-                        AddMess( FOMB_GAME, "Aim attack is not available for this critter type." );
-                    else if( !Chosen->GetIsNoAim() )
-                        ShowScreen( SCREEN__AIM );
-                    return;
-                }
-
-                // Use item
-                SetAction( CHOSEN_USE_ITEM, use_item->GetId(), 0, TARGET_CRITTER, cr->GetId(), is_attack ? Chosen->GetFullRate() : USE_USE );
-            }
-            else if( item )
-            {
-                TargetSmth.SetItem( item->GetId() );
-                SetAction( CHOSEN_USE_ITEM, use_item->GetId(), 0, item->IsItem() ? TARGET_ITEM : TARGET_SCENERY, item->GetId(), USE_USE );
-            }
-        }
-    }
-    else if( IsCurMode( CUR_USE_SKILL ) )
-    {
-        if( CurUseSkill != 0 )
-        {
-            CritterCl* cr;
-            ItemHex*   item;
-            HexMngr.GetSmthPixel( GameOpt.MouseX, GameOpt.MouseY, item, cr );
-
-            // Use skill
-            if( cr )
-            {
-                SetAction( CHOSEN_USE_SKL_ON_CRITTER, CurUseSkill, cr->GetId(), Chosen->GetFullRate() );
-            }
-            else if( item && item->IsCanUseSkill() )
-            {
-                if( item->IsScenOrGrid() )
-                    SetAction( CHOSEN_USE_SKL_ON_SCEN, CurUseSkill, item->GetProtoId(), item->GetHexX(), item->GetHexY() );
-                else
-                    SetAction( CHOSEN_USE_SKL_ON_ITEM, false, CurUseSkill, item->GetId() );
-            }
-        }
-
-        SetCurMode( CUR_DEFAULT );
-    }
-}
-
 // ==============================================================================================================================
 // ******************************************************************************************************************************
 // ==============================================================================================================================
@@ -600,13 +259,13 @@ bool FOClient::LoginCheckData()
     if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
         name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_LOGIN ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_LOGIN ) );
         return false;
     }
 
     if( !Str::IsValidUTF8( GameOpt.Name->c_str() ) || Str::Substring( GameOpt.Name->c_str(), "*" ) )
     {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_NAME_WRONG_CHARS ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_NAME_WRONG_CHARS ) );
         return false;
     }
 
@@ -614,13 +273,13 @@ bool FOClient::LoginCheckData()
     if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
         pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
     {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_WRONG_PASS ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_PASS ) );
         return false;
     }
 
     if( !Str::IsValidUTF8( Password.c_str() ) || Str::Substring( Password.c_str(), "*" ) )
     {
-        AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_PASS_WRONG_CHARS ) );
+        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_PASS_WRONG_CHARS ) );
         return false;
     }
 
@@ -628,7 +287,7 @@ bool FOClient::LoginCheckData()
     Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
     Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
 
-    AddMess( FOMB_GAME, MsgGame->GetStr( STR_NET_CONNECTION ) );
+    AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONNECTION ) );
     return true;
 }
 
@@ -988,7 +647,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
 void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NULL */ )
 {
     while( GetActiveScreen() != SCREEN_NONE )
-        ShowScreen( SCREEN_NONE );
+        HideScreen( SCREEN_NONE );
 
     int prev_main_screen = ScreenModeMain;
     if( ScreenModeMain )
@@ -1058,30 +717,16 @@ bool FOClient::IsScreenPresent( int screen )
 
 void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
 {
-    SmthSelected smth = TargetSmth;
-    DropScroll();
-
-    if( screen == SCREEN_NONE )
-    {
-        HideScreen( screen );
-        return;
-    }
-
     switch( screen )
     {
     case SCREEN__PICKUP:
         CollectContItems();
-        break;
-    case SCREEN__MINI_MAP:
-        LmapPrepareMap();
         break;
     default:
         break;
     }
 
     RunScreenScript( true, screen, params );
-
-    TargetSmth = smth;
 }
 
 void FOClient::HideScreen( int screen )
@@ -1444,8 +1089,8 @@ void FOClient::SaveLoadCollect()
                                     settings[ "RealDay" ].c_str(), settings[ "RealMonth" ].c_str(), settings[ "RealYear" ].c_str(),
                                     settings[ "RealHour" ].c_str(), settings[ "RealMinute" ].c_str(), settings[ "RealSecond" ].c_str() );
         slot.InfoExt = Str::FormatBuf( "%s\n%02d %3s %04d %02d%02d\n%s", cr_name.c_str(),
-                                       day, MsgGame->GetStr( STR_MONTH( month ) ), year, hour, minute,
-                                       MsgLocations->GetStr( STR_LOC_MAP_NAME( CurMapLocPid, CurMapIndexInLoc ) ) );
+                                       day, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_MONTH( month ) ), year, hour, minute,
+                                       CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_NAME( CurMapLocPid, CurMapIndexInLoc ) ) );
         slot.FileName = fname_ex;
         slot.RealTime = Str::AtoUI64( settings[ "SaveTimestamp" ].c_str() );
         slot.PicData = pic_data;
@@ -1496,7 +1141,7 @@ void FOClient::SaveLoadSaveGame( const char* name )
        Net_SendSaveLoad( true, fname, &pic_data );
 
        // Close save/load screen
-       ShowScreen( SCREEN_NONE );*/
+       HideScreen( SCREEN_NONE );*/
 }
 
 void FOClient::SaveLoadFillDraft()
@@ -1550,7 +1195,7 @@ void FOClient::SaveLoadProcessDone()
 
         // ShowScreen( SCREEN__SAY );
         // SayType = DIALOGSAY_SAVE;
-        // SayTitle = MsgGame->GetStr( STR_SAVE_LOAD_TYPE_RECORD_NAME );
+        // SayTitle = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_SAVE_LOAD_TYPE_RECORD_NAME );
         // SayText = "";
         // SayOnlyNumbers = false;
 
@@ -1571,7 +1216,7 @@ void FOClient::SaveLoadProcessDone()
         else
         {
             Net_SendSaveLoad( false, SaveLoadDataSlots[ SaveLoadSlotIndex ].FileName.c_str(), nullptr );
-            ShowScreen( SCREEN_NONE );
+            HideScreen( SCREEN_NONE );
             WaitPing();
         }
        }*/

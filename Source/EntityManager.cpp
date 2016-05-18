@@ -445,9 +445,9 @@ bool EntityManager::LinkItems()
                 continue;
             }
 
-            if( !item->IsItem() )
+            if( item->IsScenery() )
             {
-                WriteLog( "Item '%s' (%u) is not item type %d.\n", item->GetName(), item->GetId(), item->GetType() );
+                WriteLog( "Item '%s' (%u) is scenery type %d.\n", item->GetName(), item->GetId(), item->GetType() );
                 errors++;
                 continue;
             }
