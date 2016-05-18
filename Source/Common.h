@@ -556,6 +556,7 @@ struct GameOptions
 
     // Client and Mapper
     bool          Quit;
+    int           WaitPing;
     bool          OpenGLRendering;
     bool          OpenGLDebug;
     bool          AssimpLogging;
@@ -621,6 +622,7 @@ struct GameOptions
     uint          DoubleClickTime;
     uchar         RoofAlpha;
     bool          HideCursor;
+    bool          ShowMoveCursor;
     bool          DisableMouseEvents;
     bool          DisableKeyboardEvents;
     bool          HidePassword;

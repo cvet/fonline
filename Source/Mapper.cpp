@@ -5559,7 +5559,7 @@ int MouseButtonToSdlButton( int button )
     return -1;
 }
 
-void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
+void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button )
 {
     IntVec prev_events = MainWindowMouseEvents;
     MainWindowMouseEvents.clear();
@@ -5568,8 +5568,6 @@ void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cur
     int    prev_cursor = Self->CurMode;
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
-    if( cursor != -1 )
-        Self->CurMode = cursor;
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONDOWN );
     MainWindowMouseEvents.push_back( MouseButtonToSdlButton( button ) );
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONUP );
@@ -5578,8 +5576,6 @@ void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button, int cur
     MainWindowMouseEvents = prev_events;
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
-    if( cursor != -1 )
-        Self->CurMode = prev_cursor;
 }
 
 void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )

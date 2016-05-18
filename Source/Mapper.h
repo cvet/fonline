@@ -427,7 +427,7 @@ public:
         static bool          Global_LoadDataFile( ScriptString& dat_name );
         static bool          Global_LoadFont( int font, ScriptString& font_fname );
         static void          Global_SetDefaultFont( int font, uint color );
-        static void          Global_MouseClick( int x, int y, int button, int cursor );
+        static void          Global_MouseClick( int x, int y, int button );
         static void          Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text );
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
         static void          Global_ChangeZoom( float target_zoom );

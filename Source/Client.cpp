@@ -99,8 +99,6 @@ FOClient::FOClient()
     TurnBasedTime = 0;
     TurnBasedCurCritterId = 0;
     DaySumRGB = 0;
-    CurMode = CUR_DEFAULT;
-    CurModeLast = CUR_DEFAULT;
 
     GmapCar.Car = nullptr;
     Animations.resize( 10000 );
@@ -117,7 +115,6 @@ FOClient::FOClient()
     CurMapIndexInLoc = 0;
 
     SomeItem = nullptr;
-    CurUseSkill = 0;
 }
 
 uint* UID1;
@@ -345,7 +342,6 @@ bool FOClient::Init()
 
     // Wait screen
     ScreenModeMain = SCREEN_WAIT;
-    CurMode = CUR_WAIT;
     WaitPic = ResMngr.GetRandomSplash();
     SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
     WaitDraw();
@@ -1777,7 +1773,6 @@ void FOClient::NetDisconnect()
     Sock = INVALID_SOCKET;
     IsConnected = false;
 
-    SetCurMode( CUR_DEFAULT );
     HexMngr.UnloadMap();
     DeleteCritters();
     Bin.Reset();
@@ -4267,10 +4262,7 @@ void FOClient::Net_OnPing()
 
     if( ping == PING_WAIT )
     {
-        if( GetActiveScreen() == SCREEN__BARTER )
-            SetCurMode( CUR_HAND );
-        else
-            SetLastCurMode();
+        GameOpt.WaitPing = false;
     }
     else if( ping == PING_CLIENT )
     {
@@ -4892,7 +4884,6 @@ void FOClient::Net_OnGlobalInfo()
             GmapGroupRealOldY = GmapGroupRealCurY;
             GmapGroupCurX = GmapGroupRealCurX;
             GmapGroupCurY = GmapGroupRealCurY;
-            SetCurMode( CUR_DEFAULT );
         }
 
         // Car master id
@@ -5867,7 +5858,7 @@ void FOClient::ChosenChangeSlot()
 
 void FOClient::WaitPing()
 {
-    SetCurMode( CUR_WAIT );
+    GameOpt.WaitPing = true;
     Net_SendPing( PING_WAIT );
 }
 
@@ -6300,8 +6291,6 @@ label_EndMove:
         bool is_attack = ( target_type == TARGET_CRITTER && is_main_item && item->IsWeapon() && use < MAX_USES );
         bool is_reload = ( target_type == TARGET_SELF_ITEM && use == USE_RELOAD && item->IsWeapon() );
         bool is_self = ( target_type == TARGET_SELF || target_type == TARGET_SELF_ITEM );
-        if( !is_attack && !is_reload && ( IsCurMode( CUR_USE_ITEM ) || IsCurMode( CUR_USE_WEAPON ) ) )
-            SetCurMode( CUR_DEFAULT );
 
         // Aim overriding
         if( is_attack && ClientFunctions.HitAim && Script::PrepareContext( ClientFunctions.HitAim, _FUNC_, "Game" ) )
@@ -6358,11 +6347,7 @@ label_EndMove:
             CHECK_NEED_AP( ap_cost );
 
             if( is_main_item )
-            {
                 item->SetWeaponMode( USE_PRIMARY );
-                if( GetActiveScreen() == SCREEN_NONE )
-                    SetCurMode( CUR_USE_WEAPON );
-            }
 
             if( !item->WeapGetMaxAmmoCount() )
                 break;                            // No have holder
@@ -8553,7 +8538,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
                 Self->RegProps.push_back( Str::AtoI( args[ i + 1 ].c_str() ) );
             }
             Self->InitNetReason = INIT_NET_REASON_REG;
-            Self->SetCurMode( CUR_WAIT );
         }
     }
     else if( cmd == "CustomConnect" )
@@ -8724,37 +8708,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->ChosenChangeSlot();
     }
-    else if( cmd == "UseMainItem" )
-    {
-        if( Self->Chosen->GetUse() == USE_RELOAD )
-        {
-            Self->SetAction( CHOSEN_USE_ITEM, Self->Chosen->ItemSlotMain->GetId(), 0, TARGET_SELF_ITEM, 0, USE_RELOAD );
-        }
-        else if( Self->Chosen->GetUse() < MAX_USES && Self->Chosen->ItemSlotMain->IsWeapon() )
-        {
-            Self->SetCurMode( CUR_USE_WEAPON );
-        }
-        else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->GetIsCanUseOnSmth() )
-        {
-            Self->CurUseItem = 0;
-            Self->SetCurMode( CUR_USE_ITEM );
-        }
-        else if( Self->Chosen->GetUse() == USE_USE && Self->Chosen->ItemSlotMain->GetIsCanUse() )
-        {
-            if( !Self->Chosen->ItemSlotMain->GetIsHasTimer() )
-            {
-                Self->SetAction( CHOSEN_USE_ITEM, Self->Chosen->ItemSlotMain->GetId(), 0, TARGET_SELF, 0, USE_USE );
-            }
-            else
-            {
-                ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-                uint              item_id = Self->Chosen->ItemSlotMain->GetId();
-                dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
-                Self->ShowScreen( SCREEN__TIMER, dict );
-                dict->Release();
-            }
-        }
-    }
     else if( cmd == "IsTurnBasedMyTurn" )
     {
         return ScriptString::Create( Self->IsTurnBasedMyTurn() ? "true" : "false" );
@@ -8783,33 +8736,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->Chosen->NextRateItem( args.size() >= 2 && args[ 1 ] == "Prev" ? true : false );
     }
-    else if( cmd == "NextCursor" )
-    {
-        switch( Self->GetCurMode() )
-        {
-        case CUR_DEFAULT:
-            Self->SetCurMode( CUR_MOVE );
-            break;
-        case CUR_MOVE:
-            if( IS_TIMEOUT( Self->Chosen->GetTimeoutBattle() ) && Self->Chosen->ItemSlotMain->IsWeapon() )
-                Self->SetCurMode( CUR_USE_WEAPON );
-            else
-                Self->SetCurMode( CUR_DEFAULT );
-            break;
-        case CUR_USE_ITEM:
-            Self->SetCurMode( CUR_DEFAULT );
-            break;
-        case CUR_USE_WEAPON:
-            Self->SetCurMode( CUR_DEFAULT );
-            break;
-        case CUR_USE_SKILL:
-            Self->SetCurMode( CUR_MOVE );
-            break;
-        default:
-            Self->SetCurMode( CUR_DEFAULT );
-            break;
-        }
-    }
     else if( cmd == "TryPickItemOnGround" )
     {
         Self->TryPickItemOnGround();
@@ -8818,7 +8744,10 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
         int y = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
-        Self->SetCurPos( x, y );
+        GameOpt.MouseX = x;
+        GameOpt.MouseY = y;
+        SDL_WarpMouseInWindow( MainWindow, x, y );
+        SDL_FlushEvent( SDL_MOUSEMOTION );
     }
     else if( cmd == "SplitDrop" )
     {
@@ -9672,17 +9601,14 @@ void FOClient::SScriptFunc::Global_RefreshMap( bool only_tiles, bool only_roof, 
     }
 }
 
-void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button, int cursor )
+void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button )
 {
     IntVec prev_events = MainWindowMouseEvents;
     MainWindowMouseEvents.clear();
     int    prev_x = GameOpt.MouseX;
     int    prev_y = GameOpt.MouseY;
-    int    prev_cursor = Self->CurMode;
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
-    if( cursor != -1 )
-        Self->CurMode = cursor;
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONDOWN );
     MainWindowMouseEvents.push_back( button );
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONUP );
@@ -9691,8 +9617,6 @@ void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button, int cur
     MainWindowMouseEvents = prev_events;
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
-    if( cursor != -1 )
-        Self->CurMode = prev_cursor;
 }
 
 void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )
@@ -10367,26 +10291,6 @@ ushort FOClient::SScriptFunc::Global_GetMapHeight()
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
     return Self->HexMngr.GetHeight();
-}
-
-int FOClient::SScriptFunc::Global_GetCurrentCursor()
-{
-    return Self->CurMode;
-}
-
-int FOClient::SScriptFunc::Global_GetLastCursor()
-{
-    return Self->CurModeLast;
-}
-
-void FOClient::SScriptFunc::Global_ChangeCursor( int cursor, uint context_id )
-{
-    if( cursor == CUR_USE_SKILL )
-        Self->CurUseSkill = (int) context_id;
-    if( cursor == CUR_USE_ITEM )
-        Self->CurUseItem = (uint) context_id;
-
-    Self->SetCurMode( cursor );
 }
 
 bool FOClient::SScriptFunc::Global_SaveScreenshot( ScriptString& file_path )

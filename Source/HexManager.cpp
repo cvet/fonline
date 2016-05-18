@@ -200,7 +200,6 @@ HexManager::HexManager()
     hBottom = 0;
     wLeft = 0;
     wRight = 0;
-    isShowCursor = false;
     drawCursorX = 0;
     cursorPrePic = nullptr;
     cursorPostPic = nullptr;
@@ -268,7 +267,6 @@ bool HexManager::Init()
     curMapTime = -1;
     curHashTiles = 0;
     curHashScen = 0;
-    isShowCursor = false;
     cursorX = 0;
     cursorY = 0;
     chosenId = 0;
@@ -813,22 +811,25 @@ void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
 
 void HexManager::DrawCursor( uint spr_id )
 {
-    if( GameOpt.HideCursor || !isShowCursor )
+    if( GameOpt.HideCursor || !GameOpt.ShowMoveCursor )
         return;
+
     SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-    if( !si )
-        return;
-    SprMngr.DrawSpriteSize( spr_id,
-                            (int) ( (float) ( cursorX + GameOpt.ScrOx ) / GameOpt.SpritesZoom ),
-                            (int) ( (float) ( cursorY + GameOpt.ScrOy ) / GameOpt.SpritesZoom ),
-                            (int) ( (float) si->Width / GameOpt.SpritesZoom ),
-                            (int) ( (float) si->Height / GameOpt.SpritesZoom ), true, false );
+    if( si )
+    {
+        SprMngr.DrawSpriteSize( spr_id,
+                                (int) ( (float) ( cursorX + GameOpt.ScrOx ) / GameOpt.SpritesZoom ),
+                                (int) ( (float) ( cursorY + GameOpt.ScrOy ) / GameOpt.SpritesZoom ),
+                                (int) ( (float) si->Width / GameOpt.SpritesZoom ),
+                                (int) ( (float) si->Height / GameOpt.SpritesZoom ), true, false );
+    }
 }
 
 void HexManager::DrawCursor( const char* text )
 {
-    if( GameOpt.HideCursor || !isShowCursor )
+    if( GameOpt.HideCursor || !GameOpt.ShowMoveCursor )
         return;
+
     int x = (int) ( (float) ( cursorX + GameOpt.ScrOx ) / GameOpt.SpritesZoom );
     int y = (int) ( (float) ( cursorY + GameOpt.ScrOy ) / GameOpt.SpritesZoom );
     SprMngr.DrawStr( Rect( x, y, (int) ( (float) ( x + HEX_W ) / GameOpt.SpritesZoom ),

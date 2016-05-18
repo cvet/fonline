@@ -160,19 +160,8 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
 void FOClient::GameDraw()
 {
     // Move cursor
-    if( IsCurMode( CUR_MOVE ) )
-    {
-        ushort hx, hy;
-        if( ( GameOpt.ScrollMouseRight || GameOpt.ScrollMouseLeft || GameOpt.ScrollMouseUp || GameOpt.ScrollMouseDown ) || !GetCurHex( hx, hy, false ) )
-        {
-            HexMngr.SetCursorVisible( false );
-        }
-        else
-        {
-            HexMngr.SetCursorVisible( true );
-            HexMngr.SetCursorPos( GameOpt.MouseX, GameOpt.MouseY, Keyb::CtrlDwn, false );
-        }
-    }
+    if( GameOpt.ShowMoveCursor )
+        HexMngr.SetCursorPos( GameOpt.MouseX, GameOpt.MouseY, Keyb::CtrlDwn, false );
 
     // Look borders
     if( RebuildLookBorders )
@@ -748,51 +737,6 @@ void FOClient::RunScreenScript( bool show, int screen, ScriptDictionary* params 
         Script::SetArgObject( params );
         Script::RunPrepared();
     }
-}
-
-void FOClient::SetCurMode( int new_cur )
-{
-    if( new_cur == CurMode )
-        return;
-    if( CurModeLast != CurMode )
-        CurModeLast = CurMode;
-
-    CurMode = new_cur;
-
-    if( CurMode == CUR_USE_WEAPON && IsMainScreen( SCREEN_GAME ) && Chosen && Chosen->ItemSlotMain->IsWeapon() )
-        HexMngr.SetCrittersContour( CONTOUR_CUSTOM );
-    else if( CurModeLast == CUR_USE_WEAPON )
-        HexMngr.SetCrittersContour( 0 );
-
-    if( CurMode == CUR_MOVE )
-        HexMngr.SetCursorVisible( true );
-    else if( CurModeLast == CUR_MOVE )
-        HexMngr.SetCursorVisible( false );
-}
-
-void FOClient::SetCurCastling( int cur1, int cur2 )
-{
-    if( CurMode == cur1 )
-        SetCurMode( cur2 );
-    else if( CurMode == cur2 )
-        SetCurMode( cur1 );
-}
-
-void FOClient::SetLastCurMode()
-{
-    if( CurModeLast == CUR_WAIT )
-        return;
-    if( CurMode == CurModeLast )
-        return;
-    SetCurMode( CurModeLast );
-}
-
-void FOClient::SetCurPos( int x, int y )
-{
-    GameOpt.MouseX = x;
-    GameOpt.MouseY = y;
-    SDL_WarpMouseInWindow( MainWindow, x, y );
-    SDL_FlushEvent( SDL_MOUSEMOTION );
 }
 
 // ==============================================================================================================================

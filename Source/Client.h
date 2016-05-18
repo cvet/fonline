@@ -56,10 +56,7 @@
 // Cur modes
 #define CUR_DEFAULT                    ( 0 )
 #define CUR_MOVE                       ( 1 )
-#define CUR_USE_ITEM                   ( 2 )
 #define CUR_USE_WEAPON                 ( 3 )
-#define CUR_USE_SKILL                  ( 4 )
-#define CUR_WAIT                       ( 5 )
 
 // Chosen actions
 #define CHOSEN_NONE                    ( 0 )  //
@@ -124,8 +121,6 @@ public:
     uint       CurMapIndexInLoc;
     StrVec     Preload3dFiles;
     IntVec     RegProps;
-    max_t      CurUseSkill;
-    uint       CurUseItem;
 
     // Screen
     int ScreenModeMain;
@@ -137,15 +132,6 @@ public:
     int  GetActiveScreen( IntVec** screens = nullptr );
     bool IsScreenPresent( int screen );
     void RunScreenScript( bool show, int screen, ScriptDictionary* params );
-
-    // Cursor
-    int CurMode, CurModeLast;
-    void SetCurMode( int new_cur );
-    int  GetCurMode() { return CurMode; };
-    void SetCurCastling( int cur1, int cur2 );
-    void SetLastCurMode();
-    bool IsCurMode( int check_cur ) { return ( check_cur == CurMode ); }
-    void SetCurPos( int x, int y );
 
     // Input
     void ParseKeyboard();
@@ -641,9 +627,6 @@ public:
         static Entity*       Global_GetMonitorEntity( int x, int y, bool ignore_interface );
         static ushort        Global_GetMapWidth();
         static ushort        Global_GetMapHeight();
-        static int           Global_GetCurrentCursor();
-        static int           Global_GetLastCursor();
-        static void          Global_ChangeCursor( int cursor, uint context_id );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static void          Global_Preload3dFiles( ScriptArray& fnames, int path_type );
         static void          Global_WaitPing();
@@ -651,7 +634,7 @@ public:
         static void          Global_SetDefaultFont( int font, uint color );
         static bool          Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name, ScriptString* effect_defines );
         static void          Global_RefreshMap( bool only_tiles, bool only_roof, bool only_light );
-        static void          Global_MouseClick( int x, int y, int button, int cursor );
+        static void          Global_MouseClick( int x, int y, int button );
         static void          Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text );
         static void          Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name );
         static void          Global_ChangeZoom( float target_zoom );

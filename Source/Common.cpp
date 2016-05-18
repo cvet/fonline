@@ -1201,6 +1201,7 @@ GameOptions::GameOptions()
 
     // Client and Mapper
     Quit = false;
+    WaitPing = false;
     OpenGLRendering = true;
     OpenGLDebug = false;
     AssimpLogging = false;
@@ -1266,6 +1267,7 @@ GameOptions::GameOptions()
     DoubleClickTime = 0;
     RoofAlpha = 200;
     HideCursor = false;
+    ShowMoveCursor = false;
     DisableMouseEvents = false;
     DisableKeyboardEvents = false;
     HidePassword = true;

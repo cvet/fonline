@@ -581,9 +581,6 @@ struct BindClass
     static void Global_GetMonitorEntity()      {}
     static void Global_GetMapWidth()           {}
     static void Global_GetMapHeight()          {}
-    static void Global_GetCurrentCursor()      {}
-    static void Global_GetLastCursor()         {}
-    static void Global_ChangeCursor()          {}
     static void Global_WaitPing()              {}
     static void Global_SetEffect()             {}
     static void Global_RefreshMap()            {}

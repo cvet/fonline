@@ -7,6 +7,7 @@ BIND_ASSERT( engine->SetEngineProperty( asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true
 BIND_ASSERT( engine->SetEngineProperty( asEP_BUILD_WITHOUT_LINE_CUES, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_PRIVATE_PROP_AS_PROTECTED, true ) );
+BIND_ASSERT( engine->SetEngineProperty( asEP_REQUIRE_ENUM_SCOPE, true ) );
 // BIND_ASSERT( engine->SetEngineProperty( asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true ) );
 
 BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
@@ -603,9 +604,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetMonitorCritter(int x,
 BIND_ASSERT( engine->RegisterGlobalFunction( "Entity@+ GetMonitorEntity(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorEntity ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapWidth()", asFUNCTION( BIND_CLASS Global_GetMapWidth ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapHeight()", asFUNCTION( BIND_CLASS Global_GetMapHeight ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCurrentCursor()", asFUNCTION( BIND_CLASS Global_GetCurrentCursor ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetLastCursor()", asFUNCTION( BIND_CLASS Global_GetLastCursor ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeCursor(int cursor, uint contextId = 0)", asFUNCTION( BIND_CLASS Global_ChangeCursor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Preload3dFiles(array<string>& fileNames, int pathType)", asFUNCTION( BIND_CLASS Global_Preload3dFiles ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void WaitPing()", asFUNCTION( BIND_CLASS Global_WaitPing ), asCALL_CDECL ) );
@@ -613,7 +611,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fo
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint color)", asFUNCTION( BIND_CLASS Global_SetDefaultFont ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetEffect(int effectType, int effectSubtype, string@+ effectName, string@+ effectDefines = null)", asFUNCTION( BIND_CLASS Global_SetEffect ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RefreshMap(bool onlyTiles, bool onlyRoof, bool onlyLight)", asFUNCTION( BIND_CLASS Global_RefreshMap ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int button, int cursor)", asFUNCTION( BIND_CLASS Global_MouseClick ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int button)", asFUNCTION( BIND_CLASS Global_MouseClick ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uint8 key1, uint8 key2, string@+ key1Text = null, string@+ key2Text = null)", asFUNCTION( BIND_CLASS Global_KeyboardPress ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetRainAnimation(string@+ fallAnimName, string@+ dropAnimName)", asFUNCTION( BIND_CLASS Global_SetRainAnimation ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeZoom(float targetZoom)", asFUNCTION( BIND_CLASS Global_ChangeZoom ), asCALL_CDECL ) );
@@ -859,7 +857,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, ui
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetIfaceIniStr(string& key)", asFUNCTION( BIND_CLASS Global_GetIfaceIniStr ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fontFileName)", asFUNCTION( BIND_CLASS Global_LoadFont ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint color)", asFUNCTION( BIND_CLASS Global_SetDefaultFont ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int button, int cursor)", asFUNCTION( BIND_CLASS Global_MouseClick ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void MouseClick(int x, int y, int button)", asFUNCTION( BIND_CLASS Global_MouseClick ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uint8 key1, uint8 key2, string@+ key1Text = null, string@+ key2Text = null)", asFUNCTION( BIND_CLASS Global_KeyboardPress ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetRainAnimation(string@+ fallAnimName, string@+ dropAnimName)", asFUNCTION( BIND_CLASS Global_SetRainAnimation ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeZoom(float targetZoom)", asFUNCTION( BIND_CLASS Global_ChangeZoom ), asCALL_CDECL ) );
@@ -894,13 +892,15 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void PushDrawScissor(int x, int y,
 BIND_ASSERT( engine->RegisterGlobalFunction( "void PopDrawScissor()", asFUNCTION( BIND_CLASS Global_PopDrawScissor ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __Quit", &GameOpt.Quit ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __OpenGLRendering", &GameOpt.OpenGLRendering ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __OpenGLDebug", &GameOpt.OpenGLDebug ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __WaitPing", &GameOpt.WaitPing ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __OpenGLRendering", &GameOpt.OpenGLRendering ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __OpenGLDebug", &GameOpt.OpenGLDebug ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __AssimpLogging", &GameOpt.AssimpLogging ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __MouseX", &GameOpt.MouseX ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __MouseY", &GameOpt.MouseY ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint8 __RoofAlpha", &GameOpt.RoofAlpha ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __HideCursor", &GameOpt.HideCursor ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowMoveCursor", &GameOpt.ShowMoveCursor ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "const int __ScreenWidth", &GameOpt.ScreenWidth ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "const int __ScreenHeight", &GameOpt.ScreenHeight ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __MultiSampling", &GameOpt.MultiSampling ) );

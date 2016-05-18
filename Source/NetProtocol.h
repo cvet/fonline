@@ -554,14 +554,14 @@
 #define NETMSG_SEND_USE_SKILL                 MAKE_NETMSG_HEADER( 86 )
 #define NETMSG_SEND_USE_SKILL_SIZE                       \
     ( sizeof( uint ) + sizeof( int ) + sizeof( uchar ) + \
-      sizeof( uint ) + sizeof( hash ) )
+      sizeof( hash ) + sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
 // Use some skill.
 // Params:
 // int skill
 // uchar targ_type
-// uint target_id
 // hash target_pid
+// uint target_id
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_PICK_CRITTER              MAKE_NETMSG_HEADER( 87 )

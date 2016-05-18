@@ -386,12 +386,10 @@ public:
     // Cursor
 public:
     void SetCursorPos( int x, int y, bool show_steps, bool refresh );
-    void SetCursorVisible( bool visible ) { isShowCursor = visible; }
     void DrawCursor( uint spr_id );
     void DrawCursor( const char* text );
 
 private:
-    bool       isShowCursor;
     int        drawCursorX;
     AnyFrames* cursorPrePic, * cursorPostPic, * cursorXPic;
     int        cursorX, cursorY;

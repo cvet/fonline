@@ -59,28 +59,33 @@ public:
         if( type == "int8" || type == "int16" || type == "int32" || type == "int" || type == "uint8" || type == "uint16" || type == "uint32" || type == "uint" )
         {
             auto it = intArray.insert( intArray.begin(), int_value );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register integer global var, pragma '%s'.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
+                WriteLog( "Unable to register integer global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "int64" || type == "uint64" )
         {
             auto it = int64Array.insert( int64Array.begin(), int_value );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register integer64 global var, pragma '%s'.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
+                WriteLog( "Unable to register integer64 global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "string" )
         {
             if( value != "" ) value = text.substr( text.find( value ), string::npos );
             auto it = stringArray.insert( stringArray.begin(), ScriptString::Create( value ) );
-            if( engine->RegisterGlobalProperty( name.c_str(), ( *it ) ) < 0 ) WriteLog( "Unable to register string global var, pragma '%s'.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), ( *it ) ) < 0 )
+                WriteLog( "Unable to register string global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "float" )
         {
             auto it = floatArray.insert( floatArray.begin(), (float) float_value );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register float global var, pragma '%s'.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
+                WriteLog( "Unable to register float global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "double" )
         {
             auto it = doubleArray.insert( doubleArray.begin(), float_value );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register double global var, pragma '%s'.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
+                WriteLog( "Unable to register double global var, pragma '%s'.\n", text.c_str() );
         }
         else if( type == "bool" )
         {
@@ -91,7 +96,14 @@ public:
                 return false;
             }
             auto it = boolArray.insert( boolArray.begin(), value == "true" ? true : false );
-            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 ) WriteLog( "Unable to register boolean global var, pragma '%s'.\n", text.c_str() );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
+                WriteLog( "Unable to register boolean global var, pragma '%s'.\n", text.c_str() );
+        }
+        else if( engine->RegisterEnum( type.c_str() ) == asALREADY_REGISTERED )
+        {
+            auto it = intArray.insert( intArray.begin(), int_value );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
+                WriteLog( "Unable to register enum global var, pragma '%s'.\n", text.c_str() );
         }
         else
         {
