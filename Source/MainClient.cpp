@@ -9,7 +9,7 @@
 
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    FileManager::ResetCurrentDir();
+    IniParser::LoadMainConfig();
 
     // Threading
     Thread::SetCurrentName( "Main" );
@@ -77,10 +77,9 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         }
 
         // Config parsing
-        IniParser&  cfg = IniParser::GetClientConfig();
-        const char* server_exe = cfg.GetStr( "ServerAppName", "FOnlineServer.exe" );
-        const char* server_path = cfg.GetStr( "ServerPath", "..\\Server\\" );
-        const char* server_cmdline = cfg.GetStr( "ServerCommandLine", "" );
+        const char* server_exe = "FOnlineServer.exe";
+        const char* server_path = MainConfig->GetStr( "", "ServerPath", "" );
+        const char* server_cmdline = MainConfig->GetStr( "", "ServerCommandLine", "" );
 
         // Process attributes
         PROCESS_INFORMATION server;

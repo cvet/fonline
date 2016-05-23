@@ -3,6 +3,8 @@
 
 #include "Common.h"
 
+#define CONFIG_NAME    "FOnline.cfg"
+
 class IniParser
 {
 private:
@@ -44,10 +46,11 @@ public:
     const StrMap* GetAppKeyValues( const char* app_name );
     const char*   GetAppContent( const char* app_name );
 
-    static const char* GetConfigFileName();
-    static IniParser& GetClientConfig();
-    static IniParser& GetServerConfig();
-    static IniParser& GetMapperConfig();
+    static void LoadMainConfig();
 };
+
+extern IniParser* MainConfig;
+extern StrMap     ModuleDirs;
+extern StrVec     ModuleFullDirs;
 
 #endif // ___INI_PARSER___

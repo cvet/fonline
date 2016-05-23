@@ -530,27 +530,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     if( field == "ProtoId" || field == "ProtoName" )
                     {
                         hash proto_id = 0;
-                        if( field == "ProtoId" )
-                        {
-                            const char* proto_name = nullptr;
-                            if( !is_critter )
-                                proto_name = ConvertProtoIdByInt( ivalue );
-                            else
-                                proto_name = ConvertProtoCritterIdByInt( ivalue );
-                            RUNTIME_ASSERT( proto_name );
-                            proto_id = Str::GetHash( proto_name );
-                            if( is_critter && !ProtoMngr.GetProtoCritter( proto_id ) )
-                            {
-                                WriteLog( "Critter prototype '%s' (%u) not found.\n", proto_name, ivalue );
-                                fail = true;
-                            }
-                            else if( !is_critter && !ProtoMngr.GetProtoItem( proto_id ) )
-                            {
-                                WriteLog( "Item prototype '%s' (%u) not found.\n", proto_name, ivalue );
-                                fail = true;
-                            }
-                        }
-                        else if( field == "ProtoName" )
+                        if( field == "ProtoName" )
                         {
                             proto_id = Str::GetHash( svalue );
                             if( is_critter && !ProtoMngr.GetProtoCritter( proto_id ) )
@@ -1181,7 +1161,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
     // Save
     string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : string( GetName() ) ) + ".fomap";
-    if( !file.SaveFile( save_fname.c_str(), PT_SERVER_MODULES ) )
+    if( !file.SaveFile( save_fname.c_str(), PT_ROOT ) )
     {
         WriteLog( "Unable write file '%s' in modules.\n", save_fname.c_str() );
         return false;

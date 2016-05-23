@@ -919,7 +919,7 @@ hash Str::GetHash( const char* name )
     // Add hash
     SCOPE_LOCK( HashNamesLocker );
 
-    auto ins = HashNames.insert( PAIR( h, nullptr ) );
+    auto ins = HashNames.insert( PAIR( h, (const char*) nullptr ) );
     if( ins.second )
         ins.first->second = Str::Duplicate( name_ );
     else if( !Str::Compare( ins.first->second, name_ ) )

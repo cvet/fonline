@@ -47,7 +47,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
 
     // Load file data
     FileManager file;
-    if( !file.LoadFile( fname, PT_DATA ) )
+    if( !file.LoadFile( fname, PT_CLIENT_DATA ) )
     {
         WriteLogF( _FUNC_, " - 3d file '%s' not found.\n", fname );
         return nullptr;
@@ -123,14 +123,14 @@ MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* m
 
     // First try load from textures folder
     SprMngr.PushAtlasType( RES_ATLAS_TEXTURES );
-    AnyFrames* anim = SprMngr.LoadAnimation( texture_name, PT_TEXTURES );
+    AnyFrames* anim = SprMngr.LoadAnimation( texture_name, PT_CLIENT_TEXTURES );
     if( !anim && model_path )
     {
         // After try load from file folder
         char path[ MAX_FOPATH ];
         FileManager::ExtractDir( model_path, path );
         Str::Append( path, texture_name );
-        anim = SprMngr.LoadAnimation( path, PT_DATA );
+        anim = SprMngr.LoadAnimation( path, PT_CLIENT_DATA );
     }
     SprMngr.PopAtlasType();
     if( !anim )
@@ -186,13 +186,13 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Load text file
     FileManager file;
-    if( !file.LoadFile( fname, PT_EFFECTS ) && model_path )
+    if( !file.LoadFile( fname, PT_CLIENT_EFFECTS ) && model_path )
     {
         // Try load from model folder
         char path[ MAX_FOPATH ];
         FileManager::ExtractDir( model_path, path );
         Str::Append( path, fname );
-        file.LoadFile( path, PT_DATA );
+        file.LoadFile( path, PT_CLIENT_DATA );
     }
     if( !file.IsLoaded() )
     {
@@ -371,7 +371,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
     FileManager file_binary;
     if( GL_HAS( get_program_binary ) )
     {
-        if( file_binary.LoadFile( binary_fname, PT_CACHE ) )
+        if( file_binary.LoadFile( binary_fname, PT_CLIENT_CACHE ) )
         {
             if( file.GetWriteTime() > file_binary.GetWriteTime() )
                 file_binary.UnloadFile();                      // Disable loading from this binary, because its outdated
@@ -566,7 +566,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
             file_binary.SetBEUInt( format );
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );
-            if( !file_binary.SaveOutBufToFile( binary_fname, PT_CACHE ) )
+            if( !file_binary.SaveOutBufToFile( binary_fname, PT_CLIENT_CACHE ) )
                 WriteLogF( _FUNC_, " - Can't save effect '%s' pass %u in binary '%s'.\n", fname, pass, binary_fname );
         }
     }

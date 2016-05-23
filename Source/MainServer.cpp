@@ -20,14 +20,14 @@
 # endif
 #endif
 
-void InitAdminManager( IniParser* cfg );
+void InitAdminManager();
 
 /************************************************************************/
 /* GUI & Windows service version                                        */
 /************************************************************************/
 
 #ifndef SERVER_DAEMON
-void GUIInit( IniParser& cfg );
+void GUIInit();
 void GUICallback( Fl_Widget* widget, void* data );
 void UpdateInfo();
 void UpdateLog();
@@ -72,7 +72,7 @@ void ServiceMain( bool as_service );
 // Main
 int main( int argc, char** argv )
 {
-    FileManager::ResetCurrentDir();
+    IniParser::LoadMainConfig();
 
     // Threading
     Thread::SetCurrentName( "GUI" );
@@ -88,11 +88,8 @@ int main( int argc, char** argv )
     // Timer
     Timer::Init();
 
-    // Config
-    IniParser& cfg = IniParser::GetServerConfig();
-
     // Memory debugging
-    MemoryDebugLevel = cfg.GetInt( "", "MemoryDebugLevel", 0 );
+    MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
 
@@ -100,9 +97,9 @@ int main( int argc, char** argv )
     SetCommandLine( argc, argv );
 
     // Logging
-    LogWithTime( cfg.GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
-    LogWithThread( cfg.GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
-    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "", "LoggingDebugOutput", 0 ) != 0 )
+    LogWithTime( MainConfig->GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
+    LogWithThread( MainConfig->GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
+    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || MainConfig->GetInt( "", "LoggingDebugOutput", 0 ) != 0 )
         LogToDebugOutput( true );
 
     // Update stuff
@@ -163,7 +160,7 @@ int main( int argc, char** argv )
     if( !Singleplayer || Str::Substring( CommandLine, "-showgui" ) )
     {
         Fl::lock();         // Begin GUI multi threading
-        GUIInit( cfg );
+        GUIInit();
         LogToFile( nullptr );
         LogToBuffer( true );
     }
@@ -176,9 +173,9 @@ int main( int argc, char** argv )
     if( GuiWindow )
     {
         GuiCBtnAutoUpdate->value( 0 );
-        GuiCBtnLogging->value( cfg.GetInt( "", "Logging", 1 ) != 0 ? 1 : 0 );
-        GuiCBtnLoggingTime->value( cfg.GetInt( "", "LoggingTime", 1 ) != 0 ? 1 : 0 );
-        GuiCBtnLoggingThread->value( cfg.GetInt( "", "LoggingThread", 1 ) != 0 ? 1 : 0 );
+        GuiCBtnLogging->value( MainConfig->GetInt( "", "Logging", 1 ) != 0 ? 1 : 0 );
+        GuiCBtnLoggingTime->value( MainConfig->GetInt( "", "LoggingTime", 1 ) != 0 ? 1 : 0 );
+        GuiCBtnLoggingThread->value( MainConfig->GetInt( "", "LoggingThread", 1 ) != 0 ? 1 : 0 );
         GuiCBtnScriptDebug->value( 0 );
     }
 
@@ -201,7 +198,7 @@ int main( int argc, char** argv )
     }
 
     // Start admin manager
-    InitAdminManager( &cfg );
+    InitAdminManager();
 
     // Loop
     SyncManager::GetForCurThread()->UnlockAll();
@@ -247,7 +244,7 @@ int main( int argc, char** argv )
     return 0;
 }
 
-void GUIInit( IniParser& cfg )
+void GUIInit()
 {
     // Setup
     struct
@@ -290,13 +287,13 @@ void GUIInit( IniParser& cfg )
         }
     } GUISetup;
 
-    GUISizeMod = cfg.GetInt( "", "GUISize", 0 );
+    GUISizeMod = MainConfig->GetInt( "", "GUISize", 0 );
     GUISetup.FontType = FL_COURIER;
     GUISetup.FontSize = 11;
 
     // Main window
-    int wx = cfg.GetInt( "", "PositionX", 0 );
-    int wy = cfg.GetInt( "", "PositionY", 0 );
+    int wx = MainConfig->GetInt( "", "PositionX", 0 );
+    int wy = MainConfig->GetInt( "", "PositionY", 0 );
     if( !wx && !wy )
         wx = ( Fl::w() - GUI_SIZE1( 496 ) ) / 2, wy = ( Fl::h() - GUI_SIZE1( 412 ) ) / 2;
     GuiWindow = new Fl_Window( wx, wy, GUI_SIZE2( 496, 412 ), "FOnline Server" );
@@ -306,7 +303,7 @@ void GUIInit( IniParser& cfg )
     GuiWindow->size_range( GUI_SIZE2( 129, 129 ) );
 
     // Name
-    string title = GetWindowName();
+    string title = MainConfig->GetStr( "", "WindowName", "FOnline" );
     if( GameOpt.GameServer && !GameOpt.UpdateServer )
         title += " GAME";
     else if( !GameOpt.GameServer && GameOpt.UpdateServer )
@@ -839,6 +836,7 @@ void ServiceMain( bool as_service )
 
 VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 {
+    IniParser::LoadMainConfig();
     Thread::SetCurrentName( "Service" );
     LogToFile( "FOnlineServer.log" );
     WriteLog( "FOnline server service, version %d.\n", FONLINE_VERSION );
@@ -848,7 +846,7 @@ VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
         return;
 
     // Start admin manager
-    InitAdminManager( nullptr );
+    InitAdminManager();
 
     // Start game
     SetFOServiceStatus( SERVICE_START_PENDING );
@@ -928,6 +926,8 @@ Thread   LoopThread;
 
 int main( int argc, char** argv )
 {
+    IniParser::LoadMainConfig();
+
     // Make command line
     SetCommandLine( argc, argv );
 
@@ -961,7 +961,6 @@ int main( int argc, char** argv )
 
     // Stuff
     setlocale( LC_ALL, "Russian" );
-    FileManager::ResetCurrentDir();
 
     // Threading
     Thread::SetCurrentName( "Daemon" );
@@ -981,15 +980,15 @@ int main( int argc, char** argv )
     IniParser& cfg = IniParser::GetServerConfig();
 
     // Memory debugging
-    MemoryDebugLevel = cfg.GetInt( "", "MemoryDebugLevel", 0 );
+    MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
 
 
     // Logging
-    LogWithTime( cfg.GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
-    LogWithThread( cfg.GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
-    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || cfg.GetInt( "", "LoggingDebugOutput", 0 ) != 0 )
+    LogWithTime( MainConfig->GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
+    LogWithThread( MainConfig->GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
+    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || MainConfig->GetInt( "", "LoggingDebugOutput", 0 ) != 0 )
         LogToDebugOutput( true );
     LogToFile( "./FOnlineServerDaemon.log" );
 
@@ -1016,7 +1015,7 @@ void DaemonLoop()
     LoopThread.Start( GameLoopThread, "Main" );
 
     // Start admin manager
-    InitAdminManager( nullptr );
+    InitAdminManager();
 
     // Daemon loop
     while( true )
@@ -1062,24 +1061,9 @@ void AdminWork( void* );
 void AdminManager( void* );
 Thread AdminManagerThread;
 
-void InitAdminManager( IniParser* cfg )
+void InitAdminManager()
 {
-    ushort port = 0;
-    if( !cfg )
-    {
-        IniParser& cfg_ = IniParser::GetServerConfig();
-        if( !cfg_.IsLoaded() )
-        {
-            WriteLogF( _FUNC_, "Can't access to config file.\n" );
-            return;
-        }
-        port = cfg_.GetInt( "", "AdminPanelPort", 0 );
-    }
-    else
-    {
-        port = cfg->GetInt( "", "AdminPanelPort", 0 );
-    }
-
+    ushort port = MainConfig->GetInt( "", "AdminPanelPort", 0 );
     if( port )
     {
         AdminManagerThread.Finish();

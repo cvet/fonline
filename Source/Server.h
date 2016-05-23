@@ -232,7 +232,6 @@ public:
     static bool InitLangPacksLocations( LangPackVec& lang_packs );
     static bool InitLangPacksItems( LangPackVec& lang_packs );
     static void FinishLangPacks();
-    static bool InitLangCrTypes( LangPackVec& lang_packs );
 
     // Init/Finish
     static bool Init();
@@ -710,7 +709,6 @@ public:
         static bool          Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, ScriptString& func_name );
         static void          Global_EraseTextListener( int say_type, ScriptString& first_str, uint parameter );
         static AIDataPlane*  Global_CreatePlane();
-        static uint          Global_GetBagItems( uint bag_id, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots );
         static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory );
         static uint          Global_GetAllItems( hash pid, ScriptArray* items );
         static uint          Global_GetAllPlayers( ScriptArray* players );

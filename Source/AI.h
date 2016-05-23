@@ -3,7 +3,6 @@
 
 #include "Common.h"
 
-#define BAGS_FILE_NAME               "Bags.cfg"
 #define NPC_GO_HOME_WAIT_TICK        ( Random( 4000, 6000 ) )
 
 #define AI_PLANE_MISC                ( 0 )
@@ -85,9 +84,20 @@ struct AIDataPlane
         uint   Trace;
     } Move;
 
-    AIDataPlane* GetCurPlane()           { return ChildPlane ? ChildPlane->GetCurPlane() : this; }
-    bool         IsSelfOrHas( int type ) { return Type == type || ( ChildPlane ? ChildPlane->IsSelfOrHas( type ) : false ); }
-    void         DeleteLast()
+    bool         Assigned;
+    int          RefCounter;
+
+    AIDataPlane* GetCurPlane()
+    {
+        return ChildPlane ? ChildPlane->GetCurPlane() : this;
+    }
+
+    bool IsSelfOrHas( int type )
+    {
+        return Type == type || ( ChildPlane ? ChildPlane->IsSelfOrHas( type ) : false );
+    }
+
+    void DeleteLast()
     {
         if( ChildPlane )
         {
@@ -115,64 +125,35 @@ struct AIDataPlane
         return result;
     }
 
-    bool Assigned;
-    int  RefCounter;
-    void AddRef() { RefCounter++; }
+    void AddRef()
+    {
+        RefCounter++;
+    }
+
     void Release()
     {
-        RefCounter--;
-        if( !RefCounter ) delete this;
+        if( !--RefCounter )
+            delete this;
     }
+
     AIDataPlane( uint type, uint priority ): Type( type ), Priority( priority ), Identifier( 0 ), IdentifierExt( 0 ), ChildPlane( nullptr ), IsMove( false ), Assigned( false ), RefCounter( 1 )
     {
         memzero( &Buffer, sizeof( Buffer ) );
         memzero( &Move, sizeof( Move ) );
         MEMORY_PROCESS( MEMORY_NPC_PLANE, sizeof( AIDataPlane ) );
     }
+
     ~AIDataPlane()
     {
         SAFEREL( ChildPlane );
         MEMORY_PROCESS( MEMORY_NPC_PLANE, -(int) sizeof( AIDataPlane ) );
     }
-private: AIDataPlane() {}        // Disable default constructor
-};
-typedef vector< AIDataPlane* > AIDataPlaneVec;
-
-class NpcBagItem
-{
-public:
-    hash ItemPid;
-    uint MinCnt;
-    uint MaxCnt;
-    uint ItemSlot;
-
-    NpcBagItem(): ItemPid( 0 ), MinCnt( 0 ), MaxCnt( 0 ), ItemSlot( SLOT_INV ) {}
-    NpcBagItem( const NpcBagItem& r ): ItemPid( r.ItemPid ), MinCnt( r.MinCnt ), MaxCnt( r.MaxCnt ), ItemSlot( r.ItemSlot ) {}
-};
-typedef vector< NpcBagItem >             NpcBagItems;
-typedef vector< NpcBagItems >            NpcBagCombination;
-typedef vector< NpcBagCombination >      NpcBag;
-typedef vector< NpcBag >                 NpcBagVec;
-typedef map< string, NpcBagCombination > StringNpcBagCombMap;
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-
-class NpcAIMngr
-{
-public:
-    bool Init();
-    void Finish();
-
-    NpcBag& GetBag( uint num );
 
 private:
-    NpcBagVec npcBags;
-    bool LoadNpcBags();
+    // Disable default constructor
+    AIDataPlane() {}
 };
-extern NpcAIMngr AIMngr;
-
+typedef vector< AIDataPlane* > AIDataPlaneVec;
 
 // Plane begin/end/run reasons
 // Begin

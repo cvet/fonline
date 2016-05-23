@@ -87,9 +87,8 @@ bool FOServer::InitScriptSystem()
     #endif
 
     // Profiler settings
-    IniParser& cfg = IniParser::GetServerConfig();
-    uint       sample_time = cfg.GetInt( "", "ProfilerSampleInterval", 0 );
-    uint       profiler_mode = cfg.GetInt( "", "ProfilerMode", 0 );
+    uint sample_time = MainConfig->GetInt( "", "ProfilerSampleInterval", 0 );
+    uint profiler_mode = MainConfig->GetInt( "", "ProfilerMode", 0 );
     if( !profiler_mode )
         sample_time = 0;
 
@@ -484,12 +483,6 @@ bool FOServer::ReloadClientScripts()
     // Exit if have errors
     if( errors )
         return false;
-
-    // Copy critter types
-    LanguagePack& default_lang = *LangPacks.begin();
-    for( int i = 0; i < MAX_CRIT_TYPES; i++ )
-        if( default_lang.Msg[ TEXTMSG_INTERNAL ].Count( STR_INTERNAL_CRTYPE( i ) ) )
-            msg_script.AddStr( STR_INTERNAL_CRTYPE( i ), default_lang.Msg[ TEXTMSG_INTERNAL ].GetStr( STR_INTERNAL_CRTYPE( i ) ) );
 
     // Copy generated MSG to language packs
     for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
@@ -5136,57 +5129,6 @@ void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, ScriptString
 AIDataPlane* FOServer::SScriptFunc::Global_CreatePlane()
 {
     return new AIDataPlane( 0, 0 );
-}
-
-uint FOServer::SScriptFunc::Global_GetBagItems( uint bag_id, ScriptArray* pids, ScriptArray* min_counts, ScriptArray* max_counts, ScriptArray* slots )
-{
-    NpcBag& bag = AIMngr.GetBag( bag_id );
-    if( bag.empty() )
-        return 0;
-
-    MaxTVec bag_data;
-    bag_data.reserve( 100 );
-    for( uint i = 0, j = (uint) bag.size(); i < j; i++ )
-    {
-        NpcBagCombination& bc = bag[ i ];
-        for( uint k = 0, l = (uint) bc.size(); k < l; k++ )
-        {
-            NpcBagItems& bci = bc[ k ];
-            for( uint m = 0, n = (uint) bci.size(); m < n; m++ )
-            {
-                NpcBagItem& item = bci[ m ];
-                bag_data.push_back( item.ItemPid );
-                bag_data.push_back( item.MinCnt );
-                bag_data.push_back( item.MaxCnt );
-                bag_data.push_back( item.ItemSlot );
-            }
-        }
-    }
-
-    uint count = (uint) bag_data.size() / 4;
-    if( pids || min_counts || max_counts || slots )
-    {
-        if( pids )
-            pids->Resize( pids->GetSize() + count );
-        if( min_counts )
-            min_counts->Resize( min_counts->GetSize() + count );
-        if( max_counts )
-            max_counts->Resize( max_counts->GetSize() + count );
-        if( slots )
-            slots->Resize( slots->GetSize() + count );
-        for( uint i = 0; i < count; i++ )
-        {
-            if( pids )
-                *(hash*) pids->At( pids->GetSize() - count + i ) = (hash) bag_data[ i * 4 ];
-            if( min_counts )
-                *(uint*) min_counts->At( min_counts->GetSize() - count + i ) = (uint) bag_data[ i * 4 + 1 ];
-            if( max_counts )
-                *(uint*) max_counts->At( max_counts->GetSize() - count + i ) = (uint) bag_data[ i * 4 + 2 ];
-            if( slots )
-                *(int*) slots->At( slots->GetSize() - count + i ) = (int) bag_data[ i * 4 + 3 ];
-        }
-    }
-    return count;
 }
 
 static void SwapCrittersRefreshNpc( Npc* npc )

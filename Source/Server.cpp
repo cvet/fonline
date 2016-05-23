@@ -135,7 +135,6 @@ void FOServer::Finish()
 
     // Managers
     EntityMngr.ClearEntities();
-    AIMngr.Finish();
     DlgMngr.Finish();
     FinishScriptSystem();
     FinishLangPacks();
@@ -197,21 +196,18 @@ void FOServer::GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVe
     moder.clear();
     admin.clear();
     admin_names.clear();
-    IniParser& cfg = IniParser::GetServerConfig();
-    if( cfg.IsLoaded() )
-    {
-        const char* s;
-        if( ( s = cfg.GetStr( "", "Access_client" ) ) )
-            Str::ParseLine( s, ' ', client, Str::ParseLineDummy );
-        if( ( s = cfg.GetStr( "", "Access_tester" ) ) )
-            Str::ParseLine( s, ' ', tester, Str::ParseLineDummy );
-        if( ( s = cfg.GetStr( "", "Access_moder" ) ) )
-            Str::ParseLine( s, ' ', moder, Str::ParseLineDummy );
-        if( ( s = cfg.GetStr( "", "Access_admin" ) ) )
-            Str::ParseLine( s, ' ', admin, Str::ParseLineDummy );
-        if( ( s = cfg.GetStr( "", "AccessNames_admin" ) ) )
-            Str::ParseLine( s, ' ', admin_names, Str::ParseLineDummy );
-    }
+
+    const char* s;
+    if( ( s = MainConfig->GetStr( "", "Access_client" ) ) )
+        Str::ParseLine( s, ' ', client, Str::ParseLineDummy );
+    if( ( s = MainConfig->GetStr( "", "Access_tester" ) ) )
+        Str::ParseLine( s, ' ', tester, Str::ParseLineDummy );
+    if( ( s = MainConfig->GetStr( "", "Access_moder" ) ) )
+        Str::ParseLine( s, ' ', moder, Str::ParseLineDummy );
+    if( ( s = MainConfig->GetStr( "", "Access_admin" ) ) )
+        Str::ParseLine( s, ' ', admin, Str::ParseLineDummy );
+    if( ( s = MainConfig->GetStr( "", "AccessNames_admin" ) ) )
+        Str::ParseLine( s, ' ', admin_names, Str::ParseLineDummy );
 }
 
 void FOServer::DisconnectClient( Client* cl )
@@ -2756,26 +2752,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         ResynchronizeLogicThreads();
     }
     break;
-    case CMD_RELOADAI:
-    {
-        CHECK_ALLOW_COMMAND;
-
-        SynchronizeLogicThreads();
-
-        NpcAIMngr ai_mngr;
-        if( ai_mngr.Init() )
-        {
-            AIMngr = ai_mngr;
-            logcb( "Reload ai success." );
-        }
-        else
-        {
-            logcb( "Init AI manager fail." );
-        }
-
-        ResynchronizeLogicThreads();
-    }
-    break;
     case CMD_SETTIME:
     {
         int multiplier;
@@ -3067,7 +3043,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         {
             string      base_code;
             FileManager dev_file;
-            if( dev_file.LoadFile( "__dev.fos", PT_SCRIPTS ) )
+            if( dev_file.LoadFile( "__dev.fos", PT_CLIENT_DATA ) )
                 base_code = (char*) dev_file.GetBuf();
             else
                 base_code = "void Dummy(){}";
@@ -3298,8 +3274,6 @@ bool FOServer::InitReal()
 
     FileManager::InitDataFiles( "./" );
 
-    IniParser& cfg = IniParser::GetServerConfig();
-
     // Check the sizes of base types
     STATIC_ASSERT( sizeof( char ) == 1 );
     STATIC_ASSERT( sizeof( short ) == 2 );
@@ -3337,14 +3311,14 @@ bool FOServer::InitReal()
     LastHoloId = USER_HOLO_START_NUM;
 
     // Profiler
-    uint sample_time = cfg.GetInt( "", "ProfilerSampleInterval", 0 );
-    uint profiler_mode = cfg.GetInt( "", "ProfilerMode", 0 );
+    uint sample_time = MainConfig->GetInt( "", "ProfilerSampleInterval", 0 );
+    uint profiler_mode = MainConfig->GetInt( "", "ProfilerMode", 0 );
     if( !profiler_mode )
         sample_time = 0;
 
     // Threading
-    LogicThreadSetAffinity = cfg.GetInt( "", "LogicThreadSetAffinity", 0 ) != 0;
-    LogicThreadCount = cfg.GetInt( "", "LogicThreadCount", 0 );
+    LogicThreadSetAffinity = MainConfig->GetInt( "", "LogicThreadSetAffinity", 0 ) != 0;
+    LogicThreadCount = MainConfig->GetInt( "", "LogicThreadCount", 0 );
     if( sample_time )
         LogicThreadCount = 1;
     else if( !LogicThreadCount )
@@ -3374,14 +3348,8 @@ bool FOServer::InitReal()
         LoadBans();
 
     // Managers
-    if( !AIMngr.Init() )
-        return false;                    // NpcAi manager
     if( !DlgMngr.LoadDialogs() )
         return false;                    // Dialog manager
-    if( !InitLangCrTypes( LangPacks ) )
-        return false;                    // Critter types
-
-    // Prototypes
     if( !ProtoMngr.LoadProtosFromFiles() )
         return false;
 
@@ -3449,7 +3417,7 @@ bool FOServer::InitReal()
     ushort port;
     if( !Singleplayer )
     {
-        port = cfg.GetInt( "", "Port", 4000 );
+        port = MainConfig->GetInt( "", "Port", 4000 );
         if( GameOpt.UpdateServer && !GameOpt.GameServer )
         {
             ushort update_port = ( ushort ) Str::AtoI( Str::Substring( CommandLine, "-update" ) + Str::Length( "-update" ) );
@@ -3494,7 +3462,7 @@ bool FOServer::InitReal()
         return false;
     }
 
-    NetIOThreadsCount = cfg.GetInt( "", "NetWorkThread", 0 );
+    NetIOThreadsCount = MainConfig->GetInt( "", "NetWorkThread", 0 );
     if( !NetIOThreadsCount )
         NetIOThreadsCount = CpuCount;
 
@@ -3609,7 +3577,7 @@ bool FOServer::InitReal()
     ScriptSystemUpdate();
 
     // World saver
-    SaveWorldTime = cfg.GetInt( "", "WorldSaveTime", 60 ) * 60 * 1000;
+    SaveWorldTime = MainConfig->GetInt( "", "WorldSaveTime", 60 ) * 60 * 1000;
     SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
 
     Active = true;
@@ -3636,15 +3604,13 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
 {
     WriteLog( "Load language packs...\n" );
 
-    IniParser& cfg = IniParser::GetServerConfig();
-    uint       cur_lang = 0;
-
+    uint cur_lang = 0;
     while( true )
     {
         char cur_str_lang[ MAX_FOTEXT ];
         Str::Format( cur_str_lang, "Language_%u", cur_lang );
 
-        const char* lang_name = cfg.GetStr( "", cur_str_lang );
+        const char* lang_name = MainConfig->GetStr( "", cur_str_lang );
         if( !lang_name )
             break;
 
@@ -3785,26 +3751,6 @@ void FOServer::FinishLangPacks()
     WriteLog( "Finish lang packs...\n" );
     LangPacks.clear();
     WriteLog( "Finish lang packs complete.\n" );
-}
-
-bool FOServer::InitLangCrTypes( LangPackVec& lang_packs )
-{
-    FOMsg msg_crtypes;
-    if( !CritType::InitFromFile( &msg_crtypes ) )
-        return false;
-
-    for( auto it = lang_packs.begin(), end = lang_packs.end(); it != end; ++it )
-    {
-        LanguagePack& lang = *it;
-        for( int i = 0; i < MAX_CRIT_TYPES; i++ )
-            lang.Msg[ TEXTMSG_INTERNAL ].EraseStr( STR_INTERNAL_CRTYPE( i ) );
-        lang.Msg[ TEXTMSG_INTERNAL ] += msg_crtypes;
-    }
-
-    // Regenerate update files
-    GenerateUpdateFiles();
-
-    return true;
 }
 
 #pragma MESSAGE("Clients logging may be not thread safe.")

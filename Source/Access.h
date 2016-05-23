@@ -36,7 +36,6 @@
 #define CMD_RELOADDIALOGS            ( 26 )
 #define CMD_LOADDIALOG               ( 27 )
 #define CMD_RELOADTEXTS              ( 28 )
-#define CMD_RELOADAI                 ( 29 )
 #define CMD_SETTIME                  ( 32 )
 #define CMD_BAN                      ( 33 )
 #define CMD_DELETE_ACCOUNT           ( 34 )
@@ -83,7 +82,6 @@ const CmdDef cmdlist[] =
     { "reloaddialogs", CMD_RELOADDIALOGS },
     { "loaddialog", CMD_LOADDIALOG },
     { "reloadtexts", CMD_RELOADTEXTS },
-    { "reloadai", CMD_RELOADAI },
     { "settime", CMD_SETTIME },
     { "ban", CMD_BAN },
     { "deleteself", CMD_DELETE_ACCOUNT },
@@ -512,13 +510,6 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     }
     break;
     case CMD_RELOADTEXTS:
-    {
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-    }
-    break;
-    case CMD_RELOADAI:
     {
         buf << msg;
         buf << msg_len;

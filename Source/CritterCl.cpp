@@ -1256,11 +1256,11 @@ void CritterCl::ChangeCrType( uint type )
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = nullptr;
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( type ) ), PT_ART_CRITTERS, true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( type ) ), PT_CLIENT_CRITTERS, true );
     if( anim3d )
     {
         Anim3d = anim3d;
-        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( type ) ), PT_ART_CRITTERS, false );
+        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( type ) ), PT_CLIENT_CRITTERS, false );
 
         Anim3d->SetDir( GetDir() );
         SprId = Anim3d->SprId;

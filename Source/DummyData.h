@@ -481,7 +481,6 @@ struct BindClass
     static void Global_AddTextListener()        {}
     static void Global_EraseTextListener()      {}
     static void Global_CreatePlane()            {}
-    static void Global_GetBagItems()            {}
     static void Global_SetChosenSendParameter() {}
     static void Global_SetSendParameter()       {}
     static void Global_SetSendParameterFunc()   {}

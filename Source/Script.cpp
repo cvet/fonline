@@ -414,7 +414,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
 
     // Client path fixes
     #ifdef FONLINE_CLIENT
-    Str::Insert( dll_path, FileManager::GetDataPath( "", PT_CACHE ) );
+    Str::Insert( dll_path, FileManager::GetDataPath( "", PT_CLIENT_CACHE ) );
     Str::Replacement( dll_path, '\\', '.' );
     Str::Replacement( dll_path, '/', '.' );
     #endif
@@ -434,7 +434,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
         if( Str::CompareCase( dll_path, name ) )
         {
             founded = true;
-            Str::Copy( dll_path, FileManager::GetDataPath( path, PT_SERVER_MODULES ) );
+            Str::Copy( dll_path, path );
             break;
         }
     }
@@ -562,7 +562,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
     // Get last write time in cache scripts
     uint64          cache_write_time = 0;
     StrSet          cache_file_names;
-    FilesCollection cache_files = FilesCollection( "fosb", PT_SERVER_CACHE );
+    FilesCollection cache_files( "fosb", FileManager::GetDataPath( "", PT_SERVER_CACHE ) );
     while( cache_files.IsNextFile() )
     {
         const char*  file_name;
@@ -676,7 +676,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
             #ifdef FONLINE_SERVER
             edata->Profiler->AddModule( PT_SERVER_CACHE, name, cache_pefix );
             #else
-            edata->Profiler->AddModule( PT_CACHE, name, cache_pefix );
+            edata->Profiler->AddModule( PT_CLIENT_CACHE, name, cache_pefix );
             #endif
         }
     }
@@ -1198,19 +1198,20 @@ bool Script::LoadModuleFromFile( const char* module_name, FileManager& file, con
     // File loader
     class MemoryFileLoader: public Preprocessor::FileLoader
     {
+        FileManager* initialFile;
+
 public:
-        FileManager* InitialFile;
-        MemoryFileLoader( FileManager& file ): InitialFile( &file ) {}
+        MemoryFileLoader( FileManager& file ): initialFile( &file ) {}
         virtual ~MemoryFileLoader() {}
 
         virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data )
         {
-            if( InitialFile )
+            if( initialFile )
             {
-                data.resize( InitialFile->GetFsize() );
+                data.resize( initialFile->GetFsize() );
                 if( !data.empty() )
-                    memcpy( &data[ 0 ], InitialFile->GetBuf(), data.size() );
-                InitialFile = nullptr;
+                    memcpy( &data[ 0 ], initialFile->GetBuf(), data.size() );
+                initialFile = nullptr;
                 return true;
             }
 

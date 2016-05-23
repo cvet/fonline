@@ -26,7 +26,6 @@ namespace InterfaceEditor
 		{
 			Instance = this;
 			InitializeComponent();
-			Directory.SetCurrentDirectory(Path.GetDirectoryName(Application.ExecutablePath));
 
 			// Optimize panel drawing
 			typeof(Panel).InvokeMember("DoubleBuffered",
@@ -41,10 +40,10 @@ namespace InterfaceEditor
 					path += "\\";
 				return Path.GetFullPath(path);
 			};
-			IniFile config = new IniFile(".\\InterfaceEditor.cfg");
+			IniFile config = new IniFile(".\\FOnline.cfg");
 			Utilites.GuiPath = fixPath(config.IniReadValue("Options", "GuiPath", @""));
-			Utilites.ScriptsPath = fixPath(config.IniReadValue("Options", "ScriptsPath", @""));
-			Utilites.DataPath = fixPath(config.IniReadValue("Options", "ResourcesPath", @""));
+			Utilites.GuiOutputPath = fixPath(config.IniReadValue("Options", "GuiOutputPath", @""));
+			Utilites.GuiResourcesPath = fixPath(config.IniReadValue("Options", "GuiResourcesPath", @""));
 
 			// Load default scheme
 			LoadScheme(Utilites.GuiPath + "Default.foguischeme");
@@ -426,7 +425,7 @@ namespace InterfaceEditor
 
 			initScript.AppendLine("}");
 
-			File.WriteAllText(Utilites.ScriptsPath + "GuiScreens.fos", initScript.ToString() + contentScript.ToString(), Encoding.UTF8);
+			File.WriteAllText(Utilites.GuiOutputPath + "GuiScreens.fos", initScript.ToString() + contentScript.ToString(), Encoding.UTF8);
 
 			Log.Write("Script \"GuiScreens.fos\" generation complete.");
 		}
@@ -448,7 +447,7 @@ namespace InterfaceEditor
 		{
 			OpenFileDialog fileDialog = new OpenFileDialog();
 			fileDialog.Filter = "Text file with coords (*.txt) | *.txt";
-			fileDialog.InitialDirectory = Utilites.DataPath;
+			fileDialog.InitialDirectory = Utilites.GuiResourcesPath;
 			if (fileDialog.ShowDialog() != DialogResult.OK)
 				return;
 

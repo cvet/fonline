@@ -113,9 +113,9 @@ bool FOMapper::Init()
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
     // Cache
-    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
-        FileManager::CopyFile( FileManager::GetDataPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
-    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
+    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) ) )
+        FileManager::CopyFile( FileManager::GetDataPath( "default.cache", PT_CLIENT_DATA ), FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) );
+    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) ) )
     {
         WriteLogF( _FUNC_, " - Can't set default cache.\n" );
         return false;
@@ -177,20 +177,10 @@ bool FOMapper::Init()
         return false;
 
     // Language Packs
-    FileManager::ResetCurrentDir();
-    IniParser&  cfg_mapper = IniParser::GetMapperConfig();
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    IniParser&  cfg_server = IniParser::GetServerConfig();
-
-    const char* lang_name = cfg_server.GetStr( "", "Language_0", DEFAULT_LANGUAGE );
+    const char* lang_name = MainConfig->GetStr( "", "Language_0", DEFAULT_LANGUAGE );
     if( !CurLang.LoadFromFiles( lang_name ) )
         return false;
-
-    // Workaround to generate pid maps from server dir
-    ConvertProtoIdByInt( 0 );
-
-    // Critter types
-    CritType::InitFromFile( nullptr );
 
     // Prototypes
     if( !ProtoMngr.LoadProtosFromFiles() )
@@ -234,7 +224,7 @@ bool FOMapper::Init()
         TabsActive[ i ] = &( *Tabs[ i ].begin() ).second;
     }
 
-    TabsTiles[ INT_MODE_TILE ].TileDirs.push_back( FileManager::GetDataPath( "", PT_ART_TILES ) );
+    TabsTiles[ INT_MODE_TILE ].TileDirs.push_back( FileManager::GetDataPath( "", PT_CLIENT_TILES ) );
     TabsTiles[ INT_MODE_TILE ].TileSubDirs.push_back( true );
 
 // Initialize tabs scroll and names
@@ -360,10 +350,9 @@ int FOMapper::InitIface()
     WriteLog( "Init interface.\n" );
 
     IniParser& ini = IfaceIni;
-    IniParser& cfg = IniParser::GetMapperConfig();
-    const char* int_file = cfg.GetStr( "", "MapperInterface", CFG_DEF_INT_FILE );
+    const char* int_file = CFG_DEF_INT_FILE;
 
-    if( !ini.AppendFile( int_file, PT_DATA ) )
+    if( !ini.AppendFile( int_file, PT_CLIENT_DATA ) )
     {
         WriteLog( "File '%s' not found.\n", int_file );
         return __LINE__;
@@ -501,31 +490,31 @@ int FOMapper::InitIface()
     ConsoleStr = "";
     ConsoleCur = 0;
 
-    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation( ini.GetStr( "", "ItemStub", "art/items/reserved.frm" ), PT_DATA, true );
-    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation( ini.GetStr( "", "CritterStub", "art/critters/reservaa.frm" ), PT_DATA, true );
+    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation( ini.GetStr( "", "ItemStub", "art/items/reserved.frm" ), PT_CLIENT_DATA, true );
+    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation( ini.GetStr( "", "CritterStub", "art/critters/reservaa.frm" ), PT_CLIENT_DATA, true );
 
     // Messbox
     MessBoxScroll = 0;
 
     // Cursor
-    CurPDef = SprMngr.LoadAnimation( ini.GetStr( "", "CurDefault", "actarrow.frm" ), PT_DATA, true );
-    CurPHand = SprMngr.LoadAnimation( ini.GetStr( "", "CurHand", "hand.frm" ), PT_DATA, true );
+    CurPDef = SprMngr.LoadAnimation( ini.GetStr( "", "CurDefault", "actarrow.frm" ), PT_CLIENT_DATA, true );
+    CurPHand = SprMngr.LoadAnimation( ini.GetStr( "", "CurHand", "hand.frm" ), PT_CLIENT_DATA, true );
 
     // Iface
-    IntMainPic = SprMngr.LoadAnimation( ini.GetStr( "", "IntMainPic", "error" ), PT_DATA, true );
-    IntPTab = SprMngr.LoadAnimation( ini.GetStr( "", "IntTabPic", "error" ), PT_DATA, true );
-    IntPSelect = SprMngr.LoadAnimation( ini.GetStr( "", "IntSelectPic", "error" ), PT_DATA, true );
-    IntPShow = SprMngr.LoadAnimation( ini.GetStr( "", "IntShowPic", "error" ), PT_DATA, true );
+    IntMainPic = SprMngr.LoadAnimation( ini.GetStr( "", "IntMainPic", "error" ), PT_CLIENT_DATA, true );
+    IntPTab = SprMngr.LoadAnimation( ini.GetStr( "", "IntTabPic", "error" ), PT_CLIENT_DATA, true );
+    IntPSelect = SprMngr.LoadAnimation( ini.GetStr( "", "IntSelectPic", "error" ), PT_CLIENT_DATA, true );
+    IntPShow = SprMngr.LoadAnimation( ini.GetStr( "", "IntShowPic", "error" ), PT_CLIENT_DATA, true );
 
     // Object
-    ObjWMainPic = SprMngr.LoadAnimation( ini.GetStr( "", "ObjMainPic", "error" ), PT_DATA, true );
-    ObjPBToAllDn = SprMngr.LoadAnimation( ini.GetStr( "", "ObjToAllPicDn", "error" ), PT_DATA, true );
+    ObjWMainPic = SprMngr.LoadAnimation( ini.GetStr( "", "ObjMainPic", "error" ), PT_CLIENT_DATA, true );
+    ObjPBToAllDn = SprMngr.LoadAnimation( ini.GetStr( "", "ObjToAllPicDn", "error" ), PT_CLIENT_DATA, true );
 
     // Sub tabs
-    SubTabsPic = SprMngr.LoadAnimation( ini.GetStr( "", "SubTabsPic", "error" ), PT_DATA, true );
+    SubTabsPic = SprMngr.LoadAnimation( ini.GetStr( "", "SubTabsPic", "error" ), PT_CLIENT_DATA, true );
 
     // Console
-    ConsolePic = SprMngr.LoadAnimation( ini.GetStr( "", "ConsolePic", "error" ), PT_DATA, true );
+    ConsolePic = SprMngr.LoadAnimation( ini.GetStr( "", "ConsolePic", "error" ), PT_CLIENT_DATA, true );
 
     WriteLog( "Init interface complete.\n" );
     return 0;
@@ -4960,7 +4949,7 @@ int FOMapper::SScriptFunc::Global_GetLoadedMaps( ScriptArray* maps )
 uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArray* names )
 {
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    string dir_ = FileManager::GetDataPath( "", PT_SERVER_MODULES );
+    string dir_ = FileManager::GetDataPath( "", PT_ROOT );
     uint   n = 0;
     if( dir )
         dir_ = dir->c_std_str();
@@ -5153,12 +5142,6 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, ScriptString* sub_ta
         for( int i = 0, j = item_pids->GetSize(); i < j; i++ )
         {
             hash pid = *(hash*) item_pids->At( i );
-            if( pid < 0xFFFF )
-            {
-                const char* proto_name = ConvertProtoIdByInt( pid );
-                pid = ( proto_name ? Str::GetHash( proto_name ) : 0 );
-            }
-
             ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
             if( proto_item )
                 proto_items.push_back( proto_item );
@@ -5938,7 +5921,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
                 SprMngr.FreePure3dAnimation( anim3d );
             char fname[ MAX_FOPATH ];
             Str::Format( fname, "%s.fo3d", CritType::GetName( crtype ) );
-            anim3d = SprMngr.LoadPure3dAnimation( fname, PT_ART_CRITTERS, false );
+            anim3d = SprMngr.LoadPure3dAnimation( fname, PT_CLIENT_CRITTERS, false );
             DrawCritter3dCrType[ instance ] = crtype;
             DrawCritter3dFailToLoad[ instance ] = false;
 

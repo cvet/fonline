@@ -10,19 +10,19 @@ namespace InterfaceEditor
 	static public class Utilites
 	{
 		static public string GuiPath;
-		static public string DataPath;
-		static public string ScriptsPath;
+		static public string GuiResourcesPath;
+		static public string GuiOutputPath;
 
 		static public string MakeFileName(string fullPath)
 		{
-			if (!fullPath.StartsWith(DataPath))
+			if (!fullPath.StartsWith(GuiResourcesPath))
 				return null;
-			return fullPath.Substring(DataPath.Length).Replace('\\', '/');
+			return fullPath.Substring(GuiResourcesPath.Length).Replace('\\', '/');
 		}
 
 		static public string MakeFullPath(string fileName)
 		{
-			return DataPath + fileName.Replace('/', '\\');
+			return GuiResourcesPath + fileName.Replace('/', '\\');
 		}
 
 		static public string MakeValidIdentifierName(string name)

@@ -12,11 +12,11 @@
     <Filter Include="Zlib">
       <UniqueIdentifier>{dc38aacd-49af-483e-b10e-23ed43184a63}</UniqueIdentifier>
     </Filter>
-    <Filter Include="SHA2">
-      <UniqueIdentifier>{78e0ebbd-47b4-4f86-b841-bca4e4ed6529}</UniqueIdentifier>
-    </Filter>
     <Filter Include="DialogEditor\AngelScript">
       <UniqueIdentifier>{581e6a56-8b2e-4ecb-b6de-a057a69949ac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SHA">
+      <UniqueIdentifier>{e766afc4-ede3-4c1e-bb43-f533260cea55}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -64,9 +64,6 @@
     </ClCompile>
     <ClCompile Include="..\Source\IniParser.cpp">
       <Filter>DialogEditor</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\SHA2\sha2.c">
-      <Filter>SHA2</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\MsgFiles.cpp">
       <Filter>DialogEditor</Filter>
@@ -275,6 +272,12 @@
     <ClCompile Include="..\Source\AngelScript\scriptdict.cpp">
       <Filter>DialogEditor\AngelScript</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\SHA\sha1.c">
+      <Filter>SHA</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\SHA\sha2.c">
+      <Filter>SHA</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\Common.h">
@@ -327,9 +330,6 @@
     </ClInclude>
     <ClInclude Include="..\Source\IniParser.h">
       <Filter>DialogEditor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\SHA2\sha2.h">
-      <Filter>SHA2</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\MsgFiles.h">
       <Filter>DialogEditor</Filter>
@@ -522,6 +522,12 @@
     </ClInclude>
     <ClInclude Include="..\Source\AngelScript\scriptdict.h">
       <Filter>DialogEditor\AngelScript</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\SHA\sha1.h">
+      <Filter>SHA</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\SHA\sha2.h">
+      <Filter>SHA</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

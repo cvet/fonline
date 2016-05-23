@@ -550,7 +550,7 @@ namespace InterfaceEditor
 			{
 				openFileDialog.Filter = "PNG files (*.png) | *.png";
 				if (_InitialDirectory == null)
-					_InitialDirectory = Utilites.DataPath;
+					_InitialDirectory = Utilites.GuiResourcesPath;
 				openFileDialog.InitialDirectory = _InitialDirectory;
 				if (openFileDialog.ShowDialog() == DialogResult.OK)
 				{

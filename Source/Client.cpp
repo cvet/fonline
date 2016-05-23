@@ -227,9 +227,9 @@ bool FOClient::Init()
     UID_PREPARE_UID4_2;
 
     // Cache
-    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
-        FileManager::CopyFile( FileManager::GetDataPath( "default.cache", PT_DATA ), FileManager::GetWritePath( "default.cache", PT_CACHE ) );
-    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CACHE ) ) )
+    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) ) )
+        FileManager::CopyFile( FileManager::GetDataPath( "default.cache", PT_CLIENT_DATA ), FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) );
+    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) ) )
     {
         WriteLogF( _FUNC_, " - Can't set default cache.\n" );
         return false;
@@ -237,9 +237,8 @@ bool FOClient::Init()
     UID_PREPARE_UID4_3;
 
     // Check password in config and command line
-    IniParser&  cfg = IniParser::GetClientConfig();    // Also used below
     char        pass[ MAX_FOTEXT ];
-    const char* pass_ = cfg.GetStr( "UserPass", "" );
+    const char* pass_ = MainConfig->GetStr( "UserPass", "" );
     Str::Copy( pass, pass_ );
     char*       cmd_line_pass = Str::Substring( CommandLine, "-UserPass" );
     if( cmd_line_pass )
@@ -286,15 +285,15 @@ bool FOClient::Init()
 
     // Sound manager
     SndMngr.Init();
-    GameOpt.SoundVolume = cfg.GetInt( "", "SoundVolume", 100 );
-    GameOpt.MusicVolume = cfg.GetInt( "", "MusicVolume", 100 );
+    GameOpt.SoundVolume = MainConfig->GetInt( "", "SoundVolume", 100 );
+    GameOpt.MusicVolume = MainConfig->GetInt( "", "MusicVolume", 100 );
 
     // Language Packs
-    const char* lang_name = cfg.GetStr( "", "Language", DEFAULT_LANGUAGE );
+    const char* lang_name = MainConfig->GetStr( "", "Language", DEFAULT_LANGUAGE );
 
     CurLang.LoadFromCache( lang_name );
     MsgUserHolo = new FOMsg();
-    MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE, PT_TEXTS );
+    MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE, PT_CLIENT_CACHE );
 
     // Update
     UpdateFiles( true );
@@ -333,9 +332,6 @@ bool FOClient::Init()
     SDL_GetMouseState( &mx, &my );
     GameOpt.MouseX = CLAMP( mx, 0, sw - 1 );
     GameOpt.MouseY = CLAMP( my, 0, sh - 1 );
-
-    // CritterCl types
-    CritType::InitFromMsg( &CurLang.Msg[ TEXTMSG_INTERNAL ] );
 
     // Resource manager
     ResMngr.Refresh();
@@ -524,7 +520,7 @@ void FOClient::UpdateFiles( bool early_call )
         UpdateFilesAborted = false;
         SAFEDEL( UpdateFilesList );
         UpdateFileActive = false;
-        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp", PT_DATA ) );
+        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ) );
 
         Net_SendUpdate();
 
@@ -574,7 +570,7 @@ void FOClient::UpdateFiles( bool early_call )
                     if( UpdateFileTemp )
                         FileClose( UpdateFileTemp );
 
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp", PT_DATA ), true );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ), true );
                     if( !UpdateFileTemp )
                     {
                         UpdateFilesAddText( STR_FILESYSTEM_ERROR, "File system error!" );
@@ -2871,7 +2867,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     CHECK_IN_BUFF_ERROR;
 
     if( !CritType::IsEnabled( base_type ) )
-        base_type = DEFAULT_CRTYPE;
+        base_type = 0;
 
     if( !crid )
         WriteLogF( _FUNC_, " - Critter id is zero.\n" );
@@ -5476,13 +5472,13 @@ void FOClient::Net_OnUpdateFilesList()
         else
         {
             FileManager file;
-            if( file.LoadFile( name, PT_DATA, true ) && file.GetFsize() == size )
+            if( file.LoadFile( name, PT_CLIENT_DATA, true ) && file.GetFsize() == size )
             {
                 if( hash == 0 )
                     continue;
 
                 file.UnloadFile();
-                if( file.LoadFile( name, PT_DATA ) && file.GetFsize() > 0 && hash == Crypt.Crc32( file.GetBuf(), file.GetFsize() ) )
+                if( file.LoadFile( name, PT_CLIENT_DATA ) && file.GetFsize() > 0 && hash == Crypt.Crc32( file.GetBuf(), file.GetFsize() ) )
                     continue;
             }
         }
@@ -5532,7 +5528,7 @@ void FOClient::Net_OnUpdateFileData()
         if( update_file.Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
         {
             FileManager cache_data;
-            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp", PT_DATA ), PT_ROOT ) )
+            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ), PT_ROOT ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update.temp file!" );
                 return;
@@ -5545,16 +5541,16 @@ void FOClient::Net_OnUpdateFileData()
         else
         {
             char to_path[ MAX_FOPATH ];
-            FileManager::GetWritePath( update_file.Name.c_str(), PT_DATA, to_path );
+            FileManager::GetWritePath( update_file.Name.c_str(), PT_CLIENT_DATA, to_path );
             FileManager::FormatPath( to_path );
-            if( !FileManager::CopyFile( FileManager::GetWritePath( "update.temp", PT_DATA ), to_path ) )
+            if( !FileManager::CopyFile( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ), to_path ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't copy update.temp file!" );
                 return;
             }
         }
 
-        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp", PT_DATA ) );
+        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ) );
         UpdateFilesList->erase( UpdateFilesList->begin() );
         UpdateFileActive = false;
     }
@@ -5604,7 +5600,7 @@ void FOClient::Net_OnUserHoloStr()
     if( MsgUserHolo->Count( str_num ) )
         MsgUserHolo->EraseStr( str_num );
     MsgUserHolo->AddStr( str_num, text );
-    MsgUserHolo->SaveToFile( USER_HOLO_TEXTMSG_FILE, PT_TEXTS );
+    MsgUserHolo->SaveToFile( USER_HOLO_TEXTMSG_FILE, PT_CLIENT_CACHE );
 }
 
 void FOClient::Net_OnAutomapsInfo()
@@ -7153,11 +7149,11 @@ void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_seque
         *sound = 0;
         sound++;
         if( !Str::Substring( sound, "/" ) )
-            sw.SoundName = FileManager::GetDataPath( "", PT_VIDEO );
+            sw.SoundName = FileManager::GetDataPath( "", PT_CLIENT_VIDEO );
         sw.SoundName += sound;
     }
     if( !Str::Substring( str, "/" ) )
-        sw.FileName = FileManager::GetDataPath( "", PT_VIDEO );
+        sw.FileName = FileManager::GetDataPath( "", PT_CLIENT_VIDEO );
     sw.FileName += str;
 
     // Add video in sequence
@@ -7186,7 +7182,7 @@ void FOClient::PlayVideo()
     CurVideo->AverageRenderTime = 0.0;
 
     // Open file
-    if( !CurVideo->RawData.LoadFile( video.FileName.c_str(), PT_DATA ) )
+    if( !CurVideo->RawData.LoadFile( video.FileName.c_str(), PT_CLIENT_DATA ) )
     {
         WriteLogF( _FUNC_, " - Video file '%s' not found.\n", video.FileName.c_str() );
         SAFEDEL( CurVideo );
@@ -7895,7 +7891,7 @@ bool FOClient::ReloadScripts()
         if( dll.LoadStream( &dll_binary[ 0 ], (uint) dll_binary.size() ) )
         {
             dll.SwitchToWrite();
-            dll.SaveOutBufToFile( dll_name, PT_CACHE );
+            dll.SaveOutBufToFile( dll_name, PT_CLIENT_CACHE );
         }
     }
 
@@ -10104,7 +10100,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, ui
             char fname[ MAX_FOPATH ];
             Str::Format( fname, "%s.fo3d", CritType::GetName( crtype ) );
             SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-            anim3d = SprMngr.LoadPure3dAnimation( fname, PT_ART_CRITTERS, false );
+            anim3d = SprMngr.LoadPure3dAnimation( fname, PT_CLIENT_CRITTERS, false );
             SprMngr.PopAtlasType();
             DrawCritter3dCrType[ instance ] = crtype;
             DrawCritter3dFailToLoad[ instance ] = false;
@@ -10337,8 +10333,8 @@ void FOClient::SScriptFunc::Global_SetUserConfig( ScriptArray& key_values )
         cfg_user.SetStr( "\n" );
     }
     char cfg_name[ MAX_FOPATH ];
-    Str::Format( cfg_name, "%s", IniParser::GetConfigFileName() );
-    cfg_user.SaveOutBufToFile( cfg_name, PT_CACHE );
+    Str::Format( cfg_name, "%s", CONFIG_NAME );
+    cfg_user.SaveOutBufToFile( cfg_name, PT_CLIENT_CACHE );
 }
 
 bool&     FOClient::SScriptFunc::GmapActive = FOClient::GmapActive;

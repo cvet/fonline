@@ -248,7 +248,7 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
     {
     case ITEM_TYPE_WEAPON:
         SetAmmoCount( GetWeapon_MaxAmmoCount() );
-        SetAmmoPid( Str::GetHash( ConvertProtoIdByInt( GetWeapon_DefaultAmmoPid() ) ) );
+        SetAmmoPid( GetWeapon_DefaultAmmoPid() );
         break;
     case ITEM_TYPE_DOOR:
         SetIsGag( true );

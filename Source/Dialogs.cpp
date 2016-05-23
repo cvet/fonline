@@ -85,7 +85,7 @@ bool DialogManager::LoadDialogs()
     while( !dialogPacks.empty() )
         EraseDialog( dialogPacks.begin()->second->PackId );
 
-    FilesCollection files = FilesCollection( "fodlg" );
+    FilesCollection files( "fodlg" );
     uint            files_loaded = 0;
     while( files.IsNextFile() )
     {
@@ -491,25 +491,8 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
         // Name
         input >> name;
-        if( Str::Length( name ) > 4 && Str::CompareCount( name, "PID_", 4 ) )
-        {
-            const char* new_name = ConvertProtoIdByStr( name );
-            if( new_name )
-            {
-                id = Str::GetHash( new_name );
-                Str::Copy( name, new_name );
-            }
-            else
-            {
-                WriteLog( "Invalid DR item '%s'.\n", name );
-                fail = true;
-                id = 0;
-            }
-        }
-        else
-        {
-            id = Str::GetHash( name );
-        }
+        id = Str::GetHash( name );
+        #pragma MESSAGE("Check item name.")
 
         // Operator
         input >> oper;

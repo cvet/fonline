@@ -69,7 +69,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
     int errors = 0;
 
     // Collect data
-    FilesCollection                    files = FilesCollection( ext );
+    FilesCollection                    files( ext );
     map< hash, StrMap >                files_protos;
     map< hash, map< string, StrMap > > files_texts;
     while( files.IsNextFile() )

@@ -5,7 +5,7 @@
 
 int main( int argc, char** argv )
 {
-    FileManager::ResetCurrentDir();
+    IniParser::LoadMainConfig();
 
     // Threading
     Thread::SetCurrentName( "GUI" );

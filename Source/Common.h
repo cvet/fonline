@@ -175,9 +175,6 @@ inline TIt PtrCollectionFind( TIt it, TIt end, const T& v )
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
-// Window name
-const char* GetWindowName();
-
 /************************************************************************/
 /* Client & Mapper                                                      */
 /************************************************************************/
@@ -625,7 +622,6 @@ struct GameOptions
     bool          DisableKeyboardEvents;
     bool          HidePassword;
     ScriptString* PlayerOffAppendix;
-    int           CombatMessagesType;
     uint          Animation3dSmoothTime;
     uint          Animation3dFPS;
     int           RunModMul;
@@ -974,10 +970,5 @@ T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
 
 // Preprocessor output formatting
 void FormatPreprocessorOutput( string& str );
-
-// Deprecated stuff
-const char* ConvertProtoIdByInt( uint pid );
-const char* ConvertProtoIdByStr( const char* pid );
-const char* ConvertProtoCritterIdByInt( uint pid );
 
 #endif // __COMMON__

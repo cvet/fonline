@@ -234,7 +234,7 @@ bool FolderFile::IsFilePresent( const char* path, const char* path_lower, uint& 
     #ifndef DISABLE_FOLDER_CACHING
     auto it = filesTree.find( path_lower );
     if( it == filesTree.end() )
-        return nullptr;
+        return false;
 
     FileEntry& fe = it->second;
     size = fe.FileSize;

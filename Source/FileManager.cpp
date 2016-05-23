@@ -8,27 +8,27 @@ const char* PathList[ PATH_LIST_COUNT ] =
     // Client and mapper paths
     "",
     "",
-    "art/",
-    "art/critters/",
-    "art/intrface/",
-    "art/inven/",
-    "art/items/",
-    "art/misc/",
-    "art/scenery/",
-    "art/skilldex/",
-    "art/splash/",
-    "art/tiles/",
-    "art/walls/",
-    "textures/",
-    "effects/",
     "",
-    "sound/music/",
-    "sound/sfx/",
-    "scripts/",
-    "video/",
-    "text/",
+    "Critters/",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Splash/",
+    "Tiles/",
+    "",
+    "Textures/",
+    "Effects/",
+    "",
+    "Sound/Music/",
+    "Sound/Sfx/",
+    "",
+    "Video/",
+    "Text/",
     "Save/",
-    "fonts/",
+    "Fonts/",
     "Cache/",
     "",
     "",
@@ -37,7 +37,7 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "",
     "",
     "",
-    "Data/",
+    "",
     "",
     "",
     "",
@@ -55,7 +55,7 @@ const char* PathList[ PATH_LIST_COUNT ] =
     "",
     "",
     "",
-    "Modules/",
+    "",
 };
 
 DataFileVec FileManager::dataFiles;
@@ -651,37 +651,69 @@ void FileManager::SetLEUInt( uint data )
 
 void FileManager::ResetCurrentDir()
 {
-    #if defined ( FO_WINDOWS )
-    char path[ MAX_FOPATH ];
-    GetModuleFileName( GetModuleHandle( nullptr ), path, sizeof( path ) );
-    char dir[ MAX_FOPATH ];
-    FileManager::ExtractDir( path, dir );
-    SetCurrentDirectory( dir );
-    #elif defined ( FO_LINUX )
-    // Read symlink to executable
-    char buf[ MAX_FOPATH ];
-    if( readlink( "/proc/self/exe", buf, MAX_FOPATH ) != -1 ||    // Linux
-        readlink( "/proc/curproc/file", buf, MAX_FOPATH ) != -1 ) // FreeBSD
+    static char work_dir[ MAX_FOPATH ] = { 0 };
+    if( work_dir[ 0 ] == 0 )
     {
-        string            sbuf = buf;
-        string::size_type pos = sbuf.find_last_of( '/' );
-        if( pos != string::npos )
+        const char* appendix = "";
+        #if defined ( FONLINE_SERVER )
+        appendix = MainConfig->GetStr( "", "ServerPath" );
+        #elif defined ( FONLINE_CLIENT )
+        appendix = MainConfig->GetStr( "", "ClientPath" );
+        #elif defined ( FONLINE_MAPPER )
+        appendix = MainConfig->GetStr( "", "MapperPath" );
+        #endif
+
+        if( !appendix )
         {
-            buf[ pos ] = 0;
-            chdir( buf );
+            #if defined ( FO_WINDOWS )
+            char path[ MAX_FOPATH ];
+            GetModuleFileName( GetModuleHandle( nullptr ), path, sizeof( path ) );
+            char dir[ MAX_FOPATH ];
+            FileManager::ExtractDir( path, dir );
+            SetCurrentDirectory( dir );
+            #elif defined ( FO_LINUX )
+            // Read symlink to executable
+            char buf[ MAX_FOPATH ];
+            if( readlink( "/proc/self/exe", buf, MAX_FOPATH ) != -1 ||    // Linux
+                readlink( "/proc/curproc/file", buf, MAX_FOPATH ) != -1 ) // FreeBSD
+            {
+                string            sbuf = buf;
+                string::size_type pos = sbuf.find_last_of( '/' );
+                if( pos != string::npos )
+                {
+                    buf[ pos ] = 0;
+                    chdir( buf );
+                }
+            }
+            #elif defined ( FO_OSX_MAC )
+            chdir( "./FOnline.app/Contents/Resources/Client" );
+            #elif defined ( FO_OSX_IOS )
+            chdir( "./Client" );
+            #endif
+        }
+
+        #ifdef FO_WINDOWS
+        GetCurrentDirectory( MAX_FOPATH, work_dir );
+        #else
+        getcwd( work_dir, MAX_FOPATH );
+        #endif
+
+        if( appendix )
+        {
+            Str::Append( work_dir, appendix );
+            ResolvePath( work_dir );
         }
     }
-    #elif defined ( FO_OSX_MAC )
-    chdir( "./FOnline.app/Contents/Resources/Client" );
-    #elif defined ( FO_OSX_IOS )
-    chdir( "./Client" );
+
+    #ifdef FO_WINDOWS
+    SetCurrentDirectory( work_dir );
+    #else
+    chdir( work_dir );
     #endif
 }
 
 void FileManager::SetCurrentDir( const char* dir, const char* write_dir )
 {
-    FileManager::ResetCurrentDir();
-
     char dir_[ MAX_FOPATH ];
     Str::Copy( dir_, dir );
     FormatPath( dir_ );
@@ -1041,41 +1073,50 @@ void FileManager::GetDataFileNames( const char* path, bool include_subdirs, cons
     }
 }
 
-FilesCollection::FilesCollection( const char* ext, int path_type /* = PT_SERVER_MODULES */, const char* dir /* = NULL */ )
+FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NULL */ )
 {
     curFileIndex = 0;
-    searchPath = FileManager::GetDataPath( dir ? dir : "", path_type );
-    if( searchPath.length() > 0 && searchPath[ searchPath.length() - 1 ] != '/' && searchPath[ searchPath.length() - 1 ] != '\\' )
-        searchPath.append( "/" );
 
-    FileManager::GetFolderFileNames( searchPath.c_str(), true, ext, filePaths );
-    for( size_t i = 0; i < filePaths.size(); i++ )
+    StrVec find_dirs;
+    if( !fixed_dir )
+        find_dirs = ModuleFullDirs;
+    else
+        find_dirs.push_back( fixed_dir );
+
+    for( size_t i = 0; i < find_dirs.size(); i++ )
     {
-        char fname[ MAX_FOPATH ];
-        FileManager::ExtractFileName( filePaths[ i ].c_str(), fname );
-
-        // Link to another file
-        const char* link_ext = FileManager::GetExtension( filePaths[ i ].c_str() );
-        if( link_ext && Str::CompareCase( link_ext, "link" ) )
+        StrVec paths;
+        FileManager::GetFolderFileNames( find_dirs[ i ].c_str(), true, ext, paths );
+        for( size_t i = 0; i < paths.size(); i++ )
         {
-            FileManager link;
-            if( !link.LoadFile( ( searchPath + filePaths[ i ] ).c_str(), PT_DATA ) )
+            char fname[ MAX_FOPATH ];
+            FileManager::ExtractFileName( paths[ i ].c_str(), fname );
+            paths[ i ] += find_dirs[ i ];
+
+            // Link to another file
+            const char* link_ext = FileManager::GetExtension( paths[ i ].c_str() );
+            if( link_ext && Str::CompareCase( link_ext, "link" ) )
             {
-                WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", ( searchPath + filePaths[ i ] ).c_str() );
-                continue;
+                FileManager link;
+                if( !link.LoadFile( paths[ i ].c_str(), PT_CLIENT_DATA ) )
+                {
+                    WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", paths[ i ].c_str() );
+                    continue;
+                }
+
+                char new_path[ MAX_FOTEXT ];
+                FileManager::ExtractDir( paths[ i ].c_str(), new_path );
+                Str::Append( new_path, (char*) link.GetBuf() );
+                FileManager::FormatPath( new_path );
+                Str::Append( new_path, fname );
+                FileManager::EraseExtension( new_path );
+                paths[ i ] = new_path;
             }
 
-            char new_path[ MAX_FOTEXT ];
-            FileManager::ExtractDir( filePaths[ i ].c_str(), new_path );
-            Str::Append( new_path, (char*) link.GetBuf() );
-            FileManager::FormatPath( new_path );
-            Str::Append( new_path, fname );
-            FileManager::EraseExtension( new_path );
-            filePaths[ i ] = new_path;
+            FileManager::EraseExtension( fname );
+            fileNames.push_back( fname );
+            filePaths.push_back( paths[ i ] );
         }
-
-        FileManager::EraseExtension( fname );
-        fileNames.push_back( fname );
     }
 }
 
@@ -1087,7 +1128,7 @@ bool FilesCollection::IsNextFile()
 FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const char** path /* = NULL */, bool no_read_data /* = false */ )
 {
     curFileIndex++;
-    curFile.LoadFile( ( searchPath + filePaths[ curFileIndex - 1 ] ).c_str(), PT_DATA, no_read_data );
+    curFile.LoadFile( filePaths[ curFileIndex - 1 ].c_str(), PT_CLIENT_DATA, no_read_data );
     if( name )
         *name = fileNames[ curFileIndex - 1 ].c_str();
     if( path )
@@ -1102,7 +1143,7 @@ FileManager& FilesCollection::FindFile( const char* name, const char** path /* =
     {
         if( fileNames[ i ] == name )
         {
-            curFile.LoadFile( ( searchPath + filePaths[ i ] ).c_str(), PT_DATA );
+            curFile.LoadFile( filePaths[ i ].c_str(), PT_CLIENT_DATA );
             if( path )
                 *path = filePaths[ i ].c_str();
             break;

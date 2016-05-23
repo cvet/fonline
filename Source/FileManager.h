@@ -8,29 +8,18 @@
 
 // Paths
 #define PT_ROOT               ( -1 )
-#define PT_DATA               ( 0 )
-#define PT_ART                ( 2 )
-#define PT_ART_CRITTERS       ( 3 )
-#define PT_ART_INTRFACE       ( 4 )
-#define PT_ART_INVEN          ( 5 )
-#define PT_ART_ITEMS          ( 6 )
-#define PT_ART_MISC           ( 7 )
-#define PT_ART_SCENERY        ( 8 )
-#define PT_ART_SKILLDEX       ( 9 )
-#define PT_ART_SPLASH         ( 10 )
-#define PT_ART_TILES          ( 11 )
-#define PT_ART_WALLS          ( 12 )
-#define PT_TEXTURES           ( 13 )
-#define PT_EFFECTS            ( 14 )
-#define PT_SND_MUSIC          ( 16 )
-#define PT_SND_SFX            ( 17 )
-#define PT_SCRIPTS            ( 18 )
-#define PT_VIDEO              ( 19 )
-#define PT_TEXTS              ( 20 )
-#define PT_SAVE               ( 21 )
-#define PT_FONTS              ( 22 )
-#define PT_CACHE              ( 23 )
-#define PT_SERVER_CONFIGS     ( 31 )
+#define PT_CLIENT_DATA        ( 0 )
+#define PT_CLIENT_CRITTERS    ( 3 )
+#define PT_CLIENT_SPLASH      ( 10 )
+#define PT_CLIENT_TILES       ( 11 )
+#define PT_CLIENT_TEXTURES    ( 13 )
+#define PT_CLIENT_EFFECTS     ( 14 )
+#define PT_CLIENT_MUSIC       ( 16 )
+#define PT_CLIENT_SFX         ( 17 )
+#define PT_CLIENT_VIDEO       ( 19 )
+#define PT_CLIENT_SAVE        ( 21 )
+#define PT_CLIENT_FONTS       ( 22 )
+#define PT_CLIENT_CACHE       ( 23 )
 #define PT_SERVER_SAVE        ( 38 )
 #define PT_SERVER_CLIENTS     ( 39 )
 #define PT_SERVER_BANS        ( 40 )
@@ -39,7 +28,6 @@
 #define PT_SERVER_PROFILER    ( 43 )
 #define PT_SERVER_UPDATE      ( 44 )
 #define PT_SERVER_CACHE       ( 45 )
-#define PT_SERVER_MODULES     ( 49 )
 #define PATH_LIST_COUNT       ( 50 )
 extern const char* PathList[ PATH_LIST_COUNT ];
 
@@ -146,7 +134,7 @@ private:
 class FilesCollection
 {
 public:
-    FilesCollection( const char* ext, int path_type = PT_SERVER_MODULES, const char* dir = nullptr );
+    FilesCollection( const char* ext, const char* fixed_dir = nullptr );
     bool         IsNextFile();
     FileManager& GetNextFile( const char** name = nullptr, const char** path = nullptr, bool no_read_data = false );
     FileManager& FindFile( const char* name, const char** path = nullptr );
@@ -154,7 +142,6 @@ public:
     void         ResetCounter();
 
 private:
-    string      searchPath;
     StrVec      fileNames;
     StrVec      filePaths;
     uint        curFileIndex;

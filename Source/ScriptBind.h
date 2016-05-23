@@ -477,7 +477,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddTextListener(int sayType, 
 BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseTextListener(int sayType, string& firstStr, uint parameter)", asFUNCTION( BIND_CLASS Global_EraseTextListener ), asCALL_CDECL ) );
 // BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 ReverseDir(uint8 dir)", asFUNCTION( BIND_CLASS Global_ReverseDir ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "NpcPlane@ CreatePlane()", asFUNCTION( BIND_CLASS Global_CreatePlane ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetBagItems(uint bagId, array<hash>@+ pids, array<uint>@+ minCounts, array<uint>@+ maxCounts, array<int>@+ slots)", asFUNCTION( BIND_CLASS Global_GetBagItems ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SwapCritters(Critter& cr1, Critter& cr2, bool withInventory)", asFUNCTION( BIND_CLASS Global_SwapCritters ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllItems(hash pid, array<Item@>@+ items)", asFUNCTION( BIND_CLASS Global_GetAllItems ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllPlayers(array<Critter@>@+ players)", asFUNCTION( BIND_CLASS Global_GetAllPlayers ), asCALL_CDECL ) );
@@ -913,7 +912,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableKeyboardEvents", &Ga
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __HidePassword", &GameOpt.HidePassword ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __PlayerOffAppendix", &GameOpt.PlayerOffAppendix ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __DamageHitDelay", &GameOpt.DamageHitDelay ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __CombatMessagesType", &GameOpt.CombatMessagesType ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowTile", &GameOpt.ShowTile ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowRoof", &GameOpt.ShowRoof ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowItem", &GameOpt.ShowItem ) );

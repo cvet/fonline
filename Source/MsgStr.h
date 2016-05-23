@@ -498,7 +498,6 @@
 #define STR_INTERNAL_SCRIPT_MODULES        ( 100 )
 #define STR_INTERNAL_SCRIPT_DLLS           ( 50000 )
 #define STR_INTERNAL_SCRIPT_PRAGMAS        ( 90000 )
-#define STR_INTERNAL_CRTYPE( num )                   ( 100000 + ( num ) )
 
 // ***************************************************************************************
 // ***************************************************************************************

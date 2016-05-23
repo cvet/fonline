@@ -71,6 +71,8 @@ namespace MapperBind
 
 int main( int argc, char* argv[] )
 {
+    IniParser::LoadMainConfig();
+
     // Make command line
     SetCommandLine( argc, argv );
 
@@ -136,14 +138,7 @@ int main( int argc, char* argv[] )
     // Set current directory
     char dir[ MAX_FOTEXT ];
     FileManager::ExtractDir( path, dir );
-    if( ResolvePath( dir ) )
-    {
-        #ifdef FO_WINDOWS
-        SetCurrentDirectory( dir );
-        #else
-        chdir( dir );
-        #endif
-    }
+    FileManager::SetCurrentDir( dir, "./" );
 
     FileManager file;
     if( !file.LoadFile( path, PT_ROOT ) )

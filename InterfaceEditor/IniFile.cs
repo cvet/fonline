@@ -17,7 +17,16 @@ namespace InterfaceEditor
 
 		public string IniReadValue(string section, string key, string defaultValue)
 		{
-			string ini = File.ReadAllText(Path);
+            string ini = "";
+            try
+            {
+                ini = File.ReadAllText(Path);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                Environment.Exit(1);
+            }
 
 			int startIndex = ini.IndexOf(key);
 			if (startIndex == -1)

@@ -3,6 +3,10 @@
 #include "Crypt.h"
 #include "FileManager.h"
 
+IniParser* MainConfig;
+StrMap     ModuleDirs;
+StrVec     ModuleFullDirs;
+
 IniParser::IniParser()
 {
     //
@@ -343,64 +347,14 @@ const char* IniParser::GetAppContent( const char* app_name )
     return it_key != it_app->second.end() ? it_key->second.c_str() : nullptr;
 }
 
-const char* IniParser::GetConfigFileName()
+void IniParser::LoadMainConfig()
 {
-    // Default config names
-    #if defined ( FONLINE_SERVER )
-    static char config_name[ MAX_FOPATH ] = { "FOnlineServer.cfg\0--default-server-config--" };
-    #elif defined ( FONLINE_MAPPER )
-    static char config_name[ MAX_FOPATH ] = { "Mapper.cfg\0--default-mapper-config--" };
-    #else // FONLINE_CLIENT and others
-    static char config_name[ MAX_FOPATH ] = { "FOnline.cfg\0--default-client-config--" };
-    #endif
-
-    // Extract config name from current exe
-    #ifdef FO_WINDOWS
-    static bool processed = false;
-    if( !processed )
-    {
-        // Call once
-        processed = true;
-
-        // Get module name
-        char module_name[ MAX_FOPATH ];
-        # ifdef FO_WINDOWS
-        char path[ MAX_FOPATH ];
-        if( !GetModuleFileName( nullptr, path, sizeof( path ) ) )
-            return config_name;
-        FileManager::ExtractFileName( path, module_name );
-        # else
-        // Todo: Linux CommandLineArgValues[0] ?
-        return config_name;
-        # endif
-
-        // Change extension
-        char* ext = (char*) FileManager::GetExtension( module_name );
-        if( !ext )
-            return config_name;
-        Str::Copy( ext, 4, "cfg" );
-
-        // Check availability
-        if( !FileExist( module_name ) )
-            return config_name;
-
-        // Set as main
-        Str::Copy( config_name, module_name );
-    }
-    #endif
-
-    return config_name;
-}
-
-IniParser& IniParser::GetClientConfig()
-{
-    static IniParser cfg_client;
-    cfg_client.Clear();
+    MainConfig = new IniParser();
 
     // Injected options
-    static char InternalClientConfig[ 5032 ] =
+    static char InternalConfig[ 5032 ] =
     {
-        "###InternalClientConfig###5032\0"
+        "###InternalConfig###5032\0"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
@@ -452,50 +406,36 @@ IniParser& IniParser::GetClientConfig()
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
     };
+    MainConfig->AppendStr( InternalConfig );
+    MainConfig->AppendFile( CONFIG_NAME, PT_ROOT );
 
-    #ifndef FONLINE_MAPPER
-    const char* cfg_name = GetConfigFileName();
-    cfg_client.AppendStr( InternalClientConfig );
-    cfg_client.AppendFile( cfg_name, PT_ROOT );
-    cfg_client.AppendFile( cfg_name, PT_CACHE );
-    #else
-    IniParser&  cfg_mapper = GetMapperConfig();
-    const char* client_name = cfg_mapper.GetStr( "", "ClientName", "FOnline" );
-    char        cfg_name[ MAX_FOTEXT ];
-    Str::Copy( cfg_name, client_name );
-    Str::Append( cfg_name, ".cfg" );
-    cfg_client.AppendFile( cfg_name, PT_ROOT );
-    cfg_client.AppendFile( cfg_name, PT_CACHE );
+    const char* modules = MainConfig->GetStr( "", "Modules" );
+    RUNTIME_ASSERT( modules != nullptr );
+    StrVec      modules_arr;
+    Str::ParseLine( modules, ';', modules_arr, Str::ParseLineDummy );
+    for( size_t i = 0; i < modules_arr.size(); i++ )
+    {
+        size_t pos = modules_arr[ i ].find_last_of( '/' );
+        RUNTIME_ASSERT( pos != string::npos );
+
+        char name[ MAX_FOTEXT ];
+        Str::Copy( name, modules_arr[ i ].substr( pos + 1 ).c_str() );
+        char dir[ MAX_FOTEXT ];
+        Str::Copy( dir, modules_arr[ i ].substr( 0, pos + 1 ).c_str() );
+        ResolvePath( dir );
+
+        ModuleDirs.insert( PAIR( string( name ), string( dir ) ) );
+
+        char full_dir[ MAX_FOTEXT ];
+        Str::Copy( full_dir, modules_arr[ i ].c_str() );
+        ResolvePath( full_dir );
+        ModuleFullDirs.push_back( string( full_dir ) );
+    }
+
+    FileManager::ResetCurrentDir();
+
+    #ifdef FONLINE_CLIENT
+    MainConfig->AppendFile( CONFIG_NAME, PT_ROOT );
+    MainConfig->AppendFile( CONFIG_NAME, PT_CLIENT_CACHE );
     #endif
-
-    return cfg_client;
-}
-
-IniParser& IniParser::GetServerConfig()
-{
-    static IniParser cfg_server;
-    cfg_server.Clear();
-
-    #ifndef FONLINE_MAPPER
-    cfg_server.AppendFile( GetConfigFileName(), PT_ROOT );
-    #else
-    IniParser&  cfg_mapper = GetMapperConfig();
-    const char* server_name = cfg_mapper.GetStr( "", "ServerName", "FOnline" );
-    char        cfg_name[ MAX_FOTEXT ];
-    Str::Copy( cfg_name, server_name );
-    Str::Append( cfg_name, ".cfg" );
-    cfg_server.AppendFile( cfg_name, PT_ROOT );
-    #endif
-
-    return cfg_server;
-}
-
-IniParser& IniParser::GetMapperConfig()
-{
-    static IniParser cfg_mapper;
-    cfg_mapper.Clear();
-
-    cfg_mapper.AppendFile( GetConfigFileName(), PT_ROOT );
-
-    return cfg_mapper;
 }

@@ -1179,7 +1179,7 @@ bool ResourceConverter::Generate()
     StrVec      dummy_vec;
     StrVec      all_dirs_path;
     FindDataVec all_dirs;
-    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_MODULES ), true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
+    FileManager::GetFolderFileNames( "", true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
     for( size_t d = 0; d < all_dirs.size(); d++ )
     {
         if( !Str::CompareCase( all_dirs[ d ].FileName, "Resources" ) )
@@ -1187,11 +1187,11 @@ bool ResourceConverter::Generate()
 
         StrVec      resources_dirs_path;
         FindDataVec resources_dirs;
-        FileManager::GetFolderFileNames( FileManager::GetDataPath( all_dirs_path[ d ].c_str(), PT_SERVER_MODULES ), false, nullptr, dummy_vec, nullptr, &resources_dirs_path, &resources_dirs );
+        FileManager::GetFolderFileNames( all_dirs_path[ d ].c_str(), false, nullptr, dummy_vec, nullptr, &resources_dirs_path, &resources_dirs );
         for( size_t r = 0; r < resources_dirs.size(); r++ )
         {
             const char*     res_name = resources_dirs[ r ].FileName;
-            FilesCollection resources( nullptr, PT_SERVER_MODULES, ( all_dirs_path[ d ] + res_name ).c_str() );
+            FilesCollection resources( nullptr, ( all_dirs_path[ d ] + res_name ).c_str() );
 
             if( !Str::Substring( res_name, "_Raw" ) )
             {
@@ -1305,7 +1305,7 @@ bool ResourceConverter::Generate()
     }
 
     // Delete unnecessary update files
-    FilesCollection update_files( nullptr, PT_SERVER_UPDATE );
+    FilesCollection update_files( nullptr, FileManager::GetDataPath( "", PT_SERVER_UPDATE ) );
     while( update_files.IsNextFile() )
     {
         const char* name;

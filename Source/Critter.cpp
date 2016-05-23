@@ -5449,9 +5449,11 @@ void Npc::RefreshBag()
         {
             if( it->second <= need_count )
                 continue;
+
             ProtoItem* proto_item = ProtoMngr.GetProtoItem( it->first );
             if( !proto_item || proto_item->GetStackable() )
                 continue;
+
             ItemMngr.SetItemCritter( this, it->first, need_count );
             it->second = need_count;
             need_count = Random( 2, 4 );
@@ -5476,96 +5478,12 @@ void Npc::RefreshBag()
             auto it = pids.find( *(uint*) item_pid->At( k ) );
             if( it != pids.end() && it->second > count )
                 continue;
+
             ItemMngr.SetItemCritter( this, *(uint*) item_pid->At( k ), count );
             drop_last_weapon = true;
         }
         SAFEREL( item_pid );
         SAFEREL( item_count );
-    }
-    // External bags
-    else
-    {
-        NpcBag& bag = AIMngr.GetBag( GetBagId() );
-        if( bag.empty() )
-            return;
-
-        ScriptArray* current_set = GetExternalBagCurrentSet();
-        if( current_set->GetSize() != bag.size() )
-        {
-            current_set->Resize( (uint) bag.size() );
-            SetExternalBagCurrentSet( current_set );
-        }
-
-        // Check combinations, update or create new
-        bool set_current_set = false;
-        for( uint i = 0; i < bag.size(); i++ )
-        {
-            NpcBagCombination& comb = bag[ i ];
-            bool               create = true;
-            if( *(uchar*) current_set->At( i ) < (uchar) comb.size() )
-            {
-                NpcBagItems& items = comb[ *(uchar*) current_set->At( i ) ];
-                for( uint l = 0; l < items.size(); l++ )
-                {
-                    NpcBagItem& item = items[ l ];
-                    auto        it = pids.find( item.ItemPid );
-                    if( it != pids.end() && it->second > 0 )
-                    {
-                        // Update cur items
-                        for( uint k = 0; k < items.size(); k++ )
-                        {
-                            NpcBagItem& item_ = items[ k ];
-                            uint        count = item_.MinCnt;
-                            auto        it_ = pids.find( item_.ItemPid );
-                            if( it_ != pids.end() && ( *it_ ).second > count )
-                                continue;
-                            if( item_.MinCnt != item_.MaxCnt )
-                                count = Random( item_.MinCnt, item_.MaxCnt );
-                            ItemMngr.SetItemCritter( this, item_.ItemPid, count );
-                            drop_last_weapon = true;
-                        }
-
-                        create = false;
-                        goto label_EndCycles;                         // Force end of cycle
-                    }
-                }
-            }
-
-label_EndCycles:
-            // Create new combination
-            if( create && comb.size() )
-            {
-                uchar rnd = Random( 0, (uchar) comb.size() - 1 );
-                current_set->SetValue( i, &rnd );
-                set_current_set = true;
-                NpcBagItems& items = comb[ rnd ];
-                for( uint k = 0; k < items.size(); k++ )
-                {
-                    NpcBagItem& bag_item = items[ k ];
-                    uint        count = bag_item.MinCnt;
-                    if( bag_item.MinCnt != bag_item.MaxCnt )
-                        count = Random( bag_item.MinCnt, bag_item.MaxCnt );
-                    if( ItemMngr.SetItemCritter( this, bag_item.ItemPid, count ) )
-                    {
-                        // Move bag_item
-                        if( bag_item.ItemSlot != SLOT_INV )
-                        {
-                            if( !GetItemSlot( bag_item.ItemSlot ) )
-                            {
-                                Item* item = GetItemByPid( bag_item.ItemPid );
-                                if( item && MoveItem( SLOT_INV, bag_item.ItemSlot, item->GetId(), item->GetCount() ) )
-                                    SetFavoriteItemPid( bag_item.ItemSlot, bag_item.ItemPid );
-                            }
-                        }
-                        drop_last_weapon = true;
-                    }
-                }
-            }
-        }
-
-        if( set_current_set )
-            SetExternalBagCurrentSet( current_set );
-        SAFEREL( current_set );
     }
 
     if( drop_last_weapon && GetLastWeaponId() )

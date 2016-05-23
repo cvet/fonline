@@ -84,7 +84,8 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
     #endif
-    MainWindow = SDL_CreateWindow( GetWindowName(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
+    MainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ), SDL_WINDOWPOS_CENTERED,
+                                   SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
     if( !MainWindow )
     {
         WriteLog( "SDL Window not created, error '%s'.\n", SDL_GetError() );
@@ -3792,7 +3793,7 @@ void SpriteManager::InitializeEgg( const char* egg_name )
     #ifndef DISABLE_EGG
     eggValid = false;
     eggHx = eggHy = eggX = eggY = 0;
-    AnyFrames* egg_frames = LoadAnimation( egg_name, PT_ART_MISC );
+    AnyFrames* egg_frames = LoadAnimation( egg_name, PT_CLIENT_DATA );
     if( egg_frames )
     {
         sprEgg = GetSpriteInfo( egg_frames->Ind[ 0 ] );
