@@ -649,9 +649,6 @@ void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NUL
     case SCREEN_LOGIN:
         ScreenFadeOut();
         break;
-    case SCREEN_REGISTRATION:
-        ScreenFadeOut();
-        break;
     case SCREEN_GAME:
         if( Singleplayer )
             SingleplayerData.Pause = false;
@@ -909,57 +906,6 @@ void FOClient::WaitDraw()
 {
     SprMngr.DrawSpriteSize( WaitPic, 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight, true, true );
     SprMngr.Flush();
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-void FOClient::SplitStart( uint item_id, int item_cont )
-{
-    #define FIND_IN_CONT( cont )    { auto it = PtrCollectionFind( cont.begin(), cont.end(), item_id ); item = ( it != cont.end() ? *it : NULL ); }
-    Item* item = nullptr;
-    switch( item_cont )
-    {
-    case ITEMS_CHOSEN_ALL:
-        item = ( Chosen ? Chosen->GetItem( item_id ) : nullptr );
-        break;
-    case ITEMS_INVENTORY:
-        FIND_IN_CONT( InvContInit );
-        break;
-    case ITEMS_USE:
-        FIND_IN_CONT( InvContInit );
-        break;
-    case ITEMS_BARTER:
-        FIND_IN_CONT( InvContInit );
-        break;
-    case ITEMS_BARTER_OFFER:
-        FIND_IN_CONT( BarterCont1oInit );
-        break;
-    case ITEMS_BARTER_OPPONENT:
-        FIND_IN_CONT( BarterCont2Init );
-        break;
-    case ITEMS_BARTER_OPPONENT_OFFER:
-        FIND_IN_CONT( BarterCont2oInit );
-        break;
-    case ITEMS_PICKUP:
-        FIND_IN_CONT( InvContInit );
-        break;
-    case ITEMS_PICKUP_FROM:
-        FIND_IN_CONT( PupCont2Init );
-        break;
-    default:
-        return;
-    }
-    #undef FIND_IN_CONT
-    if( !item )
-        return;
-
-    ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-    dict->Set( "TargetItemId", &item_id, asTYPEID_UINT32 );
-    dict->Set( "ItemsCollection", &item_cont, asTYPEID_INT32 );
-    ShowScreen( SCREEN__SPLIT, dict );
-    dict->Release();
 }
 
 // ==============================================================================================================================

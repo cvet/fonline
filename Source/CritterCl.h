@@ -132,7 +132,6 @@ public:
     bool        IsLife()     { return GetCond() == COND_LIFE; }
     bool        IsKnockout() { return GetCond() == COND_KNOCKOUT; }
     bool        IsDead()     { return GetCond() == COND_DEAD; }
-    bool        IsCanTalk();
     bool        IsCombatMode();
     bool        IsTurnBased();
     bool        CheckFind( int find_type );
@@ -166,9 +165,6 @@ public:
     void  GetItemsType( int slot, ItemVec& items );
     uint  CountItemPid( hash item_pid );
     uint  CountItemType( uchar type );
-    bool  IsCanSortItems();
-    Item* GetItemHighSortValue();
-    Item* GetItemLowSortValue();
     void  GetInvItems( ItemVec& items );
     uint  GetItemsCount();
     uint  GetItemsCountInv();

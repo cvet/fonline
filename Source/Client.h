@@ -39,19 +39,15 @@
 #define SCREEN_NONE                    ( 0 )
 // Primary screens
 #define SCREEN_LOGIN                   ( 1 )
-#define SCREEN_REGISTRATION            ( 2 )
-#define SCREEN_GAME                    ( 3 )
-#define SCREEN_GLOBAL_MAP              ( 4 )
-#define SCREEN_WAIT                    ( 5 )
+#define SCREEN_GAME                    ( 2 )
+#define SCREEN_GLOBAL_MAP              ( 3 )
+#define SCREEN_WAIT                    ( 4 )
 // Secondary screens
-#define SCREEN__PICKUP                 ( 11 )
-#define SCREEN__DIALOG                 ( 14 )
-#define SCREEN__BARTER                 ( 15 )
-#define SCREEN__MENU_OPTION            ( 18 )
-#define SCREEN__SPLIT                  ( 20 )
-#define SCREEN__TIMER                  ( 21 )
-#define SCREEN__DIALOGBOX              ( 22 )
-#define SCREEN__TOWN_VIEW              ( 33 )
+#define SCREEN__PICKUP                 ( 5 )
+#define SCREEN__DIALOG                 ( 6 )
+#define SCREEN__BARTER                 ( 7 )
+#define SCREEN__DIALOGBOX              ( 8 )
+#define SCREEN__TOWN_VIEW              ( 9 )
 
 // Cur modes
 #define CUR_DEFAULT                    ( 0 )
@@ -309,19 +305,6 @@ public:
     const char* FmtGameText( uint str_num, ... );
     const char* FmtCombatText( uint str_num, ... );
 
-    #define CRITTER_ONLY_NAME      ( 0 )
-    #define CRITTER_LOOK_SHORT     ( 1 )
-    #define CRITTER_LOOK_FULL      ( 2 )
-    const char* FmtCritLook( CritterCl* cr, int look_type );
-
-    #define ITEM_LOOK_DEFAULT      ( 0 )
-    #define ITEM_LOOK_ONLY_NAME    ( 1 )
-    #define ITEM_LOOK_MAP          ( 2 )
-    #define ITEM_LOOK_BARTER       ( 3 )
-    #define ITEM_LOOK_INVENTORY    ( 4 )
-    #define ITEM_LOOK_WM_CAR       ( 5 )
-    const char* FmtItemLook( Item* item, int look_type );
-
     struct ActionEvent
     {
         max_t Type;
@@ -353,7 +336,6 @@ public:
     bool IsAction( max_t type_action );
     void ChosenChangeSlot();
     void CrittersProcess();
-    void TryPickItemOnGround();
 
     // Properties callbacks
     static void OnSendGlobalValue( Entity* entity, Property* prop );
@@ -495,6 +477,8 @@ public:
         static bool Crit_IsChosen( CritterCl* cr );
         static bool Crit_IsPlayer( CritterCl* cr );
         static bool Crit_IsNpc( CritterCl* cr );
+        static bool Crit_IsOffline( CritterCl* cr );
+        static bool Crit_IsGmapRule( CritterCl* cr );
         static bool Crit_IsLife( CritterCl* cr );
         static bool Crit_IsKnockout( CritterCl* cr );
         static bool Crit_IsDead( CritterCl* cr );
@@ -537,6 +521,8 @@ public:
         static uint          Global_GetChosenActions( ScriptArray* actions );
         static void          Global_SetChosenActions( ScriptArray* actions );
         static Item*         Global_GetItem( uint item_id );
+        static ScriptArray*  Global_GetMapAllItems();
+        static uint          Global_GetMapHexItems( ushort hx, ushort hy, ScriptArray* items );
         static uint          Global_GetCrittersDistantion( CritterCl* cr1, CritterCl* cr2 );
         static CritterCl*    Global_GetCritter( uint critter_id );
         static uint          Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type, ScriptArray* critters );
@@ -859,11 +845,6 @@ public:
     AnyFrames* WaitPic;
 
     void WaitDraw();
-
-/************************************************************************/
-/* Split                                                                */
-/************************************************************************/
-    void SplitStart( uint item_id, int item_cont );
 
 /************************************************************************/
 /* Save/Load                                                            */

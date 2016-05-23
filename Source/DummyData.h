@@ -505,6 +505,8 @@ struct BindClass
     static void Crit_IsChosen()         {}
     static void Crit_IsPlayer()         {}
     static void Crit_IsNpc()            {}
+    static void Crit_IsOffline()        {}
+    static void Crit_IsGmapRule()       {}
     static void Crit_IsLife()           {}
     static void Crit_IsKnockout()       {}
     static void Crit_IsDead()           {}
@@ -545,6 +547,8 @@ struct BindClass
     static void Global_GetChosenActions()       {}
     static void Global_SetChosenActions()       {}
     static void Global_GetItem()                {}
+    static void Global_GetMapAllItems()         {}
+    static void Global_GetMapHexItems()         {}
     static void Global_GetCrittersDistantion()  {}
     static void Global_GetCritter()             {}
     static void Global_GetCritters()            {}

@@ -505,6 +505,8 @@ REGISTER_ENTITY_CAST( "Item", Item );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsChosen() const", asFUNCTION( BIND_CLASS Crit_IsChosen ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsPlayer() const", asFUNCTION( BIND_CLASS Crit_IsPlayer ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsNpc() const", asFUNCTION( BIND_CLASS Crit_IsNpc ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsOffline() const", asFUNCTION( BIND_CLASS Crit_IsOffline ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsGmapRule() const", asFUNCTION( BIND_CLASS Crit_IsGmapRule ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsLife() const", asFUNCTION( BIND_CLASS Crit_IsLife ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsKnockout() const", asFUNCTION( BIND_CLASS Crit_IsKnockout ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsDead() const", asFUNCTION( BIND_CLASS Crit_IsDead ), asCALL_CDECL_OBJFIRST ) );
@@ -555,6 +557,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetChosen()", asFUNCTION
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetChosenActions(array<uint>@+ actions)", asFUNCTION( BIND_CLASS Global_GetChosenActions ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetChosenActions(array<uint>@+ actions)", asFUNCTION( BIND_CLASS Global_SetChosenActions ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetItem(uint itemId)", asFUNCTION( BIND_CLASS Global_GetItem ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "array<Item@>@+ GetMapAllItems()", asFUNCTION( BIND_CLASS Global_GetMapAllItems ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMapHexItems(uint16 hexX, uint16 hexY, array<Item@>@+ items)", asFUNCTION( BIND_CLASS Global_GetMapHexItems ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCrittersDistantion(Critter& cr1, Critter& cr2)", asFUNCTION( BIND_CLASS Global_GetCrittersDistantion ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetCritter(uint critterId)", asFUNCTION( BIND_CLASS Global_GetCritter ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCrittersHex(uint16 hexX, uint16 hexY, uint radius, int findType, array<Critter@>@+ critters)", asFUNCTION( BIND_CLASS Global_GetCritters ), asCALL_CDECL ) );

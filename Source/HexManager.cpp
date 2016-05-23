@@ -2605,7 +2605,9 @@ void HexManager::SetCrittersContour( int contour )
 {
     if( crittersContour == contour )
         return;
+
     crittersContour = contour;
+
     for( auto it = allCritters.begin(), end = allCritters.end(); it != end; it++ )
     {
         CritterCl* cr = it->second;

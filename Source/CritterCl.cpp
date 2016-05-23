@@ -378,48 +378,6 @@ uint CritterCl::CountItemType( uchar type )
     return res;
 }
 
-bool CritterCl::IsCanSortItems()
-{
-    uint inv_items = 0;
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-    {
-        if( ( *it )->GetCritSlot() != SLOT_INV )
-            continue;
-        inv_items++;
-        if( inv_items > 1 )
-            return true;
-    }
-    return false;
-}
-
-Item* CritterCl::GetItemHighSortValue()
-{
-    Item* result = nullptr;
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( !result )
-            result = item;
-        else if( item->GetSortValue() > result->GetSortValue() )
-            result = item;
-    }
-    return result;
-}
-
-Item* CritterCl::GetItemLowSortValue()
-{
-    Item* result = nullptr;
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( !result )
-            result = item;
-        else if( item->GetSortValue() < result->GetSortValue() )
-            result = item;
-    }
-    return result;
-}
-
 void CritterCl::GetInvItems( ItemVec& items )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
@@ -517,11 +475,6 @@ bool CritterCl::IsItemAim( uchar num_slot )
     if( item->IsWeapon() && use < MAX_USES )
         return ( use == 0 ? item->GetWeapon_Aim_0() : ( use == 1 ? item->GetWeapon_Aim_1() : item->GetWeapon_Aim_2() ) ) != 0;
     return false;
-}
-
-bool CritterCl::IsCanTalk()
-{
-    return IsNpc() && IsLife() && GetDialogId() && !GetIsNoTalk();
 }
 
 bool CritterCl::IsCombatMode()

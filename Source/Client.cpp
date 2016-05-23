@@ -1021,7 +1021,7 @@ int FOClient::MainLoop()
         ParseSocket();
 
     // Exit in Login screen if net disconnect
-    if( !IsConnected && !IsMainScreen( SCREEN_LOGIN ) && !IsMainScreen( SCREEN_REGISTRATION ) )
+    if( !IsConnected && !IsMainScreen( SCREEN_LOGIN ) )
         ShowMainScreen( SCREEN_LOGIN );
 
     // Input
@@ -2917,10 +2917,6 @@ void FOClient::Net_OnAddCritter( bool is_npc )
             SetAction( CHOSEN_NONE );
 
         AddCritter( cr );
-
-        const char* look = FmtCritLook( cr, CRITTER_ONLY_NAME );
-        if( look )
-            *cr->Name = look;
 
         if( Script::PrepareContext( ClientFunctions.CritterIn, _FUNC_, "Game" ) )
         {
@@ -7023,26 +7019,6 @@ label_EndMove:
     EraseFrontAction();
 }
 
-void FOClient::TryPickItemOnGround()
-{
-    if( !Chosen )
-        return;
-    ItemHexVec items;
-    HexMngr.GetItems( Chosen->GetHexX(), Chosen->GetHexY(), items );
-    for( auto it = items.begin(); it != items.end();)
-    {
-        ItemHex* item = *it;
-        if( item->IsFinishing() || item->IsDoor() || !item->IsUsable() )
-            it = items.erase( it );
-        else
-            ++it;
-    }
-    if( items.empty() )
-        return;
-    ItemHex* item = items[ Random( 0, (int) items.size() - 1 ) ];
-    SetAction( CHOSEN_PICK_ITEM, item->GetProtoId(), item->HexX, item->HexY );
-}
-
 void FOClient::TryExit()
 {
     int active = GetActiveScreen();
@@ -7068,17 +7044,8 @@ void FOClient::TryExit()
         case SCREEN_LOGIN:
             GameOpt.Quit = true;
             break;
-        case SCREEN_REGISTRATION:
-            ShowMainScreen( SCREEN_LOGIN );
-            break;
         case SCREEN_WAIT:
             NetDisconnect();
-            break;
-        case SCREEN_GLOBAL_MAP:
-            ShowScreen( SCREEN__MENU_OPTION );
-            break;
-        case SCREEN_GAME:
-            ShowScreen( SCREEN__MENU_OPTION );
             break;
         default:
             break;
@@ -7154,48 +7121,6 @@ const char* FOClient::FmtCombatText( uint str_num, ... )
     va_end( list );
 
     return res;
-}
-
-const char* FOClient::FmtCritLook( CritterCl* cr, int look_type )
-{
-    if( Script::PrepareContext( ClientFunctions.CritterLook, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( cr );
-        Script::SetArgUInt( look_type );
-        if( Script::RunPrepared() )
-        {
-            ScriptString* result = (ScriptString*) Script::GetReturnedObject();
-            if( result )
-            {
-                static char str[ MAX_FOTEXT ];
-                Str::Copy( str, MAX_FOTEXT, result->c_str() );
-                return str[ 0 ] ? str : nullptr;
-            }
-        }
-    }
-
-    return CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_CRIT_LOOK_NOTHING );
-}
-
-const char* FOClient::FmtItemLook( Item* item, int look_type )
-{
-    if( Script::PrepareContext( ClientFunctions.ItemLook, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( item );
-        Script::SetArgUInt( look_type );
-        if( Script::RunPrepared() )
-        {
-            ScriptString* result = (ScriptString*) Script::GetReturnedObject();
-            if( result )
-            {
-                static char str[ MAX_FOTEXT ];
-                Str::Copy( str, MAX_FOTEXT, result->c_str() );
-                return str[ 0 ] ? str : nullptr;
-            }
-        }
-    }
-
-    return CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_ITEM_LOOK_NOTHING );
 }
 
 void FOClient::SoundProcess()
@@ -8057,8 +7982,6 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.MessageBox, "message_box", "void %s(string&,int,bool)" },
         { &ClientFunctions.HitAim, "hit_aim", "void %s(uint8&)" },
         { &ClientFunctions.CombatResult, "combat_result", "void %s(uint[]&)" },
-        { &ClientFunctions.ItemLook, "item_description", "string@ %s(Item&,int)" },
-        { &ClientFunctions.CritterLook, "critter_description", "string@ %s(Critter&,int)" },
         { &ClientFunctions.GetElevator, "get_elevator", "bool %s(uint,uint[]&)" },
         { &ClientFunctions.ItemCheckMove, "item_check_move", "bool %s(const Item&,int,const Entity&,const Entity&)" },
         { &ClientFunctions.ItemCost, "item_cost", "uint %s(Item&,Critter&,Critter&,bool)" },
@@ -8176,6 +8099,20 @@ bool FOClient::SScriptFunc::Crit_IsNpc( CritterCl* cr )
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->IsNpc();
+}
+
+bool FOClient::SScriptFunc::Crit_IsOffline( CritterCl* cr )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    return cr->IsOffline();
+}
+
+bool FOClient::SScriptFunc::Crit_IsGmapRule( CritterCl* cr )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    return cr->IsGmapRule();
 }
 
 bool FOClient::SScriptFunc::Crit_IsLife( CritterCl* cr )
@@ -8610,6 +8547,14 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         SingleplayerData.Pause = !SingleplayerData.Pause;
     }
+    else if( cmd == "SetMousePos" && args.size() == 3 )
+    {
+        int x = Str::AtoI( args[ 1 ].c_str() );
+        int y = Str::AtoI( args[ 2 ].c_str() );
+        SDL_WarpMouseInWindow( MainWindow, x, y );
+        GameOpt.MouseX = x;
+        GameOpt.MouseY = y;
+    }
     else if( cmd == "SetCursorPos" )
     {
         if( Self->HexMngr.IsMapLoaded() )
@@ -8736,10 +8681,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->Chosen->NextRateItem( args.size() >= 2 && args[ 1 ] == "Prev" ? true : false );
     }
-    else if( cmd == "TryPickItemOnGround" )
-    {
-        Self->TryPickItemOnGround();
-    }
     else if( cmd == "SetMousePos" )
     {
         int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
@@ -8748,19 +8689,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         GameOpt.MouseY = y;
         SDL_WarpMouseInWindow( MainWindow, x, y );
         SDL_FlushEvent( SDL_MOUSEMOTION );
-    }
-    else if( cmd == "SplitDrop" )
-    {
-        uint  item_id = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
-        Item* item = Self->Chosen->GetItem( item_id );
-        if( item )
-            Self->SplitStart( item_id, ITEMS_CHOSEN_ALL );
-    }
-    else if( cmd == "SplitItem" && args.size() == 3 )
-    {
-        uint item_id = Str::AtoI( args[ 1 ].c_str() );
-        int  item_cont = Str::AtoI( args[ 2 ].c_str() );
-        Self->SplitStart( item_id, item_cont );
     }
     else if( cmd == "AssignSkillPoints" )
     {
@@ -8828,6 +8756,12 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         // uint answer_index;
         // Self->Net_SendBarter(DlgIsNpc, DlgNpcId, DlgAnswers[DlgCurAnsw].AnswerNum);
     }
+    else if( cmd == "BarterPlayerTry" && args.size() == 3 )
+    {
+        uint cr_id = Str::AtoUI( args[ 1 ].c_str() );
+        bool hide = Str::AtoB( args[ 2 ].c_str() );
+        Self->Net_SendPlayersBarter( BARTER_TRY, cr_id, hide );
+    }
     else if( cmd == "DrawMiniMap" && args.size() >= 6 )
     {
         static int zoom, x, y, x2, y2;
@@ -8861,11 +8795,11 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->Net_SendRefereshMe();
     }
-    else if( cmd == "RuleGlobal" && args.size() == 4 )
+    else if( cmd == "RuleGlobal" && args.size() > 1 )
     {
         int  type = Str::AtoUI( args[ 1 ].c_str() );
-        uint param1 = Str::AtoUI( args[ 2 ].c_str() );
-        uint param2 = Str::AtoUI( args[ 3 ].c_str() );
+        uint param1 = Str::AtoUI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
+        uint param2 = Str::AtoUI( args.size() >= 4 ? args[ 3 ].c_str() : "0" );
         Self->Net_SendRuleGlobal( type, param1, param2 );
     }
     else if( cmd == "SetCrittersContour" && args.size() == 2 )
@@ -8986,6 +8920,33 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
     if( !item || item->IsDestroyed )
         return nullptr;
     return item;
+}
+
+ScriptArray* FOClient::SScriptFunc::Global_GetMapAllItems()
+{
+    ScriptArray* items = Script::CreateArray( "array<Item@>" );
+    if( Self->HexMngr.IsMapLoaded() )
+    {
+        ItemHexVec& items_ = Self->HexMngr.GetItems();
+        for( auto it = items_.begin(); it != items_.end();)
+            it = ( ( *it )->IsFinishing() ? items_.erase( it ) : ++it );
+        Script::AppendVectorToArrayRef( items_, items );
+    }
+    return items;
+}
+
+uint FOClient::SScriptFunc::Global_GetMapHexItems( ushort hx, ushort hy, ScriptArray* items )
+{
+    if( Self->HexMngr.IsMapLoaded() )
+    {
+        ItemHexVec items_;
+        Self->HexMngr.GetItems( hx, hy, items_ );
+        for( auto it = items_.begin(); it != items_.end();)
+            it = ( ( *it )->IsFinishing() ? items_.erase( it ) : ++it );
+        Script::AppendVectorToArrayRef( items_, items );
+        return (uint) items_.size();
+    }
+    return 0;
 }
 
 uint FOClient::SScriptFunc::Global_GetCrittersDistantion( CritterCl* cr1, CritterCl* cr2 )

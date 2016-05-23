@@ -309,8 +309,6 @@ struct ClientScriptFunctions
     int ToHit;
     int HitAim;
     int CombatResult;
-    int ItemLook;
-    int CritterLook;
     int GetElevator;
     int ItemCheckMove;
     int ItemCost;
