@@ -1083,22 +1083,22 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
     else
         find_dirs.push_back( fixed_dir );
 
-    for( size_t i = 0; i < find_dirs.size(); i++ )
+    for( size_t d = 0; d < find_dirs.size(); d++ )
     {
         StrVec paths;
-        FileManager::GetFolderFileNames( find_dirs[ i ].c_str(), true, ext, paths );
+        FileManager::GetFolderFileNames( find_dirs[ d ].c_str(), true, ext, paths );
         for( size_t i = 0; i < paths.size(); i++ )
         {
             char fname[ MAX_FOPATH ];
             FileManager::ExtractFileName( paths[ i ].c_str(), fname );
-            paths[ i ] += find_dirs[ i ];
+            paths[ i ] = find_dirs[ d ] + paths[ i ];
 
             // Link to another file
             const char* link_ext = FileManager::GetExtension( paths[ i ].c_str() );
             if( link_ext && Str::CompareCase( link_ext, "link" ) )
             {
                 FileManager link;
-                if( !link.LoadFile( paths[ i ].c_str(), PT_CLIENT_DATA ) )
+                if( !link.LoadFile( paths[ i ].c_str(), PT_ROOT ) )
                 {
                     WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", paths[ i ].c_str() );
                     continue;
@@ -1128,7 +1128,8 @@ bool FilesCollection::IsNextFile()
 FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const char** path /* = NULL */, bool no_read_data /* = false */ )
 {
     curFileIndex++;
-    curFile.LoadFile( filePaths[ curFileIndex - 1 ].c_str(), PT_CLIENT_DATA, no_read_data );
+    curFile.LoadFile( filePaths[ curFileIndex - 1 ].c_str(), PT_ROOT, no_read_data );
+    RUNTIME_ASSERT( curFile.IsLoaded() );
     if( name )
         *name = fileNames[ curFileIndex - 1 ].c_str();
     if( path )
@@ -1143,7 +1144,8 @@ FileManager& FilesCollection::FindFile( const char* name, const char** path /* =
     {
         if( fileNames[ i ] == name )
         {
-            curFile.LoadFile( filePaths[ i ].c_str(), PT_CLIENT_DATA );
+            curFile.LoadFile( filePaths[ i ].c_str(), PT_ROOT );
+            RUNTIME_ASSERT( curFile.IsLoaded() );
             if( path )
                 *path = filePaths[ i ].c_str();
             break;

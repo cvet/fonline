@@ -424,12 +424,12 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
     FilesCollection msg_files( "msg" );
     while( msg_files.IsNextFile() )
     {
-        const char*  name, * name_with_path;
-        FileManager& msg_file = msg_files.GetNextFile( &name, &name_with_path );
+        const char*  name, * path;
+        FileManager& msg_file = msg_files.GetNextFile( &name, &path );
 
         // Check pattern '...Texts/lang/file'
         StrVec dirs;
-        Str::ParseLine( name_with_path, '/', dirs, Str::ParseLineDummy );
+        Str::ParseLine( path, '/', dirs, Str::ParseLineDummy );
         if( dirs.size() >= 3 && dirs[ dirs.size() - 3 ] == "Texts" && dirs[ dirs.size() - 2 ] == lang_name )
         {
             for( int i = 0; i < TEXTMSG_COUNT; i++ )
@@ -441,7 +441,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
                 {
                     if( !Msg[ i ].LoadFromString( (char*) msg_file.GetBuf(), msg_file.GetFsize() ) )
                     {
-                        WriteLogF( _FUNC_, " - Invalid MSG file '%s'.\n", name_with_path );
+                        WriteLogF( _FUNC_, " - Invalid MSG file '%s'.\n", path );
                         fail = true;
                     }
                     break;

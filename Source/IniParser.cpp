@@ -428,7 +428,9 @@ void IniParser::LoadMainConfig()
 
         char full_dir[ MAX_FOTEXT ];
         Str::Copy( full_dir, modules_arr[ i ].c_str() );
+        Str::Append( full_dir, "/" );
         ResolvePath( full_dir );
+        Str::Replacement( full_dir, '\\', '/' );
         ModuleFullDirs.push_back( string( full_dir ) );
     }
 

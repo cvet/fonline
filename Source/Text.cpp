@@ -880,15 +880,15 @@ static Mutex                    HashNamesLocker;
 static map< hash, const char* > HashNames;
 
 #define HASH_IMPL( var, name )    hash var = Str::GetHash( name )
-HASH_IMPL( ITEM_DEF_SLOT, "default_weapon" );
-HASH_IMPL( ITEM_DEF_ARMOR, "default_armor" );
-HASH_IMPL( SP_SCEN_IBLOCK, "minimap_invisible_block" );
-HASH_IMPL( SP_SCEN_TRIGGER, "trigger" );
-HASH_IMPL( SP_WALL_BLOCK_LIGHT, "block_light" );
-HASH_IMPL( SP_WALL_BLOCK, "block" );
-HASH_IMPL( SP_GRID_EXITGRID, "exit_grid" );
-HASH_IMPL( SP_GRID_ENTIRE, "entrance" );
-HASH_IMPL( SP_MISC_SCRBLOCK, "scroll_block" );
+HASH_IMPL( ITEM_DEF_SLOT, "DefaultWeapon" );
+HASH_IMPL( ITEM_DEF_ARMOR, "DefaultArmor" );
+HASH_IMPL( SP_SCEN_IBLOCK, "MinimapInvisibleBlock" );
+HASH_IMPL( SP_SCEN_TRIGGER, "Trigger" );
+HASH_IMPL( SP_WALL_BLOCK_LIGHT, "BlockLight" );
+HASH_IMPL( SP_WALL_BLOCK, "Block" );
+HASH_IMPL( SP_GRID_EXITGRID, "ExitGrid" );
+HASH_IMPL( SP_GRID_ENTIRE, "Entrance" );
+HASH_IMPL( SP_MISC_SCRBLOCK, "ScrollBlock" );
 
 hash Str::GetHash( const char* name )
 {
