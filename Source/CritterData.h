@@ -16,7 +16,6 @@ public:
 
     #ifdef FONLINE_MAPPER
     string CollectionName;
-    CLASS_PROPERTY_ALIAS( uint, BaseCrType );
     #endif
 };
 typedef map< hash, ProtoCritter* > ProtoCritterMap;

@@ -3292,9 +3292,6 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( void* ) == 8 );
     #endif
 
-    // Register dll script data
-    GameOpt.CritterTypes = &CritType::GetRealCritType( 0 );
-
     // Cpu count
     #ifdef FO_WINDOWS
     SYSTEM_INFO si;

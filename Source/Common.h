@@ -661,9 +661,6 @@ struct GameOptions
     bool          ShowDrawOrder;
     bool          SplitTilesCollection;
 
-    // Engine data
-    void*         CritterTypes;
-
     void*         ClientMap;
     uchar*        ClientMapLight;
     uint          ClientMapWidth;

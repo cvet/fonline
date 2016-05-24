@@ -104,17 +104,16 @@ public:
     PROPERTIES_HEADER();
     // Core
     // CritData
+    CLASS_PROPERTY( hash, ModelName );
     CLASS_PROPERTY( uint, MapId );
     CLASS_PROPERTY( hash, MapPid );
     CLASS_PROPERTY( ushort, HexX );
     CLASS_PROPERTY( ushort, HexY );
     CLASS_PROPERTY( uchar, Dir );
     CLASS_PROPERTY( ScriptString *, PassHash );
-    CLASS_PROPERTY( uint, CrType );
-    CLASS_PROPERTY( uint, CrTypeAlias );
     CLASS_PROPERTY( int, Cond ); // enum CritterCondition
     CLASS_PROPERTY( bool, ClientToDelete );
-    CLASS_PROPERTY( uint, MultihexBase );
+    CLASS_PROPERTY( uint, Multihex );
     CLASS_PROPERTY( ushort, WorldX );
     CLASS_PROPERTY( ushort, WorldY );
     CLASS_PROPERTY( uint, GlobalGroupRuleId );
@@ -150,8 +149,9 @@ public:
     CLASS_PROPERTY( int, MaxMoveAp );
     CLASS_PROPERTY( bool, IsNoWalk );
     CLASS_PROPERTY( bool, IsNoRun );
-    CLASS_PROPERTY( int, WalkTime );
-    CLASS_PROPERTY( int, RunTime );
+    CLASS_PROPERTY( bool, IsNoRotate );
+    CLASS_PROPERTY( uint, WalkTime );
+    CLASS_PROPERTY( uint, RunTime );
     CLASS_PROPERTY( int, ScaleFactor );
     CLASS_PROPERTY( uint, TimeoutBattle );
     CLASS_PROPERTY( uint, TimeoutTransfer );
@@ -469,10 +469,6 @@ public:
     bool        IsNpc()    { return CritterIsNpc; }
     void        RefreshName();
     const char* GetInfo();
-    bool        IsCanWalk();
-    bool        IsCanRun();
-    uint        GetTimeWalk();
-    uint        GetTimeRun();
     uint        GetItemsWeight();
     uint        GetItemsVolume();
     bool        IsOverweight();
@@ -482,7 +478,6 @@ public:
     uint        GetUseApCost( Item* weap, int use );
     uint        GetAttackDist( Item* weap, int use );
     uint        GetUseDist();
-    uint        GetMultihex();
     bool        IsLife();
     bool        IsDead();
     bool        IsKnockout();

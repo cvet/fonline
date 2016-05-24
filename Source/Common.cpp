@@ -1251,8 +1251,6 @@ GameOptions::GameOptions()
     SplitTilesCollection = true;
 
     // Engine data
-    CritterTypes = nullptr;
-
     ClientMap = nullptr;
     ClientMapLight = nullptr;
     ClientMapWidth = 0;

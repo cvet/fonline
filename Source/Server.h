@@ -427,16 +427,10 @@ public:
 
         static bool         Crit_IsPlayer( Critter* cr );
         static bool         Crit_IsNpc( Critter* cr );
-        static bool         Crit_IsCanWalk( Critter* cr );
-        static bool         Crit_IsCanRun( Critter* cr );
-        static bool         Crit_IsCanRotate( Critter* cr );
-        static bool         Crit_IsCanAim( Critter* cr );
-        static bool         Crit_IsAnim1( Critter* cr, uint index );
         static int          Cl_GetAccess( Critter* cl );
         static bool         Cl_SetAccess( Critter* cl, int access );
         static bool         Crit_SetEvent( Critter* cr, int event_type, ScriptString* func_name );
         static Map*         Crit_GetMap( Critter* cr );
-        static bool         Crit_ChangeCrType( Critter* cr, uint new_type );
         static void         Cl_DropTimers( Critter* cl );
         static bool         Crit_MoveRandom( Critter* cr );
         static bool         Crit_MoveToDir( Critter* cr, uchar direction );
@@ -521,8 +515,6 @@ public:
         static void Cl_Disconnect( Critter* cl );
 
         static bool Crit_SetScript( Critter* cr, ScriptString* func_name );
-        static uint Crit_GetMultihex( Critter* cr );
-        static void Crit_SetMultihex( Critter* cr, int value );
 
         static void Crit_AddEnemyToStack( Critter* cr, uint critter_id );
         static bool Crit_CheckEnemyInStack( Critter* cr, uint critter_id );
@@ -725,20 +717,10 @@ public:
         static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
         // static uint Global_GetVersion();
-        static bool          Global_IsCritterCanWalk( uint cr_type );
-        static bool          Global_IsCritterCanRun( uint cr_type );
-        static bool          Global_IsCritterCanRotate( uint cr_type );
-        static bool          Global_IsCritterCanAim( uint cr_type );
-        static bool          Global_IsCritterCanArmor( uint cr_type );
-        static bool          Global_IsCritterAnim1( uint cr_type, uint index );
-        static int           Global_GetCritterAnimType( uint cr_type );
-        static uint          Global_GetCritterAlias( uint cr_type );
-        static ScriptString* Global_GetCritterTypeName( uint cr_type );
-        static ScriptString* Global_GetCritterSoundName( uint cr_type );
-        static bool          Global_LoadImage( uint index, ScriptString* image_name, uint image_depth, int path_type );
-        static uint          Global_GetImageColor( uint index, uint x, uint y );
-        static void          Global_Synchronize();
-        static void          Global_Resynchronize();
+        static bool Global_LoadImage( uint index, ScriptString* image_name, uint image_depth, int path_type );
+        static uint Global_GetImageColor( uint index, uint x, uint y );
+        static void Global_Synchronize();
+        static void Global_Resynchronize();
     } ScriptFunc;
 };
 

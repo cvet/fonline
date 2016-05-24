@@ -1176,129 +1176,133 @@ bool ResourceConverter::Generate()
     // Generate resources
     bool        something_changed = false;
     StrSet      update_file_names;
-    StrVec      dummy_vec;
-    StrVec      all_dirs_path;
-    FindDataVec all_dirs;
-    FileManager::GetFolderFileNames( "", true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
-    for( size_t d = 0; d < all_dirs.size(); d++ )
+
+    for( size_t m = 0; m < ModuleFullDirs.size(); m++ )
     {
-        if( !Str::CompareCase( all_dirs[ d ].FileName, "Resources" ) )
-            continue;
-
-        StrVec      resources_dirs_path;
-        FindDataVec resources_dirs;
-        FileManager::GetFolderFileNames( all_dirs_path[ d ].c_str(), false, nullptr, dummy_vec, nullptr, &resources_dirs_path, &resources_dirs );
-        for( size_t r = 0; r < resources_dirs.size(); r++ )
+        StrVec      dummy_vec;
+        StrVec      all_dirs_path;
+        FindDataVec all_dirs;
+        FileManager::GetFolderFileNames( ModuleFullDirs[ m ].c_str(), true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
+        for( size_t d = 0; d < all_dirs.size(); d++ )
         {
-            const char*     res_name = resources_dirs[ r ].FileName;
-            FilesCollection resources( nullptr, ( all_dirs_path[ d ] + res_name ).c_str() );
+            if( !Str::CompareCase( all_dirs[ d ].FileName, "Resources" ) )
+                continue;
 
-            if( !Str::Substring( res_name, "_Raw" ) )
+            string      resources_root = ModuleFullDirs[ m ] + all_dirs_path[ d ];
+            FindDataVec resources_dirs;
+            FileManager::GetFolderFileNames( resources_root.c_str(), false, nullptr, dummy_vec, nullptr, nullptr, &resources_dirs );
+            for( size_t r = 0; r < resources_dirs.size(); r++ )
             {
-                string res_name_zip = res_name;
-                res_name_zip.append( ".zip" );
+                const char*     res_name = resources_dirs[ r ].FileName;
+                FilesCollection resources( nullptr, ( resources_root + res_name + "/" ).c_str() );
 
-                bool        skip_making_zip = true;
-                FileManager zip_file;
-                if( zip_file.LoadFile( res_name_zip.c_str(), PT_SERVER_UPDATE, true ) )
+                if( !Str::Substring( res_name, "_Raw" ) )
                 {
-                    while( resources.IsNextFile() )
+                    string res_name_zip = res_name;
+                    res_name_zip.append( ".zip" );
+
+                    bool        skip_making_zip = true;
+                    FileManager zip_file;
+                    if( zip_file.LoadFile( res_name_zip.c_str(), PT_SERVER_UPDATE, true ) )
                     {
-                        FileManager& file = resources.GetNextFile( nullptr, nullptr, true );
-                        if( file.GetWriteTime() > zip_file.GetWriteTime() )
-                        {
-                            skip_making_zip = false;
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    skip_making_zip = false;
-                }
-
-                if( !skip_making_zip )
-                {
-                    WriteLog( "Pack resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
-
-                    string  zip_path = FileManager::GetDataPath( res_name_zip.c_str(), PT_SERVER_UPDATE );
-                    CreateDirectoryTree( zip_path.c_str() );
-                    zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
-                    if( zip )
-                    {
-                        resources.ResetCounter();
                         while( resources.IsNextFile() )
                         {
-                            const char*  name;
-                            FileManager& file = resources.GetNextFile( nullptr, &name );
-                            FileManager* converted_file = Convert( name, file );
-                            if( !converted_file )
+                            FileManager& file = resources.GetNextFile( nullptr, nullptr, true );
+                            if( file.GetWriteTime() > zip_file.GetWriteTime() )
                             {
-                                WriteLog( "File '%s' conversation error.\n", name );
-                                continue;
+                                skip_making_zip = false;
+                                break;
                             }
-
-                            zip_fileinfo zfi;
-                            memzero( &zfi, sizeof( zfi ) );
-                            if( zipOpenNewFileInZip( zip, name, &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
-                            {
-                                if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
-                                    WriteLog( "Can't write file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
-
-                                zipCloseFileInZip( zip );
-                            }
-                            else
-                            {
-                                WriteLog( "Can't open file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
-                            }
-
-                            if( converted_file != &file )
-                                delete converted_file;
                         }
-                        zipClose( zip, nullptr );
-
-                        something_changed = true;
                     }
                     else
                     {
-                        WriteLog( "Can't open zip file '%s'.\n", zip_path.c_str() );
+                        skip_making_zip = false;
                     }
-                }
 
-                update_file_names.insert( res_name_zip );
-            }
-            else
-            {
-                bool log_shown = false;
-                while( resources.IsNextFile() )
-                {
-                    const char*  path;
-                    FileManager& file = resources.GetNextFile( nullptr, &path );
-                    char         fname[ MAX_FOTEXT ];
-                    FileManager::ExtractFileName( path, fname );
-                    FileManager  update_file;
-                    if( !update_file.LoadFile( fname, PT_SERVER_UPDATE, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
+                    if( !skip_making_zip )
                     {
-                        if( !log_shown )
-                        {
-                            log_shown = true;
-                            WriteLog( "Copy resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
-                        }
+                        WriteLog( "Pack resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
 
-                        FileManager* converted_file = Convert( fname, file );
-                        if( !converted_file )
+                        string  zip_path = FileManager::GetDataPath( res_name_zip.c_str(), PT_SERVER_UPDATE );
+                        CreateDirectoryTree( zip_path.c_str() );
+                        zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
+                        if( zip )
                         {
-                            WriteLog( "File '%s' conversation error.\n", fname );
-                            continue;
-                        }
-                        converted_file->SaveOutBufToFile( fname, PT_SERVER_UPDATE );
-                        if( converted_file != &file )
-                            delete converted_file;
+                            resources.ResetCounter();
+                            while( resources.IsNextFile() )
+                            {
+                                const char*  name;
+                                FileManager& file = resources.GetNextFile( nullptr, &name );
+                                FileManager* converted_file = Convert( name, file );
+                                if( !converted_file )
+                                {
+                                    WriteLog( "File '%s' conversation error.\n", name );
+                                    continue;
+                                }
 
-                        something_changed = true;
+                                zip_fileinfo zfi;
+                                memzero( &zfi, sizeof( zfi ) );
+                                if( zipOpenNewFileInZip( zip, name, &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
+                                {
+                                    if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
+                                        WriteLog( "Can't write file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
+
+                                    zipCloseFileInZip( zip );
+                                }
+                                else
+                                {
+                                    WriteLog( "Can't open file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
+                                }
+
+                                if( converted_file != &file )
+                                    delete converted_file;
+                            }
+                            zipClose( zip, nullptr );
+
+                            something_changed = true;
+                        }
+                        else
+                        {
+                            WriteLog( "Can't open zip file '%s'.\n", zip_path.c_str() );
+                        }
                     }
 
-                    update_file_names.insert( fname );
+                    update_file_names.insert( res_name_zip );
+                }
+                else
+                {
+                    bool log_shown = false;
+                    while( resources.IsNextFile() )
+                    {
+                        const char*  path;
+                        FileManager& file = resources.GetNextFile( nullptr, &path );
+                        char         fname[ MAX_FOTEXT ];
+                        FileManager::ExtractFileName( path, fname );
+                        FileManager  update_file;
+                        if( !update_file.LoadFile( fname, PT_SERVER_UPDATE, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
+                        {
+                            if( !log_shown )
+                            {
+                                log_shown = true;
+                                WriteLog( "Copy resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
+                            }
+
+                            FileManager* converted_file = Convert( fname, file );
+                            if( !converted_file )
+                            {
+                                WriteLog( "File '%s' conversation error.\n", fname );
+                                continue;
+                            }
+                            converted_file->SaveOutBufToFile( fname, PT_SERVER_UPDATE );
+                            if( converted_file != &file )
+                                delete converted_file;
+
+                            something_changed = true;
+                        }
+
+                        update_file_names.insert( fname );
+                    }
                 }
             }
         }
@@ -1308,11 +1312,13 @@ bool ResourceConverter::Generate()
     FilesCollection update_files( nullptr, FileManager::GetDataPath( "", PT_SERVER_UPDATE ) );
     while( update_files.IsNextFile() )
     {
-        const char* name;
-        update_files.GetNextFile( nullptr, &name );
-        if( !update_file_names.count( name ) )
+        const char* path;
+        update_files.GetNextFile( nullptr, &path, true );
+        char fname[ MAX_FOPATH ];
+        FileManager::ExtractFileName( path, fname );
+        if( !update_file_names.count( fname ) )
         {
-            FileManager::DeleteFile( FileManager::GetDataPath( name, PT_SERVER_UPDATE ) );
+            FileManager::DeleteFile( path );
             something_changed = true;
         }
     }

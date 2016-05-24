@@ -143,18 +143,12 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerClose()", asFUNCT
 /************************************************************************/
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsPlayer() const", asFUNCTION( BIND_CLASS Crit_IsPlayer ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsNpc() const", asFUNCTION( BIND_CLASS Crit_IsNpc ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsCanWalk() const", asFUNCTION( BIND_CLASS Crit_IsCanWalk ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsCanRun() const", asFUNCTION( BIND_CLASS Crit_IsCanRun ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsCanRotate() const", asFUNCTION( BIND_CLASS Crit_IsCanRotate ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsCanAim() const", asFUNCTION( BIND_CLASS Crit_IsCanAim ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsAnim1(uint index) const", asFUNCTION( BIND_CLASS Crit_IsAnim1 ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int GetAccess() const", asFUNCTION( BIND_CLASS Cl_GetAccess ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetAccess(int access)", asFUNCTION( BIND_CLASS Cl_SetAccess ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Crit_SetEvent ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Map@+ GetMap()", asFUNCTION( BIND_CLASS Crit_GetMap ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Map@+ GetMap() const", asFUNCTION( BIND_CLASS Crit_GetMap ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool ChangeCrType(uint newType)", asFUNCTION( BIND_CLASS Crit_ChangeCrType ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void DropTimers()", asFUNCTION( BIND_CLASS Cl_DropTimers ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveRandom()", asFUNCTION( BIND_CLASS Crit_MoveRandom ), asCALL_CDECL_OBJFIRST ) );
@@ -249,8 +243,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void RunClientScript(stri
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Disconnect()", asFUNCTION( BIND_CLASS Cl_Disconnect ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetScript(string@+ script)", asFUNCTION( BIND_CLASS Crit_SetScript ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetMultihex() const", asFUNCTION( BIND_CLASS Crit_GetMultihex ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetMultihex(int value)", asFUNCTION( BIND_CLASS Crit_SetMultihex ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void AddEnemyToStack(uint critterId)", asFUNCTION( BIND_CLASS Crit_AddEnemyToStack ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool CheckEnemyInStack(uint critterId) const", asFUNCTION( BIND_CLASS Crit_CheckEnemyInStack ), asCALL_CDECL_OBJFIRST ) );
@@ -536,7 +528,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetVisible(bool visi
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool GetVisible() const", asFUNCTION( BIND_CLASS Crit_GetVisible ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void set_ContourColor(uint value)", asFUNCTION( BIND_CLASS Crit_set_ContourColor ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint get_ContourColor() const", asFUNCTION( BIND_CLASS Crit_get_ContourColor ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetMultihex() const", asFUNCTION( BIND_CLASS Crit_GetMultihex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsTurnBasedTurn() const", asFUNCTION( BIND_CLASS Crit_IsTurnBasedTurn ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int& h, int& lines ) const", asFUNCTION( BIND_CLASS Crit_GetNameTextInfo ), asCALL_CDECL_OBJFIRST ) );
 
@@ -645,16 +636,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void GetGameTime(uint fullSecond, 
 // BIND_ASSERT( engine->RegisterGlobalFunction( "void GetVersion(uint& server, uint& client, uint& net)", asFUNCTION( BIND_CLASS Global_GetVersion ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetPropertyGetCallback(int propertyValue, const string& scriptFunc)", asFUNCTION( BIND_CLASS Global_SetPropertyGetCallback ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddPropertySetCallback(int propertyValue, const string& scriptFunc, bool deferred)", asFUNCTION( BIND_CLASS Global_AddPropertySetCallback ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanWalk(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanWalk ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanRun(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanRun ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanRotate(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanRotate ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanAim(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanAim ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanArmor(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanArmor ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterAnim1(uint crType, uint anim1)", asFUNCTION( BIND_CLASS Global_IsCritterAnim1 ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCritterAnimType(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAnimType ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCritterAlias(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAlias ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCritterTypeName(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterTypeName ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCritterSoundName(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterSoundName ), asCALL_CDECL ) );
 
 BIND_ASSERT( engine->RegisterGlobalProperty( "const uint16 __Year", &GameOpt.Year ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "const uint16 __Month", &GameOpt.Month ) );
@@ -825,17 +806,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void TabDelete(int tab)", asFUNCTI
 BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSelect(int tab, string@+ subTab, bool show = false)", asFUNCTION( BIND_CLASS Global_TabSelect ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSetName(int tab, string@+ tabName)", asFUNCTION( BIND_CLASS Global_TabSetName ), asCALL_CDECL ) );
 
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanWalk(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanWalk ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanRun(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanRun ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanRotate(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanRotate ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanAim(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanAim ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterCanArmor(uint crType)", asFUNCTION( BIND_CLASS Global_IsCritterCanArmor ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCritterAnim1(uint crType, uint anim1)", asFUNCTION( BIND_CLASS Global_IsCritterAnim1 ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "int GetCritterAnimType(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAnimType ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCritterAlias(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterAlias ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCritterTypeName(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterTypeName ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetCritterSoundName(uint crType)", asFUNCTION( BIND_CLASS Global_GetCritterSoundName ), asCALL_CDECL ) );
-
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)", asFUNCTION( BIND_CLASS Global_GetHexInPath ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)", asFUNCTION( BIND_CLASS Global_GetPathLengthHex ), asCALL_CDECL ) );
 
@@ -889,8 +859,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawText(string& text, int x,
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawPrimitive(int primitiveType, array<int>& data)", asFUNCTION( BIND_CLASS Global_DrawPrimitive ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSpriteProto(uint16 hx, uint16 hy, uint sprId, int frameIndex, int offsX, int offsY, hash protoId)", asFUNCTION( BIND_CLASS Global_DrawMapSpriteProto ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSpriteExt(uint16 hx, uint16 hy, uint sprId, int frameIndex, int offsX, int offsY, bool isFlat, bool noLight, int drawOrder, int drawOrderHyOffset, int corner, bool disableEgg, uint color, uint contourColor)", asFUNCTION( BIND_CLASS Global_DrawMapSpriteExt ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(uint crType, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter2d ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, uint crType, uint anim1, uint anim2, const array<int>@+ layers, const array<float>@+ position, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter3d ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(hash modelName, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter2d ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, hash modelName, uint anim1, uint anim2, const array<int>@+ layers, const array<float>@+ position, uint color)", asFUNCTION( BIND_CLASS Global_DrawCritter3d ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void PushDrawScissor(int x, int y, int w, int h)", asFUNCTION( BIND_CLASS Global_PushDrawScissor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void PopDrawScissor()", asFUNCTION( BIND_CLASS Global_PopDrawScissor ), asCALL_CDECL ) );
 

@@ -194,7 +194,6 @@ set( SERVER_CLIENT_MAPPER_SOURCE
 	${Assimp_SOURCE}
 	3dAnimation.h
 	CritterData.h
-	CritterType.cpp CritterType.h
 	GraphicStructures.cpp GraphicStructures.h
 	Item.cpp Item.h
 	LineTracer.h

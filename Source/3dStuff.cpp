@@ -2236,24 +2236,23 @@ int Animation3dEntity::GetAnimationIndex( uint& anim1, uint& anim2, float* speed
         return index;
 
     // Find substitute animation
-    uint crtype = 0;
-    uint crtype_base = crtype, anim1_base = anim1, anim2_base = anim2;
+    hash base_model_name = 0;
+    uint anim1_base = anim1, anim2_base = anim2;
     #ifdef FONLINE_CLIENT
     while( index == -1 && Script::PrepareContext( ClientFunctions.CritterAnimationSubstitute, _FUNC_, "Anim" ) )
     #else // FONLINE_MAPPER
     while( index == -1 && Script::PrepareContext( MapperFunctions.CritterAnimationSubstitute, _FUNC_, "Anim" ) )
     #endif
     {
-        uint crtype_ = crtype, anim1_ = anim1, anim2_ = anim2;
-        Script::SetArgUInt( ANIM_TYPE_3D );
-        Script::SetArgUInt( crtype_base );
+        hash model_name = base_model_name;
+        uint anim1_ = anim1, anim2_ = anim2;
+        Script::SetArgUInt( base_model_name );
         Script::SetArgUInt( anim1_base );
         Script::SetArgUInt( anim2_base );
-        Script::SetArgAddress( &crtype );
+        Script::SetArgAddress( &model_name );
         Script::SetArgAddress( &anim1 );
         Script::SetArgAddress( &anim2 );
-        if( Script::RunPrepared() && Script::GetReturnedBool() &&
-            ( crtype_ != crtype || anim1 != anim1_ || anim2 != anim2_ ) )
+        if( Script::RunPrepared() && Script::GetReturnedBool() && ( anim1 != anim1_ || anim2 != anim2_ ) )
             index = GetAnimationIndexEx( anim1, anim2, speed );
         else
             break;

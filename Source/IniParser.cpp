@@ -410,7 +410,7 @@ void IniParser::LoadMainConfig()
     MainConfig->AppendFile( CONFIG_NAME, PT_ROOT );
 
     const char* modules = MainConfig->GetStr( "", "Modules" );
-    RUNTIME_ASSERT( modules != nullptr );
+    RUNTIME_ASSERT( modules );
     StrVec      modules_arr;
     Str::ParseLine( modules, ';', modules_arr, Str::ParseLineDummy );
     for( size_t i = 0; i < modules_arr.size(); i++ )

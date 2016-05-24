@@ -11,10 +11,6 @@
 
 ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, CritterCl::PropertiesRegistrator ) {}
 
-#ifdef FONLINE_MAPPER
-CLASS_PROPERTY_ALIAS_IMPL( ProtoCritter, CritterCl, uint, BaseCrType );
-#endif
-
 bool   CritterCl::SlotEnabled[ 0x100 ];
 IntSet CritterCl::RegProperties;
 
@@ -22,10 +18,8 @@ PROPERTIES_IMPL( CritterCl );
 CLASS_PROPERTY_IMPL( CritterCl, HexX );
 CLASS_PROPERTY_IMPL( CritterCl, HexY );
 CLASS_PROPERTY_IMPL( CritterCl, Dir );
-CLASS_PROPERTY_IMPL( CritterCl, CrType );
-CLASS_PROPERTY_IMPL( CritterCl, CrTypeAlias );
 CLASS_PROPERTY_IMPL( CritterCl, Cond );
-CLASS_PROPERTY_IMPL( CritterCl, MultihexBase );
+CLASS_PROPERTY_IMPL( CritterCl, Multihex );
 CLASS_PROPERTY_IMPL( CritterCl, Anim1Life );
 CLASS_PROPERTY_IMPL( CritterCl, Anim1Knockout );
 CLASS_PROPERTY_IMPL( CritterCl, Anim1Dead );
@@ -33,10 +27,10 @@ CLASS_PROPERTY_IMPL( CritterCl, Anim2Life );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2Knockout );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2Dead );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2KnockoutEnd );
+CLASS_PROPERTY_IMPL( CritterCl, ModelName );
 CLASS_PROPERTY_IMPL( CritterCl, ScriptId );
 CLASS_PROPERTY_IMPL( CritterCl, LookDistance );
 CLASS_PROPERTY_IMPL( CritterCl, Anim3dLayer );
-CLASS_PROPERTY_IMPL( CritterCl, BaseCrType );
 CLASS_PROPERTY_IMPL( CritterCl, Gender );
 CLASS_PROPERTY_IMPL( CritterCl, DialogId );
 CLASS_PROPERTY_IMPL( CritterCl, FollowCrit );
@@ -66,6 +60,7 @@ CLASS_PROPERTY_IMPL( CritterCl, IsNoPush );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoLoot );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoWalk );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoRun );
+CLASS_PROPERTY_IMPL( CritterCl, IsNoRotate );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoTalk );
 CLASS_PROPERTY_IMPL( CritterCl, IsHide );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoFlatten );
@@ -150,8 +145,6 @@ CritterCl::~CritterCl()
 
 void CritterCl::Init()
 {
-    ChangeCrType( GetBaseCrType() );
-
     ProtoItem* unarmed = ProtoMngr.GetProtoItem( GetHandsItemProtoId() );
     if( unarmed )
     {
@@ -544,14 +537,6 @@ uint CritterCl::GetUseDist()
     return 1 + GetMultihex();
 }
 
-uint CritterCl::GetMultihex()
-{
-    int mh = GetMultihexBase();
-    if( mh == 0 )
-        mh = CritType::GetMultihex( GetCrType() );
-    return CLAMP( mh, 0, MAX_HEX_OFFSET );
-}
-
 uint CritterCl::GetMaxWeightKg()
 {
     return GetCarryWeight() / 1000;
@@ -619,8 +604,7 @@ void CritterCl::DrawStay( Rect r )
 
     if( !Anim3d )
     {
-        uint       crtype = GetCrType();
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
+        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
         if( anim )
         {
             uint spr_id = ( IsLife() ? anim->Ind[ 0 ] : anim->Ind[ anim->CntFrm - 1 ] );
@@ -667,7 +651,7 @@ void CritterCl::NextRateItem( bool prev )
                         ItemSlotMain->SetWeaponMode( ItemSlotMain->GetIsCanUseOnSmth() ? USE_USE : USE_RELOAD );
                     else
                         ItemSlotMain->SetWeaponMode( ItemSlotMain->GetMode() - 1 );
-                    if( IsItemAim( SLOT_HAND1 ) && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
+                    if( IsItemAim( SLOT_HAND1 ) && !GetIsNoAim() )
                     {
                         SetAim( HIT_LOCATION_TORSO );
                         break;
@@ -675,7 +659,7 @@ void CritterCl::NextRateItem( bool prev )
                 }
                 else
                 {
-                    if( IsItemAim( SLOT_HAND1 ) && !IsAim() && !GetIsNoAim() && CritType::IsCanAim( GetCrType() ) )
+                    if( IsItemAim( SLOT_HAND1 ) && !IsAim() && !GetIsNoAim() )
                     {
                         SetAim( HIT_LOCATION_TORSO );
                         break;
@@ -764,42 +748,23 @@ ushort CritterCl::PopLastHexY()
 
 void CritterCl::Move( int dir )
 {
-    if( dir < 0 || dir >= DIRS_COUNT || !CritType::IsCanRotate( GetCrType() ) )
+    if( dir < 0 || dir >= DIRS_COUNT || GetIsNoRotate() )
         dir = 0;
 
     SetDir( dir );
 
-    uint crtype = GetCrType();
-    int  time_move = 0;
+    uint time_move = ( IsRunning ? GetRunTime() : GetWalkTime() );
 
-    if( !IsRunning )
-    {
-        time_move = GetWalkTime();
-        if( time_move <= 0 )
-            time_move = CritType::GetTimeWalk( crtype );
-        if( time_move <= 0 )
-            time_move = 400;
-    }
-    else
-    {
-        time_move = GetRunTime();
-        if( time_move <= 0 )
-            time_move = CritType::GetTimeRun( crtype );
-        if( time_move <= 0 )
-            time_move = 200;
-    }
-
-    // Todo: move faster in turn-based, if(IsTurnBased()) time_move/=2;
     TickStart( time_move );
     animStartTick = Timer::GameTick();
 
     if( !Anim3d )
     {
-        if( CritType::GetAnimType( crtype ) == ANIM_TYPE_FALLOUT )
+        if( /*ANIM_TYPE_FALLOUT*/ false )
         {
             uint       anim1 = ( IsRunning ? ANIM1_UNARMED : GetAnim1() );
             uint       anim2 = ( IsRunning ? ANIM2_RUN : ANIM2_WALK );
-            AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
+            AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
             if( !anim )
                 anim = ResMngr.CritterDefaultAnim;
 
@@ -808,10 +773,10 @@ void CritterCl::Move( int dir )
 
             if( !IsRunning )
             {
-                int s0 = CritType::GetWalkFrmCnt( crtype, 0 );
-                int s1 = CritType::GetWalkFrmCnt( crtype, 1 );
-                int s2 = CritType::GetWalkFrmCnt( crtype, 2 );
-                int s3 = CritType::GetWalkFrmCnt( crtype, 3 );
+                int s0 = 4;
+                int s1 = 8;
+                int s2 = 0;
+                int s3 = 0;
 
                 if( (int) curSpr == s0 - 1 && s1 )
                 {
@@ -867,7 +832,7 @@ void CritterCl::Move( int dir )
             }
 
             ClearAnim();
-            animSequence.push_back( CritterAnim( anim, time_move, beg_spr, end_spr, true, 0, crtype, anim1, anim2, nullptr ) );
+            animSequence.push_back( CritterAnim( anim, time_move, beg_spr, end_spr, true, 0, anim1, anim2, nullptr ) );
             NextAnim( false );
 
             for( int i = 0; i < step; i++ )
@@ -886,14 +851,14 @@ void CritterCl::Move( int dir )
             if( IsDmgLeg() )
                 anim2 = ANIM2_LIMP;
 
-            AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
+            AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
             if( !anim )
                 anim = ResMngr.CritterDefaultAnim;
 
-            int m1 = CritType::GetWalkFrmCnt( crtype, 0 );
+            int m1 = 0;
             if( m1 <= 0 )
                 m1 = 5;
-            int m2 = CritType::GetWalkFrmCnt( crtype, 1 );
+            int m2 = 0;
             if( m2 <= 0 )
                 m2 = 2;
 
@@ -901,7 +866,7 @@ void CritterCl::Move( int dir )
             int end_spr = beg_spr + ( IsRunning ? m2 : m1 );
 
             ClearAnim();
-            animSequence.push_back( CritterAnim( anim, time_move, beg_spr, end_spr, true, dir + 1, crtype, anim1, anim2, nullptr ) );
+            animSequence.push_back( CritterAnim( anim, time_move, beg_spr, end_spr, true, dir + 1, anim1, anim2, nullptr ) );
             NextAnim( false );
 
             int ox, oy;
@@ -922,7 +887,7 @@ void CritterCl::Move( int dir )
         Anim3d->SetDir( dir );
 
         ClearAnim();
-        animSequence.push_back( CritterAnim( nullptr, time_move, 0, 0, true, dir + 1, crtype, anim1, anim2, nullptr ) );
+        animSequence.push_back( CritterAnim( nullptr, time_move, 0, 0, true, dir + 1, anim1, anim2, nullptr ) );
         NextAnim( false );
 
         int ox, oy;
@@ -1029,7 +994,6 @@ void CritterCl::NextAnim( bool erase_front )
 
 void CritterCl::Animate( uint anim1, uint anim2, Item* item )
 {
-    uint  crtype = GetCrType();
     uchar dir = GetDir();
     if( !anim1 )
         anim1 = GetAnim1( item );
@@ -1038,7 +1002,7 @@ void CritterCl::Animate( uint anim1, uint anim2, Item* item )
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
+        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
         if( !anim )
         {
             if( !IsAnim() )
@@ -1053,7 +1017,7 @@ void CritterCl::Animate( uint anim1, uint anim2, Item* item )
 //			anim2!=ANIM2_DODGE_FRONT && anim2!=ANIM2_DODGE_BACK && anim2!=ANIM2_USE && anim2!=ANIM2_PICKUP &&
 //			anim2!=ANIM2_DAMAGE_FRONT && anim2!=ANIM2_DAMAGE_BACK && anim2!=ANIM2_IDLE && anim2!=ANIM2_IDLE_COMBAT));
 
-        animSequence.push_back( CritterAnim( anim, anim->Ticks, 0, anim->GetCnt() - 1, move_text, 0, crtype, anim->Anim1, anim->Anim2, item ) );
+        animSequence.push_back( CritterAnim( anim, anim->Ticks, 0, anim->GetCnt() - 1, move_text, 0, anim->Anim1, anim->Anim2, item ) );
     }
     else
     {
@@ -1064,7 +1028,7 @@ void CritterCl::Animate( uint anim1, uint anim2, Item* item )
             return;
         }
 
-        animSequence.push_back( CritterAnim( nullptr, 0, 0, 0, true, 0, crtype, anim1, anim2, item ) );
+        animSequence.push_back( CritterAnim( nullptr, 0, 0, 0, true, 0, anim1, anim2, item ) );
     }
 
     if( animSequence.size() == 1 )
@@ -1073,13 +1037,12 @@ void CritterCl::Animate( uint anim1, uint anim2, Item* item )
 
 void CritterCl::AnimateStay()
 {
-    uint crtype = GetCrType();
     uint anim1 = GetAnim1();
     uint anim2 = GetAnim2();
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, GetDir() );
+        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() );
         if( !anim )
             anim = ResMngr.CritterDefaultAnim;
 
@@ -1243,24 +1206,21 @@ bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
     if( Anim3d )
         return Anim3d->IsAnimation( anim1, anim2 );
     // 2d
-    return ResMngr.GetCrit2dAnim( GetCrType(), anim1, anim2, GetDir() ) != nullptr;
+    return ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() ) != nullptr;
 }
 
-void CritterCl::ChangeCrType( uint type )
+void CritterCl::RefreshAnim()
 {
-    SetCrType( type );
-    SetCrTypeAlias( CritType::GetAlias( type ) );
-
     // Check 3d availability
     SprMngr.FreePure3dAnimation( Anim3d );
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = nullptr;
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( type ) ), PT_CLIENT_CRITTERS, true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( GetModelName() ), PT_CLIENT_CRITTERS, true );
     if( anim3d )
     {
         Anim3d = anim3d;
-        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::FormatBuf( "%s.fo3d", CritType::GetName( type ) ), PT_CLIENT_CRITTERS, false );
+        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::GetName( GetModelName() ), PT_CLIENT_CRITTERS, false );
 
         Anim3d->SetDir( GetDir() );
         SprId = Anim3d->SprId;
@@ -1278,7 +1238,7 @@ void CritterCl::ChangeCrType( uint type )
 
 void CritterCl::ChangeDir( uchar dir, bool animate /* = true */ )
 {
-    if( dir >= DIRS_COUNT || !CritType::IsCanRotate( GetCrType() ) )
+    if( dir >= DIRS_COUNT || GetIsNoRotate() )
         dir = 0;
     if( GetDir() == dir )
         return;

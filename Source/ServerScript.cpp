@@ -1095,46 +1095,6 @@ bool FOServer::SScriptFunc::Crit_IsNpc( Critter* cr )
     return cr->IsNpc();
 }
 
-bool FOServer::SScriptFunc::Crit_IsCanWalk( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->IsCanWalk();
-}
-
-bool FOServer::SScriptFunc::Crit_IsCanRun( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->IsCanRun();
-}
-
-bool FOServer::SScriptFunc::Crit_IsCanRotate( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return CritType::IsCanRotate( cr->GetCrType() );
-}
-
-bool FOServer::SScriptFunc::Crit_IsCanAim( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return CritType::IsCanAim( cr->GetCrType() ) && !cr->GetIsNoAim();
-}
-
-bool FOServer::SScriptFunc::Crit_IsAnim1( Critter* cr, uint index )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return CritType::IsAnim1( cr->GetCrType(), index );
-}
-
 int FOServer::SScriptFunc::Cl_GetAccess( Critter* cl )
 {
     if( cl->IsDestroyed )
@@ -1200,39 +1160,6 @@ Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
     return MapMngr.GetMap( cr->GetMapId() );
-}
-
-bool FOServer::SScriptFunc::Crit_ChangeCrType( Critter* cr, uint new_type )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !new_type )
-        SCRIPT_ERROR_R0( "New type arg is zero." );
-    if( !CritType::IsEnabled( new_type ) )
-        SCRIPT_ERROR_R0( "New type '%u' is not enabled.", new_type );
-
-    if( cr->GetCrType() != new_type )
-    {
-        if( cr->GetMultihexBase() < 0 && cr->GetMapId() && !cr->IsDead() )
-        {
-            uint old_mh = CritType::GetMultihex( cr->GetCrType() );
-            uint new_mh = CritType::GetMultihex( new_type );
-            if( new_mh != old_mh )
-            {
-                Map* map = MapMngr.GetMap( cr->GetMapId() );
-                if( map )
-                {
-                    map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), old_mh, false );
-                    map->SetFlagCritter( cr->GetHexX(), cr->GetHexY(), new_mh, false );
-                }
-            }
-        }
-
-        cr->SetCrType( new_type );
-        cr->Send_CustomCommand( cr, OTHER_BASE_TYPE, new_type );
-        cr->SendA_CustomCommand( OTHER_BASE_TYPE, new_type );
-    }
-    return true;
 }
 
 void FOServer::SScriptFunc::Cl_DropTimers( Critter* cl )
@@ -2561,42 +2488,6 @@ bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, ScriptString* func_name
         cr->SetScriptId( 0 );
     }
     return true;
-}
-
-uint FOServer::SScriptFunc::Crit_GetMultihex( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->GetMultihex();
-}
-
-void FOServer::SScriptFunc::Crit_SetMultihex( Critter* cr, int value )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( value < -1 || value > MAX_HEX_OFFSET )
-        SCRIPT_ERROR_R( "Invalid multihex arg value." );
-
-    if( cr->GetMultihexBase() == value )
-        return;
-
-    uint old_mh = cr->GetMultihex();
-    cr->SetMultihexBase( value );
-    uint new_mh = cr->GetMultihex();
-
-    if( old_mh != new_mh && cr->GetMapId() && !cr->IsDead() )
-    {
-        Map* map = MapMngr.GetMap( cr->GetMapId() );
-        if( map )
-        {
-            map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), old_mh, false );
-            map->SetFlagCritter( cr->GetHexX(), cr->GetHexY(), new_mh, false );
-        }
-    }
-
-    cr->Send_CustomCommand( cr, OTHER_MULTIHEX, value );
-    cr->SendA_CustomCommand( OTHER_MULTIHEX, value );
 }
 
 void FOServer::SScriptFunc::Crit_AddEnemyToStack( Critter* cr, uint critter_id )
@@ -5300,8 +5191,6 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
         cr2->Send_Dir( cr2 );
         cr1->Send_CustomCommand( cr1, OTHER_TELEPORT, ( cr1->GetHexX() << 16 ) | ( cr1->GetHexY() ) );
         cr2->Send_CustomCommand( cr2, OTHER_TELEPORT, ( cr2->GetHexX() << 16 ) | ( cr2->GetHexY() ) );
-        cr1->Send_CustomCommand( cr1, OTHER_BASE_TYPE, cr1->GetCrType() );
-        cr2->Send_CustomCommand( cr2, OTHER_BASE_TYPE, cr2->GetCrType() );
         cr1->ProcessVisibleCritters();
         cr2->ProcessVisibleCritters();
         cr1->ProcessVisibleItems();
@@ -5510,86 +5399,6 @@ void FOServer::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
 bool FOServer::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
 {
     return FileManager::LoadDataFile( dat_name.c_str() );
-}
-
-bool FOServer::SScriptFunc::Global_IsCritterCanWalk( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return CritType::IsCanWalk( cr_type );
-}
-
-bool FOServer::SScriptFunc::Global_IsCritterCanRun( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return CritType::IsCanRun( cr_type );
-}
-
-bool FOServer::SScriptFunc::Global_IsCritterCanRotate( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return CritType::IsCanRotate( cr_type );
-}
-
-bool FOServer::SScriptFunc::Global_IsCritterCanAim( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return CritType::IsCanAim( cr_type );
-}
-
-bool FOServer::SScriptFunc::Global_IsCritterCanArmor( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return CritType::IsCanArmor( cr_type );
-}
-
-bool FOServer::SScriptFunc::Global_IsCritterAnim1( uint cr_type, uint index )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return CritType::IsAnim1( cr_type, index );
-}
-
-int FOServer::SScriptFunc::Global_GetCritterAnimType( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return CritType::GetAnimType( cr_type );
-}
-
-uint FOServer::SScriptFunc::Global_GetCritterAlias( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return CritType::GetAlias( cr_type );
-}
-
-ScriptString* FOServer::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return ScriptString::Create( CritType::GetCritType( cr_type ).Name );
-}
-
-ScriptString* FOServer::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-
-    return ScriptString::Create( CritType::GetSoundName( cr_type ) );
 }
 
 struct ServerImage

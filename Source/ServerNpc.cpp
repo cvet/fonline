@@ -118,7 +118,7 @@ void FOServer::ProcessAI( Npc* npc )
         // Go home
         if( !npc->GetIsNoHome() && map->GetId() == npc->GetHomeMapId() && ( npc->GetHexX() != npc->GetHomeHexX() || npc->GetHexY() != npc->GetHomeHexY() ) )
         {
-            if( CritType::IsCanWalk( npc->GetCrType() ) )
+            if( !npc->GetIsNoWalk() )
             {
                 uint tick = Timer::GameTick();
                 if( tick < npc->TryingGoHomeTick )
@@ -138,7 +138,7 @@ void FOServer::ProcessAI( Npc* npc )
             }
         }
         // Set home direction
-        else if( !npc->GetIsNoHome() && CritType::IsCanRotate( npc->GetCrType() ) && map->GetId() == npc->GetHomeMapId() && npc->GetDir() != npc->GetHomeDir() )
+        else if( !npc->GetIsNoHome() && !npc->GetIsNoRotate() && map->GetId() == npc->GetHomeMapId() && npc->GetDir() != npc->GetHomeDir() )
         {
             npc->SetDir( npc->GetHomeDir() );
             npc->SendA_Dir();
@@ -158,7 +158,7 @@ void FOServer::ProcessAI( Npc* npc )
                     AI_MoveItem( npc, map, npc->ItemSlotMain->GetCritSlot(), SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
                     return;
                 }
-                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && ( !favor_item->IsWeapon() || CritType::IsAnim1( npc->GetCrType(), favor_item->GetWeapon_Anim1() ) ) )
+                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) )
                 {
                     AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
                     return;
@@ -293,9 +293,9 @@ void FOServer::ProcessAI( Npc* npc )
             pfd.CheckCrit = true;
             pfd.CheckGagItems = true;
 
-            if( pfd.IsRun && !npc->IsCanRun() )
+            if( pfd.IsRun && npc->GetIsNoRun() )
                 pfd.IsRun = false;
-            if( !pfd.IsRun && !npc->IsCanWalk() )
+            if( !pfd.IsRun && npc->GetIsNoWalk() )
             {
                 plane->IsMove = false;
                 if( map->IsTurnBasedOn && map->IsCritterTurn( npc ) )
@@ -567,7 +567,7 @@ void FOServer::ProcessAI( Npc* npc )
             /************************************************************************/
             /* Step 2: Move to target                                               */
             /************************************************************************/
-            bool is_can_walk = CritType::IsCanWalk( npc->GetCrType() );
+            bool is_can_walk = !npc->GetIsNoWalk();
             uint best_dist = 0, min_dist = 0, max_dist = 0;
             r0 = targ->GetId(), r1 = 0, r2 = 0;
             if( !npc->RunPlane( REASON_ATTACK_DISTANTION, r0, r1, r2 ) )
@@ -739,7 +739,7 @@ void FOServer::ProcessAI( Npc* npc )
                 use = r0;
 
             int aim = r1;
-            if( !( CritType::IsCanAim( npc->GetCrType() ) && !npc->GetIsNoAim() && weap->WeapIsCanAim( use ) ) )
+            if( npc->GetIsNoAim() && !npc->GetIsNoAim() && weap->WeapIsCanAim( use ) )
                 aim = 0;
 
             weap->SetWeaponMode( MAKE_ITEM_MODE( use, aim ) );
@@ -753,7 +753,7 @@ void FOServer::ProcessAI( Npc* npc )
             if( is_busy )
                 break;
 
-            if( ( !plane->Attack.LastHexX && !plane->Attack.LastHexY ) || !CritType::IsCanWalk( npc->GetCrType() ) )
+            if( ( !plane->Attack.LastHexX && !plane->Attack.LastHexY ) || npc->GetIsNoWalk() )
             {
                 Critter* targ_ = CrMngr.GetCritter( plane->Attack.TargId, true );
                 npc->NextPlane( REASON_TARGET_DISAPPEARED, targ_, nullptr );
@@ -793,7 +793,7 @@ void FOServer::ProcessAI( Npc* npc )
         }
         else
         {
-            if( CritType::IsCanWalk( npc->GetCrType() ) )
+            if( !npc->GetIsNoWalk() )
                 AI_Move( npc, plane->Walk.HexX, plane->Walk.HexY, plane->Walk.IsRun, plane->Walk.Cut, 0 );
             else
                 npc->NextPlane( REASON_CANT_WALK );

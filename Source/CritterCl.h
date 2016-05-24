@@ -19,10 +19,8 @@ public:
     CLASS_PROPERTY( ushort, HexX );
     CLASS_PROPERTY( ushort, HexY );
     CLASS_PROPERTY( uchar, Dir );
-    CLASS_PROPERTY( uint, CrType );
-    CLASS_PROPERTY( uint, CrTypeAlias );
     CLASS_PROPERTY( int, Cond );
-    CLASS_PROPERTY( int, MultihexBase );
+    CLASS_PROPERTY( uint, Multihex );
     CLASS_PROPERTY( uint, Anim1Life );
     CLASS_PROPERTY( uint, Anim1Knockout );
     CLASS_PROPERTY( uint, Anim1Dead );
@@ -31,6 +29,7 @@ public:
     CLASS_PROPERTY( uint, Anim2Dead );
     CLASS_PROPERTY( uint, Anim2KnockoutEnd );
     // Core
+    CLASS_PROPERTY( hash, ModelName );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( uint, LookDistance );
     CLASS_PROPERTY( ScriptArray *, Anim3dLayer );
@@ -47,8 +46,9 @@ public:
     CLASS_PROPERTY( int, MaxMoveAp );
     CLASS_PROPERTY( bool, IsNoWalk );
     CLASS_PROPERTY( bool, IsNoRun );
-    CLASS_PROPERTY( int, WalkTime );
-    CLASS_PROPERTY( int, RunTime );
+    CLASS_PROPERTY( bool, IsNoRotate );
+    CLASS_PROPERTY( uint, WalkTime );
+    CLASS_PROPERTY( uint, RunTime );
     CLASS_PROPERTY( int, ScaleFactor );
     CLASS_PROPERTY( uint, TimeoutBattle );
     CLASS_PROPERTY( uint, TimeoutTransfer );
@@ -59,7 +59,6 @@ public:
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
     // Exclude
-    CLASS_PROPERTY( uint, BaseCrType );         // Mapper character base type
     CLASS_PROPERTY( int, ReplicationMoney );    // GUI
     CLASS_PROPERTY( int, ReplicationCost );     // GUI
     CLASS_PROPERTY( int, ReplicationCount );    // GUI
@@ -113,7 +112,7 @@ public:
     void        FixLastHexes();
     ushort      PopLastHexX();
     ushort      PopLastHexY();
-    void        ChangeCrType( uint type );
+    void        RefreshAnim();
     void        ChangeDir( uchar dir, bool animate = true );
 
     void Animate( uint anim1, uint anim2, Item* item );
@@ -138,7 +137,6 @@ public:
 
     uint GetAttackDist();
     uint GetUseDist();
-    uint GetMultihex();
     uint GetMaxWeightKg();
     uint GetMaxVolume();
     bool IsDmgLeg();
@@ -239,11 +237,11 @@ private:
         int        EndFrm;
         bool       MoveText;
         int        DirOffs;
-        uint       IndCrType, IndAnim1, IndAnim2;
+        uint       IndAnim1, IndAnim2;
         Item*      ActiveItem;
         CritterAnim() {}
-        CritterAnim( AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs, uint ind_crtype, uint ind_anim1, uint ind_anim2, Item* item ): Anim( anim ), AnimTick( tick ), BeginFrm( beg_frm ), EndFrm( end_frm ), MoveText( move_text ), DirOffs( dir_offs ),
-                                                                                                                                                                        IndCrType( ind_crtype ), IndAnim1( ind_anim1 ), IndAnim2( ind_anim2 ), ActiveItem( item ) {}
+        CritterAnim( AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs, uint ind_anim1, uint ind_anim2, Item* item ): Anim( anim ), AnimTick( tick ), BeginFrm( beg_frm ), EndFrm( end_frm ), MoveText( move_text ), DirOffs( dir_offs ),
+                                                                                                                                                       IndAnim1( ind_anim1 ), IndAnim2( ind_anim2 ), ActiveItem( item ) {}
     };
     typedef vector< CritterAnim > CritterAnimVec;
 

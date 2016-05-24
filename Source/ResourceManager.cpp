@@ -2,7 +2,6 @@
 #include "ResourceManager.h"
 #include "FileManager.h"
 #include "DataFile.h"
-#include "CritterType.h"
 #include "Script.h"
 #include "Crypt.h"
 
@@ -138,26 +137,19 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
     return anim;
 }
 
-uint AnimMapId( uint crtype, uint anim1, uint anim2, bool is_fallout )
+uint AnimMapId( hash model_name, uint anim1, uint anim2, bool is_fallout )
 {
-    uint dw[ 4 ] = { crtype, anim1, anim2, is_fallout ? uint( -1 ) : 1 };
+    uint dw[ 4 ] = { model_name, anim1, anim2, is_fallout ? uint( -1 ) : 1 };
     return Crypt.Crc32( (uchar*) &dw[ 0 ], sizeof( dw ) );
 }
 
-AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, int dir )
+AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint anim2, int dir )
 {
-    // Check for 3d
-    uint anim_type = CritType::GetAnimType( crtype );
-    if( anim_type == ANIM_TYPE_3D )
-        return nullptr;
-
     // Process dir
     dir = CLAMP( dir, 0, DIRS_COUNT - 1 );
-    if( !CritType::IsCanRotate( crtype ) )
-        dir = 0;
 
     // Make animation id
-    uint id = AnimMapId( crtype, anim1, anim2, false );
+    uint id = AnimMapId( model_name, anim1, anim2, false );
 
     // Check already loaded
     auto it = critterFrames.find( id );
@@ -165,15 +157,15 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
         return it->second ? it->second->GetDir( dir ) : nullptr;
 
     // Process loading
-    uint       crtype_base = crtype, anim1_base = anim1, anim2_base = anim2;
+    uint       anim1_base = anim1, anim2_base = anim2;
     AnyFrames* anim = nullptr;
     while( true )
     {
         // Load
-        if( anim_type == ANIM_TYPE_FALLOUT )
+        if( /*ANIM_TYPE_FALLOUT*/ false )
         {
             // Hardcoded
-            anim = LoadFalloutAnim( crtype, anim1, anim2 );
+            anim = LoadFalloutAnim( model_name, anim1, anim2 );
         }
         else
         {
@@ -191,8 +183,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
                 uint pass = pass_base;
                 uint flags = 0;
                 int ox = 0, oy = 0;
-                Script::SetArgUInt( anim_type );
-                Script::SetArgUInt( crtype );
+                Script::SetArgUInt( model_name );
                 Script::SetArgUInt( anim1 );
                 Script::SetArgUInt( anim2 );
                 Script::SetArgAddress( &pass );
@@ -281,22 +272,22 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
         }
 
         // Find substitute animation
+        hash base_model_name = model_name;
         #ifdef FONLINE_CLIENT
         if( !anim && Script::PrepareContext( ClientFunctions.CritterAnimationSubstitute, _FUNC_, "Anim" ) )
         #else // FONLINE_MAPPER
         if( !anim && Script::PrepareContext( MapperFunctions.CritterAnimationSubstitute, _FUNC_, "Anim" ) )
         #endif
         {
-            uint crtype_ = crtype, anim1_ = anim1, anim2_ = anim2;
-            Script::SetArgUInt( anim_type );
-            Script::SetArgUInt( crtype_base );
+            hash model_name_ = model_name;
+            uint anim1_ = anim1, anim2_ = anim2;
+            Script::SetArgUInt( base_model_name );
             Script::SetArgUInt( anim1_base );
             Script::SetArgUInt( anim2_base );
-            Script::SetArgAddress( &crtype );
+            Script::SetArgAddress( &model_name );
             Script::SetArgAddress( &anim1 );
             Script::SetArgAddress( &anim2 );
-            if( Script::RunPrepared() && Script::GetReturnedBool() &&
-                ( crtype_ != crtype || anim1 != anim1_ || anim2 != anim2_ ) )
+            if( Script::RunPrepared() && ( model_name_ != model_name || anim1 != anim1_ || anim2 != anim2_ ) )
                 continue;
         }
 
@@ -319,7 +310,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( uint crtype, uint anim1, uint anim2, 
     return anim ? anim->GetDir( dir ) : nullptr;
 }
 
-AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2 )
+AnyFrames* ResourceManager::LoadFalloutAnim( hash model_name, uint anim1, uint anim2 )
 {
     // Convert from common to fallout specific
     #ifdef FONLINE_CLIENT
@@ -329,7 +320,7 @@ AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2
     #endif
     {
         uint anim1ex = 0, anim2ex = 0, flags = 0;
-        Script::SetArgUInt( crtype );
+        Script::SetArgUInt( model_name );
         Script::SetArgAddress( &anim1 );
         Script::SetArgAddress( &anim2 );
         Script::SetArgAddress( &anim1ex );
@@ -338,14 +329,14 @@ AnyFrames* ResourceManager::LoadFalloutAnim( uint crtype, uint anim1, uint anim2
         if( Script::RunPrepared() && Script::GetReturnedBool() )
         {
             // Load
-            AnyFrames* anim = LoadFalloutAnimSpr( crtype, anim1, anim2 );
+            AnyFrames* anim = LoadFalloutAnimSpr( model_name, anim1, anim2 );
             if( !anim )
                 return nullptr;
 
             // Merge
             if( anim1ex && anim2ex )
             {
-                AnyFrames* animex = LoadFalloutAnimSpr( crtype, anim1ex, anim2ex );
+                AnyFrames* animex = LoadFalloutAnimSpr( model_name, anim1ex, anim2ex );
                 if( !animex )
                     return nullptr;
 
@@ -467,9 +458,9 @@ void FixAnimOffsNext( AnyFrames* frames_base, AnyFrames* stay_frm_base )
     }
 }
 
-AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint anim2 )
+AnyFrames* ResourceManager::LoadFalloutAnimSpr( hash model_name, uint anim1, uint anim2 )
 {
-    auto it = critterFrames.find( AnimMapId( crtype, anim1, anim2, true ) );
+    auto it = critterFrames.find( AnimMapId( model_name, anim1, anim2, true ) );
     if( it != critterFrames.end() )
         return it->second;
 
@@ -479,7 +470,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
 
     // Try load fofrm
-    const char* name = CritType::GetName( crtype );
+    const char* name = Str::GetName( model_name );
     Str::Format( spr_name, "%s%c%c.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
     AnyFrames* frames = SprMngr.LoadAnimation( spr_name, PT_CLIENT_CRITTERS );
 
@@ -491,12 +482,12 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
     }
     SprMngr.PopAtlasType();
 
-    critterFrames.insert( PAIR( AnimMapId( crtype, anim1, anim2, true ), frames ) );
+    critterFrames.insert( PAIR( AnimMapId( model_name, anim1, anim2, true ), frames ) );
     if( !frames )
         return nullptr;
 
-    #define LOADSPR_ADDOFFS( a1, a2 )         FixAnimOffs( frames, LoadFalloutAnimSpr( crtype, a1, a2 ) )
-    #define LOADSPR_ADDOFFS_NEXT( a1, a2 )    FixAnimOffsNext( frames, LoadFalloutAnimSpr( crtype, a1, a2 ) )
+    #define LOADSPR_ADDOFFS( a1, a2 )         FixAnimOffs( frames, LoadFalloutAnimSpr( model_name, a1, a2 ) )
+    #define LOADSPR_ADDOFFS_NEXT( a1, a2 )    FixAnimOffsNext( frames, LoadFalloutAnimSpr( model_name, a1, a2 ) )
 
     // Fallout animations
     #define ANIM1_FALLOUT_UNARMED               ( 1 )
@@ -633,32 +624,22 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( uint crtype, uint anim1, uint an
     return frames;
 }
 
-Animation3d* ResourceManager::GetCrit3dAnim( uint crtype, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
+Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
 {
-    if( CritType::GetAnimType( crtype ) != ANIM_TYPE_3D )
-        return nullptr;
-
-    if( !CritType::IsCanRotate( crtype ) )
-        dir = 0;
-
-    if( crtype < critter3d.size() && critter3d[ crtype ] )
+    if( critter3d.count( model_name ) )
     {
-        critter3d[ crtype ]->SetDir( dir );
-        critter3d[ crtype ]->SetAnimation( anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH );
-        return critter3d[ crtype ];
+        critter3d[ model_name ]->SetDir( dir );
+        critter3d[ model_name ]->SetAnimation( anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH );
+        return critter3d[ model_name ];
     }
 
-    char name[ MAX_FOPATH ];
-    Str::Format( name, "%s.fo3d", CritType::GetName( crtype ) );
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( name, PT_CLIENT_CRITTERS, true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_CRITTERS, true );
     SprMngr.PopAtlasType();
     if( !anim3d )
         return nullptr;
 
-    if( crtype >= critter3d.size() )
-        critter3d.resize( crtype + 1 );
-    critter3d[ crtype ] = anim3d;
+    critter3d[ model_name ] = anim3d;
 
     anim3d->SetAnimation( anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH );
     anim3d->SetDir( dir );
@@ -666,17 +647,17 @@ Animation3d* ResourceManager::GetCrit3dAnim( uint crtype, uint anim1, uint anim2
     return anim3d;
 }
 
-uint ResourceManager::GetCritSprId( uint crtype, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
+uint ResourceManager::GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
 {
     uint spr_id = 0;
-    if( CritType::GetAnimType( crtype ) != ANIM_TYPE_3D )
+    if( !Str::CompareCase( FileManager::GetExtension( Str::GetName( model_name ) ), "fo3d" ) )
     {
-        AnyFrames* anim = GetCrit2dAnim( crtype, anim1, anim2, dir );
+        AnyFrames* anim = GetCrit2dAnim( model_name, anim1, anim2, dir );
         spr_id = ( anim ? anim->GetSprId( 0 ) : 0 );
     }
     else
     {
-        Animation3d* anim3d = GetCrit3dAnim( crtype, anim1, anim2, dir, layers3d );
+        Animation3d* anim3d = GetCrit3dAnim( model_name, anim1, anim2, dir, layers3d );
         spr_id = ( anim3d ? anim3d->SprId : 0 );
     }
     return spr_id;

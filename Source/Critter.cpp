@@ -68,16 +68,16 @@ IntSet Critter::RegProperties;
 
 // Properties
 PROPERTIES_IMPL( Critter );
+CLASS_PROPERTY_IMPL( Critter, ModelName );
 CLASS_PROPERTY_IMPL( Critter, MapId );
 CLASS_PROPERTY_IMPL( Critter, MapPid );
 CLASS_PROPERTY_IMPL( Critter, HexX );
 CLASS_PROPERTY_IMPL( Critter, HexY );
 CLASS_PROPERTY_IMPL( Critter, Dir );
 CLASS_PROPERTY_IMPL( Critter, PassHash );
-CLASS_PROPERTY_IMPL( Critter, CrType );
 CLASS_PROPERTY_IMPL( Critter, Cond );
 CLASS_PROPERTY_IMPL( Critter, ClientToDelete );
-CLASS_PROPERTY_IMPL( Critter, MultihexBase );
+CLASS_PROPERTY_IMPL( Critter, Multihex );
 CLASS_PROPERTY_IMPL( Critter, WorldX );
 CLASS_PROPERTY_IMPL( Critter, WorldY );
 CLASS_PROPERTY_IMPL( Critter, GlobalGroupRuleId );
@@ -141,6 +141,7 @@ CLASS_PROPERTY_IMPL( Critter, IsNoSteal );
 CLASS_PROPERTY_IMPL( Critter, IsNoHome );
 CLASS_PROPERTY_IMPL( Critter, IsNoWalk );
 CLASS_PROPERTY_IMPL( Critter, IsNoRun );
+CLASS_PROPERTY_IMPL( Critter, IsNoRotate );
 CLASS_PROPERTY_IMPL( Critter, IsNoTalk );
 CLASS_PROPERTY_IMPL( Critter, IsHide );
 CLASS_PROPERTY_IMPL( Critter, IsNoFlatten );
@@ -278,14 +279,6 @@ uint Critter::GetAttackDist( Item* weap, int use )
 uint Critter::GetUseDist()
 {
     return 1 + GetMultihex();
-}
-
-uint Critter::GetMultihex()
-{
-    uint mh = GetMultihexBase();
-    if( mh == 0 )
-        mh = CritType::GetMultihex( GetCrType() );
-    return CLAMP( mh, 0, MAX_HEX_OFFSET );
 }
 
 bool Critter::IsLife()
@@ -1317,7 +1310,6 @@ void Critter::SetItem( Item* item )
         break;
     case SLOT_HAND1:
         RUNTIME_ASSERT( !ItemSlotMain->GetId() );
-        RUNTIME_ASSERT( !( item->IsWeapon() && !CritType::IsAnim1( GetCrType(), item->GetWeapon_Anim1() ) ) );
         ItemSlotMain = item;
         break;
     case SLOT_HAND2:
@@ -1327,7 +1319,6 @@ void Critter::SetItem( Item* item )
     case SLOT_ARMOR:
         RUNTIME_ASSERT( !ItemSlotArmor->GetId() );
         RUNTIME_ASSERT( item->IsArmor() );
-        RUNTIME_ASSERT( CritType::IsCanArmor( GetCrType() ) );
         ItemSlotArmor = item;
         break;
     default:
@@ -3184,32 +3175,6 @@ const char* Critter::GetInfo()
     return GetName();
 }
 
-bool Critter::IsCanWalk()
-{
-    return CritType::IsCanWalk( GetCrType() ) && !GetIsNoWalk();
-}
-
-bool Critter::IsCanRun()
-{
-    return CritType::IsCanRun( GetCrType() ) && !GetIsNoRun();
-}
-
-uint Critter::GetTimeWalk()
-{
-    int walk_time = GetWalkTime();
-    if( walk_time <= 0 )
-        walk_time = CritType::GetTimeWalk( GetCrType() );
-    return walk_time > 0 ? walk_time : 400;
-}
-
-uint Critter::GetTimeRun()
-{
-    int walk_time = GetRunTime();
-    if( walk_time <= 0 )
-        walk_time = CritType::GetTimeRun( GetCrType() );
-    return walk_time > 0 ? walk_time : 200;
-}
-
 uint Critter::GetItemsWeight()
 {
     uint res = 0;
@@ -3794,8 +3759,8 @@ void Client::Send_AddCritter( Critter* cr )
 
     bool is_npc = cr->IsNpc();
     uint msg = ( is_npc ? NETMSG_ADD_NPC : NETMSG_ADD_PLAYER );
-    uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( uint ) + sizeof( ushort ) * 2 +
-                   sizeof( uchar ) + sizeof( int ) + sizeof( uint ) * 6 + sizeof( uint ) + sizeof( short ) +
+    uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( ushort ) * 2 +
+                   sizeof( uchar ) + sizeof( int ) + sizeof( uint ) * 6 + sizeof( uint ) +
                    ( is_npc ? sizeof( hash ) : UTF8_BUF_SIZE( MAX_NAME ) );
 
     PUCharVec* data;
@@ -3807,7 +3772,6 @@ void Client::Send_AddCritter( Critter* cr )
     Bout << msg;
     Bout << msg_len;
     Bout << cr->GetId();
-    Bout << cr->GetCrType();
     Bout << cr->GetHexX();
     Bout << cr->GetHexY();
     Bout << cr->GetDir();
@@ -3819,7 +3783,6 @@ void Client::Send_AddCritter( Critter* cr )
     Bout << cr->GetAnim2Knockout();
     Bout << cr->GetAnim2Dead();
     Bout << cr->Flags;
-    Bout << cr->GetMultihexBase();
 
     if( is_npc )
     {

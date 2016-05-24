@@ -507,7 +507,6 @@ public:
         static bool  Crit_GetVisible( CritterCl* cr );
         static void  Crit_set_ContourColor( CritterCl* cr, uint value );
         static uint  Crit_get_ContourColor( CritterCl* cr );
-        static uint  Crit_GetMultihex( CritterCl* cr );
         static bool  Crit_IsTurnBasedTurn( CritterCl* cr );
         static void  Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines );
 
@@ -563,26 +562,16 @@ public:
         static uint          Global_GetDayTime( uint day_part );
         static void          Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
 
-        static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
-        static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
-        static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
-        static bool          Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func );
-        static bool          Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred );
-        static void          Global_AllowSlot( uchar index, bool enable_send );
-        static void          Global_AddRegistrationProperty( int cr_prop );
-        static bool          Global_LoadDataFile( ScriptString& dat_name );
-        static bool          Global_IsCritterCanWalk( uint cr_type );
-        static bool          Global_IsCritterCanRun( uint cr_type );
-        static bool          Global_IsCritterCanRotate( uint cr_type );
-        static bool          Global_IsCritterCanAim( uint cr_type );
-        static bool          Global_IsCritterCanArmor( uint cr_type );
-        static bool          Global_IsCritterAnim1( uint cr_type, uint index );
-        static int           Global_GetCritterAnimType( uint cr_type );
-        static uint          Global_GetCritterAlias( uint cr_type );
-        static ScriptString* Global_GetCritterTypeName( uint cr_type );
-        static ScriptString* Global_GetCritterSoundName( uint cr_type );
-        static void          Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
-        static void          Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
+        static uint Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
+        static void Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
+        static void Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
+        static bool Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func );
+        static bool Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred );
+        static void Global_AllowSlot( uchar index, bool enable_send );
+        static void Global_AddRegistrationProperty( int cr_prop );
+        static bool Global_LoadDataFile( ScriptString& dat_name );
+        static void Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
+        static void Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
 
         static uint Global_LoadSprite( ScriptString& spr_name, int path_index );
         static uint Global_LoadSpriteHash( uint name_hash );
@@ -599,8 +588,8 @@ public:
         static void Global_DrawPrimitive( int primitive_type, ScriptArray& data );
         static void Global_DrawMapSpriteProto( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, hash proto_id );
         static void Global_DrawMapSpriteExt( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, bool is_flat, bool no_light, int draw_order, int draw_order_hy_offset, int corner, bool disable_egg, uint color, uint contour_color );
-        static void Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
-        static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
+        static void Global_DrawCritter2d( hash model_name, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
+        static void Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
         static void Global_PushDrawScissor( int x, int y, int w, int h );
         static void Global_PopDrawScissor();
 

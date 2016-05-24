@@ -208,7 +208,6 @@ struct BindClass
     static void Crit_SetLexems()                {}
     static void Crit_SetEvent()                 {}
     static void Crit_GetMap()                   {}
-    static void Crit_ChangeCrType()             {}
     static void Cl_DropTimers()                 {}
     static void Crit_MoveRandom()               {}
     static void Crit_MoveToDir()                {}
@@ -292,9 +291,7 @@ struct BindClass
     static void Cl_RunClientScript() {}
     static void Cl_Disconnect()      {}
 
-    static void Crit_SetScript()   {}
-    static void Crit_GetMultihex() {}
-    static void Crit_SetMultihex() {}
+    static void Crit_SetScript() {}
 
     static void Crit_AddEnemyToStack()     {}
     static void Crit_CheckEnemyInStack()   {}
@@ -532,7 +529,6 @@ struct BindClass
     static void Crit_GetVisible()       {}
     static void Crit_set_ContourColor() {}
     static void Crit_get_ContourColor() {}
-    static void Crit_GetMultihex()      {}
     static void Crit_IsTurnBasedTurn()  {}
     static void Crit_GetNameTextInfo()  {}
 
@@ -614,16 +610,6 @@ struct BindClass
     static void Global_SetPropertyGetCallback()  {}
     static void Global_AddPropertySetCallback()  {}
     static void Global_AddRegistrationProperty() {}
-    static void Global_IsCritterCanWalk()        {}
-    static void Global_IsCritterCanRun()         {}
-    static void Global_IsCritterCanRotate()      {}
-    static void Global_IsCritterCanAim()         {}
-    static void Global_IsCritterCanArmor()       {}
-    static void Global_IsCritterAnim1()          {}
-    static void Global_GetCritterAnimType()      {}
-    static void Global_GetCritterAlias()         {}
-    static void Global_GetCritterTypeName()      {}
-    static void Global_GetCritterSoundName()     {}
     static void Global_GetGlobalMapRelief()      {}
     #endif
 
@@ -673,17 +659,6 @@ struct BindClass
     static void Global_TabDelete()         {}
     static void Global_TabSelect()         {}
     static void Global_TabSetName()        {}
-
-    static void Global_IsCritterCanWalk()    {}
-    static void Global_IsCritterCanRun()     {}
-    static void Global_IsCritterCanRotate()  {}
-    static void Global_IsCritterCanAim()     {}
-    static void Global_IsCritterCanArmor()   {}
-    static void Global_IsCritterAnim1()      {}
-    static void Global_GetCritterAnimType()  {}
-    static void Global_GetCritterAlias()     {}
-    static void Global_GetCritterTypeName()  {}
-    static void Global_GetCritterSoundName() {}
 
     static void Global_GetIfaceIniStr()   {}
     static void Global_GetMonitorObject() {}

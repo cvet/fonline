@@ -172,8 +172,6 @@ bool FOClient::Init()
     #endif
 
     // Register dll script data
-    GameOpt.CritterTypes = &CritType::GetRealCritType( 0 );
-
     struct GetDrawingSprites_
     {
         static void* GetDrawingSprites( uint& count )
@@ -2822,13 +2820,10 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     uint msg_len;
     Bin >> msg_len;
 
-    uint crid;
-    uint base_type;
-    Bin >> crid;
-    Bin >> base_type;
-
+    uint   crid;
     ushort hx, hy;
     uchar  dir;
+    Bin >> crid;
     Bin >> hx;
     Bin >> hy;
     Bin >> dir;
@@ -2837,7 +2832,6 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     uint anim1life, anim1ko, anim1dead;
     uint anim2life, anim2ko, anim2dead;
     uint flags;
-    int  multihex;
     Bin >> cond;
     Bin >> anim1life;
     Bin >> anim1ko;
@@ -2846,7 +2840,6 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     Bin >> anim2ko;
     Bin >> anim2dead;
     Bin >> flags;
-    Bin >> multihex;
 
     // Npc
     hash npc_pid = 0;
@@ -2866,13 +2859,14 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
     CHECK_IN_BUFF_ERROR;
 
-    if( !CritType::IsEnabled( base_type ) )
-        base_type = 0;
-
     if( !crid )
+    {
         WriteLogF( _FUNC_, " - Critter id is zero.\n" );
+    }
     else if( HexMngr.IsMapLoaded() && ( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= DIRS_COUNT ) )
+    {
         WriteLogF( _FUNC_, " - Invalid positions hx %u, hy %u, dir %u.\n", hx, hy, dir );
+    }
     else
     {
         ProtoCritter* proto = ProtoMngr.GetProtoCritter( is_npc ? npc_pid : Str::GetHash( "Player" ) );
@@ -2890,8 +2884,6 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         cr->SetAnim2Knockout( anim2ko );
         cr->SetAnim2Dead( anim2dead );
         cr->Flags = flags;
-        cr->SetMultihexBase( multihex );
-        cr->SetBaseCrType( base_type );
 
         if( is_npc )
         {
@@ -3695,30 +3687,6 @@ void FOClient::Net_OnCustomCommand()
             Chosen->Flags = value;
         }
         break;
-        case OTHER_BASE_TYPE:
-        {
-            if( Chosen->GetMultihexBase() < 0 && CritType::GetMultihex( Chosen->GetCrType() ) != CritType::GetMultihex( value ) )
-            {
-                HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), CritType::GetMultihex( Chosen->GetCrType() ), false );
-                HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), CritType::GetMultihex( value ), true );
-            }
-
-            Chosen->ChangeCrType( value );
-            if( !Chosen->IsAnim() )
-                Chosen->Action( ACTION_REFRESH, 0, nullptr, false );
-        }
-        break;
-        case OTHER_MULTIHEX:
-        {
-            int old_mh = Chosen->GetMultihex();
-            Chosen->SetMultihexBase( value );
-            if( old_mh != (int) Chosen->GetMultihex() )
-            {
-                HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), old_mh, false );
-                HexMngr.SetMultihex( Chosen->GetHexX(), Chosen->GetHexY(), Chosen->GetMultihex(), true );
-            }
-        }
-        break;
         case OTHER_YOU_TURN:
         {
             if( value < 0 )
@@ -3779,28 +3747,6 @@ void FOClient::Net_OnCustomCommand()
         if( index == OTHER_FLAGS )
         {
             cr->Flags = value;
-        }
-        else if( index == OTHER_BASE_TYPE )
-        {
-            if( cr->GetMultihexBase() < 0 && CritType::GetMultihex( cr->GetCrType() ) != CritType::GetMultihex( value ) )
-            {
-                HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), CritType::GetMultihex( cr->GetCrType() ), false );
-                HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), CritType::GetMultihex( value ), true );
-            }
-
-            cr->ChangeCrType( value );
-            if( !cr->IsAnim() )
-                cr->Action( ACTION_REFRESH, 0, nullptr, false );
-        }
-        else if( index == OTHER_MULTIHEX )
-        {
-            int old_mh = cr->GetMultihex();
-            cr->SetMultihexBase( value );
-            if( old_mh != (int) cr->GetMultihex() )
-            {
-                HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), old_mh, false );
-                HexMngr.SetMultihex( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), true );
-            }
         }
         else if( index == OTHER_YOU_TURN )
         {
@@ -6073,12 +6019,10 @@ void FOClient::CrittersProcess()
         else if( is_run && !IsTurnBased && Chosen->GetApCostCritterMove( is_run ) > 0 && Chosen->GetRealAp() < ( GameOpt.RunModMul * Chosen->GetActionPoints() * AP_DIVIDER ) / GameOpt.RunModDiv + GameOpt.RunModAdd )
             is_run = false;
 
-        if( is_run && !CritType::IsCanRun( Chosen->GetCrType() ) )
-            is_run = false;
         if( is_run && Chosen->GetIsNoRun() )
             is_run = false;
 
-        if( !is_run && ( !CritType::IsCanWalk( Chosen->GetCrType() ) || Chosen->GetIsNoWalk() ) )
+        if( !is_run && Chosen->GetIsNoWalk() )
         {
             AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_CRITTER_CANT_MOVE ) );
             SetAction( CHOSEN_NONE );
@@ -7986,9 +7930,9 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.Animation2dProcess, "animation2d_process", "void %s(bool,Critter&,uint,uint,Item@)" },
         { &ClientFunctions.Animation3dProcess, "animation3d_process", "void %s(bool,Critter&,uint,uint,Item@)" },
         { &ClientFunctions.ItemsCollection, "items_collection", "void %s(int,Item@[]&)" },
-        { &ClientFunctions.CritterAnimation, "critter_animation", "string@ %s(int,uint,uint,uint,uint&,uint&,int&,int&)" },
-        { &ClientFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(int,uint,uint,uint,uint&,uint&,uint&)" },
-        { &ClientFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(uint,uint&,uint&,uint&,uint&,uint&)" },
+        { &ClientFunctions.CritterAnimation, "critter_animation", "string@ %s(hash,uint,uint,uint&,uint&,int&,int&)" },
+        { &ClientFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(hash,uint,uint,hash&,uint&,uint&)" },
+        { &ClientFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(hash,uint&,uint&,uint&,uint&,uint&)" },
         { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(const Critter&,const Item&,uint8,const Item@)" },
         { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(const Critter&,const Item&,uint8)" },
         { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(Critter&,Item&,uint8)" },
@@ -8332,13 +8276,6 @@ uint FOClient::SScriptFunc::Crit_get_ContourColor( CritterCl* cr )
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     return cr->ContourColor;
-}
-
-uint FOClient::SScriptFunc::Crit_GetMultihex( CritterCl* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->GetMultihex();
 }
 
 bool FOClient::SScriptFunc::Crit_IsTurnBasedTurn( CritterCl* cr )
@@ -9718,76 +9655,6 @@ bool FOClient::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
     return false;
 }
 
-bool FOClient::SScriptFunc::Global_IsCritterCanWalk( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return CritType::IsCanWalk( cr_type );
-}
-
-bool FOClient::SScriptFunc::Global_IsCritterCanRun( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return CritType::IsCanRun( cr_type );
-}
-
-bool FOClient::SScriptFunc::Global_IsCritterCanRotate( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return CritType::IsCanRotate( cr_type );
-}
-
-bool FOClient::SScriptFunc::Global_IsCritterCanAim( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return CritType::IsCanAim( cr_type );
-}
-
-bool FOClient::SScriptFunc::Global_IsCritterCanArmor( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return CritType::IsCanArmor( cr_type );
-}
-
-bool FOClient::SScriptFunc::Global_IsCritterAnim1( uint cr_type, uint index )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return CritType::IsAnim1( cr_type, index );
-}
-
-int FOClient::SScriptFunc::Global_GetCritterAnimType( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return CritType::GetAnimType( cr_type );
-}
-
-uint FOClient::SScriptFunc::Global_GetCritterAlias( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return CritType::GetAlias( cr_type );
-}
-
-ScriptString* FOClient::SScriptFunc::Global_GetCritterTypeName( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return ScriptString::Create( CritType::GetCritType( cr_type ).Name );
-}
-
-ScriptString* FOClient::SScriptFunc::Global_GetCritterSoundName( uint cr_type )
-{
-    if( !CritType::IsEnabled( cr_type ) )
-        SCRIPT_ERROR_R0( "Invalid critter type arg." );
-    return ScriptString::Create( CritType::GetSoundName( cr_type ) );
-}
-
 void FOClient::SScriptFunc::Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
 {
     UIntVec dw;
@@ -10059,94 +9926,86 @@ void FOClient::SScriptFunc::Global_DrawMapSpriteExt( ushort hx, ushort hy, uint 
         spr.SetContour( CONTOUR_CUSTOM, contour_color );
 }
 
-void FOClient::SScriptFunc::Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color )
+void FOClient::SScriptFunc::Global_DrawCritter2d( hash model_name, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color )
 {
-    if( CritType::IsEnabled( crtype ) )
-    {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( crtype, anim1, anim2, dir );
-        if( anim )
-            SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
-    }
+    AnyFrames* anim = ResMngr.GetCrit2dAnim( model_name, anim1, anim2, dir );
+    if( anim )
+        SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 Animation3dVec DrawCritter3dAnim;
 UIntVec        DrawCritter3dCrType;
 BoolVec        DrawCritter3dFailToLoad;
 int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
-void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color )
+void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color )
 {
     // x y
     // rx ry rz
     // sx sy sz
     // speed
     // scissor l t r b
-    if( CritType::IsEnabled( crtype ) )
+    if( instance >= DrawCritter3dAnim.size() )
     {
-        if( instance >= DrawCritter3dAnim.size() )
-        {
-            DrawCritter3dAnim.resize( instance + 1 );
-            DrawCritter3dCrType.resize( instance + 1 );
-            DrawCritter3dFailToLoad.resize( instance + 1 );
-        }
-
-        if( DrawCritter3dFailToLoad[ instance ] && DrawCritter3dCrType[ instance ] == crtype )
-            return;
-
-        Animation3d*& anim3d = DrawCritter3dAnim[ instance ];
-        if( !anim3d || DrawCritter3dCrType[ instance ] != crtype )
-        {
-            if( anim3d )
-                SprMngr.FreePure3dAnimation( anim3d );
-            char fname[ MAX_FOPATH ];
-            Str::Format( fname, "%s.fo3d", CritType::GetName( crtype ) );
-            SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-            anim3d = SprMngr.LoadPure3dAnimation( fname, PT_CLIENT_CRITTERS, false );
-            SprMngr.PopAtlasType();
-            DrawCritter3dCrType[ instance ] = crtype;
-            DrawCritter3dFailToLoad[ instance ] = false;
-
-            if( !anim3d )
-            {
-                DrawCritter3dFailToLoad[ instance ] = true;
-                return;
-            }
-            anim3d->EnableShadow( false );
-            anim3d->SetTimer( false );
-        }
-
-        uint  count = ( position ? position->GetSize() : 0 );
-        float x = ( count > 0 ? *(float*) position->At( 0 ) : 0.0f );
-        float y = ( count > 1 ? *(float*) position->At( 1 ) : 0.0f );
-        float rx = ( count > 2 ? *(float*) position->At( 2 ) : 0.0f );
-        float ry = ( count > 3 ? *(float*) position->At( 3 ) : 0.0f );
-        float rz = ( count > 4 ? *(float*) position->At( 4 ) : 0.0f );
-        float sx = ( count > 5 ? *(float*) position->At( 5 ) : 1.0f );
-        float sy = ( count > 6 ? *(float*) position->At( 6 ) : 1.0f );
-        float sz = ( count > 7 ? *(float*) position->At( 7 ) : 1.0f );
-        float speed = ( count > 8 ? *(float*) position->At( 8 ) : 1.0f );
-        float period = ( count > 9 ? *(float*) position->At( 9 ) : 0.0f );
-        float stl = ( count > 10 ? *(float*) position->At( 10 ) : 0.0f );
-        float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
-        float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
-        float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
-        if( count > 13 )
-            SprMngr.PushScissor( (int) stl, (int) stt, (int) str, (int) stb );
-
-        memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
-        for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
-            DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
-
-        anim3d->SetDirAngle( 0 );
-        anim3d->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
-        anim3d->SetScale( sx, sy, sz );
-        anim3d->SetSpeed( speed );
-        anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, ANIMATION_PERIOD( (int) ( period * 100.0f ) ) | ANIMATION_NO_SMOOTH );
-
-        SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
-
-        if( count > 13 )
-            SprMngr.PopScissor();
+        DrawCritter3dAnim.resize( instance + 1 );
+        DrawCritter3dCrType.resize( instance + 1 );
+        DrawCritter3dFailToLoad.resize( instance + 1 );
     }
+
+    if( DrawCritter3dFailToLoad[ instance ] && DrawCritter3dCrType[ instance ] == model_name )
+        return;
+
+    Animation3d*& anim3d = DrawCritter3dAnim[ instance ];
+    if( !anim3d || DrawCritter3dCrType[ instance ] != model_name )
+    {
+        if( anim3d )
+            SprMngr.FreePure3dAnimation( anim3d );
+        SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_CRITTERS, false );
+        SprMngr.PopAtlasType();
+        DrawCritter3dCrType[ instance ] = model_name;
+        DrawCritter3dFailToLoad[ instance ] = false;
+
+        if( !anim3d )
+        {
+            DrawCritter3dFailToLoad[ instance ] = true;
+            return;
+        }
+        anim3d->EnableShadow( false );
+        anim3d->SetTimer( false );
+    }
+
+    uint  count = ( position ? position->GetSize() : 0 );
+    float x = ( count > 0 ? *(float*) position->At( 0 ) : 0.0f );
+    float y = ( count > 1 ? *(float*) position->At( 1 ) : 0.0f );
+    float rx = ( count > 2 ? *(float*) position->At( 2 ) : 0.0f );
+    float ry = ( count > 3 ? *(float*) position->At( 3 ) : 0.0f );
+    float rz = ( count > 4 ? *(float*) position->At( 4 ) : 0.0f );
+    float sx = ( count > 5 ? *(float*) position->At( 5 ) : 1.0f );
+    float sy = ( count > 6 ? *(float*) position->At( 6 ) : 1.0f );
+    float sz = ( count > 7 ? *(float*) position->At( 7 ) : 1.0f );
+    float speed = ( count > 8 ? *(float*) position->At( 8 ) : 1.0f );
+    float period = ( count > 9 ? *(float*) position->At( 9 ) : 0.0f );
+    float stl = ( count > 10 ? *(float*) position->At( 10 ) : 0.0f );
+    float stt = ( count > 11 ? *(float*) position->At( 11 ) : 0.0f );
+    float str = ( count > 12 ? *(float*) position->At( 12 ) : 0.0f );
+    float stb = ( count > 13 ? *(float*) position->At( 13 ) : 0.0f );
+    if( count > 13 )
+        SprMngr.PushScissor( (int) stl, (int) stt, (int) str, (int) stb );
+
+    memzero( DrawCritter3dLayers, sizeof( DrawCritter3dLayers ) );
+    for( uint i = 0, j = ( layers ? layers->GetSize() : 0 ); i < j && i < LAYERS3D_COUNT; i++ )
+        DrawCritter3dLayers[ i ] = *(int*) layers->At( i );
+
+    anim3d->SetDirAngle( 0 );
+    anim3d->SetRotation( rx * PI_VALUE / 180.0f, ry * PI_VALUE / 180.0f, rz * PI_VALUE / 180.0f );
+    anim3d->SetScale( sx, sy, sz );
+    anim3d->SetSpeed( speed );
+    anim3d->SetAnimation( anim1, anim2, DrawCritter3dLayers, ANIMATION_PERIOD( (int) ( period * 100.0f ) ) | ANIMATION_NO_SMOOTH );
+
+    SprMngr.Draw3d( (int) x, (int) y, anim3d, COLOR_SCRIPT_SPRITE( color ) );
+
+    if( count > 13 )
+        SprMngr.PopScissor();
 }
 
 void FOClient::SScriptFunc::Global_PushDrawScissor( int x, int y, int w, int h )

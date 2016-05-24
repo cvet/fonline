@@ -292,13 +292,13 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
 
     // Check run/walk
     bool is_run = FLAG( move_params, MOVE_PARAM_RUN );
-    if( is_run && !cr->IsCanRun() )
+    if( is_run && cr->GetIsNoRun() )
     {
         // Switch to walk
         move_params ^= MOVE_PARAM_RUN;
         is_run = false;
     }
-    if( !is_run && !cr->IsCanWalk() )
+    if( !is_run && cr->GetIsNoWalk() )
         return false;
 
     // Check
@@ -401,11 +401,11 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     {
         if( !cr->GetPerkSilentRunning() && cr->GetIsHide() )
             cr->SetIsHide( false );
-        cr->SetBreakTimeDelta( cr->GetTimeRun() );
+        cr->SetBreakTimeDelta( cr->GetRunTime() );
     }
     else
     {
-        cr->SetBreakTimeDelta( cr->GetTimeWalk() );
+        cr->SetBreakTimeDelta( cr->GetWalkTime() );
     }
 
     cr->SendA_Move( move_params );
@@ -540,12 +540,6 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( aim && !CritType::IsCanAim( cr->GetCrType() ) )
-    {
-        WriteLogF( _FUNC_, " - Aim is not available for this critter type, crtype %u, aim %u, critter '%s', target critter '%s'.\n", cr->GetCrType(), aim, cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
     if( aim && cr->GetIsNoAim() )
     {
         WriteLogF( _FUNC_, " - Aim is not available with critter no aim mode, aim %u, critter '%s', target critter '%s'.\n", aim, cr->GetInfo(), t_cr->GetInfo() );
@@ -555,12 +549,6 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     if( aim && !weap->WeapIsCanAim( use ) )
     {
         WriteLogF( _FUNC_, " - Aim is not available for this weapon, aim %u, weapon '%s', critter '%s', target critter '%s'.\n", aim, weap->GetName(), cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    if( !CritType::IsAnim1( cr->GetCrType(), weap->GetWeapon_Anim1() ) )
-    {
-        WriteLogF( _FUNC_, " - Anim1 is not available for this critter type, crtype %u, anim1 %d, critter '%s', target critter '%s'.\n", cr->GetCrType(), weap->GetWeapon_Anim1(), cr->GetInfo(), t_cr->GetInfo() );
         return false;
     }
 
@@ -2641,7 +2629,7 @@ void FOServer::Process_Move( Client* cl )
     bool is_run = FLAG( move_params, MOVE_PARAM_RUN );
     if( is_run )
     {
-        if( !cl->IsCanRun() ||
+        if( cl->GetIsNoRun() ||
             ( GameOpt.RunOnCombat ? false : IS_TIMEOUT( cl->GetTimeoutBattle() ) ) ||
             ( GameOpt.RunOnTransfer ? false : IS_TIMEOUT( cl->GetTimeoutTransfer() ) ) )
         {
@@ -2654,7 +2642,7 @@ void FOServer::Process_Move( Client* cl )
     // Check walking availability
     if( !is_run )
     {
-        if( !cl->IsCanWalk() )
+        if( cl->GetIsNoWalk() )
         {
             cl->Send_XY( cl );
             return;

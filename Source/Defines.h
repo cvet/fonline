@@ -334,8 +334,6 @@
 #define OTHER_BREAK_TIME             ( 0 )
 #define OTHER_WAIT_TIME              ( 1 )
 #define OTHER_FLAGS                  ( 2 )
-#define OTHER_BASE_TYPE              ( 3 )
-#define OTHER_MULTIHEX               ( 4 )
 #define OTHER_YOU_TURN               ( 5 )
 #define OTHER_CLEAR_MAP              ( 6 )
 #define OTHER_TELEPORT               ( 7 )

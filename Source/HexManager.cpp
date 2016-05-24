@@ -4055,11 +4055,6 @@ void HexManager::GetProtoMap( ProtoMap& pmap )
         else
             RUNTIME_ASSERT( !"Unreachable place" );
         store_entity->Props = entity->Props;
-        if( entity->Type == EntityType::CritterCl )
-        {
-            ( (CritterCl*) store_entity )->SetCrType( 0 );
-            ( (CritterCl*) store_entity )->SetCrTypeAlias( 0 );
-        }
         pmap.AllEntities.push_back( store_entity );
         for( auto& child : entity->GetChildren() )
         {

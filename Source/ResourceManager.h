@@ -25,18 +25,18 @@ typedef map< hash, LoadedAnim > LoadedAnimMap;
 class ResourceManager
 {
 private:
-    PtrVec         processedDats;
-    UIntStrMap     namesHash;
-    LoadedAnimMap  loadedAnims;
-    AnimMap        critterFrames;
-    Animation3dVec critter3d;
-    StrVec         splashNames;
-    StrMap         soundNames;
+    PtrVec                    processedDats;
+    UIntStrMap                namesHash;
+    LoadedAnimMap             loadedAnims;
+    AnimMap                   critterFrames;
+    map< hash, Animation3d* > critter3d;
+    StrVec                    splashNames;
+    StrMap                    soundNames;
 
     void       AddNamesHash( StrVec& names );
-    void       RegisterCritterAnim( AnyFrames* anim, uint crtype, int anim1, int anim2, bool fallout_spr );
-    AnyFrames* LoadFalloutAnim( uint crtype, uint anim1, uint anim2 );
-    AnyFrames* LoadFalloutAnimSpr( uint crtype, uint anim1, uint anim2 );
+    void       RegisterCritterAnim( AnyFrames* anim, hash model_name, int anim1, int anim2, bool fallout_spr );
+    AnyFrames* LoadFalloutAnim( hash model_name, uint anim1, uint anim2 );
+    AnyFrames* LoadFalloutAnimSpr( hash model_name, uint anim1, uint anim2 );
 
 public:
     AnyFrames* ItemHexDefaultAnim;
@@ -53,9 +53,9 @@ public:
     AnyFrames* GetSkDxAnim( hash name_hash )  { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
     AnyFrames* GetItemAnim( hash name_hash )  { return GetAnim( name_hash, RES_ATLAS_DYNAMIC ); }
 
-    AnyFrames*   GetCrit2dAnim( uint crtype, uint anim1, uint anim2, int dir );
-    Animation3d* GetCrit3dAnim( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = nullptr );
-    uint         GetCritSprId( uint crtype, uint anim1, uint anim2, int dir, int* layers3d = nullptr );
+    AnyFrames*   GetCrit2dAnim( hash model_name, uint anim1, uint anim2, int dir );
+    Animation3d* GetCrit3dAnim( hash model_name, uint anim1, uint anim2, int dir, int* layers3d = nullptr );
+    uint         GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, int* layers3d = nullptr );
 
     AnyFrames* GetRandomSplash();
 
