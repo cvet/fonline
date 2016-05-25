@@ -660,7 +660,7 @@ void FileManager::ResetCurrentDir()
         #elif defined ( FONLINE_CLIENT )
         appendix = MainConfig->GetStr( "", "ClientPath" );
         #elif defined ( FONLINE_MAPPER )
-        appendix = MainConfig->GetStr( "", "MapperPath" );
+        appendix = MainConfig->GetStr( "", "ClientPath" );
         #endif
 
         if( !appendix )

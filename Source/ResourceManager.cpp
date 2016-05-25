@@ -19,13 +19,20 @@ void ResourceManager::Refresh()
             // Hash all files
             StrVec file_names;
             data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, nullptr, file_names );
-            char   buf_lower[ MAX_FOTEXT ];
+            char   buf[ MAX_FOTEXT ];
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
             {
-                Str::GetHash( it->c_str() );
-                Str::Copy( buf_lower, it->c_str() );
-                Str::Lower( buf_lower );
-                Str::GetHash( buf_lower );
+                // File name
+                FileManager::ExtractFileName( it->c_str(), buf );
+                Str::GetHash( buf );
+                Str::Lower( buf );
+                Str::GetHash( buf );
+
+                // Full path
+                Str::Copy( buf, it->c_str() );
+                Str::GetHash( buf );
+                Str::Lower( buf );
+                Str::GetHash( buf );
             }
 
             // Splashes

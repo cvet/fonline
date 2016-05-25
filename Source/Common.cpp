@@ -690,25 +690,8 @@ void GetClientOptions()
 
     // Load config file
     # ifdef FONLINE_MAPPER
-    READ_CFG_STR_DEF( *MainConfig, "ClientPath", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-ClientPath" );
-    FileManager::FormatPath( buf );
-    *GameOpt.ClientPath = buf;
-    if( GameOpt.ClientPath->length() && GameOpt.ClientPath->c_str()[ GameOpt.ClientPath->length() - 1 ] != '/' && GameOpt.ClientPath->c_str()[ GameOpt.ClientPath->length() - 1 ] != '\\' )
-        *GameOpt.ClientPath += "/";
-    READ_CFG_STR_DEF( *MainConfig, "ServerPath", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-ServerPath" );
-    FileManager::FormatPath( buf );
-    *GameOpt.ServerPath = buf;
-    if( GameOpt.ServerPath->length() && GameOpt.ServerPath->c_str()[ GameOpt.ServerPath->length() - 1 ] != '/' && GameOpt.ServerPath->c_str()[ GameOpt.ServerPath->length() - 1 ] != '\\' )
-        *GameOpt.ServerPath += "/";
-
-    // Server and client data
     FileManager::SetCurrentDir( GameOpt.ClientPath->c_str(), CLIENT_DATA );
     FileManager::InitDataFiles( CLIENT_DATA );
-    FileManager::SetCurrentDir( GameOpt.ServerPath->c_str(), "./" );
-    FileManager::InitDataFiles( "./" );
-    FileManager::SetCurrentDir( GameOpt.ClientPath->c_str(), CLIENT_DATA );
     # endif
 
     // Language

@@ -145,6 +145,8 @@ CritterCl::~CritterCl()
 
 void CritterCl::Init()
 {
+    RefreshAnim();
+
     ProtoItem* unarmed = ProtoMngr.GetProtoItem( GetHandsItemProtoId() );
     if( unarmed )
     {

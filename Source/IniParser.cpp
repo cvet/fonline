@@ -434,6 +434,14 @@ void IniParser::LoadMainConfig()
         ModuleFullDirs.push_back( string( full_dir ) );
     }
 
+    char path[ MAX_FOTEXT ];
+    Str::Copy( path, MainConfig->GetStr( "", "ClientPath", "" ) );
+    ResolvePath( path );
+    *GameOpt.ClientPath = path;
+    Str::Copy( path, MainConfig->GetStr( "", "ServerPath", "" ) );
+    ResolvePath( path );
+    *GameOpt.ServerPath = path;
+
     FileManager::ResetCurrentDir();
 
     #ifdef FONLINE_CLIENT
