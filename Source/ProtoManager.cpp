@@ -74,11 +74,11 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
     map< hash, map< string, StrMap > > files_texts;
     while( files.IsNextFile() )
     {
-        const char*  file_name;
-        FileManager& file = files.GetNextFile( &file_name );
+        const char*  proto_name;
+        FileManager& file = files.GetNextFile( &proto_name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file '%s'.\n", file_name );
+            WriteLog( "Unable to open file '%s'.\n", proto_name );
             errors++;
             continue;
         }
@@ -93,7 +93,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
         for( auto& pkv : protos_data )
         {
             auto&       kv = *pkv;
-            const char* name = ( kv.count( "$Name" ) ? kv[ "$Name" ].c_str() : file_name );
+            const char* name = ( kv.count( "$Name" ) ? kv[ "$Name" ].c_str() : proto_name );
             hash        pid = Str::GetHash( name );
             if( files_protos.count( pid ) )
             {
@@ -122,7 +122,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
 
         if( protos_data.empty() )
         {
-            WriteLog( "File '%s' does not contain any proto.\n", file_name );
+            WriteLog( "File '%s' does not contain any proto.\n", proto_name );
             errors++;
         }
     }

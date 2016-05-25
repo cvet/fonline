@@ -430,7 +430,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     while( dlls.IsNextFile() )
     {
         const char* name, * path;
-        dlls.GetNextFile( &name, &path, true );
+        dlls.GetNextFile( nullptr, &path, nullptr, true );
         if( Str::CompareCase( dll_path, name ) )
         {
             founded = true;
@@ -565,11 +565,11 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
     FilesCollection cache_files( "fosb", FileManager::GetDataPath( "", PT_SERVER_CACHE ) );
     while( cache_files.IsNextFile() )
     {
-        const char*  file_name;
-        FileManager& cache_file = cache_files.GetNextFile( &file_name );
+        const char*  name;
+        FileManager& cache_file = cache_files.GetNextFile( &name );
         RUNTIME_ASSERT( cache_file.IsLoaded() );
         cache_write_time = ( cache_write_time ? MIN( cache_write_time, cache_file.GetWriteTime() ) : cache_file.GetWriteTime() );
-        cache_file_names.insert( file_name );
+        cache_file_names.insert( name );
         uint bin_version = cache_file.GetBEUInt();
         if( bin_version != FONLINE_VERSION )
         {
@@ -602,7 +602,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         FileManager& file = raw_files.GetNextFile( &file_name, &file_full_name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file '%s'.\n", file_name );
+            WriteLog( "Unable to open file '%s'.\n", name );
             errors++;
             continue;
         }
@@ -611,7 +611,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         char line[ MAX_FOTEXT ];
         if( !file.GetLine( line, sizeof( line ) ) )
         {
-            WriteLog( "Error in script '%s', file empty.\n", file_name );
+            WriteLog( "Error in script '%s', file empty.\n", name );
             errors++;
             continue;
         }
@@ -619,7 +619,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         // Check signature
         if( !Str::Substring( line, "FOS" ) )
         {
-            WriteLog( "Error in script '%s', invalid header '%s'.\n", file_name, line );
+            WriteLog( "Error in script '%s', invalid header '%s'.\n", name, line );
             errors++;
             continue;
         }
@@ -636,7 +636,7 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         module_names.push_back( PAIR( string( file_name ), string( file_full_name ) ) );
 
         // Check in cache
-        if( !load_from_raw && !cache_file_names.count( ( string( cache_pefix ) + file_name ).c_str() ) )
+        if( !load_from_raw && !cache_file_names.count( ( string( cache_pefix ) + name ).c_str() ) )
             load_from_raw = true;
     }
 

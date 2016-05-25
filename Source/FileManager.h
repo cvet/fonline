@@ -93,6 +93,7 @@ public:
     static void        MakeFilePath( const char* name, const char* path, char* result );
     static const char* GetExtension( const char* path ); // EXT without dot
     static char*       EraseExtension( char* path );     // Erase EXT with dot
+    static string      CombinePath( const char* path, const char* relative_dir );
     static bool        CopyFile( const char* from, const char* to );
     static bool        DeleteFile( const char* fname );
 
@@ -136,14 +137,15 @@ class FilesCollection
 public:
     FilesCollection( const char* ext, const char* fixed_dir = nullptr );
     bool         IsNextFile();
-    FileManager& GetNextFile( const char** name = nullptr, const char** path = nullptr, bool no_read_data = false );
-    FileManager& FindFile( const char* name, const char** path = nullptr );
+    FileManager& GetNextFile( const char** name = nullptr, const char** path = nullptr, const char** relative_path = nullptr, bool no_read_data = false );
+    FileManager& FindFile( const char* name, const char** path = nullptr, const char** relative_path = nullptr, bool no_read_data = false );
     uint         GetFilesCount();
     void         ResetCounter();
 
 private:
     StrVec      fileNames;
     StrVec      filePaths;
+    StrVec      fileRelativePaths;
     uint        curFileIndex;
     FileManager curFile;
 };

@@ -89,24 +89,24 @@ bool DialogManager::LoadDialogs()
     uint            files_loaded = 0;
     while( files.IsNextFile() )
     {
-        const char*  file_name;
-        FileManager& file = files.GetNextFile( &file_name );
+        const char*  name;
+        FileManager& file = files.GetNextFile( &name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file '%s'.\n", file_name );
+            WriteLog( "Unable to open file '%s'.\n", name );
             continue;
         }
 
-        DialogPack* pack = ParseDialog( file_name, (char*) file.GetBuf() );
+        DialogPack* pack = ParseDialog( name, (char*) file.GetBuf() );
         if( !pack )
         {
-            WriteLog( "Unable to parse dialog '%s'.\n", file_name );
+            WriteLog( "Unable to parse dialog '%s'.\n", name );
             continue;
         }
 
         if( !AddDialog( pack ) )
         {
-            WriteLog( "Unable to add dialog '%s'.\n", file_name );
+            WriteLog( "Unable to add dialog '%s'.\n", name );
             continue;
         }
 

@@ -151,9 +151,9 @@ static void FixTexCoord( float& x, float& y )
 FileManager* ResourceConverter::Convert( const char* name, FileManager& file )
 {
     const char* ext = FileManager::GetExtension( name );
-    if( Str::CompareCase( ext, "png" ) || Str::CompareCase( ext, "tga" ) )
+    if( ext && Str::CompareCase( ext, "png" ) || Str::CompareCase( ext, "tga" ) )
         return ConvertImage( name, file );
-    if( Is3dExtensionSupported( ext ) && !Str::CompareCase( ext, "fo3d" ) )
+    if( ext && Is3dExtensionSupported( ext ) && !Str::CompareCase( ext, "fo3d" ) )
         return Convert3d( name, file );
     file.SwitchToWrite();
     return &file;
@@ -1207,7 +1207,7 @@ bool ResourceConverter::Generate()
                     {
                         while( resources.IsNextFile() )
                         {
-                            FileManager& file = resources.GetNextFile( nullptr, nullptr, true );
+                            FileManager& file = resources.GetNextFile( nullptr, nullptr, nullptr, true );
                             if( file.GetWriteTime() > zip_file.GetWriteTime() )
                             {
                                 skip_making_zip = false;
@@ -1232,27 +1232,27 @@ bool ResourceConverter::Generate()
                             resources.ResetCounter();
                             while( resources.IsNextFile() )
                             {
-                                const char*  name;
-                                FileManager& file = resources.GetNextFile( nullptr, &name );
-                                FileManager* converted_file = Convert( name, file );
+                                const char*  relative_path;
+                                FileManager& file = resources.GetNextFile( nullptr, nullptr, &relative_path );
+                                FileManager* converted_file = Convert( relative_path, file );
                                 if( !converted_file )
                                 {
-                                    WriteLog( "File '%s' conversation error.\n", name );
+                                    WriteLog( "File '%s' conversation error.\n", relative_path );
                                     continue;
                                 }
 
                                 zip_fileinfo zfi;
                                 memzero( &zfi, sizeof( zfi ) );
-                                if( zipOpenNewFileInZip( zip, name, &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
+                                if( zipOpenNewFileInZip( zip, relative_path, &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
                                 {
                                     if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
-                                        WriteLog( "Can't write file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
+                                        WriteLog( "Can't write file '%s' in zip file '%s'.\n", relative_path, zip_path.c_str() );
 
                                     zipCloseFileInZip( zip );
                                 }
                                 else
                                 {
-                                    WriteLog( "Can't open file '%s' in zip file '%s'.\n", name, zip_path.c_str() );
+                                    WriteLog( "Can't open file '%s' in zip file '%s'.\n", relative_path, zip_path.c_str() );
                                 }
 
                                 if( converted_file != &file )
@@ -1313,7 +1313,7 @@ bool ResourceConverter::Generate()
     while( update_files.IsNextFile() )
     {
         const char* path;
-        update_files.GetNextFile( nullptr, &path, true );
+        update_files.GetNextFile( nullptr, &path, nullptr, true );
         char fname[ MAX_FOPATH ];
         FileManager::ExtractFileName( path, fname );
         if( !update_file_names.count( fname ) )

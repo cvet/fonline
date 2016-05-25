@@ -940,6 +940,18 @@ char* FileManager::EraseExtension( char* path )
     return path;
 }
 
+string FileManager::CombinePath( const char* path, const char* relative_dir )
+{
+    char fname[ MAX_FOTEXT ];
+    ExtractFileName( path, fname );
+    char new_path[ MAX_FOTEXT ];
+    ExtractDir( path, new_path );
+    Str::Append( new_path, relative_dir );
+    FormatPath( new_path );
+    Str::Append( new_path, fname );
+    return new_path;
+}
+
 bool FileManager::CopyFile( const char* from, const char* to )
 {
     void* f_from = FileOpen( from, false );
@@ -1089,33 +1101,31 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
         FileManager::GetFolderFileNames( find_dirs[ d ].c_str(), true, ext, paths );
         for( size_t i = 0; i < paths.size(); i++ )
         {
-            char fname[ MAX_FOPATH ];
+            char   fname[ MAX_FOPATH ];
             FileManager::ExtractFileName( paths[ i ].c_str(), fname );
-            paths[ i ] = find_dirs[ d ] + paths[ i ];
+            string path = find_dirs[ d ] + paths[ i ];
+            string relative_path = paths[ i ];
 
             // Link to another file
-            const char* link_ext = FileManager::GetExtension( paths[ i ].c_str() );
+            const char* link_ext = FileManager::GetExtension( path.c_str() );
             if( link_ext && Str::CompareCase( link_ext, "link" ) )
             {
                 FileManager link;
-                if( !link.LoadFile( paths[ i ].c_str(), PT_ROOT ) )
+                if( !link.LoadFile( path.c_str(), PT_ROOT ) )
                 {
-                    WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", paths[ i ].c_str() );
+                    WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", path.c_str() );
                     continue;
                 }
 
-                char new_path[ MAX_FOTEXT ];
-                FileManager::ExtractDir( paths[ i ].c_str(), new_path );
-                Str::Append( new_path, (char*) link.GetBuf() );
-                FileManager::FormatPath( new_path );
-                Str::Append( new_path, fname );
-                FileManager::EraseExtension( new_path );
-                paths[ i ] = new_path;
+                const char* link_str = (const char*) link.GetBuf();
+                path = FileManager::CombinePath( path.c_str(), link_str );
+                relative_path = FileManager::CombinePath( relative_path.c_str(), link_str );
             }
 
             FileManager::EraseExtension( fname );
             fileNames.push_back( fname );
-            filePaths.push_back( paths[ i ] );
+            filePaths.push_back( path );
+            fileRelativePaths.push_back( relative_path );
         }
     }
 }
@@ -1125,7 +1135,7 @@ bool FilesCollection::IsNextFile()
     return curFileIndex < fileNames.size();
 }
 
-FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const char** path /* = NULL */, bool no_read_data /* = false */ )
+FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const char** path /* = NULL */, const char** relative_path /* = NULL */, bool no_read_data /* = false */ )
 {
     curFileIndex++;
     curFile.LoadFile( filePaths[ curFileIndex - 1 ].c_str(), PT_ROOT, no_read_data );
@@ -1134,20 +1144,24 @@ FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const
         *name = fileNames[ curFileIndex - 1 ].c_str();
     if( path )
         *path = filePaths[ curFileIndex - 1 ].c_str();
+    if( relative_path )
+        *relative_path = fileRelativePaths[ curFileIndex - 1 ].c_str();
     return curFile;
 }
 
-FileManager& FilesCollection::FindFile( const char* name, const char** path /* = NULL */ )
+FileManager& FilesCollection::FindFile( const char* name, const char** path /* = NULL */, const char** relative_path /* = NULL */, bool no_read_data /* = false */ )
 {
     curFile.UnloadFile();
     for( size_t i = 0; i < fileNames.size(); i++ )
     {
         if( fileNames[ i ] == name )
         {
-            curFile.LoadFile( filePaths[ i ].c_str(), PT_ROOT );
+            curFile.LoadFile( filePaths[ i ].c_str(), PT_ROOT, no_read_data );
             RUNTIME_ASSERT( curFile.IsLoaded() );
             if( path )
                 *path = filePaths[ i ].c_str();
+            if( relative_path )
+                *relative_path = fileRelativePaths[ curFileIndex - 1 ].c_str();
             break;
         }
     }
