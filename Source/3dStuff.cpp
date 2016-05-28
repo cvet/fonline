@@ -4,7 +4,6 @@
 #include "GraphicLoader.h"
 #include "Text.h"
 #include "Script.h"
-#include "CritterType.h"
 #include "GL/glu_stuff.h"
 
 int       ModeWidth = 0, ModeHeight = 0;

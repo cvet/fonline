@@ -3,7 +3,6 @@
 #include "Script.h"
 #include "MapManager.h"
 #include "ItemManager.h"
-#include "CritterType.h"
 #include "Access.h"
 #include "CritterManager.h"
 #include "ProtoManager.h"

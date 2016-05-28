@@ -12,7 +12,6 @@
 #include "BufferManager.h"
 #include "Text.h"
 #include "ResourceManager.h"
-#include "CritterType.h"
 #include "DataMask.h"
 #include "Script.h"
 #include "zlib.h"

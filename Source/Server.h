@@ -10,7 +10,6 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Dialogs.h"
-#include "CritterType.h"
 #include "NetProtocol.h"
 #include "Access.h"
 #include "EntityManager.h"
