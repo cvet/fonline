@@ -1,5 +1,0 @@
-#include "Common.h"
-#include "CritterType.h"
-#include "Text.h"
-#include "FileManager.h"
-#include "MsgFiles.h"
