@@ -244,12 +244,7 @@ void FOServer::RemoveClient( Client* cl )
     if( cl_ && cl_ == cl )
     {
         cl->EventFinish( cl->GetClientToDelete() );
-        if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cl->GetInfo() ) )
-        {
-            Script::SetArgEntity( cl );
-            Script::SetArgBool( cl->GetClientToDelete() );
-            Script::RunPrepared();
-        }
+        Script::RaiseInternalEvent( ServerFunctions.CritterFinish, 2, cl, cl->GetClientToDelete() );
 
         if( cl->GetMapId() )
         {
@@ -677,10 +672,9 @@ void FOServer::Logic_Work( void* data )
             if( game_loop_tick && Timer::FastTick() >= game_loop_tick )
             {
                 uint wait = 3600000;               // 1hour
-                if( Script::PrepareContext( ServerFunctions.Loop, _FUNC_, "Game" ) && Script::RunPrepared() )
-                    wait = Script::GetReturnedUInt();
+                Script::RaiseInternalEvent( ServerFunctions.Loop, 1, &wait );
                 if( !wait )
-                    game_loop_tick = 0;                     // Disable
+                    game_loop_tick = 0;            // Disable
                 else
                     game_loop_tick = Timer::FastTick() + wait;
             }
@@ -1743,12 +1737,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_KARMA_VOTING:
-            {
-                Process_KarmaVoting( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SINGLEPLAYER_SAVE_LOAD:
             {
                 Process_SingleplayerSaveLoad( cl );
@@ -1989,18 +1977,10 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     buf >> msg_len;
     buf >> cmd;
 
-    bool allow_command = false;
-    if( Script::PrepareContext( ServerFunctions.PlayerAllowCommand, _FUNC_, cl_ ? cl_->GetInfo() : "AdminPanel" ) )
-    {
-        ScriptString* sstr = ( cl_ ? nullptr : ScriptString::Create( admin_panel ) );
-        Script::SetArgEntity( cl_ );
-        Script::SetArgObject( sstr );
-        Script::SetArgUChar( cmd );
-        if( Script::RunPrepared() && Script::GetReturnedBool() )
-            allow_command = true;
-        if( sstr )
-            sstr->Release();
-    }
+    ScriptString* sstr = ( cl_ ? nullptr : ScriptString::Create( admin_panel ) );
+    bool          allow_command = Script::RaiseInternalEvent( ServerFunctions.PlayerAllowCommand, 3, cl_, sstr, cmd );
+    if( sstr )
+        sstr->Release();
 
     if( !allow_command && !cl_ )
     {
@@ -2326,14 +2306,10 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             wanted_access = ACCESS_ADMIN;
 
         bool allow = false;
-        if( wanted_access != -1 && Script::PrepareContext( ServerFunctions.PlayerGetAccess, _FUNC_, cl_->GetInfo() ) )
+        if( wanted_access != -1 )
         {
             ScriptString* pass = ScriptString::Create( pasw_access );
-            Script::SetArgEntity( cl_ );
-            Script::SetArgUInt( wanted_access );
-            Script::SetArgObject( pass );
-            if( Script::RunPrepared() && Script::GetReturnedBool() )
-                allow = true;
+            allow = Script::RaiseInternalEvent( ServerFunctions.PlayerGetAccess, 3, cl_, wanted_access, pass );
             pass->Release();
         }
 
@@ -3189,17 +3165,8 @@ void FOServer::InitGameTime()
 {
     if( !GameOpt.TimeMultiplier )
     {
-        if( Script::PrepareContext( ServerFunctions.GetStartTime, _FUNC_, "Game" ) )
-        {
-            Script::SetArgAddress( &GameOpt.TimeMultiplier );
-            Script::SetArgAddress( &GameOpt.YearStart );
-            Script::SetArgAddress( &GameOpt.Month );
-            Script::SetArgAddress( &GameOpt.Day );
-            Script::SetArgAddress( &GameOpt.Hour );
-            Script::SetArgAddress( &GameOpt.Minute );
-            Script::RunPrepared();
-        }
-
+        Script::RaiseInternalEvent( ServerFunctions.GetStartTime, 6, &GameOpt.TimeMultiplier, &GameOpt.YearStart,
+                                    &GameOpt.Month, &GameOpt.Day, &GameOpt.Hour, &GameOpt.Minute );
         GameOpt.YearStart = CLAMP( GameOpt.YearStart, 1700, 30000 );
         GameOpt.Year = GameOpt.YearStart;
         GameOpt.Second = 0;
@@ -3367,7 +3334,7 @@ bool FOServer::InitReal()
         return false;
 
     // Initialization script
-    if( !Script::PrepareContext( ServerFunctions.Init, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    if( !Script::RaiseInternalEvent( ServerFunctions.Init, 0 ) )
     {
         WriteLog( "Initialization script return false.\n" );
         return false;
@@ -4150,7 +4117,7 @@ bool FOServer::NewWorld()
         return false;
 
     // Start script
-    if( !Script::PrepareContext( ServerFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    if( !Script::RaiseInternalEvent( ServerFunctions.Start, 0 ) )
     {
         WriteLogF( _FUNC_, " - Start script fail.\n" );
         shutdown( ListenSock, SD_BOTH );
@@ -4179,15 +4146,10 @@ void FOServer::SaveWorld( const char* fname )
 
     // Script callback
     SaveWorldDeleteIndexes.clear();
-    if( Script::PrepareContext( ServerFunctions.WorldSave, _FUNC_, "Game" ) )
-    {
-        ScriptArray* delete_indexes = Script::CreateArray( "uint[]" );
-        Script::SetArgUInt( SaveWorldIndex + 1 );
-        Script::SetArgObject( delete_indexes );
-        if( Script::RunPrepared() )
-            Script::AssignScriptArrayInVector( SaveWorldDeleteIndexes, delete_indexes );
-        delete_indexes->Release();
-    }
+    ScriptArray* delete_indexes = Script::CreateArray( "uint[]" );
+    if( Script::RaiseInternalEvent( ServerFunctions.WorldSave, 2, SaveWorldIndex + 1, delete_indexes ) )
+        Script::AssignScriptArrayInVector( SaveWorldDeleteIndexes, delete_indexes );
+    delete_indexes->Release();
 
     // Make file name
     char auto_fname[ MAX_FOPATH ];
@@ -4283,7 +4245,7 @@ bool FOServer::LoadWorld( const char* fname )
         return false;
 
     // Start script
-    if( !Script::PrepareContext( ServerFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    if( !Script::RaiseInternalEvent( ServerFunctions.Start, 0 ) )
     {
         WriteLogF( _FUNC_, " - Start script fail.\n" );
         shutdown( ListenSock, SD_BOTH );
@@ -4297,8 +4259,7 @@ bool FOServer::LoadWorld( const char* fname )
 void FOServer::UnloadWorld()
 {
     // End script
-    if( Script::PrepareContext( ServerFunctions.Finish, _FUNC_, "Game" ) )
-        Script::RunPrepared();
+    Script::RaiseInternalEvent( ServerFunctions.Finish, 0 );
 
     // Delete critter and map jobs
     Job::Erase( JOB_CRITTER );

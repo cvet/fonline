@@ -134,59 +134,48 @@ bool FOServer::InitScriptSystem()
     }
 
     // Bind game functions
-    ReservedScriptFunction BindGameFunc[] =
-    {
-        { &ServerFunctions.Init, "init", "bool %s()" },
-        { &ServerFunctions.Start, "start", "bool %s()" },
-        { &ServerFunctions.GetStartTime, "get_start_time", "void %s(uint16&,uint16&,uint16&,uint16&,uint16&,uint16&)" },
-        { &ServerFunctions.GenerateWorld, "generate_world", "bool %s()" },
-        { &ServerFunctions.Finish, "finish", "void %s()" },
-        { &ServerFunctions.Loop, "loop", "uint %s()" },
-        { &ServerFunctions.GlobalProcess, "global_process", "void %s(int,Critter&,Item@,float&,float&,float&,float&,float&,uint&,bool&)" },
-        { &ServerFunctions.GlobalInvite, "global_invite", "void %s(Critter&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)" },
-        { &ServerFunctions.CritterAttack, "critter_attack", "void %s(Critter&,Critter&,Item&,uint8,const Item@)" },
-        { &ServerFunctions.CritterAttacked, "critter_attacked", "void %s(Critter&,Critter&)" },
-        { &ServerFunctions.CritterStealing, "critter_stealing", "bool %s(Critter&,Critter&,Item&,uint)" },
-        { &ServerFunctions.CritterUseItem, "critter_use_item", "bool %s(Critter&,Item&,Critter@,Item@,const Item@,uint)" },
-        { &ServerFunctions.CritterUseSkill, "critter_use_skill", "bool %s(Critter&,CritterProperty,Critter@,Item@,const Item@)" },
-        { &ServerFunctions.CritterReloadWeapon, "critter_reload_weapon", "void %s(Critter&,Item&,Item@)" },
-        { &ServerFunctions.CritterInit, "critter_init", "void %s(Critter&,bool)" },
-        { &ServerFunctions.CritterFinish, "critter_finish", "void %s(Critter&,bool)" },
-        { &ServerFunctions.CritterIdle, "critter_idle", "void %s(Critter&)" },
-        { &ServerFunctions.CritterDead, "critter_dead", "void %s(Critter&,Critter@)" },
-        { &ServerFunctions.CritterRespawn, "critter_respawn", "void %s(Critter&)" },
-        { &ServerFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(const Critter&,const Item&,uint8,const Item@)" },
-        { &ServerFunctions.CritterMoveItem, "critter_move_item", "void %s(const Critter&,const Item&,uint8)" },
-        { &ServerFunctions.MapCritterIn, "map_critter_in", "void %s(Map&,Critter&)" },
-        { &ServerFunctions.MapCritterOut, "map_critter_out", "void %s(Map&,Critter&)" },
-        { &ServerFunctions.NpcPlaneBegin, "npc_plane_begin", "bool %s(Critter&,NpcPlane&,int,Critter@,Item@)" },
-        { &ServerFunctions.NpcPlaneEnd, "npc_plane_end", "bool %s(Critter&,NpcPlane&,int,Critter@,Item@)" },
-        { &ServerFunctions.NpcPlaneRun, "npc_plane_run", "bool %s(Critter&,NpcPlane&,int,uint&,uint&,uint&)" },
-        { &ServerFunctions.KarmaVoting, "karma_voting", "void %s(Critter&,Critter&,bool)" },
-        { &ServerFunctions.CheckLook, "check_look", "bool %s(const Map&,const Critter&,const Critter&)" },
-        { &ServerFunctions.ItemCheckMove, "item_check_move", "bool %s(const Item&,int,const Entity&,const Entity&)" },
-        { &ServerFunctions.ItemCost, "item_cost", "uint %s(Item&,Critter&,Critter&,bool)" },
-        { &ServerFunctions.ItemsBarter, "items_barter", "bool %s(Item@[]&,uint[]&,Item@[]&,uint[]&,Critter&,Critter&)" },
-        { &ServerFunctions.PlayerLevelUp, "player_levelup", "void %s(Critter&,CritterProperty,uint,CritterProperty)" },
-        { &ServerFunctions.TurnBasedBegin, "turn_based_begin", "void %s(Map&)" },
-        { &ServerFunctions.TurnBasedEnd, "turn_based_end", "void %s(Map&)" },
-        { &ServerFunctions.TurnBasedProcess, "turn_based_process", "void %s(Map&,Critter&,bool)" },
-        { &ServerFunctions.TurnBasedSequence, "turn_based_sequence", "void %s(Map&,Critter@[]&,Critter@)" },
-        { &ServerFunctions.WorldSave, "world_save", "void %s(uint,uint[]&)" },
-        { &ServerFunctions.PlayerRegistration, "player_registration", "bool %s(uint,string&,uint&,uint&,string&)" },
-        { &ServerFunctions.PlayerLogin, "player_login", "bool %s(uint,string&,uint,uint&,uint&,string&)" },
-        { &ServerFunctions.PlayerGetAccess, "player_getaccess", "bool %s(Critter&,int,string&)" },
-        { &ServerFunctions.PlayerAllowCommand, "player_allowcommand", "bool %s(Critter@,string@,uint8)" },
-        { &ServerFunctions.CheckTrapLook, "check_trap_look", "bool %s(const Map&,const Critter&,const Item&)" },
-        { &ServerFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(const Critter&,const Item&,uint8)" },
-        { &ServerFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(const Critter&,const Item&,uint8)" },
-    };
-    if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
-    {
-        Script::Finish();
-        WriteLog( "Bind game functions fail.\n" );
-        return false;
-    }
+    ServerFunctions.Init = Script::FindInternalEvent( "Init" );
+    ServerFunctions.Start = Script::FindInternalEvent( "Start" );
+    ServerFunctions.GetStartTime = Script::FindInternalEvent( "GetStartTime" );
+    ServerFunctions.GenerateWorld = Script::FindInternalEvent( "GenerateWorld" );
+    ServerFunctions.Finish = Script::FindInternalEvent( "Finish" );
+    ServerFunctions.Loop = Script::FindInternalEvent( "Loop" );
+    ServerFunctions.GlobalProcess = Script::FindInternalEvent( "GlobalProcess" );
+    ServerFunctions.GlobalInvite = Script::FindInternalEvent( "GlobalInvite" );
+    ServerFunctions.CritterAttack = Script::FindInternalEvent( "CritterAttack" );
+    ServerFunctions.CritterAttacked = Script::FindInternalEvent( "CritterAttacked" );
+    ServerFunctions.CritterStealing = Script::FindInternalEvent( "CritterStealing" );
+    ServerFunctions.CritterUseItem = Script::FindInternalEvent( "CritterUseItem" );
+    ServerFunctions.CritterUseSkill = Script::FindInternalEvent( "CritterUseSkill" );
+    ServerFunctions.CritterReloadWeapon = Script::FindInternalEvent( "CritterReloadWeapon" );
+    ServerFunctions.CritterInit = Script::FindInternalEvent( "CritterInit" );
+    ServerFunctions.CritterFinish = Script::FindInternalEvent( "CritterFinish" );
+    ServerFunctions.CritterIdle = Script::FindInternalEvent( "CritterIdle" );
+    ServerFunctions.CritterDead = Script::FindInternalEvent( "CritterDead" );
+    ServerFunctions.CritterRespawn = Script::FindInternalEvent( "CritterRespawn" );
+    ServerFunctions.CritterCheckMoveItem = Script::FindInternalEvent( "CritterCheckMoveItem" );
+    ServerFunctions.CritterMoveItem = Script::FindInternalEvent( "CritterMoveItem" );
+    ServerFunctions.MapCritterIn = Script::FindInternalEvent( "MapCritterIn" );
+    ServerFunctions.MapCritterOut = Script::FindInternalEvent( "MapCritterOut" );
+    ServerFunctions.NpcPlaneBegin = Script::FindInternalEvent( "NpcPlaneBegin" );
+    ServerFunctions.NpcPlaneEnd = Script::FindInternalEvent( "NpcPlaneEnd" );
+    ServerFunctions.NpcPlaneRun = Script::FindInternalEvent( "NpcPlaneRun" );
+    ServerFunctions.CheckLook = Script::FindInternalEvent( "CheckLook" );
+    ServerFunctions.ItemCheckMove = Script::FindInternalEvent( "ItemCheckMove" );
+    ServerFunctions.ItemsBarter = Script::FindInternalEvent( "ItemsBarter" );
+    ServerFunctions.PlayerLevelUp = Script::FindInternalEvent( "PlayerLevelUp" );
+    ServerFunctions.TurnBasedBegin = Script::FindInternalEvent( "TurnBasedBegin" );
+    ServerFunctions.TurnBasedEnd = Script::FindInternalEvent( "TurnBasedEnd" );
+    ServerFunctions.TurnBasedProcess = Script::FindInternalEvent( "TurnBasedProcess" );
+    ServerFunctions.TurnBasedSequence = Script::FindInternalEvent( "TurnBasedSequence" );
+    ServerFunctions.WorldSave = Script::FindInternalEvent( "WorldSave" );
+    ServerFunctions.PlayerRegistration = Script::FindInternalEvent( "PlayerRegistration" );
+    ServerFunctions.PlayerLogin = Script::FindInternalEvent( "PlayerLogin" );
+    ServerFunctions.PlayerGetAccess = Script::FindInternalEvent( "PlayerGetAccess" );
+    ServerFunctions.PlayerAllowCommand = Script::FindInternalEvent( "PlayerAllowCommand" );
+    ServerFunctions.CheckTrapLook = Script::FindInternalEvent( "CheckTrapLook" );
+    ServerFunctions.GetUseApCost = Script::FindInternalEvent( "GetUseApCost" );
+    ServerFunctions.GetAttackDistantion = Script::FindInternalEvent( "GetAttackDistantion" );
 
     ASDbgMemoryCanWork = true;
 
@@ -1117,17 +1106,9 @@ bool FOServer::SScriptFunc::Cl_SetAccess( Critter* cl, int access )
     if( access == ( (Client*) cl )->Access )
         return true;
 
-    bool allow = false;
-    if( Script::PrepareContext( ServerFunctions.PlayerGetAccess, _FUNC_, cl->GetInfo() ) )
-    {
-        ScriptString* pass = ScriptString::Create();
-        Script::SetArgEntity( cl );
-        Script::SetArgUInt( access );
-        Script::SetArgObject( pass );
-        if( Script::RunPrepared() && Script::GetReturnedBool() )
-            allow = true;
-        pass->Release();
-    }
+    ScriptString* pass = ScriptString::Create();
+    bool          allow = Script::RaiseInternalEvent( ServerFunctions.PlayerGetAccess, 3, cl, access, pass );
+    pass->Release();
 
     if( allow )
         ( (Client*) cl )->Access = access;

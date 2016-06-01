@@ -513,12 +513,7 @@ void EntityManager::InitAfterLoad()
             Npc* npc = (Npc*) entity;
             npc->NextRefreshBagTick = Timer::GameTick() + GameOpt.BagRefreshTime * 60 * 1000;
             npc->RefreshName();
-            if( Script::PrepareContext( ServerFunctions.CritterInit, _FUNC_, npc->GetInfo() ) )
-            {
-                Script::SetArgEntity( npc );
-                Script::SetArgBool( false );
-                Script::RunPrepared();
-            }
+            Script::RaiseInternalEvent( ServerFunctions.CritterInit, 2, npc, false );
             if( !npc->IsDestroyed && npc->GetScriptId() )
                 npc->SetScript( nullptr, false );
         }
@@ -554,12 +549,8 @@ void EntityManager::FinishEntities()
             Critter* cr = (Critter*) entity;
 
             cr->EventFinish( false );
-            if( !cr->IsDestroyed && Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
-            {
-                Script::SetArgEntity( cr );
-                Script::SetArgBool( false );
-                Script::RunPrepared();
-            }
+            if( !cr->IsDestroyed )
+                Script::RaiseInternalEvent( ServerFunctions.CritterFinish, 2, cr, false );
 
 //                      if( entity->Type == EntityType::Client )
 //                      {
@@ -567,12 +558,7 @@ void EntityManager::FinishEntities()
 //                              bool    to_delete = cl->Data.ClientToDelete;
 //
 //                              cr->EventFinish( to_delete );
-//                              if( Script::PrepareContext( ServerFunctions.CritterFinish, _FUNC_, cr->GetInfo() ) )
-//                              {
-//                                      Script::SetArgEntity( cr );
-//                                      Script::SetArgBool( to_delete );
-//                                      Script::RunPrepared();
-//                              }
+//                              Script::RaiseInternalEvent(ServerFunctions.CritterFinish, 2, cr, to_delete);
 //
 //                              if( to_delete )
 //                              {

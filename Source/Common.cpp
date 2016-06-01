@@ -1071,7 +1071,6 @@ GameOptions::GameOptions()
     LookSneakDir[ 3 ] = 0;
     LookSneakDir[ 4 ] = 0;
     LookWeight = 200;
-    CustomItemCost = false;
     RegistrationTimeout = 5;
     AccountPlayTime = 0;
     LoggingVars = false;

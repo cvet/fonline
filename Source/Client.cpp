@@ -381,15 +381,7 @@ bool FOClient::Init()
     }
 
     // Load fonts
-    if( !SprMngr.LoadFontFO( FONT_FO, "OldDefault", false ) ||
-        !SprMngr.LoadFontFO( FONT_NUM, "Numbers", true ) ||
-        !SprMngr.LoadFontFO( FONT_BIG_NUM, "BigNumbers", true ) ||
-        !SprMngr.LoadFontFO( FONT_SAND_NUM, "SandNumbers", false ) ||
-        !SprMngr.LoadFontFO( FONT_SPECIAL, "Special", false ) ||
-        !SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false ) ||
-        !SprMngr.LoadFontFO( FONT_THIN, "Thin", false ) ||
-        !SprMngr.LoadFontFO( FONT_FAT, "Fat", false ) ||
-        !SprMngr.LoadFontFO( FONT_BIG, "Big", false ) )
+    if( !SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false ) )
     {
         WriteLog( "Fonts initialization fail.\n" );
         return false;
@@ -2746,35 +2738,38 @@ void FOClient::Net_SendCombat( uchar type, int val )
     Bout << val;
 }
 
-void FOClient::Net_SendRunScript( bool unsafe, const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 )
+void FOClient::Net_SendRunScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 )
 {
     ushort func_name_len = ( ushort ) Str::Length( func_name );
     ushort p3len = ( p3 ? ( ushort ) Str::Length( p3 ) : 0 );
     ushort p4size = (ushort) p4.size();
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( unsafe ) + sizeof( func_name_len ) + func_name_len +
-                     sizeof( p0 ) + sizeof( p1 ) + sizeof( p2 ) + sizeof( p3len ) + p3len + sizeof( p4size ) + p4size * sizeof( uint );
+    uchar  flags = ( p0 ? 1 << 0 : 0 ) | ( p1 ? 1 << 1 : 0 ) | ( p2 ? 1 << 2 : 0 ) | ( p3len ? 1 << 3 : 0 ) | ( p4size ? 1 << 4 : 0 );
+    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( flags ) + sizeof( func_name_len ) + func_name_len +
+                     ( p0 ? sizeof( p0 ) : 0 ) | ( p1 ? sizeof( p1 ) : 0 ) | ( p2 ? sizeof( p2 ) : 0 ) | ( p3len ? p3len : 0 ) | ( p4size ? p4size : 0 );
 
     Bout << NETMSG_SEND_RUN_SERVER_SCRIPT;
     Bout << msg_len;
-    Bout << unsafe;
+    Bout << flags;
+
     Bout << func_name_len;
     Bout.Push( func_name, func_name_len );
-    Bout << p0;
-    Bout << p1;
-    Bout << p2;
-    Bout << p3len;
-    if( p3len )
-        Bout.Push( p3, p3len );
-    Bout << p4size;
-    if( p4size )
-        Bout.Push( (char*) &p4[ 0 ], p4size * sizeof( uint ) );
-}
 
-void FOClient::Net_SendKarmaVoting( uint crid, bool val_up )
-{
-    Bout << NETMSG_SEND_KARMA_VOTING;
-    Bout << crid;
-    Bout << val_up;
+    if( p0 )
+        Bout << p0;
+    if( p1 )
+        Bout << p1;
+    if( p2 )
+        Bout << p2;
+    if( p3len )
+    {
+        Bout << p3len;
+        Bout.Push( p3, p3len );
+    }
+    if( p4size )
+    {
+        Bout << p4size;
+        Bout.Push( (char*) &p4[ 0 ], p4size * sizeof( uint ) );
+    }
 }
 
 void FOClient::Net_SendRefereshMe()
@@ -7891,8 +7886,8 @@ bool FOClient::ReloadScripts()
     Script::CacheEnumValues();
 
     // Bind reserved functions
-    ReservedScriptFunction BindGameFunc[] =
-    {
+    /*ReservedScriptFunction BindGameFunc[] =
+       {
         { &ClientFunctions.Start, "start", "bool %s()" },
         { &ClientFunctions.Finish, "finish", "void %s()" },
         { &ClientFunctions.Loop, "loop", "uint %s()" },
@@ -7924,7 +7919,6 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.CombatResult, "combat_result", "void %s(uint[]&)" },
         { &ClientFunctions.GetElevator, "get_elevator", "bool %s(uint,uint[]&)" },
         { &ClientFunctions.ItemCheckMove, "item_check_move", "bool %s(const Item&,int,const Entity&,const Entity&)" },
-        { &ClientFunctions.ItemCost, "item_cost", "uint %s(Item&,Critter&,Critter&,bool)" },
         { &ClientFunctions.GetTimeouts, "get_available_timeouts", "void %s(CritterProperty[]&)" },
         { &ClientFunctions.CritterAction, "critter_action", "void %s(bool,Critter&,int,int,Item@)" },
         { &ClientFunctions.Animation2dProcess, "animation2d_process", "void %s(bool,Critter&,uint,uint,Item@)" },
@@ -7938,9 +7932,7 @@ bool FOClient::ReloadScripts()
         { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(Critter&,Item&,uint8)" },
         { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },
         { &ClientFunctions.GetContItem, "get_cont_item", "bool %s(uint&,bool&)" },
-    };
-    if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
-        errors++;
+       };*/
 
     if( errors )
         return false;
@@ -9072,8 +9064,6 @@ void FOClient::SScriptFunc::Global_Message( ScriptString& msg )
 
 void FOClient::SScriptFunc::Global_MessageType( ScriptString& msg, int type )
 {
-    if( type < FOMB_GAME || type > FOMB_VIEW )
-        type = FOMB_GAME;
     Self->AddMess( type, msg.c_str(), true );
 }
 
@@ -9081,6 +9071,7 @@ void FOClient::SScriptFunc::Global_MessageMsg( int text_msg, uint str_num )
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R( "Invalid text msg arg." );
+
     Self->AddMess( FOMB_GAME, Self->CurLang.Msg[ text_msg ].GetStr( str_num ), true );
 }
 
@@ -9088,8 +9079,7 @@ void FOClient::SScriptFunc::Global_MessageMsgType( int text_msg, uint str_num, i
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R( "Invalid text msg arg." );
-    if( type < FOMB_GAME || type > FOMB_VIEW )
-        type = FOMB_GAME;
+
     Self->AddMess( type, Self->CurLang.Msg[ text_msg ].GetStr( str_num ), true );
 }
 
@@ -9662,17 +9652,7 @@ void FOClient::SScriptFunc::Global_RunServerScript( ScriptString& func_name, int
         Script::AssignScriptArrayInVector< uint >( dw, p4 );
     char script_name[ MAX_FOTEXT ];
     Script::MakeScriptNameInRuntime( func_name.c_str(), script_name );
-    Self->Net_SendRunScript( false, script_name, p0, p1, p2, p3 ? p3->c_str() : nullptr, dw );
-}
-
-void FOClient::SScriptFunc::Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
-{
-    UIntVec dw;
-    if( p4 )
-        Script::AssignScriptArrayInVector< uint >( dw, p4 );
-    char script_name[ MAX_FOTEXT ];
-    Script::MakeScriptNameInRuntime( func_name.c_str(), script_name );
-    Self->Net_SendRunScript( true, script_name, p0, p1, p2, p3 ? p3->c_str() : nullptr, dw );
+    Self->Net_SendRunScript( script_name, p0, p1, p2, p3 ? p3->c_str() : nullptr, dw );
 }
 
 uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_index )

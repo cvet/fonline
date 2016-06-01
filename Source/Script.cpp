@@ -706,70 +706,6 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
     return true;
 }
 
-bool Script::BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind_func_count )
-{
-    WriteLog( "Bind reserved functions...\n" );
-
-    int errors = 0;
-
-    // Collect functions in all modules
-    multimap< string, asIScriptFunction* > all_functions;
-    asUINT                                 module_count = Engine->GetModuleCount();
-    for( asUINT m = 0; m < module_count; m++ )
-    {
-        asIScriptModule* module = Engine->GetModuleByIndex( m );
-        asUINT           func_count = module->GetFunctionCount();
-        for( asUINT f = 0; f < func_count; f++ )
-        {
-            asIScriptFunction* func = module->GetFunctionByIndex( f );
-            all_functions.insert( PAIR( func->GetName(), func ) );
-        }
-    }
-
-    // Automatically find function
-    for( uint i = 0; i < bind_func_count; i++ )
-    {
-        ReservedScriptFunction* bf = &bind_func[ i ];
-        uint                    count = (uint) all_functions.count( bf->FuncName );
-        if( count == 1 )
-        {
-            asIScriptFunction* func = all_functions.find( bf->FuncName )->second;
-            int                bind_id = BindByFunc( func, false );
-            if( bind_id > 0 )
-            {
-                *bf->BindId = bind_id;
-            }
-            else
-            {
-                WriteLog( "Bind reserved function fail, module '%s', name '%s'.\n", func->GetModuleName(), bf->FuncName );
-                errors++;
-            }
-        }
-        else if( count == 0 )
-        {
-            WriteLog( "Function for reserved function '%s' not founded.\n", bf->FuncName );
-            errors++;
-        }
-        else
-        {
-            WriteLog( "Multiplied functions founded for reserved function '%s'.\n", bf->FuncName );
-            auto it = all_functions.find( bf->FuncName );
-            for( uint j = 0; j < count; j++, it++ )
-                WriteLog( "- In module '%s'.\n", it->second->GetModuleName() );
-            errors++;
-        }
-    }
-
-    if( errors )
-    {
-        WriteLog( "Bind reserved functions fail.\n" );
-        return false;
-    }
-
-    WriteLog( "Bind reserved functions complete.\n" );
-    return true;
-}
-
 bool Script::RunModuleInitFunctions()
 {
     for( asUINT i = 0; i < Engine->GetModuleCount(); i++ )
@@ -1091,6 +1027,22 @@ bool Script::RestoreEntity( const char* class_name, uint id, const StrMap& props
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     return edata->PragmaCB->RestoreEntity( class_name, id, props_data );
+}
+
+void* Script::FindInternalEvent( const char* event_name)
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    void*       result = edata->PragmaCB->FindInternalEvent( event_name );
+    RUNTIME_ASSERT( result );
+    return result;
+}
+
+bool Script::RaiseInternalEvent( void* event_ptr, int args, ... )
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    PtrVec      agrs;
+    // Collect args
+    return edata->PragmaCB->RaiseInternalEvent( event_ptr, agrs );
 }
 
 const char* Script::GetActiveModuleName()

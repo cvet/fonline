@@ -65,8 +65,6 @@ public:
     CLASS_PROPERTY( char, Gender );             // GUI
     CLASS_PROPERTY( bool, IsNoPush );           // GUI
     CLASS_PROPERTY( bool, IsNoAim );            // GUI
-    CLASS_PROPERTY( int, KarmaVoting );         // Migrate karma voting to scripts
-    CLASS_PROPERTY( uint, TimeoutKarmaVoting ); // Migrate karma voting to scripts
     CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
     CLASS_PROPERTY( bool, IsUnlimitedAmmo );    // Play shoot sound
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to proto? to critter type option?)

@@ -106,7 +106,6 @@ CLASS_PROPERTY_IMPL( Critter, FreeBarterPlayer );
 CLASS_PROPERTY_IMPL( Critter, LastWeaponId );
 CLASS_PROPERTY_IMPL( Critter, HandsItemProtoId );
 CLASS_PROPERTY_IMPL( Critter, HandsItemMode );
-CLASS_PROPERTY_IMPL( Critter, KarmaVoting );
 CLASS_PROPERTY_IMPL( Critter, MaxTalkers );
 CLASS_PROPERTY_IMPL( Critter, TalkDistance );
 CLASS_PROPERTY_IMPL( Critter, CarryWeight );
@@ -126,7 +125,6 @@ CLASS_PROPERTY_IMPL( Critter, BarterCoefficient );
 CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
 CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
-CLASS_PROPERTY_IMPL( Critter, TimeoutKarmaVoting );
 CLASS_PROPERTY_IMPL( Critter, DefaultCombat );
 CLASS_PROPERTY_IMPL( Critter, IsUnlimitedAmmo );
 CLASS_PROPERTY_IMPL( Critter, IsNoUnarmed );
@@ -251,28 +249,16 @@ void Critter::DeleteInventory()
 
 uint Critter::GetUseApCost( Item* weap, int use )
 {
-    if( Script::PrepareContext( ServerFunctions.GetUseApCost, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntityOK( this );
-        Script::SetArgEntityOK( weap );
-        Script::SetArgUChar( use );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return 1;
+    uint dist = 1;
+    Script::RaiseInternalEvent( ServerFunctions.GetUseApCost, 4, this, weap, use, &dist );
+    return dist;
 }
 
 uint Critter::GetAttackDist( Item* weap, int use )
 {
-    if( Script::PrepareContext( ServerFunctions.GetAttackDistantion, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntityOK( this );
-        Script::SetArgEntityOK( weap );
-        Script::SetArgUChar( use );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return 0;
+    uint dist = 1;
+    Script::RaiseInternalEvent( ServerFunctions.GetAttackDistantion, 4, this, weap, use, &dist );
+    return dist;
 }
 
 uint Critter::GetUseDist()
@@ -490,24 +476,8 @@ void Critter::ProcessVisibleCritters()
 
         if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SCRIPT ) )
         {
-            bool allow_self = true;
-            if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
-            {
-                Script::SetArgEntityOK( map );
-                Script::SetArgEntityOK( this );
-                Script::SetArgEntityOK( cr );
-                if( Script::RunPrepared() )
-                    allow_self = Script::GetReturnedBool();
-            }
-            bool allow_opp = true;
-            if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
-            {
-                Script::SetArgEntityOK( map );
-                Script::SetArgEntityOK( cr );
-                Script::SetArgEntityOK( this );
-                if( Script::RunPrepared() )
-                    allow_opp = Script::GetReturnedBool();
-            }
+            bool allow_self = Script::RaiseInternalEvent( ServerFunctions.CheckLook, 3, map, this, cr );
+            bool allow_opp = Script::RaiseInternalEvent( ServerFunctions.CheckLook, 3, map, cr, this );
 
             if( allow_self )
             {
@@ -887,14 +857,7 @@ void Critter::ProcessVisibleItems()
             bool allowed = false;
             if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
             {
-                if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, GetInfo() ) )
-                {
-                    Script::SetArgEntityOK( map );
-                    Script::SetArgEntityOK( this );
-                    Script::SetArgEntityOK( item );
-                    if( Script::RunPrepared() )
-                        allowed = Script::GetReturnedBool();
-                }
+                allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, map, this, item );
             }
             else
             {
@@ -945,14 +908,8 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
 
         if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SCRIPT ) )
         {
-            if( Script::PrepareContext( ServerFunctions.CheckLook, _FUNC_, GetInfo() ) )
-            {
-                Script::SetArgEntityOK( map );
-                Script::SetArgEntityOK( this );
-                Script::SetArgEntityOK( cr );
-                if( Script::RunPrepared() && Script::GetReturnedBool() )
-                    Send_AddCritter( cr );
-            }
+            if( Script::RaiseInternalEvent( ServerFunctions.CheckLook, 3, map, this, cr ) )
+                Send_AddCritter( cr );
             continue;
         }
 
@@ -1030,14 +987,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             bool allowed = false;
             if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
             {
-                if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, GetInfo() ) )
-                {
-                    Script::SetArgEntityOK( map );
-                    Script::SetArgEntityOK( this );
-                    Script::SetArgEntityOK( item );
-                    if( Script::RunPrepared() )
-                        allowed = Script::GetReturnedBool();
-                }
+                allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, map, this, item );
             }
             else
             {
@@ -1281,13 +1231,7 @@ void Critter::AddItem( Item*& item, bool send )
     }
 
     // Change item
-    if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntityOK( this );
-        Script::SetArgEntityOK( item );
-        Script::SetArgUChar( SLOT_GROUND );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, 3, this, item, SLOT_GROUND );
 }
 
 void Critter::SetItem( Item* item )
@@ -1348,13 +1292,7 @@ void Critter::EraseItem( Item* item, bool send )
 
     uchar from_slot = item->GetCritSlot();
     item->SetCritSlot( SLOT_GROUND );
-    if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntityOK( this );
-        Script::SetArgEntityOK( item );
-        Script::SetArgUChar( from_slot );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, 3, this, item, from_slot );
 }
 
 Item* Critter::GetItem( uint item_id, bool skip_hide )
@@ -1634,17 +1572,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
     }
 
     Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : nullptr );
-    bool  allow = false;
-    if( Script::PrepareContext( ServerFunctions.CritterCheckMoveItem, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntityOK( this );
-        Script::SetArgEntityOK( item );
-        Script::SetArgUChar( to_slot );
-        Script::SetArgEntityOK( item_swap );
-        if( Script::RunPrepared() )
-            allow = Script::GetReturnedBool();
-    }
-    if( !allow )
+    if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, 4, this, item, to_slot, item_swap ) )
     {
         if( IsPlayer() )
         {
@@ -2100,29 +2028,13 @@ bool Critter::EventAttacked( Critter* attacker )
     }
 
     if( !result && attacker )
-    {
-        if( Script::PrepareContext( ServerFunctions.CritterAttacked, _FUNC_, GetInfo() ) )
-        {
-            Script::SetArgEntity( this );
-            Script::SetArgEntity( attacker );
-            Script::RunPrepared();
-        }
-    }
+        Script::RaiseInternalEvent( ServerFunctions.CritterAttacked, 2, this, attacker );
     return result;
 }
 
 bool Critter::EventStealing( Critter* thief, Item* item, uint count )
 {
-    bool success = false;
-    if( Script::PrepareContext( ServerFunctions.CritterStealing, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( thief );
-        Script::SetArgEntity( item );
-        Script::SetArgUInt( count );
-        if( Script::RunPrepared() )
-            success = Script::GetReturnedBool();
-    }
+    bool success = Script::RaiseInternalEvent( ServerFunctions.CritterStealing, 4, this, thief, item, count );
 
     if( PrepareScriptFunc( CRITTER_EVENT_STEALING ) )
     {
@@ -2258,13 +2170,7 @@ void Critter::EventDropItem( Item* item )
 
 void Critter::EventMoveItem( Item* item, uchar from_slot )
 {
-    if( Script::PrepareContext( ServerFunctions.CritterMoveItem, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntityOK( this );
-        Script::SetArgEntityOK( item );
-        Script::SetArgUChar( from_slot );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, 3, this, item, from_slot );
 
     if( PrepareScriptFunc( CRITTER_EVENT_MOVE_ITEM ) )
     {
@@ -5477,15 +5383,12 @@ bool Npc::AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some
     }
 
     int result = EventPlaneBegin( plane, reason, some_cr, some_item );
-    if( result == PLANE_RUN_GLOBAL && Script::PrepareContext( ServerFunctions.NpcPlaneBegin, _FUNC_, GetInfo() ) )
+    if( result == PLANE_RUN_GLOBAL )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgPtr( plane );
-        Script::SetArgUInt( reason );
-        Script::SetArgEntity( some_cr );
-        Script::SetArgEntity( some_item );
-        if( Script::RunPrepared() )
-            result = ( Script::GetReturnedBool() ? PLANE_KEEP : PLANE_DISCARD );
+        if( Script::RaiseInternalEvent( ServerFunctions.NpcPlaneBegin, 5, this, plane, reason, some_cr, some_item ) )
+            result = PLANE_KEEP;
+        else
+            result = PLANE_DISCARD;
     }
 
     if( result == PLANE_DISCARD )
@@ -5535,15 +5438,12 @@ void Npc::NextPlane( int reason, Critter* some_cr, Item* some_item )
     SetBestCurPlane();
 
     int result = EventPlaneEnd( last, reason, some_cr, some_item );
-    if( result == PLANE_RUN_GLOBAL && Script::PrepareContext( ServerFunctions.NpcPlaneEnd, _FUNC_, GetInfo() ) )
+    if( result == PLANE_RUN_GLOBAL )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgPtr( last );
-        Script::SetArgUInt( reason );
-        Script::SetArgEntity( some_cr );
-        Script::SetArgEntity( some_item );
-        if( Script::RunPrepared() )
-            result = ( Script::GetReturnedBool() ? PLANE_DISCARD : PLANE_KEEP );
+        if( Script::RaiseInternalEvent( ServerFunctions.NpcPlaneEnd, 5, this, last, reason, some_cr, some_item ) )
+            result = PLANE_DISCARD;
+        else
+            result = PLANE_KEEP;
     }
 
     if( result == PLANE_KEEP )
@@ -5579,16 +5479,12 @@ bool Npc::RunPlane( int reason, uint& r0, uint& r1, uint& r2 )
     AIDataPlane* last = aiPlanes[ 0 ]->GetCurPlane();
 
     int          result = EventPlaneRun( last, reason, r0, r1, r2 );
-    if( result == PLANE_RUN_GLOBAL && Script::PrepareContext( ServerFunctions.NpcPlaneRun, _FUNC_, GetInfo() ) )
+    if( result == PLANE_RUN_GLOBAL )
     {
-        Script::SetArgEntity( this );
-        Script::SetArgPtr( last );
-        Script::SetArgUInt( reason );
-        Script::SetArgAddress( &r0 );
-        Script::SetArgAddress( &r1 );
-        Script::SetArgAddress( &r2 );
-        if( Script::RunPrepared() )
-            result = ( Script::GetReturnedBool() ? PLANE_KEEP : PLANE_DISCARD );
+        if( Script::RaiseInternalEvent( ServerFunctions.NpcPlaneRun, 6, this, last, reason, &r0, &r1, &r2 ) )
+            result = PLANE_KEEP;
+        else
+            result = PLANE_DISCARD;
     }
 
     return result == PLANE_KEEP;

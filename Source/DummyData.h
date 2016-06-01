@@ -571,28 +571,27 @@ struct BindClass
     static void Global_GetGameTime()            {}
     static void Global_Preload3dFiles()         {}
 
-    static void Global_RunServerScript()       {}
-    static void Global_RunServerScriptUnsafe() {}
-    static void Global_ShowScreen()            {}
-    static void Global_HideScreen()            {}
-    static void Global_GetMonitorItem()        {}
-    static void Global_GetMonitorCritter()     {}
-    static void Global_GetMonitorEntity()      {}
-    static void Global_GetMapWidth()           {}
-    static void Global_GetMapHeight()          {}
-    static void Global_WaitPing()              {}
-    static void Global_SetEffect()             {}
-    static void Global_RefreshMap()            {}
-    static void Global_SaveScreenshot()        {}
-    static void Global_SaveText()              {}
-    static void Global_SetCacheData()          {}
-    static void Global_SetCacheDataSize()      {}
-    static void Global_GetCacheData()          {}
-    static void Global_SetCacheDataStr()       {}
-    static void Global_GetCacheDataStr()       {}
-    static void Global_IsCacheData()           {}
-    static void Global_EraseCacheData()        {}
-    static void Global_SetUserConfig()         {}
+    static void Global_RunServerScript()   {}
+    static void Global_ShowScreen()        {}
+    static void Global_HideScreen()        {}
+    static void Global_GetMonitorItem()    {}
+    static void Global_GetMonitorCritter() {}
+    static void Global_GetMonitorEntity()  {}
+    static void Global_GetMapWidth()       {}
+    static void Global_GetMapHeight()      {}
+    static void Global_WaitPing()          {}
+    static void Global_SetEffect()         {}
+    static void Global_RefreshMap()        {}
+    static void Global_SaveScreenshot()    {}
+    static void Global_SaveText()          {}
+    static void Global_SetCacheData()      {}
+    static void Global_SetCacheDataSize()  {}
+    static void Global_GetCacheData()      {}
+    static void Global_SetCacheDataStr()   {}
+    static void Global_GetCacheDataStr()   {}
+    static void Global_IsCacheData()       {}
+    static void Global_EraseCacheData()    {}
+    static void Global_SetUserConfig()     {}
 
     static int  ConsoleActive;
     static int  GmapActive, GmapWait;

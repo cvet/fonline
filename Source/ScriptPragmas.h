@@ -21,6 +21,7 @@ class PropertyPragma;
 class MethodPragma;
 class ContentPragma;
 class EnumPragma;
+class EventPragma;
 
 typedef vector< Preprocessor::PragmaInstance > Pragmas;
 
@@ -39,6 +40,7 @@ private:
     MethodPragma*    methodPragma;
     ContentPragma*   contentPragma;
     EnumPragma*      enumPragma;
+    EventPragma*     eventPragma;
 
 public:
     ScriptPragmaCallback( int pragma_type );
@@ -49,6 +51,8 @@ public:
     bool                  IsError();
     PropertyRegistrator** GetPropertyRegistrators();
     bool                  RestoreEntity( const char* class_name, uint id, const StrMap& props_data );
+    void*                 FindInternalEvent( const char* event_name );
+    bool                  RaiseInternalEvent( void* event_ptr, const PtrVec& args );
 };
 
 #endif // __SCRIPT_PRAGMAS__

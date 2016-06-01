@@ -4495,8 +4495,8 @@ bool FOMapper::InitScriptSystem()
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
     // Bind game functions
-    ReservedScriptFunction BindGameFunc[] =
-    {
+    /*ReservedScriptFunction BindGameFunc[] =
+       {
         { &MapperFunctions.Start, "start", "void %s()" },
         { &MapperFunctions.Finish, "finish", "void %s()" },
         { &MapperFunctions.Loop, "loop", "uint %s()" },
@@ -4515,12 +4515,12 @@ bool FOMapper::InitScriptSystem()
         { &MapperFunctions.MapLoad, "map_load", "void %s(MapperMap&)" },
         { &MapperFunctions.MapSave, "map_save", "void %s(MapperMap&)" },
         { &MapperFunctions.InspectorProperties, "inspector_properties", "void %s(Entity&, int[]&)" },
-    };
-    if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
-    {
+       };
+       if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
+       {
         WriteLog( "Bind reserved functions fail.\n" );
         return false;
-    }
+       }*/
 
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     SAFEDEL( Globals );

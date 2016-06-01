@@ -32,13 +32,6 @@ struct EngineData
     map< string, IntStrMap >             CachedEnumNames;
 };
 
-struct ReservedScriptFunction
-{
-    int* BindId;
-    char FuncName[ 256 ];
-    char FuncDecl[ 256 ];
-};
-
 class Script
 {
 public:
@@ -53,7 +46,6 @@ public:
 
     static void UnloadScripts();
     static bool ReloadScripts( const char* target, const char* cache_pefix );
-    static bool BindReservedFunctions( ReservedScriptFunction* bind_func, uint bind_func_count );
     static bool RunModuleInitFunctions();
 
     static asIScriptEngine* GetEngine();
@@ -82,6 +74,9 @@ public:
     static string GetProfilerStatistics();
 
     static bool RestoreEntity( const char* class_name, uint id, const StrMap& props_data );
+
+    static void* FindInternalEvent( const char* event_name );
+    static bool  RaiseInternalEvent( void* event_ptr, int args, ... );
 
     static const char* GetActiveModuleName();
     static const char* GetActiveFuncName();

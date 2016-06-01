@@ -192,8 +192,6 @@ public:
     CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
     CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
     CLASS_PROPERTY( uint, FreeBarterPlayer );   // Used for barter coef
-    CLASS_PROPERTY( int, KarmaVoting );         // Migrate karma voting to scripts
-    CLASS_PROPERTY( uint, TimeoutKarmaVoting ); // Migrate karma voting to scripts
     CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
     CLASS_PROPERTY( int, TurnBasedAc );         // Turn based
     CLASS_PROPERTY( char, DefaultCombat );      // Just exclude

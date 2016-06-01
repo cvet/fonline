@@ -403,12 +403,7 @@ void Map::AddCritterEvents( Critter* cr )
 {
     cr->LockMapTransfers++;
     EventInCritter( cr );
-    if( Script::PrepareContext( ServerFunctions.MapCritterIn, _FUNC_, cr->GetInfo() ) )
-    {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( cr );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ServerFunctions.MapCritterIn, 2, this, cr );
     cr->LockMapTransfers--;
 }
 
@@ -445,12 +440,7 @@ void Map::EraseCritterEvents( Critter* cr )
 {
     cr->LockMapTransfers++;
     EventOutCritter( cr );
-    if( Script::PrepareContext( ServerFunctions.MapCritterOut, _FUNC_, cr->GetInfo() ) )
-    {
-        Script::SetArgEntity( this );
-        Script::SetArgEntity( cr );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ServerFunctions.MapCritterOut, 2, this, cr );
     cr->LockMapTransfers--;
 }
 
@@ -493,14 +483,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
                 bool allowed = false;
                 if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
-                    {
-                        Script::SetArgEntityOK( this );
-                        Script::SetArgEntityOK( cr );
-                        Script::SetArgEntityOK( item );
-                        if( Script::RunPrepared() )
-                            allowed = Script::GetReturnedBool();
-                    }
+                    allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, this, cr, item );
                 }
                 else
                 {
@@ -663,14 +646,7 @@ void Map::ChangeViewItem( Item* item )
                 bool allowed = false;
                 if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
-                    {
-                        Script::SetArgEntityOK( this );
-                        Script::SetArgEntityOK( cr );
-                        Script::SetArgEntityOK( item );
-                        if( Script::RunPrepared() )
-                            allowed = Script::GetReturnedBool();
-                    }
+                    allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, this, cr, item );
                 }
                 else
                 {
@@ -694,14 +670,7 @@ void Map::ChangeViewItem( Item* item )
                 bool allowed = false;
                 if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    if( Script::PrepareContext( ServerFunctions.CheckTrapLook, _FUNC_, cr->GetInfo() ) )
-                    {
-                        Script::SetArgEntityOK( this );
-                        Script::SetArgEntityOK( cr );
-                        Script::SetArgEntityOK( item );
-                        if( Script::RunPrepared() )
-                            allowed = Script::GetReturnedBool();
-                    }
+                    allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, this, cr, item );
                 }
                 else
                 {
@@ -1749,11 +1718,7 @@ void Map::BeginTurnBased( Critter* first_cr )
     IsTurnBasedTimeout = false;
 
     EventTurnBasedBegin();
-    if( Script::PrepareContext( ServerFunctions.TurnBasedBegin, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
-    {
-        Script::SetArgEntity( this );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ServerFunctions.TurnBasedBegin, 1, this );
 
     if( NeedEndTurnBased || TurnSequence.empty() )
         EndTurnBased();
@@ -1764,11 +1729,7 @@ void Map::BeginTurnBased( Critter* first_cr )
 void Map::EndTurnBased()
 {
     EventTurnBasedEnd();
-    if( Script::PrepareContext( ServerFunctions.TurnBasedEnd, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
-    {
-        Script::SetArgEntity( this );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ServerFunctions.TurnBasedEnd, 1, this );
 
     IsTurnBasedOn = false;
     TurnBasedRound = 0;
@@ -1846,13 +1807,7 @@ void Map::NextCritterTurn()
         {
             cr->EventTurnBasedProcess( this, false );
             EventTurnBasedProcess( cr, false );
-            if( Script::PrepareContext( ServerFunctions.TurnBasedProcess, _FUNC_, cr->GetInfo() ) )
-            {
-                Script::SetArgEntity( this );
-                Script::SetArgEntity( cr );
-                Script::SetArgBool( false );
-                Script::RunPrepared();
-            }
+            Script::RaiseInternalEvent( ServerFunctions.TurnBasedProcess, 3, this, cr, false );
 
             if( cr->GetCurrentAp() > 0 )
                 cr->SetCurrentAp( 0 );
@@ -1875,11 +1830,7 @@ void Map::NextCritterTurn()
         TurnBasedTurn = 0;
 
         EventTurnBasedBegin();
-        if( Script::PrepareContext( ServerFunctions.TurnBasedBegin, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
-        {
-            Script::SetArgEntity( this );
-            Script::RunPrepared();
-        }
+        Script::RaiseInternalEvent( ServerFunctions.TurnBasedBegin, 1, this );
 
         if( NeedEndTurnBased || TurnSequence.empty() )
             EndTurnBased();
@@ -1933,15 +1884,12 @@ void Map::NextCritterTurn()
 
         cr->EventTurnBasedProcess( this, true );
         EventTurnBasedProcess( cr, true );
-        if( Script::PrepareContext( ServerFunctions.TurnBasedProcess, _FUNC_, cr->GetInfo() ) )
-        {
-            Script::SetArgEntity( this );
-            Script::SetArgEntity( cr );
-            Script::SetArgBool( true );
-            Script::RunPrepared();
-        }
+        Script::RaiseInternalEvent( ServerFunctions.TurnBasedProcess, 3, this, cr, true );
+
         if( NeedEndTurnBased )
+        {
             EndTurnBased();
+        }
         else
         {
             TurnBasedTurn++;
@@ -1959,13 +1907,7 @@ void Map::GenerateSequence( Critter* first_cr )
     Script::AppendVectorToArrayRef( critters, script_critters );
 
     // Pass to scripts
-    if( Script::PrepareContext( ServerFunctions.TurnBasedSequence, _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) ) )
-    {
-        Script::SetArgEntity( this );
-        Script::SetArgObject( script_critters );
-        Script::SetArgEntity( first_cr );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ServerFunctions.TurnBasedSequence, 3, this, script_critters, first_cr );
 
     // Fill result
     Script::AssignScriptArrayInVector( critters, script_critters );

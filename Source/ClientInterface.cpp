@@ -226,6 +226,7 @@ void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
         Script::SetArgBool( script_call );
         Script::RunPrepared();
     }
+    text->Release();
 }
 
 // ==============================================================================================================================
@@ -417,25 +418,9 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
         if( barter_k != MAX_INT )
         {
             uint cost_ = item->GetCost1st();
-            if( GameOpt.CustomItemCost )
-            {
-                CritterCl* npc = GetCritter( PupContId );
-                if( Chosen && npc && Script::PrepareContext( ClientFunctions.ItemCost, _FUNC_, Chosen->GetInfo() ) )
-                {
-                    Script::SetArgEntityOK( item );
-                    Script::SetArgEntityOK( Chosen );
-                    Script::SetArgEntityOK( npc );
-                    Script::SetArgBool( sell );
-                    if( Script::RunPrepared() )
-                        cost_ = Script::GetReturnedUInt();
-                }
-            }
-            else
-            {
-                cost_ = cost_ * ( 100 + barter_k ) / 100;
-                if( !cost_ )
-                    cost_++;
-            }
+            cost_ = cost_ * ( 100 + barter_k ) / 100;
+            if( !cost_ )
+                cost_++;
             cost += cost_ * item->GetCount();
         }
         weigth += item->GetWholeWeight();

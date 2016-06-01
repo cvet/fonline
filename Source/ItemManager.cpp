@@ -475,16 +475,7 @@ bool ItemManager::SetItemCritter( Critter* cr, hash pid, uint count )
 
 bool ItemManager::ItemCheckMove( Item* item, uint count, Entity* from, Entity* to )
 {
-    if( Script::PrepareContext( ServerFunctions.ItemCheckMove, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( item );
-        Script::SetArgUInt( count );
-        Script::SetArgEntityOK( from );
-        Script::SetArgEntityOK( to );
-        if( Script::RunPrepared() && Script::GetReturnedBool() )
-            return true;
-    }
-    return false;
+    return Script::RaiseInternalEvent( ServerFunctions.ItemCheckMove, 4, item, count, from, to );
 }
 
 void ItemManager::FilterMoveItems( ItemVec& items, Entity* from, Entity* to )

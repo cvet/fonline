@@ -305,7 +305,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventTurnBasedProces
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthTurnBasedProcess(Critter& fromCr, Map& map, bool beginTurn)", asFUNCTION( BIND_CLASS Crit_EventSmthTurnBasedProcess ), asCALL_CDECL_OBJFIRST ) );
 
 // Parameters
-BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Flags", OFFSETOF( Critter, Flags ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const string@ Name", OFFSETOF( Critter, NameStr ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const bool IsRuning", OFFSETOF( Critter, IsRuning ) ) );
 
@@ -531,7 +530,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint get_ContourColor() c
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsTurnBasedTurn() const", asFUNCTION( BIND_CLASS Crit_IsTurnBasedTurn ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int& h, int& lines ) const", asFUNCTION( BIND_CLASS Crit_GetNameTextInfo ), asCALL_CDECL_OBJFIRST ) );
 
-BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const uint Flags", OFFSETOF( CritterCl, Flags ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string@ Name", OFFSETOF( CritterCl, Name ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string@ NameOnHead", OFFSETOF( CritterCl, NameOnHead ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string@ Avatar", OFFSETOF( CritterCl, Avatar ) ) );
@@ -588,7 +586,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "array<Item@>@ RefreshItemsCollecti
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDayTime(uint dayPart)", asFUNCTION( BIND_CLASS Global_GetDayTime ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b)", asFUNCTION( BIND_CLASS Global_GetDayColor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScript(string& funcName, int p0, int p1, int p2, string@+ p3, array<int>@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScript ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScriptUnsafe(string& funcName, int p0, int p1, int p2, string@+ p3, array<int>@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScriptUnsafe ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, dictionary@+ params = null)", asFUNCTION( BIND_CLASS Global_ShowScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen = 0)", asFUNCTION( BIND_CLASS Global_HideScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
@@ -717,7 +714,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookSneakDir2", &GameOpt.Lo
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookSneakDir3", &GameOpt.LookSneakDir[ 3 ] ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookSneakDir4", &GameOpt.LookSneakDir[ 4 ] ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookWeight", &GameOpt.LookWeight ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __CustomItemCost", &GameOpt.CustomItemCost ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RegistrationTimeout", &GameOpt.RegistrationTimeout ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __AccountPlayTime", &GameOpt.AccountPlayTime ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __LoggingVars", &GameOpt.LoggingVars ) );

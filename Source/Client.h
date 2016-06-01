@@ -24,15 +24,7 @@
 #include "Theora/theoradec.h"
 
 // Fonts
-#define FONT_FO                        ( 0 )
-#define FONT_NUM                       ( 1 )
-#define FONT_BIG_NUM                   ( 2 )
-#define FONT_SAND_NUM                  ( 3 )
-#define FONT_SPECIAL                   ( 4 )
-#define FONT_DEFAULT                   ( 5 )
-#define FONT_THIN                      ( 6 )
-#define FONT_FAT                       ( 7 )
-#define FONT_BIG                       ( 8 )
+#define FONT_DEFAULT                   ( 0 )
 
 // Screens
 #define SCREEN_NONE                    ( 0 )
@@ -216,8 +208,7 @@ public:
     void Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text );
     void Net_SendGetUserHoloStr( uint str_num );
     void Net_SendCombat( uchar type, int val );
-    void Net_SendRunScript( bool unsafe, const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
-    void Net_SendKarmaVoting( uint crid, bool val_up );
+    void Net_SendRunScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
     void Net_SendRefereshMe();
 
     void Net_OnWrongNetProto();
@@ -570,7 +561,6 @@ public:
         static void Global_AddRegistrationProperty( int cr_prop );
         static bool Global_LoadDataFile( ScriptString& dat_name );
         static void Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
-        static void Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
 
         static uint Global_LoadSprite( ScriptString& spr_name, int path_index );
         static uint Global_LoadSpriteHash( uint name_hash );
@@ -896,8 +886,6 @@ public:
 /************************************************************************/
     #define FOMB_GAME                  ( 0 )
     #define FOMB_TALK                  ( 1 )
-    #define FOMB_COMBAT_RESULT         ( 2 )
-    #define FOMB_VIEW                  ( 3 )
     void AddMess( int mess_type, const char* msg, bool script_call = false );
 };
 

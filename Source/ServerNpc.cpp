@@ -2106,24 +2106,10 @@ void FOServer::Process_Barter( Client* cl )
         }
 
         uint base_cost = item->GetCost1st();
-        if( GameOpt.CustomItemCost )
-        {
-            if( Script::PrepareContext( ServerFunctions.ItemCost, _FUNC_, cl->GetInfo() ) )
-            {
-                Script::SetArgEntity( item );
-                Script::SetArgEntity( cl );
-                Script::SetArgEntity( npc );
-                Script::SetArgBool( true );
-                if( Script::RunPrepared() )
-                    base_cost = Script::GetReturnedUInt();
-            }
-        }
-        else
-        {
-            base_cost = base_cost * ( 100 - barter_k ) / 100;
-            if( !base_cost )
-                base_cost++;
-        }
+        base_cost = base_cost * ( 100 - barter_k ) / 100;
+        if( !base_cost )
+            base_cost++;
+
         sale_cost += base_cost * sale_item_count[ i ];
         sale_weight += item->GetWeight() * sale_item_count[ i ];
         sale_volume += item->GetVolume() * sale_item_count[ i ];
@@ -2163,24 +2149,10 @@ void FOServer::Process_Barter( Client* cl )
         }
 
         uint base_cost = item->GetCost1st();
-        if( GameOpt.CustomItemCost )
-        {
-            if( Script::PrepareContext( ServerFunctions.ItemCost, _FUNC_, cl->GetInfo() ) )
-            {
-                Script::SetArgEntity( item );
-                Script::SetArgEntity( cl );
-                Script::SetArgEntity( npc );
-                Script::SetArgBool( false );
-                if( Script::RunPrepared() )
-                    base_cost = Script::GetReturnedUInt();
-            }
-        }
-        else
-        {
-            base_cost = base_cost * ( 100 + ( cl->GetPerkMasterTrader() ? 0 : barter_k ) ) / 100;
-            if( !base_cost )
-                base_cost++;
-        }
+        base_cost = base_cost * ( 100 + ( cl->GetPerkMasterTrader() ? 0 : barter_k ) ) / 100;
+        if( !base_cost )
+            base_cost++;
+
         buy_cost += base_cost * buy_item_count[ i ];
         buy_weight += item->GetWeight() * buy_item_count[ i ];
         buy_volume += item->GetVolume() * buy_item_count[ i ];
@@ -2214,32 +2186,21 @@ void FOServer::Process_Barter( Client* cl )
     }
 
     // Barter script
-    bool result = false;
-    if( Script::PrepareContext( ServerFunctions.ItemsBarter, _FUNC_, cl->GetInfo() ) )
-    {
-        ScriptArray* sale_items_ = Script::CreateArray( "Item@[]" );
-        ScriptArray* sale_items_count_ = Script::CreateArray( "uint[]" );
-        ScriptArray* buy_items_ = Script::CreateArray( "Item@[]" );
-        ScriptArray* buy_items_count_ = Script::CreateArray( "uint[]" );
-        Script::AppendVectorToArrayRef( sale_items, sale_items_ );
-        Script::AppendVectorToArray( sale_item_count, sale_items_count_ );
-        Script::AppendVectorToArrayRef( buy_items, buy_items_ );
-        Script::AppendVectorToArray( buy_item_count, buy_items_count_ );
+    ScriptArray* sale_items_ = Script::CreateArray( "Item@[]" );
+    ScriptArray* sale_items_count_ = Script::CreateArray( "uint[]" );
+    ScriptArray* buy_items_ = Script::CreateArray( "Item@[]" );
+    ScriptArray* buy_items_count_ = Script::CreateArray( "uint[]" );
+    Script::AppendVectorToArrayRef( sale_items, sale_items_ );
+    Script::AppendVectorToArray( sale_item_count, sale_items_count_ );
+    Script::AppendVectorToArrayRef( buy_items, buy_items_ );
+    Script::AppendVectorToArray( buy_item_count, buy_items_count_ );
 
-        Script::SetArgObject( sale_items_ );
-        Script::SetArgObject( sale_items_count_ );
-        Script::SetArgObject( buy_items_ );
-        Script::SetArgObject( buy_items_count_ );
-        Script::SetArgEntity( cl );
-        Script::SetArgEntity( npc );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
+    bool result = Script::RaiseInternalEvent( ServerFunctions.ItemsBarter, 6, sale_items_, sale_items_count_, buy_items_, buy_items_count_, cl, npc );
 
-        sale_items_->Release();
-        sale_items_count_->Release();
-        buy_items_->Release();
-        buy_items_count_->Release();
-    }
+    sale_items_->Release();
+    sale_items_count_->Release();
+    buy_items_->Release();
+    buy_items_count_->Release();
 
     if( !result )
     {

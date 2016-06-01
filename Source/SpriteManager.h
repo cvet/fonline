@@ -40,16 +40,6 @@
 #define COLOR_TEXT_WHITE           COLOR_GAME_RGB( 0xFF, 0xFF, 0xFF )
 #define COLOR_TEXT_DWHITE          COLOR_GAME_RGB( 0xBF, 0xBF, 0xBF )
 #define COLOR_TEXT_RED             COLOR_GAME_RGB( 0xC8, 0, 0 )
-#define COLOR_TEXT_DRED            COLOR_GAME_RGB( 0xAA, 0, 0 )
-#define COLOR_TEXT_DDRED           COLOR_GAME_RGB( 0x66, 0, 0 )
-#define COLOR_TEXT_DBLUE           COLOR_GAME_RGB( 0, 0, 0xAA )
-#define COLOR_TEXT_GREEN           COLOR_GAME_RGB( 0, 0xC8, 0 )
-#define COLOR_TEXT_DGREEN          COLOR_GAME_RGB( 0, 0xAA, 0 )
-#define COLOR_TEXT_DDGREEN         COLOR_GAME_RGB( 0, 0x66, 0 )
-#define COLOR_TEXT_LGREEN          COLOR_GAME_RGB( 0, 0xFF, 0 )
-#define COLOR_TEXT_BLACK           COLOR_GAME_RGB( 0, 0, 0 )
-#define COLOR_TEXT_DARK            COLOR_GAME_RGB( 0x30, 0x30, 0x30 )
-#define COLOR_TEXT_SAND            COLOR_GAME_RGB( 0x8F, 0x6F, 0 )
 
 // Sprite layers
 #define DRAW_ORDER_FLAT            ( 0 )
@@ -74,13 +64,6 @@
 #define SPRITE_CUT_HORIZONTAL      ( 1 )
 #define SPRITE_CUT_VERTICAL        ( 2 )
 #define SPRITE_CUT_CUSTOM          ( 3 )               // Todo
-
-// Egg types
-#define EGG_ALWAYS                 ( 1 )
-#define EGG_X                      ( 2 )
-#define EGG_Y                      ( 3 )
-#define EGG_X_AND_Y                ( 4 )
-#define EGG_X_OR_Y                 ( 5 )
 
 // Egg types
 #define EGG_ALWAYS                 ( 1 )

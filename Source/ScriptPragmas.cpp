@@ -877,6 +877,202 @@ public:
     }
 };
 
+// #pragma event MyEvent (Critter&, int, bool)
+// #pragma event MyEvent (Who: Critter@, Damage: int, FirstTime: bool)
+// __MyEvent.SubscribeToWho( cr, func )
+// __MyEvent.SubscribeToDamage( 100, func )
+// __MyEvent.SubscribeToFirstTime( true, func )
+class EventPragma
+{
+    class ScriptEvent
+    {
+        typedef vector< asIScriptFunction* >     FuncVec;
+        typedef map< asIScriptObject*, FuncVec > ObjFuncMap;
+        typedef map< uint64, FuncVec >           PodFuncMap;
+
+        mutable int refCount;
+        FuncVec     callbacks;
+        ObjFuncMap  objCallbacks;
+        PodFuncMap  podCallbacks;
+
+public:
+        string Name;
+
+        ScriptEvent()
+        {
+            refCount = 1;
+        }
+
+        ~ScriptEvent()
+        {
+            UnsubscribeAll();
+        }
+
+        static ScriptEvent* Factory()
+        {
+            return new ScriptEvent();
+        }
+
+        void AddRef() const
+        {
+            asAtomicInc( refCount );
+        }
+
+        void Release() const
+        {
+            if( asAtomicDec( refCount ) == 0 )
+                delete this;
+        }
+
+        void Subscribe( asIScriptFunction* callback )
+        {
+            Unsubscribe( callback );
+            callbacks.push_back( callback );
+            callback->AddRef();
+        }
+
+        void SubscribeFirst( asIScriptFunction* callback )
+        {
+            Unsubscribe( callback );
+            callbacks.insert( callbacks.begin(), callback );
+            callback->AddRef();
+        }
+
+        void SubscribeTo( asIScriptFunction* callback, void* ptr, int type_id )
+        {
+            Unsubscribe( callback );
+            callbacks.push_back( callback );
+            callback->AddRef();
+        }
+
+        void Unsubscribe( asIScriptFunction* callback )
+        {
+            auto it = std::find( callbacks.begin(), callbacks.end(), callback );
+            if( it != callbacks.end() )
+            {
+                ( *it )->Release();
+                callbacks.erase( it );
+            }
+        }
+
+        void UnsubscribeAll()
+        {
+            for( asIScriptFunction* callback : callbacks )
+                callback->Release();
+            callbacks.clear();
+        }
+
+        static void Raise( asIScriptGeneric* gen )
+        {
+            PtrVec args( gen->GetArgCount() );
+            for( size_t i = 0; i < args.size(); i++ )
+                args[ i ] = gen->GetAddressOfArg( i );
+
+            bool result = RaiseInternal( gen->GetObject(), args );
+            *(bool*) gen->GetAddressOfReturnLocation() = result;
+        }
+
+        static bool RaiseInternal( void* event_ptr, const PtrVec& args )
+        {
+            ScriptEvent* event = (ScriptEvent*) event_ptr;
+            if( event->callbacks.empty() )
+                return false;
+
+            auto callbacks_copy = event->callbacks;
+            for( asIScriptFunction* callback : callbacks_copy )
+            {
+                uint bind_id = Script::BindByFunc( callback, false );
+                RUNTIME_ASSERT( bind_id );
+                if( Script::PrepareContext( bind_id, _FUNC_, "Event" ) )
+                {
+                    for( size_t i = 0; i < args.size(); i++ )
+                        Script::SetArgAddress( args[ i ] );
+
+                    if( Script::RunPrepared() )
+                    {
+                        // Interrupted
+                        if( callback->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool() )
+                            return false;
+                    }
+                }
+            }
+            return true;
+        }
+    };
+
+    vector< ScriptEvent* > events;
+
+public:
+    ~EventPragma()
+    {
+        for (ScriptEvent* event : events)
+        {
+            event->UnsubscribeAll();
+            event->Release();
+        }
+        events.clear();
+    }
+
+    bool Call( const string& text )
+    {
+        istrstream str( text.c_str() );
+        char       event_name[ MAX_FOTEXT ];
+        str >> event_name;
+        if( str.fail() )
+        {
+            WriteLog( "Unable to parse 'event' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+
+        char arg_types[ MAX_FOTEXT ];
+        str.getline( arg_types, MAX_FOTEXT );
+        Str::Trim( arg_types );
+        Str::EraseChars( arg_types, '(' );
+        Str::EraseChars( arg_types, ')' );
+
+        char args[ MAX_FOTEXT ];
+        Str::Copy( args, arg_types );
+        
+        char             buf[ MAX_FOTEXT ];
+        asIScriptEngine* engine = Script::GetEngine();
+        if( engine->RegisterFuncdef( Str::Format( buf, "void %sFunc(%s)", event_name, args ) ) < 0 ||
+            engine->RegisterFuncdef( Str::Format( buf, "bool %sFuncBool(%s)", event_name, args ) ) < 0 ||
+            engine->RegisterObjectType( event_name, 0, asOBJ_REF ) < 0 ||
+            engine->RegisterObjectBehaviour( event_name, asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptEvent, AddRef ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectBehaviour( event_name, asBEHAVE_RELEASE, "void f()", asMETHOD( ScriptEvent, Release ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFunc@)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeFirst(%sFunc@)", event_name ), asMETHOD( ScriptEvent, SubscribeFirst ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeFirst(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, SubscribeFirst ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFunc@)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", asMETHOD( ScriptEvent, UnsubscribeAll ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
+            return false;
+
+        ScriptEvent* result = new ScriptEvent();
+        result->Name = event_name;
+        if( engine->RegisterGlobalProperty( Str::Format( buf, "%s __%s", event_name, event_name ), result ) < 0 )
+            return false;
+
+        events.push_back( result );
+        return true;
+    }
+
+    void* Find( const char* event_name )
+    {
+        for( ScriptEvent* event : events )
+            if( event->Name == event_name )
+                return event;
+        return nullptr;
+    }
+
+    bool Raise( void* event_ptr, const PtrVec& args )
+    {
+        return ScriptEvent::RaiseInternal( event_ptr, args );
+    }
+};
+
 ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
 {
     isError = false;
@@ -892,6 +1088,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
     methodPragma = nullptr;
     contentPragma = nullptr;
     enumPragma = nullptr;
+    eventPragma = nullptr;
 
     if( pragmaType != PRAGMA_UNKNOWN )
     {
@@ -903,6 +1100,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
         methodPragma = new MethodPragma( pragmaType, entityPragma );
         contentPragma = new ContentPragma();
         enumPragma = new EnumPragma();
+        eventPragma = new EventPragma();
     }
 }
 
@@ -916,6 +1114,7 @@ ScriptPragmaCallback::~ScriptPragmaCallback()
     SAFEDEL( methodPragma );
     SAFEDEL( contentPragma );
     SAFEDEL( enumPragma );
+    SAFEDEL( eventPragma );
 }
 
 void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragma )
@@ -945,6 +1144,8 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         ok = contentPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "enum" ) && enumPragma )
         ok = enumPragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "event" ) && eventPragma )
+        ok = eventPragma->Call( pragma.Text );
     else
         WriteLog( "Unknown pragma instance, name '%s' text '%s'.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
 
@@ -984,4 +1185,14 @@ PropertyRegistrator** ScriptPragmaCallback::GetPropertyRegistrators()
 bool ScriptPragmaCallback::RestoreEntity( const char* class_name, uint id, const StrMap& props_data )
 {
     return entityPragma->RestoreEntity( class_name, id, props_data );
+}
+
+void* ScriptPragmaCallback::FindInternalEvent( const char* event_name )
+{
+    return eventPragma->Find( event_name );
+}
+
+bool ScriptPragmaCallback::RaiseInternalEvent( void* event_ptr, const PtrVec& args )
+{
+    return eventPragma->Raise( event_ptr, args );
 }

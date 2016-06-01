@@ -194,12 +194,7 @@ string MapManager::GetLocationsMapsStatistics()
 
 bool MapManager::GenerateWorld()
 {
-    if( Script::PrepareContext( ServerFunctions.GenerateWorld, _FUNC_, "Game" ) )
-    {
-        if( Script::RunPrepared() )
-            return Script::GetReturnedBool();
-    }
-    return false;
+    return Script::RaiseInternalEvent( ServerFunctions.GenerateWorld, 0 );
 }
 
 Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
@@ -597,19 +592,10 @@ void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type 
         return;
     }
 
-    if( global_process && Script::PrepareContext( ServerFunctions.GlobalProcess, _FUNC_, rule->GetInfo() ) )
+    if( global_process )
     {
-        Script::SetArgUInt( type );
-        Script::SetArgEntity( cr );
-        Script::SetArgEntity( group->GetCar() );
-        Script::SetArgAddress( &cur_wx );
-        Script::SetArgAddress( &cur_wy );
-        Script::SetArgAddress( &to_wx );
-        Script::SetArgAddress( &to_wy );
-        Script::SetArgAddress( &speed );
-        Script::SetArgAddress( &encounter_descriptor );
-        Script::SetArgAddress( &wait_for_answer );
-        Script::RunPrepared();
+        Script::RaiseInternalEvent( ServerFunctions.GlobalProcess, 10, type, cr, group->GetCar(), &cur_wx, &cur_wy,
+                                    &to_wx, &to_wy, &speed, &encounter_descriptor, &wait_for_answer );
     }
 
     if( !group->IsValid() )
@@ -737,18 +723,8 @@ void MapManager::GM_GlobalInvite( GlobalMapGroup* group, int combat_mode )
         }
     }
 
-    if( global_invite && Script::PrepareContext( ServerFunctions.GlobalInvite, _FUNC_, rule->GetInfo() ) )
-    {
-        Script::SetArgEntity( rule );
-        Script::SetArgEntity( group->GetCar() );
-        Script::SetArgUInt( encounter_descriptor );
-        Script::SetArgUInt( combat_mode );
-        Script::SetArgAddress( &map_id );
-        Script::SetArgAddress( &hx );
-        Script::SetArgAddress( &hy );
-        Script::SetArgAddress( &dir );
-        Script::RunPrepared();
-    }
+    if( global_invite )
+        Script::RaiseInternalEvent( ServerFunctions.GlobalInvite, 8, rule, group->GetCar(), encounter_descriptor, combat_mode, &map_id, &hx, &hy, &dir );
 
     if( !group->IsValid() )
         return;
