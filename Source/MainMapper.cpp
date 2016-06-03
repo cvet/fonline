@@ -46,8 +46,7 @@ int main( int argc, char** argv )
 
     // Finish script
     Script::RunMandatorySuspended();
-    if( Script::PrepareContext( MapperFunctions.Finish, _FUNC_, "Game" ) )
-        Script::RunPrepared();
+    Script::RaiseInternalEvent( MapperFunctions.Finish );
 
     // Just kill process
     // System automatically clean up all resources

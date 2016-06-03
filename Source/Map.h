@@ -7,27 +7,6 @@
 #include "Critter.h"
 #include "Entity.h"
 
-// Script events
-#define MAP_EVENT_FINISH                ( 0 )
-#define MAP_EVENT_LOOP_0                ( 1 )
-#define MAP_EVENT_LOOP_1                ( 2 )
-#define MAP_EVENT_LOOP_2                ( 3 )
-#define MAP_EVENT_LOOP_3                ( 4 )
-#define MAP_EVENT_LOOP_4                ( 5 )
-#define MAP_EVENT_IN_CRITTER            ( 6 )
-#define MAP_EVENT_OUT_CRITTER           ( 7 )
-#define MAP_EVENT_CRITTER_DEAD          ( 8 )
-#define MAP_EVENT_TURN_BASED_BEGIN      ( 9 )
-#define MAP_EVENT_TURN_BASED_END        ( 10 )
-#define MAP_EVENT_TURN_BASED_PROCESS    ( 11 )
-#define MAP_EVENT_MAX                   ( 12 )
-extern const char* MapEventFuncName[ MAP_EVENT_MAX ];
-
-// Loop times
-#define MAP_LOOP_FUNC_MAX               ( 5 )
-#define MAP_LOOP_DEFAULT_TICK           ( 60 * 60000 )
-#define MAP_MAX_DATA                    ( 100 )
-
 class Map;
 class Location;
 
@@ -35,6 +14,11 @@ class Map: public Entity
 {
 public:
     PROPERTIES_HEADER();
+    CLASS_PROPERTY( uint, LoopTime1 );
+    CLASS_PROPERTY( uint, LoopTime2 );
+    CLASS_PROPERTY( uint, LoopTime3 );
+    CLASS_PROPERTY( uint, LoopTime4 );
+    CLASS_PROPERTY( uint, LoopTime5 );
     CLASS_PROPERTY( ushort, Width );
     CLASS_PROPERTY( ushort, Height );
     CLASS_PROPERTY( ushort, WorkHexX );
@@ -65,22 +49,18 @@ private:
     Location* mapLocation;
 
 public:
-    bool NeedProcess;
-    uint FuncId[ MAP_EVENT_MAX ];
-    uint LoopEnabled[ MAP_LOOP_FUNC_MAX ];
-    uint LoopLastTick[ MAP_LOOP_FUNC_MAX ];
-    uint LoopWaitTick[ MAP_LOOP_FUNC_MAX ];
+    uint LoopLastTick[ 5 ];
 
     bool Generate();
     void DeleteContent();
     void Process();
+    void ProcessLoop( int index, uint time, uint tick );
     void Lock()   { dataLocker.Lock(); }
     void Unlock() { dataLocker.Unlock(); }
 
     ProtoMap* GetProtoMap() { return (ProtoMap*) Proto; }
     Location* GetLocation( bool lock );
     void      SetLocation( Location* loc ) { mapLocation = loc; }
-    void      SetLoopTime( uint loop_num, uint ms );
 
     void SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text );
     void SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str );
@@ -167,20 +147,9 @@ public:
     void  ReplaceItemBlocks( ushort hx, ushort hy, Item* item );
     Item* GetItemChild( ushort hx, ushort hy, Item* item, uint child_index );
 
-    // Events
-private:
-    bool PrepareScriptFunc( int num_scr_func );
 
-public:
+    // Script
     bool SetScript( const char* script_name, bool first_time );
-    void EventFinish( bool to_delete );
-    void EventLoop( int loop_num );
-    void EventInCritter( Critter* cr );
-    void EventOutCritter( Critter* cr );
-    void EventCritterDead( Critter* cr, Critter* killer );
-    void EventTurnBasedBegin();
-    void EventTurnBasedEnd();
-    void EventTurnBasedProcess( Critter* cr, bool begin_turn );
 
     // Turn based game
 public:
@@ -197,7 +166,6 @@ public:
 
     void BeginTurnBased( Critter* first_cr );
     void EndTurnBased();
-    bool TryEndTurnBased();
     void ProcessTurnBased();
     bool IsCritterTurn( Critter* cr );
     uint GetCritterTurnId();
@@ -208,12 +176,6 @@ public:
 };
 typedef map< uint, Map* > MapMap;
 typedef vector< Map* >    MapVec;
-
-// Script events
-#define LOCATION_EVENT_FINISH    ( 0 )
-#define LOCATION_EVENT_ENTER     ( 1 )
-#define LOCATION_EVENT_MAX       ( 2 )
-extern const char* LocationEventFuncName[ LOCATION_EVENT_MAX ];
 
 class Location: public Entity
 {
@@ -242,10 +204,8 @@ private:
     MapVec locMaps;
 
 public:
-    uint         EntranceScriptBindId;
-
-    volatile int GeckCount;
-    uint         FuncId[ LOCATION_EVENT_MAX ];
+    uint EntranceScriptBindId;
+    int  GeckCount;
 
     void           BindScript();
     ProtoLocation* GetProtoLoc()   { return (ProtoLocation*) Proto; }
@@ -263,14 +223,6 @@ public:
     bool IsNoPlayer();
     bool IsNoNpc();
     bool IsCanDelete();
-
-// Events
-private:
-    bool PrepareScriptFunc( int num_scr_func );
-
-public:
-    void EventFinish( bool to_delete );
-    bool EventEnter( ScriptArray* group, uchar entrance );
 };
 typedef map< uint, Location* > LocMap;
 typedef vector< Location* >    LocVec;

@@ -358,7 +358,7 @@ bool FOClient::Init()
     }
 
     // Start script
-    if( !Script::PrepareContext( ClientFunctions.Start, _FUNC_, "Game" ) || !Script::RunPrepared() || !Script::GetReturnedBool() )
+    if( !Script::RaiseInternalEvent( ClientFunctions.Start ) )
     {
         WriteLog( "Execute start script fail.\n" );
         return false;
@@ -1058,8 +1058,7 @@ int FOClient::MainLoop()
     if( Timer::FastTick() >= next_call )
     {
         uint wait_tick = 1000;
-        if( Script::PrepareContext( ClientFunctions.Loop, _FUNC_, "Game" ) && Script::RunPrepared() )
-            wait_tick = Script::GetReturnedUInt();
+        Script::RaiseInternalEvent( ClientFunctions.Loop, &wait_tick );
         next_call = Timer::FastTick() + wait_tick;
     }
 
@@ -1305,8 +1304,7 @@ void FOClient::ParseKeyboard()
         MainWindowKeyboardEvents.clear();
         MainWindowKeyboardEventsText.clear();
         Keyb::Lost();
-        if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
-            Script::RunPrepared();
+        Script::RaiseInternalEvent( ClientFunctions.InputLost );
         return;
     }
 
@@ -1348,23 +1346,18 @@ void FOClient::ParseKeyboard()
         }
 
         // Key script event
-        if( dikdw && Script::PrepareContext( ClientFunctions.KeyDown, _FUNC_, "Game" ) )
+        if( dikdw )
         {
             ScriptString* event_text_script = nullptr;
             if( dikdw == DIK_TEXT )
                 event_text_script = ScriptString::Create( event_text );
-            Script::SetArgUChar( dikdw );
-            Script::SetArgObject( event_text_script );
-            Script::RunPrepared();
+            Script::RaiseInternalEvent( ClientFunctions.KeyDown, dikdw, event_text_script );
             if( event_text_script )
                 event_text_script->Release();
         }
 
-        if( dikup && Script::PrepareContext( ClientFunctions.KeyUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUChar( dikup );
-            Script::RunPrepared();
-        }
+        if( dikup )
+            Script::RaiseInternalEvent( ClientFunctions.KeyUp, dikup );
 
         // Control keys
         if( dikdw == DIK_RCONTROL || dikdw == DIK_LCONTROL )
@@ -1388,8 +1381,7 @@ void FOClient::ParseMouse()
     if( !( SDL_GetWindowFlags( MainWindow ) & SDL_WINDOW_INPUT_FOCUS ) )
     {
         MainWindowMouseEvents.clear();
-        if( Script::PrepareContext( ClientFunctions.InputLost, _FUNC_, "Game" ) )
-            Script::RunPrepared();
+        Script::RaiseInternalEvent( ClientFunctions.InputLost );
         return;
     }
 
@@ -1401,8 +1393,7 @@ void FOClient::ParseMouse()
         old_cur_x = GameOpt.MouseX;
         old_cur_y = GameOpt.MouseY;
 
-        if( Script::PrepareContext( ClientFunctions.MouseMove, _FUNC_, "Game" ) )
-            Script::RunPrepared();
+        Script::RaiseInternalEvent( ClientFunctions.MouseMove );
     }
 
     // Get buffered data
@@ -1429,16 +1420,10 @@ void FOClient::ParseMouse()
         }
 
         // Scripts
-        if( event == SDL_MOUSEBUTTONDOWN && Script::PrepareContext( ClientFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( event_button );
-            Script::RunPrepared();
-        }
-        else if( event == SDL_MOUSEBUTTONUP && Script::PrepareContext( ClientFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( event_button );
-            Script::RunPrepared();
-        }
+        if( event == SDL_MOUSEBUTTONDOWN )
+            Script::RaiseInternalEvent( ClientFunctions.MouseDown, event_button );
+        else if( event == SDL_MOUSEBUTTONUP )
+            Script::RaiseInternalEvent( ClientFunctions.MouseUp, event_button );
     }
 }
 
@@ -2369,19 +2354,13 @@ void FOClient::Net_SendText( const char* send_str, uchar how_say )
     char* str = str_buf;
     Str::Copy( str_buf, send_str );
 
-    bool result = false;
-    if( Script::PrepareContext( ClientFunctions.OutMessage, _FUNC_, "Game" ) )
-    {
-        int           say_type = how_say;
-        ScriptString* sstr = ScriptString::Create( str );
-        Script::SetArgObject( sstr );
-        Script::SetArgAddress( &say_type );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-        Str::Copy( str, MAX_FOTEXT, sstr->c_str() );
-        sstr->Release();
-        how_say = say_type;
-    }
+    bool          result = false;
+    int           say_type = how_say;
+    ScriptString* sstr = ScriptString::Create( str );
+    result = Script::RaiseInternalEvent( ClientFunctions.OutMessage, sstr, &say_type );
+    Str::Copy( str, MAX_FOTEXT, sstr->c_str() );
+    sstr->Release();
+    how_say = say_type;
 
     if( !result || !str[ 0 ] )
         return;
@@ -2901,11 +2880,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
         AddCritter( cr );
 
-        if( Script::PrepareContext( ClientFunctions.CritterIn, _FUNC_, "Game" ) )
-        {
-            Script::SetArgEntityOK( cr );
-            Script::RunPrepared();
-        }
+        Script::RaiseInternalEvent( ClientFunctions.CritterIn, cr );
 
         if( cr->IsChosen() )
             RebuildLookBorders = true;
@@ -2925,11 +2900,7 @@ void FOClient::Net_OnRemoveCritter()
 
     cr->Finish();
 
-    if( Script::PrepareContext( ClientFunctions.CritterOut, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( cr );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.CritterOut, cr );
 }
 
 void FOClient::Net_OnText()
@@ -3031,25 +3002,17 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
     if( !len )
         return;
 
-    uint text_delay = GameOpt.TextDelay + len * 100;
-    if( Script::PrepareContext( ClientFunctions.InMessage, _FUNC_, "Game" ) )
-    {
-        ScriptString* sstr = ScriptString::Create( fstr );
-        Script::SetArgObject( sstr );
-        Script::SetArgAddress( &how_say );
-        Script::SetArgAddress( &crid );
-        Script::SetArgAddress( &text_delay );
-        Script::RunPrepared();
-        Str::Copy( fstr, sstr->c_str() );
-        sstr->Release();
+    uint          text_delay = GameOpt.TextDelay + len * 100;
+    ScriptString* sstr = ScriptString::Create( fstr );
+    bool          result = Script::RaiseInternalEvent( ClientFunctions.InMessage, sstr, &how_say, &crid, &text_delay );
+    Str::Copy( fstr, sstr->c_str() );
+    sstr->Release();
+    if( !result )
+        return;
 
-        if( !Script::GetReturnedBool() )
-            return;
-
-        len = Str::Length( fstr );
-        if( !len )
-            return;
-    }
+    len = Str::Length( fstr );
+    if( !len )
+        return;
 
     // Type stream
     uint fstr_cr = 0;
@@ -3168,20 +3131,8 @@ void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color )
     uint          len = Str::Length( str );
     uint          text_delay = GameOpt.TextDelay + len * 100;
     ScriptString* sstr = ScriptString::Create( str );
-    if( Script::PrepareContext( ClientFunctions.MapMessage, _FUNC_, "Game" ) )
-    {
-        Script::SetArgObject( sstr );
-        Script::SetArgAddress( &hx );
-        Script::SetArgAddress( &hy );
-        Script::SetArgAddress( &color );
-        Script::SetArgAddress( &text_delay );
-        Script::RunPrepared();
-        if( !Script::GetReturnedBool() )
-        {
-            sstr->Release();
-            return;
-        }
-    }
+
+    Script::RaiseInternalEvent( ClientFunctions.MapMessage, sstr, &hx, &hy, &color, &text_delay );
 
     MapText t;
     t.HexX = hx;
@@ -3906,11 +3857,8 @@ void FOClient::Net_OnChosenAddItem()
         Chosen->DeleteItem( item, true );
     CollectContItems();
 
-    if( !InitialItemsSend && Script::PrepareContext( ClientFunctions.ItemInvIn, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( item );
-        Script::RunPrepared();
-    }
+    if( !InitialItemsSend )
+        Script::RaiseInternalEvent( ClientFunctions.ItemInvIn, item );
 
     item->Release();
 }
@@ -3941,11 +3889,7 @@ void FOClient::Net_OnChosenEraseItem()
     if( rebuild_light )
         HexMngr.RebuildLight();
     CollectContItems();
-    if( Script::PrepareContext( ClientFunctions.ItemInvOut, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( clone );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.ItemInvOut, clone );
     clone->Release();
 }
 
@@ -3962,8 +3906,7 @@ void FOClient::Net_OnAllItemsSend()
     if( Chosen->Anim3d )
         Chosen->Anim3d->StartMeshGeneration();
 
-    if( Script::PrepareContext( ClientFunctions.ItemInvAllIn, _FUNC_, "Game" ) )
-        Script::RunPrepared();
+    Script::RaiseInternalEvent( ClientFunctions.ItemInvAllIn );
 }
 
 void FOClient::Net_OnAddItemOnMap()
@@ -3998,11 +3941,8 @@ void FOClient::Net_OnAddItemOnMap()
     }
 
     Item* item = HexMngr.GetItemById( item_id );
-    if( item && Script::PrepareContext( ClientFunctions.ItemMapIn, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( item );
-        Script::RunPrepared();
-    }
+    if( item )
+        Script::RaiseInternalEvent( ClientFunctions.ItemMapIn, item );
 
     // Refresh borders
     if( item && !item->GetIsShootThru() )
@@ -4019,11 +3959,8 @@ void FOClient::Net_OnEraseItemFromMap()
     CHECK_IN_BUFF_ERROR;
 
     Item* item = HexMngr.GetItemById( item_id );
-    if( item && Script::PrepareContext( ClientFunctions.ItemMapOut, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( item );
-        Script::RunPrepared();
-    }
+    if( item )
+        Script::RaiseInternalEvent( ClientFunctions.ItemMapOut, item );
 
     // Refresh borders
     if( item && !item->GetIsShootThru() )
@@ -4066,17 +4003,11 @@ void FOClient::Net_OnCombatResult()
     CHECK_IN_BUFF_ERROR;
 
     ScriptArray* arr = Script::CreateArray( "uint[]" );
-    if( !arr )
-        return;
     arr->Resize( data_count );
     for( uint i = 0; i < data_count; i++ )
         *( (uint*) arr->At( i ) ) = data_vec[ i ];
 
-    if( Script::PrepareContext( ClientFunctions.CombatResult, _FUNC_, "Game" ) )
-    {
-        Script::SetArgObject( arr );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.CombatResult, arr );
 
     arr->Release();
 }
@@ -4355,12 +4286,8 @@ void FOClient::Net_OnProperty( uint data_size )
     prop->SetData( entity, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : nullptr, (uint) TempPropertyData.size() );
     entity->Props.SetSendIgnore( nullptr, nullptr );
 
-    if( type == NetProperty::MapItem && Script::PrepareContext( ClientFunctions.ItemMapChanged, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( entity );
-        Script::SetArgEntityOK( entity );
-        Script::RunPrepared();
-    }
+    if( type == NetProperty::MapItem )
+        Script::RaiseInternalEvent( ClientFunctions.ItemMapChanged, entity, entity );
 
     if( type == NetProperty::ChosenItem )
     {
@@ -4986,8 +4913,7 @@ void FOClient::Net_OnContainerInfo()
 
     CollectContItems();
 
-    if( Script::PrepareContext( ClientFunctions.ContainerChanged, _FUNC_, "Game" ) )
-        Script::RunPrepared();
+    Script::RaiseInternalEvent( ClientFunctions.ContainerChanged );
 }
 
 void FOClient::Net_OnFollow()
@@ -5241,8 +5167,7 @@ void FOClient::Net_OnPlayersBarter()
         break;
     }
 
-    if( Script::PrepareContext( ClientFunctions.ContainerChanged, _FUNC_, "Game" ) )
-        Script::RunPrepared();
+    Script::RaiseInternalEvent( ClientFunctions.ContainerChanged );
 }
 
 void FOClient::Net_OnPlayersBarterSetHide()
@@ -5644,14 +5569,7 @@ void FOClient::SetGameColor( uint color )
 
 bool FOClient::IsCurInInterface( int x, int y )
 {
-    if( ClientFunctions.CheckInterfaceHit && Script::PrepareContext( ClientFunctions.CheckInterfaceHit, _FUNC_, "Game" ) )
-    {
-        Script::SetArgUInt( x );
-        Script::SetArgUInt( y );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedBool();
-    }
-    return false;
+    return Script::RaiseInternalEvent( ClientFunctions.CheckInterfaceHit, x, y );
 }
 
 bool FOClient::GetCurHex( ushort& hx, ushort& hy, bool ignore_interface )
@@ -6224,11 +6142,11 @@ label_EndMove:
         bool is_self = ( target_type == TARGET_SELF || target_type == TARGET_SELF_ITEM );
 
         // Aim overriding
-        if( is_attack && ClientFunctions.HitAim && Script::PrepareContext( ClientFunctions.HitAim, _FUNC_, "Game" ) )
+        if( is_attack )
         {
             uchar new_aim = aim;
-            Script::SetArgAddress( &new_aim );
-            if( Script::RunPrepared() && new_aim != aim )
+            Script::RaiseInternalEvent( ClientFunctions.HitAim, &new_aim );
+            if( new_aim != aim )
             {
                 aim = new_aim;
                 rate = MAKE_ITEM_MODE( use, aim );
@@ -6415,62 +6333,19 @@ label_EndMove:
         {
             RUNTIME_ASSERT( item_count == item->GetCount() );
 
-            bool allow = false;
-            if( Script::PrepareContext( ClientFunctions.ItemCheckMove, _FUNC_, "Game" ) )
-            {
-                Script::SetArgEntityOK( item );
-                Script::SetArgUInt( item_count );
-                Script::SetArgEntityOK( Chosen );
-                Script::SetArgEntityOK( Chosen );
-                if( Script::RunPrepared() )
-                    allow = Script::GetReturnedBool();
-            }
-            if( !allow )
+            if( !Script::RaiseInternalEvent( ClientFunctions.ItemCheckMove, item, item_count, Chosen, Chosen ) )
                 break;
         }
 
         Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? Chosen->GetItemSlot( to_slot ) : nullptr );
-        bool  allow = false;
-        if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
-        {
-            Script::SetArgEntityOK( Chosen );
-            Script::SetArgEntityOK( item );
-            Script::SetArgUChar( to_slot );
-            Script::SetArgEntityOK( item_swap );
-            if( Script::RunPrepared() )
-                allow = Script::GetReturnedBool();
-        }
-        if( !allow )
+        if( !Script::RaiseInternalEvent( ClientFunctions.CritterCheckMoveItem, Chosen, item, to_slot, item_swap ) )
         {
             // Gameplay swap workaround
             if( item_swap && !is_second_try )
             {
-                // Hindering item to inventory
-                bool allow1 = false;
-                if( Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
-                {
-                    Script::SetArgEntityOK( Chosen );
-                    Script::SetArgEntityOK( item_swap );
-                    Script::SetArgUChar( SLOT_INV );
-                    Script::SetArgEntityOK( nullptr );
-                    if( Script::RunPrepared() )
-                        allow1 = Script::GetReturnedBool();
-                }
-
-                // Current item to empty slot
-                bool allow2 = false;
-                if( allow1 && Script::PrepareContext( ClientFunctions.CritterCheckMoveItem, _FUNC_, "Game" ) )
-                {
-                    Script::SetArgEntityOK( Chosen );
-                    Script::SetArgEntityOK( item );
-                    Script::SetArgUChar( to_slot );
-                    Script::SetArgEntityOK( nullptr );
-                    if( Script::RunPrepared() )
-                        allow2 = Script::GetReturnedBool();
-                }
-
                 // Add actions
-                if( allow1 && allow2 )
+                if( Script::RaiseInternalEvent( ClientFunctions.CritterCheckMoveItem, Chosen, item_swap, SLOT_INV, nullptr ) &&
+                    Script::RaiseInternalEvent( ClientFunctions.CritterCheckMoveItem, Chosen, item, to_slot, nullptr ) )
                 {
                     EraseFrontAction();
                     AddActionFront( CHOSEN_MOVE_ITEM, item_id, item_count, to_slot, 0, true );                        // Second
@@ -6598,17 +6473,7 @@ label_EndMove:
         else if( PupTransferType == TRANSFER_HEX_CONT_UP || PupTransferType == TRANSFER_HEX_CONT_DOWN || PupTransferType == TRANSFER_SELF_CONT || PupTransferType == TRANSFER_FAR_CONT )
             cont_entity = GetItem( PupContId );
 
-        bool allow = false;
-        if( Script::PrepareContext( ClientFunctions.ItemCheckMove, _FUNC_, "Game" ) )
-        {
-            Script::SetArgEntityOK( item );
-            Script::SetArgUInt( count );
-            Script::SetArgEntityOK( item_cont == ITEMS_PICKUP ? Chosen : cont_entity );
-            Script::SetArgEntityOK( item_cont == ITEMS_PICKUP ? cont_entity : Chosen );
-            if( Script::RunPrepared() )
-                allow = Script::GetReturnedBool();
-        }
-        if( !allow )
+        if( !Script::RaiseInternalEvent( ClientFunctions.ItemCheckMove, item, count, item_cont == ITEMS_PICKUP ? Chosen : cont_entity, item_cont == ITEMS_PICKUP ? cont_entity : Chosen ) )
             break;
 
         CHECK_NEED_AP( Chosen->GetApCostMoveItemContainer() );
@@ -7789,7 +7654,7 @@ bool FOClient::ReloadScripts()
     // Bind stuff
     #define BIND_CLIENT
     #define BIND_CLASS    FOClient::SScriptFunc::
-    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line %d.\n", __LINE__ ); bind_errors++; }
+    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line %d.\n", __LINE__ ); bind_errors++; }
     asIScriptEngine* engine = Script::GetEngine();
     int              bind_errors = 0;
     #include "ScriptBind.h"
@@ -7885,54 +7750,54 @@ bool FOClient::ReloadScripts()
         errors++;
     Script::CacheEnumValues();
 
-    // Bind reserved functions
-    /*ReservedScriptFunction BindGameFunc[] =
-       {
-        { &ClientFunctions.Start, "start", "bool %s()" },
-        { &ClientFunctions.Finish, "finish", "void %s()" },
-        { &ClientFunctions.Loop, "loop", "uint %s()" },
-        { &ClientFunctions.GetActiveScreens, "get_active_screens", "void %s(int[]&)" },
-        { &ClientFunctions.ScreenChange, "screen_change", "void %s(bool,int,dictionary@)" },
-        { &ClientFunctions.RenderIface, "render_iface", "void %s(uint)" },
-        { &ClientFunctions.RenderMap, "render_map", "void %s()" },
-        { &ClientFunctions.MouseDown, "mouse_down", "void %s(int)" },
-        { &ClientFunctions.MouseUp, "mouse_up", "void %s(int)" },
-        { &ClientFunctions.MouseMove, "mouse_move", "void %s()" },
-        { &ClientFunctions.KeyDown, "key_down", "void %s(uint8,string@)" },
-        { &ClientFunctions.KeyUp, "key_up", "void %s(uint8)" },
-        { &ClientFunctions.InputLost, "input_lost", "void %s()" },
-        { &ClientFunctions.CritterIn, "critter_in", "void %s(Critter&)" },
-        { &ClientFunctions.CritterOut, "critter_out", "void %s(Critter&)" },
-        { &ClientFunctions.ItemMapIn, "item_map_in", "void %s(Item&)" },
-        { &ClientFunctions.ItemMapChanged, "item_map_changed", "void %s(Item&,Item&)" },
-        { &ClientFunctions.ItemMapOut, "item_map_out", "void %s(Item&)" },
-        { &ClientFunctions.ItemInvAllIn, "item_inv_all_in", "void %s()" },
-        { &ClientFunctions.ItemInvIn, "item_inv_in", "void %s(Item&)" },
-        { &ClientFunctions.ItemInvChanged, "item_inv_changed", "void %s(Item&,Item&)" },
-        { &ClientFunctions.ItemInvOut, "item_inv_out", "void %s(Item&)" },
-        { &ClientFunctions.ContainerChanged, "container_changed", "void %s()" },
-        { &ClientFunctions.MapMessage, "map_message", "bool %s(string&,uint16&,uint16&,uint&,uint&)" },
-        { &ClientFunctions.InMessage, "in_message", "bool %s(string&,int&,uint&,uint&)" },
-        { &ClientFunctions.OutMessage, "out_message", "bool %s(string&,int&)" },
-        { &ClientFunctions.MessageBox, "message_box", "void %s(string&,int,bool)" },
-        { &ClientFunctions.HitAim, "hit_aim", "void %s(uint8&)" },
-        { &ClientFunctions.CombatResult, "combat_result", "void %s(uint[]&)" },
-        { &ClientFunctions.GetElevator, "get_elevator", "bool %s(uint,uint[]&)" },
-        { &ClientFunctions.ItemCheckMove, "item_check_move", "bool %s(const Item&,int,const Entity&,const Entity&)" },
-        { &ClientFunctions.GetTimeouts, "get_available_timeouts", "void %s(CritterProperty[]&)" },
-        { &ClientFunctions.CritterAction, "critter_action", "void %s(bool,Critter&,int,int,Item@)" },
-        { &ClientFunctions.Animation2dProcess, "animation2d_process", "void %s(bool,Critter&,uint,uint,Item@)" },
-        { &ClientFunctions.Animation3dProcess, "animation3d_process", "void %s(bool,Critter&,uint,uint,Item@)" },
-        { &ClientFunctions.ItemsCollection, "items_collection", "void %s(int,Item@[]&)" },
-        { &ClientFunctions.CritterAnimation, "critter_animation", "string@ %s(hash,uint,uint,uint&,uint&,int&,int&)" },
-        { &ClientFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(hash,uint,uint,hash&,uint&,uint&)" },
-        { &ClientFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(hash,uint&,uint&,uint&,uint&,uint&)" },
-        { &ClientFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(const Critter&,const Item&,uint8,const Item@)" },
-        { &ClientFunctions.GetUseApCost, "get_use_ap_cost", "uint %s(const Critter&,const Item&,uint8)" },
-        { &ClientFunctions.GetAttackDistantion, "get_attack_distantion", "uint %s(Critter&,Item&,uint8)" },
-        { &ClientFunctions.CheckInterfaceHit, "check_interface_hit", "bool %s(int,int)" },
-        { &ClientFunctions.GetContItem, "get_cont_item", "bool %s(uint&,bool&)" },
-       };*/
+    #define BIND_INTERNAL_EVENT( name )    ClientFunctions. ## name = Script::FindInternalEvent( # name )
+    BIND_INTERNAL_EVENT( Start );
+    BIND_INTERNAL_EVENT( Finish );
+    BIND_INTERNAL_EVENT( Loop );
+    BIND_INTERNAL_EVENT( GetActiveScreens );
+    BIND_INTERNAL_EVENT( ScreenChange );
+    BIND_INTERNAL_EVENT( RenderIface );
+    BIND_INTERNAL_EVENT( RenderIfaceScreen );
+    BIND_INTERNAL_EVENT( RenderMap );
+    BIND_INTERNAL_EVENT( MouseDown );
+    BIND_INTERNAL_EVENT( MouseUp );
+    BIND_INTERNAL_EVENT( MouseMove );
+    BIND_INTERNAL_EVENT( KeyDown );
+    BIND_INTERNAL_EVENT( KeyUp );
+    BIND_INTERNAL_EVENT( InputLost );
+    BIND_INTERNAL_EVENT( CritterIn );
+    BIND_INTERNAL_EVENT( CritterOut );
+    BIND_INTERNAL_EVENT( ItemMapIn );
+    BIND_INTERNAL_EVENT( ItemMapChanged );
+    BIND_INTERNAL_EVENT( ItemMapOut );
+    BIND_INTERNAL_EVENT( ItemInvAllIn );
+    BIND_INTERNAL_EVENT( ItemInvIn );
+    BIND_INTERNAL_EVENT( ItemInvChanged );
+    BIND_INTERNAL_EVENT( ItemInvOut );
+    BIND_INTERNAL_EVENT( ContainerChanged );
+    BIND_INTERNAL_EVENT( MapMessage );
+    BIND_INTERNAL_EVENT( InMessage );
+    BIND_INTERNAL_EVENT( OutMessage );
+    BIND_INTERNAL_EVENT( MessageBox );
+    BIND_INTERNAL_EVENT( ToHit );
+    BIND_INTERNAL_EVENT( HitAim );
+    BIND_INTERNAL_EVENT( CombatResult );
+    BIND_INTERNAL_EVENT( GetElevator );
+    BIND_INTERNAL_EVENT( ItemCheckMove );
+    BIND_INTERNAL_EVENT( GetTimeouts );
+    BIND_INTERNAL_EVENT( CritterAction );
+    BIND_INTERNAL_EVENT( Animation2dProcess );
+    BIND_INTERNAL_EVENT( Animation3dProcess );
+    BIND_INTERNAL_EVENT( ItemsCollection );
+    BIND_INTERNAL_EVENT( CritterAnimation );
+    BIND_INTERNAL_EVENT( CritterAnimationSubstitute );
+    BIND_INTERNAL_EVENT( CritterAnimationFallout );
+    BIND_INTERNAL_EVENT( CritterCheckMoveItem );
+    BIND_INTERNAL_EVENT( GetUseApCost );
+    BIND_INTERNAL_EVENT( GetAttackDistantion );
+    BIND_INTERNAL_EVENT( CheckInterfaceHit );
+    BIND_INTERNAL_EVENT( GetContItem );
+    #undef BIND_INTERNAL_EVENT
 
     if( errors )
         return false;
@@ -7974,23 +7839,14 @@ bool FOClient::ReloadScripts()
 
 void FOClient::DrawIfaceLayer( uint layer )
 {
-    if( Script::PrepareContext( ClientFunctions.RenderIface, _FUNC_, "Game" ) )
-    {
-        SpritesCanDraw++;
-        Script::SetArgUInt( layer );
-        Script::RunPrepared();
-        SpritesCanDraw--;
-    }
+    SpritesCanDraw++;
+    Script::RaiseInternalEvent( ClientFunctions.RenderIface, layer );
+    SpritesCanDraw--;
 }
 
 void FOClient::OnItemInvChanged( Item* old_item, Item* item )
 {
-    if( Script::PrepareContext( ClientFunctions.ItemInvChanged, _FUNC_, "Game" ) )
-    {
-        Script::SetArgEntityOK( old_item );
-        Script::SetArgEntityOK( item );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.ItemInvChanged, old_item, item );
     old_item->Release();
 }
 

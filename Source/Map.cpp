@@ -5,27 +5,16 @@
 #include "ItemManager.h"
 #include "MapManager.h"
 
-const char* MapEventFuncName[ MAP_EVENT_MAX ] =
-{
-    "void %s(Map&,bool)",              // MAP_EVENT_FINISH
-    "void %s(Map&)",                   // MAP_EVENT_LOOP_0
-    "void %s(Map&)",                   // MAP_EVENT_LOOP_1
-    "void %s(Map&)",                   // MAP_EVENT_LOOP_2
-    "void %s(Map&)",                   // MAP_EVENT_LOOP_3
-    "void %s(Map&)",                   // MAP_EVENT_LOOP_4
-    "void %s(Map&,Critter&)",          // MAP_EVENT_IN_CRITTER
-    "void %s(Map&,Critter&)",          // MAP_EVENT_OUT_CRITTER
-    "void %s(Map&,Critter&,Critter@)", // MAP_EVENT_CRITTER_DEAD
-    "void %s(Map&)",                   // MAP_EVENT_TURN_BASED_BEGIN
-    "void %s(Map&)",                   // MAP_EVENT_TURN_BASED_END
-    "void %s(Map&,Critter&,bool)",     // MAP_EVENT_TURN_BASED_PROCESS
-};
-
 /************************************************************************/
 /* Map                                                                  */
 /************************************************************************/
 
 PROPERTIES_IMPL( Map );
+CLASS_PROPERTY_IMPL( Map, LoopTime1 );
+CLASS_PROPERTY_IMPL( Map, LoopTime2 );
+CLASS_PROPERTY_IMPL( Map, LoopTime3 );
+CLASS_PROPERTY_IMPL( Map, LoopTime4 );
+CLASS_PROPERTY_IMPL( Map, LoopTime5 );
 CLASS_PROPERTY_IMPL( Map, Width );
 CLASS_PROPERTY_IMPL( Map, Height );
 CLASS_PROPERTY_IMPL( Map, WorkHexX );
@@ -50,7 +39,6 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     mapLocation = location;
 
     hexFlags = nullptr;
-    NeedProcess = false;
     IsTurnBasedOn = false;
     TurnBasedEndTick = 0;
     TurnSequenceCur = 0;
@@ -60,18 +48,11 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     TurnBasedRound = 0;
     TurnBasedTurn = 0;
     TurnBasedWholeTurn = 0;
-
-    memzero( FuncId, sizeof( FuncId ) );
-    memzero( LoopEnabled, sizeof( LoopEnabled ) );
     memzero( LoopLastTick, sizeof( LoopLastTick ) );
-    memzero( LoopWaitTick, sizeof( LoopWaitTick ) );
 
     hexFlagsSize = GetWidth() * GetHeight();
     hexFlags = new uchar[ hexFlagsSize ];
     memzero( hexFlags, hexFlagsSize );
-
-    for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
-        LoopWaitTick[ i ] = MAP_LOOP_DEFAULT_TICK;
 }
 
 Map::~Map()
@@ -268,17 +249,20 @@ void Map::Process()
     if( IsTurnBasedOn )
         ProcessTurnBased();
 
-    if( NeedProcess )
+    uint tick = Timer::GameTick();
+    ProcessLoop( 0, GetLoopTime1(), tick );
+    ProcessLoop( 1, GetLoopTime2(), tick );
+    ProcessLoop( 2, GetLoopTime3(), tick );
+    ProcessLoop( 3, GetLoopTime4(), tick );
+    ProcessLoop( 4, GetLoopTime5(), tick );
+}
+
+void Map::ProcessLoop( int index, uint time, uint tick )
+{
+    if( time && tick - LoopLastTick[ index ] >= time )
     {
-        uint tick = Timer::GameTick();
-        for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
-        {
-            if( LoopEnabled[ i ] && tick - LoopLastTick[ i ] >= LoopWaitTick[ i ] )
-            {
-                EventLoop( i );
-                LoopLastTick[ i ] = tick;
-            }
-        }
+        LoopLastTick[ index ] = tick;
+        Script::RaiseInternalEvent( ServerFunctions.MapLoop, this, index + 1 );
     }
 }
 
@@ -402,8 +386,7 @@ void Map::AddCritter( Critter* cr )
 void Map::AddCritterEvents( Critter* cr )
 {
     cr->LockMapTransfers++;
-    EventInCritter( cr );
-    Script::RaiseInternalEvent( ServerFunctions.MapCritterIn, 2, this, cr );
+    Script::RaiseInternalEvent( ServerFunctions.MapCritterIn, this, cr );
     cr->LockMapTransfers--;
 }
 
@@ -439,8 +422,7 @@ void Map::EraseCritter( Critter* cr )
 void Map::EraseCritterEvents( Critter* cr )
 {
     cr->LockMapTransfers++;
-    EventOutCritter( cr );
-    Script::RaiseInternalEvent( ServerFunctions.MapCritterOut, 2, this, cr );
+    Script::RaiseInternalEvent( ServerFunctions.MapCritterOut, this, cr );
     cr->LockMapTransfers--;
 }
 
@@ -483,7 +465,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
                 bool allowed = false;
                 if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, this, cr, item );
+                    allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, this, cr, item );
                 }
                 else
                 {
@@ -498,7 +480,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
 
             cr->AddIdVisItem( item->GetId() );
             cr->Send_AddItemOnMap( item );
-            cr->EventShowItemOnMap( item, false, nullptr );
+            Script::RaiseInternalEvent( ServerFunctions.CritterShowItemOnMap, cr, item, false, nullptr );
         }
     }
     item->ViewPlaceOnMap = false;
@@ -531,7 +513,7 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
     if( item->IsNonEmptyBlockLines() )
         PlaceItemBlocks( hx, hy, item );
 
-    if( item->FuncId[ ITEM_EVENT_WALK ] > 0 )
+    if( item->GetIsTrap() )
         SetHexFlag( hx, hy, FH_WALK_ITEM );
     if( item->GetIsGeck() )
         mapLocation->GeckCount++;
@@ -583,7 +565,7 @@ void Map::EraseItem( uint item_id )
         if( cr->DelIdVisItem( item->GetId() ) )
         {
             cr->Send_EraseItemFromMap( item );
-            cr->EventHideItemOnMap( item, item->ViewPlaceOnMap, item->ViewByCritter );
+            Script::RaiseInternalEvent( ServerFunctions.CritterHideItemOnMap, cr, item, item->ViewPlaceOnMap, item->ViewByCritter );
         }
     }
     item->ViewPlaceOnMap = false;
@@ -602,7 +584,7 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
             if( cr->CountIdVisItem( item->GetId() ) )
             {
                 cr->Send_Property( type, prop, entity );
-                cr->EventChangeItemOnMap( item );
+                Script::RaiseInternalEvent( ServerFunctions.CritterChangeItemOnMap, cr, item );
             }
         }
     }
@@ -639,14 +621,14 @@ void Map::ChangeViewItem( Item* item )
             {
                 cr->DelIdVisItem( item->GetId() );
                 cr->Send_EraseItemFromMap( item );
-                cr->EventHideItemOnMap( item, false, nullptr );
+                Script::RaiseInternalEvent( ServerFunctions.CritterHideItemOnMap, cr, item, false, nullptr );
             }
             else if( !item->GetIsAlwaysView() )           // Check distance for non-hide items
             {
                 bool allowed = false;
                 if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, this, cr, item );
+                    allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, this, cr, item );
                 }
                 else
                 {
@@ -659,7 +641,7 @@ void Map::ChangeViewItem( Item* item )
                 {
                     cr->DelIdVisItem( item->GetId() );
                     cr->Send_EraseItemFromMap( item );
-                    cr->EventHideItemOnMap( item, false, nullptr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideItemOnMap, cr, item, false, nullptr );
                 }
             }
         }
@@ -670,7 +652,7 @@ void Map::ChangeViewItem( Item* item )
                 bool allowed = false;
                 if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
                 {
-                    allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, this, cr, item );
+                    allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, this, cr, item );
                 }
                 else
                 {
@@ -685,7 +667,7 @@ void Map::ChangeViewItem( Item* item )
 
             cr->AddIdVisItem( item->GetId() );
             cr->Send_AddItemOnMap( item );
-            cr->EventShowItemOnMap( item, false, nullptr );
+            Script::RaiseInternalEvent( ServerFunctions.CritterShowItemOnMap, cr, item, false, nullptr );
         }
     }
 }
@@ -849,7 +831,7 @@ void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps, bool lock )
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy && item->FuncId[ ITEM_EVENT_WALK ] > 0 )
+        if( item->GetHexX() == hx && item->GetHexY() == hy && item->GetIsTrap() )
             traps.push_back( item );
     }
     if( !traps.size() )
@@ -1520,13 +1502,6 @@ Item* Map::GetItemChild( ushort hx, ushort hy, Item* item, uint child_index )
     return GetItemHex( hx, hy, child_pid, nullptr );
 }
 
-bool Map::PrepareScriptFunc( int num_scr_func )
-{
-    if( FuncId[ num_scr_func ] <= 0 )
-        return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) );
-}
-
 bool Map::SetScript( const char* script_name, bool first_time )
 {
     if( script_name && script_name[ 0 ] )
@@ -1547,92 +1522,6 @@ bool Map::SetScript( const char* script_name, bool first_time )
         Script::RunPrepared();
     }
     return true;
-}
-
-void Map::EventFinish( bool to_delete )
-{
-    if( PrepareScriptFunc( MAP_EVENT_FINISH ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgBool( to_delete );
-        Script::RunPrepared();
-    }
-}
-
-void Map::EventLoop( int loop_num )
-{
-    if( PrepareScriptFunc( MAP_EVENT_LOOP_0 + loop_num ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::RunPrepared();
-    }
-}
-
-void Map::EventInCritter( Critter* cr )
-{
-    if( PrepareScriptFunc( MAP_EVENT_IN_CRITTER ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( cr );
-        Script::RunPrepared();
-    }
-}
-
-void Map::EventOutCritter( Critter* cr )
-{
-    if( PrepareScriptFunc( MAP_EVENT_OUT_CRITTER ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( cr );
-        Script::RunPrepared();
-    }
-}
-
-void Map::EventCritterDead( Critter* cr, Critter* killer )
-{
-    if( PrepareScriptFunc( MAP_EVENT_CRITTER_DEAD ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( cr );
-        Script::SetArgEntityEvent( killer );
-        Script::RunPrepared();
-    }
-}
-
-void Map::EventTurnBasedBegin()
-{
-    if( PrepareScriptFunc( MAP_EVENT_TURN_BASED_BEGIN ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::RunPrepared();
-    }
-}
-
-void Map::EventTurnBasedEnd()
-{
-    if( PrepareScriptFunc( MAP_EVENT_TURN_BASED_BEGIN ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::RunPrepared();
-    }
-}
-
-void Map::EventTurnBasedProcess( Critter* cr, bool begin_turn )
-{
-    if( PrepareScriptFunc( MAP_EVENT_TURN_BASED_BEGIN ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( cr );
-        Script::SetArgBool( begin_turn );
-        Script::RunPrepared();
-    }
-}
-
-void Map::SetLoopTime( uint loop_num, uint ms )
-{
-    if( loop_num >= MAP_LOOP_FUNC_MAX )
-        return;
-    LoopWaitTick[ loop_num ] = ms;
 }
 
 void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text )
@@ -1717,8 +1606,7 @@ void Map::BeginTurnBased( Critter* first_cr )
     TurnSequenceCur = -1;
     IsTurnBasedTimeout = false;
 
-    EventTurnBasedBegin();
-    Script::RaiseInternalEvent( ServerFunctions.TurnBasedBegin, 1, this );
+    Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedBegin, this );
 
     if( NeedEndTurnBased || TurnSequence.empty() )
         EndTurnBased();
@@ -1728,8 +1616,7 @@ void Map::BeginTurnBased( Critter* first_cr )
 
 void Map::EndTurnBased()
 {
-    EventTurnBasedEnd();
-    Script::RaiseInternalEvent( ServerFunctions.TurnBasedEnd, 1, this );
+    Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedEnd, this );
 
     IsTurnBasedOn = false;
     TurnBasedRound = 0;
@@ -1805,9 +1692,7 @@ void Map::NextCritterTurn()
         Critter* cr = GetCritter( TurnSequence[ TurnSequenceCur ], true );
         if( cr )
         {
-            cr->EventTurnBasedProcess( this, false );
-            EventTurnBasedProcess( cr, false );
-            Script::RaiseInternalEvent( ServerFunctions.TurnBasedProcess, 3, this, cr, false );
+            Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedProcess, this, cr, false );
 
             if( cr->GetCurrentAp() > 0 )
                 cr->SetCurrentAp( 0 );
@@ -1829,8 +1714,7 @@ void Map::NextCritterTurn()
         TurnBasedRound++;
         TurnBasedTurn = 0;
 
-        EventTurnBasedBegin();
-        Script::RaiseInternalEvent( ServerFunctions.TurnBasedBegin, 1, this );
+        Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedBegin, this );
 
         if( NeedEndTurnBased || TurnSequence.empty() )
             EndTurnBased();
@@ -1882,9 +1766,7 @@ void Map::NextCritterTurn()
         cr->SendA_CustomCommand( OTHER_YOU_TURN, GameOpt.TurnBasedTick );
         TurnBasedEndTick = Timer::GameTick() + GameOpt.TurnBasedTick;
 
-        cr->EventTurnBasedProcess( this, true );
-        EventTurnBasedProcess( cr, true );
-        Script::RaiseInternalEvent( ServerFunctions.TurnBasedProcess, 3, this, cr, true );
+        Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedProcess, this, cr, true );
 
         if( NeedEndTurnBased )
         {
@@ -1907,7 +1789,7 @@ void Map::GenerateSequence( Critter* first_cr )
     Script::AppendVectorToArrayRef( critters, script_critters );
 
     // Pass to scripts
-    Script::RaiseInternalEvent( ServerFunctions.TurnBasedSequence, 3, this, script_critters, first_cr );
+    Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedSequence, this, script_critters, first_cr );
 
     // Fill result
     Script::AssignScriptArrayInVector( critters, script_critters );
@@ -1928,12 +1810,6 @@ void Map::GenerateSequence( Critter* first_cr )
 /* Location                                                             */
 /************************************************************************/
 
-const char* LocationEventFuncName[ LOCATION_EVENT_MAX ] =
-{
-    "void %s(Location&,bool)",                      // LOCATION_EVENT_FINISH
-    "bool %s(Location&,Critter@[]&,uint8)",         // LOCATION_EVENT_ENTER
-};
-
 PROPERTIES_IMPL( Location );
 CLASS_PROPERTY_IMPL( Location, MapProtos );
 CLASS_PROPERTY_IMPL( Location, MapEntrances );
@@ -1952,7 +1828,6 @@ CLASS_PROPERTY_IMPL( Location, Color );
 Location::Location( uint id, ProtoLocation* proto ): Entity( id, EntityType::Location, PropertiesRegistrator, proto )
 {
     RUNTIME_ASSERT( proto );
-    memzero( FuncId, sizeof( FuncId ) );
     GeckCount = 0;
 }
 
@@ -2124,37 +1999,5 @@ bool Location::IsCanDelete()
                 return false;
         }
     }
-    return true;
-}
-
-bool Location::PrepareScriptFunc( int num_scr_func )
-{
-    if( FuncId[ num_scr_func ] <= 0 )
-        return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Location '%s' (%u)", GetName(), GetId() ) );
-}
-
-void Location::EventFinish( bool to_delete )
-{
-    if( PrepareScriptFunc( LOCATION_EVENT_FINISH ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgBool( to_delete );
-        Script::RunPrepared();
-    }
-}
-
-bool Location::EventEnter( ScriptArray* group, uchar entrance )
-{
-    if( PrepareScriptFunc( LOCATION_EVENT_ENTER ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgObject( group );
-        Script::SetArgUChar( entrance );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedBool();
-    }
-
-    // No event specified, we are good to enter
     return true;
 }

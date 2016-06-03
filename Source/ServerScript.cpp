@@ -108,7 +108,7 @@ bool FOServer::InitScriptSystem()
     asIScriptEngine* engine = Script::GetEngine();
     #define BIND_SERVER
     #define BIND_CLASS    FOServer::SScriptFunc::
-    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); return false; }
+    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); return false; }
     #include "ScriptBind.h"
 
     // Load script modules
@@ -134,48 +134,71 @@ bool FOServer::InitScriptSystem()
     }
 
     // Bind game functions
-    ServerFunctions.Init = Script::FindInternalEvent( "Init" );
-    ServerFunctions.Start = Script::FindInternalEvent( "Start" );
-    ServerFunctions.GetStartTime = Script::FindInternalEvent( "GetStartTime" );
-    ServerFunctions.GenerateWorld = Script::FindInternalEvent( "GenerateWorld" );
-    ServerFunctions.Finish = Script::FindInternalEvent( "Finish" );
-    ServerFunctions.Loop = Script::FindInternalEvent( "Loop" );
-    ServerFunctions.GlobalProcess = Script::FindInternalEvent( "GlobalProcess" );
-    ServerFunctions.GlobalInvite = Script::FindInternalEvent( "GlobalInvite" );
-    ServerFunctions.CritterAttack = Script::FindInternalEvent( "CritterAttack" );
-    ServerFunctions.CritterAttacked = Script::FindInternalEvent( "CritterAttacked" );
-    ServerFunctions.CritterStealing = Script::FindInternalEvent( "CritterStealing" );
-    ServerFunctions.CritterUseItem = Script::FindInternalEvent( "CritterUseItem" );
-    ServerFunctions.CritterUseSkill = Script::FindInternalEvent( "CritterUseSkill" );
-    ServerFunctions.CritterReloadWeapon = Script::FindInternalEvent( "CritterReloadWeapon" );
-    ServerFunctions.CritterInit = Script::FindInternalEvent( "CritterInit" );
-    ServerFunctions.CritterFinish = Script::FindInternalEvent( "CritterFinish" );
-    ServerFunctions.CritterIdle = Script::FindInternalEvent( "CritterIdle" );
-    ServerFunctions.CritterDead = Script::FindInternalEvent( "CritterDead" );
-    ServerFunctions.CritterRespawn = Script::FindInternalEvent( "CritterRespawn" );
-    ServerFunctions.CritterCheckMoveItem = Script::FindInternalEvent( "CritterCheckMoveItem" );
-    ServerFunctions.CritterMoveItem = Script::FindInternalEvent( "CritterMoveItem" );
-    ServerFunctions.MapCritterIn = Script::FindInternalEvent( "MapCritterIn" );
-    ServerFunctions.MapCritterOut = Script::FindInternalEvent( "MapCritterOut" );
-    ServerFunctions.NpcPlaneBegin = Script::FindInternalEvent( "NpcPlaneBegin" );
-    ServerFunctions.NpcPlaneEnd = Script::FindInternalEvent( "NpcPlaneEnd" );
-    ServerFunctions.NpcPlaneRun = Script::FindInternalEvent( "NpcPlaneRun" );
-    ServerFunctions.CheckLook = Script::FindInternalEvent( "CheckLook" );
-    ServerFunctions.ItemCheckMove = Script::FindInternalEvent( "ItemCheckMove" );
-    ServerFunctions.ItemsBarter = Script::FindInternalEvent( "ItemsBarter" );
-    ServerFunctions.PlayerLevelUp = Script::FindInternalEvent( "PlayerLevelUp" );
-    ServerFunctions.TurnBasedBegin = Script::FindInternalEvent( "TurnBasedBegin" );
-    ServerFunctions.TurnBasedEnd = Script::FindInternalEvent( "TurnBasedEnd" );
-    ServerFunctions.TurnBasedProcess = Script::FindInternalEvent( "TurnBasedProcess" );
-    ServerFunctions.TurnBasedSequence = Script::FindInternalEvent( "TurnBasedSequence" );
-    ServerFunctions.WorldSave = Script::FindInternalEvent( "WorldSave" );
-    ServerFunctions.PlayerRegistration = Script::FindInternalEvent( "PlayerRegistration" );
-    ServerFunctions.PlayerLogin = Script::FindInternalEvent( "PlayerLogin" );
-    ServerFunctions.PlayerGetAccess = Script::FindInternalEvent( "PlayerGetAccess" );
-    ServerFunctions.PlayerAllowCommand = Script::FindInternalEvent( "PlayerAllowCommand" );
-    ServerFunctions.CheckTrapLook = Script::FindInternalEvent( "CheckTrapLook" );
-    ServerFunctions.GetUseApCost = Script::FindInternalEvent( "GetUseApCost" );
-    ServerFunctions.GetAttackDistantion = Script::FindInternalEvent( "GetAttackDistantion" );
+    #define BIND_INTERNAL_EVENT( name )    ServerFunctions. ## name = Script::FindInternalEvent( # name )
+    BIND_INTERNAL_EVENT( Init );
+    BIND_INTERNAL_EVENT( Start );
+    BIND_INTERNAL_EVENT( GetStartTime );
+    BIND_INTERNAL_EVENT( GenerateWorld );
+    BIND_INTERNAL_EVENT( Finish );
+    BIND_INTERNAL_EVENT( Loop );
+    BIND_INTERNAL_EVENT( ItemsBarter );
+    BIND_INTERNAL_EVENT( GlobalMapProcess );
+    BIND_INTERNAL_EVENT( GlobalMapInvite );
+    BIND_INTERNAL_EVENT( WorldSave );
+    BIND_INTERNAL_EVENT( LocationEnter );
+    BIND_INTERNAL_EVENT( LocationFinish );
+    BIND_INTERNAL_EVENT( MapLoop );
+    BIND_INTERNAL_EVENT( MapFinish );
+    BIND_INTERNAL_EVENT( MapCritterIn );
+    BIND_INTERNAL_EVENT( MapCritterOut );
+    BIND_INTERNAL_EVENT( MapTurnBasedBegin );
+    BIND_INTERNAL_EVENT( MapTurnBasedEnd );
+    BIND_INTERNAL_EVENT( MapTurnBasedProcess );
+    BIND_INTERNAL_EVENT( MapTurnBasedSequence );
+    BIND_INTERNAL_EVENT( MapCheckLook );
+    BIND_INTERNAL_EVENT( MapCheckTrapLook );
+    BIND_INTERNAL_EVENT( CritterInit );
+    BIND_INTERNAL_EVENT( CritterFinish );
+    BIND_INTERNAL_EVENT( CritterIdle );
+    BIND_INTERNAL_EVENT( CritterAttack );
+    BIND_INTERNAL_EVENT( CritterDead );
+    BIND_INTERNAL_EVENT( CritterRespawn );
+    BIND_INTERNAL_EVENT( CritterStealing );
+    BIND_INTERNAL_EVENT( CritterUseItem );
+    BIND_INTERNAL_EVENT( CritterUseSkill );
+    BIND_INTERNAL_EVENT( CritterReloadWeapon );
+    BIND_INTERNAL_EVENT( CritterCheckMoveItem );
+    BIND_INTERNAL_EVENT( CritterMoveItem );
+    BIND_INTERNAL_EVENT( CritterShow );
+    BIND_INTERNAL_EVENT( CritterShowDist1 );
+    BIND_INTERNAL_EVENT( CritterShowDist2 );
+    BIND_INTERNAL_EVENT( CritterShowDist3 );
+    BIND_INTERNAL_EVENT( CritterHide );
+    BIND_INTERNAL_EVENT( CritterHideDist1 );
+    BIND_INTERNAL_EVENT( CritterHideDist2 );
+    BIND_INTERNAL_EVENT( CritterHideDist3 );
+    BIND_INTERNAL_EVENT( CritterShowItemOnMap );
+    BIND_INTERNAL_EVENT( CritterHideItemOnMap );
+    BIND_INTERNAL_EVENT( CritterChangeItemOnMap );
+    BIND_INTERNAL_EVENT( CritterDropItem );
+    BIND_INTERNAL_EVENT( CritterMessage );
+    BIND_INTERNAL_EVENT( CritterTalk );
+    BIND_INTERNAL_EVENT( CritterBarter );
+    BIND_INTERNAL_EVENT( CritterKnockout );
+    BIND_INTERNAL_EVENT( CritterGetUseApCost );
+    BIND_INTERNAL_EVENT( CritterGetAttackDistantion );
+    BIND_INTERNAL_EVENT( NpcPlaneBegin );
+    BIND_INTERNAL_EVENT( NpcPlaneEnd );
+    BIND_INTERNAL_EVENT( NpcPlaneRun );
+    BIND_INTERNAL_EVENT( PlayerLevelUp );
+    BIND_INTERNAL_EVENT( PlayerRegistration );
+    BIND_INTERNAL_EVENT( PlayerLogin );
+    BIND_INTERNAL_EVENT( PlayerGetAccess );
+    BIND_INTERNAL_EVENT( PlayerAllowCommand );
+    BIND_INTERNAL_EVENT( ItemFinish );
+    BIND_INTERNAL_EVENT( ItemWalk );
+    BIND_INTERNAL_EVENT( ItemCheckMove );
+    #undef BIND_INTERNAL_EVENT
 
     ASDbgMemoryCanWork = true;
 
@@ -706,33 +729,6 @@ bool FOServer::SScriptFunc::Item_SetScript( Item* item, ScriptString* func_name 
     return true;
 }
 
-bool FOServer::SScriptFunc::Item_SetEvent( Item* item, int event_type, ScriptString* func_name )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( event_type < 0 || event_type >= ITEM_EVENT_MAX )
-        SCRIPT_ERROR_R0( "Invalid event type arg." );
-
-    if( func_name && func_name->length() )
-    {
-        item->FuncId[ event_type ] = Script::BindByFuncNameInRuntime( func_name->c_str(), ItemEventFuncName[ event_type ], false );
-        if( !item->FuncId[ event_type ] )
-            SCRIPT_ERROR_R0( "Function not found." );
-
-        if( event_type == ITEM_EVENT_WALK && item->GetAccessory() == ITEM_ACCESSORY_HEX )
-        {
-            Map* map = MapMngr.GetMap( item->GetMapId() );
-            if( map )
-                map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_WALK_ITEM );
-        }
-    }
-    else
-    {
-        item->FuncId[ event_type ] = 0;
-    }
-    return true;
-}
-
 uint FOServer::SScriptFunc::Item_GetWholeCost( Item* item )
 {
     if( item->IsDestroyed )
@@ -983,91 +979,6 @@ bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
     return true;
 }
 
-void FOServer::SScriptFunc::Item_EventFinish( Item* item, bool deleted )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    item->EventFinish( deleted );
-}
-
-bool FOServer::SScriptFunc::Item_EventAttack( Item* item, Critter* attacker, Critter* target )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( attacker->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attacker critter arg is destroyed." );
-    if( target->IsDestroyed )
-        SCRIPT_ERROR_R0( "Target critter arg is destroyed." );
-
-    return item->EventAttack( attacker, target );
-}
-
-bool FOServer::SScriptFunc::Item_EventUse( Item* item, Critter* cr, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Critter arg is destroyed." );
-    if( on_critter && on_critter->IsDestroyed )
-        SCRIPT_ERROR_R0( "On critter arg is destroyed." );
-    if( on_item && on_item->IsDestroyed )
-        SCRIPT_ERROR_R0( "On item arg is destroyed." );
-    return item->EventUse( cr, on_critter, on_item, on_scenery );
-}
-
-bool FOServer::SScriptFunc::Item_EventUseOnMe( Item* item, Critter* cr, Item* used_item )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Critter arg is destroyed." );
-    if( used_item && used_item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Used item arg is destroyed." );
-
-    return item->EventUseOnMe( cr, used_item );
-}
-
-bool FOServer::SScriptFunc::Item_EventSkill( Item* item, Critter* cr, int skill )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Critter arg is destroyed." );
-
-    return item->EventSkill( cr, skill );
-}
-
-void FOServer::SScriptFunc::Item_EventDrop( Item* item, Critter* cr )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Critter arg is destroyed." );
-
-    item->EventDrop( cr );
-}
-
-void FOServer::SScriptFunc::Item_EventMove( Item* item, Critter* cr, uchar from_slot )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Critter arg is destroyed." );
-
-    item->EventMove( cr, from_slot );
-}
-
-void FOServer::SScriptFunc::Item_EventWalk( Item* item, Critter* cr, bool entered, uchar dir )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Critter arg is destroyed." );
-
-    item->EventWalk( cr, entered, dir );
-}
-
 bool FOServer::SScriptFunc::Crit_IsPlayer( Critter* cr )
 {
     if( cr->IsDestroyed )
@@ -1107,32 +1018,12 @@ bool FOServer::SScriptFunc::Cl_SetAccess( Critter* cl, int access )
         return true;
 
     ScriptString* pass = ScriptString::Create();
-    bool          allow = Script::RaiseInternalEvent( ServerFunctions.PlayerGetAccess, 3, cl, access, pass );
+    bool          allow = Script::RaiseInternalEvent( ServerFunctions.PlayerGetAccess, cl, access, pass );
     pass->Release();
 
     if( allow )
         ( (Client*) cl )->Access = access;
     return allow;
-}
-
-bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, ScriptString* func_name )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( event_type < 0 || event_type >= CRITTER_EVENT_MAX )
-        SCRIPT_ERROR_R0( "Invalid event type arg." );
-
-    if( func_name && func_name->length() )
-    {
-        cr->FuncId[ event_type ] = Script::BindByFuncNameInRuntime( func_name->c_str(), CritterEventFuncName[ event_type ], false );
-        if( !cr->FuncId[ event_type ] )
-            SCRIPT_ERROR_R0( "Function not found." );
-    }
-    else
-    {
-        cr->FuncId[ event_type ] = 0;
-    }
-    return true;
 }
 
 Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
@@ -2837,466 +2728,6 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, ScriptArray& i
     return result;
 }
 
-void FOServer::SScriptFunc::Crit_EventIdle( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    cr->EventIdle();
-}
-
-void FOServer::SScriptFunc::Crit_EventFinish( Critter* cr, bool deleted )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    cr->EventFinish( deleted );
-}
-
-void FOServer::SScriptFunc::Crit_EventDead( Critter* cr, Critter* killer )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( killer && killer->IsDestroyed )
-        SCRIPT_ERROR_R( "Killer critter arg is destroyed." );
-
-    cr->EventDead( killer );
-}
-
-void FOServer::SScriptFunc::Crit_EventRespawn( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    cr->EventRespawn();
-}
-
-void FOServer::SScriptFunc::Crit_EventShowCritter( Critter* cr, Critter* show_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( show_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Show critter arg is destroyed." );
-
-    cr->EventShowCritter( show_cr );
-}
-
-void FOServer::SScriptFunc::Crit_EventShowCritter1( Critter* cr, Critter* show_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( show_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Show critter arg is destroyed." );
-
-    cr->EventShowCritter1( show_cr );
-}
-
-void FOServer::SScriptFunc::Crit_EventShowCritter2( Critter* cr, Critter* show_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( show_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Show critter arg is destroyed." );
-
-    cr->EventShowCritter2( show_cr );
-}
-
-void FOServer::SScriptFunc::Crit_EventShowCritter3( Critter* cr, Critter* show_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( show_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Show critter arg is destroyed." );
-
-    cr->EventShowCritter3( show_cr );
-}
-
-void FOServer::SScriptFunc::Crit_EventHideCritter( Critter* cr, Critter* hide_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( hide_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Hide critter arg is destroyed." );
-
-    cr->EventHideCritter( hide_cr );
-}
-
-void FOServer::SScriptFunc::Crit_EventHideCritter1( Critter* cr, Critter* hide_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( hide_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Hide critter arg is destroyed." );
-
-    cr->EventHideCritter1( hide_cr );
-}
-
-void FOServer::SScriptFunc::Crit_EventHideCritter2( Critter* cr, Critter* hide_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( hide_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Hide critter arg is destroyed." );
-
-    cr->EventHideCritter2( hide_cr );
-}
-
-void FOServer::SScriptFunc::Crit_EventHideCritter3( Critter* cr, Critter* hide_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( hide_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Hide critter arg is destroyed." );
-
-    cr->EventHideCritter3( hide_cr );
-}
-
-void FOServer::SScriptFunc::Crit_EventShowItemOnMap( Critter* cr, Item* show_item, bool added, Critter* dropper )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( show_item->IsDestroyed )
-        SCRIPT_ERROR_R( "Show item arg is destroyed." );
-    if( dropper && dropper->IsDestroyed )
-        SCRIPT_ERROR_R( "Dropper critter arg is destroyed." );
-
-    cr->EventShowItemOnMap( show_item, added, dropper );
-}
-
-void FOServer::SScriptFunc::Crit_EventChangeItemOnMap( Critter* cr, Item* item )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Item arg is destroyed." );
-
-    cr->EventChangeItemOnMap( item );
-}
-
-void FOServer::SScriptFunc::Crit_EventHideItemOnMap( Critter* cr, Item* hide_item, bool removed, Critter* picker )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( hide_item->IsDestroyed )
-        SCRIPT_ERROR_R( "Hide item arg is destroyed." );
-    if( picker && picker->IsDestroyed )
-        SCRIPT_ERROR_R( "Picker critter arg is destroyed." );
-
-    cr->EventHideItemOnMap( hide_item, removed, picker );
-}
-
-bool FOServer::SScriptFunc::Crit_EventAttack( Critter* cr, Critter* target )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( target->IsDestroyed )
-        SCRIPT_ERROR_R0( "Target critter arg is destroyed." );
-
-    return cr->EventAttack( target );
-}
-
-bool FOServer::SScriptFunc::Crit_EventAttacked( Critter* cr, Critter* attacker )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( attacker->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attacker critter arg is destroyed." );
-
-    return cr->EventAttacked( attacker );
-}
-
-bool FOServer::SScriptFunc::Crit_EventStealing( Critter* cr, Critter* thief, Item* item, uint count )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( thief->IsDestroyed )
-        SCRIPT_ERROR_R0( "Thief critter arg is destroyed." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Item arg is destroyed." );
-
-    return cr->EventStealing( thief, item, count );
-}
-
-void FOServer::SScriptFunc::Crit_EventMessage( Critter* cr, Critter* from_cr, int message, int value )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-
-    cr->EventMessage( from_cr, message, value );
-}
-
-bool FOServer::SScriptFunc::Crit_EventUseItem( Critter* cr, Item* item, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Item arg is destroyed." );
-    if( on_critter && on_critter->IsDestroyed )
-        SCRIPT_ERROR_R0( "On critter arg is destroyed." );
-    if( on_item && on_item->IsDestroyed )
-        SCRIPT_ERROR_R0( "On item arg is destroyed." );
-
-    return cr->EventUseItem( item, on_critter, on_item, on_scenery );
-}
-
-bool FOServer::SScriptFunc::Crit_EventUseItemOnMe( Critter* cr, Critter* who_use, Item* item )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( who_use->IsDestroyed )
-        SCRIPT_ERROR_R0( "Who use critter arg is destroyed." );
-
-    return cr->EventUseItemOnMe( who_use, item );
-}
-
-bool FOServer::SScriptFunc::Crit_EventUseSkill( Critter* cr, int skill, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( on_critter && on_critter->IsDestroyed )
-        SCRIPT_ERROR_R0( "On critter arg is destroyed." );
-    if( on_item && on_item->IsDestroyed )
-        SCRIPT_ERROR_R0( "On item arg is destroyed." );
-
-    return cr->EventUseSkill( skill, on_critter, on_item, on_scenery );
-}
-
-bool FOServer::SScriptFunc::Crit_EventUseSkillOnMe( Critter* cr, Critter* who_use, int skill )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( who_use->IsDestroyed )
-        SCRIPT_ERROR_R0( "Who use critter arg is destroyed." );
-
-    return cr->EventUseSkillOnMe( who_use, skill );
-}
-
-void FOServer::SScriptFunc::Crit_EventDropItem( Critter* cr, Item* item )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Item arg is destroyed." );
-
-    cr->EventDropItem( item );
-}
-
-void FOServer::SScriptFunc::Crit_EventMoveItem( Critter* cr, Item* item, uchar from_slot )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Item arg is destroyed." );
-
-    cr->EventMoveItem( item, from_slot );
-}
-
-void FOServer::SScriptFunc::Crit_EventKnockout( Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    cr->EventKnockout( anim2begin, anim2idle, anim2end, lost_ap, knock_dist );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthDead( Critter* cr, Critter* from_cr, Critter* killer )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-    if( killer && killer->IsDestroyed )
-        SCRIPT_ERROR_R( "Killer critter arg is destroyed." );
-
-    cr->EventSmthDead( from_cr, killer );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthStealing( Critter* cr, Critter* from_cr, Critter* thief, bool success, Item* item, uint count )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-    if( thief->IsDestroyed )
-        SCRIPT_ERROR_R( "Thief critter arg is destroyed." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Item arg is destroyed." );
-
-    cr->EventSmthStealing( from_cr, thief, success, item, count );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthAttack( Critter* cr, Critter* from_cr, Critter* target )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-    if( target->IsDestroyed )
-        SCRIPT_ERROR_R( "Target critter arg is destroyed." );
-
-    cr->EventSmthAttack( from_cr, target );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthAttacked( Critter* cr, Critter* from_cr, Critter* attacker )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-    if( attacker->IsDestroyed )
-        SCRIPT_ERROR_R( "Attacker critter arg is destroyed." );
-
-    cr->EventSmthAttacked( from_cr, attacker );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthUseItem( Critter* cr, Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Item arg is destroyed." );
-    if( on_critter && on_critter->IsDestroyed )
-        SCRIPT_ERROR_R( "On critter arg is destroyed." );
-    if( on_item && on_item->IsDestroyed )
-        SCRIPT_ERROR_R( "On item arg is destroyed." );
-
-    cr->EventSmthUseItem( from_cr, item, on_critter, on_item, on_scenery );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthUseSkill( Critter* cr, Critter* from_cr, int skill, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-    if( on_critter && on_critter->IsDestroyed )
-        SCRIPT_ERROR_R( "On critter arg is destroyed." );
-    if( on_item && on_item->IsDestroyed )
-        SCRIPT_ERROR_R( "On item arg is destroyed." );
-
-    cr->EventSmthUseSkill( from_cr, skill, on_critter, on_item, on_scenery );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthDropItem( Critter* cr, Critter* from_cr, Item* item )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Item arg is destroyed." );
-
-    cr->EventSmthDropItem( from_cr, item );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthMoveItem( Critter* cr, Critter* from_cr, Item* item, uchar from_slot )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R( "Item arg is destroyed." );
-
-    cr->EventSmthMoveItem( from_cr, item, from_slot );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthKnockout( Critter* cr, Critter* from_cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter arg is destroyed." );
-
-    cr->EventSmthKnockout( from_cr, anim2begin, anim2idle, anim2end, lost_ap, knock_dist );
-}
-
-int FOServer::SScriptFunc::Crit_EventPlaneBegin( Critter* cr, AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->EventPlaneBegin( plane, reason, some_cr, some_item );
-}
-
-int FOServer::SScriptFunc::Crit_EventPlaneEnd( Critter* cr, AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->EventPlaneEnd( plane, reason, some_cr, some_item );
-}
-
-int FOServer::SScriptFunc::Crit_EventPlaneRun( Critter* cr, AIDataPlane* plane, int reason, uint& p0, uint& p1, uint& p2 )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->EventPlaneRun( plane, reason, p0, p1, p2 );
-}
-
-bool FOServer::SScriptFunc::Crit_EventBarter( Critter* cr, Critter* cr_barter, bool attach, uint barter_count )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( cr_barter->IsDestroyed )
-        SCRIPT_ERROR_R0( "Barter critter is destroyed." );
-
-    return cr->EventBarter( cr_barter, attach, barter_count );
-}
-
-bool FOServer::SScriptFunc::Crit_EventTalk( Critter* cr, Critter* cr_talk, bool attach, uint talk_count )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( cr_talk->IsDestroyed )
-        SCRIPT_ERROR_R0( "Barter critter is destroyed." );
-
-    return cr->EventTalk( cr_talk, attach, talk_count );
-}
-
-bool FOServer::SScriptFunc::Crit_EventGlobalProcess( Critter* cr, int type, Item* car, float& x, float& y, float& to_x, float& to_y, float& speed, uint& encounter_descriptor, bool& wait_for_answer )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->EventGlobalProcess( type, car, x, y, to_x, to_y, speed, encounter_descriptor, wait_for_answer );
-}
-
-bool FOServer::SScriptFunc::Crit_EventGlobalInvite( Critter* cr, Item* car, uint encounter_descriptor, int combat_mode, uint& map_id, ushort& hx, ushort& hy, uchar& dir )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->EventGlobalInvite( car, encounter_descriptor, combat_mode, map_id, hx, hy, dir );
-}
-
-void FOServer::SScriptFunc::Crit_EventTurnBasedProcess( Critter* cr, Map* map, bool begin_turn )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Map is destroyed." );
-
-    cr->EventTurnBasedProcess( map, begin_turn );
-}
-
-void FOServer::SScriptFunc::Crit_EventSmthTurnBasedProcess( Critter* cr, Critter* from_cr, Map* map, bool begin_turn )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( from_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "From critter is destroyed." );
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Map is destroyed." );
-
-    cr->EventSmthTurnBasedProcess( from_cr, map, begin_turn );
-}
-
 Location* FOServer::SScriptFunc::Map_GetLocation( Map* map )
 {
     if( map->IsDestroyed )
@@ -3322,52 +2753,6 @@ bool FOServer::SScriptFunc::Map_SetScript( Map* map, ScriptString* func_name )
         map->SetScriptId( 0 );
     }
     return true;
-}
-
-bool FOServer::SScriptFunc::Map_SetEvent( Map* map, int event_type, ScriptString* func_name )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( event_type < 0 || event_type >= MAP_EVENT_MAX )
-        SCRIPT_ERROR_R0( "Invalid event type arg." );
-
-    if( func_name && func_name->length() )
-        map->FuncId[ event_type ] = Script::BindByFuncNameInRuntime( func_name->c_str(), MapEventFuncName[ event_type ], false );
-    else
-        map->FuncId[ event_type ] = 0;
-
-    if( event_type >= MAP_EVENT_LOOP_0 && event_type <= MAP_EVENT_LOOP_4 )
-    {
-        map->NeedProcess = false;
-        for( int i = 0; i < MAP_LOOP_FUNC_MAX; i++ )
-        {
-            if( !map->FuncId[ MAP_EVENT_LOOP_0 + i ] )
-            {
-                map->LoopEnabled[ i ] = false;
-            }
-            else
-            {
-                if( event_type == MAP_EVENT_LOOP_0 + i )
-                    map->LoopLastTick[ i ] = Timer::GameTick();
-                map->LoopEnabled[ i ] = true;
-                map->NeedProcess = true;
-            }
-        }
-    }
-
-    if( func_name && func_name->length() && map->FuncId[ event_type ] <= 0 )
-        SCRIPT_ERROR_R0( "Function not found." );
-    return true;
-}
-
-void FOServer::SScriptFunc::Map_SetLoopTime( Map* map, uint loop_num, uint ms )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( loop_num >= MAP_LOOP_FUNC_MAX )
-        SCRIPT_ERROR_R( "Invalid loop number arg." );
-
-    map->SetLoopTime( loop_num, ms );
 }
 
 void FOServer::SScriptFunc::Map_BeginTurnBased( Map* map, Critter* first_turn_crit )
@@ -4223,129 +3608,6 @@ void FOServer::SScriptFunc::Map_VerifyTrigger( Map* map, Critter* cr, ushort hx,
     VerifyTrigger( map, cr, from_hx, from_hy, hx, hy, dir );
 }
 
-void FOServer::SScriptFunc::Map_EventFinish( Map* map, bool deleted )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->EventFinish( deleted );
-}
-
-void FOServer::SScriptFunc::Map_EventLoop0( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->EventLoop( 0 );
-}
-
-void FOServer::SScriptFunc::Map_EventLoop1( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->EventLoop( 1 );
-}
-
-void FOServer::SScriptFunc::Map_EventLoop2( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->EventLoop( 2 );
-}
-
-void FOServer::SScriptFunc::Map_EventLoop3( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->EventLoop( 3 );
-}
-
-void FOServer::SScriptFunc::Map_EventLoop4( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->EventLoop( 4 );
-}
-
-void FOServer::SScriptFunc::Map_EventInCritter( Map* map, Critter* cr )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Critter arg is destroyed." );
-
-    map->EventInCritter( cr );
-}
-
-void FOServer::SScriptFunc::Map_EventOutCritter( Map* map, Critter* cr )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Critter arg is destroyed." );
-
-    map->EventOutCritter( cr );
-}
-
-void FOServer::SScriptFunc::Map_EventCritterDead( Map* map, Critter* cr, Critter* killer )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Critter arg is destroyed." );
-    if( killer && killer->IsDestroyed )
-        SCRIPT_ERROR_R( "Killer arg is destroyed." );
-
-    map->EventCritterDead( cr, killer );
-}
-
-void FOServer::SScriptFunc::Map_EventTurnBasedBegin( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->EventTurnBasedBegin();
-}
-
-void FOServer::SScriptFunc::Map_EventTurnBasedEnd( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->EventTurnBasedEnd();
-}
-
-void FOServer::SScriptFunc::Map_EventTurnBasedProcess( Map* map, Critter* cr, bool begin_turn )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Critter arg is destroyed." );
-
-    map->EventTurnBasedProcess( cr, begin_turn );
-}
-
-bool FOServer::SScriptFunc::Location_SetEvent( Location* loc, int event_type, ScriptString* func_name )
-{
-    if( loc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Location is destroyed." );
-    if( event_type < 0 || event_type >= LOCATION_EVENT_MAX )
-        SCRIPT_ERROR_R0( "Invalid event type arg for location." );
-
-    if( func_name && func_name->length() )
-        loc->FuncId[ event_type ] = Script::BindByFuncNameInRuntime( func_name->c_str(), LocationEventFuncName[ event_type ], false );
-    else
-        loc->FuncId[ event_type ] = 0;
-
-    if( func_name && func_name->length() && !loc->FuncId[ event_type ] )
-        SCRIPT_ERROR_R0( "Function not found." );
-    return true;
-}
-
 uint FOServer::SScriptFunc::Location_GetMapCount( Location* loc )
 {
     if( loc->IsDestroyed )
@@ -4462,22 +3724,6 @@ bool FOServer::SScriptFunc::Location_Reload( Location* loc )
             SCRIPT_ERROR_R0( "Reload map in location fail." );
     }
     return true;
-}
-
-void FOServer::SScriptFunc::Location_EventFinish( Location* loc, bool deleted )
-{
-    if( loc->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    loc->EventFinish( deleted );
-}
-
-bool FOServer::SScriptFunc::Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance )
-{
-    if( loc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return loc->EventEnter( &group, entrance );
 }
 
 uint FOServer::SScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 )
@@ -5127,7 +4373,6 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     std::swap( cr1->Props, cr2->Props );
     std::swap( cr1->KnockoutAp, cr2->KnockoutAp );
     std::swap( cr1->Flags, cr2->Flags );
-    std::swap( cr1->FuncId, cr2->FuncId );
     cr1->SetBreakTime( 0 );
     cr2->SetBreakTime( 0 );
     std::swap( cr1->AccessContainerId, cr2->AccessContainerId );

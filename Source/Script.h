@@ -76,7 +76,7 @@ public:
     static bool RestoreEntity( const char* class_name, uint id, const StrMap& props_data );
 
     static void* FindInternalEvent( const char* event_name );
-    static bool  RaiseInternalEvent( void* event_ptr, int args, ... );
+    static bool  RaiseInternalEvent( void* event_ptr, ... );
 
     static const char* GetActiveModuleName();
     static const char* GetActiveFuncName();

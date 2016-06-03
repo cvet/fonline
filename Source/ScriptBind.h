@@ -113,7 +113,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "bool Misc_SetScript(stri
 /************************************************************************/
 // Methods
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetScript(string@+ script)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Item_SetEvent ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetWholeCost() const", asFUNCTION( BIND_CLASS Item_GetWholeCost ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddItem(hash protoId, uint count, uint stackId)", asFUNCTION( BIND_CLASS Item_AddItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetItems(uint stackId, array<Item@ >@+ items)", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL_OBJFIRST ) );
@@ -124,15 +123,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint fromFrame,
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetChild(uint childIndex)", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "const Item@+ GetChild(uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter& cr, int skill, Item@+ item)", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
-
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Item_EventFinish ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventAttack(Critter& attacker, Critter& target)", asFUNCTION( BIND_CLASS Item_EventAttack ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventUse(Critter& cr, Critter@+ onCritter, Item@+ onItem, const Item@+ onScenery)", asFUNCTION( BIND_CLASS Item_EventUse ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventUseOnMe(Critter& cr, Item@+ usedItem)", asFUNCTION( BIND_CLASS Item_EventUseOnMe ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool EventSkill(Critter& cr, int skill)", asFUNCTION( BIND_CLASS Item_EventSkill ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventDrop(Critter& cr)", asFUNCTION( BIND_CLASS Item_EventDrop ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventMove(Critter& cr, uint8 fromSlot)", asFUNCTION( BIND_CLASS Item_EventMove ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void EventWalk(Critter& cr, bool entered, uint8 dir)", asFUNCTION( BIND_CLASS Item_EventWalk ), asCALL_CDECL_OBJFIRST ) );
 
 // Parameters
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerOpen()", asFUNCTION( BIND_CLASS Item_LockerOpen ), asCALL_CDECL_OBJFIRST ) );
@@ -146,7 +136,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsNpc() const", asFU
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int GetAccess() const", asFUNCTION( BIND_CLASS Cl_GetAccess ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetAccess(int access)", asFUNCTION( BIND_CLASS Cl_SetAccess ), asCALL_CDECL_OBJFIRST ) );
 
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Crit_SetEvent ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Map@+ GetMap()", asFUNCTION( BIND_CLASS Crit_GetMap ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Map@+ GetMap() const", asFUNCTION( BIND_CLASS Crit_GetMap ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void DropTimers()", asFUNCTION( BIND_CLASS Cl_DropTimers ), asCALL_CDECL_OBJFIRST ) );
@@ -259,51 +248,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EraseTimeEvent(uint 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint EraseTimeEvents(int identifier)", asFUNCTION( BIND_CLASS Crit_EraseTimeEvents ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint EraseTimeEvents(array<int>& identifiers)", asFUNCTION( BIND_CLASS Crit_EraseTimeEventsArr ), asCALL_CDECL_OBJFIRST ) );
 
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventIdle()", asFUNCTION( BIND_CLASS Crit_EventIdle ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Crit_EventFinish ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventDead(Critter@+ killer)", asFUNCTION( BIND_CLASS Crit_EventDead ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventRespawn()", asFUNCTION( BIND_CLASS Crit_EventRespawn ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventShowCritter(Critter& cr)", asFUNCTION( BIND_CLASS Crit_EventShowCritter ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventShowCritter1(Critter& cr)", asFUNCTION( BIND_CLASS Crit_EventShowCritter1 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventShowCritter2(Critter& cr)", asFUNCTION( BIND_CLASS Crit_EventShowCritter2 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventShowCritter3(Critter& cr)", asFUNCTION( BIND_CLASS Crit_EventShowCritter3 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventHideCritter(Critter& cr)", asFUNCTION( BIND_CLASS Crit_EventHideCritter ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventHideCritter1(Critter& cr)", asFUNCTION( BIND_CLASS Crit_EventHideCritter1 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventHideCritter2(Critter& cr)", asFUNCTION( BIND_CLASS Crit_EventHideCritter2 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventHideCritter3(Critter& cr)", asFUNCTION( BIND_CLASS Crit_EventHideCritter3 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventShowItemOnMap(Item& showItem, bool added, Critter@+ dropper)", asFUNCTION( BIND_CLASS Crit_EventShowItemOnMap ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventChangeItemOnMap(Item& item)", asFUNCTION( BIND_CLASS Crit_EventChangeItemOnMap ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventHideItemOnMap(Item& hideItem, bool removed, Critter@+ picker)", asFUNCTION( BIND_CLASS Crit_EventHideItemOnMap ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventAttack(Critter& target)", asFUNCTION( BIND_CLASS Crit_EventAttack ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventAttacked(Critter@+ attacker)", asFUNCTION( BIND_CLASS Crit_EventAttacked ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventStealing(Critter& thief, Item& item, uint count)", asFUNCTION( BIND_CLASS Crit_EventStealing ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventMessage(Critter& fromCr, int message, int value)", asFUNCTION( BIND_CLASS Crit_EventMessage ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseItem(Item& item, Critter@+ onCritter, Item@+ onItem, const Item@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventUseItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseItemOnMe(Critter& whoUse, Item& item)", asFUNCTION( BIND_CLASS Crit_EventUseItemOnMe ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseSkill(int skill, Critter@+ onCritter, Item@+ onItem, const Item@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventUseSkill ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventUseSkillOnMe(Critter& whoUse, int skill)", asFUNCTION( BIND_CLASS Crit_EventUseSkillOnMe ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventDropItem(Item& item)", asFUNCTION( BIND_CLASS Crit_EventDropItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventMoveItem(Item& item, uint8 fromSlot)", asFUNCTION( BIND_CLASS Crit_EventMoveItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventKnockout(uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint knockDist)", asFUNCTION( BIND_CLASS Crit_EventKnockout ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthDead(Critter& fromCr, Critter@+ killer)", asFUNCTION( BIND_CLASS Crit_EventSmthDead ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthStealing(Critter& fromCr, Critter& thief, bool success, Item& item, uint count)", asFUNCTION( BIND_CLASS Crit_EventSmthStealing ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthAttack(Critter& fromCr, Critter& target)", asFUNCTION( BIND_CLASS Crit_EventSmthAttack ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthAttacked(Critter& fromCr, Critter@+ attacker)", asFUNCTION( BIND_CLASS Crit_EventSmthAttacked ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthUseItem(Critter& fromCr, Item& item, Critter@+ onCritter, Item@+ onItem, const Item@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventSmthUseItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthUseSkill(Critter& fromCr, int skill, Critter@+ onCritter, Item@+ onItem, const Item@+ onScenery)", asFUNCTION( BIND_CLASS Crit_EventSmthUseSkill ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthDropItem(Critter& fromCr, Item& item)", asFUNCTION( BIND_CLASS Crit_EventSmthDropItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthMoveItem(Critter& fromCr, Item& item, uint8 fromSlot)", asFUNCTION( BIND_CLASS Crit_EventSmthMoveItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthKnockout(Critter& fromCr, uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint knockDist)", asFUNCTION( BIND_CLASS Crit_EventSmthKnockout ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int EventPlaneBegin(NpcPlane& plane, int reason, Critter@+ someCr, Item@+ someItem)", asFUNCTION( BIND_CLASS Crit_EventPlaneBegin ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int EventPlaneEnd(NpcPlane& plane, int reason, Critter@+ someCr, Item@+ someItem)", asFUNCTION( BIND_CLASS Crit_EventPlaneEnd ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int EventPlaneRun(NpcPlane& plane, int reason, uint& p0, uint& p1, uint& p2)", asFUNCTION( BIND_CLASS Crit_EventPlaneRun ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventBarter(Critter& barterCr, bool attach, uint barterCount)", asFUNCTION( BIND_CLASS Crit_EventBarter ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventTalk(Critter& talkCr, bool attach, uint talkCount)", asFUNCTION( BIND_CLASS Crit_EventTalk ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventGlobalProcess(int type, Item@ car, float& x, float& y, float& toX, float& toY, float& speed, uint& encounterDescriptor, bool& waitForAnswer)", asFUNCTION( BIND_CLASS Crit_EventGlobalProcess ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool EventGlobalInvite(Item@ car, uint encounterDescriptor, int combatMode, uint& mapId, uint16& hexX, uint16& hexY, uint8& dir)", asFUNCTION( BIND_CLASS Crit_EventGlobalInvite ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventTurnBasedProcess(Map& map, bool beginTurn)", asFUNCTION( BIND_CLASS Crit_EventTurnBasedProcess ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EventSmthTurnBasedProcess(Critter& fromCr, Map& map, bool beginTurn)", asFUNCTION( BIND_CLASS Crit_EventSmthTurnBasedProcess ), asCALL_CDECL_OBJFIRST ) );
-
 // Parameters
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const string@ Name", OFFSETOF( Critter, NameStr ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const bool IsRuning", OFFSETOF( Critter, IsRuning ) ) );
@@ -314,8 +258,6 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const bool IsRuning", O
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Location@+ GetLocation()", asFUNCTION( BIND_CLASS Map_GetLocation ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "const Location@+ GetLocation() const", asFUNCTION( BIND_CLASS Map_GetLocation ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool SetScript(string@+ script)", asFUNCTION( BIND_CLASS Map_SetScript ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Map_SetEvent ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void SetLoopTime(uint numLoop, uint ms)", asFUNCTION( BIND_CLASS Map_SetLoopTime ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void BeginTurnBased(Critter@+ firstTurnCrit)", asFUNCTION( BIND_CLASS Map_BeginTurnBased ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool IsTurnBased() const", asFUNCTION( BIND_CLASS Map_IsTurnBased ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EndTurnBased()", asFUNCTION( BIND_CLASS Map_EndTurnBased ), asCALL_CDECL_OBJFIRST ) );
@@ -390,19 +332,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void PlaySound(string& soundN
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool Reload()", asFUNCTION( BIND_CLASS Map_Reload ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps) const", asFUNCTION( BIND_CLASS Map_MoveHexByDir ), asCALL_CDECL_OBJFIRST ) );
 
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Map_EventFinish ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventLoop0()", asFUNCTION( BIND_CLASS Map_EventLoop0 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventLoop1()", asFUNCTION( BIND_CLASS Map_EventLoop1 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventLoop2()", asFUNCTION( BIND_CLASS Map_EventLoop2 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventLoop3()", asFUNCTION( BIND_CLASS Map_EventLoop3 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventLoop4()", asFUNCTION( BIND_CLASS Map_EventLoop4 ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventInCritter(Critter& cr)", asFUNCTION( BIND_CLASS Map_EventInCritter ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventOutCritter(Critter& cr)", asFUNCTION( BIND_CLASS Map_EventOutCritter ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventCritterDead(Critter& cr, Critter@+ killer)", asFUNCTION( BIND_CLASS Map_EventCritterDead ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventTurnBasedBegin()", asFUNCTION( BIND_CLASS Map_EventTurnBasedBegin ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventTurnBasedEnd()", asFUNCTION( BIND_CLASS Map_EventTurnBasedEnd ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void EventTurnBasedProcess(Critter& cr, bool beginTurn)", asFUNCTION( BIND_CLASS Map_EventTurnBasedProcess ), asCALL_CDECL_OBJFIRST ) );
-
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedRound", OFFSETOF( Map, TurnBasedRound ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedTurn", OFFSETOF( Map, TurnBasedTurn ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedWholeTurn", OFFSETOF( Map, TurnBasedWholeTurn ) ) );
@@ -410,7 +339,6 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Map", "const uint TurnBasedWholeTu
 /************************************************************************/
 /* Location                                                             */
 /************************************************************************/
-BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool SetEvent(int eventType, string@+ funcName)", asFUNCTION( BIND_CLASS Location_SetEvent ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetMapCount() const", asFUNCTION( BIND_CLASS Location_GetMapCount ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "Map@+ GetMap(hash mapPid)", asFUNCTION( BIND_CLASS Location_GetMap ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "const Map@+ GetMap(hash mapPid) const", asFUNCTION( BIND_CLASS Location_GetMap ), asCALL_CDECL_OBJFIRST ) );
@@ -421,9 +349,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetMaps(array<const
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool GetEntrance(uint entrance, uint& mapIndex, hash& entire) const", asFUNCTION( BIND_CLASS Location_GetEntrance ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetEntrances(array<uint>@+ mapsIndex, array<hash>@+ entires) const", asFUNCTION( BIND_CLASS Location_GetEntrances ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool Reload()", asFUNCTION( BIND_CLASS Location_Reload ), asCALL_CDECL_OBJFIRST ) );
-
-BIND_ASSERT( engine->RegisterObjectMethod( "Location", "void EventFinish(bool deleted)", asFUNCTION( BIND_CLASS Location_EventFinish ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool EventEnter(array<Critter@>& group, uint8 entrance)", asFUNCTION( BIND_CLASS Location_EventEnter ), asCALL_CDECL_OBJFIRST ) );
 
 /************************************************************************/
 /* Global                                                               */

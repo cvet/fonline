@@ -197,7 +197,7 @@ void FOServer::ProcessAI( Npc* npc )
         }
 
         // Idle
-        npc->EventIdle();
+        Script::RaiseInternalEvent( ServerFunctions.CritterIdle, npc );
         if( npc->GetCurPlane() || npc->IsBusy() || npc->IsWait() )
             return;
 
@@ -1510,17 +1510,13 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
             return;
         }
 
-        if( !npc->EventTalk( cl, true, npc->GetTalkedPlayers() + 1 ) )
-        {
-            // Message must processed in script
-            return;
-        }
-
         if( npc->IsPlaneNoTalk() )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_BUSY, SAY_NETMSG, TEXTMSG_GAME );
             return;
         }
+
+        Script::RaiseInternalEvent( ServerFunctions.CritterTalk, npc, cl, true, npc->GetTalkedPlayers() + 1 );
 
         dialog_pack = DlgMngr.GetDialog( dlg_pack_id );
         dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
@@ -1840,7 +1836,7 @@ label_Barter:
                 cl->Send_TextMsg( npc, STR_BARTER_NO_BARTER_MODE, SAY_DIALOG, TEXTMSG_GAME );
                 return;
             }
-            if( !npc->EventBarter( cl, true, npc->GetBarterPlayers() + 1 ) )
+            if( !Script::RaiseInternalEvent( ServerFunctions.CritterBarter, npc, cl, true, npc->GetBarterPlayers() + 1 ) )
             {
                 // Message must processed in script
                 return;
@@ -1877,7 +1873,7 @@ label_Barter:
         cl->Talk.Barter = false;
         dlg_id = cur_dialog->Id;
         if( npc )
-            npc->EventBarter( cl, false, npc->GetBarterPlayers() );
+            Script::RaiseInternalEvent( ServerFunctions.CritterBarter, npc, cl, false, npc->GetBarterPlayers() + 1 );
     }
 
     // Find dialog
@@ -2195,7 +2191,7 @@ void FOServer::Process_Barter( Client* cl )
     Script::AppendVectorToArrayRef( buy_items, buy_items_ );
     Script::AppendVectorToArray( buy_item_count, buy_items_count_ );
 
-    bool result = Script::RaiseInternalEvent( ServerFunctions.ItemsBarter, 6, sale_items_, sale_items_count_, buy_items_, buy_items_count_, cl, npc );
+    bool result = Script::RaiseInternalEvent( ServerFunctions.ItemsBarter, sale_items_, sale_items_count_, buy_items_, buy_items_count_, cl, npc );
 
     sale_items_->Release();
     sale_items_count_->Release();

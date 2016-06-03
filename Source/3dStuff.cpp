@@ -2238,20 +2238,18 @@ int Animation3dEntity::GetAnimationIndex( uint& anim1, uint& anim2, float* speed
     hash base_model_name = 0;
     uint anim1_base = anim1, anim2_base = anim2;
     #ifdef FONLINE_CLIENT
-    while( index == -1 && Script::PrepareContext( ClientFunctions.CritterAnimationSubstitute, _FUNC_, "Anim" ) )
+    while( index == -1 )
     #else // FONLINE_MAPPER
-    while( index == -1 && Script::PrepareContext( MapperFunctions.CritterAnimationSubstitute, _FUNC_, "Anim" ) )
+    while( index == -1 )
     #endif
     {
         hash model_name = base_model_name;
         uint anim1_ = anim1, anim2_ = anim2;
-        Script::SetArgUInt( base_model_name );
-        Script::SetArgUInt( anim1_base );
-        Script::SetArgUInt( anim2_base );
-        Script::SetArgAddress( &model_name );
-        Script::SetArgAddress( &anim1 );
-        Script::SetArgAddress( &anim2 );
-        if( Script::RunPrepared() && Script::GetReturnedBool() && ( anim1 != anim1_ || anim2 != anim2_ ) )
+        #ifdef FONLINE_CLIENT
+        if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimationSubstitute, base_model_name, anim1_base, anim2_base, &model_name, &anim1, &anim2 ) && ( anim1 != anim1_ || anim2 != anim2_ ) )
+        #else // FONLINE_MAPPER
+        if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimationSubstitute, base_model_name, anim1_base, anim2_base, &model_name, &anim1, &anim2 ) && ( anim1 != anim1_ || anim2 != anim2_ ) )
+        #endif
             index = GetAnimationIndexEx( anim1, anim2, speed );
         else
             break;

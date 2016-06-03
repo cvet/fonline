@@ -499,17 +499,11 @@ bool CritterCl::CheckFind( int find_type )
 
 uint CritterCl::GetUseApCost( Item* item, uchar rate )
 {
+    uint ap_cost = 1;
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( ClientFunctions.GetUseApCost, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntityOK( this );
-        Script::SetArgEntityOK( item );
-        Script::SetArgUChar( rate );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.GetUseApCost, this, item, rate, &ap_cost );
     #endif
-    return 1;
+    return ap_cost;
 }
 
 uint CritterCl::GetAttackDist()
@@ -518,17 +512,12 @@ uint CritterCl::GetAttackDist()
     Item* weap = GetSlotUse( SLOT_HAND1, use );
     if( !weap->IsWeapon() )
         return 0;
+
+    uint dist = 0;
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( ClientFunctions.GetAttackDistantion, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgEntityOK( this );
-        Script::SetArgEntityOK( weap );
-        Script::SetArgUChar( use );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.GetAttackDistantion, this, weap, use, &dist );
     #endif
-    return 0;
+    return dist;
 }
 
 uint CritterCl::GetUseDist()
@@ -898,15 +887,7 @@ void CritterCl::Move( int dir )
 void CritterCl::Action( int action, int action_ext, Item* item, bool local_call /* = true */ )
 {
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( ClientFunctions.CritterAction, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgBool( local_call );
-        Script::SetArgEntityOK( this );
-        Script::SetArgUInt( action );
-        Script::SetArgUInt( action_ext );
-        Script::SetArgEntityOK( item );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.CritterAction, local_call, this, action, action_ext, item );
     #endif
 
     switch( action )
@@ -1174,15 +1155,7 @@ uint CritterCl::GetAnim2()
 void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item )
 {
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess, _FUNC_, GetInfo() ) )
-    {
-        Script::SetArgBool( animate_stay );
-        Script::SetArgEntityOK( this );
-        Script::SetArgUInt( anim1 );
-        Script::SetArgUInt( anim2 );
-        Script::SetArgEntityOK( item );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( is2d ? ClientFunctions.Animation2dProcess : ClientFunctions.Animation3dProcess, animate_stay, this, anim1, anim2, item );
     #endif
 }
 

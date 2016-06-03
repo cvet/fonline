@@ -8,18 +8,6 @@
 #include "MsgFiles.h"
 #include "Entity.h"
 
-// Script events
-#define ITEM_EVENT_FINISH            ( 0 )
-#define ITEM_EVENT_ATTACK            ( 1 )
-#define ITEM_EVENT_USE               ( 2 )
-#define ITEM_EVENT_USE_ON_ME         ( 3 )
-#define ITEM_EVENT_SKILL             ( 4 )
-#define ITEM_EVENT_DROP              ( 5 )
-#define ITEM_EVENT_MOVE              ( 6 )
-#define ITEM_EVENT_WALK              ( 7 )
-#define ITEM_EVENT_MAX               ( 8 )
-extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
-
 // Items accessory
 #define ITEM_ACCESSORY_NONE          ( 0 )
 #define ITEM_ACCESSORY_CRITTER       ( 1 )
@@ -342,7 +330,6 @@ public:
     bool     ViewPlaceOnMap;
 
     #ifdef FONLINE_SERVER
-    uint       FuncId[ ITEM_EVENT_MAX ];
     uint       SceneryScriptBindId;
     Critter*   ViewByCritter;
     SyncObject Sync;
@@ -360,15 +347,6 @@ public:
 
     #ifdef FONLINE_SERVER
     bool SetScript( const char* script_name, bool first_time );
-    bool PrepareScriptFunc( int num_scr_func );
-    void EventFinish( bool deleted );
-    bool EventAttack( Critter* cr, Critter* target );
-    bool EventUse( Critter* cr, Critter* on_critter, Item* on_item, Item* on_scenery );
-    bool EventUseOnMe( Critter* cr, Item* used_item );
-    bool EventSkill( Critter* cr, int skill );
-    void EventDrop( Critter* cr );
-    void EventMove( Critter* cr, uchar from_slot );
-    void EventWalk( Critter* cr, bool entered, uchar dir );
     #endif // FONLINE_SERVER
 
     void        SetSortValue( ItemVec& items );

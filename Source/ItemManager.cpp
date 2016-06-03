@@ -155,7 +155,7 @@ void ItemManager::DeleteItem( Item* item )
     item->IsDestroying = true;
 
     // Finish events
-    item->EventFinish( true );
+    Script::RaiseInternalEvent( ServerFunctions.ItemFinish, item, true );
 
     // Delete children
     for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
@@ -475,7 +475,7 @@ bool ItemManager::SetItemCritter( Critter* cr, hash pid, uint count )
 
 bool ItemManager::ItemCheckMove( Item* item, uint count, Entity* from, Entity* to )
 {
-    return Script::RaiseInternalEvent( ServerFunctions.ItemCheckMove, 4, item, count, from, to );
+    return Script::RaiseInternalEvent( ServerFunctions.ItemCheckMove, item, count, from, to );
 }
 
 void ItemManager::FilterMoveItems( ItemVec& items, Entity* from, Entity* to )

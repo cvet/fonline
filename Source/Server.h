@@ -404,7 +404,6 @@ public:
         static Item* Item_AddItem( Item* cont, hash pid, uint count, uint stack_id );
         static uint  Item_GetItems( Item* cont, uint stack_id, ScriptArray* items );
         static bool  Item_SetScript( Item* item, ScriptString* func_name );
-        static bool  Item_SetEvent( Item* item, int event_type, ScriptString* func_name );
         static uint  Item_GetWholeCost( Item* item );
         static Map*  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static bool  Item_ChangeProto( Item* item, hash pid );
@@ -414,20 +413,10 @@ public:
         static bool  Item_LockerOpen( Item* item );
         static bool  Item_LockerClose( Item* item );
 
-        static void Item_EventFinish( Item* item, bool deleted );
-        static bool Item_EventAttack( Item* item, Critter* attacker, Critter* target );
-        static bool Item_EventUse( Item* item, Critter* cr, Critter* on_critter, Item* on_item, Item* on_scenery );
-        static bool Item_EventUseOnMe( Item* item, Critter* cr, Item* used_item );
-        static bool Item_EventSkill( Item* item, Critter* cr, int skill );
-        static void Item_EventDrop( Item* item, Critter* cr );
-        static void Item_EventMove( Item* item, Critter* cr, uchar from_slot );
-        static void Item_EventWalk( Item* item, Critter* cr, bool entered, uchar dir );
-
         static bool         Crit_IsPlayer( Critter* cr );
         static bool         Crit_IsNpc( Critter* cr );
         static int          Cl_GetAccess( Critter* cl );
         static bool         Cl_SetAccess( Critter* cl, int access );
-        static bool         Crit_SetEvent( Critter* cr, int event_type, ScriptString* func_name );
         static Map*         Crit_GetMap( Critter* cr );
         static void         Cl_DropTimers( Critter* cl );
         static bool         Crit_MoveRandom( Critter* cr );
@@ -529,55 +518,8 @@ public:
         static uint Crit_EraseTimeEvents( Critter* cr, int identifier );
         static uint Crit_EraseTimeEventsArr( Critter* cr, ScriptArray& identifiers );
 
-        static void Crit_EventIdle( Critter* cr );
-        static void Crit_EventFinish( Critter* cr, bool deleted );
-        static void Crit_EventDead( Critter* cr, Critter* killer );
-        static void Crit_EventRespawn( Critter* cr );
-        static void Crit_EventShowCritter( Critter* cr, Critter* show_cr );
-        static void Crit_EventShowCritter1( Critter* cr, Critter* show_cr );
-        static void Crit_EventShowCritter2( Critter* cr, Critter* show_cr );
-        static void Crit_EventShowCritter3( Critter* cr, Critter* show_cr );
-        static void Crit_EventHideCritter( Critter* cr, Critter* hide_cr );
-        static void Crit_EventHideCritter1( Critter* cr, Critter* hide_cr );
-        static void Crit_EventHideCritter2( Critter* cr, Critter* hide_cr );
-        static void Crit_EventHideCritter3( Critter* cr, Critter* hide_cr );
-        static void Crit_EventShowItemOnMap( Critter* cr, Item* show_item, bool added, Critter* dropper );
-        static void Crit_EventChangeItemOnMap( Critter* cr, Item* item );
-        static void Crit_EventHideItemOnMap( Critter* cr, Item* hide_item, bool removed, Critter* picker );
-        static bool Crit_EventAttack( Critter* cr, Critter* target );
-        static bool Crit_EventAttacked( Critter* cr, Critter* attacker );
-        static bool Crit_EventStealing( Critter* cr, Critter* thief, Item* item, uint count );
-        static void Crit_EventMessage( Critter* cr, Critter* from_cr, int message, int value );
-        static bool Crit_EventUseItem( Critter* cr, Item* item, Critter* on_critter, Item* on_item, Item* on_scenery );
-        static bool Crit_EventUseItemOnMe( Critter* cr, Critter* who_use, Item* item );
-        static bool Crit_EventUseSkill( Critter* cr, int skill, Critter* on_critter, Item* on_item, Item* on_scenery );
-        static bool Crit_EventUseSkillOnMe( Critter* cr, Critter* who_use, int skill );
-        static void Crit_EventDropItem( Critter* cr, Item* item );
-        static void Crit_EventMoveItem( Critter* cr, Item* item, uchar from_slot );
-        static void Crit_EventKnockout( Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist );
-        static void Crit_EventSmthDead( Critter* cr, Critter* from_cr, Critter* killer );
-        static void Crit_EventSmthStealing( Critter* cr, Critter* from_cr, Critter* thief, bool success, Item* item, uint count );
-        static void Crit_EventSmthAttack( Critter* cr, Critter* from_cr, Critter* target );
-        static void Crit_EventSmthAttacked( Critter* cr, Critter* from_cr, Critter* attacker );
-        static void Crit_EventSmthUseItem( Critter* cr, Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, Item* on_scenery );
-        static void Crit_EventSmthUseSkill( Critter* cr, Critter* from_cr, int skill, Critter* on_critter, Item* on_item, Item* on_scenery );
-        static void Crit_EventSmthDropItem( Critter* cr, Critter* from_cr, Item* item );
-        static void Crit_EventSmthMoveItem( Critter* cr, Critter* from_cr, Item* item, uchar from_slot );
-        static void Crit_EventSmthKnockout( Critter* cr, Critter* from_cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist );
-        static int  Crit_EventPlaneBegin( Critter* cr, AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item );
-        static int  Crit_EventPlaneEnd( Critter* cr, AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item );
-        static int  Crit_EventPlaneRun( Critter* cr, AIDataPlane* plane, int reason, uint& p0, uint& p1, uint& p2 );
-        static bool Crit_EventBarter( Critter* cr, Critter* cr_barter, bool attach, uint barter_count );
-        static bool Crit_EventTalk( Critter* cr, Critter* cr_talk, bool attach, uint talk_count );
-        static bool Crit_EventGlobalProcess( Critter* cr, int type, Item* car, float& x, float& y, float& to_x, float& to_y, float& speed, uint& encounter_descriptor, bool& wait_for_answer );
-        static bool Crit_EventGlobalInvite( Critter* cr, Item* car, uint encounter_descriptor, int combat_mode, uint& map_id, ushort& hx, ushort& hy, uchar& dir );
-        static void Crit_EventTurnBasedProcess( Critter* cr, Map* map, bool begin_turn );
-        static void Crit_EventSmthTurnBasedProcess( Critter* cr, Critter* from_cr, Map* map, bool begin_turn );
-
         static Location* Map_GetLocation( Map* map );
         static bool      Map_SetScript( Map* map, ScriptString* func_name );
-        static bool      Map_SetEvent( Map* map, int event_type, ScriptString* func_name );
-        static void      Map_SetLoopTime( Map* map, uint loop_num, uint ms );
         static void      Map_BeginTurnBased( Map* map, Critter* first_turn_crit );
         static bool      Map_IsTurnBased( Map* map );
         static void      Map_EndTurnBased( Map* map );
@@ -632,20 +574,6 @@ public:
         static void      Map_MoveHexByDir( Map* map, ushort& hx, ushort& hy, uchar dir, uint steps );
         static void      Map_VerifyTrigger( Map* map, Critter* cr, ushort hx, ushort hy, uchar dir );
 
-        static void Map_EventFinish( Map* map, bool deleted );
-        static void Map_EventLoop0( Map* map );
-        static void Map_EventLoop1( Map* map );
-        static void Map_EventLoop2( Map* map );
-        static void Map_EventLoop3( Map* map );
-        static void Map_EventLoop4( Map* map );
-        static void Map_EventInCritter( Map* map, Critter* cr );
-        static void Map_EventOutCritter( Map* map, Critter* cr );
-        static void Map_EventCritterDead( Map* map, Critter* cr, Critter* killer );
-        static void Map_EventTurnBasedBegin( Map* map );
-        static void Map_EventTurnBasedEnd( Map* map );
-        static void Map_EventTurnBasedProcess( Map* map, Critter* cr, bool begin_turn );
-
-        static bool Location_SetEvent( Location* loc, int event_type, ScriptString* func_name );
         static uint Location_GetMapCount( Location* loc );
         static Map* Location_GetMap( Location* loc, hash map_pid );
         static Map* Location_GetMapByIndex( Location* loc, uint index );
@@ -653,9 +581,6 @@ public:
         static bool Location_GetEntrance( Location* loc, uint entrance, uint& map_index, hash& entire );
         static uint Location_GetEntrances( Location* loc, ScriptArray* maps_index, ScriptArray* entires );
         static bool Location_Reload( Location* loc );
-
-        static void Location_EventFinish( Location* loc, bool deleted );
-        static bool Location_EventEnter( Location* loc, ScriptArray& group, uchar entrance );
 
         static Item*         Global_GetItem( uint item_id );
         static uint          Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 );

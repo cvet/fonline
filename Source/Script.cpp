@@ -1029,7 +1029,7 @@ bool Script::RestoreEntity( const char* class_name, uint id, const StrMap& props
     return edata->PragmaCB->RestoreEntity( class_name, id, props_data );
 }
 
-void* Script::FindInternalEvent( const char* event_name)
+void* Script::FindInternalEvent( const char* event_name )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     void*       result = edata->PragmaCB->FindInternalEvent( event_name );
@@ -1037,12 +1037,14 @@ void* Script::FindInternalEvent( const char* event_name)
     return result;
 }
 
-bool Script::RaiseInternalEvent( void* event_ptr, int args, ... )
+bool Script::RaiseInternalEvent( void* event_ptr, ... )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    PtrVec      agrs;
-    // Collect args
-    return edata->PragmaCB->RaiseInternalEvent( event_ptr, agrs );
+    va_list     args;
+    va_start( args, event_ptr );
+    bool        result = edata->PragmaCB->RaiseInternalEvent( event_ptr, args );
+    va_end( args );
+    return result;
 }
 
 const char* Script::GetActiveModuleName()

@@ -964,15 +964,15 @@ public:
 
         static void Raise( asIScriptGeneric* gen )
         {
-            PtrVec args( gen->GetArgCount() );
-            for( size_t i = 0; i < args.size(); i++ )
-                args[ i ] = gen->GetAddressOfArg( i );
-
-            bool result = RaiseInternal( gen->GetObject(), args );
-            *(bool*) gen->GetAddressOfReturnLocation() = result;
+            *(bool*) gen->GetAddressOfReturnLocation() = RaiseImpl( gen->GetObject(), gen, nullptr );
         }
 
-        static bool RaiseInternal( void* event_ptr, const PtrVec& args )
+        static bool RaiseInternal( void* event_ptr, va_list args )
+        {
+            return RaiseImpl( event_ptr, nullptr, args );
+        }
+
+        static bool RaiseImpl( void* event_ptr, asIScriptGeneric* gen_args, va_list va_args )
         {
             ScriptEvent* event = (ScriptEvent*) event_ptr;
             if( event->callbacks.empty() )
@@ -985,8 +985,11 @@ public:
                 RUNTIME_ASSERT( bind_id );
                 if( Script::PrepareContext( bind_id, _FUNC_, "Event" ) )
                 {
-                    for( size_t i = 0; i < args.size(); i++ )
-                        Script::SetArgAddress( args[ i ] );
+                    // for( size_t i = 0; i < args.size(); i++ )
+                    // {
+                    //    void* arg = (gen_args ? gen_args->GetAddressOfArg(i) : va_arg(va_args, void*));
+                    //    Script::SetArgAddress( arg );
+                    // }
 
                     if( Script::RunPrepared() )
                     {
@@ -1003,9 +1006,14 @@ public:
     vector< ScriptEvent* > events;
 
 public:
+    EventPragma()
+    {
+        // ...
+    }
+
     ~EventPragma()
     {
-        for (ScriptEvent* event : events)
+        for( ScriptEvent* event : events )
         {
             event->UnsubscribeAll();
             event->Release();
@@ -1032,7 +1040,7 @@ public:
 
         char args[ MAX_FOTEXT ];
         Str::Copy( args, arg_types );
-        
+
         char             buf[ MAX_FOTEXT ];
         asIScriptEngine* engine = Script::GetEngine();
         if( engine->RegisterFuncdef( Str::Format( buf, "void %sFunc(%s)", event_name, args ) ) < 0 ||
@@ -1067,7 +1075,7 @@ public:
         return nullptr;
     }
 
-    bool Raise( void* event_ptr, const PtrVec& args )
+    bool Raise( void* event_ptr, va_list args )
     {
         return ScriptEvent::RaiseInternal( event_ptr, args );
     }
@@ -1192,7 +1200,7 @@ void* ScriptPragmaCallback::FindInternalEvent( const char* event_name )
     return eventPragma->Find( event_name );
 }
 
-bool ScriptPragmaCallback::RaiseInternalEvent( void* event_ptr, const PtrVec& args )
+bool ScriptPragmaCallback::RaiseInternalEvent( void* event_ptr, va_list args )
 {
     return eventPragma->Raise( event_ptr, args );
 }

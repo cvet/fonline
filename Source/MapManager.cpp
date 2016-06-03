@@ -194,7 +194,7 @@ string MapManager::GetLocationsMapsStatistics()
 
 bool MapManager::GenerateWorld()
 {
-    return Script::RaiseInternalEvent( ServerFunctions.GenerateWorld, 0 );
+    return Script::RaiseInternalEvent( ServerFunctions.GenerateWorld );
 }
 
 Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
@@ -449,9 +449,9 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
         ( *it )->IsDestroying = true;
 
     // Finish events
-    loc->EventFinish( true );
+    Script::RaiseInternalEvent( ServerFunctions.LocationFinish, loc, true );
     for( auto it = maps.begin(); it != maps.end(); ++it )
-        ( *it )->EventFinish( true );
+        Script::RaiseInternalEvent( ServerFunctions.MapFinish, *it, true );
 
     // Send players on global map about this
     ClVec players;
@@ -568,22 +568,20 @@ void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type 
     float    base_speed = group->Speed;
     bool     global_process = true;
 
-    if( cr->FuncId[ CRITTER_EVENT_GLOBAL_PROCESS ] > 0 )
+    if( Script::RaiseInternalEvent( ServerFunctions.GlobalMapProcess, type, cr, group->GetCar(), &cur_wx, &cur_wy,
+                                    &to_wx, &to_wy, &speed, &encounter_descriptor, &wait_for_answer ) )
     {
-        if( cr->EventGlobalProcess( type, group->GetCar(), cur_wx, cur_wy, to_wx, to_wy, speed, encounter_descriptor, wait_for_answer ) )
-        {
-            global_process = false;
-        }
-        else
-        {
-            encounter_descriptor = 0;
-            wait_for_answer = false;
-            cur_wx = group->CurX;
-            cur_wy = group->CurY;
-            to_wx = group->ToX;
-            to_wy = group->ToY;
-            speed = group->Speed;
-        }
+        global_process = false;
+    }
+    else
+    {
+        encounter_descriptor = 0;
+        wait_for_answer = false;
+        cur_wx = group->CurX;
+        cur_wy = group->CurY;
+        to_wx = group->ToX;
+        to_wy = group->ToY;
+        speed = group->Speed;
     }
 
     if( !group->IsValid() )
@@ -594,7 +592,7 @@ void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type 
 
     if( global_process )
     {
-        Script::RaiseInternalEvent( ServerFunctions.GlobalProcess, 10, type, cr, group->GetCar(), &cur_wx, &cur_wy,
+        Script::RaiseInternalEvent( ServerFunctions.GlobalMapProcess, type, cr, group->GetCar(), &cur_wx, &cur_wy,
                                     &to_wx, &to_wy, &speed, &encounter_descriptor, &wait_for_answer );
     }
 
@@ -708,23 +706,17 @@ void MapManager::GM_GlobalInvite( GlobalMapGroup* group, int combat_mode )
     Critter* rule = group->Rule;
     bool     global_invite = true;
 
-    if( rule->FuncId[ CRITTER_EVENT_GLOBAL_INVITE ] > 0 )
+    if( Script::RaiseInternalEvent( ServerFunctions.GlobalMapInvite, rule, group->GetCar(), encounter_descriptor, combat_mode, &map_id, &hx, &hy, &dir ) )
     {
-        if( rule->EventGlobalInvite( group->GetCar(), encounter_descriptor, combat_mode, map_id, hx, hy, dir ) )
-        {
-            global_invite = false;
-        }
-        else
-        {
-            map_id = 0;
-            hx = 0;
-            hy = 0;
-            dir = 0;
-        }
+        global_invite = false;
     }
-
-    if( global_invite )
-        Script::RaiseInternalEvent( ServerFunctions.GlobalInvite, 8, rule, group->GetCar(), encounter_descriptor, combat_mode, &map_id, &hx, &hy, &dir );
+    else
+    {
+        map_id = 0;
+        hx = 0;
+        hy = 0;
+        dir = 0;
+    }
 
     if( !group->IsValid() )
         return;
@@ -1121,7 +1113,8 @@ bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool
     ScriptArray* group = GM_CreateGroupArray( rule->GroupMove );
     if( !group )
         return false;
-    bool result = loc->EventEnter( group, entrance );
+
+    bool result = Script::RaiseInternalEvent( ServerFunctions.LocationEnter, loc, group, entrance );
     group->Release();
     if( !result )
         return false;  // Group is not allowed to enter
@@ -2265,7 +2258,7 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map, ushort hex_x, ushort hex
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr_ = *it;
-            cr_->EventHideCritter( cr );
+            Script::RaiseInternalEvent( ServerFunctions.CritterHide, cr_, cr );
         }
 
         cr->ClearVisible();

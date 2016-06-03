@@ -9,54 +9,6 @@
 
 ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, Critter::PropertiesRegistrator ) {}
 
-const char* CritterEventFuncName[ CRITTER_EVENT_MAX ] =
-{
-    "void %s(Critter&)",                                                          // CRITTER_EVENT_IDLE
-    "void %s(Critter&,bool)",                                                     // CRITTER_EVENT_FINISH
-    "void %s(Critter&,Critter@)",                                                 // CRITTER_EVENT_DEAD
-    "void %s(Critter&)",                                                          // CRITTER_EVENT_RESPAWN
-    "void %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_SHOW_CRITTER
-    "void %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_SHOW_CRITTER_1
-    "void %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_SHOW_CRITTER_2
-    "void %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_SHOW_CRITTER_3
-    "void %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_HIDE_CRITTER
-    "void %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_HIDE_CRITTER_1
-    "void %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_HIDE_CRITTER_2
-    "void %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_HIDE_CRITTER_3
-    "void %s(Critter&,Item&,bool,Critter@)",                                      // CRITTER_EVENT_SHOW_ITEM_ON_MAP
-    "void %s(Critter&,Item&)",                                                    // CRITTER_EVENT_CHANGE_ITEM_ON_MAP
-    "void %s(Critter&,Item&,bool,Critter@)",                                      // CRITTER_EVENT_HIDE_ITEM_ON_MAP
-    "bool %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_ATTACK
-    "bool %s(Critter&,Critter&)",                                                 // CRITTER_EVENT_ATTACKED
-    "void %s(Critter&,Critter&,bool,Item&,uint)",                                 // CRITTER_EVENT_STEALING
-    "void %s(Critter&,Critter&,int,int)",                                         // CRITTER_EVENT_MESSAGE
-    "bool %s(Critter&,Item&,Critter@,Item@,Item@)",                               // CRITTER_EVENT_USE_ITEM
-    "bool %s(Critter&,Critter&,Item&)",                                           // CRITTER_EVENT_USE_ITEM_ON_ME
-    "bool %s(Critter&,CritterProperty,Critter@,Item@,Item@)",                     // CRITTER_EVENT_USE_SKILL
-    "bool %s(Critter&,Critter&,CritterProperty)",                                 // CRITTER_EVENT_USE_SKILL_ON_ME
-    "void %s(Critter&,Item&)",                                                    // CRITTER_EVENT_DROP_ITEM
-    "void %s(Critter&,Item&,uint8)",                                              // CRITTER_EVENT_MOVE_ITEM
-    "void %s(Critter&,uint,uint,uint,uint,uint)",                                 // CRITTER_EVENT_KNOCKOUT
-    "void %s(Critter&,Critter&,Critter@)",                                        // CRITTER_EVENT_SMTH_DEAD
-    "void %s(Critter&,Critter&,Critter&,bool,Item&,uint)",                        // CRITTER_EVENT_SMTH_STEALING
-    "void %s(Critter&,Critter&,Critter&)",                                        // CRITTER_EVENT_SMTH_ATTACK
-    "void %s(Critter&,Critter&,Critter&)",                                        // CRITTER_EVENT_SMTH_ATTACKED
-    "void %s(Critter&,Critter&,Item&,Critter@,Item@,Item@)",                      // CRITTER_EVENT_SMTH_USE_ITEM
-    "void %s(Critter&,Critter&,CritterProperty,Critter@,Item@,Item@)",            // CRITTER_EVENT_SMTH_USE_SKILL
-    "void %s(Critter&,Critter&,Item&)",                                           // CRITTER_EVENT_SMTH_DROP_ITEM
-    "void %s(Critter&,Critter&,Item&,uint8)",                                     // CRITTER_EVENT_SMTH_MOVE_ITEM
-    "void %s(Critter&,Critter&,uint,uint,uint,uint,uint)",                        // CRITTER_EVENT_SMTH_KNOCKOUT
-    "int %s(Critter&,NpcPlane&,int,Critter@,Item@)",                              // CRITTER_EVENT_PLANE_BEGIN
-    "int %s(Critter&,NpcPlane&,int,Critter@,Item@)",                              // CRITTER_EVENT_PLANE_END
-    "int %s(Critter&,NpcPlane&,int,uint&,uint&,uint&)",                           // CRITTER_EVENT_PLANE_RUN
-    "bool %s(Critter&,Critter&,bool,uint)",                                       // CRITTER_EVENT_BARTER
-    "bool %s(Critter&,Critter&,bool,uint)",                                       // CRITTER_EVENT_TALK
-    "bool %s(Critter&,int,Item@,float&,float&,float&,float&,float&,uint&,bool&)", // CRITTER_EVENT_GLOBAL_PROCESS
-    "bool %s(Critter&,Item@,uint,int,uint&,uint16&,uint16&,uint8&)",              // CRITTER_EVENT_GLOBAL_INVITE
-    "void %s(Critter&,Map&,bool)",                                                // CRITTER_EVENT_TURN_BASED_PROCESS
-    "void %s(Critter&,Critter&,Map&,bool)",                                       // CRITTER_EVENT_SMTH_TURN_BASED_PROCESS
-};
-
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
@@ -197,7 +149,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     DisableSend = 0;
     CanBeRemoved = false;
     NameStr = ScriptString::Create();
-    memzero( FuncId, sizeof( FuncId ) );
     GroupSelf = new GlobalMapGroup();
     GroupSelf->CurX = (float) GetWorldX();
     GroupSelf->CurY = (float) GetWorldY();
@@ -250,14 +201,14 @@ void Critter::DeleteInventory()
 uint Critter::GetUseApCost( Item* weap, int use )
 {
     uint dist = 1;
-    Script::RaiseInternalEvent( ServerFunctions.GetUseApCost, 4, this, weap, use, &dist );
+    Script::RaiseInternalEvent( ServerFunctions.CritterGetUseApCost, this, weap, use, &dist );
     return dist;
 }
 
 uint Critter::GetAttackDist( Item* weap, int use )
 {
     uint dist = 1;
-    Script::RaiseInternalEvent( ServerFunctions.GetAttackDistantion, 4, this, weap, use, &dist );
+    Script::RaiseInternalEvent( ServerFunctions.CritterGetAttackDistantion, this, weap, use, &dist );
     return dist;
 }
 
@@ -443,15 +394,12 @@ void Critter::ProcessVisibleCritters()
     int  look_base_self = GetLookDistance();
     int  dir_self = GetDir();
     int  dirs_count = DIRS_COUNT;
-    bool is_show_cr_func1 = ( FuncId[ CRITTER_EVENT_SHOW_CRITTER_1 ] > 0 || FuncId[ CRITTER_EVENT_HIDE_CRITTER_1 ] > 0 );
-    bool is_show_cr_func2 = ( FuncId[ CRITTER_EVENT_SHOW_CRITTER_2 ] > 0 || FuncId[ CRITTER_EVENT_HIDE_CRITTER_2 ] > 0 );
-    bool is_show_cr_func3 = ( FuncId[ CRITTER_EVENT_SHOW_CRITTER_3 ] > 0 || FuncId[ CRITTER_EVENT_HIDE_CRITTER_3 ] > 0 );
-    uint show_cr_dist1 = ( is_show_cr_func1 ? GetShowCritterDist1() : 0 );
-    uint show_cr_dist2 = ( is_show_cr_func2 ? GetShowCritterDist2() : 0 );
-    uint show_cr_dist3 = ( is_show_cr_func3 ? GetShowCritterDist3() : 0 );
-    bool show_cr1 = ( is_show_cr_func1 && show_cr_dist1 > 0 );
-    bool show_cr2 = ( is_show_cr_func2 && show_cr_dist2 > 0 );
-    bool show_cr3 = ( is_show_cr_func3 && show_cr_dist3 > 0 );
+    uint show_cr_dist1 = GetShowCritterDist1();
+    uint show_cr_dist2 = GetShowCritterDist2();
+    uint show_cr_dist3 = GetShowCritterDist3();
+    bool show_cr1 = ( show_cr_dist1 > 0 );
+    bool show_cr2 = ( show_cr_dist2 > 0 );
+    bool show_cr3 = ( show_cr_dist3 > 0 );
 
     bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
     // Sneak self
@@ -476,15 +424,15 @@ void Critter::ProcessVisibleCritters()
 
         if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SCRIPT ) )
         {
-            bool allow_self = Script::RaiseInternalEvent( ServerFunctions.CheckLook, 3, map, this, cr );
-            bool allow_opp = Script::RaiseInternalEvent( ServerFunctions.CheckLook, 3, map, cr, this );
+            bool allow_self = Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, this, cr );
+            bool allow_opp = Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, cr, this );
 
             if( allow_self )
             {
                 if( cr->AddCrIntoVisVec( this ) )
                 {
                     Send_AddCritter( cr );
-                    EventShowCritter( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShow, this, cr );
                 }
             }
             else
@@ -492,7 +440,7 @@ void Critter::ProcessVisibleCritters()
                 if( cr->DelCrFromVisVec( this ) )
                 {
                     Send_RemoveCritter( cr );
-                    EventHideCritter( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHide, this, cr );
                 }
             }
 
@@ -501,7 +449,7 @@ void Critter::ProcessVisibleCritters()
                 if( AddCrIntoVisVec( cr ) )
                 {
                     cr->Send_AddCritter( this );
-                    cr->EventShowCritter( this );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShow, cr, this );
                 }
             }
             else
@@ -509,7 +457,7 @@ void Critter::ProcessVisibleCritters()
                 if( DelCrFromVisVec( cr ) )
                 {
                     cr->Send_RemoveCritter( this );
-                    cr->EventHideCritter( this );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHide, cr, this );
                 }
             }
 
@@ -520,12 +468,12 @@ void Critter::ProcessVisibleCritters()
                     if( (int) show_cr_dist1 >= dist )
                     {
                         if( AddCrIntoVisSet1( cr->GetId() ) )
-                            EventShowCritter1( cr );
+                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, this, cr );
                     }
                     else
                     {
                         if( DelCrFromVisSet1( cr->GetId() ) )
-                            EventHideCritter1( cr );
+                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, this, cr );
                     }
                 }
                 if( show_cr2 )
@@ -533,12 +481,12 @@ void Critter::ProcessVisibleCritters()
                     if( (int) show_cr_dist2 >= dist )
                     {
                         if( AddCrIntoVisSet2( cr->GetId() ) )
-                            EventShowCritter2( cr );
+                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, this, cr );
                     }
                     else
                     {
                         if( DelCrFromVisSet2( cr->GetId() ) )
-                            EventHideCritter2( cr );
+                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, this, cr );
                     }
                 }
                 if( show_cr3 )
@@ -546,65 +494,56 @@ void Critter::ProcessVisibleCritters()
                     if( (int) show_cr_dist3 >= dist )
                     {
                         if( AddCrIntoVisSet3( cr->GetId() ) )
-                            EventShowCritter3( cr );
+                            Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, this, cr );
                     }
                     else
                     {
                         if( DelCrFromVisSet3( cr->GetId() ) )
-                            EventHideCritter3( cr );
+                            Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, this, cr );
                     }
                 }
             }
 
-            if( cr->FuncId[ CRITTER_EVENT_SHOW_CRITTER_1 ] > 0 || cr->FuncId[ CRITTER_EVENT_HIDE_CRITTER_1 ] > 0 )
+            uint cr_dist = cr->GetShowCritterDist1();
+            if( cr_dist )
             {
-                uint cr_dist = cr->GetShowCritterDist1();
-                if( cr_dist )
+                if( (int) cr_dist >= dist )
                 {
-                    if( (int) cr_dist >= dist )
-                    {
-                        if( cr->AddCrIntoVisSet1( GetId() ) )
-                            cr->EventShowCritter1( this );
-                    }
-                    else
-                    {
-                        if( cr->DelCrFromVisSet1( GetId() ) )
-                            cr->EventHideCritter1( this );
-                    }
+                    if( cr->AddCrIntoVisSet1( GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, this );
+                }
+                else
+                {
+                    if( cr->DelCrFromVisSet1( GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, cr, this );
                 }
             }
-            if( cr->FuncId[ CRITTER_EVENT_SHOW_CRITTER_2 ] > 0 || cr->FuncId[ CRITTER_EVENT_HIDE_CRITTER_2 ] > 0 )
+            cr_dist = cr->GetShowCritterDist2();
+            if( cr_dist )
             {
-                uint cr_dist = cr->GetShowCritterDist2();
-                if( cr_dist )
+                if( (int) cr_dist >= dist )
                 {
-                    if( (int) cr_dist >= dist )
-                    {
-                        if( cr->AddCrIntoVisSet2( GetId() ) )
-                            cr->EventShowCritter2( this );
-                    }
-                    else
-                    {
-                        if( cr->DelCrFromVisSet2( GetId() ) )
-                            cr->EventHideCritter2( this );
-                    }
+                    if( cr->AddCrIntoVisSet2( GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, cr, this );
+                }
+                else
+                {
+                    if( cr->DelCrFromVisSet2( GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, cr, this );
                 }
             }
-            if( cr->FuncId[ CRITTER_EVENT_SHOW_CRITTER_3 ] > 0 || cr->FuncId[ CRITTER_EVENT_HIDE_CRITTER_3 ] > 0 )
+            cr_dist = cr->GetShowCritterDist3();
+            if( cr_dist )
             {
-                uint cr_dist = cr->GetShowCritterDist3();
-                if( cr_dist )
+                if( (int) cr_dist >= dist )
                 {
-                    if( (int) cr_dist >= dist )
-                    {
-                        if( cr->AddCrIntoVisSet3( GetId() ) )
-                            cr->EventShowCritter3( this );
-                    }
-                    else
-                    {
-                        if( cr->DelCrFromVisSet3( GetId() ) )
-                            cr->EventHideCritter3( this );
-                    }
+                    if( cr->AddCrIntoVisSet3( GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, this );
+                }
+                else
+                {
+                    if( cr->DelCrFromVisSet3( GetId() ) )
+                        Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, cr, this );
                 }
             }
             continue;
@@ -679,7 +618,7 @@ void Critter::ProcessVisibleCritters()
             if( cr->AddCrIntoVisVec( this ) )
             {
                 Send_AddCritter( cr );
-                EventShowCritter( cr );
+                Script::RaiseInternalEvent( ServerFunctions.CritterShow, this, cr );
             }
         }
         else
@@ -687,7 +626,7 @@ void Critter::ProcessVisibleCritters()
             if( cr->DelCrFromVisVec( this ) )
             {
                 Send_RemoveCritter( cr );
-                EventHideCritter( cr );
+                Script::RaiseInternalEvent( ServerFunctions.CritterHide, this, cr );
             }
         }
 
@@ -696,12 +635,12 @@ void Critter::ProcessVisibleCritters()
             if( (int) show_cr_dist1 >= dist )
             {
                 if( AddCrIntoVisSet1( cr->GetId() ) )
-                    EventShowCritter1( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, this, cr );
             }
             else
             {
                 if( DelCrFromVisSet1( cr->GetId() ) )
-                    EventHideCritter1( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, this, cr );
             }
         }
         if( show_cr2 )
@@ -709,12 +648,12 @@ void Critter::ProcessVisibleCritters()
             if( (int) show_cr_dist2 >= dist )
             {
                 if( AddCrIntoVisSet2( cr->GetId() ) )
-                    EventShowCritter2( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, this, cr );
             }
             else
             {
                 if( DelCrFromVisSet2( cr->GetId() ) )
-                    EventHideCritter2( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, this, cr );
             }
         }
         if( show_cr3 )
@@ -722,12 +661,12 @@ void Critter::ProcessVisibleCritters()
             if( (int) show_cr_dist3 >= dist )
             {
                 if( AddCrIntoVisSet3( cr->GetId() ) )
-                    EventShowCritter3( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, this, cr );
             }
             else
             {
                 if( DelCrFromVisSet3( cr->GetId() ) )
-                    EventHideCritter3( cr );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, this, cr );
             }
         }
 
@@ -761,7 +700,7 @@ void Critter::ProcessVisibleCritters()
             if( AddCrIntoVisVec( cr ) )
             {
                 cr->Send_AddCritter( this );
-                cr->EventShowCritter( this );
+                Script::RaiseInternalEvent( ServerFunctions.CritterShow, cr, this );
             }
         }
         else
@@ -769,59 +708,50 @@ void Critter::ProcessVisibleCritters()
             if( DelCrFromVisVec( cr ) )
             {
                 cr->Send_RemoveCritter( this );
-                cr->EventHideCritter( this );
+                Script::RaiseInternalEvent( ServerFunctions.CritterHide, cr, this );
             }
         }
 
-        if( cr->FuncId[ CRITTER_EVENT_SHOW_CRITTER_1 ] > 0 || cr->FuncId[ CRITTER_EVENT_HIDE_CRITTER_1 ] > 0 )
+        uint cr_dist = cr->GetShowCritterDist1();
+        if( cr_dist )
         {
-            uint cr_dist = cr->GetShowCritterDist1();
-            if( cr_dist )
+            if( (int) cr_dist >= dist )
             {
-                if( (int) cr_dist >= dist )
-                {
-                    if( cr->AddCrIntoVisSet1( GetId() ) )
-                        cr->EventShowCritter1( this );
-                }
-                else
-                {
-                    if( cr->DelCrFromVisSet1( GetId() ) )
-                        cr->EventHideCritter1( this );
-                }
+                if( cr->AddCrIntoVisSet1( GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist1, cr, this );
+            }
+            else
+            {
+                if( cr->DelCrFromVisSet1( GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist1, cr, this );
             }
         }
-        if( cr->FuncId[ CRITTER_EVENT_SHOW_CRITTER_2 ] > 0 || cr->FuncId[ CRITTER_EVENT_HIDE_CRITTER_2 ] > 0 )
+        cr_dist = cr->GetShowCritterDist2();
+        if( cr_dist )
         {
-            uint cr_dist = cr->GetShowCritterDist2();
-            if( cr_dist )
+            if( (int) cr_dist >= dist )
             {
-                if( (int) cr_dist >= dist )
-                {
-                    if( cr->AddCrIntoVisSet2( GetId() ) )
-                        cr->EventShowCritter2( this );
-                }
-                else
-                {
-                    if( cr->DelCrFromVisSet2( GetId() ) )
-                        cr->EventHideCritter2( this );
-                }
+                if( cr->AddCrIntoVisSet2( GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist2, cr, this );
+            }
+            else
+            {
+                if( cr->DelCrFromVisSet2( GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist2, cr, this );
             }
         }
-        if( cr->FuncId[ CRITTER_EVENT_SHOW_CRITTER_3 ] > 0 || cr->FuncId[ CRITTER_EVENT_HIDE_CRITTER_3 ] > 0 )
+        cr_dist = cr->GetShowCritterDist3();
+        if( cr_dist )
         {
-            uint cr_dist = cr->GetShowCritterDist3();
-            if( cr_dist )
+            if( (int) cr_dist >= dist )
             {
-                if( (int) cr_dist >= dist )
-                {
-                    if( cr->AddCrIntoVisSet3( GetId() ) )
-                        cr->EventShowCritter3( this );
-                }
-                else
-                {
-                    if( cr->DelCrFromVisSet3( GetId() ) )
-                        cr->EventHideCritter3( this );
-                }
+                if( cr->AddCrIntoVisSet3( GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowDist3, cr, this );
+            }
+            else
+            {
+                if( cr->DelCrFromVisSet3( GetId() ) )
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideDist3, cr, this );
             }
         }
     }
@@ -849,7 +779,7 @@ void Critter::ProcessVisibleItems()
             if( AddIdVisItem( item->GetId() ) )
             {
                 Send_AddItemOnMap( item );
-                EventShowItemOnMap( item, item->ViewPlaceOnMap, item->ViewByCritter );
+                Script::RaiseInternalEvent( ServerFunctions.CritterShowItemOnMap, this, item, item->ViewPlaceOnMap, item->ViewByCritter );
             }
         }
         else
@@ -857,7 +787,7 @@ void Critter::ProcessVisibleItems()
             bool allowed = false;
             if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
             {
-                allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, map, this, item );
+                allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, map, this, item );
             }
             else
             {
@@ -872,7 +802,7 @@ void Critter::ProcessVisibleItems()
                 if( AddIdVisItem( item->GetId() ) )
                 {
                     Send_AddItemOnMap( item );
-                    EventShowItemOnMap( item, item->ViewPlaceOnMap, item->ViewByCritter );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterShowItemOnMap, this, item, item->ViewPlaceOnMap, item->ViewByCritter );
                 }
             }
             else
@@ -880,7 +810,7 @@ void Critter::ProcessVisibleItems()
                 if( DelIdVisItem( item->GetId() ) )
                 {
                     Send_EraseItemFromMap( item );
-                    EventHideItemOnMap( item, item->ViewPlaceOnMap, item->ViewByCritter );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterHideItemOnMap, this, item, item->ViewPlaceOnMap, item->ViewByCritter );
                 }
             }
         }
@@ -908,7 +838,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
 
         if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SCRIPT ) )
         {
-            if( Script::RaiseInternalEvent( ServerFunctions.CheckLook, 3, map, this, cr ) )
+            if( Script::RaiseInternalEvent( ServerFunctions.MapCheckLook, map, this, cr ) )
                 Send_AddCritter( cr );
             continue;
         }
@@ -987,7 +917,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
             bool allowed = false;
             if( item->GetIsTrap() && FLAG( GameOpt.LookChecks, LOOK_CHECK_ITEM_SCRIPT ) )
             {
-                allowed = Script::RaiseInternalEvent( ServerFunctions.CheckTrapLook, 3, map, this, item );
+                allowed = Script::RaiseInternalEvent( ServerFunctions.MapCheckTrapLook, map, this, item );
             }
             else
             {
@@ -1231,7 +1161,7 @@ void Critter::AddItem( Item*& item, bool send )
     }
 
     // Change item
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, 3, this, item, SLOT_GROUND );
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, SLOT_GROUND );
 }
 
 void Critter::SetItem( Item* item )
@@ -1292,7 +1222,7 @@ void Critter::EraseItem( Item* item, bool send )
 
     uchar from_slot = item->GetCritSlot();
     item->SetCritSlot( SLOT_GROUND );
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, 3, this, item, from_slot );
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, from_slot );
 }
 
 Item* Critter::GetItem( uint item_id, bool skip_hide )
@@ -1572,7 +1502,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
     }
 
     Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : nullptr );
-    if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, 4, this, item, to_slot, item_swap ) )
+    if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, this, item, to_slot, item_swap ) )
     {
         if( IsPlayer() )
         {
@@ -1634,8 +1564,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         item->ViewByCritter = this;
         map->AddItem( item, GetHexX(), GetHexY() );
         item->ViewByCritter = nullptr;
-        item->EventDrop( this );
-        EventDropItem( item );
+        Script::RaiseInternalEvent( ServerFunctions.CritterDropItem, this, item );
         return true;
     }
 
@@ -1662,14 +1591,9 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         item_swap->SetCritSlot( from_slot );
 
     SendAA_MoveItem( item, ACTION_MOVE_ITEM, from_slot );
-    item->EventMove( this, from_slot );
-    EventMoveItem( item, from_slot );
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, from_slot );
     if( item_swap )
-    {
-        SendAA_MoveItem( item, ACTION_MOVE_ITEM_SWAP, to_slot );
-        item->EventMove( this, to_slot );
-        EventMoveItem( item, to_slot );
-    }
+        Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item_swap, to_slot );
 
     return true;
 }
@@ -1827,642 +1751,6 @@ bool Critter::SetScript( const char* script_name, bool first_time )
         Script::RunPrepared();
     }
     return true;
-}
-
-bool Critter::PrepareScriptFunc( int num_scr_func )
-{
-    if( num_scr_func >= CRITTER_EVENT_MAX )
-        return false;
-    if( FuncId[ num_scr_func ] <= 0 )
-        return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Critter '%s', func '%s'", GetInfo(), Script::GetBindFuncName( FuncId[ num_scr_func ] ).c_str() ) );
-}
-
-void Critter::EventIdle()
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_IDLE ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::RunPrepared();
-}
-
-void Critter::EventFinish( bool deleted )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_FINISH ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgBool( deleted );
-    Script::RunPrepared();
-}
-
-void Critter::EventDead( Critter* killer )
-{
-    if( PrepareScriptFunc( CRITTER_EVENT_DEAD ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( killer );
-        Script::RunPrepared();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_DEAD ] > 0 )
-            cr->EventSmthDead( this, killer );
-    }
-}
-
-void Critter::EventRespawn()
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_RESPAWN ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::RunPrepared();
-}
-
-void Critter::EventShowCritter( Critter* cr )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_CRITTER ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Critter::EventShowCritter1( Critter* cr )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_CRITTER_1 ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Critter::EventShowCritter2( Critter* cr )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_CRITTER_2 ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Critter::EventShowCritter3( Critter* cr )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_CRITTER_3 ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Critter::EventHideCritter( Critter* cr )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_CRITTER ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Critter::EventHideCritter1( Critter* cr )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_CRITTER_1 ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Critter::EventHideCritter2( Critter* cr )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_CRITTER_2 ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Critter::EventHideCritter3( Critter* cr )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_CRITTER_3 ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Critter::EventShowItemOnMap( Item* item, bool added, Critter* dropper )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SHOW_ITEM_ON_MAP ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( item );
-    Script::SetArgBool( added );
-    Script::SetArgEntityEvent( dropper );
-    Script::RunPrepared();
-}
-
-void Critter::EventChangeItemOnMap( Item* item )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_CHANGE_ITEM_ON_MAP ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( item );
-    Script::RunPrepared();
-}
-
-void Critter::EventHideItemOnMap( Item* item, bool removed, Critter* picker )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_HIDE_ITEM_ON_MAP ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( item );
-    Script::SetArgBool( removed );
-    Script::SetArgEntityEvent( picker );
-    Script::RunPrepared();
-}
-
-bool Critter::EventAttack( Critter* target )
-{
-    bool result = false;
-    if( PrepareScriptFunc( CRITTER_EVENT_ATTACK ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( target );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_ATTACK ] > 0 )
-            cr->EventSmthAttack( this, target );
-    }
-    return result;
-}
-
-bool Critter::EventAttacked( Critter* attacker )
-{
-    bool result = false;
-    if( PrepareScriptFunc( CRITTER_EVENT_ATTACKED ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( attacker );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_ATTACKED ] > 0 )
-            cr->EventSmthAttacked( this, attacker );
-    }
-
-    if( !result && attacker )
-        Script::RaiseInternalEvent( ServerFunctions.CritterAttacked, 2, this, attacker );
-    return result;
-}
-
-bool Critter::EventStealing( Critter* thief, Item* item, uint count )
-{
-    bool success = Script::RaiseInternalEvent( ServerFunctions.CritterStealing, 4, this, thief, item, count );
-
-    if( PrepareScriptFunc( CRITTER_EVENT_STEALING ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( thief );
-        Script::SetArgBool( success );
-        Script::SetArgEntityEvent( item );
-        Script::SetArgUInt( count );
-        Script::RunPrepared();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_STEALING ] > 0 )
-            cr->EventSmthStealing( this, thief, success, item, count );
-    }
-
-    return success;
-}
-
-void Critter::EventMessage( Critter* from_cr, int num, int val )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_MESSAGE ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgUInt( num );
-    Script::SetArgUInt( val );
-    Script::RunPrepared();
-}
-
-bool Critter::EventUseItem( Item* item, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    bool result = false;
-    if( PrepareScriptFunc( CRITTER_EVENT_USE_ITEM ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( item );
-        Script::SetArgEntityEvent( on_critter );
-        Script::SetArgEntityEvent( on_item );
-        Script::SetArgEntityEvent( on_scenery );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_USE_ITEM ] > 0 )
-            cr->EventSmthUseItem( this, item, on_critter, on_item, on_scenery );
-    }
-
-    return result;
-}
-
-bool Critter::EventUseItemOnMe( Critter* who_use, Item* item )
-{
-    bool result = false;
-    if( PrepareScriptFunc( CRITTER_EVENT_USE_ITEM_ON_ME ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( who_use );
-        Script::SetArgEntityEvent( item );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-    return result;
-}
-
-bool Critter::EventUseSkill( int skill, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    bool result = false;
-    if( PrepareScriptFunc( CRITTER_EVENT_USE_SKILL ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgUInt( skill );
-        Script::SetArgEntityEvent( on_critter );
-        Script::SetArgEntityEvent( on_item );
-        Script::SetArgEntityEvent( on_scenery );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_USE_SKILL ] > 0 )
-            cr->EventSmthUseSkill( this, skill, on_critter, on_item, on_scenery );
-    }
-
-    return result;
-}
-
-bool Critter::EventUseSkillOnMe( Critter* who_use, int skill )
-{
-    bool result = false;
-    if( PrepareScriptFunc( CRITTER_EVENT_USE_SKILL_ON_ME ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( who_use );
-        Script::SetArgUInt( skill );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-    return result;
-}
-
-void Critter::EventDropItem( Item* item )
-{
-    if( PrepareScriptFunc( CRITTER_EVENT_DROP_ITEM ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( item );
-        Script::RunPrepared();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_DROP_ITEM ] > 0 )
-            cr->EventSmthDropItem( this, item );
-    }
-}
-
-void Critter::EventMoveItem( Item* item, uchar from_slot )
-{
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, 3, this, item, from_slot );
-
-    if( PrepareScriptFunc( CRITTER_EVENT_MOVE_ITEM ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( item );
-        Script::SetArgUChar( from_slot );
-        Script::RunPrepared();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_MOVE_ITEM ] > 0 )
-            cr->EventSmthMoveItem( this, item, from_slot );
-    }
-}
-
-void Critter::EventKnockout( uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist )
-{
-    if( PrepareScriptFunc( CRITTER_EVENT_KNOCKOUT ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgUInt( anim2begin );
-        Script::SetArgUInt( anim2idle );
-        Script::SetArgUInt( anim2end );
-        Script::SetArgUInt( lost_ap );
-        Script::SetArgUInt( knock_dist );
-        Script::RunPrepared();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_KNOCKOUT ] > 0 )
-            cr->EventSmthKnockout( this, anim2begin, anim2idle, anim2end, lost_ap, knock_dist );
-    }
-}
-
-void Critter::EventSmthDead( Critter* from_cr, Critter* killer )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_DEAD ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgEntityEvent( killer );
-    Script::RunPrepared();
-}
-
-void Critter::EventSmthStealing( Critter* from_cr, Critter* thief, bool success, Item* item, uint count )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_STEALING ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgEntityEvent( thief );
-    Script::SetArgBool( success );
-    Script::SetArgEntityEvent( item );
-    Script::SetArgUInt( count );
-    Script::RunPrepared();
-}
-
-void Critter::EventSmthAttack( Critter* from_cr, Critter* target )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_ATTACK ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgEntityEvent( target );
-    Script::RunPrepared();
-}
-
-void Critter::EventSmthAttacked( Critter* from_cr, Critter* attacker )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_ATTACKED ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgEntityEvent( attacker );
-    Script::RunPrepared();
-}
-
-void Critter::EventSmthUseItem( Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_USE_ITEM ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgEntityEvent( item );
-    Script::SetArgEntityEvent( on_critter );
-    Script::SetArgEntityEvent( on_item );
-    Script::SetArgEntityEvent( on_scenery );
-    Script::RunPrepared();
-}
-
-void Critter::EventSmthUseSkill( Critter* from_cr, int skill, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_USE_SKILL ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgUInt( skill );
-    Script::SetArgEntityEvent( on_critter );
-    Script::SetArgEntityEvent( on_item );
-    Script::SetArgEntityEvent( on_scenery );
-    Script::RunPrepared();
-}
-
-void Critter::EventSmthDropItem( Critter* from_cr, Item* item )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_DROP_ITEM ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgEntityEvent( item );
-    Script::RunPrepared();
-}
-
-void Critter::EventSmthMoveItem( Critter* from_cr, Item* item, uchar from_slot )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_MOVE_ITEM ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgEntityEvent( item );
-    Script::SetArgUChar( from_slot );
-    Script::RunPrepared();
-}
-
-void Critter::EventSmthKnockout( Critter* from_cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist )
-{
-    if( !PrepareScriptFunc( CRITTER_EVENT_SMTH_KNOCKOUT ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( from_cr );
-    Script::SetArgUInt( anim2begin );
-    Script::SetArgUInt( anim2idle );
-    Script::SetArgUInt( anim2end );
-    Script::SetArgUInt( lost_ap );
-    Script::SetArgUInt( knock_dist );
-    Script::RunPrepared();
-}
-
-int Critter::EventPlaneBegin( AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item )
-{
-    if( PrepareScriptFunc( CRITTER_EVENT_PLANE_BEGIN ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgPtr( plane );
-        Script::SetArgUInt( reason );
-        Script::SetArgEntityEvent( some_cr );
-        Script::SetArgEntityEvent( some_item );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return PLANE_RUN_GLOBAL;
-}
-
-int Critter::EventPlaneEnd( AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item )
-{
-    if( PrepareScriptFunc( CRITTER_EVENT_PLANE_END ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgPtr( plane );
-        Script::SetArgUInt( reason );
-        Script::SetArgEntityEvent( some_cr );
-        Script::SetArgEntityEvent( some_item );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return PLANE_RUN_GLOBAL;
-}
-
-int Critter::EventPlaneRun( AIDataPlane* plane, int reason, uint& p0, uint& p1, uint& p2 )
-{
-    if( PrepareScriptFunc( CRITTER_EVENT_PLANE_RUN ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgPtr( plane );
-        Script::SetArgUInt( reason );
-        Script::SetArgAddress( &p0 );
-        Script::SetArgAddress( &p1 );
-        Script::SetArgAddress( &p2 );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedUInt();
-    }
-    return PLANE_RUN_GLOBAL;
-}
-
-bool Critter::EventBarter( Critter* cr_barter, bool attach, uint barter_count )
-{
-    if( FuncId[ CRITTER_EVENT_BARTER ] <= 0 )
-        return true;
-    if( !PrepareScriptFunc( CRITTER_EVENT_BARTER ) )
-        return false;
-    Script::SetArgEntity( this );
-    Script::SetArgEntity( cr_barter );
-    Script::SetArgBool( attach );
-    Script::SetArgUInt( barter_count );
-    if( Script::RunPrepared() )
-        return Script::GetReturnedBool();
-    return false;
-}
-
-bool Critter::EventTalk( Critter* cr_talk, bool attach, uint talk_count )
-{
-    if( FuncId[ CRITTER_EVENT_TALK ] <= 0 )
-        return true;
-    if( !PrepareScriptFunc( CRITTER_EVENT_TALK ) )
-        return false;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr_talk );
-    Script::SetArgBool( attach );
-    Script::SetArgUInt( talk_count );
-    if( Script::RunPrepared() )
-        return Script::GetReturnedBool();
-    return false;
-}
-
-bool Critter::EventGlobalProcess( int type, Item* car, float& x, float& y, float& to_x, float& to_y, float& speed, uint& encounter_descriptor, bool& wait_for_answer )
-{
-    bool result = false;
-    if( PrepareScriptFunc( CRITTER_EVENT_GLOBAL_PROCESS ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgUInt( type );
-        Script::SetArgEntityEvent( car );
-        Script::SetArgAddress( &x );
-        Script::SetArgAddress( &y );
-        Script::SetArgAddress( &to_x );
-        Script::SetArgAddress( &to_y );
-        Script::SetArgAddress( &speed );
-        Script::SetArgAddress( &encounter_descriptor );
-        Script::SetArgAddress( &wait_for_answer );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-    return result;
-}
-
-bool Critter::EventGlobalInvite( Item* car, uint encounter_descriptor, int combat_mode, uint& map_id, ushort& hx, ushort& hy, uchar& dir )
-{
-    bool result = false;
-    if( PrepareScriptFunc( CRITTER_EVENT_GLOBAL_INVITE ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( car );
-        Script::SetArgUInt( encounter_descriptor );
-        Script::SetArgUInt( combat_mode );
-        Script::SetArgAddress( &map_id );
-        Script::SetArgAddress( &hx );
-        Script::SetArgAddress( &hy );
-        Script::SetArgAddress( &dir );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-    return result;
-}
-
-void Critter::EventTurnBasedProcess( Map* map, bool begin_turn )
-{
-    if( PrepareScriptFunc( CRITTER_EVENT_TURN_BASED_PROCESS ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( map );
-        Script::SetArgBool( begin_turn );
-        Script::RunPrepared();
-    }
-
-    CrVec crits = VisCr;
-    for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        if( cr->FuncId[ CRITTER_EVENT_SMTH_TURN_BASED_PROCESS ] > 0 )
-            cr->EventSmthTurnBasedProcess( this, map, begin_turn );
-    }
-}
-
-void Critter::EventSmthTurnBasedProcess( Critter* from_cr, Map* map, bool begin_turn )
-{
-    if( PrepareScriptFunc( CRITTER_EVENT_SMTH_TURN_BASED_PROCESS ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( from_cr );
-        Script::SetArgEntityEvent( map );
-        Script::SetArgBool( begin_turn );
-        Script::RunPrepared();
-    }
 }
 
 void Critter::Send_Property( NetProperty::Type type, Property* prop, Entity* entity )
@@ -3022,7 +2310,7 @@ void Critter::SendMessage( int num, int val, int to )
         {
             Critter* cr = *it;
             SYNC_LOCK( cr );
-            cr->EventMessage( this, num, val );
+            Script::RaiseInternalEvent( ServerFunctions.CritterMessage, cr, this, num, val );
         }
     }
     break;
@@ -3033,7 +2321,7 @@ void Critter::SendMessage( int num, int val, int to )
         {
             Critter* cr = *it;
             SYNC_LOCK( cr );
-            cr->EventMessage( this, num, val );
+            Script::RaiseInternalEvent( ServerFunctions.CritterMessage, cr, this, num, val );
         }
     }
     break;
@@ -3048,7 +2336,7 @@ void Critter::SendMessage( int num, int val, int to )
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
-            cr->EventMessage( this, num, val );
+            Script::RaiseInternalEvent( ServerFunctions.CritterMessage, cr, this, num, val );
         }
     }
     break;
@@ -5228,8 +4516,8 @@ void Client::CloseTalk()
             if( npc )
             {
                 if( Talk.Barter )
-                    npc->EventBarter( this, false, npc->GetBarterPlayers() );
-                npc->EventTalk( this, false, npc->GetTalkedPlayers() );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterBarter, npc, this, false, npc->GetBarterPlayers() );
+                Script::RaiseInternalEvent( ServerFunctions.CritterTalk, npc, this, false, npc->GetTalkedPlayers() );
             }
         }
 
@@ -5382,15 +4670,8 @@ bool Npc::AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some
         }
     }
 
-    int result = EventPlaneBegin( plane, reason, some_cr, some_item );
-    if( result == PLANE_RUN_GLOBAL )
-    {
-        if( Script::RaiseInternalEvent( ServerFunctions.NpcPlaneBegin, 5, this, plane, reason, some_cr, some_item ) )
-            result = PLANE_KEEP;
-        else
-            result = PLANE_DISCARD;
-    }
-
+    int result = PLANE_KEEP;
+    Script::RaiseInternalEvent( ServerFunctions.NpcPlaneBegin, this, plane, reason, some_cr, some_item, &result );
     if( result == PLANE_DISCARD )
     {
         plane->Release();
@@ -5437,15 +4718,8 @@ void Npc::NextPlane( int reason, Critter* some_cr, Item* some_item )
     aiPlanes.erase( aiPlanes.begin() );
     SetBestCurPlane();
 
-    int result = EventPlaneEnd( last, reason, some_cr, some_item );
-    if( result == PLANE_RUN_GLOBAL )
-    {
-        if( Script::RaiseInternalEvent( ServerFunctions.NpcPlaneEnd, 5, this, last, reason, some_cr, some_item ) )
-            result = PLANE_DISCARD;
-        else
-            result = PLANE_KEEP;
-    }
-
+    int result = PLANE_KEEP;
+    Script::RaiseInternalEvent( ServerFunctions.NpcPlaneEnd, this, last, reason, some_cr, some_item, &result );
     if( result == PLANE_KEEP )
     {
         uint place = 0;
@@ -5477,16 +4751,8 @@ bool Npc::RunPlane( int reason, uint& r0, uint& r1, uint& r2 )
 {
     AIDataPlane* cur = aiPlanes[ 0 ];
     AIDataPlane* last = aiPlanes[ 0 ]->GetCurPlane();
-
-    int          result = EventPlaneRun( last, reason, r0, r1, r2 );
-    if( result == PLANE_RUN_GLOBAL )
-    {
-        if( Script::RaiseInternalEvent( ServerFunctions.NpcPlaneRun, 6, this, last, reason, &r0, &r1, &r2 ) )
-            result = PLANE_KEEP;
-        else
-            result = PLANE_DISCARD;
-    }
-
+    int          result = PLANE_KEEP;
+    Script::RaiseInternalEvent( ServerFunctions.NpcPlaneRun, this, last, reason, &r0, &r1, &r2, &result );
     return result == PLANE_KEEP;
 }
 

@@ -186,15 +186,6 @@ struct BindClass
     static void Item_LockerOpen()          {}
     static void Item_LockerClose()         {}
 
-    static void Item_EventFinish()  {}
-    static void Item_EventAttack()  {}
-    static void Item_EventUse()     {}
-    static void Item_EventUseOnMe() {}
-    static void Item_EventSkill()   {}
-    static void Item_EventDrop()    {}
-    static void Item_EventMove()    {}
-    static void Item_EventWalk()    {}
-
     static void Crit_IsPlayer()                 {}
     static void Crit_IsNpc()                    {}
     static void Crit_IsCanWalk()                {}
@@ -206,7 +197,6 @@ struct BindClass
     static void Cl_GetAccess()                  {}
     static void Cl_SetAccess()                  {}
     static void Crit_SetLexems()                {}
-    static void Crit_SetEvent()                 {}
     static void Crit_GetMap()                   {}
     static void Cl_DropTimers()                 {}
     static void Crit_MoveRandom()               {}
@@ -308,55 +298,8 @@ struct BindClass
     static void Crit_EraseTimeEvents()    {}
     static void Crit_EraseTimeEventsArr() {}
 
-    static void Crit_EventIdle()                 {}
-    static void Crit_EventFinish()               {}
-    static void Crit_EventDead()                 {}
-    static void Crit_EventRespawn()              {}
-    static void Crit_EventShowCritter()          {}
-    static void Crit_EventShowCritter1()         {}
-    static void Crit_EventShowCritter2()         {}
-    static void Crit_EventShowCritter3()         {}
-    static void Crit_EventHideCritter()          {}
-    static void Crit_EventHideCritter1()         {}
-    static void Crit_EventHideCritter2()         {}
-    static void Crit_EventHideCritter3()         {}
-    static void Crit_EventShowItemOnMap()        {}
-    static void Crit_EventChangeItemOnMap()      {}
-    static void Crit_EventHideItemOnMap()        {}
-    static void Crit_EventAttack()               {}
-    static void Crit_EventAttacked()             {}
-    static void Crit_EventStealing()             {}
-    static void Crit_EventMessage()              {}
-    static void Crit_EventUseItem()              {}
-    static void Crit_EventUseItemOnMe()          {}
-    static void Crit_EventUseSkill()             {}
-    static void Crit_EventUseSkillOnMe()         {}
-    static void Crit_EventDropItem()             {}
-    static void Crit_EventMoveItem()             {}
-    static void Crit_EventKnockout()             {}
-    static void Crit_EventSmthDead()             {}
-    static void Crit_EventSmthStealing()         {}
-    static void Crit_EventSmthAttack()           {}
-    static void Crit_EventSmthAttacked()         {}
-    static void Crit_EventSmthUseItem()          {}
-    static void Crit_EventSmthUseSkill()         {}
-    static void Crit_EventSmthDropItem()         {}
-    static void Crit_EventSmthMoveItem()         {}
-    static void Crit_EventSmthKnockout()         {}
-    static void Crit_EventPlaneBegin()           {}
-    static void Crit_EventPlaneEnd()             {}
-    static void Crit_EventPlaneRun()             {}
-    static void Crit_EventBarter()               {}
-    static void Crit_EventTalk()                 {}
-    static void Crit_EventGlobalProcess()        {}
-    static void Crit_EventGlobalInvite()         {}
-    static void Crit_EventTurnBasedProcess()     {}
-    static void Crit_EventSmthTurnBasedProcess() {}
-
     static void Map_GetLocation()            {}
     static void Map_SetScript()              {}
-    static void Map_SetEvent()               {}
-    static void Map_SetLoopTime()            {}
     static void Map_BeginTurnBased()         {}
     static void Map_IsTurnBased()            {}
     static void Map_EndTurnBased()           {}
@@ -411,20 +354,6 @@ struct BindClass
     static void Map_MoveHexByDir()           {}
     static void Map_VerifyTrigger()          {}
 
-    static void Map_EventFinish()           {}
-    static void Map_EventLoop0()            {}
-    static void Map_EventLoop1()            {}
-    static void Map_EventLoop2()            {}
-    static void Map_EventLoop3()            {}
-    static void Map_EventLoop4()            {}
-    static void Map_EventInCritter()        {}
-    static void Map_EventOutCritter()       {}
-    static void Map_EventCritterDead()      {}
-    static void Map_EventTurnBasedBegin()   {}
-    static void Map_EventTurnBasedEnd()     {}
-    static void Map_EventTurnBasedProcess() {}
-
-    static void Location_SetEvent()      {}
     static void Location_GetMapCount()   {}
     static void Location_GetMap()        {}
     static void Location_GetMapByIndex() {}
@@ -432,9 +361,6 @@ struct BindClass
     static void Location_GetEntrance()   {}
     static void Location_GetEntrances()  {}
     static void Location_Reload()        {}
-
-    static void Location_EventFinish() {}
-    static void Location_EventEnter()  {}
 
     static void Global_GetItem()                {}
     static void Global_GetCrittersDistantion()  {}

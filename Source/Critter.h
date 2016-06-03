@@ -19,64 +19,15 @@
 # include "event2/buffer.h"
 #endif
 
-// Events
-#define CRITTER_EVENT_IDLE                       ( 0 )
-#define CRITTER_EVENT_FINISH                     ( 1 )
-#define CRITTER_EVENT_DEAD                       ( 2 )
-#define CRITTER_EVENT_RESPAWN                    ( 3 )
-#define CRITTER_EVENT_SHOW_CRITTER               ( 4 )
-#define CRITTER_EVENT_SHOW_CRITTER_1             ( 5 )
-#define CRITTER_EVENT_SHOW_CRITTER_2             ( 6 )
-#define CRITTER_EVENT_SHOW_CRITTER_3             ( 7 )
-#define CRITTER_EVENT_HIDE_CRITTER               ( 8 )
-#define CRITTER_EVENT_HIDE_CRITTER_1             ( 9 )
-#define CRITTER_EVENT_HIDE_CRITTER_2             ( 10 )
-#define CRITTER_EVENT_HIDE_CRITTER_3             ( 11 )
-#define CRITTER_EVENT_SHOW_ITEM_ON_MAP           ( 12 )
-#define CRITTER_EVENT_CHANGE_ITEM_ON_MAP         ( 13 )
-#define CRITTER_EVENT_HIDE_ITEM_ON_MAP           ( 14 )
-#define CRITTER_EVENT_ATTACK                     ( 15 )
-#define CRITTER_EVENT_ATTACKED                   ( 16 )
-#define CRITTER_EVENT_STEALING                   ( 17 )
-#define CRITTER_EVENT_MESSAGE                    ( 18 )
-#define CRITTER_EVENT_USE_ITEM                   ( 19 )
-#define CRITTER_EVENT_USE_ITEM_ON_ME             ( 20 )
-#define CRITTER_EVENT_USE_SKILL                  ( 21 )
-#define CRITTER_EVENT_USE_SKILL_ON_ME            ( 22 )
-#define CRITTER_EVENT_DROP_ITEM                  ( 23 )
-#define CRITTER_EVENT_MOVE_ITEM                  ( 24 )
-#define CRITTER_EVENT_KNOCKOUT                   ( 25 )
-#define CRITTER_EVENT_SMTH_DEAD                  ( 26 )
-#define CRITTER_EVENT_SMTH_STEALING              ( 27 )
-#define CRITTER_EVENT_SMTH_ATTACK                ( 28 )
-#define CRITTER_EVENT_SMTH_ATTACKED              ( 29 )
-#define CRITTER_EVENT_SMTH_USE_ITEM              ( 30 )
-#define CRITTER_EVENT_SMTH_USE_SKILL             ( 31 )
-#define CRITTER_EVENT_SMTH_DROP_ITEM             ( 32 )
-#define CRITTER_EVENT_SMTH_MOVE_ITEM             ( 33 )
-#define CRITTER_EVENT_SMTH_KNOCKOUT              ( 34 )
-#define CRITTER_EVENT_PLANE_BEGIN                ( 35 )
-#define CRITTER_EVENT_PLANE_END                  ( 36 )
-#define CRITTER_EVENT_PLANE_RUN                  ( 37 )
-#define CRITTER_EVENT_BARTER                     ( 38 )
-#define CRITTER_EVENT_TALK                       ( 39 )
-#define CRITTER_EVENT_GLOBAL_PROCESS             ( 40 )
-#define CRITTER_EVENT_GLOBAL_INVITE              ( 41 )
-#define CRITTER_EVENT_TURN_BASED_PROCESS         ( 42 )
-#define CRITTER_EVENT_SMTH_TURN_BASED_PROCESS    ( 43 )
-#define CRITTER_EVENT_MAX                        ( 44 )
-extern const char* CritterEventFuncName[ CRITTER_EVENT_MAX ];
-
 // Plane results
-#define PLANE_RUN_GLOBAL                         ( 0 )
-#define PLANE_KEEP                               ( 1 )
-#define PLANE_DISCARD                            ( 2 )
+#define PLANE_KEEP            ( 1 )
+#define PLANE_DISCARD         ( 2 )
 
 // Client game states
-#define STATE_NONE                               ( 0 )
-#define STATE_CONNECTED                          ( 1 )
-#define STATE_PLAYING                            ( 2 )
-#define STATE_TRANSFERRING                       ( 3 )
+#define STATE_NONE            ( 0 )
+#define STATE_CONNECTED       ( 1 )
+#define STATE_PLAYING         ( 2 )
+#define STATE_TRANSFERRING    ( 3 )
 
 class Critter;
 class Client;
@@ -316,59 +267,8 @@ public:
     ItemVec& GetInventory();
     bool     IsHaveGeckItem();
 
-    // Scripts
-protected:
-    bool PrepareScriptFunc( int num_scr_func );
-
 public:
-    uint FuncId[ CRITTER_EVENT_MAX ];
     bool SetScript( const char* script_name, bool first_time );
-
-    void EventIdle();
-    void EventFinish( bool deleted );
-    void EventDead( Critter* killer );
-    void EventRespawn();
-    void EventShowCritter( Critter* cr );
-    void EventShowCritter1( Critter* cr );
-    void EventShowCritter2( Critter* cr );
-    void EventShowCritter3( Critter* cr );
-    void EventHideCritter( Critter* cr );
-    void EventHideCritter1( Critter* cr );
-    void EventHideCritter2( Critter* cr );
-    void EventHideCritter3( Critter* cr );
-    void EventShowItemOnMap( Item* item, bool added, Critter* dropper );
-    void EventChangeItemOnMap( Item* item );
-    void EventHideItemOnMap( Item* item, bool removed, Critter* picker );
-    bool EventAttack( Critter* target );
-    bool EventAttacked( Critter* attacker );
-    bool EventStealing( Critter* thief, Item* item, uint count );
-    void EventMessage( Critter* from_cr, int num, int val );
-    bool EventUseItem( Item* item, Critter* on_critter, Item* on_item, Item* on_scenery );
-    bool EventUseItemOnMe( Critter* who_use, Item* item );
-    bool EventUseSkill( int skill, Critter* on_critter, Item* on_item, Item* on_scenery );
-    bool EventUseSkillOnMe( Critter* who_use, int skill );
-    void EventDropItem( Item* item );
-    void EventMoveItem( Item* item, uchar from_slot );
-    void EventKnockout( uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist );
-    void EventSmthDead( Critter* from_cr, Critter* killer );
-    void EventSmthStealing( Critter* from_cr, Critter* thief, bool success, Item* item, uint count );
-    void EventSmthAttack( Critter* from_cr, Critter* target );
-    void EventSmthAttacked( Critter* from_cr, Critter* attacker );
-    void EventSmthUseItem( Critter* from_cr, Item* item, Critter* on_critter, Item* on_item, Item* on_scenery );
-    void EventSmthUseSkill( Critter* from_cr, int skill, Critter* on_critter, Item* on_item, Item* on_scenery );
-    void EventSmthDropItem( Critter* from_cr, Item* item );
-    void EventSmthMoveItem( Critter* from_cr, Item* item, uchar from_slot );
-    void EventSmthKnockout( Critter* from_cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, uint knock_dist );
-    int  EventPlaneBegin( AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item );
-    int  EventPlaneEnd( AIDataPlane* plane, int reason, Critter* some_cr, Item* some_item );
-    int  EventPlaneRun( AIDataPlane* plane, int reason, uint& p0, uint& p1, uint& p2 );
-    bool EventBarter( Critter* cr_barter, bool attach, uint barter_count );
-    bool EventTalk( Critter* cr_talk, bool attach, uint talk_count );
-    bool EventGlobalProcess( int type, Item* car, float& x, float& y, float& to_x, float& to_y, float& speed, uint& encounter_descriptor, bool& wait_for_answer );
-    bool EventGlobalInvite( Item* car, uint encounter_descriptor, int combat_mode, uint& map_id, ushort& hx, ushort& hy, uchar& dir );
-    void EventTurnBasedProcess( Map* map, bool begin_turn );
-    void EventSmthTurnBasedProcess( Critter* from_cr, Map* map, bool begin_turn );
-
     // Knockout
     uint KnockoutAp;
 

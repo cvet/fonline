@@ -1056,22 +1056,13 @@ void HexManager::RebuildMap( int rx, int ry )
     mainTree.SortBySurfaces();
     mainTree.SortByMapPos();
 
-    #ifdef FONLINE_MAPPER
-    if( MapperFunctions.RenderMap && Script::PrepareContext( MapperFunctions.RenderMap, _FUNC_, "Game" ) )
-    {
-        SpritesCanDrawMap = true;
-        Script::RunPrepared();
-        SpritesCanDrawMap = false;
-    }
-    #endif
+    SpritesCanDrawMap = true;
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( ClientFunctions.RenderMap, _FUNC_, "Game" ) )
-    {
-        SpritesCanDrawMap = true;
-        Script::RunPrepared();
-        SpritesCanDrawMap = false;
-    }
+    Script::RaiseInternalEvent( ClientFunctions.RenderMap );
+    #else // FONLINE_MAPPER
+    Script::RaiseInternalEvent( MapperFunctions.RenderMap );
     #endif
+    SpritesCanDrawMap = false;
 
     screenHexX = rx;
     screenHexY = ry;

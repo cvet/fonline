@@ -178,11 +178,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
         {
             // Script specific
             uint pass_base = 0;
-            #ifdef FONLINE_CLIENT
-            while( Script::PrepareContext( ClientFunctions.CritterAnimation, _FUNC_, "Anim" ) )
-            #else // FONLINE_MAPPER
-            while( Script::PrepareContext( MapperFunctions.CritterAnimation, _FUNC_, "Anim" ) )
-            #endif
+            while( true )
             {
                 #define ANIM_FLAG_FIRST_FRAME    ( 0x01 )
                 #define ANIM_FLAG_LAST_FRAME     ( 0x02 )
@@ -190,14 +186,11 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                 uint pass = pass_base;
                 uint flags = 0;
                 int ox = 0, oy = 0;
-                Script::SetArgUInt( model_name );
-                Script::SetArgUInt( anim1 );
-                Script::SetArgUInt( anim2 );
-                Script::SetArgAddress( &pass );
-                Script::SetArgAddress( &flags );
-                Script::SetArgAddress( &ox );
-                Script::SetArgAddress( &oy );
-                if( Script::RunPrepared() )
+                #ifdef FONLINE_CLIENT
+                if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy ) )
+                #else // FONLINE_MAPPER
+                if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy ) )
+                #endif
                 {
                     ScriptString* str = (ScriptString*) Script::GetReturnedObject();
                     if( str )
@@ -280,21 +273,15 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
 
         // Find substitute animation
         hash base_model_name = model_name;
+        hash model_name_ = model_name;
+        uint anim1_ = anim1, anim2_ = anim2;
         #ifdef FONLINE_CLIENT
-        if( !anim && Script::PrepareContext( ClientFunctions.CritterAnimationSubstitute, _FUNC_, "Anim" ) )
+        if( !anim && Script::RaiseInternalEvent( ClientFunctions.CritterAnimationSubstitute, base_model_name, anim1_base, anim2_base, &model_name, &anim1, &anim2 ) )
         #else // FONLINE_MAPPER
-        if( !anim && Script::PrepareContext( MapperFunctions.CritterAnimationSubstitute, _FUNC_, "Anim" ) )
+        if( !anim && Script::RaiseInternalEvent( MapperFunctions.CritterAnimationSubstitute, base_model_name, anim1_base, anim2_base, &model_name, &anim1, &anim2 ) )
         #endif
         {
-            hash model_name_ = model_name;
-            uint anim1_ = anim1, anim2_ = anim2;
-            Script::SetArgUInt( base_model_name );
-            Script::SetArgUInt( anim1_base );
-            Script::SetArgUInt( anim2_base );
-            Script::SetArgAddress( &model_name );
-            Script::SetArgAddress( &anim1 );
-            Script::SetArgAddress( &anim2 );
-            if( Script::RunPrepared() && ( model_name_ != model_name || anim1 != anim1_ || anim2 != anim2_ ) )
+            if( model_name_ != model_name || anim1 != anim1_ || anim2 != anim2_ )
                 continue;
         }
 
@@ -320,96 +307,87 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
 AnyFrames* ResourceManager::LoadFalloutAnim( hash model_name, uint anim1, uint anim2 )
 {
     // Convert from common to fallout specific
+    uint anim1ex = 0, anim2ex = 0, flags = 0;
     #ifdef FONLINE_CLIENT
-    if( Script::PrepareContext( ClientFunctions.CritterAnimationFallout, _FUNC_, "Anim" ) )
+    if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimationFallout, model_name, &anim1, &anim2, &anim1ex, &anim2ex, &flags ) )
     #else // FONLINE_MAPPER
-    if( Script::PrepareContext( MapperFunctions.CritterAnimationFallout, _FUNC_, "Anim" ) )
+    if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimationFallout, model_name, &anim1, &anim2, &anim1ex, &anim2ex, &flags ) )
     #endif
     {
-        uint anim1ex = 0, anim2ex = 0, flags = 0;
-        Script::SetArgUInt( model_name );
-        Script::SetArgAddress( &anim1 );
-        Script::SetArgAddress( &anim2 );
-        Script::SetArgAddress( &anim1ex );
-        Script::SetArgAddress( &anim2ex );
-        Script::SetArgAddress( &flags );
-        if( Script::RunPrepared() && Script::GetReturnedBool() )
+        // Load
+        AnyFrames* anim = LoadFalloutAnimSpr( model_name, anim1, anim2 );
+        if( !anim )
+            return nullptr;
+
+        // Merge
+        if( anim1ex && anim2ex )
         {
-            // Load
-            AnyFrames* anim = LoadFalloutAnimSpr( model_name, anim1, anim2 );
-            if( !anim )
+            AnyFrames* animex = LoadFalloutAnimSpr( model_name, anim1ex, anim2ex );
+            if( !animex )
                 return nullptr;
 
-            // Merge
-            if( anim1ex && anim2ex )
+            AnyFrames* anim_merge_base = AnyFrames::Create( anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks );
+            for( int d = 0; d < anim->DirCount(); d++ )
             {
-                AnyFrames* animex = LoadFalloutAnimSpr( model_name, anim1ex, anim2ex );
-                if( !animex )
-                    return nullptr;
-
-                AnyFrames* anim_merge_base = AnyFrames::Create( anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks );
-                for( int d = 0; d < anim->DirCount(); d++ )
+                if( d == 1 )
+                    anim_merge_base->CreateDirAnims();
+                AnyFrames* anim_merge = anim_merge_base->GetDir( d );
+                AnyFrames* anim_ = anim->GetDir( d );
+                AnyFrames* animex_ = animex->GetDir( d );
+                memcpy( anim_merge->Ind, anim_->Ind, anim_->CntFrm * sizeof( uint ) );
+                memcpy( anim_merge->NextX, anim_->NextX, anim_->CntFrm * sizeof( short ) );
+                memcpy( anim_merge->NextY, anim_->NextY, anim_->CntFrm * sizeof( short ) );
+                memcpy( anim_merge->Ind + anim_->CntFrm, animex_->Ind, animex_->CntFrm * sizeof( uint ) );
+                memcpy( anim_merge->NextX + anim_->CntFrm, animex_->NextX, animex_->CntFrm * sizeof( short ) );
+                memcpy( anim_merge->NextY + anim_->CntFrm, animex_->NextY, animex_->CntFrm * sizeof( short ) );
+                short ox = 0, oy = 0;
+                for( uint i = 0; i < anim_->CntFrm; i++ )
                 {
-                    if( d == 1 )
-                        anim_merge_base->CreateDirAnims();
-                    AnyFrames* anim_merge = anim_merge_base->GetDir( d );
-                    AnyFrames* anim_ = anim->GetDir( d );
-                    AnyFrames* animex_ = animex->GetDir( d );
-                    memcpy( anim_merge->Ind, anim_->Ind, anim_->CntFrm * sizeof( uint ) );
-                    memcpy( anim_merge->NextX, anim_->NextX, anim_->CntFrm * sizeof( short ) );
-                    memcpy( anim_merge->NextY, anim_->NextY, anim_->CntFrm * sizeof( short ) );
-                    memcpy( anim_merge->Ind + anim_->CntFrm, animex_->Ind, animex_->CntFrm * sizeof( uint ) );
-                    memcpy( anim_merge->NextX + anim_->CntFrm, animex_->NextX, animex_->CntFrm * sizeof( short ) );
-                    memcpy( anim_merge->NextY + anim_->CntFrm, animex_->NextY, animex_->CntFrm * sizeof( short ) );
-                    short ox = 0, oy = 0;
-                    for( uint i = 0; i < anim_->CntFrm; i++ )
-                    {
-                        ox += anim_->NextX[ i ];
-                        oy += anim_->NextY[ i ];
-                    }
-                    anim_merge->NextX[ anim_->CntFrm ] -= ox;
-                    anim_merge->NextY[ anim_->CntFrm ] -= oy;
+                    ox += anim_->NextX[ i ];
+                    oy += anim_->NextY[ i ];
                 }
-                return anim_merge_base;
+                anim_merge->NextX[ anim_->CntFrm ] -= ox;
+                anim_merge->NextY[ anim_->CntFrm ] -= oy;
             }
+            return anim_merge_base;
+        }
 
-            // Clone
-            if( anim )
+        // Clone
+        if( anim )
+        {
+            AnyFrames* anim_clone_base = AnyFrames::Create( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) ? anim->CntFrm : 1, anim->Ticks );
+            for( int d = 0; d < anim->DirCount(); d++ )
             {
-                AnyFrames* anim_clone_base = AnyFrames::Create( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) ? anim->CntFrm : 1, anim->Ticks );
-                for( int d = 0; d < anim->DirCount(); d++ )
+                if( d == 1 )
+                    anim_clone_base->CreateDirAnims();
+                AnyFrames* anim_clone = anim_clone_base->GetDir( d );
+                AnyFrames* anim_ = anim->GetDir( d );
+                if( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) )
                 {
-                    if( d == 1 )
-                        anim_clone_base->CreateDirAnims();
-                    AnyFrames* anim_clone = anim_clone_base->GetDir( d );
-                    AnyFrames* anim_ = anim->GetDir( d );
-                    if( !FLAG( flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME ) )
-                    {
-                        memcpy( anim_clone->Ind, anim_->Ind, anim_->CntFrm * sizeof( uint ) );
-                        memcpy( anim_clone->NextX, anim_->NextX, anim_->CntFrm * sizeof( short ) );
-                        memcpy( anim_clone->NextY, anim_->NextY, anim_->CntFrm * sizeof( short ) );
-                    }
-                    else
-                    {
-                        anim_clone->Ind[ 0 ] = anim_->Ind[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
-                        anim_clone->NextX[ 0 ] = anim_->NextX[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
-                        anim_clone->NextY[ 0 ] = anim_->NextY[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
+                    memcpy( anim_clone->Ind, anim_->Ind, anim_->CntFrm * sizeof( uint ) );
+                    memcpy( anim_clone->NextX, anim_->NextX, anim_->CntFrm * sizeof( short ) );
+                    memcpy( anim_clone->NextY, anim_->NextY, anim_->CntFrm * sizeof( short ) );
+                }
+                else
+                {
+                    anim_clone->Ind[ 0 ] = anim_->Ind[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
+                    anim_clone->NextX[ 0 ] = anim_->NextX[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
+                    anim_clone->NextY[ 0 ] = anim_->NextY[ FLAG( flags, ANIM_FLAG_FIRST_FRAME ) ? 0 : anim_->CntFrm - 1 ];
 
-                        // Append offsets
-                        if( FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
+                    // Append offsets
+                    if( FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
+                    {
+                        for( uint i = 0; i < anim_->CntFrm - 1; i++ )
                         {
-                            for( uint i = 0; i < anim_->CntFrm - 1; i++ )
-                            {
-                                anim_clone->NextX[ 0 ] += anim_->NextX[ i ];
-                                anim_clone->NextY[ 0 ] += anim_->NextY[ i ];
-                            }
+                            anim_clone->NextX[ 0 ] += anim_->NextX[ i ];
+                            anim_clone->NextY[ 0 ] += anim_->NextY[ i ];
                         }
                     }
                 }
-                return anim_clone_base;
             }
-            return nullptr;
+            return anim_clone_base;
         }
+        return nullptr;
     }
     return nullptr;
 }

@@ -10,18 +10,6 @@
 # include "AI.h"
 #endif
 
-const char* ItemEventFuncName[ ITEM_EVENT_MAX ] =
-{
-    "void %s(Item&,bool)",                             // ITEM_EVENT_FINISH
-    "bool %s(Item&,Critter&,Critter&)",                // ITEM_EVENT_ATTACK
-    "bool %s(Item&,Critter&,Critter@,Item@,Item@)",    // ITEM_EVENT_USE
-    "bool %s(Item&,Critter&,Item@)",                   // ITEM_EVENT_USE_ON_ME
-    "bool %s(Item&,Critter&,CritterProperty)",         // ITEM_EVENT_SKILL
-    "void %s(Item&,Critter&)",                         // ITEM_EVENT_DROP
-    "void %s(Item&,Critter&,uint8)",                   // ITEM_EVENT_MOVE
-    "void %s(Item&,Critter&,bool,uint8)",              // ITEM_EVENT_WALK
-};
-
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Type );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Grid_Type );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicMap );
@@ -236,7 +224,6 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
     ViewPlaceOnMap = false;
 
     #ifdef FONLINE_SERVER
-    memzero( FuncId, sizeof( FuncId ) );
     SceneryScriptBindId = 0;
     ViewByCritter = nullptr;
     #endif
@@ -344,113 +331,6 @@ bool Item::SetScript( const char* script_name, bool first_time )
         Script::RunPrepared();
     }
     return true;
-}
-
-bool Item::PrepareScriptFunc( int num_scr_func )
-{
-    if( num_scr_func >= ITEM_EVENT_MAX )
-        return false;
-    if( !FuncId[ num_scr_func ] )
-        return false;
-    return Script::PrepareContext( FuncId[ num_scr_func ], _FUNC_, Str::FormatBuf( "Item '%s' (%u)", GetName(), GetId() ) );
-}
-
-void Item::EventFinish( bool deleted )
-{
-    if( PrepareScriptFunc( ITEM_EVENT_FINISH ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgBool( deleted );
-        Script::RunPrepared();
-    }
-}
-
-bool Item::EventAttack( Critter* cr, Critter* target )
-{
-    bool result = false;
-    if( PrepareScriptFunc( ITEM_EVENT_ATTACK ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( cr );
-        Script::SetArgEntityEvent( target );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-    return result;
-}
-
-bool Item::EventUse( Critter* cr, Critter* on_critter, Item* on_item, Item* on_scenery )
-{
-    bool result = false;
-    if( PrepareScriptFunc( ITEM_EVENT_USE ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( cr );
-        Script::SetArgEntityEvent( on_critter );
-        Script::SetArgEntityEvent( on_item );
-        Script::SetArgEntityEvent( on_scenery );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-    return result;
-}
-
-bool Item::EventUseOnMe( Critter* cr, Item* used_item )
-{
-    bool result = false;
-    if( PrepareScriptFunc( ITEM_EVENT_USE_ON_ME ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( cr );
-        Script::SetArgEntityEvent( used_item );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-    return result;
-}
-
-bool Item::EventSkill( Critter* cr, int skill )
-{
-    bool result = false;
-    if( PrepareScriptFunc( ITEM_EVENT_SKILL ) )
-    {
-        Script::SetArgEntityEvent( this );
-        Script::SetArgEntityEvent( cr );
-        Script::SetArgUInt( skill );
-        if( Script::RunPrepared() )
-            result = Script::GetReturnedBool();
-    }
-    return result;
-}
-
-void Item::EventDrop( Critter* cr )
-{
-    if( !PrepareScriptFunc( ITEM_EVENT_DROP ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::RunPrepared();
-}
-
-void Item::EventMove( Critter* cr, uchar from_slot )
-{
-    if( !PrepareScriptFunc( ITEM_EVENT_MOVE ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );
-    Script::SetArgUChar( from_slot );
-    Script::RunPrepared();
-}
-
-void Item::EventWalk( Critter* cr, bool entered, uchar dir )
-{
-    if( !PrepareScriptFunc( ITEM_EVENT_WALK ) )
-        return;
-    Script::SetArgEntityEvent( this );
-    Script::SetArgEntityEvent( cr );   // Saved in Act_Move
-    Script::SetArgBool( entered );
-    Script::SetArgUChar( dir );
-    Script::RunPrepared();
 }
 #endif // FONLINE_SERVER
 

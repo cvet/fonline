@@ -243,8 +243,7 @@ void FOServer::RemoveClient( Client* cl )
     Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : nullptr );
     if( cl_ && cl_ == cl )
     {
-        cl->EventFinish( cl->GetClientToDelete() );
-        Script::RaiseInternalEvent( ServerFunctions.CritterFinish, 2, cl, cl->GetClientToDelete() );
+        Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cl, cl->GetClientToDelete() );
 
         if( cl->GetMapId() )
         {
@@ -672,7 +671,7 @@ void FOServer::Logic_Work( void* data )
             if( game_loop_tick && Timer::FastTick() >= game_loop_tick )
             {
                 uint wait = 3600000;               // 1hour
-                Script::RaiseInternalEvent( ServerFunctions.Loop, 1, &wait );
+                Script::RaiseInternalEvent( ServerFunctions.Loop, &wait );
                 if( !wait )
                     game_loop_tick = 0;            // Disable
                 else
@@ -1978,7 +1977,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     buf >> cmd;
 
     ScriptString* sstr = ( cl_ ? nullptr : ScriptString::Create( admin_panel ) );
-    bool          allow_command = Script::RaiseInternalEvent( ServerFunctions.PlayerAllowCommand, 3, cl_, sstr, cmd );
+    bool          allow_command = Script::RaiseInternalEvent( ServerFunctions.PlayerAllowCommand, cl_, sstr, cmd );
     if( sstr )
         sstr->Release();
 
@@ -2309,7 +2308,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         if( wanted_access != -1 )
         {
             ScriptString* pass = ScriptString::Create( pasw_access );
-            allow = Script::RaiseInternalEvent( ServerFunctions.PlayerGetAccess, 3, cl_, wanted_access, pass );
+            allow = Script::RaiseInternalEvent( ServerFunctions.PlayerGetAccess, cl_, wanted_access, pass );
             pass->Release();
         }
 
@@ -3165,7 +3164,7 @@ void FOServer::InitGameTime()
 {
     if( !GameOpt.TimeMultiplier )
     {
-        Script::RaiseInternalEvent( ServerFunctions.GetStartTime, 6, &GameOpt.TimeMultiplier, &GameOpt.YearStart,
+        Script::RaiseInternalEvent( ServerFunctions.GetStartTime, &GameOpt.TimeMultiplier, &GameOpt.YearStart,
                                     &GameOpt.Month, &GameOpt.Day, &GameOpt.Hour, &GameOpt.Minute );
         GameOpt.YearStart = CLAMP( GameOpt.YearStart, 1700, 30000 );
         GameOpt.Year = GameOpt.YearStart;
@@ -3334,7 +3333,7 @@ bool FOServer::InitReal()
         return false;
 
     // Initialization script
-    if( !Script::RaiseInternalEvent( ServerFunctions.Init, 0 ) )
+    if( !Script::RaiseInternalEvent( ServerFunctions.Init ) )
     {
         WriteLog( "Initialization script return false.\n" );
         return false;
@@ -4117,7 +4116,7 @@ bool FOServer::NewWorld()
         return false;
 
     // Start script
-    if( !Script::RaiseInternalEvent( ServerFunctions.Start, 0 ) )
+    if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
     {
         WriteLogF( _FUNC_, " - Start script fail.\n" );
         shutdown( ListenSock, SD_BOTH );
@@ -4147,7 +4146,7 @@ void FOServer::SaveWorld( const char* fname )
     // Script callback
     SaveWorldDeleteIndexes.clear();
     ScriptArray* delete_indexes = Script::CreateArray( "uint[]" );
-    if( Script::RaiseInternalEvent( ServerFunctions.WorldSave, 2, SaveWorldIndex + 1, delete_indexes ) )
+    if( Script::RaiseInternalEvent( ServerFunctions.WorldSave, SaveWorldIndex + 1, delete_indexes ) )
         Script::AssignScriptArrayInVector( SaveWorldDeleteIndexes, delete_indexes );
     delete_indexes->Release();
 
@@ -4245,7 +4244,7 @@ bool FOServer::LoadWorld( const char* fname )
         return false;
 
     // Start script
-    if( !Script::RaiseInternalEvent( ServerFunctions.Start, 0 ) )
+    if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
     {
         WriteLogF( _FUNC_, " - Start script fail.\n" );
         shutdown( ListenSock, SD_BOTH );
@@ -4259,7 +4258,7 @@ bool FOServer::LoadWorld( const char* fname )
 void FOServer::UnloadWorld()
 {
     // End script
-    Script::RaiseInternalEvent( ServerFunctions.Finish, 0 );
+    Script::RaiseInternalEvent( ServerFunctions.Finish );
 
     // Delete critter and map jobs
     Job::Erase( JOB_CRITTER );

@@ -124,33 +124,26 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
     // Default result
     Item::ClearItems( result );
 
-    // Prepare to call
-    if( Script::PrepareContext( ClientFunctions.ItemsCollection, _FUNC_, "Game" ) )
-    {
-        // Create script array
-        ScriptArray* arr = Script::CreateArray( "Item@[]" );
-        RUNTIME_ASSERT( arr );
+    // Create script array
+    ScriptArray* arr = Script::CreateArray( "Item@[]" );
+    RUNTIME_ASSERT( arr );
 
-        // Copy to script array
-        ItemVec items_clone = init_items;
-        for( size_t i = 0; i < items_clone.size(); i++ )
-            items_clone[ i ] = items_clone[ i ]->Clone();
-        Script::AppendVectorToArray( items_clone, arr );
+    // Copy to script array
+    ItemVec items_clone = init_items;
+    for( size_t i = 0; i < items_clone.size(); i++ )
+        items_clone[ i ] = items_clone[ i ]->Clone();
+    Script::AppendVectorToArray( items_clone, arr );
 
-        // Call
-        Script::SetArgUInt( collection );
-        Script::SetArgObject( arr );
-        if( Script::RunPrepared() )
-        {
-            // Copy from script to std array
-            Script::AssignScriptArrayInVector( result, arr );
-            for( auto it = result.begin(), end = result.end(); it != end; ++it )
-                ( *it )->AddRef();
-        }
+    // Call
+    Script::RaiseInternalEvent( ClientFunctions.ItemsCollection, collection, arr );
 
-        // Release array
-        arr->Release();
-    }
+    // Copy from script to std array
+    Script::AssignScriptArrayInVector( result, arr );
+    for( auto it = result.begin(), end = result.end(); it != end; ++it )
+        ( *it )->AddRef();
+
+    // Release array
+    arr->Release();
 }
 
 // ==============================================================================================================================
@@ -219,13 +212,7 @@ void FOClient::GameDraw()
 void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
 {
     ScriptString* text = ScriptString::Create( msg );
-    if( Script::PrepareContext( ClientFunctions.MessageBox, _FUNC_, "Game" ) )
-    {
-        Script::SetArgAddress( text );
-        Script::SetArgUInt( mess_type );
-        Script::SetArgBool( script_call );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.MessageBox, text, mess_type, script_call );
     text->Release();
 }
 
@@ -403,8 +390,7 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
         break;
     }
 
-    if( Script::PrepareContext( ClientFunctions.ContainerChanged, _FUNC_, "Game" ) )
-        Script::RunPrepared();
+    Script::RaiseInternalEvent( ClientFunctions.ContainerChanged );
 }
 
 void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell )
@@ -659,17 +645,10 @@ int FOClient::GetActiveScreen( IntVec** screens /* = NULL */ )
     static IntVec active_screens;
     active_screens.clear();
 
-    if( Script::PrepareContext( ClientFunctions.GetActiveScreens, _FUNC_, "Game" ) )
-    {
-        ScriptArray* arr = Script::CreateArray( "int[]" );
-        if( arr )
-        {
-            Script::SetArgObject( arr );
-            if( Script::RunPrepared() )
-                Script::AssignScriptArrayInVector( active_screens, arr );
-            arr->Release();
-        }
-    }
+    ScriptArray* arr = Script::CreateArray( "int[]" );
+    Script::RaiseInternalEvent( ClientFunctions.GetActiveScreens, arr );
+    Script::AssignScriptArrayInVector( active_screens, arr );
+    arr->Release();
 
     if( screens )
         *screens = &active_screens;
@@ -712,13 +691,7 @@ void FOClient::HideScreen( int screen )
 
 void FOClient::RunScreenScript( bool show, int screen, ScriptDictionary* params )
 {
-    if( Script::PrepareContext( ClientFunctions.ScreenChange, _FUNC_, "Game" ) )
-    {
-        Script::SetArgBool( show );
-        Script::SetArgUInt( screen );
-        Script::SetArgObject( params );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( ClientFunctions.ScreenChange, show, screen, params );
 }
 
 // ==============================================================================================================================

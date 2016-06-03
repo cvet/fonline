@@ -16,9 +16,8 @@ void CritterManager::DeleteNpc( Critter* cr )
         return;
     cr->IsDestroying = true;
 
-    // Finish events
-    cr->EventFinish( true );
-    Script::RaiseInternalEvent( ServerFunctions.CritterFinish, 2, cr, true );
+    // Finish event
+    Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cr, true );
 
     // Tear off from environment
     cr->LockMapTransfers++;
@@ -167,7 +166,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
 
     map->AddCritter( npc );
 
-    Script::RaiseInternalEvent( ServerFunctions.CritterInit, 2, npc, true );
+    Script::RaiseInternalEvent( ServerFunctions.CritterInit, npc, true );
     npc->SetScript( nullptr, true );
     map->AddCritterEvents( npc );
 

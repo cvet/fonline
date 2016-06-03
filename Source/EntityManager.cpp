@@ -513,7 +513,7 @@ void EntityManager::InitAfterLoad()
             Npc* npc = (Npc*) entity;
             npc->NextRefreshBagTick = Timer::GameTick() + GameOpt.BagRefreshTime * 60 * 1000;
             npc->RefreshName();
-            Script::RaiseInternalEvent( ServerFunctions.CritterInit, 2, npc, false );
+            Script::RaiseInternalEvent( ServerFunctions.CritterInit, npc, false );
             if( !npc->IsDestroyed && npc->GetScriptId() )
                 npc->SetScript( nullptr, false );
         }
@@ -541,16 +541,12 @@ void EntityManager::FinishEntities()
         if( entity->Type == EntityType::Item )
         {
             Item* item = (Item*) entity;
-
-            item->EventFinish( false );
+            Script::RaiseInternalEvent( ServerFunctions.ItemFinish, item, false );
         }
         else if( entity->Type == EntityType::Npc || entity->Type == EntityType::Client )
         {
             Critter* cr = (Critter*) entity;
-
-            cr->EventFinish( false );
-            if( !cr->IsDestroyed )
-                Script::RaiseInternalEvent( ServerFunctions.CritterFinish, 2, cr, false );
+            Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cr, false );
 
 //                      if( entity->Type == EntityType::Client )
 //                      {
@@ -558,7 +554,7 @@ void EntityManager::FinishEntities()
 //                              bool    to_delete = cl->Data.ClientToDelete;
 //
 //                              cr->EventFinish( to_delete );
-//                              Script::RaiseInternalEvent(ServerFunctions.CritterFinish, 2, cr, to_delete);
+//                              Script::RaiseInternalEvent(ServerFunctions.CritterFinish, cr, to_delete);
 //
 //                              if( to_delete )
 //                              {
@@ -570,13 +566,11 @@ void EntityManager::FinishEntities()
         else if( entity->Type == EntityType::Location )
         {
             Location* loc = (Location*) entity;
-
             MapVec    maps;
             loc->GetMaps( maps, false );
-
-            loc->EventFinish( false );
+            Script::RaiseInternalEvent( ServerFunctions.LocationFinish, loc, false );
             for( auto it_ = maps.begin(); it_ != maps.end() && !loc->IsDestroyed; ++it_ )
-                ( *it_ )->EventFinish( false );
+                Script::RaiseInternalEvent( ServerFunctions.MapFinish, *it_, false );
         }
     }
 

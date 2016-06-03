@@ -699,8 +699,7 @@ void FOMapper::ParseKeyboard()
         MainWindowKeyboardEventsText.clear();
         Keyb::Lost();
         IntHold = INT_NONE;
-        if( MapperFunctions.InputLost && Script::PrepareContext( MapperFunctions.InputLost, _FUNC_, "Mapper" ) )
-            Script::RunPrepared();
+        Script::RaiseInternalEvent( MapperFunctions.InputLost );
         return;
     }
 
@@ -743,22 +742,17 @@ void FOMapper::ParseKeyboard()
 
         // Key script event
         bool script_result = false;
-        if( dikdw && MapperFunctions.KeyDown && Script::PrepareContext( MapperFunctions.KeyDown, _FUNC_, "Mapper" ) )
+        if( dikdw )
         {
             ScriptString* event_text_script = ScriptString::Create( event_text );
-            Script::SetArgUChar( dikdw );
-            Script::SetArgObject( event_text_script );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
+            script_result = Script::RaiseInternalEvent( MapperFunctions.KeyDown, dikdw, event_text_script );
+            script_result = Script::GetReturnedBool();
             event_text_script->Release();
         }
-        if( dikup && MapperFunctions.KeyUp && Script::PrepareContext( MapperFunctions.KeyUp, _FUNC_, "Mapper" ) )
+        if( dikup )
         {
             ScriptString* event_text_script = ScriptString::Create( event_text );
-            Script::SetArgUChar( dikup );
-            Script::SetArgObject( event_text_script );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
+            script_result = Script::RaiseInternalEvent( MapperFunctions.KeyUp, dikup, event_text_script );
             event_text_script->Release();
         }
 
@@ -1088,8 +1082,7 @@ void FOMapper::ParseMouse()
     {
         MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
-        if( MapperFunctions.InputLost && Script::PrepareContext( MapperFunctions.InputLost, _FUNC_, "Mapper" ) )
-            Script::RunPrepared();
+        Script::RaiseInternalEvent( MapperFunctions.InputLost );
         return;
     }
 
@@ -1104,12 +1097,7 @@ void FOMapper::ParseMouse()
 
         IntMouseMove();
 
-        if( MapperFunctions.MouseMove && Script::PrepareContext( MapperFunctions.MouseMove, _FUNC_, "Mapper" ) )
-        {
-            Script::SetArgUInt( GameOpt.MouseX );
-            Script::SetArgUInt( GameOpt.MouseY );
-            Script::RunPrepared();
-        }
+        Script::RaiseInternalEvent( MapperFunctions.MouseMove, GameOpt.MouseX, GameOpt.MouseY );
     }
 
     // Mouse Scroll
@@ -1151,109 +1139,40 @@ void FOMapper::ParseMouse()
 
         // Scripts
         bool script_result = false;
-        if( event == SDL_MOUSEWHEEL && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_LEFT );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_LEFT );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_RIGHT );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_RIGHT );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_MIDDLE );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_MIDDLE );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 4 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT0 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 4 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT0 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 5 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT1 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 5 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT1 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 6 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT2 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 6 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT2 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 7 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT3 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 7 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT3 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 8 ) && Script::PrepareContext( MapperFunctions.MouseDown, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT4 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 8 ) && Script::PrepareContext( MapperFunctions.MouseUp, _FUNC_, "Game" ) )
-        {
-            Script::SetArgUInt( MOUSE_BUTTON_EXT4 );
-            if( Script::RunPrepared() )
-                script_result = Script::GetReturnedBool();
-        }
-
+        if( event == SDL_MOUSEWHEEL )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN );
+        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_LEFT );
+        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_LEFT );
+        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_RIGHT );
+        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_RIGHT );
+        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_MIDDLE );
+        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_MIDDLE );
+        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 4 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_EXT0 );
+        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 4 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_EXT0 );
+        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 5 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_EXT1 );
+        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 5 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_EXT1 );
+        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 6 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_EXT2 );
+        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 6 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_EXT2 );
+        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 7 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_EXT3 );
+        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 7 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_EXT3 );
+        if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON( 8 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_EXT4 );
+        if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 8 ) )
+            script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_EXT4 );
         if( script_result || GameOpt.DisableMouseEvents )
             continue;
 
@@ -1452,8 +1371,7 @@ void FOMapper::MainLoop()
     if( MapperFunctions.Loop && Timer::FastTick() >= next_call )
     {
         uint wait_tick = 60000;
-        if( Script::PrepareContext( MapperFunctions.Loop, _FUNC_, "Mapper" ) && Script::RunPrepared() )
-            wait_tick = Script::GetReturnedUInt();
+        Script::RaiseInternalEvent( MapperFunctions.Loop, &wait_tick );
         next_call = Timer::FastTick() + wait_tick;
     }
 
@@ -2228,19 +2146,18 @@ Entity* FOMapper::GetInspectorEntity()
     InspectorEntity = entity;
     ShowProps.clear();
 
-    if( entity && Script::PrepareContext( MapperFunctions.InspectorProperties, _FUNC_, "Mapper" ) )
+    if( entity )
     {
         ScriptArray* arr = Script::CreateArray( "int[]" );
         RUNTIME_ASSERT( arr );
-        Script::SetArgEntityOK( entity );
-        Script::SetArgObject( arr );
-        if( Script::RunPrepared() )
-        {
-            IntVec enum_values;
-            Script::AssignScriptArrayInVector( enum_values, arr );
-            for( auto enum_value : enum_values )
-                ShowProps.push_back( enum_value ? entity->Props.FindByEnum( enum_value ) : nullptr );
-        }
+
+        Script::RaiseInternalEvent( MapperFunctions.InspectorProperties, entity, arr );
+
+        IntVec enum_values;
+        Script::AssignScriptArrayInVector( enum_values, arr );
+        for( auto enum_value : enum_values )
+            ShowProps.push_back( enum_value ? entity->Props.FindByEnum( enum_value ) : nullptr );
+
         arr->Release();
     }
 
@@ -4044,15 +3961,10 @@ void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
 
                 // Process command
                 bool process_command = true;
-                if( MapperFunctions.ConsoleMessage && Script::PrepareContext( MapperFunctions.ConsoleMessage, _FUNC_, "Mapper" ) )
-                {
-                    ScriptString* sstr = ScriptString::Create( ConsoleStr );
-                    Script::SetArgObject( sstr );
-                    if( Script::RunPrepared() && Script::GetReturnedBool() )
-                        process_command = false;
-                    ConsoleStr = sstr->c_std_str();
-                    sstr->Release();
-                }
+                ScriptString* sstr = ScriptString::Create( ConsoleStr );
+                process_command = Script::RaiseInternalEvent( MapperFunctions.ConsoleMessage, sstr );
+                ConsoleStr = sstr->c_std_str();
+                sstr->Release();
 
                 AddMess( ConsoleStr.c_str() );
                 if( process_command )
@@ -4480,7 +4392,7 @@ bool FOMapper::InitScriptSystem()
     asIScriptEngine* engine = Script::GetEngine();
     #define BIND_MAPPER
     #define BIND_CLASS    FOMapper::SScriptFunc::
-    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); errors++; }
+    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); errors++; }
     int errors = 0;
     #include <ScriptBind.h>
     if( errors )
@@ -4494,33 +4406,26 @@ bool FOMapper::InitScriptSystem()
     Script::ReloadScripts( "Mapper", "MAPPER_" );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
-    // Bind game functions
-    /*ReservedScriptFunction BindGameFunc[] =
-       {
-        { &MapperFunctions.Start, "start", "void %s()" },
-        { &MapperFunctions.Finish, "finish", "void %s()" },
-        { &MapperFunctions.Loop, "loop", "uint %s()" },
-        { &MapperFunctions.ConsoleMessage, "console_message", "bool %s(string&)" },
-        { &MapperFunctions.RenderIface, "render_iface", "void %s(uint)" },
-        { &MapperFunctions.RenderMap, "render_map", "void %s()" },
-        { &MapperFunctions.MouseDown, "mouse_down", "bool %s(int)" },
-        { &MapperFunctions.MouseUp, "mouse_up", "bool %s(int)" },
-        { &MapperFunctions.MouseMove, "mouse_move", "void %s(int,int)" },
-        { &MapperFunctions.KeyDown, "key_down", "bool %s(uint8,string&)" },
-        { &MapperFunctions.KeyUp, "key_up", "bool %s(uint8,string&)" },
-        { &MapperFunctions.InputLost, "input_lost", "void %s()" },
-        { &MapperFunctions.CritterAnimation, "critter_animation", "string@ %s(hash,uint,uint,uint&,uint&,int&,int&)" },
-        { &MapperFunctions.CritterAnimationSubstitute, "critter_animation_substitute", "bool %s(hash,uint,uint,hash&,uint&,uint&)" },
-        { &MapperFunctions.CritterAnimationFallout, "critter_animation_fallout", "bool %s(hash,uint&,uint&,uint&,uint&,uint&)" },
-        { &MapperFunctions.MapLoad, "map_load", "void %s(MapperMap&)" },
-        { &MapperFunctions.MapSave, "map_save", "void %s(MapperMap&)" },
-        { &MapperFunctions.InspectorProperties, "inspector_properties", "void %s(Entity&, int[]&)" },
-       };
-       if( !Script::BindReservedFunctions( BindGameFunc, sizeof( BindGameFunc ) / sizeof( BindGameFunc[ 0 ] ) ) )
-       {
-        WriteLog( "Bind reserved functions fail.\n" );
-        return false;
-       }*/
+    #define BIND_INTERNAL_EVENT( name )    MapperFunctions. ## name = Script::FindInternalEvent( # name )
+    BIND_INTERNAL_EVENT( Start );
+    BIND_INTERNAL_EVENT( Finish );
+    BIND_INTERNAL_EVENT( Loop );
+    BIND_INTERNAL_EVENT( ConsoleMessage );
+    BIND_INTERNAL_EVENT( RenderIface );
+    BIND_INTERNAL_EVENT( RenderMap );
+    BIND_INTERNAL_EVENT( MouseDown );
+    BIND_INTERNAL_EVENT( MouseUp );
+    BIND_INTERNAL_EVENT( MouseMove );
+    BIND_INTERNAL_EVENT( KeyDown );
+    BIND_INTERNAL_EVENT( KeyUp );
+    BIND_INTERNAL_EVENT( InputLost );
+    BIND_INTERNAL_EVENT( CritterAnimation );
+    BIND_INTERNAL_EVENT( CritterAnimationSubstitute );
+    BIND_INTERNAL_EVENT( CritterAnimationFallout );
+    BIND_INTERNAL_EVENT( MapLoad );
+    BIND_INTERNAL_EVENT( MapSave );
+    BIND_INTERNAL_EVENT( InspectorProperties );
+    #undef BIND_INTERNAL_EVENT
 
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     SAFEDEL( Globals );
@@ -4548,8 +4453,7 @@ void FOMapper::FinishScriptSystem()
 
 void FOMapper::RunStartScript()
 {
-    if( MapperFunctions.Start && Script::PrepareContext( MapperFunctions.Start, _FUNC_, "Mapper" ) )
-        Script::RunPrepared();
+    Script::RaiseInternalEvent( MapperFunctions.Start );
 }
 
 void FOMapper::RunMapLoadScript( ProtoMap* pmap )
@@ -4557,11 +4461,7 @@ void FOMapper::RunMapLoadScript( ProtoMap* pmap )
     if( !pmap )
         return;
 
-    if( MapperFunctions.MapLoad && Script::PrepareContext( MapperFunctions.MapLoad, _FUNC_, "Mapper " ) )
-    {
-        Script::SetArgPtr( pmap );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( MapperFunctions.MapLoad, pmap );
 }
 
 void FOMapper::RunMapSaveScript( ProtoMap* pmap )
@@ -4569,22 +4469,15 @@ void FOMapper::RunMapSaveScript( ProtoMap* pmap )
     if( !pmap )
         return;
 
-    if( MapperFunctions.MapSave && Script::PrepareContext( MapperFunctions.MapSave, _FUNC_, "Mapper " ) )
-    {
-        Script::SetArgPtr( pmap );
-        Script::RunPrepared();
-    }
+    Script::RaiseInternalEvent( MapperFunctions.MapSave, pmap );
 }
 
 void FOMapper::DrawIfaceLayer( uint layer )
 {
-    if( MapperFunctions.RenderIface && Script::PrepareContext( MapperFunctions.RenderIface, _FUNC_, "Mapper" ) )
-    {
-        SpritesCanDraw = true;
-        Script::SetArgUInt( layer );
-        Script::RunPrepared();
-        SpritesCanDraw = false;
-    }
+    SpritesCanDraw = true;
+    Script::SetArgUInt( layer );
+    Script::RaiseInternalEvent( MapperFunctions.RenderIface, layer );
+    SpritesCanDraw = false;
 }
 
 Item* FOMapper::SScriptFunc::Item_AddChild( Item& item, hash pid )
