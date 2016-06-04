@@ -122,24 +122,6 @@ bool FOClient::Init()
 {
     WriteLog( "Engine initialization...\n" );
 
-    // Check the sizes of base types
-    STATIC_ASSERT( sizeof( char ) == 1 );
-    STATIC_ASSERT( sizeof( short ) == 2 );
-    STATIC_ASSERT( sizeof( int ) == 4 );
-    STATIC_ASSERT( sizeof( int64 ) == 8 );
-    STATIC_ASSERT( sizeof( uchar ) == 1 );
-    STATIC_ASSERT( sizeof( ushort ) == 2 );
-    STATIC_ASSERT( sizeof( uint ) == 4 );
-    STATIC_ASSERT( sizeof( uint64 ) == 8 );
-    STATIC_ASSERT( sizeof( bool ) == 1 );
-    #if defined ( FO_X86 )
-    STATIC_ASSERT( sizeof( size_t ) == 4 );
-    STATIC_ASSERT( sizeof( void* ) == 4 );
-    #elif defined ( FO_X64 )
-    STATIC_ASSERT( sizeof( size_t ) == 8 );
-    STATIC_ASSERT( sizeof( void* ) == 8 );
-    #endif
-
     GET_UID0( UID0 );
     UID_PREPARE_UID4_0;
 
@@ -7750,14 +7732,13 @@ bool FOClient::ReloadScripts()
         errors++;
     Script::CacheEnumValues();
 
-    #define BIND_INTERNAL_EVENT( name )    ClientFunctions. ## name = Script::FindInternalEvent( # name )
+    #define BIND_INTERNAL_EVENT( name )    ClientFunctions. ## name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( GetActiveScreens );
     BIND_INTERNAL_EVENT( ScreenChange );
     BIND_INTERNAL_EVENT( RenderIface );
-    BIND_INTERNAL_EVENT( RenderIfaceScreen );
     BIND_INTERNAL_EVENT( RenderMap );
     BIND_INTERNAL_EVENT( MouseDown );
     BIND_INTERNAL_EVENT( MouseUp );
@@ -7779,12 +7760,9 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( InMessage );
     BIND_INTERNAL_EVENT( OutMessage );
     BIND_INTERNAL_EVENT( MessageBox );
-    BIND_INTERNAL_EVENT( ToHit );
     BIND_INTERNAL_EVENT( HitAim );
     BIND_INTERNAL_EVENT( CombatResult );
-    BIND_INTERNAL_EVENT( GetElevator );
     BIND_INTERNAL_EVENT( ItemCheckMove );
-    BIND_INTERNAL_EVENT( GetTimeouts );
     BIND_INTERNAL_EVENT( CritterAction );
     BIND_INTERNAL_EVENT( Animation2dProcess );
     BIND_INTERNAL_EVENT( Animation3dProcess );
@@ -7793,8 +7771,8 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( CritterAnimationSubstitute );
     BIND_INTERNAL_EVENT( CritterAnimationFallout );
     BIND_INTERNAL_EVENT( CritterCheckMoveItem );
-    BIND_INTERNAL_EVENT( GetUseApCost );
-    BIND_INTERNAL_EVENT( GetAttackDistantion );
+    BIND_INTERNAL_EVENT( CritterGetUseApCost );
+    BIND_INTERNAL_EVENT( CritterGetAttackDistantion );
     BIND_INTERNAL_EVENT( CheckInterfaceHit );
     BIND_INTERNAL_EVENT( GetContItem );
     #undef BIND_INTERNAL_EVENT

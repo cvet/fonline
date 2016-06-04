@@ -878,39 +878,50 @@ public:
 };
 
 // #pragma event MyEvent (Critter&, int, bool)
-// #pragma event MyEvent (Who: Critter@, Damage: int, FirstTime: bool)
-// __MyEvent.SubscribeToWho( cr, func )
-// __MyEvent.SubscribeToDamage( 100, func )
-// __MyEvent.SubscribeToFirstTime( true, func )
 class EventPragma
 {
     class ScriptEvent
     {
-        typedef vector< asIScriptFunction* >     FuncVec;
-        typedef map< asIScriptObject*, FuncVec > ObjFuncMap;
-        typedef map< uint64, FuncVec >           PodFuncMap;
+        typedef vector< asIScriptFunction* > FuncVec;
+        typedef map< uint64, FuncVec >       FuncMap;
 
-        mutable int refCount;
-        FuncVec     callbacks;
-        ObjFuncMap  objCallbacks;
-        PodFuncMap  podCallbacks;
+        struct ArgInfo
+        {
+            bool    IsObject;
+            bool    IsPodRef;
+            uint    PodSize;
+            FuncMap Callbacks;
+        };
+
+        mutable int       refCount;
+        FuncVec           callbacks;
+        vector< ArgInfo > argInfos;
 
 public:
         string Name;
 
-        ScriptEvent()
+        ScriptEvent( asIScriptFunction* func_def )
         {
             refCount = 1;
+
+            argInfos.resize( func_def->GetParamCount() );
+            for( asUINT i = 0; i < func_def->GetParamCount(); i++ )
+            {
+                int         type_id;
+                asDWORD     flags;
+                const char* name;
+                func_def->GetParam( i, &type_id, &flags, &name );
+
+                ArgInfo& arg_info = argInfos[ i ];
+                arg_info.IsObject = ( type_id & asTYPEID_MASK_OBJECT ) != 0;
+                arg_info.IsPodRef = ( type_id >= asTYPEID_BOOL && type_id <= asTYPEID_DOUBLE && flags & asTM_INOUTREF );
+                arg_info.PodSize = Script::GetEngine()->GetSizeOfPrimitiveType( type_id );
+            }
         }
 
         ~ScriptEvent()
         {
             UnsubscribeAll();
-        }
-
-        static ScriptEvent* Factory()
-        {
-            return new ScriptEvent();
         }
 
         void AddRef() const
@@ -927,22 +938,9 @@ public:
         void Subscribe( asIScriptFunction* callback )
         {
             Unsubscribe( callback );
-            callbacks.push_back( callback );
-            callback->AddRef();
-        }
 
-        void SubscribeFirst( asIScriptFunction* callback )
-        {
-            Unsubscribe( callback );
-            callbacks.insert( callbacks.begin(), callback );
             callback->AddRef();
-        }
-
-        void SubscribeTo( asIScriptFunction* callback, void* ptr, int type_id )
-        {
-            Unsubscribe( callback );
             callbacks.push_back( callback );
-            callback->AddRef();
         }
 
         void Unsubscribe( asIScriptFunction* callback )
@@ -955,41 +953,150 @@ public:
             }
         }
 
+        static void SubscribeTo( asIScriptGeneric* gen )
+        {
+            UnsubscribeFrom( gen );
+
+            int          arg_index = *(int*) gen->GetAuxiliary();
+            ScriptEvent* event = (ScriptEvent*) gen->GetObject();
+            ArgInfo&     arg_info = event->argInfos[ arg_index ];
+
+            uint64       value = 0;
+            if( arg_info.IsObject )
+                value = (uint64) gen->GetArgObject( 0 );
+            else if( arg_info.IsPodRef )
+                memcpy( &value, gen->GetArgAddress( 0 ), arg_info.PodSize );
+            else
+                memcpy( &value, gen->GetAddressOfArg( 0 ), arg_info.PodSize );
+
+            auto it = arg_info.Callbacks.find( value );
+            if( it == arg_info.Callbacks.end() )
+                it = arg_info.Callbacks.insert( PAIR( value, FuncVec() ) ).first;
+
+            asIScriptFunction* callback = (asIScriptFunction*) gen->GetArgObject( 1 );
+            callback->AddRef();
+            it->second.push_back( callback );
+        }
+
+        static void UnsubscribeFrom( asIScriptGeneric* gen )
+        {
+            int                arg_index = *(int*) gen->GetAuxiliary();
+            ScriptEvent*       event = (ScriptEvent*) gen->GetObject();
+            ArgInfo&           arg_info = event->argInfos[ arg_index ];
+            asIScriptFunction* callback = (asIScriptFunction*) gen->GetArgObject( 1 );
+
+            uint64             value = 0;
+            if( arg_info.IsObject )
+                value = (uint64) gen->GetArgObject( 0 );
+            else if( arg_info.IsPodRef )
+                memcpy( &value, gen->GetArgAddress( 0 ), arg_info.PodSize );
+            else
+                memcpy( &value, gen->GetAddressOfArg( 0 ), arg_info.PodSize );
+
+            auto it = arg_info.Callbacks.find( value );
+            if( it != arg_info.Callbacks.end() )
+            {
+                auto it_ = std::find( it->second.begin(), it->second.end(), callback );
+                if( it_ != it->second.end() )
+                {
+                    callback->Release();
+                    if( it->second.size() > 1 )
+                        it->second.erase( it_ );
+                    else
+                        arg_info.Callbacks.erase( it );
+                }
+            }
+        }
+
         void UnsubscribeAll()
         {
+            for( auto arg_info : argInfos )
+            {
+                for( auto arg_callbacks : arg_info.Callbacks )
+                    for( auto arg_callback : arg_callbacks.second )
+                        arg_callback->Release();
+                arg_info.Callbacks.clear();
+            }
             for( asIScriptFunction* callback : callbacks )
                 callback->Release();
             callbacks.clear();
         }
 
-        static void Raise( asIScriptGeneric* gen )
+        static void RaiseScript( asIScriptGeneric* gen )
         {
-            *(bool*) gen->GetAddressOfReturnLocation() = RaiseImpl( gen->GetObject(), gen, nullptr );
+            ScriptEvent* event = (ScriptEvent*) gen->GetObject();
+            *(bool*) gen->GetAddressOfReturnLocation() = event->RaiseImpl( gen, nullptr );
         }
 
         static bool RaiseInternal( void* event_ptr, va_list args )
         {
-            return RaiseImpl( event_ptr, nullptr, args );
+            ScriptEvent* event = (ScriptEvent*) event_ptr;
+            return event->RaiseImpl( nullptr, args );
         }
 
-        static bool RaiseImpl( void* event_ptr, asIScriptGeneric* gen_args, va_list va_args )
+        bool RaiseImpl( asIScriptGeneric* gen_args, va_list va_args )
         {
-            ScriptEvent* event = (ScriptEvent*) event_ptr;
-            if( event->callbacks.empty() )
-                return false;
+            if( callbacks.empty() )
+                return true;
 
-            auto callbacks_copy = event->callbacks;
-            for( asIScriptFunction* callback : callbacks_copy )
+            auto    callbacks_to_call = callbacks;
+            va_list va_args_copy;
+            va_copy( va_args_copy, va_args );
+            #define GET_ARG( type )            ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
+            for( size_t i = 0; i < argInfos.size(); i++ )
+            {
+                const ArgInfo& arg_info = argInfos[ i ];
+
+                uint64         value = 0;
+                if( arg_info.IsObject )
+                    memcpy( &value, &GET_ARG( void* ), sizeof( void* ) );
+                else if( arg_info.IsPodRef )
+                    memcpy( &value, &GET_ARG( void* ), arg_info.PodSize );
+                else if( arg_info.PodSize == 1 )
+                    memcpy( &value, &GET_ARG( uchar ), arg_info.PodSize );
+                else if( arg_info.PodSize == 2 )
+                    memcpy( &value, &GET_ARG( ushort ), arg_info.PodSize );
+                else if( arg_info.PodSize == 4 )
+                    memcpy( &value, &GET_ARG( uint ), arg_info.PodSize );
+                else if( arg_info.PodSize == 8 )
+                    memcpy( &value, &GET_ARG( uint64 ), arg_info.PodSize );
+                else
+                    RUNTIME_ASSERT( !"Unreachable place" );
+
+                auto it = arg_info.Callbacks.find( value );
+                if( it != arg_info.Callbacks.end() )
+                    callbacks_to_call.insert( callbacks_to_call.end(), it->second.begin(), it->second.end() );
+            }
+            #undef GET_ARG
+
+            for( asIScriptFunction* callback : callbacks_to_call )
             {
                 uint bind_id = Script::BindByFunc( callback, false );
                 RUNTIME_ASSERT( bind_id );
                 if( Script::PrepareContext( bind_id, _FUNC_, "Event" ) )
                 {
-                    // for( size_t i = 0; i < args.size(); i++ )
-                    // {
-                    //    void* arg = (gen_args ? gen_args->GetAddressOfArg(i) : va_arg(va_args, void*));
-                    //    Script::SetArgAddress( arg );
-                    // }
+                    va_list va_args_copy;
+                    va_copy( va_args_copy, va_args );
+                    #define GET_ARG( type )    ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
+                    for( size_t i = 0; i < argInfos.size(); i++ )
+                    {
+                        const ArgInfo& arg_info = argInfos[ i ];
+                        if( arg_info.IsObject )
+                            Script::SetArgObject( GET_ARG( void* ) );
+                        else if( arg_info.IsPodRef )
+                            Script::SetArgAddress( GET_ARG( void* ) );
+                        else if( arg_info.PodSize == 1 )
+                            Script::SetArgUChar( GET_ARG( uchar ) );
+                        else if( arg_info.PodSize == 2 )
+                            Script::SetArgUShort( GET_ARG( ushort ) );
+                        else if( arg_info.PodSize == 4 )
+                            Script::SetArgUInt( GET_ARG( uint ) );
+                        else if( arg_info.PodSize == 8 )
+                            Script::SetArgUInt64( GET_ARG( uint64 ) );
+                        else
+                            RUNTIME_ASSERT( !"Unreachable place" );
+                    }
+                    #undef GET_ARG
 
                     if( Script::RunPrepared() )
                     {
@@ -1023,42 +1130,71 @@ public:
 
     bool Call( const string& text )
     {
-        istrstream str( text.c_str() );
-        char       event_name[ MAX_FOTEXT ];
-        str >> event_name;
-        if( str.fail() )
+        size_t args_begin = text.find_first_of( '(' );
+        size_t args_end = text.find_first_of( ')' );
+        if( args_begin == string::npos || args_end == string::npos || args_begin > args_end )
         {
             WriteLog( "Unable to parse 'event' pragma '%s'.\n", text.c_str() );
             return false;
         }
 
-        char arg_types[ MAX_FOTEXT ];
-        str.getline( arg_types, MAX_FOTEXT );
-        Str::Trim( arg_types );
-        Str::EraseChars( arg_types, '(' );
-        Str::EraseChars( arg_types, ')' );
+        char event_name[ MAX_FOTEXT ];
+        Str::Copy( event_name, text.substr( 0, args_begin ).c_str() );
+        Str::Trim( event_name );
+        if( Str::Length( event_name ) == 0 )
+        {
+            WriteLog( "Unable to parse 'event' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
 
         char args[ MAX_FOTEXT ];
-        Str::Copy( args, arg_types );
+        Str::Copy( args, text.substr( args_begin + 1, args_end - args_begin - 1 ).c_str() );
+        Str::Trim( args );
 
         char             buf[ MAX_FOTEXT ];
         asIScriptEngine* engine = Script::GetEngine();
-        if( engine->RegisterFuncdef( Str::Format( buf, "void %sFunc(%s)", event_name, args ) ) < 0 ||
+        int func_def_id;
+        if( ( func_def_id = engine->RegisterFuncdef( Str::Format( buf, "void %sFunc(%s)", event_name, args ) ) ) < 0 ||
             engine->RegisterFuncdef( Str::Format( buf, "bool %sFuncBool(%s)", event_name, args ) ) < 0 ||
             engine->RegisterObjectType( event_name, 0, asOBJ_REF ) < 0 ||
             engine->RegisterObjectBehaviour( event_name, asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptEvent, AddRef ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectBehaviour( event_name, asBEHAVE_RELEASE, "void f()", asMETHOD( ScriptEvent, Release ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFunc@)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeFirst(%sFunc@)", event_name ), asMETHOD( ScriptEvent, SubscribeFirst ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeFirst(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, SubscribeFirst ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFunc@)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", asMETHOD( ScriptEvent, UnsubscribeAll ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::RaiseScript ), asCALL_GENERIC ) < 0 )
             return false;
 
-        ScriptEvent* result = new ScriptEvent();
+        asIScriptFunction* func_def = engine->GetFunctionById( func_def_id );
+        for( asUINT i = 0; i < func_def->GetParamCount(); i++ )
+        {
+            int type_id;
+            asDWORD flags;
+            const char* name;
+            func_def->GetParam( i, &type_id, &flags, &name );
+
+            if( name && Str::Length( name ) > 0 )
+            {
+                char arg_type[ MAX_FOTEXT ];
+                Str::Copy( arg_type, engine->GetTypeDeclaration( type_id ) );
+                if( flags & asTM_INOUTREF )
+                    Str::Append( arg_type, "&" );
+
+                char arg_name[ MAX_FOTEXT ];
+                Str::Copy( arg_name, name );
+                arg_name[ 0 ] = toupper( arg_name[ 0 ] );
+
+                if( engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeTo%s(%s, %sFunc@)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeTo%s(%s, %sFuncBool@)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void UnsubscribeFrom%s(%s, %sFunc@)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void UnsubscribeFrom%s(%s, %sFuncBool@)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
+                    return false;
+            }
+        }
+
+        ScriptEvent* result = new ScriptEvent( func_def );
         result->Name = event_name;
         if( engine->RegisterGlobalProperty( Str::Format( buf, "%s __%s", event_name, event_name ), result ) < 0 )
             return false;
@@ -1072,6 +1208,7 @@ public:
         for( ScriptEvent* event : events )
             if( event->Name == event_name )
                 return event;
+        RUNTIME_ASSERT_STR( false, event_name );
         return nullptr;
     }
 

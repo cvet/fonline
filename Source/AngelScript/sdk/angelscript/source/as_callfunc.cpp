@@ -156,8 +156,11 @@ int DetectCallingConvention(bool isMethod, const asSFuncPtr &ptr, int callConv, 
 			internal->callConv = ICC_CDECL_OBJLAST;
 		else if( base == asCALL_CDECL_OBJFIRST )
 			internal->callConv = ICC_CDECL_OBJFIRST;
-		else if( base == asCALL_GENERIC )
+		else if (base == asCALL_GENERIC)
+		{
 			internal->callConv = ICC_GENERIC_METHOD;
+			internal->auxiliary = auxiliary;
+		}
 		else
 			return asNOT_SUPPORTED;
 	}

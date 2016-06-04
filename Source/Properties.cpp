@@ -502,7 +502,7 @@ void Property::GenericSet( Entity* entity, void* new_value )
         {
             if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
             {
-                Script::SetArgEntityOK( entity );
+                Script::SetArgObject( entity );
                 if( setCallbacksArgs[ i ] > 1 )
                 {
                     Script::SetArgUInt( enumValue );

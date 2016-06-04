@@ -501,7 +501,7 @@ uint CritterCl::GetUseApCost( Item* item, uchar rate )
 {
     uint ap_cost = 1;
     #ifdef FONLINE_CLIENT
-    Script::RaiseInternalEvent( ClientFunctions.GetUseApCost, this, item, rate, &ap_cost );
+    Script::RaiseInternalEvent( ClientFunctions.CritterGetUseApCost, this, item, rate, &ap_cost );
     #endif
     return ap_cost;
 }
@@ -515,7 +515,7 @@ uint CritterCl::GetAttackDist()
 
     uint dist = 0;
     #ifdef FONLINE_CLIENT
-    Script::RaiseInternalEvent( ClientFunctions.GetAttackDistantion, this, weap, use, &dist );
+    Script::RaiseInternalEvent( ClientFunctions.CritterGetAttackDistantion, this, weap, use, &dist );
     #endif
     return dist;
 }

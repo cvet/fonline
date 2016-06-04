@@ -1123,7 +1123,7 @@ void FOServer::KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, ui
     }
 
     cr->ToKnockout( anim2begin, anim2idle, anim2end, lost_ap, knock_hx, knock_hy );
-    Script::RaiseInternalEvent( ServerFunctions.CritterKnockout, cr, anim2begin, anim2idle, anim2end, lost_ap, DistGame( x1, y1, x2, y2 ) );
+    Script::RaiseInternalEvent( ServerFunctions.CritterKnockout, cr, lost_ap, DistGame( x1, y1, x2, y2 ) );
 }
 
 bool FOServer::MoveRandom( Critter* cr )

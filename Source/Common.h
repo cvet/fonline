@@ -281,7 +281,6 @@ struct ClientScriptFunctions
     void* GetActiveScreens;
     void* ScreenChange;
     void* RenderIface;
-    void* RenderIfaceScreen;
     void* RenderMap;
     void* MouseDown;
     void* MouseUp;
@@ -303,12 +302,9 @@ struct ClientScriptFunctions
     void* InMessage;
     void* OutMessage;
     void* MessageBox;
-    void* ToHit;
     void* HitAim;
     void* CombatResult;
-    void* GetElevator;
     void* ItemCheckMove;
-    void* GetTimeouts;
     void* CritterAction;
     void* Animation2dProcess;
     void* Animation3dProcess;
@@ -317,8 +313,8 @@ struct ClientScriptFunctions
     void* CritterAnimationSubstitute;
     void* CritterAnimationFallout;
     void* CritterCheckMoveItem;
-    void* GetUseApCost;
-    void* GetAttackDistantion;
+    void* CritterGetUseApCost;
+    void* CritterGetAttackDistantion;
     void* CheckInterfaceHit;
     void* GetContItem;
 } extern ClientFunctions;
