@@ -9,6 +9,7 @@ BIND_ASSERT( engine->SetEngineProperty( asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true 
 BIND_ASSERT( engine->SetEngineProperty( asEP_PRIVATE_PROP_AS_PROTECTED, true ) );
 BIND_ASSERT( engine->SetEngineProperty( asEP_REQUIRE_ENUM_SCOPE, true ) );
 // BIND_ASSERT( engine->SetEngineProperty( asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true ) );
+// BIND_ASSERT( engine->SetEngineProperty( asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true ) );
 
 BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
 // Todo: register new type with automating string - number convertation, exclude GetStrHash

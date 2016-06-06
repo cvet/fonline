@@ -1013,6 +1013,8 @@ int FOClient::MainLoop()
     }
     else if( IsMainScreen( SCREEN_GAME ) && HexMngr.IsMapLoaded() )
     {
+        if( HexMngr.Scroll() )
+            LookBordersPrepare();
         CrittersProcess();
         HexMngr.ProcessItems();
         HexMngr.ProcessRain();
