@@ -901,7 +901,7 @@ public:
 
         string               Name;
         mutable int          RefCount;
-        bool                 Deffered;
+        bool                 Deferred;
         FuncVec              Callbacks;
         ArgInfoVec           ArgInfos;
         EntityFuncRefMulMap* EntityCallbacks;
@@ -1105,7 +1105,7 @@ public:
                     }
                     #undef GET_ARG
 
-                    if( !Deffered )
+                    if( !Deferred )
                     {
                         if( Script::RunPrepared() )
                         {
@@ -1222,7 +1222,7 @@ public:
 
         char options[ MAX_FOTEXT ];
         Str::Copy( options, text.substr( args_end + 1 ).c_str() );
-        event->Deffered = Str::Substring( options, "[deffered]" ) != nullptr;
+        event->Deferred = Str::Substring( options, "[deferred]" ) != nullptr;
 
         if( engine->RegisterGlobalProperty( Str::Format( buf, "%s __%s", event_name, event_name ), event ) < 0 )
             return false;
