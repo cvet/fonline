@@ -1222,7 +1222,7 @@ public:
 
         char options[ MAX_FOTEXT ];
         Str::Copy( options, text.substr( args_end + 1 ).c_str() );
-        event->Deferred = Str::Substring( options, "[deferred]" ) != nullptr;
+        event->Deferred = Str::Substring( options, "deferred" ) != nullptr;
 
         if( engine->RegisterGlobalProperty( Str::Format( buf, "%s __%s", event_name, event_name ), event ) < 0 )
             return false;
