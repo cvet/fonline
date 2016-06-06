@@ -321,6 +321,7 @@ void FOServer::RemoveClient( Client* cl )
     else
     {
         cl->IsDestroyed = true;
+        Script::RemoveEventsEntity( cl );
     }
 }
 

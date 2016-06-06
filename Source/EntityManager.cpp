@@ -32,6 +32,8 @@ void EntityManager::UnregisterEntity( Entity* entity )
     RUNTIME_ASSERT( it != allEntities.end() );
     allEntities.erase( it );
     entitiesCount[ (int) entity->Type ]--;
+
+    Script::RemoveEventsEntity( entity );
 }
 
 Entity* EntityManager::GetEntity( uint id, EntityType type )
@@ -582,6 +584,7 @@ void EntityManager::ClearEntities()
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
         it->second->IsDestroyed = true;
+        Script::RemoveEventsEntity( it->second );
         entitiesCount[ (int) it->second->Type ]--;
         SAFEREL( it->second );
     }

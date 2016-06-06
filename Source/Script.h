@@ -77,6 +77,7 @@ public:
 
     static void* FindInternalEvent( const char* event_name );
     static bool  RaiseInternalEvent( void* event_ptr, ... );
+    static void  RemoveEventsEntity( Entity* entity );
 
     static const char* GetActiveModuleName();
     static const char* GetActiveFuncName();

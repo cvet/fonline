@@ -5549,19 +5549,6 @@ void FOClient::SetGameColor( uint color )
     HexMngr.RefreshMap();
 }
 
-bool FOClient::IsCurInInterface( int x, int y )
-{
-    return Script::RaiseInternalEvent( ClientFunctions.CheckInterfaceHit, x, y );
-}
-
-bool FOClient::GetCurHex( ushort& hx, ushort& hy, bool ignore_interface )
-{
-    hx = hy = 0;
-    if( !ignore_interface && IsCurInInterface( GameOpt.MouseX, GameOpt.MouseY ) )
-        return false;
-    return HexMngr.GetHexPixel( GameOpt.MouseX, GameOpt.MouseY, hx, hy );
-}
-
 bool FOClient::RegCheckData()
 {
     // Name
@@ -6122,18 +6109,6 @@ label_EndMove:
         bool is_attack = ( target_type == TARGET_CRITTER && is_main_item && item->IsWeapon() && use < MAX_USES );
         bool is_reload = ( target_type == TARGET_SELF_ITEM && use == USE_RELOAD && item->IsWeapon() );
         bool is_self = ( target_type == TARGET_SELF || target_type == TARGET_SELF_ITEM );
-
-        // Aim overriding
-        if( is_attack )
-        {
-            uchar new_aim = aim;
-            Script::RaiseInternalEvent( ClientFunctions.HitAim, &new_aim );
-            if( new_aim != aim )
-            {
-                aim = new_aim;
-                rate = MAKE_ITEM_MODE( use, aim );
-            }
-        }
 
         // Calculate ap cost
         int ap_cost = Chosen->GetUseApCost( item, rate );
@@ -7760,7 +7735,6 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( InMessage );
     BIND_INTERNAL_EVENT( OutMessage );
     BIND_INTERNAL_EVENT( MessageBox );
-    BIND_INTERNAL_EVENT( HitAim );
     BIND_INTERNAL_EVENT( CombatResult );
     BIND_INTERNAL_EVENT( ItemCheckMove );
     BIND_INTERNAL_EVENT( CritterAction );
@@ -7773,8 +7747,6 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( CritterCheckMoveItem );
     BIND_INTERNAL_EVENT( CritterGetUseApCost );
     BIND_INTERNAL_EVENT( CritterGetAttackDistantion );
-    BIND_INTERNAL_EVENT( CheckInterfaceHit );
-    BIND_INTERNAL_EVENT( GetContItem );
     #undef BIND_INTERNAL_EVENT
 
     if( errors )
@@ -9862,14 +9834,14 @@ bool FOClient::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int&
     return false;
 }
 
-bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface )
+bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy )
 {
-    ushort hx_, hy_;
-    int    old_x = GameOpt.MouseX;
-    int    old_y = GameOpt.MouseY;
+    int old_x = GameOpt.MouseX;
+    int old_y = GameOpt.MouseY;
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
-    bool result = Self->GetCurHex( hx_, hy_, ignore_interface );
+    ushort hx_ = 0, hy_ = 0;
+    bool   result = Self->HexMngr.GetHexPixel( x, y, hx_, hy_ );
     GameOpt.MouseX = old_x;
     GameOpt.MouseY = old_y;
     if( result )
@@ -9881,28 +9853,19 @@ bool FOClient::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, usho
     return false;
 }
 
-Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y, bool ignore_interface )
+Item* FOClient::SScriptFunc::Global_GetMonitorItem( int x, int y )
 {
-    if( !ignore_interface && Self->IsCurInInterface( x, y ) )
-        return nullptr;
-
     bool item_egg;
     return Self->HexMngr.GetItemPixel( x, y, item_egg );
 }
 
-CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter( int x, int y, bool ignore_interface )
+CritterCl* FOClient::SScriptFunc::Global_GetMonitorCritter( int x, int y )
 {
-    if( !ignore_interface && Self->IsCurInInterface( x, y ) )
-        return nullptr;
-
     return Self->HexMngr.GetCritterPixel( x, y, false );
 }
 
-Entity* FOClient::SScriptFunc::Global_GetMonitorEntity( int x, int y, bool ignore_interface )
+Entity* FOClient::SScriptFunc::Global_GetMonitorEntity( int x, int y )
 {
-    if( !ignore_interface && Self->IsCurInInterface( x, y ) )
-        return nullptr;
-
     ItemHex*   item;
     CritterCl* cr;
     Self->HexMngr.GetSmthPixel( x, y, item, cr );

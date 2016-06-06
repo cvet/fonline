@@ -514,10 +514,10 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScript(string& funcN
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, dictionary@+ params = null)", asFUNCTION( BIND_CLASS Global_ShowScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen = 0)", asFUNCTION( BIND_CLASS Global_HideScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetMonitorItem(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorItem ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetMonitorCritter(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorCritter ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "Entity@+ GetMonitorEntity(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorEntity ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetMonitorItem(int x, int y)", asFUNCTION( BIND_CLASS Global_GetMonitorItem ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetMonitorCritter(int x, int y)", asFUNCTION( BIND_CLASS Global_GetMonitorCritter ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "Entity@+ GetMonitorEntity(int x, int y)", asFUNCTION( BIND_CLASS Global_GetMonitorEntity ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapWidth()", asFUNCTION( BIND_CLASS Global_GetMapWidth ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapHeight()", asFUNCTION( BIND_CLASS Global_GetMapHeight ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );

@@ -1969,6 +1969,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         #endif
 
         cl->IsDestroyed = true;
+        Script::RemoveEventsEntity( cl );
         cl_old->IsDestroyed = false;
 
         #if defined ( USE_LIBEVENT )

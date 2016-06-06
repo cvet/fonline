@@ -465,6 +465,7 @@ void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, Item
     if( destroy_item )
     {
         item->IsDestroyed = true;
+        Script::RemoveEventsEntity( item );
         item->Release();
     }
 }
@@ -2538,6 +2539,7 @@ void HexManager::DeleteCritter( uint crid )
     RemoveCritter( cr );
     cr->DeleteAllItems();
     cr->IsDestroyed = true;
+    Script::RemoveEventsEntity( cr );
     cr->Release();
     allCritters.erase( it );
 }
@@ -2550,6 +2552,7 @@ void HexManager::DeleteCritters()
         RemoveCritter( cr );
         cr->DeleteAllItems();
         cr->IsDestroyed = true;
+        Script::RemoveEventsEntity( cr );
         cr->Release();
     }
     allCritters.clear();

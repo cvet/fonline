@@ -241,6 +241,9 @@ void CritterCl::DeleteItem( Item* item, bool animate )
     InvItems.erase( it );
 
     item->IsDestroyed = true;
+    #ifdef FONLINE_CLIENT
+    Script::RemoveEventsEntity( item );
+    #endif
     item->Release();
 
     if( animate && !IsAnim() )

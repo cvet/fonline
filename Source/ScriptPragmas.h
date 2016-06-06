@@ -53,6 +53,7 @@ public:
     bool                  RestoreEntity( const char* class_name, uint id, const StrMap& props_data );
     void*                 FindInternalEvent( const char* event_name );
     bool                  RaiseInternalEvent( void* event_ptr, va_list args );
+    void                  RemoveEventsEntity( Entity* entity );
 };
 
 #endif // __SCRIPT_PRAGMAS__

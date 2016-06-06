@@ -585,10 +585,10 @@ public:
         static void          Global_ShowScreen( int screen, ScriptDictionary* params );
         static void          Global_HideScreen( int screen );
         static bool          Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
-        static bool          Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
-        static Item*         Global_GetMonitorItem( int x, int y, bool ignore_interface );
-        static CritterCl*    Global_GetMonitorCritter( int x, int y, bool ignore_interface );
-        static Entity*       Global_GetMonitorEntity( int x, int y, bool ignore_interface );
+        static bool          Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy );
+        static Item*         Global_GetMonitorItem( int x, int y );
+        static CritterCl*    Global_GetMonitorCritter( int x, int y );
+        static Entity*       Global_GetMonitorEntity( int x, int y );
         static ushort        Global_GetMapWidth();
         static ushort        Global_GetMapHeight();
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
@@ -626,9 +626,7 @@ public:
 /************************************************************************/
 /* Interface                                                            */
 /************************************************************************/
-    int  InitIface();
-    bool IsCurInInterface( int x, int y );
-    bool GetCurHex( ushort& hx, ushort& hy, bool ignore_interface );
+    int InitIface();
 
     // Initial state
     ItemVec InvContInit;

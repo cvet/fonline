@@ -302,7 +302,6 @@ struct ClientScriptFunctions
     void* InMessage;
     void* OutMessage;
     void* MessageBox;
-    void* HitAim;
     void* CombatResult;
     void* ItemCheckMove;
     void* CritterAction;
@@ -315,8 +314,6 @@ struct ClientScriptFunctions
     void* CritterCheckMoveItem;
     void* CritterGetUseApCost;
     void* CritterGetAttackDistantion;
-    void* CheckInterfaceHit;
-    void* GetContItem;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions

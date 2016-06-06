@@ -882,42 +882,29 @@ class EventPragma
 {
     class ScriptEvent
     {
-        typedef vector< asIScriptFunction* > FuncVec;
-        typedef map< uint64, FuncVec >       FuncMap;
+public:
+        typedef vector< asIScriptFunction* >           FuncVec;
+        typedef multimap< uint64, asIScriptFunction* > FuncMulMap;
+        typedef FuncMulMap::iterator                   FuncMulMapIt;
+        typedef pair< FuncMulMap*, FuncMulMapIt >      FuncMulMapItRef;
+        typedef multimap< Entity*, FuncMulMapItRef >   EntityFuncRefMulMap;
 
         struct ArgInfo
         {
-            bool    IsObject;
-            bool    IsPodRef;
-            uint    PodSize;
-            FuncMap Callbacks;
+            bool       IsObjectEntity;
+            bool       IsObject;
+            bool       IsPodRef;
+            uint       PodSize;
+            FuncMulMap Callbacks;
         };
+        typedef vector< ArgInfo > ArgInfoVec;
 
-        mutable int       refCount;
-        FuncVec           callbacks;
-        vector< ArgInfo > argInfos;
-
-public:
-        string Name;
-
-        ScriptEvent( asIScriptFunction* func_def )
-        {
-            refCount = 1;
-
-            argInfos.resize( func_def->GetParamCount() );
-            for( asUINT i = 0; i < func_def->GetParamCount(); i++ )
-            {
-                int         type_id;
-                asDWORD     flags;
-                const char* name;
-                func_def->GetParam( i, &type_id, &flags, &name );
-
-                ArgInfo& arg_info = argInfos[ i ];
-                arg_info.IsObject = ( type_id & asTYPEID_MASK_OBJECT ) != 0;
-                arg_info.IsPodRef = ( type_id >= asTYPEID_BOOL && type_id <= asTYPEID_DOUBLE && flags & asTM_INOUTREF );
-                arg_info.PodSize = Script::GetEngine()->GetSizeOfPrimitiveType( type_id );
-            }
-        }
+        string               Name;
+        mutable int          RefCount;
+        bool                 Deffered;
+        FuncVec              Callbacks;
+        ArgInfoVec           ArgInfos;
+        EntityFuncRefMulMap* EntityCallbacks;
 
         ~ScriptEvent()
         {
@@ -926,12 +913,12 @@ public:
 
         void AddRef() const
         {
-            asAtomicInc( refCount );
+            asAtomicInc( RefCount );
         }
 
         void Release() const
         {
-            if( asAtomicDec( refCount ) == 0 )
+            if( asAtomicDec( RefCount ) == 0 )
                 delete this;
         }
 
@@ -940,16 +927,16 @@ public:
             Unsubscribe( callback );
 
             callback->AddRef();
-            callbacks.push_back( callback );
+            Callbacks.push_back( callback );
         }
 
         void Unsubscribe( asIScriptFunction* callback )
         {
-            auto it = std::find( callbacks.begin(), callbacks.end(), callback );
-            if( it != callbacks.end() )
+            auto it = std::find( Callbacks.begin(), Callbacks.end(), callback );
+            if( it != Callbacks.end() )
             {
                 ( *it )->Release();
-                callbacks.erase( it );
+                Callbacks.erase( it );
             }
         }
 
@@ -959,7 +946,7 @@ public:
 
             int          arg_index = *(int*) gen->GetAuxiliary();
             ScriptEvent* event = (ScriptEvent*) gen->GetObject();
-            ArgInfo&     arg_info = event->argInfos[ arg_index ];
+            ArgInfo&     arg_info = event->ArgInfos[ arg_index ];
 
             uint64       value = 0;
             if( arg_info.IsObject )
@@ -969,20 +956,19 @@ public:
             else
                 memcpy( &value, gen->GetAddressOfArg( 0 ), arg_info.PodSize );
 
-            auto it = arg_info.Callbacks.find( value );
-            if( it == arg_info.Callbacks.end() )
-                it = arg_info.Callbacks.insert( PAIR( value, FuncVec() ) ).first;
-
             asIScriptFunction* callback = (asIScriptFunction*) gen->GetArgObject( 1 );
             callback->AddRef();
-            it->second.push_back( callback );
+            auto               it = arg_info.Callbacks.insert( PAIR( value, callback ) );
+
+            if( arg_info.IsObjectEntity )
+                event->EntityCallbacks->insert( PAIR( (Entity*) gen->GetArgObject( 0 ), PAIR( &arg_info.Callbacks, it ) ) );
         }
 
         static void UnsubscribeFrom( asIScriptGeneric* gen )
         {
             int                arg_index = *(int*) gen->GetAuxiliary();
             ScriptEvent*       event = (ScriptEvent*) gen->GetObject();
-            ArgInfo&           arg_info = event->argInfos[ arg_index ];
+            ArgInfo&           arg_info = event->ArgInfos[ arg_index ];
             asIScriptFunction* callback = (asIScriptFunction*) gen->GetArgObject( 1 );
 
             uint64             value = 0;
@@ -993,36 +979,49 @@ public:
             else
                 memcpy( &value, gen->GetAddressOfArg( 0 ), arg_info.PodSize );
 
-            auto it = arg_info.Callbacks.find( value );
-            if( it != arg_info.Callbacks.end() )
+            // Erase from arg callbacks
+            auto range = arg_info.Callbacks.equal_range( value );
+            auto it = std::find_if( range.first, range.second, [ &callback ] ( auto & kv ) { return kv.second == callback; } );
+            if( it != range.second )
             {
-                auto it_ = std::find( it->second.begin(), it->second.end(), callback );
-                if( it_ != it->second.end() )
+                // Erase from entity callbacks
+                if( arg_info.IsObjectEntity )
                 {
-                    callback->Release();
-                    if( it->second.size() > 1 )
-                        it->second.erase( it_ );
-                    else
-                        arg_info.Callbacks.erase( it );
+                    auto range_ = event->EntityCallbacks->equal_range( (Entity*) gen->GetArgObject( 0 ) );
+                    auto it_ = std::find_if( range_.first, range_.second, [ &it ] ( auto & kv ) { return kv.second.second == it; } );
+                    RUNTIME_ASSERT( it_ != range_.second );
+                    event->EntityCallbacks->erase( it_ );
                 }
+
+                arg_info.Callbacks.erase( it );
             }
         }
 
         void UnsubscribeAll()
         {
-            for( auto arg_info : argInfos )
+            // Global callbacks
+            for( asIScriptFunction* callback : Callbacks )
+                callback->Release();
+            Callbacks.clear();
+
+            // Args callbacks
+            for( auto& arg_info : ArgInfos )
             {
-                for( auto arg_callbacks : arg_info.Callbacks )
-                    for( auto arg_callback : arg_callbacks.second )
-                        arg_callback->Release();
+                for( auto& arg_callback : arg_info.Callbacks )
+                    arg_callback.second->Release();
                 arg_info.Callbacks.clear();
             }
-            for( asIScriptFunction* callback : callbacks )
-                callback->Release();
-            callbacks.clear();
+
+            // Entity callbacks
+            for( auto it = EntityCallbacks->begin(); it != EntityCallbacks->end(); ++it )
+            {
+                for( auto it_ = ArgInfos.begin(); it_ != ArgInfos.end(); ++it_ )
+                    if( it->second.first == &it_->Callbacks )
+                        it->second.first->erase( it->second.second );
+            }
         }
 
-        static void RaiseScript( asIScriptGeneric* gen )
+        static void Raise( asIScriptGeneric* gen )
         {
             ScriptEvent* event = (ScriptEvent*) gen->GetObject();
             *(bool*) gen->GetAddressOfReturnLocation() = event->RaiseImpl( gen, nullptr );
@@ -1036,18 +1035,23 @@ public:
 
         bool RaiseImpl( asIScriptGeneric* gen_args, va_list va_args )
         {
-            if( callbacks.empty() )
-                return true;
+            FuncVec callbacks_to_call;
 
-            auto    callbacks_to_call = callbacks;
+            // Global callbacs
+            if( !Callbacks.empty() )
+                callbacks_to_call = Callbacks;
+
+            // Arg callbacs
             va_list va_args_copy;
             va_copy( va_args_copy, va_args );
             #define GET_ARG( type )            ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
-            for( size_t i = 0; i < argInfos.size(); i++ )
+            for( size_t i = 0; i < ArgInfos.size(); i++ )
             {
-                const ArgInfo& arg_info = argInfos[ i ];
+                const ArgInfo& arg_info = ArgInfos[ i ];
+                if( arg_info.Callbacks.empty() )
+                    continue;
 
-                uint64         value = 0;
+                uint64 value = 0;
                 if( arg_info.IsObject )
                     memcpy( &value, &GET_ARG( void* ), sizeof( void* ) );
                 else if( arg_info.IsPodRef )
@@ -1063,12 +1067,13 @@ public:
                 else
                     RUNTIME_ASSERT( !"Unreachable place" );
 
-                auto it = arg_info.Callbacks.find( value );
-                if( it != arg_info.Callbacks.end() )
-                    callbacks_to_call.insert( callbacks_to_call.end(), it->second.begin(), it->second.end() );
+                auto range = arg_info.Callbacks.equal_range( value );
+                for( auto it = range.first; it != range.second; ++it )
+                    callbacks_to_call.push_back( it->second );
             }
             #undef GET_ARG
 
+            // Invoke callbacks
             for( asIScriptFunction* callback : callbacks_to_call )
             {
                 uint bind_id = Script::BindByFunc( callback, false );
@@ -1078,10 +1083,12 @@ public:
                     va_list va_args_copy;
                     va_copy( va_args_copy, va_args );
                     #define GET_ARG( type )    ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
-                    for( size_t i = 0; i < argInfos.size(); i++ )
+                    for( size_t i = 0; i < ArgInfos.size(); i++ )
                     {
-                        const ArgInfo& arg_info = argInfos[ i ];
-                        if( arg_info.IsObject )
+                        const ArgInfo& arg_info = ArgInfos[ i ];
+                        if( arg_info.IsObjectEntity )
+                            Script::SetArgEntityOK( (Entity*) GET_ARG( void* ) );
+                        else if( arg_info.IsObject )
                             Script::SetArgObject( GET_ARG( void* ) );
                         else if( arg_info.IsPodRef )
                             Script::SetArgAddress( GET_ARG( void* ) );
@@ -1098,11 +1105,18 @@ public:
                     }
                     #undef GET_ARG
 
-                    if( Script::RunPrepared() )
+                    if( !Deffered )
                     {
-                        // Interrupted
-                        if( callback->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool() )
-                            return false;
+                        if( Script::RunPrepared() )
+                        {
+                            // Interrupted
+                            if( callback->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool() )
+                                return false;
+                        }
+                    }
+                    else
+                    {
+                        Script::RunPreparedSuspend();
                     }
                 }
             }
@@ -1111,6 +1125,7 @@ public:
     };
 
     vector< ScriptEvent* > events;
+    ScriptEvent::EntityFuncRefMulMap entityCallbacks;
 
 public:
     EventPragma()
@@ -1164,16 +1179,27 @@ public:
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFunc@)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", asMETHOD( ScriptEvent, UnsubscribeAll ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::RaiseScript ), asCALL_GENERIC ) < 0 )
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
             return false;
 
+        ScriptEvent* event = new ScriptEvent();
+        event->Name = event_name;
+        event->EntityCallbacks = &entityCallbacks;
+
         asIScriptFunction* func_def = engine->GetFunctionById( func_def_id );
+        event->ArgInfos.resize( func_def->GetParamCount() );
         for( asUINT i = 0; i < func_def->GetParamCount(); i++ )
         {
             int type_id;
             asDWORD flags;
             const char* name;
             func_def->GetParam( i, &type_id, &flags, &name );
+
+            ScriptEvent::ArgInfo& arg_info = event->ArgInfos[ i ];
+            arg_info.IsObject = ( type_id & asTYPEID_MASK_OBJECT ) != 0;
+            arg_info.IsObjectEntity = ( arg_info.IsObject && engine->GetObjectTypeById( type_id )->DerivesFrom( engine->GetObjectTypeByName( "Entity" ) ) );
+            arg_info.IsPodRef = ( type_id >= asTYPEID_BOOL && type_id <= asTYPEID_DOUBLE && flags & asTM_INOUTREF );
+            arg_info.PodSize = engine->GetSizeOfPrimitiveType( type_id );
 
             if( name && Str::Length( name ) > 0 )
             {
@@ -1194,12 +1220,14 @@ public:
             }
         }
 
-        ScriptEvent* result = new ScriptEvent( func_def );
-        result->Name = event_name;
-        if( engine->RegisterGlobalProperty( Str::Format( buf, "%s __%s", event_name, event_name ), result ) < 0 )
+        char options[ MAX_FOTEXT ];
+        Str::Copy( options, text.substr( args_end + 1 ).c_str() );
+        event->Deffered = Str::Substring( options, "[deffered]" ) != nullptr;
+
+        if( engine->RegisterGlobalProperty( Str::Format( buf, "%s __%s", event_name, event_name ), event ) < 0 )
             return false;
 
-        events.push_back( result );
+        events.push_back( event );
         return true;
     }
 
@@ -1215,6 +1243,17 @@ public:
     bool Raise( void* event_ptr, va_list args )
     {
         return ScriptEvent::RaiseInternal( event_ptr, args );
+    }
+
+    void RemoveEntity( Entity* entity )
+    {
+        auto range = entityCallbacks.equal_range( entity );
+        if( range.first != range.second )
+        {
+            for( auto it = range.first; it != range.second; ++it )
+                it->second.first->erase( it->second.second );
+            entityCallbacks.erase( range.first, range.second );
+        }
     }
 };
 
@@ -1340,4 +1379,9 @@ void* ScriptPragmaCallback::FindInternalEvent( const char* event_name )
 bool ScriptPragmaCallback::RaiseInternalEvent( void* event_ptr, va_list args )
 {
     return eventPragma->Raise( event_ptr, args );
+}
+
+void ScriptPragmaCallback::RemoveEventsEntity( Entity* entity )
+{
+    eventPragma->RemoveEntity( entity );
 }

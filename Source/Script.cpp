@@ -1031,6 +1031,12 @@ bool Script::RaiseInternalEvent( void* event_ptr, ... )
     return result;
 }
 
+void Script::RemoveEventsEntity( Entity* entity )
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    edata->PragmaCB->RemoveEventsEntity( entity );
+}
+
 const char* Script::GetActiveModuleName()
 {
     asIScriptContext* ctx = asGetActiveContext();
