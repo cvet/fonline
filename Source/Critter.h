@@ -34,7 +34,6 @@ class Client;
 class Npc;
 class Map;
 class Location;
-class GlobalMapGroup;
 
 typedef Critter*              CritterPtr;
 typedef Client*               ClientPtr;
@@ -85,7 +84,6 @@ public:
     CLASS_PROPERTY( ScriptArray *, TE_Identifier ); // int
     // ...
     CLASS_PROPERTY( uint, LookDistance );
-    CLASS_PROPERTY( uint, FollowCrit );             // Rename to FollowCritterId
     CLASS_PROPERTY( hash, DialogId );
     CLASS_PROPERTY( bool, IsNoTalk );
     CLASS_PROPERTY( bool, IsNoBarter );
@@ -209,6 +207,7 @@ public:
 
     Critter* GetCritSelf( uint crid, bool sync_lock );
     void     GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, bool sync_lock );
+    Critter* GetGlobalMapCritter( uint cr_id );
 
     bool AddCrIntoVisVec( Critter* add_cr );
     bool DelCrFromVisVec( Critter* del_cr );
@@ -223,11 +222,6 @@ public:
     bool AddIdVisItem( uint item_id );
     bool DelIdVisItem( uint item_id );
     bool CountIdVisItem( uint item_id );
-
-    // Global map group
-public:
-    GlobalMapGroup* GroupSelf;
-    GlobalMapGroup* GroupMove;
 
     // Items
 protected:
@@ -351,12 +345,10 @@ public:
     void SendAA_MoveItem( Item* item, uchar action, uchar prev_slot );
     void SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void SendAA_SetAnims( int cond, uint anim1, uint anim2 );
-    void SendA_GlobalInfo( GlobalMapGroup* group, uchar info_flags );
     void SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool unsafe_text );
     void SendAA_Msg( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg );
     void SendAA_MsgLex( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void SendA_Dir();
-    void SendA_Follow( uchar follow_type, hash map_pid, uint follow_wait );
     void SendA_CustomCommand( ushort num_param, int val );
 
     // Chosen data
@@ -431,10 +423,11 @@ public:
     void ContinueTimeEvents( int offs_time );
 
     // Other
-    uint GlobalIdleNextTick;
-    uint ApRegenerationTick;
+    CrVec* GlobalMapGroup;
+    uint   IdleNextTick;
+    uint   ApRegenerationTick;
 
-    bool CanBeRemoved;
+    bool   CanBeRemoved;
 };
 
 class Client: public Critter
@@ -596,7 +589,6 @@ public:
     void Send_PlayersBarter( uchar barter, uint param, uint param_ext );
     void Send_PlayersBarterSetHide( Item* item, uint count );
     void Send_RunClientScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
-    void Send_DropTimers();
     void Send_ViewMap();
     void Send_CheckUIDS();
     void Send_SomeItem( Item* item );                                     // Without checks
@@ -622,10 +614,6 @@ public:
     void        BarterRefresh( Client* opponent );
     BarterItem* BarterGetItem( uint item_id );
     void        BarterEraseItem( uint item_id );
-
-    // Timers
-    uint LastSendEntrancesTick, LastSendEntrancesLocId;
-    void DropTimers( bool send );
 
     // Dialogs
 private:

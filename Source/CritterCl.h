@@ -34,7 +34,6 @@ public:
     CLASS_PROPERTY( uint, LookDistance );
     CLASS_PROPERTY( ScriptArray *, Anim3dLayer );
     CLASS_PROPERTY( hash, DialogId );
-    CLASS_PROPERTY( uint, FollowCrit );
     CLASS_PROPERTY( bool, IsNoTalk );
     CLASS_PROPERTY( bool, IsNoBarter );
     CLASS_PROPERTY( uint, TalkDistance );
@@ -58,6 +57,9 @@ public:
     CLASS_PROPERTY( bool, IsEndCombat );
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
+    CLASS_PROPERTY( ushort, WorldX );
+    CLASS_PROPERTY( ushort, WorldY );
+    CLASS_PROPERTY( uint, GlobalGroupRuleId );
     // Exclude
     CLASS_PROPERTY( int, ReplicationMoney );    // GUI
     CLASS_PROPERTY( int, ReplicationCost );     // GUI
@@ -123,7 +125,7 @@ public:
     bool        IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
     bool        IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }
     bool        IsChosen()   { return FLAG( Flags, FCRIT_CHOSEN ); }
-    bool        IsGmapRule() { return FLAG( Flags, FCRIT_RULEGROUP ); }
+    bool        IsGmapRule() { return GetGlobalGroupRuleId() == Id; }
     bool        IsOnline()   { return !FLAG( Flags, FCRIT_DISCONNECT ); }
     bool        IsOffline()  { return FLAG( Flags, FCRIT_DISCONNECT ); }
     bool        IsLife()     { return GetCond() == COND_LIFE; }

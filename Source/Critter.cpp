@@ -53,7 +53,6 @@ CLASS_PROPERTY_IMPL( Critter, DialogId );
 CLASS_PROPERTY_IMPL( Critter, BagId );
 CLASS_PROPERTY_IMPL( Critter, NpcRole );
 CLASS_PROPERTY_IMPL( Critter, TeamId );
-CLASS_PROPERTY_IMPL( Critter, FollowCrit );
 CLASS_PROPERTY_IMPL( Critter, FreeBarterPlayer );
 CLASS_PROPERTY_IMPL( Critter, LastWeaponId );
 CLASS_PROPERTY_IMPL( Critter, HandsItemProtoId );
@@ -126,7 +125,7 @@ CLASS_PROPERTY_IMPL( Critter, FavoriteItemPid );
 Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, type, PropertiesRegistrator, proto )
 {
     CritterIsNpc = false;
-    GroupMove = nullptr;
+    GlobalMapGroup = nullptr;
     PrevHexTick = 0;
     PrevHexX = PrevHexY = 0;
     startBreakTime = 0;
@@ -139,7 +138,7 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     ItemTransferCount = 0;
     TryingGoHomeTick = 0;
     ApRegenerationTick = 0;
-    GlobalIdleNextTick = 0;
+    IdleNextTick = 0;
     LockMapTransfers = 0;
     ViewMapId = 0;
     ViewMapPid = 0;
@@ -149,13 +148,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     DisableSend = 0;
     CanBeRemoved = false;
     NameStr = ScriptString::Create();
-    GroupSelf = new GlobalMapGroup();
-    GroupSelf->CurX = (float) GetWorldX();
-    GroupSelf->CurY = (float) GetWorldY();
-    GroupSelf->ToX = GroupSelf->CurX;
-    GroupSelf->ToY = GroupSelf->CurY;
-    GroupSelf->Speed = 0.0f;
-    GroupSelf->Rule = this;
     ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = defItemSlotArmor = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     defItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
@@ -168,7 +160,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
 
 Critter::~Critter()
 {
-    SAFEDEL( GroupSelf );
     SAFEREL( defItemSlotHand );
     SAFEREL( defItemSlotArmor );
 }
@@ -364,12 +355,12 @@ void Critter::ProcessVisibleCritters()
     // Global map
     if( !GetMapId() )
     {
-        RUNTIME_ASSERT( GroupMove );
+        RUNTIME_ASSERT( GlobalMapGroup );
 
         if( IsPlayer() )
         {
             Client* cl = (Client*) this;
-            for( auto it = GroupMove->CritMove.begin(), end = GroupMove->CritMove.end(); it != end; ++it )
+            for( auto it = GlobalMapGroup->begin(), end = GlobalMapGroup->end(); it != end; ++it )
             {
                 Critter* cr = *it;
                 if( this == cr )
@@ -1037,6 +1028,16 @@ void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, 
         critters.push_back( *it );
 }
 
+Critter* Critter::GetGlobalMapCritter( uint cr_id )
+{
+    RUNTIME_ASSERT( GlobalMapGroup );
+    auto it = std::find_if( GlobalMapGroup->begin(), GlobalMapGroup->end(), [ &cr_id ] ( Critter * other )
+                            {
+                                return other->Id == cr_id;
+                            } );
+    return it != GlobalMapGroup->end() ? *it : nullptr;
+}
+
 bool Critter::AddCrIntoVisVec( Critter* add_cr )
 {
     if( VisCrMap.count( add_cr->GetId() ) )
@@ -1168,8 +1169,6 @@ void Critter::SetItem( Item* item )
 {
     RUNTIME_ASSERT( item );
 
-    if( item->IsCar() && GroupMove && !GroupMove->CarId )
-        GroupMove->CarId = item->GetId();
     invItems.push_back( item );
 
     if( item->GetAccessory() != ITEM_ACCESSORY_CRITTER )
@@ -1206,12 +1205,6 @@ void Critter::EraseItem( Item* item, bool send )
     auto it = std::find( invItems.begin(), invItems.end(), item );
     RUNTIME_ASSERT( it != invItems.end() );
     invItems.erase( it );
-
-    if( !GetMapId() && GroupMove && GroupMove->CarId == item->GetId() )
-    {
-        GroupMove->CarId = 0;
-        SendA_GlobalInfo( GroupMove, GM_INFO_GROUP_PARAM );
-    }
 
     item->SetAccessory( ITEM_ACCESSORY_NONE );
     TakeDefaultItem( item->GetCritSlot() );
@@ -1933,11 +1926,6 @@ void Critter::Send_AutomapsInfo( void* locs_vec, Location* loc )
     if( IsPlayer() )
         ( (Client*) this )->Send_AutomapsInfo( locs_vec, loc );
 }
-void Critter::Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_Follow( rule, follow_type, map_pid, follow_wait );
-}
 void Critter::Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius )
 {
     if( IsPlayer() )
@@ -2096,23 +2084,6 @@ void Critter::SendAA_SetAnims( int cond, uint anim1, uint anim2 )
     }
 }
 
-void Critter::SendA_GlobalInfo( GlobalMapGroup* group, uchar info_flags )
-{
-    if( !group )
-        return;
-
-    CrVec cr_group = group->CritMove;
-    for( auto it = cr_group.begin(), end = cr_group.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( cr->IsPlayer() )
-        {
-            SYNC_LOCK( cr );
-            cr->Send_GlobalInfo( info_flags );
-        }
-    }
-}
-
 void Critter::SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool unsafe_text )
 {
     if( !str || !str[ 0 ] )
@@ -2221,28 +2192,6 @@ void Critter::SendA_Dir()
         Critter* cr = *it;
         if( cr->IsPlayer() )
             cr->Send_Dir( this );
-    }
-}
-
-void Critter::SendA_Follow( uchar follow_type, hash map_pid, uint follow_wait )
-{
-    if( VisCr.empty() )
-        return;
-    SyncLockCritters( false, true );
-
-    int dist = FOLLOW_DIST + GetMultihex();
-    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( !cr->IsPlayer() )
-            continue;
-        if( cr->GetFollowCrit() != GetId() )
-            continue;
-        if( cr->IsDead() || cr->IsKnockout() )
-            continue;
-        if( !CheckDist( GetLastMapHexX(), GetLastMapHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex() ) )
-            continue;
-        cr->Send_Follow( GetId(), follow_type, map_pid, follow_wait );
     }
 }
 
@@ -2751,15 +2700,13 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
     IsDisconnected = false;
     DisconnectTick = 0;
     DisableZlib = false;
-    LastSendEntrancesTick = 0;
-    LastSendEntrancesLocId = 0;
     LastSendedMapTick = 0;
     RadioMessageSended = 0;
     UpdateFileIndex = -1;
     UpdateFilePortion = 0;
 
     CritterIsNpc = false;
-    MEMORY_PROCESS( MEMORY_CLIENT, sizeof( Client ) + sizeof( GlobalMapGroup ) + 40 + sizeof( Item ) * 2 );
+    MEMORY_PROCESS( MEMORY_CLIENT, sizeof( Client ) + 40 + sizeof( Item ) * 2 );
 
     SETFLAG( Flags, FCRIT_PLAYER );
     Sock = INVALID_SOCKET;
@@ -2798,7 +2745,7 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
 
 Client::~Client()
 {
-    MEMORY_PROCESS( MEMORY_CLIENT, -(int) ( sizeof( Client ) + sizeof( GlobalMapGroup ) + 40 + sizeof( Item ) * 2 ) );
+    MEMORY_PROCESS( MEMORY_CLIENT, -(int) ( sizeof( Client ) + 40 + sizeof( Item ) * 2 ) );
     if( ZstrmInit )
     {
         deflateEnd( &Zstrm );
@@ -3492,7 +3439,6 @@ void Client::Send_GlobalInfo( uchar info_flags )
     if( LockMapTransfers )
         return;
 
-    Item*        car = ( FLAG( info_flags, GM_INFO_GROUP_PARAM ) ? GroupMove->GetCar() : nullptr );
     ScriptArray* known_locs = GetKnownLocations();
 
     // Calculate length of message
@@ -3501,9 +3447,6 @@ void Client::Send_GlobalInfo( uchar info_flags )
     ushort loc_count = (ushort) known_locs->GetSize();
     if( FLAG( info_flags, GM_INFO_LOCATIONS ) )
         msg_len += sizeof( loc_count ) + SEND_LOCATION_SIZE * loc_count;
-
-    if( FLAG( info_flags, GM_INFO_GROUP_PARAM ) )
-        msg_len += sizeof( ushort ) * 4 + sizeof( uint ) + sizeof( bool ) + sizeof( uint );
 
     if( FLAG( info_flags, GM_INFO_ZONES_FOG ) )
         msg_len += GM_ZONES_FOG_SIZE;
@@ -3551,28 +3494,6 @@ void Client::Send_GlobalInfo( uchar info_flags )
     }
     SAFEREL( known_locs );
 
-    if( FLAG( info_flags, GM_INFO_GROUP_PARAM ) )
-    {
-        ushort cur_x = (ushort) GroupMove->CurX;
-        ushort cur_y = (ushort) GroupMove->CurY;
-        ushort to_x = (ushort) GroupMove->ToX;
-        ushort to_y = (ushort) GroupMove->ToY;
-        uint   speed = (uint) ( GroupMove->Speed * 1000000.0f );
-        bool   wait = ( GroupMove->EncounterDescriptor ? true : false );
-
-        Bout << cur_x;
-        Bout << cur_y;
-        Bout << to_x;
-        Bout << to_y;
-        Bout << speed;
-        Bout << wait;
-
-        if( car )
-            Bout << car->GetCritId();
-        else
-            Bout << (uint) 0;
-    }
-
     if( FLAG( info_flags, GM_INFO_ZONES_FOG ) )
     {
         ScriptArray* gmap_fog = GetGlobalMapFog();
@@ -3585,8 +3506,6 @@ void Client::Send_GlobalInfo( uchar info_flags )
 
     if( FLAG( info_flags, GM_INFO_CRITTERS ) )
         ProcessVisibleCritters();
-    if( FLAG( info_flags, GM_INFO_GROUP_PARAM ) && car )
-        Send_AddItemOnMap( car );
 }
 
 void Client::Send_GlobalLocation( Location* loc, bool add )
@@ -4093,20 +4012,6 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
     }
 }
 
-void Client::Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_FOLLOW;
-    Bout << rule;
-    Bout << follow_type;
-    Bout << map_pid;
-    Bout << follow_wait;
-    BOUT_END( this );
-}
-
 void Client::Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius )
 {
     if( IsSendDisabled() || IsOffline() )
@@ -4228,16 +4133,6 @@ void Client::Send_RunClientScript( const char* func_name, int p0, int p1, int p2
     BOUT_END( this );
 }
 
-void Client::Send_DropTimers()
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_DROP_TIMERS;
-    BOUT_END( this );
-}
-
 void Client::Send_ViewMap()
 {
     if( IsSendDisabled() || IsOffline() )
@@ -4336,21 +4231,15 @@ void Client::Send_CustomMessage( uint msg, uchar* data, uint data_size )
 
 Client* Client::BarterGetOpponent( uint opponent_id )
 {
-    if( !GetMapId() && !GroupMove )
-    {
-        BarterEnd();
-        return nullptr;
-    }
-
     if( BarterOpponent && BarterOpponent != opponent_id )
     {
-        Critter* cr = ( GetMapId() ? GetCritSelf( BarterOpponent, true ) : GroupMove->GetCritter( BarterOpponent ) );
+        Critter* cr = ( GetMapId() ? GetCritSelf( BarterOpponent, true ) : GetGlobalMapCritter( BarterOpponent ) );
         if( cr && cr->IsPlayer() )
             ( (Client*) cr )->BarterEnd();
         BarterEnd();
     }
 
-    Critter* cr = ( GetMapId() ? GetCritSelf( opponent_id, true ) : GroupMove->GetCritter( opponent_id ) );
+    Critter* cr = ( GetMapId() ? GetCritSelf( opponent_id, true ) : GetGlobalMapCritter( opponent_id ) );
     if( !cr || !cr->IsPlayer() || !cr->IsLife() || cr->IsBusy() || IS_TIMEOUT( cr->GetTimeoutBattle() ) || ( (Client*) cr )->IsOffline() ||
         ( GetMapId() && !CheckDist( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), BARTER_DIST + GetMultihex() + cr->GetMultihex() ) ) )
     {
@@ -4415,18 +4304,6 @@ void Client::BarterEraseItem( uint item_id )
     auto it = std::find( BarterItems.begin(), BarterItems.end(), item_id );
     if( it != BarterItems.end() )
         BarterItems.erase( it );
-}
-
-/************************************************************************/
-/* Timers                                                               */
-/************************************************************************/
-
-void Client::DropTimers( bool send )
-{
-    LastSendEntrancesTick = 0;
-    LastSendEntrancesLocId = 0;
-    if( send )
-        Send_DropTimers();
 }
 
 /************************************************************************/
@@ -4560,13 +4437,13 @@ Npc::Npc( uint id, ProtoCritter* proto ): Critter( id, EntityType::Npc, proto )
 {
     NextRefreshBagTick = 0;
     CritterIsNpc = true;
-    MEMORY_PROCESS( MEMORY_NPC, sizeof( Npc ) + sizeof( GlobalMapGroup ) + 40 + sizeof( Item ) * 2 );
+    MEMORY_PROCESS( MEMORY_NPC, sizeof( Npc ) + 40 + sizeof( Item ) * 2 );
     SETFLAG( Flags, FCRIT_NPC );
 }
 
 Npc::~Npc()
 {
-    MEMORY_PROCESS( MEMORY_NPC, -(int) ( sizeof( Npc ) + sizeof( GlobalMapGroup ) + 40 + sizeof( Item ) * 2 ) );
+    MEMORY_PROCESS( MEMORY_NPC, -(int) ( sizeof( Npc ) + 40 + sizeof( Item ) * 2 ) );
     DropPlanes();
 }
 

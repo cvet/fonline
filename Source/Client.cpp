@@ -99,8 +99,6 @@ FOClient::FOClient()
     TurnBasedTime = 0;
     TurnBasedCurCritterId = 0;
     DaySumRGB = 0;
-
-    GmapCar.Car = nullptr;
     Animations.resize( 10000 );
 
     CurVideo = nullptr;
@@ -2116,14 +2114,8 @@ void FOClient::NetProcess()
         case NETMSG_GLOBAL_INFO:
             Net_OnGlobalInfo();
             break;
-        case NETMSG_GLOBAL_ENTRANCES:
-            Net_OnGlobalEntrances();
-            break;
         case NETMSG_CONTAINER_INFO:
             Net_OnContainerInfo();
-            break;
-        case NETMSG_FOLLOW:
-            Net_OnFollow();
             break;
         case NETMSG_PLAYERS_BARTER:
             Net_OnPlayersBarter();
@@ -2133,9 +2125,6 @@ void FOClient::NetProcess()
             break;
         case NETMSG_RUN_CLIENT_SCRIPT:
             Net_OnRunClientScript();
-            break;
-        case NETMSG_DROP_TIMERS:
-            Net_OnDropTimers();
             break;
 
         case NETMSG_ADD_ITEM_ON_MAP:
@@ -2610,16 +2599,6 @@ void FOClient::Net_SendLoadMapOk()
     Bout << NETMSG_SEND_LOAD_MAP_OK;
 }
 
-void FOClient::Net_SendRuleGlobal( uchar command, uint param1, uint param2 )
-{
-    Bout << NETMSG_SEND_RULE_GLOBAL;
-    Bout << command;
-    Bout << param1;
-    Bout << param2;
-
-    WaitPing();
-}
-
 void FOClient::Net_SendLevelUp( int perk_up, IntVec* props_data )
 {
     if( !Chosen )
@@ -3074,37 +3053,6 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
         {
             AddMess( mess_type, FmtGameText( fstr_mb, crit_name.c_str(), fstr ) );
         }
-    }
-
-    // Encounter question
-    if( how_say >= SAY_ENCOUNTER_ANY && how_say <= SAY_ENCOUNTER_TB && IsMainScreen( SCREEN_GLOBAL_MAP ) )
-    {
-        if( how_say == SAY_ENCOUNTER_ANY )
-        {
-            DlgboxType = DIALOGBOX_ENCOUNTER_ANY;
-            DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_ENCOUNTER_RT );
-            DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_ENCOUNTER_TB );
-            DlgboxButtonText[ 2 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
-            DlgboxButtonsCount = 3;
-        }
-        else if( how_say == SAY_ENCOUNTER_RT )
-        {
-            DlgboxType = DIALOGBOX_ENCOUNTER_RT;
-            DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_ENCOUNTER_RT );
-            DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
-            DlgboxButtonsCount = 2;
-        }
-        else
-        {
-            DlgboxType = DIALOGBOX_ENCOUNTER_TB;
-            DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_ENCOUNTER_TB );
-            DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
-            DlgboxButtonsCount = 2;
-        }
-        DlgboxWait = Timer::GameTick() + GM_ANSWER_WAIT_TIME;
-        Str::Copy( DlgboxText, fstr );
-
-        ShowDialogBox();
     }
 
     FlashGameWindow();
@@ -3912,17 +3860,7 @@ void FOClient::Net_OnAddItemOnMap()
     CHECK_IN_BUFF_ERROR;
 
     if( HexMngr.IsMapLoaded() )
-    {
         HexMngr.AddItem( item_id, item_pid, item_hx, item_hy, is_added, &TempPropertiesData );
-    }
-    else     // Global map car
-    {
-        ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
-        RUNTIME_ASSERT( proto_item->GetType() == ITEM_TYPE_CAR );
-        SAFEREL( GmapCar.Car );
-        GmapCar.Car = new Item( item_id, proto_item );
-        GmapCar.Car->Props.RestoreData( TempPropertiesData );
-    }
 
     Item* item = HexMngr.GetItemById( item_id );
     if( item )
@@ -4702,42 +4640,6 @@ void FOClient::Net_OnGlobalInfo()
         }
     }
 
-    if( FLAG( info_flags, GM_INFO_GROUP_PARAM ) )
-    {
-        ushort cur_x, cur_y, to_x, to_y;
-        uint   speed;
-        Bin >> cur_x;
-        Bin >> cur_y;
-        Bin >> to_x;
-        Bin >> to_y;
-        Bin >> speed;
-        Bin >> GmapWait;
-
-        GmapGroupRealOldX = GmapGroupCurX;
-        GmapGroupRealOldY = GmapGroupCurY;
-        GmapGroupRealCurX = cur_x;
-        GmapGroupRealCurY = cur_y;
-        GmapGroupToX = to_x;
-        GmapGroupToY = to_y;
-        GmapGroupSpeed = (float) speed / 1000000.0f;
-        GmapMoveTick = Timer::GameTick();
-
-        if( !GmapActive )
-        {
-            GmapGroupRealOldX = GmapGroupRealCurX;
-            GmapGroupRealOldY = GmapGroupRealCurY;
-            GmapGroupCurX = GmapGroupRealCurX;
-            GmapGroupCurY = GmapGroupRealCurY;
-        }
-
-        // Car master id
-        Bin >> GmapCar.MasterId;
-
-        SAFEREL( GmapCar.Car );
-
-        GmapActive = true;
-    }
-
     if( FLAG( info_flags, GM_INFO_ZONES_FOG ) )
     {
         Bin.Pop( (char*) GmapFog.GetData(), GM_ZONES_FOG_SIZE );
@@ -4760,30 +4662,6 @@ void FOClient::Net_OnGlobalInfo()
     }
 
     CHECK_IN_BUFF_ERROR;
-}
-
-void FOClient::Net_OnGlobalEntrances()
-{
-    uint  msg_len;
-    uint  loc_id;
-    uchar count;
-    bool  entrances[ 0x100 ];
-    memzero( entrances, sizeof( entrances ) );
-    Bin >> msg_len;
-    Bin >> loc_id;
-    Bin >> count;
-
-    for( int i = 0; i < count; i++ )
-    {
-        uchar e;
-        Bin >> e;
-        entrances[ e ] = true;
-    }
-
-    CHECK_IN_BUFF_ERROR;
-
-    GmapShowEntrancesLocId = loc_id;
-    memcpy( GmapShowEntrances, entrances, sizeof( entrances ) );
 }
 
 void FOClient::Net_OnContainerInfo()
@@ -4898,54 +4776,6 @@ void FOClient::Net_OnContainerInfo()
     CollectContItems();
 
     Script::RaiseInternalEvent( ClientFunctions.ContainerChanged );
-}
-
-void FOClient::Net_OnFollow()
-{
-    uint  rule;
-    uchar follow_type;
-    hash  map_pid;
-    uint  wait_time;
-    Bin >> rule;
-    Bin >> follow_type;
-    Bin >> map_pid;
-    Bin >> wait_time;
-
-    CHECK_IN_BUFF_ERROR;
-
-    DlgboxType = DIALOGBOX_FOLLOW;
-    FollowRuleId = rule;
-    FollowType = follow_type;
-    FollowMap = map_pid;
-    DlgboxWait = Timer::GameTick() + wait_time;
-
-    // Find rule
-    char       cr_name[ 64 ];
-    CritterCl* cr = GetCritter( rule );
-    Str::Copy( cr_name, cr ? cr->GetName() : CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_FOLLOW_UNKNOWN_CRNAME ) );
-    // Find map
-    char map_name[ 64 ];
-    Str::Copy( map_name, map_pid ? "local map" : CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_FOLLOW_GMNAME ) );
-
-    switch( FollowType )
-    {
-    case FOLLOW_PREP:
-        Str::Copy( DlgboxText, FmtGameText( STR_FOLLOW_PREP, cr_name, map_name ) );
-        break;
-    case FOLLOW_FORCE:
-        Str::Copy( DlgboxText, FmtGameText( STR_FOLLOW_FORCE, cr_name, map_name ) );
-        break;
-    default:
-        WriteLogF( _FUNC_, " - Error FollowType\n" );
-        Str::Copy( DlgboxText, "ERROR!" );
-        break;
-    }
-
-    DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_FOLLOW );
-    DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
-    DlgboxButtonsCount = 2;
-
-    ShowDialogBox();
 }
 
 void FOClient::Net_OnPlayersBarter()
@@ -5257,12 +5087,6 @@ void FOClient::Net_OnRunClientScript()
         p3->Release();
     if( p4 )
         p4->Release();
-}
-
-void FOClient::Net_OnDropTimers()
-{
-    GmapNextShowEntrancesTick = 0;
-    GmapShowEntrancesLocId = 0;
 }
 
 void FOClient::Net_OnCheckUID3()
@@ -6788,9 +6612,6 @@ void FOClient::TryExit()
         case SCREEN__TOWN_VIEW:
             Net_SendRefereshMe();
             break;
-        case SCREEN__DIALOGBOX:
-            if( DlgboxType >= DIALOGBOX_ENCOUNTER_ANY && DlgboxType <= DIALOGBOX_ENCOUNTER_TB )
-                Net_SendRuleGlobal( GM_CMD_ANSWER, -1 );
         default:
             HideScreen( SCREEN_NONE );
             break;
@@ -8528,13 +8349,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->Net_SendRefereshMe();
     }
-    else if( cmd == "RuleGlobal" && args.size() > 1 )
-    {
-        int  type = Str::AtoUI( args[ 1 ].c_str() );
-        uint param1 = Str::AtoUI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
-        uint param2 = Str::AtoUI( args.size() >= 4 ? args[ 3 ].c_str() : "0" );
-        Self->Net_SendRuleGlobal( type, param1, param2 );
-    }
     else if( cmd == "SetCrittersContour" && args.size() == 2 )
     {
         int countour_type = Str::AtoI( args[ 1 ].c_str() );
@@ -9975,12 +9789,5 @@ void FOClient::SScriptFunc::Global_SetUserConfig( ScriptArray& key_values )
     cfg_user.SaveOutBufToFile( cfg_name, PT_CLIENT_CACHE );
 }
 
-bool&     FOClient::SScriptFunc::GmapActive = FOClient::GmapActive;
-bool&     FOClient::SScriptFunc::GmapWait = FOClient::GmapWait;
-int&      FOClient::SScriptFunc::GmapGroupCurX = FOClient::GmapGroupCurX;
-int&      FOClient::SScriptFunc::GmapGroupCurY = FOClient::GmapGroupCurY;
-int&      FOClient::SScriptFunc::GmapGroupToX = FOClient::GmapGroupToX;
-int&      FOClient::SScriptFunc::GmapGroupToY = FOClient::GmapGroupToY;
-float&    FOClient::SScriptFunc::GmapGroupSpeed = FOClient::GmapGroupSpeed;
 Map*      FOClient::SScriptFunc::ClientCurMap = nullptr;
 Location* FOClient::SScriptFunc::ClientCurLocation = nullptr;

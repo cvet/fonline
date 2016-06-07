@@ -3884,7 +3884,6 @@ bool FOMapper::IsCurInInterface()
         return true;
     if( ObjVisible && !SelectedEntities.empty() && IsCurInRectNoTransp( ObjWMainPic->GetCurSprId(), ObjWMain, ObjX, ObjY ) )
         return true;
-    // if( ConsoleActive && IsCurInRectNoTransp( ConsolePic, Main, 0, 0 ) ) // Todo: need check console?
     return false;
 }
 
@@ -4457,7 +4456,6 @@ void FOMapper::RunMapSaveScript( ProtoMap* pmap )
 void FOMapper::DrawIfaceLayer( uint layer )
 {
     SpritesCanDraw = true;
-    Script::SetArgUInt( layer );
     Script::RaiseInternalEvent( MapperFunctions.RenderIface, layer );
     SpritesCanDraw = false;
 }

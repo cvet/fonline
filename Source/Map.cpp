@@ -383,13 +383,6 @@ void Map::AddCritter( Critter* cr )
     cr->SetTimeoutBattle( IsTurnBasedOn ? TB_BATTLE_TIMEOUT : 0 );
 }
 
-void Map::AddCritterEvents( Critter* cr )
-{
-    cr->LockMapTransfers++;
-    Script::RaiseInternalEvent( ServerFunctions.MapCritterIn, this, cr );
-    cr->LockMapTransfers--;
-}
-
 void Map::EraseCritter( Critter* cr )
 {
     // Erase critter from collections
@@ -419,13 +412,6 @@ void Map::EraseCritter( Critter* cr )
     MapMngr.RunGarbager();
 }
 
-void Map::EraseCritterEvents( Critter* cr )
-{
-    cr->LockMapTransfers++;
-    Script::RaiseInternalEvent( ServerFunctions.MapCritterOut, this, cr );
-    cr->LockMapTransfers--;
-}
-
 void Map::KickPlayersToGlobalMap()
 {
     ClVec players;
@@ -435,7 +421,7 @@ void Map::KickPlayersToGlobalMap()
     {
         Critter* cr = *it;
         SYNC_LOCK( cr );
-        MapMngr.TransitToGlobal( cr, 0, FOLLOW_FORCE, true );
+        MapMngr.TransitToGlobal( cr, 0, true );
     }
 }
 

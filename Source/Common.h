@@ -371,6 +371,8 @@ struct ServerScriptFunctions
     void* GlobalMapProcess;
     void* GlobalMapInvite;
     void* WorldSave;
+    void* GlobalMapGroupStart;
+    void* GlobalMapGroupFinish;
 
     void* LocationEnter;
     void* LocationFinish;
@@ -389,6 +391,7 @@ struct ServerScriptFunctions
     void* CritterInit;
     void* CritterFinish;
     void* CritterIdle;
+    void* CritterGlobalMapIdle;
     void* CritterAttack;
     void* CritterDead;
     void* CritterRespawn;
@@ -465,7 +468,6 @@ struct GameOptions
     bool          LevelCapAddExperience;
     uint          LookNormal;
     uint          LookMinimum;
-    uint          GlobalMapMaxGroupCount;
     uint          CritterIdleTick;
     uint          TurnBasedTick;
     int           DeadHitPoints;

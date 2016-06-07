@@ -145,6 +145,8 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( GlobalMapProcess );
     BIND_INTERNAL_EVENT( GlobalMapInvite );
     BIND_INTERNAL_EVENT( WorldSave );
+    BIND_INTERNAL_EVENT( GlobalMapGroupStart );
+    BIND_INTERNAL_EVENT( GlobalMapGroupFinish );
     BIND_INTERNAL_EVENT( LocationEnter );
     BIND_INTERNAL_EVENT( LocationFinish );
     BIND_INTERNAL_EVENT( MapLoop );
@@ -160,6 +162,7 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterInit );
     BIND_INTERNAL_EVENT( CritterFinish );
     BIND_INTERNAL_EVENT( CritterIdle );
+    BIND_INTERNAL_EVENT( CritterGlobalMapIdle );
     BIND_INTERNAL_EVENT( CritterAttack );
     BIND_INTERNAL_EVENT( CritterDead );
     BIND_INTERNAL_EVENT( CritterRespawn );
@@ -1034,17 +1037,6 @@ Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
     return MapMngr.GetMap( cr->GetMapId() );
 }
 
-void FOServer::SScriptFunc::Cl_DropTimers( Critter* cl )
-{
-    if( cl->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    if( !cl->IsPlayer() )
-        return;
-    Client* cl_ = (Client*) cl;
-    cl_->DropTimers( true );
-}
-
 bool FOServer::SScriptFunc::Crit_MoveRandom( Critter* cr )
 {
     if( cr->IsDestroyed )
@@ -1092,7 +1084,7 @@ bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy
     {
         if( dir < DIRS_COUNT && cr->GetDir() != dir )
             cr->SetDir( dir );
-        if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, true ) )
+        if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, 0, true ) )
             SCRIPT_ERROR_R0( "Transit fail." );
     }
     else if( dir < DIRS_COUNT && cr->GetDir() != dir )
@@ -1104,7 +1096,7 @@ bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir, bool with_group )
+bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1115,42 +1107,13 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, usho
     Map* map = MapMngr.GetMap( map_id );
     if( !map )
         SCRIPT_ERROR_R0( "Map not found." );
+    if( dir >= DIRS_COUNT )
+        dir = 0;
 
-    if( !cr->GetMapId() )
-    {
-        if( !with_group )
-        {
-            MapMngr.GM_LeaveGroup( cr );
-            return Crit_TransitToMapHex( cr, map_id, hx, hy, dir, true );
-        }
-        if( dir < DIRS_COUNT && cr->GetDir() != dir )
-            cr->SetDir( dir );
-        if( !cr->GroupMove )
-            SCRIPT_ERROR_R0( "Group nullptr." );
-        if( !MapMngr.GM_GroupToMap( cr->GroupMove, map, 0, hx, hy, cr->GetDir() ) )
-            SCRIPT_ERROR_R0( "Transit from global to map fail." );
-    }
-    else
-    {
-        if( cr->GetMapId() != map_id || cr->GetHexX() != hx || cr->GetHexY() != hy )
-        {
-            if( dir < DIRS_COUNT && cr->GetDir() != dir )
-                cr->SetDir( dir );
-            if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, true ) )
-                SCRIPT_ERROR_R0( "Transit from map to map fail." );
-        }
-        else if( dir < DIRS_COUNT && cr->GetDir() != dir )
-        {
-            cr->SetDir( dir );
-            cr->Send_Dir( cr );
-            cr->SendA_Dir();
-        }
-        else
-        {
-            return true;
-        }
-    }
+    if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
+        SCRIPT_ERROR_R0( "Transit to map fail." );
 
+    // Todo: need???
     Location* loc = map->GetLocation( true );
     if( loc && DistSqrt( cr->GetWorldX(), cr->GetWorldY(), loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
     {
@@ -1160,7 +1123,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, usho
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, int entire, bool with_group )
+bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, int entire )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1177,23 +1140,8 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, i
     if( !map->GetStartCoord( hx, hy, dir, entire ) )
         SCRIPT_ERROR_R0( "Entire '%d' not found.", entire );
 
-    if( !cr->GetMapId() )
-    {
-        if( !with_group )
-        {
-            MapMngr.GM_LeaveGroup( cr );
-            return Crit_TransitToMapEntire( cr, map_id, entire, true );
-        }
-        if( !cr->GroupMove )
-            SCRIPT_ERROR_R0( "Group nullptr." );
-        if( !MapMngr.GM_GroupToMap( cr->GroupMove, map, 0, hx, hy, dir ) )
-            SCRIPT_ERROR_R0( "Transit from global to map fail." );
-    }
-    else
-    {
-        if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, true ) )
-            SCRIPT_ERROR_R0( "Transit from map to map fail." );
-    }
+    if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
+        SCRIPT_ERROR_R0( "Transit to map entire fail." );
 
     Location* loc = map->GetLocation( true );
     if( loc && DistSqrt( cr->GetWorldX(), cr->GetWorldY(), loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
@@ -1205,7 +1153,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, i
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToGlobal( Critter* cr, bool request_group )
+bool FOServer::SScriptFunc::Crit_TransitToGlobal( Critter* cr )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1215,7 +1163,7 @@ bool FOServer::SScriptFunc::Crit_TransitToGlobal( Critter* cr, bool request_grou
     if( !cr->GetMapId() )
         return true;  // Already on global
 
-    if( !MapMngr.TransitToGlobal( cr, 0, request_group ? FOLLOW_PREP : FOLLOW_FORCE, true ) )
+    if( !MapMngr.TransitToGlobal( cr, 0, true ) )
         SCRIPT_ERROR_R0( "Transit fail." );
     return true;
 }
@@ -1228,15 +1176,15 @@ bool FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, ScriptAr
         SCRIPT_ERROR_R0( "Transfers locked." );
     if( !cr->GetMapId() )
         SCRIPT_ERROR_R0( "Critter already on global." );
-    if( !MapMngr.TransitToGlobal( cr, 0, FOLLOW_FORCE, true ) )
+
+    if( !MapMngr.TransitToGlobal( cr, 0, true ) )
         SCRIPT_ERROR_R0( "Transit fail." );
 
     for( int i = 0, j = group.GetSize(); i < j; i++ )
     {
         Critter* cr_ = *(Critter**) group.At( i );
-        if( !cr_ || cr_->IsDestroyed || !cr_->GetMapId() )
-            continue;
-        MapMngr.TransitToGlobal( cr_, cr->GetId(), FOLLOW_FORCE, true );
+        if( cr_ && !cr_->IsDestroyed )
+            MapMngr.TransitToGlobal( cr_, cr->GetId(), true );
     }
     return true;
 }
@@ -1253,9 +1201,10 @@ bool FOServer::SScriptFunc::Crit_TransitToGlobalGroup( Critter* cr, uint critter
     Critter* cr_global = CrMngr.GetCritter( critter_id, true );
     if( !cr_global )
         SCRIPT_ERROR_R0( "Critter on global not found." );
-    if( cr_global->GetMapId() || !cr_global->GroupMove )
+    if( cr_global->GetMapId() )
         SCRIPT_ERROR_R0( "Founded critter is not on global." );
-    if( !MapMngr.TransitToGlobal( cr, cr_global->GroupMove->Rule->GetId(), FOLLOW_FORCE, true ) )
+
+    if( !MapMngr.TransitToGlobal( cr, critter_id, true ) )
         SCRIPT_ERROR_R0( "Transit fail." );
     return true;
 }
@@ -1619,79 +1568,6 @@ uint FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int 
     return (uint) cr_vec.size();
 }
 
-uint FOServer::SScriptFunc::Crit_GetFollowGroup( Critter* cr, int find_type, ScriptArray* critters )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    CrVec cr_vec;
-    for( auto it = cr->VisCrSelf.begin(), end = cr->VisCrSelf.end(); it != end; ++it )
-    {
-        Critter* cr_ = *it;
-        if( cr_->GetFollowCrit() == cr->GetId() && cr_->CheckFind( find_type ) )
-            cr_vec.push_back( cr_ );
-    }
-
-    if( critters )
-    {
-        SortCritterByDist( cr, cr_vec );
-        for( auto it = cr_vec.begin(), end = cr_vec.end(); it != end; ++it )
-            SYNC_LOCK( *it );
-        Script::AppendVectorToArrayRef< Critter* >( cr_vec, critters );
-    }
-    return (uint) cr_vec.size();
-}
-
-Critter* FOServer::SScriptFunc::Crit_GetFollowLeader( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    uint leader_id = cr->GetFollowCrit();
-    if( !leader_id )
-        return nullptr;
-    return cr->GetCritSelf( leader_id, true );
-}
-
-ScriptArray* FOServer::SScriptFunc::Crit_GetGlobalGroup( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    if( cr->GetMapId() || !cr->GroupMove )
-        return nullptr;
-    ScriptArray* result = MapMngr.GM_CreateGroupArray( cr->GroupMove );
-    if( !result )
-        SCRIPT_ERROR_R0( "Fail to create group." );
-    return result;
-}
-
-bool FOServer::SScriptFunc::Crit_IsGlobalGroupLeader( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return !cr->GetMapId() && cr->GroupMove && cr->GroupMove->Rule == cr;
-}
-
-void FOServer::SScriptFunc::Crit_LeaveGlobalGroup( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    MapMngr.GM_LeaveGroup( cr );
-}
-
-void FOServer::SScriptFunc::Crit_GiveGlobalGroupLead( Critter* cr, Critter* to_cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( to_cr->IsDestroyed )
-        SCRIPT_ERROR_R( "To critter this is destroyed." );
-
-    MapMngr.GM_GiveRule( cr, to_cr );
-}
-
 uint FOServer::SScriptFunc::Npc_GetTalkedPlayers( Critter* cr, ScriptArray* players )
 {
     if( cr->IsDestroyed )
@@ -1735,7 +1611,7 @@ bool FOServer::SScriptFunc::Crit_IsSeeCr( Critter* cr, Critter* cr_ )
         return false;
     if( cr == cr_ )
         return true;
-    CrVec& critters = ( cr->GetMapId() ? cr->VisCrSelf : cr->GroupMove->CritMove );
+    CrVec& critters = ( cr->GetMapId() ? cr->VisCrSelf : *cr->GlobalMapGroup );
     return std::find( critters.begin(), critters.end(), cr_ ) != critters.end();
 }
 
@@ -1749,7 +1625,7 @@ bool FOServer::SScriptFunc::Crit_IsSeenByCr( Critter* cr, Critter* cr_ )
     if( cr == cr_ )
         return true;
 
-    CrVec& critters = ( cr->GetMapId() ? cr->VisCr : cr->GroupMove->CritMove );
+    CrVec& critters = ( cr->GetMapId() ? cr->VisCr : *cr->GlobalMapGroup );
     return std::find( critters.begin(), critters.end(), cr_ ) != critters.end();
 }
 

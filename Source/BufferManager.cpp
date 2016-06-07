@@ -310,16 +310,10 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_GIVE_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_LOAD_MAP_OK:
         return ( NETMSG_SEND_LOAD_MAP_OK_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_DROP_TIMERS:
-        return ( NETMSG_DROP_TIMERS_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_REFRESH_ME:
         return ( NETMSG_SEND_REFRESH_ME_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_VIEW_MAP:
         return ( NETMSG_VIEW_MAP_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_RULE_GLOBAL:
-        return ( NETMSG_SEND_RULE_GLOBAL_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_FOLLOW:
-        return ( NETMSG_FOLLOW_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GET_USER_HOLO_STR:
         return ( NETMSG_SEND_GET_USER_HOLO_STR_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_POD_PROPERTY( 1, 0 ):
@@ -415,7 +409,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_RUN_CLIENT_SCRIPT:
     case NETMSG_SEND_RUN_SERVER_SCRIPT:
     case NETMSG_GLOBAL_INFO:
-    case NETMSG_GLOBAL_ENTRANCES:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
     case NETMSG_USER_HOLO_STR:
@@ -584,20 +577,11 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SEND_LOAD_MAP_OK:
         size = NETMSG_SEND_LOAD_MAP_OK_SIZE;
         break;
-    case NETMSG_DROP_TIMERS:
-        size = NETMSG_DROP_TIMERS_SIZE;
-        break;
     case NETMSG_SEND_REFRESH_ME:
         size = NETMSG_SEND_REFRESH_ME_SIZE;
         break;
     case NETMSG_VIEW_MAP:
         size = NETMSG_VIEW_MAP_SIZE;
-        break;
-    case NETMSG_SEND_RULE_GLOBAL:
-        size = NETMSG_SEND_RULE_GLOBAL_SIZE;
-        break;
-    case NETMSG_FOLLOW:
-        size = NETMSG_FOLLOW_SIZE;
         break;
     case NETMSG_SEND_GET_USER_HOLO_STR:
         size = NETMSG_SEND_GET_USER_HOLO_STR_SIZE;
@@ -703,7 +687,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_RUN_CLIENT_SCRIPT:
     case NETMSG_SEND_RUN_SERVER_SCRIPT:
     case NETMSG_GLOBAL_INFO:
-    case NETMSG_GLOBAL_ENTRANCES:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
     case NETMSG_USER_HOLO_STR:

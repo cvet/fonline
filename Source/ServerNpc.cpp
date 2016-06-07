@@ -70,14 +70,7 @@ void FOServer::ProcessAI( Npc* npc )
 
     // Global map
     if( !npc->GetMapId() )
-    {
-        if( !npc->GroupMove )
-            return;
-        MapMngr.GM_GlobalProcess( npc, npc->GroupMove, GLOBAL_PROCESS_NPC_IDLE );
-        if( !npc->GetMapId() && !npc->IsWait() )
-            npc->SetWait( GameOpt.CritterIdleTick );
         return;
-    }
 
     // Get map
     Map* map = MapMngr.GetMap( npc->GetMapId() );
@@ -133,7 +126,7 @@ void FOServer::ProcessAI( Npc* npc )
             }
             else if( map->IsHexesPassed( npc->GetHomeHexX(), npc->GetHomeHexY(), npc->GetMultihex() ) )
             {
-                MapMngr.Transit( npc, map, npc->GetHomeHexX(), npc->GetHomeHexY(), npc->GetDir(), 2, true );
+                MapMngr.Transit( npc, map, npc->GetHomeHexX(), npc->GetHomeHexY(), npc->GetDir(), 2, 0, true );
                 return;
             }
         }
@@ -197,7 +190,6 @@ void FOServer::ProcessAI( Npc* npc )
         }
 
         // Idle
-        Script::RaiseInternalEvent( ServerFunctions.CritterIdle, npc );
         if( npc->GetCurPlane() || npc->IsBusy() || npc->IsWait() )
             return;
 

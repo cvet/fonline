@@ -8,108 +8,6 @@
 
 MapManager MapMngr;
 
-/************************************************************************/
-/* GlobalMapGroup                                                       */
-/************************************************************************/
-
-bool GlobalMapGroup::IsValid()
-{
-    return CritMove.size() != 0;
-}
-
-bool GlobalMapGroup::IsMoving()
-{
-    return Speed > 0.0f && ( CurX != ToX || CurY != ToY );
-}
-
-uint GlobalMapGroup::GetSize()
-{
-    return (uint) CritMove.size();
-}
-
-void GlobalMapGroup::Stop()
-{
-    Speed = 0.0f;
-    ToX = CurX;
-    ToY = CurY;
-}
-
-void GlobalMapGroup::SyncLockGroup()
-{
-    CrVec critters = CritMove;
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-        SYNC_LOCK( *it );
-}
-
-Critter* GlobalMapGroup::GetCritter( uint crid )
-{
-    for( auto it = CritMove.begin(), end = CritMove.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( cr->GetId() == crid )
-        {
-            SYNC_LOCK( cr );
-            return cr;
-        }
-    }
-    return nullptr;
-}
-
-Item* GlobalMapGroup::GetCar()
-{
-    if( !CarId )
-        return nullptr;
-    Item* car = ItemMngr.GetItem( CarId, true );
-    if( !car )
-        CarId = 0;
-    return car;
-}
-
-bool GlobalMapGroup::CheckForFollow( Critter* cr )
-{
-    if( IsSetMove )
-        return false;
-    if( Timer::GameTick() >= TimeCanFollow )
-        return false;
-    if( std::find( CritMove.begin(), CritMove.end(), cr ) != CritMove.end() )
-        return false;
-    if( CritMove.size() >= GM_MAX_GROUP_COUNT )
-        return false;
-    return true;
-}
-
-void GlobalMapGroup::AddCrit( Critter* cr )
-{
-    uint id = cr->GetId();
-    if( std::find( CritMove.begin(), CritMove.end(), cr ) == CritMove.end() )
-        CritMove.push_back( cr );
-}
-
-void GlobalMapGroup::EraseCrit( Critter* cr )
-{
-    auto it = std::find( CritMove.begin(), CritMove.end(), cr );
-    if( it != CritMove.end() )
-        CritMove.erase( it );
-}
-
-void GlobalMapGroup::Clear()
-{
-    CritMove.clear();
-    CurX = CurY = ToX = ToY = 0.0f;
-    CarId = 0;
-    IsSetMove = false;
-    TimeCanFollow = 0;
-    IsMultiply = true;
-    ProcessLastTick = Timer::GameTick();
-    EncounterDescriptor = 0;
-    EncounterTick = 0;
-    EncounterForce = false;
-}
-
-/************************************************************************/
-/* MapMngr                                                              */
-/************************************************************************/
-
 MapManager::MapManager(): runGarbager( true )
 {
     MEMORY_PROCESS( MEMORY_STATIC, sizeof( MapManager ) );
@@ -486,676 +384,6 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
     Job::DeferredRelease( loc );
     for( auto it = maps.begin(); it != maps.end(); ++it )
         Job::DeferredRelease( *it );
-}
-
-void MapManager::GM_GroupMove( GlobalMapGroup* group )
-{
-    uint     tick = Timer::GameTick();
-    Critter* rule = group->Rule;
-
-    // Encounter
-    if( group->EncounterDescriptor )
-    {
-        if( tick < group->EncounterTick )
-            return;
-
-        // Force invite
-        if( group->EncounterForce )
-        {
-            group->SyncLockGroup();
-            GM_GlobalInvite( group, rule->GetDefaultCombat() );
-            return;
-        }
-
-        // Continue walk
-        group->EncounterDescriptor = 0;
-        rule->SendA_GlobalInfo( group, GM_INFO_GROUP_PARAM );
-        group->ProcessLastTick = tick;
-    }
-
-    // Start callback
-    if( !group->IsSetMove && tick >= group->TimeCanFollow )
-    {
-        group->SyncLockGroup();
-        group->IsSetMove = true;
-        GM_GlobalProcess( rule, group, GLOBAL_PROCESS_START );
-        return;
-    }
-
-    // Move
-    if( group->IsMoving() )
-    {
-        uint dtime = tick - group->ProcessLastTick;
-        if( dtime >= GameOpt.GlobalMapMoveTime )
-        {
-            if( dtime >= GameOpt.GlobalMapMoveTime * 2 )
-                dtime = 0;
-            group->ProcessLastTick = tick - dtime % GameOpt.GlobalMapMoveTime;
-
-            group->SyncLockGroup();
-
-            if( rule->IsPlayer() && ( (Client*) rule )->IsOffline() )
-            {
-                group->Stop();
-                GM_GlobalProcess( rule, group, GLOBAL_PROCESS_STOPPED );
-                return;
-            }
-
-            GM_GlobalProcess( rule, group, GLOBAL_PROCESS_MOVE );
-        }
-    }
-}
-
-void MapManager::GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type )
-{
-    static THREAD int recursion_depth = 0;
-    if( ++recursion_depth > 100 )
-    {
-        WriteLogF( _FUNC_, " - Recursion depth is greater than 100, abort. Critter '%s'.\n", cr->GetInfo() );
-        recursion_depth--;
-        return;
-    }
-
-    // Catchers
-    uint     encounter_descriptor = 0;
-    bool     wait_for_answer = false;
-    Critter* rule = group->Rule;
-    float    cur_wx = group->CurX;
-    float    cur_wy = group->CurY;
-    float    to_wx = group->ToX;
-    float    to_wy = group->ToY;
-    float    speed = group->Speed;
-    float    base_speed = group->Speed;
-    bool     global_process = true;
-
-    if( Script::RaiseInternalEvent( ServerFunctions.GlobalMapProcess, type, cr, group->GetCar(), &cur_wx, &cur_wy,
-                                    &to_wx, &to_wy, &speed, &encounter_descriptor, &wait_for_answer ) )
-    {
-        global_process = false;
-    }
-    else
-    {
-        encounter_descriptor = 0;
-        wait_for_answer = false;
-        cur_wx = group->CurX;
-        cur_wy = group->CurY;
-        to_wx = group->ToX;
-        to_wy = group->ToY;
-        speed = group->Speed;
-    }
-
-    if( !group->IsValid() )
-    {
-        recursion_depth--;
-        return;
-    }
-
-    if( global_process )
-    {
-        Script::RaiseInternalEvent( ServerFunctions.GlobalMapProcess, type, cr, group->GetCar(), &cur_wx, &cur_wy,
-                                    &to_wx, &to_wy, &speed, &encounter_descriptor, &wait_for_answer );
-    }
-
-    if( !group->IsValid() )
-    {
-        recursion_depth--;
-        return;
-    }
-
-    // Check ranges
-    float max_wx = (float) GM_MAXX;
-    float max_wy = (float) GM_MAXY;
-    if( cur_wx < 0.0f )
-        cur_wx = 0.0f;
-    if( cur_wy < 0.0f )
-        cur_wy = 0.0f;
-    if( cur_wx >= max_wx )
-        cur_wx = max_wx - 1;
-    if( cur_wy >= max_wy )
-        cur_wy = max_wy - 1;
-    if( to_wx < 0.0f )
-        to_wx = 0.0f;
-    if( to_wy < 0.0f )
-        to_wy = 0.0f;
-    if( to_wx >= max_wx )
-        to_wx = max_wx - 1;
-    if( to_wy >= max_wy )
-        to_wy = max_wy - 1;
-    if( speed < 0.0f )
-        speed = 0.0f;
-    if( cur_wx == to_wx && cur_wy == to_wy )
-        speed = 0.0f;
-    if( speed == 0.0f )
-        to_wx = cur_wx, to_wy = cur_wy;
-
-    // Current position
-    if( cur_wx != group->CurX || cur_wy != group->CurY || speed != group->Speed )
-    {
-        group->CurX = cur_wx;
-        group->CurY = cur_wy;
-        group->Speed = speed;
-
-        int cur_wxi = (int) cur_wx;
-        int cur_wyi = (int) cur_wy;
-        for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            if( cur_wxi != cr->GetWorldX() || cur_wyi != cr->GetWorldY() )
-            {
-                cr->SetWorldX( cur_wxi );
-                cr->SetWorldY( cur_wyi );
-                cr->Send_GlobalInfo( GM_INFO_GROUP_PARAM );
-            }
-        }
-    }
-
-    // New target
-    if( type == GLOBAL_PROCESS_SET_MOVE || to_wx != group->ToX || to_wy != group->ToY )
-    {
-        GM_GroupSetMove( group, to_wx, to_wy, speed );
-        recursion_depth--;
-        return;
-    }
-
-    // Stop
-    if( base_speed > 0.0f && speed <= 0.0f )
-    {
-        group->Stop();
-        GM_GlobalProcess( rule, group, GLOBAL_PROCESS_STOPPED );
-        recursion_depth--;
-        return;
-    }
-    if( type == GLOBAL_PROCESS_STOPPED )
-        cr->SendA_GlobalInfo( group, GM_INFO_GROUP_PARAM );
-
-    // Encounter
-    if( encounter_descriptor )
-    {
-        group->EncounterDescriptor = encounter_descriptor;
-        if( type == GLOBAL_PROCESS_ENTER )
-        {
-            GM_GlobalInvite( group, rule->GetDefaultCombat() );
-        }
-        else
-        {
-            if( wait_for_answer )
-            {
-                group->EncounterTick = Timer::GameTick() + GM_ANSWER_WAIT_TIME;
-                group->EncounterForce = false;
-            }
-            else
-            {
-                group->EncounterTick = Timer::GameTick() + GM_LIGHT_TIME;
-                group->EncounterForce = true;
-            }
-
-            rule->SendA_GlobalInfo( group, GM_INFO_GROUP_PARAM );
-        }
-    }
-
-    recursion_depth--;
-}
-
-void MapManager::GM_GlobalInvite( GlobalMapGroup* group, int combat_mode )
-{
-    uint     encounter_descriptor = group->EncounterDescriptor;
-    group->EncounterDescriptor = 0;
-    uint     map_id = 0;
-    ushort   hx = 0, hy = 0;
-    uchar    dir = 0;
-    Critter* rule = group->Rule;
-    bool     global_invite = true;
-
-    if( Script::RaiseInternalEvent( ServerFunctions.GlobalMapInvite, rule, group->GetCar(), encounter_descriptor, combat_mode, &map_id, &hx, &hy, &dir ) )
-    {
-        global_invite = false;
-    }
-    else
-    {
-        map_id = 0;
-        hx = 0;
-        hy = 0;
-        dir = 0;
-    }
-
-    if( !group->IsValid() )
-        return;
-
-    if( map_id )
-    {
-        Map* map = GetMap( map_id );
-        if( map )
-            GM_GroupToMap( group, map, 0, hx, hy, dir < DIRS_COUNT ? dir : rule->GetDir() );
-    }
-    else
-    {
-        rule->SendA_GlobalInfo( group, GM_INFO_GROUP_PARAM );
-    }
-}
-
-bool MapManager::GM_CheckEntrance( Location* loc, ScriptArray* arr, uchar entrance )
-{
-    if( !loc->EntranceScriptBindId )
-        return true;
-
-    if( Script::PrepareContext( loc->EntranceScriptBindId, _FUNC_, ( *(Critter**) arr->At( 0 ) )->GetInfo() ) )
-    {
-        Script::SetArgEntity( loc );
-        Script::SetArgObject( arr );
-        Script::SetArgUChar( entrance );
-        if( Script::RunPrepared() )
-            return Script::GetReturnedBool();
-    }
-    return false;
-}
-
-ScriptArray* MapManager::GM_CreateGroupArray( GlobalMapGroup* group )
-{
-    ScriptArray* arr = Script::CreateArray( "Critter@[]" );
-    if( !arr )
-    {
-        WriteLogF( _FUNC_, " - Create script array fail.\n" );
-        return nullptr;
-    }
-
-    group->SyncLockGroup();
-
-    arr->Resize( (asUINT) group->CritMove.size() );
-    Critter** p_ = (Critter**) arr->At( 0 );
-    *p_ = group->Rule;
-    group->Rule->AddRef();
-    int ind = 1;
-    for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( cr == group->Rule )
-            continue;
-        Critter** p = (Critter**) arr->At( ind );
-        if( !p )
-        {
-            WriteLogF( _FUNC_, " - Critical bug, rule critter '%s', not valid %d.\n", group->Rule->GetInfo(), group->Rule->IsDestroyed );
-            return nullptr;
-        }
-        *p = cr;
-        cr->AddRef();
-        ind++;
-    }
-    return arr;
-}
-
-void MapManager::GM_GroupStartMove( Critter* cr )
-{
-    if( cr->GetMapId() )
-    {
-        WriteLogF( _FUNC_, " - Critter '%s' is on map.\n", cr->GetInfo() );
-        TransitToGlobal( cr, 0, 0, false );
-        return;
-    }
-
-    cr->SetHexX( 0 );
-    cr->SetHexY( 0 );
-    cr->GroupMove = cr->GroupSelf;
-    GlobalMapGroup* group = cr->GroupMove;
-    group->Clear();
-    group->CurX = (float) cr->GetWorldX();
-    group->CurY = (float) cr->GetWorldY();
-    group->ToX = group->CurX;
-    group->ToY = group->CurY;
-    group->Speed = 0.0f;
-    cr->SetGlobalGroupUid( cr->GetGlobalGroupUid() + 1 );
-
-    Item* car = cr->GetItemCar();
-    if( car )
-        group->CarId = car->GetId();
-
-    group->TimeCanFollow = Timer::GameTick() + TIME_CAN_FOLLOW_GM;
-    SETFLAG( cr->Flags, FCRIT_RULEGROUP );
-
-    group->AddCrit( cr );
-    cr->Send_GlobalInfo( GM_INFO_ALL );
-    GM_GlobalProcess( cr, group, GLOBAL_PROCESS_START_FAST );
-}
-
-void MapManager::GM_AddCritToGroup( Critter* cr, uint rule_id )
-{
-    if( !cr )
-    {
-        WriteLogF( _FUNC_, " - Critter null ptr." );
-        return;
-    }
-
-    if( !rule_id )
-    {
-        GM_GroupStartMove( cr );
-        return;
-    }
-
-    Critter* rule = CrMngr.GetCritter( rule_id, true );
-    if( !rule || rule->GetMapId() || !rule->GroupMove || rule != rule->GroupMove->Rule )
-    {
-        if( cr->IsNpc() )
-            WriteLogF( _FUNC_, " - Invalid rule on global map. Start move alone.\n" );
-        GM_GroupStartMove( cr );
-        return;
-    }
-
-    GlobalMapGroup* group = rule->GroupMove;
-    group->SyncLockGroup();
-
-    UNSETFLAG( cr->Flags, FCRIT_RULEGROUP );
-    cr->SetWorldX( (uint) group->CurX );
-    cr->SetWorldY( (uint) group->CurY );
-    cr->SetGlobalGroupRuleId( rule_id );
-
-    for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
-        ( *it )->Send_AddCritter( cr );
-    group->AddCrit( cr );
-    cr->GroupMove = group;
-    cr->SetGlobalGroupUid( rule->GetGlobalGroupUid() );
-}
-
-void MapManager::GM_LeaveGroup( Critter* cr )
-{
-    if( cr->GetMapId() || !cr->GroupMove || cr->GroupMove->GetSize() < 2 )
-        return;
-
-    GlobalMapGroup* group = cr->GroupMove;
-    group->SyncLockGroup();
-
-    if( cr != cr->GroupMove->Rule )
-    {
-        group->EraseCrit( cr );
-        for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
-            ( *it )->Send_RemoveCritter( cr );
-
-        Item* car = cr->GetItemCar();
-        if( car && car->GetId() == group->CarId )
-        {
-            group->CarId = 0;
-            MapMngr.GM_GroupSetMove( group, group->ToX, group->ToY, 0.0f );
-        }
-
-        GM_GroupStartMove( cr );
-    }
-    else
-    {
-        // Give rule to critter with highest charisma
-        Critter* new_rule = nullptr;
-        int      max_charisma = 0;
-        for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            if( cr == group->Rule )
-                continue;
-            int charisma = cr->GetCharisma();
-            if( !max_charisma || charisma > max_charisma )
-            {
-                new_rule = cr;
-                max_charisma = charisma;
-            }
-        }
-        GM_GiveRule( cr, new_rule );
-
-        // Call again
-        if( cr != cr->GroupMove->Rule )
-            GM_LeaveGroup( cr );
-    }
-}
-
-void MapManager::GM_GiveRule( Critter* cr, Critter* new_rule )
-{
-    if( cr->GetMapId() || !cr->GroupMove || cr->GroupMove->GetSize() < 2 || cr->GroupMove->Rule != cr || cr == new_rule )
-        return;
-
-    cr->GroupSelf->SyncLockGroup();
-
-    *new_rule->GroupSelf = *cr->GroupSelf;
-    new_rule->GroupSelf->Rule = new_rule;
-    cr->GroupSelf->Clear();
-    new_rule->GroupMove = new_rule->GroupSelf;
-    UNSETFLAG( cr->Flags, FCRIT_RULEGROUP );
-    SETFLAG( new_rule->Flags, FCRIT_RULEGROUP );
-
-    for( auto it = new_rule->GroupSelf->CritMove.begin(), end = new_rule->GroupSelf->CritMove.end(); it != end; ++it )
-    {
-        Critter* cr_ = *it;
-        cr_->GroupMove = new_rule->GroupSelf;
-        cr_->Send_CustomCommand( cr, OTHER_FLAGS, cr->Flags );
-        cr_->Send_CustomCommand( new_rule, OTHER_FLAGS, new_rule->Flags );
-    }
-}
-
-void MapManager::GM_StopGroup( Critter* cr )
-{
-    if( cr->GetMapId() || !cr->GroupMove )
-        return;
-
-    cr->GroupMove->ToX = cr->GroupMove->CurX;
-    cr->GroupMove->ToY = cr->GroupMove->CurY;
-    cr->GroupMove->Speed = 0.0f;
-
-    GM_GlobalProcess( cr, cr->GroupMove, GLOBAL_PROCESS_STOPPED );
-}
-
-bool MapManager::GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, ushort mx, ushort my, uchar mdir )
-{
-    if( !map || !map->GetId() )
-    {
-        WriteLogF( _FUNC_, " - Map null ptr or zero id, pointer '%p'.\n", map );
-        return false;
-    }
-
-    Critter* rule = group->Rule;
-    ushort   hx, hy;
-    uchar    dir;
-    ushort   car_hx, car_hy;
-    Item*    car = group->GetCar();
-    Critter* car_owner = nullptr;
-
-    if( car )
-    {
-        car_owner = group->GetCritter( car->GetCritId() );
-        if( !car_owner )
-        {
-            WriteLogF( _FUNC_, " - Car owner not found, rule '%s'.\n", rule->GetInfo() );
-            car = nullptr;
-        }
-    }
-
-    if( mx >= map->GetWidth() || my >= map->GetHeight() || mdir >= DIRS_COUNT )
-    {
-        if( car )
-        {
-            if( !map->GetStartCoordCar( car_hx, car_hy, car ) )
-            {
-                rule->Send_TextMsg( rule, STR_GLOBAL_CAR_PLACE_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-                return false;
-            }
-            hx = car_hx;
-            hy = car_hy;
-            if( mdir < DIRS_COUNT )
-                dir = mdir;
-        }
-        else
-        {
-            if( !map->GetStartCoord( hx, hy, dir, entire ) )
-            {
-                rule->Send_TextMsg( rule, STR_GLOBAL_PLACE_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-                return false;
-            }
-        }
-    }
-    else
-    {
-        hx = mx;
-        hy = my;
-        dir = mdir;
-        if( car && !map->GetStartCoordCar( car_hx, car_hy, car ) )
-        {
-            rule->Send_TextMsg( rule, STR_GLOBAL_CAR_PLACE_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-            return false;
-        }
-    }
-
-    // Transit
-    group->SyncLockGroup();
-    CrVec transit_cr = group->CritMove;
-
-    // Transit rule
-    rule->SetWorldX( (uint) rule->GroupSelf->CurX );
-    rule->SetWorldY( (uint) rule->GroupSelf->CurY );
-    if( car )
-        map->SetCritterCar( car_hx, car_hy, car_owner, car );
-    if( !Transit( rule, map, hx, hy, dir, car ? 3 : 2, true ) )
-        return false;
-
-    // Transit other
-    for( auto it = transit_cr.begin(), end = transit_cr.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( cr == rule )
-            continue;
-
-        cr->SetWorldX( (uint) group->CurX );
-        cr->SetWorldY( (uint) group->CurY );
-
-        if( !Transit( cr, map, hx, hy, dir, car ? 3 : 2, true ) )
-        {
-            GM_GroupStartMove( cr );
-            continue;
-        }
-    }
-
-    group->Clear();
-    return true;
-}
-
-bool MapManager::GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool force /* = false */ )
-{
-    if( rule->GetMapId() )
-        return false;
-    if( !rule->GroupMove )
-        return false;
-    if( rule->IsPlayer() && ( (Client*) rule )->IsOffline() )
-        return false;                                                      // Offline on encounter
-    if( !loc_id )
-        return false;
-
-    if( rule != rule->GroupMove->Rule )
-    {
-        WriteLogF( _FUNC_, " - Critter '%s' is not rule.\n", rule->GetInfo() );
-        return false;
-    }
-
-    if( !force && !rule->CheckKnownLocById( loc_id ) )
-    {
-        WriteLogF( _FUNC_, " - Critter '%s' is not known location.\n", rule->GetInfo() );
-        return false;
-    }
-
-    Location* loc = GetLocation( loc_id );
-    if( !loc )
-    {
-        if( rule->IsPlayer() )
-            ( (Client*) rule )->EraseKnownLoc( loc_id );
-        rule->Send_GlobalInfo( GM_INFO_LOCATIONS );
-        rule->Send_TextMsg( rule, STR_GLOBAL_LOCATION_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-        return false;
-    }
-
-    if( !force && DistSqrt( (uint) rule->GroupSelf->CurX, (uint) rule->GroupSelf->CurY, loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
-    {
-        if( rule->IsPlayer() )
-            rule->Send_GlobalLocation( loc, true );
-        rule->Send_TextMsg( rule, STR_GLOBAL_LOCATION_REMOVED, SAY_NETMSG, TEXTMSG_GAME );
-        return false;
-    }
-
-    if( !force && !loc->IsCanEnter( rule->GroupSelf->GetSize() ) )
-    {
-        rule->Send_TextMsg( rule, STR_GLOBAL_PLAYERS_OVERFLOW, SAY_NETMSG, TEXTMSG_GAME );
-        return false;
-    }
-
-    if( !loc->GetMapsCount() )
-    {
-        if( rule->IsPlayer() )
-            ( (Client*) rule )->EraseKnownLoc( loc_id );
-        WriteLogF( _FUNC_, " - Location is empty, critter '%s'.\n", rule->GetInfo() );
-        return false;
-    }
-
-    ScriptArray* map_entrances = loc->GetMapEntrances();
-    if( entrance >= map_entrances->GetSize() / 2 )
-    {
-        WriteLogF( _FUNC_, " - Invalid entrance, critter '%s'.\n", rule->GetInfo() );
-        map_entrances->Release();
-        return false;
-    }
-    hash entrance_map = *(hash*) map_entrances->At( entrance * 2 );
-    hash entrance_entire = *(hash*) map_entrances->At( entrance * 2 + 1 );
-    map_entrances->Release();
-
-    if( loc->EntranceScriptBindId )
-    {
-        ScriptArray* group = GM_CreateGroupArray( rule->GroupMove );
-        if( !group )
-            return false;
-        bool result = GM_CheckEntrance( loc, group, entrance );
-        group->Release();
-        if( !result )
-        {
-            WriteLogF( _FUNC_, " - Can't enter in entrance, critter '%s'.\n", rule->GetInfo() );
-            return false;
-        }
-    }
-
-    ScriptArray* group = GM_CreateGroupArray( rule->GroupMove );
-    if( !group )
-        return false;
-
-    bool result = Script::RaiseInternalEvent( ServerFunctions.LocationEnter, loc, group, entrance );
-    group->Release();
-    if( !result )
-        return false;  // Group is not allowed to enter
-
-    Map* map = loc->GetMapByPid( entrance_map );
-    if( !map )
-    {
-        if( rule->IsPlayer() )
-            ( (Client*) rule )->EraseKnownLoc( loc_id );
-        WriteLogF( _FUNC_, " - Map not found in location, critter '%s'.\n", rule->GetInfo() );
-        return false;
-    }
-
-    return GM_GroupToMap( rule->GroupMove, map, entrance_entire, -1, -1, -1 );
-}
-
-void MapManager::GM_GroupSetMove( GlobalMapGroup* group, float to_x, float to_y, float speed )
-{
-    int dist = DistSqrt( (int) to_x, (int) to_y, (int) group->CurX, (int) group->CurY );
-
-    if( speed <= 0.0f || !dist )
-    {
-        group->Speed = 0.0f;
-        group->ToX = group->CurX;
-        group->ToY = group->CurY;
-    }
-    else
-    {
-        group->Speed = speed;
-        group->ToX = to_x;
-        group->ToY = to_y;
-    }
-
-    group->Rule->SendA_GlobalInfo( group, GM_INFO_GROUP_PARAM );
-    if( Timer::GameTick() - group->ProcessLastTick > GameOpt.GlobalMapMoveTime )
-        group->ProcessLastTick = Timer::GameTick();
-    if( !group->IsSetMove )
-    {
-        group->IsSetMove = true;
-        GM_GlobalProcess( group->Rule, group, GLOBAL_PROCESS_START );
-    }
 }
 
 void MapManager::TraceBullet( TraceData& trace )
@@ -1995,7 +1223,7 @@ void MapManager::PathSetMoveParams( PathStepVec& path, bool is_run )
     }
 }
 
-bool MapManager::TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, bool force )
+bool MapManager::TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, bool force )
 {
     if( cr->LockMapTransfers )
     {
@@ -2012,7 +1240,6 @@ bool MapManager::TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, 
 
     Location* loc = map->GetLocation( true );
     uint      id_map = 0;
-    uchar     dir = 0;
 
     if( !loc->GetTransit( map, id_map, hx, hy, dir ) )
         return false;
@@ -2028,21 +1255,21 @@ bool MapManager::TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, 
     // To global
     if( !id_map )
     {
-        if( TransitToGlobal( cr, 0, FOLLOW_PREP, force ) )
+        if( TransitToGlobal( cr, 0, force ) )
             return true;
     }
     // To local
     else
     {
         Map* to_map = MapMngr.GetMap( id_map );
-        if( to_map && Transit( cr, to_map, hx, hy, dir, 2, force ) )
+        if( to_map && Transit( cr, to_map, hx, hy, dir, 2, 0, force ) )
             return true;
     }
 
     return false;
 }
 
-bool MapManager::TransitToGlobal( Critter* cr, uint rule, uchar follow_type, bool force )
+bool MapManager::TransitToGlobal( Critter* cr, uint rule_id, bool force )
 {
     if( cr->LockMapTransfers )
     {
@@ -2050,10 +1277,10 @@ bool MapManager::TransitToGlobal( Critter* cr, uint rule, uchar follow_type, boo
         return false;
     }
 
-    return Transit( cr, nullptr, rule >> 16, rule & 0xFFFF, follow_type, 0, force );
+    return Transit( cr, nullptr, 0, 0, 0, 0, rule_id, force );
 }
 
-bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, bool force )
+bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint rule_id, bool force )
 {
     // Check location deletion
     Location* loc = ( map ? map->GetLocation( true ) : nullptr );
@@ -2083,24 +1310,23 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
             return false;
     }
 
-    uint   map_id = ( map ? map->GetId() : 0 );
-    uint   old_map_id = cr->GetMapId();
-    Map*   old_map = MapMngr.GetMap( old_map_id, true );
-    ushort old_hx = cr->GetHexX();
-    ushort old_hy = cr->GetHexY();
+    uint map_id = ( map ? map->GetId() : 0 );
+    uint old_map_id = cr->GetMapId();
+    Map* old_map = MapMngr.GetMap( old_map_id, true );
 
     // Recheck after synchronization
     if( cr->GetMapId() != old_map_id )
         return false;
 
-    // One map
     if( old_map_id == map_id )
     {
-        // Global
+        // One map
         if( !map_id )
+        {
+            // Todo: check group
             return true;
+        }
 
-        // Local
         if( !map || hx >= map->GetWidth() || hy >= map->GetHeight() )
             return false;
 
@@ -2111,11 +1337,10 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
         cr->LockMapTransfers++;
 
         cr->SetDir( dir >= DIRS_COUNT ? 0 : dir );
-        bool is_dead = cr->IsDead();
-        map->UnsetFlagCritter( old_hx, old_hy, multihex, is_dead );
+        map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), multihex, cr->IsDead() );
         cr->SetHexX( hx );
         cr->SetHexY( hy );
-        map->SetFlagCritter( hx, hy, multihex, is_dead );
+        map->SetFlagCritter( hx, hy, multihex, cr->IsDead() );
         cr->SetBreakTime( 0 );
         cr->Send_CustomCommand( cr, OTHER_TELEPORT, ( cr->GetHexX() << 16 ) | ( cr->GetHexY() ) );
         cr->ClearVisible();
@@ -2124,43 +1349,28 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
         cr->Send_XY( cr );
 
         cr->LockMapTransfers--;
-        return true;
     }
-    // Different maps
     else
     {
+        // Different maps
+        uint multihex = cr->GetMultihex();
+        if( !map->FindStartHex( hx, hy, multihex, radius, true ) && !map->FindStartHex( hx, hy, multihex, radius, false ) )
+            return false;
+        if( !CanAddCrToMap( cr, map, hx, hy, rule_id ) )
+            return false;
+
         cr->LockMapTransfers++;
 
-        if( !AddCrToMap( cr, map, hx, hy, radius, true ) )
-        {
-            cr->LockMapTransfers--;
-            return false;
-        }
-
-        // Global
-        if( !map )
-        {
-            // to_ori == follow_type
-            if( dir == FOLLOW_PREP )
-                cr->SendA_Follow( dir, 0, TIME_CAN_FOLLOW_GM );
-        }
-        // Local
-        else
-        {
-            cr->SetDir( dir >= DIRS_COUNT ? 0 : dir );
-        }
-
         if( !old_map_id || old_map )
-            EraseCrFromMap( cr, old_map, old_hx, old_hy );
+            EraseCrFromMap( cr, old_map );
 
+        cr->SetLastMapHexX( cr->GetHexX() );
+        cr->SetLastMapHexY( cr->GetHexY() );
         cr->SetBreakTime( 0 );
-        cr->Send_LoadMap( nullptr );
 
-        // Map out / in events
-        if( old_map )
-            old_map->EraseCritterEvents( cr );
-        if( map )
-            map->AddCritterEvents( cr );
+        AddCrToMap( cr, map, hx, hy, dir, rule_id );
+
+        cr->Send_LoadMap( nullptr );
 
         // Visible critters / items
         cr->DisableSend++;
@@ -2173,98 +1383,130 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
     return true;
 }
 
-bool MapManager::AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint radius, bool transit )
+bool MapManager::FindPlaceOnMap( Critter* cr, Map* map, ushort& hx, ushort& hy, uint radius )
 {
-    // Global map
-    if( !map )
+    uint multihex = cr->GetMultihex();
+    if( !map->FindStartHex( hx, hy, multihex, radius, true ) && !map->FindStartHex( hx, hy, multihex, radius, false ) )
+        return false;
+    return true;
+}
+
+bool MapManager::CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uint rule_id )
+{
+    if( map )
     {
+        if( hx >= map->GetWidth() || hy >= map->GetHeight() )
+            return false;
+        if( !map->IsHexesPassed( hx, hy, cr->GetMultihex() ) )
+            return false;
+    }
+    else
+    {
+        if( rule_id && rule_id != cr->GetId() )
+        {
+            Critter* rule = CrMngr.GetCritter( rule_id, true );
+            if( !rule || rule->GetMapId() || rule->GetGlobalGroupUid() != cr->GetGlobalGroupUid() )
+                return false;
+        }
+    }
+    return true;
+}
+
+void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint rule_id )
+{
+    cr->LockMapTransfers++;
+
+    if( map )
+    {
+        RUNTIME_ASSERT( hx < map->GetWidth() && hy < map->GetHeight() );
+
+        cr->SetTimeoutBattle( 0 );
+        cr->SetTimeoutTransfer( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
+        cr->SetMapId( map->GetId() );
+        cr->SetMapPid( map->GetProtoId() );
+        cr->SetHexX( hx );
+        cr->SetHexY( hy );
+        cr->SetDir( dir );
+
+        map->AddCritter( cr );
+
+        Script::RaiseInternalEvent( ServerFunctions.MapCritterIn, cr );
+    }
+    else
+    {
+        RUNTIME_ASSERT( !cr->GlobalMapGroup );
+        cr->GlobalMapGroup = new CrVec();
+
         cr->SetMapId( 0 );
         cr->SetMapPid( 0 );
         cr->SetTimeoutBattle( 0 );
         cr->SetTimeoutBattle( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
 
-        cr->LockMapTransfers++;
-        if( transit )
+        if( rule_id && rule_id != cr->GetId() )
         {
-            cr->SetLastMapHexX( cr->GetHexX() );
-            cr->SetLastMapHexY( cr->GetHexY() );
+            Critter* rule = CrMngr.GetCritter( rule_id, true );
+            RUNTIME_ASSERT( rule );
+            RUNTIME_ASSERT( !rule->GetMapId() );
+
+            cr->SetWorldX( rule->GetWorldX() );
+            cr->SetWorldY( rule->GetWorldY() );
+            cr->SetGlobalGroupRuleId( rule_id );
+            cr->SetGlobalGroupUid( rule->GetGlobalGroupUid() );
+
+            for( auto it = rule->GlobalMapGroup->begin(), end = rule->GlobalMapGroup->end(); it != end; ++it )
+                ( *it )->Send_AddCritter( cr );
+            rule->GlobalMapGroup->push_back( cr );
+            *cr->GlobalMapGroup = *rule->GlobalMapGroup;
         }
-        uint rule_id = cr->GetGlobalGroupRuleId();
-        if( !rule_id )
-            GM_GroupStartMove( cr );
         else
-            GM_AddCritToGroup( cr, rule_id );
-        cr->LockMapTransfers--;
-    }
-    // Local map
-    else
-    {
-        if( tx >= map->GetWidth() || ty >= map->GetHeight() )
         {
-            WriteLog( "Invalid map position %u %u, map width %u and height %u.\n", tx, ty, map->GetWidth(), map->GetHeight() );
-            return false;
+            cr->SetGlobalGroupRuleId( 0 );
+            cr->SetGlobalGroupUid( cr->GetGlobalGroupUid() + 1 );
+
+            cr->GlobalMapGroup->push_back( cr );
         }
 
-        uint multihex = cr->GetMultihex();
-        if( !map->FindStartHex( tx, ty, multihex, radius, true ) && !map->FindStartHex( tx, ty, multihex, radius, false ) )
-        {
-            WriteLog( "Start hex for position %u %u and rasius %u not found.\n", tx, ty, radius );
-            return false;
-        }
-
-        cr->LockMapTransfers++;
-        cr->SetTimeoutBattle( 0 );
-        cr->SetTimeoutTransfer( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
-        cr->SetMapId( map->GetId() );
-        cr->SetMapPid( map->GetProtoId() );
-        if( transit )
-        {
-            cr->SetLastMapHexX( cr->GetHexX() );
-            cr->SetLastMapHexY( cr->GetHexY() );
-        }
-        cr->SetHexX( tx );
-        cr->SetHexY( ty );
-        map->AddCritter( cr );
-        cr->LockMapTransfers--;
+        Script::RaiseInternalEvent( ServerFunctions.GlobalMapGroupStart, cr );
     }
-    return true;
+
+    cr->LockMapTransfers--;
 }
 
-void MapManager::EraseCrFromMap( Critter* cr, Map* map, ushort hex_x, ushort hex_y )
+void MapManager::EraseCrFromMap( Critter* cr, Map* map )
 {
-    // Global map
+    cr->LockMapTransfers++;
+
     if( !map )
     {
-        if( cr->GroupMove )
+        Script::RaiseInternalEvent( ServerFunctions.GlobalMapGroupFinish, cr );
+
+        RUNTIME_ASSERT( cr->GlobalMapGroup );
+
+        for( auto group_cr :* cr->GlobalMapGroup )
         {
-            cr->GroupMove->EraseCrit( cr );
-            for( auto it = cr->GroupMove->CritMove.begin(), end = cr->GroupMove->CritMove.end(); it != end; ++it )
-            {
-                Critter* cr_ = *it;
-                cr_->Send_RemoveCritter( cr );
-                // cr_->EventHideCritter(cr);
-            }
-            cr->GroupMove = nullptr;
+            auto it_ = std::find( group_cr->GlobalMapGroup->begin(), group_cr->GlobalMapGroup->end(), cr );
+            RUNTIME_ASSERT( it_ != group_cr->GlobalMapGroup->end() );
+            group_cr->GlobalMapGroup->erase( it_ );
+            group_cr->Send_RemoveCritter( cr );
         }
+        SAFEDEL( cr->GlobalMapGroup );
     }
-    // Local map
     else
     {
-        cr->LockMapTransfers++;
+        Script::RaiseInternalEvent( ServerFunctions.MapCritterOut, map, cr );
 
         cr->SyncLockCritters( false, false );
         CrVec critters = cr->VisCr;
-
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-        {
-            Critter* cr_ = *it;
-            Script::RaiseInternalEvent( ServerFunctions.CritterHide, cr_, cr );
-        }
+            Script::RaiseInternalEvent( ServerFunctions.CritterHide, *it, cr );
 
         cr->ClearVisible();
         map->EraseCritter( cr );
-        map->UnsetFlagCritter( hex_x, hex_y, cr->GetMultihex(), cr->IsDead() );
+        map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
 
-        cr->LockMapTransfers--;
+        cr->SetMapId( 0 );
+        cr->SetMapPid( 0 );
     }
+
+    cr->LockMapTransfers--;
 }

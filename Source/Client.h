@@ -196,7 +196,6 @@ public:
     void Net_SendSayNpc( uchar is_npc, uint id_to_talk, const char* str );
     void Net_SendBarter( uint npc_id, ItemVec& cont_sale, ItemVec& cont_buy );
     void Net_SendGetGameInfo();
-    void Net_SendRuleGlobal( uchar command, uint param1 = 0, uint param2 = 0 );
     void Net_SendGiveMap( bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash );
     void Net_SendLoadMapOk();
     void Net_SendText( const char* send_str, uchar how_say );
@@ -256,13 +255,10 @@ public:
     void Net_OnLoadMap();
     void Net_OnMap();
     void Net_OnGlobalInfo();
-    void Net_OnGlobalEntrances();
     void Net_OnContainerInfo();
-    void Net_OnFollow();
     void Net_OnPlayersBarter();
     void Net_OnPlayersBarterSetHide();
     void Net_OnRunClientScript();
-    void Net_OnDropTimers();
     void Net_OnCheckUID3();
 
     void Net_OnUpdateFilesList();
@@ -613,10 +609,6 @@ public:
         static void          Global_EraseCacheData( const ScriptString& name );
         static void          Global_SetUserConfig( ScriptArray& key_values );
 
-        static bool&         GmapActive;
-        static bool&         GmapWait;
-        static int&          GmapGroupCurX, & GmapGroupCurY, & GmapGroupToX, & GmapGroupToY;
-        static float&        GmapGroupSpeed;
         static Map*          ClientCurMap;
         static Location*     ClientCurLocation;
     } ScriptFunc;
@@ -683,7 +675,7 @@ public:
 /************************************************************************/
 /* Mini-map                                                             */
 /************************************************************************/
-    #define MINIMAP_PREPARE_TICK       ( 1000 )
+    #define MINIMAP_PREPARE_TICK      ( 1000 )
 
     PointVec LmapPrepPix;
     Rect     LmapWMap;
@@ -696,13 +688,6 @@ public:
 /************************************************************************/
 /* Global map                                                           */
 /************************************************************************/
-    static bool GmapActive;
-
-    void GmapNullParams();
-
-    uint       GmapNextShowEntrancesTick;
-    uint       GmapShowEntrancesLocId;
-    bool       GmapShowEntrances[ 0x100 ];
     // Mask
     TwoBitMask GmapFog;
     PointVec   GmapFogPix;
@@ -723,19 +708,7 @@ public:
     GmapLocationVec GmapLoc;
     GmapLocation    GmapTownLoc;
 
-    // Params
-    uint         GmapMoveTick;
-    int          GmapGroupRealOldX, GmapGroupRealOldY, GmapGroupRealCurX, GmapGroupRealCurY;
-    static int   GmapGroupCurX, GmapGroupCurY, GmapGroupToX, GmapGroupToY;
-    static bool  GmapWait;
-    static float GmapGroupSpeed;
-
-    // Cars
-    struct
-    {
-        uint  MasterId;
-        Item* Car;
-    } GmapCar;
+    void GmapNullParams();
 
 /************************************************************************/
 /* PipBoy                                                               */
@@ -793,12 +766,8 @@ public:
 /************************************************************************/
 /* DialogBox                                                            */
 /************************************************************************/
-    #define DIALOGBOX_NONE             ( 0 )
-    #define DIALOGBOX_FOLLOW           ( 1 )
-    #define DIALOGBOX_BARTER           ( 2 )
-    #define DIALOGBOX_ENCOUNTER_ANY    ( 3 )
-    #define DIALOGBOX_ENCOUNTER_RT     ( 4 )
-    #define DIALOGBOX_ENCOUNTER_TB     ( 5 )
+    #define DIALOGBOX_NONE            ( 0 )
+    #define DIALOGBOX_BARTER          ( 2 )
     uchar  DlgboxType;
     uint   DlgboxWait;
     char   DlgboxText[ MAX_FOTEXT ];
@@ -825,8 +794,8 @@ public:
 /************************************************************************/
 /* Save/Load                                                            */
 /************************************************************************/
-    #define SAVE_LOAD_IMAGE_WIDTH      ( 400 )
-    #define SAVE_LOAD_IMAGE_HEIGHT     ( 300 )
+    #define SAVE_LOAD_IMAGE_WIDTH     ( 400 )
+    #define SAVE_LOAD_IMAGE_HEIGHT    ( 300 )
 
     bool          SaveLoadProcessDraft, SaveLoadDraftValid;
     RenderTarget* SaveLoadDraft;
@@ -882,8 +851,8 @@ public:
 /************************************************************************/
 /* MessBox                                                              */
 /************************************************************************/
-    #define FOMB_GAME                  ( 0 )
-    #define FOMB_TALK                  ( 1 )
+    #define FOMB_GAME                 ( 0 )
+    #define FOMB_TALK                 ( 1 )
     void AddMess( int mess_type, const char* msg, bool script_call = false );
 };
 

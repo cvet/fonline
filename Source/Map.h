@@ -71,9 +71,7 @@ public:
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
     void AddCritter( Critter* cr );
-    void AddCritterEvents( Critter* cr );
     void EraseCritter( Critter* cr );
-    void EraseCritterEvents( Critter* cr );
     void KickPlayersToGlobalMap();
 
     bool AddItem( Item* item, ushort hx, ushort hy );

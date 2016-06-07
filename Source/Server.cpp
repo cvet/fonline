@@ -225,9 +225,9 @@ void FOServer::DisconnectClient( Client* cl )
         {
             cl->SendA_Action( ACTION_DISCONNECT, 0, nullptr );
         }
-        else if( cl->GroupMove )
+        else
         {
-            for( auto it = cl->GroupMove->CritMove.begin(), end = cl->GroupMove->CritMove.end(); it != end; ++it )
+            for( auto it = cl->GlobalMapGroup->begin(), end = cl->GlobalMapGroup->end(); it != end; ++it )
             {
                 Critter* cr = *it;
                 if( cr != cl )
@@ -247,41 +247,13 @@ void FOServer::RemoveClient( Client* cl )
 
         if( cl->GetMapId() )
         {
-            Map* map = MapMngr.GetMap( cl->GetMapId(), true );
-            if( map )
-            {
-                MapMngr.EraseCrFromMap( cl, map, cl->GetHexX(), cl->GetHexY() );
-                map->EraseCritterEvents( cl );
-            }
+            Map* map = MapMngr.GetMap( cl->GetMapId() );
+            RUNTIME_ASSERT( map );
+            MapMngr.EraseCrFromMap( cl, map );
         }
-        else if( cl->GroupMove )
+        else if( cl->GlobalMapGroup )
         {
-            GlobalMapGroup* group = cl->GroupMove;
-            group->EraseCrit( cl );
-            if( cl == group->Rule )
-            {
-                for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
-                {
-                    Critter* cr = *it;
-                    MapMngr.GM_GroupStartMove( cr );
-                }
-            }
-            else
-            {
-                for( auto it = group->CritMove.begin(), end = group->CritMove.end(); it != end; ++it )
-                {
-                    Critter* cr = *it;
-                    cr->Send_RemoveCritter( cl );
-                }
-
-                Item* car = cl->GetItemCar();
-                if( car && car->GetId() == group->CarId )
-                {
-                    group->CarId = 0;
-                    MapMngr.GM_GroupSetMove( group, group->ToX, group->ToY, 0.0f );                // Stop others
-                }
-            }
-            cl->GroupMove = nullptr;
+            MapMngr.EraseCrFromMap( cl, nullptr );
         }
 
         // Deferred saving
@@ -1709,14 +1681,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            break;
-            case NETMSG_SEND_RULE_GLOBAL:
-            {
-                CHECK_BUSY_AND_LIFE;
-                Process_RuleGlobal( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_SET_USER_HOLO_STR:
             {
                 CHECK_BUSY_AND_LIFE;
@@ -1848,7 +1812,7 @@ void FOServer::Process_Text( Client* cl )
         if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_NORM, true );
         else
-            cl->SendAA_Text( cl->GroupMove->CritMove, str, SAY_NORM, true );
+            cl->SendAA_Text( *cl->GlobalMapGroup, str, SAY_NORM, true );
     }
     break;
     case SAY_SHOUT:
@@ -1866,7 +1830,7 @@ void FOServer::Process_Text( Client* cl )
         }
         else
         {
-            cl->SendAA_Text( cl->GroupMove->CritMove, str, SAY_SHOUT, true );
+            cl->SendAA_Text( *cl->GlobalMapGroup, str, SAY_SHOUT, true );
         }
     }
     break;
@@ -1875,7 +1839,7 @@ void FOServer::Process_Text( Client* cl )
         if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_EMOTE, true );
         else
-            cl->SendAA_Text( cl->GroupMove->CritMove, str, SAY_EMOTE, true );
+            cl->SendAA_Text( *cl->GlobalMapGroup, str, SAY_EMOTE, true );
     }
     break;
     case SAY_WHISP:
@@ -2146,7 +2110,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             break;
         }
 
-        if( MapMngr.Transit( cr, map, hex_x, hex_y, cr->GetDir(), 3, true ) )
+        if( MapMngr.Transit( cr, map, hex_x, hex_y, cr->GetDir(), 3, 0, true ) )
             logcb( "Critter move success." );
         else
             logcb( "Critter move fail." );
@@ -2220,7 +2184,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             break;
         }
 
-        if( MapMngr.TransitToGlobal( cl_, 0, 0, false ) == true )
+        if( MapMngr.TransitToGlobal( cl_, 0, false ) == true )
             logcb( "To global success." );
         else
             logcb( "To global fail." );
@@ -2640,7 +2604,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         if( RegenerateMap( map ) )
         {
             // Transit to old position
-            MapMngr.Transit( cl_, map, hx, hy, dir, 5, true );
+            MapMngr.Transit( cl_, map, hx, hy, dir, 5, 0, true );
             logcb( "Regenerate map success." );
         }
         else

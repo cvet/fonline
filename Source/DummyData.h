@@ -198,7 +198,6 @@ struct BindClass
     static void Cl_SetAccess()                  {}
     static void Crit_SetLexems()                {}
     static void Crit_GetMap()                   {}
-    static void Cl_DropTimers()                 {}
     static void Crit_MoveRandom()               {}
     static void Crit_MoveToDir()                {}
     static void Crit_TransitToHex()             {}
@@ -229,12 +228,6 @@ struct BindClass
     static void Crit_SetFavoriteItem()          {}
     static void Crit_GetFavoriteItem()          {}
     static void Crit_GetCritters()              {}
-    static void Crit_GetFollowGroup()           {}
-    static void Crit_GetFollowLeader()          {}
-    static void Crit_GetGlobalGroup()           {}
-    static void Crit_IsGlobalGroupLeader()      {}
-    static void Crit_LeaveGlobalGroup()         {}
-    static void Crit_GiveGlobalGroupLead()      {}
     static void Npc_GetTalkedPlayers()          {}
     static void Crit_IsSeeCr()                  {}
     static void Crit_IsSeenByCr()               {}
@@ -519,10 +512,6 @@ struct BindClass
     static void Global_EraseCacheData()    {}
     static void Global_SetUserConfig()     {}
 
-    static int  ConsoleActive;
-    static int  GmapActive, GmapWait;
-    static int  GmapGroupCurX, GmapGroupCurY, GmapGroupToX, GmapGroupToY;
-    static int  GmapGroupSpeed;
     static int  ClientCurMap;
     static int  ClientCurLocation;
     #endif
@@ -650,14 +639,6 @@ struct BindClass
 #include "ScriptFunctions.h"
 
 #ifdef BIND_CLIENT
-int BindClass::ConsoleActive;
-int BindClass::GmapActive;
-int BindClass::GmapWait;
-int BindClass::GmapGroupCurX;
-int BindClass::GmapGroupCurY;
-int BindClass::GmapGroupToX;
-int BindClass::GmapGroupToY;
-int BindClass::GmapGroupSpeed;
 int BindClass::ClientCurMap;
 int BindClass::ClientCurLocation;
 #endif

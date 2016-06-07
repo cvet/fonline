@@ -6,39 +6,6 @@
 #include "Critter.h"
 #include "Item.h"
 
-class GlobalMapGroup
-{
-public:
-    CrVec    CritMove;
-    Critter* Rule;
-    uint     CarId;
-    float    CurX, CurY;
-    float    ToX, ToY;
-    float    Speed;
-    bool     IsSetMove;
-    uint     TimeCanFollow;
-    bool     IsMultiply;
-    uint     ProcessLastTick;
-    uint     EncounterDescriptor;
-    uint     EncounterTick;
-    bool     EncounterForce;
-    uint     UserData[ 10 ];
-
-    bool     IsValid();
-    bool     IsMoving();
-    uint     GetSize();
-    void     Stop();
-    void     SyncLockGroup();
-    Critter* GetCritter( uint crid );
-    Item*    GetCar();
-    bool     CheckForFollow( Critter* cr );
-    void     AddCrit( Critter* cr );
-    void     EraseCrit( Critter* cr );
-    void     Clear();
-    GlobalMapGroup() { Clear(); }
-};
-typedef vector< GlobalMapGroup* > GMapGroupVec;
-
 struct TraceData
 {
     // Input
@@ -126,30 +93,15 @@ public:
 
     // Maps stuff
 public:
-    bool AddCrToMap( Critter* cr, Map* map, ushort tx, ushort ty, uint radius, bool transit );
-    void EraseCrFromMap( Critter* cr, Map* map, ushort hex_x, ushort hex_y );
-    bool TryTransitCrGrid( Critter* cr, Map* map, ushort hx, ushort hy, bool force );
-    bool TransitToGlobal( Critter* cr, uint rule, uchar follow_type, bool force );
-    bool Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, bool force );
-
-    // Global map
-public:
+    bool FindPlaceOnMap( Critter* cr, Map* map, ushort& hx, ushort& hy, uint radius );
+    bool CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uint rule_id );
+    void AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint rule_id );
+    void EraseCrFromMap( Critter* cr, Map* map );
+    bool TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, bool force );
+    bool TransitToGlobal( Critter* cr, uint rule_id, bool force );
+    bool Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint rule_id, bool force );
     bool IsIntersectZone( int wx1, int wy1, int wx1_radius, int wx2, int wy2, int wx2_radius, int zones );
     void GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc_ids );
-
-    void         GM_GroupStartMove( Critter* cr );
-    void         GM_AddCritToGroup( Critter* cr, uint rule_id );
-    void         GM_LeaveGroup( Critter* cr );
-    void         GM_GiveRule( Critter* cr, Critter* new_rule );
-    void         GM_StopGroup( Critter* cr );
-    bool         GM_GroupToMap( GlobalMapGroup* group, Map* map, uint entire, ushort mx, ushort my, uchar mdir );
-    bool         GM_GroupToLoc( Critter* rule, uint loc_id, uchar entrance, bool force = false );
-    void         GM_GroupSetMove( GlobalMapGroup* group, float to_x, float to_y, float speed );
-    void         GM_GroupMove( GlobalMapGroup* group );
-    void         GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type );
-    void         GM_GlobalInvite( GlobalMapGroup* group, int combat_mode );
-    bool         GM_CheckEntrance( Location* loc, ScriptArray* arr, uchar entrance );
-    ScriptArray* GM_CreateGroupArray( GlobalMapGroup* group );
 
     // Locations
 private:

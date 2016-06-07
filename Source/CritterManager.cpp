@@ -21,56 +21,22 @@ void CritterManager::DeleteNpc( Critter* cr )
 
     // Tear off from environment
     cr->LockMapTransfers++;
-    while( cr->GetMapId() || cr->GroupMove || cr->RealCountItems() )
+    while( cr->GetMapId() || cr->GlobalMapGroup || cr->RealCountItems() )
     {
-        // Delete from map
+        // Delete inventory
+        cr->DeleteInventory();
+
+        // Delete from maps
         if( cr->GetMapId() )
         {
             Map* map = MapMngr.GetMap( cr->GetMapId() );
-            if( map )
-            {
-                cr->ClearVisible();
-                map->EraseCritter( cr );
-                map->EraseCritterEvents( cr );
-                map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
-            }
-            cr->SetMapId( 0 );
-            cr->SetMapPid( 0 );
+            RUNTIME_ASSERT( map );
+            MapMngr.EraseCrFromMap( cr, map );
         }
-
-        // Delete from global
-        if( cr->GroupMove )
+        else if( cr->GlobalMapGroup )
         {
-            GlobalMapGroup* group = cr->GroupMove;
-            group->EraseCrit( cr );
-            if( cr == group->Rule )
-            {
-                for( auto it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
-                {
-                    Critter* cr_ = *it_;
-                    MapMngr.GM_GroupStartMove( cr_ );
-                }
-            }
-            else
-            {
-                for( auto it_ = group->CritMove.begin(), end_ = group->CritMove.end(); it_ != end_; ++it_ )
-                {
-                    Critter* cr_ = *it_;
-                    cr_->Send_RemoveCritter( cr );
-                }
-
-                Item* car = cr->GetItemCar();
-                if( car && car->GetId() == group->CarId )
-                {
-                    group->CarId = 0;
-                    MapMngr.GM_GroupSetMove( group, group->ToX, group->ToY, 0.0f );                                      // Stop others
-                }
-            }
-            cr->GroupMove = nullptr;
+            MapMngr.EraseCrFromMap( cr, nullptr );
         }
-
-        // Delete inventory
-        cr->DeleteInventory();
     }
     cr->LockMapTransfers--;
 
@@ -154,7 +120,6 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
 
     if( dir >= DIRS_COUNT )
         dir = Random( 0, DIRS_COUNT - 1 );
-    npc->SetDir( dir );
     npc->SetWorldX( loc ? loc->GetWorldX() : 100 );
     npc->SetWorldY( loc ? loc->GetWorldY() : 100 );
     npc->SetHome( map->GetId(), hx, hy, dir );
@@ -164,11 +129,12 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     npc->SetHexY( hy );
     npc->RefreshName();
 
-    map->AddCritter( npc );
+    bool can = MapMngr.CanAddCrToMap( npc, map, hx, hy, 0 );
+    RUNTIME_ASSERT( can );
+    MapMngr.AddCrToMap( npc, map, hx, hy, dir, 0 );
 
     Script::RaiseInternalEvent( ServerFunctions.CritterInit, npc, true );
     npc->SetScript( nullptr, true );
-    map->AddCritterEvents( npc );
 
     npc->RefreshBag();
     npc->ProcessVisibleCritters();
@@ -330,8 +296,7 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
     for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( !cr->GetMapId() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
-            cr->CheckFind( find_type ) )
+        if( !cr->GetMapId() && DistSqrt( (int) cr->GetWorldX(), (int) cr->GetWorldY(), wx, wy ) <= radius && cr->CheckFind( find_type ) )
             find_critters.push_back( cr );
     }
 
@@ -349,8 +314,7 @@ void CritterManager::GetGlobalMapCritters( ushort wx, ushort wy, uint radius, in
         for( auto it = all_critters.begin(), end = all_critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
-            if( !cr->GetMapId() && cr->GroupMove && DistSqrt( (int) cr->GroupMove->CurX, (int) cr->GroupMove->CurY, wx, wy ) <= radius &&
-                cr->CheckFind( find_type ) )
+            if( !cr->GetMapId() && DistSqrt( (int) cr->GetWorldX(), (int) cr->GetWorldY(), wx, wy ) <= radius && cr->CheckFind( find_type ) )
                 find_critters2.push_back( cr );
         }
 

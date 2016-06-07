@@ -732,7 +732,7 @@ void FOClient::LmapPrepareMap()
             Field& f = HexMngr.GetField( i1, i2 );
             if( f.Crit )
             {
-                cur_color = ( f.Crit == Chosen ? 0xFF0000FF : ( f.Crit->GetFollowCrit() == Chosen->GetId() ? 0xFFFF00FF : 0xFFFF0000 ) );
+                cur_color = ( f.Crit == Chosen ? 0xFF0000FF : 0xFFFF0000 );
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y, cur_color ) );
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color ) );
             }
@@ -769,28 +769,10 @@ void FOClient::LmapPrepareMap()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-bool  FOClient::GmapActive;
-int   FOClient::GmapGroupCurX, FOClient::GmapGroupCurY, FOClient::GmapGroupToX, FOClient::GmapGroupToY;
-bool  FOClient::GmapWait;
-float FOClient::GmapGroupSpeed;
-
 void FOClient::GmapNullParams()
 {
-    GmapGroupRealOldX = 0;
-    GmapGroupRealOldY = 0;
-    GmapGroupRealCurX = 0;
-    GmapGroupRealCurY = 0;
-    GmapGroupCurX = 0;
-    GmapGroupCurY = 0;
-    GmapGroupToX = 0;
-    GmapGroupToY = 0;
-    GmapGroupSpeed = 0.0f;
-    GmapWait = false;
     GmapLoc.clear();
-    SAFEREL( GmapCar.Car );
-    GmapCar.MasterId = 0;
     GmapFog.Fill( 0 );
-    GmapActive = false;
     DeleteCritters();
 }
 
@@ -826,38 +808,12 @@ void FOClient::ShowDialogBox()
 
 void FOClient::DlgboxAnswer( int selected )
 {
-    if( selected == DlgboxButtonsCount - 1 )
-    {
-        if( DlgboxType >= DIALOGBOX_ENCOUNTER_ANY && DlgboxType <= DIALOGBOX_ENCOUNTER_TB )
-            Net_SendRuleGlobal( GM_CMD_ANSWER, -1 );
-        return;
-    }
-
-    if( DlgboxType == DIALOGBOX_FOLLOW )
-    {
-        Net_SendRuleGlobal( GM_CMD_FOLLOW, FollowRuleId );
-    }
-    else if( DlgboxType == DIALOGBOX_BARTER )
+    if( DlgboxType == DIALOGBOX_BARTER )
     {
         if( selected == 0 )
             Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, false );
         else
             Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, true );
-    }
-    else if( DlgboxType == DIALOGBOX_ENCOUNTER_ANY )
-    {
-        if( selected == 0 )
-            Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_REAL_TIME );
-        else
-            Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_TURN_BASED );
-    }
-    else if( DlgboxType == DIALOGBOX_ENCOUNTER_RT )
-    {
-        Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_REAL_TIME );
-    }
-    else if( DlgboxType == DIALOGBOX_ENCOUNTER_TB )
-    {
-        Net_SendRuleGlobal( GM_CMD_ANSWER, COMBAT_MODE_TURN_BASED );
     }
 }
 void FOClient::WaitDraw()

@@ -10,11 +10,11 @@ void FOServer::ProcessCritter( Critter* cr )
 
     uint tick = Timer::GameTick();
 
-    // Idle global function
-    if( tick >= cr->GlobalIdleNextTick )
+    // Idle function
+    if( tick >= cr->IdleNextTick )
     {
-        Script::RaiseInternalEvent( ServerFunctions.CritterIdle, cr );
-        cr->GlobalIdleNextTick = tick + GameOpt.CritterIdleTick;
+        Script::RaiseInternalEvent( cr->GetMapId() ? ServerFunctions.CritterIdle : ServerFunctions.CritterGlobalMapIdle, cr );
+        cr->IdleNextTick = tick + GameOpt.CritterIdleTick;
     }
 
     // Ap regeneration
@@ -22,7 +22,9 @@ void FOServer::ProcessCritter( Critter* cr )
     if( cr->IsFree() && cr->GetRealAp() < max_ap && !cr->IsTurnBased() )
     {
         if( !cr->ApRegenerationTick )
+        {
             cr->ApRegenerationTick = tick;
+        }
         else
         {
             uint delta = tick - cr->ApRegenerationTick;
@@ -79,10 +81,6 @@ void FOServer::ProcessCritter( Critter* cr )
         te_next_time->Release();
     }
 
-    // Global map
-    if( !cr->GetMapId() && cr->GroupMove && cr == cr->GroupMove->Rule )
-        MapMngr.GM_GroupMove( cr->GroupMove );
-
     // Client
     if( cr->IsPlayer() )
     {
@@ -101,7 +99,7 @@ void FOServer::ProcessCritter( Critter* cr )
             #endif
             cl->PingClient();
             if( cl->GetMapId() )
-                MapMngr.TryTransitCrGrid( cr, MapMngr.GetMap( cr->GetMapId() ), cr->GetHexX(), cr->GetHexY(), false );
+                MapMngr.TransitToMapHex( cr, MapMngr.GetMap( cr->GetMapId() ), cr->GetHexX(), cr->GetHexY(), cr->GetDir(), false );
         }
 
         // Kick from game
@@ -424,7 +422,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         }
 
         // Try transit
-        MapMngr.TryTransitCrGrid( cr, map, cr->GetHexX(), cr->GetHexY(), false );
+        MapMngr.TransitToMapHex( cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), false );
     }
 
     return true;
@@ -748,13 +746,8 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             }
             else
             {
-                if( !cr->GroupMove )
-                {
-                    WriteLogF( _FUNC_, " - Group move null ptr, critter '%s'.\n", cr->GetInfo() );
-                    return false;
-                }
-
-                target_cr = cr->GroupMove->GetCritter( target_id );
+                RUNTIME_ASSERT( cr->GlobalMapGroup );
+                target_cr = cr->GetGlobalMapCritter( target_id );
                 if( !target_cr )
                 {
                     WriteLogF( _FUNC_, " - Target critter not found, id %u, critter '%s'.\n", target_id, cr->GetInfo() );
@@ -1006,7 +999,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
             cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_item );
             SAFEREL( pick_item );
 
-            MapMngr.TryTransitCrGrid( cr, map, hx, hy, false );
+            MapMngr.TransitToMapHex( cr, map, hx, hy, cr->GetDir(), false );
         }
         break;
         default:
@@ -1546,7 +1539,9 @@ void FOServer::Process_CreateClient( Client* cl )
 
     cl->AddRef();
     EntityMngr.RegisterEntity( cl );
-    MapMngr.AddCrToMap( cl, nullptr, 0, 0, 0, false );
+    bool can = MapMngr.CanAddCrToMap( cl, nullptr, 0, 0, 0 );
+    RUNTIME_ASSERT( can );
+    MapMngr.AddCrToMap( cl, nullptr, 0, 0, 0, 0 );
     Job::PushBack( JOB_CRITTER, cl );
 
     Script::RaiseInternalEvent( ServerFunctions.CritterInit, cl, true );
@@ -2053,39 +2048,44 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                     cl->SetMapPid( 0 );
                     cl->SetHexX( 0 );
                     cl->SetHexY( 0 );
+                    cl->SetGlobalGroupRuleId( 0 );
                 }
             }
         }
 
-        if( !cl->GetMapId() && ( cl->GetHexX() || cl->GetHexY() ) )
+        ushort hx = cl->GetHexX();
+        ushort hy = cl->GetHexY();
+        uint   rule_id = cl->GetGlobalGroupRuleId();
+        if( map )
         {
-            Critter* rule = CrMngr.GetCritter( cl->GetGlobalGroupRuleId(), false );
-            if( !rule || rule->GetMapId() || cl->GetGlobalGroupUid() != rule->GetGlobalGroupUid() )
-                cl->SetGlobalGroupRuleId( 0 );
+            uint multihex = cl->GetMultihex();
+            if( !map->FindStartHex( hx, hy, multihex, 1, true ) )
+                map->FindStartHex( hx, hy, multihex, 1, false );
+        }
+        else
+        {
+            if( rule_id )
+            {
+                Critter* rule = CrMngr.GetCritter( rule_id, false );
+                if( !rule || rule->GetMapId() || cl->GetGlobalGroupUid() != rule->GetGlobalGroupUid() )
+                {
+                    cl->SetGlobalGroupRuleId( 0 );
+                    rule_id = 0;
+                }
+            }
         }
 
-        if( !MapMngr.AddCrToMap( cl, map, cl->GetHexX(), cl->GetHexY(), 1, false ) )
+        if( !MapMngr.CanAddCrToMap( cl, map, hx, hy, rule_id ) )
         {
-            WriteLogF( _FUNC_, " - Error add critter to map, client '%s'.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Can't player '%s' on map '%s'.\n", cl->GetInfo(), map ? map->GetName() : "GlobalMap" );
             cl->Send_TextMsg( cl, STR_NET_HEXES_BUSY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
         }
+        MapMngr.AddCrToMap( cl, map, hx, hy, cl->GetDir(), rule_id );
 
         if( cl_saved )
             EraseSaveClient( id );
-
-        // Map event
-        if( map )
-            map->AddCritterEvents( cl );
-
-        // Add car, if on global
-        if( !cl->GetMapId() && !cl->GroupMove->CarId )
-        {
-            Item* car = cl->GetItemCar();
-            if( car )
-                cl->GroupMove->CarId = car->GetId();
-        }
 
         cl->SetTimeoutTransfer( 0 );
         cl->AddRef();
@@ -2257,20 +2257,14 @@ void FOServer::Process_ParseToGame( Client* cl )
     // Parse
     Map* map = MapMngr.GetMap( cl->GetMapId(), true );
     cl->Send_GameInfo( map );
-    cl->DropTimers( true );
 
     // Parse to global
     if( !cl->GetMapId() )
     {
-        if( !cl->GroupMove )
-        {
-            WriteLogF( _FUNC_, " - Group nullptr, client '%s'.\n", cl->GetInfo() );
-            cl->Disconnect();
-            return;
-        }
+        RUNTIME_ASSERT( cl->GlobalMapGroup );
 
         cl->Send_GlobalInfo( GM_INFO_ALL );
-        for( auto it = cl->GroupMove->CritMove.begin(), end = cl->GroupMove->CritMove.end(); it != end; ++it )
+        for( auto it = cl->GlobalMapGroup->begin(), end = cl->GlobalMapGroup->end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr != cl )
@@ -3035,7 +3029,7 @@ void FOServer::Process_ContainerItem( Client* cl )
         bool is_loot = ( transfer_type == TRANSFER_CRIT_LOOT );
 
         // Get critter target
-        Critter* cr = ( is_far ? CrMngr.GetCritter( cont_id, true ) : ( cl->GetMapId() ? cl->GetCritSelf( cont_id, true ) : cl->GroupMove->GetCritter( cont_id ) ) );
+        Critter* cr = ( is_far ? CrMngr.GetCritter( cont_id, true ) : ( cl->GetMapId() ? cl->GetCritSelf( cont_id, true ) : cl->GetGlobalMapCritter( cont_id ) ) );
         if( !cr )
         {
             cl->Send_ContainerInfo();
@@ -3812,281 +3806,6 @@ void FOServer::Process_RunServerScript( Client* cl )
         p3->Release();
     if( p4 )
         p4->Release();
-}
-
-void FOServer::Process_RuleGlobal( Client* cl )
-{
-    uchar command;
-    uint  param1;
-    uint  param2;
-    cl->Bin >> command;
-    cl->Bin >> param1;
-    cl->Bin >> param2;
-
-    switch( command )
-    {
-    case GM_CMD_FOLLOW_CRIT:
-    {
-        if( !param1 )
-            break;
-
-        Critter* cr = cl->GetCritSelf( param1, false );
-        if( !cr )
-            break;
-
-        if( cl->GetFollowCrit() == cr->GetId() )
-            cl->SetFollowCrit( 0 );
-        else
-            cl->SetFollowCrit( cr->GetId() );
-    }
-    break;
-    case GM_CMD_SETMOVE:
-        if( cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule )
-            break;
-        if( param1 >= GM_MAXX || param2 >= GM_MAXY )
-            break;
-        if( cl->GroupMove->EncounterDescriptor )
-            break;
-        cl->GroupMove->ToX = (float) param1;
-        cl->GroupMove->ToY = (float) param2;
-        MapMngr.GM_GlobalProcess( cl, cl->GroupMove, GLOBAL_PROCESS_SET_MOVE );
-        break;
-    case GM_CMD_STOP:
-        break;
-    case GM_CMD_TOLOCAL:
-        if( cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule )
-            break;
-        if( cl->GroupMove->EncounterDescriptor )
-            break;
-        if( IS_TIMEOUT( cl->GetTimeoutTransfer() ) )
-        {
-            cl->Send_TextMsg( cl, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME );
-            break;
-        }
-
-        if( !param1 )
-        {
-            if( cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule )
-                break;
-            cl->GroupMove->EncounterDescriptor = 0;
-            MapMngr.GM_GlobalProcess( cl, cl->GroupMove, GLOBAL_PROCESS_ENTER );
-        }
-        else
-        {
-            MapMngr.GM_GroupToLoc( cl, param1, param2 );
-        }
-        return;
-    case GM_CMD_ANSWER:
-        if( cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule )
-            break;
-        if( !cl->GroupMove->EncounterDescriptor || cl->GroupMove->EncounterForce )
-            break;
-
-        if( (int) param1 >= 0 )    // Yes
-        {
-            MapMngr.GM_GlobalInvite( cl->GroupMove, param1 );
-            return;
-        }
-        else if( cl->GroupMove->EncounterDescriptor )       // No
-        {
-            cl->GroupMove->EncounterDescriptor = 0;
-            cl->SendA_GlobalInfo( cl->GroupMove, GM_INFO_GROUP_PARAM );
-        }
-        break;
-    case GM_CMD_FOLLOW:
-    {
-        // Find rule
-        Critter* rule = CrMngr.GetCritter( param1, true );
-        if( !rule || rule->GetMapId() || !rule->GroupMove || rule != rule->GroupMove->Rule )
-            break;
-
-        // Check for follow
-        if( !rule->GroupMove->CheckForFollow( cl ) )
-            break;
-        if( !CheckDist( rule->GetLastMapHexX(), rule->GetLastMapHexY(), cl->GetHexX(), cl->GetHexY(), FOLLOW_DIST + rule->GetMultihex() + cl->GetMultihex() ) )
-            break;
-
-        // Transit
-        if( cl->LockMapTransfers )
-        {
-            WriteLogF( _FUNC_, " - Transfers locked, critter '%s'.\n", cl->GetInfo() );
-            return;
-        }
-        if( !MapMngr.TransitToGlobal( cl, param1, 0, false ) )
-            break;
-    }
-        return;
-    case GM_CMD_KICKCRIT:
-    {
-        if( cl->GetMapId() || !cl->GroupMove || cl->GroupMove->GetSize() < 2 || cl->GroupMove->EncounterDescriptor )
-            break;
-
-        GlobalMapGroup* group = cl->GroupMove;
-        Critter*        kick_cr;
-
-        if( cl->GetId() == param1 )             // Kick self
-        {
-            if( cl == group->Rule )
-                break;
-            kick_cr = cl;
-        }
-        else                 // Kick other
-        {
-            if( cl != group->Rule )
-                break;
-            kick_cr = group->GetCritter( param1 );
-            if( !kick_cr )
-                break;
-        }
-
-        MapMngr.GM_GlobalProcess( kick_cr, cl->GroupMove, GLOBAL_PROCESS_KICK );
-    }
-    break;
-    case GM_CMD_GIVE_RULE:
-    {
-        // Check
-        if( cl->GetId() == param1 || cl->GetMapId() || !cl->GroupMove || cl != cl->GroupMove->Rule || cl->GroupMove->EncounterDescriptor )
-            break;
-        Critter* new_rule = cl->GroupMove->GetCritter( param1 );
-        if( !new_rule || !new_rule->IsPlayer() || !( (Client*) new_rule )->IsOnline() )
-            break;
-
-        MapMngr.GM_GiveRule( cl, new_rule );
-        MapMngr.GM_StopGroup( cl );
-    }
-    break;
-    case GM_CMD_ENTRANCES:
-    {
-        if( cl->GetMapId() || !cl->GroupMove || cl->GroupMove->EncounterDescriptor )
-            break;
-
-        uint      loc_id = param1;
-        Location* loc = MapMngr.GetLocation( loc_id );
-        if( !loc || DistSqrt( (int) cl->GroupMove->CurX, (int) cl->GroupMove->CurY, loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
-            break;
-
-        uint tick = Timer::FastTick();
-        if( cl->LastSendEntrancesLocId == loc_id && tick < cl->LastSendEntrancesTick + GM_ENTRANCES_SEND_TIME )
-        {
-            WriteLogF( _FUNC_, " - Client '%s' ignore send entrances timeout.\n", cl->GetInfo() );
-            break;
-        }
-        cl->LastSendEntrancesLocId = loc_id;
-        cl->LastSendEntrancesTick = tick;
-
-        if( loc->EntranceScriptBindId )
-        {
-            uchar        count = 0;
-            uchar        show[ 0x100 ];
-            ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
-            if( !arr )
-                break;
-            ScriptArray* map_entrances = loc->GetMapEntrances();
-            uchar        map_entrances_size = (uchar) ( map_entrances->GetSize() / 2 );
-            map_entrances->Release();
-            for( uchar i = 0; i < map_entrances_size; i++ )
-            {
-                if( MapMngr.GM_CheckEntrance( loc, arr, i ) )
-                {
-                    show[ count ] = i;
-                    count++;
-                }
-            }
-            arr->Release();
-
-            uint msg = NETMSG_GLOBAL_ENTRANCES;
-            uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( loc_id ) + sizeof( count ) + sizeof( uchar ) * count;
-
-            BOUT_BEGIN( cl );
-            cl->Bout << msg;
-            cl->Bout << msg_len;
-            cl->Bout << loc_id;
-            cl->Bout << count;
-            for( uchar i = 0; i < count; i++ )
-                cl->Bout << show[ i ];
-            BOUT_END( cl );
-        }
-        else
-        {
-            uint         msg = NETMSG_GLOBAL_ENTRANCES;
-            ScriptArray* map_entrances = loc->GetMapEntrances();
-            uchar        count = (uchar) ( map_entrances->GetSize() / 2 );
-            map_entrances->Release();
-            uint         msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( loc_id ) + sizeof( count ) + sizeof( uchar ) * count;
-
-            BOUT_BEGIN( cl );
-            cl->Bout << msg;
-            cl->Bout << msg_len;
-            cl->Bout << loc_id;
-            cl->Bout << count;
-            for( uchar i = 0; i < count; i++ )
-                cl->Bout << i;
-            BOUT_END( cl );
-        }
-    }
-    break;
-    case GM_CMD_VIEW_MAP:
-    {
-        if( cl->GetMapId() || !cl->GroupMove || cl->GroupMove->EncounterDescriptor )
-            break;
-
-        uint      loc_id = param1;
-        Location* loc = MapMngr.GetLocation( loc_id );
-        if( !loc || DistSqrt( (int) cl->GroupMove->CurX, (int) cl->GroupMove->CurY, loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
-            break;
-
-        ScriptArray* map_entrances = loc->GetMapEntrances();
-        uchar        count = (uchar) ( map_entrances->GetSize() / 2 );
-        uint         entrance = param2;
-        if( entrance >= count )
-        {
-            map_entrances->Release();
-            break;
-        }
-        hash entrance_map = *(hash*) map_entrances->At( entrance * 2 );
-        hash entrance_entire = *(hash*) map_entrances->At( entrance * 2 + 1 );
-        map_entrances->Release();
-
-        if( loc->EntranceScriptBindId )
-        {
-            ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
-            if( !arr )
-                break;
-            bool result = MapMngr.GM_CheckEntrance( loc, arr, entrance );
-            arr->Release();
-            if( !result )
-                break;
-        }
-
-        Map* map = loc->GetMapByPid( entrance_map );
-        if( !map )
-            break;
-
-        uchar  dir;
-        ushort hx, hy;
-        if( !map->GetStartCoord( hx, hy, dir, entrance_entire ) )
-            break;
-
-        cl->SetHexX( hx );
-        cl->SetHexY( hy );
-        cl->SetDir( dir );
-        cl->ViewMapId = map->GetId();
-        cl->ViewMapPid = map->GetProtoId();
-        cl->ViewMapLook = cl->GetLookDistance();
-        cl->ViewMapHx = hx;
-        cl->ViewMapHy = hy;
-        cl->ViewMapDir = dir;
-        cl->ViewMapLocId = loc_id;
-        cl->ViewMapLocEnt = entrance;
-        cl->Send_LoadMap( map );
-    }
-    break;
-    default:
-        WriteLogF( _FUNC_, " - Unknown command %u, from client '%s'.\n", cl->GetInfo() );
-        break;
-    }
-
-    cl->SetBreakTime( GameOpt.Breaktime );
 }
 
 void FOServer::Process_Property( Client* cl, uint data_size )
