@@ -92,7 +92,6 @@ CLASS_PROPERTY_IMPL( Critter, IsNoRotate );
 CLASS_PROPERTY_IMPL( Critter, IsNoTalk );
 CLASS_PROPERTY_IMPL( Critter, IsHide );
 CLASS_PROPERTY_IMPL( Critter, IsNoFlatten );
-CLASS_PROPERTY_IMPL( Critter, IsNoAim );
 CLASS_PROPERTY_IMPL( Critter, IsNoBarter );
 CLASS_PROPERTY_IMPL( Critter, IsEndCombat );
 CLASS_PROPERTY_IMPL( Critter, IsDamagedEye );

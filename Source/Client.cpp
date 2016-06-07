@@ -8224,10 +8224,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
             Self->Chosen->SetIsEndCombat( !Self->Chosen->GetIsEndCombat() );
         }
     }
-    else if( cmd == "NextItemMode" )
-    {
-        Self->Chosen->NextRateItem( args.size() >= 2 && args[ 1 ] == "Prev" ? true : false );
-    }
     else if( cmd == "SetMousePos" )
     {
         int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );

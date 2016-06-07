@@ -150,7 +150,6 @@ public:
     CLASS_PROPERTY( bool, IsNoPush );           // Can puck checks
     CLASS_PROPERTY( bool, IsNoEnemyStack );     // Migrate enemy stack to scripts
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to critter type option)
-    CLASS_PROPERTY( bool, IsNoAim );            // AI
     CLASS_PROPERTY( bool, IsDamagedEye );
     CLASS_PROPERTY( bool, IsDamagedRightArm );
     CLASS_PROPERTY( bool, IsDamagedLeftArm );

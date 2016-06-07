@@ -683,7 +683,7 @@ void FOServer::Logic_Work( void* data )
             {
                 stats = new StatisticsThread();
                 memzero( stats, sizeof( StatisticsThread ) );
-                stats->LoopMin = MAX_UINT;
+                stats->LoopMin = uint( -1 );
                 stats_ptrs.push_back( stats );
             }
 
@@ -698,7 +698,7 @@ void FOServer::Logic_Work( void* data )
             stats->CycleTime = loop_tick;
 
             // Calculate whole threads statistics
-            uint real_min_cycle = MAX_UINT;           // Calculate real cycle count for deferred releasing
+            uint real_min_cycle = uint( -1 );           // Calculate real cycle count for deferred releasing
             uint cycle_time = 0, loop_time = 0, loop_cycles = 0, loop_min = 0, loop_max = 0, lags = 0;
             for( auto it = stats_ptrs.begin(), end = stats_ptrs.end(); it != end; ++it )
             {

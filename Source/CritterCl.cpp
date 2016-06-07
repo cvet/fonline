@@ -63,7 +63,6 @@ CLASS_PROPERTY_IMPL( CritterCl, IsNoRotate );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoTalk );
 CLASS_PROPERTY_IMPL( CritterCl, IsHide );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoFlatten );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoAim );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoBarter );
 CLASS_PROPERTY_IMPL( CritterCl, IsEndCombat );
 CLASS_PROPERTY_IMPL( CritterCl, IsDamagedEye );
@@ -610,96 +609,6 @@ void CritterCl::DrawStay( Rect r )
         Anim3dStay->SetAnimation( anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD( 100 ) | ANIMATION_NO_SMOOTH );
         SprMngr.Draw3d( r.CX(), r.B, Anim3dStay, COLOR_IFACE );
     }
-}
-
-void CritterCl::NextRateItem( bool prev )
-{
-    if( !ItemSlotMain->IsWeapon() )
-    {
-        if( ItemSlotMain->GetIsCanUse() || ItemSlotMain->GetIsCanUseOnSmth() )
-            ItemSlotMain->SetWeaponMode( USE_USE );
-        else
-            ItemSlotMain->SetWeaponMode( USE_NONE );
-    }
-    else
-    {
-        // Unarmed
-        if( !ItemSlotMain->GetId() )
-        {
-            RUNTIME_ASSERT( !"Unarmed weapon must handling in scripts." );
-        }
-        // Armed
-        else
-        {
-            while( true )
-            {
-                if( prev )
-                {
-                    if( IsItemAim( SLOT_HAND1 ) && IsAim() )
-                    {
-                        SetAim( HIT_LOCATION_NONE );
-                        break;
-                    }
-                    if( !ItemSlotMain->GetMode() )
-                        ItemSlotMain->SetWeaponMode( ItemSlotMain->GetIsCanUseOnSmth() ? USE_USE : USE_RELOAD );
-                    else
-                        ItemSlotMain->SetWeaponMode( ItemSlotMain->GetMode() - 1 );
-                    if( IsItemAim( SLOT_HAND1 ) && !GetIsNoAim() )
-                    {
-                        SetAim( HIT_LOCATION_TORSO );
-                        break;
-                    }
-                }
-                else
-                {
-                    if( IsItemAim( SLOT_HAND1 ) && !IsAim() && !GetIsNoAim() )
-                    {
-                        SetAim( HIT_LOCATION_TORSO );
-                        break;
-                    }
-                    ItemSlotMain->SetWeaponMode( ItemSlotMain->GetMode() + 1 );
-                    SetAim( HIT_LOCATION_NONE );
-                }
-
-                switch( GetUse() )
-                {
-                case USE_PRIMARY:
-                    if( ItemSlotMain->GetWeapon_ActiveUses() & 0x1 )
-                        break;
-                    continue;
-                case USE_SECONDARY:
-                    if( ItemSlotMain->GetWeapon_ActiveUses() & 0x2 )
-                        break;
-                    continue;
-                case USE_THIRD:
-                    if( ItemSlotMain->GetWeapon_ActiveUses() & 0x4 )
-                        break;
-                    continue;
-                case USE_RELOAD:
-                    if( ItemSlotMain->GetWeapon_MaxAmmoCount() )
-                        break;
-                    continue;
-                case USE_USE:
-                    if( ItemSlotMain->GetIsCanUseOnSmth() )
-                        break;
-                    continue;
-                default:
-                    ItemSlotMain->SetWeaponMode( USE_PRIMARY );
-                    break;
-                }
-                break;
-            }
-        }
-    }
-}
-
-void CritterCl::SetAim( uchar hit_location )
-{
-    uchar mode = ItemSlotMain->GetMode();
-    UNSETFLAG( mode, 0xF0 );
-    if( IsItemAim( SLOT_HAND1 ) )
-        SETFLAG( mode, hit_location << 4 );
-    ItemSlotMain->SetWeaponMode( mode );
 }
 
 Item* CritterCl::GetAmmoAvialble( Item* weap )

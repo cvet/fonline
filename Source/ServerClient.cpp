@@ -520,24 +520,6 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( aim >= MAX_HIT_LOCATION )
-    {
-        WriteLogF( _FUNC_, " - Aim %u invalid value, critter '%s', target critter '%s'.\n", aim, cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    if( aim && cr->GetIsNoAim() )
-    {
-        WriteLogF( _FUNC_, " - Aim is not available with critter no aim mode, aim %u, critter '%s', target critter '%s'.\n", aim, cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    if( aim && !weap->WeapIsCanAim( use ) )
-    {
-        WriteLogF( _FUNC_, " - Aim is not available for this weapon, aim %u, weapon '%s', critter '%s', target critter '%s'.\n", aim, weap->GetName(), cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
     uint max_dist = cr->GetAttackDist( weap, use ) + t_cr->GetMultihex();
     if( !CheckDist( hx, hy, tx, ty, max_dist ) && !( Timer::GameTick() < t_cr->PrevHexTick + 500 && CheckDist( hx, hy, t_cr->PrevHexX, t_cr->PrevHexY, max_dist ) ) )
     {

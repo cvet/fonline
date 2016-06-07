@@ -731,8 +731,6 @@ void FOServer::ProcessAI( Npc* npc )
                 use = r0;
 
             int aim = r1;
-            if( npc->GetIsNoAim() && !npc->GetIsNoAim() && weap->WeapIsCanAim( use ) )
-                aim = 0;
 
             weap->SetWeaponMode( MAKE_ITEM_MODE( use, aim ) );
             AI_Attack( npc, map, MAKE_ITEM_MODE( use, aim ), targ->GetId() );

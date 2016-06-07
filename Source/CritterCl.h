@@ -66,7 +66,6 @@ public:
     CLASS_PROPERTY( int, ReplicationCount );    // GUI
     CLASS_PROPERTY( char, Gender );             // GUI
     CLASS_PROPERTY( bool, IsNoPush );           // GUI
-    CLASS_PROPERTY( bool, IsNoAim );            // GUI
     CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
     CLASS_PROPERTY( bool, IsUnlimitedAmmo );    // Play shoot sound
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to proto? to critter type option?)
@@ -175,10 +174,6 @@ public:
     bool  IsItemAim( uchar num_slot );
     uchar GetUse()      { return ItemSlotMain->GetMode() & 0xF; }
     uchar GetFullRate() { return ItemSlotMain->GetMode(); }
-    void  NextRateItem( bool prev );
-    uchar GetAim() { return ( ItemSlotMain->GetMode() >> 4 ) & 0xF; }
-    bool  IsAim()  { return GetAim() > 0; }
-    void  SetAim( uchar hit_location );
     uint  GetUseApCost( Item* item, uchar rate );
     Item* GetAmmoAvialble( Item* weap );
     bool  IsOverweight()       { return (int) GetItemsWeight() > GetCarryWeight(); }

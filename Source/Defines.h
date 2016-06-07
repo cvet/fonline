@@ -3,11 +3,11 @@
 
 // Floats
 #define PI_FLOAT                    ( 3.14159265f )
-#define PIBY2_FLOAT                 ( 1.5707963f )
 #define SQRT3T2_FLOAT               ( 3.4641016151f )
 #define SQRT3_FLOAT                 ( 1.732050807568877f )
 #define BIAS_FLOAT                  ( 0.02f )
 #define RAD2DEG                     ( 57.29577951f )
+#define RAD( deg )                            ( ( deg ) * 3.141592654f / 180.0f )
 
 // Bits
 #define BIN__N( x )                           ( x ) | x >> 3 | x >> 6 | x >> 9
@@ -22,17 +22,9 @@
 #define SETFLAG( x, y )                       ( ( x ) = ( x ) | ( y ) )
 #define UNSETFLAG( x, y )                     ( ( x ) = ( ( x ) | ( y ) ) ^ ( y ) )
 
-// Limits
-#define MAX_UCHAR                   ( 0xFF )
-#define MAX_USHORT                  ( 0xFFFF )
-#define MAX_UINT                    ( 0xFFFFFFFF )
-#define MAX_INT                     ( 0x7FFFFFFF )
-#define MIN_INT                     ( 0x80000000 )
-
 // Other stuff
 #define CLAMP( x, low, high )                 ( ( ( x ) > ( high ) ) ? ( high ) : ( ( ( x ) < ( low ) ) ? ( low ) : ( x ) ) )
-#define CONVERT_GRAMM( x )                    ( ( x ) * 453 )
-#define RAD( deg )                            ( ( deg ) * 3.141592654f / 180.0f )
+#define MAX_INT                     ( 0x7FFFFFFF )
 
 // Generic
 #define CLIENT_DATA                 "./Data/"
@@ -125,19 +117,6 @@
 // Locker
 #define LOCKER_ISOPEN               ( 0x01 )
 #define LOCKER_NOOPEN               ( 0x10 )
-
-// Hit locations
-#define HIT_LOCATION_NONE           ( 0 )
-#define HIT_LOCATION_HEAD           ( 1 )
-#define HIT_LOCATION_LEFT_ARM       ( 2 )
-#define HIT_LOCATION_RIGHT_ARM      ( 3 )
-#define HIT_LOCATION_TORSO          ( 4 )
-#define HIT_LOCATION_RIGHT_LEG      ( 5 )
-#define HIT_LOCATION_LEFT_LEG       ( 6 )
-#define HIT_LOCATION_EYES           ( 7 )
-#define HIT_LOCATION_GROIN          ( 8 )
-#define HIT_LOCATION_UNCALLED       ( 9 )
-#define MAX_HIT_LOCATION            ( 10 )
 
 // Global map
 #define GM_MAXX                     ( GameOpt.GlobalMapWidth * GameOpt.GlobalMapZoneLength )

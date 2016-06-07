@@ -390,7 +390,6 @@ public:
     uint WeapGetMaxAmmoCount()       { return GetWeapon_MaxAmmoCount(); }
     int  WeapGetAmmoCaliber()        { return GetWeapon_Caliber(); }
     bool WeapIsUseAviable( int use ) { return use >= USE_PRIMARY && use <= USE_THIRD ? ( ( ( GetWeapon_ActiveUses() >> use ) & 1 ) != 0 ) : false; }
-    bool WeapIsCanAim( int use )     { return use >= 0 && use < MAX_USES && ( use == 0 ? GetWeapon_Aim_0() : ( use == 1 ? GetWeapon_Aim_1() : GetWeapon_Aim_2() ) ); }
     void WeapLoadHolder();
 
     // Container

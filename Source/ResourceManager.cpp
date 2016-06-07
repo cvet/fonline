@@ -637,7 +637,8 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
 uint ResourceManager::GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
 {
     uint spr_id = 0;
-    if( !Str::CompareCase( FileManager::GetExtension( Str::GetName( model_name ) ), "fo3d" ) )
+    const char* ext = FileManager::GetExtension( Str::GetName( model_name ) );
+    if( !ext || !Str::CompareCase( ext, "fo3d" ) )
     {
         AnyFrames* anim = GetCrit2dAnim( model_name, anim1, anim2, dir );
         spr_id = ( anim ? anim->GetSprId( 0 ) : 0 );

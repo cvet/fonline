@@ -191,7 +191,6 @@ struct BindClass
     static void Crit_IsCanWalk()                {}
     static void Crit_IsCanRun()                 {}
     static void Crit_IsCanRotate()              {}
-    static void Crit_IsCanAim()                 {}
     static void Crit_IsAnim1()                  {}
     static void Crit_IsAnim3d()                 {}
     static void Cl_GetAccess()                  {}
