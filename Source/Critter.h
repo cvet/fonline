@@ -66,8 +66,8 @@ public:
     CLASS_PROPERTY( uint, Multihex );
     CLASS_PROPERTY( ushort, WorldX );
     CLASS_PROPERTY( ushort, WorldY );
-    CLASS_PROPERTY( uint, GlobalGroupRuleId );
-    CLASS_PROPERTY( uint, GlobalGroupUid );
+    CLASS_PROPERTY( uint, GlobalMapLeaderId );
+    CLASS_PROPERTY( uint, GlobalMapTripId );
     CLASS_PROPERTY( ushort, LastMapHexX );
     CLASS_PROPERTY( ushort, LastMapHexY );
     CLASS_PROPERTY( uint, Anim1Life );
@@ -133,7 +133,6 @@ public:
     CLASS_PROPERTY( int, SneakCoefficient );
     CLASS_PROPERTY( int, BarterCoefficient );
     // Exclude
-    CLASS_PROPERTY( int, Charisma );            // Used in check next rule on global map
     CLASS_PROPERTY( int, ReplicationTime );     // Used in map dead npc generation
     CLASS_PROPERTY( hash, BagId );              // Bags (migrate bags to scripts)
     CLASS_PROPERTY( uint, LastWeaponId );       // Bags
@@ -329,7 +328,6 @@ public:
     void Send_CombatResult( uint* combat_res, uint len );
     void Send_HoloInfo( bool clear, ushort offset, ushort count );
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
-    void Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait );
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );
@@ -577,7 +575,6 @@ public:
     void Send_CombatResult( uint* combat_res, uint len );
     void Send_HoloInfo( bool clear, ushort offset, ushort count );
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
-    void Send_Follow( uint rule, uchar follow_type, hash map_pid, uint follow_wait );
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );

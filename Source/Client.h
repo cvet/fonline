@@ -464,7 +464,6 @@ public:
         static bool Crit_IsPlayer( CritterCl* cr );
         static bool Crit_IsNpc( CritterCl* cr );
         static bool Crit_IsOffline( CritterCl* cr );
-        static bool Crit_IsGmapRule( CritterCl* cr );
         static bool Crit_IsLife( CritterCl* cr );
         static bool Crit_IsKnockout( CritterCl* cr );
         static bool Crit_IsDead( CritterCl* cr );
@@ -773,10 +772,6 @@ public:
     char   DlgboxText[ MAX_FOTEXT ];
     string DlgboxButtonText[ 100 ];
     uint   DlgboxButtonsCount;
-    // For follow
-    uchar  FollowType;
-    uint   FollowRuleId;
-    hash   FollowMap;
     // For barter
     uint   PBarterPlayerId;
     bool   PBarterHide;

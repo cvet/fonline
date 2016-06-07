@@ -421,7 +421,6 @@ struct BindClass
     static void Crit_IsPlayer()         {}
     static void Crit_IsNpc()            {}
     static void Crit_IsOffline()        {}
-    static void Crit_IsGmapRule()       {}
     static void Crit_IsLife()           {}
     static void Crit_IsKnockout()       {}
     static void Crit_IsDead()           {}

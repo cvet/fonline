@@ -2048,14 +2048,14 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                     cl->SetMapPid( 0 );
                     cl->SetHexX( 0 );
                     cl->SetHexY( 0 );
-                    cl->SetGlobalGroupRuleId( 0 );
+                    cl->SetGlobalMapLeaderId( 0 );
                 }
             }
         }
 
         ushort hx = cl->GetHexX();
         ushort hy = cl->GetHexY();
-        uint   rule_id = cl->GetGlobalGroupRuleId();
+        uint   leader_id = cl->GetGlobalMapLeaderId();
         if( map )
         {
             uint multihex = cl->GetMultihex();
@@ -2064,25 +2064,25 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         }
         else
         {
-            if( rule_id )
+            if( leader_id )
             {
-                Critter* rule = CrMngr.GetCritter( rule_id, false );
-                if( !rule || rule->GetMapId() || cl->GetGlobalGroupUid() != rule->GetGlobalGroupUid() )
+                Critter* leader = CrMngr.GetCritter( leader_id, false );
+                if( !leader || leader->GetMapId() || cl->GetGlobalMapTripId() != leader->GetGlobalMapTripId() )
                 {
-                    cl->SetGlobalGroupRuleId( 0 );
-                    rule_id = 0;
+                    cl->SetGlobalMapLeaderId( 0 );
+                    leader_id = 0;
                 }
             }
         }
 
-        if( !MapMngr.CanAddCrToMap( cl, map, hx, hy, rule_id ) )
+        if( !MapMngr.CanAddCrToMap( cl, map, hx, hy, leader_id ) )
         {
             WriteLogF( _FUNC_, " - Can't player '%s' on map '%s'.\n", cl->GetInfo(), map ? map->GetName() : "GlobalMap" );
             cl->Send_TextMsg( cl, STR_NET_HEXES_BUSY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
         }
-        MapMngr.AddCrToMap( cl, map, hx, hy, cl->GetDir(), rule_id );
+        MapMngr.AddCrToMap( cl, map, hx, hy, cl->GetDir(), leader_id );
 
         if( cl_saved )
             EraseSaveClient( id );

@@ -94,12 +94,12 @@ public:
     // Maps stuff
 public:
     bool FindPlaceOnMap( Critter* cr, Map* map, ushort& hx, ushort& hy, uint radius );
-    bool CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uint rule_id );
-    void AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint rule_id );
+    bool CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id );
+    void AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint leader_id );
     void EraseCrFromMap( Critter* cr, Map* map );
     bool TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, bool force );
-    bool TransitToGlobal( Critter* cr, uint rule_id, bool force );
-    bool Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint rule_id, bool force );
+    bool TransitToGlobal( Critter* cr, uint leader_id, bool force );
+    bool Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force );
     bool IsIntersectZone( int wx1, int wy1, int wx1_radius, int wx2, int wy2, int wx2_radius, int zones );
     void GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc_ids );
 

@@ -31,8 +31,8 @@ CLASS_PROPERTY_IMPL( Critter, ClientToDelete );
 CLASS_PROPERTY_IMPL( Critter, Multihex );
 CLASS_PROPERTY_IMPL( Critter, WorldX );
 CLASS_PROPERTY_IMPL( Critter, WorldY );
-CLASS_PROPERTY_IMPL( Critter, GlobalGroupRuleId );
-CLASS_PROPERTY_IMPL( Critter, GlobalGroupUid );
+CLASS_PROPERTY_IMPL( Critter, GlobalMapLeaderId );
+CLASS_PROPERTY_IMPL( Critter, GlobalMapTripId );
 CLASS_PROPERTY_IMPL( Critter, LastMapHexX );
 CLASS_PROPERTY_IMPL( Critter, LastMapHexY );
 CLASS_PROPERTY_IMPL( Critter, Anim1Life );
@@ -48,7 +48,6 @@ CLASS_PROPERTY_IMPL( Critter, TE_Rate );
 CLASS_PROPERTY_IMPL( Critter, TE_NextTime );
 CLASS_PROPERTY_IMPL( Critter, TE_Identifier );
 CLASS_PROPERTY_IMPL( Critter, LookDistance );
-CLASS_PROPERTY_IMPL( Critter, Charisma );
 CLASS_PROPERTY_IMPL( Critter, DialogId );
 CLASS_PROPERTY_IMPL( Critter, BagId );
 CLASS_PROPERTY_IMPL( Critter, NpcRole );
@@ -160,6 +159,7 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
 
 Critter::~Critter()
 {
+    RUNTIME_ASSERT( !GlobalMapGroup );
     SAFEREL( defItemSlotHand );
     SAFEREL( defItemSlotArmor );
 }

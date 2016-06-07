@@ -352,11 +352,11 @@ bool EntityManager::LinkNpc()
     CrVec critters_groups;
     critters_groups.reserve( critters.size() );
 
-    // Move all critters to local maps and global map rules
+    // Move all critters to local maps and global map leaders
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( !cr->GetMapId() && cr->GetGlobalGroupRuleId() )
+        if( !cr->GetMapId() && cr->GetGlobalMapLeaderId() && cr->GetGlobalMapLeaderId() != cr->GetId() )
         {
             critters_groups.push_back( cr );
             continue;
@@ -379,20 +379,20 @@ bool EntityManager::LinkNpc()
         MapMngr.AddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), 0 );
 
         if( !map )
-            cr->SetGlobalGroupUid( cr->GetGlobalGroupUid() - 1 );
+            cr->SetGlobalMapTripId( cr->GetGlobalMapTripId() - 1 );
     }
 
     // Move critters to global groups
     for( auto it = critters_groups.begin(), end = critters_groups.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( !MapMngr.CanAddCrToMap( cr, nullptr, 0, 0, cr->GetGlobalGroupRuleId() ) )
+        if( !MapMngr.CanAddCrToMap( cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId() ) )
         {
-            WriteLog( "Error parsing npc to global group, critter '%s', rule id %u.\n", cr->GetName(), cr->GetGlobalGroupRuleId() );
+            WriteLog( "Error parsing npc to global group, critter '%s', rule id %u.\n", cr->GetName(), cr->GetGlobalMapLeaderId() );
             errors++;
             continue;
         }
-        MapMngr.AddCrToMap( cr, nullptr, 0, 0, 0, cr->GetGlobalGroupRuleId() );
+        MapMngr.AddCrToMap( cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId() );
     }
 
     WriteLog( "Link npc complete.\n" );

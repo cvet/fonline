@@ -142,11 +142,9 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( ItemsBarter );
-    BIND_INTERNAL_EVENT( GlobalMapProcess );
-    BIND_INTERNAL_EVENT( GlobalMapInvite );
     BIND_INTERNAL_EVENT( WorldSave );
-    BIND_INTERNAL_EVENT( GlobalMapGroupStart );
-    BIND_INTERNAL_EVENT( GlobalMapGroupFinish );
+    BIND_INTERNAL_EVENT( GlobalMapCritterIn );
+    BIND_INTERNAL_EVENT( GlobalMapCritterOut );
     BIND_INTERNAL_EVENT( LocationEnter );
     BIND_INTERNAL_EVENT( LocationFinish );
     BIND_INTERNAL_EVENT( MapLoop );

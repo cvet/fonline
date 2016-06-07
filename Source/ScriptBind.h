@@ -415,7 +415,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsChosen() const", a
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsPlayer() const", asFUNCTION( BIND_CLASS Crit_IsPlayer ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsNpc() const", asFUNCTION( BIND_CLASS Crit_IsNpc ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsOffline() const", asFUNCTION( BIND_CLASS Crit_IsOffline ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsGmapRule() const", asFUNCTION( BIND_CLASS Crit_IsGmapRule ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsLife() const", asFUNCTION( BIND_CLASS Crit_IsLife ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsKnockout() const", asFUNCTION( BIND_CLASS Crit_IsKnockout ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsDead() const", asFUNCTION( BIND_CLASS Crit_IsDead ), asCALL_CDECL_OBJFIRST ) );

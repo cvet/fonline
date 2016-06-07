@@ -368,11 +368,9 @@ struct ServerScriptFunctions
     void* Finish;
     void* Loop;
     void* ItemsBarter;
-    void* GlobalMapProcess;
-    void* GlobalMapInvite;
     void* WorldSave;
-    void* GlobalMapGroupStart;
-    void* GlobalMapGroupFinish;
+    void* GlobalMapCritterIn;
+    void* GlobalMapCritterOut;
 
     void* LocationEnter;
     void* LocationFinish;

@@ -7669,13 +7669,6 @@ bool FOClient::SScriptFunc::Crit_IsOffline( CritterCl* cr )
     return cr->IsOffline();
 }
 
-bool FOClient::SScriptFunc::Crit_IsGmapRule( CritterCl* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->IsGmapRule();
-}
-
 bool FOClient::SScriptFunc::Crit_IsLife( CritterCl* cr )
 {
     if( cr->IsDestroyed )

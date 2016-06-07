@@ -186,76 +186,78 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                 uint pass = pass_base;
                 uint flags = 0;
                 int ox = 0, oy = 0;
+                ScriptString* str = (ScriptString*) ScriptString::Create();
                 #ifdef FONLINE_CLIENT
-                if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy ) )
+                if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, str ) )
                 #else // FONLINE_MAPPER
-                if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy ) )
+                if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, str ) )
                 #endif
                 {
-                    ScriptString* str = (ScriptString*) Script::GetReturnedObject();
-                    if( str )
+                    if( str->length() )
                     {
-                        if( str->length() )
+                        SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
+                        anim = SprMngr.LoadAnimation( str->c_str(), PT_CLIENT_DATA );
+                        SprMngr.PopAtlasType();
+                        str->Release();
+
+                        // Fix by dirs
+                        for( int d = 0; anim && d < anim->DirCount(); d++ )
                         {
-                            SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-                            anim = SprMngr.LoadAnimation( str->c_str(), PT_CLIENT_DATA );
-                            SprMngr.PopAtlasType();
+                            AnyFrames* dir_anim = anim->GetDir( d );
 
-                            // Fix by dirs
-                            for( int d = 0; anim && d < anim->DirCount(); d++ )
+                            // Process flags
+                            if( flags )
                             {
-                                AnyFrames* dir_anim = anim->GetDir( d );
-
-                                // Process flags
-                                if( flags )
+                                if( FLAG( flags, ANIM_FLAG_FIRST_FRAME ) || FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
                                 {
-                                    if( FLAG( flags, ANIM_FLAG_FIRST_FRAME ) || FLAG( flags, ANIM_FLAG_LAST_FRAME ) )
+                                    bool first = FLAG( flags, ANIM_FLAG_FIRST_FRAME );
+
+                                    // Append offsets
+                                    if( !first )
                                     {
-                                        bool first = FLAG( flags, ANIM_FLAG_FIRST_FRAME );
-
-                                        // Append offsets
-                                        if( !first )
+                                        for( uint i = 0; i < dir_anim->CntFrm - 1; i++ )
                                         {
-                                            for( uint i = 0; i < dir_anim->CntFrm - 1; i++ )
-                                            {
-                                                dir_anim->NextX[ dir_anim->CntFrm - 1 ] += dir_anim->NextX[ i ];
-                                                dir_anim->NextY[ dir_anim->CntFrm - 1 ] += dir_anim->NextY[ i ];
-                                            }
+                                            dir_anim->NextX[ dir_anim->CntFrm - 1 ] += dir_anim->NextX[ i ];
+                                            dir_anim->NextY[ dir_anim->CntFrm - 1 ] += dir_anim->NextY[ i ];
                                         }
-
-                                        // Change size
-                                        dir_anim->Ind[ 0 ] = ( first ? dir_anim->Ind[ 0 ] : dir_anim->Ind[ dir_anim->CntFrm - 1 ] );
-                                        dir_anim->NextX[ 0 ] = ( first ? dir_anim->NextX[ 0 ] : dir_anim->NextX[ dir_anim->CntFrm - 1 ] );
-                                        dir_anim->NextY[ 0 ] = ( first ? dir_anim->NextY[ 0 ] : dir_anim->NextY[ dir_anim->CntFrm - 1 ] );
-                                        dir_anim->CntFrm = 1;
                                     }
-                                }
 
-                                // Add offsets
-                                if( ( ox || oy ) && false )
+                                    // Change size
+                                    dir_anim->Ind[ 0 ] = ( first ? dir_anim->Ind[ 0 ] : dir_anim->Ind[ dir_anim->CntFrm - 1 ] );
+                                    dir_anim->NextX[ 0 ] = ( first ? dir_anim->NextX[ 0 ] : dir_anim->NextX[ dir_anim->CntFrm - 1 ] );
+                                    dir_anim->NextY[ 0 ] = ( first ? dir_anim->NextY[ 0 ] : dir_anim->NextY[ dir_anim->CntFrm - 1 ] );
+                                    dir_anim->CntFrm = 1;
+                                }
+                            }
+
+                            // Add offsets
+                            if( ( ox || oy ) && false )
+                            {
+                                for( uint i = 0; i < dir_anim->CntFrm; i++ )
                                 {
-                                    for( uint i = 0; i < dir_anim->CntFrm; i++ )
+                                    uint spr_id = dir_anim->Ind[ i ];
+                                    bool fixed = false;
+                                    for( uint j = 0; j < i; j++ )
                                     {
-                                        uint spr_id = dir_anim->Ind[ i ];
-                                        bool fixed = false;
-                                        for( uint j = 0; j < i; j++ )
+                                        if( dir_anim->Ind[ j ] == spr_id )
                                         {
-                                            if( dir_anim->Ind[ j ] == spr_id )
-                                            {
-                                                fixed = true;
-                                                break;
-                                            }
+                                            fixed = true;
+                                            break;
                                         }
-                                        if( !fixed )
-                                        {
-                                            SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
-                                            si->OffsX += ox;
-                                            si->OffsY += oy;
-                                        }
+                                    }
+                                    if( !fixed )
+                                    {
+                                        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+                                        si->OffsX += ox;
+                                        si->OffsY += oy;
                                     }
                                 }
                             }
                         }
+                    }
+                    else
+                    {
+                        str->Release();
                     }
 
                     // If pass changed and animation not loaded than try again

@@ -59,7 +59,7 @@ public:
     CLASS_PROPERTY( uchar, HandsItemMode );
     CLASS_PROPERTY( ushort, WorldX );
     CLASS_PROPERTY( ushort, WorldY );
-    CLASS_PROPERTY( uint, GlobalGroupRuleId );
+    CLASS_PROPERTY( uint, GlobalMapLeaderId );
     // Exclude
     CLASS_PROPERTY( int, ReplicationMoney );    // GUI
     CLASS_PROPERTY( int, ReplicationCost );     // GUI
@@ -125,7 +125,6 @@ public:
     bool        IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
     bool        IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }
     bool        IsChosen()   { return FLAG( Flags, FCRIT_CHOSEN ); }
-    bool        IsGmapRule() { return GetGlobalGroupRuleId() == Id; }
     bool        IsOnline()   { return !FLAG( Flags, FCRIT_DISCONNECT ); }
     bool        IsOffline()  { return FLAG( Flags, FCRIT_DISCONNECT ); }
     bool        IsLife()     { return GetCond() == COND_LIFE; }

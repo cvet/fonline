@@ -36,7 +36,7 @@ CLASS_PROPERTY_IMPL( CritterCl, HandsItemProtoId );
 CLASS_PROPERTY_IMPL( CritterCl, HandsItemMode );
 CLASS_PROPERTY_IMPL( CritterCl, WorldX );
 CLASS_PROPERTY_IMPL( CritterCl, WorldY );
-CLASS_PROPERTY_IMPL( CritterCl, GlobalGroupRuleId );
+CLASS_PROPERTY_IMPL( CritterCl, GlobalMapLeaderId );
 CLASS_PROPERTY_IMPL( CritterCl, TalkDistance );
 CLASS_PROPERTY_IMPL( CritterCl, CarryWeight );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentHp );

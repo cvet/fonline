@@ -245,7 +245,7 @@
 #define FCRIT_PLAYER                ( 0x00010000 )
 #define FCRIT_NPC                   ( 0x00020000 )
 #define FCRIT_DISCONNECT            ( 0x00080000 )
-#define FCRIT_CHOSEN                ( 0x00100000 )  // Chosen
+#define FCRIT_CHOSEN                ( 0x00100000 )
 
 // Slots
 #define SLOT_INV                    ( 0 )

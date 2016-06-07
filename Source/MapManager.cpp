@@ -1269,7 +1269,7 @@ bool MapManager::TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, u
     return false;
 }
 
-bool MapManager::TransitToGlobal( Critter* cr, uint rule_id, bool force )
+bool MapManager::TransitToGlobal( Critter* cr, uint leader_id, bool force )
 {
     if( cr->LockMapTransfers )
     {
@@ -1277,10 +1277,10 @@ bool MapManager::TransitToGlobal( Critter* cr, uint rule_id, bool force )
         return false;
     }
 
-    return Transit( cr, nullptr, 0, 0, 0, 0, rule_id, force );
+    return Transit( cr, nullptr, 0, 0, 0, 0, leader_id, force );
 }
 
-bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint rule_id, bool force )
+bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force )
 {
     // Check location deletion
     Location* loc = ( map ? map->GetLocation( true ) : nullptr );
@@ -1356,7 +1356,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
         uint multihex = cr->GetMultihex();
         if( !map->FindStartHex( hx, hy, multihex, radius, true ) && !map->FindStartHex( hx, hy, multihex, radius, false ) )
             return false;
-        if( !CanAddCrToMap( cr, map, hx, hy, rule_id ) )
+        if( !CanAddCrToMap( cr, map, hx, hy, leader_id ) )
             return false;
 
         cr->LockMapTransfers++;
@@ -1368,7 +1368,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
         cr->SetLastMapHexY( cr->GetHexY() );
         cr->SetBreakTime( 0 );
 
-        AddCrToMap( cr, map, hx, hy, dir, rule_id );
+        AddCrToMap( cr, map, hx, hy, dir, leader_id );
 
         cr->Send_LoadMap( nullptr );
 
@@ -1391,7 +1391,7 @@ bool MapManager::FindPlaceOnMap( Critter* cr, Map* map, ushort& hx, ushort& hy, 
     return true;
 }
 
-bool MapManager::CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uint rule_id )
+bool MapManager::CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id )
 {
     if( map )
     {
@@ -1402,26 +1402,27 @@ bool MapManager::CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uin
     }
     else
     {
-        if( rule_id && rule_id != cr->GetId() )
+        if( leader_id && leader_id != cr->GetId() )
         {
-            Critter* rule = CrMngr.GetCritter( rule_id, true );
-            if( !rule || rule->GetMapId() || rule->GetGlobalGroupUid() != cr->GetGlobalGroupUid() )
+            Critter* leader = CrMngr.GetCritter( leader_id, true );
+            if( !leader || leader->GetMapId() || leader->GetGlobalMapTripId() != cr->GetGlobalMapTripId() )
                 return false;
         }
     }
     return true;
 }
 
-void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint rule_id )
+void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint leader_id )
 {
     cr->LockMapTransfers++;
+
+    cr->SetTimeoutBattle( 0 );
+    cr->SetTimeoutTransfer( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
 
     if( map )
     {
         RUNTIME_ASSERT( hx < map->GetWidth() && hy < map->GetHeight() );
 
-        cr->SetTimeoutBattle( 0 );
-        cr->SetTimeoutTransfer( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
         cr->SetMapId( map->GetId() );
         cr->SetMapPid( map->GetProtoId() );
         cr->SetHexX( hx );
@@ -1435,38 +1436,34 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
     else
     {
         RUNTIME_ASSERT( !cr->GlobalMapGroup );
-        cr->GlobalMapGroup = new CrVec();
 
-        cr->SetMapId( 0 );
-        cr->SetMapPid( 0 );
-        cr->SetTimeoutBattle( 0 );
-        cr->SetTimeoutBattle( GameOpt.FullSecond + GameOpt.TimeoutTransfer );
-
-        if( rule_id && rule_id != cr->GetId() )
+        if( !leader_id || leader_id == cr->GetId() )
         {
-            Critter* rule = CrMngr.GetCritter( rule_id, true );
-            RUNTIME_ASSERT( rule );
-            RUNTIME_ASSERT( !rule->GetMapId() );
+            cr->SetGlobalMapLeaderId( cr->GetId() );
+            cr->SetGlobalMapTripId( cr->GetGlobalMapTripId() + 1 );
 
-            cr->SetWorldX( rule->GetWorldX() );
-            cr->SetWorldY( rule->GetWorldY() );
-            cr->SetGlobalGroupRuleId( rule_id );
-            cr->SetGlobalGroupUid( rule->GetGlobalGroupUid() );
-
-            for( auto it = rule->GlobalMapGroup->begin(), end = rule->GlobalMapGroup->end(); it != end; ++it )
-                ( *it )->Send_AddCritter( cr );
-            rule->GlobalMapGroup->push_back( cr );
-            *cr->GlobalMapGroup = *rule->GlobalMapGroup;
+            cr->GlobalMapGroup = new CrVec();
+            cr->GlobalMapGroup->push_back( cr );
         }
         else
         {
-            cr->SetGlobalGroupRuleId( 0 );
-            cr->SetGlobalGroupUid( cr->GetGlobalGroupUid() + 1 );
+            Critter* leader = CrMngr.GetCritter( leader_id, true );
+            RUNTIME_ASSERT( leader );
+            RUNTIME_ASSERT( !leader->GetMapId() );
 
+            cr->SetWorldX( leader->GetWorldX() );
+            cr->SetWorldY( leader->GetWorldY() );
+            cr->SetGlobalMapLeaderId( leader_id );
+            cr->SetGlobalMapTripId( leader->GetGlobalMapTripId() );
+
+            for( auto it = leader->GlobalMapGroup->begin(), end = leader->GlobalMapGroup->end(); it != end; ++it )
+                ( *it )->Send_AddCritter( cr );
+
+            cr->GlobalMapGroup = leader->GlobalMapGroup;
             cr->GlobalMapGroup->push_back( cr );
         }
 
-        Script::RaiseInternalEvent( ServerFunctions.GlobalMapGroupStart, cr );
+        Script::RaiseInternalEvent( ServerFunctions.GlobalMapCritterIn, cr );
     }
 
     cr->LockMapTransfers--;
@@ -1476,22 +1473,7 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map )
 {
     cr->LockMapTransfers++;
 
-    if( !map )
-    {
-        Script::RaiseInternalEvent( ServerFunctions.GlobalMapGroupFinish, cr );
-
-        RUNTIME_ASSERT( cr->GlobalMapGroup );
-
-        for( auto group_cr :* cr->GlobalMapGroup )
-        {
-            auto it_ = std::find( group_cr->GlobalMapGroup->begin(), group_cr->GlobalMapGroup->end(), cr );
-            RUNTIME_ASSERT( it_ != group_cr->GlobalMapGroup->end() );
-            group_cr->GlobalMapGroup->erase( it_ );
-            group_cr->Send_RemoveCritter( cr );
-        }
-        SAFEDEL( cr->GlobalMapGroup );
-    }
-    else
+    if( map )
     {
         Script::RaiseInternalEvent( ServerFunctions.MapCritterOut, map, cr );
 
@@ -1506,6 +1488,32 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map )
 
         cr->SetMapId( 0 );
         cr->SetMapPid( 0 );
+    }
+    else
+    {
+        RUNTIME_ASSERT( cr->GlobalMapGroup );
+
+        Script::RaiseInternalEvent( ServerFunctions.GlobalMapCritterOut, cr );
+
+        auto it = std::find( cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr );
+        cr->GlobalMapGroup->erase( it );
+
+        if( !cr->GlobalMapGroup->empty() )
+        {
+            Critter* new_leader = *cr->GlobalMapGroup->begin();
+            for( auto group_cr :* cr->GlobalMapGroup )
+            {
+                group_cr->SetGlobalMapLeaderId( new_leader->Id );
+                group_cr->Send_RemoveCritter( cr );
+            }
+            cr->GlobalMapGroup = nullptr;
+        }
+        else
+        {
+            SAFEDEL( cr->GlobalMapGroup );
+        }
+
+        cr->SetGlobalMapLeaderId( 0 );
     }
 
     cr->LockMapTransfers--;
