@@ -557,7 +557,7 @@ public:
         static bool Global_LoadDataFile( ScriptString& dat_name );
         static void Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
 
-        static uint Global_LoadSprite( ScriptString& spr_name, int path_index );
+        static uint Global_LoadSprite( ScriptString& spr_name );
         static uint Global_LoadSpriteHash( uint name_hash );
         static int  Global_GetSpriteWidth( uint spr_id, int frame_index );
         static int  Global_GetSpriteHeight( uint spr_id, int frame_index );
@@ -587,7 +587,7 @@ public:
         static ushort        Global_GetMapWidth();
         static ushort        Global_GetMapHeight();
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
-        static void          Global_Preload3dFiles( ScriptArray& fnames, int path_type );
+        static void          Global_Preload3dFiles( ScriptArray& fnames );
         static void          Global_WaitPing();
         static bool          Global_LoadFont( int font, ScriptString& font_fname );
         static void          Global_SetDefaultFont( int font, uint color );

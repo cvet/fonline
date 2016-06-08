@@ -4509,7 +4509,7 @@ struct ServerImage
     uint     Depth;
 };
 vector< ServerImage* > ServerImages;
-bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_name, uint image_depth, int path_type )
+bool FOServer::SScriptFunc::Global_LoadImage( uint index, ScriptString* image_name, uint image_depth )
 {
     // Delete old
     if( index >= ServerImages.size() )

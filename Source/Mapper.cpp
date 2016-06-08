@@ -204,10 +204,7 @@ bool FOMapper::Init()
         TabsActive[ i ] = &( *Tabs[ i ].begin() ).second;
     }
 
-    TabsTiles[ INT_MODE_TILE ].TileDirs.push_back( FileManager::GetDataPath( "", PT_CLIENT_TILES ) );
-    TabsTiles[ INT_MODE_TILE ].TileSubDirs.push_back( true );
-
-// Initialize tabs scroll and names
+    // Initialize tabs scroll and names
     memzero( TabsScroll, sizeof( TabsScroll ) );
     for( int i = INT_MODE_CUSTOM0; i <= INT_MODE_CUSTOM9; i++ )
         TabsName[ i ] = "-";
@@ -220,10 +217,10 @@ bool FOMapper::Init()
     TabsName[ INT_MODE_MESS ] = "Msg";
     TabsName[ INT_MODE_LIST ] = "Maps";
 
-// Restore to client path
+    // Restore to client path
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
-// Hex manager
+    // Hex manager
     if( !HexMngr.Init() )
         return false;
     HexMngr.ReloadSprites();
@@ -4743,7 +4740,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
     //
 }
 
-ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name, int path_type )
+ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( ScriptString& file_name )
 {
     ProtoMap* pmap = new ProtoMap( Str::GetHash( file_name.c_str() ) );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
@@ -5502,11 +5499,9 @@ void FOMapper::SScriptFunc::Global_ChangeZoom( float target_zoom )
     }
 }
 
-uint FOMapper::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_index )
+uint FOMapper::SScriptFunc::Global_LoadSprite( ScriptString& spr_name )
 {
-    if( path_index >= PATH_LIST_COUNT )
-        SCRIPT_ERROR_R0( "Invalid path index arg." );
-    return Self->AnimLoad( spr_name.c_str(), path_index, RES_ATLAS_STATIC );
+    return Self->AnimLoad( spr_name.c_str(), PT_CLIENT_DATA, RES_ATLAS_STATIC );
 }
 
 uint FOMapper::SScriptFunc::Global_LoadSpriteHash( uint name_hash )
@@ -5785,7 +5780,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
     {
         if( anim3d )
             SprMngr.FreePure3dAnimation( anim3d );
-        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_CRITTERS, false );
+        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_DATA, false );
         DrawCritter3dCrType[ instance ] = model_name;
         DrawCritter3dFailToLoad[ instance ] = false;
 

@@ -9,9 +9,7 @@
 // Paths
 #define PT_ROOT               ( -1 )
 #define PT_CLIENT_DATA        ( 0 )
-#define PT_CLIENT_CRITTERS    ( 3 )
 #define PT_CLIENT_SPLASH      ( 10 )
-#define PT_CLIENT_TILES       ( 11 )
 #define PT_CLIENT_TEXTURES    ( 13 )
 #define PT_CLIENT_EFFECTS     ( 14 )
 #define PT_CLIENT_MUSIC       ( 16 )

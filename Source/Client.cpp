@@ -8952,7 +8952,7 @@ void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
     }
 }
 
-void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames, int path_type )
+void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames )
 {
     size_t k = Self->Preload3dFiles.size();
 
@@ -8963,7 +8963,7 @@ void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames, int path
     }
 
     for( ; k < Self->Preload3dFiles.size(); k++ )
-        Self->Preload3dFiles[ k ] = FileManager::GetDataPath( Self->Preload3dFiles[ k ].c_str(), path_type );
+        Self->Preload3dFiles[ k ] = FileManager::GetDataPath( Self->Preload3dFiles[ k ].c_str(), PT_CLIENT_DATA );
 }
 
 void FOClient::SScriptFunc::Global_WaitPing()
@@ -9266,11 +9266,9 @@ void FOClient::SScriptFunc::Global_RunServerScript( ScriptString& func_name, int
     Self->Net_SendRunScript( script_name, p0, p1, p2, p3 ? p3->c_str() : nullptr, dw );
 }
 
-uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name, int path_index )
+uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name )
 {
-    if( path_index >= PATH_LIST_COUNT )
-        SCRIPT_ERROR_R0( "Invalid path index arg." );
-    return Self->AnimLoad( spr_name.c_str(), path_index, RES_ATLAS_STATIC );
+    return Self->AnimLoad( spr_name.c_str(), PT_CLIENT_DATA, RES_ATLAS_STATIC );
 }
 
 uint FOClient::SScriptFunc::Global_LoadSpriteHash( uint name_hash )
@@ -9551,7 +9549,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
         if( anim3d )
             SprMngr.FreePure3dAnimation( anim3d );
         SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_CRITTERS, false );
+        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_DATA, false );
         SprMngr.PopAtlasType();
         DrawCritter3dCrType[ instance ] = model_name;
         DrawCritter3dFailToLoad[ instance ] = false;

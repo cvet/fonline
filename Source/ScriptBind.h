@@ -396,7 +396,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllMaps(hash pid, array<Ma
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllLocations(hash pid, array<Location@>@+ locations)", asFUNCTION( BIND_CLASS Global_GetAllLocations ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetScriptId(string& scriptName, string& funcDeclaration)", asFUNCTION( BIND_CLASS Global_GetScriptId ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetScriptName(hash scriptId)", asFUNCTION( BIND_CLASS Global_GetScriptName ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadImage(uint index, string@+ imageName, uint imageDepth, int pathType)", asFUNCTION( BIND_CLASS Global_LoadImage ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadImage(uint index, string@+ imageName, uint imageDepth)", asFUNCTION( BIND_CLASS Global_LoadImage ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetImageColor(uint index, uint x, uint y)", asFUNCTION( BIND_CLASS Global_GetImageColor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Synchronize()", asFUNCTION( BIND_CLASS Global_Synchronize ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Resynchronize()", asFUNCTION( BIND_CLASS Global_Resynchronize ), asCALL_CDECL ) );
@@ -514,7 +514,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "Entity@+ GetMonitorEntity(int x, i
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapWidth()", asFUNCTION( BIND_CLASS Global_GetMapWidth ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetMapHeight()", asFUNCTION( BIND_CLASS Global_GetMapHeight ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Preload3dFiles(array<string>& fileNames, int pathType)", asFUNCTION( BIND_CLASS Global_Preload3dFiles ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Preload3dFiles(array<string>& fileNames)", asFUNCTION( BIND_CLASS Global_Preload3dFiles ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void WaitPing()", asFUNCTION( BIND_CLASS Global_WaitPing ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string& fontFileName)", asFUNCTION( BIND_CLASS Global_LoadFont ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetDefaultFont(int font, uint color)", asFUNCTION( BIND_CLASS Global_SetDefaultFont ), asCALL_CDECL ) );
@@ -693,7 +693,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void AddTileName(uint16 hexX, uint
 BIND_ASSERT( engine->RegisterObjectType( "MapperMap", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperMap", asBEHAVE_ADDREF, "void f()", asMETHOD( ProtoMap, AddRef ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperMap", asBEHAVE_RELEASE, "void f()", asMETHOD( ProtoMap, Release ), asCALL_THISCALL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "MapperMap@+ LoadMap(string& fileName, int pathType)", asFUNCTION( BIND_CLASS Global_LoadMap ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "MapperMap@+ LoadMap(string& fileName)", asFUNCTION( BIND_CLASS Global_LoadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void UnloadMap(MapperMap@+ map)", asFUNCTION( BIND_CLASS Global_UnloadMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(MapperMap@+ map, string@+ customName = null)", asFUNCTION( BIND_CLASS Global_SaveMap ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool ShowMap(MapperMap@+ map)", asFUNCTION( BIND_CLASS Global_ShowMap ), asCALL_CDECL ) );
@@ -749,7 +749,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __SplitTilesCollection", &Gam
 #endif
 
 #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(string& name, int pathIndex)", asFUNCTION( BIND_CLASS Global_LoadSprite ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(string& name)", asFUNCTION( BIND_CLASS Global_LoadSprite ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint LoadSprite(hash name)", asFUNCTION( BIND_CLASS Global_LoadSpriteHash ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteWidth(uint sprId, int frameIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteWidth ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetSpriteHeight(uint sprId, int frameIndex)", asFUNCTION( BIND_CLASS Global_GetSpriteHeight ), asCALL_CDECL ) );

@@ -632,7 +632,7 @@ public:
         static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( ScriptString& dat_name );
         // static uint Global_GetVersion();
-        static bool Global_LoadImage( uint index, ScriptString* image_name, uint image_depth, int path_type );
+        static bool Global_LoadImage( uint index, ScriptString* image_name, uint image_depth );
         static uint Global_GetImageColor( uint index, uint x, uint y );
         static void Global_Synchronize();
         static void Global_Resynchronize();

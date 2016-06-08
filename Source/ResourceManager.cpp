@@ -169,7 +169,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
     while( true )
     {
         // Load
-        if( /*ANIM_TYPE_FALLOUT*/ false )
+        if( Str::CompareCount( "art/critters/", Str::GetName( model_name ), 13 ) )
         {
             // Hardcoded
             anim = LoadFalloutAnim( model_name, anim1, anim2 );
@@ -459,13 +459,13 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( hash model_name, uint anim1, uin
     // Try load fofrm
     const char* name = Str::GetName( model_name );
     Str::Format( spr_name, "%s%c%c.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
-    AnyFrames* frames = SprMngr.LoadAnimation( spr_name, PT_CLIENT_CRITTERS );
+    AnyFrames* frames = SprMngr.LoadAnimation( spr_name, PT_CLIENT_DATA );
 
     // Try load fallout frames
     if( !frames )
     {
         Str::Format( spr_name, "%s%c%c.frm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
-        frames = SprMngr.LoadAnimation( spr_name, PT_CLIENT_CRITTERS );
+        frames = SprMngr.LoadAnimation( spr_name, PT_CLIENT_DATA );
     }
     SprMngr.PopAtlasType();
 
@@ -621,7 +621,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
     }
 
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_CRITTERS, true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_DATA, true );
     SprMngr.PopAtlasType();
     if( !anim3d )
         return nullptr;

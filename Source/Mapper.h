@@ -402,7 +402,7 @@ public:
         static void          Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, ScriptString* pic_name );
 
         static void      Global_AllowSlot( uchar index, bool enable_send );
-        static ProtoMap* Global_LoadMap( ScriptString& file_name, int path_type );
+        static ProtoMap* Global_LoadMap( ScriptString& file_name );
         static void      Global_UnloadMap( ProtoMap* pmap );
         static bool      Global_SaveMap( ProtoMap* pmap, ScriptString* custom_name );
         static bool      Global_ShowMap( ProtoMap* pmap );
@@ -449,7 +449,7 @@ public:
         static bool    Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
         static Entity* Global_GetMonitorObject( int x, int y, bool ignore_interface );
 
-        static uint Global_LoadSprite( ScriptString& spr_name, int path_index );
+        static uint Global_LoadSprite( ScriptString& spr_name );
         static uint Global_LoadSpriteHash( uint name_hash );
         static int  Global_GetSpriteWidth( uint spr_id, int spr_index );
         static int  Global_GetSpriteHeight( uint spr_id, int spr_index );
