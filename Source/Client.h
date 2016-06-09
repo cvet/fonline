@@ -19,8 +19,6 @@
 #include "MsgFiles.h"
 #include "MapCl.h"
 #include "ProtoManager.h"
-
-// Video
 #include "Theora/theoradec.h"
 
 // Fonts
@@ -39,11 +37,6 @@
 #define SCREEN__BARTER                 ( 7 )
 #define SCREEN__DIALOGBOX              ( 8 )
 #define SCREEN__TOWN_VIEW              ( 9 )
-
-// Cur modes
-#define CUR_DEFAULT                    ( 0 )
-#define CUR_MOVE                       ( 1 )
-#define CUR_USE_WEAPON                 ( 3 )
 
 // Chosen actions
 #define CHOSEN_NONE                    ( 0 )  //
@@ -201,7 +194,6 @@ public:
     void Net_SendText( const char* send_str, uchar how_say );
     void Net_SendDir();
     void Net_SendMove( UCharVec steps );
-    void Net_SendLevelUp( int perk_up, IntVec* props_data );
     void Net_SendPing( uchar ping );
     void Net_SendPlayersBarter( uchar barter, uint param, uint param_ext );
     void Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text );
@@ -449,7 +441,6 @@ public:
     void ScreenQuake( int noise, uint time );
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
-    void ProcessScreenEffectMirror();
 
 /************************************************************************/
 /* Scripting                                                            */

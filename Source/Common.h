@@ -420,7 +420,6 @@ struct ServerScriptFunctions
     void* NpcPlaneBegin;
     void* NpcPlaneEnd;
     void* NpcPlaneRun;
-    void* PlayerLevelUp;
     void* PlayerRegistration;
     void* PlayerLogin;
     void* PlayerGetAccess;

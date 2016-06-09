@@ -3358,36 +3358,6 @@ void FOServer::Process_GetUserHoloStr( Client* cl )
     Send_PlayerHoloInfo( cl, str_num / 10, ( str_num % 10 ) != 0 );
 }
 
-void FOServer::Process_LevelUp( Client* cl )
-{
-    uint   msg_len;
-    ushort count_skill_up;
-    IntVec skills;
-    int    perk_up;
-
-    cl->Bin >> msg_len;
-
-    // Skills up
-    cl->Bin >> count_skill_up;
-    for( int i = 0; i < count_skill_up; i++ )
-    {
-        int num, val;
-        cl->Bin >> num;
-        cl->Bin >> val;
-        skills.push_back( num );
-        skills.push_back( val );
-    }
-
-    // Perk up
-    cl->Bin >> perk_up;
-
-    CHECK_IN_BUFF_ERROR( cl );
-
-    for( int i = 0; i < count_skill_up; i++ )
-        Script::RaiseInternalEvent( ServerFunctions.PlayerLevelUp, cl, skills[ i * 2 ], skills[ i * 2 + 1 ], 0 );
-    Script::RaiseInternalEvent( ServerFunctions.PlayerLevelUp, cl, 0, 0, perk_up );
-}
-
 void FOServer::Process_Ping( Client* cl )
 {
     uchar ping;

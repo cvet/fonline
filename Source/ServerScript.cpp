@@ -191,7 +191,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( NpcPlaneBegin );
     BIND_INTERNAL_EVENT( NpcPlaneEnd );
     BIND_INTERNAL_EVENT( NpcPlaneRun );
-    BIND_INTERNAL_EVENT( PlayerLevelUp );
     BIND_INTERNAL_EVENT( PlayerRegistration );
     BIND_INTERNAL_EVENT( PlayerLogin );
     BIND_INTERNAL_EVENT( PlayerGetAccess );

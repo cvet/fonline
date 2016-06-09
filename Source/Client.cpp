@@ -1036,13 +1036,7 @@ int FOClient::MainLoop()
     Script::ProcessDeferredCalls();
 
     // Script loop
-    static uint next_call = 0;
-    if( Timer::FastTick() >= next_call )
-    {
-        uint wait_tick = 1000;
-        Script::RaiseInternalEvent( ClientFunctions.Loop, &wait_tick );
-        next_call = Timer::FastTick() + wait_tick;
-    }
+    Script::RaiseInternalEvent( ClientFunctions.Loop );
 
     // Suspended contexts
     Script::RunSuspended();
@@ -1058,7 +1052,6 @@ int FOClient::MainLoop()
         GameDraw();
         if( SaveLoadProcessDraft )
             SaveLoadFillDraft();
-        ProcessScreenEffectMirror();
     }
 
     DrawIfaceLayer( 2 );
@@ -1193,89 +1186,6 @@ void FOClient::ProcessScreenEffectQuake()
         GameOpt.ScrOy += ScreenOffsY;
         ScreenOffsNextTick = Timer::GameTick() + 30;
     }
-}
-
-void FOClient::ProcessScreenEffectMirror()
-{
-/*
-        if(ScreenMirrorStart)
-        {
-                ScreenQuake(10,1000);
-                ScreenMirrorX=0;
-                ScreenMirrorY=0;
-                SAFEREL(ScreenMirrorTexture);
-                ScreenMirrorEndTick=Timer::FastTick()+1000;
-                ScreenMirrorStart=false;
-
-                if(FAILED(SprMngr.GetDevice()->CreateTexture(MODE_WIDTH,MODE_HEIGHT,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&ScreenMirrorTexture))) return;
-                LPDIRECT3DSURFACE8 mirror=NULL;
-                LPDIRECT3DSURFACE8 back_buf=NULL;
-                if(SUCCEEDED(ScreenMirrorTexture->GetSurfaceLevel(0,&mirror))
-                && SUCCEEDED(SprMngr.GetDevice()->GetBackBuffer(0,D3DBACKBUFFER_TYPE_MONO,&back_buf)))
-                        D3DXLoadSurfaceFromSurface(mirror,NULL,NULL,back_buf,NULL,NULL,D3DX_DEFAULT,0);
-                SAFEREL(back_buf);
-                SAFEREL(mirror);
-        }
-        else if(ScreenMirrorEndTick)
-        {
-                if(Timer::FastTick()>=ScreenMirrorEndTick)
-                {
-                        SAFEREL(ScreenMirrorTexture);
-                        ScreenMirrorEndTick=0;
-                }
-                else
-                {
-                        MYVERTEX vb_[6];
-                        vb_[0].x=0+ScreenMirrorX-0.5f;
-                        vb_[0].y=MODE_HEIGHT+ScreenMirrorY-0.5f;
-                        vb_[0].tu=0.0f;
-                        vb_[0].tv=1.0f;
-                        vb_[0].Diffuse=0x7F7F7F7F;
-
-                        vb_[1].x=0+ScreenMirrorX-0.5f;
-                        vb_[1].y=0+ScreenMirrorY-0.5f;
-                        vb_[1].tu=0.0f;
-                        vb_[1].tv=0.0f;
-                        vb_[1].Diffuse=0x7F7F7F7F;
-                        vb_[3].x=0+ScreenMirrorX-0.5f;
-                        vb_[3].y=0+ScreenMirrorY-0.5f;
-                        vb_[3].tu=0.0f;
-                        vb_[3].tv=0.0f;
-                        vb_[3].Diffuse=0x7F7F7F7F;
-
-                        vb_[2].x=MODE_WIDTH+ScreenMirrorX-0.5f;
-                        vb_[2].y=MODE_HEIGHT+ScreenMirrorY-0.5f;
-                        vb_[2].tu=1.0f;
-                        vb_[2].tv=1.0f;
-                        vb_[2].Diffuse=0x7F7F7F7F;
-                        vb_[5].x=MODE_WIDTH+ScreenMirrorX-0.5f;
-                        vb_[5].y=MODE_HEIGHT+ScreenMirrorY-0.5f;
-                        vb_[5].tu=1.0f;
-                        vb_[5].tv=1.0f;
-                        vb_[5].Diffuse=0x7F7F7F7F;
-
-                        vb_[4].x=MODE_WIDTH+ScreenMirrorX-0.5f;
-                        vb_[4].y=0+ScreenMirrorY-0.5f;
-                        vb_[4].tu=1.0f;
-                        vb_[4].tv=0.0f;
-                        vb_[4].Diffuse=0x7F7F7F7F;
-
-                        SprMngr.GetDevice()->SetTexture(0,ScreenMirrorTexture);
-                        LPDIRECT3DVERTEXBUFFER vb;
-                        SprMngr.GetDevice()->CreateVertexBuffer(6*sizeof(MYVERTEX),D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,D3DFVF_MYVERTEX,D3DPOOL_DEFAULT,&vb);
-                        void* vertices;
-                        vb->Lock(0,6*sizeof(MYVERTEX),(uchar**)&vertices,D3DLOCK_DISCARD);
-                        memcpy(vertices,vb_,6*sizeof(MYVERTEX));
-                        vb->Unlock();
-                        SprMngr.GetDevice()->SetStreamSource(0,vb,sizeof(MYVERTEX));
-                        SprMngr.GetDevice()->SetVertexShader(D3DFVF_MYVERTEX);
-                        SprMngr.GetDevice()->DrawPrimitive(PRIMITIVE_TRIANGLELIST,0,2);
-                        SAFEREL(vb);
-                        SprMngr.GetDevice()->SetStreamSource(0,SprMngr.GetVB(),sizeof(MYVERTEX));
-                        SprMngr.GetDevice()->SetVertexShader(D3DFVF_MYVERTEX);
-                }
-        }
- */
 }
 
 void FOClient::ParseKeyboard()
@@ -2597,29 +2507,6 @@ void FOClient::Net_SendGiveMap( bool automap, hash map_pid, uint loc_id, hash ti
 void FOClient::Net_SendLoadMapOk()
 {
     Bout << NETMSG_SEND_LOAD_MAP_OK;
-}
-
-void FOClient::Net_SendLevelUp( int perk_up, IntVec* props_data )
-{
-    if( !Chosen )
-        return;
-
-    ushort count = (ushort) ( props_data ? props_data->size() / 2 : 0 );
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( count ) + sizeof( int ) * 2 * count + sizeof( perk_up );
-
-    Bout << NETMSG_SEND_LEVELUP;
-    Bout << msg_len;
-
-    // Skills
-    Bout << count;
-    for( size_t i = 0, j = ( props_data ? props_data->size() / 2 : 0 ); i < j; i++ )
-    {
-        Bout << props_data->at( i * 2 );
-        Bout << props_data->at( i * 2 + 1 );
-    }
-
-    // Perks
-    Bout << perk_up;
 }
 
 void FOClient::Net_SendPing( uchar ping )
@@ -8232,21 +8119,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         GameOpt.MouseY = y;
         SDL_WarpMouseInWindow( MainWindow, x, y );
         SDL_FlushEvent( SDL_MOUSEMOTION );
-    }
-    else if( cmd == "AssignSkillPoints" )
-    {
-        IntVec props_data;
-        for( size_t i = 1; i < args.size(); i += 2 )
-        {
-            props_data.push_back( Str::AtoI( args[ i ].c_str() ) );
-            props_data.push_back( Str::AtoI( args[ i + 1 ].c_str() ) );
-        }
-        Self->Net_SendLevelUp( 0, &props_data );
-    }
-    else if( cmd == "AssignPerk" && args.size() == 2 )
-    {
-        int perk = Str::AtoI( args[ 1 ].c_str() );
-        Self->Net_SendLevelUp( perk, nullptr );
     }
     else if( cmd == "SaveLog" && args.size() == 3 )
     {

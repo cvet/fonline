@@ -1540,12 +1540,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_LEVELUP:
-            {
-                Process_LevelUp( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_DIR:
             {
                 CHECK_BUSY_AND_LIFE;

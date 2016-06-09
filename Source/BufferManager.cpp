@@ -395,7 +395,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_MSG_LEX:
     case NETMSG_MAP_TEXT:
     case NETMSG_MAP_TEXT_MSG_LEX:
-    case NETMSG_SEND_LEVELUP:
     case NETMSG_ADD_ITEM:
     case NETMSG_ADD_ITEM_ON_MAP:
     case NETMSG_SOME_ITEM:
@@ -677,7 +676,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_MSG_LEX:
     case NETMSG_MAP_TEXT:
     case NETMSG_MAP_TEXT_MSG_LEX:
-    case NETMSG_SEND_LEVELUP:
     case NETMSG_CONTAINER_INFO:
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_COMBAT_RESULTS:

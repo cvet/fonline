@@ -64,7 +64,6 @@ public:
     static void Process_GiveMap( Client* cl );
     static void Process_SetUserHoloStr( Client* cl );
     static void Process_GetUserHoloStr( Client* cl );
-    static void Process_LevelUp( Client* cl );
     static void Process_Ping( Client* cl );
     static void Process_PlayersBarter( Client* cl );
     static void Process_Combat( Client* cl );
