@@ -89,7 +89,6 @@ public:
     MapManager();
 
     string GetLocationsMapsStatistics();
-    bool   GenerateWorld();
 
     // Maps stuff
 public:

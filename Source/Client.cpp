@@ -4223,13 +4223,7 @@ void FOClient::Net_OnGameInfo()
 
     CHECK_IN_BUFF_ERROR;
 
-    DateTimeStamp dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
-    uint64        start_ft;
-    Timer::DateTimeToFullTime( dt, start_ft );
-    GameOpt.YearStartFTHi = ( start_ft >> 32 ) & 0xFFFFFFFF;
-    GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
-    GameOpt.FullSecond = Timer::GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
-    GameOpt.FullSecondStart = GameOpt.FullSecond;
+    Timer::InitGameTime();
     GameOpt.GameTimeTick = Timer::GameTick();
 
     HexMngr.SetWeather( time, rain );
@@ -7255,18 +7249,18 @@ void FOClient::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_valu
     }
 }
 
-void FOClient::OnSetItemLockerCondition( Entity* entity, Property* prop, void* cur_value, void* old_value )
+void FOClient::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     Item* item = (Item*) entity;
-    uint  cur = *(uint*) cur_value;
-    uint  old = *(uint*) old_value;
+    bool  cur = *(bool*) cur_value;
+    bool  old = *(bool*) old_value;
 
     if( item->IsDoor() || item->IsContainer() )
     {
         ItemHex* hex_item = (ItemHex*) item;
-        if( !FLAG( old, LOCKER_ISOPEN ) && FLAG( cur, LOCKER_ISOPEN ) )
+        if( !old && cur )
             hex_item->SetAnimFromStart();
-        if( FLAG( old, LOCKER_ISOPEN ) && !FLAG( cur, LOCKER_ISOPEN ) )
+        if( old && !cur )
             hex_item->SetAnimFromEnd();
     }
 }
@@ -7485,7 +7479,7 @@ bool FOClient::ReloadScripts()
     Item::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
     Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
     Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LockerCondition", OnSetItemLockerCondition );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
     Map::SetPropertyRegistrator( registrators[ 3 ] );
     Map::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
     Location::SetPropertyRegistrator( registrators[ 4 ] );

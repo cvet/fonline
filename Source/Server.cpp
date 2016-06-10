@@ -640,16 +640,7 @@ void FOServer::Logic_Work( void* data )
         else if( job.Type == JOB_LOOP_SCRIPT )
         {
             // Script game loop
-            static uint game_loop_tick = 1;
-            if( game_loop_tick && Timer::FastTick() >= game_loop_tick )
-            {
-                uint wait = 3600000;               // 1hour
-                Script::RaiseInternalEvent( ServerFunctions.Loop, &wait );
-                if( !wait )
-                    game_loop_tick = 0;            // Disable
-                else
-                    game_loop_tick = Timer::FastTick() + wait;
-            }
+            Script::RaiseInternalEvent( ServerFunctions.Loop );
         }
         else if( job.Type == JOB_SUSPENDED_CONTEXTS )
         {
@@ -3113,40 +3104,10 @@ bool FOServer::LoadGameInfoFile( IniParser& data )
     GameOpt.Minute = Str::AtoI( kv[ "Minute" ].c_str() );
     GameOpt.Second = Str::AtoI( kv[ "Second" ].c_str() );
     GameOpt.TimeMultiplier = Str::AtoI( kv[ "TimeMultiplier" ].c_str() );
-    InitGameTime();
+    Timer::InitGameTime();
 
     WriteLog( "Load game info complete.\n" );
     return true;
-}
-
-void FOServer::InitGameTime()
-{
-    if( !GameOpt.TimeMultiplier )
-    {
-        Script::RaiseInternalEvent( ServerFunctions.GetStartTime, &GameOpt.TimeMultiplier, &GameOpt.YearStart,
-                                    &GameOpt.Month, &GameOpt.Day, &GameOpt.Hour, &GameOpt.Minute );
-        GameOpt.YearStart = CLAMP( GameOpt.YearStart, 1700, 30000 );
-        GameOpt.Year = GameOpt.YearStart;
-        GameOpt.Second = 0;
-    }
-
-    DateTimeStamp dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
-    uint64        start_ft;
-    Timer::DateTimeToFullTime( dt, start_ft );
-    GameOpt.YearStartFTHi = ( start_ft >> 32 ) & 0xFFFFFFFF;
-    GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
-
-    GameOpt.TimeMultiplier = CLAMP( GameOpt.TimeMultiplier, 1, 50000 );
-    GameOpt.Year = CLAMP( GameOpt.Year, GameOpt.YearStart, GameOpt.YearStart + 130 );
-    GameOpt.Month = CLAMP( GameOpt.Month, 1, 12 );
-    GameOpt.Day = CLAMP( GameOpt.Day, 1, 31 );
-    GameOpt.Hour = CLAMP( (short) GameOpt.Hour, 0, 23 );
-    GameOpt.Minute = CLAMP( (short) GameOpt.Minute, 0, 59 );
-    GameOpt.Second = CLAMP( (short) GameOpt.Second, 0, 59 );
-    GameOpt.FullSecond = Timer::GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
-
-    GameOpt.FullSecondStart = GameOpt.FullSecond;
-    GameOpt.GameTimeTick = Timer::GameTick();
 }
 
 void FOServer::SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second )
@@ -4052,9 +4013,14 @@ bool FOServer::LoadClient( Client* cl )
 bool FOServer::NewWorld()
 {
     UnloadWorld();
-    InitGameTime();
-    if( !GameOpt.GenerateWorldDisabled && !MapMngr.GenerateWorld() )
-        return false;
+
+    Script::RaiseInternalEvent( ServerFunctions.GenerateWorld, &GameOpt.TimeMultiplier, &GameOpt.YearStart,
+                                &GameOpt.Month, &GameOpt.Day, &GameOpt.Hour, &GameOpt.Minute );
+
+    GameOpt.YearStart = CLAMP( GameOpt.YearStart, 1700, 30000 );
+    GameOpt.Year = GameOpt.YearStart;
+    GameOpt.Second = 0;
+    Timer::InitGameTime();
 
     // Start script
     if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )

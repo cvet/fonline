@@ -665,9 +665,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                             if( field == "Item_AmmoPid" )
                                 ( (Item*) entities.back() )->SetAmmoPid( Str::GetHash( svalue ) );
                             SET_FIELD_ITEM( "Item_AmmoCount", AmmoCount );
-                            SET_FIELD_ITEM( "Item_LockerDoorId", LockerId );
-                            SET_FIELD_ITEM( "Item_LockerCondition", LockerCondition );
-                            SET_FIELD_ITEM( "Item_LockerComplexity", LockerComplexity );
                             SET_FIELD_ITEM( "Item_TrapValue", TrapValue );
                             SET_FIELD_ITEM( "Item_Val0", Val0 );
                             SET_FIELD_ITEM( "Item_Val1", Val1 );

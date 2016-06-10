@@ -90,11 +90,6 @@ string MapManager::GetLocationsMapsStatistics()
     return result;
 }
 
-bool MapManager::GenerateWorld()
-{
-    return Script::RaiseInternalEvent( ServerFunctions.GenerateWorld );
-}
-
 Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
 {
     ProtoLocation* proto = ProtoMngr.GetProtoLocation( loc_pid );

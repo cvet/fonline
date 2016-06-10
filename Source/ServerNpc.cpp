@@ -805,7 +805,7 @@ void FOServer::ProcessAI( Npc* npc )
         bool   is_run = plane->Pick.IsRun;
 
         Item*  item = map->GetItemHex( hx, hy, pid, nullptr );         // Cheat
-        if( !item || ( item->IsDoor() && ( to_open ? item->LockerIsOpen() : item->LockerIsClose() ) ) )
+        if( !item || ( item->IsDoor() && ( to_open ? item->GetOpened() : !item->GetOpened() ) ) )
         {
             npc->NextPlane( REASON_SUCCESS );
             break;

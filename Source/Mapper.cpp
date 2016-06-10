@@ -720,12 +720,11 @@ void FOMapper::ParseKeyboard()
         key_pressed[ dikdw ] = true;
 
         // Key script event
-        bool script_result = false;
+        bool script_result = true;
         if( dikdw )
         {
             ScriptString* event_text_script = ScriptString::Create( event_text );
             script_result = Script::RaiseInternalEvent( MapperFunctions.KeyDown, dikdw, event_text_script );
-            script_result = Script::GetReturnedBool();
             event_text_script->Release();
         }
         if( dikup )
@@ -736,7 +735,7 @@ void FOMapper::ParseKeyboard()
         }
 
         // Disable keyboard events
-        if( script_result || GameOpt.DisableKeyboardEvents )
+        if( !script_result || GameOpt.DisableKeyboardEvents )
         {
             if( dikdw == DIK_ESCAPE && Keyb::ShiftDwn )
                 GameOpt.Quit = true;
@@ -1117,7 +1116,7 @@ void FOMapper::ParseMouse()
         int event_dy = -events[ i + 2 ];
 
         // Scripts
-        bool script_result = false;
+        bool script_result = true;
         if( event == SDL_MOUSEWHEEL )
             script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN );
         if( event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT )
@@ -1152,7 +1151,7 @@ void FOMapper::ParseMouse()
             script_result = Script::RaiseInternalEvent( MapperFunctions.MouseDown, MOUSE_BUTTON_EXT4 );
         if( event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON( 8 ) )
             script_result = Script::RaiseInternalEvent( MapperFunctions.MouseUp, MOUSE_BUTTON_EXT4 );
-        if( script_result || GameOpt.DisableMouseEvents )
+        if( !script_result || GameOpt.DisableMouseEvents )
             continue;
 
         // Wheel
@@ -1346,13 +1345,7 @@ void FOMapper::MainLoop()
     }
 
     // Script loop
-    static uint next_call = 0;
-    if( MapperFunctions.Loop && Timer::FastTick() >= next_call )
-    {
-        uint wait_tick = 60000;
-        Script::RaiseInternalEvent( MapperFunctions.Loop, &wait_tick );
-        next_call = Timer::FastTick() + wait_tick;
-    }
+    Script::RaiseInternalEvent( MapperFunctions.Loop );
 
     // Input
     ConsoleProcess();

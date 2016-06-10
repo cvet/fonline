@@ -178,6 +178,7 @@ public:
     static void  OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Npc
     static void ProcessAI( Npc* npc );
@@ -218,7 +219,6 @@ public:
     // Game time
     static void SaveGameInfoFile( IniParser& data );
     static bool LoadGameInfoFile( IniParser& data );
-    static void InitGameTime();
     static void SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second );
 
     // Lang packs
@@ -408,8 +408,6 @@ public:
         static void  Item_Animate( Item* item, uchar from_frm, uchar to_frm );
         static Item* Item_GetChild( Item* item, uint child_index );
         static bool  Item_CallSceneryFunction( Item* scenery, Critter* cr, int skill, Item* item );
-        static bool  Item_LockerOpen( Item* item );
-        static bool  Item_LockerClose( Item* item );
 
         static bool  Crit_IsPlayer( Critter* cr );
         static bool  Crit_IsNpc( Critter* cr );

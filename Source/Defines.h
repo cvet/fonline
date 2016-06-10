@@ -114,10 +114,6 @@
 // Critters
 #define CRITTER_INV_VOLUME          ( 1000 )
 
-// Locker
-#define LOCKER_ISOPEN               ( 0x01 )
-#define LOCKER_NOOPEN               ( 0x10 )
-
 // Global map
 #define GM_MAXX                     ( GameOpt.GlobalMapWidth * GameOpt.GlobalMapZoneLength )
 #define GM_MAXY                     ( GameOpt.GlobalMapHeight * GameOpt.GlobalMapZoneLength )

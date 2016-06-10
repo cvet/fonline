@@ -325,7 +325,7 @@ public:
     static void OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetItemLockerCondition( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void OnSendMapValue( Entity* entity, Property* prop );
     static void OnSendLocationValue( Entity* entity, Property* prop );
 

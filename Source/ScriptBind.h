@@ -125,10 +125,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetChild(uint childIn
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "const Item@+ GetChild(uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter& cr, int skill, Item@+ item)", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
 
-// Parameters
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerOpen()", asFUNCTION( BIND_CLASS Item_LockerOpen ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool LockerClose()", asFUNCTION( BIND_CLASS Item_LockerClose ), asCALL_CDECL_OBJFIRST ) );
-
 /************************************************************************/
 /* Critter                                                              */
 /************************************************************************/
@@ -640,7 +636,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "bool __UpdateServer", &GameOpt.Upd
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __CommandLine", &GameOpt.CommandLine ) );
 
 # ifdef BIND_SERVER
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GenerateWorldDisabled", &GameOpt.GenerateWorldDisabled ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __BuildMapperScripts", &GameOpt.BuildMapperScripts ) );
 # endif
 

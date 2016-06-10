@@ -228,6 +228,19 @@ void Timer::ContinueTime( DateTimeStamp& td, int seconds )
     FullTimeToDateTime( ft, td );
 }
 
+void Timer::InitGameTime()
+{
+    DateTimeStamp dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
+    uint64        start_ft;
+    DateTimeToFullTime( dt, start_ft );
+    GameOpt.YearStartFTHi = ( start_ft >> 32 ) & 0xFFFFFFFF;
+    GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
+
+    GameOpt.FullSecond = GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
+    GameOpt.FullSecondStart = GameOpt.FullSecond;
+    GameOpt.GameTimeTick = Timer::GameTick();
+}
+
 uint Timer::GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
 {
     DateTimeStamp dt = { year, month, 0, day, hour, minute, second, 0 };

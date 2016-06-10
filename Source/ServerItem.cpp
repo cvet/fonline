@@ -200,3 +200,39 @@ void FOServer::OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value
 
     ItemMngr.RadioRegister( item, value );
 }
+
+void FOServer::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) entity;
+    bool  cur = *(bool*) cur_value;
+    bool  old = *(bool*) old_value;
+
+    if( item->IsDoor() || item->IsContainer() )
+    {
+        if( !old && cur )
+        {
+            item->SetIsLightThru( true );
+
+            if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
+            {
+                Map* map = MapMngr.GetMap( item->GetMapId() );
+                if( map )
+                    map->RecacheHexBlockShoot( item->GetHexX(), item->GetHexY() );
+            }
+        }
+        if( old && !cur )
+        {
+            item->SetIsLightThru( false );
+
+            if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
+            {
+                Map* map = MapMngr.GetMap( item->GetMapId() );
+                if( map )
+                {
+                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM );
+                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_NRAKE_ITEM );
+                }
+            }
+        }
+    }
+}

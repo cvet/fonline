@@ -183,8 +183,6 @@ struct BindClass
     static void Item_Animate()             {}
     static void Item_GetChild()            {}
     static void Item_CallSceneryFunction() {}
-    static void Item_LockerOpen()          {}
-    static void Item_LockerClose()         {}
 
     static void Crit_IsPlayer()                 {}
     static void Crit_IsNpc()                    {}

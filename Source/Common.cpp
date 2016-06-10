@@ -1103,7 +1103,6 @@ GameOptions::GameOptions()
     MinimumOfflineTime = 180000;
     GameServer = false;
     UpdateServer = false;
-    GenerateWorldDisabled = false;
     BuildMapperScripts = false;
     CommandLine = ScriptString::Create();
 

@@ -363,7 +363,6 @@ struct ServerScriptFunctions
 {
     void* Init;
     void* Start;
-    void* GetStartTime;
     void* GenerateWorld;
     void* Finish;
     void* Loop;
@@ -528,7 +527,6 @@ struct GameOptions
     uint          MinimumOfflineTime;
     bool          GameServer;
     bool          UpdateServer;
-    bool          GenerateWorldDisabled;
     bool          BuildMapperScripts;
     ScriptString* CommandLine;
 

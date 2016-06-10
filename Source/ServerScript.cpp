@@ -137,7 +137,6 @@ bool FOServer::InitScriptSystem()
     #define BIND_INTERNAL_EVENT( name )    ServerFunctions. ## name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( Init );
     BIND_INTERNAL_EVENT( Start );
-    BIND_INTERNAL_EVENT( GetStartTime );
     BIND_INTERNAL_EVENT( GenerateWorld );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
@@ -221,6 +220,7 @@ bool FOServer::InitScriptSystem()
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsGag", OnSetItemRecacheHex );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsGeck", OnSetItemIsGeck );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsRadio", OnSetItemIsRadio );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
     Map::SetPropertyRegistrator( registrators[ 3 ] );
     Map::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
     Location::SetPropertyRegistrator( registrators[ 4 ] );
@@ -875,108 +875,6 @@ bool FOServer::SScriptFunc::Item_CallSceneryFunction( Item* scenery, Critter* cr
     Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
     Script::SetArgEntity( item );
     return Script::RunPrepared() && Script::GetReturnedBool();
-}
-
-bool FOServer::SScriptFunc::Item_LockerOpen( Item* item )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !item->IsHasLocker() )
-        SCRIPT_ERROR_R0( "Door item is no have locker." );
-    if( !item->LockerIsChangeble() )
-        SCRIPT_ERROR_R0( "Door is not changeble." );
-
-    if( item->LockerIsOpen() )
-        return true;
-
-    ushort locker_condition = item->GetLockerCondition();
-    SETFLAG( locker_condition, LOCKER_ISOPEN );
-    item->SetLockerCondition( locker_condition );
-
-    if( item->IsDoor() )
-    {
-        bool recache_block = false;
-        bool recache_shoot = false;
-        if( !item->GetDoor_NoBlockMove() )
-        {
-            item->SetIsNoBlock( true );
-            recache_block = true;
-        }
-        if( !item->GetDoor_NoBlockShoot() )
-        {
-            item->SetIsShootThru( true );
-            recache_shoot = true;
-        }
-        if( !item->GetDoor_NoBlockLight() )
-        {
-            item->SetIsLightThru( true );
-        }
-
-        if( item->GetAccessory() == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
-        {
-            Map* map = MapMngr.GetMap( item->GetMapId() );
-            if( map )
-            {
-                if( recache_block && recache_shoot )
-                    map->RecacheHexBlockShoot( item->GetHexX(), item->GetHexY() );
-                else if( recache_block )
-                    map->RecacheHexBlock( item->GetHexX(), item->GetHexY() );
-                else if( recache_shoot )
-                    map->RecacheHexShoot( item->GetHexX(), item->GetHexY() );
-            }
-        }
-    }
-    return true;
-}
-
-bool FOServer::SScriptFunc::Item_LockerClose( Item* item )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !item->IsHasLocker() )
-        SCRIPT_ERROR_R0( "Door item is no have locker." );
-    if( !item->LockerIsChangeble() )
-        SCRIPT_ERROR_R0( "Door is not changeble." );
-
-    if( item->LockerIsClose() )
-        return true;
-
-    ushort locker_condition = item->GetLockerCondition();
-    UNSETFLAG( locker_condition, LOCKER_ISOPEN );
-    item->SetLockerCondition( locker_condition );
-
-    if( item->IsDoor() )
-    {
-        bool recache_block = false;
-        bool recache_shoot = false;
-        if( !item->GetDoor_NoBlockMove() )
-        {
-            item->SetIsNoBlock( false );
-            recache_block = true;
-        }
-        if( !item->GetDoor_NoBlockShoot() )
-        {
-            item->SetIsShootThru( false );
-            recache_shoot = true;
-        }
-        if( !item->GetDoor_NoBlockLight() )
-        {
-            item->SetIsLightThru( false );
-        }
-
-        if( item->GetAccessory() == ITEM_ACCESSORY_HEX && ( recache_block || recache_shoot ) )
-        {
-            Map* map = MapMngr.GetMap( item->GetMapId() );
-            if( map )
-            {
-                if( recache_block )
-                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM );
-                if( recache_shoot )
-                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_NRAKE_ITEM );
-            }
-        }
-    }
-    return true;
 }
 
 bool FOServer::SScriptFunc::Crit_IsPlayer( Critter* cr )

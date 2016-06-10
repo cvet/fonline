@@ -60,6 +60,7 @@ CLASS_PROPERTY_IMPL( Item, Type );
 CLASS_PROPERTY_IMPL( Item, Stackable );
 CLASS_PROPERTY_IMPL( Item, Deteriorable );
 CLASS_PROPERTY_IMPL( Item, GroundLevel );
+CLASS_PROPERTY_IMPL( Item, Opened );
 CLASS_PROPERTY_IMPL( Item, Corner );
 CLASS_PROPERTY_IMPL( Item, Slot );
 CLASS_PROPERTY_IMPL( Item, Weight );
@@ -124,14 +125,10 @@ CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_0 );
 CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_1 );
 CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_2 );
 CLASS_PROPERTY_IMPL( Item, Ammo_Caliber );
-CLASS_PROPERTY_IMPL( Item, Door_NoBlockMove );
-CLASS_PROPERTY_IMPL( Item, Door_NoBlockShoot );
-CLASS_PROPERTY_IMPL( Item, Door_NoBlockLight );
 CLASS_PROPERTY_IMPL( Item, Container_Volume );
 CLASS_PROPERTY_IMPL( Item, Container_Changeble );
 CLASS_PROPERTY_IMPL( Item, Container_CannotPickUp );
 CLASS_PROPERTY_IMPL( Item, Container_MagicHandsGrnd );
-CLASS_PROPERTY_IMPL( Item, Locker_Condition );
 CLASS_PROPERTY_IMPL( Item, Grid_Type );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMap );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMapEntire );
@@ -205,9 +202,6 @@ CLASS_PROPERTY_IMPL( Item, Deterioration );
 CLASS_PROPERTY_IMPL( Item, AmmoPid );
 CLASS_PROPERTY_IMPL( Item, AmmoCount );
 CLASS_PROPERTY_IMPL( Item, TrapValue );
-CLASS_PROPERTY_IMPL( Item, LockerId );
-CLASS_PROPERTY_IMPL( Item, LockerCondition );
-CLASS_PROPERTY_IMPL( Item, LockerComplexity );
 CLASS_PROPERTY_IMPL( Item, HolodiskNum );
 CLASS_PROPERTY_IMPL( Item, RadioChannel );
 CLASS_PROPERTY_IMPL( Item, RadioFlags );
@@ -230,29 +224,6 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
 
     if( GetCount() == 0 )
         SetCount( 1 );
-
-    switch( GetType() )
-    {
-    case ITEM_TYPE_WEAPON:
-        SetAmmoCount( GetWeapon_MaxAmmoCount() );
-        SetAmmoPid( GetWeapon_DefaultAmmoPid() );
-        break;
-    case ITEM_TYPE_DOOR:
-        SetIsGag( true );
-        if( !GetDoor_NoBlockMove() )
-            SetIsNoBlock( false );
-        if( !GetDoor_NoBlockShoot() )
-            SetIsShootThru( false );
-        if( !GetDoor_NoBlockLight() )
-            SetIsLightThru( false );
-        SetLockerCondition( GetLocker_Condition() );
-        break;
-    case  ITEM_TYPE_CONTAINER:
-        SetLockerCondition( GetLocker_Condition() );
-        break;
-    default:
-        break;
-    }
 }
 
 Item::~Item()

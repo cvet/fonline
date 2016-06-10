@@ -36,6 +36,7 @@ namespace Timer
     void ContinueTime( DateTimeStamp& dt, int seconds );
 
     // Game time
+    void          InitGameTime();
     uint          GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
     DateTimeStamp GetGameTime( uint full_second );
     uint          GameTimeMonthDay( ushort year, ushort month );

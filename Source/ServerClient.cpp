@@ -597,7 +597,6 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     // Run script
     Item* ammo_proto = ( ammo ? new Item( 0, ammo ) : nullptr );
     Script::RaiseInternalEvent( ServerFunctions.CritterAttack, cr, t_cr, weap, MAKE_ITEM_MODE( use, aim ), ammo_proto );
-    Script::RunPrepared();
     if( ammo_proto )
         ammo_proto->Release();
 
@@ -2811,7 +2810,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Check for close
-            if( cont->GetContainer_Changeble() && !cont->LockerIsOpen() )
+            if( cont->GetContainer_Changeble() && !cont->GetOpened() )
             {
                 cl->Send_ContainerInfo();
                 WriteLogF( _FUNC_, " - Container is not open.\n" );

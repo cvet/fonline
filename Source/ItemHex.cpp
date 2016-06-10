@@ -241,7 +241,7 @@ void ItemHex::RefreshAnim()
 
     if( GetType() == ITEM_TYPE_CONTAINER || GetType() == ITEM_TYPE_DOOR )
     {
-        if( FLAG( GetLockerCondition(), LOCKER_ISOPEN ) )
+        if( GetOpened() )
             SetSprEnd();
         else
             SetSprStart();

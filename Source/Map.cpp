@@ -135,21 +135,13 @@ bool Map::Generate()
         id_map.insert( PAIR( base_item->GetId(), item->GetId() ) );
 
         // Other values
-        if( item->IsDoor() && FLAG( item->GetLockerCondition(), LOCKER_ISOPEN ) )
-        {
-            if( !item->GetDoor_NoBlockMove() )
-                item->SetIsNoBlock( true );
-            if( !item->GetDoor_NoBlockShoot() )
-                item->SetIsShootThru( true );
-            if( !item->GetDoor_NoBlockLight() )
-                item->SetIsLightThru( true );
-        }
+        if( item->IsDoor() && item->GetOpened() )
+            item->SetIsLightThru( true );
 
         if( !AddItem( item, item->GetHexX(), item->GetHexY() ) )
         {
             WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failure, continue generate.\n", item->GetName(), GetName() );
             ItemMngr.DeleteItem( item );
-            continue;
         }
     }
 

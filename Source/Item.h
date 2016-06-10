@@ -157,6 +157,7 @@ public:
     CLASS_PROPERTY( bool, Stackable );
     CLASS_PROPERTY( bool, Deteriorable );
     CLASS_PROPERTY( bool, GroundLevel );
+    CLASS_PROPERTY( bool, Opened );
     CLASS_PROPERTY( int, Corner );
     CLASS_PROPERTY( uchar, Slot );
     CLASS_PROPERTY( uint, Weight );
@@ -221,14 +222,10 @@ public:
     CLASS_PROPERTY( uchar, Weapon_SoundId_1 );
     CLASS_PROPERTY( uchar, Weapon_SoundId_2 );
     CLASS_PROPERTY( int, Ammo_Caliber );
-    CLASS_PROPERTY( bool, Door_NoBlockMove );
-    CLASS_PROPERTY( bool, Door_NoBlockShoot );
-    CLASS_PROPERTY( bool, Door_NoBlockLight );
     CLASS_PROPERTY( uint, Container_Volume );
     CLASS_PROPERTY( bool, Container_Changeble );
     CLASS_PROPERTY( bool, Container_CannotPickUp );
     CLASS_PROPERTY( bool, Container_MagicHandsGrnd );
-    CLASS_PROPERTY( ushort, Locker_Condition );
     CLASS_PROPERTY( int, Grid_Type );
     CLASS_PROPERTY( hash, Grid_ToMap );
     CLASS_PROPERTY( int, Grid_ToMapEntire );
@@ -309,9 +306,6 @@ public:
     CLASS_PROPERTY( hash, AmmoPid );
     CLASS_PROPERTY( uint, AmmoCount );
     CLASS_PROPERTY( short, TrapValue );
-    CLASS_PROPERTY( uint, LockerId );
-    CLASS_PROPERTY( ushort, LockerCondition );
-    CLASS_PROPERTY( ushort, LockerComplexity );
     CLASS_PROPERTY( uint, HolodiskNum );
     CLASS_PROPERTY( ushort, RadioChannel );
     CLASS_PROPERTY( ushort, RadioFlags );
@@ -415,12 +409,6 @@ public:
 
     // Door
     bool IsDoor() { return GetType() == ITEM_TYPE_DOOR; }
-
-    // Locker
-    bool IsHasLocker()       { return IsDoor() || IsContainer(); }
-    bool LockerIsOpen()      { return FLAG( GetLockerCondition(), LOCKER_ISOPEN ); }
-    bool LockerIsClose()     { return !LockerIsOpen(); }
-    bool LockerIsChangeble() { return IsDoor() ? true : ( IsContainer() ? GetContainer_Changeble() : false ); }
 
     // Ammo
     bool IsAmmo()         { return GetType() == ITEM_TYPE_AMMO; }

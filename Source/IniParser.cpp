@@ -202,8 +202,12 @@ bool IniParser::SaveFile( const char* fname, int path_type )
         str.append( "\n" );
     }
 
-    char  path[ MAX_FOTEXT ];
-    FileManager::GetWritePath( fname, path_type, path );
+    char path[ MAX_FOTEXT ];
+    if( path_type != PT_ROOT )
+        FileManager::GetWritePath( fname, path_type, path );
+    else
+        Str::Copy( path, fname );
+
     void* f = FileOpen( path, true );
     if( !f )
         return false;
