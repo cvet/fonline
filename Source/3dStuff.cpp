@@ -1596,9 +1596,9 @@ bool Animation3dEntity::Load( const char* name )
                     Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
-                        int layer = (int) ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
-                        if( Str::Compare( layers[ m ].c_str(), "All" ) )
-                            layer = -1;
+                        int layer = -1;
+                        if( !Str::Compare( layers[ m ].c_str(), "All" ) )
+                            layer = (int) ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
                         cut->Layers.push_back( layer );
                     }
 
