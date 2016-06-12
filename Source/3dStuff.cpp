@@ -953,6 +953,7 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
                 Quaternion sr;
                 sm.Decompose( ss, sr, sp );
                 float      sphere_square_radius = powf( cut->UnskinShape.SphereRadius * ss.x, 2.0f );
+                bool       revert_shape = cut->RevertUnskinShape;
 
                 // Process mesh vertices
                 v_count += combined_mesh->MeshVertices[ i ];
@@ -962,17 +963,19 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
 
                     // Get vertex side
                     bool v_side = ( ( v.Position - sp ).SquareLength() <= sphere_square_radius );
+                    if( revert_shape )
+                        v_side = !v_side;
 
                     // Check influences
                     for( int b = 0; b < BONES_PER_VERTEX; b++ )
                     {
                         // No influence
                         float w = v.BlendWeights[ b ];
-                        if( w <= 0.0f )
+                        if( w <= 0.0f + FLT_EPSILON )
                             continue;
 
                         // Last influence, don't reskin
-                        if( w >= 1.0f )
+                        if( w >= 1.0f - FLT_EPSILON )
                             break;
 
                         // Skip equal influence side
@@ -1596,27 +1599,23 @@ bool Animation3dEntity::Load( const char* name )
                     Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
-                        int layer = -1;
                         if( !Str::Compare( layers[ m ].c_str(), "All" ) )
-                            layer = (int) ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
-                        cut->Layers.push_back( layer );
+                        {
+                            int layer = (int) ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
+                            cut->Layers.push_back( layer );
+                        }
+                        else
+                        {
+                            for( int i = 0; i < LAYERS3D_COUNT; i++ )
+                                if( i != layer )
+                                    cut->Layers.push_back( i );
+                        }
                     }
 
                     // Shapes
                     ( *istr ) >> buf;
                     StrVec shapes;
                     Str::ParseLine( buf, '-', shapes, Str::ParseLineDummy );
-                    for( uint m = 0, n = (uint) shapes.size(); m < n; m++ )
-                    {
-                        uint shape_name = Bone::GetHash( shapes[ m ].c_str() );
-                        if( Str::Compare( shapes[ m ].c_str(), "All" ) )
-                            shape_name = 0;
-                        for( size_t k = 0, l = area->allDrawBones.size(); k < l; k++ )
-                        {
-                            if( !shape_name || shape_name == area->allDrawBones[ k ]->NameHash )
-                                cut->Shapes.push_back( CutShape::Make( area->allDrawBones[ k ]->Mesh ) );
-                        }
-                    }
 
                     // Unskin bone
                     ( *istr ) >> buf;
@@ -1626,13 +1625,32 @@ bool Animation3dEntity::Load( const char* name )
 
                     // Unskin shape
                     ( *istr ) >> buf;
+                    uint unskin_shape_name = 0;
+                    cut->RevertUnskinShape = false;
                     if( cut->UnskinBone )
                     {
-                        uint unskin_shape_name = Bone::GetHash( buf );
+                        cut->RevertUnskinShape = ( buf[ 0 ] == '~' );
+                        unskin_shape_name = Bone::GetHash( buf[ 0 ] == '~' ? buf + 1 : buf );
                         for( size_t k = 0, l = area->allDrawBones.size(); k < l; k++ )
                         {
                             if( unskin_shape_name == area->allDrawBones[ k ]->NameHash )
                                 cut->UnskinShape = CutShape::Make( area->allDrawBones[ k ]->Mesh );
+                        }
+                    }
+
+                    // Parse shapes
+                    for( uint m = 0, n = (uint) shapes.size(); m < n; m++ )
+                    {
+                        uint shape_name = Bone::GetHash( shapes[ m ].c_str() );
+                        if( Str::Compare( shapes[ m ].c_str(), "All" ) )
+                            shape_name = 0;
+                        for( size_t k = 0, l = area->allDrawBones.size(); k < l; k++ )
+                        {
+                            if( ( !shape_name || shape_name == area->allDrawBones[ k ]->NameHash ) &&
+                                area->allDrawBones[ k ]->NameHash != unskin_shape_name )
+                            {
+                                cut->Shapes.push_back( CutShape::Make( area->allDrawBones[ k ]->Mesh ) );
+                            }
                         }
                     }
                 }

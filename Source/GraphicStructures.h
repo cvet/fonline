@@ -477,6 +477,7 @@ struct CutData
     IntVec      Layers;
     uint        UnskinBone;
     CutShape    UnskinShape;
+    bool        RevertUnskinShape;
 };
 typedef vector< CutData* > CutDataVec;
 
