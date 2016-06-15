@@ -809,7 +809,6 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
     IntVec& cut_layers = cut->Layers;
     for( size_t i = 0, j = cut->Shapes.size(); i < j; i++ )
     {
-        bool        cut_all = ( std::find( cut_layers.begin(), cut_layers.end(), -1 ) != cut_layers.end() );
         Vertex3DVec result_vertices;
         UShortVec   result_indices;
         UIntVec     result_mesh_vertices;
@@ -830,7 +829,7 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
 
             // Check anim layer
             int  mesh_anim_layer = combined_mesh->MeshAnimLayers[ k ];
-            bool skip = ( !cut_all && std::find( cut_layers.begin(), cut_layers.end(), mesh_anim_layer ) == cut_layers.end() );
+            bool skip = ( std::find( cut_layers.begin(), cut_layers.end(), mesh_anim_layer ) == cut_layers.end() );
 
             // Process faces
             i_count += combined_mesh->MeshIndices[ k ];
@@ -946,6 +945,14 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
             size_t v_pos = 0, v_count = 0;
             for( size_t i = 0, j = combined_mesh->MeshVertices.size(); i < j; i++ )
             {
+                // Check anim layer
+                if( std::find( cut_layers.begin(), cut_layers.end(), combined_mesh->MeshAnimLayers[ i ] ) == cut_layers.end() )
+                {
+                    v_count += combined_mesh->MeshVertices[ i ];
+                    v_pos = v_count;
+                    continue;
+                }
+
                 // Move shape to face space
                 Matrix     mesh_transform = combined_mesh->Meshes[ i ]->Owner->GlobalTransformationMatrix;
                 Matrix     sm = mesh_transform.Inverse() * cut->UnskinShape.GlobalTransformationMatrix;
@@ -971,11 +978,11 @@ void Animation3d::CutCombinedMesh( CombinedMesh* combined_mesh, CutData* cut )
                     {
                         // No influence
                         float w = v.BlendWeights[ b ];
-                        if( w <= 0.0f + FLT_EPSILON )
+                        if( w < 0.00001f )
                             continue;
 
                         // Last influence, don't reskin
-                        if( w >= 1.0f - FLT_EPSILON )
+                        if( w > 1.0f - 0.00001f )
                             break;
 
                         // Skip equal influence side
