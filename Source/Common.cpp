@@ -441,16 +441,6 @@ void ShowMessage( const char* message )
     #endif
 }
 
-uint GetDoubleClickTicks()
-{
-    #ifdef FO_WINDOWS
-    return (uint) GetDoubleClickTime();
-    #else
-    // Todo: Linux
-    return 500;
-    #endif
-}
-
 int ConvertParamValue( const char* str, bool& fail )
 {
     if( !str[ 0 ] )
@@ -781,9 +771,14 @@ void GetClientOptions()
     GameOpt.IndicatorType = MainConfig->GetInt( "", "IndicatorType", COMBAT_MODE_ANY );
     GETOPTIONS_CMD_LINE_INT( GameOpt.IndicatorType, "-IndicatorType" );
     GETOPTIONS_CHECK( GameOpt.IndicatorType, INDICATOR_LINES, INDICATOR_BOTH, INDICATOR_LINES );
-    GameOpt.DoubleClickTime = MainConfig->GetInt( "", "DoubleClickTime", 400 );
+
+    uint dct = 500;
+    # ifdef FO_WINDOWS
+    dct = (uint) GetDoubleClickTime();
+    # endif
+    GameOpt.DoubleClickTime = MainConfig->GetInt( "", "DoubleClickTime", dct );
     GETOPTIONS_CMD_LINE_INT( GameOpt.DoubleClickTime, "-DoubleClickTime" );
-    GETOPTIONS_CHECK( GameOpt.DoubleClickTime, 0, 1000, 0 );
+    GETOPTIONS_CHECK( GameOpt.DoubleClickTime, 0, 1000, dct );
 
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.HelpInfo, "-HelpInfo" );
     GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugInfo, "-DebugInfo" );

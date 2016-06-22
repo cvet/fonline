@@ -1055,7 +1055,7 @@ public:
                 if( arg_info.IsObject )
                     memcpy( &value, &GET_ARG( void* ), sizeof( void* ) );
                 else if( arg_info.IsPodRef )
-                    memcpy( &value, &GET_ARG( void* ), arg_info.PodSize );
+                    memcpy( &value, GET_ARG( void* ), arg_info.PodSize );
                 else if( arg_info.PodSize == 1 )
                     memcpy( &value, &GET_ARG( uchar ), arg_info.PodSize );
                 else if( arg_info.PodSize == 2 )
@@ -1074,9 +1074,10 @@ public:
             #undef GET_ARG
 
             // Invoke callbacks
-            for( asIScriptFunction* callback : callbacks_to_call )
+            for( int i = (int) callbacks_to_call.size() - 1; i >= 0; i-- )
             {
-                uint bind_id = Script::BindByFunc( callback, false );
+                asIScriptFunction* callback = callbacks_to_call[ i ];
+                uint               bind_id = Script::BindByFunc( callback, false );
                 RUNTIME_ASSERT( bind_id );
                 if( Script::PrepareContext( bind_id, _FUNC_, "Event" ) )
                 {

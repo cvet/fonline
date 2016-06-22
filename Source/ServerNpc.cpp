@@ -539,7 +539,7 @@ void FOServer::ProcessAI( Npc* npc )
             npc->ItemSlotMain->SetWeaponMode( MAKE_ITEM_MODE( use, 0 ) );
 
             // Load weapon
-            if( !npc->GetIsUnlimitedAmmo() && weap->WeapGetMaxAmmoCount() && weap->WeapIsEmpty() )
+            if( !npc->GetIsUnlimitedAmmo() && weap->GetWeapon_MaxAmmoCount() && weap->WeapIsEmpty() )
             {
                 Item* ammo = npc->GetAmmoForWeapon( weap );
                 if( !ammo )
@@ -553,7 +553,7 @@ void FOServer::ProcessAI( Npc* npc )
                     break;
                 }
             }
-            else if( npc->GetIsUnlimitedAmmo() && weap->WeapGetMaxAmmoCount() )
+            else if( npc->GetIsUnlimitedAmmo() && weap->GetWeapon_MaxAmmoCount() )
                 weap->WeapLoadHolder();
 
             /************************************************************************/

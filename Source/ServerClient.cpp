@@ -368,7 +368,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     }
 
     // Set last move type
-    cr->IsRuning = is_run;
+    cr->IsRunning = is_run;
 
     // Process step
     bool is_dead = cr->IsDead();
@@ -487,12 +487,6 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         return false;
     }
 
-    if( weap->IsBroken() )
-    {
-        WriteLogF( _FUNC_, " - Critter weapon is broken, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
     if( weap->GetWeapon_IsTwoHanded() && cr->IsDmgArm() )
     {
         WriteLogF( _FUNC_, " - Critter is damaged arm on two hands weapon, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
@@ -553,7 +547,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
 
     // Ammo
     ProtoItem* ammo = nullptr;
-    if( weap->WeapGetAmmoCaliber() && weap->WeapGetMaxAmmoCount() )
+    if( weap->GetWeapon_Caliber() && weap->GetWeapon_MaxAmmoCount() )
     {
         ammo = ProtoMngr.GetProtoItem( weap->GetAmmoPid() );
         if( !ammo )
@@ -576,7 +570,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     }
 
     // No ammo
-    if( weap->WeapGetMaxAmmoCount() && !cr->GetIsUnlimitedAmmo() )
+    if( weap->GetWeapon_MaxAmmoCount() && !cr->GetIsUnlimitedAmmo() )
     {
         if( !weap->GetAmmoCount() )
         {
@@ -626,7 +620,7 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
         return false;
     }
 
-    if( !weap->WeapGetMaxAmmoCount() )
+    if( !weap->GetWeapon_MaxAmmoCount() )
     {
         WriteLogF( _FUNC_, " - Weapon is not have holder, id %u, critter '%s'.\n", weap_id, cr->GetInfo() );
         return false;
@@ -647,13 +641,13 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
         return false;
     }
 
-    if( ammo && weap->WeapGetAmmoCaliber() != ammo->AmmoGetCaliber() )
+    if( ammo && weap->GetWeapon_Caliber() != ammo->AmmoGetCaliber() )
     {
         WriteLogF( _FUNC_, " - Different calibers, critter '%s'.\n", cr->GetInfo() );
         return false;
     }
 
-    if( ammo && weap->WeapGetAmmoPid() == ammo->GetProtoId() && weap->WeapIsFull() )
+    if( ammo && weap->GetAmmoPid() == ammo->GetProtoId() && weap->WeapIsFull() )
     {
         WriteLogF( _FUNC_, " - Weapon is full, id %u, critter '%s'.\n", weap_id, cr->GetInfo() );
         return false;

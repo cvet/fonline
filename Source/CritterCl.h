@@ -176,8 +176,7 @@ public:
     uchar GetFullRate() { return ItemSlotMain->GetMode(); }
     uint  GetUseApCost( Item* item, uchar rate );
     Item* GetAmmoAvialble( Item* weap );
-    bool  IsOverweight()       { return (int) GetItemsWeight() > GetCarryWeight(); }
-    bool  IsDoubleOverweight() { return (int) GetItemsWeight() > GetCarryWeight() * 2; }
+    bool  IsOverweight() { return (int) GetItemsWeight() > GetCarryWeight(); }
 
     // Moving
 public:
@@ -185,11 +184,6 @@ public:
     UShortPairVec MoveSteps;
     int           CurMoveStep;
     bool IsNeedMove() { return MoveSteps.size() && !IsWalkAnim(); }
-    void ZeroSteps()
-    {
-        MoveSteps.clear();
-        CurMoveStep = 0;
-    }
     void Move( int dir );
 
     // ReSet

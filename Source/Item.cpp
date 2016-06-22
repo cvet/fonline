@@ -15,7 +15,6 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Grid_Type );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicMap );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicInv );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Stackable );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Deteriorable );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Weapon_IsUnarmed );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Weapon_Anim1 );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, short, OffsetX );
@@ -58,7 +57,6 @@ CLASS_PROPERTY_IMPL( Item, LightFlags );
 CLASS_PROPERTY_IMPL( Item, LightColor );
 CLASS_PROPERTY_IMPL( Item, Type );
 CLASS_PROPERTY_IMPL( Item, Stackable );
-CLASS_PROPERTY_IMPL( Item, Deteriorable );
 CLASS_PROPERTY_IMPL( Item, GroundLevel );
 CLASS_PROPERTY_IMPL( Item, Opened );
 CLASS_PROPERTY_IMPL( Item, Corner );
@@ -196,9 +194,6 @@ CLASS_PROPERTY_IMPL( Item, Val6 );
 CLASS_PROPERTY_IMPL( Item, Val7 );
 CLASS_PROPERTY_IMPL( Item, Val8 );
 CLASS_PROPERTY_IMPL( Item, Val9 );
-CLASS_PROPERTY_IMPL( Item, BrokenFlags );
-CLASS_PROPERTY_IMPL( Item, BrokenCount );
-CLASS_PROPERTY_IMPL( Item, Deterioration );
 CLASS_PROPERTY_IMPL( Item, AmmoPid );
 CLASS_PROPERTY_IMPL( Item, AmmoCount );
 CLASS_PROPERTY_IMPL( Item, TrapValue );
@@ -336,19 +331,6 @@ void Item::ChangeCount( int val )
 {
     SetCount( GetCount() + val );
 }
-
-#ifdef FONLINE_SERVER
-void Item::Repair()
-{
-    if( FLAG( GetBrokenFlags(), BI_BROKEN ) )
-    {
-        uchar flags = GetBrokenFlags();
-        UNSETFLAG( flags, BI_BROKEN );
-        SetBrokenFlags( flags );
-        SetDeterioration( 0 );
-    }
-}
-#endif
 
 void Item::SetWeaponMode( uchar mode )
 {

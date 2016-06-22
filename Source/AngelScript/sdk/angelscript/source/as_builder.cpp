@@ -317,11 +317,11 @@ int asCBuilder::Build()
 		return asERROR;
 
 	// Make sure something was compiled, otherwise return an error
-	if( module->IsEmpty() )
-	{
-		WriteError(TXT_NOTHING_WAS_BUILT, 0, 0);
-		return asERROR;
-	}
+//	if( module->IsEmpty() )
+//	{
+//		WriteError(TXT_NOTHING_WAS_BUILT, 0, 0);
+//		return asERROR;
+//	}
 
 	return asSUCCESS;
 }

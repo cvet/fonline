@@ -46,6 +46,12 @@ static T* EntityUpCast( Entity* a )
     return nullptr;
 }
 
+void Global_Assert( bool condition )
+{
+    if( !condition )
+        Script::RaiseException( "Assertion Failed" );
+}
+
 int Global_Random( int min, int max )
 {
     static Randomizer script_randomizer;

@@ -169,7 +169,7 @@ public:
     bool          CritterIsNpc;
     uint          Flags;
     ScriptString* NameStr;
-    bool          IsRuning;
+    bool          IsRunning;
     uint          PrevHexTick;
     ushort        PrevHexX, PrevHexY;
     int           LockMapTransfers;

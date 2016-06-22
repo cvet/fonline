@@ -1496,11 +1496,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
     Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : nullptr );
     if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, this, item, to_slot, item_swap ) )
     {
-        if( IsPlayer() )
-        {
-            Send_AddItem( item );
-            WriteLogF( _FUNC_, " - Can't move item with pid %u to slot %u, player '%s'.\n", item->GetProtoId(), to_slot, GetInfo() );
-        }
+        WriteLogF( _FUNC_, " - Can't move item '%s' to slot %u, critter '%s'.\n", item->GetName(), to_slot, GetInfo() );
         return false;
     }
 
@@ -4465,9 +4461,7 @@ void Npc::RefreshBag()
         // Repair/reload item in slots
         if( item->GetCritSlot() != SLOT_INV )
         {
-            if( item->GetDeteriorable() && item->IsBroken() )
-                item->Repair();
-            if( item->IsWeapon() && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty() )
+            if( item->IsWeapon() && item->GetWeapon_MaxAmmoCount() && item->WeapIsEmpty() )
                 item->WeapLoadHolder();
         }
     }

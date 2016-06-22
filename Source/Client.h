@@ -38,23 +38,6 @@
 #define SCREEN__DIALOGBOX              ( 8 )
 #define SCREEN__TOWN_VIEW              ( 9 )
 
-// Chosen actions
-#define CHOSEN_NONE                    ( 0 )  //
-#define CHOSEN_MOVE                    ( 1 )  // HexX, HexY, Is run, Cut path, Wait double click, Double click tick
-#define CHOSEN_MOVE_TO_CRIT            ( 2 )  // Critter id, None, Is run, Cut path, Wait double click, Double click tick
-#define CHOSEN_DIR                     ( 3 )  // 0 (CW) or 1 (CCW)
-#define CHOSEN_USE_ITEM                ( 6 )  // Item id, -, Target type, Target id, Item mode, Some param (timer)
-#define CHOSEN_MOVE_ITEM               ( 7 )  // Item id, Item count, To slot, Is barter container, Is second try
-#define CHOSEN_MOVE_ITEM_CONT          ( 8 )  // From container, Item id, Count
-#define CHOSEN_TAKE_ALL                ( 9 )  //
-#define CHOSEN_PUT_ALL                 ( 10 ) //
-#define CHOSEN_USE_SKL_ON_CRITTER      ( 11 ) // Skill, Critter id
-#define CHOSEN_USE_SKL_ON_ITEM         ( 12 ) // Is inventory, Skill index, Item id
-#define CHOSEN_USE_SKL_ON_SCEN         ( 13 ) // Skill, Pid, HexX, HexY
-#define CHOSEN_TALK_NPC                ( 14 ) // Critter id
-#define CHOSEN_PICK_ITEM               ( 15 ) // Pid, HexX, HexY
-#define CHOSEN_PICK_CRIT               ( 16 ) // Critter id, (loot - 0, push - 1)
-
 // Proxy types
 #define PROXY_SOCKS4                   ( 1 )
 #define PROXY_SOCKS5                   ( 2 )
@@ -264,16 +247,11 @@ public:
 
     void OnText( const char* str, uint crid, int how_say );
     void OnMapText( const char* str, ushort hx, ushort hy, uint color );
-
+    void CrittersProcess();
+    void SoundProcess();
     void WaitPing();
 
-    UCharVec MoveDirs;
-    ushort   MoveLastHx, MoveLastHy;
-
-    uint     PingTick, PingCallTick;
-
-    // Sound
-    void SoundProcess();
+    uint PingTick, PingCallTick;
 
     // MSG File
     LanguagePack CurLang;
@@ -281,39 +259,6 @@ public:
 
     const char* GetHoloText( uint str_num );
     const char* FmtGameText( uint str_num, ... );
-    const char* FmtCombatText( uint str_num, ... );
-
-    struct ActionEvent
-    {
-        max_t Type;
-        max_t Param[ 6 ];
-        bool operator==( const ActionEvent& r ) { return Type == r.Type && Param[ 0 ] == r.Param[ 0 ] && Param[ 1 ] == r.Param[ 1 ] && Param[ 2 ] == r.Param[ 2 ] && Param[ 3 ] == r.Param[ 3 ] && Param[ 4 ] == r.Param[ 4 ] && Param[ 4 ] == r.Param[ 5 ]; }
-        ActionEvent() {}
-        ActionEvent( max_t type, max_t param0, max_t param1, max_t param2, max_t param3, max_t param4, max_t param5 ): Type( type )
-        {
-            Param[ 0 ] = param0;
-            Param[ 1 ] = param1;
-            Param[ 2 ] = param2;
-            Param[ 3 ] = param3;
-            Param[ 4 ] = param4;
-            Param[ 5 ] = param5;
-        }
-        ActionEvent( const ActionEvent& r ) { memcpy( this, &r, sizeof( ActionEvent ) ); }
-    };
-    typedef vector< ActionEvent > ActionEventVec;
-
-    ActionEventVec ChosenAction;
-    void AddAction( bool to_front, ActionEvent act );
-    void SetAction( max_t type_action, max_t param0 = 0, max_t param1 = 0, max_t param2 = 0, max_t param3 = 0, max_t param4 = 0, max_t param5 = 0 );
-    void SetAction( ActionEvent act );
-    void AddActionBack( max_t type_action, max_t param0 = 0, max_t param1 = 0, max_t param2 = 0, max_t param3 = 0, max_t param4 = 0, max_t param5 = 0 );
-    void AddActionBack( ActionEvent act );
-    void AddActionFront( max_t type_action, max_t param0 = 0, max_t param1 = 0, max_t param2 = 0, max_t param3 = 0, max_t param4 = 0, max_t param5 = 0 );
-    void EraseFrontAction();
-    void EraseBackAction();
-    bool IsAction( max_t type_action );
-    void ChosenChangeSlot();
-    void CrittersProcess();
 
     // Properties callbacks
     static void OnSendGlobalValue( Entity* entity, Property* prop );
@@ -493,8 +438,6 @@ public:
 
         static ScriptString* Global_CustomCall( ScriptString& command, ScriptString& separator );
         static CritterCl*    Global_GetChosen();
-        static uint          Global_GetChosenActions( ScriptArray* actions );
-        static void          Global_SetChosenActions( ScriptArray* actions );
         static Item*         Global_GetItem( uint item_id );
         static ScriptArray*  Global_GetMapAllItems();
         static uint          Global_GetMapHexItems( ushort hx, ushort hy, ScriptArray* items );
@@ -505,6 +448,8 @@ public:
         static uint          Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters );
         static uint          Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy );
         static void          Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
+        static ScriptArray*  Global_GetPathHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
+        static ScriptArray*  Global_GetPathCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut );
         static uint          Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static uint          Global_GetPathLengthCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut );
         static void          Global_FlushScreen( uint from_color, uint to_color, uint ms );
@@ -577,6 +522,8 @@ public:
         static Entity*       Global_GetMonitorEntity( int x, int y );
         static ushort        Global_GetMapWidth();
         static ushort        Global_GetMapHeight();
+        static bool          Global_IsMapHexPassed( ushort hx, ushort hy );
+        static bool          Global_IsMapHexRaked( ushort hx, ushort hy );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static void          Global_Preload3dFiles( ScriptArray& fnames );
         static void          Global_WaitPing();

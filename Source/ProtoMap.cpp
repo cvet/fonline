@@ -658,9 +658,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                         else
                         {
                             SET_FIELD_ITEM( "Item_Count", Count );
-                            SET_FIELD_ITEM( "Item_BrokenFlags", BrokenFlags );
-                            SET_FIELD_ITEM( "Item_BrokenCount", BrokenFlags );
-                            SET_FIELD_ITEM( "Item_Deterioration", Deterioration );
                             SET_FIELD_ITEM( "Item_ItemSlot", Slot );
                             if( field == "Item_AmmoPid" )
                                 ( (Item*) entities.back() )->SetAmmoPid( Str::GetHash( svalue ) );
@@ -676,9 +673,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                             SET_FIELD_ITEM( "Item_Val7", Val7 );
                             SET_FIELD_ITEM( "Item_Val8", Val8 );
                             SET_FIELD_ITEM( "Item_Val9", Val9 );
-                            SET_FIELD_ITEM( "Item_DeteorationFlags", BrokenFlags );
-                            SET_FIELD_ITEM( "Item_DeteorationCount", BrokenCount );
-                            SET_FIELD_ITEM( "Item_DeteorationValue", Deterioration );
                             if( field == "Item_InContainer" )
                                 entities_addon.back().ContainerUID = ivalue;
 
@@ -686,7 +680,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                                 ( (Item*) entities.back() )->SetIsCanUse( ivalue != 0 );
                             if( field == "Scenery_CanTalk" )
                                 ( (Item*) entities.back() )->SetIsCanTalk( ivalue != 0 );
-                            SET_FIELD_ITEM( "Scenery_TriggerNum", BrokenFlags );
                             if( field == "Scenery_ParamsCount" )
                                 entities_addon.back().ParamsCount = ivalue;
                             if( field == "Scenery_Param0" )

@@ -128,7 +128,7 @@ struct Critter: public Entity
     int Data;
     int Flags;
     int NameStr;
-    int IsRuning;
+    int IsRunning;
 };
 typedef Critter CritterCl;
 
@@ -454,8 +454,6 @@ struct BindClass
 
     static void Global_CustomCall()             {}
     static void Global_GetChosen()              {}
-    static void Global_GetChosenActions()       {}
-    static void Global_SetChosenActions()       {}
     static void Global_GetItem()                {}
     static void Global_GetMapAllItems()         {}
     static void Global_GetMapHexItems()         {}
@@ -494,6 +492,8 @@ struct BindClass
     static void Global_GetMonitorEntity()  {}
     static void Global_GetMapWidth()       {}
     static void Global_GetMapHeight()      {}
+    static void Global_IsMapHexPassed()    {}
+    static void Global_IsMapHexRaked()     {}
     static void Global_WaitPing()          {}
     static void Global_SetEffect()         {}
     static void Global_RefreshMap()        {}
@@ -579,6 +579,8 @@ struct BindClass
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
     static void Global_GetHexInPath()       {}
+    static void Global_GetPathHex()         {}
+    static void Global_GetPathCr()          {}
     static void Global_GetPathLengthHex()   {}
     static void Global_GetPathLengthCr()    {}
     static void Global_Message()            {}

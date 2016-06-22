@@ -51,10 +51,6 @@
 #define USE_NONE                     ( 15 )
 #define MAKE_ITEM_MODE( use, aim )    ( ( ( ( aim ) << 4 ) | ( ( use ) & 0xF ) ) & 0xFF )
 
-// Item deterioration info
-#define MAX_DETERIORATION            ( 10000 )
-#define BI_BROKEN                    ( 0x0F )
-
 // Radio
 // Flags
 #define RADIO_DISABLE_SEND           ( 0x01 )
@@ -103,7 +99,6 @@ public:
     CLASS_PROPERTY_ALIAS( hash, PicMap );
     CLASS_PROPERTY_ALIAS( hash, PicInv );
     CLASS_PROPERTY_ALIAS( bool, Stackable );
-    CLASS_PROPERTY_ALIAS( bool, Deteriorable );
     CLASS_PROPERTY_ALIAS( bool, Weapon_IsUnarmed );
     CLASS_PROPERTY_ALIAS( uint, Weapon_Anim1 );
     CLASS_PROPERTY_ALIAS( short, OffsetX );
@@ -155,7 +150,6 @@ public:
     PROPERTIES_HEADER();
     CLASS_PROPERTY( int, Type );
     CLASS_PROPERTY( bool, Stackable );
-    CLASS_PROPERTY( bool, Deteriorable );
     CLASS_PROPERTY( bool, GroundLevel );
     CLASS_PROPERTY( bool, Opened );
     CLASS_PROPERTY( int, Corner );
@@ -300,9 +294,6 @@ public:
     CLASS_PROPERTY( int, Val7 );
     CLASS_PROPERTY( int, Val8 );
     CLASS_PROPERTY( int, Val9 );
-    CLASS_PROPERTY( uchar, BrokenFlags );
-    CLASS_PROPERTY( uchar, BrokenCount );
-    CLASS_PROPERTY( ushort, Deterioration );
     CLASS_PROPERTY( hash, AmmoPid );
     CLASS_PROPERTY( uint, AmmoCount );
     CLASS_PROPERTY( short, TrapValue );
@@ -365,13 +356,6 @@ public:
     uint GetCurSprId();
     #endif
 
-    // Deterioration
-    #ifdef FONLINE_SERVER
-    void Repair();
-    #endif
-    bool IsBroken()             { return FLAG( GetBrokenFlags(), BI_BROKEN ); }
-    int  GetDeteriorationProc() { return CLAMP( GetDeterioration() * 100 / MAX_DETERIORATION, 0, 100 ); }
-
     // Armor
     bool IsArmor() { return GetType() == ITEM_TYPE_ARMOR; }
 
@@ -379,10 +363,6 @@ public:
     bool IsWeapon()                  { return GetType() == ITEM_TYPE_WEAPON; }
     bool WeapIsEmpty()               { return !GetAmmoCount(); }
     bool WeapIsFull()                { return GetAmmoCount() >= GetWeapon_MaxAmmoCount(); }
-    uint WeapGetAmmoCount()          { return GetAmmoCount(); }
-    hash WeapGetAmmoPid()            { return GetAmmoPid(); }
-    uint WeapGetMaxAmmoCount()       { return GetWeapon_MaxAmmoCount(); }
-    int  WeapGetAmmoCaliber()        { return GetWeapon_Caliber(); }
     bool WeapIsUseAviable( int use ) { return use >= USE_PRIMARY && use <= USE_THIRD ? ( ( ( GetWeapon_ActiveUses() >> use ) & 1 ) != 0 ) : false; }
     void WeapLoadHolder();
 

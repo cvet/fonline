@@ -105,8 +105,6 @@ FOClient::FOClient()
     MusicVolumeRestore = -1;
 
     UIDFail = false;
-    MoveLastHx = -1;
-    MoveLastHy = -1;
 
     CurMapPid = 0;
     CurMapLocPid = 0;
@@ -687,7 +685,6 @@ void FOClient::DeleteCritters()
 {
     HexMngr.DeleteCritters();
     Chosen = nullptr;
-    ChosenAction.clear();
     Item::ClearItems( InvContInit );
     Item::ClearItems( BarterCont1oInit );
     Item::ClearItems( BarterCont2Init );
@@ -2725,9 +2722,6 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
         cr->Init();
 
-        if( FLAG( cr->Flags, FCRIT_CHOSEN ) )
-            SetAction( CHOSEN_NONE );
-
         AddCritter( cr );
 
         Script::RaiseInternalEvent( ClientFunctions.CritterIn, cr );
@@ -3123,6 +3117,7 @@ void FOClient::Net_OnCritterMove()
         cr->MoveSteps.resize( cr->CurMoveStep > 0 ? cr->CurMoveStep : 0 );
         if( cr->CurMoveStep >= 0 )
             cr->MoveSteps.push_back( PAIR( new_hx, new_hy ) );
+
         for( int i = 0, j = cr->CurMoveStep + 1; i < MOVE_PARAM_STEP_COUNT; i++, j++ )
         {
             int  step = ( move_params >> ( i * MOVE_PARAM_STEP_BITS ) ) & ( MOVE_PARAM_STEP_DIR | MOVE_PARAM_STEP_ALLOW | MOVE_PARAM_STEP_DISALLOW );
@@ -3143,24 +3138,11 @@ void FOClient::Net_OnCritterMove()
             cr->MoveSteps.push_back( PAIR( new_hx, new_hy ) );
         }
         cr->CurMoveStep++;
-
-        /*if(HexMngr.IsShowTrack())
-           {
-                HexMngr.ClearHexTrack();
-                for(int i=4;i<cr->MoveDirs.size();i++)
-                {
-                        UShortPair& step=cr->MoveDirs[i];
-                        HexMngr.HexTrack[step.second][step.first]=1;
-                }
-                HexMngr.HexTrack[last_hy][last_hx]=2;
-                HexMngr.RefreshMap();
-           }*/
     }
     else
     {
-        if( IsAction( ACTION_MOVE ) )
-            EraseFrontAction();
-        MoveDirs.clear();
+        cr->MoveSteps.clear();
+        cr->CurMoveStep = 0;
         HexMngr.TransitCritter( cr, new_hx, new_hy, true, true );
     }
 }
@@ -3442,9 +3424,8 @@ void FOClient::Net_OnCustomCommand()
             if( value < 0 )
                 value = 0;
             Chosen->TickStart( value );
-            SetAction( CHOSEN_NONE );
-            MoveDirs.clear();
             Chosen->MoveSteps.clear();
+            Chosen->CurMoveStep = 0;
         }
         break;
         case OTHER_FLAGS:
@@ -3456,7 +3437,6 @@ void FOClient::Net_OnCustomCommand()
         {
             if( value < 0 )
                 value = 0;
-            ChosenAction.clear();
             TurnBasedTime = Timer::GameTick() + value;
             TurnBasedCurCritterId = Chosen->GetId();
             HexMngr.SetCritterContour( 0, 0 );
@@ -3574,13 +3554,14 @@ void FOClient::Net_OnCritterXY()
             // Chosen->TickStart(GameOpt.Breaktime);
             Chosen->TickStart( 200 );
             // SetAction(CHOSEN_NONE);
-            MoveDirs.clear();
             Chosen->MoveSteps.clear();
+            Chosen->CurMoveStep = 0;
             RebuildLookBorders = true;
         }
     }
 
-    cr->ZeroSteps();
+    cr->MoveSteps.clear();
+    cr->CurMoveStep = 0;
 }
 
 void FOClient::Net_OnAllProperties()
@@ -3969,7 +3950,6 @@ void FOClient::Net_OnEndParseToGame()
 
     if( CurMapPid )
     {
-        MoveDirs.clear();
         HexMngr.FindSetCenter( Chosen->GetHexX(), Chosen->GetHexY() );
         Chosen->AnimateStay();
         SndMngr.PlayAmbient( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
@@ -6365,122 +6345,76 @@ label_EndMove:
             return;
         }
 
-        if( !HexMngr.TraceBullet( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY(), talk_distance + Chosen->GetMultihex(), 0.0f, cr, false, nullptr, 0, nullptr, nullptr, nullptr, true ) )
-        {
-            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_FINDPATH_AIMBLOCK ) );
-            break;
-        }
-
-        // Refresh orientation
-        uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
-        if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
-        {
-            Chosen->ChangeDir( dir );
-            Net_SendDir();
-        }
-
-        Net_SendTalk( true, cr->GetId(), ANSWER_BEGIN );
-    }
-    break;
-    case CHOSEN_PICK_ITEM:
+    // Password
+    if( !Singleplayer )
     {
-        hash   pid = (hash) act.Param[ 0 ];
-        ushort hx = (ushort) act.Param[ 1 ];
-        ushort hy = (ushort) act.Param[ 2 ];
-
-        if( !HexMngr.IsMapLoaded() )
-            break;
-
-        ItemHex* item = HexMngr.GetItem( hx, hy, pid );
-        if( !item )
-            break;
-
-        uint dist = DistGame( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy );
-        if( dist > Chosen->GetUseDist() )
+        uint pass_len_utf8 = Str::LengthUTF8( GameOpt.RegPassword->c_str() );
+        if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
+            pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
         {
-            if( IsTurnBased )
-                break;
-            bool is_run = ( GameOpt.AlwaysRun && dist >= GameOpt.AlwaysRunUseDist );
-            SetAction( CHOSEN_MOVE, hx, hy, is_run, Chosen->GetUseDist(), 0 );
-            if( HexMngr.CutPath( Chosen, Chosen->GetHexX(), Chosen->GetHexY(), hx, hy, Chosen->GetUseDist() ) )
-                AddActionBack( act );
-            AddActionBack( act );
-            return;
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_PASS ) );
+            return false;
         }
 
-        CHECK_NEED_AP( Chosen->GetApCostPickItem() );
-
-        // Refresh orientation
-        uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy );
-        if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), hx, hy ) >= 1 && Chosen->GetDir() != dir )
+        if( !Str::IsValidUTF8( GameOpt.RegPassword->c_str() ) || Str::Substring( GameOpt.RegPassword->c_str(), "*" ) )
         {
-            Chosen->ChangeDir( dir );
-            Net_SendDir();
+            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_PASS_WRONG_CHARS ) );
+            return false;
         }
-
-        Net_SendPickItem( hx, hy, pid );
-        Chosen->Action( ACTION_PICK_ITEM, 0, item );
-        Chosen->SubAp( Chosen->GetApCostPickItem() );
     }
-    break;
-    case CHOSEN_PICK_CRIT:
+
+    return true;
+}
+
+void FOClient::SetDayTime( bool refresh )
+{
+    if( !HexMngr.IsMapLoaded() )
+        return;
+
+    static uint old_color = -1;
+    uint        color = GetColorDay( HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr );
+    color = COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF );
+
+    if( refresh )
+        old_color = -1;
+    if( old_color != color )
     {
-        uint crid = (uint) act.Param[ 0 ];
-        bool is_loot = ( act.Param[ 1 ] == 0 );
-
-        if( !HexMngr.IsMapLoaded() )
-            break;
-
-        CritterCl* cr = GetCritter( crid );
-        if( !cr )
-            break;
-
-        if( is_loot && ( !cr->IsDead() || cr->GetIsNoLoot() ) )
-            break;
-        if( !is_loot && ( !cr->IsLife() || cr->GetIsNoPush() ) )
-            break;
-
-        uint dist = DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
-        uint pick_dist = Chosen->GetUseDist() + cr->GetMultihex();
-        if( dist > pick_dist )
-        {
-            if( IsTurnBased )
-                break;
-            bool   is_run = ( GameOpt.AlwaysRun && dist >= GameOpt.AlwaysRunUseDist );
-            SetAction( CHOSEN_MOVE_TO_CRIT, cr->GetId(), 0, is_run, pick_dist );
-            ushort hx = cr->GetHexX(), hy = cr->GetHexY();
-            if( HexMngr.CutPath( Chosen, Chosen->GetHexX(), Chosen->GetHexY(), hx, hy, pick_dist ) )
-                AddActionBack( act );
-            return;
-        }
-
-        CHECK_NEED_AP( Chosen->GetApCostPickCritter() );
-
-        // Refresh orientation
-        uchar dir = GetFarDir( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() );
-        if( DistGame( Chosen->GetHexX(), Chosen->GetHexY(), cr->GetHexX(), cr->GetHexY() ) >= 1 && Chosen->GetDir() != dir )
-        {
-            Chosen->ChangeDir( dir );
-            Net_SendDir();
-        }
-
-        if( is_loot )
-        {
-            Net_SendPickCritter( cr->GetId(), PICK_CRIT_LOOT );
-            Chosen->Action( ACTION_PICK_CRITTER, 0, nullptr );
-        }
-        else if( cr->IsLife() )
-        {
-            Net_SendPickCritter( cr->GetId(), PICK_CRIT_PUSH );
-            Chosen->Action( ACTION_PICK_CRITTER, 2, nullptr );
-        }
-        Chosen->SubAp( Chosen->GetApCostPickCritter() );
-        WaitPing();
+        old_color = color;
+        SetGameColor( old_color );
     }
-    break;
-    }
+}
 
-    EraseFrontAction();
+void FOClient::WaitPing()
+{
+    GameOpt.WaitPing = true;
+    Net_SendPing( PING_WAIT );
+}
+
+void FOClient::CrittersProcess()
+{
+    for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end();)
+    {
+        CritterCl* cr = it->second;
+        ++it;
+
+        cr->Process();
+
+        if( cr->IsNeedReSet() )
+        {
+            HexMngr.RemoveCritter( cr );
+            HexMngr.SetCritter( cr );
+            cr->ReSetOk();
+        }
+
+        if( !cr->IsChosen() && cr->IsNeedMove() && HexMngr.TransitCritter( cr, cr->MoveSteps[ 0 ].first, cr->MoveSteps[ 0 ].second, true, cr->CurMoveStep > 0 ) )
+        {
+            cr->MoveSteps.erase( cr->MoveSteps.begin() );
+            cr->CurMoveStep--;
+        }
+
+        if( cr->IsFinish() )
+            DeleteCritter( cr->GetId() );
+    }
 }
 
 void FOClient::TryExit()
@@ -6560,21 +6494,6 @@ const char* FOClient::FmtGameText( uint str_num, ... )
 
     Str::Copy( str, CurLang.Msg[ TEXTMSG_GAME ].GetStr( str_num ) );
     Str::Replacement( str, '\\', 'n', '\n' );
-
-    va_list list;
-    va_start( list, str_num );
-    vsprintf( res, str, list );
-    va_end( list );
-
-    return res;
-}
-
-const char* FOClient::FmtCombatText( uint str_num, ... )
-{
-    static char res[ MAX_FOTEXT ];
-    static char str[ MAX_FOTEXT ];
-
-    Str::Copy( str, CurLang.Msg[ TEXTMSG_COMBAT ].GetStr( str_num ) );
 
     va_list list;
     va_start( list, str_num );
@@ -8077,10 +7996,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->Net_SendText( args[ 1 ].c_str(), SAY_NORM );
     }
-    else if( cmd == "ChangeSlot" )
-    {
-        Self->ChosenChangeSlot();
-    }
     else if( cmd == "IsTurnBasedMyTurn" )
     {
         return ScriptString::Create( Self->IsTurnBasedMyTurn() ? "true" : "false" );
@@ -8230,6 +8145,208 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         Self->WaitDraw();
     }
+    else if( cmd == "ChangeDir" && args.size() == 2 )
+    {
+        int dir = Str::AtoI( args[ 1 ].c_str() );
+        Self->Chosen->ChangeDir( dir );
+        Self->Net_SendDir();
+    }
+    else if( cmd == "MoveItem" && args.size() == 6 )
+    {
+        uint  ap_cost = Str::AtoUI( args[ 1 ].c_str() );
+        uint  item_count = Str::AtoUI( args[ 2 ].c_str() );
+        uint  item_id = Str::AtoUI( args[ 3 ].c_str() );
+        uint  item_swap_id = Str::AtoUI( args[ 4 ].c_str() );
+        int   to_slot = Str::AtoI( args[ 5 ].c_str() );
+        Item* item = Self->GetItem( item_id );
+        Item* item_swap = ( item_swap_id ? Self->GetItem( item_swap_id ) : nullptr );
+        Item* old_item = item->Clone();
+        int   from_slot = item->GetCritSlot();
+
+        // Move
+        bool is_light = item->GetIsLight();
+        if( to_slot == SLOT_GROUND )
+        {
+            Self->Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
+            if( item->GetCount() < item->GetCount() )
+            {
+                item->ChangeCount( -(int) item->GetCount() );
+            }
+            else
+            {
+                Self->Chosen->DeleteItem( item, true );
+                item = nullptr;
+            }
+        }
+        else
+        {
+            if( from_slot == SLOT_HAND1 || to_slot == SLOT_HAND1 )
+                Self->Chosen->ItemSlotMain = Self->Chosen->DefItemSlotHand;
+            if( from_slot == SLOT_HAND2 || to_slot == SLOT_HAND2 )
+                Self->Chosen->ItemSlotExt = Self->Chosen->DefItemSlotHand;
+            if( from_slot == SLOT_ARMOR || to_slot == SLOT_ARMOR )
+                Self->Chosen->ItemSlotArmor = Self->Chosen->DefItemSlotArmor;
+
+            if( to_slot == SLOT_HAND1 )
+                Self->Chosen->ItemSlotMain = item;
+            else if( to_slot == SLOT_HAND2 )
+                Self->Chosen->ItemSlotExt = item;
+            else if( to_slot == SLOT_ARMOR )
+                Self->Chosen->ItemSlotArmor = item;
+
+            if( item_swap )
+            {
+                if( from_slot == SLOT_HAND1 )
+                    Self->Chosen->ItemSlotMain = item_swap;
+                else if( from_slot == SLOT_HAND2 )
+                    Self->Chosen->ItemSlotExt = item_swap;
+                else if( from_slot == SLOT_ARMOR )
+                    Self->Chosen->ItemSlotArmor = item_swap;
+            }
+
+            item->SetCritSlot( to_slot );
+            if( item_swap )
+                item_swap->SetCritSlot( from_slot );
+
+            Self->Chosen->Action( ACTION_MOVE_ITEM, from_slot, item );
+            if( item_swap )
+                Self->Chosen->Action( ACTION_MOVE_ITEM_SWAP, to_slot, item_swap );
+        }
+
+        // Affect barter screen
+        if( to_slot == SLOT_GROUND )
+            Self->CollectContItems();
+
+        // Light
+        if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
+            Self->RebuildLookBorders = true;
+        if( is_light && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
+            Self->HexMngr.RebuildLight();
+
+        // Notice server
+        Self->Net_SendChangeItem( ap_cost, item_id, from_slot, to_slot, item_count );
+
+        // Spend AP
+        Self->Chosen->SubAp( ap_cost );
+
+        // Notify scripts about item changing
+        Self->OnItemInvChanged( old_item, item );
+    }
+    else if( cmd == "MoveItemCont" && args.size() == 5 )
+    {
+        uint     ap_cost = Str::AtoUI( args[ 1 ].c_str() );
+        uint     item_count = Str::AtoUI( args[ 2 ].c_str() );
+        uint     item_id = Str::AtoUI( args[ 3 ].c_str() );
+        int      item_cont = Str::AtoUI( args[ 4 ].c_str() );
+
+        ItemVec& cont = ( item_cont == ITEMS_PICKUP ? Self->InvContInit : Self->PupCont2Init );
+        auto     it = PtrCollectionFind( cont.begin(), cont.end(), item_id );
+        RUNTIME_ASSERT( it != cont.end() );
+        Item*    item = *it;
+
+        Self->Chosen->Action( ACTION_OPERATE_CONTAINER, Self->PupTransferType * 10 + ( item_cont == ITEMS_PICKUP_FROM ? 0 : 2 ), item );
+        Self->Chosen->SubAp( ap_cost );
+
+        if( item->GetStackable() && item_count < item->GetCount() )
+        {
+            item->ChangeCount( -(int) item_count );
+        }
+        else
+        {
+            item->Release();
+            cont.erase( it );
+        }
+        Self->CollectContItems();
+
+        uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
+        Self->Net_SendItemCont( Self->PupTransferType, Self->PupContId, item_id, item_count, take_flags );
+    }
+    else if( cmd == "PickItem" && args.size() == 5 )
+    {
+        uint ap_cost =  Str::AtoUI( args[ 1 ].c_str() );
+        hash pid = Str::AtoUI( args[ 2 ].c_str() );
+        uint hx = Str::AtoUI( args[ 3 ].c_str() );
+        uint hy = Str::AtoUI( args[ 4 ].c_str() );
+
+        Self->Net_SendPickItem( hx, hy, pid );
+        Self->Chosen->Action( ACTION_PICK_ITEM, 0, Self->HexMngr.GetItem( hx, hy, pid ) );
+        Self->Chosen->SubAp( ap_cost );
+    }
+    else if( cmd == "PickCritter" && args.size() == 4 )
+    {
+        uint       ap_cost =  Str::AtoUI( args[ 1 ].c_str() );
+        uint       cr_id = Str::AtoUI( args[ 2 ].c_str() );
+        bool       is_loot = Str::AtoB( args[ 3 ].c_str() );
+
+        CritterCl* cr = Self->GetCritter( cr_id );
+        RUNTIME_ASSERT( cr );
+
+        if( is_loot )
+        {
+            Self->Net_SendPickCritter( cr->GetId(), PICK_CRIT_LOOT );
+            Self->Chosen->Action( ACTION_PICK_CRITTER, 0, nullptr );
+        }
+        else if( cr->IsLife() )
+        {
+            Self->Net_SendPickCritter( cr->GetId(), PICK_CRIT_PUSH );
+            Self->Chosen->Action( ACTION_PICK_CRITTER, 2, nullptr );
+        }
+        Self->Chosen->SubAp( ap_cost );
+    }
+    else if( cmd == "UseCritterSkill" && args.size() == 4 )
+    {
+        int  skill = Str::AtoUI( args[ 1 ].c_str() );
+        uint ap_cost = Str::AtoUI( args[ 2 ].c_str() );
+        uint cr_id = Str::AtoUI( args[ 3 ].c_str() );
+
+        Self->Chosen->Action( ACTION_USE_SKILL, skill, nullptr );
+        Self->Net_SendUseSkill( skill, (CritterCl*) ( cr_id ? Self->GetCritter( cr_id ) : nullptr ) );
+        Self->Chosen->SubAp( ap_cost );
+    }
+    else if( cmd == "SkipRoof" && args.size() == 3 )
+    {
+        uint hx = Str::AtoUI( args[ 1 ].c_str() );
+        uint hy = Str::AtoUI( args[ 2 ].c_str() );
+        Self->HexMngr.SetSkipRoof( hx, hy );
+    }
+    else if( cmd == "RebuildLookBorders" )
+    {
+        Self->RebuildLookBorders = true;
+    }
+    else if( cmd == "TransitCritter" && args.size() == 5 )
+    {
+        int  hx = Str::AtoI( args[ 1 ].c_str() );
+        int  hy = Str::AtoI( args[ 2 ].c_str() );
+        bool animate = Str::AtoB( args[ 3 ].c_str() );
+        bool force = Str::AtoB( args[ 4 ].c_str() );
+
+        Self->HexMngr.TransitCritter( Self->Chosen, hx, hy, animate, force );
+    }
+    else if( cmd == "SendMove" )
+    {
+        UCharVec dirs;
+        for( size_t i = 1; i < args.size(); i++ )
+            dirs.push_back( ( uchar ) Str::AtoI( args[ i ].c_str() ) );
+
+        Self->Net_SendMove( dirs );
+
+        if( dirs.size() > 1 )
+        {
+            Self->Chosen->MoveSteps.resize( 1 );
+        }
+        else
+        {
+            Self->Chosen->MoveSteps.resize( 0 );
+            if( !Self->Chosen->IsAnim() )
+                Self->Chosen->AnimateStay();
+        }
+    }
+    else if( cmd == "ChosenAlpha" && args.size() == 2 )
+    {
+        int alpha = Str::AtoI( args[ 1 ].c_str() );
+
+        Self->Chosen->Alpha = (uchar) alpha;
+    }
     else
     {
         SCRIPT_ERROR_R0( "Invalid custom call command." );
@@ -8242,53 +8359,6 @@ CritterCl* FOClient::SScriptFunc::Global_GetChosen()
     if( Self->Chosen && Self->Chosen->IsDestroyed )
         return nullptr;
     return Self->Chosen;
-}
-
-uint FOClient::SScriptFunc::Global_GetChosenActions( ScriptArray* actions )
-{
-    if( actions )
-        actions->Resize( 0 );
-
-    if( Self->Chosen )
-    {
-        actions->Resize( (uint) Self->ChosenAction.size() * 7 );
-        for( uint i = 0, j = (uint) Self->ChosenAction.size(); i < j; i++ )
-        {
-            ActionEvent& act = Self->ChosenAction[ i ];
-            *(uint*) actions->At( i * 7 + 0 ) = act.Type;
-            *(uint*) actions->At( i * 7 + 1 ) = act.Param[ 0 ];
-            *(uint*) actions->At( i * 7 + 2 ) = act.Param[ 1 ];
-            *(uint*) actions->At( i * 7 + 3 ) = act.Param[ 2 ];
-            *(uint*) actions->At( i * 7 + 4 ) = act.Param[ 3 ];
-            *(uint*) actions->At( i * 7 + 5 ) = act.Param[ 4 ];
-            *(uint*) actions->At( i * 7 + 6 ) = act.Param[ 5 ];
-        }
-        return (uint) Self->ChosenAction.size();
-    }
-    return 0;
-}
-
-void FOClient::SScriptFunc::Global_SetChosenActions( ScriptArray* actions )
-{
-    if( actions && actions->GetSize() % 7 )
-        SCRIPT_ERROR_R( "Wrong action array size." );
-    Self->ChosenAction.clear();
-
-    if( Self->Chosen && actions )
-    {
-        Self->ChosenAction.resize( actions->GetSize() / 7 );
-        for( uint i = 0, j = actions->GetSize() / 7; i < j; i++ )
-        {
-            ActionEvent& act = Self->ChosenAction[ i ];
-            act.Type = *(uint*) actions->At( i * 7 + 0 );
-            act.Param[ 0 ] = *(uint*) actions->At( i * 7 + 1 );
-            act.Param[ 1 ] = *(uint*) actions->At( i * 7 + 2 );
-            act.Param[ 2 ] = *(uint*) actions->At( i * 7 + 3 );
-            act.Param[ 3 ] = *(uint*) actions->At( i * 7 + 4 );
-            act.Param[ 4 ] = *(uint*) actions->At( i * 7 + 5 );
-            act.Param[ 5 ] = *(uint*) actions->At( i * 7 + 6 );
-        }
-    }
 }
 
 Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
@@ -8454,6 +8524,44 @@ void FOClient::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy,
     to_hy = pre_block.second;
 }
 
+ScriptArray* FOClient::SScriptFunc::Global_GetPathHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut )
+{
+    if( from_hx >= Self->HexMngr.GetWidth() || from_hy >= Self->HexMngr.GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid from hexes args." );
+    if( to_hx >= Self->HexMngr.GetWidth() || to_hy >= Self->HexMngr.GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid to hexes args." );
+
+    if( cut > 0 && !Self->HexMngr.CutPath( nullptr, from_hx, from_hy, to_hx, to_hy, cut ) )
+        return nullptr;
+
+    UCharVec steps;
+    if( !Self->HexMngr.FindPath( nullptr, from_hx, from_hy, to_hx, to_hy, steps, -1 ) )
+        return nullptr;
+
+    ScriptArray* path = Script::CreateArray( "uint8[]" );
+    Script::AppendVectorToArray( steps, path );
+    return path;
+}
+
+ScriptArray* FOClient::SScriptFunc::Global_GetPathCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Critter arg is destroyed." );
+    if( to_hx >= Self->HexMngr.GetWidth() || to_hy >= Self->HexMngr.GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid to hexes args." );
+
+    if( cut > 0 && !Self->HexMngr.CutPath( cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut ) )
+        return nullptr;
+
+    UCharVec steps;
+    if( !Self->HexMngr.FindPath( cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1 ) )
+        return nullptr;
+
+    ScriptArray* path = Script::CreateArray( "uint8[]" );
+    Script::AppendVectorToArray( steps, path );
+    return path;
+}
+
 uint FOClient::SScriptFunc::Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut )
 {
     if( from_hx >= Self->HexMngr.GetWidth() || from_hy >= Self->HexMngr.GetHeight() )
@@ -8463,9 +8571,11 @@ uint FOClient::SScriptFunc::Global_GetPathLengthHex( ushort from_hx, ushort from
 
     if( cut > 0 && !Self->HexMngr.CutPath( nullptr, from_hx, from_hy, to_hx, to_hy, cut ) )
         return 0;
+
     UCharVec steps;
     if( !Self->HexMngr.FindPath( nullptr, from_hx, from_hy, to_hx, to_hy, steps, -1 ) )
         steps.clear();
+
     return (uint) steps.size();
 }
 
@@ -8478,9 +8588,11 @@ uint FOClient::SScriptFunc::Global_GetPathLengthCr( CritterCl* cr, ushort to_hx,
 
     if( cut > 0 && !Self->HexMngr.CutPath( cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut ) )
         return 0;
+
     UCharVec steps;
     if( !Self->HexMngr.FindPath( cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1 ) )
         steps.clear();
+
     return (uint) steps.size();
 }
 
@@ -9545,6 +9657,7 @@ ushort FOClient::SScriptFunc::Global_GetMapWidth()
 {
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
+
     return Self->HexMngr.GetWidth();
 }
 
@@ -9552,7 +9665,28 @@ ushort FOClient::SScriptFunc::Global_GetMapHeight()
 {
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
+
     return Self->HexMngr.GetHeight();
+}
+
+bool FOClient::SScriptFunc::Global_IsMapHexPassed( ushort hx, ushort hy )
+{
+    if( !Self->HexMngr.IsMapLoaded() )
+        SCRIPT_ERROR_R0( "Map is not loaded." );
+    if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid hex args." );
+
+    return !Self->HexMngr.GetField( hx, hy ).Flags.IsNotPassed;
+}
+
+bool FOClient::SScriptFunc::Global_IsMapHexRaked( ushort hx, ushort hy )
+{
+    if( !Self->HexMngr.IsMapLoaded() )
+        SCRIPT_ERROR_R0( "Map is not loaded." );
+    if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid hex args." );
+
+    return !Self->HexMngr.GetField( hx, hy ).Flags.IsNotRaked;
 }
 
 bool FOClient::SScriptFunc::Global_SaveScreenshot( ScriptString& file_path )
