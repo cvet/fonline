@@ -95,8 +95,6 @@ CLASS_PROPERTY_IMPL( Critter, IsDamagedRightArm );
 CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftArm );
 CLASS_PROPERTY_IMPL( Critter, IsDamagedRightLeg );
 CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftLeg );
-CLASS_PROPERTY_IMPL( Critter, PerkMasterTrader );
-CLASS_PROPERTY_IMPL( Critter, PerkSilentRunning );
 CLASS_PROPERTY_IMPL( Critter, KnownLocations );
 CLASS_PROPERTY_IMPL( Critter, ConnectionIp );
 CLASS_PROPERTY_IMPL( Critter, ConnectionPort );

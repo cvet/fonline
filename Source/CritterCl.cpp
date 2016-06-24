@@ -68,8 +68,6 @@ CLASS_PROPERTY_IMPL( CritterCl, IsDamagedRightArm );
 CLASS_PROPERTY_IMPL( CritterCl, IsDamagedLeftArm );
 CLASS_PROPERTY_IMPL( CritterCl, IsDamagedRightLeg );
 CLASS_PROPERTY_IMPL( CritterCl, IsDamagedLeftLeg );
-CLASS_PROPERTY_IMPL( CritterCl, PerkMasterTrader );
-CLASS_PROPERTY_IMPL( CritterCl, PerkSilentRunning );
 
 CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterCl, PropertiesRegistrator, proto )
 {

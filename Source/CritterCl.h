@@ -72,8 +72,6 @@ public:
     CLASS_PROPERTY( bool, IsDamagedLeftArm );
     CLASS_PROPERTY( bool, IsDamagedRightLeg );
     CLASS_PROPERTY( bool, IsDamagedLeftLeg );
-    CLASS_PROPERTY( uchar, PerkMasterTrader );
-    CLASS_PROPERTY( uchar, PerkSilentRunning );
 
     // Data
     uint          NameColor;

@@ -2083,7 +2083,7 @@ void FOServer::Process_Barter( Client* cl )
         }
 
         uint base_cost = item->GetCost1st();
-        base_cost = base_cost * ( 100 + ( cl->GetPerkMasterTrader() ? 0 : barter_k ) ) / 100;
+        base_cost = base_cost * ( 100 + barter_k ) / 100;
         if( !base_cost )
             base_cost++;
 

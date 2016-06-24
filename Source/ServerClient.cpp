@@ -346,7 +346,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
 
     if( is_run )
     {
-        if( !cr->GetPerkSilentRunning() && cr->GetIsHide() )
+        if( cr->GetIsHide() )
             cr->SetIsHide( false );
         cr->SetBreakTimeDelta( cr->GetRunTime() );
     }

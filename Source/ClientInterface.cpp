@@ -294,7 +294,7 @@ void FOClient::BarterTryOffer()
 
         uint c1, w1, v1, c2, w2, v2;
         ContainerCalcInfo( BarterCont1oInit, c1, w1, v1, -BarterK, true );
-        ContainerCalcInfo( BarterCont2oInit, c2, w2, v2, Chosen->GetPerkMasterTrader() ? 0 : BarterK, false );
+        ContainerCalcInfo( BarterCont2oInit, c2, w2, v2, BarterK, false );
 
         if( !( c1 < c2 && BarterK ) && Chosen->GetFreeWeight() + w1 >= w2 && Chosen->GetFreeVolume() + v1 >= v2 )
         {
