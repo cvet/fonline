@@ -63,9 +63,6 @@ CLASS_PROPERTY_IMPL( Critter, CurrentHp );
 CLASS_PROPERTY_IMPL( Critter, ActionPoints );
 CLASS_PROPERTY_IMPL( Critter, CurrentAp );
 CLASS_PROPERTY_IMPL( Critter, ApRegenerationTime );
-CLASS_PROPERTY_IMPL( Critter, MaxMoveAp );
-CLASS_PROPERTY_IMPL( Critter, MoveAp );
-CLASS_PROPERTY_IMPL( Critter, TurnBasedAc );
 CLASS_PROPERTY_IMPL( Critter, ReplicationTime );
 CLASS_PROPERTY_IMPL( Critter, WalkTime );
 CLASS_PROPERTY_IMPL( Critter, RunTime );
@@ -75,7 +72,6 @@ CLASS_PROPERTY_IMPL( Critter, BarterCoefficient );
 CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
 CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
-CLASS_PROPERTY_IMPL( Critter, DefaultCombat );
 CLASS_PROPERTY_IMPL( Critter, IsUnlimitedAmmo );
 CLASS_PROPERTY_IMPL( Critter, IsNoUnarmed );
 CLASS_PROPERTY_IMPL( Critter, IsNoFavoriteItem );
@@ -99,7 +95,6 @@ CLASS_PROPERTY_IMPL( Critter, IsDamagedRightArm );
 CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftArm );
 CLASS_PROPERTY_IMPL( Critter, IsDamagedRightLeg );
 CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftLeg );
-CLASS_PROPERTY_IMPL( Critter, PerkQuickPockets );
 CLASS_PROPERTY_IMPL( Critter, PerkMasterTrader );
 CLASS_PROPERTY_IMPL( Critter, PerkSilentRunning );
 CLASS_PROPERTY_IMPL( Critter, KnownLocations );
@@ -246,18 +241,13 @@ int Critter::GetRealAp()
 
 int Critter::GetAllAp()
 {
-    return GetCurrentAp() / AP_DIVIDER + GetMoveAp();
+    return GetCurrentAp() / AP_DIVIDER;
 }
 
 void Critter::SubAp( int val )
 {
     SetCurrentAp( GetCurrentAp() - val * AP_DIVIDER );
     ApRegenerationTick = 0;
-}
-
-void Critter::SubMoveAp( int val )
-{
-    SetMoveAp( GetMoveAp() - val );
 }
 
 bool Critter::IsDmgLeg()
@@ -2355,61 +2345,39 @@ int Critter::GetFreeVolume()
     return max_volume - cur_volume;
 }
 
-bool Critter::IsTurnBased()
-{
-    return TB_BATTLE_TIMEOUT_CHECK( GetTimeoutBattle() );
-}
-
-bool Critter::CheckMyTurn( Map* map )
-{
-    if( !IsTurnBased() )
-        return true;
-    if( !map )
-        map = MapMngr.GetMap( GetMapId() );
-    if( !map || !map->IsTurnBasedOn || map->IsCritterTurn( this ) )
-        return true;
-    return false;
-}
-
 int Critter::GetApCostCritterMove( bool is_run )
 {
-    if( IsTurnBased() )
-        return GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) );
-    else
-        return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
+    return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
 }
 
 int Critter::GetApCostMoveItemContainer()
 {
-    return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer;
+    return GameOpt.RtApCostMoveItemContainer;
 }
 
 int Critter::GetApCostMoveItemInventory()
 {
-    int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
-    if( GetPerkQuickPockets() )
-        val /= 2;
-    return val;
+    return GameOpt.RtApCostMoveItemInventory;
 }
 
 int Critter::GetApCostPickItem()
 {
-    return IsTurnBased() ? GameOpt.TbApCostPickItem : GameOpt.RtApCostPickItem;
+    return GameOpt.RtApCostPickItem;
 }
 
 int Critter::GetApCostDropItem()
 {
-    return IsTurnBased() ? GameOpt.TbApCostDropItem : GameOpt.RtApCostDropItem;
+    return GameOpt.RtApCostDropItem;
 }
 
 int Critter::GetApCostPickCritter()
 {
-    return IsTurnBased() ? GameOpt.TbApCostPickCritter : GameOpt.RtApCostPickCritter;
+    return GameOpt.RtApCostPickCritter;
 }
 
 int Critter::GetApCostUseSkill()
 {
-    return IsTurnBased() ? GameOpt.TbApCostUseSkill : GameOpt.RtApCostUseSkill;
+    return GameOpt.RtApCostUseSkill;
 }
 
 void Critter::SetHome( uint map_id, ushort hx, ushort hy, uchar dir )
@@ -3647,7 +3615,6 @@ void Client::Send_GameInfo( Map* map )
 
     int          time = ( map ? map->GetCurDayTime() : -1 );
     uchar        rain = ( map ? map->GetRainCapacity() : 0 );
-    bool         turn_based = ( map ? map->IsTurnBasedOn : false );
     bool         no_log_out = ( map ? map->GetIsNoLogOut() : true );
 
     int          day_time[ 4 ];
@@ -3684,7 +3651,6 @@ void Client::Send_GameInfo( Map* map )
     Bout << GameOpt.TimeMultiplier;
     Bout << time;
     Bout << rain;
-    Bout << turn_based;
     Bout << no_log_out;
     Bout.Push( (const char*) day_time, sizeof( day_time ) );
     Bout.Push( (const char*) day_color, sizeof( day_color ) );
@@ -4811,6 +4777,6 @@ void Npc::SetTarget( int reason, Critter* target, int min_hp, bool is_gag )
     plane->Attack.IsGag = is_gag;
     plane->Attack.GagHexX = target->GetHexX();
     plane->Attack.GagHexY = target->GetHexY();
-    plane->Attack.IsRun = ( IsTurnBased() ? GameOpt.TbAlwaysRun : GameOpt.RtAlwaysRun );
+    plane->Attack.IsRun = GameOpt.RtAlwaysRun;
     AddPlane( reason, plane, false, target, nullptr );
 }

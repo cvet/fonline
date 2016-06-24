@@ -194,15 +194,6 @@
 #define RESPOWN_TIME_NPC            ( 120 )
 #define RESPOWN_TIME_INFINITY       ( 4 * 24 * 60 * 60000 )
 
-// Combat modes
-#define COMBAT_MODE_ANY             ( 0 )
-#define COMBAT_MODE_REAL_TIME       ( 1 )
-#define COMBAT_MODE_TURN_BASED      ( 2 )
-
-// Turn based
-#define COMBAT_TB_END_TURN          ( 0 )
-#define COMBAT_TB_END_COMBAT        ( 1 )
-
 // Answer
 #define ANSWER_BEGIN                ( 0xF0 )
 #define ANSWER_END                  ( 0xF1 )
@@ -261,14 +252,11 @@
 
 // Timeouts
 #define IS_TIMEOUT( to )                      ( ( to ) > GameOpt.FullSecond )
-#define TB_BATTLE_TIMEOUT           ( GameOpt.FullSecond + 100000000 )
-#define TB_BATTLE_TIMEOUT_CHECK( to )         ( ( to ) > GameOpt.FullSecond && ( to ) - GameOpt.FullSecond > 10000000 )
 
 // Special send params
 #define OTHER_BREAK_TIME            ( 0 )
 #define OTHER_WAIT_TIME             ( 1 )
 #define OTHER_FLAGS                 ( 2 )
-#define OTHER_YOU_TURN              ( 5 )
 #define OTHER_CLEAR_MAP             ( 6 )
 #define OTHER_TELEPORT              ( 7 )
 

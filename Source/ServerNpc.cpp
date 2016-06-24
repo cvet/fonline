@@ -1,65 +1,41 @@
 #include "Common.h"
 #include "Server.h"
 
-#define CHECK_NPC_AP( npc, map, need_ap )                                                                                            \
-    do                                                                                                                               \
-    {                                                                                                                                \
-        if( npc->GetCurrentAp() / AP_DIVIDER < (int) ( need_ap ) )                                                                   \
-        {                                                                                                                            \
-            if( map->IsTurnBasedOn )                                                                                                 \
-            {                                                                                                                        \
-                if( map->IsCritterTurn( npc ) )                                                                                      \
-                    map->EndCritterTurn();                                                                                           \
-            }                                                                                                                        \
-            else                                                                                                                     \
-            {                                                                                                                        \
-                uint ap_regeneration = npc->GetApRegenerationTime();                                                                 \
-                if( !ap_regeneration )                                                                                               \
-                    ap_regeneration = GameOpt.ApRegeneration;                                                                        \
-                npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetCurrentAp() / AP_DIVIDER ) ); \
-            }                                                                                                                        \
-            return;                                                                                                                  \
-        }                                                                                                                            \
+#define CHECK_NPC_AP( npc, map, need_ap )                                                                                        \
+    do                                                                                                                           \
+    {                                                                                                                            \
+        if( npc->GetCurrentAp() / AP_DIVIDER < (int) ( need_ap ) )                                                               \
+        {                                                                                                                        \
+            uint ap_regeneration = npc->GetApRegenerationTime();                                                                 \
+            if( !ap_regeneration )                                                                                               \
+                ap_regeneration = GameOpt.ApRegeneration;                                                                        \
+            npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetCurrentAp() / AP_DIVIDER ) ); \
+            return;                                                                                                              \
+        }                                                                                                                        \
     } while( 0 )
-#define CHECK_NPC_REAL_AP( npc, map, need_ap )                                                                                    \
-    do                                                                                                                            \
-    {                                                                                                                             \
-        if( npc->GetRealAp() < (int) ( need_ap ) )                                                                                \
-        {                                                                                                                         \
-            if( map->IsTurnBasedOn )                                                                                              \
-            {                                                                                                                     \
-                if( map->IsCritterTurn( npc ) )                                                                                   \
-                    map->EndCritterTurn();                                                                                        \
-            }                                                                                                                     \
-            else                                                                                                                  \
-            {                                                                                                                     \
-                uint ap_regeneration = npc->GetApRegenerationTime();                                                              \
-                if( !ap_regeneration )                                                                                            \
-                    ap_regeneration = GameOpt.ApRegeneration;                                                                     \
-                npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetRealAp() ) / AP_DIVIDER ); \
-            }                                                                                                                     \
-            return;                                                                                                               \
-        }                                                                                                                         \
+#define CHECK_NPC_REAL_AP( npc, map, need_ap )                                                                                \
+    do                                                                                                                        \
+    {                                                                                                                         \
+        if( npc->GetRealAp() < (int) ( need_ap ) )                                                                            \
+        {                                                                                                                     \
+            uint ap_regeneration = npc->GetApRegenerationTime();                                                              \
+            if( !ap_regeneration )                                                                                            \
+                ap_regeneration = GameOpt.ApRegeneration;                                                                     \
+            npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetRealAp() ) / AP_DIVIDER ); \
+            return;                                                                                                           \
+        }                                                                                                                     \
     } while( 0 )
-#define CHECK_NPC_AP_R0( npc, map, need_ap )                                                                                         \
-    do                                                                                                                               \
-    {                                                                                                                                \
-        if( npc->GetCurrentAp() / AP_DIVIDER < (int) ( need_ap ) )                                                                   \
-        {                                                                                                                            \
-            if( map->IsTurnBasedOn )                                                                                                 \
-            {                                                                                                                        \
-                if( map->IsCritterTurn( npc ) )                                                                                      \
-                    map->EndCritterTurn();                                                                                           \
-            }                                                                                                                        \
-            else                                                                                                                     \
-            {                                                                                                                        \
-                uint ap_regeneration = npc->GetApRegenerationTime();                                                                 \
-                if( !ap_regeneration )                                                                                               \
-                    ap_regeneration = GameOpt.ApRegeneration;                                                                        \
-                npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetCurrentAp() / AP_DIVIDER ) ); \
-            }                                                                                                                        \
-            return false;                                                                                                            \
-        }                                                                                                                            \
+#define CHECK_NPC_AP_R0( npc, map, need_ap )                                                                                     \
+    do                                                                                                                           \
+    {                                                                                                                            \
+        if( npc->GetCurrentAp() / AP_DIVIDER < (int) ( need_ap ) )                                                               \
+        {                                                                                                                        \
+            uint ap_regeneration = npc->GetApRegenerationTime();                                                                 \
+            if( !ap_regeneration )                                                                                               \
+                ap_regeneration = GameOpt.ApRegeneration;                                                                        \
+            npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetCurrentAp() / AP_DIVIDER ) ); \
+            return false;                                                                                                        \
+        }                                                                                                                        \
     } while( 0 )
 
 void FOServer::ProcessAI( Npc* npc )
@@ -77,17 +53,9 @@ void FOServer::ProcessAI( Npc* npc )
     if( !map )
         return;
 
-    // Check turn based
-    if( map->IsTurnBasedOn && !map->IsCritterTurn( npc ) )
-        return;
-
     // Check wait
     if( npc->IsWait() )
-    {
-        if( map->IsTurnBasedOn )
-            map->EndCritterTurn();
         return;
-    }
 
     // Get current plane
     AIDataPlane* plane = npc->GetCurPlane();
@@ -195,8 +163,6 @@ void FOServer::ProcessAI( Npc* npc )
 
         // Wait
         npc->SetWait( GameOpt.CritterIdleTick );
-        if( map->IsTurnBasedOn && map->IsCritterTurn( npc ) )
-            map->EndCritterTurn();
         return;
     }
 
@@ -214,8 +180,6 @@ void FOServer::ProcessAI( Npc* npc )
 
         // Check ap availability
         int ap_move = npc->GetApCostCritterMove( plane->Move.IsRun );
-        if( map->IsTurnBasedOn )
-            ap_move += npc->GetMoveAp();
         plane->IsMove = false;
         CHECK_NPC_REAL_AP( npc, map, ap_move );
         plane->IsMove = true;
@@ -248,8 +212,6 @@ void FOServer::ProcessAI( Npc* npc )
                 {
                     plane->IsMove = false;
                     npc->SendA_XY();
-                    if( map->IsTurnBasedOn && map->IsCritterTurn( npc ) )
-                        map->EndCritterTurn();
                     return;
                 }
 
@@ -290,8 +252,6 @@ void FOServer::ProcessAI( Npc* npc )
             if( !pfd.IsRun && npc->GetIsNoWalk() )
             {
                 plane->IsMove = false;
-                if( map->IsTurnBasedOn && map->IsCritterTurn( npc ) )
-                    map->EndCritterTurn();
                 return;
             }
 
@@ -436,9 +396,6 @@ void FOServer::ProcessAI( Npc* npc )
 /************************************************************************/
     case AI_PLANE_ATTACK:
     {
-        if( map->GetIsTurnBasedAviable() && !map->IsTurnBasedOn )
-            map->BeginTurnBased( npc );
-
         /************************************************************************/
         /* Target is visible                                                    */
         /************************************************************************/
@@ -852,8 +809,6 @@ void FOServer::ProcessAI( Npc* npc )
     }
     break;
     }
-
-//	if(map->IsTurnBasedOn && map->IsCritterTurn(npc) && !is_busy && (npc->IsNoPlanes() || !npc->GetCurPlane()->IsMove) && !npc->IsBusy() && !npc->IsWait()) map->EndCritterTurn();
 }
 
 bool FOServer::AI_Stay( Npc* npc, uint ms )
@@ -1461,13 +1416,6 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
             if( !map )
             {
                 cl->Send_TextMsg( cl, STR_FINDPATH_AIMBLOCK, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
-
-            if( map->IsTurnBasedOn )
-            {
-                cl->Send_TextMsg( cl, STR_DIALOG_NPC_BUSY, SAY_NETMSG, TEXTMSG_GAME );
-                WriteLogF( _FUNC_, " - Map is in turn based state, npc '%s', client '%s'.\n", npc->GetInfo(), cl->GetInfo() );
                 return;
             }
 

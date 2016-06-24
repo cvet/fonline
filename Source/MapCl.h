@@ -18,7 +18,6 @@ public:
     CLASS_PROPERTY( uint, LocId );
     CLASS_PROPERTY( uint, LocMapIndex );
     CLASS_PROPERTY( uchar, RainCapacity );
-    CLASS_PROPERTY( bool, IsTurnBasedAviable );
     CLASS_PROPERTY( int, CurDayTime );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( ScriptArray *, DayTime );    // 4 int

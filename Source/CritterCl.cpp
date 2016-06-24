@@ -43,8 +43,6 @@ CLASS_PROPERTY_IMPL( CritterCl, CurrentHp );
 CLASS_PROPERTY_IMPL( CritterCl, ActionPoints );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentAp );
 CLASS_PROPERTY_IMPL( CritterCl, ApRegenerationTime );
-CLASS_PROPERTY_IMPL( CritterCl, MaxMoveAp );
-CLASS_PROPERTY_IMPL( CritterCl, MoveAp );
 CLASS_PROPERTY_IMPL( CritterCl, ReplicationMoney );
 CLASS_PROPERTY_IMPL( CritterCl, ReplicationCost );
 CLASS_PROPERTY_IMPL( CritterCl, ReplicationCount );
@@ -70,7 +68,6 @@ CLASS_PROPERTY_IMPL( CritterCl, IsDamagedRightArm );
 CLASS_PROPERTY_IMPL( CritterCl, IsDamagedLeftArm );
 CLASS_PROPERTY_IMPL( CritterCl, IsDamagedRightLeg );
 CLASS_PROPERTY_IMPL( CritterCl, IsDamagedLeftLeg );
-CLASS_PROPERTY_IMPL( CritterCl, PerkQuickPockets );
 CLASS_PROPERTY_IMPL( CritterCl, PerkMasterTrader );
 CLASS_PROPERTY_IMPL( CritterCl, PerkSilentRunning );
 
@@ -478,11 +475,6 @@ bool CritterCl::IsCombatMode()
     return IS_TIMEOUT( GetTimeoutBattle() );
 }
 
-bool CritterCl::IsTurnBased()
-{
-    return TB_BATTLE_TIMEOUT_CHECK( GetTimeoutBattle() );
-}
-
 bool CritterCl::CheckFind( int find_type )
 {
     if( IsNpc() )
@@ -566,18 +558,13 @@ int CritterCl::GetRealAp()
 
 int CritterCl::GetAllAp()
 {
-    return GetCurrentAp() / AP_DIVIDER + GetMoveAp();
+    return GetCurrentAp() / AP_DIVIDER;
 }
 
 void CritterCl::SubAp( int val )
 {
     SetCurrentAp( GetCurrentAp() - val * AP_DIVIDER );
     ApRegenerationTick = 0;
-}
-
-void CritterCl::SubMoveAp( int val )
-{
-    SetMoveAp( GetMoveAp() - val );
 }
 
 void CritterCl::DrawStay( Rect r )
@@ -1435,41 +1422,35 @@ void CritterCl::DrawTextOnHead()
 
 int CritterCl::GetApCostCritterMove( bool is_run )
 {
-    if( IsTurnBased() )
-        return GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) );
-    else
-        return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
+    return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
 }
 
 int CritterCl::GetApCostMoveItemContainer()
 {
-    return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer;
+    return GameOpt.RtApCostMoveItemContainer;
 }
 
 int CritterCl::GetApCostMoveItemInventory()
 {
-    int val = IsTurnBased() ? GameOpt.TbApCostMoveItemInventory : GameOpt.RtApCostMoveItemInventory;
-    if( GetPerkQuickPockets() )
-        val /= 2;
-    return val;
+    return GameOpt.RtApCostMoveItemInventory;
 }
 
 int CritterCl::GetApCostPickItem()
 {
-    return IsTurnBased() ? GameOpt.TbApCostPickItem : GameOpt.RtApCostPickItem;
+    return GameOpt.RtApCostPickItem;
 }
 
 int CritterCl::GetApCostDropItem()
 {
-    return IsTurnBased() ? GameOpt.TbApCostDropItem : GameOpt.RtApCostDropItem;
+    return GameOpt.RtApCostDropItem;
 }
 
 int CritterCl::GetApCostPickCritter()
 {
-    return IsTurnBased() ? GameOpt.TbApCostPickCritter : GameOpt.RtApCostPickCritter;
+    return GameOpt.RtApCostPickCritter;
 }
 
 int CritterCl::GetApCostUseSkill()
 {
-    return IsTurnBased() ? GameOpt.TbApCostUseSkill : GameOpt.RtApCostUseSkill;
+    return GameOpt.RtApCostUseSkill;
 }

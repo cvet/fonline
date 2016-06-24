@@ -377,10 +377,6 @@ struct ServerScriptFunctions
     void* MapFinish;
     void* MapCritterIn;
     void* MapCritterOut;
-    void* MapTurnBasedBegin;
-    void* MapTurnBasedEnd;
-    void* MapTurnBasedProcess;
-    void* MapTurnBasedSequence;
     void* MapCheckLook;
     void* MapCheckTrapLook;
 
@@ -464,7 +460,6 @@ struct GameOptions
     uint          LookNormal;
     uint          LookMinimum;
     uint          CritterIdleTick;
-    uint          TurnBasedTick;
     int           DeadHitPoints;
     uint          Breaktime;
     uint          TimeoutTransfer;
@@ -481,16 +476,6 @@ struct GameOptions
     uint          RtApCostUseItem;
     uint          RtApCostUseSkill;
     bool          RtAlwaysRun;
-    uint          TbApCostCritterMove;
-    uint          TbApCostMoveItemContainer;
-    uint          TbApCostMoveItemInventory;
-    uint          TbApCostPickItem;
-    uint          TbApCostDropItem;
-    uint          TbApCostReloadWeapon;
-    uint          TbApCostPickCritter;
-    uint          TbApCostUseItem;
-    uint          TbApCostUseSkill;
-    bool          TbAlwaysRun;
     uint          ApCostAimEyes;
     uint          ApCostAimHead;
     uint          ApCostAimGroin;
@@ -499,7 +484,6 @@ struct GameOptions
     uint          ApCostAimLegs;
     bool          RunOnCombat;
     bool          RunOnTransfer;
-    bool          RunOnTurnBased;
     uint          GlobalMapWidth;
     uint          GlobalMapHeight;
     uint          GlobalMapZoneLength;
@@ -613,7 +597,6 @@ struct GameOptions
     uint          PingPeriod;
     uint          Ping;
     bool          MsgboxInvert;
-    uchar         DefaultCombatMode;
     bool          MessNotify;
     bool          SoundNotify;
     bool          AlwaysOnTop;

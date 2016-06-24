@@ -19,7 +19,7 @@ void FOServer::ProcessCritter( Critter* cr )
 
     // Ap regeneration
     int max_ap = cr->GetActionPoints() * AP_DIVIDER;
-    if( cr->IsFree() && cr->GetRealAp() < max_ap && !cr->IsTurnBased() )
+    if( cr->IsFree() && cr->GetRealAp() < max_ap )
     {
         if( !cr->ApRegenerationTick )
         {
@@ -49,7 +49,7 @@ void FOServer::ProcessCritter( Critter* cr )
     {
         ScriptArray* te_next_time = cr->GetTE_NextTime();
         uint         next_time = *(uint*) te_next_time->At( 0 );
-        if( !next_time || ( !cr->IsTurnBased() && GameOpt.FullSecond >= next_time ) )
+        if( !next_time || GameOpt.FullSecond >= next_time )
         {
             ScriptArray* te_func_num = cr->GetTE_FuncNum();
             ScriptArray* te_rate = cr->GetTE_Rate();
@@ -292,46 +292,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     if( !map || map_id != cr->GetMapId() || hx >= map->GetWidth() || hy >= map->GetHeight() )
         return false;
 
-    // Check turn based
-    if( !cr->CheckMyTurn( map ) )
-    {
-        cr->Send_XY( cr );
-        cr->Send_CustomCommand( cr, OTHER_YOU_TURN, 0 );
-        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
-        return false;
-    }
-
-    if( map->IsTurnBasedOn )
-    {
-        int ap_cost = cr->GetApCostCritterMove( is_run ) / AP_DIVIDER;
-        int move_ap = cr->GetMoveAp();
-        if( ap_cost )
-        {
-            if( ( cr->GetCurrentAp() / AP_DIVIDER + move_ap ) / ap_cost <= 0 )
-            {
-                cr->Send_XY( cr );
-                return false;
-            }
-            int steps = ( cr->GetCurrentAp() / AP_DIVIDER + move_ap ) / ap_cost - 1;
-            if( steps < MOVE_PARAM_STEP_COUNT )
-                move_params |= ( MOVE_PARAM_STEP_DISALLOW << ( steps * MOVE_PARAM_STEP_BITS ) );                               // Cut steps
-            if( move_ap )
-            {
-                if( ap_cost > move_ap )
-                {
-                    cr->SubMoveAp( move_ap );
-                    cr->SubAp( ap_cost - move_ap );
-                }
-                else
-                    cr->SubMoveAp( ap_cost );
-            }
-            else
-                cr->SubAp( ap_cost );
-            if( cr->GetAllAp() <= 0 )
-                map->EndCritterTurn();
-        }
-    }
-    else if( IS_TIMEOUT( cr->GetTimeoutBattle() ) )
+    if( IS_TIMEOUT( cr->GetTimeoutBattle() ) )
     {
         int ap_cost = cr->GetApCostCritterMove( is_run );
         if( cr->GetRealAp() < ap_cost && !Singleplayer )
@@ -445,12 +406,6 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     if( !map )
     {
         WriteLogF( _FUNC_, " - Map not found, map id %u, critter '%s'.\n", cr->GetMapId(), cr->GetInfo() );
-        return false;
-    }
-
-    if( !cr->CheckMyTurn( map ) )
-    {
-        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
         return false;
     }
 
@@ -585,8 +540,6 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
 
     // Ap, Turn based
     cr->SubAp( ap_cost );
-    if( map->IsTurnBasedOn && !cr->GetAllAp() )
-        map->EndCritterTurn();
 
     // Run script
     Item* ammo_proto = ( ammo ? new Item( 0, ammo ) : nullptr );
@@ -600,12 +553,6 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
 bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
 {
     cr->SetBreakTime( GameOpt.Breaktime );
-
-    if( !cr->CheckMyTurn( nullptr ) )
-    {
-        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
-        return false;
-    }
 
     Item* weap = cr->GetItem( weap_id, true );
     if( !weap )
@@ -657,9 +604,6 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
         return false;
 
     cr->SendAA_Action( ACTION_RELOAD_WEAPON, 0, weap );
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
-    if( map && map->IsTurnBasedOn && !cr->GetAllAp() )
-        map->EndCritterTurn();
     return true;
 }
 
@@ -667,13 +611,6 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
 bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, uint target_id, hash target_pid, uint param )
 {
     cr->SetBreakTime( GameOpt.Breaktime );
-
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
-    if( map && !cr->CheckMyTurn( map ) )
-    {
-        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
-        return false;
-    }
 
     Item* item = nullptr;
     if( item_id )
@@ -752,6 +689,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return false;
         }
 
+        Map* map = MapMngr.GetMap( cr->GetMapId() );
         if( !map )
         {
             WriteLogF( _FUNC_, " - Map not found, map id %u, critter '%s'.\n", cr->GetMapId(), cr->GetInfo() );
@@ -831,10 +769,6 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         }
     }
 
-    // Check turn based
-    if( map && map->IsTurnBasedOn && !cr->GetAllAp() )
-        map->EndCritterTurn();
-
     // Scenery
     if( target_scen && target_scen->SceneryScriptBindId != 0 )
     {
@@ -886,12 +820,6 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
     if( !map )
         return false;
 
-    if( !cr->CheckMyTurn( map ) )
-    {
-        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cr->GetInfo() );
-        return false;
-    }
-
     int ap_cost = cr->GetApCostPickItem();
     if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
@@ -916,9 +844,6 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
         WriteLogF( _FUNC_, " - Proto item '%s' not found, critter '%s'.\n", Str::GetName( pid ), cr->GetInfo() );
         return false;
     }
-
-    if( map->IsTurnBasedOn && !cr->GetAllAp() )
-        map->EndCritterTurn();
 
     if( !proto->IsScenery() )
     {
@@ -1592,10 +1517,9 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     }
 
     // Bin hashes
-    uint  msg_language;
-    uint  textmsg_hash[ TEXTMSG_COUNT ];
-    uint  item_hash[ ITEM_MAX_TYPES ];
-    uchar default_combat_mode;
+    uint msg_language;
+    uint textmsg_hash[ TEXTMSG_COUNT ];
+    uint item_hash[ ITEM_MAX_TYPES ];
 
     cl->Bin >> msg_language;
     for( int i = 0; i < TEXTMSG_COUNT; i++ )
@@ -1607,7 +1531,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     for( int i = 0; i < ITEM_MAX_TYPES; i++ )
         cl->Bin >> item_hash[ i ];
     cl->Bin >> uidcalc;
-    cl->Bin >> default_combat_mode;
     cl->Bin >> uid[ 0 ];
     char dummy[ 100 ];
     cl->Bin.Pop( dummy, 100 );
@@ -2079,7 +2002,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl->DisableSend--;
     }
 
-    cl->SetDefaultCombat( default_combat_mode );
     for( int i = 0; i < 5; i++ )
         cl->UID[ i ] = uid[ i ];
 
@@ -2298,25 +2220,6 @@ void FOServer::Process_ParseToGame( Client* cl )
             cl->ProcessTalk( true );
             cl->Send_Talk();
         }
-
-        // Turn based
-        if( map->IsTurnBasedOn )
-        {
-            if( map->IsCritterTurn( cl ) )
-            {
-                cl->Send_CustomCommand( cl, OTHER_YOU_TURN, map->GetCritterTurnTime() );
-            }
-            else
-            {
-                Critter* cr = cl->GetCritSelf( map->GetCritterTurnId(), false );
-                if( cr )
-                    cl->Send_CustomCommand( cr, OTHER_YOU_TURN, map->GetCritterTurnTime() );
-            }
-        }
-        else if( TB_BATTLE_TIMEOUT_CHECK( cl->GetTimeoutBattle() ) )
-        {
-            cl->SetTimeoutBattle( 0 );
-        }
     }
 
     // Notify about end of parsing
@@ -2531,13 +2434,6 @@ void FOServer::Process_ChangeItem( Client* cl )
 
     cl->SetBreakTime( GameOpt.Breaktime );
 
-    if( !cl->CheckMyTurn( nullptr ) )
-    {
-        WriteLogF( _FUNC_, " - Is not client '%s' turn.\n", cl->GetInfo() );
-        cl->Send_AddAllItems();
-        return;
-    }
-
     bool is_castling = ( ( from_slot == SLOT_HAND1 && to_slot == SLOT_HAND2 ) || ( from_slot == SLOT_HAND2 && to_slot == SLOT_HAND1 ) );
     int  ap_cost = ( is_castling ? 0 : cl->GetApCostMoveItemInventory() );
     if( to_slot == SLOT_GROUND )
@@ -2549,10 +2445,6 @@ void FOServer::Process_ChangeItem( Client* cl )
         return;
     }
     cl->SubAp( ap_cost );
-
-    Map* map = MapMngr.GetMap( cl->GetMapId() );
-    if( map && map->IsTurnBasedOn && !cl->GetAllAp() )
-        map->EndCritterTurn();
 
     // Move
     if( !cl->MoveItem( from_slot, to_slot, item_id, count ) )
@@ -2655,12 +2547,6 @@ void FOServer::Process_PickCritter( Client* cl )
 
     cl->SetBreakTime( GameOpt.Breaktime );
 
-    if( !cl->CheckMyTurn( nullptr ) )
-    {
-        WriteLogF( _FUNC_, " - Is not critter '%s' turn.\n", cl->GetInfo() );
-        return;
-    }
-
     int ap_cost = cl->GetApCostPickCritter();
     if( cl->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
@@ -2668,10 +2554,6 @@ void FOServer::Process_PickCritter( Client* cl )
         return;
     }
     cl->SubAp( ap_cost );
-
-    Map* map = MapMngr.GetMap( cl->GetMapId() );
-    if( map && map->IsTurnBasedOn && !cl->GetAllAp() )
-        map->EndCritterTurn();
 
     Critter* cr = cl->GetCritSelf( crid, true );
     if( !cr )
@@ -2736,12 +2618,6 @@ void FOServer::Process_ContainerItem( Client* cl )
 
     cl->SetBreakTime( GameOpt.Breaktime );
 
-    if( !cl->CheckMyTurn( nullptr ) )
-    {
-        WriteLogF( _FUNC_, " - Is not client '%s' turn.\n", cl->GetInfo() );
-        return;
-    }
-
     if( cl->AccessContainerId != cont_id )
     {
         WriteLogF( _FUNC_, " - Try work with not accessed container, client '%s'.\n", cl->GetInfo() );
@@ -2758,10 +2634,6 @@ void FOServer::Process_ContainerItem( Client* cl )
         return;
     }
     cl->SubAp( ap_cost );
-
-    Map* map = MapMngr.GetMap( cl->GetMapId() );
-    if( map && map->IsTurnBasedOn && !cl->GetAllAp() )
-        map->EndCritterTurn();
 
     if( !cl->GetMapId() && ( transfer_type != TRANSFER_CRIT_STEAL && transfer_type != TRANSFER_FAR_CONT && transfer_type != TRANSFER_FAR_CRIT &&
                              transfer_type != TRANSFER_CRIT_BARTER && transfer_type != TRANSFER_SELF_CONT ) )
@@ -3262,7 +3134,7 @@ void FOServer::Process_Dir( Client* cl )
     cl->Bin >> dir;
     CHECK_IN_BUFF_ERROR( cl );
 
-    if( !cl->GetMapId() || dir >= DIRS_COUNT || cl->GetDir() == dir || cl->IsTalking() || !cl->CheckMyTurn( nullptr ) )
+    if( !cl->GetMapId() || dir >= DIRS_COUNT || cl->GetDir() == dir || cl->IsTalking() )
     {
         if( cl->GetDir() != dir )
             cl->Send_Dir( cl );
@@ -3624,42 +3496,6 @@ label_EndOffer:
             opponent->Send_PlayersBarterSetHide( item, param_ext );
         else
             opponent->Send_PlayersBarter( barter, param, param_ext );
-    }
-}
-
-void FOServer::Process_Combat( Client* cl )
-{
-    uchar type;
-    int   val;
-    cl->Bin >> type;
-    cl->Bin >> val;
-    CHECK_IN_BUFF_ERROR( cl );
-
-    if( type == COMBAT_TB_END_TURN )
-    {
-        Map* map = MapMngr.GetMap( cl->GetMapId() );
-        if( !map )
-        {
-            WriteLogF( _FUNC_, " - Map not found on end turn, client '%s'.\n", cl->GetInfo() );
-            return;
-        }
-        if( map->IsTurnBasedOn && map->IsCritterTurn( cl ) )
-            map->EndCritterTurn();
-    }
-    else if( type == COMBAT_TB_END_COMBAT )
-    {
-        Map* map = MapMngr.GetMap( cl->GetMapId() );
-        if( !map )
-        {
-            WriteLogF( _FUNC_, " - Map not found on end combat, client '%s'.\n", cl->GetInfo() );
-            return;
-        }
-        if( map->IsTurnBasedOn )
-            cl->SetIsEndCombat( val != 0 );
-    }
-    else
-    {
-        WriteLogF( _FUNC_, " - Unknown type %u, value %d, client '%s'.\n", type, val, cl->GetInfo() );
     }
 }
 

@@ -89,13 +89,11 @@ public:
     CLASS_PROPERTY( bool, IsNoBarter );
     CLASS_PROPERTY( int, MaxTalkers );   // Callback on begin dialog?
     CLASS_PROPERTY( uint, TalkDistance );
-    CLASS_PROPERTY( int, CurrentHp );    // CurHp, CurAp, CurMoveAp or MaximumHp, MaximumAp, MaximumMoveAp?
+    CLASS_PROPERTY( int, CurrentHp );
     // CLASS_PROPERTY( int, MaxHp ); Need?
     CLASS_PROPERTY( int, CurrentAp );
     CLASS_PROPERTY( uint, ApRegenerationTime );
     CLASS_PROPERTY( int, ActionPoints ); // Rename MaxAp
-    CLASS_PROPERTY( int, MoveAp );       // Rename CurrentMoveAp
-    CLASS_PROPERTY( int, MaxMoveAp );
     CLASS_PROPERTY( bool, IsNoWalk );
     CLASS_PROPERTY( bool, IsNoRun );
     CLASS_PROPERTY( bool, IsNoRotate );
@@ -141,8 +139,6 @@ public:
     CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
     CLASS_PROPERTY( uint, FreeBarterPlayer );   // Used for barter coef
     CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
-    CLASS_PROPERTY( int, TurnBasedAc );         // Turn based
-    CLASS_PROPERTY( char, DefaultCombat );      // Just exclude
     // CLASS_PROPERTY( bool, IsInvulnerable ); // Resolve in scripts
     CLASS_PROPERTY( bool, IsUnlimitedAmmo );    // AI, check shoot possibility
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
@@ -155,7 +151,6 @@ public:
     CLASS_PROPERTY( bool, IsDamagedLeftArm );
     CLASS_PROPERTY( bool, IsDamagedRightLeg );
     CLASS_PROPERTY( bool, IsDamagedLeftLeg );
-    CLASS_PROPERTY( uchar, PerkQuickPockets );
     CLASS_PROPERTY( uchar, PerkMasterTrader );
     CLASS_PROPERTY( uchar, PerkSilentRunning );
 
@@ -372,22 +367,18 @@ public:
     int         GetRealAp();
     int         GetAllAp();
     void        SubAp( int val );
-    void        SubMoveAp( int val );
     bool        IsDmgLeg();
     bool        IsDmgTwoLeg();
     bool        IsDmgArm();
     bool        IsDmgTwoArm();
 
-    // Turn based
-    bool IsTurnBased();
-    bool CheckMyTurn( Map* map );
-    int  GetApCostCritterMove( bool is_run );
-    int  GetApCostMoveItemContainer();
-    int  GetApCostMoveItemInventory();
-    int  GetApCostPickItem();
-    int  GetApCostDropItem();
-    int  GetApCostPickCritter();
-    int  GetApCostUseSkill();
+    int GetApCostCritterMove( bool is_run );
+    int GetApCostMoveItemContainer();
+    int GetApCostMoveItemInventory();
+    int GetApCostPickItem();
+    int GetApCostDropItem();
+    int GetApCostPickCritter();
+    int GetApCostUseSkill();
 
     // Timeouts
     bool IsTransferTimeouts( bool send );

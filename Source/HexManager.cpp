@@ -778,20 +778,13 @@ void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
             static ushort last_hx = 0, last_hy = 0;
             if( refresh || hx != last_hx || hy != last_hy )
             {
-                bool is_tb = chosen->IsTurnBased();
-                if( chosen->IsLife() && ( !is_tb || chosen->GetAllAp() > 0 ) )
+                if( chosen->IsLife() )
                 {
                     UCharVec steps;
                     if( !FindPath( chosen, cx, cy, hx, hy, steps, -1 ) )
                         drawCursorX = -1;
-                    else if( !is_tb )
-                        drawCursorX = (int) ( show_steps ? steps.size() : 0 );
                     else
-                    {
-                        drawCursorX = (int) steps.size();
-                        if( !show_steps && drawCursorX > chosen->GetAllAp() )
-                            drawCursorX = -1;
-                    }
+                        drawCursorX = (int) ( show_steps ? steps.size() : 0 );
                 }
                 else
                 {

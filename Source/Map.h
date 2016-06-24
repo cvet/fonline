@@ -26,7 +26,6 @@ public:
     CLASS_PROPERTY( uint, LocId );
     CLASS_PROPERTY( uint, LocMapIndex );
     CLASS_PROPERTY( uchar, RainCapacity );
-    CLASS_PROPERTY( bool, IsTurnBasedAviable );
     CLASS_PROPERTY( int, CurDayTime );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( ScriptArray *, DayTime );    // 4 int
@@ -148,29 +147,6 @@ public:
 
     // Script
     bool SetScript( const char* script_name, bool first_time );
-
-    // Turn based game
-public:
-    bool    IsTurnBasedOn;
-    uint    TurnBasedEndTick;
-    int     TurnSequenceCur;
-    UIntVec TurnSequence;
-    bool    IsTurnBasedTimeout;
-    uint    TurnBasedBeginSecond;
-    bool    NeedEndTurnBased;
-    uint    TurnBasedRound;
-    uint    TurnBasedTurn;
-    uint    TurnBasedWholeTurn;
-
-    void BeginTurnBased( Critter* first_cr );
-    void EndTurnBased();
-    void ProcessTurnBased();
-    bool IsCritterTurn( Critter* cr );
-    uint GetCritterTurnId();
-    uint GetCritterTurnTime();
-    void EndCritterTurn();
-    void NextCritterTurn();
-    void GenerateSequence( Critter* first_cr );
 };
 typedef map< uint, Map* > MapMap;
 typedef vector< Map* >    MapVec;

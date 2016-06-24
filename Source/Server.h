@@ -66,7 +66,6 @@ public:
     static void Process_GetUserHoloStr( Client* cl );
     static void Process_Ping( Client* cl );
     static void Process_PlayersBarter( Client* cl );
-    static void Process_Combat( Client* cl );
     static void Process_RunServerScript( Client* cl );
     static void Process_Property( Client* cl, uint data_size );
 
@@ -509,10 +508,6 @@ public:
 
         static Location* Map_GetLocation( Map* map );
         static bool      Map_SetScript( Map* map, ScriptString* func_name );
-        static void      Map_BeginTurnBased( Map* map, Critter* first_turn_crit );
-        static bool      Map_IsTurnBased( Map* map );
-        static void      Map_EndTurnBased( Map* map );
-        static int       Map_GetTurnBasedSequence( Map* map, ScriptArray& critters_ids );
         static Item*     Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count, ScriptDict* props );
         static uint      Map_GetItemsHex( Map* map, ushort hx, ushort hy, ScriptArray* items );
         static uint      Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid, ScriptArray* items );

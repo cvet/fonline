@@ -95,9 +95,6 @@ FOClient::FOClient()
     Chosen = nullptr;
     PingTick = 0;
     PingCallTick = 0;
-    IsTurnBased = false;
-    TurnBasedTime = 0;
-    TurnBasedCurCritterId = 0;
     DaySumRGB = 0;
     Animations.resize( 10000 );
 
@@ -2138,7 +2135,6 @@ void FOClient::Net_SendLogIn( const char* name, const char* pass )
     for( int i = 0; i < ITEM_MAX_TYPES; i++ )
         Bout << (uint) i + 111;
     Bout << UIDCALC;                                                                                                                            // UID uidcalc
-    Bout << GameOpt.DefaultCombatMode;
     uint uid0 = *UID0;
     Bout << uid0;
     uid3 ^= uid1 + Random( 0, 53245 );
@@ -2555,13 +2551,6 @@ void FOClient::Net_SendGetUserHoloStr( uint str_num )
 
     Bout << NETMSG_SEND_GET_USER_HOLO_STR;
     Bout << str_num;
-}
-
-void FOClient::Net_SendCombat( uchar type, int val )
-{
-    Bout << NETMSG_SEND_COMBAT;
-    Bout << type;
-    Bout << val;
 }
 
 void FOClient::Net_SendRunScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 )
@@ -3433,16 +3422,6 @@ void FOClient::Net_OnCustomCommand()
             Chosen->Flags = value;
         }
         break;
-        case OTHER_YOU_TURN:
-        {
-            if( value < 0 )
-                value = 0;
-            TurnBasedTime = Timer::GameTick() + value;
-            TurnBasedCurCritterId = Chosen->GetId();
-            HexMngr.SetCritterContour( 0, 0 );
-            FlashGameWindow();
-        }
-        break;
         case OTHER_CLEAR_MAP:
         {
             CritMap crits = HexMngr.GetCritters();
@@ -3492,12 +3471,6 @@ void FOClient::Net_OnCustomCommand()
         if( index == OTHER_FLAGS )
         {
             cr->Flags = value;
-        }
-        else if( index == OTHER_YOU_TURN )
-        {
-            TurnBasedTime = Timer::GameTick() + value;
-            TurnBasedCurCritterId = cr->GetId();
-            HexMngr.SetCritterContour( cr->GetId(), CONTOUR_CUSTOM );
         }
     }
 }
@@ -4182,7 +4155,6 @@ void FOClient::Net_OnGameInfo()
 {
     int    time;
     uchar  rain;
-    bool   turn_based;
     bool   no_log_out;
     int*   day_time = HexMngr.GetMapDayTime();
     uchar* day_color = HexMngr.GetMapDayColor();
@@ -4196,7 +4168,6 @@ void FOClient::Net_OnGameInfo()
     Bin >> GameOpt.TimeMultiplier;
     Bin >> time;
     Bin >> rain;
-    Bin >> turn_based;
     Bin >> no_log_out;
     Bin.Pop( (char*) day_time, sizeof( int ) * 4 );
     Bin.Pop( (char*) day_color, sizeof( uchar ) * 12 );
@@ -4208,9 +4179,6 @@ void FOClient::Net_OnGameInfo()
 
     HexMngr.SetWeather( time, rain );
     SetDayTime( true );
-    IsTurnBased = turn_based;
-    if( !IsTurnBased )
-        HexMngr.SetCritterContour( 0, 0 );
     NoLogOut = no_log_out;
 }
 
@@ -4263,8 +4231,6 @@ void FOClient::Net_OnLoadMap()
     ShowMainScreen( SCREEN_WAIT );
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
-
-    IsTurnBased = false;
 
     // Global
     if( !map_pid )
@@ -7692,13 +7658,6 @@ uint FOClient::SScriptFunc::Crit_get_ContourColor( CritterCl* cr )
     return cr->ContourColor;
 }
 
-bool FOClient::SScriptFunc::Crit_IsTurnBasedTurn( CritterCl* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return Self->IsTurnBased && cr->GetId() == Self->TurnBasedCurCritterId;
-}
-
 void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )
 {
     if( cr->IsDestroyed )
@@ -7995,30 +7954,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "ConsoleMessage" && args.size() >= 2 )
     {
         Self->Net_SendText( args[ 1 ].c_str(), SAY_NORM );
-    }
-    else if( cmd == "IsTurnBasedMyTurn" )
-    {
-        return ScriptString::Create( Self->IsTurnBasedMyTurn() ? "true" : "false" );
-    }
-    else if( cmd == "EndTurn" )
-    {
-        if( Self->IsTurnBasedMyTurn() )
-        {
-            Self->Net_SendCombat( COMBAT_TB_END_TURN, 1 );
-            Self->TurnBasedTime = 0;
-            Self->TurnBasedCurCritterId = 0;
-        }
-    }
-    else if( cmd == "EndCombat" )
-    {
-        if( Self->IsTurnBased )
-        {
-            if( Self->Chosen->GetIsEndCombat() )
-                Self->Net_SendCombat( COMBAT_TB_END_COMBAT, 0 );
-            else
-                Self->Net_SendCombat( COMBAT_TB_END_COMBAT, 1 );
-            Self->Chosen->SetIsEndCombat( !Self->Chosen->GetIsEndCombat() );
-        }
     }
     else if( cmd == "SetMousePos" )
     {
@@ -8625,18 +8560,6 @@ void FOClient::SScriptFunc::Global_PlayVideo( ScriptString& video_name, bool can
 {
     SndMngr.StopMusic();
     Self->AddVideo( video_name.c_str(), can_stop, true );
-}
-
-bool FOClient::SScriptFunc::Global_IsTurnBased()
-{
-    return Self->HexMngr.IsMapLoaded() && Self->IsTurnBased;
-}
-
-uint FOClient::SScriptFunc::Global_GetTurnBasedTime()
-{
-    if( Self->HexMngr.IsMapLoaded() && Self->IsTurnBased && Self->TurnBasedTime > Timer::GameTick() )
-        return Self->TurnBasedTime - Timer::GameTick();
-    return 0;
 }
 
 hash FOClient::SScriptFunc::Global_GetCurrentMapPid()

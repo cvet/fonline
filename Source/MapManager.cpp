@@ -65,7 +65,7 @@ string MapManager::GetLocationsMapsStatistics()
     Str::Format( str, "Maps count: %u\n", (uint) maps.size() );
     result += str;
     result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
-    result += "          Map                 Id          Time Rain TbAviable TbOn   Script\n";
+    result += "          Map                 Id          Time Rain Script\n";
     for( auto it = locations.begin(), end = locations.end(); it != end; ++it )
     {
         Location* loc = (Location*) *it;
@@ -79,9 +79,8 @@ string MapManager::GetLocationsMapsStatistics()
         for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
         {
             Map* map = *it_;
-            Str::Format( str, "     %2u) %-20s %-9u   %-4d %-4u %-9s %-6s %-50s\n",
+            Str::Format( str, "     %2u) %-20s %-9u   %-4d %-4u %-50s\n",
                          map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
-                         map->GetIsTurnBasedAviable() ? "true" : "false", map->IsTurnBasedOn ? "true" : "false",
                          map->GetScriptId() ? Str::GetName( map->GetScriptId() ) : "" );
             result += str;
             map_index++;
@@ -1230,7 +1229,7 @@ bool MapManager::TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, u
         return false;
     if( !map || !FLAG( map->GetHexFlags( hx, hy ), FH_SCEN_GRID ) )
         return false;
-    if( !force && !map->IsTurnBasedOn && cr->IsTransferTimeouts( true ) )
+    if( !force && cr->IsTransferTimeouts( true ) )
         return false;
 
     Location* loc = map->GetLocation( true );

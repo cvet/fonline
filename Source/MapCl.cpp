@@ -8,7 +8,6 @@ CLASS_PROPERTY_IMPL( Map, WorkHexY );
 CLASS_PROPERTY_IMPL( Map, LocId );
 CLASS_PROPERTY_IMPL( Map, LocMapIndex );
 CLASS_PROPERTY_IMPL( Map, RainCapacity );
-CLASS_PROPERTY_IMPL( Map, IsTurnBasedAviable );
 CLASS_PROPERTY_IMPL( Map, CurDayTime );
 CLASS_PROPERTY_IMPL( Map, ScriptId );
 CLASS_PROPERTY_IMPL( Map, DayTime );

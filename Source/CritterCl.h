@@ -41,8 +41,6 @@ public:
     CLASS_PROPERTY( int, CurrentAp );
     CLASS_PROPERTY( uint, ApRegenerationTime );
     CLASS_PROPERTY( int, ActionPoints );
-    CLASS_PROPERTY( int, MoveAp );
-    CLASS_PROPERTY( int, MaxMoveAp );
     CLASS_PROPERTY( bool, IsNoWalk );
     CLASS_PROPERTY( bool, IsNoRun );
     CLASS_PROPERTY( bool, IsNoRotate );
@@ -74,7 +72,6 @@ public:
     CLASS_PROPERTY( bool, IsDamagedLeftArm );
     CLASS_PROPERTY( bool, IsDamagedRightLeg );
     CLASS_PROPERTY( bool, IsDamagedLeftLeg );
-    CLASS_PROPERTY( uchar, PerkQuickPockets );
     CLASS_PROPERTY( uchar, PerkMasterTrader );
     CLASS_PROPERTY( uchar, PerkSilentRunning );
 
@@ -130,7 +127,6 @@ public:
     bool        IsKnockout() { return GetCond() == COND_KNOCKOUT; }
     bool        IsDead()     { return GetCond() == COND_DEAD; }
     bool        IsCombatMode();
-    bool        IsTurnBased();
     bool        CheckFind( int find_type );
 
     uint GetAttackDist();
@@ -144,7 +140,6 @@ public:
     int  GetRealAp();
     int  GetAllAp();
     void SubAp( int val );
-    void SubMoveAp( int val );
 
     // Items
 public:

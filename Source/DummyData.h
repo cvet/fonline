@@ -134,9 +134,7 @@ typedef Critter CritterCl;
 
 struct Map: public Entity
 {
-    int TurnBasedRound;
-    int TurnBasedTurn;
-    int TurnBasedWholeTurn;
+    // Empty
 };
 
 struct Location: public Entity
@@ -290,10 +288,6 @@ struct BindClass
 
     static void Map_GetLocation()            {}
     static void Map_SetScript()              {}
-    static void Map_BeginTurnBased()         {}
-    static void Map_IsTurnBased()            {}
-    static void Map_EndTurnBased()           {}
-    static void Map_GetTurnBasedSequence()   {}
     static void Map_AddItem()                {}
     static void Map_GetItemsHex()            {}
     static void Map_GetItemsHexEx()          {}
@@ -444,7 +438,6 @@ struct BindClass
     static void Crit_GetVisible()       {}
     static void Crit_set_ContourColor() {}
     static void Crit_get_ContourColor() {}
-    static void Crit_IsTurnBasedTurn()  {}
     static void Crit_GetNameTextInfo()  {}
 
     static void Item_GetItems()       {}
@@ -469,8 +462,6 @@ struct BindClass
     static void Global_PlaySoundType()          {}
     static void Global_PlayMusic()              {}
     static void Global_PlayVideo()              {}
-    static void Global_IsTurnBased()            {}
-    static void Global_GetTurnBasedTime()       {}
     static void Global_GetCurrentMapPid()       {}
     static void Global_MessageType()            {}
     static void Global_MessageMsgType()         {}

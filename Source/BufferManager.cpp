@@ -304,8 +304,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_GET_TIME_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_GAME_INFO:
         return ( NETMSG_GAME_INFO_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_COMBAT:
-        return ( NETMSG_SEND_COMBAT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GIVE_MAP:
         return ( NETMSG_SEND_GIVE_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_LOAD_MAP_OK:
@@ -566,9 +564,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_GAME_INFO:
         size = NETMSG_GAME_INFO_SIZE;
-        break;
-    case NETMSG_SEND_COMBAT:
-        size = NETMSG_SEND_COMBAT_SIZE;
         break;
     case NETMSG_SEND_GIVE_MAP:
         size = NETMSG_SEND_GIVE_MAP_SIZE;

@@ -181,7 +181,6 @@ public:
     void Net_SendPlayersBarter( uchar barter, uint param, uint param_ext );
     void Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text );
     void Net_SendGetUserHoloStr( uint str_num );
-    void Net_SendCombat( uchar type, int val );
     void Net_SendRunScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
     void Net_SendRefereshMe();
 
@@ -428,7 +427,6 @@ public:
         static bool  Crit_GetVisible( CritterCl* cr );
         static void  Crit_set_ContourColor( CritterCl* cr, uint value );
         static uint  Crit_get_ContourColor( CritterCl* cr );
-        static bool  Crit_IsTurnBasedTurn( CritterCl* cr );
         static void  Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines );
 
         static bool  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
@@ -458,8 +456,6 @@ public:
         static bool          Global_PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
         static bool          Global_PlayMusic( ScriptString& music_name, uint pos, uint repeat );
         static void          Global_PlayVideo( ScriptString& video_name, bool can_stop );
-        static bool          Global_IsTurnBased();
-        static uint          Global_GetTurnBasedTime();
 
         static hash          Global_GetCurrentMapPid();
         static void          Global_Message( ScriptString& msg );
@@ -767,13 +763,8 @@ public:
     void       DeleteCritters();
     void       DeleteCritter( uint remid );
 
-    bool  IsTurnBased;
-    uint  TurnBasedTime;
-    uint  TurnBasedCurCritterId;
-    bool  NoLogOut;
-    uint* UID3, * UID2;
-
-    bool IsTurnBasedMyTurn() { return IsTurnBased && Timer::GameTick() < TurnBasedTime && Chosen && Chosen->GetId() == TurnBasedCurCritterId && Chosen->GetAllAp() > 0; }
+    bool     NoLogOut;
+    uint*    UID3, * UID2;
 
     bool     RebuildLookBorders;
     bool     DrawLookBorders, DrawShootBorders;

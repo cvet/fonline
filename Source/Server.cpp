@@ -1430,52 +1430,43 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );                                \
                 return;                                       \
             }
-        #define CHECK_AP_MSG                                                         \
-            uchar ap;                                                                \
-            cl->Bin >> ap;                                                           \
-            if( !Singleplayer )                                                      \
-            {                                                                        \
-                if( !cl->IsTurnBased() )                                             \
-                {                                                                    \
-                    if( ap > cl->GetActionPoints() )                                 \
-                        break;                                                       \
-                    if( (int) ap > cl->GetCurrentAp() / AP_DIVIDER )                 \
-                    {                                                                \
-                        cl->Bin.MoveReadPos( -int( sizeof( msg ) + sizeof( ap ) ) ); \
-                        BIN_END( cl );                                               \
-                        return;                                                      \
-                    }                                                                \
-                }                                                                    \
+        #define CHECK_AP_MSG                                                     \
+            uchar ap;                                                            \
+            cl->Bin >> ap;                                                       \
+            if( !Singleplayer )                                                  \
+            {                                                                    \
+                if( ap > cl->GetActionPoints() )                                 \
+                    break;                                                       \
+                if( (int) ap > cl->GetCurrentAp() / AP_DIVIDER )                 \
+                {                                                                \
+                    cl->Bin.MoveReadPos( -int( sizeof( msg ) + sizeof( ap ) ) ); \
+                    BIN_END( cl );                                               \
+                    return;                                                      \
+                }                                                                \
             }
-        #define CHECK_AP( ap )                                           \
-            if( !Singleplayer )                                          \
-            {                                                            \
-                if( !cl->IsTurnBased() )                                 \
-                {                                                        \
-                    if( (int) ( ap ) > cl->GetActionPoints() )           \
-                        break;                                           \
-                    if( (int) ( ap ) > cl->GetCurrentAp() / AP_DIVIDER ) \
-                    {                                                    \
-                        cl->Bin.MoveReadPos( -int( sizeof( msg ) ) );    \
-                        BIN_END( cl );                                   \
-                        return;                                          \
-                    }                                                    \
-                }                                                        \
+        #define CHECK_AP( ap )                                       \
+            if( !Singleplayer )                                      \
+            {                                                        \
+                if( (int) ( ap ) > cl->GetActionPoints() )           \
+                    break;                                           \
+                if( (int) ( ap ) > cl->GetCurrentAp() / AP_DIVIDER ) \
+                {                                                    \
+                    cl->Bin.MoveReadPos( -int( sizeof( msg ) ) );    \
+                    BIN_END( cl );                                   \
+                    return;                                          \
+                }                                                    \
             }
-        #define CHECK_REAL_AP( ap )                                         \
-            if( !Singleplayer )                                             \
-            {                                                               \
-                if( !cl->IsTurnBased() )                                    \
-                {                                                           \
-                    if( (int) ( ap ) > cl->GetActionPoints() * AP_DIVIDER ) \
-                        break;                                              \
-                    if( (int) ( ap ) > cl->GetRealAp() )                    \
-                    {                                                       \
-                        cl->Bin.MoveReadPos( -int( sizeof( msg ) ) );       \
-                        BIN_END( cl );                                      \
-                        return;                                             \
-                    }                                                       \
-                }                                                           \
+        #define CHECK_REAL_AP( ap )                                     \
+            if( !Singleplayer )                                         \
+            {                                                           \
+                if( (int) ( ap ) > cl->GetActionPoints() * AP_DIVIDER ) \
+                    break;                                              \
+                if( (int) ( ap ) > cl->GetRealAp() )                    \
+                {                                                       \
+                    cl->Bin.MoveReadPos( -int( sizeof( msg ) ) );       \
+                    BIN_END( cl );                                      \
+                    return;                                             \
+                }                                                       \
             }
         #define CHECK_IS_GLOBAL                    \
             if( cl->GetMapId() || !cl->GroupMove ) \
@@ -1641,14 +1632,6 @@ void FOServer::Process( ClientPtr& cl )
             case NETMSG_SEND_REFRESH_ME:
             {
                 cl->Send_LoadMap( nullptr );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_COMBAT:
-            {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_NO_GLOBAL;
-                Process_Combat( cl );
                 BIN_END( cl );
                 continue;
             }

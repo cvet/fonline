@@ -765,10 +765,7 @@ void GetClientOptions()
     GETOPTIONS_CHECK( GameOpt.ProxyPort, 0, 0xFFFF, 1080 );
     GameOpt.AlwaysRun = MainConfig->GetInt( "", "AlwaysRun", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysRun, "-AlwaysRun" );
-    GameOpt.DefaultCombatMode = MainConfig->GetInt( "", "DefaultCombatMode", COMBAT_MODE_ANY );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.DefaultCombatMode, "-DefaultCombatMode" );
-    GETOPTIONS_CHECK( GameOpt.DefaultCombatMode, COMBAT_MODE_ANY, COMBAT_MODE_TURN_BASED, COMBAT_MODE_ANY );
-    GameOpt.IndicatorType = MainConfig->GetInt( "", "IndicatorType", COMBAT_MODE_ANY );
+    GameOpt.IndicatorType = MainConfig->GetInt( "", "IndicatorType", INDICATOR_LINES );
     GETOPTIONS_CMD_LINE_INT( GameOpt.IndicatorType, "-IndicatorType" );
     GETOPTIONS_CHECK( GameOpt.IndicatorType, INDICATOR_LINES, INDICATOR_BOTH, INDICATOR_LINES );
 
@@ -1027,7 +1024,6 @@ GameOptions::GameOptions()
     LookNormal = 20;
     LookMinimum = 6;
     CritterIdleTick = 10000;
-    TurnBasedTick = 30000;
     DeadHitPoints = -6;
 
     Breaktime = 1200;
@@ -1045,16 +1041,6 @@ GameOptions::GameOptions()
     RtApCostUseItem = 3;
     RtApCostUseSkill = 2;
     RtAlwaysRun = false;
-    TbApCostCritterMove = 1;
-    TbApCostMoveItemContainer = 0;
-    TbApCostMoveItemInventory = 1;
-    TbApCostPickItem = 3;
-    TbApCostDropItem = 1;
-    TbApCostReloadWeapon = 2;
-    TbApCostPickCritter = 3;
-    TbApCostUseItem = 3;
-    TbApCostUseSkill = 3;
-    TbAlwaysRun = false;
     ApCostAimEyes = 1;
     ApCostAimHead = 1;
     ApCostAimGroin = 1;
@@ -1063,7 +1049,6 @@ GameOptions::GameOptions()
     ApCostAimLegs = 1;
     RunOnCombat = false;
     RunOnTransfer = false;
-    RunOnTurnBased = false;
     GlobalMapWidth = 28;
     GlobalMapHeight = 30;
     GlobalMapZoneLength = 50;
@@ -1186,7 +1171,6 @@ GameOptions::GameOptions()
     PingPeriod = 2000;
     Ping = 0;
     MsgboxInvert = false;
-    DefaultCombatMode = COMBAT_MODE_ANY;
     MessNotify = true;
     SoundNotify = true;
     AlwaysOnTop = false;

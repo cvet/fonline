@@ -22,7 +22,6 @@ CLASS_PROPERTY_IMPL( Map, WorkHexY );
 CLASS_PROPERTY_IMPL( Map, LocId );
 CLASS_PROPERTY_IMPL( Map, LocMapIndex );
 CLASS_PROPERTY_IMPL( Map, RainCapacity );
-CLASS_PROPERTY_IMPL( Map, IsTurnBasedAviable );
 CLASS_PROPERTY_IMPL( Map, CurDayTime );
 CLASS_PROPERTY_IMPL( Map, ScriptId );
 CLASS_PROPERTY_IMPL( Map, DayTime );
@@ -39,15 +38,6 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     mapLocation = location;
 
     hexFlags = nullptr;
-    IsTurnBasedOn = false;
-    TurnBasedEndTick = 0;
-    TurnSequenceCur = 0;
-    IsTurnBasedTimeout = false;
-    TurnBasedBeginSecond = 0;
-    NeedEndTurnBased = false;
-    TurnBasedRound = 0;
-    TurnBasedTurn = 0;
-    TurnBasedWholeTurn = 0;
     memzero( LoopLastTick, sizeof( LoopLastTick ) );
 
     hexFlagsSize = GetWidth() * GetHeight();
@@ -238,9 +228,6 @@ bool Map::Generate()
 
 void Map::Process()
 {
-    if( IsTurnBasedOn )
-        ProcessTurnBased();
-
     uint tick = Timer::GameTick();
     ProcessLoop( 0, GetLoopTime1(), tick );
     ProcessLoop( 1, GetLoopTime2(), tick );
@@ -372,7 +359,7 @@ void Map::AddCritter( Critter* cr )
     }
 
     SetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
-    cr->SetTimeoutBattle( IsTurnBasedOn ? TB_BATTLE_TIMEOUT : 0 );
+    cr->SetTimeoutBattle( 0 );
 }
 
 void Map::EraseCritter( Critter* cr )
@@ -1544,243 +1531,6 @@ void Map::SetTextMsgLex( ushort hx, ushort hy, uint color, ushort text_msg, uint
         Client* cl = *it;
         if( cl->LookCacheValue >= DistGame( hx, hy, cl->GetHexX(), cl->GetHexY() ) )
             cl->Send_MapTextMsgLex( hx, hy, color, text_msg, num_str, lexems, lexems_len );
-    }
-}
-
-void Map::BeginTurnBased( Critter* first_cr )
-{
-    if( IsTurnBasedOn )
-        return;
-
-    IsTurnBasedOn = true;
-    NeedEndTurnBased = false;
-    TurnBasedRound = 0;
-    TurnBasedTurn = 0;
-    TurnBasedWholeTurn = 0;
-    TurnBasedBeginSecond = GameOpt.FullSecond;
-
-    GenerateSequence( first_cr );
-
-    CrVec critters;
-    GetCritters( critters, true );
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( !first_cr || cr != first_cr )
-        {
-            if( cr->GetCurrentAp() > 0 )
-                cr->SetCurrentAp( 0 );
-            else
-                cr->SetCurrentAp( cr->GetCurrentAp() / AP_DIVIDER * AP_DIVIDER );
-        }
-
-        cr->SetMoveAp( 0 );
-        cr->SetIsEndCombat( false );
-        cr->SetTurnBasedAc( 0 );
-        cr->Send_GameInfo( this );
-        cr->SetTimeoutBattle( TB_BATTLE_TIMEOUT );
-        cr->SetTimeoutTransfer( 0 );
-    }
-    TurnSequenceCur = -1;
-    IsTurnBasedTimeout = false;
-
-    Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedBegin, this );
-
-    if( NeedEndTurnBased || TurnSequence.empty() )
-        EndTurnBased();
-    else
-        NextCritterTurn();
-}
-
-void Map::EndTurnBased()
-{
-    Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedEnd, this );
-
-    IsTurnBasedOn = false;
-    TurnBasedRound = 0;
-    TurnBasedTurn = 0;
-    TurnBasedWholeTurn = 0;
-    TurnSequenceCur = -1;
-    IsTurnBasedTimeout = false;
-
-    CrVec critters;
-    GetCritters( critters, true );
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        cr->Send_GameInfo( this );
-        cr->SetTimeoutBattle( 0 );
-        cr->SetTurnBasedAc( 0 );
-
-        // Continue time events
-        if( GameOpt.FullSecond > TurnBasedBeginSecond )
-            cr->ContinueTimeEvents( GameOpt.FullSecond - TurnBasedBeginSecond );
-    }
-}
-
-void Map::ProcessTurnBased()
-{
-    if( !IsTurnBasedTimeout )
-    {
-        Critter* cr = GetCritter( GetCritterTurnId(), true );
-        if( !cr || ( cr->IsDead() || cr->GetAllAp() <= 0 || cr->GetCurrentHp() <= 0 ) )
-            EndCritterTurn();
-    }
-
-    if( Timer::GameTick() >= TurnBasedEndTick )
-    {
-        IsTurnBasedTimeout = !IsTurnBasedTimeout;
-        if( IsTurnBasedTimeout )
-            TurnBasedEndTick = Timer::GameTick() + TURN_BASED_TIMEOUT;
-        else
-            NextCritterTurn();
-    }
-}
-
-bool Map::IsCritterTurn( Critter* cr )
-{
-    if( TurnSequenceCur >= (int) TurnSequence.size() )
-        return false;
-    return TurnSequence[ TurnSequenceCur ] == cr->GetId();
-}
-
-uint Map::GetCritterTurnId()
-{
-    if( TurnSequenceCur >= (int) TurnSequence.size() )
-        return 0;
-    return TurnSequence[ TurnSequenceCur ];
-}
-
-uint Map::GetCritterTurnTime()
-{
-    uint tick = Timer::GameTick();
-    return TurnBasedEndTick > tick ? TurnBasedEndTick - tick : 0;
-}
-
-void Map::EndCritterTurn()
-{
-    TurnBasedEndTick = Timer::GameTick();
-}
-
-void Map::NextCritterTurn()
-{
-    // End previous turn
-    if( TurnSequenceCur >= 0 )
-    {
-        Critter* cr = GetCritter( TurnSequence[ TurnSequenceCur ], true );
-        if( cr )
-        {
-            Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedProcess, this, cr, false );
-
-            if( cr->GetCurrentAp() > 0 )
-                cr->SetCurrentAp( 0 );
-        }
-        else
-        {
-            TurnSequence.erase( TurnSequence.begin() + TurnSequenceCur );
-            TurnSequenceCur--;
-        }
-    }
-
-    // Begin next
-    TurnSequenceCur++;
-    if( TurnSequenceCur >= (int) TurnSequence.size() ) // Next round
-    {
-        // Next turn
-        GenerateSequence( nullptr );
-        TurnSequenceCur = -1;
-        TurnBasedRound++;
-        TurnBasedTurn = 0;
-
-        Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedBegin, this );
-
-        if( NeedEndTurnBased || TurnSequence.empty() )
-            EndTurnBased();
-        else
-            NextCritterTurn();
-    }
-    else     // Next critter turn
-    {
-        Critter* cr = GetCritter( TurnSequence[ TurnSequenceCur ], true );
-        if( !cr || cr->IsDead() )
-        {
-            TurnSequence.erase( TurnSequence.begin() + TurnSequenceCur );
-            TurnSequenceCur--;
-            TurnBasedTurn++;
-            TurnBasedWholeTurn++;
-            NextCritterTurn();
-            return;
-        }
-
-        if( cr->GetCurrentAp() >= 0 )
-        {
-            cr->SetCurrentAp( cr->GetActionPoints() * AP_DIVIDER );
-        }
-        else
-        {
-            cr->SetCurrentAp( cr->GetCurrentAp() + cr->GetActionPoints() * AP_DIVIDER );
-            if( cr->GetCurrentAp() < 0 || ( cr->GetCurrentAp() == 0 && !cr->GetMaxMoveAp() ) )
-            {
-                TurnBasedTurn++;
-                TurnBasedWholeTurn++;
-                NextCritterTurn();
-                return;
-            }
-        }
-
-        if( cr->IsKnockout() )
-        {
-            cr->TryUpOnKnockout();
-            if( cr->IsKnockout() )
-            {
-                TurnBasedTurn++;
-                TurnBasedWholeTurn++;
-                NextCritterTurn();
-                return;
-            }
-        }
-
-        cr->Send_CustomCommand( cr, OTHER_YOU_TURN, GameOpt.TurnBasedTick );
-        cr->SendA_CustomCommand( OTHER_YOU_TURN, GameOpt.TurnBasedTick );
-        TurnBasedEndTick = Timer::GameTick() + GameOpt.TurnBasedTick;
-
-        Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedProcess, this, cr, true );
-
-        if( NeedEndTurnBased )
-        {
-            EndTurnBased();
-        }
-        else
-        {
-            TurnBasedTurn++;
-            TurnBasedWholeTurn++;
-        }
-    }
-}
-
-void Map::GenerateSequence( Critter* first_cr )
-{
-    // Collect all critters
-    CrVec        critters;
-    GetCritters( critters, true );
-    ScriptArray* script_critters = Script::CreateArray( "Critter@[]" );
-    Script::AppendVectorToArrayRef( critters, script_critters );
-
-    // Pass to scripts
-    Script::RaiseInternalEvent( ServerFunctions.MapTurnBasedSequence, this, script_critters, first_cr );
-
-    // Fill result
-    Script::AssignScriptArrayInVector( critters, script_critters );
-    script_critters->Release();
-
-    // Add only critters on this map
-    TurnSequenceCur = 0;
-    TurnSequence.clear();
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( cr->GetMapId() == GetId() )
-            TurnSequence.push_back( cr->GetId() );
     }
 }
 

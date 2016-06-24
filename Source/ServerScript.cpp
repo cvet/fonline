@@ -150,10 +150,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( MapFinish );
     BIND_INTERNAL_EVENT( MapCritterIn );
     BIND_INTERNAL_EVENT( MapCritterOut );
-    BIND_INTERNAL_EVENT( MapTurnBasedBegin );
-    BIND_INTERNAL_EVENT( MapTurnBasedEnd );
-    BIND_INTERNAL_EVENT( MapTurnBasedProcess );
-    BIND_INTERNAL_EVENT( MapTurnBasedSequence );
     BIND_INTERNAL_EVENT( MapCheckLook );
     BIND_INTERNAL_EVENT( MapCheckTrapLook );
     BIND_INTERNAL_EVENT( CritterInit );
@@ -2526,43 +2522,6 @@ bool FOServer::SScriptFunc::Map_SetScript( Map* map, ScriptString* func_name )
     return true;
 }
 
-void FOServer::SScriptFunc::Map_BeginTurnBased( Map* map, Critter* first_turn_crit )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( first_turn_crit && first_turn_crit->IsDestroyed )
-        SCRIPT_ERROR_R( "Critter arg is not valid." );
-
-    map->BeginTurnBased( first_turn_crit );
-}
-
-bool FOServer::SScriptFunc::Map_IsTurnBased( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return map->IsTurnBasedOn;
-}
-
-void FOServer::SScriptFunc::Map_EndTurnBased( Map* map )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    map->NeedEndTurnBased = true;
-}
-
-int FOServer::SScriptFunc::Map_GetTurnBasedSequence( Map* map, ScriptArray& critters_ids )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !map->IsTurnBasedOn )
-        SCRIPT_ERROR_R0( "Map is not in turn based state." );
-
-    Script::AppendVectorToArray( map->TurnSequence, &critters_ids );
-    return ( map->TurnSequenceCur >= 0 && map->TurnSequenceCur < (int) map->TurnSequence.size() ) ? map->TurnSequenceCur : -1;
-}
-
 Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count, ScriptDict* props )
 {
     if( map->IsDestroyed )
@@ -4049,24 +4008,6 @@ static void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
         cl->Send_AddAllItems();
         cl->Send_HoloInfo( true, 0, 0 );
         cl->Send_AllAutomapsInfo();
-
-        if( map->IsTurnBasedOn )
-        {
-            if( map->IsCritterTurn( cl ) )
-            {
-                cl->Send_CustomCommand( cl, OTHER_YOU_TURN, map->GetCritterTurnTime() );
-            }
-            else
-            {
-                Critter* cr = cl->GetCritSelf( map->GetCritterTurnId(), false );
-                if( cr )
-                    cl->Send_CustomCommand( cr, OTHER_YOU_TURN, map->GetCritterTurnTime() );
-            }
-        }
-        else if( TB_BATTLE_TIMEOUT_CHECK( cl->GetTimeoutBattle() ) )
-        {
-            cl->SetTimeoutBattle( 0 );
-        }
     }
 }
 

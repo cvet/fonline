@@ -27,7 +27,7 @@
 #define NETMSG_LOGIN                          MAKE_NETMSG_HEADER( 1 )
 #define NETMSG_LOGIN_SIZE                                               \
     ( sizeof( uint ) + sizeof( ushort ) + sizeof( uint ) * 8 /*UIDs*/ + \
-      UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE + sizeof( uint ) + sizeof( uint ) * 10 /*MSG*/ + sizeof( uint ) * 14 /*Proto*/ + sizeof( uchar ) + 100 )
+      UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE + sizeof( uint ) + sizeof( uint ) * 10 /*MSG*/ + sizeof( uint ) * 14 /*Proto*/ + 100 )
 // ////////////////////////////////////////////////////////////////////////
 // Enter to game
 // Params:
@@ -778,7 +778,7 @@
 #define NETMSG_GAME_INFO                      MAKE_NETMSG_HEADER( 117 )
 #define NETMSG_GAME_INFO_SIZE                 \
     ( sizeof( uint ) + sizeof( ushort ) * 8 + \
-      sizeof( int ) + sizeof( uchar ) + sizeof( bool ) * 2 + sizeof( int ) * 4 + sizeof( uchar ) * 12 )
+      sizeof( int ) + sizeof( uchar ) + sizeof( bool ) + sizeof( int ) * 4 + sizeof( uchar ) * 12 )
 // ////////////////////////////////////////////////////////////////////////
 // Generic game info
 // ushort GameOpt.YearStart;
@@ -795,14 +795,6 @@
 // bool no_log_out
 // int day_time[4]
 // uchar day_color[12]
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_COMBAT                    MAKE_NETMSG_HEADER( 118 )
-#define NETMSG_SEND_COMBAT_SIZE               ( sizeof( uint ) + sizeof( uchar ) + sizeof( int ) )
-// ////////////////////////////////////////////////////////////////////////
-// Turn based
-// uchar type (see Combat in FOdefines.h)
-// int val
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
