@@ -46,6 +46,7 @@ public:
 
     static void UnloadScripts();
     static bool ReloadScripts( const char* target, const char* cache_pefix );
+    static bool PostInitScriptSystem();
     static bool RunModuleInitFunctions();
 
     static asIScriptEngine* GetEngine();
@@ -78,6 +79,8 @@ public:
     static void* FindInternalEvent( const char* event_name );
     static bool  RaiseInternalEvent( void* event_ptr, ... );
     static void  RemoveEventsEntity( Entity* entity );
+
+    static void HandleRpc( void* context );
 
     static const char* GetActiveModuleName();
     static const char* GetActiveFuncName();

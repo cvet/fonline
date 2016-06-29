@@ -22,6 +22,7 @@ class MethodPragma;
 class ContentPragma;
 class EnumPragma;
 class EventPragma;
+class RpcPragma;
 
 typedef vector< Preprocessor::PragmaInstance > Pragmas;
 
@@ -41,6 +42,7 @@ private:
     ContentPragma*   contentPragma;
     EnumPragma*      enumPragma;
     EventPragma*     eventPragma;
+    RpcPragma*       rpcPragma;
 
 public:
     ScriptPragmaCallback( int pragma_type );
@@ -54,6 +56,7 @@ public:
     void*                 FindInternalEvent( const char* event_name );
     bool                  RaiseInternalEvent( void* event_ptr, va_list args );
     void                  RemoveEventsEntity( Entity* entity );
+    void                  HandleRpc( void* context );
 };
 
 #endif // __SCRIPT_PRAGMAS__

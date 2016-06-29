@@ -698,6 +698,24 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
     return true;
 }
 
+bool Script::PostInitScriptSystem()
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    if( edata->PragmaCB->IsError() )
+    {
+        WriteLog( "Error in pragma(s) during loading.\n" );
+        return false;
+    }
+
+    edata->PragmaCB->Finish();
+    if( edata->PragmaCB->IsError() )
+    {
+        WriteLog( "Error in pragma(s) after finalization.\n" );
+        return false;
+    }
+    return true;
+}
+
 bool Script::RunModuleInitFunctions()
 {
     for( asUINT i = 0; i < Engine->GetModuleCount(); i++ )
@@ -1035,6 +1053,12 @@ void Script::RemoveEventsEntity( Entity* entity )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     edata->PragmaCB->RemoveEventsEntity( entity );
+}
+
+void Script::HandleRpc( void* context )
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    edata->PragmaCB->HandleRpc( context );
 }
 
 const char* Script::GetActiveModuleName()

@@ -265,9 +265,8 @@ struct BindClass
     static void Crit_SetFog()        {}
     static void Crit_GetFog()        {}
 
-    static void Cl_ShowContainer()   {}
-    static void Cl_RunClientScript() {}
-    static void Cl_Disconnect()      {}
+    static void Cl_ShowContainer() {}
+    static void Cl_Disconnect()    {}
 
     static void Crit_SetScript() {}
 
@@ -475,7 +474,6 @@ struct BindClass
     static void Global_GetGameTime()            {}
     static void Global_Preload3dFiles()         {}
 
-    static void Global_RunServerScript()   {}
     static void Global_ShowScreen()        {}
     static void Global_HideScreen()        {}
     static void Global_GetMonitorItem()    {}

@@ -2027,8 +2027,8 @@ void FOClient::NetProcess()
         case NETMSG_PLAYERS_BARTER_SET_HIDE:
             Net_OnPlayersBarterSetHide();
             break;
-        case NETMSG_RUN_CLIENT_SCRIPT:
-            Net_OnRunClientScript();
+        case NETMSG_RPC:
+            Script::HandleRpc( &Bin );
             break;
 
         case NETMSG_ADD_ITEM_ON_MAP:
@@ -2551,40 +2551,6 @@ void FOClient::Net_SendGetUserHoloStr( uint str_num )
 
     Bout << NETMSG_SEND_GET_USER_HOLO_STR;
     Bout << str_num;
-}
-
-void FOClient::Net_SendRunScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 )
-{
-    ushort func_name_len = ( ushort ) Str::Length( func_name );
-    ushort p3len = ( p3 ? ( ushort ) Str::Length( p3 ) : 0 );
-    ushort p4size = (ushort) p4.size();
-    uchar  flags = ( p0 ? 1 << 0 : 0 ) | ( p1 ? 1 << 1 : 0 ) | ( p2 ? 1 << 2 : 0 ) | ( p3len ? 1 << 3 : 0 ) | ( p4size ? 1 << 4 : 0 );
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( flags ) + sizeof( func_name_len ) + func_name_len +
-                     ( p0 ? sizeof( p0 ) : 0 ) | ( p1 ? sizeof( p1 ) : 0 ) | ( p2 ? sizeof( p2 ) : 0 ) | ( p3len ? p3len : 0 ) | ( p4size ? p4size : 0 );
-
-    Bout << NETMSG_SEND_RUN_SERVER_SCRIPT;
-    Bout << msg_len;
-    Bout << flags;
-
-    Bout << func_name_len;
-    Bout.Push( func_name, func_name_len );
-
-    if( p0 )
-        Bout << p0;
-    if( p1 )
-        Bout << p1;
-    if( p2 )
-        Bout << p2;
-    if( p3len )
-    {
-        Bout << p3len;
-        Bout.Push( p3, p3len );
-    }
-    if( p4size )
-    {
-        Bout << p4size;
-        Bout.Push( (char*) &p4[ 0 ], p4size * sizeof( uint ) );
-    }
 }
 
 void FOClient::Net_SendRefereshMe()
@@ -4854,66 +4820,6 @@ void FOClient::Net_OnPlayersBarterSetHide()
         citem->SetCount( new_count );
     }
     CollectContItems();
-}
-
-void FOClient::Net_OnRunClientScript()
-{
-    char          str[ MAX_FOTEXT ];
-    uint          msg_len;
-    ushort        func_name_len;
-    ScriptString* func_name = ScriptString::Create();
-    int           p0, p1, p2;
-    ushort        p3len;
-    ScriptString* p3 = nullptr;
-    ushort        p4size;
-    ScriptArray*  p4 = nullptr;
-    Bin >> msg_len;
-    Bin >> func_name_len;
-    if( func_name_len && func_name_len < MAX_FOTEXT )
-    {
-        Bin.Pop( str, func_name_len );
-        str[ func_name_len ] = 0;
-        *func_name = str;
-    }
-    Bin >> p0;
-    Bin >> p1;
-    Bin >> p2;
-    Bin >> p3len;
-    if( p3len && p3len )
-    {
-        Bin.Pop( str, p3len );
-        str[ p3len ] = 0;
-        p3 = ScriptString::Create( str );
-    }
-    Bin >> p4size;
-    if( p4size )
-    {
-        p4 = Script::CreateArray( "int[]" );
-        if( p4 )
-        {
-            p4->Resize( p4size );
-            Bin.Pop( (char*) p4->At( 0 ), p4size * sizeof( uint ) );
-        }
-    }
-
-    CHECK_IN_BUFF_ERROR;
-
-    uint bind_id = Script::BindByScriptName( func_name->c_str(), "void %s(int,int,int,string@,int[]@)", true );
-    if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
-    {
-        Script::SetArgUInt( p0 );
-        Script::SetArgUInt( p1 );
-        Script::SetArgUInt( p2 );
-        Script::SetArgObject( p3 );
-        Script::SetArgObject( p4 );
-        Script::RunPrepared();
-    }
-
-    func_name->Release();
-    if( p3 )
-        p3->Release();
-    if( p4 )
-        p4->Release();
 }
 
 void FOClient::Net_OnCheckUID3()
@@ -7294,6 +7200,8 @@ bool FOClient::ReloadScripts()
         errors++;
     if( !Script::RebindFunctions() )
         errors++;
+    if( !Script::PostInitScriptSystem() )
+        errors++;
     Script::CacheEnumValues();
 
     #define BIND_INTERNAL_EVENT( name )    ClientFunctions. ## name = Script::FindInternalEvent( "Event" # name )
@@ -9155,16 +9063,6 @@ bool FOClient::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
         return true;
     }
     return false;
-}
-
-void FOClient::SScriptFunc::Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
-{
-    UIntVec dw;
-    if( p4 )
-        Script::AssignScriptArrayInVector< uint >( dw, p4 );
-    char script_name[ MAX_FOTEXT ];
-    Script::MakeScriptNameInRuntime( func_name.c_str(), script_name );
-    Self->Net_SendRunScript( script_name, p0, p1, p2, p3 ? p3->c_str() : nullptr, dw );
 }
 
 uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name )

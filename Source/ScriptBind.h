@@ -112,7 +112,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "bool Misc_SetScript(stri
 /************************************************************************/
 /* Item                                                                 */
 /************************************************************************/
-// Methods
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetScript(string@+ script)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetWholeCost() const", asFUNCTION( BIND_CLASS Item_GetWholeCost ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddItem(hash protoId, uint count, uint stackId)", asFUNCTION( BIND_CLASS Item_AddItem ), asCALL_CDECL_OBJFIRST ) );
@@ -218,7 +217,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetFog(uint16 zoneX,
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int GetFog(uint16 zoneX, uint16 zoneY) const", asFUNCTION( BIND_CLASS Crit_GetFog ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ShowContainer(Critter@+ contCr, Item@+ contItem, uint8 transferType)", asFUNCTION( BIND_CLASS Cl_ShowContainer ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void RunClientScript(string& funcName, int p0, int p1, int p2, string@+ p3, array<int>@+ p4)", asFUNCTION( BIND_CLASS Cl_RunClientScript ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Disconnect()", asFUNCTION( BIND_CLASS Cl_Disconnect ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetScript(string@+ script)", asFUNCTION( BIND_CLASS Crit_SetScript ), asCALL_CDECL_OBJFIRST ) );
@@ -487,7 +485,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "int GetFog(uint16 zoneX, uint16 zo
 BIND_ASSERT( engine->RegisterGlobalFunction( "array<Item@>@ RefreshItemsCollection(int collection)", asFUNCTION( BIND_CLASS Global_RefreshItemsCollection ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDayTime(uint dayPart)", asFUNCTION( BIND_CLASS Global_GetDayTime ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b)", asFUNCTION( BIND_CLASS Global_GetDayColor ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void RunServerScript(string& funcName, int p0, int p1, int p2, string@+ p3, array<int>@+ p4)", asFUNCTION( BIND_CLASS Global_RunServerScript ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, dictionary@+ params = null)", asFUNCTION( BIND_CLASS Global_ShowScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen = 0)", asFUNCTION( BIND_CLASS Global_HideScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );

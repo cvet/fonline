@@ -4406,6 +4406,12 @@ bool FOMapper::InitScriptSystem()
     Map::SetPropertyRegistrator( registrators[ 3 ] );
     Location::SetPropertyRegistrator( registrators[ 4 ] );
 
+    if( !Script::PostInitScriptSystem() )
+    {
+        WriteLog( "Post init fail.\n" );
+        return false;
+    }
+
     if( !Script::RunModuleInitFunctions() )
     {
         WriteLog( "Run module init functions fail.\n" );

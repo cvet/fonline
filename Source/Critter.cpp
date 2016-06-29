@@ -4062,36 +4062,6 @@ void Client::Send_PlayersBarterSetHide( Item* item, uint count )
     BOUT_END( this );
 }
 
-void Client::Send_RunClientScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    char script_name[ MAX_FOTEXT ];
-    Script::MakeScriptNameInRuntime( func_name, script_name );
-
-    ushort script_name_len = Str::Length( script_name );
-    ushort p3len = ( p3 ? Str::Length( p3 ) : 0 );
-    ushort p4size = (ushort) p4.size();
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( script_name_len ) + script_name_len + sizeof( p0 ) + sizeof( p1 ) + sizeof( p2 ) + sizeof( p3len ) + p3len + sizeof( p4size ) + p4size * sizeof( uint );
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_RUN_CLIENT_SCRIPT;
-    Bout << msg_len;
-    Bout << script_name_len;
-    Bout.Push( script_name, script_name_len );
-    Bout << p0;
-    Bout << p1;
-    Bout << p2;
-    Bout << p3len;
-    if( p3len )
-        Bout.Push( p3, p3len );
-    Bout << p4size;
-    if( p4size )
-        Bout.Push( (char*) &p4[ 0 ], p4size * sizeof( uint ) );
-    BOUT_END( this );
-}
-
 void Client::Send_ViewMap()
 {
     if( IsSendDisabled() || IsOffline() )

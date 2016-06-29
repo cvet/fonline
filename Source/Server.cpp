@@ -1351,8 +1351,8 @@ void FOServer::Process( ClientPtr& cl )
                     cl->Disconnect();
                 BIN_END( cl );
                 break;
-            case NETMSG_SEND_RUN_SERVER_SCRIPT:
-                Process_RunServerScript( cl );
+            case NETMSG_RPC:
+                Script::HandleRpc( cl );
                 BIN_END( cl );
                 break;
             default:
@@ -1663,9 +1663,9 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_RUN_SERVER_SCRIPT:
+            case NETMSG_RPC:
             {
-                Process_RunServerScript( cl );
+                Script::HandleRpc( &cl->Bin );
                 BIN_END( cl );
                 continue;
             }
@@ -3210,7 +3210,7 @@ bool FOServer::InitReal()
         return false;                            // Create FOITEM.MSG, need call after InitLangPacks and ItemMngr.LoadProtos
 
     // Scripts post check
-    if( !PostInitScriptSystem() )
+    if( !Script::PostInitScriptSystem() )
         return false;
 
     // Modules initialization

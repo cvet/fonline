@@ -181,7 +181,6 @@ public:
     void Net_SendPlayersBarter( uchar barter, uint param, uint param_ext );
     void Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text );
     void Net_SendGetUserHoloStr( uint str_num );
-    void Net_SendRunScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
     void Net_SendRefereshMe();
 
     void Net_OnWrongNetProto();
@@ -232,7 +231,6 @@ public:
     void Net_OnContainerInfo();
     void Net_OnPlayersBarter();
     void Net_OnPlayersBarterSetHide();
-    void Net_OnRunClientScript();
     void Net_OnCheckUID3();
 
     void Net_OnUpdateFilesList();
@@ -487,7 +485,6 @@ public:
         static void Global_AllowSlot( uchar index, bool enable_send );
         static void Global_AddRegistrationProperty( int cr_prop );
         static bool Global_LoadDataFile( ScriptString& dat_name );
-        static void Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
 
         static uint Global_LoadSprite( ScriptString& spr_name );
         static uint Global_LoadSpriteHash( uint name_hash );

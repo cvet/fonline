@@ -66,7 +66,6 @@ public:
     static void Process_GetUserHoloStr( Client* cl );
     static void Process_Ping( Client* cl );
     static void Process_PlayersBarter( Client* cl );
-    static void Process_RunServerScript( Client* cl );
     static void Process_Property( Client* cl, uint data_size );
 
     static void Send_MapData( Client* cl, ProtoMap* pmap, bool send_tiles, bool send_scenery );
@@ -486,7 +485,6 @@ public:
         static int  Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_y );
 
         static void Cl_ShowContainer( Critter* cl, Critter* cr_cont, Item* item_cont, uchar transfer_type );
-        static void Cl_RunClientScript( Critter* cl, ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
         static void Cl_Disconnect( Critter* cl );
 
         static bool Crit_SetScript( Critter* cr, ScriptString* func_name );

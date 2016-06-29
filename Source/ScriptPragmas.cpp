@@ -1258,6 +1258,365 @@ public:
     }
 };
 
+// #pragma rpc
+#ifdef FONLINE_SERVER
+# include "Critter.h"
+#endif
+#ifdef FONLINE_CLIENT
+# include "Client.h"
+#endif
+class RpcPragma
+{
+    typedef vector< pair< string, string > > FuncDescVec;
+    typedef vector< asIScriptFunction* >     FuncVec;
+
+    bool inited;
+    int pragmaType;
+    int curOutIndex;
+    FuncDescVec inFuncDesc;
+    FuncVec inFunc;
+    IntVec inFuncBind;
+
+public:
+    RpcPragma( int pragma_type )
+    {
+        inited = false;
+        pragmaType = pragma_type;
+        curOutIndex = 0;
+    }
+
+    void Init()
+    {
+        asIScriptEngine* engine = Script::GetEngine();
+        int r = engine->RegisterObjectType( "RpcCaller", 0, asOBJ_REF | asOBJ_NOCOUNT );
+        RUNTIME_ASSERT( r >= 0 );
+
+        if( pragmaType == PRAGMA_SERVER )
+            r = engine->RegisterObjectProperty( "Critter", "RpcCaller Rpc", 0 );
+        else
+            r = engine->RegisterGlobalProperty( "RpcCaller ServerRpc", this );
+        RUNTIME_ASSERT( r >= 0 );
+    }
+
+    bool Call( const string& text )
+    {
+        if( !inited )
+        {
+            inited = true;
+            Init();
+        }
+
+        char type[ MAX_FOTEXT ];
+        char name[ MAX_FOTEXT ];
+        istrstream str( text.c_str() );
+        str >> type >> name;
+        if( str.fail() )
+        {
+            WriteLog( "Unable to parse 'rpc' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+        if( !Str::Compare( type, "Server" ) && !Str::Compare( type, "Client" ) )
+        {
+            WriteLog( "Invalid type in 'rpc' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+
+        size_t args_begin = text.find_first_of( '(' );
+        size_t args_end = text.find_first_of( ')' );
+        if( args_begin == string::npos || args_end == string::npos || args_begin > args_end )
+        {
+            WriteLog( "Unable to parse 'rpc' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+        char args[ MAX_FOTEXT ];
+        Str::Copy( args, text.substr( args_begin + 1, args_end - args_begin - 1 ).c_str() );
+        Str::Trim( args );
+
+        // Verify args
+        asIScriptEngine* engine = Script::GetEngine();
+
+        char buf[ MAX_FOTEXT ];
+        int func_def_id = engine->RegisterFuncdef( Str::Format( buf, "void %sRpcFunc(%s)", name, args ) );
+        if( func_def_id < 0 )
+        {
+            WriteLog( "Invalid function in 'rpc' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+
+        if( Str::Substring( args, "@" ) )
+        {
+            WriteLog( "Handles is not allowed for 'rpc' pragma '%s'.\n", text.c_str() );
+            return false;
+        }
+
+        asIScriptFunction* func_def = engine->GetFunctionById( func_def_id );
+        for( asUINT i = 0; i < func_def->GetParamCount(); i++ )
+        {
+            int type_id;
+            asDWORD flags;
+            const char* name;
+            func_def->GetParam( i, &type_id, &flags, &name );
+
+            if( type_id & asTYPEID_MASK_OBJECT )
+            {
+                asIObjectType* obj_type = engine->GetObjectTypeById( type_id );
+                RUNTIME_ASSERT( obj_type );
+                if( Str::Compare( obj_type->GetName(), "array" ) )
+                {
+                    if( obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT && !Str::Compare( obj_type->GetSubType( 0 )->GetName(), "string" ) )
+                    {
+                        WriteLog( "Invalid type '%s' in array in 'rpc' pragma '%s'.\n", obj_type->GetSubType( 0 )->GetName(), text.c_str() );
+                        return false;
+                    }
+                }
+                else if( Str::Compare( obj_type->GetName(), "dict" ) )
+                {
+                    if( obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT && !Str::Compare( obj_type->GetSubType( 0 )->GetName(), "string" ) )
+                    {
+                        WriteLog( "Invalid type '%s' in dict key in 'rpc' pragma '%s'.\n", obj_type->GetSubType( 0 )->GetName(), text.c_str() );
+                        return false;
+                    }
+                    if( obj_type->GetSubTypeId( 1 ) & asTYPEID_MASK_OBJECT && !Str::Compare( obj_type->GetSubType( 1 )->GetName(), "string" ) )
+                    {
+                        WriteLog( "Invalid type '%s' in dict value in 'rpc' pragma '%s'.\n", obj_type->GetSubType( 1 )->GetName(), text.c_str() );
+                        return false;
+                    }
+                }
+                else if( !Str::Compare( obj_type->GetName(), "string" ) )
+                {
+                    WriteLog( "Invalid type '%s' in 'rpc' pragma '%s'.\n", obj_type->GetName(), text.c_str() );
+                    return false;
+                }
+            }
+        }
+
+        // Register
+        if( ( pragmaType == PRAGMA_SERVER ) == Str::Compare( type, "Client" ) )
+        {
+            Str::Format( buf, "void %s(%s) const", name, args );
+            if( engine->RegisterObjectMethod( "RpcCaller", buf, asFUNCTION( Rpc ), asCALL_GENERIC, new uint( curOutIndex++ ) ) < 0 )
+            {
+                WriteLog( "Invalid method '%s' in 'rpc' pragma '%s'.\n", buf, text.c_str() );
+                return false;
+            }
+        }
+        else
+        {
+            inFuncDesc.push_back( PAIR( string( name ), string( args ) ) );
+        }
+
+        return true;
+    }
+
+    bool Finish()
+    {
+        uint errors = 0;
+
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
+        // Collect functions in all modules
+        asIScriptEngine* engine = Script::GetEngine();
+        multimap< string, asIScriptFunction* > all_functions;
+        asUINT                                 module_count = engine->GetModuleCount();
+        for( asUINT m = 0; m < module_count; m++ )
+        {
+            asIScriptModule* module = engine->GetModuleByIndex( m );
+            asUINT           func_count = module->GetFunctionCount();
+            for( asUINT f = 0; f < func_count; f++ )
+            {
+                asIScriptFunction* func = module->GetFunctionByIndex( f );
+                all_functions.insert( PAIR( func->GetName(), func ) );
+            }
+        }
+
+        // Automatically find function
+        for( auto& func_desc : inFuncDesc )
+        {
+            uint count = (uint) all_functions.count( func_desc.first );
+            if( count == 1 )
+            {
+                // Verify args
+                char decl[ MAX_FOTEXT ];
+                Str::Format( decl, "void %s(%s%s%s)", "%s", pragmaType == PRAGMA_SERVER ? "Critter&" : "",
+                             pragmaType == PRAGMA_SERVER && func_desc.second.length() > 0 ? ", " : "", func_desc.second.c_str() );
+
+                asIScriptFunction* func = all_functions.find( func_desc.first )->second;
+                int                bind_id = Script::BindByModuleFuncName( func->GetModuleName(), func->GetName(), decl, false );
+                if( bind_id > 0 )
+                {
+                    inFunc.push_back( func );
+                    inFuncBind.push_back( bind_id );
+                }
+                else
+                {
+                    WriteLog( "Bind rpc function fail, module '%s', name '%s'.\n", func->GetModuleName(), func_desc.first.c_str() );
+                    errors++;
+                }
+            }
+            else if( count == 0 )
+            {
+                WriteLog( "Rpc function '%s' not found.\n", func_desc.first.c_str() );
+                errors++;
+            }
+            else
+            {
+                WriteLog( "Multiplied functions found for rpc function '%s'.\n", func_desc.first.c_str() );
+                auto it = all_functions.find( func_desc.first );
+                for( uint j = 0; j < count; j++, it++ )
+                    WriteLog( "- In module '%s'.\n", it->second->GetModuleName() );
+                errors++;
+            }
+        }
+        #endif
+
+        return errors == 0;
+    }
+
+    static void Rpc( asIScriptGeneric* gen )
+    {
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
+        uint msg = NETMSG_RPC;
+        uint func_index = *(uint*) gen->GetAuxiliary();
+        uint msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( func_index );
+
+        asIScriptEngine* engine = Script::GetEngine();
+        StrVec args( gen->GetArgCount() );
+        for( int i = 0; i < gen->GetArgCount(); i++ )
+        {
+            int type_id = gen->GetArgTypeId( i );
+            asIObjectType* obj_type = ( type_id & asTYPEID_MASK_OBJECT ? engine->GetObjectTypeById( type_id ) : nullptr );
+            bool is_hashes[] = { false, false, false, false };
+            void* ptr = ( type_id & asTYPEID_MASK_OBJECT ? gen->GetArgObject( i ) : gen->GetAddressOfArg( i ) );
+            args[ i ] = WriteValue( ptr, type_id, obj_type, is_hashes, 0 );
+            msg_len += sizeof( ushort ) + (ushort) args[ i ].size();
+
+            if( args[ i ].size() > 0xFFFF )
+                SCRIPT_ERROR_R( "Some of argument is too large (more than 65535 bytes length)" );
+        }
+
+        # ifdef FONLINE_SERVER
+        Critter* cr = (Critter*) gen->GetObject();
+        if( !cr->IsPlayer() )
+        {
+            SCRIPT_ERROR_R( "Critter is not player" );
+            return;
+        }
+
+        Client* cl = (Client*) cr;
+        BufferManager& net_buf = cl->Bout;
+        # else
+        BufferManager& net_buf = FOClient::Self->Bout;
+        # endif
+
+        # ifdef FONLINE_SERVER
+        BOUT_BEGIN( cl );
+        # endif
+        net_buf << NETMSG_RPC;
+        net_buf << msg_len;
+        net_buf << func_index;
+        for( size_t i = 0; i < args.size(); i++ )
+        {
+            ushort len = (ushort) args[ i ].size();
+            net_buf << len;
+            if( len )
+                net_buf.Push( &args[ i ][ 0 ], len );
+        }
+        # ifdef FONLINE_SERVER
+        BOUT_END( cl );
+        # endif
+        #endif
+    }
+
+    void HandleRpc( void* context )
+    {
+        #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
+        # ifdef FONLINE_SERVER
+        Client* cl = (Client*) context;
+        BufferManager& net_buf = cl->Bin;
+        # else
+        BufferManager& net_buf = *(BufferManager*) context;
+        # endif
+
+        uint msg_len;
+        uint func_index;
+        net_buf >> msg_len;
+        net_buf >> func_index;
+        if( net_buf.IsError() )
+            return;
+
+        if( func_index >= (uint) inFunc.size() )
+        {
+            net_buf.SetError();
+            return;
+        }
+
+        if( !Script::PrepareContext( inFuncBind[ func_index ], _FUNC_, "Rpc" ) )
+        {
+            net_buf.SetError();
+            return;
+        }
+
+        char buf[ 0xFFFF + 1 ];
+        uchar pod_buf[ 8 ];
+        bool is_error = false;
+
+        asIScriptEngine* engine = Script::GetEngine();
+        asIScriptFunction* func = inFunc[ func_index ];
+        for( asUINT i = 0; i < func->GetParamCount(); i++ )
+        {
+            # ifdef FONLINE_SERVER
+            if( i == 0 )
+            {
+                Script::SetArgEntityOK( cl );
+                continue;
+            }
+            # endif
+
+            ushort len;
+            net_buf >> len;
+            if( net_buf.IsError() )
+                return;
+            net_buf.Pop( buf, len );
+            if( net_buf.IsError() )
+                return;
+            buf[ len ] = 0;
+
+            int type_id;
+            asDWORD flags;
+            func->GetParam( i, &type_id, &flags );
+            asIObjectType* obj_type = ( type_id & asTYPEID_MASK_OBJECT ? engine->GetObjectTypeById( type_id ) : nullptr );
+            bool is_hashes[] = { false, false, false, false };
+            void* value = ReadValue( buf, type_id, obj_type, is_hashes, 0, pod_buf, is_error );
+            if( is_error )
+            {
+                net_buf.SetError();
+                return;
+            }
+
+            if( !( type_id & asTYPEID_MASK_OBJECT ) )
+            {
+                int size = engine->GetSizeOfPrimitiveType( type_id );
+                if( size == 1 )
+                    Script::SetArgUChar( *(uchar*) value );
+                else if( size == 2 )
+                    Script::SetArgUShort( *(ushort*) value );
+                else if( size == 4 )
+                    Script::SetArgUInt( *(uint*) value );
+                else if( size == 8 )
+                    Script::SetArgUInt64( *(uint64*) value );
+                else
+                    RUNTIME_ASSERT( !"Unreachable place" );
+            }
+            else
+            {
+                Script::SetArgObject( value );
+            }
+        }
+
+        Script::RunPrepared();
+        #endif
+    }
+};
+
 ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
 {
     isError = false;
@@ -1274,6 +1633,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
     contentPragma = nullptr;
     enumPragma = nullptr;
     eventPragma = nullptr;
+    rpcPragma = nullptr;
 
     if( pragmaType != PRAGMA_UNKNOWN )
     {
@@ -1286,6 +1646,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
         contentPragma = new ContentPragma();
         enumPragma = new EnumPragma();
         eventPragma = new EventPragma();
+        rpcPragma = new RpcPragma( pragmaType );
     }
 }
 
@@ -1331,8 +1692,10 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         ok = enumPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "event" ) && eventPragma )
         ok = eventPragma->Call( pragma.Text );
+    else if( Str::CompareCase( pragma.Name.c_str(), "rpc" ) && rpcPragma )
+        ok = rpcPragma->Call( pragma.Text );
     else
-        WriteLog( "Unknown pragma instance, name '%s' text '%s'.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
+        WriteLog( "Unknown pragma instance, nbuame '%s' text '%s'.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
 
     if( ok )
         processedPragmas.push_back( pragma );
@@ -1354,6 +1717,8 @@ void ScriptPragmaCallback::Finish()
     if( !methodPragma->Finish() )
         isError = true;
     if( !contentPragma->Finish() )
+        isError = true;
+    if( !rpcPragma->Finish() )
         isError = true;
 }
 
@@ -1385,4 +1750,9 @@ bool ScriptPragmaCallback::RaiseInternalEvent( void* event_ptr, va_list args )
 void ScriptPragmaCallback::RemoveEventsEntity( Entity* entity )
 {
     eventPragma->RemoveEntity( entity );
+}
+
+void ScriptPragmaCallback::HandleRpc( void* context )
+{
+    rpcPragma->HandleRpc( context );
 }

@@ -41,6 +41,9 @@
     prop_type base_class_name::Get ## prop() { return Props.GetPropValue< prop_type >( class_name::Property ## prop ); } \
     void base_class_name::Set ## prop( prop_type value ) { Props.SetPropValue< prop_type >( class_name::Property ## prop, value ); }
 
+extern string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep );
+extern void*  ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error );
+
 class Entity;
 class Property;
 typedef void ( *NativeSendCallback )( Entity* entity, Property* prop );

@@ -403,8 +403,7 @@ bool BufferManager::NeedProcess()
     case NETMSG_TALK_NPC:
     case NETMSG_SEND_BARTER:
     case NETMSG_MAP:
-    case NETMSG_RUN_CLIENT_SCRIPT:
-    case NETMSG_SEND_RUN_SERVER_SCRIPT:
+    case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
@@ -677,8 +676,7 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_TALK_NPC:
     case NETMSG_SEND_BARTER:
     case NETMSG_MAP:
-    case NETMSG_RUN_CLIENT_SCRIPT:
-    case NETMSG_SEND_RUN_SERVER_SCRIPT:
+    case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:

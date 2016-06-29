@@ -1350,7 +1350,7 @@ static string DecodeString( const string& str )
     return result;
 }
 
-static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep )
+string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep )
 {
     if( !( type_id & asTYPEID_MASK_OBJECT ) )
     {
@@ -1433,7 +1433,7 @@ static string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bo
     return "";
 }
 
-static void* ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error )
+void* ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error )
 {
     RUNTIME_ASSERT( deep <= 3 );
 
