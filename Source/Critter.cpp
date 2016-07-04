@@ -1702,15 +1702,15 @@ void Critter::ToDead( uint anim2, bool send_all )
     }
 }
 
-bool Critter::SetScript( const char* script_name, bool first_time )
+bool Critter::SetScript( asIScriptFunction* func, bool first_time )
 {
     hash func_num = 0;
-    if( script_name && script_name[ 0 ] )
+    if( func )
     {
-        func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Critter&,bool)" );
+        func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script '%s' bind fail, critter '%s'.\n", script_name, GetInfo() );
+            WriteLogF( _FUNC_, " - Script bind fail, critter '%s'.\n", GetInfo() );
             return false;
         }
         SetScriptId( func_num );

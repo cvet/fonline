@@ -146,7 +146,7 @@ public:
 
 
     // Script
-    bool SetScript( const char* script_name, bool first_time );
+    bool SetScript( asIScriptFunction* func, bool first_time );
 };
 typedef map< uint, Map* > MapMap;
 typedef vector< Map* >    MapVec;

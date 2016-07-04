@@ -55,19 +55,14 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
     return true;
 }
 
-void ScriptProfiler::AddModule( int path_type, const char* module_name, const char* cache_prefix )
+void ScriptProfiler::AddModule( int path_type, const char* module_name, const char* script_code )
 {
     RUNTIME_ASSERT( curStage == ProfilerInitialized );
 
     if( saveFileHandle )
     {
-        char        fname[ MAX_FOPATH ];
-        Str::Format( fname, "%s%s.fosp", cache_prefix, module_name );
-        FileManager file;
-        file.LoadFile( fname, path_type );
-        RUNTIME_ASSERT( file.IsLoaded() );
         FileWrite( saveFileHandle, module_name, Str::Length( module_name ) + 1 );
-        FileWrite( saveFileHandle, file.GetBuf(), Str::Length( (char*) file.GetBuf() ) + 1 );
+        FileWrite( saveFileHandle, script_code, Str::Length( script_code ) + 1 );
     }
 }
 

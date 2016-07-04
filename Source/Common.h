@@ -510,7 +510,6 @@ struct GameOptions
     uint          MinimumOfflineTime;
     bool          GameServer;
     bool          UpdateServer;
-    bool          BuildMapperScripts;
     ScriptString* CommandLine;
 
     int           StartSpecialPoints;
@@ -667,7 +666,6 @@ struct GameOptions
     const char*   ( *GetNameByHash )( hash );
     hash          ( * GetHashByName )( const char* );
 
-    bool          ( * ScriptLoadModule )( const char* );
     uint          ( * ScriptBind )( const char*, const char*, bool );
     bool          ( * ScriptPrepare )( uint );
     void          ( * ScriptSetArgInt8 )( char );
@@ -953,12 +951,5 @@ T* ReadDataArr( UCharVec& vec, uint size, uint& pos )
     pos += size;
     return size ? &vec[ pos - size ] : nullptr;
 }
-
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-
-// Preprocessor output formatting
-void FormatPreprocessorOutput( string& str );
 
 #endif // __COMMON__

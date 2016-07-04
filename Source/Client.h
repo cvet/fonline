@@ -480,8 +480,8 @@ public:
         static uint Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
         static void Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
-        static bool Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func );
-        static bool Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred );
+        static bool Global_SetPropertyGetCallback( int prop_enum_value, void* ref, int type_id );
+        static bool Global_AddPropertySetCallback( int prop_enum_value, void* ref, int type_id, bool deferred );
         static void Global_AllowSlot( uchar index, bool enable_send );
         static void Global_AddRegistrationProperty( int cr_prop );
         static bool Global_LoadDataFile( ScriptString& dat_name );

@@ -271,7 +271,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         else
             decl = "void %s()";
 
-        call.FuncNum = Script::BindScriptFuncNumByScriptName( kv[ "Script" ].c_str(), decl );
+        call.FuncNum = Script::BindScriptFuncNumByFuncName( kv[ "Script" ].c_str(), decl );
         if( !call.FuncNum )
         {
             WriteLog( "Unable to find function '%s' with declaration '%s' for deferred call %u.\n", kv[ "Script" ].c_str(), decl, call.Id );

@@ -1083,7 +1083,6 @@ GameOptions::GameOptions()
     MinimumOfflineTime = 180000;
     GameServer = false;
     UpdateServer = false;
-    BuildMapperScripts = false;
     CommandLine = ScriptString::Create();
 
     StartSpecialPoints = 40;
@@ -1242,7 +1241,6 @@ GameOptions::GameOptions()
     GetNameByHash = &Str::GetName;
     GetHashByName = &Str::GetHash;
 
-    ScriptLoadModule = nullptr;
     ScriptBind = nullptr;
     ScriptPrepare = nullptr;
     ScriptSetArgInt8 = nullptr;
@@ -1594,17 +1592,4 @@ int InsertTabs( string& str, int cur_pos, int level )
     }
 
     return i;
-}
-
-void FormatPreprocessorOutput( string& str )
-{
-    // Combine long line breaks
-    for( int i = 0; i < (int) str.length() - 2; ++i )
-        if( str[ i ] == '\n' && str[ i + 1 ] == '\n' && str[ i + 2 ] == '\n' )
-            str[ i ] = ' ';
-
-    // Add tabulations for {}
-    for( int i = 0; i < (int) str.length() - 1; ++i )
-        if( str[ i ] == '{' )
-            i = InsertTabs( str, i + 1, 1 );
 }

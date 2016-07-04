@@ -397,8 +397,6 @@ struct BindClass
     static void Global_GetAllNpc()              {}
     static void Global_GetAllMaps()             {}
     static void Global_GetAllLocations()        {}
-    static void Global_GetScriptId()            {}
-    static void Global_GetScriptName()          {}
     static void Global_LoadImage()              {}
     static void Global_GetImageColor()          {}
     static void Global_Synchronize()            {}

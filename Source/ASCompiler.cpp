@@ -238,11 +238,9 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     FileManager::ExtractFileName( path, file_name );
 
     // Make module name
-    char        module_name[ MAX_FOTEXT ];
+    char module_name[ MAX_FOTEXT ];
     Str::Copy(  module_name, file_name );
-    const char* ext = FileManager::GetExtension( file_name );
-    if( !( ext && Str::CompareCase( ext, "fosh" ) ) )
-        FileManager::EraseExtension( module_name );
+    FileManager::EraseExtension( module_name );
 
     // Start compilation
     char target_lower[ MAX_FOTEXT ];
@@ -250,10 +248,6 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     Str::Lower( target_lower );
     WriteLog( "Compiling '%s' as %s script...\n", file_name, target_lower );
     double tick = Timer::AccurateTick();
-
-    // Get dir
-    char dir[ MAX_FOTEXT ];
-    FileManager::ExtractDir( path, dir );
 
     // Preprocessor defines
     Preprocessor::UndefAll();
@@ -270,7 +264,14 @@ int Compile( const char* target, FileManager& file, const char* path, const char
         Preprocessor::Define( string( defines[ i ] ) );
 
     // Compile
-    if( !Script::LoadModuleFromFile( module_name, file, dir, nullptr ) )
+    if( Str::Compare( target, "SERVER" ) )
+        target = "Server";
+    else if( Str::Compare( target, "CLIENT" ) )
+        target = "Client";
+    else if( Str::Compare( target, "MAPPER" ) )
+        target = "Mapper";
+
+    if( !Script::ReloadScripts( target ) )
         return -1;
 
     // Finish pragmas
@@ -288,7 +289,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     for( size_t i = 0; i < run_func.size(); i++ )
     {
         WriteLog( "Executing 'void %s()'.\n", run_func[ i ] );
-        uint bind_id = Script::BindByModuleFuncName( module_name, run_func[ i ], "void %s()", true );
+        uint bind_id = Script::BindByFuncName( run_func[ i ], "void %s()", true );
         if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "ASCompiler" ) )
             Script::RunPrepared();
     }

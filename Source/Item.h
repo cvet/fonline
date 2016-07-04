@@ -331,7 +331,7 @@ public:
     bool operator==( const uint& id ) { return Id == id; }
 
     #ifdef FONLINE_SERVER
-    bool SetScript( const char* script_name, bool first_time );
+    bool SetScript( asIScriptFunction* func, bool first_time );
     #endif // FONLINE_SERVER
 
     void        SetSortValue( ItemVec& items );

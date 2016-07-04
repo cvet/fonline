@@ -495,7 +495,7 @@
 // ***  FOINTERNAL.MSG  ******************************************************************
 // ***************************************************************************************
 
-#define STR_INTERNAL_SCRIPT_MODULES        ( 100 )
+#define STR_INTERNAL_SCRIPT_MODULE         ( 100 )
 #define STR_INTERNAL_SCRIPT_DLLS           ( 50000 )
 #define STR_INTERNAL_SCRIPT_PRAGMAS        ( 90000 )
 

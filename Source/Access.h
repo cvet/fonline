@@ -28,7 +28,6 @@
 #define CMD_ADDNPC                   ( 15 )
 #define CMD_ADDLOCATION              ( 16 )
 #define CMD_RELOADSCRIPTS            ( 17 )
-#define CMD_LOADSCRIPT               ( 18 )
 #define CMD_RELOAD_CLIENT_SCRIPTS    ( 19 )
 #define CMD_RUNSCRIPT                ( 20 )
 #define COMMAND_RELOAD_PROTOS        ( 21 )
@@ -71,8 +70,6 @@ const CmdDef cmdlist[] =
     { "addnpc", CMD_ADDNPC },
     { "addloc", CMD_ADDLOCATION },
     { "reloadscripts", CMD_RELOADSCRIPTS },
-    { "loadscript", CMD_LOADSCRIPT },
-    { "load", CMD_LOADSCRIPT },
     { "reloadclientscripts", CMD_RELOAD_CLIENT_SCRIPTS },
     { "rcs", CMD_RELOAD_CLIENT_SCRIPTS },
     { "runscript", CMD_RUNSCRIPT },
@@ -413,9 +410,9 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char script_name[ MAX_FOTEXT ];
         char func_name[ MAX_FOTEXT ];
         uint param0, param1, param2;
-        if( sscanf( args, "%s%s%d%d%d", script_name, func_name, &param0, &param1, &param2 ) != 5 )
+        if( sscanf( args, "%s%d%d%d", func_name, &param0, &param1, &param2 ) != 5 )
         {
-            logcb( "Invalid arguments. Example: runscript module func param0 param1 param2." );
+            logcb( "Invalid arguments. Example: runscript module::func param0 param1 param2." );
             break;
         }
         script_name[ MAX_FOTEXT - 1 ] = 0;

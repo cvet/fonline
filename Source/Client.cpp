@@ -7081,9 +7081,7 @@ bool FOClient::ReloadScripts()
     WriteLog( "Load scripts...\n" );
 
     FOMsg& msg_script = CurLang.Msg[ TEXTMSG_INTERNAL ];
-    if( !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES ) ||
-        !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES + 1 ) ||
-        !msg_script.Count( STR_INTERNAL_SCRIPT_MODULES + 2 ) )
+    if( !msg_script.Count( STR_INTERNAL_SCRIPT_MODULE ) || !msg_script.Count( STR_INTERNAL_SCRIPT_MODULE + 1 ) )
     {
         WriteLog( "Main script section not found in MSG.\n" );
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
@@ -7153,56 +7151,47 @@ bool FOClient::ReloadScripts()
 
     // Pragmas
     Pragmas pragmas;
-    for( int i = STR_INTERNAL_SCRIPT_PRAGMAS; ; i += 2 )
-    {
-        if( !msg_script.Count( i ) )
-            break;
-        RUNTIME_ASSERT( msg_script.Count( i + 1 ) );
-
-        Preprocessor::PragmaInstance pragma;
-        pragma.Name = msg_script.GetStr( i );
-        pragma.Text = msg_script.GetStr( i + 1 );
-        pragma.CurrentFile = "Main";
-        pragma.CurrentFileLine = i;
-        pragmas.push_back( pragma );
-    }
-    Script::CallPragmas( pragmas );
-
-    // Load modules
-    int errors = 0;
-    for( int i = STR_INTERNAL_SCRIPT_MODULES; ; i += 3 )
+    for( int i = STR_INTERNAL_SCRIPT_PRAGMAS; ; i += 3 )
     {
         if( !msg_script.Count( i ) )
             break;
         RUNTIME_ASSERT( msg_script.Count( i + 1 ) );
         RUNTIME_ASSERT( msg_script.Count( i + 2 ) );
 
-        const char* module_name = msg_script.GetStr( i );
-        RUNTIME_ASSERT( module_name && module_name[ 0 ] );
+        Preprocessor::PragmaInstance pragma;
+        pragma.Name = msg_script.GetStr( i );
+        pragma.Text = msg_script.GetStr( i + 1 );
+        pragma.CurrentFile = msg_script.GetStr( i + 2 );
+        pragmas.push_back( pragma );
+    }
+    Script::CallPragmas( pragmas );
 
-        UCharVec bytecode;
-        msg_script.GetBinary( i + 1, bytecode );
-        RUNTIME_ASSERT( !bytecode.empty() );
+    // Load module
+    int      errors = 0;
 
-        UCharVec lnt_data;
-        msg_script.GetBinary( i + 2, lnt_data );
-        RUNTIME_ASSERT( !lnt_data.empty() );
-
-        if( !Script::RestoreModuleFromBinary( module_name, bytecode, lnt_data ) )
+    UCharVec bytecode;
+    msg_script.GetBinary( STR_INTERNAL_SCRIPT_MODULE, bytecode );
+    RUNTIME_ASSERT( !bytecode.empty() );
+    UCharVec lnt_data;
+    msg_script.GetBinary( STR_INTERNAL_SCRIPT_MODULE + 1, lnt_data );
+    RUNTIME_ASSERT( !lnt_data.empty() );
+    if( Script::RestoreRootModule( bytecode, lnt_data ) )
+    {
+        if( Script::PostInitScriptSystem() )
         {
-            WriteLog( "Load script '%s' fail.\n", module_name );
+            Script::CacheEnumValues();
+        }
+        else
+        {
+            WriteLog( "Init client script fail.\n" );
             errors++;
         }
     }
-
-    // Bind functions
-    if( !Script::BindImportedFunctions() )
+    else
+    {
+        WriteLog( "Load client script fail.\n" );
         errors++;
-    if( !Script::RebindFunctions() )
-        errors++;
-    if( !Script::PostInitScriptSystem() )
-        errors++;
-    Script::CacheEnumValues();
+    }
 
     #define BIND_INTERNAL_EVENT( name )    ClientFunctions. ## name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( Start );
@@ -9011,7 +9000,7 @@ void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort&
     milliseconds = dt.Milliseconds;
 }
 
-bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func )
+bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, void* ref, int type_id )
 {
     Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
@@ -9019,20 +9008,20 @@ bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, 
     if( !prop )
         SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
-    string result = prop->SetGetCallback( script_func.c_str() );
+    string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
         SCRIPT_ERROR_R0( result.c_str() );
     return true;
 }
 
-bool FOClient::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred )
+bool FOClient::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, void* ref, int type_id, bool deferred )
 {
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
-    string result = prop->AddSetCallback( script_func.c_str(), deferred );
+    string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )
         SCRIPT_ERROR_R0( result.c_str() );
     return true;

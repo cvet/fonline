@@ -253,7 +253,7 @@ public:
     bool     IsHaveGeckItem();
 
 public:
-    bool SetScript( const char* script_name, bool first_time );
+    bool SetScript( asIScriptFunction* func, bool first_time );
     // Knockout
     uint KnockoutAp;
 

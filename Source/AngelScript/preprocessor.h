@@ -130,6 +130,7 @@ public:
 public:
         virtual ~FileLoader() {}
         virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data );
+        virtual void FileLoaded() { }
     };
 
     /************************************************************************/

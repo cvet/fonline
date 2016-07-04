@@ -1175,10 +1175,10 @@ public:
             engine->RegisterObjectType( event_name, 0, asOBJ_REF ) < 0 ||
             engine->RegisterObjectBehaviour( event_name, asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptEvent, AddRef ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectBehaviour( event_name, asBEHAVE_RELEASE, "void f()", asMETHOD( ScriptEvent, Release ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFunc@)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFunc@)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFunc@+)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFuncBool@+)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFunc@+)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@+)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", asMETHOD( ScriptEvent, UnsubscribeAll ), asCALL_THISCALL ) < 0 ||
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
             return false;
@@ -1213,10 +1213,10 @@ public:
                 Str::Copy( arg_name, name );
                 arg_name[ 0 ] = toupper( arg_name[ 0 ] );
 
-                if( engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeTo%s(%s, %sFunc@)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeTo%s(%s, %sFuncBool@)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void UnsubscribeFrom%s(%s, %sFunc@)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void UnsubscribeFrom%s(%s, %sFuncBool@)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
+                if( engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeTo%s(%s, %sFunc@+)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeTo%s(%s, %sFuncBool@+)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void UnsubscribeFrom%s(%s, %sFunc@+)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void UnsubscribeFrom%s(%s, %sFuncBool@+)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
                     return false;
             }
         }
@@ -1275,7 +1275,7 @@ class RpcPragma
     int curOutIndex;
     FuncDescVec inFuncDesc;
     FuncVec inFunc;
-    IntVec inFuncBind;
+    UIntVec inFuncBind;
 
 public:
     RpcPragma( int pragma_type )
@@ -1298,7 +1298,7 @@ public:
         RUNTIME_ASSERT( r >= 0 );
     }
 
-    bool Call( const string& text )
+    bool Call( const string& text, const string& cur_file )
     {
         if( !inited )
         {
@@ -1354,8 +1354,7 @@ public:
         {
             int type_id;
             asDWORD flags;
-            const char* name;
-            func_def->GetParam( i, &type_id, &flags, &name );
+            func_def->GetParam( i, &type_id, &flags );
 
             if( type_id & asTYPEID_MASK_OBJECT )
             {
@@ -1402,7 +1401,9 @@ public:
         }
         else
         {
-            inFuncDesc.push_back( PAIR( string( name ), string( args ) ) );
+            string func_name = cur_file;
+            func_name.append( "::" ).append( name );
+            inFuncDesc.push_back( PAIR( func_name, string( args ) ) );
         }
 
         return true;
@@ -1413,56 +1414,21 @@ public:
         uint errors = 0;
 
         #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
-        // Collect functions in all modules
-        asIScriptEngine* engine = Script::GetEngine();
-        multimap< string, asIScriptFunction* > all_functions;
-        asUINT                                 module_count = engine->GetModuleCount();
-        for( asUINT m = 0; m < module_count; m++ )
-        {
-            asIScriptModule* module = engine->GetModuleByIndex( m );
-            asUINT           func_count = module->GetFunctionCount();
-            for( asUINT f = 0; f < func_count; f++ )
-            {
-                asIScriptFunction* func = module->GetFunctionByIndex( f );
-                all_functions.insert( PAIR( func->GetName(), func ) );
-            }
-        }
-
-        // Automatically find function
         for( auto& func_desc : inFuncDesc )
         {
-            uint count = (uint) all_functions.count( func_desc.first );
-            if( count == 1 )
-            {
-                // Verify args
-                char decl[ MAX_FOTEXT ];
-                Str::Format( decl, "void %s(%s%s%s)", "%s", pragmaType == PRAGMA_SERVER ? "Critter&" : "",
-                             pragmaType == PRAGMA_SERVER && func_desc.second.length() > 0 ? ", " : "", func_desc.second.c_str() );
+            char decl[ MAX_FOTEXT ];
+            Str::Format( decl, "void %s(%s%s%s)", "%s", pragmaType == PRAGMA_SERVER ? "Critter&" : "",
+                         pragmaType == PRAGMA_SERVER && func_desc.second.length() > 0 ? ", " : "", func_desc.second.c_str() );
 
-                asIScriptFunction* func = all_functions.find( func_desc.first )->second;
-                int                bind_id = Script::BindByModuleFuncName( func->GetModuleName(), func->GetName(), decl, false );
-                if( bind_id > 0 )
-                {
-                    inFunc.push_back( func );
-                    inFuncBind.push_back( bind_id );
-                }
-                else
-                {
-                    WriteLog( "Bind rpc function fail, module '%s', name '%s'.\n", func->GetModuleName(), func_desc.first.c_str() );
-                    errors++;
-                }
-            }
-            else if( count == 0 )
+            uint bind_id = Script::BindByFuncName( func_desc.first.c_str(), decl, false, false );
+            if( bind_id )
             {
-                WriteLog( "Rpc function '%s' not found.\n", func_desc.first.c_str() );
-                errors++;
+                inFunc.push_back( Script::GetBindFunc( bind_id ) );
+                inFuncBind.push_back( bind_id );
             }
             else
             {
-                WriteLog( "Multiplied functions found for rpc function '%s'.\n", func_desc.first.c_str() );
-                auto it = all_functions.find( func_desc.first );
-                for( uint j = 0; j < count; j++, it++ )
-                    WriteLog( "- In module '%s'.\n", it->second->GetModuleName() );
+                WriteLog( "Can't bind Rpc function '%s'.\n", func_desc.first.c_str() );
                 errors++;
             }
         }
@@ -1665,11 +1631,6 @@ ScriptPragmaCallback::~ScriptPragmaCallback()
 
 void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragma )
 {
-    string pragma_instance = pragma.CurrentFile + Str::ItoA( pragma.CurrentFileLine );
-    if( alreadyProcessed.count( pragma_instance ) )
-        return;
-    alreadyProcessed.insert( pragma_instance );
-
     if( ignorePragma && ignorePragma->IsIgnored( pragma.Name ) )
         return;
 
@@ -1693,7 +1654,7 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
     else if( Str::CompareCase( pragma.Name.c_str(), "event" ) && eventPragma )
         ok = eventPragma->Call( pragma.Text );
     else if( Str::CompareCase( pragma.Name.c_str(), "rpc" ) && rpcPragma )
-        ok = rpcPragma->Call( pragma.Text );
+        ok = rpcPragma->Call( pragma.Text, pragma.CurrentFile );
     else
         WriteLog( "Unknown pragma instance, nbuame '%s' text '%s'.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
 

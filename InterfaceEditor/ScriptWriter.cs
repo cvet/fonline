@@ -22,9 +22,9 @@ namespace InterfaceEditor
 
 			_Script.AppendLine();
 			if (root is GUIScreen)
-				_Script.AppendLine(_BaseIdent + root.GetType().ToString().Substring(root.GetType().ToString().IndexOf("GUI")) + "@ CreateScreen()");
+				_Script.AppendLine(_BaseIdent + "Gui::" + root.GetType().ToString().Substring(root.GetType().ToString().IndexOf("GUI") + 3) + "@ CreateScreen()");
 			else
-				_Script.AppendLine(_BaseIdent + root.Name + "@ CreateHierarchy( GUIObject@ parent )");
+				_Script.AppendLine(_BaseIdent + root.Name + "@ CreateHierarchy( Gui::Object@ parent )");
 			_Script.AppendLine(_BaseIdent + "{");
 			if (root is GUIScreen)
 				_Script.AppendLine(_BaseIdent + "    return Create" + root.Name + "Hierarchy( null );");
@@ -46,7 +46,7 @@ namespace InterfaceEditor
 		{
 			// Hierarchy creation
 			_Script.AppendLine();
-			_Script.AppendLine(_BaseIdent + obj.Name + "@ Create" + obj.Name + "Hierarchy( GUIObject@ parent )");
+			_Script.AppendLine(_BaseIdent + obj.Name + "@ Create" + obj.Name + "Hierarchy( Gui::Object@ parent )");
 			_Script.AppendLine(_BaseIdent + "{");
 			_Script.AppendLine(_BaseIdent + "    " + obj.Name + " obj();");
 			foreach (GUIObject child in obj.Children)
@@ -74,7 +74,7 @@ namespace InterfaceEditor
 			}
 
 			// Class name
-			_Script.AppendLine(_BaseIdent + "class " + className + " : " + obj.GetType().ToString().Substring(obj.GetType().ToString().IndexOf("GUI")));
+			_Script.AppendLine(_BaseIdent + "class " + className + " : Gui::" + obj.GetType().ToString().Substring(obj.GetType().ToString().IndexOf("GUI") + 3));
 			_Script.AppendLine(_BaseIdent + "{");
 
 			// Class fields
@@ -282,8 +282,8 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnFocusChanged() override", obj.OnFocusChanged);
 			WriteClassFunction("void OnHoverChanged() override", obj.OnHoverChanged);
 			WriteClassFunction("void OnDragChanged() override", obj.OnDragChanged);
-			WriteClassFunction("void OnResizeGrid( GUIObject@ cell, uint cellIndex ) override", obj.OnResizeGrid);
-			WriteClassFunction("void OnDrawItem( Item@ item, GUIObject@ cell, uint cellIndex ) override", obj.OnDrawItem);
+			WriteClassFunction("void OnResizeGrid( Gui::Object@ cell, uint cellIndex ) override", obj.OnResizeGrid);
+			WriteClassFunction("void OnDrawItem( Item@ item, Gui::Object@ cell, uint cellIndex ) override", obj.OnDrawItem);
 			if (obj is GUICheckBox)
 			{
 				WriteClassFunction("void OnCheckedChanged() override", ((GUICheckBox)obj).OnCheckedChanged);

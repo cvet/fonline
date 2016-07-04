@@ -118,8 +118,8 @@ public:
     void   SetData( Entity* entity, uchar* data, uint data_size );
     int    GetPODValueAsInt( Entity* entity );
     void   SetPODValueAsInt( Entity* entity, int value );
-    string SetGetCallback( const char* script_func );
-    string AddSetCallback( const char* script_func, bool deferred );
+    string SetGetCallback( asIScriptFunction* func );
+    string AddSetCallback( asIScriptFunction* func, bool deferred );
 
 private:
     enum DataType

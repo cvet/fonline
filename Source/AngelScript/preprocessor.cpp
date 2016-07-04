@@ -233,7 +233,7 @@ Preprocessor::LineNumberTranslator::Entry& Preprocessor::LineNumberTranslator::S
 void Preprocessor::LineNumberTranslator::AddLineRange( const std::string& file, unsigned int start_line, unsigned int offset )
 {
     Entry e;
-    e.File = file + ( file.find_last_of( '.' ) == std::string::npos ? ".fosh" : "" );
+    e.File = file;
     e.StartLine = start_line;
     e.Offset = offset;
     lines.push_back( e );
@@ -939,10 +939,13 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
     }
 
     if( data.size() == 0 )
+    {
+        file_source.FileLoaded();
         return;
+    }
+
     char* d_end = &data[ data.size() - 1 ];
-    ++d_end;
-    Lex( &data[ 0 ], d_end, lexems );
+    Lex( &data[ 0 ], ++d_end, lexems );
 
     LexemList::iterator itr = lexems.begin();
     LexemList::iterator end = lexems.end();
@@ -1080,6 +1083,8 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
 
     if( LNT )
         LNT->AddLineRange( current_file, start_line, CurrentLine - LinesThisFile );
+
+    file_source.FileLoaded();
 }
 
 int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStream* errors, FileLoader* loader, bool skip_pragmas )
@@ -1118,14 +1123,13 @@ void Preprocessor::Define( const std::string& str )
     if( str.length() == 0 )
         return;
 
-    Undef( str );
+    Undef( str.substr( 0, str.find_first_of( " \t" ) ) );
 
     std::string data = "#define ";
     data += str;
     char*       d_end = &data[ data.length() - 1 ];
-    ++d_end;
     LexemList   lexems;
-    Lex( &data[ 0 ], d_end, lexems );
+    Lex( &data[ 0 ], ++d_end, lexems );
 
     ParseDefine( CustomDefines, lexems );
 }

@@ -36,7 +36,6 @@ class BindFunction
 public:
     bool               IsScriptCall;
     asIScriptFunction* ScriptFunc;
-    string             ModuleName;
     string             FuncName;
     size_t             NativeFuncAddr;
 
@@ -51,18 +50,15 @@ public:
     {
         IsScriptCall = true;
         ScriptFunc = func;
-        const char* module_name = func->GetModuleName();
-        ModuleName = ( module_name ? module_name : "unknown" );
         FuncName = func->GetDeclaration();
         func->AddRef();
         NativeFuncAddr = 0;
     }
 
-    BindFunction( size_t native_func_addr, const char* module_name,  const char* func_name )
+    BindFunction( size_t native_func_addr, const char* func_name )
     {
         IsScriptCall = false;
         NativeFuncAddr = native_func_addr;
-        ModuleName = module_name;
         FuncName = func_name;
         ScriptFunc = nullptr;
     }
@@ -165,22 +161,9 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     // Game options callback
     struct GameOptScript
     {
-        static bool ScriptLoadModule( const char* module_name )
+        static uint ScriptBind( const char* func_name, const char* func_decl, bool temporary_id )
         {
-            FilesCollection scripts( "fos" );
-            const char*     path;
-            FileManager&    file = scripts.FindFile( module_name, &path );
-            if( file.IsLoaded() )
-            {
-                char dir[ MAX_FOPATH ];
-                FileManager::ExtractDir( path, dir );
-                return Script::LoadModuleFromFile( module_name, file, dir, nullptr ) && Script::BindImportedFunctions();
-            }
-            return nullptr;
-        }
-        static uint ScriptBind( const char* script_name, const char* func_decl, bool temporary_id )
-        {
-            return Script::BindByScriptName( script_name, func_decl, temporary_id, false );
+            return Script::BindByFuncName( func_name, func_decl, temporary_id, false );
         }
         static bool ScriptPrepare( uint bind_id )
         {
@@ -295,7 +278,6 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
             return *(void**) Script::GetReturnedRawAddress();
         }
     };
-    GameOpt.ScriptLoadModule = &GameOptScript::ScriptLoadModule;
     GameOpt.ScriptBind = &GameOptScript::ScriptBind;
     GameOpt.ScriptPrepare = &GameOptScript::ScriptPrepare;
     GameOpt.ScriptSetArgInt8 = &GameOptScript::ScriptSetArgInt8;
@@ -541,7 +523,7 @@ void Script::UnloadScripts()
         Engine->GetModuleByIndex( 0 )->Discard();
 }
 
-bool Script::ReloadScripts( const char* target, const char* cache_pefix )
+bool Script::ReloadScripts( const char* target )
 {
     WriteLog( "Reload scripts...\n" );
 
@@ -549,7 +531,6 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
 
     EngineData* edata = (EngineData*) Engine->GetUserData();
     int         errors = 0;
-    bool        load_from_raw = ( cache_pefix == nullptr );
 
     // Get last write time in cache scripts
     uint64          cache_write_time = 0;
@@ -627,16 +608,28 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
         // Add file names
         module_names.push_back( PAIR( string( file_name ), string( file_full_name ) ) );
 
-        // Check in cache
-        if( !load_from_raw && !cache_file_names.count( ( string( cache_pefix ) + name ).c_str() ) )
-            load_from_raw = true;
+        // Append
+        ScriptEntry entry;
+        entry.Name = name;
+        entry.Content = string( "namespace " ).append( name ).append( "{" ).append( (char*) file.GetBuf() ).append( "\n}\n" );
+        entry.SortValue = sort_value;
+        entry.SortValueExt = ++file_index;
+        scripts.push_back( entry );
     }
 
-    // Load modules
-    for( size_t i = 0; i < module_names.size(); i++ )
+    std::sort( scripts.begin(), scripts.end(), [] ( ScriptEntry & a, ScriptEntry & b )
+               {
+                   if( a.SortValue == b.SortValue )
+                       return a.SortValueExt < b.SortValueExt;
+                   return a.SortValue < b.SortValue;
+               } );
+    StrVec names;
+    StrVec contents;
+    for( auto& s : scripts )
     {
-        const char* name = module_names[ i ].first.c_str();
-        const char* path = module_names[ i ].second.c_str();
+        names.push_back( s.Name );
+        contents.push_back( s.Content );
+    }
 
         // Load module
         if( load_from_raw )
@@ -661,30 +654,19 @@ bool Script::ReloadScripts( const char* target, const char* cache_pefix )
             }
         }
 
-        // Add to profiler
-        if( edata->Profiler )
-        {
-            RUNTIME_ASSERT( cache_pefix );
-            #ifdef FONLINE_SERVER
-            edata->Profiler->AddModule( PT_SERVER_CACHE, name, cache_pefix );
-            #else
-            edata->Profiler->AddModule( PT_CLIENT_CACHE, name, cache_pefix );
-            #endif
-        }
+    // Add to profiler
+    if( edata->Profiler )
+    {
+        #ifdef FONLINE_SERVER
+        edata->Profiler->AddModule( PT_SERVER_CACHE, "Root", result_code.c_str() );
+        #else
+        edata->Profiler->AddModule( PT_CLIENT_CACHE, "Root", result_code.c_str() );
+        #endif
     }
 
     // Finalize profiler
     if( edata->Profiler )
         edata->Profiler->EndModules();
-
-    // Bind imported functions
-    if( !errors && !BindImportedFunctions() )
-        errors++;
-
-    #ifdef FONLINE_SERVER
-    if( !errors && Str::Compare( target, "Server" ) && !RebindFunctions() )
-        errors++;
-    #endif
 
     CacheEnumValues();
 
@@ -718,7 +700,10 @@ bool Script::PostInitScriptSystem()
 
 bool Script::RunModuleInitFunctions()
 {
-    for( asUINT i = 0; i < Engine->GetModuleCount(); i++ )
+    RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
+
+    asIScriptModule* module = Engine->GetModuleByIndex( 0 );
+    for( asUINT i = 0; i < module->GetFunctionCount(); i++ )
     {
         asIScriptModule* module = Engine->GetModuleByIndex( i );
         uint             bind_id = Script::BindByScriptName( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
@@ -726,11 +711,9 @@ bool Script::RunModuleInitFunctions()
             bind_id = Script::BindByScriptName( Str::FormatBuf( "%s@ModuleInit", module->GetName() ), "bool %s()", true, true );
         if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
         {
-            if( !Script::RunPrepared() )
-            {
-                WriteLog( "Error executing init function, module '%s'.\n", module->GetName() );
-                return false;
-            }
+            WriteLog( "Init function '%s::%s' must have void or bool return type.\n", func->GetNamespace(), func->GetName() );
+            return false;
+        }
 
             if( !Script::GetReturnedBool() )
             {
@@ -910,7 +893,7 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
         asIScriptContext* ctx_ = ctx;
         while( ctx_ )
         {
-            Str::Append( buf, MakeContextTraceback( ctx_, ctx_ == ctx, false ).c_str() );
+            Str::Append( buf, MakeContextTraceback( ctx_ ).c_str() );
             ContextData* ctx_data = (ContextData*) ctx_->GetUserData();
             ctx_ = ctx_data->Parent;
         }
@@ -925,7 +908,7 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
     #endif
 }
 
-string Script::MakeContextTraceback( asIScriptContext* ctx, bool include_header, bool extended_header )
+string Script::MakeContextTraceback( asIScriptContext* ctx )
 {
     string                   result = "";
     char                     buf[ MAX_FOTEXT ];
@@ -935,19 +918,10 @@ string Script::MakeContextTraceback( asIScriptContext* ctx, bool include_header,
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
 
-    // Header
-    if( include_header )
-    {
-        if( !extended_header )
-            result += Str::Format( buf, " Traceback:\n" );
-        else
-            result += Str::Format( buf, " Traceback: (%s, %s)\n", ContextStatesStr[ (int) ctx->GetState() ], ctx_data->Info );
-    }
-
     // Print system function
     asIScriptFunction* sys_func = ctx->GetSystemFunction();
     if( sys_func )
-        result += Str::Format( buf, "  %s\n", sys_func->GetDeclaration( true, true, true ) );
+        result += Str::Format( buf, "\t%s\n", sys_func->GetDeclaration( true, true, true ) );
 
     // Print current function
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
@@ -963,7 +937,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx, bool include_header,
     if( func )
     {
         Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
-        result += Str::Format( buf, "  %s : %s : Line %d\n", Preprocessor::ResolveOriginalFile( line, lnt ), func->GetDeclaration(), Preprocessor::ResolveOriginalLine( line, lnt ) );
+        result += Str::Format( buf, "\t%s : Line %d\n", func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ) );
     }
 
     // Print call stack
@@ -974,7 +948,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx, bool include_header,
         if( func )
         {
             Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
-            result += Str::Format( buf, "  %s : %s : Line %d\n", Preprocessor::ResolveOriginalFile( line, lnt ), func->GetDeclaration(), Preprocessor::ResolveOriginalLine( line, lnt ) );
+            result += Str::Format( buf, "\t%s : Line %d\n", func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ) );
         }
     }
 
@@ -1061,17 +1035,6 @@ void Script::HandleRpc( void* context )
     edata->PragmaCB->HandleRpc( context );
 }
 
-const char* Script::GetActiveModuleName()
-{
-    asIScriptContext* ctx = asGetActiveContext();
-    if( !ctx )
-        return nullptr;
-    asIScriptFunction* func = ctx->GetFunction( 0 );
-    if( !func )
-        return nullptr;
-    return func->GetModuleName();
-}
-
 const char* Script::GetActiveFuncName()
 {
     static const char error[] = "<error>";
@@ -1152,9 +1115,9 @@ void Script::CallPragmas( const Pragmas& pragmas )
         Preprocessor::CallPragma( pragmas[ i ] );
 }
 
-bool Script::LoadModuleFromFile( const char* module_name, FileManager& file, const char* dir, const char* cache_pefix )
+bool Script::LoadRootModule( StrVec& names, StrVec& contents, string& result_code )
 {
-    RUNTIME_ASSERT( file.IsLoaded() );
+    RUNTIME_ASSERT( Engine->GetModuleCount() == 0 );
 
     // Binary version
     uint version = FONLINE_VERSION;
@@ -1166,20 +1129,21 @@ bool Script::LoadModuleFromFile( const char* module_name, FileManager& file, con
     // File loader
     class MemoryFileLoader: public Preprocessor::FileLoader
     {
-        FileManager* initialFile;
+        string* rootScript;
+        StrVec& includeScripts;
+        int     includeDeep;
 
 public:
-        MemoryFileLoader( FileManager& file ): initialFile( &file ) {}
+        MemoryFileLoader( string& root, StrVec& scripts ): rootScript( &root ), includeScripts( scripts ), includeDeep( 0 ) {}
         virtual ~MemoryFileLoader() {}
 
         virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data )
         {
-            if( initialFile )
+            if( rootScript )
             {
-                data.resize( initialFile->GetFsize() );
-                if( !data.empty() )
-                    memcpy( &data[ 0 ], initialFile->GetBuf(), data.size() );
-                initialFile = nullptr;
+                data.resize( rootScript->length() );
+                memcpy( &data[ 0 ], rootScript->c_str(), rootScript->length() );
+                rootScript = nullptr;
                 return true;
             }
 
@@ -1220,7 +1184,7 @@ public:
         FileManager::EraseExtension( path );
 
     // Preprocess
-    MemoryFileLoader              loader( file );
+    MemoryFileLoader              loader( root, contents );
     Preprocessor::StringOutStream result, errors;
     int                           errors_count = Preprocessor::Preprocess( path, result, &errors, &loader );
 
@@ -1228,32 +1192,20 @@ public:
     {
         while( errors.String[ errors.String.length() - 1 ] == '\n' )
             errors.String.pop_back();
-        WriteLogF( _FUNC_, " - Module '%s' preprocessor message '%s'.\n", module_name, errors.String.c_str() );
+        WriteLogF( _FUNC_, " - Preprocessor message '%s'.\n", errors.String.c_str() );
     }
 
     if( errors_count )
     {
-        WriteLogF( _FUNC_, " - Unable to preprocess module '%s'.\n", module_name );
+        WriteLogF( _FUNC_, " - Unable to preprocess.\n" );
         return false;
     }
 
-    // Delete loaded module
-    for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
-    {
-        asIScriptModule* module = Engine->GetModuleByIndex( i );
-        if( Str::Compare( module->GetName(), module_name ) )
-        {
-            WriteLogF( _FUNC_, " - Warning, script for this name '%s' already exist. Discard it.\n", module_name );
-            module->Discard();
-            break;
-        }
-    }
-
     // Add new
-    asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
+    asIScriptModule* module = Engine->GetModule( "Root", asGM_ALWAYS_CREATE );
     if( !module )
     {
-        WriteLogF( _FUNC_, " - Create module fail, script '%s'.\n", module_name );
+        WriteLogF( _FUNC_, " - Create 'Root' module fail.\n" );
         return false;
     }
 
@@ -1264,10 +1216,10 @@ public:
     module->SetUserData( lnt );
 
     // Add single script section
-    int as_result = module->AddScriptSection( module_name, result.String.c_str() );
+    int as_result = module->AddScriptSection( "Root", result.String.c_str() );
     if( as_result < 0 )
     {
-        WriteLogF( _FUNC_, " - Unable to AddScriptSection module '%s', result %d.\n", module_name, as_result );
+        WriteLogF( _FUNC_, " - Unable to add script section, result %d.\n", as_result );
         module->Discard();
         return false;
     }
@@ -1281,153 +1233,20 @@ public:
         return false;
     }
 
-    // Save binary in cache
-    if( cache_pefix )
-    {
-        CBytecodeStream binary;
-        if( module->SaveByteCode( &binary ) >= 0 )
-        {
-            std::vector< asBYTE >& data = binary.GetBuf();
-            const Pragmas&         pragmas = edata->PragmaCB->GetProcessedPragmas();
-
-            // Fill data
-            FileManager file_bin;
-            file_bin.SetBEUInt( version );
-            file_bin.SetBEUInt( (uint) pragmas.size() );
-            for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
-            {
-                const Preprocessor::PragmaInstance& pragma = pragmas[ i ];
-                file_bin.SetStrNT( "%s", pragma.Name.c_str() );
-                file_bin.SetStrNT( "%s", pragma.Text.c_str() );
-                file_bin.SetStrNT( "%s", pragma.CurrentFile.c_str() );
-                file_bin.SetBEUInt( pragma.CurrentFileLine );
-                file_bin.SetStrNT( "%s", pragma.RootFile.c_str() );
-                file_bin.SetBEUInt( pragma.GlobalLine );
-            }
-            file_bin.SetBEUInt( (uint) lnt_data.size() );
-            file_bin.SetData( &lnt_data[ 0 ], (uint) lnt_data.size() );
-            file_bin.SetData( &data[ 0 ], (uint) data.size() );
-
-            // Flush on disk
-            char bin_fname[ MAX_FOPATH ];
-            Str::Format( bin_fname, "%s%s.fosb", cache_pefix, module_name );
-            if( !file_bin.SaveOutBufToFile( bin_fname, PT_SERVER_CACHE ) )
-                WriteLogF( _FUNC_, " - Can't save bytecode, script '%s'.\n", module_name );
-        }
-        else
-        {
-            WriteLogF( _FUNC_, " - Can't write bytecode, script '%s'.\n", module_name );
-        }
-
-        // Safe preprocessor output
-        char        prep_fname[ MAX_FOPATH ];
-        Str::Format( prep_fname, "%s%s.fosp", cache_pefix, module_name );
-        FileManager file_prep;
-        FormatPreprocessorOutput( result.String );
-        file_prep.SetData( (void*) result.String.c_str(), (uint) result.String.length() );
-        if( !file_prep.SaveOutBufToFile( prep_fname, PT_SERVER_CACHE ) )
-            WriteLogF( _FUNC_, " - Can't write preprocessed file, module '%s'.\n", module_name );
-    }
-
+    result_code = result.String;
     return true;
 }
 
-bool Script::LoadModuleFromCache( const char* module_name, const char* cache_pefix )
+bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_data )
 {
-    RUNTIME_ASSERT( cache_pefix );
-
-    // Load binary file
-    char        bin_fname[ MAX_FOPATH ];
-    Str::Format( bin_fname, "%s%s.fosb", cache_pefix, module_name );
-    FileManager file_bin;
-    file_bin.LoadFile( bin_fname, PT_SERVER_CACHE );
-    RUNTIME_ASSERT( file_bin.IsLoaded() );
-    uint bin_version = file_bin.GetBEUInt();
-    RUNTIME_ASSERT( bin_version == FONLINE_VERSION );
-
-    // Load pragmas
-    uint    pragmas_count = file_bin.GetBEUInt();
-    Pragmas pragmas;
-    for( uint i = 0; i < pragmas_count; i++ )
-    {
-        Preprocessor::PragmaInstance pragma;
-        char                         str[ MAX_FOTEXT ];
-        file_bin.GetStrNT( str );
-        pragma.Name = str;
-        file_bin.GetStrNT( str );
-        pragma.Text = str;
-        file_bin.GetStrNT( str );
-        pragma.CurrentFile = str;
-        pragma.CurrentFileLine = file_bin.GetBEUInt();
-        file_bin.GetStrNT( str );
-        pragma.RootFile = str;
-        pragma.GlobalLine = file_bin.GetBEUInt();
-        pragmas.push_back( pragma );
-    }
-
-    // Load line number translator data
-    uint     lnt_data_size = file_bin.GetBEUInt();
-    UCharVec lnt_data( lnt_data_size );
-    file_bin.CopyMem( &lnt_data[ 0 ], lnt_data_size );
-
-    // Delete old
-    for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
-    {
-        asIScriptModule* module = Engine->GetModuleByIndex( i );
-        if( Str::Compare( module->GetName(), module_name ) )
-        {
-            WriteLogF( _FUNC_, " - Warning, module for this name '%s' already exist. Discard it.\n", module_name );
-            module->Discard();
-            break;
-        }
-    }
-
-    // Create new
-    asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
-    if( !module )
-    {
-        WriteLogF( _FUNC_, " - Create module '%s' fail. Make clean up.\n", module_name );
-        return false;
-    }
-
-    // Set line number translator
-    Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator( lnt_data );
-    module->SetUserData( lnt );
-
-    // Call pragmas
-    CallPragmas( pragmas );
-
-    // Restore from bytecode
-    CBytecodeStream binary;
-    binary.Write( file_bin.GetCurBuf(), file_bin.GetFsize() - file_bin.GetCurPos() );
-    if( module->LoadByteCode( &binary ) < 0 )
-    {
-        WriteLogF( _FUNC_, " - Can't load binary for module '%s'. Make clean up.\n", module_name );
-        return false;
-    }
-    return true;
-}
-
-bool Script::RestoreModuleFromBinary( const char* module_name, const UCharVec& bytecode, const UCharVec& lnt_data )
-{
+    RUNTIME_ASSERT( Engine->GetModuleCount() == 0 );
     RUNTIME_ASSERT( !bytecode.empty() );
     RUNTIME_ASSERT( !lnt_data.empty() );
 
-    for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
-    {
-        asIScriptModule* module = Engine->GetModuleByIndex( i );
-        if( Str::Compare( module->GetName(), module_name ) )
-        {
-            WriteLogF( _FUNC_, " - Warning, script for this name '%s' already exist. Discard it.\n", module_name );
-            module->Discard();
-            break;
-        }
-    }
-
-    asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
+    asIScriptModule* module = Engine->GetModule( "Root", asGM_ALWAYS_CREATE );
     if( !module )
     {
-        WriteLogF( _FUNC_, " - Create module fail, script '%s'.\n", module_name );
+        WriteLogF( _FUNC_, " - Create 'Root' module fail.\n" );
         return false;
     }
 
@@ -1439,7 +1258,7 @@ bool Script::RestoreModuleFromBinary( const char* module_name, const UCharVec& b
     int             result = module->LoadByteCode( &binary );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Can't load binary, module '%s', result %d.\n", module_name, result );
+        WriteLogF( _FUNC_, " - Can't load binary, result %d.\n", result );
         module->Discard();
         return false;
     }
@@ -1447,71 +1266,18 @@ bool Script::RestoreModuleFromBinary( const char* module_name, const UCharVec& b
     return true;
 }
 
-bool Script::BindImportedFunctions()
-{
-    int errors = 0;
-    for( asUINT i = 0; i < Engine->GetModuleCount(); i++ )
-    {
-        asIScriptModule* module = Engine->GetModuleByIndex( i );
-        for( asUINT j = 0; j < module->GetImportedFunctionCount(); j++ )
-        {
-            const char*      name = module->GetImportedFunctionSourceModule( j );
-            const char*      decl = module->GetImportedFunctionDeclaration( j );
-
-            asIScriptModule* mod = Engine->GetModule( name, asGM_ONLY_IF_EXISTS );
-            if( !mod )
-            {
-                WriteLog( "Module '%s' fail to bind: import %s from \"%s\" - source module does not exists.\n", module->GetName(), decl, name );
-                errors++;
-                continue;
-            }
-
-            asIScriptFunction* func = mod->GetFunctionByDecl( decl );
-            if( !func )
-            {
-                WriteLog( "Module '%s' fail to bind: import %s from \"%s\" - source function does not exists.\n", module->GetName(), decl, name );
-                errors++;
-                continue;
-            }
-
-            int r = module->BindImportedFunction( j, func );
-            if( r < 0 )
-            {
-                WriteLog( "Module '%s' fail to bind: import %s from \"%s\" - bind error %d.\n", module->GetName(), decl, name, r );
-                errors++;
-                continue;
-            }
-        }
-    }
-    if( errors )
-    {
-        for( asUINT i = 0, j = Engine->GetModuleCount(); i < j; i++ )
-        {
-            asIScriptModule* module = Engine->GetModuleByIndex( i );
-            for( asUINT m = 0; m < module->GetImportedFunctionCount(); m++ )
-                module->UnbindAllImportedFunctions();
-        }
-    }
-    return errors == 0;
-}
-
-uint Script::BindByModuleFuncName( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
+uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
     #endif
 
     // Detect native dll
-    if( !Str::Substring( module_name, ".dll" ) )
+    const char* dll_pos = Str::Substring( func_name, ".dll::" );
+    if( !dll_pos )
     {
-        // Find module
-        asIScriptModule* module = Engine->GetModule( module_name, asGM_ONLY_IF_EXISTS );
-        if( !module )
-        {
-            if( !disable_log )
-                WriteLogF( _FUNC_, " - Module '%s' not found.\n", module_name );
-            return 0;
-        }
+        // Collect functions in all modules
+        RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
 
         // Find function
         char decl_[ MAX_FOTEXT ];
@@ -1519,11 +1285,13 @@ uint Script::BindByModuleFuncName( const char* module_name, const char* func_nam
             Str::Format( decl_, decl, func_name );
         else
             Str::Copy( decl_, func_name );
+
+        asIScriptModule*   module = Engine->GetModuleByIndex( 0 );
         asIScriptFunction* script_func = module->GetFunctionByDecl( decl_ );
         if( !script_func )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Function '%s' in module '%s' not found.\n", decl_, module_name );
+                WriteLogF( _FUNC_, " - Function '%s' not found.\n", decl_ );
             return 0;
         }
 
@@ -1549,21 +1317,27 @@ uint Script::BindByModuleFuncName( const char* module_name, const char* func_nam
     }
     else
     {
+        // my.dll::Func1
+        char dll_name[ MAX_FOTEXT ];
+        char dll_func_name[ MAX_FOTEXT ];
+        Str::CopyCount( dll_name, func_name, ( uint ) std::distance( func_name, dll_pos + Str::Length( ".dll" ) ) );
+        Str::Copy( dll_func_name, dll_pos + Str::Length( ".dll::" ) );
+
         // Load dynamic library
-        void* dll = LoadDynamicLibrary( module_name );
+        void* dll = LoadDynamicLibrary( dll_name );
         if( !dll )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Dll '%s' not found in scripts folder, error '%s'.\n", module_name, DLL_Error() );
+                WriteLogF( _FUNC_, " - Dll '%s' not found in scripts folder, error '%s'.\n", dll_name, DLL_Error() );
             return 0;
         }
 
         // Load function
-        size_t func = (size_t) DLL_GetAddress( dll, func_name );
+        size_t func = (size_t) DLL_GetAddress( dll, dll_func_name );
         if( !func )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Function '%s' in dll '%s' not found, error '%s'.\n", func_name, module_name, DLL_Error() );
+                WriteLogF( _FUNC_, " - Function '%s' in dll '%s' not found, error '%s'.\n", dll_func_name, dll_name, DLL_Error() );
             return 0;
         }
 
@@ -1585,25 +1359,10 @@ uint Script::BindByModuleFuncName( const char* module_name, const char* func_nam
         }
 
         // Create new bind
-        BindedFunctions.push_back( BindFunction( func, module_name, func_name ) );
+        BindedFunctions.push_back( BindFunction( func, func_name ) );
     }
     return (uint) BindedFunctions.size() - 1;
-}
-
-uint Script::BindByScriptName( const char* script_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
-{
-    char module_name[ MAX_FOTEXT ];
-    char func_name[ MAX_FOTEXT ];
-    if( !ParseScriptName( script_name, module_name, func_name, disable_log ) )
-        return 0;
-    return BindByModuleFuncName( module_name, func_name, decl, is_temp, disable_log );
-}
-
-uint Script::BindByFuncNameInRuntime( const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
-{
-    char script_name[ MAX_FOTEXT ];
-    Script::MakeScriptNameInRuntime( func_name, script_name );
-    return BindByScriptName( script_name, decl, is_temp, disable_log );
+    return 0;
 }
 
 uint Script::BindByFunc( asIScriptFunction* func, bool is_temp, bool disable_log /* = false */ )
@@ -1643,72 +1402,18 @@ uint Script::BindByFuncNum( hash func_num, bool is_temp, bool disable_log /* = f
     return BindByFunc( func, is_temp, disable_log );
 }
 
-bool Script::RebindFunctions()
+asIScriptFunction* Script::GetBindFunc( uint bind_id )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
     #endif
 
-    int errors = 0;
-    for( int i = 2, j = (int) BindedFunctions.size(); i < j; i++ )
-    {
-        BindFunction& bf = BindedFunctions[ i ];
-        if( bf.IsScriptCall )
-        {
-            if( bf.ScriptFunc )
-                bf.ScriptFunc->Release();
+    RUNTIME_ASSERT( bind_id );
+    RUNTIME_ASSERT( bind_id < BindedFunctions.size() );
 
-            int bind_id = BindByModuleFuncName( bf.ModuleName.c_str(), bf.FuncName.c_str(), nullptr, true, false );
-            if( bind_id <= 0 )
-            {
-                WriteLogF( _FUNC_, " - Unable to bind function, module '%s', function '%s'.\n", bf.ModuleName.c_str(), bf.FuncName.c_str() );
-                bf.ScriptFunc = nullptr;
-                errors++;
-            }
-            else
-            {
-                bf.ScriptFunc = BindedFunctions[ 1 ].ScriptFunc;
-                bf.ScriptFunc->AddRef();
-            }
-        }
-    }
-    return errors == 0;
-}
-
-bool Script::ParseScriptName( const char* script_name, char* module_name, char* func_name, bool disable_log /* = false */ )
-{
-    RUNTIME_ASSERT( script_name );
-    RUNTIME_ASSERT( module_name );
-    RUNTIME_ASSERT( func_name );
-
-    if( !Str::Substring( script_name, "@" ) )
-    {
-        if( !disable_log )
-            WriteLog( "Script name parse error, string '%s'.\n", script_name );
-        return false;
-    }
-
-    char str[ MAX_FOTEXT ];
-    Str::Copy( str, script_name );
-    Str::EraseChars( str, ' ' );
-    Str::CopyWord( module_name, str, '@' );
-    char* str_ = &str[ 0 ];
-    Str::GoTo( str_, '@', true );
-    Str::CopyWord( func_name, str_, 0 );
-
-    if( !module_name[ 0 ] )
-    {
-        if( !disable_log )
-            WriteLog( "Module name parse error, string '%s'.\n", script_name );
-        return false;
-    }
-    if( !func_name[ 0 ] )
-    {
-        if( !disable_log )
-            WriteLog( "Function name parse error, string '%s'.\n", script_name );
-        return false;
-    }
-    return true;
+    BindFunction& bf = BindedFunctions[ bind_id ];
+    RUNTIME_ASSERT( bf.IsScriptCall );
+    return bf.ScriptFunc;
 }
 
 string Script::GetBindFuncName( uint bind_id )
@@ -1723,31 +1428,7 @@ string Script::GetBindFuncName( uint bind_id )
         return "";
     }
 
-    BindFunction& bf = BindedFunctions[ bind_id ];
-    string        result;
-    result += bf.ModuleName;
-    result += " : ";
-    result += bf.FuncName;
-    return result;
-}
-
-void Script::MakeScriptNameInRuntime( const char* func_name, char(&script_name)[ MAX_FOTEXT ] )
-{
-    RUNTIME_ASSERT( func_name );
-    const char* active_module_name = GetActiveModuleName();
-    RUNTIME_ASSERT( active_module_name );
-
-    // Copy base
-    if( script_name != func_name )
-        Str::Copy( script_name, func_name );
-
-    // Append module
-    const char* mod_separator = Str::Substring( func_name, "@" );
-    if( !mod_separator )
-    {
-        Str::Insert( script_name, "@" );
-        Str::Insert( script_name, active_module_name );
-    }
+    return BindedFunctions[ bind_id ].FuncName;
 }
 
 /************************************************************************/
@@ -1760,8 +1441,8 @@ hash Script::GetFuncNum( asIScriptFunction* func )
     if( !func_num_ptr )
     {
         char script_name[ MAX_FOTEXT ];
-        Str::Copy( script_name, func->GetModuleName() );
-        Str::Append( script_name, "@" );
+        Str::Copy( script_name, func->GetNamespace() );
+        Str::Append( script_name, "::" );
         Str::Append( script_name, func->GetName() );
         func_num_ptr = new hash( Str::GetHash( script_name ) );
         func->SetUserData( func_num_ptr );
@@ -1784,21 +1465,14 @@ asIScriptFunction* Script::FindFunc( hash func_num )
     return nullptr;
 }
 
-hash Script::BindScriptFuncNumByFuncNameInRuntime( const char* func_name, const char* decl )
-{
-    char script_name[ MAX_FOTEXT ];
-    Script::MakeScriptNameInRuntime( func_name, script_name );
-    return BindScriptFuncNumByScriptName( script_name, decl );
-}
-
-hash Script::BindScriptFuncNumByScriptName( const char* script_name, const char* decl )
+hash Script::BindScriptFuncNumByFuncName( const char* func_name, const char* decl )
 {
     #ifdef SCRIPT_MULTITHREADING
     SCOPE_LOCK( BindedFunctionsLocker );
     #endif
 
     // Bind function
-    int bind_id = Script::BindByScriptName( script_name, decl, false );
+    int bind_id = Script::BindByFuncName( func_name, decl, false );
     if( bind_id <= 0 )
         return 0;
 
@@ -2745,7 +2419,7 @@ void Script::Log( const char* str )
         int                                 line = ctx->GetLineNumber( 0 );
         Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
         ContextData*                        ctx_data = (ContextData*) ctx->GetUserData();
-        WriteLog( "Script callback: %s : %s : %s : Line %d : %s.\n", str, Preprocessor::ResolveOriginalFile( line, lnt ), func->GetDeclaration( true ), Preprocessor::ResolveOriginalLine( line, lnt ), ctx_data->Info );
+        WriteLog( "Script callback: %s : %s : Line %d : %s.\n", str, func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ), ctx_data->Info );
     }
     else
     {

@@ -898,15 +898,24 @@ void Property::SetPODValueAsInt( Entity* entity, int value )
     }
 }
 
-string Property::SetGetCallback( const char* script_func )
+string Property::SetGetCallback( asIScriptFunction* func )
 {
     // Todo: Check can get
 
-    char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "%s%s %s(const %s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
-    uint bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
+    uint bind_id = Script::BindByFunc( func, false );
     if( !bind_id )
-    {
+        return "Unable to bind function '" + string( func->GetName() ) + "'.";
+
+    getCallback = bind_id;
+    getCallbackArgs = func->GetParamCount();
+
+    return "";
+
+    /*char decl[ MAX_FOTEXT ];
+       Str::Format( decl, "%s%s %s(const %s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
+       uint bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
+       if( !bind_id )
+       {
         Str::Format( decl, "%s%s %s(const %s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
         bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
         if( !bind_id )
@@ -916,23 +925,39 @@ string Property::SetGetCallback( const char* script_func )
             return "Unable to bind function '" + string( buf ) + "'.";
         }
         getCallbackArgs = 1;
-    }
-    else
-    {
+       }
+       else
+       {
         getCallbackArgs = 2;
-    }
+       }
 
-    getCallback = bind_id;
-    return "";
+       getCallback = bind_id;
+       return "";*/
 }
 
-string Property::AddSetCallback( const char* script_func, bool deferred )
+string Property::AddSetCallback( asIScriptFunction* func, bool deferred )
 {
-    char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
-    uint  bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
+    uint bind_id = Script::BindByFunc( func, false );
     if( !bind_id )
-    {
+        return "Unable to bind function '" + string( func->GetName() ) + "'.";
+
+    setCallbacksArgs.push_back( func->GetParamCount() );
+    asDWORD flags;
+    if( setCallbacksArgs.back() >= 2 && func->GetParam( 1, nullptr, &flags ) > 0 && flags & asTM_INOUTREF )
+        setCallbacksArgs.back() = -setCallbacksArgs.back();
+    if( setCallbacksArgs.back() == 3 || setCallbacksArgs.back() == -3 || setCallbacksArgs.back() == -2 )
+        setCallbacksAnyNewValue = true;
+
+    setCallbacks.push_back( bind_id );
+    setCallbacksDeferred.push_back( deferred );
+
+    return "";
+
+    /*char decl[ MAX_FOTEXT ];
+       Str::Format( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
+       uint  bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
+       if( !bind_id )
+       {
         Str::Format( decl, "void %s(%s%s&,%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
         bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
         if( !bind_id )
@@ -974,16 +999,16 @@ string Property::AddSetCallback( const char* script_func, bool deferred )
             setCallbacksArgs.push_back( -3 );
             setCallbacksAnyNewValue = true;
         }
-    }
-    else
-    {
+       }
+       else
+       {
         setCallbacksArgs.push_back( 3 );
         setCallbacksAnyNewValue = true;
-    }
+       }
 
-    setCallbacks.push_back( bind_id );
-    setCallbacksDeferred.push_back( deferred );
-    return "";
+       setCallbacks.push_back( bind_id );
+       setCallbacksDeferred.push_back( deferred );
+       return "";*/
 }
 
 Properties::Properties( PropertyRegistrator* reg )

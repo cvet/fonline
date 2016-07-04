@@ -543,16 +543,16 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
         #ifdef FONLINE_SERVER
         // Bind function
-        # define BIND_D_FUNC( params )                                                            \
-            do {                                                                                  \
-                id = Script::BindByScriptName( name, "bool %s(Critter&,Critter@" params, false ); \
+        # define BIND_D_FUNC( params )                                                          \
+            do {                                                                                \
+                id = Script::BindByFuncName( name, "bool %s(Critter&,Critter@" params, false ); \
             } while( 0 )
-        # define BIND_R_FUNC( params )                                                                               \
-            do {                                                                                                     \
-                if( ( id = Script::BindByScriptName( name, "uint %s(Critter&,Critter@" params, false, true ) ) > 0 ) \
-                    ret_value = true;                                                                                \
-                else                                                                                                 \
-                    id = Script::BindByScriptName( name, "void %s(Critter&,Critter@" params, false );                \
+        # define BIND_R_FUNC( params )                                                                             \
+            do {                                                                                                   \
+                if( ( id = Script::BindByFuncName( name, "uint %s(Critter&,Critter@" params, false, true ) ) > 0 ) \
+                    ret_value = true;                                                                              \
+                else                                                                                               \
+                    id = Script::BindByFuncName( name, "void %s(Critter&,Critter@" params, false );                \
             } while( 0 )
         switch( values_count )
         {
@@ -654,13 +654,13 @@ uint DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
         return NOT_ANSWER_BEGIN_BATTLE;
 
     #ifdef FONLINE_SERVER
-    uint id = Script::BindByScriptName( str, "uint %s(Critter&,Critter@,string@)", false, true );
+    uint id = Script::BindByFuncName( str, "uint %s(Critter&,Critter@,string@)", false, true );
     if( id )
     {
         ret_val = true;
         return id;
     }
-    return Script::BindByScriptName( str, "void %s(Critter&,Critter@,string@)", false );
+    return Script::BindByFuncName( str, "void %s(Critter&,Critter@,string@)", false );
     #endif
 
     return 0;

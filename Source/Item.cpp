@@ -277,14 +277,14 @@ Item* Item::Clone()
 #endif
 
 #ifdef FONLINE_SERVER
-bool Item::SetScript( const char* script_name, bool first_time )
+bool Item::SetScript( asIScriptFunction* func, bool first_time )
 {
-    if( script_name && script_name[ 0 ] )
+    if( func )
     {
-        hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Item&,bool)" );
+        hash func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script '%s' bind fail, item '%s'.\n", script_name, GetName() );
+            WriteLogF( _FUNC_, " - Script bind fail, item '%s'.\n", GetName() );
             return false;
         }
         SetScriptId( func_num );

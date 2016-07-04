@@ -1035,7 +1035,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
     // Map script
     if( GetScriptId() )
     {
-        hash func_num = Script::BindScriptFuncNumByScriptName( Str::GetName( GetScriptId() ), "void %s(Map&,bool)" );
+        hash func_num = Script::BindScriptFuncNumByFuncName( Str::GetName( GetScriptId() ), "void %s(Map&,bool)" );
         if( !func_num )
         {
             WriteLog( "Map '%s', can't bind map function '%s'.\n", GetName(), Str::GetName( GetScriptId() ) );
@@ -1048,36 +1048,36 @@ bool ProtoMap::BindScripts( EntityVec& entities )
     {
         if( entity->Type == MUTUAL_CRITTER_TYPE && ( (MUTUAL_CRITTER*) entity )->GetScriptId() )
         {
-            const char* script_name = Str::GetName( ( (MUTUAL_CRITTER*) entity )->GetScriptId() );
-            hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Critter&,bool)" );
+            const char* func_name = Str::GetName( ( (MUTUAL_CRITTER*) entity )->GetScriptId() );
+            hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Critter&,bool)" );
             if( !func_num )
             {
-                WriteLog( "Map '%s', can't bind critter function '%s'.\n", GetName(), script_name );
+                WriteLog( "Map '%s', can't bind critter function '%s'.\n", GetName(), func_name );
                 errors++;
             }
         }
         else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
         {
-            const char* script_name = Str::GetName( ( (Item*) entity )->GetScriptId() );
-            hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Item&,bool)" );
+            const char* func_name = Str::GetName( ( (Item*) entity )->GetScriptId() );
+            hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Item&,bool)" );
             if( !func_num )
             {
-                WriteLog( "Map '%s', can't bind item function '%s'.\n", GetName(), script_name );
+                WriteLog( "Map '%s', can't bind item function '%s'.\n", GetName(), func_name );
                 errors++;
             }
         }
         else if( entity->Type == EntityType::Item && ( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
         {
             Item* item = (Item*) entity;
-            const char* script_name = Str::GetName( item->GetScriptId() );
+            const char* func_name = Str::GetName( item->GetScriptId() );
             uint bind_id = 0;
             if( item->GetProtoId() != SP_SCEN_TRIGGER )
-                bind_id = Script::BindByScriptName( script_name, "bool %s(Critter&,const Item&,CritterProperty,Item@)", false );
+                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter&,const Item&,CritterProperty,Item@)", false );
             else
-                bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,const Item&,bool,uint8)", false );
+                bind_id = Script::BindByFuncName( func_name, "void %s(Critter&,const Item&,bool,uint8)", false );
             if( !bind_id )
             {
-                WriteLog( "Map '%s', can't bind scenery function '%s'.\n", GetName(), script_name );
+                WriteLog( "Map '%s', can't bind scenery function '%s'.\n", GetName(), func_name );
                 errors++;
             }
             item->SceneryScriptBindId = bind_id;

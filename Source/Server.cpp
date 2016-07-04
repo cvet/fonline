@@ -2351,7 +2351,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         Script::Undef( nullptr );
         Script::Define( "__SERVER" );
         Script::Define( "__VERSION %d", FONLINE_VERSION );
-        if( Script::ReloadScripts( "Server", "SERVER_" ) )
+        if( Script::ReloadScripts( "Server" ) )
             logcb( "Success." );
         else
             logcb( "Fail." );
@@ -2425,7 +2425,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         CHECK_ALLOW_COMMAND;
 
-        if( !Str::Length( module_name ) || !Str::Length( func_name ) )
+        if( !Str::Length( func_name ) )
         {
             logcb( "Fail, length is zero." );
             break;
@@ -2434,9 +2434,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         if( !cl_ )
             SynchronizeLogicThreads();
 
-        char script_name[ MAX_FOTEXT ];
-        Str::Format( script_name, "%s@%s", module_name, func_name );
-        uint bind_id = Script::BindByScriptName( script_name, "void %s(Critter&,int,int,int)", true );
+        uint bind_id = Script::BindByFuncName( func_name, "void %s(Critter&,int,int,int)", true );
         if( !bind_id )
         {
             if( !cl_ )
@@ -3188,8 +3186,6 @@ bool FOServer::InitReal()
         return false;                                  // Language packs
     if( !ReloadClientScripts() )
         return false;                                  // Client scripts, after language packs initialization
-    if( GameOpt.BuildMapperScripts && !ReloadMapperScripts() )
-        return false;                                  // Mapper scripts
     if( GameOpt.GameServer && !Singleplayer && !LoadClientsData() )
         return false;
     if( !Singleplayer )

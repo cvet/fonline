@@ -4098,7 +4098,7 @@ void FOMapper::ParseCommand( const char* cmd )
             Str::CopyBack( str );
 
         // Reparse module
-        uint bind_id = Script::BindByScriptName( func_name, "string %s(string)", true );
+        uint bind_id = Script::BindByFuncName( func_name, "string %s(string)", true );
         if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Mapper" ) )
         {
             ScriptString* sstr = ScriptString::Create( str );
@@ -4374,7 +4374,7 @@ bool FOMapper::InitScriptSystem()
     Script::Define( "__MAPPER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    Script::ReloadScripts( "Mapper", "MAPPER_" );
+    Script::ReloadScripts( "Mapper" );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
     #define BIND_INTERNAL_EVENT( name )    MapperFunctions. ## name = Script::FindInternalEvent( "Event" # name )

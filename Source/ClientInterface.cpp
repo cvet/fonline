@@ -562,7 +562,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
             {
                 char func_name[ MAX_FOTEXT ];
                 Str::CopyWord( func_name, &tag[ 7 ], '$', false );
-                uint bind_id = Script::BindByScriptName( func_name, "string@ %s(string&)", true );
+                uint bind_id = Script::BindByFuncName( func_name, "string@ %s(string&)", true );
                 Str::Copy( tag, "<script function not found>" );
                 if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Game" ) )
                 {

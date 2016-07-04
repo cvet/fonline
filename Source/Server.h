@@ -136,7 +136,6 @@ public:
     // Client script
     static bool RequestReloadClientScripts;
     static bool ReloadClientScripts();
-    static bool ReloadMapperScripts();
 
     // Text listen
     #define TEXT_LISTEN_FIRST_STR_MAX_LEN    ( 63 )
@@ -395,11 +394,11 @@ public:
         static AIDataPlane* NpcPlane_GetCopy( AIDataPlane* plane );
         static AIDataPlane* NpcPlane_SetChild( AIDataPlane* plane, AIDataPlane* child_plane );
         static AIDataPlane* NpcPlane_GetChild( AIDataPlane* plane, uint index );
-        static bool         NpcPlane_Misc_SetScript( AIDataPlane* plane, ScriptString& func_name );
+        static bool         NpcPlane_Misc_SetScript( AIDataPlane* plane, asIScriptFunction* func );
 
         static Item* Item_AddItem( Item* cont, hash pid, uint count, uint stack_id );
         static uint  Item_GetItems( Item* cont, uint stack_id, ScriptArray* items );
-        static bool  Item_SetScript( Item* item, ScriptString* func_name );
+        static bool  Item_SetScript( Item* item, asIScriptFunction* func );
         static uint  Item_GetWholeCost( Item* item );
         static Map*  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static bool  Item_ChangeProto( Item* item, hash pid );
@@ -487,7 +486,7 @@ public:
         static void Cl_ShowContainer( Critter* cl, Critter* cr_cont, Item* item_cont, uchar transfer_type );
         static void Cl_Disconnect( Critter* cl );
 
-        static bool Crit_SetScript( Critter* cr, ScriptString* func_name );
+        static bool Crit_SetScript( Critter* cr, asIScriptFunction* func );
 
         static void Crit_AddEnemyToStack( Critter* cr, uint critter_id );
         static bool Crit_CheckEnemyInStack( Critter* cr, uint critter_id );
@@ -495,8 +494,8 @@ public:
         static void Crit_ClearEnemyStack( Critter* cr );
         static void Crit_ClearEnemyStackNpc( Critter* cr );
 
-        static bool Crit_AddTimeEvent( Critter* cr, ScriptString& func_name, uint duration, int identifier );
-        static bool Crit_AddTimeEventRate( Critter* cr, ScriptString& func_name, uint duration, int identifier, uint rate );
+        static bool Crit_AddTimeEvent( Critter* cr, asIScriptFunction* func, uint duration, int identifier );
+        static bool Crit_AddTimeEventRate( Critter* cr, asIScriptFunction* func, uint duration, int identifier, uint rate );
         static uint Crit_GetTimeEvents( Critter* cr, int identifier, ScriptArray* indexes, ScriptArray* durations, ScriptArray* rates );
         static uint Crit_GetTimeEventsArr( Critter* cr, ScriptArray& find_identifiers, ScriptArray* identifiers, ScriptArray* indexes, ScriptArray* durations, ScriptArray* rates );
         static void Crit_ChangeTimeEvent( Critter* cr, uint index, uint new_duration, uint new_rate );
@@ -505,7 +504,7 @@ public:
         static uint Crit_EraseTimeEventsArr( Critter* cr, ScriptArray& identifiers );
 
         static Location* Map_GetLocation( Map* map );
-        static bool      Map_SetScript( Map* map, ScriptString* func_name );
+        static bool      Map_SetScript( Map* map, asIScriptFunction* func );
         static Item*     Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count, ScriptDict* props );
         static uint      Map_GetItemsHex( Map* map, ushort hx, ushort hy, ScriptArray* items );
         static uint      Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid, ScriptArray* items );
@@ -531,7 +530,7 @@ public:
         static void      Map_GetHexInPathWall( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
         static uint      Map_GetPathLengthHex( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static uint      Map_GetPathLengthCr( Map* map, Critter* cr, ushort to_hx, ushort to_hy, uint cut );
-        static Critter*  Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* props, ScriptString* script );
+        static Critter*  Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptDict* props );
         static uint      Map_GetNpcCount( Map* map, int npc_role, int find_type );
         static Critter*  Map_GetNpc( Map* map, int npc_role, int find_type, uint skip_count );
         static uint      Map_CountEntire( Map* map, int entire );
@@ -603,7 +602,7 @@ public:
         static bool          Global_RunDialogNpcDlgPack( Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance );
         static bool          Global_RunDialogHex( Critter* player, uint dlg_pack, ushort hx, ushort hy, bool ignore_distance );
         static int64         Global_WorldItemCount( hash pid );
-        static bool          Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, ScriptString& func_name );
+        static bool          Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, asIScriptFunction* func );
         static void          Global_EraseTextListener( int say_type, ScriptString& first_str, uint parameter );
         static AIDataPlane*  Global_CreatePlane();
         static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory );
@@ -613,11 +612,9 @@ public:
         static uint          Global_GetAllNpc( hash pid, ScriptArray* npc );
         static uint          Global_GetAllMaps( hash pid, ScriptArray* maps );
         static uint          Global_GetAllLocations( hash pid, ScriptArray* locations );
-        static hash          Global_GetScriptId( ScriptString& func_name, ScriptString& func_decl );
-        static ScriptString* Global_GetScriptName( hash script_id );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
-        static bool          Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func );
-        static bool          Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred );
+        static bool          Global_SetPropertyGetCallback( int prop_enum_value, void* ref, int type_id );
+        static bool          Global_AddPropertySetCallback( int prop_enum_value, void* ref, int type_id, bool deferred );
         static void          Global_AllowSlot( uchar index, bool enable_send );
         static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( ScriptString& dat_name );

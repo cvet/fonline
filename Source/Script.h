@@ -45,7 +45,7 @@ public:
     static void  SetLoadLibraryCompiler( bool enabled );
 
     static void UnloadScripts();
-    static bool ReloadScripts( const char* target, const char* cache_pefix );
+    static bool ReloadScripts( const char* target );
     static bool PostInitScriptSystem();
     static bool RunModuleInitFunctions();
 
@@ -63,7 +63,7 @@ public:
     static void              RaiseException( const char* message, ... );
     static void              PassException();
     static void              HandleException( asIScriptContext* ctx, const char* message, ... );
-    static string            MakeContextTraceback( asIScriptContext* ctx, bool include_header, bool extended_header );
+    static string            MakeContextTraceback( asIScriptContext* ctx );
 
     static ScriptInvoker* GetInvoker();
     static string         GetDeferredCallsStatistics();
@@ -82,7 +82,6 @@ public:
 
     static void HandleRpc( void* context );
 
-    static const char* GetActiveModuleName();
     static const char* GetActiveFuncName();
 
     static void Watcher();
@@ -91,25 +90,18 @@ public:
     static void Define( const char* def, ... );
     static void Undef( const char* def );
     static void CallPragmas( const Pragmas& pragmas );
-    static bool LoadModuleFromFile( const char* module_name, FileManager& file, const char* dir, const char* cache_pefix );
-    static bool LoadModuleFromCache( const char* module_name, const char* cache_pefix );
-    static bool RestoreModuleFromBinary( const char* module_name, const UCharVec& bytecode, const UCharVec& lnt_data );
+    static bool LoadRootModule( StrVec& names, StrVec& contents, string& result_code );
+    static bool RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_data );
 
-    static bool   BindImportedFunctions();
-    static uint   BindByModuleFuncName( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false );
-    static uint   BindByScriptName( const char* script_name, const char* decl, bool is_temp, bool disable_log = false );
-    static uint   BindByFuncNameInRuntime( const char* func_name, const char* decl, bool is_temp, bool disable_log = false );
-    static uint   BindByFunc( asIScriptFunction* func, bool is_temp, bool disable_log = false );
-    static uint   BindByFuncNum( hash func_num, bool is_temp, bool disable_log = false );
-    static bool   RebindFunctions();
-    static bool   ParseScriptName( const char* script_name, char* module_name, char* func_name, bool disable_log = false );
-    static string GetBindFuncName( uint bind_id );
-    static void MakeScriptNameInRuntime( const char* func_name, char(&script_name)[ MAX_FOTEXT ] );
+    static uint               BindByFuncName( const char* func_name, const char* decl, bool is_temp, bool disable_log = false );
+    static uint               BindByFunc( asIScriptFunction* func, bool is_temp, bool disable_log = false );
+    static uint               BindByFuncNum( hash func_num, bool is_temp, bool disable_log = false );
+    static asIScriptFunction* GetBindFunc( uint bind_id );
+    static string             GetBindFuncName( uint bind_id );
 
     static hash               GetFuncNum( asIScriptFunction* func );
     static asIScriptFunction* FindFunc( hash func_num );
-    static hash               BindScriptFuncNumByScriptName( const char* script_name, const char* decl );
-    static hash               BindScriptFuncNumByFuncNameInRuntime( const char* func_name, const char* decl );
+    static hash               BindScriptFuncNumByFuncName( const char* func_name, const char* decl );
     static hash               BindScriptFuncNumByFunc( asIScriptFunction* func );
     static uint               GetScriptFuncBindId( hash func_num );
     static bool               PrepareScriptFuncContext( hash func_num, const char* call_func, const char* ctx_info );

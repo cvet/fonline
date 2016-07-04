@@ -39,9 +39,8 @@ void* ASDeepDebugMalloc( size_t size )
     {
         SCOPE_LOCK( ASDbgMemoryLocker );
         ASDbgMemoryInUse = true;
-        const char* module = Script::GetActiveModuleName();
         const char* func = Script::GetActiveFuncName();
-        Str::Format( ASDbgMemoryBuf, "AS : %s : %s", module ? module : "<nullptr>", func ? func : "<nullptr>" );
+        Str::Format( ASDbgMemoryBuf, "AS : %s", func ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( ASDbgMemoryBuf, (int) size );
         ASDbgMemoryPtr.insert( PAIR( ptr, string( ASDbgMemoryBuf ) ) );
         ASDbgMemoryInUse = false;
@@ -115,7 +114,7 @@ bool FOServer::InitScriptSystem()
     Script::Undef( nullptr );
     Script::Define( "__SERVER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
-    if( !Script::ReloadScripts( "Server", "SERVER_" ) )
+    if( !Script::ReloadScripts( "Server" ) )
     {
         Script::Finish();
         WriteLog( "Reload scripts fail.\n" );
@@ -341,20 +340,14 @@ bool FOServer::ReloadClientScripts()
     Script::SetLoadLibraryCompiler( true );
 
     FOMsg msg_script;
-    int   num = STR_INTERNAL_SCRIPT_MODULES;
     int   errors = 0;
-    if( Script::ReloadScripts( "Client", "CLIENT_" ) )
+    if( Script::ReloadScripts( "Client" ) )
     {
-        for( asUINT i = 0; i < engine->GetModuleCount(); i++ )
+        RUNTIME_ASSERT( engine->GetModuleCount() == 1 );
+        asIScriptModule* module = engine->GetModuleByIndex( 0 );
+        CBytecodeStream  binary;
+        if( module->SaveByteCode( &binary ) >= 0 )
         {
-            asIScriptModule* module = engine->GetModuleByIndex( i );
-            CBytecodeStream  binary;
-            if( !module || module->SaveByteCode( &binary ) < 0 )
-            {
-                WriteLogF( _FUNC_, " - Unable to save bytecode of client script '%s'.\n", module->GetName() );
-                errors++;
-                continue;
-            }
             std::vector< asBYTE >&              buf = binary.GetBuf();
 
             UCharVec                            lnt_data;
@@ -362,10 +355,13 @@ bool FOServer::ReloadClientScripts()
             Preprocessor::StoreLineNumberTranslator( lnt, lnt_data );
 
             // Store data for client
-            msg_script.AddStr( num, module->GetName() );
-            msg_script.AddBinary( num + 1, (uchar*) &buf[ 0 ], (uint) buf.size() );
-            msg_script.AddBinary( num + 2, (uchar*) &lnt_data[ 0 ], (uint) lnt_data.size() );
-            num += 3;
+            msg_script.AddBinary( STR_INTERNAL_SCRIPT_MODULE, (uchar*) &buf[ 0 ], (uint) buf.size() );
+            msg_script.AddBinary( STR_INTERNAL_SCRIPT_MODULE + 1, (uchar*) &lnt_data[ 0 ], (uint) lnt_data.size() );
+        }
+        else
+        {
+            WriteLogF( _FUNC_, " - Unable to save bytecode of client script.\n" );
+            errors++;
         }
     }
     else
@@ -440,8 +436,9 @@ bool FOServer::ReloadClientScripts()
         if( pragmas[ i ].Name != "property" )
         {
             // All pragmas exclude 'property'
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2, pragmas[ i ].Name.c_str() );
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2 + 1, pragmas[ i ].Text.c_str() );
+            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3, pragmas[ i ].Name.c_str() );
+            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 1, pragmas[ i ].Text.c_str() );
+            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 2, pragmas[ i ].CurrentFile.c_str() );
             pragma_index++;
         }
         else
@@ -466,8 +463,9 @@ bool FOServer::ReloadClientScripts()
     for( size_t i = 0; i < ServerPropertyPragmas.size(); i++ )
     {
         // All 'property' pragmas
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2, ServerPropertyPragmas[ i ].Name.c_str() );
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 2 + 1, ServerPropertyPragmas[ i ].Text.c_str() );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3, ServerPropertyPragmas[ i ].Name.c_str() );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 1, ServerPropertyPragmas[ i ].Text.c_str() );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 2, ServerPropertyPragmas[ i ].CurrentFile.c_str() );
         pragma_index++;
     }
 
@@ -486,113 +484,6 @@ bool FOServer::ReloadClientScripts()
     GenerateUpdateFiles();
 
     WriteLog( "Reload client scripts complete.\n" );
-    return true;
-}
-
-/************************************************************************/
-/* Mapper script processing                                             */
-/************************************************************************/
-
-#undef BIND_CLIENT
-#undef BIND_CLASS
-#undef BIND_ASSERT
-#define BIND_MAPPER
-#define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); bind_errors++; }
-
-namespace MapperBind
-{
-    #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
-    {
-        int bind_errors = 0;
-        #include "ScriptBind.h"
-        return bind_errors;
-    }
-}
-
-bool FOServer::ReloadMapperScripts()
-{
-    WriteLog( "Reload mapper scripts...\n" );
-
-    // Disable debug allocators
-    #ifdef MEMORY_DEBUG
-    asThreadCleanup();
-    asSetGlobalMemoryFunctions( malloc, free );
-    #endif
-
-    // Swap engine
-    asIScriptEngine*      old_engine = Script::GetEngine();
-    ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_MAPPER );
-    asIScriptEngine*      engine = Script::CreateEngine( pragma_callback, "MAPPER", true );
-    if( engine )
-        Script::SetEngine( engine );
-
-    // Properties
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-
-    // Bind vars and functions
-    int bind_errors = 0;
-    if( engine )
-        bind_errors = MapperBind::Bind( engine, registrators );
-
-    // Check errors
-    if( !engine || bind_errors )
-    {
-        if( !engine )
-            WriteLogF( _FUNC_, " - asCreateScriptEngine fail.\n" );
-        else
-            WriteLog( "Bind fail, errors %d.\n", bind_errors );
-        Script::FinishEngine( engine );
-
-        #ifdef MEMORY_DEBUG
-        asThreadCleanup();
-        if( MemoryDebugLevel >= 2 )
-            asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
-        else if( MemoryDebugLevel >= 1 )
-            asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
-        else
-            asSetGlobalMemoryFunctions( malloc, free );
-        #endif
-        return false;
-    }
-
-    // Load script modules
-    Script::Undef( "__SERVER" );
-    Script::Define( "__MAPPER" );
-    Script::Define( "__VERSION %d", FONLINE_VERSION );
-    Script::SetLoadLibraryCompiler( true );
-
-    int errors = 0;
-    if( !Script::ReloadScripts( "Client", "MAPPER_" ) )
-        errors++;
-
-    // Imported functions
-    if( !Script::BindImportedFunctions() )
-        errors++;
-
-    // Finish
-    Script::FinishEngine( engine );
-    Script::Undef( "__MAPPER" );
-    Script::Define( "__SERVER" );
-    Script::SetLoadLibraryCompiler( false );
-
-    #ifdef MEMORY_DEBUG
-    asThreadCleanup();
-    if( MemoryDebugLevel >= 2 )
-        asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
-    else if( MemoryDebugLevel >= 1 )
-        asSetGlobalMemoryFunctions( ASDebugMalloc, ASDebugFree );
-    else
-        asSetGlobalMemoryFunctions( malloc, free );
-    #endif
-    Script::SetEngine( old_engine );
-
-    // Exit if have errors
-    if( errors )
-        return false;
-
-    WriteLog( "Reload mapper scripts complete.\n" );
     return true;
 }
 
@@ -653,9 +544,9 @@ AIDataPlane* FOServer::SScriptFunc::NpcPlane_GetChild( AIDataPlane* plane, uint 
     return result;
 }
 
-bool FOServer::SScriptFunc::NpcPlane_Misc_SetScript( AIDataPlane* plane, ScriptString& func_name )
+bool FOServer::SScriptFunc::NpcPlane_Misc_SetScript( AIDataPlane* plane, asIScriptFunction* func )
 {
-    uint bind_id = Script::BindByFuncNameInRuntime( func_name.c_str(), "void %s(Critter&)", false );
+    uint bind_id = Script::BindByFunc( func, false );
     if( !bind_id )
         SCRIPT_ERROR_R0( "Script not found." );
 
@@ -689,16 +580,14 @@ uint FOServer::SScriptFunc::Item_GetItems( Item* cont, uint stack_id, ScriptArra
     return (uint) items_.size();
 }
 
-bool FOServer::SScriptFunc::Item_SetScript( Item* item, ScriptString* func_name )
+bool FOServer::SScriptFunc::Item_SetScript( Item* item, asIScriptFunction* func )
 {
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    if( func_name && func_name->length() )
+    if( func )
     {
-        char script_name[ MAX_FOTEXT ];
-        Script::MakeScriptNameInRuntime( func_name->c_str(), script_name );
-        if( !item->SetScript( script_name, true ) )
+        if( !item->SetScript( func, true ) )
             SCRIPT_ERROR_R0( "Script function not found." );
     }
     else
@@ -2093,17 +1982,15 @@ void FOServer::SScriptFunc::Cl_Disconnect( Critter* cl )
         cl_->Disconnect();
 }
 
-bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, ScriptString* func_name )
+bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, asIScriptFunction* func )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    if( func_name && func_name->length() )
+    if( func )
     {
-        char script_name[ MAX_FOTEXT ];
-        Script::MakeScriptNameInRuntime( func_name->c_str(), script_name );
-        if( !cr->SetScript( script_name, true ) )
-            SCRIPT_ERROR_R0( "Script function '%s' not found.", script_name );
+        if( !cr->SetScript( func, true ) )
+            SCRIPT_ERROR_R0( "Script function not found." );
     }
     else
     {
@@ -2172,14 +2059,14 @@ void FOServer::SScriptFunc::Crit_ClearEnemyStackNpc( Critter* cr )
     SAFEREL( enemy_stack );
 }
 
-bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, ScriptString& func_name, uint duration, int identifier )
+bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, asIScriptFunction* func, uint duration, int identifier )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !func_name.length() )
-        SCRIPT_ERROR_R0( "Script name is empty." );
+    if( !func )
+        SCRIPT_ERROR_R0( "Func is null." );
 
-    hash func_num = Script::BindScriptFuncNumByFuncNameInRuntime( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
+    hash func_num = Script::BindScriptFuncNumByFunc( func );
     if( !func_num )
         SCRIPT_ERROR_R0( "Function not found." );
 
@@ -2187,14 +2074,14 @@ bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, ScriptString& func_n
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, ScriptString& func_name, uint duration, int identifier, uint rate )
+bool FOServer::SScriptFunc::Crit_AddTimeEventRate( Critter* cr, asIScriptFunction* func, uint duration, int identifier, uint rate )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !func_name.length() )
-        SCRIPT_ERROR_R0( "Script name is empty." );
+    if( !func )
+        SCRIPT_ERROR_R0( "Func is null." );
 
-    hash func_num = Script::BindScriptFuncNumByFuncNameInRuntime( func_name.c_str(), "uint %s(Critter&,int,uint&)" );
+    hash func_num = Script::BindScriptFuncNumByFunc( func );
     if( !func_num )
         SCRIPT_ERROR_R0( "Function not found." );
 
@@ -2486,16 +2373,14 @@ Location* FOServer::SScriptFunc::Map_GetLocation( Map* map )
     return map->GetLocation( true );
 }
 
-bool FOServer::SScriptFunc::Map_SetScript( Map* map, ScriptString* func_name )
+bool FOServer::SScriptFunc::Map_SetScript( Map* map, asIScriptFunction* func )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    if( func_name && func_name->length() )
+    if( func )
     {
-        char script_name[ MAX_FOTEXT ];
-        Script::MakeScriptNameInRuntime( func_name->c_str(), script_name );
-        if( !map->SetScript( script_name, true ) )
+        if( !map->SetScript( func, true ) )
             SCRIPT_ERROR_R0( "Script function not found." );
     }
     else
@@ -2962,7 +2847,7 @@ uint FOServer::SScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort t
     return (uint) path.size();
 }
 
-Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptArray* props, ScriptString* script )
+Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, ScriptDict* props )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2971,26 +2856,15 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
         SCRIPT_ERROR_R0( "Proto '%s' not found.", Str::GetName( proto_id ) );
-    if( script && !Script::BindByFuncNameInRuntime( script->c_str(), "void %s(Critter&,bool)", true, true ) )
-        SCRIPT_ERROR_R0( "Invalid script '%s'.", script->c_str() );
 
     Critter* npc = nullptr;
-    if( props || script )
+    if( props )
     {
         Properties props_( Critter::PropertiesRegistrator );
         props_ = proto->Props;
-        if( props )
-        {
-            for( uint i = 0, j = props->GetSize() / 2; i < j; i++ )
-                if( !Properties::SetValueAsIntProps( &props_, *(int*) props->At( i * 2 ), *(int*) props->At( i * 2 + 1 ) ) )
-                    return nullptr;
-        }
-        if( script )
-        {
-            char script_name[ MAX_FOTEXT ];
-            Script::MakeScriptNameInRuntime( script->c_str(), script_name );
-            Properties::SetValueAsIntProps( &props_, Critter::PropertyScriptId->GetEnumValue(), Str::GetHash( script_name ) );
-        }
+        for( uint i = 0, j = props->GetSize(); i < j; i++ )
+            if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
+                return nullptr;
 
         npc = CrMngr.CreateNpc( proto_id, &props_, map, hx, hy, dir, false );
     }
@@ -3920,12 +3794,12 @@ int64 FOServer::SScriptFunc::Global_WorldItemCount( hash pid )
     return ItemMngr.GetItemStatistics( pid );
 }
 
-bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, ScriptString& func_name )
+bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, ScriptString& first_str, uint parameter, asIScriptFunction* func )
 {
     if( first_str.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN )
         SCRIPT_ERROR_R0( "First string arg length greater than maximum." );
 
-    uint func_id = Script::BindByFuncNameInRuntime( func_name.c_str(), "void %s(Critter&,string&)", false );
+    uint func_id = Script::BindByFunc( func, false );
     if( !func_id )
         SCRIPT_ERROR_R0( "Unable to bind script function." );
 
@@ -4248,11 +4122,6 @@ uint FOServer::SScriptFunc::Global_GetAllLocations( hash pid, ScriptArray* locat
     return (uint) locs_.size();
 }
 
-ScriptString* FOServer::SScriptFunc::Global_GetScriptName( hash script_id )
-{
-    return ScriptString::Create( Str::GetName( script_id ) );
-}
-
 void FOServer::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds )
 {
     DateTimeStamp cur_time;
@@ -4272,28 +4141,32 @@ void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, usho
     SetGameTime( multiplier, year, month, day, hour, minute, second );
 }
 
-bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, ScriptString& script_func )
+bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, void* ref, int type_id )
 {
+    RUNTIME_ASSERT( ref );
+
     Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Critter::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
-    string result = prop->SetGetCallback( script_func.c_str() );
+    string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
         SCRIPT_ERROR_R0( result.c_str() );
     return true;
 }
 
-bool FOServer::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, ScriptString& script_func, bool deferred )
+bool FOServer::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, void* ref, int type_id, bool deferred )
 {
+    RUNTIME_ASSERT( ref );
+
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
-    string result = prop->AddSetCallback( script_func.c_str(), deferred );
+    string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )
         SCRIPT_ERROR_R0( result.c_str() );
     return true;
@@ -4498,11 +4371,6 @@ uint FOServer::SScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
         break;
     }
     return result;
-}
-
-hash FOServer::SScriptFunc::Global_GetScriptId( ScriptString& func_name, ScriptString& func_decl )
-{
-    return Script::BindScriptFuncNumByFuncNameInRuntime( func_name.c_str(), func_decl.c_str() );
 }
 
 void FOServer::SScriptFunc::Global_Synchronize()

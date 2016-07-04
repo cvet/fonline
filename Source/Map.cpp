@@ -1467,14 +1467,14 @@ Item* Map::GetItemChild( ushort hx, ushort hy, Item* item, uint child_index )
     return GetItemHex( hx, hy, child_pid, nullptr );
 }
 
-bool Map::SetScript( const char* script_name, bool first_time )
+bool Map::SetScript( asIScriptFunction* func, bool first_time )
 {
-    if( script_name && script_name[ 0 ] )
+    if( func )
     {
-        hash func_num = Script::BindScriptFuncNumByScriptName( script_name, "void %s(Map&,bool)" );
+        hash func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script '%s' bind fail, map '%s'.\n", script_name, GetName() );
+            WriteLogF( _FUNC_, " - Script bind fail, map '%s'.\n", GetName() );
             return false;
         }
         SetScriptId( func_num );
@@ -1569,8 +1569,8 @@ void Location::BindScript()
     EntranceScriptBindId = 0;
     if( GetEntranceScript() )
     {
-        const char* script_name = Str::GetName( GetEntranceScript() );
-        EntranceScriptBindId = Script::BindByScriptName( script_name, "bool %s(Location&, Critter@[]&, uint8 entranceIndex)", false );
+        const char* func_name = Str::GetName( GetEntranceScript() );
+        EntranceScriptBindId = Script::BindByFuncName( func_name, "bool %s(Location&, Critter@[]&, uint8 entranceIndex)", false );
     }
 }
 

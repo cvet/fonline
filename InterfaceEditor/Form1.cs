@@ -385,9 +385,6 @@ namespace InterfaceEditor
 			initScript.AppendLine();
 			initScript.AppendLine("// GUI scheme name: " + SchemeName);
 			initScript.AppendLine();
-			initScript.AppendLine("#include \"Core/Gui\"");
-			initScript.AppendLine("#include \"GuiScreensExt\"");
-			initScript.AppendLine();
 			initScript.AppendLine("void InitializeScreens()");
 			initScript.AppendLine("{");
 
@@ -417,9 +414,9 @@ namespace InterfaceEditor
 					}
 
 					if (screen != "CUSTOM")
-						initScript.AppendLine("    GUI_RegisterScreen( " + screen + ", " + scriptPrefix + "::CreateScreen );");
+						initScript.AppendLine("    Gui::RegisterScreen( " + screen + ", GuiScreens::" + scriptPrefix + "::CreateScreen );");
 					else
-						initScript.AppendLine("    // Custom hierarchy: " + scriptPrefix + "::CreateHierarchy");
+						initScript.AppendLine("    // Custom hierarchy: GuiScreens::" + scriptPrefix + "::CreateHierarchy");
 				}
 			}
 

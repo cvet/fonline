@@ -30,7 +30,6 @@ class ScriptPragmaCallback: public Preprocessor::PragmaCallback
 {
 private:
     int              pragmaType;
-    set< string >    alreadyProcessed;
     Pragmas          processedPragmas;
     bool             isError;
     IgnorePragma*    ignorePragma;
