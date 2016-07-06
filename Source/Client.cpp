@@ -7990,8 +7990,8 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uint  item_id = Str::AtoUI( args[ 3 ].c_str() );
         uint  item_swap_id = Str::AtoUI( args[ 4 ].c_str() );
         int   to_slot = Str::AtoI( args[ 5 ].c_str() );
-        Item* item = Self->GetItem( item_id );
-        Item* item_swap = ( item_swap_id ? Self->GetItem( item_swap_id ) : nullptr );
+        Item* item = Self->Chosen->GetItem( item_id );
+        Item* item_swap = ( item_swap_id ? Self->Chosen->GetItem( item_swap_id ) : nullptr );
         Item* old_item = item->Clone();
         int   from_slot = item->GetCritSlot();
 
@@ -8133,6 +8133,29 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
 
         Self->Chosen->Action( ACTION_USE_SKILL, skill, nullptr );
         Self->Net_SendUseSkill( skill, (CritterCl*) ( cr_id ? Self->GetCritter( cr_id ) : nullptr ) );
+        Self->Chosen->SubAp( ap_cost );
+    }
+    else if( cmd == "UseCritterItem" && args.size() == 8 )
+    {
+        uint ap_cost = Str::AtoUI( args[ 1 ].c_str() );
+        uint item_id = Str::AtoUI( args[ 2 ].c_str() );
+        uint rate = Str::AtoUI( args[ 3 ].c_str() );
+        uint target_type = Str::AtoUI( args[ 4 ].c_str() );
+        uint target_id = Str::AtoUI( args[ 5 ].c_str() );
+        hash param = Str::AtoUI( args[ 6 ].c_str() );
+        uint target_pid = Str::AtoUI( args[ 7 ].c_str() );
+
+        Self->Net_SendUseItem( ap_cost, item_id, rate, target_type, target_id, param, target_pid );
+
+        Item* item = Self->Chosen->GetItem( item_id );
+        uint  use = rate & 0xF;
+        if( use >= USE_PRIMARY && use <= USE_THIRD )
+            Self->Chosen->Action( ACTION_USE_WEAPON, rate, item );
+        else if( use == USE_RELOAD )
+            Self->Chosen->Action( ACTION_RELOAD_WEAPON, 0, item );
+        else
+            Self->Chosen->Action( ACTION_USE_ITEM, 0, item );
+
         Self->Chosen->SubAp( ap_cost );
     }
     else if( cmd == "SkipRoof" && args.size() == 3 )

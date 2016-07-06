@@ -112,6 +112,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "bool Misc_SetScript(NpcP
 /************************************************************************/
 /* Item                                                                 */
 /************************************************************************/
+
 BIND_ASSERT( engine->RegisterFuncdef( "void ItemInitFunc(Item&, bool)" ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetScript(ItemInitFunc@+ func)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetWholeCost() const", asFUNCTION( BIND_CLASS Item_GetWholeCost ), asCALL_CDECL_OBJFIRST ) );
@@ -124,6 +125,65 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint fromFrame,
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetChild(uint childIndex)", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "const Item@+ GetChild(uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter& cr, int skill, Item@+ item)", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
+
+// BIND_ASSERT( engine->RegisterGlobalFunction( "bool __Item_SetScript(?&in item, ?&in func)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "uint __Item_GetWholeCost(?&in item)", asFUNCTION( BIND_CLASS Item_GetWholeCost ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ __Item_AddItem(?&in item, hash protoId, uint count, uint stackId)", asFUNCTION( BIND_CLASS Item_AddItem ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "uint __Item_GetItems(?&in item, uint stackId, ?&in items)", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "uint __Item_GetItems(?&in item, uint stackId, ?&in items)", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ __Item_GetMapPosition(?&in item, uint16& hexX, uint16& hexY)", asFUNCTION( BIND_CLASS Item_GetMapPosition ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "bool __Item_ChangeProto(?&in item, hash protoId)", asFUNCTION( BIND_CLASS Item_ChangeProto ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "void __Item_Animate(?&in item, uint fromFrame, uint toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ __Item_GetChild(?&in item, uint childIndex)", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "const __Item@+ Item_GetChild(?&in item, uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL ) );
+// BIND_ASSERT( engine->RegisterGlobalFunction( "bool __Item_CallSceneryFunction(?&in item, ?&in cr, int skill, ?&in item)", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL ) );
+// uint __Entity_Id( _Entity& e ) { return 0; }
+// hash __Entity_ProtoId( _Entity& e ) { return 0; }
+// bool __Entity_IsDestroyed( _Entity& e ) { return false; }
+// bool __Entity_IsDestroying( _Entity& e ) { return false; }
+// int __Entity_RefCounter( _Entity& e ) { return 0; }
+//
+// class _Entity
+// {
+//	uint get_Id() { return __Entity_Id( this ); }
+//	hash get_ProtoId() { return __Entity_ProtoId( this ); }
+//	bool get_IsDestroyed() { return __Entity_IsDestroyed( this ); }
+//	bool get_IsDestroying() { return __Entity_IsDestroying( this ); }
+//	int get_RefCounter() { return __Entity_RefCounter( this ); }
+// }
+//
+// class _Item : _Entity
+// {
+//	#ifdef __SERVER
+//	funcdef void ItemInitFunc( _Item@, bool );
+//	bool SetScript(ItemInitFunc@ func){ return /*__Item_SetScript( func );*/false; }
+//    uint GetWholeCost() const{ return /*__Item_GetWholeCost();*/0; }
+//    Item@ AddItem(hash protoId, uint count, uint stackId){ return /*__Item_AddItem();*/null; }
+//    uint GetItems(uint stackId, array<Item@ >@ items){ return /*__Item_GetItems();*/0; }
+//    uint GetItems(uint stackId, array<const Item@>@ items) const{ return /*__Item_GetItems();*/0; }
+//    Map@ GetMapPosition(uint16& hexX, uint16& hexY) const{ return /*__Item_GetMapPosition();*/null; }
+//    bool ChangeProto(hash protoId){ return /*__Item_ChangeProto();*/false; }
+//    void Animate(uint fromFrame, uint toFrame){ /*__Item_Animate();*/ }
+//    Item@ GetChild(uint childIndex){ return /*__Item_GetChild();*/null; }
+//    const Item@ GetChild(uint childIndex) const{ return /*__Item_GetChild();*/null; }
+//    bool CallSceneryFunction(Critter& cr, int skill, Item@ item){ return /*__Item_CallSceneryFunction();*/false; }
+//	#endif
+// }
+//
+// class _Critter : _Entity
+// {
+//
+// }
+//
+// class _Map : _Entity
+// {
+//
+// }
+//
+// class _Location : _Entity
+// {
+//
+// }
 
 /************************************************************************/
 /* Critter                                                              */

@@ -1049,7 +1049,26 @@ public:
             {
                 const ArgInfo& arg_info = ArgInfos[ i ];
                 if( arg_info.Callbacks.empty() )
+                {
+                    if( !gen_args )
+                    {
+                        if( arg_info.IsObject )
+                            GET_ARG( void* );
+                        else if( arg_info.IsPodRef )
+                            GET_ARG( void* );
+                        else if( arg_info.PodSize == 1 )
+                            GET_ARG( uchar );
+                        else if( arg_info.PodSize == 2 )
+                            GET_ARG( ushort );
+                        else if( arg_info.PodSize == 4 )
+                            GET_ARG( uint );
+                        else if( arg_info.PodSize == 8 )
+                            GET_ARG( uint64 );
+                        else
+                            RUNTIME_ASSERT( !"Unreachable place" );
+                    }
                     continue;
+                }
 
                 uint64 value = 0;
                 if( arg_info.IsObject )

@@ -654,6 +654,9 @@ bool Script::ReloadScripts( const char* target )
             }
         }
 
+    if( !errors )
+        CacheEnumValues();
+
     // Add to profiler
     if( edata->Profiler )
     {
@@ -667,8 +670,6 @@ bool Script::ReloadScripts( const char* target )
     // Finalize profiler
     if( edata->Profiler )
         edata->Profiler->EndModules();
-
-    CacheEnumValues();
 
     if( errors )
     {
@@ -1567,7 +1568,7 @@ void Script::CacheEnumValues()
     auto&       cached_enum_names = edata->CachedEnumNames;
     char        buf[ MAX_FOTEXT ];
 
-    // Enums
+    // Engine enums
     cached_enums.clear();
     cached_enum_names.clear();
     for( asUINT i = 0, j = Engine->GetEnumCount(); i < j; i++ )
@@ -1581,6 +1582,26 @@ void Script::CacheEnumValues()
         {
             int         value;
             const char* value_name = Engine->GetEnumValueByIndex( enum_type_id, k, &value );
+            Str::Format( buf, "%s%s%s::%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name, value_name );
+            cached_enums.insert( PAIR( string( buf ), value ) );
+            value_names.insert( PAIR( value, string( value_name ) ) );
+        }
+    }
+
+    // Script enums
+    RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
+    asIScriptModule* module = Engine->GetModuleByIndex( 0 );
+    for( asUINT i = 0; i < module->GetEnumCount(); i++ )
+    {
+        int         enum_type_id;
+        const char* enum_ns;
+        const char* enum_name = module->GetEnumByIndex( i, &enum_type_id, &enum_ns );
+        Str::Format( buf, "%s%s%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name );
+        IntStrMap&  value_names = cached_enum_names.insert( PAIR( string( buf ), IntStrMap() ) ).first->second;
+        for( asUINT k = 0, l = module->GetEnumValueCount( enum_type_id ); k < l; k++ )
+        {
+            int         value;
+            const char* value_name = module->GetEnumValueByIndex( enum_type_id, k, &value );
             Str::Format( buf, "%s%s%s::%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name, value_name );
             cached_enums.insert( PAIR( string( buf ), value ) );
             value_names.insert( PAIR( value, string( value_name ) ) );

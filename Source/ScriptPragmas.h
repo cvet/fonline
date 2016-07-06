@@ -13,16 +13,18 @@
 #define PRAGMA_MAPPER     ( 3 )
 
 class PropertyRegistrator;
-class IgnorePragma;
-class GlobalVarPragma;
-class BindFuncPragma;
-class EntityPragma;
-class PropertyPragma;
-class MethodPragma;
-class ContentPragma;
-class EnumPragma;
-class EventPragma;
-class RpcPragma;
+class IgnorePragma;    // just delete
+class GlobalVarPragma; // just delete
+class BindFuncPragma;  // [Extern = ...]
+class EntityPragma;    // class NewEntity { [Protected] uint Field1; }
+class PropertyPragma;  // extend class Critter { [Protected] uint LockerId; }
+class MethodPragma;    // extend class Critter { [Protected] void Foo() {} }
+class ContentPragma;   // improve dynamic scan
+class EnumPragma;      // extend enum MyEnum { NewA, NewB }
+class EventPragma;     // [Event] void MyEvent(...)
+class RpcPragma;       // [ServerRpc] void MyRpc(...)
+// add [Export] to allow access from other modules
+// ???
 
 typedef vector< Preprocessor::PragmaInstance > Pragmas;
 

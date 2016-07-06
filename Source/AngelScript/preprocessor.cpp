@@ -947,9 +947,9 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
     char* d_end = &data[ data.size() - 1 ];
     Lex( &data[ 0 ], ++d_end, lexems );
 
-    LexemList::iterator itr = lexems.begin();
-    LexemList::iterator end = lexems.end();
-    LLITR               old = end;
+    LLITR itr = lexems.begin();
+    LLITR end = lexems.end();
+    LLITR old = end;
     while( itr != end )
     {
         if( itr->Type == NEWLINE )
