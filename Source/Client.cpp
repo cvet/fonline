@@ -4070,10 +4070,11 @@ void FOClient::Net_OnChosenTalk()
 
     // Answers
     UIntVec answers_texts;
+    uint    answ_text_id;
     for( int i = 0; i < count_answ; i++ )
     {
-        Bin >> text_id;
-        answers_texts.push_back( text_id );
+        Bin >> answ_text_id;
+        answers_texts.push_back( answ_text_id );
     }
 
     char str[ MAX_FOTEXT ];
