@@ -782,32 +782,10 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
             return true;
     }
 
-    // Item
     if( item )
-    {
-        if( Script::RaiseInternalEvent( ServerFunctions.CritterUseItem, cr, item, target_cr, target_item, target_scen, param ) )
-            return true;
-
-        // Default process
-        if( item->GetIsHolodisk() && target_type == TARGET_SELF && cr->IsPlayer() )
-        {
-            AddPlayerHoloInfo( (Client*) cr, item->GetHolodiskNum(), true );
-        }
-        // Nothing happens
-        else
-        {
-            cr->Send_TextMsg( cr, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
-        }
-    }
-    // Skill
+        Script::RaiseInternalEvent( ServerFunctions.CritterUseItem, cr, item, target_cr, target_item, target_scen, param );
     else
-    {
-        if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, skill, target_cr, target_item, target_scen ) )
-            return true;
-
-        // Nothing happens
-        cr->Send_TextMsg( cr, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
-    }
+        Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, skill, target_cr, target_item, target_scen );
 
     return true;
 }
@@ -853,10 +831,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
         cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_item );
 
-        if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, SKILL_PICK_ON_GROUND, nullptr, pick_item, nullptr ) )
-            return true;
-
-        cr->Send_TextMsg( cr, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
+        Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, SKILL_PICK_ON_GROUND, nullptr, pick_item, nullptr );
     }
     else if( proto->IsGeneric() )
     {
@@ -881,10 +856,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
                 return true;
         }
 
-        if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, SKILL_PICK_ON_GROUND, nullptr, nullptr, pick_scenery ) )
-            return true;
-
-        cr->Send_TextMsg( cr, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
+        Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, SKILL_PICK_ON_GROUND, nullptr, nullptr, pick_scenery );
     }
     else if( proto->IsGrid() )
     {
@@ -2574,7 +2546,7 @@ void FOServer::Process_PickCritter( Client* cl )
         }
 
         // Script events
-        if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_LOOT_CRITTER, cr, nullptr, nullptr ) )
+        if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_LOOT_CRITTER, cr, nullptr, nullptr ) )
             return;
 
         // Default process
@@ -2593,8 +2565,7 @@ void FOServer::Process_PickCritter( Client* cl )
         }
 
         // Script events
-        if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_PUSH_CRITTER, cr, nullptr, nullptr ) )
-            return;
+        Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_PUSH_CRITTER, cr, nullptr, nullptr );
         break;
     default:
         break;
@@ -2747,7 +2718,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Script events
-            if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_CONT, nullptr, item, nullptr ) )
+            if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_CONT, nullptr, item, nullptr ) )
                 return;
 
             // Transfer
@@ -2792,7 +2763,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Script events
-            if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_ALL_CONT, nullptr, cont, nullptr ) )
+            if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_ALL_CONT, nullptr, cont, nullptr ) )
                 return;
 
             // Transfer
@@ -2846,7 +2817,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Script events
-            if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_PUT_CONT, nullptr, item, nullptr ) )
+            if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_PUT_CONT, nullptr, item, nullptr ) )
                 return;
 
             // Transfer
@@ -2979,7 +2950,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Script events
-            if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_CONT, nullptr, item, nullptr ) )
+            if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_CONT, nullptr, item, nullptr ) )
                 return;
 
             // Transfer
@@ -3027,7 +2998,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Script events
-            if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_ALL_CONT, cr, nullptr, nullptr ) )
+            if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_ALL_CONT, cr, nullptr, nullptr ) )
                 return;
 
             // Transfer
@@ -3085,7 +3056,7 @@ void FOServer::Process_ContainerItem( Client* cl )
             }
 
             // Script events
-            if( Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_PUT_CONT, nullptr, item, nullptr ) )
+            if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_PUT_CONT, nullptr, item, nullptr ) )
                 return;
 
             // Transfer
