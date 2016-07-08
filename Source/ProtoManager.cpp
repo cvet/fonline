@@ -422,7 +422,7 @@ static int ValidateProtoResourcesExt( map< hash, T* >& protos,  HashSet& hashes 
                 hash h = proto->Props.GetPropValue< hash >( prop );
                 if( h && !hashes.count( h ) )
                 {
-                    WriteLog( "Resource '%s' not found for property '%s' in prototype '%s'.\n", Str::GetName( h ), prop->GetName(), kv.second->GetName() );
+                    WriteLog( "Resource '%s' not found for property '%s' in prototype '%s'.\n", Str::GetName( h ), prop->GetName(), proto->GetName() );
                     errors++;
                 }
             }
