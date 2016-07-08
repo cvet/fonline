@@ -12,6 +12,7 @@ BIND_ASSERT( engine->SetEngineProperty( asEP_REQUIRE_ENUM_SCOPE, true ) );
 // BIND_ASSERT( engine->SetEngineProperty( asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true ) );
 
 BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
+BIND_ASSERT( engine->RegisterTypedef( "resource", "uint" ) );
 // Todo: register new type with automating string - number convertation, exclude GetStrHash
 // BIND_ASSERT( engine->RegisterObjectType( "hash", 0, asOBJ_VALUE | asOBJ_POD ) );
 

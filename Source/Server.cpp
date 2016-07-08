@@ -3213,15 +3213,20 @@ bool FOServer::InitReal()
     if( !Script::RunModuleInitFunctions() )
         return false;
 
+    // Update files
+    StrVec resource_names;
+    GenerateUpdateFiles( true, &resource_names );
+
+    // Validate protos resources
+    if( !ProtoMngr.ValidateProtoResources( resource_names ) )
+        return false;
+
     // Initialization script
     if( !Script::RaiseInternalEvent( ServerFunctions.Init ) )
     {
         WriteLog( "Initialization script return false.\n" );
         return false;
     }
-
-    // Update files
-    GenerateUpdateFiles( true );
 
     // World loading
     if( GameOpt.GameServer && !Singleplayer )
@@ -4287,7 +4292,7 @@ void FOServer::Dump_Work( void* args )
 /*                                                                      */
 /************************************************************************/
 
-void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
+void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec* resource_names /* = nullptr */ )
 {
     if( !GameOpt.UpdateServer )
         return;
@@ -4297,7 +4302,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */ )
     WriteLog( "Generate update files...\n" );
 
     // Generate resources
-    ResourceConverter::Generate();
+    ResourceConverter::Generate( resource_names );
 
     // Clear collections
     for( auto it = UpdateFiles.begin(), end = UpdateFiles.end(); it != end; ++it )

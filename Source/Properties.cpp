@@ -743,6 +743,11 @@ bool Property::IsHash()
     return isHash;
 }
 
+bool Property::IsResource()
+{
+    return isResource;
+}
+
 bool Property::IsEnum()
 {
     return isEnumDataType;
@@ -1633,7 +1638,7 @@ bool Properties::LoadPropertyFromText( Property* prop, const char* value )
 
     // Parse
     uchar pod_buf[ 8 ];
-    bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
+    bool is_hashes[] = { prop->isHash || prop->isResource, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
     void* complex_value = ReadValue( value, prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error );
 
     // Assign
@@ -1668,7 +1673,7 @@ string Properties::SavePropertyToText( Property* prop )
     if( prop->complexDataIndex != uint( -1 ) )
         data = prop->CreateComplexValue( (uchar*) data, data_size );
 
-    bool is_hashes[] = { prop->isHash, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
+    bool is_hashes[] = { prop->isHash || prop->isResource, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
     string value = WriteValue( data, prop->asObjTypeId, prop->asObjType, is_hashes, 0 );
 
     if( prop->complexDataIndex != uint( -1 ) )
@@ -1956,6 +1961,11 @@ Property* PropertyRegistrator::Register(
             WriteLogF( _FUNC_, " - Invalid property type '%s', array elements must have POD/string type.\n", type_name );
             return nullptr;
         }
+        if( Str::Substring( type_name, "resource" ) )
+        {
+            WriteLogF( _FUNC_, " - Invalid property type '%s', array elements can't be resource type.\n", type_name );
+            return nullptr;
+        }
 
         is_hash_sub0 = ( Str::Substring( type_name, "hash" ) != nullptr );
     }
@@ -1983,6 +1993,13 @@ Property* PropertyRegistrator::Register(
                 WriteLogF( _FUNC_, " - Invalid property type '%s', dict value must have POD/string type or array of POD/string type.\n", type_name );
                 return nullptr;
             }
+        }
+        if( ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) != nullptr ) ||
+            ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) == nullptr && !is_dict_of_array ) ||
+            ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) == nullptr && is_dict_of_array ) )
+        {
+            WriteLogF( _FUNC_, " - Invalid property type '%s', dict elements can't be resource type.\n", type_name );
+            return nullptr;
         }
 
         is_hash_sub0 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) != nullptr );
@@ -2216,6 +2233,7 @@ Property* PropertyRegistrator::Register(
     prop->isHashSubType0 = is_hash_sub0;
     prop->isHashSubType1 = is_hash_sub1;
     prop->isHashSubType2 = is_hash_sub2;
+    prop->isResource = Str::Compare( type_name, "resource" );
     prop->isIntDataType = is_int_data_type;
     prop->isSignedIntDataType = is_signed_int_data_type;
     prop->isFloatDataType = is_float_data_type;

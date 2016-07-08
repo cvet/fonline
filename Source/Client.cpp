@@ -295,6 +295,7 @@ bool FOClient::Init()
         return false;
     }
 
+    // Basic effects
     if( !GraphicLoader::LoadDefaultEffects() )
         return false;
 

@@ -6,7 +6,7 @@
 class ResourceConverter
 {
 public:
-    static bool Generate();
+    static bool Generate( StrVec* resource_names );
 
 private:
     static FileManager* Convert( const char* name, FileManager& file );

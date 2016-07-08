@@ -406,6 +406,45 @@ void ProtoManager::LoadProtosFromBinaryData( UCharVec& data )
     ReadProtosFromBinary( data, pos, locProtos );
 }
 
+template< class T >
+static int ValidateProtoResourcesExt( map< hash, T* >& protos,  HashSet& hashes )
+{
+    int errors = 0;
+    for( auto& kv : protos )
+    {
+        T*                   proto = kv.second;
+        PropertyRegistrator* registrator = proto->Props.GetRegistrator();
+        for( uint i = 0; i < registrator->GetCount(); i++ )
+        {
+            Property* prop = registrator->Get( i );
+            if( prop->IsResource() )
+            {
+                hash h = proto->Props.GetPropValue< hash >( prop );
+                if( h && !hashes.count( h ) )
+                {
+                    WriteLog( "Resource '%s' not found for property '%s' in prototype '%s'.\n", Str::GetName( h ), prop->GetName(), kv.second->GetName() );
+                    errors++;
+                }
+            }
+        }
+    }
+    return errors;
+}
+
+bool ProtoManager::ValidateProtoResources( StrVec& resource_names )
+{
+    HashSet hashes;
+    for( auto& name : resource_names )
+        hashes.insert( Str::GetHash( name.c_str() ) );
+
+    int errors = 0;
+    errors += ValidateProtoResourcesExt( itemProtos, hashes );
+    errors += ValidateProtoResourcesExt( crProtos, hashes );
+    errors += ValidateProtoResourcesExt( mapProtos, hashes );
+    errors += ValidateProtoResourcesExt( locProtos, hashes );
+    return errors == 0;
+}
+
 ProtoItem* ProtoManager::GetProtoItem( hash pid )
 {
     auto it = itemProtos.find( pid );

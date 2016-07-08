@@ -24,6 +24,7 @@ public:
     bool LoadProtosFromFiles();
     void GetBinaryData( UCharVec& data );
     void LoadProtosFromBinaryData( UCharVec& data );
+    bool ValidateProtoResources( StrVec& resource_names );
 
     ProtoItem*     GetProtoItem( hash pid );
     ProtoCritter*  GetProtoCritter( hash pid );

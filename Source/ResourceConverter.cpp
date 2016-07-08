@@ -1171,7 +1171,7 @@ static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, ui
     return result;
 }
 
-bool ResourceConverter::Generate()
+bool ResourceConverter::Generate( StrVec* resource_names )
 {
     // Generate resources
     bool        something_changed = false;
@@ -1203,21 +1203,18 @@ bool ResourceConverter::Generate()
 
                     bool        skip_making_zip = true;
                     FileManager zip_file;
-                    if( zip_file.LoadFile( res_name_zip.c_str(), PT_SERVER_UPDATE, true ) )
-                    {
-                        while( resources.IsNextFile() )
-                        {
-                            FileManager& file = resources.GetNextFile( nullptr, nullptr, nullptr, true );
-                            if( file.GetWriteTime() > zip_file.GetWriteTime() )
-                            {
-                                skip_making_zip = false;
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
+                    if( !zip_file.LoadFile( res_name_zip.c_str(), PT_SERVER_UPDATE, true ) )
                         skip_making_zip = false;
+
+                    while( resources.IsNextFile() )
+                    {
+                        const char* rel_path;
+                        FileManager& file = resources.GetNextFile( nullptr, nullptr, &rel_path, true );
+                        if( resource_names )
+                            resource_names->push_back( rel_path );
+
+                        if( skip_making_zip && file.GetWriteTime() > zip_file.GetWriteTime() )
+                            skip_making_zip = false;
                     }
 
                     if( !skip_making_zip )
@@ -1299,6 +1296,26 @@ bool ResourceConverter::Generate()
                                 delete converted_file;
 
                             something_changed = true;
+                        }
+
+                        if( resource_names )
+                        {
+                            const char* ext = FileManager::GetExtension( fname );
+                            if( ext && ( Str::CompareCase( ext, "zip" ) || Str::CompareCase( ext, "dat" ) || Str::CompareCase( ext, "bos" ) ) )
+                            {
+                                DataFile* inner = OpenDataFile( path );
+                                if( inner )
+                                {
+                                    StrVec inner_files;
+                                    inner->GetFileNames( "", true, nullptr, inner_files );
+                                    resource_names->insert( resource_names->end(), inner_files.begin(), inner_files.end() );
+                                    delete inner;
+                                }
+                                else
+                                {
+                                    WriteLog( "Can't read data file '%s'.\n", path );
+                                }
+                            }
                         }
 
                         update_file_names.insert( fname );

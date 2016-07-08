@@ -107,7 +107,7 @@ bool FOMapper::Init()
 
     // Resources
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    bool something_changed = ResourceConverter::Generate();
+    bool something_changed = ResourceConverter::Generate( nullptr );
     FileManager::SetCurrentDir( ClientWritePath, "./" );
     if( something_changed )
         FileManager::InitDataFiles( CLIENT_DATA );

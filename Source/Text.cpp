@@ -957,17 +957,6 @@ void Str::LoadHashes( StrMap& hashes )
 
     for( auto& kv : hashes )
         GetHash( kv.second.c_str() );
-
-//    {
-//        hash h = Str::AtoUI( kv.first.c_str() );
-//        if( h )
-//        {
-//            auto ins = HashNames.insert( PAIR( h, nullptr ) );
-//            if( !ins.second )
-//                delete[] ins.first->second;
-//            ins.first->second = Str::Duplicate( kv.second.c_str() );
-//        }
-//    }
 }
 
 const char* Str::ParseLineDummy( const char* str )

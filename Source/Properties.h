@@ -93,6 +93,7 @@ public:
     bool           IsPOD();
     bool           IsDict();
     bool           IsHash();
+    bool           IsResource();
     bool           IsEnum();
     bool           IsReadable();
     bool           IsWritable();
@@ -150,6 +151,7 @@ private:
     bool           isHashSubType0;
     bool           isHashSubType1;
     bool           isHashSubType2;
+    bool           isResource;
     bool           isIntDataType;
     bool           isSignedIntDataType;
     bool           isFloatDataType;
@@ -196,22 +198,23 @@ public:
     Properties( PropertyRegistrator* reg );
     Properties( const Properties& other );
     ~Properties();
-    Properties& operator=( const Properties& other );
-    Property*   FindByEnum( int enum_value );
-    void*       FindData( const char* property_name );
-    uint        StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
-    void        RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
-    void        RestoreData( UCharVecVec& all_data );
-    bool        LoadFromText( const StrMap& key_values );
-    void        SaveToText( StrMap& key_values, Properties* base );
-    bool        LoadPropertyFromText( Property* prop, const char* value );
-    string      SavePropertyToText( Property* prop );
-    static int  GetValueAsInt( Entity* entity, int enum_value );
-    static void SetValueAsInt( Entity* entity, int enum_value, int value );
-    static bool SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
-    static bool SetValueAsIntProps( Properties* props, int enum_value, int value );
-    string      GetClassName();
-    void        SetSendIgnore( Property* prop, Entity* entity );
+    Properties&          operator=( const Properties& other );
+    Property*            FindByEnum( int enum_value );
+    void*                FindData( const char* property_name );
+    uint                 StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
+    void                 RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
+    void                 RestoreData( UCharVecVec& all_data );
+    bool                 LoadFromText( const StrMap& key_values );
+    void                 SaveToText( StrMap& key_values, Properties* base );
+    bool                 LoadPropertyFromText( Property* prop, const char* value );
+    string               SavePropertyToText( Property* prop );
+    static int           GetValueAsInt( Entity* entity, int enum_value );
+    static void          SetValueAsInt( Entity* entity, int enum_value, int value );
+    static bool          SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
+    static bool          SetValueAsIntProps( Properties* props, int enum_value, int value );
+    string               GetClassName();
+    void                 SetSendIgnore( Property* prop, Entity* entity );
+    PropertyRegistrator* GetRegistrator() { return registrator; }
 
     template< typename T >
     T GetPropValue( Property* prop )

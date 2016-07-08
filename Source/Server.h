@@ -80,7 +80,7 @@ public:
     static UpdateFileVec UpdateFiles;
     static UCharVec      UpdateFilesList;
 
-    static void GenerateUpdateFiles( bool first_generation = false );
+    static void GenerateUpdateFiles( bool first_generation = false, StrVec* resource_names = nullptr );
 
     // Holodisks
     struct HoloInfo
