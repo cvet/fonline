@@ -410,7 +410,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char script_name[ MAX_FOTEXT ];
         char func_name[ MAX_FOTEXT ];
         uint param0, param1, param2;
-        if( sscanf( args, "%s%d%d%d", func_name, &param0, &param1, &param2 ) != 5 )
+        if( sscanf( args, "%s%d%d%d", func_name, &param0, &param1, &param2 ) != 4 )
         {
             logcb( "Invalid arguments. Example: runscript module::func param0 param1 param2." );
             break;
