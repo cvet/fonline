@@ -304,8 +304,8 @@ bool FOClient::Init()
     SDL_GetWindowSize( MainWindow, &sw, &sh );
     int mx = 0, my = 0;
     SDL_GetMouseState( &mx, &my );
-    GameOpt.MouseX = CLAMP( mx, 0, sw - 1 );
-    GameOpt.MouseY = CLAMP( my, 0, sh - 1 );
+    GameOpt.MouseX = GameOpt.LastMouseX = CLAMP( mx, 0, sw - 1 );
+    GameOpt.MouseY = GameOpt.LastMouseY = CLAMP( my, 0, sh - 1 );
 
     // Resource manager
     ResMngr.Refresh();
@@ -1273,14 +1273,14 @@ void FOClient::ParseMouse()
     }
 
     // Mouse move
-    static int old_cur_x = GameOpt.MouseX;
-    static int old_cur_y = GameOpt.MouseY;
-    if( old_cur_x != GameOpt.MouseX || old_cur_y != GameOpt.MouseY )
+    if( GameOpt.LastMouseX != GameOpt.MouseX || GameOpt.LastMouseY != GameOpt.MouseY )
     {
-        old_cur_x = GameOpt.MouseX;
-        old_cur_y = GameOpt.MouseY;
+        int ox = GameOpt.MouseX - GameOpt.LastMouseX;
+        int oy = GameOpt.MouseY - GameOpt.LastMouseY;
+        GameOpt.LastMouseX = GameOpt.MouseX;
+        GameOpt.LastMouseY = GameOpt.MouseY;
 
-        Script::RaiseInternalEvent( ClientFunctions.MouseMove );
+        Script::RaiseInternalEvent( ClientFunctions.MouseMove, ox, oy );
     }
 
     // Get buffered data
@@ -7752,13 +7752,23 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         SingleplayerData.Pause = !SingleplayerData.Pause;
     }
-    else if( cmd == "SetMousePos" && args.size() == 3 )
+    else if( cmd == "SetMousePos" && args.size() == 4 )
     {
-        int x = Str::AtoI( args[ 1 ].c_str() );
-        int y = Str::AtoI( args[ 2 ].c_str() );
-        SDL_WarpMouseInWindow( MainWindow, x, y );
-        GameOpt.MouseX = x;
-        GameOpt.MouseY = y;
+        int  x = Str::AtoI( args[ 1 ].c_str() );
+        int  y = Str::AtoI( args[ 2 ].c_str() );
+        bool motion = Str::AtoB( args[ 3 ].c_str() );
+        if( motion )
+        {
+            SDL_WarpMouseInWindow( MainWindow, x, y );
+        }
+        else
+        {
+            SDL_EventState( SDL_MOUSEMOTION, SDL_DISABLE );
+            SDL_WarpMouseInWindow( MainWindow, x, y );
+            SDL_EventState( SDL_MOUSEMOTION, SDL_ENABLE );
+            GameOpt.MouseX = GameOpt.LastMouseX = x;
+            GameOpt.MouseY = GameOpt.LastMouseY = y;
+        }
     }
     else if( cmd == "SetCursorPos" )
     {
@@ -7853,15 +7863,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "ConsoleMessage" && args.size() >= 2 )
     {
         Self->Net_SendText( args[ 1 ].c_str(), SAY_NORM );
-    }
-    else if( cmd == "SetMousePos" )
-    {
-        int x = Str::AtoI( args.size() >= 2 ? args[ 1 ].c_str() : "0" );
-        int y = Str::AtoI( args.size() >= 3 ? args[ 2 ].c_str() : "0" );
-        GameOpt.MouseX = x;
-        GameOpt.MouseY = y;
-        SDL_WarpMouseInWindow( MainWindow, x, y );
-        SDL_FlushEvent( SDL_MOUSEMOTION );
     }
     else if( cmd == "SaveLog" && args.size() == 3 )
     {
@@ -8925,8 +8926,10 @@ void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button )
     MainWindowMouseEvents.clear();
     int    prev_x = GameOpt.MouseX;
     int    prev_y = GameOpt.MouseY;
-    GameOpt.MouseX = x;
-    GameOpt.MouseY = y;
+    int    last_prev_x = GameOpt.LastMouseX;
+    int    last_prev_y = GameOpt.LastMouseY;
+    GameOpt.MouseX = GameOpt.LastMouseX = x;
+    GameOpt.MouseY = GameOpt.LastMouseY = y;
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONDOWN );
     MainWindowMouseEvents.push_back( button );
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONUP );
@@ -8935,6 +8938,8 @@ void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button )
     MainWindowMouseEvents = prev_events;
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
+    GameOpt.LastMouseX = last_prev_x;
+    GameOpt.LastMouseY = last_prev_y;
 }
 
 void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )

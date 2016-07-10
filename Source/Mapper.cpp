@@ -84,6 +84,12 @@ bool FOMapper::Init()
     // Input
     Keyb::Init();
 
+    // Mouse
+    int mx = 0, my = 0;
+    SDL_GetMouseState( &mx, &my );
+    GameOpt.MouseX = GameOpt.LastMouseX = CLAMP( mx, 0, GameOpt.ScreenWidth - 1 );
+    GameOpt.MouseY = GameOpt.LastMouseY = CLAMP( my, 0, GameOpt.ScreenHeight - 1 );
+
     // Options
     GameOpt.ScrollCheck = false;
 
@@ -1048,12 +1054,8 @@ void FOMapper::ParseMouse()
     // Mouse position
     int mx = 0, my = 0;
     SDL_GetMouseState( &mx, &my );
-    int w = 0, h = 0;
-    SDL_GetWindowPosition( MainWindow, &w, &h );
-    GameOpt.MouseX = mx;
-    GameOpt.MouseY = my;
-    GameOpt.MouseX = CLAMP( GameOpt.MouseX, 0, GameOpt.ScreenWidth - 1 );
-    GameOpt.MouseY = CLAMP( GameOpt.MouseY, 0, GameOpt.ScreenHeight - 1 );
+    GameOpt.MouseX = CLAMP( mx, 0, GameOpt.ScreenWidth - 1 );
+    GameOpt.MouseY = CLAMP( my, 0, GameOpt.ScreenHeight - 1 );
 
     // Stop processing if window not active
     if( !( SDL_GetWindowFlags( MainWindow ) & SDL_WINDOW_INPUT_FOCUS ) )
@@ -1065,17 +1067,16 @@ void FOMapper::ParseMouse()
     }
 
     // Mouse move
-    static int old_cur_x = GameOpt.MouseX;
-    static int old_cur_y = GameOpt.MouseY;
-
-    if( old_cur_x != GameOpt.MouseX || old_cur_y != GameOpt.MouseY )
+    if( GameOpt.LastMouseX != GameOpt.MouseX || GameOpt.LastMouseY != GameOpt.MouseY )
     {
-        old_cur_x = GameOpt.MouseX;
-        old_cur_y = GameOpt.MouseY;
+        int ox = GameOpt.MouseX - GameOpt.LastMouseX;
+        int oy = GameOpt.MouseY - GameOpt.LastMouseY;
+        GameOpt.LastMouseX = GameOpt.MouseX;
+        GameOpt.LastMouseY = GameOpt.MouseY;
+
+        Script::RaiseInternalEvent( MapperFunctions.MouseMove, ox, oy );
 
         IntMouseMove();
-
-        Script::RaiseInternalEvent( MapperFunctions.MouseMove, GameOpt.MouseX, GameOpt.MouseY );
     }
 
     // Mouse Scroll
@@ -5415,9 +5416,11 @@ void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button )
     MainWindowMouseEvents.clear();
     int    prev_x = GameOpt.MouseX;
     int    prev_y = GameOpt.MouseY;
+    int    last_prev_x = GameOpt.LastMouseX;
+    int    last_prev_y = GameOpt.LastMouseY;
     int    prev_cursor = Self->CurMode;
-    GameOpt.MouseX = x;
-    GameOpt.MouseY = y;
+    GameOpt.MouseX = GameOpt.LastMouseX = x;
+    GameOpt.MouseY = GameOpt.LastMouseY = y;
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONDOWN );
     MainWindowMouseEvents.push_back( MouseButtonToSdlButton( button ) );
     MainWindowMouseEvents.push_back( SDL_MOUSEBUTTONUP );
@@ -5426,6 +5429,8 @@ void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button )
     MainWindowMouseEvents = prev_events;
     GameOpt.MouseX = prev_x;
     GameOpt.MouseY = prev_y;
+    GameOpt.LastMouseX = last_prev_x;
+    GameOpt.LastMouseY = last_prev_y;
 }
 
 void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )

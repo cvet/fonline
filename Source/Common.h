@@ -550,6 +550,8 @@ struct GameOptions
     bool          AssimpLogging;
     int           MouseX;
     int           MouseY;
+    int           LastMouseX;
+    int           LastMouseY;
     int           ScrOx;
     int           ScrOy;
     bool          ShowTile;

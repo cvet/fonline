@@ -1124,6 +1124,8 @@ GameOptions::GameOptions()
     AssimpLogging = false;
     MouseX = 0;
     MouseY = 0;
+    LastMouseX = 0;
+    LastMouseY = 0;
     ScrOx = 0;
     ScrOy = 0;
     ShowTile = true;
