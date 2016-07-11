@@ -8072,12 +8072,13 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uint     ap_cost = Str::AtoUI( args[ 1 ].c_str() );
         uint     item_count = Str::AtoUI( args[ 2 ].c_str() );
         uint     item_id = Str::AtoUI( args[ 3 ].c_str() );
-        int      item_cont = Str::AtoUI( args[ 4 ].c_str() );
+        int      item_cont = Str::AtoI( args[ 4 ].c_str() );
 
         ItemVec& cont = ( item_cont == ITEMS_PICKUP ? Self->InvContInit : Self->PupCont2Init );
         auto     it = PtrCollectionFind( cont.begin(), cont.end(), item_id );
         RUNTIME_ASSERT( it != cont.end() );
         Item*    item = *it;
+        Item*    old_item = item->Clone();
 
         Self->Chosen->Action( ACTION_OPERATE_CONTAINER, Self->PupTransferType * 10 + ( item_cont == ITEMS_PICKUP_FROM ? 0 : 2 ), item );
         Self->Chosen->SubAp( ap_cost );
@@ -8091,10 +8092,12 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
             item->Release();
             cont.erase( it );
         }
-        Self->CollectContItems();
 
         uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
         Self->Net_SendItemCont( Self->PupTransferType, Self->PupContId, item_id, item_count, take_flags );
+
+        // Notify scripts about item changing
+        Self->OnItemInvChanged( old_item, item );
     }
     else if( cmd == "PickItem" && args.size() == 5 )
     {

@@ -119,7 +119,12 @@ void FileManager::InitDataFiles( const char* path )
         std::sort( files.begin(), files.end(), std::greater< string >() );
 
         for( size_t i = 0, j = files.size(); i < j; i++ )
-            LoadDataFile( ( string( "" ) + path + files[ i ] ).c_str() );
+            if( !LoadDataFile( ( string( "" ) + path + files[ i ] ).c_str() ) )
+                RUNTIME_ASSERT( !"Unable to load data file." );
+    }
+    else
+    {
+        RUNTIME_ASSERT( !"Unable to load files in folder." );
     }
 
     // Extension of this path

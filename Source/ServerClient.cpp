@@ -607,7 +607,6 @@ bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
     return true;
 }
 
-#pragma MESSAGE("Add using hands/legs.")
 bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, uint target_id, hash target_pid, uint param )
 {
     cr->SetBreakTime( GameOpt.Breaktime );

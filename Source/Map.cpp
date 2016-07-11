@@ -98,8 +98,6 @@ bool Map::Generate()
             if( npc->GetCond() == COND_DEAD )
             {
                 npc->SetCurrentHp( GameOpt.DeadHitPoints - 1 );
-                if( !npc->GetReplicationTime() )
-                    npc->SetReplicationTime( -1 );
 
                 uint multihex = npc->GetMultihex();
                 UnsetFlagCritter( npc->GetHexX(), npc->GetHexY(), multihex, false );

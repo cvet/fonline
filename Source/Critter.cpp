@@ -63,7 +63,6 @@ CLASS_PROPERTY_IMPL( Critter, CurrentHp );
 CLASS_PROPERTY_IMPL( Critter, ActionPoints );
 CLASS_PROPERTY_IMPL( Critter, CurrentAp );
 CLASS_PROPERTY_IMPL( Critter, ApRegenerationTime );
-CLASS_PROPERTY_IMPL( Critter, ReplicationTime );
 CLASS_PROPERTY_IMPL( Critter, WalkTime );
 CLASS_PROPERTY_IMPL( Critter, RunTime );
 CLASS_PROPERTY_IMPL( Critter, ScaleFactor );

@@ -131,7 +131,6 @@ public:
     CLASS_PROPERTY( int, SneakCoefficient );
     CLASS_PROPERTY( int, BarterCoefficient );
     // Exclude
-    CLASS_PROPERTY( int, ReplicationTime );     // Used in map dead npc generation
     CLASS_PROPERTY( hash, BagId );              // Bags (migrate bags to scripts)
     CLASS_PROPERTY( uint, LastWeaponId );       // Bags
     CLASS_PROPERTY( bool, IsNoItemGarbager );   // Bags
