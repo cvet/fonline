@@ -161,6 +161,5 @@ CustomEntity::CustomEntity( uint id, uint sub_type, PropertyRegistrator* registr
 }
 
 PROPERTIES_IMPL( GlobalVars );
-CLASS_PROPERTY_IMPL( GlobalVars, BestScores );
 GlobalVars::GlobalVars(): Entity( 0, EntityType::Global, PropertiesRegistrator, nullptr ) {}
 GlobalVars* Globals;

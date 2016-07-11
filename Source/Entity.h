@@ -79,7 +79,6 @@ class GlobalVars: public Entity
 {
 public:
     PROPERTIES_HEADER();
-    CLASS_PROPERTY( ScriptArray *, BestScores );
     GlobalVars();
 };
 extern GlobalVars* Globals;

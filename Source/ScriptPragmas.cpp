@@ -1096,7 +1096,7 @@ public:
             for( int i = (int) callbacks_to_call.size() - 1; i >= 0; i-- )
             {
                 asIScriptFunction* callback = callbacks_to_call[ i ];
-                uint               bind_id = Script::BindByFunc( callback, false );
+                uint               bind_id = Script::BindByFunc( callback, true );
                 RUNTIME_ASSERT( bind_id );
                 if( Script::PrepareContext( bind_id, _FUNC_, "Event" ) )
                 {
