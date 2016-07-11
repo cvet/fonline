@@ -1107,7 +1107,13 @@ public:
                     {
                         const ArgInfo& arg_info = ArgInfos[ i ];
                         if( arg_info.IsObjectEntity )
-                            Script::SetArgEntityOK( (Entity*) GET_ARG( void* ) );
+                        {
+                            Entity* entity = (Entity*) GET_ARG( void* );
+                            if( entity->IsDestroyed )
+                                return false;
+
+                            Script::SetArgEntityOK( entity );
+                        }
                         else if( arg_info.IsObject )
                             Script::SetArgObject( GET_ARG( void* ) );
                         else if( arg_info.IsPodRef )
@@ -1217,9 +1223,25 @@ public:
 
             ScriptEvent::ArgInfo& arg_info = event->ArgInfos[ i ];
             arg_info.IsObject = ( type_id & asTYPEID_MASK_OBJECT ) != 0;
-            arg_info.IsObjectEntity = ( arg_info.IsObject && engine->GetObjectTypeById( type_id )->DerivesFrom( engine->GetObjectTypeByName( "Entity" ) ) );
             arg_info.IsPodRef = ( type_id >= asTYPEID_BOOL && type_id <= asTYPEID_DOUBLE && flags & asTM_INOUTREF );
             arg_info.PodSize = engine->GetSizeOfPrimitiveType( type_id );
+
+            arg_info.IsObjectEntity = false;
+            if( arg_info.IsObject && type_id & asTYPEID_APPOBJECT )
+            {
+                int matches = 0;
+                asIObjectType* obj_type = engine->GetObjectTypeById( type_id );
+                for( asUINT j = 0; j < obj_type->GetPropertyCount() && matches < 3; j++ )
+                {
+                    const char* decl = obj_type->GetPropertyDeclaration( j );
+                    if( Str::Compare( decl, "const uint Id" ) ||
+                        Str::Compare( decl, "const bool IsDestroyed" ) ||
+                        Str::Compare( decl, "const bool IsDestroying" ) )
+                        matches++;
+                }
+                if( matches == 3 )
+                    arg_info.IsObjectEntity = true;
+            }
 
             if( name && Str::Length( name ) > 0 )
             {
