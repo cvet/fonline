@@ -1109,7 +1109,7 @@ public:
                         if( arg_info.IsObjectEntity )
                         {
                             Entity* entity = (Entity*) GET_ARG( void* );
-                            if( entity->IsDestroyed )
+                            if( entity && entity->IsDestroyed )
                                 return false;
 
                             Script::SetArgEntityOK( entity );
