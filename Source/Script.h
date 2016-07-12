@@ -104,7 +104,7 @@ public:
     static hash               BindScriptFuncNumByFuncName( const char* func_name, const char* decl );
     static hash               BindScriptFuncNumByFunc( asIScriptFunction* func );
     static uint               GetScriptFuncBindId( hash func_num );
-    static bool               PrepareScriptFuncContext( hash func_num, const char* call_func, const char* ctx_info );
+    static void               PrepareScriptFuncContext( hash func_num, const char* ctx_info );
 
     static void        CacheEnumValues();
     static int         GetEnumValue( const char* enum_value_name, bool& fail );
@@ -116,7 +116,7 @@ public:
     static void EndExecution();
     static void AddEndExecutionCallback( EndExecutionCallback func );
 
-    static bool              PrepareContext( uint bind_id, const char* call_func, const char* ctx_info );
+    static void              PrepareContext( uint bind_id, const char* ctx_info );
     static void              SetArgUChar( uchar value );
     static void              SetArgUShort( ushort value );
     static void              SetArgUInt( uint value );

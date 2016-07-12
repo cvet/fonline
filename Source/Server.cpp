@@ -1884,12 +1884,10 @@ void FOServer::Process_Text( Client* cl )
 
     for( int i = 0; i < listen_count; i++ )
     {
-        if( Script::PrepareContext( listen_func_id[ i ], _FUNC_, cl->GetInfo() ) )
-        {
-            Script::SetArgEntity( cl );
-            Script::SetArgObject( listen_str[ i ] );
-            Script::RunPrepared();
-        }
+        Script::PrepareContext( listen_func_id[ i ], cl->GetInfo() );
+        Script::SetArgEntity( cl );
+        Script::SetArgObject( listen_str[ i ] );
+        Script::RunPrepared();
         listen_str[ i ]->Release();
     }
 }
@@ -2443,14 +2441,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             break;
         }
 
-        if( !Script::PrepareContext( bind_id, _FUNC_, cl_ ? cl_->GetInfo() : "AdminPanel" ) )
-        {
-            if( !cl_ )
-                ResynchronizeLogicThreads();
-            logcb( "Fail, prepare error." );
-            break;
-        }
-
+        Script::PrepareContext( bind_id, cl_ ? cl_->GetInfo() : "AdminPanel" );
         Script::SetArgObject( cl_ );
         Script::SetArgUInt( param0 );
         Script::SetArgUInt( param1 );

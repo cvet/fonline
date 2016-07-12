@@ -1719,8 +1719,9 @@ bool Critter::SetScript( asIScriptFunction* func, bool first_time )
         func_num = GetScriptId();
     }
 
-    if( func_num && Script::PrepareScriptFuncContext( func_num, _FUNC_, GetInfo() ) )
+    if( func_num )
     {
+        Script::PrepareScriptFuncContext( func_num, GetInfo() );
         Script::SetArgEntity( this );
         Script::SetArgBool( first_time );
         Script::RunPrepared();
@@ -4335,14 +4336,15 @@ void Client::CloseTalk()
         {
             if( !npc )
                 break;
+
             npc->SetTarget( REASON_FROM_DIALOG, this, GameOpt.DeadHitPoints, false );
         }
         break;
         default:
             if( func_id <= 0 )
                 break;
-            if( !Script::PrepareContext( func_id, _FUNC_, GetInfo() ) )
-                break;
+
+            Script::PrepareContext( func_id, GetInfo() );
             Script::SetArgEntity( this );
             Script::SetArgEntity( npc );
             Script::SetArgEntity( nullptr );

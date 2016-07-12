@@ -24,42 +24,41 @@ void Method::Wrap( asIScriptGeneric* gen )
 
     for( size_t cbk = 0; cbk < bind_ids.size(); cbk++ )
     {
-        if( Script::PrepareContext( bind_ids[ cbk ], _FUNC_, "Method" ) )
+        Script::PrepareContext( bind_ids[ cbk ], "Method" );
+
+        // First arg is entity
+        Script::SetArgEntityOK( entity );
+
+        // Arguments
+        int arg_count = gen->GetArgCount();
+        for( int i = 1; i < arg_count; i++ )
+            Script::SetArgAddress( gen->GetArgAddress( i ) );
+
+        // Run
+        if( cbk == 0 )
         {
-            // First arg is entity
-            Script::SetArgEntityOK( entity );
-
-            // Arguments
-            int arg_count = gen->GetArgCount();
-            for( int i = 1; i < arg_count; i++ )
-                Script::SetArgAddress( gen->GetArgAddress( i ) );
-
-            // Run
-            if( cbk == 0 )
+            if( Script::RunPrepared() )
             {
-                if( Script::RunPrepared() )
+                int type_id = gen->GetReturnTypeId();
+                if( cbk == 0 && type_id != asTYPEID_VOID )
                 {
-                    int type_id = gen->GetReturnTypeId();
-                    if( cbk == 0 && type_id != asTYPEID_VOID )
-                    {
-                        RUNTIME_ASSERT( false );
-                        // gen->SetReturnAddress( Script::GetReturnedRawAddress() );
-                    }
-                }
-                else
-                {
-                    Script::PassException();
-                    break;
+                    RUNTIME_ASSERT( false );
+                    // gen->SetReturnAddress( Script::GetReturnedRawAddress() );
                 }
             }
             else
             {
-                Script::RunPrepared();
-            }
-
-            if( entity->IsDestroyed )
+                Script::PassException();
                 break;
+            }
         }
+        else
+        {
+            Script::RunPrepared();
+        }
+
+        if( entity->IsDestroyed )
+            break;
     }
 }
 

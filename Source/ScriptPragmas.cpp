@@ -1044,7 +1044,7 @@ public:
             // Arg callbacs
             va_list va_args_copy;
             va_copy( va_args_copy, va_args );
-            #define GET_ARG( type )            ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
+            #define GET_ARG( type )        ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
             for( size_t i = 0; i < ArgInfos.size(); i++ )
             {
                 const ArgInfo& arg_info = ArgInfos[ i ];
@@ -1096,54 +1096,74 @@ public:
             for( int i = (int) callbacks_to_call.size() - 1; i >= 0; i-- )
             {
                 asIScriptFunction* callback = callbacks_to_call[ i ];
-                uint               bind_id = Script::BindByFunc( callback, true );
-                RUNTIME_ASSERT( bind_id );
-                if( Script::PrepareContext( bind_id, _FUNC_, "Event" ) )
+
+                // Check entities
+                #define GET_ARG( type )    ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
+                va_list va_args_copy;
+                va_copy( va_args_copy, va_args );
+                for( size_t i = 0; i < ArgInfos.size(); i++ )
                 {
-                    va_list va_args_copy;
-                    va_copy( va_args_copy, va_args );
-                    #define GET_ARG( type )    ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
-                    for( size_t i = 0; i < ArgInfos.size(); i++ )
+                    const ArgInfo& arg_info = ArgInfos[ i ];
+                    if( arg_info.IsObjectEntity )
                     {
-                        const ArgInfo& arg_info = ArgInfos[ i ];
-                        if( arg_info.IsObjectEntity )
-                        {
-                            Entity* entity = (Entity*) GET_ARG( void* );
-                            if( entity && entity->IsDestroyed )
-                                return false;
-
-                            Script::SetArgEntityOK( entity );
-                        }
-                        else if( arg_info.IsObject )
-                            Script::SetArgObject( GET_ARG( void* ) );
-                        else if( arg_info.IsPodRef )
-                            Script::SetArgAddress( GET_ARG( void* ) );
-                        else if( arg_info.PodSize == 1 )
-                            Script::SetArgUChar( GET_ARG( uchar ) );
-                        else if( arg_info.PodSize == 2 )
-                            Script::SetArgUShort( GET_ARG( ushort ) );
-                        else if( arg_info.PodSize == 4 )
-                            Script::SetArgUInt( GET_ARG( uint ) );
-                        else if( arg_info.PodSize == 8 )
-                            Script::SetArgUInt64( GET_ARG( uint64 ) );
-                        else
-                            RUNTIME_ASSERT( !"Unreachable place" );
+                        Entity* entity = (Entity*) GET_ARG( void* );
+                        if( entity && entity->IsDestroyed )
+                            return false;
                     }
-                    #undef GET_ARG
-
-                    if( !Deferred )
-                    {
-                        if( Script::RunPrepared() )
-                        {
-                            // Interrupted
-                            if( callback->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool() )
-                                return false;
-                        }
-                    }
+                    else if( arg_info.IsObject )
+                        GET_ARG( void* );
+                    else if( arg_info.IsPodRef )
+                        GET_ARG( void* );
+                    else if( arg_info.PodSize == 1 )
+                        GET_ARG( uchar );
+                    else if( arg_info.PodSize == 2 )
+                        GET_ARG( ushort );
+                    else if( arg_info.PodSize == 4 )
+                        GET_ARG( uint );
+                    else if( arg_info.PodSize == 8 )
+                        GET_ARG( uint64 );
                     else
+                        RUNTIME_ASSERT( !"Unreachable place" );
+                }
+
+                uint bind_id = Script::BindByFunc( callback, true );
+                Script::PrepareContext( bind_id, "Event" );
+
+                va_copy( va_args_copy, va_args );
+                for( size_t i = 0; i < ArgInfos.size(); i++ )
+                {
+                    const ArgInfo& arg_info = ArgInfos[ i ];
+                    if( arg_info.IsObjectEntity )
+                        Script::SetArgEntityOK( (Entity*) GET_ARG( void* ) );
+                    else if( arg_info.IsObject )
+                        Script::SetArgObject( GET_ARG( void* ) );
+                    else if( arg_info.IsPodRef )
+                        Script::SetArgAddress( GET_ARG( void* ) );
+                    else if( arg_info.PodSize == 1 )
+                        Script::SetArgUChar( GET_ARG( uchar ) );
+                    else if( arg_info.PodSize == 2 )
+                        Script::SetArgUShort( GET_ARG( ushort ) );
+                    else if( arg_info.PodSize == 4 )
+                        Script::SetArgUInt( GET_ARG( uint ) );
+                    else if( arg_info.PodSize == 8 )
+                        Script::SetArgUInt64( GET_ARG( uint64 ) );
+                    else
+                        RUNTIME_ASSERT( !"Unreachable place" );
+                }
+                #undef GET_ARG
+
+                if( !Deferred )
+                {
+                    if( Script::RunPrepared() )
                     {
-                        Script::RunPreparedSuspend();
+                        // Interrupted
+                        if( callback->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool() )
+                            return false;
                     }
+                }
+                else
+                {
+                    Script::RunPreparedSuspend();
                 }
             }
             return true;
@@ -1556,11 +1576,7 @@ public:
             return;
         }
 
-        if( !Script::PrepareContext( inFuncBind[ func_index ], _FUNC_, "Rpc" ) )
-        {
-            net_buf.SetError();
-            return;
-        }
+        Script::PrepareContext( inFuncBind[ func_index ], "Rpc" );
 
         char buf[ 0xFFFF + 1 ];
         uchar pod_buf[ 8 ];

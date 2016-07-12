@@ -2425,8 +2425,6 @@ void FOClient::Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, ucha
     Bout << from_slot;
     Bout << to_slot;
     Bout << count;
-
-    CollectContItems();
 }
 
 void FOClient::Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags )
@@ -2437,8 +2435,6 @@ void FOClient::Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id
     Bout << item_id;
     Bout << count;
     Bout << take_flags;
-
-    CollectContItems();
 }
 
 void FOClient::Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer )
@@ -7284,7 +7280,7 @@ void FOClient::DrawIfaceLayer( uint layer )
 
 void FOClient::OnItemInvChanged( Item* old_item, Item* item )
 {
-    Script::RaiseInternalEvent( ClientFunctions.ItemInvChanged, old_item, item );
+    Script::RaiseInternalEvent( ClientFunctions.ItemInvChanged, item, old_item );
     old_item->Release();
 }
 
@@ -8060,6 +8056,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
 
         // Notice server
         Self->Net_SendChangeItem( ap_cost, item_id, from_slot, to_slot, item_count );
+        // Self->CollectContItems();
 
         // Spend AP
         Self->Chosen->SubAp( ap_cost );
@@ -8083,21 +8080,26 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         Self->Chosen->Action( ACTION_OPERATE_CONTAINER, Self->PupTransferType * 10 + ( item_cont == ITEMS_PICKUP_FROM ? 0 : 2 ), item );
         Self->Chosen->SubAp( ap_cost );
 
+        bool release = false;
         if( item->GetStackable() && item_count < item->GetCount() )
         {
             item->ChangeCount( -(int) item_count );
         }
         else
         {
-            item->Release();
+            release = true;
             cont.erase( it );
         }
 
-        uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
-        Self->Net_SendItemCont( Self->PupTransferType, Self->PupContId, item_id, item_count, take_flags );
-
         // Notify scripts about item changing
         Self->OnItemInvChanged( old_item, item );
+
+        if( release )
+            item->Release();
+
+        uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
+        Self->Net_SendItemCont( Self->PupTransferType, Self->PupContId, item_id, item_count, take_flags );
+        // Self->CollectContItems();
     }
     else if( cmd == "PickItem" && args.size() == 5 )
     {

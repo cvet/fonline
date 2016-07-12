@@ -669,7 +669,7 @@ struct GameOptions
     hash          ( * GetHashByName )( const char* );
 
     uint          ( * ScriptBind )( const char*, const char*, bool );
-    bool          ( * ScriptPrepare )( uint );
+    void          ( * ScriptPrepare )( uint );
     void          ( * ScriptSetArgInt8 )( char );
     void          ( * ScriptSetArgInt16 )( short );
     void          ( * ScriptSetArgInt )( int );

@@ -394,27 +394,26 @@ void Property::GenericGet( Entity* entity, void* ret_value )
 
         properties->getCallbackLocked[ getIndex ] = true;
 
-        if( Script::PrepareContext( getCallback, _FUNC_, GetName() ) )
+        Script::PrepareContext( getCallback, GetName() );
+        if( getCallbackArgs > 0 )
+            Script::SetArgEntityOK( entity );
+        if( getCallbackArgs > 1 )
+            Script::SetArgUInt( enumValue );
+        if( Script::RunPrepared() )
         {
-            if( getCallbackArgs > 0 )
-                Script::SetArgEntityOK( entity );
-            if( getCallbackArgs > 1 )
-                Script::SetArgUInt( enumValue );
-            if( Script::RunPrepared() )
-            {
-                properties->getCallbackLocked[ getIndex ] = false;
+            properties->getCallbackLocked[ getIndex ] = false;
 
-                memcpy( ret_value, Script::GetReturnedRawAddress(), baseSize );
-                if( !IsPOD() )
-                {
-                    void*& val = *(void**) ret_value;
-                    if( val )
-                        AddRefComplexValue( val );
-                    else
-                        val = CreateComplexValue( nullptr, 0 );
-                }
-                return;
+            memcpy( ret_value, Script::GetReturnedRawAddress(), baseSize );
+            if( !IsPOD() )
+            {
+                void*& val = *(void**) ret_value;
+                if( val )
+                    AddRefComplexValue( val );
+                else
+                    val = CreateComplexValue( nullptr, 0 );
             }
+
+            return;
         }
 
         properties->getCallbackLocked[ getIndex ] = false;
@@ -500,31 +499,29 @@ void Property::GenericSet( Entity* entity, void* new_value )
     {
         for( size_t i = 0; i < setCallbacks.size(); i++ )
         {
-            if( Script::PrepareContext( setCallbacks[ i ], _FUNC_, GetName() ) )
+            Script::PrepareContext( setCallbacks[ i ], GetName() );
+            Script::SetArgObject( entity );
+            if( setCallbacksArgs[ i ] > 1 )
             {
-                Script::SetArgObject( entity );
-                if( setCallbacksArgs[ i ] > 1 )
-                {
-                    Script::SetArgUInt( enumValue );
-                    if( setCallbacksArgs[ i ] == 3 )
-                        Script::SetArgAddress( new_value );
-                }
-                else if( setCallbacksArgs[ i ] < -1 )
-                {
+                Script::SetArgUInt( enumValue );
+                if( setCallbacksArgs[ i ] == 3 )
                     Script::SetArgAddress( new_value );
-                    if( setCallbacksArgs[ i ] == -3 )
-                        Script::SetArgUInt( enumValue );
-                }
-
-                bool run_ok = true;
-                if( setCallbacksDeferred[ i ] )
-                    Script::RunPreparedSuspend();
-                else
-                    run_ok = Script::RunPrepared();
-                RUNTIME_ASSERT( !entity->IsDestroyed );
-                if( !run_ok )
-                    break;
             }
+            else if( setCallbacksArgs[ i ] < -1 )
+            {
+                Script::SetArgAddress( new_value );
+                if( setCallbacksArgs[ i ] == -3 )
+                    Script::SetArgUInt( enumValue );
+            }
+
+            bool run_ok = true;
+            if( setCallbacksDeferred[ i ] )
+                Script::RunPreparedSuspend();
+            else
+                run_ok = Script::RunPrepared();
+            RUNTIME_ASSERT( !entity->IsDestroyed );
+            if( !run_ok )
+                break;
         }
     }
 

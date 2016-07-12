@@ -290,8 +290,11 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     {
         WriteLog( "Executing 'void %s()'.\n", run_func[ i ] );
         uint bind_id = Script::BindByFuncName( run_func[ i ], "void %s()", true );
-        if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "ASCompiler" ) )
+        if( bind_id )
+        {
+            Script::PrepareContext( bind_id, "ASCompiler" );
             Script::RunPrepared();
+        }
     }
 
     // Clean up

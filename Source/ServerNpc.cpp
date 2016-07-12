@@ -377,11 +377,9 @@ void FOServer::ProcessAI( Npc* npc )
         else if( bind_id )
         {
             plane->Misc.ScriptBindId = 0;
-            if( Script::PrepareContext( bind_id, _FUNC_, npc->GetInfo() ) )
-            {
-                Script::SetArgEntity( npc );
-                Script::RunPrepared();
-            }
+            Script::PrepareContext( bind_id, npc->GetInfo() );
+            Script::SetArgEntity( npc );
+            Script::RunPrepared();
         }
         else
         {
@@ -1554,9 +1552,10 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
 
     // Get lexems
     cl->Talk.Lexems.clear();
-    if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext( cl->Talk.CurDialog.DlgScript, _FUNC_, cl->GetInfo() ) )
+    if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE )
     {
         ScriptString* lexems = ScriptString::Create();
+        Script::PrepareContext( cl->Talk.CurDialog.DlgScript, cl->GetInfo() );
         Script::SetArgEntity( cl );
         Script::SetArgEntity( npc );
         Script::SetArgObject( lexems );
@@ -1687,8 +1686,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
                 return;
 
             ScriptString* str_ = ScriptString::Create( str );
-            if( !Script::PrepareContext( cur_dialog->DlgScript, _FUNC_, cl->GetInfo() ) )
-                return;
+            Script::PrepareContext( cur_dialog->DlgScript, cl->GetInfo() );
             Script::SetArgEntity( cl );
             Script::SetArgEntity( npc );
             Script::SetArgObject( str_ );
@@ -1838,9 +1836,10 @@ label_Barter:
 
     // Get lexems
     cl->Talk.Lexems.clear();
-    if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE && Script::PrepareContext( cl->Talk.CurDialog.DlgScript, _FUNC_, cl->GetInfo() ) )
+    if( cl->Talk.CurDialog.DlgScript > NOT_ANSWER_BEGIN_BATTLE )
     {
         ScriptString* lexems = ScriptString::Create();
+        Script::PrepareContext( cl->Talk.CurDialog.DlgScript, cl->GetInfo() );
         Script::SetArgEntity( cl );
         Script::SetArgEntity( npc );
         Script::SetArgObject( lexems );

@@ -67,14 +67,12 @@ void FOServer::ProcessCritter( Critter* cr )
             cr->EraseCrTimeEvent( 0 );
 
             uint time = GameOpt.TimeMultiplier * 1800;             // 30 minutes on error
-            if( Script::PrepareScriptFuncContext( func_num, _FUNC_, cr->GetInfo() ) )
-            {
-                Script::SetArgEntity( cr );
-                Script::SetArgUInt( identifier );
-                Script::SetArgAddress( &rate );
-                if( Script::RunPrepared() )
-                    time = Script::GetReturnedUInt();
-            }
+            Script::PrepareScriptFuncContext( func_num, cr->GetInfo() );
+            Script::SetArgEntity( cr );
+            Script::SetArgUInt( identifier );
+            Script::SetArgAddress( &rate );
+            if( Script::RunPrepared() )
+                time = Script::GetReturnedUInt();
             if( time )
                 cr->AddCrTimeEvent( func_num, rate, time, identifier );
         }
@@ -771,8 +769,7 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     // Scenery
     if( target_scen && target_scen->SceneryScriptBindId != 0 )
     {
-        if( !Script::PrepareContext( target_scen->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
-            return false;
+        Script::PrepareContext( target_scen->SceneryScriptBindId, cr->GetInfo() );
         Script::SetArgEntity( cr );
         Script::SetArgEntity( target_scen );
         Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
@@ -845,8 +842,7 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
 
         if( pick_scenery->SceneryScriptBindId )
         {
-            if( !Script::PrepareContext( pick_scenery->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
-                return false;
+            Script::PrepareContext( pick_scenery->SceneryScriptBindId, cr->GetInfo() );
             Script::SetArgEntity( cr );
             Script::SetArgEntity( pick_scenery );
             Script::SetArgUInt( SKILL_PICK_ON_GROUND );
@@ -1038,16 +1034,18 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
         Item* in_trigger = map->GetProtoMap()->GetMapScenery( to_hx, to_hy, SP_SCEN_TRIGGER );
         if( !( out_trigger && in_trigger && out_trigger->GetTriggerNum() == in_trigger->GetTriggerNum() ) )
         {
-            if( out_trigger && out_trigger->SceneryScriptBindId && Script::PrepareContext( out_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
+            if( out_trigger && out_trigger->SceneryScriptBindId )
             {
+                Script::PrepareContext( out_trigger->SceneryScriptBindId, cr->GetInfo() );
                 Script::SetArgEntityOK( cr );
                 Script::SetArgEntityOK( out_trigger );
                 Script::SetArgBool( false );
                 Script::SetArgUChar( dir );
                 Script::RunPreparedSuspend();
             }
-            if( in_trigger && in_trigger->SceneryScriptBindId && Script::PrepareContext( in_trigger->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
+            if( in_trigger && in_trigger->SceneryScriptBindId )
             {
+                Script::PrepareContext( in_trigger->SceneryScriptBindId, cr->GetInfo() );
                 Script::SetArgEntityOK( cr );
                 Script::SetArgEntityOK( in_trigger );
                 Script::SetArgBool( true );

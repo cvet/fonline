@@ -240,8 +240,7 @@ void FOServer::ScriptSystemUpdate()
 bool FOServer::DialogScriptDemand( DemandResult& demand, Critter* master, Critter* slave )
 {
     int bind_id = (int) demand.ParamId;
-    if( !Script::PrepareContext( bind_id, _FUNC_, master->GetInfo() ) )
-        return 0;
+    Script::PrepareContext( bind_id, master->GetInfo() );
     Script::SetArgEntity( master );
     Script::SetArgEntity( slave );
     for( int i = 0; i < demand.ValuesCount; i++ )
@@ -254,8 +253,7 @@ bool FOServer::DialogScriptDemand( DemandResult& demand, Critter* master, Critte
 uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critter* slave )
 {
     int bind_id = (int) result.ParamId;
-    if( !Script::PrepareContext( bind_id, _FUNC_, Str::FormatBuf( "Critter '%s', func '%s'", master->GetInfo(), Script::GetBindFuncName( bind_id ).c_str() ) ) )
-        return 0;
+    Script::PrepareContext( bind_id, Str::FormatBuf( "Critter '%s', func '%s'", master->GetInfo(), Script::GetBindFuncName( bind_id ).c_str() ) );
     Script::SetArgEntity( master );
     Script::SetArgEntity( slave );
     for( int i = 0; i < result.ValuesCount; i++ )
@@ -735,9 +733,8 @@ bool FOServer::SScriptFunc::Item_CallSceneryFunction( Item* scenery, Critter* cr
 {
     if( !scenery->SceneryScriptBindId )
         return false;
-    if( !Script::PrepareContext( scenery->SceneryScriptBindId, _FUNC_, cr->GetInfo() ) )
-        return false;
 
+    Script::PrepareContext( scenery->SceneryScriptBindId, cr->GetInfo() );
     Script::SetArgEntity( cr );
     Script::SetArgEntity( scenery );
     Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );

@@ -4100,9 +4100,10 @@ void FOMapper::ParseCommand( const char* cmd )
 
         // Reparse module
         uint bind_id = Script::BindByFuncName( func_name, "string %s(string)", true );
-        if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Mapper" ) )
+        if( bind_id )
         {
             ScriptString* sstr = ScriptString::Create( str );
+            Script::PrepareContext( bind_id, "Mapper" );
             Script::SetArgObject( sstr );
             if( Script::RunPrepared() )
             {

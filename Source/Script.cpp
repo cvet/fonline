@@ -165,9 +165,9 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
         {
             return Script::BindByFuncName( func_name, func_decl, temporary_id, false );
         }
-        static bool ScriptPrepare( uint bind_id )
+        static void ScriptPrepare( uint bind_id )
         {
-            return Script::PrepareContext( bind_id, _FUNC_, "ScriptDllCall" );
+            Script::PrepareContext( bind_id, "ScriptDllCall" );
         }
         static void ScriptSetArgInt8( char value )
         {
@@ -1550,15 +1550,10 @@ uint Script::GetScriptFuncBindId( hash func_num )
     return 0;
 }
 
-bool Script::PrepareScriptFuncContext( hash func_num, const char* call_func, const char* ctx_info )
+void Script::PrepareScriptFuncContext( hash func_num, const char* ctx_info )
 {
     uint bind_id = GetScriptFuncBindId( func_num );
-    if( !bind_id )
-    {
-        WriteLogF( _FUNC_, " - Function %u '%s' not found. Context info '%s', call func '%s'.\n", func_num, Str::GetName( func_num ), ctx_info, call_func );
-        return false;
-    }
-    return PrepareContext( bind_id, call_func, ctx_info );
+    PrepareContext( bind_id, ctx_info );
 }
 
 void Script::CacheEnumValues()
@@ -1776,22 +1771,15 @@ void Script::AddEndExecutionCallback( EndExecutionCallback func )
     #endif
 }
 
-bool Script::PrepareContext( uint bind_id, const char* call_func, const char* ctx_info )
+void Script::PrepareContext( uint bind_id, const char* ctx_info )
 {
     #ifdef SCRIPT_MULTITHREADING
     if( LogicMT )
         BindedFunctionsLocker.Lock();
     #endif
 
-    if( !bind_id || bind_id >= (uint) BindedFunctions.size() )
-    {
-        WriteLogF( _FUNC_, " - Invalid bind id '%u'. Context info '%s'.\n", bind_id, ctx_info );
-        #ifdef SCRIPT_MULTITHREADING
-        if( LogicMT )
-            BindedFunctionsLocker.Unlock();
-        #endif
-        return false;
-    }
+    RUNTIME_ASSERT( bind_id > 0 );
+    RUNTIME_ASSERT( bind_id < (uint) BindedFunctions.size() );
 
     BindFunction&      bf = BindedFunctions[ bind_id ];
     bool               is_script = bf.IsScriptCall;
@@ -1805,8 +1793,7 @@ bool Script::PrepareContext( uint bind_id, const char* call_func, const char* ct
 
     if( is_script )
     {
-        if( !script_func )
-            return false;
+        RUNTIME_ASSERT( script_func );
 
         asIScriptContext* ctx = RequestContext();
         RUNTIME_ASSERT( ctx );
@@ -1814,17 +1801,10 @@ bool Script::PrepareContext( uint bind_id, const char* call_func, const char* ct
         BeginExecution();
 
         ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-        Str::Format( ctx_data->Info, "Caller '%s', CallFunc '%s', Thread '%s'", ctx_info, call_func, Thread::GetCurrentName() );
+        Str::Format( ctx_data->Info, ctx_info );
 
         int result = ctx->Prepare( script_func );
-        if( result < 0 )
-        {
-            WriteLogF( _FUNC_, " - Prepare error, context name '%s', bind_id '%u', func '%s', error '%d'.\n", ctx_data->Info, bind_id, script_func->GetDeclaration(), result );
-            ctx->Abort();
-            ReturnContext( ctx );
-            EndExecution();
-            return false;
-        }
+        RUNTIME_ASSERT( result >= 0 );
 
         RUNTIME_ASSERT( !CurrentCtx );
         CurrentCtx = ctx;
@@ -1832,6 +1812,8 @@ bool Script::PrepareContext( uint bind_id, const char* call_func, const char* ct
     }
     else
     {
+        RUNTIME_ASSERT( func_addr );
+
         BeginExecution();
 
         NativeFuncAddr = func_addr;
@@ -1839,7 +1821,6 @@ bool Script::PrepareContext( uint bind_id, const char* call_func, const char* ct
     }
 
     CurrentArg = 0;
-    return true;
 }
 
 void Script::SetArgUChar( uchar value )
@@ -2137,12 +2118,15 @@ bool Script::RunPrepared()
         }
 
         *(uint64*) RetValue = *(uint64*) ctx->GetAddressOfReturnValue();
+        ScriptCall = true;
+
         ReturnContext( ctx );
     }
     else
     {
         #ifdef ALLOW_NATIVE_CALLS
         *(uint64*) RetValue = CallCDeclFunction32( NativeArgs, CurrentArg * 4, NativeFuncAddr );
+        ScriptCall = false;
         #else
         RUNTIME_ASSERT( !"Native calls is not allowed" );
         #endif
