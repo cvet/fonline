@@ -1631,7 +1631,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
             cl->CloseTalk();
-            WriteLogF( _FUNC_, " - Npc not found, client '%s'.\n", cl->GetInfo() );
+            WriteLogF( _FUNC_, " - Npc with id %u not found, client '%s'.\n", id_npc_talk, cl->GetInfo() );
             return;
         }
 

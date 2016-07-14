@@ -590,9 +590,11 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
             }
             return true;
         }
-        else if( typeId == asTYPEID_INT64 )
+        else if( typeId == asTYPEID_INT64 || typeId == asTYPEID_UINT64 )
         {
-            if( m_typeId == asTYPEID_DOUBLE )
+            if( m_typeId >= asTYPEID_INT8 && m_typeId <= asTYPEID_UINT64 )
+                *(asINT64*) value = asINT64( m_valueInt );
+            else if( m_typeId == asTYPEID_DOUBLE )
                 *(asINT64*) value = asINT64( m_valueFlt );
             else if( m_typeId == asTYPEID_BOOL )
             {
