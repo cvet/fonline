@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -487,6 +487,15 @@ void asCModule::CallExit()
 				*obj = 0;
 			}
 		}
+		else if ((*it)->type.IsFuncdef())
+		{
+			asCScriptFunction **func = (asCScriptFunction**)(*it)->GetAddressOfValue();
+			if (*func)
+			{
+				(*func)->Release();
+				*func = 0;
+			}
+		}
 		it++;
 	}
 
@@ -499,6 +508,29 @@ bool asCModule::HasExternalReferences(bool shuttingDown)
 	// Check all entiteis in the module for any external references.
 	// If there are any external references the module cannot be deleted yet.
 	
+	asCSymbolTableIterator<asCGlobalProperty> it = scriptGlobals.List();
+	while (it)
+	{
+		asCGlobalProperty *desc = *it;
+		if (desc->GetInitFunc() && desc->GetInitFunc()->externalRefCount.get())
+		{
+			if( !shuttingDown )
+				return true;
+			else
+			{
+				asCString msg;
+				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
+
+				// TODO: Use a better error message
+				asCString tmpName = "init " + desc->name;
+				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, tmpName.AddressOf(), desc->GetInitFunc()->GetFuncType());
+				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
+			}
+		}
+		it++;
+	}
+
 	for( asUINT n = 0; n < scriptFunctions.GetLength(); n++ )
 		if( scriptFunctions[n] && scriptFunctions[n]->externalRefCount.get() )
 		{
@@ -542,7 +574,7 @@ bool asCModule::HasExternalReferences(bool shuttingDown)
 //				msg.Format(TXT_EXTRNL_REF_TO_MODULE_s, name.AddressOf());
 //				engine->WriteMessage("", 0, 0, asMSGTYPE_WARNING, msg.AddressOf());
 //
-//				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, funcDefs[n]->GetName(), funcDefs[n]->GetFuncType());
+//				msg.Format(TXT_PREV_FUNC_IS_NAMED_s_TYPE_IS_d, funcDefs[n]->GetName(), funcDefs[n]->funcdef->GetFuncType());
 //				engine->WriteMessage("", 0, 0, asMSGTYPE_INFORMATION, msg.AddressOf());
 			}
 		}
@@ -676,7 +708,7 @@ void asCModule::InternalReset()
 	enumTypes.SetLength(0);
 	for( n = 0; n < typeDefs.GetLength(); n++ )
 	{
-		asCObjectType *type = typeDefs[n];
+		asCTypedefType *type = typeDefs[n];
 
 		// The type should be destroyed now
 		type->DestroyInternal();
@@ -690,13 +722,13 @@ void asCModule::InternalReset()
 	// Free funcdefs
 	for( n = 0; n < funcDefs.GetLength(); n++ )
 	{
-		asCScriptFunction *func = funcDefs[n];
-		if( func->IsShared() )
+		asCFuncdefType *func = funcDefs[n];
+		if( func->funcdef->IsShared() )
 		{
-			// The func is shared, so transfer ownership to another module that also uses it
-			if( engine->FindNewOwnerForSharedFunc(func, this) != this )
+			// The funcdef is shared, so transfer ownership to another module that also uses it
+			if( engine->FindNewOwnerForSharedType(func, this) != this )
 			{
-				// The func is owned by another module, just release our reference
+				// The funcdef is owned by another module, just release our reference
 				func->ReleaseInternal();
 				continue;
 			}
@@ -928,8 +960,8 @@ int asCModule::RemoveGlobalVar(asUINT index)
 		engine->RemoveGlobalProperty(prop);
 
 	// Remove the global variable from the module
-	prop->Release();
 	scriptGlobals.Erase(index);
+	prop->Release();
 
 	return 0;
 }
@@ -1019,7 +1051,7 @@ asUINT asCModule::GetObjectTypeCount() const
 }
 
 // interface 
-asIObjectType *asCModule::GetObjectTypeByIndex(asUINT index) const
+asITypeInfo *asCModule::GetTypeInfoByIndex(asUINT index) const
 {
 	if( index >= classTypes.GetLength() ) 
 		return 0;
@@ -1027,18 +1059,44 @@ asIObjectType *asCModule::GetObjectTypeByIndex(asUINT index) const
 	return classTypes[index];
 }
 
+#ifdef AS_DEPRECATED
+// Deprecated since 2.31.0, 2015-12-06
 // interface
-asIObjectType *asCModule::GetObjectTypeByName(const char *in_name) const
+asITypeInfo *asCModule::GetTypeInfoByName(const char *in_name) const
+{
+	asITypeInfo *ti = GetTypeInfoByName(in_name);
+	return reinterpret_cast<asCTypeInfo*>(ti)->CastToObjectType();
+}
+#endif
+
+// interface
+asITypeInfo *asCModule::GetTypeInfoByName(const char *in_name) const
 {
 	asSNameSpace *ns = defaultNamespace;
-	while( ns )
+	while (ns)
 	{
-		for( asUINT n = 0; n < classTypes.GetLength(); n++ )
+		for (asUINT n = 0; n < classTypes.GetLength(); n++)
 		{
-			if( classTypes[n] &&
+			if (classTypes[n] &&
 				classTypes[n]->name == in_name &&
-				classTypes[n]->nameSpace == ns )
+				classTypes[n]->nameSpace == ns)
 				return classTypes[n];
+		}
+
+		for (asUINT n = 0; n < enumTypes.GetLength(); n++)
+		{
+			if (enumTypes[n] &&
+				enumTypes[n]->name == in_name &&
+				enumTypes[n]->nameSpace == ns)
+				return enumTypes[n];
+		}
+
+		for (asUINT n = 0; n < typeDefs.GetLength(); n++)
+		{
+			if (typeDefs[n] &&
+				typeDefs[n]->name == in_name &&
+				typeDefs[n]->nameSpace == ns)
+				return typeDefs[n];
 		}
 
 		// Recursively search parent namespace
@@ -1066,8 +1124,18 @@ int asCModule::GetTypeIdByDecl(const char *decl) const
 	return engine->GetTypeIdFromDataType(dt);
 }
 
+#ifdef AS_DEPRECATED
+// Deprecated since 2.31.0, 2015-12-06
 // interface
-asIObjectType *asCModule::GetObjectTypeByDecl(const char *decl) const
+asITypeInfo *asCModule::GetTypeInfoByDecl(const char *decl) const
+{
+	asITypeInfo *ti = GetTypeInfoByDecl(decl);
+	return reinterpret_cast<asCTypeInfo*>(ti)->CastToObjectType();
+}
+#endif
+
+// interface
+asITypeInfo *asCModule::GetTypeInfoByDecl(const char *decl) const
 {
 	asCDataType dt;
 
@@ -1078,7 +1146,7 @@ asIObjectType *asCModule::GetObjectTypeByDecl(const char *decl) const
 	bld.silent = true;
 
 	int r = bld.ParseDataType(decl, &dt, defaultNamespace);
-	if( r < 0 )
+	if (r < 0)
 		return 0;
 
 	return dt.GetTypeInfo();
@@ -1087,51 +1155,45 @@ asIObjectType *asCModule::GetObjectTypeByDecl(const char *decl) const
 // interface
 asUINT asCModule::GetEnumCount() const
 {
-	return (asUINT)enumTypes.GetLength();
+	return enumTypes.GetLength();
 }
 
 // interface
-const char *asCModule::GetEnumByIndex(asUINT index, int *enumTypeId, const char **nameSpace) const
+asITypeInfo *asCModule::GetEnumByIndex(asUINT index) const
 {
 	if( index >= enumTypes.GetLength() )
 		return 0;
 
-	if( enumTypeId )
-		*enumTypeId = engine->GetTypeIdFromDataType(asCDataType::CreateType(enumTypes[index], false));
-
-	if( nameSpace )
-		*nameSpace = enumTypes[index]->nameSpace->name.AddressOf();
-
-	return enumTypes[index]->name.AddressOf();
+	return enumTypes[index];
 }
 
+#ifdef AS_DEPRECATED
+// Deprecated since 2.31.0, 2015-12-06
 // interface
 int asCModule::GetEnumValueCount(int enumTypeId) const
 {
-	asCDataType dt = engine->GetDataTypeFromTypeId(enumTypeId);
-	asCEnumType *t = dt.GetTypeInfo()->CastToEnumType();
-	if( t == 0 ) 
+	asITypeInfo *ti = engine->GetTypeInfoById(enumTypeId);
+	asCEnumType *e = reinterpret_cast<asCTypeInfo*>(ti)->CastToEnumType();
+	if (e == 0)
 		return asINVALID_TYPE;
 
-	return (int)t->enumValues.GetLength();
+	return e->GetEnumValueCount();
 }
+#endif
 
+#ifdef AS_DEPRECATED
+// Deprecated since 2.31.0, 2015-12-06
 // interface
 const char *asCModule::GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const
 {
-	asCDataType dt = engine->GetDataTypeFromTypeId(enumTypeId);
-	asCEnumType *t = dt.GetTypeInfo()->CastToEnumType();
-	if( t == 0 ) 
+	asITypeInfo *ti = engine->GetTypeInfoById(enumTypeId);
+	asCEnumType *e = reinterpret_cast<asCTypeInfo*>(ti)->CastToEnumType();
+	if (e == 0)
 		return 0;
 
-	if( index >= t->enumValues.GetLength() )
-		return 0;
-
-	if( outValue )
-		*outValue = t->enumValues[index]->value;
-
-	return t->enumValues[index]->name.AddressOf();
+	return e->GetEnumValueByIndex(index, outValue);
 }
+#endif
 
 // interface
 asUINT asCModule::GetTypedefCount() const
@@ -1140,20 +1202,13 @@ asUINT asCModule::GetTypedefCount() const
 }
 
 // interface
-const char *asCModule::GetTypedefByIndex(asUINT index, int *typeId, const char **nameSpace) const
+asITypeInfo *asCModule::GetTypedefByIndex(asUINT index) const
 {
 	if( index >= typeDefs.GetLength() )
 		return 0;
 
-	if( typeId )
-		*typeId = engine->GetTypeIdFromDataType(typeDefs[index]->templateSubTypes[0]); 
-
-	if( nameSpace )
-		*nameSpace = typeDefs[index]->nameSpace->name.AddressOf();
-
-	return typeDefs[index]->name.AddressOf();
+	return typeDefs[index];
 }
-
 
 // internal
 int asCModule::GetNextImportedFunctionId()
@@ -1472,6 +1527,11 @@ asCTypeInfo *asCModule::GetType(const char *type, asSNameSpace *ns)
 			typeDefs[n]->nameSpace == ns)
 			return typeDefs[n];
 
+	for (n = 0; n < funcDefs.GetLength(); n++)
+		if (funcDefs[n]->name == type &&
+			funcDefs[n]->nameSpace == ns)
+			return funcDefs[n];
+
 	return 0;
 }
 
@@ -1485,12 +1545,6 @@ asCObjectType *asCModule::GetObjectType(const char *type, asSNameSpace *ns)
 		if( classTypes[n]->name == type &&
 			classTypes[n]->nameSpace == ns )
 			return classTypes[n];
-
-	// TODO: type: typedefs shouldn't be considered as objectTypes
-	for( n = 0; n < typeDefs.GetLength(); n++ )
-		if( typeDefs[n]->name == type && 
-			typeDefs[n]->nameSpace == ns )
-			return typeDefs[n];
 
 	return 0;
 }
@@ -1571,6 +1625,11 @@ int asCModule::LoadByteCode(asIBinaryStream *in, bool *wasDebugInfoStripped)
 
 	asCReader read(this, in, engine);
 	r = read.Read(wasDebugInfoStripped);
+	if (r < 0)
+	{
+		engine->BuildCompleted();
+		return r;
+	}
 
 	JITCompile();
 
@@ -1744,16 +1803,17 @@ int asCModule::AddFuncDef(const asCString &funcName, asSNameSpace *ns, asCObject
 	func->nameSpace = ns;
 	func->module    = this;
 
-	funcDefs.PushLast(func);
+	asCFuncdefType *fdt = asNEW(asCFuncdefType)(engine, func);
+	funcDefs.PushLast(fdt); // The constructor set the refcount to 1
 
-	engine->funcDefs.PushLast(func);
+	engine->funcDefs.PushLast(fdt); // doesn't increase refcount
 	func->id = engine->GetNextScriptFunctionId();
 	engine->AddScriptFunction(func);
 
 	if (parent)
 	{
-		parent->childFuncDefs.PushLast(func);
-		func->parentClass = parent;
+		parent->childFuncDefs.PushLast(fdt);
+		fdt->parentClass = parent;
 	}
 
 	return (int)funcDefs.GetLength()-1;

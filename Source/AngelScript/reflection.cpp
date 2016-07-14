@@ -5,7 +5,7 @@
 #include "as_scriptengine.h"
 #include "as_typeinfo.h"
 
-static asIObjectType* GetObjectTypeById( asIScriptEngine* engine, int typeId )
+static asITypeInfo* GetTypeInfoById( asIScriptEngine* engine, int typeId )
 {
     asCDataType dt = ( (asCScriptEngine*) engine )->GetDataTypeFromTypeId( typeId );
     if( dt.IsValid() )
@@ -13,7 +13,7 @@ static asIObjectType* GetObjectTypeById( asIScriptEngine* engine, int typeId )
     return NULL;
 }
 
-ScriptType::ScriptType( asIObjectType* type )
+ScriptType::ScriptType( asITypeInfo* type )
 {
     ObjType = type;
 }
@@ -150,7 +150,7 @@ void ScriptType::Instantiate( void* out, int out_type_id ) const
         asGetActiveContext()->SetException( "Invalid 'instance' argument, handle must be null" );
         return;
     }
-    if( !ObjType->DerivesFrom( GetObjectTypeById( engine, out_type_id ) ) )
+    if( !ObjType->DerivesFrom( GetTypeInfoById( engine, out_type_id ) ) )
     {
         asGetActiveContext()->SetException( "Invalid 'instance' argument, incompatible types" );
         return;
@@ -179,7 +179,7 @@ void ScriptType::InstantiateCopy( void* in, int in_type_id, void* out, int out_t
         asGetActiveContext()->SetException( "Invalid 'instance' argument, handle must be null" );
         return;
     }
-    if( !ObjType->DerivesFrom( GetObjectTypeById( engine, out_type_id ) ) )
+    if( !ObjType->DerivesFrom( GetTypeInfoById( engine, out_type_id ) ) )
     {
         asGetActiveContext()->SetException( "Invalid 'instance' argument, incompatible types" );
         return;
@@ -243,7 +243,7 @@ uint ScriptType::GetEnumLength() const
 ScriptArray* ScriptType::GetEnumNames() const
 {
     asCEnumType* enum_type = ( (asCTypeInfo*) ObjType )->CastToEnumType();
-    ScriptArray* result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetObjectTypeByDecl( "string[]" ) );
+    ScriptArray* result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetTypeInfoByDecl( "string[]" ) );
     for( asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++ )
         result->InsertLast( ScriptString::Create( enum_type->enumValues[ i ]->name.AddressOf() ) );
     return result;
@@ -252,30 +252,30 @@ ScriptArray* ScriptType::GetEnumNames() const
 ScriptArray* ScriptType::GetEnumValues() const
 {
     asCEnumType* enum_type = ( (asCTypeInfo*) ObjType )->CastToEnumType();
-    ScriptArray* result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetObjectTypeByDecl( "int[]" ) );
+    ScriptArray* result = ScriptArray::Create( asGetActiveContext()->GetEngine()->GetTypeInfoByDecl( "int[]" ) );
     for( asUINT i = 0, j = enum_type ? enum_type->enumValues.GetLength() : 0; i < j; i++ )
         result->InsertLast( &enum_type->enumValues[ i ]->value );
     return result;
 }
 
-static bool ScriptTypeOfTemplateCallback( asIObjectType* ot, bool& )
+static bool ScriptTypeOfTemplateCallback( asITypeInfo* ot, bool& )
 {
     if( ot->GetSubTypeCount() != 1 || ot->GetSubTypeId() & asTYPEID_OBJHANDLE || ( ot->GetSubTypeId() & asTYPEID_MASK_SEQNBR ) < asTYPEID_DOUBLE )
         return false;
     return true;
 }
 
-static ScriptTypeOf* ScriptTypeOfFactory( asIObjectType* ot )
+static ScriptTypeOf* ScriptTypeOfFactory( asITypeInfo* ot )
 {
     return new ScriptTypeOf( ot->GetSubType() );
 }
 
-static ScriptTypeOf* ScriptTypeOfFactory2( asIObjectType* ot, void* ref )
+static ScriptTypeOf* ScriptTypeOfFactory2( asITypeInfo* ot, void* ref )
 {
     return new ScriptTypeOf( ( (asIScriptObject*) ref )->GetObjectType() );
 }
 
-ScriptTypeOf::ScriptTypeOf( asIObjectType* ot ): ScriptType( ot )
+ScriptTypeOf::ScriptTypeOf( asITypeInfo* ot ): ScriptType( ot )
 {
     refCount = 1;
 }
@@ -305,7 +305,7 @@ ScriptArray* GetLoadedModules()
 {
     asIScriptContext* ctx = asGetActiveContext();
     asIScriptEngine*  engine = ctx->GetEngine();
-    ScriptArray*      modules = ScriptArray::Create( engine->GetObjectTypeByDecl( "string[]" ) );
+    ScriptArray*      modules = ScriptArray::Create( engine->GetTypeInfoByDecl( "string[]" ) );
 
     for( uint i = 0, j = engine->GetModuleCount(); i < j; i++ )
         modules->InsertLast( ScriptString::Create( engine->GetModuleByIndex( i )->GetName() ) );
@@ -328,7 +328,7 @@ ScriptString* GetCurrentModule()
 ScriptArray* GetEnumsInternal( bool global, const char* module_name )
 {
     asIScriptEngine* engine = asGetActiveContext()->GetEngine();
-    ScriptArray*     enums = ScriptArray::Create( engine->GetObjectTypeByDecl( "reflection::type[]" ) );
+    ScriptArray*     enums = ScriptArray::Create( engine->GetTypeInfoByDecl( "reflection::type[]" ) );
 
     asIScriptModule* module;
     if( !global )
@@ -340,12 +340,12 @@ ScriptArray* GetEnumsInternal( bool global, const char* module_name )
 
     for( uint i = 0, j = ( global ? engine->GetEnumCount() : module->GetEnumCount() ); i < j; i++ )
     {
-        int enum_type_id;
+        asITypeInfo* enum_type;
         if( global )
-            engine->GetEnumByIndex( i, &enum_type_id );
+            enum_type = engine->GetEnumByIndex( i );
         else
-            module->GetEnumByIndex( i, &enum_type_id );
-        ScriptType type = ScriptType( GetObjectTypeById( engine, enum_type_id ) );
+            enum_type = module->GetEnumByIndex( i );
+        ScriptType type = ScriptType( enum_type );
         enums->InsertLast( &type );
     }
     return enums;

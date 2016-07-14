@@ -50,8 +50,12 @@ bool Test()
 		}
 
 		ctxMgr.AddContext(engine, mod->GetFunctionByName("main"));
-		ctxMgr.ExecuteScripts();
-
+		int count = 10;
+		while (ctxMgr.ExecuteScripts() > 0 && count-- > 0);
+		
+		if (count != 6)
+			TEST_FAILED;
+		
 		engine->Release();
 	}
 

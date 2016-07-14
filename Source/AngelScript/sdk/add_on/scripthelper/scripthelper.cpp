@@ -18,13 +18,13 @@ int CompareRelation(asIScriptEngine *engine, void *lobj, void *robj, int typeId,
 	int retval = -1;
 	asIScriptFunction *func = 0;
 
-	asIObjectType *ot = engine->GetObjectTypeById(typeId);
-	if( ot )
+	asITypeInfo *ti = engine->GetTypeInfoById(typeId);
+	if( ti )
 	{
 		// Check if the object type has a compatible opCmp method
-		for( asUINT n = 0; n < ot->GetMethodCount(); n++ )
+		for( asUINT n = 0; n < ti->GetMethodCount(); n++ )
 		{
-			asIScriptFunction *f = ot->GetMethodByIndex(n);
+			asIScriptFunction *f = ti->GetMethodByIndex(n);
 			asDWORD flags;
 			if( strcmp(f->GetName(), "opCmp") == 0 &&
 				f->GetReturnTypeId(&flags) == asTYPEID_INT32 &&
@@ -75,13 +75,13 @@ int CompareEquality(asIScriptEngine *engine, void *lobj, void *robj, int typeId,
 	int retval = -1;
 	asIScriptFunction *func = 0;
 
-	asIObjectType *ot = engine->GetObjectTypeById(typeId);
-	if( ot )
+	asITypeInfo *ti = engine->GetTypeInfoById(typeId);
+	if( ti )
 	{
 		// Check if the object type has a compatible opEquals method
-		for( asUINT n = 0; n < ot->GetMethodCount(); n++ )
+		for( asUINT n = 0; n < ti->GetMethodCount(); n++ )
 		{
-			asIScriptFunction *f = ot->GetMethodByIndex(n);
+			asIScriptFunction *f = ti->GetMethodByIndex(n);
 			asDWORD flags;
 			if( strcmp(f->GetName(), "opEquals") == 0 &&
 				f->GetReturnTypeId(&flags) == asTYPEID_BOOL &&
@@ -148,10 +148,10 @@ int ExecuteString(asIScriptEngine *engine, const char *code, void *ref, int refT
 	funcCode = engine->GetTypeDeclaration(refTypeId, true) + funcCode;
 
 	// GetModule will free unused types, so to be on the safe side we'll hold on to a reference to the type
-	asIObjectType *type = 0;
+	asITypeInfo *type = 0;
 	if( refTypeId & asTYPEID_MASK_OBJECT )
 	{
-		type = engine->GetObjectTypeById(refTypeId);
+		type = engine->GetTypeInfoById(refTypeId);
 		if( type )
 			type->AddRef();
 	}
@@ -190,13 +190,13 @@ int ExecuteString(asIScriptEngine *engine, const char *code, void *ref, int refT
 			// Expect the pointer to be null to start with
 			assert( *reinterpret_cast<void**>(ref) == 0 );
 			*reinterpret_cast<void**>(ref) = *reinterpret_cast<void**>(execCtx->GetAddressOfReturnValue());
-			engine->AddRefScriptObject(*reinterpret_cast<void**>(ref), engine->GetObjectTypeById(refTypeId));
+			engine->AddRefScriptObject(*reinterpret_cast<void**>(ref), engine->GetTypeInfoById(refTypeId));
 		}
 		else if( refTypeId & asTYPEID_MASK_OBJECT )
 		{
 			// Expect the pointer to point to a valid object
 			assert( *reinterpret_cast<void**>(ref) != 0 );
-			engine->AssignScriptObject(ref, execCtx->GetAddressOfReturnValue(), engine->GetObjectTypeById(refTypeId));
+			engine->AssignScriptObject(ref, execCtx->GetAddressOfReturnValue(), engine->GetTypeInfoById(refTypeId));
 		}
 		else
 		{
@@ -269,27 +269,27 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	c = engine->GetEnumCount();
 	for( n = 0; n < c; n++ )
 	{
-		int typeId;
-		asDWORD accessMask;
-		const char *nameSpace;
-		const char *enumName = engine->GetEnumByIndex(n, &typeId, &nameSpace, 0, &accessMask);
+		asITypeInfo *ti = engine->GetEnumByIndex(n);
+		asDWORD accessMask = ti->GetAccessMask();
 		if( accessMask != currAccessMask )
 		{
 			strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 			currAccessMask = accessMask;
 		}
+		const char *nameSpace = ti->GetNamespace();
 		if( nameSpace != currNamespace )
 		{
 			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
 			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
+		const char *enumName = ti->GetName();
 		strm << "enum " << enumName << "\n";
-		for( int m = 0; m < engine->GetEnumValueCount(typeId); m++ )
+		for( asUINT m = 0; m < ti->GetEnumValueCount(); m++ )
 		{
 			const char *valName;
 			int val;
-			valName = engine->GetEnumValueByIndex(typeId, m, &val);
+			valName = ti->GetEnumValueByIndex(m, &val);
 			strm << "enumval " << enumName << " " << valName << " " << val << "\n";
 		}
 	}
@@ -298,12 +298,12 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	strm << "\n// Types\n";
 
 	// Keep a list of the template types, as the methods for these need to be exported first
-	set<asIObjectType*> templateTypes;
+	set<asITypeInfo*> templateTypes;
 
 	c = engine->GetObjectTypeCount();
 	for( n = 0; n < c; n++ )
 	{
-		asIObjectType *type = engine->GetObjectTypeByIndex(n);
+		asITypeInfo *type = engine->GetTypeInfoByIndex(n);
 		asDWORD accessMask = type->GetAccessMask();
 		if( accessMask != currAccessMask )
 		{
@@ -340,28 +340,27 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	c = engine->GetTypedefCount();
 	for( n = 0; n < c; n++ )
 	{
-		int typeId;
-		asDWORD accessMask;
-		const char *nameSpace;
-		const char *typeDef = engine->GetTypedefByIndex(n, &typeId, &nameSpace, 0, &accessMask);
+		asITypeInfo *ti = engine->GetTypedefByIndex(n);
+		const char *nameSpace = ti->GetNamespace();
 		if( nameSpace != currNamespace )
 		{
 			strm << "namespace \"" << nameSpace << "\"\n";
 			currNamespace = nameSpace;
 			engine->SetDefaultNamespace(currNamespace.c_str());
 		}
+		asDWORD accessMask = ti->GetAccessMask();
 		if( accessMask != currAccessMask )
 		{
 			strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 			currAccessMask = accessMask;
 		}
-		strm << "typedef " << typeDef << " \"" << engine->GetTypeDeclaration(typeId) << "\"\n";
+		strm << "typedef " << ti->GetName() << " \"" << engine->GetTypeDeclaration(ti->GetTypedefTypeId()) << "\"\n";
 	}
 
 	c = engine->GetFuncdefCount();
 	for( n = 0; n < c; n++ )
 	{
-		asIScriptFunction *funcDef = engine->GetFuncdefByIndex(n);
+		asITypeInfo *funcDef = engine->GetFuncdefByIndex(n);
 		asDWORD accessMask = funcDef->GetAccessMask();
 		const char *nameSpace = funcDef->GetNamespace();
 		// Child funcdefs do not have any namespace, as they belong to the parent object
@@ -376,13 +375,13 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 			strm << "access " << hex << (unsigned int)(accessMask) << dec << "\n";
 			currAccessMask = accessMask;
 		}
-		strm << "funcdef \"" << funcDef->GetDeclaration() << "\"\n";
+		strm << "funcdef \"" << funcDef->GetFuncdefSignature()->GetDeclaration() << "\"\n";
 	}
 
 	// A helper for writing object type members
 	struct TypeWriter
 	{
-		static void Write(asIScriptEngine *engine, ostream &strm, asIObjectType *type, string &currNamespace, asDWORD &currAccessMask)
+		static void Write(asIScriptEngine *engine, ostream &strm, asITypeInfo *type, string &currNamespace, asDWORD &currAccessMask)
 		{
 			const char *nameSpace = type->GetNamespace();
 			if( nameSpace != currNamespace )
@@ -463,9 +462,9 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	// Write the members of the template types, so they can be fully registered before any other type uses them
 	// TODO: Order the template types based on dependency to avoid failure if one type uses instances of another 
 	strm << "\n// Template type members\n";
-	for( set<asIObjectType*>::iterator it = templateTypes.begin(); it != templateTypes.end(); ++it )
+	for( set<asITypeInfo*>::iterator it = templateTypes.begin(); it != templateTypes.end(); ++it )
 	{
-		asIObjectType *type = *it;
+		asITypeInfo *type = *it;
 		TypeWriter::Write(engine, strm, type, currNamespace, currAccessMask);
 	}
 
@@ -475,7 +474,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	c = engine->GetObjectTypeCount();
 	for( n = 0; n < c; n++ )
 	{
-		asIObjectType *type = engine->GetObjectTypeByIndex(n);
+		asITypeInfo *type = engine->GetTypeInfoByIndex(n);
 		if( templateTypes.find(type) == templateTypes.end() )
 			TypeWriter::Write(engine, strm, type, currNamespace, currAccessMask);
 	}
@@ -662,7 +661,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 		{
 			string maskStr;
 			in::GetToken(engine, maskStr, config, pos);
-			asDWORD mask = strtol(maskStr.c_str(), 0, 16);
+			asDWORD mask = strtoul(maskStr.c_str(), 0, 16);
 			engine->SetDefaultAccessMask(mask);
 		}
 		else if( token == "objtype" )
@@ -736,7 +735,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 			in::GetToken(engine, decl, config, pos);
 			decl = decl.substr(1, decl.length() - 2);
 
-			asIObjectType *type = engine->GetObjectTypeById(engine->GetTypeIdByDecl(name.c_str()));
+			asITypeInfo *type = engine->GetTypeInfoById(engine->GetTypeIdByDecl(name.c_str()));
 			if( type == 0 )
 			{
 				engine->WriteMessage(configFile, in::GetLineNumber(config, pos), 0, asMSGTYPE_ERROR, "Type doesn't exist for property registration");
@@ -901,8 +900,8 @@ string GetExceptionInfo(asIScriptContext *ctx, bool showStack)
 
 	const asIScriptFunction *function = ctx->GetExceptionFunction();
 	text << "func: " << function->GetDeclaration() << "\n";
-	text << "modl: " << function->GetModuleName() << "\n";
-	text << "sect: " << function->GetScriptSectionName() << "\n";
+	text << "modl: " << (function->GetModuleName() ? function->GetModuleName() : "") << "\n";
+	text << "sect: " << (function->GetScriptSectionName() ? function->GetScriptSectionName() : "") << "\n";
 	text << "line: " << ctx->GetExceptionLineNumber() << "\n";
 	text << "desc: " << ctx->GetExceptionString() << "\n";
 
@@ -916,7 +915,7 @@ string GetExceptionInfo(asIScriptContext *ctx, bool showStack)
 			{
 				if( function->GetFuncType() == asFUNC_SCRIPT )
 				{
-					text << function->GetScriptSectionName() << " (" << ctx->GetLineNumber(n) << "): " << function->GetDeclaration() << "\n";
+					text << (function->GetScriptSectionName() ? function->GetScriptSectionName() : "") << " (" << ctx->GetLineNumber(n) << "): " << function->GetDeclaration() << "\n";
 				}
 				else
 				{

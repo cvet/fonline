@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -41,8 +41,7 @@
 #include "as_config.h"
 #include "as_string.h"
 #include "as_atomic.h"
-
-#ifndef AS_NO_COMPILER
+#include "as_datatype.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -50,23 +49,18 @@ class asCScriptEngine;
 class asCModule;
 class asCObjectType;
 class asCEnumType;
+class asCTypedefType;
+class asCFuncdefType;
 struct asSNameSpace;
 
-// TODO: type: This is where the new asCTypeInfo will be implemented
-//             asCTypeInfo should implement the asITypeInfo interface with dummy classes
-//               only the name, flags, and some other basic members shall be in this class
-//             asCObjectType will inherit from asCTypeInfo instead of directly implementing asITypeInfo
-//             asCEnumType shall be implemented to represent enums
-//               the enum value list shall be in this class
-//             asCTypeDefType shall be implemented to represent typedefs
-//               the aliased data type shall be in this class
-//             asCFundDefType shall be implemented to represent funcdefs
-//               a pointer to the asCScriptFunction describing the func def shall be in this class
-//             asCPrimitiveType shall be implemented to represent primitives (void, int, double, etc)
-//             All classes except asCObjectType will be in this file
+// TODO: type: asCPrimitiveType shall be implemented to represent primitives (void, int, double, etc)
 
-// TODO: type: asIObjectType shall be renamed to asITypeInfo
-class asCTypeInfo : public asIObjectType
+// TODO: type: asCTypeInfo should have an internal virtual method GetBehaviours. For asCObjectType it 
+//             should return the beh member. For asCFuncdefType it should return the beh member of 
+//             engine->functionBehaviours. This will allow the code that needs the behaviour to handle 
+//             both object types and funcdefs the same way
+
+class asCTypeInfo : public asITypeInfo
 {
 public:
 	//=====================================
@@ -84,19 +78,19 @@ public:
 	// Type info
 	const char      *GetName() const;
 	const char      *GetNamespace() const;
-	asIObjectType   *GetBaseType() const { return 0; }
-	bool             DerivesFrom(const asIObjectType *objType) const { UNUSED_VAR(objType); return 0; }
+	asITypeInfo     *GetBaseType() const { return 0; }
+	bool             DerivesFrom(const asITypeInfo *objType) const { UNUSED_VAR(objType); return 0; }
 	asDWORD          GetFlags() const;
 	asUINT           GetSize() const;
 	int              GetTypeId() const;
 	int              GetSubTypeId(asUINT subtypeIndex = 0) const { UNUSED_VAR(subtypeIndex); return -1; }
-	asIObjectType   *GetSubType(asUINT subtypeIndex = 0) const { UNUSED_VAR(subtypeIndex); return 0; }
+	asITypeInfo     *GetSubType(asUINT subtypeIndex = 0) const { UNUSED_VAR(subtypeIndex); return 0; }
 	asUINT           GetSubTypeCount() const { return 0; }
 
 	// Interfaces
 	asUINT           GetInterfaceCount() const { return 0; }
-	asIObjectType   *GetInterface(asUINT index) const { UNUSED_VAR(index); return 0; }
-	bool             Implements(const asIObjectType *objType) const { UNUSED_VAR(objType); return false; }
+	asITypeInfo     *GetInterface(asUINT index) const { UNUSED_VAR(index); return 0; }
+	bool             Implements(const asITypeInfo *objType) const { UNUSED_VAR(objType); return false; }
 
 	// Factories
 	asUINT             GetFactoryCount() const { return 0; }
@@ -119,8 +113,19 @@ public:
 	asIScriptFunction *GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const { UNUSED_VAR(index); UNUSED_VAR(outBehaviour); return 0; }
 
 	// Child types
-	asUINT             GetChildFuncdefCount() const { return 0; }
-	asIScriptFunction *GetChildFuncdef(asUINT index) const { UNUSED_VAR(index); return 0; }
+	asUINT       GetChildFuncdefCount() const { return 0; }
+	asITypeInfo *GetChildFuncdef(asUINT index) const { UNUSED_VAR(index); return 0; }
+	asITypeInfo *GetParentType() const { return 0; }
+
+	// Enums
+	virtual asUINT      GetEnumValueCount() const { return 0; }
+	virtual const char *GetEnumValueByIndex(asUINT index, int *outValue) const { UNUSED_VAR(index); if (outValue) *outValue = 0; return 0; }
+
+	// Typedef
+	virtual int GetTypedefTypeId() const { return asERROR; }
+
+	// Funcdef
+	virtual asIScriptFunction *GetFuncdefSignature() const { return 0; }
 
 	// User data
 	void *SetUserData(void *data, asPWORD type);
@@ -138,13 +143,17 @@ public:
 	virtual int AddRefInternal();
 	virtual int ReleaseInternal();
 
+	virtual void DestroyInternal() {}
+
 	void CleanUserData();
 
 	bool IsShared() const;
 
 	// These can be safely used on null pointers (which will return null)
-	asCObjectType *CastToObjectType();
-	asCEnumType   *CastToEnumType();
+	asCObjectType  *CastToObjectType();
+	asCEnumType    *CastToEnumType();
+	asCTypedefType *CastToTypedefType();
+	asCFuncdefType *CastToFuncdefType();
 
 
 	asCString                    name;
@@ -187,12 +196,46 @@ public:
 
 	asCArray<asSEnumValue*> enumValues;
 
+	asUINT      GetEnumValueCount() const;
+	const char *GetEnumValueByIndex(asUINT index, int *outValue) const;
+
 protected:
 	asCEnumType() : asCTypeInfo() {}
 };
 
-END_AS_NAMESPACE
+class asCTypedefType : public asCTypeInfo
+{
+public:
+	asCTypedefType(asCScriptEngine *engine) : asCTypeInfo(engine) {}
+	~asCTypedefType();
 
-#endif // AS_NO_COMPILER
+	void DestroyInternal();
+
+	asCDataType aliasForType; // increase refCount for typeinfo inside datatype
+
+	int GetTypedefTypeId() const;
+
+protected:
+	asCTypedefType() : asCTypeInfo() {}
+};
+
+class asCFuncdefType : public asCTypeInfo
+{
+public:
+	asCFuncdefType(asCScriptEngine *engine, asCScriptFunction *func);
+	~asCFuncdefType();
+
+	asIScriptFunction *GetFuncdefSignature() const;
+	asITypeInfo       *GetParentType() const;
+
+	void DestroyInternal();
+	asCScriptFunction *funcdef;     // increases refCount
+	asCObjectType     *parentClass; // doesn't increase refCount
+
+protected:
+	asCFuncdefType() : asCTypeInfo(), funcdef(0), parentClass(0) {}
+};
+
+END_AS_NAMESPACE
 
 #endif

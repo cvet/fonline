@@ -8,7 +8,7 @@
 class ScriptType
 {
 public:
-    ScriptType( asIObjectType* type );
+    ScriptType( asITypeInfo* type );
     ScriptString* GetName() const;
     ScriptString* GetNameWithoutNamespace() const;
     ScriptString* GetNamespace() const;
@@ -37,19 +37,18 @@ public:
     ScriptArray*  GetEnumNames() const;
     ScriptArray*  GetEnumValues() const;
 
-    asIObjectType* ObjType;
+    asITypeInfo* ObjType;
 };
 
 class ScriptTypeOf: public ScriptType
 {
 public:
-    ScriptTypeOf( asIObjectType* type );
+    ScriptTypeOf( asITypeInfo* type );
     void       AddRef() const;
     void       Release() const;
     ScriptType ConvertToType() const;
 
-protected:
-    ~ScriptTypeOf();
+protected: ~ScriptTypeOf();
 
     mutable int refCount;
 };

@@ -100,7 +100,7 @@ int CSerializer::Restore(asIScriptModule *mod)
 	for( i = 0; i < m_extraObjects.size(); i++ )
 	{
 		SExtraObject &o = m_extraObjects[i];
-		asIObjectType *type = m_mod->GetObjectTypeByName( o.originalClassName.c_str() );
+		asITypeInfo *type = m_mod->GetTypeInfoByName( o.originalClassName.c_str() );
 		if( type )
 		{
 			for( size_t i2 = 0; i2 < m_root.m_children.size(); i2++ )
@@ -210,7 +210,7 @@ void CSerializedValue::ClearChildren()
 	// then it is necessary to release the handle here, so we won't get a memory leak
 	if( (m_typeId & asTYPEID_OBJHANDLE) && m_children.size() == 1 && m_children[0]->m_restorePtr )
 	{
-		m_serializer->m_engine->ReleaseScriptObject(m_children[0]->m_restorePtr, m_serializer->m_engine->GetObjectTypeById(m_children[0]->m_typeId));
+		m_serializer->m_engine->ReleaseScriptObject(m_children[0]->m_restorePtr, m_serializer->m_engine->GetTypeInfoById(m_children[0]->m_typeId));
 	}
 
 	for( size_t n = 0; n < m_children.size(); n++ )
@@ -307,7 +307,7 @@ void CSerializedValue::Store(void *ref, int typeId)
 	else if( m_typeId & asTYPEID_SCRIPTOBJECT )
 	{
 		asIScriptObject *obj = (asIScriptObject *)ref;
-		asIObjectType *type = obj->GetObjectType();
+		asITypeInfo *type = obj->GetObjectType();
 		SetType(type->GetTypeId());
 
 		// Store children 
@@ -332,7 +332,7 @@ void CSerializedValue::Store(void *ref, int typeId)
 			else
 			{
 				// POD-types can be stored without need for user type
-				asIObjectType *type = GetType();
+				asITypeInfo *type = GetType();
 				if( type && (type->GetFlags() & asOBJ_POD) )
 					size = GetType()->GetSize();
 
@@ -356,7 +356,7 @@ void CSerializedValue::Restore(void *ref, int typeId)
 	// Verify that the stored type matched the new type of the value being restored
 	if( typeId <= asTYPEID_DOUBLE && typeId != m_typeId ) return; // TODO: We may try to do a type conversion for primitives
 	if( (typeId & ~asTYPEID_MASK_SEQNBR) ^ (m_typeId & ~asTYPEID_MASK_SEQNBR) ) return;
-	asIObjectType *type = m_serializer->m_engine->GetObjectTypeById(typeId);
+	asITypeInfo *type = m_serializer->m_engine->GetTypeInfoById(typeId);
 	if( type && m_typeName != type->GetName() ) return;
 
 	// Set the new pointer and type
@@ -369,41 +369,40 @@ void CSerializedValue::Restore(void *ref, int typeId)
 		// if need create objects
 		if( m_children.size() == 1 )
 		{
-			asIObjectType *type = m_children[0]->GetType();
+			asITypeInfo *ctype = m_children[0]->GetType();
 
-			if( type->GetFactoryCount() == 0 )
+			if( ctype->GetFactoryCount() == 0 )
 			{
 				// There are no factories, so assume the same pointer is going to be used
 				m_children[0]->m_restorePtr = m_handlePtr;
 
 				// Increase the refCount for the object as it will be released upon clean-up
-				m_serializer->m_engine->AddRefScriptObject(m_handlePtr, type);
+				m_serializer->m_engine->AddRefScriptObject(m_handlePtr, ctype);
 			}
 			else
 			{
 				// Create a new script object, but don't call its constructor as we will initialize the members. 
 				// Calling the constructor may have unwanted side effects if for example the constructor changes
 				// any outside entities, such as setting global variables to point to new objects, etc.
-				void *newObject = m_serializer->m_engine->CreateUninitializedScriptObject(type);
-				m_children[0]->Restore(newObject, type->GetTypeId());
+				void *newObject = m_serializer->m_engine->CreateUninitializedScriptObject(ctype);
+				m_children[0]->Restore(newObject, ctype->GetTypeId());
 			}
 		}
 	}
 	else if( m_typeId & asTYPEID_SCRIPTOBJECT )
 	{
 		asIScriptObject *obj = (asIScriptObject *)ref;
-		asIObjectType *type = GetType();
 
 		// Retrieve children
 		for( asUINT i = 0; i < type->GetPropertyCount() ; i++ )
 		{	
 			const char *nameProperty;
-			int typeId;
-			type->GetProperty(i, &nameProperty, &typeId);
+			int ptypeId;
+			type->GetProperty(i, &nameProperty, &ptypeId);
 			
 			CSerializedValue *var = FindByName(nameProperty, "");
 			if( var )
-				var->Restore(obj->GetAddressOfProperty(i), typeId);
+				var->Restore(obj->GetAddressOfProperty(i), ptypeId);
 		}
 	}
 	else
@@ -459,7 +458,7 @@ void CSerializedValue::ReplaceHandles()
 		if( handle_to == 0 )
 		{
 			// Store the object now
-			asIObjectType *type = GetType();
+			asITypeInfo *type = GetType();
 			CSerializedValue *need_create = new CSerializedValue(this, m_name, m_nameSpace, m_handlePtr, type->GetTypeId()); 
 
 			// Make sure all other handles that point to the same object 
@@ -486,7 +485,7 @@ void CSerializedValue::RestoreHandles()
 
 			if( m_restorePtr && handleTo && handleTo->m_restorePtr )
 			{
-				asIObjectType *type = m_serializer->m_engine->GetObjectTypeById(m_typeId);
+				asITypeInfo *type = m_serializer->m_engine->GetTypeInfoById(m_typeId);
 
 				// If the handle is already pointing to something it must be released first
 				if( *(void**)m_restorePtr )
@@ -504,7 +503,7 @@ void CSerializedValue::RestoreHandles()
 			// If the handle is pointing to something, we must release it to restore the null pointer
 			if( m_restorePtr && *(void**)m_restorePtr )
 			{
-				m_serializer->m_engine->ReleaseScriptObject(*(void**)m_restorePtr, m_serializer->m_engine->GetObjectTypeById(m_typeId));
+				m_serializer->m_engine->ReleaseScriptObject(*(void**)m_restorePtr, m_serializer->m_engine->GetTypeInfoById(m_typeId));
 				*(void**)m_restorePtr = 0;
 			}
 		}
@@ -519,18 +518,18 @@ void CSerializedValue::SetType(int typeId)
 {
 	m_typeId = typeId;
 
-	asIObjectType *type = m_serializer->m_engine->GetObjectTypeById(typeId);
+	asITypeInfo *type = m_serializer->m_engine->GetTypeInfoById(typeId);
 
 	if( type )
 		m_typeName = type->GetName();
 }
 
-asIObjectType *CSerializedValue::GetType()
+asITypeInfo *CSerializedValue::GetType()
 {
 	if( !m_typeName.empty() )
 	{
 		int newTypeId = m_serializer->m_mod->GetTypeIdByDecl(m_typeName.c_str());
-		return m_serializer->m_engine->GetObjectTypeById(newTypeId);
+		return m_serializer->m_engine->GetTypeInfoById(newTypeId);
 	}	
 
 	return 0;

@@ -4,6 +4,7 @@
 #include <vector>
 #include <stdlib.h>  // system()
 #include <stdio.h>
+#include <direct.h>  // _chdir()
 #include <sstream>   // stringstream
 #include <angelscript.h>
 #include "../../../add_on/scriptbuilder/scriptbuilder.h"
@@ -15,6 +16,7 @@
 #include "../../../add_on/scripthelper/scripthelper.h"
 #include "../../../add_on/debugger/debugger.h"
 #include "../../../add_on/contextmgr/contextmgr.h"
+#include "../../../add_on/datetime/datetime.h"
 
 #ifdef _WIN32
 #include <Windows.h> // WriteConsoleW
@@ -35,8 +37,10 @@ void              MessageCallback(const asSMessageInfo *msg, void *param);
 asIScriptContext *RequestContextCallback(asIScriptEngine *engine, void *param);
 void              ReturnContextCallback(asIScriptEngine *engine, asIScriptContext *ctx, void *param);
 void              PrintString(const string &str);
+string            GetInput();
 int               ExecSystemCmd(const string &cmd);
 CScriptArray     *GetCommandLineArgs();
+void              SetWorkDir(const string &file);
 
 // The command line arguments
 CScriptArray *g_commandLineArgs = 0;
@@ -105,6 +109,9 @@ int main(int argc, char **argv)
 	g_argc = argc - (scriptArg + 1);
 	g_argv = argv + (scriptArg + 1);
 
+	// Set the current work dir according to the script's location
+	SetWorkDir(argv[scriptArg]);
+
 	// Compile the script code
 	r = CompileScript(engine, argv[scriptArg]);
 	if( r < 0 ) return -1;
@@ -147,9 +154,11 @@ int ConfigureEngine(asIScriptEngine *engine)
 	RegisterScriptDictionary(engine);
 	RegisterScriptFile(engine);
 	RegisterScriptFileSystem(engine);
+	RegisterScriptDateTime(engine);
 
 	// Register a couple of extra functions for the scripts
 	r = engine->RegisterGlobalFunction("void print(const string &in)", asFUNCTION(PrintString), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterGlobalFunction("string getInput()", asFUNCTION(GetInput), asCALL_CDECL); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("array<string> @getCommandLineArgs()", asFUNCTION(GetCommandLineArgs), asCALL_CDECL); assert( r >= 0 );
 	r = engine->RegisterGlobalFunction("int exec(const string &in)", asFUNCTION(ExecSystemCmd), asCALL_CDECL); assert( r >= 0 );
 
@@ -257,9 +266,9 @@ void InitializeDebugger(asIScriptEngine *engine)
 	g_dbg->SetEngine(engine);
 
 	// Register the to-string callbacks so the user can see the contents of strings
-	g_dbg->RegisterToStringCallback(engine->GetObjectTypeByName("string"), StringToString);
-	g_dbg->RegisterToStringCallback(engine->GetObjectTypeByName("array"), ArrayToString);
-	g_dbg->RegisterToStringCallback(engine->GetObjectTypeByName("dictionary"), DictionaryToString);
+	g_dbg->RegisterToStringCallback(engine->GetTypeInfoByName("string"), StringToString);
+	g_dbg->RegisterToStringCallback(engine->GetTypeInfoByName("array"), ArrayToString);
+	g_dbg->RegisterToStringCallback(engine->GetTypeInfoByName("dictionary"), DictionaryToString);
 
 	// Allow the user to initialize the debugging before moving on
 	cout << "Debugging, waiting for commands. Type 'h' for help." << endl;
@@ -431,6 +440,14 @@ void PrintString(const string &str)
 #endif
 }
 
+// Retrieve a line from stdin
+string GetInput()
+{
+	string line;
+	getline(cin, line);
+	return line;
+}
+
 // TODO: Perhaps it might be interesting to implement pipes so that the script can receive input from stdin, 
 //       or execute commands that return output similar to how popen is used
 
@@ -470,7 +487,7 @@ CScriptArray *GetCommandLineArgs()
 	asIScriptEngine *engine = ctx->GetEngine();
 
 	// Create the array object
-	asIObjectType *arrayType = engine->GetObjectTypeById(engine->GetTypeIdByDecl("array<string>"));
+	asITypeInfo *arrayType = engine->GetTypeInfoById(engine->GetTypeIdByDecl("array<string>"));
 	g_commandLineArgs = CScriptArray::Create(arrayType, (asUINT)0);
 
 	// Find the existence of the delimiter in the input string
@@ -524,5 +541,10 @@ void ReturnContextCallback(asIScriptEngine *engine, asIScriptContext *ctx, void 
 
 	// Unprepare the context to free any objects it may still hold (e.g. return value)
 	ctx->Unprepare();
+}
+
+void SetWorkDir(const string &file)
+{
+	_chdir(file.c_str());
 }
 

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -106,9 +106,12 @@ public:
 	virtual int            RegisterInterface(const char *name);
 	virtual int            RegisterInterfaceMethod(const char *intf, const char *declaration);
 	virtual asUINT         GetObjectTypeCount() const;
-	virtual asIObjectType *GetObjectTypeByIndex(asUINT index) const;
-	virtual asIObjectType *GetObjectTypeByName(const char *name) const;
-	virtual asIObjectType *GetObjectTypeByDecl(const char *decl) const;
+	virtual asITypeInfo   *GetTypeInfoByIndex(asUINT index) const;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const;
+	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const;
+#endif
 
 	// String factory
 	virtual int RegisterStringFactory(const char *datatype, const asSFuncPtr &factoryFunc, asDWORD callConv, void *auxiliary = 0);
@@ -119,23 +122,26 @@ public:
 	virtual int GetDefaultArrayTypeId() const;
 
 	// Enums
-	virtual int         RegisterEnum(const char *type);
-	virtual int         RegisterEnumValue(const char *type, const char *name, int value);
-	virtual asUINT      GetEnumCount() const;
-	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **nameSpace, const char **configGroup = 0, asDWORD *accessMask = 0) const;
-	virtual int         GetEnumValueCount(int enumTypeId) const;
-	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const;
+	virtual int          RegisterEnum(const char *type);
+	virtual int          RegisterEnumValue(const char *type, const char *name, int value);
+	virtual asUINT       GetEnumCount() const;
+	virtual asITypeInfo *GetEnumByIndex(asUINT index) const;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	virtual int          GetEnumValueCount(int enumTypeId) const;
+	virtual const char * GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const;
+#endif
 
 	// Funcdefs
-	virtual int                RegisterFuncdef(const char *decl);
-	virtual asUINT             GetFuncdefCount() const;
-	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index) const;
+	virtual int          RegisterFuncdef(const char *decl);
+	virtual asUINT       GetFuncdefCount() const;
+	virtual asITypeInfo *GetFuncdefByIndex(asUINT index) const;
 
 	// Typedefs
 	// TODO: interface: Should perhaps rename this to Alias, since it doesn't really create a new type
-	virtual int         RegisterTypedef(const char *type, const char *decl);
-	virtual asUINT      GetTypedefCount() const;
-	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **nameSpace, const char **configGroup = 0, asDWORD *accessMask = 0) const;
+	virtual int          RegisterTypedef(const char *type, const char *decl);
+	virtual asUINT       GetTypedefCount() const;
+	virtual asITypeInfo *GetTypedefByIndex(asUINT index) const;
 
 	// Configuration groups
 	virtual int         BeginConfigGroup(const char *groupName);
@@ -153,29 +159,38 @@ public:
 
 	// Script functions
 	virtual asIScriptFunction *GetFunctionById(int funcId) const;
+#ifdef AS_DEPRECATED
+	// deprecated since 2.31.0, 2016-01-01
 	virtual asIScriptFunction *GetFuncdefFromTypeId(int typeId) const;
+#endif
 
 	// Type identification
-	virtual asIObjectType *GetObjectTypeById(int typeId) const;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	virtual asITypeInfo   *GetTypeInfoById(int typeId) const;
+#endif
 	virtual int            GetTypeIdByDecl(const char *decl) const;
 	virtual const char    *GetTypeDeclaration(int typeId, bool includeNamespace = false) const;
 	virtual int            GetSizeOfPrimitiveType(int typeId) const;
+	virtual asITypeInfo   *GetTypeInfoById(int typeId) const;
+	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const;
+	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const;
 
 	// Script execution
 	virtual asIScriptContext      *CreateContext();
-	virtual void                  *CreateScriptObject(const asIObjectType *type);
-	virtual void                  *CreateScriptObjectCopy(void *obj, const asIObjectType *type);
-	virtual void                  *CreateUninitializedScriptObject(const asIObjectType *type);
+	virtual void                  *CreateScriptObject(const asITypeInfo *type);
+	virtual void                  *CreateScriptObjectCopy(void *obj, const asITypeInfo *type);
+	virtual void                  *CreateUninitializedScriptObject(const asITypeInfo *type);
 	virtual asIScriptFunction     *CreateDelegate(asIScriptFunction *func, void *obj);
-	virtual int                    AssignScriptObject(void *dstObj, void *srcObj, const asIObjectType *type);
-	virtual void                   ReleaseScriptObject(void *obj, const asIObjectType *type);
-	virtual void                   AddRefScriptObject(void *obj, const asIObjectType *type);
-	virtual int                    RefCastObject(void *obj, asIObjectType *fromType, asIObjectType *toType, void **newPtr, bool useOnlyImplicitCast = false);
+	virtual int                    AssignScriptObject(void *dstObj, void *srcObj, const asITypeInfo *type);
+	virtual void                   ReleaseScriptObject(void *obj, const asITypeInfo *type);
+	virtual void                   AddRefScriptObject(void *obj, const asITypeInfo *type);
+	virtual int                    RefCastObject(void *obj, asITypeInfo *fromType, asITypeInfo *toType, void **newPtr, bool useOnlyImplicitCast = false);
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.30.0, 2014-11-04
 	virtual bool                   IsHandleCompatibleWithObject(void *obj, int objTypeId, int handleTypeId) const;
 #endif
-	virtual asILockableSharedBool *GetWeakRefFlagOfScriptObject(void *obj, const asIObjectType *type) const;
+	virtual asILockableSharedBool *GetWeakRefFlagOfScriptObject(void *obj, const asITypeInfo *type) const;
 
 	// Context pooling
 	virtual asIScriptContext *RequestContext();
@@ -188,8 +203,8 @@ public:
 	// Garbage collection
 	virtual int  GarbageCollect(asDWORD flags = asGC_FULL_CYCLE, asUINT numIterations = 1);
 	virtual void GetGCStatistics(asUINT *currentSize, asUINT *totalDestroyed, asUINT *totalDetected, asUINT *newObjects, asUINT *totalNewDestroyed) const;
-	virtual int  NotifyGarbageCollectorOfNewObject(void *obj, asIObjectType *type);
-	virtual int  GetObjectInGC(asUINT idx, asUINT *seqNbr, void **obj = 0, asIObjectType **type = 0);
+	virtual int  NotifyGarbageCollectorOfNewObject(void *obj, asITypeInfo *type);
+	virtual int  GetObjectInGC(asUINT idx, asUINT *seqNbr, void **obj = 0, asITypeInfo **type = 0);
 	virtual void GCEnumCallback(void *reference);
 
 	// User data
@@ -199,7 +214,11 @@ public:
 	virtual void  SetModuleUserDataCleanupCallback(asCLEANMODULEFUNC_t callback, asPWORD type);
 	virtual void  SetContextUserDataCleanupCallback(asCLEANCONTEXTFUNC_t callback, asPWORD type);
 	virtual void  SetFunctionUserDataCleanupCallback(asCLEANFUNCTIONFUNC_t callback, asPWORD type);
-	virtual void  SetObjectTypeUserDataCleanupCallback(asCLEANOBJECTTYPEFUNC_t callback, asPWORD type);
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	virtual void  SetObjectTypeUserDataCleanupCallback(asCLEANTYPEINFOFUNC_t callback, asPWORD type);
+#endif
+	virtual void  SetTypeInfoUserDataCleanupCallback(asCLEANTYPEINFOFUNC_t callback, asPWORD type);
 	virtual void  SetScriptObjectUserDataCleanupCallback(asCLEANSCRIPTOBJECTFUNC_t callback, asPWORD type);
 
 //===========================================================
@@ -251,7 +270,7 @@ public:
 	asCConfigGroup *FindConfigGroupForFunction(int funcId) const;
 	asCConfigGroup *FindConfigGroupForGlobalVar(int gvarId) const;
 	asCConfigGroup *FindConfigGroupForTypeInfo(const asCTypeInfo *type) const;
-	asCConfigGroup *FindConfigGroupForFuncDef(const asCScriptFunction *funcDef) const;
+	asCConfigGroup *FindConfigGroupForFuncDef(const asCFuncdefType *funcDef) const;
 
 	int  RequestBuild();
 	void BuildCompleted();
@@ -282,26 +301,28 @@ public:
 	int  GetNextScriptFunctionId();
 	void AddScriptFunction(asCScriptFunction *func);
 	void RemoveScriptFunction(asCScriptFunction *func);
-	void RemoveFuncdef(asCScriptFunction *func);
+	void RemoveFuncdef(asCFuncdefType *func);
 
 	int ConfigError(int err, const char *funcName, const char *arg1, const char *arg2);
 
 	int                GetTypeIdFromDataType(const asCDataType &dt) const;
 	asCDataType        GetDataTypeFromTypeId(int typeId) const;
 	asCObjectType     *GetObjectTypeFromTypeId(int typeId) const;
-	void               RemoveFromTypeIdMap(asCObjectType *type);
+	void               RemoveFromTypeIdMap(asCTypeInfo *type);
 
 	bool               IsTemplateType(const char *name) const;
 	int                SetTemplateRestrictions(asCObjectType *templateType, asCScriptFunction *func, const char *caller, const char *decl);
 	asCObjectType     *GetTemplateInstanceType(asCObjectType *templateType, asCArray<asCDataType> &subTypes, asCModule *requestingModule);
 	asCScriptFunction *GenerateTemplateFactoryStub(asCObjectType *templateType, asCObjectType *templateInstanceType, int origFactoryId);
 	bool               GenerateNewTemplateFunction(asCObjectType *templateType, asCObjectType *templateInstanceType, asCScriptFunction *templateFunc, asCScriptFunction **newFunc);
-	asCScriptFunction *GenerateNewTemplateFuncdef(asCObjectType *templateType, asCObjectType *templateInstanceType, asCScriptFunction *templateFuncdef);
+	asCFuncdefType    *GenerateNewTemplateFuncdef(asCObjectType *templateType, asCObjectType *templateInstanceType, asCFuncdefType *templateFuncdef);
 	asCDataType        DetermineTypeForTemplate(const asCDataType &orig, asCObjectType *tmpl, asCObjectType *ot);
 	bool               RequireTypeReplacement(asCDataType &type, asCObjectType *templateType);
 
 	asCModule         *FindNewOwnerForSharedType(asCTypeInfo *type, asCModule *mod);
 	asCModule         *FindNewOwnerForSharedFunc(asCScriptFunction *func, asCModule *mod);
+
+	asCFuncdefType    *FindMatchingFuncdef(asCScriptFunction *func, asCModule *mod);
 
 	// String constants
 	// TODO: Must free unused string constants, thus the ref count for each must be tracked
@@ -331,21 +352,22 @@ public:
 	asCObjectType    functionBehaviours;
 
 	// Registered interface
-	asCArray<asCObjectType *>         registeredObjTypes;
-	asCArray<asCObjectType *>         registeredTypeDefs;
-	asCArray<asCEnumType *>           registeredEnums;
-	asCSymbolTable<asCGlobalProperty> registeredGlobalProps; // increases ref count // TODO: memory savings: Since there can be only one property with the same name a simpler symbol table should be used
+	asCArray<asCObjectType *>         registeredObjTypes;      // doesn't increase ref count
+	asCArray<asCTypedefType *>        registeredTypeDefs;      // doesn't increase ref count
+	asCArray<asCEnumType *>           registeredEnums;         // doesn't increase ref count
+	// TODO: memory savings: Since there can be only one property with the same name a simpler symbol table should be used for global props
+	asCSymbolTable<asCGlobalProperty> registeredGlobalProps;   // increases ref count
 	asCSymbolTable<asCScriptFunction> registeredGlobalFuncs;
-	asCArray<asCScriptFunction *>     registeredFuncDefs; // increases ref count
-	asCArray<asCObjectType *>         registeredTemplateTypes;
+	asCArray<asCFuncdefType *>        registeredFuncDefs;      // doesn't increase ref count
+	asCArray<asCObjectType *>         registeredTemplateTypes; // doesn't increase ref count
 	asCScriptFunction                *stringFactory;
 	bool configFailed;
 
-	// Stores all registered types except funcdefs
+	// Stores all registered types
 	asCMap<asSNameSpaceNamePair, asCTypeInfo*> allRegisteredTypes; // increases ref count
 
 	// Dummy types used to name the subtypes in the template objects 
-	asCArray<asCObjectType *>      templateSubTypes;
+	asCArray<asCTypeInfo *>        templateSubTypes;
 
 	// Store information about template types
 	// This list will contain all instances of templates, both registered specialized 
@@ -404,7 +426,7 @@ public:
 	// Stores the funcdefs
 	// TODO: redesign: Only shared funcdefs should be stored here
 	//                 a funcdef becomes shared if all arguments and the return type are shared (or application registered)
-	asCArray<asCScriptFunction *> funcDefs; // increases ref count
+	asCArray<asCFuncdefType *> funcDefs; // doesn't increases ref count
 
 	// Stores the names of the script sections for debugging purposes
 	asCArray<asCString *> scriptSectionNames;
@@ -412,7 +434,6 @@ public:
 	// Type identifiers
 	mutable int                             typeIdSeqNbr;
 	mutable asCMap<int, asCTypeInfo*>       mapTypeIdToTypeInfo;
-	mutable asCMap<int, asCScriptFunction*> mapTypeIdToFunction;
 
 	// Garbage collector
 	asCGarbageCollector gc;
@@ -460,16 +481,16 @@ public:
 	// User data
 	asCArray<asPWORD>       userData;
 
-	struct SEngineClean    { asPWORD type; asCLEANENGINEFUNC_t      cleanFunc; };
+	struct SEngineClean    { asPWORD type; asCLEANENGINEFUNC_t       cleanFunc; };
 	asCArray<SEngineClean>    cleanEngineFuncs;
-	struct SModuleClean    { asPWORD type; asCLEANMODULEFUNC_t      cleanFunc; };
+	struct SModuleClean    { asPWORD type; asCLEANMODULEFUNC_t       cleanFunc; };
 	asCArray<SModuleClean>    cleanModuleFuncs;
-	struct SContextClean   { asPWORD type; asCLEANCONTEXTFUNC_t     cleanFunc; };
+	struct SContextClean   { asPWORD type; asCLEANCONTEXTFUNC_t      cleanFunc; };
 	asCArray<SContextClean>   cleanContextFuncs;
-	struct SFunctionClean  { asPWORD type; asCLEANFUNCTIONFUNC_t    cleanFunc; };
+	struct SFunctionClean  { asPWORD type; asCLEANFUNCTIONFUNC_t     cleanFunc; };
 	asCArray<SFunctionClean>  cleanFunctionFuncs;
-	struct SObjTypeClean   { asPWORD type; asCLEANOBJECTTYPEFUNC_t  cleanFunc; };
-	asCArray<SObjTypeClean>   cleanObjectTypeFuncs;
+	struct STypeInfoClean  { asPWORD type; asCLEANTYPEINFOFUNC_t     cleanFunc; };
+	asCArray<STypeInfoClean>  cleanTypeInfoFuncs;
 	struct SScriptObjClean { asPWORD type; asCLEANSCRIPTOBJECTFUNC_t cleanFunc; };
 	asCArray<SScriptObjClean> cleanScriptObjectFuncs;
 
@@ -506,6 +527,7 @@ public:
 		// TODO: 3.0.0: Remove the privatePropAsProtected
 		bool   privatePropAsProtected;
 		bool   allowUnicodeIdentifiers;
+		int    heredocTrimMode;
 	} ep;
 
 	// This flag is to allow a quicker shutdown when releasing the engine

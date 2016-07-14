@@ -36,7 +36,7 @@ bool Test()
 
 	RegisterScriptString(engine);
 
-	any = (CScriptAny*)engine->CreateScriptObject(engine->GetObjectTypeByName("any"));
+	any = (CScriptAny*)engine->CreateScriptObject(engine->GetTypeInfoByName("any"));
 	engine->RegisterGlobalProperty("any g_any", any);
 
 	COutStream out;

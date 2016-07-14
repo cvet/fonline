@@ -23,7 +23,7 @@ public:
 	// If the object that is being converted to a string has members of its own the callback should call
 	// the debugger's ToString passing in expandMembersLevel - 1.
 	typedef std::string (*ToStringCallback)(void *obj, int expandMembersLevel, CDebugger *dbg);
-	virtual void RegisterToStringCallback(const asIObjectType *ot, ToStringCallback callback);
+	virtual void RegisterToStringCallback(const asITypeInfo *ti, ToStringCallback callback);
 
 	// User interaction
 	virtual void TakeCommands(asIScriptContext *ctx);
@@ -78,8 +78,8 @@ protected:
 
 	asIScriptEngine *m_engine;
 
-	// Registered callbacks for converting objects to strings
-	std::map<const asIObjectType*, ToStringCallback> m_toStringCallbacks;
+	// Registered callbacks for converting types to strings
+	std::map<const asITypeInfo*, ToStringCallback> m_toStringCallbacks;
 };
 
 END_AS_NAMESPACE

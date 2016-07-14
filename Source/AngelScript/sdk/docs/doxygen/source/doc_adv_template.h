@@ -41,26 +41,26 @@ with the name and subtype within angle brackets, but without the class token, e.
 The sub type is identified by just the name of the subtype as it was declared in the call to RegisterObjectType.
 
 The factory/construct behaviour for the template type is also different. In order for the implementation to know
-which subtype it is instantiated for, the factory/constructor receives the \ref asIObjectType of the template instance
+which subtype it is instantiated for, the factory/constructor receives the \ref asITypeInfo of the template instance
 as a hidden first parameter. When registering the factory/constructor this hidden parameter is reflected in the declaration,
 for example as <tt>int &amp;in</tt>.
 
 \code
 // Register the factory behaviour
-r = engine->RegisterObjectBehaviour("myTemplate<T>", asBEHAVE_FACTORY, "myTemplate<T>@ f(int&in)", asFUNCTIONPR(myTemplateFactory, (asIObjectType*), myTemplate*), asCALL_CDECL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("myTemplate<T>", asBEHAVE_FACTORY, "myTemplate<T>@ f(int&in)", asFUNCTIONPR(myTemplateFactory, (asITypeInfo*), myTemplate*), asCALL_CDECL); assert( r >= 0 );
 
 // Register the construct behaviour
-r = engine->RegisterObjectBehaviour("myValueTemplate<T>", asBEHAVE_CONSTRUCT, "void f(int&in)", asFUNCTIONPR(myValueTemplConstructor, (asIObjectType*, void*), void), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("myValueTemplate<T>", asBEHAVE_CONSTRUCT, "void f(int&in)", asFUNCTIONPR(myValueTemplConstructor, (asITypeInfo*, void*), void), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 \endcode
 
 The list factory/constructor, used to instantiate objects with initialization lists, is registered in the same way, i.e.:
 
 \code
 // Register the list factory behaviour
-r = engine->RegisterObjectBehaviour("myTemplate<T>", asBEHAVE_LIST_FACTORY, "myTemplate<T>@ f(int&in, uint)", asFUNCTIONPR(myTemplateListFactory, (asIObjectType*, unsigned int), myTemplate*), asCALL_CDECL); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("myTemplate<T>", asBEHAVE_LIST_FACTORY, "myTemplate<T>@ f(int&in, uint)", asFUNCTIONPR(myTemplateListFactory, (asITypeInfo*, unsigned int), myTemplate*), asCALL_CDECL); assert( r >= 0 );
 
 // Register the list constructor behaviour
-r = engine->RegisterObjectBehaviour("myValueTemplate<T>", asBEHAVE_LIST_CONSTRUCT, "void f(int&in, uint)", asFUNCTIONPR(myValueTemplListConstruct, (asIObjectType*, unsigned int, void*), void), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+r = engine->RegisterObjectBehaviour("myValueTemplate<T>", asBEHAVE_LIST_CONSTRUCT, "void f(int&in, uint)", asFUNCTIONPR(myValueTemplListConstruct, (asITypeInfo*, unsigned int, void*), void), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 \endcode
 
 
@@ -87,7 +87,7 @@ that the script engine will invoke every time a new template instance type is ge
 function can then perform necessary validations to verify if the type can be handled, and if not tell
 the engine that the instance isn't supported. 
 
-The callback function must be a global function that receives an asIObjectType pointer, and should return 
+The callback function must be a global function that receives an asITypeInfo pointer, and should return 
 a boolean. If the template instance is valid the return value should be true. 
 
 The function should also take a second parameter with an output reference to a boolean. This parameter 
@@ -98,14 +98,14 @@ the work that has to be done by the garbage collector.
 
 \code
 // Register the template callback
-// Observe that the asIObjectType pointer argument is represented by the int reference
+// Observe that the asITypeInfo pointer argument is represented by the int reference
 r = engine->RegisterObjectBehaviour("myTemplate<T>", asBEHAVE_TEMPLATE_CALLBACK, "bool f(int &in, bool&out)", asFUNCTION(myTemplateCallback), asCALL_CDECL); assert( r >= 0 );
 \endcode
 
 Here's an example callback function:
 
 \code
-bool myTemplateCallback(asIObjectType *ot, bool &dontGarbageCollect)
+bool myTemplateCallback(asITypeInfo *ot, bool &dontGarbageCollect)
 {
   // This template will only support primitive types
   int typeId = ot->GetSubTypeId();

@@ -32,8 +32,8 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine );
 // Usually where the variables are only used in debug mode.
 #define UNUSED_VAR( x )    (void) ( x )
 
-static void* CopyObject( asIObjectType* objType, int subTypeIndex, void* value );
-static void  DestroyObject( asIObjectType* objType, int subTypeIndex, void* value );
+static void* CopyObject( asITypeInfo* objType, int subTypeIndex, void* value );
+static void  DestroyObject( asITypeInfo* objType, int subTypeIndex, void* value );
 static bool  Less( int typeId, const void* a, const void* b );
 static bool  Equals( int typeId, const void* a, const void* b );
 
@@ -54,7 +54,7 @@ struct DictMapComparator
 
 typedef map< void*, void*, DictMapComparator > DictMap;
 
-ScriptDict* ScriptDict::Create( asIObjectType* ot )
+ScriptDict* ScriptDict::Create( asITypeInfo* ot )
 {
     // Allocate the memory
     void* mem = AllocMem( sizeof( ScriptDict ) );
@@ -73,7 +73,7 @@ ScriptDict* ScriptDict::Create( asIObjectType* ot )
     return d;
 }
 
-ScriptDict* ScriptDict::Create( asIObjectType* ot, void* initList )
+ScriptDict* ScriptDict::Create( asITypeInfo* ot, void* initList )
 {
     // Allocate the memory
     void* mem = AllocMem( sizeof( ScriptDict ) );
@@ -97,7 +97,7 @@ ScriptDict* ScriptDict::Create( asIObjectType* ot, void* initList )
 // subtype at compile time, instead of at runtime. The output argument dontGarbageCollect
 // allow the callback to tell the engine if the template instance type shouldn't be garbage collected,
 // i.e. no asOBJ_GC flag.
-static bool ScriptDictTemplateCallbackExt( asIObjectType* ot, int subTypeIndex, bool& dontGarbageCollect )
+static bool ScriptDictTemplateCallbackExt( asITypeInfo* ot, int subTypeIndex, bool& dontGarbageCollect )
 {
     // Make sure the subtype can be instanciated with a default factory/constructor,
     // otherwise we won't be able to instanciate the elements.
@@ -106,8 +106,8 @@ static bool ScriptDictTemplateCallbackExt( asIObjectType* ot, int subTypeIndex, 
         return false;
     if( ( typeId & asTYPEID_MASK_OBJECT ) && !( typeId & asTYPEID_OBJHANDLE ) )
     {
-        asIObjectType* subtype = ot->GetEngine()->GetObjectTypeById( typeId );
-        asDWORD        flags = subtype->GetFlags();
+        asITypeInfo* subtype = ot->GetEngine()->GetTypeInfoById( typeId );
+        asDWORD      flags = subtype->GetFlags();
         if( ( flags & asOBJ_VALUE ) && !( flags & asOBJ_POD ) )
         {
             // Verify that there is a default constructor
@@ -181,8 +181,8 @@ static bool ScriptDictTemplateCallbackExt( asIObjectType* ot, int subTypeIndex, 
         // If it is possible to determine that the handle cannot refer to an object type
         // that can potentially form a circular reference with the dict then it is not
         // necessary to make the dict garbage collected.
-        asIObjectType* subtype = ot->GetEngine()->GetObjectTypeById( typeId );
-        asDWORD        flags = subtype->GetFlags();
+        asITypeInfo* subtype = ot->GetEngine()->GetTypeInfoById( typeId );
+        asDWORD      flags = subtype->GetFlags();
         if( !( flags & asOBJ_GC ) )
         {
             if( ( flags & asOBJ_SCRIPT_OBJECT ) )
@@ -211,7 +211,7 @@ static bool ScriptDictTemplateCallbackExt( asIObjectType* ot, int subTypeIndex, 
     return true;
 }
 
-static bool ScriptDictTemplateCallback( asIObjectType* ot, bool& dontGarbageCollect )
+static bool ScriptDictTemplateCallback( asITypeInfo* ot, bool& dontGarbageCollect )
 {
     return ScriptDictTemplateCallbackExt( ot, 0, dontGarbageCollect ) &&
            ScriptDictTemplateCallbackExt( ot, 1, dontGarbageCollect );
@@ -238,11 +238,11 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
 
     // Templates receive the object type as the first parameter. To the script writer this is hidden
-    r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in)", asFUNCTIONPR( ScriptDict::Create, (asIObjectType*), ScriptDict* ), asCALL_CDECL );
+    r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in)", asFUNCTIONPR( ScriptDict::Create, (asITypeInfo*), ScriptDict* ), asCALL_CDECL );
     assert( r >= 0 );
 
     // Register the factory that will be used for initialization lists
-    r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", asFUNCTIONPR( ScriptDict::Create, ( asIObjectType *, void* ), ScriptDict* ), asCALL_CDECL );
+    r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", asFUNCTIONPR( ScriptDict::Create, ( asITypeInfo *, void* ), ScriptDict* ), asCALL_CDECL );
     assert( r >= 0 );
 
     // The memory management methods
@@ -302,7 +302,7 @@ static void RegisterScriptDict_Native( asIScriptEngine* engine )
     assert( r >= 0 );
 }
 
-ScriptDict::ScriptDict( asIObjectType* ot )
+ScriptDict::ScriptDict( asITypeInfo* ot )
 {
     refCount = 1;
     gcFlag = false;
@@ -317,7 +317,7 @@ ScriptDict::ScriptDict( asIObjectType* ot )
         objType->GetEngine()->NotifyGarbageCollectorOfNewObject( this, objType );
 }
 
-ScriptDict::ScriptDict( asIObjectType* ot, void* listBuffer )
+ScriptDict::ScriptDict( asITypeInfo* ot, void* listBuffer )
 {
     refCount = 1;
     gcFlag = false;
@@ -340,7 +340,7 @@ ScriptDict::ScriptDict( asIObjectType* ot, void* listBuffer )
         void* key = buffer;
         if( keyTypeId & asTYPEID_MASK_OBJECT )
         {
-            asIObjectType* ot = engine->GetObjectTypeById( keyTypeId );
+            asITypeInfo* ot = engine->GetTypeInfoById( keyTypeId );
             if( ot->GetFlags() & asOBJ_VALUE )
                 buffer += ot->GetSize();
             else
@@ -360,7 +360,7 @@ ScriptDict::ScriptDict( asIObjectType* ot, void* listBuffer )
         void* value = buffer;
         if( valueTypeId & asTYPEID_MASK_OBJECT )
         {
-            asIObjectType* ot = engine->GetObjectTypeById( valueTypeId );
+            asITypeInfo* ot = engine->GetTypeInfoById( valueTypeId );
             if( ot->GetFlags() & asOBJ_VALUE )
                 buffer += ot->GetSize();
             else
@@ -702,10 +702,10 @@ void ScriptDict::GetMap( std::vector< std::pair< void*, void* > >& data )
 }
 
 // internal
-static void* CopyObject( asIObjectType* objType, int subTypeIndex, void* value )
+static void* CopyObject( asITypeInfo* objType, int subTypeIndex, void* value )
 {
     int              subTypeId = objType->GetSubTypeId( subTypeIndex );
-    asIObjectType*   subType = objType->GetSubType( subTypeIndex );
+    asITypeInfo*     subType = objType->GetSubType( subTypeIndex );
     asIScriptEngine* engine = objType->GetEngine();
 
     int              elementSize;
@@ -749,7 +749,7 @@ static void* CopyObject( asIObjectType* objType, int subTypeIndex, void* value )
     return ptr;
 }
 
-static void DestroyObject( asIObjectType* objType, int subTypeIndex, void* value )
+static void DestroyObject( asITypeInfo* objType, int subTypeIndex, void* value )
 {
     int              subTypeId = objType->GetSubTypeId( subTypeIndex );
     asIScriptEngine* engine = objType->GetEngine();

@@ -73,7 +73,7 @@ bool Test2Modules()
 	mod->Build();
 	if( r < 0 ) TEST_FAILED;
 
-	asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(engine->GetModule("b")->GetObjectTypeByName("CTest"));
+	asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(engine->GetModule("b")->GetTypeInfoByName("CTest"));
 	*((asIScriptObject**)engine->GetModule("a")->GetAddressOfGlobalVar(0)) = obj;
 	r = ExecuteString(engine, "obj.test()", engine->GetModule("a"));
 	if( r != asEXECUTION_FINISHED ) TEST_FAILED;

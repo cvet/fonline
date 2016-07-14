@@ -28,7 +28,7 @@ To register the generic handle type, the application should follow the same prin
  - The \ref doc_script_class_ops "opEquals" method must also be registered with a \ref doc_adv_var_type in order to allow the 
    is and !is operators to behave as expected for a handle, e.g. 'bool opEquals(const ?&in)'.
    
- - Finally the \ref asBEHAVE_REF_CAST behaviour must be registered with the signature 'void f(?&out)' in order
+ - Finally the \ref doc_script_class_ops "opCast" must be registered with the signature 'void opCast(?&out)' in order
    to allow a dynamic cast to any other type.
 
 As this is a quite useful type, with really very little need for customization, a standard add-on 

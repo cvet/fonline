@@ -160,7 +160,7 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
-		asUINT seqNbr; asIObjectType *type;
+		asUINT seqNbr; asITypeInfo *type;
 		engine->GetObjectInGC(0, &seqNbr, 0, &type);
 		if( seqNbr != 0 || type == 0 || strcmp(type->GetName(), "CircularRef") != 0 )
 			TEST_FAILED;
@@ -193,7 +193,7 @@ bool Test()
 			TEST_FAILED;
 
 		// As the subtype holds handles and can form circular references it is possible for the array to form circular references too
-		asIObjectType *type = mod->GetObjectTypeByDecl("array<F>");
+		asITypeInfo *type = mod->GetTypeInfoByDecl("array<F>");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) == 0 )
 			TEST_FAILED;
 		
@@ -220,34 +220,34 @@ bool Test()
 			TEST_FAILED;
 
 		// F can obviously create circular references and must be garbage collected
-		asIObjectType *type = mod->GetObjectTypeByName("F");
+		asITypeInfo *type = mod->GetTypeInfoByName("F");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) == 0 )
 			TEST_FAILED;
 
 		// D can't create circular references and thus doesn't need to be garbage collected
-		type = mod->GetObjectTypeByName("D");
+		type = mod->GetTypeInfoByName("D");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) != 0 )
 			TEST_FAILED;
 
 		// E can't create circular references, because it is known that D cannot be inherited from and D can't create circular references
-		type = mod->GetObjectTypeByName("E");
+		type = mod->GetTypeInfoByName("E");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) != 0 )
 			TEST_FAILED;
 
 		// C can't create circular references
-		type = mod->GetObjectTypeByName("C");
+		type = mod->GetTypeInfoByName("C");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) != 0 )
 			TEST_FAILED;
 
 		// B can potentially create circular references though, as a class that derives from C can refer to B
 		// TODO: runtime optimize: The compiler could check for the existance of classes that derives from C, and thus see that B really can't form circular references
-		type = mod->GetObjectTypeByName("B");
+		type = mod->GetTypeInfoByName("B");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) == 0 )
 			TEST_FAILED;
 
 		// A can't really create circular references, but at the moment the compiler doesn't know how to detect that
 		// TODO: runtime optimize: The algorithm can be improved to allow the compiler to properly detect this case too
-		type = mod->GetObjectTypeByName("A");
+		type = mod->GetTypeInfoByName("A");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) == 0 )
 			TEST_FAILED;
 		
@@ -263,13 +263,13 @@ bool Test()
 			TEST_FAILED;
 
 		// All must be marked as garbage collected
-		type = mod->GetObjectTypeByName("A");
+		type = mod->GetTypeInfoByName("A");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) == 0 )
 			TEST_FAILED;
-		type = mod->GetObjectTypeByName("B");
+		type = mod->GetTypeInfoByName("B");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) == 0 )
 			TEST_FAILED;
-		type = mod->GetObjectTypeByName("C");
+		type = mod->GetTypeInfoByName("C");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) == 0 )
 			TEST_FAILED;
 
@@ -530,18 +530,20 @@ bool Test()
 		int enumTypeId = mod->GetTypeIdByDecl("TEST");
 		if( enumTypeId < 0 )
 			TEST_FAILED;
-		int count = engine->GetEnumValueCount(enumTypeId);
+		asITypeInfo *t = engine->GetTypeInfoById(enumTypeId);
+		int count = t->GetEnumValueCount();
 		if( count != 1 )
 			TEST_FAILED;
 
-		asIObjectType *type = mod->GetObjectTypeByName("A");
-		asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(type));
+		t = mod->GetTypeInfoByName("A");
+		asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(t));
 
 		engine->DiscardModule("test");
 		engine->GarbageCollect();
 
 		// The object is still alive so the enumType should still be valid
-		count = engine->GetEnumValueCount(enumTypeId);
+		t = engine->GetTypeInfoById(enumTypeId);
+		count = t->GetEnumValueCount();
 		if( count != 1 )
 			TEST_FAILED;
 
@@ -569,9 +571,9 @@ bool Test()
 		engine->Release();
 	}
 
-/*
-	// This test leaks, as it is not possible to release the delegate after the engine
 
+	// TODO: This test leaks, as it is not possible to release the delegate after the engine
+/*
 	// Test garbage collector message when holding on to a delegate
 	{
 		CBufferedOutStream bout;
@@ -599,10 +601,12 @@ bool Test()
 
 		engine->Release();
 
-		if( bout.buffer != " (0, 0) : Error   : Object {0}. GC cannot destroy an object of type '_builtin_function_' as it can't see all references. Current ref count is 1.\n"
-						   " (0, 0) : Info    : The function in previous message is named ''. The func type is 6\n"
-						   " (0, 0) : Error   : Object {8}. GC cannot destroy an object of type '_builtin_objecttype_' as it can't see all references. Current ref count is 1.\n"
-						   " (0, 0) : Info    : The builtin type in previous message is named 'A'\n" )
+		if( bout.buffer != " (0, 0) : Warning : There is an external reference to an object in module 'test', preventing it from being deleted\n"
+			" (0, 0) : Info    : The function in previous message is named 'func'. The func type is 3\n"
+			" (0, 0) : Warning : There is an external reference to an object in module 'test', preventing it from being deleted\n"
+			" (0, 0) : Info    : The builtin type in previous message is named 'A'\n"
+			" (0, 0) : Error   : Object{ 0 }.GC cannot destroy an object of type '$func' as it can't see all references. Current ref count is 1.\n"
+			" (0, 0) : Info    : The function in previous message is named ''. The func type is 6\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -611,9 +615,9 @@ bool Test()
 		// We can't release the function after the engine, because it will attempt to access the engine
 		// TODO: The application must not crash if the delegate is released after the engine. A leak might be acceptable, but not a crash
 		// TODO: Can we use the custom memory manager to force the memory cleanup so we can enable this test?
-		func->Release();
-	} */
-
+		//func->Release();
+	}
+*/
 
 /*
 	{

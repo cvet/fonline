@@ -85,7 +85,7 @@ void Test()
 	time = GetSystemTimer() - time;
 
 	if( r != 0 )
-		printf("Build failed\n", TESTNAME);
+		printf("Build failed\n");
 	else
 		printf("Time = %f secs\n", time);
 

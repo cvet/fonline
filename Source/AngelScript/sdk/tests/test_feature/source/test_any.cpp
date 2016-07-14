@@ -104,6 +104,75 @@ bool Test()
 	CBufferedOutStream bout;
 	asIScriptModule *mod;
 
+	// Test initialization from another any
+	// http://www.gamedev.net/topic/678208-scriptany-addon-call-wrong-constructor-in-2310/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptAny(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		RegisterStdString(engine);
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() \n"
+			"{ \n"
+			"  string testh = 'hello'; \n"
+			"  string output; \n"
+			"  any data; \n"
+			"  data.store(testh); \n"
+			"  any temp = data; \n"
+			"  temp.retrieve(output); \n"
+			"  assert( output == testh ); \n"
+			"  temp = data; \n"
+			"  temp.retrieve(output); \n"
+			"  assert( output == testh ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptContext *ctx = engine->CreateContext();
+		r = ExecuteString(engine, "main()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		if (r == asEXECUTION_EXCEPTION)
+			PRINTF("%s", GetExceptionInfo(ctx).c_str());
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test bug where the any type destroyed asITypeInfo too early
+	// http://www.gamedev.net/topic/676125-scriptany-addon-eats-typeinfo-references-when-nulls-are-stored/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		RegisterScriptAny(engine);
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A {} \n"
+			"void func() \n"
+			"{ \n"
+			"  A @a; \n"
+			"  any c(@a); \n" // store a null handle
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptContext *ctx = engine->CreateContext();
+		r = ExecuteString(engine, "func()", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		if (r == asEXECUTION_EXCEPTION)
+			PRINTF("%s", GetExceptionInfo(ctx).c_str());
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test bug
 	// http://www.gamedev.net/topic/672536-patch-proposal-for-scriptany-add-on-issue/
 	{

@@ -503,9 +503,6 @@
     <ClCompile Include="..\..\source\teststdcall4args.cpp">
       <Filter>tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\source\teststdstring.cpp">
-      <Filter>tests</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\source\testswitch.cpp">
       <Filter>tests</Filter>
     </ClCompile>
@@ -516,6 +513,18 @@
       <Filter>tests</Filter>
     </ClCompile>
     <ClCompile Include="..\..\source\testvirtualmethod.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\add_on\datetime\datetime.cpp">
+      <Filter>add-ons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\test_addon_datetime.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\test_addon_stdstring.cpp">
+      <Filter>tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\source\teststdstring.cpp">
       <Filter>tests</Filter>
     </ClCompile>
   </ItemGroup>
@@ -585,6 +594,9 @@
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\add_on\weakref\weakref.h">
+      <Filter>add-ons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\add_on\datetime\datetime.h">
       <Filter>add-ons</Filter>
     </ClInclude>
   </ItemGroup>

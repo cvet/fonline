@@ -15,6 +15,49 @@ bool Test()
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
 
+	// Test auto when it is not possible to determine type from expression
+	// http://www.gamedev.net/topic/677273-various-unexpected-behaviors-of-angelscript-2310/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		// local vars
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "void func() { auto var = null; }");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		// global vars
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "auto var = null;");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		// class members
+		// TODO: Currently auto in class member declarations are not supported, but if they are one day then this must also be properly handled
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "class foo { auto var = null; }");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void func()\n"
+						   "test (1, 20) : Error   : Unable to resolve auto type\n"
+						   "test (1, 6) : Info    : Compiling <auto> var\n"
+						   "test (1, 6) : Error   : Unable to resolve auto type\n"
+						   "test (1, 13) : Error   : Auto is not allowed here\n"
+						   "test (1, 30) : Error   : Unexpected token '}'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
+	}
+
 	// Test that anonymous functions with auto generates proper error
 	// http://www.gamedev.net/topic/671632-auto-causes-crash-with-anonymous-functions/
 	{

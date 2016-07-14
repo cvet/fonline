@@ -381,6 +381,16 @@ asCScriptObject::~asCScriptObject()
 					engine->CallObjectMethod(ptr, propType->beh.destruct);
 			}
 		}
+		else if( prop->type.IsFuncdef() )
+		{
+			// Release the function descriptor
+			asCScriptFunction **ptr = (asCScriptFunction**)(((char*)this) + prop->byteOffset);
+			if (*ptr)
+			{
+				(*ptr)->Release();
+				*ptr = 0;
+			}
+		}
 	}
 
 	objType->Release();
@@ -647,7 +657,7 @@ void asCScriptObject::CallDestructor()
 	}
 }
 
-asIObjectType *asCScriptObject::GetObjectType() const
+asITypeInfo *asCScriptObject::GetObjectType() const
 {
 	return objType;
 }
@@ -715,19 +725,21 @@ void asCScriptObject::EnumReferences(asIScriptEngine *engine)
 	for( asUINT n = 0; n < objType->properties.GetLength(); n++ )
 	{
 		asCObjectProperty *prop = objType->properties[n];
+		void *ptr = 0;
 		if( prop->type.IsObject() )
 		{
 			// TODO: gc: The members of the value type needs to be enumerated
 			//           too, since the value type may be holding a reference.
-			void *ptr;
 			if( prop->type.IsReference() || (prop->type.GetTypeInfo()->flags & asOBJ_REF) )
 				ptr = *(void**)(((char*)this) + prop->byteOffset);
 			else
 				ptr = (void*)(((char*)this) + prop->byteOffset);
-
-			if( ptr )
-				((asCScriptEngine*)engine)->GCEnumCallback(ptr);
 		}
+		else if (prop->type.IsFuncdef())
+			ptr = *(void**)(((char*)this) + prop->byteOffset);
+
+		if (ptr)
+			((asCScriptEngine*)engine)->GCEnumCallback(ptr);
 	}
 }
 
@@ -748,6 +760,15 @@ void asCScriptObject::ReleaseAllHandles(asIScriptEngine *engine)
 				asASSERT( (prop->type.GetTypeInfo()->flags & asOBJ_NOCOUNT) || prop->type.GetBehaviour()->release );
 				if( prop->type.GetBehaviour()->release )
 					((asCScriptEngine*)engine)->CallObjectMethod(*ptr, prop->type.GetBehaviour()->release);
+				*ptr = 0;
+			}
+		}
+		else if (prop->type.IsFuncdef())
+		{
+			asCScriptFunction **ptr = (asCScriptFunction**)(((char*)this) + prop->byteOffset);
+			if (*ptr)
+			{
+				(*ptr)->Release();
 				*ptr = 0;
 			}
 		}
@@ -794,6 +815,16 @@ asCScriptObject &asCScriptObject::operator=(const asCScriptObject &other)
 					}
 					else
 						CopyHandle((asPWORD*)src, (asPWORD*)dst, prop->type.GetTypeInfo()->CastToObjectType(), engine);
+				}
+				else if (prop->type.IsFuncdef())
+				{
+					asCScriptFunction **dst = (asCScriptFunction**)(((char*)this) + prop->byteOffset);
+					asCScriptFunction **src = (asCScriptFunction**)(((char*)&other) + prop->byteOffset);
+					if (*dst)
+						(*dst)->Release();
+					*dst = *src;
+					if (*dst)
+						(*dst)->AddRef();
 				}
 				else
 				{

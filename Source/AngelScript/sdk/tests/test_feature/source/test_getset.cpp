@@ -1284,7 +1284,7 @@ bool Test()
 			TEST_FAILED;
 
 		int typeId = mod->GetTypeIdByDecl("TestClass");
-		asIObjectType *type = engine->GetObjectTypeById(typeId);
+		asITypeInfo *type = engine->GetTypeInfoById(typeId);
 		if( type->GetMethodCount() != 1 )
 			TEST_FAILED;
 		asIScriptFunction *func = type->GetMethodByDecl("int get_MyProp()");

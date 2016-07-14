@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -54,7 +54,6 @@ asCDataType::asCDataType()
 	isAuto                 = false;
 	isObjectHandle         = false;
 	isConstHandle          = false;
-	funcDef                = 0;
 	isHandleToAsHandleType = false;
 }
 
@@ -67,7 +66,6 @@ asCDataType::asCDataType(const asCDataType &dt)
 	isAuto                 = dt.isAuto;
 	isObjectHandle         = dt.isObjectHandle;
 	isConstHandle          = dt.isConstHandle;
-	funcDef                = dt.funcDef;
 	isHandleToAsHandleType = dt.isHandleToAsHandleType;
 }
 
@@ -120,16 +118,6 @@ asCDataType asCDataType::CreateObjectHandle(asCTypeInfo *ot, bool isConst)
 	return dt;
 }
 
-asCDataType asCDataType::CreateFuncDef(asCScriptFunction *func)
-{
-	asCDataType dt;
-	dt.tokenType        = ttIdentifier;
-	dt.funcDef          = func;
-	dt.typeInfo         = &func->engine->functionBehaviours;
-
-	return dt;
-}
-
 asCDataType asCDataType::CreatePrimitive(eTokenType tt, bool isConst)
 {
 	asCDataType dt;
@@ -174,18 +162,16 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 
 	// If the type is not declared in the current namespace, then the namespace 
 	// must always be informed to guarantee that the correct type is informed
-	if (includeNamespace || (typeInfo && typeInfo->nameSpace != currNs) || (funcDef && funcDef->nameSpace != currNs))
+	if (includeNamespace || (typeInfo && typeInfo->nameSpace != currNs))
 	{
-		if (typeInfo && typeInfo->nameSpace->name != "")
+		if (typeInfo && typeInfo->nameSpace && typeInfo->nameSpace->name != "")
 			str += typeInfo->nameSpace->name + "::";
-		else if (funcDef && funcDef->nameSpace && funcDef->nameSpace->name != "")
-			str += funcDef->nameSpace->name + "::";
-		else if (funcDef && funcDef->nameSpace == 0)
-		{
-			// If funcDef->nameSpace is null it means the funcDef was declared as member of 
-			// another type, in which case the scope should be built with the name of that type
-			str += funcDef->parentClass->name + "::";
-		}
+	}
+	if (typeInfo && typeInfo->nameSpace == 0)
+	{
+		// If funcDef->nameSpace is null it means the funcDef was declared as member of 
+		// another type, in which case the scope should be built with the name of that type
+		str += typeInfo->CastToFuncdefType()->parentClass->name + "::";
 	}
 
 	if( tokenType != ttIdentifier )
@@ -198,10 +184,6 @@ asCString asCDataType::Format(asSNameSpace *currNs, bool includeNamespace) const
 		asASSERT( ot && ot->templateSubTypes.GetLength() == 1 );
 		str += ot->templateSubTypes[0].Format(currNs, includeNamespace);
 		str += "[]";
-	}
-	else if( funcDef )
-	{
-		str += funcDef->name;
 	}
 	else if(typeInfo)
 	{
@@ -250,7 +232,6 @@ asCDataType &asCDataType::operator =(const asCDataType &dt)
 	isObjectHandle         = dt.isObjectHandle;
 	isConstHandle          = dt.isConstHandle;
 	isAuto                 = dt.isAuto;
-	funcDef                = dt.funcDef;
 	isHandleToAsHandleType = dt.isHandleToAsHandleType;
 
 	return (asCDataType &)*this;
@@ -277,9 +258,8 @@ int asCDataType::MakeHandle(bool b, bool acceptHandleForScope)
 			// (except when returned from registered function)
 			// funcdefs are special reference types and support handles
 			// value types with asOBJ_ASHANDLE are treated as a handle
-			if( !funcDef && 
-				(!typeInfo ||
-				!((typeInfo->flags & asOBJ_REF) || (typeInfo->flags & asOBJ_TEMPLATE_SUBTYPE) || (typeInfo->flags & asOBJ_ASHANDLE)) ||
+			if( (!typeInfo ||
+				!((typeInfo->flags & asOBJ_REF) || (typeInfo->flags & asOBJ_TEMPLATE_SUBTYPE) || (typeInfo->flags & asOBJ_ASHANDLE) || (typeInfo->flags & asOBJ_FUNCDEF)) ||
 				(typeInfo->flags & asOBJ_NOHANDLE) ||
 				((typeInfo->flags & asOBJ_SCOPED) && !acceptHandleForScope)) )
 				return -1;
@@ -350,7 +330,7 @@ int asCDataType::MakeHandleToConst(bool b)
 bool asCDataType::SupportHandles() const
 {
 	if( typeInfo &&
-		(typeInfo->flags & (asOBJ_REF | asOBJ_ASHANDLE)) &&
+		(typeInfo->flags & (asOBJ_REF | asOBJ_ASHANDLE | asOBJ_FUNCDEF)) &&
 		!(typeInfo->flags & asOBJ_NOHANDLE) &&
 		!isObjectHandle )
 		return true;
@@ -363,14 +343,19 @@ bool asCDataType::CanBeInstantiated() const
 	if( GetSizeOnStackDWords() == 0 ) // Void
 		return false;
 
-	if( !IsObject() ) // Primitives
+	if( !IsObject() && !IsFuncdef() ) // Primitives
 		return true; 
+
+	if (IsNullHandle()) // null
+		return false;
 
 	if( IsObjectHandle() && !(typeInfo->flags & asOBJ_NOHANDLE) ) // Handles
 		return true;
 
-	if( funcDef ) // Funcdefs can be instantiated as delegates
-		 return true;
+	// Funcdefs cannot be instantiated without being handles
+	// The exception being delegates, but these can only be created as temporary objects
+	if (IsFuncdef())
+		return false;
 
 	asCObjectType *ot = typeInfo->CastToObjectType();
 	if( ot && (ot->flags & asOBJ_REF) && ot->beh.factories.GetLength() == 0 ) // ref types without factories
@@ -506,7 +491,6 @@ bool asCDataType::IsEqualExceptRefAndConst(const asCDataType &dt) const
 	if( isObjectHandle != dt.isObjectHandle ) return false;
 	if( isObjectHandle )
 		if( isReadOnly != dt.isReadOnly ) return false;
-	if( funcDef != dt.funcDef ) return false;
 
 	return true;
 }
@@ -525,11 +509,11 @@ bool asCDataType::IsPrimitive() const
 	if( IsEnumType() )
 		return true;
 
-	// A registered object is never a primitive neither is a pointer, nor an array
-	if( typeInfo || funcDef )
+	// A registered object is never a primitive neither is a pointer nor an array
+	if( typeInfo )
 		return false;
 
-	// Null handle doesn't have an objectType, but it is not a primitive
+	// Null handle doesn't have a typeInfo, but it is not a primitive
 	if( tokenType == ttUnrecognizedToken )
 		return false;
 
@@ -602,7 +586,16 @@ bool asCDataType::IsObject() const
 	if( typeInfo == 0 )
 		return IsNullHandle();
 
-	return true;
+	// Template subtypes shouldn't be considered objects
+	return typeInfo->CastToObjectType() ? true : false;
+}
+
+bool asCDataType::IsFuncdef() const
+{
+	if (typeInfo && (typeInfo->flags & asOBJ_FUNCDEF))
+		return true;
+
+	return false;
 }
 
 int asCDataType::GetSizeInMemoryBytes() const

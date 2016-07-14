@@ -91,7 +91,7 @@ CGCRef *GCRef_Factory()
 {
     // Create the object and then notify the GC of its existence
     CGCRef *obj = new CGCRef();
-    asIObjectType *type = engine->GetObjectTypeByName("gc");
+    asITypeInfo *type = engine->GetTypeInfoByName("gc");
     engine->NotifyGarbageCollectorOfNewObject(obj, type);
     return obj;
 }

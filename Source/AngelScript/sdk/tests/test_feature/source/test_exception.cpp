@@ -101,7 +101,7 @@ bool TestException()
 
 	// A test to validate Unprepare without execution
 	{
-		asIObjectType *type = mod->GetObjectTypeByIndex(0);
+		asITypeInfo *type = mod->GetObjectTypeByIndex(0);
 		asIScriptFunction *func = type->GetMethodByDecl("void Test(string c)");
 		ctx = engine->CreateContext();
 		ctx->Prepare(func);
@@ -117,7 +117,7 @@ bool TestException()
 
 	// Another test to validate Unprepare without execution
 	{
-		asIObjectType *type = mod->GetObjectTypeByIndex(0);
+		asITypeInfo *type = mod->GetObjectTypeByIndex(0);
 		// Get the real method, not the virtual method
 		asIScriptFunction *func = type->GetMethodByDecl("void Test(string c)", false);
 		ctx = engine->CreateContext();

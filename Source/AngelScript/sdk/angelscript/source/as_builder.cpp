@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -317,11 +317,11 @@ int asCBuilder::Build()
 		return asERROR;
 
 	// Make sure something was compiled, otherwise return an error
-//	if( module->IsEmpty() )
-//	{
-//		WriteError(TXT_NOTHING_WAS_BUILT, 0, 0);
-//		return asERROR;
-//	}
+	if( module->IsEmpty() )
+	{
+		WriteError(TXT_NOTHING_WAS_BUILT, 0, 0);
+		return asERROR;
+	}
 
 	return asSUCCESS;
 }
@@ -1030,7 +1030,7 @@ int asCBuilder::VerifyProperty(asCDataType *dt, const char *decl, asCString &nam
 	// Validate that the type really can be a registered property
 	// We cannot use CanBeInstantiated, as it is allowed to register
 	// properties of type that cannot otherwise be instantiated
-	if( type.GetFuncDef() && !type.IsObjectHandle() )
+	if( type.IsFuncdef() && !type.IsObjectHandle() )
 	{
 		// Function definitions must always be handles
 		return asINVALID_DECLARATION;
@@ -1150,9 +1150,14 @@ asCGlobalProperty *asCBuilder::GetGlobalProperty(const char *prop, asSNameSpace 
 	return 0;
 }
 
-int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *decl, asCScriptFunction *func, bool isSystemFunction, asCArray<bool> *paramAutoHandles, bool *returnAutoHandle, asSNameSpace *ns, asCScriptNode **listPattern)
+int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *decl, asCScriptFunction *func, bool isSystemFunction, asCArray<bool> *paramAutoHandles, bool *returnAutoHandle, asSNameSpace *ns, asCScriptNode **listPattern, asCObjectType **outParentClass)
 {
 	asASSERT( objType || ns );
+
+	if (listPattern)
+		*listPattern = 0;
+	if (outParentClass)
+		*outParentClass = 0;
 
 	// TODO: Can't we use GetParsedFunctionDetails to do most of what is done in this function?
 
@@ -1170,12 +1175,15 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 
 	// Determine scope
 	asCScriptNode *n = node->firstChild->next->next;
-	asCObjectType *parentClass;
+	asCObjectType *parentClass = 0;
 	func->nameSpace = GetNameSpaceFromNode(n, &source, ns, &n, &parentClass);
-	if (func->nameSpace == 0 && func->funcType == asFUNC_FUNCDEF)
-		func->parentClass = parentClass;
-	if( func->nameSpace == 0 && func->parentClass == 0 )
+	if( func->nameSpace == 0 && parentClass == 0 )
 		return asINVALID_DECLARATION;
+	if (parentClass && func->funcType != asFUNC_FUNCDEF)
+		return asINVALID_DECLARATION;
+
+	if (outParentClass)
+		*outParentClass = parentClass;
 
 	// Find name
 	func->name.Assign(&source.code[n->tokenPos], n->tokenLength);
@@ -1377,7 +1385,7 @@ int asCBuilder::CheckNameConflictMember(asCTypeInfo *t, const char *name, asCScr
 		}
 	}
 
-	asCArray<asCScriptFunction*> &funcdefs = ot->childFuncDefs;
+	asCArray<asCFuncdefType*> &funcdefs = ot->childFuncDefs;
 	for (asUINT n = 0; n < funcdefs.GetLength(); n++)
 	{
 		if (funcdefs[n]->name == name)
@@ -1600,12 +1608,13 @@ void asCBuilder::CompleteFuncDef(sFuncDef *funcDef)
 	bool                       isFinal;
 	bool                       isShared;
 
-	asCScriptFunction *func = module->funcDefs[funcDef->idx];
-	asASSERT( func );
+	asCFuncdefType *fdt = module->funcDefs[funcDef->idx];
+	asASSERT( fdt );
+	asCScriptFunction *func = fdt->funcdef;
 
 	// TODO: It should be possible to declare funcdef as shared. In this case a compiler error will be given if any of the types it uses are not shared
-	asSNameSpace *implicitNs = func->nameSpace ? func->nameSpace : func->parentClass->nameSpace;
-	GetParsedFunctionDetails(funcDef->node, funcDef->script, func->parentClass, funcDef->name, func->returnType, func->parameterNames, func->parameterTypes, func->inOutFlags, defaultArgs, isConstMethod, isConstructor, isDestructor, isPrivate, isProtected, isOverride, isFinal, isShared, implicitNs);
+	asSNameSpace *implicitNs = func->nameSpace ? func->nameSpace : fdt->parentClass->nameSpace;
+	GetParsedFunctionDetails(funcDef->node, funcDef->script, fdt->parentClass, funcDef->name, func->returnType, func->parameterNames, func->parameterTypes, func->inOutFlags, defaultArgs, isConstMethod, isConstructor, isDestructor, isPrivate, isProtected, isOverride, isFinal, isShared, implicitNs);
 
 	// There should not be any defaultArgs, but if there are any we need to delete them to avoid leaks
 	for( asUINT n = 0; n < defaultArgs.GetLength(); n++ )
@@ -1616,15 +1625,9 @@ void asCBuilder::CompleteFuncDef(sFuncDef *funcDef)
 	isShared = true;
 	if( func->returnType.GetTypeInfo() && !func->returnType.GetTypeInfo()->IsShared() )
 		isShared = false;
-	if( func->returnType.GetFuncDef() && !func->returnType.GetFuncDef()->IsShared() )
-		isShared = false;
 	for( asUINT n = 0; isShared && n < func->parameterTypes.GetLength(); n++ )
-	{
 		if( func->parameterTypes[n].GetTypeInfo() && !func->parameterTypes[n].GetTypeInfo()->IsShared() )
 			isShared = false;
-		if( func->parameterTypes[n].GetFuncDef() && !func->parameterTypes[n].GetFuncDef()->IsShared() )
-			isShared = false;
-	}
 	func->isShared = isShared;
 
 	// Check if there is another identical funcdef from another module and if so reuse that instead
@@ -1632,25 +1635,25 @@ void asCBuilder::CompleteFuncDef(sFuncDef *funcDef)
 	{
 		for( asUINT n = 0; n < engine->funcDefs.GetLength(); n++ )
 		{
-			asCScriptFunction *f2 = engine->funcDefs[n];
-			if( f2 == 0 || func == f2 )
+			asCFuncdefType *fdt2 = engine->funcDefs[n];
+			if( fdt2 == 0 || fdt == fdt2 )
 				continue;
 
-			if( !f2->isShared )
+			if( !fdt2->funcdef->isShared )
 				continue;
 
-			if( f2->name == func->name &&
-				f2->nameSpace == func->nameSpace &&
-				f2->IsSignatureExceptNameEqual(func) )
+			if( fdt2->name == fdt->name &&
+				fdt2->nameSpace == fdt->nameSpace &&
+				fdt2->funcdef->IsSignatureExceptNameEqual(func) )
 			{
 				// Replace our funcdef for the existing one
-				funcDef->idx = f2->id;
-				module->funcDefs[module->funcDefs.IndexOf(func)] = f2;
-				f2->AddRefInternal();
+				funcDef->idx = fdt2->funcdef->id;
+				module->funcDefs[module->funcDefs.IndexOf(fdt)] = fdt2;
+				fdt2->AddRefInternal();
 
-				engine->funcDefs.RemoveValue(func);
+				engine->funcDefs.RemoveValue(fdt);
 
-				func->ReleaseInternal();
+				fdt->ReleaseInternal();
 				break;
 			}
 		}
@@ -3338,6 +3341,24 @@ void asCBuilder::CompileClasses(asUINT numTempl)
 		for( asUINT p = 0; p < type->properties.GetLength(); p++ )
 		{
 			asCDataType dt = type->properties[p]->type;
+
+			if (dt.IsFuncdef())
+			{
+				// If a class holds a function pointer as member then the class must be garbage collected as the 
+				// function pointer can form circular references with the class through use of a delegate. Example:
+				//
+				//   class A { B @b; void f(); }
+				//   class B { F @f; }
+				//   funcdef void F();
+				//
+				//   A a;
+				//   @a.b = B();       // instance of A refers to instance of B
+				//   @a.b.f = F(a.f);  // instance of B refers to delegate that refers to instance of A
+				//
+				gc = true;
+				break;
+			}
+
 			if( !dt.IsObject() )
 				continue;
 
@@ -4030,11 +4051,11 @@ int asCBuilder::RegisterTypedef(asCScriptNode *node, asCScriptCode *file, asSNam
 	// If the name is not already in use add it
  	int r = CheckNameConflict(name.AddressOf(), tmp, file, ns);
 
-	asCObjectType *st = 0;
+	asCTypedefType *st = 0;
 	if( asSUCCESS == r )
 	{
 		// Create the new type
-		st = asNEW(asCObjectType)(engine);
+		st = asNEW(asCTypedefType)(engine);
 		if( st == 0 )
 			r = asOUT_OF_MEMORY;
 	}
@@ -4045,7 +4066,7 @@ int asCBuilder::RegisterTypedef(asCScriptNode *node, asCScriptCode *file, asSNam
 		st->size            = dataType.GetSizeInMemoryBytes();
 		st->name            = name;
 		st->nameSpace       = ns;
-		st->templateSubTypes.PushLast(dataType);
+		st->aliasForType    = dataType;
 		st->module          = module;
 
 		module->typeDefs.PushLast(st);
@@ -4917,8 +4938,11 @@ void asCBuilder::GetFunctionDescriptions(const char *name, asCArray<int> &funcs,
 	}
 }
 
+// scope is only informed when looking for a base class' method
 void asCBuilder::GetObjectMethodDescriptions(const char *name, asCObjectType *objectType, asCArray<int> &methods, bool objIsConst, const asCString &scope, asCScriptNode *errNode, asCScriptCode *script)
 {
+	asASSERT(objectType);
+
 	if( scope != "" )
 	{
 		// If searching with a scope informed, then the node and script must also be informed for potential error reporting
@@ -4930,61 +4954,54 @@ void asCBuilder::GetObjectMethodDescriptions(const char *name, asCObjectType *ob
 		asCString className = n >= 0 ? scope.SubString(n+2) : scope;
 		asCString nsName = n >= 0 ? scope.SubString(0, n) : "";
 
-		// Check if the namespace actually exist, if not return silently as this cannot be the referring to a base class
-		asSNameSpace *ns = GetNameSpaceByString(nsName, objectType->nameSpace, errNode, script, 0, false);
-		if( ns == 0 )
-			return;
+		// If a namespace was specifically defined, then this must be used
+		asSNameSpace *ns = 0;
+		if (n >= 0)
+		{
+			if (nsName == "")
+				ns = engine->nameSpaces[0];
+			else
+				ns = GetNameSpaceByString(nsName, objectType->nameSpace, errNode, script, 0, false);
+			
+			// If the namespace isn't found return silently and let the calling 
+			// function report the error if it cannot resolve the symbol
+			if (ns == 0)
+				return;
+		}
 
 		// Find the base class with the specified scope
-		while( objectType && (objectType->name != className || objectType->nameSpace != ns) )
+		while (objectType)
+		{
+			// If the name and namespace matches it is the correct class. If no
+			// specific namespace was given, then don't compare the namespace
+			if (objectType->name == className && (ns == 0 || objectType->nameSpace == ns))
+				break;
+
 			objectType = objectType->derivedFrom;
+		}
 
 		// If the scope is not any of the base classes, then return no methods
 		if( objectType == 0 )
 			return;
 	}
 
+	// Find the methods in the object that match the name
 	// TODO: optimize: Improve linear search
-	if( objIsConst )
+	for( asUINT n = 0; n < objectType->methods.GetLength(); n++ )
 	{
-		// Only add const methods to the list
-		for( asUINT n = 0; n < objectType->methods.GetLength(); n++ )
+		asCScriptFunction *func = engine->scriptFunctions[objectType->methods[n]];
+		if( func->name == name &&
+			(!objIsConst || func->isReadOnly) &&
+			(func->accessMask & module->accessMask) )
 		{
-			asCScriptFunction *func = engine->scriptFunctions[objectType->methods[n]];
-			if( func->name == name &&
-				func->isReadOnly &&
-				(func->accessMask & module->accessMask) )
+			// When the scope is defined the returned methods should be the true methods, not the virtual method stubs
+			if( scope == "" )
+				methods.PushLast(engine->scriptFunctions[objectType->methods[n]]->id);
+			else
 			{
-				// When the scope is defined the returned methods should be the true methods, not the virtual method stubs
-				if( scope == "" )
-					methods.PushLast(engine->scriptFunctions[objectType->methods[n]]->id);
-				else
-				{
-					asCScriptFunction *virtFunc = engine->scriptFunctions[objectType->methods[n]];
-					asCScriptFunction *realFunc = objectType->virtualFunctionTable[virtFunc->vfTableIdx];
-					methods.PushLast(realFunc->id);
-				}
-			}
-		}
-	}
-	else
-	{
-		// TODO: Prefer non-const over const
-		for( asUINT n = 0; n < objectType->methods.GetLength(); n++ )
-		{
-			asCScriptFunction *func = engine->scriptFunctions[objectType->methods[n]];
-			if( func->name == name &&
-				(func->accessMask & module->accessMask) )
-			{
-				// When the scope is defined the returned methods should be the true methods, not the virtual method stubs
-				if( scope == "" )
-					methods.PushLast(engine->scriptFunctions[objectType->methods[n]]->id);
-				else
-				{
-					asCScriptFunction *virtFunc = engine->scriptFunctions[objectType->methods[n]];
-					asCScriptFunction *realFunc = objectType->virtualFunctionTable[virtFunc->vfTableIdx];
-					methods.PushLast(realFunc->id);
-				}
+				asCScriptFunction *virtFunc = engine->scriptFunctions[objectType->methods[n]];
+				asCScriptFunction *realFunc = objectType->virtualFunctionTable[virtFunc->vfTableIdx];
+				methods.PushLast(realFunc->id);
 			}
 		}
 	}
@@ -5152,13 +5169,17 @@ asSNameSpace *asCBuilder::GetNameSpaceFromNode(asCScriptNode *node, asCScriptCod
 		}
 	}
 
-	return GetNameSpaceByString(scope, implicitNs ? implicitNs : engine->nameSpaces[0], node, script, objType);
+	asCTypeInfo *ti = 0;
+	asSNameSpace *ns = GetNameSpaceByString(scope, implicitNs ? implicitNs : engine->nameSpaces[0], node, script, &ti);
+	if (ti && objType)
+		*objType = ti->CastToObjectType();
+	return ns;
 }
 
-asSNameSpace *asCBuilder::GetNameSpaceByString(const asCString &nsName, asSNameSpace *implicitNs, asCScriptNode *errNode, asCScriptCode *script, asCObjectType **objType, bool isRequired)
+asSNameSpace *asCBuilder::GetNameSpaceByString(const asCString &nsName, asSNameSpace *implicitNs, asCScriptNode *errNode, asCScriptCode *script, asCTypeInfo **scopeType, bool isRequired)
 {
-	if( objType )
-		*objType = 0;
+	if( scopeType )
+		*scopeType = 0;
 
 	asSNameSpace *ns = implicitNs;
 	if( nsName == "::" )
@@ -5166,35 +5187,41 @@ asSNameSpace *asCBuilder::GetNameSpaceByString(const asCString &nsName, asSNameS
 	else if( nsName != "" )
 	{
 		ns = engine->FindNameSpace(nsName.AddressOf());
-		if (ns == 0 && objType)
+		if (ns == 0 && scopeType)
 		{
 			asCString typeName;
 			asCString searchNs;
 
 			// Split the scope with at the inner most ::
 			int pos = nsName.FindLast("::");
+			bool recursive = false;
 			if (pos >= 0)
 			{
+				// Fully qualified namespace
 				typeName = nsName.SubString(pos + 2);
 				searchNs = nsName.SubString(0, pos);
 			}
 			else
 			{
+				// Partially qualified, use the implicit namespace and then search recursively for the type
 				typeName = nsName;
-				searchNs = "::";
+				searchNs = implicitNs->name;
+				recursive = true;
 			}
 
 			asSNameSpace *nsTmp = searchNs == "::" ? engine->nameSpaces[0] : engine->FindNameSpace(searchNs.AddressOf());
-			if (nsTmp)
+			asCTypeInfo *ti = 0;
+			while( !ti && nsTmp )
 			{
 				// Check if the typeName is an existing type in the namespace
-				asCObjectType *ot = GetObjectType(typeName.AddressOf(), nsTmp);
-				if (ot)
+				ti = GetType(typeName.AddressOf(), nsTmp, 0);
+				if (ti)
 				{
-					// The informed scope is not a namespace, but it does match an object type
-					*objType = ot;
+					// The informed scope is not a namespace, but it does match a type
+					*scopeType = ti;
 					return 0;
 				}
+				nsTmp = recursive ? engine->GetParentNameSpace(nsTmp) : 0;
 			}
 		}
 
@@ -5269,18 +5296,17 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 				if (ti == 0)
 				{
 					// Check if the type is a child type of the current type
-					asCScriptFunction *funcDef = GetFuncDef(str.AddressOf(), 0, currentType);
-					if (funcDef)
+					ti = GetFuncDef(str.AddressOf(), 0, currentType);
+					if (ti)
 					{
-						dt = asCDataType::CreateFuncDef(funcDef);
-						ti = dt.GetTypeInfo();
+						dt = asCDataType::CreateType(ti, false);
 						found = true;
 					}
 				}
 			}
 
-			if( ti == 0 && ns )
-				ti = GetType(str.AddressOf(), ns);
+			if( ti == 0 )
+				ti = GetType(str.AddressOf(), ns, parentType);
 			if( ti == 0 && !module && currentType )
 				ti = GetTypeFromTypesKnownByObject(str.AddressOf(), currentType);
 
@@ -5298,8 +5324,7 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 					{
 						// TODO: typedef: A typedef should be considered different from the original type (though with implicit conversions between the two)
 						// Create primitive data type based on object flags
-						// TODO: type: typedefs should be cast to asCTypeDefs
-						dt = ti->CastToObjectType()->templateSubTypes[0];
+						dt = ti->CastToTypedefType()->aliasForType;
 						dt.MakeReadOnly(isConst);
 					}
 					else
@@ -5334,17 +5359,6 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 					WriteError(msg, file, n);
 
 					dt.SetTokenType(ttInt);
-				}
-			}
-			else if( ti == 0 )
-			{
-				// It can still be a function definition
-				asCScriptFunction *funcdef = GetFuncDef(str.AddressOf(), ns, parentType);
-
-				if( funcdef )
-				{
-					dt = asCDataType::CreateFuncDef(funcdef);
-					found = true;
 				}
 			}
 
@@ -5541,6 +5555,14 @@ asCDataType asCBuilder::ModifyDataTypeFromNode(const asCDataType &type, asCScrip
 	asCScriptNode *n = node->firstChild;
 	if( n && n->tokenType == ttAmp )
 	{
+		if (dt.GetTokenType() == ttVoid)
+		{
+			asCString msg;
+			msg.Format(TXT_TYPE_s_CANNOT_BE_REFERENCE, type.Format(0).AddressOf());
+			WriteError(msg, file, node->firstChild);
+			return dt;
+		}
+
 		dt.MakeReference(true);
 		n = n->next;
 
@@ -5591,18 +5613,39 @@ asCDataType asCBuilder::ModifyDataTypeFromNode(const asCDataType &type, asCScrip
 	return dt;
 }
 
-asCTypeInfo *asCBuilder::GetType(const char *type, asSNameSpace *ns)
+asCTypeInfo *asCBuilder::GetType(const char *type, asSNameSpace *ns, asCObjectType *parentType)
 {
-	asCTypeInfo *ti = engine->GetRegisteredType(type, ns);
-	if (!ti && module)
-		ti = module->GetType(type, ns);
+	asASSERT((ns == 0 && parentType) || (ns && parentType == 0));
 
-	return ti;
+	if (ns)
+	{
+		asCTypeInfo *ti = engine->GetRegisteredType(type, ns);
+		if (!ti && module)
+			ti = module->GetType(type, ns);
+		return ti;
+	}
+	else
+	{
+		// Recursively check base classes
+		asCObjectType *currType = parentType;
+		while (currType)
+		{
+			for (asUINT n = 0; n < currType->childFuncDefs.GetLength(); n++)
+			{
+				asCFuncdefType *funcDef = currType->childFuncDefs[n];
+				if (funcDef && funcDef->name == type)
+					return funcDef;
+			}
+			currType = currType->derivedFrom;
+		}
+	}
+
+	return 0;
 }
 
 asCObjectType *asCBuilder::GetObjectType(const char *type, asSNameSpace *ns)
 {
-	return GetType(type, ns)->CastToObjectType();
+	return GetType(type, ns, 0)->CastToObjectType();
 }
 
 #ifndef AS_NO_COMPILER
@@ -5621,7 +5664,7 @@ bool asCBuilder::DoesTypeExist(const asCString &type)
 		// Only do this once
 		hasCachedKnownTypes = true;
 
-		// Add registered object types
+		// Add registered types
 		asSMapNode<asSNameSpaceNamePair, asCTypeInfo*> *cursor;
 		engine->allRegisteredTypes.MoveFirst(&cursor);
 		while( cursor )
@@ -5632,11 +5675,6 @@ bool asCBuilder::DoesTypeExist(const asCString &type)
 			engine->allRegisteredTypes.MoveNext(&cursor, cursor);
 		}
 
-		// Add registered funcdefs
-		for (n = 0; n < engine->registeredFuncDefs.GetLength(); n++)
-			if (!knownTypes.MoveTo(0, engine->registeredFuncDefs[n]->name))
-				knownTypes.Insert(engine->registeredFuncDefs[n]->name, true);
-		
 		if (module)
 		{
 			// Add script classes and interfaces
@@ -5704,7 +5742,7 @@ asCTypeInfo *asCBuilder::GetTypeFromTypesKnownByObject(const char *type, asCObje
 	return found;
 }
 
-asCScriptFunction *asCBuilder::GetFuncDef(const char *type, asSNameSpace *ns, asCObjectType *parentType)
+asCFuncdefType *asCBuilder::GetFuncDef(const char *type, asSNameSpace *ns, asCObjectType *parentType)
 {
 	asASSERT((ns == 0 && parentType) || (ns && parentType == 0));
 
@@ -5712,7 +5750,7 @@ asCScriptFunction *asCBuilder::GetFuncDef(const char *type, asSNameSpace *ns, as
 	{
 		for (asUINT n = 0; n < engine->registeredFuncDefs.GetLength(); n++)
 		{
-			asCScriptFunction *funcDef = engine->registeredFuncDefs[n];
+			asCFuncdefType *funcDef = engine->registeredFuncDefs[n];
 			// TODO: access: Only return the definitions that the module has access to
 			if (funcDef && funcDef->nameSpace == ns && funcDef->name == type)
 				return funcDef;
@@ -5722,7 +5760,7 @@ asCScriptFunction *asCBuilder::GetFuncDef(const char *type, asSNameSpace *ns, as
 		{
 			for (asUINT n = 0; n < module->funcDefs.GetLength(); n++)
 			{
-				asCScriptFunction *funcDef = module->funcDefs[n];
+				asCFuncdefType *funcDef = module->funcDefs[n];
 				if (funcDef && funcDef->nameSpace == ns && funcDef->name == type)
 					return funcDef;
 			}
@@ -5736,7 +5774,7 @@ asCScriptFunction *asCBuilder::GetFuncDef(const char *type, asSNameSpace *ns, as
 		{
 			for (asUINT n = 0; n < currType->childFuncDefs.GetLength(); n++)
 			{
-				asCScriptFunction *funcDef = currType->childFuncDefs[n];
+				asCFuncdefType *funcDef = currType->childFuncDefs[n];
 				if (funcDef && funcDef->name == type)
 					return funcDef;
 			}

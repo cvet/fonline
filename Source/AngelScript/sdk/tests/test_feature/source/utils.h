@@ -161,14 +161,14 @@ public:
 		buffer.resize(buffer.size() + size);
 		memcpy(&buffer[wpointer], ptr, size); 
 		wpointer += size;
-		// Are we writing zeroes?
+/*		// Are we writing zeroes?
 		for( asUINT n = 0; n < size; n++ )
 			if( *(asBYTE*)ptr == 0 )
 			{
 				n = n; // <== Set break point here
 				break;
 			}
-	}
+*/	}
 	void Read(void *ptr, asUINT size) 
 	{
 		assert( rpointer + size <= buffer.size() );
@@ -192,6 +192,7 @@ void InstallMemoryManager();
 void RemoveMemoryManager();
 int  GetNumAllocs();
 int  GetAllocedMem();
+void PrintLocationCounters();
 
 // Returns true if bytecode is as expected
 bool ValidateByteCode(asIScriptFunction *func, asBYTE *expectBC);

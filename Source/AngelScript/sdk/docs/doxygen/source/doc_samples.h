@@ -170,12 +170,32 @@ breakpoints, stepping through the code, examining variables, etc.
  - \ref doc_addon_dict
  - \ref doc_addon_file
  - \ref doc_addon_filesystem
+ - \ref doc_addon_datetime
  - \ref doc_addon_ctxmgr
  - \ref doc_addon_build
  - \ref asIScriptEngine::SetContextCallbacks
  - Passing commandline arguments to script
  - Executing system commands from script
+ 
+\section doc_samples_asrun_funcs Global functions available to scripts
 
+Besides the add-ons listed above, the following functions are also exposed to the scripts.
+
+ - void print(const string &in line)
+
+Prints a line to the standard output.
+ 
+ - string getInput()
+
+Gets a line from the standard input.
+ 
+ - array<string> \@getCommandLineArgs()
+
+Gets the command line arguments as an array.
+ 
+ - int exec(const string &in)
+
+Executes a system command.
 
 
 
@@ -189,7 +209,7 @@ breakpoints, stepping through the code, examining variables, etc.
  modules. 
  
  - \ref asIScriptModule
- - \ref asIObjectType::SetUserData
+ - \ref asITypeInfo::SetUserData
  - \ref doc_global_interface
  - \ref doc_script_class
  - \ref doc_addon_build

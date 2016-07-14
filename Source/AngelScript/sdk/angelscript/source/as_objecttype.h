@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -101,14 +101,14 @@ struct asSNameSpace;
 class asCObjectType : public asCTypeInfo
 {
 public:
-	asIObjectType     *GetBaseType() const;
-	bool               DerivesFrom(const asIObjectType *objType) const;
+	asITypeInfo       *GetBaseType() const;
+	bool               DerivesFrom(const asITypeInfo *objType) const;
 	int                GetSubTypeId(asUINT subtypeIndex = 0) const;
-	asIObjectType     *GetSubType(asUINT subtypeIndex = 0) const;
+	asITypeInfo       *GetSubType(asUINT subtypeIndex = 0) const;
 	asUINT             GetSubTypeCount() const;
 	asUINT             GetInterfaceCount() const;
-	asIObjectType     *GetInterface(asUINT index) const;
-	bool               Implements(const asIObjectType *objType) const;
+	asITypeInfo       *GetInterface(asUINT index) const;
+	bool               Implements(const asITypeInfo *objType) const;
 	asUINT             GetFactoryCount() const;
 	asIScriptFunction *GetFactoryByIndex(asUINT index) const;
 	asIScriptFunction *GetFactoryByDecl(const char *decl) const;
@@ -122,7 +122,7 @@ public:
 	asUINT             GetBehaviourCount() const;
 	asIScriptFunction *GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const;
 	asUINT             GetChildFuncdefCount() const;
-	asIScriptFunction *GetChildFuncdef(asUINT index) const;
+	asITypeInfo       *GetChildFuncdef(asUINT index) const;
 
 public:
 	asCObjectType(asCScriptEngine *engine);
@@ -141,6 +141,8 @@ public:
 #endif
 	asCArray<asCObjectProperty*> properties;
 	asCArray<int>                methods;
+
+	// TODO: These are not used by template types. Should perhaps create a derived class to save memory on ordinary object types
 	asCArray<asCObjectType*>     interfaces;
 	asCArray<asUINT>             interfaceVFTOffsets;
 	asCObjectType *              derivedFrom;
@@ -148,12 +150,12 @@ public:
 
 	// Used for funcdefs declared as members of class.
 	// TODO: child funcdef: Should be possible to enumerate these from application
-	asCArray<asCScriptFunction*> childFuncDefs;
+	asCArray<asCFuncdefType*> childFuncDefs;
 
 	asSTypeBehaviour beh;
 
 	// Used for template types
-	asCArray<asCDataType> templateSubTypes;
+	asCArray<asCDataType> templateSubTypes;   // increases refCount for typeinfo held in datatype
 	bool                  acceptValueSubType;
 	bool                  acceptRefSubType;
 

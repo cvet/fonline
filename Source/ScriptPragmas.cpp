@@ -291,7 +291,7 @@ public:
 
         // Check already registered classes
         asIScriptEngine* engine = Script::GetEngine();
-        if( engine->GetObjectTypeByName( class_name.c_str() ) )
+        if( engine->GetTypeInfoByName( class_name.c_str() ) )
         {
             WriteLog( "Error in 'entity' pragma '%s', class already registered.\n", text.c_str() );
             return false;
@@ -1250,7 +1250,7 @@ public:
             if( arg_info.IsObject && type_id & asTYPEID_APPOBJECT )
             {
                 int matches = 0;
-                asIObjectType* obj_type = engine->GetObjectTypeById( type_id );
+                asITypeInfo* obj_type = engine->GetTypeInfoById( type_id );
                 for( asUINT j = 0; j < obj_type->GetPropertyCount() && matches < 3; j++ )
                 {
                     const char* decl = obj_type->GetPropertyDeclaration( j );
@@ -1419,7 +1419,7 @@ public:
 
             if( type_id & asTYPEID_MASK_OBJECT )
             {
-                asIObjectType* obj_type = engine->GetObjectTypeById( type_id );
+                asITypeInfo* obj_type = engine->GetTypeInfoById( type_id );
                 RUNTIME_ASSERT( obj_type );
                 if( Str::Compare( obj_type->GetName(), "array" ) )
                 {
@@ -1510,7 +1510,7 @@ public:
         for( int i = 0; i < gen->GetArgCount(); i++ )
         {
             int type_id = gen->GetArgTypeId( i );
-            asIObjectType* obj_type = ( type_id & asTYPEID_MASK_OBJECT ? engine->GetObjectTypeById( type_id ) : nullptr );
+            asITypeInfo* obj_type = ( type_id & asTYPEID_MASK_OBJECT ? engine->GetTypeInfoById( type_id ) : nullptr );
             bool is_hashes[] = { false, false, false, false };
             void* ptr = ( type_id & asTYPEID_MASK_OBJECT ? gen->GetArgObject( i ) : gen->GetAddressOfArg( i ) );
             args[ i ] = WriteValue( ptr, type_id, obj_type, is_hashes, 0 );
@@ -1606,7 +1606,7 @@ public:
             int type_id;
             asDWORD flags;
             func->GetParam( i, &type_id, &flags );
-            asIObjectType* obj_type = ( type_id & asTYPEID_MASK_OBJECT ? engine->GetObjectTypeById( type_id ) : nullptr );
+            asITypeInfo* obj_type = ( type_id & asTYPEID_MASK_OBJECT ? engine->GetTypeInfoById( type_id ) : nullptr );
             bool is_hashes[] = { false, false, false, false };
             void* value = ReadValue( buf, type_id, obj_type, is_hashes, 0, pod_buf, is_error );
             if( is_error )

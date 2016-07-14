@@ -121,7 +121,7 @@ bool Test()
 			TEST_FAILED;
 
 		// Add an extra object for serialization
-		asIScriptObject *scriptObj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(mod->GetObjectTypeByName("CTest")));
+		asIScriptObject *scriptObj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(mod->GetTypeInfoByName("CTest")));
 		((std::string*)(scriptObj->GetAddressOfProperty(1)))->assign("external object");
 
 		// Reload the script while keeping the object states

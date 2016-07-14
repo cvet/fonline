@@ -15,7 +15,60 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 
 <h1>AngelScript Change Log</h1>
 
-<h2>Version 2.31.0 WIP - 2015/11/08</h2>
+<h2>Version 2.31.2 WIP - 2016/06/27</h2>
+
+<ul>
+<li>Bug fixes
+<ul>
+<li>Fixed compiler warning about missing GNU-stack on gentoo Linux (Thanks James Le Cuirot)
+</ul>
+</ul>
+
+<h2>Version 2.31.1 - 2016/06/26</h2>
+
+<ul>
+<li>Bug fixes
+<ul>
+<li>Fixed assert failure in compiler when attempting to implicitly convert primitive to function pointer (Thanks Sir Ementaler)
+<li>Fixed compiler bug when passing funcdef by reference to a function (Thanks Sir Ementaler)
+<li>The auxiliary pointer wasn't stored with object methods registered with the asCALL_GENERIC calling convention (Thanks Phong Ba)
+<li>Fixed null pointer access crash in asBC_Thiscall1 when calling opIndex on a null pointer (Thanks gjl)
+<li>The generic calling convention wasn't properly handling funcdefs in arguments or return type (Thanks Ansjh)
+<li>Fixed null pointer access crash in compiler when compiling invalid script with value assign of function pointer (Thanks Phong Ba)
+<li>Expressions like (expr ? null : null) is now compiled correctly (Thanks Sir Ementaler)
+<li>auto var = null; no longer causes a crash in the compiler (Thanks Sir Ementaler)
+<li>Compiler wasn't giving an error on 'void &' (Thanks Sir Ementaler)
+<li>Fixed error when discarding a module if a context was still holding a reference to global var (Thanks GuyWithBeard)
+<li>Offset for bytecode ClrVPtr wasn't adjusted correctly when saving/loading bytecode when the referred to variable was a null pointer (Thanks _Engine_)
+<li>Fixed assert failure in compiler with AS_DEBUG when compiling anonymous function from class method (Thanks Phong Ba)
+<li>Fixed crash in compiler when compiling 'null();' (Thanks Nikola Stojsic)
+<li>Incorrect constructor could be used when declaring variable of object type and the initialization expression was of the same type but type had no copy constructor (Thanks loboWu)
+<li>Returning a function pointer from a registered function wasn't working properly (Thanks Sir Ementaler)
+<li>Function pointers in initialization lists would crash the application (Thanks Sir Ementaler)
+<li>opCast can now be used on types registered with asOBJ_NOHANDLE too without crashing
+<li>Function pointers wasn't properly handled in context's SetArg and GetReturn methods
+<li>Fixed some big endian compatibility issues in compiler (Thanks rfonseca)
+</ul>
+<li>Script language
+<ul>
+<li>Enum to int32 conversion is now preferred over enum to int of other sizes in function overload resolution (Thanks Sir Ementaler)
+<li>Anonymous objects initialized with initialization lists are now parsed as expression terms, rather than expressions by themselves
+</ul>
+<li>Library
+<ul>
+<li>Added asEP_HEREDOC_TRIM_MODE to allow application to decide how/if heredoc strings should be trimmed
+</ul>
+<li>Add-ons
+<ul>
+<li>Implemented parseUInt, findFirstOf, findLastOf, findFirstNotOf, findLastNotOf, insert, and erase for the string add-on
+<li>Implemented removeRange for the array add-on
+<li>Implemented insertAt for the array add-on that inserts all the elements from another array
+<li>Fixed big endian compatility problems in script dictionary (Thanks rfonseca)
+<li>Fixed compiler error in datetime add-on on gnuc (Thanks rfonseca)
+</ul>
+</ul>
+
+<h2>Version 2.31.0 - 2016/02/26</h2>
 
 <ul>
 <li>Bug fixes
@@ -26,6 +79,14 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 <li>Fixed bug with namespace and class member initialization (Thanks Solokiller)
 <li>Ternary condition can now return function pointers (Thanks Sir Ementaler)
 <li>Fixed problem with named args and registered behaviours (Thanks Solokiller)
+<li>Linux with PPC64 Little Endian is now working with AS_MAX_PORTABILITY (Thanks Rafael Fonseca)
+<li>Functions with generic calling conventions now catch application exceptions (Thanks Jason Goepel)
+<li>Fixed a bug in compiler with calling function with const reference and the function expected non-const reference (Thanks cvet)
+<li>Fixed compiler error in as_memory.cpp on OpenBSD (Thanks David Carlier)
+<li>Fixes for Big Endian CPUs (Thanks Rafael Fonseca)
+<li>Fixed crash on Linux 32bit when application threw C++ exception and library had been compiled with optimizations
+<li>Fixed bug in compiler when passing a handle from function argument to copy constructor (Thanks GGLucas)
+<li>Compiler properly resolves namespace when calling base classes method and the base class is declared in a different namespace (Thanks Ansjh)
 </ul>
 <li>Library interface
 <ul>
@@ -33,7 +94,20 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 <li>Added GetChildFuncdefCount and GetChildFuncdef to asIObjectType
 <li>Renamed GetFuncDefFromTypeId to GetFuncdefFromTypeId for consistency
 <li>It is now possible to register child funcdefs with RegisterFuncdef too
-<li>Added GetParentType to asIScriptFunction to allow querying the parent type for child funcdefs
+<li>Renamed asIObjectType to asITypeInfo 
+<li>Renamed asCLEANOBJECTTYPEFUNC_t to asCLEANTYPEINFOFUNC_t
+<li>Implemented GetTypeInfoByDecl, GetTypeInfoByName, and GetTypeInfoById
+<li>Implemented SetTypeInfoUserDataCleanupCallback
+<li>Implemented asITypeInfo::GetEnumValueCount and GetEnumValueByIndex
+<li>Deprecated GetObjectTypeByName/Decl, GetEnumValueCount/ByIndex, GetObjectTypeById, SetObjectTypeUserDataCleanupCallback in engine
+<li>Deprecated GetObjectTypeByName/Decl, GetEnumValueCount/ByIndex in module
+<li>Deprecated asIObjectType
+<li>Changed GetEnumByIndex and GetTypedefByIndex to return an asITypeInfo and removed all the output parameters
+<li>Implemented GetTypedefTypeId in asITypeInfo
+<li>GetChildFuncdef now returns an asITypeInfo instead of asIScriptFunction
+<li>Added GetFuncdefSignature to asITypeInfo
+<li>Deprecated GetFuncdefFromTypeId
+<li>Implemented GetParentType in asITypeInfo to allow querying the parent type for child funcdefs
 </ul>
 <li>Library
 <ul>
@@ -41,17 +115,32 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 <li>Improved parser error message when finding unexpected token to inform if the token is reserved or not (Thanks Solokiller)
 <li>Implemented asEP_ALLOW_UNICODE_IDENTIFIERS (Thanks Alexander Orefkov)
 <li>Added configuration in as_config.h to identify GNUC+Linux+PPC64 (Thanks Rafael Fonseca)
+<li>Access mask in the engine now defaults to all bits set to make sure built-in functions are available to all modules (Thanks Solokiller)
+<li>Included the asOBJ_FUNCDEF value to allow asITypeInfo to represent funcdefs too
+<li>asOBJ_SCRIPT_FUNCTION has been removed
+<li>RefCastObject can now be used for function pointers too
+<li>Refactored the code with regards to how types are stored, specifically funcdefs, resulting in more unified code and less memory use
+<li>Clang is now recognized in angelscript.h as supporting C++11 features (Thanks Derric McGarrah)
 </ul>
 <li>Script language
 <ul>
 <li>It is now possible to declare funcdefs as members of script classes
+<li>Partially specializing the scope as the enum type when referring to enums in namespaces is now possible (Thanks cvet)
 </ul>
-<li>Add-ons
+<li>Add-ons &amp; Samples
 <ul>
 <li>Fixed compiler error in scriptstdstring.h when using AS_USE_NAMESPACE (Thanks Sami Vuorela)
 <li>Fixed compiler error in aswrappedcall.h when using AS_USE_NAMESPACE
 <li>WriteConfigToStream and ConfigEngineFromStream is properly handling child funcdefs
 <li>Fixed problem in CScriptAny with constructing any object from primitive (Thanks gjl)
+<li>ScriptHandle and Dictionary no longer need special code for function pointers
+<li>Implemented CScriptDictionary::find for easier lookup of key/value pairs from application side
+<li>dictionary::delete now returns a bool to indicate if the delete was successful or not
+<li>Implemented CDateTime as a basic way of getting the time in scripts
+<li>The asrun sample exposes the CDateTime add-on to scripts
+<li>Implemented getInput in the asrun sample to allow it to get user input from standard input
+<li>CScriptAny released asITypeInfo that it didn't own when a null handle was stored in it (Thanks GGLucas)
+<li>CScriptBuilder incorrectly replaced /./ in include paths with nothing (Thanks Solokiller)
 </ul>
 <li>Project
 <ul>

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -255,6 +255,7 @@
 #define TXT_TMPL_SUBTYPE_MUST_NOT_BE_READ_ONLY "Template subtype must not be read-only"
 #define TXT_TOO_MANY_JUMP_LABELS               "The function has too many jump labels to handle. Split the function into smaller ones."
 #define TXT_TOO_MANY_VALUES_FOR_LIST           "Too many values to match pattern"
+#define TXT_TYPE_s_CANNOT_BE_REFERENCE         "Type '%s' cannot be a reference"
 #define TXT_TYPE_s_NOT_AVAILABLE_FOR_MODULE    "Type '%s' is not available for this module"
 #define TXT_TYPE_s_NOT_TEMPLATE                "Type '%s' is not a template type"
 

@@ -163,7 +163,7 @@ bool TestConstructor()
 			TEST_FAILED;
 
 		int typeId = mod->GetTypeIdByDecl("Obj");
-		asIObjectType *type = engine->GetObjectTypeById(typeId);
+		asITypeInfo *type = engine->GetTypeInfoById(typeId);
 		asIScriptFunction *func = type->GetFactoryByDecl("Obj @Obj(const vector3 &in)");
 		if( func == 0 )
 			TEST_FAILED;

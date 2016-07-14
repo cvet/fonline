@@ -37,12 +37,12 @@ void CScriptBuilder::SetIncludeCallback(INCLUDECALLBACK_t callback, void *userPa
 	callbackParam   = userParam;
 }
 
-int CScriptBuilder::StartNewModule(asIScriptEngine *engine, const char *moduleName)
+int CScriptBuilder::StartNewModule(asIScriptEngine *inEngine, const char *moduleName)
 {
-	if( engine == 0 ) return -1;
+	if(inEngine == 0 ) return -1;
 
-	this->engine = engine;
-	module = engine->GetModule(moduleName, asGM_ALWAYS_CREATE);
+	engine = inEngine;
+	module = inEngine->GetModule(moduleName, asGM_ALWAYS_CREATE);
 	if( module == 0 )
 		return -1;
 
@@ -230,7 +230,7 @@ int CScriptBuilder::ProcessScriptSection(const char *script, unsigned int length
 			int start = pos++;
 
 			// Is this an #if directive?
-			asETokenClass t = engine->ParseToken(&modifiedScript[pos], modifiedScript.size() - pos, &len);
+			t = engine->ParseToken(&modifiedScript[pos], modifiedScript.size() - pos, &len);
 
 			string token;
 			token.assign(&modifiedScript[pos], len);
@@ -421,7 +421,7 @@ int CScriptBuilder::ProcessScriptSection(const char *script, unsigned int length
 		{
 			int start = pos++;
 
-			asETokenClass t = engine->ParseToken(&modifiedScript[pos], modifiedScript.size() - pos, &len);
+			t = engine->ParseToken(&modifiedScript[pos], modifiedScript.size() - pos, &len);
 			if( t == asTC_IDENTIFIER )
 			{
 				string token;
@@ -551,7 +551,7 @@ int CScriptBuilder::Build()
 					it = classMetadataMap.find(typeId);
 				}
 
-				asIObjectType *type = engine->GetObjectTypeById(typeId);
+				asITypeInfo *type = engine->GetTypeInfoById(typeId);
 				asIScriptFunction *func = type->GetMethodByDecl(decl->declaration.c_str());
 				assert( func );
 				if( func )
@@ -582,7 +582,7 @@ int CScriptBuilder::Build()
 					it = classMetadataMap.find(typeId);
 				}
 
-				asIObjectType *type = engine->GetObjectTypeById(typeId);
+				asITypeInfo *type = engine->GetTypeInfoById(typeId);
 				asIScriptFunction *func = type->GetMethodByName(("get_" + decl->declaration).c_str());
 				if( func )
 					it->second.funcMetadataMap.insert(map<int, string>::value_type(func->GetId(), decl->metadata));
@@ -616,7 +616,7 @@ int CScriptBuilder::Build()
 				}
 
 				// Add the variable to class
-				asIObjectType *objectType = engine->GetObjectTypeById(typeId);
+				asITypeInfo *objectType = engine->GetTypeInfoById(typeId);
 				int idx = -1;
 
 				// Search through all properties to get proper declaration
@@ -947,10 +947,10 @@ string GetAbsolutePath(const string &file)
 	while( (pos = str.find("\\", pos)) != string::npos )
 		str[pos] = '/';
 
-	// Replace /./ with nothing
+	// Replace /./ with /
 	pos = 0;
 	while( (pos = str.find("/./", pos)) != string::npos )
-		str.erase(pos, 3);
+		str.erase(pos+1, 2);
 
 	// For each /../ remove the parent dir and the /../
 	pos = 0;

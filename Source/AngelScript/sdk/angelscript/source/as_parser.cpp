@@ -1814,40 +1814,18 @@ asCScriptNode *asCParser::ParseCondition()
 	return node;
 }
 
-// BNF: EXPR ::= (TYPE '=' INITLIST) | (EXPRTERM {EXPROP EXPRTERM})
+// BNF: EXPR ::= EXPRTERM {EXPROP EXPRTERM}
 asCScriptNode *asCParser::ParseExpression()
 {
 	asCScriptNode *node = CreateNode(snExpression);
 	if( node == 0 ) return 0;
-
-	// Check if the expression is a initialization of a temp object with init list, i.e. type = {...}
-	sToken t;
-	GetToken(&t);
-	sToken t2 = t, t3;
-	if( IsDataType(t2) && CheckTemplateType(t2) )
-	{
-		// The next token must be a = followed by a {
-		GetToken(&t2);
-		GetToken(&t3);
-		if( t2.type == ttAssignment && t3.type == ttStartStatementBlock )
-		{
-			// It is an initialization, now parse it for real
-			RewindTo(&t);
-			node->AddChildLast(ParseType(false));
-			GetToken(&t2);
-			node->AddChildLast(ParseInitList());
-			return node;
-		}
-	}
-	
-	// It wasn't an initialization, so it must be an ordinary expression
-	RewindTo(&t);
 
 	node->AddChildLast(ParseExprTerm());
 	if( isSyntaxError ) return node;
 
 	for(;;)
 	{
+		sToken t;
 		GetToken(&t);
 		RewindTo(&t);
 
@@ -1863,15 +1841,37 @@ asCScriptNode *asCParser::ParseExpression()
 	UNREACHABLE_RETURN;
 }
 
-// BNF: EXPRTERM ::= {EXPRPREOP} EXPRVALUE {EXPRPOSTOP}
+// BNF: EXPRTERM ::= (TYPE '=' INITLIST) | ({EXPRPREOP} EXPRVALUE {EXPRPOSTOP})
 asCScriptNode *asCParser::ParseExprTerm()
 {
 	asCScriptNode *node = CreateNode(snExprTerm);
 	if( node == 0 ) return 0;
 
+	// Check if the expression term is an initialization of a temp object with init list, i.e. type = {...}
+	sToken t;
+	GetToken(&t);
+	sToken t2 = t, t3;
+	if (IsDataType(t2) && CheckTemplateType(t2))
+	{
+		// The next token must be a = followed by a {
+		GetToken(&t2);
+		GetToken(&t3);
+		if (t2.type == ttAssignment && t3.type == ttStartStatementBlock)
+		{
+			// It is an initialization, now parse it for real
+			RewindTo(&t);
+			node->AddChildLast(ParseType(false));
+			GetToken(&t2);
+			node->AddChildLast(ParseInitList());
+			return node;
+		}
+	}
+
+	// It wasn't an initialization, so it must be an ordinary expression term
+	RewindTo(&t);
+
 	for(;;)
 	{
-		sToken t;
 		GetToken(&t);
 		RewindTo(&t);
 		if( !IsPreOperator(t.type) )
@@ -1887,7 +1887,6 @@ asCScriptNode *asCParser::ParseExprTerm()
 	
 	for(;;)
 	{
-		sToken t;
 		GetToken(&t);
 		RewindTo(&t);
 		if( !IsPostOperator(t.type) )

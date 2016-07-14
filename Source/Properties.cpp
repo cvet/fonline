@@ -72,9 +72,9 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
             uint key_element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId( 0 ) );
             if( isDictOfArray )
             {
-                asIObjectType* arr_type = asObjType->GetSubType( 1 );
-                uint           arr_element_size = engine->GetSizeOfPrimitiveType( arr_type->GetSubTypeId() );
-                uchar*         data_end = data + data_size;
+                asITypeInfo* arr_type = asObjType->GetSubType( 1 );
+                uint         arr_element_size = engine->GetSizeOfPrimitiveType( arr_type->GetSubTypeId() );
+                uchar*       data_end = data + data_size;
                 while( data < data_end )
                 {
                     void*        key = data;
@@ -720,7 +720,7 @@ uint Property::GetBaseSize()
     return baseSize;
 }
 
-asIObjectType* Property::GetASObjectType()
+asITypeInfo* Property::GetASObjectType()
 {
     return asObjType;
 }
@@ -1377,7 +1377,7 @@ static string DecodeString( const string& str )
     return result;
 }
 
-string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep )
+string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep )
 {
     if( !( type_id & asTYPEID_MASK_OBJECT ) )
     {
@@ -1424,7 +1424,7 @@ string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_
         if( arr_size > 0 )
         {
             int value_type_id = as_obj_type->GetSubTypeId( 0 );
-            asIObjectType* value_type = as_obj_type->GetSubType( 0 );
+            asITypeInfo* value_type = as_obj_type->GetSubType( 0 );
             for( asUINT i = 0; i < arr_size; i++ )
                 result.append( WriteValue( arr->At( i ), value_type_id, value_type, is_hashes, deep + 1 ) ).append( " " );
             result.pop_back();
@@ -1441,8 +1441,8 @@ string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_
         {
             int key_type_id = as_obj_type->GetSubTypeId( 0 );
             int value_type_id = as_obj_type->GetSubTypeId( 1 );
-            asIObjectType* key_type = as_obj_type->GetSubType( 0 );
-            asIObjectType* value_type = as_obj_type->GetSubType( 1 );
+            asITypeInfo* key_type = as_obj_type->GetSubType( 0 );
+            asITypeInfo* value_type = as_obj_type->GetSubType( 1 );
             vector< pair< void*, void* > > dict_map;
             dict->GetMap( dict_map );
             for( const auto& dict_kv : dict_map )
@@ -1460,7 +1460,7 @@ string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_
     return "";
 }
 
-void* ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error )
+void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error )
 {
     RUNTIME_ASSERT( deep <= 3 );
 
@@ -1510,7 +1510,7 @@ void* ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, boo
     {
         ScriptArray* arr = ScriptArray::Create( as_obj_type );
         int value_type_id = as_obj_type->GetSubTypeId( 0 );
-        asIObjectType* value_type = as_obj_type->GetSubType( 0 );
+        asITypeInfo* value_type = as_obj_type->GetSubType( 0 );
         string str;
         uchar arr_pod_buf[ 8 ];
         while( ( value = ReadToken( value, str ) ) )
@@ -1527,8 +1527,8 @@ void* ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, boo
         ScriptDict* dict = ScriptDict::Create( as_obj_type );
         int key_type_id = as_obj_type->GetSubTypeId( 0 );
         int value_type_id = as_obj_type->GetSubTypeId( 1 );
-        asIObjectType* key_type = as_obj_type->GetSubType( 0 );
-        asIObjectType* value_type = as_obj_type->GetSubType( 1 );
+        asITypeInfo* key_type = as_obj_type->GetSubType( 0 );
+        asITypeInfo* value_type = as_obj_type->GetSubType( 1 );
         string str1, str2;
         uchar dict_pod_buf1[ 8 ];
         uchar dict_pod_buf2[ 8 ];
@@ -1898,7 +1898,7 @@ Property* PropertyRegistrator::Register(
 
     Property::DataType data_type;
     uint               data_size = 0;
-    asIObjectType*     as_obj_type = engine->GetObjectTypeById( type_id );
+    asITypeInfo*     as_obj_type = engine->GetTypeInfoById( type_id );
     bool               is_int_data_type = false;
     bool               is_signed_int_data_type = false;
     bool               is_float_data_type = false;
@@ -1978,7 +1978,7 @@ Property* PropertyRegistrator::Register(
         }
 
         int value_sub_type_id = as_obj_type->GetSubTypeId( 1 );
-        asIObjectType* value_sub_type = as_obj_type->GetSubType( 1 );
+        asITypeInfo* value_sub_type = as_obj_type->GetSubType( 1 );
         if( value_sub_type_id & asTYPEID_MASK_OBJECT )
         {
             is_dict_of_string = Str::Compare( value_sub_type->GetName(), "string" );
@@ -2010,7 +2010,7 @@ Property* PropertyRegistrator::Register(
     }
 
     // Check name for already used
-    asIObjectType* ot = engine->GetObjectTypeByName( scriptClassName.c_str() );
+    asITypeInfo* ot = engine->GetTypeInfoByName( scriptClassName.c_str() );
     RUNTIME_ASSERT( ot );
     for( asUINT i = 0, j = ot->GetPropertyCount(); i < j; i++ )
     {
@@ -2115,7 +2115,7 @@ Property* PropertyRegistrator::Register(
         {
             char           decl[ MAX_FOTEXT ];
             Str::Format( decl, "%s[]", enumTypeName.c_str() );
-            asIObjectType* enum_array_type = engine->GetObjectTypeByDecl( decl );
+            asITypeInfo* enum_array_type = engine->GetTypeInfoByDecl( decl );
             if( !enum_array_type )
             {
                 WriteLogF( _FUNC_, " - Invalid type for property group '%s'.\n", decl );

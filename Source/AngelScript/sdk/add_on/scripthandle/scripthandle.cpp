@@ -25,7 +25,7 @@ CScriptHandle::CScriptHandle(const CScriptHandle &other)
 	AddRefHandle();
 }
 
-CScriptHandle::CScriptHandle(void *ref, asIObjectType *type)
+CScriptHandle::CScriptHandle(void *ref, asITypeInfo *type)
 {
 	m_ref  = ref;
 	m_type = type;
@@ -82,7 +82,7 @@ CScriptHandle &CScriptHandle::operator =(const CScriptHandle &other)
 	return *this;
 }
 
-void CScriptHandle::Set(void *ref, asIObjectType *type)
+void CScriptHandle::Set(void *ref, asITypeInfo *type)
 {
 	if( m_ref == ref ) return;
 
@@ -99,7 +99,7 @@ void *CScriptHandle::GetRef()
 	return m_ref;
 }
 
-asIObjectType *CScriptHandle::GetType() const
+asITypeInfo *CScriptHandle::GetType() const
 {
 	return m_type;
 }
@@ -107,12 +107,6 @@ asIObjectType *CScriptHandle::GetType() const
 int CScriptHandle::GetTypeId() const
 {
 	if( m_type == 0 ) return 0;
-
-	if( m_type->GetFlags() & asOBJ_SCRIPT_FUNCTION )
-	{
-		asIScriptFunction *func = reinterpret_cast<asIScriptFunction*>(m_ref);
-		return func->GetTypeId() | asTYPEID_OBJHANDLE;
-	}
 
 	return m_type->GetTypeId() | asTYPEID_OBJHANDLE;
 }
@@ -139,7 +133,7 @@ CScriptHandle &CScriptHandle::Assign(void *ref, int typeId)
 	// Get the object type
 	asIScriptContext *ctx    = asGetActiveContext();
 	asIScriptEngine  *engine = ctx->GetEngine();
-	asIObjectType    *type   = engine->GetObjectTypeById(typeId);
+	asITypeInfo      *type   = engine->GetTypeInfoById(typeId);
 
 	// If the argument is another CScriptHandle, we should copy the content instead
 	if( type && strcmp(type->GetName(), "ref") == 0 )
@@ -209,30 +203,12 @@ void CScriptHandle::Cast(void **outRef, int typeId)
 	// Compare the type id of the actual object
 	typeId &= ~asTYPEID_OBJHANDLE;
 	asIScriptEngine  *engine = m_type->GetEngine();
-	asIObjectType    *type   = engine->GetObjectTypeById(typeId);
+	asITypeInfo      *type   = engine->GetTypeInfoById(typeId);
 
 	*outRef = 0;
 
-	if( type == m_type )
-	{
-		// If the requested type is a script function it is 
-		// necessary to check if the functions are compatible too
-		if( m_type->GetFlags() & asOBJ_SCRIPT_FUNCTION )
-		{
-			asIScriptFunction *func = reinterpret_cast<asIScriptFunction*>(m_ref);
-			if( !func->IsCompatibleWithTypeId(typeId) )
-				return;
-		}
-
-		// Must increase the ref count as we're returning a new reference to the object
-		engine->AddRefScriptObject(m_ref, m_type);
-		*outRef = m_ref;
-	}
-	else 
-	{
-		// RefCastObject will increment the refCount of the returned object if successful
-		engine->RefCastObject(m_ref, m_type, type, outRef);
-	}
+	// RefCastObject will increment the refCount of the returned object if successful
+	engine->RefCastObject(m_ref, m_type, type, outRef);
 }
 
 

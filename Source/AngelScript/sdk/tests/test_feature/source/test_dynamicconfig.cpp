@@ -417,7 +417,7 @@ bool Test()
 	r = engine->RegisterObjectBehaviour("mytype", asBEHAVE_ADDREF, "void f()", asFUNCTION(AddRef), asCALL_GENERIC);
 	r = engine->RegisterObjectBehaviour("mytype", asBEHAVE_RELEASE, "void f()", asFUNCTION(Release), asCALL_GENERIC);
 
-	any = (CScriptAny*)engine->CreateScriptObject(engine->GetObjectTypeByName("any"));
+	any = (CScriptAny*)engine->CreateScriptObject(engine->GetTypeInfoByName("any"));
 
 	r = engine->RegisterGlobalProperty("any g_any", any);
 	engine->EndConfigGroup();
@@ -465,7 +465,7 @@ bool Test()
 	r = engine->RegisterObjectType("int[]", sizeof(int), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
 	r = engine->EndConfigGroup(); assert( r >= 0 );
 
-	asIObjectType *ot = engine->GetObjectTypeByDecl("int[]");
+	asITypeInfo *ot = engine->GetTypeInfoByDecl("int[]");
 	if( ot->GetSubTypeId() != asTYPEID_INT32 )
 		TEST_FAILED;
 
@@ -610,7 +610,7 @@ bool Test()
 	engine->BeginConfigGroup("group1");
 	r = engine->RegisterObjectType("mytype", sizeof(int), asOBJ_VALUE | asOBJ_POD);
 
-	any = (CScriptAny*)engine->CreateScriptObject(engine->GetObjectTypeByName("any"));
+	any = (CScriptAny*)engine->CreateScriptObject(engine->GetTypeInfoByName("any"));
 
 	r = engine->RegisterGlobalProperty("any g_any", any);
 	engine->EndConfigGroup();
@@ -770,7 +770,7 @@ bool Test()
 	engine->RegisterObjectMethod("type", "void func()", asFUNCTION(0), asCALL_GENERIC);
 	engine->EndConfigGroup();
 
-	asIObjectType *type = engine->GetObjectTypeByName("type");
+	asITypeInfo *type = engine->GetTypeInfoByName("type");
 	if( type->GetMethodCount() != 1 )
 		TEST_FAILED;
 

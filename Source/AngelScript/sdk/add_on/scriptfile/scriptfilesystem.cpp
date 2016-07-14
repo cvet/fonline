@@ -79,7 +79,7 @@ CScriptArray *CScriptFileSystem::GetFiles() const
 
 	// TODO: This should only be done once
 	// TODO: This assumes that CScriptArray was already registered
-	asIObjectType *arrayType = engine->GetObjectTypeByDecl("array<string>");
+	asITypeInfo *arrayType = engine->GetTypeInfoByDecl("array<string>");
 
 	// Create the array object
 	CScriptArray *array = CScriptArray::Create(arrayType);
@@ -149,7 +149,7 @@ CScriptArray *CScriptFileSystem::GetDirs() const
 
 	// TODO: This should only be done once
 	// TODO: This assumes that CScriptArray was already registered
-	asIObjectType *arrayType = engine->GetObjectTypeByDecl("array<string>");
+	asITypeInfo *arrayType = engine->GetTypeInfoByDecl("array<string>");
 
 	// Create the array object
 	CScriptArray *array = CScriptArray::Create(arrayType);

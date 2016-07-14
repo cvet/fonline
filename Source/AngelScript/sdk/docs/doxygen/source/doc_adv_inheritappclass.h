@@ -192,7 +192,7 @@ in the script.
 FooScripted *CreateFooDerived(asIScriptEngine *engine)
 {
   // Create an instance of the FooDerived script class that inherits from the FooScripted C++ class
-  asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(mod->GetObjectTypeByName("FooDerived")));
+  asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(mod->GetTypeInfoByName("FooDerived")));
   
   // Get the pointer to the C++ side of the FooScripted class
   FooScripted *obj2 = *reinterpret_cast<FooScripted**>(obj->GetAddressOfProperty(0));

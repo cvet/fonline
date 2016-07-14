@@ -262,7 +262,7 @@ bool Test()
 				TEST_FAILED;
 			}
 
-			asIObjectType *ot = mod->GetObjectTypeByName("Clss");
+			asITypeInfo *ot = mod->GetTypeInfoByName("Clss");
 			if( ot == 0 )
 				TEST_FAILED;
 

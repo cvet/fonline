@@ -2,6 +2,10 @@
 #include "../../../add_on/debugger/debugger.h"
 #include "../../../add_on/scriptdictionary/scriptdictionary.h"
 #include <sstream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
 
 namespace Test_Addon_Debugger
 {
@@ -170,6 +174,10 @@ std::string ArrayToString(void *obj, int expandMembers, CDebugger *dbg)
 	return s.str();
 }
 
+//#ifndef AS_CAN_USE_CPP11
+static bool cmp(const string &a, const string &b) { return a > b; }
+//#endif
+
 std::string DictionaryToString(void *obj, int expandMembers, CDebugger *dbg)
 {
 	CScriptDictionary *dic = reinterpret_cast<CScriptDictionary*>(obj);
@@ -180,12 +188,25 @@ std::string DictionaryToString(void *obj, int expandMembers, CDebugger *dbg)
 	if( expandMembers > 0 )
 	{
 		s << " [";
-		asUINT n = 0;
-		for( CScriptDictionary::CIterator it = dic->begin(); it != dic->end(); it++, n++ )
+
+		// Order the keys alphabetically so that the test result will always be the same
+		// regardless of the std::map/unordered_map implementation of the target env
+		vector<string> keys;
+		for (CScriptDictionary::CIterator it = dic->begin(); it != dic->end(); it++)
+			keys.push_back(it.GetKey());
+
+/*#ifdef AS_CAN_USE_CPP11
+		sort(keys.begin(), keys.end(), [](auto a, auto b) {return a > b;});
+#else*/
+		sort(keys.begin(), keys.end(), cmp);
+//#endif
+
+		for (asUINT n = 0; n < keys.size(); n++)
 		{
-			s << "[" << it.GetKey() << "] = ";
+			s << "[" << keys[n] << "] = ";
 
 			// Get the type and address of the value
+			CScriptDictionary::CIterator it = dic->find(keys[n]);
 			const void *val = it.GetAddressOfValue();
 			int typeId = it.GetTypeId();
 
@@ -236,9 +257,9 @@ bool Test()
 
 		CMyDebugger2 debug;
 		debug.SetEngine(engine);
-		debug.RegisterToStringCallback(engine->GetObjectTypeByName("string"), StringToString);
-		debug.RegisterToStringCallback(engine->GetObjectTypeByName("array"), ArrayToString);
-		debug.RegisterToStringCallback(engine->GetObjectTypeByName("dictionary"), DictionaryToString);
+		debug.RegisterToStringCallback(engine->GetTypeInfoByName("string"), StringToString);
+		debug.RegisterToStringCallback(engine->GetTypeInfoByName("array"), ArrayToString);
+		debug.RegisterToStringCallback(engine->GetTypeInfoByName("dictionary"), DictionaryToString);
 
 		ctx = engine->CreateContext();
 		ctx->SetLineCallback(asMETHOD(CMyDebugger, LineCallback), &debug, asCALL_THISCALL);
@@ -252,8 +273,8 @@ bool Test()
 		// TODO: Must not get into trouble expanding circular references infinitely
 
 		if( debug.output != "{XXXXXXXX} (len=10) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n"
-							"{YYYYYYYY} (len=2) [[keya] = 1234, [keyb] = 4321]\n"
-							"{........} (len=3) [[key1] = {ZZZZZZZZ} (len=10) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [key2] = {YYYYYYYY} (len=2) [[keya] = 1234, [keyb] = 4321], [key3] = (len=5) \"hello\"]\n" )
+							"{YYYYYYYY} (len=2) [[keyb] = 4321, [keya] = 1234]\n"
+							"{........} (len=3) [[key3] = (len=5) \"hello\", [key2] = {YYYYYYYY} (len=2) [[keyb] = 4321, [keya] = 1234], [key1] = {ZZZZZZZZ} (len=10) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]\n" )
 		{
 			PRINTF("%s", debug.output.c_str());
 			TEST_FAILED;
@@ -272,8 +293,8 @@ bool Test()
 		RegisterStdString(engine);
 		RegisterScriptArray(engine, true);
 
-		debug.RegisterToStringCallback(engine->GetObjectTypeByName("string"), StringToString);
-		debug.RegisterToStringCallback(engine->GetObjectTypeByName("array"), ArrayToString);
+		debug.RegisterToStringCallback(engine->GetTypeInfoByName("string"), StringToString);
+		debug.RegisterToStringCallback(engine->GetTypeInfoByName("array"), ArrayToString);
 
 		const char *script = 
 			"void func(int a, const int &in b, string c, const string &in d, type @e, type &f, type @&in g) \n"

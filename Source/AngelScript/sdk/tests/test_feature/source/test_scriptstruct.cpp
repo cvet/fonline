@@ -13,7 +13,7 @@ namespace ProjectClover
 // use this global variable to attempt to access the script class
 // while the internal asCScriptObject is being destroyed.
 asIScriptObject* gBar     = NULL;
-asIObjectType*   gBarType = NULL;
+asITypeInfo*     gBarType = NULL;
 asIScriptEngine* gEngine  = NULL;
  
 // In place of the physics callback from the original code
@@ -31,7 +31,7 @@ void createBar()
         asIScriptContext *ctx = gEngine->CreateContext();
  
         asIScriptModule *module = gEngine->GetModule("script");
-        gBarType = gEngine->GetObjectTypeById(module->GetTypeIdByDecl("Bar"));
+        gBarType = gEngine->GetTypeInfoById(module->GetTypeIdByDecl("Bar"));
         asIScriptFunction *factory = gBarType->GetFactoryByDecl("Bar @Bar()");
         ctx->Prepare(factory);
         ctx->Execute();
@@ -629,7 +629,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIObjectType *type = mod->GetObjectTypeByName("A");
+		asITypeInfo *type = mod->GetTypeInfoByName("A");
 		if( engine->CreateScriptObject(type) )
 			TEST_FAILED;
 
@@ -891,7 +891,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("T"));
+		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("T"));
 		if( obj != 0 )
 		{
 			TEST_FAILED;
@@ -939,7 +939,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("T"));
+		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("T"));
 		if( obj == 0 )
 			TEST_FAILED;
 		else
@@ -975,7 +975,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("T"));
+		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("T"));
 		if( obj == 0 )
 			TEST_FAILED;
 		else
@@ -1040,7 +1040,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("T"));
+		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("T"));
 		if( obj == 0 )
 			TEST_FAILED;
 		else
@@ -1148,7 +1148,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("T"));
+		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("T"));
 		if( obj == 0 )
 			TEST_FAILED;
 		else
@@ -1180,7 +1180,7 @@ bool Test()
 			obj->Release();
 
 		// Test creating script class instance without initialization (for serialization)
-		obj = (asIScriptObject*)engine->CreateUninitializedScriptObject(mod->GetObjectTypeByName("T"));
+		obj = (asIScriptObject*)engine->CreateUninitializedScriptObject(mod->GetTypeInfoByName("T"));
 		if( obj == 0 )
 			TEST_FAILED;
 		else
@@ -1210,7 +1210,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("T"));
+		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("T"));
 		if( obj == 0 )
 			TEST_FAILED;
 		else
@@ -1256,7 +1256,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("T"));
+		obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("T"));
 		if( obj == 0 )
 			TEST_FAILED;
 		else
@@ -1330,7 +1330,7 @@ bool Test()
 		// Verify that GetObjectTypeByIndex recognizes the script class
 		if( mod->GetObjectTypeCount() != 1 )
 			TEST_FAILED;
-		asIObjectType *type = mod->GetObjectTypeByIndex(0);
+		asITypeInfo *type = mod->GetObjectTypeByIndex(0);
 		if( strcmp(type->GetName(), "Test") != 0 )
 			TEST_FAILED;
 

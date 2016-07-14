@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -35,9 +35,6 @@
 
 
 #include "as_config.h"
-
-#ifndef AS_NO_COMPILER
-
 #include "as_typeinfo.h"
 #include "as_scriptengine.h"
 
@@ -50,6 +47,7 @@ asCTypeInfo::asCTypeInfo()
 	engine = 0;
 	module = 0;
 	size = 0;
+	flags = 0;
 	typeId = -1; // start as -1 to signal that it hasn't been defined
 
 	scriptSectionIdx = -1;
@@ -65,6 +63,8 @@ asCTypeInfo::asCTypeInfo(asCScriptEngine *in_engine)
 	internalRefCount.set(1); // start with one internal ref count
 	engine = in_engine;
 	module = 0;
+	size = 0;
+	flags = 0;
 	typeId = -1; // start as -1 to signal that it hasn't been defined
 
 	scriptSectionIdx = -1;
@@ -193,7 +193,10 @@ const char *asCTypeInfo::GetName() const
 // interface
 const char *asCTypeInfo::GetNamespace() const
 {
-	return nameSpace->name.AddressOf();
+	if( nameSpace )
+		return nameSpace->name.AddressOf();
+
+	return 0;
 }
 
 // interface
@@ -264,11 +267,11 @@ int asCTypeInfo::GetProperty(asUINT index, const char **out_name, int *out_typeI
 // internal
 asCObjectType *asCTypeInfo::CastToObjectType()
 {
+	// Allow call on null pointer
 	if (this == 0) return 0;
 
 	// TODO: type: Should List pattern have its own type class?
-	// TODO: type: typedefs should have their own class
-	if (flags & (asOBJ_VALUE | asOBJ_REF | asOBJ_TEMPLATE_SUBTYPE | asOBJ_LIST_PATTERN | asOBJ_TYPEDEF))
+	if ((flags & (asOBJ_VALUE | asOBJ_REF | asOBJ_LIST_PATTERN)) && !(flags & asOBJ_FUNCDEF))
 		return reinterpret_cast<asCObjectType*>(this);
 
 	return 0;
@@ -277,10 +280,35 @@ asCObjectType *asCTypeInfo::CastToObjectType()
 // internal
 asCEnumType *asCTypeInfo::CastToEnumType()
 {
+	// Allow call on null pointer
 	if (this == 0) return 0;
 
 	if (flags & (asOBJ_ENUM))
 		return reinterpret_cast<asCEnumType*>(this);
+
+	return 0;
+}
+
+// internal
+asCTypedefType *asCTypeInfo::CastToTypedefType()
+{
+	// Allow call on null pointer
+	if (this == 0) return 0;
+
+	if (flags & (asOBJ_TYPEDEF))
+		return reinterpret_cast<asCTypedefType*>(this);
+
+	return 0;
+}
+
+// internal
+asCFuncdefType *asCTypeInfo::CastToFuncdefType()
+{
+	// Allow call on null pointer
+	if (this == 0) return 0;
+
+	if (flags & (asOBJ_FUNCDEF))
+		return reinterpret_cast<asCFuncdefType*>(this);
 
 	return 0;
 }
@@ -293,9 +321,9 @@ void asCTypeInfo::CleanUserData()
 	{
 		if (userData[n + 1])
 		{
-			for (asUINT c = 0; c < engine->cleanObjectTypeFuncs.GetLength(); c++)
-				if (engine->cleanObjectTypeFuncs[c].type == userData[n])
-					engine->cleanObjectTypeFuncs[c].cleanFunc(this);
+			for (asUINT c = 0; c < engine->cleanTypeInfoFuncs.GetLength(); c++)
+				if (engine->cleanTypeInfoFuncs[c].type == userData[n])
+					engine->cleanTypeInfoFuncs[c].cleanFunc(this);
 		}
 	}
 	userData.SetLength(0);
@@ -324,6 +352,122 @@ asCEnumType::~asCEnumType()
 	enumValues.SetLength(0);
 }
 
+// interface
+asUINT asCEnumType::GetEnumValueCount() const
+{ 
+	return enumValues.GetLength(); 
+}
+
+// interface
+const char *asCEnumType::GetEnumValueByIndex(asUINT index, int *outValue) const
+{ 
+	if (outValue)
+		*outValue = 0;
+
+	if (index >= enumValues.GetLength())
+		return 0;
+
+	if (outValue)
+		*outValue = enumValues[index]->value;
+
+	return enumValues[index]->name.AddressOf();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+asCTypedefType::~asCTypedefType()
+{
+	DestroyInternal();
+}
+
+void asCTypedefType::DestroyInternal()
+{
+	if (engine == 0) return;
+
+	// Release the object types held by the alias
+	if (aliasForType.GetTypeInfo())
+			aliasForType.GetTypeInfo()->ReleaseInternal();
+	
+	aliasForType = asCDataType::CreatePrimitive(ttVoid, false);
+
+	CleanUserData();
+
+	// Remove the type from the engine
+	if (typeId != -1)
+		engine->RemoveFromTypeIdMap(this);
+
+	// Clear the engine pointer to mark the object type as invalid
+	engine = 0;
+}
+
+// interface
+int asCTypedefType::GetTypedefTypeId() const
+{ 
+	return engine->GetTypeIdFromDataType(aliasForType); 
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+asCFuncdefType::asCFuncdefType(asCScriptEngine *en, asCScriptFunction *func) : asCTypeInfo(en)
+{
+	asASSERT(func->funcType == asFUNC_FUNCDEF);
+	asASSERT(func->funcdefType == 0);
+
+	// A function pointer is special kind of reference type
+	flags       = asOBJ_REF | asOBJ_FUNCDEF | (func->isShared ? asOBJ_SHARED : 0);
+	name        = func->name;
+	nameSpace   = func->nameSpace;
+	module      = func->module;
+	accessMask  = func->accessMask;
+	funcdef     = func; // reference already counted by the asCScriptFunction constructor
+	parentClass = 0;
+
+	func->funcdefType = this;
+}
+
+asCFuncdefType::~asCFuncdefType()
+{
+	DestroyInternal();
+}
+
+void asCFuncdefType::DestroyInternal()
+{
+	if (engine == 0) return;
+
+	// Release the funcdef
+	if( funcdef )
+		funcdef->ReleaseInternal();
+	funcdef = 0;
+
+	// Detach from parent class
+	if (parentClass)
+	{
+		parentClass->childFuncDefs.RemoveValue(this);
+		parentClass = 0;
+	}
+
+	CleanUserData();
+
+	// Remove the type from the engine
+	if (typeId != -1)
+		engine->RemoveFromTypeIdMap(this);
+
+	// Clear the engine pointer to mark the object type as invalid
+	engine = 0;
+}
+
+// interface
+asIScriptFunction *asCFuncdefType::GetFuncdefSignature() const
+{ 
+	return funcdef; 
+}
+
+// interface
+asITypeInfo *asCFuncdefType::GetParentType() const
+{
+	return parentClass;
+}
+
 END_AS_NAMESPACE
 
-#endif // AS_NO_COMPILER
+

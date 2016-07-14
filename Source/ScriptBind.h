@@ -408,7 +408,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItems(array<Item@>& ite
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteItems(array<uint>& itemIds)", asFUNCTION( BIND_CLASS Global_DeleteItemsById ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteNpc(Critter& npc)", asFUNCTION( BIND_CLASS Global_DeleteNpc ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteNpc(uint npcId)", asFUNCTION( BIND_CLASS Global_DeleteNpcById ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCrittersDistantion(Critter& cr1, Critter& cr2)", asFUNCTION( BIND_CLASS Global_GetCrittersDistantion ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCrittersDistantion(const Critter& cr1, const Critter& cr2)", asFUNCTION( BIND_CLASS Global_GetCrittersDistantion ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessage(uint16 channel, string& text)", asFUNCTION( BIND_CLASS Global_RadioMessage ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_RadioMessageMsg ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum, string@+ lexems)", asFUNCTION( BIND_CLASS Global_RadioMessageMsgLex ), asCALL_CDECL ) );
@@ -509,7 +509,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetChosen()", asFUNCTION
 BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetItem(uint itemId)", asFUNCTION( BIND_CLASS Global_GetItem ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "array<Item@>@+ GetMapAllItems()", asFUNCTION( BIND_CLASS Global_GetMapAllItems ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMapHexItems(uint16 hexX, uint16 hexY, array<Item@>@+ items)", asFUNCTION( BIND_CLASS Global_GetMapHexItems ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCrittersDistantion(Critter& cr1, Critter& cr2)", asFUNCTION( BIND_CLASS Global_GetCrittersDistantion ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCrittersDistantion(const Critter& cr1, const Critter& cr2)", asFUNCTION( BIND_CLASS Global_GetCrittersDistantion ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetCritter(uint critterId)", asFUNCTION( BIND_CLASS Global_GetCritter ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCrittersHex(uint16 hexX, uint16 hexY, uint radius, int findType, array<Critter@>@+ critters)", asFUNCTION( BIND_CLASS Global_GetCritters ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetCritters(hash pid, int findType, array<Critter@>@+ critters)", asFUNCTION( BIND_CLASS Global_GetCrittersByPids ), asCALL_CDECL ) );
@@ -979,7 +979,7 @@ BIND_ASSERT_EXT( registrators[ 4 ]->Init() );
 #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
 BIND_ASSERT( engine->RegisterGlobalFunction( "void AddRegistrationProperty(CritterProperty prop)", asFUNCTION( BIND_CLASS Global_AddRegistrationProperty ), asCALL_CDECL ) );
 
-void* reg_props = engine->CreateScriptObject( engine->GetObjectTypeByDecl( "array<CritterProperty>" ) );
+void* reg_props = engine->CreateScriptObject( engine->GetTypeInfoByDecl( "array<CritterProperty>" ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "array<CritterProperty> CritterPropertyRegProperties", reg_props ) );
 #endif
 #if defined ( BIND_SERVER )

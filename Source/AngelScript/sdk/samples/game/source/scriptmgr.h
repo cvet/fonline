@@ -32,7 +32,7 @@ protected:
 	{
 		SController() : type(0), factoryFunc(0), onThinkMethod(0), onMessageMethod(0) {}
 		std::string        module;
-		asIObjectType     *type;
+		asITypeInfo       *type;
 		asIScriptFunction *factoryFunc;
 		asIScriptFunction *onThinkMethod;
 		asIScriptFunction *onMessageMethod;

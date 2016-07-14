@@ -138,7 +138,7 @@ bool Test()
 	if( metadata != " edit,c " )
 		TEST_FAILED;
 
-	asIObjectType *type = engine->GetObjectTypeById(typeId);
+	asITypeInfo *type = engine->GetTypeInfoById(typeId);
 	if( type == 0 )
 		TEST_FAILED;
 	else
@@ -216,6 +216,30 @@ bool Test()
 					   "c:/disk_path/missing_inc.as (0, 0) : Error   : Failed to open script file 'c:/disk_path/missing_inc.as'\n";
 		if( bout.buffer != error )
 			PRINTF("%s", bout.buffer.c_str());
+	}
+
+	// Test that ../ and ./ are properly resolved
+	{
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		CScriptBuilder builder;
+		builder.StartNewModule(engine, "mod");
+		builder.AddSectionFromMemory("test5", "#include '../bin/./scripts/include.as'\n");
+		r = builder.BuildModule();
+		if (r < 0)
+			PRINTF("The build failed. Are you running the test from the correct path?\n");
+		string sections;
+		for (asUINT n = 0; n < builder.GetSectionCount(); n++)
+			sections += builder.GetSectionName(n) + "\n";
+
+		string expected = GetCurrentDir() + "/scripts/include.as\n"
+			              "test5\n";
+		if (sections != expected)
+		{
+			PRINTF("%s", sections.c_str());
+			TEST_FAILED;
+		}
 	}
 
 

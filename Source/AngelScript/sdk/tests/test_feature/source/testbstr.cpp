@@ -62,7 +62,7 @@ bool TestBStr()
 	// Create the object and initialize it, then give 
 	// the pointer directly to the script engine. 
 	// The script engine will free the object.
-	asBSTR *a = (asBSTR*)engine->CreateScriptObject(engine->GetObjectTypeByName("bstr"));
+	asBSTR *a = (asBSTR*)engine->CreateScriptObject(engine->GetTypeInfoByName("bstr"));
 	*a = asBStrAlloc(1);
 	strcpy((char*)*a, "a");
 	*(asBSTR**)ctx->GetAddressOfArg(0) = a;

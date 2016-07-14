@@ -380,7 +380,7 @@ void CContextMgr::RegisterCoRoutineSupport(asIScriptEngine *engine)
 	int r; 
 
 	// The dictionary add-on must have been registered already
-	assert( engine->GetObjectTypeByDecl("dictionary") );
+	assert( engine->GetTypeInfoByDecl("dictionary") );
 
 #ifndef AS_MAX_PORTABILITY
 	r = engine->RegisterGlobalFunction("void yield()", asFUNCTION(ScriptYield), asCALL_CDECL); assert( r >= 0 );

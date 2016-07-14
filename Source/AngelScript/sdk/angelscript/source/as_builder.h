@@ -140,7 +140,7 @@ public:
 	int VerifyProperty(asCDataType *dt, const char *decl, asCString &outName, asCDataType &outType, asSNameSpace *ns);
 	int ParseDataType(const char *datatype, asCDataType *result, asSNameSpace *implicitNamespace, bool isReturnType = false);
 	int ParseTemplateDecl(const char *decl, asCString *name, asCArray<asCString> &subtypeNames);
-	int ParseFunctionDeclaration(asCObjectType *type, const char *decl, asCScriptFunction *func, bool isSystemFunction, asCArray<bool> *paramAutoHandles = 0, bool *returnAutoHandle = 0, asSNameSpace *ns = 0, asCScriptNode **listPattern = 0);
+	int ParseFunctionDeclaration(asCObjectType *type, const char *decl, asCScriptFunction *func, bool isSystemFunction, asCArray<bool> *paramAutoHandles = 0, bool *returnAutoHandle = 0, asSNameSpace *ns = 0, asCScriptNode **outListPattern = 0, asCObjectType **outParentClass = 0);
 	int ParseVariableDeclaration(const char *decl, asSNameSpace *implicitNamespace, asCString &outName, asSNameSpace *&outNamespace, asCDataType &outDt);
 	int CheckNameConflict(const char *name, asCScriptNode *node, asCScriptCode *code, asSNameSpace *ns);
 	int CheckNameConflictMember(asCTypeInfo *type, const char *name, asCScriptNode *node, asCScriptCode *code, bool isProperty);
@@ -174,12 +174,12 @@ protected:
 	asCString          GetCleanExpressionString(asCScriptNode *n, asCScriptCode *file);
 
 	asSNameSpace      *GetNameSpaceFromNode(asCScriptNode *node, asCScriptCode *script, asSNameSpace *implicitNs, asCScriptNode **next, asCObjectType **objType = 0);
-	asSNameSpace      *GetNameSpaceByString(const asCString &nsName, asSNameSpace *implicitNs, asCScriptNode *errNode, asCScriptCode *script, asCObjectType **objType = 0, bool isRequired = true);
+	asSNameSpace      *GetNameSpaceByString(const asCString &nsName, asSNameSpace *implicitNs, asCScriptNode *errNode, asCScriptCode *script, asCTypeInfo **scopeType = 0, bool isRequired = true);
 	asCString          GetScopeFromNode(asCScriptNode *n, asCScriptCode *script, asCScriptNode **next = 0);
 
-	asCTypeInfo       *GetType(const char *type, asSNameSpace *ns);
+	asCTypeInfo       *GetType(const char *type, asSNameSpace *ns, asCObjectType *parentType);
 	asCObjectType     *GetObjectType(const char *type, asSNameSpace *ns);
-	asCScriptFunction *GetFuncDef(const char *type, asSNameSpace *ns, asCObjectType *parentType);
+	asCFuncdefType    *GetFuncDef(const char *type, asSNameSpace *ns, asCObjectType *parentType);
 	asCTypeInfo       *GetTypeFromTypesKnownByObject(const char *type, asCObjectType *currentType);
 	asCDataType        CreateDataTypeFromNode(asCScriptNode *node, asCScriptCode *file, asSNameSpace *implicitNamespace, bool acceptHandleForScope = false, asCObjectType *currentType = 0);
 	asCObjectType     *GetTemplateInstanceFromNode(asCScriptNode *node, asCScriptCode *file, asCObjectType *templateType, asSNameSpace *implicitNamespace, asCObjectType *currentType, asCScriptNode **next = 0);

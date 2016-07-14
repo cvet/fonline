@@ -24,7 +24,7 @@ can easily be obtained by calling the module's \ref asIScriptModule::GetTypeIdBy
 of the class. The application can also choose to identify the class through some properties of the class, e.g.
 if the class implements a predefined \ref asIScriptEngine::RegisterInterface "interface". Then the application 
 can enumerate the class types implemented in the script with \ref asIScriptModule::GetObjectTypeByIndex "GetObjectTypeByIndex"
-and then examine the type through the \ref asIObjectType interface.
+and then examine the type through the \ref asITypeInfo interface.
 
 A third option, if you're using the \ref doc_addon_build "script builder add-on", is to use the metadata to identify
 the class. If you choose this option, use the \ref asIScriptModule to enumerate the declared types and then query the
@@ -32,12 +32,12 @@ the class. If you choose this option, use the \ref asIScriptModule to enumerate 
 
 Once the object type is known you create the instance by calling the class' factory function, passing it the necessary
 arguments, e.g. a pointer to the application object which the script class should be bound to. The factory function id
-is found by querying the \ref asIObjectType. 
+is found by querying the \ref asITypeInfo. 
 
 \code
 // Get the object type
 asIScriptModule *module = engine->GetModule("MyModule");
-asIObjectType *type = engine->GetObjectTypeById(module->GetTypeIdByDecl("MyClass"));
+asITypeInfo *type = module->GetTypeInfoByDecl("MyClass");
 
 // Get the factory function from the object type
 asIScriptFunction *factory = type->GetFactoryByDecl("MyClass @MyClass()");
@@ -66,7 +66,7 @@ the newly instanciated class.
 \section doc_use_script_class_2 Calling a method on the script class
 
 Calling the methods of the script classes are similar to \ref doc_call_script_func "calling global functions" except
-that you obtain the function id from the \ref asIObjectType, and you must set the object pointer along with the 
+that you obtain the function id from the \ref asITypeInfo, and you must set the object pointer along with the 
 rest of the function arguments.
 
 \code

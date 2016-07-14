@@ -79,7 +79,7 @@ bool Test()
 	return fail;
 }
 
-void DumpObjectType(stringstream &s, asIObjectType *objType)
+void DumpObjectType(stringstream &s, asITypeInfo *objType)
 {
 	if( objType->GetFlags() & asOBJ_SCRIPT_OBJECT )
 	{
@@ -179,16 +179,15 @@ void DumpModule(asIScriptModule *mod)
 	c = mod->GetEnumCount();
 	for( n = 0; n < c; n++ )
 	{
-		int eid;
-		const char *ename = mod->GetEnumByIndex(n, &eid);
+		asITypeInfo *ti = mod->GetEnumByIndex(n);
 
-		s << "enum: " << ename << endl;
+		s << "enum: " << ti->GetName() << endl;
 
 		// List enum values
-		for( int e = 0; e < mod->GetEnumValueCount(eid); e++ )
+		for( asUINT e = 0; e < ti->GetEnumValueCount(); e++ )
 		{
 			int value;
-			const char *name = mod->GetEnumValueByIndex(eid, e, &value);
+			const char *name = ti->GetEnumValueByIndex(e, &value);
 			s << " " << name << " = " << value << endl;
 		}
 	}
@@ -197,10 +196,9 @@ void DumpModule(asIScriptModule *mod)
 	c = mod->GetTypedefCount();
 	for( n = 0; n < c; n++ )
 	{
-		int tid;
-		const char *name = mod->GetTypedefByIndex(n, &tid);
+		asITypeInfo *ti = mod->GetTypedefByIndex(n);
 
-		s << "typedef: " << name << " => " << engine->GetTypeDeclaration(tid, true) << endl;
+		s << "typedef: " << ti->GetName() << " => " << engine->GetTypeDeclaration(ti->GetTypedefTypeId(), true) << endl;
 	}
 
 	// Enumerate imported functions
@@ -232,9 +230,8 @@ void DumpModule(asIScriptModule *mod)
 	c = engine->GetTypedefCount();
 	for( n = 0; n < c; n++ )
 	{
-		int typeId;
-		const char *name = engine->GetTypedefByIndex(n, &typeId);
-		s << "reg typedef: " << name << " => " << engine->GetTypeDeclaration(typeId, true) << endl;
+		asITypeInfo *ti = engine->GetTypedefByIndex(n);
+		s << "reg typedef: " << ti->GetName() << " => " << engine->GetTypeDeclaration(ti->GetTypedefTypeId(), true) << endl;
 	}
 
 	// Enumerate registered global functions
@@ -251,16 +248,15 @@ void DumpModule(asIScriptModule *mod)
 	c = engine->GetEnumCount();
 	for( n = 0; n < c; n++ )
 	{
-		int eid;
-		const char *ename = engine->GetEnumByIndex(n, &eid);
+		asITypeInfo *ti = engine->GetEnumByIndex(n);
 
-		s << "reg enum: " << ename << endl;
+		s << "reg enum: " << ti->GetName() << endl;
 
 		// List enum values
-		for( int e = 0; e < engine->GetEnumValueCount(eid); e++ )
+		for( asUINT e = 0; e < ti->GetEnumValueCount(); e++ )
 		{
 			int value;
-			const char *name = engine->GetEnumValueByIndex(eid, e, &value);
+			const char *name = ti->GetEnumValueByIndex(e, &value);
 			s << " " << name << " = " << value << endl;
 		}
 	}
@@ -269,9 +265,9 @@ void DumpModule(asIScriptModule *mod)
 	c = engine->GetFuncdefCount();
 	for( n = 0; n < c; n++ )
 	{
-		asIScriptFunction *funcdef = engine->GetFuncdefByIndex(n);
+		asITypeInfo *funcdef = engine->GetFuncdefByIndex(n);
 
-		s << "reg funcdef: " << funcdef->GetDeclaration() << endl;
+		s << "reg funcdef: " << funcdef->GetFuncdefSignature()->GetDeclaration() << endl;
 	}
 
 	// Get the string factory return type
@@ -319,6 +315,7 @@ void DumpModule(asIScriptModule *mod)
 		"reg func: string formatUInt(uint64, const string&in = \"\", uint = 0) group: <null>\n"
 		"reg func: string formatFloat(double, const string&in = \"\", uint = 0, uint = 0) group: <null>\n"
 		"reg func: int64 parseInt(const string&in, uint = 10, uint&out = 0) group: <null>\n"
+		"reg func: uint64 parseUInt(const string&in, uint = 10, uint&out = 0) group: <null>\n"
 		"reg func: double parseFloat(const string&in, uint&out = 0) group: <null>\n"
 		"reg func: void func(int&in) group: <null>\n"
 		"reg func: void func2(const string&in = \"\") group: test\n"
@@ -344,9 +341,11 @@ void DumpModule(asIScriptModule *mod)
 		" const T& opIndex(uint) const\n"
 		" T[]& opAssign(const T[]&in)\n"
 		" void insertAt(uint, const T&in)\n"
-		" void removeAt(uint)\n"
+		" void insertAt(uint, const T[]&inout)\n"
 		" void insertLast(const T&in)\n"
+		" void removeAt(uint)\n"
 		" void removeLast()\n"
+		" void removeRange(uint, uint)\n"
 		" uint length() const\n"
 		" void reserve(uint)\n"
 		" void resize(uint)\n"
@@ -401,7 +400,13 @@ void DumpModule(asIScriptModule *mod)
 		" string opAdd_r(bool) const\n"
 		" string substr(uint = 0, int = - 1) const\n"
 		" int findFirst(const string&in, uint = 0) const\n"
+		" int findFirstOf(const string&in, uint = 0) const\n"
+		" int findFirstNotOf(const string&in, uint = 0) const\n"
 		" int findLast(const string&in, int = - 1) const\n"
+		" int findLastOf(const string&in, int = - 1) const\n"
+		" int findLastNotOf(const string&in, int = - 1) const\n"
+		" void insert(uint, const string&in)\n"
+		" void erase(uint, int = - 1)\n"
 		"type: interface MyIntf\n"
 		" void func() const\n" )
 	{

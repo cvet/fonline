@@ -80,7 +80,16 @@ struct loc
 	}
 };
 
-static map<loc, int> locCount;
+struct counters
+{
+	int allocs;
+	int frees;
+	int totalMemAlloced;
+	int totalMemFreed;
+};
+
+static map<loc, counters> locCount;
+static map<void*, loc> memAllocedFrom;
 #endif
 
 void *MyAllocWithStats(size_t size, const char *file, int line)
@@ -124,11 +133,20 @@ void *MyAllocWithStats(size_t size, const char *file, int line)
 #ifdef TRACK_LOCATIONS
 	// Count the number of allocations for each location in the library
 	loc l = {file, line};
-	map<loc, int>::iterator i2 = locCount.find(l);
-	if( i2 != locCount.end() )
-		i2->second++;
+	map<loc, counters>::iterator i2 = locCount.find(l);
+	if (i2 != locCount.end())
+	{
+		i2->second.allocs++;
+		i2->second.totalMemAlloced += size;
+	}
 	else
-		locCount.insert(map<loc,int>::value_type(l,1));
+	{
+		counters c = { 1,0,size,0 };
+		locCount.insert(map<loc, counters>::value_type(l, c));
+	}
+
+	// Remember where the allocation is from
+	memAllocedFrom.insert(map<void*, loc>::value_type(ptr, l));
 #endif
 #endif
 	return ptr;
@@ -141,11 +159,13 @@ void MyFreeWithStats(void *address)
 	numFrees++;
 
 	// Remove the memory block from the list of allocated blocks
+	int allocSize = 0;
 	map<void*,size_t>::iterator i = memSize.find(address);
 	if( i != memSize.end() )
 	{
 		// Decrease the current amount of allocated memory
-		currentMemAlloc -= i->second;
+		allocSize = i->second;
+		currentMemAlloc -= allocSize;
 		memSize.erase(i);
 	}
 	else
@@ -160,6 +180,24 @@ void MyFreeWithStats(void *address)
 	}
 	else
 		assert(false);
+
+#ifdef TRACK_LOCATIONS
+	// Find out where the allocation was from
+	map<void*, loc>::iterator it = memAllocedFrom.find(address);
+	if (it != memAllocedFrom.end())
+	{
+		map<loc, counters>::iterator i2 = locCount.find(it->second);
+		if (i2 != locCount.end())
+		{
+			i2->second.frees++;
+			i2->second.totalMemFreed += allocSize;
+		}
+
+		memAllocedFrom.erase(it);
+	}
+	else
+		assert(false);
+#endif
 #endif
 	// Free the actual memory
 	free(address);
@@ -182,6 +220,25 @@ void PrintAllocIndices()
 		PRINTF("%d\n", i->second);
 		i++;
 	}
+}
+
+void PrintLocationCounters()
+{
+#ifdef TRACK_LOCATIONS
+	// Print allocation counts per location
+	map<loc, counters>::iterator i2 = locCount.begin();
+	while (i2 != locCount.end())
+	{
+		const char *file = i2->first.file;
+		int         line = i2->first.line;
+		int         count = i2->second.allocs;
+		int         frees = i2->second.frees;
+		int         totalMem = i2->second.totalMemAlloced;
+		int         totalFree = i2->second.totalMemFreed;
+		PRINTF("%s (%d): %d, %d, %d, %d\n", file, line, count, count-frees, totalMem, totalMem - totalFree);
+		i2++;
+	}
+#endif
 }
 
 void RemoveMemoryManager()
@@ -232,18 +289,7 @@ void RemoveMemoryManager()
 	}
 #endif
 
-#ifdef TRACK_LOCATIONS
-	// Print allocation counts per location
-	map<loc,int>::iterator i2 = locCount.begin();
-	while( i2 != locCount.end() )
-	{
-		const char *file  = i2->first.file;
-		int         line  = i2->first.line;
-		int         count = i2->second;
-		PRINTF("%s (%d): %d\n", file, line, count);
-		i2++;
-	}
-#endif
+	PrintLocationCounters();
 
 	asResetGlobalMemoryFunctions();
 }

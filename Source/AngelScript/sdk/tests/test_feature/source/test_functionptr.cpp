@@ -1,6 +1,9 @@
 #include "utils.h"
-#include <strstream>
+#include <sstream>
 #include "../../../add_on/scripthelper/scripthelper.h"
+#include "../../../add_on/scriptstdstring/scriptstdstring.h"
+#include "../../../add_on/scriptarray/scriptarray.h"
+#include "../../../add_on/scriptdictionary/scriptdictionary.h"
 
 namespace TestFunctionPtr
 {
@@ -17,6 +20,20 @@ void ReceiveFuncPtr(asIScriptFunction *funcPtr)
 	funcPtr->Release();
 }
 
+class Obj
+{
+public:
+	Obj() { func = 0; }
+	~Obj() { if (func) func->Release(); }
+	asIScriptFunction *opCast() 
+	{
+		if (func) func->AddRef();
+		return func;
+	}
+
+	asIScriptFunction *func;
+};
+
 bool Test()
 {
 	RET_ON_MAX_PORT
@@ -29,6 +46,400 @@ bool Test()
 	asIScriptContext *ctx;
 	CBufferedOutStream bout;
 	const char *script;
+
+	// Test passing function pointer to script function, and returning function pointer from script function
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->RegisterFuncdef("void FUNC()");
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() {} \n"
+			"FUNC @foo(int a, FUNC @b) \n"
+			"{ \n"
+			"  assert( a == 42 ); \n"
+			"  assert( b is func ); \n"
+			"  return b; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		ctx = engine->CreateContext();
+		ctx->Prepare(mod->GetFunctionByName("foo"));
+
+		asIScriptFunction *func = mod->GetFunctionByName("func");
+
+		// ctx->SetArgDWord should fail, since the argument is a funcdef
+		r = ctx->SetArgDWord(1, 42);
+		if (r != asINVALID_TYPE)
+			TEST_FAILED;
+
+		ctx->Prepare(mod->GetFunctionByName("foo"));
+
+		// SetArgAddress should fail when the argument is not an object or funcdef
+		r = ctx->SetArgAddress(0, func);
+		if (r != asINVALID_TYPE)
+			TEST_FAILED;
+
+		ctx->Prepare(mod->GetFunctionByName("foo"));
+
+		r = ctx->SetArgDWord(0, 42);
+		if (r != 0)
+			TEST_FAILED;
+
+		// SetArgAddress doesn't increment the refcount
+		r = ctx->SetArgAddress(1, func);
+		if (r != 0)
+			TEST_FAILED;
+
+		// Make sure GetAddressOfArg works, and that SetArgAddress really set the value
+		if (*((asIScriptFunction**)ctx->GetAddressOfArg(1)) != func)
+			TEST_FAILED;
+
+		// Clear the value to test SetArgObject
+		*((asIScriptFunction**)ctx->GetAddressOfArg(1)) = 0;
+
+		// SetArgObject increments the refcount
+		r = ctx->SetArgObject(1, func);
+		if (r != 0)
+			TEST_FAILED;
+
+		if (*((asIScriptFunction**)ctx->GetAddressOfArg(1)) != func)
+			TEST_FAILED;
+
+		r = ctx->Execute();
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// ctx->GetAddressOfReturnValue should work
+		if (*((asIScriptFunction**)ctx->GetAddressOfReturnValue()) != func)
+			TEST_FAILED;
+
+		// ctx->GetReturnDWord should fail, since the return value is a funcdef
+		r = (int)ctx->GetReturnDWord();
+		if (r != 0)
+			TEST_FAILED;
+
+		// ctx->GetReturnAddress should work
+		if (((asIScriptFunction*)ctx->GetReturnAddress()) != func)
+			TEST_FAILED;
+
+		// ctx->GetReturnObject should work
+		if (((asIScriptFunction*)ctx->GetReturnObject()) != func)
+			TEST_FAILED;
+		
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Allow a type registered with asOBJ_NOHANDLE to register opCast methods 
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		engine->RegisterFuncdef("void func()");
+		engine->RegisterObjectType("Object", 0, asOBJ_REF | asOBJ_NOHANDLE);
+		engine->RegisterObjectMethod("Object", "func @opCast()", asMETHOD(Obj, opCast), asCALL_THISCALL);
+		engine->RegisterObjectProperty("Object", "func @f", asOFFSET(Obj, func));
+
+		Obj o;
+		engine->RegisterGlobalProperty("Object obj", &o);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+		"void main() { \n"
+		"	assert( cast<func@>(obj) is null ); \n"
+		"   @obj.f = main; \n"
+		"	assert( cast<func@>(obj) !is null ); \n"
+		"} \n");
+		r = mod->Build();
+		if (r < 0)
+		TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+		TEST_FAILED;
+
+		// Release the function before the engine to avoid complaints from GC
+		if (o.func)
+		{
+			o.func->Release();
+			o.func = 0;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test function pointers in initialization lists
+	// http://www.gamedev.net/topic/678333-access-violation-when-passing-function-to-generic-initialization-list/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		RegisterStdString(engine);
+		RegisterScriptArray(engine, false);
+		RegisterScriptDictionary(engine);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"funcdef bool Callback(int, int); \n"
+			"bool myGreaterThan(int a, int b) { \n"
+			"	return a > b; \n"
+			"} \n"
+			"bool myEquals(int a, int b) { \n"
+			"	return a == b; \n"
+			"} \n"
+			"bool myLessThan(int a, int b) { \n"
+			"	return a < b; \n"
+			"} \n"
+			"dictionary ops = { \n"
+			"  { 'gt', @myGreaterThan}, \n"
+			"  { 'lt', @myLessThan}, \n"
+			"  { 'eq', @myEquals} \n"
+			"}; \n"
+			"dictionary ops2 = { \n"
+			"  { 'gt', cast<Callback>(myGreaterThan) }, \n"
+			"  { 'lt', cast<Callback>(myLessThan) }, \n"
+			"  { 'eq', cast<Callback>(myEquals) } \n"
+			"}; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "assert( cast<Callback>(ops['gt']) is myGreaterThan );", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test returning function pointer from registered class method
+	// http://www.gamedev.net/topic/678317-incorrect-results-from-functions-returning-function-handles/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		engine->RegisterFuncdef("void func()");
+		engine->RegisterObjectType("Object", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectMethod("Object", "func @opCast()", asMETHOD(Obj, opCast), asCALL_THISCALL);
+		engine->RegisterObjectProperty("Object", "func @f", asOFFSET(Obj, func));
+
+		Obj o;
+		engine->RegisterGlobalProperty("Object obj", &o);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() { \n"
+			"	assert( cast<func@>(obj) is null ); \n"
+			"   @obj.f = main; \n"
+			"	assert( cast<func@>(obj) !is null ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// Release the function before the engine to avoid complaints from GC
+		if (o.func)
+		{
+			o.func->Release();
+			o.func = 0;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Create anonymous function from within class method
+	// This caused error in asCByteCode::DebugOutput
+	// Problem reported by Phong Ba
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+
+		asIScriptModule *module = engine->GetModule("testCallback", asGM_ALWAYS_CREATE);
+		asIScriptContext *context = engine->CreateContext();
+
+		r = module->AddScriptSection("test",
+			"funcdef void CALLBACK();"
+
+			"class Test {"
+			"	void set_Callback(CALLBACK@ handler)"
+			"	{"
+			"	}"
+			"}"
+
+			"class ErrHere {"
+			"	Test@ obj = null;"
+			"	ErrHere()"
+			"	{"
+			"		@obj = Test();"
+			"		@obj.Callback = function() {};" //<== Assertion failed: file, file ..\..\source\as_bytecode.cpp, line 2082
+			"	}"
+			"}"
+
+			"void main(){ErrHere@ err = ErrHere();}"
+			);
+		assert(r >= 0);
+
+		r = module->Build(); 
+		if (r < 0)
+			TEST_FAILED;
+		r = context->Prepare(module->GetFunctionByName("main")); assert(r >= 0);
+		r = context->Execute(); 
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		context->Release();
+		module->Discard();
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test passing function pointer by reference
+	// http://www.gamedev.net/topic/676566-assert-failure-when-passing-function-handle-by-reference/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"funcdef void f(); \n"
+			"class foo { \n"
+			"	void opAssign(f@ &in) { correct = true; } \n"
+			"   bool correct = false; \n"
+			"} \n"
+			"void main() { \n"
+			"	foo bar = main; \n"
+			"   assert( bar.correct ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test function overloads and function pointers
+	// http://www.gamedev.net/topic/676565-assert-failure-during-overload-resolution/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"funcdef void f();\n"
+			"class foo {\n"
+			"  void opAssign(f@) {}\n"
+			"  void opAssign(int) { correct = true; }\n"
+			"  bool correct = false; \n"
+			"}\n"
+			"void main() {\n"
+			"  foo bar = 1;\n"
+			"  assert( bar.correct ); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test function pointers in array
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptArray(engine, false);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"funcdef void FD (void);\n"
+			"void f(void)\n"
+			"{\n"
+			"}\n"
+			"void main1(void)\n"
+			"{\n"
+			"	array<FD @> a;\n"
+			"	a.insertLast(f);\n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "main1()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		
+		bout.buffer = "";
+		mod->AddScriptSection("test",
+			"funcdef void FD (void);\n"
+			"void f(void)\n"
+			"{\n"
+			"}\n"
+			"void main2(void)\n"
+			"{\n"
+			"	array<FD> a;\n" // shouldn't be allowed as it would mean value copies of functions
+			"	a.insertLast(f);\n"
+			"}\n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "test (5, 1) : Info    : Compiling void main2()\n"
+						   "array (0, 0) : Error   : The subtype has no default factory\n"
+						   "test (7, 8) : Error   : Attempting to instantiate invalid template type 'array<FD>'\n"
+						   "test (8, 3) : Warning : 'a' is not initialized.\n"
+						   "test (8, 3) : Error   : Illegal operation on 'int'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test function pointers in ternary conditions
 	// http://www.gamedev.net/topic/672565-conditional-operator-is-unusable-with-functions/
@@ -227,12 +638,12 @@ bool Test()
 		}
 
 		// Test enumerating child types of MyObj (it must be possible to find the Callback. The declaration of the funcdef must be void MyObj::Callback())
-		asIObjectType *ot = mod->GetObjectTypeByName("Base");
+		asITypeInfo *ot = mod->GetTypeInfoByName("Base");
 		if (ot == 0 || ot->GetChildFuncdefCount() != 1 ||
 			ot->GetChildFuncdef(0) == 0 ||
-			std::string(ot->GetChildFuncdef(0)->GetDeclaration()) != "void Base::A()")
+			std::string(ot->GetChildFuncdef(0)->GetFuncdefSignature()->GetDeclaration()) != "void Base::A()")
 			TEST_FAILED;
-		ot = mod->GetObjectTypeByName("Derived");
+		ot = mod->GetTypeInfoByName("Derived");
 		if (ot == 0 || ot->GetChildFuncdefCount() != 0)
 			TEST_FAILED;
 
@@ -277,9 +688,10 @@ bool Test()
 		bout.buffer = "";
 		mod->AddScriptSection("test2",
 			"namespace Boo { \n"
-			"class MyObj  { \n"
-			"  funcdef void A(); \n"
-			"} \n"
+			"  class MyObj  { \n"
+			"    funcdef void A(); \n"
+			"  } \n"
+			"  MyObj::A @b; \n"
 			"} \n"
 			"Boo::MyObj::A @a; \n");
 		r = mod->Build();
@@ -401,11 +813,11 @@ bool Test()
 		r = ConfigEngineFromStream(engine2, s);
 		if (r < 0)
 			TEST_FAILED;
-		typeId = engine->GetTypeIdByDecl("MyType3::F");
-		asIScriptFunction *f = engine->GetFuncdefFromTypeId(typeId);
+		asITypeInfo *type = engine->GetTypeInfoByDecl("MyType3::F");
+		asIScriptFunction *f = type->GetFuncdefSignature();
 		if (std::string(f->GetDeclaration()) != "void MyType3::F(MyType2::Callback@)")
 			TEST_FAILED;
-		if (f->GetParentType() == 0 || std::string(f->GetParentType()->GetName()) != "MyType3")
+		if (type->GetParentType() == 0 || std::string(type->GetParentType()->GetName()) != "MyType3")
 			TEST_FAILED;
 		engine2->ShutDownAndRelease();
 		if (bout.buffer != "")
@@ -640,6 +1052,19 @@ bool Test()
 
 		// Error scenarios
 		//-------------------
+		// Test assigning lambda to a funcdef that hasn't been declared
+		bout.buffer = "";
+		r = mod->CompileGlobalVar("glob", "NotDeclared @nd = function(a) {return a;};", 0);
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "glob (1, 1) : Error   : Identifier 'NotDeclared' is not a data type in global namespace\n"
+						   "glob (1, 14) : Info    : Compiling int nd\n"
+						   "glob (1, 28) : Error   : Can't implicitly convert from '$func@const' to 'int&'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
 		// Test compiler error within lambda
 		bout.buffer = "";
 		mod->AddScriptSection("name", 
@@ -1265,6 +1690,7 @@ bool Test()
 			TEST_FAILED;
 
 		// Must be possible to call delegate from application
+		bout.buffer = "";
 		mod->AddScriptSection("test",
 			"funcdef void CALL(); \n"
 			"class Test { \n"
@@ -1276,6 +1702,11 @@ bool Test()
 		r = mod->Build();
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
 
 		int idx = mod->GetGlobalVarIndexByDecl("CALL @callback");
 		if( idx < 0 )
@@ -1464,8 +1895,7 @@ bool Test()
 		r = mod->Build();
 		if( r >= 0 )
 			TEST_FAILED;
-		if( bout.buffer != "script (2, 10) : Info    : Compiling functype myFunc\n"
-						   "script (2, 10) : Error   : No default constructor for object of type 'functype'.\n" )
+		if( bout.buffer != "script (2, 1) : Error   : Data type can't be 'functype'\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1592,11 +2022,12 @@ bool Test()
 		if( !receivedFuncPtrIsOK )
 			TEST_FAILED;
 
-		mod->SaveByteCode(&bytecode);
+		CBytecodeStream bytecode2(__FILE__"2");
+		mod->SaveByteCode(&bytecode2);
 		{
 			receivedFuncPtrIsOK = false;
 			asIScriptModule *mod2 = engine->GetModule("mod2", asGM_ALWAYS_CREATE);
-			mod2->LoadByteCode(&bytecode);
+			mod2->LoadByteCode(&bytecode2);
 			r = ExecuteString(engine, "main()", mod2);
 			if( r != asEXECUTION_FINISHED )
 				TEST_FAILED;

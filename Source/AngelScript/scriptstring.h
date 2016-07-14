@@ -12,8 +12,8 @@ public:
     #ifdef FONLINE_DLL
     static ScriptString& Create( const char* str = NULL )
     {
-        static asIObjectType* ot = ASEngine->GetObjectTypeByDecl( "string" );
-        ScriptString*         scriptStr = (ScriptString*) ASEngine->CreateScriptObject( ot );
+        static asITypeInfo* ot = ASEngine->GetTypeInfoByDecl( "string" );
+        ScriptString*       scriptStr = (ScriptString*) ASEngine->CreateScriptObject( ot );
         if( str )
             scriptStr->assign( str );
         return *scriptStr;

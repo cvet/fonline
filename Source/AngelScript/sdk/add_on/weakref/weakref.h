@@ -15,9 +15,9 @@ class CScriptWeakRef
 {
 public:
 	// Constructors
-	CScriptWeakRef(asIObjectType *type);
+	CScriptWeakRef(asITypeInfo *type);
 	CScriptWeakRef(const CScriptWeakRef &other);
-	CScriptWeakRef(void *ref, asIObjectType *type);
+	CScriptWeakRef(void *ref, asITypeInfo *type);
 
 	~CScriptWeakRef();
 
@@ -39,7 +39,7 @@ public:
 	bool Equals(void *ref) const;
 
 	// Returns the type of the reference held
-	asIObjectType *GetRefType() const;
+	asITypeInfo *GetRefType() const;
 
 protected:
 	// These functions need to have access to protected
@@ -47,7 +47,7 @@ protected:
 	friend void RegisterScriptWeakRef_Native(asIScriptEngine *engine);
 
 	void                  *m_ref;
-	asIObjectType         *m_type;
+	asITypeInfo           *m_type;
 	asILockableSharedBool *m_weakRefFlag;
 };
 

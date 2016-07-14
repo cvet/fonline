@@ -79,6 +79,45 @@ bool TestCondition()
 	CBufferedOutStream bout;
 	asIScriptEngine *engine;
 
+	// Test condition where both cases return null
+	// http://www.gamedev.net/topic/677273-various-unexpected-behaviors-of-angelscript-2310/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+//		engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() {\n"
+			"	foo@ bar = true ? null : null;\n"
+			"}\n"
+			"class foo {}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// TODO: optimize: The bytecode optimizer should see that asBC_SetV1, asBC_CpyVtoR4 doesn't have any effect and remove these
+		asIScriptFunction *func = mod->GetFunctionByName("func");
+		asBYTE expect[] =
+		{
+			asBC_SUSPEND,asBC_SetV1,asBC_CpyVtoR4,asBC_FREE,
+			asBC_SUSPEND,asBC_FREE,asBC_RET
+		};
+		if (!ValidateByteCode(func, expect))
+			TEST_FAILED;
+
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test nested conditions returning global values
 	// Problem reported by Jonathan Sandusky
 	SKIP_ON_MAX_PORT

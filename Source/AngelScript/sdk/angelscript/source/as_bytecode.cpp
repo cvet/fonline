@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -1536,7 +1536,7 @@ void asCByteCode::ExtractObjectVariableInfo(asCScriptFunction *outFunc)
 			asSObjectVariableInfo info;
 			info.programPos     = pos;
 			info.variableOffset = (short)instr->wArg[0];
-			info.option         = *(int*)ARG_DW(instr->arg);
+			info.option         = (asEObjVarInfoOption)*(int*)ARG_DW(instr->arg);
 			outFunc->scriptData->objVariableInfo.PushLast(info);
 		}
 		else if( instr->op == asBC_VarDecl )
@@ -2071,6 +2071,11 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 	asCString path = "AS_DEBUG/";
 	path += name;
 
+	// Anonymous functions created from within class methods will contain :: as part of the name
+	// Replace :: with __ to avoid error when creating the file for debug output
+	for (asUINT n = 0; n < path.GetLength(); n++)
+		if (path[n] == ':') path[n] = '_';
+
 #if _MSC_VER >= 1500 && !defined(AS_MARMALADE)
 	FILE *file;
 	fopen_s(&file, path.AddressOf(), "w");
@@ -2361,7 +2366,7 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 			{
 				asCObjectType *ot = *(asCObjectType**)ARG_QW(instr->arg);
 				asCScriptFunction *f = engine->scriptFunctions[instr->wArg[0]];
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(_MSC_VER)
 #ifdef AS_64BIT_PTR
 				fprintf(file, "   %-8s 0x%lx, %d             (type:%s, %s)\n", asBCInfo[instr->op].name, *(asINT64*)ARG_QW(instr->arg), *(int*)(ARG_DW(instr->arg)+2), ot->GetName(), f ? f->GetDeclaration() : "{no func}");
 #else
@@ -2372,7 +2377,7 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 #endif
 			}
 			else
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(_MSC_VER)
 #ifdef AS_64BIT_PTR
 				fprintf(file, "   %-8s %lu, %d\n", asBCInfo[instr->op].name, *(asINT64*)ARG_QW(instr->arg), *(int*)(ARG_DW(instr->arg)+2));
 #else

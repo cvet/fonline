@@ -5,8 +5,6 @@
 namespace Test_Addon_ScriptGrid
 {
 
-static const char *TESTNAME = "Test_Addon_ScriptGrid";
-
 bool Test()
 {
 	RET_ON_MAX_PORT
@@ -74,18 +72,18 @@ bool Test()
 			TEST_FAILED;
 
 		// The type B is not really garbage collected
-		asIObjectType *t = mod->GetObjectTypeByDecl("B");
+		asITypeInfo *t = mod->GetTypeInfoByDecl("B");
 		if( t->GetFlags() & asOBJ_GC )
 			TEST_FAILED;
 
 		// grid<B> is not garbage collected since B is not
-		t = mod->GetObjectTypeByDecl("grid<B>");
+		t = mod->GetTypeInfoByDecl("grid<B>");
 		if( (t->GetFlags() & asOBJ_GC) )
 			TEST_FAILED;
 
 		// grid<B@> is however garbage collected because it is not possible to know 
 		// that no class derived from B can't form a circular reference with it.
-		t = mod->GetObjectTypeByDecl("grid<B@>");
+		t = mod->GetTypeInfoByDecl("grid<B@>");
 		if( !(t->GetFlags() & asOBJ_GC) )
 			TEST_FAILED;
 

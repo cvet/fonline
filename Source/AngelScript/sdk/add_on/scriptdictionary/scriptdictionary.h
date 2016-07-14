@@ -150,7 +150,7 @@ public:
 	asUINT GetSize() const;
 
 	// Deletes the key
-	void Delete(const dictKey_t &key);
+	bool Delete(const dictKey_t &key);
 
 	// Deletes all keys
 	void DeleteAll();
@@ -194,6 +194,7 @@ public:
 
 	CIterator begin() const;
 	CIterator end() const;
+	CIterator find(const dictKey_t &key) const;
 
 	// Garbage collections behaviours
 	int GetRefCount();

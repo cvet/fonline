@@ -170,7 +170,7 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
-		asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(mod->GetObjectTypeByName("FooDerived")));
+		asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(mod->GetTypeInfoByName("FooDerived")));
 		FooScripted *obj2 = *reinterpret_cast<FooScripted**>(obj->GetAddressOfProperty(0));
 		obj2->AddRef();
 		obj->Release();
@@ -469,7 +469,7 @@ bool TestModule(const char *module, asIScriptEngine *engine)
 	// Test that the inherited methods are available in the derived class
 	// Test that it is possible to override the inherited methods
 	// Test that it is possible to call base class methods from within overridden methods in derived class 
-	asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("Derived"));
+	asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("Derived"));
 	asIScriptContext *ctx = engine->CreateContext();
 	ctx->Prepare(obj->GetObjectType()->GetMethodByDecl("void func()"));
 	ctx->SetObject(obj);
@@ -603,7 +603,7 @@ bool TestModule(const char *module, asIScriptEngine *engine)
 	}
 
 	// Test that it is possible to determine base class from object type interface
-	asIObjectType *d = engine->GetObjectTypeById(mod->GetTypeIdByDecl("Derived"));
+	asITypeInfo *d = engine->GetTypeInfoById(mod->GetTypeIdByDecl("Derived"));
 	if( d == 0 )
 	{
 		TEST_FAILED;

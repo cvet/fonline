@@ -55,6 +55,11 @@ guarded. With this option turned on you cannot consider the scripts to be sand-b
 
 These options are used to determine how strings are treated by the compiler. The details are described in \ref doc_strings.
  
+\ref asEP_HEREDOC_TRIM_MODE
+
+With this option the compiler can be set to always trim \ref doc_datatypes_strings "heredoc strings", 
+only trim if it is multiple lines, or never trim them.
+ 
 \ref asEP_ALLOW_IMPLICIT_HANDLE_TYPES
  
 This option is experimental. By turning it on script classes can be declared to always be treated as handles by declaring the 
@@ -105,6 +110,12 @@ It will only write a warning.
 This option is provided to give backwards compatibility for scripts written between versions 2.19.1, when support for private 
 properties was added, albeit working more like protected properties, and version 2.30.0 when the behaviour was changed so that private
 properties work like in other languages, i.e. they can't be accessed by derived classes.
+
+\ref asEP_ALLOW_UNICODE_IDENTIFIERS
+
+When this option is set to true the compiler will accept identifiers that contain characters with byte 
+value higher than 127. This permits the use of international characters in the identifiers as the script 
+can be encoded in UTF-8 format and compiler normally.
 
 
 

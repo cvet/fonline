@@ -29,7 +29,7 @@ void Type_castVar(void *ptr, int typeId, int *obj)
 	asIScriptContext *ctx = asGetActiveContext();
 	asIScriptEngine *engine = ctx->GetEngine();
 
-	asIObjectType *type = engine->GetObjectTypeById(typeId);
+	asITypeInfo *type = engine->GetTypeInfoById(typeId);
 	if( std::string(type->GetName()) == "string" )
 	{
 		std::stringstream strm;

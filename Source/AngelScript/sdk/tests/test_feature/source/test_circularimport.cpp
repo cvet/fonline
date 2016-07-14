@@ -9,9 +9,6 @@
 namespace TestCircularImport
 {
 
-static const char * const TESTNAME = "TestCircularImport";
-
-
 static const char *script1 =
 "import void Test2() from \"Module2\";   \n"
 "void Test1() {}                         \n";

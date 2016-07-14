@@ -10,13 +10,13 @@ Doing searches by function declaration or name is rather time consuming and
 should not be done more than once per function that will be called. The same 
 goes for the types that you might use it.
 
-Also try to use the actual \ref asIScriptFunction or \ref asIObjectType pointers
+Also try to use the actual \ref asIScriptFunction or \ref asITypeInfo pointers
 instead of the ids where possible. This will save the engine from translating the  
 id to the actual object.
 
 You may use the user data in the various engine interfaces to store the cached 
 information. For example, store a structure with the commonly used class methods
-as \ref asIObjectType::SetUserData "user data" in the \ref asIObjectType interface. 
+as \ref asITypeInfo::SetUserData "user data" in the \ref asITypeInfo interface. 
 This way you will have quick access to the functions when they need to be called.
 
 

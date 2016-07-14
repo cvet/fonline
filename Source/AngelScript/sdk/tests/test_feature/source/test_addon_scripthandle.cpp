@@ -9,7 +9,7 @@ static const char *TESTNAME = "Test_Addon_ScriptHandle";
 
 void ReceiveRefByValue(CScriptHandle hndl)
 {
-	asIObjectType *type = hndl.GetType();
+	asITypeInfo *type = hndl.GetType();
 	if( type )
 		std::string str(type->GetName());
 }
@@ -27,7 +27,7 @@ CScriptHandle GetFunc1()
 	asIScriptFunction *func1 = mod->GetFunctionByName("func1");
 
 	CScriptHandle ref;
-	ref.Set(func1, engine->GetObjectTypeById(func1->GetTypeId()));
+	ref.Set(func1, engine->GetTypeInfoById(func1->GetTypeId()));
 
 	return ref;
 }
@@ -37,7 +37,7 @@ CScriptHandle ReturnRef()
 	asIScriptContext *ctx = asGetActiveContext();
 	asIScriptEngine *engine = ctx->GetEngine();
 	asIScriptModule *mod = engine->GetModule("test");
-	asIObjectType *type = mod->GetObjectTypeByName("CTest");
+	asITypeInfo *type = mod->GetTypeInfoByName("CTest");
 
 	asIScriptObject *obj = reinterpret_cast<asIScriptObject *>(engine->CreateScriptObject(type));
 
@@ -180,7 +180,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIObjectType *type = mod->GetObjectTypeByName("Test");
+		asITypeInfo *type = mod->GetTypeInfoByName("Test");
 		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(type);
 
 		// Store the object in the handle
@@ -431,7 +431,7 @@ bool Test()
 			TEST_FAILED;
 
 		CScriptHandle ref;
-		asIObjectType *type = mod->GetObjectTypeByName("Test");
+		asITypeInfo *type = mod->GetTypeInfoByName("Test");
 		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(type);
 		ref.Set(obj, type);
 
@@ -461,7 +461,7 @@ bool Test()
 		CScriptHandle hndl;
 		
 		// Pass the function pointer to the script handle
-		hndl.Set(func, engine->GetObjectTypeById(func->GetTypeId()));
+		hndl.Set(func, engine->GetTypeInfoById(func->GetTypeId()));
 
 		// Verify the type id
 		int typeId = hndl.GetTypeId();
@@ -469,7 +469,7 @@ bool Test()
 			TEST_FAILED;
 
 		// Retrieve the function
-		if( hndl.GetType()->GetFlags() & asOBJ_SCRIPT_FUNCTION )
+		if( hndl.GetType()->GetFlags() & asOBJ_FUNCDEF )
 		{
 			hndl.Cast((void**)&func, hndl.GetTypeId());
 

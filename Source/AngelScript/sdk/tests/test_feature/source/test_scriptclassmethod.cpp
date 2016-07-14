@@ -213,7 +213,7 @@ bool Test()
 		TEST_FAILED;
 	}
 
-	asIObjectType *type = engine->GetModule("test")->GetObjectTypeByName("myclass");
+	asITypeInfo *type = engine->GetModule("test")->GetTypeInfoByName("myclass");
 	asIScriptObject *s = (asIScriptObject*)engine->CreateScriptObject(type);
 	if( s == 0 ) 
 		TEST_FAILED;
@@ -269,7 +269,7 @@ bool Test()
 	if( r < 0 ) TEST_FAILED;
 
 	int typeId = engine->GetModule(0)->GetTypeIdByDecl("myclass");
-	type = engine->GetObjectTypeById(typeId);
+	type = engine->GetTypeInfoById(typeId);
 	asIScriptFunction *mtd = type->GetMethodByDecl("void func()");
 	asIScriptObject *obj = (asIScriptObject *)engine->GetModule(0)->GetAddressOfGlobalVar(engine->GetModule(0)->GetGlobalVarIndexByName("c"));
 
@@ -284,7 +284,7 @@ bool Test()
 		ctx->Release();
 	}
 
-	type = engine->GetObjectTypeById(typeId);
+	type = engine->GetTypeInfoById(typeId);
 	mtd = type->GetMethodByDecl("void func(int, int)");
 	if( mtd == 0 || obj == 0 ) TEST_FAILED;
 	else
@@ -432,7 +432,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("A"));
+		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("A"));
 		if( obj == 0 )
 			TEST_FAILED;
 

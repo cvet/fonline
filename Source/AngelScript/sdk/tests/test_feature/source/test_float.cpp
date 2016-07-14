@@ -3,10 +3,6 @@
 namespace TestFloat
 {
 
-static const char * const TESTNAME = "TestFloat";
-
-
-
 static const char *script =
 "void TestFloat()                               \n"
 "{                                              \n"

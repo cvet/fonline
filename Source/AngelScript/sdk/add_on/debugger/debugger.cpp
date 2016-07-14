@@ -70,10 +70,11 @@ string CDebugger::ToString(void *value, asUINT typeId, int expandMembers, asIScr
 		// Check if the value matches one of the defined enums
 		if( engine )
 		{
-			for( int n = engine->GetEnumValueCount(typeId); n-- > 0; )
+			asITypeInfo *t = engine->GetTypeInfoById(typeId);
+			for( int n = t->GetEnumValueCount(); n-- > 0; )
 			{
 				int enumVal;
-				const char *enumName = engine->GetEnumValueByIndex(typeId, n, &enumVal);
+				const char *enumName = t->GetEnumValueByIndex(n, &enumVal);
 				if( enumVal == *(int*)value )
 				{
 					s << ", " << enumName;
@@ -96,7 +97,7 @@ string CDebugger::ToString(void *value, asUINT typeId, int expandMembers, asIScr
 		// Print the members
 		if( obj && expandMembers > 0 )
 		{
-			asIObjectType *type = obj->GetObjectType();
+			asITypeInfo *type = obj->GetObjectType();
 			for( asUINT n = 0; n < obj->GetPropertyCount(); n++ )
 			{
 				if( n == 0 )
@@ -118,21 +119,21 @@ string CDebugger::ToString(void *value, asUINT typeId, int expandMembers, asIScr
 		// possible to see when handles point to the same object
 		if( engine )
 		{
-			asIObjectType *type = engine->GetObjectTypeById(typeId);
+			asITypeInfo *type = engine->GetTypeInfoById(typeId);
 			if( type->GetFlags() & asOBJ_REF )
 				s << "{" << value << "}";
 
 			if( value )
 			{
 				// Check if there is a registered to-string callback
-				map<const asIObjectType*, ToStringCallback>::iterator it = m_toStringCallbacks.find(type);
+				map<const asITypeInfo*, ToStringCallback>::iterator it = m_toStringCallbacks.find(type);
 				if( it == m_toStringCallbacks.end() )
 				{
 					// If the type is a template instance, there might be a
 					// to-string callback for the generic template type
 					if( type->GetFlags() & asOBJ_TEMPLATE )
 					{
-						asIObjectType *tmplType = engine->GetObjectTypeByName(type->GetName());
+						asITypeInfo *tmplType = engine->GetTypeInfoByName(type->GetName());
 						it = m_toStringCallbacks.find(tmplType);
 					}
 				}
@@ -155,10 +156,10 @@ string CDebugger::ToString(void *value, asUINT typeId, int expandMembers, asIScr
 	return s.str();
 }
 
-void CDebugger::RegisterToStringCallback(const asIObjectType *ot, ToStringCallback callback)
+void CDebugger::RegisterToStringCallback(const asITypeInfo *ot, ToStringCallback callback)
 {
 	if( m_toStringCallbacks.find(ot) == m_toStringCallbacks.end() )
-		m_toStringCallbacks.insert(map<const asIObjectType*, ToStringCallback>::value_type(ot, callback));
+		m_toStringCallbacks.insert(map<const asITypeInfo*, ToStringCallback>::value_type(ot, callback));
 }
 
 void CDebugger::LineCallback(asIScriptContext *ctx)
@@ -564,7 +565,7 @@ void CDebugger::PrintValue(const std::string &expr, asIScriptContext *ctx)
 				}
 				else
 				{
-					asIObjectType *type = engine->GetObjectTypeById(ctx->GetThisTypeId());
+					asITypeInfo *type = engine->GetTypeInfoById(ctx->GetThisTypeId());
 					for( asUINT n = 0; n < type->GetPropertyCount(); n++ )
 					{
 						const char *propName = 0;

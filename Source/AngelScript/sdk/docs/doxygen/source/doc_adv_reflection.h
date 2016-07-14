@@ -29,7 +29,7 @@ registered global properties, i.e. \ref asIScriptEngine::GetGlobalPropertyCount 
 \ref asIScriptEngine::GetGlobalPropertyIndexByDecl "GetGlobalPropertyIndexByDecl".
 
 Member properties of classes are accessed through the \ref asIScriptObject interface for live 
-object instances, and \ref asIObjectType interface for inspecting the class declarations without any
+object instances, and \ref asITypeInfo interface for inspecting the class declarations without any
 live object instance.
 
 Local variables within functions can also be enumerated as long as the script has been compiled with
@@ -45,16 +45,15 @@ Global functions in a script are enumerated with the interface \ref asIScriptMod
 
 The engine interface \ref asIScriptEngine also exposes methods for enumerating application registered functions in a similar manner.
 
-To enumerate methods of classes the interface \ref asIObjectType should be used.
+To enumerate methods of classes the interface \ref asITypeInfo should be used.
 
 \section doc_adv_reflection_types Enumerating types
 
 \ref asIScriptModule is of course used to enumerate the types declared in the scripts too. The methods
 \ref asIScriptModule::GetObjectTypeCount "GetObjectTypeCount", \ref asIScriptModule::GetObjectTypeByIndex "GetObjectTypeByIndex", and
-\ref asIScriptModule::GetObjectTypeByName "GetObjectTypeByName" are for enumerating classes and interfaces. The methods
-\ref asIScriptModule::GetEnumCount "GetEnumCount", \ref asIScriptModule::GetEnumByIndex "GetEnumByIndex", 
-\ref asIScriptModule::GetEnumValueCount "GetEnumValueCount", and \ref asIScriptModule::GetEnumValueByIndex "GetEnumValueByIndex" are
-for enumerating enums and their values.
+\ref asIScriptModule::GetTypeInfoByName "GetTypeInfoByName" are for enumerating classes and interfaces. The methods
+\ref asIScriptModule::GetEnumCount "GetEnumCount" and \ref asIScriptModule::GetEnumByIndex "GetEnumByIndex" are
+for enumerating enums.
 
 The \ref asIScriptEngine interface has near identical methods for enumerating the application registered types.
 
@@ -64,9 +63,9 @@ are just a sequence number where the first 12 numbers represents the built-in pr
 registered types or script declared types. The higher bits indicate if the type represents a primitive, object, or handle. Use the flags
 in \ref asETypeIdFlags to do the necessary verifications on the type id.
 
-For type ids that represent object types it may be necessary to obtain the \ref asIObjectType instance to get further information
-on what the type is. The method \ref asIScriptEngine::GetObjectTypeById "GetObjectTypeById" is used to do this translate from type id
-to \ref asIObjectType.
+For type ids that represent object types it may be necessary to obtain the \ref asITypeInfo instance to get further information
+on what the type is. The method \ref asIScriptEngine::GetTypeInfoById "GetTypeInfoById" is used to do this translate from type id
+to \ref asITypeInfo.
 
 
 */

@@ -84,6 +84,29 @@ static bool TestEnum()
 	int                r;
 	bool               fail = false;
 
+	// Test that enums are properly converted during function overloading
+	// http://www.gamedev.net/topic/678030-enum-type-conversion-to-int-cost-not-calculated-correctly/
+	{
+		engine = asCreateScriptEngine();
+		r = engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"enum e {val} \n"
+			"void f(int) {} \n"
+			"void f(int8) {} \n"
+			"void f(int16) {} \n"
+			"void f(int64) {} \n"
+			"void main() { \n"
+			"	f(val); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test registering same enum in different namespaces
 	// http://www.gamedev.net/topic/663391-enum-names-collisions/
 	{
@@ -366,6 +389,7 @@ static bool TestEnum()
 		TEST_FAILED;
 
 	// functions can be overloaded for parameters with enum type
+	bout.buffer = "";
 	const char *script4 =
 	"void func(TEST_ENUM) { output(1); } \n"
 	"void func(int) { output(2); } \n";
@@ -380,6 +404,11 @@ static bool TestEnum()
 		TEST_FAILED;
 	if( buffer != "2\n2\n1\n" )
 		TEST_FAILED;
+	if (bout.buffer != "")
+	{
+		PRINTF("%s", bout.buffer.c_str());
+		TEST_FAILED;
+	}
 
 	// Using registered enum type in a script
 	engine->RegisterEnum("game_type_t");
@@ -402,12 +431,10 @@ static bool TestEnum()
 		TEST_FAILED;
 
 	// Enums are not object types
-	int eid;
-	const char *ename = mod->GetEnumByIndex(0, &eid);
-	if( eid < 0 || ename == 0 )
+	asITypeInfo *ti = mod->GetEnumByIndex(0);
+	if( ti == 0 )
 		TEST_FAILED;
-	asIObjectType *eot = engine->GetObjectTypeById(eid);
-	if( eot )
+	if( !(ti->GetFlags() & asOBJ_ENUM) )
 		TEST_FAILED;
 
 	// enum must allow negate and binary complement operators

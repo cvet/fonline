@@ -169,7 +169,7 @@ CScriptArray *CreateArrayOfStrings()
 	if( ctx )
 	{
 		asIScriptEngine* engine = ctx->GetEngine();
-		asIObjectType* t = engine->GetObjectTypeByDecl("array<string@>");
+		asITypeInfo* t = engine->GetTypeInfoByDecl("array<string@>");
 		CScriptArray* arr = CScriptArray::Create(t, 3);
 		for( asUINT i = 0; i < arr->GetSize(); i++ )
 		{
@@ -257,7 +257,7 @@ bool Test()
 
 		RegisterScriptArray(engine, false);
 
-		CScriptArray *arr = CScriptArray::Create(engine->GetObjectTypeByDecl("array<int>"));
+		CScriptArray *arr = CScriptArray::Create(engine->GetTypeInfoByDecl("array<int>"));
 		
 		engine->Release();
 
@@ -702,7 +702,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("MyTest"));
+		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("MyTest"));
 		obj->Release();
 
 		engine->Release();
@@ -789,21 +789,31 @@ bool Test()
 		}		
 	}
 
-	// Test insertAt, removeAt
+	// Test insertAt, removeAt, removeRange
 	{
 		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
 		RegisterScriptArray(engine, false);
 		RegisterScriptString(engine);
 		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
 
-		r = ExecuteString(engine, "array<string> arr = {'1','2','3'}; \n"
-			                      "arr.insertAt(1, 'test'); \n"
-								  "assert( arr[1] == 'test' );\n"
-								  "arr.insertAt(4, '4'); \n"
-								  "assert( arr[4] == '4' );\n"
-								  "arr.removeAt(0); \n"
-								  "assert( arr[0] == 'test' );\n"
-								  "assert( arr[3] == '4' );\n");
+		r = ExecuteString(engine,
+			"array<string> arr = {'1','2','3'}; \n"
+			"arr.insertAt(1, 'test'); \n"
+			"assert( arr[1] == 'test' );\n"
+			"arr.insertAt(4, '4'); \n"
+			"assert( arr[4] == '4' );\n"
+			"arr.removeAt(0); \n"
+			"assert( arr[0] == 'test' );\n"
+			"assert( arr[3] == '4' );\n"
+			"arr.removeRange(1, 2); \n"
+			"assert( arr == (array<string> = {'test', '4'}) ); \n"
+			"arr.insertAt(1, array<string> = {'1','2','3'}); \n"
+			"assert( arr == (array<string> = {'test', '1','2','3','4'}) ); \n"
+			// insertAt on itself
+			"arr = (array<string> = {'1','2'}); \n"
+			"arr.insertAt(1, arr); \n"
+			"assert( arr == (array<string> = {'1','1','2','2'}) ); \n");
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
@@ -1292,8 +1302,8 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIObjectType *arrAType = mod->GetObjectTypeByDecl("array<A@>");
-		asIObjectType *arrBType = mod->GetObjectTypeByDecl("array<B@>");
+		asITypeInfo *arrAType = mod->GetTypeInfoByDecl("array<A@>");
+		asITypeInfo *arrBType = mod->GetTypeInfoByDecl("array<B@>");
 
 		// array<A@> must be garbage collected since it is not possible to know that 
 		// array can't hold a handle to a type derived from A that might cause circular 

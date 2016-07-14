@@ -161,7 +161,7 @@ CScriptMgr::SController *CScriptMgr::GetControllerScript(const string &script)
 
 	// Find the class that implements the IController interface
 	mod = engine->GetModule(script.c_str(), asGM_ONLY_IF_EXISTS);
-	asIObjectType *type = 0;
+	asITypeInfo *type = 0;
 	int tc = mod->GetObjectTypeCount();
 	for( int n = 0; n < tc; n++ )
 	{

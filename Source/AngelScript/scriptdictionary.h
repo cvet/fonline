@@ -60,8 +60,8 @@ public:
     #ifdef FONLINE_DLL
     static ScriptDictionary& Create()
     {
-        static asIObjectType* ot = ASEngine->GetObjectTypeByDecl( "dictionary" );
-        ScriptDictionary*     scriptDictionary = (ScriptDictionary*) ASEngine->CreateScriptObject( ot );
+        static asITypeInfo* ot = ASEngine->GetTypeInfoByDecl( "dictionary" );
+        ScriptDictionary*   scriptDictionary = (ScriptDictionary*) ASEngine->CreateScriptObject( ot );
         return *scriptDictionary;
     }
 protected:
@@ -120,7 +120,7 @@ public:
     virtual asUINT GetSize() const;
 
     // Deletes the key
-    virtual void Delete( const ScriptString& key );
+    virtual bool Delete( const ScriptString& key );
 
     // Deletes all keys
     virtual void DeleteAll();

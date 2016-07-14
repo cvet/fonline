@@ -218,7 +218,7 @@ bool Test()
 	int count = engine->GetObjectTypeCount();
 	if( count != 3 )
 		TEST_FAILED;
-	asIObjectType *type = engine->GetObjectTypeByIndex(0);
+	asITypeInfo *type = engine->GetObjectTypeByIndex(0);
 	if( strcmp(type->GetName(), "Object") != 0 )
 		TEST_FAILED;
 	

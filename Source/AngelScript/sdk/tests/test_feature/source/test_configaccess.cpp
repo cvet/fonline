@@ -2,8 +2,6 @@
 
 namespace TestConfigAccess
 {
-          
-const char * const TESTNAME = "TestConfigAccess";
 
 static void Func(asIScriptGeneric *)
 {
@@ -27,9 +25,48 @@ bool Test()
 
 	float val;
 
+	// Test access masks for delegates without the first bit set
+	// http://www.gamedev.net/topic/673050-bug-with-access-masks/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		RegisterScriptArray(engine, true);
+		RegisterStdString(engine);
+
+		engine->RegisterGlobalFunction("void Print(const string& in s)", asFUNCTION(0), asCALL_GENERIC);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->SetAccessMask(2);
+		mod->AddScriptSection("test",
+			"funcdef void Foo();\n"
+			"Foo@ g_pFoo = null;\n"
+			"class Bar\n"
+			"{\n"
+			"	Bar()\n"
+			"	{\n"
+			"		@g_pFoo = Foo(this.bar);\n"
+			"	}\n"
+			"	void bar()\n"
+			"	{\n"
+			"	}\n"
+			"}\n"
+			"void test()\n"
+			"{\n"
+			"	Bar bar;\n"
+			"	g_pFoo();\n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		
+		engine->ShutDownAndRelease();
+	}
+
 	//------------
 	// Test global properties
 	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	engine->SetDefaultAccessMask(1);
 	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
 
 	r = engine->BeginConfigGroup("group"); assert( r >= 0 );
@@ -98,6 +135,7 @@ bool Test()
 	//------------
 	// Test object types
 	engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+	engine->SetDefaultAccessMask(1);
 	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
 
 	r = engine->BeginConfigGroup("group"); assert( r >= 0 );

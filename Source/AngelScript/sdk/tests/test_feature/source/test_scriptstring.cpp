@@ -161,6 +161,55 @@ bool Test()
 	asIScriptModule *mod = 0;
 	int r;
 
+	// Test heredoc engine properties
+	// idea from discussion with Scott Bean
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		RegisterScriptString(engine);
+
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		// without line break
+		engine->SetEngineProperty(asEP_HEREDOC_TRIM_MODE, 2);
+		r = ExecuteString(engine, "string s = \"\"\"   \"\"\"; assert( s == '' ); \n");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// with line break
+		engine->SetEngineProperty(asEP_HEREDOC_TRIM_MODE, 2);
+		r = ExecuteString(engine, "string s = \"\"\"  \n  \"\"\"; assert( s == '' ); \n");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// without line break, no trimming
+		engine->SetEngineProperty(asEP_HEREDOC_TRIM_MODE, 1);
+		r = ExecuteString(engine, "string s = \"\"\"   \"\"\"; assert( s == '   ' ); \n");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// with line break
+		engine->SetEngineProperty(asEP_HEREDOC_TRIM_MODE, 1);
+		r = ExecuteString(engine, "string s = \"\"\"  \n  \"\"\"; assert( s == '' ); \n");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// without line break, no trimming
+		engine->SetEngineProperty(asEP_HEREDOC_TRIM_MODE, 0);
+		r = ExecuteString(engine, "string s = \"\"\"   \"\"\"; assert( s == '   ' ); \n");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		// with line break, no trimming
+		engine->SetEngineProperty(asEP_HEREDOC_TRIM_MODE, 0);
+		r = ExecuteString(engine, "string s = \"\"\"  \n  \"\"\"; assert( s == '  \\n  ' ); \n");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test copy constructor for reference types
 	// Problem reported by Wracky of piko3d fame
 	{
@@ -549,7 +598,7 @@ bool Test()
 		const char *script = 
 			"void func() { \n"
 			" string @tutPage = string(\"\"\" \n"
-	        "    \"\"\"); \n"
+			"    \"\"\"); \n"
 			"} \n";
 
 		asIScriptModule *mod = engine->GetModule("mod", asGM_ALWAYS_CREATE);
@@ -580,7 +629,7 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
-		engine->Release();			
+		engine->Release();
 	}
 
 	//--------------

@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "../../add_on/scriptbuilder/scriptbuilder.h"
 
 namespace TestModule
 {
@@ -10,6 +11,44 @@ bool Test()
 	CBufferedOutStream bout;
 	COutStream out;
 	asIScriptContext *ctx;
+
+	// Test discarding module right after compiling
+	// http://www.gamedev.net/topic/677465-refcount-mismatch-when-discarding-module/
+	{
+		class Dummy
+		{
+		public:
+			static asIScriptContext* requestScriptContext(asIScriptEngine* engine, void* param)
+			{
+				return static_cast<asIScriptContext*>(param);
+			}
+
+			static void returnScriptContext(asIScriptEngine* engine, asIScriptContext* context, void* param)
+			{
+				// Nothing to do...
+			}
+		};
+
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		asIScriptContext* ctxt = engine->CreateContext();
+		engine->SetContextCallbacks(Dummy::requestScriptContext, Dummy::returnScriptContext, ctxt);
+
+		CScriptBuilder b;
+		b.StartNewModule(engine, "test");
+		b.AddSectionFromMemory("test", "float test = 0.0f;");
+		r = b.BuildModule();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule *mod = b.GetModule();
+		mod->Discard();
+
+		ctxt->Release();
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test a problematic script for cleaning up a module
 	// Reported by Polyak Istvan
@@ -70,7 +109,7 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetObjectTypeByName("foo"));
+		asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(mod->GetTypeInfoByName("foo"));
 
 		// It must not be possible to rebuild the module while there are external references to the code
 		r = mod->Build();
@@ -324,7 +363,7 @@ bool Test()
 		engine->Release();
 	}
 
-	// GetObjectTypeById must not crash even though the object type has already been removed
+	// GetTypeInfoById must not crash even though the object type has already been removed
 	{
 		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
@@ -341,17 +380,17 @@ bool Test()
 		if( typeId < 0 )
 			TEST_FAILED;
 
-		asIObjectType *type = engine->GetObjectTypeById(typeId);
+		asITypeInfo *type = engine->GetTypeInfoById(typeId);
 		if( type == 0 || std::string(type->GetName()) != "array" )
 			TEST_FAILED;
 
-		if( type != mod->GetObjectTypeByDecl("array<A@>") )
+		if( type != mod->GetTypeInfoByDecl("array<A@>") )
 			TEST_FAILED;
 
 		mod->Discard();
 		engine->GarbageCollect();
 
-		type = engine->GetObjectTypeById(typeId);
+		type = engine->GetTypeInfoById(typeId);
 		if( type != 0 )
 			TEST_FAILED;
 
@@ -467,7 +506,7 @@ bool Test()
 /*			for( asUINT i = 0; i < gcSize; i++ )
 			{
 				void *obj = 0;
-				asIObjectType *type = 0;
+				asITypeInfo *type = 0;
 				engine->GetObjectInGC(i, 0, &obj, &type);
 
 				if( strcmp(type->GetName(), "$func") == 0 )
@@ -477,7 +516,7 @@ bool Test()
 				}
 				else
 				{
-					asIObjectType *ot = (asIObjectType*)obj;
+					asITypeInfo *ot = (asITypeInfo*)obj;
 					PRINTF("type: %s\n", ot->GetName());
 				}
 			}*/

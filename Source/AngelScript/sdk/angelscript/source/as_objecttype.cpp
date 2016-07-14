@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -76,7 +76,7 @@ asUINT asCObjectType::GetChildFuncdefCount() const
 }
 
 // interface
-asIScriptFunction *asCObjectType::GetChildFuncdef(asUINT index) const
+asITypeInfo *asCObjectType::GetChildFuncdef(asUINT index) const
 {
 	if (index >= childFuncDefs.GetLength())
 		return 0;
@@ -84,9 +84,7 @@ asIScriptFunction *asCObjectType::GetChildFuncdef(asUINT index) const
 	return childFuncDefs[index];
 }
 
-
-
-
+// internal
 void asCObjectType::DestroyInternal()
 {
 	if( engine == 0 ) return;
@@ -135,14 +133,11 @@ void asCObjectType::DestroyInternal()
 
 asCObjectType::~asCObjectType()
 {
-	if( engine == 0 )
-		return;
-
 	DestroyInternal();
 }
 
 // interface
-bool asCObjectType::Implements(const asIObjectType *objType) const
+bool asCObjectType::Implements(const asITypeInfo *objType) const
 {
 	if( this == objType )
 		return true;
@@ -154,7 +149,7 @@ bool asCObjectType::Implements(const asIObjectType *objType) const
 }
 
 // interface
-bool asCObjectType::DerivesFrom(const asIObjectType *objType) const
+bool asCObjectType::DerivesFrom(const asITypeInfo *objType) const
 {
 	if( this == objType )
 		return true;
@@ -185,7 +180,7 @@ int asCObjectType::GetSubTypeId(asUINT subtypeIndex) const
 }
 
 // interface
-asIObjectType *asCObjectType::GetSubType(asUINT subtypeIndex) const
+asITypeInfo *asCObjectType::GetSubType(asUINT subtypeIndex) const
 {
 	if( subtypeIndex >= templateSubTypes.GetLength() )
 		return 0;
@@ -203,7 +198,7 @@ asUINT asCObjectType::GetInterfaceCount() const
 	return asUINT(interfaces.GetLength());
 }
 
-asIObjectType *asCObjectType::GetInterface(asUINT index) const
+asITypeInfo *asCObjectType::GetInterface(asUINT index) const
 {
 	return interfaces[index];
 }
@@ -369,7 +364,7 @@ const char *asCObjectType::GetPropertyDeclaration(asUINT index, bool includeName
 	return tempString->AddressOf();
 }
 
-asIObjectType *asCObjectType::GetBaseType() const
+asITypeInfo *asCObjectType::GetBaseType() const
 {
 	return derivedFrom; 
 }
@@ -525,6 +520,12 @@ asCObjectProperty *asCObjectType::AddPropertyToClass(const asCString &propName, 
 			if( !dt.IsObjectHandle() )
 				prop->type.MakeReference(true);
 		}
+	}
+	else if (dt.IsFuncdef())
+	{
+		// Funcdefs don't have a size, as they must always be stored as handles
+		asASSERT(dt.IsObjectHandle());
+		propSize = AS_PTR_SIZE * 4;
 	}
 	else
 		propSize = dt.GetSizeInMemoryBytes();

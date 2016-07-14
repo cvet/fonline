@@ -41,8 +41,8 @@
     prop_type base_class_name::Get ## prop() { return Props.GetPropValue< prop_type >( class_name::Property ## prop ); } \
     void base_class_name::Set ## prop( prop_type value ) { Props.SetPropValue< prop_type >( class_name::Property ## prop, value ); }
 
-extern string WriteValue( void* ptr, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep );
-extern void*  ReadValue( const char* value, int type_id, asIObjectType* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error );
+extern string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep );
+extern void*  ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error );
 
 class Entity;
 class Property;
@@ -83,21 +83,21 @@ public:
         ModifiableMask       = 0x2600,
     };
 
-    const char*    GetName();
-    const char*    GetTypeName();
-    uint           GetRegIndex();
-    int            GetEnumValue();
-    AccessType     GetAccess();
-    uint           GetBaseSize();
-    asIObjectType* GetASObjectType();
-    bool           IsPOD();
-    bool           IsDict();
-    bool           IsHash();
-    bool           IsResource();
-    bool           IsEnum();
-    bool           IsReadable();
-    bool           IsWritable();
-    bool           IsConst();
+    const char*  GetName();
+    const char*  GetTypeName();
+    uint         GetRegIndex();
+    int          GetEnumValue();
+    AccessType   GetAccess();
+    uint         GetBaseSize();
+    asITypeInfo* GetASObjectType();
+    bool         IsPOD();
+    bool         IsDict();
+    bool         IsHash();
+    bool         IsResource();
+    bool         IsEnum();
+    bool         IsReadable();
+    bool         IsWritable();
+    bool         IsConst();
 
     template< typename T >
     T GetValue( Entity* entity )
@@ -142,33 +142,33 @@ private:
     void   SetPropRawData( Properties* properties, uchar* data, uint data_size );
 
     // Static data
-    string         propName;
-    string         typeName;
-    DataType       dataType;
-    int            asObjTypeId;
-    asIObjectType* asObjType;
-    bool           isHash;
-    bool           isHashSubType0;
-    bool           isHashSubType1;
-    bool           isHashSubType2;
-    bool           isResource;
-    bool           isIntDataType;
-    bool           isSignedIntDataType;
-    bool           isFloatDataType;
-    bool           isBoolDataType;
-    bool           isEnumDataType;
-    bool           isArrayOfString;
-    bool           isDictOfString;
-    bool           isDictOfArray;
-    bool           isDictOfArrayOfString;
-    AccessType     accessType;
-    bool           isConst;
-    bool           isReadable;
-    bool           isWritable;
-    bool           checkMinValue;
-    bool           checkMaxValue;
-    int64          minValue;
-    int64          maxValue;
+    string       propName;
+    string       typeName;
+    DataType     dataType;
+    int          asObjTypeId;
+    asITypeInfo* asObjType;
+    bool         isHash;
+    bool         isHashSubType0;
+    bool         isHashSubType1;
+    bool         isHashSubType2;
+    bool         isResource;
+    bool         isIntDataType;
+    bool         isSignedIntDataType;
+    bool         isFloatDataType;
+    bool         isBoolDataType;
+    bool         isEnumDataType;
+    bool         isArrayOfString;
+    bool         isDictOfString;
+    bool         isDictOfArray;
+    bool         isDictOfArrayOfString;
+    AccessType   accessType;
+    bool         isConst;
+    bool         isReadable;
+    bool         isWritable;
+    bool         checkMinValue;
+    bool         checkMaxValue;
+    int64        minValue;
+    int64        maxValue;
 
     // Dynamic data
     PropertyRegistrator* registrator;

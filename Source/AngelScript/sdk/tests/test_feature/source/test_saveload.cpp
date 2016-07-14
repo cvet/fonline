@@ -8,6 +8,7 @@
 #include <vector>
 #include "utils.h"
 #include "../../../add_on/scriptarray/scriptarray.h"
+#include "../../../add_on/scripthandle/scripthandle.h"
 
 
 namespace TestSaveLoad
@@ -191,7 +192,7 @@ asIScriptEngine *ConfigureEngine(int version)
 	RegisterStdString(engine);
 
 	// Register a property with the built-in array type
-	GlobalCharArray = (CScriptArray*)engine->CreateScriptObject(engine->GetObjectTypeById(engine->GetTypeIdByDecl("uint8[]")));
+	GlobalCharArray = (CScriptArray*)engine->CreateScriptObject(engine->GetTypeInfoById(engine->GetTypeIdByDecl("uint8[]")));
 	int r = engine->RegisterGlobalProperty("uint8[] GlobalCharArray", GlobalCharArray); assert( r >= 0 );
 
 	// Register function that use the built-in array type
@@ -240,11 +241,11 @@ void TestScripts(asIScriptEngine *engine)
 	}
 
 	// Call an interface method on a class that implements the interface
-	asIObjectType *type = engine->GetModule(0)->GetObjectTypeByName("MyClass");
+	asITypeInfo *type = engine->GetModule(0)->GetTypeInfoByName("MyClass");
 	asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(type);
 
 	int intfTypeId = engine->GetModule(0)->GetTypeIdByDecl("MyIntf");
-	type = engine->GetObjectTypeById(intfTypeId);
+	type = engine->GetTypeInfoById(intfTypeId);
 	if( type == 0 )
 		TEST_FAILED;
 	else
@@ -325,14 +326,38 @@ public:
 	Tmpl() {refCount = 1;}
 	void AddRef() {refCount++;}
 	void Release() {if( --refCount == 0 ) delete this;}
-	static Tmpl *TmplFactory(asIObjectType*) {return new Tmpl;}
-	static bool TmplCallback(asIObjectType * /*ot*/, bool & /*dontGC*/) {return false;}
+	static Tmpl *TmplFactory(asITypeInfo*) {return new Tmpl;}
+	static bool TmplCallback(asITypeInfo * /*ot*/, bool & /*dontGC*/) {return false;}
 	int refCount;
 };
 
 bool TestAndrewPrice();
 
 static asIScriptFunction *g_func = 0;
+
+class NGUIWidget
+{
+public:
+	float alpha;
+
+	NGUIWidget()
+	{
+		alpha = 0;
+	};
+};
+
+class NGUISymbol : public NGUIWidget
+{
+};
+
+void NGUIWidgetCastGeneric(asIScriptGeneric *gen)
+{
+	NGUIWidget* wgt = (NGUIWidget*)gen->GetObject();
+
+	gen->SetReturnAddress(wgt);
+}
+
+NGUISymbol symbol_inst;
 
 bool Test()
 {
@@ -341,6 +366,97 @@ bool Test()
 	CBufferedOutStream bout;
 	asIScriptEngine* engine;
 	asIScriptModule* mod;
+
+	// Test saving/loading bytecode with asBC_ClrVPtr when the variable is a null pointer
+	// http://www.gamedev.net/topic/677759-crash-on-ios-arm64/
+	{
+		engine = asCreateScriptEngine();
+
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		engine->RegisterObjectType("NGUIWidget", sizeof(NGUIWidget), asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectProperty("NGUIWidget", "float alpha", asOFFSET(NGUIWidget, alpha));
+
+
+		engine->RegisterObjectType("NGUISymbol", sizeof(NGUISymbol), asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectMethod("NGUISymbol", "NGUIWidget@ opImplCast()", asFUNCTION(NGUIWidgetCastGeneric), asCALL_GENERIC);
+		engine->RegisterObjectProperty("NGUISymbol", "float alpha", asOFFSET(NGUISymbol, alpha));
+
+
+		engine->RegisterGlobalProperty("NGUISymbol inst", &symbol_inst);
+
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void main() \n"
+			"{ \n"
+			"	NGUIWidget@ wgt = @inst; \n"
+			"	wgt.alpha = 0.58f; \n"
+			"}\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		CBytecodeStream bc("blah");
+		r = mod->SaveByteCode(&bc);
+		if (r < 0)
+			TEST_FAILED;
+
+		asDWORD crc = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
+		if (crc != 2772594532u)
+		{
+			PRINTF("Wrong checksum. Got %u\n", crc);
+			TEST_FAILED;
+		}
+
+		r = mod->LoadByteCode(&bc);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test saving bytecode where indirectly defined funcdefs are used
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		RegisterScriptHandle(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace A { void func() {} }\n"
+			"namespace B { int func(int) { return 0; } }\n"
+			"void main() \n"
+			"{ \n"
+			"  ref @r1 = A::func; \n"
+			"  ref @r2 = B::func; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc("blah");
+		r = mod->SaveByteCode(&bc);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = mod->LoadByteCode(&bc);
+		if (r < 0)
+			TEST_FAILED;
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test problem with scripts calling constructor with value type passed before reference
 	// http://www.gamedev.net/topic/671244-error-when-saving-bytecode-on-x64/
@@ -489,7 +605,7 @@ bool Test()
 
 		engine->ShutDownAndRelease();
 
-		if( bout.buffer != "config (49, 0) : Warning : Cannot register template callback without the actual implementation\n" )
+		if( bout.buffer != "config (50, 0) : Warning : Cannot register template callback without the actual implementation\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -548,11 +664,12 @@ bool Test()
 					"ep 23 0\n"
 					"ep 24 0\n"
 					"ep 25 0\n"
+					"ep 26 1\n"
 					"\n"
 					"// Enums\n"
 					"\n"
 					"// Types\n"
-					"access 1\n"
+					"access ffffffff\n"
 					"namespace \"test::sub\"\n"
 					"objtype \"foo\" 262145\n"
 					"\n"
@@ -755,7 +872,7 @@ bool Test()
 			TEST_FAILED;
 		
 		if( bout.buffer != " (0, 0) : Error   : Template type 'typeof' doesn't exist\n"
-						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 130\n" )
+						   " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 129\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
@@ -1147,23 +1264,23 @@ bool Test()
 		mod->SaveByteCode(&stream2, true);
 
 #ifndef STREAM_TO_FILE
-		if( stream.buffer.size() != 2295 )
+		if( stream.buffer.size() != 2243 )
 			PRINTF("The saved byte code is not of the expected size. It is %d bytes\n", stream.buffer.size());
 		asUINT zeroes = stream.CountZeroes();
-		if( zeroes != 579 )
+		if( zeroes != 571 )
 		{
 			PRINTF("The saved byte code contains a different amount of zeroes than the expected. Counted %d\n", zeroes);
 			// Mac OS X PPC has more zeroes, probably due to the bool type being 4 bytes
 		}
 		asDWORD crc32 = ComputeCRC32(&stream.buffer[0], asUINT(stream.buffer.size()));
-		if( crc32 != 0xEDE1BB13 )
+		if( crc32 != 0xFC06D5F3 )
 			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
 
 		// Without debug info
-		if( stream2.buffer.size() != 1926 )
+		if( stream2.buffer.size() != 1886 )
 			PRINTF("The saved byte code without debug info is not of the expected size. It is %d bytes\n", stream2.buffer.size());
 		zeroes = stream2.CountZeroes();
-		if( zeroes != 465 )
+		if( zeroes != 461 )
 			PRINTF("The saved byte code without debug info contains a different amount of zeroes than the expected. Counted %d\n", zeroes);
 #endif
 		// Test loading without releasing the engine first
@@ -2028,11 +2145,11 @@ bool Test()
 
 		r = engine->RegisterObjectType("tmpl<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE); assert( r >= 0 );
 #ifndef AS_MAX_PORTABILITY
-		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_FACTORY, "tmpl<T>@ f(int&in)", asFUNCTIONPR(Tmpl::TmplFactory, (asIObjectType*), Tmpl*), asCALL_CDECL); assert( r >= 0 );
+		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_FACTORY, "tmpl<T>@ f(int&in)", asFUNCTIONPR(Tmpl::TmplFactory, (asITypeInfo*), Tmpl*), asCALL_CDECL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(Tmpl,AddRef), asCALL_THISCALL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(Tmpl,Release), asCALL_THISCALL); assert( r >= 0 );
 #else
-		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_FACTORY, "tmpl<T>@ f(int&in)", WRAP_FN_PR(Tmpl::TmplFactory, (asIObjectType*), Tmpl*), asCALL_GENERIC); assert( r >= 0 );
+		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_FACTORY, "tmpl<T>@ f(int&in)", WRAP_FN_PR(Tmpl::TmplFactory, (asITypeInfo*), Tmpl*), asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_ADDREF, "void f()", WRAP_MFN(Tmpl,AddRef), asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_RELEASE, "void f()", WRAP_MFN(Tmpl,Release), asCALL_GENERIC); assert( r >= 0 );
 #endif
@@ -2053,12 +2170,12 @@ bool Test()
 
 		r = engine->RegisterObjectType("tmpl<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE); assert( r >= 0 );
 #ifndef AS_MAX_PORTABILITY
-		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_FACTORY, "tmpl<T>@ f(int&in)", asFUNCTIONPR(Tmpl::TmplFactory, (asIObjectType*), Tmpl*), asCALL_CDECL); assert( r >= 0 );
+		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_FACTORY, "tmpl<T>@ f(int&in)", asFUNCTIONPR(Tmpl::TmplFactory, (asITypeInfo*), Tmpl*), asCALL_CDECL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(Tmpl,AddRef), asCALL_THISCALL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(Tmpl,Release), asCALL_THISCALL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", asFUNCTION(Tmpl::TmplCallback), asCALL_CDECL); assert( r >= 0 );
 #else
-		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_FACTORY, "tmpl<T>@ f(int&in)", WRAP_FN_PR(Tmpl::TmplFactory, (asIObjectType*), Tmpl*), asCALL_GENERIC); assert( r >= 0 );
+		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_FACTORY, "tmpl<T>@ f(int&in)", WRAP_FN_PR(Tmpl::TmplFactory, (asITypeInfo*), Tmpl*), asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_ADDREF, "void f()", WRAP_MFN(Tmpl,AddRef), asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_RELEASE, "void f()", WRAP_MFN(Tmpl,Release), asCALL_GENERIC); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("tmpl<T>", asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", WRAP_FN(Tmpl::TmplCallback), asCALL_GENERIC); assert( r >= 0 );
@@ -2071,7 +2188,7 @@ bool Test()
 			TEST_FAILED;
 
 		if( bout.buffer != " (0, 0) : Error   : Attempting to instantiate invalid template type 'tmpl<int>'\n"
-			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 117\n" )
+			               " (0, 0) : Error   : LoadByteCode failed. The bytecode is invalid. Number of bytes read from stream: 115\n" )
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

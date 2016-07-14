@@ -28,10 +28,101 @@ This page gives a brief description of the add-ons that you'll find in the /sdk/
  - \subpage doc_addon_filesystem
  - \subpage doc_addon_math
  - \subpage doc_addon_grid
+ - \subpage doc_addon_datetime
 
 
+
+\page doc_addon_datetime datetime object
+
+<b>Path:</b> /sdk/add_on/datetime/
+
+The <code>CDateTime</code> class provides a way for scripts to get the system date and time.
+
+Register the type with the <code>RegisterScriptDateTime(asIScriptEngine*)</code> function.
+
+\note This class requires C++11 or later to compile.
+
+\section doc_addon_array_1 Public C++ interface
+
+\code
+class CDateTime
+{
+public:
+	// Constructors
+	CDateTime();
+	CDateTime(const CDateTime &other);
+
+	// Copy the stored value from another any object
+	CDateTime &operator=(const CDateTime &other);
+
+	// Accessors
+	asUINT getYear() const;
+	asUINT getMonth() const;
+	asUINT getDay() const;
+	asUINT getHour() const;
+	asUINT getMinute() const;
+	asUINT getSecond() const;
+};
+\endcode
+
+\section doc_addon_array_2 Public script interface
+
+<pre>
+  class datetime
+  {
+    datetime();
+    datetime(const datetime &in other);
+
+    datetime &opAssign(const datetime &in other);
+
+    uint get_year() const;
+    uint get_month() const;
+    uint get_day() const;
+    uint get_hour() const;
+    uint get_minute() const;
+    uint get_second() const;
+  }
+</pre>
+
+<b>datetime()</b><br>
+<b>datetime(const datetime &in other)</b>
  
+The default constructor initializes the object with the current system time.
+
+The copy constructor copíes the content of the other object.
+
+<b>datetime &opAssign(const datetime &in other)</b>
  
+The assignment operator copies the content of the other object.
+
+<b>uint get_year() const</b>
+
+Returns the year of the date stored in the object. 
+
+<b>uint get_month() const</b>
+
+Returns the month of the date stored in the object. The range is 1 to 12, i.e. 1 is January, 12 is December, and so on.
+ 
+<b>uint get_day() const</b>
+
+Returns the day of the month of the date stored in the object.
+ 
+<b>uint get_hour() const</b>
+
+Returns the hour of the time stored in the object. The range is 0 to 23.
+ 
+<b>uint get_minute() const</b>
+
+Returns the minute of the time stored in the object. The range is 0 to 59.
+
+<b>uint get_second() const</b>
+ 
+Returns the second of the time stored in the object. The range is 0 to 59.
+
+
+
+
+
 \page doc_addon_serializer Serializer
 
 <b>Path:</b> /sdk/add_on/serializer/
@@ -194,7 +285,7 @@ public:
   // If the object that is being converted to a string has members of its own the callback should call
   // the debugger's ToString passing in expandMembersLevel - 1.
   typedef std::string (*ToStringCallback)(void *obj, int expandMembersLevel, CDebugger *dbg);
-  virtual void RegisterToStringCallback(const asIObjectType *ot, ToStringCallback callback);
+  virtual void RegisterToStringCallback(const asITypeInfo *type, ToStringCallback callback);
   
   // User interaction
   virtual void TakeCommands(asIScriptContext *ctx);
@@ -334,12 +425,30 @@ public:
 };
 \endcode
 
+\section doc_addon_ctxmgr_2 Public script interface
 
+<pre>
+  funcdef void coroutine(dictionary@);
+  void createCoRoutine(coroutine @, dictionary @);
+  void yield();
+</pre>
 
+<b>funcdef void coroutine(dictionary@)</b><br>
+<b>void createCoRoutine(coroutine @, dictionary @)</b>
 
+This function is used to create a co-routine. The co-routine will initiate in a 
+yielded state, i.e. it will only begin execution once the control is given to it
+by the current thread. 
 
+Multiple co-routines can be created, and they will each take turn to execute in 
+round-robin fashion.
 
+<b>void yield()</b>
 
+Yields control of the execution for the next co-routine in the queue. 
+
+When a co-routine receives control it will resume execution from the last call to
+yield, or the entry point if this is the first time the co-routine is allowed to execute.
 
 
 
@@ -370,17 +479,17 @@ public:
   static void SetMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc);
 
   // Factory functions
-  static CScriptArray *Create(asIObjectType *ot);
-  static CScriptArray *Create(asIObjectType *ot, asUINT length);
-  static CScriptArray *Create(asIObjectType *ot, asUINT length, void *defaultValue);
-  static CScriptArray *Create(asIObjectType *ot, void *listBuffer);
+  static CScriptArray *Create(asITypeInfo *arrayType);
+  static CScriptArray *Create(asITypeInfo *arrayType, asUINT length);
+  static CScriptArray *Create(asITypeInfo *arrayType, asUINT length, void *defaultValue);
+  static CScriptArray *Create(asITypeInfo *arrayType, void *listBuffer);
 
   // Memory management
   void AddRef() const;
   void Release() const;
 
   // Type information
-  asIObjectType *GetArrayObjectType() const;
+  asITypeInfo   *GetArrayObjectType() const;
   int            GetArrayTypeId() const;
   int            GetElementTypeId() const;
 
@@ -456,7 +565,7 @@ CScriptArray *CreateArrayOfStrings()
     // The script array needs to know its type to properly handle the elements.
     // Note that the object type should be cached to avoid performance issues
     // if the function is called frequently.
-    asIObjectType* t = engine->GetObjectTypeByDecl("array<string>");
+    asITypeInfo* t = engine->GetTypeInfoByDecl("array<string>");
 
     // Create an array with the initial size of 3 elements
     CScriptArray* arr = CScriptArray::Create(t, 3);
@@ -504,17 +613,17 @@ public:
   static void SetMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc);
 
   // Factory functions
-  static CScriptGrid *Create(asIObjectType *ot);
-  static CScriptGrid *Create(asIObjectType *ot, asUINT width, asUINT height);
-  static CScriptGrid *Create(asIObjectType *ot, asUINT width, asUINT height, void *defaultValue);
-  static CScriptGrid *Create(asIObjectType *ot, void *listBuffer);
+  static CScriptGrid *Create(asITypeInfo *gridType);
+  static CScriptGrid *Create(asITypeInfo *gridType, asUINT width, asUINT height);
+  static CScriptGrid *Create(asITypeInfo *gridType, asUINT width, asUINT height, void *defaultValue);
+  static CScriptGrid *Create(asITypeInfo *gridType, void *listBuffer);
 
   // Memory management
   void AddRef() const;
   void Release() const;
 
   // Type information
-  asIObjectType *GetGridObjectType() const;
+  asITypeInfo   *GetGridObjectType() const;
   int            GetGridTypeId() const;
   int            GetElementTypeId() const;
 
@@ -552,6 +661,29 @@ public:
     const T &opIndex(uint, uint) const;
   }
 </pre>
+
+<b>grid()</b><br>
+<b>grid(uint width, uint height)</b><br>
+<b>grid(uint width, height, const T &in fillValue)</b><br>
+
+The constructors initializes the grid object. The default constructor will create an zero sized grid.
+
+<b>uint width() const</b><br>
+<b>uint height() const</b><br>
+
+Returns the width and height of the grid.
+
+<b>void resize(uint w, uint h)</b>
+
+Resizes the grid to the new dimension. The elements that still fit in the grid will keep their values.
+
+<b>T &opIndex(uint x, uint y)</b><br>
+<b>const T &opIndex(uint x, uint y) const</b><br>
+
+The index operator returns a reference to one of the elements. If the index is out of bounds a script
+exception will be raised.
+
+
 
 \section doc_addon_grid_3 Example usage in script
 
@@ -642,6 +774,10 @@ public:
   {
     any();
     any(? &in value);
+    any(int64 &in value);
+    any(double &in value);
+
+    any &opAssign(const any &in other);
   
     void store(? &in value);
     void store(int64 &in value);
@@ -652,6 +788,35 @@ public:
     bool retrieve(double &out value) const;
   }
 </pre>
+
+<b>any()</b><br>
+<b>any(? &in value)</b><br>
+<b>any(int64 &in value)</b><br>
+<b>any(double &in value)</b><br>
+
+The default constructor creates an empty object, and the second initializes the object with the provided value.
+
+The int64 and double overloads make sure that all numbers are converted to 64bit before being stored in the object.
+
+<b>any &opAssign(const any &in other)</b><br>
+
+The assignment operator will copy the contained value from the other object.
+
+<b>void store(? &in value)</b><br>
+<b>void store(int64 &in value)</b><br>
+<b>void store(double &in value)</b><br>
+
+These methods sets the value in the object.
+
+The int64 and double overloads make sure that all numbers are converted to 64bit before being stored in the object.
+
+<b>bool retrieve(? &out value) const</b><br>
+<b>bool retrieve(int64 &out value) const</b><br>
+<b>bool retrieve(double &out value) const</b><br>
+
+These methods retrieve the value stored in the object. The methods will return true if the stored value is 
+compatible with the requested type.
+
 
 \section doc_addon_any_3 Example usage
 
@@ -717,7 +882,7 @@ public:
   CScriptHandle &operator=(const CScriptHandle &other);
   
   // Set the reference
-  void Set(void *ref, asIObjectType *type);
+  void Set(void *ref, asITypeInfo *type);
 
   // Compare equalness
   bool operator==(const CScriptHandle &o) const;
@@ -728,7 +893,7 @@ public:
   void Cast(void **outRef, int typeId);
 
   // Returns the type of the reference held
-  asIObjectType *GetType() const;
+  asITypeInfo   *GetType() const;
   int            GetTypeId() const;
   
   // Returns the reference
@@ -799,9 +964,9 @@ class CScriptWeakRef
 {
 public:
   // Constructors
-  CScriptWeakRef(asIObjectType *type);
+  CScriptWeakRef(asITypeInfo *type);
   CScriptWeakRef(const CScriptWeakRef &other);
-  CScriptWeakRef(void *ref, asIObjectType *type);
+  CScriptWeakRef(void *ref, asITypeInfo *type);
 
   ~CScriptWeakRef();
 
@@ -823,7 +988,7 @@ public:
   bool Equals(void *ref) const;
   
   // Returns the type of the reference held
-  asIObjectType *GetRefType() const;
+  asITypeInfo *GetRefType() const;
 };
 \endcode
 
@@ -942,7 +1107,7 @@ public:
   asUINT GetSize() const;
   
   // Deletes the key
-  void Delete(const dictKey &key);
+  bool Delete(const dictKey &key);
   
   // Deletes all keys
   void DeleteAll();
@@ -971,6 +1136,7 @@ public:
   
   CIterator begin() const;
   CIterator end() const;
+  CIterator find(const dictKey &key) const;
 };
 \endcode
 
@@ -1074,7 +1240,7 @@ public:
     uint64   readUInt(uint bytes);
     float    readFloat();
     double   readDouble();
-    int      writeString(const string &in string);
+    int      writeString(const string &in str);
     int      writeInt(int64 value, uint bytes);
     int      writeUInt(uint64 value, uint bytes);
     int      writeFloat(float value);
@@ -1085,6 +1251,98 @@ public:
     bool     mostSignificantByteFirst;
   }
 </pre>
+
+<b>int open(const string &in filename, const string &in mode)</b><br>
+
+Opens a file. The mode can be "r" for reading, "w" for writing, or "a" for appending.
+
+If the file couldn't be opened, a negative value is returned.
+
+<b>int close()</b><br>
+
+Closes the file.
+
+If no file is open, a negative value is returned.
+
+<b>int getSize() const</b><br>
+
+Returns the size of the file, or a negative value if no file is open.
+
+<b>bool isEndOfFile() const</b><br>
+
+Returns true if the current position is at the end of the file.
+
+<b>string readString(uint length)</b><br>
+
+Reads \a length bytes into a string and returns it.
+
+<b>string readLine()</b><br>
+
+Reads until a new line character, e.g. '\n', or end-of-file and returns the string. The new line character is also returned in the string.
+
+<b>int64 readInt(uint bytes)</b><br>
+
+Reads \a bytes as a signed integer number.
+
+<b>uint64 readUInt(uint bytes)</b><br>
+
+Reads \a bytes as an unsigned integer number.
+
+<b>float readFloat()</b><br>
+
+Reads 4 bytes as a float number.
+
+<b>double readDouble()</b><br>
+
+Reads 8 bytes as a double number.
+
+<b>int writeString(const string &in str)</b><br>
+
+Writes the bytes of the string into the file. 
+
+Returns the number of bytes written, or a negative value on error.
+
+<b>int writeInt(int64 value, uint bytes)</b><br>
+
+Writes \a bytes as a signed integer value.
+
+Returns the number of bytes written, or a negative value on error.
+
+<b>int writeUInt(uint64 value, uint bytes)</b><br>
+
+Writes \a bytes as an unsigned integer value.
+
+Returns the number of bytes written, or a negative value on error.
+
+<b>int writeFloat(float value)</b><br>
+
+Writes 4 bytes as a float value.
+
+Returns the number of bytes written, or a negative value on error.
+
+<b>int writeDouble(double value)</b><br>
+
+Writes 8 bytes as a double value.
+
+Returns the number of bytes written, or a negative value on error.
+
+<b>int getPos() const</b><br>
+
+Returns the current position in the file, or a negative value on error.
+
+<b>int setPos(int pos)</b><br>
+
+Sets the current position in the file. Returns the previous position or a negative value on error.
+
+<b>int movePos(int delta)</b><br>
+
+Moves the position \a delta bytes relative to the current position. Returns the previous position or a negative value on error.
+
+<b>bool mostSignificantByteFirst</b><br>
+
+This property should be set to true if the most significant bit should be read or written first in the methods that reads/writes numbers.
+
+It is set to false by default, which is the standard on most platforms.
 
 \section doc_addon_file_3 Script example
 
@@ -1149,6 +1407,28 @@ public:
     bool           isDir(const string &in);
   }
 </pre>
+
+<b>bool changeCurrentPath(const string &in path)</b>
+
+This changes the current directory used by the filesystem object. It will return true if the given path is valid.
+
+It doesn't change the application' working directory.
+
+<b>string getCurrentPath() const</b>
+
+Returns the current path used by the filesystem object.
+
+<b>array<string> \@getDirs()</b>
+
+Returns a list with the names of all directories in the current path.
+
+<b>array<string> \@getFiles()</b>
+
+Returns a list with the names of all files in the current path.
+
+<b>bool isDir(const string &in path)</b>
+
+Returns true if the given path is a directory.
 
 
 
@@ -1256,7 +1536,7 @@ represents a complex number, i.e. a number with real and imaginary parts.
   }
 </pre>
 
-
+\todo Document the interface
 
 
 

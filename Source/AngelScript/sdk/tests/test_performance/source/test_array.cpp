@@ -42,7 +42,7 @@ static const char *script =
 void TestArray2(asIScriptEngine *engine)
 {
 	int val = 0;
-	CScriptArray *a = CScriptArray::Create(engine->GetObjectTypeByDecl("array<int>"), 1, &val);
+	CScriptArray *a = CScriptArray::Create(engine->GetTypeInfoByDecl("array<int>"), 1, &val);
 	for( asUINT i = 0; i < 2000000; i++ )
 	{
 		(*(int*)a->At(0))++;

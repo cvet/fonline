@@ -519,8 +519,12 @@ bool Test()
 			values += val;
 		}
 
-		if( keys != "ab" || values != 3 )
+		// With C++11 the dictionary uses an unordered_map so the order of the keys is not guaranteed
+		if (keys.find("a") == std::string::npos || keys.find("b") == std::string::npos || values != 3)
+		{
+			PRINTF("keys = '%s', values = %d\n", keys.c_str(), int(values));
 			TEST_FAILED;
+		}
 
 		dict->Release();
 		engine->Release();

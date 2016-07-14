@@ -1568,16 +1568,16 @@ void Script::CacheEnumValues()
     cached_enum_names.clear();
     for( asUINT i = 0, j = Engine->GetEnumCount(); i < j; i++ )
     {
-        int         enum_type_id;
-        const char* enum_ns;
-        const char* enum_name = Engine->GetEnumByIndex( i, &enum_type_id, &enum_ns );
-        Str::Format( buf, "%s%s%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name );
-        IntStrMap&  value_names = cached_enum_names.insert( PAIR( string( buf ), IntStrMap() ) ).first->second;
-        for( asUINT k = 0, l = Engine->GetEnumValueCount( enum_type_id ); k < l; k++ )
+        asITypeInfo* enum_type = Engine->GetEnumByIndex( i );
+        const char*  enum_ns = enum_type->GetNamespace();
+        const char*  enum_name = enum_type->GetName();
+        Str::Format( buf, "%s%s%s", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
+        IntStrMap&   value_names = cached_enum_names.insert( PAIR( string( buf ), IntStrMap() ) ).first->second;
+        for( asUINT k = 0, l = enum_type->GetEnumValueCount(); k < l; k++ )
         {
             int         value;
-            const char* value_name = Engine->GetEnumValueByIndex( enum_type_id, k, &value );
-            Str::Format( buf, "%s%s%s::%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name, value_name );
+            const char* value_name = enum_type->GetEnumValueByIndex( k, &value );
+            Str::Format( buf, "%s%s%s::%s", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name );
             cached_enums.insert( PAIR( string( buf ), value ) );
             value_names.insert( PAIR( value, string( value_name ) ) );
         }
@@ -1588,16 +1588,16 @@ void Script::CacheEnumValues()
     asIScriptModule* module = Engine->GetModuleByIndex( 0 );
     for( asUINT i = 0; i < module->GetEnumCount(); i++ )
     {
-        int         enum_type_id;
-        const char* enum_ns;
-        const char* enum_name = module->GetEnumByIndex( i, &enum_type_id, &enum_ns );
-        Str::Format( buf, "%s%s%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name );
-        IntStrMap&  value_names = cached_enum_names.insert( PAIR( string( buf ), IntStrMap() ) ).first->second;
-        for( asUINT k = 0, l = module->GetEnumValueCount( enum_type_id ); k < l; k++ )
+        asITypeInfo* enum_type = module->GetEnumByIndex( i );
+        const char*  enum_ns = enum_type->GetNamespace();
+        const char*  enum_name = enum_type->GetName();
+        Str::Format( buf, "%s%s%s", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
+        IntStrMap&   value_names = cached_enum_names.insert( PAIR( string( buf ), IntStrMap() ) ).first->second;
+        for( asUINT k = 0, l = enum_type->GetEnumValueCount(); k < l; k++ )
         {
             int         value;
-            const char* value_name = module->GetEnumValueByIndex( enum_type_id, k, &value );
-            Str::Format( buf, "%s%s%s::%s", enum_ns, enum_ns[ 0 ] ? "::" : "", enum_name, value_name );
+            const char* value_name = enum_type->GetEnumValueByIndex( k, &value );
+            Str::Format( buf, "%s%s%s::%s", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name );
             cached_enums.insert( PAIR( string( buf ), value ) );
             value_names.insert( PAIR( value, string( value_name ) ) );
         }
@@ -2463,7 +2463,7 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 
 ScriptArray* Script::CreateArray( const char* type )
 {
-    return ScriptArray::Create( Engine->GetObjectTypeById( Engine->GetTypeIdByDecl( type ) ), 0, nullptr );
+    return ScriptArray::Create( Engine->GetTypeInfoById( Engine->GetTypeIdByDecl( type ) ), 0, nullptr );
 }
 
 /************************************************************************/

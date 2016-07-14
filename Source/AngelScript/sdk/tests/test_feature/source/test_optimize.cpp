@@ -973,7 +973,7 @@ bool TestOptimize()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIObjectType *type = mod->GetObjectTypeByName("C");
+		asITypeInfo *type = mod->GetTypeInfoByName("C");
 		asEBehaviours beh;
 		asIScriptFunction *func = type->GetBehaviourByIndex(8, &beh);
 		if( beh != asBEHAVE_CONSTRUCT )

@@ -202,6 +202,10 @@ public:
 	}
 };
 
+void DoNothing(asIScriptGeneric *gen)
+{
+}
+
 bool Test()
 {
 	bool fail = false;
@@ -211,6 +215,261 @@ bool Test()
 	CBufferedOutStream bout;
 	COutStream out;
 	asIScriptModule *mod;
+
+	// Test attempt to use null as a function
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() \n"
+			"{ \n"
+			"  null(); \n" // give a proper error message
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void func()\n"
+						   "test (3, 7) : Error   : Expression doesn't evaluate to a function\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test anonymous array objects in expressions
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		bout.buffer = "";
+
+		RegisterScriptArray(engine, true);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() \n"
+			"{ \n"
+			" array<int> arr; \n"
+			" if(arr == array<int> = { 1, 2 }) \n"
+			"   arr.resize(0);\n"
+		// TODO: This should work with the old style of array types too
+		//	" if(arr == int[] = {1, 2}) \n"
+		//	"   arr.resize(1);\n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		
+		engine->ShutDownAndRelease();
+	}
+
+
+	// Test void &, which should fail with appropriate error message
+	// http://www.gamedev.net/topic/677273-various-unexpected-behaviors-of-angelscript-2310/
+	{
+		engine = asCreateScriptEngine();
+
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void &func1() {} \n"
+			"void func2(void &, void &in, void &out) {} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 6) : Error   : Type 'void' cannot be a reference\n"
+						   "test (2, 17) : Error   : Type 'void' cannot be a reference\n"
+						   "test (2, 25) : Error   : Type 'void' cannot be a reference\n"
+						   "test (2, 35) : Error   : Type 'void' cannot be a reference\n"
+						   "test (2, 1) : Info    : Compiling void func2(void, void, void)\n"
+						   "test (2, 1) : Error   : Parameter type can't be 'void', because the type cannot be instantiated.\n"
+						   "test (2, 1) : Error   : Parameter type can't be 'void', because the type cannot be instantiated.\n"
+						   "test (2, 1) : Error   : Parameter type can't be 'void', because the type cannot be instantiated.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test funcdefs, property accessors, anonymous functions, and wrong syntax
+	{
+		engine = asCreateScriptEngine();
+
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		asIScriptModule *module = engine->GetModule("testCallback", asGM_ALWAYS_CREATE);
+		asIScriptContext *context = engine->CreateContext();
+
+		r = engine->RegisterFuncdef("int Callback()"); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("void set_TestCallback(Callback@ cb)", asFUNCTION(DoNothing), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterGlobalFunction("Callback@ get_TestCallback()", asFUNCTION(DoNothing), asCALL_GENERIC); assert(r >= 0);
+
+		r = module->AddScriptSection("test", "void main(){ Callback@ cb = function() {return 123;}; TestCallback = cb; }"); assert(r >= 0);
+		r = module->Build(); // <== Crash Here
+		if (r >= 0)
+			TEST_FAILED;
+
+		r = module->AddScriptSection("test", "void main(){ Callback@ cb = test; TestCallback = cb; } int test() {return 123;}"); assert(r >= 0);
+		r = module->Build(); // <== Crash Here
+		if (r >= 0)
+			TEST_FAILED;
+
+		r = module->AddScriptSection("test", "void main(){ TestCallback = function() {return 123;}; }"); assert(r >= 0);
+		r = module->Build(); // <== Crash Here
+		if (r >= 0)
+			TEST_FAILED;
+
+		r = module->AddScriptSection("test", "void main(){ Callback@ cb = function() {return 123;}; @TestCallback = cb; }"); assert(r >= 0);
+		r = module->Build(); 
+		if (r < 0)
+			TEST_FAILED;
+
+		r = module->AddScriptSection("test", "void main(){ @TestCallback = function(){return 123;}; }"); assert(r >= 0);
+		r = module->Build(); 
+		if (r < 0)
+			TEST_FAILED;
+
+		r = context->Prepare(module->GetFunctionByName("main")); 
+		if (r < 0)
+			TEST_FAILED;
+
+		if (context->Execute() != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		context->Release();
+		module->Discard();
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void main()\n"
+						   "test (1, 68) : Error   : No appropriate opAssign method found in 'Callback' for value assignment\n"
+						   "test (1, 1) : Info    : Compiling void main()\n"
+						   "test (1, 48) : Error   : No appropriate opAssign method found in 'Callback' for value assignment\n"
+						   "test (1, 1) : Info    : Compiling void main()\n"
+						   "test (1, 27) : Error   : No appropriate opAssign method found in 'Callback' for value assignment\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test assert failure in compiler
+	// http://www.gamedev.net/topic/676120-compiler-assert-hit-in-deallocatevariable/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+		bout.buffer = "";
+
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A { \n"
+			"  A() { value = 42; } \n"
+			"  A(A@ other) { value = other.value*2; } \n"
+			"  int value; \n"
+			"}; \n"
+			"void func(A@ a) {\n"
+			"  A x(a); \n" // make a copy of the object
+			"  assert( a.value == 42 ); \n" // original object must still be available through handle
+			"  assert( x.value == 84 ); \n"
+			"}; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		asIScriptContext *ctx = engine->CreateContext();
+		r = ExecuteString(engine, "A a; func(a)", mod, ctx);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		if (r == asEXECUTION_EXCEPTION)
+			PRINTF("%s", GetExceptionInfo(ctx).c_str());
+		ctx->Release();
+		
+		engine->ShutDownAndRelease();
+	}
+
+	// Test implicit conversion to handle
+	// Make sure no incorrect warning message is given
+	// http://www.gamedev.net/topic/661910-template-containers-angelscript-addon-library-release/page-2#entry5273466
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		bout.buffer = "";
+
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A { \n"
+			"  A@&opIndex(A@&in) { return g_a; } \n"
+			"} \n"
+			"A @g_a; \n"
+			"void main() { \n"
+			"  if( @g_a[@g_a] == null ) {} \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test const correctness with parameters
+	// http://www.gamedev.net/topic/673892-const-broken/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+
+		bout.buffer = "";
+
+		mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class A {} \n"
+			"void foo(const A& a) { foo2(a); } \n" // foo2 call must fail as foo2 is expecting a const reference
+			"void foo2(A& a) {}\n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (2, 1) : Info    : Compiling void foo(const A&inout)\n"
+						   "test (2, 24) : Error   : No matching signatures to 'foo2(const A&)'\n"
+						   "test (2, 24) : Info    : Candidates are:\n"
+						   "test (2, 24) : Info    : void foo2(A&inout a)\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test unicode identifiers
 	{
@@ -247,13 +506,13 @@ bool Test()
 		if( r < 0 )
 			TEST_FAILED;
 
-		asIObjectType *type = mod->GetObjectTypeByName("A");
+		asITypeInfo *type = mod->GetTypeInfoByName("A");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) )
 			TEST_FAILED;
-		type = mod->GetObjectTypeByName("B");
+		type = mod->GetTypeInfoByName("B");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) )
 			TEST_FAILED;
-		type = mod->GetObjectTypeByName("C");
+		type = mod->GetTypeInfoByName("C");
 		if( type == 0 || (type->GetFlags() & asOBJ_GC) )
 			TEST_FAILED;
 
@@ -995,6 +1254,17 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 		if( bout.buffer != "" )
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Don't warn 
+		bout.buffer = "";
+		r = ExecuteString(engine, "const int64 i64 = -9223372036854775808; assert( uint64(i64) == 0x8000000000000000 ); ");
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		if (bout.buffer != "")
 		{
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;

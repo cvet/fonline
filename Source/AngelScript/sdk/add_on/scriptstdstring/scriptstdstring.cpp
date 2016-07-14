@@ -352,7 +352,53 @@ static int StringCmp(const string &a, const string &b)
 static int StringFindFirst(const string &sub, asUINT start, const string &str)
 {
 	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
-	return (int)str.find(sub, start);
+	return (int)str.find(sub, (size_t)(start < 0 ? string::npos : start));
+}
+
+// This function returns the index of the first position where the one of the bytes in substring
+// exists in the input string. If the characters in the substring doesn't exist in the input
+// string -1 is returned.
+//
+// AngelScript signature:
+// int string::findFirstOf(const string &in sub, uint start = 0) const
+static int StringFindFirstOf(const string &sub, asUINT start, const string &str)
+{
+	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
+	return (int)str.find_first_of(sub, (size_t)(start < 0 ? string::npos : start));
+}
+
+// This function returns the index of the last position where the one of the bytes in substring
+// exists in the input string. If the characters in the substring doesn't exist in the input
+// string -1 is returned.
+//
+// AngelScript signature:
+// int string::findLastOf(const string &in sub, uint start = -1) const
+static int StringFindLastOf(const string &sub, asUINT start, const string &str)
+{
+	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
+	return (int)str.find_last_of(sub, (size_t)(start < 0 ? string::npos : start));
+}
+
+// This function returns the index of the first position where a byte other than those in substring
+// exists in the input string. If none is found -1 is returned.
+//
+// AngelScript signature:
+// int string::findFirstNotOf(const string &in sub, uint start = 0) const
+static int StringFindFirstNotOf(const string &sub, asUINT start, const string &str)
+{
+	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
+	return (int)str.find_first_not_of(sub, (size_t)(start < 0 ? string::npos : start));
+}
+
+// This function returns the index of the last position where a byte other than those in substring
+// exists in the input string. If none is found -1 is returned.
+//
+// AngelScript signature:
+// int string::findLastNotOf(const string &in sub, uint start = -1) const
+static int StringFindLastNotOf(const string &sub, asUINT start, const string &str)
+{
+	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
+	return (int)str.find_last_of(sub, (size_t)(start < 0 ? string::npos : start));
 }
 
 // This function returns the index of the last position where the substring
@@ -364,8 +410,25 @@ static int StringFindFirst(const string &sub, asUINT start, const string &str)
 static int StringFindLast(const string &sub, int start, const string &str)
 {
 	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
-	return (int)str.rfind(sub, (size_t)start);
+	return (int)str.rfind(sub, (size_t)(start < 0 ? string::npos : start));
 }
+
+// AngelScript signature:
+// void string::insert(uint pos, const string &in other)
+static void StringInsert(unsigned int pos, const string &other, string &str)
+{
+	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
+	str.insert(pos, other);
+}
+
+// AngelScript signature:
+// void string::erase(uint pos, int count = -1)
+static void StringErase(unsigned int pos, int count, string &str)
+{
+	// We don't register the method directly because the argument types change between 32bit and 64bit platforms
+	str.erase(pos, (size_t)(count < 0 ? string::npos : count));
+}
+
 
 // AngelScript signature:
 // uint string::length() const
@@ -566,6 +629,50 @@ static asINT64 parseInt(const string &val, asUINT base, asUINT *byteCount)
 }
 
 // AngelScript signature:
+// uint64 parseUInt(const string &in val, uint base = 10, uint &out byteCount = 0)
+static asQWORD parseUInt(const string &val, asUINT base, asUINT *byteCount)
+{
+	// Only accept base 10 and 16
+	if (base != 10 && base != 16)
+	{
+		if (byteCount) *byteCount = 0;
+		return 0;
+	}
+
+	const char *end = &val[0];
+
+	asQWORD res = 0;
+	if (base == 10)
+	{
+		while (*end >= '0' && *end <= '9')
+		{
+			res *= 10;
+			res += *end++ - '0';
+		}
+	}
+	else if (base == 16)
+	{
+		while ((*end >= '0' && *end <= '9') ||
+			(*end >= 'a' && *end <= 'f') ||
+			(*end >= 'A' && *end <= 'F'))
+		{
+			res *= 16;
+			if (*end >= '0' && *end <= '9')
+				res += *end++ - '0';
+			else if (*end >= 'a' && *end <= 'f')
+				res += *end++ - 'a' + 10;
+			else if (*end >= 'A' && *end <= 'F')
+				res += *end++ - 'A' + 10;
+		}
+	}
+
+	if (byteCount)
+		*byteCount = asUINT(size_t(end - val.c_str()));
+
+	return res;
+}
+
+// AngelScript signature:
 // double parseFloat(const string &in val, uint &out byteCount = 0)
 double parseFloat(const string &val, asUINT *byteCount)
 {
@@ -603,7 +710,7 @@ static string StringSubString(asUINT start, int count, const string &str)
 	// Check for out-of-bounds
 	string ret;
 	if( start < str.length() && count != 0 )
-		ret = str.substr(start, count);
+		ret = str.substr(start, (size_t)(count < 0 ? string::npos : count));
 
 	return ret;
 }
@@ -700,12 +807,20 @@ void RegisterStdString_Native(asIScriptEngine *engine)
 	// Utilities
 	r = engine->RegisterObjectMethod("string", "string substr(uint start = 0, int count = -1) const", asFUNCTION(StringSubString), asCALL_CDECL_OBJLAST); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "int findFirst(const string &in, uint start = 0) const", asFUNCTION(StringFindFirst), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "int findFirstOf(const string &in, uint start = 0) const", asFUNCTION(StringFindFirstOf), asCALL_CDECL_OBJLAST); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "int findFirstNotOf(const string &in, uint start = 0) const", asFUNCTION(StringFindFirstNotOf), asCALL_CDECL_OBJLAST); assert(r >= 0);
 	r = engine->RegisterObjectMethod("string", "int findLast(const string &in, int start = -1) const", asFUNCTION(StringFindLast), asCALL_CDECL_OBJLAST); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "int findLastOf(const string &in, int start = -1) const", asFUNCTION(StringFindLastOf), asCALL_CDECL_OBJLAST); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "int findLastNotOf(const string &in, int start = -1) const", asFUNCTION(StringFindLastNotOf), asCALL_CDECL_OBJLAST); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "void insert(uint pos, const string &in other)", asFUNCTION(StringInsert), asCALL_CDECL_OBJLAST); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "void erase(uint pos, int count = -1)", asFUNCTION(StringErase), asCALL_CDECL_OBJLAST); assert(r >= 0);
+
 
 	r = engine->RegisterGlobalFunction("string formatInt(int64 val, const string &in options = \"\", uint width = 0)", asFUNCTION(formatInt), asCALL_CDECL); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("string formatUInt(uint64 val, const string &in options = \"\", uint width = 0)", asFUNCTION(formatUInt), asCALL_CDECL); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("string formatFloat(double val, const string &in options = \"\", uint width = 0, uint precision = 0)", asFUNCTION(formatFloat), asCALL_CDECL); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("int64 parseInt(const string &in, uint base = 10, uint &out byteCount = 0)", asFUNCTION(parseInt), asCALL_CDECL); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("uint64 parseUInt(const string &in, uint base = 10, uint &out byteCount = 0)", asFUNCTION(parseUInt), asCALL_CDECL); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("double parseFloat(const string &in, uint &out byteCount = 0)", asFUNCTION(parseFloat), asCALL_CDECL); assert(r >= 0);
 
 #if AS_USE_STLNAMES == 1
@@ -720,15 +835,9 @@ void RegisterStdString_Native(asIScriptEngine *engine)
 #endif
 
 	// TODO: Implement the following
-	// findFirstOf
-	// findLastOf
-	// findFirstNotOf
-	// findLastNotOf
 	// findAndReplace - replaces a text found in the string
 	// replaceRange - replaces a range of bytes in the string
-	// trim/trimLeft/trimRight
 	// multiply/times/opMul/opMul_r - takes the string and multiplies it n times, e.g. "-".multiply(5) returns "-----"
-	// parseUInt
 }
 
 #if AS_USE_STRINGPOOL == 1
@@ -829,6 +938,22 @@ static void StringResizeGeneric(asIScriptGeneric * gen)
 	self->resize(*static_cast<asUINT *>(gen->GetAddressOfArg(0)));
 }
 
+static void StringInsert_Generic(asIScriptGeneric *gen)
+{
+	string * self = static_cast<string *>(gen->GetObject());
+	asUINT pos = gen->GetArgDWord(0);
+	string *other = reinterpret_cast<string*>(gen->GetArgAddress(1));
+	StringInsert(pos, *other, *self);
+}
+
+static void StringErase_Generic(asIScriptGeneric *gen)
+{
+	string * self = static_cast<string *>(gen->GetObject());
+	asUINT pos = gen->GetArgDWord(0);
+	int count = int(gen->GetArgDWord(1));
+	StringErase(pos, count, *self);
+}
+
 static void StringFindFirst_Generic(asIScriptGeneric * gen)
 {
 	string *find = reinterpret_cast<string*>(gen->GetArgAddress(0));
@@ -843,6 +968,38 @@ static void StringFindLast_Generic(asIScriptGeneric * gen)
 	asUINT start = gen->GetArgDWord(1);
 	string *self = reinterpret_cast<string *>(gen->GetObject());
 	*reinterpret_cast<int *>(gen->GetAddressOfReturnLocation()) = StringFindLast(*find, start, *self);
+}
+
+static void StringFindFirstOf_Generic(asIScriptGeneric * gen)
+{
+	string *find = reinterpret_cast<string*>(gen->GetArgAddress(0));
+	asUINT start = gen->GetArgDWord(1);
+	string *self = reinterpret_cast<string *>(gen->GetObject());
+	*reinterpret_cast<int *>(gen->GetAddressOfReturnLocation()) = StringFindFirstOf(*find, start, *self);
+}
+
+static void StringFindLastOf_Generic(asIScriptGeneric * gen)
+{
+	string *find = reinterpret_cast<string*>(gen->GetArgAddress(0));
+	asUINT start = gen->GetArgDWord(1);
+	string *self = reinterpret_cast<string *>(gen->GetObject());
+	*reinterpret_cast<int *>(gen->GetAddressOfReturnLocation()) = StringFindLastOf(*find, start, *self);
+}
+
+static void StringFindFirstNotOf_Generic(asIScriptGeneric * gen)
+{
+	string *find = reinterpret_cast<string*>(gen->GetArgAddress(0));
+	asUINT start = gen->GetArgDWord(1);
+	string *self = reinterpret_cast<string *>(gen->GetObject());
+	*reinterpret_cast<int *>(gen->GetAddressOfReturnLocation()) = StringFindFirstNotOf(*find, start, *self);
+}
+
+static void StringFindLastNotOf_Generic(asIScriptGeneric * gen)
+{
+	string *find = reinterpret_cast<string*>(gen->GetArgAddress(0));
+	asUINT start = gen->GetArgDWord(1);
+	string *self = reinterpret_cast<string *>(gen->GetObject());
+	*reinterpret_cast<int *>(gen->GetAddressOfReturnLocation()) = StringFindLastNotOf(*find, start, *self);
 }
 
 static void formatInt_Generic(asIScriptGeneric * gen)
@@ -876,6 +1033,14 @@ static void parseInt_Generic(asIScriptGeneric *gen)
 	asUINT base = gen->GetArgDWord(1);
 	asUINT *byteCount = reinterpret_cast<asUINT*>(gen->GetArgAddress(2));
 	gen->SetReturnQWord(parseInt(*str,base,byteCount));
+}
+
+static void parseUInt_Generic(asIScriptGeneric *gen)
+{
+	string *str = reinterpret_cast<string*>(gen->GetArgAddress(0));
+	asUINT base = gen->GetArgDWord(1);
+	asUINT *byteCount = reinterpret_cast<asUINT*>(gen->GetArgAddress(2));
+	gen->SetReturnQWord(parseUInt(*str, base, byteCount));
 }
 
 static void parseFloat_Generic(asIScriptGeneric *gen)
@@ -1182,14 +1347,22 @@ void RegisterStdString_Generic(asIScriptEngine *engine)
 	r = engine->RegisterObjectMethod("string", "string opAdd(bool) const", asFUNCTION(AddString2BoolGeneric), asCALL_GENERIC); assert( r >= 0 );
 	r = engine->RegisterObjectMethod("string", "string opAdd_r(bool) const", asFUNCTION(AddBool2StringGeneric), asCALL_GENERIC); assert( r >= 0 );
 
-	r = engine->RegisterObjectMethod("string", "string substr(uint start = 0, int count = -1) const", asFUNCTION(StringSubString_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "int findFirst(const string &in, uint start = 0) const", asFUNCTION(StringFindFirst_Generic), asCALL_GENERIC); assert( r >= 0 );
-	r = engine->RegisterObjectMethod("string", "int findLast(const string &in, int start = -1) const", asFUNCTION(StringFindLast_Generic), asCALL_GENERIC); assert( r >= 0 );
+	r = engine->RegisterObjectMethod("string", "string substr(uint start = 0, int count = -1) const", asFUNCTION(StringSubString_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "int findFirst(const string &in, uint start = 0) const", asFUNCTION(StringFindFirst_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "int findFirstOf(const string &in, uint start = 0) const", asFUNCTION(StringFindFirstOf_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "int findFirstNotOf(const string &in, uint start = 0) const", asFUNCTION(StringFindFirstNotOf_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "int findLast(const string &in, int start = -1) const", asFUNCTION(StringFindLast_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "int findLastOf(const string &in, int start = -1) const", asFUNCTION(StringFindLastOf_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "int findLastNotOf(const string &in, int start = -1) const", asFUNCTION(StringFindLastNotOf_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "void insert(uint pos, const string &in other)", asFUNCTION(StringInsert_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterObjectMethod("string", "void erase(uint pos, int count = -1)", asFUNCTION(StringErase_Generic), asCALL_GENERIC); assert(r >= 0);
+
 
 	r = engine->RegisterGlobalFunction("string formatInt(int64 val, const string &in options = \"\", uint width = 0)", asFUNCTION(formatInt_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("string formatUInt(uint64 val, const string &in options = \"\", uint width = 0)", asFUNCTION(formatUInt_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("string formatFloat(double val, const string &in options = \"\", uint width = 0, uint precision = 0)", asFUNCTION(formatFloat_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("int64 parseInt(const string &in, uint base = 10, uint &out byteCount = 0)", asFUNCTION(parseInt_Generic), asCALL_GENERIC); assert(r >= 0);
+	r = engine->RegisterGlobalFunction("uint64 parseUInt(const string &in, uint base = 10, uint &out byteCount = 0)", asFUNCTION(parseUInt_Generic), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterGlobalFunction("double parseFloat(const string &in, uint &out byteCount = 0)", asFUNCTION(parseFloat_Generic), asCALL_GENERIC); assert(r >= 0);
 }
 

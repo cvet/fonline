@@ -81,7 +81,7 @@ The following shows how to retrieve the internals of the delegate:
   // The callback, and accompanying object, if the callback is a class method
   asIScriptFunction *callback           = 0;
   void              *callbackObject     = 0;
-  asIObjectType     *callbackObjectType = 0;
+  asITypeInfo       *callbackObjectType = 0;
   
   void SetCallback(asIScriptFunction *cb)
   {

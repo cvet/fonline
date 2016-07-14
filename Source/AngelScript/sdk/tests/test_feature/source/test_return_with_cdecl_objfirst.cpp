@@ -35,21 +35,21 @@ static ClassNotComplex factory;
 static Class1 notComplex1(ClassNotComplex *obj, int a)
 {
 	assert(obj == &factory);
-	Class1 C = {a};
+	Class1 C = {asDWORD(a)};
 	return C;
 }
 
 static Class2 notComplex2(ClassNotComplex *obj, int a, int b)
 {
 	assert(obj == &factory);
-	Class2 C = {a, b};
+	Class2 C = {asDWORD(a), asDWORD(b)};
 	return C;
 }
 
 static Class3 notComplex3(ClassNotComplex *obj, int a, int b, int c)
 {
 	assert(obj == &factory);
-	Class3 C = {a, b, c};
+	Class3 C = {asDWORD(a), asDWORD(b), asDWORD(c)};
 	return C;
 }
 

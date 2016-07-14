@@ -201,11 +201,11 @@ void RegisterScriptAny_Generic(asIScriptEngine *engine)
 CScriptAny &CScriptAny::operator=(const CScriptAny &other)
 {
 	// Hold on to the object type reference so it isn't destroyed too early
-	if( other.value.valueObj && (other.value.typeId & asTYPEID_MASK_OBJECT) )
+	if( (other.value.typeId & asTYPEID_MASK_OBJECT) )
 	{
-		asIObjectType *ot = engine->GetObjectTypeById(other.value.typeId);
-		if( ot )
-			ot->AddRef();
+		asITypeInfo *ti = engine->GetTypeInfoById(other.value.typeId);
+		if( ti )
+			ti->AddRef();
 	}
 
 	FreeObject();
@@ -215,12 +215,12 @@ CScriptAny &CScriptAny::operator=(const CScriptAny &other)
 	{
 		// For handles, copy the pointer and increment the reference count
 		value.valueObj = other.value.valueObj;
-		engine->AddRefScriptObject(value.valueObj, engine->GetObjectTypeById(value.typeId));
+		engine->AddRefScriptObject(value.valueObj, engine->GetTypeInfoById(value.typeId));
 	}
 	else if( value.typeId & asTYPEID_MASK_OBJECT )
 	{
 		// Create a copy of the object
-		value.valueObj = engine->CreateScriptObjectCopy(other.value.valueObj, engine->GetObjectTypeById(value.typeId));
+		value.valueObj = engine->CreateScriptObjectCopy(other.value.valueObj, engine->GetTypeInfoById(value.typeId));
 	}
 	else
 	{
@@ -250,7 +250,7 @@ CScriptAny::CScriptAny(asIScriptEngine *engine)
 	value.valueInt = 0;
 
 	// Notify the garbage collector of this object
-	engine->NotifyGarbageCollectorOfNewObject(this, engine->GetObjectTypeByName("any"));
+	engine->NotifyGarbageCollectorOfNewObject(this, engine->GetTypeInfoByName("any"));
 }
 
 CScriptAny::CScriptAny(void *ref, int refTypeId, asIScriptEngine *engine)
@@ -263,7 +263,7 @@ CScriptAny::CScriptAny(void *ref, int refTypeId, asIScriptEngine *engine)
 	value.valueInt = 0;
 
 	// Notify the garbage collector of this object
-	engine->NotifyGarbageCollectorOfNewObject(this, engine->GetObjectTypeByName("any"));
+	engine->NotifyGarbageCollectorOfNewObject(this, engine->GetTypeInfoByName("any"));
 
 	Store(ref, refTypeId);
 }
@@ -279,11 +279,11 @@ void CScriptAny::Store(void *ref, int refTypeId)
 	assert( refTypeId > asTYPEID_DOUBLE || refTypeId == asTYPEID_VOID || refTypeId == asTYPEID_BOOL || refTypeId == asTYPEID_INT64 || refTypeId == asTYPEID_DOUBLE );
 
 	// Hold on to the object type reference so it isn't destroyed too early
-	if( *(void**)ref && (refTypeId & asTYPEID_MASK_OBJECT) )
+	if( (refTypeId & asTYPEID_MASK_OBJECT) )
 	{
-		asIObjectType *ot = engine->GetObjectTypeById(refTypeId);
-		if( ot )
-			ot->AddRef();
+		asITypeInfo *ti = engine->GetTypeInfoById(refTypeId);
+		if( ti )
+			ti->AddRef();
 	}
 
 	FreeObject();
@@ -293,12 +293,12 @@ void CScriptAny::Store(void *ref, int refTypeId)
 	{
 		// We're receiving a reference to the handle, so we need to dereference it
 		value.valueObj = *(void**)ref;
-		engine->AddRefScriptObject(value.valueObj, engine->GetObjectTypeById(value.typeId));
+		engine->AddRefScriptObject(value.valueObj, engine->GetTypeInfoById(value.typeId));
 	}
 	else if( value.typeId & asTYPEID_MASK_OBJECT )
 	{
 		// Create a copy of the object
-		value.valueObj = engine->CreateScriptObjectCopy(ref, engine->GetObjectTypeById(value.typeId));
+		value.valueObj = engine->CreateScriptObjectCopy(ref, engine->GetTypeInfoById(value.typeId));
 	}
 	else
 	{
@@ -341,7 +341,7 @@ bool CScriptAny::Retrieve(void *ref, int refTypeId) const
 				return false;
 
 			// RefCastObject will increment the refCount of the returned pointer if successful
-			engine->RefCastObject(value.valueObj, engine->GetObjectTypeById(value.typeId), engine->GetObjectTypeById(refTypeId), reinterpret_cast<void**>(ref));
+			engine->RefCastObject(value.valueObj, engine->GetTypeInfoById(value.typeId), engine->GetTypeInfoById(refTypeId), reinterpret_cast<void**>(ref));
 			if( *(asPWORD*)ref == 0 )
 				return false;
 			return true;
@@ -354,7 +354,7 @@ bool CScriptAny::Retrieve(void *ref, int refTypeId) const
 		// Copy the object into the given reference
 		if( value.typeId == refTypeId )
 		{
-			engine->AssignScriptObject(ref, value.valueObj, engine->GetObjectTypeById(value.typeId));
+			engine->AssignScriptObject(ref, value.valueObj, engine->GetTypeInfoById(value.typeId));
 			return true;
 		}
 	}
@@ -385,14 +385,14 @@ bool CScriptAny::Retrieve(void *ref, int refTypeId) const
 	return false;
 }
 
-bool CScriptAny::Retrieve(asINT64 &value) const
+bool CScriptAny::Retrieve(asINT64 &outValue) const
 {
-	return Retrieve(&value, asTYPEID_INT64);
+	return Retrieve(&outValue, asTYPEID_INT64);
 }
 
-bool CScriptAny::Retrieve(double &value) const
+bool CScriptAny::Retrieve(double &outValue) const
 {
-	return Retrieve(&value, asTYPEID_DOUBLE);
+	return Retrieve(&outValue, asTYPEID_DOUBLE);
 }
 
 int CScriptAny::GetTypeId() const
@@ -406,12 +406,12 @@ void CScriptAny::FreeObject()
 	if( value.typeId & asTYPEID_MASK_OBJECT )
 	{
 		// Let the engine release the object
-		asIObjectType *ot = engine->GetObjectTypeById(value.typeId);
-		engine->ReleaseScriptObject(value.valueObj, ot);
+		asITypeInfo *ti = engine->GetTypeInfoById(value.typeId);
+		engine->ReleaseScriptObject(value.valueObj, ti);
 
 		// Release the object type info
-		if( ot )
-			ot->Release();
+		if( ti )
+			ti->Release();
 
 		value.valueObj = 0;
 		value.typeId = 0;
@@ -421,17 +421,17 @@ void CScriptAny::FreeObject()
 }
 
 
-void CScriptAny::EnumReferences(asIScriptEngine *engine)
+void CScriptAny::EnumReferences(asIScriptEngine *inEngine)
 {
 	// If we're holding a reference, we'll notify the garbage collector of it
 	if( value.valueObj && (value.typeId & asTYPEID_MASK_OBJECT) )
 	{
-		engine->GCEnumCallback(value.valueObj);
+		inEngine->GCEnumCallback(value.valueObj);
 
 		// The object type itself is also garbage collected
-		asIObjectType *ot = engine->GetObjectTypeById(value.typeId);
-		if( ot )
-			engine->GCEnumCallback(ot);
+		asITypeInfo *ti = inEngine->GetTypeInfoById(value.typeId);
+		if( ti )
+			inEngine->GCEnumCallback(ti);
 	}
 }
 

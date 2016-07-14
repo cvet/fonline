@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -123,7 +123,7 @@ void RegisterScriptFunction(asCScriptEngine *engine)
 	int r = 0;
 	UNUSED_VAR(r); // It is only used in debug mode
 	engine->functionBehaviours.engine = engine;
-	engine->functionBehaviours.flags = asOBJ_REF | asOBJ_GC | asOBJ_SCRIPT_FUNCTION;
+	engine->functionBehaviours.flags = asOBJ_REF | asOBJ_GC;
 	engine->functionBehaviours.name = "$func";
 #ifndef AS_MAX_PORTABILITY
 	r = engine->RegisterBehaviourToObjectType(&engine->functionBehaviours, asBEHAVE_ADDREF, "void f()", asMETHOD(asCScriptFunction,AddRef), asCALL_THISCALL, 0); asASSERT( r >= 0 );
@@ -221,7 +221,7 @@ void *asCScriptFunction::GetDelegateObject() const
 }
 
 // interface
-asIObjectType *asCScriptFunction::GetDelegateObjectType() const
+asITypeInfo *asCScriptFunction::GetDelegateObjectType() const
 {
 	if( objForDelegate == 0 || funcForDelegate == 0 )
 		return 0;
@@ -377,7 +377,7 @@ asCScriptFunction::asCScriptFunction(asCScriptEngine *engine, asCModule *mod, as
 	objForDelegate         = 0;
 	funcForDelegate        = 0;
 	listPattern            = 0;
-	parentClass            = 0;
+	funcdefType            = 0;
 
 	if( funcType == asFUNC_SCRIPT )
 		AllocateScriptFunctionData();
@@ -467,12 +467,6 @@ void asCScriptFunction::DestroyInternal()
 	}
 	userData.SetLength(0);
 
-	if (funcType == asFUNC_FUNCDEF && parentClass)
-	{
-		parentClass->childFuncDefs.RemoveValue(this);
-		parentClass = 0;
-	}
-
 	// Release all references the function holds to other objects
 	ReleaseReferences();
 	parameterTypes.SetLength(0);
@@ -502,12 +496,6 @@ void asCScriptFunction::DestroyInternal()
 		asDELETE(listPattern, asSListPatternNode);
 		listPattern = n;
 	}
-}
-
-// interface
-asIObjectType *asCScriptFunction::GetParentType() const
-{
-	return parentClass;
 }
 
 // interface
@@ -574,7 +562,7 @@ int asCScriptFunction::ReleaseInternal()
 int asCScriptFunction::GetTypeId() const
 {
 	// This const cast is ok, the object won't be modified
-	asCDataType dt = asCDataType::CreateFuncDef(const_cast<asCScriptFunction*>(this));
+	asCDataType dt = asCDataType::CreateType(engine->FindMatchingFuncdef(const_cast<asCScriptFunction*>(this), 0), false);
 	return engine->GetTypeIdFromDataType(dt);
 }
 
@@ -584,10 +572,10 @@ bool asCScriptFunction::IsCompatibleWithTypeId(int typeId) const
 	asCDataType dt = engine->GetDataTypeFromTypeId(typeId);
 
 	// Make sure the type is a function
-	asCScriptFunction *func = dt.GetFuncDef();
-	if( func == 0 )
+	if (!dt.IsFuncdef())
 		return false;
 
+	asCScriptFunction *func = dt.GetTypeInfo()->CastToFuncdefType()->funcdef;
 	if( !IsSignatureExceptNameEqual(func) )
 		return false;
 
@@ -616,7 +604,7 @@ asIScriptModule *asCScriptFunction::GetModule() const
 }
 
 // interface
-asIObjectType *asCScriptFunction::GetObjectType() const
+asITypeInfo *asCScriptFunction::GetObjectType() const
 {
 	return objectType;
 }
@@ -717,13 +705,13 @@ asCString asCScriptFunction::GetDeclarationStr(bool includeObjectName, bool incl
 		else
 			str += "_unnamed_type_::";
 	}
-	else if (parentClass && includeObjectName)
+	else if (funcdefType && funcdefType->parentClass && includeObjectName)
 	{
-		if (includeNamespace && parentClass->nameSpace->name != "")
-			str += parentClass->nameSpace->name + "::";
+		if (includeNamespace && funcdefType->parentClass->nameSpace->name != "")
+			str += funcdefType->parentClass->nameSpace->name + "::";
 
-		if (parentClass->name != "")
-			str += parentClass->name + "::";
+		if (funcdefType->parentClass->name != "")
+			str += funcdefType->parentClass->name + "::";
 		else
 			str += "_unnamed_type_::";
 	}
@@ -1004,7 +992,7 @@ void asCScriptFunction::AddVariable(asCString &in_name, asCDataType &in_type, in
 }
 
 // internal
-asCObjectType *asCScriptFunction::GetObjectTypeOfLocalVar(short varOffset)
+asCTypeInfo *asCScriptFunction::GetTypeInfoOfLocalVar(short varOffset)
 {
 	asASSERT( scriptData );
 
@@ -1492,7 +1480,7 @@ const char *asCScriptFunction::GetConfigGroup() const
 	if( funcType != asFUNC_FUNCDEF )
 		group = engine->FindConfigGroupForFunction(id);
 	else
-		group = engine->FindConfigGroupForFuncDef(this);
+		group = engine->FindConfigGroupForFuncDef(this->funcdefType);
 
 	if( group == 0 )
 		return 0;

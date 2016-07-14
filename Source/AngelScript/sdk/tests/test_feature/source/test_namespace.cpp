@@ -11,6 +11,82 @@ bool Test()
 	COutStream out;
 	CBufferedOutStream bout;
 
+	// Calling base class method from overridden method when base class is declared in a different namespace
+	// http://www.gamedev.net/topic/675631-unable-to-call-base-function-on-class-outside-of-namespace/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace Test \n"
+			"{ \n"
+			"	class Bar : Foo \n"
+			"	{ \n"
+			"		void Stuff() override \n"
+			"		{ \n"
+			"			Foo::Stuff();  \n"
+			"			::Foo::Stuff();  \n"
+			"		} \n"
+			"	} \n"
+			"} \n"
+			"class Foo \n"
+			"{ \n"
+			"	void Stuff() \n"
+			"	{ \n"
+			"		// do stuff \n"
+			"	} \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Partial namespace specialization of enum in namespace
+	// http://www.gamedev.net/topic/673284-namespace-auto-detection-fail/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"namespace A\n"
+			"{\n"
+			"	enum B { b1 }\n"
+			"	void main()\n"
+			"	{\n"
+			"		B b1 = B::b1; \n"		// Partial namespace specialization
+			"		B b2 = b1; \n"			// Implicit namespace
+			"		A::B b3 = A::B::b1; \n"	// Complete namespace specialization
+			"		::C c1 = ::C::c1; \n"	// Complete namespace specialization
+			"		C c2 = c1; \n"			// Implicit namespace
+			"		C c3 = C::c1; \n"		// Partial namespace specialization
+			"	}\n"
+			"} \n"
+			"enum C { c1 }\n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test bug with namespace
 	// http://www.gamedev.net/topic/672251-unknown-datatype-when-using-class-in-namespace/
 	{
@@ -413,7 +489,7 @@ bool Test()
 			TEST_FAILED;
 
 		// Fully specify the namespace to get the correct object
-		asIObjectType *type = mod->GetObjectTypeByDecl("net::room::kernel");
+		asITypeInfo *type = mod->GetTypeInfoByDecl("net::room::kernel");
 		std::string str = engine->GetTypeDeclaration(type->GetTypeId(), true);
 		if( str != "net::room::kernel" )
 		{
@@ -423,7 +499,7 @@ bool Test()
 
 		// Also possible to get it by setting the default namespace
 		mod->SetDefaultNamespace("net::room");
-		type = mod->GetObjectTypeByDecl("kernel");
+		type = mod->GetTypeInfoByDecl("kernel");
 		str = engine->GetTypeDeclaration(type->GetTypeId(), true);
 		if( str != "net::room::kernel" )
 		{
@@ -829,9 +905,9 @@ bool Test()
 		if( r != asALREADY_REGISTERED ) TEST_FAILED;
 
 		engine->SetDefaultNamespace("");
-		asIObjectType *o1 = engine->GetObjectTypeByName("TestObj");
+		asITypeInfo *o1 = engine->GetTypeInfoByName("TestObj");
 		engine->SetDefaultNamespace("A");
-		asIObjectType *o2 = engine->GetObjectTypeByName("TestObj");
+		asITypeInfo *o2 = engine->GetTypeInfoByName("TestObj");
 		if( o1 == 0 || o2 == 0 )
 			TEST_FAILED;
 		if( o1 == o2 )
@@ -913,15 +989,15 @@ bool Test()
 		if( r < 0 ) 
 			TEST_FAILED;
 
-		asIObjectType *type = mod->GetObjectTypeByName("b");
+		asITypeInfo *type = mod->GetTypeInfoByName("b");
 		if( type == 0 )
 			TEST_FAILED;
 		else
 		{
 			mod->SetDefaultNamespace("A");
-			if( !type->DerivesFrom(mod->GetObjectTypeByName("a")) )
+			if( !type->DerivesFrom(mod->GetTypeInfoByName("a")) )
 				TEST_FAILED;
-			if( !type->Implements(mod->GetObjectTypeByName("i")) )
+			if( !type->Implements(mod->GetTypeInfoByName("i")) )
 				TEST_FAILED;
 		}
 
@@ -948,22 +1024,20 @@ bool Test()
 			TEST_FAILED;
 
 		// Make sure it's possible to retrieve the enum again
-		int typeId;
-		const char *ns;
-		const char *e = engine->GetEnumByIndex(0, &typeId, &ns);
-		if( std::string(e) != "ETest" )
+		asITypeInfo *ti = engine->GetEnumByIndex(0);
+		if( std::string(ti->GetName()) != "ETest" )
 			TEST_FAILED;
-		if( std::string(ns) != "A" )
+		if( std::string(ti->GetNamespace()) != "A" )
 			TEST_FAILED;
-		if( typeId != engine->GetTypeIdByDecl("ETest") )
+		if( ti->GetTypeId() != engine->GetTypeIdByDecl("ETest") )
 			TEST_FAILED;
 		engine->SetDefaultNamespace("");
-		e = engine->GetEnumByIndex(0, &typeId, &ns);
-		if( std::string(e) != "ETest" )
+		ti = engine->GetEnumByIndex(0);
+		if( std::string(ti->GetName()) != "ETest" )
 			TEST_FAILED;
-		if( std::string(ns) != "A" )
+		if( std::string(ti->GetNamespace()) != "A" )
 			TEST_FAILED;
-		if( typeId != engine->GetTypeIdByDecl("A::ETest") )
+		if( ti->GetTypeId() != engine->GetTypeIdByDecl("A::ETest") )
 			TEST_FAILED;
 
 		engine->Release();

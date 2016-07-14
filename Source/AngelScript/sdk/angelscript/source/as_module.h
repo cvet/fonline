@@ -58,6 +58,8 @@ class asCCompiler;
 class asCBuilder;
 class asCContext;
 class asCConfigGroup;
+class asCTypedefType;
+class asCFuncdefType;
 struct asSNameSpace;
 
 struct sBindInfo
@@ -84,7 +86,7 @@ struct sObjectTypePair
 //       With this separation it will be possible to compile the library without
 //       the compiler, thus giving a much smaller binary executable.
 
-// TODO: There should be an special compile option that will let the application
+// TODO: There should be a special compile option that will let the application
 //       recompile an already compiled script. The compiler should check if no
 //       destructive changes have been made (changing function signatures, etc)
 //       then it should simply replace the bytecode within the functions without
@@ -130,20 +132,28 @@ public:
 
 	// Type identification
 	virtual asUINT         GetObjectTypeCount() const;
-	virtual asIObjectType *GetObjectTypeByIndex(asUINT index) const;
-	virtual asIObjectType *GetObjectTypeByName(const char *name) const;
-	virtual asIObjectType *GetObjectTypeByDecl(const char *decl) const;
+	virtual asITypeInfo   *GetTypeInfoByIndex(asUINT index) const;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const;
+	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const;
+#endif
 	virtual int            GetTypeIdByDecl(const char *decl) const;
+	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const;
+	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const;
 
 	// Enums
-	virtual asUINT      GetEnumCount() const;
-	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **nameSpace) const;
-	virtual int         GetEnumValueCount(int enumTypeId) const;
-	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const;
+	virtual asUINT       GetEnumCount() const;
+	virtual asITypeInfo *GetEnumByIndex(asUINT index) const;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	virtual int          GetEnumValueCount(int enumTypeId) const;
+	virtual const char * GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const;
+#endif
 
 	// Typedefs
-	virtual asUINT      GetTypedefCount() const;
-	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **nameSpace) const;
+	virtual asUINT       GetTypedefCount() const;
+	virtual asITypeInfo *GetTypedefByIndex(asUINT index) const;
 
 	// Dynamic binding between modules
 	virtual asUINT      GetImportedFunctionCount() const;
@@ -226,9 +236,9 @@ public:
 	// This array holds enum types
 	asCArray<asCEnumType*>         enumTypes; // increases ref count
 	// This array holds typedefs
-	asCArray<asCObjectType*>       typeDefs; // increases ref count
+	asCArray<asCTypedefType*>      typeDefs; // increases ref count
 	// This array holds the funcdefs declared in the module
-	asCArray<asCScriptFunction*>   funcDefs; // increases ref count
+	asCArray<asCFuncdefType*>      funcDefs; // increases ref count
 };
 
 END_AS_NAMESPACE

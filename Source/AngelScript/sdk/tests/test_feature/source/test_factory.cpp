@@ -3,8 +3,6 @@
 
 namespace TestFactory
 {
-static const char * const TESTNAME = "TestFactory";
-
 
 class MyFactory
 {

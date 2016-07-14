@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -155,6 +155,7 @@
 //
 // How to identify different compilers
 //-----------------------------------------
+// Ref: http://nadeausoftware.com/articles/2012/10/c_c_tip_how_detect_compiler_name_and_version_using_compiler_predefined_macros
 
 // MS Visual C++
 //  _MSC_VER   is defined
@@ -167,10 +168,13 @@
 // GNU C based compilers
 //  __GNUC__   is defined
 
+// CLang/LLVM 
+// __clang__ is defined
+
 // Embarcadero C++Builder
 //  __BORLANDC__ is defined
 
-// Sun CC compiler
+// Oracle Solaris Studio (previously known as Sun CC compiler)
 // __SUNPRO_CC is defined
 
 
@@ -602,7 +606,8 @@
 
 // GNU C (and MinGW or Cygwin on Windows)
 // Use the following command to determine predefined macros: echo . | g++ -dM -E -
-#if (defined(__GNUC__) && !defined(__SNC__)) || defined(EPPC) || defined(__CYGWIN__) // JWC -- use this instead for Wii
+// MSVC2015 can now use CLang too, but it shouldn't go in here
+#if (defined(__GNUC__) && !defined(__SNC__) && !defined(_MSC_VER)) || defined(EPPC) || defined(__CYGWIN__) // JWC -- use this instead for Wii
 	#define GNU_STYLE_VIRTUAL_METHOD
 	#define MULTI_BASE_OFFSET(x) (*((asPWORD*)(&x)+1))
 	#define asVSNPRINTF(a, b, c, d) vsnprintf(a, b, c, d)
@@ -911,7 +916,7 @@
 				// For other ABIs the native calling convention is not available (yet)
 				#define AS_MAX_PORTABILITY
 			#endif
-		#elif defined(__PPC64)
+		#elif defined(__PPC64__)
 			// Support native calling conventions on Linux with PPC64
 			// TODO: This has not yet been confirmed to work
 			#define AS_PPC_64
@@ -1163,23 +1168,20 @@
 // Detect target hardware
 //------------------------------------------------
 
-// X86, Intel, AMD, etc, i.e. most PCs
-#if defined(__i386__) || defined(_M_IX86)
-	// Nothing special here
+// Big endian CPU target?
+// see: http://sourceforge.net/p/predef/wiki/Endianness/
+#if !defined(AS_BIG_ENDIAN) && \
+	defined(__BYTE_ORDER) && __BYTE_ORDER == __BIG_ENDIAN || \
+	defined(__BIG_ENDIAN__) || \
+	defined(__ARMEB__) || \
+	defined(__THUMBEB__) || \
+	defined(__AARCH64EB__) || \
+	defined(_MIBSEB) || defined(__MIBSEB) || defined(__MIBSEB__)
+		#define AS_BIG_ENDIAN
 #endif
 
-// PowerPC, e.g. Mac, GameCube, PS3, XBox 360, Wii
-#if defined(__PPC__) || defined(__ppc__) || defined(_PPC_) || defined(EPPC)
-	#define AS_BIG_ENDIAN
-
-	// Gamecube
-	#if defined(_GC)
-		#define AS_USE_DOUBLE_AS_FLOAT
-	#endif
-#endif
-
-// Dreamcast console
-#ifdef __SH4_SINGLE_ONLY__
+// Dreamcast and Gamecube use only 32bit floats, so treat doubles as floats
+#if defined(__SH4_SINGLE_ONLY__) || defined(_GC)
 	#define AS_USE_DOUBLE_AS_FLOAT	// use 32bit floats instead of doubles
 #endif
 

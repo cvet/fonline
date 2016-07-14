@@ -8,7 +8,7 @@ namespace TestTemplate
 class MyTmpl
 {
 public:
-	MyTmpl(asIObjectType *t) 
+	MyTmpl(asITypeInfo *t) 
 	{
 		refCount = 1;
 		type = t;
@@ -16,7 +16,7 @@ public:
 		type->AddRef();
 	}
 
-	MyTmpl(asIObjectType *t, int len) 
+	MyTmpl(asITypeInfo *t, int len)
 	{
 		refCount = 1;
 		type = t;
@@ -68,18 +68,18 @@ public:
 		return 0;
 	}
 
-	asIObjectType *type;
+	asITypeInfo *type;
 	int refCount;
 
 	int length;
 };
 
-MyTmpl *MyTmpl_factory(asIObjectType *type)
+MyTmpl *MyTmpl_factory(asITypeInfo *type)
 {
 	return new MyTmpl(type);
 }
 
-MyTmpl *MyTmpl_factory(asIObjectType *type, int len)
+MyTmpl *MyTmpl_factory(asITypeInfo *type, int len)
 {
 	return new MyTmpl(type, len);
 }
@@ -135,7 +135,7 @@ MyTmpl_float *MyTmpl_float_factory()
 class MyDualTmpl
 {
 public:
-	MyDualTmpl(asIObjectType *t) 
+	MyDualTmpl(asITypeInfo *t)
 	{
 		refCount = 1;
 		type = t;
@@ -156,10 +156,10 @@ public:
 		if( --refCount == 0 )
 			delete this;
 	}
-	asIObjectType *type;
+	asITypeInfo *type;
 	int refCount;
 };
-MyDualTmpl *MyDualTmpl_factory(asIObjectType *type)
+MyDualTmpl *MyDualTmpl_factory(asITypeInfo *type)
 {
 	return new MyDualTmpl(type);
 }
@@ -168,12 +168,12 @@ MyDualTmpl *MyDualTmpl_factory(asIObjectType *type)
 class MyValueTmpl
 {
 public:
-	MyValueTmpl(asIObjectType *type) : ot(type) 
+	MyValueTmpl(asITypeInfo *type) : ot(type) 
 	{ 
 		ot->AddRef(); 
 		isSet = false;
 	}
-	MyValueTmpl(asIObjectType *type, const MyValueTmpl &other) : ot(type)
+	MyValueTmpl(asITypeInfo *type, const MyValueTmpl &other) : ot(type)
 	{
 		ot->AddRef();
 		isSet = false;
@@ -186,11 +186,11 @@ public:
 
 	std::string GetSubType() { isSet = true; return std::string(ot->GetEngine()->GetTypeDeclaration(ot->GetSubTypeId())); }
 
-	static void Construct(asIObjectType *type, void *mem) { new(mem) MyValueTmpl(type); }
-	static void CopyConstruct(asIObjectType *type, const MyValueTmpl &other, void *mem) { new(mem) MyValueTmpl(type, other); }
+	static void Construct(asITypeInfo *type, void *mem) { new(mem) MyValueTmpl(type); }
+	static void CopyConstruct(asITypeInfo *type, const MyValueTmpl &other, void *mem) { new(mem) MyValueTmpl(type, other); }
 	static void Destruct(MyValueTmpl *obj) { obj->~MyValueTmpl(); }
 
-	asIObjectType *ot;
+	asITypeInfo *ot;
 	bool isSet;
 };
 
@@ -429,7 +429,7 @@ bool Test()
 		engine->GetGCStatistics(&size, &destr, &detect);
 
 		// It must be possible to find method by declaration on the template instances
-		asIObjectType *ot = engine->GetObjectTypeById(engine->GetTypeIdByDecl("MyDualTmpl<int, string>"));
+		asITypeInfo *ot = engine->GetTypeInfoById(engine->GetTypeIdByDecl("MyDualTmpl<int, string>"));
 		if( ot == 0 )
 			TEST_FAILED;
 		asIScriptFunction *mthd = ot->GetMethodByDecl("int &func(const string &in)");
@@ -516,7 +516,7 @@ bool Test()
 		}
 
 		// Get the template instance
-		asIObjectType *type = engine->GetObjectTypeById(engine->GetTypeIdByDecl("tmpl<int, bool, float>"));
+		asITypeInfo *type = engine->GetTypeInfoById(engine->GetTypeIdByDecl("tmpl<int, bool, float>"));
 		if( type->GetSubTypeCount() != 3 )
 			TEST_FAILED;
 		if( type->GetSubTypeId(0) != asTYPEID_INT32 ||
@@ -669,7 +669,7 @@ bool Test()
 	if( r < 0 )
 		TEST_FAILED;
 
-	r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int&in)", asFUNCTIONPR(MyTmpl_factory, (asIObjectType*), MyTmpl*), asCALL_CDECL); assert( r >= 0 );
+	r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int&in)", asFUNCTIONPR(MyTmpl_factory, (asITypeInfo*), MyTmpl*), asCALL_CDECL); assert( r >= 0 );
 	r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(MyTmpl, AddRef), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(MyTmpl, Release), asCALL_THISCALL); assert( r >= 0 );
 
@@ -715,7 +715,7 @@ bool Test()
 
 	// It should be possible to register specializations of the template type
 	r = engine->RegisterObjectType("MyTmpl<float>", 0, asOBJ_REF); assert( r >= 0 );
-	// The specialization's factory doesn't take the hidden asIObjectType parameter
+	// The specialization's factory doesn't take the hidden asITypeInfo parameter
 	r = engine->RegisterObjectBehaviour("MyTmpl<float>", asBEHAVE_FACTORY, "MyTmpl<float> @f()", asFUNCTION(MyTmpl_float_factory), asCALL_CDECL); assert( r >= 0 );
 	r = engine->RegisterObjectBehaviour("MyTmpl<float>", asBEHAVE_ADDREF, "void f()", asMETHOD(MyTmpl_float, AddRef), asCALL_THISCALL); assert( r >= 0 );
 	r = engine->RegisterObjectBehaviour("MyTmpl<float>", asBEHAVE_RELEASE, "void f()", asMETHOD(MyTmpl_float, Release), asCALL_THISCALL); assert( r >= 0 );
@@ -846,7 +846,7 @@ bool Test()
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
 
 		r = engine->RegisterObjectType("MyTmpl<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE); assert( r >= 0 );
-		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int &in)", asFUNCTIONPR(MyTmpl_factory, (asIObjectType*), MyTmpl*), asCALL_CDECL); assert( r >= 0 );
+		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int &in)", asFUNCTIONPR(MyTmpl_factory, (asITypeInfo*), MyTmpl*), asCALL_CDECL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(MyTmpl, AddRef), asCALL_THISCALL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(MyTmpl, Release), asCALL_THISCALL); assert( r >= 0 );
 
@@ -875,7 +875,7 @@ bool Test()
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
 
 		r = engine->RegisterObjectType("MyTmpl<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE); assert( r >= 0 );
-		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int &in)", asFUNCTIONPR(MyTmpl_factory, (asIObjectType*), MyTmpl*), asCALL_CDECL); assert( r >= 0 );
+		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int &in)", asFUNCTIONPR(MyTmpl_factory, (asITypeInfo*), MyTmpl*), asCALL_CDECL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(MyTmpl, AddRef), asCALL_THISCALL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(MyTmpl, Release), asCALL_THISCALL); assert( r >= 0 );
 
@@ -899,7 +899,7 @@ bool Test()
 	}
 
 
-	// The factory behaviour for a template class must have a hidden reference as first parameter (which receives the asIObjectType)
+	// The factory behaviour for a template class must have a hidden reference as first parameter (which receives the asITypeInfo)
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		r = engine->RegisterObjectType("MyTmpl<class T>", 0, asOBJ_REF | asOBJ_TEMPLATE); assert( r >= 0 );
@@ -943,7 +943,7 @@ bool Test()
 		CBufferedOutStream bout;
 		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
 		r = engine->RegisterObjectType("MyTmpl<class T>", 0, asOBJ_REF|asOBJ_TEMPLATE); assert( r >= 0 );
-		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int &in, int)", asFUNCTIONPR(MyTmpl_factory, (asIObjectType*, int), MyTmpl*), asCALL_CDECL); assert( r >= 0 );
+		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_FACTORY, "MyTmpl<T> @f(int &in, int)", asFUNCTIONPR(MyTmpl_factory, (asITypeInfo*, int), MyTmpl*), asCALL_CDECL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_ADDREF, "void f()", asMETHOD(MyTmpl, AddRef), asCALL_THISCALL); assert( r >= 0 );
 		r = engine->RegisterObjectBehaviour("MyTmpl<T>", asBEHAVE_RELEASE, "void f()", asMETHOD(MyTmpl, Release), asCALL_THISCALL); assert( r >= 0 );
 
@@ -1002,12 +1002,12 @@ class CScriptType
 {
 public:
 
-    static void Construct(asIObjectType *type, void *mem);
-    static void CopyConstruct(asIObjectType *type, const CScriptType &other, void *mem);
+    static void Construct(asITypeInfo *type, void *mem);
+    static void CopyConstruct(asITypeInfo *type, const CScriptType &other, void *mem);
     static void Destruct(CScriptType *obj);
 
-    CScriptType(asIObjectType *type);
-    CScriptType(asIObjectType *type, const CScriptType &other);
+    CScriptType(asITypeInfo *type);
+    CScriptType(asITypeInfo *type, const CScriptType &other);
     virtual ~CScriptType();
 
     int GetSubTypeId() const;
@@ -1021,7 +1021,7 @@ public:
     // std::string GetSubType() { return std::string(ot->GetEngine()->GetTypeDeclaration(ot->GetSubTypeId())); }
 
 protected:
-    asIObjectType *ot;
+    asITypeInfo *ot;
 };
 
 static bool ScriptTypeTypeidEquals(int other, int *self)
@@ -1040,7 +1040,7 @@ static std::string ScriptTypeGetClassname(int typeId)
     if ( ctx )
     {
         return ctx->GetEngine()->GetTypeDeclaration(typeId, true);
-        // asIObjectType* objType = ctx->GetEngine()->GetObjectTypeById(typeId);
+        // asITypeInfo* objType = ctx->GetEngine()->GetTypeInfoById(typeId);
         // if ( objType )
         // {
 
@@ -1070,12 +1070,12 @@ static std::string ScriptTypeTypeidToString(int *self)
     return ScriptTypeGetClassname(*self);
 }
 
-void CScriptType::Construct(asIObjectType *type, void *mem)
+void CScriptType::Construct(asITypeInfo *type, void *mem)
 {
     new(mem) CScriptType(type);
 }
 
-void CScriptType::CopyConstruct(asIObjectType *type, const CScriptType &other, void *mem)
+void CScriptType::CopyConstruct(asITypeInfo *type, const CScriptType &other, void *mem)
 {
     new(mem) CScriptType(type, other);
 }
@@ -1085,13 +1085,13 @@ void CScriptType::Destruct(CScriptType *obj)
     obj->~CScriptType();
 }
 
-CScriptType::CScriptType(asIObjectType *type)
+CScriptType::CScriptType(asITypeInfo *type)
     : ot(type)
 {
     ot->AddRef();
 }
 
-CScriptType::CScriptType(asIObjectType *type, const CScriptType &other)
+CScriptType::CScriptType(asITypeInfo *type, const CScriptType &other)
     : ot(type)
 {
     ot->AddRef();

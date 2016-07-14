@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -63,9 +63,9 @@ BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-//! Version 2.30.2
-#define ANGELSCRIPT_VERSION        23002
-#define ANGELSCRIPT_VERSION_STRING "2.30.2"
+//! Version 2.31.1
+#define ANGELSCRIPT_VERSION        23101
+#define ANGELSCRIPT_VERSION_STRING "2.31.1"
 
 // Data types
 
@@ -74,7 +74,12 @@ class asIScriptModule;
 class asIScriptContext;
 class asIScriptGeneric;
 class asIScriptObject;
-class asIObjectType;
+class asITypeInfo;
+#ifdef AS_DEPRECATED
+// deprecated since 2.31.0 - 2015/11/18
+//! \deprecated Since 2.31.0. Use \ref asITypeInfo instead.
+typedef asITypeInfo asIObjectType;
+#endif
 class asIScriptFunction;
 class asIBinaryStream;
 class asIJITCompiler;
@@ -195,10 +200,14 @@ enum asEEngineProp
 	asEP_ALTER_SYNTAX_NAMED_ARGS            = 21,
 	//! When true, the / and /= operators will perform floating-point division (i.e. 1/2 = 0.5 instead of 0). Default: false
 	asEP_DISABLE_INTEGER_DIVISION           = 22,
-	//! When true, the initialization lists may not contain empty elements
+	//! When true, the initialization lists may not contain empty elements. Default: false
 	asEP_DISALLOW_EMPTY_LIST_ELEMENTS       = 23,
-	//! When true, private properties behave like protected properties
+	//! When true, private properties behave like protected properties. Default: false
 	asEP_PRIVATE_PROP_AS_PROTECTED          = 24,
+	//! When true, the compiler will not give an error if identifiers contain characters with byte value above 127, thus permit identifiers to contain international characters. Default: false
+	asEP_ALLOW_UNICODE_IDENTIFIERS          = 25,
+	//! Define how heredoc strings will be trimmed by the compiler: 0 - never trim, 1 - trim if multiple lines, 2 - always trim. Default: 1
+	asEP_HEREDOC_TRIM_MODE                  = 26,
 
 	asEP_LAST_PROPERTY
 };
@@ -311,12 +320,15 @@ enum asEObjTypeFlags
 	asOBJ_SHARED                     = (1<<22),
 	//! The object type is marked as final and cannot be inherited.
 	asOBJ_NOINHERIT                  = (1<<23),
-	//! The object type is a script function
-	asOBJ_SCRIPT_FUNCTION            = (1<<24),
+	//! The type is a script funcdef
+	asOBJ_FUNCDEF                    = (1<<24),
 	asOBJ_LIST_PATTERN               = (1<<25),
+	//! The type is an enum
 	asOBJ_ENUM                       = (1<<26),
 	asOBJ_TEMPLATE_SUBTYPE           = (1<<27),
+	//! The type is a typedef
 	asOBJ_TYPEDEF                    = (1<<28),
+	//! The class is abstract, i.e. cannot be instantiated
 	asOBJ_ABSTRACT                   = (1<<29),
 	asOBJ_APP_ALIGN16                = (1<<30)
 };
@@ -578,26 +590,26 @@ enum asEFuncType
 typedef unsigned char  asBYTE;
 typedef unsigned short asWORD;
 typedef unsigned int   asUINT;
-#if (defined(_MSC_VER) && _MSC_VER <= 1200) || defined(__S3E__)
+#if (defined(_MSC_VER) && _MSC_VER <= 1200) || defined(__S3E__) || (defined(_MSC_VER) && defined(__clang__))
 	// size_t is not really correct, since it only guaranteed to be large enough to hold the segment size.
 	// For example, on 16bit systems the size_t may be 16bits only even if pointers are 32bit. But nobody
 	// is likely to use MSVC6 to compile for 16bit systems anymore, so this should be ok.
-	typedef size_t	       asPWORD;
+	typedef size_t         asPWORD;
 #else
 	typedef uintptr_t      asPWORD;
 #endif
 #ifdef __LP64__
-    typedef unsigned int  asDWORD;
-    typedef unsigned long asQWORD;
-    typedef long asINT64;
+	typedef unsigned int  asDWORD;
+	typedef unsigned long asQWORD;
+	typedef long asINT64;
 #else
-    typedef unsigned long asDWORD;
-  #if defined(__GNUC__) || defined(__MWERKS__) || defined(__SUNPRO_CC) || defined(__psp2__)
-    typedef uint64_t asQWORD;
-    typedef int64_t asINT64;
+	typedef unsigned long asDWORD;
+  #if !defined(_MSC_VER) && (defined(__GNUC__) || defined(__MWERKS__) || defined(__SUNPRO_CC) || defined(__psp2__))
+	typedef uint64_t asQWORD;
+	typedef int64_t asINT64;
   #else
-    typedef unsigned __int64 asQWORD;
-    typedef __int64 asINT64;
+	typedef unsigned __int64 asQWORD;
+	typedef __int64 asINT64;
   #endif
 #endif
 
@@ -623,8 +635,13 @@ typedef void (*asCLEANMODULEFUNC_t)(asIScriptModule *);
 typedef void (*asCLEANCONTEXTFUNC_t)(asIScriptContext *);
 //! The function signature for the function cleanup callback function
 typedef void (*asCLEANFUNCTIONFUNC_t)(asIScriptFunction *);
-//! The function signature for the object type cleanup callback function
-typedef void (*asCLEANOBJECTTYPEFUNC_t)(asIObjectType *);
+//! The function signature for the type info cleanup callback function
+typedef void (*asCLEANTYPEINFOFUNC_t)(asITypeInfo *);
+#ifdef AS_DEPRECATED
+// deprecated since 2.31.0 - 2015/11/18
+//! \deprecated Since 2.31.0. Use \ref asCLEANTYPEINFOFUNC_t instead
+typedef asCLEANTYPEINFOFUNC_t asCLEANOBJECTTYPEFUNC_t;
+#endif
 //! The function signature for the script object cleanup callback function
 typedef void (*asCLEANSCRIPTOBJECTFUNC_t)(asIScriptObject *);
 //! The function signature for the request context callback
@@ -634,14 +651,14 @@ typedef void (*asRETURNCONTEXTFUNC_t)(asIScriptEngine *, asIScriptContext *, voi
 
 // Check if the compiler can use C++11 features
 #if !defined(_MSC_VER) || _MSC_VER >= 1700   // MSVC 2012
-#if !defined(__GNUC__) || __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)  // gnuc 4.7
-#if !(defined(__GNUC__) && defined(__cplusplus) && __cplusplus < 201103L) // g++ -std=c++11
-#if !defined(__SUNPRO_CC)
-//! \brief This macro is defined if the compiler supports the C++11 feature set
-#define AS_CAN_USE_CPP11 1
-#endif
-#endif
-#endif
+ #if !defined(__GNUC__) || defined(__clang__) || __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)  // gnuc 4.7 or clang
+  #if !(defined(__GNUC__) && defined(__cplusplus) && __cplusplus < 201103L) // gnuc and clang require compiler flag -std=c++11
+   #if !defined(__SUNPRO_CC) // Oracle Solaris Studio
+    //! \brief This macro is defined if the compiler supports the C++11 feature set
+    #define AS_CAN_USE_CPP11 1
+   #endif
+  #endif
+ #endif
 #endif
 
 // This macro does basically the same thing as offsetof defined in stddef.h, but
@@ -1165,19 +1182,22 @@ public:
 	//! \param[in] declaration The declaration of the global function in script syntax.
 	//! \param[in] funcPointer The function pointer.
 	//! \param[in] callConv The calling convention for the function.
-	//! \param[in] objForThiscall An object pointer for use with \ref asCALL_THISCALL_ASGLOBAL.
+	//! \param[in] auxiliary A helper object for use with some calling conventions.
 	//! \return A negative value on error, or the function id if successful.
 	//! \retval asNOT_SUPPORTED The calling convention is not supported.
 	//! \retval asWRONG_CALLING_CONV The function's calling convention doesn't match \a callConv.
 	//! \retval asINVALID_DECLARATION The function declaration is invalid.
 	//! \retval asNAME_TAKEN The function name is already used elsewhere.
 	//! \retval asALREADY_REGISTERED The function has already been registered with the same parameter list.
-	//! \retval asINVALID_ARG The \a objForThiscall pointer wasn't set according to calling convention.
+	//! \retval asINVALID_ARG The \a auxiliary pointer wasn't set according to calling convention.
 	//!
 	//! This method registers system functions that the scripts may use to communicate with the host application.
 	//!
+	//! The \a auxiliary pointer can optionally be used with \ref asCALL_GENERIC.
+	//! For the calling convention \ref asCALL_THISCALL_ASGLOBAL the \a auxiliary is required.
+	//!
 	//! \see \ref doc_register_func
-	virtual int                RegisterGlobalFunction(const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0) = 0;
+	virtual int                RegisterGlobalFunction(const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *auxiliary = 0) = 0;
 	//! \brief Returns the number of registered functions.
 	//! \return The number of registered functions.
 	virtual asUINT             GetGlobalFunctionCount() const = 0;
@@ -1289,7 +1309,7 @@ public:
 	//! \param[in] declaration The declaration of the method in script syntax.
 	//! \param[in] funcPointer The method or function pointer.
 	//! \param[in] callConv The calling convention for the method or function.
-	//! \param[in] objForThiscall A pointer to the functor object for use with \ref asCALL_THISCALL_OBJFIRST and \ref asCALL_THISCALL_OBJLAST
+	//! \param[in] auxiliary A helper object for use with some calling conventions.
 	//! \return A negative value on error, or the function id if successful.
 	//! \retval asWRONG_CONFIG_GROUP The object type was registered in a different configuration group.
 	//! \retval asNOT_SUPPORTED The calling convention is not supported.
@@ -1298,22 +1318,25 @@ public:
 	//! \retval asNAME_TAKEN The name conflicts with other members.
 	//! \retval asWRONG_CALLING_CONV The function's calling convention isn't compatible with \a callConv.
 	//! \retval asALREADY_REGISTERED The method has already been registered with the same parameter list.
-	//! \retval asINVALID_ARG The \a objForThiscall pointer wasn't set according to calling convention.
+	//! \retval asINVALID_ARG The \a auxiliary pointer wasn't set according to calling convention.
 	//!
 	//! Use this method to register a member method for the type. The method
 	//! that is registered may be an actual class method, or a global function
 	//! that takes the object pointer as either the first or last parameter. Or
 	//! it may be a global function implemented with the generic calling convention.
 	//!
+	//! The \a auxiliary pointer can optionally be used with \ref asCALL_GENERIC.
+	//! For the calling conventions \ref asCALL_THISCALL_OBJFIRST and asCALL_THISCALL_OBJLAST the \a auxiliary is required.
+	//!
 	//! \see \ref doc_register_func
-	virtual int            RegisterObjectMethod(const char *obj, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0) = 0;
+	virtual int            RegisterObjectMethod(const char *obj, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *auxiliary = 0) = 0;
 	//! \brief Registers a behaviour for the object type.
 	//! \param[in] obj The name of the type.
 	//! \param[in] behaviour One of the object behaviours from \ref asEBehaviours.
 	//! \param[in] declaration The declaration of the method in script syntax.
 	//! \param[in] funcPointer The method or function pointer.
 	//! \param[in] callConv The calling convention for the method or function.
-	//! \param[in] objForThiscall The object pointer used for \ref asCALL_THISCALL_ASGLOBAL, \ref asCALL_THISCALL_OBJFIRST, and \ref asCALL_THISCALL_OBJLAST
+	//! \param[in] auxiliary A helper object for use with some calling conventions.
 	//! \return A negative value on error, or the function id is successful.
 	//! \retval asWRONG_CONFIG_GROUP The object type was registered in a different configuration group.
 	//! \retval asINVALID_ARG \a obj is not set, or a global behaviour is given in \a behaviour.
@@ -1333,8 +1356,11 @@ public:
 	//! not be used or stored in the application so there is no need to provide a meaningful function 
 	//! name.
 	//!
+	//! The \a auxiliary pointer can optionally be used with \ref asCALL_GENERIC.
+	//! For the calling conventions \ref asCALL_THISCALL_ASGLOBAL, \ref asCALL_THISCALL_OBJFIRST and asCALL_THISCALL_OBJLAST the \a auxiliary is required.
+	//!
 	//! \see \ref doc_register_func, \ref doc_reg_opbeh
-	virtual int            RegisterObjectBehaviour(const char *obj, asEBehaviours behaviour, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *objForThiscall = 0) = 0;
+	virtual int            RegisterObjectBehaviour(const char *obj, asEBehaviours behaviour, const char *declaration, const asSFuncPtr &funcPointer, asDWORD callConv, void *auxiliary = 0) = 0;
 	//! \brief Registers a script interface.
 	//! \param[in] name The name of the interface.
 	//! \return A negative value on error.
@@ -1366,21 +1392,14 @@ public:
 	//! \brief Returns the object type interface by index.
 	//! \param[in] index The index of the type.
 	//! \return The registered object type interface for the type, or null if not found.
-	virtual asIObjectType *GetObjectTypeByIndex(asUINT index) const = 0;
-	//! \brief Returns a matching object type by name.
-	//! \param[in] name The name of the type.
-	//! \return The object type or null if no match is found.
-	virtual asIObjectType *GetObjectTypeByName(const char *name) const = 0;
-	//! \brief Returns an object type by declaration.
-	//! \param[in] decl The declaration of the type.
-	//! \return The object type or null on error.
-	//!
-	//! Translates a type declaration into the object type. The returned object type is valid for as 
-	//! long as the type is valid, so you can safely store it for later use to avoid potential overhead from 
-	//! calling this function each time. Just remember to update the object type, any time the type is 
-	//! changed within the engine, e.g. when recompiling script declared classes, or changing the 
-	//! engine configuration.
-	virtual asIObjectType *GetObjectTypeByDecl(const char *decl) const = 0;
+	virtual asITypeInfo   *GetObjectTypeByIndex(asUINT index) const = 0;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	//! \deprecated Since 2.31.0. Use \ref asIScriptEngine::GetTypeInfoByName instead.
+	virtual asITypeInfo   *GetObjectTypeByName(const char *name) const = 0;
+	//! \deprecated Since 2.31.0. Use \ref asIScriptEngine::GetTypeInfoByDecl instead.
+	virtual asITypeInfo   *GetObjectTypeByDecl(const char *decl) const = 0;
+#endif
 	//! \}
 
 	// String factory
@@ -1391,7 +1410,7 @@ public:
 	//! \param[in] datatype The datatype that the string factory returns
 	//! \param[in] factoryFunc The pointer to the factory function
 	//! \param[in] callConv The calling convention of the factory function
-	//! \param[in] objForThiscall The object pointer used for \ref asCALL_THISCALL_ASGLOBAL.
+	//! \param[in] auxiliary A helper object for use with some calling conventions.
 	//! \return A negative value on error, or the function id if successful.
 	//! \retval asNOT_SUPPORTED The calling convention is not supported.
 	//! \retval asWRONG_CALLING_CONV The function's calling convention doesn't match \a callConv.
@@ -1415,7 +1434,10 @@ public:
 	//! \endcode
 	//!
 	//! The example assumes that the std::string type has been registered as the string type, with \ref RegisterObjectType.
-	virtual int RegisterStringFactory(const char *datatype, const asSFuncPtr &factoryFunc, asDWORD callConv, void *objForThiscall = 0) = 0;
+	//!
+	//! The \a auxiliary pointer can optionally be used with \ref asCALL_GENERIC.
+	//! For the calling convention \ref asCALL_THISCALL_ASGLOBAL the \a auxiliary is required.
+	virtual int RegisterStringFactory(const char *datatype, const asSFuncPtr &factoryFunc, asDWORD callConv, void *auxiliary = 0) = 0;
 	//! \brief Returns the type id of the type that the string factory returns.
 	//! \return The type id of the type that the string type returns, or a negative value on error.
 	//! \param[out] flags The \ref asETypeModifiers "type modifiers" for the return type
@@ -1453,7 +1475,7 @@ public:
 	//!
 	//! This method registers an enum type in the engine. The enum values should then be registered 
 	//! with \ref RegisterEnumValue.
-	virtual int         RegisterEnum(const char *type) = 0;
+	virtual int          RegisterEnum(const char *type) = 0;
 	//! \brief Registers an enum value.
 	//! \param[in] type The name of the enum type.
 	//! \param[in] name The name of the enum value.
@@ -1464,28 +1486,21 @@ public:
 	//! \retval asALREADY_REGISTERED The \a name is already registered for this enum.
 	//!
 	//! This method registers an enum value for a previously registered enum type.
-	virtual int         RegisterEnumValue(const char *type, const char *name, int value) = 0;
+	virtual int          RegisterEnumValue(const char *type, const char *name, int value) = 0;
 	//! \brief Returns the number of registered enum types.
 	//! \return The number of registered enum types.
-	virtual asUINT      GetEnumCount() const = 0;
+	virtual asUINT       GetEnumCount() const = 0;
 	//! \brief Returns the registered enum type.
 	//! \param[in] index The index of the enum type.
-	//! \param[out] enumTypeId Receives the type if of the enum type.
-	//! \param[out] nameSpace Receives the namespace of the enum.
-	//! \param[out] configGroup Receives the config group in which the enum was registered.
-	//! \param[out] accessMask Receives the access mask of the enum.
-	//! \return The name of the registered enum type, or null on error.
-	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **nameSpace = 0, const char **configGroup = 0, asDWORD *accessMask = 0) const = 0;
-	//! \brief Returns the number of enum values for the enum type.
-	//! \param[in] enumTypeId The type id of the enum type.
-	//! \return The number of enum values for the enum type.
-	virtual int         GetEnumValueCount(int enumTypeId) const = 0;
-	//! \brief Returns the name and value of the enum value for the enum type.
-	//! \param[in] enumTypeId The type id of the enum type.
-	//! \param[in] index The index of the enum value.
-	//! \param[out] outValue Receives the value of the enum value.
-	//! \return The name of the enum value.
-	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const = 0;
+	//! \return The type info of the registered enum type, or null on error.
+	virtual asITypeInfo *GetEnumByIndex(asUINT index) const = 0;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	//! \deprecated Since 2.31.0. Use \ref asITypeInfo::GetEnumValueCount instead.
+	virtual int          GetEnumValueCount(int enumTypeId) const = 0;
+	//! \deprecated Since 2.31.0. Use \ref asITypeInfo::GetEnumValueByIndex instead.
+	virtual const char * GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const = 0;
+#endif
 	//! \}
 
 	// Funcdefs
@@ -1503,16 +1518,20 @@ public:
 	//! function pointers. If the application is going to receive function pointers
 	//! from scripts, it is necessary to first register the funcdef before registering
 	//! the function or property that will be used to receive it.
-	virtual int                RegisterFuncdef(const char *decl) = 0;
+	//! 
+	//! Funcdefs are usually registered as global entities, but can also be registered
+	//! as a child of a class. To do this simply prefix the name of the funcdef with the 
+	//! name of the class and the scope operator to specify which class should be the owner.
+	virtual int          RegisterFuncdef(const char *decl) = 0;
 	//! \brief Returns the number of registered function definitions.
 	//! \return The number of registered funcdefs.
-	virtual asUINT             GetFuncdefCount() const = 0;
+	virtual asUINT       GetFuncdefCount() const = 0;
 	//! \brief Returns a registered function definition.
 	//! \param[in] index The index of the funcdef.
-	//! \return The funcdef.
+	//! \return The type info of the funcdef.
 	//!
-	//! This function does not increase the reference count of the return function definition.
-	virtual asIScriptFunction *GetFuncdefByIndex(asUINT index) const = 0;
+	//! This function does not increase the reference count of the returned function definition.
+	virtual asITypeInfo *GetFuncdefByIndex(asUINT index) const = 0;
 	//! \}
 
 	// Typedefs
@@ -1532,18 +1551,14 @@ public:
 	//! This method registers an alias for a data type.
 	//!
 	//! Currently typedefs can only be registered for built-in primitive types.
-	virtual int         RegisterTypedef(const char *type, const char *decl) = 0;
+	virtual int          RegisterTypedef(const char *type, const char *decl) = 0;
 	//! \brief Returns the number of registered typedefs.
 	//! \return The number of registered typedefs.
-	virtual asUINT      GetTypedefCount() const = 0;
+	virtual asUINT       GetTypedefCount() const = 0;
 	//! \brief Returns a registered typedef.
 	//! \param[in] index The index of the typedef.
-	//! \param[out] typeId The type that the typedef aliases.
-	//! \param[out] nameSpace The namespace in which the typedef was registered.
-	//! \param[out] configGroup Receives the config group in which the type def was registered.
-	//! \param[out] accessMask The access mask for the typedef.
-	//! \return The name of the typedef.
-	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **nameSpace = 0, const char **configGroup = 0, asDWORD *accessMask = 0) const = 0;
+	//! \return The type info of the typedef.
+	virtual asITypeInfo *GetTypedefByIndex(asUINT index) const = 0;
 	//! \}
 
 	// Configuration groups
@@ -1648,24 +1663,22 @@ public:
 	//!
 	//! This does not increment the reference count of the returned function interface.
 	virtual asIScriptFunction *GetFunctionById(int funcId) const = 0;
-	//! \brief Returns the function description for the funcdef.
-	//! \param[in] typeId The type id for the funcdef.
-	//! \return A pointer to the function description interface, or null if not found.
-	//!
-	//! This does not increment the reference count of the returned function interface.
-	virtual asIScriptFunction *GetFuncDefFromTypeId(int typeId) const = 0;
+#ifdef AS_DEPRECATED
+	// deprecated since 2.31.0, 2016-01-01
+	//! \deprecated Since 2.31.0. Use \ref asIScriptEngine::GetTypeInfoById instead.
+	virtual asIScriptFunction *GetFuncdefFromTypeId(int typeId) const = 0;
+#endif
 	//! \}
 
 	// Type identification
 	//! \name Type identification
 	//! \{
 
-	//! \brief Returns the object type interface for type.
-	//! \param[in] typeId The type id of the type.
-	//! \return The object type interface for the type, or null if not found.
-	//!
-	//! This does not increment the reference count of the returned object type.
-	virtual asIObjectType *GetObjectTypeById(int typeId) const = 0;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	//! \deprecated Since 2.31.0. Use \ref asIScriptEngine::GetTypeInfoById instead.
+	virtual asITypeInfo   *GetObjectTypeById(int typeId) const = 0;
+#endif
 	//! \brief Returns a type id by declaration.
 	//! \param[in] decl The declaration of the type.
 	//! \return A negative value on error, or the type id of the type.
@@ -1701,6 +1714,28 @@ public:
 	//! This method can be used to return the size of any built-in primitive type,
 	//! and also for script declared or application registered enums.
 	virtual int            GetSizeOfPrimitiveType(int typeId) const = 0;
+	//! \brief Returns the type interface for type.
+	//! \param[in] typeId The type id of the type.
+	//! \return The type interface for the type, or null if not found.
+	//!
+	//! This does not increment the reference count of the returned type.
+	virtual asITypeInfo   *GetTypeInfoById(int typeId) const = 0;
+	//! \brief Returns the type interface by name.
+	//! \param[in] name The name of the type.
+	//! \return The type interface for the type, or null if not found.
+	//!
+	//! This does not increase the reference count of the returned type info.
+	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const = 0;
+	//! \brief Returns a type by declaration.
+	//! \param[in] decl The declaration of the type.
+	//! \return The type or null on error.
+	//!
+	//! Translates a type declaration into the type info. The returned type is valid for as 
+	//! long as the type is valid, so you can safely store it for later use to avoid potential overhead from 
+	//! calling this function each time. Just remember to update the type info pointer any time the type is 
+	//! changed within the engine, e.g. when recompiling script declared classes, or changing the 
+	//! engine configuration.
+	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const = 0;
 	//! \}
 
 	// Script execution
@@ -1732,7 +1767,7 @@ public:
 	//!
 	//! The method only works for objects, for primitive types and object handles the method 
 	//! doesn't do anything and returns a null pointer.
-	virtual void                  *CreateScriptObject(const asIObjectType *type) = 0;
+	virtual void                  *CreateScriptObject(const asITypeInfo *type) = 0;
 	//! \brief Creates a copy of a script object.
 	//! \param[in] obj A pointer to the source object.
 	//! \param[in] type The type of the object.
@@ -1742,7 +1777,7 @@ public:
 	//!
 	//! This only works for objects, for primitive types and object handles the method 
 	//! doesn't do anything and returns a null pointer.
-	virtual void                  *CreateScriptObjectCopy(void *obj, const asIObjectType *type) = 0;
+	virtual void                  *CreateScriptObjectCopy(void *obj, const asITypeInfo *type) = 0;
 	//! \brief Creates an uninitialized script object defined by its type.
 	//! \param[in] type The type of the object to create.
 	//! \return A pointer to the new object if successful, or null if not.
@@ -1758,7 +1793,7 @@ public:
 	//!
 	//! This method is meant for objects that will be initialized manually 
 	//! by the application, e.g. when restoring a serialized object.
-	virtual void                  *CreateUninitializedScriptObject(const asIObjectType *type) = 0;
+	virtual void                  *CreateUninitializedScriptObject(const asITypeInfo *type) = 0;
 	//! \brief Create a delegate for an object and method
 	//! \param[in] func The object method
 	//! \param[in] obj The object pointer
@@ -1775,7 +1810,7 @@ public:
 	//! This calls the assignment operator to copy the object from one to the other.
 	//!
 	//! This only works for objects.
-	virtual int                    AssignScriptObject(void *dstObj, void *srcObj, const asIObjectType *type) = 0;
+	virtual int                    AssignScriptObject(void *dstObj, void *srcObj, const asITypeInfo *type) = 0;
 	//! \brief Release the object pointer.
 	//! \param[in] obj A pointer to the object.
 	//! \param[in] type The type of the object.
@@ -1784,13 +1819,13 @@ public:
 	//!
 	//! If the type is a value type, the method will destroy the object and deallocate
 	//! the memory using the \ref asSetGlobalMemoryFunctions "default memory routine".
-	virtual void                   ReleaseScriptObject(void *obj, const asIObjectType *type) = 0;
+	virtual void                   ReleaseScriptObject(void *obj, const asITypeInfo *type) = 0;
 	//! \brief Increase the reference counter for the script object.
 	//! \param[in] obj A pointer to the object.
 	//! \param[in] type The type of the object.
 	//!
 	//! This calls the add ref method of the object to increase the reference count.
-	virtual void                   AddRefScriptObject(void *obj, const asIObjectType *type) = 0;
+	virtual void                   AddRefScriptObject(void *obj, const asITypeInfo *type) = 0;
 	//! \brief Returns the handle on a successful reference cast to desired type
 	//! \param[in] obj A pointer to the object.
 	//! \param[in] fromType The type of the object.
@@ -1799,16 +1834,15 @@ public:
 	//! \param[in] useOnlyImplicitCast If only the implicit reference cast operators should be used.
 	//! \return A negative value on error
 	//! \retval asINVALID_ARG A null pointer was supplied
-	//! \retval asNOT_SUPPORTED The type of the object is a function pointer.
 	//!
-	//! This method is used to cast an object pointer to a different type. While both the new 
-	//! and old pointers are expected to refer to the same object instance, the address of the 
+	//! This method is used to cast an pointer to a different type. While both the new 
+	//! and old pointers are expected to refer to the same instance, the address of the 
 	//! pointers are not necessarily the same.
 	//! 
 	//! If the cast is successful the \a newPtr will be set to the new pointer,
 	//! and the reference counter will be incremented. If the cast is not successful,
 	//! the \a newPtr will be set to null, and the reference count left unchanged.
-	virtual int                    RefCastObject(void *obj, asIObjectType *fromType, asIObjectType *toType, void **newPtr, bool useOnlyImplicitCast = false) = 0;
+	virtual int                    RefCastObject(void *obj, asITypeInfo *fromType, asITypeInfo *toType, void **newPtr, bool useOnlyImplicitCast = false) = 0;
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.30.0, 2014-11-04
 	//! \deprecated Since 2.30.0. Use \ref asIScriptEngine::RefCastObject instead
@@ -1824,7 +1858,7 @@ public:
 	//! \ref asILockableSharedBool::Get method.
 	//!
 	//! This method doesn't increase the reference to the returned shared boolean.
-	virtual asILockableSharedBool *GetWeakRefFlagOfScriptObject(void *obj, const asIObjectType *type) const = 0;
+	virtual asILockableSharedBool *GetWeakRefFlagOfScriptObject(void *obj, const asITypeInfo *type) const = 0;
 	//! \}
 
 	// Context pooling
@@ -1923,7 +1957,7 @@ public:
 	//! detect whether the object is involved in any circular references that should be released.
 	//!
 	//! \see \ref doc_gc_object
-	virtual int  NotifyGarbageCollectorOfNewObject(void *obj, asIObjectType *type) = 0;
+	virtual int  NotifyGarbageCollectorOfNewObject(void *obj, asITypeInfo *type) = 0;
 	//! \brief Gets an object in the garbage collector
 	//! \param[in] idx The index of the desired object
 	//! \param[out] seqNbr The sequence number of the obtained object
@@ -1931,7 +1965,7 @@ public:
 	//! \param[out] type The type of the obtained object
 	//! \return A negative value on error
 	//! \retval asINVALID_ARG The index is not valid
-	virtual int  GetObjectInGC(asUINT idx, asUINT *seqNbr = 0, void **obj = 0, asIObjectType **type = 0) = 0;
+	virtual int  GetObjectInGC(asUINT idx, asUINT *seqNbr = 0, void **obj = 0, asITypeInfo **type = 0) = 0;
 	//! \brief Used by the garbage collector to enumerate all references held by an object.
 	//! \param[in] reference A pointer to the referenced object.
 	//!
@@ -2001,16 +2035,21 @@ public:
 	//! The function is called from within the function destructor, so the callback
 	//! should not be used for anything but cleaning up the user data itself.
 	virtual void  SetFunctionUserDataCleanupCallback(asCLEANFUNCTIONFUNC_t callback, asPWORD type = 0) = 0;
-	//! \brief Set the function that should be called when an object type is destroyed
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	//! \deprecated Since 2.31.0. Use \ref asIScriptEngine::SetTypeInfoUserDataCleanupCallback instead.
+	virtual void  SetObjectTypeUserDataCleanupCallback(asCLEANTYPEINFOFUNC_t callback, asPWORD type = 0) = 0;
+#endif
+	//! \brief Set the function that should be called when a type info is destroyed
 	//! \param[in] callback A pointer to the function
 	//! \param[in] type An identifier specifying which user data the callback is to be used with.
 	//!
-	//! The function given with this call will be invoked when an object type
-	//! is destroyed if any \ref asIObjectType::SetUserData "user data" has been registered with the type.
+	//! The function given with this call will be invoked when a type info
+	//! is destroyed if any \ref asITypeInfo::SetUserData "user data" has been registered with the type.
 	//!
-	//! The function is called from within the object type destructor, so the callback
+	//! The function is called from within the type info destructor, so the callback
 	//! should not be used for anything but cleaning up the user data itself.
-	virtual void  SetObjectTypeUserDataCleanupCallback(asCLEANOBJECTTYPEFUNC_t callback, asPWORD type = 0) = 0;
+	virtual void  SetTypeInfoUserDataCleanupCallback(asCLEANTYPEINFOFUNC_t callback, asPWORD type = 0) = 0;
 	//! \brief Set the function that should be called when a script object is destroyed
 	//! \param[in] callback A pointer to the function
 	//! \param[in] type An identifier specifying which user data the callback is to be used with.
@@ -2320,23 +2359,14 @@ public:
 	//! \return The object type interface for the type, or null if not found.
 	//!
 	//! This does not increase the reference count of the returned object.
-	virtual asIObjectType *GetObjectTypeByIndex(asUINT index) const = 0;
-	//! \brief Returns the object type interface by name.
-	//! \param[in] name The name of the type.
-	//! \return The object type interface for the type, or null if not found.
-	//!
-	//! This does not increase the reference count of the returned object.
-	virtual asIObjectType *GetObjectTypeByName(const char *name) const = 0;
-	//! \brief Returns a type by declaration.
-	//! \param[in] decl The declaration of the type.
-	//! \return The object type or null on error.
-	//!
-	//! Translates a type declaration into the object type. The returned object type is valid for as 
-	//! long as the type is valid, so you can safely store it for later use to avoid potential overhead from 
-	//! calling this function each time. Just remember to update the object type, any time the type is 
-	//! changed within the engine, e.g. when recompiling script declared classes, or changing the 
-	//! engine configuration.
-	virtual asIObjectType *GetObjectTypeByDecl(const char *decl) const = 0;
+	virtual asITypeInfo   *GetObjectTypeByIndex(asUINT index) const = 0;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	//! \deprecated Since 2.31.0. Use \ref asIScriptModule::GetTypeInfoByName instead.
+	virtual asITypeInfo   *GetObjectTypeByName(const char *name) const = 0;
+	//! \deprecated Since 2.31.0. Use \ref asIScriptModule::GetTypeInfoByDecl instead.
+	virtual asITypeInfo   *GetObjectTypeByDecl(const char *decl) const = 0;
+#endif
 	//! \brief Returns a type id by declaration.
 	//! \param[in] decl The declaration of the type.
 	//! \return A negative value on error, or the type id of the type.
@@ -2356,6 +2386,22 @@ public:
 	//! const is for the subtype then the type id is different, e.g. string@ isn't the same as const 
 	//! string@ but string is the same as const string. 
 	virtual int            GetTypeIdByDecl(const char *decl) const = 0;
+	//! \brief Returns the type interface by name.
+	//! \param[in] name The name of the type.
+	//! \return The type interface for the type, or null if not found.
+	//!
+	//! This does not increase the reference count of the returned type info.
+	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const = 0;
+	//! \brief Returns a type by declaration.
+	//! \param[in] decl The declaration of the type.
+	//! \return The type or null on error.
+	//!
+	//! Translates a type declaration into the type info. The returned type is valid for as 
+	//! long as the type is valid, so you can safely store it for later use to avoid potential overhead from 
+	//! calling this function each time. Just remember to update the type info pointer any time the type is 
+	//! changed within the engine, e.g. when recompiling script declared classes, or changing the 
+	//! engine configuration.
+	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const = 0;
 	//! \}
 
 	// Enums
@@ -2364,24 +2410,18 @@ public:
 
 	//! \brief Returns the number of enum types declared in the module.
 	//! \return The number of enum types in the module.
-	virtual asUINT      GetEnumCount() const = 0;
+	virtual asUINT       GetEnumCount() const = 0;
 	//! \brief Returns the enum type.
 	//! \param[in] index The index of the enum type.
-	//! \param[out] enumTypeId Receives the type id of the enum type.
-	//! \param[out] nameSpace Receives the namespace of the enum.
-	//! \return The name of the enum type, or null on error.
-	virtual const char *GetEnumByIndex(asUINT index, int *enumTypeId, const char **nameSpace = 0) const = 0;
-	//! \brief Returns the number of values defined for the enum type.
-	//! \param[in] enumTypeId The type id of the enum type.
-	//! \return The number of enum values or a negative value on error.
-	//! \retval asINVALID_ARG \a enumTypeId is not an enum type.
-	virtual int         GetEnumValueCount(int enumTypeId) const = 0;
-	//! \brief Returns the name and value of the enum value.
-	//! \param[in] enumTypeId The type id of the enum type.
-	//! \param[in] index The index of the enum value.
-	//! \param[out] outValue Receives the numeric value.
-	//! \return The name of the enum value.
-	virtual const char *GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const = 0;
+	//! \return The type info of the enum type, or null on error.
+	virtual asITypeInfo *GetEnumByIndex(asUINT index) const = 0;
+#ifdef AS_DEPRECATED
+	// Deprecated since 2.31.0, 2015-12-06
+	//! \deprecated Since 2.31.0. Use \ref asITypeInfo::GetEnumValueCount instead.
+	virtual int          GetEnumValueCount(int enumTypeId) const = 0;
+	//! \deprecated Since 2.31.0. Use \ref asITypeInfo::GetEnumValueByIndex instead.
+	virtual const char * GetEnumValueByIndex(int enumTypeId, asUINT index, int *outValue) const = 0;
+#endif
 	//! \}
 
 	// Typedefs
@@ -2390,13 +2430,11 @@ public:
 
 	//! \brief Returns the number of typedefs in the module.
 	//! \return The number of typedefs in the module.
-	virtual asUINT      GetTypedefCount() const = 0;
+	virtual asUINT       GetTypedefCount() const = 0;
 	//! \brief Returns the typedef.
 	//! \param[in] index The index of the typedef.
-	//! \param[out] typeId The type that the typedef aliases.
-	//! \param[out] nameSpace Receives the namespace of the typedef.
-	//! \return The name of the typedef.
-	virtual const char *GetTypedefByIndex(asUINT index, int *typeId, const char **nameSpace = 0) const = 0;
+	//! \return The type info of the typedef, or null on error.
+	virtual asITypeInfo *GetTypedefByIndex(asUINT index) const = 0;
 	//! \}
 
 	// Dynamic binding between modules
@@ -3064,6 +3102,9 @@ public:
 	//! \brief Returns the function that is being called.
 	//! \return The function that is being called.
 	virtual asIScriptFunction *GetFunction() const = 0;
+	//! \brief Return the auxiliary registered with the function.
+	//! \return The auxiliary registered with the function.
+	virtual void              *GetAuxiliary() const = 0;
 	//! \}
 
 	// Object
@@ -3253,7 +3294,7 @@ public:
 	//! \return The object type interface of the script object.
 	//!
 	//! This does not increase the reference count of the returned object type.
-	virtual asIObjectType *GetObjectType() const = 0;
+	virtual asITypeInfo   *GetObjectType() const = 0;
 	//! \}
 
 	// Class properties
@@ -3319,7 +3360,6 @@ public:
 	//! \param[in] type An identifier used to identify which user data to get.
 	//! \return The pointer to the user data.
 	virtual void *GetUserData(asPWORD type = 0) const = 0;
-
 	//! \}
 
 protected:
@@ -3328,8 +3368,12 @@ protected:
 
 
 
-//! \brief The interface for an object type
-class asIObjectType
+//! \brief The interface for describing types
+//! This interface is used to describe the types in the script engine. 
+//!
+//! It can represent object types, funcdefs, typedefs, and enums. To 
+//! determine which family the type belong to verify the flags.
+class asITypeInfo
 {
 public:
 	// Miscellaneous
@@ -3375,8 +3419,10 @@ public:
 	//! \brief Returns a temporary pointer to the name of the datatype.
 	//! \return A null terminated string with the name of the object type.
 	virtual const char      *GetName() const = 0;
-	//! \brief Return the namespace of the object type.
-	//! \returns The namespace of the object type.
+	//! \brief Return the namespace of the type.
+	//! \returns The namespace of the type, or null if not defined.
+	//!
+	//! If the namespace is not defined it means that this is a child type.
 	virtual	const char      *GetNamespace() const = 0;
 	//! \brief Returns the object type that this type derives from.
 	//! \return A pointer to the object type that this type derives from.
@@ -3385,15 +3431,23 @@ public:
 	//! derives from another script class.
 	//!
 	//! This does not increase the reference count of the returned object type.
-	virtual asIObjectType   *GetBaseType() const = 0;
+	virtual asITypeInfo     *GetBaseType() const = 0;
 	//! \brief Returns true if the type inherits directly or indirectly from the informed type.
 	//! \param[in] objType The potential parent type.
 	//! \return True if the type inherits directly or indirectly from the informed type.
-	virtual bool             DerivesFrom(const asIObjectType *objType) const = 0;
-	//! \brief Returns the object type flags.
+	virtual bool             DerivesFrom(const asITypeInfo *objType) const = 0;
+	//! \brief Returns the type flags.
 	//! \return A bit mask with the flags from \ref asEObjTypeFlags.
 	//!
-	//! Script classes are identified by having the asOBJ_SCRIPT_OBJECT flag set. 
+	//! Object types are identified by having the flags \ref asOBJ_REF or \ref asOBJ_VALUE set.
+	//!
+	//! Enums are identified by having the flag \ref asOBJ_ENUM set.
+	//!
+	//! Funcdefs are identified by having the flag \ref asOBJ_FUNCDEF set.
+	//!
+	//! Typedefs are identified by having the flag \ref asOBJ_TYPEDEF set.
+	//!
+	//! Script classes are identified by having the \ref asOBJ_SCRIPT_OBJECT flag set. 
 	//! Interfaces are identified as a script class with a size of zero.
 	//!
 	//! \see \ref GetSize
@@ -3414,8 +3468,8 @@ public:
 	virtual int              GetSubTypeId(asUINT subTypeIndex = 0) const = 0;
 	//! \brief Returns the template subtype, in case it is an object type.
 	//! \param[in] subTypeIndex The zero based index of the template sub type.
-	//! \return The object type of the template sub type, or null if the template subtype is not an object type.
-	virtual asIObjectType   *GetSubType(asUINT subTypeIndex = 0) const = 0;
+	//! \return The type info of the template sub type, or null if the template subtype is a primitive.
+	virtual asITypeInfo     *GetSubType(asUINT subTypeIndex = 0) const = 0;
 	//! \brief Returns the number of template sub types.
 	//! \return The number of template sub types.
 	virtual asUINT           GetSubTypeCount() const = 0;
@@ -3431,11 +3485,11 @@ public:
 	//! \brief Returns a temporary pointer to the specified interface or null if none are found.
 	//! \param[in] index The interface index.
 	//! \return A pointer to the interface type.
-	virtual asIObjectType   *GetInterface(asUINT index) const = 0;
+	virtual asITypeInfo     *GetInterface(asUINT index) const = 0;
 	//! \brief Returns true if the type implements the informed interface type.
 	//! \param[in] objType The interface type.
 	//! \return True if the type implements the informed interface type.
-	virtual bool             Implements(const asIObjectType *objType) const = 0;
+	virtual bool             Implements(const asITypeInfo *objType) const = 0;
 	//! \}
 
 	// Factories
@@ -3535,6 +3589,55 @@ public:
 	virtual asIScriptFunction *GetBehaviourByIndex(asUINT index, asEBehaviours *outBehaviour) const = 0;
 	//! \}
 
+	// Child types
+	//! \name Child types
+	//! \{
+
+	//! \brief Returns the number of child funcdefs declared in the class.
+	//! \return The number of child funcdefs declared in the class.
+	virtual asUINT       GetChildFuncdefCount() const = 0;
+	//! \brief Returns a child funcdef by index.
+	//! \return The child funcdef matching the index.
+	virtual asITypeInfo *GetChildFuncdef(asUINT index) const = 0;
+	//! \brief Returns the parent type if this is a child type.
+	//! \return The parent type if this is a child type.
+	virtual asITypeInfo *GetParentType() const = 0;
+	//! \}
+
+	// Enums
+	//! \name Enums
+	//! \{
+
+	//! \brief Returns the number of values defined for the enum type.
+	//! \return The number of enum values.
+	virtual asUINT      GetEnumValueCount() const = 0;
+	//! \brief Returns the name and value of the enum value for the enum type.
+	//! \param[in] index The index of the enum value.
+	//! \param[out] outValue Receives the value of the enum value.
+	//! \return The name of the enum value.
+	virtual const char *GetEnumValueByIndex(asUINT index, int *outValue) const = 0;
+	//! \}
+
+	// Typedef
+	//! \name Typedef
+	//! \{
+
+	//! \brief Returns the type id that the typedef represents.
+	//! \return The type id that the typedef represents.
+	virtual int GetTypedefTypeId() const = 0;
+	//! \}
+
+	// Funcdef
+	//! \name Funcdef
+	//! \{
+
+	//! \brief Returns the function description for the funcdef type.
+	//! \return A pointer to the function description interface, or null if not a funcdef type.
+	//!
+	//! This does not increment the reference count of the returned function interface.
+	virtual asIScriptFunction *GetFuncdefSignature() const = 0;
+	//! \}
+
 	// User data
 	//! \name User data
 	//! \{
@@ -3549,7 +3652,7 @@ public:
 	//!
 	//! The user data types identifiers between 1000 and 1999 are reserved for use by official add-ons.
 	//!
-	//! Optionally, a callback function can be \ref asIScriptEngine::SetObjectTypeUserDataCleanupCallback "registered" 
+	//! Optionally, a callback function can be \ref asIScriptEngine::SetTypeInfoUserDataCleanupCallback "registered" 
 	//! to clean up the user data when the object type is destroyed.
 	virtual void *SetUserData(void *data, asPWORD type = 0) = 0;
 	//! \brief Returns the address of the previously registered user data.
@@ -3559,7 +3662,7 @@ public:
 	//! \}
 
 protected:
-	virtual ~asIObjectType() {}
+	virtual ~asITypeInfo() {}
 };
 
 //! \brief The interface for a script function description
@@ -3613,6 +3716,9 @@ public:
 	//! \brief Returns the access mast of the function.
 	//! \return The access mask of the function.
 	virtual asDWORD          GetAccessMask() const = 0;
+	//! \brief Returns the auxiliary object registered with the function.
+	//! \return The auxiliary object registered with the function.
+	virtual void            *GetAuxiliary() const = 0;
 	//! \}
 
 	//! \name Function signature
@@ -3623,7 +3729,7 @@ public:
 	//! \return A pointer to the object type interface if this is a method.
 	//!
 	//! This does not increase the reference count of the returned object type.
-	virtual asIObjectType   *GetObjectType() const = 0;
+	virtual asITypeInfo     *GetObjectType() const = 0;
 	//! \brief Returns the name of the object for class or interface methods
 	//! \return A null terminated string with the name of the object type if this a method.
 	virtual const char      *GetObjectName() const = 0;
@@ -3707,7 +3813,7 @@ public:
 	virtual void              *GetDelegateObject() const = 0;
 	//! \brief Returns the type of the delegated object
 	//! \return A pointer to the object type of the delegated object.
-	virtual asIObjectType     *GetDelegateObjectType() const = 0;
+	virtual asITypeInfo       *GetDelegateObjectType() const = 0;
 	//! \brief Returns the function for the delegate
 	//! \return A pointer to the delegated function
 	virtual asIScriptFunction *GetDelegateFunction() const = 0;
@@ -4030,7 +4136,7 @@ struct asSVMRegisters
 	//! \brief Temporary register for managed object references/handles
 	void             *objectRegister;     // temp register for objects and handles
 	//! \brief Type of the object held in the object register
-	asIObjectType    *objectType;         // type of object held in object register
+	asITypeInfo      *objectType;         // type of object held in object register
 	//! \brief Set to true if the SUSPEND instruction should be processed. Do not update this value.
 	bool              doProcessSuspend;   // whether or not the JIT should break out when it encounters a suspend instruction
 	//! \brief The context to which the registers belong.

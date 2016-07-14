@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -169,7 +169,7 @@ int DetectCallingConvention(bool isMethod, const asSFuncPtr &ptr, int callConv, 
 }
 
 // This function should prepare system functions so that it will be faster to call them
-int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInterface *internal, asCScriptEngine * /*engine*/)
+int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInterface *internal, asCScriptEngine *engine)
 {
 	asASSERT(internal->callConv == ICC_GENERIC_METHOD || internal->callConv == ICC_GENERIC_FUNC);
 
@@ -183,11 +183,19 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 	{
 		asCDataType &dt = func->parameterTypes[n];
 
-		if( dt.IsObject() && !dt.IsReference() )
+		if( (dt.IsObject() || dt.IsFuncdef()) && !dt.IsReference() )
 		{
-			asSTypeBehaviour *beh = &dt.GetTypeInfo()->CastToObjectType()->beh;
-			if( dt.GetTypeInfo()->flags & asOBJ_REF )
+			if (dt.IsFuncdef())
 			{
+				asSSystemFunctionInterface::SClean clean;
+				clean.op = 0; // call release
+				clean.ot = &engine->functionBehaviours;
+				clean.off = short(offset);
+				internal->cleanArgs.PushLast(clean);
+			}
+			else if( dt.GetTypeInfo()->flags & asOBJ_REF )
+			{
+				asSTypeBehaviour *beh = &dt.GetTypeInfo()->CastToObjectType()->beh;
 				asASSERT( (dt.GetTypeInfo()->flags & asOBJ_NOCOUNT) || beh->release );
 				if( beh->release )
 				{
@@ -206,6 +214,7 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 				clean.off = short(offset);
 
 				// Call the destructor then free the memory
+				asSTypeBehaviour *beh = &dt.GetTypeInfo()->CastToObjectType()->beh;
 				if( beh->destruct )
 					clean.op = 2; // call destruct, then free
 
@@ -490,7 +499,10 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 		{
 			asSSystemFunctionInterface::SClean clean;
 			clean.op  = 0; // call release
-			clean.ot  = dt.GetTypeInfo()->CastToObjectType();
+			if (dt.IsFuncdef())
+				clean.ot = &engine->functionBehaviours;
+			else
+				clean.ot  = dt.GetTypeInfo()->CastToObjectType();
 			clean.off = short(offset);
 			internal->cleanArgs.PushLast(clean);
 		}
@@ -711,7 +723,7 @@ int CallSystemFunction(int id, asCContext *context)
 	context->m_callingSystemFunction = 0;
 
 	// Store the returned value in our stack
-	if( descr->returnType.IsObject() && !descr->returnType.IsReference() )
+	if( (descr->returnType.IsObject() || descr->returnType.IsFuncdef()) && !descr->returnType.IsReference() )
 	{
 		if( descr->returnType.IsObjectHandle() )
 		{

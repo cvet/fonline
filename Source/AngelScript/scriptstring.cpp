@@ -822,7 +822,7 @@ ScriptArray* StringSplit( ScriptString* str, ScriptString* delim )
 
     // TODO: This should only be done once
     // TODO: This assumes that ScriptArray was already registered
-    asIObjectType* arrayType = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "array<string@>" ) );
+    asITypeInfo* arrayType = engine->GetTypeInfoById( engine->GetTypeIdByDecl( "array<string@>" ) );
 
     // Create the array object
     ScriptArray* array = ScriptArray::Create( arrayType, 0, NULL );
@@ -869,7 +869,7 @@ ScriptArray* StringSplitEx( ScriptString* str, ScriptString* delim )
 
     // TODO: This should only be done once
     // TODO: This assumes that ScriptArray was already registered
-    asIObjectType* arrayType = engine->GetObjectTypeById( engine->GetTypeIdByDecl( "array<string@>" ) );
+    asITypeInfo* arrayType = engine->GetTypeInfoById( engine->GetTypeIdByDecl( "array<string@>" ) );
 
     // Create the array object
     ScriptArray* array = ScriptArray::Create( arrayType, 0, NULL );

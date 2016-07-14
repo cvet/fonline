@@ -39,7 +39,7 @@ ScriptDictionary::ScriptDictionary( asIScriptEngine* engine )
 
     // Notify the garbage collector of this object
     // TODO: The object type should be cached
-    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetObjectTypeByName( "dictionary" ) );
+    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetTypeInfoByName( "dictionary" ) );
 }
 
 ScriptDictionary::ScriptDictionary( asBYTE* buffer )
@@ -55,7 +55,7 @@ ScriptDictionary::ScriptDictionary( asBYTE* buffer )
 
     // Notify the garbage collector of this object
     // TODO: The type id should be cached
-    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetObjectTypeByName( "dictionary" ) );
+    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetTypeInfoByName( "dictionary" ) );
 
     // Initialize the dictionary from the buffer
     asUINT length = *(asUINT*) buffer;
@@ -127,7 +127,7 @@ ScriptDictionary::ScriptDictionary( asBYTE* buffer )
         {
             if( ( typeId & asTYPEID_MASK_OBJECT ) &&
                 !( typeId & asTYPEID_OBJHANDLE ) &&
-                ( engine->GetObjectTypeById( typeId )->GetFlags() & asOBJ_REF ) )
+                ( engine->GetTypeInfoById( typeId )->GetFlags() & asOBJ_REF ) )
             {
                 // Dereference the pointer to get the reference to the actual object
                 ref = *(void**) ref;
@@ -139,7 +139,7 @@ ScriptDictionary::ScriptDictionary( asBYTE* buffer )
         // Advance the buffer pointer with the size of the value
         if( typeId & asTYPEID_MASK_OBJECT )
         {
-            asIObjectType* ot = engine->GetObjectTypeById( typeId );
+            asITypeInfo* ot = engine->GetTypeInfoById( typeId );
             if( ot->GetFlags() & asOBJ_VALUE )
                 buffer += ot->GetSize();
             else
@@ -382,7 +382,7 @@ asUINT ScriptDictionary::GetSize() const
     return asUINT( dict.size() );
 }
 
-void ScriptDictionary::Delete( const ScriptString& key )
+bool ScriptDictionary::Delete( const ScriptString& key )
 {
     map< string, ScriptDictValue >::iterator it;
     it = dict.find( key.c_std_str() );
@@ -390,7 +390,9 @@ void ScriptDictionary::Delete( const ScriptString& key )
     {
         it->second.FreeValue( engine );
         dict.erase( it );
+        return true;
     }
+    return false;
 }
 
 void ScriptDictionary::DeleteAll()
@@ -409,7 +411,7 @@ ScriptArray* ScriptDictionary::GetKeys() const
     //                 Only problem is if multiple engines are used, as they may not
     //                 share the same type id. Alternatively it can be stored in the
     //                 user data for the dictionary type.
-    asIObjectType* ot = engine->GetObjectTypeByDecl( "array<string>" );
+    asITypeInfo* ot = engine->GetTypeInfoByDecl( "array<string>" );
 
     // Create the array object
     ScriptArray*                                        array = ScriptArray::Create( ot, asUINT( dict.size() ) );
@@ -463,7 +465,7 @@ void ScriptDictValue::FreeValue( asIScriptEngine* engine )
     if( m_typeId & asTYPEID_MASK_OBJECT )
     {
         // Let the engine release the object
-        engine->ReleaseScriptObject( m_valueObj, engine->GetObjectTypeById( m_typeId ) );
+        engine->ReleaseScriptObject( m_valueObj, engine->GetTypeInfoById( m_typeId ) );
         m_valueObj = 0;
         m_typeId = 0;
     }
@@ -480,12 +482,12 @@ void ScriptDictValue::Set( asIScriptEngine* engine, void* value, int typeId )
     {
         // We're receiving a reference to the handle, so we need to dereference it
         m_valueObj = *(void**) value;
-        engine->AddRefScriptObject( m_valueObj, engine->GetObjectTypeById( typeId ) );
+        engine->AddRefScriptObject( m_valueObj, engine->GetTypeInfoById( typeId ) );
     }
     else if( typeId & asTYPEID_MASK_OBJECT )
     {
         // Create a copy of the object
-        m_valueObj = engine->CreateScriptObjectCopy( value, engine->GetObjectTypeById( typeId ) );
+        m_valueObj = engine->CreateScriptObjectCopy( value, engine->GetTypeInfoById( typeId ) );
     }
     else
     {
@@ -528,22 +530,8 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
             if( ( m_typeId & asTYPEID_HANDLETOCONST ) && !( typeId & asTYPEID_HANDLETOCONST ) )
                 return false;
 
-            asIObjectType* currType = engine->GetObjectTypeById( m_typeId );
-            if( currType->GetFlags() & asOBJ_SCRIPT_FUNCTION )
-            {
-                // For function pointers it is necessary to check if they have the same signature
-                asIScriptFunction* func = reinterpret_cast< asIScriptFunction* >( m_valueObj );
-                if( !func->IsCompatibleWithTypeId( typeId ) )
-                    return false;
-
-                func->AddRef();
-                *reinterpret_cast< asIScriptFunction** >( value ) = func;
-            }
-            else
-            {
-                // RefCastObject will increment the refcount if successful
-                engine->RefCastObject( m_valueObj, currType, engine->GetObjectTypeById( typeId ), reinterpret_cast< void** >( value ) );
-            }
+            // RefCastObject will increment the refcount if successful
+            engine->RefCastObject( m_valueObj, engine->GetTypeInfoById( m_typeId ), engine->GetTypeInfoById( typeId ), reinterpret_cast< void** >( value ) );
 
             return true;
         }
@@ -560,7 +548,7 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
         // Copy the object into the given reference
         if( isCompatible )
         {
-            engine->AssignScriptObject( value, m_valueObj, engine->GetObjectTypeById( typeId ) );
+            engine->AssignScriptObject( value, m_valueObj, engine->GetTypeInfoById( typeId ) );
 
             return true;
         }
@@ -575,14 +563,25 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
         }
 
         // We know all numbers are stored as either int64 or double, since we register overloaded functions for those
+        // Only bool and enums needs to be treated separately
         if( typeId == asTYPEID_DOUBLE )
         {
             if( m_typeId == asTYPEID_INT64 )
                 *(double*) value = double(m_valueInt);
             else if( m_typeId == asTYPEID_BOOL )
-                *(double*) value = char(m_valueInt) ? 1.0 : 0.0;
+            {
+                // Use memcpy instead of type cast to make sure the code is endianess agnostic
+                char localValue;
+                memcpy( &localValue, &m_valueInt, sizeof( char ) );
+                *(double*) value = localValue ? 1.0 : 0.0;
+            }
             else if( m_typeId > asTYPEID_DOUBLE && ( m_typeId & asTYPEID_MASK_OBJECT ) == 0 )
-                *(double*) value = double( int(m_valueInt) );              // enums are 32bit
+            {
+                // Use memcpy instead of type cast to make sure the code is endianess agnostic
+                int localValue;
+                memcpy( &localValue, &m_valueInt, sizeof( int ) );
+                *(double*) value = double(localValue); // enums are 32bit
+            }
             else
             {
                 // The stored type is an object
@@ -591,16 +590,24 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
             }
             return true;
         }
-        else if( typeId == asTYPEID_INT64 || typeId == asTYPEID_UINT64 )
+        else if( typeId == asTYPEID_INT64 )
         {
-            if( m_typeId >= asTYPEID_INT8 && m_typeId <= asTYPEID_UINT64 )
-                *(asINT64*) value = asINT64( m_valueInt );
-            else if( m_typeId == asTYPEID_DOUBLE )
+            if( m_typeId == asTYPEID_DOUBLE )
                 *(asINT64*) value = asINT64( m_valueFlt );
             else if( m_typeId == asTYPEID_BOOL )
-                *(asINT64*) value = char(m_valueInt) ? 1 : 0;
+            {
+                // Use memcpy instead of type cast to make sure the code is endianess agnostic
+                char localValue;
+                memcpy( &localValue, &m_valueInt, sizeof( char ) );
+                *(asINT64*) value = localValue ? 1 : 0;
+            }
             else if( m_typeId > asTYPEID_DOUBLE && ( m_typeId & asTYPEID_MASK_OBJECT ) == 0 )
-                *(asINT64*) value = int(m_valueInt);                // enums are 32bit
+            {
+                // Use memcpy instead of type cast to make sure the code is endianess agnostic
+                int localValue;
+                memcpy( &localValue, &m_valueInt, sizeof( int ) );
+                *(asINT64*) value = localValue; // enums are 32bit
+            }
             else
             {
                 // The stored type is an object
@@ -617,9 +624,19 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
             else if( m_typeId == asTYPEID_INT64 )
                 *(int*) value = int(m_valueInt);
             else if( m_typeId == asTYPEID_BOOL )
-                *(int*) value = char(m_valueInt) ? 1 : 0;
+            {
+                // Use memcpy instead of type cast to make sure the code is endianess agnostic
+                char localValue;
+                memcpy( &localValue, &m_valueInt, sizeof( char ) );
+                *(int*) value = localValue ? 1 : 0;
+            }
             else if( m_typeId > asTYPEID_DOUBLE && ( m_typeId & asTYPEID_MASK_OBJECT ) == 0 )
-                *(int*) value = int(m_valueInt);
+            {
+                // Use memcpy instead of type cast to make sure the code is endianess agnostic
+                int localValue;
+                memcpy( &localValue, &m_valueInt, sizeof( int ) );
+                *(int*) value = localValue; // enums are 32bit
+            }
             else
             {
                 // The stored type is an object
@@ -630,7 +647,10 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
         else if( typeId == asTYPEID_BOOL )
         {
             if( m_typeId & asTYPEID_OBJHANDLE )
+            {
+                // TODO: Check if the object has a conversion operator to a primitive value
                 *(bool*) value = m_valueObj ? true : false;
+            }
             else if( m_typeId & asTYPEID_MASK_OBJECT )
             {
                 // TODO: Check if the object has a conversion operator to a primitive value
@@ -638,8 +658,9 @@ bool ScriptDictValue::Get( asIScriptEngine* engine, void* value, int typeId ) co
             }
             else
             {
+                // Compare only the bytes that were actually set
                 asQWORD zero = 0;
-                int     size = engine->GetSizeOfPrimitiveType( typeId );
+                int     size = engine->GetSizeOfPrimitiveType( m_typeId );
                 *(bool*) value = memcmp( &m_valueInt, &zero, size ) == 0 ? false : true;
             }
         }
@@ -821,7 +842,7 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dictionary", "uint getSize() const", asMETHOD( ScriptDictionary, GetSize ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "dictionary", "void delete(const string &in)", asMETHOD( ScriptDictionary, Delete ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dictionary", "bool delete(const string &in)", asMETHOD( ScriptDictionary, Delete ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dictionary", "void deleteAll()", asMETHOD( ScriptDictionary, DeleteAll ), asCALL_THISCALL );
     assert( r >= 0 );

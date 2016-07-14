@@ -17,19 +17,19 @@ public:
 	static void SetMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc);
 
 	// Factory functions
-	static CScriptGrid *Create(asIObjectType *ot);
-	static CScriptGrid *Create(asIObjectType *ot, asUINT width, asUINT height);
-	static CScriptGrid *Create(asIObjectType *ot, asUINT width, asUINT height, void *defaultValue);
-	static CScriptGrid *Create(asIObjectType *ot, void *listBuffer);
+	static CScriptGrid *Create(asITypeInfo *ot);
+	static CScriptGrid *Create(asITypeInfo *ot, asUINT width, asUINT height);
+	static CScriptGrid *Create(asITypeInfo *ot, asUINT width, asUINT height, void *defaultValue);
+	static CScriptGrid *Create(asITypeInfo *ot, void *listBuffer);
 
 	// Memory management
 	void AddRef() const;
 	void Release() const;
 
 	// Type information
-	asIObjectType *GetGridObjectType() const;
-	int            GetGridTypeId() const;
-	int            GetElementTypeId() const;
+	asITypeInfo *GetGridObjectType() const;
+	int          GetGridTypeId() const;
+	int          GetElementTypeId() const;
 
 	// Size
 	asUINT GetWidth() const;
@@ -53,17 +53,17 @@ public:
 	void ReleaseAllHandles(asIScriptEngine *engine);
 
 protected:
-	mutable int       refCount;
-	mutable bool      gcFlag;
-	asIObjectType    *objType;
-	SGridBuffer      *buffer;
-	int               elementSize;
-	int               subTypeId;
+	mutable int     refCount;
+	mutable bool    gcFlag;
+	asITypeInfo    *objType;
+	SGridBuffer    *buffer;
+	int             elementSize;
+	int             subTypeId;
 
 	// Constructors
-	CScriptGrid(asIObjectType *ot, void *initBuf); // Called from script when initialized with list
-	CScriptGrid(asUINT w, asUINT h, asIObjectType *ot);
-	CScriptGrid(asUINT w, asUINT h, void *defVal, asIObjectType *ot);
+	CScriptGrid(asITypeInfo *ot, void *initBuf); // Called from script when initialized with list
+	CScriptGrid(asUINT w, asUINT h, asITypeInfo *ot);
+	CScriptGrid(asUINT w, asUINT h, void *defVal, asITypeInfo *ot);
 	virtual ~CScriptGrid();
 
 	bool  CheckMaxSize(asUINT x, asUINT y);

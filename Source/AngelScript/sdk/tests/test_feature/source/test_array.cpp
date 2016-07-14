@@ -148,6 +148,32 @@ bool Test()
 	COutStream out;
 	asIScriptContext *ctx;
 
+	// Test to make sure opIndex properly catches null pointer access
+	// http://www.gamedev.net/topic/676729-crash-instead-of-null-pointer-exception-on-opindex/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+
+		RegisterScriptArray(engine, true);
+
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		ctx = engine->CreateContext();
+		r = ExecuteString(engine, "array<array<int>@> a = {null}; a[0][0] = 1;", 0, ctx);
+		if (r != asEXECUTION_EXCEPTION)
+			TEST_FAILED;
+		else if( GetExceptionInfo(ctx) != "func: void ExecuteString()\n"
+										  "modl: \n"
+										  "sect: ExecuteString\n"
+										  "line: 1\n"
+										  "desc: Null pointer access\n" )
+		{
+			PRINTF("%s", GetExceptionInfo(ctx).c_str());
+			TEST_FAILED;
+		}
+		ctx->Release();
+		engine->ShutDownAndRelease();
+	}
+
 	// Test GetTypeDeclaration with arrays
 	// http://www.gamedev.net/topic/663428-simplest-way-to-get-variable-type/
 	{

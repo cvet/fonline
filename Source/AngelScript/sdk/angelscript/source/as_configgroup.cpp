@@ -156,16 +156,6 @@ void asCConfigGroup::RemoveConfiguration(asCScriptEngine *engine, bool notUsed)
 			obj->ReleaseAllFunctions();
 	}
 
-	// Remove function definitions
-	for( n = 0; n < funcDefs.GetLength(); n++ )
-	{
-		engine->registeredFuncDefs.RemoveValue(funcDefs[n]);
-		funcDefs[n]->ReleaseInternal();
-		engine->RemoveFuncdef(funcDefs[n]);
-		funcDefs[n]->ReleaseInternal();
-	}
-	funcDefs.SetLength(0);
-
 	// Remove object types (skip this if it is possible other groups are still using the types)
 	if( !notUsed )
 	{
@@ -182,17 +172,20 @@ void asCConfigGroup::RemoveConfiguration(asCScriptEngine *engine, bool notUsed)
 					engine->defaultArrayObjectType = 0;
 
 				if( t->flags & asOBJ_TYPEDEF )
-					engine->registeredTypeDefs.RemoveValue(t->CastToObjectType());
+					engine->registeredTypeDefs.RemoveValue(t->CastToTypedefType());
 				else if( t->flags & asOBJ_ENUM )
 					engine->registeredEnums.RemoveValue(t->CastToEnumType());
-				else if( t->flags & asOBJ_TEMPLATE )
+				else if (t->flags & asOBJ_TEMPLATE)
 					engine->registeredTemplateTypes.RemoveValue(t->CastToObjectType());
+				else if (t->flags & asOBJ_FUNCDEF)
+				{
+					engine->registeredFuncDefs.RemoveValue(t->CastToFuncdefType());
+					engine->RemoveFuncdef(t->CastToFuncdefType());
+				}
 				else
 					engine->registeredObjTypes.RemoveValue(t->CastToObjectType());
 
-				asCObjectType *ot = t->CastToObjectType();
-				if (ot)
-					ot->DestroyInternal();
+				t->DestroyInternal();
 				t->ReleaseInternal();
 			}
 			else

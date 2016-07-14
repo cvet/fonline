@@ -165,7 +165,7 @@ bool Test()
 	r = mod->AddScriptSection("test", script, strlen(script));
 	r = mod->Build();
 
-	asIObjectType *objType = engine->GetModule("test")->GetObjectTypeByName("CTest");
+	asITypeInfo *objType = engine->GetModule("test")->GetTypeInfoByName("CTest");
 	asIScriptObject* testClassObj = (asIScriptObject*)engine->CreateScriptObject(objType);
 
 	typeA* a = new typeB();
@@ -185,7 +185,7 @@ bool Test()
 	}
 
 	typeB* b = 0;
-	r = engine->RefCastObject(a, engine->GetObjectTypeByName("typeA"), engine->GetObjectTypeByName("typeB"), (void**)&b);
+	r = engine->RefCastObject(a, engine->GetTypeInfoByName("typeA"), engine->GetTypeInfoByName("typeB"), (void**)&b);
 	if( r != asSUCCESS )
 		TEST_FAILED;
 	if( b == 0 )

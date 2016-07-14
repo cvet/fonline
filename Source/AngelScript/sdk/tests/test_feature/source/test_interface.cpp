@@ -96,7 +96,7 @@ bool Test()
 	r = engine->RegisterInterfaceMethod("appintf", "void test()"); assert( r >= 0 );
 
 	// Registered interfaces do not belong to any module
-	asIObjectType *type = engine->GetObjectTypeByName("appintf");
+	asITypeInfo *type = engine->GetTypeInfoByName("appintf");
 	if( type == 0 || type->GetModule() != 0 )
 		TEST_FAILED;
 
@@ -107,7 +107,7 @@ bool Test()
 	if( r < 0 ) TEST_FAILED;
 
 	// Script declared interfaces belong to the module that declared them
-	type = mod->GetObjectTypeByName("intf2");
+	type = mod->GetTypeInfoByName("intf2");
 	if( type == 0 || type->GetModule() != mod )
 		TEST_FAILED;
 
@@ -115,11 +115,11 @@ bool Test()
 	if( r != asEXECUTION_FINISHED ) TEST_FAILED;
 
 	// Test calling the interface method from the application
-	type = engine->GetModule(0)->GetObjectTypeByName("myclass");
+	type = engine->GetModule(0)->GetTypeInfoByName("myclass");
 	asIScriptObject *obj = (asIScriptObject*)engine->CreateScriptObject(type);
 
 	int intfTypeId = engine->GetModule(0)->GetTypeIdByDecl("myintf");
-	type = engine->GetObjectTypeById(intfTypeId);
+	type = engine->GetTypeInfoById(intfTypeId);
 	asIScriptFunction *func = type->GetMethodByDecl("void test()");
 	asIScriptContext *ctx = engine->CreateContext();
 	r = ctx->Prepare(func);
@@ -130,7 +130,7 @@ bool Test()
 		TEST_FAILED;
 
 	intfTypeId = engine->GetTypeIdByDecl("appintf");
-	type = engine->GetObjectTypeById(intfTypeId);
+	type = engine->GetTypeInfoById(intfTypeId);
 	func = type->GetMethodByDecl("void test()");
 
 	r = ctx->Prepare(func);
@@ -499,7 +499,7 @@ bool Test2()
 
 		int typeBA = engine->GetModule("b")->GetTypeIdByDecl("A@");
 		int typeBB = engine->GetModule("b")->GetTypeIdByDecl("B");
-		asIObjectType *objType = engine->GetObjectTypeById(typeBB);
+		asITypeInfo *objType = engine->GetTypeInfoById(typeBB);
 		asIScriptFunction *func = objType->GetMethodByIndex(0);
 		if( func->GetReturnTypeId() != typeBA )
 			TEST_FAILED;

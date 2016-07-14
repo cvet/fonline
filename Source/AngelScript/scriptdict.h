@@ -10,8 +10,8 @@ public:
     #ifdef FONLINE_DLL
     static ScriptDict& Create( const char* keyType, const char* valueType )
     {
-        static asIObjectType* ot = ASEngine->GetObjectTypeByDecl( std::string( "dict<" ).append( keyType ).append( "," ).append( valueType ).append( ">" ).c_str() );
-        ScriptDict*           scriptDict = (ScriptDict*) ASEngine->CreateScriptObject( ot );
+        static asITypeInfo* ot = ASEngine->GetTypeInfoByDecl( std::string( "dict<" ).append( keyType ).append( "," ).append( valueType ).append( ">" ).c_str() );
+        ScriptDict*         scriptDict = (ScriptDict*) ASEngine->CreateScriptObject( ot );
         return *scriptDict;
     }
 protected:
@@ -19,8 +19,8 @@ protected:
 
     #ifndef FONLINE_DLL
     // Factory functions
-    static ScriptDict* Create( asIObjectType* ot );
-    static ScriptDict* Create( asIObjectType* ot, void* listBuffer );
+    static ScriptDict* Create( asITypeInfo* ot );
+    static ScriptDict* Create( asITypeInfo* ot, void* listBuffer );
     #endif
 
 public:
@@ -57,16 +57,16 @@ public:
     virtual void ReleaseAllHandles( asIScriptEngine* engine );
 
 protected:
-    mutable int    refCount;
-    mutable bool   gcFlag;
-    asIObjectType* objType;
-    int            keyTypeId;
-    int            valueTypeId;
-    void*          dictMap;
+    mutable int  refCount;
+    mutable bool gcFlag;
+    asITypeInfo* objType;
+    int          keyTypeId;
+    int          valueTypeId;
+    void*        dictMap;
 
     ScriptDict();
-    ScriptDict( asIObjectType* ot );
-    ScriptDict( asIObjectType* ot, void* initBuf );
+    ScriptDict( asITypeInfo* ot );
+    ScriptDict( asITypeInfo* ot, void* initBuf );
     ScriptDict( const ScriptDict& other );
     virtual ~ScriptDict();
 };

@@ -179,7 +179,7 @@ bool Test()
 		}
 
 		// Make sure the shared type didn't get the interface duplicated
-		asIObjectType *type = mod->GetObjectTypeByName("C");
+		asITypeInfo *type = mod->GetTypeInfoByName("C");
 		if( type->GetInterfaceCount() != 1 )
 			TEST_FAILED;
 
@@ -355,7 +355,7 @@ bool Test()
 
 		if( t1 >= 0 )
 		{
-			asIScriptFunction *fact1 = engine->GetObjectTypeById(t1)->GetFactoryByIndex(0);
+			asIScriptFunction *fact1 = engine->GetTypeInfoById(t1)->GetFactoryByIndex(0);
 			if( fact1 < 0 )
 				TEST_FAILED;
 		
@@ -379,7 +379,7 @@ bool Test()
 			if( f1 != f2 )
 				TEST_FAILED;
 
-			asIScriptFunction *fact2 = engine->GetObjectTypeById(t2)->GetFactoryByIndex(0);
+			asIScriptFunction *fact2 = engine->GetTypeInfoById(t2)->GetFactoryByIndex(0);
 			if( fact1 != fact2 )
 				TEST_FAILED;
 
@@ -405,7 +405,7 @@ bool Test()
 			if( f1 != f3 )
 				TEST_FAILED;
 
-			asIScriptFunction *fact3 = engine->GetObjectTypeById(t3)->GetFactoryByIndex(0);
+			asIScriptFunction *fact3 = engine->GetTypeInfoById(t3)->GetFactoryByIndex(0);
 			if( fact1 != fact3 )
 				TEST_FAILED;
 
@@ -479,7 +479,7 @@ bool Test()
 			TEST_FAILED;
 
 		int id = mod->GetTypeIdByDecl("cMyClass");
-		asIObjectType *type = engine->GetObjectTypeById(id);
+		asITypeInfo *type = engine->GetTypeInfoById(id);
 		asIScriptFunction *func = type->GetMethodByDecl("void MyFunc(const B &in)");
 		if( func == 0 )
 			TEST_FAILED;
@@ -510,7 +510,7 @@ bool Test()
 			TEST_FAILED;
 
 		id = mod->GetTypeIdByDecl("cMyClass");
-		type = engine->GetObjectTypeById(id);
+		type = engine->GetTypeInfoById(id);
 		func = type->GetMethodByDecl("void MyFunc(const B &in)");
 		if( func == 0 )
 			TEST_FAILED;

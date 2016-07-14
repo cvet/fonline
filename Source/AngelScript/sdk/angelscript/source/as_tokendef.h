@@ -263,7 +263,7 @@ sTokenWord const tokenWords[] =
 	asTokenDef("for"       , ttFor),
 	asTokenDef("funcdef"   , ttFuncDef),
 	asTokenDef("if"        , ttIf),
-	//asTokenDef("import"    , ttImport),
+	asTokenDef("import"    , ttImport),
 	asTokenDef("in"        , ttIn),
 	asTokenDef("inout"     , ttInOut),
 	asTokenDef("int"       , ttInt),
@@ -305,7 +305,7 @@ const char * const whiteSpace = " \t\r\n";
 const char * const THIS_TOKEN     = "this";
 const char * const FROM_TOKEN     = "from";
 const char * const SUPER_TOKEN    = "super";
-const char * const SHARED_TOKEN   = "__shared";
+const char * const SHARED_TOKEN   = "shared";
 const char * const FINAL_TOKEN    = "final";
 const char * const OVERRIDE_TOKEN = "override";
 const char * const GET_TOKEN      = "get";

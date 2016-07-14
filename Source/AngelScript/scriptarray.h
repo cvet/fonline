@@ -24,8 +24,8 @@ public:
     #ifdef FONLINE_DLL
     static ScriptArray& Create( const char* type )
     {
-        static asIObjectType* ot = ASEngine->GetObjectTypeByDecl( std::string( type ).append( "[]" ).c_str() );
-        ScriptArray*          scriptArray = (ScriptArray*) ASEngine->CreateScriptObject( ot );
+        static asITypeInfo* ot = ASEngine->GetTypeInfoByDecl( std::string( type ).append( "[]" ).c_str() );
+        ScriptArray*        scriptArray = (ScriptArray*) ASEngine->CreateScriptObject( ot );
         return *scriptArray;
     }
 protected:
@@ -33,10 +33,10 @@ protected:
 
     #ifndef FONLINE_DLL
     // Factory functions
-    static ScriptArray* Create( asIObjectType* ot );
-    static ScriptArray* Create( asIObjectType* ot, asUINT length );
-    static ScriptArray* Create( asIObjectType* ot, asUINT length, void* defaultValue );
-    static ScriptArray* Create( asIObjectType* ot, void* listBuffer );
+    static ScriptArray* Create( asITypeInfo* ot );
+    static ScriptArray* Create( asITypeInfo* ot, asUINT length );
+    static ScriptArray* Create( asITypeInfo* ot, asUINT length, void* defaultValue );
+    static ScriptArray* Create( asITypeInfo* ot, void* listBuffer );
     #endif
 
 public:
@@ -45,9 +45,9 @@ public:
     virtual void Release() const;
 
     // Type information
-    virtual asIObjectType* GetArrayObjectType() const;
-    virtual int            GetArrayTypeId() const;
-    virtual int            GetElementTypeId() const;
+    virtual asITypeInfo* GetArrayObjectType() const;
+    virtual int          GetArrayTypeId() const;
+    virtual int          GetElementTypeId() const;
 
     // Get the current size
     virtual asUINT GetSize() const;
@@ -110,17 +110,17 @@ public:
     virtual void ReleaseAllHandles( asIScriptEngine* engine );
 
 protected:
-    mutable int    refCount;
-    mutable bool   gcFlag;
-    asIObjectType* objType;
-    ArrayBuffer*   buffer;
-    int            elementSize;
-    int            subTypeId;
+    mutable int  refCount;
+    mutable bool gcFlag;
+    asITypeInfo* objType;
+    ArrayBuffer* buffer;
+    int          elementSize;
+    int          subTypeId;
 
     ScriptArray();
-    ScriptArray( asIObjectType* ot, void* initBuf );   // Called from script when initialized with list
-    ScriptArray( asUINT length, asIObjectType* ot );
-    ScriptArray( asUINT length, void* defVal, asIObjectType* ot );
+    ScriptArray( asITypeInfo* ot, void* initBuf );   // Called from script when initialized with list
+    ScriptArray( asUINT length, asITypeInfo* ot );
+    ScriptArray( asUINT length, void* defVal, asITypeInfo* ot );
     ScriptArray( const ScriptArray& other );
     virtual ~ScriptArray();
 

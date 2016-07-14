@@ -423,7 +423,7 @@ bool Test3()
 	GetClassInstance( engine, func, objB, objBTypeId );
 
 	// resolve method functions we want to call
-	asIObjectType* typeA = engine->GetObjectTypeById( objATypeId );
+	asITypeInfo* typeA = engine->GetTypeInfoById( objATypeId );
 	asIScriptFunction *setFunc = typeA->GetMethodByDecl( "void SetObj( IMyInterface@ obj )" );
 	asIScriptFunction *clearFunc = typeA->GetMethodByDecl( "void ClearObj()" );
 

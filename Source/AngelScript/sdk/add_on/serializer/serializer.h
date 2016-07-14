@@ -51,7 +51,7 @@ public:
 	void SetType(int typeId);
 
 	// Returns the object type for non-primitives
-	asIObjectType *GetType();
+	asITypeInfo *GetType();
 
 	// Get child by name variable
 	CSerializedValue *FindByName(const std::string &name, const std::string &nameSpace);

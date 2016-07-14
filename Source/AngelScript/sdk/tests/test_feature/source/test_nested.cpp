@@ -32,7 +32,7 @@ CScriptHandle CreateObject(const string &s)
 	asIScriptContext *ctx = asGetActiveContext();
 	asIScriptEngine *engine = ctx->GetEngine();
 	asIScriptModule *mod = engine->GetModule("test");
-	asIObjectType *type = mod->GetObjectTypeByName(s.c_str());
+	asITypeInfo *type = mod->GetTypeInfoByName(s.c_str());
 
 	// The object will start with ref count == 1
 	asIScriptObject *obj = reinterpret_cast<asIScriptObject*>(engine->CreateScriptObject(type));

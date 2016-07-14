@@ -217,13 +217,43 @@ std::string ReturnStringButException()
 	return ""; // This is never returned so AngelScript has to properly handle the situation
 }
 
+void ReturnStringButException_generic(asIScriptGeneric *gen)
+{
+	// This call will throw an exception (unless library has been compiled with AS_NO_EXCEPTIONS)
+	std::string str = ReturnStringButException();
+
+	// Initialize the returned object
+	new(gen->GetAddressOfReturnLocation()) std::string(str);
+}
+
 bool Test()
 {
-	RET_ON_MAX_PORT
-
 	bool fail = false;
 	int r;
 	int suspendId, exceptionId;
+
+	// Test calling a function that throws an exception and has been registered with generic calling convention
+	{
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+
+		RegisterStdString(engine);
+		engine->RegisterGlobalFunction("string RetStrButExcept()", asFUNCTION(ReturnStringButException_generic), asCALL_GENERIC);
+
+		asIScriptContext *ctx = engine->CreateContext();
+		r = ExecuteString(engine, "string str = RetStrButExcept()", 0, ctx);
+		if (r != asEXECUTION_EXCEPTION)
+			TEST_FAILED;
+		else if (std::string(ctx->GetExceptionString()) != "Caught an exception from the application")
+		{
+			PRINTF("Got exception : %s\n", ctx->GetExceptionString());
+			TEST_FAILED;
+		}
+
+		ctx->Release();
+		engine->Release();
+	}
+
+	RET_ON_MAX_PORT
 
 	// Test calling a function that throws an exception
 	{
