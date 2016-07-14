@@ -344,7 +344,7 @@ bool ProtoManager::LoadProtosFromFiles()
     // Check player proto
     if( !crProtos.count( Str::GetHash( "Player" ) ) )
     {
-        WriteLog( "Player proto 'Player.focr' not loaded." );
+        WriteLog( "Player proto 'Player.focr' not loaded.\n" );
         errors++;
     }
 

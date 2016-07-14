@@ -1570,6 +1570,7 @@ void Script::CacheEnumValues()
     {
         asITypeInfo* enum_type = Engine->GetEnumByIndex( i );
         const char*  enum_ns = enum_type->GetNamespace();
+        enum_ns = ( enum_ns && enum_ns[ 0 ] ? enum_ns : nullptr );
         const char*  enum_name = enum_type->GetName();
         Str::Format( buf, "%s%s%s", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
         IntStrMap&   value_names = cached_enum_names.insert( PAIR( string( buf ), IntStrMap() ) ).first->second;
@@ -1590,6 +1591,7 @@ void Script::CacheEnumValues()
     {
         asITypeInfo* enum_type = module->GetEnumByIndex( i );
         const char*  enum_ns = enum_type->GetNamespace();
+        enum_ns = ( enum_ns && enum_ns[ 0 ] ? enum_ns : nullptr );
         const char*  enum_name = enum_type->GetName();
         Str::Format( buf, "%s%s%s", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
         IntStrMap&   value_names = cached_enum_names.insert( PAIR( string( buf ), IntStrMap() ) ).first->second;
