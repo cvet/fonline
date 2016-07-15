@@ -7999,7 +7999,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         if( to_slot == SLOT_GROUND )
         {
             Self->Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
-            if( item->GetCount() < item->GetCount() )
+            if( item->GetStackable() && item_count < item->GetCount() )
             {
                 item->ChangeCount( -(int) item->GetCount() );
             }
@@ -8045,7 +8045,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         }
 
         // Affect barter screen
-        if( to_slot == SLOT_GROUND )
+        if( to_slot == SLOT_GROUND && Self->IsScreenPresent( SCREEN__BARTER ) )
             Self->CollectContItems();
 
         // Light
