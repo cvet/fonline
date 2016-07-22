@@ -178,7 +178,6 @@ CLASS_PROPERTY_IMPL( Item, IsCanLook );
 CLASS_PROPERTY_IMPL( Item, IsCanTalk );
 CLASS_PROPERTY_IMPL( Item, IsCanPickUp );
 CLASS_PROPERTY_IMPL( Item, IsCanUse );
-CLASS_PROPERTY_IMPL( Item, IsHolodisk );
 CLASS_PROPERTY_IMPL( Item, IsRadio );
 CLASS_PROPERTY_IMPL( Item, SortValue );
 CLASS_PROPERTY_IMPL( Item, Indicator );

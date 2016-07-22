@@ -159,9 +159,7 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterDead );
     BIND_INTERNAL_EVENT( CritterRespawn );
     BIND_INTERNAL_EVENT( CritterStealing );
-    BIND_INTERNAL_EVENT( CritterUseItem );
     BIND_INTERNAL_EVENT( CritterUseSkill );
-    BIND_INTERNAL_EVENT( CritterReloadWeapon );
     BIND_INTERNAL_EVENT( CritterCheckMoveItem );
     BIND_INTERNAL_EVENT( CritterMoveItem );
     BIND_INTERNAL_EVENT( CritterShow );
@@ -1146,40 +1144,6 @@ void FOServer::SScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, usho
     cr->ViewMapLocId = 0;
     cr->ViewMapLocEnt = 0;
     cr->Send_LoadMap( map );
-}
-
-void FOServer::SScriptFunc::Crit_AddHolodiskInfo( Critter* cr, uint holodisk_num )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    AddPlayerHoloInfo( cr, holodisk_num, true );
-}
-
-void FOServer::SScriptFunc::Crit_EraseHolodiskInfo( Critter* cr, uint holodisk_num )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    ErasePlayerHoloInfo( cr, holodisk_num, true );
-}
-
-bool FOServer::SScriptFunc::Crit_IsHolodiskInfo( Critter* cr, uint holodisk_num )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    ScriptArray* holo_info = cr->GetHoloInfo();
-    for( int i = 0, j = holo_info->GetSize(); i < j; i++ )
-    {
-        if( *(uint*) holo_info->At( i ) == holodisk_num )
-        {
-            SAFEREL( holo_info );
-            return true;
-        }
-    }
-    SAFEREL( holo_info );
-    return false;
 }
 
 void FOServer::SScriptFunc::Crit_Say( Critter* cr, uchar how_say, ScriptString& text )
@@ -3860,7 +3824,6 @@ static void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
     {
         cl->Send_AllProperties();
         cl->Send_AddAllItems();
-        cl->Send_HoloInfo( true, 0, 0 );
         cl->Send_AllAutomapsInfo();
     }
 }

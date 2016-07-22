@@ -125,7 +125,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool ChangeProto(hash protoI
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint fromFrame, uint toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetChild(uint childIndex)", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "const Item@+ GetChild(uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter& cr, int skill, Item@+ item)", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter& cr, int skill, Item@+ item) const", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
 
 // BIND_ASSERT( engine->RegisterGlobalFunction( "bool __Item_SetScript(?&in item, ?&in func)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL ) );
 // BIND_ASSERT( engine->RegisterGlobalFunction( "uint __Item_GetWholeCost(?&in item)", asFUNCTION( BIND_CLASS Item_GetWholeCost ), asCALL_CDECL ) );
@@ -205,10 +205,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint ma
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobal()", asFUNCTION( BIND_CLASS Crit_TransitToGlobal ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobal(array<Critter@>& group)", asFUNCTION( BIND_CLASS Crit_TransitToGlobalWithGroup ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobalGroup(uint critterId)", asFUNCTION( BIND_CLASS Crit_TransitToGlobalGroup ), asCALL_CDECL_OBJFIRST ) );
-
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void AddHolodiskInfo(uint holodiskNum)", asFUNCTION( BIND_CLASS Crit_AddHolodiskInfo ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EraseHolodiskInfo(uint holodiskNum)", asFUNCTION( BIND_CLASS Crit_EraseHolodiskInfo ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsHolodiskInfo(uint holodiskNum) const", asFUNCTION( BIND_CLASS Crit_IsHolodiskInfo ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsLife() const", asFUNCTION( BIND_CLASS Crit_IsLife ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsKnockout() const", asFUNCTION( BIND_CLASS Crit_IsKnockout ), asCALL_CDECL_OBJFIRST ) );
@@ -919,7 +915,13 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadDataFile(string& dataFile
 BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, bool enableSend)", asFUNCTION( BIND_CLASS Global_AllowSlot ), asCALL_CDECL ) );
 
 // ScriptFunctions.h
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, string@ message = null)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message, const ?&in)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message, const ?&in, const ?&in)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message, const ?&in, const ?&in, const ?&in)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message, const ?&in, const ?&in, const ?&in, const ?&in)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int Random(int min, int max)", asFUNCTION( Global_Random ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Log(const string& text)", asFUNCTION( Global_Log ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToInt(const string@+ text, int& result)", asFUNCTION( Global_StrToInt ), asCALL_CDECL ) );

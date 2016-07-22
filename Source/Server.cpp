@@ -1548,14 +1548,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_USE_ITEM:
-            {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_AP_MSG;
-                Process_UseItem( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_PICK_ITEM:
             {
                 CHECK_BUSY_AND_LIFE;
@@ -1665,7 +1657,7 @@ void FOServer::Process( ClientPtr& cl )
             }
             case NETMSG_RPC:
             {
-                Script::HandleRpc( &cl->Bin );
+                Script::HandleRpc( cl );
                 BIN_END( cl );
                 continue;
             }

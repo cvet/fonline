@@ -51,7 +51,6 @@ public:
     static void Process_SingleplayerSaveLoad( Client* cl );
     static void Process_Dir( Client* cl );
     static void Process_ChangeItem( Client* cl );
-    static void Process_UseItem( Client* cl );
     static void Process_PickItem( Client* cl );
     static void Process_PickCritter( Client* cl );
     static void Process_ContainerItem( Client* cl );
@@ -97,20 +96,12 @@ public:
 
     static void      SaveHoloInfoFile( IniParser& data );
     static bool      LoadHoloInfoFile( IniParser& data );
-    static HoloInfo* GetHoloInfo( uint id )
-    {
-        auto it = HolodiskInfo.find( id );
-        return it != HolodiskInfo.end() ? it->second : nullptr;
-    }
-    static void AddPlayerHoloInfo( Critter* cr, uint holo_num, bool send );
-    static void ErasePlayerHoloInfo( Critter* cr, uint index, bool send );
-    static void Send_PlayerHoloInfo( Critter* cr, uint holo_num, bool send_text );
+    static HoloInfo* GetHoloInfo( uint id );
+    static void      Send_PlayerHoloInfo( Critter* cr, uint holo_num, bool send_text );
 
     // Actions
     static bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
-    static bool Act_Attack( Critter* cr, uchar rate_weap, uint target_id );
-    static bool Act_Reload( Critter* cr, uint weap_id, uint ammo_id );
-    static bool Act_Use( Critter* cr, uint item_id, int skill, int target_type, uint target_id, hash target_pid, uint param );
+    static bool Act_UseSkill( Critter* cr, int skill, int target_type, uint target_id, hash target_pid );
     static bool Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid );
 
     static void KillCritter( Critter* cr, uint anim2, Critter* attacker );
@@ -183,9 +174,7 @@ public:
     static bool AI_Move( Npc* npc, ushort hx, ushort hy, bool is_run, uint cut, uint trace );
     static bool AI_MoveToCrit( Npc* npc, uint targ_id, uint cut, uint trace, bool is_run );
     static bool AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, uint item_id, uint count );
-    static bool AI_Attack( Npc* npc, Map* map, uchar mode, uint targ_id );
     static bool AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, hash pid, uint use_item_id );
-    static bool AI_ReloadWeapon( Npc* npc, Map* map, Item* weap, uint ammo_id );
     static void ProcessCritter( Critter* cr );
     static bool Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg );
     static bool Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck );
@@ -430,9 +419,6 @@ public:
         static bool  Crit_ToKnockout( Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy );
         static void  Crit_RefreshVisible( Critter* cr );
         static void  Crit_ViewMap( Critter* cr, Map* map, uint look, ushort hx, ushort hy, uchar dir );
-        static void  Crit_AddHolodiskInfo( Critter* cr, uint holodisk_num );
-        static void  Crit_EraseHolodiskInfo( Critter* cr, uint holodisk_num );
-        static bool  Crit_IsHolodiskInfo( Critter* cr, uint holodisk_num );
         static void  Crit_Say( Critter* cr, uchar how_say, ScriptString& text );
         static void  Crit_SayMsg( Critter* cr, uchar how_say, ushort text_msg, uint num_str );
         static void  Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, ScriptString& lexems );

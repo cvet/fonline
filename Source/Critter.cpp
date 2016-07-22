@@ -97,7 +97,6 @@ CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftLeg );
 CLASS_PROPERTY_IMPL( Critter, KnownLocations );
 CLASS_PROPERTY_IMPL( Critter, ConnectionIp );
 CLASS_PROPERTY_IMPL( Critter, ConnectionPort );
-CLASS_PROPERTY_IMPL( Critter, HoloInfo );
 CLASS_PROPERTY_IMPL( Critter, HomeMapId );
 CLASS_PROPERTY_IMPL( Critter, HomeHexX );
 CLASS_PROPERTY_IMPL( Critter, HomeHexY );
@@ -116,8 +115,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
 {
     CritterIsNpc = false;
     GlobalMapGroup = nullptr;
-    PrevHexTick = 0;
-    PrevHexX = PrevHexY = 0;
     startBreakTime = 0;
     breakTime = 0;
     waitEndTick = 0;
@@ -1898,11 +1895,6 @@ void Critter::Send_CombatResult( uint* combat_res, uint len )
 {
     if( IsPlayer() )
         ( (Client*) this )->Send_CombatResult( combat_res, len );
-}
-void Critter::Send_HoloInfo( bool clear, ushort offset, ushort count )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_HoloInfo( clear, offset, count );
 }
 void Critter::Send_AutomapsInfo( void* locs_vec, Location* loc )
 {
@@ -3847,28 +3839,6 @@ void Client::Send_CombatResult( uint* combat_res, uint len )
     if( len )
         Bout.Push( (char*) combat_res, len * sizeof( uint ) );
     BOUT_END( this );
-}
-
-void Client::Send_HoloInfo( bool clear, ushort offset, ushort count )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    ScriptArray* holo_info = GetHoloInfo();
-    count = ( count ? count : holo_info->GetSize() );
-    uint         msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( clear ) + sizeof( offset ) + sizeof( count ) + count * sizeof( uint );
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_HOLO_INFO;
-    Bout << msg_len;
-    Bout << clear;
-    Bout << offset;
-    Bout << count;
-    if( count )
-        Bout.Push( (char*) holo_info->At( offset ), count * sizeof( uint ) );
-    BOUT_END( this );
-
-    SAFEREL( holo_info );
 }
 
 void Client::Send_UserHoloStr( uint str_num, const char* text, ushort text_len )

@@ -523,22 +523,6 @@
 // uchar take_flags (see Take flags in FOdefines.h)
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_USE_ITEM                  MAKE_NETMSG_HEADER( 85 )
-#define NETMSG_SEND_USE_ITEM_SIZE                         \
-    ( sizeof( uint ) + sizeof( uchar ) + sizeof( uint ) + \
-      sizeof( uchar ) + sizeof( uchar ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint ) )
-// ////////////////////////////////////////////////////////////////////////
-// Use some item.
-// Params:
-// uchar ap
-// uint item_id
-// uchar rate
-// uchar target_type
-// uint target_id
-// hash target_pid
-// uint param
-// ////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_SEND_USE_SKILL                 MAKE_NETMSG_HEADER( 86 )
 #define NETMSG_SEND_USE_SKILL_SIZE                       \
     ( sizeof( uint ) + sizeof( int ) + sizeof( uchar ) + \
@@ -888,16 +872,6 @@
 // ************************************************************************
 // Holodisk info, Automaps info
 // ************************************************************************
-
-#define NETMSG_HOLO_INFO                      MAKE_NETMSG_HEADER( 163 )
-// ////////////////////////////////////////////////////////////////////////
-// uint msg_len
-// bool clear
-// ushort offset
-// ushort num_count
-//	for num_count
-//	ushort holo_num
-// ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_SET_USER_HOLO_STR         MAKE_NETMSG_HEADER( 164 )
 // ////////////////////////////////////////////////////////////////////////

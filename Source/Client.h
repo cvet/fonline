@@ -162,7 +162,6 @@ public:
     void Net_SendUseSkill( int skill, CritterCl* cr );
     void Net_SendUseSkill( int skill, ItemHex* item );
     void Net_SendUseSkill( int skill, Item* item );
-    void Net_SendUseItem( uchar ap, uint item_id, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param );
     void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
     void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
@@ -236,7 +235,6 @@ public:
     void Net_OnUpdateFilesList();
     void Net_OnUpdateFileData();
 
-    void Net_OnHoloInfo();
     void Net_OnUserHoloStr();
     void Net_OnAutomapsInfo();
     void Net_OnCheckUID4();

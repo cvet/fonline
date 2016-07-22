@@ -168,79 +168,10 @@ bool FOServer::LoadHoloInfoFile( IniParser& data )
     return true;
 }
 
-void FOServer::AddPlayerHoloInfo( Critter* cr, uint holo_num, bool send )
+FOServer::HoloInfo* FOServer::GetHoloInfo( uint id )
 {
-    if( !holo_num )
-    {
-        if( send )
-            cr->Send_TextMsg( cr, STR_HOLO_READ_FAIL, SAY_NETMSG, TEXTMSG_HOLO );
-        return;
-    }
-
-    ScriptArray* holo_info = cr->GetHoloInfo();
-    uint         holo_count = holo_info->GetSize();
-    if( holo_count >= MAX_HOLO_INFO )
-    {
-        if( send )
-            cr->Send_TextMsg( cr, STR_HOLO_READ_MEMORY_FULL, SAY_NETMSG, TEXTMSG_HOLO );
-        SAFEREL( holo_info );
-        return;
-    }
-
-    for( uint i = 0; i < holo_count; i++ )
-    {
-        if( *(uint*) holo_info->At( i ) == holo_num )
-        {
-            if( send )
-                cr->Send_TextMsg( cr, STR_HOLO_READ_ALREADY, SAY_NETMSG, TEXTMSG_HOLO );
-            SAFEREL( holo_info );
-            return;
-        }
-    }
-
-    holo_info->InsertLast( &holo_num );
-    cr->SetHoloInfo( holo_info );
-    SAFEREL( holo_info );
-
-    if( send )
-    {
-        if( holo_num >= USER_HOLO_START_NUM )
-            Send_PlayerHoloInfo( cr, holo_num, true );
-        cr->Send_HoloInfo( false, holo_count, 1 );
-        cr->Send_TextMsg( cr, STR_HOLO_READ_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
-    }
-
-    // Cancel rewrite
-    if( holo_num >= USER_HOLO_START_NUM )
-    {
-        SCOPE_LOCK( HolodiskLocker );
-
-        HoloInfo* hi = GetHoloInfo( holo_num );
-        if( hi && hi->CanRewrite )
-            hi->CanRewrite = false;
-    }
-}
-
-void FOServer::ErasePlayerHoloInfo( Critter* cr, uint index, bool send )
-{
-    ScriptArray* holo_info = cr->GetHoloInfo();
-    if( index >= holo_info->GetSize() )
-    {
-        if( send )
-            cr->Send_TextMsg( cr, STR_HOLO_ERASE_FAIL, SAY_NETMSG, TEXTMSG_HOLO );
-        SAFEREL( holo_info );
-        return;
-    }
-
-    holo_info->RemoveAt( index );
-    cr->SetHoloInfo( holo_info );
-    SAFEREL( holo_info );
-
-    if( send )
-    {
-        cr->Send_HoloInfo( true, 0, 0 );
-        cr->Send_TextMsg( cr, STR_HOLO_ERASE_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
-    }
+    auto it = HolodiskInfo.find( id );
+    return it != HolodiskInfo.end() ? it->second : nullptr;
 }
 
 void FOServer::Send_PlayerHoloInfo( Critter* cr, uint holo_num, bool send_text )
@@ -332,9 +263,6 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     // Process step
     bool is_dead = cr->IsDead();
     map->UnsetFlagCritter( fx, fy, multihex, is_dead );
-    cr->PrevHexX = fx;
-    cr->PrevHexY = fy;
-    cr->PrevHexTick = Timer::GameTick();
     cr->SetHexX( hx );
     cr->SetHexY( hy );
     map->SetFlagCritter( hx, hy, multihex, is_dead );
@@ -387,240 +315,11 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     return true;
 }
 
-bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
-{
-/************************************************************************/
-/* Check & Prepare                                                      */
-/************************************************************************/
-    cr->SetBreakTime( GameOpt.Breaktime );
-
-    if( cr->GetId() == target_id )
-    {
-        WriteLogF( _FUNC_, " - Critter '%s' self attack.\n", cr->GetInfo() );
-        return false;
-    }
-
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
-    if( !map )
-    {
-        WriteLogF( _FUNC_, " - Map not found, map id %u, critter '%s'.\n", cr->GetMapId(), cr->GetInfo() );
-        return false;
-    }
-
-    Critter* t_cr = cr->GetCritSelf( target_id, true );
-    if( !t_cr )
-    {
-        WriteLogF( _FUNC_, " - Target critter not found, target id %u, critter '%s'.\n", target_id, cr->GetInfo() );
-        return false;
-    }
-
-    if( cr->GetMapId() != t_cr->GetMapId() )
-    {
-        WriteLogF( _FUNC_, " - Other maps, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    if( t_cr->IsDead() )
-    {
-        // if(cr->IsPlayer()) WriteLogF(_FUNC_," - Target critter is dead, critter '%s', target critter '%s'.\n",cr->GetInfo(),t_cr->GetInfo());
-        cr->Send_AddCritter( t_cr );       // Refresh
-        return false;
-    }
-
-    int hx = cr->GetHexX();
-    int hy = cr->GetHexY();
-    int tx = t_cr->GetHexX();
-    int ty = t_cr->GetHexY();
-
-    // Get weapon, ammo and armor
-    Item* weap = cr->ItemSlotMain;
-    if( !weap->IsWeapon() )
-    {
-        WriteLogF( _FUNC_, " - Critter item is not weapon, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    if( weap->GetWeapon_IsTwoHanded() && cr->IsDmgArm() )
-    {
-        WriteLogF( _FUNC_, " - Critter is damaged arm on two hands weapon, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    if( cr->IsDmgTwoArm() && weap->GetId() )
-    {
-        WriteLogF( _FUNC_, " - Critter is damaged two arms on armed attack, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    uchar aim = rate_weap >> 4;
-    uchar use = rate_weap & 0xF;
-
-    if( use >= MAX_USES )
-    {
-        WriteLogF( _FUNC_, " - Use %u invalid value, critter '%s', target critter '%s'.\n", use, cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    if( !( weap->GetWeapon_ActiveUses() & ( 1 << use ) ) )
-    {
-        WriteLogF( _FUNC_, " - Use %u is not aviable, critter '%s', target critter '%s'.\n", use, cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    uint max_dist = cr->GetAttackDist( weap, use ) + t_cr->GetMultihex();
-    if( !CheckDist( hx, hy, tx, ty, max_dist ) && !( Timer::GameTick() < t_cr->PrevHexTick + 500 && CheckDist( hx, hy, t_cr->PrevHexX, t_cr->PrevHexY, max_dist ) ) )
-    {
-        cr->Send_XY( cr );
-        cr->Send_XY( t_cr );
-        return false;
-    }
-
-    TraceData trace;
-    trace.TraceMap = map;
-    trace.BeginHx = hx;
-    trace.BeginHy = hy;
-    trace.EndHx = tx;
-    trace.EndHy = ty;
-    trace.Dist = ( ( use == 0 ? weap->GetWeapon_MaxDist_0() : ( use == 1 ? weap->GetWeapon_MaxDist_1() : weap->GetWeapon_MaxDist_2() ) ) > 2 ? max_dist : 0 );
-    trace.FindCr = t_cr;
-    MapMngr.TraceBullet( trace );
-    if( !trace.IsCritterFounded )
-    {
-        cr->Send_XY( cr );
-        cr->Send_XY( t_cr );
-        return false;
-    }
-
-    int ap_cost = cr->GetUseApCost( weap, rate_weap );
-    if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
-    {
-        WriteLogF( _FUNC_, " - Not enough AP, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
-        return false;
-    }
-
-    // Ammo
-    ProtoItem* ammo = nullptr;
-    if( weap->GetWeapon_Caliber() && weap->GetWeapon_MaxAmmoCount() )
-    {
-        ammo = ProtoMngr.GetProtoItem( weap->GetAmmoPid() );
-        if( !ammo )
-        {
-            weap->SetAmmoPid( weap->GetWeapon_DefaultAmmoPid() );
-            ammo = ProtoMngr.GetProtoItem( weap->GetAmmoPid() );
-        }
-
-        if( !ammo )
-        {
-            WriteLogF( _FUNC_, " - Critter weapon ammo not found, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
-            return false;
-        }
-
-        if( ammo->GetType() != ITEM_TYPE_AMMO )
-        {
-            WriteLogF( _FUNC_, " - Critter weapon ammo is not ammo type, critter '%s', target critter '%s'.\n", cr->GetInfo(), t_cr->GetInfo() );
-            return false;
-        }
-    }
-
-    // No ammo
-    if( weap->GetWeapon_MaxAmmoCount() && !cr->GetIsUnlimitedAmmo() )
-    {
-        if( !weap->GetAmmoCount() )
-        {
-            WriteLogF( _FUNC_, " - Critter bullets count is zero, critter '%s'.\n", cr->GetInfo() );
-            return false;
-        }
-    }
-
-    ushort ammo_round = ( use == 0 ? weap->GetWeapon_Round_0() : ( use == 1 ? weap->GetWeapon_Round_1() : weap->GetWeapon_Round_2() ) );
-    if( !ammo_round )
-        ammo_round = 1;
-
-    // Ap, Turn based
-    cr->SubAp( ap_cost );
-
-    // Run script
-    Item* ammo_proto = ( ammo ? new Item( 0, ammo ) : nullptr );
-    Script::RaiseInternalEvent( ServerFunctions.CritterAttack, cr, t_cr, weap, MAKE_ITEM_MODE( use, aim ), ammo_proto );
-    if( ammo_proto )
-        ammo_proto->Release();
-
-    return true;
-}
-
-bool FOServer::Act_Reload( Critter* cr, uint weap_id, uint ammo_id )
+bool FOServer::Act_UseSkill( Critter* cr, int skill, int target_type, uint target_id, hash target_pid )
 {
     cr->SetBreakTime( GameOpt.Breaktime );
 
-    Item* weap = cr->GetItem( weap_id, true );
-    if( !weap )
-    {
-        WriteLogF( _FUNC_, " - Unable to find weapon, id %u, critter '%s'.\n", weap_id, cr->GetInfo() );
-        return false;
-    }
-
-    if( !weap->IsWeapon() )
-    {
-        WriteLogF( _FUNC_, " - Invalid type of weapon %u, critter '%s'.\n", weap->GetType(), cr->GetInfo() );
-        return false;
-    }
-
-    if( !weap->GetWeapon_MaxAmmoCount() )
-    {
-        WriteLogF( _FUNC_, " - Weapon is not have holder, id %u, critter '%s'.\n", weap_id, cr->GetInfo() );
-        return false;
-    }
-
-    int ap_cost = cr->GetUseApCost( weap, USE_RELOAD );
-    if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
-    {
-        WriteLogF( _FUNC_, " - Not enough AP, critter '%s'.\n", cr->GetInfo() );
-        return false;
-    }
-    cr->SubAp( ap_cost );
-
-    Item* ammo = ( ammo_id ? cr->GetItem( ammo_id, true ) : nullptr );
-    if( ammo_id && !ammo )
-    {
-        WriteLogF( _FUNC_, " - Unable to find ammo, id %u, critter '%s'.\n", ammo_id, cr->GetInfo() );
-        return false;
-    }
-
-    if( ammo && weap->GetWeapon_Caliber() != ammo->AmmoGetCaliber() )
-    {
-        WriteLogF( _FUNC_, " - Different calibers, critter '%s'.\n", cr->GetInfo() );
-        return false;
-    }
-
-    if( ammo && weap->GetAmmoPid() == ammo->GetProtoId() && weap->WeapIsFull() )
-    {
-        WriteLogF( _FUNC_, " - Weapon is full, id %u, critter '%s'.\n", weap_id, cr->GetInfo() );
-        return false;
-    }
-
-    if( !Script::RaiseInternalEvent( ServerFunctions.CritterReloadWeapon, cr, weap, ammo ) )
-        return false;
-
-    cr->SendAA_Action( ACTION_RELOAD_WEAPON, 0, weap );
-    return true;
-}
-
-bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, uint target_id, hash target_pid, uint param )
-{
-    cr->SetBreakTime( GameOpt.Breaktime );
-
-    Item* item = nullptr;
-    if( item_id )
-    {
-        item = cr->GetItem( item_id, cr->IsPlayer() );
-        if( !item )
-        {
-            WriteLogF( _FUNC_, " - Item not found, id %u, critter '%s'.\n", item_id, cr->GetInfo() );
-            return false;
-        }
-    }
-
-    int ap_cost = ( item_id ? cr->GetUseApCost( item, USE_USE ) : cr->GetApCostUseSkill() );
+    int ap_cost = cr->GetApCostUseSkill();
     if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
     {
         WriteLogF( _FUNC_, " - Not enough AP, critter '%s'.\n", cr->GetInfo() );
@@ -751,19 +450,12 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
     // Send action
     if( cr->GetMapId() )
     {
-        if( item )
-        {
-            cr->SendAA_Action( ACTION_USE_ITEM, 0, item );
-        }
-        else
-        {
-            if( target_item )
-                cr->SendAA_Action( ACTION_USE_SKILL, skill, target_item );
-            else if( target_cr )
-                cr->SendAA_Action( ACTION_USE_SKILL, skill, nullptr );
-            else if( target_scen )
-                cr->SendAA_Action( ACTION_USE_SKILL, skill, target_scen );
-        }
+        if( target_item )
+            cr->SendAA_Action( ACTION_USE_SKILL, skill, target_item );
+        else if( target_cr )
+            cr->SendAA_Action( ACTION_USE_SKILL, skill, nullptr );
+        else if( target_scen )
+            cr->SendAA_Action( ACTION_USE_SKILL, skill, target_scen );
     }
 
     // Scenery
@@ -772,17 +464,13 @@ bool FOServer::Act_Use( Critter* cr, uint item_id, int skill, int target_type, u
         Script::PrepareContext( target_scen->SceneryScriptBindId, cr->GetInfo() );
         Script::SetArgEntity( cr );
         Script::SetArgEntity( target_scen );
-        Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
-        Script::SetArgEntity( item );
+        Script::SetArgUInt( skill );
+        Script::SetArgEntity( nullptr );
         if( Script::RunPrepared() && Script::GetReturnedBool() )
             return true;
     }
 
-    if( item )
-        Script::RaiseInternalEvent( ServerFunctions.CritterUseItem, cr, item, target_cr, target_item, target_scen, param );
-    else
-        Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, skill, target_cr, target_item, target_scen );
-
+    Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, skill, target_cr, target_item, target_scen );
     return true;
 }
 
@@ -2136,7 +1824,6 @@ void FOServer::Process_ParseToGame( Client* cl )
             if( cr != cl )
                 cr->Send_CustomCommand( cl, OTHER_FLAGS, cl->Flags );
         }
-        cl->Send_HoloInfo( true, 0, 0 );
         cl->Send_AllAutomapsInfo();
         if( cl->Talk.TalkType != TALK_NONE )
         {
@@ -2160,7 +1847,6 @@ void FOServer::Process_ParseToGame( Client* cl )
 
         // Send all data
         cl->Send_AddAllItems();
-        cl->Send_HoloInfo( true, 0, 0 );
         cl->Send_AllAutomapsInfo();
 
         // Send current critters
@@ -2420,74 +2106,6 @@ void FOServer::Process_ChangeItem( Client* cl )
     {
         WriteLogF( _FUNC_, " - Move item fail, from %u, to %u, item_id %u, client '%s'.\n", from_slot, to_slot, item_id, cl->GetInfo() );
         cl->Send_AddAllItems();
-    }
-}
-
-void FOServer::Process_UseItem( Client* cl )
-{
-    uint  item_id;
-    uchar rate;
-    uchar target_type;
-    uint  target_id;
-    hash  target_pid;
-    uint  param;
-
-    cl->Bin >> item_id;
-    cl->Bin >> rate;
-    cl->Bin >> target_type;
-    cl->Bin >> target_id;
-    cl->Bin >> target_pid;
-    cl->Bin >> param;
-    CHECK_IN_BUFF_ERROR( cl );
-
-    if( !cl->IsLife() )
-        return;
-
-    uchar use = rate & 0xF;
-    Item* item = ( item_id ? cl->GetItem( item_id, true ) : cl->ItemSlotMain );
-    if( !item )
-    {
-        WriteLogF( _FUNC_, " - Item not found, item id %u, client '%s'.\n", item_id, cl->GetInfo() );
-        return;
-    }
-
-    if( item->IsWeapon() && use != USE_USE )
-    {
-        switch( use )
-        {
-        case USE_PRIMARY:
-        case USE_SECONDARY:
-        case USE_THIRD:
-            if( !cl->GetMapId() )
-                break;
-            if( item != cl->ItemSlotMain )
-                break;
-
-            Act_Attack( cl, rate, target_id );
-            break;
-        case USE_RELOAD:
-            Act_Reload( cl, item->GetId(), target_id );
-            break;
-        default:
-            cl->Send_TextMsg( cl, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
-            break;
-        }
-    }
-    else if( use == USE_USE )
-    {
-        if( !item_id )
-            return;
-        if( target_type != TARGET_CRITTER && target_type != TARGET_ITEM &&
-            target_type != TARGET_SELF && target_type != TARGET_SELF_ITEM )
-            return;
-        if( !cl->GetMapId() && target_type == TARGET_ITEM )
-            return;
-        if( !Act_Use( cl, item_id, -1, target_type, target_id, target_pid, param ) )
-            cl->Send_TextMsg( cl, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
-    }
-    else
-    {
-        cl->Send_TextMsg( cl, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
     }
 }
 
@@ -3093,7 +2711,7 @@ void FOServer::Process_UseSkill( Client* cl )
         return;
     }
 
-    Act_Use( cl, 0, skill, targ_type, target_id, target_pid, 0 );
+    Act_UseSkill( cl, skill, targ_type, target_id, target_pid );
 }
 
 void FOServer::Process_Dir( Client* cl )

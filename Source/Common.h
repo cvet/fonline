@@ -388,9 +388,7 @@ struct ServerScriptFunctions
     void* CritterDead;
     void* CritterRespawn;
     void* CritterStealing;
-    void* CritterUseItem;
     void* CritterUseSkill;
-    void* CritterReloadWeapon;
     void* CritterCheckMoveItem;
     void* CritterMoveItem;
     void* CritterShow;

@@ -271,7 +271,6 @@ public:
     CLASS_PROPERTY( bool, IsCanTalk );
     CLASS_PROPERTY( bool, IsCanPickUp );
     CLASS_PROPERTY( bool, IsCanUse );
-    CLASS_PROPERTY( bool, IsHolodisk );
     CLASS_PROPERTY( bool, IsRadio );
     CLASS_PROPERTY( short, SortValue );
     CLASS_PROPERTY( uchar, Indicator );

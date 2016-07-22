@@ -118,7 +118,6 @@ public:
     CLASS_PROPERTY( ScriptArray *, KnownLocations );
     CLASS_PROPERTY( ScriptArray *, ConnectionIp );
     CLASS_PROPERTY( ScriptArray *, ConnectionPort );
-    CLASS_PROPERTY( ScriptArray *, HoloInfo );
     CLASS_PROPERTY( uint, ShowCritterDist1 );
     CLASS_PROPERTY( uint, ShowCritterDist2 );
     CLASS_PROPERTY( uint, ShowCritterDist3 );
@@ -162,8 +161,6 @@ public:
     uint          Flags;
     ScriptString* NameStr;
     bool          IsRunning;
-    uint          PrevHexTick;
-    ushort        PrevHexX, PrevHexY;
     int           LockMapTransfers;
     uint          AllowedToDownloadMap;
 
@@ -317,7 +314,6 @@ public:
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
     void Send_CombatResult( uint* combat_res, uint len );
-    void Send_HoloInfo( bool clear, ushort offset, ushort count );
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
@@ -560,7 +556,6 @@ public:
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
     void Send_CombatResult( uint* combat_res, uint len );
-    void Send_HoloInfo( bool clear, ushort offset, ushort count );
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );

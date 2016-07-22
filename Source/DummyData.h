@@ -212,9 +212,6 @@ struct BindClass
     static void Crit_ToKnockout()               {}
     static void Crit_RefreshVisible()           {}
     static void Crit_ViewMap()                  {}
-    static void Crit_AddHolodiskInfo()          {}
-    static void Crit_EraseHolodiskInfo()        {}
-    static void Crit_IsHolodiskInfo()           {}
     static void Crit_Say()                      {}
     static void Crit_SayMsg()                   {}
     static void Crit_SayMsgLex()                {}

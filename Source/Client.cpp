@@ -1994,9 +1994,6 @@ void FOClient::NetProcess()
             Net_OnGameInfo();
             break;
 
-        case NETMSG_HOLO_INFO:
-            Net_OnHoloInfo();
-            break;
         case NETMSG_USER_HOLO_STR:
             Net_OnUserHoloStr();
             break;
@@ -2316,18 +2313,6 @@ void FOClient::Net_SendUseSkill( int skill, Item* item )
     Bout << (uchar) TARGET_SELF_ITEM;
     Bout << item->GetId();
     Bout << (hash) 0;
-}
-
-void FOClient::Net_SendUseItem( uchar ap, uint item_id, uchar rate, uchar target_type, uint target_id, hash target_pid, uint param )
-{
-    Bout << NETMSG_SEND_USE_ITEM;
-    Bout << ap;
-    Bout << item_id;
-    Bout << rate;
-    Bout << target_type;
-    Bout << target_id;
-    Bout << target_pid;
-    Bout << param;
 }
 
 void FOClient::Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid )
@@ -4959,25 +4944,6 @@ void FOClient::Net_OnUpdateFileData()
         UpdateFilesList->erase( UpdateFilesList->begin() );
         UpdateFileActive = false;
     }
-}
-
-void FOClient::Net_OnHoloInfo()
-{
-    uint   msg_len;
-    bool   clear;
-    ushort offset;
-    ushort count;
-    Bin >> msg_len;
-    Bin >> clear;
-    Bin >> offset;
-    Bin >> count;
-
-    if( clear )
-        memzero( HoloInfo, sizeof( HoloInfo ) );
-    if( count )
-        Bin.Pop( (char*) &HoloInfo[ offset ], count * sizeof( uint ) );
-
-    CHECK_IN_BUFF_ERROR;
 }
 
 void FOClient::Net_OnUserHoloStr()
@@ -8141,29 +8107,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
 
         Self->Chosen->Action( ACTION_USE_SKILL, skill, nullptr );
         Self->Net_SendUseSkill( skill, (CritterCl*) ( cr_id ? Self->GetCritter( cr_id ) : nullptr ) );
-        Self->Chosen->SubAp( ap_cost );
-    }
-    else if( cmd == "UseCritterItem" && args.size() == 8 )
-    {
-        uint ap_cost = Str::AtoUI( args[ 1 ].c_str() );
-        uint item_id = Str::AtoUI( args[ 2 ].c_str() );
-        uint rate = Str::AtoUI( args[ 3 ].c_str() );
-        uint target_type = Str::AtoUI( args[ 4 ].c_str() );
-        uint target_id = Str::AtoUI( args[ 5 ].c_str() );
-        hash param = Str::AtoUI( args[ 6 ].c_str() );
-        uint target_pid = Str::AtoUI( args[ 7 ].c_str() );
-
-        Self->Net_SendUseItem( ap_cost, item_id, rate, target_type, target_id, param, target_pid );
-
-        Item* item = Self->Chosen->GetItem( item_id );
-        uint  use = rate & 0xF;
-        if( use >= USE_PRIMARY && use <= USE_THIRD )
-            Self->Chosen->Action( ACTION_USE_WEAPON, rate, item );
-        else if( use == USE_RELOAD )
-            Self->Chosen->Action( ACTION_RELOAD_WEAPON, 0, item );
-        else
-            Self->Chosen->Action( ACTION_USE_ITEM, 0, item );
-
         Self->Chosen->SubAp( ap_cost );
     }
     else if( cmd == "SkipRoof" && args.size() == 3 )

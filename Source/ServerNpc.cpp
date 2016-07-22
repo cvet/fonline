@@ -440,12 +440,15 @@ void FOServer::ProcessAI( Npc* npc )
                 WriteLog( "REASON_ATTACK_WEAPON fail. Skip attack.\n" );
                 break;
             }
+            if( npc->IsWait() )
+                break;
             if( plane != npc->GetCurPlane() )
                 break;                                               // Validate plane
 
             if( r0 )
             {
-                weap = npc->GetItem( r0, false );
+                weap = npc->ItemSlotMain;
+                RUNTIME_ASSERT( r0 == weap->GetId() );
             }
             else
             {
@@ -466,50 +469,7 @@ void FOServer::ProcessAI( Npc* npc )
                 weap = def_item_main;
             }
             use = r1;
-
-            if( !weap || !weap->IsWeapon() || !weap->WeapIsUseAviable( use ) )
-            {
-                WriteLog( "REASON_ATTACK_WEAPON fail, debug values '%p' %d %d.\n", weap, weap ? weap->IsWeapon() : -1, weap ? weap->WeapIsUseAviable( use ) : -1 );
-                break;
-            }
-
-            // Hide cur, show new
-            if( weap != npc->ItemSlotMain )
-            {
-                // Hide cur item
-                if( npc->ItemSlotMain->GetId() )                       // Is no hands
-                {
-                    Item* item_hand = npc->ItemSlotMain;
-                    AI_MoveItem( npc, map, SLOT_HAND1, SLOT_INV, item_hand->GetId(), item_hand->GetCount() );
-                    break;
-                }
-
-                // Show new
-                if( weap->GetId() )                       // Is no hands
-                {
-                    AI_MoveItem( npc, map, weap->GetCritSlot(), SLOT_HAND1, weap->GetId(), weap->GetCount() );
-                    break;
-                }
-            }
             npc->ItemSlotMain->SetWeaponMode( MAKE_ITEM_MODE( use, 0 ) );
-
-            // Load weapon
-            if( !npc->GetIsUnlimitedAmmo() && weap->GetWeapon_MaxAmmoCount() && weap->WeapIsEmpty() )
-            {
-                Item* ammo = npc->GetAmmoForWeapon( weap );
-                if( !ammo )
-                {
-                    WriteLogF( _FUNC_, " - Ammo for weapon not found, full load, npc '%s'.\n", npc->GetInfo() );
-                    weap->WeapLoadHolder();
-                }
-                else
-                {
-                    AI_ReloadWeapon( npc, map, weap, ammo->GetId() );
-                    break;
-                }
-            }
-            else if( npc->GetIsUnlimitedAmmo() && weap->GetWeapon_MaxAmmoCount() )
-                weap->WeapLoadHolder();
 
             /************************************************************************/
             /* Step 2: Move to target                                               */
@@ -522,6 +482,8 @@ void FOServer::ProcessAI( Npc* npc )
                 WriteLog( "REASON_ATTACK_DISTANTION fail. Skip attack.\n" );
                 break;
             }
+            if( npc->IsWait() )
+                break;
             if( plane != npc->GetCurPlane() )
                 break;                                               // Validate plane
 
@@ -675,6 +637,8 @@ void FOServer::ProcessAI( Npc* npc )
                 WriteLog( "REASON_ATTACK_USE_AIM fail. Skip attack.\n" );
                 break;
             }
+            if( npc->IsWait() )
+                break;
 
             if( r2 )
             {
@@ -685,10 +649,21 @@ void FOServer::ProcessAI( Npc* npc )
             if( r0 != (uint) use && weap->WeapIsUseAviable( r0 ) )
                 use = r0;
 
-            int aim = r1;
+            int   aim = r1;
+            uchar mode = MAKE_ITEM_MODE( use, aim );
+            weap->SetWeaponMode( mode );
 
-            weap->SetWeaponMode( MAKE_ITEM_MODE( use, aim ) );
-            AI_Attack( npc, map, MAKE_ITEM_MODE( use, aim ), targ->GetId() );
+            int ap_cost = npc->GetUseApCost( npc->ItemSlotMain, mode );
+            CHECK_NPC_AP( npc, map, ap_cost );
+
+            r0 = mode;
+            r1 = targ->GetId();
+            r2 = 0;
+            if( !npc->RunPlane( REASON_ATTACK_SHOOT, r0, r1, r2 ) )
+            {
+                WriteLog( "REASON_ATTACK_SHOOT fail. Skip attack.\n" );
+                break;
+            }
         }
         /************************************************************************/
         /* Target not visible, try find by last stored position                 */
@@ -861,30 +836,10 @@ bool FOServer::AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, 
     return npc->MoveItem( from_slot, to_slot, item_id, count );
 }
 
-bool FOServer::AI_Attack( Npc* npc, Map* map, uchar mode, uint targ_id )
-{
-    int ap_cost = npc->GetUseApCost( npc->ItemSlotMain, mode );
-
-    CHECK_NPC_AP_R0( npc, map, ap_cost );
-
-    Critter* targ = npc->GetCritSelf( targ_id, false );
-    if( !targ || !Act_Attack( npc, mode, targ_id ) )
-        return false;
-
-    return true;
-}
-
 bool FOServer::AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, hash pid, uint use_item_id )
 {
     CHECK_NPC_AP_R0( npc, map, npc->GetApCostPickItem() );
     return Act_PickItem( npc, hx, hy, pid );
-}
-
-bool FOServer::AI_ReloadWeapon( Npc* npc, Map* map, Item* weap, uint ammo_id )
-{
-    int ap_cost = npc->GetUseApCost( npc->ItemSlotMain, USE_RELOAD );
-    CHECK_NPC_AP_R0( npc, map, ap_cost );
-    return Act_Reload( npc, weap->GetId(), ammo_id );
 }
 
 bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg )

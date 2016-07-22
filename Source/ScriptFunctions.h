@@ -46,10 +46,20 @@ static T* EntityUpCast( Entity* a )
     return nullptr;
 }
 
-void Global_Assert( bool condition )
+void Global_Assert( bool condition, ScriptString* message )
 {
     if( !condition )
-        Script::RaiseException( "Assertion Failed" );
+    {
+        if( message )
+            Script::RaiseException( "Assertion failed: %s", message->c_str() );
+        else
+            Script::RaiseException( "Assertion failed" );
+    }
+}
+
+void Global_ThrowException( ScriptString* message )
+{
+    Script::RaiseException( "%s", message->c_str() );
 }
 
 int Global_Random( int min, int max )

@@ -272,8 +272,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_PICK_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_ITEM_CONT:
         return ( NETMSG_SEND_ITEM_CONT_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_USE_ITEM:
-        return ( NETMSG_SEND_USE_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_USE_SKILL:
         return ( NETMSG_SEND_USE_SKILL_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_PICK_CRITTER:
@@ -405,7 +403,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_MAP:
     case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
-    case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
     case NETMSG_USER_HOLO_STR:
     case NETMSG_AUTOMAPS_INFO:
@@ -515,9 +512,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_SEND_ITEM_CONT:
         size = NETMSG_SEND_ITEM_CONT_SIZE;
-        break;
-    case NETMSG_SEND_USE_ITEM:
-        size = NETMSG_SEND_USE_ITEM_SIZE;
         break;
     case NETMSG_SEND_USE_SKILL:
         size = NETMSG_SEND_USE_SKILL_SIZE;
@@ -678,7 +672,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_MAP:
     case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
-    case NETMSG_HOLO_INFO:
     case NETMSG_SEND_SET_USER_HOLO_STR:
     case NETMSG_USER_HOLO_STR:
     case NETMSG_AUTOMAPS_INFO:
