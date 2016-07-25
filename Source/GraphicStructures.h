@@ -1,7 +1,9 @@
 #ifndef __GRAPHIC_STRUCTURES__
 #define __GRAPHIC_STRUCTURES__
 
-#include "GL/glew.h"
+#ifndef FO_OGL_ES
+# include "GL/glew.h"
+#endif
 #include "Defines.h"
 #include "Assimp/aiTypes.h"
 #include "Assimp/aiScene.h"

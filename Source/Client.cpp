@@ -7149,7 +7149,7 @@ bool FOClient::ReloadScripts()
         errors++;
     }
 
-    #define BIND_INTERNAL_EVENT( name )    ClientFunctions. ## name = Script::FindInternalEvent( "Event" # name )
+    #define BIND_INTERNAL_EVENT( name )    ClientFunctions.name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
@@ -8003,7 +8003,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         }
 
         // Affect barter screen
-        if( to_slot == SLOT_GROUND && Self->IsScreenPresent( SCREEN__BARTER ) )
+        if( to_slot == SLOT_GROUND )
             Self->CollectContItems();
 
         // Light

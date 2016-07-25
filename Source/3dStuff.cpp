@@ -1198,11 +1198,16 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow_dis
 bool Animation3d::StartUp()
 {
     // Calculate max effect bones
+    #pragma ANDROID_TODO
+    #ifndef FO_ANDROID
     GLint max_uniform_components = 0;
     GL( glGetIntegerv( GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components ) );
     if( max_uniform_components < 1024 )
         WriteLog( "Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is %u.\n", max_uniform_components );
     Effect::MaxBones = MIN( MAX( max_uniform_components, 1024 ) / 16, 256 ) - 4;
+    #else
+    Effect::MaxBones = 60;
+    #endif
     RUNTIME_ASSERT( Effect::MaxBones >= MAX_BONES_PER_MODEL );
     WorldMatrices.resize( Effect::MaxBones );
 

@@ -102,6 +102,7 @@ BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Pick_HexY", OFF
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "hash Pick_Pid", OFFSETOF( AIDataPlane, Pick.Pid ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Pick_UseItemId", OFFSETOF( AIDataPlane, Pick.UseItemId ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Pick_ToOpen", OFFSETOF( AIDataPlane, Pick.ToOpen ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Pick_IsRun", OFFSETOF( AIDataPlane, Pick.IsRun ) ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "NpcPlane@ GetCopy() const", asFUNCTION( BIND_CLASS NpcPlane_GetCopy ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "NpcPlane@+ SetChild(NpcPlane& child)", asFUNCTION( BIND_CLASS NpcPlane_SetChild ), asCALL_CDECL_OBJFIRST ) );
@@ -260,7 +261,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetPlanes(int identi
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool AddPlane(NpcPlane& plane)", asFUNCTION( BIND_CLASS Npc_AddPlane ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SendMessage(int num, int val, int to)", asFUNCTION( BIND_CLASS Crit_SendMessage ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Action(int action, int actionExt, Item@+ item)", asFUNCTION( BIND_CLASS Crit_Action ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Action(int action, int actionExt, const Item@+ item)", asFUNCTION( BIND_CLASS Crit_Action ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Animate(uint anim1, uint anim2, const Item@+ item, bool clearSequence, bool delayPlay)", asFUNCTION( BIND_CLASS Crit_Animate ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetAnims(int cond, uint anim1, uint anim2)", asFUNCTION( BIND_CLASS Crit_SetAnims ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void PlaySound(string& soundName, bool sendSelf)", asFUNCTION( BIND_CLASS Crit_PlaySound ), asCALL_CDECL_OBJFIRST ) );
@@ -442,6 +443,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetImageColor(uint index, uin
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Synchronize()", asFUNCTION( BIND_CLASS Global_Synchronize ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Resynchronize()", asFUNCTION( BIND_CLASS Global_Resynchronize ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", asFUNCTION( BIND_CLASS Global_SetTime ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(const string& url, const dict< string, string >@+ post, bool& success, string& result)", asFUNCTION( BIND_CLASS Global_YieldWebRequest ), asCALL_CDECL ) );
 #endif
 
 #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
@@ -946,7 +948,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(const stri
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(const string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(const string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", asFUNCTION( Global_Yield ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(const string& url, const dict< string, string >@+ post, bool& success, string& result)", asFUNCTION( Global_YieldWebRequest ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ SHA1(const string& text)", asFUNCTION( Global_SHA1 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ SHA2(const string& text)", asFUNCTION( Global_SHA2 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(const string& link)", asFUNCTION( Global_OpenLink ), asCALL_CDECL ) );

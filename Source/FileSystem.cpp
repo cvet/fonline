@@ -379,7 +379,12 @@ bool FileDelete( const char* fname )
     char fname_[ MAX_FOPATH ];
     SetRelativePath( fname, fname_ );
 
+    # pragma ANDROID_TODO
+    # ifndef FO_ANDROID
     return std::remove( fname_ );
+    # else
+    return false;
+    # endif
 }
 
 bool FileExist( const char* fname )

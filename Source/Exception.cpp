@@ -28,7 +28,7 @@ char AppVer[ MAX_FOTEXT ] = { 0 };
 char ManualDumpAppendix[ MAX_FOTEXT ] = { 0 };
 char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
 
-#ifdef FO_WINDOWS
+#if defined ( FO_WINDOWS )
 
 # include <windows.h>
 # include <stdio.h>
@@ -528,7 +528,7 @@ void CreateDump( const char* appendix, const char* message )
     # endif
 }
 
-#else
+#elif !defined ( FO_ANDROID )
 
 # include "FileManager.h"
 # include <signal.h>
@@ -720,6 +720,19 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 
     if( siginfo )
         ExitProcess( 1 );
+}
+
+#else
+# pragma ANDROID_TODO
+
+void CatchExceptions( const char* app_name, int app_ver )
+{
+    //
+}
+
+void CreateDump( const char* appendix, const char* message )
+{
+    //
 }
 
 #endif

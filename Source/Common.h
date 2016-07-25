@@ -8,6 +8,7 @@
 // #define DEV_VERSION
 // #define SHOW_RACE_CONDITIONS // All known places with race conditions, not use in multithreading
 // #define SHOW_DEPRECTAED // All known places with deprecated stuff
+// #define SHOW_ANDROID_TODO
 // #define DISABLE_EGG
 
 // Some platform specific definitions
@@ -21,7 +22,7 @@
 #include <functional>
 #include <math.h>
 #ifdef FO_WINDOWS
-# define WINVER                                  0x0501 // Windows XP
+# define WINVER                                   0x0501 // Windows XP
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
 # include <Shellapi.h>
@@ -29,7 +30,7 @@
 # include <errno.h>
 # include <string.h> // strerror
 # include <unistd.h>
-# define ERRORSTR                                strerror( errno )
+# define ERRORSTR                                 strerror( errno )
 # define ExitProcess( code )              exit( code )
 #endif
 
@@ -37,7 +38,7 @@
 const char* GetLastSocketError();
 #ifdef FO_WINDOWS
 # include <winsock2.h>
-# define socklen_t                               int
+# define socklen_t                                int
 # if defined ( FO_MSVC )
 #  pragma comment( lib, "Ws2_32.lib" )
 # endif
@@ -47,13 +48,13 @@ const char* GetLastSocketError();
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <netdb.h>
-# define SOCKET                                  int
-# define INVALID_SOCKET                          ( -1 )
-# define SOCKET_ERROR                            ( -1 )
-# define closesocket                             close
-# define SD_RECEIVE                              SHUT_RD
-# define SD_SEND                                 SHUT_WR
-# define SD_BOTH                                 SHUT_RDWR
+# define SOCKET                                   int
+# define INVALID_SOCKET                           ( -1 )
+# define SOCKET_ERROR                             ( -1 )
+# define closesocket                              close
+# define SD_RECEIVE                               SHUT_RD
+# define SD_SEND                                  SHUT_WR
+# define SD_BOTH                                  SHUT_RDWR
 #endif
 
 // DLL
@@ -118,15 +119,21 @@ const char* GetLastSocketError();
 #define MAKEUINT( ch0, ch1, ch2, ch3 )    ( (uint) (uchar) ( ch0 ) | ( (uint) (uchar) ( ch1 ) << 8 ) | ( (uint) (uchar) ( ch2 ) << 16 ) | ( (uint) (uchar) ( ch3 ) << 24 ) )
 
 #ifdef SHOW_RACE_CONDITIONS
-# define RACE_CONDITION                          MESSAGE( "Race condition" )
+# define RACE_CONDITION                           MESSAGE( "Race condition" )
 #else
 # define RACE_CONDITION
 #endif
 
 #ifdef SHOW_DEPRECATED
-# define DEPRECATED                              MESSAGE( "Deprecated" )
+# define DEPRECATED                               MESSAGE( "Deprecated" )
 #else
 # define DEPRECATED
+#endif
+
+#ifdef SHOW_ANDROID_TODO
+# define ANDROID_TODO                             MESSAGE( "Android todo" )
+#else
+# define ANDROID_TODO
 #endif
 
 typedef vector< Rect >  IntRectVec;
@@ -170,7 +177,7 @@ inline TIt PtrCollectionFind( TIt it, TIt end, const T& v )
 }
 
 // Hex offsets
-#define MAX_HEX_OFFSET                           ( 50 ) // Must be not odd
+#define MAX_HEX_OFFSET                            ( 50 ) // Must be not odd
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
 
@@ -180,7 +187,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
 
-# define PI_VALUE                                ( 3.141592654f )
+# define PI_VALUE                                 ( 3.141592654f )
 
 # include "SDL.h"
 # include "SDL_syswm.h"
@@ -191,46 +198,53 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #   undef glGenVertexArrays
 #   undef glBindVertexArray
 #   undef glDeleteVertexArrays
-#   define glGenVertexArrays                     glGenVertexArraysAPPLE
-#   define glBindVertexArray                     glBindVertexArrayAPPLE
-#   define glDeleteVertexArrays                  glDeleteVertexArraysAPPLE
+#   define glGenVertexArrays                      glGenVertexArraysAPPLE
+#   define glBindVertexArray                      glBindVertexArrayAPPLE
+#   define glDeleteVertexArrays                   glDeleteVertexArraysAPPLE
 #  endif
 # else
+#  define GL_GLEXT_PROTOTYPES
 #  include "SDL_opengles2.h"
-#  define glGenVertexArrays                      glGenVertexArraysOES
-#  define glBindVertexArray                      glBindVertexArrayOES
-#  define glDeleteVertexArrays                   glDeleteVertexArraysOES
-#  define glGenFramebuffersEXT                   glGenFramebuffers
-#  define glBindFramebufferEXT                   glBindFramebuffer
-#  define glFramebufferTexture2DEXT              glFramebufferTexture2D
-#  define glRenderbufferStorageEXT               glRenderbufferStorage
-#  define glGenRenderbuffersEXT                  glGenRenderbuffers
-#  define glBindRenderbufferEXT                  glBindRenderbuffer
-#  define glFramebufferRenderbufferEXT           glFramebufferRenderbuffer
-#  define glCheckFramebufferStatusEXT            glCheckFramebufferStatus
-#  define glDeleteRenderbuffersEXT               glDeleteRenderbuffers
-#  define glDeleteFramebuffersEXT                glDeleteFramebuffers
+#  define glGenVertexArrays                       glGenVertexArraysOES
+#  define glBindVertexArray                       glBindVertexArrayOES
+#  define glDeleteVertexArrays                    glDeleteVertexArraysOES
+#  define glGenFramebuffersEXT                    glGenFramebuffers
+#  define glBindFramebufferEXT                    glBindFramebuffer
+#  define glFramebufferTexture2DEXT               glFramebufferTexture2D
+#  define glRenderbufferStorageEXT                glRenderbufferStorage
+#  define glGenRenderbuffersEXT                   glGenRenderbuffers
+#  define glBindRenderbufferEXT                   glBindRenderbuffer
+#  define glFramebufferRenderbufferEXT            glFramebufferRenderbuffer
+#  define glCheckFramebufferStatusEXT             glCheckFramebufferStatus
+#  define glDeleteRenderbuffersEXT                glDeleteRenderbuffers
+#  define glDeleteFramebuffersEXT                 glDeleteFramebuffers
 #  define glProgramBinary( a, b, c, d )
 #  define glGetProgramBinary( a, b, c, d, e )
-#  define glProgramParameteri                    glProgramParameteriEXT
-#  define GL_PROGRAM_BINARY_RETRIEVABLE_HINT     0
-#  define GL_PROGRAM_BINARY_LENGTH               0
-#  define GL_FRAMEBUFFER_COMPLETE_EXT            GL_FRAMEBUFFER_COMPLETE
-#  define GL_FRAMEBUFFER_EXT                     GL_FRAMEBUFFER
-#  define GL_COLOR_ATTACHMENT0_EXT               GL_COLOR_ATTACHMENT0
-#  define GL_RENDERBUFFER_EXT                    GL_RENDERBUFFER
-#  define GL_DEPTH_ATTACHMENT_EXT                GL_DEPTH_ATTACHMENT
-#  define GL_RENDERBUFFER_BINDING_EXT            GL_RENDERBUFFER_BINDING
-#  define GL_CLAMP                               GL_CLAMP_TO_EDGE
-#  define GL_DEPTH24_STENCIL8                    GL_DEPTH24_STENCIL8_OES
-#  define GL_DEPTH24_STENCIL8_EXT                GL_DEPTH24_STENCIL8_OES
-#  define GL_STENCIL_ATTACHMENT_EXT              GL_STENCIL_ATTACHMENT
+#  define glProgramParameteri                     glProgramParameteriEXT
+#  define GL_PROGRAM_BINARY_RETRIEVABLE_HINT      0
+#  define GL_PROGRAM_BINARY_LENGTH                0
+#  define GL_FRAMEBUFFER_COMPLETE_EXT             GL_FRAMEBUFFER_COMPLETE
+#  define GL_FRAMEBUFFER_EXT                      GL_FRAMEBUFFER
+#  define GL_COLOR_ATTACHMENT0_EXT                GL_COLOR_ATTACHMENT0
+#  define GL_RENDERBUFFER_EXT                     GL_RENDERBUFFER
+#  define GL_DEPTH_ATTACHMENT_EXT                 GL_DEPTH_ATTACHMENT
+#  define GL_RENDERBUFFER_BINDING_EXT             GL_RENDERBUFFER_BINDING
+#  define GL_CLAMP                                GL_CLAMP_TO_EDGE
+#  define GL_DEPTH24_STENCIL8                     GL_DEPTH24_STENCIL8_OES
+#  define GL_DEPTH24_STENCIL8_EXT                 GL_DEPTH24_STENCIL8_OES
+#  define GL_STENCIL_ATTACHMENT_EXT               GL_STENCIL_ATTACHMENT
 #  define glGetTexImage( a, b, c, d, e )
 #  define glDrawBuffer( a )
-#  define GL_MAX_COLOR_TEXTURE_SAMPLES           0
-#  define GL_TEXTURE_2D_MULTISAMPLE              0
-#  define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
-#  define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
+#  define GL_MAX_COLOR_TEXTURE_SAMPLES            0
+#  define GL_TEXTURE_2D_MULTISAMPLE               0
+#  pragma ANDROID_TODO
+#  ifdef FO_OSX
+#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
+#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
+#  else
+#   define glRenderbufferStorageMultisample( a, b, c, d, e )
+#   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
+#  endif
 #  define glTexImage2DMultisample( a, b, c, d, e, f )
 # endif
 # include "GL/glu_stuff.h"
@@ -263,10 +277,10 @@ extern IntVec        MainWindowMouseEvents;
 # include "Assimp/aiTypes.h"
 
 # ifdef FONLINE_CLIENT
-#  define CFG_DEF_INT_FILE                       "default800x600.ini"
+#  define CFG_DEF_INT_FILE                        "default800x600.ini"
 # else // FONLINE_MAPPER
 const uchar SELECT_ALPHA    = 100;
-#  define CFG_DEF_INT_FILE                       "mapper_default.ini"
+#  define CFG_DEF_INT_FILE                        "mapper_default.ini"
 # endif
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
@@ -847,10 +861,8 @@ private:
 
 public:
     Thread();
-    ~Thread();
     void Start( void ( * func )( void* ), const char* name, void* arg = nullptr );
     void Wait();
-    void Finish();
     void Release();
 
     # if defined ( FO_WINDOWS )

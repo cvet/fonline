@@ -981,14 +981,14 @@ public:
 
             // Erase from arg callbacks
             auto range = arg_info.Callbacks.equal_range( value );
-            auto it = std::find_if( range.first, range.second, [ &callback ] ( auto & kv ) { return kv.second == callback; } );
+            auto it = std::find_if( range.first, range.second, [ &callback ] ( FuncMulMap::value_type & kv ) { return kv.second == callback; } );
             if( it != range.second )
             {
                 // Erase from entity callbacks
                 if( arg_info.IsObjectEntity )
                 {
                     auto range_ = event->EntityCallbacks->equal_range( (Entity*) gen->GetArgObject( 0 ) );
-                    auto it_ = std::find_if( range_.first, range_.second, [ &it ] ( auto & kv ) { return kv.second.second == it; } );
+                    auto it_ = std::find_if( range_.first, range_.second, [ &it ] ( EntityFuncRefMulMap::value_type & kv ) { return kv.second.second == it; } );
                     RUNTIME_ASSERT( it_ != range_.second );
                     event->EntityCallbacks->erase( it_ );
                 }
@@ -1030,11 +1030,35 @@ public:
         static bool RaiseInternal( void* event_ptr, va_list args )
         {
             ScriptEvent* event = (ScriptEvent*) event_ptr;
-            return event->RaiseImpl( nullptr, args );
+
+            UInt64Vec    va_args;
+            for( size_t i = 0; i < event->ArgInfos.size(); i++ )
+            {
+                const ArgInfo& arg_info = event->ArgInfos[ i ];
+                if( arg_info.IsObject )
+                    va_args.push_back( (uint64) va_arg( args, void* ) );
+                else if( arg_info.IsPodRef )
+                    va_args.push_back( (uint64) va_arg( args, void* ) );
+                else if( arg_info.PodSize == 1 )
+                    va_args.push_back( (uint64) va_arg( args, int ) );
+                else if( arg_info.PodSize == 2 )
+                    va_args.push_back( (uint64) va_arg( args, int ) );
+                else if( arg_info.PodSize == 4 )
+                    va_args.push_back( (uint64) va_arg( args, int ) );
+                else if( arg_info.PodSize == 8 )
+                    va_args.push_back( (uint64) va_arg( args, int64 ) );
+                else
+                    RUNTIME_ASSERT( !"Unreachable place" );
+            }
+
+            return event->RaiseImpl( nullptr, &va_args );
         }
 
-        bool RaiseImpl( asIScriptGeneric* gen_args, va_list va_args )
+        bool RaiseImpl( asIScriptGeneric* gen_args, UInt64Vec* va_args )
         {
+            #define GET_ARG_ADDR    ( gen_args ? gen_args->GetAddressOfArg( i ) : &va_args->at( i ) )
+            #define GET_ARG( type )    ( *(type*) GET_ARG_ADDR )
+
             FuncVec callbacks_to_call;
 
             // Global callbacs
@@ -1042,47 +1066,25 @@ public:
                 callbacks_to_call = Callbacks;
 
             // Arg callbacs
-            va_list va_args_copy;
-            va_copy( va_args_copy, va_args );
-            #define GET_ARG( type )        ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
             for( size_t i = 0; i < ArgInfos.size(); i++ )
             {
                 const ArgInfo& arg_info = ArgInfos[ i ];
                 if( arg_info.Callbacks.empty() )
-                {
-                    if( !gen_args )
-                    {
-                        if( arg_info.IsObject )
-                            GET_ARG( void* );
-                        else if( arg_info.IsPodRef )
-                            GET_ARG( void* );
-                        else if( arg_info.PodSize == 1 )
-                            GET_ARG( uchar );
-                        else if( arg_info.PodSize == 2 )
-                            GET_ARG( ushort );
-                        else if( arg_info.PodSize == 4 )
-                            GET_ARG( uint );
-                        else if( arg_info.PodSize == 8 )
-                            GET_ARG( uint64 );
-                        else
-                            RUNTIME_ASSERT( !"Unreachable place" );
-                    }
                     continue;
-                }
 
                 uint64 value = 0;
                 if( arg_info.IsObject )
-                    memcpy( &value, &GET_ARG( void* ), sizeof( void* ) );
+                    memcpy( &value, GET_ARG_ADDR, sizeof( void* ) );
                 else if( arg_info.IsPodRef )
                     memcpy( &value, GET_ARG( void* ), arg_info.PodSize );
                 else if( arg_info.PodSize == 1 )
-                    memcpy( &value, &GET_ARG( uchar ), arg_info.PodSize );
+                    memcpy( &value, GET_ARG_ADDR, arg_info.PodSize );
                 else if( arg_info.PodSize == 2 )
-                    memcpy( &value, &GET_ARG( ushort ), arg_info.PodSize );
+                    memcpy( &value, GET_ARG_ADDR, arg_info.PodSize );
                 else if( arg_info.PodSize == 4 )
-                    memcpy( &value, &GET_ARG( uint ), arg_info.PodSize );
+                    memcpy( &value, GET_ARG_ADDR, arg_info.PodSize );
                 else if( arg_info.PodSize == 8 )
-                    memcpy( &value, &GET_ARG( uint64 ), arg_info.PodSize );
+                    memcpy( &value, GET_ARG_ADDR, arg_info.PodSize );
                 else
                     RUNTIME_ASSERT( !"Unreachable place" );
 
@@ -1090,7 +1092,6 @@ public:
                 for( auto it = range.first; it != range.second; ++it )
                     callbacks_to_call.push_back( it->second );
             }
-            #undef GET_ARG
 
             // Invoke callbacks
             for( int i = (int) callbacks_to_call.size() - 1; i >= 0; i-- )
@@ -1098,9 +1099,6 @@ public:
                 asIScriptFunction* callback = callbacks_to_call[ i ];
 
                 // Check entities
-                #define GET_ARG( type )    ( gen_args ? *(type*) gen_args->GetAddressOfArg( i ) : va_arg( va_args_copy, type ) )
-                va_list va_args_copy;
-                va_copy( va_args_copy, va_args );
                 for( size_t i = 0; i < ArgInfos.size(); i++ )
                 {
                     const ArgInfo& arg_info = ArgInfos[ i ];
@@ -1110,26 +1108,11 @@ public:
                         if( entity && entity->IsDestroyed )
                             return false;
                     }
-                    else if( arg_info.IsObject )
-                        GET_ARG( void* );
-                    else if( arg_info.IsPodRef )
-                        GET_ARG( void* );
-                    else if( arg_info.PodSize == 1 )
-                        GET_ARG( uchar );
-                    else if( arg_info.PodSize == 2 )
-                        GET_ARG( ushort );
-                    else if( arg_info.PodSize == 4 )
-                        GET_ARG( uint );
-                    else if( arg_info.PodSize == 8 )
-                        GET_ARG( uint64 );
-                    else
-                        RUNTIME_ASSERT( !"Unreachable place" );
                 }
 
                 uint bind_id = Script::BindByFunc( callback, true );
                 Script::PrepareContext( bind_id, "Event" );
 
-                va_copy( va_args_copy, va_args );
                 for( size_t i = 0; i < ArgInfos.size(); i++ )
                 {
                     const ArgInfo& arg_info = ArgInfos[ i ];
@@ -1150,7 +1133,6 @@ public:
                     else
                         RUNTIME_ASSERT( !"Unreachable place" );
                 }
-                #undef GET_ARG
 
                 if( !Deferred )
                 {
@@ -1166,11 +1148,12 @@ public:
                     Script::RunPreparedSuspend();
                 }
             }
+            #undef GET_ARG
             return true;
         }
     };
 
-    vector< ScriptEvent* > events;
+    vector< ScriptEvent* >           events;
     ScriptEvent::EntityFuncRefMulMap entityCallbacks;
 
 public:
@@ -1214,7 +1197,7 @@ public:
 
         char             buf[ MAX_FOTEXT ];
         asIScriptEngine* engine = Script::GetEngine();
-        int func_def_id;
+        int              func_def_id;
         if( ( func_def_id = engine->RegisterFuncdef( Str::Format( buf, "void %sFunc(%s)", event_name, args ) ) ) < 0 ||
             engine->RegisterFuncdef( Str::Format( buf, "bool %sFuncBool(%s)", event_name, args ) ) < 0 ||
             engine->RegisterObjectType( event_name, 0, asOBJ_REF ) < 0 ||
@@ -1236,8 +1219,8 @@ public:
         event->ArgInfos.resize( func_def->GetParamCount() );
         for( asUINT i = 0; i < func_def->GetParamCount(); i++ )
         {
-            int type_id;
-            asDWORD flags;
+            int         type_id;
+            asDWORD     flags;
             const char* name;
             func_def->GetParam( i, &type_id, &flags, &name );
 
@@ -1249,7 +1232,7 @@ public:
             arg_info.IsObjectEntity = false;
             if( arg_info.IsObject && type_id & asTYPEID_APPOBJECT )
             {
-                int matches = 0;
+                int          matches = 0;
                 asITypeInfo* obj_type = engine->GetTypeInfoById( type_id );
                 for( asUINT j = 0; j < obj_type->GetPropertyCount() && matches < 3; j++ )
                 {

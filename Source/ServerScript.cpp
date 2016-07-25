@@ -2,6 +2,7 @@
 #include "Server.h"
 #include "AngelScript/preprocessor.h"
 #include "ScriptFunctions.h"
+#include "curl/curl.h"
 
 // Global_LoadImage
 #include "PNG/png.h"
@@ -133,7 +134,7 @@ bool FOServer::InitScriptSystem()
     }
 
     // Bind game functions
-    #define BIND_INTERNAL_EVENT( name )    ServerFunctions. ## name = Script::FindInternalEvent( "Event" # name )
+    #define BIND_INTERNAL_EVENT( name )    ServerFunctions.name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( Init );
     BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( GenerateWorld );
@@ -4327,6 +4328,101 @@ void FOServer::SScriptFunc::Global_Resynchronize()
 {
     if( !Script::ResynchronizeThread() )
         SCRIPT_ERROR_R( "Invalid call." );
+}
+
+void FOServer::SScriptFunc::Global_YieldWebRequest( ScriptString& url, ScriptDict* post, bool& success, ScriptString& result )
+{
+    success = false;
+    result = "";
+
+    asIScriptContext* ctx = Script::SuspendCurrentContext( uint( -1 ) );
+    if( !ctx )
+        return;
+
+    struct RequestData
+    {
+        asIScriptContext* Context;
+        Thread*           WorkThread;
+        ScriptString*     Url;
+        ScriptDict*       Post;
+        bool*             Success;
+        ScriptString*     Result;
+    };
+
+    RequestData* request_data = new RequestData();
+    request_data->Context = ctx;
+    request_data->WorkThread = new Thread();
+    request_data->Url = &url;
+    request_data->Post = post;
+    request_data->Success = &success;
+    request_data->Result = &result;
+
+    auto request_func = [] (void* data)
+    {
+        static bool curl_inited = false;
+        if( !curl_inited )
+        {
+            curl_inited = true;
+            curl_global_init( CURL_GLOBAL_ALL );
+        }
+
+        RequestData* request_data = (RequestData*) data;
+
+        bool         success = false;
+        string       result;
+
+        CURL*        curl = curl_easy_init();
+        if( curl )
+        {
+            curl_easy_setopt( curl, CURLOPT_URL, request_data->Url->c_str() );
+            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
+            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &result );
+
+            string post;
+            if( request_data->Post )
+            {
+                for( uint i = 0, j = request_data->Post->GetSize(); i < j; i++ )
+                {
+                    ScriptString* key = (ScriptString*) request_data->Post->GetKey( i );
+                    ScriptString* value = (ScriptString*) request_data->Post->GetValue( i );
+                    char*         escaped_key = curl_easy_escape( curl, key->c_str(), key->length() );
+                    char*         escaped_value = curl_easy_escape( curl, value->c_str(), value->length() );
+                    if( i > 0 )
+                        post += "&";
+                    post += escaped_key;
+                    post += "=";
+                    post += escaped_value;
+                    curl_free( escaped_key );
+                    curl_free( escaped_value );
+                }
+                curl_easy_setopt( curl, CURLOPT_POSTFIELDS, post.c_str() );
+            }
+
+            CURLcode curl_res = curl_easy_perform( curl );
+            if( curl_res == CURLE_OK )
+            {
+                success = true;
+            }
+            else
+            {
+                result = "curl_easy_perform() failed: ";
+                result += curl_easy_strerror( curl_res );
+            }
+            curl_easy_cleanup( curl );
+        }
+        else
+        {
+            result = "curl_easy_init fail";
+        }
+
+        *request_data->Success = success;
+        *request_data->Result = result;
+        Script::ResumeContext( request_data->Context );
+        request_data->WorkThread->Release();
+        delete request_data->WorkThread;
+        delete request_data;
+    };
+    request_data->WorkThread->Start( request_func, "WebRequest", request_data );
 }
 
 /************************************************************************/

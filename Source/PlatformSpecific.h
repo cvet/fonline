@@ -40,7 +40,7 @@
 // Detect operating system
 #if defined ( _WIN32 ) || defined ( _WIN64 )
 # define FO_WINDOWS
-#elif defined ( __linux__ )
+#elif defined ( __linux__ ) && !defined ( ANDROID ) && !defined ( __ANDROID__ )
 # define FO_LINUX
 #elif defined ( __APPLE__ )
 # include <TargetConditionals.h>
@@ -51,7 +51,7 @@
 # else
 #  define FO_OSX_MAC
 # endif
-#elif defined ( ANDROID )
+#elif defined ( ANDROID ) || defined ( __ANDROID__ )
 # define FO_ANDROID
 # define FO_OGL_ES
 #else

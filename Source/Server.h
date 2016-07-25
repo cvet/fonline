@@ -606,6 +606,7 @@ public:
         static uint Global_GetImageColor( uint index, uint x, uint y );
         static void Global_Synchronize();
         static void Global_Resynchronize();
+        static void Global_YieldWebRequest( ScriptString& url, ScriptDict* post, bool& success, ScriptString& result );
     } ScriptFunc;
 };
 

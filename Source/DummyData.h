@@ -398,6 +398,7 @@ struct BindClass
     static void Global_Synchronize()            {}
     static void Global_Resynchronize()          {}
     static void Global_SetTime()                {}
+    static void Global_YieldWebRequest()        {}
     #endif
 
     #ifdef BIND_CLIENT

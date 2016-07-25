@@ -1445,11 +1445,6 @@ Thread::Thread()
     isStarted = false;
 }
 
-Thread::~Thread()
-{
-    Finish();
-}
-
 void Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = NULL */ )
 {
     void** args = (void**) malloc( sizeof( void* ) * 3 );
@@ -1474,19 +1469,6 @@ void Thread::Wait()
         pthread_join( threadId, nullptr );
         # endif
         isStarted = false;
-    }
-}
-
-void Thread::Finish()
-{
-    if( isStarted )
-    {
-        isStarted = false;
-        # ifdef FO_WINDOWS
-        TerminateThread( threadId, 0 );
-        # else
-        pthread_cancel( threadId );
-        # endif
     }
 }
 

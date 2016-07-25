@@ -285,7 +285,7 @@ uint UIDDUMMY10 = -1;
     UID_DUMMY_CALCS9;                             \
     UID_DUMMY_CALCS4;                             \
     UID_DUMMY_CALCS8
-#elif !defined ( FO_OSX_IOS )
+#elif !defined ( FO_OSX_IOS ) && !defined ( FO_ANDROID )
 # define GET_UID3( result )                                              \
     unsigned int d_cpuid[ 4 ] = { 0, 0, 0, 0 };                          \
     {                                                                    \

@@ -34,13 +34,6 @@
 #define ITEM_TYPE_CAR                ( 13 )
 #define ITEM_MAX_TYPES               ( 14 )
 
-// Grid Types
-#define GRID_EXITGRID                ( 1 )
-#define GRID_STAIRS                  ( 2 )
-#define GRID_LADDERBOT               ( 3 )
-#define GRID_LADDERTOP               ( 4 )
-#define GRID_ELEVATOR                ( 5 )
-
 // Uses
 #define USE_PRIMARY                  ( 0 )
 #define USE_SECONDARY                ( 1 )

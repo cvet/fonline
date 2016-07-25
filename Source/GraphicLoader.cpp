@@ -281,10 +281,18 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
                 return GL_FUNC_SUBTRACT;
             if( Str::Compare( s, "GL_FUNC_REVERSE_SUBTRACT" ) )
                 return GL_FUNC_REVERSE_SUBTRACT;
+            #pragma ANDROID_TODO
+            #ifndef FO_ANDROID
             if( Str::Compare( s, "GL_MAX" ) )
                 return GL_MAX;
             if( Str::Compare( s, "GL_MIN" ) )
                 return GL_MIN;
+            #else
+            if( Str::Compare( s, "GL_MAX" ) )
+                return 0x8008;
+            if( Str::Compare( s, "GL_MIN" ) )
+                return 0x8007;
+            #endif
             return -1;
         };
 
@@ -534,8 +542,11 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
             GL( glBindAttribLocation( program, 7, "InBlendIndices" ) );
         }
 
+        #pragma ANDROID_TODO
+        #ifndef FO_ANDROID
         if( GL_HAS( get_program_binary ) )
             GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
+        #endif
 
         GL( glLinkProgram( program ) );
         GLint linked;

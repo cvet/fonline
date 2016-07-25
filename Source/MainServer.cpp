@@ -230,7 +230,6 @@ int main( int argc, char** argv )
             }
         }
         Fl::unlock();
-        GUIUpdateThread.Finish();
     }
     else
     {
@@ -1065,10 +1064,7 @@ void InitAdminManager()
 {
     ushort port = MainConfig->GetInt( "", "AdminPanelPort", 0 );
     if( port )
-    {
-        AdminManagerThread.Finish();
         AdminManagerThread.Start( AdminManager, "AdminPanelManager", new ushort( port ) );
-    }
 }
 
 void AdminManager( void* port_ )

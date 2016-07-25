@@ -4379,7 +4379,7 @@ bool FOMapper::InitScriptSystem()
     Script::ReloadScripts( "Mapper" );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
-    #define BIND_INTERNAL_EVENT( name )    MapperFunctions. ## name = Script::FindInternalEvent( "Event" # name )
+    #define BIND_INTERNAL_EVENT( name )    MapperFunctions.name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );

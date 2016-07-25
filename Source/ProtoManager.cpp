@@ -419,6 +419,7 @@ static int ValidateProtoResourcesExt( map< hash, T* >& protos,  HashSet& hashes 
             Property* prop = registrator->Get( i );
             if( prop->IsResource() )
             {
+                #pragma ANDROID_TODO
                 hash h = proto->Props.GetPropValue< hash >( prop );
                 if( h && !hashes.count( h ) )
                 {

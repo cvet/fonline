@@ -15,7 +15,7 @@
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include <strstream>
 
-#if defined ( FO_X86 ) && !defined ( FO_OSX_IOS )
+#if defined ( FO_X86 ) && !defined ( FO_OSX_IOS ) && !defined ( FO_ANDROID )
 # define ALLOW_NATIVE_CALLS
 #endif
 
@@ -2298,7 +2298,7 @@ float Script::GetReturnedFloat()
         float            f;
         #if defined ( FO_MSVC ) && defined ( FO_X86 )
         __asm fstp dword ptr[ f ]
-        #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
+        #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS ) && !defined ( FO_ANDROID )
         asm ( "fstps %0 \n" : "=m" ( f ) );
         #else
         f = 0.0f;
@@ -2318,7 +2318,7 @@ double Script::GetReturnedDouble()
         double           d;
         #if defined ( FO_MSVC ) && defined ( FO_X86 )
         __asm fstp qword ptr[ d ]
-        #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS )
+        #elif defined ( FO_GCC ) && !defined ( FO_OSX_IOS ) && !defined ( FO_ANDROID )
         asm ( "fstpl %0 \n" : "=m" ( d ) );
         #else
         d = 0.0;
