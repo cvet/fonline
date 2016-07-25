@@ -1548,15 +1548,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_PICK_ITEM:
-            {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_NO_GLOBAL;
-                CHECK_AP( cl->GetApCostPickItem() );
-                Process_PickItem( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_PICK_CRITTER:
             {
                 CHECK_BUSY_AND_LIFE;

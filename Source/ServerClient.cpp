@@ -474,107 +474,6 @@ bool FOServer::Act_UseSkill( Critter* cr, int skill, int target_type, uint targe
     return true;
 }
 
-bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
-{
-    cr->SetBreakTime( GameOpt.Breaktime );
-
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
-    if( !map )
-        return false;
-
-    int ap_cost = cr->GetApCostPickItem();
-    if( cr->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
-    {
-        WriteLogF( _FUNC_, " - Not enough AP, critter '%s'.\n", cr->GetInfo() );
-        return false;
-    }
-    cr->SubAp( ap_cost );
-
-    if( hx >= map->GetWidth() || hy >= map->GetHeight() )
-        return false;
-
-    if( !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetUseDist() ) )
-    {
-        WriteLogF( _FUNC_, " - Wrong distance, critter '%s'.\n", cr->GetInfo() );
-        cr->Send_XY( cr );
-        return false;
-    }
-
-    ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
-    if( !proto )
-    {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found, critter '%s'.\n", Str::GetName( pid ), cr->GetInfo() );
-        return false;
-    }
-
-    if( !proto->IsScenery() )
-    {
-        Item* pick_item = map->GetItemHex( hx, hy, pid, cr->IsPlayer() ? cr : nullptr );
-        if( !pick_item )
-            return false;
-
-        cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_item );
-
-        Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, SKILL_PICK_ON_GROUND, nullptr, pick_item, nullptr );
-    }
-    else if( proto->IsGeneric() )
-    {
-        Item* pick_scenery = map->GetProtoMap()->GetMapScenery( hx, hy, pid );
-        if( !pick_scenery )
-        {
-            cr->Send_Text( cr, "Scenery not found, maybe map outdated.", SAY_NETMSG );
-            return false;
-        }
-
-        cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_scenery );
-
-        if( pick_scenery->SceneryScriptBindId )
-        {
-            Script::PrepareContext( pick_scenery->SceneryScriptBindId, cr->GetInfo() );
-            Script::SetArgEntity( cr );
-            Script::SetArgEntity( pick_scenery );
-            Script::SetArgUInt( SKILL_PICK_ON_GROUND );
-            Script::SetArgEntity( nullptr );
-            if( Script::RunPrepared() && Script::GetReturnedBool() )
-                return true;
-        }
-
-        Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cr, SKILL_PICK_ON_GROUND, nullptr, nullptr, pick_scenery );
-    }
-    else if( proto->IsGrid() )
-    {
-        switch( proto->GetGrid_Type() )
-        {
-        case GRID_STAIRS:
-        case GRID_LADDERBOT:
-        case GRID_LADDERTOP:
-        case GRID_ELEVATOR:
-        {
-            Item* pick_item = new Item( uint( -1 ), proto );
-            cr->SendAA_Action( ACTION_PICK_ITEM, 0, pick_item );
-            SAFEREL( pick_item );
-
-            MapMngr.TransitToMapHex( cr, map, hx, hy, cr->GetDir(), false );
-        }
-        break;
-        default:
-            cr->Send_TextMsg( cr, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
-            break;
-        }
-    }
-    else if( proto->IsWall() )
-    {
-        cr->Send_TextMsg( cr, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
-        return false;
-    }
-    else
-    {
-        cr->Send_TextMsg( cr, STR_USE_NOTHING, SAY_NETMSG, TEXTMSG_GAME );
-        return false;
-    }
-    return true;
-}
-
 void FOServer::KillCritter( Critter* cr, uint anim2, Critter* attacker )
 {
     // Close talk
@@ -2107,20 +2006,6 @@ void FOServer::Process_ChangeItem( Client* cl )
         WriteLogF( _FUNC_, " - Move item fail, from %u, to %u, item_id %u, client '%s'.\n", from_slot, to_slot, item_id, cl->GetInfo() );
         cl->Send_AddAllItems();
     }
-}
-
-void FOServer::Process_PickItem( Client* cl )
-{
-    ushort targ_x;
-    ushort targ_y;
-    hash   pid;
-
-    cl->Bin >> targ_x;
-    cl->Bin >> targ_y;
-    cl->Bin >> pid;
-    CHECK_IN_BUFF_ERROR( cl );
-
-    Act_PickItem( cl, targ_x, targ_y, pid );
 }
 
 void FOServer::Process_PickCritter( Client* cl )

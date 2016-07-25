@@ -234,7 +234,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetItemsByType(int t
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetItemsByType(int type, array<const Item@>@+ items) const", asFUNCTION( BIND_CLASS Crit_GetItemsByType ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Item@+ GetSlotItem(int slot) const", asFUNCTION( BIND_CLASS Crit_GetSlotItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveItem(uint itemId, uint count, uint8 toSlot)", asFUNCTION( BIND_CLASS Crit_MoveItem ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool PickItem(uint16 hexX, uint16 hexY, hash protoId)", asFUNCTION( BIND_CLASS Crit_PickItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetFavoriteItem(int slot, hash pid)", asFUNCTION( BIND_CLASS Crit_SetFavoriteItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "hash GetFavoriteItem(int slot) const", asFUNCTION( BIND_CLASS Crit_GetFavoriteItem ), asCALL_CDECL_OBJFIRST ) );
 
@@ -915,7 +914,13 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadDataFile(string& dataFile
 BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, bool enableSend)", asFUNCTION( BIND_CLASS Global_AllowSlot ), asCALL_CDECL ) );
 
 // ScriptFunctions.h
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, string@ message = null)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message, const ?&in)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(const string& message, const ?&in, const ?&in)", asFUNCTION( Global_ThrowException ), asCALL_CDECL ) );

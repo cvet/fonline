@@ -734,41 +734,18 @@ void FOServer::ProcessAI( Npc* npc )
         bool   to_open = plane->Pick.ToOpen;
         bool   is_run = plane->Pick.IsRun;
 
-        Item*  item = map->GetItemHex( hx, hy, pid, nullptr );         // Cheat
-        if( !item || ( item->IsDoor() && ( to_open ? item->GetOpened() : !item->GetOpened() ) ) )
+        uint   r0 = 0, r1 = 0, r2 = 0;
+        if( !npc->RunPlane( REASON_DO, r0, r1, r2 ) )
         {
-            npc->NextPlane( REASON_SUCCESS );
+            WriteLog( "REASON_ATTACK_USE_AIM fail. Skip attack.\n" );
             break;
         }
-
-        if( use_item_id && !npc->GetItem( use_item_id, true ) )
-        {
-            npc->NextPlane( REASON_USE_ITEM_NOT_FOUND );
+        if( npc->IsWait() )
             break;
-        }
-
-        if( is_busy )
+        if( plane != npc->GetCurPlane() )
             break;
 
-        ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
-        if( !proto_item )
-        {
-            npc->NextPlane( REASON_SUCCESS );
-            break;
-        }
-
-        int use_dist = npc->GetUseDist();
-        if( !CheckDist( npc->GetHexX(), npc->GetHexY(), hx, hy, use_dist ) )
-        {
-            AI_Move( npc, hx, hy, is_run, use_dist, 0 );
-        }
-        else
-        {
-            npc->SetDir( GetFarDir( npc->GetHexX(), npc->GetHexY(), plane->Walk.HexX, plane->Walk.HexY ) );
-            npc->SendA_Dir();
-            if( AI_PickItem( npc, map, hx, hy, pid, use_item_id ) )
-                npc->NextPlane( REASON_SUCCESS );
-        }
+        npc->NextPlane( REASON_SUCCESS );
     }
     break;
 /************************************************************************/
@@ -834,12 +811,6 @@ bool FOServer::AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, 
 
     npc->SetWait( GameOpt.Breaktime );
     return npc->MoveItem( from_slot, to_slot, item_id, count );
-}
-
-bool FOServer::AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, hash pid, uint use_item_id )
-{
-    CHECK_NPC_AP_R0( npc, map, npc->GetApCostPickItem() );
-    return Act_PickItem( npc, hx, hy, pid );
 }
 
 bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg )

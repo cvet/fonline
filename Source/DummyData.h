@@ -216,7 +216,6 @@ struct BindClass
     static void Crit_SayMsg()                   {}
     static void Crit_SayMsgLex()                {}
     static void Crit_SetDir()                   {}
-    static void Crit_PickItem()                 {}
     static void Crit_SetFavoriteItem()          {}
     static void Crit_GetFavoriteItem()          {}
     static void Crit_GetCritters()              {}

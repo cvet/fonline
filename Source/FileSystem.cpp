@@ -512,7 +512,7 @@ bool MakeDirectory( const char* path )
     char path_[ MAX_FOPATH ];
     SetRelativePath( path, path_ );
 
-    return mkdir( path_, ALLPERMS ) == 0;
+    return mkdir( path_, 0x0777 ) == 0;
 }
 
 bool ResolvePath( char* path )

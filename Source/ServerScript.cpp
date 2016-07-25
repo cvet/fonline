@@ -1212,22 +1212,6 @@ void FOServer::SScriptFunc::Crit_SetDir( Critter* cr, uchar dir )
     }
 }
 
-bool FOServer::SScriptFunc::Crit_PickItem( Critter* cr, ushort hx, ushort hy, hash pid )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
-    if( !map )
-        SCRIPT_ERROR_R0( "Map not found." );
-    if( hx >= map->GetWidth() || hy >= map->GetHeight() )
-        SCRIPT_ERROR_R0( "Invalid hexes args." );
-
-    bool pick = Act_PickItem( cr, hx, hy, pid );
-    if( !pick )
-        SCRIPT_ERROR_R0( "Pick fail." );
-    return true;
-}
-
 void FOServer::SScriptFunc::Crit_SetFavoriteItem( Critter* cr, int slot, hash pid )
 {
     if( cr->IsDestroyed )

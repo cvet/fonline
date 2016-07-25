@@ -162,7 +162,6 @@ public:
     void Net_SendUseSkill( int skill, CritterCl* cr );
     void Net_SendUseSkill( int skill, ItemHex* item );
     void Net_SendUseSkill( int skill, Item* item );
-    void Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid );
     void Net_SendPickCritter( uint crid, uchar pick_type );
     void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
     void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );

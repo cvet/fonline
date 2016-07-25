@@ -183,5 +183,6 @@ typedef vector< AIDataPlane* > AIDataPlaneVec;
 #define REASON_ATTACK_DISTANTION       ( 52 )
 #define REASON_ATTACK_USE_AIM          ( 53 )
 #define REASON_ATTACK_SHOOT            ( 54 )
+#define REASON_DO                      ( 55 )
 
 #endif // __AI__

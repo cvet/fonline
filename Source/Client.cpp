@@ -2315,14 +2315,6 @@ void FOClient::Net_SendUseSkill( int skill, Item* item )
     Bout << (hash) 0;
 }
 
-void FOClient::Net_SendPickItem( ushort targ_x, ushort targ_y, hash pid )
-{
-    Bout << NETMSG_SEND_PICK_ITEM;
-    Bout << targ_x;
-    Bout << targ_y;
-    Bout << pid;
-}
-
 void FOClient::Net_SendPickCritter( uint crid, uchar pick_type )
 {
     Bout << NETMSG_SEND_PICK_CRITTER;
@@ -8066,17 +8058,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
         Self->Net_SendItemCont( Self->PupTransferType, Self->PupContId, item_id, item_count, take_flags );
         // Self->CollectContItems();
-    }
-    else if( cmd == "PickItem" && args.size() == 5 )
-    {
-        uint ap_cost =  Str::AtoUI( args[ 1 ].c_str() );
-        hash pid = Str::AtoUI( args[ 2 ].c_str() );
-        uint hx = Str::AtoUI( args[ 3 ].c_str() );
-        uint hy = Str::AtoUI( args[ 4 ].c_str() );
-
-        Self->Net_SendPickItem( hx, hy, pid );
-        Self->Chosen->Action( ACTION_PICK_ITEM, 0, Self->HexMngr.GetItem( hx, hy, pid ) );
-        Self->Chosen->SubAp( ap_cost );
     }
     else if( cmd == "PickCritter" && args.size() == 4 )
     {

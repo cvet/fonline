@@ -51,7 +51,6 @@ public:
     static void Process_SingleplayerSaveLoad( Client* cl );
     static void Process_Dir( Client* cl );
     static void Process_ChangeItem( Client* cl );
-    static void Process_PickItem( Client* cl );
     static void Process_PickCritter( Client* cl );
     static void Process_ContainerItem( Client* cl );
     static void Process_UseSkill( Client* cl );
@@ -102,7 +101,6 @@ public:
     // Actions
     static bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
     static bool Act_UseSkill( Critter* cr, int skill, int target_type, uint target_id, hash target_pid );
-    static bool Act_PickItem( Critter* cr, ushort hx, ushort hy, hash pid );
 
     static void KillCritter( Critter* cr, uint anim2, Critter* attacker );
     static void RespawnCritter( Critter* cr );
@@ -423,7 +421,6 @@ public:
         static void  Crit_SayMsg( Critter* cr, uchar how_say, ushort text_msg, uint num_str );
         static void  Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, ScriptString& lexems );
         static void  Crit_SetDir( Critter* cr, uchar dir );
-        static bool  Crit_PickItem( Critter* cr, ushort hx, ushort hy, hash pid );
         static void  Crit_SetFavoriteItem( Critter* cr, int slot, hash pid );
         static hash  Crit_GetFavoriteItem( Critter* cr, int slot );
         static uint  Crit_GetCritters( Critter* cr, bool look_on_me, int find_type, ScriptArray* critters );
