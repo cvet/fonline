@@ -723,7 +723,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 }
 
 #else
-# pragma ANDROID_TODO
+# pragma MESSAGE( "Android exception handling" )
 
 void CatchExceptions( const char* app_name, int app_ver )
 {

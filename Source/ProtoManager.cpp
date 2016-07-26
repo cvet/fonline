@@ -406,7 +406,7 @@ void ProtoManager::LoadProtosFromBinaryData( UCharVec& data )
     ReadProtosFromBinary( data, pos, locProtos );
 }
 
-template< class T >
+template< typename T >
 static int ValidateProtoResourcesExt( map< hash, T* >& protos,  HashSet& hashes )
 {
     int errors = 0;
@@ -419,8 +419,7 @@ static int ValidateProtoResourcesExt( map< hash, T* >& protos,  HashSet& hashes 
             Property* prop = registrator->Get( i );
             if( prop->IsResource() )
             {
-                #pragma ANDROID_TODO
-                hash h = proto->Props.GetPropValue< hash >( prop );
+                hash h = proto->Props.template GetPropValue< hash >( prop );
                 if( h && !hashes.count( h ) )
                 {
                     WriteLog( "Resource '%s' not found for property '%s' in prototype '%s'.\n", Str::GetName( h ), prop->GetName(), proto->GetName() );

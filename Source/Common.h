@@ -237,13 +237,15 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  define glDrawBuffer( a )
 #  define GL_MAX_COLOR_TEXTURE_SAMPLES            0
 #  define GL_TEXTURE_2D_MULTISAMPLE               0
-#  pragma ANDROID_TODO
 #  ifdef FO_OSX
 #   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
 #   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
-#  else
-#   define glRenderbufferStorageMultisample( a, b, c, d, e )
-#   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
+#  endif
+#  ifdef FO_ANDROID
+#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG
+#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG
+#   define GL_MAX                                 GL_MAX_EXT
+#   define GL_MIN                                 GL_MIN_EXT
 #  endif
 #  define glTexImage2DMultisample( a, b, c, d, e, f )
 # endif

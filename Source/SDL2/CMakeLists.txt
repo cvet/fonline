@@ -19,6 +19,8 @@ set(CMAKE_MODULE_PATH "${SDL2_SOURCE_DIR}/cmake")
 include(${SDL2_SOURCE_DIR}/cmake/macros.cmake)
 include(${SDL2_SOURCE_DIR}/cmake/sdlchecks.cmake)
 
+add_definitions(-DGL_GLEXT_PROTOTYPES)
+
 # General settings
 # Edit include/SDL_version.h and change the version, then:
 #   SDL_MICRO_VERSION += 1;
