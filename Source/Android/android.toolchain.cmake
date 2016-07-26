@@ -1383,6 +1383,8 @@ if( ANDROID_COMPILER_IS_CLANG )
  endif()
 endif()
 
+set( ANDROID_LINKER_FLAGS "${ANDROID_LINKER_FLAGS} --sysroot=${ANDROID_SYSROOT}" ) #!
+
 # cache flags
 set( CMAKE_CXX_FLAGS           ""                        CACHE STRING "c++ flags" )
 set( CMAKE_C_FLAGS             ""                        CACHE STRING "c flags" )
@@ -1450,7 +1452,8 @@ endif()
 # global includes and link directories
 include_directories( SYSTEM "${ANDROID_SYSROOT}/usr/include" ${ANDROID_STL_INCLUDE_DIRS} )
 get_filename_component(__android_install_path "${CMAKE_INSTALL_PREFIX}/libs/${ANDROID_NDK_ABI_NAME}" ABSOLUTE) # avoid CMP0015 policy warning
-link_directories( "${__android_install_path}" )
+#link_directories( "${__android_install_path}" ) #!
+link_directories( "${ANDROID_SYSROOT}/usr/lib" ) #!
 
 # detect if need link crtbegin_so.o explicitly
 if( NOT DEFINED ANDROID_EXPLICIT_CRT_LINK )
