@@ -242,8 +242,14 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
 #  endif
 #  ifdef FO_ANDROID
-#   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleIMG
-#   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleIMG
+#   undef glGenVertexArrays
+#   undef glBindVertexArray
+#   undef glDeleteVertexArrays
+#   define glGenVertexArrays( a, b )
+#   define glBindVertexArray( a )
+#   define glDeleteVertexArrays( a, b )
+#   define glRenderbufferStorageMultisample( a, b, c, d, e )
+#   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
 #   define GL_MAX                                 GL_MAX_EXT
 #   define GL_MIN                                 GL_MIN_EXT
 #  endif

@@ -1351,6 +1351,7 @@ configure_file("${SDL2_SOURCE_DIR}/include/SDL_config.h.cmake"
 
 # Prepare the flags and remove duplicates
 if(EXTRA_LDFLAGS)
+  list(REMOVE_ITEM EXTRA_LDFLAGS "-lpthread") #!
   list(REMOVE_DUPLICATES EXTRA_LDFLAGS)
 endif()
 if(EXTRA_LIBS)

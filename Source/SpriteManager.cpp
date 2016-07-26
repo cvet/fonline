@@ -153,13 +153,16 @@ bool SpriteManager::Init()
     #ifdef FO_OGL_ES
     OGL_version_2_0 = true;
     OGL_vertex_buffer_object = true;
-    OGL_framebuffer_object = true;       // GL_OES_framebuffer_object
+    OGL_framebuffer_object = true;
     OGL_framebuffer_object_ext = false;
-    OGL_framebuffer_multisample = false; // APPLE_framebuffer_multisample
+    OGL_framebuffer_multisample = false;
     OGL_packed_depth_stencil = false;
     OGL_texture_multisample = false;
-    OGL_vertex_array_object = true;      // OES_vertex_array_object
-    OGL_get_program_binary = false;      // GL_OES_get_program_binary
+    OGL_vertex_array_object = true;
+    OGL_get_program_binary = false;
+    # ifdef FO_ANDROID
+    OGL_vertex_array_object = false;
+    # endif
     #endif
 
     // Check OpenGL extensions
