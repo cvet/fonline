@@ -172,7 +172,6 @@ public:
     static bool AI_Move( Npc* npc, ushort hx, ushort hy, bool is_run, uint cut, uint trace );
     static bool AI_MoveToCrit( Npc* npc, uint targ_id, uint cut, uint trace, bool is_run );
     static bool AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, uint item_id, uint count );
-    static bool AI_PickItem( Npc* npc, Map* map, ushort hx, ushort hy, hash pid, uint use_item_id );
     static void ProcessCritter( Critter* cr );
     static bool Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg );
     static bool Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck );
@@ -451,6 +450,7 @@ public:
         static uint         Npc_GetPlanesIdentifier( Critter* npc, int identifier, ScriptArray* arr );
         static uint         Npc_GetPlanesIdentifier2( Critter* npc, int identifier, uint identifier_ext, ScriptArray* arr );
         static bool         Npc_AddPlane( Critter* npc, AIDataPlane& plane );
+        static void         Npc_NextPlane( Critter* npc, int reason );
 
         static void Crit_SendMessage( Critter* cr, int num, int val, int to );
         static void Crit_SendCombatResult( Critter* cr, ScriptArray& arr );

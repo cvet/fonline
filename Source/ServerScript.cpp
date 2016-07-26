@@ -1685,6 +1685,20 @@ bool FOServer::SScriptFunc::Npc_AddPlane( Critter* npc, AIDataPlane& plane )
     return true;
 }
 
+void FOServer::SScriptFunc::Npc_NextPlane( Critter* npc, int reason )
+{
+    if( npc->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+    if( !npc->IsNpc() )
+        SCRIPT_ERROR_R( "Critter is not npc." );
+
+    Npc* npc_ = (Npc*) npc;
+    if( npc_->IsNoPlanes() )
+        SCRIPT_ERROR_R( "Npc does not have any plans." );
+
+    npc_->NextPlane( reason );
+}
+
 void FOServer::SScriptFunc::Crit_SendMessage( Critter* cr, int num, int val, int to )
 {
     if( cr->IsDestroyed )

@@ -246,6 +246,7 @@ struct BindClass
     static void Npc_GetPlanesIdentifier()  {}
     static void Npc_GetPlanesIdentifier2() {}
     static void Npc_AddPlane()             {}
+    static void Npc_NextPlane()            {}
 
     static void Crit_SendMessage()      {}
     static void Crit_SendCombatResult() {}

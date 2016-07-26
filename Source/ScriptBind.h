@@ -259,6 +259,7 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetPlanes(array<NpcP
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetPlanes(int identifier, array<NpcPlane@>@+ planes) const", asFUNCTION( BIND_CLASS Npc_GetPlanesIdentifier ), asCALL_CDECL_OBJFIRST ) );                      // Todo: const
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint GetPlanes(int identifier, uint identifierExt, array<NpcPlane@>@+ planes) const", asFUNCTION( BIND_CLASS Npc_GetPlanesIdentifier2 ), asCALL_CDECL_OBJFIRST ) ); // Todo: const
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool AddPlane(NpcPlane& plane)", asFUNCTION( BIND_CLASS Npc_AddPlane ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void NextPlane(int reason)", asFUNCTION( BIND_CLASS Npc_NextPlane ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SendMessage(int num, int val, int to)", asFUNCTION( BIND_CLASS Crit_SendMessage ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Action(int action, int actionExt, const Item@+ item)", asFUNCTION( BIND_CLASS Crit_Action ), asCALL_CDECL_OBJFIRST ) );
