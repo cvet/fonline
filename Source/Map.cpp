@@ -144,6 +144,7 @@ bool Map::Generate()
             parent_id = base_item->GetContainerId();
         else
             RUNTIME_ASSERT( !"Unreachable place" );
+
         if( !id_map.count( parent_id ) )
             continue;
         parent_id = id_map[ parent_id ];
@@ -162,12 +163,6 @@ bool Map::Generate()
             Critter* cr_cont = GetCritter( parent_id, true );
             RUNTIME_ASSERT( cr_cont );
             cr_cont->AddItem( item, false );
-            if( item->GetCritSlot() == SLOT_HAND1 )
-                cr_cont->SetFavoriteItemPid( SLOT_HAND1, item->GetProtoId() );
-            else if( item->GetCritSlot() == SLOT_HAND2 )
-                cr_cont->SetFavoriteItemPid( SLOT_HAND2, item->GetProtoId() );
-            else if( item->GetCritSlot() == SLOT_ARMOR )
-                cr_cont->SetFavoriteItemPid( SLOT_ARMOR, item->GetProtoId() );
         }
         else if( base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER )
         {

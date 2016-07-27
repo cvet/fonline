@@ -126,7 +126,6 @@ public:
     CLASS_PROPERTY( ScriptArray *, InternalBagItemPid );
     CLASS_PROPERTY( ScriptArray *, InternalBagItemCount );
     CLASS_PROPERTY( ScriptArray *, ExternalBagCurrentSet );
-    CLASS_PROPERTY( ScriptArray *, FavoriteItemPid );
     CLASS_PROPERTY( int, SneakCoefficient );
     CLASS_PROPERTY( int, BarterCoefficient );
     // Exclude
@@ -140,7 +139,6 @@ public:
     // CLASS_PROPERTY( bool, IsInvulnerable ); // Resolve in scripts
     CLASS_PROPERTY( bool, IsUnlimitedAmmo );    // AI, check shoot possibility
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
-    CLASS_PROPERTY( bool, IsNoFavoriteItem );   // AI
     CLASS_PROPERTY( bool, IsNoPush );           // Can puck checks
     CLASS_PROPERTY( bool, IsNoEnemyStack );     // Migrate enemy stack to scripts
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to critter type option)
@@ -169,8 +167,6 @@ public:
     static IntSet RegProperties;
 
     void DeleteInventory();
-    hash GetFavoriteItemPid( uchar slot );
-    void SetFavoriteItemPid( uchar slot, hash pid );
 
     // Visible critters and items
     CrVec         VisCr;
@@ -367,8 +363,6 @@ public:
 
     int GetApCostCritterMove( bool is_run );
     int GetApCostMoveItemContainer();
-    int GetApCostMoveItemInventory();
-    int GetApCostDropItem();
     int GetApCostPickCritter();
     int GetApCostUseSkill();
 

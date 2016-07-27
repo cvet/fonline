@@ -106,56 +106,6 @@ void FOServer::ProcessAI( Npc* npc )
             npc->SetWait( 200 );
             return;
         }
-        else if( !npc->GetIsNoFavoriteItem() )
-        {
-            hash  favor_item_pid;
-            Item* favor_item;
-            // Set favorite item to slot1
-            favor_item_pid = npc->GetFavoriteItemPid( SLOT_HAND1 );
-            if( favor_item_pid != npc->ItemSlotMain->GetProtoId() )
-            {
-                if( npc->ItemSlotMain->GetId() )
-                {
-                    AI_MoveItem( npc, map, npc->ItemSlotMain->GetCritSlot(), SLOT_INV, npc->ItemSlotMain->GetId(), npc->ItemSlotMain->GetCount() );
-                    return;
-                }
-                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) )
-                {
-                    AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_HAND1, favor_item->GetId(), favor_item->GetCount() );
-                    return;
-                }
-            }
-            // Set favorite item to slot2
-            favor_item_pid = npc->GetFavoriteItemPid( SLOT_HAND2 );
-            if( favor_item_pid != npc->ItemSlotExt->GetProtoId() )
-            {
-                if( npc->ItemSlotExt->GetId() )
-                {
-                    AI_MoveItem( npc, map, npc->ItemSlotExt->GetCritSlot(), SLOT_INV, npc->ItemSlotExt->GetId(), npc->ItemSlotExt->GetCount() );
-                    return;
-                }
-                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) )
-                {
-                    AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_HAND2, favor_item->GetId(), favor_item->GetCount() );
-                    return;
-                }
-            }
-            // Set favorite item to slot armor
-            favor_item_pid = npc->GetFavoriteItemPid( SLOT_ARMOR );
-            if( favor_item_pid != npc->ItemSlotArmor->GetProtoId() )
-            {
-                if( npc->ItemSlotArmor->GetId() )
-                {
-                    AI_MoveItem( npc, map, npc->ItemSlotArmor->GetCritSlot(), SLOT_INV, npc->ItemSlotArmor->GetId(), npc->ItemSlotArmor->GetCount() );
-                    return;
-                }
-                else if( favor_item_pid && ( favor_item = npc->GetItemByPid( favor_item_pid ) ) && favor_item->IsArmor() && !favor_item->GetSlot() )
-                {
-                    AI_MoveItem( npc, map, favor_item->GetCritSlot(), SLOT_ARMOR, favor_item->GetId(), favor_item->GetCount() );
-                    return;
-                }
-            }
-        }
 
         // Idle
         if( npc->GetCurPlane() || npc->IsBusy() || npc->IsWait() )
@@ -799,18 +749,6 @@ bool FOServer::AI_MoveToCrit( Npc* npc, uint targ_id, uint cut, uint trace, bool
     plane->Move.PathNum = 0;
     plane->Move.Iter = 0;
     return true;
-}
-
-bool FOServer::AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, uint item_id, uint count )
-{
-    bool is_castling = ( ( from_slot == SLOT_HAND1 && to_slot == SLOT_HAND2 ) || ( from_slot == SLOT_HAND2 && to_slot == SLOT_HAND1 ) );
-    uint ap_cost = ( is_castling ? 0 : npc->GetApCostMoveItemInventory() );
-    if( to_slot == SLOT_GROUND )
-        ap_cost = npc->GetApCostDropItem();
-    CHECK_NPC_AP_R0( npc, map, ap_cost );
-
-    npc->SetWait( GameOpt.Breaktime );
-    return npc->MoveItem( from_slot, to_slot, item_id, count );
 }
 
 bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg )

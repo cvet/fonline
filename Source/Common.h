@@ -484,8 +484,6 @@ struct GameOptions
     uint          RtApCostCritterWalk;
     uint          RtApCostCritterRun;
     uint          RtApCostMoveItemContainer;
-    uint          RtApCostMoveItemInventory;
-    uint          RtApCostDropItem;
     uint          RtApCostPickCritter;
     uint          RtApCostUseSkill;
     bool          RtAlwaysRun;

@@ -1213,47 +1213,6 @@ void FOServer::SScriptFunc::Crit_SetDir( Critter* cr, uchar dir )
     }
 }
 
-void FOServer::SScriptFunc::Crit_SetFavoriteItem( Critter* cr, int slot, hash pid )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    switch( slot )
-    {
-    case SLOT_HAND1:
-        cr->SetFavoriteItemPid( SLOT_HAND1, pid );
-        break;
-    case SLOT_HAND2:
-        cr->SetFavoriteItemPid( SLOT_HAND2, pid );
-        break;
-    case SLOT_ARMOR:
-        cr->SetFavoriteItemPid( SLOT_ARMOR, pid );
-        break;
-    default:
-        SCRIPT_ERROR_R( "Invalid slot arg." );
-        break;
-    }
-}
-
-hash FOServer::SScriptFunc::Crit_GetFavoriteItem( Critter* cr, int slot )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    switch( slot )
-    {
-    case SLOT_HAND1:
-        return cr->GetFavoriteItemPid( SLOT_HAND1 );
-    case SLOT_HAND2:
-        return cr->GetFavoriteItemPid( SLOT_HAND2 );
-    case SLOT_ARMOR:
-        return cr->GetFavoriteItemPid( SLOT_ARMOR );
-    default:
-        SCRIPT_ERROR_R0( "Invalid slot arg." );
-    }
-    return 0;
-}
-
 uint FOServer::SScriptFunc::Crit_GetCritters( Critter* cr, bool look_on_me, int find_type, ScriptArray* critters )
 {
     if( cr->IsDestroyed )

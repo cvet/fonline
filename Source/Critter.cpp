@@ -73,7 +73,6 @@ CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
 CLASS_PROPERTY_IMPL( Critter, IsUnlimitedAmmo );
 CLASS_PROPERTY_IMPL( Critter, IsNoUnarmed );
-CLASS_PROPERTY_IMPL( Critter, IsNoFavoriteItem );
 CLASS_PROPERTY_IMPL( Critter, IsNoPush );
 CLASS_PROPERTY_IMPL( Critter, IsNoItemGarbager );
 CLASS_PROPERTY_IMPL( Critter, IsNoEnemyStack );
@@ -109,7 +108,6 @@ CLASS_PROPERTY_IMPL( Critter, EnemyStack );
 CLASS_PROPERTY_IMPL( Critter, InternalBagItemPid );
 CLASS_PROPERTY_IMPL( Critter, InternalBagItemCount );
 CLASS_PROPERTY_IMPL( Critter, ExternalBagCurrentSet );
-CLASS_PROPERTY_IMPL( Critter, FavoriteItemPid );
 
 Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, type, PropertiesRegistrator, proto )
 {
@@ -262,29 +260,6 @@ bool Critter::IsDmgArm()
 bool Critter::IsDmgTwoArm()
 {
     return GetIsDamagedRightArm() && GetIsDamagedLeftArm();
-}
-
-hash Critter::GetFavoriteItemPid( uchar slot )
-{
-    ScriptArray* pids = GetFavoriteItemPid();
-    hash         result = 0;
-    if( slot < pids->GetSize() )
-        result = *(hash*) pids->At( slot );
-    SAFEREL( pids );
-    return result;
-}
-
-void Critter::SetFavoriteItemPid( uchar slot, hash pid )
-{
-    ScriptArray* pids = GetFavoriteItemPid();
-    if( slot >= pids->GetSize() )
-        pids->Resize( slot + 1 );
-    if( *(hash*) pids->At( slot ) != pid )
-    {
-        pids->SetValue( slot, &pid );
-        SetFavoriteItemPid( pids );
-    }
-    SAFEREL( pids );
 }
 
 void Critter::SyncLockCritters( bool self_critters, bool only_players )
@@ -2343,16 +2318,6 @@ int Critter::GetApCostCritterMove( bool is_run )
 int Critter::GetApCostMoveItemContainer()
 {
     return GameOpt.RtApCostMoveItemContainer;
-}
-
-int Critter::GetApCostMoveItemInventory()
-{
-    return GameOpt.RtApCostMoveItemInventory;
-}
-
-int Critter::GetApCostDropItem()
-{
-    return GameOpt.RtApCostDropItem;
 }
 
 int Critter::GetApCostPickCritter()

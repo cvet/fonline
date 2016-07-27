@@ -170,7 +170,6 @@ public:
     static bool AI_Stay( Npc* npc, uint ms );
     static bool AI_Move( Npc* npc, ushort hx, ushort hy, bool is_run, uint cut, uint trace );
     static bool AI_MoveToCrit( Npc* npc, uint targ_id, uint cut, uint trace, bool is_run );
-    static bool AI_MoveItem( Npc* npc, Map* map, uchar from_slot, uchar to_slot, uint item_id, uint count );
     static void ProcessCritter( Critter* cr );
     static bool Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg );
     static bool Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck );
@@ -419,8 +418,6 @@ public:
         static void  Crit_SayMsg( Critter* cr, uchar how_say, ushort text_msg, uint num_str );
         static void  Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, ScriptString& lexems );
         static void  Crit_SetDir( Critter* cr, uchar dir );
-        static void  Crit_SetFavoriteItem( Critter* cr, int slot, hash pid );
-        static hash  Crit_GetFavoriteItem( Critter* cr, int slot );
         static uint  Crit_GetCritters( Critter* cr, bool look_on_me, int find_type, ScriptArray* critters );
         static uint  Npc_GetTalkedPlayers( Critter* cr, ScriptArray* players );
         static bool  Crit_IsSeeCr( Critter* cr, Critter* cr_ );

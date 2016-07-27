@@ -1029,8 +1029,6 @@ GameOptions::GameOptions()
     RtApCostCritterWalk = 0;
     RtApCostCritterRun = 1;
     RtApCostMoveItemContainer = 0;
-    RtApCostMoveItemInventory = 2;
-    RtApCostDropItem = 1;
     RtApCostPickCritter = 1;
     RtApCostUseSkill = 2;
     RtAlwaysRun = false;

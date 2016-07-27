@@ -1428,16 +1428,6 @@ int CritterCl::GetApCostMoveItemContainer()
     return GameOpt.RtApCostMoveItemContainer;
 }
 
-int CritterCl::GetApCostMoveItemInventory()
-{
-    return GameOpt.RtApCostMoveItemInventory;
-}
-
-int CritterCl::GetApCostDropItem()
-{
-    return GameOpt.RtApCostDropItem;
-}
-
 int CritterCl::GetApCostPickCritter()
 {
     return GameOpt.RtApCostPickCritter;
