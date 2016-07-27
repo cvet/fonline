@@ -602,11 +602,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __FloodSize", &GameOpt.FloodS
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __BruteForceTick", &GameOpt.BruteForceTick ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __NoAnswerShuffle", &GameOpt.NoAnswerShuffle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DialogDemandRecheck", &GameOpt.DialogDemandRecheck ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __FixBoyDefaultExperience", &GameOpt.FixBoyDefaultExperience ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __SneakDivider", &GameOpt.SneakDivider ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LevelCap", &GameOpt.LevelCap ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __LevelCapAddExperience", &GameOpt.LevelCapAddExperience ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookNormal", &GameOpt.LookNormal ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookMinimum", &GameOpt.LookMinimum ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __CritterIdleTick", &GameOpt.CritterIdleTick ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __DeadHitPoints", &GameOpt.DeadHitPoints ) );
@@ -618,27 +614,16 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostCritterWalk", &Game
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostCritterRun", &GameOpt.RtApCostCritterRun ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostMoveItemContainer", &GameOpt.RtApCostMoveItemContainer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostMoveItemInventory", &GameOpt.RtApCostMoveItemInventory ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostPickItem", &GameOpt.RtApCostPickItem ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostDropItem", &GameOpt.RtApCostDropItem ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostReloadWeapon", &GameOpt.RtApCostReloadWeapon ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostPickCritter", &GameOpt.RtApCostPickCritter ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostUseItem", &GameOpt.RtApCostUseItem ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostUseSkill", &GameOpt.RtApCostUseSkill ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RtAlwaysRun", &GameOpt.RtAlwaysRun ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostAimEyes", &GameOpt.ApCostAimEyes ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostAimHead", &GameOpt.ApCostAimHead ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostAimGroin", &GameOpt.ApCostAimGroin ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostAimTorso", &GameOpt.ApCostAimTorso ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostAimArms", &GameOpt.ApCostAimArms ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostAimLegs", &GameOpt.ApCostAimLegs ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RunOnCombat", &GameOpt.RunOnCombat ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RunOnTransfer", &GameOpt.RunOnTransfer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __GlobalMapWidth", &GameOpt.GlobalMapWidth ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __GlobalMapHeight", &GameOpt.GlobalMapHeight ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __GlobalMapZoneLength", &GameOpt.GlobalMapZoneLength ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __GlobalMapMoveTime", &GameOpt.GlobalMapMoveTime ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __BagRefreshTime", &GameOpt.BagRefreshTime ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __AttackAnimationsMinDist", &GameOpt.AttackAnimationsMinDist ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __WisperDist", &GameOpt.WhisperDist ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ShoutDist", &GameOpt.ShoutDist ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "int __LookChecks", &GameOpt.LookChecks ) );
@@ -655,7 +640,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookSneakDir4", &GameOpt.Lo
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookWeight", &GameOpt.LookWeight ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RegistrationTimeout", &GameOpt.RegistrationTimeout ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __AccountPlayTime", &GameOpt.AccountPlayTime ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "bool __LoggingVars", &GameOpt.LoggingVars ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ScriptRunSuspendTimeout", &GameOpt.ScriptRunSuspendTimeout ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ScriptRunMessageTimeout", &GameOpt.ScriptRunMessageTimeout ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TalkDistance", &GameOpt.TalkDistance ) );
@@ -668,22 +652,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __MinimumOfflineTime", &GameO
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GameServer", &GameOpt.GameServer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __UpdateServer", &GameOpt.UpdateServer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __CommandLine", &GameOpt.CommandLine ) );
-
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __StartSpecialPoints", &GameOpt.StartSpecialPoints ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __StartTagSkillPoints", &GameOpt.StartTagSkillPoints ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __SkillMaxValue", &GameOpt.SkillMaxValue ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __SkillModAdd2", &GameOpt.SkillModAdd2 ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __SkillModAdd3", &GameOpt.SkillModAdd3 ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __SkillModAdd4", &GameOpt.SkillModAdd4 ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __SkillModAdd5", &GameOpt.SkillModAdd5 ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __SkillModAdd6", &GameOpt.SkillModAdd6 ) );
-
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationLoved", &GameOpt.ReputationLoved ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationLiked", &GameOpt.ReputationLiked ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationAccepted", &GameOpt.ReputationAccepted ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationNeutral", &GameOpt.ReputationNeutral ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationAntipathy", &GameOpt.ReputationAntipathy ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "int __ReputationHated", &GameOpt.ReputationHated ) );
 #endif
 
 #ifdef BIND_MAPPER

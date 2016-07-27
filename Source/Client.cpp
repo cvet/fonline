@@ -2394,16 +2394,6 @@ void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, Entity*
     }
 }
 
-void FOClient::Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count )
-{
-    Bout << NETMSG_SEND_CHANGE_ITEM;
-    Bout << ap;
-    Bout << item_id;
-    Bout << from_slot;
-    Bout << to_slot;
-    Bout << count;
-}
-
 void FOClient::Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags )
 {
     Bout << NETMSG_SEND_ITEM_CONT;
@@ -7939,88 +7929,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         int dir = Str::AtoI( args[ 1 ].c_str() );
         Self->Chosen->ChangeDir( dir );
         Self->Net_SendDir();
-    }
-    else if( cmd == "MoveItem" && args.size() == 6 )
-    {
-        uint  ap_cost = Str::AtoUI( args[ 1 ].c_str() );
-        uint  item_count = Str::AtoUI( args[ 2 ].c_str() );
-        uint  item_id = Str::AtoUI( args[ 3 ].c_str() );
-        uint  item_swap_id = Str::AtoUI( args[ 4 ].c_str() );
-        int   to_slot = Str::AtoI( args[ 5 ].c_str() );
-        Item* item = Self->Chosen->GetItem( item_id );
-        Item* item_swap = ( item_swap_id ? Self->Chosen->GetItem( item_swap_id ) : nullptr );
-        Item* old_item = item->Clone();
-        int   from_slot = item->GetCritSlot();
-
-        // Move
-        bool is_light = item->GetIsLight();
-        if( to_slot == SLOT_GROUND )
-        {
-            Self->Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
-            if( item->GetStackable() && item_count < item->GetCount() )
-            {
-                item->ChangeCount( -(int) item->GetCount() );
-            }
-            else
-            {
-                Self->Chosen->DeleteItem( item, true );
-                item = nullptr;
-            }
-        }
-        else
-        {
-            if( from_slot == SLOT_HAND1 || to_slot == SLOT_HAND1 )
-                Self->Chosen->ItemSlotMain = Self->Chosen->DefItemSlotHand;
-            if( from_slot == SLOT_HAND2 || to_slot == SLOT_HAND2 )
-                Self->Chosen->ItemSlotExt = Self->Chosen->DefItemSlotHand;
-            if( from_slot == SLOT_ARMOR || to_slot == SLOT_ARMOR )
-                Self->Chosen->ItemSlotArmor = Self->Chosen->DefItemSlotArmor;
-
-            if( to_slot == SLOT_HAND1 )
-                Self->Chosen->ItemSlotMain = item;
-            else if( to_slot == SLOT_HAND2 )
-                Self->Chosen->ItemSlotExt = item;
-            else if( to_slot == SLOT_ARMOR )
-                Self->Chosen->ItemSlotArmor = item;
-
-            if( item_swap )
-            {
-                if( from_slot == SLOT_HAND1 )
-                    Self->Chosen->ItemSlotMain = item_swap;
-                else if( from_slot == SLOT_HAND2 )
-                    Self->Chosen->ItemSlotExt = item_swap;
-                else if( from_slot == SLOT_ARMOR )
-                    Self->Chosen->ItemSlotArmor = item_swap;
-            }
-
-            item->SetCritSlot( to_slot );
-            if( item_swap )
-                item_swap->SetCritSlot( from_slot );
-
-            Self->Chosen->Action( ACTION_MOVE_ITEM, from_slot, item );
-            if( item_swap )
-                Self->Chosen->Action( ACTION_MOVE_ITEM_SWAP, to_slot, item_swap );
-        }
-
-        // Affect barter screen
-        if( to_slot == SLOT_GROUND )
-            Self->CollectContItems();
-
-        // Light
-        if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
-            Self->RebuildLookBorders = true;
-        if( is_light && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
-            Self->HexMngr.RebuildLight();
-
-        // Notice server
-        Self->Net_SendChangeItem( ap_cost, item_id, from_slot, to_slot, item_count );
-        // Self->CollectContItems();
-
-        // Spend AP
-        Self->Chosen->SubAp( ap_cost );
-
-        // Notify scripts about item changing
-        Self->OnItemInvChanged( old_item, item );
     }
     else if( cmd == "MoveItemCont" && args.size() == 5 )
     {

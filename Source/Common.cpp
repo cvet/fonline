@@ -1017,11 +1017,7 @@ GameOptions::GameOptions()
     BruteForceTick = 100;
     NoAnswerShuffle = false;
     DialogDemandRecheck = false;
-    FixBoyDefaultExperience = 50;
     SneakDivider = 6;
-    LevelCap = 99;
-    LevelCapAddExperience = false;
-    LookNormal = 20;
     LookMinimum = 6;
     CritterIdleTick = 10000;
     DeadHitPoints = -6;
@@ -1034,27 +1030,16 @@ GameOptions::GameOptions()
     RtApCostCritterRun = 1;
     RtApCostMoveItemContainer = 0;
     RtApCostMoveItemInventory = 2;
-    RtApCostPickItem = 1;
     RtApCostDropItem = 1;
-    RtApCostReloadWeapon = 2;
     RtApCostPickCritter = 1;
-    RtApCostUseItem = 3;
     RtApCostUseSkill = 2;
     RtAlwaysRun = false;
-    ApCostAimEyes = 1;
-    ApCostAimHead = 1;
-    ApCostAimGroin = 1;
-    ApCostAimTorso = 1;
-    ApCostAimArms = 1;
-    ApCostAimLegs = 1;
     RunOnCombat = false;
     RunOnTransfer = false;
     GlobalMapWidth = 28;
     GlobalMapHeight = 30;
     GlobalMapZoneLength = 50;
-    GlobalMapMoveTime = 500;
     BagRefreshTime = 60;
-    AttackAnimationsMinDist = 0;
     WhisperDist = 2;
     ShoutDist = 200;
     LookChecks = 0;
@@ -1071,7 +1056,6 @@ GameOptions::GameOptions()
     LookWeight = 200;
     RegistrationTimeout = 5;
     AccountPlayTime = 0;
-    LoggingVars = false;
     ScriptRunSuspendTimeout = 30000;
     ScriptRunMessageTimeout = 10000;
     TalkDistance = 3;
@@ -1084,23 +1068,6 @@ GameOptions::GameOptions()
     GameServer = false;
     UpdateServer = false;
     CommandLine = ScriptString::Create();
-
-    StartSpecialPoints = 40;
-    StartTagSkillPoints = 3;
-
-    SkillMaxValue = 300;
-    SkillModAdd2 = 100;
-    SkillModAdd3 = 125;
-    SkillModAdd4 = 150;
-    SkillModAdd5 = 175;
-    SkillModAdd6 = 200;
-
-    ReputationLoved = 30;
-    ReputationLiked = 15;
-    ReputationAccepted = 1;
-    ReputationNeutral = 0;
-    ReputationAntipathy = -14;
-    ReputationHated = -29;
 
     MapHexagonal = true;
     MapHexWidth = 32;

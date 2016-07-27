@@ -1565,14 +1565,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_CHANGE_ITEM:
-            {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_AP_MSG;
-                Process_ChangeItem( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_USE_SKILL:
             {
                 CHECK_BUSY_AND_LIFE;

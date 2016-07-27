@@ -1973,41 +1973,6 @@ void FOServer::Process_Move( Client* cl )
     Act_Move( cl, hx, hy, move_params );
 }
 
-void FOServer::Process_ChangeItem( Client* cl )
-{
-    uint  item_id;
-    uchar from_slot;
-    uchar to_slot;
-    uint  count;
-
-    cl->Bin >> item_id;
-    cl->Bin >> from_slot;
-    cl->Bin >> to_slot;
-    cl->Bin >> count;
-    CHECK_IN_BUFF_ERROR( cl );
-
-    cl->SetBreakTime( GameOpt.Breaktime );
-
-    bool is_castling = ( ( from_slot == SLOT_HAND1 && to_slot == SLOT_HAND2 ) || ( from_slot == SLOT_HAND2 && to_slot == SLOT_HAND1 ) );
-    int  ap_cost = ( is_castling ? 0 : cl->GetApCostMoveItemInventory() );
-    if( to_slot == SLOT_GROUND )
-        ap_cost = cl->GetApCostDropItem();
-    if( cl->GetCurrentAp() / AP_DIVIDER < ap_cost && !Singleplayer )
-    {
-        WriteLogF( _FUNC_, " - Not enough AP, client '%s'.\n", cl->GetInfo() );
-        cl->Send_AddAllItems();
-        return;
-    }
-    cl->SubAp( ap_cost );
-
-    // Move
-    if( !cl->MoveItem( from_slot, to_slot, item_id, count ) )
-    {
-        WriteLogF( _FUNC_, " - Move item fail, from %u, to %u, item_id %u, client '%s'.\n", from_slot, to_slot, item_id, cl->GetInfo() );
-        cl->Send_AddAllItems();
-    }
-}
-
 void FOServer::Process_PickCritter( Client* cl )
 {
     uint  crid;

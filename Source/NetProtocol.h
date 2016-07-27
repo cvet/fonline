@@ -468,20 +468,6 @@
 // CHOSEN USE ITEM
 // ************************************************************************
 
-#define NETMSG_SEND_CHANGE_ITEM               MAKE_NETMSG_HEADER( 81 )
-#define NETMSG_SEND_CHANGE_ITEM_SIZE                                            \
-    ( sizeof( uint ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uchar ) * 2 + \
-      sizeof( uint ) )
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// uchar ap
-// uint item_id
-// uchar from_slot
-// uchar to_slot
-// uint count
-// ////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_CONTAINER_INFO                 MAKE_NETMSG_HEADER( 83 )
 // ////////////////////////////////////////////////////////////////////////
 //

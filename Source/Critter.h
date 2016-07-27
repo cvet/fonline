@@ -368,7 +368,6 @@ public:
     int GetApCostCritterMove( bool is_run );
     int GetApCostMoveItemContainer();
     int GetApCostMoveItemInventory();
-    int GetApCostPickItem();
     int GetApCostDropItem();
     int GetApCostPickCritter();
     int GetApCostUseSkill();

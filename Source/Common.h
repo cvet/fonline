@@ -473,11 +473,7 @@ struct GameOptions
     uint          BruteForceTick;
     bool          NoAnswerShuffle;
     bool          DialogDemandRecheck;
-    uint          FixBoyDefaultExperience;
     uint          SneakDivider;
-    uint          LevelCap;
-    bool          LevelCapAddExperience;
-    uint          LookNormal;
     uint          LookMinimum;
     uint          CritterIdleTick;
     int           DeadHitPoints;
@@ -489,27 +485,16 @@ struct GameOptions
     uint          RtApCostCritterRun;
     uint          RtApCostMoveItemContainer;
     uint          RtApCostMoveItemInventory;
-    uint          RtApCostPickItem;
     uint          RtApCostDropItem;
-    uint          RtApCostReloadWeapon;
     uint          RtApCostPickCritter;
-    uint          RtApCostUseItem;
     uint          RtApCostUseSkill;
     bool          RtAlwaysRun;
-    uint          ApCostAimEyes;
-    uint          ApCostAimHead;
-    uint          ApCostAimGroin;
-    uint          ApCostAimTorso;
-    uint          ApCostAimArms;
-    uint          ApCostAimLegs;
     bool          RunOnCombat;
     bool          RunOnTransfer;
     uint          GlobalMapWidth;
     uint          GlobalMapHeight;
     uint          GlobalMapZoneLength;
-    uint          GlobalMapMoveTime;
     uint          BagRefreshTime;
-    uint          AttackAnimationsMinDist;
     uint          WhisperDist;
     uint          ShoutDist;
     int           LookChecks;
@@ -518,7 +503,6 @@ struct GameOptions
     uint          LookWeight;
     uint          RegistrationTimeout;
     uint          AccountPlayTime;
-    bool          LoggingVars;
     uint          ScriptRunSuspendTimeout;
     uint          ScriptRunMessageTimeout;
     uint          TalkDistance;
@@ -531,22 +515,6 @@ struct GameOptions
     bool          GameServer;
     bool          UpdateServer;
     ScriptString* CommandLine;
-
-    int           StartSpecialPoints;
-    int           StartTagSkillPoints;
-    int           SkillMaxValue;
-    int           SkillModAdd2;
-    int           SkillModAdd3;
-    int           SkillModAdd4;
-    int           SkillModAdd5;
-    int           SkillModAdd6;
-
-    int           ReputationLoved;
-    int           ReputationLiked;
-    int           ReputationAccepted;
-    int           ReputationNeutral;
-    int           ReputationAntipathy;
-    int           ReputationHated;
 
     bool          MapHexagonal;
     int           MapHexWidth;

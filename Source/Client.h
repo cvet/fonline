@@ -164,7 +164,6 @@ public:
     void Net_SendUseSkill( int skill, Item* item );
     void Net_SendPickCritter( uint crid, uchar pick_type );
     void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
-    void Net_SendChangeItem( uchar ap, uint item_id, uchar from_slot, uchar to_slot, uint count );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
     void Net_SendSayNpc( uchar is_npc, uint id_to_talk, const char* str );

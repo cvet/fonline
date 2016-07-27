@@ -266,8 +266,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_ERASE_ITEM_FROM_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_ANIMATE_ITEM:
         return ( NETMSG_ANIMATE_ITEM_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_CHANGE_ITEM:
-        return ( NETMSG_SEND_CHANGE_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_ITEM_CONT:
         return ( NETMSG_SEND_ITEM_CONT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_USE_SKILL:
@@ -501,9 +499,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_ANIMATE_ITEM:
         size = NETMSG_ANIMATE_ITEM_SIZE;
-        break;
-    case NETMSG_SEND_CHANGE_ITEM:
-        size = NETMSG_SEND_CHANGE_ITEM_SIZE;
         break;
     case NETMSG_SEND_ITEM_CONT:
         size = NETMSG_SEND_ITEM_CONT_SIZE;
