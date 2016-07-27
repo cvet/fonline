@@ -2,7 +2,7 @@
 
 # Build commands
 # cd <build dir>
-# export FO_SOURCE=<source> && export ANDROID_NDK=<ndk> && cmake -C $FO_SOURCE/Android/cache.cmake $FO_SOURCE
+# export FO_SOURCE=<source> && export ANDROID_NDK=<ndk> && cmake -C $FO_SOURCE/Android/android.cache.cmake $FO_SOURCE
 # make
 
 if( NOT DEFINED "ENV{FO_SOURCE}" )

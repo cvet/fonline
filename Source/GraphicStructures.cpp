@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "GraphicStructures.h"
 
 bool Is3dExtensionSupported( const char* ext )

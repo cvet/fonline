@@ -1,15 +1,13 @@
 #ifndef __GRAPHIC_STRUCTURES__
 #define __GRAPHIC_STRUCTURES__
 
-#ifndef FO_OGL_ES
-# include "GL/glew.h"
-#endif
+#include "Common.h"
 #include "Defines.h"
 #include "Assimp/aiTypes.h"
 #include "Assimp/aiScene.h"
 #include "FileManager.h"
 
-#ifdef FONLINE_SERVER
+#if defined( FONLINE_SERVER ) || defined( FONLINE_SCRIPT_COMPILER )
 # define GL( x )        (void) 0
 # define GL_HAS( x )    false
 # define GLuint                 uint
