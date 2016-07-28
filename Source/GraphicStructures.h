@@ -7,7 +7,7 @@
 #include "Assimp/aiScene.h"
 #include "FileManager.h"
 
-#if defined( FONLINE_SERVER ) || defined( FONLINE_SCRIPT_COMPILER )
+#if defined ( FONLINE_SERVER ) || defined ( FONLINE_SCRIPT_COMPILER )
 # define GL( x )        (void) 0
 # define GL_HAS( x )    false
 # define GLuint                 uint

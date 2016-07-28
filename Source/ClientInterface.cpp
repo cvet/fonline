@@ -512,7 +512,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
                     rnd.pop_back();
                 if( !rnd.empty() )
                 {
-                    char* rnd_str = rnd[ Random( 0, rnd.size() - 1 ) ];
+                    char* rnd_str = rnd[ Random( 0, (int) rnd.size() - 1 ) ];
                     str_ = rnd_str + 1;
                     Str::GoTo( str_, '|' );
                     Str::CopyCount( tag, rnd_str + 1, (uint) ( str_ - rnd_str ) - 1 );

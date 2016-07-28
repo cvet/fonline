@@ -3,7 +3,9 @@
 # Usage:
 # export FO_SOURCE=<source> && export ANDROID_NDK=<ndk> && $FO_SOURCE/BuildScripts/android.sh
 
-rm -rf android
+if ["$FO_CLEAR" = "TRUE"]; then
+	rm -rf android
+fi
 mkdir android
 cd android
 
@@ -16,7 +18,7 @@ cd $ANDROID_ABI
 cmake -C $FO_SOURCE/BuildScripts/android.cache.cmake $FO_SOURCE/Source && make
 cd ../
 
-export ANDROID_ABI=arm64-v8a
+export ANDROID_ABI=x86
 mkdir $ANDROID_ABI
 cd $ANDROID_ABI
 cmake -C $FO_SOURCE/BuildScripts/android.cache.cmake $FO_SOURCE/Source && make

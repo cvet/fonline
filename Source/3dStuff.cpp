@@ -1168,7 +1168,7 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow_dis
                     WorldMatrices[ i ].Transpose();                                                             // Convert to column major order
                 }
             }
-            GL( glUniformMatrix4fv( effect_pass.WorldMatrices, combined_mesh->CurBoneMatrix, GL_FALSE, (float*) &WorldMatrices[ 0 ] ) );
+            GL( glUniformMatrix4fv( effect_pass.WorldMatrices, (GLsizei) combined_mesh->CurBoneMatrix, GL_FALSE, (float*) &WorldMatrices[ 0 ] ) );
         }
         if( IS_EFFECT_VALUE( effect_pass.GroundPosition ) )
             GL( glUniform3fv( effect_pass.GroundPosition, 1, (float*) &groundPos ) );

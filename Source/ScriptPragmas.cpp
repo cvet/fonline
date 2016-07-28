@@ -1056,7 +1056,7 @@ public:
 
         bool RaiseImpl( asIScriptGeneric* gen_args, UInt64Vec* va_args )
         {
-            #define GET_ARG_ADDR    ( gen_args ? gen_args->GetAddressOfArg( i ) : &va_args->at( i ) )
+            #define GET_ARG_ADDR    ( gen_args ? gen_args->GetAddressOfArg( (asUINT) i ) : &va_args->at( i ) )
             #define GET_ARG( type )    ( *(type*) GET_ARG_ADDR )
 
             FuncVec callbacks_to_call;
