@@ -17,6 +17,6 @@ PUSHD "%BUILD_DIR%\windows\x64"
 POPD
 
 "%CMAKE_DIR%\cmake.exe" --build "%BUILD_DIR%\windows\x86" --config RelWithDebInfo --target FOnline
-"%CMAKE_DIR%\cmake.exe" --build "%BUILD_DIR%\windows\x64" --config RelWithDebInfo --target FOnlineServer
-"%CMAKE_DIR%\cmake.exe" --build "%BUILD_DIR%\windows\x64" --config RelWithDebInfo --target Mapper
-"%CMAKE_DIR%\cmake.exe" --build "%BUILD_DIR%\windows\x64" --config RelWithDebInfo --target ASCompiler
+"%CMAKE_DIR%\cmake.exe" --build "%BUILD_DIR%\windows\x86" --config RelWithDebInfo --target FOnlineServer
+"%CMAKE_DIR%\cmake.exe" --build "%BUILD_DIR%\windows\x86" --config RelWithDebInfo --target Mapper
+"%CMAKE_DIR%\cmake.exe" --build "%BUILD_DIR%\windows\x86" --config RelWithDebInfo --target ASCompiler
