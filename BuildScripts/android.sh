@@ -3,7 +3,7 @@
 # Usage:
 # export FO_SOURCE=<source> && export ANDROID_NDK=<ndk> && $FO_SOURCE/BuildScripts/android.sh
 
-if ["$FO_CLEAR" = "TRUE"]; then
+if [ "$FO_CLEAR" = "TRUE" ]; then
 	rm -rf android
 fi
 mkdir android
