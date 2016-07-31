@@ -57,7 +57,6 @@ CLASS_PROPERTY_IMPL( CritterCl, IsNoTalk );
 CLASS_PROPERTY_IMPL( CritterCl, IsHide );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoFlatten );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoBarter );
-CLASS_PROPERTY_IMPL( CritterCl, IsEndCombat );
 
 CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterCl, PropertiesRegistrator, proto )
 {

@@ -52,7 +52,6 @@ public:
     CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
     CLASS_PROPERTY( bool, IsNoLoot );
     CLASS_PROPERTY( bool, IsHide );
-    CLASS_PROPERTY( bool, IsEndCombat );
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
     CLASS_PROPERTY( ushort, WorldX );

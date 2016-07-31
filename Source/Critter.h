@@ -111,7 +111,6 @@ public:
     CLASS_PROPERTY( ushort, HomeHexY );
     CLASS_PROPERTY( uchar, HomeDir );
     CLASS_PROPERTY( bool, IsHide );
-    CLASS_PROPERTY( bool, IsEndCombat );           // ?
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
     CLASS_PROPERTY( ScriptArray *, KnownLocations );

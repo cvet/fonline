@@ -85,7 +85,6 @@ CLASS_PROPERTY_IMPL( Critter, IsNoTalk );
 CLASS_PROPERTY_IMPL( Critter, IsHide );
 CLASS_PROPERTY_IMPL( Critter, IsNoFlatten );
 CLASS_PROPERTY_IMPL( Critter, IsNoBarter );
-CLASS_PROPERTY_IMPL( Critter, IsEndCombat );
 CLASS_PROPERTY_IMPL( Critter, KnownLocations );
 CLASS_PROPERTY_IMPL( Critter, ConnectionIp );
 CLASS_PROPERTY_IMPL( Critter, ConnectionPort );
