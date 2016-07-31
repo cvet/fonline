@@ -407,9 +407,6 @@ public:
         static void  Crit_AnimateEx( CritterCl* cr, uint anim1, uint anim2, Item* item );
         static void  Crit_ClearAnim( CritterCl* cr );
         static void  Crit_Wait( CritterCl* cr, uint ms );
-        static uint  Crit_ItemsCount( CritterCl* cr );
-        static uint  Crit_ItemsWeight( CritterCl* cr );
-        static uint  Crit_ItemsVolume( CritterCl* cr );
         static uint  Crit_CountItem( CritterCl* cr, hash proto_id );
         static uint  Crit_CountItemByType( CritterCl* cr, uchar type );
         static Item* Crit_GetItem( CritterCl* cr, hash proto_id, int slot );
@@ -595,7 +592,7 @@ public:
     bool IsScreenPlayersBarter();
     void BarterTryOffer();
     void BarterTransfer( uint item_id, int item_cont, uint item_count );
-    void ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell );
+    void ContainerCalcInfo( ItemVec& cont, uint& cost, int barter_k, bool sell );
     void FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl * player, CritterCl * npc, const char* lexems );
 
 /************************************************************************/

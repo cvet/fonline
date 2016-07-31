@@ -292,11 +292,11 @@ void FOClient::BarterTryOffer()
         if( BarterCont1oInit.empty() && BarterCont2oInit.empty() )
             return;
 
-        uint c1, w1, v1, c2, w2, v2;
-        ContainerCalcInfo( BarterCont1oInit, c1, w1, v1, -BarterK, true );
-        ContainerCalcInfo( BarterCont2oInit, c2, w2, v2, BarterK, false );
+        uint c1, c2;
+        ContainerCalcInfo( BarterCont1oInit, c1, -BarterK, true );
+        ContainerCalcInfo( BarterCont2oInit, c2, BarterK, false );
 
-        if( !( c1 < c2 && BarterK ) && Chosen->GetFreeWeight() + w1 >= w2 && Chosen->GetFreeVolume() + v1 >= v2 )
+        if( !( c1 < c2 && BarterK ) )
         {
             Net_SendBarter( DlgNpcId, BarterCont1oInit, BarterCont2oInit );
             WaitPing();
@@ -393,11 +393,9 @@ void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
     Script::RaiseInternalEvent( ClientFunctions.ContainerChanged );
 }
 
-void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint& volume, int barter_k, bool sell )
+void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, int barter_k, bool sell )
 {
     cost = 0;
-    weigth = 0;
-    volume = 0;
     for( auto it = cont.begin(); it != cont.end(); it++ )
     {
         Item* item = *it;
@@ -409,8 +407,6 @@ void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, uint& weigth, uint&
                 cost_++;
             cost += cost_ * item->GetCount();
         }
-        weigth += item->GetWholeWeight();
-        volume += item->GetWholeVolume();
     }
 }
 

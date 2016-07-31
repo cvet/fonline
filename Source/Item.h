@@ -147,8 +147,6 @@ public:
     CLASS_PROPERTY( bool, Opened );
     CLASS_PROPERTY( int, Corner );
     CLASS_PROPERTY( uchar, Slot );
-    CLASS_PROPERTY( uint, Weight );
-    CLASS_PROPERTY( uint, Volume );
     CLASS_PROPERTY( uchar, SoundId );
     CLASS_PROPERTY( uchar, Material );
     CLASS_PROPERTY( bool, DisableEgg );
@@ -209,7 +207,6 @@ public:
     CLASS_PROPERTY( uchar, Weapon_SoundId_1 );
     CLASS_PROPERTY( uchar, Weapon_SoundId_2 );
     CLASS_PROPERTY( int, Ammo_Caliber );
-    CLASS_PROPERTY( uint, Container_Volume );
     CLASS_PROPERTY( bool, Container_Changeble );
     CLASS_PROPERTY( bool, Container_CannotPickUp );
     CLASS_PROPERTY( bool, Container_MagicHandsGrnd );
@@ -217,15 +214,6 @@ public:
     CLASS_PROPERTY( hash, Grid_ToMap );
     CLASS_PROPERTY( int, Grid_ToMapEntire );
     CLASS_PROPERTY( uchar, Grid_ToMapDir );
-    CLASS_PROPERTY( uint, Car_Speed );
-    CLASS_PROPERTY( uint, Car_Passability );
-    CLASS_PROPERTY( uint, Car_DeteriorationRate );
-    CLASS_PROPERTY( uint, Car_CrittersCapacity );
-    CLASS_PROPERTY( uint, Car_TankVolume );
-    CLASS_PROPERTY( uint, Car_MaxDeterioration );
-    CLASS_PROPERTY( uint, Car_FuelConsumption );
-    CLASS_PROPERTY( uint, Car_Entrance );
-    CLASS_PROPERTY( uint, Car_MovementType );
     CLASS_PROPERTY( ScriptArray *, SceneryParams );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( int, Accessory ); // enum ItemOwnership
@@ -339,9 +327,7 @@ public:
     void ChangeCount( int val );
     void SetWeaponMode( uchar mode );
 
-    uint GetWholeVolume() { return GetCount() * GetVolume(); }
-    uint GetWholeWeight() { return GetCount() * GetWeight(); }
-    uint GetWholeCost()   { return GetCount() * GetCost1st(); }
+    uint GetWholeCost() { return GetCount() * GetCost1st(); }
     uint GetCost1st();
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -370,7 +356,6 @@ public:
     void  ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock );
     Item* ContGetItemByPid( hash pid, uint stack_id );
     void  ContGetItems( ItemVec& items, uint stack_id, bool sync_lock );
-    bool  ContHaveFreeVolume( uint stack_id, uint volume );
     bool  ContIsItems();
     void  ContDeleteItems();
     #else

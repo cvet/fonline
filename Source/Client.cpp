@@ -7369,27 +7369,6 @@ void FOClient::SScriptFunc::Crit_Wait( CritterCl* cr, uint ms )
     cr->TickStart( ms );
 }
 
-uint FOClient::SScriptFunc::Crit_ItemsCount( CritterCl* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->GetItemsCount();
-}
-
-uint FOClient::SScriptFunc::Crit_ItemsWeight( CritterCl* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->GetItemsWeight();
-}
-
-uint FOClient::SScriptFunc::Crit_ItemsVolume( CritterCl* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->GetItemsVolume();
-}
-
 uint FOClient::SScriptFunc::Crit_CountItem( CritterCl* cr, hash proto_id )
 {
     if( cr->IsDestroyed )

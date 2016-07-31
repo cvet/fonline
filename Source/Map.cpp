@@ -264,28 +264,6 @@ bool Map::GetStartCoord( ushort& hx, ushort& hy, uchar& dir, uint entire )
     return true;
 }
 
-bool Map::GetStartCoordCar( ushort& hx, ushort& hy, Item* item )
-{
-    if( !item->IsCar() )
-        return false;
-
-    ProtoMap::EntiresVec entires;
-    GetProtoMap()->GetEntires( item->GetCar_Entrance(), entires );
-    std::random_shuffle( entires.begin(), entires.end() );
-
-    for( int i = 0, j = (uint) entires.size(); i < j; i++ )
-    {
-        ProtoMap::MapEntire* ent = &entires[ i ];
-        if( ent->HexX < GetWidth() && ent->HexY < GetHeight() && IsPlaceForItem( ent->HexX, ent->HexY, item ) )
-        {
-            hx = ent->HexX;
-            hy = ent->HexY;
-            return true;
-        }
-    }
-    return false;
-}
-
 bool Map::FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe )
 {
     if( IsHexesPassed( hx, hy, multihex ) && !( skip_unsafe && ( IsHexTrigger( hx, hy ) || IsHexTrap( hx, hy ) ) ) )

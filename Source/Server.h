@@ -425,9 +425,6 @@ public:
         static bool  Crit_IsSeeItem( Critter* cr, Item* item );
         static Item* Crit_AddItem( Critter* cr, hash pid, uint count );
         static bool  Crit_DeleteItem( Critter* cr, hash pid, uint count );
-        static uint  Crit_ItemsCount( Critter* cr );
-        static uint  Crit_ItemsWeight( Critter* cr );
-        static uint  Crit_ItemsVolume( Critter* cr );
         static uint  Crit_CountItem( Critter* cr, hash proto_id );
         static Item* Crit_GetItem( Critter* cr, hash proto_id, int slot );
         static Item* Crit_GetItemById( Critter* cr, uint item_id );

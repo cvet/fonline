@@ -59,19 +59,9 @@ public:
     CLASS_PROPERTY( ushort, WorldY );
     CLASS_PROPERTY( uint, GlobalMapLeaderId );
     // Exclude
-    CLASS_PROPERTY( int, ReplicationMoney );    // GUI
-    CLASS_PROPERTY( int, ReplicationCost );     // GUI
-    CLASS_PROPERTY( int, ReplicationCount );    // GUI
     CLASS_PROPERTY( char, Gender );             // GUI
     CLASS_PROPERTY( bool, IsNoPush );           // GUI
-    CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
-    CLASS_PROPERTY( bool, IsUnlimitedAmmo );    // Play shoot sound
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to proto? to critter type option?)
-    CLASS_PROPERTY( bool, IsDamagedEye );
-    CLASS_PROPERTY( bool, IsDamagedRightArm );
-    CLASS_PROPERTY( bool, IsDamagedLeftArm );
-    CLASS_PROPERTY( bool, IsDamagedRightLeg );
-    CLASS_PROPERTY( bool, IsDamagedLeftLeg );
 
     // Data
     uint          NameColor;
@@ -129,12 +119,6 @@ public:
 
     uint GetAttackDist();
     uint GetUseDist();
-    uint GetMaxWeightKg();
-    uint GetMaxVolume();
-    bool IsDmgLeg();
-    bool IsDmgTwoLeg();
-    bool IsDmgArm();
-    bool IsDmgTwoArm();
     int  GetRealAp();
     int  GetAllAp();
     void SubAp( int val );
@@ -155,13 +139,6 @@ public:
     uint  CountItemPid( hash item_pid );
     uint  CountItemType( uchar type );
     void  GetInvItems( ItemVec& items );
-    uint  GetItemsCount();
-    uint  GetItemsCountInv();
-    uint  GetItemsWeight();
-    uint  GetItemsWeightKg();
-    uint  GetItemsVolume();
-    int   GetFreeWeight();
-    int   GetFreeVolume();
     bool  IsHaveLightSources();
     Item* GetSlotUse( uchar num_slot, uchar& use );
     bool  IsItemAim( uchar num_slot );
@@ -169,7 +146,6 @@ public:
     uchar GetFullRate() { return ItemSlotMain->GetMode(); }
     uint  GetUseApCost( Item* item, uchar rate );
     Item* GetAmmoAvialble( Item* weap );
-    bool  IsOverweight() { return (int) GetItemsWeight() > GetCarryWeight(); }
 
     // Moving
 public:

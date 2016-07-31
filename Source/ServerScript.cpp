@@ -1333,29 +1333,6 @@ bool FOServer::SScriptFunc::Crit_DeleteItem( Critter* cr, hash pid, uint count )
     return ItemMngr.SubItemCritter( cr, pid, count );
 }
 
-uint FOServer::SScriptFunc::Crit_ItemsCount( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->CountItems();
-}
-
-uint FOServer::SScriptFunc::Crit_ItemsWeight( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->GetItemsWeight();
-}
-
-uint FOServer::SScriptFunc::Crit_ItemsVolume( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    return cr->GetItemsVolume();
-}
-
 uint FOServer::SScriptFunc::Crit_CountItem( Critter* cr, hash proto_id )
 {
     if( cr->IsDestroyed )

@@ -1943,25 +1943,6 @@ void FOServer::Process_Move( Client* cl )
         }
     }
 
-    // Overweight
-    uint cur_weight = cl->GetItemsWeight();
-    uint max_weight = cl->GetCarryWeight();
-    if( cur_weight > max_weight )
-    {
-        if( is_run || cur_weight > max_weight * 2 )
-        {
-            cl->Send_XY( cl );
-            return;
-        }
-    }
-
-    // Lame
-    if( cl->IsDmgLeg() && is_run )
-    {
-        cl->Send_XY( cl );
-        return;
-    }
-
     // Check dist
     if( !CheckDist( cl->GetHexX(), cl->GetHexY(), hx, hy, 1 ) )
     {
@@ -2168,20 +2149,6 @@ void FOServer::Process_ContainerItem( Client* cl )
                 return;
             }
 
-            // Check weight
-            if( cl->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
-            {
-                cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
-
-            // Check volume
-            if( cl->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
-            {
-                cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
-
             // Script events
             if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_CONT, nullptr, item, nullptr ) )
                 return;
@@ -2203,27 +2170,6 @@ void FOServer::Process_ContainerItem( Client* cl )
             if( items.empty() )
             {
                 cl->Send_ContainerInfo();
-                return;
-            }
-
-            // Check weight, volume
-            uint weight = 0, volume = 0;
-            for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            {
-                Item* item = *it;
-                weight += item->GetWholeWeight();
-                volume += item->GetWholeVolume();
-            }
-
-            if( cl->GetFreeWeight() < (int) weight )
-            {
-                cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
-
-            if( cl->GetFreeVolume() < (int) volume )
-            {
-                cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
                 return;
             }
 
@@ -2271,13 +2217,6 @@ void FOServer::Process_ContainerItem( Client* cl )
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Cheat detected.", SAY_NETMSG );
                 WriteLogF( _FUNC_, " - Attempting to put in a container not from the inventory, client '%s'.", cl->GetInfo() );
-                return;
-            }
-
-            // Check volume
-            if( !cont->ContHaveFreeVolume( 0, item->GetVolume() * item_count ) )
-            {
-                cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
                 return;
             }
 
@@ -2400,20 +2339,6 @@ void FOServer::Process_ContainerItem( Client* cl )
                 return;
             }
 
-            // Check weight
-            if( cl->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
-            {
-                cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
-
-            // Check volume
-            if( cl->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
-            {
-                cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
-
             // Script events
             if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_CONT, nullptr, item, nullptr ) )
                 return;
@@ -2441,26 +2366,6 @@ void FOServer::Process_ContainerItem( Client* cl )
             ItemMngr.FilterMoveItems( items, cr, cl );
             if( items.empty() )
                 return;
-
-            // Check weight, volume
-            uint weight = 0, volume = 0;
-            for( uint i = 0, j = (uint) items.size(); i < j; ++i )
-            {
-                weight += items[ i ]->GetWholeWeight();
-                volume += items[ i ]->GetWholeVolume();
-            }
-
-            if( cl->GetFreeWeight() < (int) weight )
-            {
-                cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
-
-            if( cl->GetFreeVolume() < (int) volume )
-            {
-                cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
 
             // Script events
             if( !Script::RaiseInternalEvent( ServerFunctions.CritterUseSkill, cl, SKILL_TAKE_ALL_CONT, cr, nullptr, nullptr ) )
@@ -2505,18 +2410,6 @@ void FOServer::Process_ContainerItem( Client* cl )
                 cl->Send_ContainerInfo();
                 cl->Send_Text( cl, "Cheat detected.", SAY_NETMSG );
                 WriteLogF( _FUNC_, " - Attempting to put in a container not from the inventory2, client '%s'.", cl->GetInfo() );
-                return;
-            }
-
-            // Check weight, volume
-            if( cr->GetFreeWeight() < (int) ( item->GetWeight() * item_count ) )
-            {
-                cl->Send_TextMsg( cl, STR_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                return;
-            }
-            if( cr->GetFreeVolume() < (int) ( item->GetVolume() * item_count ) )
-            {
-                cl->Send_TextMsg( cl, STR_OVERVOLUME, SAY_NETMSG, TEXTMSG_GAME );
                 return;
             }
 
@@ -2776,35 +2669,6 @@ void FOServer::Process_PlayersBarter( Client* cl )
             cl->BarterOffer = false;
             opponent->BarterOffer = false;
 
-            // Check for weight
-            // Player
-            uint weigth = 0;
-            for( uint i = 0; i < cl->BarterItems.size(); i++ )
-            {
-                Client::BarterItem& barter_item = cl->BarterItems[ i ];
-                Item*               item = cl->GetItem( barter_item.Id, true );
-                weigth += item->GetWeight() * barter_item.Count;
-            }
-            // Opponent
-            uint weigth_ = 0;
-            for( uint i = 0; i < opponent->BarterItems.size(); i++ )
-            {
-                Client::BarterItem& barter_item = opponent->BarterItems[ i ];
-                Item*               item = opponent->GetItem( barter_item.Id, true );
-                weigth_ += item->GetWeight() * barter_item.Count;
-            }
-            // Check
-            if( cl->GetFreeWeight() + (int) weigth < (int) weigth_ )
-            {
-                cl->Send_TextMsg( cl, STR_BARTER_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                goto label_EndOffer;
-            }
-            if( opponent->GetFreeWeight() + (int) weigth_ < (int) weigth )
-            {
-                opponent->Send_TextMsg( opponent, STR_BARTER_OVERWEIGHT, SAY_NETMSG, TEXTMSG_GAME );
-                goto label_EndOffer;
-            }
-
             // Transfer
             // Player
             for( uint i = 0; i < cl->BarterItems.size(); i++ )
@@ -2812,7 +2676,7 @@ void FOServer::Process_PlayersBarter( Client* cl )
                 Client::BarterItem& bitem = cl->BarterItems[ i ];
                 Item*               item = cl->GetItem( bitem.Id, true );
                 if( !ItemMngr.MoveItemCritters( cl, opponent, item, bitem.Count ) )
-                    WriteLogF( _FUNC_, " - transfer item, from player to player_, fail.\n" );
+                    WriteLogF( _FUNC_, " - Transfer item, from player to player_, fail.\n" );
             }
             // Player_
             for( uint i = 0; i < opponent->BarterItems.size(); i++ )
@@ -2820,14 +2684,13 @@ void FOServer::Process_PlayersBarter( Client* cl )
                 Client::BarterItem& bitem = opponent->BarterItems[ i ];
                 Item*               item = opponent->GetItem( bitem.Id, true );
                 if( !ItemMngr.MoveItemCritters( opponent, cl, item, bitem.Count ) )
-                    WriteLogF( _FUNC_, " - transfer item, from player_ to player, fail.\n" );
+                    WriteLogF( _FUNC_, " - Transfer item, from player_ to player, fail.\n" );
             }
 
             is_succ = true;
             cl->BarterItems.clear();
             opponent->BarterItems.clear();
 
-label_EndOffer:
             if( is_succ )
             {
                 cl->SetBreakTime( GameOpt.Breaktime );

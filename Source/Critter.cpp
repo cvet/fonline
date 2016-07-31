@@ -58,7 +58,6 @@ CLASS_PROPERTY_IMPL( Critter, HandsItemProtoId );
 CLASS_PROPERTY_IMPL( Critter, HandsItemMode );
 CLASS_PROPERTY_IMPL( Critter, MaxTalkers );
 CLASS_PROPERTY_IMPL( Critter, TalkDistance );
-CLASS_PROPERTY_IMPL( Critter, CarryWeight );
 CLASS_PROPERTY_IMPL( Critter, CurrentHp );
 CLASS_PROPERTY_IMPL( Critter, ActionPoints );
 CLASS_PROPERTY_IMPL( Critter, CurrentAp );
@@ -71,7 +70,6 @@ CLASS_PROPERTY_IMPL( Critter, BarterCoefficient );
 CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
 CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
-CLASS_PROPERTY_IMPL( Critter, IsUnlimitedAmmo );
 CLASS_PROPERTY_IMPL( Critter, IsNoUnarmed );
 CLASS_PROPERTY_IMPL( Critter, IsNoPush );
 CLASS_PROPERTY_IMPL( Critter, IsNoItemGarbager );
@@ -88,11 +86,6 @@ CLASS_PROPERTY_IMPL( Critter, IsHide );
 CLASS_PROPERTY_IMPL( Critter, IsNoFlatten );
 CLASS_PROPERTY_IMPL( Critter, IsNoBarter );
 CLASS_PROPERTY_IMPL( Critter, IsEndCombat );
-CLASS_PROPERTY_IMPL( Critter, IsDamagedEye );
-CLASS_PROPERTY_IMPL( Critter, IsDamagedRightArm );
-CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftArm );
-CLASS_PROPERTY_IMPL( Critter, IsDamagedRightLeg );
-CLASS_PROPERTY_IMPL( Critter, IsDamagedLeftLeg );
 CLASS_PROPERTY_IMPL( Critter, KnownLocations );
 CLASS_PROPERTY_IMPL( Critter, ConnectionIp );
 CLASS_PROPERTY_IMPL( Critter, ConnectionPort );
@@ -242,26 +235,6 @@ void Critter::SubAp( int val )
     ApRegenerationTick = 0;
 }
 
-bool Critter::IsDmgLeg()
-{
-    return GetIsDamagedRightLeg() || GetIsDamagedLeftLeg();
-}
-
-bool Critter::IsDmgTwoLeg()
-{
-    return GetIsDamagedRightLeg() && GetIsDamagedLeftLeg();
-}
-
-bool Critter::IsDmgArm()
-{
-    return GetIsDamagedRightArm() || GetIsDamagedLeftArm();
-}
-
-bool Critter::IsDmgTwoArm()
-{
-    return GetIsDamagedRightArm() && GetIsDamagedLeftArm();
-}
-
 void Critter::SyncLockCritters( bool self_critters, bool only_players )
 {
     if( LogicMT )
@@ -353,8 +326,6 @@ void Critter::ProcessVisibleCritters()
     bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
     // Sneak self
     int  sneak_base_self = GetSneakCoefficient();
-    if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
-        sneak_base_self -= GetItemsWeight() / GameOpt.LookWeight;
 
     Map* map = MapMngr.GetMap( GetMapId() );
     if( !map )
@@ -540,8 +511,6 @@ void Critter::ProcessVisibleCritters()
         if( cr->GetIsHide() && dist != MAX_INT )
         {
             int sneak_opp = cr->GetSneakCoefficient();
-            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
-                sneak_opp -= cr->GetItemsWeight() / GameOpt.LookWeight;
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
             {
                 int real_dir = GetFarDir( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY() );
@@ -826,8 +795,6 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
         if( cr->GetIsHide() )
         {
             int sneak_opp = cr->GetSneakCoefficient();
-            if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_WEIGHT ) )
-                sneak_opp -= cr->GetItemsWeight() / GameOpt.LookWeight;
             if( FLAG( GameOpt.LookChecks, LOOK_CHECK_SNEAK_DIR ) )
             {
                 int real_dir = GetFarDir( hx, hy, cr->GetHexX(), cr->GetHexY() );
@@ -2265,49 +2232,6 @@ void Critter::RefreshName()
 const char* Critter::GetInfo()
 {
     return GetName();
-}
-
-uint Critter::GetItemsWeight()
-{
-    uint res = 0;
-    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( !item->GetIsHidden() )
-            res += item->GetWholeWeight();
-    }
-    return res;
-}
-
-uint Critter::GetItemsVolume()
-{
-    uint res = 0;
-    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( !item->GetIsHidden() )
-            res += item->GetWholeVolume();
-    }
-    return res;
-}
-
-bool Critter::IsOverweight()
-{
-    return (int) GetItemsWeight() > GetCarryWeight();
-}
-
-int Critter::GetFreeWeight()
-{
-    int cur_weight = GetItemsWeight();
-    int max_weight = GetCarryWeight();
-    return max_weight - cur_weight;
-}
-
-int Critter::GetFreeVolume()
-{
-    int cur_volume = GetItemsVolume();
-    int max_volume = CRITTER_INV_VOLUME;
-    return max_volume - cur_volume;
 }
 
 int Critter::GetApCostCritterMove( bool is_run )

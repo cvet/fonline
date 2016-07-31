@@ -223,9 +223,6 @@ struct BindClass
     static void Crit_IsSeeItem()                {}
     static void Crit_AddItem()                  {}
     static void Crit_DeleteItem()               {}
-    static void Crit_ItemsCount()               {}
-    static void Crit_ItemsWeight()              {}
-    static void Crit_ItemsVolume()              {}
     static void Crit_CountItem()                {}
     static void Crit_GetItem()                  {}
     static void Crit_GetItemById()              {}
@@ -418,9 +415,6 @@ struct BindClass
     static void Crit_AnimateEx()        {}
     static void Crit_ClearAnim()        {}
     static void Crit_Wait()             {}
-    static void Crit_ItemsCount()       {}
-    static void Crit_ItemsWeight()      {}
-    static void Crit_ItemsVolume()      {}
     static void Crit_CountItem()        {}
     static void Crit_GetItem()          {}
     static void Crit_GetItemById()      {}

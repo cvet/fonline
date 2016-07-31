@@ -90,7 +90,6 @@ public:
     CLASS_PROPERTY( int, MaxTalkers );   // Callback on begin dialog?
     CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
-    // CLASS_PROPERTY( int, MaxHp ); Need?
     CLASS_PROPERTY( int, CurrentAp );
     CLASS_PROPERTY( uint, ApRegenerationTime );
     CLASS_PROPERTY( int, ActionPoints ); // Rename MaxAp
@@ -135,18 +134,10 @@ public:
     CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
     CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
     CLASS_PROPERTY( uint, FreeBarterPlayer );   // Used for barter coef
-    CLASS_PROPERTY( int, CarryWeight );         // Overweight checking
-    // CLASS_PROPERTY( bool, IsInvulnerable ); // Resolve in scripts
-    CLASS_PROPERTY( bool, IsUnlimitedAmmo );    // AI, check shoot possibility
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
     CLASS_PROPERTY( bool, IsNoPush );           // Can puck checks
     CLASS_PROPERTY( bool, IsNoEnemyStack );     // Migrate enemy stack to scripts
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to critter type option)
-    CLASS_PROPERTY( bool, IsDamagedEye );
-    CLASS_PROPERTY( bool, IsDamagedRightArm );
-    CLASS_PROPERTY( bool, IsDamagedLeftArm );
-    CLASS_PROPERTY( bool, IsDamagedRightLeg );
-    CLASS_PROPERTY( bool, IsDamagedLeftLeg );
 
 protected:
     Critter( uint id, EntityType type, ProtoCritter* proto );
@@ -340,11 +331,6 @@ public:
     bool        IsNpc()    { return CritterIsNpc; }
     void        RefreshName();
     const char* GetInfo();
-    uint        GetItemsWeight();
-    uint        GetItemsVolume();
-    bool        IsOverweight();
-    int         GetFreeWeight();
-    int         GetFreeVolume();
     void        SendMessage( int num, int val, int to );
     uint        GetUseApCost( Item* weap, int use );
     uint        GetAttackDist( Item* weap, int use );
@@ -356,10 +342,6 @@ public:
     int         GetRealAp();
     int         GetAllAp();
     void        SubAp( int val );
-    bool        IsDmgLeg();
-    bool        IsDmgTwoLeg();
-    bool        IsDmgArm();
-    bool        IsDmgTwoArm();
 
     int GetApCostCritterMove( bool is_run );
     int GetApCostMoveItemContainer();

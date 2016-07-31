@@ -498,7 +498,6 @@ struct GameOptions
     int           LookChecks;
     uint          LookDir[ 5 ];
     uint          LookSneakDir[ 5 ];
-    uint          LookWeight;
     uint          RegistrationTimeout;
     uint          AccountPlayTime;
     uint          ScriptRunSuspendTimeout;

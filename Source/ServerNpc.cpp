@@ -119,15 +119,6 @@ void FOServer::ProcessAI( Npc* npc )
     // Process move
     if( plane->IsMove )
     {
-        // Check run availability
-        if( plane->Move.IsRun )
-        {
-            if( npc->IsDmgLeg() )
-                plane->Move.IsRun = false;                           // Clipped legs
-            else if( npc->IsOverweight() )
-                plane->Move.IsRun = false;                           // Overweight
-        }
-
         // Check ap availability
         int ap_move = npc->GetApCostCritterMove( plane->Move.IsRun );
         plane->IsMove = false;
@@ -1856,10 +1847,6 @@ void FOServer::Process_Barter( Client* cl )
     barter_k = CLAMP( barter_k, 5, 95 );
     int     sale_cost = 0;
     int     buy_cost = 0;
-    uint    sale_weight = 0;
-    uint    buy_weight = 0;
-    uint    sale_volume = 0;
-    uint    buy_volume = 0;
     ItemVec sale_items;
     ItemVec buy_items;
 
@@ -1908,8 +1895,6 @@ void FOServer::Process_Barter( Client* cl )
             base_cost++;
 
         sale_cost += base_cost * sale_item_count[ i ];
-        sale_weight += item->GetWeight() * sale_item_count[ i ];
-        sale_volume += item->GetVolume() * sale_item_count[ i ];
         sale_items.push_back( item );
     }
 
@@ -1951,8 +1936,6 @@ void FOServer::Process_Barter( Client* cl )
             base_cost++;
 
         buy_cost += base_cost * buy_item_count[ i ];
-        buy_weight += item->GetWeight() * buy_item_count[ i ];
-        buy_volume += item->GetVolume() * buy_item_count[ i ];
         buy_items.push_back( item );
 
         if( buy_cost > sale_cost && !is_free )
@@ -1962,24 +1945,6 @@ void FOServer::Process_Barter( Client* cl )
             cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
             return;
         }
-    }
-
-    // Check weight
-    if( cl->GetFreeWeight() + (int) sale_weight < (int) buy_weight )
-    {
-        WriteLogF( _FUNC_, " - Overweight - ignore barter, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-        cl->Send_TextMsg( cl, STR_BARTER_OVERWEIGHT, SAY_DIALOG, TEXTMSG_GAME );
-        cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
-        return;
-    }
-
-    // Check volume
-    if( cl->GetFreeVolume() + (int) sale_volume < (int) buy_volume )
-    {
-        WriteLogF( _FUNC_, " - Oversize - ignore barter, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-        cl->Send_TextMsg( cl, STR_BARTER_OVERSIZE, SAY_DIALOG, TEXTMSG_GAME );
-        cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
-        return;
     }
 
     // Barter script

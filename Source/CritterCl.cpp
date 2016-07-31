@@ -38,21 +38,16 @@ CLASS_PROPERTY_IMPL( CritterCl, WorldX );
 CLASS_PROPERTY_IMPL( CritterCl, WorldY );
 CLASS_PROPERTY_IMPL( CritterCl, GlobalMapLeaderId );
 CLASS_PROPERTY_IMPL( CritterCl, TalkDistance );
-CLASS_PROPERTY_IMPL( CritterCl, CarryWeight );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentHp );
 CLASS_PROPERTY_IMPL( CritterCl, ActionPoints );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentAp );
 CLASS_PROPERTY_IMPL( CritterCl, ApRegenerationTime );
-CLASS_PROPERTY_IMPL( CritterCl, ReplicationMoney );
-CLASS_PROPERTY_IMPL( CritterCl, ReplicationCost );
-CLASS_PROPERTY_IMPL( CritterCl, ReplicationCount );
 CLASS_PROPERTY_IMPL( CritterCl, WalkTime );
 CLASS_PROPERTY_IMPL( CritterCl, RunTime );
 CLASS_PROPERTY_IMPL( CritterCl, ScaleFactor );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutBattle );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutRemoveFromGame );
-CLASS_PROPERTY_IMPL( CritterCl, IsUnlimitedAmmo );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoPush );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoLoot );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoWalk );
@@ -63,11 +58,6 @@ CLASS_PROPERTY_IMPL( CritterCl, IsHide );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoFlatten );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoBarter );
 CLASS_PROPERTY_IMPL( CritterCl, IsEndCombat );
-CLASS_PROPERTY_IMPL( CritterCl, IsDamagedEye );
-CLASS_PROPERTY_IMPL( CritterCl, IsDamagedRightArm );
-CLASS_PROPERTY_IMPL( CritterCl, IsDamagedLeftArm );
-CLASS_PROPERTY_IMPL( CritterCl, IsDamagedRightLeg );
-CLASS_PROPERTY_IMPL( CritterCl, IsDamagedLeftLeg );
 
 CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterCl, PropertiesRegistrator, proto )
 {
@@ -381,58 +371,6 @@ void CritterCl::GetInvItems( ItemVec& items )
     Item::SortItems( items );
 }
 
-uint CritterCl::GetItemsCount()
-{
-    uint count = 0;
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        count += ( *it )->GetCount();
-    return count;
-}
-
-uint CritterCl::GetItemsCountInv()
-{
-    uint res = 0;
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->GetCritSlot() == SLOT_INV )
-            res++;
-    return res;
-}
-
-uint CritterCl::GetItemsWeight()
-{
-    uint res = 0;
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        res += ( *it )->GetWholeWeight();
-    return res;
-}
-
-uint CritterCl::GetItemsWeightKg()
-{
-    return GetItemsWeight() / 1000;
-}
-
-uint CritterCl::GetItemsVolume()
-{
-    uint res = 0;
-    for( auto it = InvItems.begin(); it != InvItems.end(); ++it )
-        res += ( *it )->GetWholeVolume();
-    return res;
-}
-
-int CritterCl::GetFreeWeight()
-{
-    int cur_weight = GetItemsWeight();
-    int max_weight = GetCarryWeight();
-    return max_weight - cur_weight;
-}
-
-int CritterCl::GetFreeVolume()
-{
-    int cur_volume = GetItemsVolume();
-    int max_volume = GetMaxVolume();
-    return max_volume - cur_volume;
-}
-
 Item* CritterCl::GetSlotUse( uchar num_slot, uchar& use )
 {
     Item* item = nullptr;
@@ -517,36 +455,6 @@ uint CritterCl::GetAttackDist()
 uint CritterCl::GetUseDist()
 {
     return 1 + GetMultihex();
-}
-
-uint CritterCl::GetMaxWeightKg()
-{
-    return GetCarryWeight() / 1000;
-}
-
-uint CritterCl::GetMaxVolume()
-{
-    return CRITTER_INV_VOLUME;
-}
-
-bool CritterCl::IsDmgLeg()
-{
-    return GetIsDamagedRightLeg() || GetIsDamagedLeftLeg();
-}
-
-bool CritterCl::IsDmgTwoLeg()
-{
-    return GetIsDamagedRightLeg() && GetIsDamagedLeftLeg();
-}
-
-bool CritterCl::IsDmgArm()
-{
-    return GetIsDamagedRightArm() || GetIsDamagedLeftArm();
-}
-
-bool CritterCl::IsDmgTwoArm()
-{
-    return GetIsDamagedRightArm() && GetIsDamagedLeftArm();
 }
 
 int CritterCl::GetRealAp()
@@ -735,8 +643,6 @@ void CritterCl::Move( int dir )
             uint anim2 = ( IsRunning ? ANIM2_RUN : ANIM2_WALK );
             if( GetIsHide() )
                 anim2 = ( IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK );
-            if( IsDmgLeg() )
-                anim2 = ANIM2_LIMP;
 
             AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
             if( !anim )
@@ -767,8 +673,6 @@ void CritterCl::Move( int dir )
         uint anim2 = ( IsRunning ? ANIM2_RUN : ANIM2_WALK );
         if( GetIsHide() )
             anim2 = ( IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK );
-        if( IsDmgLeg() )
-            anim2 = ANIM2_LIMP;
 
         Anim3d->CheckAnimation( anim1, anim2 );
         Anim3d->SetDir( dir );

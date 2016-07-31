@@ -61,8 +61,6 @@ CLASS_PROPERTY_IMPL( Item, GroundLevel );
 CLASS_PROPERTY_IMPL( Item, Opened );
 CLASS_PROPERTY_IMPL( Item, Corner );
 CLASS_PROPERTY_IMPL( Item, Slot );
-CLASS_PROPERTY_IMPL( Item, Weight );
-CLASS_PROPERTY_IMPL( Item, Volume );
 CLASS_PROPERTY_IMPL( Item, SoundId );
 CLASS_PROPERTY_IMPL( Item, Material );
 CLASS_PROPERTY_IMPL( Item, DisableEgg );
@@ -123,7 +121,6 @@ CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_0 );
 CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_1 );
 CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_2 );
 CLASS_PROPERTY_IMPL( Item, Ammo_Caliber );
-CLASS_PROPERTY_IMPL( Item, Container_Volume );
 CLASS_PROPERTY_IMPL( Item, Container_Changeble );
 CLASS_PROPERTY_IMPL( Item, Container_CannotPickUp );
 CLASS_PROPERTY_IMPL( Item, Container_MagicHandsGrnd );
@@ -131,15 +128,6 @@ CLASS_PROPERTY_IMPL( Item, Grid_Type );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMap );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMapEntire );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMapDir );
-CLASS_PROPERTY_IMPL( Item, Car_Speed );
-CLASS_PROPERTY_IMPL( Item, Car_Passability );
-CLASS_PROPERTY_IMPL( Item, Car_DeteriorationRate );
-CLASS_PROPERTY_IMPL( Item, Car_CrittersCapacity );
-CLASS_PROPERTY_IMPL( Item, Car_TankVolume );
-CLASS_PROPERTY_IMPL( Item, Car_MaxDeterioration );
-CLASS_PROPERTY_IMPL( Item, Car_FuelConsumption );
-CLASS_PROPERTY_IMPL( Item, Car_Entrance );
-CLASS_PROPERTY_IMPL( Item, Car_MovementType );
 CLASS_PROPERTY_IMPL( Item, SceneryParams );
 CLASS_PROPERTY_IMPL( Item, ScriptId );
 CLASS_PROPERTY_IMPL( Item, Accessory );
@@ -549,28 +537,6 @@ void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
     if( sync_lock && LogicMT )
         for( auto it = items.begin(), end = items.end(); it != end; ++it )
             SYNC_LOCK( *it );
-}
-
-bool Item::ContHaveFreeVolume( uint stack_id, uint volume )
-{
-    uint max_volume = GetContainer_Volume();
-    if( max_volume == 0 )
-        return true;
-
-    if( volume > max_volume )
-        return false;
-
-    uint cur_volume = 0;
-    if( ChildItems )
-    {
-        for( auto it = ChildItems->begin(), end = ChildItems->end(); it != end; ++it )
-        {
-            Item* item = *it;
-            if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
-                cur_volume += item->GetWholeVolume();
-        }
-    }
-    return max_volume >= cur_volume + volume;
 }
 
 bool Item::ContIsItems()

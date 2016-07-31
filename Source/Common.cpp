@@ -1051,7 +1051,6 @@ GameOptions::GameOptions()
     LookSneakDir[ 2 ] = 30;
     LookSneakDir[ 3 ] = 0;
     LookSneakDir[ 4 ] = 0;
-    LookWeight = 200;
     RegistrationTimeout = 5;
     AccountPlayTime = 0;
     ScriptRunSuspendTimeout = 30000;
