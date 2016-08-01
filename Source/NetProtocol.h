@@ -512,15 +512,6 @@
 // uint target_id
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_PICK_CRITTER              MAKE_NETMSG_HEADER( 87 )
-#define NETMSG_SEND_PICK_CRITTER_SIZE         ( sizeof( uint ) + sizeof( uint ) + sizeof( uchar ) )
-// ////////////////////////////////////////////////////////////////////////
-// Critter picking.
-// Params:
-// uint crid
-// uchar pick_type (see Pick types in FOdefines.h)
-// ////////////////////////////////////////////////////////////////////////
-
 // ************************************************************************
 // CRITTER ACTION
 // ************************************************************************

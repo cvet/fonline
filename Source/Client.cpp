@@ -2315,13 +2315,6 @@ void FOClient::Net_SendUseSkill( int skill, Item* item )
     Bout << (hash) 0;
 }
 
-void FOClient::Net_SendPickCritter( uint crid, uchar pick_type )
-{
-    Bout << NETMSG_SEND_PICK_CRITTER;
-    Bout << crid;
-    Bout << pick_type;
-}
-
 void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
 {
     RUNTIME_ASSERT( entity );
@@ -8022,27 +8015,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
         Self->Net_SendItemCont( Self->PupTransferType, Self->PupContId, item_id, item_count, take_flags );
         // Self->CollectContItems();
-    }
-    else if( cmd == "PickCritter" && args.size() == 4 )
-    {
-        uint       ap_cost =  Str::AtoUI( args[ 1 ].c_str() );
-        uint       cr_id = Str::AtoUI( args[ 2 ].c_str() );
-        bool       is_loot = Str::AtoB( args[ 3 ].c_str() );
-
-        CritterCl* cr = Self->GetCritter( cr_id );
-        RUNTIME_ASSERT( cr );
-
-        if( is_loot )
-        {
-            Self->Net_SendPickCritter( cr->GetId(), PICK_CRIT_LOOT );
-            Self->Chosen->Action( ACTION_PICK_CRITTER, 0, nullptr );
-        }
-        else if( cr->IsLife() )
-        {
-            Self->Net_SendPickCritter( cr->GetId(), PICK_CRIT_PUSH );
-            Self->Chosen->Action( ACTION_PICK_CRITTER, 2, nullptr );
-        }
-        Self->Chosen->SubAp( ap_cost );
     }
     else if( cmd == "UseCritterSkill" && args.size() == 4 )
     {

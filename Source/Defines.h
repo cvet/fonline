@@ -107,10 +107,6 @@
 #define TARGET_CRITTER              ( 2 )
 #define TARGET_ITEM                 ( 3 )
 
-// Pick types
-#define PICK_CRIT_LOOT              ( 0 )
-#define PICK_CRIT_PUSH              ( 1 )
-
 // Critters
 #define CRITTER_INV_VOLUME          ( 1000 )
 

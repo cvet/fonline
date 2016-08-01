@@ -50,7 +50,6 @@ public:
     static void Process_LogIn( ClientPtr& cl );
     static void Process_SingleplayerSaveLoad( Client* cl );
     static void Process_Dir( Client* cl );
-    static void Process_PickCritter( Client* cl );
     static void Process_ContainerItem( Client* cl );
     static void Process_UseSkill( Client* cl );
     static void Process_Text( Client* cl );

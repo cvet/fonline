@@ -2243,11 +2243,6 @@ int Critter::GetApCostMoveItemContainer()
     return GameOpt.RtApCostMoveItemContainer;
 }
 
-int Critter::GetApCostPickCritter()
-{
-    return GameOpt.RtApCostPickCritter;
-}
-
 int Critter::GetApCostUseSkill()
 {
     return GameOpt.RtApCostUseSkill;
