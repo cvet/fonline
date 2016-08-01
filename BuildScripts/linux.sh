@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Usage:
+# Install: freeglut3-dev, libssl-dev
 # export FO_SOURCE=<source> && $FO_SOURCE/BuildScripts/linux.sh
 
 if [ "$FO_CLEAR" = "TRUE" ]; then

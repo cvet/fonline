@@ -46,9 +46,9 @@
 
 #ifndef SHA2_TYPES
 #define SHA2_TYPES
-typedef unsigned char uint8;
-typedef unsigned int  uint32;
-typedef unsigned long long uint64;
+typedef unsigned char sha2_uint8;
+typedef unsigned int  sha2_uint32;
+typedef unsigned long long sha2_uint64;
 #endif
 
 #ifdef __cplusplus
@@ -59,14 +59,14 @@ typedef struct {
     unsigned int tot_len;
     unsigned int len;
     unsigned char block[2 * SHA256_BLOCK_SIZE];
-    uint32 h[8];
+    sha2_uint32 h[8];
 } sha256_ctx;
 
 typedef struct {
     unsigned int tot_len;
     unsigned int len;
     unsigned char block[2 * SHA512_BLOCK_SIZE];
-    uint64 h[8];
+    sha2_uint64 h[8];
 } sha512_ctx;
 
 typedef sha512_ctx sha384_ctx;
