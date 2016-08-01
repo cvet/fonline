@@ -12,13 +12,13 @@ cd linux
 
 mkdir x86
 cd x86
-export CMAKE_C_FLAGS=-m32
+#export CFLAGS=-m32
 cmake -G "Unix Makefiles" $FO_SOURCE/Source
 cd ../
 
 mkdir x64
 cd x64
-export CMAKE_C_FLAGS=-m64
+#export CFLAGS=-m64
 cmake -G "Unix Makefiles" $FO_SOURCE/Source
 cd ../
 

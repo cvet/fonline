@@ -281,7 +281,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
 {
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
-        return nullptr;
+        return false;
 
     uint dw_buf = fm.GetLEUInt();
     if( dw_buf != MAKEUINT( 'R', 'I', 'F', 'F' ) )
@@ -382,7 +382,7 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
 {
     FileManager fm;
     if( !fm.LoadFile( fname, path_type ) )
-        return nullptr;
+        return false;
 
     int                     channels = 0;
     int                     freq = 0;
@@ -455,7 +455,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
     if( !fm || !fm->LoadFile( fname, path_type ) )
     {
         SAFEDEL( fm );
-        return nullptr;
+        return false;
     }
 
     ov_callbacks callbacks;

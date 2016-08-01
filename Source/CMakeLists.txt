@@ -353,7 +353,6 @@ if( NOT BUILD_ONLY_CLIENT )
 
 	if( NOT WIN32 )
 		add_executable( FOnlineServerDaemon ${SERVER_SOURCE} "Server.rc" )
-		set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../FOnline/Binaries/Server/" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_FLAGS "${SERVER_DEFINES} -DSERVER_DAEMON" )
 		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "png16_static" "SHA" "libcurl" "${NCODEHOOK}" "${EVENT2}" "${EVENT2_PTHREADS}" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
