@@ -285,6 +285,8 @@ bool ProtoManager::LoadProtosFromFiles()
     errors += ParseProtos( "focr", "ProtoCritter", crProtos );
     errors += ParseProtos( "fomap", "ProtoMap", mapProtos );
     errors += ParseProtos( "foloc", "ProtoLocation", locProtos );
+    if( errors )
+        return false;
 
     // Mapper collections
     #ifdef FONLINE_MAPPER
@@ -347,6 +349,18 @@ bool ProtoManager::LoadProtosFromFiles()
         WriteLog( "Player proto 'Player.focr' not loaded.\n" );
         errors++;
     }
+    if( !itemProtos.count( ITEM_DEF_SLOT ) )
+    {
+        WriteLog( "Item default slot proto not loaded.\n" );
+        errors++;
+    }
+    if( !itemProtos.count( ITEM_DEF_ARMOR ) )
+    {
+        WriteLog(  "Item default armor proto not loaded.\n" );
+        errors++;
+    }
+    if( errors )
+        return false;
 
     // Check maps for locations
     for( auto& kv : locProtos )
@@ -363,6 +377,8 @@ bool ProtoManager::LoadProtosFromFiles()
         }
         map_pids->Release();
     }
+    if( errors )
+        return false;
 
     // Load maps data
     #ifdef FONLINE_SERVER
@@ -374,10 +390,12 @@ bool ProtoManager::LoadProtosFromFiles()
             errors++;
         }
     }
+    if( errors )
+        return false;
     #endif
 
     WriteLog( "Load prototypes complete, count %u.\n", (uint) ( itemProtos.size() + crProtos.size() + mapProtos.size() + locProtos.size() ) );
-    return errors == 0;
+    return true;
 }
 
 void ProtoManager::GetBinaryData( UCharVec& data )

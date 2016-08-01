@@ -1564,7 +1564,12 @@ bool Properties::LoadFromText( const StrMap& key_values )
         Property* prop = registrator->Find( key );
         if( !prop || ( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) ) )
         {
-            unresolvedProperties.insert( PAIR( kv.first, kv.second ) );
+            if( !prop )
+                WriteLog( "Unknown property '%s'.\n", key );
+            else
+                WriteLog( "Invalid property '%s' for reading.\n", prop->GetName() );
+
+            is_error = true;
             continue;
         }
 
@@ -1621,9 +1626,6 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
         // Serialize to text and store in map
         key_values.insert( PAIR( prop->propName, SavePropertyToText( prop ) ) );
     }
-
-    // Unresolved properties stays too
-    key_values.insert( unresolvedProperties.begin(), unresolvedProperties.end() );
 }
 
 bool Properties::LoadPropertyFromText( Property* prop, const char* value )

@@ -264,7 +264,6 @@ private:
     PUCharVec            storeData;
     UIntVec              storeDataSizes;
     UShortVec            storeDataComplexIndicies;
-    StrMap               unresolvedProperties;
     bool*                getCallbackLocked;
     Entity*              sendIgnoreEntity;
     Property*            sendIgnoreProperty;
