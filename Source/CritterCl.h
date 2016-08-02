@@ -278,7 +278,6 @@ private:
 public:
     int GetApCostCritterMove( bool is_run );
     int GetApCostMoveItemContainer();
-    int GetApCostUseSkill();
 };
 
 typedef map< uint, CritterCl* > CritMap;

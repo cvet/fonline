@@ -499,19 +499,6 @@
 // uchar take_flags (see Take flags in FOdefines.h)
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_USE_SKILL                 MAKE_NETMSG_HEADER( 86 )
-#define NETMSG_SEND_USE_SKILL_SIZE                       \
-    ( sizeof( uint ) + sizeof( int ) + sizeof( uchar ) + \
-      sizeof( hash ) + sizeof( uint ) )
-// ////////////////////////////////////////////////////////////////////////
-// Use some skill.
-// Params:
-// int skill
-// uchar targ_type
-// hash target_pid
-// uint target_id
-// ////////////////////////////////////////////////////////////////////////
-
 // ************************************************************************
 // CRITTER ACTION
 // ************************************************************************

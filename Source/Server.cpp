@@ -1556,14 +1556,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_USE_SKILL:
-            {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_AP( cl->GetApCostUseSkill() );
-                Process_UseSkill( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_TALK_NPC:
             {
                 CHECK_BUSY_AND_LIFE;

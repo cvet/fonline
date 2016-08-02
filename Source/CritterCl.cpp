@@ -1330,8 +1330,3 @@ int CritterCl::GetApCostMoveItemContainer()
 {
     return GameOpt.RtApCostMoveItemContainer;
 }
-
-int CritterCl::GetApCostUseSkill()
-{
-    return GameOpt.RtApCostUseSkill;
-}

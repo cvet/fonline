@@ -2284,37 +2284,6 @@ void FOClient::Net_SendMove( UCharVec steps )
     Bout << Chosen->GetHexY();
 }
 
-void FOClient::Net_SendUseSkill( int skill, CritterCl* cr )
-{
-    Bout << NETMSG_SEND_USE_SKILL;
-    Bout << skill;
-    Bout << (uchar) TARGET_CRITTER;
-    Bout << cr->GetId();
-    Bout << (hash) 0;
-}
-
-void FOClient::Net_SendUseSkill( int skill, ItemHex* item )
-{
-    Bout << NETMSG_SEND_USE_SKILL;
-    Bout << skill;
-    Bout << (uchar) TARGET_ITEM;
-    Bout << item->GetProtoId();
-
-    if( item->IsScenery() )
-        Bout << (uint) ( ( item->GetHexX() << 16 ) | item->GetHexY() );
-    else
-        Bout << item->GetId();
-}
-
-void FOClient::Net_SendUseSkill( int skill, Item* item )
-{
-    Bout << NETMSG_SEND_USE_SKILL;
-    Bout << skill;
-    Bout << (uchar) TARGET_SELF_ITEM;
-    Bout << item->GetId();
-    Bout << (hash) 0;
-}
-
 void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
 {
     RUNTIME_ASSERT( entity );
@@ -8015,16 +7984,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
         Self->Net_SendItemCont( Self->PupTransferType, Self->PupContId, item_id, item_count, take_flags );
         // Self->CollectContItems();
-    }
-    else if( cmd == "UseCritterSkill" && args.size() == 4 )
-    {
-        int  skill = Str::AtoUI( args[ 1 ].c_str() );
-        uint ap_cost = Str::AtoUI( args[ 2 ].c_str() );
-        uint cr_id = Str::AtoUI( args[ 3 ].c_str() );
-
-        Self->Chosen->Action( ACTION_USE_SKILL, skill, nullptr );
-        Self->Net_SendUseSkill( skill, (CritterCl*) ( cr_id ? Self->GetCritter( cr_id ) : nullptr ) );
-        Self->Chosen->SubAp( ap_cost );
     }
     else if( cmd == "SkipRoof" && args.size() == 3 )
     {

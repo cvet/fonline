@@ -51,7 +51,6 @@ public:
     static void Process_SingleplayerSaveLoad( Client* cl );
     static void Process_Dir( Client* cl );
     static void Process_ContainerItem( Client* cl );
-    static void Process_UseSkill( Client* cl );
     static void Process_Text( Client* cl );
     static void Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
     static void Process_Command2( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
@@ -98,7 +97,6 @@ public:
 
     // Actions
     static bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
-    static bool Act_UseSkill( Critter* cr, int skill, int target_type, uint target_id, hash target_pid );
 
     static void KillCritter( Critter* cr, uint anim2, Critter* attacker );
     static void RespawnCritter( Critter* cr );
@@ -137,13 +135,6 @@ public:
     typedef vector< TextListen > TextListenVec;
     static TextListenVec TextListeners;
     static Mutex         TextListenersLocker;
-
-//	void GlobalEventCritterUseItem(Critter* cr);
-//	void GlobalEventCritterUseSkill(Critter* cr);
-//	void GlobalEventCritterInit(Critter* cr, bool first_time);
-//	void GlobalEventCritterFinish(Critter* cr, bool to_delete);
-//	void GlobalEventCritterIdle(Critter* cr);
-//	void GlobalEventCritterDead(Critter* cr);
 
     static void OnSendGlobalValue( Entity* entity, Property* prop );
     static void OnSendCritterValue( Entity* entity, Property* prop );

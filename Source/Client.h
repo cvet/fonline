@@ -159,9 +159,6 @@ public:
     void Net_SendLogIn( const char* name, const char* pass );
     void Net_SendCreatePlayer();
     void Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data );
-    void Net_SendUseSkill( int skill, CritterCl* cr );
-    void Net_SendUseSkill( int skill, ItemHex* item );
-    void Net_SendUseSkill( int skill, Item* item );
     void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
     void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );

@@ -484,7 +484,6 @@ struct GameOptions
     uint          RtApCostCritterWalk;
     uint          RtApCostCritterRun;
     uint          RtApCostMoveItemContainer;
-    uint          RtApCostUseSkill;
     bool          RtAlwaysRun;
     bool          RunOnCombat;
     bool          RunOnTransfer;

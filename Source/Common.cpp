@@ -1029,7 +1029,6 @@ GameOptions::GameOptions()
     RtApCostCritterWalk = 0;
     RtApCostCritterRun = 1;
     RtApCostMoveItemContainer = 0;
-    RtApCostUseSkill = 2;
     RtAlwaysRun = false;
     RunOnCombat = false;
     RunOnTransfer = false;

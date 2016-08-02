@@ -344,7 +344,6 @@ public:
 
     int GetApCostCritterMove( bool is_run );
     int GetApCostMoveItemContainer();
-    int GetApCostUseSkill();
 
     // Timeouts
     bool IsTransferTimeouts( bool send );

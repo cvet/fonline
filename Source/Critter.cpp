@@ -2243,11 +2243,6 @@ int Critter::GetApCostMoveItemContainer()
     return GameOpt.RtApCostMoveItemContainer;
 }
 
-int Critter::GetApCostUseSkill()
-{
-    return GameOpt.RtApCostUseSkill;
-}
-
 void Critter::SetHome( uint map_id, ushort hx, ushort hy, uchar dir )
 {
     SetHomeMapId( map_id );
