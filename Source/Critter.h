@@ -102,8 +102,6 @@ public:
     CLASS_PROPERTY( uint, TimeoutTransfer );
     CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
     CLASS_PROPERTY( bool, IsGeck );    // Rename
-    CLASS_PROPERTY( bool, IsNoLoot );  // ?
-    CLASS_PROPERTY( bool, IsNoSteal ); // ?
     CLASS_PROPERTY( bool, IsNoHome );
     CLASS_PROPERTY( uint, HomeMapId );
     CLASS_PROPERTY( ushort, HomeHexX );
@@ -131,7 +129,6 @@ public:
     CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
     CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
-    CLASS_PROPERTY( bool, IsNoPush );           // Can puck checks
     CLASS_PROPERTY( bool, IsNoEnemyStack );     // Migrate enemy stack to scripts
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to critter type option)
 

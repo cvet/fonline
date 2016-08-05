@@ -48,8 +48,6 @@ CLASS_PROPERTY_IMPL( CritterCl, ScaleFactor );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutBattle );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( CritterCl, TimeoutRemoveFromGame );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoPush );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoLoot );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoWalk );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoRun );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoRotate );

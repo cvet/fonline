@@ -49,7 +49,6 @@ public:
     CLASS_PROPERTY( uint, TimeoutBattle );
     CLASS_PROPERTY( uint, TimeoutTransfer );
     CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
-    CLASS_PROPERTY( bool, IsNoLoot );
     CLASS_PROPERTY( bool, IsHide );
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
@@ -58,7 +57,6 @@ public:
     CLASS_PROPERTY( uint, GlobalMapLeaderId );
     // Exclude
     CLASS_PROPERTY( char, Gender );             // GUI
-    CLASS_PROPERTY( bool, IsNoPush );           // GUI
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to proto? to critter type option?)
 
     // Data

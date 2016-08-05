@@ -239,8 +239,6 @@ public:
     CLASS_PROPERTY( bool, IsGeck );
     CLASS_PROPERTY( bool, IsTrap );
     CLASS_PROPERTY( bool, IsNoLightInfluence );
-    CLASS_PROPERTY( bool, IsNoLoot );
-    CLASS_PROPERTY( bool, IsNoSteal );
     CLASS_PROPERTY( bool, IsGag );
     CLASS_PROPERTY( bool, IsColorize );
     CLASS_PROPERTY( bool, IsColorizeInv );

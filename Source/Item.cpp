@@ -153,8 +153,6 @@ CLASS_PROPERTY_IMPL( Item, IsLight );
 CLASS_PROPERTY_IMPL( Item, IsGeck );
 CLASS_PROPERTY_IMPL( Item, IsTrap );
 CLASS_PROPERTY_IMPL( Item, IsNoLightInfluence );
-CLASS_PROPERTY_IMPL( Item, IsNoLoot );
-CLASS_PROPERTY_IMPL( Item, IsNoSteal );
 CLASS_PROPERTY_IMPL( Item, IsGag );
 CLASS_PROPERTY_IMPL( Item, IsColorize );
 CLASS_PROPERTY_IMPL( Item, IsColorizeInv );
