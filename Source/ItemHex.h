@@ -41,7 +41,6 @@ private:
     uint  animNextTick;
 
 public:
-    bool IsCanUseSkill()      { return IsGenericOrGrid() || !IsScenery(); }
     bool IsGenericOrGrid()    { return IsGeneric() || IsGrid(); }
     bool IsAnimated()         { return isAnimated; }
     bool IsTalkable()         { return !IsWall() && GetIsCanTalk(); }

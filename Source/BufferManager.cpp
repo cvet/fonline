@@ -266,8 +266,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_ERASE_ITEM_FROM_MAP_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_ANIMATE_ITEM:
         return ( NETMSG_ANIMATE_ITEM_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_ITEM_CONT:
-        return ( NETMSG_SEND_ITEM_CONT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_ACTION:
         return ( NETMSG_CRITTER_ACTION_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_KNOCKOUT:
@@ -288,8 +286,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_TALK_NPC_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_SAY_NPC:
         return ( NETMSG_SEND_SAY_NPC_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_PLAYERS_BARTER:
-        return ( NETMSG_PLAYERS_BARTER_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GET_INFO:
         return ( NETMSG_SEND_GET_TIME_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_GAME_INFO:
@@ -386,12 +382,10 @@ bool BufferManager::NeedProcess()
     case NETMSG_ADD_ITEM:
     case NETMSG_ADD_ITEM_ON_MAP:
     case NETMSG_SOME_ITEM:
-    case NETMSG_PLAYERS_BARTER_SET_HIDE:
-    case NETMSG_CONTAINER_INFO:
+    case NETMSG_SOME_ITEMS:
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_COMBAT_RESULTS:
     case NETMSG_TALK_NPC:
-    case NETMSG_SEND_BARTER:
     case NETMSG_MAP:
     case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
@@ -496,9 +490,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_ANIMATE_ITEM:
         size = NETMSG_ANIMATE_ITEM_SIZE;
         break;
-    case NETMSG_SEND_ITEM_CONT:
-        size = NETMSG_SEND_ITEM_CONT_SIZE;
-        break;
     case NETMSG_CRITTER_ACTION:
         size = NETMSG_CRITTER_ACTION_SIZE;
         break;
@@ -528,9 +519,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_SEND_SAY_NPC:
         size = NETMSG_SEND_SAY_NPC_SIZE;
-        break;
-    case NETMSG_PLAYERS_BARTER:
-        size = NETMSG_PLAYERS_BARTER_SIZE;
         break;
     case NETMSG_SEND_GET_INFO:
         size = NETMSG_SEND_GET_TIME_SIZE;
@@ -644,11 +632,10 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_MSG_LEX:
     case NETMSG_MAP_TEXT:
     case NETMSG_MAP_TEXT_MSG_LEX:
-    case NETMSG_CONTAINER_INFO:
+    case NETMSG_SOME_ITEMS:
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_COMBAT_RESULTS:
     case NETMSG_TALK_NPC:
-    case NETMSG_SEND_BARTER:
     case NETMSG_MAP:
     case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
@@ -658,7 +645,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_ADD_ITEM:
     case NETMSG_ADD_ITEM_ON_MAP:
     case NETMSG_SOME_ITEM:
-    case NETMSG_PLAYERS_BARTER_SET_HIDE:
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
     case NETMSG_ALL_PROPERTIES:

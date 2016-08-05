@@ -1548,14 +1548,6 @@ void FOServer::Process( ClientPtr& cl )
                 BIN_END( cl );
                 continue;
             }
-            case NETMSG_SEND_ITEM_CONT:
-            {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_AP( cl->GetApCostMoveItemContainer() );
-                Process_ContainerItem( cl );
-                BIN_END( cl );
-                continue;
-            }
             case NETMSG_SEND_TALK_NPC:
             {
                 CHECK_BUSY_AND_LIFE;
@@ -1569,21 +1561,6 @@ void FOServer::Process( ClientPtr& cl )
                 CHECK_BUSY_AND_LIFE;
                 CHECK_NO_GLOBAL;
                 Process_Dialog( cl, true );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_BARTER:
-            {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_NO_GLOBAL;
-                Process_Barter( cl );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_PLAYERS_BARTER:
-            {
-                CHECK_BUSY_AND_LIFE;
-                Process_PlayersBarter( cl );
                 BIN_END( cl );
                 continue;
             }
@@ -1623,6 +1600,7 @@ void FOServer::Process( ClientPtr& cl )
             }
             case NETMSG_RPC:
             {
+                CHECK_BUSY;
                 Script::HandleRpc( cl );
                 BIN_END( cl );
                 continue;

@@ -207,9 +207,6 @@ public:
     CLASS_PROPERTY( uchar, Weapon_SoundId_1 );
     CLASS_PROPERTY( uchar, Weapon_SoundId_2 );
     CLASS_PROPERTY( int, Ammo_Caliber );
-    CLASS_PROPERTY( bool, Container_Changeble );
-    CLASS_PROPERTY( bool, Container_CannotPickUp );
-    CLASS_PROPERTY( bool, Container_MagicHandsGrnd );
     CLASS_PROPERTY( int, Grid_Type );
     CLASS_PROPERTY( hash, Grid_ToMap );
     CLASS_PROPERTY( int, Grid_ToMapEntire );

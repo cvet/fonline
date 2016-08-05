@@ -9,14 +9,6 @@ int FOClient::InitIface()
 {
     WriteLog( "Interface initialization...\n" );
 
-    // Barter
-    BarterPlayerId = 0;
-    BarterK = 0;
-    BarterIsPlayers = false;
-    BarterOpponentHide = false;
-    BarterOffer = false;
-    BarterOpponentOffer = false;
-
     // Minimap
     LmapZoom = 2;
     LmapSwitchHi = false;
@@ -49,101 +41,6 @@ int FOClient::InitIface()
 
     WriteLog( "Interface initialization complete.\n" );
     return 0;
-}
-
-Item* FOClient::GetContainerItem( ItemVec& cont, uint id )
-{
-    auto it = PtrCollectionFind( cont.begin(), cont.end(), id );
-    return it != cont.end() ? *it : nullptr;
-}
-
-void FOClient::CollectContItems()
-{
-    Item::ClearItems( InvContInit );
-    if( Chosen )
-    {
-        Chosen->GetInvItems( InvContInit );
-        for( size_t i = 0; i < InvContInit.size(); i++ )
-            InvContInit[ i ] = InvContInit[ i ]->Clone();
-    }
-
-    if( IsScreenPresent( SCREEN__BARTER ) )
-    {
-        // Manage offered items
-        for( auto it = BarterCont1oInit.begin(); it != BarterCont1oInit.end();)
-        {
-            Item* item = *it;
-            auto  it_ = PtrCollectionFind( InvContInit.begin(), InvContInit.end(), item->GetId() );
-            if( it_ == InvContInit.end() || ( *it_ )->GetCount() < item->GetCount() )
-            {
-                item->Release();
-                it = BarterCont1oInit.erase( it );
-            }
-            else
-            {
-                ++it;
-            }
-        }
-        for( auto it = InvContInit.begin(); it != InvContInit.end();)
-        {
-            Item* item = *it;
-            auto  it_ = PtrCollectionFind( BarterCont1oInit.begin(), BarterCont1oInit.end(), item->GetId() );
-            if( it_ != BarterCont1oInit.end() )
-            {
-                Item* item_ = *it_;
-
-                uint  count = item_->GetCount();
-                item_->Props = item->Props;
-                item_->SetCount( count );
-
-                if( item->GetStackable() )
-                    item->ChangeCount( -(int) item_->GetCount() );
-                if( !item->GetStackable() || !item->GetCount() )
-                {
-                    item->Release();
-                    it = InvContInit.erase( it );
-                    continue;
-                }
-            }
-            ++it;
-        }
-    }
-
-    ProcessItemsCollection( ITEMS_INVENTORY, InvContInit, InvCont );
-    ProcessItemsCollection( ITEMS_USE, InvContInit, UseCont );
-    ProcessItemsCollection( ITEMS_BARTER, InvContInit, BarterCont1 );
-    ProcessItemsCollection( ITEMS_BARTER_OFFER, BarterCont1oInit, BarterCont1o );
-    ProcessItemsCollection( ITEMS_BARTER_OPPONENT, BarterCont2Init, BarterCont2 );
-    ProcessItemsCollection( ITEMS_BARTER_OPPONENT_OFFER, BarterCont2oInit, BarterCont2o );
-    ProcessItemsCollection( ITEMS_PICKUP, InvContInit, PupCont1 );
-    ProcessItemsCollection( ITEMS_PICKUP_FROM, PupCont2Init, PupCont2 );
-}
-
-void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result )
-{
-    // Default result
-    Item::ClearItems( result );
-
-    // Create script array
-    ScriptArray* arr = Script::CreateArray( "Item@[]" );
-    RUNTIME_ASSERT( arr );
-
-    // Copy to script array
-    ItemVec items_clone = init_items;
-    for( size_t i = 0; i < items_clone.size(); i++ )
-        items_clone[ i ] = items_clone[ i ]->Clone();
-    Script::AppendVectorToArray( items_clone, arr );
-
-    // Call
-    Script::RaiseInternalEvent( ClientFunctions.ItemsCollection, collection, arr );
-
-    // Copy from script to std array
-    Script::AssignScriptArrayInVector( result, arr );
-    for( auto it = result.begin(), end = result.end(); it != end; ++it )
-        ( *it )->AddRef();
-
-    // Release array
-    arr->Release();
 }
 
 // ==============================================================================================================================
@@ -266,148 +163,6 @@ bool FOClient::LoginCheckData()
 
     AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONNECTION ) );
     return true;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
-bool FOClient::IsScreenPlayersBarter()
-{
-    return IsScreenPresent( SCREEN__BARTER ) && BarterIsPlayers;
-}
-
-void FOClient::BarterTryOffer()
-{
-    if( !Chosen )
-        return;
-
-    if( BarterIsPlayers )
-    {
-        BarterOffer = !BarterOffer;
-        Net_SendPlayersBarter( BARTER_OFFER, BarterOffer, 0 );
-    }
-    else
-    {
-        if( BarterCont1oInit.empty() && BarterCont2oInit.empty() )
-            return;
-
-        uint c1, c2;
-        ContainerCalcInfo( BarterCont1oInit, c1, -BarterK, true );
-        ContainerCalcInfo( BarterCont2oInit, c2, BarterK, false );
-
-        if( !( c1 < c2 && BarterK ) )
-        {
-            Net_SendBarter( DlgNpcId, BarterCont1oInit, BarterCont2oInit );
-            WaitPing();
-        }
-    }
-}
-
-void FOClient::BarterTransfer( uint item_id, int item_cont, uint item_count )
-{
-    if( !item_count || !Chosen )
-        return;
-
-    ItemVec* from_cont;
-    ItemVec* to_cont;
-
-    switch( item_cont )
-    {
-    case ITEMS_BARTER:
-        from_cont = &InvContInit;
-        to_cont = &BarterCont1oInit;
-        break;
-    case ITEMS_BARTER_OPPONENT:
-        from_cont = &BarterCont2Init;
-        to_cont = &BarterCont2oInit;
-        break;
-    case ITEMS_BARTER_OFFER:
-        from_cont = &BarterCont1oInit;
-        to_cont = &InvContInit;
-        break;
-    case ITEMS_BARTER_OPPONENT_OFFER:
-        from_cont = &BarterCont2oInit;
-        to_cont = &BarterCont2Init;
-        break;
-    default:
-        return;
-    }
-
-    auto it = PtrCollectionFind( from_cont->begin(), from_cont->end(), item_id );
-    if( it == from_cont->end() )
-        return;
-
-    Item* item = *it;
-    Item* to_item = nullptr;
-
-    if( item->GetCount() < item_count )
-        return;
-
-    if( item->GetStackable() )
-    {
-        auto it_to = PtrCollectionFind( to_cont->begin(), to_cont->end(), item->GetId() );
-        if( it_to != to_cont->end() )
-            to_item = *it_to;
-    }
-
-    if( to_item )
-    {
-        to_item->ChangeCount( item_count );
-    }
-    else
-    {
-        to_cont->push_back( item->Clone() );
-        to_cont->back()->SetCount( item_count );
-    }
-
-    item->ChangeCount( -(int) item_count );
-    if( !item->GetCount() || !item->GetStackable() )
-    {
-        item->Release();
-        from_cont->erase( it );
-    }
-
-    switch( item_cont )
-    {
-    case ITEMS_BARTER:
-        if( BarterIsPlayers )
-            Net_SendPlayersBarter( BARTER_SET_SELF, item_id, item_count );
-        break;
-    case ITEMS_BARTER_OPPONENT:
-        if( BarterIsPlayers )
-            Net_SendPlayersBarter( BARTER_SET_OPPONENT, item_id, item_count );
-        break;
-    case ITEMS_BARTER_OFFER:
-        if( BarterIsPlayers )
-            Net_SendPlayersBarter( BARTER_UNSET_SELF, item_id, item_count );
-        break;
-    case ITEMS_BARTER_OPPONENT_OFFER:
-        if( BarterIsPlayers )
-            Net_SendPlayersBarter( BARTER_UNSET_OPPONENT, item_id, item_count );
-        break;
-    default:
-        break;
-    }
-
-    Script::RaiseInternalEvent( ClientFunctions.ContainerChanged );
-}
-
-void FOClient::ContainerCalcInfo( ItemVec& cont, uint& cost, int barter_k, bool sell )
-{
-    cost = 0;
-    for( auto it = cont.begin(); it != cont.end(); it++ )
-    {
-        Item* item = *it;
-        if( barter_k != MAX_INT )
-        {
-            uint cost_ = item->GetCost1st();
-            cost_ = cost_ * ( 100 + barter_k ) / 100;
-            if( !cost_ )
-                cost_++;
-            cost += cost_ * item->GetCount();
-        }
-    }
 }
 
 // ==============================================================================================================================
@@ -664,15 +419,6 @@ bool FOClient::IsScreenPresent( int screen )
 
 void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
 {
-    switch( screen )
-    {
-    case SCREEN__PICKUP:
-        CollectContItems();
-        break;
-    default:
-        break;
-    }
-
     RunScreenScript( true, screen, params );
 }
 
@@ -803,16 +549,6 @@ void FOClient::ShowDialogBox()
     dict->Release();
 }
 
-void FOClient::DlgboxAnswer( int selected )
-{
-    if( DlgboxType == DIALOGBOX_BARTER )
-    {
-        if( selected == 0 )
-            Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, false );
-        else
-            Net_SendPlayersBarter( BARTER_ACCEPTED, PBarterPlayerId, true );
-    }
-}
 void FOClient::WaitDraw()
 {
     SprMngr.DrawSpriteSize( WaitPic, 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight, true, true );

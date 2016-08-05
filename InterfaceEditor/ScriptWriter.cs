@@ -245,10 +245,10 @@ namespace InterfaceEditor
 			if (obj is GUIItemView)
 			{
 				GUIItemView itemView = (GUIItemView)obj;
-				if (!string.IsNullOrEmpty(itemView.ItemsCollection))
-					_Script.AppendLine(_BaseIdent + "        SetItemsCollection( " + itemView.ItemsCollection + " );");
 				if (!string.IsNullOrEmpty(itemView.UserData))
 					_Script.AppendLine(_BaseIdent + "        SetUserData( " + itemView.UserData + " );");
+				if (!string.IsNullOrEmpty(itemView.UserDataExt))
+					_Script.AppendLine(_BaseIdent + "        SetUserDataExt( " + itemView.UserDataExt + " );");
 				if (itemView.UseSorting)
 					_Script.AppendLine(_BaseIdent + "        SetUseSorting( true );");
 			}
@@ -290,6 +290,7 @@ namespace InterfaceEditor
 			}
 			if (obj is GUIItemView)
 			{
+				WriteClassFunction("Item@[]@ OnGetItems() override", ((GUIItemView)obj).OnGetItems);
 				WriteClassFunction("int OnCheckItem( Item@ item ) override", ((GUIItemView)obj).OnCheckItem);
 			}
 

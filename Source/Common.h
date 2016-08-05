@@ -284,12 +284,7 @@ extern IntVec        MainWindowMouseEvents;
 
 # include "Assimp/aiTypes.h"
 
-# ifdef FONLINE_CLIENT
-#  define CFG_DEF_INT_FILE                        "default800x600.ini"
-# else // FONLINE_MAPPER
 const uchar SELECT_ALPHA    = 100;
-#  define CFG_DEF_INT_FILE                        "mapper_default.ini"
-# endif
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
 void GetClientOptions();
@@ -318,7 +313,7 @@ struct ClientScriptFunctions
     void* ItemInvIn;
     void* ItemInvChanged;
     void* ItemInvOut;
-    void* ContainerChanged;
+    void* ReceiveItems;
     void* MapMessage;
     void* InMessage;
     void* OutMessage;
@@ -328,7 +323,6 @@ struct ClientScriptFunctions
     void* CritterAction;
     void* Animation2dProcess;
     void* Animation3dProcess;
-    void* ItemsCollection;
     void* CritterAnimation;
     void* CritterAnimationSubstitute;
     void* CritterAnimationFallout;
@@ -387,7 +381,6 @@ struct ServerScriptFunctions
     void* GenerateWorld;
     void* Finish;
     void* Loop;
-    void* ItemsBarter;
     void* WorldSave;
     void* GlobalMapCritterIn;
     void* GlobalMapCritterOut;
@@ -409,8 +402,6 @@ struct ServerScriptFunctions
     void* CritterAttack;
     void* CritterDead;
     void* CritterRespawn;
-    void* CritterStealing;
-    void* CritterUseSkill;
     void* CritterCheckMoveItem;
     void* CritterMoveItem;
     void* CritterShow;
@@ -483,7 +474,6 @@ struct GameOptions
     uint          ApRegeneration;
     uint          RtApCostCritterWalk;
     uint          RtApCostCritterRun;
-    uint          RtApCostMoveItemContainer;
     bool          RtAlwaysRun;
     bool          RunOnCombat;
     bool          RunOnTransfer;

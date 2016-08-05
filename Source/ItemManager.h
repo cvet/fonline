@@ -34,7 +34,6 @@ public:
     bool  SetItemCritter( Critter* cr, hash pid, uint count );
 
     bool ItemCheckMove( Item* item, uint count, Entity* from, Entity* to );
-    void FilterMoveItems( ItemVec& items, Entity* from, Entity* to );
     bool MoveItemCritters( Critter* from_cr, Critter* to_cr, Item* item, uint count );
     bool MoveItemCritterToCont( Critter* from_cr, Item* to_cont, Item* item, uint count, uint stack_id );
     bool MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, Item* item, uint count );

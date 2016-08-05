@@ -35,7 +35,6 @@ public:
     CLASS_PROPERTY( ScriptArray *, Anim3dLayer );
     CLASS_PROPERTY( hash, DialogId );
     CLASS_PROPERTY( bool, IsNoTalk );
-    CLASS_PROPERTY( bool, IsNoBarter );
     CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
     CLASS_PROPERTY( int, CurrentAp );
@@ -137,7 +136,6 @@ public:
     void  GetItemsType( int slot, ItemVec& items );
     uint  CountItemPid( hash item_pid );
     uint  CountItemType( uchar type );
-    void  GetInvItems( ItemVec& items );
     bool  IsHaveLightSources();
     Item* GetSlotUse( uchar num_slot, uchar& use );
     bool  IsItemAim( uchar num_slot );
@@ -277,7 +275,6 @@ private:
     // Ap cost
 public:
     int GetApCostCritterMove( bool is_run );
-    int GetApCostMoveItemContainer();
 };
 
 typedef map< uint, CritterCl* > CritMap;

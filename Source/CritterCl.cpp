@@ -56,7 +56,6 @@ CLASS_PROPERTY_IMPL( CritterCl, IsNoRotate );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoTalk );
 CLASS_PROPERTY_IMPL( CritterCl, IsHide );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoFlatten );
-CLASS_PROPERTY_IMPL( CritterCl, IsNoBarter );
 
 CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterCl, PropertiesRegistrator, proto )
 {
@@ -356,18 +355,6 @@ uint CritterCl::CountItemType( uchar type )
         if( ( *it )->GetType() == type )
             res += ( *it )->GetCount();
     return res;
-}
-
-void CritterCl::GetInvItems( ItemVec& items )
-{
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetCritSlot() == SLOT_INV )
-            items.push_back( item );
-    }
-
-    Item::SortItems( items );
 }
 
 Item* CritterCl::GetSlotUse( uchar num_slot, uchar& use )
@@ -1324,9 +1311,4 @@ void CritterCl::DrawTextOnHead()
 int CritterCl::GetApCostCritterMove( bool is_run )
 {
     return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
-}
-
-int CritterCl::GetApCostMoveItemContainer()
-{
-    return GameOpt.RtApCostMoveItemContainer;
 }

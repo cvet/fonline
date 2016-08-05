@@ -468,35 +468,17 @@
 // CHOSEN USE ITEM
 // ************************************************************************
 
-#define NETMSG_CONTAINER_INFO                 MAKE_NETMSG_HEADER( 83 )
+#define NETMSG_SOME_ITEMS                     MAKE_NETMSG_HEADER( 83 )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // uint msg_len
-// uchar transfer_type
-// uint talk_time
-// uint cont_id
-// max_t cont_pid or barter_k
-// uint count_items
-//	while(cont_items)
+// int param
+// bool is_null
+// uint count
 //	uint item_id
 //	hash item_pid
-//	uint item_count
 //	Properties data
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_ITEM_CONT                 MAKE_NETMSG_HEADER( 84 )
-#define NETMSG_SEND_ITEM_CONT_SIZE                            \
-    ( sizeof( uint ) + sizeof( uchar ) + sizeof( uint ) * 2 + \
-      sizeof( uint ) + sizeof( uchar ) )
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// uchar transfer_type (see Transfer types in FOdefines.h)
-// uint cont_id
-// uint item_id
-// uint item_count
-// uchar take_flags (see Take flags in FOdefines.h)
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -663,44 +645,6 @@
 // uint talk_time
 // ushort lexems_length
 // char[lexems_length] lexems
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_BARTER                    MAKE_NETMSG_HEADER( 112 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// uint msg_len
-// CrID crid
-//
-// ushort count_sale
-// for count_sale
-//	uint item_id
-//	uint item_count
-//
-// ushort count_buy
-// for count_buy
-//	uint item_id
-//	uint item_count
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_PLAYERS_BARTER                 MAKE_NETMSG_HEADER( 114 )
-#define NETMSG_PLAYERS_BARTER_SIZE       \
-    ( sizeof( uint ) + sizeof( uchar ) + \
-      sizeof( uint ) * 2 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// uchar barter
-// uint param
-// uint param_ext
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_PLAYERS_BARTER_SET_HIDE        MAKE_NETMSG_HEADER( 115 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// uint msg_len
-// uint id
-// hash pid
-// uint count
-// Properties data
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

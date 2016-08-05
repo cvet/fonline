@@ -50,17 +50,14 @@ public:
     static void Process_LogIn( ClientPtr& cl );
     static void Process_SingleplayerSaveLoad( Client* cl );
     static void Process_Dir( Client* cl );
-    static void Process_ContainerItem( Client* cl );
     static void Process_Text( Client* cl );
     static void Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
     static void Process_Command2( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
     static void Process_Dialog( Client* cl, bool is_say );
-    static void Process_Barter( Client* cl );
     static void Process_GiveMap( Client* cl );
     static void Process_SetUserHoloStr( Client* cl );
     static void Process_GetUserHoloStr( Client* cl );
     static void Process_Ping( Client* cl );
-    static void Process_PlayersBarter( Client* cl );
     static void Process_Property( Client* cl, uint data_size );
 
     static void Send_MapData( Client* cl, ProtoMap* pmap, bool send_tiles, bool send_scenery );
@@ -378,7 +375,7 @@ public:
         static bool  Item_ChangeProto( Item* item, hash pid );
         static void  Item_Animate( Item* item, uchar from_frm, uchar to_frm );
         static Item* Item_GetChild( Item* item, uint child_index );
-        static bool  Item_CallSceneryFunction( Item* scenery, Critter* cr, int skill, Item* item );
+        static bool  Item_CallSceneryFunction( Item* scenery, Critter* cr, Item* item, int param );
 
         static bool  Crit_IsPlayer( Critter* cr );
         static bool  Crit_IsNpc( Critter* cr );
@@ -449,7 +446,7 @@ public:
         static void Crit_SetFog( Critter* cr, ushort zone_x, ushort zone_y, int fog );
         static int  Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_y );
 
-        static void Cl_ShowContainer( Critter* cl, Critter* cr_cont, Item* item_cont, uchar transfer_type );
+        static void Cl_SendItems( Critter* cl, ScriptArray* items, int param );
         static void Cl_Disconnect( Critter* cl );
 
         static bool Crit_SetScript( Critter* cr, asIScriptFunction* func );

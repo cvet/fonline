@@ -1307,7 +1307,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
             return;
         }
 
-        Script::RaiseInternalEvent( ServerFunctions.CritterTalk, npc, cl, true, npc->GetTalkedPlayers() + 1 );
+        Script::RaiseInternalEvent( ServerFunctions.CritterTalk, cl, npc, true, npc->GetTalkedPlayers() + 1 );
 
         dialog_pack = DlgMngr.GetDialog( dlg_pack_id );
         dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
@@ -1612,31 +1612,18 @@ label_ForceDialog:
         case -3:
         case DIALOG_BARTER:
 label_Barter:
-            if( !npc )
-            {
-                cl->Send_TextMsg( cl, STR_BARTER_NO_BARTER_MODE, SAY_DIALOG, TEXTMSG_GAME );
-                return;
-            }
             if( cur_dialog->DlgScript != NOT_ANSWER_CLOSE_DIALOG )
             {
                 cl->Send_TextMsg( npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME );
                 return;
             }
-            if( npc->GetIsNoBarter() )
-            {
-                cl->Send_TextMsg( npc, STR_BARTER_NO_BARTER_MODE, SAY_DIALOG, TEXTMSG_GAME );
-                return;
-            }
-            if( !Script::RaiseInternalEvent( ServerFunctions.CritterBarter, npc, cl, true, npc->GetBarterPlayers() + 1 ) )
-            {
-                // Message must processed in script
-                return;
-            }
 
-            cl->Talk.Barter = true;
-            cl->Talk.StartTick = Timer::GameTick();
-            cl->Talk.TalkTime = GameOpt.DlgBarterMinTime;
-            cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, true );
+            if( Script::RaiseInternalEvent( ServerFunctions.CritterBarter, cl, npc, true, npc->GetBarterPlayers() + 1 ) )
+            {
+                cl->Talk.Barter = true;
+                cl->Talk.StartTick = Timer::GameTick();
+                cl->Talk.TalkTime = GameOpt.DlgBarterMinTime;
+            }
             return;
         case -2:
         case DIALOG_BACK:
@@ -1664,7 +1651,7 @@ label_Barter:
         cl->Talk.Barter = false;
         dlg_id = cur_dialog->Id;
         if( npc )
-            Script::RaiseInternalEvent( ServerFunctions.CritterBarter, npc, cl, false, npc->GetBarterPlayers() + 1 );
+            Script::RaiseInternalEvent( ServerFunctions.CritterBarter, cl, npc, false, npc->GetBarterPlayers() + 1 );
     }
 
     // Find dialog
@@ -1728,268 +1715,4 @@ label_Barter:
     cl->Talk.StartTick = Timer::GameTick();
     cl->Talk.TalkTime = GameOpt.DlgTalkMinTime;
     cl->Send_Talk();
-}
-
-void FOServer::Process_Barter( Client* cl )
-{
-    uint    msg_len;
-    uint    id_npc_talk;
-    ushort  sale_count;
-    UIntVec sale_item_id;
-    UIntVec sale_item_count;
-    ushort  buy_count;
-    UIntVec buy_item_id;
-    UIntVec buy_item_count;
-    uint    item_id;
-    uint    item_count;
-    uint    same_id = 0;
-
-    cl->Bin >> msg_len;
-    cl->Bin >> id_npc_talk;
-
-    cl->Bin >> sale_count;
-    for( int i = 0; i < sale_count; ++i )
-    {
-        cl->Bin >> item_id;
-        cl->Bin >> item_count;
-
-        if( std::find( sale_item_id.begin(), sale_item_id.end(), item_id ) != sale_item_id.end() )
-            same_id++;
-        sale_item_id.push_back( item_id );
-        sale_item_count.push_back( item_count );
-    }
-
-    cl->Bin >> buy_count;
-    for( int i = 0; i < buy_count; ++i )
-    {
-        cl->Bin >> item_id;
-        cl->Bin >> item_count;
-
-        if( std::find( buy_item_id.begin(), buy_item_id.end(), item_id ) != buy_item_id.end() )
-            same_id++;
-        buy_item_id.push_back( item_id );
-        buy_item_count.push_back( item_count );
-    }
-
-    // Check
-    if( !cl->GetMapId() )
-    {
-        WriteLogF( _FUNC_, " - Player try to barter from global map, client '%s'.\n", cl->GetInfo() );
-        cl->Send_ContainerInfo();
-        return;
-    }
-
-    Npc* npc = CrMngr.GetNpc( id_npc_talk, true );
-    if( !npc )
-    {
-        WriteLogF( _FUNC_, " - Npc not found, client '%s'.\n", cl->GetInfo() );
-        cl->Send_ContainerInfo();
-        return;
-    }
-
-    bool is_free = ( npc->GetFreeBarterPlayer() == cl->GetId() );
-    if( !sale_count && !is_free )
-    {
-        WriteLogF( _FUNC_, " - Player nothing for sale, client '%s'.\n", cl->GetInfo() );
-        cl->Send_ContainerInfo();
-        return;
-    }
-
-    if( same_id )
-    {
-        WriteLogF( _FUNC_, " - Same item id found, client '%s', npc '%s', same count %u.\n", cl->GetInfo(), npc->GetInfo(), same_id );
-        cl->Send_TextMsg( cl, STR_BARTER_BAD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
-        cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
-        return;
-    }
-
-    if( !npc->IsLife() )
-    {
-        WriteLogF( _FUNC_, " - Npc busy or dead, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-        cl->Send_ContainerInfo();
-        return;
-    }
-
-    if( npc->GetIsNoBarter() )
-    {
-        WriteLogF( _FUNC_, " - Npc has NoBarterMode, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-        cl->Send_ContainerInfo();
-        return;
-    }
-
-    if( cl->GetMapId() != npc->GetMapId() )
-    {
-        WriteLogF( _FUNC_, " - Different maps, npc '%s' %u, client '%s' %u.\n", npc->GetInfo(), npc->GetMapId(), cl->GetInfo(), cl->GetMapId() );
-        cl->Send_ContainerInfo();
-        return;
-    }
-
-    uint talk_distance = npc->GetTalkDistance();
-    talk_distance = ( talk_distance ? talk_distance : GameOpt.TalkDistance ) + cl->GetMultihex();
-    if( !CheckDist( cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance ) )
-    {
-        WriteLogF( _FUNC_, " - Wrong distance, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-        cl->Send_XY( cl );
-        cl->Send_XY( npc );
-        cl->Send_ContainerInfo();
-        return;
-    }
-
-    if( cl->Talk.TalkType != TALK_WITH_NPC || cl->Talk.TalkNpc != npc->GetId() || !cl->Talk.Barter )
-    {
-        WriteLogF( _FUNC_, " - Dialog is closed or not beginning, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-        cl->Send_ContainerInfo();
-        return;
-    }
-
-    // Check cost
-    int     barter_k = npc->GetBarterCoefficient() - cl->GetBarterCoefficient();
-    barter_k = CLAMP( barter_k, 5, 95 );
-    int     sale_cost = 0;
-    int     buy_cost = 0;
-    ItemVec sale_items;
-    ItemVec buy_items;
-
-    for( int i = 0; i < sale_count; ++i )
-    {
-        Item* item = cl->GetItem( sale_item_id[ i ], true );
-        if( !item )
-        {
-            WriteLogF( _FUNC_, " - Sale item not found, id %u, client '%s', npc '%s'.\n", sale_item_id[ i ], cl->GetInfo(), npc->GetInfo() );
-            cl->Send_TextMsg( cl, STR_BARTER_SALE_ITEM_NOT_FOUND, SAY_DIALOG, TEXTMSG_GAME );
-            cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
-            return;
-        }
-
-        if( item->GetIsBadItem() )
-        {
-            cl->Send_TextMsg( cl, STR_BARTER_BAD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
-            cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
-            return;
-        }
-
-        if( !sale_item_count[ i ] || sale_item_count[ i ] > item->GetCount() )
-        {
-            WriteLogF( _FUNC_, " - Sale item count error, id %u, count %u, real count %u, client '%s', npc '%s'.\n", sale_item_id[ i ], sale_item_count[ i ], item->GetCount(), cl->GetInfo(), npc->GetInfo() );
-            cl->Send_ContainerInfo();
-            return;
-        }
-
-        if( sale_item_count[ i ] > 1 && !item->GetStackable() )
-        {
-            WriteLogF( _FUNC_, " - Sale item is not stackable, id %u, count %u, client '%s', npc '%s'.\n", sale_item_id[ i ], sale_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
-            cl->Send_ContainerInfo();
-            return;
-        }
-
-        if( !ItemMngr.ItemCheckMove( item, sale_item_count[ i ], cl, npc ) )
-        {
-            WriteLogF( _FUNC_, " - Sale item is not allowed to move, id %u, count %u, client '%s', npc '%s'.\n", sale_item_id[ i ], sale_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
-            cl->Send_ContainerInfo();
-            return;
-        }
-
-        uint base_cost = item->GetCost1st();
-        base_cost = base_cost * ( 100 - barter_k ) / 100;
-        if( !base_cost )
-            base_cost++;
-
-        sale_cost += base_cost * sale_item_count[ i ];
-        sale_items.push_back( item );
-    }
-
-    for( int i = 0; i < buy_count; ++i )
-    {
-        Item* item = npc->GetItem( buy_item_id[ i ], true );
-        if( !item )
-        {
-            WriteLogF( _FUNC_, " - Buy item not found, id %u, client '%s', npc '%s'.\n", buy_item_id[ i ], cl->GetInfo(), npc->GetInfo() );
-            cl->Send_TextMsg( cl, STR_BARTER_BUY_ITEM_NOT_FOUND, SAY_DIALOG, TEXTMSG_GAME );
-            cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
-            return;
-        }
-
-        if( !buy_item_count[ i ] || buy_item_count[ i ] > item->GetCount() )
-        {
-            WriteLogF( _FUNC_, " - Buy item count error, id %u, count %u, real count %u, client '%s', npc '%s'.\n", buy_item_id[ i ], buy_item_count[ i ], item->GetCount(), cl->GetInfo(), npc->GetInfo() );
-            cl->Send_ContainerInfo();
-            return;
-        }
-
-        if( buy_item_count[ i ] > 1 && !item->GetStackable() )
-        {
-            WriteLogF( _FUNC_, " - Buy item is not stackable, id %u, count %u, client '%s', npc '%s'.\n", buy_item_id[ i ], buy_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
-            cl->Send_ContainerInfo();
-            return;
-        }
-
-        if( !ItemMngr.ItemCheckMove( item, buy_item_count[ i ], npc, cl ) )
-        {
-            WriteLogF( _FUNC_, " - Buy item is not allowed to move, id %u, count %u, client '%s', npc '%s'.\n", buy_item_id[ i ], buy_item_count[ i ], cl->GetInfo(), npc->GetInfo() );
-            cl->Send_ContainerInfo();
-            return;
-        }
-
-        uint base_cost = item->GetCost1st();
-        base_cost = base_cost * ( 100 + barter_k ) / 100;
-        if( !base_cost )
-            base_cost++;
-
-        buy_cost += base_cost * buy_item_count[ i ];
-        buy_items.push_back( item );
-
-        if( buy_cost > sale_cost && !is_free )
-        {
-            WriteLogF( _FUNC_, " - Buy is > sale - ignore barter, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-            cl->Send_TextMsg( cl, STR_BARTER_BAD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
-            cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
-            return;
-        }
-    }
-
-    // Barter script
-    ScriptArray* sale_items_ = Script::CreateArray( "Item@[]" );
-    ScriptArray* sale_items_count_ = Script::CreateArray( "uint[]" );
-    ScriptArray* buy_items_ = Script::CreateArray( "Item@[]" );
-    ScriptArray* buy_items_count_ = Script::CreateArray( "uint[]" );
-    Script::AppendVectorToArrayRef( sale_items, sale_items_ );
-    Script::AppendVectorToArray( sale_item_count, sale_items_count_ );
-    Script::AppendVectorToArrayRef( buy_items, buy_items_ );
-    Script::AppendVectorToArray( buy_item_count, buy_items_count_ );
-
-    bool result = Script::RaiseInternalEvent( ServerFunctions.ItemsBarter, sale_items_, sale_items_count_, buy_items_, buy_items_count_, cl, npc );
-
-    sale_items_->Release();
-    sale_items_count_->Release();
-    buy_items_->Release();
-    buy_items_count_->Release();
-
-    if( !result )
-    {
-        cl->Send_TextMsg( cl, STR_BARTER_BAD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
-        return;
-    }
-
-    // Transfer
-    // From Player to Npc
-    for( int i = 0; i < sale_count; ++i )
-    {
-        Item* item = cl->GetItem( sale_item_id[ i ], true );
-        if( !ItemMngr.MoveItemCritters( cl, npc, item, sale_item_count[ i ] ) )
-            WriteLogF( _FUNC_, " - Transfer item, from player to npc, fail, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-    }
-
-    // From Npc to Player
-    for( int i = 0; i < buy_count; ++i )
-    {
-        Item* item = npc->GetItem( buy_item_id[ i ], true );
-        if( !ItemMngr.MoveItemCritters( npc, cl, item, buy_item_count[ i ] ) )
-            WriteLogF( _FUNC_, " - Transfer item, from player to npc, fail, client '%s', npc '%s'.\n", cl->GetInfo(), npc->GetInfo() );
-    }
-
-    cl->Talk.StartTick = Timer::GameTick();
-    cl->Talk.TalkTime = GameOpt.DlgBarterMinTime;
-    if( !is_free )
-        cl->Send_TextMsg( cl, STR_BARTER_GOOD_OFFER, SAY_DIALOG, TEXTMSG_GAME );
-    cl->Send_ContainerInfo( npc, TRANSFER_CRIT_BARTER, false );
 }

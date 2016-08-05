@@ -1072,7 +1072,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
             const char* func_name = Str::GetName( item->GetScriptId() );
             uint bind_id = 0;
             if( item->GetProtoId() != SP_SCEN_TRIGGER )
-                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter&,const Item&,CritterProperty,Item@)", false );
+                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter&,const Item&,Item@,int)", false );
             else
                 bind_id = Script::BindByFuncName( func_name, "void %s(Critter&,const Item&,bool,uint8)", false );
             if( !bind_id )

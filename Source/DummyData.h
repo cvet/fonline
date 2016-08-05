@@ -257,8 +257,8 @@ struct BindClass
     static void Crit_SetFog()        {}
     static void Crit_GetFog()        {}
 
-    static void Cl_ShowContainer() {}
-    static void Cl_Disconnect()    {}
+    static void Cl_SendItems()  {}
+    static void Cl_Disconnect() {}
 
     static void Crit_SetScript() {}
 
@@ -427,6 +427,7 @@ struct BindClass
     static void Crit_get_ContourColor() {}
     static void Crit_GetNameTextInfo()  {}
 
+    static void Item_Clone()          {}
     static void Item_GetItems()       {}
     static void Item_GetMapPosition() {}
     static void Item_Animate()        {}
@@ -455,7 +456,6 @@ struct BindClass
     static void Global_FormatTags()             {}
     static void Global_LockScreenScroll()       {}
     static void Global_GetFog()                 {}
-    static void Global_RefreshItemsCollection() {}
     static void Global_GetDayTime()             {}
     static void Global_GetDayColor()            {}
     static void Global_GetFullSecond()          {}

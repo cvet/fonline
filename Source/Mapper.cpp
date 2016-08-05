@@ -333,7 +333,7 @@ int FOMapper::InitIface()
     WriteLog( "Init interface.\n" );
 
     IniParser& ini = IfaceIni;
-    const char* int_file = CFG_DEF_INT_FILE;
+    const char* int_file = "mapper_default.ini";
 
     if( !ini.AppendFile( int_file, PT_CLIENT_DATA ) )
     {

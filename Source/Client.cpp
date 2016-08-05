@@ -683,20 +683,6 @@ void FOClient::DeleteCritters()
 {
     HexMngr.DeleteCritters();
     Chosen = nullptr;
-    Item::ClearItems( InvContInit );
-    Item::ClearItems( BarterCont1oInit );
-    Item::ClearItems( BarterCont2Init );
-    Item::ClearItems( BarterCont2oInit );
-    Item::ClearItems( PupCont2Init );
-    Item::ClearItems( PupCont2 );
-    Item::ClearItems( InvCont );
-    Item::ClearItems( BarterCont1 );
-    Item::ClearItems( PupCont1 );
-    Item::ClearItems( UseCont );
-    Item::ClearItems( BarterCont1o );
-    Item::ClearItems( BarterCont2 );
-    Item::ClearItems( BarterCont2o );
-    Item::ClearItems( PupCont2 );
 }
 
 void FOClient::AddCritter( CritterCl* cr )
@@ -2016,14 +2002,8 @@ void FOClient::NetProcess()
         case NETMSG_GLOBAL_INFO:
             Net_OnGlobalInfo();
             break;
-        case NETMSG_CONTAINER_INFO:
-            Net_OnContainerInfo();
-            break;
-        case NETMSG_PLAYERS_BARTER:
-            Net_OnPlayersBarter();
-            break;
-        case NETMSG_PLAYERS_BARTER_SET_HIDE:
-            Net_OnPlayersBarterSetHide();
+        case NETMSG_SOME_ITEMS:
+            Net_OnSomeItems();
             break;
         case NETMSG_RPC:
             Script::HandleRpc( &Bin );
@@ -2356,16 +2336,6 @@ void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, Entity*
     }
 }
 
-void FOClient::Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags )
-{
-    Bout << NETMSG_SEND_ITEM_CONT;
-    Bout << transfer_type;
-    Bout << cont_id;
-    Bout << item_id;
-    Bout << count;
-    Bout << take_flags;
-}
-
 void FOClient::Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer )
 {
     Bout << NETMSG_SEND_TALK_NPC;
@@ -2380,32 +2350,6 @@ void FOClient::Net_SendSayNpc( uchar is_npc, uint id_to_talk, const char* str )
     Bout << is_npc;
     Bout << id_to_talk;
     Bout.Push( str, MAX_SAY_NPC_TEXT );
-}
-
-void FOClient::Net_SendBarter( uint npc_id, ItemVec& cont_sale, ItemVec& cont_buy )
-{
-    ushort sale_count = (ushort) cont_sale.size();
-    ushort buy_count = (ushort) cont_buy.size();
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( sale_count ) + sizeof( buy_count ) +
-                     ( sizeof( uint ) + sizeof( uint ) ) * sale_count + ( sizeof( uint ) + sizeof( uint ) ) * buy_count;
-
-    Bout << NETMSG_SEND_BARTER;
-    Bout << msg_len;
-    Bout << npc_id;
-
-    Bout << sale_count;
-    for( int i = 0; i < sale_count; ++i )
-    {
-        Bout << cont_sale[ i ]->GetId();
-        Bout << cont_sale[ i ]->GetCount();
-    }
-
-    Bout << buy_count;
-    for( int i = 0; i < buy_count; ++i )
-    {
-        Bout << cont_buy[ i ]->GetId();
-        Bout << cont_buy[ i ]->GetCount();
-    }
 }
 
 void FOClient::Net_SendGetGameInfo()
@@ -2432,14 +2376,6 @@ void FOClient::Net_SendPing( uchar ping )
 {
     Bout << NETMSG_PING;
     Bout << ping;
-}
-
-void FOClient::Net_SendPlayersBarter( uchar barter, uint param, uint param_ext )
-{
-    Bout << NETMSG_PLAYERS_BARTER;
-    Bout << barter;
-    Bout << param;
-    Bout << param_ext;
 }
 
 void FOClient::Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text )
@@ -3468,7 +3404,6 @@ void FOClient::Net_OnChosenClearItems()
     if( Chosen->IsHaveLightSources() )
         HexMngr.RebuildLight();
     Chosen->DeleteAllItems();
-    CollectContItems();
 }
 
 void FOClient::Net_OnChosenAddItem()
@@ -3520,7 +3455,6 @@ void FOClient::Net_OnChosenAddItem()
         HexMngr.RebuildLight();
     if( item->GetIsHidden() )
         Chosen->DeleteItem( item, true );
-    CollectContItems();
 
     if( !InitialItemsSend )
         Script::RaiseInternalEvent( ClientFunctions.ItemInvIn, item );
@@ -3553,7 +3487,6 @@ void FOClient::Net_OnChosenEraseItem()
     Chosen->DeleteItem( item, true );
     if( rebuild_light )
         HexMngr.RebuildLight();
-    CollectContItems();
     Script::RaiseInternalEvent( ClientFunctions.ItemInvOut, clone );
     clone->Release();
 }
@@ -3945,7 +3878,6 @@ void FOClient::Net_OnProperty( uint data_size )
 
     if( type == NetProperty::ChosenItem )
     {
-        CollectContItems();
         Item* item = (Item*) entity;
         item->AddRef();
         OnItemInvChanged( item, item );
@@ -3968,11 +3900,9 @@ void FOClient::Net_OnChosenTalk()
 
     if( !count_answ )
     {
-        // End dialog or barter
+        // End dialog
         if( IsScreenPresent( SCREEN__DIALOG ) )
             HideScreen( SCREEN__DIALOG );
-        if( IsScreenPresent( SCREEN__BARTER ) )
-            HideScreen( SCREEN__BARTER );
         return;
     }
 
@@ -4020,9 +3950,6 @@ void FOClient::Net_OnChosenTalk()
     Bin >> talk_time;
 
     CHECK_IN_BUFF_ERROR;
-
-    if( IsScreenPresent( SCREEN__BARTER ) )
-        HideScreen( SCREEN__BARTER );
 
     ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
     dict->Set( "TalkerIsNpc", &is_npc, asTYPEID_BOOL );
@@ -4384,32 +4311,15 @@ void FOClient::Net_OnGlobalInfo()
     CHECK_IN_BUFF_ERROR;
 }
 
-void FOClient::Net_OnContainerInfo()
+void FOClient::Net_OnSomeItems()
 {
-    uint  msg_len;
-    uchar transfer_type;
-    uint  talk_time;
-    uint  cont_id;
-    max_t cont_pid;      // Or Barter K
-    uint  items_count;
+    uint msg_len;
+    int  param;
+    bool is_null;
+    uint items_count;
     Bin >> msg_len;
-    Bin >> transfer_type;
-
-    bool open_screen = ( FLAG( transfer_type, 0x80 ) ? true : false );
-    UNSETFLAG( transfer_type, 0x80 );
-
-    if( transfer_type == TRANSFER_CLOSE )
-    {
-        if( IsScreenPresent( SCREEN__BARTER ) )
-            HideScreen( SCREEN__BARTER );
-        if( IsScreenPresent( SCREEN__PICKUP ) )
-            HideScreen( SCREEN__PICKUP );
-        return;
-    }
-
-    Bin >> talk_time;
-    Bin >> cont_id;
-    Bin >> cont_pid;
+    Bin >> param;
+    Bin >> is_null;
     Bin >> items_count;
 
     ItemVec item_container;
@@ -4432,40 +4342,8 @@ void FOClient::Net_OnContainerInfo()
 
     CHECK_IN_BUFF_ERROR;
 
-    if( !Chosen )
-    {
-        Item::ClearItems( item_container );
-        return;
-    }
-
-    Item::SortItems( item_container );
-    PupContId = cont_id;
-    PupContPid = 0;
-
-    if( transfer_type == TRANSFER_CRIT_BARTER )
-    {
-        PupTransferType = transfer_type;
-        BarterK = (ushort) cont_pid;
-        Item::ClearItems( BarterCont2Init );
-        BarterCont2Init = item_container;
-        item_container.clear();
-        Item::ClearItems( BarterCont1oInit );
-        Item::ClearItems( BarterCont2oInit );
-
-        if( open_screen )
-        {
-            if( IsScreenPresent( SCREEN__DIALOG ) )
-                HideScreen( SCREEN__DIALOG );
-            if( !IsScreenPresent( SCREEN__BARTER ) )
-            {
-                ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-                dict->Set( "CritterId", &PupContId, asTYPEID_UINT32 );
-                ShowScreen( SCREEN__BARTER, dict );
-                dict->Release();
-            }
-        }
-    }
-    else
+    ScriptArray* items_arr = nullptr;
+    if( !is_null )
     {
         PupTransferType = transfer_type;
         PupContPid = ( transfer_type == TRANSFER_HEX_CONT_UP || transfer_type == TRANSFER_HEX_CONT_DOWN || transfer_type == TRANSFER_FAR_CONT ? (hash) cont_pid : 0 );
@@ -4493,260 +4371,10 @@ void FOClient::Net_OnContainerInfo()
         }
     }
 
-    CollectContItems();
+    Script::RaiseInternalEvent( ClientFunctions.ReceiveItems, items_arr, param );
 
-    Script::RaiseInternalEvent( ClientFunctions.ContainerChanged );
-}
-
-void FOClient::Net_OnPlayersBarter()
-{
-    uchar barter;
-    uint  param;
-    uint  param_ext;
-    Bin >> barter;
-    Bin >> param;
-    Bin >> param_ext;
-
-    CHECK_IN_BUFF_ERROR;
-
-    switch( barter )
-    {
-    case BARTER_BEGIN:
-    {
-        CritterCl* cr = GetCritter( param );
-        if( !cr )
-            break;
-
-        param_ext = ( FLAG( param_ext, 2 ) ? true : false );
-    }
-    case BARTER_REFRESH:
-    {
-        CritterCl* cr = GetCritter( param );
-        if( !cr )
-            break;
-
-        if( IsScreenPresent( SCREEN__DIALOG ) )
-            HideScreen( SCREEN__DIALOG );
-
-        BarterIsPlayers = true;
-        BarterOpponentHide = ( param_ext != 0 );
-        BarterOffer = false;
-        BarterOpponentOffer = false;
-        Item::ClearItems( BarterCont2Init );
-        Item::ClearItems( BarterCont1oInit );
-        Item::ClearItems( BarterCont2oInit );
-        CollectContItems();
-
-        if( !IsScreenPresent( SCREEN__BARTER ) )
-        {
-            ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-            dict->Set( "CritterId", &param, asTYPEID_UINT32 );
-            ShowScreen( SCREEN__BARTER, dict );
-            dict->Release();
-        }
-    }
-    break;
-    case BARTER_END:
-    {
-        if( IsScreenPlayersBarter() )
-            HideScreen( SCREEN_NONE );
-    }
-    break;
-    case BARTER_TRY:
-    {
-        CritterCl* cr = GetCritter( param );
-        if( !cr )
-            break;
-
-        DlgboxType = DIALOGBOX_BARTER;
-        PBarterPlayerId = param;
-        BarterOpponentHide = ( param_ext != 0 );
-        PBarterHide = BarterOpponentHide;
-        Str::Copy( DlgboxText, FmtGameText( STR_BARTER_DIALOGBOX, cr->GetName(), !BarterOpponentHide ? CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_BARTER_OPEN_MODE ) : CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_BARTER_HIDE_MODE ) ) );
-        DlgboxWait = Timer::GameTick() + 20000;
-        DlgboxButtonText[ 0 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_BARTER_OPEN );
-        DlgboxButtonText[ 1 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_BARTER_HIDE );
-        DlgboxButtonText[ 2 ] = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_DIALOGBOX_CANCEL );
-        DlgboxButtonsCount = 3;
-
-        ShowDialogBox();
-    }
-    break;
-    case BARTER_SET_SELF:
-    case BARTER_SET_OPPONENT:
-    {
-        if( !IsScreenPlayersBarter() )
-        {
-            Net_SendPlayersBarter( BARTER_END, 0, 0 );
-            break;
-        }
-
-        BarterOffer = false;
-        BarterOpponentOffer = false;
-        bool     is_hide = ( barter == BARTER_SET_OPPONENT && BarterOpponentHide );
-        ItemVec& cont = ( barter == BARTER_SET_SELF ? InvContInit : BarterCont2Init );
-        ItemVec& cont_o = ( barter == BARTER_SET_SELF ? BarterCont1oInit : BarterCont2oInit );
-
-        if( !is_hide )
-        {
-            auto it = PtrCollectionFind( cont.begin(), cont.end(), param );
-            if( it == cont.end() || param_ext > ( *it )->GetCount() )
-            {
-                Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
-                break;
-            }
-            Item* citem = *it;
-            auto  it_ = PtrCollectionFind( cont_o.begin(), cont_o.end(), param );
-            if( it_ == cont_o.end() )
-            {
-                cont_o.push_back( citem->Clone() );
-                cont_o.back()->SetCount( param_ext );
-            }
-            else
-            {
-                ( *it_ )->ChangeCount( param_ext );
-            }
-            citem->ChangeCount( -(int) param_ext );
-            if( !citem->GetCount() || !citem->GetStackable() )
-            {
-                citem->Release();
-                cont.erase( it );
-            }
-        }
-        else                 // Hide
-        {
-            WriteLogF( _FUNC_, " - Invalid argument.\n" );
-            Net_SendPlayersBarter( BARTER_END, 0, 0 );
-            // See void FOClient::Net_OnPlayersBarterSetHide()
-        }
-        CollectContItems();
-    }
-    break;
-    case BARTER_UNSET_SELF:
-    case BARTER_UNSET_OPPONENT:
-    {
-        if( !IsScreenPlayersBarter() )
-        {
-            Net_SendPlayersBarter( BARTER_END, 0, 0 );
-            break;
-        }
-
-        BarterOffer = false;
-        BarterOpponentOffer = false;
-        bool     is_hide = ( barter == BARTER_UNSET_OPPONENT && BarterOpponentHide );
-        ItemVec& cont = ( barter == BARTER_UNSET_SELF ? InvContInit : BarterCont2Init );
-        ItemVec& cont_o = ( barter == BARTER_UNSET_SELF ? BarterCont1oInit : BarterCont2oInit );
-
-        if( !is_hide )
-        {
-            auto it = PtrCollectionFind( cont_o.begin(), cont_o.end(), param );
-            if( it == cont_o.end() || param_ext > ( *it )->GetCount() )
-            {
-                Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
-                break;
-            }
-            Item* citem = *it;
-            auto  it_ = PtrCollectionFind( cont.begin(), cont.end(), param );
-            if( it_ == cont.end() )
-            {
-                cont.push_back( citem->Clone() );
-                cont.back()->SetCount( param_ext );
-            }
-            else
-            {
-                ( *it_ )->ChangeCount( param_ext );
-            }
-            citem->ChangeCount( -(int) param_ext );
-            if( !citem->GetCount() || !citem->GetStackable() )
-            {
-                citem->Release();
-                cont_o.erase( it );
-            }
-        }
-        else                 // Hide
-        {
-            Item* citem = GetContainerItem( cont_o, param );
-            if( !citem || param_ext > citem->GetCount() )
-            {
-                Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
-                break;
-            }
-            citem->ChangeCount( -(int) param_ext );
-            if( !citem->GetCount() || !citem->GetStackable() )
-            {
-                auto it = PtrCollectionFind( cont_o.begin(), cont_o.end(), param );
-                ( *it )->Release();
-                cont_o.erase( it );
-            }
-        }
-        CollectContItems();
-    }
-    break;
-    case BARTER_OFFER:
-    {
-        if( !IsScreenPlayersBarter() )
-        {
-            Net_SendPlayersBarter( BARTER_END, 0, 0 );
-            break;
-        }
-
-        if( !param_ext )
-            BarterOffer = ( param != 0 );
-        else
-            BarterOpponentOffer = ( param != 0 );
-    }
-    break;
-    default:
-        Net_SendPlayersBarter( BARTER_END, 0, 0 );
-        break;
-    }
-
-    Script::RaiseInternalEvent( ClientFunctions.ContainerChanged );
-}
-
-void FOClient::Net_OnPlayersBarterSetHide()
-{
-    uint msg_len;
-    uint item_id;
-    hash pid;
-    uint count;
-    Bin >> msg_len;
-    Bin >> item_id;
-    Bin >> pid;
-    Bin >> count;
-    NET_READ_PROPERTIES( Bin, TempPropertiesData );
-
-    CHECK_IN_BUFF_ERROR;
-
-    if( !IsScreenPlayersBarter() )
-    {
-        Net_SendPlayersBarter( BARTER_END, 0, 0 );
-        return;
-    }
-
-    ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
-    if( !proto_item )
-    {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
-        Net_SendPlayersBarter( BARTER_REFRESH, 0, 0 );
-        return;
-    }
-
-    Item* citem = GetContainerItem( BarterCont2oInit, item_id );
-    if( !citem )
-    {
-        Item* item = new Item( item_id, proto_item );
-        item->Props.RestoreData( TempPropertiesData );
-        item->SetCount( count );
-        BarterCont2oInit.push_back( item );
-    }
-    else
-    {
-        uint new_count = citem->GetCount() + count;
-        citem->Props.RestoreData( TempPropertiesData );
-        citem->SetCount( new_count );
-    }
-    CollectContItems();
+    if( items_arr )
+        items_arr->Release();
 }
 
 void FOClient::Net_OnCheckUID3()
@@ -7124,7 +6752,7 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( ItemInvIn );
     BIND_INTERNAL_EVENT( ItemInvChanged );
     BIND_INTERNAL_EVENT( ItemInvOut );
-    BIND_INTERNAL_EVENT( ContainerChanged );
+    BIND_INTERNAL_EVENT( ReceiveItems );
     BIND_INTERNAL_EVENT( MapMessage );
     BIND_INTERNAL_EVENT( InMessage );
     BIND_INTERNAL_EVENT( OutMessage );
@@ -7134,7 +6762,6 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( CritterAction );
     BIND_INTERNAL_EVENT( Animation2dProcess );
     BIND_INTERNAL_EVENT( Animation3dProcess );
-    BIND_INTERNAL_EVENT( ItemsCollection );
     BIND_INTERNAL_EVENT( CritterAnimation );
     BIND_INTERNAL_EVENT( CritterAnimationSubstitute );
     BIND_INTERNAL_EVENT( CritterAnimationFallout );
@@ -7448,6 +7075,14 @@ void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisib
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
     cr->GetNameTextInfo( nameVisible, x, y, w, h, lines );
+}
+
+Item* FOClient::SScriptFunc::Item_Clone( Item* item, uint count )
+{
+    Item* clone = item->Clone();
+    if( count )
+        clone->SetCount( count );
+    return clone;
 }
 
 bool FOClient::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )
@@ -7777,34 +7412,13 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         bool is_npc = Str::Compare( args[ 1 ].c_str(), "true" );
         uint talker_id = Str::AtoI( args[ 2 ].c_str() );
         uint answer_index = Str::AtoI( args[ 3 ].c_str() );
-        if( !Self->IsScreenPlayersBarter() )
-            Self->Net_SendTalk( is_npc, talker_id, answer_index );
+        Self->Net_SendTalk( is_npc, talker_id, answer_index );
     }
     else if( cmd == "DialogSay" )
     {
         bool is_npc = Str::AtoI( args[ 1 ].c_str() ) != 0;
         uint talker_id = Str::AtoI( args[ 2 ].c_str() );
         Self->Net_SendSayNpc( is_npc, talker_id, args[ 3 ].c_str() );
-    }
-    else if( cmd == "BarterMoveItem" && args.size() == 4 )
-    {
-        uint item_id = Str::AtoI( args[ 1 ].c_str() );
-        int  item_cont = Str::AtoI( args[ 2 ].c_str() );
-        int  count = Str::AtoI( args[ 3 ].c_str() );
-        Self->BarterTransfer( item_id, item_cont, count );
-    }
-    else if( cmd == "BarterOffer" )
-    {
-        Self->BarterTryOffer();
-        // uint talker_id;
-        // uint answer_index;
-        // Self->Net_SendBarter(DlgIsNpc, DlgNpcId, DlgAnswers[DlgCurAnsw].AnswerNum);
-    }
-    else if( cmd == "BarterPlayerTry" && args.size() == 3 )
-    {
-        uint cr_id = Str::AtoUI( args[ 1 ].c_str() );
-        bool hide = Str::AtoB( args[ 2 ].c_str() );
-        Self->Net_SendPlayersBarter( BARTER_TRY, cr_id, hide );
     }
     else if( cmd == "DrawMiniMap" && args.size() >= 6 )
     {
@@ -7830,10 +7444,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         }
 
         SprMngr.DrawPoints( Self->LmapPrepPix, PRIMITIVE_LINELIST );
-    }
-    else if( cmd == "DialogBoxAnswer" && args.size() == 2 )
-    {
-        Self->DlgboxAnswer( Str::AtoI( args[ 1 ].c_str() ) );
     }
     else if( cmd == "RefreshMe" )
     {
@@ -7932,58 +7542,14 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
                 Self->Chosen->Action( ACTION_MOVE_ITEM_SWAP, to_slot, item_swap );
         }
 
-        // Affect barter screen
-        if( to_slot == SLOT_GROUND )
-            Self->CollectContItems();
-
         // Light
         if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
             Self->RebuildLookBorders = true;
         if( is_light && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
             Self->HexMngr.RebuildLight();
 
-        // Notice server
-        // Self->CollectContItems();
-
         // Notify scripts about item changing
         Self->OnItemInvChanged( old_item, item );
-    }
-    else if( cmd == "MoveItemCont" && args.size() == 5 )
-    {
-        uint     ap_cost = Str::AtoUI( args[ 1 ].c_str() );
-        uint     item_count = Str::AtoUI( args[ 2 ].c_str() );
-        uint     item_id = Str::AtoUI( args[ 3 ].c_str() );
-        int      item_cont = Str::AtoI( args[ 4 ].c_str() );
-
-        ItemVec& cont = ( item_cont == ITEMS_PICKUP ? Self->InvContInit : Self->PupCont2Init );
-        auto     it = PtrCollectionFind( cont.begin(), cont.end(), item_id );
-        RUNTIME_ASSERT( it != cont.end() );
-        Item*    item = *it;
-        Item*    old_item = item->Clone();
-
-        Self->Chosen->Action( ACTION_OPERATE_CONTAINER, Self->PupTransferType * 10 + ( item_cont == ITEMS_PICKUP_FROM ? 0 : 2 ), item );
-        Self->Chosen->SubAp( ap_cost );
-
-        bool release = false;
-        if( item->GetStackable() && item_count < item->GetCount() )
-        {
-            item->ChangeCount( -(int) item_count );
-        }
-        else
-        {
-            release = true;
-            cont.erase( it );
-        }
-
-        // Notify scripts about item changing
-        Self->OnItemInvChanged( old_item, item );
-
-        if( release )
-            item->Release();
-
-        uchar take_flags = ( item_cont == ITEMS_PICKUP ? CONT_PUT : CONT_GET );
-        Self->Net_SendItemCont( Self->PupTransferType, Self->PupContId, item_id, item_count, take_flags );
-        // Self->CollectContItems();
     }
     else if( cmd == "SkipRoof" && args.size() == 3 )
     {
@@ -8054,14 +7620,6 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
     // On Chosen
     if( !item && Self->Chosen )
         item = Self->Chosen->GetItem( item_id );
-
-    // In containers
-    #define FIND_IN_CONT( cont )    if( !item ) { auto it = PtrCollectionFind( cont.begin(), cont.end(), item_id ); item = ( it != cont.end() ? *it : NULL ); }
-    FIND_IN_CONT( Self->BarterCont1oInit );
-    FIND_IN_CONT( Self->BarterCont2Init );
-    FIND_IN_CONT( Self->BarterCont2oInit );
-    FIND_IN_CONT( Self->PupCont2Init );
-    #undef FIND_IN_CONT
 
     // On other critters
     if( !item )
@@ -8462,62 +8020,6 @@ int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )
     if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
         SCRIPT_ERROR_R0( "Invalid world map pos arg." );
     return Self->GmapFog.Get2Bit( zone_x, zone_y );
-}
-
-ScriptArray* FOClient::SScriptFunc::Global_RefreshItemsCollection( int collection )
-{
-    ScriptArray* result = Script::CreateArray( "Item@[]" );
-    switch( collection )
-    {
-    case ITEMS_CHOSEN_ALL:
-    {
-        ItemVec items;
-        if( Self->Chosen )
-            items = Self->Chosen->InvItems;
-        Item::SortItems( items );
-        ItemVec items2;
-        Self->ProcessItemsCollection( ITEMS_CHOSEN_ALL, items, items2 );
-        Script::AppendVectorToArrayRef( items2, result );
-    }
-    break;
-    case ITEMS_INVENTORY:
-        Self->ProcessItemsCollection( ITEMS_INVENTORY, Self->InvContInit, Self->InvCont );
-        Script::AppendVectorToArrayRef( Self->InvCont, result );
-        break;
-    case ITEMS_USE:
-        Self->ProcessItemsCollection( ITEMS_USE, Self->InvContInit, Self->UseCont );
-        Script::AppendVectorToArrayRef( Self->UseCont, result );
-        break;
-    case ITEMS_BARTER:
-        Self->ProcessItemsCollection( ITEMS_BARTER, Self->InvContInit, Self->BarterCont1 );
-        Script::AppendVectorToArrayRef( Self->BarterCont1, result );
-        break;
-    case ITEMS_BARTER_OFFER:
-        Self->ProcessItemsCollection( ITEMS_BARTER_OFFER, Self->BarterCont1oInit, Self->BarterCont1o );
-        Script::AppendVectorToArrayRef( Self->BarterCont1o, result );
-        break;
-    case ITEMS_BARTER_OPPONENT:
-        Self->ProcessItemsCollection( ITEMS_BARTER_OPPONENT, Self->BarterCont2Init, Self->BarterCont2 );
-        Script::AppendVectorToArrayRef( Self->BarterCont2, result );
-        break;
-    case ITEMS_BARTER_OPPONENT_OFFER:
-        Self->ProcessItemsCollection( ITEMS_BARTER_OPPONENT_OFFER, Self->BarterCont2oInit, Self->BarterCont2o );
-        Script::AppendVectorToArrayRef( Self->BarterCont2o, result );
-        break;
-    case ITEMS_PICKUP:
-        Self->ProcessItemsCollection( ITEMS_PICKUP, Self->InvContInit, Self->PupCont1 );
-        Script::AppendVectorToArrayRef( Self->PupCont1, result );
-        break;
-    case ITEMS_PICKUP_FROM:
-        Self->ProcessItemsCollection( ITEMS_PICKUP_FROM, Self->PupCont2Init, Self->PupCont2 );
-        Script::AppendVectorToArrayRef( Self->PupCont2, result );
-        break;
-    default:
-        result->Release();
-        SCRIPT_ERROR_R0( "Invalid items collection." );
-        break;
-    }
-    return result;
 }
 
 uint FOClient::SScriptFunc::Global_GetDayTime( uint day_part )

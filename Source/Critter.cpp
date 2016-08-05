@@ -52,7 +52,6 @@ CLASS_PROPERTY_IMPL( Critter, DialogId );
 CLASS_PROPERTY_IMPL( Critter, BagId );
 CLASS_PROPERTY_IMPL( Critter, NpcRole );
 CLASS_PROPERTY_IMPL( Critter, TeamId );
-CLASS_PROPERTY_IMPL( Critter, FreeBarterPlayer );
 CLASS_PROPERTY_IMPL( Critter, LastWeaponId );
 CLASS_PROPERTY_IMPL( Critter, HandsItemProtoId );
 CLASS_PROPERTY_IMPL( Critter, HandsItemMode );
@@ -66,7 +65,6 @@ CLASS_PROPERTY_IMPL( Critter, WalkTime );
 CLASS_PROPERTY_IMPL( Critter, RunTime );
 CLASS_PROPERTY_IMPL( Critter, ScaleFactor );
 CLASS_PROPERTY_IMPL( Critter, SneakCoefficient );
-CLASS_PROPERTY_IMPL( Critter, BarterCoefficient );
 CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
 CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
@@ -84,7 +82,6 @@ CLASS_PROPERTY_IMPL( Critter, IsNoRotate );
 CLASS_PROPERTY_IMPL( Critter, IsNoTalk );
 CLASS_PROPERTY_IMPL( Critter, IsHide );
 CLASS_PROPERTY_IMPL( Critter, IsNoFlatten );
-CLASS_PROPERTY_IMPL( Critter, IsNoBarter );
 CLASS_PROPERTY_IMPL( Critter, KnownLocations );
 CLASS_PROPERTY_IMPL( Critter, ConnectionIp );
 CLASS_PROPERTY_IMPL( Critter, ConnectionPort );
@@ -111,8 +108,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     KnockoutAp = 0;
     CacheValuesNextTick = 0;
     Flags = 0;
-    AccessContainerId = 0;
-    ItemTransferCount = 0;
     TryingGoHomeTick = 0;
     ApRegenerationTick = 0;
     IdleNextTick = 0;
@@ -1162,42 +1157,6 @@ Item* Critter::GetItem( uint item_id, bool skip_hide )
     return nullptr;
 }
 
-Item* Critter::GetInvItem( uint item_id, int transfer_type )
-{
-    if( transfer_type == TRANSFER_CRIT_LOOT && GetIsNoLoot() )
-        return nullptr;
-    if( transfer_type == TRANSFER_CRIT_STEAL && GetIsNoSteal() )
-        return nullptr;
-
-    Item* item = GetItem( item_id, true );
-    if( !item || item->GetCritSlot() != SLOT_INV ||
-        ( transfer_type == TRANSFER_CRIT_LOOT && item->GetIsNoLoot() ) ||
-        ( transfer_type == TRANSFER_CRIT_STEAL && item->GetIsNoSteal() ) )
-        return nullptr;
-    return item;
-}
-
-void Critter::GetInvItems( ItemVec& items, int transfer_type, bool lock )
-{
-    if( transfer_type == TRANSFER_CRIT_LOOT && GetIsNoLoot() )
-        return;
-    if( transfer_type == TRANSFER_CRIT_STEAL && GetIsNoSteal() )
-        return;
-
-    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetCritSlot() == SLOT_INV && !item->GetIsHidden() &&
-            !( transfer_type == TRANSFER_CRIT_LOOT && item->GetIsNoLoot() ) &&
-            !( transfer_type == TRANSFER_CRIT_STEAL && item->GetIsNoSteal() ) )
-            items.push_back( item );
-    }
-
-    if( lock )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
-}
-
 #pragma MESSAGE("Add explicit sync lock.")
 Item* Critter::GetItemByPid( hash item_pid )
 {
@@ -1727,21 +1686,6 @@ void Critter::Send_EraseItem( Item* item )
     if( IsPlayer() )
         ( (Client*) this )->Send_EraseItem( item );
 }
-void Critter::Send_ContainerInfo()
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_ContainerInfo();
-}
-void Critter::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open_screen )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_ContainerInfo( item_cont, transfer_type, open_screen );
-}
-void Critter::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool open_screen )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_ContainerInfo( cr_cont, transfer_type, open_screen );
-}
 void Critter::Send_GlobalInfo( uchar flags )
 {
     if( IsPlayer() )
@@ -2236,11 +2180,6 @@ const char* Critter::GetInfo()
 int Critter::GetApCostCritterMove( bool is_run )
 {
     return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
-}
-
-int Critter::GetApCostMoveItemContainer()
-{
-    return GameOpt.RtApCostMoveItemContainer;
 }
 
 void Critter::SetHome( uint map_id, ushort hx, ushort hy, uchar dir )
@@ -3147,87 +3086,16 @@ void Client::Send_EraseItem( Item* item )
     BOUT_END( this );
 }
 
-void Client::Send_ContainerInfo()
+void Client::Send_SomeItems( ScriptArray* items_arr, int param )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    uchar transfer_type = TRANSFER_CLOSE;
-    uint  msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( transfer_type );
+    uint    msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( param ) + sizeof( bool ) + sizeof( uint );
 
-    BOUT_BEGIN( this );
-    Bout << NETMSG_CONTAINER_INFO;
-    Bout << msg_len;
-    Bout << transfer_type;
-    BOUT_END( this );
-
-    AccessContainerId = 0;
-}
-
-void Client::Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open_screen )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-    if( item_cont->GetType() != ITEM_TYPE_CONTAINER )
-        return;
-
-    uint                 msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
-    ItemVec              items;
-    item_cont->ContGetAllItems( items, true, true );
-    vector< PUCharVec* > items_data( items.size() );
-    vector< UIntVec* >   items_data_sizes( items.size() );
-    for( size_t i = 0, j = items.size(); i < j; i++ )
-    {
-        uint whole_data_size = items[ i ]->Props.StoreData( false, &items_data[ i ], &items_data_sizes[ i ] );
-        msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) + whole_data_size;
-    }
-    if( open_screen )
-        SETFLAG( transfer_type, 0x80 );
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_CONTAINER_INFO;
-    Bout << msg_len;
-    Bout << transfer_type;
-    Bout << uint( 0 );
-    Bout << item_cont->GetId();
-    Bout << (max_t) item_cont->GetProtoId();
-    Bout << uint( items.size() );
-
-    for( size_t i = 0, j = items.size(); i < j; i++ )
-    {
-        Item* item = items[ i ];
-        Bout << item->GetId();
-        Bout << item->GetProtoId();
-        NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
-    }
-    BOUT_END( this );
-
-    AccessContainerId = item_cont->GetId();
-}
-
-void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool open_screen )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    uint    msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uchar ) + sizeof( uint ) + sizeof( uint ) + sizeof( max_t ) + sizeof( uint );
     ItemVec items;
-    cr_cont->GetInvItems( items, transfer_type, true );
-    ushort  barter_k = 0;
-    if( transfer_type == TRANSFER_CRIT_BARTER )
-    {
-        int cr_cont_k = cr_cont->GetBarterCoefficient();
-        int k = GetBarterCoefficient();
-        if( cr_cont_k > k )
-            barter_k = cr_cont_k - k;
-        barter_k = CLAMP( barter_k, 5, 95 );
-        if( cr_cont->GetFreeBarterPlayer() == GetId() )
-            barter_k = 0;
-    }
-
-    if( open_screen )
-        SETFLAG( transfer_type, 0x80 );
-
+    if( items_arr )
+        Script::AssignScriptArrayInVector( items, items_arr );
     vector< PUCharVec* > items_data( items.size() );
     vector< UIntVec* >   items_data_sizes( items.size() );
     for( size_t i = 0, j = items.size(); i < j; i++ )
@@ -3237,14 +3105,11 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
     }
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CONTAINER_INFO;
+    Bout << NETMSG_SOME_ITEMS;
     Bout << msg_len;
-    Bout << transfer_type;
-    Bout << (uint) Talk.TalkTime;
-    Bout << cr_cont->GetId();
-    Bout << (max_t) barter_k;
+    Bout << param;
+    Bout << ( items_arr == nullptr );
     Bout << (uint) items.size();
-
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
         Item* item = items[ i ];
@@ -3253,8 +3118,6 @@ void Client::Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool ope
         NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
     }
     BOUT_END( this );
-
-    AccessContainerId = cr_cont->GetId();
 }
 
 #define SEND_LOCATION_SIZE    ( sizeof( uint ) + sizeof( hash ) + sizeof( ushort ) * 2 + sizeof( ushort ) + sizeof( uint ) + sizeof( uchar ) )
@@ -3872,39 +3735,6 @@ void Client::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar 
     BOUT_END( this );
 }
 
-void Client::Send_PlayersBarter( uchar barter, uint param, uint param_ext )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_PLAYERS_BARTER;
-    Bout << barter;
-    Bout << param;
-    Bout << param_ext;
-    BOUT_END( this );
-}
-
-void Client::Send_PlayersBarterSetHide( Item* item, uint count )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    uint       msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( uint ) + sizeof( hash ) + sizeof( uint );
-    PUCharVec* data;
-    UIntVec*   data_sizes;
-    uint       whole_data_size = item->Props.StoreData( false, &data, &data_sizes );
-    msg_len += sizeof( ushort ) + whole_data_size;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_PLAYERS_BARTER_SET_HIDE;
-    Bout << item->GetId();
-    Bout << item->GetProtoId();
-    Bout << count;
-    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
-    BOUT_END( this );
-}
-
 void Client::Send_ViewMap()
 {
     if( IsSendDisabled() || IsOffline() )
@@ -3998,87 +3828,6 @@ void Client::Send_CustomMessage( uint msg, uchar* data, uint data_size )
 }
 
 /************************************************************************/
-/* Players barter                                                       */
-/************************************************************************/
-
-Client* Client::BarterGetOpponent( uint opponent_id )
-{
-    if( BarterOpponent && BarterOpponent != opponent_id )
-    {
-        Critter* cr = ( GetMapId() ? GetCritSelf( BarterOpponent, true ) : GetGlobalMapCritter( BarterOpponent ) );
-        if( cr && cr->IsPlayer() )
-            ( (Client*) cr )->BarterEnd();
-        BarterEnd();
-    }
-
-    Critter* cr = ( GetMapId() ? GetCritSelf( opponent_id, true ) : GetGlobalMapCritter( opponent_id ) );
-    if( !cr || !cr->IsPlayer() || !cr->IsLife() || cr->IsBusy() || IS_TIMEOUT( cr->GetTimeoutBattle() ) || ( (Client*) cr )->IsOffline() ||
-        ( GetMapId() && !CheckDist( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), BARTER_DIST + GetMultihex() + cr->GetMultihex() ) ) )
-    {
-        if( cr && cr->IsPlayer() && BarterOpponent == cr->GetId() )
-            ( (Client*) cr )->BarterEnd();
-        BarterEnd();
-        return nullptr;
-    }
-
-    BarterOpponent = cr->GetId();
-    return (Client*) cr;
-}
-
-void Client::BarterEnd()
-{
-    BarterOpponent = 0;
-    Send_PlayersBarter( BARTER_END, 0, 0 );
-}
-
-void Client::BarterRefresh( Client* opponent )
-{
-    Send_PlayersBarter( BARTER_REFRESH, opponent->GetId(), opponent->BarterHide );
-    Send_PlayersBarter( BARTER_OFFER, BarterOffer, false );
-    Send_PlayersBarter( BARTER_OFFER, opponent->BarterOffer, true );
-    if( !opponent->BarterHide )
-        Send_ContainerInfo( opponent, TRANSFER_CRIT_BARTER, false );
-    for( auto it = BarterItems.begin(); it != BarterItems.end();)
-    {
-        BarterItem& barter_item = *it;
-        if( !GetItem( barter_item.Id, true ) )
-            it = BarterItems.erase( it );
-        else
-        {
-            Send_PlayersBarter( BARTER_SET_SELF, barter_item.Id, barter_item.Count );
-            ++it;
-        }
-    }
-    for( auto it = opponent->BarterItems.begin(); it != opponent->BarterItems.end();)
-    {
-        BarterItem& barter_item = *it;
-        if( !opponent->GetItem( barter_item.Id, true ) )
-            it = opponent->BarterItems.erase( it );
-        else
-        {
-            if( opponent->BarterHide )
-                Send_PlayersBarterSetHide( opponent->GetItem( barter_item.Id, true ), barter_item.Count );
-            else
-                Send_PlayersBarter( BARTER_SET_OPPONENT, barter_item.Id, barter_item.Count );
-            ++it;
-        }
-    }
-}
-
-Client::BarterItem* Client::BarterGetItem( uint item_id )
-{
-    auto it = std::find( BarterItems.begin(), BarterItems.end(), item_id );
-    return it != BarterItems.end() ? &( *it ) : nullptr;
-}
-
-void Client::BarterEraseItem( uint item_id )
-{
-    auto it = std::find( BarterItems.begin(), BarterItems.end(), item_id );
-    if( it != BarterItems.end() )
-        BarterItems.erase( it );
-}
-
-/************************************************************************/
 /* Dialogs                                                              */
 /************************************************************************/
 
@@ -4165,8 +3914,8 @@ void Client::CloseTalk()
             if( npc )
             {
                 if( Talk.Barter )
-                    Script::RaiseInternalEvent( ServerFunctions.CritterBarter, npc, this, false, npc->GetBarterPlayers() );
-                Script::RaiseInternalEvent( ServerFunctions.CritterTalk, npc, this, false, npc->GetTalkedPlayers() );
+                    Script::RaiseInternalEvent( ServerFunctions.CritterBarter, this, npc, false, npc->GetBarterPlayers() );
+                Script::RaiseInternalEvent( ServerFunctions.CritterTalk, this, npc, false, npc->GetTalkedPlayers() );
             }
         }
 

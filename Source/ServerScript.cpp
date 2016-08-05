@@ -140,7 +140,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( GenerateWorld );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
-    BIND_INTERNAL_EVENT( ItemsBarter );
     BIND_INTERNAL_EVENT( WorldSave );
     BIND_INTERNAL_EVENT( GlobalMapCritterIn );
     BIND_INTERNAL_EVENT( GlobalMapCritterOut );
@@ -159,8 +158,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterAttack );
     BIND_INTERNAL_EVENT( CritterDead );
     BIND_INTERNAL_EVENT( CritterRespawn );
-    BIND_INTERNAL_EVENT( CritterStealing );
-    BIND_INTERNAL_EVENT( CritterUseSkill );
     BIND_INTERNAL_EVENT( CritterCheckMoveItem );
     BIND_INTERNAL_EVENT( CritterMoveItem );
     BIND_INTERNAL_EVENT( CritterShow );
@@ -728,7 +725,7 @@ Item* FOServer::SScriptFunc::Item_GetChild( Item* item, uint child_index )
     return item->GetChild( child_index );
 }
 
-bool FOServer::SScriptFunc::Item_CallSceneryFunction( Item* scenery, Critter* cr, int skill, Item* item )
+bool FOServer::SScriptFunc::Item_CallSceneryFunction( Item* scenery, Critter* cr, Item* item, int param )
 {
     if( !scenery->SceneryScriptBindId )
         return false;
@@ -736,8 +733,8 @@ bool FOServer::SScriptFunc::Item_CallSceneryFunction( Item* scenery, Critter* cr
     Script::PrepareContext( scenery->SceneryScriptBindId, cr->GetInfo() );
     Script::SetArgEntity( cr );
     Script::SetArgEntity( scenery );
-    Script::SetArgUInt( item ? SKILL_PICK_ON_GROUND : skill );
     Script::SetArgEntity( item );
+    Script::SetArgUInt( param );
     return Script::RunPrepared() && Script::GetReturnedBool();
 }
 
@@ -1825,7 +1822,7 @@ int FOServer::SScriptFunc::Crit_GetFog( Critter* cr, ushort zone_x, ushort zone_
     return result;
 }
 
-void FOServer::SScriptFunc::Cl_ShowContainer( Critter* cl, Critter* cr_cont, Item* item_cont, uchar transfer_type )
+void FOServer::SScriptFunc::Cl_SendItems( Critter* cl, ScriptArray* items, int param )
 {
     if( cl->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1834,22 +1831,7 @@ void FOServer::SScriptFunc::Cl_ShowContainer( Critter* cl, Critter* cr_cont, Ite
     if( !cl->IsPlayer() )
         return;
 
-    if( cr_cont )
-    {
-        if( cr_cont->IsDestroyed )
-            SCRIPT_ERROR_R( "Critter container is destroyed." );
-        ( (Client*) cl )->Send_ContainerInfo( cr_cont, transfer_type, true );
-    }
-    else if( item_cont )
-    {
-        if( item_cont->IsDestroyed )
-            SCRIPT_ERROR_R( "Item container is destroyed." );
-        ( (Client*) cl )->Send_ContainerInfo( item_cont, transfer_type, true );
-    }
-    else
-    {
-        ( (Client*) cl )->Send_ContainerInfo();
-    }
+    ( (Client*) cl )->Send_SomeItems( items, param );
 }
 
 void FOServer::SScriptFunc::Cl_RunClientScript( Critter* cl, ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
@@ -3839,8 +3821,6 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     std::swap( cr1->Flags, cr2->Flags );
     cr1->SetBreakTime( 0 );
     cr2->SetBreakTime( 0 );
-    std::swap( cr1->AccessContainerId, cr2->AccessContainerId );
-    std::swap( cr1->ItemTransferCount, cr2->ItemTransferCount );
     std::swap( cr1->ApRegenerationTick, cr2->ApRegenerationTick );
 
     // Swap inventory

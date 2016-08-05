@@ -1028,7 +1028,6 @@ GameOptions::GameOptions()
     ApRegeneration = 10000;
     RtApCostCritterWalk = 0;
     RtApCostCritterRun = 1;
-    RtApCostMoveItemContainer = 0;
     RtAlwaysRun = false;
     RunOnCombat = false;
     RunOnTransfer = false;

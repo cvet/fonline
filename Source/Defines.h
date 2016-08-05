@@ -84,23 +84,6 @@
 #define SAY_APPEND                  ( 13 )
 #define SAY_FLASH_WINDOW            ( 41 )
 
-// Transfer types
-#define TRANSFER_CLOSE              ( 0 )
-#define TRANSFER_HEX_CONT_UP        ( 1 )
-#define TRANSFER_HEX_CONT_DOWN      ( 2 )
-#define TRANSFER_SELF_CONT          ( 3 )
-#define TRANSFER_CRIT_LOOT          ( 4 )
-#define TRANSFER_CRIT_STEAL         ( 5 )
-#define TRANSFER_CRIT_BARTER        ( 6 )
-#define TRANSFER_FAR_CONT           ( 7 )
-#define TRANSFER_FAR_CRIT           ( 8 )
-
-// Take flags
-#define CONT_GET                    ( 1 )
-#define CONT_PUT                    ( 2 )
-#define CONT_GETALL                 ( 3 )
-#define CONT_PUTALL                 ( 4 )
-
 // Target types
 #define TARGET_SELF                 ( 0 )
 #define TARGET_SELF_ITEM            ( 1 )
@@ -215,20 +198,6 @@
 #define SLOT_HAND2                  ( 2 )
 #define SLOT_ARMOR                  ( 3 )
 #define SLOT_GROUND                 ( 255 )
-
-// Players barter
-#define BARTER_DIST                 ( 1 )
-// Types
-#define BARTER_TRY                  ( 0 )  // opponentId, isHide
-#define BARTER_ACCEPTED             ( 1 )  // opponentId, isHide
-#define BARTER_BEGIN                ( 2 )
-#define BARTER_END                  ( 3 )
-#define BARTER_SET_SELF             ( 4 )
-#define BARTER_SET_OPPONENT         ( 5 )
-#define BARTER_UNSET_SELF           ( 6 )
-#define BARTER_UNSET_OPPONENT       ( 7 )
-#define BARTER_OFFER                ( 8 )  // isSet, isOpponent
-#define BARTER_REFRESH              ( 9 )
 
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.

@@ -195,18 +195,10 @@ void ItemManager::DeleteItem( Item* item )
 
 Item* ItemManager::SplitItem( Item* item, uint count )
 {
-    if( !item->GetStackable() )
-    {
-        WriteLogF( _FUNC_, " - Splitted item '%s' is not stackable, id %u.\n", item->GetName(), item->GetId() );
-        return nullptr;
-    }
-
     uint item_count = item->GetCount();
-    if( !count || count >= item_count )
-    {
-        WriteLogF( _FUNC_, " - Invalid item '%s' count, id %u, count %u, split count %u.\n", item->GetName(), item->GetId(), item_count, count );
-        return nullptr;
-    }
+    RUNTIME_ASSERT( item->GetStackable() );
+    RUNTIME_ASSERT( count > 0 );
+    RUNTIME_ASSERT( count < item_count );
 
     Item* new_item = CreateItem( item->GetProtoId(), count, &item->Props ); // Ignore init script
     if( !new_item )
@@ -214,6 +206,13 @@ Item* ItemManager::SplitItem( Item* item, uint count )
         WriteLogF( _FUNC_, " - Create item '%s' fail, count %u.\n", item->GetName(), count );
         return nullptr;
     }
+
+    new_item->SetAccessory( ITEM_ACCESSORY_NONE );
+    new_item->SetCritId( 0 );
+    new_item->SetCritSlot( 0 );
+    new_item->SetMapId( 0 );
+    new_item->SetContainerId( 0 );
+    new_item->SetContainerStack( 0 );
 
     item->ChangeCount( -(int) count );
 
@@ -476,18 +475,6 @@ bool ItemManager::SetItemCritter( Critter* cr, hash pid, uint count )
 bool ItemManager::ItemCheckMove( Item* item, uint count, Entity* from, Entity* to )
 {
     return Script::RaiseInternalEvent( ServerFunctions.ItemCheckMove, item, count, from, to );
-}
-
-void ItemManager::FilterMoveItems( ItemVec& items, Entity* from, Entity* to )
-{
-    for( auto it = items.begin(); it != items.end();)
-    {
-        Item* item = *it;
-        if( !ItemCheckMove( item, item->GetCount(), from, to ) )
-            it = items.erase( it );
-        else
-            ++it;
-    }
 }
 
 bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, Item* item, uint count )

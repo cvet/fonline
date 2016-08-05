@@ -22,45 +22,32 @@
 #include "Theora/theoradec.h"
 
 // Fonts
-#define FONT_DEFAULT                   ( 0 )
+#define FONT_DEFAULT              ( 0 )
 
 // Screens
-#define SCREEN_NONE                    ( 0 )
+#define SCREEN_NONE               ( 0 )
 // Primary screens
-#define SCREEN_LOGIN                   ( 1 )
-#define SCREEN_GAME                    ( 2 )
-#define SCREEN_GLOBAL_MAP              ( 3 )
-#define SCREEN_WAIT                    ( 4 )
+#define SCREEN_LOGIN              ( 1 )
+#define SCREEN_GAME               ( 2 )
+#define SCREEN_GLOBAL_MAP         ( 3 )
+#define SCREEN_WAIT               ( 4 )
 // Secondary screens
-#define SCREEN__PICKUP                 ( 5 )
-#define SCREEN__DIALOG                 ( 6 )
-#define SCREEN__BARTER                 ( 7 )
-#define SCREEN__DIALOGBOX              ( 8 )
-#define SCREEN__TOWN_VIEW              ( 9 )
+#define SCREEN__DIALOG            ( 6 )
+#define SCREEN__DIALOGBOX         ( 8 )
+#define SCREEN__TOWN_VIEW         ( 9 )
 
 // Proxy types
-#define PROXY_SOCKS4                   ( 1 )
-#define PROXY_SOCKS5                   ( 2 )
-#define PROXY_HTTP                     ( 3 )
+#define PROXY_SOCKS4              ( 1 )
+#define PROXY_SOCKS5              ( 2 )
+#define PROXY_HTTP                ( 3 )
 
 // InitNetReason
-#define INIT_NET_REASON_NONE           ( 0 )
-#define INIT_NET_REASON_LOGIN          ( 1 )
-#define INIT_NET_REASON_REG            ( 2 )
-#define INIT_NET_REASON_LOAD           ( 3 )
-#define INIT_NET_REASON_LOGIN2         ( 4 )
-#define INIT_NET_REASON_CUSTOM         ( 5 )
-
-// Items collections
-#define ITEMS_CHOSEN_ALL               ( 0 )
-#define ITEMS_INVENTORY                ( 1 )
-#define ITEMS_USE                      ( 2 )
-#define ITEMS_BARTER                   ( 3 )
-#define ITEMS_BARTER_OFFER             ( 4 )
-#define ITEMS_BARTER_OPPONENT          ( 5 )
-#define ITEMS_BARTER_OPPONENT_OFFER    ( 6 )
-#define ITEMS_PICKUP                   ( 7 )
-#define ITEMS_PICKUP_FROM              ( 8 )
+#define INIT_NET_REASON_NONE      ( 0 )
+#define INIT_NET_REASON_LOGIN     ( 1 )
+#define INIT_NET_REASON_REG       ( 2 )
+#define INIT_NET_REASON_LOAD      ( 3 )
+#define INIT_NET_REASON_LOGIN2    ( 4 )
+#define INIT_NET_REASON_CUSTOM    ( 5 )
 
 class FOClient
 {
@@ -160,10 +147,8 @@ public:
     void Net_SendCreatePlayer();
     void Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data );
     void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
-    void Net_SendItemCont( uchar transfer_type, uint cont_id, uint item_id, uint count, uchar take_flags );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
     void Net_SendSayNpc( uchar is_npc, uint id_to_talk, const char* str );
-    void Net_SendBarter( uint npc_id, ItemVec& cont_sale, ItemVec& cont_buy );
     void Net_SendGetGameInfo();
     void Net_SendGiveMap( bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash );
     void Net_SendLoadMapOk();
@@ -171,7 +156,6 @@ public:
     void Net_SendDir();
     void Net_SendMove( UCharVec steps );
     void Net_SendPing( uchar ping );
-    void Net_SendPlayersBarter( uchar barter, uint param, uint param_ext );
     void Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text );
     void Net_SendGetUserHoloStr( uint str_num );
     void Net_SendRefereshMe();
@@ -221,9 +205,7 @@ public:
     void Net_OnLoadMap();
     void Net_OnMap();
     void Net_OnGlobalInfo();
-    void Net_OnContainerInfo();
-    void Net_OnPlayersBarter();
-    void Net_OnPlayersBarterSetHide();
+    void Net_OnSomeItems();
     void Net_OnCheckUID3();
 
     void Net_OnUpdateFilesList();
@@ -416,6 +398,7 @@ public:
         static uint  Crit_get_ContourColor( CritterCl* cr );
         static void  Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines );
 
+        static Item* Item_Clone( Item* item, uint count );
         static bool  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static void  Item_Animate( Item* item, uint from_frame, uint to_frame );
         static Item* Item_GetChild( Item* item, uint childIndex );
@@ -462,7 +445,6 @@ public:
         static void          Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop );
         static void          Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same );
         static int           Global_GetFog( ushort zone_x, ushort zone_y );
-        static ScriptArray*  Global_RefreshItemsCollection( int collection );
         static uint          Global_GetDayTime( uint day_part );
         static void          Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
 
@@ -539,19 +521,6 @@ public:
 /************************************************************************/
     int InitIface();
 
-    // Initial state
-    ItemVec InvContInit;
-    ItemVec BarterCont1oInit, BarterCont2Init, BarterCont2oInit;
-    ItemVec PupCont2Init;
-    // After script processing
-    ItemVec InvCont, BarterCont1, PupCont1, UseCont;
-    ItemVec BarterCont1o, BarterCont2, BarterCont2o;
-    ItemVec PupCont2;
-
-    Item* GetContainerItem( ItemVec& cont, uint id );
-    void  CollectContItems();
-    void  ProcessItemsCollection( int collection, ItemVec& init_items, ItemVec& result );
-
     bool LoginCheckData();
     bool RegCheckData();
 
@@ -579,17 +548,10 @@ public:
 /************************************************************************/
 /* Dialog                                                               */
 /************************************************************************/
-    uchar  DlgIsNpc;
-    uint   DlgNpcId;
-    uint   BarterPlayerId;
-    ushort BarterK;
-    bool   BarterIsPlayers, BarterOpponentHide, BarterOffer, BarterOpponentOffer;
+    uchar DlgIsNpc;
+    uint  DlgNpcId;
 
-    bool IsScreenPlayersBarter();
-    void BarterTryOffer();
-    void BarterTransfer( uint item_id, int item_cont, uint item_count );
-    void ContainerCalcInfo( ItemVec& cont, uint& cost, int barter_k, bool sell );
-    void FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl * player, CritterCl * npc, const char* lexems );
+    void  FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl * player, CritterCl * npc, const char* lexems );
 
 /************************************************************************/
 /* Mini-map                                                             */
@@ -686,18 +648,13 @@ public:
 /* DialogBox                                                            */
 /************************************************************************/
     #define DIALOGBOX_NONE            ( 0 )
-    #define DIALOGBOX_BARTER          ( 2 )
     uchar  DlgboxType;
     uint   DlgboxWait;
     char   DlgboxText[ MAX_FOTEXT ];
     string DlgboxButtonText[ 100 ];
     uint   DlgboxButtonsCount;
-    // For barter
-    uint   PBarterPlayerId;
-    bool   PBarterHide;
 
     void ShowDialogBox();
-    void DlgboxAnswer( int selected );
 
 /************************************************************************/
 /* Wait                                                                 */

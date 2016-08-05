@@ -86,7 +86,6 @@ public:
     CLASS_PROPERTY( uint, LookDistance );
     CLASS_PROPERTY( hash, DialogId );
     CLASS_PROPERTY( bool, IsNoTalk );
-    CLASS_PROPERTY( bool, IsNoBarter );
     CLASS_PROPERTY( int, MaxTalkers );   // Callback on begin dialog?
     CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
@@ -125,14 +124,12 @@ public:
     CLASS_PROPERTY( ScriptArray *, InternalBagItemCount );
     CLASS_PROPERTY( ScriptArray *, ExternalBagCurrentSet );
     CLASS_PROPERTY( int, SneakCoefficient );
-    CLASS_PROPERTY( int, BarterCoefficient );
     // Exclude
     CLASS_PROPERTY( hash, BagId );              // Bags (migrate bags to scripts)
     CLASS_PROPERTY( uint, LastWeaponId );       // Bags
     CLASS_PROPERTY( bool, IsNoItemGarbager );   // Bags
     CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
     CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
-    CLASS_PROPERTY( uint, FreeBarterPlayer );   // Used for barter coef
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
     CLASS_PROPERTY( bool, IsNoPush );           // Can puck checks
     CLASS_PROPERTY( bool, IsNoEnemyStack );     // Migrate enemy stack to scripts
@@ -215,9 +212,7 @@ public:
     void     SetItem( Item* item );
     void     EraseItem( Item* item, bool send );
     Item*    GetItem( uint item_id, bool skip_hide );
-    Item*    GetInvItem( uint item_id, int transfer_type );
     ItemVec& GetItemsNoLock() { return invItems; }
-    void     GetInvItems( ItemVec& items, int transfer_type, bool lock );
     Item*    GetItemByPid( hash item_pid );
     Item*    GetItemByPidInvPriority( hash item_pid );
     Item*    GetItemByPidSlot( hash item_pid, int slot );
@@ -278,9 +273,6 @@ public:
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
     void Send_AddItem( Item* item );
     void Send_EraseItem( Item* item );
-    void Send_ContainerInfo();
-    void Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open_screen );
-    void Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool open_screen );
     void Send_GlobalInfo( uchar flags );
     void Send_GlobalLocation( Location* loc, bool add );
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );
@@ -343,14 +335,9 @@ public:
     void        SubAp( int val );
 
     int GetApCostCritterMove( bool is_run );
-    int GetApCostMoveItemContainer();
 
     // Timeouts
     bool IsTransferTimeouts( bool send );
-
-    // Current container
-    uint AccessContainerId;
-    uint ItemTransferCount;
 
     // Home
     uint TryingGoHomeTick;
@@ -506,9 +493,7 @@ public:
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
     void Send_AddItem( Item* item );
     void Send_EraseItem( Item* item );
-    void Send_ContainerInfo();
-    void Send_ContainerInfo( Item* item_cont, uchar transfer_type, bool open_screen );
-    void Send_ContainerInfo( Critter* cr_cont, uchar transfer_type, bool open_screen );
+    void Send_SomeItems( ScriptArray* items_arr, int param );
     void Send_GlobalInfo( uchar flags );
     void Send_GlobalLocation( Location* loc, bool add );
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );
@@ -537,34 +522,11 @@ public:
     void Send_MapTextMsg( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str );
     void Send_MapTextMsgLex( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len );
     void Send_UserHoloStr( uint str_num, const char* text, ushort text_len );
-    void Send_PlayersBarter( uchar barter, uint param, uint param_ext );
-    void Send_PlayersBarterSetHide( Item* item, uint count );
-    void Send_RunClientScript( const char* func_name, int p0, int p1, int p2, const char* p3, UIntVec& p4 );
     void Send_ViewMap();
     void Send_CheckUIDS();
     void Send_SomeItem( Item* item );                                     // Without checks
     void Send_CustomMessage( uint msg );
     void Send_CustomMessage( uint msg, uchar* data, uint data_size );
-
-    // Players barter
-    bool BarterOffer;
-    bool BarterHide;
-    uint BarterOpponent;
-    struct BarterItem
-    {
-        uint Id;
-        uint Count;
-        bool operator==( uint id ) { return Id == id; }
-        BarterItem( uint id, uint count ): Id( id ), Count( count ) {}
-    };
-    typedef vector< BarterItem > BarterItemVec;
-    BarterItemVec BarterItems;
-
-    Client*     BarterGetOpponent( uint opponent_id );
-    void        BarterEnd();
-    void        BarterRefresh( Client* opponent );
-    BarterItem* BarterGetItem( uint item_id );
-    void        BarterEraseItem( uint item_id );
 
     // Dialogs
 private:
