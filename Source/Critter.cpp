@@ -1224,37 +1224,6 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
     return nullptr;
 }
 
-Item* Critter::GetAmmoForWeapon( Item* weap )
-{
-    if( !weap->IsWeapon() )
-        return nullptr;
-
-    Item* ammo = GetItemByPid( weap->GetAmmoPid() );
-    if( ammo )
-        return ammo;
-    ammo = GetItemByPid( weap->GetWeapon_DefaultAmmoPid() );
-    if( ammo )
-        return ammo;
-    ammo = GetAmmo( weap->GetWeapon_Caliber() );
-
-    // Already synchronized
-    return ammo;
-}
-
-Item* Critter::GetAmmo( int caliber )
-{
-    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetType() == ITEM_TYPE_AMMO && item->GetAmmo_Caliber() == caliber )
-        {
-            SYNC_LOCK( item );
-            return item;
-        }
-    }
-    return nullptr;
-}
-
 Item* Critter::GetItemCar()
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
@@ -3981,13 +3950,6 @@ void Npc::RefreshBag()
             pids[ item->GetProtoId() ] += item->GetCount();
         else
             pids[ item->GetProtoId() ] = item->GetCount();
-
-        // Repair/reload item in slots
-        if( item->GetCritSlot() != SLOT_INV )
-        {
-            if( item->IsWeapon() && item->GetWeapon_MaxAmmoCount() && item->WeapIsEmpty() )
-                item->WeapLoadHolder();
-        }
     }
 
     // Item garbager

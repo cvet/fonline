@@ -11,12 +11,9 @@
 #endif
 
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Type );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Grid_Type );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicMap );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicInv );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Stackable );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Weapon_IsUnarmed );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Weapon_Anim1 );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, short, OffsetX );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, short, OffsetY );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, Slot );
@@ -87,41 +84,7 @@ CLASS_PROPERTY_IMPL( Item, ChildLines_1 );
 CLASS_PROPERTY_IMPL( Item, ChildLines_2 );
 CLASS_PROPERTY_IMPL( Item, ChildLines_3 );
 CLASS_PROPERTY_IMPL( Item, ChildLines_4 );
-CLASS_PROPERTY_IMPL( Item, Weapon_IsUnarmed );
-CLASS_PROPERTY_IMPL( Item, Weapon_UnarmedMinAgility );
-CLASS_PROPERTY_IMPL( Item, Weapon_UnarmedMinUnarmed );
-CLASS_PROPERTY_IMPL( Item, Weapon_UnarmedMinLevel );
 CLASS_PROPERTY_IMPL( Item, Weapon_Anim1 );
-CLASS_PROPERTY_IMPL( Item, Weapon_MaxAmmoCount );
-CLASS_PROPERTY_IMPL( Item, Weapon_Caliber );
-CLASS_PROPERTY_IMPL( Item, Weapon_DefaultAmmoPid );
-CLASS_PROPERTY_IMPL( Item, Weapon_MinStrength );
-CLASS_PROPERTY_IMPL( Item, Weapon_Perk );
-CLASS_PROPERTY_IMPL( Item, Weapon_IsTwoHanded );
-CLASS_PROPERTY_IMPL( Item, Weapon_ActiveUses );
-CLASS_PROPERTY_IMPL( Item, Weapon_Skill_0 );
-CLASS_PROPERTY_IMPL( Item, Weapon_Skill_1 );
-CLASS_PROPERTY_IMPL( Item, Weapon_Skill_2 );
-CLASS_PROPERTY_IMPL( Item, Weapon_PicUse_0 );
-CLASS_PROPERTY_IMPL( Item, Weapon_PicUse_1 );
-CLASS_PROPERTY_IMPL( Item, Weapon_PicUse_2 );
-CLASS_PROPERTY_IMPL( Item, Weapon_MaxDist_0 );
-CLASS_PROPERTY_IMPL( Item, Weapon_MaxDist_1 );
-CLASS_PROPERTY_IMPL( Item, Weapon_MaxDist_2 );
-CLASS_PROPERTY_IMPL( Item, Weapon_Round_0 );
-CLASS_PROPERTY_IMPL( Item, Weapon_Round_1 );
-CLASS_PROPERTY_IMPL( Item, Weapon_Round_2 );
-CLASS_PROPERTY_IMPL( Item, Weapon_ApCost_0 );
-CLASS_PROPERTY_IMPL( Item, Weapon_ApCost_1 );
-CLASS_PROPERTY_IMPL( Item, Weapon_ApCost_2 );
-CLASS_PROPERTY_IMPL( Item, Weapon_Aim_0 );
-CLASS_PROPERTY_IMPL( Item, Weapon_Aim_1 );
-CLASS_PROPERTY_IMPL( Item, Weapon_Aim_2 );
-CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_0 );
-CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_1 );
-CLASS_PROPERTY_IMPL( Item, Weapon_SoundId_2 );
-CLASS_PROPERTY_IMPL( Item, Ammo_Caliber );
-CLASS_PROPERTY_IMPL( Item, Grid_Type );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMap );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMapEntire );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMapDir );
@@ -166,16 +129,6 @@ CLASS_PROPERTY_IMPL( Item, SortValue );
 CLASS_PROPERTY_IMPL( Item, Indicator );
 CLASS_PROPERTY_IMPL( Item, Mode );
 CLASS_PROPERTY_IMPL( Item, Count );
-CLASS_PROPERTY_IMPL( Item, Val0 );
-CLASS_PROPERTY_IMPL( Item, Val1 );
-CLASS_PROPERTY_IMPL( Item, Val2 );
-CLASS_PROPERTY_IMPL( Item, Val3 );
-CLASS_PROPERTY_IMPL( Item, Val4 );
-CLASS_PROPERTY_IMPL( Item, Val5 );
-CLASS_PROPERTY_IMPL( Item, Val6 );
-CLASS_PROPERTY_IMPL( Item, Val7 );
-CLASS_PROPERTY_IMPL( Item, Val8 );
-CLASS_PROPERTY_IMPL( Item, Val9 );
 CLASS_PROPERTY_IMPL( Item, AmmoPid );
 CLASS_PROPERTY_IMPL( Item, AmmoCount );
 CLASS_PROPERTY_IMPL( Item, TrapValue );
@@ -315,69 +268,6 @@ void Item::ChangeCount( int val )
     SetCount( GetCount() + val );
 }
 
-void Item::SetWeaponMode( uchar mode )
-{
-    if( !IsWeapon() )
-    {
-        mode &= 0xF;
-        if( mode == USE_USE && !GetIsCanUse() && !GetIsCanUseOnSmth() )
-            mode = USE_NONE;
-        else if( GetIsCanUse() || GetIsCanUseOnSmth() )
-            mode = USE_USE;
-        else
-            mode = USE_NONE;
-    }
-    else
-    {
-        uchar use = ( mode & 0xF );
-        uchar aim = ( mode >> 4 );
-
-        switch( use )
-        {
-        case USE_PRIMARY:
-            if( GetWeapon_ActiveUses() & 0x1 )
-                break;
-            use = 0xF;
-            aim = 0;
-            break;
-        case USE_SECONDARY:
-            if( GetWeapon_ActiveUses() & 0x2 )
-                break;
-            use = USE_PRIMARY;
-            aim = 0;
-            break;
-        case USE_THIRD:
-            if( GetWeapon_ActiveUses() & 0x4 )
-                break;
-            use = USE_PRIMARY;
-            aim = 0;
-            break;
-        case USE_RELOAD:
-            aim = 0;
-            if( GetWeapon_MaxAmmoCount() )
-                break;
-            use = USE_PRIMARY;
-            break;
-        case USE_USE:
-            aim = 0;
-            if( GetIsCanUseOnSmth() )
-                break;
-            use = USE_PRIMARY;
-            break;
-        default:
-            use = USE_PRIMARY;
-            aim = 0;
-            break;
-        }
-
-        if( use < MAX_USES && aim && !( use == 0 ? GetWeapon_Aim_0() : ( use == 1 ? GetWeapon_Aim_1() : GetWeapon_Aim_2() ) ) )
-            aim = 0;
-        mode = ( aim << 4 ) | ( use & 0xF );
-    }
-
-    SetMode( mode );
-}
-
 uint Item::GetCost1st()
 {
     uint cost = ( GetCost() ? GetCost() : GetCost() );
@@ -390,13 +280,6 @@ uint Item::GetCost1st()
     if( !cost )
         cost = 1;
     return cost;
-}
-
-void Item::WeapLoadHolder()
-{
-    if( !GetAmmoPid() )
-        SetAmmoPid( GetWeapon_DefaultAmmoPid() );
-    SetAmmoCount( (ushort) GetWeapon_MaxAmmoCount() );
 }
 
 #ifdef FONLINE_SERVER

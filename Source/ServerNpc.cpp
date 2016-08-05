@@ -400,7 +400,7 @@ void FOServer::ProcessAI( Npc* npc )
                 }
 
                 ProtoItem* unarmed = ProtoMngr.GetProtoItem( r2 );
-                if( !unarmed || !unarmed->GetWeapon_IsUnarmed() )
+                if( !unarmed )
                     unarmed = ProtoMngr.GetProtoItem( ITEM_DEF_SLOT );
 
                 Item* def_item_main = npc->GetHandsItem();
@@ -410,7 +410,7 @@ void FOServer::ProcessAI( Npc* npc )
                 weap = def_item_main;
             }
             use = r1;
-            npc->ItemSlotMain->SetWeaponMode( MAKE_ITEM_MODE( use, 0 ) );
+            npc->ItemSlotMain->SetMode( MAKE_ITEM_MODE( use, 0 ) );
 
             /************************************************************************/
             /* Step 2: Move to target                                               */
@@ -459,7 +459,7 @@ void FOServer::ProcessAI( Npc* npc )
             ushort    res_hx = t_hx;
             ushort    res_hy = t_hy;
             bool      is_run = plane->Attack.IsRun;
-            bool      is_range = ( ( use == 0 ? weap->GetWeapon_MaxDist_0() : ( use == 1 ? weap->GetWeapon_MaxDist_1() : weap->GetWeapon_MaxDist_2() ) ) > 2 );
+            bool      is_range = ( max_dist > 2 );
 
             TraceData trace;
             trace.TraceMap = map;
@@ -587,12 +587,12 @@ void FOServer::ProcessAI( Npc* npc )
                 break;
             }
 
-            if( r0 != (uint) use && weap->WeapIsUseAviable( r0 ) )
+            if( r0 != (uint) use )
                 use = r0;
 
             int   aim = r1;
             uchar mode = MAKE_ITEM_MODE( use, aim );
-            weap->SetWeaponMode( mode );
+            weap->SetMode( mode );
 
             int ap_cost = npc->GetUseApCost( npc->ItemSlotMain, mode );
             CHECK_NPC_AP( npc, map, ap_cost );

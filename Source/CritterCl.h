@@ -128,19 +128,13 @@ public:
     Item* GetItemByPid( hash item_pid );
     Item* GetItemByPidInvPriority( hash item_pid );
     Item* GetItemByPidSlot( hash item_pid, int slot );
-    Item* GetAmmo( uint caliber );
     Item* GetItemSlot( int slot );
     void  GetItemsSlot( int slot, ItemVec& items );
     void  GetItemsType( int slot, ItemVec& items );
     uint  CountItemPid( hash item_pid );
     uint  CountItemType( uchar type );
     bool  IsHaveLightSources();
-    Item* GetSlotUse( uchar num_slot, uchar& use );
-    bool  IsItemAim( uchar num_slot );
-    uchar GetUse()      { return ItemSlotMain->GetMode() & 0xF; }
-    uchar GetFullRate() { return ItemSlotMain->GetMode(); }
     uint  GetUseApCost( Item* item, uchar rate );
-    Item* GetAmmoAvialble( Item* weap );
 
     // Moving
 public:

@@ -663,16 +663,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                                 ( (Item*) entities.back() )->SetAmmoPid( Str::GetHash( svalue ) );
                             SET_FIELD_ITEM( "Item_AmmoCount", AmmoCount );
                             SET_FIELD_ITEM( "Item_TrapValue", TrapValue );
-                            SET_FIELD_ITEM( "Item_Val0", Val0 );
-                            SET_FIELD_ITEM( "Item_Val1", Val1 );
-                            SET_FIELD_ITEM( "Item_Val2", Val2 );
-                            SET_FIELD_ITEM( "Item_Val3", Val3 );
-                            SET_FIELD_ITEM( "Item_Val4", Val4 );
-                            SET_FIELD_ITEM( "Item_Val5", Val5 );
-                            SET_FIELD_ITEM( "Item_Val6", Val6 );
-                            SET_FIELD_ITEM( "Item_Val7", Val7 );
-                            SET_FIELD_ITEM( "Item_Val8", Val8 );
-                            SET_FIELD_ITEM( "Item_Val9", Val9 );
                             if( field == "Item_InContainer" )
                                 entities_addon.back().ContainerUID = ivalue;
 

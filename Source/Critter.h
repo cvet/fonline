@@ -213,8 +213,6 @@ public:
     Item*    GetItemByPid( hash item_pid );
     Item*    GetItemByPidInvPriority( hash item_pid );
     Item*    GetItemByPidSlot( hash item_pid, int slot );
-    Item*    GetAmmoForWeapon( Item* weap );
-    Item*    GetAmmo( int caliber );
     Item*    GetItemCar();
     Item*    GetItemSlot( int slot );
     void     GetItemsSlot( int slot, ItemVec& items, bool lock );

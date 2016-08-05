@@ -19,13 +19,12 @@
 #define MAX_ADDED_NOGROUP_ITEMS      ( 30 )
 
 // Types
-#define ITEM_TYPE_OTHER              ( 0 )
 #define ITEM_TYPE_ARMOR              ( 1 )
-#define ITEM_TYPE_DRUG               ( 2 )
+#define ITEM_TYPE_DRUG               ( 2 ) // -
 #define ITEM_TYPE_WEAPON             ( 3 )
-#define ITEM_TYPE_AMMO               ( 4 )
-#define ITEM_TYPE_MISC               ( 5 )
-#define ITEM_TYPE_KEY                ( 7 )
+#define ITEM_TYPE_AMMO               ( 4 ) // -
+#define ITEM_TYPE_MISC               ( 5 ) // -
+#define ITEM_TYPE_KEY                ( 7 ) // -
 #define ITEM_TYPE_CONTAINER          ( 8 )
 #define ITEM_TYPE_DOOR               ( 9 )
 #define ITEM_TYPE_GRID               ( 10 )
@@ -88,12 +87,9 @@ public:
     #endif
 
     CLASS_PROPERTY_ALIAS( int, Type );
-    CLASS_PROPERTY_ALIAS( int, Grid_Type );
     CLASS_PROPERTY_ALIAS( hash, PicMap );
     CLASS_PROPERTY_ALIAS( hash, PicInv );
     CLASS_PROPERTY_ALIAS( bool, Stackable );
-    CLASS_PROPERTY_ALIAS( bool, Weapon_IsUnarmed );
-    CLASS_PROPERTY_ALIAS( uint, Weapon_Anim1 );
     CLASS_PROPERTY_ALIAS( short, OffsetX );
     CLASS_PROPERTY_ALIAS( short, OffsetY );
     CLASS_PROPERTY_ALIAS( uchar, Slot );
@@ -173,41 +169,7 @@ public:
     CLASS_PROPERTY( ScriptString *, ChildLines_2 );
     CLASS_PROPERTY( ScriptString *, ChildLines_3 );
     CLASS_PROPERTY( ScriptString *, ChildLines_4 );
-    CLASS_PROPERTY( bool, Weapon_IsUnarmed );
-    CLASS_PROPERTY( int, Weapon_UnarmedMinAgility );
-    CLASS_PROPERTY( int, Weapon_UnarmedMinUnarmed );
-    CLASS_PROPERTY( int, Weapon_UnarmedMinLevel );
     CLASS_PROPERTY( uint, Weapon_Anim1 );
-    CLASS_PROPERTY( uint, Weapon_MaxAmmoCount );
-    CLASS_PROPERTY( int, Weapon_Caliber );
-    CLASS_PROPERTY( hash, Weapon_DefaultAmmoPid );
-    CLASS_PROPERTY( int, Weapon_MinStrength );
-    CLASS_PROPERTY( int, Weapon_Perk );
-    CLASS_PROPERTY( bool, Weapon_IsTwoHanded );
-    CLASS_PROPERTY( uint, Weapon_ActiveUses );
-    CLASS_PROPERTY( int, Weapon_Skill_0 );
-    CLASS_PROPERTY( int, Weapon_Skill_1 );
-    CLASS_PROPERTY( int, Weapon_Skill_2 );
-    CLASS_PROPERTY( hash, Weapon_PicUse_0 );
-    CLASS_PROPERTY( hash, Weapon_PicUse_1 );
-    CLASS_PROPERTY( hash, Weapon_PicUse_2 );
-    CLASS_PROPERTY( uint, Weapon_MaxDist_0 );
-    CLASS_PROPERTY( uint, Weapon_MaxDist_1 );
-    CLASS_PROPERTY( uint, Weapon_MaxDist_2 );
-    CLASS_PROPERTY( uint, Weapon_Round_0 );
-    CLASS_PROPERTY( uint, Weapon_Round_1 );
-    CLASS_PROPERTY( uint, Weapon_Round_2 );
-    CLASS_PROPERTY( uint, Weapon_ApCost_0 );
-    CLASS_PROPERTY( uint, Weapon_ApCost_1 );
-    CLASS_PROPERTY( uint, Weapon_ApCost_2 );
-    CLASS_PROPERTY( bool, Weapon_Aim_0 );
-    CLASS_PROPERTY( bool, Weapon_Aim_1 );
-    CLASS_PROPERTY( bool, Weapon_Aim_2 );
-    CLASS_PROPERTY( uchar, Weapon_SoundId_0 );
-    CLASS_PROPERTY( uchar, Weapon_SoundId_1 );
-    CLASS_PROPERTY( uchar, Weapon_SoundId_2 );
-    CLASS_PROPERTY( int, Ammo_Caliber );
-    CLASS_PROPERTY( int, Grid_Type );
     CLASS_PROPERTY( hash, Grid_ToMap );
     CLASS_PROPERTY( int, Grid_ToMapEntire );
     CLASS_PROPERTY( uchar, Grid_ToMapDir );
@@ -259,16 +221,6 @@ public:
     CLASS_PROPERTY( uint, LightColor );
     CLASS_PROPERTY( uint, Count );
     CLASS_PROPERTY( uint, Cost );
-    CLASS_PROPERTY( int, Val0 );
-    CLASS_PROPERTY( int, Val1 );
-    CLASS_PROPERTY( int, Val2 );
-    CLASS_PROPERTY( int, Val3 );
-    CLASS_PROPERTY( int, Val4 );
-    CLASS_PROPERTY( int, Val5 );
-    CLASS_PROPERTY( int, Val6 );
-    CLASS_PROPERTY( int, Val7 );
-    CLASS_PROPERTY( int, Val8 );
-    CLASS_PROPERTY( int, Val9 );
     CLASS_PROPERTY( hash, AmmoPid );
     CLASS_PROPERTY( uint, AmmoCount );
     CLASS_PROPERTY( short, TrapValue );
@@ -314,13 +266,17 @@ public:
     static void ClearItems( ItemVec& items );
 
     // All
-    bool IsScenery() { return IsGeneric() || IsWall() || IsGrid(); }
-    bool IsGeneric() { return GetType() == ITEM_TYPE_GENERIC; }
-    bool IsWall()    { return GetType() == ITEM_TYPE_WALL; }
-    bool IsGrid()    { return GetType() == ITEM_TYPE_GRID; }
+    bool IsScenery()   { return IsGeneric() || IsWall() || IsGrid(); }
+    bool IsGeneric()   { return GetType() == ITEM_TYPE_GENERIC; }
+    bool IsWall()      { return GetType() == ITEM_TYPE_WALL; }
+    bool IsGrid()      { return GetType() == ITEM_TYPE_GRID; }
+    bool IsArmor()     { return GetType() == ITEM_TYPE_ARMOR; }
+    bool IsWeapon()    { return GetType() == ITEM_TYPE_WEAPON; }
+    bool IsContainer() { return GetType() == ITEM_TYPE_CONTAINER; }
+    bool IsDoor()      { return GetType() == ITEM_TYPE_DOOR; }
+    bool IsCar()       { return GetType() == ITEM_TYPE_CAR; }
 
     void ChangeCount( int val );
-    void SetWeaponMode( uchar mode );
 
     uint GetWholeCost() { return GetCount() * GetCost1st(); }
     uint GetCost1st();
@@ -328,19 +284,6 @@ public:
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     uint GetCurSprId();
     #endif
-
-    // Armor
-    bool IsArmor() { return GetType() == ITEM_TYPE_ARMOR; }
-
-    // Weapon
-    bool IsWeapon()                  { return GetType() == ITEM_TYPE_WEAPON; }
-    bool WeapIsEmpty()               { return !GetAmmoCount(); }
-    bool WeapIsFull()                { return GetAmmoCount() >= GetWeapon_MaxAmmoCount(); }
-    bool WeapIsUseAviable( int use ) { return use >= USE_PRIMARY && use <= USE_THIRD ? ( ( ( GetWeapon_ActiveUses() >> use ) & 1 ) != 0 ) : false; }
-    void WeapLoadHolder();
-
-    // Container
-    bool IsContainer() { return GetType() == ITEM_TYPE_CONTAINER; }
 
     // Children
     #ifdef FONLINE_SERVER
@@ -359,13 +302,6 @@ public:
     void ContGetItems( ItemVec& items, uint stack_id );
     #endif
 
-    // Door
-    bool IsDoor() { return GetType() == ITEM_TYPE_DOOR; }
-
-    // Ammo
-    bool IsAmmo()         { return GetType() == ITEM_TYPE_AMMO; }
-    int  AmmoGetCaliber() { return GetAmmo_Caliber(); }
-
     // Colorize
     bool  IsColorize()  { return GetIsColorize(); }
     uint  GetColor()    { return ( GetLightColor() ? GetLightColor() : GetLightColor() ) & 0xFFFFFF; }
@@ -382,9 +318,6 @@ public:
     // Radio
     bool RadioIsSendActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_SEND ); }
     bool RadioIsRecvActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_RECV ); }
-
-    // Car
-    bool IsCar() { return GetType() == ITEM_TYPE_CAR; }
 
     #ifdef FONLINE_SERVER
     Item* GetChild( uint child_index );

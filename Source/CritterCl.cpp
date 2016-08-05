@@ -301,14 +301,6 @@ Item* CritterCl::GetItemByPidSlot( hash item_pid, int slot )
     return nullptr;
 }
 
-Item* CritterCl::GetAmmo( uint caliber )
-{
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->IsAmmo() && ( *it )->GetAmmo_Caliber() == (int) caliber )
-            return *it;
-    return nullptr;
-}
-
 Item* CritterCl::GetItemSlot( int slot )
 {
     for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
@@ -355,41 +347,6 @@ uint CritterCl::CountItemType( uchar type )
     return res;
 }
 
-Item* CritterCl::GetSlotUse( uchar num_slot, uchar& use )
-{
-    Item* item = nullptr;
-    switch( num_slot )
-    {
-    case SLOT_HAND1:
-        item = ItemSlotMain;
-        use = GetUse();
-        break;
-    case SLOT_HAND2:
-        item = ItemSlotExt;
-        if( item->IsWeapon() )
-            use = USE_PRIMARY;
-        else if( item->GetIsCanUse() || item->GetIsCanUseOnSmth() )
-            use = USE_USE;
-        else
-            use = 0xF;
-        break;
-    default:
-        break;
-    }
-    return item;
-}
-
-bool CritterCl::IsItemAim( uchar num_slot )
-{
-    uchar use;
-    Item* item = GetSlotUse( num_slot, use );
-    if( !item )
-        return false;
-    if( item->IsWeapon() && use < MAX_USES )
-        return ( use == 0 ? item->GetWeapon_Aim_0() : ( use == 1 ? item->GetWeapon_Aim_1() : item->GetWeapon_Aim_2() ) ) != 0;
-    return false;
-}
-
 bool CritterCl::IsCombatMode()
 {
     return IS_TIMEOUT( GetTimeoutBattle() );
@@ -424,14 +381,13 @@ uint CritterCl::GetUseApCost( Item* item, uchar rate )
 
 uint CritterCl::GetAttackDist()
 {
-    uchar use;
-    Item* weap = GetSlotUse( SLOT_HAND1, use );
+    Item* weap = ItemSlotMain;
     if( !weap->IsWeapon() )
         return 0;
 
     uint dist = 0;
     #ifdef FONLINE_CLIENT
-    Script::RaiseInternalEvent( ClientFunctions.CritterGetAttackDistantion, this, weap, use, &dist );
+    Script::RaiseInternalEvent( ClientFunctions.CritterGetAttackDistantion, this, weap, weap->GetMode(), &dist );
     #endif
     return dist;
 }
@@ -486,16 +442,6 @@ void CritterCl::DrawStay( Rect r )
         Anim3dStay->SetAnimation( anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD( 100 ) | ANIMATION_NO_SMOOTH );
         SprMngr.Draw3d( r.CX(), r.B, Anim3dStay, COLOR_IFACE );
     }
-}
-
-Item* CritterCl::GetAmmoAvialble( Item* weap )
-{
-    Item* ammo = GetItemByPid( weap->GetAmmoPid() );
-    if( !ammo && weap->WeapIsEmpty() )
-        ammo = GetItemByPid( weap->GetWeapon_DefaultAmmoPid() );
-    if( !ammo && weap->WeapIsEmpty() )
-        ammo = GetAmmo( weap->GetWeapon_Caliber() );
-    return ammo;
 }
 
 bool CritterCl::IsLastHexes()
