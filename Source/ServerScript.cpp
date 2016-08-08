@@ -1709,21 +1709,6 @@ void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, ScriptString& sound_nam
     }
 }
 
-void FOServer::SScriptFunc::Crit_PlaySoundType( Critter* cr, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext, bool send_self )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    uint crid = cr->GetId();
-    if( send_self )
-        cr->Send_PlaySoundType( crid, sound_type, sound_type_ext, sound_id, sound_id_ext );
-    for( auto it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
-    {
-        Critter* cr_ = *it;
-        cr_->Send_PlaySoundType( crid, sound_type, sound_type_ext, sound_id, sound_id_ext );
-    }
-}
-
 bool FOServer::SScriptFunc::Crit_IsKnownLoc( Critter* cr, bool by_id, uint loc_num )
 {
     if( cr->IsDestroyed )

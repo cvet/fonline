@@ -291,7 +291,6 @@ public:
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );
-    void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
 
     // Send all
     void SendA_Property( NetProperty::Type type, Property* prop, Entity* entity );
@@ -512,7 +511,6 @@ public:
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const char* sound_name );
-    void Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
     void Send_MapText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text );
     void Send_MapTextMsg( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str );
     void Send_MapTextMsgLex( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len );

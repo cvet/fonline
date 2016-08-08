@@ -438,7 +438,6 @@ public:
         static void Crit_Animate( Critter* cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
         static void Crit_SetAnims( Critter* cr, int cond, uint anim1, uint anim2 );
         static void Crit_PlaySound( Critter* cr, ScriptString& sound_name, bool send_self );
-        static void Crit_PlaySoundType( Critter* cr, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext, bool send_self );
 
         static bool Crit_IsKnownLoc( Critter* cr, bool by_id, uint loc_num );
         static bool Crit_SetKnownLoc( Critter* cr, bool by_id, uint loc_num );

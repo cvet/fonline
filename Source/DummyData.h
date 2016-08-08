@@ -249,7 +249,6 @@ struct BindClass
     static void Crit_Animate()          {}
     static void Crit_SetAnims()         {}
     static void Crit_PlaySound()        {}
-    static void Crit_PlaySoundType()    {}
 
     static void Crit_IsKnownLoc()    {}
     static void Crit_SetKnownLoc()   {}
@@ -447,7 +446,6 @@ struct BindClass
     static void Global_FlushScreen()            {}
     static void Global_QuakeScreen()            {}
     static void Global_PlaySound()              {}
-    static void Global_PlaySoundType()          {}
     static void Global_PlayMusic()              {}
     static void Global_PlayVideo()              {}
     static void Global_GetCurrentMapPid()       {}

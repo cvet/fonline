@@ -1767,11 +1767,6 @@ void Critter::Send_PlaySound( uint crid_synchronize, const char* sound_name )
     if( IsPlayer() )
         ( (Client*) this )->Send_PlaySound( crid_synchronize, sound_name );
 }
-void Critter::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_PlaySoundType( crid_synchronize, sound_type, sound_type_ext, sound_id, sound_id_ext );
-}
 
 void Critter::SendA_Property( NetProperty::Type type, Property* prop, Entity* entity )
 {
@@ -3683,21 +3678,6 @@ void Client::Send_PlaySound( uint crid_synchronize, const char* sound_name )
     Bout << NETMSG_PLAY_SOUND;
     Bout << crid_synchronize;
     Bout.Push( sound_name, 100 );
-    BOUT_END( this );
-}
-
-void Client::Send_PlaySoundType( uint crid_synchronize, uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_PLAY_SOUND_TYPE;
-    Bout << crid_synchronize;
-    Bout << sound_type;
-    Bout << sound_type_ext;
-    Bout << sound_id;
-    Bout << sound_id_ext;
     BOUT_END( this );
 }
 

@@ -175,7 +175,7 @@ public:
     void Net_OnCombatResult();
     void Net_OnEffect();
     void Net_OnFlyEffect();
-    void Net_OnPlaySound( bool by_type );
+    void Net_OnPlaySound();
     void Net_OnPing();
     void Net_OnEndParseToGame();
     void Net_OnCheckUID0();
@@ -423,7 +423,6 @@ public:
         static void          Global_FlushScreen( uint from_color, uint to_color, uint ms );
         static void          Global_QuakeScreen( uint noise, uint ms );
         static bool          Global_PlaySound( ScriptString& sound_name );
-        static bool          Global_PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
         static bool          Global_PlayMusic( ScriptString& music_name, uint pos, uint repeat );
         static void          Global_PlayVideo( ScriptString& video_name, bool can_stop );
 

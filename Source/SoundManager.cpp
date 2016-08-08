@@ -641,69 +641,6 @@ bool SoundManager::PlaySound( const char* name )
     return false;
 }
 
-bool SoundManager::PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )
-{
-    if( !isActive || !GameOpt.SoundVolume )
-        return true;
-
-    // Generate name of the sound
-    StrMap& names = ResMngr.GetSoundNames();
-    char    name[ 9 ];
-    if( sound_type == 'W' ) // Weapon, W123XXXR
-    {
-        name[ 0 ] = 'W';
-        name[ 1 ] = sound_type_ext;
-        name[ 2 ] = sound_id;
-        name[ 3 ] = sound_id_ext;
-        name[ 4 ] = 'X';
-        name[ 5 ] = 'X';
-        name[ 6 ] = 'X';
-        name[ 7 ] = '1';
-        name[ 8 ] = '\0';
-
-        // Try count dublier
-        if( !Random( 0, 1 ) )
-        {
-            name[ 7 ] = '2';
-            Str::Upper( name );
-            if( !names.count( name ) )
-                name[ 7 ] = '1';
-        }
-    }
-    else if( sound_type == 'S' ) // Door
-    {
-        name[ 0 ] = 'S';
-        name[ 1 ] = sound_type_ext;
-        name[ 2 ] = 'D';
-        name[ 3 ] = 'O';
-        name[ 4 ] = 'O';
-        name[ 5 ] = 'R';
-        name[ 6 ] = 'S';
-        name[ 7 ] = sound_id;
-        name[ 8 ] = '\0';
-    }
-    else     // Other
-    {
-        name[ 0 ] = sound_type;
-        name[ 1 ] = sound_type_ext;
-        name[ 2 ] = sound_id;
-        name[ 3 ] = sound_id_ext;
-        name[ 4 ] = 'X';
-        name[ 5 ] = 'X';
-        name[ 6 ] = 'X';
-        name[ 7 ] = 'X';
-        name[ 8 ] = '\0';
-    }
-    Str::Upper( name );
-
-    auto it = names.find( name );
-    if( it == names.end() )
-        return false;
-
-    // Play
-    return PlaySound( it->second.c_str() );
-}
-
 bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
 {
     if( !isActive )

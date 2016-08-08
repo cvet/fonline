@@ -595,18 +595,6 @@
 // char sound_name[16]
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_PLAY_SOUND_TYPE                MAKE_NETMSG_HEADER( 102 )
-#define NETMSG_PLAY_SOUND_TYPE_SIZE           ( sizeof( uint ) + sizeof( uint ) + sizeof( uchar ) * 4 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// Params:
-// uint crid_synchronize
-// uchar sound_type
-// uchar sound_type_ext
-// uchar sound_id
-// uchar sound_id_ext
-// ////////////////////////////////////////////////////////////////////////
-
 // ************************************************************************
 // TALK&BARTER NPC
 // ************************************************************************

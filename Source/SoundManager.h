@@ -20,7 +20,6 @@ public:
     void ClearSounds();
 
     bool PlaySound( const char* name );
-    bool PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext );
     bool PlayMusic( const char* fname, uint pos = 0, uint repeat = MUSIC_REPEAT_TIME );
     void StopMusic();
     void PlayAmbient( const char* str );

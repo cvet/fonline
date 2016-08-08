@@ -261,7 +261,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Action(int action, i
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Animate(uint anim1, uint anim2, const Item@+ item, bool clearSequence, bool delayPlay)", asFUNCTION( BIND_CLASS Crit_Animate ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetAnims(int cond, uint anim1, uint anim2)", asFUNCTION( BIND_CLASS Crit_SetAnims ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void PlaySound(string& soundName, bool sendSelf)", asFUNCTION( BIND_CLASS Crit_PlaySound ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void PlaySound(uint8 soundType, uint8 soundTypeExt, uint8 soundId, uint8 soundIdExt, bool sendSelf)", asFUNCTION( BIND_CLASS Crit_PlaySoundType ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SendCombatResult(array<uint>& combatResult)", asFUNCTION( BIND_CLASS Crit_SendCombatResult ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsKnownLoc(bool byId, uint locNum) const", asFUNCTION( BIND_CLASS Crit_IsKnownLoc ), asCALL_CDECL_OBJFIRST ) );
@@ -515,7 +514,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPathLength(Critter& cr, ui
 BIND_ASSERT( engine->RegisterGlobalFunction( "void FlushScreen(uint fromColor, uint toColor, uint timeMs)", asFUNCTION( BIND_CLASS Global_FlushScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void QuakeScreen(uint noise, uint timeMs)", asFUNCTION( BIND_CLASS Global_QuakeScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool PlaySound(string& soundName)", asFUNCTION( BIND_CLASS Global_PlaySound ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool PlaySound(uint8 soundType, uint8 soundTypeExt, uint8 soundId, uint8 soundIdExt)", asFUNCTION( BIND_CLASS Global_PlaySoundType ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool PlayMusic(string& musicName, uint pos, uint repeat)", asFUNCTION( BIND_CLASS Global_PlayMusic ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void PlayVideo(string& videoName, bool canStop)", asFUNCTION( BIND_CLASS Global_PlayVideo ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetCurrentMapPid()", asFUNCTION( BIND_CLASS Global_GetCurrentMapPid ), asCALL_CDECL ) );

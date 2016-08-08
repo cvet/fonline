@@ -2028,10 +2028,7 @@ void FOClient::NetProcess()
             Net_OnFlyEffect();
             break;
         case NETMSG_PLAY_SOUND:
-            Net_OnPlaySound( false );
-            break;
-        case NETMSG_PLAY_SOUND_TYPE:
-            Net_OnPlaySound( true );
+            Net_OnPlaySound();
             break;
 
         case NETMSG_UPDATE_FILES_LIST:
@@ -3676,31 +3673,14 @@ void FOClient::Net_OnFlyEffect()
     }
 }
 
-void FOClient::Net_OnPlaySound( bool by_type )
+void FOClient::Net_OnPlaySound()
 {
-    if( !by_type )
-    {
-        uint synchronize_crid;
-        char sound_name[ 101 ];
-        Bin >> synchronize_crid;
-        Bin.Pop( sound_name, 100 );
-        sound_name[ 100 ] = 0;
-        SndMngr.PlaySound( sound_name );
-    }
-    else
-    {
-        uint  synchronize_crid;
-        uchar sound_type;
-        uchar sound_type_ext;
-        uchar sound_id;
-        uchar sound_id_ext;
-        Bin >> synchronize_crid;
-        Bin >> sound_type;
-        Bin >> sound_type_ext;
-        Bin >> sound_id;
-        Bin >> sound_id_ext;
-        SndMngr.PlaySoundType( sound_type, sound_type_ext, sound_id, sound_id_ext );
-    }
+    uint synchronize_crid;
+    char sound_name[ 101 ];
+    Bin >> synchronize_crid;
+    Bin.Pop( sound_name, 100 );
+    sound_name[ 100 ] = 0;
+    SndMngr.PlaySound( sound_name );
 
     CHECK_IN_BUFF_ERROR;
 }
@@ -7849,11 +7829,6 @@ void FOClient::SScriptFunc::Global_QuakeScreen( uint noise, uint ms )
 bool FOClient::SScriptFunc::Global_PlaySound( ScriptString& sound_name )
 {
     return SndMngr.PlaySound( sound_name.c_str() );
-}
-
-bool FOClient::SScriptFunc::Global_PlaySoundType( uchar sound_type, uchar sound_type_ext, uchar sound_id, uchar sound_id_ext )
-{
-    return SndMngr.PlaySoundType( sound_type, sound_type_ext, sound_id, sound_id_ext );
 }
 
 bool FOClient::SScriptFunc::Global_PlayMusic( ScriptString& music_name, uint pos, uint repeat )
