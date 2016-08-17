@@ -1425,7 +1425,7 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
 
         map->AddCritter( cr );
 
-        Script::RaiseInternalEvent( ServerFunctions.MapCritterIn, cr );
+        Script::RaiseInternalEvent( ServerFunctions.MapCritterIn, map, cr );
     }
     else
     {

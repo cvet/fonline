@@ -27,7 +27,7 @@ void Method::Wrap( asIScriptGeneric* gen )
         Script::PrepareContext( bind_ids[ cbk ], "Method" );
 
         // First arg is entity
-        Script::SetArgEntityOK( entity );
+        Script::SetArgEntity( entity );
 
         // Arguments
         int arg_count = gen->GetArgCount();

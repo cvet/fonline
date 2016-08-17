@@ -96,6 +96,9 @@ struct ContextData
     uint              SuspendEndTick;
     Entity*           EntityArgs[ 20 ];
     uint              EntityArgsCount;
+    void*             ObjectArgs[ 50 ];
+    asITypeInfo*      ObjectArgsType[ 50 ];
+    uint              ObjectArgsCount;
     asIScriptContext* Parent;
 };
 static ContextVec FreeContexts;
@@ -840,8 +843,9 @@ void Script::ReturnContext( asIScriptContext* ctx )
     FreeContexts.push_back( ctx );
 
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-    for( uint i = 0; i < ctx_data->EntityArgsCount; i++ )
-        ctx_data->EntityArgs[ i ]->Release();
+    for( uint i = 0; i < ctx_data->ObjectArgsCount; i++ )
+        Engine->ReleaseScriptObject( ctx_data->ObjectArgs[ i ], ctx_data->ObjectArgsType[ i ] );
+
     memzero( ctx_data, sizeof( ContextData ) );
 }
 
@@ -1894,9 +1898,28 @@ void Script::SetArgDouble( double value )
 void Script::SetArgObject( void* value )
 {
     if( ScriptCall )
+    {
+        if( value )
+        {
+            asIScriptFunction* func = CurrentCtx->GetFunction( 0 );
+            int                type_id = 0;
+            func->GetParam( CurrentArg, &type_id );
+            asITypeInfo*       type_info = Engine->GetTypeInfoById( type_id );
+            RUNTIME_ASSERT( type_info );
+            Engine->AddRefScriptObject( value, type_info );
+
+            ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
+            ctx_data->ObjectArgs[ ctx_data->ObjectArgsCount ] = value;
+            ctx_data->ObjectArgsType[ ctx_data->ObjectArgsCount ] = type_info;
+            ctx_data->ObjectArgsCount++;
+        }
+
         CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
+    }
     else
+    {
         NativeArgs[ CurrentArg ] = (size_t) value;
+    }
     CurrentArg++;
 }
 
@@ -1904,42 +1927,14 @@ void Script::SetArgEntity( Entity* value )
 {
     RUNTIME_ASSERT( !value || !value->IsDestroyed );
 
-    if( ScriptCall )
+    if( ScriptCall && value )
     {
-        if( value )
-        {
-            ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
-            ctx_data->EntityArgs[ ctx_data->EntityArgsCount++ ] = value;
-            value->AddRef();
-        }
-        CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
+        ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
+        ctx_data->EntityArgs[ ctx_data->EntityArgsCount ] = value;
+        ctx_data->EntityArgsCount++;
     }
-    else
-    {
-        NativeArgs[ CurrentArg ] = (size_t) value;
-    }
-    CurrentArg++;
-}
 
-void Script::SetArgEntityOK( Entity* value )
-{
-    RUNTIME_ASSERT( !value || !value->IsDestroyed );
-
-    if( ScriptCall )
-    {
-        if( value )
-        {
-            ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
-            ctx_data->EntityArgs[ ctx_data->EntityArgsCount++ ] = value;
-            value->AddRef();
-        }
-        CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
-    }
-    else
-    {
-        NativeArgs[ CurrentArg ] = (size_t) value;
-    }
-    CurrentArg++;
+    SetArgObject( value );
 }
 
 void Script::SetArgAddress( void* value )

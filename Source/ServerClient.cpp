@@ -465,8 +465,8 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
             if( out_trigger && out_trigger->SceneryScriptBindId )
             {
                 Script::PrepareContext( out_trigger->SceneryScriptBindId, cr->GetInfo() );
-                Script::SetArgEntityOK( cr );
-                Script::SetArgEntityOK( out_trigger );
+                Script::SetArgEntity( cr );
+                Script::SetArgEntity( out_trigger );
                 Script::SetArgBool( false );
                 Script::SetArgUChar( dir );
                 Script::RunPreparedSuspend();
@@ -474,8 +474,8 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
             if( in_trigger && in_trigger->SceneryScriptBindId )
             {
                 Script::PrepareContext( in_trigger->SceneryScriptBindId, cr->GetInfo() );
-                Script::SetArgEntityOK( cr );
-                Script::SetArgEntityOK( in_trigger );
+                Script::SetArgEntity( cr );
+                Script::SetArgEntity( in_trigger );
                 Script::SetArgBool( true );
                 Script::SetArgUChar( dir );
                 Script::RunPreparedSuspend();

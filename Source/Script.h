@@ -126,7 +126,6 @@ public:
     static void              SetArgDouble( double value );
     static void              SetArgObject( void* value );
     static void              SetArgEntity( Entity* value );
-    static void              SetArgEntityOK( Entity* value );
     static void              SetArgAddress( void* value );
     static bool              RunPrepared();
     static void              RunPreparedSuspend();

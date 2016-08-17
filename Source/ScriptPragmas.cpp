@@ -1117,7 +1117,7 @@ public:
                 {
                     const ArgInfo& arg_info = ArgInfos[ i ];
                     if( arg_info.IsObjectEntity )
-                        Script::SetArgEntityOK( (Entity*) GET_ARG( void* ) );
+                        Script::SetArgEntity( (Entity*) GET_ARG( void* ) );
                     else if( arg_info.IsObject )
                         Script::SetArgObject( GET_ARG( void* ) );
                     else if( arg_info.IsPodRef )
@@ -1572,7 +1572,7 @@ public:
             # ifdef FONLINE_SERVER
             if( i == 0 )
             {
-                Script::SetArgEntityOK( cl );
+                Script::SetArgEntity( cl );
                 continue;
             }
             # endif
