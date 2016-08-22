@@ -333,10 +333,23 @@ bool FOServer::ReloadClientScripts()
     Script::Define( "__VERSION %d", FONLINE_VERSION );
     Script::SetLoadLibraryCompiler( true );
 
-    FOMsg msg_script;
-    int   errors = 0;
+    FOMsg       msg_script;
+    int         errors = 0;
+    EngineData* ed = (EngineData*) engine->GetUserData();
     if( Script::ReloadScripts( "Client" ) )
     {
+        Pragmas pragmas = ed->PragmaCB->GetProcessedPragmas();
+        Pragmas additional_pragmas;
+        for( size_t i = 0; i < ServerPropertyPragmas.size(); i++ )
+        {
+            bool found = false;
+            for( size_t j = 0; j < pragmas.size() && !found; j++ )
+                found = ( pragmas[ j ].Name == "property" && pragmas[ j ].Text == ServerPropertyPragmas[ i ].Text );
+            if( !found )
+                additional_pragmas.push_back( ServerPropertyPragmas[ i ] );
+        }
+        Script::CallPragmas( additional_pragmas );
+
         RUNTIME_ASSERT( engine->GetModuleCount() == 1 );
         asIScriptModule* module = engine->GetModuleByIndex( 0 );
         CBytecodeStream  binary;
@@ -364,8 +377,7 @@ bool FOServer::ReloadClientScripts()
     }
 
     // Add native dlls to MSG
-    int         dll_num = STR_INTERNAL_SCRIPT_DLLS;
-    EngineData* ed = (EngineData*) engine->GetUserData();
+    int dll_num = STR_INTERNAL_SCRIPT_DLLS;
     for( auto it = ed->LoadedDlls.begin(), end = ed->LoadedDlls.end(); it != end; ++it )
     {
         const string& dll_name = it->first;
@@ -423,19 +435,14 @@ bool FOServer::ReloadClientScripts()
     #endif
     Script::SetEngine( old_engine );
 
-    // Add config text and pragmas
-    uint pragma_index = 0;
+    // Add pragmas
     for( size_t i = 0; i < pragmas.size(); i++ )
     {
-        if( pragmas[ i ].Name != "property" )
-        {
-            // All pragmas exclude 'property'
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3, pragmas[ i ].Name.c_str() );
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 1, pragmas[ i ].Text.c_str() );
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 2, pragmas[ i ].CurrentFile.c_str() );
-            pragma_index++;
-        }
-        else
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i * 3, pragmas[ i ].Name.c_str() );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i * 3 + 1, pragmas[ i ].Text.c_str() );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + i * 3 + 2, pragmas[ i ].CurrentFile.c_str() );
+
+        if( pragmas[ i ].Name == "property" )
         {
             // Verify client property, it is must present in server scripts
             bool found = false;
@@ -453,14 +460,6 @@ bool FOServer::ReloadClientScripts()
                 errors++;
             }
         }
-    }
-    for( size_t i = 0; i < ServerPropertyPragmas.size(); i++ )
-    {
-        // All 'property' pragmas
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3, ServerPropertyPragmas[ i ].Name.c_str() );
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 1, ServerPropertyPragmas[ i ].Text.c_str() );
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 2, ServerPropertyPragmas[ i ].CurrentFile.c_str() );
-        pragma_index++;
     }
 
     // Exit if have errors
