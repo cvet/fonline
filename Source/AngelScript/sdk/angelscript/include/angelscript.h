@@ -58,8 +58,8 @@ BEGIN_AS_NAMESPACE
 
 // AngelScript version
 
-#define ANGELSCRIPT_VERSION        23101
-#define ANGELSCRIPT_VERSION_STRING "2.31.1"
+#define ANGELSCRIPT_VERSION        23102
+#define ANGELSCRIPT_VERSION_STRING "2.31.2 WIP"
 
 // Data types
 
@@ -71,7 +71,7 @@ class asIScriptObject;
 class asITypeInfo;
 #ifdef AS_DEPRECATED
 // deprecated since 2.31.0 - 2015/11/18
-typedef asITypeInfo asITypeInfo;
+typedef asITypeInfo asIObjectType;
 #endif
 class asIScriptFunction;
 class asIBinaryStream;
@@ -594,7 +594,7 @@ BEGIN_AS_NAMESPACE
 template<typename T>
 asUINT asGetTypeTraits()
 {
-#if defined(_MSC_VER) || defined(_LIBCPP_TYPE_TRAITS) || (__GNUC__ >= 5)
+#if defined(_MSC_VER) || defined(_LIBCPP_TYPE_TRAITS) || (__GNUC__ >= 5) || defined(__clang__)
 	// MSVC, XCode/Clang, and gnuc 5+
 	// C++11 compliant code
 	bool hasConstructor        = std::is_default_constructible<T>::value && !std::is_trivially_default_constructible<T>::value;
@@ -695,11 +695,11 @@ public:
 	virtual int            RegisterInterface(const char *name) = 0;
 	virtual int            RegisterInterfaceMethod(const char *intf, const char *declaration) = 0;
 	virtual asUINT         GetObjectTypeCount() const = 0;
-	virtual asITypeInfo   *GetTypeInfoByIndex(asUINT index) const = 0;
+	virtual asITypeInfo   *GetObjectTypeByIndex(asUINT index) const = 0;
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.31.0, 2015-12-06
-	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const = 0;
-	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const = 0;
+	virtual asITypeInfo   *GetObjectTypeByName(const char *name) const = 0;
+	virtual asITypeInfo   *GetObjectTypeByDecl(const char *decl) const = 0;
 #endif
 
 	// String factory
@@ -755,7 +755,7 @@ public:
 	// Type identification
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.31.0, 2015-12-06
-	virtual asITypeInfo   *GetTypeInfoById(int typeId) const = 0;
+	virtual asITypeInfo   *GetObjectTypeById(int typeId) const = 0;
 #endif
 	virtual int            GetTypeIdByDecl(const char *decl) const = 0;
 	virtual const char    *GetTypeDeclaration(int typeId, bool includeNamespace = false) const = 0;
@@ -855,11 +855,11 @@ public:
 
 	// Type identification
 	virtual asUINT         GetObjectTypeCount() const = 0;
-	virtual asITypeInfo   *GetTypeInfoByIndex(asUINT index) const = 0;
+	virtual asITypeInfo   *GetObjectTypeByIndex(asUINT index) const = 0;
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.31.0, 2015-12-06
-	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const = 0;
-	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const = 0;
+	virtual asITypeInfo   *GetObjectTypeByName(const char *name) const = 0;
+	virtual asITypeInfo   *GetObjectTypeByDecl(const char *decl) const = 0;
 #endif
 	virtual int            GetTypeIdByDecl(const char *decl) const = 0;
 	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const = 0;

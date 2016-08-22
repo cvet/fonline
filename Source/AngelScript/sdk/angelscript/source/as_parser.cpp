@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2015 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -427,6 +427,15 @@ asCScriptNode *asCParser::ParseTypeMod(bool isParam)
 	{
 		node->AddChildLast(ParseToken(ttPlus));
 		if( isSyntaxError ) return node;
+	}
+
+	// Parse possible if_handle_then_const token
+	GetToken(&t);
+	RewindTo(&t);
+	if (IdentifierIs(t, IF_HANDLE_TOKEN))
+	{
+		node->AddChildLast(ParseToken(ttIdentifier));
+		if (isSyntaxError) return node;
 	}
 
 	return node;

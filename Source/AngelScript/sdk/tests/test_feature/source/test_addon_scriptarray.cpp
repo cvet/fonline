@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "../../../add_on/scriptarray/scriptarray.h"
+#include "../../../add_on/weakref/weakref.h"
 
 namespace Test_Addon_ScriptArray
 {
@@ -190,6 +191,47 @@ bool Test()
 	CBufferedOutStream bout;
 	asIScriptContext *ctx;
 	asIScriptEngine *engine;
+
+	// Test array with weakref
+	// http://www.gamedev.net/topic/680788-crash-when-trying-to-store-weakref-in-an-array/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterScriptArray(engine, false);
+		RegisterScriptWeakRef(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class foo \n"
+			"{ \n"
+			"} \n"
+			"int main() \n"
+			"{ \n"
+			"	array<weakref<foo>> arr; \n"
+			"	foo f(); \n"
+			"	arr.insertLast(weakref<foo>(f)); \n"
+			"	return 1; \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		asIScriptContext *ctx = engine->CreateContext();
+		ctx->Prepare(mod->GetFunctionByName("main"));
+		r = ctx->Execute();
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		ctx->Release();
+
+		engine->ShutDownAndRelease();
+	}
 
 	// Test invalid initialization list
 	{

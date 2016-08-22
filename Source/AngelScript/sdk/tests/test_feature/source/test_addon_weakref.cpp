@@ -116,6 +116,75 @@ bool Test()
 		engine->Release();
 	}
 
+	// value assignment for weakref
+	// http://www.gamedev.net/topic/680611-passing-this-as-argument-in/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		RegisterScriptWeakRef(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Foo {} \n"
+			"void main() \n"
+			"{ \n"
+			"  weakref<Foo> a = Foo(); \n"
+			"  weakref<Foo> b; \n"
+			"  b = a; \n"
+			"  assert( a.get() is b.get() ); \n"
+			"  weakref<Foo> c(b); \n"
+			"  assert( c.get() is b.get() ); \n"
+			"  func(a); \n"
+			"} \n"
+			"void func(weakref<Foo> f) {} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// CreateScriptObject with Weakref
+	// http://www.gamedev.net/topic/680788-crash-when-trying-to-store-weakref-in-an-array/
+	{
+		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		RegisterScriptWeakRef(engine);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test", "class Foo {}");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asITypeInfo *type = mod->GetTypeInfoByDecl("weakref<Foo>");
+		CScriptWeakRef *weakRef = (CScriptWeakRef*)engine->CreateScriptObject(type);
+		if (weakRef == 0 || weakRef->GetRefType() == 0 || std::string(weakRef->GetRefType()->GetName()) != "Foo")
+			TEST_FAILED;
+
+		CScriptWeakRef *weakRef2 = (CScriptWeakRef*)engine->CreateScriptObjectCopy(weakRef, type);
+		if (weakRef2 == 0 || weakRef2->GetRefType() == 0 || std::string(weakRef2->GetRefType()->GetName()) != "Foo")
+			TEST_FAILED;
+
+		engine->ReleaseScriptObject(weakRef, type);
+		engine->ReleaseScriptObject(weakRef2, type);
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Weakref as member of script class
 	{
 		engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);

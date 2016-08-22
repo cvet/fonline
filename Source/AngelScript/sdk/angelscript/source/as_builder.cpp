@@ -2176,8 +2176,7 @@ void asCBuilder::CompileGlobalVariables()
 						sGlobalVariableDescription *gvar2 = *prev_it;
 						if(gvar2->datatype == gvar->datatype )
 						{
-							// The integer value is stored in the lower bytes
-							enumVal = (*(int*)&gvar2->constantValue) + 1;
+							enumVal = int(gvar2->constantValue) + 1;
 
 							if( !gvar2->isCompiled )
 							{
@@ -2196,8 +2195,7 @@ void asCBuilder::CompileGlobalVariables()
 						}
 					}
 
-					// The integer value is stored in the lower bytes
-					*(int*)&gvar->constantValue = enumVal;
+					gvar->constantValue = enumVal;
 				}
 
 				if( r >= 0 )
@@ -2296,7 +2294,7 @@ void asCBuilder::CompileGlobalVariables()
 					}
 
 					e->name = gvar->name;
-					e->value = *(int*)&gvar->constantValue;
+					e->value = int(gvar->constantValue);
 
 					enumType->enumValues.PushLast(e);
 				}
@@ -5608,6 +5606,21 @@ asCDataType asCBuilder::ModifyDataTypeFromNode(const asCDataType &type, asCScrip
 			WriteError(TXT_AUTOHANDLE_CANNOT_BE_USED_FOR_NOCOUNT, file, node->firstChild);
 
 		if( autoHandle ) *autoHandle = true;
+	}
+
+	if (n && n->tokenType == ttIdentifier)
+	{
+		asCString str;
+		str.Assign(&file->code[n->tokenPos], n->tokenLength);
+		if (str == IF_HANDLE_TOKEN)
+			dt.SetIfHandleThenConst(true);
+		else
+		{
+			// TODO: Should give error if not currently parsing template registration
+			asCString msg;
+			msg.Format(TXT_UNEXPECTED_TOKEN_s, str.AddressOf());
+			WriteError(msg, file, node->firstChild);
+		}
 	}
 
 	return dt;

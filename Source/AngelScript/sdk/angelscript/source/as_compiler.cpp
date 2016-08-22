@@ -7246,10 +7246,17 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				// Convert to 32bit
 				if( from->type.dataType.GetSizeInMemoryBytes() == 1 )
 					from->type.SetConstantDW(targetDt, from->type.GetConstantB());
-				else if( from->type.dataType.GetSizeInMemoryBytes() == 2 )
+				else if (from->type.dataType.GetSizeInMemoryBytes() == 2)
 					from->type.SetConstantDW(targetDt, from->type.GetConstantW());
+				else
+					from->type.dataType = targetDt;
 			}
 			else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
+			{
+				// Convert to 32bit
+				from->type.SetConstantDW(targetDt, int(from->type.GetConstantQW()));
+			}
+			else if (from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 2)
 			{
 				// Convert to 32bit
 				from->type.SetConstantDW(targetDt, int(from->type.GetConstantQW()));
@@ -7263,9 +7270,16 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				else if (from->type.dataType.GetSizeInMemoryBytes() == 2)
 					from->type.SetConstantDW(targetDt, (short)from->type.GetConstantW());
 			}
-			
-			// Make sure the type was set
-			from->type.dataType = targetDt;
+			else
+			{
+				// Only int32 and enums should come here and as these are 32bit
+				// already nothing needs to be done except set the target type
+				asASSERT((from->type.dataType.GetTokenType() == ttInt ||
+					      from->type.dataType.IsEnumType()) &&
+					     from->type.dataType.GetSizeInMemoryBytes() == 4);
+
+				from->type.dataType = targetDt;
+			}
 		}
 
 		// Check if a downsize is necessary
@@ -7303,8 +7317,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(ttInt64, true);
-			from->type.SetConstantQW(ic);
+			from->type.SetConstantQW(asCDataType::CreatePrimitive(ttInt64, true), ic);
 		}
 		// Double constants can be implicitly converted to int
 		else if( from->type.dataType.IsDoubleType() )
@@ -7317,27 +7330,25 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(ttInt64, true);
-			from->type.SetConstantQW(ic);
+			from->type.SetConstantQW(asCDataType::CreatePrimitive(ttInt64, true), ic);
 		}
 		else if( from->type.dataType.IsUnsignedType() )
 		{
 			// Convert to 64bit
 			if( from->type.dataType.GetSizeInMemoryBytes() == 1 )
-				from->type.SetConstantQW(from->type.GetConstantB());
+				from->type.SetConstantQW(asCDataType::CreatePrimitive(ttInt64, true), from->type.GetConstantB());
 			else if( from->type.dataType.GetSizeInMemoryBytes() == 2 )
-				from->type.SetConstantQW(from->type.GetConstantW());
+				from->type.SetConstantQW(asCDataType::CreatePrimitive(ttInt64, true), from->type.GetConstantW());
 			else if( from->type.dataType.GetSizeInMemoryBytes() == 4 )
-				from->type.SetConstantQW(from->type.GetConstantDW());
+				from->type.SetConstantQW(asCDataType::CreatePrimitive(ttInt64, true), from->type.GetConstantDW());
 			else if( from->type.dataType.GetSizeInMemoryBytes() == 8 )
 			{
 				if( asINT64(from->type.GetConstantQW()) < 0 )
 				{
 					if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_CHANGE_SIGN, node);
 				}
+				from->type.dataType = asCDataType::CreatePrimitive(ttInt64, true);
 			}
-
-			from->type.dataType = asCDataType::CreatePrimitive(ttInt64, true);
 		}
 		else if( from->type.dataType.IsIntegerType() )
 		{
@@ -7364,8 +7375,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(ttUInt, true);
-			from->type.SetConstantDW(uic);
+			from->type.SetConstantDW(asCDataType::CreatePrimitive(ttUInt, true), uic);
 
 			// Try once more, in case of a smaller type
 			ImplicitConversionConstant(from, to, node, convType);
@@ -7382,8 +7392,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(ttUInt, true);
-			from->type.SetConstantDW(uic);
+			from->type.SetConstantDW(asCDataType::CreatePrimitive(ttUInt, true), uic);
 
 			// Try once more, in case of a smaller type
 			ImplicitConversionConstant(from, to, node, convType);
@@ -7466,8 +7475,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 			}
 #endif
 
-			from->type.dataType = asCDataType::CreatePrimitive(ttUInt64, true);
-			from->type.SetConstantQW(uic);
+			from->type.SetConstantQW(asCDataType::CreatePrimitive(ttUInt64, true), uic);
 		}
 		else if( from->type.dataType.IsDoubleType() )
 		{
@@ -7483,8 +7491,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 			}
 #endif
 
-			from->type.dataType = asCDataType::CreatePrimitive(ttUInt64, true);
-			from->type.SetConstantQW(uic);
+			from->type.SetConstantQW(asCDataType::CreatePrimitive(ttUInt64, true), uic);
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
 		{
@@ -7532,8 +7539,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 			double ic = from->type.GetConstantD();
 			float fc = float(ic);
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantF(fc);
+			from->type.SetConstantF(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
 		{
@@ -7552,8 +7558,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantF(fc);
+			from->type.SetConstantF(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
 		{
@@ -7563,8 +7568,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantF(fc);
+			from->type.SetConstantF(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 		else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
 		{
@@ -7583,8 +7587,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantF(fc);
+			from->type.SetConstantF(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 		else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
 		{
@@ -7595,8 +7598,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantF(fc);
+			from->type.SetConstantF(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 	}
 	else if( to.IsDoubleType() )
@@ -7606,8 +7608,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 			float ic = from->type.GetConstantF();
 			double fc = double(ic);
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantD(fc);
+			from->type.SetConstantD(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
 		{
@@ -7626,8 +7627,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantD(fc);
+			from->type.SetConstantD(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 		else if( from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
 		{
@@ -7638,8 +7638,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantD(fc);
+			from->type.SetConstantD(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 		else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 1 )
 		{
@@ -7658,8 +7657,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantD(fc);
+			from->type.SetConstantD(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 		else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
 		{
@@ -7670,8 +7668,7 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 				if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_NOT_EXACT, node);
 			}
 
-			from->type.dataType = asCDataType::CreatePrimitive(to.GetTokenType(), true);
-			from->type.SetConstantD(fc);
+			from->type.SetConstantD(asCDataType::CreatePrimitive(to.GetTokenType(), true), fc);
 		}
 	}
 }

@@ -338,7 +338,7 @@ bool ValidateByteCode(asIScriptFunction *func, asBYTE *expect)
 	asDWORD *bc = func->GetByteCode(&len);
 	for( asUINT n = 0, i = 0; n < len; )
 	{
-		asBYTE c = asBYTE(bc[n]);
+		asBYTE c = *(asBYTE*)(&bc[n]);
 		if( c != expect[i] )
 			return false;
 		n += asBCTypeSize[asBCInfo[c].type];

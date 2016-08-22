@@ -534,13 +534,15 @@ asIScriptContext *RequestContextCallback(asIScriptEngine *engine, void * /*param
 // This function is called by the engine when the context is no longer in use
 void ReturnContextCallback(asIScriptEngine *engine, asIScriptContext *ctx, void * /*param*/)
 {
-	// Place the context into the pool for when it will be needed again
-	g_ctxPool.push_back(ctx);
-
 	// We can also check for possible script exceptions here if so desired
 
 	// Unprepare the context to free any objects it may still hold (e.g. return value)
+	// This must be done before making the context available for re-use, as the clean
+	// up may trigger other script executions, e.g. if a destructor needs to call a function.
 	ctx->Unprepare();
+
+	// Place the context into the pool for when it will be needed again
+	g_ctxPool.push_back(ctx);
 }
 
 void SetWorkDir(const string &file)

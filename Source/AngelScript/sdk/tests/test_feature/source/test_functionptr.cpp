@@ -47,6 +47,35 @@ bool Test()
 	CBufferedOutStream bout;
 	const char *script;
 
+	// Test funcdef and shared entitites
+	// http://www.gamedev.net/topic/681021-crash-on-closing-modules-with-shared-and-funcdef/
+	{
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		asIScriptModule *mod1 = engine->GetModule("test1", asGM_ALWAYS_CREATE);
+		mod1->AddScriptSection("test",
+			"funcdef void functype();\n"
+			"shared class classname {}\n");
+		r = mod1->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptModule *mod2 = engine->GetModule("test2", asGM_ALWAYS_CREATE);
+		mod2->AddScriptSection("test",
+			"funcdef void functype();\n"
+			"shared class classname {}\n"
+			"classname classinstance;\n");
+		r = mod2->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		mod1->Discard();
+		mod2->Discard();
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test passing function pointer to script function, and returning function pointer from script function
 	{
 		asIScriptEngine *engine = asCreateScriptEngine();

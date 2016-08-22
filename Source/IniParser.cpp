@@ -442,9 +442,11 @@ void IniParser::LoadMainConfig()
     Str::Copy( path, MainConfig->GetStr( "", "ClientPath", "" ) );
     ResolvePath( path );
     *GameOpt.ClientPath = path;
+    MakeDirectory( path );
     Str::Copy( path, MainConfig->GetStr( "", "ServerPath", "" ) );
     ResolvePath( path );
     *GameOpt.ServerPath = path;
+    MakeDirectory( path );
 
     FileManager::ResetCurrentDir();
 

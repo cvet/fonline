@@ -79,191 +79,224 @@ bool Test()
 {
 	bool fail = Test2();
 
-	RET_ON_MAX_PORT
-
 	int r;
 	COutStream out;
 	CBufferedOutStream bout;
 
-	asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-
-	// Register an object type
-	r = engine->RegisterObjectType("obj", sizeof(CObj), asOBJ_REF); assert( r>=0 );
-	r = engine->RegisterObjectBehaviour("obj", asBEHAVE_FACTORY, "obj@ f()", asFUNCTION(CObj_Factory), asCALL_CDECL); assert( r>=0 );
-	r = engine->RegisterObjectBehaviour("obj", asBEHAVE_ADDREF, "void f()", asMETHOD(CObj,AddRef), asCALL_THISCALL); assert( r>=0 );
-	r = engine->RegisterObjectBehaviour("obj", asBEHAVE_RELEASE, "void f()", asMETHOD(CObj,Release), asCALL_THISCALL); assert( r>=0 );
-	r = engine->RegisterObjectMethod("obj", "obj &opAssign(const obj &in)", asMETHOD(CObj,operator=), asCALL_THISCALL); assert( r>=0 );
-	r = engine->RegisterObjectMethod("obj", "int &opIndex(int)", asMETHODPR(CObj, operator[], (int), int&), asCALL_THISCALL); assert( r>=0 );
-	r = engine->RegisterObjectMethod("obj", "const int &opIndex(int) const", asMETHODPR(CObj, operator[], (int) const, const int&), asCALL_THISCALL); assert( r>=0 );
-
-	r = engine->RegisterObjectType("prop", sizeof(int), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE); assert( r>=0 );
-	r = engine->RegisterObjectProperty("prop", "int val", 0); assert( r>=0 );
-
-	r = engine->RegisterObjectMethod("obj", "void SetVal(int)", asMETHOD(CObj, SetVal), asCALL_THISCALL); assert( r>=0 );
-	r = engine->RegisterObjectMethod("obj", "int GetVal() const", asMETHOD(CObj, GetVal), asCALL_THISCALL); assert( r>=0 );
-	r = engine->RegisterObjectProperty("obj", "int val", asOFFSET(CObj,val)); assert( r>=0 );
-	r = engine->RegisterObjectProperty("obj", "obj@ next", asOFFSET(CObj,next)); assert( r>=0 );
-	r = engine->RegisterObjectProperty("obj", "prop p", asOFFSET(CObj,val)); assert( r>=0 );
-
-	r = engine->RegisterGlobalProperty("const obj c_obj", &c_obj); assert( r>=0 );
-	r = engine->RegisterGlobalProperty("obj g_obj", &c_obj); assert( r>= 0 );
-
-	RegisterScriptString(engine);
-
-
-	asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
-	mod->AddScriptSection("script1", script2, strlen(script2), 0);
-	r = mod->Build();
-	if( r < 0 ) TEST_FAILED;
-
-
-
-	// TODO: A member array of a const object is also const
-
-	// TODO: Parameters registered as &in and not const must make a copy of the object (even for operators)
-
-	// A member object of a const object is also const
-	bout.buffer = "";
-	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
-	r = ExecuteString(engine, "c_obj.p.val = 1;");
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "ExecuteString (1, 13) : Error   : Reference is read-only\n" ) TEST_FAILED;
-
-	c_obj.val = 0;
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	r = ExecuteString(engine, "g_obj.p.val = 1;");
-	if( r < 0 ) TEST_FAILED;
-	if( c_obj.val != 1 ) TEST_FAILED;
-
-	// Allow overloading on const.
-	r = ExecuteString(engine, "obj o; o[0] = 1;");
-	if( r < 0 ) TEST_FAILED;
-
-	// Allow return of const ref
-	r = ExecuteString(engine, "int a = c_obj[0];");
-	if( r < 0 ) TEST_FAILED;
-
-	// Do not allow the script to call object behaviour that is not const on a const object
-	bout.buffer = "";
-	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
-	r = ExecuteString(engine, "c_obj[0] = 1;");
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "ExecuteString (1, 10) : Error   : Reference is read-only\n" ) TEST_FAILED;
-
-	// Do not allow the script to take a non-const handle to a const object
-	bout.buffer = "";
-	r = ExecuteString(engine, "obj@ o = @c_obj;");
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "ExecuteString (1, 10) : Error   : Can't implicitly convert from 'const obj@' to 'obj@&'.\n" )
-		TEST_FAILED;
-
-	// Do not allow the script to pass a const obj@ to a parameter that is not a const obj@
-	mod->AddScriptSection("script", script, strlen(script));
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	mod->Build();
-	
-	bout.buffer = "";
-	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
-	r = ExecuteString(engine, "Test(@c_obj);", mod);
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "ExecuteString (1, 1) : Error   : No matching signatures to 'Test(const obj@&)'\n"
-		               "ExecuteString (1, 1) : Info    : Candidates are:\n"
-					   "ExecuteString (1, 1) : Info    : void Test(obj@ o)\n" )
+	// passing a const handle on to a function expecting a const ref
+	// http://www.gamedev.net/topic/681018-problem-in-arrayfind-with-a-const-param/
 	{
-		PRINTF("%s", bout.buffer.c_str());
-		TEST_FAILED;
+		asIScriptEngine *engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+		RegisterScriptArray(engine, false);
+
+		asIScriptModule *mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class CData { int a; } \n"
+			"void func(const CData @d) \n"
+			"{ \n"
+			"  find(d); \n"
+			"  array<CData@> arr; \n"
+			"  arr.find(d); \n"
+			"} \n"
+			"void find(const CData@ &in f) \n"
+			"{ \n"
+			//"  f.a = 42; \n"  change is not allowed
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
 	}
 
-	// Do not allow the script to assign the object handle member of a const object
-	bout.buffer = "";
-	r = ExecuteString(engine, "@c_obj.next = @obj();");
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "ExecuteString (1, 13) : Error   : Reference is read-only\n" )
-		TEST_FAILED;
-
-	// Allow the script to change the object the handle points to
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	r = ExecuteString(engine, "c_obj.next.val = 1;");
-	if( r != 3 ) TEST_FAILED;
-
-	// Allow the script take a handle to a non const object handle in a const object
-	r = ExecuteString(engine, "obj @a = @c_obj.next;");
-	if( r < 0 ) TEST_FAILED;
-
-	// Allow the script to take a const handle to a const object
-	r = ExecuteString(engine, "const obj@ o = @c_obj;");
-	if( r < 0 ) TEST_FAILED;
-
-	bout.buffer = "";
-	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
-	r = ExecuteString(engine, "obj @a; const obj @b; @a = @b;");
-	if( r >= 0 ) TEST_FAILED;
-	if(bout.buffer != "ExecuteString (1, 28) : Error   : Can't implicitly convert from 'const obj@' to 'obj@'.\n" )
+	// Ordinary tests
+	SKIP_ON_MAX_PORT
 	{
-		PRINTF("%s", bout.buffer.c_str());
-		TEST_FAILED;
+		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+
+		// Register an object type
+		r = engine->RegisterObjectType("obj", sizeof(CObj), asOBJ_REF); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("obj", asBEHAVE_FACTORY, "obj@ f()", asFUNCTION(CObj_Factory), asCALL_CDECL); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("obj", asBEHAVE_ADDREF, "void f()", asMETHOD(CObj, AddRef), asCALL_THISCALL); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("obj", asBEHAVE_RELEASE, "void f()", asMETHOD(CObj, Release), asCALL_THISCALL); assert(r >= 0);
+		r = engine->RegisterObjectMethod("obj", "obj &opAssign(const obj &in)", asMETHOD(CObj, operator=), asCALL_THISCALL); assert(r >= 0);
+		r = engine->RegisterObjectMethod("obj", "int &opIndex(int)", asMETHODPR(CObj, operator[], (int), int&), asCALL_THISCALL); assert(r >= 0);
+		r = engine->RegisterObjectMethod("obj", "const int &opIndex(int) const", asMETHODPR(CObj, operator[], (int) const, const int&), asCALL_THISCALL); assert(r >= 0);
+
+		r = engine->RegisterObjectType("prop", sizeof(int), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE); assert(r >= 0);
+		r = engine->RegisterObjectProperty("prop", "int val", 0); assert(r >= 0);
+
+		r = engine->RegisterObjectMethod("obj", "void SetVal(int)", asMETHOD(CObj, SetVal), asCALL_THISCALL); assert(r >= 0);
+		r = engine->RegisterObjectMethod("obj", "int GetVal() const", asMETHOD(CObj, GetVal), asCALL_THISCALL); assert(r >= 0);
+		r = engine->RegisterObjectProperty("obj", "int val", asOFFSET(CObj, val)); assert(r >= 0);
+		r = engine->RegisterObjectProperty("obj", "obj@ next", asOFFSET(CObj, next)); assert(r >= 0);
+		r = engine->RegisterObjectProperty("obj", "prop p", asOFFSET(CObj, val)); assert(r >= 0);
+
+		r = engine->RegisterGlobalProperty("const obj c_obj", &c_obj); assert(r >= 0);
+		r = engine->RegisterGlobalProperty("obj g_obj", &c_obj); assert(r >= 0);
+
+		RegisterScriptString(engine);
+
+
+		asIScriptModule *mod = engine->GetModule(0, asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("script1", script2, strlen(script2), 0);
+		r = mod->Build();
+		if (r < 0) TEST_FAILED;
+
+
+
+		// TODO: A member array of a const object is also const
+
+		// TODO: Parameters registered as &in and not const must make a copy of the object (even for operators)
+
+		// A member object of a const object is also const
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		r = ExecuteString(engine, "c_obj.p.val = 1;");
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 13) : Error   : Reference is read-only\n") TEST_FAILED;
+
+		c_obj.val = 0;
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		r = ExecuteString(engine, "g_obj.p.val = 1;");
+		if (r < 0) TEST_FAILED;
+		if (c_obj.val != 1) TEST_FAILED;
+
+		// Allow overloading on const.
+		r = ExecuteString(engine, "obj o; o[0] = 1;");
+		if (r < 0) TEST_FAILED;
+
+		// Allow return of const ref
+		r = ExecuteString(engine, "int a = c_obj[0];");
+		if (r < 0) TEST_FAILED;
+
+		// Do not allow the script to call object behaviour that is not const on a const object
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		r = ExecuteString(engine, "c_obj[0] = 1;");
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 10) : Error   : Reference is read-only\n") TEST_FAILED;
+
+		// Do not allow the script to take a non-const handle to a const object
+		bout.buffer = "";
+		r = ExecuteString(engine, "obj@ o = @c_obj;");
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 10) : Error   : Can't implicitly convert from 'const obj@' to 'obj@&'.\n")
+			TEST_FAILED;
+
+		// Do not allow the script to pass a const obj@ to a parameter that is not a const obj@
+		mod->AddScriptSection("script", script, strlen(script));
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		mod->Build();
+
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		r = ExecuteString(engine, "Test(@c_obj);", mod);
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 1) : Error   : No matching signatures to 'Test(const obj@&)'\n"
+			"ExecuteString (1, 1) : Info    : Candidates are:\n"
+			"ExecuteString (1, 1) : Info    : void Test(obj@ o)\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Do not allow the script to assign the object handle member of a const object
+		bout.buffer = "";
+		r = ExecuteString(engine, "@c_obj.next = @obj();");
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 13) : Error   : Reference is read-only\n")
+			TEST_FAILED;
+
+		// Allow the script to change the object the handle points to
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		r = ExecuteString(engine, "c_obj.next.val = 1;");
+		if (r != 3) TEST_FAILED;
+
+		// Allow the script take a handle to a non const object handle in a const object
+		r = ExecuteString(engine, "obj @a = @c_obj.next;");
+		if (r < 0) TEST_FAILED;
+
+		// Allow the script to take a const handle to a const object
+		r = ExecuteString(engine, "const obj@ o = @c_obj;");
+		if (r < 0) TEST_FAILED;
+
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		r = ExecuteString(engine, "obj @a; const obj @b; @a = @b;");
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 28) : Error   : Can't implicitly convert from 'const obj@' to 'obj@'.\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Allow a non-const handle to be assigned to a const handle
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		r = ExecuteString(engine, "obj @a; const obj @b; @b = @a;");
+		if (r < 0) TEST_FAILED;
+
+		// Do not allow the script to alter properties of a const object
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		r = ExecuteString(engine, "c_obj.val = 1;");
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 11) : Error   : Reference is read-only\n")
+			TEST_FAILED;
+
+		// Do not allow the script to call non-const methods on a const object
+		bout.buffer = "";
+		r = ExecuteString(engine, "c_obj.SetVal(1);");
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 7) : Error   : No matching signatures to 'obj::SetVal(const int) const'\n")
+			TEST_FAILED;
+
+		// Allow the script to call const methods on a const object
+		engine->SetMessageCallback(asMETHOD(COutStream, Callback), &out, asCALL_THISCALL);
+		r = ExecuteString(engine, "c_obj.GetVal();");
+		if (r < 0) TEST_FAILED;
+
+		// Handle to const must not allow call to non-const methods
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		mod->AddScriptSection("script", script3, strlen(script3));
+		r = mod->Build();
+		if (r >= 0) TEST_FAILED;
+		if (bout.buffer != "script (10, 1) : Info    : Compiling void func()\n"
+			"script (15, 13) : Error   : No matching signatures to 'CTest::SetInt(const int) const'\n"
+			"script (16, 7) : Error   : No matching signatures to 'CTest::SetInt(const int) const'\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		// Allow passing a const object to a function that takes a non-const object by value
+		bout.buffer = "";
+		const char *script4 = "void func(prop val) {}";
+		mod->AddScriptSection("script", script4, strlen(script4));
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		r = ExecuteString(engine, "const prop val; func(val)", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->Release();
 	}
-
-	// Allow a non-const handle to be assigned to a const handle
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	r = ExecuteString(engine, "obj @a; const obj @b; @b = @a;");
-	if( r < 0 ) TEST_FAILED;
-
-	// Do not allow the script to alter properties of a const object
-	bout.buffer = "";
-	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
-	r = ExecuteString(engine, "c_obj.val = 1;");
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "ExecuteString (1, 11) : Error   : Reference is read-only\n" )
-		TEST_FAILED;
-
-	// Do not allow the script to call non-const methods on a const object
-	bout.buffer = "";
-	r = ExecuteString(engine, "c_obj.SetVal(1);");
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "ExecuteString (1, 7) : Error   : No matching signatures to 'obj::SetVal(const int) const'\n" )
-		TEST_FAILED;
-
-	// Allow the script to call const methods on a const object
-	engine->SetMessageCallback(asMETHOD(COutStream,Callback), &out, asCALL_THISCALL);
-	r = ExecuteString(engine, "c_obj.GetVal();");
-	if( r < 0 ) TEST_FAILED;
-
-	// Handle to const must not allow call to non-const methods
-	bout.buffer = "";
-	engine->SetMessageCallback(asMETHOD(CBufferedOutStream,Callback), &bout, asCALL_THISCALL);
-	mod->AddScriptSection("script", script3, strlen(script3));
-	r = mod->Build();
-	if( r >= 0 ) TEST_FAILED;
-	if( bout.buffer != "script (10, 1) : Info    : Compiling void func()\n"
-		               "script (15, 13) : Error   : No matching signatures to 'CTest::SetInt(const int) const'\n"
-					   "script (16, 7) : Error   : No matching signatures to 'CTest::SetInt(const int) const'\n" )
-	{
-		PRINTF("%s", bout.buffer.c_str());
-		TEST_FAILED;
-	}
-
-	// Allow passing a const object to a function that takes a non-const object by value
-	bout.buffer = "";
-	const char *script4 = "void func(prop val) {}";
-	mod->AddScriptSection("script", script4, strlen(script4));
-	r = mod->Build();
-	if( r < 0 ) 
-		TEST_FAILED;
-	r = ExecuteString(engine, "const prop val; func(val)", mod);
-	if( r != asEXECUTION_FINISHED )
-		TEST_FAILED;
-	if( bout.buffer != "" )
-	{
-		PRINTF("%s", bout.buffer.c_str());
-		TEST_FAILED;
-	}
-
-	engine->Release();
-
-	if( fail )
-		PRINTF("%s: failed\n", TESTNAME);
 
 	// Success
 	return fail;

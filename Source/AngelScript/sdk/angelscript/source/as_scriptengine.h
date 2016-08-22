@@ -106,11 +106,11 @@ public:
 	virtual int            RegisterInterface(const char *name);
 	virtual int            RegisterInterfaceMethod(const char *intf, const char *declaration);
 	virtual asUINT         GetObjectTypeCount() const;
-	virtual asITypeInfo   *GetTypeInfoByIndex(asUINT index) const;
+	virtual asITypeInfo   *GetObjectTypeByIndex(asUINT index) const;
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.31.0, 2015-12-06
-	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const;
-	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const;
+	virtual asITypeInfo   *GetObjectTypeByName(const char *name) const;
+	virtual asITypeInfo   *GetObjectTypeByDecl(const char *decl) const;
 #endif
 
 	// String factory
@@ -167,7 +167,7 @@ public:
 	// Type identification
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.31.0, 2015-12-06
-	virtual asITypeInfo   *GetTypeInfoById(int typeId) const;
+	virtual asITypeInfo   *GetObjectTypeById(int typeId) const;
 #endif
 	virtual int            GetTypeIdByDecl(const char *decl) const;
 	virtual const char    *GetTypeDeclaration(int typeId, bool includeNamespace = false) const;
@@ -260,6 +260,7 @@ public:
 	void *CallObjectMethodRetPtr(void *obj, int param1, asCScriptFunction *func) const;
 	void  CallGlobalFunction(void *param1, void *param2, asSSystemFunctionInterface *func, asCScriptFunction *desc) const;
 	bool  CallGlobalFunctionRetBool(void *param1, void *param2, asSSystemFunctionInterface *func, asCScriptFunction *desc) const;
+	int   CallScriptObjectMethod(void *obj, int func);
 
 	void ConstructScriptObjectCopy(void *mem, void *obj, asCObjectType *type);
 

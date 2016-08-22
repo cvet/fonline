@@ -15,12 +15,29 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 
 <h1>AngelScript Change Log</h1>
 
-<h2>Version 2.31.2 WIP - 2016/06/27</h2>
+<h2>Version 2.31.2 WIP - 2016/08/21</h2>
 
 <ul>
 <li>Bug fixes
 <ul>
 <li>Fixed compiler warning about missing GNU-stack on gentoo Linux (Thanks James Le Cuirot)
+<li>Fixed asGetTypeTraits on clang 3.8 (Thanks Ansjh)
+<li>Fixed big endian errors in the compiler related to enum values (Thanks rfonseca)
+<li>CreateScriptObject crashed when called for template value types (Thanks noizex)
+<li>Fixed crash when discarding modules containing shared funcdefs (Thanks Violet CLM)
+<li>Fixed big endian errors in the compiler related to implicit conversions of constants (Thanks rfonseca)
+<li>Fixed bug with saved byte code not being portable between 32bit and 64bit platforms when including ChkNullS instruction (Thanks cvet)
+</ul>
+<li>Library
+<ul>
+<li>Introduced a new keyword 'if_handle_then_const' that is used to tell template that a handle should be to const object
+</ul>
+<li>Add-ons &amp; Samples
+<ul>
+<li>Fixed a minor bug in ExecuteString that could cause problem in rare cases (Thanks Solokiller)
+<li>Fixed a bug in asrun example where the context was returned to the pool before being unprepared (Thanks noizex)
+<li>Registered the opAssign method for weakref to allow value assignments for this type (Thanks noizex)
+<li>Array add-on uses 'if_handle_then_const' on find methods (Thanks IronHawk)
 </ul>
 </ul>
 

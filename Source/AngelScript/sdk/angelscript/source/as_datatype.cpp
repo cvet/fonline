@@ -55,6 +55,7 @@ asCDataType::asCDataType()
 	isObjectHandle         = false;
 	isConstHandle          = false;
 	isHandleToAsHandleType = false;
+	ifHandleThenConst      = false;
 }
 
 asCDataType::asCDataType(const asCDataType &dt)
@@ -67,6 +68,7 @@ asCDataType::asCDataType(const asCDataType &dt)
 	isObjectHandle         = dt.isObjectHandle;
 	isConstHandle          = dt.isConstHandle;
 	isHandleToAsHandleType = dt.isHandleToAsHandleType;
+	ifHandleThenConst      = dt.ifHandleThenConst;
 }
 
 asCDataType::~asCDataType()
@@ -233,6 +235,7 @@ asCDataType &asCDataType::operator =(const asCDataType &dt)
 	isConstHandle          = dt.isConstHandle;
 	isAuto                 = dt.isAuto;
 	isHandleToAsHandleType = dt.isHandleToAsHandleType;
+	ifHandleThenConst      = dt.ifHandleThenConst;
 
 	return (asCDataType &)*this;
 }

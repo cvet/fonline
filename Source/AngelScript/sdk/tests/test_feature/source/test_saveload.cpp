@@ -367,6 +367,60 @@ bool Test()
 	asIScriptEngine* engine;
 	asIScriptModule* mod;
 
+	// Test saving/loading bytecode with asBC_ChkNullS
+	// http://www.gamedev.net/topic/681386-bytecode-x64-x32/
+	{
+		engine = asCreateScriptEngine();
+
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"class Foo {} \n"
+			"void func(Foo &, Foo &) {} \n"
+			"void main() { \n"
+			"  Foo @f; \n"
+			"  func(f, f); \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		asIScriptFunction *func = mod->GetFunctionByName("main");
+		asBYTE expect[] =
+		{
+			asBC_SUSPEND,asBC_SUSPEND,asBC_PshVPtr,asBC_PshVPtr,asBC_ChkNullS,asBC_ChkNullS,asBC_CALL,asBC_SUSPEND,asBC_FREE, asBC_RET
+		};
+		if (!ValidateByteCode(func, expect))
+			TEST_FAILED;
+
+		CBytecodeStream bc("test");
+		r = mod->SaveByteCode(&bc);
+		if (r < 0)
+			TEST_FAILED;
+
+		asDWORD crc32 = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
+		if (crc32 != 0x213093ea)
+		{
+			PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
+			TEST_FAILED;
+		}
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		r = mod->LoadByteCode(&bc);
+		if (r < 0)
+			TEST_FAILED;
+		
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test saving/loading bytecode with asBC_ClrVPtr when the variable is a null pointer
 	// http://www.gamedev.net/topic/677759-crash-on-ios-arm64/
 	{

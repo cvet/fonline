@@ -2813,7 +2813,8 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 
 		if( c == asBC_GETREF ||
 		    c == asBC_GETOBJ ||
-		    c == asBC_GETOBJREF )
+		    c == asBC_GETOBJREF ||
+		    c == asBC_ChkNullS )
 		{
 			asBC_WORDARG0(&bc[n]) = (asWORD)AdjustGetOffset(asBC_WORDARG0(&bc[n]), func, n);
 		}
@@ -4702,7 +4703,8 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 		}
 		else if( c == asBC_GETOBJ ||    // W_ARG
 			     c == asBC_GETOBJREF ||
-				 c == asBC_GETREF )
+			     c == asBC_GETREF ||
+			     c == asBC_ChkNullS )
 		{
 			// Adjust the offset according to the function call that comes after
 			asBC_WORDARG0(tmpBC) = (asWORD)AdjustGetOffset(asBC_WORDARG0(tmpBC), func, asDWORD(bc - startBC));

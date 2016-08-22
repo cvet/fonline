@@ -132,11 +132,11 @@ public:
 
 	// Type identification
 	virtual asUINT         GetObjectTypeCount() const;
-	virtual asITypeInfo   *GetTypeInfoByIndex(asUINT index) const;
+	virtual asITypeInfo   *GetObjectTypeByIndex(asUINT index) const;
 #ifdef AS_DEPRECATED
 	// Deprecated since 2.31.0, 2015-12-06
-	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const;
-	virtual asITypeInfo   *GetTypeInfoByDecl(const char *decl) const;
+	virtual asITypeInfo   *GetObjectTypeByName(const char *name) const;
+	virtual asITypeInfo   *GetObjectTypeByDecl(const char *decl) const;
 #endif
 	virtual int            GetTypeIdByDecl(const char *decl) const;
 	virtual asITypeInfo   *GetTypeInfoByName(const char *name) const;

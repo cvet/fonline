@@ -110,46 +110,48 @@ public:
 	std::string buffer;
 };
 
-#ifdef STREAM_TO_FILE
-class CBytecodeStream : public asIBinaryStream
+class CBytecodeFileStream : public asIBinaryStream
 {
 public:
-	CBytecodeStream(const char *name) {this->name = name; this->name += ".stream"; f = 0; isReading = false;}
-	~CBytecodeStream() { if( f ) fclose(f); }
+	CBytecodeFileStream(const char *name) { this->name = name; f = 0; isReading = false; position = 0; }
+	~CBytecodeFileStream() { if (f) fclose(f); }
 
-	void Write(const void *ptr, asUINT size) 
+	void Write(const void *ptr, asUINT size)
 	{
-		if( size == 0 ) return; 
-		if( f == 0 || isReading ) 
-		{ 
-			if( f ) 
-				fclose(f); 
-			f = fopen(name.c_str(), "wb"); 
+		if (size == 0) return;
+		if (f == 0 || isReading)
+		{
+			if (f)
+				fclose(f);
+			f = fopen(name.c_str(), "wb");
 			isReading = false;
-		} 
-		fwrite(ptr, size, 1, f); 
+		}
+		fwrite(ptr, size, 1, f);
 		fflush(f);
+		position += size;
 	}
-	void Read(void *ptr, asUINT size) 
-	{ 
-		if( size == 0 ) return; 
-		if( f == 0 || !isReading ) 
-		{ 
-			if( f ) 
-				fclose(f); 
+	void Read(void *ptr, asUINT size)
+	{
+		if (size == 0) return;
+		if (f == 0 || !isReading)
+		{
+			if (f)
+				fclose(f);
 			f = fopen(name.c_str(), "rb");
 			isReading = true;
-		} 
-		fread(ptr, size, 1, f); 
+		}
+		fread(ptr, size, 1, f);
+		position += size;
 	}
-	void Restart() {if( f ) { fclose(f); f = 0; }}
+	void Restart() { if (f) { fclose(f); f = 0; } position = 0; }
 
 protected:
 	std::string name;
 	FILE *f;
 	bool isReading;
+	asDWORD position;
 };
-#else
+
 class CBytecodeStream : public asIBinaryStream
 {
 public:
@@ -184,7 +186,6 @@ protected:
 	int rpointer;
 	int wpointer;
 };
-#endif
 
 void Assert(asIScriptGeneric *gen);
 

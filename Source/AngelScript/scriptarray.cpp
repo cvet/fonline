@@ -315,13 +315,14 @@ static void RegisterScriptArray_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "void reverse()", asMETHOD( ScriptArray, Reverse ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "int find(const T&in) const", asMETHODPR( ScriptArray, Find, (void*) const, int ), asCALL_THISCALL );
+    // The token 'if_handle_then_const' tells the engine that if the type T is a handle, then it should refer to a read-only object
+    r = engine->RegisterObjectMethod( "array<T>", "int find(const T&in if_handle_then_const value) const", asMETHODPR( ScriptArray, Find, (void*) const, int ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "int find(uint, const T&in) const", asMETHODPR( ScriptArray, Find, ( asUINT, void* ) const, int ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "array<T>", "int find(uint startAt, const T&in if_handle_then_const value) const", asMETHODPR( ScriptArray, Find, ( asUINT, void* ) const, int ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "int findByRef(const T&in) const", asMETHODPR( ScriptArray, FindByRef, (void*) const, int ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "array<T>", "int findByRef(const T&in if_handle_then_const value) const", asMETHODPR( ScriptArray, FindByRef, (void*) const, int ), asCALL_THISCALL );
     assert( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "int findByRef(uint, const T&in) const", asMETHODPR( ScriptArray, FindByRef, ( asUINT, void* ) const, int ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "array<T>", "int findByRef(uint startAt, const T&in if_handle_then_const value) const", asMETHODPR( ScriptArray, FindByRef, ( asUINT, void* ) const, int ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "bool opEquals(const array<T>&in) const", asMETHOD( ScriptArray, operator== ), asCALL_THISCALL );
     assert( r >= 0 );

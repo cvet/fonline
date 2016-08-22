@@ -172,36 +172,32 @@ int ExecuteString(asIScriptEngine *engine, const char *code, void *ref, int refT
 	// If no context was provided, request a new one from the engine
 	asIScriptContext *execCtx = ctx ? ctx : engine->RequestContext();
 	r = execCtx->Prepare(func);
-	if( r < 0 )
+	if (r >= 0)
 	{
-		func->Release();
-		if( !ctx ) execCtx->Release();
-		return r;
-	}
+		// Execute the function
+		r = execCtx->Execute();
 
-	// Execute the function
-	r = execCtx->Execute();
-
-	// Unless the provided type was void retrieve it's value
-	if( ref != 0 && refTypeId != asTYPEID_VOID )
-	{
-		if( refTypeId & asTYPEID_OBJHANDLE )
+		// Unless the provided type was void retrieve it's value
+		if (ref != 0 && refTypeId != asTYPEID_VOID)
 		{
-			// Expect the pointer to be null to start with
-			assert( *reinterpret_cast<void**>(ref) == 0 );
-			*reinterpret_cast<void**>(ref) = *reinterpret_cast<void**>(execCtx->GetAddressOfReturnValue());
-			engine->AddRefScriptObject(*reinterpret_cast<void**>(ref), engine->GetTypeInfoById(refTypeId));
-		}
-		else if( refTypeId & asTYPEID_MASK_OBJECT )
-		{
-			// Expect the pointer to point to a valid object
-			assert( *reinterpret_cast<void**>(ref) != 0 );
-			engine->AssignScriptObject(ref, execCtx->GetAddressOfReturnValue(), engine->GetTypeInfoById(refTypeId));
-		}
-		else
-		{
-			// Copy the primitive value
-			memcpy(ref, execCtx->GetAddressOfReturnValue(), engine->GetSizeOfPrimitiveType(refTypeId));
+			if (refTypeId & asTYPEID_OBJHANDLE)
+			{
+				// Expect the pointer to be null to start with
+				assert(*reinterpret_cast<void**>(ref) == 0);
+				*reinterpret_cast<void**>(ref) = *reinterpret_cast<void**>(execCtx->GetAddressOfReturnValue());
+				engine->AddRefScriptObject(*reinterpret_cast<void**>(ref), engine->GetTypeInfoById(refTypeId));
+			}
+			else if (refTypeId & asTYPEID_MASK_OBJECT)
+			{
+				// Expect the pointer to point to a valid object
+				assert(*reinterpret_cast<void**>(ref) != 0);
+				engine->AssignScriptObject(ref, execCtx->GetAddressOfReturnValue(), engine->GetTypeInfoById(refTypeId));
+			}
+			else
+			{
+				// Copy the primitive value
+				memcpy(ref, execCtx->GetAddressOfReturnValue(), engine->GetSizeOfPrimitiveType(refTypeId));
+			}
 		}
 	}
 
@@ -303,7 +299,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	c = engine->GetObjectTypeCount();
 	for( n = 0; n < c; n++ )
 	{
-		asITypeInfo *type = engine->GetTypeInfoByIndex(n);
+		asITypeInfo *type = engine->GetObjectTypeByIndex(n);
 		asDWORD accessMask = type->GetAccessMask();
 		if( accessMask != currAccessMask )
 		{
@@ -474,7 +470,7 @@ int WriteConfigToStream(asIScriptEngine *engine, ostream &strm)
 	c = engine->GetObjectTypeCount();
 	for( n = 0; n < c; n++ )
 	{
-		asITypeInfo *type = engine->GetTypeInfoByIndex(n);
+		asITypeInfo *type = engine->GetObjectTypeByIndex(n);
 		if( templateTypes.find(type) == templateTypes.end() )
 			TypeWriter::Write(engine, strm, type, currNamespace, currAccessMask);
 	}
@@ -611,7 +607,7 @@ int ConfigEngineFromStream(asIScriptEngine *engine, istream &strm, const char *c
 		strm.getline(buffer, 1000);
 		config += buffer;
 		config += "\n";
-	} while( !strm.eof() );
+	} while( !strm.eof() && strm.good() );
 
 	// Process the configuration file and register each entity
 	asUINT pos  = 0;

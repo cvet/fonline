@@ -723,7 +723,8 @@ void asCModule::InternalReset()
 	for( n = 0; n < funcDefs.GetLength(); n++ )
 	{
 		asCFuncdefType *func = funcDefs[n];
-		if( func->funcdef->IsShared() )
+		asASSERT(func);
+		if( func->funcdef && func->funcdef->IsShared() )
 		{
 			// The funcdef is shared, so transfer ownership to another module that also uses it
 			if( engine->FindNewOwnerForSharedType(func, this) != this )
@@ -1051,7 +1052,7 @@ asUINT asCModule::GetObjectTypeCount() const
 }
 
 // interface 
-asITypeInfo *asCModule::GetTypeInfoByIndex(asUINT index) const
+asITypeInfo *asCModule::GetObjectTypeByIndex(asUINT index) const
 {
 	if( index >= classTypes.GetLength() ) 
 		return 0;
@@ -1062,7 +1063,7 @@ asITypeInfo *asCModule::GetTypeInfoByIndex(asUINT index) const
 #ifdef AS_DEPRECATED
 // Deprecated since 2.31.0, 2015-12-06
 // interface
-asITypeInfo *asCModule::GetTypeInfoByName(const char *in_name) const
+asITypeInfo *asCModule::GetObjectTypeByName(const char *in_name) const
 {
 	asITypeInfo *ti = GetTypeInfoByName(in_name);
 	return reinterpret_cast<asCTypeInfo*>(ti)->CastToObjectType();
@@ -1127,7 +1128,7 @@ int asCModule::GetTypeIdByDecl(const char *decl) const
 #ifdef AS_DEPRECATED
 // Deprecated since 2.31.0, 2015-12-06
 // interface
-asITypeInfo *asCModule::GetTypeInfoByDecl(const char *decl) const
+asITypeInfo *asCModule::GetObjectTypeByDecl(const char *decl) const
 {
 	asITypeInfo *ti = GetTypeInfoByDecl(decl);
 	return reinterpret_cast<asCTypeInfo*>(ti)->CastToObjectType();

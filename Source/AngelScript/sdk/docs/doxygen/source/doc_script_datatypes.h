@@ -145,6 +145,13 @@ When the array stores \ref doc_script_handle "handles" the elements are assigned
   \@arr[0] = Foo();
 </pre>
 
+Arrays can also be created and initialized within expressions as \ref anonobj "anonymous objects". 
+
+<pre>
+  // Call a function that expects an array of integers as input
+  foo(array<int> = {1,2,3,4});
+</pre>
+
 
 
 \section doc_datatypes_arrays_addon Supporting array object and functions
@@ -268,6 +275,8 @@ for more details.
 The dictionary stores key-value pairs, where the key is a string, and the value can be of any type. Key-value
 pairs can be added or removed dynamically, making the dictionary a good general purpose container object.
 
+\todo Reformat content to separate text and code in blocks for easier readier. Similar to \ref doc_datatypes_arrays.
+
 <pre>
   obj object;
   obj \@handle;
@@ -296,9 +305,15 @@ pairs can be added or removed dynamically, making the dictionary a good general 
   
   // Delete everything with a single call
   dict.deleteAll();
+  
+  // Create a dictionary of dictionaries
+  dictionary d2 = {{'a', dictionary = {{'aa', 1}, {'ab', 2}}}, 
+                   {'b', dictionary = {{'ba', 1}, {'bb', 2}}}};
 </pre>
 
 \section doc_datatypes_dictionary_addon Supporting dictionary object and functions
+
+\todo Explain the dictValue subtype too
 
 The dictionary object is a \ref doc_datatypes_obj "reference type", so it's possible
 to use handles to the dictionary object when passing it around to avoid costly copies.
@@ -747,6 +762,10 @@ can be used in place of the handle where the reference to the object is needed b
 <b>\@=          handle assignment</b><br>
  
 The handle assignment operator is used to set the object that the referred to by the ref type.
+
+<b>=            value assignment</b><br>
+
+The value assignment operator is used when one weakref object is copied to another.
 
 <b>is, !is      identity operator</b><br>
  

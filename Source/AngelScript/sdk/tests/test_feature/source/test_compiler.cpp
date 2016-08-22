@@ -1726,26 +1726,14 @@ bool Test()
 			TEST_FAILED;
 		}
 
-		asIScriptFunction *func = mod->GetFunctionByName("main");
-		asUINT len;
-		asDWORD *bc = func->GetByteCode(&len);
 		asBYTE expect[] = 
 			{	
 				asBC_SUSPEND,asBC_CALL,asBC_STOREOBJ,asBC_ChkNullV,asBC_VAR,asBC_CALL,asBC_STOREOBJ,asBC_PshVPtr,asBC_GETOBJREF,asBC_CALLINTF,asBC_FREE,
 				asBC_SUSPEND,asBC_FREE,asBC_RET
 			};
-		for( asUINT n = 0, i = 0; n < len; )
-		{
-			asBYTE c = asBYTE(bc[n]);
-			if( c != expect[i] )
-			{
-				TEST_FAILED;
-				break;
-			}
-			n += asBCTypeSize[asBCInfo[c].type];
-			if( ++i > sizeof(expect) )
-				TEST_FAILED;
-		}
+		asIScriptFunction *func = mod->GetFunctionByName("main");
+		if (!ValidateByteCode(func, expect))
+			TEST_FAILED;
 
 		engine->Release();
 	}
