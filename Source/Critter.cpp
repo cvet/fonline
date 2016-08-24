@@ -159,13 +159,6 @@ void Critter::DeleteInventory()
         ItemMngr.DeleteItem( *invItems.begin() );
 }
 
-uint Critter::GetUseApCost( Item* weap, int use )
-{
-    uint dist = 1;
-    Script::RaiseInternalEvent( ServerFunctions.CritterGetUseApCost, this, weap, use, &dist );
-    return dist;
-}
-
 uint Critter::GetAttackDist( Item* weap, int use )
 {
     uint dist = 1;
@@ -2140,7 +2133,7 @@ const char* Critter::GetInfo()
 
 int Critter::GetApCostCritterMove( bool is_run )
 {
-    return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
+    return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.ApCostCritterRun : GameOpt.ApCostCritterWalk ) : 0;
 }
 
 void Critter::SetHome( uint map_id, ushort hx, ushort hy, uchar dir )

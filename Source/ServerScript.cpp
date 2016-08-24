@@ -176,7 +176,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterTalk );
     BIND_INTERNAL_EVENT( CritterBarter );
     BIND_INTERNAL_EVENT( CritterKnockout );
-    BIND_INTERNAL_EVENT( CritterGetUseApCost );
     BIND_INTERNAL_EVENT( CritterGetAttackDistantion );
     BIND_INTERNAL_EVENT( NpcPlaneBegin );
     BIND_INTERNAL_EVENT( NpcPlaneEnd );
@@ -589,14 +588,6 @@ bool FOServer::SScriptFunc::Item_SetScript( Item* item, asIScriptFunction* func 
         item->SetScriptId( 0 );
     }
     return true;
-}
-
-uint FOServer::SScriptFunc::Item_GetWholeCost( Item* item )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return item->GetWholeCost();
 }
 
 Map* FOServer::SScriptFunc::Item_GetMapPosition( Item* item, ushort& hx, ushort& hy )

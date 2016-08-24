@@ -98,7 +98,6 @@ public:
     CLASS_PROPERTY_ALIAS( uchar, LightFlags );
     CLASS_PROPERTY_ALIAS( uint, LightColor );
     CLASS_PROPERTY_ALIAS( bool, IsCanPickUp );
-    CLASS_PROPERTY_ALIAS( uint, Cost );
     CLASS_PROPERTY_ALIAS( uint, Count );
     CLASS_PROPERTY_ALIAS( bool, IsFlat );
     CLASS_PROPERTY_ALIAS( char, DrawOrderOffsetHexY );
@@ -277,9 +276,6 @@ public:
     bool IsCar()       { return GetType() == ITEM_TYPE_CAR; }
 
     void ChangeCount( int val );
-
-    uint GetWholeCost() { return GetCount() * GetCost1st(); }
-    uint GetCost1st();
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     uint GetCurSprId();

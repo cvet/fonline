@@ -370,7 +370,6 @@ public:
         static Item* Item_AddItem( Item* cont, hash pid, uint count, uint stack_id );
         static uint  Item_GetItems( Item* cont, uint stack_id, ScriptArray* items );
         static bool  Item_SetScript( Item* item, asIScriptFunction* func );
-        static uint  Item_GetWholeCost( Item* item );
         static Map*  Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static bool  Item_ChangeProto( Item* item, hash pid );
         static void  Item_Animate( Item* item, uchar from_frm, uchar to_frm );

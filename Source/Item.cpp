@@ -22,7 +22,6 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, LightDistance );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, LightFlags );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, LightColor );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsCanPickUp );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Cost );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uint, Count );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsFlat );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, char, DrawOrderOffsetHexY );
@@ -266,20 +265,6 @@ void Item::ClearItems( ItemVec& items )
 void Item::ChangeCount( int val )
 {
     SetCount( GetCount() + val );
-}
-
-uint Item::GetCost1st()
-{
-    uint cost = ( GetCost() ? GetCost() : GetCost() );
-    if( IsWeapon() && GetAmmoCount() )
-    {
-        ProtoItem* ammo = ProtoMngr.GetProtoItem( GetAmmoPid() );
-        if( ammo )
-            cost += ammo->GetCost() * GetAmmoCount();
-    }
-    if( !cost )
-        cost = 1;
-    return cost;
 }
 
 #ifdef FONLINE_SERVER

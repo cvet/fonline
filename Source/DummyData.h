@@ -175,7 +175,6 @@ struct BindClass
     static void Item_GetItems()            {}
     static void Item_SetScript()           {}
     static void Item_SetEvent()            {}
-    static void Item_GetWholeCost()        {}
     static void Item_GetMapPosition()      {}
     static void Item_ChangeProto()         {}
     static void Item_Animate()             {}

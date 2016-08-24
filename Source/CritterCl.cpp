@@ -370,15 +370,6 @@ bool CritterCl::CheckFind( int find_type )
            ( IsDead() && FLAG( find_type, FIND_DEAD ) );
 }
 
-uint CritterCl::GetUseApCost( Item* item, uchar rate )
-{
-    uint ap_cost = 1;
-    #ifdef FONLINE_CLIENT
-    Script::RaiseInternalEvent( ClientFunctions.CritterGetUseApCost, this, item, rate, &ap_cost );
-    #endif
-    return ap_cost;
-}
-
 uint CritterCl::GetAttackDist()
 {
     Item* weap = ItemSlotMain;
@@ -1254,5 +1245,5 @@ void CritterCl::DrawTextOnHead()
 
 int CritterCl::GetApCostCritterMove( bool is_run )
 {
-    return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0;
+    return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.ApCostCritterRun : GameOpt.ApCostCritterWalk ) : 0;
 }

@@ -581,25 +581,7 @@ void FOServer::ProcessAI( Npc* npc )
             if( npc->IsWait() )
                 break;
 
-            if( r2 )
-            {
-                npc->SetWait( r2 );
-                break;
-            }
-
-            if( r0 != (uint) use )
-                use = r0;
-
-            int   aim = r1;
-            uchar mode = MAKE_ITEM_MODE( use, aim );
-            weap->SetMode( mode );
-
-            int ap_cost = npc->GetUseApCost( npc->ItemSlotMain, mode );
-            CHECK_NPC_AP( npc, map, ap_cost );
-
-            r0 = mode;
-            r1 = targ->GetId();
-            r2 = 0;
+            r2 = targ->GetId();
             if( !npc->RunPlane( REASON_ATTACK_SHOOT, r0, r1, r2 ) )
             {
                 WriteLog( "REASON_ATTACK_SHOOT fail. Skip attack.\n" );

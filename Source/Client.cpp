@@ -6746,7 +6746,6 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( CritterAnimationSubstitute );
     BIND_INTERNAL_EVENT( CritterAnimationFallout );
     BIND_INTERNAL_EVENT( CritterCheckMoveItem );
-    BIND_INTERNAL_EVENT( CritterGetUseApCost );
     BIND_INTERNAL_EVENT( CritterGetAttackDistantion );
     #undef BIND_INTERNAL_EVENT
 

@@ -327,7 +327,6 @@ struct ClientScriptFunctions
     void* CritterAnimationSubstitute;
     void* CritterAnimationFallout;
     void* CritterCheckMoveItem;
-    void* CritterGetUseApCost;
     void* CritterGetAttackDistantion;
 } extern ClientFunctions;
 
@@ -420,7 +419,6 @@ struct ServerScriptFunctions
     void* CritterTalk;
     void* CritterBarter;
     void* CritterKnockout;
-    void* CritterGetUseApCost;
     void* CritterGetAttackDistantion;
     void* NpcPlaneBegin;
     void* NpcPlaneEnd;
@@ -472,8 +470,8 @@ struct GameOptions
     uint          TimeoutTransfer;
     uint          TimeoutBattle;
     uint          ApRegeneration;
-    uint          RtApCostCritterWalk;
-    uint          RtApCostCritterRun;
+    uint          ApCostCritterWalk;
+    uint          ApCostCritterRun;
     bool          RtAlwaysRun;
     bool          RunOnCombat;
     bool          RunOnTransfer;

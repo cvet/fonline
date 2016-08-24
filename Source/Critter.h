@@ -317,7 +317,6 @@ public:
     void        RefreshName();
     const char* GetInfo();
     void        SendMessage( int num, int val, int to );
-    uint        GetUseApCost( Item* weap, int use );
     uint        GetAttackDist( Item* weap, int use );
     uint        GetUseDist();
     bool        IsLife();

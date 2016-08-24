@@ -117,7 +117,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "bool Misc_SetScript(NpcP
 
 BIND_ASSERT( engine->RegisterFuncdef( "void ItemInitFunc(Item&, bool)" ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetScript(ItemInitFunc@+ func)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetWholeCost() const", asFUNCTION( BIND_CLASS Item_GetWholeCost ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddItem(hash protoId, uint count, uint stackId)", asFUNCTION( BIND_CLASS Item_AddItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetItems(uint stackId, array<Item@ >@+ items)", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "uint GetItems(uint stackId, array<const Item@>@+ items) const", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL_OBJFIRST ) );
@@ -129,7 +128,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "const Item@+ GetChild(uint c
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter& cr, Item@+ item, int param) const", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
 
 // BIND_ASSERT( engine->RegisterGlobalFunction( "bool __Item_SetScript(?&in item, ?&in func)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL ) );
-// BIND_ASSERT( engine->RegisterGlobalFunction( "uint __Item_GetWholeCost(?&in item)", asFUNCTION( BIND_CLASS Item_GetWholeCost ), asCALL_CDECL ) );
 // BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ __Item_AddItem(?&in item, hash protoId, uint count, uint stackId)", asFUNCTION( BIND_CLASS Item_AddItem ), asCALL_CDECL ) );
 // BIND_ASSERT( engine->RegisterGlobalFunction( "uint __Item_GetItems(?&in item, uint stackId, ?&in items)", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL ) );
 // BIND_ASSERT( engine->RegisterGlobalFunction( "uint __Item_GetItems(?&in item, uint stackId, ?&in items)", asFUNCTION( BIND_CLASS Item_GetItems ), asCALL_CDECL ) );
@@ -159,7 +157,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Cri
 //	#ifdef __SERVER
 //	funcdef void ItemInitFunc( _Item@, bool );
 //	bool SetScript(ItemInitFunc@ func){ return /*__Item_SetScript( func );*/false; }
-//    uint GetWholeCost() const{ return /*__Item_GetWholeCost();*/0; }
 //    Item@ AddItem(hash protoId, uint count, uint stackId){ return /*__Item_AddItem();*/null; }
 //    uint GetItems(uint stackId, array<Item@ >@ items){ return /*__Item_GetItems();*/0; }
 //    uint GetItems(uint stackId, array<const Item@>@ items) const{ return /*__Item_GetItems();*/0; }
@@ -601,8 +598,8 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Breaktime", &GameOpt.Breakt
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TimeoutTransfer", &GameOpt.TimeoutTransfer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TimeoutBattle", &GameOpt.TimeoutBattle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApRegeneration", &GameOpt.ApRegeneration ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostCritterWalk", &GameOpt.RtApCostCritterWalk ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __RtApCostCritterRun", &GameOpt.RtApCostCritterRun ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostCritterWalk", &GameOpt.ApCostCritterWalk ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostCritterRun", &GameOpt.ApCostCritterRun ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RtAlwaysRun", &GameOpt.RtAlwaysRun ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RunOnCombat", &GameOpt.RunOnCombat ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RunOnTransfer", &GameOpt.RunOnTransfer ) );

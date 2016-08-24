@@ -134,7 +134,6 @@ public:
     uint  CountItemPid( hash item_pid );
     uint  CountItemType( uchar type );
     bool  IsHaveLightSources();
-    uint  GetUseApCost( Item* item, uchar rate );
 
     // Moving
 public:
