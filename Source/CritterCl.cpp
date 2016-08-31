@@ -41,7 +41,6 @@ CLASS_PROPERTY_IMPL( CritterCl, TalkDistance );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentHp );
 CLASS_PROPERTY_IMPL( CritterCl, ActionPoints );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentAp );
-CLASS_PROPERTY_IMPL( CritterCl, ApRegenerationTime );
 CLASS_PROPERTY_IMPL( CritterCl, WalkTime );
 CLASS_PROPERTY_IMPL( CritterCl, RunTime );
 CLASS_PROPERTY_IMPL( CritterCl, ScaleFactor );
@@ -67,7 +66,6 @@ CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::Cr
     SprOx = SprOy = 0;
     StartTick = 0;
     TickCount = 0;
-    ApRegenerationTick = 0;
     tickTextDelay = 0;
     textOnHeadColor = COLOR_TEXT;
     Alpha = 0;
@@ -386,22 +384,6 @@ uint CritterCl::GetAttackDist()
 uint CritterCl::GetUseDist()
 {
     return 1 + GetMultihex();
-}
-
-int CritterCl::GetRealAp()
-{
-    return GetCurrentAp();
-}
-
-int CritterCl::GetAllAp()
-{
-    return GetCurrentAp() / AP_DIVIDER;
-}
-
-void CritterCl::SubAp( int val )
-{
-    SetCurrentAp( GetCurrentAp() - val * AP_DIVIDER );
-    ApRegenerationTick = 0;
 }
 
 void CritterCl::DrawStay( Rect r )
@@ -1241,9 +1223,4 @@ void CritterCl::DrawTextOnHead()
 
     if( Timer::GameTick() - tickStartText >= tickTextDelay && !strTextOnHead.empty() )
         strTextOnHead = "";
-}
-
-int CritterCl::GetApCostCritterMove( bool is_run )
-{
-    return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.ApCostCritterRun : GameOpt.ApCostCritterWalk ) : 0;
 }

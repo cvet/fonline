@@ -60,7 +60,6 @@ CLASS_PROPERTY_IMPL( Critter, TalkDistance );
 CLASS_PROPERTY_IMPL( Critter, CurrentHp );
 CLASS_PROPERTY_IMPL( Critter, ActionPoints );
 CLASS_PROPERTY_IMPL( Critter, CurrentAp );
-CLASS_PROPERTY_IMPL( Critter, ApRegenerationTime );
 CLASS_PROPERTY_IMPL( Critter, WalkTime );
 CLASS_PROPERTY_IMPL( Critter, RunTime );
 CLASS_PROPERTY_IMPL( Critter, ScaleFactor );
@@ -106,7 +105,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     CacheValuesNextTick = 0;
     Flags = 0;
     TryingGoHomeTick = 0;
-    ApRegenerationTick = 0;
     IdleNextTick = 0;
     LockMapTransfers = 0;
     ViewMapId = 0;
@@ -138,7 +136,6 @@ void Critter::SetBreakTime( uint ms )
 {
     breakTime = ms;
     startBreakTime = Timer::GameTick();
-    ApRegenerationTick = 0;
 }
 
 void Critter::SetBreakTimeDelta( uint ms )
@@ -201,22 +198,6 @@ bool Critter::CheckFind( int find_type )
     return ( FLAG( find_type, FIND_LIFE ) && IsLife() ) ||
            ( FLAG( find_type, FIND_KO ) && IsKnockout() ) ||
            ( FLAG( find_type, FIND_DEAD ) && IsDead() );
-}
-
-int Critter::GetRealAp()
-{
-    return GetCurrentAp();
-}
-
-int Critter::GetAllAp()
-{
-    return GetCurrentAp() / AP_DIVIDER;
-}
-
-void Critter::SubAp( int val )
-{
-    SetCurrentAp( GetCurrentAp() - val * AP_DIVIDER );
-    ApRegenerationTick = 0;
 }
 
 void Critter::SyncLockCritters( bool self_critters, bool only_players )
@@ -1517,7 +1498,6 @@ void Critter::TryUpOnKnockout()
         if( cur_ap <= 0 )
             return;
         int ap = MIN( (int) KnockoutAp, cur_ap );
-        SubAp( ap );
         KnockoutAp -= ap;
         if( KnockoutAp )
             return;
@@ -2129,11 +2109,6 @@ void Critter::RefreshName()
 const char* Critter::GetInfo()
 {
     return GetName();
-}
-
-int Critter::GetApCostCritterMove( bool is_run )
-{
-    return IS_TIMEOUT( GetTimeoutBattle() ) ? ( is_run ? GameOpt.ApCostCritterRun : GameOpt.ApCostCritterWalk ) : 0;
 }
 
 void Critter::SetHome( uint map_id, ushort hx, ushort hy, uchar dir )

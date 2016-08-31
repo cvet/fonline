@@ -1,43 +1,6 @@
 #include "Common.h"
 #include "Server.h"
 
-#define CHECK_NPC_AP( npc, map, need_ap )                                                                                        \
-    do                                                                                                                           \
-    {                                                                                                                            \
-        if( npc->GetCurrentAp() / AP_DIVIDER < (int) ( need_ap ) )                                                               \
-        {                                                                                                                        \
-            uint ap_regeneration = npc->GetApRegenerationTime();                                                                 \
-            if( !ap_regeneration )                                                                                               \
-                ap_regeneration = GameOpt.ApRegeneration;                                                                        \
-            npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetCurrentAp() / AP_DIVIDER ) ); \
-            return;                                                                                                              \
-        }                                                                                                                        \
-    } while( 0 )
-#define CHECK_NPC_REAL_AP( npc, map, need_ap )                                                                                \
-    do                                                                                                                        \
-    {                                                                                                                         \
-        if( npc->GetRealAp() < (int) ( need_ap ) )                                                                            \
-        {                                                                                                                     \
-            uint ap_regeneration = npc->GetApRegenerationTime();                                                              \
-            if( !ap_regeneration )                                                                                            \
-                ap_regeneration = GameOpt.ApRegeneration;                                                                     \
-            npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetRealAp() ) / AP_DIVIDER ); \
-            return;                                                                                                           \
-        }                                                                                                                     \
-    } while( 0 )
-#define CHECK_NPC_AP_R0( npc, map, need_ap )                                                                                     \
-    do                                                                                                                           \
-    {                                                                                                                            \
-        if( npc->GetCurrentAp() / AP_DIVIDER < (int) ( need_ap ) )                                                               \
-        {                                                                                                                        \
-            uint ap_regeneration = npc->GetApRegenerationTime();                                                                 \
-            if( !ap_regeneration )                                                                                               \
-                ap_regeneration = GameOpt.ApRegeneration;                                                                        \
-            npc->SetWait( ap_regeneration / npc->GetActionPoints() * ( (int) ( need_ap ) - npc->GetCurrentAp() / AP_DIVIDER ) ); \
-            return false;                                                                                                        \
-        }                                                                                                                        \
-    } while( 0 )
-
 void FOServer::ProcessAI( Npc* npc )
 {
     // Check busy
@@ -119,21 +82,12 @@ void FOServer::ProcessAI( Npc* npc )
     // Process move
     if( plane->IsMove )
     {
-        // Check ap availability
-        int ap_move = npc->GetApCostCritterMove( plane->Move.IsRun );
-        plane->IsMove = false;
-        CHECK_NPC_REAL_AP( npc, map, ap_move );
-        plane->IsMove = true;
-
-        // Check
+        // Check for path recalculation
         if( plane->Move.PathNum && plane->Move.TargId )
         {
             Critter* targ = npc->GetCritSelf( plane->Move.TargId, true );
             if( !targ || ( ( plane->Attack.LastHexX || plane->Attack.LastHexY ) && !CheckDist( targ->GetHexX(), targ->GetHexY(), plane->Attack.LastHexX, plane->Attack.LastHexY, 0 ) ) )
-            {
-                plane->Move.PathNum = 0;              // PathSafeFinish(*step);
-                // npc->SendA_XY();
-            }
+                plane->Move.PathNum = 0;
         }
 
         // Find path if not exist

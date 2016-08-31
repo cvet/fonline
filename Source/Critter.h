@@ -90,7 +90,6 @@ public:
     CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
     CLASS_PROPERTY( int, CurrentAp );
-    CLASS_PROPERTY( uint, ApRegenerationTime );
     CLASS_PROPERTY( int, ActionPoints ); // Rename MaxAp
     CLASS_PROPERTY( bool, IsNoWalk );
     CLASS_PROPERTY( bool, IsNoRun );
@@ -226,6 +225,7 @@ public:
 
 public:
     bool SetScript( asIScriptFunction* func, bool first_time );
+
     // Knockout
     uint KnockoutAp;
 
@@ -323,11 +323,6 @@ public:
     bool        IsDead();
     bool        IsKnockout();
     bool        CheckFind( int find_type );
-    int         GetRealAp();
-    int         GetAllAp();
-    void        SubAp( int val );
-
-    int GetApCostCritterMove( bool is_run );
 
     // Timeouts
     bool IsTransferTimeouts( bool send );
@@ -358,7 +353,6 @@ public:
     // Other
     CrVec* GlobalMapGroup;
     uint   IdleNextTick;
-    uint   ApRegenerationTick;
 
     bool   CanBeRemoved;
 };

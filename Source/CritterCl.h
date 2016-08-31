@@ -38,7 +38,6 @@ public:
     CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
     CLASS_PROPERTY( int, CurrentAp );
-    CLASS_PROPERTY( uint, ApRegenerationTime );
     CLASS_PROPERTY( int, ActionPoints );
     CLASS_PROPERTY( bool, IsNoWalk );
     CLASS_PROPERTY( bool, IsNoRun );
@@ -64,7 +63,6 @@ public:
     uint          ContourColor;
     UShortVec     LastHexX, LastHexY;
     uint          Flags;
-    uint          ApRegenerationTick;
     Effect*       DrawEffect;
 
     ScriptString* Name;
@@ -115,9 +113,6 @@ public:
 
     uint GetAttackDist();
     uint GetUseDist();
-    int  GetRealAp();
-    int  GetAllAp();
-    void SubAp( int val );
 
     // Items
 public:
@@ -262,10 +257,6 @@ private:
     uint   tickStartText;
     uint   tickTextDelay;
     uint   textOnHeadColor;
-
-    // Ap cost
-public:
-    int GetApCostCritterMove( bool is_run );
 };
 
 typedef map< uint, CritterCl* > CritMap;

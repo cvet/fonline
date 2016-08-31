@@ -469,9 +469,6 @@ struct GameOptions
     uint          Breaktime;
     uint          TimeoutTransfer;
     uint          TimeoutBattle;
-    uint          ApRegeneration;
-    uint          ApCostCritterWalk;
-    uint          ApCostCritterRun;
     bool          RtAlwaysRun;
     bool          RunOnCombat;
     bool          RunOnTransfer;

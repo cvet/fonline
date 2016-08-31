@@ -17,32 +17,6 @@ void FOServer::ProcessCritter( Critter* cr )
         cr->IdleNextTick = tick + GameOpt.CritterIdleTick;
     }
 
-    // Ap regeneration
-    int max_ap = cr->GetActionPoints() * AP_DIVIDER;
-    if( cr->IsFree() && cr->GetRealAp() < max_ap )
-    {
-        if( !cr->ApRegenerationTick )
-        {
-            cr->ApRegenerationTick = tick;
-        }
-        else
-        {
-            uint delta = tick - cr->ApRegenerationTick;
-            if( delta >= 500 )
-            {
-                uint ap_regeneration = cr->GetApRegenerationTime();
-                if( !ap_regeneration )
-                    ap_regeneration = GameOpt.ApRegeneration;
-                cr->SetCurrentAp( cr->GetCurrentAp() + max_ap * delta / ap_regeneration );
-                if( cr->GetCurrentAp() > max_ap )
-                    cr->SetCurrentAp( max_ap );
-                cr->ApRegenerationTick = tick;
-            }
-        }
-    }
-    if( cr->GetCurrentAp() > max_ap )
-        cr->SetCurrentAp( max_ap );
-
     // Internal misc/drugs time events
     // One event per cycle
     if( cr->IsNonEmptyTE_FuncNum() )
@@ -130,10 +104,6 @@ void FOServer::ProcessCritter( Critter* cr )
                 npc->RefreshBag();
         }
     }
-
-    // Knockout
-    if( cr->IsKnockout() )
-        cr->TryUpOnKnockout();
 }
 
 void FOServer::SaveHoloInfoFile( IniParser& data )
@@ -220,24 +190,6 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     Map* map = MapMngr.GetMap( map_id, true );
     if( !map || map_id != cr->GetMapId() || hx >= map->GetWidth() || hy >= map->GetHeight() )
         return false;
-
-    if( IS_TIMEOUT( cr->GetTimeoutBattle() ) )
-    {
-        int ap_cost = cr->GetApCostCritterMove( is_run );
-        if( cr->GetRealAp() < ap_cost && !Singleplayer )
-        {
-            cr->Send_XY( cr );
-            return false;
-        }
-        if( ap_cost )
-        {
-            int steps = cr->GetRealAp() / ap_cost - 1;
-            if( steps < MOVE_PARAM_STEP_COUNT )
-                move_params |= ( MOVE_PARAM_STEP_DISALLOW << ( steps * MOVE_PARAM_STEP_BITS ) );                               // Cut steps
-            cr->SetCurrentAp( cr->GetCurrentAp() - ap_cost );
-            cr->ApRegenerationTick = 0;
-        }
-    }
 
     // Check passed
     ushort fx = cr->GetHexX();

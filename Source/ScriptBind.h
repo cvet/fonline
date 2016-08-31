@@ -597,9 +597,6 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "int __DeadHitPoints", &GameOpt.Dea
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Breaktime", &GameOpt.Breaktime ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TimeoutTransfer", &GameOpt.TimeoutTransfer ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TimeoutBattle", &GameOpt.TimeoutBattle ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApRegeneration", &GameOpt.ApRegeneration ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostCritterWalk", &GameOpt.ApCostCritterWalk ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ApCostCritterRun", &GameOpt.ApCostCritterRun ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RtAlwaysRun", &GameOpt.RtAlwaysRun ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RunOnCombat", &GameOpt.RunOnCombat ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __RunOnTransfer", &GameOpt.RunOnTransfer ) );

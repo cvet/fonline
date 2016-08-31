@@ -1421,59 +1421,13 @@ void FOServer::Process( ClientPtr& cl )
     else if( cl->GameState == STATE_PLAYING )
     {
         #define MESSAGES_PER_CYCLE    ( 5 )
-        #define CHECK_BUSY_AND_LIFE                           \
-            if( !cl->IsLife() )                               \
-                break;                                        \
+        #define CHECK_BUSY                                    \
             if( cl->IsBusy() && !Singleplayer )               \
             {                                                 \
                 cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); \
                 BIN_END( cl );                                \
                 return;                                       \
             }
-        #define CHECK_AP_MSG                                                     \
-            uchar ap;                                                            \
-            cl->Bin >> ap;                                                       \
-            if( !Singleplayer )                                                  \
-            {                                                                    \
-                if( ap > cl->GetActionPoints() )                                 \
-                    break;                                                       \
-                if( (int) ap > cl->GetCurrentAp() / AP_DIVIDER )                 \
-                {                                                                \
-                    cl->Bin.MoveReadPos( -int( sizeof( msg ) + sizeof( ap ) ) ); \
-                    BIN_END( cl );                                               \
-                    return;                                                      \
-                }                                                                \
-            }
-        #define CHECK_AP( ap )                                       \
-            if( !Singleplayer )                                      \
-            {                                                        \
-                if( (int) ( ap ) > cl->GetActionPoints() )           \
-                    break;                                           \
-                if( (int) ( ap ) > cl->GetCurrentAp() / AP_DIVIDER ) \
-                {                                                    \
-                    cl->Bin.MoveReadPos( -int( sizeof( msg ) ) );    \
-                    BIN_END( cl );                                   \
-                    return;                                          \
-                }                                                    \
-            }
-        #define CHECK_REAL_AP( ap )                                     \
-            if( !Singleplayer )                                         \
-            {                                                           \
-                if( (int) ( ap ) > cl->GetActionPoints() * AP_DIVIDER ) \
-                    break;                                              \
-                if( (int) ( ap ) > cl->GetRealAp() )                    \
-                {                                                       \
-                    cl->Bin.MoveReadPos( -int( sizeof( msg ) ) );       \
-                    BIN_END( cl );                                      \
-                    return;                                             \
-                }                                                       \
-            }
-        #define CHECK_IS_GLOBAL                    \
-            if( cl->GetMapId() || !cl->GroupMove ) \
-                break
-        #define CHECK_NO_GLOBAL   \
-            if( !cl->GetMapId() ) \
-                break
 
         for( int i = 0; i < MESSAGES_PER_CYCLE; i++ )
         {
@@ -1524,42 +1478,35 @@ void FOServer::Process( ClientPtr& cl )
             }
             case NETMSG_DIR:
             {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_NO_GLOBAL;
+                CHECK_BUSY;
                 Process_Dir( cl );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_MOVE_WALK:
             {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_NO_GLOBAL;
-                CHECK_REAL_AP( cl->GetApCostCritterMove( false ) );
+                CHECK_BUSY;
                 Process_Move( cl );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_MOVE_RUN:
             {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_NO_GLOBAL;
-                CHECK_REAL_AP( cl->GetApCostCritterMove( true ) );
+                CHECK_BUSY;
                 Process_Move( cl );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_TALK_NPC:
             {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_NO_GLOBAL;
+                CHECK_BUSY;
                 Process_Dialog( cl, false );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_SAY_NPC:
             {
-                CHECK_BUSY_AND_LIFE;
-                CHECK_NO_GLOBAL;
+                CHECK_BUSY;
                 Process_Dialog( cl, true );
                 BIN_END( cl );
                 continue;
@@ -1586,14 +1533,14 @@ void FOServer::Process( ClientPtr& cl )
             }
             case NETMSG_SEND_SET_USER_HOLO_STR:
             {
-                CHECK_BUSY_AND_LIFE;
+                CHECK_BUSY;
                 Process_SetUserHoloStr( cl );
                 BIN_END( cl );
                 continue;
             }
             case NETMSG_SEND_GET_USER_HOLO_STR:
             {
-                CHECK_BUSY_AND_LIFE;
+                CHECK_BUSY;
                 Process_GetUserHoloStr( cl );
                 BIN_END( cl );
                 continue;

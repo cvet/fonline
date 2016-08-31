@@ -1025,9 +1025,6 @@ GameOptions::GameOptions()
     Breaktime = 1200;
     TimeoutTransfer = 3;
     TimeoutBattle = 10;
-    ApRegeneration = 10000;
-    ApCostCritterWalk = 0;
-    ApCostCritterRun = 1;
     RtAlwaysRun = false;
     RunOnCombat = false;
     RunOnTransfer = false;
