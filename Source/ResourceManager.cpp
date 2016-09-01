@@ -46,9 +46,9 @@ void ResourceManager::Refresh()
 
             // Sound names
             StrVec sounds;
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_SFX ), true, "wav", sounds );
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_SFX ), true, "acm", sounds );
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_SFX ), true, "ogg", sounds );
+            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "wav", sounds );
+            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "acm", sounds );
+            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "ogg", sounds );
             char fname[ MAX_FOPATH ];
             char name[ MAX_FOPATH ];
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )

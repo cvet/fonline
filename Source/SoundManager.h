@@ -28,10 +28,10 @@ public:
 
 private:
     bool   ProcessSound( Sound* sound );
-    Sound* Load( const char* fname, int path_type );
-    bool   LoadWAV( Sound* sound, const char* fname, int path_type );
-    bool   LoadACM( Sound* sound, const char* fname, int path_type );
-    bool   LoadOGG( Sound* sound, const char* fname, int path_type );
+    Sound* Load( const char* fname, bool is_music );
+    bool   LoadWAV( Sound* sound, const char* fname );
+    bool   LoadACM( Sound* sound, const char* fname, bool is_music );
+    bool   LoadOGG( Sound* sound, const char* fname );
     bool   Streaming( Sound* sound );
     bool   StreamingWAV( Sound* sound );
     bool   StreamingACM( Sound* sound );

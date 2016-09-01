@@ -5921,11 +5921,11 @@ void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_seque
         *sound = 0;
         sound++;
         if( !Str::Substring( sound, "/" ) )
-            sw.SoundName = FileManager::GetDataPath( "", PT_CLIENT_VIDEO );
+            sw.SoundName = FileManager::GetDataPath( "", PT_CLIENT_DATA );
         sw.SoundName += sound;
     }
     if( !Str::Substring( str, "/" ) )
-        sw.FileName = FileManager::GetDataPath( "", PT_CLIENT_VIDEO );
+        sw.FileName = FileManager::GetDataPath( "", PT_CLIENT_DATA );
     sw.FileName += str;
 
     // Add video in sequence

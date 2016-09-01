@@ -236,13 +236,10 @@ bool SoundManager::ProcessSound( Sound* sound )
     return false;
 }
 
-Sound* SoundManager::Load( const char* fname, int path_type )
+Sound* SoundManager::Load( const char* fname, bool is_music )
 {
     char fname_[ MAX_FOPATH ];
     Str::Copy( fname_, fname );
-
-    if( Str::Substring( fname_, "\\" ) || Str::Substring( fname_, "/" ) )
-        path_type = PT_CLIENT_DATA;
 
     const char* ext = FileManager::GetExtension( fname );
     if( !ext )
@@ -263,9 +260,9 @@ Sound* SoundManager::Load( const char* fname, int path_type )
         return nullptr;
     }
 
-    if( !( ( Str::CompareCase( ext, ".wav" ) && LoadWAV( sound, fname_, path_type ) ) ||
-           ( Str::CompareCase( ext, ".acm" ) && LoadACM( sound, fname_, path_type ) ) ||
-           ( Str::CompareCase( ext, ".ogg" ) && LoadOGG( sound, fname_, path_type ) ) ) )
+    if( !( ( Str::CompareCase( ext, ".wav" ) && LoadWAV( sound, fname_ ) ) ||
+           ( Str::CompareCase( ext, ".acm" ) && LoadACM( sound, fname_, is_music ) ) ||
+           ( Str::CompareCase( ext, ".ogg" ) && LoadOGG( sound, fname_ ) ) ) )
     {
         delete sound;
         return nullptr;
@@ -277,10 +274,10 @@ Sound* SoundManager::Load( const char* fname, int path_type )
     return sound;
 }
 
-bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
+bool SoundManager::LoadWAV( Sound* sound, const char* fname )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
+    if( !fm.LoadFile( fname, PT_CLIENT_DATA ) )
         return false;
 
     uint dw_buf = fm.GetLEUInt();
@@ -378,10 +375,10 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname, int path_type )
     return ConvertData( sound );
 }
 
-bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
+bool SoundManager::LoadACM( Sound* sound, const char* fname, bool is_music )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
+    if( !fm.LoadFile( fname, PT_CLIENT_DATA ) )
         return false;
 
     int                     channels = 0;
@@ -395,7 +392,7 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, int path_type )
     }
 
     sound->OriginalFormat = AUDIO_S16;
-    sound->OriginalChannels = ( path_type == PT_CLIENT_MUSIC ? 2 : 1 );
+    sound->OriginalChannels = ( is_music ? 2 : 1 );
     sound->OriginalRate = 22050;
 
     sound->BaseBufSize = samples * 2;
@@ -449,10 +446,10 @@ long Ogg_tell_func( void* datasource )
     return fm->GetCurPos();
 }
 
-bool SoundManager::LoadOGG( Sound* sound, const char* fname, int path_type )
+bool SoundManager::LoadOGG( Sound* sound, const char* fname )
 {
     FileManager* fm = new FileManager();
-    if( !fm || !fm->LoadFile( fname, path_type ) )
+    if( !fm || !fm->LoadFile( fname, PT_CLIENT_DATA ) )
     {
         SAFEDEL( fm );
         return false;
@@ -628,7 +625,7 @@ bool SoundManager::PlaySound( const char* name )
     StrMap& names = ResMngr.GetSoundNames();
     auto    it = names.find( name_ );
     if( it != names.end() )
-        return Load( it->second.c_str(), PT_CLIENT_SFX ) != nullptr;
+        return Load( it->second.c_str(), PT_CLIENT_DATA ) != nullptr;
 
     // Check random pattern 'NAME_X'
     uint count = 0;
@@ -636,7 +633,7 @@ bool SoundManager::PlaySound( const char* name )
     while( names.find( Str::Format( buf, "%s_%d", name_, count + 1 ) ) != names.end() )
         count++;
     if( count )
-        return Load( names.find( Str::Format( buf, "%s_%d", name_, Random( 1, count ) ) )->second.c_str(), PT_CLIENT_SFX ) != nullptr;
+        return Load( names.find( Str::Format( buf, "%s_%d", name_, Random( 1, count ) ) )->second.c_str(), false ) != nullptr;
 
     return false;
 }
@@ -649,7 +646,7 @@ bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
     StopMusic();
 
     // Load new
-    Sound* sound = Load( fname, PT_CLIENT_MUSIC );
+    Sound* sound = Load( fname, true );
     if( !sound )
         return false;
 
