@@ -10,10 +10,12 @@ void FOServer::ProcessCritter( Critter* cr )
 
     uint tick = Timer::GameTick();
 
-    // Idle function
+    // Idle functions
     if( tick >= cr->IdleNextTick )
     {
-        Script::RaiseInternalEvent( cr->GetMapId() ? ServerFunctions.CritterIdle : ServerFunctions.CritterGlobalMapIdle, cr );
+        Script::RaiseInternalEvent( ServerFunctions.CritterIdle, cr );
+        if( !cr->GetMapId() )
+            Script::RaiseInternalEvent( ServerFunctions.CritterGlobalMapIdle, cr );
         cr->IdleNextTick = tick + GameOpt.CritterIdleTick;
     }
 
