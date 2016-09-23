@@ -142,8 +142,6 @@ public:
     CLASS_PROPERTY( bool, Opened );
     CLASS_PROPERTY( int, Corner );
     CLASS_PROPERTY( uchar, Slot );
-    CLASS_PROPERTY( uchar, SoundId );
-    CLASS_PROPERTY( uchar, Material );
     CLASS_PROPERTY( bool, DisableEgg );
     CLASS_PROPERTY( ushort, AnimWaitBase );
     CLASS_PROPERTY( ushort, AnimWaitRndMin );

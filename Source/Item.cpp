@@ -57,8 +57,6 @@ CLASS_PROPERTY_IMPL( Item, GroundLevel );
 CLASS_PROPERTY_IMPL( Item, Opened );
 CLASS_PROPERTY_IMPL( Item, Corner );
 CLASS_PROPERTY_IMPL( Item, Slot );
-CLASS_PROPERTY_IMPL( Item, SoundId );
-CLASS_PROPERTY_IMPL( Item, Material );
 CLASS_PROPERTY_IMPL( Item, DisableEgg );
 CLASS_PROPERTY_IMPL( Item, AnimWaitBase );
 CLASS_PROPERTY_IMPL( Item, AnimWaitRndMin );
