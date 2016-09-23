@@ -9,6 +9,7 @@
 #endif
 
 ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, CritterCl::PropertiesRegistrator ) {}
+CLASS_PROPERTY_ALIAS_IMPL( ProtoCritter, CritterCl, uint, Multihex );
 
 bool   CritterCl::SlotEnabled[ 0x100 ];
 IntSet CritterCl::RegProperties;

@@ -65,7 +65,13 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
         return nullptr;
     }
 
-    if( !map->IsHexPassed( hx, hy ) )
+    uint multihex;
+    if( !props )
+        multihex = proto->GetMultihex();
+    else
+        multihex = props->GetPropValue< uint >( Critter::PropertyMultihex );
+
+    if( !map->IsHexesPassed( hx, hy, multihex ) )
     {
         if( accuracy )
         {
@@ -94,7 +100,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
                 continue;
             if( hy_ + sy[ cur_step ] < 0 || hy_ + sy[ cur_step ] >= map->GetHeight() )
                 continue;
-            if( !map->IsHexPassed( hx_ + sx[ cur_step ], hy_ + sy[ cur_step ] ) )
+            if( !map->IsHexesPassed( hx_ + sx[ cur_step ], hy_ + sy[ cur_step ], multihex ) )
                 continue;
             break;
         }

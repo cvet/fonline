@@ -8,6 +8,7 @@
 #include "ProtoManager.h"
 
 ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, Critter::PropertiesRegistrator ) {}
+CLASS_PROPERTY_ALIAS_IMPL( ProtoCritter, Critter, uint, Multihex );
 
 /************************************************************************/
 /*                                                                      */

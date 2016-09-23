@@ -11,6 +11,8 @@ class ProtoCritter: public ProtoEntity
 public:
     ProtoCritter( hash pid );
 
+    CLASS_PROPERTY_ALIAS( uint, Multihex );
+
     UIntVec  TextsLang;
     FOMsgVec Texts;
 
