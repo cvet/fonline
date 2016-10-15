@@ -45,12 +45,6 @@ public:
     void          GotoNextApp( const char* app_name );
     const StrMap* GetAppKeyValues( const char* app_name );
     const char*   GetAppContent( const char* app_name );
-
-    static void LoadMainConfig();
 };
-
-extern IniParser* MainConfig;
-extern StrMap     ModuleDirs;
-extern StrVec     ModuleFullDirs;
 
 #endif // ___INI_PARSER___

@@ -71,7 +71,7 @@ namespace MapperBind
 
 int main( int argc, char* argv[] )
 {
-    IniParser::LoadMainConfig();
+    InitialSetup();
 
     // Make command line
     SetCommandLine( argc, argv );

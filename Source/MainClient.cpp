@@ -9,7 +9,7 @@
 
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    IniParser::LoadMainConfig();
+    InitialSetup();
 
     // Threading
     Thread::SetCurrentName( "Main" );

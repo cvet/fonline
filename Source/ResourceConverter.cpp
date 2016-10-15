@@ -1177,18 +1177,18 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     bool        something_changed = false;
     StrSet      update_file_names;
 
-    for( size_t m = 0; m < ModuleFullDirs.size(); m++ )
+    for( size_t m = 0; m < GameModules.size(); m++ )
     {
         StrVec      dummy_vec;
         StrVec      all_dirs_path;
         FindDataVec all_dirs;
-        FileManager::GetFolderFileNames( ModuleFullDirs[ m ].c_str(), true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
+        FileManager::GetFolderFileNames( GameModules[ m ].c_str(), true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
         for( size_t d = 0; d < all_dirs.size(); d++ )
         {
             if( !Str::CompareCase( all_dirs[ d ].FileName, "Resources" ) )
                 continue;
 
-            string      resources_root = ModuleFullDirs[ m ] + all_dirs_path[ d ];
+            string      resources_root = GameModules[ m ] + all_dirs_path[ d ];
             FindDataVec resources_dirs;
             FileManager::GetFolderFileNames( resources_root.c_str(), false, nullptr, dummy_vec, nullptr, nullptr, &resources_dirs );
             for( size_t r = 0; r < resources_dirs.size(); r++ )

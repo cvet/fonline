@@ -139,6 +139,10 @@ const char* GetLastSocketError();
 typedef vector< Rect >  IntRectVec;
 typedef vector< RectF > FltRectVec;
 
+extern IniParser* MainConfig;
+extern StrVec     GameModules;
+void InitialSetup();
+
 extern char CommandLine[ MAX_FOTEXT ];
 void SetCommandLine( uint argc, char** argv );
 

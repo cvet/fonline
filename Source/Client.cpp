@@ -8911,9 +8911,7 @@ void FOClient::SScriptFunc::Global_SetUserConfig( ScriptArray& key_values )
         cfg_user.SetStr( value.c_str() );
         cfg_user.SetStr( "\n" );
     }
-    char cfg_name[ MAX_FOPATH ];
-    Str::Format( cfg_name, "%s", CONFIG_NAME );
-    cfg_user.SaveOutBufToFile( cfg_name, PT_CLIENT_CACHE );
+    cfg_user.SaveOutBufToFile( CONFIG_NAME, PT_CLIENT_CACHE );
 }
 
 Map*      FOClient::SScriptFunc::ClientCurMap = nullptr;

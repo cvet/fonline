@@ -5,7 +5,7 @@
 
 int main( int argc, char** argv )
 {
-    IniParser::LoadMainConfig();
+    InitialSetup();
 
     // Threading
     Thread::SetCurrentName( "GUI" );

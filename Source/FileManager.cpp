@@ -668,35 +668,6 @@ void FileManager::ResetCurrentDir()
         appendix = MainConfig->GetStr( "", "ClientPath" );
         #endif
 
-        if( !appendix )
-        {
-            #if defined ( FO_WINDOWS )
-            char path[ MAX_FOPATH ];
-            GetModuleFileName( GetModuleHandle( nullptr ), path, sizeof( path ) );
-            char dir[ MAX_FOPATH ];
-            FileManager::ExtractDir( path, dir );
-            SetCurrentDirectory( dir );
-            #elif defined ( FO_LINUX )
-            // Read symlink to executable
-            char buf[ MAX_FOPATH ];
-            if( readlink( "/proc/self/exe", buf, MAX_FOPATH ) != -1 ||    // Linux
-                readlink( "/proc/curproc/file", buf, MAX_FOPATH ) != -1 ) // FreeBSD
-            {
-                string            sbuf = buf;
-                string::size_type pos = sbuf.find_last_of( '/' );
-                if( pos != string::npos )
-                {
-                    buf[ pos ] = 0;
-                    chdir( buf );
-                }
-            }
-            #elif defined ( FO_OSX_MAC )
-            chdir( "./FOnline.app/Contents/Resources/Client" );
-            #elif defined ( FO_OSX_IOS )
-            chdir( "./Client" );
-            #endif
-        }
-
         #ifdef FO_WINDOWS
         GetCurrentDirectory( MAX_FOPATH, work_dir );
         #else
@@ -1096,7 +1067,7 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
 
     StrVec find_dirs;
     if( !fixed_dir )
-        find_dirs = ModuleFullDirs;
+        find_dirs = GameModules;
     else
         find_dirs.push_back( fixed_dir );
 

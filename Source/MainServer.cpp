@@ -72,7 +72,7 @@ void ServiceMain( bool as_service );
 // Main
 int main( int argc, char** argv )
 {
-    IniParser::LoadMainConfig();
+    InitialSetup();
 
     // Threading
     Thread::SetCurrentName( "GUI" );
@@ -835,7 +835,7 @@ void ServiceMain( bool as_service )
 
 VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 {
-    IniParser::LoadMainConfig();
+    InitialSetup();
     Thread::SetCurrentName( "Service" );
     LogToFile( "FOnlineServer.log" );
     WriteLog( "FOnline server service, version %d.\n", FONLINE_VERSION );
@@ -925,7 +925,7 @@ Thread   LoopThread;
 
 int main( int argc, char** argv )
 {
-    IniParser::LoadMainConfig();
+    InitialSetup();
 
     // Make command line
     SetCommandLine( argc, argv );
