@@ -2443,12 +2443,10 @@ void FOMapper::IntLMouseDown()
 
             if( ind < (int) LoadedProtoMaps.size() && ActiveProtoMap != LoadedProtoMaps[ ind ] )
             {
-                int sx, sy;
-                HexMngr.GetScreenHexes( sx, sy );
-                ActiveProtoMap->SetWorkHexX( sx );
-                ActiveProtoMap->SetWorkHexY( sy );
                 SelectClear();
 
+                if( ActiveProtoMap )
+                    HexMngr.GetProtoMap( *ActiveProtoMap );
                 if( HexMngr.SetProtoMap( *LoadedProtoMaps[ ind ] ) )
                 {
                     ActiveProtoMap = LoadedProtoMaps[ ind ];
@@ -3673,6 +3671,7 @@ void FOMapper::BufferPaste( int, int )
         {
             uint id = HexMngr.AddItem( --ActiveProtoMap->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr );
             ItemHex* item = HexMngr.GetItemById( id );
+            item->Props = *entity_buf.Props;
             SelectAdd( item );
             owner = item;
         }
@@ -4037,6 +4036,9 @@ void FOMapper::ParseCommand( const char* cmd )
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
         SelectClear();
+
+        if( ActiveProtoMap )
+            HexMngr.GetProtoMap( *ActiveProtoMap );
         if( !HexMngr.SetProtoMap( *pmap ) )
         {
             AddMess( "Load map fail." );
@@ -4070,8 +4072,9 @@ void FOMapper::ParseCommand( const char* cmd )
             return;
         }
 
-        FileManager::SetCurrentDir( ServerWritePath, "./" );
         HexMngr.GetProtoMap( *ActiveProtoMap );
+
+        FileManager::SetCurrentDir( ServerWritePath, "./" );
         if( ActiveProtoMap->Save( map_name ) )
         {
             AddMess( "Save map success." );
@@ -4176,6 +4179,8 @@ void FOMapper::ParseCommand( const char* cmd )
             ProtoMap* pmap = new ProtoMap( Str::GetHash( "new" ) );
             pmap->GenNew();
 
+            if( ActiveProtoMap )
+                HexMngr.GetProtoMap( *ActiveProtoMap );
             if( !HexMngr.SetProtoMap( *pmap ) )
             {
                 AddMess( "Create map fail, see log." );
@@ -4867,6 +4872,7 @@ void FOMapper::SScriptFunc::Global_ResizeMap( ushort width, ushort height )
     RUNTIME_ASSERT( Self->ActiveProtoMap );
 
     // Unload current
+    Self->HexMngr.GetProtoMap( *Self->ActiveProtoMap );
     Self->SelectClear();
     Self->HexMngr.UnloadMap();
 
