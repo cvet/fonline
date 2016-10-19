@@ -367,6 +367,64 @@ bool Test()
 	asIScriptEngine* engine;
 	asIScriptModule* mod;
 
+	// Test adjustement of pointers in call to constructor with asBC_ALLOC instruction
+	// http://www.gamedev.net/topic/682729-assert-failure-when-saving-bytecode-in-adjustgetoffset-linux-amd64/
+	{
+		engine = asCreateScriptEngine();
+
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		RegisterStdString(engine);
+
+		engine->RegisterObjectType("vec4", 16, asOBJ_VALUE | asOBJ_POD);
+		engine->RegisterObjectBehaviour("vec4", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectBehaviour("vec4", asBEHAVE_CONSTRUCT, "void f(const vec4 &in)", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectMethod("vec4", "vec4 &opAssign(const vec4 &in)", asFUNCTION(0), asCALL_GENERIC);
+
+		engine->RegisterObjectType("FontSetup", 4, asOBJ_VALUE| asOBJ_APP_CLASS_CDAK);
+		engine->RegisterObjectBehaviour("FontSetup", asBEHAVE_CONSTRUCT, "void f( const string &in _name, int32 _size, vec4 _color, bool _shadowed = false )", asFUNCTION(0), asCALL_GENERIC);
+		engine->RegisterObjectBehaviour("FontSetup", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(0), asCALL_GENERIC);
+
+		engine->RegisterGlobalProperty("const vec4 white", (void*)1);
+
+		engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, false);
+
+		mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"FontSetup selectionListFont('OpenSans - Regular', 70, white, true); \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		CBytecodeStream bc("test");
+		r = mod->SaveByteCode(&bc);
+		if (r < 0)
+			TEST_FAILED;
+		else
+		{
+			asDWORD crc32 = ComputeCRC32(&bc.buffer[0], asUINT(bc.buffer.size()));
+			if (crc32 != 0x2159D51E)
+			{
+				PRINTF("The saved byte code has different checksum than the expected. Got 0x%X\n", crc32);
+				TEST_FAILED;
+			}
+
+			mod = engine->GetModule("test", asGM_ALWAYS_CREATE);
+			r = mod->LoadByteCode(&bc);
+			if (r < 0)
+				TEST_FAILED;
+		}
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test saving/loading bytecode with asBC_ChkNullS
 	// http://www.gamedev.net/topic/681386-bytecode-x64-x32/
 	{

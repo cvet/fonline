@@ -841,6 +841,7 @@
 		#define COMPLEX_RETURN_MASK (asOBJ_APP_CLASS_DESTRUCTOR | asOBJ_APP_CLASS_COPY_CONSTRUCTOR | asOBJ_APP_ARRAY)
 
 		#if (defined(i386) || defined(__i386) || defined(__i386__)) && !defined(__LP64__)
+			// x86 32bit
 			#define THISCALL_RETURN_SIMPLE_IN_MEMORY
 			#define CDECL_RETURN_SIMPLE_IN_MEMORY
 			#define STDCALL_RETURN_SIMPLE_IN_MEMORY
@@ -849,7 +850,8 @@
 			#define THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 			#define AS_X86
 			#undef AS_NO_THISCALL_FUNCTOR_METHOD
-		#elif defined(__LP64__) && !defined(__arm64__) && !defined(__PPC64__)
+		#elif defined(__x86_64__)
+			// x86 64bit
 			#define AS_X64_GCC
 			#undef AS_NO_THISCALL_FUNCTOR_METHOD
 			#define HAS_128_BIT_PRIMITIVES
@@ -860,6 +862,7 @@
 			#undef STDCALL
 			#define STDCALL
 		#elif (defined(__ARMEL__) || defined(__arm__)) && !(defined(__ARM_ARCH_4__) || defined(__ARM_ARCH_4T__))
+			// arm 32bit
 			#define AS_ARM
 
 			// TODO: The stack unwind on exceptions currently fails due to the assembler code in as_callfunc_arm_gcc.S
@@ -897,11 +900,13 @@
 			#undef AS_NO_THISCALL_FUNCTOR_METHOD
 
 		#elif defined(__mips__)
+			// mips
 			#define AS_MIPS
 			#undef STDCALL
 			#define STDCALL
 
 			#ifdef _ABIO32
+				// 32bit O32 ABI
 				#define AS_MIPS
 
 				// All structures are returned in memory regardless of size or complexity

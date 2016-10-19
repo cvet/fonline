@@ -261,6 +261,34 @@ bool TestSwitch()
 		}
 	}
 
+	// Test error message for switch cases where the cases are strings
+	{
+		bout.buffer = "";
+		const char *script = 
+			"void func() { \n"
+			"  int test; \n"
+			"  switch (undeclaredString) \n"
+			"  { \n"
+			"  case 'a': \n"
+			"    test = 1; \n"
+			"  } \n"
+			"} \n";
+
+		mod->AddScriptSection("script", script);
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+		if (bout.buffer != "script (1, 1) : Info    : Compiling void func()\n"
+						   "script (3, 11) : Error   : 'undeclaredString' is not declared\n"
+						   "script (5, 8) : Error   : Case expressions must be constants\n"
+						   "script (5, 8) : Error   : Switch expressions must be integral numbers\n"
+						   "script (3, 3) : Error   : Empty switch statement\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+	}
+
 	engine->Release();
 
 	return fail;

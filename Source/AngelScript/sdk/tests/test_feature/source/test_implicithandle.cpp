@@ -91,6 +91,7 @@ bool Test()
 	engine->Release();
 
 	// It should be possible to register types with asOBJ_IMPLICIT_HANDLE when the engine property is turned on
+	// http://www.gamedev.net/topic/679183-asep-allow-implicit-handle-types-asobj-implicit-handle/
 	{
 		asIScriptEngine *engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		CBufferedOutStream bout;
@@ -98,8 +99,20 @@ bool Test()
 
 		engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
 
-		r = engine->RegisterObjectType("test1", 0, asOBJ_REF | asOBJ_NOCOUNT | asOBJ_IMPLICIT_HANDLE);
-		if( r < 0 )
+		r = engine->RegisterObjectType("test1", 0, asOBJ_REF | asOBJ_IMPLICIT_HANDLE);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = engine->RegisterObjectBehaviour("test1", asBEHAVE_ADDREF, "void func()", asFUNCTION(0), asCALL_GENERIC);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = engine->RegisterObjectProperty("test1", "int a", 0);
+		if (r < 0)
+			TEST_FAILED;
+
+		r = engine->RegisterObjectMethod("test1", "void func()", asFUNCTION(0), asCALL_GENERIC);
+		if (r < 0)
 			TEST_FAILED;
 
 		engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, false);
@@ -113,6 +126,8 @@ bool Test()
 			PRINTF("%s", bout.buffer.c_str());
 			TEST_FAILED;
 		}
+
+
 
 		engine->Release();
 	}

@@ -216,6 +216,107 @@ bool Test()
 	COutStream out;
 	asIScriptModule *mod;
 
+	// Test constant values
+	// http://www.gamedev.net/topic/682120-warning-value-is-too-large-for-data-type-incorrect/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() { \n"
+			"int8 x1 = -1; \n"
+			"int16 y1 = -1; \n"
+			"int8 x2 = 255; \n" // too big for 8bit signed
+			"int16 y2 = 65535; \n" // too big for 16bit signed
+			"int8 x3 = 4294967297; \n" // too big for 8bit signed, too big for 32bit unsigned
+			"int16 y3 = 4294967297; \n" // too big for 16bit signed
+			"int x4 = 4294967295; \n" // too big for 32bit signed, but not for 32bit unsigned
+			"int64 y4 = 18446744073709551616; \n" // overflow 64bit unsigned
+			"uint64 z4 = 18446744073709551616; \n" // overflow 64bit unsigned biggest signed 9223372036854775807, biggest unsigned 18446744073709551615
+			"uint8 x5 = 18446744073709551616; \n" // overflow 64bit unsigned
+			"uint16 y5 = 18446744073709551616; \n" // overflow 64bit unsigned
+			"uint z5 = 0x10000000000000000; \n" // overflow 64bit unsigned
+			"uint x6 = 18446744073709551615; \n" // too big for 32bit unsigned, but not for 64bit
+			"} \n");
+		r = mod->Build();
+		if (r >= 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "test (1, 1) : Info    : Compiling void func()\n"
+						   "test (4, 11) : Warning : Value is too large for data type\n"
+						   "test (5, 12) : Warning : Value is too large for data type\n"
+						   "test (6, 11) : Warning : Value is too large for data type\n"
+						   "test (7, 12) : Warning : Value is too large for data type\n"
+						   "test (8, 10) : Warning : Value is too large for data type\n"
+						   "test (9, 12) : Error   : Value is too large for data type\n"
+						   "test (10, 13) : Error   : Value is too large for data type\n"
+						   "test (11, 12) : Error   : Value is too large for data type\n"
+						   "test (12, 13) : Error   : Value is too large for data type\n"
+						   "test (13, 11) : Error   : Value is too large for data type\n"
+						   "test (14, 11) : Warning : Value is too large for data type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test 8bit and 16bit integers
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"const int8 INT8_MIN = -1; \n"
+			"const int16 INT16_MIN = -32768; \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
+	// Test boolean constants
+	// http://www.gamedev.net/topic/682759-assert-failure-when-evaluating-const-bool-as-false-in-if-statement/
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *mod = engine->GetModule("Test", asGM_ALWAYS_CREATE);
+		mod->AddScriptSection("test",
+			"void func() { \n"
+			"	const bool value = true; \n"
+			"	if (!value) {} \n"
+			"} \n"
+			"void Init() { \n"
+			"  const bool show_invisible = false; \n"
+			"  if (show_invisible == false) {} \n"
+			"} \n");
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Test attempt to use null as a function
 	{
 		engine = asCreateScriptEngine();
@@ -1850,9 +1951,15 @@ bool Test()
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
 
-		r = ExecuteString(engine, "int never_computed = (-2147483648 / -1);\n");
+		r = ExecuteString(engine, "int never_computed = (-2147483648 / -1);\n"); // constants will be treated as 64bit so the division is fine
 		if( r != asEXECUTION_FINISHED )
 			TEST_FAILED;
+		if (bout.buffer != "ExecuteString (1, 22) : Warning : Value is too large for data type\n")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+		bout.buffer = "";
 
 		r = ExecuteString(engine, "int never_computed = (-2147483648 % -1);\n");
 		if( r != asEXECUTION_FINISHED )

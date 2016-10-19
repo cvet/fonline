@@ -1955,7 +1955,13 @@ void asCCompiler::MoveArgsToStack(int funcId, asCByteCode *bc, asCArray<asCExprC
 				}
 				else
 				{
-					bc->InstrWORD(asBC_GETREF, (asWORD)offset);
+					// If the variable is really an argument of @& type, then it is necessary
+					// to use asBC_GETOBJREF so the pointer is correctly dereferenced.
+					sVariable *var = variables->GetVariableByOffset(args[n]->type.stackOffset);
+					if (var == 0 || !var->type.IsReference())
+						bc->InstrWORD(asBC_GETREF, (asWORD)offset);
+					else
+						bc->InstrWORD(asBC_GETOBJREF, (asWORD)offset);
 				}
 			}
 		}
@@ -3857,24 +3863,24 @@ void asCCompiler::CompileSwitchStatement(asCScriptNode *snode, bool *, asCByteCo
 				Error(TXT_SWITCH_CASE_MUST_BE_CONSTANT, cnode->firstChild);
 
 			// Verify that the result is an integral number
-			if( !c.type.dataType.IsIntegerType() && !c.type.dataType.IsUnsignedType() )
+			if (!c.type.dataType.IsIntegerType() && !c.type.dataType.IsUnsignedType())
 				Error(TXT_SWITCH_MUST_BE_INTEGRAL, cnode->firstChild);
-
-			ImplicitConversion(&c, to, cnode->firstChild, asIC_IMPLICIT_CONV, true);
-
-			// Has this case been declared already?
-			if( caseValues.IndexOf(c.type.GetConstantDW()) >= 0 )
+			else
 			{
-				Error(TXT_DUPLICATE_SWITCH_CASE, cnode->firstChild);
+				ImplicitConversion(&c, to, cnode->firstChild, asIC_IMPLICIT_CONV, true);
+
+				// Has this case been declared already?
+				if (caseValues.IndexOf(c.type.GetConstantDW()) >= 0)
+					Error(TXT_DUPLICATE_SWITCH_CASE, cnode->firstChild);
+
+				// TODO: Optimize: We can insert the numbers sorted already
+
+				// Store constant for later use
+				caseValues.PushLast(c.type.GetConstantDW());
+
+				// Reserve label for this case
+				caseLabels.PushLast(nextLabel++);
 			}
-
-			// TODO: Optimize: We can insert the numbers sorted already
-
-			// Store constant for later use
-			caseValues.PushLast(c.type.GetConstantDW());
-
-			// Reserve label for this case
-			caseLabels.PushLast(nextLabel++);
 		}
 		else
 		{
@@ -3893,7 +3899,7 @@ void asCCompiler::CompileSwitchStatement(asCScriptNode *snode, bool *, asCByteCo
 		cnode = cnode->next;
 	}
 
-    // check for empty switch
+	// check for empty switch
 	if (caseValues.GetLength() == 0)
 	{
 		Error(TXT_EMPTY_SWITCH, snode);
@@ -3904,7 +3910,7 @@ void asCCompiler::CompileSwitchStatement(asCScriptNode *snode, bool *, asCByteCo
 		defaultLabel = breakLabel;
 
 	//---------------------------------
-    // Output the optimized case comparisons
+	// Output the optimized case comparisons
 	// with jumps to the case code
 	//------------------------------------
 
@@ -7253,11 +7259,17 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 			}
 			else if( from->type.dataType.IsUnsignedType() && from->type.dataType.GetSizeInMemoryDWords() == 2 )
 			{
+				if (int(from->type.GetConstantQW()) != asQWORD(from->type.GetConstantQW()))
+					if (convType != asIC_EXPLICIT_VAL_CAST && node) Warning(TXT_VALUE_TOO_LARGE_FOR_TYPE, node);
+
 				// Convert to 32bit
 				from->type.SetConstantDW(targetDt, int(from->type.GetConstantQW()));
 			}
 			else if (from->type.dataType.IsIntegerType() && from->type.dataType.GetSizeInMemoryDWords() == 2)
 			{
+				if (int(from->type.GetConstantQW()) != asINT64(from->type.GetConstantQW()))
+					if (convType != asIC_EXPLICIT_VAL_CAST && node) Warning(TXT_VALUE_TOO_LARGE_FOR_TYPE, node);
+
 				// Convert to 32bit
 				from->type.SetConstantDW(targetDt, int(from->type.GetConstantQW()));
 			}
@@ -7290,14 +7302,14 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 			// Verify if it is possible
 			if( to.GetSizeInMemoryBytes() == 1 )
 			{
-				if( asBYTE(from->type.GetConstantDW()) != from->type.GetConstantDW() )
+				if( char(from->type.GetConstantDW()) != int(from->type.GetConstantDW()) )
 					if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_VALUE_TOO_LARGE_FOR_TYPE, node);
 
 				from->type.SetConstantB(asCDataType::CreatePrimitive(to.GetTokenType(), true), char(from->type.GetConstantDW()));
 			}
 			else if( to.GetSizeInMemoryBytes() == 2 )
 			{
-				if( asWORD(from->type.GetConstantDW()) != from->type.GetConstantDW())
+				if( short(from->type.GetConstantDW()) != int(from->type.GetConstantDW()) )
 					if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_VALUE_TOO_LARGE_FOR_TYPE, node);
 
 				from->type.SetConstantW(asCDataType::CreatePrimitive(to.GetTokenType(), true), short(from->type.GetConstantDW()));
@@ -7456,6 +7468,13 @@ void asCCompiler::ImplicitConversionConstant(asCExprContext *from, const asCData
 					if( convType != asIC_EXPLICIT_VAL_CAST && node ) Warning(TXT_VALUE_TOO_LARGE_FOR_TYPE, node);
 
 				from->type.SetConstantW(asCDataType::CreatePrimitive(to.GetTokenType(), true), asWORD(from->type.GetConstantDW()));
+			}
+			else if (to.GetSizeInMemoryBytes() == 4)
+			{
+				if( asDWORD(from->type.GetConstantQW()) != from->type.GetConstantQW())
+					if (convType != asIC_EXPLICIT_VAL_CAST && node) Warning(TXT_VALUE_TOO_LARGE_FOR_TYPE, node);
+
+				from->type.SetConstantDW(asCDataType::CreatePrimitive(to.GetTokenType(), true), asDWORD(from->type.GetConstantQW()));
 			}
 		}
 	}
@@ -9010,7 +9029,17 @@ int asCCompiler::CompileExpressionValue(asCScriptNode *node, asCExprContext *ctx
 		{
 			asCString value(&script->code[vnode->tokenPos], vnode->tokenLength);
 
-			asQWORD val = asStringScanUInt64(value.AddressOf(), 10, 0);
+			bool overflow = false;
+			asQWORD val = asStringScanUInt64(value.AddressOf(), 10, 0, &overflow);
+
+			// Is the number bigger than a 64bit word?
+			if (overflow)
+			{
+				Error(TXT_VALUE_TOO_LARGE_FOR_TYPE, vnode);
+
+				// Set the value to zero to avoid further warnings
+				val = 0;
+			}
 
 			// Do we need 64 bits?
 			// If the 31st bit is set we'll treat the value as a signed 64bit number to avoid
@@ -9031,8 +9060,17 @@ int asCCompiler::CompileExpressionValue(asCScriptNode *node, asCExprContext *ctx
 			asCString value(&script->code[vnode->tokenPos], vnode->tokenLength);
 
 			// Let the function determine the radix from the prefix 0x = 16, 0d = 10, 0o = 8, or 0b = 2
-			// TODO: Check for overflow
-			asQWORD val = asStringScanUInt64(value.AddressOf(), 0, 0);
+			bool overflow = false;
+			asQWORD val = asStringScanUInt64(value.AddressOf(), 0, 0, &overflow);
+
+			// Is the number bigger than a 64bit word?
+			if (overflow)
+			{
+				Error(TXT_VALUE_TOO_LARGE_FOR_TYPE, vnode);
+
+				// Set the value to zero to avoid further warnings
+				val = 0;
+			}
 
 			// Do we need 64 bits?
 			if( val>>32 )
@@ -9852,6 +9890,9 @@ int asCCompiler::CompileConstructCall(asCScriptNode *node, asCExprContext *ctx)
 			// is done and the scipt wants a new value to be constructed
 			if( conv.type.dataType.IsEqualExceptRef(dt) && cost > 0 )
 			{
+				// Make sure any property accessor is already evaluated
+				ProcessPropertyGetAccessor(args[0], args[0]->exprNode);
+
 				ImplicitConversion(args[0], dt, node->lastChild, asIC_EXPLICIT_VAL_CAST);
 
 				ctx->bc.AddCode(&args[0]->bc);
@@ -10670,7 +10711,11 @@ int asCCompiler::CompileExpressionPreOp(asCScriptNode *node, asCExprContext *ctx
 		{
 			if( ctx->type.isConstant )
 			{
-				ctx->type.SetConstantDW(ctx->type.GetConstantDW() == 0 ? VALUE_OF_BOOLEAN_TRUE : 0);
+				#if AS_SIZEOF_BOOL == 1
+					ctx->type.SetConstantB(ctx->type.GetConstantB() == 0 ? VALUE_OF_BOOLEAN_TRUE : 0);
+				#else
+					ctx->type.SetConstantDW(ctx->type.GetConstantDW() == 0 ? VALUE_OF_BOOLEAN_TRUE : 0);
+				#endif
 				return 0;
 			}
 
@@ -13821,21 +13866,24 @@ void asCCompiler::CompileComparisonOperator(asCScriptNode *node, asCExprContext 
 		{
 			if( op == ttEqual || op == ttNotEqual )
 			{
+				asDWORD lv, rv;
+				#if AS_SIZEOF_BOOL == 1
+					lv = lctx->type.GetConstantB();
+					rv = rctx->type.GetConstantB();
+				#else
+					lv = lctx->type.GetConstantDW();
+					rv = rctx->type.GetConstantDW();
+				#endif
+
 				// Make sure they are equal if not false
-				if( lctx->type.GetConstantDW() != 0 ) lctx->type.SetConstantDW(VALUE_OF_BOOLEAN_TRUE);
-				if( rctx->type.GetConstantDW() != 0 ) rctx->type.SetConstantDW(VALUE_OF_BOOLEAN_TRUE);
+				if (lv != 0) lv = VALUE_OF_BOOLEAN_TRUE;
+				if (rv != 0) rv = VALUE_OF_BOOLEAN_TRUE;
 
 				asDWORD v = 0;
-				if( op == ttEqual )
-				{
-					v = int(lctx->type.GetConstantDW()) - int(rctx->type.GetConstantDW());
-					if( v == 0 ) v = VALUE_OF_BOOLEAN_TRUE; else v = 0;
-				}
-				else if( op == ttNotEqual )
-				{
-					v = int(lctx->type.GetConstantDW()) - int(rctx->type.GetConstantDW());
-					if( v != 0 ) v = VALUE_OF_BOOLEAN_TRUE; else v = 0;
-				}
+				if (op == ttEqual)
+					v = (lv == rv) ? VALUE_OF_BOOLEAN_TRUE : 0;
+				else if (op == ttNotEqual)
+					v = (lv != rv) ? VALUE_OF_BOOLEAN_TRUE : 0;
 
 				#if AS_SIZEOF_BOOL == 1
 					ctx->type.SetConstantB(asCDataType::CreatePrimitive(ttBool, true), (asBYTE)v);

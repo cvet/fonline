@@ -15,7 +15,7 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 
 <h1>AngelScript Change Log</h1>
 
-<h2>Version 2.31.2 WIP - 2016/08/21</h2>
+<h2>Version 2.31.2 WIP - 2016/10/15</h2>
 
 <ul>
 <li>Bug fixes
@@ -27,10 +27,23 @@ BODY { FONT-SIZE: 12px; FONT-FAMILY: Arial; }
 <li>Fixed crash when discarding modules containing shared funcdefs (Thanks Violet CLM)
 <li>Fixed big endian errors in the compiler related to implicit conversions of constants (Thanks rfonseca)
 <li>Fixed bug with saved byte code not being portable between 32bit and 64bit platforms when including ChkNullS instruction (Thanks cvet)
+<li>Fixed assert failure in compiler when compiling invalid switch case (Thanks Jordan Verner)
+<li>Fixed bug in compiler when passing a @& argument to a function (Thanks IronHawk)
+<li>Fixed bug when compiling get property accessor returning a registered type that is then implicitly converted to another (Thanks Phong Ba)
+<li>Fixed assert failure when compiling boolean not operator on constant (Thanks gkfkdk404)
+<li>Fixed incorrect compiler warning about too large value when assigning negative value to const int8/int16 (Thanks gkfkdk404)
+<li>Compiler emits warnings if 64bit integer constants cannot fit when implicitly converted to smaller types (Thanks Sir Ementaler)
+<li>Compiler didn't support implicitly converting constant uint64 values to uint32 values
+<li>Fixed compiler error on Linux with non-x86 64bit platforms, e.g. arm64, mips, and s390x architectures (Thanks deveee)
+<li>Fixed assert failure when compiling comparison operator on boolean constant (Thanks Autious)
+<li>Fixed bug in bytecode serialization when adjusting pointer sizes for calls using asBC_ALLOC (Thanks Autious)
+<li>Fixed problem with registering types using the asOBJ_IMPLICIT_HANDLE flag (Thanks cvet)
 </ul>
 <li>Library
 <ul>
 <li>Introduced a new keyword 'if_handle_then_const' that is used to tell template that a handle should be to const object
+<li>Compiler now emits an error if an integer constant is larger than 2^64-1
+<li>Non-pod value types are now allowed to be registered without default constructor, as long as at least one constructor is registered (Thanks Phong Ba)
 </ul>
 <li>Add-ons &amp; Samples
 <ul>

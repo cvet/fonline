@@ -3351,6 +3351,8 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 	// Get offset 0 doesn't need adjustment
 	if( offset == 0 ) return 0;
 
+	bool bcAlloc = false;
+
 	// Find out which function that will be called
 	asCScriptFunction *calledFunc = 0;
 	int stackDelta = 0;
@@ -3365,6 +3367,11 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			bc == asBC_CALLBND ||
 			bc == asBC_CallPtr )
 		{
+			// The alloc instruction allocates the object memory
+			// so it doesn't take the this pointer as input
+			if (bc == asBC_ALLOC)
+				bcAlloc = true;
+
 			calledFunc = GetCalledFunction(func, n);
 			break;
 		}
@@ -3393,7 +3400,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 	// current offset, and then adjust the offset accordingly
 	asUINT numPtrs = 0;
 	int currOffset = -stackDelta;
-	if( offset > currOffset && calledFunc->GetObjectType() )
+	if( offset > currOffset && calledFunc->GetObjectType() && !bcAlloc )
 	{
 		currOffset++;
 		if( currOffset > 0 )
@@ -4418,6 +4425,8 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 	// Get offset 0 doesn't need adjustment
 	if( offset == 0 ) return 0;
 
+	bool bcAlloc = false;
+
 	// Find out which function that will be called
 	asCScriptFunction *calledFunc = 0;
 	int stackDelta = 0;
@@ -4436,6 +4445,10 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 		}
 		else if( bc == asBC_ALLOC )
 		{
+			// The alloc instruction doesn't take the object pointer on the stack,
+			// as the memory will be allocated by the instruction itself
+			bcAlloc = true;
+
 			// Find the function from the function id in the bytecode
 			int funcId = asBC_INTARG(&func->scriptData->byteCode[n+AS_PTR_SIZE]);
 			calledFunc = engine->scriptFunctions[funcId];
@@ -4502,7 +4515,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 	// current offset, and then adjust the offset accordingly
 	asUINT numPtrs = 0;
 	int currOffset = -stackDelta;
-	if( offset > currOffset && calledFunc->GetObjectType() )
+	if( offset > currOffset && calledFunc->GetObjectType() && !bcAlloc )
 	{
 		currOffset += AS_PTR_SIZE;
 		if( currOffset > 0 )

@@ -238,6 +238,33 @@ bool Test()
  	asIScriptEngine *engine;
 	const char *script;
 
+	// Using a registered non-pod value type without default constructor
+	// Reported by Phong Ba through e-mail on March 23rd, 2016
+	{
+		engine = asCreateScriptEngine();
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		bout.buffer = "";
+
+		asIScriptModule *module = engine->GetModule("testOBJValue", asGM_ALWAYS_CREATE);
+
+		r = engine->RegisterObjectType("dummy", 4, asOBJ_VALUE); assert(r >= 0);
+
+		r = engine->RegisterObjectBehaviour("dummy", asBEHAVE_CONSTRUCT, "void f(int i)", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+		r = engine->RegisterObjectBehaviour("dummy", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(0), asCALL_GENERIC); assert(r >= 0);
+
+		r = module->AddScriptSection("test", "void main(){ dummy d(1); }");
+		r = module->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		engine->ShutDownAndRelease();
+	}
+
 	// Registering a type that has member value types as references
 	// http://www.gamedev.net/topic/658589-register-handle-as-reference/
 	SKIP_ON_MAX_PORT
@@ -916,11 +943,11 @@ bool Test()
 	if( r >= 0 )
 		TEST_FAILED;
 	if( bout.buffer != " (0, 0) : Error   : Type 'val' is missing behaviours\n"
-		               " (0, 0) : Info    : A non-pod value type must have the default constructor and destructor behaviours\n"
+		               " (0, 0) : Info    : A non-pod value type must have at least one constructor and the destructor behaviours\n"
 		               " (0, 0) : Error   : Type 'val1' is missing behaviours\n"
-					   " (0, 0) : Info    : A non-pod value type must have the default constructor and destructor behaviours\n"
+					   " (0, 0) : Info    : A non-pod value type must have at least one constructor and the destructor behaviours\n"
 					   " (0, 0) : Error   : Type 'val2' is missing behaviours\n"
-					   " (0, 0) : Info    : A non-pod value type must have the default constructor and destructor behaviours\n"
+					   " (0, 0) : Info    : A non-pod value type must have at least one constructor and the destructor behaviours\n"
 					   " (0, 0) : Error   : Invalid configuration. Verify the registered application interface.\n" )
 	{
 		PRINTF("%s", bout.buffer.c_str());

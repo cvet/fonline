@@ -1406,6 +1406,9 @@ int asCScriptEngine::RegisterObjectProperty(const char *obj, const char *declara
 	if( r < 0 )
 		return ConfigError(r, "RegisterObjectProperty", obj, declaration);
 
+	if (dt.GetTypeInfo() == 0 || (dt.IsObjectHandle() && !(dt.GetTypeInfo()->GetFlags() & asOBJ_IMPLICIT_HANDLE)))
+		return ConfigError(asINVALID_OBJECT, "RegisterObjectProperty", obj, declaration);
+
 	// Don't allow modifying generated template instances
 	if( dt.GetTypeInfo() && (dt.GetTypeInfo()->flags & asOBJ_TEMPLATE) && generatedTemplateTypes.Exists(dt.GetTypeInfo()->CastToObjectType()) )
 		return ConfigError(asINVALID_TYPE, "RegisterObjectProperty", obj, declaration);
@@ -1419,10 +1422,6 @@ int asCScriptEngine::RegisterObjectProperty(const char *obj, const char *declara
 
 	if( (r = bld.VerifyProperty(&dt, declaration, name, type, 0)) < 0 )
 		return ConfigError(r, "RegisterObjectProperty", obj, declaration);
-
-	// Store the property info
-	if( dt.GetTypeInfo() == 0 || dt.IsObjectHandle() )
-		return ConfigError(asINVALID_OBJECT, "RegisterObjectProperty", obj, declaration);
 
 	// The VM currently only supports 16bit offsets
 	// TODO: The VM needs to have support for 32bit offsets. Probably with a second ADDSi instruction
@@ -1895,7 +1894,7 @@ int asCScriptEngine::RegisterObjectBehaviour(const char *datatype, asEBehaviours
 	if( r < 0 )
 		return ConfigError(r, "RegisterObjectBehaviour", datatype, decl);
 
-	if( type.GetTypeInfo() == 0 || type.IsObjectHandle()  )
+	if( type.GetTypeInfo() == 0 || (type.IsObjectHandle() && !(type.GetTypeInfo()->GetFlags() & asOBJ_IMPLICIT_HANDLE)) )
 		return ConfigError(asINVALID_TYPE, "RegisterObjectBehaviour", datatype, decl);
 
 	// Don't allow application to modify built-in types
@@ -2715,7 +2714,7 @@ int asCScriptEngine::RegisterObjectMethod(const char *obj, const char *declarati
 		return ConfigError(r, "RegisterObjectMethod", obj, declaration);
 
 	// Don't allow application to modify primitives or handles
-	if( dt.GetTypeInfo() == 0 || dt.IsObjectHandle() )
+	if( dt.GetTypeInfo() == 0 || (dt.IsObjectHandle() && !(dt.GetTypeInfo()->GetFlags() & asOBJ_IMPLICIT_HANDLE)))
 		return ConfigError(asINVALID_ARG, "RegisterObjectMethod", obj, declaration);
 
 	// Don't allow application to modify built-in types or funcdefs
@@ -3101,7 +3100,7 @@ void asCScriptEngine::PrepareEngine()
 			else if( (type->flags & asOBJ_VALUE) &&
 				     !(type->flags & asOBJ_POD) )
 			{
-				if( type->beh.construct == 0 ||
+				if( type->beh.constructors.GetLength() == 0 ||
 					type->beh.destruct  == 0 )
 				{
 					infoMsg = TXT_NON_POD_REQUIRE_CONSTR_DESTR_BEHAVIOUR;

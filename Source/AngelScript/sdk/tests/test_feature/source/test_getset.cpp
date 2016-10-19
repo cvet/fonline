@@ -77,6 +77,21 @@ void formattedPrintAS( std::string& /*format*/, void* a, int typeId_a )
 	}
 }
 
+void CharAssign(char & me, const char & other)
+{
+	assert(other == 'A');
+	me = other;
+}
+
+std::string CharToStr(char & me)
+{
+	std::string result = std::string(1, me);
+
+	assert(result == "A");
+
+	return result;
+}
+
 bool Test()
 {
 	RET_ON_MAX_PORT
@@ -87,6 +102,39 @@ bool Test()
 	COutStream out;
 	asIScriptModule *mod;
 	asIScriptEngine *engine;
+
+	// Test global property with conversion to string
+	// Reported by Phong Ba
+	{
+		engine = asCreateScriptEngine();
+		bout.buffer = "";
+		engine->SetMessageCallback(asMETHOD(CBufferedOutStream, Callback), &bout, asCALL_THISCALL);
+		RegisterStdString(engine);
+		engine->RegisterGlobalFunction("void assert(bool)", asFUNCTION(Assert), asCALL_GENERIC);
+
+		r = engine->RegisterObjectType("char", sizeof(char), asOBJ_VALUE | asOBJ_POD); assert(r >= 0);
+		r = engine->RegisterObjectMethod("char", "char &opAssign(const char &in)", asFUNCTION(&CharAssign), asCALL_CDECL_OBJFIRST); assert(r >= 0);
+		r = engine->RegisterObjectMethod("char", "char &opAssign(const uint16 &in)", asFUNCTION(&CharAssign), asCALL_CDECL_OBJFIRST); assert(r >= 0);
+		r = engine->RegisterObjectMethod("char", "string opImplConv() const", asFUNCTION(&CharToStr), asCALL_CDECL_OBJFIRST); assert(r >= 0);
+
+		mod = engine->GetModule(0, asGM_ALWAYS_CREATE); assert(mod != NULL);
+		r = mod->AddScriptSection("prop", "char get_Prop(){char c = 0x41; return c;}"); assert(r >= 0);
+		r = mod->AddScriptSection("main", "void main(){string s = string(Prop); assert(s == 'A');}"); assert(r >= 0);
+		r = mod->Build();
+		if (r < 0)
+			TEST_FAILED;
+		if (bout.buffer != "")
+		{
+			PRINTF("%s", bout.buffer.c_str());
+			TEST_FAILED;
+		}
+
+		r = ExecuteString(engine, "main()", mod);
+		if (r != asEXECUTION_FINISHED)
+			TEST_FAILED;
+
+		r = engine->ShutDownAndRelease();
+	}
 
 	// Test with namespace
 	// http://www.gamedev.net/topic/670216-patch-for-namespace-support-in-getsetters/
