@@ -98,7 +98,7 @@ void InitialSetup()
     MainConfig->AppendStr( InternalConfig );
     MainConfig->AppendFile( CONFIG_NAME, PT_ROOT );
 
-    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER )
+    #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER ) || defined ( FONLINE_SCRIPT_COMPILER )
     const char* modules = MainConfig->GetStr( "", "Modules" );
     RUNTIME_ASSERT( modules );
     StrVec      modules_arr;
@@ -145,17 +145,41 @@ pthread_mutexattr_t Mutex::mutexAttr;
 #endif
 
 // Command line
-char CommandLine[ MAX_FOTEXT ] = { 0 };
+map< string, string > CommandLineMap;
+char                  CommandLine[ MAX_FOTEXT ] = { 0 };
 void SetCommandLine( uint argc, char** argv )
 {
+    // Make command line in single string
     for( uint i = 0; i < argc; i++ )
     {
+        // Skip path
         if( i == 0 && argv[ 0 ][ 0 ] != '-' )
             continue;
+
         Str::Append( CommandLine, argv[ i ] );
         Str::Append( CommandLine, " " );
     }
 
+    // Make key value command line
+    StrVec args;
+    Str::ParseLine( CommandLine, ' ', args, Str::ParseLineDummy );
+    for( size_t i = 0; i < args.size(); i++ )
+    {
+        string& arg = args[ i ];
+        if( arg.length() > 1 && arg[ 0 ] == '-' )
+        {
+            const char* arg_value = "";
+            if( i < args.size() - 1 && args[ i + 1 ][ 0 ] != '-' )
+            {
+                arg_value = args[ i + 1 ].c_str();
+                i++;
+            }
+
+            CommandLineMap.insert( PAIR( arg.c_str() + 1, arg_value ) );
+        }
+    }
+
+    // Store for scripts
     GameOpt.CommandLine = ScriptString::Create( CommandLine );
 }
 

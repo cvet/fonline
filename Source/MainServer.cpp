@@ -180,8 +180,12 @@ int main( int argc, char** argv )
     }
 
     // Command line
-    if( Str::Length( CommandLine ) > 0 )
-        WriteLog( "Command line '%s'.\n", CommandLine );
+    if( CommandLineMap.size() > 0 )
+    {
+        WriteLog( "Command line variables:\n" );
+        for( auto& kv : CommandLineMap )
+            WriteLog( " - %s = %s\n", kv.first.c_str(), kv.second.c_str() );
+    }
 
     // Autostart
     if( Str::Substring( CommandLine, "-start" ) || Singleplayer )

@@ -1188,6 +1188,13 @@ public:
     else
         FileManager::EraseExtension( path );
 
+    // Set preprocessor defines from command line
+    for( auto& kv : CommandLineMap )
+    {
+        if( Str::CompareCase( kv.first.c_str(), "D" ) && kv.second.length() > 0 )
+            Preprocessor::Define( kv.second.c_str() );
+    }
+
     // Preprocess
     MemoryFileLoader              loader( root, contents );
     Preprocessor::StringOutStream result, errors;
@@ -1204,6 +1211,40 @@ public:
     {
         WriteLogF( _FUNC_, " - Unable to preprocess.\n" );
         return false;
+    }
+
+    // Set global properties from command line
+    for( auto& kv : CommandLineMap )
+    {
+        if( Str::CompareCase( kv.first.c_str(), "D" ) )
+            continue;
+
+        int index = Engine->GetGlobalPropertyIndexByName( kv.first.c_str() );
+        if( index < 0 )
+            continue;
+
+        int   type_id;
+        void* ptr;
+        int   r = Engine->GetGlobalPropertyByIndex( index, nullptr, nullptr, &type_id, nullptr, nullptr, &ptr, nullptr );
+        RUNTIME_ASSERT( r >= 0 );
+
+        asITypeInfo* obj_type = ( type_id & asTYPEID_MASK_OBJECT ? Engine->GetTypeInfoById( type_id ) : nullptr );
+        bool         is_hashes[] = { false, false, false, false };
+        uchar        pod_buf[ 8 ];
+        bool         is_error = false;
+        void*        value = ReadValue( kv.second.c_str(), type_id, obj_type, is_hashes, 0, pod_buf, is_error );
+        if( !is_error )
+        {
+            if( !obj_type )
+            {
+                memcpy( ptr, value, Engine->GetSizeOfPrimitiveType( type_id ) );
+            }
+            else
+            {
+                Engine->AssignScriptObject( ptr, value, obj_type );
+                Engine->ReleaseScriptObject( value, obj_type );
+            }
+        }
     }
 
     // Add new
@@ -1903,7 +1944,7 @@ void Script::SetArgObject( void* value )
         {
             asIScriptFunction* func = CurrentCtx->GetFunction( 0 );
             int                type_id = 0;
-            func->GetParam( CurrentArg, &type_id );
+            func->GetParam( (asUINT) CurrentArg, &type_id );
             asITypeInfo*       type_info = Engine->GetTypeInfoById( type_id );
             RUNTIME_ASSERT( type_info );
             Engine->AddRefScriptObject( value, type_info );

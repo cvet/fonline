@@ -143,7 +143,8 @@ extern IniParser* MainConfig;
 extern StrVec     GameModules;
 void InitialSetup();
 
-extern char CommandLine[ MAX_FOTEXT ];
+extern map< string, string > CommandLineMap;
+extern char                  CommandLine[ MAX_FOTEXT ];
 void SetCommandLine( uint argc, char** argv );
 
 extern Randomizer DefaultRandomizer;
