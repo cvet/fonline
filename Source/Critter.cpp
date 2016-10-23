@@ -3872,7 +3872,6 @@ void Client::CloseTalk()
 
 Npc::Npc( uint id, ProtoCritter* proto ): Critter( id, EntityType::Npc, proto )
 {
-    NextRefreshBagTick = 0;
     CritterIsNpc = true;
     MEMORY_PROCESS( MEMORY_NPC, sizeof( Npc ) + 40 + sizeof( Item ) * 2 );
     SETFLAG( Flags, FCRIT_NPC );
@@ -3882,73 +3881,6 @@ Npc::~Npc()
 {
     MEMORY_PROCESS( MEMORY_NPC, -(int) ( sizeof( Npc ) + 40 + sizeof( Item ) * 2 ) );
     DropPlanes();
-}
-
-void Npc::RefreshBag()
-{
-    NextRefreshBagTick = Timer::GameTick() + GameOpt.BagRefreshTime * 60 * 1000;
-
-    SyncLockItems();
-
-    // Collect pids and count
-    HashUIntMap pids;
-    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( pids.count( item->GetProtoId() ) )
-            pids[ item->GetProtoId() ] += item->GetCount();
-        else
-            pids[ item->GetProtoId() ] = item->GetCount();
-    }
-
-    // Item garbager
-    if( !GetIsNoItemGarbager() )
-    {
-        // Erase not grouped items
-        uint need_count = Random( 2, 4 );
-        for( auto it = pids.begin(), end = pids.end(); it != end; ++it )
-        {
-            if( it->second <= need_count )
-                continue;
-
-            ProtoItem* proto_item = ProtoMngr.GetProtoItem( it->first );
-            if( !proto_item || proto_item->GetStackable() )
-                continue;
-
-            ItemMngr.SetItemCritter( this, it->first, need_count );
-            it->second = need_count;
-            need_count = Random( 2, 4 );
-        }
-    }
-
-    // Refresh bag
-    bool drop_last_weapon = false;
-
-    // Internal bag
-    if( !GetBagId() )
-    {
-        ScriptArray* item_pid = GetInternalBagItemPid();
-        ScriptArray* item_count = GetInternalBagItemCount();
-        RUNTIME_ASSERT( item_pid->GetSize() == item_count->GetSize() );
-
-        // Update cur items
-        uint bag_size = item_pid->GetSize();
-        for( uint k = 0; k < bag_size; k++ )
-        {
-            uint count = *(uint*) item_count->At( k );
-            auto it = pids.find( *(uint*) item_pid->At( k ) );
-            if( it != pids.end() && it->second > count )
-                continue;
-
-            ItemMngr.SetItemCritter( this, *(uint*) item_pid->At( k ), count );
-            drop_last_weapon = true;
-        }
-        SAFEREL( item_pid );
-        SAFEREL( item_count );
-    }
-
-    if( drop_last_weapon && GetLastWeaponId() )
-        SetLastWeaponId( 0 );
 }
 
 bool Npc::AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some_cr, Item* some_item )

@@ -656,35 +656,10 @@ void FileManager::SetLEUInt( uint data )
 
 void FileManager::ResetCurrentDir()
 {
-    static char work_dir[ MAX_FOPATH ] = { 0 };
-    if( work_dir[ 0 ] == 0 )
-    {
-        const char* appendix = "";
-        #if defined ( FONLINE_SERVER )
-        appendix = MainConfig->GetStr( "", "ServerPath" );
-        #elif defined ( FONLINE_CLIENT )
-        appendix = MainConfig->GetStr( "", "ClientPath" );
-        #elif defined ( FONLINE_MAPPER )
-        appendix = MainConfig->GetStr( "", "ClientPath" );
-        #endif
-
-        #ifdef FO_WINDOWS
-        GetCurrentDirectory( MAX_FOPATH, work_dir );
-        #else
-        getcwd( work_dir, MAX_FOPATH );
-        #endif
-
-        if( appendix )
-        {
-            Str::Append( work_dir, appendix );
-            ResolvePath( work_dir );
-        }
-    }
-
     #ifdef FO_WINDOWS
-    SetCurrentDirectory( work_dir );
+    SetCurrentDirectory( WorkDir );
     #else
-    chdir( work_dir );
+    chdir( WorkDir );
     #endif
 }
 

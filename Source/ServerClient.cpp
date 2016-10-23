@@ -100,11 +100,7 @@ void FOServer::ProcessCritter( Critter* cr )
 
         // Process
         if( npc->IsLife() )
-        {
             ProcessAI( npc );
-            if( npc->IsNeedRefreshBag() )
-                npc->RefreshBag();
-        }
     }
 }
 

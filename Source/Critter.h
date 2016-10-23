@@ -531,12 +531,6 @@ public:
     Npc( uint id, ProtoCritter* proto );
     ~Npc();
 
-    // Bags
-public:
-    uint NextRefreshBagTick;
-    bool IsNeedRefreshBag() { return IsLife() && Timer::GameTick() > NextRefreshBagTick && IsNoPlanes(); }
-    void RefreshBag();
-
     // AI
 private:
     AIDataPlaneVec aiPlanes;

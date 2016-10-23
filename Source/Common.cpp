@@ -33,14 +33,55 @@ STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 /*                                                                      */
 /************************************************************************/
 
+char       WorkDir[ MAX_FOTEXT ];
+char       CommandLine[ MAX_FOTEXT ] = { 0 };
 IniParser* MainConfig;
 StrVec     GameModules;
 
-void InitialSetup()
+void InitialSetup( uint argc, char** argv )
 {
-    MainConfig = new IniParser();
+    // Parse command line args
+    const char* work_dir = nullptr;
+    StrVec      configs;
+    for( uint i = 0; i < argc; i++ )
+    {
+        // Skip path
+        if( i == 0 && argv[ 0 ][ 0 ] != '-' )
+            continue;
 
-    // Injected options
+        // Find work path entry
+        if( Str::Compare( argv[ i ], "-WorkDir" ) && i < argc - 1 )
+            work_dir = argv[ i + 1 ];
+
+        // Find config path entry
+        if( Str::Compare( argv[ i ], "-AddConfig" ) && i < argc - 1 )
+            configs.push_back( argv[ i + 1 ] );
+
+        // Make sinle line
+        Str::Append( CommandLine, argv[ i ] );
+        if( i < argc - 1 )
+            Str::Append( CommandLine, " " );
+    }
+
+    // Store for scripts
+    GameOpt.CommandLine = ScriptString::Create( CommandLine );
+
+    // Store start directory
+    if( work_dir )
+    {
+        #ifdef FO_WINDOWS
+        SetCurrentDirectory( work_dir );
+        #else
+        chdir( work_dir );
+        #endif
+    }
+    #ifdef FO_WINDOWS
+    GetCurrentDirectory( MAX_FOPATH, WorkDir );
+    #else
+    getcwd( WorkDir, MAX_FOPATH );
+    #endif
+
+    // Injected config
     static char InternalConfig[ 5032 ] =
     {
         "###InternalConfig###5032\0"
@@ -95,9 +136,35 @@ void InitialSetup()
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
         "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
     };
+    MainConfig = new IniParser();
     MainConfig->AppendStr( InternalConfig );
-    MainConfig->AppendFile( CONFIG_NAME, PT_ROOT );
 
+    // File configs
+    MainConfig->AppendFile( CONFIG_NAME, PT_CLIENT_CACHE );
+    for( string& config : configs )
+        MainConfig->AppendFile( config.c_str(), PT_ROOT );
+
+    // Command line config
+    for( uint i = 0; i < argc; i++ )
+    {
+        const char* arg = argv[ i ];
+        uint        arg_len = Str::Length( arg );
+        if( arg_len < 2 || arg[ 0 ] != '-' )
+            continue;
+
+        string arg_value;
+        while( i < argc - 1 && argv[ i + 1 ][ 0 ] != '-' )
+        {
+            if( arg_value.length() > 0 )
+                arg_value += " ";
+            arg_value += argv[ i + 1 ];
+            i++;
+        }
+
+        MainConfig->SetStr( "", arg + 1, arg_value.c_str() );
+    }
+
+    // Cache modules
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER ) || defined ( FONLINE_SCRIPT_COMPILER )
     const char* modules = MainConfig->GetStr( "", "Modules" );
     RUNTIME_ASSERT( modules );
@@ -122,20 +189,6 @@ void InitialSetup()
         GameModules.push_back( string( full_dir ) );
     }
     #endif
-
-    char path[ MAX_FOTEXT ];
-    Str::Copy( path, MainConfig->GetStr( "", "ClientPath", "" ) );
-    ResolvePath( path );
-    *GameOpt.ClientPath = path;
-    MakeDirectory( path );
-    Str::Copy( path, MainConfig->GetStr( "", "ServerPath", "" ) );
-    ResolvePath( path );
-    *GameOpt.ServerPath = path;
-    MakeDirectory( path );
-
-    FileManager::ResetCurrentDir();
-
-    MainConfig->AppendFile( CONFIG_NAME, PT_ROOT );
 }
 
 #ifndef FO_WINDOWS
@@ -143,45 +196,6 @@ void InitialSetup()
 bool                Mutex::attrInitialized = false;
 pthread_mutexattr_t Mutex::mutexAttr;
 #endif
-
-// Command line
-map< string, string > CommandLineMap;
-char                  CommandLine[ MAX_FOTEXT ] = { 0 };
-void SetCommandLine( uint argc, char** argv )
-{
-    // Make command line in single string
-    for( uint i = 0; i < argc; i++ )
-    {
-        // Skip path
-        if( i == 0 && argv[ 0 ][ 0 ] != '-' )
-            continue;
-
-        Str::Append( CommandLine, argv[ i ] );
-        Str::Append( CommandLine, " " );
-    }
-
-    // Make key value command line
-    StrVec args;
-    Str::ParseLine( CommandLine, ' ', args, Str::ParseLineDummy );
-    for( size_t i = 0; i < args.size(); i++ )
-    {
-        string& arg = args[ i ];
-        if( arg.length() > 1 && arg[ 0 ] == '-' )
-        {
-            const char* arg_value = "";
-            if( i < args.size() - 1 && args[ i + 1 ][ 0 ] != '-' )
-            {
-                arg_value = args[ i + 1 ].c_str();
-                i++;
-            }
-
-            CommandLineMap.insert( PAIR( arg.c_str() + 1, arg_value ) );
-        }
-    }
-
-    // Store for scripts
-    GameOpt.CommandLine = ScriptString::Create( CommandLine );
-}
 
 // Default randomizer
 Randomizer DefaultRandomizer;
@@ -826,11 +840,11 @@ void GetClientOptions()
     char buf[ MAX_FOTEXT ];
     # define READ_CFG_STR_DEF( cfg, key, def_val )    Str::Copy( buf, MainConfig->GetStr( "", key, def_val ) )
 
-    // Load config file
-    # ifdef FONLINE_MAPPER
-    FileManager::SetCurrentDir( GameOpt.ClientPath->c_str(), CLIENT_DATA );
-    FileManager::InitDataFiles( CLIENT_DATA );
+    // Data files
+    # ifdef FO_OSX_IOS
+    FileManager::InitDataFiles( "../../Documents/" );
     # endif
+    FileManager::InitDataFiles( CLIENT_DATA );
 
     // Cached configuration
     MainConfig->AppendFile( CONFIG_NAME, PT_CLIENT_CACHE );
@@ -1312,8 +1326,7 @@ GameOptions::GameOptions()
     ChosenLightFlags = 0;
 
     // Mapper
-    ClientPath = ScriptString::Create( "./" );
-    ServerPath = ScriptString::Create( "./" );
+    ServerDir = ScriptString::Create( "./" );
     ShowCorners = false;
     ShowSpriteCuts = false;
     ShowDrawOrder = false;

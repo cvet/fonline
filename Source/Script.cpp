@@ -533,7 +533,7 @@ bool Script::ReloadScripts( const char* target )
     Script::UnloadScripts();
 
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    int         errors = 0;
+
 
     // Get last write time in cache scripts
     uint64          cache_write_time = 0;
@@ -619,6 +619,8 @@ bool Script::ReloadScripts( const char* target )
         entry.SortValueExt = ++file_index;
         scripts.push_back( entry );
     }
+    if( errors )
+        return false;
 
     std::sort( scripts.begin(), scripts.end(), [] ( ScriptEntry & a, ScriptEntry & b )
                {
@@ -632,6 +634,11 @@ bool Script::ReloadScripts( const char* target )
     {
         names.push_back( s.Name );
         contents.push_back( s.Content );
+    }
+    if( names.empty() )
+    {
+        WriteLog( "No scripts found.\n" );
+        return false;
     }
 
         // Load module
@@ -657,8 +664,8 @@ bool Script::ReloadScripts( const char* target )
             }
         }
 
-    if( !errors )
-        CacheEnumValues();
+    // Cache enums
+    CacheEnumValues();
 
     // Add to profiler
     if( edata->Profiler )
@@ -674,12 +681,7 @@ bool Script::ReloadScripts( const char* target )
     if( edata->Profiler )
         edata->Profiler->EndModules();
 
-    if( errors )
-    {
-        WriteLog( "Reload scripts fail.\n" );
-        return false;
-    }
-
+    // Done
     WriteLog( "Reload scripts complete.\n" );
     return true;
 }
@@ -1189,10 +1191,11 @@ public:
         FileManager::EraseExtension( path );
 
     // Set preprocessor defines from command line
-    for( auto& kv : CommandLineMap )
+    const StrMap& config = MainConfig->GetApp( "" );
+    for( auto& kv : config )
     {
-        if( Str::CompareCase( kv.first.c_str(), "D" ) && kv.second.length() > 0 )
-            Preprocessor::Define( kv.second.c_str() );
+        if( kv.first.length() > 2 && kv.first[ 0 ] == '-' && kv.first[ 1 ] == '-' )
+            Preprocessor::Define( kv.first.substr( 2 ) );
     }
 
     // Preprocess
@@ -1214,20 +1217,27 @@ public:
     }
 
     // Set global properties from command line
-    for( auto& kv : CommandLineMap )
+    for( auto& kv : config )
     {
-        if( Str::CompareCase( kv.first.c_str(), "D" ) )
+        // Skip defines
+        if( kv.first.length() > 2 && kv.first[ 0 ] == '-' && kv.first[ 1 ] == '-' )
             continue;
 
-        int index = Engine->GetGlobalPropertyIndexByName( kv.first.c_str() );
+        // Find property, with prefix and without
+        int index = Engine->GetGlobalPropertyIndexByName( ( "__" + kv.first ).c_str() );
         if( index < 0 )
-            continue;
+        {
+            index = Engine->GetGlobalPropertyIndexByName( kv.first.c_str() );
+            if( index < 0 )
+                continue;
+        }
 
         int   type_id;
         void* ptr;
         int   r = Engine->GetGlobalPropertyByIndex( index, nullptr, nullptr, &type_id, nullptr, nullptr, &ptr, nullptr );
         RUNTIME_ASSERT( r >= 0 );
 
+        // Try set value
         asITypeInfo* obj_type = ( type_id & asTYPEID_MASK_OBJECT ? Engine->GetTypeInfoById( type_id ) : nullptr );
         bool         is_hashes[] = { false, false, false, false };
         uchar        pod_buf[ 8 ];
@@ -1238,6 +1248,12 @@ public:
             if( !obj_type )
             {
                 memcpy( ptr, value, Engine->GetSizeOfPrimitiveType( type_id ) );
+            }
+            else if( type_id & asTYPEID_OBJHANDLE )
+            {
+                if( ptr )
+                    Engine->ReleaseScriptObject( *(void**) ptr, obj_type );
+                memcpy( ptr, value, sizeof( void* ) );
             }
             else
             {

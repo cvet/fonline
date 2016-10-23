@@ -71,10 +71,7 @@ namespace MapperBind
 
 int main( int argc, char* argv[] )
 {
-    InitialSetup();
-
-    // Make command line
-    SetCommandLine( argc, argv );
+    InitialSetup( argc, argv );
 
     // Initialization
     Timer::Init();

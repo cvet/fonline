@@ -5,16 +5,13 @@
 
 int main( int argc, char** argv )
 {
-    InitialSetup();
+    InitialSetup( argc, argv );
 
     // Threading
     Thread::SetCurrentName( "GUI" );
 
     // Exceptions
     CatchExceptions( "FOnlineMapper", FONLINE_VERSION );
-
-    // Make command line
-    SetCommandLine( argc, argv );
 
     // Timer
     Timer::Init();

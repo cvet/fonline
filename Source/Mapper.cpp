@@ -94,8 +94,8 @@ bool FOMapper::Init()
     GameOpt.ScrollCheck = false;
 
     // Setup write paths
-    Str::Copy( ServerWritePath, GameOpt.ServerPath->c_str() );
-    Str::Copy( ClientWritePath, GameOpt.ClientPath->c_str() );
+    Str::Copy( ServerWritePath, GameOpt.ServerDir->c_str() );
+    Str::Copy( ClientWritePath, WorkDir );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
     // Cache
@@ -5365,7 +5365,7 @@ Entity* FOMapper::SScriptFunc::Global_GetMonitorObject( int x, int y, bool ignor
 
 bool FOMapper::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
 {
-    if( FileManager::LoadDataFile( dat_name.c_std_str().find( ':' ) == string::npos ? ( GameOpt.ClientPath->c_std_str() + dat_name.c_std_str() ).c_str() : dat_name.c_str() ) )
+    if( FileManager::LoadDataFile( dat_name.c_str() ) )
     {
         // Reload resource manager
         if( Self->IsMapperStarted )

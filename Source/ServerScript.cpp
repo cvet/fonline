@@ -3698,7 +3698,6 @@ static void SwapCrittersRefreshNpc( Npc* npc )
     for( auto it = planes.begin(), end = planes.end(); it != end; ++it )
         delete *it;
     planes.clear();
-    npc->NextRefreshBagTick = Timer::GameTick() + GameOpt.BagRefreshTime * 60 * 1000;
 }
 
 static void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )

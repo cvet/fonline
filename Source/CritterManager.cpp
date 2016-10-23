@@ -142,7 +142,6 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     Script::RaiseInternalEvent( ServerFunctions.CritterInit, npc, true );
     npc->SetScript( nullptr, true );
 
-    npc->RefreshBag();
     npc->ProcessVisibleCritters();
     npc->ProcessVisibleItems();
     return npc;

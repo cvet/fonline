@@ -511,7 +511,6 @@ void EntityManager::InitAfterLoad()
         else if( entity->Type == EntityType::Npc )
         {
             Npc* npc = (Npc*) entity;
-            npc->NextRefreshBagTick = Timer::GameTick() + GameOpt.BagRefreshTime * 60 * 1000;
             npc->RefreshName();
             Script::RaiseInternalEvent( ServerFunctions.CritterInit, npc, false );
             if( !npc->IsDestroyed && npc->GetScriptId() )

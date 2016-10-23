@@ -139,13 +139,11 @@ const char* GetLastSocketError();
 typedef vector< Rect >  IntRectVec;
 typedef vector< RectF > FltRectVec;
 
+extern char       WorkDir[ MAX_FOTEXT ];
+extern char       CommandLine[ MAX_FOTEXT ];
 extern IniParser* MainConfig;
 extern StrVec     GameModules;
-void InitialSetup();
-
-extern map< string, string > CommandLineMap;
-extern char                  CommandLine[ MAX_FOTEXT ];
-void SetCommandLine( uint argc, char** argv );
+void InitialSetup( uint argc, char** argv );
 
 extern Randomizer DefaultRandomizer;
 int Random( int minimum, int maximum );
@@ -621,8 +619,7 @@ struct GameOptions
     uchar         ChosenLightFlags;
 
     // Mapper
-    ScriptString* ClientPath;
-    ScriptString* ServerPath;
+    ScriptString* ServerDir;
     bool          ShowCorners;
     bool          ShowSpriteCuts;
     bool          ShowDrawOrder;

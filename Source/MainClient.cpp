@@ -9,7 +9,7 @@
 
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
-    InitialSetup();
+    InitialSetup( argc, argv );
 
     // Threading
     Thread::SetCurrentName( "Main" );
@@ -22,21 +22,12 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     // Exception
     CatchExceptions( "FOnline", FONLINE_VERSION );
 
-    // Make command line
-    SetCommandLine( argc, argv );
-
     // Timer
     Timer::Init();
 
     // Logging
     LogToFile( "FOnline.log" );
     LogToDebugOutput( true );
-
-    // Data files
-    #ifdef FO_OSX_IOS
-    FileManager::InitDataFiles( "../../Documents/" );
-    #endif
-    FileManager::InitDataFiles( CLIENT_DATA );
 
     // Singleplayer mode initialization
     #ifdef FO_WINDOWS
@@ -78,7 +69,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
         // Config parsing
         const char* server_exe = "FOnlineServer.exe";
-        const char* server_path = MainConfig->GetStr( "", "ServerPath", "" );
+        const char* server_dir = MainConfig->GetStr( "", "ServerDir", "" );
         const char* server_cmdline = MainConfig->GetStr( "", "ServerCommandLine", "" );
 
         // Process attributes
@@ -91,8 +82,8 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         char   command_line[ 2048 ];
 
         // Start server
-        Str::Format( command_line, "\"%s%s\" -singleplayer %p %p %s -logpath %s", server_path, server_exe, map_file, client_process, server_cmdline, path );
-        if( !CreateProcess( nullptr, command_line, nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, server_path, &sui, &server ) )
+        Str::Format( command_line, "\"%s%s\" -singleplayer %p %p %s -logpath %s", server_dir, server_exe, map_file, client_process, server_cmdline, path );
+        if( !CreateProcess( nullptr, command_line, nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, server_dir, &sui, &server ) )
         {
             WriteLog( "Can't start server process, error %u.\n", GetLastError() );
             return 0;

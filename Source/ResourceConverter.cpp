@@ -377,13 +377,8 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
             void* dll = DLL_Load( ASSIMP_PATH1 ASSIMP_PATH2 );
             if( !dll )
             {
-                if( GameOpt.ClientPath->c_std_str() != "" )
-                    dll = DLL_Load( ( GameOpt.ClientPath->c_std_str() + ASSIMP_PATH2 ).c_str() );
-                if( !dll )
-                {
-                    WriteLogF( _FUNC_, " - '" ASSIMP_PATH2 "' not found.\n" );
-                    return nullptr;
-                }
+                WriteLogF( _FUNC_, " - '" ASSIMP_PATH2 "' not found.\n" );
+                return nullptr;
             }
 
             // Bind functions

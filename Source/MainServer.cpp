@@ -72,7 +72,7 @@ void ServiceMain( bool as_service );
 // Main
 int main( int argc, char** argv )
 {
-    InitialSetup();
+    InitialSetup( argc, argv );
 
     // Threading
     Thread::SetCurrentName( "GUI" );
@@ -92,9 +92,6 @@ int main( int argc, char** argv )
     MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
-
-    // Make command line
-    SetCommandLine( argc, argv );
 
     // Logging
     LogWithTime( MainConfig->GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
@@ -177,14 +174,6 @@ int main( int argc, char** argv )
         GuiCBtnLoggingTime->value( MainConfig->GetInt( "", "LoggingTime", 1 ) != 0 ? 1 : 0 );
         GuiCBtnLoggingThread->value( MainConfig->GetInt( "", "LoggingThread", 1 ) != 0 ? 1 : 0 );
         GuiCBtnScriptDebug->value( 0 );
-    }
-
-    // Command line
-    if( CommandLineMap.size() > 0 )
-    {
-        WriteLog( "Command line variables:\n" );
-        for( auto& kv : CommandLineMap )
-            WriteLog( " - %s = %s\n", kv.first.c_str(), kv.second.c_str() );
     }
 
     // Autostart
@@ -794,18 +783,18 @@ void ServiceMain( bool as_service )
     SC_HANDLE service = OpenService( manager, "FOnlineServer", SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_START );
 
     // Compile service path
-    char path1[ MAX_FOPATH ];
-    GetModuleFileName( GetModuleHandle( nullptr ), path1, MAX_FOPATH );
-    char path2[ MAX_FOPATH ];
-    Str::Format( path2, "\"%s\" --service", path1 );
+    char exe_path[ MAX_FOPATH ];
+    GetModuleFileName( GetModuleHandle( nullptr ), exe_path, MAX_FOPATH );
+    char path[ MAX_FOPATH ];
+    Str::Format( path, "\"%s\" --service %s", exe_path, CommandLine );
 
     // Change executable path, if changed
     if( service )
     {
         LPQUERY_SERVICE_CONFIG service_cfg = (LPQUERY_SERVICE_CONFIG) calloc( 8192, 1 );
         DWORD                  dw;
-        if( QueryServiceConfig( service, service_cfg, 8192, &dw ) && !Str::CompareCase( service_cfg->lpBinaryPathName, path2 ) )
-            ChangeServiceConfig( service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path2, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
+        if( QueryServiceConfig( service, service_cfg, 8192, &dw ) && !Str::CompareCase( service_cfg->lpBinaryPathName, path ) )
+            ChangeServiceConfig( service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
         free( service_cfg );
     }
 
@@ -813,21 +802,12 @@ void ServiceMain( bool as_service )
     if( !service )
     {
         service = CreateService( manager, "FOnlineServer", "FOnlineServer", SERVICE_ALL_ACCESS,
-                                 SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path2, nullptr, nullptr, nullptr, nullptr, nullptr );
+                                 SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path, nullptr, nullptr, nullptr, nullptr, nullptr );
 
         if( service )
             MessageBox( nullptr, "\'FOnlineServer\' service registered.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
         else
             MessageBox( nullptr, "Can't register \'FOnlineServer\' service.", "FOnlineServer", MB_OK | MB_ICONHAND );
-    }
-    // Start service
-    else
-    {
-        SERVICE_STATUS status;
-        if( service && QueryServiceStatus( service, &status ) && status.dwCurrentState != SERVICE_STOPPED )
-            MessageBox( nullptr, "Service already running.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
-        else if( service && !StartService( service, 0, nullptr ) )
-            MessageBox( nullptr, "Can't start service.", "FOnlineServer", MB_OK | MB_ICONHAND );
     }
 
     // Close handles
@@ -839,7 +819,6 @@ void ServiceMain( bool as_service )
 
 VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 {
-    InitialSetup();
     Thread::SetCurrentName( "Service" );
     LogToFile( "FOnlineServer.log" );
     WriteLog( "FOnline server service, version %d.\n", FONLINE_VERSION );
@@ -929,10 +908,7 @@ Thread   LoopThread;
 
 int main( int argc, char** argv )
 {
-    InitialSetup();
-
-    // Make command line
-    SetCommandLine( argc, argv );
+    InitialSetup( argc, argv );
 
     if( !Str::Substring( CommandLine, "-nodetach" ) )
     {

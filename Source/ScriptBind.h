@@ -712,8 +712,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void KeyboardPress(uint8 key1, uin
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetRainAnimation(string@+ fallAnimName, string@+ dropAnimName)", asFUNCTION( BIND_CLASS Global_SetRainAnimation ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void ChangeZoom(float targetZoom)", asFUNCTION( BIND_CLASS Global_ChangeZoom ), asCALL_CDECL ) );
 
-BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ClientPath", &GameOpt.ClientPath ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ServerPath", &GameOpt.ServerPath ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "string@ __ServerDir", &GameOpt.ServerDir ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowCorners", &GameOpt.ShowCorners ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowSpriteCuts", &GameOpt.ShowSpriteCuts ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ShowDrawOrder", &GameOpt.ShowDrawOrder ) );
