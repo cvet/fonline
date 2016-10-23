@@ -61,16 +61,12 @@ void Map::DeleteContent()
         KickPlayersToGlobalMap();
 
         // Delete npc
-        dataLocker.Lock();
         PcVec del_npc = mapNpcs;
-        dataLocker.Unlock();
         for( auto it = del_npc.begin(); it != del_npc.end(); ++it )
             CrMngr.DeleteNpc( *it );
 
         // Delete items
-        dataLocker.Lock();
         ItemVec del_items = hexItems;
-        dataLocker.Unlock();
         for( auto it = del_items.begin(); it != del_items.end(); ++it )
             ItemMngr.DeleteItem( *it );
     }
@@ -160,7 +156,7 @@ bool Map::Generate()
         // Add to parent
         if( base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
         {
-            Critter* cr_cont = GetCritter( parent_id, true );
+            Critter* cr_cont = GetCritter( parent_id );
             RUNTIME_ASSERT( cr_cont );
             cr_cont->AddItem( item, false );
         }
@@ -178,7 +174,7 @@ bool Map::Generate()
 
     // Npc initialization
     PcVec npcs;
-    GetNpcs( npcs, true );
+    GetNpcs( npcs );
 
     // Generate internal bag
     for( auto& npc : npcs )
@@ -238,10 +234,8 @@ void Map::ProcessLoop( int index, uint time, uint tick )
     }
 }
 
-Location* Map::GetLocation( bool lock )
+Location* Map::GetLocation()
 {
-    if( lock )
-        SYNC_LOCK( mapLocation );
     return mapLocation;
 }
 
@@ -310,24 +304,20 @@ bool Map::FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius,
 void Map::AddCritter( Critter* cr )
 {
     // Add critter to collections
+    if( std::find( mapCritters.begin(), mapCritters.end(), cr ) != mapCritters.end() )
     {
-        SCOPE_LOCK( dataLocker );
-
-        if( std::find( mapCritters.begin(), mapCritters.end(), cr ) != mapCritters.end() )
-        {
-            WriteLogF( _FUNC_, " - Critter already added!\n" );
-            return;
-        }
-
-        if( cr->IsPlayer() )
-            mapPlayers.push_back( (Client*) cr );
-        else
-            mapNpcs.push_back( (Npc*) cr );
-        mapCritters.push_back( cr );
-
-        cr->SetMapId( GetId() );
-        cr->SetMapPid( GetProtoId() );
+        WriteLogF( _FUNC_, " - Critter already added!\n" );
+        return;
     }
+
+    if( cr->IsPlayer() )
+        mapPlayers.push_back( (Client*) cr );
+    else
+        mapNpcs.push_back( (Npc*) cr );
+    mapCritters.push_back( cr );
+
+    cr->SetMapId( GetId() );
+    cr->SetMapPid( GetProtoId() );
 
     SetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
     cr->SetTimeoutBattle( 0 );
@@ -336,26 +326,22 @@ void Map::AddCritter( Critter* cr )
 void Map::EraseCritter( Critter* cr )
 {
     // Erase critter from collections
+    if( cr->IsPlayer() )
     {
-        SCOPE_LOCK( dataLocker );
-
-        if( cr->IsPlayer() )
-        {
-            auto it = std::find( mapPlayers.begin(), mapPlayers.end(), (Client*) cr );
-            RUNTIME_ASSERT( it != mapPlayers.end() );
-            mapPlayers.erase( it );
-        }
-        else
-        {
-            auto it = std::find( mapNpcs.begin(), mapNpcs.end(), (Npc*) cr );
-            RUNTIME_ASSERT( it != mapNpcs.end() );
-            mapNpcs.erase( it );
-        }
-
-        auto it = std::find( mapCritters.begin(), mapCritters.end(), cr );
-        RUNTIME_ASSERT( it != mapCritters.end() );
-        mapCritters.erase( it );
+        auto it = std::find( mapPlayers.begin(), mapPlayers.end(), (Client*) cr );
+        RUNTIME_ASSERT( it != mapPlayers.end() );
+        mapPlayers.erase( it );
     }
+    else
+    {
+        auto it = std::find( mapNpcs.begin(), mapNpcs.end(), (Npc*) cr );
+        RUNTIME_ASSERT( it != mapNpcs.end() );
+        mapNpcs.erase( it );
+    }
+
+    auto it = std::find( mapCritters.begin(), mapCritters.end(), cr );
+    RUNTIME_ASSERT( it != mapCritters.end() );
+    mapCritters.erase( it );
 
     cr->SetTimeoutBattle( 0 );
 
@@ -365,14 +351,10 @@ void Map::EraseCritter( Critter* cr )
 void Map::KickPlayersToGlobalMap()
 {
     ClVec players;
-    GetPlayers( players, true );
+    GetPlayers( players );
 
     for( auto it = players.begin(), end = players.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        SYNC_LOCK( cr );
-        MapMngr.TransitToGlobal( cr, 0, true );
-    }
+        MapMngr.TransitToGlobal( *it, 0, true );
 }
 
 bool Map::AddItem( Item* item, ushort hx, ushort hy )
@@ -388,7 +370,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
 
     // Process critters view
     CrVec critters;
-    GetCritters( critters, true );
+    GetCritters( critters );
 
     item->ViewPlaceOnMap = true;
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
@@ -491,7 +473,7 @@ void Map::EraseItem( uint item_id )
 
     // Process critters view
     CrVec critters;
-    GetCritters( critters, true );
+    GetCritters( critters );
 
     item->ViewPlaceOnMap = true;
     for( auto it_ = critters.begin(), end_ = critters.end(); it_ != end_; ++it_ )
@@ -513,7 +495,7 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
     {
         Item* item = (Item*) entity;
         CrVec critters;
-        GetCritters( critters, true );
+        GetCritters( critters );
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
@@ -527,7 +509,7 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
     else if( type == NetProperty::Map || type == NetProperty::Location )
     {
         CrVec critters;
-        GetCritters( critters, false );
+        GetCritters( critters );
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
@@ -545,7 +527,7 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
 void Map::ChangeViewItem( Item* item )
 {
     CrVec critters;
-    GetCritters( critters, true );
+    GetCritters( critters );
 
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
@@ -610,8 +592,6 @@ void Map::ChangeViewItem( Item* item )
 
 void Map::AnimateItem( Item* item, uchar from_frm, uchar to_frm )
 {
-    SCOPE_LOCK( dataLocker );
-
     for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
     {
         Client* cl = *it;
@@ -627,10 +607,7 @@ Item* Map::GetItem( uint item_id )
     {
         Item* item = *it;
         if( item->GetId() == item_id )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
@@ -642,10 +619,7 @@ Item* Map::GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker )
         Item* item = *it;
         if( item->GetHexX() == hx && item->GetHexY() == hy && ( item_pid == 0 || item->GetProtoId() == item_pid ) &&
             ( !picker || ( !item->GetIsHidden() && picker->CountIdVisItem( item->GetId() ) ) ) )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
@@ -656,10 +630,7 @@ Item* Map::GetItemDoor( ushort hx, ushort hy )
     {
         Item* item = *it;
         if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsDoor() )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
@@ -670,10 +641,7 @@ Item* Map::GetItemCar( ushort hx, ushort hy )
     {
         Item* item = *it;
         if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsCar() )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
@@ -684,10 +652,7 @@ Item* Map::GetItemContainer( ushort hx, ushort hy )
     {
         Item* item = *it;
         if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsContainer() )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
@@ -698,15 +663,12 @@ Item* Map::GetItemGag( ushort hx, ushort hy )
     {
         Item* item = *it;
         if( item->GetHexX() == hx && item->GetHexY() == hy && item->GetIsGag() )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
 
-void Map::GetItemsHex( ushort hx, ushort hy, ItemVec& items, bool lock )
+void Map::GetItemsHex( ushort hx, ushort hy, ItemVec& items )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -714,13 +676,9 @@ void Map::GetItemsHex( ushort hx, ushort hy, ItemVec& items, bool lock )
         if( item->GetHexX() == hx && item->GetHexY() == hy )
             items.push_back( item );
     }
-
-    if( lock )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
-void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items, bool lock )
+void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -728,13 +686,9 @@ void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& i
         if( ( !pid || item->GetProtoId() == pid ) && DistGame( item->GetHexX(), item->GetHexY(), hx, hy ) <= radius )
             items.push_back( item );
     }
-
-    if( lock )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
-void Map::GetItemsPid( hash pid, ItemVec& items, bool lock )
+void Map::GetItemsPid( hash pid, ItemVec& items )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -742,13 +696,9 @@ void Map::GetItemsPid( hash pid, ItemVec& items, bool lock )
         if( !pid || item->GetProtoId() == pid )
             items.push_back( item );
     }
-
-    if( lock )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
-void Map::GetItemsType( int type, ItemVec& items, bool lock )
+void Map::GetItemsType( int type, ItemVec& items )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -756,13 +706,9 @@ void Map::GetItemsType( int type, ItemVec& items, bool lock )
         if( item->GetType() == type )
             items.push_back( item );
     }
-
-    if( lock )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
-void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps, bool lock )
+void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps )
 {
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
@@ -772,10 +718,6 @@ void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps, bool lock )
     }
     if( !traps.size() )
         UnsetHexFlag( hx, hy, FH_WALK_ITEM );
-
-    if( lock )
-        for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
 void Map::RecacheHexBlock( ushort hx, ushort hy )
@@ -983,14 +925,12 @@ void Map::UnsetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead )
     {
         uint dead_count = 0;
 
-        dataLocker.Lock();
         for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
         {
             Critter* cr = *it;
             if( cr->GetHexX() == hx && cr->GetHexY() == hy && cr->IsDead() )
                 dead_count++;
         }
-        dataLocker.Unlock();
 
         if( dead_count <= 1 )
             UnsetHexFlag( hx, hy, FH_DEAD_CRITTER );
@@ -1020,7 +960,7 @@ void Map::UnsetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead )
 uint Map::GetNpcCount( int npc_role, int find_type )
 {
     PcVec npcs;
-    GetNpcs( npcs, true );
+    GetNpcs( npcs );
 
     uint result = 0;
     for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
@@ -1032,116 +972,61 @@ uint Map::GetNpcCount( int npc_role, int find_type )
     return result;
 }
 
-Critter* Map::GetCritter( uint crid, bool sync_lock )
+Critter* Map::GetCritter( uint crid )
 {
-    Critter* cr = nullptr;
-
-    dataLocker.Lock();
     for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
     {
-        Critter* cr_ = *it;
-        if( cr_->GetId() == crid )
-        {
-            cr = cr_;
-            break;
-        }
+        Critter* cr = *it;
+        if( cr->GetId() == crid )
+            return cr;
     }
-    dataLocker.Unlock();
-
-    if( cr && sync_lock && LogicMT )
-    {
-        // Synchronize
-        SYNC_LOCK( cr );
-
-        // Recheck
-        if( cr->GetMapId() != GetId() )
-            return nullptr;
-    }
-
-    return cr;
+    return nullptr;
 }
 
-Critter* Map::GetNpc( int npc_role, int find_type, uint skip_count, bool sync_lock )
+Critter* Map::GetNpc( int npc_role, int find_type, uint skip_count )
 {
-    Npc* npc = nullptr;
-
-    dataLocker.Lock();
     for( auto it = mapNpcs.begin(), end = mapNpcs.end(); it != end; ++it )
     {
-        Npc* npc_ = *it;
-        if( npc_->GetNpcRole() == npc_role && npc_->CheckFind( find_type ) )
+        Npc* npc = *it;
+        if( npc->GetNpcRole() == npc_role && npc->CheckFind( find_type ) )
         {
             if( skip_count )
                 skip_count--;
             else
-            {
-                npc = npc_;
-                break;
-            }
+                return npc;
         }
     }
-    dataLocker.Unlock();
-
-    if( npc && sync_lock && LogicMT )
-    {
-        // Synchronize
-        SYNC_LOCK( npc );
-
-        // Recheck
-        if( npc->GetMapId() != GetId() || npc->GetNpcRole() != npc_role || !npc->CheckFind( find_type ) )
-            return GetNpc( npc_role, find_type, skip_count, sync_lock );
-    }
-
-    return npc;
+    return nullptr;
 }
 
-Critter* Map::GetHexCritter( ushort hx, ushort hy, bool dead, bool sync_lock )
+Critter* Map::GetHexCritter( ushort hx, ushort hy, bool dead )
 {
     if( !IsFlagCritter( hx, hy, dead ) )
         return nullptr;
 
-    Critter* cr = nullptr;
-
-    dataLocker.Lock();
     for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
     {
-        Critter* cr_ = *it;
-        if( cr_->IsDead() == dead )
+        Critter* cr = *it;
+        if( cr->IsDead() == dead )
         {
-            int mh = cr_->GetMultihex();
+            int mh = cr->GetMultihex();
             if( !mh )
             {
-                if( cr_->GetHexX() == hx && cr_->GetHexY() == hy )
-                {
-                    cr = cr_;
-                    break;
-                }
+                if( cr->GetHexX() == hx && cr->GetHexY() == hy )
+                    return cr;
             }
             else
             {
-                if( CheckDist( cr_->GetHexX(), cr_->GetHexY(), hx, hy, mh ) )
-                {
-                    cr = cr_;
-                    break;
-                }
+                if( CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, mh ) )
+                    return cr;
             }
         }
     }
-    dataLocker.Unlock();
-
-    if( cr && sync_lock && LogicMT )
-    {
-        SYNC_LOCK( cr );
-        if( cr->GetMapId() != GetId() || !CheckDist( cr->GetHexX(), cr->GetHexY(), hx, hy, cr->GetMultihex() ) )
-            return GetHexCritter( hx, hy, dead, sync_lock );
-    }
-
-    return cr;
+    return nullptr;
 }
 
-void Map::GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVec& critters, bool sync_lock )
+void Map::GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVec& critters )
 {
-    dataLocker.Lock();
     CrVec find_critters;
     find_critters.reserve( mapCritters.size() );
     for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
@@ -1149,33 +1034,6 @@ void Map::GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVe
         Critter* cr = *it;
         if( cr->CheckFind( find_type ) && CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex() ) )
             find_critters.push_back( cr );
-    }
-    dataLocker.Unlock();
-
-    if( sync_lock && LogicMT )
-    {
-        // Synchronize
-        for( auto it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
-            SYNC_LOCK( *it );
-
-        // Recheck
-        dataLocker.Lock();
-        CrVec find_critters2;
-        find_critters2.reserve( find_critters.size() );
-        for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            if( cr->CheckFind( find_type ) && CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex() ) )
-                find_critters2.push_back( cr );
-        }
-        dataLocker.Unlock();
-
-        // Search again
-        if( !CompareContainers( find_critters, find_critters2 ) )
-        {
-            GetCrittersHex( hx, hy, radius, find_type, critters, sync_lock );
-            return;
-        }
     }
 
     // Store result, append
@@ -1186,103 +1044,38 @@ void Map::GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVe
     }
 }
 
-void Map::GetCritters( CrVec& critters, bool sync_lock )
+void Map::GetCritters( CrVec& critters )
 {
-    dataLocker.Lock();
     critters = mapCritters;
-    dataLocker.Unlock();
-
-    if( sync_lock && LogicMT )
-    {
-        // Synchronize
-        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-            SYNC_LOCK( *it );
-
-        // Recheck after synchronization
-        dataLocker.Lock();
-        bool equal = CompareContainers( critters, mapCritters );
-        dataLocker.Unlock();
-        if( !equal )
-        {
-            critters.clear();
-            GetCritters( critters, sync_lock );
-        }
-    }
 }
 
-void Map::GetPlayers( ClVec& players, bool sync_lock )
+void Map::GetPlayers( ClVec& players )
 {
-    dataLocker.Lock();
     players = mapPlayers;
-    dataLocker.Unlock();
-
-    if( sync_lock && LogicMT )
-    {
-        // Synchronize
-        for( auto it = players.begin(), end = players.end(); it != end; ++it )
-            SYNC_LOCK( *it );
-
-        // Recheck after synchronization
-        dataLocker.Lock();
-        bool equal = CompareContainers( players, mapPlayers );
-        dataLocker.Unlock();
-        if( !equal )
-        {
-            players.clear();
-            GetPlayers( players, sync_lock );
-        }
-    }
 }
 
-void Map::GetNpcs( PcVec& npcs, bool sync_lock )
+void Map::GetNpcs( PcVec& npcs )
 {
-    dataLocker.Lock();
     npcs = mapNpcs;
-    dataLocker.Unlock();
-
-    if( sync_lock && LogicMT )
-    {
-        // Synchronize
-        for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
-            SYNC_LOCK( *it );
-
-        // Recheck after synchronization
-        dataLocker.Lock();
-        bool equal = CompareContainers( npcs, mapNpcs );
-        dataLocker.Unlock();
-        if( !equal )
-        {
-            npcs.clear();
-            GetNpcs( npcs, sync_lock );
-        }
-    }
 }
 
 uint Map::GetCrittersCount()
 {
-    SCOPE_LOCK( dataLocker );
-    uint count = (uint) mapCritters.size();
-    return count;
+    return (uint) mapCritters.size();
 }
 
 uint Map::GetPlayersCount()
 {
-    SCOPE_LOCK( dataLocker );
-    uint count = (uint) mapPlayers.size();
-    return count;
+    return (uint) mapPlayers.size();
 }
 
 uint Map::GetNpcsCount()
 {
-    SCOPE_LOCK( dataLocker );
-    uint count = (uint) mapNpcs.size();
-    return count;
+    return (uint) mapNpcs.size();
 }
 
 void Map::SendEffect( hash eff_pid, ushort hx, ushort hy, ushort radius )
 {
-    SCOPE_LOCK( dataLocker );
-
     for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
     {
         Client* cl = *it;
@@ -1293,8 +1086,6 @@ void Map::SendEffect( hash eff_pid, ushort hx, ushort hy, ushort radius )
 
 void Map::SendFlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
 {
-    SCOPE_LOCK( dataLocker );
-
     for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
     {
         Client* cl = *it;
@@ -1466,8 +1257,6 @@ void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort te
     if( hx >= GetWidth() || hy >= GetHeight() )
         return;
 
-    SCOPE_LOCK( dataLocker );
-
     for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
     {
         Client* cl = *it;
@@ -1481,8 +1270,6 @@ void Map::SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint nu
     if( hx >= GetWidth() || hy >= GetHeight() || !num_str )
         return;
 
-    SCOPE_LOCK( dataLocker );
-
     for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
     {
         Client* cl = *it;
@@ -1495,8 +1282,6 @@ void Map::SetTextMsgLex( ushort hx, ushort hy, uint color, ushort text_msg, uint
 {
     if( hx >= GetWidth() || hy >= GetHeight() || !num_str )
         return;
-
-    SCOPE_LOCK( dataLocker );
 
     for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
     {
@@ -1546,21 +1331,16 @@ void Location::BindScript()
     }
 }
 
-void Location::GetMaps( MapVec& maps, bool lock )
+void Location::GetMaps( MapVec& maps )
 {
     maps = locMaps;
-    if( lock )
-        for( auto& map : maps )
-            SYNC_LOCK( map );
 }
 
 Map* Location::GetMapByIndex( uint index )
 {
     if( index >= locMaps.size() )
         return nullptr;
-    Map* map = locMaps[ index ];
-    SYNC_LOCK( map );
-    return map;
+    return locMaps[ index ];
 }
 
 Map* Location::GetMapByPid( hash map_pid )
@@ -1568,10 +1348,7 @@ Map* Location::GetMapByPid( hash map_pid )
     for( auto& map : locMaps )
     {
         if( map->GetProtoId() == map_pid )
-        {
-            SYNC_LOCK( map );
             return map;
-        }
     }
     return nullptr;
 }
@@ -1616,7 +1393,6 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
 
     if( !to_map )
         return false;
-    SYNC_LOCK( to_map );
 
     id_map = to_map->GetId();
 
@@ -1690,7 +1466,7 @@ bool Location::IsCanDelete()
     for( auto& map : maps )
     {
         PcVec npcs;
-        map->GetNpcs( npcs, true );
+        map->GetNpcs( npcs );
 
         for( auto it_ = npcs.begin(), end_ = npcs.end(); it_ != end_; ++it_ )
         {

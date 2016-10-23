@@ -60,7 +60,7 @@ void FOServer::OnSendItemValue( Entity* entity, Property* prop )
         {
             if( is_public || is_protected )
             {
-                Critter* cr = CrMngr.GetCritter( item->GetCritId(), false );
+                Critter* cr = CrMngr.GetCritter( item->GetCritId() );
                 if( cr )
                 {
                     if( is_public || is_protected )
@@ -74,7 +74,7 @@ void FOServer::OnSendItemValue( Entity* entity, Property* prop )
         {
             if( is_public )
             {
-                Map* map = MapMngr.GetMap( item->GetMapId(), false );
+                Map* map = MapMngr.GetMap( item->GetMapId() );
                 if( map )
                     map->SendProperty( NetProperty::MapItem, prop, item );
             }
@@ -120,7 +120,7 @@ void FOServer::OnSetItemChangeView( Entity* entity, Property* prop, void* cur_va
     }
     else if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( item->GetCritId(), false );
+        Critter* cr = CrMngr.GetCritter( item->GetCritId() );
         if( cr )
         {
             bool value = *(bool*) cur_value;
@@ -189,7 +189,7 @@ void FOServer::OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value,
     {
         Map* map = MapMngr.GetMap( item->GetMapId() );
         if( map )
-            map->GetLocation( false )->GeckCount += ( value ? 1 : -1 );
+            map->GetLocation()->GeckCount += ( value ? 1 : -1 );
     }
 }
 

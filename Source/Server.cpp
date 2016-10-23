@@ -34,9 +34,6 @@ uint                        FOServer::SaveWorldNextTick = 0;
 UIntVec                     FOServer::SaveWorldDeleteIndexes;
 FOServer::EntityDumpVec     FOServer::DumpedEntities;
 Thread                      FOServer::DumpThread;
-Thread*                     FOServer::LogicThreads;
-uint                        FOServer::LogicThreadCount = 0;
-bool                        FOServer::LogicThreadSetAffinity = false;
 bool                        FOServer::RequestReloadClientScripts = false;
 LangPackVec                 FOServer::LangPacks;
 FOServer::HoloInfoMap       FOServer::HolodiskInfo;
@@ -57,7 +54,6 @@ Mutex                       FOServer::BannedLocker;
 FOServer::ClientDataMap     FOServer::ClientsData;
 Mutex                       FOServer::ClientsDataLocker;
 FOServer::SingleplayerSave_ FOServer::SingleplayerSave;
-MutexSynchronizer           FOServer::LogicThreadSync;
 FOServer::UpdateFileVec     FOServer::UpdateFiles;
 UCharVec                    FOServer::UpdateFilesList;
 UIntUIntPairMap             FOServer::BruteForceIps;
@@ -176,8 +172,8 @@ string FOServer::GetIngamePlayersStatistics()
     {
         Client*     cl = players[ i ];
         const char* name = cl->GetName();
-        Map*        map = MapMngr.GetMap( cl->GetMapId(), false );
-        Location*   loc = ( map ? map->GetLocation( false ) : nullptr );
+        Map*        map = MapMngr.GetMap( cl->GetMapId() );
+        Location*   loc = ( map ? map->GetLocation() : nullptr );
 
         Str::Format( str_loc, "%s (%u) %s (%u)", map ? loc->GetName() : "", map ? loc->GetId() : 0, map ? map->GetName() : "", map ? map->GetId() : 0 );
         Str::Format( str, "%-20s %-10u %-15s %-7s %-8s %-5u %-5u %s\n",
@@ -214,7 +210,7 @@ void FOServer::DisconnectClient( Client* cl )
 {
     // Manage saves, exit from game
     uint    id = cl->GetId();
-    Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : nullptr );
+    Client* cl_ = ( id ? CrMngr.GetPlayer( id ) : nullptr );
     if( cl_ && cl_ == cl )
     {
         EraseSaveClient( cl->GetId() );
@@ -240,7 +236,7 @@ void FOServer::DisconnectClient( Client* cl )
 void FOServer::RemoveClient( Client* cl )
 {
     uint    id = cl->GetId();
-    Client* cl_ = ( id ? CrMngr.GetPlayer( id, false ) : nullptr );
+    Client* cl_ = ( id ? CrMngr.GetPlayer( id ) : nullptr );
     if( cl_ && cl_ == cl )
     {
         Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cl, cl->GetClientToDelete() );
@@ -288,7 +284,7 @@ void FOServer::RemoveClient( Client* cl )
             DeleteClientFile( cl->Name );
         }
 
-        Job::DeferredRelease( cl );
+        cl->Release();
     }
     else
     {
@@ -363,7 +359,6 @@ void FOServer::MainLoop()
 
     // Add general jobs
     Job::PushBack( JOB_GARBAGE_LOCATIONS );
-    Job::PushBack( JOB_DEFERRED_RELEASE );
     Job::PushBack( JOB_GAME_TIME );
     Job::PushBack( JOB_BANS );
     Job::PushBack( JOB_INVOCATIONS );
@@ -371,43 +366,12 @@ void FOServer::MainLoop()
     Job::PushBack( JOB_SUSPENDED_CONTEXTS );
 
     // Start logic threads
-    WriteLog( "Starting logic threads, count %u.\n", LogicThreadCount );
     WriteLog( "***   Starting game loop   ***\n" );
 
-    LogicThreads = new Thread[ LogicThreadCount ];
-    for( uint i = 0; i < LogicThreadCount; i++ )
-    {
-        Job::PushBack( JOB_THREAD_SYNCHRONIZE );
-
-        char thread_name[ MAX_FOTEXT ];
-        if( LogicThreadCount > 1 )
-            Str::Format( thread_name, "Logic%u", i );
-        else
-            Str::Format( thread_name, "Logic" );
-
-        LogicThreads[ i ].Start( Logic_Work, thread_name );
-
-        if( LogicThreadSetAffinity )
-        {
-            #if defined ( FO_WINDOWS )
-            SetThreadAffinityMask( LogicThreads[ i ].GetWindowsHandle(), 1 << ( i % CpuCount ) );
-            #elif defined ( FO_LINUX )
-            cpu_set_t mask;
-            CPU_ZERO( &mask );
-            CPU_SET( i % CpuCount, &mask );
-            sched_setaffinity( LogicThreads[ i ].GetPid(), sizeof( mask ), &mask );
-            #elif defined ( FO_OSX )
-            // Todo: https://developer.apple.com/library/mac/#releasenotes/Performance/RN-AffinityAPI/index.html
-            #endif
-        }
-    }
-
-    SyncManager* sync_mngr = SyncManager::GetForCurThread();
-    sync_mngr->UnlockAll();
     while( !FOQuit )
     {
-        // Synchronize point
-        LogicThreadSync.SynchronizePoint();
+        // Tick
+        LogicTick();
 
         // Synchronize single player data
         #ifdef FO_WINDOWS
@@ -423,30 +387,22 @@ void FOServer::MainLoop()
             SingleplayerData.Refresh();
 
             if( SingleplayerData.Pause != Timer::IsGamePaused() )
-            {
-                SynchronizeLogicThreads();
                 Timer::SetGamePause( SingleplayerData.Pause );
-                ResynchronizeLogicThreads();
-            }
         }
         #endif
 
         // World saver
         if( Timer::FastTick() >= SaveWorldNextTick )
         {
-            SynchronizeLogicThreads();
             SaveWorld( nullptr );
             SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
-            ResynchronizeLogicThreads();
         }
 
         // Client script
         if( RequestReloadClientScripts )
         {
-            SynchronizeLogicThreads();
             ReloadClientScripts();
             RequestReloadClientScripts = false;
-            ResynchronizeLogicThreads();
         }
 
         // Statistics
@@ -457,13 +413,6 @@ void FOServer::MainLoop()
     }
 
     WriteLog( "***   Finishing game loop  ***\n" );
-
-    // Stop logic threads
-    for( uint i = 0; i < LogicThreadCount; i++ )
-        Job::PushBack( JOB_THREAD_FINISH );
-    for( uint i = 0; i < LogicThreadCount; i++ )
-        LogicThreads[ i ].Wait();
-    SAFEDELA( LogicThreads );
 
     // Erase all jobs
     for( int i = 0; i < JOB_COUNT; i++ )
@@ -476,42 +425,17 @@ void FOServer::MainLoop()
     ProcessBans();
     Timer::ProcessGameTime();
     MapMngr.LocationGarbager();
-    Job::SetDeferredReleaseCycle( 0xFFFFFFFF );
-    Job::ProcessDeferredReleasing();
 
     // Save
     SaveWorld( nullptr );
-
-    // Last unlock
-    sync_mngr->UnlockAll();
 }
 
-void FOServer::SynchronizeLogicThreads()
-{
-    SyncManager* sync_mngr = SyncManager::GetForCurThread();
-    sync_mngr->Suspend();
-    LogicThreadSync.Synchronize( LogicThreadCount );
-    sync_mngr->Resume();
-}
-
-void FOServer::ResynchronizeLogicThreads()
-{
-    LogicThreadSync.Resynchronize();
-}
-
-void FOServer::Logic_Work( void* data )
+void FOServer::LogicTick()
 {
     Thread::Sleep( 10 );
 
-    // Init scripts
-    if( !Script::InitThread() )
-        return;
-
     // Add sleep job for current thread
-    Job::PushBack( Job( JOB_THREAD_LOOP, nullptr, true ) );
-
-    // Get synchronize manager
-    SyncManager* sync_mngr = SyncManager::GetForCurThread();
+    Job::PushBack( Job( JOB_THREAD_LOOP, nullptr ) );
 
     // Wait next threads initialization
     Thread::Sleep( 10 );
@@ -522,13 +446,10 @@ void FOServer::Logic_Work( void* data )
     // Word loop
     while( true )
     {
-        sync_mngr->UnlockAll();
         Job job = Job::PopFront();
-
         if( job.Type == JOB_CLIENT )
         {
             Client* cl = (Client*) job.Data;
-            SYNC_LOCK( cl );
 
             // Disconnect
             if( cl->IsOffline() )
@@ -573,7 +494,7 @@ void FOServer::Logic_Work( void* data )
                 }
                 ConnectedClientsLocker.Unlock();
 
-                Job::DeferredRelease( cl );
+                cl->Release();
                 continue;
             }
 
@@ -585,7 +506,6 @@ void FOServer::Logic_Work( void* data )
         else if( job.Type == JOB_CRITTER )
         {
             Critter* cr = (Critter*) job.Data;
-            SYNC_LOCK( cr );
 
             // Player specific
             if( cr->CanBeRemoved )
@@ -601,7 +521,6 @@ void FOServer::Logic_Work( void* data )
         else if( job.Type == JOB_MAP )
         {
             Map* map = (Map*) job.Data;
-            SYNC_LOCK( map );
 
             // Check for removing
             if( map->IsDestroyed )
@@ -613,14 +532,7 @@ void FOServer::Logic_Work( void* data )
         else if( job.Type == JOB_GARBAGE_LOCATIONS )
         {
             // Locations and maps garbage
-            sync_mngr->PushPriority( 2 );
             MapMngr.LocationGarbager();
-            sync_mngr->PopPriority();
-        }
-        else if( job.Type == JOB_DEFERRED_RELEASE )
-        {
-            // Release pointers
-            Job::ProcessDeferredReleasing();
         }
         else if( job.Type == JOB_GAME_TIME )
         {
@@ -689,7 +601,6 @@ void FOServer::Logic_Work( void* data )
             stats->CycleTime = loop_tick;
 
             // Calculate whole threads statistics
-            uint real_min_cycle = uint( -1 );           // Calculate real cycle count for deferred releasing
             uint cycle_time = 0, loop_time = 0, loop_cycles = 0, loop_min = 0, loop_max = 0, lags = 0;
             for( auto it = stats_ptrs.begin(), end = stats_ptrs.end(); it != end; ++it )
             {
@@ -700,7 +611,6 @@ void FOServer::Logic_Work( void* data )
                 loop_min += stats_thread->LoopMin;
                 loop_max += stats_thread->LoopMax;
                 lags += stats_thread->LagsCount;
-                real_min_cycle = MIN( real_min_cycle, stats->LoopCycles );
             }
             uint count = (uint) stats_ptrs.size();
             Statistics.CycleTime = cycle_time / count;
@@ -711,20 +621,8 @@ void FOServer::Logic_Work( void* data )
             Statistics.LagsCount = lags / count;
             stats_locker.Unlock();
 
-            // Set real cycle count for deferred releasing
-            Job::SetDeferredReleaseCycle( real_min_cycle );
-
             // Start time of next cycle
             cycle_tick = Timer::FastTick();
-        }
-        else if( job.Type == JOB_THREAD_SYNCHRONIZE )
-        {
-            // Threads synchronization
-            LogicThreadSync.SynchronizePoint();
-        }
-        else if( job.Type == JOB_THREAD_FINISH )
-        {
-            // Exit from thread
             break;
         }
         else         // JOB_NOP
@@ -752,9 +650,6 @@ void FOServer::Logic_Work( void* data )
             }
         }
     }
-
-    sync_mngr->UnlockAll();
-    Script::FinishThread();
 }
 
 void FOServer::Net_Listen( void* )
@@ -1519,7 +1414,7 @@ void FOServer::Process( ClientPtr& cl )
             }
             case NETMSG_SEND_GET_INFO:
             {
-                Map* map = MapMngr.GetMap( cl->GetMapId(), false );
+                Map* map = MapMngr.GetMap( cl->GetMapId() );
                 cl->Send_GameInfo( map );
                 BIN_END( cl );
                 continue;
@@ -1675,7 +1570,7 @@ void FOServer::Process_Text( Client* cl )
                 return;
 
             CrVec critters;
-            map->GetCritters( critters, false );
+            map->GetCritters( critters );
 
             cl->SendAA_Text( critters, str, SAY_SHOUT, true );
         }
@@ -1939,14 +1834,14 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         CHECK_ALLOW_COMMAND;
 
-        Critter* cr = CrMngr.GetCritter( crid, true );
+        Critter* cr = CrMngr.GetCritter( crid );
         if( !cr )
         {
             logcb( "Critter not found." );
             break;
         }
 
-        Map* map = MapMngr.GetMap( cr->GetMapId(), true );
+        Map* map = MapMngr.GetMap( cr->GetMapId() );
         if( !map )
         {
             logcb( "Critter is on global." );
@@ -1972,7 +1867,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         CHECK_ALLOW_COMMAND;
 
-        Critter* cr = CrMngr.GetCritter( crid, true );
+        Critter* cr = CrMngr.GetCritter( crid );
         if( !cr )
         {
             logcb( "Critter not found." );
@@ -1996,7 +1891,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             return;
         }
 
-        Critter* cr = CrMngr.GetCritter( crid, true );
+        Critter* cr = CrMngr.GetCritter( crid );
         if( !cr )
         {
             logcb( "Critter not found." );
@@ -2046,7 +1941,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         CHECK_ALLOW_COMMAND;
 
-        Critter* cr = ( !crid ? cl_ : CrMngr.GetCritter( crid, true ) );
+        Critter* cr = ( !crid ? cl_ : CrMngr.GetCritter( crid ) );
         if( !cr )
             logcb( "Critter not found." );
         else if( !cr->IsDead() )
@@ -2069,7 +1964,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         CHECK_ALLOW_COMMAND;
 
-        Critter* cr = ( !crid ? cl_ : CrMngr.GetCritter( crid, true ) );
+        Critter* cr = ( !crid ? cl_ : CrMngr.GetCritter( crid ) );
         if( cr )
         {
             Property* prop = Critter::PropertiesRegistrator->Find( property_name );
@@ -2227,8 +2122,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     {
         CHECK_ALLOW_COMMAND;
 
-        SynchronizeLogicThreads();
-
         Script::Undef( nullptr );
         Script::Define( "__SERVER" );
         Script::Define( "__VERSION %d", FONLINE_VERSION );
@@ -2236,8 +2129,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             logcb( "Success." );
         else
             logcb( "Fail." );
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_LOADSCRIPT:
@@ -2281,14 +2172,10 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     {
         CHECK_ALLOW_COMMAND;
 
-        SynchronizeLogicThreads();
-
         if( ReloadClientScripts() )
             logcb( "Reload client scripts success." );
         else
             logcb( "Reload client scripts fail." );
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_RUNSCRIPT:
@@ -2312,14 +2199,9 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             break;
         }
 
-        if( !cl_ )
-            SynchronizeLogicThreads();
-
         uint bind_id = Script::BindByFuncName( func_name, "void %s(Critter&,int,int,int)", true );
         if( !bind_id )
         {
-            if( !cl_ )
-                ResynchronizeLogicThreads();
             logcb( "Fail, function not found." );
             break;
         }
@@ -2334,16 +2216,11 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             logcb( "Run script success." );
         else
             logcb( "Run script fail." );
-
-        if( !cl_ )
-            ResynchronizeLogicThreads();
     }
     break;
     case COMMAND_RELOAD_PROTOS:
     {
         CHECK_ALLOW_COMMAND;
-
-        SynchronizeLogicThreads();
 
         if( ProtoMngr.LoadProtosFromFiles() )
             logcb( "Reload protos success." );
@@ -2353,8 +2230,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         InitLangPacksLocations( LangPacks );
         InitLangPacksItems( LangPacks );
         GenerateUpdateFiles();
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_LOADLOCATION:
@@ -2457,14 +2332,10 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     {
         CHECK_ALLOW_COMMAND;
 
-        SynchronizeLogicThreads();
-
         bool error = DlgMngr.LoadDialogs();
         InitLangPacksDialogs( LangPacks );
         GenerateUpdateFiles();
         logcb( Str::FormatBuf( "Dialogs reload done%s.", error ? ", with errors." : "" ) );
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_LOADDIALOG:
@@ -2474,8 +2345,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         dlg_name[ 127 ] = 0;
 
         CHECK_ALLOW_COMMAND;
-
-        SynchronizeLogicThreads();
 
         FilesCollection dialogs( "fodlg" );
         FileManager&    fm = dialogs.FindFile( dlg_name );
@@ -2506,15 +2375,11 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         {
             logcb( "File not found." );
         }
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_RELOADTEXTS:
     {
         CHECK_ALLOW_COMMAND;
-
-        SynchronizeLogicThreads();
 
         LangPackVec lang_packs;
         if( InitLangPacks( lang_packs ) && InitLangPacksDialogs( lang_packs ) && InitLangPacksLocations( lang_packs ) && InitLangPacksItems( lang_packs ) )
@@ -2528,8 +2393,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             lang_packs.clear();
             logcb( "Reload texts fail." );
         }
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_SETTIME:
@@ -2608,7 +2471,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
                 return;
             }
 
-            Client*      cl_banned = CrMngr.GetPlayer( name, true );
+            Client*      cl_banned = CrMngr.GetPlayer( name );
             ClientBanned ban;
             memzero( &ban, sizeof( ban ) );
             Str::Copy( ban.ClientName, name );
@@ -2773,8 +2636,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             return;
         }
 
-        SynchronizeLogicThreads();
-
         LogToFunc( &FOServer::LogToClients, false );
         auto it = std::find( LogClients.begin(), LogClients.end(), cl_ );
         if( action == 0 && it != LogClients.end() )           // Detach current
@@ -2798,8 +2659,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         }
         if( !LogClients.empty() )
             LogToFunc( &FOServer::LogToClients, true );
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_DEV_EXEC:
@@ -2967,8 +2826,6 @@ bool FOServer::LoadGameInfoFile( IniParser& data )
 
 void FOServer::SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second )
 {
-    SynchronizeLogicThreads();
-
     if( multiplier >= 1 && multiplier <= 50000 )
         GameOpt.TimeMultiplier = multiplier;
     if( year >= GameOpt.YearStart && year <= GameOpt.YearStart + 130 )
@@ -2992,11 +2849,9 @@ void FOServer::SetGameTime( int multiplier, int year, int month, int day, int ho
     {
         Client* cl = *it;
         if( cl->IsOnline() )
-            cl->Send_GameInfo( MapMngr.GetMap( cl->GetMapId(), false ) );
+            cl->Send_GameInfo( MapMngr.GetMap( cl->GetMapId() ) );
     }
     ConnectedClientsLocker.Unlock();
-
-    ResynchronizeLogicThreads();
 }
 
 bool FOServer::Init()
@@ -3015,15 +2870,6 @@ bool FOServer::InitReal()
 
     FileManager::InitDataFiles( "./" );
 
-    // Cpu count
-    #ifdef FO_WINDOWS
-    SYSTEM_INFO si;
-    GetSystemInfo( &si );
-    CpuCount = si.dwNumberOfProcessors;
-    #else
-    CpuCount = sysconf( _SC_NPROCESSORS_ONLN );
-    #endif
-
     // Generic
     ConnectedClients.clear();
     SaveClients.clear();
@@ -3035,17 +2881,6 @@ bool FOServer::InitReal()
     uint profiler_mode = MainConfig->GetInt( "", "ProfilerMode", 0 );
     if( !profiler_mode )
         sample_time = 0;
-
-    // Threading
-    LogicThreadSetAffinity = MainConfig->GetInt( "", "LogicThreadSetAffinity", 0 ) != 0;
-    LogicThreadCount = MainConfig->GetInt( "", "LogicThreadCount", 0 );
-    if( sample_time )
-        LogicThreadCount = 1;
-    else if( !LogicThreadCount )
-        LogicThreadCount = CpuCount;
-    if( LogicThreadCount == 1 )
-        Script::SetConcurrentExecution( false );
-    LogicMT = ( LogicThreadCount != 1 );
 
     if( !Singleplayer )
     {

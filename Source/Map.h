@@ -35,10 +35,7 @@ public:
     Map( uint id, ProtoMap* proto, Location* location );
     ~Map();
 
-    SyncObject Sync;
-
 private:
-    Mutex     dataLocker;
     uchar*    hexFlags;
     int       hexFlagsSize;
     CrVec     mapCritters;
@@ -54,11 +51,9 @@ public:
     void DeleteContent();
     void Process();
     void ProcessLoop( int index, uint time, uint tick );
-    void Lock()   { dataLocker.Lock(); }
-    void Unlock() { dataLocker.Unlock(); }
 
     ProtoMap* GetProtoMap() { return (ProtoMap*) Proto; }
-    Location* GetLocation( bool lock );
+    Location* GetLocation();
     void      SetLocation( Location* loc ) { mapLocation = loc; }
 
     void SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text );
@@ -87,11 +82,11 @@ public:
     Item* GetItemGag( ushort hx, ushort hy );
 
     ItemVec& GetItemsNoLock() { return hexItems; }
-    void     GetItemsHex( ushort hx, ushort hy, ItemVec& items, bool lock );
-    void     GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items, bool lock );
-    void     GetItemsPid( hash pid, ItemVec& items, bool lock );
-    void     GetItemsType( int type, ItemVec& items, bool lock );
-    void     GetItemsTrap( ushort hx, ushort hy, ItemVec& items, bool lock );
+    void     GetItemsHex( ushort hx, ushort hy, ItemVec& items );
+    void     GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items );
+    void     GetItemsPid( hash pid, ItemVec& items );
+    void     GetItemsType( int type, ItemVec& items );
+    void     GetItemsTrap( ushort hx, ushort hy, ItemVec& items );
     void     RecacheHexBlock( ushort hx, ushort hy );
     void     RecacheHexShoot( ushort hx, ushort hy );
     void     RecacheHexBlockShoot( ushort hx, ushort hy );
@@ -114,14 +109,14 @@ public:
     void     SetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead );
     void     UnsetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead );
     uint     GetNpcCount( int npc_role, int find_type );
-    Critter* GetCritter( uint crid, bool sync_lock );
-    Critter* GetNpc( int npc_role, int find_type, uint skip_count, bool sync_lock );
-    Critter* GetHexCritter( ushort hx, ushort hy, bool dead, bool sync_lock );
-    void     GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVec& critters, bool sync_lock ); // Critters append
+    Critter* GetCritter( uint crid );
+    Critter* GetNpc( int npc_role, int find_type, uint skip_count );
+    Critter* GetHexCritter( ushort hx, ushort hy, bool dead );
+    void     GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVec& critters ); // Critters append
 
-    void   GetCritters( CrVec& critters, bool sync_lock );
-    void   GetPlayers( ClVec& players, bool sync_lock );
-    void   GetNpcs( PcVec& npcs, bool sync_lock );
+    void   GetCritters( CrVec& critters );
+    void   GetPlayers( ClVec& players );
+    void   GetNpcs( PcVec& npcs );
     CrVec& GetCrittersNoLock() { return mapCritters; }
     ClVec& GetPlayersNoLock()  { return mapPlayers; }
     PcVec& GetNpcsNoLock()     { return mapNpcs; }
@@ -171,8 +166,6 @@ public:
     Location( uint id, ProtoLocation* proto );
     ~Location();
 
-    SyncObject Sync;
-
 private:
     MapVec locMaps;
 
@@ -184,7 +177,7 @@ public:
     ProtoLocation* GetProtoLoc()   { return (ProtoLocation*) Proto; }
     bool           IsLocVisible()  { return !GetHidden() || ( GetGeckVisible() && GeckCount > 0 ); }
     MapVec&        GetMapsNoLock() { return locMaps; };
-    void           GetMaps( MapVec& maps, bool lock );
+    void           GetMaps( MapVec& maps );
     uint           GetMapsCount() { return (uint) locMaps.size(); }
     Map*           GetMapByIndex( uint index );
     Map*           GetMapByPid( hash map_pid );

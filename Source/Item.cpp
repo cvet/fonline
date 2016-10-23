@@ -339,14 +339,13 @@ Item* Item::ContGetItem( uint item_id, bool skip_hide )
         {
             if( skip_hide && item->GetIsHidden() )
                 return nullptr;
-            SYNC_LOCK( item );
             return item;
         }
     }
     return nullptr;
 }
 
-void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
+void Item::ContGetAllItems( ItemVec& items, bool skip_hide )
 {
     if( !ChildItems )
         return;
@@ -357,11 +356,6 @@ void Item::ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock )
         if( !skip_hide || !item->GetIsHidden() )
             items.push_back( item );
     }
-
-    # pragma MESSAGE("Recheck after synchronization.")
-    if( sync_lock && LogicMT )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
 # pragma MESSAGE("Add explicit sync lock.")
@@ -374,15 +368,12 @@ Item* Item::ContGetItemByPid( hash pid, uint stack_id )
     {
         Item* item = *it;
         if( item->GetProtoId() == pid && ( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id ) )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
 
-void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
+void Item::ContGetItems( ItemVec& items, uint stack_id )
 {
     if( !ChildItems )
         return;
@@ -393,11 +384,6 @@ void Item::ContGetItems( ItemVec& items, uint stack_id, bool sync_lock )
         if( stack_id == uint( -1 ) || item->GetContainerStack() == stack_id )
             items.push_back( item );
     }
-
-    # pragma MESSAGE("Recheck after synchronization.")
-    if( sync_lock && LogicMT )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
 bool Item::ContIsItems()
@@ -429,13 +415,13 @@ Item* Item::GetChild( uint child_index )
     }
     else if( GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
-        Critter* cr = CrMngr.GetCritter( GetCritId(), true );
+        Critter* cr = CrMngr.GetCritter( GetCritId() );
         if( cr )
             return cr->GetItemByPid( pid );
     }
     else if( GetAccessory() == ITEM_ACCESSORY_CONTAINER )
     {
-        Item* cont = ItemMngr.GetItem( GetContainerId(), true );
+        Item* cont = ItemMngr.GetItem( GetContainerId() );
         if( cont )
             return cont->ContGetItemByPid( pid, GetContainerStack() );
     }

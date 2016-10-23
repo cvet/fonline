@@ -301,7 +301,7 @@ bool EntityManager::LinkMaps()
     // Link maps to locations
     int    errors = 0;
     MapVec maps;
-    MapMngr.GetMaps( maps, false );
+    MapMngr.GetMaps( maps );
     for( auto& map : maps )
     {
         uint      loc_id = map->GetLocId();
@@ -323,7 +323,7 @@ bool EntityManager::LinkMaps()
 
     // Verify linkage result
     LocVec locs;
-    MapMngr.GetLocations( locs, false );
+    MapMngr.GetLocations( locs );
     for( auto& loc : locs )
     {
         MapVec& maps = loc->GetMapsNoLock();
@@ -348,7 +348,7 @@ bool EntityManager::LinkNpc()
 
     int   errors = 0;
     CrVec critters;
-    CrMngr.GetCritters( critters, false );
+    CrMngr.GetCritters( critters );
     CrVec critters_groups;
     critters_groups.reserve( critters.size() );
 
@@ -405,7 +405,7 @@ bool EntityManager::LinkItems()
 
     int     errors = 0;
     CrVec   critters;
-    CrMngr.GetCritters( critters, false );
+    CrMngr.GetCritters( critters );
     ItemVec game_items;
     ItemMngr.GetGameItems( game_items );
     for( auto& item : game_items )
@@ -417,7 +417,7 @@ bool EntityManager::LinkItems()
                 if( IS_CLIENT_ID( item->GetCritId() ) )
                     continue;                                                  // Skip player
 
-                Critter* npc = CrMngr.GetNpc( item->GetCritId(), false );
+                Critter* npc = CrMngr.GetNpc( item->GetCritId() );
                 if( !npc )
                 {
                     WriteLog( "Item '%s' (%u) npc not found, npc id %u.\n", item->GetName(), item->GetId(), item->GetCritId() );
@@ -430,7 +430,7 @@ bool EntityManager::LinkItems()
             break;
         case ITEM_ACCESSORY_HEX:
         {
-            Map* map = MapMngr.GetMap( item->GetMapId(), false );
+            Map* map = MapMngr.GetMap( item->GetMapId() );
             if( !map )
             {
                 WriteLog( "Item '%s' (%u) map not found, map id %u, hx %u, hy %u.\n", item->GetName(), item->GetId(), item->GetMapId(), item->GetHexX(), item->GetHexY() );
@@ -457,7 +457,7 @@ bool EntityManager::LinkItems()
         break;
         case ITEM_ACCESSORY_CONTAINER:
         {
-            Item* cont = ItemMngr.GetItem( item->GetContainerId(), false );
+            Item* cont = ItemMngr.GetItem( item->GetContainerId() );
             if( !cont )
             {
                 WriteLog( "Item '%s' (%u) container not found, container id %u.\n", item->GetName(), item->GetId(), item->GetContainerId() );
@@ -485,7 +485,7 @@ void EntityManager::InitAfterLoad()
 
     // Process visible
     CrVec critters;
-    CrMngr.GetCritters( critters, false );
+    CrMngr.GetCritters( critters );
     for( auto& cr : critters )
     {
         cr->ProcessVisibleCritters();
@@ -566,7 +566,7 @@ void EntityManager::FinishEntities()
         {
             Location* loc = (Location*) entity;
             MapVec    maps;
-            loc->GetMaps( maps, false );
+            loc->GetMaps( maps );
             Script::RaiseInternalEvent( ServerFunctions.LocationFinish, loc, false );
             for( auto it_ = maps.begin(); it_ != maps.end() && !loc->IsDestroyed; ++it_ )
                 Script::RaiseInternalEvent( ServerFunctions.MapFinish, *it_, false );

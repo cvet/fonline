@@ -194,7 +194,6 @@ int main( int argc, char** argv )
     InitAdminManager();
 
     // Loop
-    SyncManager::GetForCurThread()->UnlockAll();
     if( GuiWindow )
     {
         GUIUpdateThread.Start( GUIUpdate, "GUIUpdate" );
@@ -1384,18 +1383,10 @@ void AdminWork( void* session_ )
                 PackCommand( &cmd[ 1 ], buf, LogCB::Message, nullptr );
                 if( !buf.IsEmpty() )
                 {
-                    if( Script::InitThread() )
-                    {
-                        uint msg;
-                        buf >> msg;
-                        WriteLog( ADMIN_PREFIX "Execute command '%s'.\n", admin_name, cmd );
-                        Server.Process_Command( buf, LogCB::Message, nullptr, admin_name );
-                        Script::FinishThread();
-                    }
-                    else
-                    {
-                        ADMIN_LOG( "Can't initialize script stuff for thread." );
-                    }
+                    uint msg;
+                    buf >> msg;
+                    WriteLog( ADMIN_PREFIX "Execute command '%s'.\n", admin_name, cmd );
+                    Server.Process_Command( buf, LogCB::Message, nullptr, admin_name );
                 }
 
                 if( send_fail )

@@ -278,7 +278,6 @@ set( SERVER_SOURCE
 	ServerItem.cpp
 	ServerNpc.cpp
 	ServerScript.cpp
-	ThreadSync.cpp ThreadSync.h
 )
 set( CLIENT_SOURCE
 	${COMMON_SOURCE}

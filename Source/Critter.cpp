@@ -201,49 +201,6 @@ bool Critter::CheckFind( int find_type )
            ( FLAG( find_type, FIND_DEAD ) && IsDead() );
 }
 
-void Critter::SyncLockCritters( bool self_critters, bool only_players )
-{
-    if( LogicMT )
-    {
-        CrVec& critters = ( self_critters ? VisCrSelf : VisCr );
-
-        // Collect critters
-        CrVec find_critters;
-        find_critters.reserve( critters.size() );
-        if( only_players )
-        {
-            for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-                if( ( *it )->IsPlayer() )
-                    find_critters.push_back( *it );
-        }
-        else
-        {
-            find_critters = critters;
-        }
-
-        // Synchronize
-        for( auto it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
-            SYNC_LOCK( *it );
-
-        // Recheck after synchronization
-        CrVec find_critters2;
-        find_critters2.reserve( find_critters.size() );
-        if( only_players )
-        {
-            for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-                if( ( *it )->IsPlayer() )
-                    find_critters2.push_back( *it );
-        }
-        else
-        {
-            find_critters2 = critters;
-        }
-
-        if( !CompareContainers( find_critters, find_critters2 ) )
-            SyncLockCritters( self_critters, only_players );
-    }
-}
-
 void Critter::ProcessVisibleCritters()
 {
     if( IsDestroyed )
@@ -298,7 +255,7 @@ void Critter::ProcessVisibleCritters()
         return;
 
     CrVec critters;
-    map->GetCritters( critters, true );
+    map->GetCritters( critters );
 
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
@@ -712,7 +669,7 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
     int   dirs_count = DIRS_COUNT;
     int   vis;
     CrVec critters;
-    map->GetCritters( critters, true );
+    map->GetCritters( critters );
 
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
@@ -818,9 +775,6 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
 
 void Critter::ClearVisible()
 {
-    SyncLockCritters( false, false );
-    SyncLockCritters( true, false );
-
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
         Critter* cr = *it;
@@ -857,29 +811,13 @@ void Critter::ClearVisible()
     VisItemLocker.Unlock();
 }
 
-Critter* Critter::GetCritSelf( uint crid, bool sync_lock )
+Critter* Critter::GetCritSelf( uint crid )
 {
-    Critter* cr = nullptr;
-
-    auto     it = VisCrSelfMap.find( crid );
-    if( it != VisCrSelfMap.end() )
-        cr = it->second;
-
-    if( cr && sync_lock )
-    {
-        // Synchronize
-        SYNC_LOCK( cr );
-
-        // Recheck
-        it = VisCrSelfMap.find( crid );
-        if( it == VisCrSelfMap.end() )
-            return GetCritSelf( crid, sync_lock );
-    }
-
-    return cr;
+    auto it = VisCrSelfMap.find( crid );
+    return it != VisCrSelfMap.end() ? it->second : nullptr;
 }
 
-void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, bool sync_lock )
+void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self )
 {
     CrVec& vis_cr = ( vis_cr_self ? VisCrSelf : VisCr );
 
@@ -889,29 +827,6 @@ void Critter::GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, 
         Critter* cr = *it;
         if( cr->CheckFind( find_type ) && std::find( critters.begin(), critters.end(), cr ) == critters.end() )
             find_critters.push_back( cr );
-    }
-
-    if( sync_lock && LogicMT )
-    {
-        // Synchronize
-        for( auto it = find_critters.begin(), end = find_critters.end(); it != end; ++it )
-            SYNC_LOCK( *it );
-
-        // Recheck after synchronization
-        CrVec find_critters2;
-        for( auto it = vis_cr.begin(), end = vis_cr.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            if( cr->CheckFind( find_type ) && std::find( critters.begin(), critters.end(), cr ) == critters.end() )
-                find_critters2.push_back( cr );
-        }
-
-        // Search again, if have difference
-        if( !CompareContainers( find_critters, find_critters2 ) )
-        {
-            GetCrFromVisCr( critters, find_type, vis_cr_self, sync_lock );
-            return;
-        }
     }
 
     critters.reserve( critters.size() + find_critters.size() );
@@ -1014,15 +929,6 @@ bool Critter::CountIdVisItem( uint item_id )
     return result;
 }
 
-void Critter::SyncLockItems()
-{
-    ItemVec inv_items = invItems;
-    for( auto it = inv_items.begin(), end = inv_items.end(); it != end; ++it )
-        SYNC_LOCK( *it );
-    if( !CompareContainers( inv_items, invItems ) )
-        SyncLockItems();
-}
-
 void Critter::AddItem( Item*& item, bool send )
 {
     RUNTIME_ASSERT( item );
@@ -1121,25 +1027,19 @@ Item* Critter::GetItem( uint item_id, bool skip_hide )
         {
             if( skip_hide && item->GetIsHidden() )
                 return nullptr;
-
-            SYNC_LOCK( item );
             return item;
         }
     }
     return nullptr;
 }
 
-#pragma MESSAGE("Add explicit sync lock.")
 Item* Critter::GetItemByPid( hash item_pid )
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
         Item* item = *it;
         if( item->GetProtoId() == item_pid )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
@@ -1150,10 +1050,7 @@ Item* Critter::GetItemByPidSlot( hash item_pid, int slot )
     {
         Item* item = *it;
         if( item->GetProtoId() == item_pid && item->GetCritSlot() == slot )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
@@ -1170,10 +1067,7 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
         {
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
-            {
-                SYNC_LOCK( item );
                 return item;
-            }
         }
     }
     else
@@ -1185,15 +1079,10 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
             if( item->GetProtoId() == item_pid )
             {
                 if( item->GetCritSlot() == SLOT_INV )
-                {
-                    SYNC_LOCK( item );
                     return item;
-                }
                 another_slot = item;
             }
         }
-        if( another_slot )
-            SYNC_LOCK( another_slot );
         return another_slot;
     }
     return nullptr;
@@ -1205,10 +1094,7 @@ Item* Critter::GetItemCar()
     {
         Item* item = *it;
         if( item->IsCar() )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
@@ -1219,15 +1105,12 @@ Item* Critter::GetItemSlot( int slot )
     {
         Item* item = *it;
         if( item->GetCritSlot() == slot )
-        {
-            SYNC_LOCK( item );
             return item;
-        }
     }
     return nullptr;
 }
 
-void Critter::GetItemsSlot( int slot, ItemVec& items, bool lock )
+void Critter::GetItemsSlot( int slot, ItemVec& items )
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
@@ -1235,13 +1118,9 @@ void Critter::GetItemsSlot( int slot, ItemVec& items, bool lock )
         if( slot < 0 || item->GetCritSlot() == slot )
             items.push_back( item );
     }
-
-    if( lock )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
-void Critter::GetItemsType( int type, ItemVec& items, bool lock )
+void Critter::GetItemsType( int type, ItemVec& items )
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
     {
@@ -1249,10 +1128,6 @@ void Critter::GetItemsType( int type, ItemVec& items, bool lock )
         if( item->GetType() == type )
             items.push_back( item );
     }
-
-    if( lock )
-        for( auto it = items.begin(), end = items.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
 uint Critter::CountItemPid( hash pid )
@@ -1461,7 +1336,6 @@ uint Critter::CountItems()
 
 ItemVec& Critter::GetInventory()
 {
-    SyncLockItems();
     return invItems;
 }
 
@@ -1759,7 +1633,6 @@ void Critter::SendA_Move( uint move_params )
 {
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1773,7 +1646,6 @@ void Critter::SendA_XY()
 {
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1787,7 +1659,6 @@ void Critter::SendA_Action( int action, int action_ext, Item* item )
 {
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1804,7 +1675,6 @@ void Critter::SendAA_Action( int action, int action_ext, Item* item )
 
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1818,7 +1688,6 @@ void Critter::SendA_Knockout( uint anim2begin, uint anim2idle, ushort knock_hx, 
 {
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1835,7 +1704,6 @@ void Critter::SendAA_MoveItem( Item* item, uchar action, uchar prev_slot )
 
     if( VisCr.empty() )
         return;
-    SyncLockCritters( false, true );
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1852,7 +1720,6 @@ void Critter::SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_seq
 
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1869,7 +1736,6 @@ void Critter::SendAA_SetAnims( int cond, uint anim1, uint anim2 )
 
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1980,7 +1846,6 @@ void Critter::SendA_Dir()
 {
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -1994,7 +1859,6 @@ void Critter::SendA_CustomCommand( ushort num_param, int val )
 {
     if( VisCr.empty() )
         return;
-    // SyncLockCritters(true);
 
     for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
     {
@@ -2008,8 +1872,6 @@ void Critter::Send_AddAllItems()
 {
     if( !IsPlayer() )
         return;
-
-    SyncLockItems();
 
     Client* cl = (Client*) this;
     BOUT_BEGIN( cl );
@@ -2053,7 +1915,6 @@ void Critter::SendMessage( int num, int val, int to )
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
-            SYNC_LOCK( cr );
             Script::RaiseInternalEvent( ServerFunctions.CritterMessage, cr, this, num, val );
         }
     }
@@ -2064,7 +1925,6 @@ void Critter::SendMessage( int num, int val, int to )
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
-            SYNC_LOCK( cr );
             Script::RaiseInternalEvent( ServerFunctions.CritterMessage, cr, this, num, val );
         }
     }
@@ -2076,7 +1936,7 @@ void Critter::SendMessage( int num, int val, int to )
             return;
 
         CrVec critters;
-        map->GetCritters( critters, true );
+        map->GetCritters( critters );
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
         {
             Critter* cr = *it;
@@ -2224,7 +2084,7 @@ Critter* Critter::ScanEnemyStack()
     ScriptArray* enemy_stack = GetEnemyStack();
     for( int i = (int) enemy_stack->GetSize() - 1; i >= 0; i-- )
     {
-        Critter* enemy = GetCritSelf( *(uint*) enemy_stack->At( i ), true );
+        Critter* enemy = GetCritSelf( *(uint*) enemy_stack->At( i ) );
         if( enemy && !enemy->IsDead() )
         {
             SAFEREL( enemy_stack );
@@ -2664,10 +2524,10 @@ void Client::Send_LoadMap( Map* map )
     hash      hash_scen = 0;
 
     if( !map )
-        map = MapMngr.GetMap( GetMapId(), false );
+        map = MapMngr.GetMap( GetMapId() );
     if( map )
     {
-        loc = map->GetLocation( false );
+        loc = map->GetLocation();
         pid_map = map->GetProtoId();
         pid_loc = loc->GetProtoId();
         map_index_in_loc = (uchar) loc->GetMapIndex( pid_map );
@@ -3266,9 +3126,6 @@ void Client::Send_GameInfo( Map* map )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    if( map )
-        map->Lock();
-
     int          time = ( map ? map->GetCurDayTime() : -1 );
     uchar        rain = ( map ? map->GetRainCapacity() : 0 );
     bool         no_log_out = ( map ? map->GetIsNoLogOut() : true );
@@ -3291,9 +3148,6 @@ void Client::Send_GameInfo( Map* map )
         day_time_arr->Release();
     if( day_color_arr )
         day_color_arr->Release();
-
-    if( map )
-        map->Unlock();
 
     BOUT_BEGIN( this );
     Bout << NETMSG_GAME_INFO;
@@ -3765,7 +3619,7 @@ void Client::ProcessTalk( bool force )
     Npc* npc = nullptr;
     if( Talk.TalkType == TALK_WITH_NPC )
     {
-        npc = CrMngr.GetNpc( Talk.TalkNpc, true );
+        npc = CrMngr.GetNpc( Talk.TalkNpc );
         if( !npc )
         {
             CloseTalk();
@@ -3825,7 +3679,7 @@ void Client::CloseTalk()
         if( Talk.TalkType == TALK_WITH_NPC )
         {
             Talk.TalkType = TALK_NONE;
-            npc = CrMngr.GetNpc( Talk.TalkNpc, true );
+            npc = CrMngr.GetNpc( Talk.TalkNpc );
             if( npc )
             {
                 if( Talk.Barter )
@@ -4047,7 +3901,7 @@ void Npc::SetBestCurPlane()
     int best_dist = -1;
     for( int i = 0; i < sort_cnt; i++ )
     {
-        Critter* cr = GetCritSelf( aiPlanes[ i ]->Attack.TargId, false );
+        Critter* cr = GetCritSelf( aiPlanes[ i ]->Attack.TargId );
         if( !cr )
             continue;
 
@@ -4056,7 +3910,7 @@ void Npc::SetBestCurPlane()
             continue;
         else if( dist == best_dist )
         {
-            Critter* cr2 = GetCritSelf( aiPlanes[ best_plane ]->Attack.TargId, false );
+            Critter* cr2 = GetCritSelf( aiPlanes[ best_plane ]->Attack.TargId );
             if( !cr || cr->GetCurrentHp() >= cr2->GetCurrentHp() )
                 continue;
         }

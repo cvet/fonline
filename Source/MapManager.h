@@ -112,7 +112,7 @@ public:
     Location* GetLocationByMap( uint map_id );
     Location* GetLocation( uint loc_id );
     Location* GetLocationByPid( hash loc_pid, uint skip_count );
-    void      GetLocations( LocVec& locs, bool lock );
+    void      GetLocations( LocVec& locs );
     uint      GetLocationsCount();
     void      LocationGarbager();
     void      DeleteLocation( Location* loc, ClVec* gmap_players );
@@ -126,9 +126,9 @@ private:
 public:
     Map*         CreateMap( hash proto_id, Location* loc );
     bool         RestoreMap( uint id, hash proto_id, const StrMap& props_data );
-    Map*         GetMap( uint map_id, bool sync_lock = true );
+    Map*         GetMap( uint map_id );
     Map*         GetMapByPid( hash map_pid, uint skip_count );
-    void         GetMaps( MapVec& maps, bool lock );
+    void         GetMaps( MapVec& maps );
     uint         GetMapsCount();
     bool         IsProtoMapNoLogOut( hash map_pid );
     void         TraceBullet( TraceData& trace );

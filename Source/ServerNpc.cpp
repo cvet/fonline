@@ -85,7 +85,7 @@ void FOServer::ProcessAI( Npc* npc )
         // Check for path recalculation
         if( plane->Move.PathNum && plane->Move.TargId )
         {
-            Critter* targ = npc->GetCritSelf( plane->Move.TargId, true );
+            Critter* targ = npc->GetCritSelf( plane->Move.TargId );
             if( !targ || ( ( plane->Attack.LastHexX || plane->Attack.LastHexY ) && !CheckDist( targ->GetHexX(), targ->GetHexY(), plane->Attack.LastHexX, plane->Attack.LastHexY, 0 ) ) )
                 plane->Move.PathNum = 0;
         }
@@ -102,7 +102,7 @@ void FOServer::ProcessAI( Npc* npc )
 
             if( plane->Move.TargId )
             {
-                Critter* targ = npc->GetCritSelf( plane->Move.TargId, true );
+                Critter* targ = npc->GetCritSelf( plane->Move.TargId );
                 if( !targ )
                 {
                     plane->IsMove = false;
@@ -292,7 +292,7 @@ void FOServer::ProcessAI( Npc* npc )
         /************************************************************************/
         /* Target is visible                                                    */
         /************************************************************************/
-        Critter* targ = npc->GetCritSelf( plane->Attack.TargId, true );
+        Critter* targ = npc->GetCritSelf( plane->Attack.TargId );
         if( targ )
         {
             /************************************************************************/
@@ -552,7 +552,7 @@ void FOServer::ProcessAI( Npc* npc )
 
             if( ( !plane->Attack.LastHexX && !plane->Attack.LastHexY ) || npc->GetIsNoWalk() )
             {
-                Critter* targ_ = CrMngr.GetCritter( plane->Attack.TargId, true );
+                Critter* targ_ = CrMngr.GetCritter( plane->Attack.TargId );
                 npc->NextPlane( REASON_TARGET_DISAPPEARED, targ_, nullptr );
                 break;
             }
@@ -765,13 +765,13 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             }
             else if( demand.Type == DR_PROP_LOCATION )
             {
-                Map* map = MapMngr.GetMap( master->GetMapId(), false );
-                entity = ( map ? map->GetLocation( false ) : nullptr );
+                Map* map = MapMngr.GetMap( master->GetMapId() );
+                entity = ( map ? map->GetLocation() : nullptr );
                 prop_registrator = Location::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_MAP )
             {
-                entity = MapMngr.GetMap( master->GetMapId(), false );
+                entity = MapMngr.GetMap( master->GetMapId() );
                 prop_registrator = Map::PropertiesRegistrator;
             }
             if( !entity )
@@ -986,13 +986,13 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             }
             else if( result.Type == DR_PROP_LOCATION )
             {
-                Map* map = MapMngr.GetMap( master->GetMapId(), false );
-                entity = ( map ? map->GetLocation( false ) : nullptr );
+                Map* map = MapMngr.GetMap( master->GetMapId() );
+                entity = ( map ? map->GetLocation() : nullptr );
                 prop_registrator = Location::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_MAP )
             {
-                entity = MapMngr.GetMap( master->GetMapId(), false );
+                entity = MapMngr.GetMap( master->GetMapId() );
                 prop_registrator = Map::PropertiesRegistrator;
             }
             if( !entity )
@@ -1417,7 +1417,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
     if( is_npc )
     {
         // Find npc
-        npc = CrMngr.GetNpc( id_npc_talk, true );
+        npc = CrMngr.GetNpc( id_npc_talk );
         if( !npc )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );

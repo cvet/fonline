@@ -45,7 +45,6 @@ bool MapManager::RestoreLocation( uint id, hash proto_id, const StrMap& props_da
         return false;
     }
 
-    SYNC_LOCK( loc );
     loc->BindScript();
     EntityMngr.RegisterEntity( loc );
     return true;
@@ -126,7 +125,6 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
     pids->Release();
     loc->BindScript();
 
-    SYNC_LOCK( loc );
     EntityMngr.RegisterEntity( loc );
 
     // Generate location maps
@@ -156,9 +154,7 @@ Map* MapManager::CreateMap( hash proto_id, Location* loc )
         return nullptr;
     }
 
-    Map* map = new Map( 0, proto_map, loc );
-    SYNC_LOCK( map );
-    SYNC_LOCK( loc );
+    Map*    map = new Map( 0, proto_map, loc );
     MapVec& maps = loc->GetMapsNoLock();
     map->SetLocId( loc->GetId() );
     map->SetLocMapIndex( (uint) maps.size() );
@@ -185,41 +181,28 @@ bool MapManager::RestoreMap( uint id, hash proto_id, const StrMap& props_data )
         return false;
     }
 
-    SYNC_LOCK( map );
     EntityMngr.RegisterEntity( map );
     Job::PushBack( JOB_MAP, map );
     return true;
 }
 
-Map* MapManager::GetMap( uint map_id, bool sync_lock )
+Map* MapManager::GetMap( uint map_id )
 {
     if( !map_id )
         return nullptr;
-
-    Map* map = (Map*) EntityMngr.GetEntity( map_id, EntityType::Map );
-    if( map && sync_lock )
-        SYNC_LOCK( map );
-    return map;
+    return (Map*) EntityMngr.GetEntity( map_id, EntityType::Map );
 }
 
 Map* MapManager::GetMapByPid( hash map_pid, uint skip_count )
 {
     if( !map_pid )
         return nullptr;
-
-    Map* map = EntityMngr.GetMapByPid( map_pid, skip_count );
-    if( map )
-        SYNC_LOCK( map );
-    return map;
+    return EntityMngr.GetMapByPid( map_pid, skip_count );
 }
 
-void MapManager::GetMaps( MapVec& maps, bool lock )
+void MapManager::GetMaps( MapVec& maps )
 {
     EntityMngr.GetMaps( maps );
-
-    if( lock )
-        for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
 uint MapManager::GetMapsCount()
@@ -238,29 +221,21 @@ Location* MapManager::GetLocationByMap( uint map_id )
     Map* map = GetMap( map_id );
     if( !map )
         return nullptr;
-    return map->GetLocation( true );
+    return map->GetLocation();
 }
 
 Location* MapManager::GetLocation( uint loc_id )
 {
     if( !loc_id )
         return nullptr;
-
-    Location* loc = (Location*) EntityMngr.GetEntity( loc_id, EntityType::Location );
-    if( loc )
-        SYNC_LOCK( loc );
-    return loc;
+    return (Location*) EntityMngr.GetEntity( loc_id, EntityType::Location );
 }
 
 Location* MapManager::GetLocationByPid( hash loc_pid, uint skip_count )
 {
     if( !loc_pid )
         return nullptr;
-
-    Location* loc = (Location*) EntityMngr.GetLocationByPid( loc_pid, skip_count );
-    if( loc )
-        SYNC_LOCK( loc );
-    return loc;
+    return (Location*) EntityMngr.GetLocationByPid( loc_pid, skip_count );
 }
 
 bool MapManager::IsIntersectZone( int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones )
@@ -285,13 +260,9 @@ void MapManager::GetZoneLocations( int zx, int zy, int zone_radius, UIntVec& loc
     }
 }
 
-void MapManager::GetLocations( LocVec& locs, bool lock )
+void MapManager::GetLocations( LocVec& locs )
 {
     EntityMngr.GetLocations( locs );
-
-    if( lock )
-        for( auto it = locs.begin(), end = locs.end(); it != end; ++it )
-            SYNC_LOCK( *it );
 }
 
 uint MapManager::GetLocationsCount()
@@ -317,7 +288,7 @@ void MapManager::LocationGarbager()
             {
                 if( !gmap_players )
                 {
-                    CrMngr.GetClients( players, true, true );
+                    CrMngr.GetClients( players, true );
                     gmap_players = &players;
                 }
                 DeleteLocation( loc, gmap_players );
@@ -329,9 +300,8 @@ void MapManager::LocationGarbager()
 void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
 {
     // Start deleting
-    SYNC_LOCK( loc );
     MapVec maps;
-    loc->GetMaps( maps, true );
+    loc->GetMaps( maps );
 
     // Redundant calls
     if( loc->IsDestroying || loc->IsDestroyed )
@@ -349,7 +319,7 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
     ClVec players;
     if( !gmap_players )
     {
-        CrMngr.GetClients( players, true, true );
+        CrMngr.GetClients( players, true );
         gmap_players = &players;
     }
     for( auto it = gmap_players->begin(); it != gmap_players->end(); ++it )
@@ -375,9 +345,9 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
         ( *it )->IsDestroyed = true;
 
     // Release after some time
-    Job::DeferredRelease( loc );
     for( auto it = maps.begin(); it != maps.end(); ++it )
-        Job::DeferredRelease( *it );
+        ( *it )->Release();
+    loc->Release();
 }
 
 void MapManager::TraceBullet( TraceData& trace )
@@ -448,10 +418,10 @@ void MapManager::TraceBullet( TraceData& trace )
         if( !map->IsHexRaked( cx, cy ) )
             break;
         if( trace.Critters != nullptr && map->IsHexCritter( cx, cy ) )
-            map->GetCrittersHex( cx, cy, 0, trace.FindType, *trace.Critters, false );
+            map->GetCrittersHex( cx, cy, 0, trace.FindType, *trace.Critters );
         if( ( trace.FindCr || trace.IsCheckTeam ) && map->IsFlagCritter( cx, cy, false ) )
         {
-            Critter* cr = map->GetHexCritter( cx, cy, false, false );
+            Critter* cr = map->GetHexCritter( cx, cy, false );
             if( cr )
             {
                 if( cr == trace.FindCr )
@@ -802,7 +772,7 @@ label_FindOk:
 
             if( check_cr && map->IsFlagCritter( ps.HexX, ps.HexY, false ) )
             {
-                Critter* cr = map->GetHexCritter( ps.HexX, ps.HexY, false, false );
+                Critter* cr = map->GetHexCritter( ps.HexX, ps.HexY, false );
                 if( !cr || cr == pfd.FromCritter )
                     continue;
                 pfd.GagCritter = cr;
@@ -1232,7 +1202,7 @@ bool MapManager::TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, u
     if( !force && cr->IsTransferTimeouts( true ) )
         return false;
 
-    Location* loc = map->GetLocation( true );
+    Location* loc = map->GetLocation();
     uint      id_map = 0;
 
     if( !loc->GetTransit( map, id_map, hx, hy, dir ) )
@@ -1277,7 +1247,7 @@ bool MapManager::TransitToGlobal( Critter* cr, uint leader_id, bool force )
 bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force )
 {
     // Check location deletion
-    Location* loc = ( map ? map->GetLocation( true ) : nullptr );
+    Location* loc = ( map ? map->GetLocation() : nullptr );
     if( loc && loc->GetToGarbage() )
     {
         WriteLogF( _FUNC_, " - Transfer to deleted location, critter '%s'.\n", cr->GetInfo() );
@@ -1306,7 +1276,7 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
 
     uint map_id = ( map ? map->GetId() : 0 );
     uint old_map_id = cr->GetMapId();
-    Map* old_map = MapMngr.GetMap( old_map_id, true );
+    Map* old_map = MapMngr.GetMap( old_map_id );
 
     // Recheck after synchronization
     if( cr->GetMapId() != old_map_id )
@@ -1398,7 +1368,7 @@ bool MapManager::CanAddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uin
     {
         if( leader_id && leader_id != cr->GetId() )
         {
-            Critter* leader = CrMngr.GetCritter( leader_id, true );
+            Critter* leader = CrMngr.GetCritter( leader_id );
             if( !leader || leader->GetMapId() || leader->GetGlobalMapTripId() != cr->GetGlobalMapTripId() )
                 return false;
         }
@@ -1441,7 +1411,7 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
         }
         else
         {
-            Critter* leader = CrMngr.GetCritter( leader_id, true );
+            Critter* leader = CrMngr.GetCritter( leader_id );
             RUNTIME_ASSERT( leader );
             RUNTIME_ASSERT( !leader->GetMapId() );
 
@@ -1471,7 +1441,6 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map )
     {
         Script::RaiseInternalEvent( ServerFunctions.MapCritterOut, map, cr );
 
-        cr->SyncLockCritters( false, false );
         CrVec critters = cr->VisCr;
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
             Script::RaiseInternalEvent( ServerFunctions.CritterHide, *it, cr );

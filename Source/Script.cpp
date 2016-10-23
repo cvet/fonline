@@ -74,19 +74,9 @@ typedef vector< BindFunction > BindFunctionVec;
 
 static asIScriptEngine* Engine = nullptr;
 static bool             LogDebugInfo = false;
-
 static BindFunctionVec  BindedFunctions;
-#ifdef SCRIPT_MULTITHREADING
-static Mutex            BindedFunctionsLocker;
-#endif
 static HashIntMap       ScriptFuncBinds;   // Func Num -> Bind Id
-
-static bool             ConcurrentExecution = false;
-#ifdef SCRIPT_MULTITHREADING
-static Mutex            ConcurrentExecutionLocker;
-#endif
-
-static bool LoadLibraryCompiler = false;
+static bool             LoadLibraryCompiler = false;
 
 // Contexts
 struct ContextData
@@ -157,9 +147,6 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
 
     while( FreeContexts.size() < 10 )
         CreateContext();
-
-    if( !InitThread() )
-        return false;
 
     // Game options callback
     struct GameOptScript
@@ -345,18 +332,6 @@ void Script::Finish()
         FinishContext( FreeContexts[ 0 ] );
 
     FinishEngine( Engine );     // Finish default engine
-    FinishThread();
-}
-
-bool Script::InitThread()
-{
-    // Dummy
-    return true;
-}
-
-void Script::FinishThread()
-{
-    asThreadCleanup();
 }
 
 void* Script::LoadDynamicLibrary( const char* dll_name )
@@ -497,11 +472,6 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     edata->LoadedDlls.insert( PAIR( string( dll_name_lower ), value ) );
 
     return dll;
-}
-
-void Script::SetConcurrentExecution( bool enabled )
-{
-    ConcurrentExecution = enabled;
 }
 
 void Script::SetLoadLibraryCompiler( bool enabled )
@@ -1330,10 +1300,6 @@ bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_da
 
 uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
     // Detect native dll
     const char* dll_pos = Str::Substring( func_name, ".dll::" );
     if( !dll_pos )
@@ -1466,10 +1432,6 @@ uint Script::BindByFuncNum( hash func_num, bool is_temp, bool disable_log /* = f
 
 asIScriptFunction* Script::GetBindFunc( uint bind_id )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
     RUNTIME_ASSERT( bind_id );
     RUNTIME_ASSERT( bind_id < BindedFunctions.size() );
 
@@ -1480,10 +1442,6 @@ asIScriptFunction* Script::GetBindFunc( uint bind_id )
 
 string Script::GetBindFuncName( uint bind_id )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
     if( !bind_id || bind_id >= (uint) BindedFunctions.size() )
     {
         WriteLogF( _FUNC_, " - Wrong bind id %u, bind buffer size %u.\n", bind_id, BindedFunctions.size() );
@@ -1529,10 +1487,6 @@ asIScriptFunction* Script::FindFunc( hash func_num )
 
 hash Script::BindScriptFuncNumByFuncName( const char* func_name, const char* decl )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
     // Bind function
     int bind_id = Script::BindByFuncName( func_name, decl, false );
     if( bind_id <= 0 )
@@ -1560,10 +1514,6 @@ hash Script::BindScriptFuncNumByFuncName( const char* func_name, const char* dec
 
 hash Script::BindScriptFuncNumByFunc( asIScriptFunction* func )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
     // Bind function
     int bind_id = Script::BindByFunc( func, false );
     if( bind_id <= 0 )
@@ -1586,10 +1536,6 @@ hash Script::BindScriptFuncNumByFunc( asIScriptFunction* func )
 
 uint Script::GetScriptFuncBindId( hash func_num )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    SCOPE_LOCK( BindedFunctionsLocker );
-    #endif
-
     if( !func_num )
         return 0;
 
@@ -1724,123 +1670,15 @@ const char* Script::GetEnumValueName( const char* enum_name, int value )
 /* Contexts                                                             */
 /************************************************************************/
 
-static THREAD bool              ScriptCall = false;
-static THREAD asIScriptContext* CurrentCtx = nullptr;
-static THREAD size_t            NativeFuncAddr = 0;
-static THREAD size_t            NativeArgs[ 256 ] = { 0 };
-static THREAD size_t            RetValue[ 2 ] = { 0 }; // EAX:EDX
-static THREAD size_t            CurrentArg = 0;
-#ifdef SCRIPT_MULTITHREADING
-static THREAD int               ExecutionRecursionCounter = 0;
-#endif
-
-#ifdef SCRIPT_MULTITHREADING
-static size_t     SynchronizeThreadId = 0;
-static int        SynchronizeThreadCounter = 0;
-static MutexEvent SynchronizeThreadLocker;
-static Mutex      SynchronizeThreadLocalLocker;
-
-typedef vector< EndExecutionCallback > EndExecutionCallbackVec;
-static THREAD EndExecutionCallbackVec* EndExecutionCallbacks;
-#endif
-
-void Script::BeginExecution()
-{
-    #ifdef SCRIPT_MULTITHREADING
-    if( !LogicMT )
-        return;
-
-    if( !ExecutionRecursionCounter )
-    {
-        SyncManager* sync_mngr = SyncManager::GetForCurThread();
-        if( !ConcurrentExecution )
-        {
-            sync_mngr->Suspend();
-            ConcurrentExecutionLocker.Lock();
-            sync_mngr->PushPriority( 5 );
-            sync_mngr->Resume();
-        }
-        else
-        {
-            sync_mngr->PushPriority( 5 );
-        }
-    }
-    ExecutionRecursionCounter++;
-    #endif
-}
-
-void Script::EndExecution()
-{
-    #ifdef SCRIPT_MULTITHREADING
-    if( !LogicMT )
-        return;
-
-    ExecutionRecursionCounter--;
-    if( !ExecutionRecursionCounter )
-    {
-        if( !ConcurrentExecution )
-        {
-            ConcurrentExecutionLocker.Unlock();
-
-            SyncManager* sync_mngr = SyncManager::GetForCurThread();
-            sync_mngr->PopPriority();
-        }
-        else
-        {
-            SyncManager* sync_mngr = SyncManager::GetForCurThread();
-            sync_mngr->PopPriority();
-
-            SynchronizeThreadLocalLocker.Lock();
-            bool sync_not_closed = ( SynchronizeThreadId == Thread::GetCurrentId() );
-            if( sync_not_closed )
-            {
-                SynchronizeThreadId = 0;
-                SynchronizeThreadCounter = 0;
-                SynchronizeThreadLocker.Allow();                 // Unlock synchronization section
-            }
-            SynchronizeThreadLocalLocker.Unlock();
-
-            if( sync_not_closed )
-            {
-                WriteLogF( _FUNC_, " - Synchronization section is not closed in script!\n" );
-                sync_mngr->PopPriority();
-            }
-        }
-
-        if( EndExecutionCallbacks && !EndExecutionCallbacks->empty() )
-        {
-            for( auto it = EndExecutionCallbacks->begin(), end = EndExecutionCallbacks->end(); it != end; ++it )
-            {
-                EndExecutionCallback func = *it;
-                (func) ( );
-            }
-            EndExecutionCallbacks->clear();
-        }
-    }
-    #endif
-}
-
-void Script::AddEndExecutionCallback( EndExecutionCallback func )
-{
-    #ifdef SCRIPT_MULTITHREADING
-    if( !LogicMT )
-        return;
-
-    if( !EndExecutionCallbacks )
-        EndExecutionCallbacks = new EndExecutionCallbackVec();
-    auto it = std::find( EndExecutionCallbacks->begin(), EndExecutionCallbacks->end(), func );
-    if( it == EndExecutionCallbacks->end() )
-        EndExecutionCallbacks->push_back( func );
-    #endif
-}
+static bool              ScriptCall = false;
+static asIScriptContext* CurrentCtx = nullptr;
+static size_t            NativeFuncAddr = 0;
+static size_t            NativeArgs[ 256 ] = { 0 };
+static size_t            RetValue[ 2 ] = { 0 }; // EAX:EDX
+static size_t            CurrentArg = 0;
 
 void Script::PrepareContext( uint bind_id, const char* ctx_info )
 {
-    #ifdef SCRIPT_MULTITHREADING
-    if( LogicMT )
-        BindedFunctionsLocker.Lock();
-    #endif
-
     RUNTIME_ASSERT( bind_id > 0 );
     RUNTIME_ASSERT( bind_id < (uint) BindedFunctions.size() );
 
@@ -1849,19 +1687,12 @@ void Script::PrepareContext( uint bind_id, const char* ctx_info )
     asIScriptFunction* script_func = bf.ScriptFunc;
     size_t             func_addr = bf.NativeFuncAddr;
 
-    #ifdef SCRIPT_MULTITHREADING
-    if( LogicMT )
-        BindedFunctionsLocker.Unlock();
-    #endif
-
     if( is_script )
     {
         RUNTIME_ASSERT( script_func );
 
         asIScriptContext* ctx = RequestContext();
         RUNTIME_ASSERT( ctx );
-
-        BeginExecution();
 
         ContextData* ctx_data = (ContextData*) ctx->GetUserData();
         Str::Format( ctx_data->Info, ctx_info );
@@ -1876,8 +1707,6 @@ void Script::PrepareContext( uint bind_id, const char* ctx_info )
     else
     {
         RUNTIME_ASSERT( func_addr );
-
-        BeginExecution();
 
         NativeFuncAddr = func_addr;
         ScriptCall = false;
@@ -2140,7 +1969,6 @@ bool Script::RunPrepared()
         if( state == asEXECUTION_SUSPENDED )
         {
             *(uint64*) RetValue = 0;
-            EndExecution();
             return true;
         }
         else if( state != asEXECUTION_FINISHED )
@@ -2154,7 +1982,6 @@ bool Script::RunPrepared()
             }
             ctx->Abort();
             ReturnContext( ctx );
-            EndExecution();
             return false;
         }
         else if( RunTimeoutMessage && delta >= RunTimeoutMessage )
@@ -2167,7 +1994,6 @@ bool Script::RunPrepared()
             WriteLogF( _FUNC_, " - Context '%s' execute error %d, state '%s'.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
             ctx->Abort();
             ReturnContext( ctx );
-            EndExecution();
             return false;
         }
 
@@ -2186,7 +2012,6 @@ bool Script::RunPrepared()
         #endif
     }
 
-    EndExecution();
     return true;
 }
 
@@ -2202,7 +2027,6 @@ void Script::RunPreparedSuspend()
     ctx_data->StartTick = tick;
     ctx_data->Parent = asGetActiveContext();
     *(uint64*) RetValue = 0;
-    EndExecution();
 }
 
 asIScriptContext* Script::SuspendCurrentContext( uint time )
@@ -2262,7 +2086,6 @@ void Script::RunSuspended()
             continue;
         }
 
-        BeginExecution();
         CurrentCtx = ctx;
         ScriptCall = true;
         RunPrepared();
@@ -2303,7 +2126,6 @@ void Script::RunMandatorySuspended()
                 continue;
             }
 
-            BeginExecution();
             CurrentCtx = ctx;
             ScriptCall = true;
             RunPrepared();
@@ -2382,77 +2204,6 @@ double Script::GetReturnedDouble()
 void* Script::GetReturnedRawAddress()
 {
     return (void*) RetValue;
-}
-
-bool Script::SynchronizeThread()
-{
-    #ifdef SCRIPT_MULTITHREADING
-    if( !ConcurrentExecution )
-        return true;
-
-    SynchronizeThreadLocalLocker.Lock();     // Local lock
-
-    if( !SynchronizeThreadId )               // Section is free
-    {
-        SynchronizeThreadId = Thread::GetCurrentId();
-        SynchronizeThreadCounter = 1;
-        SynchronizeThreadLocker.Disallow();         // Lock synchronization section
-        SynchronizeThreadLocalLocker.Unlock();      // Local unlock
-
-        SyncManager* sync_mngr = SyncManager::GetForCurThread();
-        sync_mngr->PushPriority( 10 );
-    }
-    else if( SynchronizeThreadId == Thread::GetCurrentId() ) // Section busy by current thread
-    {
-        SynchronizeThreadCounter++;
-        SynchronizeThreadLocalLocker.Unlock();               // Local unlock
-    }
-    else                                                     // Section busy by another thread
-    {
-        SynchronizeThreadLocalLocker.Unlock();               // Local unlock
-
-        SyncManager* sync_mngr = SyncManager::GetForCurThread();
-        sync_mngr->Suspend();                                // Allow other threads take objects
-        SynchronizeThreadLocker.Wait();                      // Sleep until synchronization section locked
-        sync_mngr->Resume();                                 // Relock busy objects
-        return SynchronizeThread();                          // Try enter again
-    }
-    #endif
-    return true;
-}
-
-bool Script::ResynchronizeThread()
-{
-    #ifdef SCRIPT_MULTITHREADING
-    if( !ConcurrentExecution )
-        return true;
-
-    SynchronizeThreadLocalLocker.Lock();     // Local lock
-
-    if( SynchronizeThreadId == Thread::GetCurrentId() )
-    {
-        if( --SynchronizeThreadCounter == 0 )
-        {
-            SynchronizeThreadId = 0;
-            SynchronizeThreadLocker.Allow();             // Unlock synchronization section
-            SynchronizeThreadLocalLocker.Unlock();       // Local unlock
-
-            SyncManager* sync_mngr = SyncManager::GetForCurThread();
-            sync_mngr->PopPriority();
-        }
-        else
-        {
-            SynchronizeThreadLocalLocker.Unlock();             // Local unlock
-        }
-    }
-    else
-    {
-        // Invalid call
-        SynchronizeThreadLocalLocker.Unlock();         // Local unlock
-        return false;
-    }
-    #endif
-    return true;
 }
 
 /************************************************************************/

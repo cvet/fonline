@@ -37,11 +37,8 @@ class Script
 public:
     static bool Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
     static void Finish();
-    static bool InitThread();
-    static void FinishThread();
 
     static void* LoadDynamicLibrary( const char* dll_name );
-    static void  SetConcurrentExecution( bool enabled );
     static void  SetLoadLibraryCompiler( bool enabled );
 
     static void UnloadScripts();
@@ -112,10 +109,6 @@ public:
     static const char* GetEnumValueName( const char* enum_name, int value );
 
     // Script execution
-    static void BeginExecution();
-    static void EndExecution();
-    static void AddEndExecutionCallback( EndExecutionCallback func );
-
     static void              PrepareContext( uint bind_id, const char* ctx_info );
     static void              SetArgUChar( uchar value );
     static void              SetArgUShort( ushort value );
@@ -140,9 +133,6 @@ public:
     static float             GetReturnedFloat();
     static double            GetReturnedDouble();
     static void*             GetReturnedRawAddress();
-
-    static bool SynchronizeThread();
-    static bool ResynchronizeThread();
 
     // Logging
     static void Log( const char* str );

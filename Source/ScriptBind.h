@@ -65,16 +65,6 @@ BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_ADDREF, "void
 BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_RELEASE, "void f()", asMETHOD( AIDataPlane, Release ), asCALL_THISCALL ) );
 
 /************************************************************************/
-/* Synchronizer                                                         */
-/************************************************************************/
-BIND_ASSERT( engine->RegisterObjectType( "Synchronizer", sizeof( SyncObject ), asOBJ_VALUE ) );
-
-BIND_ASSERT( engine->RegisterObjectBehaviour( "Synchronizer", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION( BIND_CLASS Synchronizer_Constructor ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectBehaviour( "Synchronizer", asBEHAVE_DESTRUCT, "void f()", asFUNCTION( BIND_CLASS Synchronizer_Destructor ), asCALL_CDECL_OBJFIRST ) );
-
-BIND_ASSERT( engine->RegisterObjectMethod( "Synchronizer", "void Lock()", asMETHOD( SyncObject, Lock ), asCALL_THISCALL ) );
-
-/************************************************************************/
 /* NpcPlane                                                             */
 /************************************************************************/
 BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Type", OFFSETOF( AIDataPlane, Type ) ) );
@@ -433,8 +423,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllMaps(hash pid, array<Ma
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAllLocations(hash pid, array<Location@>@+ locations)", asFUNCTION( BIND_CLASS Global_GetAllLocations ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadImage(uint index, string@+ imageName, uint imageDepth)", asFUNCTION( BIND_CLASS Global_LoadImage ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetImageColor(uint index, uint x, uint y)", asFUNCTION( BIND_CLASS Global_GetImageColor ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Synchronize()", asFUNCTION( BIND_CLASS Global_Synchronize ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Resynchronize()", asFUNCTION( BIND_CLASS Global_Resynchronize ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", asFUNCTION( BIND_CLASS Global_SetTime ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(const string& url, const dict< string, string >@+ post, bool& success, string& result)", asFUNCTION( BIND_CLASS Global_YieldWebRequest ), asCALL_CDECL ) );
 #endif

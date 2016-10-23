@@ -22,7 +22,7 @@ public:
     void  DeleteItem( Item* item );
 
     Item* SplitItem( Item* item, uint count );
-    Item* GetItem( uint item_id, bool sync_lock );
+    Item* GetItem( uint item_id );
 
     void MoveItem( Item* item, uint count, Critter* to_cr, bool skip_checks );
     void MoveItem( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks );

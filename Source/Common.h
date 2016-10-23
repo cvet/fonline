@@ -165,10 +165,6 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
 void ShowMessage( const char* message );
 int  ConvertParamValue( const char* str, bool& fail );
 
-// Containers comparator template
-template< class T >
-inline bool CompareContainers( const T& a, const T& b ) { return a.size() == b.size() && ( a.empty() || !memcmp( &a[ 0 ], &b[ 0 ], a.size() * sizeof( a[ 0 ] ) ) ); }
-
 // Find in container of pointers
 template< typename TIt, typename T >
 inline TIt PtrCollectionFind( TIt it, TIt end, const T& v )
@@ -363,14 +359,11 @@ struct MapperScriptFunctions
 
 #ifdef FONLINE_SERVER
 
-# include "ThreadSync.h"
 # include "Jobs.h"
 
 extern bool FOQuit;
 extern int  ServerGameSleep;
 extern int  MemoryDebugLevel;
-extern uint VarsGarbageTime;
-extern bool LogicMT;
 extern bool AllowServerNativeCalls;
 extern bool AllowClientNativeCalls;
 

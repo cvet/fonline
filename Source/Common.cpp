@@ -994,14 +994,12 @@ bool FOQuit = false;
 int  ServerGameSleep = 10;
 int  MemoryDebugLevel = 10;
 uint VarsGarbageTime = 3600000;
-bool LogicMT = false;
 bool AllowServerNativeCalls = false;
 bool AllowClientNativeCalls = false;
 
 void GetServerOptions()
 {
     ServerGameSleep = MainConfig->GetInt( "", "GameSleep", 10 );
-    Script::SetConcurrentExecution( MainConfig->GetInt( "", "ScriptConcurrentExecution", 0 ) != 0 );
     AllowServerNativeCalls = ( MainConfig->GetInt( "", "AllowServerNativeCalls", 1 ) != 0 );
     AllowClientNativeCalls = ( MainConfig->GetInt( "", "AllowClientNativeCalls", 0 ) != 0 );
 }

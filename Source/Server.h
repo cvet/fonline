@@ -207,13 +207,7 @@ public:
     static bool Stopped()  { return !Active && !ActiveInProcess; }
     static void MainLoop();
 
-    static Thread*           LogicThreads;
-    static uint              LogicThreadCount;
-    static bool              LogicThreadSetAffinity;
-    static MutexSynchronizer LogicThreadSync;
-    static void SynchronizeLogicThreads();
-    static void ResynchronizeLogicThreads();
-    static void Logic_Work( void* data );
+    static void LogicTick();
 
     // Net IO
     static ClVec  ConnectedClients;
@@ -582,8 +576,6 @@ public:
         // static uint Global_GetVersion();
         static bool Global_LoadImage( uint index, ScriptString* image_name, uint image_depth );
         static uint Global_GetImageColor( uint index, uint x, uint y );
-        static void Global_Synchronize();
-        static void Global_Resynchronize();
         static void Global_YieldWebRequest( ScriptString& url, ScriptDict* post, bool& success, ScriptString& result );
     } ScriptFunc;
 };

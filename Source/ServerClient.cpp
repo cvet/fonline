@@ -185,7 +185,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         return false;
 
     // Check
-    Map* map = MapMngr.GetMap( map_id, true );
+    Map* map = MapMngr.GetMap( map_id );
     if( !map || map_id != cr->GetMapId() || hx >= map->GetWidth() || hy >= map->GetHeight() )
         return false;
 
@@ -200,7 +200,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         if( cr->IsPlayer() )
         {
             cr->Send_XY( cr );
-            Critter* cr_hex = map->GetHexCritter( hx, hy, false, false );
+            Critter* cr_hex = map->GetHexCritter( hx, hy, false );
             if( cr_hex )
                 cr->Send_XY( cr_hex );
         }
@@ -244,7 +244,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         if( map->IsHexTrap( fx, fy ) )
         {
             ItemVec traps;
-            map->GetItemsTrap( fx, fy, traps, true );
+            map->GetItemsTrap( fx, fy, traps );
             for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
                 Script::RaiseInternalEvent( ServerFunctions.ItemWalk, *it, cr, false, dir );
         }
@@ -253,7 +253,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
         if( map->IsHexTrap( hx, hy ) )
         {
             ItemVec traps;
-            map->GetItemsTrap( hx, hy, traps, true );
+            map->GetItemsTrap( hx, hy, traps );
             for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
                 Script::RaiseInternalEvent( ServerFunctions.ItemWalk, *it, cr, true, dir );
         }
@@ -758,18 +758,13 @@ void FOServer::Process_CreateClient( Client* cl )
     // Load world
     if( Singleplayer )
     {
-        SynchronizeLogicThreads();
-        SyncManager::GetForCurThread()->UnlockAll();
-        SYNC_LOCK( cl );
         if( !NewWorld() )
         {
             WriteLogF( _FUNC_, " - Generate new world fail.\n" );
             cl->Send_TextMsg( cl, STR_SP_NEW_GAME_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
-            ResynchronizeLogicThreads();
             return;
         }
-        ResynchronizeLogicThreads();
     }
 
     // Notify
@@ -1114,7 +1109,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     #endif
 
     // Find in players in game
-    Client* cl_old = CrMngr.GetPlayer( id, true );
+    Client* cl_old = CrMngr.GetPlayer( id );
     RUNTIME_ASSERT( cl != cl_old );
 
     // Avatar in game
@@ -1221,7 +1216,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl_old->NetIOIn->Locker.Unlock();
         #endif
 
-        Job::DeferredRelease( cl );
+        cl->Release();
         cl = cl_old;
 
         ConnectedClientsLocker.Unlock();
@@ -1311,7 +1306,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         {
             if( leader_id )
             {
-                Critter* leader = CrMngr.GetCritter( leader_id, false );
+                Critter* leader = CrMngr.GetCritter( leader_id );
                 if( !leader || leader->GetMapId() || cl->GetGlobalMapTripId() != leader->GetGlobalMapTripId() )
                 {
                     cl->SetGlobalMapLeaderId( 0 );
@@ -1451,18 +1446,13 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
     }
     else
     {
-        SynchronizeLogicThreads();
-        SyncManager::GetForCurThread()->UnlockAll();
-        SYNC_LOCK( cl );
         if( !LoadWorld( fname ) )
         {
             WriteLogF( _FUNC_, " - Unable load world from file '%s'.\n", fname );
             cl->Send_TextMsg( cl, STR_SP_LOAD_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
-            ResynchronizeLogicThreads();
             return;
         }
-        ResynchronizeLogicThreads();
 
         cl->Send_TextMsg( cl, STR_SP_LOAD_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
 
@@ -1475,7 +1465,7 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
 
 void FOServer::Process_ParseToGame( Client* cl )
 {
-    if( !cl->GetId() || !CrMngr.GetPlayer( cl->GetId(), false ) )
+    if( !cl->GetId() || !CrMngr.GetPlayer( cl->GetId() ) )
         return;
     cl->SetBreakTime( GameOpt.Breaktime );
 
@@ -1499,7 +1489,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     }
 
     // Parse
-    Map* map = MapMngr.GetMap( cl->GetMapId(), true );
+    Map* map = MapMngr.GetMap( cl->GetMapId() );
     cl->Send_GameInfo( map );
 
     // Parse to global
@@ -1542,11 +1532,7 @@ void FOServer::Process_ParseToGame( Client* cl )
         // Send current critters
         CrVec critters = cl->VisCrSelf;
         for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
-            SYNC_LOCK( cr );
-            cl->Send_AddCritter( cr );
-        }
+            cl->Send_AddCritter( *it );
 
         // Send current items on map
         cl->VisItemLocker.Lock();
@@ -1554,7 +1540,7 @@ void FOServer::Process_ParseToGame( Client* cl )
         cl->VisItemLocker.Unlock();
         for( auto it = items.begin(), end = items.end(); it != end; ++it )
         {
-            Item* item = ItemMngr.GetItem( *it, false );
+            Item* item = ItemMngr.GetItem( *it );
             if( item )
                 cl->Send_AddItemOnMap( item );
         }
@@ -2378,7 +2364,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         is_public = true;
         prop = Critter::PropertiesRegistrator->Get( property_index );
         if( prop )
-            entity = CrMngr.GetCritter( cr_id, true );
+            entity = CrMngr.GetCritter( cr_id );
         break;
     case NetProperty::Chosen:
         prop = Critter::PropertiesRegistrator->Get( property_index );
@@ -2389,14 +2375,14 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         is_public = true;
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
-            entity = ItemMngr.GetItem( item_id, true );
+            entity = ItemMngr.GetItem( item_id );
         break;
     case NetProperty::CritterItem:
         is_public = true;
         prop = Item::PropertiesRegistrator->Get( property_index );
         if( prop )
         {
-            Critter* cr = CrMngr.GetCritter( cr_id, true );
+            Critter* cr = CrMngr.GetCritter( cr_id );
             if( cr )
                 entity = cr->GetItem( item_id, true );
         }
@@ -2410,16 +2396,16 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         is_public = true;
         prop = Map::PropertiesRegistrator->Get( property_index );
         if( prop )
-            entity = MapMngr.GetMap( cl->GetMapId(), true );
+            entity = MapMngr.GetMap( cl->GetMapId() );
         break;
     case NetProperty::Location:
         is_public = true;
         prop = Location::PropertiesRegistrator->Get( property_index );
         if( prop )
         {
-            Map* map = MapMngr.GetMap( cl->GetMapId(), false );
+            Map* map = MapMngr.GetMap( cl->GetMapId() );
             if( map )
-                entity = map->GetLocation( true );
+                entity = map->GetLocation();
         }
         break;
     default:
@@ -2487,7 +2473,7 @@ void FOServer::OnSendLocationValue( Entity* entity, Property* prop )
     {
         Location* loc = (Location*) entity;
         MapVec    maps;
-        loc->GetMaps( maps, false );
+        loc->GetMaps( maps );
         for( auto it = maps.begin(); it != maps.end(); ++it )
         {
             Map* map = *it;

@@ -12,11 +12,11 @@ Entity* ItemManager::GetItemHolder( Item* item )
     switch( item->GetAccessory() )
     {
     case ITEM_ACCESSORY_CRITTER:
-        return CrMngr.GetCritter( item->GetCritId(), true );
+        return CrMngr.GetCritter( item->GetCritId() );
     case ITEM_ACCESSORY_HEX:
-        return MapMngr.GetMap( item->GetMapId(), true );
+        return MapMngr.GetMap( item->GetMapId() );
     case ITEM_ACCESSORY_CONTAINER:
-        return ItemMngr.GetItem( item->GetContainerId(), true );
+        return ItemMngr.GetItem( item->GetContainerId() );
     default:
         break;
     }
@@ -76,8 +76,6 @@ void ItemManager::SetCritterItems( Critter* cr )
     for( auto it = items.begin(); it != items.end(); ++it )
     {
         Item* item = *it;
-        SYNC_LOCK( item );
-
         cr->SetItem( item );
         if( item->GetIsRadio() )
             RadioRegister( item, true );
@@ -96,7 +94,6 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     Item* item = new Item( 0, proto );
     if( props )
         item->Props = *props;
-    SYNC_LOCK( item );
 
     // Main collection
     EntityMngr.RegisterEntity( item );
@@ -139,16 +136,12 @@ bool ItemManager::RestoreItem( uint id, hash proto_id, const StrMap& props_data 
         return false;
     }
 
-    SYNC_LOCK( item );
     EntityMngr.RegisterEntity( item );
     return true;
 }
 
 void ItemManager::DeleteItem( Item* item )
 {
-    // Synchronize
-    SYNC_LOCK( item );
-
     // Redundant calls
     if( item->IsDestroying || item->IsDestroyed )
         return;
@@ -188,9 +181,7 @@ void ItemManager::DeleteItem( Item* item )
 
     // Invalidate for use
     item->IsDestroyed = true;
-
-    // Release after some time
-    Job::DeferredRelease( item );
+    item->Release();
 }
 
 Item* ItemManager::SplitItem( Item* item, uint count )
@@ -223,12 +214,9 @@ Item* ItemManager::SplitItem( Item* item, uint count )
     return new_item;
 }
 
-Item* ItemManager::GetItem( uint item_id, bool sync_lock )
+Item* ItemManager::GetItem( uint item_id )
 {
-    Item* item = (Item*) EntityMngr.GetEntity( item_id, EntityType::Item );
-    if( item && sync_lock )
-        SYNC_LOCK( item );
-    return item;
+    return (Item*) EntityMngr.GetEntity( item_id, EntityType::Item );
 }
 
 void ItemManager::MoveItem( Item* item, uint count, Critter* to_cr, bool skip_checks )
@@ -694,11 +682,11 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                 {
                     if( !broadcast_map_id )
                     {
-                        Map* map = MapMngr.GetMap( from_map_id, false );
+                        Map* map = MapMngr.GetMap( from_map_id );
                         if( !map )
                             continue;
                         broadcast_map_id = map->GetId();
-                        broadcast_loc_id = map->GetLocation( false )->GetId();
+                        broadcast_loc_id = map->GetLocation()->GetId();
                     }
                 }
                 else if( !( broadcast >= 101 && broadcast <= 200 ) /*RADIO_BROADCAST_ZONE*/ )
@@ -711,7 +699,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
 
             if( radio->GetAccessory() == ITEM_ACCESSORY_CRITTER )
             {
-                Client* cl = CrMngr.GetPlayer( radio->GetCritId(), false );
+                Client* cl = CrMngr.GetPlayer( radio->GetCritId() );
                 if( cl && cl->RadioMessageSended != msg_count )
                 {
                     if( broadcast != RADIO_BROADCAST_FORCE_ALL )
@@ -723,8 +711,8 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                         }
                         else if( broadcast == RADIO_BROADCAST_LOCATION )
                         {
-                            Map* map = MapMngr.GetMap( cl->GetMapId(), false );
-                            if( !map || broadcast_loc_id != map->GetLocation( false )->GetId() )
+                            Map* map = MapMngr.GetMap( cl->GetMapId() );
+                            if( !map || broadcast_loc_id != map->GetLocation()->GetId() )
                                 continue;
                         }
                         else if( broadcast >= 101 && broadcast <= 200 )                   // RADIO_BROADCAST_ZONE
@@ -751,20 +739,20 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                 if( broadcast == RADIO_BROADCAST_MAP && broadcast_map_id != radio->GetMapId() )
                     continue;
 
-                Map* map = MapMngr.GetMap( radio->GetMapId(), false );
+                Map* map = MapMngr.GetMap( radio->GetMapId() );
                 if( map )
                 {
                     if( broadcast != RADIO_BROADCAST_FORCE_ALL && broadcast != RADIO_BROADCAST_MAP )
                     {
                         if( broadcast == RADIO_BROADCAST_LOCATION )
                         {
-                            Location* loc = map->GetLocation( false );
+                            Location* loc = map->GetLocation();
                             if( broadcast_loc_id != loc->GetId() )
                                 continue;
                         }
                         else if( broadcast >= 101 && broadcast <= 200 )                   // RADIO_BROADCAST_ZONE
                         {
-                            Location* loc = map->GetLocation( false );
+                            Location* loc = map->GetLocation();
                             if( !MapMngr.IsIntersectZone( from_wx, from_wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), broadcast - 101 ) )
                                 continue;
                         }

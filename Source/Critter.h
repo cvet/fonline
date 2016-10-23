@@ -10,7 +10,6 @@
 #include "CritterData.h"
 #include "DataMask.h"
 #include "NetProtocol.h"
-#include "ThreadSync.h"
 #include "Entity.h"
 
 #if defined ( USE_LIBEVENT )
@@ -137,7 +136,6 @@ protected:
 
 public:
     // Data
-    SyncObject    Sync;
     bool          CritterIsNpc;
     uint          Flags;
     ScriptString* NameStr;
@@ -165,14 +163,13 @@ public:
     uchar         ViewMapDir;
     uint          ViewMapLocId, ViewMapLocEnt;
 
-    void SyncLockCritters( bool self_critters, bool only_players );
     void ProcessVisibleCritters();
     void ProcessVisibleItems();
     void ViewMap( Map* map, int look, ushort hx, ushort hy, int dir );
     void ClearVisible();
 
-    Critter* GetCritSelf( uint crid, bool sync_lock );
-    void     GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self, bool sync_lock );
+    Critter* GetCritSelf( uint crid );
+    void     GetCrFromVisCr( CrVec& critters, int find_type, bool vis_cr_self );
     Critter* GetGlobalMapCritter( uint cr_id );
 
     bool AddCrIntoVisVec( Critter* add_cr );
@@ -202,7 +199,6 @@ public:
     Item* ItemSlotExt;
     Item* ItemSlotArmor;
 
-    void     SyncLockItems();
     Item*    GetHandsItem() { return defItemSlotHand; }
     void     AddItem( Item*& item, bool send );
     void     SetItem( Item* item );
@@ -214,8 +210,8 @@ public:
     Item*    GetItemByPidSlot( hash item_pid, int slot );
     Item*    GetItemCar();
     Item*    GetItemSlot( int slot );
-    void     GetItemsSlot( int slot, ItemVec& items, bool lock );
-    void     GetItemsType( int type, ItemVec& items, bool lock );
+    void     GetItemsSlot( int slot, ItemVec& items );
+    void     GetItemsType( int type, ItemVec& items );
     uint     CountItemPid( hash item_pid );
     bool     MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count );
     uint     RealCountItems() { return (uint) invItems.size(); }

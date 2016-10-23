@@ -389,8 +389,6 @@ struct BindClass
     static void Global_GetAllLocations()        {}
     static void Global_LoadImage()              {}
     static void Global_GetImageColor()          {}
-    static void Global_Synchronize()            {}
-    static void Global_Resynchronize()          {}
     static void Global_SetTime()                {}
     static void Global_YieldWebRequest()        {}
     #endif

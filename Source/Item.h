@@ -8,6 +8,10 @@
 #include "MsgFiles.h"
 #include "Entity.h"
 
+#ifdef FONLINE_SERVER
+class Critter;
+#endif
+
 // Items accessory
 #define ITEM_ACCESSORY_NONE          ( 0 )
 #define ITEM_ACCESSORY_CRITTER       ( 1 )
@@ -239,9 +243,8 @@ public:
     bool     ViewPlaceOnMap;
 
     #ifdef FONLINE_SERVER
-    uint       SceneryScriptBindId;
-    Critter*   ViewByCritter;
-    SyncObject Sync;
+    uint     SceneryScriptBindId;
+    Critter* ViewByCritter;
     #endif
 
     ProtoItem*    GetProtoItem() { return (ProtoItem*) Proto; }
@@ -285,9 +288,9 @@ public:
     void  ContSetItem( Item* item );
     void  ContEraseItem( Item* item );
     Item* ContGetItem( uint item_id, bool skip_hide );
-    void  ContGetAllItems( ItemVec& items, bool skip_hide, bool sync_lock );
+    void  ContGetAllItems( ItemVec& items, bool skip_hide );
     Item* ContGetItemByPid( hash pid, uint stack_id );
-    void  ContGetItems( ItemVec& items, uint stack_id, bool sync_lock );
+    void  ContGetItems( ItemVec& items, uint stack_id );
     bool  ContIsItems();
     void  ContDeleteItems();
     #else
