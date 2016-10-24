@@ -254,12 +254,6 @@ Sound* SoundManager::Load( const char* fname, bool is_music )
     }
 
     Sound* sound = new Sound();
-    if( !sound )
-    {
-        WriteLogF( _FUNC_, " - Allocation error.\n" );
-        return nullptr;
-    }
-
     if( !( ( Str::CompareCase( ext, ".wav" ) && LoadWAV( sound, fname_ ) ) ||
            ( Str::CompareCase( ext, ".acm" ) && LoadACM( sound, fname_, is_music ) ) ||
            ( Str::CompareCase( ext, ".ogg" ) && LoadOGG( sound, fname_ ) ) ) )

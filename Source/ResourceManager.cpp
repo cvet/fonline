@@ -49,19 +49,13 @@ void ResourceManager::Refresh()
             data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "wav", sounds );
             data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "acm", sounds );
             data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "ogg", sounds );
-            char fname[ MAX_FOPATH ];
-            char name[ MAX_FOPATH ];
+            char sound_name[ MAX_FOPATH ];
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
             {
-                FileManager::ExtractFileName( it->c_str(), fname );
-                Str::Copy( name, fname );
-                Str::Upper( name );
-                char* ext = (char*) FileManager::GetExtension( name );
-                if( !ext )
-                    continue;
-                *( --ext ) = 0;
-                if( name[ 0 ] )
-                    soundNames.insert( PAIR( string( name ), string( fname ) ) );
+                Str::Copy( sound_name, it->c_str() );
+                FileManager::EraseExtension( sound_name );
+                Str::Upper( sound_name );
+                soundNames.insert( PAIR( string( sound_name ), *it ) );
             }
 
             processedDats.push_back( data_file );
