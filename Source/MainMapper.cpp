@@ -59,12 +59,3 @@ int main( int argc, char** argv )
 
     return 0;
 }
-
-#ifdef FO_WINDOWS
-int CALLBACK WinMain( HINSTANCE instance, HINSTANCE prev_instance, char* cmd_line, int cmd_show )
-{
-    char** argv = new char*[ 1 ];
-    argv[ 0 ] = cmd_line;
-    return main( 1, argv );
-}
-#endif
