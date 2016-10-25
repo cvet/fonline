@@ -366,7 +366,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
 
     // Client path fixes
     #ifdef FONLINE_CLIENT
-    Str::Insert( dll_path, FileManager::GetDataPath( "", PT_CLIENT_CACHE ) );
+    Str::Insert( dll_path, "Cache/" );
     Str::Replacement( dll_path, '\\', '.' );
     Str::Replacement( dll_path, '/', '.' );
     #endif
@@ -641,9 +641,9 @@ bool Script::ReloadScripts( const char* target )
     if( edata->Profiler )
     {
         #ifdef FONLINE_SERVER
-        edata->Profiler->AddModule( PT_SERVER_CACHE, "Root", result_code.c_str() );
+        edata->Profiler->AddModule( "Root", result_code.c_str() );
         #else
-        edata->Profiler->AddModule( PT_CLIENT_CACHE, "Root", result_code.c_str() );
+        edata->Profiler->AddModule( "Root", result_code.c_str() );
         #endif
     }
 

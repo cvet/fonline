@@ -878,7 +878,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetStrHash(const string@+ str
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetHashStr(hash h)", asFUNCTION( Global_GetHashStr ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint DecodeUTF8(const string& text, uint& length)", asFUNCTION( Global_DecodeUTF8 ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ EncodeUTF8(uint ucs)", asFUNCTION( Global_EncodeUTF8 ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetFilePath(int path)", asFUNCTION( Global_GetFilePath ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFolderFileNames(const string& path, const string@+ extension, bool includeSubdirs, array<string>@+ result)", asFUNCTION( Global_GetFolderFileNames ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(const string& fileName)", asFUNCTION( Global_DeleteFile ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(const string& path)", asFUNCTION( Global_CreateDirectoryTree ), asCALL_CDECL ) );

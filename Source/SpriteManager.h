@@ -147,30 +147,30 @@ private:
 
     // Load sprites
 public:
-    AnyFrames*   LoadAnimation( const char* fname, int path_type, bool use_dummy = false, bool frm_anim_pix = false );
-    AnyFrames*   ReloadAnimation( AnyFrames* anim, const char* fname, int path_type );
-    Animation3d* LoadPure3dAnimation( const char* fname, int path_type, bool auto_redraw );
+    AnyFrames*   LoadAnimation( const char* fname, bool use_dummy = false, bool frm_anim_pix = false );
+    AnyFrames*   ReloadAnimation( AnyFrames* anim, const char* fname );
+    Animation3d* LoadPure3dAnimation( const char* fname, bool auto_redraw );
     void         RefreshPure3dAnimationSprite( Animation3d* anim3d );
     void         FreePure3dAnimation( Animation3d* anim3d );
-    bool         SaveAnimationInFastFormat( AnyFrames* anim, const char* fname, int path_type );
-    bool         TryLoadAnimationInFastFormat( const char* fname, int path_type, FileManager& fm, AnyFrames*& anim );
+    bool         SaveAnimationInFastFormat( AnyFrames* anim, const char* fname );
+    bool         TryLoadAnimationInFastFormat( const char* fname, FileManager& fm, AnyFrames*& anim );
 
 private:
     SprInfoVec     sprData;
     Animation3dVec autoRedrawAnim3d;
 
     AnyFrames* CreateAnimation( uint frames, uint ticks );
-    AnyFrames* LoadAnimationFrm( const char* fname, int path_type, bool anim_pix );
-    AnyFrames* LoadAnimationRix( const char* fname, int path_type );
-    AnyFrames* LoadAnimationFofrm( const char* fname, int path_type );
-    AnyFrames* LoadAnimation3d( const char* fname, int path_type );
-    AnyFrames* LoadAnimationArt( const char* fname, int path_type );
-    AnyFrames* LoadAnimationSpr( const char* fname, int path_type );
-    AnyFrames* LoadAnimationZar( const char* fname, int path_type );
-    AnyFrames* LoadAnimationTil( const char* fname, int path_type );
-    AnyFrames* LoadAnimationMos( const char* fname, int path_type );
-    AnyFrames* LoadAnimationBam( const char* fname, int path_type );
-    AnyFrames* LoadAnimationOther( const char* fname, int path_type, uchar * ( *loader )( const uchar *, uint, uint &, uint & ) );
+    AnyFrames* LoadAnimationFrm( const char* fname, bool anim_pix );
+    AnyFrames* LoadAnimationRix( const char* fname );
+    AnyFrames* LoadAnimationFofrm( const char* fname );
+    AnyFrames* LoadAnimation3d( const char* fname );
+    AnyFrames* LoadAnimationArt( const char* fname );
+    AnyFrames* LoadAnimationSpr( const char* fname );
+    AnyFrames* LoadAnimationZar( const char* fname );
+    AnyFrames* LoadAnimationTil( const char* fname );
+    AnyFrames* LoadAnimationMos( const char* fname );
+    AnyFrames* LoadAnimationBam( const char* fname );
+    AnyFrames* LoadAnimationOther( const char* fname, uchar * ( *loader )( const uchar *, uint, uint &, uint & ) );
     bool Render3d( Animation3d* anim3d );
 
     // Draw

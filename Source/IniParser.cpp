@@ -13,9 +13,9 @@ IniParser::IniParser( const char* str )
     AppendStr( str );
 }
 
-IniParser::IniParser( const char* fname, int path_type )
+IniParser::IniParser( const char* fname, bool from_data )
 {
-    AppendFile( fname, path_type );
+    AppendFile( fname, from_data );
 }
 
 void IniParser::AppendStr( const char* buf )
@@ -23,10 +23,10 @@ void IniParser::AppendStr( const char* buf )
     ParseStr( buf );
 }
 
-bool IniParser::AppendFile( const char* fname, int path_type )
+bool IniParser::AppendFile( const char* fname, bool from_data )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
+    if( !fm.LoadFile( fname, from_data ) )
         return false;
 
     ParseStr( fm.GetCStr() );
@@ -184,7 +184,7 @@ void IniParser::ParseStr( const char* str )
         ( *cur_app )[ "" ] = app_content;
 }
 
-bool IniParser::SaveFile( const char* fname, int path_type )
+bool IniParser::SaveFile( const char* fname, bool to_data )
 {
     string str;
     str.reserve( 10000000 );
@@ -199,8 +199,8 @@ bool IniParser::SaveFile( const char* fname, int path_type )
     }
 
     char path[ MAX_FOTEXT ];
-    if( path_type != PT_ROOT )
-        FileManager::GetWritePath( fname, path_type, path );
+    if( to_data )
+        FileManager::GetWritePath( fname, path );
     else
         Str::Copy( path, fname );
 

@@ -91,7 +91,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     Timer::GetCurrentDateTime( dt );
     const char*   dump_str = except ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
+    FileManager::GetWritePath( "Dumps/", dump_path_dir );
     # else
     Str::Copy( dump_path_dir, "./" );
     # endif

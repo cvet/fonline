@@ -304,7 +304,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
     char        fname[ MAX_FOPATH ];
     Str::Format( fname, "%s.fofnt", font_name );
     FileManager fm;
-    if( !fm.LoadFile( fname, PT_CLIENT_FONTS ) )
+    if( !fm.LoadFile( fname, true ) )
     {
         WriteLogF( _FUNC_, " - File '%s' not found.\n", fname );
         return false;
@@ -503,7 +503,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
     font.MakeGray = make_gray;
 
     // Load image
-    AnyFrames* image_normal = LoadAnimation( image_name, PT_CLIENT_FONTS );
+    AnyFrames* image_normal = LoadAnimation( image_name );
     if( !image_normal )
     {
         WriteLogF( _FUNC_, " - Image file '%s' not found.\n", image_name );
@@ -514,7 +514,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
     // Create bordered instance
     if( !not_bordered )
     {
-        AnyFrames* image_bordered = LoadAnimation( image_name, PT_CLIENT_FONTS );
+        AnyFrames* image_bordered = LoadAnimation( image_name );
         if( !image_bordered )
         {
             WriteLogF( _FUNC_, " - Can't load twice file '%s'.\n", image_name );
@@ -544,7 +544,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     FileManager fm;
     FileManager fm_tex;
 
-    if( !fm.LoadFile( Str::FormatBuf( "%s.fnt", font_name ), PT_CLIENT_FONTS ) )
+    if( !fm.LoadFile( Str::FormatBuf( "%s.fnt", font_name ), true ) )
     {
         WriteLogF( _FUNC_, " - Font file '%s' not found.\n", Str::FormatBuf( "%s.fnt", font_name ) );
         return false;
@@ -669,7 +669,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     font.MakeGray = true;
 
     // Load image
-    AnyFrames* image_normal = LoadAnimation( image_name, PT_CLIENT_FONTS );
+    AnyFrames* image_normal = LoadAnimation( image_name );
     if( !image_normal )
     {
         WriteLogF( _FUNC_, " - Image file '%s' not found.\n", image_name );
@@ -678,7 +678,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     font.ImageNormal = image_normal;
 
     // Create bordered instance
-    AnyFrames* image_bordered = LoadAnimation( image_name, PT_CLIENT_FONTS );
+    AnyFrames* image_bordered = LoadAnimation( image_name );
     if( !image_bordered )
     {
         WriteLogF( _FUNC_, " - Can't load twice file '%s'.\n", image_name );

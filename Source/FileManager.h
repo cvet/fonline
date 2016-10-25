@@ -6,26 +6,6 @@
 #include "Log.h"
 #include "DataFile.h"
 
-// Paths
-#define PT_ROOT               ( -1 )
-#define PT_CLIENT_DATA        ( 0 )
-#define PT_CLIENT_SPLASH      ( 10 )
-#define PT_CLIENT_TEXTURES    ( 13 )
-#define PT_CLIENT_EFFECTS     ( 14 )
-#define PT_CLIENT_SAVE        ( 21 )
-#define PT_CLIENT_FONTS       ( 22 )
-#define PT_CLIENT_CACHE       ( 23 )
-#define PT_SERVER_SAVE        ( 38 )
-#define PT_SERVER_CLIENTS     ( 39 )
-#define PT_SERVER_BANS        ( 40 )
-#define PT_SERVER_LOGS        ( 41 )
-#define PT_SERVER_DUMPS       ( 42 )
-#define PT_SERVER_PROFILER    ( 43 )
-#define PT_SERVER_UPDATE      ( 44 )
-#define PT_SERVER_CACHE       ( 45 )
-#define PATH_LIST_COUNT       ( 50 )
-extern const char* PathList[ PATH_LIST_COUNT ];
-
 class FileManager
 {
 public:
@@ -33,7 +13,7 @@ public:
     static bool LoadDataFile( const char* path );
     static void ClearDataFiles();
 
-    bool   LoadFile( const char* path, int path_type, bool no_read_data = false );
+    bool   LoadFile( const char* path, bool from_data, bool no_read_data = false );
     bool   LoadStream( const uchar* stream, uint length );
     void   UnloadFile();
     uchar* ReleaseBuffer();
@@ -61,7 +41,7 @@ public:
     void   SwitchToWrite();
     bool   ResizeOutBuf();
     void   SetPosOutBuf( uint pos );
-    bool   SaveOutBufToFile( const char* fname, int path_type );
+    bool   SaveOutBufToFile( const char* fname, bool to_data );
     uchar* GetOutBuf()    { return dataOutBuf; }
     uint   GetOutBufLen() { return endOutBuf; }
 
@@ -77,15 +57,13 @@ public:
 
     static void        ResetCurrentDir();
     static void        SetCurrentDir( const char* dir, const char* write_dir );
-    static const char* GetDataPath( const char* fname, int path_type );
-    static void        GetDataPath( const char* fname, int path_type, char* result );
-    static const char* GetWritePath( const char* fname, int path_type );
-    static void        GetWritePath( const char* fname, int path_type, char* result );
-    static hash        GetPathHash( const char* fname, int path_type );
+    static const char* GetWritePath( const char* fname );
+    static void        GetWritePath( const char* fname, char* result );
+    static hash        GetPathHash( const char* fname );
     static void        FormatPath( char* path );
     static void        ExtractDir( const char* path, char* dir );
     static void        ExtractFileName( const char* path, char* name );
-    static void        MakeFilePath( const char* name, const char* path, char* result );
+    static void        CombinePath( const char* base_path, const char* path, char* result );
     static const char* GetExtension( const char* path ); // EXT without dot
     static char*       EraseExtension( char* path );     // Erase EXT with dot
     static string      CombinePath( const char* path, const char* relative_dir );
@@ -100,7 +78,6 @@ public:
     uint        GetFsize()     { return fileSize; }
     bool        IsEOF()        { return curPos >= fileSize; }
     uint64      GetWriteTime() { return writeTime; }
-    int         ParseLinesInt( const char* fname, int path_type, IntVec& lines );
 
     static DataFileVec& GetDataFiles() { return dataFiles; }
     static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr );

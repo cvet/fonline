@@ -140,9 +140,9 @@ void InitialSetup( uint argc, char** argv )
     MainConfig->AppendStr( InternalConfig );
 
     // File configs
-    MainConfig->AppendFile( CONFIG_NAME, PT_CLIENT_CACHE );
+    MainConfig->AppendFile( "Cache/" CONFIG_NAME, true );
     for( string& config : configs )
-        MainConfig->AppendFile( config.c_str(), PT_ROOT );
+        MainConfig->AppendFile( config.c_str(), false );
 
     // Command line config
     for( uint i = 0; i < argc; i++ )
@@ -847,7 +847,7 @@ void GetClientOptions()
     FileManager::InitDataFiles( CLIENT_DATA );
 
     // Cached configuration
-    MainConfig->AppendFile( CONFIG_NAME, PT_CLIENT_CACHE );
+    MainConfig->AppendFile( "Cache/" CONFIG_NAME, true );
 
     // Language
     READ_CFG_STR_DEF( *MainConfig, "Language", "russ" );

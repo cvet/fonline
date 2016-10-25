@@ -29,7 +29,7 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
         Timer::GetCurrentDateTime( dt );
 
         char dump_file_path[ MAX_FOPATH ];
-        Str::Copy( dump_file_path, FileManager::GetWritePath( "", PT_SERVER_PROFILER ) );
+        Str::Copy( dump_file_path, FileManager::GetWritePath( "Profiler/" ) );
 
         char dump_file[ MAX_FOPATH ];
         Str::Format( dump_file, "%sProfiler_%04u.%02u.%02u_%02u-%02u-%02u.foprof",
@@ -55,7 +55,7 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
     return true;
 }
 
-void ScriptProfiler::AddModule( int path_type, const char* module_name, const char* script_code )
+void ScriptProfiler::AddModule( const char* module_name, const char* script_code )
 {
     RUNTIME_ASSERT( curStage == ProfilerInitialized );
 

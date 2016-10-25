@@ -145,15 +145,6 @@ ScriptString* Global_EncodeUTF8( uint ucs )
     return ScriptString::Create( buf );
 }
 
-ScriptString* Global_GetFilePath( int path_type )
-{
-    char path[ MAX_FOPATH ];
-    FileManager::GetDataPath( "", path_type, path );
-    FileManager::FormatPath( path );
-
-    return ScriptString::Create( path );
-}
-
 uint Global_GetFolderFileNames( ScriptString& path, ScriptString* ext, bool include_subdirs, ScriptArray* result )
 {
     StrVec files;

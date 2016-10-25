@@ -541,12 +541,9 @@ uint FOMapper::AnimLoad( uint name_hash, int res_type )
     return index;
 }
 
-uint FOMapper::AnimLoad( const char* fname, int path_type, int res_type )
+uint FOMapper::AnimLoad( const char* fname, int res_type )
 {
-    char full_name[ MAX_FOPATH ];
-    FileManager::GetDataPath( fname, path_type, full_name );
-
-    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( full_name ), res_type );
+    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( fname ), res_type );
     if( !anim )
         return 0;
     IfaceAnim* ianim = new IfaceAnim( anim, res_type );

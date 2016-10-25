@@ -94,7 +94,7 @@ public:
     IfaceAnimVec Animations;
 
     uint       AnimLoad( uint name_hash, int res_type );
-    uint       AnimLoad( const char* fname, int path_type, int res_type );
+    uint       AnimLoad( const char* fname, int res_type );
     uint       AnimGetCurSpr( uint anim_id );
     uint       AnimGetCurSprCnt( uint anim_id );
     uint       AnimGetSprCount( uint anim_id );

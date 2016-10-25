@@ -1262,13 +1262,6 @@ void Animation3d::Finish()
     Animation3dXFile::xFiles.clear();
 }
 
-Animation3d* Animation3d::GetAnimation( const char* name, int path_type, bool is_child )
-{
-    char fname[ MAX_FOPATH ];
-    FileManager::GetDataPath( name, path_type, fname );
-    return GetAnimation( fname, is_child );
-}
-
 Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
 {
     Animation3dEntity* entity = Animation3dEntity::GetEntity( name );
@@ -1381,15 +1374,11 @@ bool Animation3dEntity::Load( const char* name )
     {
         // Load main fo3d file
         FileManager fo3d;
-        if( !fo3d.LoadFile( name, PT_CLIENT_DATA ) )
+        if( !fo3d.LoadFile( name, true ) )
             return false;
         char* big_buf = Str::GetBigBuf();
         fo3d.CopyMem( big_buf, fo3d.GetFsize() );
         big_buf[ fo3d.GetFsize() ] = 0;
-
-        // Extract file path
-        char path[ MAX_FOPATH ];
-        FileManager::ExtractDir( name, path );
 
         // Parse
         char             model[ MAX_FOPATH ] = { 0 };
@@ -1448,7 +1437,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::Compare( token, "Model" ) )
             {
                 ( *istr ) >> buf;
-                FileManager::MakeFilePath( buf, path, model );
+                FileManager::CombinePath( name, buf, model );
             }
             else if( Str::Compare( token, "Include" ) )
             {
@@ -1465,11 +1454,11 @@ bool Animation3dEntity::Load( const char* name )
 
                 // Include file path
                 char fname[ MAX_FOPATH ];
-                FileManager::MakeFilePath( templates[ 0 ].c_str(), path, fname );
+                FileManager::CombinePath( name, templates[ 0 ].c_str(), fname );
 
                 // Load file
                 FileManager fo3d_ex;
-                if( !fo3d_ex.LoadFile( fname, PT_CLIENT_DATA ) )
+                if( !fo3d_ex.LoadFile( fname, true ) )
                 {
                     WriteLogF( _FUNC_, " - Include file '%s' not found.\n", fname );
                     continue;
@@ -1575,7 +1564,7 @@ bool Animation3dEntity::Load( const char* name )
                 link->LayerValue = layer_val;
 
                 char fname[ MAX_FOPATH ];
-                FileManager::MakeFilePath( buf, path, fname );
+                FileManager::CombinePath( name, buf, fname );
                 link->ChildFName = Str::Duplicate( fname );
 
                 mesh = 0;
@@ -1590,7 +1579,7 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
                 char              fname[ MAX_FOPATH ];
-                FileManager::MakeFilePath( buf, path, fname );
+                FileManager::CombinePath( name, buf, fname );
                 Animation3dXFile* area = Animation3dXFile::GetXFile( fname );
                 if( area )
                 {
@@ -2157,7 +2146,7 @@ bool Animation3dEntity::Load( const char* name )
                 if( Str::Compare( anim_fname, "ModelFile" ) )
                     Str::Copy( anim_path, model );
                 else
-                    FileManager::MakeFilePath( anim_fname, path, anim_path );
+                    FileManager::CombinePath( name, anim_fname, anim_path );
 
                 AnimSet* set = GraphicLoader::LoadAnimation( anim_path, anim_name );
                 if( set )

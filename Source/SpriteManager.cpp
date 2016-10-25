@@ -1280,7 +1280,7 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
     SAFEDELA( data );
 }
 
-AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, bool use_dummy /* = false */, bool frm_anim_pix /* = false */ )
+AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = false */, bool frm_anim_pix /* = false */ )
 {
     AnyFrames* dummy = ( use_dummy ? DummyAnimation : nullptr );
 
@@ -1296,36 +1296,36 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, int path_type, bool 
 
     AnyFrames* result = nullptr;
     if( Str::CompareCase( ext, "png" ) )
-        result = LoadAnimationOther( fname, path_type, &GraphicLoader::LoadPNG );
+        result = LoadAnimationOther( fname, &GraphicLoader::LoadPNG );
     else if( Str::CompareCase( ext, "tga" ) )
-        result = LoadAnimationOther( fname, path_type, &GraphicLoader::LoadTGA );
+        result = LoadAnimationOther( fname, &GraphicLoader::LoadTGA );
     else if( Str::CompareCase( ext, "frm" ) )
-        result = LoadAnimationFrm( fname, path_type, frm_anim_pix );
+        result = LoadAnimationFrm( fname, frm_anim_pix );
     else if( Str::CompareCase( ext, "rix" ) )
-        result = LoadAnimationRix( fname, path_type );
+        result = LoadAnimationRix( fname );
     else if( Str::CompareCase( ext, "fofrm" ) )
-        result = LoadAnimationFofrm( fname, path_type );
+        result = LoadAnimationFofrm( fname );
     else if( Str::CompareCase( ext, "art" ) )
-        result = LoadAnimationArt( fname, path_type );
+        result = LoadAnimationArt( fname );
     else if( Str::CompareCase( ext, "spr" ) )
-        result = LoadAnimationSpr( fname, path_type );
+        result = LoadAnimationSpr( fname );
     else if( Str::CompareCase( ext, "zar" ) )
-        result = LoadAnimationZar( fname, path_type );
+        result = LoadAnimationZar( fname );
     else if( Str::CompareCase( ext, "til" ) )
-        result = LoadAnimationTil( fname, path_type );
+        result = LoadAnimationTil( fname );
     else if( Str::CompareCase( ext, "mos" ) )
-        result = LoadAnimationMos( fname, path_type );
+        result = LoadAnimationMos( fname );
     else if( Str::CompareCase( ext, "bam" ) )
-        result = LoadAnimationBam( fname, path_type );
+        result = LoadAnimationBam( fname );
     else if( Is3dExtensionSupported( ext ) )
-        result = LoadAnimation3d( fname, path_type );
+        result = LoadAnimation3d( fname );
     else
         WriteLogF( _FUNC_, " - Unsupported image file format '%s', file '%s'.\n", ext, fname );
 
     return result ? result : dummy;
 }
 
-AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const char* fname, int path_type )
+AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const char* fname )
 {
     if( !fname || !fname[ 0 ] )
         return anim;
@@ -1343,15 +1343,15 @@ AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const char* fname, i
     }
 
     // Load fresh
-    return LoadAnimation( fname, path_type );
+    return LoadAnimation( fname );
 }
 
-AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bool anim_pix /* = false */ )
+AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* = false */ )
 {
     // Load file
     FileManager fm;
     AnyFrames*  fast_anim;
-    if( TryLoadAnimationInFastFormat( fname, path_type, fm, fast_anim ) && fm.IsLoaded() )
+    if( TryLoadAnimationInFastFormat( fname, fm, fast_anim ) && fm.IsLoaded() )
         return fast_anim;
 
     // Load from fr0..5
@@ -1362,7 +1362,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
         Str::Copy( fname_, fname );
         char* ext = (char*) FileManager::GetExtension( fname_ );
         *( ext + 2 ) = '0';
-        if( !fm.LoadFile( fname_, path_type ) )
+        if( !fm.LoadFile( fname_, true ) )
             return nullptr;
         load_from_fr = true;
     }
@@ -1413,7 +1413,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
             Str::Copy( fname_, fname );
             char* ext = (char*) FileManager::GetExtension( fname_ );
             *( ext + 2 ) = '0' + dir;
-            if( !fm.LoadFile( fname_, path_type ) )
+            if( !fm.LoadFile( fname_, true ) )
             {
                 if( dir > 1 )
                 {
@@ -1455,7 +1455,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
         Str::Copy( palette_name, fname );
         Str::Copy( (char*) FileManager::GetExtension( palette_name ), 4, "pal" );
         FileManager fm_palette;
-        if( fm_palette.LoadFile( palette_name, path_type ) )
+        if( fm_palette.LoadFile( palette_name, true ) )
         {
             for( uint i = 0; i < 256; i++ )
             {
@@ -1637,10 +1637,10 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, int path_type, bo
     return base_anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationRix( const char* fname )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
+    if( !fm.LoadFile( fname, true ) )
         return nullptr;
 
     SpriteInfo* si = new SpriteInfo();
@@ -1674,12 +1674,12 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname, int path_type )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
 {
     // Load file
     FileManager fm;
     AnyFrames*  fast_anim;
-    if( TryLoadAnimationInFastFormat( fname, path_type, fm, fast_anim ) )
+    if( TryLoadAnimationInFastFormat( fname, fm, fast_anim ) )
         return fast_anim;
     if( !fm.IsLoaded() )
         return nullptr;
@@ -1754,7 +1754,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
 
             Str::Copy( buf, frm_dir );
             Str::Append( buf, frm_name );
-            AnyFrames* anim = LoadAnimation( buf, path_type );
+            AnyFrames* anim = LoadAnimation( buf );
             if( !anim )
             {
                 WriteLog( "Anim '%s' not found.\n", buf );
@@ -1814,7 +1814,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname, int path_type )
     return base_anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimation3d( const char* fname )
 {
     if( !GameOpt.Enable3dRendering )
         return nullptr;
@@ -1822,13 +1822,13 @@ AnyFrames* SpriteManager::LoadAnimation3d( const char* fname, int path_type )
     // Load file
     FileManager fm;
     AnyFrames*  fast_anim;
-    if( TryLoadAnimationInFastFormat( fname, path_type, fm, fast_anim ) )
+    if( TryLoadAnimationInFastFormat( fname, fm, fast_anim ) )
         return fast_anim;
     if( !fm.IsLoaded() )
         return nullptr;
 
     // Load 3d animation
-    Animation3d* anim3d = Animation3d::GetAnimation( fname, path_type, false );
+    Animation3d* anim3d = Animation3d::GetAnimation( fname, false );
     if( !anim3d )
         return nullptr;
     anim3d->StartMeshGeneration();
@@ -1900,7 +1900,7 @@ label_LoadOneSpr:
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationArt( const char* fname )
 {
     AnyFrames* base_anim = nullptr;
 
@@ -2002,7 +2002,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
             return nullptr;
 
         FileManager fm;
-        if( !fm.LoadFile( file_name, path_type ) )
+        if( !fm.LoadFile( file_name, true ) )
             return nullptr;
 
         struct ArtHeader
@@ -2224,7 +2224,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname, int path_type )
 }
 
 #define SPR_CACHED_COUNT    ( 10 )
-AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname )
 {
     AnyFrames* base_anim = nullptr;
 
@@ -2334,7 +2334,6 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
         struct SprCache
         {
             char        fileName[ MAX_FOPATH ];
-            int         pathType;
             FileManager fm;
         } static* cached[ SPR_CACHED_COUNT + 1 ] = { 0 };         // Last index for last loaded
 
@@ -2344,7 +2343,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
         {
             if( !cached[ i ] )
                 break;
-            if( Str::CompareCase( file_name, cached[ i ]->fileName ) && path_type == cached[ i ]->pathType )
+            if( Str::CompareCase( file_name, cached[ i ]->fileName ) )
             {
                 index = i;
                 break;
@@ -2355,7 +2354,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
         if( index == -1 )
         {
             FileManager fm;
-            if( !fm.LoadFile( file_name, path_type ) )
+            if( !fm.LoadFile( file_name, true ) )
                 return nullptr;
 
             if( fm.GetFsize() > 1000000 )                 // 1mb
@@ -2383,7 +2382,6 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
                 if( !cached[ index ] )
                     return nullptr;
                 Str::Copy( cached[ index ]->fileName, file_name );
-                cached[ index ]->pathType = path_type;
                 cached[ index ]->fm = fm;
                 fm.ReleaseBuffer();
             }
@@ -2395,7 +2393,6 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
                 else
                     cached[ index ]->fm.UnloadFile();
                 Str::Copy( cached[ index ]->fileName, file_name );
-                cached[ index ]->pathType = path_type;
                 cached[ index ]->fm = fm;
                 fm.ReleaseBuffer();
             }
@@ -2741,11 +2738,11 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname, int path_type )
     return base_anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationZar( const char* fname )
 {
     // Open file
     FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
+    if( !fm.LoadFile( fname, true ) )
         return nullptr;
 
     // Read header
@@ -2837,11 +2834,11 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname, int path_type )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationTil( const char* fname )
 {
     // Open file
     FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
+    if( !fm.LoadFile( fname, true ) )
         return nullptr;
 
     // Read header
@@ -2956,10 +2953,10 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname, int path_type )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationMos( const char* fname )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, path_type ) )
+    if( !fm.LoadFile( fname, true ) )
         return nullptr;
 
     // Read signature
@@ -3057,7 +3054,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname, int path_type )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
+AnyFrames* SpriteManager::LoadAnimationBam( const char* fname )
 {
     // Parameters
     char file_name[ MAX_FOPATH ];
@@ -3094,7 +3091,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
 
     // Load file
     FileManager fm;
-    if( !fm.LoadFile( file_name, path_type ) )
+    if( !fm.LoadFile( file_name, true ) )
         return nullptr;
 
     // Read signature
@@ -3214,12 +3211,12 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname, int path_type )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, int path_type, uchar* ( *loader )( const uchar *, uint, uint &, uint & ) )
+AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, uchar* ( *loader )( const uchar *, uint, uint &, uint & ) )
 {
     // Load file
     FileManager fm;
     AnyFrames*  fast_anim;
-    if( TryLoadAnimationInFastFormat( fname, path_type, fm, fast_anim ) )
+    if( TryLoadAnimationInFastFormat( fname, fm, fast_anim ) )
         return fast_anim;
 
     // Load
@@ -3287,13 +3284,13 @@ bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
     return true;
 }
 
-Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, int path_type, bool auto_redraw )
+Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, bool auto_redraw )
 {
     if( !GameOpt.Enable3dRendering )
         return nullptr;
 
     // Fill data
-    Animation3d* anim3d = Animation3d::GetAnimation( fname, path_type, false );
+    Animation3d* anim3d = Animation3d::GetAnimation( fname, false );
     if( !anim3d )
         return nullptr;
 
@@ -3365,7 +3362,7 @@ void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
     }
 }
 
-bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const char* fname, int path_type )
+bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const char* fname )
 {
     FileManager fm;
     fm.SetBEUInt( FAST_FORMAT_SIGNATURE );
@@ -3387,16 +3384,16 @@ bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const char* fnam
             fm.SetData( si->Data, si->Width * si->Height * 4 );
         }
     }
-    return fm.SaveOutBufToFile( fname, path_type );
+    return fm.SaveOutBufToFile( fname, true );
 }
 
-bool SpriteManager::TryLoadAnimationInFastFormat( const char* fname, int path_type, FileManager& fm, AnyFrames*& anim )
+bool SpriteManager::TryLoadAnimationInFastFormat( const char* fname, FileManager& fm, AnyFrames*& anim )
 {
     // Null result
     anim = nullptr;
 
     // Load file
-    if( !fm.LoadFile( fname, path_type ) )
+    if( !fm.LoadFile( fname, true ) )
         return true;
 
     // Check for fonline cached format

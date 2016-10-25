@@ -138,7 +138,7 @@ int main( int argc, char* argv[] )
     FileManager::SetCurrentDir( dir, "./" );
 
     FileManager file;
-    if( !file.LoadFile( path, PT_ROOT ) )
+    if( !file.LoadFile( path, false ) )
     {
         WriteLog( "File '%s' not found.\n", path );
         return -1;

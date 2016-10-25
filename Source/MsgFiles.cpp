@@ -256,12 +256,12 @@ bool FOMsg::LoadFromBinaryData( const UCharVec& data )
     return true;
 }
 
-bool FOMsg::LoadFromFile( const char* fname, int path_type )
+bool FOMsg::LoadFromFile( const char* fname, bool from_data )
 {
     Clear();
 
     FileManager file;
-    if( !file.LoadFile( fname, path_type ) )
+    if( !file.LoadFile( fname, from_data ) )
         return false;
 
     return LoadFromString( (char*) file.GetBuf(), file.GetFsize() );
@@ -355,7 +355,7 @@ void FOMsg::LoadFromMap( const StrMap& kv )
     }
 }
 
-bool FOMsg::SaveToFile( const char* fname, int path_type )
+bool FOMsg::SaveToFile( const char* fname, bool to_data )
 {
     string str;
     for( auto it = strData.begin(), end = strData.end(); it != end; it++ )
@@ -372,7 +372,7 @@ bool FOMsg::SaveToFile( const char* fname, int path_type )
 
     FileManager fm;
     fm.SetData( buf, buf_len );
-    if( !fm.SaveOutBufToFile( fname, path_type ) )
+    if( !fm.SaveOutBufToFile( fname, to_data ) )
         return false;
 
     return true;

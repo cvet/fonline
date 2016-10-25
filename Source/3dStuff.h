@@ -141,7 +141,6 @@ public:
     static void         SetScreenSize( int width, int height );
     static void         Finish();
     static void         BeginScene();
-    static Animation3d* GetAnimation( const char* name, int path_type, bool is_child );
     static Animation3d* GetAnimation( const char* name, bool is_child );
     static void         AnimateFaster();
     static void         AnimateSlower();
