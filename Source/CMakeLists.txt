@@ -188,7 +188,11 @@ if( NOT BUILD_ONLY_CLIENT )
 	add_subdirectory( "cURL" )
 endif()
 
+file( GLOB "Json_SOURCE Json/*.*" )
+source_group( Json FILES ${Json_SOURCE} )
+
 set( COMMON_SOURCE
+	${Json_SOURCE}
 	Common.cpp Common.h
 	Crypt.cpp Crypt.h
 	DataFile.cpp DataFile.h
