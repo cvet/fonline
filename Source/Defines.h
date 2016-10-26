@@ -304,7 +304,7 @@
 #define MOVE_PARAM_RUN              ( 0x80000000 )
 
 // Holodisks
-#define USER_HOLO_TEXTMSG_FILE      "Holodisks.txt"
+#define USER_HOLO_TEXTMSG_FILE      "Cache/Holodisks.txt"
 #define USER_HOLO_START_NUM         ( 100000 )
 #define USER_HOLO_MAX_TITLE_LEN     ( 40 )
 #define USER_HOLO_MAX_LEN           ( 2000 )

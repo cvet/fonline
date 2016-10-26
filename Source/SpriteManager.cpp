@@ -3793,7 +3793,7 @@ void SpriteManager::InitializeEgg( const char* egg_name )
     #ifndef DISABLE_EGG
     eggValid = false;
     eggHx = eggHy = eggX = eggY = 0;
-    AnyFrames* egg_frames = LoadAnimation( egg_name, PT_CLIENT_DATA );
+    AnyFrames* egg_frames = LoadAnimation( egg_name );
     if( egg_frames )
     {
         sprEgg = GetSpriteInfo( egg_frames->Ind[ 0 ] );

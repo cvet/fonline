@@ -200,9 +200,7 @@ bool FOClient::Init()
     UID_PREPARE_UID4_2;
 
     // Cache
-    if( !FileExist( FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) ) )
-        FileManager::CopyFile( FileManager::GetDataPath( "default.cache", PT_CLIENT_DATA ), FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) );
-    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "default.cache", PT_CLIENT_CACHE ) ) )
+    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "Cache/default.cache" ) ) )
     {
         WriteLogF( _FUNC_, " - Can't set default cache.\n" );
         return false;
@@ -266,7 +264,7 @@ bool FOClient::Init()
 
     CurLang.LoadFromCache( lang_name );
     MsgUserHolo = new FOMsg();
-    MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE, PT_CLIENT_CACHE );
+    MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE, true );
 
     // Update
     UpdateFiles( true );
@@ -486,7 +484,7 @@ void FOClient::UpdateFiles( bool early_call )
         UpdateFilesAborted = false;
         SAFEDEL( UpdateFilesList );
         UpdateFileActive = false;
-        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ) );
+        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
 
         Net_SendUpdate();
 
@@ -536,7 +534,7 @@ void FOClient::UpdateFiles( bool early_call )
                     if( UpdateFileTemp )
                         FileClose( UpdateFileTemp );
 
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ), true );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
                     if( !UpdateFileTemp )
                     {
                         UpdateFilesAddText( STR_FILESYSTEM_ERROR, "File system error!" );
@@ -4414,13 +4412,13 @@ void FOClient::Net_OnUpdateFilesList()
         else
         {
             FileManager file;
-            if( file.LoadFile( name, PT_CLIENT_DATA, true ) && file.GetFsize() == size )
+            if( file.LoadFile( name, true, true ) && file.GetFsize() == size )
             {
                 if( hash == 0 )
                     continue;
 
                 file.UnloadFile();
-                if( file.LoadFile( name, PT_CLIENT_DATA ) && file.GetFsize() > 0 && hash == Crypt.Crc32( file.GetBuf(), file.GetFsize() ) )
+                if( file.LoadFile( name, true ) && file.GetFsize() > 0 && hash == Crypt.Crc32( file.GetBuf(), file.GetFsize() ) )
                     continue;
             }
         }
@@ -4470,7 +4468,7 @@ void FOClient::Net_OnUpdateFileData()
         if( update_file.Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
         {
             FileManager cache_data;
-            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ), PT_ROOT ) )
+            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp" ), true ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update.temp file!" );
                 return;
@@ -4483,16 +4481,16 @@ void FOClient::Net_OnUpdateFileData()
         else
         {
             char to_path[ MAX_FOPATH ];
-            FileManager::GetWritePath( update_file.Name.c_str(), PT_CLIENT_DATA, to_path );
+            FileManager::GetWritePath( update_file.Name.c_str(), to_path );
             FileManager::FormatPath( to_path );
-            if( !FileManager::CopyFile( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ), to_path ) )
+            if( !FileManager::CopyFile( FileManager::GetWritePath( "update.temp" ), to_path ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't copy update.temp file!" );
                 return;
             }
         }
 
-        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp", PT_CLIENT_DATA ) );
+        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
         UpdateFilesList->erase( UpdateFilesList->begin() );
         UpdateFileActive = false;
     }
@@ -4523,7 +4521,7 @@ void FOClient::Net_OnUserHoloStr()
     if( MsgUserHolo->Count( str_num ) )
         MsgUserHolo->EraseStr( str_num );
     MsgUserHolo->AddStr( str_num, text );
-    MsgUserHolo->SaveToFile( USER_HOLO_TEXTMSG_FILE, PT_CLIENT_CACHE );
+    MsgUserHolo->SaveToFile( USER_HOLO_TEXTMSG_FILE, true );
 }
 
 void FOClient::Net_OnAutomapsInfo()
@@ -5920,12 +5918,8 @@ void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_seque
     {
         *sound = 0;
         sound++;
-        if( !Str::Substring( sound, "/" ) )
-            sw.SoundName = FileManager::GetDataPath( "", PT_CLIENT_DATA );
         sw.SoundName += sound;
     }
-    if( !Str::Substring( str, "/" ) )
-        sw.FileName = FileManager::GetDataPath( "", PT_CLIENT_DATA );
     sw.FileName += str;
 
     // Add video in sequence
@@ -5954,7 +5948,7 @@ void FOClient::PlayVideo()
     CurVideo->AverageRenderTime = 0.0;
 
     // Open file
-    if( !CurVideo->RawData.LoadFile( video.FileName.c_str(), PT_CLIENT_DATA ) )
+    if( !CurVideo->RawData.LoadFile( video.FileName.c_str(), true ) )
     {
         WriteLogF( _FUNC_, " - Video file '%s' not found.\n", video.FileName.c_str() );
         SAFEDEL( CurVideo );
@@ -6648,7 +6642,8 @@ bool FOClient::ReloadScripts()
 
         // Fix slashes
         char dll_name_[ MAX_FOPATH ];
-        Str::Copy( dll_name_, dll_name );
+        Str::Copy( dll_name_, "Cache/" );
+        Str::Append( dll_name_, dll_name );
         Str::Replacement( dll_name_, '\\', '.' );
         Str::Replacement( dll_name_, '/', '.' );
         dll_name = dll_name_;
@@ -6658,7 +6653,7 @@ bool FOClient::ReloadScripts()
         if( dll.LoadStream( &dll_binary[ 0 ], (uint) dll_binary.size() ) )
         {
             dll.SwitchToWrite();
-            dll.SaveOutBufToFile( dll_name, PT_CLIENT_CACHE );
+            dll.SaveOutBufToFile( dll_name, true );
         }
     }
 
@@ -8084,7 +8079,7 @@ void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames )
     }
 
     for( ; k < Self->Preload3dFiles.size(); k++ )
-        Self->Preload3dFiles[ k ] = FileManager::GetDataPath( Self->Preload3dFiles[ k ].c_str(), PT_CLIENT_DATA );
+        Self->Preload3dFiles[ k ] = Self->Preload3dFiles[ k ].c_str();
 }
 
 void FOClient::SScriptFunc::Global_WaitPing()
@@ -8383,7 +8378,7 @@ bool FOClient::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
 
 uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name )
 {
-    return Self->AnimLoad( spr_name.c_str(), PT_CLIENT_DATA, RES_ATLAS_STATIC );
+    return Self->AnimLoad( spr_name.c_str(), RES_ATLAS_STATIC );
 }
 
 uint FOClient::SScriptFunc::Global_LoadSpriteHash( uint name_hash )
@@ -8664,7 +8659,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
         if( anim3d )
             SprMngr.FreePure3dAnimation( anim3d );
         SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_DATA, false );
+        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), false );
         SprMngr.PopAtlasType();
         DrawCritter3dCrType[ instance ] = model_name;
         DrawCritter3dFailToLoad[ instance ] = false;

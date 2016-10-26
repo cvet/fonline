@@ -310,17 +310,17 @@ void HexManager::ReloadSprites()
     curDataPrefix = GameOpt.MapDataPrefix->c_std_str();
 
     // Must be valid
-    picHex[ 0 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex1.png" ).c_str(), PT_CLIENT_DATA, true );
-    picHex[ 1 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex2.png" ).c_str(), PT_CLIENT_DATA, true );
-    picHex[ 2 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex3.png" ).c_str(), PT_CLIENT_DATA, true );
-    cursorPrePic = SprMngr.LoadAnimation( ( curDataPrefix + "move_pre.png" ).c_str(), PT_CLIENT_DATA, true );
-    cursorPostPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_post.png" ).c_str(), PT_CLIENT_DATA, true );
-    cursorXPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_x.png" ).c_str(), PT_CLIENT_DATA, true );
-    picTrack1 = SprMngr.LoadAnimation( ( curDataPrefix + "track1.png" ).c_str(), PT_CLIENT_DATA, true );
-    picTrack2 = SprMngr.LoadAnimation( ( curDataPrefix + "track2.png" ).c_str(), PT_CLIENT_DATA, true );
+    picHex[ 0 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex1.png" ).c_str(), true );
+    picHex[ 1 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex2.png" ).c_str(), true );
+    picHex[ 2 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex3.png" ).c_str(), true );
+    cursorPrePic = SprMngr.LoadAnimation( ( curDataPrefix + "move_pre.png" ).c_str(), true );
+    cursorPostPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_post.png" ).c_str(), true );
+    cursorXPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_x.png" ).c_str(), true );
+    picTrack1 = SprMngr.LoadAnimation( ( curDataPrefix + "track1.png" ).c_str(), true );
+    picTrack2 = SprMngr.LoadAnimation( ( curDataPrefix + "track2.png" ).c_str(), true );
 
     // May be null
-    picHexMask = SprMngr.LoadAnimation( ( curDataPrefix + "hex_mask.png" ).c_str(), PT_CLIENT_DATA );
+    picHexMask = SprMngr.LoadAnimation( ( curDataPrefix + "hex_mask.png" ).c_str() );
 
     // Rain
     SetRainAnimation( nullptr, nullptr );
@@ -744,8 +744,8 @@ void HexManager::SetRainAnimation( const char* fall_anim_name, const char* drop_
     else
         AnyFrames::Destroy( picRainDrop );
 
-    picRainFall = SprMngr.LoadAnimation( picRainFallName.c_str(), PT_CLIENT_DATA, true );
-    picRainDrop = SprMngr.LoadAnimation( picRainDropName.c_str(), PT_CLIENT_DATA, true );
+    picRainFall = SprMngr.LoadAnimation( picRainFallName.c_str(), true );
+    picRainDrop = SprMngr.LoadAnimation( picRainDropName.c_str(), true );
 }
 
 void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )

@@ -2,26 +2,12 @@
 #include "Exception.h"
 #include "Script.h"
 
-char DumpMessRus[] =
-{
-    "Пожалуйста вышлите этот файл '%s' на e-mail 'support@fonline.ru'."
-    "Тема письма должна содержать слово 'dump'. В письме укажите при "
-    "каких обстоятельствах произошел сбой. Спасибо."
-};
-
-char DumpMessEng[] =
+char DumpMess[] =
 {
     "Please send this file '%s' on e-mail 'support@fonline.ru'."
     "The theme of the letter should contain a word 'dump'. In the letter specify "
     "under what circumstances there was a failure. Thanks."
 };
-
-char* DumpMess = DumpMessEng;
-
-void SetExceptionsRussianText()
-{
-    DumpMess = DumpMessRus;
-}
 
 char AppName[ MAX_FOTEXT ] = { 0 };
 char AppVer[ MAX_FOTEXT ] = { 0 };
@@ -474,7 +460,7 @@ LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
+    FileManager::GetWritePath( dump_path_dir );
     # else
     Str::Copy( dump_path_dir, "./" );
     # endif

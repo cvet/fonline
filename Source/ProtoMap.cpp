@@ -1141,7 +1141,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
     // Save
     string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : string( GetName() ) ) + ".fomap";
-    if( !file.SaveFile( save_fname.c_str(), PT_ROOT ) )
+    if( !file.SaveFile( save_fname.c_str(), false ) )
     {
         WriteLog( "Unable write file '%s' in modules.\n", save_fname.c_str() );
         return false;
@@ -1159,7 +1159,7 @@ bool ProtoMap::IsMapFile( const char* fname )
     {
         // Check text format
         IniParser txt;
-        if( !txt.AppendFile( fname, PT_ROOT ) )
+        if( !txt.AppendFile( fname, false ) )
             return false;
         return txt.IsApp( "Header" ) && txt.IsApp( "Tiles" ) && txt.IsApp( "Objects" );
     }

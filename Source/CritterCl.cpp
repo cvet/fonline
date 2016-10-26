@@ -895,11 +895,11 @@ void CritterCl::RefreshAnim()
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = nullptr;
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( GetModelName() ), PT_CLIENT_DATA, true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( GetModelName() ), true );
     if( anim3d )
     {
         Anim3d = anim3d;
-        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::GetName( GetModelName() ), PT_CLIENT_DATA, false );
+        Anim3dStay = SprMngr.LoadPure3dAnimation( Str::GetName( GetModelName() ), false );
 
         Anim3d->SetDir( GetDir() );
         SprId = Anim3d->SprId;

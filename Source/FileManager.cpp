@@ -135,75 +135,72 @@ uchar* FileManager::ReleaseBuffer()
     return tmp;
 }
 
-bool FileManager::LoadFile( const char* path, bool from_data, bool no_read_data /* = false */  )
+bool FileManager::LoadFileFromData( const char* path, bool no_read /* = false */ )
 {
     UnloadFile();
 
-    if( !path || !path[ 0 ] )
-        return false;
+    // Make data path
+    char data_path[ MAX_FOPATH ];
+    Str::Copy( data_path, path );
+    FormatPath( data_path );
+    char data_path_lower[ MAX_FOPATH ];
+    Str::Copy( data_path_lower, data_path );
+    Str::Lower( data_path_lower );
 
-    if( from_data )
+    // Find file in every data file
+    for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
-        // Make data path
-        char data_path[ MAX_FOPATH ];
-        Str::Copy( data_path, path );
-        FormatPath( data_path );
-        char data_path_lower[ MAX_FOPATH ];
-        Str::Copy( data_path_lower, data_path );
-        Str::Lower( data_path_lower );
-
-        // Find file in every data file
-        for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
+        DataFile* dat = *it;
+        if( !no_read )
         {
-            DataFile* dat = *it;
-            if( !no_read_data )
+            fileBuf = dat->OpenFile( data_path, data_path_lower, fileSize, writeTime );
+            if( fileBuf )
             {
-                fileBuf = dat->OpenFile( data_path, data_path_lower, fileSize, writeTime );
-                if( fileBuf )
-                {
-                    curPos = 0;
-                    return true;
-                }
-            }
-            else
-            {
-                if( dat->IsFilePresent( data_path, data_path_lower, fileSize, writeTime ) )
-                    return true;
-            }
-        }
-    }
-    else
-    {
-        char folder_path[ MAX_FOPATH ] = { 0 };
-        Str::Copy( folder_path, path );
-        FormatPath( folder_path );
-
-        void* file = FileOpen( folder_path, false );
-        if( file )
-        {
-            writeTime = FileGetWriteTime( file );
-            fileSize = FileGetSize( file );
-
-            if( no_read_data )
-            {
-                FileClose( file );
+                curPos = 0;
                 return true;
             }
+        }
+        else
+        {
+            if( dat->IsFilePresent( data_path, data_path_lower, fileSize, writeTime ) )
+                return true;
+        }
+    }
 
-            uchar* buf = new uchar[ fileSize + 1 ];
-            if( !buf )
-                return false;
+    return false;
+}
 
-            bool result = FileRead( file, buf, fileSize );
+bool FileManager::LoadFileFromDisk( const char* path, bool no_read /* = false */ )
+{
+    char folder_path[ MAX_FOPATH ] = { 0 };
+    Str::Copy( folder_path, path );
+    FormatPath( folder_path );
+
+    void* file = FileOpen( folder_path, false );
+    if( file )
+    {
+        writeTime = FileGetWriteTime( file );
+        fileSize = FileGetSize( file );
+
+        if( no_read )
+        {
             FileClose( file );
-            if( !result )
-                return false;
-
-            fileBuf = buf;
-            fileBuf[ fileSize ] = 0;
-            curPos = 0;
             return true;
         }
+
+        uchar* buf = new uchar[ fileSize + 1 ];
+        if( !buf )
+            return false;
+
+        bool result = FileRead( file, buf, fileSize );
+        FileClose( file );
+        if( !result )
+            return false;
+
+        fileBuf = buf;
+        fileBuf[ fileSize ] = 0;
+        curPos = 0;
+        return true;
     }
 
     return false;
@@ -458,18 +455,34 @@ void FileManager::SetPosOutBuf( uint pos )
     posOutBuf = pos;
 }
 
-bool FileManager::SaveOutBufToFile( const char* fname, bool to_data )
+bool FileManager::SaveFileToData( const char* fname )
 {
     RUNTIME_ASSERT( dataOutBuf || !endOutBuf );
 
-    if( !fname )
+    char fpath[ MAX_FOPATH ];
+    Str::Copy( fpath, GetWritePath( fname ) );
+    FormatPath( fpath );
+
+    void* file = FileOpen( fpath, true );
+    if( !file )
         return false;
 
+    if( !FileWrite( file, dataOutBuf, endOutBuf ) )
+    {
+        FileClose( file );
+        return false;
+    }
+
+    FileClose( file );
+    return true;
+}
+
+bool FileManager::SaveFileToDisk( const char* fname )
+{
+    RUNTIME_ASSERT( dataOutBuf || !endOutBuf );
+
     char fpath[ MAX_FOPATH ];
-    if( to_data )
-        Str::Copy( fpath, GetWritePath( fname ) );
-    else
-        Str::Copy( fpath, fname );
+    Str::Copy( fpath, fname );
     FormatPath( fpath );
 
     void* file = FileOpen( fpath, true );
@@ -943,7 +956,7 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
             if( link_ext && Str::CompareCase( link_ext, "link" ) )
             {
                 FileManager link;
-                if( !link.LoadFile( path.c_str(), false ) )
+                if( !link.LoadAnyFile( path.c_str() ) )
                 {
                     WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", path.c_str() );
                     continue;

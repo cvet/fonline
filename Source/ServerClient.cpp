@@ -647,7 +647,7 @@ void FOServer::Process_CreateClient( Client* cl )
         {
             // Avoid created files rewriting
             char fname[ MAX_FOPATH ];
-            FileManager::GetWritePath( cl->Name, PT_SERVER_CLIENTS, fname );
+            FileManager::GetWritePath( "Save/Clients/", fname );
             Str::Append( fname, ".foclient" );
             exist = FileExist( fname );
         }
@@ -739,7 +739,7 @@ void FOServer::Process_CreateClient( Client* cl )
 
     // Add name in clients names cache file
     char  cache_fname[ MAX_FOPATH ];
-    FileManager::GetWritePath( "ClientsList.txt", PT_SERVER_CACHE, cache_fname );
+    FileManager::GetWritePath( "Cache/ClientsList.txt", cache_fname );
     void* cache_file = FileOpenForAppend( cache_fname );
     if( cache_file )
     {

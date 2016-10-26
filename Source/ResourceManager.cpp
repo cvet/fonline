@@ -18,7 +18,7 @@ void ResourceManager::Refresh()
         {
             // Hash all files
             StrVec file_names;
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, nullptr, file_names );
+            data_file->GetFileNames( CLIENT_DATA, true, nullptr, file_names );
             char   buf[ MAX_FOTEXT ];
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
             {
@@ -37,18 +37,18 @@ void ResourceManager::Refresh()
 
             // Splashes
             StrVec splashes;
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_SPLASH ), true, "rix", splashes );
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_SPLASH ), true, "png", splashes );
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_SPLASH ), true, "jpg", splashes );
+            data_file->GetFileNames( "Splash/", true, "rix", splashes );
+            data_file->GetFileNames( "Splash/", true, "png", splashes );
+            data_file->GetFileNames( "Splash/", true, "jpg", splashes );
             for( auto it = splashes.begin(), end = splashes.end(); it != end; ++it )
                 if( std::find( splashNames.begin(), splashNames.end(), *it ) == splashNames.end() )
                     splashNames.push_back( *it );
 
             // Sound names
             StrVec sounds;
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "wav", sounds );
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "acm", sounds );
-            data_file->GetFileNames( FileManager::GetDataPath( "", PT_CLIENT_DATA ), true, "ogg", sounds );
+            data_file->GetFileNames( "", true, "wav", sounds );
+            data_file->GetFileNames( "", true, "acm", sounds );
+            data_file->GetFileNames( "", true, "ogg", sounds );
             char sound_name[ MAX_FOPATH ];
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
             {
@@ -113,8 +113,8 @@ void ResourceManager::ReinitializeDynamicAtlas()
     SprMngr.InitializeEgg( "TransparentEgg.png" );
     AnyFrames::Destroy( CritterDefaultAnim );
     AnyFrames::Destroy( ItemHexDefaultAnim );
-    CritterDefaultAnim = SprMngr.LoadAnimation( "CritterStub.png", PT_CLIENT_DATA, true );
-    ItemHexDefaultAnim = SprMngr.LoadAnimation( "ItemStub.png", PT_CLIENT_DATA, true );
+    CritterDefaultAnim = SprMngr.LoadAnimation( "CritterStub.png", true );
+    ItemHexDefaultAnim = SprMngr.LoadAnimation( "ItemStub.png", true );
     SprMngr.PopAtlasType();
 }
 
@@ -131,7 +131,7 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
         return nullptr;
 
     SprMngr.PushAtlasType( res_type );
-    AnyFrames* anim = SprMngr.LoadAnimation( fname, PT_CLIENT_DATA, false, true );
+    AnyFrames* anim = SprMngr.LoadAnimation( fname, false, true );
     SprMngr.PopAtlasType();
 
     loadedAnims.insert( PAIR( name_hash, LoadedAnim( res_type, anim ) ) );
@@ -190,7 +190,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                     if( str->length() )
                     {
                         SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-                        anim = SprMngr.LoadAnimation( str->c_str(), PT_CLIENT_DATA );
+                        anim = SprMngr.LoadAnimation( str->c_str() );
                         SprMngr.PopAtlasType();
                         str->Release();
 
@@ -453,13 +453,13 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( hash model_name, uint anim1, uin
     // Try load fofrm
     const char* name = Str::GetName( model_name );
     Str::Format( spr_name, "%s%c%c.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
-    AnyFrames* frames = SprMngr.LoadAnimation( spr_name, PT_CLIENT_DATA );
+    AnyFrames* frames = SprMngr.LoadAnimation( spr_name );
 
     // Try load fallout frames
     if( !frames )
     {
         Str::Format( spr_name, "%s%c%c.frm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
-        frames = SprMngr.LoadAnimation( spr_name, PT_CLIENT_DATA );
+        frames = SprMngr.LoadAnimation( spr_name );
     }
     SprMngr.PopAtlasType();
 
@@ -615,7 +615,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
     }
 
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), PT_CLIENT_DATA, true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), true );
     SprMngr.PopAtlasType();
     if( !anim3d )
         return nullptr;
@@ -652,7 +652,7 @@ AnyFrames* ResourceManager::GetRandomSplash()
     int rnd = Random( 0, (int) splashNames.size() - 1 );
     static AnyFrames* splash = nullptr;
     SprMngr.PushAtlasType( RES_ATLAS_SPLASH, true );
-    splash = SprMngr.ReloadAnimation( splash, splashNames[ rnd ].c_str(), PT_CLIENT_DATA );
+    splash = SprMngr.ReloadAnimation( splash, splashNames[ rnd ].c_str() );
     SprMngr.PopAtlasType();
     return splash;
 }

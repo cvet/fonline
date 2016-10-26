@@ -1198,7 +1198,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
                     bool        skip_making_zip = true;
                     FileManager zip_file;
-                    if( !zip_file.LoadFile( res_name_zip.c_str(), PT_SERVER_UPDATE, true ) )
+                    if( !zip_file.LoadFile( res_name_zip.c_str(), , true ) )
                         skip_making_zip = false;
 
                     while( resources.IsNextFile() )
@@ -1216,7 +1216,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     {
                         WriteLog( "Pack resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
 
-                        string  zip_path = FileManager::GetDataPath( res_name_zip.c_str(), PT_SERVER_UPDATE );
+                        string  zip_path = string( "Update/" ) + res_name_zip;
                         CreateDirectoryTree( zip_path.c_str() );
                         zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
                         if( zip )
@@ -1271,8 +1271,9 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                         FileManager& file = resources.GetNextFile( nullptr, &path );
                         char         fname[ MAX_FOTEXT ];
                         FileManager::ExtractFileName( path, fname );
+                        Str::Insert(fname, "Update/");
                         FileManager  update_file;
-                        if( !update_file.LoadFile( fname, PT_SERVER_UPDATE, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
+                        if( !update_file.LoadFile( fname, true, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
                         {
                             if( !log_shown )
                             {

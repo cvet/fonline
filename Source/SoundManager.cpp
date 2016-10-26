@@ -271,7 +271,7 @@ Sound* SoundManager::Load( const char* fname, bool is_music )
 bool SoundManager::LoadWAV( Sound* sound, const char* fname )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, PT_CLIENT_DATA ) )
+    if( !fm.LoadFile( fname, true ) )
         return false;
 
     uint dw_buf = fm.GetLEUInt();
@@ -372,7 +372,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
 bool SoundManager::LoadACM( Sound* sound, const char* fname, bool is_music )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, PT_CLIENT_DATA ) )
+    if( !fm.LoadFile( fname, true ) )
         return false;
 
     int                     channels = 0;
@@ -443,7 +443,7 @@ long Ogg_tell_func( void* datasource )
 bool SoundManager::LoadOGG( Sound* sound, const char* fname )
 {
     FileManager* fm = new FileManager();
-    if( !fm || !fm->LoadFile( fname, PT_CLIENT_DATA ) )
+    if( !fm || !fm->LoadFile( fname, true ) )
     {
         SAFEDEL( fm );
         return false;
@@ -619,7 +619,7 @@ bool SoundManager::PlaySound( const char* name )
     StrMap& names = ResMngr.GetSoundNames();
     auto    it = names.find( name_ );
     if( it != names.end() )
-        return Load( it->second.c_str(), PT_CLIENT_DATA ) != nullptr;
+        return Load( it->second.c_str(), false ) != nullptr;
 
     // Check random pattern 'NAME_X'
     uint count = 0;
