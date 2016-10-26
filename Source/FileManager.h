@@ -13,8 +13,7 @@ public:
     static bool LoadDataFile( const char* path );
     static void ClearDataFiles();
 
-    bool   LoadFileFromData( const char* path, bool no_read = false );
-    bool   LoadFileFromDisk( const char* path, bool no_read = false );
+    bool   LoadFile( const char* path, bool no_read = false );
     bool   LoadStream( const uchar* stream, uint length );
     void   UnloadFile();
     uchar* ReleaseBuffer();
@@ -44,8 +43,7 @@ public:
     void   SetPosOutBuf( uint pos );
     uchar* GetOutBuf()    { return dataOutBuf; }
     uint   GetOutBufLen() { return endOutBuf; }
-    bool   SaveFileToData( const char* fname );
-    bool   SaveFileToDisk( const char* fname );
+    bool   SaveFile( const char* fname );
 
     void SetData( void* data, uint len );
     void SetStr( const char* fmt, ... );

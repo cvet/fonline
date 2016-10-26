@@ -304,7 +304,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
     char        fname[ MAX_FOPATH ];
     Str::Format( fname, "%s.fofnt", font_name );
     FileManager fm;
-    if( !fm.LoadFile( fname, true ) )
+    if( !fm.LoadFile( fname ) )
     {
         WriteLogF( _FUNC_, " - File '%s' not found.\n", fname );
         return false;
@@ -544,7 +544,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     FileManager fm;
     FileManager fm_tex;
 
-    if( !fm.LoadFile( Str::FormatBuf( "%s.fnt", font_name ), true ) )
+    if( !fm.LoadFile( Str::FormatBuf( "%s.fnt", font_name ) ) )
     {
         WriteLogF( _FUNC_, " - Font file '%s' not found.\n", Str::FormatBuf( "%s.fnt", font_name ) );
         return false;

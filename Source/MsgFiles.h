@@ -49,7 +49,7 @@ public:
     // Serialization
     void GetBinaryData( UCharVec& data );
     bool LoadFromBinaryData( const UCharVec& data );
-    bool LoadFromFile( const char* fname, bool from_data );
+    bool LoadFromFile( const char* fname );
     bool LoadFromString( const char* str, uint str_len );
     void LoadFromMap( const StrMap& kv );
     bool SaveToFile( const char* fname, bool to_data );

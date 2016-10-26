@@ -256,12 +256,12 @@ bool FOMsg::LoadFromBinaryData( const UCharVec& data )
     return true;
 }
 
-bool FOMsg::LoadFromFile( const char* fname, bool from_data )
+bool FOMsg::LoadFromFile( const char* fname )
 {
     Clear();
 
     FileManager file;
-    if( !file.LoadFile( fname, from_data ) )
+    if( !file.LoadFile( fname ) )
         return false;
 
     return LoadFromString( (char*) file.GetBuf(), file.GetFsize() );
@@ -372,7 +372,7 @@ bool FOMsg::SaveToFile( const char* fname, bool to_data )
 
     FileManager fm;
     fm.SetData( buf, buf_len );
-    if( !fm.SaveOutBufToFile( fname, to_data ) )
+    if( !fm.SaveFile( fname ) )
         return false;
 
     return true;

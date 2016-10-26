@@ -1362,7 +1362,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
         Str::Copy( fname_, fname );
         char* ext = (char*) FileManager::GetExtension( fname_ );
         *( ext + 2 ) = '0';
-        if( !fm.LoadFile( fname_, true ) )
+        if( !fm.LoadFile( fname_ ) )
             return nullptr;
         load_from_fr = true;
     }
@@ -1413,7 +1413,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
             Str::Copy( fname_, fname );
             char* ext = (char*) FileManager::GetExtension( fname_ );
             *( ext + 2 ) = '0' + dir;
-            if( !fm.LoadFile( fname_, true ) )
+            if( !fm.LoadFile( fname_ ) )
             {
                 if( dir > 1 )
                 {
@@ -1455,7 +1455,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
         Str::Copy( palette_name, fname );
         Str::Copy( (char*) FileManager::GetExtension( palette_name ), 4, "pal" );
         FileManager fm_palette;
-        if( fm_palette.LoadFile( palette_name, true ) )
+        if( fm_palette.LoadFile( palette_name ) )
         {
             for( uint i = 0; i < 256; i++ )
             {
@@ -1640,7 +1640,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
 AnyFrames* SpriteManager::LoadAnimationRix( const char* fname )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, true ) )
+    if( !fm.LoadFile( fname ) )
         return nullptr;
 
     SpriteInfo* si = new SpriteInfo();
@@ -1685,9 +1685,10 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
         return nullptr;
 
     // Load ini parser
-    IniParser fofrm( fm.GetCStr() );
+    IniParser fofrm;
+    fofrm.AppendStr( fm.GetCStr() );
 
-    ushort    frm_fps = fofrm.GetInt( "", "fps", 0 );
+    ushort frm_fps = fofrm.GetInt( "", "fps", 0 );
     if( !frm_fps )
         frm_fps = 10;
 
@@ -2002,7 +2003,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname )
             return nullptr;
 
         FileManager fm;
-        if( !fm.LoadFile( file_name, true ) )
+        if( !fm.LoadFile( file_name ) )
             return nullptr;
 
         struct ArtHeader
@@ -2354,7 +2355,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname )
         if( index == -1 )
         {
             FileManager fm;
-            if( !fm.LoadFile( file_name, true ) )
+            if( !fm.LoadFile( file_name ) )
                 return nullptr;
 
             if( fm.GetFsize() > 1000000 )                 // 1mb
@@ -2742,7 +2743,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname )
 {
     // Open file
     FileManager fm;
-    if( !fm.LoadFile( fname, true ) )
+    if( !fm.LoadFile( fname ) )
         return nullptr;
 
     // Read header
@@ -2838,7 +2839,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname )
 {
     // Open file
     FileManager fm;
-    if( !fm.LoadFile( fname, true ) )
+    if( !fm.LoadFile( fname ) )
         return nullptr;
 
     // Read header
@@ -2956,7 +2957,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname )
 AnyFrames* SpriteManager::LoadAnimationMos( const char* fname )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, true ) )
+    if( !fm.LoadFile( fname ) )
         return nullptr;
 
     // Read signature
@@ -3091,7 +3092,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname )
 
     // Load file
     FileManager fm;
-    if( !fm.LoadFile( file_name, true ) )
+    if( !fm.LoadFile( file_name ) )
         return nullptr;
 
     // Read signature
@@ -3384,7 +3385,7 @@ bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const char* fnam
             fm.SetData( si->Data, si->Width * si->Height * 4 );
         }
     }
-    return fm.SaveOutBufToFile( fname, true );
+    return fm.SaveFile( fname );
 }
 
 bool SpriteManager::TryLoadAnimationInFastFormat( const char* fname, FileManager& fm, AnyFrames*& anim )
@@ -3393,7 +3394,7 @@ bool SpriteManager::TryLoadAnimationInFastFormat( const char* fname, FileManager
     anim = nullptr;
 
     // Load file
-    if( !fm.LoadFile( fname, true ) )
+    if( !fm.LoadFile( fname ) )
         return true;
 
     // Check for fonline cached format

@@ -271,7 +271,7 @@ Sound* SoundManager::Load( const char* fname, bool is_music )
 bool SoundManager::LoadWAV( Sound* sound, const char* fname )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, true ) )
+    if( !fm.LoadFile( fname ) )
         return false;
 
     uint dw_buf = fm.GetLEUInt();
@@ -372,7 +372,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
 bool SoundManager::LoadACM( Sound* sound, const char* fname, bool is_music )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname, true ) )
+    if( !fm.LoadFile( fname ) )
         return false;
 
     int                     channels = 0;
@@ -443,7 +443,7 @@ long Ogg_tell_func( void* datasource )
 bool SoundManager::LoadOGG( Sound* sound, const char* fname )
 {
     FileManager* fm = new FileManager();
-    if( !fm || !fm->LoadFile( fname, true ) )
+    if( !fm || !fm->LoadFile( fname ) )
     {
         SAFEDEL( fm );
         return false;

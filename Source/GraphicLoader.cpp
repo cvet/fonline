@@ -47,7 +47,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
 
     // Load file data
     FileManager file;
-    if( !file.LoadFile( fname, true ) )
+    if( !file.LoadFile( fname ) )
     {
         WriteLogF( _FUNC_, " - 3d file '%s' not found.\n", fname );
         return nullptr;
@@ -184,7 +184,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     FileManager::ExtractDir( model_path, path );
     Str::Append( path, fname );
     FileManager file;
-    file.LoadFile( path, true );
+    file.LoadFile( path );
     if( !file.IsLoaded() )
     {
         WriteLogF( _FUNC_, " - Effect file '%s' not found.\n", fname );
@@ -363,7 +363,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
     FileManager file_binary;
     if( GL_HAS( get_program_binary ) )
     {
-        if( file_binary.LoadFile( binary_fname, true ) )
+        if( file_binary.LoadFile( binary_fname ) )
         {
             if( file.GetWriteTime() > file_binary.GetWriteTime() )
                 file_binary.UnloadFile();                      // Disable loading from this binary, because its outdated
@@ -560,7 +560,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
             file_binary.SetBEUInt( format );
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );
-            if( !file_binary.SaveOutBufToFile( binary_fname, true ) )
+            if( !file_binary.SaveFile( binary_fname ) )
                 WriteLogF( _FUNC_, " - Can't save effect '%s' pass %u in binary '%s'.\n", fname, pass, binary_fname );
         }
     }
@@ -928,7 +928,7 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
     // Write to disk
     FileManager fm;
     fm.SetData( &result_png[ 0 ], (uint) result_png.size() );
-    fm.SaveOutBufToFile( fname, false );
+    fm.SaveFile( fname );
 }
 
 uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height )

@@ -135,72 +135,72 @@ uchar* FileManager::ReleaseBuffer()
     return tmp;
 }
 
-bool FileManager::LoadFileFromData( const char* path, bool no_read /* = false */ )
+bool FileManager::LoadFile( const char* path, bool no_read /* = false */ )
 {
     UnloadFile();
 
-    // Make data path
-    char data_path[ MAX_FOPATH ];
-    Str::Copy( data_path, path );
-    FormatPath( data_path );
-    char data_path_lower[ MAX_FOPATH ];
-    Str::Copy( data_path_lower, data_path );
-    Str::Lower( data_path_lower );
-
-    // Find file in every data file
-    for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
+    if( path[ 0 ] != '.' && path[ 0 ] != '/' && path[ 1 ] != ':' )
     {
-        DataFile* dat = *it;
-        if( !no_read )
+        // Make data path
+        char data_path[ MAX_FOPATH ];
+        Str::Copy( data_path, path );
+        FormatPath( data_path );
+        char data_path_lower[ MAX_FOPATH ];
+        Str::Copy( data_path_lower, data_path );
+        Str::Lower( data_path_lower );
+
+        // Find file in every data file
+        for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
         {
-            fileBuf = dat->OpenFile( data_path, data_path_lower, fileSize, writeTime );
-            if( fileBuf )
+            DataFile* dat = *it;
+            if( !no_read )
             {
-                curPos = 0;
-                return true;
+                fileBuf = dat->OpenFile( data_path, data_path_lower, fileSize, writeTime );
+                if( fileBuf )
+                {
+                    curPos = 0;
+                    return true;
+                }
+            }
+            else
+            {
+                if( dat->IsFilePresent( data_path, data_path_lower, fileSize, writeTime ) )
+                    return true;
             }
         }
-        else
-        {
-            if( dat->IsFilePresent( data_path, data_path_lower, fileSize, writeTime ) )
-                return true;
-        }
     }
-
-    return false;
-}
-
-bool FileManager::LoadFileFromDisk( const char* path, bool no_read /* = false */ )
-{
-    char folder_path[ MAX_FOPATH ] = { 0 };
-    Str::Copy( folder_path, path );
-    FormatPath( folder_path );
-
-    void* file = FileOpen( folder_path, false );
-    if( file )
+    else
     {
-        writeTime = FileGetWriteTime( file );
-        fileSize = FileGetSize( file );
+        char folder_path[ MAX_FOPATH ] = { 0 };
+        Str::Copy( folder_path, path );
+        FormatPath( folder_path );
 
-        if( no_read )
+        void* file = FileOpen( folder_path, false );
+        if( file )
         {
+            writeTime = FileGetWriteTime( file );
+            fileSize = FileGetSize( file );
+
+            if( no_read )
+            {
+                FileClose( file );
+                return true;
+            }
+
+            uchar* buf = new uchar[ fileSize + 1 ];
+            if( !buf )
+                return false;
+
+            bool result = FileRead( file, buf, fileSize );
             FileClose( file );
+            if( !result )
+                return false;
+
+            fileBuf = buf;
+            fileBuf[ fileSize ] = 0;
+            curPos = 0;
             return true;
         }
-
-        uchar* buf = new uchar[ fileSize + 1 ];
-        if( !buf )
-            return false;
-
-        bool result = FileRead( file, buf, fileSize );
-        FileClose( file );
-        if( !result )
-            return false;
-
-        fileBuf = buf;
-        fileBuf[ fileSize ] = 0;
-        curPos = 0;
-        return true;
     }
 
     return false;
@@ -455,34 +455,12 @@ void FileManager::SetPosOutBuf( uint pos )
     posOutBuf = pos;
 }
 
-bool FileManager::SaveFileToData( const char* fname )
+bool FileManager::SaveFile( const char* fname )
 {
     RUNTIME_ASSERT( dataOutBuf || !endOutBuf );
 
     char fpath[ MAX_FOPATH ];
     Str::Copy( fpath, GetWritePath( fname ) );
-    FormatPath( fpath );
-
-    void* file = FileOpen( fpath, true );
-    if( !file )
-        return false;
-
-    if( !FileWrite( file, dataOutBuf, endOutBuf ) )
-    {
-        FileClose( file );
-        return false;
-    }
-
-    FileClose( file );
-    return true;
-}
-
-bool FileManager::SaveFileToDisk( const char* fname )
-{
-    RUNTIME_ASSERT( dataOutBuf || !endOutBuf );
-
-    char fpath[ MAX_FOPATH ];
-    Str::Copy( fpath, fname );
     FormatPath( fpath );
 
     void* file = FileOpen( fpath, true );
@@ -766,8 +744,8 @@ void FileManager::ExtractFileName( const char* path, char* name )
 void FileManager::CombinePath( const char* base_path, const char* path, char* result )
 {
     FileManager::ExtractDir( base_path, result );
-    if (result[0] && result[Str::Length(result) - 1] != '/' && path[0] != '/')
-        Str::Append(result, MAX_FOTEXT, "/");
+    if( result[ 0 ] && result[ Str::Length( result ) - 1 ] != '/' && path[ 0 ] != '/' )
+        Str::Append( result, MAX_FOTEXT, "/" );
     Str::Append( result, MAX_FOTEXT, path );
     FormatPath( result );
 }
@@ -956,7 +934,7 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
             if( link_ext && Str::CompareCase( link_ext, "link" ) )
             {
                 FileManager link;
-                if( !link.LoadAnyFile( path.c_str() ) )
+                if( !link.LoadFile( path.c_str() ) )
                 {
                     WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", path.c_str() );
                     continue;
@@ -983,7 +961,7 @@ bool FilesCollection::IsNextFile()
 FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const char** path /* = NULL */, const char** relative_path /* = NULL */, bool no_read_data /* = false */ )
 {
     curFileIndex++;
-    curFile.LoadFile( filePaths[ curFileIndex - 1 ].c_str(), false, no_read_data );
+    curFile.LoadFile( filePaths[ curFileIndex - 1 ].c_str(), no_read_data );
     RUNTIME_ASSERT( curFile.IsLoaded() );
     if( name )
         *name = fileNames[ curFileIndex - 1 ].c_str();
@@ -1001,7 +979,7 @@ FileManager& FilesCollection::FindFile( const char* name, const char** path /* =
     {
         if( fileNames[ i ] == name )
         {
-            curFile.LoadFile( filePaths[ i ].c_str(), false, no_read_data );
+            curFile.LoadFile( filePaths[ i ].c_str(), no_read_data );
             RUNTIME_ASSERT( curFile.IsLoaded() );
             if( path )
                 *path = filePaths[ i ].c_str();

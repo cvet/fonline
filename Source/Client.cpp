@@ -261,10 +261,9 @@ bool FOClient::Init()
 
     // Language Packs
     const char* lang_name = MainConfig->GetStr( "", "Language", DEFAULT_LANGUAGE );
-
     CurLang.LoadFromCache( lang_name );
     MsgUserHolo = new FOMsg();
-    MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE, true );
+    MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE );
 
     // Update
     UpdateFiles( true );
@@ -4412,13 +4411,13 @@ void FOClient::Net_OnUpdateFilesList()
         else
         {
             FileManager file;
-            if( file.LoadFile( name, true, true ) && file.GetFsize() == size )
+            if( file.LoadFile( name, true ) && file.GetFsize() == size )
             {
                 if( hash == 0 )
                     continue;
 
                 file.UnloadFile();
-                if( file.LoadFile( name, true ) && file.GetFsize() > 0 && hash == Crypt.Crc32( file.GetBuf(), file.GetFsize() ) )
+                if( file.LoadFile( name ) && file.GetFsize() > 0 && hash == Crypt.Crc32( file.GetBuf(), file.GetFsize() ) )
                     continue;
             }
         }
@@ -4468,7 +4467,7 @@ void FOClient::Net_OnUpdateFileData()
         if( update_file.Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
         {
             FileManager cache_data;
-            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp" ), true ) )
+            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp" ) ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update.temp file!" );
                 return;
@@ -5948,7 +5947,7 @@ void FOClient::PlayVideo()
     CurVideo->AverageRenderTime = 0.0;
 
     // Open file
-    if( !CurVideo->RawData.LoadFile( video.FileName.c_str(), true ) )
+    if( !CurVideo->RawData.LoadFile( video.FileName.c_str() ) )
     {
         WriteLogF( _FUNC_, " - Video file '%s' not found.\n", video.FileName.c_str() );
         SAFEDEL( CurVideo );
@@ -6653,7 +6652,7 @@ bool FOClient::ReloadScripts()
         if( dll.LoadStream( &dll_binary[ 0 ], (uint) dll_binary.size() ) )
         {
             dll.SwitchToWrite();
-            dll.SaveOutBufToFile( dll_name, true );
+            dll.SaveFile( dll_name );
         }
     }
 
@@ -8903,8 +8902,8 @@ void FOClient::SScriptFunc::Global_SetUserConfig( ScriptArray& key_values )
         cfg_user.SetStr( value.c_str() );
         cfg_user.SetStr( "\n" );
     }
-    cfg_user.SaveOutBufToFile( CONFIG_NAME, PT_CLIENT_CACHE );
+    cfg_user.SaveFile( "Cache/" CONFIG_NAME );
 }
 
-Map*      FOClient::SScriptFunc::ClientCurMap = nullptr;
-Location* FOClient::SScriptFunc::ClientCurLocation = nullptr;
+Map*      FOClient::SScriptFunc::ClientCurMap;
+Location* FOClient::SScriptFunc::ClientCurLocation;

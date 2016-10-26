@@ -140,9 +140,9 @@ void InitialSetup( uint argc, char** argv )
     MainConfig->AppendStr( InternalConfig );
 
     // File configs
-    MainConfig->AppendFile( "Cache/" CONFIG_NAME, true );
+    MainConfig->AppendFile( "Cache/" CONFIG_NAME );
     for( string& config : configs )
-        MainConfig->AppendFile( config.c_str(), false );
+        MainConfig->AppendFile( config.c_str() );
 
     // Command line config
     for( uint i = 0; i < argc; i++ )
@@ -847,14 +847,11 @@ void GetClientOptions()
     FileManager::InitDataFiles( CLIENT_DATA );
 
     // Cached configuration
-    MainConfig->AppendFile( "Cache/" CONFIG_NAME, true );
+    MainConfig->AppendFile( "Cache/" CONFIG_NAME );
 
     // Language
     READ_CFG_STR_DEF( *MainConfig, "Language", "russ" );
     GETOPTIONS_CMD_LINE_STR( buf, "Language" );
-    Str::Lower( buf );
-    if( Str::Compare( buf, "russ" ) )
-        SetExceptionsRussianText();
 
     // Int / Bool
     GameOpt.OpenGLDebug = MainConfig->GetInt( "", "OpenGLDebug", 0 ) != 0;

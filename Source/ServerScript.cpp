@@ -387,7 +387,7 @@ bool FOServer::ReloadClientScripts()
 
             // Load dll
             FileManager dll;
-            if( !dll.LoadFile( fname, false ) )
+            if( !dll.LoadFile( fname ) )
             {
                 if( !d )
                 {

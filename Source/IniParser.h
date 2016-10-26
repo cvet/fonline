@@ -19,12 +19,10 @@ private:
 
 public:
     IniParser();
-    IniParser( const char* str );
-    IniParser( const char* fname, bool from_data );
     void CollectContent() { collectContent = true; }
     void AppendStr( const char* buf );
-    bool AppendFile( const char* fname, bool from_data );
-    bool SaveFile( const char* fname, bool to_data );
+    bool AppendFile( const char* fname );
+    bool SaveFile( const char* fname );
     void Clear();
     bool IsLoaded();
 

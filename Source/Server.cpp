@@ -297,7 +297,7 @@ void FOServer::DeleteClientFile( const char* client_name )
 {
     // Make old name
     char clients_path[ MAX_FOPATH ];
-    FileManager::GetWritePath( "", PT_SERVER_CLIENTS, clients_path );
+    FileManager::GetWritePath( "Save/Clients/", clients_path );
     char old_client_fname[ MAX_FOPATH ];
     Str::Format( old_client_fname, "%s%s.client", clients_path, client_name );
 
@@ -2682,7 +2682,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         {
             string      base_code;
             FileManager dev_file;
-            if( dev_file.LoadFile( "__dev.fos", PT_CLIENT_DATA ) )
+            if( dev_file.LoadFile( "Scripts/__dev.fos" ) )
                 base_code = (char*) dev_file.GetBuf();
             else
                 base_code = "void Dummy(){}";
@@ -3388,9 +3388,9 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
 
     FileManager fm;
     const char* fname = ( expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE );
-    if( !fm.LoadFile( fname, PT_SERVER_BANS ) )
+    if( !fm.LoadFile( fname ) )
     {
-        WriteLogF( _FUNC_, " - Can't open file '%s'.\n", FileManager::GetDataPath( fname, PT_SERVER_BANS ) );
+        WriteLogF( _FUNC_, " - Can't open file '%s'.\n", fname );
         return;
     }
     fm.SwitchToWrite();
@@ -3408,8 +3408,8 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
         fm.SetStr( "Comment = %s\n", ban.BanInfo );
     fm.SetStr( "\n" );
 
-    if( !fm.SaveOutBufToFile( fname, PT_SERVER_BANS ) )
-        WriteLogF( _FUNC_, " - Unable to save file '%s'.\n", FileManager::GetWritePath( fname, PT_SERVER_BANS ) );
+    if( !fm.SaveFile( fname ) )
+        WriteLogF( _FUNC_, " - Unable to save file '%s'.\n", fname );
 }
 
 void FOServer::SaveBans()
@@ -3434,8 +3434,8 @@ void FOServer::SaveBans()
         fm.SetStr( "\n" );
     }
 
-    if( !fm.SaveOutBufToFile( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) )
-        WriteLogF( _FUNC_, " - Unable to save file '%s'.\n", FileManager::GetWritePath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) );
+    if( !fm.SaveFile( BANS_FNAME_ACTIVE ) )
+        WriteLogF( _FUNC_, " - Unable to save file '%s'.\n", BANS_FNAME_ACTIVE );
 }
 
 void FOServer::LoadBans()
@@ -3445,13 +3445,8 @@ void FOServer::LoadBans()
     Banned.clear();
     Banned.reserve( 1000 );
     IniParser bans_txt;
-    if( !bans_txt.AppendFile( BANS_FNAME_ACTIVE, PT_SERVER_BANS ) )
-    {
-        void* f = FileOpen( FileManager::GetWritePath( BANS_FNAME_ACTIVE, PT_SERVER_BANS ), true );
-        if( f )
-            FileClose( f );
+    if( !bans_txt.AppendFile( BANS_FNAME_ACTIVE ) )
         return;
-    }
 
     while( bans_txt.IsApp( "Ban" ) )
     {
@@ -3484,13 +3479,13 @@ bool FOServer::LoadClientsData()
 
     char client_name[ MAX_FOPATH ];
     char clients_path[ MAX_FOPATH ];
-    FileManager::GetDataPath( "", PT_SERVER_CLIENTS, clients_path );
+    Str::Copy( clients_path, "Save/Clients/" );
 
     // Get cache for clients
     istrstream* cache_str = nullptr;
     char*       cache_buf = nullptr;
     char        cache_fname[ MAX_FOPATH ];
-    Str::Copy( cache_fname, FileManager::GetDataPath( "ClientsList.txt", PT_SERVER_CACHE ) );
+    Str::Copy( cache_fname, "Cache/ClientsList.txt" );
 
     if( FileExist( "cache_fail" ) )
     {
@@ -3582,7 +3577,7 @@ bool FOServer::LoadClientsData()
         char      client_fname[ MAX_FOPATH ];
         Str::Format( client_fname, "%s%s", clients_path, client_name );
         IniParser client_data;
-        if( !client_data.AppendFile( client_fname, PT_ROOT ) )
+        if( !client_data.AppendFile( client_fname ) )
         {
             WriteLog( "Unable to open client save file '%s'.\n", client_fname );
             errors++;
@@ -3631,7 +3626,7 @@ bool FOServer::LoadClientsData()
 
     // Save cache
     if( !cache_str )
-        file_cache_write.SaveOutBufToFile( cache_fname, PT_ROOT );
+        file_cache_write.SaveFile( cache_fname );
 
     // Clean up
     if( file_find )
@@ -3661,12 +3656,13 @@ bool FOServer::SaveClient( Client* cl )
     RUNTIME_ASSERT( cl->GetId() );
 
     char fname[ MAX_FOPATH ];
-    Str::Copy( fname, cl->Name );
+    Str::Copy( fname, "Save/Clients/" );
+    Str::Append( fname, cl->Name );
     Str::Append( fname, ".foclient" );
 
     IniParser data;
     cl->Props.SaveToText( data.SetApp( "Client" ), &cl->Proto->Props );
-    if( !data.SaveFile( fname, PT_SERVER_CLIENTS ) )
+    if( !data.SaveFile( fname ) )
     {
         WriteLog( "Unable to save client '%s'.\n", fname );
         return false;
@@ -3681,8 +3677,8 @@ bool FOServer::LoadClient( Client* cl )
 
     char      fname[ MAX_FOPATH ];
     Str::Format( fname, "%s.foclient", cl->Name );
-    IniParser client_data( fname, PT_SERVER_CLIENTS );
-    if( !client_data.IsLoaded() )
+    IniParser client_data;
+    if( !client_data.AppendFile( fname ) )
     {
         WriteLog(  "Unable to open client save file '%s'.\n", fname );
         return false;
@@ -3754,7 +3750,7 @@ void FOServer::SaveWorld( const char* fname )
     char auto_fname[ MAX_FOPATH ];
     if( !fname )
     {
-        fname = Str::Format( auto_fname, "%sAuto%04d.foworld", FileManager::GetWritePath( "", PT_SERVER_SAVE ), SaveWorldIndex + 1 );
+        fname = Str::Format( auto_fname, "%sAuto%04d.foworld", FileManager::GetWritePath( "Save/" ), SaveWorldIndex + 1 );
         if( ++SaveWorldIndex >= WORLD_SAVE_MAX_INDEX )
             SaveWorldIndex = 0;
     }
@@ -3803,8 +3799,8 @@ bool FOServer::LoadWorld( const char* fname )
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
         {
             char auto_fname[ MAX_FOPATH ];
-            Str::Format( auto_fname, "Auto%04d.foworld", i );
-            if( data.AppendFile( auto_fname, PT_SERVER_SAVE ) )
+            Str::Format( auto_fname, "Save/Auto%04d.foworld", i );
+            if( data.AppendFile( auto_fname ) )
             {
                 WriteLog( "Load world from dump file '%s'.\n", auto_fname );
                 SaveWorldIndex = i;
@@ -3821,7 +3817,7 @@ bool FOServer::LoadWorld( const char* fname )
     }
     else
     {
-        if( !data.AppendFile( fname, PT_ROOT ) )
+        if( !data.AppendFile( fname ) )
         {
             WriteLog( "World dump file '%s' not found.\n", fname );
             return false;
@@ -3945,7 +3941,7 @@ void FOServer::Dump_Work( void* args )
             kv.insert( d->ExtraData.begin(), d->ExtraData.end() );
             d->Props->SaveToText( kv, d->ProtoProps );
             RUNTIME_ASSERT( !Str::Compare( d->TypeName.c_str(), "err.foclient" ) );
-            if( !client_data.SaveFile( d->TypeName.c_str(), PT_SERVER_CLIENTS ) )
+            if( !client_data.SaveFile( ( "Save/Clients/" + d->TypeName ).c_str() ) )
                 WriteLog( "Unable to save client to '%s'.\n", d->TypeName.c_str() );
 
             // Sleep some time
@@ -3971,7 +3967,7 @@ void FOServer::Dump_Work( void* args )
     Str::SaveHashes( data->SetApp( "Hashes" ) );
 
     // Save world to file
-    if( !data->SaveFile( fname, PT_ROOT ) )
+    if( !data->SaveFile( fname ) )
         WriteLog( "Unable to save world to '%s'.\n", fname );
 
     // Delete old dump files
@@ -4062,7 +4058,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 
     // Fill files
     StrVec file_paths;
-    FileManager::GetFolderFileNames( FileManager::GetDataPath( "", PT_SERVER_UPDATE ), true, nullptr, file_paths );
+    FileManager::GetFolderFileNames( "Update/", true, nullptr, file_paths );
     for( size_t i = 0; i < file_paths.size(); i++ )
     {
         string      file_path = file_paths[ i ];
@@ -4073,7 +4069,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
         if( ext && ( Str::CompareCase( ext, "crc" ) || Str::CompareCase( ext, "txt" ) || Str::CompareCase( ext, "lst" ) ) )
         {
             FileManager crc;
-            if( !crc.LoadFile( file_path.c_str(), PT_SERVER_UPDATE ) )
+            if( !crc.LoadFile( ( "Update/" + file_path ).c_str() ) )
             {
                 WriteLog( "Can't load file '%s'.\n", file_path.c_str() );
                 continue;
@@ -4090,7 +4086,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
         }
 
         FileManager file;
-        if( !file.LoadFile( file_path.c_str(), PT_SERVER_UPDATE ) )
+        if( !file.LoadFile( ( "Update/" + file_path ).c_str() ) )
         {
             WriteLog( "Can't load file '%s'.\n", file_path.c_str() );
             continue;

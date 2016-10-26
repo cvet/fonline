@@ -1374,7 +1374,7 @@ bool Animation3dEntity::Load( const char* name )
     {
         // Load main fo3d file
         FileManager fo3d;
-        if( !fo3d.LoadFileFromData( name ) )
+        if( !fo3d.LoadFile( name ) )
             return false;
         char* big_buf = Str::GetBigBuf();
         fo3d.CopyMem( big_buf, fo3d.GetFsize() );
@@ -1458,7 +1458,7 @@ bool Animation3dEntity::Load( const char* name )
 
                 // Load file
                 FileManager fo3d_ex;
-                if( !fo3d_ex.LoadFileFromData( fname ) )
+                if( !fo3d_ex.LoadFile( fname ) )
                 {
                     WriteLogF( _FUNC_, " - Include file '%s' not found.\n", fname );
                     continue;

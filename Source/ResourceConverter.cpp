@@ -1193,12 +1193,11 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
                 if( !Str::Substring( res_name, "_Raw" ) )
                 {
-                    string res_name_zip = res_name;
-                    res_name_zip.append( ".zip" );
-
+                    string res_name_zip = (string) res_name + ".zip";
+                    string  zip_path = (string) "Update/" + res_name_zip;
                     bool        skip_making_zip = true;
                     FileManager zip_file;
-                    if( !zip_file.LoadFile( res_name_zip.c_str(), , true ) )
+                    if( !zip_file.LoadFile( zip_path.c_str(), true ) )
                         skip_making_zip = false;
 
                     while( resources.IsNextFile() )
@@ -1216,7 +1215,6 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     {
                         WriteLog( "Pack resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
 
-                        string  zip_path = string( "Update/" ) + res_name_zip;
                         CreateDirectoryTree( zip_path.c_str() );
                         zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
                         if( zip )
@@ -1271,9 +1269,9 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                         FileManager& file = resources.GetNextFile( nullptr, &path );
                         char         fname[ MAX_FOTEXT ];
                         FileManager::ExtractFileName( path, fname );
-                        Str::Insert(fname, "Update/");
+                        Str::Insert( fname, "Update/" );
                         FileManager  update_file;
-                        if( !update_file.LoadFile( fname, true, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
+                        if( !update_file.LoadFile( fname, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
                         {
                             if( !log_shown )
                             {
@@ -1287,7 +1285,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                                 WriteLog( "File '%s' conversation error.\n", fname );
                                 continue;
                             }
-                            converted_file->SaveOutBufToFile( fname, PT_SERVER_UPDATE );
+                            converted_file->SaveFile( fname );
                             if( converted_file != &file )
                                 delete converted_file;
 
@@ -1322,7 +1320,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     }
 
     // Delete unnecessary update files
-    FilesCollection update_files( nullptr, FileManager::GetDataPath( "", PT_SERVER_UPDATE ) );
+    FilesCollection update_files( nullptr, "Update/" );
     while( update_files.IsNextFile() )
     {
         const char* path;
