@@ -1164,39 +1164,39 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
 
     if( !item_id )
     {
-        WriteLogF( _FUNC_, " - Item id is zero, from slot %u, to slot %u, critter '%s'.\n", from_slot, to_slot, GetInfo() );
+        WriteLog( "Item id is zero, from slot %u, to slot %u, critter '%s'.\n", from_slot, to_slot, GetInfo() );
         return false;
     }
 
     Item* item = GetItem( item_id, IsPlayer() );
     if( !item )
     {
-        WriteLogF( _FUNC_, " - Item not found, item id %u, critter '%s'.\n", item_id, GetInfo() );
+        WriteLog( "Item not found, item id %u, critter '%s'.\n", item_id, GetInfo() );
         return false;
     }
 
     if( item->GetCritSlot() != from_slot || from_slot == to_slot )
     {
-        WriteLogF( _FUNC_, " - Wrong slots, from slot %u, from slot real %u, to slot %u, item id %u, critter '%s'.\n", from_slot, item->GetCritSlot(), to_slot, item_id, GetInfo() );
+        WriteLog( "Wrong slots, from slot %u, from slot real %u, to slot %u, item id %u, critter '%s'.\n", from_slot, item->GetCritSlot(), to_slot, item_id, GetInfo() );
         return false;
     }
 
     if( to_slot != SLOT_GROUND && !SlotEnabled[ to_slot ] )
     {
-        WriteLogF( _FUNC_, " - Slot %u is not allowed, critter '%s'.\n", to_slot, GetInfo() );
+        WriteLog( "Slot %u is not allowed, critter '%s'.\n", to_slot, GetInfo() );
         return false;
     }
 
     if( to_slot == SLOT_GROUND && !ItemMngr.ItemCheckMove( item, item->GetCount(), this, this ) )
     {
-        WriteLogF( _FUNC_, " - Move item is not allwed, critter '%s'.\n", to_slot, GetInfo() );
+        WriteLog( "Move item is not allwed, critter '%s'.\n", to_slot, GetInfo() );
         return false;
     }
 
     Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : nullptr );
     if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, this, item, to_slot, item_swap ) )
     {
-        WriteLogF( _FUNC_, " - Can't move item '%s' to slot %u, critter '%s'.\n", item->GetName(), to_slot, GetInfo() );
+        WriteLog( "Can't move item '%s' to slot %u, critter '%s'.\n", item->GetName(), to_slot, GetInfo() );
         return false;
     }
 
@@ -1243,7 +1243,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         Map* map = MapMngr.GetMap( GetMapId() );
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found, map id %u, critter '%s'.\n", GetMapId(), GetInfo() );
+            WriteLog( "Map not found, map id %u, critter '%s'.\n", GetMapId(), GetInfo() );
             ItemMngr.DeleteItem( item );
             return true;
         }
@@ -1420,7 +1420,7 @@ bool Critter::SetScript( asIScriptFunction* func, bool first_time )
         func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script bind fail, critter '%s'.\n", GetInfo() );
+            WriteLog( "Script bind fail, critter '%s'.\n", GetInfo() );
             return false;
         }
         SetScriptId( func_num );
@@ -1959,11 +1959,10 @@ void Critter::RefreshName()
     {
         hash        dlg_pack_id = GetDialogId();
         DialogPack* dlg_pack = ( dlg_pack_id ? DlgMngr.GetDialog( dlg_pack_id ) : nullptr );
-        char        buf[ MAX_FOTEXT ];
         if( dlg_pack )
-            *NameStr = Str::Format( buf, "%s (Npc)", dlg_pack->PackName.c_str(), GetId() );
+            *NameStr = fmt::format( "{} {} (Npc)", dlg_pack->PackName.c_str(), GetId() );
         else
-            *NameStr = Str::Format( buf, "%u (Npc)", GetId() );
+            *NameStr = fmt::format( "{} (Npc)", GetId() );
     }
 }
 

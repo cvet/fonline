@@ -52,13 +52,13 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Critter proto '%s' not found.\n", Str::GetName( proto_id ) );
+        WriteLog( "Critter proto '%s' not found.\n", Str::GetName( proto_id ) );
         return nullptr;
     }
 
     if( !map || hx >= map->GetWidth() || hy >= map->GetHeight() )
     {
-        WriteLogF( _FUNC_, " - Wrong map values, hx %u, hy %u, map is nullptr '%s'.\n", hx, hy, !map ? "true" : "false" );
+        WriteLog( "Wrong map values, hx %u, hy %u, map is nullptr '%s'.\n", hx, hy, !map ? "true" : "false" );
         return nullptr;
     }
 
@@ -72,7 +72,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     {
         if( accuracy )
         {
-            WriteLogF( _FUNC_, " - Accuracy position busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
+            WriteLog( "Accuracy position busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
             return nullptr;
         }
 
@@ -87,7 +87,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
         {
             if( i >= 18 )
             {
-                WriteLogF( _FUNC_, " - All positions busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
+                WriteLog( "All positions busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
                 return nullptr;
             }
             cur_step++;

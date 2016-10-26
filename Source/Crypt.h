@@ -1,7 +1,7 @@
 #ifndef __CRYPT__
 #define __CRYPT__
 
-#include "Log.h"
+#include "Common.h"
 
 class CryptManager
 {

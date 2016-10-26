@@ -49,7 +49,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
     FileManager file;
     if( !file.LoadFile( fname ) )
     {
-        WriteLogF( _FUNC_, " - 3d file '%s' not found.\n", fname );
+        WriteLog( "3d file '%s' not found.\n", fname );
         return nullptr;
     }
 
@@ -187,7 +187,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     file.LoadFile( path );
     if( !file.IsLoaded() )
     {
-        WriteLogF( _FUNC_, " - Effect file '%s' not found.\n", fname );
+        WriteLog( "Effect file '%s' not found.\n", fname );
         return nullptr;
     }
 
@@ -318,7 +318,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     }
     if( fail )
     {
-        WriteLogF( _FUNC_, " - Invalid commands in effect '%s'.\n", fname );
+        WriteLog( "Invalid commands in effect '%s'.\n", fname );
         return nullptr;
     }
 
@@ -391,13 +391,13 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - Failed to link binary shader program '%s', effect '%s'.\n", binary_fname, fname );
+                    WriteLog( "Failed to link binary shader program '%s', effect '%s'.\n", binary_fname, fname );
                     GL( glDeleteProgram( program ) );
                 }
             }
             else
             {
-                WriteLogF( _FUNC_, " - Binary shader program '%s' truncated, effect '%s'.\n", binary_fname, fname );
+                WriteLog( "Binary shader program '%s' truncated, effect '%s'.\n", binary_fname, fname );
             }
         }
         if( !loaded )
@@ -481,7 +481,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         GL( glGetShaderiv( vs, GL_COMPILE_STATUS, &compiled ) );
         if( !compiled )
         {
-            WriteLogF( _FUNC_, " - Vertex shader not compiled, effect '%s'.\n", fname, str );
+            WriteLog( "Vertex shader not compiled, effect '%s'.\n", fname, str );
             ShaderInfo::Log( "Vertex shader", vs );
             GL( glDeleteShader( vs ) );
             GL( glDeleteShader( fs ) );
@@ -493,7 +493,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         GL( glGetShaderiv( fs, GL_COMPILE_STATUS, &compiled ) );
         if( !compiled )
         {
-            WriteLogF( _FUNC_, " - Fragment shader not compiled, effect '%s'.\n", fname );
+            WriteLog( "Fragment shader not compiled, effect '%s'.\n", fname );
             ShaderInfo::Log( "Fragment shader", fs );
             GL( glDeleteShader( vs ) );
             GL( glDeleteShader( fs ) );
@@ -536,7 +536,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
         if( !linked )
         {
-            WriteLogF( _FUNC_, " - Failed to link shader program, effect '%s'.\n", fname );
+            WriteLog( "Failed to link shader program, effect '%s'.\n", fname );
             ShaderInfo::LogProgram( program );
             GL( glDetachShader( program, vs ) );
             GL( glDetachShader( program, fs ) );
@@ -561,7 +561,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );
             if( !file_binary.SaveFile( binary_fname ) )
-                WriteLogF( _FUNC_, " - Can't save effect '%s' pass %u in binary '%s'.\n", fname, pass, binary_fname );
+                WriteLog( "Can't save effect '%s' pass %u in binary '%s'.\n", fname, pass, binary_fname );
         }
     }
 

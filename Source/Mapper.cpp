@@ -29,7 +29,7 @@ bool FOMapper::Init()
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
-        WriteLogF( _FUNC_, " - SDL initialization fail, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL initialization fail, error '%s'.\n", SDL_GetError() );
         return false;
     }
 
@@ -95,13 +95,13 @@ bool FOMapper::Init()
 
     // Setup write paths
     Str::Copy( ServerWritePath, GameOpt.ServerDir->c_str() );
-    Str::Copy( ClientWritePath, WorkDir );
+    Str::Copy( ClientWritePath, WorkDir.c_str() );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
     // Cache
     if( !Crypt.SetCacheTable( FileManager::GetWritePath( "Cache/default.cache" ) ) )
     {
-        WriteLogF( _FUNC_, " - Can't set default cache.\n" );
+        WriteLog( "Can't set default cache.\n" );
         return false;
     }
 
@@ -231,10 +231,10 @@ bool FOMapper::Init()
     HexMngr.SwitchShowTrack();
     ChangeGameTime();
 
-    if( Str::Substring( CommandLine, "-Map" ) )
+    if( MainConfig->GetStr( "", "Map" ) )
     {
         char map_name[ MAX_FOPATH ];
-        sscanf( Str::Substring( CommandLine, "-Map" ) + Str::Length( "-Map" ) + 1, "%s", map_name );
+        Str::Copy( map_name, MainConfig->GetStr( "", "Map" ) );
 
         FileManager::SetCurrentDir( ServerWritePath, "./" );
 
@@ -245,21 +245,8 @@ bool FOMapper::Init()
 
         if( initialized && HexMngr.SetProtoMap( *pmap ) )
         {
-            #define GETOPTIONS_CMD_LINE_INT( opt, str_id )              \
-                do {                                                    \
-                    char* str = Str::Substring( CommandLine, str_id );  \
-                    if( str )                                           \
-                        opt = atoi( str + Str::Length( str_id ) + 1 );  \
-                }                                                       \
-                while( 0 )
-
-            int hexX = -1, hexY = -1;
-
-            GETOPTIONS_CMD_LINE_INT( hexX, "-HexX" );
-            GETOPTIONS_CMD_LINE_INT( hexY, "-HexY" );
-
-            #undef GETOPTIONS_CMD_LINE_INT
-
+            int hexX = MainConfig->GetInt( "", "HexX", -1 );
+            int hexY = MainConfig->GetInt( "", "HexY", -1 );
             if( hexX < 0 || hexX >= pmap->GetWidth() )
                 hexX = pmap->GetWorkHexX();
             if( hexY < 0 || hexY >= pmap->GetHeight() )
@@ -330,7 +317,7 @@ int FOMapper::InitIface()
 {
     WriteLog( "Init interface.\n" );
 
-    IniParser& ini = IfaceIni;
+    IniParser&  ini = IfaceIni;
     const char* int_file = "mapper_default.ini";
 
     if( !ini.AppendFile( int_file ) )
@@ -1360,9 +1347,9 @@ void FOMapper::MainLoop()
 
             if( cr->IsNeedMove() )
             {
-                bool       err_move = ( ( !cr->IsRunning && cr->GetIsNoWalk() ) || ( cr->IsRunning && cr->GetIsNoRun() ) );
-                ushort     old_hx = cr->GetHexX();
-                ushort     old_hy = cr->GetHexY();
+                bool   err_move = ( ( !cr->IsRunning && cr->GetIsNoWalk() ) || ( cr->IsRunning && cr->GetIsNoRun() ) );
+                ushort old_hx = cr->GetHexX();
+                ushort old_hy = cr->GetHexY();
                 if( !err_move && HexMngr.TransitCritter( cr, cr->MoveSteps[ 0 ].first, cr->MoveSteps[ 0 ].second, true, false ) )
                     cr->MoveSteps.erase( cr->MoveSteps.begin() );
                 else
@@ -1741,11 +1728,11 @@ void FOMapper::IntDraw()
         if( GetTabIndex() < (uint) ( *CurItemProtos ).size() )
         {
             ProtoItem* proto_item = ( *CurItemProtos )[ GetTabIndex() ];
-            auto it = std::find( proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.Name );
+            auto       it = std::find( proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.Name );
             if( it != proto_item->TextsLang.end() )
             {
-                uint index = ( uint ) std::distance( proto_item->TextsLang.begin(), it );
-                string     info = proto_item->Texts[ 0 ]->GetStr( ITEM_STR_ID( proto_item->ProtoId, 1 ) );
+                uint   index = ( uint ) std::distance( proto_item->TextsLang.begin(), it );
+                string info = proto_item->Texts[ 0 ]->GetStr( ITEM_STR_ID( proto_item->ProtoId, 1 ) );
                 info += " - ";
                 info += proto_item->Texts[ 0 ]->GetStr( ITEM_STR_ID( proto_item->ProtoId, 2 ) );
                 SprMngr.DrawStr( Rect( IntWHint, IntX, IntY ), info.c_str(), 0 );
@@ -1790,8 +1777,8 @@ void FOMapper::IntDraw()
         {
             ProtoCritter* proto = ( *CurNpcProtos )[ i ];
 
-            hash model_name = proto->Props.GetPropValue< hash >( CritterCl::PropertyModelName );
-            uint      spr_id = ResMngr.GetCritSprId( model_name, 1, 1, NpcDir, nullptr ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
+            hash          model_name = proto->Props.GetPropValue< hash >( CritterCl::PropertyModelName );
+            uint          spr_id = ResMngr.GetCritSprId( model_name, 1, 1, NpcDir, nullptr ); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if( !spr_id )
                 continue;
 
@@ -1811,17 +1798,17 @@ void FOMapper::IntDraw()
     }
     else if( IntMode == INT_MODE_INCONT && !SelectedEntities.empty() )
     {
-        Entity* entity = SelectedEntities[ 0 ];
+        Entity*   entity = SelectedEntities[ 0 ];
         EntityVec children = entity->GetChildren();
-        uint i = InContScroll;
-        uint j = i + ProtosOnScreen;
+        uint      i = InContScroll;
+        uint      j = i + ProtosOnScreen;
         if( j > children.size() )
             j = (uint) children.size();
 
         for( ; i < j; i++, x += w )
         {
             RUNTIME_ASSERT( children[ i ]->Type == EntityType::Item );
-            Item* child = (Item*) children[ i ];
+            Item*      child = (Item*) children[ i ];
 
             AnyFrames* anim = ResMngr.GetInvAnim( child->GetPicInv() );
             if( !anim )
@@ -1936,13 +1923,13 @@ void FOMapper::ObjDraw()
     if( !entity )
         return;
 
-    Item* item = ( entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex ? (Item*) entity : nullptr );
+    Item*      item = ( entity->Type == EntityType::Item || entity->Type == EntityType::ItemHex ? (Item*) entity : nullptr );
     CritterCl* cr = ( entity->Type == EntityType::CritterCl ? (CritterCl*) entity : nullptr );
-    Rect r = Rect( ObjWWork, ObjX, ObjY );
-    int x = r.L;
-    int y = r.T;
-    int w = r.W();
-    int h = r.H();
+    Rect       r = Rect( ObjWWork, ObjX, ObjY );
+    int        x = r.L;
+    int        y = r.T;
+    int        w = r.W();
+    int        h = r.H();
 
     SprMngr.DrawSprite( ObjWMainPic, ObjX, ObjY );
     if( ObjToAll )
@@ -1991,11 +1978,10 @@ void FOMapper::ObjDraw()
 void FOMapper::DrawLine( const char* name, const char* type_name, const char* text, bool is_const, Rect& r )
 {
     uint col = COLOR_TEXT;
-    int x = r.L;
-    int y = r.T;
-    int w = r.W();
-    int h = r.H();
-    char str[ MAX_FOTEXT ];
+    int  x = r.L;
+    int  y = r.T;
+    int  w = r.W();
+    int  h = r.H();
     col = COLOR_TEXT;
     if( is_const )
         col = COLOR_TEXT_DWHITE;
@@ -2008,11 +1994,10 @@ void FOMapper::DrawLine( const char* name, const char* type_name, const char* te
             text = ObjCurLineValue.c_str();
         }
     }
-    Str::Format( str, "%s%s%s%s", name, type_name ? " (" : "", type_name ? type_name : "", type_name ? ")" : "" );
-    // Str::Copy( str, name );
-    Str::Append( str, "...................................................." );
+    string str = fmt::format( "%s%s%s%s", name, type_name ? " (" : "", type_name ? type_name : "", type_name ? ")" : "" );
+    str += "....................................................";
     SprMngr.DrawStr( Rect( Rect( x, y, x + w / 2, y + h ), 0, 0 ), str, FT_NOBREAK, col );
-    Str::Copy( str, text ? text : "" );
+    str += ( text ? text : "" );
     SprMngr.DrawStr( Rect( Rect( x + w / 2, y, x + w, y + h ), 0, 0 ), str, FT_NOBREAK, col );
     r.T += DRAW_NEXT_HEIGHT;
     r.B += DRAW_NEXT_HEIGHT;
@@ -2200,8 +2185,8 @@ void FOMapper::IntLMouseDown()
                     if( entity->Type == EntityType::CritterCl )
                     {
                         CritterCl* cr = (CritterCl*) entity;
-                        bool is_run = ( cr->MoveSteps.size() && cr->MoveSteps[ cr->MoveSteps.size() - 1 ].first == SelectHX1 &&
-                                        cr->MoveSteps[ cr->MoveSteps.size() - 1 ].second == SelectHY1 );
+                        bool       is_run = ( cr->MoveSteps.size() && cr->MoveSteps[ cr->MoveSteps.size() - 1 ].first == SelectHX1 &&
+                                              cr->MoveSteps[ cr->MoveSteps.size() - 1 ].second == SelectHY1 );
 
                         cr->MoveSteps.clear();
                         if( !is_run && cr->GetIsNoWalk() )
@@ -2288,10 +2273,10 @@ void FOMapper::IntLMouseDown()
             // Switch ignore pid to draw
             if( Keyb::CtrlDwn )
             {
-                hash  pid = ( *CurItemProtos )[ ind ]->ProtoId;
+                hash    pid = ( *CurItemProtos )[ ind ]->ProtoId;
 
                 SubTab& stab = Tabs[ INT_MODE_IGNORE ][ DEFAULT_SUB_TAB ];
-                bool founded = false;
+                bool    founded = false;
                 for( auto it = stab.ItemProtos.begin(); it != stab.ItemProtos.end(); ++it )
                 {
                     if( ( *it )->ProtoId == pid )
@@ -3192,8 +3177,8 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
                 continue;
 
             ItemHex* item = (ItemHex*) entity;
-            int ox = item->GetOffsetX() + offs_x;
-            int oy = item->GetOffsetY() + offs_y;
+            int      ox = item->GetOffsetX() + offs_x;
+            int      oy = item->GetOffsetY() + offs_y;
             ox = CLAMP( ox, -MAX_MOVE_OX, MAX_MOVE_OX );
             oy = CLAMP( oy, -MAX_MOVE_OY, MAX_MOVE_OY );
             if( Keyb::AltDwn )
@@ -3518,7 +3503,7 @@ Entity* FOMapper::CloneEntity( Entity* entity )
     }
     else if( entity->Type == EntityType::ItemHex )
     {
-        uint id = HexMngr.AddItem( --ActiveProtoMap->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr );
+        uint     id = HexMngr.AddItem( --ActiveProtoMap->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr );
         ItemHex* item = HexMngr.GetItemById( id );
         SelectAdd( item );
         owner = item;
@@ -3528,7 +3513,7 @@ Entity* FOMapper::CloneEntity( Entity* entity )
         RUNTIME_ASSERT( !"Unreachable place" );
     }
 
-    auto pmap = ActiveProtoMap;
+    auto                                    pmap = ActiveProtoMap;
     std::function< void(Entity*, Entity*) > add_entity_children = [ &add_entity_children, &pmap ] ( Entity * from, Entity * to )
     {
         for( auto& from_child : from->GetChildren() )
@@ -3627,8 +3612,8 @@ void FOMapper::BufferPaste( int, int )
         if( entity_buf.HexX >= HexMngr.GetWidth() || entity_buf.HexY >= HexMngr.GetHeight() )
             continue;
 
-        ushort hx = entity_buf.HexX;
-        ushort hy = entity_buf.HexY;
+        ushort  hx = entity_buf.HexX;
+        ushort  hy = entity_buf.HexY;
 
         Entity* owner = nullptr;
         if( entity_buf.Type == EntityType::CritterCl )
@@ -3664,14 +3649,14 @@ void FOMapper::BufferPaste( int, int )
         }
         else if( entity_buf.Type == EntityType::ItemHex )
         {
-            uint id = HexMngr.AddItem( --ActiveProtoMap->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr );
+            uint     id = HexMngr.AddItem( --ActiveProtoMap->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr );
             ItemHex* item = HexMngr.GetItemById( id );
             item->Props = *entity_buf.Props;
             SelectAdd( item );
             owner = item;
         }
 
-        auto pmap = ActiveProtoMap;
+        auto                                       pmap = ActiveProtoMap;
         std::function< void(EntityBuf*, Entity*) > add_entity_children = [ &add_entity_children, &pmap ] ( EntityBuf * entity_buf, Entity * entity )
         {
             for( auto& child_buf : entity_buf->Children )
@@ -3852,7 +3837,7 @@ void FOMapper::CurMMouseDown()
             if( entity->Type == EntityType::CritterCl )
             {
                 CritterCl* cr = (CritterCl*) entity;
-                int dir = cr->GetDir() + 1;
+                int        dir = cr->GetDir() + 1;
                 if( dir >= DIRS_COUNT )
                     dir = 0;
                 cr->ChangeDir( dir );
@@ -3926,7 +3911,7 @@ void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
                 Crypt.SetCache( "mapper_console", history_str );
 
                 // Process command
-                bool process_command = true;
+                bool          process_command = true;
                 ScriptString* sstr = ScriptString::Create( ConsoleStr );
                 process_command = Script::RaiseInternalEvent( MapperFunctions.ConsoleMessage, sstr );
                 ConsoleStr = sstr->c_std_str();
@@ -4251,7 +4236,7 @@ void FOMapper::AddMess( const char* message_text )
     // Time
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
-    char     mess_time[ 64 ];
+    char          mess_time[ 64 ];
     Str::Format( mess_time, "%02d:%02d:%02d ", dt.Hour, dt.Minute, dt.Second );
 
     // Add
@@ -4323,7 +4308,7 @@ bool FOMapper::SaveLogFile()
 
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
-    char     log_path[ MAX_FOPATH ];
+    char          log_path[ MAX_FOPATH ];
     Str::Format( log_path, "./mapper_messbox_%02d-%02d-%d_%02d-%02d-%02d.txt",
                  dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
@@ -4365,7 +4350,7 @@ bool FOMapper::InitScriptSystem()
     asIScriptEngine* engine = Script::GetEngine();
     #define BIND_MAPPER
     #define BIND_CLASS    FOMapper::SScriptFunc::
-    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); errors++; }
+    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line %d.\n", __LINE__ ); errors++; }
     int errors = 0;
     #include <ScriptBind.h>
     if( errors )
@@ -4630,7 +4615,7 @@ void FOMapper::SScriptFunc::Global_DeleteTile( ushort hx, ushort hy, bool roof, 
     if( hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R( "Invalid hex y arg." );
 
-    bool deleted = false;
+    bool               deleted = false;
     ProtoMap::TileVec& tiles = Self->HexMngr.GetTiles( hx, hy, roof );
     Field&             f = Self->HexMngr.GetField( hx, hy );
     if( layer < 0 )
@@ -4824,7 +4809,7 @@ uint FOMapper::SScriptFunc::Global_GetMapFileNames( ScriptString* dir, ScriptArr
         dir_ = dir->c_std_str();
 
     FindData fd;
-    void*     h = FileFindFirst( dir_.c_str(), nullptr, fd );
+    void*    h = FileFindFirst( dir_.c_str(), nullptr, fd );
     if( !h )
     {
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
@@ -4891,8 +4876,8 @@ void FOMapper::SScriptFunc::Global_ResizeMap( ushort width, ushort height )
         for( auto it = Self->ActiveProtoMap->AllEntities.begin(); it != Self->ActiveProtoMap->AllEntities.end();)
         {
             Entity* entity = *it;
-            int hx = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
-            int hy = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexY() : ( (ItemHex*) entity )->GetHexY() );
+            int     hx = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
+            int     hy = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexY() : ( (ItemHex*) entity )->GetHexY() );
             if( hx >= maxhx || hy >= maxhy )
             {
                 entity->Release();
@@ -5011,7 +4996,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, ScriptString* sub_ta
         ProtoItemVec proto_items;
         for( int i = 0, j = item_pids->GetSize(); i < j; i++ )
         {
-            hash pid = *(hash*) item_pids->At( i );
+            hash       pid = *(hash*) item_pids->At( i );
             ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
             if( proto_item )
                 proto_items.push_back( proto_item );
@@ -5322,8 +5307,8 @@ bool FOMapper::SScriptFunc::Global_GetHexPos( ushort hx, ushort hy, int& x, int&
 bool FOMapper::SScriptFunc::Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface )
 {
     ushort hx_, hy_;
-    int old_x = GameOpt.MouseX;
-    int old_y = GameOpt.MouseY;
+    int    old_x = GameOpt.MouseX;
+    int    old_y = GameOpt.MouseY;
     GameOpt.MouseX = x;
     GameOpt.MouseY = y;
     bool result = Self->GetCurHex( hx_, hy_, ignore_interface );
@@ -5712,11 +5697,11 @@ void FOMapper::SScriptFunc::Global_DrawMapSpriteExt( ushort hx, ushort hy, uint 
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
 
-    Field&     f = Self->HexMngr.GetField( hx, hy );
-    Sprites&   tree = Self->HexMngr.GetDrawTree();
-    Sprite&    spr = tree.InsertSprite( draw_order, hx, hy + draw_order_hy_offset, 0,
-                                        f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ),
-                                        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
+    Field&   f = Self->HexMngr.GetField( hx, hy );
+    Sprites& tree = Self->HexMngr.GetDrawTree();
+    Sprite&  spr = tree.InsertSprite( draw_order, hx, hy + draw_order_hy_offset, 0,
+                                      f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ),
+                                      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
 
     if( !no_light )
         spr.SetLight( corner, Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight() );

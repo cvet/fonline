@@ -133,21 +133,21 @@ add_subdirectory( "${PNG_DIR}" )
 
 set( OGG_DIR "ogg" ) # libogg-1.3.1
 file( GLOB OGG_SOURCE "${OGG_DIR}/src/*.c" )
-source_group( ogg FILES ${OGG_SOURCE} )
+source_group( "ThirdParty\\ogg" FILES ${OGG_SOURCE} )
 
 set( VORBIS_DIR "Vorbis" ) # libvorbis-1.3.3
 file( GLOB VORBIS_SOURCE "${VORBIS_DIR}/lib/*.c" )
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/barkmel.c" )
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/psytune.c" )
 list( REMOVE_ITEM VORBIS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${VORBIS_DIR}/lib/tone.c" )
-source_group( vorbis FILES ${VORBIS_SOURCE} )
+source_group( "ThirdParty\\vorbis" FILES ${VORBIS_SOURCE} )
 
 set( THEORA_DIR "Theora" ) # libtheora-1.1.1
 file( GLOB THEORA_SOURCE "${THEORA_DIR}/lib/*.c" )
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/analyze.c" )
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/encode.c" )
 list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/encapiwrapper.c" )
-source_group( theora FILES ${THEORA_SOURCE} )
+source_group( "ThirdParty\\theora" FILES ${THEORA_SOURCE} )
 
 set( ANGEL_SCRIPT_DIR "AngelScript" )
 add_subdirectory( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/projects/cmake" )
@@ -168,11 +168,11 @@ if( NOT WIN32 )
 	set( EVENT2_PTHREADS "libevent_pthreads.a" )
 endif()
 
-file( GLOB "Assimp_SOURCE Assimp/*.* Assimp/Compiler/*.*" )
-source_group( Assimp FILES ${Assimp_SOURCE} )
+file( GLOB Assimp_SOURCE "Assimp/*.* Assimp/Compiler/*.*" )
+source_group( "ThirdParty\\Assimp" FILES ${Assimp_SOURCE} )
 
-file( GLOB "fbxsdk_SOURCE fbxsdk/*.*" )
-source_group( fbxsdk FILES ${fbxsdk_SOURCE} )
+file( GLOB fbxsdk_SOURCE "fbxsdk/*.*" )
+source_group( "ThirdParty\\fbxsdk" FILES ${fbxsdk_SOURCE} )
 if( WIN32 )
 	set( FBXSDK "libfbxsdk-mt" )
 else()
@@ -188,11 +188,15 @@ if( NOT BUILD_ONLY_CLIENT )
 	add_subdirectory( "cURL" )
 endif()
 
-file( GLOB "Json_SOURCE Json/*.*" )
-source_group( Json FILES ${Json_SOURCE} )
+file( GLOB Json_SOURCE "Json/*.*" )
+source_group( "ThirdParty\\Json" FILES ${Json_SOURCE} )
+
+file( GLOB fmt_SOURCE "fmt/fmt/*.*" )
+source_group( "ThirdParty\\fmt" FILES ${fmt_SOURCE} )
 
 set( COMMON_SOURCE
 	${Json_SOURCE}
+	${fmt_SOURCE}
 	Common.cpp Common.h
 	Crypt.cpp Crypt.h
 	DataFile.cpp DataFile.h

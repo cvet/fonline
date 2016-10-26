@@ -249,8 +249,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     // Preprocessor defines
     Preprocessor::UndefAll();
 
-    char buf[ MAX_FOTEXT ];
-    Preprocessor::Define( Str::Format( buf, "__VERSION %d", FONLINE_VERSION ) );
+    Preprocessor::Define( fmt::format( "__VERSION {}", FONLINE_VERSION ) );
 
     Preprocessor::Define( "__ASCOMPILER" );
     char target_define[ MAX_FOTEXT ];

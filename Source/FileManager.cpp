@@ -100,7 +100,7 @@ bool FileManager::LoadDataFile( const char* path )
     DataFile* data_file = OpenDataFile( path );
     if( !data_file )
     {
-        WriteLogF( _FUNC_, " - Load data '%s' fail.\n", path );
+        WriteLog( "Load data '%s' fail.\n", path );
         return false;
     }
 
@@ -578,9 +578,9 @@ void FileManager::SetLEUInt( uint data )
 void FileManager::ResetCurrentDir()
 {
     #ifdef FO_WINDOWS
-    SetCurrentDirectory( WorkDir );
+    SetCurrentDirectory( WorkDir.c_str() );
     #else
-    chdir( WorkDir );
+    chdir( WorkDir.c_str() );
     #endif
 }
 
@@ -936,7 +936,7 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
                 FileManager link;
                 if( !link.LoadFile( path.c_str() ) )
                 {
-                    WriteLogF( _FUNC_, " - Can't read link file '%s'.\n", path.c_str() );
+                    WriteLog( "Can't read link file '%s'.\n", path.c_str() );
                     continue;
                 }
 

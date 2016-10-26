@@ -109,7 +109,7 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     Engine = CreateEngine( pragma_callback, dll_target, allow_native_calls );
     if( !Engine )
     {
-        WriteLogF( _FUNC_, " - Can't create AS engine.\n" );
+        WriteLog( "Can't create AS engine.\n" );
         return false;
     }
 
@@ -340,7 +340,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     EngineData* edata = (EngineData*) Engine->GetUserData();
     if( !edata->AllowNativeCalls )
     {
-        WriteLogF( _FUNC_, " - Unable to load dll '%s', native calls not allowed.\n", dll_name );
+        WriteLog( "Unable to load dll '%s', native calls not allowed.\n", dll_name );
         return nullptr;
     }
 
@@ -429,9 +429,9 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
     if( !ptr )
     {
-        WriteLogF( _FUNC_, " - Wrong script DLL '%s', expected target '%s', but found '%s%s%s%s'.\n", dll_name, edata->DllTarget.c_str(),
-                   DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
-                   !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
+        WriteLog( "Wrong script DLL '%s', expected target '%s', but found '%s%s%s%s'.\n", dll_name, edata->DllTarget.c_str(),
+                  DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
+                  !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
         DLL_Free( dll );
         return nullptr;
     }
@@ -450,7 +450,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
         *ptr = (size_t) &RaiseAssert;
     ptr = DLL_GetAddress( dll, "Log" );
     if( ptr )
-        *ptr = (size_t) &WriteLog;
+        *ptr = (size_t) &WriteLogMessage;
     ptr = DLL_GetAddress( dll, "ScriptGetActiveContext" );
     if( ptr )
         *ptr = (size_t) &asGetActiveContext;
@@ -486,10 +486,10 @@ void Script::UnloadScripts()
         asIScriptModule* module = Engine->GetModuleByIndex( i );
         int              result = module->ResetGlobalVars();
         if( result < 0 )
-            WriteLogF( _FUNC_, " - Reset global vars fail, module '%s', error %d.\n", module->GetName(), result );
+            WriteLog( "Reset global vars fail, module '%s', error %d.\n", module->GetName(), result );
         result = module->UnbindAllImportedFunctions();
         if( result < 0 )
-            WriteLogF( _FUNC_, " - Unbind fail, module '%s', error %d.\n", module->GetName(), result );
+            WriteLog( "Unbind fail, module '%s', error %d.\n", module->GetName(), result );
     }
 
     while( Engine->GetModuleCount() > 0 )
@@ -717,7 +717,7 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
     asIScriptEngine* engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !engine )
     {
-        WriteLogF( _FUNC_, " - asCreateScriptEngine fail.\n" );
+        WriteLog( "asCreateScriptEngine fail.\n" );
         return nullptr;
     }
 
@@ -1177,12 +1177,12 @@ public:
     {
         while( errors.String[ errors.String.length() - 1 ] == '\n' )
             errors.String.pop_back();
-        WriteLogF( _FUNC_, " - Preprocessor message '%s'.\n", errors.String.c_str() );
+        WriteLog( "Preprocessor message '%s'.\n", errors.String.c_str() );
     }
 
     if( errors_count )
     {
-        WriteLogF( _FUNC_, " - Unable to preprocess.\n" );
+        WriteLog( "Unable to preprocess.\n" );
         return false;
     }
 
@@ -1237,7 +1237,7 @@ public:
     asIScriptModule* module = Engine->GetModule( "Root", asGM_ALWAYS_CREATE );
     if( !module )
     {
-        WriteLogF( _FUNC_, " - Create 'Root' module fail.\n" );
+        WriteLog( "Create 'Root' module fail.\n" );
         return false;
     }
 
@@ -1251,7 +1251,7 @@ public:
     int as_result = module->AddScriptSection( "Root", result.String.c_str() );
     if( as_result < 0 )
     {
-        WriteLogF( _FUNC_, " - Unable to add script section, result %d.\n", as_result );
+        WriteLog( "Unable to add script section, result %d.\n", as_result );
         module->Discard();
         return false;
     }
@@ -1278,7 +1278,7 @@ bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_da
     asIScriptModule* module = Engine->GetModule( "Root", asGM_ALWAYS_CREATE );
     if( !module )
     {
-        WriteLogF( _FUNC_, " - Create 'Root' module fail.\n" );
+        WriteLog( "Create 'Root' module fail.\n" );
         return false;
     }
 
@@ -1290,7 +1290,7 @@ bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_da
     int             result = module->LoadByteCode( &binary );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Can't load binary, result %d.\n", result );
+        WriteLog( "Can't load binary, result %d.\n", result );
         module->Discard();
         return false;
     }
@@ -1319,7 +1319,7 @@ uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_te
         if( !script_func )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Function '%s' not found.\n", decl_ );
+                WriteLog( "Function '%s' not found.\n", decl_ );
             return 0;
         }
 
@@ -1356,7 +1356,7 @@ uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_te
         if( !dll )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Dll '%s' not found in scripts folder, error '%s'.\n", dll_name, DLL_Error() );
+                WriteLog( "Dll '%s' not found in scripts folder, error '%s'.\n", dll_name, DLL_Error() );
             return 0;
         }
 
@@ -1365,7 +1365,7 @@ uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_te
         if( !func )
         {
             if( !disable_log )
-                WriteLogF( _FUNC_, " - Function '%s' in dll '%s' not found, error '%s'.\n", dll_func_name, dll_name, DLL_Error() );
+                WriteLog( "Function '%s' in dll '%s' not found, error '%s'.\n", dll_func_name, dll_name, DLL_Error() );
             return 0;
         }
 
@@ -1423,7 +1423,7 @@ uint Script::BindByFuncNum( hash func_num, bool is_temp, bool disable_log /* = f
     if( !func )
     {
         if( !disable_log )
-            WriteLogF( _FUNC_, " - Function '%s' not found.\n", Str::GetName( func_num ) );
+            WriteLog( "Function '%s' not found.\n", Str::GetName( func_num ) );
         return 0;
     }
 
@@ -1444,7 +1444,7 @@ string Script::GetBindFuncName( uint bind_id )
 {
     if( !bind_id || bind_id >= (uint) BindedFunctions.size() )
     {
-        WriteLogF( _FUNC_, " - Wrong bind id %u, bind buffer size %u.\n", bind_id, BindedFunctions.size() );
+        WriteLog( "Wrong bind id %u, bind buffer size %u.\n", bind_id, BindedFunctions.size() );
         return "";
     }
 
@@ -1991,7 +1991,7 @@ bool Script::RunPrepared()
 
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Context '%s' execute error %d, state '%s'.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
+            WriteLog( "Context '%s' execute error %d, state '%s'.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
             ctx->Abort();
             ReturnContext( ctx );
             return false;

@@ -107,7 +107,7 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
 {
     if( registrationFinished )
     {
-        WriteLogF( _FUNC_, " - Registration of class properties is finished.\n" );
+        WriteLog( "Registration of class properties is finished.\n" );
         return nullptr;
     }
 
@@ -127,14 +127,14 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
 //      int result = engine->RegisterEnum(enum_type.c_str());
 //      if (result < 0)
 //      {
-//              WriteLogF(_FUNC_, " - Register object property enum '%s' fail, error %d.\n", enum_type.c_str(), result);
+//              WriteLog("Register object property enum '%s' fail, error %d.\n", enum_type.c_str(), result);
 //              return false;
 //      }
 //
 //      result = engine->RegisterEnumValue(enum_type.c_str(), "Invalid", 0);
 //      if (result < 0)
 //      {
-//              WriteLogF(_FUNC_, " - Register object property enum '%s::Invalid' zero value fail, error %d.\n", enum_type.c_str(), result);
+//              WriteLog("Register object property enum '%s::Invalid' zero value fail, error %d.\n", enum_type.c_str(), result);
 //              return false;
 //      }
 
@@ -162,7 +162,7 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
         int result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Method::Wrap ), asCALL_GENERIC, method );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Register entity method '%s' fail, error %d.\n", decl, result );
+            WriteLog( "Register entity method '%s' fail, error %d.\n", decl, result );
             return nullptr;
         }
 

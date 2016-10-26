@@ -319,7 +319,7 @@ void SpriteManager::EndScene()
 
     if( GameOpt.OpenGLDebug && glGetError() != GL_NO_ERROR )
     {
-        WriteLogF( _FUNC_, " - Unknown place of OpenGL error.\n" );
+        WriteLog( "Unknown place of OpenGL error.\n" );
         ExitProcess( 0 );
     }
     sceneBeginned = false;
@@ -518,7 +518,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
         if( status != GL_FRAMEBUFFER_COMPLETE )
         {
-            WriteLogF( _FUNC_, " - Framebuffer not created, status %08X.\n", status );
+            WriteLog( "Framebuffer not created, status %08X.\n", status );
             return nullptr;
         }
     }
@@ -528,7 +528,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         GL( status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT ) );
         if( status != GL_FRAMEBUFFER_COMPLETE_EXT )
         {
-            WriteLogF( _FUNC_, " - FramebufferExt not created, status %08X.\n", status );
+            WriteLog( "FramebufferExt not created, status %08X.\n", status );
             return nullptr;
         }
     }
@@ -1290,7 +1290,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = 
     const char* ext = FileManager::GetExtension( fname );
     if( !ext )
     {
-        WriteLogF( _FUNC_, " - Extension not found, file '%s'.\n", fname );
+        WriteLog( "Extension not found, file '%s'.\n", fname );
         return dummy;
     }
 
@@ -1320,7 +1320,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = 
     else if( Is3dExtensionSupported( ext ) )
         result = LoadAnimation3d( fname );
     else
-        WriteLogF( _FUNC_, " - Unsupported image file format '%s', file '%s'.\n", ext, fname );
+        WriteLog( "Unsupported image file format '%s', file '%s'.\n", ext, fname );
 
     return result ? result : dummy;
 }
@@ -1417,7 +1417,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
             {
                 if( dir > 1 )
                 {
-                    WriteLogF( _FUNC_, " - File '%s' not found.\n", fname_ );
+                    WriteLog( "File '%s' not found.\n", fname_ );
                     AnyFrames::Destroy( base_anim );
                     return nullptr;
                 }
@@ -1436,7 +1436,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
         {
             if( dir > 1 )
             {
-                WriteLogF( _FUNC_, " - FRM file '%s' truncated.\n", fname );
+                WriteLog( "FRM file '%s' truncated.\n", fname );
                 AnyFrames::Destroy( base_anim );
                 return nullptr;
             }
@@ -1725,7 +1725,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
 
             if( dir > 1 )
             {
-                WriteLogF( _FUNC_, " - FOFRM file '%s' invalid apps.\n", fname );
+                WriteLog( "FOFRM file '%s' invalid apps.\n", fname );
                 AnyFrames::Destroy( base_anim );
                 return nullptr;
             }
@@ -1776,7 +1776,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
             if( no_info && dir == 1 )
                 break;
 
-            WriteLogF( _FUNC_, " - FOFRM file '%s' invalid data.\n", fname );
+            WriteLog( "FOFRM file '%s' invalid data.\n", fname );
             for( uint i = 0, j = (uint) anims.size(); i < j; i++ )
                 AnyFrames::Destroy( anims[ i ] );
             AnyFrames::Destroy( base_anim );
@@ -3814,7 +3814,7 @@ void SpriteManager::InitializeEgg( const char* egg_name )
     }
     else
     {
-        WriteLogF( _FUNC_, " - Load sprite '%s' fail. Egg disabled.\n", egg_name );
+        WriteLog( "Load sprite '%s' fail. Egg disabled.\n", egg_name );
     }
     #endif
 }

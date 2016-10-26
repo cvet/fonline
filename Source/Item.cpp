@@ -216,7 +216,7 @@ bool Item::SetScript( asIScriptFunction* func, bool first_time )
         hash func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script bind fail, item '%s'.\n", GetName() );
+            WriteLog( "Script bind fail, item '%s'.\n", GetName() );
             return false;
         }
         SetScriptId( func_num );

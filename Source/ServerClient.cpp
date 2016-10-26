@@ -288,7 +288,7 @@ void FOServer::RespawnCritter( Critter* cr )
     Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map )
     {
-        WriteLogF( _FUNC_, " - Current map not found, continue dead. Critter '%s'.\n", cr->GetInfo() );
+        WriteLog( "Current map not found, continue dead. Critter '%s'.\n", cr->GetInfo() );
         return;
     }
 
@@ -296,10 +296,7 @@ void FOServer::RespawnCritter( Critter* cr )
     ushort hy = cr->GetHexY();
     uint   multihex = cr->GetMultihex();
     if( !map->IsHexesPassed( hx, hy, multihex ) )
-    {
-        // WriteLogF(_FUNC_," - Live critter on hex, continue dead.\n");
         return;
-    }
 
     map->UnsetFlagCritter( hx, hy, multihex, true );
     map->SetFlagCritter( hx, hy, multihex, false );
@@ -475,7 +472,7 @@ void FOServer::Process_UpdateFile( Client* cl )
 
     if( file_index >= (uint) UpdateFiles.size() )
     {
-        WriteLogF( _FUNC_, " - Wrong file index %u, client ip '%s'.\n", file_index, cl->GetIpStr() );
+        WriteLog( "Wrong file index %u, client ip '%s'.\n", file_index, cl->GetIpStr() );
         cl->Disconnect();
         return;
     }
@@ -489,7 +486,7 @@ void FOServer::Process_UpdateFileData( Client* cl )
 {
     if( cl->UpdateFileIndex == -1 )
     {
-        WriteLogF( _FUNC_, " - Wrong update call, client ip '%s'.\n", cl->GetIpStr() );
+        WriteLog( "Wrong update call, client ip '%s'.\n", cl->GetIpStr() );
         cl->Disconnect();
         return;
     }
@@ -556,7 +553,6 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Bin >> proto_ver;
     if( proto_ver != FONLINE_VERSION )
     {
-        // WriteLogF(_FUNC_," - Wrong Protocol Version from SockId %u.\n", cl->Sock);
         cl->Send_TextMsg( cl, STR_NET_WRONG_NETPROTO, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -605,7 +601,7 @@ void FOServer::Process_CreateClient( Client* cl )
         Property* prop = Critter::PropertiesRegistrator->FindByEnum( enum_value );
         if( !prop || !prop->IsPOD() )
         {
-            WriteLogF( _FUNC_, " - Invalid allowed property '%s'.\n", prop ? prop->GetName() : Str::ItoA( enum_value ) );
+            WriteLog( "Invalid allowed property '%s'.\n", prop ? prop->GetName() : Str::ItoA( enum_value ) );
             cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -731,7 +727,7 @@ void FOServer::Process_CreateClient( Client* cl )
     // First save
     if( !SaveClient( cl ) )
     {
-        WriteLogF( _FUNC_, " - First save fail.\n" );
+        WriteLog( "First save fail.\n" );
         cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -760,7 +756,7 @@ void FOServer::Process_CreateClient( Client* cl )
     {
         if( !NewWorld() )
         {
-            WriteLogF( _FUNC_, " - Generate new world fail.\n" );
+            WriteLog( "Generate new world fail.\n" );
             cl->Send_TextMsg( cl, STR_SP_NEW_GAME_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -895,7 +891,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     // Singleplayer
     if( Singleplayer && !SingleplayerSave.Valid )
     {
-        WriteLogF( _FUNC_, " - World not contain singleplayer data.\n" );
+        WriteLog( "World not contain singleplayer data.\n" );
         cl->Send_TextMsg( cl, STR_SP_SAVE_FAIL, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
@@ -931,7 +927,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( !Str::IsValidUTF8( cl->Name ) || Str::Substring( cl->Name, "*" ) )
         {
-            // WriteLogF(_FUNC_," - Wrong chars: Name or Password, client '%s'.\n",cl->Name);
             cl->Send_TextMsg( cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -948,7 +943,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         ClientData* data_ = GetClientData( id );
         if( !data_ || memcmp( pass_hash, data_->ClientPassHash, PASS_HASH_SIZE ) )
         {
-            // WriteLogF(_FUNC_," - Wrong name '%s' or password.\n",cl->Name);
             cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1010,7 +1004,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 uid_zero++;
         if( uid_zero > 2 )
         {
-            WriteLogF( _FUNC_, " - Received more than two zero UIDs, client '%s'.\n", cl->Name );
+            WriteLog( "Received more than two zero UIDs, client '%s'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1022,7 +1016,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             ( uid[ 3 ] && ( !FLAG( uid[ 3 ], 0x80000000 ) || FLAG( uid[ 3 ], 0x40000000 ) ) ) ||
             ( uid[ 4 ] && ( !FLAG( uid[ 4 ], 0x00000800 ) || FLAG( uid[ 4 ], 0x00004000 ) ) ) )
         {
-            WriteLogF( _FUNC_, " - Invalid UIDs, client '%s'.\n", cl->Name );
+            WriteLog( "Invalid UIDs, client '%s'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1038,7 +1032,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( uidxor != uidxor_ || uidor != uidor_ || uidcalc != uidcalc_ )
         {
-            WriteLogF( _FUNC_, " - Invalid UIDs hash, client '%s'.\n", cl->Name );
+            WriteLog( "Invalid UIDs hash, client '%s'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1075,7 +1069,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - UID already used by critter '%s', client '%s'.\n", cd->ClientName, cl->Name );
+                    WriteLog( "UID already used by critter '%s', client '%s'.\n", cd->ClientName, cl->Name );
                     cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
                     cl->Disconnect();
                     return;
@@ -1097,7 +1091,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 }
                 else
                 {
-                    WriteLogF( _FUNC_, " - Different UID %d, client '%s'.\n", i, cl->Name );
+                    WriteLog( "Different UID %d, client '%s'.\n", i, cl->Name );
                     cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
                     cl->Disconnect();
                     return;
@@ -1255,7 +1249,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( !cl_saved && !LoadClient( cl ) )
         {
-            WriteLogF( _FUNC_, " - Error load from data base, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Error load from data base, client '%s'.\n", cl->GetInfo() );
             cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1317,7 +1311,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( !MapMngr.CanAddCrToMap( cl, map, hx, hy, leader_id ) )
         {
-            WriteLogF( _FUNC_, " - Can't player '%s' on map '%s'.\n", cl->GetInfo(), map ? map->GetName() : "GlobalMap" );
+            WriteLog( "Can't player '%s' on map '%s'.\n", cl->GetInfo(), map ? map->GetName() : "GlobalMap" );
             cl->Send_TextMsg( cl, STR_NET_HEXES_BUSY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1448,7 +1442,7 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
     {
         if( !LoadWorld( fname ) )
         {
-            WriteLogF( _FUNC_, " - Unable load world from file '%s'.\n", fname );
+            WriteLog( "Unable load world from file '%s'.\n", fname );
             cl->Send_TextMsg( cl, STR_SP_LOAD_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1515,7 +1509,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     {
         if( !map )
         {
-            WriteLogF( _FUNC_, " - Map not found, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Map not found, client '%s'.\n", cl->GetInfo() );
             cl->Disconnect();
             return;
         }
@@ -1585,14 +1579,14 @@ void FOServer::Process_GiveMap( Client* cl )
     ProtoMap* pmap = ProtoMngr.GetProtoMap( map_pid );
     if( !pmap )
     {
-        WriteLogF( _FUNC_, " - Map prototype not found, client '%s'.\n", cl->GetInfo() );
+        WriteLog( "Map prototype not found, client '%s'.\n", cl->GetInfo() );
         cl->Disconnect();
         return;
     }
 
     if( !automap && map_pid != cl->GetMapPid() && cl->ViewMapPid != map_pid )
     {
-        WriteLogF( _FUNC_, " - Request for loading incorrect map, client '%s'.\n", cl->GetInfo() );
+        WriteLog( "Request for loading incorrect map, client '%s'.\n", cl->GetInfo() );
         return;
     }
 
@@ -1600,14 +1594,14 @@ void FOServer::Process_GiveMap( Client* cl )
     {
         if( !cl->CheckKnownLocById( loc_id ) )
         {
-            WriteLogF( _FUNC_, " - Request for loading unknown automap, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading unknown automap, client '%s'.\n", cl->GetInfo() );
             return;
         }
 
         Location* loc = MapMngr.GetLocation( loc_id );
         if( !loc )
         {
-            WriteLogF( _FUNC_, " - Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
             return;
         }
 
@@ -1621,7 +1615,7 @@ void FOServer::Process_GiveMap( Client* cl )
         }
         if( !found )
         {
-            WriteLogF( _FUNC_, " - Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
             return;
         }
     }
@@ -2179,7 +2173,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
     cl->Bin >> text_len;
     if( !title_len || !text_len || title_len > USER_HOLO_MAX_TITLE_LEN || text_len > USER_HOLO_MAX_LEN )
     {
-        WriteLogF( _FUNC_, " - Length of texts is greater of maximum or zero, title cur %u, title max %u, text cur %u, text max %u, client '%s'. Disconnect.\n", title_len, USER_HOLO_MAX_TITLE_LEN, text_len, USER_HOLO_MAX_LEN, cl->GetInfo() );
+        WriteLog( "Length of texts is greater of maximum or zero, title cur %u, title max %u, text cur %u, text max %u, client '%s'. Disconnect.\n", title_len, USER_HOLO_MAX_TITLE_LEN, text_len, USER_HOLO_MAX_LEN, cl->GetInfo() );
         cl->Disconnect();
         return;
     }
@@ -2194,7 +2188,7 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
     Item* holodisk = cl->GetItem( holodisk_id, true );
     if( !holodisk )
     {
-        WriteLogF( _FUNC_, " - Holodisk %u not found, client '%s'.\n", holodisk_id, cl->GetInfo() );
+        WriteLog( "Holodisk %u not found, client '%s'.\n", holodisk_id, cl->GetInfo() );
         cl->Send_TextMsg( cl, STR_HOLO_WRITE_FAIL, SAY_NETMSG, TEXTMSG_HOLO );
         return;
     }
@@ -2203,7 +2197,6 @@ void FOServer::Process_SetUserHoloStr( Client* cl )
 
     #pragma MESSAGE("Check valid of received text.")
 //	int invalid_chars=CheckStr(text);
-//	if(invalid_chars>0) WriteLogF(_FUNC_," - Found invalid chars, count %u, client '%s', changed on '_'.\n",invalid_chars,cl->GetInfo());
 
     HolodiskLocker.Lock();
 
@@ -2236,7 +2229,7 @@ void FOServer::Process_GetUserHoloStr( Client* cl )
 
     if( str_num / 10 < USER_HOLO_START_NUM )
     {
-        WriteLogF( _FUNC_, " - String value is less than users holo numbers, str num %u, client '%s'.\n", str_num, cl->GetInfo() );
+        WriteLog( "String value is less than users holo numbers, str num %u, client '%s'.\n", str_num, cl->GetInfo() );
         return;
     }
 
@@ -2263,7 +2256,7 @@ void FOServer::Process_Ping( Client* cl )
         ClientData* data = GetClientData( cl->GetId() );
         if( data )
         {
-            WriteLogF( _FUNC_, " - Wrong UID, client '%s'. Disconnect.\n", cl->GetInfo() );
+            WriteLog( "Wrong UID, client '%s'. Disconnect.\n", cl->GetInfo() );
             for( int i = 0; i < 5; i++ )
                 data->UID[ i ] = Random( 0, 10000 );
             data->UIDEndTick = Timer::FastTick() + GameOpt.AccountPlayTime * 1000;

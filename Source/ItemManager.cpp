@@ -87,7 +87,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto item '%s' not found.\n", Str::GetName( pid ) );
+        WriteLog( "Proto item '%s' not found.\n", Str::GetName( pid ) );
         return nullptr;
     }
 
@@ -112,7 +112,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     // Verify destroying
     if( item->IsDestroyed )
     {
-        WriteLogF( _FUNC_, " - Item destroyed after prototype '%s' initialization.\n", Str::GetName( pid ) );
+        WriteLog( "Item destroyed after prototype '%s' initialization.\n", Str::GetName( pid ) );
         return nullptr;
     }
 
@@ -194,7 +194,7 @@ Item* ItemManager::SplitItem( Item* item, uint count )
     Item* new_item = CreateItem( item->GetProtoId(), count, &item->Props ); // Ignore init script
     if( !new_item )
     {
-        WriteLogF( _FUNC_, " - Create item '%s' fail, count %u.\n", item->GetName(), count );
+        WriteLog( "Create item '%s' fail, count %u.\n", item->GetName(), count );
         return nullptr;
     }
 
@@ -482,7 +482,7 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, Item* item
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLogF( _FUNC_, " - Create item '%s' fail.\n", item->GetName() );
+                WriteLog( "Create item '%s' fail.\n", item->GetName() );
                 return false;
             }
 
@@ -521,7 +521,7 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, Item* 
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLogF( _FUNC_, " - Create item '%s' fail.\n", item->GetName() );
+                WriteLog( "Create item '%s' fail.\n", item->GetName() );
                 return false;
             }
 
@@ -561,7 +561,7 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, Item
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLogF( _FUNC_, " - Create item '%s' fail.\n", item->GetName() );
+                WriteLog( "Create item '%s' fail.\n", item->GetName() );
                 return false;
             }
 

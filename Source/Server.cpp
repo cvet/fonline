@@ -317,7 +317,7 @@ void FOServer::DeleteClientFile( const char* client_name )
     // Rename
     if( !FileRename( old_client_fname, new_client_fname ) )
     {
-        WriteLogF( _FUNC_, " - Fail to rename from '%s' to '%s'.\n", old_client_fname, new_client_fname );
+        WriteLog( "Fail to rename from '%s' to '%s'.\n", old_client_fname, new_client_fname );
         FileClose( FileOpen( "cache_fail", true ) );
     }
 }
@@ -469,7 +469,7 @@ void FOServer::LogicTick()
 
                 if( cl->GetOfflineTime() > 60 * 60 * 1000 )         // 1 hour
                 {
-                    WriteLogF( _FUNC_, " - Offline connection timeout, force shutdown. Ip '%s', name '%s'.\n", cl->GetIpStr(), cl->GetName() );
+                    WriteLog( "Offline connection timeout, force shutdown. Ip '%s', name '%s'.\n", cl->GetIpStr(), cl->GetName() );
                     cl->Shutdown();
                 }
             }
@@ -677,7 +677,7 @@ void FOServer::Net_Listen( void* )
                 break;
             #endif
 
-            WriteLogF( _FUNC_, " - Listen error '%s'. Continue listening.\n", GetLastSocketError() );
+            WriteLog( "Listen error '%s'. Continue listening.\n", GetLastSocketError() );
             continue;
         }
 
@@ -695,11 +695,11 @@ void FOServer::Net_Listen( void* )
             #ifdef FO_WINDOWS
             int optval = 1;
             if( setsockopt( sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
-                WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error '%s'.\n", GetLastSocketError() );
+                WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '%s'.\n", GetLastSocketError() );
             #else
             // socklen_t optval = 1;
             // if( setsockopt( sock, IPPROTO_TCP, 1, &optval, sizeof( optval ) ) )
-            //    WriteLogF( _FUNC_, " - Can't set TCP_NODELAY (disable Nagle) to socket, error '%s'.\n", GetLastSocketError() );
+            //    WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '%s'.\n", GetLastSocketError() );
             #endif
         }
 
@@ -718,7 +718,7 @@ void FOServer::Net_Listen( void* )
         int result = deflateInit( &cl->Zstrm, Z_BEST_SPEED );
         if( result != Z_OK )
         {
-            WriteLogF( _FUNC_, " - Client Zlib deflateInit fail, error %d '%s'.\n", result, zError( result ) );
+            WriteLog( "Client Zlib deflateInit fail, error %d '%s'.\n", result, zError( result ) );
             closesocket( sock );
             delete cl;
             continue;
@@ -730,7 +730,7 @@ void FOServer::Net_Listen( void* )
         bufferevent* bev = bufferevent_socket_new( NetIOEventHandler, sock, BEV_OPT_THREADSAFE );   // BEV_OPT_DEFER_CALLBACKS
         if( !bev )
         {
-            WriteLogF( _FUNC_, " - Create new buffer event fail.\n" );
+            WriteLog( "Create new buffer event fail.\n" );
             closesocket( sock );
             delete cl;
             continue;
@@ -740,7 +740,7 @@ void FOServer::Net_Listen( void* )
         // CompletionPort
         if( !CreateIoCompletionPort( (HANDLE) sock, NetIOCompletionPort, 0, 0 ) )
         {
-            WriteLogF( _FUNC_, " - CreateIoCompletionPort fail, error %u.\n", GetLastError() );
+            WriteLog( "CreateIoCompletionPort fail, error %u.\n", GetLastError() );
             closesocket( sock );
             delete cl;
             continue;
@@ -750,7 +750,7 @@ void FOServer::Net_Listen( void* )
         DWORD bytes;
         if( WSARecv( cl->Sock, &cl->NetIOIn->Buffer, 1, &bytes, &cl->NetIOIn->Flags, &cl->NetIOIn->OV, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
         {
-            WriteLogF( _FUNC_, " - First recv fail, error '%s'.\n", GetLastSocketError() );
+            WriteLog( "First recv fail, error '%s'.\n", GetLastSocketError() );
             closesocket( sock );
             delete cl;
             continue;
@@ -818,7 +818,7 @@ void FOServer::NetIO_Loop( void* )
 
         // Error
         if( result == -1 )
-            WriteLogF( _FUNC_, " - Error.\n" );
+            WriteLog( "Error.\n" );
 
         // End of work
         // event_base_loopbreak called
@@ -913,7 +913,7 @@ void FOServer::NetIO_Input( bufferevent* bev, void* arg )
         cl->Bin.Lock();
         if( cl->Bin.GetCurPos() + read_len >= GameOpt.FloodSize && !Singleplayer )
         {
-            WriteLogF( _FUNC_, " - Flood.\n" );
+            WriteLog( "Flood.\n" );
             cl->Disconnect();
             cl->Bin.Reset();
             cl->Bin.Unlock();
@@ -928,7 +928,7 @@ void FOServer::NetIO_Input( bufferevent* bev, void* arg )
 
         if( evbuffer_remove( input, data + pos, read_len ) != (int) read_len )
         {
-            WriteLogF( _FUNC_, " - Receive fail.\n" );
+            WriteLog( "Receive fail.\n" );
             cl->Bin.Unlock();
             cl->Shutdown();
         }
@@ -975,7 +975,7 @@ void FOServer::NetIO_Output( bufferevent* bev, void* arg )
 
         if( deflate( &cl->Zstrm, Z_SYNC_FLUSH ) != Z_OK )
         {
-            WriteLogF( _FUNC_, " - Deflate fail.\n" );
+            WriteLog( "Deflate fail.\n" );
             cl->Disconnect();
             cl->Bout.Reset();
             cl->Bout.Unlock();
@@ -1009,7 +1009,7 @@ void FOServer::NetIO_Output( bufferevent* bev, void* arg )
     // Append to buffer
     if( bufferevent_write( bev, output_buffer, write_len ) )
     {
-        WriteLogF( _FUNC_, " - Send fail.\n" );
+        WriteLog( "Send fail.\n" );
         cl->Shutdown();
     }
     else
@@ -1077,7 +1077,7 @@ void FOServer::NetIO_Input( Client::NetIOArg* io )
     cl->Bin.Lock();
     if( cl->Bin.GetCurPos() + io->Bytes >= GameOpt.FloodSize && !Singleplayer )
     {
-        WriteLogF( _FUNC_, " - Flood.\n" );
+        WriteLog( "Flood.\n" );
         cl->Bin.Reset();
         cl->Bin.Unlock();
         InterlockedExchange( &io->Operation, WSAOP_FREE );
@@ -1091,7 +1091,7 @@ void FOServer::NetIO_Input( Client::NetIOArg* io )
     DWORD bytes;
     if( WSARecv( cl->Sock, &io->Buffer, 1, &bytes, &io->Flags, &io->OV, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
-        WriteLogF( _FUNC_, " - Recv fail, error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Recv fail, error '%s'.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
         cl->Disconnect();
     }
@@ -1124,7 +1124,7 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
 
         if( deflate( &cl->Zstrm, Z_SYNC_FLUSH ) != Z_OK )
         {
-            WriteLogF( _FUNC_, " - Deflate fail.\n" );
+            WriteLog( "Deflate fail.\n" );
             cl->Bout.Reset();
             cl->Bout.Unlock();
             InterlockedExchange( &io->Operation, WSAOP_FREE );
@@ -1159,7 +1159,7 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
     DWORD bytes;
     if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
     {
-        WriteLogF( _FUNC_, " - Send fail, error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Send fail, error '%s'.\n", GetLastSocketError() );
         InterlockedExchange( &io->Operation, WSAOP_FREE );
         cl->Disconnect();
     }
@@ -1266,7 +1266,7 @@ void FOServer::Process( ClientPtr& cl )
 
         if( cl->GameState == STATE_CONNECTED && cl->LastActivityTime && Timer::FastTick() - cl->LastActivityTime > PING_CLIENT_LIFE_TIME ) // Kick bot
         {
-            WriteLogF( _FUNC_, " - Connection timeout, client kicked, maybe bot. Ip '%s'.\n", cl->GetIpStr() );
+            WriteLog( "Connection timeout, client kicked, maybe bot. Ip '%s'.\n", cl->GetIpStr() );
             cl->Disconnect();
         }
     }
@@ -1519,7 +1519,7 @@ void FOServer::Process_Text( Client* cl )
 
     if( !len || len >= sizeof( str ) )
     {
-        WriteLogF( _FUNC_, " - Buffer zero sized or too large, length %u. Disconnect.\n", len );
+        WriteLog( "Buffer zero sized or too large, length %u. Disconnect.\n", len );
         cl->Disconnect();
         return;
     }
@@ -1536,7 +1536,7 @@ void FOServer::Process_Text( Client* cl )
         cl->LastSayEqualCount++;
         if( cl->LastSayEqualCount >= 10 )
         {
-            WriteLogF( _FUNC_, " - Flood detected, client '%s'. Disconnect.\n", cl->GetInfo() );
+            WriteLog( "Flood detected, client '%s'. Disconnect.\n", cl->GetInfo() );
             cl->Disconnect();
             return;
         }
@@ -2978,7 +2978,7 @@ bool FOServer::InitReal()
         port = MainConfig->GetInt( "", "Port", 4000 );
         if( GameOpt.UpdateServer && !GameOpt.GameServer )
         {
-            ushort update_port = ( ushort ) Str::AtoI( Str::Substring( CommandLine, "-update" ) + Str::Length( "-update" ) );
+            ushort update_port = (ushort) MainConfig->GetInt( "", "update" );
             if( update_port )
                 port = update_port;
         }
@@ -3096,41 +3096,6 @@ bool FOServer::InitReal()
 
     Client::SendData = &NetIO_Output;
     #endif
-
-    // Process command line definitions
-    const char*      cmd_line = CommandLine;
-    asIScriptEngine* engine = Script::GetEngine();
-    for( int i = 0, j = engine->GetGlobalPropertyCount(); i < j; i++ )
-    {
-        const char* name;
-        int         type_id;
-        bool        is_const;
-        const char* config_group;
-        void*       pointer;
-        if( engine->GetGlobalPropertyByIndex( i, &name, nullptr, &type_id, &is_const, &config_group, &pointer ) >= 0 )
-        {
-            const char* cmd_name = Str::Substring( cmd_line, name );
-            if( cmd_name )
-            {
-                const char* type_decl = engine->GetTypeDeclaration( type_id );
-                if( Str::Compare( type_decl, "bool" ) )
-                {
-                    *(bool*) pointer = atoi( cmd_name + Str::Length( name ) + 1 ) != 0;
-                    WriteLog( "Global var '%s' changed to '%s'.\n", name, *(bool*) pointer ? "true" : "false" );
-                }
-                else if( Str::Compare( type_decl, "string" ) )
-                {
-                    *(string*) pointer = cmd_name + Str::Length( name ) + 1;
-                    WriteLog( "Global var '%s' changed to '%s'.\n", name, ( *(string*) pointer ).c_str() );
-                }
-                else
-                {
-                    *(int*) pointer = atoi( cmd_name + Str::Length( name ) + 1 );
-                    WriteLog( "Global var '%s' changed to %d.\n", name, *(int*) pointer );
-                }
-            }
-        }
-    }
 
     ScriptSystemUpdate();
 
@@ -3390,7 +3355,7 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
     const char* fname = ( expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE );
     if( !fm.LoadFile( fname ) )
     {
-        WriteLogF( _FUNC_, " - Can't open file '%s'.\n", fname );
+        WriteLog( "Can't open file '%s'.\n", fname );
         return;
     }
     fm.SwitchToWrite();
@@ -3409,7 +3374,7 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
     fm.SetStr( "\n" );
 
     if( !fm.SaveFile( fname ) )
-        WriteLogF( _FUNC_, " - Unable to save file '%s'.\n", fname );
+        WriteLog( "Unable to save file '%s'.\n", fname );
 }
 
 void FOServer::SaveBans()
@@ -3435,7 +3400,7 @@ void FOServer::SaveBans()
     }
 
     if( !fm.SaveFile( BANS_FNAME_ACTIVE ) )
-        WriteLogF( _FUNC_, " - Unable to save file '%s'.\n", BANS_FNAME_ACTIVE );
+        WriteLog( "Unable to save file '%s'.\n", BANS_FNAME_ACTIVE );
 }
 
 void FOServer::LoadBans()
@@ -3714,7 +3679,7 @@ bool FOServer::NewWorld()
     // Start script
     if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
     {
-        WriteLogF( _FUNC_, " - Start script fail.\n" );
+        WriteLog( "Start script fail.\n" );
         shutdown( ListenSock, SD_BOTH );
         closesocket( ListenSock );
         return false;
@@ -3842,7 +3807,7 @@ bool FOServer::LoadWorld( const char* fname )
     // Start script
     if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
     {
-        WriteLogF( _FUNC_, " - Start script fail.\n" );
+        WriteLog( "Start script fail.\n" );
         shutdown( ListenSock, SD_BOTH );
         closesocket( ListenSock );
         return false;

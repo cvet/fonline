@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Log.h"
 #include "Timer.h"
 #include <stdarg.h>
@@ -7,19 +6,18 @@
 # include "FL/Fl_Text_Display.H"
 #endif
 
-Mutex                LogLocker;
-void*                LogFileHandle = nullptr;
-vector< LogFuncPtr > LogFunctions;
-bool                 LogFunctionsInProcess = false;
-void*                LogTextBox = nullptr;
-string*              LogBufferStr = nullptr;
-bool                 ToDebugOutput = false;
-bool                 LoggingWithTime = false;
-bool                 LoggingWithThread = false;
-uint                 StartLogTime = 0;
-void WriteLogInternal( const char* func, const char* frmt, va_list& list );
+static Mutex                LogLocker;
+static void*                LogFileHandle;
+static vector< LogFuncPtr > LogFunctions;
+static bool                 LogFunctionsInProcess;
+static void*                LogTextBox;
+static string*              LogBufferStr;
+static bool                 ToDebugOutput;
+static bool                 LoggingWithTime;
+static bool                 LoggingWithThread;
+static uint                 StartLogTime;
 
-void LogToFile( const char* fname )
+void LogToFile( const string& fname )
 {
     SCOPE_LOCK( LogLocker );
 
@@ -27,8 +25,8 @@ void LogToFile( const char* fname )
         FileClose( LogFileHandle );
     LogFileHandle = nullptr;
 
-    if( fname && fname[ 0 ] )
-        LogFileHandle = FileOpen( fname, true, true );
+    if( !fname.empty() )
+        LogFileHandle = FileOpen( fname.c_str(), true, true );
 }
 
 void LogToFunc( LogFuncPtr func_ptr, bool enable )
@@ -62,10 +60,7 @@ void LogToBuffer( bool enable )
 
     SAFEDEL( LogBufferStr );
     if( enable )
-    {
         LogBufferStr = new string();
-        LogBufferStr->reserve( MAX_LOGTEXT * 2 );
-    }
 }
 
 void LogToDebugOutput( bool enable )
@@ -86,42 +81,26 @@ void LogFinish()
     LogToDebugOutput( false );
 }
 
-void WriteLog( const char* frmt, ... )
-{
-    va_list list;
-    va_start( list, frmt );
-    WriteLogInternal( nullptr, frmt, list );
-    va_end( list );
-}
-
-void WriteLogF( const char* func, const char* frmt, ... )
-{
-    va_list list;
-    va_start( list, frmt );
-    WriteLogInternal( func, frmt, list );
-    va_end( list );
-}
-
-void WriteLogInternal( const char* func, const char* frmt, va_list& list )
+void WriteLogMessage( const string& message )
 {
     SCOPE_LOCK( LogLocker );
 
     if( LogFunctionsInProcess )
         return;
 
-    char str_tid[ 64 ] = { 0 };
+    string result;
+
     #if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
     if( LoggingWithThread )
     {
         const char* name = Thread::GetCurrentName();
         if( name[ 0 ] )
-            Str::Format( str_tid, "[%s]", name );
+            result += fmt::format( "[{}] ", name );
         else
-            Str::Format( str_tid, "[%zu]", Thread::GetCurrentId() );
+            result += fmt::format( "[{}] ", Thread::GetCurrentId() );
     }
     #endif
 
-    char str_time[ 64 ] = { 0 };
     if( LoggingWithTime )
     {
         if( StartLogTime == 0 )
@@ -132,57 +111,45 @@ void WriteLogInternal( const char* func, const char* frmt, va_list& list )
         uint minutes = seconds / 60 % 60;
         uint hours = seconds / 60 / 60;
         if( hours )
-            Str::Format( str_time, "[%03u:%02u:%02u:%03u]", hours, minutes, seconds % 60, delta % 1000 );
+            result += fmt::format( "[{:0=3}:%{:0=2}:%{:0=2}:%{:0=3}] ", hours, minutes, seconds % 60, delta % 1000 );
         else if( minutes )
-            Str::Format( str_time, "[%02u:%02u:%03u]", minutes, seconds % 60, delta % 1000 );
+            result += fmt::format( "[%{:0=2}:%{:0=2}:%{:0=3}] ", minutes, seconds % 60, delta % 1000 );
         else
-            Str::Format( str_time, "[%02u:%03u]", seconds % 60, delta % 1000 );
+            result += fmt::format( "[%{:0=2}:%{:0=3}] ", seconds % 60, delta % 1000 );
     }
 
-    char str[ MAX_LOGTEXT ] = { 0 };
-    if( str_tid[ 0 ] )
-        Str::Append( str, str_tid );
-    if( str_time[ 0 ] )
-        Str::Append( str, str_time );
-    if( str_tid[ 0 ] || str_time[ 0 ] )
-        Str::Append( str, " " );
-    if( func )
-        Str::Append( str, func );
-
-    size_t len = Str::Length( str );
-    vsnprintf( &str[ len ], MAX_LOGTEXT - len, frmt, list );
-    str[ MAX_LOGTEXT - 1 ] = 0;
+    result += message;
 
     if( LogFileHandle )
     {
-        FileWrite( LogFileHandle, str, Str::Length( str ) );
+        FileWrite( LogFileHandle, result.c_str(), (uint) result.length() );
     }
     if( !LogFunctions.empty() )
     {
         LogFunctionsInProcess = true;
         for( size_t i = 0, j = LogFunctions.size(); i < j; i++ )
-            ( *LogFunctions[ i ] )( str );
+            ( *LogFunctions[ i ] )( result.c_str() );
         LogFunctionsInProcess = false;
     }
     if( LogTextBox )
     {
         #if defined ( FONLINE_SERVER ) && !defined ( SERVER_DAEMON )
-        ( (Fl_Text_Display*) LogTextBox )->buffer()->append( str );
+        ( (Fl_Text_Display*) LogTextBox )->buffer()->append( result.c_str() );
         #endif
     }
     if( LogBufferStr )
     {
-        *LogBufferStr += str;
+        *LogBufferStr += result;
     }
     if( ToDebugOutput )
     {
         #ifdef FO_WINDOWS
-        OutputDebugString( str );
+        OutputDebugString( result.c_str() );
         #endif
     }
 
     #if !defined ( FO_WINDOWS ) || defined ( FONLINE_SCRIPT_COMPILER )
-    printf( "%s", str );
+    printf( "%s", result.c_str() );
     #endif
 }
 

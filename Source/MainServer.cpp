@@ -96,13 +96,13 @@ int main( int argc, char** argv )
     // Logging
     LogWithTime( MainConfig->GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
     LogWithThread( MainConfig->GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
-    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || MainConfig->GetInt( "", "LoggingDebugOutput", 0 ) != 0 )
+    if( MainConfig->IsKey( "", "LoggingDebugOutput" ) )
         LogToDebugOutput( true );
 
     // Update stuff
-    if( !Singleplayer && Str::Substring( CommandLine, "-game" ) )
+    if( !Singleplayer && MainConfig->IsKey( "", "GameServer" ) )
         GameOpt.GameServer = true, GameOpt.UpdateServer = false;
-    else if( !Singleplayer && Str::Substring( CommandLine, "-update" ) )
+    else if( !Singleplayer && MainConfig->IsKey( "", "UpdateServer" ) )
         GameOpt.GameServer = false, GameOpt.UpdateServer = true;
     else
         GameOpt.GameServer = true, GameOpt.UpdateServer = true;
@@ -111,16 +111,16 @@ int main( int argc, char** argv )
     GameInitEvent.Disallow();
 
     // Service
-    if( Str::Substring( CommandLine, "-service" ) )
+    if( MainConfig->IsKey( "", "Service" ) )
     {
         # ifdef FO_WINDOWS
-        ServiceMain( Str::Substring( CommandLine, "--service" ) != nullptr );
+        ServiceMain( MainConfig->IsKey( "", "StartService" ) );
         # endif
         return 0;
     }
 
     // Check single player parameters
-    if( Str::Substring( CommandLine, "-singleplayer " ) )
+    if( MainConfig->IsKey( "", "Singleplayer" ) )
     {
         # ifdef FO_WINDOWS
         Singleplayer = true;
@@ -129,11 +129,8 @@ int main( int argc, char** argv )
 
         // Logging
         char log_path[ MAX_FOPATH ] = { 0 };
-        if( !Str::Substring( CommandLine, "-nologpath" ) && Str::Substring( CommandLine, "-logpath " ) )
-        {
-            const char* ptr = Str::Substring( CommandLine, "-logpath " ) + Str::Length( "-logpath " );
-            Str::Copy( log_path, ptr );
-        }
+        if( !MainConfig->IsKey( "", "NoLogPath" ) && MainConfig->IsKey( "", "LogPath" ) )
+            Str::Copy( log_path, MainConfig->GetStr( "", "LogPath" ) );
         Str::Trim( log_path );
         Str::Append( log_path, "FOnlineServer.log" );
         LogToFile( log_path );
@@ -141,7 +138,7 @@ int main( int argc, char** argv )
         WriteLog( "Singleplayer mode.\n" );
 
         // Shared data
-        const char* ptr = Str::Substring( CommandLine, "-singleplayer " ) + Str::Length( "-singleplayer " );
+        const char* ptr = MainConfig->GetStr( "", "Singleplayer" );
         HANDLE      map_file = nullptr;
         if( sscanf( ptr, "%p%p", &map_file, &SingleplayerClientProcess ) != 2 || !SingleplayerData.Attach( map_file ) )
         {
@@ -154,7 +151,7 @@ int main( int argc, char** argv )
     }
 
     // GUI
-    if( !Singleplayer || Str::Substring( CommandLine, "-showgui" ) )
+    if( !Singleplayer || MainConfig->IsKey( "", "ShowGui" ) )
     {
         Fl::lock();         // Begin GUI multi threading
         GUIInit();
@@ -177,7 +174,7 @@ int main( int argc, char** argv )
     }
 
     // Autostart
-    if( Str::Substring( CommandLine, "-start" ) || Singleplayer )
+    if( MainConfig->IsKey( "", "Start" ) || Singleplayer )
     {
         if( GuiWindow )
         {
@@ -764,7 +761,7 @@ void ServiceMain( bool as_service )
     }
 
     // Delete service
-    if( Str::Substring( CommandLine, "-delete" ) )
+    if( MainConfig->IsKey( "", "Delete" ) )
     {
         SC_HANDLE service = OpenService( manager, "FOnlineServer", DELETE );
 

@@ -1,4 +1,3 @@
-#include "Common.h"
 #include "Crypt.h"
 #include "zlib.h"
 #include "SHA/sha2.h"
@@ -239,23 +238,12 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
     uLongf buf_len = data_len * mul_approx;
     if( buf_len > 100000000 ) // 100mb
     {
-        WriteLogF( _FUNC_, "Unpack - Buffer length is too large, data length %u, multiplier %u.\n", data_len, mul_approx );
+        WriteLog( "Unpack buffer length is too large, data length %u, multiplier %u.\n", data_len, mul_approx );
         return nullptr;
     }
 
     AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
-    if( !buf.IsValid() )
-    {
-        WriteLog( "Unpack - Bad alloc, size %u.\n", buf_len );
-        return nullptr;
-    }
-
     AutoPtrArr< uchar > data_( new uchar[ data_len ] );
-    if( !data_.IsValid() )
-    {
-        WriteLog( "Unpack - Bad alloc, size %u.\n", data_len );
-        return nullptr;
-    }
 
     memcpy( data_.Get(), data, data_len );
     if( *(ushort*) data_.Get() != 0x9C78 )
@@ -266,7 +254,7 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
 
     if( *(ushort*) data_.Get() != 0x9C78 )
     {
-        WriteLog( "Unpack - Signature not found.\n" );
+        WriteLog( "Unpack signature not found.\n" );
         return nullptr;
     }
 
@@ -279,7 +267,7 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
             buf.Reset( new uchar[ buf_len ] );
             if( !buf.IsValid() )
             {
-                WriteLog( "Unpack - Bad alloc, size %u.\n", buf_len );
+                WriteLog( "Unpack bad alloc, size %u.\n", buf_len );
                 return nullptr;
             }
         }
@@ -553,7 +541,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
 
     // Grow table
     #pragma MESSAGE("Grow cache descriptors table.")
-    WriteLogF( _FUNC_, " - Cache table descriptors ended! Delete 'default.cache' file." );
+    WriteLog( "Cache table descriptors ended! Delete 'default.cache' file." );
     return;
 
     // Place founded

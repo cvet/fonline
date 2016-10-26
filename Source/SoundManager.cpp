@@ -83,7 +83,7 @@ bool SoundManager::Init()
     // SDL
     if( SDL_InitSubSystem( SDL_INIT_AUDIO ) )
     {
-        WriteLogF( _FUNC_, " - SDL Audio initialization fail, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL Audio initialization fail, error '%s'.\n", SDL_GetError() );
         return false;
     }
 
@@ -277,7 +277,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
     uint dw_buf = fm.GetLEUInt();
     if( dw_buf != MAKEUINT( 'R', 'I', 'F', 'F' ) )
     {
-        WriteLogF( _FUNC_, " - 'RIFF' not found.\n" );
+        WriteLog( "'RIFF' not found.\n" );
         return false;
     }
 
@@ -286,21 +286,21 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
     dw_buf = fm.GetLEUInt();
     if( dw_buf != MAKEUINT( 'W', 'A', 'V', 'E' ) )
     {
-        WriteLogF( _FUNC_, " - 'WAVE' not found.\n" );
+        WriteLog( "'WAVE' not found.\n" );
         return false;
     }
 
     dw_buf = fm.GetLEUInt();
     if( dw_buf != MAKEUINT( 'f', 'm', 't', ' ' ) )
     {
-        WriteLogF( _FUNC_, " - 'fmt ' not found.\n" );
+        WriteLog( "'fmt ' not found.\n" );
         return false;
     }
 
     dw_buf = fm.GetLEUInt();
     if( !dw_buf )
     {
-        WriteLogF( _FUNC_, " - Unknown format.\n" );
+        WriteLog( "Unknown format.\n" );
         return false;
     }
 
@@ -319,7 +319,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
 
     if( waveformatex.wFormatTag != 1 )
     {
-        WriteLogF( _FUNC_, " - Compressed files not supported.\n" );
+        WriteLog( "Compressed files not supported.\n" );
         return false;
     }
 
@@ -335,7 +335,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
 
     if( dw_buf != MAKEUINT( 'd', 'a', 't', 'a' ) )
     {
-        WriteLogF( _FUNC_, " - Unknown format2.\n" );
+        WriteLog( "Unknown format2.\n" );
         return false;
     }
 
@@ -354,7 +354,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
         sound->OriginalFormat = AUDIO_S16;
         break;
     default:
-        WriteLogF( _FUNC_, " - Unknown format.\n" );
+        WriteLog( "Unknown format.\n" );
         return false;
     }
 
@@ -362,7 +362,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
     sound->BaseBuf = new unsigned char[ sound->BaseBufSize ];
     if( !fm.CopyMem( sound->BaseBuf, sound->BaseBufSize ) )
     {
-        WriteLogF( _FUNC_, " - File truncated.\n" );
+        WriteLog( "File truncated.\n" );
         return false;
     }
 
@@ -381,7 +381,7 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, bool is_music )
     AutoPtr< CACMUnpacker > acm( new CACMUnpacker( fm.GetBuf(), (int) fm.GetFsize(), channels, freq, samples ) );
     if( !acm.IsValid() )
     {
-        WriteLogF( _FUNC_, " - ACMUnpacker init fail.\n" );
+        WriteLog( "ACMUnpacker init fail.\n" );
         return false;
     }
 
@@ -394,7 +394,7 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, bool is_music )
     int dec_data = acm->readAndDecompress( (ushort*) sound->BaseBuf, sound->BaseBufSize );
     if( dec_data != (int) sound->BaseBufSize )
     {
-        WriteLogF( _FUNC_, " - Decode Acm error.\n" );
+        WriteLog( "Decode Acm error.\n" );
         return false;
     }
 
@@ -458,7 +458,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     int error = ov_open_callbacks( fm, &sound->OggDescriptor, nullptr, 0, callbacks );
     if( error )
     {
-        WriteLogF( _FUNC_, " - Open OGG file '%s' fail, error:\n", fname );
+        WriteLog( "Open OGG file '%s' fail, error:\n", fname );
         switch( error )
         {
         case OV_EREAD:
@@ -486,7 +486,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     vorbis_info* vi = ov_info( &sound->OggDescriptor, -1 );
     if( !vi )
     {
-        WriteLogF( _FUNC_, " - ov_info error.\n" );
+        WriteLog( "ov_info error.\n" );
         ov_clear( &sound->OggDescriptor );
         return false;
     }
@@ -576,7 +576,7 @@ bool SoundManager::ConvertData( Sound* sound )
                                         SoundSpec.format, SoundSpec.channels, SoundSpec.freq );
     if( r == -1 )
     {
-        WriteLogF( _FUNC_, " - SDL_BuildAudioCVT fail, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL_BuildAudioCVT fail, error '%s'.\n", SDL_GetError() );
         return false;
     }
     if( r == 1 )
@@ -586,7 +586,7 @@ bool SoundManager::ConvertData( Sound* sound )
         memcpy( cvt.buf, sound->BaseBuf, sound->BaseBufSize );
         if( SDL_ConvertAudio( &cvt ) )
         {
-            WriteLogF( _FUNC_, " - SDL_ConvertAudio fail, error '%s'.\n", SDL_GetError() );
+            WriteLog( "SDL_ConvertAudio fail, error '%s'.\n", SDL_GetError() );
             return false;
         }
         sound->ConvertedBufCur = 0;

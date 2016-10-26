@@ -82,7 +82,7 @@ void BufferManager::Refresh()
     if( bufReadPos > bufEndPos )
     {
         isError = true;
-        WriteLogF( _FUNC_, " - Error!\n" );
+        WriteLog( "Error!\n" );
         return;
     }
     if( bufReadPos )
@@ -162,7 +162,7 @@ void BufferManager::Pop( char* buf, uint len )
     if( bufReadPos + len > bufEndPos )
     {
         isError = true;
-        WriteLogF( _FUNC_, " - Error!\n" );
+        WriteLog( "Error!\n" );
         return;
     }
     CopyBuf( bufData + bufReadPos, buf, nullptr, EncryptKey( len ), len );
@@ -176,7 +176,7 @@ void BufferManager::Cut( uint len )
     if( bufReadPos + len > bufEndPos )
     {
         isError = true;
-        WriteLogF( _FUNC_, " - Error!\n" );
+        WriteLog( "Error!\n" );
         return;
     }
     char* buf = bufData + bufReadPos;

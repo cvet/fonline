@@ -1834,14 +1834,14 @@ bool PropertyRegistrator::Init()
     int result = engine->RegisterEnum( enum_type.c_str() );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity property enum '%s' fail, error %d.\n", enum_type.c_str(), result );
+        WriteLog( "Register entity property enum '%s' fail, error %d.\n", enum_type.c_str(), result );
         return false;
     }
 
     result = engine->RegisterEnumValue( enum_type.c_str(), "Invalid", 0 );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity property enum '%s::Invalid' zero value fail, error %d.\n", enum_type.c_str(), result );
+        WriteLog( "Register entity property enum '%s::Invalid' zero value fail, error %d.\n", enum_type.c_str(), result );
         return false;
     }
 
@@ -1850,7 +1850,7 @@ bool PropertyRegistrator::Init()
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::GetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity method '%s' fail, error %d.\n", decl, result );
+        WriteLog( "Register entity method '%s' fail, error %d.\n", decl, result );
         return false;
     }
 
@@ -1858,7 +1858,7 @@ bool PropertyRegistrator::Init()
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::SetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity method '%s' fail, error %d.\n", decl, result );
+        WriteLog( "Register entity method '%s' fail, error %d.\n", decl, result );
         return false;
     }
 
@@ -1877,7 +1877,7 @@ Property* PropertyRegistrator::Register(
 {
     if( registrationFinished )
     {
-        WriteLogF( _FUNC_, " - Registration of class properties is finished.\n" );
+        WriteLog( "Registration of class properties is finished.\n" );
         return nullptr;
     }
 
@@ -1894,7 +1894,7 @@ Property* PropertyRegistrator::Register(
     int type_id = engine->GetTypeIdByDecl( type_name );
     if( type_id < 0 )
     {
-        WriteLogF( _FUNC_, " - Invalid type '%s'.\n", type_name );
+        WriteLog( "Invalid type '%s'.\n", type_name );
         return nullptr;
     }
 
@@ -1915,7 +1915,7 @@ Property* PropertyRegistrator::Register(
     bool               is_hash_sub2 = false;
     if( type_id & asTYPEID_OBJHANDLE )
     {
-        WriteLogF( _FUNC_, " - Invalid property type '%s', handles not allowed.\n", type_name );
+        WriteLog( "Invalid property type '%s', handles not allowed.\n", type_name );
         return nullptr;
     }
     else if( !( type_id & asTYPEID_MASK_OBJECT ) )
@@ -1926,14 +1926,14 @@ Property* PropertyRegistrator::Register(
         int primitive_size = engine->GetSizeOfPrimitiveType( type_id );
         if( primitive_size <= 0 )
         {
-            WriteLogF( _FUNC_, " - Invalid property POD type '%s'.\n", type_name );
+            WriteLog( "Invalid property POD type '%s'.\n", type_name );
             return nullptr;
         }
 
         data_size = (uint) primitive_size;
         if( data_size != 1 && data_size != 2 && data_size != 4 && data_size != 8 )
         {
-            WriteLogF( _FUNC_, " - Invalid size of property POD type '%s', size %d.\n", type_name, data_size );
+            WriteLog( "Invalid size of property POD type '%s', size %d.\n", type_name, data_size );
             return nullptr;
         }
 
@@ -1957,12 +1957,12 @@ Property* PropertyRegistrator::Register(
         is_array_of_string = ( !is_array_of_pod && Str::Compare( as_obj_type->GetSubType()->GetName(), "string" ) );
         if( !is_array_of_pod && !is_array_of_string )
         {
-            WriteLogF( _FUNC_, " - Invalid property type '%s', array elements must have POD/string type.\n", type_name );
+            WriteLog( "Invalid property type '%s', array elements must have POD/string type.\n", type_name );
             return nullptr;
         }
         if( Str::Substring( type_name, "resource" ) )
         {
-            WriteLogF( _FUNC_, " - Invalid property type '%s', array elements can't be resource type.\n", type_name );
+            WriteLog( "Invalid property type '%s', array elements can't be resource type.\n", type_name );
             return nullptr;
         }
 
@@ -1975,7 +1975,7 @@ Property* PropertyRegistrator::Register(
 
         if( as_obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT )
         {
-            WriteLogF( _FUNC_, " - Invalid property type '%s', dict key must have POD type.\n", type_name );
+            WriteLog( "Invalid property type '%s', dict key must have POD type.\n", type_name );
             return nullptr;
         }
 
@@ -1989,7 +1989,7 @@ Property* PropertyRegistrator::Register(
             bool is_dict_array_of_pod = !( value_sub_type->GetSubTypeId() & asTYPEID_MASK_OBJECT );
             if( !is_dict_of_string && !is_dict_array_of_pod && !is_dict_of_array_of_string )
             {
-                WriteLogF( _FUNC_, " - Invalid property type '%s', dict value must have POD/string type or array of POD/string type.\n", type_name );
+                WriteLog( "Invalid property type '%s', dict value must have POD/string type or array of POD/string type.\n", type_name );
                 return nullptr;
             }
         }
@@ -1997,7 +1997,7 @@ Property* PropertyRegistrator::Register(
             ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) == nullptr && !is_dict_of_array ) ||
             ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) == nullptr && is_dict_of_array ) )
         {
-            WriteLogF( _FUNC_, " - Invalid property type '%s', dict elements can't be resource type.\n", type_name );
+            WriteLog( "Invalid property type '%s', dict elements can't be resource type.\n", type_name );
             return nullptr;
         }
 
@@ -2007,7 +2007,7 @@ Property* PropertyRegistrator::Register(
     }
     else
     {
-        WriteLogF( _FUNC_, " - Invalid property type '%s'.\n", type_name );
+        WriteLog( "Invalid property type '%s'.\n", type_name );
         return nullptr;
     }
 
@@ -2020,7 +2020,7 @@ Property* PropertyRegistrator::Register(
         ot->GetProperty( i, &n );
         if( Str::Compare( n, name ) )
         {
-            WriteLogF( _FUNC_, " - Trying to register already registered property '%s'.\n", name );
+            WriteLog( "Trying to register already registered property '%s'.\n", name );
             return nullptr;
         }
     }
@@ -2064,7 +2064,7 @@ Property* PropertyRegistrator::Register(
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int64 >, (Entity*), int64 ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Register entity property '%s' getter fail, error %d.\n", name, result );
+            WriteLog( "Register entity property '%s' getter fail, error %d.\n", name, result );
             return nullptr;
         }
     }
@@ -2087,7 +2087,7 @@ Property* PropertyRegistrator::Register(
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int64 >, ( Entity *, int64 ), void ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Register entity property '%s' setter fail, error %d.\n", name, result );
+            WriteLog( "Register entity property '%s' setter fail, error %d.\n", name, result );
             return nullptr;
         }
     }
@@ -2099,7 +2099,7 @@ Property* PropertyRegistrator::Register(
     int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
     if( result < 0 )
     {
-        WriteLogF( _FUNC_, " - Register entity property enum '%s::%s' value %d fail, error %d.\n", enumTypeName.c_str(), name, enum_value, result );
+        WriteLog( "Register entity property enum '%s::%s' value %d fail, error %d.\n", enumTypeName.c_str(), name, enum_value, result );
         return nullptr;
     }
 
@@ -2120,21 +2120,21 @@ Property* PropertyRegistrator::Register(
             asITypeInfo* enum_array_type = engine->GetTypeInfoByDecl( decl );
             if( !enum_array_type )
             {
-                WriteLogF( _FUNC_, " - Invalid type for property group '%s'.\n", decl );
+                WriteLog( "Invalid type for property group '%s'.\n", decl );
                 return nullptr;
             }
 
             group_array = ScriptArray::Create( enum_array_type );
             if( !enum_array_type )
             {
-                WriteLogF( _FUNC_, " - Can not create array type for property group '%s'.\n", decl );
+                WriteLog( "Can not create array type for property group '%s'.\n", decl );
                 return nullptr;
             }
 
             int result = engine->RegisterGlobalProperty( full_decl, group_array );
             if( result < 0 )
             {
-                WriteLogF( _FUNC_, " - Register entity property group '%s' fail, error %d.\n", full_decl, result );
+                WriteLog( "Register entity property group '%s' fail, error %d.\n", full_decl, result );
                 return nullptr;
             }
 

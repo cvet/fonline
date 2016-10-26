@@ -83,7 +83,7 @@ bool Map::Generate()
         Npc* npc = CrMngr.CreateNpc( base_cr->GetProtoId(), &base_cr->Props, this, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true );
         if( !npc )
         {
-            WriteLogF( _FUNC_, " - Create npc '%s' on map '%s' fail, continue generate.\n", base_cr->GetName(), GetName() );
+            WriteLog( "Create npc '%s' on map '%s' fail, continue generate.\n", base_cr->GetName(), GetName() );
             continue;
         }
         id_map.insert( PAIR( base_cr->GetId(), npc->GetId() ) );
@@ -113,7 +113,7 @@ bool Map::Generate()
         Item* item = ItemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
         if( !item )
         {
-            WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
+            WriteLog( "Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
         id_map.insert( PAIR( base_item->GetId(), item->GetId() ) );
@@ -124,7 +124,7 @@ bool Map::Generate()
 
         if( !AddItem( item, item->GetHexX(), item->GetHexY() ) )
         {
-            WriteLogF( _FUNC_, " - Add item '%s' to map '%s' failure, continue generate.\n", item->GetName(), GetName() );
+            WriteLog( "Add item '%s' to map '%s' failure, continue generate.\n", item->GetName(), GetName() );
             ItemMngr.DeleteItem( item );
         }
     }
@@ -149,7 +149,7 @@ bool Map::Generate()
         Item* item = ItemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
         if( !item )
         {
-            WriteLogF( _FUNC_, " - Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
+            WriteLog( "Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
 
@@ -306,7 +306,7 @@ void Map::AddCritter( Critter* cr )
     // Add critter to collections
     if( std::find( mapCritters.begin(), mapCritters.end(), cr ) != mapCritters.end() )
     {
-        WriteLogF( _FUNC_, " - Critter already added!\n" );
+        WriteLog( "Critter already added!\n" );
         return;
     }
 
@@ -410,7 +410,7 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
 {
     if( GetItem( item->GetId() ) )
     {
-        WriteLogF( _FUNC_, " - Item already added!\n" );
+        WriteLog( "Item already added!\n" );
         return;
     }
 
@@ -1127,7 +1127,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
     // Check
     if( hx >= GetWidth() || hy >= GetHeight() || !cr || !car || !car->IsCar() )
     {
-        WriteLogF( _FUNC_, " - Generic error, hx %u, hy %u, critter pointer '%p', car pointer '%p', is car %d.\n", hx, hy, cr, car, car && car->IsCar() ? 1 : 0 );
+        WriteLog( "Generic error, hx %u, hy %u, critter pointer '%p', car pointer '%p', is car %d.\n", hx, hy, (void*) cr, (void*) car, car && car->IsCar() ? 1 : 0 );
         return;
     }
 
@@ -1236,7 +1236,7 @@ bool Map::SetScript( asIScriptFunction* func, bool first_time )
         hash func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLogF( _FUNC_, " - Script bind fail, map '%s'.\n", GetName() );
+            WriteLog( "Script bind fail, map '%s'.\n", GetName() );
             return false;
         }
         SetScriptId( func_num );

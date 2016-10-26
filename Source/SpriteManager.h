@@ -279,7 +279,7 @@ public:
     bool LoadFontFO( int index, const char* font_name, bool not_bordered, bool skip_if_loaded = true );
     bool LoadFontBMF( int index, const char* font_name );
     void BuildFonts();
-    bool DrawStr( const Rect& r, const char* str, uint flags, uint color = 0, int num_font = -1 );
+    bool DrawStr( const Rect& r, const string& str, uint flags, uint color = 0, int num_font = -1 );
     int  GetLinesCount( int width, int height, const char* str, int num_font = -1 );
     int  GetLinesHeight( int width, int height, const char* str, int num_font = -1 );
     int  GetLineHeight( int num_font = -1 );

@@ -682,7 +682,7 @@ bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dia
 {
     if( base_dlg.Id < 2 )
     {
-        WriteLogF( _FUNC_, " - Wrong dialog id %u.\n", base_dlg.Id );
+        WriteLog( "Wrong dialog id %u.\n", base_dlg.Id );
         return false;
     }
     compiled_dlg = base_dlg;
@@ -1159,7 +1159,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
 {
     if( cl->Talk.Locked )
     {
-        WriteLogF( _FUNC_, " - Dialog locked, client '%s'.\n", cl->GetInfo() );
+        WriteLog( "Dialog locked, client '%s'.\n", cl->GetInfo() );
         return;
     }
     if( cl->Talk.TalkType != TALK_NONE )
@@ -1186,7 +1186,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         {
             if( cl->GetMapId() != npc->GetMapId() )
             {
-                WriteLogF( _FUNC_, " - Different maps, npc '%s' %u, client '%s' %u.\n", npc->GetInfo(), npc->GetMapId(), cl->GetInfo(), cl->GetMapId() );
+                WriteLog( "Different maps, npc '%s' %u, client '%s' %u.\n", npc->GetInfo(), npc->GetMapId(), cl->GetInfo(), cl->GetMapId() );
                 return;
             }
 
@@ -1197,7 +1197,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
                 cl->Send_XY( cl );
                 cl->Send_XY( npc );
                 cl->Send_TextMsg( cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME );
-                WriteLogF( _FUNC_, " - Wrong distance to npc '%s', client '%s'.\n", npc->GetInfo(), cl->GetInfo() );
+                WriteLog( "Wrong distance to npc '%s', client '%s'.\n", npc->GetInfo(), cl->GetInfo() );
                 return;
             }
 
@@ -1227,7 +1227,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         if( !npc->IsLife() )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_LIFE, SAY_NETMSG, TEXTMSG_GAME );
-            WriteLogF( _FUNC_, " - Npc '%s' bad condition, client '%s'.\n", npc->GetInfo(), cl->GetInfo() );
+            WriteLog( "Npc '%s' bad condition, client '%s'.\n", npc->GetInfo(), cl->GetInfo() );
             return;
         }
 
@@ -1267,7 +1267,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         {
             cl->Send_XY( cl );
             cl->Send_TextMsg( cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME );
-            WriteLogF( _FUNC_, " - Wrong distance to hexes, hx %u, hy %u, client '%s'.\n", hx, hy, cl->GetInfo() );
+            WriteLog( "Wrong distance to hexes, hx %u, hy %u, client '%s'.\n", hx, hy, cl->GetInfo() );
             return;
         }
 
@@ -1275,7 +1275,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
         if( !dialogs || !dialogs->size() )
         {
-            WriteLogF( _FUNC_, " - No dialogs, hx %u, hy %u, client '%s'.\n", hx, hy, cl->GetInfo() );
+            WriteLog( "No dialogs, hx %u, hy %u, client '%s'.\n", hx, hy, cl->GetInfo() );
             return;
         }
     }
@@ -1309,7 +1309,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     if( it_d == dialogs->end() )
     {
         cl->Send_TextMsg( cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-        WriteLogF( _FUNC_, " - Dialog from link %u not found, client '%s', dialog pack %u.\n", go_dialog, cl->GetInfo(), dialog_pack->PackId );
+        WriteLog( "Dialog from link %u not found, client '%s', dialog pack %u.\n", go_dialog, cl->GetInfo(), dialog_pack->PackId );
         return;
     }
 
@@ -1317,7 +1317,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     if( !Dialog_Compile( npc, cl, *it_d, cl->Talk.CurDialog ) )
     {
         cl->Send_TextMsg( cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-        WriteLogF( _FUNC_, " - Dialog compile fail, client '%s', dialog pack %u.\n", cl->GetInfo(), dialog_pack->PackId );
+        WriteLog( "Dialog compile fail, client '%s', dialog pack %u.\n", cl->GetInfo(), dialog_pack->PackId );
         return;
     }
 
@@ -1401,7 +1401,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         str[ MAX_SAY_NPC_TEXT ] = 0;
         if( !Str::Length( str ) )
         {
-            WriteLogF( _FUNC_, " - Say text length is zero, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Say text length is zero, client '%s'.\n", cl->GetInfo() );
             return;
         }
     }
@@ -1422,7 +1422,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
             cl->CloseTalk();
-            WriteLogF( _FUNC_, " - Npc with id %u not found, client '%s'.\n", id_npc_talk, cl->GetInfo() );
+            WriteLog( "Npc with id %u not found, client '%s'.\n", id_npc_talk, cl->GetInfo() );
             return;
         }
 
@@ -1445,7 +1445,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         if( !dialogs || !dialogs->size() )
         {
             cl->CloseTalk();
-            WriteLogF( _FUNC_, " - No dialogs, npc '%s', client '%s'.\n", npc->GetInfo(), cl->GetInfo() );
+            WriteLog( "No dialogs, npc '%s', client '%s'.\n", npc->GetInfo(), cl->GetInfo() );
             return;
         }
     }
@@ -1456,7 +1456,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
         if( !dialogs || !dialogs->size() )
         {
-            WriteLogF( _FUNC_, " - No dialogs, dialog '%s' hx %u, hy %u, client '%s'.\n", Str::GetName( id_npc_talk ), cl->Talk.TalkHexX, cl->Talk.TalkHexY, cl->GetInfo() );
+            WriteLog( "No dialogs, dialog '%s' hx %u, hy %u, client '%s'.\n", Str::GetName( id_npc_talk ), cl->Talk.TalkHexX, cl->Talk.TalkHexY, cl->GetInfo() );
             return;
         }
     }
@@ -1518,7 +1518,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         // Invalid answer
         if( num_answer >= cur_dialog->Answers.size() )
         {
-            WriteLogF( _FUNC_, " - Wrong number of answer %u, client '%s'.\n", num_answer, cl->GetInfo() );
+            WriteLog( "Wrong number of answer %u, client '%s'.\n", num_answer, cl->GetInfo() );
             cl->Send_Talk();             // Refresh
             return;
         }
@@ -1529,7 +1529,7 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
         // Check demand again
         if( !Dialog_CheckDemand( npc, cl, *answer, true ) )
         {
-            WriteLogF( _FUNC_, " - Secondary check of dialog demands fail, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Secondary check of dialog demands fail, client '%s'.\n", cl->GetInfo() );
             cl->CloseTalk();             // End
             return;
         }
@@ -1596,7 +1596,7 @@ label_Barter:
     {
         cl->CloseTalk();
         cl->Send_TextMsg( cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-        WriteLogF( _FUNC_, " - Dialog from link %u not found, client '%s', dialog pack %u.\n", dlg_id, cl->GetInfo(), dialog_pack->PackId );
+        WriteLog( "Dialog from link %u not found, client '%s', dialog pack %u.\n", dlg_id, cl->GetInfo(), dialog_pack->PackId );
         return;
     }
 
@@ -1605,7 +1605,7 @@ label_Barter:
     {
         cl->CloseTalk();
         cl->Send_TextMsg( cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-        WriteLogF( _FUNC_, " - Dialog compile fail, client '%s', dialog pack %u.\n", cl->GetInfo(), dialog_pack->PackId );
+        WriteLog( "Dialog compile fail, client '%s', dialog pack %u.\n", cl->GetInfo(), dialog_pack->PackId );
         return;
     }
 

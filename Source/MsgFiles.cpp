@@ -441,7 +441,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
                 {
                     if( !Msg[ i ].LoadFromString( (char*) msg_file.GetBuf(), msg_file.GetFsize() ) )
                     {
-                        WriteLogF( _FUNC_, " - Invalid MSG file '%s'.\n", path );
+                        WriteLog( "Invalid MSG file '%s'.\n", path );
                         fail = true;
                     }
                     break;
@@ -451,7 +451,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
     }
 
     if( Msg[ TEXTMSG_GAME ].GetSize() == 0 )
-        WriteLogF( _FUNC_, " - Unable to load '%s' from file.\n", TextMsgFileName[ TEXTMSG_GAME ] );
+        WriteLog( "Unable to load '%s' from file.\n", TextMsgFileName[ TEXTMSG_GAME ] );
 
     IsAllMsgLoaded = ( Msg[ TEXTMSG_GAME ].GetSize() > 0 && !fail );
     return IsAllMsgLoaded;
@@ -484,7 +484,7 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
     }
 
     if( errors )
-        WriteLogF( _FUNC_, " - Cached language '%s' not found.\n", NameStr );
+        WriteLog( "Cached language '%s' not found.\n", NameStr );
 
     IsAllMsgLoaded = errors == 0;
     return IsAllMsgLoaded;

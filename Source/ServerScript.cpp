@@ -108,7 +108,7 @@ bool FOServer::InitScriptSystem()
     asIScriptEngine* engine = Script::GetEngine();
     #define BIND_SERVER
     #define BIND_CLASS    FOServer::SScriptFunc::
-    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); return false; }
+    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line %d.\n", __LINE__ ); return false; }
     #include "ScriptBind.h"
 
     // Load script modules
@@ -267,7 +267,7 @@ uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critte
 #undef BIND_ASSERT
 #define BIND_CLIENT
 #define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLogF( _FUNC_, " - Bind error, line %d.\n", __LINE__ ); bind_errors++; }
+#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line %d.\n", __LINE__ ); bind_errors++; }
 
 namespace ClientBind
 {
@@ -309,7 +309,7 @@ bool FOServer::ReloadClientScripts()
     if( !engine || bind_errors )
     {
         if( !engine )
-            WriteLogF( _FUNC_, " - asCreateScriptEngine fail.\n" );
+            WriteLog( "asCreateScriptEngine fail.\n" );
         else
             WriteLog( "Bind fail, errors %d.\n", bind_errors );
         Script::FinishEngine( engine );
@@ -353,7 +353,7 @@ bool FOServer::ReloadClientScripts()
         }
         else
         {
-            WriteLogF( _FUNC_, " - Unable to save bytecode of client script.\n" );
+            WriteLog( "Unable to save bytecode of client script.\n" );
             errors++;
         }
     }
@@ -391,7 +391,7 @@ bool FOServer::ReloadClientScripts()
             {
                 if( !d )
                 {
-                    WriteLogF( _FUNC_, " - Can't load dll '%s'.\n", dll_name.c_str() );
+                    WriteLog( "Can't load dll '%s'.\n", dll_name.c_str() );
                     errors++;
                 }
                 continue;

@@ -24,14 +24,14 @@
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EXT( client, 0, return )
-#define CHECK_IN_BUFF_ERROR_EXT( client, before_disconnect, after_disconnect )                                  \
-    if( client->Bin.IsError() )                                                                                 \
-    {                                                                                                           \
-        WriteLogF( _FUNC_, " - Wrong network data from client '%s', line %u.\n", client->GetInfo(), __LINE__ ); \
-        before_disconnect;                                                                                      \
-        client->Disconnect();                                                                                   \
-        client->Bin.LockReset();                                                                                \
-        after_disconnect;                                                                                       \
+#define CHECK_IN_BUFF_ERROR_EXT( client, before_disconnect, after_disconnect )                      \
+    if( client->Bin.IsError() )                                                                     \
+    {                                                                                               \
+        WriteLog( "Wrong network data from client '%s', line %u.\n", client->GetInfo(), __LINE__ ); \
+        before_disconnect;                                                                          \
+        client->Disconnect();                                                                       \
+        client->Bin.LockReset();                                                                    \
+        after_disconnect;                                                                           \
     }
 
 class FOServer

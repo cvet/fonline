@@ -5,12 +5,12 @@
 #include "ScriptFunctions.h"
 
 // Check buffer for error
-#define CHECK_IN_BUFF_ERROR                              \
-    if( Bin.IsError() )                                  \
-    {                                                    \
-        WriteLogF( _FUNC_, " - Wrong network data!\n" ); \
-        NetDisconnect();                                 \
-        return;                                          \
+#define CHECK_IN_BUFF_ERROR                  \
+    if( Bin.IsError() )                      \
+    {                                        \
+        WriteLog( "Wrong network data!\n" ); \
+        NetDisconnect();                     \
+        return;                              \
     }
 
 void* zlib_alloc_( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
@@ -135,7 +135,7 @@ bool FOClient::Init()
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
-        WriteLogF( _FUNC_, " - SDL initialization fail, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL initialization fail, error '%s'.\n", SDL_GetError() );
         return false;
     }
     GET_UID1( UID1 );
@@ -202,7 +202,7 @@ bool FOClient::Init()
     // Cache
     if( !Crypt.SetCacheTable( FileManager::GetWritePath( "Cache/default.cache" ) ) )
     {
-        WriteLogF( _FUNC_, " - Can't set default cache.\n" );
+        WriteLog( "Can't set default cache.\n" );
         return false;
     }
     UID_PREPARE_UID4_3;
@@ -211,9 +211,9 @@ bool FOClient::Init()
     char        pass[ MAX_FOTEXT ];
     const char* pass_ = MainConfig->GetStr( "UserPass", "" );
     Str::Copy( pass, pass_ );
-    char*       cmd_line_pass = Str::Substring( CommandLine, "-UserPass" );
+    const char* cmd_line_pass = MainConfig->GetStr( "", "UserPass" );
     if( cmd_line_pass )
-        sscanf( cmd_line_pass + Str::Length( "-UserPass" ) + 1, "%s", pass );
+        Str::Copy( pass, cmd_line_pass );
     Password = pass;
     GET_UID3( UID3 );
     UID_PREPARE_UID4_4;
@@ -408,13 +408,13 @@ bool FOClient::Init()
     Active = true;
 
     // Begin game
-    if( Str::Substring( CommandLine, "-Start" ) && !Singleplayer )
+    if( MainConfig->IsKey( "", "Start" ) && !Singleplayer )
     {
         if( LoginCheckData() )
             InitNetReason = INIT_NET_REASON_LOGIN;
     }
     // Intro
-    else if( !Str::Substring( CommandLine, "-SkipIntro" ) )
+    else if( !MainConfig->IsKey( "", "SkipIntro" ) )
     {
         if( CurLang.Msg[ TEXTMSG_GAME ].Count( STR_MUSIC_MAIN_THEME ) )
             MusicAfterVideo = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_MUSIC_MAIN_THEME );
@@ -1589,7 +1589,7 @@ bool FOClient::FillSockAddr( sockaddr_in& saddr, const char* host, ushort port )
         hostent* h = gethostbyname( host );
         if( !h )
         {
-            WriteLogF( _FUNC_, " - Can't resolve remote host '%s', error '%s'.", host, GetLastSocketError() );
+            WriteLog( "Can't resolve remote host '%s', error '%s'.", host, GetLastSocketError() );
             return false;
         }
 
@@ -1660,9 +1660,9 @@ bool FOClient::NetOutput()
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
     if( select( (int) Sock + 1, nullptr, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
-        WriteLogF( _FUNC_, " - Select error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Select error '%s'.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
-        WriteLogF( _FUNC_, " - Socket error.\n" );
+        WriteLog( "Socket error.\n" );
     if( !FD_ISSET( Sock, &SockSet ) )
         return true;
 
@@ -1681,7 +1681,7 @@ bool FOClient::NetOutput()
         if( len <= 0 )
         #endif
         {
-            WriteLogF( _FUNC_, " - Socket error while send to server, error '%s'.\n", GetLastSocketError() );
+            WriteLog( "Socket error while send to server, error '%s'.\n", GetLastSocketError() );
             NetDisconnect();
             return false;
         }
@@ -1703,9 +1703,9 @@ int FOClient::NetInput( bool unpack )
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
     if( select( (int) Sock + 1, &SockSet, nullptr, &SockSetErr, &tv ) == SOCKET_ERROR )
-        WriteLogF( _FUNC_, " - Select error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Select error '%s'.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
-        WriteLogF( _FUNC_, " - Socket error.\n" );
+        WriteLog( "Socket error.\n" );
     if( !FD_ISSET( Sock, &SockSet ) )
         return 0;
 
@@ -1721,12 +1721,12 @@ int FOClient::NetInput( bool unpack )
     if( len < 0 )
     #endif
     {
-        WriteLogF( _FUNC_, " - Socket error while receive from server, error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Socket error while receive from server, error '%s'.\n", GetLastSocketError() );
         return -1;
     }
     if( len == 0 )
     {
-        WriteLogF( _FUNC_, " - Socket is closed.\n" );
+        WriteLog( "Socket is closed.\n" );
         return -2;
     }
 
@@ -1750,12 +1750,12 @@ int FOClient::NetInput( bool unpack )
         if( len < 0 )
         #endif
         {
-            WriteLogF( _FUNC_, " - Socket error (2) while receive from server, error '%s'.\n", GetLastSocketError() );
+            WriteLog( "Socket error (2) while receive from server, error '%s'.\n", GetLastSocketError() );
             return -1;
         }
         if( len == 0 )
         {
-            WriteLogF( _FUNC_, " - Socket is closed (2).\n" );
+            WriteLog( "Socket is closed (2).\n" );
             return -2;
         }
 
@@ -1774,7 +1774,7 @@ int FOClient::NetInput( bool unpack )
 
         if( inflate( &ZStream, Z_SYNC_FLUSH ) != Z_OK )
         {
-            WriteLogF( _FUNC_, " - ZStream Inflate error.\n" );
+            WriteLog( "ZStream Inflate error.\n" );
             return -3;
         }
 
@@ -1789,7 +1789,7 @@ int FOClient::NetInput( bool unpack )
 
             if( inflate( &ZStream, Z_SYNC_FLUSH ) != Z_OK )
             {
-                WriteLogF( _FUNC_, " - ZStream Inflate continue error.\n" );
+                WriteLog( "ZStream Inflate continue error.\n" );
                 return -4;
             }
 
@@ -2376,7 +2376,7 @@ void FOClient::Net_SendSetUserHoloStr( Item* holodisk, const char* title, const 
 {
     if( !holodisk || !title || !text )
     {
-        WriteLogF( _FUNC_, " - Null pointers arguments.\n" );
+        WriteLog( "Null pointers arguments.\n" );
         return;
     }
 
@@ -2384,7 +2384,7 @@ void FOClient::Net_SendSetUserHoloStr( Item* holodisk, const char* title, const 
     ushort text_len = ( ushort ) Str::Length( text );
     if( !title_len || !text_len || title_len > USER_HOLO_MAX_TITLE_LEN || text_len > USER_HOLO_MAX_LEN )
     {
-        WriteLogF( _FUNC_, " - Length of texts is greather of maximum or zero, title cur %u, title max %u, text cur %u, text max %u.\n", title_len, USER_HOLO_MAX_TITLE_LEN, text_len, USER_HOLO_MAX_LEN );
+        WriteLog( "Length of texts is greather of maximum or zero, title cur %u, title max %u, text cur %u, text max %u.\n", title_len, USER_HOLO_MAX_TITLE_LEN, text_len, USER_HOLO_MAX_LEN );
         return;
     }
 
@@ -2493,11 +2493,11 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
     if( !crid )
     {
-        WriteLogF( _FUNC_, " - Critter id is zero.\n" );
+        WriteLog( "Critter id is zero.\n" );
     }
     else if( HexMngr.IsMapLoaded() && ( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= DIRS_COUNT ) )
     {
-        WriteLogF( _FUNC_, " - Invalid positions hx %u, hy %u, dir %u.\n", hx, hy, dir );
+        WriteLog( "Invalid positions hx %u, hy %u, dir %u.\n", hx, hy, dir );
     }
     else
     {
@@ -2629,7 +2629,7 @@ void FOClient::Net_OnTextMsg( bool with_lexems )
 
     if( msg_num >= TEXTMSG_COUNT )
     {
-        WriteLogF( _FUNC_, " - Msg num invalid value %u.\n", msg_num );
+        WriteLog( "Msg num invalid value %u.\n", msg_num );
         return;
     }
 
@@ -2804,7 +2804,7 @@ void FOClient::Net_OnMapText()
 
     if( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() )
     {
-        WriteLogF( _FUNC_, " - Invalid coords, hx %u, hy %u, text '%s'.\n", hx, hy, str );
+        WriteLog( "Invalid coords, hx %u, hy %u, text '%s'.\n", hx, hy, str );
         return;
     }
 
@@ -2831,7 +2831,7 @@ void FOClient::Net_OnMapTextMsg()
 
     if( msg_num >= TEXTMSG_COUNT )
     {
-        WriteLogF( _FUNC_, " - Msg num invalid value, num %u.\n", msg_num );
+        WriteLog( "Msg num invalid value, num %u.\n", msg_num );
         return;
     }
 
@@ -2870,7 +2870,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
     if( msg_num >= TEXTMSG_COUNT )
     {
-        WriteLogF( _FUNC_, " - Msg num invalid value, num %u.\n", msg_num );
+        WriteLog( "Msg num invalid value, num %u.\n", msg_num );
         return;
     }
 
@@ -2892,7 +2892,7 @@ void FOClient::Net_OnCritterDir()
 
     if( dir >= DIRS_COUNT )
     {
-        WriteLogF( _FUNC_, " - Invalid dir %u.\n", dir );
+        WriteLog( "Invalid dir %u.\n", dir );
         dir = 0;
     }
 
@@ -3329,7 +3329,7 @@ void FOClient::Net_OnCritterXY()
 
     if( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= DIRS_COUNT )
     {
-        WriteLogF( _FUNC_, " - Error data, hx %d, hy %d, dir %d.\n", hx, hy, dir );
+        WriteLog( "Error data, hx %d, hy %d, dir %d.\n", hx, hy, dir );
         return;
     }
 
@@ -3391,7 +3391,7 @@ void FOClient::Net_OnChosenClearItems()
 
     if( !Chosen )
     {
-        WriteLogF( _FUNC_, " - Chosen is not created.\n" );
+        WriteLog( "Chosen is not created.\n" );
         return;
     }
 
@@ -3416,7 +3416,7 @@ void FOClient::Net_OnChosenAddItem()
 
     if( !Chosen )
     {
-        WriteLogF( _FUNC_, " - Chosen is not created.\n" );
+        WriteLog( "Chosen is not created.\n" );
         return;
     }
 
@@ -3465,14 +3465,14 @@ void FOClient::Net_OnChosenEraseItem()
 
     if( !Chosen )
     {
-        WriteLogF( _FUNC_, " - Chosen is not created.\n" );
+        WriteLog( "Chosen is not created.\n" );
         return;
     }
 
     Item* item = Chosen->GetItem( item_id );
     if( !item )
     {
-        WriteLogF( _FUNC_, " - Item not found, id %u.\n", item_id );
+        WriteLog( "Item not found, id %u.\n", item_id );
         return;
     }
 
@@ -3491,7 +3491,7 @@ void FOClient::Net_OnAllItemsSend()
 
     if( !Chosen )
     {
-        WriteLogF( _FUNC_, " - Chosen is not created.\n" );
+        WriteLog( "Chosen is not created.\n" );
         return;
     }
 
@@ -3665,7 +3665,7 @@ void FOClient::Net_OnFlyEffect()
 
     if( !HexMngr.RunEffect( eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy ) )
     {
-        WriteLogF( _FUNC_, " - Run effect '%s' fail.\n", Str::GetName( eff_pid ) );
+        WriteLog( "Run effect '%s' fail.\n", Str::GetName( eff_pid ) );
         return;
     }
 }
@@ -3716,7 +3716,7 @@ void FOClient::Net_OnEndParseToGame()
 {
     if( !Chosen )
     {
-        WriteLogF( _FUNC_, " - Chosen is not created.\n" );
+        WriteLog( "Chosen is not created.\n" );
         return;
     }
 
@@ -4507,7 +4507,7 @@ void FOClient::Net_OnUserHoloStr()
 
     if( text_len > USER_HOLO_MAX_LEN )
     {
-        WriteLogF( _FUNC_, " - Text length greater than maximum, cur %u, max %u. Disconnect.\n", text_len, USER_HOLO_MAX_LEN );
+        WriteLog( "Text length greater than maximum, cur %u, max %u. Disconnect.\n", text_len, USER_HOLO_MAX_LEN );
         NetDisconnect();
         return;
     }
@@ -5949,7 +5949,7 @@ void FOClient::PlayVideo()
     // Open file
     if( !CurVideo->RawData.LoadFile( video.FileName.c_str() ) )
     {
-        WriteLogF( _FUNC_, " - Video file '%s' not found.\n", video.FileName.c_str() );
+        WriteLog( "Video file '%s' not found.\n", video.FileName.c_str() );
         SAFEDEL( CurVideo );
         NextVideo();
         return;
@@ -5970,7 +5970,7 @@ void FOClient::PlayVideo()
         int stream_index = VideoDecodePacket();
         if( stream_index < 0 )
         {
-            WriteLogF( _FUNC_, " - Decode header packet fail.\n" );
+            WriteLog( "Decode header packet fail.\n" );
             SAFEDEL( CurVideo );
             NextVideo();
             return;
@@ -5987,7 +5987,7 @@ void FOClient::PlayVideo()
                         break;
                     if( stream_index < 0 )
                     {
-                        WriteLogF( _FUNC_, " - Seek first data packet fail.\n" );
+                        WriteLog( "Seek first data packet fail.\n" );
                         SAFEDEL( CurVideo );
                         NextVideo();
                         return;
@@ -6008,7 +6008,7 @@ void FOClient::PlayVideo()
     CurVideo->RT = SprMngr.CreateRenderTarget( false, false, false, CurVideo->VideoInfo.pic_width, CurVideo->VideoInfo.pic_height, true );
     if( !CurVideo->RT )
     {
-        WriteLogF( _FUNC_, " - Can't create render target.\n" );
+        WriteLog( "Can't create render target.\n" );
         SAFEDEL( CurVideo );
         NextVideo();
         return;
@@ -6121,7 +6121,7 @@ void FOClient::RenderVideo()
         {
             if( r )
             {
-                WriteLogF( _FUNC_, " - Frame does not contain encoded video data, error %d.\n", r );
+                WriteLog( "Frame does not contain encoded video data, error %d.\n", r );
                 NextVideo();
                 return;
             }
@@ -6130,7 +6130,7 @@ void FOClient::RenderVideo()
             r = th_decode_ycbcr_out( CurVideo->Context, CurVideo->ColorBuffer );
             if( r )
             {
-                WriteLogF( _FUNC_, " - th_decode_ycbcr_out() fail, error %d\n.", r );
+                WriteLog( "th_decode_ycbcr_out() fail, error %d\n.", r );
                 NextVideo();
                 return;
             }
@@ -6168,7 +6168,7 @@ void FOClient::RenderVideo()
         dj = 1;
         break;
     default:
-        WriteLogF( _FUNC_, " - Wrong pixel format.\n" );
+        WriteLog( "Wrong pixel format.\n" );
         NextVideo();
         return;
     }

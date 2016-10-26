@@ -198,7 +198,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
             fbx_manager = FbxManager::Create();
             if( !fbx_manager )
             {
-                WriteLogF( _FUNC_, " - Unable to create FBX Manager.\n" );
+                WriteLog( "Unable to create FBX Manager.\n" );
                 return nullptr;
             }
 
@@ -214,7 +214,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
         FbxScene* fbx_scene = FbxScene::Create( fbx_manager, "My Scene" );
         if( !fbx_scene )
         {
-            WriteLogF( _FUNC_, " - Unable to create FBX scene.\n" );
+            WriteLog( "Unable to create FBX scene.\n" );
             return nullptr;
         }
 
@@ -222,7 +222,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
         FbxImporter* fbx_importer = FbxImporter::Create( fbx_manager, "" );
         if( !fbx_importer )
         {
-            WriteLogF( _FUNC_, " - Unable to create FBX importer.\n" );
+            WriteLog( "Unable to create FBX importer.\n" );
             return nullptr;
         }
 
@@ -230,15 +230,15 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
         FbxStreamImpl fbx_stream;
         if( !fbx_importer->Initialize( &fbx_stream, &file, -1, fbx_manager->GetIOSettings() ) )
         {
-            WriteLogF( _FUNC_, " - Call to FbxImporter::Initialize() failed, error '%s'.\n", fbx_importer->GetStatus().GetErrorString() );
+            WriteLog( "Call to FbxImporter::Initialize() failed, error '%s'.\n", fbx_importer->GetStatus().GetErrorString() );
             if( fbx_importer->GetStatus().GetCode() == FbxStatus::eInvalidFileVersion )
             {
                 int file_major, file_minor, file_revision;
                 int sdk_major,  sdk_minor,  sdk_revision;
                 FbxManager::GetFileFormatVersion( sdk_major, sdk_minor, sdk_revision );
                 fbx_importer->GetFileVersion( file_major, file_minor, file_revision );
-                WriteLogF( _FUNC_, " - FBX file format version for this FBX SDK is %d.%d.%d.\n", sdk_major, sdk_minor, sdk_revision );
-                WriteLogF( _FUNC_, " - FBX file format version for file '%s' is %d.%d.%d.\n", name, file_major, file_minor, file_revision );
+                WriteLog( "FBX file format version for this FBX SDK is %d.%d.%d.\n", sdk_major, sdk_minor, sdk_revision );
+                WriteLog( "FBX file format version for file '%s' is %d.%d.%d.\n", name, file_major, file_minor, file_revision );
             }
             return nullptr;
         }
@@ -255,7 +255,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
                     if(!fbx_importer->Import(pScene) && lImporter->GetStatus().GetCode() == FbxStatus::ePasswordError)
                             return NULL;
                }*/
-            WriteLogF( _FUNC_, " - Can't import scene, file '%s'.\n", name );
+            WriteLog( "Can't import scene, file '%s'.\n", name );
             return nullptr;
         }
 
@@ -377,18 +377,18 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
             void* dll = DLL_Load( ASSIMP_PATH1 ASSIMP_PATH2 );
             if( !dll )
             {
-                WriteLogF( _FUNC_, " - '" ASSIMP_PATH2 "' not found.\n" );
+                WriteLog( "'" ASSIMP_PATH2 "' not found.\n" );
                 return nullptr;
             }
 
             // Bind functions
             uint errors = 0;
-            #define BIND_ASSIMP_FUNC( f )                                             \
-                Ptr_ ## f = ( decltype( Ptr_ ## f ) )DLL_GetAddress( dll, # f );      \
-                if( !Ptr_ ## f )                                                      \
-                {                                                                     \
-                    WriteLogF( _FUNC_, " - Assimp function '" # f "' not found.\n" ); \
-                    errors++;                                                         \
+            #define BIND_ASSIMP_FUNC( f )                                        \
+                Ptr_ ## f = ( decltype( Ptr_ ## f ) )DLL_GetAddress( dll, # f ); \
+                if( !Ptr_ ## f )                                                 \
+                {                                                                \
+                    WriteLog( "Assimp function '" # f "' not found.\n" );        \
+                    errors++;                                                    \
                 }
             BIND_ASSIMP_FUNC( aiImportFileFromMemory );
             BIND_ASSIMP_FUNC( aiReleaseImport );
@@ -421,7 +421,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
                                                                 aiProcess_ImproveCacheLocality, "" );
         if( !scene )
         {
-            WriteLogF( _FUNC_, " - Can't load 3d file, name '%s', error '%s'.\n", name, Ptr_aiGetErrorString() );
+            WriteLog( "Can't load 3d file, name '%s', error '%s'.\n", name, Ptr_aiGetErrorString() );
             return nullptr;
         }
 
@@ -621,7 +621,7 @@ static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, 
                 Bone* skin_bone = root_bone->Find( Bone::GetHash( ai_bone->mName.data ) );
                 if( !skin_bone )
                 {
-                    WriteLogF( _FUNC_, " - Skin bone '%s' for mesh '%s' not found.\n", ai_bone->mName.data, ai_node->mName.data );
+                    WriteLog( "Skin bone '%s' for mesh '%s' not found.\n", ai_bone->mName.data, ai_node->mName.data );
                     skin_bone = bone;
                 }
                 mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
@@ -721,7 +721,7 @@ static T2 FbxGetElement( T* elements, int index, int* vertices )
             return elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( vertices[ index ] ) );
     }
 
-    WriteLogF( _FUNC_, " - Unknown mapping mode %d or reference mode %d.\n", elements->GetMappingMode(), elements->GetReferenceMode() );
+    WriteLog( "Unknown mapping mode %d or reference mode %d.\n", elements->GetMappingMode(), elements->GetReferenceMode() );
     return elements->GetDirectArray().GetAt( 0 );
 }
 
@@ -844,7 +844,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
                 Bone* skin_bone = root_bone->Find( Bone::GetHash( fbx_cluster->GetLink()->GetName() ) );
                 if( !skin_bone )
                 {
-                    WriteLogF( _FUNC_, " - Skin bone '%s' for mesh '%s' not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName() );
+                    WriteLog( "Skin bone '%s' for mesh '%s' not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName() );
                     skin_bone = bone;
                 }
                 mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
@@ -943,12 +943,12 @@ static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, ui
         static void Error( png_structp png_ptr, png_const_charp error_msg )
         {
             UNUSED_VARIABLE( png_ptr );
-            WriteLogF( _FUNC_, " - PNG error '%s'.\n", error_msg );
+            WriteLog( "PNG error '%s'.\n", error_msg );
         }
         static void Warning( png_structp png_ptr, png_const_charp error_msg )
         {
             UNUSED_VARIABLE( png_ptr );
-            // WriteLogF( _FUNC_, " - PNG warning '%s'.\n", error_msg );
+            // WriteLog( "PNG warning '%s'.\n", error_msg );
         }
     };
 

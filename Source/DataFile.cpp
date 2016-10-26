@@ -148,7 +148,7 @@ DataFile* OpenDataFile( const char* path )
 {
     if( !path || !path[ 0 ] )
     {
-        WriteLogF( _FUNC_, " - Invalid file name, empty or nullptr.\n" );
+        WriteLog( "Invalid file name, empty or nullptr.\n" );
         return nullptr;
     }
 
@@ -158,7 +158,7 @@ DataFile* OpenDataFile( const char* path )
         FalloutDatFile* dat = new FalloutDatFile();
         if( !dat->Init( path ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open DAT file '%s'.\n", path );
+            WriteLog( "Unable to open DAT file '%s'.\n", path );
             delete dat;
             return nullptr;
         }
@@ -169,7 +169,7 @@ DataFile* OpenDataFile( const char* path )
         ZipFile* zip = new ZipFile();
         if( !zip->Init( path ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open ZIP file '%s'.\n", path );
+            WriteLog( "Unable to open ZIP file '%s'.\n", path );
             delete zip;
             return nullptr;
         }
@@ -180,7 +180,7 @@ DataFile* OpenDataFile( const char* path )
         FolderFile* folder = new FolderFile();
         if( !folder->Init( path ) )
         {
-            WriteLogF( _FUNC_, " - Unable to open folder '%s'.\n", path );
+            WriteLog( "Unable to open folder '%s'.\n", path );
             delete folder;
             return nullptr;
         }
@@ -332,7 +332,7 @@ bool FalloutDatFile::Init( const char* fname )
     datHandle = FileOpen( fname, false );
     if( !datHandle )
     {
-        WriteLogF( _FUNC_, " - Cannot open file.\n" );
+        WriteLog( "Cannot open file.\n" );
         return false;
     }
 
@@ -341,7 +341,7 @@ bool FalloutDatFile::Init( const char* fname )
 
     if( !ReadTree() )
     {
-        WriteLogF( _FUNC_, " - Read file tree fail.\n" );
+        WriteLog( "Read file tree fail.\n" );
         return false;
     }
 
@@ -599,14 +599,14 @@ bool ZipFile::Init( const char* fname )
         Str::Copy( path, fname );
         if( !ResolvePath( path ) )
         {
-            WriteLogF( _FUNC_, " - Can't retrieve file full path.\n" );
+            WriteLog( "Can't retrieve file full path.\n" );
             return false;
         }
 
         void* file = FileOpen( fname, false );
         if( !file )
         {
-            WriteLogF( _FUNC_, " - Cannot open file.\n" );
+            WriteLog( "Cannot open file.\n" );
             return false;
         }
 
@@ -620,7 +620,7 @@ bool ZipFile::Init( const char* fname )
         if( MultiByteToWideChar( CP_UTF8, 0, path, -1, path_wc, MAX_FOPATH ) == 0 ||
             WideCharToMultiByte( GetACP(), 0, path_wc, -1, path, MAX_FOPATH, nullptr, nullptr ) == 0 )
         {
-            WriteLogF( _FUNC_, " - Code page conversion fail.\n" );
+            WriteLog( "Code page conversion fail.\n" );
             return false;
         }
         #endif
@@ -628,7 +628,7 @@ bool ZipFile::Init( const char* fname )
         zipHandle = unzOpen( path );
         if( !zipHandle )
         {
-            WriteLogF( _FUNC_, " - Cannot open ZIP file.\n" );
+            WriteLog( "Cannot open ZIP file.\n" );
             return false;
         }
     }
@@ -711,14 +711,14 @@ bool ZipFile::Init( const char* fname )
         zipHandle = unzOpen2( fname, &ffunc );
         if( !zipHandle )
         {
-            WriteLogF( _FUNC_, " - Cannot open ZIP file in memory.\n" );
+            WriteLog( "Cannot open ZIP file in memory.\n" );
             return false;
         }
     }
 
     if( !ReadTree() )
     {
-        WriteLogF( _FUNC_, " - Read file tree fail.\n" );
+        WriteLog( "Read file tree fail.\n" );
         return false;
     }
 

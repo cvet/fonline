@@ -351,26 +351,26 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
 {
     if( !id )
     {
-        WriteLogF( _FUNC_, " - Item id is zero.\n" );
+        WriteLog( "Item id is zero.\n" );
         return 0;
     }
 
     if( !IsMapLoaded() )
     {
-        WriteLogF( _FUNC_, " - Map is not loaded." );
+        WriteLog( "Map is not loaded." );
         return 0;
     }
 
     if( hx >= maxHexX || hy >= maxHexY )
     {
-        WriteLogF( _FUNC_, " - Position hx %u or hy %u error value.\n", hx, hy );
+        WriteLog( "Position hx %u or hy %u error value.\n", hx, hy );
         return 0;
     }
 
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto not found '%s'.\n", Str::GetName( pid ) );
+        WriteLog( "Proto not found '%s'.\n", Str::GetName( pid ) );
         return 0;
     }
 
@@ -425,14 +425,14 @@ void HexManager::FinishItem( uint id, bool is_deleted )
 {
     if( !id )
     {
-        WriteLogF( _FUNC_, " - Item zero id.\n" );
+        WriteLog( "Item zero id.\n" );
         return;
     }
 
     ItemHex* item = GetItemById( id );
     if( !item )
     {
-        WriteLogF( _FUNC_, " - Item '%s' not found.\n", Str::GetName( id ) );
+        WriteLog( "Item '%s' not found.\n", Str::GetName( id ) );
         return;
     }
 
@@ -636,14 +636,14 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
         return false;
     if( from_hx >= maxHexX || from_hy >= maxHexY || to_hx >= maxHexX || to_hy >= maxHexY )
     {
-        WriteLogF( _FUNC_, " - Incorrect value of from_x %d or from_y %d or to_x %d or to_y %d.\n", from_hx, from_hy, to_hx, to_hy );
+        WriteLog( "Incorrect value of from_x %d or from_y %d or to_x %d or to_y %d.\n", from_hx, from_hy, to_hx, to_hy );
         return false;
     }
 
     ProtoItem* proto = ProtoMngr.GetProtoItem( eff_pid );
     if( !proto )
     {
-        WriteLogF( _FUNC_, " - Proto '%s' not found.\n", Str::GetName( eff_pid ) );
+        WriteLog( "Proto '%s' not found.\n", Str::GetName( eff_pid ) );
         return false;
     }
 
@@ -2440,7 +2440,7 @@ void HexManager::SetCritter( CritterCl* cr )
     {
         if( f.Crit && f.Crit != cr )
         {
-            WriteLogF( _FUNC_, " - Hex %u %u busy, critter old %u, new %u.\n", hx, hy, f.Crit->GetId(), cr->GetId() );
+            WriteLog( "Hex %u %u busy, critter old %u, new %u.\n", hx, hy, f.Crit->GetId(), cr->GetId() );
             return;
         }
 

@@ -33,16 +33,15 @@ STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 /*                                                                      */
 /************************************************************************/
 
-char       WorkDir[ MAX_FOTEXT ];
-char       CommandLine[ MAX_FOTEXT ] = { 0 };
+string     WorkDir;
+string     CommandLine;
 IniParser* MainConfig;
 StrVec     GameModules;
 
 void InitialSetup( uint argc, char** argv )
 {
     // Parse command line args
-    const char* work_dir = nullptr;
-    StrVec      configs;
+    StrVec configs;
     for( uint i = 0; i < argc; i++ )
     {
         // Skip path
@@ -51,35 +50,37 @@ void InitialSetup( uint argc, char** argv )
 
         // Find work path entry
         if( Str::Compare( argv[ i ], "-WorkDir" ) && i < argc - 1 )
-            work_dir = argv[ i + 1 ];
+            WorkDir = argv[ i + 1 ];
 
         // Find config path entry
         if( Str::Compare( argv[ i ], "-AddConfig" ) && i < argc - 1 )
             configs.push_back( argv[ i + 1 ] );
 
         // Make sinle line
-        Str::Append( CommandLine, argv[ i ] );
+        CommandLine += argv[ i ];
         if( i < argc - 1 )
-            Str::Append( CommandLine, " " );
+            CommandLine += " ";
     }
 
     // Store for scripts
     GameOpt.CommandLine = ScriptString::Create( CommandLine );
 
     // Store start directory
-    if( work_dir )
+    if( !WorkDir.empty() )
     {
         #ifdef FO_WINDOWS
-        SetCurrentDirectory( work_dir );
+        SetCurrentDirectory( WorkDir.c_str() );
         #else
         chdir( work_dir );
         #endif
     }
+    char buf[ TEMP_BUF_SIZE ];
     #ifdef FO_WINDOWS
-    GetCurrentDirectory( MAX_FOPATH, WorkDir );
+    GetCurrentDirectory( sizeof( buf ), buf );
     #else
-    getcwd( WorkDir, MAX_FOPATH );
+    getcwd( buf, sizeof( buf ) );
     #endif
+    WorkDir = buf;
 
     // Injected config
     static char InternalConfig[ 5032 ] =
@@ -821,18 +822,18 @@ uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light )
 void GetClientOptions()
 {
     // Defines
-    # define GETOPTIONS_CMD_LINE_INT( opt, str_id )                       \
-        do { char* str = Str::Substring( CommandLine, str_id ); if( str ) \
-                 opt = atoi( str + Str::Length( str_id ) + 1 ); } while( 0 )
-    # define GETOPTIONS_CMD_LINE_BOOL( opt, str_id )                      \
-        do { char* str = Str::Substring( CommandLine, str_id ); if( str ) \
-                 opt = atoi( str + Str::Length( str_id ) + 1 ) != 0; } while( 0 )
-    # define GETOPTIONS_CMD_LINE_BOOL_ON( opt, str_id )                   \
-        do { char* str = Str::Substring( CommandLine, str_id ); if( str ) \
+    # define GETOPTIONS_CMD_LINE_INT( opt, str_id )                        \
+        do { const char* str = MainConfig->GetStr( "", str_id ); if( str ) \
+                 opt = MainConfig->GetInt( "", str_id ); } while( 0 )
+    # define GETOPTIONS_CMD_LINE_BOOL( opt, str_id )                       \
+        do { const char* str = MainConfig->GetStr( "", str_id ); if( str ) \
+                 opt = MainConfig->GetInt( "", str_id ) != 0; } while( 0 )
+    # define GETOPTIONS_CMD_LINE_BOOL_ON( opt, str_id )                    \
+        do { const char* str = MainConfig->GetStr( "", str_id ); if( str ) \
                  opt = true; } while( 0 )
-    # define GETOPTIONS_CMD_LINE_STR( opt, str_id )                       \
-        do { char* str = Str::Substring( CommandLine, str_id ); if( str ) \
-                 sscanf( str + Str::Length( str_id ) + 1, "%s", opt ); } while( 0 )
+    # define GETOPTIONS_CMD_LINE_STR( opt, str_id )                        \
+        do { const char* str = MainConfig->GetStr( "", str_id ); if( str ) \
+                 Str::Copy( opt, str ); } while( 0 )
     # define GETOPTIONS_CHECK( val_, min_, max_, def_ )                 \
         do { int val__ = (int) val_; if( val__ < min_ || val__ > max_ ) \
                  val_ = def_; } while( 0 )
@@ -855,61 +856,61 @@ void GetClientOptions()
 
     // Int / Bool
     GameOpt.OpenGLDebug = MainConfig->GetInt( "", "OpenGLDebug", 0 ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.OpenGLDebug, "-OpenGLDebug" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.OpenGLDebug, "OpenGLDebug" );
     GameOpt.AssimpLogging = MainConfig->GetInt( "", "AssimpLogging", 0 ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.AssimpLogging, "-AssimpLogging" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.AssimpLogging, "AssimpLogging" );
     GameOpt.FullScreen = MainConfig->GetInt( "", "FullScreen", 0 ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.FullScreen, "-FullScreen" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.FullScreen, "FullScreen" );
     GameOpt.VSync = MainConfig->GetInt( "", "VSync", 0 ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.VSync, "-VSync" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.VSync, "VSync" );
     GameOpt.Light = MainConfig->GetInt( "", "Light", 20 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.Light, "-Light" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.Light, "Light" );
     GETOPTIONS_CHECK( GameOpt.Light, 0, 100, 20 );
     GameOpt.ScrollDelay = MainConfig->GetInt( "", "ScrollDelay", 10 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollDelay, "-ScrollDelay" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollDelay, "ScrollDelay" );
     GETOPTIONS_CHECK( GameOpt.ScrollDelay, 0, 100, 10 );
     GameOpt.ScrollStep = MainConfig->GetInt( "", "ScrollStep", 12 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollStep, "-ScrollStep" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.ScrollStep, "ScrollStep" );
     GETOPTIONS_CHECK( GameOpt.ScrollStep, 4, 32, 12 );
     GameOpt.TextDelay = MainConfig->GetInt( "", "TextDelay", 3000 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.TextDelay, "-TextDelay" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.TextDelay, "TextDelay" );
     GETOPTIONS_CHECK( GameOpt.TextDelay, 1000, 30000, 3000 );
     GameOpt.DamageHitDelay = MainConfig->GetInt( "", "DamageHitDelay", 0 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.DamageHitDelay, "-OptDamageHitDelay" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.DamageHitDelay, "OptDamageHitDelay" );
     GETOPTIONS_CHECK( GameOpt.DamageHitDelay, 0, 30000, 0 );
     GameOpt.ScreenWidth = MainConfig->GetInt( "", "ScreenWidth", 0 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenWidth, "-ScreenWidth" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenWidth, "ScreenWidth" );
     GETOPTIONS_CHECK( GameOpt.ScreenWidth, 100, 30000, 800 );
     GameOpt.ScreenHeight = MainConfig->GetInt( "", "ScreenHeight", 0 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenHeight, "-ScreenHeight" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.ScreenHeight, "ScreenHeight" );
     GETOPTIONS_CHECK( GameOpt.ScreenHeight, 100, 30000, 600 );
     GameOpt.AlwaysOnTop = MainConfig->GetInt( "", "AlwaysOnTop", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysOnTop, "-AlwaysOnTop" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysOnTop, "AlwaysOnTop" );
     GameOpt.FixedFPS = MainConfig->GetInt( "", "FixedFPS", 100 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.FixedFPS, "-FixedFPS" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.FixedFPS, "FixedFPS" );
     GETOPTIONS_CHECK( GameOpt.FixedFPS, -10000, 10000, 100 );
     GameOpt.MsgboxInvert = MainConfig->GetInt( "", "InvertMessBox", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.MsgboxInvert, "-InvertMessBox" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.MsgboxInvert, "InvertMessBox" );
     GameOpt.MessNotify = MainConfig->GetInt( "", "WinNotify", true ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.MessNotify, "-WinNotify" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.MessNotify, "WinNotify" );
     GameOpt.SoundNotify = MainConfig->GetInt( "", "SoundNotify", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.SoundNotify, "-SoundNotify" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.SoundNotify, "SoundNotify" );
     GameOpt.Port = MainConfig->GetInt( "", "RemotePort", 4000 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.Port, "-RemotePort" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.Port, "RemotePort" );
     GETOPTIONS_CHECK( GameOpt.Port, 0, 0xFFFF, 4000 );
     GameOpt.UpdateServerPort = MainConfig->GetInt( "", "UpdateServerPort", 0 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.UpdateServerPort, "-UpdateServerPort" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.UpdateServerPort, "UpdateServerPort" );
     GETOPTIONS_CHECK( GameOpt.UpdateServerPort, 0, 0xFFFF, 0 );
     GameOpt.ProxyType = MainConfig->GetInt( "", "ProxyType", 0 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyType, "-ProxyType" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyType, "ProxyType" );
     GETOPTIONS_CHECK( GameOpt.ProxyType, 0, 3, 0 );
     GameOpt.ProxyPort = MainConfig->GetInt( "", "ProxyPort", 8080 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyPort, "-ProxyPort" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyPort, "ProxyPort" );
     GETOPTIONS_CHECK( GameOpt.ProxyPort, 0, 0xFFFF, 1080 );
     GameOpt.AlwaysRun = MainConfig->GetInt( "", "AlwaysRun", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysRun, "-AlwaysRun" );
+    GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysRun, "AlwaysRun" );
     GameOpt.IndicatorType = MainConfig->GetInt( "", "IndicatorType", INDICATOR_LINES );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.IndicatorType, "-IndicatorType" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.IndicatorType, "IndicatorType" );
     GETOPTIONS_CHECK( GameOpt.IndicatorType, INDICATOR_LINES, INDICATOR_BOTH, INDICATOR_LINES );
 
     uint dct = 500;
@@ -917,39 +918,39 @@ void GetClientOptions()
     dct = (uint) GetDoubleClickTime();
     # endif
     GameOpt.DoubleClickTime = MainConfig->GetInt( "", "DoubleClickTime", dct );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.DoubleClickTime, "-DoubleClickTime" );
+    GETOPTIONS_CMD_LINE_INT( GameOpt.DoubleClickTime, "DoubleClickTime" );
     GETOPTIONS_CHECK( GameOpt.DoubleClickTime, 0, 1000, dct );
 
-    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.HelpInfo, "-HelpInfo" );
-    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugInfo, "-DebugInfo" );
-    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugNet, "-DebugNet" );
+    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.HelpInfo, "HelpInfo" );
+    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugInfo, "DebugInfo" );
+    GETOPTIONS_CMD_LINE_BOOL_ON( GameOpt.DebugNet, "DebugNet" );
 
     // Str
     READ_CFG_STR_DEF( *MainConfig, "RemoteHost", "localhost" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-RemoteHost" );
+    GETOPTIONS_CMD_LINE_STR( buf, "RemoteHost" );
     *GameOpt.Host = buf;
     READ_CFG_STR_DEF( *MainConfig, "UpdateServerHost", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-UpdateServerHost" );
+    GETOPTIONS_CMD_LINE_STR( buf, "UpdateServerHost" );
     *GameOpt.UpdateServerHost = buf;
     READ_CFG_STR_DEF( *MainConfig, "ProxyHost", "localhost" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-ProxyHost" );
+    GETOPTIONS_CMD_LINE_STR( buf, "ProxyHost" );
     *GameOpt.ProxyHost = buf;
     READ_CFG_STR_DEF( *MainConfig, "ProxyUser", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-ProxyUser" );
+    GETOPTIONS_CMD_LINE_STR( buf, "ProxyUser" );
     *GameOpt.ProxyUser = buf;
     READ_CFG_STR_DEF( *MainConfig, "ProxyPass", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-ProxyPass" );
+    GETOPTIONS_CMD_LINE_STR( buf, "ProxyPass" );
     *GameOpt.ProxyPass = buf;
     READ_CFG_STR_DEF( *MainConfig, "UserName", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-UserName" );
+    GETOPTIONS_CMD_LINE_STR( buf, "UserName" );
     *GameOpt.Name = buf;
     READ_CFG_STR_DEF( *MainConfig, "KeyboardRemap", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "-KeyboardRemap" );
+    GETOPTIONS_CMD_LINE_STR( buf, "KeyboardRemap" );
     *GameOpt.KeyboardRemap = buf;
 
     // Logging
     bool logging = MainConfig->GetInt( "", "Logging", 1 ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( logging, "-Logging" );
+    GETOPTIONS_CMD_LINE_BOOL( logging, "Logging" );
     if( !logging )
     {
         WriteLog( "File logging off.\n" );
@@ -957,15 +958,15 @@ void GetClientOptions()
     }
 
     logging = MainConfig->GetInt( "", "LoggingDebugOutput", 0 ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingDebugOutput" );
+    GETOPTIONS_CMD_LINE_BOOL( logging, "LoggingDebugOutput" );
     if( logging )
         LogToDebugOutput( true );
 
     logging = MainConfig->GetInt( "", "LoggingTime", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingTime" );
+    GETOPTIONS_CMD_LINE_BOOL( logging, "LoggingTime" );
     LogWithTime( logging );
     logging = MainConfig->GetInt( "", "LoggingThread", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( logging, "-LoggingThread" );
+    GETOPTIONS_CMD_LINE_BOOL( logging, "LoggingThread" );
     LogWithThread( logging );
 
     # ifdef FONLINE_MAPPER
@@ -1009,18 +1010,18 @@ ServerScriptFunctions ServerFunctions;
 /************************************************************************/
 #ifdef FO_WINDOWS
 
-const char* GetLastSocketError()
+string GetLastSocketError()
 {
-    static THREAD char str[ MAX_FOTEXT ];
+    string result;
     int                error = WSAGetLastError();
     # define CASE_SOCK_ERROR( code, message ) \
     case code:                                \
-        Str::Format( str, "%s, %d, %s", # code, code, message ); break
+        result += fmt::format( "%s, %d, %s", # code, code, message ); break
 
     switch( error )
     {
     default:
-        Str::Format( str, "%d, unknown error code.", error );
+        result += fmt::format( "%d, unknown error code.", error );
         break;
         CASE_SOCK_ERROR( WSAEINTR, "A blocking operation was interrupted by a call to WSACancelBlockingCall." );
         CASE_SOCK_ERROR( WSAEBADF, "The file handle supplied is not valid." );
@@ -1112,16 +1113,14 @@ const char* GetLastSocketError()
         CASE_SOCK_ERROR( WSA_QOS_ESHAPERATEOBJ, "An invalid shaping rate object was found in the QOS provider-specific buffer." );
         CASE_SOCK_ERROR( WSA_QOS_RESERVED_PETYPE, "A reserved policy element was found in the QOS provider-specific buffer." );
     }
-    return str;
+    return result;
 }
 
 #else
 
-const char* GetLastSocketError()
+string GetLastSocketError()
 {
-    static THREAD char str[ MAX_FOTEXT ];
-    Str::Format( str, "%s", strerror( errno ) );
-    return str;
+    return fmt::format( "%s", strerror( errno ) );
 }
 
 #endif
