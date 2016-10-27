@@ -1094,7 +1094,7 @@ void AdminManager( void* port_ )
         if( select( (int) listen_sock + 1, &sock_set, nullptr, nullptr, &tv ) > 0 )
         {
             sockaddr_in from;
-            socklen_t   len = sizeof( from );
+            int         len = sizeof( from );
             SOCKET      sock = accept( listen_sock, (sockaddr*) &from, &len );
             if( sock != INVALID_SOCKET )
             {

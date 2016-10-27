@@ -194,6 +194,9 @@ source_group( "ThirdParty\\Json" FILES ${Json_SOURCE} )
 file( GLOB fmt_SOURCE "fmt/fmt/*.*" )
 source_group( "ThirdParty\\fmt" FILES ${fmt_SOURCE} )
 
+file( GLOB Asio_SOURCE "Asio/include/asio.hpp" )
+source_group( "ThirdParty\\Asio" FILES ${Asio_SOURCE} )
+
 set( COMMON_SOURCE
 	${Json_SOURCE}
 	${fmt_SOURCE}
@@ -236,6 +239,7 @@ set( SERVER_CLIENT_MAPPER_SOURCE
 	ProtoMap.cpp ProtoMap.h
 )
 set( SERVER_CLIENT_SOURCE
+	${Asio_SOURCE}
 	Access.h
 	BufferManager.cpp BufferManager.h
 	DataMask.h

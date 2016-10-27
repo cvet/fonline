@@ -40,7 +40,6 @@
 // Network
 #ifdef FO_WINDOWS
 # include <winsock2.h>
-# define socklen_t                                int
 # if defined ( FO_MSVC )
 #  pragma comment( lib, "Ws2_32.lib" )
 # endif

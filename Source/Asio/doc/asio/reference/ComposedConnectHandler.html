@@ -1,0 +1,96 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Composed connect handler requirements</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.75.2">
+<link rel="home" href="../../index.html" title="Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="CompletionHandler.html" title="Completion handler requirements">
+<link rel="next" href="ConnectHandler.html" title="Connect handler requirements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="asio C++ library" width="250" height="60" src="../../asio.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="CompletionHandler.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="ConnectHandler.html"><img src="../../next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="asio.reference.ComposedConnectHandler"></a><a class="link" href="ComposedConnectHandler.html" title="Composed connect handler requirements">Composed connect
+      handler requirements</a>
+</h3></div></div></div>
+<p>
+        A composed connect handler must meet the requirements for a <a class="link" href="Handler.html" title="Handlers">handler</a>.
+        A value <code class="computeroutput"><span class="identifier">h</span></code> of a composed connect
+        handler class should work correctly in the expression <code class="computeroutput"><span class="identifier">h</span><span class="special">(</span><span class="identifier">ec</span><span class="special">,</span>
+        <span class="identifier">i</span><span class="special">)</span></code>,
+        where <code class="computeroutput"><span class="identifier">ec</span></code> is an lvalue of
+        type <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">error_code</span></code>
+        and <code class="computeroutput"><span class="identifier">i</span></code> is an lvalue of the
+        type <code class="computeroutput"><span class="identifier">Iterator</span></code> used in the
+        corresponding <code class="computeroutput"><span class="identifier">connect</span><span class="special">()</span></code>
+        or async_connect()` function.
+      </p>
+<h5>
+<a name="asio.reference.ComposedConnectHandler.h0"></a>
+        <span><a name="asio.reference.ComposedConnectHandler.examples"></a></span><a class="link" href="ComposedConnectHandler.html#asio.reference.ComposedConnectHandler.examples">Examples</a>
+      </h5>
+<p>
+        A free function as a composed connect handler:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">connect_handler</span><span class="special">(</span>
+    <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span>
+    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">iterator</span> <span class="identifier">iterator</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="special">...</span>
+<span class="special">}</span>
+</pre>
+<p>
+        A composed connect handler function object:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">connect_handler</span>
+<span class="special">{</span>
+  <span class="special">...</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span>
+      <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span>
+      <span class="identifier">Iterator</span> <span class="identifier">iterator</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="special">...</span>
+  <span class="special">}</span>
+  <span class="special">...</span>
+<span class="special">};</span>
+</pre>
+<p>
+        A non-static class member function adapted to a composed connect handler
+        using <code class="computeroutput"><span class="identifier">bind</span><span class="special">()</span></code>:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">my_class</span><span class="special">::</span><span class="identifier">connect_handler</span><span class="special">(</span>
+    <span class="keyword">const</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span>
+    <span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span><span class="special">::</span><span class="identifier">iterator</span> <span class="identifier">iterator</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="special">...</span>
+<span class="special">}</span>
+<span class="special">...</span>
+<span class="identifier">asio</span><span class="special">::</span><span class="identifier">async_connect</span><span class="special">(...,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">my_class</span><span class="special">::</span><span class="identifier">connect_handler</span><span class="special">,</span>
+      <span class="keyword">this</span><span class="special">,</span> <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">error</span><span class="special">,</span>
+      <span class="identifier">asio</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">iterator</span><span class="special">));</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2016 Christopher
+      M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="CompletionHandler.html"><img src="../../prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../home.png" alt="Home"></a><a accesskey="n" href="ConnectHandler.html"><img src="../../next.png" alt="Next"></a>
+</div>
+</body>
+</html>
