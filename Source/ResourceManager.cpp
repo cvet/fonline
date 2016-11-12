@@ -18,7 +18,7 @@ void ResourceManager::Refresh()
         {
             // Hash all files
             StrVec file_names;
-            data_file->GetFileNames( CLIENT_DATA, true, nullptr, file_names );
+            data_file->GetFileNames( "", true, nullptr, file_names );
             char   buf[ MAX_FOTEXT ];
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
             {
@@ -180,19 +180,18 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                 uint pass = pass_base;
                 uint flags = 0;
                 int ox = 0, oy = 0;
-                ScriptString* str = (ScriptString*) ScriptString::Create();
+                string str;
                 #ifdef FONLINE_CLIENT
-                if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, str ) )
+                if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str ) )
                 #else // FONLINE_MAPPER
-                if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, str ) )
+                if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str ) )
                 #endif
                 {
-                    if( str->length() )
+                    if( !str.empty() )
                     {
                         SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-                        anim = SprMngr.LoadAnimation( str->c_str() );
+                        anim = SprMngr.LoadAnimation( str.c_str() );
                         SprMngr.PopAtlasType();
-                        str->Release();
 
                         // Fix by dirs
                         for( int d = 0; anim && d < anim->DirCount(); d++ )
@@ -248,10 +247,6 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                                 }
                             }
                         }
-                    }
-                    else
-                    {
-                        str->Release();
                     }
 
                     // If pass changed and animation not loaded than try again

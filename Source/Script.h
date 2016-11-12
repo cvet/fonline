@@ -6,10 +6,6 @@
 #include "ScriptInvoker.h"
 #include "ScriptProfiler.h"
 #include "angelscript.h"
-#include "scriptarray.h"
-#include "scriptstring.h"
-#include "scriptdict.h"
-#include "scriptdictionary.h"
 #include "preprocessor.h"
 #include <vector>
 #include <string>
@@ -49,6 +45,9 @@ public:
     static asIScriptEngine* GetEngine();
     static void             SetEngine( asIScriptEngine* engine );
     static asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
+    static void             RegisterScriptArrayExtensions( asIScriptEngine* engine );
+    static void             RegisterScriptDictExtensions( asIScriptEngine* engine );
+    static void             RegisterScriptStdStringExtensions( asIScriptEngine* engine );
     static void             FinishEngine( asIScriptEngine*& engine );
 
     static void              CreateContext();
@@ -144,10 +143,18 @@ public:
     static void CallbackException( asIScriptContext* ctx, void* param );
 
     // Arrays stuff
-    static ScriptArray* CreateArray( const char* type );
+    static CScriptArray* CreateArray( const char* type );
 
     template< typename Type >
-    static void AppendVectorToArray( const vector< Type >& vec, ScriptArray* arr )
+    static CScriptArray* CreateArrayRef( const char* type, const vector< Type* >& vec )
+    {
+        CScriptArray* arr = CreateArray( type );
+        AppendVectorToArrayRef( vec, arr );
+        return arr;
+    }
+
+    template< typename Type >
+    static void AppendVectorToArray( const vector< Type >& vec, CScriptArray* arr )
     {
         if( !vec.empty() && arr )
         {
@@ -161,7 +168,7 @@ public:
         }
     }
     template< typename Type >
-    static void AppendVectorToArrayRef( const vector< Type >& vec, ScriptArray* arr )
+    static void AppendVectorToArrayRef( const vector< Type >& vec, CScriptArray* arr )
     {
         if( !vec.empty() && arr )
         {
@@ -176,7 +183,7 @@ public:
         }
     }
     template< typename Type >
-    static void AssignScriptArrayInVector( vector< Type >& vec, const ScriptArray* arr )
+    static void AssignScriptArrayInVector( vector< Type >& vec, const CScriptArray* arr )
     {
         if( arr )
         {

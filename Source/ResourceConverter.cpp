@@ -230,15 +230,15 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
         FbxStreamImpl fbx_stream;
         if( !fbx_importer->Initialize( &fbx_stream, &file, -1, fbx_manager->GetIOSettings() ) )
         {
-            WriteLog( "Call to FbxImporter::Initialize() failed, error '%s'.\n", fbx_importer->GetStatus().GetErrorString() );
+            WriteLog( "Call to FbxImporter::Initialize() failed, error '{}'.\n", fbx_importer->GetStatus().GetErrorString() );
             if( fbx_importer->GetStatus().GetCode() == FbxStatus::eInvalidFileVersion )
             {
                 int file_major, file_minor, file_revision;
                 int sdk_major,  sdk_minor,  sdk_revision;
                 FbxManager::GetFileFormatVersion( sdk_major, sdk_minor, sdk_revision );
                 fbx_importer->GetFileVersion( file_major, file_minor, file_revision );
-                WriteLog( "FBX file format version for this FBX SDK is %d.%d.%d.\n", sdk_major, sdk_minor, sdk_revision );
-                WriteLog( "FBX file format version for file '%s' is %d.%d.%d.\n", name, file_major, file_minor, file_revision );
+                WriteLog( "FBX file format version for this FBX SDK is {}.{}.{}.\n", sdk_major, sdk_minor, sdk_revision );
+                WriteLog( "FBX file format version for file '{}' is {}.{}.{}.\n", name, file_major, file_minor, file_revision );
             }
             return nullptr;
         }
@@ -255,7 +255,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
                     if(!fbx_importer->Import(pScene) && lImporter->GetStatus().GetCode() == FbxStatus::ePasswordError)
                             return NULL;
                }*/
-            WriteLog( "Can't import scene, file '%s'.\n", name );
+            WriteLog( "Can't import scene, file '{}'.\n", name );
             return nullptr;
         }
 
@@ -421,7 +421,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
                                                                 aiProcess_ImproveCacheLocality, "" );
         if( !scene )
         {
-            WriteLog( "Can't load 3d file, name '%s', error '%s'.\n", name, Ptr_aiGetErrorString() );
+            WriteLog( "Can't load 3d file, name '{}', error '{}'.\n", name, Ptr_aiGetErrorString() );
             return nullptr;
         }
 
@@ -621,7 +621,7 @@ static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, 
                 Bone* skin_bone = root_bone->Find( Bone::GetHash( ai_bone->mName.data ) );
                 if( !skin_bone )
                 {
-                    WriteLog( "Skin bone '%s' for mesh '%s' not found.\n", ai_bone->mName.data, ai_node->mName.data );
+                    WriteLog( "Skin bone '{}' for mesh '{}' not found.\n", ai_bone->mName.data, ai_node->mName.data );
                     skin_bone = bone;
                 }
                 mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
@@ -721,7 +721,7 @@ static T2 FbxGetElement( T* elements, int index, int* vertices )
             return elements->GetDirectArray().GetAt( elements->GetIndexArray().GetAt( vertices[ index ] ) );
     }
 
-    WriteLog( "Unknown mapping mode %d or reference mode %d.\n", elements->GetMappingMode(), elements->GetReferenceMode() );
+    WriteLog( "Unknown mapping mode {} or reference mode {}.\n", elements->GetMappingMode(), elements->GetReferenceMode() );
     return elements->GetDirectArray().GetAt( 0 );
 }
 
@@ -844,7 +844,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
                 Bone* skin_bone = root_bone->Find( Bone::GetHash( fbx_cluster->GetLink()->GetName() ) );
                 if( !skin_bone )
                 {
-                    WriteLog( "Skin bone '%s' for mesh '%s' not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName() );
+                    WriteLog( "Skin bone '{}' for mesh '{}' not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName() );
                     skin_bone = bone;
                 }
                 mesh->SkinBoneNameHashes[ i ] = skin_bone->NameHash;
@@ -943,12 +943,12 @@ static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, ui
         static void Error( png_structp png_ptr, png_const_charp error_msg )
         {
             UNUSED_VARIABLE( png_ptr );
-            WriteLog( "PNG error '%s'.\n", error_msg );
+            WriteLog( "PNG error '{}'.\n", error_msg );
         }
         static void Warning( png_structp png_ptr, png_const_charp error_msg )
         {
             UNUSED_VARIABLE( png_ptr );
-            // WriteLog( "PNG warning '%s'.\n", error_msg );
+            // WriteLog( "PNG warning '{}'.\n", error_msg );
         }
     };
 
@@ -1213,7 +1213,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
                     if( !skip_making_zip )
                     {
-                        WriteLog( "Pack resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
+                        WriteLog( "Pack resource '{}', files {}...\n", res_name, resources.GetFilesCount() );
 
                         CreateDirectoryTree( zip_path.c_str() );
                         zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
@@ -1227,7 +1227,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                                 FileManager* converted_file = Convert( relative_path, file );
                                 if( !converted_file )
                                 {
-                                    WriteLog( "File '%s' conversation error.\n", relative_path );
+                                    WriteLog( "File '{}' conversation error.\n", relative_path );
                                     continue;
                                 }
 
@@ -1236,13 +1236,13 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                                 if( zipOpenNewFileInZip( zip, relative_path, &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
                                 {
                                     if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
-                                        WriteLog( "Can't write file '%s' in zip file '%s'.\n", relative_path, zip_path.c_str() );
+                                        WriteLog( "Can't write file '{}' in zip file '{}'.\n", relative_path, zip_path.c_str() );
 
                                     zipCloseFileInZip( zip );
                                 }
                                 else
                                 {
-                                    WriteLog( "Can't open file '%s' in zip file '%s'.\n", relative_path, zip_path.c_str() );
+                                    WriteLog( "Can't open file '{}' in zip file '{}'.\n", relative_path, zip_path.c_str() );
                                 }
 
                                 if( converted_file != &file )
@@ -1254,7 +1254,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                         }
                         else
                         {
-                            WriteLog( "Can't open zip file '%s'.\n", zip_path.c_str() );
+                            WriteLog( "Can't open zip file '{}'.\n", zip_path.c_str() );
                         }
                     }
 
@@ -1276,13 +1276,13 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             if( !log_shown )
                             {
                                 log_shown = true;
-                                WriteLog( "Copy resource '%s', files %u...\n", res_name, resources.GetFilesCount() );
+                                WriteLog( "Copy resource '{}', files {}...\n", res_name, resources.GetFilesCount() );
                             }
 
                             FileManager* converted_file = Convert( fname, file );
                             if( !converted_file )
                             {
-                                WriteLog( "File '%s' conversation error.\n", fname );
+                                WriteLog( "File '{}' conversation error.\n", fname );
                                 continue;
                             }
                             converted_file->SaveFile( fname );
@@ -1307,7 +1307,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                                 }
                                 else
                                 {
-                                    WriteLog( "Can't read data file '%s'.\n", path );
+                                    WriteLog( "Can't read data file '{}'.\n", path );
                                 }
                             }
                         }

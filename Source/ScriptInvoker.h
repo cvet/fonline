@@ -29,7 +29,7 @@ private:
     Mutex            deferredCallsLocker;
 
     ScriptInvoker();
-    uint   AddDeferredCall( uint delay, bool saved, asIScriptFunction* func, int* value, ScriptArray* values );
+    uint   AddDeferredCall( uint delay, bool saved, asIScriptFunction* func, int* value, CScriptArray* values );
     bool   IsDeferredCallPending( uint id );
     bool   CancelDeferredCall( uint id );
     bool   GetDeferredCallData( uint id, DeferredCall& data );
@@ -43,14 +43,14 @@ private:
 public:
     static uint Global_DeferredCall( uint delay, asIScriptFunction* func );
     static uint Global_DeferredCallWithValue( uint delay, asIScriptFunction* func, int value );
-    static uint Global_DeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values );
+    static uint Global_DeferredCallWithValues( uint delay, asIScriptFunction* func, CScriptArray* values );
     static uint Global_SavedDeferredCall( uint delay, asIScriptFunction* func );
     static uint Global_SavedDeferredCallWithValue( uint delay, asIScriptFunction* func, int value );
-    static uint Global_SavedDeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values );
+    static uint Global_SavedDeferredCallWithValues( uint delay, asIScriptFunction* func, CScriptArray* values );
     static bool Global_IsDeferredCallPending( uint id );
     static bool Global_CancelDeferredCall( uint id );
-    static bool Global_GetDeferredCallData( uint id, uint& delay, ScriptArray* values );
-    static uint Global_GetDeferredCallsList( ScriptArray* ids );
+    static bool Global_GetDeferredCallData( uint id, uint& delay, CScriptArray* values );
+    static uint Global_GetDeferredCallsList( CScriptArray* ids );
 };
 
 #endif // __SCRIPT_INVOKER__

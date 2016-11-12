@@ -115,7 +115,7 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     ViewMapDir = 0;
     DisableSend = 0;
     CanBeRemoved = false;
-    NameStr = ScriptString::Create();
+    Name = "";
     ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = defItemSlotArmor = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     defItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
@@ -1164,39 +1164,39 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
 
     if( !item_id )
     {
-        WriteLog( "Item id is zero, from slot %u, to slot %u, critter '%s'.\n", from_slot, to_slot, GetInfo() );
+        WriteLog( "Item id is zero, from slot {}, to slot {}, critter '{}'.\n", from_slot, to_slot, GetInfo() );
         return false;
     }
 
     Item* item = GetItem( item_id, IsPlayer() );
     if( !item )
     {
-        WriteLog( "Item not found, item id %u, critter '%s'.\n", item_id, GetInfo() );
+        WriteLog( "Item not found, item id {}, critter '{}'.\n", item_id, GetInfo() );
         return false;
     }
 
     if( item->GetCritSlot() != from_slot || from_slot == to_slot )
     {
-        WriteLog( "Wrong slots, from slot %u, from slot real %u, to slot %u, item id %u, critter '%s'.\n", from_slot, item->GetCritSlot(), to_slot, item_id, GetInfo() );
+        WriteLog( "Wrong slots, from slot {}, from slot real {}, to slot {}, item id {}, critter '{}'.\n", from_slot, item->GetCritSlot(), to_slot, item_id, GetInfo() );
         return false;
     }
 
     if( to_slot != SLOT_GROUND && !SlotEnabled[ to_slot ] )
     {
-        WriteLog( "Slot %u is not allowed, critter '%s'.\n", to_slot, GetInfo() );
+        WriteLog( "Slot {} is not allowed, critter '{}'.\n", to_slot, GetInfo() );
         return false;
     }
 
     if( to_slot == SLOT_GROUND && !ItemMngr.ItemCheckMove( item, item->GetCount(), this, this ) )
     {
-        WriteLog( "Move item is not allwed, critter '%s'.\n", to_slot, GetInfo() );
+        WriteLog( "Move item is not allwed, critter '{}'.\n", to_slot, GetInfo() );
         return false;
     }
 
     Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : nullptr );
     if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, this, item, to_slot, item_swap ) )
     {
-        WriteLog( "Can't move item '%s' to slot %u, critter '%s'.\n", item->GetName(), to_slot, GetInfo() );
+        WriteLog( "Can't move item '{}' to slot {}, critter '{}'.\n", item->GetName(), to_slot, GetInfo() );
         return false;
     }
 
@@ -1243,7 +1243,7 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
         Map* map = MapMngr.GetMap( GetMapId() );
         if( !map )
         {
-            WriteLog( "Map not found, map id %u, critter '%s'.\n", GetMapId(), GetInfo() );
+            WriteLog( "Map not found, map id {}, critter '{}'.\n", GetMapId(), GetInfo() );
             ItemMngr.DeleteItem( item );
             return true;
         }
@@ -1420,7 +1420,7 @@ bool Critter::SetScript( asIScriptFunction* func, bool first_time )
         func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLog( "Script bind fail, critter '%s'.\n", GetInfo() );
+            WriteLog( "Script bind fail, critter '{}'.\n", GetInfo() );
             return false;
         }
         SetScriptId( func_num );
@@ -1891,8 +1891,8 @@ void Critter::Send_AllAutomapsInfo()
     if( !IsPlayer() )
         return;
 
-    LocVec       locs;
-    ScriptArray* known_locs = GetKnownLocations();
+    LocVec        locs;
+    CScriptArray* known_locs = GetKnownLocations();
     for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
     {
         uint      loc_id = *(uint*) known_locs->At( i );
@@ -1951,18 +1951,14 @@ void Critter::SendMessage( int num, int val, int to )
 
 void Critter::RefreshName()
 {
-    if( IsPlayer() )
-    {
-        *NameStr = ( (Client*) this )->Name;
-    }
-    else
+    if( !IsPlayer() )
     {
         hash        dlg_pack_id = GetDialogId();
         DialogPack* dlg_pack = ( dlg_pack_id ? DlgMngr.GetDialog( dlg_pack_id ) : nullptr );
         if( dlg_pack )
-            *NameStr = fmt::format( "{} {} (Npc)", dlg_pack->PackName.c_str(), GetId() );
+            Name = fmt::format( "{} {} (Npc)", dlg_pack->PackName.c_str(), GetId() );
         else
-            *NameStr = fmt::format( "{} (Npc)", GetId() );
+            Name = fmt::format( "{} (Npc)", GetId() );
     }
 }
 
@@ -2017,8 +2013,8 @@ void Critter::AddEnemyToStack( uint crid )
         return;
 
     // Find already
-    ScriptArray* enemy_stack = GetEnemyStack();
-    uint         stack_count = enemy_stack->GetSize();
+    CScriptArray* enemy_stack = GetEnemyStack();
+    uint          stack_count = enemy_stack->GetSize();
     for( uint i = 0; i < stack_count; i++ )
     {
         if( *(uint*) enemy_stack->At( i ) == crid )
@@ -2045,8 +2041,8 @@ bool Critter::CheckEnemyInStack( uint crid )
     if( GetIsNoEnemyStack() )
         return false;
 
-    ScriptArray* enemy_stack = GetEnemyStack();
-    uint         stack_count = enemy_stack->GetSize();
+    CScriptArray* enemy_stack = GetEnemyStack();
+    uint          stack_count = enemy_stack->GetSize();
     for( uint i = 0; i < stack_count; i++ )
     {
         if( *(uint*) enemy_stack->At( i ) == crid )
@@ -2061,8 +2057,8 @@ bool Critter::CheckEnemyInStack( uint crid )
 
 void Critter::EraseEnemyInStack( uint crid )
 {
-    ScriptArray* enemy_stack = GetEnemyStack();
-    uint         stack_count = enemy_stack->GetSize();
+    CScriptArray* enemy_stack = GetEnemyStack();
+    uint          stack_count = enemy_stack->GetSize();
     for( uint i = 0; i < stack_count; i++ )
     {
         if( *(uint*) enemy_stack->At( i ) == crid )
@@ -2080,7 +2076,7 @@ Critter* Critter::ScanEnemyStack()
     if( GetIsNoEnemyStack() )
         return nullptr;
 
-    ScriptArray* enemy_stack = GetEnemyStack();
+    CScriptArray* enemy_stack = GetEnemyStack();
     for( int i = (int) enemy_stack->GetSize() - 1; i >= 0; i-- )
     {
         Critter* enemy = GetCritSelf( *(uint*) enemy_stack->At( i ) );
@@ -2100,7 +2096,7 @@ Critter* Critter::ScanEnemyStack()
 
 bool Critter::CheckKnownLocById( uint loc_id )
 {
-    ScriptArray* known_locs = GetKnownLocations();
+    CScriptArray* known_locs = GetKnownLocations();
     for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
     {
         if( *(uint*) known_locs->At( i ) == loc_id )
@@ -2115,7 +2111,7 @@ bool Critter::CheckKnownLocById( uint loc_id )
 
 bool Critter::CheckKnownLocByPid( hash loc_pid )
 {
-    ScriptArray* known_locs = GetKnownLocations();
+    CScriptArray* known_locs = GetKnownLocations();
     SAFEREL( known_locs );
     for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
     {
@@ -2135,7 +2131,7 @@ void Critter::AddKnownLoc( uint loc_id )
     if( CheckKnownLocById( loc_id ) )
         return;
 
-    ScriptArray* known_locs = GetKnownLocations();
+    CScriptArray* known_locs = GetKnownLocations();
     known_locs->InsertLast( &loc_id );
     SetKnownLocations( known_locs );
     SAFEREL( known_locs );
@@ -2143,7 +2139,7 @@ void Critter::AddKnownLoc( uint loc_id )
 
 void Critter::EraseKnownLoc( uint loc_id )
 {
-    ScriptArray* known_locs = GetKnownLocations();
+    CScriptArray* known_locs = GetKnownLocations();
     for( uint i = 0, j = known_locs->GetSize(); i < j; i++ )
     {
         if( *(uint*) known_locs->At( i ) == loc_id )
@@ -2165,10 +2161,10 @@ void Critter::AddCrTimeEvent( hash func_num, uint rate, uint duration, int ident
     if( duration )
         duration += GameOpt.FullSecond;
 
-    ScriptArray* te_next_time = GetTE_NextTime();
-    ScriptArray* te_func_num = GetTE_FuncNum();
-    ScriptArray* te_rate = GetTE_Rate();
-    ScriptArray* te_identifier = GetTE_Identifier();
+    CScriptArray* te_next_time = GetTE_NextTime();
+    CScriptArray* te_func_num = GetTE_FuncNum();
+    CScriptArray* te_rate = GetTE_Rate();
+    CScriptArray* te_identifier = GetTE_Identifier();
     RUNTIME_ASSERT( te_next_time->GetSize() == te_func_num->GetSize() );
     RUNTIME_ASSERT( te_func_num->GetSize() == te_rate->GetSize() );
     RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
@@ -2196,10 +2192,10 @@ void Critter::AddCrTimeEvent( hash func_num, uint rate, uint duration, int ident
 
 void Critter::EraseCrTimeEvent( int index )
 {
-    ScriptArray* te_next_time = GetTE_NextTime();
-    ScriptArray* te_func_num = GetTE_FuncNum();
-    ScriptArray* te_rate = GetTE_Rate();
-    ScriptArray* te_identifier = GetTE_Identifier();
+    CScriptArray* te_next_time = GetTE_NextTime();
+    CScriptArray* te_func_num = GetTE_FuncNum();
+    CScriptArray* te_rate = GetTE_Rate();
+    CScriptArray* te_identifier = GetTE_Identifier();
     RUNTIME_ASSERT( te_next_time->GetSize() == te_func_num->GetSize() );
     RUNTIME_ASSERT( te_func_num->GetSize() == te_rate->GetSize() );
     RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
@@ -2225,7 +2221,7 @@ void Critter::EraseCrTimeEvent( int index )
 
 void Critter::ContinueTimeEvents( int offs_time )
 {
-    ScriptArray* te_next_time = GetTE_NextTime();
+    CScriptArray* te_next_time = GetTE_NextTime();
     if( te_next_time->GetSize() > 0 )
     {
         for( uint i = 0, j = te_next_time->GetSize(); i < j; i++ )
@@ -2264,8 +2260,6 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
 
     SETFLAG( Flags, FCRIT_PLAYER );
     Sock = INVALID_SOCKET;
-    memzero( Name, sizeof( Name ) );
-    Str::Copy( Name, "err" );
     pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
     Talk.Clear();
     talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
@@ -2399,22 +2393,20 @@ uint Client::GetOfflineTime()
 const char* Client::GetBinPassHash()
 {
     static THREAD char pass_hash[ PASS_HASH_SIZE ];
-    ScriptString*      str = GetPassHash();
-    RUNTIME_ASSERT( str->length() == PASS_HASH_SIZE * 2 );
-    for( asUINT i = 0, j = str->length(); i < j; i += 2 )
-        pass_hash[ i / 2 ] = Str::StrToHex( str->c_str() + i );
-    str->Release();
+    string&            str = GetPassHash();
+    RUNTIME_ASSERT( str.length() == PASS_HASH_SIZE * 2 );
+    for( asUINT i = 0, j = (uint) str.length(); i < j; i += 2 )
+        pass_hash[ i / 2 ] = Str::StrToHex( str.c_str() + i );
     return pass_hash;
 }
 
 void Client::SetBinPassHash( const char* pass_hash )
 {
-    ScriptString* str = ScriptString::Create();
-    str->rawResize( PASS_HASH_SIZE * 2 );
+    string str;
+    str.resize( PASS_HASH_SIZE * 2 );
     for( uint i = 0; i < PASS_HASH_SIZE; i++ )
-        Str::HexToStr( (uchar) pass_hash[ i ], (char*) str->c_str() + i * 2 );
-    SetPassHash( str );
-    str->Release();
+        Str::HexToStr( (uchar) pass_hash[ i ], (char*) str.c_str() + i * 2 );
+    PropertyPassHash->SetValue< string* >( this, &str );
 }
 
 bool Client::IsToPing()
@@ -2486,7 +2478,7 @@ void Client::Send_AddCritter( Critter* cr )
     else
     {
         Client* cl = (Client*) cr;
-        Bout.Push( cl->Name, UTF8_BUF_SIZE( MAX_NAME ) );
+        Bout.Push( cl->Name.c_str(), UTF8_BUF_SIZE( MAX_NAME ) );
     }
 
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
@@ -2875,7 +2867,7 @@ void Client::Send_EraseItem( Item* item )
     BOUT_END( this );
 }
 
-void Client::Send_SomeItems( ScriptArray* items_arr, int param )
+void Client::Send_SomeItems( CScriptArray* items_arr, int param )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
@@ -2917,7 +2909,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
     if( LockMapTransfers )
         return;
 
-    ScriptArray* known_locs = GetKnownLocations();
+    CScriptArray* known_locs = GetKnownLocations();
 
     // Calculate length of message
     uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( info_flags );
@@ -2956,7 +2948,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
                 uchar count = 0;
                 if( loc->IsNonEmptyMapEntrances() )
                 {
-                    ScriptArray* map_entrances = loc->GetMapEntrances();
+                    CScriptArray* map_entrances = loc->GetMapEntrances();
                     count = (uchar) ( map_entrances->GetSize() / 2 );
                     map_entrances->Release();
                 }
@@ -2974,7 +2966,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
 
     if( FLAG( info_flags, GM_INFO_ZONES_FOG ) )
     {
-        ScriptArray* gmap_fog = GetGlobalMapFog();
+        CScriptArray* gmap_fog = GetGlobalMapFog();
         if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
             gmap_fog->Resize( GM_ZONES_FOG_SIZE );
         Bout.Push( (char*) gmap_fog->At( 0 ), GM_ZONES_FOG_SIZE );
@@ -3008,7 +3000,7 @@ void Client::Send_GlobalLocation( Location* loc, bool add )
     uchar count = 0;
     if( loc->IsNonEmptyMapEntrances() )
     {
-        ScriptArray* map_entrances = loc->GetMapEntrances();
+        CScriptArray* map_entrances = loc->GetMapEntrances();
         count = (uchar) ( map_entrances->GetSize() / 2 );
         map_entrances->Release();
     }
@@ -3125,14 +3117,14 @@ void Client::Send_GameInfo( Map* map )
     if( IsSendDisabled() || IsOffline() )
         return;
 
-    int          time = ( map ? map->GetCurDayTime() : -1 );
-    uchar        rain = ( map ? map->GetRainCapacity() : 0 );
-    bool         no_log_out = ( map ? map->GetIsNoLogOut() : true );
+    int           time = ( map ? map->GetCurDayTime() : -1 );
+    uchar         rain = ( map ? map->GetRainCapacity() : 0 );
+    bool          no_log_out = ( map ? map->GetIsNoLogOut() : true );
 
-    int          day_time[ 4 ];
-    uchar        day_color[ 12 ];
-    ScriptArray* day_time_arr = ( map ? map->GetDayTime() : nullptr );
-    ScriptArray* day_color_arr = ( map ? map->GetDayColor() : nullptr );
+    int           day_time[ 4 ];
+    uchar         day_color[ 12 ];
+    CScriptArray* day_time_arr = ( map ? map->GetDayTime() : nullptr );
+    CScriptArray* day_color_arr = ( map ? map->GetDayColor() : nullptr );
     RUNTIME_ASSERT( !day_time_arr || day_time_arr->GetSize() == 0 || day_time_arr->GetSize() == 4 );
     RUNTIME_ASSERT( !day_color_arr || day_color_arr->GetSize() == 0 || day_color_arr->GetSize() == 12 );
     if( day_time_arr && day_time_arr->GetSize() > 0 )
@@ -3360,22 +3352,6 @@ void Client::Send_CombatResult( uint* combat_res, uint len )
     BOUT_END( this );
 }
 
-void Client::Send_UserHoloStr( uint str_num, const char* text, ushort text_len )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-
-    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( str_num ) + sizeof( text_len ) + text_len;
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_USER_HOLO_STR;
-    Bout << msg_len;
-    Bout << str_num;
-    Bout << text_len;
-    Bout.Push( text, text_len );
-    BOUT_END( this );
-}
-
 void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
 {
     if( IsSendDisabled() || IsOffline() )
@@ -3391,7 +3367,7 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
             msg_len += sizeof( uint ) + sizeof( hash ) + sizeof( ushort );
             if( loc_->IsNonEmptyAutomaps() )
             {
-                ScriptArray* automaps = loc_->GetAutomaps();
+                CScriptArray* automaps = loc_->GetAutomaps();
                 msg_len += ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps->GetSize();
                 automaps->Release();
             }
@@ -3409,7 +3385,7 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
             Bout << loc_->GetProtoId();
             if( loc_->IsNonEmptyAutomaps() )
             {
-                ScriptArray* automaps = loc_->GetAutomaps();
+                CScriptArray* automaps = loc_->GetAutomaps();
                 Bout << (ushort) automaps->GetSize();
                 for( uint k = 0, l = (uint) automaps->GetSize(); k < l; k++ )
                 {
@@ -3430,9 +3406,9 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
 
     if( loc )
     {
-        uint         msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort ) +
-                               sizeof( uint ) + sizeof( hash ) + sizeof( ushort );
-        ScriptArray* automaps = ( loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr );
+        uint          msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( bool ) + sizeof( ushort ) +
+                                sizeof( uint ) + sizeof( hash ) + sizeof( ushort );
+        CScriptArray* automaps = ( loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr );
         if( automaps )
             msg_len += ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps->GetSize();
 

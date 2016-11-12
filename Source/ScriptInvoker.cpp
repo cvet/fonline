@@ -6,7 +6,7 @@ ScriptInvoker::ScriptInvoker()
     lastDeferredCallId = 0;
 }
 
-uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* func, int* value, ScriptArray* values )
+uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* func, int* value, CScriptArray* values )
 {
     if( !func )
         SCRIPT_ERROR_R0( "Function arg is null." );
@@ -147,7 +147,7 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call )
 {
     Script::PrepareContext( call.BindId, "Invoker" );
 
-    ScriptArray* arr = nullptr;
+    CScriptArray* arr = nullptr;
 
     if( call.IsValue )
     {
@@ -254,7 +254,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 
         if( call.IsValue && call.IsValues )
         {
-            WriteLog( "Deferred call %u have value and values.\n", call.Id );
+            WriteLog( "Deferred call {} have value and values.\n", call.Id );
             errors++;
             continue;
         }
@@ -274,7 +274,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         call.FuncNum = Script::BindScriptFuncNumByFuncName( kv[ "Script" ].c_str(), decl );
         if( !call.FuncNum )
         {
-            WriteLog( "Unable to find function '%s' with declaration '%s' for deferred call %u.\n", kv[ "Script" ].c_str(), decl, call.Id );
+            WriteLog( "Unable to find function '{}' with declaration '{}' for deferred call {}.\n", kv[ "Script" ].c_str(), decl, call.Id );
             errors++;
             continue;
         }
@@ -282,7 +282,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         call.BindId = Script::BindByFuncNum( call.FuncNum, false );
         if( !call.BindId )
         {
-            WriteLog( "Unable to bind script function '%s' for deferred call %u.\n", Str::GetName( call.FuncNum ), call.Id );
+            WriteLog( "Unable to bind script function '{}' for deferred call {}.\n", Str::GetName( call.FuncNum ), call.Id );
             errors++;
             continue;
         }
@@ -291,7 +291,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         deferredCalls.push_back( call );
     }
 
-    WriteLog( "Load deferred calls complete, count %u.\n", (uint) deferredCalls.size() );
+    WriteLog( "Load deferred calls complete, count {}.\n", (uint) deferredCalls.size() );
     return errors == 0;
 }
 
@@ -340,7 +340,7 @@ uint ScriptInvoker::Global_DeferredCallWithValue( uint delay, asIScriptFunction*
     return Script::GetInvoker()->AddDeferredCall( delay, false, func, &value, nullptr );
 }
 
-uint ScriptInvoker::Global_DeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
+uint ScriptInvoker::Global_DeferredCallWithValues( uint delay, asIScriptFunction* func, CScriptArray* values )
 {
     return Script::GetInvoker()->AddDeferredCall( delay, false, func, nullptr, values );
 }
@@ -355,7 +355,7 @@ uint ScriptInvoker::Global_SavedDeferredCallWithValue( uint delay, asIScriptFunc
     return Script::GetInvoker()->AddDeferredCall( delay, true, func, &value, nullptr );
 }
 
-uint ScriptInvoker::Global_SavedDeferredCallWithValues( uint delay, asIScriptFunction* func, ScriptArray* values )
+uint ScriptInvoker::Global_SavedDeferredCallWithValues( uint delay, asIScriptFunction* func, CScriptArray* values )
 {
     return Script::GetInvoker()->AddDeferredCall( delay, true, func, nullptr, values );
 }
@@ -370,7 +370,7 @@ bool ScriptInvoker::Global_CancelDeferredCall( uint id )
     return Script::GetInvoker()->CancelDeferredCall( id );
 }
 
-bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, ScriptArray* values )
+bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, CScriptArray* values )
 {
     ScriptInvoker* self = Script::GetInvoker();
     DeferredCall   call;
@@ -387,7 +387,7 @@ bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, ScriptArra
             }
             else if( call.IsValues )
             {
-                values->Clear();
+                values->Resize( 0 );
                 Script::AppendVectorToArray( call.Values, values );
             }
         }
@@ -396,7 +396,7 @@ bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, ScriptArra
     return false;
 }
 
-uint ScriptInvoker::Global_GetDeferredCallsList( ScriptArray* ids )
+uint ScriptInvoker::Global_GetDeferredCallsList( CScriptArray* ids )
 {
     ScriptInvoker* self = Script::GetInvoker();
     IntVec         ids_;

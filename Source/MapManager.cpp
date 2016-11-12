@@ -33,14 +33,14 @@ bool MapManager::RestoreLocation( uint id, hash proto_id, const StrMap& props_da
     ProtoLocation* proto = ProtoMngr.GetProtoLocation( proto_id );
     if( !proto )
     {
-        WriteLog( "Location proto '%s' is not loaded.\n", Str::GetName( proto_id ) );
+        WriteLog( "Location proto '{}' is not loaded.\n", Str::GetName( proto_id ) );
         return false;
     }
 
     Location* loc = new Location( id, proto );
     if( !loc->Props.LoadFromText( props_data ) )
     {
-        WriteLog( "Fail to restore properties for location '%s' (%u).\n", Str::GetName( proto_id ), id );
+        WriteLog( "Fail to restore properties for location '{}' ({}).\n", Str::GetName( proto_id ), id );
         loc->Release();
         return false;
     }
@@ -93,27 +93,27 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
     ProtoLocation* proto = ProtoMngr.GetProtoLocation( loc_pid );
     if( !proto )
     {
-        WriteLog( "Location proto '%s' is not loaded.\n", Str::GetName( loc_pid ) );
+        WriteLog( "Location proto '{}' is not loaded.\n", Str::GetName( loc_pid ) );
         return nullptr;
     }
 
     if( !wx || !wy || wx >= GM__MAXZONEX * GameOpt.GlobalMapZoneLength || wy >= GM__MAXZONEY * GameOpt.GlobalMapZoneLength )
     {
-        WriteLog( "Invalid location '%s' coordinates.\n", Str::GetName( loc_pid ) );
+        WriteLog( "Invalid location '{}' coordinates.\n", Str::GetName( loc_pid ) );
         return nullptr;
     }
 
     Location* loc = new Location( 0, proto );
     loc->SetWorldX( wx );
     loc->SetWorldY( wy );
-    ScriptArray* pids = loc->GetMapProtos();
+    CScriptArray* pids = loc->GetMapProtos();
     for( uint i = 0, j = pids->GetSize(); i < j; i++ )
     {
         hash map_pid = *(hash*) pids->At( i );
         Map* map = CreateMap( map_pid, loc );
         if( !map )
         {
-            WriteLog( "Create map '%s' for location '%s' fail.\n", Str::GetName( map_pid ), Str::GetName( loc_pid ) );
+            WriteLog( "Create map '{}' for location '{}' fail.\n", Str::GetName( map_pid ), Str::GetName( loc_pid ) );
             MapVec& maps = loc->GetMapsNoLock();
             for( auto& map : maps )
                 map->Release();
@@ -135,7 +135,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
         map->SetLocId( loc->GetId() );
         if( !map->Generate() )
         {
-            WriteLog( "Generate map '%s' fail.\n", Str::GetName( map->GetProtoId() ) );
+            WriteLog( "Generate map '{}' fail.\n", Str::GetName( map->GetProtoId() ) );
             loc->SetToGarbage( true );
             MapMngr.RunGarbager();
             return nullptr;
@@ -150,7 +150,7 @@ Map* MapManager::CreateMap( hash proto_id, Location* loc )
     ProtoMap* proto_map = ProtoMngr.GetProtoMap( proto_id );
     if( !proto_map )
     {
-        WriteLog( "Proto map '%s' is not loaded.\n", Str::GetName( proto_id ) );
+        WriteLog( "Proto map '{}' is not loaded.\n", Str::GetName( proto_id ) );
         return nullptr;
     }
 
@@ -169,14 +169,14 @@ bool MapManager::RestoreMap( uint id, hash proto_id, const StrMap& props_data )
     ProtoMap* proto = ProtoMngr.GetProtoMap( proto_id );
     if( !proto )
     {
-        WriteLog( "Map proto '%s' is not loaded.\n", Str::GetName( proto_id ) );
+        WriteLog( "Map proto '{}' is not loaded.\n", Str::GetName( proto_id ) );
         return false;
     }
 
     Map* map = new Map( id, proto, nullptr );
     if( !map->Props.LoadFromText( props_data ) )
     {
-        WriteLog( "Fail to restore properties for map '%s' (%u).\n", Str::GetName( proto_id ), id );
+        WriteLog( "Fail to restore properties for map '{}' ({}).\n", Str::GetName( proto_id ), id );
         map->Release();
         return false;
     }
@@ -1191,7 +1191,7 @@ bool MapManager::TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, u
 {
     if( cr->LockMapTransfers )
     {
-        WriteLog( "Transfers locked, critter '%s'.\n", cr->GetInfo() );
+        WriteLog( "Transfers locked, critter '{}'.\n", cr->GetInfo() );
         return false;
     }
 
@@ -1237,7 +1237,7 @@ bool MapManager::TransitToGlobal( Critter* cr, uint leader_id, bool force )
 {
     if( cr->LockMapTransfers )
     {
-        WriteLog( "Transfers locked, critter '%s'.\n", cr->GetInfo() );
+        WriteLog( "Transfers locked, critter '{}'.\n", cr->GetInfo() );
         return false;
     }
 
@@ -1250,14 +1250,14 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
     Location* loc = ( map ? map->GetLocation() : nullptr );
     if( loc && loc->GetToGarbage() )
     {
-        WriteLog( "Transfer to deleted location, critter '%s'.\n", cr->GetInfo() );
+        WriteLog( "Transfer to deleted location, critter '{}'.\n", cr->GetInfo() );
         return false;
     }
 
     // Maybe critter already in transfer
     if( cr->LockMapTransfers )
     {
-        WriteLog( "Transfers locked, critter '%s'.\n", cr->GetInfo() );
+        WriteLog( "Transfers locked, critter '{}'.\n", cr->GetInfo() );
         return false;
     }
 

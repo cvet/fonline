@@ -4,8 +4,8 @@
 // Uncomment for use minidumps (dmp) instead readable dumps (txt)
 // #define EXCEPTION_MINIDUMP
 
-void CatchExceptions( const char* app_name, int app_ver );
-void CreateDump( const char* appendix, const char* message );
-bool RaiseAssert( const char* message, const char* file, int line );
+extern void CatchExceptions( const char* app_name, int app_ver );
+extern void CreateDump( const char* appendix, const char* message );
+extern bool RaiseAssert( const char* message, const char* file, int line );
 
 #endif // ___EXCEPTION___

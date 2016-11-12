@@ -113,7 +113,7 @@ public:
     CLASS_PROPERTY_ALIAS( bool, IsShowAnimExt );
     CLASS_PROPERTY_ALIAS( uchar, AnimStay_0 );
     CLASS_PROPERTY_ALIAS( uchar, AnimStay_1 );
-    CLASS_PROPERTY_ALIAS( ScriptString *, BlockLines );
+    CLASS_PROPERTY_ALIAS( string, BlockLines );
 
     bool IsScenery() { return IsGeneric() || IsWall() || IsGrid(); }
     bool IsGeneric() { return GetType() == ITEM_TYPE_GENERIC; }
@@ -159,22 +159,22 @@ public:
     CLASS_PROPERTY( uchar, SpriteCut );
     CLASS_PROPERTY( char, DrawOrderOffsetHexY );
     CLASS_PROPERTY( uchar, IndicatorMax );
-    CLASS_PROPERTY( ScriptString *, BlockLines );
+    CLASS_PROPERTY( string, BlockLines );
     CLASS_PROPERTY( hash, ChildPid_0 );
     CLASS_PROPERTY( hash, ChildPid_1 );
     CLASS_PROPERTY( hash, ChildPid_2 );
     CLASS_PROPERTY( hash, ChildPid_3 );
     CLASS_PROPERTY( hash, ChildPid_4 );
-    CLASS_PROPERTY( ScriptString *, ChildLines_0 );
-    CLASS_PROPERTY( ScriptString *, ChildLines_1 );
-    CLASS_PROPERTY( ScriptString *, ChildLines_2 );
-    CLASS_PROPERTY( ScriptString *, ChildLines_3 );
-    CLASS_PROPERTY( ScriptString *, ChildLines_4 );
+    CLASS_PROPERTY( string, ChildLines_0 );
+    CLASS_PROPERTY( string, ChildLines_1 );
+    CLASS_PROPERTY( string, ChildLines_2 );
+    CLASS_PROPERTY( string, ChildLines_3 );
+    CLASS_PROPERTY( string, ChildLines_4 );
     CLASS_PROPERTY( uint, Weapon_Anim1 );
     CLASS_PROPERTY( hash, Grid_ToMap );
     CLASS_PROPERTY( int, Grid_ToMapEntire );
     CLASS_PROPERTY( uchar, Grid_ToMapDir );
-    CLASS_PROPERTY( ScriptArray *, SceneryParams );
+    CLASS_PROPERTY( CScriptArray *, SceneryParams );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( int, Accessory ); // enum ItemOwnership
     CLASS_PROPERTY( uint, MapId );
@@ -221,11 +221,9 @@ public:
     CLASS_PROPERTY( uchar, LightFlags );
     CLASS_PROPERTY( uint, LightColor );
     CLASS_PROPERTY( uint, Count );
-    CLASS_PROPERTY( uint, Cost );
     CLASS_PROPERTY( hash, AmmoPid );
     CLASS_PROPERTY( uint, AmmoCount );
     CLASS_PROPERTY( short, TrapValue );
-    CLASS_PROPERTY( uint, HolodiskNum );
     CLASS_PROPERTY( ushort, RadioChannel );
     CLASS_PROPERTY( ushort, RadioFlags );
     CLASS_PROPERTY( uchar, RadioBroadcastSend );
@@ -247,9 +245,9 @@ public:
     Critter* ViewByCritter;
     #endif
 
-    ProtoItem*    GetProtoItem() { return (ProtoItem*) Proto; }
-    hash          GetChildPid( uint index );
-    ScriptString* GetChildLinesStr( uint index );
+    ProtoItem* GetProtoItem() { return (ProtoItem*) Proto; }
+    hash       GetChildPid( uint index );
+    string     GetChildLinesStr( uint index );
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     Item* Clone();
@@ -328,9 +326,9 @@ public:
     FOREACH_PROTO_ITEM_LINES_WORK( lines, hx, hy, maxhx, maxhy, {} )
 #define FOREACH_PROTO_ITEM_LINES_WORK( lines, hx, hy, maxhx, maxhy, work )   \
     int hx__ = hx, hy__ = hy;                                                \
-    int           maxhx__ = maxhx, maxhy__ = maxhy;                          \
-    ScriptString* lines__ = lines;                                           \
-    const char*   lines___ = lines__->c_str();                               \
+    int         maxhx__ = maxhx, maxhy__ = maxhy;                            \
+    string      lines__ = lines;                                             \
+    const char* lines___ = lines__.c_str();                                  \
     for( uint i__ = 0, j__ = Str::Length( lines___ ) / 2; i__ < j__; i__++ ) \
     {                                                                        \
         uchar dir__ = lines___[ i__ * 2 ] - '0';                             \
@@ -345,7 +343,6 @@ public:
             hx = hx__, hy = hy__;                                            \
             work                                                             \
         }                                                                    \
-    }                                                                        \
-    SAFEREL( lines__ )
+    }
 
 #endif // __ITEM__

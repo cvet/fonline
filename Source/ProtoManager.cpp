@@ -78,7 +78,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
         FileManager& file = files.GetNextFile( &proto_name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file '%s'.\n", proto_name );
+            WriteLog( "Unable to open file '{}'.\n", proto_name );
             errors++;
             continue;
         }
@@ -97,7 +97,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
             hash        pid = Str::GetHash( name );
             if( files_protos.count( pid ) )
             {
-                WriteLog( "Proto '%s' already loaded.\n", name );
+                WriteLog( "Proto '{}' already loaded.\n", name );
                 errors++;
                 continue;
             }
@@ -122,7 +122,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
 
         if( protos_data.empty() )
         {
-            WriteLog( "File '%s' does not contain any proto.\n", proto_name );
+            WriteLog( "File '{}' does not contain any proto.\n", proto_name );
             errors++;
         }
     }
@@ -151,7 +151,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
                         hash inject_name_hash = Str::GetHash( inject_name.c_str() );
                         if( !files_protos.count( inject_name_hash ) )
                         {
-                            WriteLog( "Proto '%s' not found for injection from proto '%s'.\n", inject_name.c_str(), Str::GetName( inject_kv.first ) );
+                            WriteLog( "Proto '{}' not found for injection from proto '{}'.\n", inject_name.c_str(), Str::GetName( inject_kv.first ) );
                             errors++;
                             continue;
                         }
@@ -186,9 +186,9 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
                 if( parent == files_protos.end() )
                 {
                     if( base_name == name )
-                        WriteLog( "Proto '%s' fail to load parent '%s'.\n", base_name, parent_name.c_str() );
+                        WriteLog( "Proto '{}' fail to load parent '{}'.\n", base_name, parent_name.c_str() );
                     else
-                        WriteLog( "Proto '%s' fail to load parent '%s' for proto '%s'.\n", base_name, parent_name.c_str(), name );
+                        WriteLog( "Proto '{}' fail to load parent '{}' for proto '{}'.\n", base_name, parent_name.c_str(), name );
                     return false;
                 }
 
@@ -216,7 +216,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
         T* proto = new T( pid );
         if( !proto->Props.LoadFromText( final_kv ) )
         {
-            WriteLog( "Proto item '%s' fail to load properties.\n", base_name );
+            WriteLog( "Proto item '{}' fail to load properties.\n", base_name );
             errors++;
             continue;
         }
@@ -365,13 +365,13 @@ bool ProtoManager::LoadProtosFromFiles()
     // Check maps for locations
     for( auto& kv : locProtos )
     {
-        ScriptArray* map_pids = kv.second->GetMapProtos();
+        CScriptArray* map_pids = kv.second->GetMapProtos();
         for( uint i = 0, j = map_pids->GetSize(); i < j; i++ )
         {
             hash map_pid = *(hash*) map_pids->At( i );
             if( !mapProtos.count( map_pid ) )
             {
-                WriteLog( "Proto map '%s' not found for proto location '%s'.\n", Str::GetName( map_pid ), kv.second->GetName() );
+                WriteLog( "Proto map '{}' not found for proto location '{}'.\n", Str::GetName( map_pid ), kv.second->GetName() );
                 errors++;
             }
         }
@@ -386,7 +386,7 @@ bool ProtoManager::LoadProtosFromFiles()
     {
         if( !kv.second->Load() )
         {
-            WriteLog( "Load proto map '%s' fail.\n", kv.second->GetName() );
+            WriteLog( "Load proto map '{}' fail.\n", kv.second->GetName() );
             errors++;
         }
     }
@@ -394,7 +394,7 @@ bool ProtoManager::LoadProtosFromFiles()
         return false;
     #endif
 
-    WriteLog( "Load prototypes complete, count %u.\n", (uint) ( itemProtos.size() + crProtos.size() + mapProtos.size() + locProtos.size() ) );
+    WriteLog( "Load prototypes complete, count {}.\n", (uint) ( itemProtos.size() + crProtos.size() + mapProtos.size() + locProtos.size() ) );
     return true;
 }
 
@@ -440,7 +440,7 @@ static int ValidateProtoResourcesExt( map< hash, T* >& protos,  HashSet& hashes 
                 hash h = proto->Props.template GetPropValue< hash >( prop );
                 if( h && !hashes.count( h ) )
                 {
-                    WriteLog( "Resource '%s' not found for property '%s' in prototype '%s'.\n", Str::GetName( h ), prop->GetName(), proto->GetName() );
+                    WriteLog( "Resource '{}' not found for property '{}' in prototype '{}'.\n", Str::GetName( h ), prop->GetName(), proto->GetName() );
                     errors++;
                 }
             }

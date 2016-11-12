@@ -23,13 +23,13 @@ void FOServer::ProcessCritter( Critter* cr )
     // One event per cycle
     if( cr->IsNonEmptyTE_FuncNum() )
     {
-        ScriptArray* te_next_time = cr->GetTE_NextTime();
-        uint         next_time = *(uint*) te_next_time->At( 0 );
+        CScriptArray* te_next_time = cr->GetTE_NextTime();
+        uint          next_time = *(uint*) te_next_time->At( 0 );
         if( !next_time || GameOpt.FullSecond >= next_time )
         {
-            ScriptArray* te_func_num = cr->GetTE_FuncNum();
-            ScriptArray* te_rate = cr->GetTE_Rate();
-            ScriptArray* te_identifier = cr->GetTE_Identifier();
+            CScriptArray* te_func_num = cr->GetTE_FuncNum();
+            CScriptArray* te_rate = cr->GetTE_Rate();
+            CScriptArray* te_identifier = cr->GetTE_Identifier();
             RUNTIME_ASSERT( te_next_time->GetSize() == te_func_num->GetSize() );
             RUNTIME_ASSERT( te_func_num->GetSize() == te_rate->GetSize() );
             RUNTIME_ASSERT( te_rate->GetSize() == te_identifier->GetSize() );
@@ -101,69 +101,6 @@ void FOServer::ProcessCritter( Critter* cr )
         // Process
         if( npc->IsLife() )
             ProcessAI( npc );
-    }
-}
-
-void FOServer::SaveHoloInfoFile( IniParser& data )
-{
-    data.SetStr( "GeneralSettings", "LastHoloId", Str::UItoA( LastHoloId ) );
-
-    for( auto& holo : HolodiskInfo )
-    {
-        StrMap& kv = data.SetApp( "HoloInfo" );
-        kv[ "Id" ] = holo.first;
-        kv[ "CanWrite" ] = holo.second->CanRewrite;
-        kv[ "Title" ] = holo.second->Title;
-        kv[ "Text" ] = holo.second->Text;
-    }
-}
-
-bool FOServer::LoadHoloInfoFile( IniParser& data )
-{
-    LastHoloId = Str::AtoUI( data.GetStr( "GeneralSettings", "LastHoloId" ) );
-
-    PStrMapVec holos;
-    data.GetApps( "HoloInfo", holos );
-    for( auto& pkv : holos )
-    {
-        auto&       kv = *pkv;
-        uint        id = Str::AtoUI( kv[ "Id" ].c_str() );
-        bool        can_rw = Str::CompareCase( kv[ "CanWrite" ].c_str(), "True" );
-        const char* title = kv[ "Title" ].c_str();
-        const char* text = kv[ "Text" ].c_str();
-        HolodiskInfo.insert( PAIR( id, new HoloInfo( can_rw, title, text ) ) );
-    }
-    return true;
-}
-
-FOServer::HoloInfo* FOServer::GetHoloInfo( uint id )
-{
-    auto it = HolodiskInfo.find( id );
-    return it != HolodiskInfo.end() ? it->second : nullptr;
-}
-
-void FOServer::Send_PlayerHoloInfo( Critter* cr, uint holo_num, bool send_text )
-{
-    if( !cr->IsPlayer() )
-        return;
-
-    HolodiskLocker.Lock();
-
-    Client*   cl = (Client*) cr;
-    HoloInfo* hi = GetHoloInfo( holo_num );
-    if( hi )
-    {
-        string str = ( send_text ? hi->Text : hi->Title ); // Copy
-
-        HolodiskLocker.Unlock();
-
-        cl->Send_UserHoloStr( send_text ? STR_HOLO_INFO_DESC( holo_num ) : STR_HOLO_INFO_NAME( holo_num ), str.c_str(), (ushort) str.length() );
-    }
-    else
-    {
-        HolodiskLocker.Unlock();
-
-        cl->Send_UserHoloStr( send_text ? STR_HOLO_INFO_DESC( holo_num ) : STR_HOLO_INFO_NAME( holo_num ), "Truncated", Str::Length( "Truncated" ) );
     }
 }
 
@@ -288,7 +225,7 @@ void FOServer::RespawnCritter( Critter* cr )
     Map* map = MapMngr.GetMap( cr->GetMapId() );
     if( !map )
     {
-        WriteLog( "Current map not found, continue dead. Critter '%s'.\n", cr->GetInfo() );
+        WriteLog( "Current map not found, continue dead. Critter '{}'.\n", cr->GetInfo() );
         return;
     }
 
@@ -472,7 +409,7 @@ void FOServer::Process_UpdateFile( Client* cl )
 
     if( file_index >= (uint) UpdateFiles.size() )
     {
-        WriteLog( "Wrong file index %u, client ip '%s'.\n", file_index, cl->GetIpStr() );
+        WriteLog( "Wrong file index {}, client ip '{}'.\n", file_index, cl->GetIpStr() );
         cl->Disconnect();
         return;
     }
@@ -486,7 +423,7 @@ void FOServer::Process_UpdateFileData( Client* cl )
 {
     if( cl->UpdateFileIndex == -1 )
     {
-        WriteLog( "Wrong update call, client ip '%s'.\n", cl->GetIpStr() );
+        WriteLog( "Wrong update call, client ip '{}'.\n", cl->GetIpStr() );
         cl->Disconnect();
         return;
     }
@@ -566,7 +503,7 @@ void FOServer::Process_CreateClient( Client* cl )
     char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
     cl->Bin.Pop( name, sizeof( name ) );
     name[ sizeof( name ) - 1 ] = 0;
-    Str::Copy( cl->Name, name );
+    cl->Name = name;
 
     // Password hash
     char pass_hash[ PASS_HASH_SIZE ];
@@ -601,7 +538,7 @@ void FOServer::Process_CreateClient( Client* cl )
         Property* prop = Critter::PropertiesRegistrator->FindByEnum( enum_value );
         if( !prop || !prop->IsPOD() )
         {
-            WriteLog( "Invalid allowed property '%s'.\n", prop ? prop->GetName() : Str::ItoA( enum_value ) );
+            WriteLog( "Invalid allowed property '{}'.\n", prop ? prop->GetName() : Str::ItoA( enum_value ) );
             cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -614,14 +551,14 @@ void FOServer::Process_CreateClient( Client* cl )
     CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
 
     // Check data
-    if( !Str::IsValidUTF8( cl->Name ) || Str::Substring( cl->Name, "*" ) )
+    if( !Str::IsValidUTF8( cl->Name.c_str() ) || Str::Substring( cl->Name.c_str(), "*" ) )
     {
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
     }
 
-    uint name_len_utf8 = Str::LengthUTF8( cl->Name );
+    uint name_len_utf8 = Str::LengthUTF8( cl->Name.c_str() );
     if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
         name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
@@ -685,18 +622,13 @@ void FOServer::Process_CreateClient( Client* cl )
     }
     #endif
 
-    uint          disallow_msg_num = 0, disallow_str_num = 0;
-    char          disallow_lexems[ MAX_FOTEXT ];
-    ScriptString* name_str = ScriptString::Create( cl->Name );
-    ScriptString* lexems = ScriptString::Create();
-    bool          allow = Script::RaiseInternalEvent( ServerFunctions.PlayerRegistration, cl->GetIp(), name_str, &disallow_msg_num, &disallow_str_num, lexems );
-    Str::Copy( disallow_lexems, lexems->c_str() );
-    name_str->Release();
-    lexems->Release();
+    uint   disallow_msg_num = 0, disallow_str_num = 0;
+    string lexems;
+    bool   allow = Script::RaiseInternalEvent( ServerFunctions.PlayerRegistration, cl->GetIp(), &cl->Name, &disallow_msg_num, &disallow_str_num, &lexems );
     if( !allow )
     {
         if( disallow_msg_num < TEXTMSG_COUNT && disallow_str_num )
-            cl->Send_TextMsgLex( cl, disallow_str_num, SAY_NETMSG, disallow_msg_num, disallow_lexems );
+            cl->Send_TextMsgLex( cl, disallow_str_num, SAY_NETMSG, disallow_msg_num, lexems.c_str() );
         else
             cl->Send_TextMsg( cl, STR_NET_LOGIN_SCRIPT_FAIL, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -710,13 +642,13 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->SetWorldY( GM_MAXY / 2 );
     cl->SetCond( COND_LIFE );
 
-    ScriptArray* arr_reg_ip = Script::CreateArray( "uint[]" );
-    uint         reg_ip = cl->GetIp();
+    CScriptArray* arr_reg_ip = Script::CreateArray( "uint[]" );
+    uint          reg_ip = cl->GetIp();
     arr_reg_ip->InsertLast( &reg_ip );
     cl->SetConnectionIp( arr_reg_ip );
     SAFEREL( arr_reg_ip );
-    ScriptArray* arr_reg_port = Script::CreateArray( "uint16[]" );
-    ushort       reg_port = cl->GetPort();
+    CScriptArray* arr_reg_port = Script::CreateArray( "uint16[]" );
+    ushort        reg_port = cl->GetPort();
     arr_reg_port->InsertLast( &reg_port );
     cl->SetConnectionPort( arr_reg_port );
     SAFEREL( arr_reg_port );
@@ -733,23 +665,8 @@ void FOServer::Process_CreateClient( Client* cl )
         return;
     }
 
-    // Add name in clients names cache file
-    char  cache_fname[ MAX_FOPATH ];
-    FileManager::GetWritePath( "Cache/ClientsList.txt", cache_fname );
-    void* cache_file = FileOpenForAppend( cache_fname );
-    if( cache_file )
-    {
-        FileWrite( cache_file, cl->Name, Str::Length( cl->Name ) );
-        FileWrite( cache_file, ".foclient\n", 10 );
-        FileClose( cache_file );
-    }
-    else
-    {
-        FileClose( FileOpen( "cache_fail", true ) );
-    }
-
     // Clear brute force ip and name, because client enter to game immediately after registration
-    ClearBruteForceEntire( cl->GetIp(), cl->Name );
+    ClearBruteForceEntire( cl->GetIp(), cl->Name.c_str() );
 
     // Load world
     if( Singleplayer )
@@ -789,7 +706,7 @@ void FOServer::Process_CreateClient( Client* cl )
     {
         ClientData* data = new ClientData();
         memzero( data, sizeof( ClientData ) );
-        Str::Copy( data->ClientName, cl->Name );
+        Str::Copy( data->ClientName, cl->Name.c_str() );
         memcpy( data->ClientPassHash, pass_hash, PASS_HASH_SIZE );
 
         SCOPE_LOCK( ClientsDataLocker );
@@ -836,19 +753,19 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
     cl->Bin.Pop( name, sizeof( name ) );
     name[ sizeof( name ) - 1 ] = 0;
-    Str::Copy( cl->Name, name );
+    cl->Name = name;
     cl->Bin >> uid[ 1 ];
     char pass_hash[ PASS_HASH_SIZE ];
     cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
 
     if( Singleplayer )
     {
-        memzero( cl->Name, sizeof( cl->Name ) );
+        cl->Name = "";
         memzero( pass_hash, sizeof( pass_hash ) );
     }
 
     // Prevent brute force by name
-    if( CheckBruteForceName( cl->Name ) )
+    if( CheckBruteForceName( cl->Name.c_str() ) )
     {
         cl->Disconnect();
         return;
@@ -906,7 +823,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         if( ban && !Singleplayer )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED_IP, SAY_NETMSG, TEXTMSG_GAME );
-            if( Str::CompareCaseUTF8( ban->ClientName, cl->Name ) )
+            if( Str::CompareCaseUTF8( ban->ClientName, cl->Name.c_str() ) )
                 cl->Send_TextMsgLex( cl, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, ban->GetBanLexems() );
             cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, Str::FormatBuf( "$time%u", GetBanTime( *ban ) ) );
             cl->Disconnect();
@@ -917,7 +834,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     // Check login/password
     if( !Singleplayer )
     {
-        uint name_len_utf8 = Str::LengthUTF8( cl->Name );
+        uint name_len_utf8 = Str::LengthUTF8( cl->Name.c_str() );
         if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength || name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
         {
             cl->Send_TextMsg( cl, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME );
@@ -925,7 +842,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             return;
         }
 
-        if( !Str::IsValidUTF8( cl->Name ) || Str::Substring( cl->Name, "*" ) )
+        if( !Str::IsValidUTF8( cl->Name.c_str() ) || Str::Substring( cl->Name.c_str(), "*" ) )
         {
             cl->Send_TextMsg( cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
@@ -934,7 +851,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     }
 
     // Get client account data
-    uint       id = MAKE_CLIENT_ID( cl->Name );
+    uint       id = MAKE_CLIENT_ID( cl->Name.c_str() );
     ClientData data;
     if( !Singleplayer )
     {
@@ -972,18 +889,14 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     }
 
     // Request script
-    uint          disallow_msg_num = 0, disallow_str_num = 0;
-    char          disallow_lexems[ MAX_FOTEXT ];
-    ScriptString* name_str = ScriptString::Create( data.ClientName );
-    ScriptString* lexems = ScriptString::Create();
-    bool          allow = Script::RaiseInternalEvent( ServerFunctions.PlayerLogin, cl->GetIp(), name_str, id, &disallow_msg_num, &disallow_str_num, lexems );
-    Str::Copy( disallow_lexems, lexems->c_str() );
-    name_str->Release();
-    lexems->Release();
+    uint   disallow_msg_num = 0, disallow_str_num = 0;
+    string name_str = data.ClientName;
+    string lexems;
+    bool   allow = Script::RaiseInternalEvent( ServerFunctions.PlayerLogin, cl->GetIp(), &name_str, id, &disallow_msg_num, &disallow_str_num, &lexems );
     if( !allow )
     {
         if( disallow_msg_num < TEXTMSG_COUNT && disallow_str_num )
-            cl->Send_TextMsgLex( cl, disallow_str_num, SAY_NETMSG, disallow_msg_num, disallow_lexems );
+            cl->Send_TextMsgLex( cl, disallow_str_num, SAY_NETMSG, disallow_msg_num, lexems.c_str() );
         else
             cl->Send_TextMsg( cl, STR_NET_LOGIN_SCRIPT_FAIL, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -991,7 +904,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
     }
 
     // Copy data
-    Str::Copy( cl->Name, data.ClientName );
+    cl->Name = data.ClientName;
     cl->RefreshName();
 
     // Check UIDS
@@ -1004,7 +917,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 uid_zero++;
         if( uid_zero > 2 )
         {
-            WriteLog( "Received more than two zero UIDs, client '%s'.\n", cl->Name );
+            WriteLog( "Received more than two zero UIDs, client '{}'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1016,7 +929,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
             ( uid[ 3 ] && ( !FLAG( uid[ 3 ], 0x80000000 ) || FLAG( uid[ 3 ], 0x40000000 ) ) ) ||
             ( uid[ 4 ] && ( !FLAG( uid[ 4 ], 0x00000800 ) || FLAG( uid[ 4 ], 0x00004000 ) ) ) )
         {
-            WriteLog( "Invalid UIDs, client '%s'.\n", cl->Name );
+            WriteLog( "Invalid UIDs, client '{}'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1032,7 +945,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( uidxor != uidxor_ || uidor != uidor_ || uidcalc != uidcalc_ )
         {
-            WriteLog( "Invalid UIDs hash, client '%s'.\n", cl->Name );
+            WriteLog( "Invalid UIDs hash, client '{}'.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1069,7 +982,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 }
                 else
                 {
-                    WriteLog( "UID already used by critter '%s', client '%s'.\n", cd->ClientName, cl->Name );
+                    WriteLog( "UID already used by critter '{}', client '{}'.\n", cd->ClientName, cl->Name );
                     cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
                     cl->Disconnect();
                     return;
@@ -1091,7 +1004,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
                 }
                 else
                 {
-                    WriteLog( "Different UID %d, client '%s'.\n", i, cl->Name );
+                    WriteLog( "Different UID {}, client '{}'.\n", i, cl->Name );
                     cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
                     cl->Disconnect();
                     return;
@@ -1229,7 +1142,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         // Singleplayer data
         if( Singleplayer )
         {
-            Str::Copy( cl->Name, SingleplayerSave.Name.c_str() );
+            cl->Name = SingleplayerSave.Name;
             cl->Props = *SingleplayerSave.CrProps;
         }
 
@@ -1249,7 +1162,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( !cl_saved && !LoadClient( cl ) )
         {
-            WriteLog( "Error load from data base, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Error load from data base, client '{}'.\n", cl->GetInfo() );
             cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1311,7 +1224,7 @@ void FOServer::Process_LogIn( ClientPtr& cl )
 
         if( !MapMngr.CanAddCrToMap( cl, map, hx, hy, leader_id ) )
         {
-            WriteLog( "Can't player '%s' on map '%s'.\n", cl->GetInfo(), map ? map->GetName() : "GlobalMap" );
+            WriteLog( "Can't player '{}' on map '{}'.\n", cl->GetInfo(), map ? map->GetName() : "GlobalMap" );
             cl->Send_TextMsg( cl, STR_NET_HEXES_BUSY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1342,12 +1255,12 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl->UID[ i ] = uid[ i ];
 
     // Connection info
-    uint         ip = cl->GetIp();
-    ushort       port = cl->GetPort();
-    ScriptArray* conn_ip = cl->GetConnectionIp();
-    ScriptArray* conn_port = cl->GetConnectionPort();
+    uint          ip = cl->GetIp();
+    ushort        port = cl->GetPort();
+    CScriptArray* conn_ip = cl->GetConnectionIp();
+    CScriptArray* conn_port = cl->GetConnectionPort();
     RUNTIME_ASSERT( conn_ip->GetSize() == conn_port->GetSize() );
-    bool         ip_found = false;
+    bool          ip_found = false;
     for( uint i = 0, j = conn_ip->GetSize(); i < j; i++ )
     {
         if( *(uint*) conn_ip->At( i ) == ip )
@@ -1442,7 +1355,7 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
     {
         if( !LoadWorld( fname ) )
         {
-            WriteLog( "Unable load world from file '%s'.\n", fname );
+            WriteLog( "Unable load world from file '{}'.\n", fname );
             cl->Send_TextMsg( cl, STR_SP_LOAD_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -1509,7 +1422,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     {
         if( !map )
         {
-            WriteLog( "Map not found, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Map not found, client '{}'.\n", cl->GetInfo() );
             cl->Disconnect();
             return;
         }
@@ -1579,14 +1492,14 @@ void FOServer::Process_GiveMap( Client* cl )
     ProtoMap* pmap = ProtoMngr.GetProtoMap( map_pid );
     if( !pmap )
     {
-        WriteLog( "Map prototype not found, client '%s'.\n", cl->GetInfo() );
+        WriteLog( "Map prototype not found, client '{}'.\n", cl->GetInfo() );
         cl->Disconnect();
         return;
     }
 
     if( !automap && map_pid != cl->GetMapPid() && cl->ViewMapPid != map_pid )
     {
-        WriteLog( "Request for loading incorrect map, client '%s'.\n", cl->GetInfo() );
+        WriteLog( "Request for loading incorrect map, client '{}'.\n", cl->GetInfo() );
         return;
     }
 
@@ -1594,19 +1507,19 @@ void FOServer::Process_GiveMap( Client* cl )
     {
         if( !cl->CheckKnownLocById( loc_id ) )
         {
-            WriteLog( "Request for loading unknown automap, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading unknown automap, client '{}'.\n", cl->GetInfo() );
             return;
         }
 
         Location* loc = MapMngr.GetLocation( loc_id );
         if( !loc )
         {
-            WriteLog( "Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading incorrect automap, client '{}'.\n", cl->GetInfo() );
             return;
         }
 
-        bool         found = false;
-        ScriptArray* automaps = ( loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr );
+        bool          found = false;
+        CScriptArray* automaps = ( loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : nullptr );
         if( automaps )
         {
             for( uint i = 0, j = automaps->GetSize(); i < j && !found; i++ )
@@ -1615,7 +1528,7 @@ void FOServer::Process_GiveMap( Client* cl )
         }
         if( !found )
         {
-            WriteLog( "Request for loading incorrect automap, client '%s'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading incorrect automap, client '{}'.\n", cl->GetInfo() );
             return;
         }
     }
@@ -2159,83 +2072,6 @@ void FOServer::Process_Dir( Client* cl )
     cl->SendA_Dir();
 }
 
-void FOServer::Process_SetUserHoloStr( Client* cl )
-{
-    uint   msg_len;
-    uint   holodisk_id;
-    ushort title_len;
-    ushort text_len;
-    char   title[ USER_HOLO_MAX_TITLE_LEN + 1 ];
-    char   text[ USER_HOLO_MAX_LEN + 1 ];
-    cl->Bin >> msg_len;
-    cl->Bin >> holodisk_id;
-    cl->Bin >> title_len;
-    cl->Bin >> text_len;
-    if( !title_len || !text_len || title_len > USER_HOLO_MAX_TITLE_LEN || text_len > USER_HOLO_MAX_LEN )
-    {
-        WriteLog( "Length of texts is greater of maximum or zero, title cur %u, title max %u, text cur %u, text max %u, client '%s'. Disconnect.\n", title_len, USER_HOLO_MAX_TITLE_LEN, text_len, USER_HOLO_MAX_LEN, cl->GetInfo() );
-        cl->Disconnect();
-        return;
-    }
-    cl->Bin.Pop( title, title_len );
-    title[ title_len ] = '\0';
-    cl->Bin.Pop( text, text_len );
-    text[ text_len ] = '\0';
-    CHECK_IN_BUFF_ERROR( cl );
-
-    cl->SetBreakTime( GameOpt.Breaktime );
-
-    Item* holodisk = cl->GetItem( holodisk_id, true );
-    if( !holodisk )
-    {
-        WriteLog( "Holodisk %u not found, client '%s'.\n", holodisk_id, cl->GetInfo() );
-        cl->Send_TextMsg( cl, STR_HOLO_WRITE_FAIL, SAY_NETMSG, TEXTMSG_HOLO );
-        return;
-    }
-
-    cl->SendAA_Action( ACTION_USE_ITEM, 0, holodisk );
-
-    #pragma MESSAGE("Check valid of received text.")
-//	int invalid_chars=CheckStr(text);
-
-    HolodiskLocker.Lock();
-
-    uint      holo_id = holodisk->GetHolodiskNum();
-    HoloInfo* hi = GetHoloInfo( holo_id );
-    if( hi && hi->CanRewrite )
-    {
-        hi->Title = title;
-        hi->Text = text;
-    }
-    else
-    {
-        holo_id = ++LastHoloId;
-        HolodiskInfo.insert( PAIR( holo_id, new HoloInfo( true, title, text ) ) );
-    }
-
-    HolodiskLocker.Unlock();
-
-    cl->Send_UserHoloStr( STR_HOLO_INFO_NAME( holo_id ), title, title_len );
-    cl->Send_UserHoloStr( STR_HOLO_INFO_DESC( holo_id ), text, text_len );
-    holodisk->SetHolodiskNum( holo_id );
-    cl->Send_TextMsg( cl, STR_HOLO_WRITE_SUCC, SAY_NETMSG, TEXTMSG_HOLO );
-}
-
-#pragma MESSAGE("Check aviability of requested holodisk.")
-void FOServer::Process_GetUserHoloStr( Client* cl )
-{
-    uint str_num;
-    cl->Bin >> str_num;
-
-    if( str_num / 10 < USER_HOLO_START_NUM )
-    {
-        WriteLog( "String value is less than users holo numbers, str num %u, client '%s'.\n", str_num, cl->GetInfo() );
-        return;
-    }
-
-    Send_PlayerHoloInfo( cl, str_num / 10, ( str_num % 10 ) != 0 );
-}
-
 void FOServer::Process_Ping( Client* cl )
 {
     uchar ping;
@@ -2256,7 +2092,7 @@ void FOServer::Process_Ping( Client* cl )
         ClientData* data = GetClientData( cl->GetId() );
         if( data )
         {
-            WriteLog( "Wrong UID, client '%s'. Disconnect.\n", cl->GetInfo() );
+            WriteLog( "Wrong UID, client '{}'. Disconnect.\n", cl->GetInfo() );
             for( int i = 0; i < 5; i++ )
                 data->UID[ i ] = Random( 0, 10000 );
             data->UIDEndTick = Timer::FastTick() + GameOpt.AccountPlayTime * 1000;
@@ -2271,7 +2107,7 @@ void FOServer::Process_Ping( Client* cl )
     }
     else
     {
-        WriteLog( "Unknown ping %u, client '%s'.\n", ping, cl->GetInfo() );
+        WriteLog( "Unknown ping {}, client '{}'.\n", ping, cl->GetInfo() );
         return;
     }
 

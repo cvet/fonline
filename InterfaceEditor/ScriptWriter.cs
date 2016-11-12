@@ -22,9 +22,9 @@ namespace InterfaceEditor
 
 			_Script.AppendLine();
 			if (root is GUIScreen)
-				_Script.AppendLine(_BaseIdent + "Gui::" + root.GetType().ToString().Substring(root.GetType().ToString().IndexOf("GUI") + 3) + "@ CreateScreen()");
+				_Script.AppendLine(_BaseIdent + "Gui::" + root.GetType().ToString().Substring(root.GetType().ToString().IndexOf("GUI") + 3) + " CreateScreen()");
 			else
-				_Script.AppendLine(_BaseIdent + root.Name + "@ CreateHierarchy( Gui::Object@ parent )");
+				_Script.AppendLine(_BaseIdent + root.Name + " CreateHierarchy( Gui::Object parent )");
 			_Script.AppendLine(_BaseIdent + "{");
 			if (root is GUIScreen)
 				_Script.AppendLine(_BaseIdent + "    return Create" + root.Name + "Hierarchy( null );");
@@ -46,9 +46,9 @@ namespace InterfaceEditor
 		{
 			// Hierarchy creation
 			_Script.AppendLine();
-			_Script.AppendLine(_BaseIdent + obj.Name + "@ Create" + obj.Name + "Hierarchy( Gui::Object@ parent )");
+			_Script.AppendLine(_BaseIdent + obj.Name + " Create" + obj.Name + "Hierarchy( Gui::Object parent )");
 			_Script.AppendLine(_BaseIdent + "{");
-			_Script.AppendLine(_BaseIdent + "    " + obj.Name + " obj();");
+			_Script.AppendLine(_BaseIdent + "    " + obj.Name + " obj = " + obj.Name + "();");
 			foreach (GUIObject child in obj.Children)
 				_Script.AppendLine(_BaseIdent + "    Create" + child.Name + "Hierarchy( obj );");
 			_Script.AppendLine(_BaseIdent + "    obj.Init( parent );");
@@ -256,7 +256,7 @@ namespace InterfaceEditor
 
 			// Callbacks
 			WriteClassFunction("void OnInit() override", obj.OnInit);
-			WriteClassFunction("void OnShow( dictionary@ params ) override", obj.OnShow);
+			WriteClassFunction("void OnShow( dictionary params ) override", obj.OnShow);
 			WriteClassFunction("void OnHide() override", obj.OnHide);
 			WriteClassFunction("void OnAppear() override", obj.OnAppear);
 			WriteClassFunction("void OnDisappear() override", obj.OnDisappear);
@@ -276,22 +276,22 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnGlobalMousePressed( int button ) override", obj.OnGlobalMousePressed);
 			WriteClassFunction("void OnGlobalMouseClick( int button ) override", obj.OnGlobalMouseClick);
 			WriteClassFunction("void OnGlobalMouseMove() override", obj.OnGlobalMouseMove);
-			WriteClassFunction("void OnInput( uint8 key, string@ text ) override", obj.OnInput);
-			WriteClassFunction("void OnGlobalInput( uint8 key, string@ text ) override", obj.OnGlobalInput);
+			WriteClassFunction("void OnInput( uint8 key, string text ) override", obj.OnInput);
+			WriteClassFunction("void OnGlobalInput( uint8 key, string text ) override", obj.OnGlobalInput);
 			WriteClassFunction("void OnActiveChanged() override", obj.OnActiveChanged);
 			WriteClassFunction("void OnFocusChanged() override", obj.OnFocusChanged);
 			WriteClassFunction("void OnHoverChanged() override", obj.OnHoverChanged);
 			WriteClassFunction("void OnDragChanged() override", obj.OnDragChanged);
-			WriteClassFunction("void OnResizeGrid( Gui::Object@ cell, uint cellIndex ) override", obj.OnResizeGrid);
-			WriteClassFunction("void OnDrawItem( Item@ item, Gui::Object@ cell, uint cellIndex ) override", obj.OnDrawItem);
+			WriteClassFunction("void OnResizeGrid( Gui::Object cell, uint cellIndex ) override", obj.OnResizeGrid);
+			WriteClassFunction("void OnDrawItem( Item item, Gui::Object cell, uint cellIndex ) override", obj.OnDrawItem);
 			if (obj is GUICheckBox)
 			{
 				WriteClassFunction("void OnCheckedChanged() override", ((GUICheckBox)obj).OnCheckedChanged);
 			}
 			if (obj is GUIItemView)
 			{
-				WriteClassFunction("Item@[]@ OnGetItems() override", ((GUIItemView)obj).OnGetItems);
-				WriteClassFunction("int OnCheckItem( Item@ item ) override", ((GUIItemView)obj).OnCheckItem);
+				WriteClassFunction("Item[] OnGetItems() override", ((GUIItemView)obj).OnGetItems);
+				WriteClassFunction("int OnCheckItem( Item item ) override", ((GUIItemView)obj).OnCheckItem);
 			}
 
 			// Subtypes
@@ -301,7 +301,7 @@ namespace InterfaceEditor
 				if (!string.IsNullOrEmpty(text.DynamicText))
 				{
 					_Script.AppendLine();
-					_Script.AppendLine(_BaseIdent + "    string@ get_Text() override");
+					_Script.AppendLine(_BaseIdent + "    string get_Text() override");
 					_Script.AppendLine(_BaseIdent + "    {");
 					AppendCode(text.DynamicText, _BaseIdent + "        ");
 					_Script.AppendLine(_BaseIdent + "    }");

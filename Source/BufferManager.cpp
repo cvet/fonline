@@ -296,8 +296,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_SEND_REFRESH_ME_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_VIEW_MAP:
         return ( NETMSG_VIEW_MAP_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_GET_USER_HOLO_STR:
-        return ( NETMSG_SEND_GET_USER_HOLO_STR_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_POD_PROPERTY( 1, 0 ):
         return ( NETMSG_SEND_POD_PROPERTY_SIZE( 1, 0  ) + bufReadPos <= bufEndPos );
     case NETMSG_SEND_POD_PROPERTY( 2, 0  ):
@@ -387,8 +385,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_MAP:
     case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
-    case NETMSG_SEND_SET_USER_HOLO_STR:
-    case NETMSG_USER_HOLO_STR:
     case NETMSG_AUTOMAPS_INFO:
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
@@ -533,9 +529,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_VIEW_MAP:
         size = NETMSG_VIEW_MAP_SIZE;
         break;
-    case NETMSG_SEND_GET_USER_HOLO_STR:
-        size = NETMSG_SEND_GET_USER_HOLO_STR_SIZE;
-        break;
     case NETMSG_SEND_POD_PROPERTY( 1, 0 ):
         size = NETMSG_SEND_POD_PROPERTY_SIZE( 1, 0 );
         break;
@@ -634,8 +627,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_MAP:
     case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
-    case NETMSG_SEND_SET_USER_HOLO_STR:
-    case NETMSG_USER_HOLO_STR:
     case NETMSG_AUTOMAPS_INFO:
     case NETMSG_ADD_ITEM:
     case NETMSG_ADD_ITEM_ON_MAP:

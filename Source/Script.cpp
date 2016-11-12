@@ -2,14 +2,12 @@
 #include "Script.h"
 #include "Text.h"
 #include "FileManager.h"
-#include "AngelScript/scriptstring.h"
-#include "AngelScript/scriptany.h"
-#include "AngelScript/scriptdictionary.h"
-#include "AngelScript/scriptdict.h"
-#include "AngelScript/scriptfile.h"
-#include "AngelScript/scriptarray.h"
 #include "AngelScript/reflection.h"
 #include "AngelScript/preprocessor.h"
+#include "AngelScript/sdk/add_on/scriptstdstring/scriptstdstring.h"
+#include "AngelScript/sdk/add_on/scriptfile/scriptfile.h"
+#include "AngelScript/sdk/add_on/scriptany/scriptany.h"
+#include "AngelScript/sdk/add_on/datetime/datetime.h"
 #include "AngelScript/sdk/add_on/scriptmath/scriptmath.h"
 #include "AngelScript/sdk/add_on/weakref/weakref.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
@@ -86,9 +84,6 @@ struct ContextData
     uint              SuspendEndTick;
     Entity*           EntityArgs[ 20 ];
     uint              EntityArgsCount;
-    void*             ObjectArgs[ 50 ];
-    asITypeInfo*      ObjectArgsType[ 50 ];
-    uint              ObjectArgsCount;
     asIScriptContext* Parent;
 };
 static ContextVec FreeContexts;
@@ -340,7 +335,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     EngineData* edata = (EngineData*) Engine->GetUserData();
     if( !edata->AllowNativeCalls )
     {
-        WriteLog( "Unable to load dll '%s', native calls not allowed.\n", dll_name );
+        WriteLog( "Unable to load dll '{}', native calls not allowed.\n", dll_name );
         return nullptr;
     }
 
@@ -429,7 +424,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
     if( !ptr )
     {
-        WriteLog( "Wrong script DLL '%s', expected target '%s', but found '%s%s%s%s'.\n", dll_name, edata->DllTarget.c_str(),
+        WriteLog( "Wrong script DLL '{}', expected target '{}', but found '{}{}{}{}'.\n", dll_name, edata->DllTarget.c_str(),
                   DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
                   !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
         DLL_Free( dll );
@@ -486,10 +481,10 @@ void Script::UnloadScripts()
         asIScriptModule* module = Engine->GetModuleByIndex( i );
         int              result = module->ResetGlobalVars();
         if( result < 0 )
-            WriteLog( "Reset global vars fail, module '%s', error %d.\n", module->GetName(), result );
+            WriteLog( "Reset global vars fail, module '{}', error {}.\n", module->GetName(), result );
         result = module->UnbindAllImportedFunctions();
         if( result < 0 )
-            WriteLog( "Unbind fail, module '%s', error %d.\n", module->GetName(), result );
+            WriteLog( "Unbind fail, module '{}', error {}.\n", module->GetName(), result );
     }
 
     while( Engine->GetModuleCount() > 0 )
@@ -548,7 +543,7 @@ bool Script::ReloadScripts( const char* target )
         FileManager& file = raw_files.GetNextFile( &file_name, &file_full_name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file '%s'.\n", name );
+            WriteLog( "Unable to open file '{}'.\n", name );
             errors++;
             continue;
         }
@@ -557,7 +552,7 @@ bool Script::ReloadScripts( const char* target )
         char line[ MAX_FOTEXT ];
         if( !file.GetLine( line, sizeof( line ) ) )
         {
-            WriteLog( "Error in script '%s', file empty.\n", name );
+            WriteLog( "Error in script '{}', file empty.\n", name );
             errors++;
             continue;
         }
@@ -565,7 +560,7 @@ bool Script::ReloadScripts( const char* target )
         // Check signature
         if( !Str::Substring( line, "FOS" ) )
         {
-            WriteLog( "Error in script '%s', invalid header '%s'.\n", name, line );
+            WriteLog( "Error in script '{}', invalid header '{}'.\n", name, line );
             errors++;
             continue;
         }
@@ -687,7 +682,7 @@ bool Script::RunModuleInitFunctions()
             bind_id = Script::BindByScriptName( Str::FormatBuf( "%s@ModuleInit", module->GetName() ), "bool %s()", true, true );
         if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
         {
-            WriteLog( "Init function '%s::%s' must have void or bool return type.\n", func->GetNamespace(), func->GetName() );
+            WriteLog( "Init function '{}::{}' must have void or bool return type.\n", func->GetNamespace(), func->GetName() );
             return false;
         }
 
@@ -722,12 +717,28 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
     }
 
     engine->SetMessageCallback( asFUNCTION( CallbackMessage ), nullptr, asCALL_CDECL );
+
+    engine->SetEngineProperty( asEP_ALLOW_UNSAFE_REFERENCES, true );
+    engine->SetEngineProperty( asEP_USE_CHARACTER_LITERALS, true );
+    engine->SetEngineProperty( asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true );
+    engine->SetEngineProperty( asEP_BUILD_WITHOUT_LINE_CUES, true );
+    engine->SetEngineProperty( asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true );
+    engine->SetEngineProperty( asEP_PRIVATE_PROP_AS_PROTECTED, true );
+    engine->SetEngineProperty( asEP_REQUIRE_ENUM_SCOPE, true );
+    engine->SetEngineProperty( asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true );
+    engine->SetEngineProperty( asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true );
+
     RegisterScriptArray( engine, true );
-    RegisterScriptString( engine );
+    RegisterScriptArrayExtensions( engine );
+    RegisterStdString( engine );
+    RegisterStdStringUtils( engine );
+    RegisterScriptStdStringExtensions( engine );
     RegisterScriptAny( engine );
     RegisterScriptDictionary( engine );
     RegisterScriptDict( engine );
+    RegisterScriptDictExtensions( engine );
     RegisterScriptFile( engine );
+    RegisterScriptDateTime( engine );
     RegisterScriptMath( engine );
     RegisterScriptWeakRef( engine );
     RegisterScriptReflection( engine );
@@ -815,9 +826,6 @@ void Script::ReturnContext( asIScriptContext* ctx )
     FreeContexts.push_back( ctx );
 
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
-    for( uint i = 0; i < ctx_data->ObjectArgsCount; i++ )
-        Engine->ReleaseScriptObject( ctx_data->ObjectArgs[ i ], ctx_data->ObjectArgsType[ i ] );
-
     memzero( ctx_data, sizeof( ContextData ) );
 }
 
@@ -876,7 +884,7 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
         }
     }
 
-    WriteLog( "%s", buf );
+    WriteLog( "{}", buf );
 
     #ifndef FONLINE_SERVER
     CreateDump( "ScriptException", buf );
@@ -1177,7 +1185,7 @@ public:
     {
         while( errors.String[ errors.String.length() - 1 ] == '\n' )
             errors.String.pop_back();
-        WriteLog( "Preprocessor message '%s'.\n", errors.String.c_str() );
+        WriteLog( "Preprocessor message '{}'.\n", errors.String.c_str() );
     }
 
     if( errors_count )
@@ -1221,9 +1229,9 @@ public:
             }
             else if( type_id & asTYPEID_OBJHANDLE )
             {
-                if( ptr )
+                if( *(void**) ptr )
                     Engine->ReleaseScriptObject( *(void**) ptr, obj_type );
-                memcpy( ptr, value, sizeof( void* ) );
+                *(void**) ptr = value;
             }
             else
             {
@@ -1251,7 +1259,7 @@ public:
     int as_result = module->AddScriptSection( "Root", result.String.c_str() );
     if( as_result < 0 )
     {
-        WriteLog( "Unable to add script section, result %d.\n", as_result );
+        WriteLog( "Unable to add script section, result {}.\n", as_result );
         module->Discard();
         return false;
     }
@@ -1290,7 +1298,7 @@ bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_da
     int             result = module->LoadByteCode( &binary );
     if( result < 0 )
     {
-        WriteLog( "Can't load binary, result %d.\n", result );
+        WriteLog( "Can't load binary, result {}.\n", result );
         module->Discard();
         return false;
     }
@@ -1319,7 +1327,7 @@ uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_te
         if( !script_func )
         {
             if( !disable_log )
-                WriteLog( "Function '%s' not found.\n", decl_ );
+                WriteLog( "Function '{}' not found.\n", decl_ );
             return 0;
         }
 
@@ -1356,7 +1364,7 @@ uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_te
         if( !dll )
         {
             if( !disable_log )
-                WriteLog( "Dll '%s' not found in scripts folder, error '%s'.\n", dll_name, DLL_Error() );
+                WriteLog( "Dll '{}' not found in scripts folder, error '{}'.\n", dll_name, DLL_Error() );
             return 0;
         }
 
@@ -1365,7 +1373,7 @@ uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_te
         if( !func )
         {
             if( !disable_log )
-                WriteLog( "Function '%s' in dll '%s' not found, error '%s'.\n", dll_func_name, dll_name, DLL_Error() );
+                WriteLog( "Function '{}' in dll '{}' not found, error '{}'.\n", dll_func_name, dll_name, DLL_Error() );
             return 0;
         }
 
@@ -1423,7 +1431,7 @@ uint Script::BindByFuncNum( hash func_num, bool is_temp, bool disable_log /* = f
     if( !func )
     {
         if( !disable_log )
-            WriteLog( "Function '%s' not found.\n", Str::GetName( func_num ) );
+            WriteLog( "Function '{}' not found.\n", Str::GetName( func_num ) );
         return 0;
     }
 
@@ -1444,7 +1452,7 @@ string Script::GetBindFuncName( uint bind_id )
 {
     if( !bind_id || bind_id >= (uint) BindedFunctions.size() )
     {
-        WriteLog( "Wrong bind id %u, bind buffer size %u.\n", bind_id, BindedFunctions.size() );
+        WriteLog( "Wrong bind id {}, bind buffer size {}.\n", bind_id, BindedFunctions.size() );
         return "";
     }
 
@@ -1637,7 +1645,7 @@ int Script::GetEnumValue( const char* enum_value_name, bool& fail )
     auto        it = cached_enums.find( key );
     if( it == cached_enums.end() )
     {
-        WriteLog( "Enum value '%s' not found.\n", enum_value_name );
+        WriteLog( "Enum value '{}' not found.\n", enum_value_name );
         fail = true;
         return 0;
     }
@@ -1784,28 +1792,9 @@ void Script::SetArgDouble( double value )
 void Script::SetArgObject( void* value )
 {
     if( ScriptCall )
-    {
-        if( value )
-        {
-            asIScriptFunction* func = CurrentCtx->GetFunction( 0 );
-            int                type_id = 0;
-            func->GetParam( (asUINT) CurrentArg, &type_id );
-            asITypeInfo*       type_info = Engine->GetTypeInfoById( type_id );
-            RUNTIME_ASSERT( type_info );
-            Engine->AddRefScriptObject( value, type_info );
-
-            ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
-            ctx_data->ObjectArgs[ ctx_data->ObjectArgsCount ] = value;
-            ctx_data->ObjectArgsType[ ctx_data->ObjectArgsCount ] = type_info;
-            ctx_data->ObjectArgsCount++;
-        }
-
         CurrentCtx->SetArgObject( (asUINT) CurrentArg, value );
-    }
     else
-    {
         NativeArgs[ CurrentArg ] = (size_t) value;
-    }
     CurrentArg++;
 }
 
@@ -1986,12 +1975,12 @@ bool Script::RunPrepared()
         }
         else if( RunTimeoutMessage && delta >= RunTimeoutMessage )
         {
-            WriteLog( "Script work time %u in context '%s'.\n", delta, ctx_data->Info );
+            WriteLog( "Script work time {} in context '{}'.\n", delta, ctx_data->Info );
         }
 
         if( result < 0 )
         {
-            WriteLog( "Context '%s' execute error %d, state '%s'.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
+            WriteLog( "Context '{}' execute error {}, state '{}'.\n", ctx_data->Info, result, ContextStatesStr[ (int) state ] );
             ctx->Abort();
             ReturnContext( ctx );
             return false;
@@ -2215,13 +2204,13 @@ void Script::Log( const char* str )
     asIScriptContext* ctx = asGetActiveContext();
     if( !ctx )
     {
-        WriteLog( "<unknown> : %s.\n", str );
+        WriteLog( "<unknown> : {}.\n", str );
         return;
     }
     asIScriptFunction* func = ctx->GetFunction( 0 );
     if( !func )
     {
-        WriteLog( "<unknown> : %s.\n", str );
+        WriteLog( "<unknown> : {}.\n", str );
         return;
     }
     if( LogDebugInfo )
@@ -2229,13 +2218,13 @@ void Script::Log( const char* str )
         int                                 line = ctx->GetLineNumber( 0 );
         Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
         ContextData*                        ctx_data = (ContextData*) ctx->GetUserData();
-        WriteLog( "Script callback: %s : %s : Line %d : %s.\n", str, func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ), ctx_data->Info );
+        WriteLog( "Script callback: {} : {} : Line {} : {}.\n", str, func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ), ctx_data->Info );
     }
     else
     {
         int                                 line = ctx->GetLineNumber( 0 );
         Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
-        WriteLog( "%s : %s\n", Preprocessor::ResolveOriginalFile( line, lnt ), str );
+        WriteLog( "{} : {}\n", Preprocessor::ResolveOriginalFile( line, lnt ), str );
     }
 }
 
@@ -2251,7 +2240,7 @@ void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
         type = "Warning";
     else if( msg->type == asMSGTYPE_INFORMATION )
         type = "Info";
-    WriteLog( "%s : %s : %s : Line %d.\n", Preprocessor::ResolveOriginalFile( msg->row ), type, msg->message, Preprocessor::ResolveOriginalLine( msg->row ) );
+    WriteLog( "{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile( msg->row ), type, msg->message, Preprocessor::ResolveOriginalLine( msg->row ) );
 }
 
 void Script::CallbackException( asIScriptContext* ctx, void* param )
@@ -2266,9 +2255,9 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 /* Array                                                                */
 /************************************************************************/
 
-ScriptArray* Script::CreateArray( const char* type )
+CScriptArray* Script::CreateArray( const char* type )
 {
-    return ScriptArray::Create( Engine->GetTypeInfoById( Engine->GetTypeIdByDecl( type ) ), 0, nullptr );
+    return CScriptArray::Create( Engine->GetTypeInfoById( Engine->GetTypeIdByDecl( type ) ) );
 }
 
 /************************************************************************/

@@ -29,12 +29,12 @@ public:
 class GlobalVarPragma
 {
 private:
-    list< int >           intArray;
-    list< int64 >         int64Array;
-    list< ScriptString* > stringArray;
-    list< float >         floatArray;
-    list< double >        doubleArray;
-    list< char >          boolArray;
+    list< int >    intArray;
+    list< int64 >  int64Array;
+    list< string > stringArray;
+    list< float >  floatArray;
+    list< double > doubleArray;
+    list< char >   boolArray;
 
 public:
     bool Call( const string& text )
@@ -47,7 +47,7 @@ public:
 
         if( decl == "" )
         {
-            WriteLog( "Global var name not found, pragma '%s'.\n", text.c_str() );
+            WriteLog( "Global var name not found, pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -60,54 +60,55 @@ public:
         {
             auto it = intArray.insert( intArray.begin(), int_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
-                WriteLog( "Unable to register integer global var, pragma '%s'.\n", text.c_str() );
+                WriteLog( "Unable to register integer global var, pragma '{}'.\n", text.c_str() );
         }
         else if( type == "int64" || type == "uint64" )
         {
             auto it = int64Array.insert( int64Array.begin(), int_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
-                WriteLog( "Unable to register integer64 global var, pragma '%s'.\n", text.c_str() );
+                WriteLog( "Unable to register integer64 global var, pragma '{}'.\n", text.c_str() );
         }
         else if( type == "string" )
         {
-            if( value != "" ) value = text.substr( text.find( value ), string::npos );
-            auto it = stringArray.insert( stringArray.begin(), ScriptString::Create( value ) );
-            if( engine->RegisterGlobalProperty( name.c_str(), ( *it ) ) < 0 )
-                WriteLog( "Unable to register string global var, pragma '%s'.\n", text.c_str() );
+            if( value != "" )
+                value = text.substr( text.find( value ), string::npos );
+            auto it = stringArray.insert( stringArray.begin(), value );
+            if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
+                WriteLog( "Unable to register string global var, pragma '{}'.\n", text.c_str() );
         }
         else if( type == "float" )
         {
             auto it = floatArray.insert( floatArray.begin(), (float) float_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
-                WriteLog( "Unable to register float global var, pragma '%s'.\n", text.c_str() );
+                WriteLog( "Unable to register float global var, pragma '{}'.\n", text.c_str() );
         }
         else if( type == "double" )
         {
             auto it = doubleArray.insert( doubleArray.begin(), float_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
-                WriteLog( "Unable to register double global var, pragma '%s'.\n", text.c_str() );
+                WriteLog( "Unable to register double global var, pragma '{}'.\n", text.c_str() );
         }
         else if( type == "bool" )
         {
             value = ( ch == '=' ? value : "false" );
             if( value != "true" && value != "false" )
             {
-                WriteLog( "Invalid start value of boolean type, pragma '%s'.\n", text.c_str() );
+                WriteLog( "Invalid start value of boolean type, pragma '{}'.\n", text.c_str() );
                 return false;
             }
             auto it = boolArray.insert( boolArray.begin(), value == "true" ? true : false );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
-                WriteLog( "Unable to register boolean global var, pragma '%s'.\n", text.c_str() );
+                WriteLog( "Unable to register boolean global var, pragma '{}'.\n", text.c_str() );
         }
         else if( engine->RegisterEnum( type.c_str() ) == asALREADY_REGISTERED )
         {
             auto it = intArray.insert( intArray.begin(), int_value );
             if( engine->RegisterGlobalProperty( name.c_str(), &( *it ) ) < 0 )
-                WriteLog( "Unable to register enum global var, pragma '%s'.\n", text.c_str() );
+                WriteLog( "Unable to register enum global var, pragma '{}'.\n", text.c_str() );
         }
         else
         {
-            WriteLog( "Global var not registered, unknown type, pragma '%s'.\n", text.c_str() );
+            WriteLog( "Global var not registered, unknown type, pragma '{}'.\n", text.c_str() );
         }
         return true;
     }
@@ -137,14 +138,14 @@ public:
 
         if( str.fail() )
         {
-            WriteLog( "Error in 'bindfunc' pragma '%s', parse fail.\n", text.c_str() );
+            WriteLog( "Error in 'bindfunc' pragma '{}', parse fail.\n", text.c_str() );
             return false;
         }
 
         void* dll = Script::LoadDynamicLibrary( dll_name.c_str() );
         if( !dll )
         {
-            WriteLog( "Error in 'bindfunc' pragma '%s', dll not found, error '%s'.\n", text.c_str(), DLL_Error() );
+            WriteLog( "Error in 'bindfunc' pragma '{}', dll not found, error '{}'.\n", text.c_str(), DLL_Error() );
             return false;
         }
 
@@ -152,7 +153,7 @@ public:
         size_t* func = DLL_GetAddress( dll, func_dll_name.c_str() );
         if( !func )
         {
-            WriteLog( "Error in 'bindfunc' pragma '%s', function not found, error '%s'.\n", text.c_str(), DLL_Error() );
+            WriteLog( "Error in 'bindfunc' pragma '{}', function not found, error '{}'.\n", text.c_str(), DLL_Error() );
             return false;
         }
 
@@ -169,7 +170,7 @@ public:
             string::size_type j = func_name.find( "::" );
             if( i == string::npos || i + 1 >= j )
             {
-                WriteLog( "Error in 'bindfunc' pragma '%s', parse class name fail.\n", text.c_str() );
+                WriteLog( "Error in 'bindfunc' pragma '{}', parse class name fail.\n", text.c_str() );
                 return false;
             }
             i++;
@@ -180,7 +181,7 @@ public:
         }
         if( result < 0 )
         {
-            WriteLog( "Error in 'bindfunc' pragma '%s', script registration fail, error '%d'.\n", text.c_str(), result );
+            WriteLog( "Error in 'bindfunc' pragma '{}', script registration fail, error '{}'.\n", text.c_str(), result );
             return false;
         }
         return true;
@@ -220,7 +221,7 @@ public:
         CustomEntity* entity = new CustomEntity( id, SubType, Registrator );
         if( !entity->Props.LoadFromText( props_data ) )
         {
-            WriteLog( "Fail to restore properties for custom entity '%s' (%u).\n", Registrator->GetClassName().c_str(), id );
+            WriteLog( "Fail to restore properties for custom entity '{}' ({}).\n", Registrator->GetClassName().c_str(), id );
             entity->Release();
             return false;
         }
@@ -233,6 +234,7 @@ public:
         RUNTIME_ASSERT( entity->SubType == SubType );
         entity->IsDestroyed = true;
         EntityMngr.UnregisterEntity( entity );
+        entity->Release();
     }
 
     void DeleteEntityById( uint id )
@@ -242,6 +244,7 @@ public:
             return;
         entity->IsDestroyed = true;
         EntityMngr.UnregisterEntity( entity );
+        entity->Release();
     }
 
     CustomEntity* GetEntity( uint id )
@@ -293,7 +296,7 @@ public:
         asIScriptEngine* engine = Script::GetEngine();
         if( engine->GetTypeInfoByName( class_name.c_str() ) )
         {
-            WriteLog( "Error in 'entity' pragma '%s', class already registered.\n", text.c_str() );
+            WriteLog( "Error in 'entity' pragma '{}', class already registered.\n", text.c_str() );
             return false;
         }
 
@@ -305,7 +308,7 @@ public:
             engine->RegisterObjectProperty( class_name.c_str(), "const bool IsDestroyed", OFFSETOF( Entity, IsDestroyed ) ) < 0 ||
             engine->RegisterObjectProperty( class_name.c_str(), "const bool IsDestroying", OFFSETOF( Entity, IsDestroying ) ) < 0 )
         {
-            WriteLog( "Error in 'entity' pragma '%s', fail to register object type.\n", text.c_str() );
+            WriteLog( "Error in 'entity' pragma '{}', fail to register object type.\n", text.c_str() );
             return false;
         }
 
@@ -315,11 +318,11 @@ public:
         {
             char buf[ MAX_FOTEXT ];
             if( engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Create%s()", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, CreateEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s& entity)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s@+ entity)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
                 engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(uint id)", class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntityById ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
                 engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Get%s(uint id)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, GetEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 )
             {
-                WriteLog( "Error in 'entity' pragma '%s', fail to register management functions.\n", text.c_str() );
+                WriteLog( "Error in 'entity' pragma '{}', fail to register management functions.\n", text.c_str() );
                 return false;
             }
         }
@@ -327,7 +330,7 @@ public:
         // Init registrator
         if( !entity_creator->Registrator->Init() )
         {
-            WriteLog( "Error in 'entity' pragma '%s', fail to initialize property registrator.\n", text.c_str() );
+            WriteLog( "Error in 'entity' pragma '{}', fail to initialize property registrator.\n", text.c_str() );
             return false;
         }
 
@@ -434,7 +437,7 @@ public:
 
         if( str.fail() )
         {
-            WriteLog( "Error in 'property' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Error in 'property' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -473,7 +476,7 @@ public:
                 access = Property::VirtualProtected;
             if( access == (Property::AccessType) 0 )
             {
-                WriteLog( "Error in 'property' pragma '%s', invalid access type '%s'.\n", text.c_str(), access_str.c_str() );
+                WriteLog( "Error in 'property' pragma '{}', invalid access type '{}'.\n", text.c_str(), access_str.c_str() );
                 return false;
             }
         }
@@ -495,7 +498,7 @@ public:
             Str::ParseLine( opt_entries[ i ].c_str(), '=', opt_entry, Str::ParseLineDummy );
             if( opt_entry.size() != 2 )
             {
-                WriteLog( "Error in 'property' pragma '%s', invalid options entry.\n", text.c_str() );
+                WriteLog( "Error in 'property' pragma '{}', invalid options entry.\n", text.c_str() );
                 return false;
             }
 
@@ -527,7 +530,7 @@ public:
         }
         if( fail )
         {
-            WriteLog( "Error in 'property' pragma '%s', value conversation failed.\n", text.c_str() );
+            WriteLog( "Error in 'property' pragma '{}', value conversation failed.\n", text.c_str() );
             return false;
         }
 
@@ -546,7 +549,7 @@ public:
         else if( entitiesRegistrators->entityCreators.count( class_name ) )
             registrator = entitiesRegistrators->entityCreators[ class_name ]->Registrator;
         else
-            WriteLog( "Invalid class in 'property' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Invalid class in 'property' pragma '{}'.\n", text.c_str() );
         if( !registrator )
             return false;
 
@@ -557,7 +560,7 @@ public:
                                         group.length() > 0 ? group.c_str() : nullptr,
                                         check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr ) )
             {
-                WriteLog( "Unable to register 'property' pragma '%s'.\n", text.c_str() );
+                WriteLog( "Unable to register 'property' pragma '{}'.\n", text.c_str() );
                 return false;
             }
         }
@@ -611,7 +614,7 @@ public:
         str.getline( buf, MAX_FOTEXT );
         if( str.fail() )
         {
-            WriteLog( "Error in 'method' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Error in 'method' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -619,7 +622,7 @@ public:
         char* separator = Str::Substring( buf, "=" );
         if( !separator )
         {
-            WriteLog( "Error in 'method' pragma declaration '%s'.\n", text.c_str() );
+            WriteLog( "Error in 'method' pragma declaration '{}'.\n", text.c_str() );
             return false;
         }
         *separator = 0;
@@ -645,7 +648,7 @@ public:
             call_type = Method::RemoteClient;
         if( call_type == (Method::CallType) 0 )
         {
-            WriteLog( "Error in 'method' pragma '%s', invalid call type '%s'.\n", text.c_str(), call_type_str.c_str() );
+            WriteLog( "Error in 'method' pragma '{}', invalid call type '{}'.\n", text.c_str(), call_type_str.c_str() );
             return false;
         }
 
@@ -664,14 +667,14 @@ public:
         // else if (entitiesRegistrators->entityCreators.count(class_name))
         //	registrator = entitiesRegistrators->entityCreators[class_name]->Registrator;
         else
-            WriteLog( "Invalid class in 'property' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Invalid class in 'property' pragma '{}'.\n", text.c_str() );
         if( !registrator )
             return false;
 
         // Register
         if( !registrator->Register( decl, script_func, call_type ) )
         {
-            WriteLog( "Unable to register 'method' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Unable to register 'method' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -705,7 +708,7 @@ public:
         str >> group >> name;
         if( str.fail() )
         {
-            WriteLog( "Unable to parse 'content' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Unable to parse 'content' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -740,7 +743,7 @@ public:
         }
         else
         {
-            WriteLog( "Invalid group name in 'content' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Invalid group name in 'content' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -762,7 +765,7 @@ public:
         engine->SetDefaultNamespace( "" );
         if( result < 0 )
         {
-            WriteLog( "Error in 'content' pragma '%s', error %d.\n", text.c_str(), result );
+            WriteLog( "Error in 'content' pragma '{}', error {}.\n", text.c_str(), result );
             return false;
         }
 
@@ -777,7 +780,7 @@ public:
         {
             if( !DlgMngr.GetDialog( it->second ) )
             {
-                WriteLog( "Dialog file '%s' not found.\n", it->first.c_str() );
+                WriteLog( "Dialog file '{}' not found.\n", it->first.c_str() );
                 errors++;
             }
         }
@@ -785,7 +788,7 @@ public:
         {
             if( !ProtoMngr.GetProtoItem( it->second ) )
             {
-                WriteLog( "Item file '%s' not found.\n", it->first.c_str() );
+                WriteLog( "Item file '{}' not found.\n", it->first.c_str() );
                 errors++;
             }
         }
@@ -793,7 +796,7 @@ public:
         {
             if( !ProtoMngr.GetProtoCritter( it->second ) )
             {
-                WriteLog( "Critter file '%s' not found.\n", it->first.c_str() );
+                WriteLog( "Critter file '{}' not found.\n", it->first.c_str() );
                 errors++;
             }
         }
@@ -801,7 +804,7 @@ public:
         {
             if( !ProtoMngr.GetProtoLocation( it->second ) )
             {
-                WriteLog( "Location file '%s' not found.\n", it->first.c_str() );
+                WriteLog( "Location file '{}' not found.\n", it->first.c_str() );
                 errors++;
             }
         }
@@ -809,7 +812,7 @@ public:
         {
             if( !ProtoMngr.GetProtoMap( it->second ) )
             {
-                WriteLog( "Map file '%s' not found.\n", it->first.c_str() );
+                WriteLog( "Map file '{}' not found.\n", it->first.c_str() );
                 errors++;
             }
         }
@@ -831,7 +834,7 @@ public:
         str >> enum_name >> value_name;
         if( str.fail() )
         {
-            WriteLog( "Unable to parse 'enum' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Unable to parse 'enum' pragma '{}'.\n", text.c_str() );
             return false;
         }
         char other[ MAX_FOTEXT ];
@@ -841,7 +844,7 @@ public:
         int              result = engine->RegisterEnum( enum_name );
         if( result < 0 && result != asALREADY_REGISTERED )
         {
-            WriteLog( "Error in 'enum' pragma '%s', register enum error %d.\n", text.c_str(), result );
+            WriteLog( "Error in 'enum' pragma '{}', register enum error {}.\n", text.c_str(), result );
             return false;
         }
 
@@ -856,7 +859,7 @@ public:
             value = ConvertParamValue( buf, fail );
             if( fail )
             {
-                WriteLog( "Error in 'enum' pragma '%s', value conversation error.\n", text.c_str() );
+                WriteLog( "Error in 'enum' pragma '{}', value conversation error.\n", text.c_str() );
                 return false;
             }
         }
@@ -869,7 +872,7 @@ public:
         result = engine->RegisterEnumValue( enum_name, value_name, value );
         if( result < 0 )
         {
-            WriteLog( "Error in 'enum' pragma '%s', register enum value error %d.\n", text.c_str(), result );
+            WriteLog( "Error in 'enum' pragma '{}', register enum value error {}.\n", text.c_str(), result );
             return false;
         }
 
@@ -906,6 +909,11 @@ public:
         ArgInfoVec           ArgInfos;
         EntityFuncRefMulMap* EntityCallbacks;
 
+        ScriptEvent()
+        {
+            RefCount = 1;
+        }
+
         ~ScriptEvent()
         {
             UnsubscribeAll();
@@ -924,19 +932,23 @@ public:
 
         void Subscribe( asIScriptFunction* callback )
         {
+            callback->AddRef();
+
             Unsubscribe( callback );
 
-            callback->AddRef();
             Callbacks.push_back( callback );
         }
 
         void Unsubscribe( asIScriptFunction* callback )
         {
-            auto it = std::find( Callbacks.begin(), Callbacks.end(), callback );
-            if( it != Callbacks.end() )
+            if( !Callbacks.empty() )
             {
-                ( *it )->Release();
-                Callbacks.erase( it );
+                auto it = std::find( Callbacks.begin(), Callbacks.end(), callback );
+                if( it != Callbacks.end() )
+                {
+                    ( *it )->Release();
+                    Callbacks.erase( it );
+                }
             }
         }
 
@@ -1094,9 +1106,9 @@ public:
             }
 
             // Invoke callbacks
-            for( int i = (int) callbacks_to_call.size() - 1; i >= 0; i-- )
+            for( int j = (int) callbacks_to_call.size() - 1; j >= 0; j-- )
             {
-                asIScriptFunction* callback = callbacks_to_call[ i ];
+                asIScriptFunction* callback = callbacks_to_call[ j ];
 
                 // Check entities
                 for( size_t i = 0; i < ArgInfos.size(); i++ )
@@ -1153,7 +1165,7 @@ public:
         }
     };
 
-    vector< ScriptEvent* >           events;
+    list< ScriptEvent* >             events;
     ScriptEvent::EntityFuncRefMulMap entityCallbacks;
 
 public:
@@ -1178,7 +1190,7 @@ public:
         size_t args_end = text.find_first_of( ')' );
         if( args_begin == string::npos || args_end == string::npos || args_begin > args_end )
         {
-            WriteLog( "Unable to parse 'event' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Unable to parse 'event' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -1187,7 +1199,7 @@ public:
         Str::Trim( event_name );
         if( Str::Length( event_name ) == 0 )
         {
-            WriteLog( "Unable to parse 'event' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Unable to parse 'event' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -1269,10 +1281,13 @@ public:
         Str::Copy( options, text.substr( args_end + 1 ).c_str() );
         event->Deferred = Str::Substring( options, "deferred" ) != nullptr;
 
-        if( engine->RegisterGlobalProperty( Str::Format( buf, "%s __%s", event_name, event_name ), event ) < 0 )
-            return false;
-
         events.push_back( event );
+        if( engine->RegisterGlobalProperty( Str::Format( buf, "%s@ __%s", event_name, event_name ), &events.back() ) < 0 )
+        {
+            events.pop_back();
+            return false;
+        }
+
         return true;
     }
 
@@ -1332,7 +1347,7 @@ public:
     void Init()
     {
         asIScriptEngine* engine = Script::GetEngine();
-        int r = engine->RegisterObjectType( "RpcCaller", 0, asOBJ_REF | asOBJ_NOCOUNT );
+        int r = engine->RegisterObjectType( "RpcCaller", 1, asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS );
         RUNTIME_ASSERT( r >= 0 );
 
         if( pragmaType == PRAGMA_SERVER )
@@ -1356,12 +1371,12 @@ public:
         str >> type >> name;
         if( str.fail() )
         {
-            WriteLog( "Unable to parse 'rpc' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Unable to parse 'rpc' pragma '{}'.\n", text.c_str() );
             return false;
         }
         if( !Str::Compare( type, "Server" ) && !Str::Compare( type, "Client" ) )
         {
-            WriteLog( "Invalid type in 'rpc' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Invalid type in 'rpc' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -1369,7 +1384,7 @@ public:
         size_t args_end = text.find_first_of( ')' );
         if( args_begin == string::npos || args_end == string::npos || args_begin > args_end )
         {
-            WriteLog( "Unable to parse 'rpc' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Unable to parse 'rpc' pragma '{}'.\n", text.c_str() );
             return false;
         }
         char args[ MAX_FOTEXT ];
@@ -1383,13 +1398,13 @@ public:
         int func_def_id = engine->RegisterFuncdef( Str::Format( buf, "void %sRpcFunc(%s)", name, args ) );
         if( func_def_id < 0 )
         {
-            WriteLog( "Invalid function in 'rpc' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Invalid function in 'rpc' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
         if( Str::Substring( args, "@" ) )
         {
-            WriteLog( "Handles is not allowed for 'rpc' pragma '%s'.\n", text.c_str() );
+            WriteLog( "Handles is not allowed for 'rpc' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
@@ -1408,7 +1423,7 @@ public:
                 {
                     if( obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT && !Str::Compare( obj_type->GetSubType( 0 )->GetName(), "string" ) )
                     {
-                        WriteLog( "Invalid type '%s' in array in 'rpc' pragma '%s'.\n", obj_type->GetSubType( 0 )->GetName(), text.c_str() );
+                        WriteLog( "Invalid type '{}' in array in 'rpc' pragma '{}'.\n", obj_type->GetSubType( 0 )->GetName(), text.c_str() );
                         return false;
                     }
                 }
@@ -1416,18 +1431,18 @@ public:
                 {
                     if( obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT && !Str::Compare( obj_type->GetSubType( 0 )->GetName(), "string" ) )
                     {
-                        WriteLog( "Invalid type '%s' in dict key in 'rpc' pragma '%s'.\n", obj_type->GetSubType( 0 )->GetName(), text.c_str() );
+                        WriteLog( "Invalid type '{}' in dict key in 'rpc' pragma '{}'.\n", obj_type->GetSubType( 0 )->GetName(), text.c_str() );
                         return false;
                     }
                     if( obj_type->GetSubTypeId( 1 ) & asTYPEID_MASK_OBJECT && !Str::Compare( obj_type->GetSubType( 1 )->GetName(), "string" ) )
                     {
-                        WriteLog( "Invalid type '%s' in dict value in 'rpc' pragma '%s'.\n", obj_type->GetSubType( 1 )->GetName(), text.c_str() );
+                        WriteLog( "Invalid type '{}' in dict value in 'rpc' pragma '{}'.\n", obj_type->GetSubType( 1 )->GetName(), text.c_str() );
                         return false;
                     }
                 }
                 else if( !Str::Compare( obj_type->GetName(), "string" ) )
                 {
-                    WriteLog( "Invalid type '%s' in 'rpc' pragma '%s'.\n", obj_type->GetName(), text.c_str() );
+                    WriteLog( "Invalid type '{}' in 'rpc' pragma '{}'.\n", obj_type->GetName(), text.c_str() );
                     return false;
                 }
             }
@@ -1439,7 +1454,7 @@ public:
             Str::Format( buf, "void %s(%s) const", name, args );
             if( engine->RegisterObjectMethod( "RpcCaller", buf, asFUNCTION( Rpc ), asCALL_GENERIC, new uint( curOutIndex++ ) ) < 0 )
             {
-                WriteLog( "Invalid method '%s' in 'rpc' pragma '%s'.\n", buf, text.c_str() );
+                WriteLog( "Invalid method '{}' in 'rpc' pragma '{}'.\n", buf, text.c_str() );
                 return false;
             }
         }
@@ -1461,7 +1476,7 @@ public:
         for( auto& func_desc : inFuncDesc )
         {
             char decl[ MAX_FOTEXT ];
-            Str::Format( decl, "void %s(%s%s%s)", "%s", pragmaType == PRAGMA_SERVER ? "Critter&" : "",
+            Str::Format( decl, "void %s(%s%s%s)", "%s", pragmaType == PRAGMA_SERVER ? "Critter" : "",
                          pragmaType == PRAGMA_SERVER && func_desc.second.length() > 0 ? ", " : "", func_desc.second.c_str() );
 
             uint bind_id = Script::BindByFuncName( func_desc.first.c_str(), decl, false, false );
@@ -1472,7 +1487,7 @@ public:
             }
             else
             {
-                WriteLog( "Can't bind Rpc function '%s'.\n", func_desc.first.c_str() );
+                WriteLog( "Can't bind Rpc function '{}'.\n", func_desc.first.c_str() );
                 errors++;
             }
         }
@@ -1615,6 +1630,7 @@ public:
             else
             {
                 Script::SetArgObject( value );
+                Script::GetEngine()->ReleaseScriptObject( value, obj_type );
             }
         }
 
@@ -1696,7 +1712,7 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
     else if( Str::CompareCase( pragma.Name.c_str(), "rpc" ) && rpcPragma )
         ok = rpcPragma->Call( pragma.Text, pragma.CurrentFile );
     else
-        WriteLog( "Unknown pragma instance, nbuame '%s' text '%s'.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
+        WriteLog( "Unknown pragma instance, nbuame '{}' text '{}'.\n", pragma.Name.c_str(), pragma.Text.c_str() ), ok = false;
 
     if( ok )
         processedPragmas.push_back( pragma );

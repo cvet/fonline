@@ -28,8 +28,8 @@ public:
     CLASS_PROPERTY( uchar, RainCapacity );
     CLASS_PROPERTY( int, CurDayTime );
     CLASS_PROPERTY( hash, ScriptId );
-    CLASS_PROPERTY( ScriptArray *, DayTime );    // 4 int
-    CLASS_PROPERTY( ScriptArray *, DayColor );   // 12 uchar
+    CLASS_PROPERTY( CScriptArray *, DayTime );    // 4 int
+    CLASS_PROPERTY( CScriptArray *, DayColor );   // 12 uchar
     CLASS_PROPERTY( bool, IsNoLogOut );
 
     Map( uint id, ProtoMap* proto, Location* location );
@@ -149,9 +149,9 @@ class Location: public Entity
 {
 public:
     PROPERTIES_HEADER();
-    CLASS_PROPERTY( ScriptArray *, MapProtos );    // hash[]
-    CLASS_PROPERTY( ScriptArray *, MapEntrances ); // hash[]
-    CLASS_PROPERTY( ScriptArray *, Automaps );     // hash[]
+    CLASS_PROPERTY( CScriptArray *, MapProtos );    // hash[]
+    CLASS_PROPERTY( CScriptArray *, MapEntrances ); // hash[]
+    CLASS_PROPERTY( CScriptArray *, Automaps );     // hash[]
     CLASS_PROPERTY( uint, MaxPlayers );
     CLASS_PROPERTY( bool, AutoGarbage );
     CLASS_PROPERTY( bool, GeckVisible );

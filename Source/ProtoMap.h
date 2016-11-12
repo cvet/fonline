@@ -19,8 +19,8 @@ public:
     CLASS_PROPERTY_ALIAS( ushort, WorkHexY );
     CLASS_PROPERTY_ALIAS( int, CurDayTime );
     CLASS_PROPERTY_ALIAS( hash, ScriptId );
-    CLASS_PROPERTY_ALIAS( ScriptArray *, DayTime );    // 4 int
-    CLASS_PROPERTY_ALIAS( ScriptArray *, DayColor );   // 12 uchar
+    CLASS_PROPERTY_ALIAS( CScriptArray *, DayTime );    // 4 int
+    CLASS_PROPERTY_ALIAS( CScriptArray *, DayColor );   // 12 uchar
     CLASS_PROPERTY_ALIAS( bool, IsNoLogOut );
 
     // Entities
@@ -129,7 +129,7 @@ typedef map< hash, ProtoMap* > ProtoMapMap;
 class ProtoLocation: public ProtoEntity
 {
 public:
-    CLASS_PROPERTY_ALIAS( ScriptArray *, MapProtos );
+    CLASS_PROPERTY_ALIAS( CScriptArray *, MapProtos );
 
     ProtoLocation( hash pid );
 

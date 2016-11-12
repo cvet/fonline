@@ -216,6 +216,7 @@ set( COMMON_SOURCE
 	Properties.cpp Properties.h
 	Randomizer.h
 	Script.cpp Script.h
+	ScriptExtensions.cpp
 	ScriptBind.h
 	ScriptFunctions.h
 	ScriptInvoker.cpp ScriptInvoker.h

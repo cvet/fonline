@@ -74,7 +74,7 @@ void LogFinish()
 {
     SCOPE_LOCK( LogLocker );
 
-    LogToFile( nullptr );
+    LogToFile( "" );
     LogToFunc( nullptr, false );
     LogToTextBox( nullptr );
     LogToBuffer( false );
@@ -111,11 +111,11 @@ void WriteLogMessage( const string& message )
         uint minutes = seconds / 60 % 60;
         uint hours = seconds / 60 / 60;
         if( hours )
-            result += fmt::format( "[{:0=3}:%{:0=2}:%{:0=2}:%{:0=3}] ", hours, minutes, seconds % 60, delta % 1000 );
+            result += fmt::format( "[{:0=3}:{:0=2}:{:0=2}:{:0=3}] ", hours, minutes, seconds % 60, delta % 1000 );
         else if( minutes )
-            result += fmt::format( "[%{:0=2}:%{:0=2}:%{:0=3}] ", minutes, seconds % 60, delta % 1000 );
+            result += fmt::format( "[{:0=2}:{:0=2}:{:0=3}] ", minutes, seconds % 60, delta % 1000 );
         else
-            result += fmt::format( "[%{:0=2}:%{:0=3}] ", seconds % 60, delta % 1000 );
+            result += fmt::format( "[{:0=2}:{:0=3}] ", seconds % 60, delta % 1000 );
     }
 
     result += message;

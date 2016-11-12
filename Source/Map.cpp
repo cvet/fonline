@@ -83,7 +83,7 @@ bool Map::Generate()
         Npc* npc = CrMngr.CreateNpc( base_cr->GetProtoId(), &base_cr->Props, this, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true );
         if( !npc )
         {
-            WriteLog( "Create npc '%s' on map '%s' fail, continue generate.\n", base_cr->GetName(), GetName() );
+            WriteLog( "Create npc '{}' on map '{}' fail, continue generate.\n", base_cr->GetName(), GetName() );
             continue;
         }
         id_map.insert( PAIR( base_cr->GetId(), npc->GetId() ) );
@@ -113,7 +113,7 @@ bool Map::Generate()
         Item* item = ItemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
         if( !item )
         {
-            WriteLog( "Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
+            WriteLog( "Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
         id_map.insert( PAIR( base_item->GetId(), item->GetId() ) );
@@ -124,7 +124,7 @@ bool Map::Generate()
 
         if( !AddItem( item, item->GetHexX(), item->GetHexY() ) )
         {
-            WriteLog( "Add item '%s' to map '%s' failure, continue generate.\n", item->GetName(), GetName() );
+            WriteLog( "Add item '{}' to map '{}' failure, continue generate.\n", item->GetName(), GetName() );
             ItemMngr.DeleteItem( item );
         }
     }
@@ -149,7 +149,7 @@ bool Map::Generate()
         Item* item = ItemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
         if( !item )
         {
-            WriteLog( "Create item '%s' on map '%s' fail, continue generate.\n", base_item->GetName(), GetName() );
+            WriteLog( "Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
 
@@ -182,9 +182,9 @@ bool Map::Generate()
         ItemVec& items = npc->GetInventory();
         if( !npc->GetBagId() && !items.empty() )
         {
-            uint         bag_size = (uint) items.size();
-            ScriptArray* item_pid = Script::CreateArray( "hash[]" );
-            ScriptArray* item_count = Script::CreateArray( "uint[]" );
+            uint          bag_size = (uint) items.size();
+            CScriptArray* item_pid = Script::CreateArray( "hash[]" );
+            CScriptArray* item_count = Script::CreateArray( "uint[]" );
 
             for( uint i = 0; i < bag_size; i++ )
             {
@@ -1127,7 +1127,7 @@ void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
     // Check
     if( hx >= GetWidth() || hy >= GetHeight() || !cr || !car || !car->IsCar() )
     {
-        WriteLog( "Generic error, hx %u, hy %u, critter pointer '%p', car pointer '%p', is car %d.\n", hx, hy, (void*) cr, (void*) car, car && car->IsCar() ? 1 : 0 );
+        WriteLog( "Generic error, hx {}, hy {}, critter pointer {}, car pointer {}, is car {}.\n", hx, hy, (void*) cr, (void*) car, car && car->IsCar() ? 1 : 0 );
         return;
     }
 
@@ -1236,7 +1236,7 @@ bool Map::SetScript( asIScriptFunction* func, bool first_time )
         hash func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLog( "Script bind fail, map '%s'.\n", GetName() );
+            WriteLog( "Script bind fail, map '{}'.\n", GetName() );
             return false;
         }
         SetScriptId( func_num );
@@ -1327,7 +1327,7 @@ void Location::BindScript()
     if( GetEntranceScript() )
     {
         const char* func_name = Str::GetName( GetEntranceScript() );
-        EntranceScriptBindId = Script::BindByFuncName( func_name, "bool %s(Location&, Critter@[]&, uint8 entranceIndex)", false );
+        EntranceScriptBindId = Script::BindByFuncName( func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false );
     }
 }
 

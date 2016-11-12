@@ -232,7 +232,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             {
                 if( !ItemMngr.RestoreItem( id, proto_id, kv ) )
                 {
-                    WriteLog( "Fail to restore item %u.\n", id );
+                    WriteLog( "Fail to restore item {}.\n", id );
                     continue;
                 }
             }
@@ -240,7 +240,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             {
                 if( !CrMngr.RestoreNpc( id, proto_id, kv ) )
                 {
-                    WriteLog( "Fail to restore npc %u.\n", id );
+                    WriteLog( "Fail to restore npc {}.\n", id );
                     continue;
                 }
             }
@@ -248,7 +248,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             {
                 if( !MapMngr.RestoreLocation( id, proto_id, kv ) )
                 {
-                    WriteLog( "Fail to restore location %u.\n", id );
+                    WriteLog( "Fail to restore location {}.\n", id );
                     continue;
                 }
             }
@@ -256,7 +256,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             {
                 if( !MapMngr.RestoreMap( id, proto_id, kv ) )
                 {
-                    WriteLog( "Fail to restore map %u.\n", id );
+                    WriteLog( "Fail to restore map {}.\n", id );
                     continue;
                 }
             }
@@ -265,7 +265,7 @@ bool EntityManager::LoadEntities( IniParser& data )
                 const char* class_name = kv[ "$ClassName" ].c_str();
                 if( !Script::RestoreEntity( class_name, id, kv ) )
                 {
-                    WriteLog( "Fail to restore entity %u.\n", id );
+                    WriteLog( "Fail to restore entity {}.\n", id );
                     continue;
                 }
             }
@@ -282,7 +282,7 @@ bool EntityManager::LoadEntities( IniParser& data )
         whole_count += count;
     }
 
-    WriteLog( "Load entities complete, count %u.\n", whole_count );
+    WriteLog( "Load entities complete, count {}.\n", whole_count );
 
     if( !LinkMaps() )
         return false;
@@ -309,7 +309,7 @@ bool EntityManager::LinkMaps()
         Location* loc = MapMngr.GetLocation( loc_id );
         if( !loc )
         {
-            WriteLog( "Location %u for map '%s' (%u) not found.\n", loc_id, map->GetName(), map->GetId() );
+            WriteLog( "Location {} for map '{}' ({}) not found.\n", loc_id, map->GetName(), map->GetId() );
             errors++;
             continue;
         }
@@ -331,7 +331,7 @@ bool EntityManager::LinkMaps()
         {
             if( !maps[ i ] )
             {
-                WriteLog( "Location '%s' (%u) map index %u is empty.\n", loc->GetName(), loc->GetId(), i );
+                WriteLog( "Location '{}' ({}) map index {} is empty.\n", loc->GetName(), loc->GetId(), i );
                 errors++;
                 continue;
             }
@@ -365,14 +365,14 @@ bool EntityManager::LinkNpc()
         Map* map = MapMngr.GetMap( cr->GetMapId() );
         if( cr->GetMapId() && !map )
         {
-            WriteLog( "Map '%s' (%u) not found, critter '%s', hx %u, hy %u.\n", Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Map '{}' ({}) not found, critter '{}', hx {}, hy {}.\n", Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
 
         if( !MapMngr.CanAddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 0 ) )
         {
-            WriteLog( "Error parsing npc '%s' (%u) to map '%s' (%u), hx %u, hy %u.\n", cr->GetName(), cr->GetId(), Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Error parsing npc '{}' ({}) to map '{}' ({}), hx {}, hy {}.\n", cr->GetName(), cr->GetId(), Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
@@ -388,7 +388,7 @@ bool EntityManager::LinkNpc()
         Critter* cr = *it;
         if( !MapMngr.CanAddCrToMap( cr, nullptr, 0, 0, cr->GetGlobalMapLeaderId() ) )
         {
-            WriteLog( "Error parsing npc to global group, critter '%s', rule id %u.\n", cr->GetName(), cr->GetGlobalMapLeaderId() );
+            WriteLog( "Error parsing npc to global group, critter '{}', rule id {}.\n", cr->GetName(), cr->GetGlobalMapLeaderId() );
             errors++;
             continue;
         }
@@ -420,7 +420,7 @@ bool EntityManager::LinkItems()
                 Critter* npc = CrMngr.GetNpc( item->GetCritId() );
                 if( !npc )
                 {
-                    WriteLog( "Item '%s' (%u) npc not found, npc id %u.\n", item->GetName(), item->GetId(), item->GetCritId() );
+                    WriteLog( "Item '{}' ({}) npc not found, npc id {}.\n", item->GetName(), item->GetId(), item->GetCritId() );
                     errors++;
                     continue;
                 }
@@ -433,21 +433,21 @@ bool EntityManager::LinkItems()
             Map* map = MapMngr.GetMap( item->GetMapId() );
             if( !map )
             {
-                WriteLog( "Item '%s' (%u) map not found, map id %u, hx %u, hy %u.\n", item->GetName(), item->GetId(), item->GetMapId(), item->GetHexX(), item->GetHexY() );
+                WriteLog( "Item '{}' ({}) map not found, map id {}, hx {}, hy {}.\n", item->GetName(), item->GetId(), item->GetMapId(), item->GetHexX(), item->GetHexY() );
                 errors++;
                 continue;
             }
 
             if( item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight() )
             {
-                WriteLog( "Item '%s' (%u) invalid hex position, hx %u, hy %u.\n", item->GetName(), item->GetId(), item->GetHexX(), item->GetHexY() );
+                WriteLog( "Item '{}' ({}) invalid hex position, hx {}, hy {}.\n", item->GetName(), item->GetId(), item->GetHexX(), item->GetHexY() );
                 errors++;
                 continue;
             }
 
             if( item->IsScenery() )
             {
-                WriteLog( "Item '%s' (%u) is scenery type %d.\n", item->GetName(), item->GetId(), item->GetType() );
+                WriteLog( "Item '{}' ({}) is scenery type {}.\n", item->GetName(), item->GetId(), item->GetType() );
                 errors++;
                 continue;
             }
@@ -460,7 +460,7 @@ bool EntityManager::LinkItems()
             Item* cont = ItemMngr.GetItem( item->GetContainerId() );
             if( !cont )
             {
-                WriteLog( "Item '%s' (%u) container not found, container id %u.\n", item->GetName(), item->GetId(), item->GetContainerId() );
+                WriteLog( "Item '{}' ({}) container not found, container id {}.\n", item->GetName(), item->GetId(), item->GetContainerId() );
                 errors++;
                 continue;
             }
@@ -469,7 +469,7 @@ bool EntityManager::LinkItems()
         }
         break;
         default:
-            WriteLog( "Unknown accessory id '%s' (%u), acc %u.\n", item->GetName(), item->Id, item->GetAccessory() );
+            WriteLog( "Unknown accessory id '{}' ({}), acc {}.\n", item->GetName(), item->Id, item->GetAccessory() );
             errors++;
             continue;
         }

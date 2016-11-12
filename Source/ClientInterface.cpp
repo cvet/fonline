@@ -108,9 +108,8 @@ void FOClient::GameDraw()
 
 void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
 {
-    ScriptString* text = ScriptString::Create( msg );
-    Script::RaiseInternalEvent( ClientFunctions.MessageBox, text, mess_type, script_call );
-    text->Release();
+    string text = msg;
+    Script::RaiseInternalEvent( ClientFunctions.MessageBox, &text, mess_type, script_call );
 }
 
 // ==============================================================================================================================
@@ -122,14 +121,14 @@ bool FOClient::LoginCheckData()
     if( Singleplayer )
         return true;
 
-    string tmp_str = GameOpt.Name->c_std_str();
+    string tmp_str = GameOpt.Name;
     while( !tmp_str.empty() && tmp_str[ 0 ] == ' ' )
         tmp_str.erase( 0, 1 );
     while( !tmp_str.empty() && tmp_str[ tmp_str.length() - 1 ] == ' ' )
         tmp_str.erase( tmp_str.length() - 1, 1 );
-    *GameOpt.Name = tmp_str;
+    GameOpt.Name = tmp_str;
 
-    uint name_len_utf8 = Str::LengthUTF8( GameOpt.Name->c_str() );
+    uint name_len_utf8 = Str::LengthUTF8( GameOpt.Name.c_str() );
     if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
         name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
@@ -137,7 +136,7 @@ bool FOClient::LoginCheckData()
         return false;
     }
 
-    if( !Str::IsValidUTF8( GameOpt.Name->c_str() ) || Str::Substring( GameOpt.Name->c_str(), "*" ) )
+    if( !Str::IsValidUTF8( GameOpt.Name.c_str() ) || Str::Substring( GameOpt.Name.c_str(), "*" ) )
     {
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_NAME_WRONG_CHARS ) );
         return false;
@@ -158,7 +157,7 @@ bool FOClient::LoginCheckData()
     }
 
     // Save login and password
-    Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
+    Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
     Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
 
     AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONNECTION ) );
@@ -231,12 +230,12 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
             // Player name
             if( Str::CompareCase( tag, "pname" ) )
             {
-                Str::Copy( tag, player ? player->GetName() : "" );
+                Str::Copy( tag, player ? player->GetName().c_str() : "" );
             }
             // Npc name
             else if( Str::CompareCase( tag, "nname" ) )
             {
-                Str::Copy( tag, npc ? npc->GetName() : "" );
+                Str::Copy( tag, npc ? npc->GetName().c_str() : "" );
             }
             // Sex
             else if( Str::CompareCase( tag, "sex" ) )
@@ -313,23 +312,18 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
             {
                 char func_name[ MAX_FOTEXT ];
                 Str::CopyWord( func_name, &tag[ 7 ], '$', false );
-                uint bind_id = Script::BindByFuncName( func_name, "string@ %s(string&)", true );
+                uint bind_id = Script::BindByFuncName( func_name, "string %s(string)", true );
                 Str::Copy( tag, "<script function not found>" );
                 if( bind_id )
                 {
-                    ScriptString* script_lexems = ScriptString::Create( lexems ? lexems : "" );
+                    string script_lexems = lexems ? lexems : "";
                     Script::PrepareContext( bind_id, "Game" );
-                    Script::SetArgObject( script_lexems );
+                    Script::SetArgObject( &script_lexems );
                     if( Script::RunPrepared() )
                     {
-                        ScriptString* result = (ScriptString*) Script::GetReturnedObject();
-                        if( result )
-                        {
-                            Str::Copy( tag, result->c_str() );
-                            result->Release();
-                        }
+                        string& result = *(string*) Script::GetReturnedObject();
+                        Str::Copy( tag, result.c_str() );
                     }
-                    script_lexems->Release();
                 }
             }
             // Error
@@ -356,7 +350,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::ShowMainScreen( int new_screen, ScriptDictionary* params /* = NULL */ )
+void FOClient::ShowMainScreen( int new_screen, CScriptDictionary* params /* = NULL */ )
 {
     while( GetActiveScreen() != SCREEN_NONE )
         HideScreen( SCREEN_NONE );
@@ -397,7 +391,7 @@ int FOClient::GetActiveScreen( IntVec** screens /* = NULL */ )
     static IntVec active_screens;
     active_screens.clear();
 
-    ScriptArray* arr = Script::CreateArray( "int[]" );
+    CScriptArray* arr = Script::CreateArray( "int[]" );
     Script::RaiseInternalEvent( ClientFunctions.GetActiveScreens, arr );
     Script::AssignScriptArrayInVector( active_screens, arr );
     arr->Release();
@@ -417,7 +411,7 @@ bool FOClient::IsScreenPresent( int screen )
     return std::find( active_screens->begin(), active_screens->end(), screen ) != active_screens->end();
 }
 
-void FOClient::ShowScreen( int screen, ScriptDictionary* params /* = NULL */ )
+void FOClient::ShowScreen( int screen, CScriptDictionary* params /* = NULL */ )
 {
     RunScreenScript( true, screen, params );
 }
@@ -432,7 +426,7 @@ void FOClient::HideScreen( int screen )
     RunScreenScript( false, screen, nullptr );
 }
 
-void FOClient::RunScreenScript( bool show, int screen, ScriptDictionary* params )
+void FOClient::RunScreenScript( bool show, int screen, CScriptDictionary* params )
 {
     Script::RaiseInternalEvent( ClientFunctions.ScreenChange, show, screen, params );
 }
@@ -525,27 +519,22 @@ void FOClient::GmapNullParams()
 
 void FOClient::ShowDialogBox()
 {
-    ScriptArray* button_texts = Script::CreateArray( "string@[]" );
+    CScriptArray* button_texts = Script::CreateArray( "string[]" );
     for( uint i = 0; i < DlgboxButtonsCount; i++ )
-    {
-        ScriptString* sstr = ScriptString::Create( DlgboxButtonText[ i ].c_str() );
-        button_texts->InsertLast( &sstr );
-        sstr->Release();
-    }
+        button_texts->InsertLast( &DlgboxButtonText[ i ] );
 
-    ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
-    int               type = DlgboxType;
+    CScriptDictionary* dict = CScriptDictionary::Create( Script::GetEngine() );
+    int                type = DlgboxType;
     dict->Set( "BoxType", &type, asTYPEID_INT32 );
     dict->Set( "WaitTime", &DlgboxWait, asTYPEID_UINT32 );
     dict->Set( "Buttons", &DlgboxButtonsCount, asTYPEID_UINT32 );
-    ScriptString* text = ScriptString::Create( DlgboxText );
-    dict->Set( "Text", &text, Script::GetEngine()->GetTypeIdByDecl( "string@" ) );
-    dict->Set( "ButtonTexts", &button_texts, Script::GetEngine()->GetTypeIdByDecl( "string@[]@" ) );
+    string text = DlgboxText;
+    dict->Set( "Text", &text, Script::GetEngine()->GetTypeIdByDecl( "string" ) );
+    dict->Set( "ButtonTexts", &button_texts, Script::GetEngine()->GetTypeIdByDecl( "string[]@" ) );
 
     ShowScreen( SCREEN__DIALOGBOX, dict );
 
     button_texts->Release();
-    text->Release();
     dict->Release();
 }
 

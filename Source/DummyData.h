@@ -116,7 +116,6 @@ struct Critter: public Entity
     int Anim2Life;
     int Anim2Knockout;
     int Anim2Dead;
-    int Name;
     int NameOnHead;
     int Avatar;
     int DialogId;
@@ -127,7 +126,7 @@ struct Critter: public Entity
 
     int Data;
     int Flags;
-    int NameStr;
+    int Name;
     int IsRunning;
 };
 typedef Critter CritterCl;

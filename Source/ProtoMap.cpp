@@ -27,8 +27,8 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, WorkHexX );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, WorkHexY );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, int, CurDayTime );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, hash, ScriptId );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ScriptArray *, DayTime );    // 4 int
-CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ScriptArray *, DayColor );   // 12 uchar
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, CScriptArray *, DayTime );    // 4 int
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, CScriptArray *, DayColor );   // 12 uchar
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, bool, IsNoLogOut );
 
 ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, Map::PropertiesRegistrator )
@@ -173,7 +173,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
         if( !proto )
         {
-            WriteLog( "Proto critter '%s' not found.\n", Str::GetName( proto_id ) );
+            WriteLog( "Proto critter '{}' not found.\n", Str::GetName( proto_id ) );
             errors++;
             continue;
         }
@@ -185,7 +185,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         #endif
         if( !npc->Props.LoadFromText( kv ) )
         {
-            WriteLog( "Unable to load critter '%s' properties.\n", Str::GetName( proto_id ) );
+            WriteLog( "Unable to load critter '{}' properties.\n", Str::GetName( proto_id ) );
             errors++;
             continue;
         }
@@ -211,7 +211,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
         if( !proto )
         {
-            WriteLog( "Proto item '%s' not found.\n", Str::GetName( proto_id ) );
+            WriteLog( "Proto item '{}' not found.\n", Str::GetName( proto_id ) );
             errors++;
             continue;
         }
@@ -219,7 +219,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         Item* item = new Item( id, proto );
         if( !item->Props.LoadFromText( kv ) )
         {
-            WriteLog( "Unable to load item '%s' properties.\n", Str::GetName( proto_id ) );
+            WriteLog( "Unable to load item '{}' properties.\n", Str::GetName( proto_id ) );
             errors++;
             continue;
         }
@@ -249,13 +249,13 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         bool is_roof = ( kv.count( "IsRoof" ) ? Str::AtoB( kv[ "IsRoof" ].c_str() ) : false );
         if( hx < 0 || hx >= GetWidth() || hy < 0 || hy > GetHeight() )
         {
-            WriteLog( "Tile '%s' have wrong hex position %d %d.\n", Str::GetName( name ), hx, hy );
+            WriteLog( "Tile '{}' have wrong hex position {} {}.\n", Str::GetName( name ), hx, hy );
             errors++;
             continue;
         }
         if( layer < 0 || layer > 255 )
         {
-            WriteLog( "Tile '%s' have wrong layer value %d.\n", Str::GetName( name ), layer );
+            WriteLog( "Tile '{}' have wrong layer value {}.\n", Str::GetName( name ), layer );
             errors++;
             continue;
         }
@@ -373,11 +373,11 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         }
         if( !script_name.empty() )
             SetScriptId( Str::GetHash( script_name.c_str() ) );
-        ScriptArray* arr = Script::CreateArray( "int[]" );
+        CScriptArray* arr = Script::CreateArray( "int[]" );
         Script::AppendVectorToArray( vec, arr );
         SetDayTime( arr );
         arr->Release();
-        ScriptArray* arr2 = Script::CreateArray( "uint8[]" );
+        CScriptArray* arr2 = Script::CreateArray( "uint8[]" );
         Script::AppendVectorToArray( vec2, arr2 );
         SetDayColor( arr2 );
         arr2->Release();
@@ -535,12 +535,12 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                             proto_id = Str::GetHash( svalue );
                             if( is_critter && !ProtoMngr.GetProtoCritter( proto_id ) )
                             {
-                                WriteLog( "Critter prototype '%s' not found.\n", svalue );
+                                WriteLog( "Critter prototype '{}' not found.\n", svalue );
                                 fail = true;
                             }
                             else if( !is_critter && !ProtoMngr.GetProtoItem( proto_id ) )
                             {
-                                WriteLog( "Item prototype '%s' not found.\n", svalue );
+                                WriteLog( "Item prototype '{}' not found.\n", svalue );
                                 fail = true;
                             }
                         }
@@ -619,7 +619,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                                 cur_prop = MUTUAL_CRITTER::PropertiesRegistrator->Find( svalue );
                                 if( !cur_prop )
                                 {
-                                    WriteLog( "Critter property '%s' not found.\n", svalue );
+                                    WriteLog( "Critter property '{}' not found.\n", svalue );
                                     fail = true;
                                 }
                             }
@@ -718,7 +718,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         {
             RUNTIME_ASSERT( entity->Type == EntityType::Item );
             RUNTIME_ASSERT( entity_addon.ParamsCount <= 5 );
-            ScriptArray* params = Script::CreateArray( "int[]" );
+            CScriptArray* params = Script::CreateArray( "int[]" );
             for( uint i = 0; i < entity_addon.ParamsCount; i++ )
                 params->InsertLast( &entity_addon.Params[ i ] );
             ( (Item*) entity )->SetSceneryParams( params );
@@ -900,7 +900,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
         ushort hy = item->GetHexY();
         if( hx >= maxhx || hy >= maxhy )
         {
-            WriteLog( "Invalid item '%s' position on map '%s', hex x %u, hex y %u.\n", item->GetName(), GetName(), hx, hy );
+            WriteLog( "Invalid item '{}' position on map '{}', hex x {}, hex y {}.\n", item->GetName(), GetName(), hx, hy );
             continue;
         }
 
@@ -1025,10 +1025,10 @@ bool ProtoMap::BindScripts( EntityVec& entities )
     // Map script
     if( GetScriptId() )
     {
-        hash func_num = Script::BindScriptFuncNumByFuncName( Str::GetName( GetScriptId() ), "void %s(Map&,bool)" );
+        hash func_num = Script::BindScriptFuncNumByFuncName( Str::GetName( GetScriptId() ), "void %s(Map, bool)" );
         if( !func_num )
         {
-            WriteLog( "Map '%s', can't bind map function '%s'.\n", GetName(), Str::GetName( GetScriptId() ) );
+            WriteLog( "Map '{}', can't bind map function '{}'.\n", GetName(), Str::GetName( GetScriptId() ) );
             errors++;
         }
     }
@@ -1039,20 +1039,20 @@ bool ProtoMap::BindScripts( EntityVec& entities )
         if( entity->Type == MUTUAL_CRITTER_TYPE && ( (MUTUAL_CRITTER*) entity )->GetScriptId() )
         {
             const char* func_name = Str::GetName( ( (MUTUAL_CRITTER*) entity )->GetScriptId() );
-            hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Critter&,bool)" );
+            hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Critter, bool)" );
             if( !func_num )
             {
-                WriteLog( "Map '%s', can't bind critter function '%s'.\n", GetName(), func_name );
+                WriteLog( "Map '{}', can't bind critter function '{}'.\n", GetName(), func_name );
                 errors++;
             }
         }
         else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
         {
             const char* func_name = Str::GetName( ( (Item*) entity )->GetScriptId() );
-            hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Item&,bool)" );
+            hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Item, bool)" );
             if( !func_num )
             {
-                WriteLog( "Map '%s', can't bind item function '%s'.\n", GetName(), func_name );
+                WriteLog( "Map '{}', can't bind item function '{}'.\n", GetName(), func_name );
                 errors++;
             }
         }
@@ -1062,12 +1062,12 @@ bool ProtoMap::BindScripts( EntityVec& entities )
             const char* func_name = Str::GetName( item->GetScriptId() );
             uint bind_id = 0;
             if( item->GetProtoId() != SP_SCEN_TRIGGER )
-                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter&,const Item&,Item@,int)", false );
+                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter, const Item, Item, int)", false );
             else
-                bind_id = Script::BindByFuncName( func_name, "void %s(Critter&,const Item&,bool,uint8)", false );
+                bind_id = Script::BindByFuncName( func_name, "void %s(Critter, const Item, bool, uint8)", false );
             if( !bind_id )
             {
-                WriteLog( "Map '%s', can't bind scenery function '%s'.\n", GetName(), func_name );
+                WriteLog( "Map '{}', can't bind scenery function '{}'.\n", GetName(), func_name );
                 errors++;
             }
             item->SceneryScriptBindId = bind_id;
@@ -1085,7 +1085,7 @@ bool ProtoMap::Load()
     FileManager& map_file = maps.FindFile( GetName(), &path );
     if( !map_file.IsLoaded() )
     {
-        WriteLog( "Map '%s' not found.\n", GetName() );
+        WriteLog( "Map '{}' not found.\n", GetName() );
         return false;
     }
 
@@ -1099,12 +1099,12 @@ bool ProtoMap::Load()
     bool is_old_format = ( Str::Substring( data, "[Header]" ) && Str::Substring( data, "[Tiles]" ) && Str::Substring( data, "[Objects]" ) );
     if( is_old_format && !LoadOldTextFormat( data ) )
     {
-        WriteLog( "Unable to load map '%s' from old map format.\n", GetName() );
+        WriteLog( "Unable to load map '{}' from old map format.\n", GetName() );
         return false;
     }
     else if( !is_old_format && !LoadTextFormat( data ) )
     {
-        WriteLog( "Unable to load map '%s'.\n", GetName() );
+        WriteLog( "Unable to load map '{}'.\n", GetName() );
         return false;
     }
 
@@ -1123,11 +1123,11 @@ void ProtoMap::GenNew()
     // Nigh		23.00 -  4.59	1380
     IntVec vec = { 300, 600, 1140, 1380 };
     UCharVec vec2 = { 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29 };
-    ScriptArray* arr = Script::CreateArray( "int[]" );
+    CScriptArray* arr = Script::CreateArray( "int[]" );
     Script::AppendVectorToArray( vec, arr );
     SetDayTime( arr );
     arr->Release();
-    ScriptArray* arr2 = Script::CreateArray( "uint8[]" );
+    CScriptArray* arr2 = Script::CreateArray( "uint8[]" );
     Script::AppendVectorToArray( vec2, arr2 );
     SetDayColor( arr2 );
     arr2->Release();
@@ -1143,7 +1143,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
     string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : string( GetName() ) ) + ".fomap";
     if( !file.SaveFile( save_fname.c_str() ) )
     {
-        WriteLog( "Unable write file '%s' in modules.\n", save_fname.c_str() );
+        WriteLog( "Unable write file '{}' in modules.\n", save_fname.c_str() );
         return false;
     }
     return true;
@@ -1299,7 +1299,7 @@ Item* ProtoMap::GetMapGrid( ushort hx, ushort hy )
 
 #endif // FONLINE_SERVER
 
-CLASS_PROPERTY_ALIAS_IMPL( ProtoLocation, Location, ScriptArray *, MapProtos );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoLocation, Location, CScriptArray *, MapProtos );
 
 ProtoLocation::ProtoLocation( hash pid ): ProtoEntity( pid, Location::PropertiesRegistrator )
 {

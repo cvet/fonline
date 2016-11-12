@@ -87,7 +87,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLog( "Proto item '%s' not found.\n", Str::GetName( pid ) );
+        WriteLog( "Proto item '{}' not found.\n", Str::GetName( pid ) );
         return nullptr;
     }
 
@@ -112,7 +112,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     // Verify destroying
     if( item->IsDestroyed )
     {
-        WriteLog( "Item destroyed after prototype '%s' initialization.\n", Str::GetName( pid ) );
+        WriteLog( "Item destroyed after prototype '{}' initialization.\n", Str::GetName( pid ) );
         return nullptr;
     }
 
@@ -124,14 +124,14 @@ bool ItemManager::RestoreItem( uint id, hash proto_id, const StrMap& props_data 
     ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
     if( !proto )
     {
-        WriteLog( "Proto item '%s' is not loaded.\n", Str::GetName( proto_id ) );
+        WriteLog( "Proto item '{}' is not loaded.\n", Str::GetName( proto_id ) );
         return false;
     }
 
     Item* item = new Item( id, proto );
     if( !item->Props.LoadFromText( props_data ) )
     {
-        WriteLog( "Fail to restore properties for item '%s' (%u).\n", Str::GetName( proto_id ), id );
+        WriteLog( "Fail to restore properties for item '{}' ({}).\n", Str::GetName( proto_id ), id );
         item->Release();
         return false;
     }
@@ -194,7 +194,7 @@ Item* ItemManager::SplitItem( Item* item, uint count )
     Item* new_item = CreateItem( item->GetProtoId(), count, &item->Props ); // Ignore init script
     if( !new_item )
     {
-        WriteLog( "Create item '%s' fail, count %u.\n", item->GetName(), count );
+        WriteLog( "Create item '{}' fail, count {}.\n", item->GetName(), count );
         return nullptr;
     }
 
@@ -482,7 +482,7 @@ bool ItemManager::MoveItemCritters( Critter* from_cr, Critter* to_cr, Item* item
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLog( "Create item '%s' fail.\n", item->GetName() );
+                WriteLog( "Create item '{}' fail.\n", item->GetName() );
                 return false;
             }
 
@@ -521,7 +521,7 @@ bool ItemManager::MoveItemCritterToCont( Critter* from_cr, Item* to_cont, Item* 
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLog( "Create item '%s' fail.\n", item->GetName() );
+                WriteLog( "Create item '{}' fail.\n", item->GetName() );
                 return false;
             }
 
@@ -561,7 +561,7 @@ bool ItemManager::MoveItemCritterFromCont( Item* from_cont, Critter* to_cr, Item
             item_ = ItemMngr.CreateItem( item->GetProtoId(), count );
             if( !item_ )
             {
-                WriteLog( "Create item '%s' fail.\n", item->GetName() );
+                WriteLog( "Create item '{}' fail.\n", item->GetName() );
                 return false;
             }
 

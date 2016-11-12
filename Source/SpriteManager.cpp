@@ -88,19 +88,19 @@ bool SpriteManager::Init()
                                    SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
     if( !MainWindow )
     {
-        WriteLog( "SDL Window not created, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL Window not created, error '{}'.\n", SDL_GetError() );
         return false;
     }
 
     GLContext = SDL_GL_CreateContext( MainWindow );
     if( !GLContext )
     {
-        WriteLog( "OpenGL context not created, error '%s'.\n", SDL_GetError() );
+        WriteLog( "OpenGL context not created, error '{}'.\n", SDL_GetError() );
         return false;
     }
     if( SDL_GL_MakeCurrent( MainWindow, GLContext ) < 0 )
     {
-        WriteLog( "Can't set current context, error '%s'.\n", SDL_GetError() );
+        WriteLog( "Can't set current context, error '{}'.\n", SDL_GetError() );
         return false;
     }
 
@@ -122,7 +122,7 @@ bool SpriteManager::Init()
     atlasHeight = MIN( 2048, atlasHeight );
     if( atlasWidth != 2048 || atlasHeight != 2048 )
     {
-        WriteLog( "Max texture size must be at least 2048x2048, current is %ux%u.\n", atlasWidth, atlasHeight );
+        WriteLog( "Max texture size must be at least 2048x2048, current is {}x{}.\n", atlasWidth, atlasHeight );
         return false;
     }
 
@@ -131,7 +131,7 @@ bool SpriteManager::Init()
     GLenum glew_result = glewInit();
     if( glew_result != GLEW_OK )
     {
-        WriteLog( "GLEW not initialized, result %u.\n", glew_result );
+        WriteLog( "GLEW not initialized, result {}.\n", glew_result );
         return false;
     }
     OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
@@ -170,7 +170,7 @@ bool SpriteManager::Init()
         if( !GL_HAS( ext ) )                                                      \
         {                                                                         \
             const char* msg = ( critical ? "Critical" : "Not critical" );         \
-            WriteLog( "OpenGL extension '" # ext "' not supported. %s.\n", msg ); \
+            WriteLog( "OpenGL extension '" # ext "' not supported. {}.\n", msg ); \
             if( critical )                                                        \
                 extension_errors++;                                               \
         }
@@ -518,7 +518,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
         if( status != GL_FRAMEBUFFER_COMPLETE )
         {
-            WriteLog( "Framebuffer not created, status %08X.\n", status );
+            WriteLog( "Framebuffer not created, status {:#X}.\n", status );
             return nullptr;
         }
     }
@@ -528,7 +528,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
         GL( status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT ) );
         if( status != GL_FRAMEBUFFER_COMPLETE_EXT )
         {
-            WriteLog( "FramebufferExt not created, status %08X.\n", status );
+            WriteLog( "FramebufferExt not created, status {:#X}.\n", status );
             return nullptr;
         }
     }
@@ -1290,7 +1290,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = 
     const char* ext = FileManager::GetExtension( fname );
     if( !ext )
     {
-        WriteLog( "Extension not found, file '%s'.\n", fname );
+        WriteLog( "Extension not found, file '{}'.\n", fname );
         return dummy;
     }
 
@@ -1320,7 +1320,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = 
     else if( Is3dExtensionSupported( ext ) )
         result = LoadAnimation3d( fname );
     else
-        WriteLog( "Unsupported image file format '%s', file '%s'.\n", ext, fname );
+        WriteLog( "Unsupported image file format '{}', file '{}'.\n", ext, fname );
 
     return result ? result : dummy;
 }
@@ -1417,7 +1417,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
             {
                 if( dir > 1 )
                 {
-                    WriteLog( "File '%s' not found.\n", fname_ );
+                    WriteLog( "File '{}' not found.\n", fname_ );
                     AnyFrames::Destroy( base_anim );
                     return nullptr;
                 }
@@ -1436,7 +1436,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
         {
             if( dir > 1 )
             {
-                WriteLog( "FRM file '%s' truncated.\n", fname );
+                WriteLog( "FRM file '{}' truncated.\n", fname );
                 AnyFrames::Destroy( base_anim );
                 return nullptr;
             }
@@ -1725,7 +1725,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
 
             if( dir > 1 )
             {
-                WriteLog( "FOFRM file '%s' invalid apps.\n", fname );
+                WriteLog( "FOFRM file '{}' invalid apps.\n", fname );
                 AnyFrames::Destroy( base_anim );
                 return nullptr;
             }
@@ -1758,7 +1758,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
             AnyFrames* anim = LoadAnimation( buf );
             if( !anim )
             {
-                WriteLog( "Anim '%s' not found.\n", buf );
+                WriteLog( "Anim '{}' not found.\n", buf );
                 load_fail = true;
                 break;
             }
@@ -1776,7 +1776,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
             if( no_info && dir == 1 )
                 break;
 
-            WriteLog( "FOFRM file '%s' invalid data.\n", fname );
+            WriteLog( "FOFRM file '{}' invalid data.\n", fname );
             for( uint i = 0, j = (uint) anims.size(); i < j; i++ )
                 AnyFrames::Destroy( anims[ i ] );
             AnyFrames::Destroy( base_anim );
@@ -3814,7 +3814,7 @@ void SpriteManager::InitializeEgg( const char* egg_name )
     }
     else
     {
-        WriteLog( "Load sprite '%s' fail. Egg disabled.\n", egg_name );
+        WriteLog( "Load sprite '{}' fail. Egg disabled.\n", egg_name );
     }
     #endif
 }

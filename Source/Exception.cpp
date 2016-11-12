@@ -29,7 +29,8 @@ char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
 LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
 LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except );
 
-void DumpAngelScript( FILE* f );
+# pragma MESSAGE( "Dump AS stack trace?" )
+static void DumpAngelScript( FILE* f );
 
 // Old version of the structure, used before Vista
 typedef struct _IMAGEHLP_MODULE64_V2
@@ -167,7 +168,7 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         }
 
         // AngelScript dump
-        DumpAngelScript( f );
+        // DumpAngelScript( f );
 
         // Collect current threads
         HANDLE process = GetCurrentProcess();
@@ -530,7 +531,7 @@ bool sigactionsSetted = false;
 struct sigaction oldSIGSEGV;
 struct sigaction oldSIGFPE;
 
-void DumpAngelScript( FILE* f );
+static void DumpAngelScript( FILE* f );
 
 void CatchExceptions( const char* app_name, int app_ver )
 {
@@ -654,7 +655,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         }
 
         // AngelScript dump
-        DumpAngelScript( f );
+        // DumpAngelScript( f );
 
         // Threads
         fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
@@ -723,7 +724,7 @@ void CreateDump( const char* appendix, const char* message )
 
 #endif
 
-void DumpAngelScript( FILE* f )
+static void DumpAngelScript( FILE* f )
 {
     ContextVec contexts;
     Script::GetExecutionContexts( contexts );

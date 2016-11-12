@@ -126,7 +126,7 @@ bool NpcAIMngr::LoadNpcBags()
     IniParser bags_txt;
     if( !bags_txt.AppendFile( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) )
     {
-        WriteLog( "File '%s' not found.\n", FileManager::GetDataPath( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) );
+        WriteLog( "File '{}' not found.\n", FileManager::GetDataPath( BAGS_FILE_NAME, PT_SERVER_CONFIGS ) );
         npcBags.resize( 1 );
         return true;
     }
@@ -154,7 +154,7 @@ bool NpcAIMngr::LoadNpcBags()
                 // Get combination line
                 if( !( bag_str = bags_txt.GetStr( "", c.c_str(), "" ) ) )
                 {
-                    WriteLog( "Items combination '%s' not found.\n", c.c_str() );
+                    WriteLog( "Items combination '{}' not found.\n", c.c_str() );
                     return false;
                 }
 
@@ -171,7 +171,7 @@ bool NpcAIMngr::LoadNpcBags()
                         NpcBagItem& b = items[ k ];
                         if( b.MinCnt > b.MaxCnt )
                         {
-                            WriteLog( "Invalid items combination '%s', item combination %d, number %d.\n", c.c_str(), l, k );
+                            WriteLog( "Invalid items combination '{}', item combination {}, number {}.\n", c.c_str(), l, k );
                             return false;
                         }
                     }
@@ -187,7 +187,7 @@ bool NpcAIMngr::LoadNpcBags()
         bag_count++;
     }
 
-    WriteLog( "Load NPC bags complete, count %d.\n", bag_count );
+    WriteLog( "Load NPC bags complete, count {}.\n", bag_count );
     return true;
 }
 

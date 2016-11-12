@@ -142,7 +142,7 @@ int main( int argc, char** argv )
         HANDLE      map_file = nullptr;
         if( sscanf( ptr, "%p%p", &map_file, &SingleplayerClientProcess ) != 2 || !SingleplayerData.Attach( map_file ) )
         {
-            WriteLog( "Can't attach to mapped file '%p'.\n", map_file );
+            WriteLog( "Can't attach to mapped file {}.\n", map_file );
             return 0;
         }
         # else
@@ -155,11 +155,11 @@ int main( int argc, char** argv )
     {
         Fl::lock();         // Begin GUI multi threading
         GUIInit();
-        LogToFile( nullptr );
+        LogToFile( "" );
         LogToBuffer( true );
     }
 
-    WriteLog( "FOnline server, version %d.\n", FONLINE_VERSION );
+    WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
 
     FOQuit = true;
     Script::SetLogDebugInfo( false );
@@ -782,7 +782,7 @@ void ServiceMain( bool as_service )
     char exe_path[ MAX_FOPATH ];
     GetModuleFileName( GetModuleHandle( nullptr ), exe_path, MAX_FOPATH );
     char path[ MAX_FOPATH ];
-    Str::Format( path, "\"%s\" --service %s", exe_path, CommandLine );
+    Str::Format( path, "\"%s\" --service %s", exe_path, GameOpt.CommandLine.c_str() );
 
     // Change executable path, if changed
     if( service )
@@ -817,7 +817,7 @@ VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 {
     Thread::SetCurrentName( "Service" );
     LogToFile( "FOnlineServer.log" );
-    WriteLog( "FOnline server service, version %d.\n", FONLINE_VERSION );
+    WriteLog( "FOnline server service, version {}.\n", FONLINE_VERSION );
 
     FOServiceStatusHandle = RegisterServiceCtrlHandler( "FOnlineServer", FOServiceCtrlHandler );
     if( !FOServiceStatusHandle )
@@ -912,7 +912,7 @@ int main( int argc, char** argv )
         pid_t parpid = fork();
         if( parpid < 0 )
         {
-            WriteLog( "Create child process (fork) fail, error '%s'.", ERRORSTR );
+            WriteLog( "Create child process (fork) fail, error '{}'.", ERRORSTR );
             return 1;
         }
         else if( parpid != 0 )
@@ -927,7 +927,7 @@ int main( int argc, char** argv )
 
         if( setsid() < 0 )
         {
-            WriteLog( "Generate process index (setsid) fail, error '%s'.\n", ERRORSTR );
+            WriteLog( "Generate process index (setsid) fail, error '{}'.\n", ERRORSTR );
             return 1;
         }
     }
@@ -968,9 +968,9 @@ int main( int argc, char** argv )
     LogToFile( "./FOnlineServerDaemon.log" );
 
     // Log version
-    WriteLog( "FOnline server daemon, version %d.\n", FONLINE_VERSION );
+    WriteLog( "FOnline server daemon, version {}.\n", FONLINE_VERSION );
     if( Str::Length( CommandLine ) > 0 )
-        WriteLog( "Command line '%s'.\n", CommandLine );
+        WriteLog( "Command line '{}'.\n", CommandLine );
 
     // Update stuff
     if( !Singleplayer && Str::Substring( CommandLine, "-game" ) )
@@ -1245,7 +1245,7 @@ void AdminWork( void* session_ )
             }
             else
             {
-                WriteLog( "Wrong access key entered in admin panel from IP '%s', disconnect.\n", inet_ntoa( s->From.sin_addr ) );
+                WriteLog( "Wrong access key entered in admin panel from IP '{}', disconnect.\n", inet_ntoa( s->From.sin_addr ) );
                 char failstr[] = { "Wrong access key!\n" };
                 send( s->Sock, failstr, Str::Length( failstr ) + 1, 0 );
                 goto label_Finish;
@@ -1382,7 +1382,7 @@ void AdminWork( void* session_ )
                 {
                     uint msg;
                     buf >> msg;
-                    WriteLog( ADMIN_PREFIX "Execute command '%s'.\n", admin_name, cmd );
+                    WriteLog( ADMIN_PREFIX "Execute command '{}'.\n", admin_name, cmd );
                     Server.Process_Command( buf, LogCB::Message, nullptr, admin_name );
                 }
 

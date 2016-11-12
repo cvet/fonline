@@ -86,9 +86,9 @@ CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::Cr
     OxExtSpeed = OyExtSpeed = 0;
     OffsExtNextTick = 0;
     Anim3d = Anim3dStay = nullptr;
-    Name = ScriptString::Create();
-    NameOnHead = ScriptString::Create();
-    Avatar = ScriptString::Create();
+    Name = "";
+    NameOnHead = "";
+    Avatar = "";
     ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_SLOT ) );
     ItemSlotArmor = DefItemSlotArmor = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
     DefItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
@@ -104,7 +104,7 @@ CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::Cr
     textOnHeadColor = COLOR_CRITTER_NAME;
 
     #ifdef FONLINE_CLIENT
-    ScriptArray* arr = Script::CreateArray( "int[]" );
+    CScriptArray* arr = Script::CreateArray( "int[]" );
     arr->Resize( LAYERS3D_COUNT );
     SetAnim3dLayer( arr );
     arr->Release();
@@ -868,7 +868,7 @@ void CritterCl::ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim
 
 int* CritterCl::GetLayers3dData()
 {
-    ScriptArray* layers = GetAnim3dLayer();
+    CScriptArray* layers = GetAnim3dLayer();
     if( layers->GetSize() == LAYERS3D_COUNT )
         memcpy( anim3dLayers, layers->At( 0 ), sizeof( anim3dLayers ) );
     else
@@ -1142,17 +1142,19 @@ void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int&
 
         nameVisible = true;
 
-        if( NameOnHead->length() )
-            Str::Copy( str, NameOnHead->c_str() );
+        if( !NameOnHead.empty() )
+            Str::Copy( str, NameOnHead.c_str() );
         else
-            Str::Copy( str, Name->c_str() );
+            Str::Copy( str, Name.c_str() );
         if( GameOpt.ShowCritId )
             Str::Append( str, Str::FormatBuf( "  %u", GetId() ) );
         if( FLAG( Flags, FCRIT_DISCONNECT ) )
-            Str::Append( str, GameOpt.PlayerOffAppendix->c_str() );
+            Str::Append( str, GameOpt.PlayerOffAppendix.c_str() );
     }
     else
+    {
         Str::Copy( str, strTextOnHead.c_str() );
+    }
 
     Rect tr = GetTextRect();
     x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
@@ -1184,14 +1186,14 @@ void CritterCl::DrawTextOnHead()
         uint color;
         if( strTextOnHead.empty() )
         {
-            if( NameOnHead->length() )
-                Str::Copy( str, NameOnHead->c_str() );
+            if( !NameOnHead.empty() )
+                Str::Copy( str, NameOnHead.c_str() );
             else
-                Str::Copy( str, Name->c_str() );
+                Str::Copy( str, Name.c_str() );
             if( GameOpt.ShowCritId )
                 Str::Append( str, Str::FormatBuf( " (%u)", GetId() ) );
             if( FLAG( Flags, FCRIT_DISCONNECT ) )
-                Str::Append( str, GameOpt.PlayerOffAppendix->c_str() );
+                Str::Append( str, GameOpt.PlayerOffAppendix.c_str() );
             color = ( NameColor ? NameColor : COLOR_CRITTER_NAME );
         }
         else

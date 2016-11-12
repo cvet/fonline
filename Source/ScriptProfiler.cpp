@@ -38,7 +38,7 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
         saveFileHandle = FileOpen( dump_file, true );
         if( !saveFileHandle )
         {
-            WriteLog( "Couldn't open profiler dump file '%s'.\n", dump_file );
+            WriteLog( "Couldn't open profiler dump file '{}'.\n", dump_file );
             return false;
         }
 

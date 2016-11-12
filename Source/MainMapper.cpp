@@ -26,7 +26,7 @@ int main( int argc, char** argv )
     GetClientOptions();
 
     // Start
-    WriteLog( "Starting Mapper (version %d)...\n", FONLINE_VERSION );
+    WriteLog( "Starting Mapper (version {})...\n", FONLINE_VERSION );
 
     // Create engine
     FOMapper* mapper = new FOMapper();

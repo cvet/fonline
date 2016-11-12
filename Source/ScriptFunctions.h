@@ -51,9 +51,9 @@ void Global_Assert( bool condition )
         Script::RaiseException( "Assertion failed" );
 }
 
-void Global_ThrowException( ScriptString* message )
+void Global_ThrowException( const string& message )
 {
-    Script::RaiseException( "%s", message->c_str() );
+    Script::RaiseException( "%s", message.c_str() );
 }
 
 int Global_Random( int min, int max )
@@ -62,7 +62,7 @@ int Global_Random( int min, int max )
     return script_randomizer.Random( min, max );
 }
 
-void Global_Log( ScriptString& text )
+void Global_Log( const string& text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     Script::Log( text.c_str() );
@@ -71,19 +71,19 @@ void Global_Log( ScriptString& text )
     #endif
 }
 
-bool Global_StrToInt( ScriptString* text, int& result )
+bool Global_StrToInt( const string& text, int& result )
 {
-    if( !text || !text->length() || !Str::IsNumber( text->c_str() ) )
+    if( text.empty() || !Str::IsNumber( text.c_str() ) )
         return false;
-    result = Str::AtoI( text->c_str() );
+    result = Str::AtoI( text.c_str() );
     return true;
 }
 
-bool Global_StrToFloat( ScriptString* text, float& result )
+bool Global_StrToFloat( const string& text, float& result )
 {
-    if( !text || !text->length() )
+    if( text.empty() )
         return false;
-    result = (float) strtod( text->c_str(), nullptr );
+    result = (float) strtod( text.c_str(), nullptr );
     return true;
 }
 
@@ -117,54 +117,54 @@ bool Global_SetAngelScriptProperty( int property, uint value )
     return asGetActiveContext()->GetEngine()->SetEngineProperty( (asEEngineProp) property, value ) >= 0;
 }
 
-hash Global_GetStrHash( ScriptString* str )
+hash Global_GetStrHash( const string& str )
 {
-    if( !str )
+    if( str.empty() )
         return 0;
-    return Str::GetHash( str->c_str() );
+    return Str::GetHash( str.c_str() );
 }
 
-ScriptString* Global_GetHashStr( hash h )
+string Global_GetHashStr( hash h )
 {
     if( !h )
-        return ScriptString::Create();
+        return "";
     const char* str = Str::GetName( h );
-    return ScriptString::Create( str ? str : "" );
+    return str ? str : "";
 }
 
-uint Global_DecodeUTF8( ScriptString& text, uint& length )
+uint Global_DecodeUTF8( const string& text, uint& length )
 {
     return Str::DecodeUTF8( text.c_str(), &length );
 }
 
-ScriptString* Global_EncodeUTF8( uint ucs )
+string Global_EncodeUTF8( uint ucs )
 {
     char buf[ 5 ];
     uint len = Str::EncodeUTF8( ucs, buf );
     buf[ len ] = 0;
-    return ScriptString::Create( buf );
+    return buf;
 }
 
-uint Global_GetFolderFileNames( ScriptString& path, ScriptString* ext, bool include_subdirs, ScriptArray* result )
+uint Global_GetFolderFileNames( const string& path, const string& ext, bool include_subdirs, CScriptArray* result )
 {
     StrVec files;
-    FileManager::GetFolderFileNames( path.c_str(), include_subdirs, ext ? ext->c_str() : nullptr, files );
+    FileManager::GetFolderFileNames( path.c_str(), include_subdirs, !ext.empty() ? ext.c_str() : nullptr, files );
 
     if( result )
     {
-        for( uint i = 0, j = (uint) files.size(); i < j; i++ )
-            result->InsertLast( ScriptString::Create( files[ i ] ) );
+        for( auto& f : files )
+            result->InsertLast( &f );
     }
 
     return (uint) files.size();
 }
 
-bool Global_DeleteFile( ScriptString& filename )
+bool Global_DeleteFile( const string& filename )
 {
     return FileManager::DeleteFile( filename.c_str() );
 }
 
-void Global_CreateDirectoryTree( ScriptString& path )
+void Global_CreateDirectoryTree( const string& path )
 {
     char tmp[ MAX_FOPATH ];
     Str::Copy( tmp, path.c_str() );
@@ -194,7 +194,7 @@ static size_t WriteMemoryCallback( char* ptr, size_t size, size_t nmemb, void* u
 }
 #endif
 
-ScriptString* Global_SHA1( ScriptString& text )
+string Global_SHA1( const string& text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     SHA1_CTX ctx;
@@ -207,35 +207,35 @@ ScriptString* Global_SHA1( ScriptString& text )
     char               hex_digest[ SHA1_DIGEST_SIZE * 2 ];
     for( uint i = 0; i < sizeof( hex_digest ); i++ )
         hex_digest[ i ] = nums[ i % 2 ? digest[ i / 2 ] & 0xF : digest[ i / 2 ] >> 4 ];
-    return ScriptString::Create( hex_digest, sizeof( hex_digest ) );
+    return string( hex_digest, sizeof( hex_digest ) );
     #else
-    return nullptr;
+    return "";
     #endif
 }
 
-ScriptString* Global_SHA2( ScriptString& text )
+string Global_SHA2( const string& text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     const uint digest_size = 32;
     uchar      digest[ digest_size ];
-    sha256( (uchar*) text.c_str(), text.length(), digest );
+    sha256( (uchar*) text.c_str(), (uint) text.length(), digest );
 
     static const char* nums = "0123456789abcdef";
     char               hex_digest[ digest_size * 2 ];
     for( uint i = 0; i < sizeof( hex_digest ); i++ )
         hex_digest[ i ] = nums[ i % 2 ? digest[ i / 2 ] & 0xF : digest[ i / 2 ] >> 4 ];
-    return ScriptString::Create( hex_digest, sizeof( hex_digest ) );
+    return string( hex_digest, sizeof( hex_digest ) );
     #else
     return nullptr;
     #endif
 }
 
-void Global_OpenLink( ScriptString& link )
+void Global_OpenLink( const string& link )
 {
     #ifdef FO_WINDOWS
     ShellExecute( nullptr, "open", link.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
     #else
-    system( ( string( "xdg-open " ) + link.c_std_str() ).c_str() );
+    system( ( string( "xdg-open " ) + link ).c_str() );
     #endif
 }
 

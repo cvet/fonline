@@ -33,7 +33,7 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnim );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnimExt );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay_0 );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay_1 );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, ScriptString *, BlockLines );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, string, BlockLines );
 
 ProtoItem::ProtoItem( hash pid ): ProtoEntity( pid, Item::PropertiesRegistrator )
 {
@@ -46,7 +46,6 @@ CLASS_PROPERTY_IMPL( Item, PicMap );
 CLASS_PROPERTY_IMPL( Item, PicInv );
 CLASS_PROPERTY_IMPL( Item, OffsetX );
 CLASS_PROPERTY_IMPL( Item, OffsetY );
-CLASS_PROPERTY_IMPL( Item, Cost );
 CLASS_PROPERTY_IMPL( Item, LightIntensity );
 CLASS_PROPERTY_IMPL( Item, LightDistance );
 CLASS_PROPERTY_IMPL( Item, LightFlags );
@@ -129,7 +128,6 @@ CLASS_PROPERTY_IMPL( Item, Count );
 CLASS_PROPERTY_IMPL( Item, AmmoPid );
 CLASS_PROPERTY_IMPL( Item, AmmoCount );
 CLASS_PROPERTY_IMPL( Item, TrapValue );
-CLASS_PROPERTY_IMPL( Item, HolodiskNum );
 CLASS_PROPERTY_IMPL( Item, RadioChannel );
 CLASS_PROPERTY_IMPL( Item, RadioFlags );
 CLASS_PROPERTY_IMPL( Item, RadioBroadcastSend );
@@ -182,20 +180,19 @@ hash Item::GetChildPid( uint index )
     return 0;
 }
 
-ScriptString* Item::GetChildLinesStr( uint index )
+string Item::GetChildLinesStr( uint index )
 {
-    ScriptString* result = nullptr;
     if( index == 0 )
-        result = GetChildLines_0();
+        return GetChildLines_0();
     else if( index == 1 )
-        result = GetChildLines_1();
+        return GetChildLines_1();
     else if( index == 2 )
-        result = GetChildLines_2();
+        return GetChildLines_2();
     else if( index == 3 )
-        result = GetChildLines_3();
+        return GetChildLines_3();
     else if( index == 4 )
-        result = GetChildLines_4();
-    return result;
+        return GetChildLines_4();
+    return "";
 }
 
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -216,7 +213,7 @@ bool Item::SetScript( asIScriptFunction* func, bool first_time )
         hash func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLog( "Script bind fail, item '%s'.\n", GetName() );
+            WriteLog( "Script bind fail, item '{}'.\n", GetName() );
             return false;
         }
         SetScriptId( func_num );

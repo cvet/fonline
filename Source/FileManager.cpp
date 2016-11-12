@@ -100,7 +100,7 @@ bool FileManager::LoadDataFile( const char* path )
     DataFile* data_file = OpenDataFile( path );
     if( !data_file )
     {
-        WriteLog( "Load data '%s' fail.\n", path );
+        WriteLog( "Load data '{}' fail.\n", path );
         return false;
     }
 
@@ -139,7 +139,7 @@ bool FileManager::LoadFile( const char* path, bool no_read /* = false */ )
 {
     UnloadFile();
 
-    if( path[ 0 ] != '.' && path[ 0 ] != '/' && path[ 1 ] != ':' )
+    if( path[ 0 ] != '.' && path[ 0 ] != '/' && *path && path[ 1 ] != ':' )
     {
         // Make data path
         char data_path[ MAX_FOPATH ];
@@ -211,10 +211,12 @@ bool FileManager::LoadStream( const uchar* stream, uint length )
     UnloadFile();
     if( !length )
         return false;
+
     fileSize = length;
     fileBuf = new uchar[ fileSize + 1 ];
     if( !fileBuf )
         return false;
+
     memcpy( fileBuf, stream, fileSize );
     fileBuf[ fileSize ] = 0;
     curPos = 0;
@@ -297,6 +299,7 @@ bool FileManager::CopyMem( void* ptr, uint size )
         return false;
     if( curPos + size > fileSize )
         return false;
+
     memcpy( ptr, fileBuf + curPos, size );
     curPos += size;
     return true;
@@ -306,9 +309,11 @@ void FileManager::GetStrNT( char* str )
 {
     if( !str || curPos + 1 > fileSize )
         return;
+
     uint len = 1;
     while( *( fileBuf + curPos + len - 1 ) )
         len++;
+
     memcpy( str, fileBuf + curPos, len );
     curPos += len;
 }
@@ -326,6 +331,7 @@ ushort FileManager::GetBEUShort()
 {
     if( curPos + sizeof( ushort ) > fileSize )
         return 0;
+
     ushort res = 0;
     uchar* cres = (uchar*) &res;
     cres[ 1 ] = fileBuf[ curPos++ ];
@@ -337,6 +343,7 @@ ushort FileManager::GetLEUShort()
 {
     if( curPos + sizeof( ushort ) > fileSize )
         return 0;
+
     ushort res = 0;
     uchar* cres = (uchar*) &res;
     cres[ 0 ] = fileBuf[ curPos++ ];
@@ -348,6 +355,7 @@ uint FileManager::GetBEUInt()
 {
     if( curPos + sizeof( uint ) > fileSize )
         return 0;
+
     uint   res = 0;
     uchar* cres = (uchar*) &res;
     for( int i = 3; i >= 0; i-- )
@@ -359,6 +367,7 @@ uint FileManager::GetLEUInt()
 {
     if( curPos + sizeof( uint ) > fileSize )
         return 0;
+
     uint   res = 0;
     uchar* cres = (uchar*) &res;
     for( int i = 0; i <= 3; i++ )
@@ -370,6 +379,7 @@ uint FileManager::GetLE3UChar()
 {
     if( curPos + sizeof( uchar ) * 3 > fileSize )
         return 0;
+
     uint   res = 0;
     uchar* cres = (uchar*) &res;
     for( int i = 0; i <= 2; i++ )
@@ -381,6 +391,7 @@ float FileManager::GetBEFloat()
 {
     if( curPos + sizeof( float ) > fileSize )
         return 0.0f;
+
     float  res;
     uchar* cres = (uchar*) &res;
     for( int i = 3; i >= 0; i-- )
@@ -392,6 +403,7 @@ float FileManager::GetLEFloat()
 {
     if( curPos + sizeof( float ) > fileSize )
         return 0.0f;
+
     float  res;
     uchar* cres = (uchar*) &res;
     for( int i = 0; i <= 3; i++ )
@@ -578,9 +590,9 @@ void FileManager::SetLEUInt( uint data )
 void FileManager::ResetCurrentDir()
 {
     #ifdef FO_WINDOWS
-    SetCurrentDirectory( WorkDir.c_str() );
+    SetCurrentDirectory( GameOpt.WorkDir.c_str() );
     #else
-    chdir( WorkDir.c_str() );
+    chdir( GameOpt.WorkDir.c_str() );
     #endif
 }
 
@@ -936,7 +948,7 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
                 FileManager link;
                 if( !link.LoadFile( path.c_str() ) )
                 {
-                    WriteLog( "Can't read link file '%s'.\n", path.c_str() );
+                    WriteLog( "Can't read link file '{}'.\n", path.c_str() );
                     continue;
                 }
 

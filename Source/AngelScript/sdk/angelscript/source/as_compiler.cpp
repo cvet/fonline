@@ -9836,7 +9836,7 @@ int asCCompiler::CompileConstructCall(asCScriptNode *node, asCExprContext *ctx)
 	}
 
 	// Don't accept syntax like object@(expr)
-	if( dt.IsObjectHandle() )
+	if( dt.IsObjectHandle() && !dt.IsFuncdef() ) // Patch '&& !dt.IsFuncdef()'
 	{
 		asCString str;
 		str.Format(TXT_CANT_CONSTRUCT_s_USE_REF_CAST, dt.Format(outFunc->nameSpace).AddressOf());

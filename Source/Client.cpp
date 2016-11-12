@@ -135,7 +135,7 @@ bool FOClient::Init()
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
-        WriteLog( "SDL initialization fail, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL initialization fail, error '{}'.\n", SDL_GetError() );
         return false;
     }
     GET_UID1( UID1 );
@@ -219,14 +219,14 @@ bool FOClient::Init()
     UID_PREPARE_UID4_4;
 
     // User and password
-    if( !GameOpt.Name->length() && Password.empty() && !Singleplayer )
+    if( !GameOpt.Name.length() && Password.empty() && !Singleplayer )
     {
         bool  fail = false;
 
         uint  len;
         char* str = (char*) Crypt.GetCache( "__name", len );
         if( str && len <= UTF8_BUF_SIZE( MAX_NAME ) )
-            *GameOpt.Name = str;
+            GameOpt.Name = str;
         else
             fail = true;
         delete[] str;
@@ -240,9 +240,9 @@ bool FOClient::Init()
 
         if( fail )
         {
-            *GameOpt.Name = "login";
+            GameOpt.Name = "login";
             Password = "password";
-            Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
+            Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
             Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
         }
     }
@@ -262,8 +262,6 @@ bool FOClient::Init()
     // Language Packs
     const char* lang_name = MainConfig->GetStr( "", "Language", DEFAULT_LANGUAGE );
     CurLang.LoadFromCache( lang_name );
-    MsgUserHolo = new FOMsg();
-    MsgUserHolo->LoadFromFile( USER_HOLO_TEXTMSG_FILE );
 
     // Update
     UpdateFiles( true );
@@ -338,7 +336,7 @@ bool FOClient::Init()
     }
 
     // 3d initialization
-    WriteLog( "3d rendering is %s.\n", GameOpt.Enable3dRendering ? "enabled" : "disabled" );
+    WriteLog( "3d rendering is {}.\n", GameOpt.Enable3dRendering ? "enabled" : "disabled" );
     if( GameOpt.Enable3dRendering && !Animation3d::StartUp() )
     {
         WriteLog( "Can't initialize 3d rendering.\n" );
@@ -349,7 +347,7 @@ bool FOClient::Init()
     int result = InitIface();
     if( result != 0 )
     {
-        WriteLog( "Interface initialization fail on line %d.\n", result );
+        WriteLog( "Interface initialization fail on line {}.\n", result );
         return false;
     }
 
@@ -467,7 +465,7 @@ void FOClient::UpdateFiles( bool early_call )
     {
         // Connect to server
         UpdateFilesAddText( STR_CONNECT_TO_SERVER, "Connect to server..." );
-        const char* host = ( GameOpt.UpdateServerHost->length() > 0 ? GameOpt.UpdateServerHost->c_str() : GameOpt.Host->c_str() );
+        const char* host = ( GameOpt.UpdateServerHost.length() > 0 ? GameOpt.UpdateServerHost.c_str() : GameOpt.Host.c_str() );
         ushort      port = ( GameOpt.UpdateServerPort != 0 ? GameOpt.UpdateServerPort : GameOpt.Port );
         if( !NetConnect( host, port ) )
         {
@@ -601,7 +599,7 @@ void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
 
     if( !UpdateFilesFontLoaded )
     {
-        WriteLog( "Update files message '%s'.\n", num_str_str );
+        WriteLog( "Update files message '{}'.\n", num_str_str );
         SprMngr.BeginScene( COLOR_RGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) ) );
         SprMngr.EndScene();
     }
@@ -942,7 +940,7 @@ int FOClient::MainLoop()
         ShowMainScreen( SCREEN_WAIT );
 
         // Connect to server
-        if( !NetConnect( GameOpt.Host->c_str(), GameOpt.Port ) )
+        if( !NetConnect( GameOpt.Host.c_str(), GameOpt.Port ) )
         {
             ShowMainScreen( SCREEN_LOGIN );
             AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_FAIL ) );
@@ -951,7 +949,7 @@ int FOClient::MainLoop()
 
         // After connect things
         if( reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_LOGIN2 )
-            Net_SendLogIn( GameOpt.Name->c_str(), Password.c_str() );
+            Net_SendLogIn( GameOpt.Name.c_str(), Password.c_str() );
         else if( reason == INIT_NET_REASON_REG )
             Net_SendCreatePlayer();
         // else if( reason == INIT_NET_REASON_LOAD )
@@ -1217,14 +1215,7 @@ void FOClient::ParseKeyboard()
 
         // Key script event
         if( dikdw )
-        {
-            ScriptString* event_text_script = nullptr;
-            if( dikdw == DIK_TEXT )
-                event_text_script = ScriptString::Create( event_text );
-            Script::RaiseInternalEvent( ClientFunctions.KeyDown, dikdw, event_text_script );
-            if( event_text_script )
-                event_text_script->Release();
-        }
+            Script::RaiseInternalEvent( ClientFunctions.KeyDown, dikdw, &string( event_text ) );
 
         if( dikup )
             Script::RaiseInternalEvent( ClientFunctions.KeyUp, dikup );
@@ -1315,7 +1306,7 @@ void ContainerWheelScroll( int items_count, int cont_height, int item_height, in
 bool FOClient::NetConnect( const char* host, ushort port )
 {
     if( !Singleplayer )
-        WriteLog( "Connecting to server '%s:%d'.\n", host, port );
+        WriteLog( "Connecting to server '{}:{}'.\n", host, port );
     else
         WriteLog( "Connecting to server.\n" );
 
@@ -1325,7 +1316,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     WSADATA wsa;
     if( WSAStartup( MAKEWORD( 2, 2 ), &wsa ) )
     {
-        WriteLog( "WSAStartup error '%s'.\n", GetLastSocketError() );
+        WriteLog( "WSAStartup error '{}'.\n", GetLastSocketError() );
         return false;
     }
     #endif
@@ -1334,7 +1325,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     {
         if( !FillSockAddr( SockAddr, host, port ) )
             return false;
-        if( GameOpt.ProxyType && !FillSockAddr( ProxyAddr, GameOpt.ProxyHost->c_str(), GameOpt.ProxyPort ) )
+        if( GameOpt.ProxyType && !FillSockAddr( ProxyAddr, GameOpt.ProxyHost.c_str(), GameOpt.ProxyPort ) )
             return false;
     }
     else
@@ -1365,7 +1356,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     if( ( Sock = socket( AF_INET, SOCK_STREAM, 0 ) ) == INVALID_SOCKET )
     #endif
     {
-        WriteLog( "Create socket error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Create socket error '{}'.\n", GetLastSocketError() );
         return false;
     }
 
@@ -1375,7 +1366,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     {
         int optval = 1;
         if( setsockopt( Sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
-            WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '%s'.\n", WSAGetLastError() );
+            WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", WSAGetLastError() );
     }
     #endif
 
@@ -1384,7 +1375,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     {
         if( connect( Sock, (sockaddr*) &SockAddr, sizeof( sockaddr_in ) ) )
         {
-            WriteLog( "Can't connect to game server, error '%s'.\n", GetLastSocketError() );
+            WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
             return false;
         }
     }
@@ -1393,7 +1384,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     {
         if( connect( Sock, (sockaddr*) &ProxyAddr, sizeof( sockaddr_in ) ) )
         {
-            WriteLog( "Can't connect to proxy server, error '%s'.\n", GetLastSocketError() );
+            WriteLog( "Can't connect to proxy server, error '{}'.\n", GetLastSocketError() );
             return false;
         }
 
@@ -1456,7 +1447,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
                     WriteLog( "Proxy connection error, request failed because client's identd could not confirm the user ID string in the request.\n" );
                     break;
                 default:
-                    WriteLog( "Proxy connection error, Unknown error %u.\n", b2 );
+                    WriteLog( "Proxy connection error, Unknown error {}.\n", b2 );
                     break;
                 }
                 return false;
@@ -1464,22 +1455,22 @@ bool FOClient::NetConnect( const char* host, ushort port )
         }
         else if( GameOpt.ProxyType == PROXY_SOCKS5 )
         {
-            Bout << uchar( 5 );                                                                // Socks version
-            Bout << uchar( 1 );                                                                // Count methods
-            Bout << uchar( 2 );                                                                // Method
+            Bout << uchar( 5 );                                                              // Socks version
+            Bout << uchar( 1 );                                                              // Count methods
+            Bout << uchar( 2 );                                                              // Method
             SEND_RECV;
-            Bin >> b1;                                                                         // Socks version
-            Bin >> b2;                                                                         // Method
-            if( b2 == 2 )                                                                      // User/Password
+            Bin >> b1;                                                                       // Socks version
+            Bin >> b2;                                                                       // Method
+            if( b2 == 2 )                                                                    // User/Password
             {
-                Bout << uchar( 1 );                                                            // Subnegotiation version
-                Bout << uchar( GameOpt.ProxyUser->length() );                                  // Name length
-                Bout.Push( GameOpt.ProxyUser->c_str(), (uint) GameOpt.ProxyUser->length() );   // Name
-                Bout << uchar( GameOpt.ProxyPass->length() );                                  // Pass length
-                Bout.Push( GameOpt.ProxyPass->c_str(), (uint) GameOpt.ProxyPass->length() );   // Pass
+                Bout << uchar( 1 );                                                          // Subnegotiation version
+                Bout << uchar( GameOpt.ProxyUser.length() );                                 // Name length
+                Bout.Push( GameOpt.ProxyUser.c_str(), (uint) GameOpt.ProxyUser.length() );   // Name
+                Bout << uchar( GameOpt.ProxyPass.length() );                                 // Pass length
+                Bout.Push( GameOpt.ProxyPass.c_str(), (uint) GameOpt.ProxyPass.length() );   // Pass
                 SEND_RECV;
-                Bin >> b1;                                                                     // Subnegotiation version
-                Bin >> b2;                                                                     // Status
+                Bin >> b1;                                                                   // Subnegotiation version
+                Bin >> b2;                                                                   // Status
                 if( b2 != 0 )
                 {
                     WriteLog( "Invalid proxy user or password.\n" );
@@ -1530,7 +1521,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
                     WriteLog( "Proxy connection error, address type not supported.\n" );
                     break;
                 default:
-                    WriteLog( "Proxy connection error, unknown error %u.\n", b2 );
+                    WriteLog( "Proxy connection error, unknown error {}.\n", b2 );
                     break;
                 }
                 return false;
@@ -1551,13 +1542,13 @@ bool FOClient::NetConnect( const char* host, ushort port )
                }*/
             if( !Str::Substring( buf, " 200 " ) )
             {
-                WriteLog( "Proxy connection error, receive message '%s'.\n", buf );
+                WriteLog( "Proxy connection error, receive message '{}'.\n", buf );
                 return false;
             }
         }
         else
         {
-            WriteLog( "Unknown proxy type %u.\n", GameOpt.ProxyType );
+            WriteLog( "Unknown proxy type {}.\n", GameOpt.ProxyType );
             return false;
         }
 
@@ -1589,7 +1580,7 @@ bool FOClient::FillSockAddr( sockaddr_in& saddr, const char* host, ushort port )
         hostent* h = gethostbyname( host );
         if( !h )
         {
-            WriteLog( "Can't resolve remote host '%s', error '%s'.", host, GetLastSocketError() );
+            WriteLog( "Can't resolve remote host '{}', error '{}'.", host, GetLastSocketError() );
             return false;
         }
 
@@ -1603,7 +1594,7 @@ void FOClient::NetDisconnect()
     if( !IsConnected )
         return;
 
-    WriteLog( "Disconnect. Session traffic: send %u, receive %u, whole %u, receive real %u.\n",
+    WriteLog( "Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}.\n",
               BytesSend, BytesReceive, BytesReceive + BytesSend, BytesRealReceive );
 
     if( ZStreamOk )
@@ -1660,7 +1651,7 @@ bool FOClient::NetOutput()
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
     if( select( (int) Sock + 1, nullptr, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
-        WriteLog( "Select error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Select error '{}'.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
         WriteLog( "Socket error.\n" );
     if( !FD_ISSET( Sock, &SockSet ) )
@@ -1681,7 +1672,7 @@ bool FOClient::NetOutput()
         if( len <= 0 )
         #endif
         {
-            WriteLog( "Socket error while send to server, error '%s'.\n", GetLastSocketError() );
+            WriteLog( "Socket error while send to server, error '{}'.\n", GetLastSocketError() );
             NetDisconnect();
             return false;
         }
@@ -1703,7 +1694,7 @@ int FOClient::NetInput( bool unpack )
     FD_SET( Sock, &SockSet );
     FD_SET( Sock, &SockSetErr );
     if( select( (int) Sock + 1, &SockSet, nullptr, &SockSetErr, &tv ) == SOCKET_ERROR )
-        WriteLog( "Select error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Select error '{}'.\n", GetLastSocketError() );
     if( FD_ISSET( Sock, &SockSetErr ) )
         WriteLog( "Socket error.\n" );
     if( !FD_ISSET( Sock, &SockSet ) )
@@ -1721,7 +1712,7 @@ int FOClient::NetInput( bool unpack )
     if( len < 0 )
     #endif
     {
-        WriteLog( "Socket error while receive from server, error '%s'.\n", GetLastSocketError() );
+        WriteLog( "Socket error while receive from server, error '{}'.\n", GetLastSocketError() );
         return -1;
     }
     if( len == 0 )
@@ -1750,7 +1741,7 @@ int FOClient::NetInput( bool unpack )
         if( len < 0 )
         #endif
         {
-            WriteLog( "Socket error (2) while receive from server, error '%s'.\n", GetLastSocketError() );
+            WriteLog( "Socket error (2) while receive from server, error '{}'.\n", GetLastSocketError() );
             return -1;
         }
         if( len == 0 )
@@ -1819,7 +1810,7 @@ void FOClient::NetProcess()
         {
             static uint count = 0;
             AddMess( FOMB_GAME, Str::FormatBuf( "%04u) Input net message %u.", count, ( msg >> 8 ) & 0xFF ) );
-            WriteLog( "%04u) Input net message %u.\n", count, ( msg >> 8 ) & 0xFF );
+            WriteLog( "{}) Input net message {}.\n", count, ( msg >> 8 ) & 0xFF );
             count++;
         }
 
@@ -1835,12 +1826,12 @@ void FOClient::NetProcess()
             if( !Singleplayer )
             {
                 WriteLog( "Registration success.\n" );
-                *GameOpt.Name = *GameOpt.RegName;
-                Password = GameOpt.RegPassword->c_std_str();
-                Crypt.SetCache( "__name", (uchar*) GameOpt.Name->c_str(), (uint) GameOpt.Name->length() + 1 );
+                GameOpt.Name = GameOpt.RegName;
+                Password = GameOpt.RegPassword;
+                Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
                 Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
-                *GameOpt.RegName = "";
-                *GameOpt.RegPassword = "";
+                GameOpt.RegName = "";
+                GameOpt.RegPassword = "";
             }
             else
             {
@@ -1977,9 +1968,6 @@ void FOClient::NetProcess()
             Net_OnGameInfo();
             break;
 
-        case NETMSG_USER_HOLO_STR:
-            Net_OnUserHoloStr();
-            break;
         case NETMSG_AUTOMAPS_INFO:
             Net_OnAutomapsInfo();
             break;
@@ -2149,10 +2137,10 @@ void FOClient::Net_SendCreatePlayer()
 
     char buf[ UTF8_BUF_SIZE( MAX_NAME ) ];
     memzero( buf, sizeof( buf ) );
-    Str::Copy( buf, GameOpt.RegName->c_str() );
+    Str::Copy( buf, GameOpt.RegName.c_str() );
     Bout.Push( buf, UTF8_BUF_SIZE( MAX_NAME ) );
     char pass_hash[ PASS_HASH_SIZE ];
-    Crypt.ClientPassHash( GameOpt.RegName->c_str(), GameOpt.RegPassword->c_str(), pass_hash );
+    Crypt.ClientPassHash( GameOpt.RegName.c_str(), GameOpt.RegPassword.c_str(), pass_hash );
     Bout.Push( pass_hash, PASS_HASH_SIZE );
 
     Bout << count;
@@ -2168,9 +2156,9 @@ void FOClient::Net_SendCreatePlayer()
 void FOClient::Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data )
 {
     if( save )
-        WriteLog( "Request save to file '%s'...", fname );
+        WriteLog( "Request save to file '{}'...", fname );
     else
-        WriteLog( "Request load from file '%s'...", fname );
+        WriteLog( "Request load from file '{}'...", fname );
 
     uint   msg = NETMSG_SINGLEPLAYER_SAVE_LOAD;
     ushort fname_len = Str::Length( fname );
@@ -2198,29 +2186,24 @@ void FOClient::Net_SendText( const char* send_str, uchar how_say )
     if( !send_str || !send_str[ 0 ] )
         return;
 
-    char  str_buf[ MAX_FOTEXT ];
-    char* str = str_buf;
-    Str::Copy( str_buf, send_str );
+    bool   result = false;
+    int    say_type = how_say;
+    string str = send_str;
+    result = Script::RaiseInternalEvent( ClientFunctions.OutMessage, &str, &say_type );
 
-    bool          result = false;
-    int           say_type = how_say;
-    ScriptString* sstr = ScriptString::Create( str );
-    result = Script::RaiseInternalEvent( ClientFunctions.OutMessage, sstr, &say_type );
-    Str::Copy( str, MAX_FOTEXT, sstr->c_str() );
-    sstr->Release();
     how_say = say_type;
 
-    if( !result || !str[ 0 ] )
+    if( !result || str.empty() )
         return;
 
-    ushort len = Str::Length( str );
+    ushort len = (ushort) str.length();
     uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( how_say ) + sizeof( len ) + len;
 
     Bout << NETMSG_SEND_TEXT;
     Bout << msg_len;
     Bout << how_say;
     Bout << len;
-    Bout.Push( str, len );
+    Bout.Push( str.c_str(), len );
 }
 
 void FOClient::Net_SendDir()
@@ -2372,43 +2355,6 @@ void FOClient::Net_SendPing( uchar ping )
     Bout << ping;
 }
 
-void FOClient::Net_SendSetUserHoloStr( Item* holodisk, const char* title, const char* text )
-{
-    if( !holodisk || !title || !text )
-    {
-        WriteLog( "Null pointers arguments.\n" );
-        return;
-    }
-
-    ushort title_len = ( ushort ) Str::Length( title );
-    ushort text_len = ( ushort ) Str::Length( text );
-    if( !title_len || !text_len || title_len > USER_HOLO_MAX_TITLE_LEN || text_len > USER_HOLO_MAX_LEN )
-    {
-        WriteLog( "Length of texts is greather of maximum or zero, title cur %u, title max %u, text cur %u, text max %u.\n", title_len, USER_HOLO_MAX_TITLE_LEN, text_len, USER_HOLO_MAX_LEN );
-        return;
-    }
-
-    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( title_len ) + sizeof( text_len ) + title_len + text_len;
-    Bout << NETMSG_SEND_SET_USER_HOLO_STR;
-    Bout << msg_len;
-    Bout << holodisk->GetId();
-    Bout << title_len;
-    Bout << text_len;
-    Bout.Push( title, title_len );
-    Bout.Push( text, text_len );
-}
-
-void FOClient::Net_SendGetUserHoloStr( uint str_num )
-{
-    static UIntSet already_send;
-    if( already_send.count( str_num ) )
-        return;
-    already_send.insert( str_num );
-
-    Bout << NETMSG_SEND_GET_USER_HOLO_STR;
-    Bout << str_num;
-}
-
 void FOClient::Net_SendRefereshMe()
 {
     Bout << NETMSG_SEND_REFRESH_ME;
@@ -2497,7 +2443,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     }
     else if( HexMngr.IsMapLoaded() && ( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= DIRS_COUNT ) )
     {
-        WriteLog( "Invalid positions hx %u, hy %u, dir %u.\n", hx, hy, dir );
+        WriteLog( "Invalid positions hx {}, hy {}, dir {}.\n", hx, hy, dir );
     }
     else
     {
@@ -2520,15 +2466,15 @@ void FOClient::Net_OnAddCritter( bool is_npc )
         if( is_npc )
         {
             if( cr->GetDialogId() && CurLang.Msg[ TEXTMSG_DLG ].Count( STR_NPC_NAME( cr->GetDialogId() ) ) )
-                *cr->Name = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_NAME( cr->GetDialogId() ) );
+                cr->Name = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_NAME( cr->GetDialogId() ) );
             else
-                *cr->Name = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_PID_NAME( npc_pid ) );
+                cr->Name = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_PID_NAME( npc_pid ) );
             if( CurLang.Msg[ TEXTMSG_DLG ].Count( STR_NPC_AVATAR( cr->GetDialogId() ) ) )
-                *cr->Avatar = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_AVATAR( cr->GetDialogId() ) );
+                cr->Avatar = CurLang.Msg[ TEXTMSG_DLG ].GetStr( STR_NPC_AVATAR( cr->GetDialogId() ) );
         }
         else
         {
-            *cr->Name = cl_name;
+            cr->Name = cl_name;
         }
 
         cr->Init();
@@ -2629,18 +2575,12 @@ void FOClient::Net_OnTextMsg( bool with_lexems )
 
     if( msg_num >= TEXTMSG_COUNT )
     {
-        WriteLog( "Msg num invalid value %u.\n", msg_num );
+        WriteLog( "Msg num invalid value {}.\n", msg_num );
         return;
     }
 
     FOMsg& msg = CurLang.Msg[ msg_num ];
-    if( msg_num == TEXTMSG_HOLO )
-    {
-        char str[ MAX_FOTEXT ];
-        Str::Copy( str, GetHoloText( num_str ) );
-        OnText( str, crid, how_say );
-    }
-    else if( msg.Count( num_str ) )
+    if( msg.Count( num_str ) )
     {
         char str[ MAX_FOTEXT ];
         Str::Copy( str, msg.GetStr( num_str ) );
@@ -2657,14 +2597,13 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
     if( !len )
         return;
 
-    uint          text_delay = GameOpt.TextDelay + len * 100;
-    ScriptString* sstr = ScriptString::Create( fstr );
-    bool          result = Script::RaiseInternalEvent( ClientFunctions.InMessage, sstr, &how_say, &crid, &text_delay );
-    Str::Copy( fstr, sstr->c_str() );
-    sstr->Release();
+    uint   text_delay = GameOpt.TextDelay + len * 100;
+    string sstr = fstr;
+    bool   result = Script::RaiseInternalEvent( ClientFunctions.InMessage, &sstr, &how_say, &crid, &text_delay );
     if( !result )
         return;
 
+    Str::Copy( fstr, sstr.c_str() );
     len = Str::Length( fstr );
     if( !len )
         return;
@@ -2752,11 +2691,11 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
 
 void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color )
 {
-    uint          len = Str::Length( str );
-    uint          text_delay = GameOpt.TextDelay + len * 100;
-    ScriptString* sstr = ScriptString::Create( str );
+    uint   len = Str::Length( str );
+    uint   text_delay = GameOpt.TextDelay + len * 100;
+    string sstr = str;
 
-    Script::RaiseInternalEvent( ClientFunctions.MapMessage, sstr, &hx, &hy, &color, &text_delay );
+    Script::RaiseInternalEvent( ClientFunctions.MapMessage, &sstr, &hx, &hy, &color, &text_delay );
 
     MapText t;
     t.HexX = hx;
@@ -2765,15 +2704,13 @@ void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color )
     t.Fade = false;
     t.StartTick = Timer::GameTick();
     t.Tick = text_delay;
-    t.Text = sstr->c_std_str();
+    t.Text = sstr;
     t.Pos = HexMngr.GetRectForText( hx, hy );
     t.EndPos = t.Pos;
     auto it = std::find( GameMapTexts.begin(), GameMapTexts.end(), t );
     if( it != GameMapTexts.end() )
         GameMapTexts.erase( it );
     GameMapTexts.push_back( t );
-
-    sstr->Release();
 
     FlashGameWindow();
 }
@@ -2804,7 +2741,7 @@ void FOClient::Net_OnMapText()
 
     if( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() )
     {
-        WriteLog( "Invalid coords, hx %u, hy %u, text '%s'.\n", hx, hy, str );
+        WriteLog( "Invalid coords, hx {}, hy {}, text '{}'.\n", hx, hy, str );
         return;
     }
 
@@ -2831,7 +2768,7 @@ void FOClient::Net_OnMapTextMsg()
 
     if( msg_num >= TEXTMSG_COUNT )
     {
-        WriteLog( "Msg num invalid value, num %u.\n", msg_num );
+        WriteLog( "Msg num invalid value, num {}.\n", msg_num );
         return;
     }
 
@@ -2870,7 +2807,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
     if( msg_num >= TEXTMSG_COUNT )
     {
-        WriteLog( "Msg num invalid value, num %u.\n", msg_num );
+        WriteLog( "Msg num invalid value, num {}.\n", msg_num );
         return;
     }
 
@@ -2892,7 +2829,7 @@ void FOClient::Net_OnCritterDir()
 
     if( dir >= DIRS_COUNT )
     {
-        WriteLog( "Invalid dir %u.\n", dir );
+        WriteLog( "Invalid dir {}.\n", dir );
         dir = 0;
     }
 
@@ -3329,7 +3266,7 @@ void FOClient::Net_OnCritterXY()
 
     if( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= DIRS_COUNT )
     {
-        WriteLog( "Error data, hx %d, hy %d, dir %d.\n", hx, hy, dir );
+        WriteLog( "Error data, hx {}, hy {}, dir {}.\n", hx, hy, dir );
         return;
     }
 
@@ -3472,7 +3409,7 @@ void FOClient::Net_OnChosenEraseItem()
     Item* item = Chosen->GetItem( item_id );
     if( !item )
     {
-        WriteLog( "Item not found, id %u.\n", item_id );
+        WriteLog( "Item not found, id {}.\n", item_id );
         return;
     }
 
@@ -3584,7 +3521,7 @@ void FOClient::Net_OnCombatResult()
 
     CHECK_IN_BUFF_ERROR;
 
-    ScriptArray* arr = Script::CreateArray( "uint[]" );
+    CScriptArray* arr = Script::CreateArray( "uint[]" );
     arr->Resize( data_count );
     for( uint i = 0; i < data_count; i++ )
         *( (uint*) arr->At( i ) ) = data_vec[ i ];
@@ -3665,7 +3602,7 @@ void FOClient::Net_OnFlyEffect()
 
     if( !HexMngr.RunEffect( eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy ) )
     {
-        WriteLog( "Run effect '%s' fail.\n", Str::GetName( eff_pid ) );
+        WriteLog( "Run effect '{}' fail.\n", Str::GetName( eff_pid ) );
         return;
     }
 }
@@ -3913,29 +3850,27 @@ void FOClient::Net_OnChosenTalk()
     char str[ MAX_FOTEXT ];
     Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( text_id ) );
     FormatTags( str, Chosen, npc, lexems );
-    ScriptString* text_to_script = ScriptString::Create( str );
-    ScriptArray*  answers_to_script = Script::CreateArray( "string@[]" );
+    string        text_to_script = str;
+    CScriptArray* answers_to_script = Script::CreateArray( "string[]" );
     for( size_t i = 0; i < answers_texts.size(); i++ )
     {
         Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( answers_texts[ i ] ) );
         FormatTags( str, Chosen, npc, lexems );
-        ScriptString* sstr = ScriptString::Create( str );
+        string sstr = str;
         answers_to_script->InsertLast( &sstr );
-        sstr->Release();
     }
 
     Bin >> talk_time;
 
     CHECK_IN_BUFF_ERROR;
 
-    ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+    CScriptDictionary* dict = CScriptDictionary::Create( Script::GetEngine() );
     dict->Set( "TalkerIsNpc", &is_npc, asTYPEID_BOOL );
     dict->Set( "TalkerId", &talk_id, asTYPEID_UINT32 );
-    dict->Set( "Text", &text_to_script, Script::GetEngine()->GetTypeIdByDecl( "string@" ) );
-    dict->Set( "Answers", &answers_to_script, Script::GetEngine()->GetTypeIdByDecl( "string@[]@" ) );
+    dict->Set( "Text", &text_to_script, Script::GetEngine()->GetTypeIdByDecl( "string" ) );
+    dict->Set( "Answers", &answers_to_script, Script::GetEngine()->GetTypeIdByDecl( "string[]@" ) );
     dict->Set( "TalkTime", &talk_time, asTYPEID_UINT32 );
     ShowScreen( SCREEN__DIALOG, dict );
-    text_to_script->Release();
     answers_to_script->Release();
     dict->Release();
 }
@@ -4044,7 +3979,7 @@ void FOClient::Net_OnLoadMap()
 
         if( hash_tiles != hash_tiles_cl || hash_scen != hash_scen_cl )
         {
-            WriteLog( "Obsolete map data (hashes %u:%u, %u:%u).\n", hash_tiles, hash_tiles_cl, hash_scen, hash_scen_cl );
+            WriteLog( "Obsolete map data (hashes {}:{}, {}:{}).\n", hash_tiles, hash_tiles_cl, hash_scen, hash_scen_cl );
             Net_SendGiveMap( false, map_pid, 0, hash_tiles_cl, hash_scen_cl );
             return;
         }
@@ -4083,7 +4018,7 @@ void FOClient::Net_OnMap()
 
     CHECK_IN_BUFF_ERROR;
 
-    WriteLog( "Map %u received...\n", map_pid );
+    WriteLog( "Map {} received...\n", map_pid );
 
     char map_name[ 256 ];
     Str::Format( map_name, "map%u", map_pid );
@@ -4181,7 +4116,7 @@ void FOClient::Net_OnMap()
         uchar* buf = Crypt.Compress( fm.GetOutBuf(), obuf_len );
         if( !buf )
         {
-            WriteLog( "Failed to compress data '%s', disconnect.\n", map_name );
+            WriteLog( "Failed to compress data '{}', disconnect.\n", map_name );
             NetDisconnect();
             return;
         }
@@ -4319,7 +4254,7 @@ void FOClient::Net_OnSomeItems()
 
     CHECK_IN_BUFF_ERROR;
 
-    ScriptArray* items_arr = nullptr;
+    CScriptArray* items_arr = nullptr;
     if( !is_null )
     {
         PupTransferType = transfer_type;
@@ -4495,34 +4430,6 @@ void FOClient::Net_OnUpdateFileData()
     }
 }
 
-void FOClient::Net_OnUserHoloStr()
-{
-    uint   msg_len;
-    uint   str_num;
-    ushort text_len;
-    char   text[ USER_HOLO_MAX_LEN + 1 ];
-    Bin >> msg_len;
-    Bin >> str_num;
-    Bin >> text_len;
-
-    if( text_len > USER_HOLO_MAX_LEN )
-    {
-        WriteLog( "Text length greater than maximum, cur %u, max %u. Disconnect.\n", text_len, USER_HOLO_MAX_LEN );
-        NetDisconnect();
-        return;
-    }
-
-    Bin.Pop( text, text_len );
-    text[ text_len ] = '\0';
-
-    CHECK_IN_BUFF_ERROR;
-
-    if( MsgUserHolo->Count( str_num ) )
-        MsgUserHolo->EraseStr( str_num );
-    MsgUserHolo->AddStr( str_num, text );
-    MsgUserHolo->SaveToFile( USER_HOLO_TEXTMSG_FILE, true );
-}
-
 void FOClient::Net_OnAutomapsInfo()
 {
     uint   msg_len;
@@ -4608,7 +4515,7 @@ void FOClient::Net_OnViewMap()
     ScreenFadeOut();
     HexMngr.RebuildLight();
 
-    ScriptDictionary* dict = ScriptDictionary::Create( Script::GetEngine() );
+    CScriptDictionary* dict = CScriptDictionary::Create( Script::GetEngine() );
     dict->Set( "LocationId", &loc_id, asTYPEID_UINT32 );
     dict->Set( "LocationEntrance", &loc_ent, asTYPEID_UINT32 );
     ShowScreen( SCREEN__TOWN_VIEW, dict );
@@ -4624,7 +4531,7 @@ void FOClient::SetGameColor( uint color )
 bool FOClient::RegCheckData()
 {
     // Name
-    uint name_len_utf8 = Str::LengthUTF8( GameOpt.RegName->c_str() );
+    uint name_len_utf8 = Str::LengthUTF8( GameOpt.RegName.c_str() );
     if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
         name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
@@ -4632,7 +4539,7 @@ bool FOClient::RegCheckData()
         return false;
     }
 
-    if( !Str::IsValidUTF8( GameOpt.RegName->c_str() ) || Str::Substring( GameOpt.RegName->c_str(), "*" ) )
+    if( !Str::IsValidUTF8( GameOpt.RegName.c_str() ) || Str::Substring( GameOpt.RegName.c_str(), "*" ) )
     {
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_NAME_WRONG_CHARS ) );
         return false;
@@ -4641,7 +4548,7 @@ bool FOClient::RegCheckData()
     // Password
     if( !Singleplayer )
     {
-        uint pass_len_utf8 = Str::LengthUTF8( GameOpt.RegPassword->c_str() );
+        uint pass_len_utf8 = Str::LengthUTF8( GameOpt.RegPassword.c_str() );
         if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
             pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
         {
@@ -4649,7 +4556,7 @@ bool FOClient::RegCheckData()
             return false;
         }
 
-        if( !Str::IsValidUTF8( GameOpt.RegPassword->c_str() ) || Str::Substring( GameOpt.RegPassword->c_str(), "*" ) )
+        if( !Str::IsValidUTF8( GameOpt.RegPassword.c_str() ) || Str::Substring( GameOpt.RegPassword.c_str(), "*" ) )
         {
             AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_PASS_WRONG_CHARS ) );
             return false;
@@ -5857,21 +5764,6 @@ void FOClient::FlashGameWindow()
     #endif
 }
 
-const char* FOClient::GetHoloText( uint str_num )
-{
-    if( str_num / 10 >= USER_HOLO_START_NUM )
-    {
-        if( !MsgUserHolo->Count( str_num ) )
-        {
-            Net_SendGetUserHoloStr( str_num );
-            static char wait[ 32 ] = "...";
-            return wait;
-        }
-        return MsgUserHolo->GetStr( str_num );
-    }
-    return CurLang.Msg[ TEXTMSG_HOLO ].GetStr( str_num );
-}
-
 const char* FOClient::FmtGameText( uint str_num, ... )
 {
     static char res[ MAX_FOTEXT ];
@@ -5949,7 +5841,7 @@ void FOClient::PlayVideo()
     // Open file
     if( !CurVideo->RawData.LoadFile( video.FileName.c_str() ) )
     {
-        WriteLog( "Video file '%s' not found.\n", video.FileName.c_str() );
+        WriteLog( "Video file '{}' not found.\n", video.FileName.c_str() );
         SAFEDEL( CurVideo );
         NextVideo();
         return;
@@ -6121,7 +6013,7 @@ void FOClient::RenderVideo()
         {
             if( r )
             {
-                WriteLog( "Frame does not contain encoded video data, error %d.\n", r );
+                WriteLog( "Frame does not contain encoded video data, error {}.\n", r );
                 NextVideo();
                 return;
             }
@@ -6130,7 +6022,7 @@ void FOClient::RenderVideo()
             r = th_decode_ycbcr_out( CurVideo->Context, CurVideo->ColorBuffer );
             if( r )
             {
-                WriteLog( "th_decode_ycbcr_out() fail, error %d\n.", r );
+                WriteLog( "th_decode_ycbcr_out() fail, error {}\n.", r );
                 NextVideo();
                 return;
             }
@@ -6610,14 +6502,14 @@ bool FOClient::ReloadScripts()
     // Bind stuff
     #define BIND_CLIENT
     #define BIND_CLASS    FOClient::SScriptFunc::
-    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line %d.\n", __LINE__ ); bind_errors++; }
+    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); bind_errors++; }
     asIScriptEngine* engine = Script::GetEngine();
     int              bind_errors = 0;
     #include "ScriptBind.h"
 
     if( bind_errors )
     {
-        WriteLog( "Bind fail, errors %d.\n", bind_errors );
+        WriteLog( "Bind fail, errors {}.\n", bind_errors );
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
@@ -6962,26 +6854,22 @@ Item* FOClient::SScriptFunc::Crit_GetItemById( CritterCl* cr, uint item_id )
     return cr->GetItem( item_id );
 }
 
-uint FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items )
+CScriptArray* FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    ItemVec items_;
-    cr->GetItemsSlot( slot, items_ );
-    if( items )
-        Script::AppendVectorToArrayRef< Item* >( items_, items );
-    return (uint) items_.size();
+    ItemVec items;
+    cr->GetItemsSlot( slot, items );
+    return Script::CreateArrayRef( "Item[]", items );
 }
 
-uint FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items )
+CScriptArray* FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    ItemVec items_;
-    cr->GetItemsType( type, items_ );
-    if( items )
-        Script::AppendVectorToArrayRef< Item* >( items_, items );
-    return (uint) items_.size();
+    ItemVec items;
+    cr->GetItemsType( type, items );
+    return Script::CreateArrayRef( "Item[]", items );
 }
 
 Item* FOClient::SScriptFunc::Crit_GetSlotItem( CritterCl* cr, int slot )
@@ -7117,26 +7005,22 @@ Item* FOClient::SScriptFunc::Item_GetChild( Item* item, uint childIndex )
     return nullptr;
 }
 
-uint FOClient::SScriptFunc::Item_GetItems( Item* cont, uint stack_id, ScriptArray* items )
+CScriptArray* FOClient::SScriptFunc::Item_GetItems( Item* cont, uint stack_id )
 {
-    if( !items )
-        SCRIPT_ERROR_R0( "Items array arg nullptr." );
     if( cont->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    ItemVec items_;
-    cont->ContGetItems( items_, stack_id );
-    if( items )
-        Script::AppendVectorToArrayRef< Item* >( items_, items );
-    return (uint) items_.size();
+    ItemVec items;
+    cont->ContGetItems( items, stack_id );
+    return Script::CreateArrayRef( "Item[]", items );
 }
 
 
-ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, ScriptString& separator )
+string FOClient::SScriptFunc::Global_CustomCall( string command, string separator )
 {
     // Parse command
     vector< string >  args;
-    std::stringstream ss( command.c_std_str() );
+    std::stringstream ss( command );
     if( separator.length() > 0 )
     {
         string arg;
@@ -7145,7 +7029,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else
     {
-        args.push_back( command.c_std_str() );
+        args.push_back( command );
     }
     if( args.size() < 1 )
         SCRIPT_ERROR_R0( "Empty custom call command." );
@@ -7154,7 +7038,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     string cmd = args[ 0 ];
     if( cmd == "Login" && args.size() >= 3 )
     {
-        *GameOpt.Name = args[ 1 ];
+        GameOpt.Name = args[ 1 ];
         Self->Password = args[ 2 ];
         if( Self->LoginCheckData() )
             Self->InitNetReason = INIT_NET_REASON_LOGIN;
@@ -7183,7 +7067,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else if( cmd == "GetPassword" )
     {
-        return ScriptString::Create( Self->Password );
+        return Self->Password;
     }
     else if( cmd == "DumpAtlases" )
     {
@@ -7227,7 +7111,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     }
     else if( cmd == "GetShootBorders" )
     {
-        return ScriptString::Create( Self->DrawShootBorders ? "true" : "false" );
+        return Self->DrawShootBorders ? "true" : "false";
     }
     else if( cmd == "SetShootBorders" && args.size() >= 2 )
     {
@@ -7276,19 +7160,19 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "Version" )
     {
         char buf[ 1024 ];
-        return ScriptString::Create( Str::Format( buf, "%d", FONLINE_VERSION ) );
+        return Str::Format( buf, "%d", FONLINE_VERSION );
     }
     else if( cmd == "BytesSend" )
     {
-        return ScriptString::Create( Str::ItoA( Self->BytesSend ) );
+        return Str::ItoA( Self->BytesSend );
     }
     else if( cmd == "BytesReceive" )
     {
-        return ScriptString::Create( Str::ItoA( Self->BytesReceive ) );
+        return Str::ItoA( Self->BytesReceive );
     }
     else if( cmd == "GetLanguage" )
     {
-        return ScriptString::Create( Self->CurLang.NameStr );
+        return Self->CurLang.NameStr;
     }
     else if( cmd == "SetLanguage" && args.size() >= 2 )
     {
@@ -7345,10 +7229,10 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
         Str::Copy( buf, "" );
         Str::Copy( buf_separator, separator.c_str() );
 
-        if( !PackCommand( str, Self->Bout, LogCB::Message, Self->Chosen->Name->c_str() ) )
-            return ScriptString::Create( "UNKNOWN" );
+        if( !PackCommand( str, Self->Bout, LogCB::Message, Self->Chosen->Name.c_str() ) )
+            return "UNKNOWN";
 
-        return ScriptString::Create( buf );
+        return buf;
     }
     else if( cmd == "ConsoleMessage" && args.size() >= 2 )
     {
@@ -7427,13 +7311,6 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     else if( cmd == "SaveGame" && args.size() == 2 )
     {
         Self->SaveLoadSaveGame( args[ 1 ].c_str() );
-    }
-    else if( cmd == "WriteHolo" && args.size() == 4 )
-    {
-        uint  item_id = Str::AtoUI( args[ 1 ].c_str() );
-        Item* holo = Self->Chosen->GetItem( item_id );
-        if( holo )
-            Self->Net_SendSetUserHoloStr( holo, args[ 2 ].c_str(), args[ 3 ].c_str() );
     }
     else if( cmd == "SingleplayerPause" && args.size() == 2 )
     {
@@ -7569,7 +7446,7 @@ ScriptString* FOClient::SScriptFunc::Global_CustomCall( ScriptString& command, S
     {
         SCRIPT_ERROR_R0( "Invalid custom call command." );
     }
-    return ScriptString::Create();
+    return "";
 }
 
 CritterCl* FOClient::SScriptFunc::Global_GetChosen()
@@ -7604,9 +7481,9 @@ Item* FOClient::SScriptFunc::Global_GetItem( uint item_id )
     return item;
 }
 
-ScriptArray* FOClient::SScriptFunc::Global_GetMapAllItems()
+CScriptArray* FOClient::SScriptFunc::Global_GetMapAllItems()
 {
-    ScriptArray* items = Script::CreateArray( "array<Item@>" );
+    CScriptArray* items = Script::CreateArray( "Item[]" );
     if( Self->HexMngr.IsMapLoaded() )
     {
         ItemHexVec& items_ = Self->HexMngr.GetItems();
@@ -7617,18 +7494,16 @@ ScriptArray* FOClient::SScriptFunc::Global_GetMapAllItems()
     return items;
 }
 
-uint FOClient::SScriptFunc::Global_GetMapHexItems( ushort hx, ushort hy, ScriptArray* items )
+CScriptArray* FOClient::SScriptFunc::Global_GetMapHexItems( ushort hx, ushort hy )
 {
+    ItemHexVec items;
     if( Self->HexMngr.IsMapLoaded() )
     {
-        ItemHexVec items_;
-        Self->HexMngr.GetItems( hx, hy, items_ );
-        for( auto it = items_.begin(); it != items_.end();)
-            it = ( ( *it )->IsFinishing() ? items_.erase( it ) : ++it );
-        Script::AppendVectorToArrayRef( items_, items );
-        return (uint) items_.size();
+        Self->HexMngr.GetItems( hx, hy, items );
+        for( auto it = items.begin(); it != items.end();)
+            it = ( ( *it )->IsFinishing() ? items.erase( it ) : ++it );
     }
-    return 0;
+    return Script::CreateArrayRef( "Item[]", items );
 }
 
 uint FOClient::SScriptFunc::Global_GetCrittersDistantion( CritterCl* cr1, CritterCl* cr2 )
@@ -7652,39 +7527,35 @@ CritterCl* FOClient::SScriptFunc::Global_GetCritter( uint critter_id )
     return cr;
 }
 
-uint FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type, ScriptArray* critters )
+CScriptArray* FOClient::SScriptFunc::Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type )
 {
     if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R0( "Invalid hexes args." );
 
     CritMap& crits = Self->HexMngr.GetCritters();
-    CritVec  cr_vec;
+    CritVec  critters;
     for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
     {
         CritterCl* cr = it->second;
         if( cr->CheckFind( find_type ) && CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius ) )
-            cr_vec.push_back( cr );
+            critters.push_back( cr );
     }
 
-    if( critters )
-    {
-        SortCritterByDist( hx, hy, cr_vec );
-        Script::AppendVectorToArrayRef< CritterCl* >( cr_vec, critters );
-    }
-    return (uint) cr_vec.size();
+    SortCritterByDist( hx, hy, critters );
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-uint FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int find_type, ScriptArray* critters )
+CScriptArray* FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int find_type )
 {
     CritMap& crits = Self->HexMngr.GetCritters();
-    CritVec  cr_vec;
+    CritVec  critters;
     if( !pid )
     {
         for( auto it = crits.begin(), end = crits.end(); it != end; ++it )
         {
             CritterCl* cr = it->second;
             if( cr->CheckFind( find_type ) )
-                cr_vec.push_back( cr );
+                critters.push_back( cr );
         }
     }
     else
@@ -7693,37 +7564,29 @@ uint FOClient::SScriptFunc::Global_GetCrittersByPids( hash pid, int find_type, S
         {
             CritterCl* cr = it->second;
             if( cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind( find_type ) )
-                cr_vec.push_back( cr );
+                critters.push_back( cr );
         }
     }
-    if( cr_vec.empty() )
-        return 0;
-    if( critters )
-        Script::AppendVectorToArrayRef< CritterCl* >( cr_vec, critters );
-    return (uint) cr_vec.size();
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-uint FOClient::SScriptFunc::Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters )
+CScriptArray* FOClient::SScriptFunc::Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type )
 {
-    CritVec cr_vec;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, &cr_vec, find_type, nullptr, nullptr, nullptr, true );
-    if( critters )
-        Script::AppendVectorToArrayRef< CritterCl* >( cr_vec, critters );
-    return (uint) cr_vec.size();
+    CritVec critters;
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, &critters, find_type, nullptr, nullptr, nullptr, true );
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-uint FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
+CScriptArray* FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
 {
-    CritVec    cr_vec;
+    CritVec    critters;
     UShortPair block, pre_block;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, &cr_vec, find_type, &block, &pre_block, nullptr, true );
-    if( critters )
-        Script::AppendVectorToArrayRef< CritterCl* >( cr_vec, critters );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, &critters, find_type, &block, &pre_block, nullptr, true );
     pre_block_hx = pre_block.first;
     pre_block_hy = pre_block.second;
     block_hx = block.first;
     block_hy = block.second;
-    return (uint) cr_vec.size();
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
 void FOClient::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
@@ -7734,7 +7597,7 @@ void FOClient::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy,
     to_hy = pre_block.second;
 }
 
-ScriptArray* FOClient::SScriptFunc::Global_GetPathHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut )
+CScriptArray* FOClient::SScriptFunc::Global_GetPathHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut )
 {
     if( from_hx >= Self->HexMngr.GetWidth() || from_hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R0( "Invalid from hexes args." );
@@ -7748,12 +7611,12 @@ ScriptArray* FOClient::SScriptFunc::Global_GetPathHex( ushort from_hx, ushort fr
     if( !Self->HexMngr.FindPath( nullptr, from_hx, from_hy, to_hx, to_hy, steps, -1 ) )
         return nullptr;
 
-    ScriptArray* path = Script::CreateArray( "uint8[]" );
+    CScriptArray* path = Script::CreateArray( "uint8[]" );
     Script::AppendVectorToArray( steps, path );
     return path;
 }
 
-ScriptArray* FOClient::SScriptFunc::Global_GetPathCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut )
+CScriptArray* FOClient::SScriptFunc::Global_GetPathCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter arg is destroyed." );
@@ -7767,7 +7630,7 @@ ScriptArray* FOClient::SScriptFunc::Global_GetPathCr( CritterCl* cr, ushort to_h
     if( !Self->HexMngr.FindPath( cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1 ) )
         return nullptr;
 
-    ScriptArray* path = Script::CreateArray( "uint8[]" );
+    CScriptArray* path = Script::CreateArray( "uint8[]" );
     Script::AppendVectorToArray( steps, path );
     return path;
 }
@@ -7816,17 +7679,17 @@ void FOClient::SScriptFunc::Global_QuakeScreen( uint noise, uint ms )
     Self->ScreenQuake( noise, ms );
 }
 
-bool FOClient::SScriptFunc::Global_PlaySound( ScriptString& sound_name )
+bool FOClient::SScriptFunc::Global_PlaySound( string sound_name )
 {
     return SndMngr.PlaySound( sound_name.c_str() );
 }
 
-bool FOClient::SScriptFunc::Global_PlayMusic( ScriptString& music_name, uint pos, uint repeat )
+bool FOClient::SScriptFunc::Global_PlayMusic( string music_name, uint pos, uint repeat )
 {
     return SndMngr.PlayMusic( music_name.c_str(), pos, repeat );
 }
 
-void FOClient::SScriptFunc::Global_PlayVideo( ScriptString& video_name, bool can_stop )
+void FOClient::SScriptFunc::Global_PlayVideo( string video_name, bool can_stop )
 {
     SndMngr.StopMusic();
     Self->AddVideo( video_name.c_str(), can_stop, true );
@@ -7839,12 +7702,12 @@ hash FOClient::SScriptFunc::Global_GetCurrentMapPid()
     return Self->CurMapPid;
 }
 
-void FOClient::SScriptFunc::Global_Message( ScriptString& msg )
+void FOClient::SScriptFunc::Global_Message( string msg )
 {
     Self->AddMess( FOMB_GAME, msg.c_str(), true );
 }
 
-void FOClient::SScriptFunc::Global_MessageType( ScriptString& msg, int type )
+void FOClient::SScriptFunc::Global_MessageType( string msg, int type )
 {
     Self->AddMess( type, msg.c_str(), true );
 }
@@ -7865,7 +7728,7 @@ void FOClient::SScriptFunc::Global_MessageMsgType( int text_msg, uint str_num, i
     Self->AddMess( type, Self->CurLang.Msg[ text_msg ].GetStr( str_num ), true );
 }
 
-void FOClient::SScriptFunc::Global_MapMessage( ScriptString& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
+void FOClient::SScriptFunc::Global_MapMessage( string text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
 {
     FOClient::MapText t;
     t.HexX = hx;
@@ -7874,7 +7737,7 @@ void FOClient::SScriptFunc::Global_MapMessage( ScriptString& text, ushort hx, us
     t.Fade = fade;
     t.StartTick = Timer::GameTick();
     t.Tick = ms;
-    t.Text = text.c_std_str();
+    t.Text = text;
     t.Pos = Self->HexMngr.GetRectForText( hx, hy );
     t.EndPos = Rect( t.Pos, ox, oy );
     auto it = std::find( Self->GameMapTexts.begin(), Self->GameMapTexts.end(), t );
@@ -7883,18 +7746,18 @@ void FOClient::SScriptFunc::Global_MapMessage( ScriptString& text, ushort hx, us
     Self->GameMapTexts.push_back( t );
 }
 
-ScriptString* FOClient::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_num )
+string FOClient::SScriptFunc::Global_GetMsgStr( int text_msg, uint str_num )
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R0( "Invalid text msg arg." );
-    return ScriptString::Create( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
+    return Self->CurLang.Msg[ text_msg ].GetStr( str_num );
 }
 
-ScriptString* FOClient::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint str_num, uint skip_count )
+string FOClient::SScriptFunc::Global_GetMsgStrSkip( int text_msg, uint str_num, uint skip_count )
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R0( "Invalid text msg arg." );
-    return ScriptString::Create( text_msg == TEXTMSG_HOLO ? Self->GetHoloText( str_num ) : Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count ) );
+    return Self->CurLang.Msg[ text_msg ].GetStr( str_num, skip_count );
 }
 
 uint FOClient::SScriptFunc::Global_GetMsgStrNumUpper( int text_msg, uint str_num )
@@ -7925,32 +7788,31 @@ bool FOClient::SScriptFunc::Global_IsMsgStr( int text_msg, uint str_num )
     return Self->CurLang.Msg[ text_msg ].Count( str_num ) > 0;
 }
 
-ScriptString* FOClient::SScriptFunc::Global_ReplaceTextStr( ScriptString& text, ScriptString& replace, ScriptString& str )
+string FOClient::SScriptFunc::Global_ReplaceTextStr( string text, string replace, string str )
 {
-    size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
+    size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
-        return ScriptString::Create( text );
-    string result = text.c_std_str();
-    return ScriptString::Create( result.replace( pos, replace.length(), str.c_std_str() ) );
+        return text;
+    string result = text;
+    return result.replace( pos, replace.length(), str );
 }
 
-ScriptString* FOClient::SScriptFunc::Global_ReplaceTextInt( ScriptString& text, ScriptString& replace, int i )
+string FOClient::SScriptFunc::Global_ReplaceTextInt( string text, string replace, int i )
 {
-    size_t pos = text.c_std_str().find( replace.c_std_str(), 0 );
+    size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
-        return ScriptString::Create( text );
-    char   val[ 32 ];
+        return text;
+    char val[ 32 ];
     Str::Format( val, "%d", i );
-    string result = text.c_std_str();
-    return ScriptString::Create( result.replace( pos, replace.length(), val ) );
+    return text.replace( pos, replace.length(), val );
 }
 
-ScriptString* FOClient::SScriptFunc::Global_FormatTags( ScriptString& text, ScriptString* lexems )
+string FOClient::SScriptFunc::Global_FormatTags( string text, string lexems )
 {
     char buf[ MAX_FOTEXT ];
     Str::Copy( buf, text.c_str() );
-    Self->FormatTags( buf, Self->Chosen, nullptr, lexems ? lexems->c_str() : nullptr );
-    return ScriptString::Create( buf );
+    Self->FormatTags( buf, Self->Chosen, nullptr, lexems.length() > 0 ? lexems.c_str() : nullptr );
+    return buf;
 }
 
 void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )
@@ -8067,14 +7929,14 @@ void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
     }
 }
 
-void FOClient::SScriptFunc::Global_Preload3dFiles( ScriptArray& fnames )
+void FOClient::SScriptFunc::Global_Preload3dFiles( CScriptArray* fnames )
 {
     size_t k = Self->Preload3dFiles.size();
 
-    for( asUINT i = 0; i < fnames.GetSize(); i++ )
+    for( asUINT i = 0; i < fnames->GetSize(); i++ )
     {
-        ScriptString* s = (ScriptString*) fnames.At( i );
-        Self->Preload3dFiles.push_back( s->c_std_str() );
+        string& s = *(string*) fnames->At( i );
+        Self->Preload3dFiles.push_back( s );
     }
 
     for( ; k < Self->Preload3dFiles.size(); k++ )
@@ -8086,7 +7948,7 @@ void FOClient::SScriptFunc::Global_WaitPing()
     Self->WaitPing();
 }
 
-bool FOClient::SScriptFunc::Global_LoadFont( int font_index, ScriptString& font_fname )
+bool FOClient::SScriptFunc::Global_LoadFont( int font_index, string font_fname )
 {
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
     bool result;
@@ -8105,7 +7967,7 @@ void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
     SprMngr.SetDefaultFont( font, color );
 }
 
-bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, ScriptString* effect_name, ScriptString* effect_defines )
+bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, string effect_name, string effect_defines )
 {
     // Effect types
     #define EFFECT_2D_GENERIC                ( 0x00000001 ) // Subtype can be item id, zero for all items
@@ -8128,10 +7990,10 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_FLUSH_FOG                 ( 0x20000000 )
 
     Effect* effect = nullptr;
-    if( effect_name && effect_name->length() )
+    if( !effect_name.empty() )
     {
         bool use_in_2d = !( effect_type & EFFECT_3D_SKINNED );
-        effect = GraphicLoader::LoadEffect( effect_name->c_str(), use_in_2d, effect_defines ? effect_defines->c_str() : nullptr );
+        effect = GraphicLoader::LoadEffect( effect_name.c_str(), use_in_2d, !effect_defines.empty() ? effect_defines.c_str() : nullptr );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
     }
@@ -8233,7 +8095,7 @@ void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button )
     GameOpt.LastMouseY = last_prev_y;
 }
 
-void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, ScriptString* key1_text, ScriptString* key2_text )
+void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, string key1_text, string key2_text )
 {
     if( !key1 && !key2 )
         return;
@@ -8245,13 +8107,13 @@ void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, Script
     {
         MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
         MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key1 ) );
-        MainWindowKeyboardEventsText.push_back( key1_text ? key1_text->c_std_str() : "" );
+        MainWindowKeyboardEventsText.push_back( key1_text );
     }
     if( key2 )
     {
         MainWindowKeyboardEvents.push_back( SDL_KEYDOWN );
         MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
-        MainWindowKeyboardEventsText.push_back( key2_text ? key2_text->c_std_str() : "" );
+        MainWindowKeyboardEventsText.push_back( key2_text );
         MainWindowKeyboardEvents.push_back( SDL_KEYUP );
         MainWindowKeyboardEvents.push_back( Keyb::UnmapKey( key2 ) );
         MainWindowKeyboardEventsText.push_back( "" );
@@ -8267,9 +8129,9 @@ void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, Script
     MainWindowKeyboardEventsText = prev_events_text;
 }
 
-void FOClient::SScriptFunc::Global_SetRainAnimation( ScriptString* fall_anim_name, ScriptString* drop_anim_name )
+void FOClient::SScriptFunc::Global_SetRainAnimation( string fall_anim_name, string drop_anim_name )
 {
-    Self->HexMngr.SetRainAnimation( fall_anim_name ? fall_anim_name->c_str() : nullptr, drop_anim_name ? drop_anim_name->c_str() : nullptr );
+    Self->HexMngr.SetRainAnimation( !fall_anim_name.empty() ? fall_anim_name.c_str() : nullptr, !drop_anim_name.empty() ? drop_anim_name.c_str() : nullptr );
 }
 
 void FOClient::SScriptFunc::Global_ChangeZoom( float target_zoom )
@@ -8357,15 +8219,15 @@ void FOClient::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
 {
     CritterCl::RegProperties.insert( cr_prop );
 
-    ScriptArray* props_array;
-    int          props_array_index = Script::GetEngine()->GetGlobalPropertyIndexByName( "CritterPropertyRegProperties" );
+    CScriptArray** props_array;
+    int            props_array_index = Script::GetEngine()->GetGlobalPropertyIndexByName( "CritterPropertyRegProperties" );
     Script::GetEngine()->GetGlobalPropertyByIndex( props_array_index, nullptr, nullptr, nullptr, nullptr, nullptr, (void**) &props_array );
-    props_array->Resize( 0 );
+    ( *props_array )->Resize( 0 );
     for( auto it = CritterCl::RegProperties.begin(); it != CritterCl::RegProperties.end(); ++it )
-        props_array->InsertLast( (void*) &( *it ) );
+        ( *props_array )->InsertLast( (void*) &( *it ) );
 }
 
-bool FOClient::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
+bool FOClient::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
     if( FileManager::LoadDataFile( dat_name.c_str() ) )
     {
@@ -8375,7 +8237,7 @@ bool FOClient::SScriptFunc::Global_LoadDataFile( ScriptString& dat_name )
     return false;
 }
 
-uint FOClient::SScriptFunc::Global_LoadSprite( ScriptString& spr_name )
+uint FOClient::SScriptFunc::Global_LoadSprite( string spr_name )
 {
     return Self->AnimLoad( spr_name.c_str(), RES_ATLAS_STATIC );
 }
@@ -8432,9 +8294,9 @@ uint FOClient::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, 
     return SprMngr.GetPixColor( spr_id_, x, y, false );
 }
 
-void FOClient::SScriptFunc::Global_GetTextInfo( ScriptString* text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
+void FOClient::SScriptFunc::Global_GetTextInfo( string text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
-    SprMngr.GetTextInfo( w, h, text ? text->c_str() : nullptr, font, flags, tw, th, lines );
+    SprMngr.GetTextInfo( w, h, !text.empty() ? text.c_str() : nullptr, font, flags, tw, th, lines );
 }
 
 void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
@@ -8485,7 +8347,7 @@ void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_ind
     SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, COLOR_SCRIPT_SPRITE( color ) );
 }
 
-void FOClient::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags )
+void FOClient::SScriptFunc::Global_DrawText( string text, int x, int y, int w, int h, uint color, int font, int flags )
 {
     if( !SpritesCanDraw )
         return;
@@ -8499,9 +8361,9 @@ void FOClient::SScriptFunc::Global_DrawText( ScriptString& text, int x, int y, i
     SprMngr.DrawStr( r, text.c_str(), flags, COLOR_SCRIPT_TEXT( color ), font );
 }
 
-void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArray& data )
+void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArray* data )
 {
-    if( !SpritesCanDraw || data.GetSize() == 0 )
+    if( !SpritesCanDraw || data->GetSize() == 0 )
         return;
 
     int prim;
@@ -8530,15 +8392,15 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, ScriptArra
     }
 
     static PointVec points;
-    int             size = data.GetSize() / 3;
+    int             size = data->GetSize() / 3;
     points.resize( size );
 
     for( int i = 0; i < size; i++ )
     {
         PrepPoint& pp = points[ i ];
-        pp.PointX = *(int*) data.At( i * 3 );
-        pp.PointY = *(int*) data.At( i * 3 + 1 );
-        pp.PointColor = *(int*) data.At( i * 3 + 2 );
+        pp.PointX = *(int*) data->At( i * 3 );
+        pp.PointY = *(int*) data->At( i * 3 + 1 );
+        pp.PointColor = *(int*) data->At( i * 3 + 2 );
         pp.PointOffsX = nullptr;
         pp.PointOffsY = nullptr;
     }
@@ -8635,7 +8497,7 @@ Animation3dVec DrawCritter3dAnim;
 UIntVec        DrawCritter3dCrType;
 BoolVec        DrawCritter3dFailToLoad;
 int            DrawCritter3dLayers[ LAYERS3D_COUNT ];
-void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color )
+void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color )
 {
     // x y
     // rx ry rz
@@ -8716,7 +8578,7 @@ void FOClient::SScriptFunc::Global_PopDrawScissor()
     SprMngr.PopScissor();
 }
 
-void FOClient::SScriptFunc::Global_ShowScreen( int screen, ScriptDictionary* params )
+void FOClient::SScriptFunc::Global_ShowScreen( int screen, CScriptDictionary* params )
 {
     if( screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT )
         Self->ShowMainScreen( screen, params );
@@ -8820,7 +8682,7 @@ bool FOClient::SScriptFunc::Global_IsMapHexRaked( ushort hx, ushort hy )
     return !Self->HexMngr.GetField( hx, hy ).Flags.IsNotRaked;
 }
 
-bool FOClient::SScriptFunc::Global_SaveScreenshot( ScriptString& file_path )
+bool FOClient::SScriptFunc::Global_SaveScreenshot( string file_path )
 {
     char screen_path[ MAX_FOPATH ];
     Str::Copy( screen_path, file_path.c_str() );
@@ -8830,7 +8692,7 @@ bool FOClient::SScriptFunc::Global_SaveScreenshot( ScriptString& file_path )
     return true;
 }
 
-bool FOClient::SScriptFunc::Global_SaveText( ScriptString& file_path, ScriptString& text )
+bool FOClient::SScriptFunc::Global_SaveText( string file_path, string text )
 {
     char text_path[ MAX_FOPATH ];
     Str::Copy( text_path, file_path.c_str() );
@@ -8846,57 +8708,59 @@ bool FOClient::SScriptFunc::Global_SaveText( ScriptString& file_path, ScriptStri
     return true;
 }
 
-void FOClient::SScriptFunc::Global_SetCacheData( const ScriptString& name, const ScriptArray& data )
+void FOClient::SScriptFunc::Global_SetCacheData( string name, const CScriptArray* data )
 {
     UCharVec data_vec;
-    Script::AssignScriptArrayInVector( data_vec, &data );
+    Script::AssignScriptArrayInVector( data_vec, data );
     Crypt.SetCache( name.c_str(), data_vec );
 }
 
-void FOClient::SScriptFunc::Global_SetCacheDataSize( const ScriptString& name, const ScriptArray& data, uint data_size )
+void FOClient::SScriptFunc::Global_SetCacheDataSize( string name, const CScriptArray* data, uint data_size )
 {
     UCharVec data_vec;
-    Script::AssignScriptArrayInVector( data_vec, &data );
+    Script::AssignScriptArrayInVector( data_vec, data );
     data_vec.resize( data_size );
     Crypt.SetCache( name.c_str(), data_vec );
 }
 
-bool FOClient::SScriptFunc::Global_GetCacheData( const ScriptString& name, ScriptArray& data )
+CScriptArray* FOClient::SScriptFunc::Global_GetCacheData( string name )
 {
     UCharVec data_vec;
     if( !Crypt.GetCache( name.c_str(), data_vec ) )
-        return false;
-    Script::AppendVectorToArray( data_vec, &data );
-    return true;
+        return nullptr;
+
+    CScriptArray* arr = Script::CreateArray( "uint8[]" );
+    Script::AppendVectorToArray( data_vec, arr );
+    return arr;
 }
 
-void FOClient::SScriptFunc::Global_SetCacheDataStr( const ScriptString& name, const ScriptString& str )
+void FOClient::SScriptFunc::Global_SetCacheDataStr( string name, string str )
 {
-    Crypt.SetCache( name.c_str(), str.c_std_str() );
+    Crypt.SetCache( name.c_str(), str );
 }
 
-ScriptString* FOClient::SScriptFunc::Global_GetCacheDataStr( const ScriptString& name )
+string FOClient::SScriptFunc::Global_GetCacheDataStr( string name )
 {
-    return ScriptString::Create( Crypt.GetCache( name.c_str() ) );
+    return Crypt.GetCache( name.c_str() );
 }
 
-bool FOClient::SScriptFunc::Global_IsCacheData( const ScriptString& name )
+bool FOClient::SScriptFunc::Global_IsCacheData( string name )
 {
     return Crypt.IsCache( name.c_str() );
 }
 
-void FOClient::SScriptFunc::Global_EraseCacheData( const ScriptString& name )
+void FOClient::SScriptFunc::Global_EraseCacheData( string name )
 {
     Crypt.EraseCache( name.c_str() );
 }
 
-void FOClient::SScriptFunc::Global_SetUserConfig( ScriptArray& key_values )
+void FOClient::SScriptFunc::Global_SetUserConfig( CScriptArray* key_values )
 {
     FileManager cfg_user;
-    for( int i = 0, j = (int) key_values.GetSize(); i < j - 1; i += 2 )
+    for( int i = 0, j = (int) key_values->GetSize(); i < j - 1; i += 2 )
     {
-        ScriptString& key = *(ScriptString*) key_values.At( i );
-        ScriptString& value = *(ScriptString*) key_values.At( i + 1 );
+        string& key = *(string*) key_values->At( i );
+        string& value = *(string*) key_values->At( i + 1 );
         cfg_user.SetStr( key.c_str() );
         cfg_user.SetStr( " = " );
         cfg_user.SetStr( value.c_str() );

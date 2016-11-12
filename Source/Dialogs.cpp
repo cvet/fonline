@@ -21,12 +21,12 @@ int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash 
     int       count = ( prop_global ? 1 : 0 ) + ( prop_critter ? 1 : 0 ) + ( prop_item ? 1 : 0 ) + ( prop_location ? 1 : 0 ) + ( prop_map ? 1 : 0 );
     if( count == 0 )
     {
-        WriteLog( "DR property '%s' not found in GlobalVars/Critter/Item/Location/Map.\n", str );
+        WriteLog( "DR property '{}' not found in GlobalVars/Critter/Item/Location/Map.\n", str );
         return -1;
     }
     else if( count > 1 )
     {
-        WriteLog( "DR property '%s' found multiple instances in GlobalVars/Critter/Item/Location/Map.\n", str );
+        WriteLog( "DR property '{}' found multiple instances in GlobalVars/Critter/Item/Location/Map.\n", str );
         return -1;
     }
 
@@ -47,7 +47,7 @@ int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash 
         type = DR_PROP_CRITTER_DICT;
         if( prop->GetASObjectType()->GetSubTypeId( 0 ) != asTYPEID_UINT32 )
         {
-            WriteLog( "DR property '%s' Dict must have 'uint' in key.\n", str );
+            WriteLog( "DR property '{}' Dict must have 'uint' in key.\n", str );
             return -1;
         }
     }
@@ -55,19 +55,19 @@ int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash 
     {
         if( !prop->IsPOD() )
         {
-            WriteLog( "DR property '%s' is not POD type.\n", str );
+            WriteLog( "DR property '{}' is not POD type.\n", str );
             return -1;
         }
     }
 
     if( is_demand && !prop->IsReadable() )
     {
-        WriteLog( "DR property '%s' is not readable.\n", str );
+        WriteLog( "DR property '{}' is not readable.\n", str );
         return -1;
     }
     else if( !is_demand && !prop->IsWritable() )
     {
-        WriteLog( "DR property '%s' is not writable.\n", str );
+        WriteLog( "DR property '{}' is not writable.\n", str );
         return -1;
     }
 
@@ -93,27 +93,27 @@ bool DialogManager::LoadDialogs()
         FileManager& file = files.GetNextFile( &name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file '%s'.\n", name );
+            WriteLog( "Unable to open file '{}'.\n", name );
             continue;
         }
 
         DialogPack* pack = ParseDialog( name, (char*) file.GetBuf() );
         if( !pack )
         {
-            WriteLog( "Unable to parse dialog '%s'.\n", name );
+            WriteLog( "Unable to parse dialog '{}'.\n", name );
             continue;
         }
 
         if( !AddDialog( pack ) )
         {
-            WriteLog( "Unable to add dialog '%s'.\n", name );
+            WriteLog( "Unable to add dialog '{}'.\n", name );
             continue;
         }
 
         files_loaded++;
     }
 
-    WriteLog( "Load dialogs complete, count %u.\n", files_loaded );
+    WriteLog( "Load dialogs complete, count {}.\n", files_loaded );
     return files_loaded == files.GetFilesCount();
 }
 
@@ -121,7 +121,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
 {
     if( dialogPacks.count( pack->PackId ) )
     {
-        WriteLog( "Dialog '%s' already added.\n", pack->PackName.c_str() );
+        WriteLog( "Dialog '{}' already added.\n", pack->PackName.c_str() );
         return false;
     }
 
@@ -131,7 +131,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
         uint check_pack_id = it->first & DLGID_MASK;
         if( pack_id == check_pack_id )
         {
-            WriteLog( "Name hash collision for dialogs '%s' and '%s'.\n", pack->PackName.c_str(), it->second->PackName.c_str() );
+            WriteLog( "Name hash collision for dialogs '{}' and '{}'.\n", pack->PackName.c_str(), it->second->PackName.c_str() );
             return false;
         }
     }
@@ -185,7 +185,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     fodlg.CollectContent();
     fodlg.AppendStr( data );
 
-    #define LOAD_FAIL( err )           { WriteLog( "Dialog '%s' - %s\n", pack_name, err ); delete pack; return nullptr; }
+    #define LOAD_FAIL( err )           { WriteLog( "Dialog '{}' - {}\n", pack_name, err ); delete pack; return nullptr; }
     #define VERIFY_STR_ID( str_id )    ( uint( str_id ) <= ~DLGID_MASK )
 
     DialogPack* pack = new DialogPack();
@@ -307,7 +307,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         script = GetNotAnswerAction( read_str, ret_val );
         if( script < 0 )
         {
-            WriteLog( "Unable to parse '%s'.\n", read_str );
+            WriteLog( "Unable to parse '{}'.\n", read_str );
             LOAD_FAIL( "Invalid not answer action." );
         }
         #endif
@@ -451,7 +451,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         who = GetWho( who );
         if( who == DR_WHO_NONE )
         {
-            WriteLog( "Invalid DR property who '%c'.\n", who );
+            WriteLog( "Invalid DR property who '{}'.\n", who );
             fail = true;
         }
 
@@ -466,7 +466,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> oper;
         if( !CheckOper( oper ) )
         {
-            WriteLog( "Invalid DR property oper '%c'.\n", oper );
+            WriteLog( "Invalid DR property oper '{}'.\n", oper );
             fail = true;
         }
 
@@ -485,7 +485,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         who = GetWho( who );
         if( who == DR_WHO_NONE )
         {
-            WriteLog( "Invalid DR item who '%c'.\n", who );
+            WriteLog( "Invalid DR item who '{}'.\n", who );
             fail = true;
         }
 
@@ -498,7 +498,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         input >> oper;
         if( !CheckOper( oper ) )
         {
-            WriteLog( "Invalid DR item oper '%c'.\n", oper );
+            WriteLog( "Invalid DR item oper '{}'.\n", oper );
             fail = true;
         }
 
@@ -536,55 +536,55 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
             READ_SCRIPT_VALUE_( script_val[ 4 ] );
         if( values_count > 5 )
         {
-            WriteLog( "Invalid DR script values count %d.\n", values_count );
+            WriteLog( "Invalid DR script values count {}.\n", values_count );
             values_count = 0;
             fail = true;
         }
 
         #ifdef FONLINE_SERVER
         // Bind function
-        # define BIND_D_FUNC( params )                                                          \
-            do {                                                                                \
-                id = Script::BindByFuncName( name, "bool %s(Critter&,Critter@" params, false ); \
+        # define BIND_D_FUNC( params )                                                         \
+            do {                                                                               \
+                id = Script::BindByFuncName( name, "bool %s(Critter, Critter" params, false ); \
             } while( 0 )
-        # define BIND_R_FUNC( params )                                                                             \
-            do {                                                                                                   \
-                if( ( id = Script::BindByFuncName( name, "uint %s(Critter&,Critter@" params, false, true ) ) > 0 ) \
-                    ret_value = true;                                                                              \
-                else                                                                                               \
-                    id = Script::BindByFuncName( name, "void %s(Critter&,Critter@" params, false );                \
+        # define BIND_R_FUNC( params )                                                                            \
+            do {                                                                                                  \
+                if( ( id = Script::BindByFuncName( name, "uint %s(Critter, Critter" params, false, true ) ) > 0 ) \
+                    ret_value = true;                                                                             \
+                else                                                                                              \
+                    id = Script::BindByFuncName( name, "void %s(Critter, Critter" params, false );                \
             } while( 0 )
         switch( values_count )
         {
         case 1:
             if( is_demand )
-                BIND_D_FUNC( ",int)" );
+                BIND_D_FUNC( ", int)" );
             else
-                BIND_R_FUNC( ",int)" );
+                BIND_R_FUNC( ", int)" );
             break;
         case 2:
             if( is_demand )
-                BIND_D_FUNC( ",int,int)" );
+                BIND_D_FUNC( ", int, int)" );
             else
-                BIND_R_FUNC( ",int,int)" );
+                BIND_R_FUNC( ", int,int)" );
             break;
         case 3:
             if( is_demand )
-                BIND_D_FUNC( ",int,int,int)" );
+                BIND_D_FUNC( ", int, int, int)" );
             else
-                BIND_R_FUNC( ",int,int,int)" );
+                BIND_R_FUNC( ", int, int, int)" );
             break;
         case 4:
             if( is_demand )
-                BIND_D_FUNC( ",int,int,int,int)" );
+                BIND_D_FUNC( ", int, int, int, int)" );
             else
-                BIND_R_FUNC( ",int,int,int,int)" );
+                BIND_R_FUNC( ", int, int, int, int)" );
             break;
         case 5:
             if( is_demand )
-                BIND_D_FUNC( ",int,int,int,int,int)" );
+                BIND_D_FUNC( ", int, int, int, int ,int)" );
             else
-                BIND_R_FUNC( ",int,int,int,int,int)" );
+                BIND_R_FUNC( ", int, int, int, int, int)" );
             break;
         default:
             if( is_demand )
@@ -595,7 +595,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         }
         if( !id )
         {
-            WriteLog( "Script '%s' bind error.\n", name );
+            WriteLog( "Script '{}' bind error.\n", name );
             return nullptr;
         }
         #endif
@@ -654,13 +654,13 @@ uint DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
         return NOT_ANSWER_BEGIN_BATTLE;
 
     #ifdef FONLINE_SERVER
-    uint id = Script::BindByFuncName( str, "uint %s(Critter&,Critter@,string@)", false, true );
+    uint id = Script::BindByFuncName( str, "uint %s(Critter, Critter, string)", false, true );
     if( id )
     {
         ret_val = true;
         return id;
     }
-    return Script::BindByFuncName( str, "void %s(Critter&,Critter@,string@)", false );
+    return Script::BindByFuncName( str, "void %s(Critter, Critter, string)", false );
     #endif
 
     return 0;

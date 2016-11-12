@@ -49,7 +49,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
     FileManager file;
     if( !file.LoadFile( fname ) )
     {
-        WriteLog( "3d file '%s' not found.\n", fname );
+        WriteLog( "3d file '{}' not found.\n", fname );
         return nullptr;
     }
 
@@ -187,7 +187,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     file.LoadFile( path );
     if( !file.IsLoaded() )
     {
-        WriteLog( "Effect file '%s' not found.\n", fname );
+        WriteLog( "Effect file '{}' not found.\n", fname );
         return nullptr;
     }
 
@@ -318,7 +318,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     }
     if( fail )
     {
-        WriteLog( "Invalid commands in effect '%s'.\n", fname );
+        WriteLog( "Invalid commands in effect '{}'.\n", fname );
         return nullptr;
     }
 
@@ -391,13 +391,13 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
                 }
                 else
                 {
-                    WriteLog( "Failed to link binary shader program '%s', effect '%s'.\n", binary_fname, fname );
+                    WriteLog( "Failed to link binary shader program '{}', effect '{}'.\n", binary_fname, fname );
                     GL( glDeleteProgram( program ) );
                 }
             }
             else
             {
-                WriteLog( "Binary shader program '%s' truncated, effect '%s'.\n", binary_fname, fname );
+                WriteLog( "Binary shader program '{}' truncated, effect '{}'.\n", binary_fname, fname );
             }
         }
         if( !loaded )
@@ -456,7 +456,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
                     GLchar* str = new GLchar[ len ];
                     int     chars = 0;
                     glGetShaderInfoLog( shader, len, &chars, str );
-                    WriteLog( "%s output:\n%s", shader_name, str );
+                    WriteLog( "{} output:\n{}", shader_name, str );
                     delete[] str;
                 }
             }
@@ -469,7 +469,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
                     GLchar* str = new GLchar[ len ];
                     int     chars = 0;
                     glGetProgramInfoLog( program, len, &chars, str );
-                    WriteLog( "Program info output:\n%s", str );
+                    WriteLog( "Program info output:\n{}", str );
                     delete[] str;
                 }
             }
@@ -481,7 +481,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         GL( glGetShaderiv( vs, GL_COMPILE_STATUS, &compiled ) );
         if( !compiled )
         {
-            WriteLog( "Vertex shader not compiled, effect '%s'.\n", fname, str );
+            WriteLog( "Vertex shader not compiled, effect '{}'.\n", fname, str );
             ShaderInfo::Log( "Vertex shader", vs );
             GL( glDeleteShader( vs ) );
             GL( glDeleteShader( fs ) );
@@ -493,7 +493,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         GL( glGetShaderiv( fs, GL_COMPILE_STATUS, &compiled ) );
         if( !compiled )
         {
-            WriteLog( "Fragment shader not compiled, effect '%s'.\n", fname );
+            WriteLog( "Fragment shader not compiled, effect '{}'.\n", fname );
             ShaderInfo::Log( "Fragment shader", fs );
             GL( glDeleteShader( vs ) );
             GL( glDeleteShader( fs ) );
@@ -536,7 +536,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         GL( glGetProgramiv( program, GL_LINK_STATUS, &linked ) );
         if( !linked )
         {
-            WriteLog( "Failed to link shader program, effect '%s'.\n", fname );
+            WriteLog( "Failed to link shader program, effect '{}'.\n", fname );
             ShaderInfo::LogProgram( program );
             GL( glDetachShader( program, vs ) );
             GL( glDetachShader( program, fs ) );
@@ -561,7 +561,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );
             if( !file_binary.SaveFile( binary_fname ) )
-                WriteLog( "Can't save effect '%s' pass %u in binary '%s'.\n", fname, pass, binary_fname );
+                WriteLog( "Can't save effect '{}' pass {} in binary '{}'.\n", fname, pass, binary_fname );
         }
     }
 
@@ -789,11 +789,11 @@ Effect* Effect::FlushFog, * Effect::FlushFogDefault;
 Effect* Effect::Font, * Effect::FontDefault;
 Effect* Effect::Skinned3d, * Effect::Skinned3dDefault;
 
-#define LOAD_EFFECT( effect_handle, effect_name, use_in_2d, defines )         \
-    effect_handle ## Default = LoadEffect( effect_name, use_in_2d, defines ); \
-    if( effect_handle ## Default )                                            \
-        effect_handle = new Effect( *effect_handle ## Default );              \
-    else                                                                      \
+#define LOAD_EFFECT( effect_handle, effect_name, use_in_2d, defines )                     \
+    effect_handle ## Default = LoadEffect( effect_name, use_in_2d, defines, "Effects/" ); \
+    if( effect_handle ## Default )                                                        \
+        effect_handle = new Effect( *effect_handle ## Default );                          \
+    else                                                                                  \
         effect_errors++
 
 bool GraphicLoader::LoadMinimalEffects()

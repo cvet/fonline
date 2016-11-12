@@ -83,7 +83,7 @@ bool SoundManager::Init()
     // SDL
     if( SDL_InitSubSystem( SDL_INIT_AUDIO ) )
     {
-        WriteLog( "SDL Audio initialization fail, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL Audio initialization fail, error '{}'.\n", SDL_GetError() );
         return false;
     }
 
@@ -101,7 +101,7 @@ bool SoundManager::Init()
     DeviceID = SDL_OpenAudioDevice( nullptr, 0, &desired, &SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE );
     if( DeviceID < 2 )
     {
-        WriteLog( "SDL Open audio device fail, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL Open audio device fail, error '{}'.\n", SDL_GetError() );
         return false;
     }
 
@@ -458,7 +458,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     int error = ov_open_callbacks( fm, &sound->OggDescriptor, nullptr, 0, callbacks );
     if( error )
     {
-        WriteLog( "Open OGG file '%s' fail, error:\n", fname );
+        WriteLog( "Open OGG file '{}' fail, error:\n", fname );
         switch( error )
         {
         case OV_EREAD:
@@ -477,7 +477,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
             WriteLog( "Internal logic fault; indicates a bug or heap/stack corruption.\n" );
             break;
         default:
-            WriteLog( "Unknown error code %d.\n", error );
+            WriteLog( "Unknown error code {}.\n", error );
             break;
         }
         return false;
@@ -576,7 +576,7 @@ bool SoundManager::ConvertData( Sound* sound )
                                         SoundSpec.format, SoundSpec.channels, SoundSpec.freq );
     if( r == -1 )
     {
-        WriteLog( "SDL_BuildAudioCVT fail, error '%s'.\n", SDL_GetError() );
+        WriteLog( "SDL_BuildAudioCVT fail, error '{}'.\n", SDL_GetError() );
         return false;
     }
     if( r == 1 )
@@ -586,7 +586,7 @@ bool SoundManager::ConvertData( Sound* sound )
         memcpy( cvt.buf, sound->BaseBuf, sound->BaseBufSize );
         if( SDL_ConvertAudio( &cvt ) )
         {
-            WriteLog( "SDL_ConvertAudio fail, error '%s'.\n", SDL_GetError() );
+            WriteLog( "SDL_ConvertAudio fail, error '{}'.\n", SDL_GetError() );
             return false;
         }
         sound->ConvertedBufCur = 0;

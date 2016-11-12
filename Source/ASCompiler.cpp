@@ -5,13 +5,13 @@
 #include "ScriptInvoker.h"
 #include "angelscript.h"
 #include "preprocessor.h"
-#include "scriptany.h"
-#include "scriptdictionary.h"
 #include "scriptdict.h"
-#include "scriptfile.h"
-#include "scriptstring.h"
-#include "scriptarray.h"
 #include "reflection.h"
+#include "AngelScript/sdk/add_on/scriptarray/scriptarray.h"
+#include "AngelScript/sdk/add_on/scriptany/scriptany.h"
+#include "AngelScript/sdk/add_on/scriptdictionary/scriptdictionary.h"
+#include "AngelScript/sdk/add_on/scriptfile/scriptfile.h"
+#include "AngelScript/sdk/add_on/scriptstdstring/scriptstdstring.h"
 #include "AngelScript/sdk/add_on/scriptmath/scriptmath.h"
 #include "AngelScript/sdk/add_on/weakref/weakref.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
@@ -140,14 +140,14 @@ int main( int argc, char* argv[] )
     FileManager file;
     if( !file.LoadFile( path ) )
     {
-        WriteLog( "File '%s' not found.\n", path );
+        WriteLog( "File '{}' not found.\n", path );
         return -1;
     }
 
     char line[ MAX_FOTEXT ];
     if( !file.GetLine( line, MAX_FOTEXT ) )
     {
-        WriteLog( "File '%s' empty.\n", path );
+        WriteLog( "File '{}' empty.\n", path );
         return -1;
     }
 
@@ -228,7 +228,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     else if( Str::Compare( target, "MAPPER" ) )
         bind_errors = MapperBind::Bind( engine, registrators );
     if( bind_errors )
-        WriteLog( "Warning, bind result: %d.\n", bind_errors );
+        WriteLog( "Warning, bind result: {}.\n", bind_errors );
 
     // Get file name
     char file_name[ MAX_FOTEXT ];
@@ -243,7 +243,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     char target_lower[ MAX_FOTEXT ];
     Str::Copy( target_lower, target );
     Str::Lower( target_lower );
-    WriteLog( "Compiling '%s' as %s script...\n", file_name, target_lower );
+    WriteLog( "Compiling '{}' as {} script...\n", file_name, target_lower );
     double tick = Timer::AccurateTick();
 
     // Preprocessor defines
@@ -279,12 +279,12 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     }
 
     // Print compilation time
-    WriteLog( "Success (%g ms).\n", Timer::AccurateTick() - tick );
+    WriteLog( "Success ({} ms).\n", Timer::AccurateTick() - tick );
 
     // Execute functions
     for( size_t i = 0; i < run_func.size(); i++ )
     {
-        WriteLog( "Executing 'void %s()'.\n", run_func[ i ] );
+        WriteLog( "Executing 'void {}()'.\n", run_func[ i ] );
         uint bind_id = Script::BindByFuncName( run_func[ i ], "void %s()", true );
         if( bind_id )
         {

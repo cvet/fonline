@@ -102,9 +102,10 @@ public:
     template< typename T >
     T GetValue( Entity* entity )
     {
-        RUNTIME_ASSERT( sizeof( T ) == baseSize );
-        T ret_value = 0;
-        GenericGet( entity, &ret_value );
+        if( dataType != DataType::String )
+            RUNTIME_ASSERT( sizeof( T ) == baseSize );
+        T ret_value;
+        GenericGet( entity, (void*) &ret_value );
         return ret_value;
     }
 
@@ -112,7 +113,7 @@ public:
     void SetValue( Entity* entity, T new_value )
     {
         RUNTIME_ASSERT( sizeof( T ) == baseSize );
-        GenericSet( entity, &new_value );
+        GenericSet( entity, (void*) &new_value );
     }
 
     uchar* GetRawData( Entity* entity, uint& data_size );
@@ -132,10 +133,9 @@ private:
     };
 
     Property();
-    void*  CreateComplexValue( uchar* data, uint data_size );
+    void*  CreateRefValue( uchar* data, uint data_size );
+    void   ReleaseRefValue( void* value );
     uchar* ExpandComplexValueData( void* pvalue, uint& data_size, bool& need_delete );
-    void   AddRefComplexValue( void* value );
-    void   ReleaseComplexValue( void* value );
     void   GenericGet( Entity* entity, void* ret_value );
     void   GenericSet( Entity* entity, void* new_value );
     uchar* GetPropRawData( Properties* properties, uint& data_size );
@@ -206,7 +206,7 @@ public:
     void                 RestoreData( UCharVecVec& all_data );
     bool                 LoadFromText( const StrMap& key_values );
     void                 SaveToText( StrMap& key_values, Properties* base );
-    bool                 LoadPropertyFromText( Property* prop, const char* value );
+    bool                 LoadPropertyFromText( Property* prop, const char* text );
     string               SavePropertyToText( Property* prop );
     static int           GetValueAsInt( Entity* entity, int enum_value );
     static void          SetValueAsInt( Entity* entity, int enum_value, int value );
@@ -219,13 +219,14 @@ public:
     template< typename T >
     T GetPropValue( Property* prop )
     {
+        RUNTIME_ASSERT( prop->dataType != Property::DataType::String );
         RUNTIME_ASSERT( sizeof( T ) == prop->baseSize );
         uint   data_size;
         uchar* data = prop->GetPropRawData( this, data_size );
         T      result;
         if( prop->dataType != Property::DataType::POD )
         {
-            void* p = prop->CreateComplexValue( data, data_size );
+            void* p = prop->CreateRefValue( data, data_size );
             memcpy( &result, &p, sizeof( T ) );
         }
         else
@@ -233,6 +234,16 @@ public:
             memcpy( &result, data, sizeof( T ) );
         }
         return result;
+    }
+
+    template< >
+    string GetPropValue( Property* prop )
+    {
+        RUNTIME_ASSERT( prop->dataType == Property::DataType::String );
+        RUNTIME_ASSERT( sizeof( string ) == prop->baseSize );
+        uint   data_size;
+        uchar* data = prop->GetPropRawData( this, data_size );
+        return string( (char*) data, data_size );
     }
 
     template< typename T >
@@ -293,13 +304,13 @@ public:
     static NativeCallbackVec GlobalSetCallbacks;
 
 private:
-    bool                        registrationFinished;
-    bool                        isServer;
-    string                      scriptClassName;
-    PropertyVec                 registeredProperties;
-    string                      enumTypeName;
-    map< string, ScriptArray* > enumGroups;
-    uint                        getPropertiesCount;
+    bool                         registrationFinished;
+    bool                         isServer;
+    string                       scriptClassName;
+    PropertyVec                  registeredProperties;
+    string                       enumTypeName;
+    map< string, CScriptArray* > enumGroups;
+    uint                         getPropertiesCount;
 
     // POD info
     uint      wholePodDataSize;

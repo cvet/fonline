@@ -464,21 +464,6 @@
 #define STR_QUEST_INFO( num )                        ( ( num ) * 1000 + 102 )
 
 // ***************************************************************************************
-// ***  FOHOLO.MSG, FOUSERHOLO.MSG  ******************************************************
-// ***************************************************************************************
-
-#define STR_HOLO_READ_SUCC                 ( 1 )
-#define STR_HOLO_READ_FAIL                 ( 2 )
-#define STR_HOLO_READ_ALREADY              ( 3 )
-#define STR_HOLO_READ_MEMORY_FULL          ( 4 )
-#define STR_HOLO_ERASE_SUCC                ( 5 )
-#define STR_HOLO_ERASE_FAIL                ( 6 )
-#define STR_HOLO_WRITE_SUCC                ( 7 )
-#define STR_HOLO_WRITE_FAIL                ( 8 )
-#define STR_HOLO_INFO_NAME( num )                    ( ( num ) * 10 )
-#define STR_HOLO_INFO_DESC( num )                    ( ( num ) * 10 + 1 )
-
-// ***************************************************************************************
 // ***  FOCOMBAT.MSG  ********************************************************************
 // ***************************************************************************************
 

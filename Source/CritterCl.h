@@ -32,7 +32,7 @@ public:
     CLASS_PROPERTY( hash, ModelName );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( uint, LookDistance );
-    CLASS_PROPERTY( ScriptArray *, Anim3dLayer );
+    CLASS_PROPERTY( CScriptArray *, Anim3dLayer );
     CLASS_PROPERTY( hash, DialogId );
     CLASS_PROPERTY( bool, IsNoTalk );
     CLASS_PROPERTY( uint, TalkDistance );
@@ -65,9 +65,9 @@ public:
     uint          Flags;
     Effect*       DrawEffect;
 
-    ScriptString* Name;
-    ScriptString* NameOnHead;
-    ScriptString* Avatar;
+    string        Name;
+    string        NameOnHead;
+    string        Avatar;
 
     ItemVec       InvItems;
     Item*         DefItemSlotHand;
@@ -84,14 +84,14 @@ public:
     void Init();
     void Finish();
 
-    uint        GetId()   { return Id; }
-    const char* GetInfo() { return Name->c_str(); }
-    bool        IsLastHexes();
-    void        FixLastHexes();
-    ushort      PopLastHexX();
-    ushort      PopLastHexY();
-    void        RefreshAnim();
-    void        ChangeDir( uchar dir, bool animate = true );
+    uint   GetId()   { return Id; }
+    string GetInfo() { return Name; }
+    bool   IsLastHexes();
+    void   FixLastHexes();
+    ushort PopLastHexX();
+    ushort PopLastHexY();
+    void   RefreshAnim();
+    void   ChangeDir( uchar dir, bool animate = true );
 
     void Animate( uint anim1, uint anim2, Item* item );
     void AnimateStay();
@@ -99,17 +99,17 @@ public:
     void Process();
     void DrawStay( Rect r );
 
-    const char* GetName()    { return Name->c_str(); }
-    bool        IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
-    bool        IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }
-    bool        IsChosen()   { return FLAG( Flags, FCRIT_CHOSEN ); }
-    bool        IsOnline()   { return !FLAG( Flags, FCRIT_DISCONNECT ); }
-    bool        IsOffline()  { return FLAG( Flags, FCRIT_DISCONNECT ); }
-    bool        IsLife()     { return GetCond() == COND_LIFE; }
-    bool        IsKnockout() { return GetCond() == COND_KNOCKOUT; }
-    bool        IsDead()     { return GetCond() == COND_DEAD; }
-    bool        IsCombatMode();
-    bool        CheckFind( int find_type );
+    string GetName()    { return Name; }
+    bool   IsNpc()      { return FLAG( Flags, FCRIT_NPC ); }
+    bool   IsPlayer()   { return FLAG( Flags, FCRIT_PLAYER ); }
+    bool   IsChosen()   { return FLAG( Flags, FCRIT_CHOSEN ); }
+    bool   IsOnline()   { return !FLAG( Flags, FCRIT_DISCONNECT ); }
+    bool   IsOffline()  { return FLAG( Flags, FCRIT_DISCONNECT ); }
+    bool   IsLife()     { return GetCond() == COND_LIFE; }
+    bool   IsKnockout() { return GetCond() == COND_KNOCKOUT; }
+    bool   IsDead()     { return GetCond() == COND_DEAD; }
+    bool   IsCombatMode();
+    bool   CheckFind( int find_type );
 
     uint GetAttackDist();
     uint GetUseDist();

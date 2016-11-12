@@ -33,8 +33,6 @@ STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 /*                                                                      */
 /************************************************************************/
 
-string     WorkDir;
-string     CommandLine;
 IniParser* MainConfig;
 StrVec     GameModules;
 
@@ -50,26 +48,23 @@ void InitialSetup( uint argc, char** argv )
 
         // Find work path entry
         if( Str::Compare( argv[ i ], "-WorkDir" ) && i < argc - 1 )
-            WorkDir = argv[ i + 1 ];
+            GameOpt.WorkDir = argv[ i + 1 ];
 
         // Find config path entry
         if( Str::Compare( argv[ i ], "-AddConfig" ) && i < argc - 1 )
             configs.push_back( argv[ i + 1 ] );
 
         // Make sinle line
-        CommandLine += argv[ i ];
+        GameOpt.CommandLine += argv[ i ];
         if( i < argc - 1 )
-            CommandLine += " ";
+            GameOpt.CommandLine += " ";
     }
 
-    // Store for scripts
-    GameOpt.CommandLine = ScriptString::Create( CommandLine );
-
     // Store start directory
-    if( !WorkDir.empty() )
+    if( !GameOpt.WorkDir.empty() )
     {
         #ifdef FO_WINDOWS
-        SetCurrentDirectory( WorkDir.c_str() );
+        SetCurrentDirectory( GameOpt.WorkDir.c_str() );
         #else
         chdir( work_dir );
         #endif
@@ -80,7 +75,7 @@ void InitialSetup( uint argc, char** argv )
     #else
     getcwd( buf, sizeof( buf ) );
     #endif
-    WorkDir = buf;
+    GameOpt.WorkDir = buf;
 
     // Injected config
     static char InternalConfig[ 5032 ] =
@@ -928,25 +923,25 @@ void GetClientOptions()
     // Str
     READ_CFG_STR_DEF( *MainConfig, "RemoteHost", "localhost" );
     GETOPTIONS_CMD_LINE_STR( buf, "RemoteHost" );
-    *GameOpt.Host = buf;
+    GameOpt.Host = buf;
     READ_CFG_STR_DEF( *MainConfig, "UpdateServerHost", "" );
     GETOPTIONS_CMD_LINE_STR( buf, "UpdateServerHost" );
-    *GameOpt.UpdateServerHost = buf;
+    GameOpt.UpdateServerHost = buf;
     READ_CFG_STR_DEF( *MainConfig, "ProxyHost", "localhost" );
     GETOPTIONS_CMD_LINE_STR( buf, "ProxyHost" );
-    *GameOpt.ProxyHost = buf;
+    GameOpt.ProxyHost = buf;
     READ_CFG_STR_DEF( *MainConfig, "ProxyUser", "" );
     GETOPTIONS_CMD_LINE_STR( buf, "ProxyUser" );
-    *GameOpt.ProxyUser = buf;
+    GameOpt.ProxyUser = buf;
     READ_CFG_STR_DEF( *MainConfig, "ProxyPass", "" );
     GETOPTIONS_CMD_LINE_STR( buf, "ProxyPass" );
-    *GameOpt.ProxyPass = buf;
+    GameOpt.ProxyPass = buf;
     READ_CFG_STR_DEF( *MainConfig, "UserName", "" );
     GETOPTIONS_CMD_LINE_STR( buf, "UserName" );
-    *GameOpt.Name = buf;
+    GameOpt.Name = buf;
     READ_CFG_STR_DEF( *MainConfig, "KeyboardRemap", "" );
     GETOPTIONS_CMD_LINE_STR( buf, "KeyboardRemap" );
-    *GameOpt.KeyboardRemap = buf;
+    GameOpt.KeyboardRemap = buf;
 
     // Logging
     bool logging = MainConfig->GetInt( "", "Logging", 1 ) != 0;
@@ -1013,15 +1008,15 @@ ServerScriptFunctions ServerFunctions;
 string GetLastSocketError()
 {
     string result;
-    int                error = WSAGetLastError();
+    int    error = WSAGetLastError();
     # define CASE_SOCK_ERROR( code, message ) \
     case code:                                \
-        result += fmt::format( "%s, %d, %s", # code, code, message ); break
+        result += fmt::format( "{}, {}, {}", # code, code, message ); break
 
     switch( error )
     {
     default:
-        result += fmt::format( "%d, unknown error code.", error );
+        result += fmt::format( "{}, unknown error code.", error );
         break;
         CASE_SOCK_ERROR( WSAEINTR, "A blocking operation was interrupted by a call to WSACancelBlockingCall." );
         CASE_SOCK_ERROR( WSAEBADF, "The file handle supplied is not valid." );
@@ -1120,7 +1115,7 @@ string GetLastSocketError()
 
 string GetLastSocketError()
 {
-    return fmt::format( "%s", strerror( errno ) );
+    return fmt::format( "{}", strerror( errno ) );
 }
 
 #endif
@@ -1138,6 +1133,9 @@ static void AddPropertyCallback( void ( * function )( void*, void*, void*, void*
 GameOptions GameOpt;
 GameOptions::GameOptions()
 {
+    WorkDir = "";
+    CommandLine = "";
+
     YearStart = 2246;
     Year = 2246;
     Month = 1;
@@ -1198,7 +1196,6 @@ GameOptions::GameOptions()
     MinimumOfflineTime = 180000;
     GameServer = false;
     UpdateServer = false;
-    CommandLine = ScriptString::Create();
 
     MapHexagonal = true;
     MapHexWidth = 32;
@@ -1212,7 +1209,7 @@ GameOptions::GameOptions()
     MapRoofSkipSize = 2;
     MapCameraAngle = 25.7f;
     MapSmoothPath = true;
-    MapDataPrefix = ScriptString::Create( "art/geometry/fallout_" );
+    MapDataPrefix = "art/geometry/fallout_";
 
     // Client and Mapper
     Quit = false;
@@ -1252,16 +1249,16 @@ GameOptions::GameOptions()
     FullScreen = false;
     VSync = false;
     Light = 0;
-    Host = ScriptString::Create( "localhost" );
+    Host = "localhost";
     Port = 4000;
-    UpdateServerHost = ScriptString::Create();
+    UpdateServerHost = "";
     UpdateServerPort = 0;
     ProxyType = 0;
-    ProxyHost = ScriptString::Create();
+    ProxyHost = "";
     ProxyPort = 0;
-    ProxyUser = ScriptString::Create();
-    ProxyPass = ScriptString::Create();
-    Name = ScriptString::Create();
+    ProxyUser = "";
+    ProxyPass = "";
+    Name = "";
     ScrollDelay = 10;
     ScrollStep = 1;
     ScrollCheck = true;
@@ -1287,7 +1284,7 @@ GameOptions::GameOptions()
     DisableMouseEvents = false;
     DisableKeyboardEvents = false;
     HidePassword = true;
-    PlayerOffAppendix = ScriptString::Create( "_off" );
+    PlayerOffAppendix = "_off";
     Animation3dSmoothTime = 150;
     Animation3dFPS = 30;
     RunModMul = 1;
@@ -1301,7 +1298,7 @@ GameOptions::GameOptions()
     AlwaysRun = false;
     AlwaysRunMoveDist = 1;
     AlwaysRunUseDist = 5;
-    KeyboardRemap = ScriptString::Create();
+    KeyboardRemap = "";
     CritterFidgetTime = 50000;
     Anim2CombatBegin = 0;
     Anim2CombatIdle = 0;
@@ -1312,15 +1309,15 @@ GameOptions::GameOptions()
     ConsoleHistorySize = 20;
     SoundVolume = 100;
     MusicVolume = 100;
-    RegName = ScriptString::Create();
-    RegPassword = ScriptString::Create();
+    RegName = "";
+    RegPassword = "";
     ChosenLightColor = 0;
     ChosenLightDistance = 4;
     ChosenLightIntensity = 2500;
     ChosenLightFlags = 0;
 
     // Mapper
-    ServerDir = ScriptString::Create( "./" );
+    ServerDir = "";
     ShowCorners = false;
     ShowSpriteCuts = false;
     ShowDrawOrder = false;

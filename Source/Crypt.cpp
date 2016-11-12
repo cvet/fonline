@@ -127,11 +127,8 @@ void CryptManager::TextXOR( char* data, uint len, char* xor_key, uint xor_len )
             ( ( ( a ) >= 32 && ( a ) <= 126 ) || \
               ( ( a ) >= -64 && ( a ) <= -1 ) )
 
-        //	WriteLog("%c",cur_char);
-
         if( TRUECHAR( cur_char ) )
             data[ i ] = cur_char;
-        //	if(cur_char) data[i]=cur_char;
     }
 }
 
@@ -238,7 +235,7 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
     uLongf buf_len = data_len * mul_approx;
     if( buf_len > 100000000 ) // 100mb
     {
-        WriteLog( "Unpack buffer length is too large, data length %u, multiplier %u.\n", data_len, mul_approx );
+        WriteLog( "Unpack buffer length is too large, data length {}, multiplier {}.\n", data_len, mul_approx );
         return nullptr;
     }
 
@@ -267,13 +264,13 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
             buf.Reset( new uchar[ buf_len ] );
             if( !buf.IsValid() )
             {
-                WriteLog( "Unpack bad alloc, size %u.\n", buf_len );
+                WriteLog( "Unpack bad alloc, size {}.\n", buf_len );
                 return nullptr;
             }
         }
         else if( result != Z_OK )
         {
-            WriteLog( "Unpack error %d.\n", result );
+            WriteLog( "Unpack error {}.\n", result );
             return nullptr;
         }
         else

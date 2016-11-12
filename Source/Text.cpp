@@ -923,7 +923,7 @@ hash Str::GetHash( const char* name )
     if( ins.second )
         ins.first->second = Str::Duplicate( name_ );
     else if( !Str::Compare( ins.first->second, name_ ) )
-        WriteLog( "Hash collision detected for names '%s' and '%s', hash %08X.\n", name_, ins.first->second, h );
+        WriteLog( "Hash collision detected for names '{}' and '{}', hash {:#X}.\n", name_, ins.first->second, h );
 
     return h;
 }

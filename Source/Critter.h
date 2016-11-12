@@ -59,7 +59,7 @@ public:
     CLASS_PROPERTY( ushort, HexX );
     CLASS_PROPERTY( ushort, HexY );
     CLASS_PROPERTY( uchar, Dir );
-    CLASS_PROPERTY( ScriptString *, PassHash );
+    CLASS_PROPERTY( string, PassHash );
     CLASS_PROPERTY( int, Cond ); // enum CritterCondition
     CLASS_PROPERTY( bool, ClientToDelete );
     CLASS_PROPERTY( uint, Multihex );
@@ -76,11 +76,11 @@ public:
     CLASS_PROPERTY( uint, Anim2Knockout );
     CLASS_PROPERTY( uint, Anim2Dead );
     CLASS_PROPERTY( uint, Anim2KnockoutEnd );
-    CLASS_PROPERTY( ScriptArray *, GlobalMapFog );
-    CLASS_PROPERTY( ScriptArray *, TE_FuncNum );    // hash
-    CLASS_PROPERTY( ScriptArray *, TE_Rate );       // uint
-    CLASS_PROPERTY( ScriptArray *, TE_NextTime );   // uint
-    CLASS_PROPERTY( ScriptArray *, TE_Identifier ); // int
+    CLASS_PROPERTY( CScriptArray *, GlobalMapFog );
+    CLASS_PROPERTY( CScriptArray *, TE_FuncNum );    // hash
+    CLASS_PROPERTY( CScriptArray *, TE_Rate );       // uint
+    CLASS_PROPERTY( CScriptArray *, TE_NextTime );   // uint
+    CLASS_PROPERTY( CScriptArray *, TE_Identifier ); // int
     // ...
     CLASS_PROPERTY( uint, LookDistance );
     CLASS_PROPERTY( hash, DialogId );
@@ -108,17 +108,17 @@ public:
     CLASS_PROPERTY( bool, IsHide );
     CLASS_PROPERTY( hash, HandsItemProtoId );
     CLASS_PROPERTY( uchar, HandsItemMode );
-    CLASS_PROPERTY( ScriptArray *, KnownLocations );
-    CLASS_PROPERTY( ScriptArray *, ConnectionIp );
-    CLASS_PROPERTY( ScriptArray *, ConnectionPort );
+    CLASS_PROPERTY( CScriptArray *, KnownLocations );
+    CLASS_PROPERTY( CScriptArray *, ConnectionIp );
+    CLASS_PROPERTY( CScriptArray *, ConnectionPort );
     CLASS_PROPERTY( uint, ShowCritterDist1 );
     CLASS_PROPERTY( uint, ShowCritterDist2 );
     CLASS_PROPERTY( uint, ShowCritterDist3 );
     CLASS_PROPERTY( hash, ScriptId );
-    CLASS_PROPERTY( ScriptArray *, EnemyStack );
-    CLASS_PROPERTY( ScriptArray *, InternalBagItemPid );
-    CLASS_PROPERTY( ScriptArray *, InternalBagItemCount );
-    CLASS_PROPERTY( ScriptArray *, ExternalBagCurrentSet );
+    CLASS_PROPERTY( CScriptArray *, EnemyStack );
+    CLASS_PROPERTY( CScriptArray *, InternalBagItemPid );
+    CLASS_PROPERTY( CScriptArray *, InternalBagItemCount );
+    CLASS_PROPERTY( CScriptArray *, ExternalBagCurrentSet );
     CLASS_PROPERTY( int, SneakCoefficient );
     // Exclude
     CLASS_PROPERTY( hash, BagId );              // Bags (migrate bags to scripts)
@@ -138,7 +138,7 @@ public:
     // Data
     bool          CritterIsNpc;
     uint          Flags;
-    ScriptString* NameStr;
+    string        Name;
     bool          IsRunning;
     int           LockMapTransfers;
     uint          AllowedToDownloadMap;
@@ -359,7 +359,6 @@ public:
     Client( ProtoCritter* proto );
     ~Client();
 
-    char          Name[ UTF8_BUF_SIZE( MAX_NAME ) ];
     uchar         Access;
     uint          LanguageMsg;
     uint          UID[ 5 ];
@@ -476,7 +475,7 @@ public:
     void Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm );
     void Send_AddItem( Item* item );
     void Send_EraseItem( Item* item );
-    void Send_SomeItems( ScriptArray* items_arr, int param );
+    void Send_SomeItems( CScriptArray* items_arr, int param );
     void Send_GlobalInfo( uchar flags );
     void Send_GlobalLocation( Location* loc, bool add );
     void Send_GlobalMapFog( ushort zx, ushort zy, uchar fog );

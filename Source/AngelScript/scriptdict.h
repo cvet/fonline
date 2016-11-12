@@ -1,60 +1,57 @@
 #ifndef SCRIPTDICT_H
 #define SCRIPTDICT_H
 
-#include "angelscript.h"
-#include <map>
+#ifndef ANGELSCRIPT_H 
+// Avoid having to inform include path if header is already include before
+#include <angelscript.h>
+#endif
 
-class ScriptDict
+#include <map>
+#include <vector>
+
+BEGIN_AS_NAMESPACE
+
+class CScriptDict
 {
 public:
-    #ifdef FONLINE_DLL
-    static ScriptDict& Create( const char* keyType, const char* valueType )
-    {
-        static asITypeInfo* ot = ASEngine->GetTypeInfoByDecl( std::string( "dict<" ).append( keyType ).append( "," ).append( valueType ).append( ">" ).c_str() );
-        ScriptDict*         scriptDict = (ScriptDict*) ASEngine->CreateScriptObject( ot );
-        return *scriptDict;
-    }
-protected:
-    #endif
+    // Set the memory functions that should be used by all CScriptArrays
+    static void SetMemoryFunctions(asALLOCFUNC_t allocFunc, asFREEFUNC_t freeFunc);
 
-    #ifndef FONLINE_DLL
     // Factory functions
-    static ScriptDict* Create( asITypeInfo* ot );
-    static ScriptDict* Create( asITypeInfo* ot, void* listBuffer );
-    #endif
+    static CScriptDict* Create(asITypeInfo* ot);
+    static CScriptDict* Create(asITypeInfo* ot, void* listBuffer);
 
-public:
     // Memory management
     virtual void AddRef() const;
     virtual void Release() const;
 
     // Copy the contents of one dict to another (only if the types are the same)
-    virtual ScriptDict& operator=( const ScriptDict& other );
+    virtual CScriptDict& operator=(const CScriptDict& other);
 
     // Compare two dicts
-    virtual bool operator==( const ScriptDict& ) const;
+    virtual bool operator==(const CScriptDict&) const;
 
     // Dict manipulation
-    virtual uint  GetSize() const;
+    virtual asUINT  GetSize() const;
     virtual bool  IsEmpty() const;
-    virtual void  Set( void* key, void* value );
-    virtual void  SetIfNotExist( void* key, void* value );
-    virtual bool  Remove( void* key );
-    virtual uint  RemoveValues( void* value );
+    virtual void  Set(void* key, void* value);
+    virtual void  SetIfNotExist(void* key, void* value);
+    virtual bool  Remove(void* key);
+    virtual asUINT  RemoveValues(void* value);
     virtual void  Clear();
-    virtual void* Get( void* key );
-    virtual void* GetDefault( void* key, void* defaultValue );
-    virtual void* GetKey( uint index );
-    virtual void* GetValue( uint index );
-    virtual bool  Exists( void* key ) const;
-    virtual void  GetMap( std::vector< std::pair< void*, void* > >& data );
+    virtual void* Get(void* key);
+    virtual void* GetDefault(void* key, void* defaultValue);
+    virtual void* GetKey(asUINT index);
+    virtual void* GetValue(asUINT index);
+    virtual bool  Exists(void* key) const;
+    virtual void  GetMap(std::vector< std::pair< void*, void* > >& data);
 
     // GC methods
     virtual int  GetRefCount();
     virtual void SetFlag();
     virtual bool GetFlag();
-    virtual void EnumReferences( asIScriptEngine* engine );
-    virtual void ReleaseAllHandles( asIScriptEngine* engine );
+    virtual void EnumReferences(asIScriptEngine* engine);
+    virtual void ReleaseAllHandles(asIScriptEngine* engine);
 
 protected:
     mutable int  refCount;
@@ -64,15 +61,15 @@ protected:
     int          valueTypeId;
     void*        dictMap;
 
-    ScriptDict();
-    ScriptDict( asITypeInfo* ot );
-    ScriptDict( asITypeInfo* ot, void* initBuf );
-    ScriptDict( const ScriptDict& other );
-    virtual ~ScriptDict();
+    CScriptDict();
+    CScriptDict(asITypeInfo* ot);
+    CScriptDict(asITypeInfo* ot, void* initBuf);
+    CScriptDict(const CScriptDict& other);
+    virtual ~CScriptDict();
 };
 
-#ifndef FONLINE_DLL
-void RegisterScriptDict( asIScriptEngine* engine );
-#endif
+void RegisterScriptDict(asIScriptEngine* engine);
+
+END_AS_NAMESPACE
 
 #endif

@@ -158,7 +158,7 @@ DataFile* OpenDataFile( const char* path )
         FalloutDatFile* dat = new FalloutDatFile();
         if( !dat->Init( path ) )
         {
-            WriteLog( "Unable to open DAT file '%s'.\n", path );
+            WriteLog( "Unable to open DAT file '{}'.\n", path );
             delete dat;
             return nullptr;
         }
@@ -169,7 +169,7 @@ DataFile* OpenDataFile( const char* path )
         ZipFile* zip = new ZipFile();
         if( !zip->Init( path ) )
         {
-            WriteLog( "Unable to open ZIP file '%s'.\n", path );
+            WriteLog( "Unable to open ZIP file '{}'.\n", path );
             delete zip;
             return nullptr;
         }
@@ -180,7 +180,7 @@ DataFile* OpenDataFile( const char* path )
         FolderFile* folder = new FolderFile();
         if( !folder->Init( path ) )
         {
-            WriteLog( "Unable to open folder '%s'.\n", path );
+            WriteLog( "Unable to open folder '{}'.\n", path );
             delete folder;
             return nullptr;
         }

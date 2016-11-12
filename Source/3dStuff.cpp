@@ -1202,7 +1202,7 @@ bool Animation3d::StartUp()
     GLint max_uniform_components = 0;
     GL( glGetIntegerv( GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components ) );
     if( max_uniform_components < 1024 )
-        WriteLog( "Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is %u.\n", max_uniform_components );
+        WriteLog( "Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}.\n", max_uniform_components );
     Effect::MaxBones = MIN( MAX( max_uniform_components, 1024 ) / 16, 256 ) - 4;
     #else
     Effect::MaxBones = MAX_BONES_PER_MODEL;
@@ -1460,7 +1460,7 @@ bool Animation3dEntity::Load( const char* name )
                 FileManager fo3d_ex;
                 if( !fo3d_ex.LoadFile( fname ) )
                 {
-                    WriteLog( "Include file '%s' not found.\n", fname );
+                    WriteLog( "Include file '{}' not found.\n", fname );
                     continue;
                 }
 
@@ -1511,7 +1511,7 @@ bool Animation3dEntity::Load( const char* name )
                 }
                 else if( !layer_val )
                 {
-                    WriteLog( "Wrong layer '%d' zero value.\n", layer );
+                    WriteLog( "Wrong layer '{}' zero value.\n", layer );
                     link = &dummy_link;
                 }
                 else
@@ -1656,7 +1656,7 @@ bool Animation3dEntity::Load( const char* name )
                 }
                 else
                 {
-                    WriteLog( "Cut file '%s' not found.\n", fname );
+                    WriteLog( "Cut file '{}' not found.\n", fname );
                     ( *istr ) >> buf;
                     ( *istr ) >> buf;
                     ( *istr ) >> buf;
@@ -2090,21 +2090,21 @@ bool Animation3dEntity::Load( const char* name )
             }
             else
             {
-                WriteLog( "Unknown token '%s' in file '%s'.\n", token, name );
+                WriteLog( "Unknown token '{}' in file '{}'.\n", token, name );
             }
         }
 
         // Process pathes
         if( !model[ 0 ] )
         {
-            WriteLog( "'Model' section not found in file '%s'.\n", name );
+            WriteLog( "'Model' section not found in file '{}'.\n", name );
             return false;
         }
 
         // Check for correct param values
         if( convert_value_fail )
         {
-            WriteLog( "Invalid param values for file '%s'.\n", name );
+            WriteLog( "Invalid param values for file '{}'.\n", name );
             return false;
         }
 
@@ -2130,7 +2130,7 @@ bool Animation3dEntity::Load( const char* name )
         {
             animController = AnimController::Create( 2 );
             if( !animController )
-                WriteLog( "Unable to create animation controller, file '%s'.\n", name );
+                WriteLog( "Unable to create animation controller, file '{}'.\n", name );
         }
 
         // Parse animations
@@ -2161,7 +2161,7 @@ bool Animation3dEntity::Load( const char* name )
                 }
                 else
                 {
-                    // WriteLog( "Animation '%s'/'%s' not found.\n", anim_path, anim_name );
+                    // WriteLog( "Animation '{}'/'{}' not found.\n", anim_path, anim_name );
                 }
 
                 delete[] anim_fname;
@@ -2387,14 +2387,14 @@ Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
         Bone* root_bone = GraphicLoader::LoadModel( xname );
         if( !root_bone )
         {
-            WriteLog( "Unable to load 3d file '%s'.\n", xname );
+            WriteLog( "Unable to load 3d file '{}'.\n", xname );
             return nullptr;
         }
 
         xfile = new Animation3dXFile();
         if( !xfile )
         {
-            WriteLog( "Allocation fail, x file '%s'.\n", xname );
+            WriteLog( "Allocation fail, x file '{}'.\n", xname );
             return nullptr;
         }
 
@@ -2446,7 +2446,7 @@ MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )
 {
     MeshTexture* texture = GraphicLoader::LoadTexture( tex_name, fileName.c_str() );
     if( !texture )
-        WriteLog( "Can't load texture '%s'.\n", tex_name ? tex_name : "nullptr" );
+        WriteLog( "Can't load texture '{}'.\n", tex_name ? tex_name : "nullptr" );
     return texture;
 }
 
@@ -2454,6 +2454,6 @@ Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
 {
     Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, nullptr, fileName.c_str(), effect_inst->Defaults, effect_inst->DefaultsCount );
     if( !effect )
-        WriteLog( "Can't load effect '%s'.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
+        WriteLog( "Can't load effect '{}'.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
     return effect;
 }

@@ -14,49 +14,41 @@ Property::Property()
     setCallbacksAnyNewValue = false;
 }
 
-void* Property::CreateComplexValue( uchar* data, uint data_size )
+void* Property::CreateRefValue( uchar* data, uint data_size )
 {
     asIScriptEngine* engine = asObjType->GetEngine();
-    if( dataType == Property::String )
-    {
-        ScriptString* str = ScriptString::Create( data_size ? (char*) data : "", data_size );
-        RUNTIME_ASSERT( str );
-        return str;
-    }
-    else if( dataType == Property::Array )
+    if( dataType == Property::Array )
     {
         if( isArrayOfString )
         {
             if( data_size )
             {
-                uint         arr_size = *(uint*) data;
+                uint          arr_size = *(uint*) data;
                 data += sizeof( uint );
-                ScriptArray* arr = ScriptArray::Create( asObjType, arr_size );
+                CScriptArray* arr = CScriptArray::Create( asObjType, arr_size );
                 RUNTIME_ASSERT( arr );
                 for( uint i = 0; i < arr_size; i++ )
                 {
-                    uint          str_size = *(uint*) data;
+                    uint   str_size = *(uint*) data;
                     data += sizeof( uint );
-                    ScriptString* str = ScriptString::Create( (char*) data, str_size );
-                    RUNTIME_ASSERT( str );
-                    arr->SetValue( i, str );
-                    str->Release();
+                    string str( (char*) data, str_size );
+                    arr->SetValue( i, &str );
                     data += str_size;
                 }
                 return arr;
             }
             else
             {
-                ScriptArray* arr = ScriptArray::Create( asObjType );
+                CScriptArray* arr = CScriptArray::Create( asObjType );
                 RUNTIME_ASSERT( arr );
                 return arr;
             }
         }
         else
         {
-            uint         element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId() );
-            uint         arr_size = data_size / element_size;
-            ScriptArray* arr = ScriptArray::Create( asObjType, arr_size );
+            uint          element_size = engine->GetSizeOfPrimitiveType( asObjType->GetSubTypeId() );
+            uint          arr_size = data_size / element_size;
+            CScriptArray* arr = CScriptArray::Create( asObjType, arr_size );
             RUNTIME_ASSERT( arr );
             if( arr_size )
                 memcpy( arr->At( 0 ), data, arr_size * element_size );
@@ -65,7 +57,7 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
     }
     else if( dataType == Property::Dict )
     {
-        ScriptDict* dict = ScriptDict::Create( asObjType );
+        CScriptDict* dict = CScriptDict::Create( asObjType );
         RUNTIME_ASSERT( dict );
         if( data_size )
         {
@@ -77,11 +69,11 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
                 uchar*       data_end = data + data_size;
                 while( data < data_end )
                 {
-                    void*        key = data;
+                    void*         key = data;
                     data += key_element_size;
-                    uint         arr_size = *(uint*) data;
+                    uint          arr_size = *(uint*) data;
                     data += sizeof( uint );
-                    ScriptArray* arr = ScriptArray::Create( arr_type, arr_size );
+                    CScriptArray* arr = CScriptArray::Create( arr_type, arr_size );
                     RUNTIME_ASSERT( arr );
                     if( arr_size )
                     {
@@ -89,12 +81,10 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
                         {
                             for( uint i = 0; i < arr_size; i++ )
                             {
-                                uint          str_size = *(uint*) data;
+                                uint   str_size = *(uint*) data;
                                 data += sizeof( uint );
-                                ScriptString* str = ScriptString::Create( (char*) data, str_size );
-                                RUNTIME_ASSERT( str );
-                                arr->SetValue( i, str );
-                                str->Release();
+                                string str( (char*) data, str_size );
+                                arr->SetValue( i, &str );
                                 data += str_size;
                             }
                         }
@@ -104,7 +94,7 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
                             data += arr_size * arr_element_size;
                         }
                     }
-                    dict->Set( key, arr );
+                    dict->Set( key, &arr );
                     arr->Release();
                 }
             }
@@ -113,13 +103,12 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
                 uchar* data_end = data + data_size;
                 while( data < data_end )
                 {
-                    void*         key = data;
+                    void*  key = data;
                     data += key_element_size;
-                    uint          str_size = *(uint*) data;
+                    uint   str_size = *(uint*) data;
                     data += sizeof( uint );
-                    ScriptString* str = ScriptString::Create( (char*) data, str_size );
-                    dict->Set( key, str );
-                    str->Release();
+                    string str( (char*) data, str_size );
+                    dict->Set( key, &str );
                     data += str_size;
                 }
             }
@@ -141,42 +130,28 @@ void* Property::CreateComplexValue( uchar* data, uint data_size )
     return nullptr;
 }
 
-void Property::AddRefComplexValue( void* value )
+void Property::ReleaseRefValue( void* value )
 {
-    if( dataType == Property::String )
-        ( (ScriptString*) value )->AddRef();
-    else if( dataType == Property::Array )
-        ( (ScriptArray*) value )->AddRef();
+    if( dataType == Property::Array )
+        ( (CScriptArray*) value )->Release();
     else if( dataType == Property::Dict )
-        ( (ScriptDict*) value )->AddRef();
+        ( (CScriptDict*) value )->Release();
     else
         RUNTIME_ASSERT( !"Unexpected type" );
 }
 
-void Property::ReleaseComplexValue( void* value )
-{
-    if( dataType == Property::String )
-        ( (ScriptString*) value )->Release();
-    else if( dataType == Property::Array )
-        ( (ScriptArray*) value )->Release();
-    else if( dataType == Property::Dict )
-        ( (ScriptDict*) value )->Release();
-    else
-        RUNTIME_ASSERT( !"Unexpected type" );
-}
-
-uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& need_delete )
+uchar* Property::ExpandComplexValueData( void* value, uint& data_size, bool& need_delete )
 {
     need_delete = false;
     if( dataType == Property::String )
     {
-        ScriptString* str = *(ScriptString**) pvalue;
-        data_size = ( str ? str->length() : 0 );
-        return data_size ? (uchar*) str->c_str() : nullptr;
+        string& str = *(string*) value;
+        data_size = (uint) str.length();
+        return data_size ? (uchar*) str.c_str() : nullptr;
     }
     else if( dataType == Property::Array )
     {
-        ScriptArray* arr = *(ScriptArray**) pvalue;
+        CScriptArray* arr = (CScriptArray*) value;
         if( isArrayOfString )
         {
             data_size = 0;
@@ -189,8 +164,8 @@ uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& ne
                 data_size += sizeof( uint );
                 for( uint i = 0; i < arr_size; i++ )
                 {
-                    ScriptString* str = (ScriptString*) arr->At( i );
-                    data_size += sizeof( uint ) + str->length();
+                    string& str = *(string*) arr->At( i );
+                    data_size += sizeof( uint ) + (uint) str.length();
                 }
 
                 // Make buffer
@@ -200,13 +175,13 @@ uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& ne
                 buf += sizeof( uint );
                 for( uint i = 0; i < arr_size; i++ )
                 {
-                    ScriptString* str = (ScriptString*) arr->At( i );
-                    uint          str_size = str->length();
+                    string& str = *(string*) arr->At( i );
+                    uint    str_size = (uint) str.length();
                     memcpy( buf, &str_size, sizeof( uint ) );
                     buf += sizeof( uint );
                     if( str_size )
                     {
-                        memcpy( buf, str->c_str(), str_size );
+                        memcpy( buf, str.c_str(), str_size );
                         buf += str_size;
                     }
                 }
@@ -216,13 +191,20 @@ uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& ne
         }
         else
         {
-            data_size = ( arr ? arr->GetSize() * arr->GetElementSize() : 0 );
+            int element_size;
+            int type_id = arr->GetElementTypeId();
+            if( type_id & asTYPEID_MASK_OBJECT )
+                element_size = sizeof( asPWORD );
+            else
+                element_size = asObjType->GetEngine()->GetSizeOfPrimitiveType( type_id );
+
+            data_size = ( arr ? arr->GetSize() * element_size : 0 );
             return data_size ? (uchar*) arr->At( 0 ) : nullptr;
         }
     }
     else if( dataType == Property::Dict )
     {
-        ScriptDict* dict = *(ScriptDict**) pvalue;
+        CScriptDict* dict = (CScriptDict*) value;
         if( isDictOfArray )
         {
             data_size = ( dict ? dict->GetSize() : 0 );
@@ -238,15 +220,15 @@ uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& ne
                 dict->GetMap( dict_map );
                 for( const auto& kv : dict_map )
                 {
-                    ScriptArray* arr = (ScriptArray*) kv.second;
-                    uint         arr_size = arr->GetSize();
+                    CScriptArray* arr = *(CScriptArray**) kv.second;
+                    uint          arr_size = ( arr ? arr->GetSize() : 0 );
                     data_size += key_element_size + sizeof( uint );
                     if( isDictOfArrayOfString )
                     {
                         for( uint i = 0; i < arr_size; i++ )
                         {
-                            ScriptString* str = (ScriptString*) arr->At( i );
-                            data_size += sizeof( uint ) + str->length();
+                            string& str = *(string*) arr->At( i );
+                            data_size += sizeof( uint ) + (uint) str.length();
                         }
                     }
                     else
@@ -260,10 +242,10 @@ uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& ne
                 uchar* buf = init_buf;
                 for( const auto& kv : dict_map )
                 {
-                    ScriptArray* arr = (ScriptArray*) kv.second;
+                    CScriptArray* arr = *(CScriptArray**) kv.second;
                     memcpy( buf, kv.first, key_element_size );
                     buf += key_element_size;
-                    uint arr_size = arr->GetSize();
+                    uint arr_size = ( arr ? arr->GetSize() : 0 );
                     memcpy( buf, &arr_size, sizeof( uint ) );
                     buf += sizeof( uint );
                     if( arr_size )
@@ -272,13 +254,13 @@ uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& ne
                         {
                             for( uint i = 0; i < arr_size; i++ )
                             {
-                                ScriptString* str = (ScriptString*) arr->At( i );
-                                uint          str_size = str->length();
+                                string& str = *(string*) arr->At( i );
+                                uint    str_size = (uint) str.length();
                                 memcpy( buf, &str_size, sizeof( uint ) );
                                 buf += sizeof( uint );
                                 if( str_size )
                                 {
-                                    memcpy( buf, str->c_str(), str_size );
+                                    memcpy( buf, str.c_str(), str_size );
                                     buf += arr_size;
                                 }
                             }
@@ -307,8 +289,8 @@ uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& ne
                 dict->GetMap( dict_map );
                 for( const auto& kv : dict_map )
                 {
-                    ScriptString* str = (ScriptString*) kv.second;
-                    uint          str_size = str->length();
+                    string& str = *(string*) kv.second;
+                    uint    str_size = (uint) str.length();
                     data_size += key_element_size + sizeof( uint ) + str_size;
                 }
 
@@ -317,15 +299,15 @@ uchar* Property::ExpandComplexValueData( void* pvalue, uint& data_size, bool& ne
                 uchar* buf = init_buf;
                 for( const auto& kv : dict_map )
                 {
-                    ScriptString* str = (ScriptString*) kv.second;
+                    string& str = *(string*) kv.second;
                     memcpy( buf, kv.first, key_element_size );
                     buf += key_element_size;
-                    uint str_size = str->length();
+                    uint str_size = (uint) str.length();
                     memcpy( buf, &str_size, sizeof( uint ) );
                     buf += sizeof( uint );
                     if( str_size )
                     {
-                        memcpy( buf, str->c_str(), str_size );
+                        memcpy( buf, str.c_str(), str_size );
                         buf += str_size;
                     }
                 }
@@ -380,14 +362,12 @@ void Property::GenericGet( Entity* entity, void* ret_value )
     {
         if( !getCallback )
         {
-            memzero( ret_value, baseSize );
             SCRIPT_ERROR_R( "'Get' callback is not assigned for virtual property '%s %s::%s'.",
                             typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
         }
 
         if( properties->getCallbackLocked[ getIndex ] )
         {
-            memzero( ret_value, baseSize );
             SCRIPT_ERROR_R( "Recursive call for virtual property '%s %s::%s'.",
                             typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
         }
@@ -403,14 +383,32 @@ void Property::GenericGet( Entity* entity, void* ret_value )
         {
             properties->getCallbackLocked[ getIndex ] = false;
 
-            memcpy( ret_value, Script::GetReturnedRawAddress(), baseSize );
-            if( !IsPOD() )
+            if( dataType == Property::String )
+            {
+                *(string*) ret_value = *(string*) Script::GetReturnedRawAddress();
+            }
+            else if( dataType == Property::POD )
+            {
+                memcpy( ret_value, Script::GetReturnedRawAddress(), baseSize );
+            }
+            else if( dataType == Property::Array || dataType == Property::Dict )
             {
                 void*& val = *(void**) ret_value;
                 if( val )
-                    AddRefComplexValue( val );
+                {
+                    if( dataType == Property::Array )
+                        ( (CScriptArray*) val )->AddRef();
+                    else
+                        ( (CScriptDict*) val )->AddRef();
+                }
                 else
-                    val = CreateComplexValue( nullptr, 0 );
+                {
+                    val = CreateRefValue( nullptr, 0 );
+                }
+            }
+            else
+            {
+                RUNTIME_ASSERT( !"Unexpected type" );
             }
 
             return;
@@ -419,24 +417,34 @@ void Property::GenericGet( Entity* entity, void* ret_value )
         properties->getCallbackLocked[ getIndex ] = false;
 
         // Error
-        memzero( ret_value, baseSize );
         Script::PassException();
         return;
     }
 
     // Raw property
-    if( dataType == Property::POD )
-    {
-        RUNTIME_ASSERT( podDataOffset != uint( -1 ) );
-        memcpy( ret_value, &properties->podData[ podDataOffset ], baseSize );
-    }
-    else
+    if( dataType == Property::String )
     {
         RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
         uchar* data = properties->complexData[ complexDataIndex ];
         uint   data_size = properties->complexDataSizes[ complexDataIndex ];
-        void*  result = CreateComplexValue( data, data_size );
-        memcpy( ret_value, &result, baseSize );
+        if( data_size )
+            ( *(string*) ret_value ).assign( (char*) data, data_size );
+    }
+    else if( dataType == Property::POD )
+    {
+        RUNTIME_ASSERT( podDataOffset != uint( -1 ) );
+        memcpy( ret_value, &properties->podData[ podDataOffset ], baseSize );
+    }
+    else if( dataType == Property::Array || dataType == Property::Dict )
+    {
+        RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
+        uchar* data = properties->complexData[ complexDataIndex ];
+        uint   data_size = properties->complexDataSizes[ complexDataIndex ];
+        *(void**) ret_value = CreateRefValue( data, data_size );
+    }
+    else
+    {
+        RUNTIME_ASSERT( !"Unexpected type" );
     }
 }
 
@@ -473,8 +481,15 @@ void Property::GenericSet( Entity* entity, void* new_value )
     {
         RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
 
+        // Check for null
+        if( !*(void**) new_value )
+        {
+            SCRIPT_ERROR_R( "Attempt to set null on property '%s %s::%s'.",
+                            typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+        }
+
         // Expand new value data for comparison
-        new_value_data = ExpandComplexValueData( new_value, new_value_data_size, new_value_data_need_delete );
+        new_value_data = ExpandComplexValueData( *(void**) new_value, new_value_data_size, new_value_data_need_delete );
 
         // Get current data for comparison
         uint   cur_value_data_size = properties->complexDataSizes[ complexDataIndex ];
@@ -625,7 +640,7 @@ void Property::GenericSet( Entity* entity, void* new_value )
 
         // Expand new value data for comparison
         if( !new_value_data )
-            new_value_data = ExpandComplexValueData( new_value, new_value_data_size, new_value_data_need_delete );
+            new_value_data = ExpandComplexValueData( *(void**) new_value, new_value_data_size, new_value_data_need_delete );
 
         // Get current data for comparison
         uint   cur_value_data_size = properties->complexDataSizes[ complexDataIndex ];
@@ -809,16 +824,26 @@ void Property::SetPropRawData( Properties* properties, uchar* data, uint data_si
 
 void Property::SetData( Entity* entity, uchar* data, uint data_size )
 {
-    if( dataType == Property::POD )
+    if( dataType == Property::String )
+    {
+        RUNTIME_ASSERT( data_size == baseSize );
+        string str( (char*) data, data_size );
+        GenericSet( entity, &str );
+    }
+    else if( dataType == Property::POD )
     {
         RUNTIME_ASSERT( data_size == baseSize );
         GenericSet( entity, data );
     }
+    else if( dataType == Property::Array || dataType == Property::Dict )
+    {
+        void* value = CreateRefValue( data, data_size );
+        GenericSet( entity, &value );
+        ReleaseRefValue( value );
+    }
     else
     {
-        void* value = CreateComplexValue( data, data_size );
-        GenericSet( entity, &value );
-        ReleaseComplexValue( value );
+        RUNTIME_ASSERT( !"Unexpected type" );
     }
 }
 
@@ -1413,13 +1438,15 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
     }
     else if( Str::Compare( as_obj_type->GetName(), "string" ) )
     {
-        ScriptString* str = (ScriptString*) ptr;
-        return CodeString( str->c_std_str(), deep );
+        string& str = *(string*) ptr;
+        return CodeString( str, deep );
     }
     else if( Str::Compare( as_obj_type->GetName(), "array" ) )
     {
         string result = ( deep > 0 ? "{" : "" );
-        ScriptArray* arr = (ScriptArray*) ptr;
+        CScriptArray* arr = (CScriptArray*) ptr;
+        if( deep > 0 )
+            arr = *(CScriptArray**) ptr;
         asUINT arr_size = arr->GetSize();
         if( arr_size > 0 )
         {
@@ -1436,7 +1463,7 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
     else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
     {
         string result = ( deep > 0 ? "{" : "" );
-        ScriptDict* dict = (ScriptDict*) ptr;
+        CScriptDict* dict = (CScriptDict*) ptr;
         if( dict->GetSize() > 0 )
         {
             int key_type_id = as_obj_type->GetSubTypeId( 0 );
@@ -1504,11 +1531,13 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
     }
     else if( Str::Compare( as_obj_type->GetName(), "string" ) )
     {
-        return ScriptString::Create( DecodeString( value ) );
+        string* str = (string*) Script::GetEngine()->CreateScriptObject( as_obj_type );
+        *str = DecodeString( value );
+        return str;
     }
     else if( Str::Compare( as_obj_type->GetName(), "array" ) )
     {
-        ScriptArray* arr = ScriptArray::Create( as_obj_type );
+        CScriptArray* arr = CScriptArray::Create( as_obj_type );
         int value_type_id = as_obj_type->GetSubTypeId( 0 );
         asITypeInfo* value_type = as_obj_type->GetSubType( 0 );
         string str;
@@ -1516,7 +1545,7 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
         while( ( value = ReadToken( value, str ) ) )
         {
             void* v = ReadValue( str.c_str(), value_type_id, value_type, is_hashes, deep + 1, arr_pod_buf, is_error );
-            arr->InsertLast( v );
+            arr->InsertLast( value_type_id & asTYPEID_OBJHANDLE ? &v : v );
             if( v != arr_pod_buf )
                 Script::GetEngine()->ReleaseScriptObject( v, value_type );
         }
@@ -1524,7 +1553,7 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
     }
     else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
     {
-        ScriptDict* dict = ScriptDict::Create( as_obj_type );
+        CScriptDict* dict = CScriptDict::Create( as_obj_type );
         int key_type_id = as_obj_type->GetSubTypeId( 0 );
         int value_type_id = as_obj_type->GetSubTypeId( 1 );
         asITypeInfo* key_type = as_obj_type->GetSubType( 0 );
@@ -1536,7 +1565,7 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
         {
             void* v1 = ReadValue( str1.c_str(), key_type_id, key_type, is_hashes, deep + 1, dict_pod_buf1, is_error );
             void* v2 = ReadValue( str2.c_str(), value_type_id, value_type, is_hashes, deep + 2, dict_pod_buf2, is_error );
-            dict->Set( v1, v2 );
+            dict->Set( key_type_id & asTYPEID_OBJHANDLE ? &v1 : v1, value_type_id & asTYPEID_OBJHANDLE ? &v2 : v2 );
             if( v1 != dict_pod_buf1 )
                 Script::GetEngine()->ReleaseScriptObject( v1, key_type );
             if( v2 != dict_pod_buf2 )
@@ -1565,9 +1594,9 @@ bool Properties::LoadFromText( const StrMap& key_values )
         if( !prop || ( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) ) )
         {
             if( !prop )
-                WriteLog( "Unknown property '%s'.\n", key );
+                WriteLog( "Unknown property '{}'.\n", key );
             else
-                WriteLog( "Invalid property '%s' for reading.\n", prop->GetName() );
+                WriteLog( "Invalid property '{}' for reading.\n", prop->GetName() );
 
             is_error = true;
             continue;
@@ -1628,7 +1657,7 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
     }
 }
 
-bool Properties::LoadPropertyFromText( Property* prop, const char* value )
+bool Properties::LoadPropertyFromText( Property* prop, const char* text )
 {
     RUNTIME_ASSERT( prop );
     RUNTIME_ASSERT( registrator == prop->registrator );
@@ -1638,23 +1667,23 @@ bool Properties::LoadPropertyFromText( Property* prop, const char* value )
     // Parse
     uchar pod_buf[ 8 ];
     bool is_hashes[] = { prop->isHash || prop->isResource, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
-    void* complex_value = ReadValue( value, prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error );
+    void* value = ReadValue( text, prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error );
 
     // Assign
     if( prop->podDataOffset != uint( -1 ) )
     {
-        RUNTIME_ASSERT( complex_value == pod_buf );
+        RUNTIME_ASSERT( value == pod_buf );
         prop->SetPropRawData( this, pod_buf, prop->baseSize );
     }
     else if( prop->complexDataIndex != uint( -1 ) )
     {
         bool need_delete;
         uint data_size;
-        uchar* data = prop->ExpandComplexValueData( &complex_value, data_size, need_delete );
+        uchar* data = prop->ExpandComplexValueData( value, data_size, need_delete );
         prop->SetPropRawData( this, data, data_size );
         if( need_delete )
             SAFEDELA( data );
-        prop->ReleaseComplexValue( complex_value );
+        Script::GetEngine()->ReleaseScriptObject( value, prop->asObjType );
     }
 
     return !is_error;
@@ -1669,16 +1698,26 @@ string Properties::SavePropertyToText( Property* prop )
     uint data_size;
     void* data = prop->GetPropRawData( this, data_size );
 
-    if( prop->complexDataIndex != uint( -1 ) )
-        data = prop->CreateComplexValue( (uchar*) data, data_size );
+    void* value = data;
+    string str;
+    if( prop->dataType == Property::String )
+    {
+        value = &str;
+        if( data_size )
+            str.assign( (char*) data, data_size );
+    }
+    else if( prop->dataType == Property::Array || prop->dataType == Property::Dict )
+    {
+        value = prop->CreateRefValue( (uchar*) data, data_size );
+    }
 
     bool is_hashes[] = { prop->isHash || prop->isResource, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
-    string value = WriteValue( data, prop->asObjTypeId, prop->asObjType, is_hashes, 0 );
+    string text = WriteValue( value, prop->asObjTypeId, prop->asObjType, is_hashes, 0 );
 
-    if( prop->complexDataIndex != uint( -1 ) )
-        prop->ReleaseComplexValue( data );
+    if( prop->dataType == Property::Array || prop->dataType == Property::Dict )
+        prop->ReleaseRefValue( value );
 
-    return value;
+    return text;
 }
 
 int Properties::GetValueAsInt( Entity* entity, int enum_value )
@@ -1834,14 +1873,14 @@ bool PropertyRegistrator::Init()
     int result = engine->RegisterEnum( enum_type.c_str() );
     if( result < 0 )
     {
-        WriteLog( "Register entity property enum '%s' fail, error %d.\n", enum_type.c_str(), result );
+        WriteLog( "Register entity property enum '{}' fail, error {}.\n", enum_type.c_str(), result );
         return false;
     }
 
     result = engine->RegisterEnumValue( enum_type.c_str(), "Invalid", 0 );
     if( result < 0 )
     {
-        WriteLog( "Register entity property enum '%s::Invalid' zero value fail, error %d.\n", enum_type.c_str(), result );
+        WriteLog( "Register entity property enum '{}::Invalid' zero value fail, error {}.\n", enum_type.c_str(), result );
         return false;
     }
 
@@ -1850,7 +1889,7 @@ bool PropertyRegistrator::Init()
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::GetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
-        WriteLog( "Register entity method '%s' fail, error %d.\n", decl, result );
+        WriteLog( "Register entity method '{}' fail, error {}.\n", decl, result );
         return false;
     }
 
@@ -1858,7 +1897,7 @@ bool PropertyRegistrator::Init()
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Properties::SetValueAsInt ), asCALL_CDECL_OBJFIRST );
     if( result < 0 )
     {
-        WriteLog( "Register entity method '%s' fail, error %d.\n", decl, result );
+        WriteLog( "Register entity method '{}' fail, error {}.\n", decl, result );
         return false;
     }
 
@@ -1894,13 +1933,13 @@ Property* PropertyRegistrator::Register(
     int type_id = engine->GetTypeIdByDecl( type_name );
     if( type_id < 0 )
     {
-        WriteLog( "Invalid type '%s'.\n", type_name );
+        WriteLog( "Invalid type '{}'.\n", type_name );
         return nullptr;
     }
 
     Property::DataType data_type;
     uint               data_size = 0;
-    asITypeInfo*     as_obj_type = engine->GetTypeInfoById( type_id );
+    asITypeInfo*       as_obj_type = engine->GetTypeInfoById( type_id );
     bool               is_int_data_type = false;
     bool               is_signed_int_data_type = false;
     bool               is_float_data_type = false;
@@ -1913,12 +1952,7 @@ Property* PropertyRegistrator::Register(
     bool               is_hash_sub0 = false;
     bool               is_hash_sub1 = false;
     bool               is_hash_sub2 = false;
-    if( type_id & asTYPEID_OBJHANDLE )
-    {
-        WriteLog( "Invalid property type '%s', handles not allowed.\n", type_name );
-        return nullptr;
-    }
-    else if( !( type_id & asTYPEID_MASK_OBJECT ) )
+    if( !( type_id & asTYPEID_MASK_OBJECT ) )
     {
         data_type = Property::POD;
 
@@ -1926,14 +1960,14 @@ Property* PropertyRegistrator::Register(
         int primitive_size = engine->GetSizeOfPrimitiveType( type_id );
         if( primitive_size <= 0 )
         {
-            WriteLog( "Invalid property POD type '%s'.\n", type_name );
+            WriteLog( "Invalid property POD type '{}'.\n", type_name );
             return nullptr;
         }
 
         data_size = (uint) primitive_size;
         if( data_size != 1 && data_size != 2 && data_size != 4 && data_size != 8 )
         {
-            WriteLog( "Invalid size of property POD type '%s', size %d.\n", type_name, data_size );
+            WriteLog( "Invalid size of property POD type '{}', size {}.\n", type_name, data_size );
             return nullptr;
         }
 
@@ -1957,12 +1991,12 @@ Property* PropertyRegistrator::Register(
         is_array_of_string = ( !is_array_of_pod && Str::Compare( as_obj_type->GetSubType()->GetName(), "string" ) );
         if( !is_array_of_pod && !is_array_of_string )
         {
-            WriteLog( "Invalid property type '%s', array elements must have POD/string type.\n", type_name );
+            WriteLog( "Invalid property type '{}', array elements must have POD/string type.\n", type_name );
             return nullptr;
         }
         if( Str::Substring( type_name, "resource" ) )
         {
-            WriteLog( "Invalid property type '%s', array elements can't be resource type.\n", type_name );
+            WriteLog( "Invalid property type '{}', array elements can't be resource type.\n", type_name );
             return nullptr;
         }
 
@@ -1975,7 +2009,7 @@ Property* PropertyRegistrator::Register(
 
         if( as_obj_type->GetSubTypeId( 0 ) & asTYPEID_MASK_OBJECT )
         {
-            WriteLog( "Invalid property type '%s', dict key must have POD type.\n", type_name );
+            WriteLog( "Invalid property type '{}', dict key must have POD type.\n", type_name );
             return nullptr;
         }
 
@@ -1989,7 +2023,7 @@ Property* PropertyRegistrator::Register(
             bool is_dict_array_of_pod = !( value_sub_type->GetSubTypeId() & asTYPEID_MASK_OBJECT );
             if( !is_dict_of_string && !is_dict_array_of_pod && !is_dict_of_array_of_string )
             {
-                WriteLog( "Invalid property type '%s', dict value must have POD/string type or array of POD/string type.\n", type_name );
+                WriteLog( "Invalid property type '{}', dict value must have POD/string type or array of POD/string type.\n", type_name );
                 return nullptr;
             }
         }
@@ -1997,7 +2031,7 @@ Property* PropertyRegistrator::Register(
             ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) == nullptr && !is_dict_of_array ) ||
             ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) == nullptr && is_dict_of_array ) )
         {
-            WriteLog( "Invalid property type '%s', dict elements can't be resource type.\n", type_name );
+            WriteLog( "Invalid property type '{}', dict elements can't be resource type.\n", type_name );
             return nullptr;
         }
 
@@ -2007,7 +2041,7 @@ Property* PropertyRegistrator::Register(
     }
     else
     {
-        WriteLog( "Invalid property type '%s'.\n", type_name );
+        WriteLog( "Invalid property type '{}'.\n", type_name );
         return nullptr;
     }
 
@@ -2020,7 +2054,7 @@ Property* PropertyRegistrator::Register(
         ot->GetProperty( i, &n );
         if( Str::Compare( n, name ) )
         {
-            WriteLog( "Trying to register already registered property '%s'.\n", name );
+            WriteLog( "Trying to register already registered property '{}'.\n", name );
             return nullptr;
         }
     }
@@ -2047,12 +2081,15 @@ Property* PropertyRegistrator::Register(
     #endif
 
     // Register default getter
+    bool is_handle = ( data_type == Property::Array || data_type == Property::Dict );
     if( !disable_get )
     {
         char decl[ MAX_FOTEXT ];
-        Str::Format( decl, "const %s%s get_%s() const", type_name, data_type != Property::POD ? "@" : "", name );
+        Str::Format( decl, "const %s%s get_%s() const", type_name, is_handle ? "@" : "", name );
         int  result = -1;
-        if( data_type != Property::POD )
+        if( data_type == Property::String )
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< string >, (Entity*), string ), asCALL_THISCALL_OBJFIRST, prop );
+        else if( data_type != Property::POD )
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< void* >, (Entity*), void* ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< char >, (Entity*), char ), asCALL_THISCALL_OBJFIRST, prop );
@@ -2064,7 +2101,7 @@ Property* PropertyRegistrator::Register(
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int64 >, (Entity*), int64 ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
-            WriteLog( "Register entity property '%s' getter fail, error %d.\n", name, result );
+            WriteLog( "Register entity property '{}' getter fail, error {}.\n", name, result );
             return nullptr;
         }
     }
@@ -2073,9 +2110,11 @@ Property* PropertyRegistrator::Register(
     if( !disable_set )
     {
         char decl[ MAX_FOTEXT ];
-        Str::Format( decl, "void set_%s(%s%s)", name, type_name, data_type != Property::POD ? "&" : "" );
+        Str::Format( decl, "void set_%s(%s%s%s)", name, is_handle ? "const " : "", type_name, is_handle ? "@" : "" );
         int  result = -1;
-        if( data_type != Property::POD )
+        if( data_type == Property::String )
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< string* >, ( Entity *, string* ), void ), asCALL_THISCALL_OBJFIRST, prop );
+        else if( data_type != Property::POD )
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< void* >, ( Entity *, void* ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< char >, ( Entity *, char ), void ), asCALL_THISCALL_OBJFIRST, prop );
@@ -2087,7 +2126,7 @@ Property* PropertyRegistrator::Register(
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int64 >, ( Entity *, int64 ), void ), asCALL_THISCALL_OBJFIRST, prop );
         if( result < 0 )
         {
-            WriteLog( "Register entity property '%s' setter fail, error %d.\n", name, result );
+            WriteLog( "Register entity property '{}' setter fail, error {}.\n", name, result );
             return nullptr;
         }
     }
@@ -2099,7 +2138,7 @@ Property* PropertyRegistrator::Register(
     int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
     if( result < 0 )
     {
-        WriteLog( "Register entity property enum '%s::%s' value %d fail, error %d.\n", enumTypeName.c_str(), name, enum_value, result );
+        WriteLog( "Register entity property enum '{}::{}' value {} fail, error {}.\n", enumTypeName.c_str(), name, enum_value, result );
         return nullptr;
     }
 
@@ -2107,38 +2146,39 @@ Property* PropertyRegistrator::Register(
     if( group )
     {
         char full_decl[ MAX_FOTEXT ];
-        Str::Format( full_decl, "const %s[] %s%s", enumTypeName.c_str(), enumTypeName.c_str(), group );
+        Str::Format( full_decl, "const array<%s>@ %s%s", enumTypeName.c_str(), enumTypeName.c_str(), group );
 
-        ScriptArray* group_array = nullptr;
+        CScriptArray* group_array = nullptr;
         if( enumGroups.count( full_decl ) )
             group_array = enumGroups[ full_decl ];
 
         if( !group_array )
         {
-            char           decl[ MAX_FOTEXT ];
-            Str::Format( decl, "%s[]", enumTypeName.c_str() );
+            char decl[ MAX_FOTEXT ];
+            Str::Format( decl, "array<%s>", enumTypeName.c_str() );
             asITypeInfo* enum_array_type = engine->GetTypeInfoByDecl( decl );
             if( !enum_array_type )
             {
-                WriteLog( "Invalid type for property group '%s'.\n", decl );
+                WriteLog( "Invalid type for property group '{}'.\n", decl );
                 return nullptr;
             }
 
-            group_array = ScriptArray::Create( enum_array_type );
+            group_array = CScriptArray::Create( enum_array_type );
             if( !enum_array_type )
             {
-                WriteLog( "Can not create array type for property group '%s'.\n", decl );
-                return nullptr;
-            }
-
-            int result = engine->RegisterGlobalProperty( full_decl, group_array );
-            if( result < 0 )
-            {
-                WriteLog( "Register entity property group '%s' fail, error %d.\n", full_decl, result );
+                WriteLog( "Can not create array type for property group '{}'.\n", decl );
                 return nullptr;
             }
 
             enumGroups.insert( PAIR( string( full_decl ), group_array ) );
+
+            int result = engine->RegisterGlobalProperty( full_decl, &enumGroups[ full_decl ] );
+            if( result < 0 )
+            {
+                WriteLog( "Register entity property group '{}' fail, error {}.\n", full_decl, result );
+                enumGroups.erase( full_decl );
+                return nullptr;
+            }
         }
 
         group_array->InsertLast( &enum_value );

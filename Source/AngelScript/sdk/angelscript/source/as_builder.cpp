@@ -1932,6 +1932,8 @@ int asCBuilder::RegisterClass(asCScriptNode *node, asCScriptCode *file, asSNameS
 		if (node->tokenType == ttHandle)
 			st->flags |= asOBJ_IMPLICIT_HANDLE;
 
+		st->flags |= asOBJ_IMPLICIT_HANDLE; // Patch
+
 		st->size = sizeof(asCScriptObject);
 		st->name = name;
 		st->nameSpace = ns;
@@ -2052,6 +2054,8 @@ int asCBuilder::RegisterInterface(asCScriptNode *node, asCScriptCode *file, asSN
 
 	if( isShared )
 		st->flags |= asOBJ_SHARED;
+
+	st->flags |= asOBJ_IMPLICIT_HANDLE; // Patch
 
 	st->size = 0; // Cannot be instantiated
 	st->name = name;
@@ -5314,6 +5318,8 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 
 				if( ti->flags & asOBJ_IMPLICIT_HANDLE )
 					isImplicitHandle = true;
+				if( ti->flags & asOBJ_FUNCDEF ) // Patch
+					isImplicitHandle = true;
 
 				// Make sure the module has access to the object type
 				if( !module || (module->accessMask & ti->accessMask) )
@@ -5405,6 +5411,13 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 	{
 		if( n->tokenType == ttOpenBracket )
 		{
+			if (isImplicitHandle) // Patch
+			{
+				// Make the type a handle
+				if (dt.MakeHandle(true, acceptHandleForScope) < 0)
+					WriteError(TXT_OBJECT_HANDLE_NOT_SUPPORTED, file, n);
+			}
+
 			// Make sure the sub type can be instantiated
 			if( !dt.CanBeInstantiated() )
 			{
@@ -5426,6 +5439,9 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 				WriteError(TXT_NO_DEFAULT_ARRAY_TYPE, file, n);
 				break;
 			}
+
+			if( dt.GetTypeInfo()->flags & asOBJ_IMPLICIT_HANDLE ) // Patch
+				isImplicitHandle = true;
 		}
 		else
 		{

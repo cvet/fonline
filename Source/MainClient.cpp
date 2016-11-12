@@ -85,7 +85,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         Str::Format( command_line, "\"%s%s\" -singleplayer %p %p %s -logpath %s", server_dir, server_exe, map_file, client_process, server_cmdline, path );
         if( !CreateProcess( nullptr, command_line, nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, server_dir, &sui, &server ) )
         {
-            WriteLog( "Can't start server process, error %u.\n", GetLastError() );
+            WriteLog( "Can't start server process, error {}.\n", GetLastError() );
             return 0;
         }
         CloseHandle( server.hProcess );
@@ -111,7 +111,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     GetClientOptions();
 
     // Start message
-    WriteLog( "Starting FOnline (version %d)...\n", FONLINE_VERSION );
+    WriteLog( "Starting FOnline (version {})...\n", FONLINE_VERSION );
 
     // Create engine
     FOClient* engine = new FOClient();

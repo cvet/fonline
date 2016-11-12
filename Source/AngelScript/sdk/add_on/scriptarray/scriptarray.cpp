@@ -557,7 +557,8 @@ void CScriptArray::SetValue(asUINT index, void *value)
 	{
 		void *tmp = *(void**)ptr;
 		*(void**)ptr = *(void**)value;
-		objType->GetEngine()->AddRefScriptObject(*(void**)value, objType->GetSubType());
+		if( *(void**)value )
+			objType->GetEngine()->AddRefScriptObject(*(void**)value, objType->GetSubType());
 		if( tmp )
 			objType->GetEngine()->ReleaseScriptObject(tmp, objType->GetSubType());
 	}

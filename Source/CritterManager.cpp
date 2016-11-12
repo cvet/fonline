@@ -52,13 +52,13 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
     {
-        WriteLog( "Critter proto '%s' not found.\n", Str::GetName( proto_id ) );
+        WriteLog( "Critter proto '{}' not found.\n", Str::GetName( proto_id ) );
         return nullptr;
     }
 
     if( !map || hx >= map->GetWidth() || hy >= map->GetHeight() )
     {
-        WriteLog( "Wrong map values, hx %u, hy %u, map is nullptr '%s'.\n", hx, hy, !map ? "true" : "false" );
+        WriteLog( "Wrong map values, hx {}, hy {}, map is nullptr '{}'.\n", hx, hy, !map ? "true" : "false" );
         return nullptr;
     }
 
@@ -72,7 +72,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     {
         if( accuracy )
         {
-            WriteLog( "Accuracy position busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
+            WriteLog( "Accuracy position busy, map '{}', hx {}, hy {}.\n", map->GetName(), hx, hy );
             return nullptr;
         }
 
@@ -87,7 +87,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
         {
             if( i >= 18 )
             {
-                WriteLog( "All positions busy, map '%s', hx %u, hy %u.\n", map->GetName(), hx, hy );
+                WriteLog( "All positions busy, map '{}', hx {}, hy {}.\n", map->GetName(), hx, hy );
                 return nullptr;
             }
             cur_step++;
@@ -148,14 +148,14 @@ bool CritterManager::RestoreNpc( uint id, hash proto_id, const StrMap& props_dat
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
     {
-        WriteLog( "Proto critter '%s' is not loaded.\n", Str::GetName( proto_id ) );
+        WriteLog( "Proto critter '{}' is not loaded.\n", Str::GetName( proto_id ) );
         return false;
     }
 
     Npc* npc = new Npc( id, proto );
     if( !npc->Props.LoadFromText( props_data ) )
     {
-        WriteLog( "Fail to restore properties for critter '%s' (%u).\n", Str::GetName( proto_id ), id );
+        WriteLog( "Fail to restore properties for critter '{}' ({}).\n", Str::GetName( proto_id ), id );
         npc->Release();
         return false;
     }

@@ -307,7 +307,7 @@ void HexManager::Finish()
 
 void HexManager::ReloadSprites()
 {
-    curDataPrefix = GameOpt.MapDataPrefix->c_std_str();
+    curDataPrefix = GameOpt.MapDataPrefix;
 
     // Must be valid
     picHex[ 0 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex1.png" ).c_str(), true );
@@ -363,14 +363,14 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
 
     if( hx >= maxHexX || hy >= maxHexY )
     {
-        WriteLog( "Position hx %u or hy %u error value.\n", hx, hy );
+        WriteLog( "Position hx {} or hy {} error value.\n", hx, hy );
         return 0;
     }
 
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLog( "Proto not found '%s'.\n", Str::GetName( pid ) );
+        WriteLog( "Proto not found '{}'.\n", Str::GetName( pid ) );
         return 0;
     }
 
@@ -432,7 +432,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     ItemHex* item = GetItemById( id );
     if( !item )
     {
-        WriteLog( "Item '%s' not found.\n", Str::GetName( id ) );
+        WriteLog( "Item '{}' not found.\n", Str::GetName( id ) );
         return;
     }
 
@@ -636,14 +636,14 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
         return false;
     if( from_hx >= maxHexX || from_hy >= maxHexY || to_hx >= maxHexX || to_hy >= maxHexY )
     {
-        WriteLog( "Incorrect value of from_x %d or from_y %d or to_x %d or to_y %d.\n", from_hx, from_hy, to_hx, to_hy );
+        WriteLog( "Incorrect value of from_x {} or from_y {} or to_x {} or to_y {}.\n", from_hx, from_hy, to_hx, to_hy );
         return false;
     }
 
     ProtoItem* proto = ProtoMngr.GetProtoItem( eff_pid );
     if( !proto )
     {
-        WriteLog( "Proto '%s' not found.\n", Str::GetName( eff_pid ) );
+        WriteLog( "Proto '{}' not found.\n", Str::GetName( eff_pid ) );
         return false;
     }
 
@@ -2440,7 +2440,7 @@ void HexManager::SetCritter( CritterCl* cr )
     {
         if( f.Crit && f.Crit != cr )
         {
-            WriteLog( "Hex %u %u busy, critter old %u, new %u.\n", hx, hy, f.Crit->GetId(), cr->GetId() );
+            WriteLog( "Hex {} {} busy, critter old {}, new {}.\n", hx, hy, f.Crit->GetId(), cr->GetId() );
             return;
         }
 
@@ -3561,7 +3561,7 @@ bool HexManager::LoadMap( hash map_pid )
     UnloadMap();
 
     // Check data sprites reloading
-    if( curDataPrefix != GameOpt.MapDataPrefix->c_std_str() )
+    if( curDataPrefix != GameOpt.MapDataPrefix )
         ReloadSprites();
 
     // Make name
@@ -3573,14 +3573,14 @@ bool HexManager::LoadMap( hash map_pid )
     uchar* cache = Crypt.GetCache( map_name, cache_len );
     if( !cache )
     {
-        WriteLog( "Load map '%s' from cache fail.\n", map_name );
+        WriteLog( "Load map '{}' from cache fail.\n", map_name );
         return false;
     }
 
     FileManager fm;
     if( !fm.LoadStream( cache, cache_len ) )
     {
-        WriteLog( "Load map '%s' from stream fail.\n", map_name );
+        WriteLog( "Load map '{}' from stream fail.\n", map_name );
         delete[] cache;
         return false;
     }
@@ -3791,7 +3791,7 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
         hash_tiles = curHashTiles;
         hash_scen = curHashScen;
 
-        WriteLog( "Hashes of loaded map: tiles %u, scenery %u.\n", hash_tiles, hash_scen );
+        WriteLog( "Hashes of loaded map: tiles {}, scenery {}.\n", hash_tiles, hash_scen );
         return;
     }
 
@@ -3802,14 +3802,14 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
     uchar* cache = Crypt.GetCache( map_name, cache_len );
     if( !cache )
     {
-        WriteLog( "Load map '%s' from cache fail.\n", map_name );
+        WriteLog( "Load map '{}' from cache fail.\n", map_name );
         return;
     }
 
     FileManager fm;
     if( !fm.LoadStream( cache, cache_len ) )
     {
-        WriteLog( "Load map '%s' from stream fail.\n", map_name );
+        WriteLog( "Load map '{}' from stream fail.\n", map_name );
         delete[] cache;
         return;
     }
@@ -3909,7 +3909,7 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
 
     UnloadMap();
 
-    if( curDataPrefix != GameOpt.MapDataPrefix->c_std_str() )
+    if( curDataPrefix != GameOpt.MapDataPrefix )
         ReloadSprites();
 
     ResizeField( pmap.GetWidth(), pmap.GetHeight() );
@@ -3922,8 +3922,8 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     uint color = GetColorDay( GetMapDayTime(), GetMapDayColor(), GetMapTime(), nullptr );
     SprMngr.SetSpritesColor( COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF ) );
 
-    ScriptArray* dt = pmap.GetDayTime();
-    ScriptArray* dc = pmap.GetDayColor();
+    CScriptArray* dt = pmap.GetDayTime();
+    CScriptArray* dc = pmap.GetDayColor();
     for( int i = 0; i < 4; i++ )
         dayTime[ i ] = *(int*) dt->At( i );
     for( int i = 0; i < 12; i++ )
