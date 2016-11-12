@@ -162,9 +162,6 @@ struct ProtoMap
 struct BindClass
 {
     #ifdef BIND_SERVER
-    static void Synchronizer_Constructor( void* ) {}
-    static void Synchronizer_Destructor( void* )  {}
-
     static void NpcPlane_GetCopy()        {}
     static void NpcPlane_SetChild()       {}
     static void NpcPlane_GetChild()       {}

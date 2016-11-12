@@ -2406,7 +2406,7 @@ void Client::SetBinPassHash( const char* pass_hash )
     str.resize( PASS_HASH_SIZE * 2 );
     for( uint i = 0; i < PASS_HASH_SIZE; i++ )
         Str::HexToStr( (uchar) pass_hash[ i ], (char*) str.c_str() + i * 2 );
-    PropertyPassHash->SetValue< string* >( this, &str );
+    SetPassHash( str );
 }
 
 bool Client::IsToPing()

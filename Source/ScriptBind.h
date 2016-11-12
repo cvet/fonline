@@ -354,7 +354,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "array<Location@>@ GetAllLocations(
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadImage(uint index, string imageName, uint imageDepth)", asFUNCTION( BIND_CLASS Global_LoadImage ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetImageColor(uint index, uint x, uint y)", asFUNCTION( BIND_CLASS Global_GetImageColor ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", asFUNCTION( BIND_CLASS Global_SetTime ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(const string url, const dict<string, string>@+ post, bool& success, string& result)", asFUNCTION( BIND_CLASS Global_YieldWebRequest ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(string url, const dict<string, string>@+ post, bool& success, string& result)", asFUNCTION( BIND_CLASS Global_YieldWebRequest ), asCALL_CDECL ) );
 #endif
 
 #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )

@@ -102,8 +102,7 @@ public:
     template< typename T >
     T GetValue( Entity* entity )
     {
-        if( dataType != DataType::String )
-            RUNTIME_ASSERT( sizeof( T ) == baseSize );
+        RUNTIME_ASSERT( sizeof( T ) == baseSize );
         T ret_value;
         GenericGet( entity, (void*) &ret_value );
         return ret_value;

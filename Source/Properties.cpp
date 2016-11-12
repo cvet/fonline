@@ -459,6 +459,10 @@ void Property::GenericSet( Entity* entity, void* new_value )
                         typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
     }
 
+    // Dereference ref types
+    if( dataType == DataType::Array || dataType == DataType::Dict )
+        new_value = *(void**) new_value;
+
     // Get current value
     void*  cur_pod_value = nullptr;
     uint64 old_pod_value = 0;
@@ -482,14 +486,14 @@ void Property::GenericSet( Entity* entity, void* new_value )
         RUNTIME_ASSERT( complexDataIndex != uint( -1 ) );
 
         // Check for null
-        if( !*(void**) new_value )
+        if( !new_value )
         {
             SCRIPT_ERROR_R( "Attempt to set null on property '%s %s::%s'.",
                             typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
         }
 
         // Expand new value data for comparison
-        new_value_data = ExpandComplexValueData( *(void**) new_value, new_value_data_size, new_value_data_need_delete );
+        new_value_data = ExpandComplexValueData( new_value, new_value_data_size, new_value_data_need_delete );
 
         // Get current data for comparison
         uint   cur_value_data_size = properties->complexDataSizes[ complexDataIndex ];
@@ -640,7 +644,7 @@ void Property::GenericSet( Entity* entity, void* new_value )
 
         // Expand new value data for comparison
         if( !new_value_data )
-            new_value_data = ExpandComplexValueData( *(void**) new_value, new_value_data_size, new_value_data_need_delete );
+            new_value_data = ExpandComplexValueData( new_value, new_value_data_size, new_value_data_need_delete );
 
         // Get current data for comparison
         uint   cur_value_data_size = properties->complexDataSizes[ complexDataIndex ];
@@ -826,8 +830,9 @@ void Property::SetData( Entity* entity, uchar* data, uint data_size )
 {
     if( dataType == Property::String )
     {
-        RUNTIME_ASSERT( data_size == baseSize );
-        string str( (char*) data, data_size );
+        string str;
+        if( data_size )
+            str.assign( (char*) data, data_size );
         GenericSet( entity, &str );
     }
     else if( dataType == Property::POD )
@@ -1980,7 +1985,7 @@ Property* PropertyRegistrator::Register(
     else if( Str::Compare( as_obj_type->GetName(), "string" ) )
     {
         data_type = Property::String;
-        data_size = sizeof( void* );
+        data_size = sizeof( string );
     }
     else if( Str::Compare( as_obj_type->GetName(), "array" ) )
     {
@@ -2113,7 +2118,7 @@ Property* PropertyRegistrator::Register(
         Str::Format( decl, "void set_%s(%s%s%s)", name, is_handle ? "const " : "", type_name, is_handle ? "@" : "" );
         int  result = -1;
         if( data_type == Property::String )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< string* >, ( Entity *, string* ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< const string& >, ( Entity *, const string & ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_type != Property::POD )
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< void* >, ( Entity *, void* ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
