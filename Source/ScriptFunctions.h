@@ -51,7 +51,7 @@ void Global_Assert( bool condition )
         Script::RaiseException( "Assertion failed" );
 }
 
-void Global_ThrowException( const string& message )
+void Global_ThrowException( string message )
 {
     Script::RaiseException( "%s", message.c_str() );
 }
@@ -62,7 +62,7 @@ int Global_Random( int min, int max )
     return script_randomizer.Random( min, max );
 }
 
-void Global_Log( const string& text )
+void Global_Log( string text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     Script::Log( text.c_str() );
@@ -71,7 +71,7 @@ void Global_Log( const string& text )
     #endif
 }
 
-bool Global_StrToInt( const string& text, int& result )
+bool Global_StrToInt( string text, int& result )
 {
     if( text.empty() || !Str::IsNumber( text.c_str() ) )
         return false;
@@ -79,7 +79,7 @@ bool Global_StrToInt( const string& text, int& result )
     return true;
 }
 
-bool Global_StrToFloat( const string& text, float& result )
+bool Global_StrToFloat( string text, float& result )
 {
     if( text.empty() )
         return false;
@@ -117,7 +117,7 @@ bool Global_SetAngelScriptProperty( int property, uint value )
     return asGetActiveContext()->GetEngine()->SetEngineProperty( (asEEngineProp) property, value ) >= 0;
 }
 
-hash Global_GetStrHash( const string& str )
+hash Global_GetStrHash( string str )
 {
     if( str.empty() )
         return 0;
@@ -132,7 +132,7 @@ string Global_GetHashStr( hash h )
     return str ? str : "";
 }
 
-uint Global_DecodeUTF8( const string& text, uint& length )
+uint Global_DecodeUTF8( string text, uint& length )
 {
     return Str::DecodeUTF8( text.c_str(), &length );
 }
@@ -145,7 +145,7 @@ string Global_EncodeUTF8( uint ucs )
     return buf;
 }
 
-uint Global_GetFolderFileNames( const string& path, const string& ext, bool include_subdirs, CScriptArray* result )
+uint Global_GetFolderFileNames( string path, string ext, bool include_subdirs, CScriptArray* result )
 {
     StrVec files;
     FileManager::GetFolderFileNames( path.c_str(), include_subdirs, !ext.empty() ? ext.c_str() : nullptr, files );
@@ -159,12 +159,12 @@ uint Global_GetFolderFileNames( const string& path, const string& ext, bool incl
     return (uint) files.size();
 }
 
-bool Global_DeleteFile( const string& filename )
+bool Global_DeleteFile( string filename )
 {
     return FileManager::DeleteFile( filename.c_str() );
 }
 
-void Global_CreateDirectoryTree( const string& path )
+void Global_CreateDirectoryTree( string path )
 {
     char tmp[ MAX_FOPATH ];
     Str::Copy( tmp, path.c_str() );
@@ -194,7 +194,7 @@ static size_t WriteMemoryCallback( char* ptr, size_t size, size_t nmemb, void* u
 }
 #endif
 
-string Global_SHA1( const string& text )
+string Global_SHA1( string text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     SHA1_CTX ctx;
@@ -213,7 +213,7 @@ string Global_SHA1( const string& text )
     #endif
 }
 
-string Global_SHA2( const string& text )
+string Global_SHA2( string text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     const uint digest_size = 32;
@@ -230,7 +230,7 @@ string Global_SHA2( const string& text )
     #endif
 }
 
-void Global_OpenLink( const string& link )
+void Global_OpenLink( string link )
 {
     #ifdef FO_WINDOWS
     ShellExecute( nullptr, "open", link.c_str(), nullptr, nullptr, SW_SHOWNORMAL );

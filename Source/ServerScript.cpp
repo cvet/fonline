@@ -1117,7 +1117,7 @@ void FOServer::SScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, usho
     cr->Send_LoadMap( map );
 }
 
-void FOServer::SScriptFunc::Crit_Say( Critter* cr, uchar how_say, const string& text )
+void FOServer::SScriptFunc::Crit_Say( Critter* cr, uchar how_say, string text )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1147,7 +1147,7 @@ void FOServer::SScriptFunc::Crit_SayMsg( Critter* cr, uchar how_say, ushort text
         cr->SendAA_Msg( cr->VisCr, num_str, how_say, text_msg );
 }
 
-void FOServer::SScriptFunc::Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, const string& lexems )
+void FOServer::SScriptFunc::Crit_SayMsgLex( Critter* cr, uchar how_say, ushort text_msg, uint num_str, string lexems )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1631,7 +1631,7 @@ void FOServer::SScriptFunc::Crit_SetAnims( Critter* cr, int cond, uint anim1, ui
     cr->SendAA_SetAnims( cond, anim1, anim2 );
 }
 
-void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, const string& sound_name, bool send_self )
+void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, string sound_name, bool send_self )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2768,7 +2768,7 @@ bool FOServer::SScriptFunc::Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y
     return map->IsHexRaked( hex_x, hex_y );
 }
 
-void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, uint color, const string& text )
+void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, uint color, string text )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2787,7 +2787,7 @@ void FOServer::SScriptFunc::Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y
     map->SetTextMsg( hex_x, hex_y, color, text_msg, str_num );
 }
 
-void FOServer::SScriptFunc::Map_SetTextMsgLex( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num, const string& lexems )
+void FOServer::SScriptFunc::Map_SetTextMsgLex( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num, string lexems )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2863,7 +2863,7 @@ void FOServer::SScriptFunc::Map_UnblockHex( Map* map, ushort hx, ushort hy )
     map->UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
 }
 
-void FOServer::SScriptFunc::Map_PlaySound( Map* map, const string& sound_name )
+void FOServer::SScriptFunc::Map_PlaySound( Map* map, string sound_name )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -2880,7 +2880,7 @@ void FOServer::SScriptFunc::Map_PlaySound( Map* map, const string& sound_name )
     }
 }
 
-void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, const string& sound_name, ushort hx, ushort hy, uint radius )
+void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, string sound_name, ushort hx, ushort hy, uint radius )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -3225,7 +3225,7 @@ void FOServer::SScriptFunc::Global_DeleteNpcById( uint npc_id )
         CrMngr.DeleteNpc( npc );
 }
 
-void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, const string& text )
+void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, string text )
 {
     ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (uint) text.length(), false, 0, 0, nullptr );
 }
@@ -3235,7 +3235,7 @@ void FOServer::SScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_
     ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, false, text_msg, num_str, nullptr );
 }
 
-void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, const string& lexems )
+void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, string lexems )
 {
     ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, false, text_msg, num_str, !lexems.empty() ? lexems.c_str() : nullptr );
 }
@@ -3337,7 +3337,7 @@ Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
     return CrMngr.GetCritter( crid );
 }
 
-Critter* FOServer::SScriptFunc::Global_GetPlayer( const string& name )
+Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
 {
     uint len_utf8 = Str::LengthUTF8( name.c_str() );
     if( len_utf8 < MIN_NAME || len_utf8 < GameOpt.MinNameLength )
@@ -3348,7 +3348,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( const string& name )
     return CrMngr.GetPlayer( name.c_str() );
 }
 
-uint FOServer::SScriptFunc::Global_GetPlayerId( const string& name )
+uint FOServer::SScriptFunc::Global_GetPlayerId( string name )
 {
     uint len_utf8 = Str::LengthUTF8( name.c_str() );
     if( len_utf8 < MIN_NAME || len_utf8 < GameOpt.MinNameLength )
@@ -3524,7 +3524,7 @@ int64 FOServer::SScriptFunc::Global_WorldItemCount( hash pid )
     return ItemMngr.GetItemStatistics( pid );
 }
 
-bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, const string& first_str, uint parameter, asIScriptFunction* func )
+bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, string first_str, uint parameter, asIScriptFunction* func )
 {
     if( first_str.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN )
         SCRIPT_ERROR_R0( "First string arg length greater than maximum." );
@@ -3546,7 +3546,7 @@ bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, const string& 
     return true;
 }
 
-void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, const string& first_str, uint parameter )
+void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, string first_str, uint parameter )
 {
     SCOPE_LOCK( TextListenersLocker );
 
@@ -3882,7 +3882,7 @@ void FOServer::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
         ( *props_array )->InsertLast( (void*) &( *it ) );
 }
 
-bool FOServer::SScriptFunc::Global_LoadDataFile( const string& dat_name )
+bool FOServer::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
     return FileManager::LoadDataFile( dat_name.c_str() );
 }
@@ -3895,7 +3895,7 @@ struct ServerImage
     uint     Depth;
 };
 vector< ServerImage* > ServerImages;
-bool FOServer::SScriptFunc::Global_LoadImage( uint index, const string& image_name, uint image_depth )
+bool FOServer::SScriptFunc::Global_LoadImage( uint index, string image_name, uint image_depth )
 {
     // Delete old
     if( index >= ServerImages.size() )
@@ -4065,7 +4065,7 @@ uint FOServer::SScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
     return result;
 }
 
-void FOServer::SScriptFunc::Global_YieldWebRequest( const string& url, CScriptDict* post, bool& success, string& result )
+void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result )
 {
     success = false;
     result = "";

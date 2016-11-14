@@ -4685,7 +4685,7 @@ string FOMapper::SScriptFunc::Global_GetTileName( ushort hx, ushort hy, bool roo
     return "";
 }
 
-void FOMapper::SScriptFunc::Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, const string& pic_name )
+void FOMapper::SScriptFunc::Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string pic_name )
 {
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R( "Map not loaded." );
@@ -4710,7 +4710,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
     //
 }
 
-ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( const string& file_name )
+ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
     ProtoMap* pmap = new ProtoMap( Str::GetHash( file_name.c_str() ) );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
@@ -4743,7 +4743,7 @@ void FOMapper::SScriptFunc::Global_UnloadMap( ProtoMap* pmap )
     pmap->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, const string& custom_name )
+bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, string custom_name )
 {
     if( !pmap )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
@@ -4782,7 +4782,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetLoadedMaps( int& index )
     return Script::CreateArrayRef( "ProtoMap[]", Self->LoadedProtoMaps );
 }
 
-CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( const string& dir )
+CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
 {
     FileManager::SetCurrentDir( ServerWritePath, "./" );
     string   dir_ = ( dir.empty() ? GameOpt.WorkDir : dir );
@@ -4905,7 +4905,7 @@ uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, CScriptArray* dir_na
     return (uint) ttab.TileDirs.size();
 }
 
-uint FOMapper::SScriptFunc::Global_TabGetItemPids( int tab, const string& sub_tab, CScriptArray* item_pids )
+uint FOMapper::SScriptFunc::Global_TabGetItemPids( int tab, string sub_tab, CScriptArray* item_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R0( "Wrong tab arg." );
@@ -4918,7 +4918,7 @@ uint FOMapper::SScriptFunc::Global_TabGetItemPids( int tab, const string& sub_ta
     return (uint) stab.ItemProtos.size();
 }
 
-uint FOMapper::SScriptFunc::Global_TabGetCritterPids( int tab, const string& sub_tab, CScriptArray* critter_pids )
+uint FOMapper::SScriptFunc::Global_TabGetCritterPids( int tab, string sub_tab, CScriptArray* critter_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R0( "Wrong tab arg." );
@@ -4959,7 +4959,7 @@ void FOMapper::SScriptFunc::Global_TabSetTileDirs( int tab, CScriptArray* dir_na
         Self->RefreshTiles( tab );
 }
 
-void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, const string& sub_tab, CScriptArray* item_pids )
+void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, string sub_tab, CScriptArray* item_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -5015,7 +5015,7 @@ void FOMapper::SScriptFunc::Global_TabSetItemPids( int tab, const string& sub_ta
         Self->RefreshCurProtos();
 }
 
-void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, const string& sub_tab, CScriptArray* critter_pids )
+void FOMapper::SScriptFunc::Global_TabSetCritterPids( int tab, string sub_tab, CScriptArray* critter_pids )
 {
     if( tab < 0 || tab >= TAB_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -5081,7 +5081,7 @@ void FOMapper::SScriptFunc::Global_TabDelete( int tab )
     Self->TabsActive[ tab ] = &stab_default;
 }
 
-void FOMapper::SScriptFunc::Global_TabSelect( int tab, const string& sub_tab, bool show )
+void FOMapper::SScriptFunc::Global_TabSelect( int tab, string sub_tab, bool show )
 {
     if( tab < 0 || tab >= INT_MODE_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -5097,7 +5097,7 @@ void FOMapper::SScriptFunc::Global_TabSelect( int tab, const string& sub_tab, bo
         Self->TabsActive[ tab ] = &it->second;
 }
 
-void FOMapper::SScriptFunc::Global_TabSetName( int tab, const string& tab_name )
+void FOMapper::SScriptFunc::Global_TabSetName( int tab, string tab_name )
 {
     if( tab < 0 || tab >= INT_MODE_COUNT )
         SCRIPT_ERROR_R( "Wrong tab arg." );
@@ -5143,12 +5143,12 @@ void FOMapper::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
     hy = hy_;
 }
 
-string FOMapper::SScriptFunc::Global_GetIfaceIniStr( const string& key )
+string FOMapper::SScriptFunc::Global_GetIfaceIniStr( string key )
 {
     return Self->IfaceIni.GetStr( "", key.c_str(), "" );
 }
 
-void FOMapper::SScriptFunc::Global_Message( const string& msg )
+void FOMapper::SScriptFunc::Global_Message( string msg )
 {
     Self->AddMess( msg.c_str() );
 }
@@ -5160,7 +5160,7 @@ void FOMapper::SScriptFunc::Global_MessageMsg( int text_msg, uint str_num )
     Self->AddMess( Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
 }
 
-void FOMapper::SScriptFunc::Global_MapMessage( const string& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
+void FOMapper::SScriptFunc::Global_MapMessage( string text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
 {
     FOMapper::MapText t;
     t.HexX = hx;
@@ -5226,7 +5226,7 @@ bool FOMapper::SScriptFunc::Global_IsMsgStr( int text_msg, uint str_num )
     return Self->CurLang.Msg[ text_msg ].Count( str_num ) > 0;
 }
 
-string FOMapper::SScriptFunc::Global_ReplaceTextStr( const string& text, const string& replace, const string& str )
+string FOMapper::SScriptFunc::Global_ReplaceTextStr( string text, string replace, string str )
 {
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
@@ -5234,7 +5234,7 @@ string FOMapper::SScriptFunc::Global_ReplaceTextStr( const string& text, const s
     return string( text ).replace( pos, replace.length(), text );
 }
 
-string FOMapper::SScriptFunc::Global_ReplaceTextInt( const string& text, const string& replace, int i )
+string FOMapper::SScriptFunc::Global_ReplaceTextInt( string text, string replace, int i )
 {
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
@@ -5321,7 +5321,7 @@ Entity* FOMapper::SScriptFunc::Global_GetMonitorObject( int x, int y, bool ignor
     return mobj;
 }
 
-bool FOMapper::SScriptFunc::Global_LoadDataFile( const string& dat_name )
+bool FOMapper::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
     if( FileManager::LoadDataFile( dat_name.c_str() ) )
     {
@@ -5337,7 +5337,7 @@ bool FOMapper::SScriptFunc::Global_LoadDataFile( const string& dat_name )
     return false;
 }
 
-bool FOMapper::SScriptFunc::Global_LoadFont( int font_index, const string& font_fname )
+bool FOMapper::SScriptFunc::Global_LoadFont( int font_index, string font_fname )
 {
     bool result;
     if( font_fname.length() > 0 && font_fname.c_str()[ 0 ] == '*' )
@@ -5398,7 +5398,7 @@ void FOMapper::SScriptFunc::Global_MouseClick( int x, int y, int button )
     GameOpt.LastMouseY = last_prev_y;
 }
 
-void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, const string& key1_text, const string& key2_text )
+void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, string key1_text, string key2_text )
 {
     if( !key1 && !key2 )
         return;
@@ -5432,7 +5432,7 @@ void FOMapper::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, const 
     MainWindowKeyboardEventsText = prev_events_text;
 }
 
-void FOMapper::SScriptFunc::Global_SetRainAnimation( const string& fall_anim_name, const string& drop_anim_name )
+void FOMapper::SScriptFunc::Global_SetRainAnimation( string fall_anim_name, string drop_anim_name )
 {
     Self->HexMngr.SetRainAnimation( !fall_anim_name.empty() ? fall_anim_name.c_str() : nullptr, !drop_anim_name.empty() ? drop_anim_name.c_str() : nullptr );
 }
@@ -5468,7 +5468,7 @@ void FOMapper::SScriptFunc::Global_ChangeZoom( float target_zoom )
     }
 }
 
-uint FOMapper::SScriptFunc::Global_LoadSprite( const string& spr_name )
+uint FOMapper::SScriptFunc::Global_LoadSprite( string spr_name )
 {
     return Self->AnimLoad( spr_name.c_str(), RES_ATLAS_STATIC );
 }
@@ -5525,7 +5525,7 @@ uint FOMapper::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, 
     return SprMngr.GetPixColor( spr_id_, x, y, false );
 }
 
-void FOMapper::SScriptFunc::Global_GetTextInfo( const string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
+void FOMapper::SScriptFunc::Global_GetTextInfo( string text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
     SprMngr.GetTextInfo( w, h, !text.empty() ? text.c_str() : nullptr, font, flags, tw, th, lines );
 }
@@ -5578,7 +5578,7 @@ void FOMapper::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_ind
     SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, COLOR_SCRIPT_SPRITE( color ) );
 }
 
-void FOMapper::SScriptFunc::Global_DrawText( const string& text, int x, int y, int w, int h, uint color, int font, int flags )
+void FOMapper::SScriptFunc::Global_DrawText( string text, int x, int y, int w, int h, uint color, int font, int flags )
 {
     if( !SpritesCanDraw )
         return;

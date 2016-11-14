@@ -7016,7 +7016,7 @@ CScriptArray* FOClient::SScriptFunc::Item_GetItems( Item* cont, uint stack_id )
 }
 
 
-string FOClient::SScriptFunc::Global_CustomCall( const string& command, const string& separator )
+string FOClient::SScriptFunc::Global_CustomCall( string command, string separator )
 {
     // Parse command
     vector< string >  args;
@@ -7679,17 +7679,17 @@ void FOClient::SScriptFunc::Global_QuakeScreen( uint noise, uint ms )
     Self->ScreenQuake( noise, ms );
 }
 
-bool FOClient::SScriptFunc::Global_PlaySound( const string& sound_name )
+bool FOClient::SScriptFunc::Global_PlaySound( string sound_name )
 {
     return SndMngr.PlaySound( sound_name.c_str() );
 }
 
-bool FOClient::SScriptFunc::Global_PlayMusic( const string& music_name, uint pos, uint repeat )
+bool FOClient::SScriptFunc::Global_PlayMusic( string music_name, uint pos, uint repeat )
 {
     return SndMngr.PlayMusic( music_name.c_str(), pos, repeat );
 }
 
-void FOClient::SScriptFunc::Global_PlayVideo( const string& video_name, bool can_stop )
+void FOClient::SScriptFunc::Global_PlayVideo( string video_name, bool can_stop )
 {
     SndMngr.StopMusic();
     Self->AddVideo( video_name.c_str(), can_stop, true );
@@ -7702,12 +7702,12 @@ hash FOClient::SScriptFunc::Global_GetCurrentMapPid()
     return Self->CurMapPid;
 }
 
-void FOClient::SScriptFunc::Global_Message( const string& msg )
+void FOClient::SScriptFunc::Global_Message( string msg )
 {
     Self->AddMess( FOMB_GAME, msg.c_str(), true );
 }
 
-void FOClient::SScriptFunc::Global_MessageType( const string& msg, int type )
+void FOClient::SScriptFunc::Global_MessageType( string msg, int type )
 {
     Self->AddMess( type, msg.c_str(), true );
 }
@@ -7728,7 +7728,7 @@ void FOClient::SScriptFunc::Global_MessageMsgType( int text_msg, uint str_num, i
     Self->AddMess( type, Self->CurLang.Msg[ text_msg ].GetStr( str_num ), true );
 }
 
-void FOClient::SScriptFunc::Global_MapMessage( const string& text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
+void FOClient::SScriptFunc::Global_MapMessage( string text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )
 {
     FOClient::MapText t;
     t.HexX = hx;
@@ -7788,7 +7788,7 @@ bool FOClient::SScriptFunc::Global_IsMsgStr( int text_msg, uint str_num )
     return Self->CurLang.Msg[ text_msg ].Count( str_num ) > 0;
 }
 
-string FOClient::SScriptFunc::Global_ReplaceTextStr( const string& text, const string& replace, const string& str )
+string FOClient::SScriptFunc::Global_ReplaceTextStr( string text, string replace, string str )
 {
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
@@ -7796,7 +7796,7 @@ string FOClient::SScriptFunc::Global_ReplaceTextStr( const string& text, const s
     return string( text ).replace( pos, replace.length(), str );
 }
 
-string FOClient::SScriptFunc::Global_ReplaceTextInt( const string& text, const string& replace, int i )
+string FOClient::SScriptFunc::Global_ReplaceTextInt( string text, string replace, int i )
 {
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
@@ -7806,7 +7806,7 @@ string FOClient::SScriptFunc::Global_ReplaceTextInt( const string& text, const s
     return string( text ).replace( pos, replace.length(), val );
 }
 
-string FOClient::SScriptFunc::Global_FormatTags( const string& text, const string& lexems )
+string FOClient::SScriptFunc::Global_FormatTags( string text, string lexems )
 {
     char buf[ MAX_FOTEXT ];
     Str::Copy( buf, text.c_str() );
@@ -7947,7 +7947,7 @@ void FOClient::SScriptFunc::Global_WaitPing()
     Self->WaitPing();
 }
 
-bool FOClient::SScriptFunc::Global_LoadFont( int font_index, const string& font_fname )
+bool FOClient::SScriptFunc::Global_LoadFont( int font_index, string font_fname )
 {
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
     bool result;
@@ -7966,7 +7966,7 @@ void FOClient::SScriptFunc::Global_SetDefaultFont( int font, uint color )
     SprMngr.SetDefaultFont( font, color );
 }
 
-bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, const string& effect_name, const string& effect_defines )
+bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtype, string effect_name, string effect_defines )
 {
     // Effect types
     #define EFFECT_2D_GENERIC                ( 0x00000001 ) // Subtype can be item id, zero for all items
@@ -8094,7 +8094,7 @@ void FOClient::SScriptFunc::Global_MouseClick( int x, int y, int button )
     GameOpt.LastMouseY = last_prev_y;
 }
 
-void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, const string& key1_text, const string& key2_text )
+void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, string key1_text, string key2_text )
 {
     if( !key1 && !key2 )
         return;
@@ -8128,7 +8128,7 @@ void FOClient::SScriptFunc::Global_KeyboardPress( uchar key1, uchar key2, const 
     MainWindowKeyboardEventsText = prev_events_text;
 }
 
-void FOClient::SScriptFunc::Global_SetRainAnimation( const string& fall_anim_name, const string& drop_anim_name )
+void FOClient::SScriptFunc::Global_SetRainAnimation( string fall_anim_name, string drop_anim_name )
 {
     Self->HexMngr.SetRainAnimation( !fall_anim_name.empty() ? fall_anim_name.c_str() : nullptr, !drop_anim_name.empty() ? drop_anim_name.c_str() : nullptr );
 }
@@ -8226,7 +8226,7 @@ void FOClient::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
         ( *props_array )->InsertLast( (void*) &( *it ) );
 }
 
-bool FOClient::SScriptFunc::Global_LoadDataFile( const string& dat_name )
+bool FOClient::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
     if( FileManager::LoadDataFile( dat_name.c_str() ) )
     {
@@ -8236,7 +8236,7 @@ bool FOClient::SScriptFunc::Global_LoadDataFile( const string& dat_name )
     return false;
 }
 
-uint FOClient::SScriptFunc::Global_LoadSprite( const string& spr_name )
+uint FOClient::SScriptFunc::Global_LoadSprite( string spr_name )
 {
     return Self->AnimLoad( spr_name.c_str(), RES_ATLAS_STATIC );
 }
@@ -8293,7 +8293,7 @@ uint FOClient::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, 
     return SprMngr.GetPixColor( spr_id_, x, y, false );
 }
 
-void FOClient::SScriptFunc::Global_GetTextInfo( const string& text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
+void FOClient::SScriptFunc::Global_GetTextInfo( string text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
     SprMngr.GetTextInfo( w, h, !text.empty() ? text.c_str() : nullptr, font, flags, tw, th, lines );
 }
@@ -8346,7 +8346,7 @@ void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_ind
     SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, COLOR_SCRIPT_SPRITE( color ) );
 }
 
-void FOClient::SScriptFunc::Global_DrawText( const string& text, int x, int y, int w, int h, uint color, int font, int flags )
+void FOClient::SScriptFunc::Global_DrawText( string text, int x, int y, int w, int h, uint color, int font, int flags )
 {
     if( !SpritesCanDraw )
         return;
@@ -8681,7 +8681,7 @@ bool FOClient::SScriptFunc::Global_IsMapHexRaked( ushort hx, ushort hy )
     return !Self->HexMngr.GetField( hx, hy ).Flags.IsNotRaked;
 }
 
-bool FOClient::SScriptFunc::Global_SaveScreenshot( const string& file_path )
+bool FOClient::SScriptFunc::Global_SaveScreenshot( string file_path )
 {
     char screen_path[ MAX_FOPATH ];
     Str::Copy( screen_path, file_path.c_str() );
@@ -8691,7 +8691,7 @@ bool FOClient::SScriptFunc::Global_SaveScreenshot( const string& file_path )
     return true;
 }
 
-bool FOClient::SScriptFunc::Global_SaveText( const string& file_path, const string& text )
+bool FOClient::SScriptFunc::Global_SaveText( string file_path, string text )
 {
     char text_path[ MAX_FOPATH ];
     Str::Copy( text_path, file_path.c_str() );
@@ -8707,14 +8707,14 @@ bool FOClient::SScriptFunc::Global_SaveText( const string& file_path, const stri
     return true;
 }
 
-void FOClient::SScriptFunc::Global_SetCacheData( const string& name, const CScriptArray* data )
+void FOClient::SScriptFunc::Global_SetCacheData( string name, const CScriptArray* data )
 {
     UCharVec data_vec;
     Script::AssignScriptArrayInVector( data_vec, data );
     Crypt.SetCache( name.c_str(), data_vec );
 }
 
-void FOClient::SScriptFunc::Global_SetCacheDataSize( const string& name, const CScriptArray* data, uint data_size )
+void FOClient::SScriptFunc::Global_SetCacheDataSize( string name, const CScriptArray* data, uint data_size )
 {
     UCharVec data_vec;
     Script::AssignScriptArrayInVector( data_vec, data );
@@ -8722,7 +8722,7 @@ void FOClient::SScriptFunc::Global_SetCacheDataSize( const string& name, const C
     Crypt.SetCache( name.c_str(), data_vec );
 }
 
-CScriptArray* FOClient::SScriptFunc::Global_GetCacheData( const string& name )
+CScriptArray* FOClient::SScriptFunc::Global_GetCacheData( string name )
 {
     UCharVec data_vec;
     if( !Crypt.GetCache( name.c_str(), data_vec ) )
@@ -8733,22 +8733,22 @@ CScriptArray* FOClient::SScriptFunc::Global_GetCacheData( const string& name )
     return arr;
 }
 
-void FOClient::SScriptFunc::Global_SetCacheDataStr( const string& name, const string& str )
+void FOClient::SScriptFunc::Global_SetCacheDataStr( string name, string str )
 {
     Crypt.SetCache( name.c_str(), str );
 }
 
-string FOClient::SScriptFunc::Global_GetCacheDataStr( const string& name )
+string FOClient::SScriptFunc::Global_GetCacheDataStr( string name )
 {
     return Crypt.GetCache( name.c_str() );
 }
 
-bool FOClient::SScriptFunc::Global_IsCacheData( const string& name )
+bool FOClient::SScriptFunc::Global_IsCacheData( string name )
 {
     return Crypt.IsCache( name.c_str() );
 }
 
-void FOClient::SScriptFunc::Global_EraseCacheData( const string& name )
+void FOClient::SScriptFunc::Global_EraseCacheData( string name )
 {
     Crypt.EraseCache( name.c_str() );
 }
