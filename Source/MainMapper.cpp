@@ -19,9 +19,6 @@ int main( int argc, char** argv )
     // Logging
     LogToFile( "FOMapper.log" );
 
-    // Data files
-    FileManager::InitDataFiles( "./" );
-
     // Options
     GetClientOptions();
 

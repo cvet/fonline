@@ -111,10 +111,11 @@ bool FOMapper::Init()
 
     // Resources
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    bool something_changed = ResourceConverter::Generate( nullptr );
-    FileManager::SetCurrentDir( ClientWritePath, "./" );
-    if( something_changed )
-        FileManager::InitDataFiles( CLIENT_DATA );
+    FileManager::ClearDataFiles();
+    FileManager::InitDataFiles( "./" );
+    ResourceConverter::Generate( nullptr );
+    FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
+    FileManager::InitDataFiles( CLIENT_DATA );
 
     // Default effects
     if( !GraphicLoader::LoadDefaultEffects() )

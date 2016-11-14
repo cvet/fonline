@@ -10,6 +10,7 @@ FileManager::FileManager()
 {
     curPos = 0;
     fileSize = 0;
+    writeTime = 0;
     dataOutBuf = nullptr;
     fileBuf = nullptr;
     posOutBuf = 0;
@@ -51,26 +52,8 @@ void FileManager::InitDataFiles( const char* path )
         writeDir = path;
 
     // Process dir
-    if( LoadDataFile( path ) )
-    {
-        StrVec files;
-        dataFiles.back()->GetFileNames( "", false, "dat", files );
-        dataFiles.back()->GetFileNames( "", false, "zip", files );
-        dataFiles.back()->GetFileNames( "", false, "bos", files );
-        dataFiles.back()->GetFileNames( "packs/", true, "dat", files );
-        dataFiles.back()->GetFileNames( "packs/", true, "zip", files );
-        dataFiles.back()->GetFileNames( "packs/", true, "bos", files );
-
-        std::sort( files.begin(), files.end(), std::greater< string >() );
-
-        for( size_t i = 0, j = files.size(); i < j; i++ )
-            if( !LoadDataFile( ( string( "" ) + path + files[ i ] ).c_str() ) )
-                RUNTIME_ASSERT( !"Unable to load data file." );
-    }
-    else
-    {
+    if( !LoadDataFile( path ) )
         RUNTIME_ASSERT( !"Unable to load files in folder." );
-    }
 
     // Extension of this path
     void* extension_link = FileOpen( ( string( path ) + "Extension.link" ).c_str(), false );
@@ -88,24 +71,50 @@ void FileManager::InitDataFiles( const char* path )
 
 bool FileManager::LoadDataFile( const char* path )
 {
+    DataFile* data_file = nullptr;
+
     // Find already loaded
-    for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
+    for( DataFile* df : dataFiles )
     {
-        DataFile* pfile = *it;
-        if( pfile->GetPackName() == path )
-            return true;
+        if( df->GetPackName() == path )
+        {
+            data_file = df;
+            break;
+        }
     }
 
     // Add new
-    DataFile* data_file = OpenDataFile( path );
     if( !data_file )
     {
-        WriteLog( "Load data '{}' fail.\n", path );
-        return false;
+        data_file = OpenDataFile( path );
+        if( !data_file )
+        {
+            WriteLog( "Load data '{}' fail.\n", path );
+            return false;
+        }
+
+        dataFiles.push_back( data_file );
     }
 
-    dataFiles.push_back( data_file );
-    return true;
+    // Inner data files
+    if( data_file )
+    {
+        StrVec files;
+        data_file->GetFileNames( "", false, "dat", files );
+        data_file->GetFileNames( "", false, "zip", files );
+        data_file->GetFileNames( "", false, "bos", files );
+        data_file->GetFileNames( "packs/", true, "dat", files );
+        data_file->GetFileNames( "packs/", true, "zip", files );
+        data_file->GetFileNames( "packs/", true, "bos", files );
+
+        std::sort( files.begin(), files.end(), std::greater< string >() );
+
+        for( size_t i = 0; i < files.size(); i++ )
+            if( !LoadDataFile( ( string( "" ) + path + files[ i ] ).c_str() ) )
+                RUNTIME_ASSERT( !"Unable to load data file." );
+    }
+
+    return data_file != nullptr;
 }
 
 void FileManager::ClearDataFiles()
@@ -119,6 +128,7 @@ void FileManager::UnloadFile()
 {
     SAFEDELA( fileBuf );
     fileSize = 0;
+    writeTime = 0;
     curPos = 0;
     SAFEDELA( dataOutBuf );
     posOutBuf = 0;

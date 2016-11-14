@@ -49,6 +49,8 @@ void InitialSetup( uint argc, char** argv )
         // Find work path entry
         if( Str::Compare( argv[ i ], "-WorkDir" ) && i < argc - 1 )
             GameOpt.WorkDir = argv[ i + 1 ];
+        if( Str::Compare( argv[ i ], "-ServerDir" ) && i < argc - 1 )
+            GameOpt.ServerDir = argv[ i + 1 ];
 
         // Find config path entry
         if( Str::Compare( argv[ i ], "-AddConfig" ) && i < argc - 1 )
@@ -156,8 +158,6 @@ void InitialSetup( uint argc, char** argv )
             arg_value += argv[ i + 1 ];
             i++;
         }
-
-        MainConfig->SetStr( "", arg + 1, arg_value.c_str() );
     }
 
     // Cache modules

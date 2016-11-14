@@ -57,10 +57,56 @@ static bool CScriptArray_Exists( const CScriptArray* arr, void* value )
 
 static CScriptArray* CScriptArray_Clone( asITypeInfo* ti, const CScriptArray** other )
 {
+    if( !*other )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Array nullptr" );
+        return;
+    }
+
     CScriptArray* clone = CScriptArray::Create( ti );
-    if( *other )
-        *clone = **other;
+    *clone = **other;
     return clone;
+}
+
+static void CScriptArray_InsertArrAt( CScriptArray* arr, uint index, const CScriptArray** other )
+{
+    if( !*other )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Array nullptr" );
+        return;
+    }
+
+    arr->InsertAt( index, **other );
+}
+
+static void CScriptArray_InsertArrFirst( CScriptArray* arr, const CScriptArray** other )
+{
+    if( !*other )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Array nullptr" );
+        return;
+    }
+
+    arr->InsertAt( 0, **other );
+}
+
+static void CScriptArray_InsertArrLast( CScriptArray* arr, const CScriptArray** other )
+{
+    if( !*other )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Array nullptr" );
+        return;
+    }
+
+    arr->InsertAt( arr->GetSize() - 1, **other );
 }
 
 void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
@@ -86,6 +132,12 @@ void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
     r = engine->RegisterObjectMethod( "array<T>", "bool exists(const T&in) const", asFUNCTION( CScriptArray_Exists ), asCALL_CDECL_OBJFIRST );
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectBehaviour( "array<T>", asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>&in)", asFUNCTION( CScriptArray_Clone ), asCALL_CDECL );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "array<T>", "void insertAt(uint, const array<T>&in)", asFUNCTION( CScriptArray_InsertArrAt ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const array<T>&in)", asFUNCTION( CScriptArray_InsertArrFirst ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "array<T>", "void insertLast(const array<T>&in)", asFUNCTION( CScriptArray_InsertArrFirst ), asCALL_CDECL_OBJFIRST );
     RUNTIME_ASSERT( r >= 0 );
 }
 
