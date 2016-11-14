@@ -62,7 +62,7 @@ static CScriptArray* CScriptArray_Clone( asITypeInfo* ti, const CScriptArray** o
         asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
             ctx->SetException( "Array nullptr" );
-        return;
+        return nullptr;
     }
 
     CScriptArray* clone = CScriptArray::Create( ti );
