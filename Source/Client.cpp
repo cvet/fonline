@@ -7152,6 +7152,9 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     else if( cmd == "NetDisconnect" )
     {
         Self->NetDisconnect();
+
+        if( !Self->IsConnected && !Self->IsMainScreen( SCREEN_LOGIN ) )
+            Self->ShowMainScreen( SCREEN_LOGIN );
     }
     else if( cmd == "TryExit" )
     {
