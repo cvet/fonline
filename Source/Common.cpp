@@ -158,6 +158,8 @@ void InitialSetup( uint argc, char** argv )
             arg_value += argv[ i + 1 ];
             i++;
         }
+
+        MainConfig->SetStr( "", arg + 1, arg_value.c_str() );
     }
 
     // Cache modules
