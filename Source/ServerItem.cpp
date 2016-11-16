@@ -24,23 +24,6 @@ Item* FOServer::CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint 
         return nullptr;
     }
 
-    // Create childs
-    for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
-    {
-        hash child_pid = item->GetChildPid( i );
-        if( !child_pid )
-            continue;
-
-        ProtoItem* child = ProtoMngr.GetProtoItem( child_pid );
-        if( !child )
-            continue;
-
-        ushort child_hx = hx, child_hy = hy;
-        FOREACH_PROTO_ITEM_LINES( item->GetChildLinesStr( i ), child_hx, child_hy, map->GetWidth(), map->GetHeight() );
-
-        CreateItemOnHex( map, child_hx, child_hy, child_pid, 1, nullptr, false );
-    }
-
     // Recursive non-stacked items
     if( !proto_item->GetStackable() && count > 1 )
         return CreateItemOnHex( map, hx, hy, pid, count - 1, props, true );

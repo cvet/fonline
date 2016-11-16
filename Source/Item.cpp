@@ -33,7 +33,7 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnim );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnimExt );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay_0 );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay_1 );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, string, BlockLines );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, CScriptArray *, BlockLines );
 
 ProtoItem::ProtoItem( hash pid ): ProtoEntity( pid, Item::PropertiesRegistrator )
 {
@@ -70,16 +70,6 @@ CLASS_PROPERTY_IMPL( Item, SpriteCut );
 CLASS_PROPERTY_IMPL( Item, DrawOrderOffsetHexY );
 CLASS_PROPERTY_IMPL( Item, IndicatorMax );
 CLASS_PROPERTY_IMPL( Item, BlockLines );
-CLASS_PROPERTY_IMPL( Item, ChildPid_0 );
-CLASS_PROPERTY_IMPL( Item, ChildPid_1 );
-CLASS_PROPERTY_IMPL( Item, ChildPid_2 );
-CLASS_PROPERTY_IMPL( Item, ChildPid_3 );
-CLASS_PROPERTY_IMPL( Item, ChildPid_4 );
-CLASS_PROPERTY_IMPL( Item, ChildLines_0 );
-CLASS_PROPERTY_IMPL( Item, ChildLines_1 );
-CLASS_PROPERTY_IMPL( Item, ChildLines_2 );
-CLASS_PROPERTY_IMPL( Item, ChildLines_3 );
-CLASS_PROPERTY_IMPL( Item, ChildLines_4 );
 CLASS_PROPERTY_IMPL( Item, Weapon_Anim1 );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMap );
 CLASS_PROPERTY_IMPL( Item, Grid_ToMapEntire );
@@ -163,36 +153,6 @@ void Item::SetProto( ProtoItem* proto )
     Proto->Release();
     Proto = proto;
     Props = proto->Props;
-}
-
-hash Item::GetChildPid( uint index )
-{
-    if( index == 0 )
-        return GetChildPid_0();
-    else if( index == 1 )
-        return GetChildPid_1();
-    else if( index == 2 )
-        return GetChildPid_2();
-    else if( index == 3 )
-        return GetChildPid_3();
-    else if( index == 4 )
-        return GetChildPid_4();
-    return 0;
-}
-
-string Item::GetChildLinesStr( uint index )
-{
-    if( index == 0 )
-        return GetChildLines_0();
-    else if( index == 1 )
-        return GetChildLines_1();
-    else if( index == 2 )
-        return GetChildLines_2();
-    else if( index == 3 )
-        return GetChildLines_3();
-    else if( index == 4 )
-        return GetChildLines_4();
-    return "";
 }
 
 #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -395,34 +355,6 @@ void Item::ContDeleteItems()
         RUNTIME_ASSERT( !ChildItems->empty() );
         ItemMngr.DeleteItem( *ChildItems->begin() );
     }
-}
-
-Item* Item::GetChild( uint child_index )
-{
-    hash pid = ( child_index == 0 ? GetChildPid_0() : ( child_index == 1 ? GetChildPid_1() : GetChildPid_2() ) );
-    if( !pid )
-        return nullptr;
-
-    if( GetAccessory() == ITEM_ACCESSORY_HEX )
-    {
-        Map* map = MapMngr.GetMap( GetMapId() );
-        if( !map )
-            return nullptr;
-        return map->GetItemChild( GetHexX(), GetHexY(), this, child_index );
-    }
-    else if( GetAccessory() == ITEM_ACCESSORY_CRITTER )
-    {
-        Critter* cr = CrMngr.GetCritter( GetCritId() );
-        if( cr )
-            return cr->GetItemByPid( pid );
-    }
-    else if( GetAccessory() == ITEM_ACCESSORY_CONTAINER )
-    {
-        Item* cont = ItemMngr.GetItem( GetContainerId() );
-        if( cont )
-            return cont->ContGetItemByPid( pid, GetContainerStack() );
-    }
-    return nullptr;
 }
 
 #else

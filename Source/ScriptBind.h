@@ -100,8 +100,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Item", "array<const Item@>@ GetItems
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Map@+ GetMapPosition(uint16& hexX, uint16& hexY) const", asFUNCTION( BIND_CLASS Item_GetMapPosition ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool ChangeProto(hash protoId)", asFUNCTION( BIND_CLASS Item_ChangeProto ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint fromFrame, uint toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ GetChild(uint childIndex)", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Item", "const Item@+ GetChild(uint childIndex) const", asFUNCTION( BIND_CLASS Item_GetChild ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter@+ cr, Item@+ item, int param) const", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
 
 /************************************************************************/

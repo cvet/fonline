@@ -484,7 +484,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         uint UID = 0;
         uint ContainerUID = 0;
         uint ParentUID = 0;
-        uint ParentChildIndex = 0;
         string ScriptName;
         string FuncName;
         uint ParamsCount = 0;
@@ -590,8 +589,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                         entities_addon.back().ContainerUID = ivalue;
                     else if( field == "ParentUID" )
                         entities_addon.back().ParentUID = ivalue;
-                    else if( field == "ParentChildIndex" )
-                        entities_addon.back().ParentChildIndex = ivalue;
                     SET_FIELD_ITEM( "LightColor", LightColor );
                     if( field == "LightDay" )
                         ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ( ( ivalue & 3 ) << 6 ) );
@@ -767,54 +764,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     entity_cont_addon.UID = ++uid;
                 entity_addon.ContainerUID = entity_cont_addon.UID;
             }
-        }
-    }
-
-    // Fix children positions
-    for( size_t i = 0; i < entities.size();)
-    {
-        Entity* entity = entities[ i ];
-        AdditionalFields& entity_addon = entities_addon[ i ];
-        if( !entity_addon.ParentUID )
-        {
-            i++;
-            continue;
-        }
-
-        RUNTIME_ASSERT( entity->Type == EntityType::Item );
-        Item* entity_item = (Item*) entity;
-        bool delete_child = true;
-        for( size_t j = 0; j < entities.size(); j++ )
-        {
-            Entity* entity_parent = entities[ j ];
-            AdditionalFields& entity_parent_addon = entities_addon[ j ];
-            if( !entity_parent_addon.UID || entity_parent_addon.UID != entity_addon.ParentUID || entity_parent == entity )
-                continue;
-
-            RUNTIME_ASSERT( entity_parent->Type == EntityType::Item );
-            Item* entity_parent_item = (Item*) entity_parent;
-            if( !entity_parent_item->GetChildPid( entity_addon.ParentChildIndex ) )
-                break;
-
-            ushort child_hx = entity_parent_item->GetHexX();
-            ushort child_hy = entity_parent_item->GetHexY();
-            FOREACH_PROTO_ITEM_LINES( entity_parent_item->GetChildLinesStr( entity_addon.ParentChildIndex ), child_hx, child_hy, GetWidth(), GetHeight() );
-
-            entity_item->SetHexX( child_hx );
-            entity_item->SetHexY( child_hy );
-            RUNTIME_ASSERT( entity_item->GetProtoId() == entity_parent_item->GetChildPid( entity_addon.ParentChildIndex ) );
-            delete_child = false;
-            break;
-        }
-
-        if( delete_child )
-        {
-            entities[ i ]->Release();
-            entities.erase( entities.begin() + i );
-        }
-        else
-        {
-            i++;
         }
     }
 

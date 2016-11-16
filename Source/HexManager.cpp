@@ -330,21 +330,21 @@ void HexManager::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
     bool raked = item->GetIsShootThru();
     bool light = item->GetIsLightThru();
-    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                                   Field& field = GetField( hx, hy );
-                                   field.Flags.IsNotPassed = true;
-                                   if( !raked )
-                                       field.Flags.IsNotRaked = true;
-                                   if( !light )
-                                       field.Flags.IsNoLight = true;
-                                   );
+    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                              Field& field = GetField( hx, hy );
+                              field.Flags.IsNotPassed = true;
+                              if( !raked )
+                                  field.Flags.IsNotRaked = true;
+                              if( !light )
+                                  field.Flags.IsNoLight = true;
+                              );
 }
 
 void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
-    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                                   GetField( hx, hy ).ProcessCache();
-                                   );
+    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                              GetField( hx, hy ).ProcessCache();
+                              );
 }
 
 uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data )

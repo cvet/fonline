@@ -174,7 +174,6 @@ struct BindClass
     static void Item_GetMapPosition()      {}
     static void Item_ChangeProto()         {}
     static void Item_Animate()             {}
-    static void Item_GetChild()            {}
     static void Item_CallSceneryFunction() {}
 
     static void Crit_IsPlayer()                 {}
@@ -423,7 +422,6 @@ struct BindClass
     static void Item_GetItems()       {}
     static void Item_GetMapPosition() {}
     static void Item_Animate()        {}
-    static void Item_GetChild()       {}
 
     static void Global_CustomCall()             {}
     static void Global_GetChosen()              {}

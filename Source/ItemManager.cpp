@@ -150,14 +150,6 @@ void ItemManager::DeleteItem( Item* item )
     // Finish events
     Script::RaiseInternalEvent( ServerFunctions.ItemFinish, item, true );
 
-    // Delete children
-    for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
-    {
-        Item* child = item->GetChild( i );
-        if( child )
-            DeleteItem( child );
-    }
-
     // Tear off from environment
     while( item->GetAccessory() != ITEM_ACCESSORY_NONE || item->ContIsItems() )
     {

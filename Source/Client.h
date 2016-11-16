@@ -396,7 +396,6 @@ public:
         static Item*         Item_Clone( Item* item, uint count );
         static bool          Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static void          Item_Animate( Item* item, uint from_frame, uint to_frame );
-        static Item*         Item_GetChild( Item* item, uint childIndex );
         static CScriptArray* Item_GetItems( Item* cont, uint stack_id );
 
         static string        Global_CustomCall( string command, string separator );

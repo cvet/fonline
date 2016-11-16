@@ -3412,22 +3412,6 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
         item = HexMngr.GetItemById( id );
     }
 
-    // Add children
-    for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
-    {
-        if( !item->GetChildPid( i ) )
-            continue;
-
-        ProtoItem* child_proto = ProtoMngr.GetProtoItem( item->GetChildPid( i ) );
-        if( !child_proto )
-            continue;
-
-        ushort child_hx = hx, child_hy = hy;
-        FOREACH_PROTO_ITEM_LINES( item->GetChildLinesStr( i ), child_hx, child_hy, HexMngr.GetWidth(), HexMngr.GetHeight() );
-
-        AddItem( item->GetChildPid( i ), child_hx, child_hy, nullptr );
-    }
-
     // Select
     if( !owner )
     {

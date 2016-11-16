@@ -19,7 +19,6 @@ class Critter;
 #define ITEM_ACCESSORY_CONTAINER     ( 3 )
 
 // Generic
-#define ITEM_MAX_CHILDS              ( 5 )
 #define MAX_ADDED_NOGROUP_ITEMS      ( 30 )
 
 // Types
@@ -113,7 +112,7 @@ public:
     CLASS_PROPERTY_ALIAS( bool, IsShowAnimExt );
     CLASS_PROPERTY_ALIAS( uchar, AnimStay_0 );
     CLASS_PROPERTY_ALIAS( uchar, AnimStay_1 );
-    CLASS_PROPERTY_ALIAS( string, BlockLines );
+    CLASS_PROPERTY_ALIAS( CScriptArray *, BlockLines );
 
     bool IsScenery() { return IsGeneric() || IsWall() || IsGrid(); }
     bool IsGeneric() { return GetType() == ITEM_TYPE_GENERIC; }
@@ -159,17 +158,7 @@ public:
     CLASS_PROPERTY( uchar, SpriteCut );
     CLASS_PROPERTY( char, DrawOrderOffsetHexY );
     CLASS_PROPERTY( uchar, IndicatorMax );
-    CLASS_PROPERTY( string, BlockLines );
-    CLASS_PROPERTY( hash, ChildPid_0 );
-    CLASS_PROPERTY( hash, ChildPid_1 );
-    CLASS_PROPERTY( hash, ChildPid_2 );
-    CLASS_PROPERTY( hash, ChildPid_3 );
-    CLASS_PROPERTY( hash, ChildPid_4 );
-    CLASS_PROPERTY( string, ChildLines_0 );
-    CLASS_PROPERTY( string, ChildLines_1 );
-    CLASS_PROPERTY( string, ChildLines_2 );
-    CLASS_PROPERTY( string, ChildLines_3 );
-    CLASS_PROPERTY( string, ChildLines_4 );
+    CLASS_PROPERTY( CScriptArray *, BlockLines );
     CLASS_PROPERTY( uint, Weapon_Anim1 );
     CLASS_PROPERTY( hash, Grid_ToMap );
     CLASS_PROPERTY( int, Grid_ToMapEntire );
@@ -246,8 +235,6 @@ public:
     #endif
 
     ProtoItem* GetProtoItem() { return (ProtoItem*) Proto; }
-    hash       GetChildPid( uint index );
-    string     GetChildLinesStr( uint index );
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     Item* Clone();
@@ -314,25 +301,17 @@ public:
     bool RadioIsSendActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_SEND ); }
     bool RadioIsRecvActive() { return !FLAG( GetRadioFlags(), RADIO_DISABLE_RECV ); }
 
-    #ifdef FONLINE_SERVER
-    Item* GetChild( uint child_index );
-    #endif
-
     void SetProto( ProtoItem* proto );
 };
 
 // Lines foreach helper
-#define FOREACH_PROTO_ITEM_LINES( lines, hx, hy, maxhx, maxhy ) \
-    FOREACH_PROTO_ITEM_LINES_WORK( lines, hx, hy, maxhx, maxhy, {} )
-#define FOREACH_PROTO_ITEM_LINES_WORK( lines, hx, hy, maxhx, maxhy, work )   \
+#define FOREACH_PROTO_ITEM_LINES( lines, hx, hy, maxhx, maxhy, work )        \
     int hx__ = hx, hy__ = hy;                                                \
-    int         maxhx__ = maxhx, maxhy__ = maxhy;                            \
-    string      lines__ = lines;                                             \
-    const char* lines___ = lines__.c_str();                                  \
-    for( uint i__ = 0, j__ = Str::Length( lines___ ) / 2; i__ < j__; i__++ ) \
+    int maxhx__ = maxhx, maxhy__ = maxhy;                                    \
+    for( uint i__ = 0, j__ = ( lines )->GetSize() / 2; i__ < j__; i__++ )    \
     {                                                                        \
-        uchar dir__ = lines___[ i__ * 2 ] - '0';                             \
-        uchar steps__ = lines___[ i__ * 2 + 1 ] - '0';                       \
+        uchar dir__ = *(uchar*) ( lines )->At( i__ * 2 );                    \
+        uchar steps__ = *(uchar*) ( lines )->At( i__ * 2 + 1 );              \
         if( dir__ >= DIRS_COUNT || !steps__ || steps__ > 9 )                 \
             break;                                                           \
         for( uchar k__ = 0; k__ < steps__; k__++ )                           \

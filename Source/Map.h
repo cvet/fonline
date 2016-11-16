@@ -130,14 +130,9 @@ public:
 
     // Cars
 public:
-    void  GetCritterCar( Critter* cr, Item* car );
-    void  SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car );
-    bool  IsPlaceForItem( ushort hx, ushort hy, Item* item );
-    bool  IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item );
-    void  PlaceItemBlocks( ushort hx, ushort hy, Item* item );
-    void  ReplaceItemBlocks( ushort hx, ushort hy, Item* item );
-    Item* GetItemChild( ushort hx, ushort hy, Item* item, uint child_index );
-
+    bool IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item );
+    void PlaceItemBlocks( ushort hx, ushort hy, Item* item );
+    void ReplaceItemBlocks( ushort hx, ushort hy, Item* item );
 
     // Script
     bool SetScript( asIScriptFunction* func, bool first_time );

@@ -6996,15 +6996,6 @@ void FOClient::SScriptFunc::Item_Animate( Item* item, uint from_frame, uint to_f
     }
 }
 
-Item* FOClient::SScriptFunc::Item_GetChild( Item* item, uint childIndex )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    // Need implement
-    #pragma MESSAGE("Implement Item_GetChild.")
-    return nullptr;
-}
-
 CScriptArray* FOClient::SScriptFunc::Item_GetItems( Item* cont, uint stack_id )
 {
     if( cont->IsDestroyed )

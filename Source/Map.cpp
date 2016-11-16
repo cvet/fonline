@@ -1094,139 +1094,47 @@ void Map::SendFlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from
     }
 }
 
-void Map::GetCritterCar( Critter* cr, Item* car )
-{
-    // Check
-    if( !cr || !car || !car->IsCar() )
-        return;
-
-    // Car position
-    ushort hx = car->GetHexX();
-    ushort hy = car->GetHexY();
-
-    // Move car from map to inventory
-    EraseItem( car->GetId() );
-    car->SetIsHidden( true );
-    cr->AddItem( car, false );
-
-    // Move car bags from map to inventory
-    for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
-    {
-        Item* child = GetItemChild( hx, hy, car, i );
-        if( !child )
-            continue;
-
-        EraseItem( child->GetId() );
-        child->SetIsHidden( true );
-        cr->AddItem( child, false );
-    }
-}
-
-void Map::SetCritterCar( ushort hx, ushort hy, Critter* cr, Item* car )
-{
-    // Check
-    if( hx >= GetWidth() || hy >= GetHeight() || !cr || !car || !car->IsCar() )
-    {
-        WriteLog( "Generic error, hx {}, hy {}, critter pointer {}, car pointer {}, is car {}.\n", hx, hy, (void*) cr, (void*) car, car && car->IsCar() ? 1 : 0 );
-        return;
-    }
-
-    // Move car from inventory to map
-    cr->EraseItem( car, false );
-    car->SetIsHidden( false );
-    AddItem( car, hx, hy );
-
-    // Move car bags from inventory to map
-    for( int i = 0; i < ITEM_MAX_CHILDS; i++ )
-    {
-        hash child_pid = car->GetChildPid( i );
-        if( !child_pid )
-            continue;
-
-        Item* child = cr->GetItemByPid( child_pid );
-        if( !child )
-            continue;
-
-        // Move to position
-        ushort child_hx = hx;
-        ushort child_hy = hy;
-        FOREACH_PROTO_ITEM_LINES( car->GetChildLinesStr( i ), child_hx, child_hy, GetWidth(), GetHeight() );
-        cr->EraseItem( child, false );
-        child->SetIsHidden( false );
-        AddItem( child, child_hx, child_hy );
-    }
-}
-
-bool Map::IsPlaceForItem( ushort hx, ushort hy, Item* item )
-{
-    if( !IsHexPassed( hx, hy ) )
-        return false;
-
-    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                                   if( IsHexCritter( hx, hy ) )
-                                       return false;
-                                   // if( !IsHexPassed( hx, hy ) )
-                                   //    return false;
-                                   );
-
-    return true;
-}
-
 bool Map::IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item )
 {
     if( !IsHexPassed( hx, hy ) )
         return false;
 
-    FOREACH_PROTO_ITEM_LINES_WORK( proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                                   if( IsHexCritter( hx, hy ) )
-                                       return false;
-                                   // if( !IsHexPassed( hx, hy ) )
-                                   //    return false;
-                                   );
+    FOREACH_PROTO_ITEM_LINES( proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                              if( IsHexCritter( hx, hy ) )
+                                  return false;
+                              // if( !IsHexPassed( hx, hy ) )
+                              //    return false;
+                              );
     return true;
 }
 
 void Map::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
     bool raked = item->GetIsShootThru();
-    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                                   SetHexFlag( hx, hy, FH_BLOCK_ITEM );
-                                   if( !raked )
-                                       SetHexFlag( hx, hy, FH_NRAKE_ITEM );
-                                   );
+    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                              SetHexFlag( hx, hy, FH_BLOCK_ITEM );
+                              if( !raked )
+                                  SetHexFlag( hx, hy, FH_NRAKE_ITEM );
+                              );
 }
 
 void Map::ReplaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
     bool raked = item->GetIsShootThru();
-    FOREACH_PROTO_ITEM_LINES_WORK( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                                   UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
-                                   if( !raked )
-                                   {
-                                       UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
-                                       if( IsHexItem( hx, hy ) )
-                                           RecacheHexBlockShoot( hx, hy );
-                                   }
-                                   else
-                                   {
-                                       if( IsHexItem( hx, hy ) )
-                                           RecacheHexBlock( hx, hy );
-                                   }
-                                   );
-}
-
-Item* Map::GetItemChild( ushort hx, ushort hy, Item* item, uint child_index )
-{
-    // Get child pid
-    hash child_pid = item->GetChildPid( child_index );
-    if( !child_pid )
-        return nullptr;
-
-    // Move to position
-    FOREACH_PROTO_ITEM_LINES( item->GetChildLinesStr( child_index ), hx, hy, GetWidth(), GetHeight() );
-
-    // Find on map
-    return GetItemHex( hx, hy, child_pid, nullptr );
+    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                              UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
+                              if( !raked )
+                              {
+                                  UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
+                                  if( IsHexItem( hx, hy ) )
+                                      RecacheHexBlockShoot( hx, hy );
+                              }
+                              else
+                              {
+                                  if( IsHexItem( hx, hy ) )
+                                      RecacheHexBlock( hx, hy );
+                              }
+                              );
 }
 
 bool Map::SetScript( asIScriptFunction* func, bool first_time )

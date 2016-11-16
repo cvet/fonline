@@ -346,7 +346,6 @@ public:
         static Map*          Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static bool          Item_ChangeProto( Item* item, hash pid );
         static void          Item_Animate( Item* item, uchar from_frm, uchar to_frm );
-        static Item*         Item_GetChild( Item* item, uint child_index );
         static bool          Item_CallSceneryFunction( Item* scenery, Critter* cr, Item* item, int param );
 
         static bool          Crit_IsPlayer( Critter* cr );

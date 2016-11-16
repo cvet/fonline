@@ -689,16 +689,6 @@ void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_f
     }
 }
 
-Item* FOServer::SScriptFunc::Item_GetChild( Item* item, uint child_index )
-{
-    if( item->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( child_index >= ITEM_MAX_CHILDS )
-        SCRIPT_ERROR_R0( "Wrong child index." );
-
-    return item->GetChild( child_index );
-}
-
 bool FOServer::SScriptFunc::Item_CallSceneryFunction( Item* scenery, Critter* cr, Item* item, int param )
 {
     if( !scenery->SceneryScriptBindId )
