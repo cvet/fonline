@@ -4769,7 +4769,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetLoadedMaps( int& index )
         if( pmap == Self->ActiveProtoMap )
             index = i;
     }
-    return Script::CreateArrayRef( "ProtoMap[]", Self->LoadedProtoMaps );
+    return Script::CreateArrayRef( "MapperMap[]", Self->LoadedProtoMaps );
 }
 
 CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
