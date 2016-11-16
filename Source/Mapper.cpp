@@ -1969,7 +1969,8 @@ void FOMapper::ObjDraw()
         }
         else
         {
-            DrawLine( "-----------------------------------------------", "", "", true, r );
+            r.T += DRAW_NEXT_HEIGHT;
+            r.B += DRAW_NEXT_HEIGHT;
         }
     }
 }
@@ -1993,10 +1994,10 @@ void FOMapper::DrawLine( const char* name, const char* type_name, const char* te
             text = ObjCurLineValue.c_str();
         }
     }
-    string str = fmt::format( "%s%s%s%s", name, type_name ? " (" : "", type_name ? type_name : "", type_name ? ")" : "" );
-    str += "....................................................";
+    string str = fmt::format( "{}{}{}{}", name, type_name ? " (" : "", type_name ? type_name : "", type_name ? ")" : "" );
+    str += "........................................................................................................";
     SprMngr.DrawStr( Rect( Rect( x, y, x + w / 2, y + h ), 0, 0 ), str, FT_NOBREAK, col );
-    str += ( text ? text : "" );
+    str = ( text ? text : "" );
     SprMngr.DrawStr( Rect( Rect( x + w / 2, y, x + w, y + h ), 0, 0 ), str, FT_NOBREAK, col );
     r.T += DRAW_NEXT_HEIGHT;
     r.B += DRAW_NEXT_HEIGHT;
