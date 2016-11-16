@@ -375,10 +375,10 @@ public:
 
     struct SScriptFunc
     {
-        static Item*         Item_AddChild( Item& item, hash pid );
-        static Item*         Crit_AddChild( CritterCl& cr, hash pid );
-        static CScriptArray* Item_GetChildren( Item& item );
-        static CScriptArray* Crit_GetChildren( CritterCl& cr );
+        static Item*         Item_AddChild( Item* item, hash pid );
+        static Item*         Crit_AddChild( CritterCl* cr, hash pid );
+        static CScriptArray* Item_GetChildren( Item* item );
+        static CScriptArray* Crit_GetChildren( CritterCl* cr );
 
         static Item*         Global_AddItem( hash pid, ushort hx, ushort hy );
         static CritterCl*    Global_AddCritter( hash pid, ushort hx, ushort hy );
@@ -386,10 +386,10 @@ public:
         static CScriptArray* Global_GetItemsByHex( ushort hx, ushort hy );
         static CritterCl*    Global_GetCritterByHex( ushort hx, ushort hy, int find_type );
         static CScriptArray* Global_GetCrittersByHex( ushort hx, ushort hy, int find_type );
-        static void          Global_MoveEntity( Entity& entity, ushort hx, ushort hy );
-        static void          Global_DeleteEntity( Entity& entity );
+        static void          Global_MoveEntity( Entity* entity, ushort hx, ushort hy );
+        static void          Global_DeleteEntity( Entity* entity );
         static void          Global_DeleteEntities( CScriptArray* entities );
-        static void          Global_SelectEntity( Entity& entity, bool set );
+        static void          Global_SelectEntity( Entity* entity, bool set );
         static void          Global_SelectEntities( CScriptArray* entities, bool set );
         static Entity*       Global_GetSelectedEntity();
         static CScriptArray* Global_GetSelectedEntities();

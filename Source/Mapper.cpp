@@ -3008,12 +3008,16 @@ void FOMapper::SelectAddTile( ushort hx, ushort hy, bool is_roof )
 
 void FOMapper::SelectAdd( Entity* entity )
 {
-    SelectedEntities.push_back( entity );
+    auto it = std::find( SelectedEntities.begin(), SelectedEntities.end(), entity );
+    if( it == SelectedEntities.end() )
+    {
+        SelectedEntities.push_back( entity );
 
-    if( entity->Type == EntityType::CritterCl )
-        ( (CritterCl*) entity )->Alpha = SELECT_ALPHA;
-    if( entity->Type == EntityType::ItemHex )
-        ( (ItemHex*) entity )->Alpha = SELECT_ALPHA;
+        if( entity->Type == EntityType::CritterCl )
+            ( (CritterCl*) entity )->Alpha = SELECT_ALPHA;
+        if( entity->Type == EntityType::ItemHex )
+            ( (ItemHex*) entity )->Alpha = SELECT_ALPHA;
+    }
 }
 
 void FOMapper::SelectErase( Entity* entity )
@@ -4423,34 +4427,34 @@ void FOMapper::DrawIfaceLayer( uint layer )
     SpritesCanDraw = false;
 }
 
-Item* FOMapper::SScriptFunc::Item_AddChild( Item& item, hash pid )
+Item* FOMapper::SScriptFunc::Item_AddChild( Item* item, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     if( !proto_item || proto_item->IsScenery() )
         SCRIPT_ERROR_R0( "Added child is not item." );
 
-    return Self->AddItem( pid, 0, 0, &item );
+    return Self->AddItem( pid, 0, 0, item );
 }
 
-Item* FOMapper::SScriptFunc::Crit_AddChild( CritterCl& cr, hash pid )
+Item* FOMapper::SScriptFunc::Crit_AddChild( CritterCl* cr, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     if( !proto_item || proto_item->IsScenery() )
         SCRIPT_ERROR_R0( "Added child is not item." );
 
-    return Self->AddItem( pid, 0, 0, &cr );
+    return Self->AddItem( pid, 0, 0, cr );
 }
 
-CScriptArray* FOMapper::SScriptFunc::Item_GetChildren( Item& item )
+CScriptArray* FOMapper::SScriptFunc::Item_GetChildren( Item* item )
 {
     ItemVec children;
-    item.ContGetItems( children, 0 );
+    item->ContGetItems( children, 0 );
     return Script::CreateArrayRef( "Item[]", children );
 }
 
-CScriptArray* FOMapper::SScriptFunc::Crit_GetChildren( CritterCl& cr )
+CScriptArray* FOMapper::SScriptFunc::Crit_GetChildren( CritterCl* cr )
 {
-    return Script::CreateArrayRef( "Item[]", cr.InvItems );
+    return Script::CreateArrayRef( "Item[]", cr->InvItems );
 }
 
 Item* FOMapper::SScriptFunc::Global_AddItem( hash pid, ushort hx, ushort hy )
@@ -4501,18 +4505,18 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetCrittersByHex( ushort hx, ushort 
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-void FOMapper::SScriptFunc::Global_MoveEntity( Entity& entity, ushort hx, ushort hy )
+void FOMapper::SScriptFunc::Global_MoveEntity( Entity* entity, ushort hx, ushort hy )
 {
     if( hx >= Self->HexMngr.GetWidth() )
         hx = Self->HexMngr.GetWidth() - 1;
     if( hy >= Self->HexMngr.GetHeight() )
         hy = Self->HexMngr.GetHeight() - 1;
-    Self->MoveEntity( &entity, hx, hy );
+    Self->MoveEntity( entity, hx, hy );
 }
 
-void FOMapper::SScriptFunc::Global_DeleteEntity( Entity& entity )
+void FOMapper::SScriptFunc::Global_DeleteEntity( Entity* entity )
 {
-    Self->DeleteEntity( &entity );
+    Self->DeleteEntity( entity );
 }
 
 void FOMapper::SScriptFunc::Global_DeleteEntities( CScriptArray* entities )
@@ -4525,12 +4529,12 @@ void FOMapper::SScriptFunc::Global_DeleteEntities( CScriptArray* entities )
     }
 }
 
-void FOMapper::SScriptFunc::Global_SelectEntity( Entity& entity, bool set )
+void FOMapper::SScriptFunc::Global_SelectEntity( Entity* entity, bool set )
 {
     if( set )
-        Self->SelectAdd( &entity );
+        Self->SelectAdd( entity );
     else
-        Self->SelectErase( &entity );
+        Self->SelectErase( entity );
 }
 
 void FOMapper::SScriptFunc::Global_SelectEntities( CScriptArray* entities, bool set )
