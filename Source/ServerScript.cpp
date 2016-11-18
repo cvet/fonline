@@ -2282,7 +2282,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCritters( Map* map, ushort hx, ushor
     CrVec critters;
     map->GetCrittersHex( hx, hy, radius, find_type, critters );
     SortCritterByDist( hx, hy, critters );
-    return Script::CreateArrayRef( "Critter", critters );
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
 CScriptArray* FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, hash pid, int find_type )
@@ -2316,7 +2316,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, hash pid, 
         }
     }
 
-    return Script::CreateArrayRef( "Critter", critters );
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
 CScriptArray* FOServer::SScriptFunc::Map_GetCrittersInPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type )
@@ -2337,7 +2337,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersInPath( Map* map, ushort fro
     trace.FindType = find_type;
     MapMngr.TraceBullet( trace );
 
-    return Script::CreateArrayRef( "Critter", critters );
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
 CScriptArray* FOServer::SScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy )
@@ -2365,7 +2365,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersInPathBlock( Map* map, ushor
     pre_block_hy = pre_block.second;
     block_hx = block.first;
     block_hy = block.second;
-    return Script::CreateArrayRef( "Critter", critters );
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
 CScriptArray* FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, int find_type )
@@ -2385,7 +2385,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushor
             critters.push_back( cr );
     }
 
-    return Script::CreateArrayRef( "Critter", critters );
+    return Script::CreateArrayRef( "Critter[]", critters );
 }
 
 CScriptArray* FOServer::SScriptFunc::Map_GetCrittersSeeing( Map* map, CScriptArray* critters, bool look_on_them, int find_type )
@@ -2400,7 +2400,7 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersSeeing( Map* map, CScriptArr
         cr->GetCrFromVisCr( result_critters, find_type, !look_on_them );
     }
 
-    return Script::CreateArrayRef( "Critter", result_critters );
+    return Script::CreateArrayRef( "Critter[]", result_critters );
 }
 
 void FOServer::SScriptFunc::Map_GetHexInPath( Map* map, ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
