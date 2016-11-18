@@ -7,8 +7,6 @@ ItemHex::ItemHex( uint id, ProtoItem* proto ): Item( id, proto )
     const_cast< EntityType& >( Type ) = EntityType::ItemHex;
 
     // Hex
-    HexX = 0;
-    HexY = 0;
     HexScrX = nullptr;
     HexScrY = nullptr;
 
@@ -88,8 +86,6 @@ ItemHex::ItemHex( uint id, ProtoItem* proto, UCharVecVec* props_data, int hx, in
 void ItemHex::AfterConstruction()
 {
     RUNTIME_ASSERT( GetAccessory() == ITEM_ACCESSORY_HEX );
-    HexX = GetHexX();
-    HexY = GetHexY();
 
     // Refresh item
     RefreshAnim();

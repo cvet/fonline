@@ -23,7 +23,6 @@ public:
 
 public:
     uint       SprId;
-    int        HexX, HexY;
     short      ScrX, ScrY;
     int*       HexScrX, * HexScrY;
     uchar      Alpha;

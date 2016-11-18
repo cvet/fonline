@@ -24,6 +24,7 @@ void Field::AddItem( ItemHex* item )
 {
     if( !Items )
         Items = new ItemHexVec();
+
     Items->push_back( item );
     ProcessCache();
 }
@@ -32,6 +33,7 @@ void Field::EraseItem( ItemHex* item )
 {
     if( !Items )
         return;
+
     auto it = std::find( Items->begin(), Items->end(), item );
     if( it != Items->end() )
     {
@@ -447,7 +449,7 @@ void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, Item
     ushort hy = item->GetHexY();
 
     if( item->IsNonEmptyBlockLines() )
-        ReplaceItemBlocks( item->HexX, item->HexY, item );
+        ReplaceItemBlocks( hx, hy, item );
     if( item->SprDrawValid )
         item->SprDraw->Unvalidate();
 
@@ -492,8 +494,8 @@ void HexManager::ProcessItems()
                 Field& f_ = GetField( step.first, step.second );
                 f.EraseItem( item );
                 f_.AddItem( item );
-                item->HexX = step.first;
-                item->HexY = step.second;
+                item->SetHexX( step.first );
+                item->SetHexY( step.second );
                 if( item->SprDrawValid )
                     item->SprDraw->Unvalidate();
 

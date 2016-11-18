@@ -2935,8 +2935,6 @@ void FOMapper::MoveEntity( Entity* entity, ushort hx, ushort hy )
         HexMngr.DeleteItem( item, false );
         item->SetHexX( hx );
         item->SetHexY( hy );
-        item->HexX = hx;
-        item->HexY = hy;
         HexMngr.PushItem( item );
     }
 }
@@ -3218,8 +3216,6 @@ bool FOMapper::SelectMove( bool hex_move, int& offs_hx, int& offs_hy, int& offs_
                 HexMngr.DeleteItem( item, false );
                 item->SetHexX( hx );
                 item->SetHexY( hy );
-                item->HexX = hx;
-                item->HexY = hy;
                 HexMngr.PushItem( item );
             }
             else if( entity->Type == EntityType::CritterCl )
