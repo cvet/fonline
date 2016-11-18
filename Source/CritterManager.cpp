@@ -113,7 +113,6 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
         npc->Props = *props;
 
     EntityMngr.RegisterEntity( npc );
-    Job::PushBack( JOB_CRITTER, npc );
 
     npc->SetCond( COND_LIFE );
 
@@ -161,7 +160,6 @@ bool CritterManager::RestoreNpc( uint id, hash proto_id, const StrMap& props_dat
     }
 
     EntityMngr.RegisterEntity( npc );
-    Job::PushBack( JOB_CRITTER, npc );
     return true;
 }
 

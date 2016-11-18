@@ -354,14 +354,6 @@ void FOServer::MainLoop()
     if( !Started() )
         return;
 
-    // Add general jobs
-    Job::PushBack( JOB_GARBAGE_LOCATIONS );
-    Job::PushBack( JOB_GAME_TIME );
-    Job::PushBack( JOB_BANS );
-    Job::PushBack( JOB_INVOCATIONS );
-    Job::PushBack( JOB_LOOP_SCRIPT );
-    Job::PushBack( JOB_SUSPENDED_CONTEXTS );
-
     // Start logic threads
     WriteLog( "***   Starting game loop   ***\n" );
 
@@ -369,51 +361,9 @@ void FOServer::MainLoop()
     {
         // Tick
         LogicTick();
-
-        // Synchronize single player data
-        #ifdef FO_WINDOWS
-        if( Singleplayer )
-        {
-            // Check client process
-            if( WaitForSingleObject( SingleplayerClientProcess, 0 ) == WAIT_OBJECT_0 )
-            {
-                FOQuit = true;
-                break;
-            }
-
-            SingleplayerData.Refresh();
-
-            if( SingleplayerData.Pause != Timer::IsGamePaused() )
-                Timer::SetGamePause( SingleplayerData.Pause );
-        }
-        #endif
-
-        // World saver
-        if( Timer::FastTick() >= SaveWorldNextTick )
-        {
-            SaveWorld( nullptr );
-            SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
-        }
-
-        // Client script
-        if( RequestReloadClientScripts )
-        {
-            ReloadClientScripts();
-            RequestReloadClientScripts = false;
-        }
-
-        // Statistics
-        Statistics.Uptime = ( Timer::FastTick() - Statistics.ServerStartTick ) / 1000;
-
-//		sync_mngr->UnlockAll();
-        Thread::Sleep( 100 );
     }
 
     WriteLog( "***   Finishing game loop  ***\n" );
-
-    // Erase all jobs
-    for( int i = 0; i < JOB_COUNT; i++ )
-        Job::Erase( i );
 
     // Finish entities
     EntityMngr.FinishEntities();
@@ -429,224 +379,177 @@ void FOServer::MainLoop()
 
 void FOServer::LogicTick()
 {
-    Thread::Sleep( 10 );
-
-    // Add sleep job for current thread
-    Job::PushBack( Job( JOB_THREAD_LOOP, nullptr ) );
-
-    // Wait next threads initialization
-    Thread::Sleep( 10 );
-
     // Cycle time
-    uint cycle_tick = Timer::FastTick();
+    double frame_begin = Timer::AccurateTick();
 
-    // Word loop
-    while( true )
+    // Process clients
+    EntityVec clients;
+    EntityMngr.GetEntities( EntityType::Client, clients );
+    for( Entity* cl_ : clients )
     {
-        Job job = Job::PopFront();
-        if( job.Type == JOB_CLIENT )
+        Client* cl = (Client*) cl_;
+
+        // Disconnect
+        if( cl->IsOffline() )
         {
-            Client* cl = (Client*) job.Data;
-
-            // Disconnect
-            if( cl->IsOffline() )
-            {
-                #if defined ( USE_LIBEVENT )
-                cl->Bout.Lock();
-                bool empty = cl->Bout.IsEmpty();
-                cl->Bout.Unlock();
-                if( empty )
-                    cl->Shutdown();
-                #else
-                if( InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
-                {
-                    cl->Shutdown();
-                }
-                #endif
-
-                if( cl->GetOfflineTime() > 60 * 60 * 1000 )         // 1 hour
-                {
-                    WriteLog( "Offline connection timeout, force shutdown. Ip '{}', name '{}'.\n", cl->GetIpStr(), cl->GetName() );
-                    cl->Shutdown();
-                }
-            }
-
-            // Check for removing
             #if defined ( USE_LIBEVENT )
-            if( cl->Sock == INVALID_SOCKET )
+            cl->Bout.Lock();
+            bool empty = cl->Bout.IsEmpty();
+            cl->Bout.Unlock();
+            if( empty )
+                cl->Shutdown();
             #else
-            if( cl->Sock == INVALID_SOCKET &&
-                InterlockedCompareExchange( &cl->NetIOIn->Operation, 0, 0 ) == WSAOP_FREE &&
-                InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
+            if( InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
+            {
+                cl->Shutdown();
+            }
             #endif
+
+            if( cl->GetOfflineTime() > 60 * 60 * 1000 )         // 1 hour
             {
-                DisconnectClient( cl );
-
-                ConnectedClientsLocker.Lock();
-                auto it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
-                if( it != ConnectedClients.end() )
-                {
-                    ConnectedClients.erase( it );
-                    Statistics.CurOnline--;
-                }
-                ConnectedClientsLocker.Unlock();
-
-                cl->Release();
-                continue;
+                WriteLog( "Offline connection timeout, force shutdown. Ip '{}', name '{}'.\n", cl->GetIpStr(), cl->GetName() );
+                cl->Shutdown();
             }
+        }
 
-            // Process net
-            Process( cl );
-            if( (Client*) job.Data != cl )
-                job.Data = cl;
-        }
-        else if( job.Type == JOB_CRITTER )
+        // Check for removing
+        #if defined ( USE_LIBEVENT )
+        if( cl->Sock == INVALID_SOCKET )
+        #else
+        if( cl->Sock == INVALID_SOCKET &&
+            InterlockedCompareExchange( &cl->NetIOIn->Operation, 0, 0 ) == WSAOP_FREE &&
+            InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
+        #endif
         {
-            Critter* cr = (Critter*) job.Data;
+            DisconnectClient( cl );
 
-            // Player specific
-            if( cr->CanBeRemoved )
-                RemoveClient( (Client*) cr );
-
-            // Check for removing
-            if( cr->IsDestroyed )
-                continue;
-
-            // Process logic
-            ProcessCritter( cr );
-        }
-        else if( job.Type == JOB_MAP )
-        {
-            Map* map = (Map*) job.Data;
-
-            // Check for removing
-            if( map->IsDestroyed )
-                continue;
-
-            // Process logic
-            map->Process();
-        }
-        else if( job.Type == JOB_GARBAGE_LOCATIONS )
-        {
-            // Locations and maps garbage
-            MapMngr.LocationGarbager();
-        }
-        else if( job.Type == JOB_GAME_TIME )
-        {
-            // Game time
-            Timer::ProcessGameTime();
-        }
-        else if( job.Type == JOB_BANS )
-        {
-            // Bans
-            ProcessBans();
-        }
-        else if( job.Type == JOB_INVOCATIONS )
-        {
-            // Process pending invocations
-            Script::ProcessDeferredCalls();
-        }
-        else if( job.Type == JOB_LOOP_SCRIPT )
-        {
-            // Script game loop
-            Script::RaiseInternalEvent( ServerFunctions.Loop );
-        }
-        else if( job.Type == JOB_SUSPENDED_CONTEXTS )
-        {
-            // Suspended contexts
-            Script::RunSuspended();
-        }
-        else if( job.Type == JOB_THREAD_LOOP )
-        {
-            // Sleep
-            uint sleep_time = Timer::FastTick();
-            if( ServerGameSleep >= 0 )
-                Thread::Sleep( ServerGameSleep );
-            sleep_time = Timer::FastTick() - sleep_time;
-
-            // Thread statistics
-            // Manage threads data
-            static Mutex  stats_locker;
-            static PtrVec stats_ptrs;
-            stats_locker.Lock();
-            struct StatisticsThread
+            ConnectedClientsLocker.Lock();
+            auto it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
+            if( it != ConnectedClients.end() )
             {
-                uint CycleTime;
-                uint FPS;
-                uint LoopTime;
-                uint LoopCycles;
-                uint LoopMin;
-                uint LoopMax;
-                uint LagsCount;
-            } static THREAD* stats = nullptr;
-            if( !stats )
-            {
-                stats = new StatisticsThread();
-                memzero( stats, sizeof( StatisticsThread ) );
-                stats->LoopMin = uint( -1 );
-                stats_ptrs.push_back( stats );
+                ConnectedClients.erase( it );
+                Statistics.CurOnline--;
             }
+            ConnectedClientsLocker.Unlock();
 
-            // Fill statistics
-            uint loop_tick = Timer::FastTick() - cycle_tick - sleep_time;
-            stats->LoopTime += loop_tick;
-            stats->LoopCycles++;
-            if( loop_tick > stats->LoopMax )
-                stats->LoopMax = loop_tick;
-            if( loop_tick < stats->LoopMin )
-                stats->LoopMin = loop_tick;
-            stats->CycleTime = loop_tick;
-
-            // Calculate whole threads statistics
-            uint cycle_time = 0, loop_time = 0, loop_cycles = 0, loop_min = 0, loop_max = 0, lags = 0;
-            for( auto it = stats_ptrs.begin(), end = stats_ptrs.end(); it != end; ++it )
-            {
-                StatisticsThread* stats_thread = (StatisticsThread*) *it;
-                cycle_time += stats_thread->CycleTime;
-                loop_time += stats_thread->LoopTime;
-                loop_cycles += stats_thread->LoopCycles;
-                loop_min += stats_thread->LoopMin;
-                loop_max += stats_thread->LoopMax;
-                lags += stats_thread->LagsCount;
-            }
-            uint count = (uint) stats_ptrs.size();
-            Statistics.CycleTime = cycle_time / count;
-            Statistics.LoopTime = loop_time / count;
-            Statistics.LoopCycles = loop_cycles / count;
-            Statistics.LoopMin = loop_min / count;
-            Statistics.LoopMax = loop_max / count;
-            Statistics.LagsCount = lags / count;
-            stats_locker.Unlock();
-
-            // Start time of next cycle
-            cycle_tick = Timer::FastTick();
-            break;
-        }
-        else         // JOB_NOP
-        {
-            Thread::Sleep( 100 );
+            cl->Release();
             continue;
         }
 
-        // Add job to back
-        uint job_count = Job::PushBack( job );
-
-        // Calculate fps
-        static volatile uint job_cur = 0;
-        static volatile uint fps = 0;
-        static volatile uint job_tick = 0;
-        if( ++job_cur >= job_count )
-        {
-            job_cur = 0;
-            fps++;
-            if( !job_tick || Timer::FastTick() - job_tick >= 1000 )
-            {
-                Statistics.FPS = fps;
-                fps = 0;
-                job_tick = Timer::FastTick();
-            }
-        }
+        // Process net
+        Process( cl );
     }
+
+    // Process critters
+    CrVec critters;
+    EntityMngr.GetCritters( critters );
+    for( Critter* cr : critters )
+    {
+        // Player specific
+        if( cr->CanBeRemoved )
+            RemoveClient( (Client*) cr );
+
+        // Check for removing
+        if( cr->IsDestroyed )
+            continue;
+
+        // Process logic
+        ProcessCritter( cr );
+    }
+
+    // Process maps
+    MapVec maps;
+    EntityMngr.GetMaps( maps );
+    for( Map* map : maps )
+    {
+        // Check for removing
+        if( map->IsDestroyed )
+            continue;
+
+        // Process logic
+        map->Process();
+    }
+
+    // Locations and maps garbage
+    MapMngr.LocationGarbager();
+
+    // Game time
+    Timer::ProcessGameTime();
+
+    // Bans
+    ProcessBans();
+
+    // Process pending invocations
+    Script::ProcessDeferredCalls();
+
+    // Script game loop
+    Script::RaiseInternalEvent( ServerFunctions.Loop );
+
+    // Suspended contexts
+    Script::RunSuspended();
+
+    // Fill statistics
+    double frame_time = Timer::AccurateTick() - frame_begin;
+    uint   loop_tick = (uint) frame_time;
+    Statistics.LoopTime += loop_tick;
+    Statistics.LoopCycles++;
+    if( loop_tick > Statistics.LoopMax )
+        Statistics.LoopMax = loop_tick;
+    if( loop_tick < Statistics.LoopMin )
+        Statistics.LoopMin = loop_tick;
+    Statistics.CycleTime = loop_tick;
+    if( loop_tick > 100 )
+        Statistics.LagsCount++;
+    Statistics.Uptime = ( Timer::FastTick() - Statistics.ServerStartTick ) / 1000;
+
+    // Calculate fps
+    static uint   fps = 0;
+    static double fps_tick = Timer::AccurateTick();
+    if( fps_tick >= 1000.0 )
+    {
+        Statistics.FPS = fps;
+        fps = 0;
+    }
+    else
+    {
+        fps++;
+    }
+
+    // Synchronize single player data
+    #ifdef FO_WINDOWS
+    if( Singleplayer )
+    {
+        // Check client process
+        if( WaitForSingleObject( SingleplayerClientProcess, 0 ) == WAIT_OBJECT_0 )
+        {
+            FOQuit = true;
+            return;
+        }
+
+        SingleplayerData.Refresh();
+
+        if( SingleplayerData.Pause != Timer::IsGamePaused() )
+            Timer::SetGamePause( SingleplayerData.Pause );
+    }
+    #endif
+
+    // World saver
+    if( Timer::FastTick() >= SaveWorldNextTick )
+    {
+        SaveWorld( nullptr );
+        SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
+    }
+
+    // Client script
+    if( RequestReloadClientScripts )
+    {
+        ReloadClientScripts();
+        RequestReloadClientScripts = false;
+    }
+
+    // Sleep
+    if( ServerGameSleep >= 0 )
+        Thread::Sleep( ServerGameSleep );
 }
 
 void FOServer::Net_Listen( void* )
@@ -788,9 +691,6 @@ void FOServer::Net_Listen( void* )
         bufferevent_enable( bev, EV_WRITE | EV_READ );
         bufferevent_unlock( bev );
         #endif
-
-        // Add job
-        Job::PushBack( JOB_CLIENT, cl );
     }
 }
 
@@ -3714,10 +3614,6 @@ void FOServer::UnloadWorld()
 {
     // End script
     Script::RaiseInternalEvent( ServerFunctions.Finish );
-
-    // Delete critter and map jobs
-    Job::Erase( JOB_CRITTER );
-    Job::Erase( JOB_MAP );
 
     // Items
     ItemMngr.RadioClear();

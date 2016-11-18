@@ -281,7 +281,6 @@ set( SERVER_SOURCE
 	Dialogs.cpp Dialogs.h
 	EntityManager.cpp EntityManager.h
 	ItemManager.cpp ItemManager.h
-	Jobs.cpp Jobs.h
 	MainServer.cpp
 	Map.cpp Map.h
 	MapManager.cpp MapManager.h

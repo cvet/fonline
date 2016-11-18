@@ -697,7 +697,6 @@ void FOServer::Process_CreateClient( Client* cl )
     bool can = MapMngr.CanAddCrToMap( cl, nullptr, 0, 0, 0 );
     RUNTIME_ASSERT( can );
     MapMngr.AddCrToMap( cl, nullptr, 0, 0, 0, 0 );
-    Job::PushBack( JOB_CRITTER, cl );
 
     Script::RaiseInternalEvent( ServerFunctions.CritterInit, cl, true );
     SaveClient( cl );
@@ -1237,7 +1236,6 @@ void FOServer::Process_LogIn( ClientPtr& cl )
         cl->SetTimeoutTransfer( 0 );
         cl->AddRef();
         EntityMngr.RegisterEntity( cl );
-        Job::PushBack( JOB_CRITTER, cl );
 
         cl->DisableSend++;
         if( cl->GetMapId() )

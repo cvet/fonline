@@ -159,7 +159,7 @@ Map* MapManager::CreateMap( hash proto_id, Location* loc )
     map->SetLocId( loc->GetId() );
     map->SetLocMapIndex( (uint) maps.size() );
     maps.push_back( map );
-    Job::PushBack( JOB_MAP, map );
+
     EntityMngr.RegisterEntity( map );
     return map;
 }
@@ -182,7 +182,6 @@ bool MapManager::RestoreMap( uint id, hash proto_id, const StrMap& props_data )
     }
 
     EntityMngr.RegisterEntity( map );
-    Job::PushBack( JOB_MAP, map );
     return true;
 }
 

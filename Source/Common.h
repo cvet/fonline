@@ -360,8 +360,6 @@ struct MapperScriptFunctions
 
 #ifdef FONLINE_SERVER
 
-# include "Jobs.h"
-
 extern bool FOQuit;
 extern int  ServerGameSleep;
 extern int  MemoryDebugLevel;
