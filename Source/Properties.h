@@ -253,7 +253,11 @@ public:
         {
             bool   need_delete = false;
             uint   data_size;
-            uchar* data = prop->ExpandComplexValueData( &value, data_size, need_delete );
+            uchar* data;
+            if( prop->dataType == Property::DataType::Array || prop->dataType == Property::DataType::Dict )
+                data = prop->ExpandComplexValueData( *(void**) &value, data_size, need_delete );
+            else
+                data = prop->ExpandComplexValueData( &value, data_size, need_delete );
             prop->SetPropRawData( this, data, data_size );
             if( need_delete )
                 delete[] data;
