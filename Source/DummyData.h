@@ -221,6 +221,9 @@ struct BindClass
     static void Crit_GetItemsByType()           {}
     static void Crit_GetSlotItem()              {}
     static void Crit_MoveItem()                 {}
+    static void Crit_SetCond()                  {}
+    static void Crit_CloseDialog()              {}
+    static void Crit_SendKnockout()             {}
 
     static void Npc_ErasePlane()           {}
     static void Npc_ErasePlaneIndex()      {}
@@ -304,6 +307,7 @@ struct BindClass
     static void Map_GetNearEntireCoords()    {}
     static void Map_GetNearEntireCoordsDir() {}
     static void Map_IsHexPassed()            {}
+    static void Map_IsHexesPassed()          {}
     static void Map_IsHexRaked()             {}
     static void Map_SetText()                {}
     static void Map_SetTextMsg()             {}

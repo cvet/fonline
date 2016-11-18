@@ -384,6 +384,9 @@ public:
         static CScriptArray* Crit_GetItemsByType( Critter* cr, int type );
         static Item*         Crit_GetSlotItem( Critter* cr, int slot );
         static bool          Crit_MoveItem( Critter* cr, uint item_id, uint count, uchar to_slot );
+        static void          Crit_SetCond( Critter* cr, int cond );
+        static void          Crit_CloseDialog( Critter* cr );
+        static void          Crit_SendKnockout( Critter* cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
 
         static uint          Npc_ErasePlane( Critter* npc, int plane_type, bool all );
         static bool          Npc_ErasePlaneIndex( Critter* npc, uint index );
@@ -467,6 +470,7 @@ public:
         static bool          Map_GetNearEntireCoords( Map* map, int& entire, ushort& hx, ushort& hy );
         static bool          Map_GetNearEntireCoordsDir( Map* map, int& entire, ushort& hx, ushort& hy, uchar& dir );
         static bool          Map_IsHexPassed( Map* map, ushort hex_x, ushort hex_y );
+        static bool          Map_IsHexesPassed( Map* map, ushort hex_x, ushort hex_y, uint radius );
         static bool          Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y );
         static void          Map_SetText( Map* map, ushort hex_x, ushort hex_y, uint color, string text );
         static void          Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num );

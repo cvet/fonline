@@ -155,8 +155,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterFinish );
     BIND_INTERNAL_EVENT( CritterIdle );
     BIND_INTERNAL_EVENT( CritterGlobalMapIdle );
-    BIND_INTERNAL_EVENT( CritterDead );
-    BIND_INTERNAL_EVENT( CritterRespawn );
     BIND_INTERNAL_EVENT( CritterCheckMoveItem );
     BIND_INTERNAL_EVENT( CritterMoveItem );
     BIND_INTERNAL_EVENT( CritterShow );
@@ -174,7 +172,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterMessage );
     BIND_INTERNAL_EVENT( CritterTalk );
     BIND_INTERNAL_EVENT( CritterBarter );
-    BIND_INTERNAL_EVENT( CritterKnockout );
     BIND_INTERNAL_EVENT( CritterGetAttackDistantion );
     BIND_INTERNAL_EVENT( NpcPlaneBegin );
     BIND_INTERNAL_EVENT( NpcPlaneEnd );
@@ -1287,6 +1284,47 @@ bool FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uint count
         return false;             // SCRIPT_ERROR_R0("Fail to move item.");
     cr->Send_AddItem( item );
     return true;
+}
+
+void FOServer::SScriptFunc::Crit_SetCond( Critter* cr, int cond )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+
+    int prev_cond = cr->GetCond();
+    if( prev_cond == cond )
+        return;
+    cr->SetCond( cond );
+
+    if( cr->GetMapId() )
+    {
+        Map*   map = MapMngr.GetMap( cr->GetMapId() );
+        RUNTIME_ASSERT( map );
+        ushort hx = cr->GetHexX();
+        ushort hy = cr->GetHexY();
+        uint   multihex = cr->GetMultihex();
+        bool   is_dead = ( cond == COND_DEAD );
+        map->UnsetFlagCritter( hx, hy, multihex, !is_dead );
+        map->SetFlagCritter( hx, hy, multihex, is_dead );
+    }
+}
+
+void FOServer::SScriptFunc::Crit_CloseDialog( Critter* cr )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+
+    if( cr->IsPlayer() && ( (Client*) cr )->IsTalking() )
+        ( (Client*) cr )->CloseTalk();
+}
+
+void FOServer::SScriptFunc::Crit_SendKnockout( Critter* cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+
+    cr->Send_Knockout( cr, anim2begin, anim2idle, knock_hx, knock_hy );
+    cr->SendA_Knockout( anim2begin, anim2idle, knock_hx, knock_hy );
 }
 
 uint FOServer::SScriptFunc::Npc_ErasePlane( Critter* npc, int plane_type, bool all )
@@ -2658,6 +2696,16 @@ bool FOServer::SScriptFunc::Map_IsHexPassed( Map* map, ushort hex_x, ushort hex_
         SCRIPT_ERROR_R0( "Invalid hexes args." );
 
     return map->IsHexPassed( hex_x, hex_y );
+}
+
+bool FOServer::SScriptFunc::Map_IsHexesPassed( Map* map, ushort hex_x, ushort hex_y, uint radius )
+{
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( hex_x >= map->GetWidth() || hex_y >= map->GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid hexes args." );
+
+    return map->IsHexesPassed( hex_x, hex_y, radius );
 }
 
 bool FOServer::SScriptFunc::Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y )

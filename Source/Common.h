@@ -393,8 +393,6 @@ struct ServerScriptFunctions
     void* CritterFinish;
     void* CritterIdle;
     void* CritterGlobalMapIdle;
-    void* CritterDead;
-    void* CritterRespawn;
     void* CritterCheckMoveItem;
     void* CritterMoveItem;
     void* CritterShow;
@@ -412,7 +410,6 @@ struct ServerScriptFunctions
     void* CritterMessage;
     void* CritterTalk;
     void* CritterBarter;
-    void* CritterKnockout;
     void* CritterGetAttackDistantion;
     void* NpcPlaneBegin;
     void* NpcPlaneEnd;
