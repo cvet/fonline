@@ -982,94 +982,6 @@ void FOServer::SScriptFunc::Crit_Wait( Critter* cr, uint ms )
     }
 }
 
-void FOServer::SScriptFunc::Crit_ToDead( Critter* cr, uint anim2, Critter* killer )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    // Already dead
-    if( cr->IsDead() )
-        return;
-
-    KillCritter( cr, anim2, killer );
-}
-
-bool FOServer::SScriptFunc::Crit_ToLife( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    // Already life
-    if( cr->IsLife() )
-        return true;
-
-    if( cr->IsDead() )
-    {
-        if( !cr->GetMapId() )
-            SCRIPT_ERROR_R0( "Critter on global map." );
-        Map* map = MapMngr.GetMap( cr->GetMapId() );
-        if( !map )
-            SCRIPT_ERROR_R0( "Map not found." );
-        if( !map->IsHexesPassed( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex() ) )
-            SCRIPT_ERROR_R0( "Position busy." );
-        RespawnCritter( cr );
-    }
-    else
-    {
-        if( cr->GetCurrentHp() <= 0 )
-            cr->SetCurrentHp( 1 );
-        if( cr->GetCurrentAp() <= 0 )
-            cr->SetCurrentAp( AP_DIVIDER );
-        cr->KnockoutAp = 0;
-        cr->TryUpOnKnockout();
-    }
-
-    if( !cr->IsLife() )
-        SCRIPT_ERROR_R0( "Respawn critter fail." );
-    return true;
-}
-
-bool FOServer::SScriptFunc::Crit_ToKnockout( Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( cr->IsDead() )
-        SCRIPT_ERROR_R0( "Critter is dead." );
-
-    if( cr->IsKnockout() )
-    {
-        cr->KnockoutAp += lost_ap;
-        return true;
-    }
-
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
-    if( !map )
-        SCRIPT_ERROR_R0( "Critter map not found." );
-    if( knock_hx >= map->GetWidth() || knock_hy >= map->GetHeight() )
-        SCRIPT_ERROR_R0( "Invalid hexes args." );
-
-    if( cr->GetHexX() != knock_hx || cr->GetHexY() != knock_hy )
-    {
-        bool passed = false;
-        uint multihex = cr->GetMultihex();
-        if( multihex )
-        {
-            map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), multihex, false );
-            passed = map->IsHexesPassed( knock_hx, knock_hy, multihex );
-            map->SetFlagCritter( cr->GetHexX(), cr->GetHexY(), multihex, false );
-        }
-        else
-        {
-            passed = map->IsHexPassed( knock_hx, knock_hy );
-        }
-        if( !passed )
-            SCRIPT_ERROR_R0( "Knock hexes is busy." );
-    }
-
-    KnockoutCritter( cr, anim2begin, anim2idle, anim2end, lost_ap, knock_hx, knock_hy );
-    return true;
-}
-
 void FOServer::SScriptFunc::Crit_RefreshVisible( Critter* cr )
 {
     if( cr->IsDestroyed )
@@ -3652,7 +3564,6 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
 
     // Swap data
     std::swap( cr1->Props, cr2->Props );
-    std::swap( cr1->KnockoutAp, cr2->KnockoutAp );
     std::swap( cr1->Flags, cr2->Flags );
     cr1->SetBreakTime( 0 );
     cr2->SetBreakTime( 0 );

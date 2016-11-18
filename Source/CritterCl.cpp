@@ -40,8 +40,6 @@ CLASS_PROPERTY_IMPL( CritterCl, WorldY );
 CLASS_PROPERTY_IMPL( CritterCl, GlobalMapLeaderId );
 CLASS_PROPERTY_IMPL( CritterCl, TalkDistance );
 CLASS_PROPERTY_IMPL( CritterCl, CurrentHp );
-CLASS_PROPERTY_IMPL( CritterCl, ActionPoints );
-CLASS_PROPERTY_IMPL( CritterCl, CurrentAp );
 CLASS_PROPERTY_IMPL( CritterCl, WalkTime );
 CLASS_PROPERTY_IMPL( CritterCl, RunTime );
 CLASS_PROPERTY_IMPL( CritterCl, ScaleFactor );

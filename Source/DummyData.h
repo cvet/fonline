@@ -201,9 +201,6 @@ struct BindClass
     static void Crit_IsFree()                   {}
     static void Crit_IsBusy()                   {}
     static void Crit_Wait()                     {}
-    static void Crit_ToDead()                   {}
-    static void Crit_ToLife()                   {}
-    static void Crit_ToKnockout()               {}
     static void Crit_RefreshVisible()           {}
     static void Crit_ViewMap()                  {}
     static void Crit_Say()                      {}

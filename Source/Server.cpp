@@ -1740,24 +1740,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             logcb( "Critter move fail." );
     }
     break;
-    case CMD_KILLCRIT:
-    {
-        uint crid;
-        buf >> crid;
-
-        CHECK_ALLOW_COMMAND;
-
-        Critter* cr = CrMngr.GetCritter( crid );
-        if( !cr )
-        {
-            logcb( "Critter not found." );
-            break;
-        }
-
-        KillCritter( cr, ANIM2_DEAD_FRONT, nullptr );
-        logcb( "Critter is dead." );
-    }
-    break;
     case CMD_DISCONCRIT:
     {
         uint crid;
@@ -1812,25 +1794,6 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             logcb( "To global success." );
         else
             logcb( "To global fail." );
-    }
-    break;
-    case CMD_RESPAWN:
-    {
-        uint crid;
-        buf >> crid;
-
-        CHECK_ALLOW_COMMAND;
-
-        Critter* cr = ( !crid ? cl_ : CrMngr.GetCritter( crid ) );
-        if( !cr )
-            logcb( "Critter not found." );
-        else if( !cr->IsDead() )
-            logcb( "Critter does not require respawn." );
-        else
-        {
-            RespawnCritter( cr );
-            logcb( "Respawn success." );
-        }
     }
     break;
     case CMD_PROPERTY:

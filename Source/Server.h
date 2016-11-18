@@ -77,9 +77,6 @@ public:
     // Actions
     static bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
 
-    static void KillCritter( Critter* cr, uint anim2, Critter* attacker );
-    static void RespawnCritter( Critter* cr );
-    static void KnockoutCritter( Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy );
     static bool MoveRandom( Critter* cr );
     static bool RegenerateMap( Map* map );
     static void VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
@@ -367,9 +364,6 @@ public:
         static bool          Crit_IsFree( Critter* cr );
         static bool          Crit_IsBusy( Critter* cr );
         static void          Crit_Wait( Critter* cr, uint ms );
-        static void          Crit_ToDead( Critter* cr, uint anim2, Critter* killer );
-        static bool          Crit_ToLife( Critter* cr );
-        static bool          Crit_ToKnockout( Critter* cr, uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy );
         static void          Crit_RefreshVisible( Critter* cr );
         static void          Crit_ViewMap( Critter* cr, Map* map, uint look, ushort hx, ushort hy, uchar dir );
         static void          Crit_Say( Critter* cr, uchar how_say, string text );

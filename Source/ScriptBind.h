@@ -128,9 +128,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsDead() const", asF
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsFree() const", asFUNCTION( BIND_CLASS Crit_IsFree ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsBusy() const", asFUNCTION( BIND_CLASS Crit_IsBusy ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Wait(uint ms)", asFUNCTION( BIND_CLASS Crit_Wait ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ToDead(uint anim2, Critter@+ killer)", asFUNCTION( BIND_CLASS Crit_ToDead ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool ToLife()", asFUNCTION( BIND_CLASS Crit_ToLife ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool ToKnockout(uint anim2begin, uint anim2idle, uint anim2end, uint lostAp, uint16 knockHx, uint16 knockHy)", asFUNCTION( BIND_CLASS Crit_ToKnockout ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void RefreshVisible()", asFUNCTION( BIND_CLASS Crit_RefreshVisible ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ViewMap(Map@+ map, uint look, uint16 hx, uint16 hy, uint8 dir)", asFUNCTION( BIND_CLASS Crit_ViewMap ), asCALL_CDECL_OBJFIRST ) );

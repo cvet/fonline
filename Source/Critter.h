@@ -88,8 +88,6 @@ public:
     CLASS_PROPERTY( int, MaxTalkers );   // Callback on begin dialog?
     CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
-    CLASS_PROPERTY( int, CurrentAp );
-    CLASS_PROPERTY( int, ActionPoints ); // Rename MaxAp
     CLASS_PROPERTY( bool, IsNoWalk );
     CLASS_PROPERTY( bool, IsNoRun );
     CLASS_PROPERTY( bool, IsNoRotate );
@@ -221,15 +219,6 @@ public:
 
 public:
     bool SetScript( asIScriptFunction* func, bool first_time );
-
-    // Knockout
-    uint KnockoutAp;
-
-    void ToKnockout( uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy );
-    void TryUpOnKnockout();
-
-    // Respawn, Dead
-    void ToDead( uint anim2, bool send_all );
 
     // Cached values to avoid synchronization
     uint CacheValuesNextTick;

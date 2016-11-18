@@ -99,10 +99,6 @@ bool Map::Generate()
                 UnsetFlagCritter( npc->GetHexX(), npc->GetHexY(), multihex, false );
                 SetFlagCritter( npc->GetHexX(), npc->GetHexY(), multihex, true );
             }
-            else if( npc->GetCond() == COND_KNOCKOUT )
-            {
-                npc->KnockoutAp = 10000;
-            }
         }
     }
 

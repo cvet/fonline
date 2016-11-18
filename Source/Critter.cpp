@@ -59,8 +59,6 @@ CLASS_PROPERTY_IMPL( Critter, HandsItemMode );
 CLASS_PROPERTY_IMPL( Critter, MaxTalkers );
 CLASS_PROPERTY_IMPL( Critter, TalkDistance );
 CLASS_PROPERTY_IMPL( Critter, CurrentHp );
-CLASS_PROPERTY_IMPL( Critter, ActionPoints );
-CLASS_PROPERTY_IMPL( Critter, CurrentAp );
 CLASS_PROPERTY_IMPL( Critter, WalkTime );
 CLASS_PROPERTY_IMPL( Critter, RunTime );
 CLASS_PROPERTY_IMPL( Critter, ScaleFactor );
@@ -102,7 +100,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     startBreakTime = 0;
     breakTime = 0;
     waitEndTick = 0;
-    KnockoutAp = 0;
     CacheValuesNextTick = 0;
     Flags = 0;
     TryingGoHomeTick = 0;
@@ -1348,68 +1345,6 @@ bool Critter::IsHaveGeckItem()
             return true;
     }
     return false;
-}
-
-void Critter::ToKnockout( uint anim2begin, uint anim2idle, uint anim2end, uint lost_ap, ushort knock_hx, ushort knock_hy )
-{
-    SetCond( COND_KNOCKOUT );
-    SetAnim2Knockout( anim2idle );
-    SetAnim2KnockoutEnd( anim2end );
-    KnockoutAp = lost_ap;
-    Send_Knockout( this, anim2begin, anim2idle, knock_hx, knock_hy );
-    SendA_Knockout( anim2begin, anim2idle, knock_hx, knock_hy );
-}
-
-void Critter::TryUpOnKnockout()
-{
-    // Critter lie on ground
-    if( GetCurrentHp() <= 0 )
-        return;
-
-    // Subtract knockout ap
-    if( KnockoutAp )
-    {
-        int cur_ap = GetCurrentAp() / AP_DIVIDER;
-        if( cur_ap <= 0 )
-            return;
-        int ap = MIN( (int) KnockoutAp, cur_ap );
-        KnockoutAp -= ap;
-        if( KnockoutAp )
-            return;
-    }
-
-    // Wait when ap regenerated to zero
-    if( GetCurrentAp() < 0 )
-        return;
-
-    // Stand up
-    SetCond( COND_LIFE );
-    SendAA_Action( ACTION_STANDUP, GetAnim2KnockoutEnd(), nullptr );
-    SetBreakTime( GameOpt.Breaktime );
-}
-
-void Critter::ToDead( uint anim2, bool send_all )
-{
-    bool already_dead = IsDead();
-
-    if( GetCurrentHp() > 0 )
-        SetCurrentHp( 0 );
-    SetCond( COND_DEAD );
-    SetAnim2Dead( anim2 );
-
-    if( send_all )
-        SendAA_Action( ACTION_DEAD, anim2, nullptr );
-
-    if( !already_dead )
-    {
-        Map* map = MapMngr.GetMap( GetMapId() );
-        if( map )
-        {
-            uint multihex = GetMultihex();
-            map->UnsetFlagCritter( GetHexX(), GetHexY(), multihex, false );
-            map->SetFlagCritter( GetHexX(), GetHexY(), multihex, true );
-        }
-    }
 }
 
 bool Critter::SetScript( asIScriptFunction* func, bool first_time )

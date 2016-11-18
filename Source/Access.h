@@ -17,10 +17,8 @@
 #define CMD_GAMEINFO                 ( 3 )
 #define CMD_CRITID                   ( 4 )
 #define CMD_MOVECRIT                 ( 5 )
-#define CMD_KILLCRIT                 ( 6 )
 #define CMD_DISCONCRIT               ( 7 )
 #define CMD_TOGLOBAL                 ( 8 )
-#define CMD_RESPAWN                  ( 9 )
 #define CMD_PROPERTY                 ( 10 )
 #define CMD_GETACCESS                ( 11 )
 #define CMD_ADDITEM                  ( 12 )
@@ -58,10 +56,8 @@ const CmdDef cmdlist[] =
     { "gameinfo", CMD_GAMEINFO },
     { "id", CMD_CRITID },
     { "move", CMD_MOVECRIT },
-    { "kill", CMD_KILLCRIT },
     { "disconnect", CMD_DISCONCRIT },
     { "toglobal", CMD_TOGLOBAL },
-    { "respawn", CMD_RESPAWN },
     { "prop", CMD_PROPERTY },
     { "getaccess", CMD_GETACCESS },
     { "additem", CMD_ADDITEM },
@@ -187,22 +183,6 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         buf << hex_y;
     }
     break;
-    case CMD_KILLCRIT:
-    {
-        uint crid;
-        if( sscanf( args, "%u", &crid ) != 1 )
-        {
-            logcb( "Invalid arguments. Example: kill crid." );
-            break;
-        }
-        msg_len += sizeof( crid );
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf << crid;
-    }
-    break;
     case CMD_DISCONCRIT:
     {
         uint crid;
@@ -224,22 +204,6 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-    }
-    break;
-    case CMD_RESPAWN:
-    {
-        uint crid;
-        if( sscanf( args, "%u", &crid ) != 1 )
-        {
-            logcb( "Invalid arguments. Example: respawn crid." );
-            break;
-        }
-        msg_len += sizeof( crid );
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf << crid;
     }
     break;
     case CMD_PROPERTY:

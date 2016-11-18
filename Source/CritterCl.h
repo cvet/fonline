@@ -37,8 +37,6 @@ public:
     CLASS_PROPERTY( bool, IsNoTalk );
     CLASS_PROPERTY( uint, TalkDistance );
     CLASS_PROPERTY( int, CurrentHp );
-    CLASS_PROPERTY( int, CurrentAp );
-    CLASS_PROPERTY( int, ActionPoints );
     CLASS_PROPERTY( bool, IsNoWalk );
     CLASS_PROPERTY( bool, IsNoRun );
     CLASS_PROPERTY( bool, IsNoRotate );
