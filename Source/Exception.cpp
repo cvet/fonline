@@ -54,11 +54,7 @@ void CatchExceptions( const char* app_name, int app_ver )
     Str::Format( AppVer, "%d", app_ver );
 
     if( app_name )
-    # ifndef EXCEPTION_MINIDUMP
         SetUnhandledExceptionFilter( TopLevelFilterReadableDump );
-    # else
-        SetUnhandledExceptionFilter( TopLevelFilterMiniDump );
-    # endif
     else
         SetUnhandledExceptionFilter( nullptr );
 }
@@ -201,6 +197,9 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         }
 
         // Init symbols
+        wchar_t exe_path[ TEMP_BUF_SIZE ];
+        GetModuleFileNameW( GetModuleHandle( nullptr ), exe_path, sizeof( exe_path ) );
+        SetCurrentDirectoryW( exe_path );
         SymInitialize( process, nullptr, TRUE );
         SymSetOptions( SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS );
 
@@ -449,70 +448,12 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
-LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except )
-{
-    LONG retval = EXCEPTION_CONTINUE_SEARCH;
-    char mess[ MAX_FOTEXT ];
-    char dump_path[ MAX_FOPATH ];
-    char dump_path_dir[ MAX_FOPATH ];
-
-    FileManager::ResetCurrentDir();
-    DateTimeStamp    dt;
-    Timer::GetCurrentDateTime( dt );
-    const char* dump_str = except ? "CrashDump" : ManualDumpAppendix;
-    # ifdef FONLINE_SERVER
-    FileManager::GetWritePath( dump_path_dir );
-    # else
-    Str::Copy( dump_path_dir, "./" );
-    # endif
-    Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
-                 dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
-
-    for( char* s = dump_path; *s; s++ )
-        if( *s == '/' )
-            *s = '\\';
-
-    HANDLE f = CreateFile( dump_path, GENERIC_WRITE, FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr );
-    if( f != INVALID_HANDLE_VALUE )
-    {
-        MINIDUMP_EXCEPTION_INFORMATION ex_info;
-        ex_info.ThreadId = GetCurrentThreadId();
-        ex_info.ExceptionPointers = except;
-        ex_info.ClientPointers = FALSE;
-
-        if( MiniDumpWriteDump( GetCurrentProcess(), GetCurrentProcessId(), f, MiniDumpNormal, except ? &ex_info : nullptr, nullptr, nullptr ) )
-        {
-            Str::Format( mess, DumpMess, dump_path );
-            retval = EXCEPTION_EXECUTE_HANDLER;
-        }
-        else
-        {
-            Str::Format( mess, "Error while create dump file - File save error, path '%s', err %d.", dump_path, GetLastError() );
-        }
-
-        CloseHandle( f );
-    }
-    else
-    {
-        Str::Format( mess, "Error while create dump file - Error create file, path '%s', err %d.", dump_path, GetLastError() );
-    }
-
-    if( except )
-        ShowMessage( mess );
-
-    return retval;
-}
-
 void CreateDump( const char* appendix, const char* message )
 {
     Str::Copy( ManualDumpAppendix, appendix );
     Str::Copy( ManualDumpMessage, message );
 
-    # ifndef EXCEPTION_MINIDUMP
     TopLevelFilterReadableDump( nullptr );
-    # else
-    TopLevelFilterMiniDump( nullptr );
-    # endif
 }
 
 #elif !defined ( FO_ANDROID )
