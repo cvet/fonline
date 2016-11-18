@@ -34,10 +34,6 @@ class Npc;
 class Map;
 class Location;
 
-typedef Critter*              CritterPtr;
-typedef Client*               ClientPtr;
-typedef Npc*                  NpcPtr;
-
 typedef map< uint, Critter* > CrMap;
 typedef map< uint, Client* >  ClMap;
 typedef map< uint, Npc* >     PcMap;

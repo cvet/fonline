@@ -624,7 +624,7 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 }
 
-void FOServer::Process_LogIn( ClientPtr& cl )
+void FOServer::Process_LogIn( Client*& cl )
 {
     // Prevent brute force by ip
     if( CheckBruteForceIp( cl->GetIp() ) )

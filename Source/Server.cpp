@@ -358,10 +358,7 @@ void FOServer::MainLoop()
     WriteLog( "***   Starting game loop   ***\n" );
 
     while( !FOQuit )
-    {
-        // Tick
         LogicTick();
-    }
 
     WriteLog( "***   Finishing game loop  ***\n" );
 
@@ -383,12 +380,13 @@ void FOServer::LogicTick()
     double frame_begin = Timer::AccurateTick();
 
     // Process clients
-    EntityVec clients;
-    EntityMngr.GetEntities( EntityType::Client, clients );
-    for( Entity* cl_ : clients )
+    ConnectedClientsLocker.Lock();
+    ClVec clients = ConnectedClients;
+    for( Client* cl : clients )
+        cl->AddRef();
+    ConnectedClientsLocker.Unlock();
+    for( Client* cl : clients )
     {
-        Client* cl = (Client*) cl_;
-
         // Disconnect
         if( cl->IsOffline() )
         {
@@ -438,6 +436,7 @@ void FOServer::LogicTick()
 
         // Process net
         Process( cl );
+        cl->Release();
     }
 
     // Process critters
@@ -1064,7 +1063,7 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
 
 #endif
 
-void FOServer::Process( ClientPtr& cl )
+void FOServer::Process( Client* cl )
 {
     if( cl->IsOffline() || cl->IsDestroyed )
     {
