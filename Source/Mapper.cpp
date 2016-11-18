@@ -4520,13 +4520,18 @@ void FOMapper::SScriptFunc::Global_DeleteEntities( CScriptArray* entities )
     for( int i = 0, j = entities->GetSize(); i < j; i++ )
     {
         Entity* entity = *(Entity**) entities->At( i );
-        if( entity )
+        if( entity && !entity->IsDestroyed )
             Self->DeleteEntity( entity );
     }
 }
 
 void FOMapper::SScriptFunc::Global_SelectEntity( Entity* entity, bool set )
 {
+    if( !entity )
+        SCRIPT_ERROR_R( "Entity arg is null." );
+    if( entity->IsDestroyed )
+        SCRIPT_ERROR_R( "Entity arg is destroyed." );
+
     if( set )
         Self->SelectAdd( entity );
     else
@@ -4540,6 +4545,9 @@ void FOMapper::SScriptFunc::Global_SelectEntities( CScriptArray* entities, bool 
         Entity* entity = *(Entity**) entities->At( i );
         if( entity )
         {
+            if( entity->IsDestroyed )
+                SCRIPT_ERROR_R( "Entity in array is destroyed." );
+
             if( set )
                 Self->SelectAdd( entity );
             else
