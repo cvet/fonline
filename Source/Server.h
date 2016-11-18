@@ -386,7 +386,6 @@ public:
         static bool          Crit_MoveItem( Critter* cr, uint item_id, uint count, uchar to_slot );
         static void          Crit_SetCond( Critter* cr, int cond );
         static void          Crit_CloseDialog( Critter* cr );
-        static void          Crit_SendKnockout( Critter* cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
 
         static uint          Npc_ErasePlane( Critter* npc, int plane_type, bool all );
         static bool          Npc_ErasePlaneIndex( Critter* npc, uint index );

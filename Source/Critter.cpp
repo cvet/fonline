@@ -42,7 +42,6 @@ CLASS_PROPERTY_IMPL( Critter, Anim1Dead );
 CLASS_PROPERTY_IMPL( Critter, Anim2Life );
 CLASS_PROPERTY_IMPL( Critter, Anim2Knockout );
 CLASS_PROPERTY_IMPL( Critter, Anim2Dead );
-CLASS_PROPERTY_IMPL( Critter, Anim2KnockoutEnd );
 CLASS_PROPERTY_IMPL( Critter, GlobalMapFog );
 CLASS_PROPERTY_IMPL( Critter, TE_FuncNum );
 CLASS_PROPERTY_IMPL( Critter, TE_Rate );
@@ -1505,11 +1504,6 @@ void Critter::Send_Action( Critter* from_cr, int action, int action_ext, Item* i
     if( IsPlayer() )
         ( (Client*) this )->Send_Action( from_cr, action, action_ext, item );
 }
-void Critter::Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy )
-{
-    if( IsPlayer() )
-        ( (Client*) this )->Send_Knockout( from_cr, anim2begin, anim2idle, knock_hx, knock_hy );
-}
 void Critter::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot )
 {
     if( IsPlayer() )
@@ -1616,19 +1610,6 @@ void Critter::SendAA_Action( int action, int action_ext, Item* item )
         Critter* cr = *it;
         if( cr->IsPlayer() )
             cr->Send_Action( this, action, action_ext, item );
-    }
-}
-
-void Critter::SendA_Knockout( uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy )
-{
-    if( VisCr.empty() )
-        return;
-
-    for( auto it = VisCr.begin(), end = VisCr.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
-        if( cr->IsPlayer() )
-            cr->Send_Knockout( this, anim2begin, anim2idle, knock_hx, knock_hy );
     }
 }
 
@@ -2616,22 +2597,6 @@ void Client::Send_Action( Critter* from_cr, int action, int action_ext, Item* it
     Bout << action;
     Bout << action_ext;
     Bout << (bool) ( item ? true : false );
-    BOUT_END( this );
-}
-
-void Client::Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy )
-{
-    if( IsSendDisabled() || IsOffline() )
-        return;
-    Send_XY( from_cr );
-
-    BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_KNOCKOUT;
-    Bout << from_cr->GetId();
-    Bout << anim2begin;
-    Bout << anim2idle;
-    Bout << knock_hx;
-    Bout << knock_hy;
     BOUT_END( this );
 }
 

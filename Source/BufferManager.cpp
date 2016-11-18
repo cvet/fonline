@@ -268,8 +268,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_ANIMATE_ITEM_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_ACTION:
         return ( NETMSG_CRITTER_ACTION_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_CRITTER_KNOCKOUT:
-        return ( NETMSG_CRITTER_KNOCKOUT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_ANIMATE:
         return ( NETMSG_CRITTER_ANIMATE_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_CRITTER_SET_ANIMS:
@@ -486,9 +484,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_CRITTER_ACTION:
         size = NETMSG_CRITTER_ACTION_SIZE;
-        break;
-    case NETMSG_CRITTER_KNOCKOUT:
-        size = NETMSG_CRITTER_KNOCKOUT_SIZE;
         break;
     case NETMSG_CRITTER_ANIMATE:
         size = NETMSG_CRITTER_ANIMATE_SIZE;

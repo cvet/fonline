@@ -1866,9 +1866,6 @@ void FOClient::NetProcess()
         case NETMSG_CRITTER_ACTION:
             Net_OnCritterAction();
             break;
-        case NETMSG_CRITTER_KNOCKOUT:
-            Net_OnCritterKnockout();
-            break;
         case NETMSG_CRITTER_MOVE_ITEM:
             Net_OnCritterMoveItem();
             break;
@@ -2936,35 +2933,6 @@ void FOClient::Net_OnCritterAction()
         return;
 
     cr->Action( action, action_ext, is_item ? SomeItem : nullptr, false );
-}
-
-void FOClient::Net_OnCritterKnockout()
-{
-    uint   crid;
-    uint   anim2begin;
-    uint   anim2idle;
-    ushort knock_hx;
-    ushort knock_hy;
-    Bin >> crid;
-    Bin >> anim2begin;
-    Bin >> anim2idle;
-    Bin >> knock_hx;
-    Bin >> knock_hy;
-
-    CHECK_IN_BUFF_ERROR;
-
-    CritterCl* cr = GetCritter( crid );
-    if( !cr )
-        return;
-
-    cr->Action( ACTION_KNOCKOUT, anim2begin, nullptr, false );
-    cr->SetAnim2Knockout( anim2idle );
-
-    if( cr->GetHexX() != knock_hx || cr->GetHexY() != knock_hy )
-    {
-        // TODO: offsets
-        HexMngr.TransitCritter( cr, knock_hx, knock_hy, false, true );
-    }
 }
 
 void FOClient::Net_OnCritterMoveItem()

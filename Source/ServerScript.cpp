@@ -1318,15 +1318,6 @@ void FOServer::SScriptFunc::Crit_CloseDialog( Critter* cr )
         ( (Client*) cr )->CloseTalk();
 }
 
-void FOServer::SScriptFunc::Crit_SendKnockout( Critter* cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    cr->Send_Knockout( cr, anim2begin, anim2idle, knock_hx, knock_hy );
-    cr->SendA_Knockout( anim2begin, anim2idle, knock_hx, knock_hy );
-}
-
 uint FOServer::SScriptFunc::Npc_ErasePlane( Critter* npc, int plane_type, bool all )
 {
     if( npc->IsDestroyed )

@@ -71,7 +71,6 @@ public:
     CLASS_PROPERTY( uint, Anim2Life );
     CLASS_PROPERTY( uint, Anim2Knockout );
     CLASS_PROPERTY( uint, Anim2Dead );
-    CLASS_PROPERTY( uint, Anim2KnockoutEnd );
     CLASS_PROPERTY( CScriptArray *, GlobalMapFog );
     CLASS_PROPERTY( CScriptArray *, TE_FuncNum );    // hash
     CLASS_PROPERTY( CScriptArray *, TE_Rate );       // uint
@@ -263,7 +262,6 @@ public:
     void Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void Send_TextMsgLex( uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void Send_Action( Critter* from_cr, int action, int action_ext, Item* item );
-    void Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot );
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );
@@ -279,7 +277,6 @@ public:
     void SendA_XY();
     void SendA_Action( int action, int action_ext, Item* item );
     void SendAA_Action( int action, int action_ext, Item* item );
-    void SendA_Knockout( uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void SendAA_MoveItem( Item* item, uchar action, uchar prev_slot );
     void SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void SendAA_SetAnims( int cond, uint anim1, uint anim2 );
@@ -475,7 +472,6 @@ public:
     void Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void Send_TextMsgLex( uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void Send_Action( Critter* from_cr, int action, int action_ext, Item* item );
-    void Send_Knockout( Critter* from_cr, uint anim2begin, uint anim2idle, ushort knock_hx, ushort knock_hy );
     void Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar prev_slot );
     void Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 );

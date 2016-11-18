@@ -26,7 +26,6 @@ CLASS_PROPERTY_IMPL( CritterCl, Anim1Dead );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2Life );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2Knockout );
 CLASS_PROPERTY_IMPL( CritterCl, Anim2Dead );
-CLASS_PROPERTY_IMPL( CritterCl, Anim2KnockoutEnd );
 CLASS_PROPERTY_IMPL( CritterCl, ModelName );
 CLASS_PROPERTY_IMPL( CritterCl, ScriptId );
 CLASS_PROPERTY_IMPL( CritterCl, LookDistance );

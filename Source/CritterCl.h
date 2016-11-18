@@ -27,7 +27,6 @@ public:
     CLASS_PROPERTY( uint, Anim2Life );
     CLASS_PROPERTY( uint, Anim2Knockout );
     CLASS_PROPERTY( uint, Anim2Dead );
-    CLASS_PROPERTY( uint, Anim2KnockoutEnd );
     // Core
     CLASS_PROPERTY( hash, ModelName );
     CLASS_PROPERTY( hash, ScriptId );

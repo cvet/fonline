@@ -223,7 +223,6 @@ struct BindClass
     static void Crit_MoveItem()                 {}
     static void Crit_SetCond()                  {}
     static void Crit_CloseDialog()              {}
-    static void Crit_SendKnockout()             {}
 
     static void Npc_ErasePlane()           {}
     static void Npc_ErasePlaneIndex()      {}

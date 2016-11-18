@@ -183,7 +183,6 @@ public:
     void Net_OnCritterMove();
     void Net_OnSomeItem();
     void Net_OnCritterAction();
-    void Net_OnCritterKnockout();
     void Net_OnCritterMoveItem();
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();

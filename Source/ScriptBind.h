@@ -146,7 +146,6 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Item@+ GetSlotItem(
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveItem(uint itemId, uint count, uint8 toSlot)", asFUNCTION( BIND_CLASS Crit_MoveItem ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetCond(int cond)", asFUNCTION( BIND_CLASS Crit_SetCond ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void CloseDialog()", asFUNCTION( BIND_CLASS Crit_CloseDialog ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SendKnockout(uint anim2begin, uint anim2idle, uint16 knockHx, uint16 knockHy)", asFUNCTION( BIND_CLASS Crit_SendKnockout ), asCALL_CDECL_OBJFIRST ) );
 
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Critter@>@ GetCritters(bool lookOnMe, int findType) const", asFUNCTION( BIND_CLASS Crit_GetCritters ), asCALL_CDECL_OBJFIRST ) ); // Todo: const
 BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Critter@>@ GetTalkedPlayers() const", asFUNCTION( BIND_CLASS Npc_GetTalkedPlayers ), asCALL_CDECL_OBJFIRST ) );                   // Todo: const
