@@ -1786,8 +1786,6 @@ void Properties::SetValueAsInt( Entity* entity, int enum_value, int value )
         SCRIPT_ERROR_R( "Can't set integer value to non POD property '%s'", prop->GetName() );
     if( !prop->IsWritable() )
         SCRIPT_ERROR_R( "Can't set integer value to non writable property '%s'", prop->GetName() );
-    if( prop->accessType & Property::VirtualMask )
-        SCRIPT_ERROR_R( "Can't set integer value to virtual property '%s'", prop->GetName() );
 
     prop->SetPODValueAsInt( entity, value );
 }
@@ -1801,8 +1799,6 @@ bool Properties::SetValueAsIntByName( Entity* entity, const char* enum_name, int
         SCRIPT_ERROR_R0( "Can't set by name integer value from non POD property '%s'", prop->GetName() );
     if( !prop->IsWritable() )
         SCRIPT_ERROR_R0( "Can't set integer value to non writable property '%s'", prop->GetName() );
-    if( prop->accessType & Property::VirtualMask )
-        SCRIPT_ERROR_R0( "Can't set integer value to virtual property '%s'", prop->GetName() );
 
     prop->SetPODValueAsInt( entity, value );
     return true;
