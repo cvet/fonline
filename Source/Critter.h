@@ -199,7 +199,8 @@ public:
     void     GetItemsSlot( int slot, ItemVec& items );
     void     GetItemsType( int type, ItemVec& items );
     uint     CountItemPid( hash item_pid );
-    bool     MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count );
+    bool     MoveItem( Item* item, uchar to_slot );
+    bool     DropItem( Item* item, uint count );
     uint     RealCountItems() { return (uint) invItems.size(); }
     uint     CountItems();
     ItemVec& GetInventory();

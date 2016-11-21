@@ -198,7 +198,6 @@
 #define SLOT_HAND1                  ( 1 )
 #define SLOT_HAND2                  ( 2 )
 #define SLOT_ARMOR                  ( 3 )
-#define SLOT_GROUND                 ( 255 )
 
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.

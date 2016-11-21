@@ -948,7 +948,7 @@ void Critter::AddItem( Item*& item, bool send )
     }
 
     // Change item
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, SLOT_GROUND );
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, -1 );
 }
 
 void Critter::SetItem( Item* item )
@@ -999,9 +999,7 @@ void Critter::EraseItem( Item* item, bool send )
     if( item->GetCritSlot() != SLOT_INV )
         SendAA_MoveItem( item, ACTION_REFRESH, 0 );
 
-    uchar from_slot = item->GetCritSlot();
-    item->SetCritSlot( SLOT_GROUND );
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, from_slot );
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, item->GetCritSlot() );
 }
 
 Item* Critter::GetItem( uint item_id, bool skip_hide )
@@ -1131,120 +1129,22 @@ uint Critter::CountItemPid( hash pid )
     return res;
 }
 
-bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count )
+bool Critter::MoveItem( Item* item, uchar to_slot )
 {
-    if( !item_id )
-    {
-        switch( from_slot )
-        {
-        case SLOT_HAND1:
-            item_id = ItemSlotMain->GetId();
-            break;
-        case SLOT_HAND2:
-            item_id = ItemSlotExt->GetId();
-            break;
-        case SLOT_ARMOR:
-            item_id = ItemSlotArmor->GetId();
-            break;
-        default:
-            break;
-        }
-    }
-
-    if( !item_id )
-    {
-        WriteLog( "Item id is zero, from slot {}, to slot {}, critter '{}'.\n", from_slot, to_slot, GetInfo() );
-        return false;
-    }
-
-    Item* item = GetItem( item_id, IsPlayer() );
-    if( !item )
-    {
-        WriteLog( "Item not found, item id {}, critter '{}'.\n", item_id, GetInfo() );
-        return false;
-    }
-
-    if( item->GetCritSlot() != from_slot || from_slot == to_slot )
-    {
-        WriteLog( "Wrong slots, from slot {}, from slot real {}, to slot {}, item id {}, critter '{}'.\n", from_slot, item->GetCritSlot(), to_slot, item_id, GetInfo() );
-        return false;
-    }
-
-    if( to_slot != SLOT_GROUND && !SlotEnabled[ to_slot ] )
+    if( !SlotEnabled[ to_slot ] )
     {
         WriteLog( "Slot {} is not allowed, critter '{}'.\n", to_slot, GetInfo() );
         return false;
     }
 
-    if( to_slot == SLOT_GROUND && !ItemMngr.ItemCheckMove( item, item->GetCount(), this, this ) )
-    {
-        WriteLog( "Move item is not allwed, critter '{}'.\n", to_slot, GetInfo() );
-        return false;
-    }
-
-    Item* item_swap = ( ( to_slot != SLOT_INV && to_slot != SLOT_GROUND ) ? GetItemSlot( to_slot ) : nullptr );
+    Item* item_swap = ( to_slot != SLOT_INV ? GetItemSlot( to_slot ) : nullptr );
     if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, this, item, to_slot, item_swap ) )
     {
         WriteLog( "Can't move item '{}' to slot {}, critter '{}'.\n", item->GetName(), to_slot, GetInfo() );
         return false;
     }
 
-    if( to_slot == SLOT_GROUND )
-    {
-        if( !count || count > item->GetCount() )
-        {
-            Send_AddItem( item );
-            return false;
-        }
-
-        bool full_drop = ( !item->GetStackable() || count >= item->GetCount() );
-        if( !full_drop )
-        {
-            if( GetMapId() )
-            {
-                Item* item_ = ItemMngr.SplitItem( item, count );
-                if( !item_ )
-                {
-                    Send_AddItem( item );
-                    return false;
-                }
-                item = item_;
-            }
-            else
-            {
-                item->ChangeCount( -(int) count );
-                item = nullptr;
-            }
-        }
-        else
-        {
-            EraseItem( item, false );
-            if( !GetMapId() )
-            {
-                ItemMngr.DeleteItem( item );
-                item = nullptr;
-            }
-        }
-
-        if( !item )
-            return true;
-
-        Map* map = MapMngr.GetMap( GetMapId() );
-        if( !map )
-        {
-            WriteLog( "Map not found, map id {}, critter '{}'.\n", GetMapId(), GetInfo() );
-            ItemMngr.DeleteItem( item );
-            return true;
-        }
-
-        SendAA_Action( ACTION_DROP_ITEM, from_slot, item );
-        item->ViewByCritter = this;
-        map->AddItem( item, GetHexX(), GetHexY() );
-        item->ViewByCritter = nullptr;
-        Script::RaiseInternalEvent( ServerFunctions.CritterDropItem, this, item );
-        return true;
-    }
-
+    uchar from_slot = item->GetCritSlot();
     TakeDefaultItem( from_slot );
     TakeDefaultItem( to_slot );
     if( to_slot == SLOT_HAND1 )
@@ -1272,6 +1172,68 @@ bool Critter::MoveItem( uchar from_slot, uchar to_slot, uint item_id, uint count
     if( item_swap )
         Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item_swap, to_slot );
 
+    return true;
+}
+
+bool Critter::DropItem( Item* item, uint count )
+{
+    if( !ItemMngr.ItemCheckMove( item, item->GetCount(), this, this ) )
+    {
+        WriteLog( "Drop item is not allwed, critter '{}'.\n", GetInfo() );
+        return false;
+    }
+
+    if( !count || count > item->GetCount() )
+    {
+        Send_AddItem( item );
+        return false;
+    }
+
+    bool full_drop = ( !item->GetStackable() || count >= item->GetCount() );
+    if( !full_drop )
+    {
+        if( GetMapId() )
+        {
+            Item* item_ = ItemMngr.SplitItem( item, count );
+            if( !item_ )
+            {
+                Send_AddItem( item );
+                return false;
+            }
+            item = item_;
+        }
+        else
+        {
+            item->ChangeCount( -(int) count );
+            item = nullptr;
+        }
+    }
+    else
+    {
+        EraseItem( item, false );
+        if( !GetMapId() )
+        {
+            ItemMngr.DeleteItem( item );
+            item = nullptr;
+        }
+    }
+
+    if( !item )
+        return true;
+
+    Map* map = MapMngr.GetMap( GetMapId() );
+    if( !map )
+    {
+        WriteLog( "Map not found, map id {}, critter '{}'.\n", GetMapId(), GetInfo() );
+        ItemMngr.DeleteItem( item );
+        return true;
+    }
+
+    SendAA_Action( ACTION_DROP_ITEM, -1, item );
+    item->ViewByCritter = this;
+    map->AddItem( item, GetHexX(), GetHexY() );
+    item->ViewByCritter = nullptr;
+    Script::RaiseInternalEvent( ServerFunctions.CritterDropItem, this, item );
     return true;
 }
 

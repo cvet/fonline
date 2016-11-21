@@ -6811,29 +6811,7 @@ uint FOClient::SScriptFunc::Crit_CountItem( CritterCl* cr, hash proto_id )
     return cr->CountItemPid( proto_id );
 }
 
-uint FOClient::SScriptFunc::Crit_CountItemByType( CritterCl* cr, uchar type )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->CountItemType( type );
-}
-
-Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, hash proto_id, int slot )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    if( proto_id && slot >= 0 && slot < SLOT_GROUND )
-        return cr->GetItemByPidSlot( proto_id, slot );
-    else if( proto_id )
-        return cr->GetItemByPidInvPriority( proto_id );
-    else if( slot >= 0 && slot < SLOT_GROUND )
-        return cr->GetItemSlot( slot );
-    return nullptr;
-}
-
-Item* FOClient::SScriptFunc::Crit_GetItemById( CritterCl* cr, uint item_id )
+Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, uint item_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -6841,7 +6819,33 @@ Item* FOClient::SScriptFunc::Crit_GetItemById( CritterCl* cr, uint item_id )
     return cr->GetItem( item_id );
 }
 
-CScriptArray* FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr, int slot )
+Item* FOClient::SScriptFunc::Crit_GetItemBySlot( CritterCl* cr, uchar slot )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    return cr->GetItemSlot( slot );
+}
+
+Item* FOClient::SScriptFunc::Crit_GetItemByPid( CritterCl* cr, hash proto_id )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    return cr->GetItemByPidInvPriority( proto_id );
+}
+
+CScriptArray* FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    ItemVec items;
+    cr->GetItemsSlot( -1, items );
+    return Script::CreateArrayRef( "Item[]", items );
+}
+
+CScriptArray* FOClient::SScriptFunc::Crit_GetItemsBySlot( CritterCl* cr, uchar slot )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -7329,7 +7333,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
 
         // Move
         bool is_light = item->GetIsLight();
-        if( to_slot == SLOT_GROUND )
+        if( to_slot == -1 )
         {
             Self->Chosen->Action( ACTION_DROP_ITEM, from_slot, item );
             if( item->GetStackable() && item_count < item->GetCount() )
@@ -7380,7 +7384,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         // Light
         if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
             Self->RebuildLookBorders = true;
-        if( is_light && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != SLOT_GROUND ) ) )
+        if( is_light && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != -1 ) ) )
             Self->HexMngr.RebuildLight();
 
         // Notify scripts about item changing

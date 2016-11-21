@@ -124,7 +124,6 @@ public:
     void  GetItemsSlot( int slot, ItemVec& items );
     void  GetItemsType( int slot, ItemVec& items );
     uint  CountItemPid( hash item_pid );
-    uint  CountItemType( uchar type );
     bool  IsHaveLightSources();
 
     // Moving

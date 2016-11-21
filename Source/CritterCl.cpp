@@ -334,15 +334,6 @@ uint CritterCl::CountItemPid( hash item_pid )
     return result;
 }
 
-uint CritterCl::CountItemType( uchar type )
-{
-    uint res = 0;
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-        if( ( *it )->GetType() == type )
-            res += ( *it )->GetCount();
-    return res;
-}
-
 bool CritterCl::IsCombatMode()
 {
     return IS_TIMEOUT( GetTimeoutBattle() );

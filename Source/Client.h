@@ -380,10 +380,12 @@ public:
         static void          Crit_ClearAnim( CritterCl* cr );
         static void          Crit_Wait( CritterCl* cr, uint ms );
         static uint          Crit_CountItem( CritterCl* cr, hash proto_id );
-        static uint          Crit_CountItemByType( CritterCl* cr, uchar type );
-        static Item*         Crit_GetItem( CritterCl* cr, hash proto_id, int slot );
-        static Item*         Crit_GetItemById( CritterCl* cr, uint item_id );
-        static CScriptArray* Crit_GetItems( CritterCl* cr, int slot );
+        static Item*         Crit_GetItem( CritterCl* cr, uint item_id );
+        static Item*         Crit_GetItemBySlot( CritterCl* cr, uchar slot );
+        static Item*         Crit_GetItemByType( CritterCl* cr, int type );
+        static Item*         Crit_GetItemByPid( CritterCl* cr, hash proto_id );
+        static CScriptArray* Crit_GetItems( CritterCl* cr );
+        static CScriptArray* Crit_GetItemsBySlot( CritterCl* cr, uchar slot );
         static CScriptArray* Crit_GetItemsByType( CritterCl* cr, int type );
         static Item*         Crit_GetSlotItem( CritterCl* cr, int slot );
         static void          Crit_SetVisible( CritterCl* cr, bool visible );

@@ -1157,18 +1157,12 @@ bool FOServer::SScriptFunc::Crit_IsSeeItem( Critter* cr, Item* item )
     return cr->CountIdVisItem( item->GetId() );
 }
 
-Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
+uint FOServer::SScriptFunc::Crit_CountItem( Critter* cr, hash proto_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !pid )
-        SCRIPT_ERROR_R0( "Proto id arg is zero." );
-    if( !ProtoMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid proto '%s'.", Str::GetName( pid ) );
 
-    if( !count )
-        count = 1;
-    return ItemMngr.AddItemCritter( cr, pid, count );
+    return cr->CountItemPid( proto_id );
 }
 
 bool FOServer::SScriptFunc::Crit_DeleteItem( Critter* cr, hash pid, uint count )
@@ -1183,29 +1177,21 @@ bool FOServer::SScriptFunc::Crit_DeleteItem( Critter* cr, hash pid, uint count )
     return ItemMngr.SubItemCritter( cr, pid, count );
 }
 
-uint FOServer::SScriptFunc::Crit_CountItem( Critter* cr, hash proto_id )
+Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( !pid )
+        SCRIPT_ERROR_R0( "Proto id arg is zero." );
+    if( !ProtoMngr.GetProtoItem( pid ) )
+        SCRIPT_ERROR_R0( "Invalid proto '%s'.", Str::GetName( pid ) );
 
-    return cr->CountItemPid( proto_id );
+    if( !count )
+        count = 1;
+    return ItemMngr.AddItemCritter( cr, pid, count );
 }
 
-Item* FOServer::SScriptFunc::Crit_GetItem( Critter* cr, hash proto_id, int slot )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    if( proto_id && slot >= 0 && slot < SLOT_GROUND )
-        return cr->GetItemByPidSlot( proto_id, slot );
-    else if( proto_id )
-        return cr->GetItemByPidInvPriority( proto_id );
-    else if( slot >= 0 && slot < SLOT_GROUND )
-        return cr->GetItemSlot( slot );
-    return nullptr;
-}
-
-Item* FOServer::SScriptFunc::Crit_GetItemById( Critter* cr, uint item_id )
+Item* FOServer::SScriptFunc::Crit_GetItem( Critter* cr, uint item_id )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1213,7 +1199,33 @@ Item* FOServer::SScriptFunc::Crit_GetItemById( Critter* cr, uint item_id )
     return cr->GetItem( item_id, false );
 }
 
-CScriptArray* FOServer::SScriptFunc::Crit_GetItems( Critter* cr, int slot )
+Item* FOServer::SScriptFunc::Crit_GetItemBySlot( Critter* cr, uchar slot )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    return cr->GetItemSlot( slot );
+}
+
+Item* FOServer::SScriptFunc::Crit_GetItemByPid( Critter* cr, hash proto_id )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    return cr->GetItemByPidInvPriority( proto_id );
+}
+
+CScriptArray* FOServer::SScriptFunc::Crit_GetItems( Critter* cr )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    ItemVec items;
+    cr->GetItemsSlot( -1, items );
+    return Script::CreateArrayRef( "Item[]", items );
+}
+
+CScriptArray* FOServer::SScriptFunc::Crit_GetItemsBySlot( Critter* cr, int slot )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -1260,30 +1272,38 @@ Item* FOServer::SScriptFunc::Crit_GetSlotItem( Critter* cr, int slot )
     return item;
 }
 
-bool FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uint count, uchar to_slot )
+void FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uchar to_slot )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( !item_id )
-        SCRIPT_ERROR_R0( "Item id arg is zero." );
+        SCRIPT_ERROR_R( "Item id arg is zero." );
     Item* item = cr->GetItem( item_id, cr->IsPlayer() );
     if( !item )
-        SCRIPT_ERROR_R0( "Item not found." );
+        SCRIPT_ERROR_R( "Item not found." );
 
     // To slot arg is equal of current item slot
     if( item->GetCritSlot() == to_slot )
-        return true;
+        return;
+
+    if( !cr->MoveItem( item, to_slot ) )
+        SCRIPT_ERROR_R( "Fail to move item." );
+}
+
+void FOServer::SScriptFunc::Crit_DropItem( Critter* cr, uint item_id, uint count )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+    if( !item_id )
+        SCRIPT_ERROR_R( "Item id arg is zero." );
+    Item* item = cr->GetItem( item_id, cr->IsPlayer() );
+    if( !item )
+        SCRIPT_ERROR_R( "Item not found." );
 
     if( !count )
         count = item->GetCount();
-    if( count > item->GetCount() )
-        SCRIPT_ERROR_R0( "Item count arg is greater than items count." );
-
-    bool result = cr->MoveItem( item->GetCritSlot(), to_slot, item_id, count );
-    if( !result )
-        return false;             // SCRIPT_ERROR_R0("Fail to move item.");
-    cr->Send_AddItem( item );
-    return true;
+    if( !cr->DropItem( item, count ) )
+        SCRIPT_ERROR_R( "Fail to drop item." );
 }
 
 void FOServer::SScriptFunc::Crit_SetCond( Critter* cr, int cond )
@@ -2149,6 +2169,16 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
         return CreateItemOnHex( map, hx, hy, proto_id, count, &props_, true );
     }
     return CreateItemOnHex( map, hx, hy, proto_id, count, nullptr, true );
+}
+
+CScriptArray* FOServer::SScriptFunc::Map_GetItems( Map* map )
+{
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    ItemVec items;
+    map->GetItemsPid( 0, items );
+    return Script::CreateArrayRef( "Item[]", items );
 }
 
 CScriptArray* FOServer::SScriptFunc::Map_GetItemsHex( Map* map, ushort hx, ushort hy )
@@ -3119,7 +3149,8 @@ void FOServer::SScriptFunc::Global_MoveItemsCont( CScriptArray* items, Item* to_
 
 void FOServer::SScriptFunc::Global_DeleteItem( Item* item )
 {
-    ItemMngr.DeleteItem( item );
+    if( item )
+        ItemMngr.DeleteItem( item );
 }
 
 void FOServer::SScriptFunc::Global_DeleteItemById( uint item_id )
@@ -3156,13 +3187,14 @@ void FOServer::SScriptFunc::Global_DeleteItemsById( CScriptArray* items )
 
 void FOServer::SScriptFunc::Global_DeleteNpc( Critter* npc )
 {
-    CrMngr.DeleteNpc( npc );
+    if( npc )
+        CrMngr.DeleteNpc( npc );
 }
 
 void FOServer::SScriptFunc::Global_DeleteNpcById( uint npc_id )
 {
     Critter* npc = CrMngr.GetNpc( npc_id );
-    if( !npc )
+    if( npc )
         CrMngr.DeleteNpc( npc );
 }
 
@@ -3261,7 +3293,8 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
 
 void FOServer::SScriptFunc::Global_DeleteLocation( Location* loc )
 {
-    MapMngr.DeleteLocation( loc, nullptr );
+    if( loc )
+        MapMngr.DeleteLocation( loc, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_DeleteLocationById( uint loc_id )

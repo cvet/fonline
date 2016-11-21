@@ -212,15 +212,19 @@ struct BindClass
     static void Crit_IsSeeCr()                  {}
     static void Crit_IsSeenByCr()               {}
     static void Crit_IsSeeItem()                {}
-    static void Crit_AddItem()                  {}
-    static void Crit_DeleteItem()               {}
     static void Crit_CountItem()                {}
+    static void Crit_DeleteItem()               {}
+    static void Crit_AddItem()                  {}
     static void Crit_GetItem()                  {}
-    static void Crit_GetItemById()              {}
+    static void Crit_GetItemByPid()             {}
+    static void Crit_GetItemBySlot()            {}
+    static void Crit_GetItemByType()            {}
     static void Crit_GetItems()                 {}
+    static void Crit_GetItemsBySlot()           {}
     static void Crit_GetItemsByType()           {}
     static void Crit_GetSlotItem()              {}
     static void Crit_MoveItem()                 {}
+    static void Crit_DropItem()                 {}
     static void Crit_SetCond()                  {}
     static void Crit_CloseDialog()              {}
 
@@ -272,6 +276,7 @@ struct BindClass
     static void Map_GetLocation()            {}
     static void Map_SetScript()              {}
     static void Map_AddItem()                {}
+    static void Map_GetItems()               {}
     static void Map_GetItemsHex()            {}
     static void Map_GetItemsHexEx()          {}
     static void Map_GetItemsByPid()          {}
@@ -408,8 +413,10 @@ struct BindClass
     static void Crit_Wait()             {}
     static void Crit_CountItem()        {}
     static void Crit_GetItem()          {}
-    static void Crit_GetItemById()      {}
+    static void Crit_GetItemByPid()     {}
+    static void Crit_GetItemBySlot()    {}
     static void Crit_GetItems()         {}
+    static void Crit_GetItemsBySlot()   {}
     static void Crit_GetItemsByType()   {}
     static void Crit_GetSlotItem()      {}
     static void Crit_SetVisible()       {}

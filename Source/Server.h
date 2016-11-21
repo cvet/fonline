@@ -375,15 +375,18 @@ public:
         static bool          Crit_IsSeeCr( Critter* cr, Critter* cr_ );
         static bool          Crit_IsSeenByCr( Critter* cr, Critter* cr_ );
         static bool          Crit_IsSeeItem( Critter* cr, Item* item );
-        static Item*         Crit_AddItem( Critter* cr, hash pid, uint count );
-        static bool          Crit_DeleteItem( Critter* cr, hash pid, uint count );
         static uint          Crit_CountItem( Critter* cr, hash proto_id );
-        static Item*         Crit_GetItem( Critter* cr, hash proto_id, int slot );
-        static Item*         Crit_GetItemById( Critter* cr, uint item_id );
-        static CScriptArray* Crit_GetItems( Critter* cr, int slot );
+        static bool          Crit_DeleteItem( Critter* cr, hash pid, uint count );
+        static Item*         Crit_AddItem( Critter* cr, hash pid, uint count );
+        static Item*         Crit_GetItem( Critter* cr, uint item_id );
+        static Item*         Crit_GetItemBySlot( Critter* cr, uchar slot );
+        static Item*         Crit_GetItemByPid( Critter* cr, hash proto_id );
+        static CScriptArray* Crit_GetItems( Critter* cr );
+        static CScriptArray* Crit_GetItemsBySlot( Critter* cr, int slot );
         static CScriptArray* Crit_GetItemsByType( Critter* cr, int type );
         static Item*         Crit_GetSlotItem( Critter* cr, int slot );
-        static bool          Crit_MoveItem( Critter* cr, uint item_id, uint count, uchar to_slot );
+        static void          Crit_MoveItem( Critter* cr, uint item_id, uchar to_slot );
+        static void          Crit_DropItem( Critter* cr, uint item_id, uint count );
         static void          Crit_SetCond( Critter* cr, int cond );
         static void          Crit_CloseDialog( Critter* cr );
 
@@ -435,6 +438,7 @@ public:
         static Location*     Map_GetLocation( Map* map );
         static bool          Map_SetScript( Map* map, asIScriptFunction* func );
         static Item*         Map_AddItem( Map* map, ushort hx, ushort hy, hash proto_id, uint count, CScriptDict* props );
+        static CScriptArray* Map_GetItems( Map* map );
         static CScriptArray* Map_GetItemsHex( Map* map, ushort hx, ushort hy );
         static CScriptArray* Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid );
         static CScriptArray* Map_GetItemsByPid( Map* map, hash pid );
