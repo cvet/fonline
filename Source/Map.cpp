@@ -172,32 +172,6 @@ bool Map::Generate()
     PcVec npcs;
     GetNpcs( npcs );
 
-    // Generate internal bag
-    for( auto& npc : npcs )
-    {
-        ItemVec& items = npc->GetInventory();
-        if( !npc->GetBagId() && !items.empty() )
-        {
-            uint          bag_size = (uint) items.size();
-            CScriptArray* item_pid = Script::CreateArray( "hash[]" );
-            CScriptArray* item_count = Script::CreateArray( "uint[]" );
-
-            for( uint i = 0; i < bag_size; i++ )
-            {
-                Item* item = items[ i ];
-                hash  pid = item->GetProtoId();
-                uint  count = item->GetCount();
-                item_pid->InsertLast( &pid );
-                item_count->InsertLast( &count );
-            }
-
-            npc->SetInternalBagItemPid( item_pid );
-            npc->SetInternalBagItemCount( item_count );
-            SAFEREL( item_pid );
-            SAFEREL( item_count );
-        }
-    }
-
     // Visible
     for( auto& npc : npcs )
     {

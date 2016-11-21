@@ -100,7 +100,6 @@ public:
     CLASS_PROPERTY_ALIAS( uchar, LightDistance );
     CLASS_PROPERTY_ALIAS( uchar, LightFlags );
     CLASS_PROPERTY_ALIAS( uint, LightColor );
-    CLASS_PROPERTY_ALIAS( bool, IsCanPickUp );
     CLASS_PROPERTY_ALIAS( uint, Count );
     CLASS_PROPERTY_ALIAS( bool, IsFlat );
     CLASS_PROPERTY_ALIAS( char, DrawOrderOffsetHexY );
@@ -197,7 +196,6 @@ public:
     CLASS_PROPERTY( bool, IsCanUseOnSmth );
     CLASS_PROPERTY( bool, IsCanLook );
     CLASS_PROPERTY( bool, IsCanTalk );
-    CLASS_PROPERTY( bool, IsCanPickUp );
     CLASS_PROPERTY( bool, IsCanUse );
     CLASS_PROPERTY( bool, IsRadio );
     CLASS_PROPERTY( short, SortValue );

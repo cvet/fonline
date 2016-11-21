@@ -49,10 +49,8 @@ CLASS_PROPERTY_IMPL( Critter, TE_NextTime );
 CLASS_PROPERTY_IMPL( Critter, TE_Identifier );
 CLASS_PROPERTY_IMPL( Critter, LookDistance );
 CLASS_PROPERTY_IMPL( Critter, DialogId );
-CLASS_PROPERTY_IMPL( Critter, BagId );
 CLASS_PROPERTY_IMPL( Critter, NpcRole );
 CLASS_PROPERTY_IMPL( Critter, TeamId );
-CLASS_PROPERTY_IMPL( Critter, LastWeaponId );
 CLASS_PROPERTY_IMPL( Critter, HandsItemProtoId );
 CLASS_PROPERTY_IMPL( Critter, HandsItemMode );
 CLASS_PROPERTY_IMPL( Critter, MaxTalkers );
@@ -66,7 +64,6 @@ CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
 CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
 CLASS_PROPERTY_IMPL( Critter, IsNoUnarmed );
-CLASS_PROPERTY_IMPL( Critter, IsNoItemGarbager );
 CLASS_PROPERTY_IMPL( Critter, IsNoEnemyStack );
 CLASS_PROPERTY_IMPL( Critter, IsGeck );
 CLASS_PROPERTY_IMPL( Critter, IsNoHome );
@@ -75,7 +72,6 @@ CLASS_PROPERTY_IMPL( Critter, IsNoRun );
 CLASS_PROPERTY_IMPL( Critter, IsNoRotate );
 CLASS_PROPERTY_IMPL( Critter, IsNoTalk );
 CLASS_PROPERTY_IMPL( Critter, IsHide );
-CLASS_PROPERTY_IMPL( Critter, IsNoFlatten );
 CLASS_PROPERTY_IMPL( Critter, KnownLocations );
 CLASS_PROPERTY_IMPL( Critter, ConnectionIp );
 CLASS_PROPERTY_IMPL( Critter, ConnectionPort );
@@ -88,9 +84,6 @@ CLASS_PROPERTY_IMPL( Critter, ShowCritterDist2 );
 CLASS_PROPERTY_IMPL( Critter, ShowCritterDist3 );
 CLASS_PROPERTY_IMPL( Critter, ScriptId );
 CLASS_PROPERTY_IMPL( Critter, EnemyStack );
-CLASS_PROPERTY_IMPL( Critter, InternalBagItemPid );
-CLASS_PROPERTY_IMPL( Critter, InternalBagItemCount );
-CLASS_PROPERTY_IMPL( Critter, ExternalBagCurrentSet );
 
 Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, type, PropertiesRegistrator, proto )
 {

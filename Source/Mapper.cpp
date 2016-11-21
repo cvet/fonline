@@ -3386,8 +3386,6 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
     if( !proto_item )
         return nullptr;
-    if( owner && !proto_item->GetIsCanPickUp() )
-        return nullptr;
     if( !owner && ( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() ) )
         return nullptr;
     if( proto_item->IsScenery() && owner )

@@ -109,19 +109,12 @@ public:
     CLASS_PROPERTY( uint, ShowCritterDist3 );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( CScriptArray *, EnemyStack );
-    CLASS_PROPERTY( CScriptArray *, InternalBagItemPid );
-    CLASS_PROPERTY( CScriptArray *, InternalBagItemCount );
-    CLASS_PROPERTY( CScriptArray *, ExternalBagCurrentSet );
     CLASS_PROPERTY( int, SneakCoefficient );
     // Exclude
-    CLASS_PROPERTY( hash, BagId );              // Bags (migrate bags to scripts)
-    CLASS_PROPERTY( uint, LastWeaponId );       // Bags
-    CLASS_PROPERTY( bool, IsNoItemGarbager );   // Bags
     CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
     CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
     CLASS_PROPERTY( bool, IsNoEnemyStack );     // Migrate enemy stack to scripts
-    CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to critter type option)
 
 protected:
     Critter( uint id, EntityType type, ProtoCritter* proto );
