@@ -463,6 +463,45 @@ void Property::GenericSet( Entity* entity, void* new_value )
     if( dataType == DataType::Array || dataType == DataType::Dict )
         new_value = *(void**) new_value;
 
+    // Virtual property
+    if( accessType & Property::VirtualMask )
+    {
+        if( setCallbacks.empty() )
+        {
+            SCRIPT_ERROR_R( "'Set' callback is not assigned for virtual property '%s %s::%s'.",
+                            typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+        }
+
+        for( size_t i = 0; i < setCallbacks.size(); i++ )
+        {
+            Script::PrepareContext( setCallbacks[ i ], GetName() );
+            Script::SetArgObject( entity );
+            if( setCallbacksArgs[ i ] > 1 )
+            {
+                Script::SetArgUInt( enumValue );
+                if( setCallbacksArgs[ i ] == 3 )
+                    Script::SetArgAddress( new_value );
+            }
+            else if( setCallbacksArgs[ i ] < -1 )
+            {
+                Script::SetArgAddress( new_value );
+                if( setCallbacksArgs[ i ] == -3 )
+                    Script::SetArgUInt( enumValue );
+            }
+
+            bool run_ok = true;
+            if( setCallbacksDeferred[ i ] )
+                Script::RunPreparedSuspend();
+            else
+                run_ok = Script::RunPrepared();
+            RUNTIME_ASSERT( !entity->IsDestroyed );
+            if( !run_ok )
+                break;
+        }
+
+        return;
+    }
+
     // Get current value
     void*  cur_pod_value = nullptr;
     uint64 old_pod_value = 0;
@@ -1747,6 +1786,8 @@ void Properties::SetValueAsInt( Entity* entity, int enum_value, int value )
         SCRIPT_ERROR_R( "Can't set integer value to non POD property '%s'", prop->GetName() );
     if( !prop->IsWritable() )
         SCRIPT_ERROR_R( "Can't set integer value to non writable property '%s'", prop->GetName() );
+    if( prop->accessType & Property::VirtualMask )
+        SCRIPT_ERROR_R( "Can't set integer value to virtual property '%s'", prop->GetName() );
 
     prop->SetPODValueAsInt( entity, value );
 }
@@ -1760,6 +1801,8 @@ bool Properties::SetValueAsIntByName( Entity* entity, const char* enum_name, int
         SCRIPT_ERROR_R0( "Can't set by name integer value from non POD property '%s'", prop->GetName() );
     if( !prop->IsWritable() )
         SCRIPT_ERROR_R0( "Can't set integer value to non writable property '%s'", prop->GetName() );
+    if( prop->accessType & Property::VirtualMask )
+        SCRIPT_ERROR_R0( "Can't set integer value to virtual property '%s'", prop->GetName() );
 
     prop->SetPODValueAsInt( entity, value );
     return true;
@@ -1774,6 +1817,8 @@ bool Properties::SetValueAsIntProps( Properties* props, int enum_value, int valu
         SCRIPT_ERROR_R0( "Can't set integer value to non POD property '%s'", prop->GetName() );
     if( !prop->IsWritable() )
         SCRIPT_ERROR_R0( "Can't set integer value to non writable property '%s'", prop->GetName() );
+    if( prop->accessType & Property::VirtualMask )
+        SCRIPT_ERROR_R0( "Can't set integer value to virtual property '%s'", prop->GetName() );
 
     if( prop->isBoolDataType )
     {
@@ -2071,8 +2116,6 @@ Property* PropertyRegistrator::Register(
     // Disallow set or get accessors
     bool disable_get = false;
     bool disable_set = false;
-    if( access & Property::VirtualMask )
-        disable_set = true;
     if( isServer && ( access & Property::ClientOnlyMask ) )
         disable_get = disable_set = true;
     if( !isServer && ( access & Property::ServerOnlyMask ) )
