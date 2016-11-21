@@ -486,8 +486,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         uint ParentUID = 0;
         string ScriptName;
         string FuncName;
-        uint ParamsCount = 0;
-        uint Params[ 5 ];
     };
     vector< AdditionalFields > entities_addon;
     EntityVec entities;
@@ -656,29 +654,12 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                         {
                             SET_FIELD_ITEM( "Item_Count", Count );
                             SET_FIELD_ITEM( "Item_ItemSlot", Slot );
-                            if( field == "Item_AmmoPid" )
-                                ( (Item*) entities.back() )->SetAmmoPid( Str::GetHash( svalue ) );
-                            SET_FIELD_ITEM( "Item_AmmoCount", AmmoCount );
                             SET_FIELD_ITEM( "Item_TrapValue", TrapValue );
                             if( field == "Item_InContainer" )
                                 entities_addon.back().ContainerUID = ivalue;
 
-                            if( field == "Scenery_CanUse" )
-                                ( (Item*) entities.back() )->SetIsCanUse( ivalue != 0 );
                             if( field == "Scenery_CanTalk" )
                                 ( (Item*) entities.back() )->SetIsCanTalk( ivalue != 0 );
-                            if( field == "Scenery_ParamsCount" )
-                                entities_addon.back().ParamsCount = ivalue;
-                            if( field == "Scenery_Param0" )
-                                entities_addon.back().Params[ 0 ] = ivalue;
-                            if( field == "Scenery_Param1" )
-                                entities_addon.back().Params[ 1 ] = ivalue;
-                            if( field == "Scenery_Param2" )
-                                entities_addon.back().Params[ 2 ] = ivalue;
-                            if( field == "Scenery_Param3" )
-                                entities_addon.back().Params[ 3 ] = ivalue;
-                            if( field == "Scenery_Param4" )
-                                entities_addon.back().Params[ 4 ] = ivalue;
                             if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
                                 ( (Item*) entities.back() )->SetGrid_ToMap( Str::GetHash( svalue ) );
                             SET_FIELD_ITEM( "Scenery_ToEntire", Grid_ToMapEntire );
@@ -709,17 +690,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                 ( (MUTUAL_CRITTER*) entity )->SetScriptId( Str::GetHash( script_name ) );
             else if( entity->Type == EntityType::Item )
                 ( (Item*) entity )->SetScriptId( Str::GetHash( script_name ) );
-        }
-
-        if( entity_addon.ParamsCount )
-        {
-            RUNTIME_ASSERT( entity->Type == EntityType::Item );
-            RUNTIME_ASSERT( entity_addon.ParamsCount <= 5 );
-            CScriptArray* params = Script::CreateArray( "int[]" );
-            for( uint i = 0; i < entity_addon.ParamsCount; i++ )
-                params->InsertLast( &entity_addon.Params[ i ] );
-            ( (Item*) entity )->SetSceneryParams( params );
-            params->Release();
         }
     }
 

@@ -731,7 +731,6 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
     RegisterScriptArray( engine, true );
     RegisterScriptArrayExtensions( engine );
     RegisterStdString( engine );
-    RegisterStdStringUtils( engine );
     RegisterScriptStdStringExtensions( engine );
     RegisterScriptAny( engine );
     RegisterScriptDictionary( engine );

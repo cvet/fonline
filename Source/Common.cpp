@@ -906,9 +906,6 @@ void GetClientOptions()
     GETOPTIONS_CHECK( GameOpt.ProxyPort, 0, 0xFFFF, 1080 );
     GameOpt.AlwaysRun = MainConfig->GetInt( "", "AlwaysRun", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysRun, "AlwaysRun" );
-    GameOpt.IndicatorType = MainConfig->GetInt( "", "IndicatorType", INDICATOR_LINES );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.IndicatorType, "IndicatorType" );
-    GETOPTIONS_CHECK( GameOpt.IndicatorType, INDICATOR_LINES, INDICATOR_BOTH, INDICATOR_LINES );
 
     uint dct = 500;
     # ifdef FO_WINDOWS
@@ -1278,7 +1275,6 @@ GameOptions::GameOptions()
     ScreenHeight = 600;
     MultiSampling = -1;
     MouseScroll = true;
-    IndicatorType = INDICATOR_LINES;
     DoubleClickTime = 0;
     RoofAlpha = 200;
     HideCursor = false;

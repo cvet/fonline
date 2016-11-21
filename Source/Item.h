@@ -156,13 +156,11 @@ public:
     CLASS_PROPERTY( uchar, AnimHide_1 );
     CLASS_PROPERTY( uchar, SpriteCut );
     CLASS_PROPERTY( char, DrawOrderOffsetHexY );
-    CLASS_PROPERTY( uchar, IndicatorMax );
     CLASS_PROPERTY( CScriptArray *, BlockLines );
     CLASS_PROPERTY( uint, Weapon_Anim1 );
     CLASS_PROPERTY( hash, Grid_ToMap );
     CLASS_PROPERTY( int, Grid_ToMapEntire );
     CLASS_PROPERTY( uchar, Grid_ToMapDir );
-    CLASS_PROPERTY( CScriptArray *, SceneryParams );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( int, Accessory ); // enum ItemOwnership
     CLASS_PROPERTY( uint, MapId );
@@ -177,11 +175,7 @@ public:
     CLASS_PROPERTY( bool, IsNoBlock );
     CLASS_PROPERTY( bool, IsShootThru );
     CLASS_PROPERTY( bool, IsLightThru );
-    CLASS_PROPERTY( bool, IsMultiHex );
-    CLASS_PROPERTY( bool, IsWallTransEnd );
-    CLASS_PROPERTY( bool, IsBigGun );
     CLASS_PROPERTY( bool, IsAlwaysView );
-    CLASS_PROPERTY( bool, IsHasTimer );
     CLASS_PROPERTY( bool, IsBadItem );
     CLASS_PROPERTY( bool, IsNoHighlight );
     CLASS_PROPERTY( bool, IsShowAnim );
@@ -193,13 +187,9 @@ public:
     CLASS_PROPERTY( bool, IsGag );
     CLASS_PROPERTY( bool, IsColorize );
     CLASS_PROPERTY( bool, IsColorizeInv );
-    CLASS_PROPERTY( bool, IsCanUseOnSmth );
-    CLASS_PROPERTY( bool, IsCanLook );
     CLASS_PROPERTY( bool, IsCanTalk );
-    CLASS_PROPERTY( bool, IsCanUse );
     CLASS_PROPERTY( bool, IsRadio );
     CLASS_PROPERTY( short, SortValue );
-    CLASS_PROPERTY( uchar, Indicator );
     CLASS_PROPERTY( hash, PicMap );
     CLASS_PROPERTY( hash, PicInv );
     CLASS_PROPERTY( uchar, Mode );
@@ -208,8 +198,6 @@ public:
     CLASS_PROPERTY( uchar, LightFlags );
     CLASS_PROPERTY( uint, LightColor );
     CLASS_PROPERTY( uint, Count );
-    CLASS_PROPERTY( hash, AmmoPid );
-    CLASS_PROPERTY( uint, AmmoCount );
     CLASS_PROPERTY( short, TrapValue );
     CLASS_PROPERTY( ushort, RadioChannel );
     CLASS_PROPERTY( ushort, RadioFlags );

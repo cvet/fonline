@@ -568,7 +568,6 @@ struct GameOptions
     int         ScreenHeight;
     int         MultiSampling;
     bool        MouseScroll;
-    int         IndicatorType;
     uint        DoubleClickTime;
     uchar       RoofAlpha;
     bool        HideCursor;
@@ -666,13 +665,9 @@ struct GameOptions
     GameOptions();
 } extern GameOpt;
 
-// IndicatorType
-#define INDICATOR_LINES      ( 0 )
-#define INDICATOR_NUMBERS    ( 1 )
-#define INDICATOR_BOTH       ( 2 )
 // Zoom
-#define MIN_ZOOM             ( 0.1f )
-#define MAX_ZOOM             ( 20.0f )
+#define MIN_ZOOM    ( 0.1f )
+#define MAX_ZOOM    ( 20.0f )
 
 /************************************************************************/
 /* Auto pointers                                                        */

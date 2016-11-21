@@ -247,6 +247,50 @@ static string ScriptString_Upper( const string& str )
     return result;
 }
 
+static CScriptArray* ScriptString_Split( const string& delim, const string& str )
+{
+    CScriptArray* array = Script::CreateArray( "string[]" );
+
+    // Find the existence of the delimiter in the input string
+    int pos = 0, prev = 0, count = 0;
+    while( ( pos = (int) str.find( delim, prev ) ) != (int) string::npos )
+    {
+        // Add the part to the array
+        array->Resize( array->GetSize() + 1 );
+        ( (string*) array->At( count ) )->assign( &str[ prev ], pos - prev );
+
+        // Find the next part
+        count++;
+        prev = pos + (int) delim.length();
+    }
+
+    // Add the remaining part
+    array->Resize( array->GetSize() + 1 );
+    ( (string*) array->At( count ) )->assign( &str[ prev ] );
+
+    return array;
+}
+
+static string ScriptString_Join( const CScriptArray* array, const string& delim )
+{
+    // Create the new string
+    string str = "";
+    if( array->GetSize() )
+    {
+        int n;
+        for( n = 0; n < (int) array->GetSize() - 1; n++ )
+        {
+            str += *(string*) array->At( n );
+            str += delim;
+        }
+
+        // Add the last part
+        str += *(string*) array->At( n );
+    }
+
+    return str;
+}
+
 void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
 {
     int r = engine->RegisterObjectMethod( "string", "void clear()", asFUNCTION( ScriptString_Clear ), asCALL_CDECL_OBJFIRST );
@@ -267,5 +311,10 @@ void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
     r = engine->RegisterObjectMethod( "string", "string lower() const", asFUNCTION( ScriptString_Lower ), asCALL_CDECL_OBJFIRST );
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "string", "string upper() const", asFUNCTION( ScriptString_Upper ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+
+    r = engine->RegisterObjectMethod( "string", "array<string>@ split(const string &in) const", asFUNCTION( ScriptString_Split ), asCALL_CDECL_OBJLAST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterGlobalFunction( "string join(const array<string>@ &in, const string &in)", asFUNCTION( ScriptString_Join ), asCALL_CDECL );
     RUNTIME_ASSERT( r >= 0 );
 }
