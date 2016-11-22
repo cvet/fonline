@@ -851,7 +851,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
                 for( int k = 0; k < 6; k++ )
                 {
                     ushort hx_ = hx, hy_ = hy;
-                    MoveHexByDir( hx_, hy_, k, GetWidth(), GetHeight() );
+                    MoveHexByDir( hx_, hy_, k, maxhx, maxhy );
                     SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
                 }
             }
@@ -870,6 +870,17 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             {
                 if( item->GetScriptId() )
                     SETFLAG( HexFlags[ hy * maxhx + hx ], FH_TRIGGER );
+            }
+
+            if( item->IsNonEmptyBlockLines() )
+            {
+                ushort hx_ = hx, hy_ = hy;
+                bool raked = item->GetIsShootThru();
+                FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx_, hy_, maxhx, maxhy,
+                                          SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
+                                          if( !raked )
+                                              SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_NOTRAKE );
+                                          );
             }
 
             // Data for client
@@ -1204,7 +1215,7 @@ void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, hash pid
 void ProtoMap::GetMapSceneriesByPid( hash pid, ItemVec& items )
 {
     for( auto& item : SceneryVec )
-        if( !pid || item->GetProtoId()  == pid )
+        if( !pid || item->GetProtoId() == pid )
             items.push_back( item );
 }
 
