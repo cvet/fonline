@@ -436,7 +436,7 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
 
 bool Animation3d::IsAnimation( uint anim1, uint anim2 )
 {
-    int  ii = ( anim1 << 8 ) | anim2;
+    int  ii = ( anim1 << 16 ) | anim2;
     auto it = animEntity->animIndexes.find( ii );
     return it != animEntity->animIndexes.end();
 }
@@ -1974,7 +1974,7 @@ bool Animation3dEntity::Load( const char* name )
                     // Deferred loading
                     // Todo: Reverse play
 
-                    anim_indexes.push_back( ( ind1 << 8 ) | ind2 );
+                    anim_indexes.push_back( ( ind1 << 16 ) | ind2 );
                     ( *istr ) >> buf;
                     anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
                     ( *istr ) >> buf;
@@ -1982,7 +1982,7 @@ bool Animation3dEntity::Load( const char* name )
 
                     if( Str::Compare( token, "AnimExt" ) )
                     {
-                        anim_indexes.push_back( ( ind1 << 8 ) | ( ind2 | 0x80 ) );
+                        anim_indexes.push_back( ( ind1 << 16 ) | ( ind2 | 0x8000 ) );
                         ( *istr ) >> buf;
                         anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
                         ( *istr ) >> buf;
@@ -1992,12 +1992,12 @@ bool Animation3dEntity::Load( const char* name )
                 else
                 {
                     ( *istr ) >> valuef;
-                    animSpeed.insert( PAIR( ( ind1 << 8 ) | ind2, valuef ) );
+                    animSpeed.insert( PAIR( ( ind1 << 16 ) | ind2, valuef ) );
 
                     if( Str::Compare( token, "AnimSpeedExt" ) )
                     {
                         ( *istr ) >> valuef;
-                        animSpeed.insert( PAIR( ( ind1 << 8 ) | ( ind2 | 0x80 ), valuef ) );
+                        animSpeed.insert( PAIR( ( ind1 << 16 ) | ( ind2 | 0x8000 ), valuef ) );
                     }
                 }
             }
@@ -2244,11 +2244,11 @@ int Animation3dEntity::GetAnimationIndex( uint& anim1, uint& anim2, float* speed
     // Find index
     int index = -1;
     if( combat_first )
-        index = GetAnimationIndexEx( anim1, anim2 | 0x80, speed );
+        index = GetAnimationIndexEx( anim1, anim2 | 0x8000, speed );
     if( index == -1 )
         index = GetAnimationIndexEx( anim1, anim2, speed );
     if( !combat_first && index == -1 )
-        index = GetAnimationIndexEx( anim1, anim2 | 0x80, speed );
+        index = GetAnimationIndexEx( anim1, anim2 | 0x8000, speed );
     if( index != -1 )
         return index;
 
@@ -2282,12 +2282,12 @@ int Animation3dEntity::GetAnimationIndexEx( uint anim1, uint anim2, float* speed
     auto it1 = anim1Equals.find( anim1 );
     if( it1 != anim1Equals.end() )
         anim1 = ( *it1 ).second;
-    auto it2 = anim2Equals.find( anim2 & 0x7F );
+    auto it2 = anim2Equals.find( anim2 & 0x7FFF );
     if( it2 != anim2Equals.end() )
-        anim2 = ( ( *it2 ).second | ( anim2 & 0x80 ) );
+        anim2 = ( ( *it2 ).second | ( anim2 & 0x8000 ) );
 
     // Make index
-    int ii = ( anim1 << 8 ) | anim2;
+    int ii = ( anim1 << 16 ) | anim2;
 
     // Speed
     if( speed )
