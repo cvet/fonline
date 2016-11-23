@@ -196,10 +196,15 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             fprintf( f, "CreateToolhelp32Snapshot fail\n" );
         }
 
-        // Init symbols
+        // Set exe dir for PDB symbols
         wchar_t exe_path[ TEMP_BUF_SIZE ];
         GetModuleFileNameW( GetModuleHandle( nullptr ), exe_path, sizeof( exe_path ) );
+        wchar_t* last_slash = wcsrchr( exe_path, '\\' );
+        if( last_slash )
+            *last_slash = 0;
         SetCurrentDirectoryW( exe_path );
+
+        // Init symbols
         SymInitialize( process, nullptr, TRUE );
         SymSetOptions( SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS );
 
