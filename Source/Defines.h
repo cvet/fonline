@@ -59,10 +59,6 @@
 #define FIND_ONLY_NPC               ( 0x20 )
 #define FIND_ALL                    ( 0x0F )
 
-// Type entires
-#define ENTIRE_DEFAULT              ( 0 )
-#define ENTIRE_LOG_OUT              ( 241 )
-
 // Ping
 #define PING_PING                   ( 0 )
 #define PING_WAIT                   ( 1 )

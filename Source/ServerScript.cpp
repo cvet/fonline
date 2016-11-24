@@ -3629,11 +3629,6 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     else
         cl_map1.push_back( (Client*) cr2 );
 
-    cr1->SetMapId( map2->GetId() );
-    cr1->SetMapPid( map2->GetProtoId() );
-    cr2->SetMapId( map1->GetId() );
-    cr2->SetMapPid( map1->GetProtoId() );
-
     // Swap data
     std::swap( cr1->Props, cr2->Props );
     std::swap( cr1->Flags, cr2->Flags );

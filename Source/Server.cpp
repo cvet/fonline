@@ -238,16 +238,11 @@ void FOServer::RemoveClient( Client* cl )
     {
         Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cl, cl->GetClientToDelete() );
 
-        if( cl->GetMapId() )
-        {
-            Map* map = MapMngr.GetMap( cl->GetMapId() );
-            RUNTIME_ASSERT( map );
-            MapMngr.EraseCrFromMap( cl, map );
-        }
-        else if( cl->GlobalMapGroup )
-        {
-            MapMngr.EraseCrFromMap( cl, nullptr );
-        }
+        uint map_id = cl->GetMapId();
+        uint gm_leader_id = cl->GetGlobalMapLeaderId();
+        MapMngr.EraseCrFromMap( cl, cl->GetMap() );
+        cl->SetMapId( map_id );
+        cl->SetGlobalMapLeaderId( gm_leader_id );
 
         // Deferred saving
         EraseSaveClient( cl->GetId() );
@@ -1526,7 +1521,8 @@ void FOServer::Process_Text( Client* cl )
     }
     else
     {
-        hash pid = cl->GetMapPid();
+        Map* map = cl->GetMap();
+        hash pid = ( map ? map->GetProtoId() : 0 );
         for( uint i = 0; i < TextListeners.size(); i++ )
         {
             TextListen& tl = TextListeners[ i ];

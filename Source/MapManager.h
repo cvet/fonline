@@ -130,7 +130,6 @@ public:
     Map*         GetMapByPid( hash map_pid, uint skip_count );
     void         GetMaps( MapVec& maps );
     uint         GetMapsCount();
-    bool         IsProtoMapNoLogOut( hash map_pid );
     void         TraceBullet( TraceData& trace );
     int          FindPath( PathFindData& pfd );
     int          FindPathGrid( ushort& hx, ushort& hy, int index, bool smooth_switcher );

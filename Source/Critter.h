@@ -51,7 +51,6 @@ public:
     // CritData
     CLASS_PROPERTY( hash, ModelName );
     CLASS_PROPERTY( uint, MapId );
-    CLASS_PROPERTY( hash, MapPid );
     CLASS_PROPERTY( ushort, HexX );
     CLASS_PROPERTY( ushort, HexY );
     CLASS_PROPERTY( uchar, Dir );
@@ -148,6 +147,8 @@ public:
     ushort        ViewMapLook, ViewMapHx, ViewMapHy;
     uchar         ViewMapDir;
     uint          ViewMapLocId, ViewMapLocEnt;
+
+    Map* GetMap();
 
     void ProcessVisibleCritters();
     void ProcessVisibleItems();

@@ -287,7 +287,6 @@ void Map::AddCritter( Critter* cr )
     mapCritters.push_back( cr );
 
     cr->SetMapId( GetId() );
-    cr->SetMapPid( GetProtoId() );
 
     SetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
     cr->SetTimeoutBattle( 0 );

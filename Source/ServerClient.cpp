@@ -78,8 +78,7 @@ void FOServer::ProcessCritter( Critter* cr )
 
         // Kick from game
         if( cl->IsOffline() && cl->IsLife() && !IS_TIMEOUT( cl->GetTimeoutBattle() ) &&
-            !cl->GetTimeoutRemoveFromGame() && cl->GetOfflineTime() >= GameOpt.MinimumOfflineTime &&
-            !MapMngr.IsProtoMapNoLogOut( cl->GetMapPid() ) )
+            !cl->GetTimeoutRemoveFromGame() && cl->GetOfflineTime() >= GameOpt.MinimumOfflineTime )
         {
             cl->RemoveFromGame();
         }
@@ -209,7 +208,7 @@ bool FOServer::MoveRandom( Critter* cr )
         dirs[ i ] = i;
     std::random_shuffle( dirs.begin(), dirs.end() );
 
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
+    Map* map = cr->GetMap();
     if( !map )
         return false;
 
@@ -1079,27 +1078,23 @@ void FOServer::Process_LogIn( Client*& cl )
 
         // Add to map
         Map* map = MapMngr.GetMap( cl->GetMapId() );
-        if( cl->GetMapId() )
+        if( cl->GetMapId() && ( !map || map->GetIsNoLogOut() ) )
         {
-            if( !map || map->GetIsNoLogOut() || map->GetProtoId() != cl->GetMapPid() )
+            ushort hx, hy;
+            uchar  dir;
+            if( map && map->GetStartCoord( hx, hy, dir, 0 ) )
             {
-                ushort hx, hy;
-                uchar  dir;
-                if( map && map->GetProtoId() == cl->GetMapPid() && map->GetStartCoord( hx, hy, dir, ENTIRE_LOG_OUT ) )
-                {
-                    cl->SetHexX( hx );
-                    cl->SetHexY( hy );
-                    cl->SetDir( dir );
-                }
-                else
-                {
-                    map = nullptr;
-                    cl->SetMapId( 0 );
-                    cl->SetMapPid( 0 );
-                    cl->SetHexX( 0 );
-                    cl->SetHexY( 0 );
-                    cl->SetGlobalMapLeaderId( 0 );
-                }
+                cl->SetHexX( hx );
+                cl->SetHexY( hy );
+                cl->SetDir( dir );
+            }
+            else
+            {
+                map = nullptr;
+                cl->SetMapId( 0 );
+                cl->SetHexX( 0 );
+                cl->SetHexY( 0 );
+                cl->SetGlobalMapLeaderId( 0 );
             }
         }
 
@@ -1399,12 +1394,6 @@ void FOServer::Process_GiveMap( Client* cl )
         return;
     }
 
-    if( !automap && map_pid != cl->GetMapPid() && cl->ViewMapPid != map_pid )
-    {
-        WriteLog( "Request for loading incorrect map, client '{}'.\n", cl->GetInfo() );
-        return;
-    }
-
     if( automap )
     {
         if( !cl->CheckKnownLocById( loc_id ) )
@@ -1431,6 +1420,15 @@ void FOServer::Process_GiveMap( Client* cl )
         if( !found )
         {
             WriteLog( "Request for loading incorrect automap, client '{}'.\n", cl->GetInfo() );
+            return;
+        }
+    }
+    else
+    {
+        Map* map = cl->GetMap();
+        if( !map || ( map_pid != map->GetProtoId() && cl->ViewMapPid != map_pid ) )
+        {
+            WriteLog( "Request for loading incorrect map, client '{}'.\n", cl->GetInfo() );
             return;
         }
     }
@@ -2134,7 +2132,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         prop = Location::PropertiesRegistrator->Get( property_index );
         if( prop )
         {
-            Map* map = MapMngr.GetMap( cl->GetMapId() );
+            Map* map = cl->GetMap();
             if( map )
                 entity = map->GetLocation();
         }

@@ -209,12 +209,6 @@ uint MapManager::GetMapsCount()
     return EntityMngr.GetEntitiesCount( EntityType::Map );
 }
 
-bool MapManager::IsProtoMapNoLogOut( hash map_pid )
-{
-    ProtoMap* pmap = ProtoMngr.GetProtoMap( map_pid );
-    return pmap ? pmap->GetIsNoLogOut() : false;
-}
-
 Location* MapManager::GetLocationByMap( uint map_id )
 {
     Map* map = GetMap( map_id );
@@ -1387,7 +1381,6 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
         RUNTIME_ASSERT( hx < map->GetWidth() && hy < map->GetHeight() );
 
         cr->SetMapId( map->GetId() );
-        cr->SetMapPid( map->GetProtoId() );
         cr->SetHexX( hx );
         cr->SetHexY( hy );
         cr->SetDir( dir );
@@ -1449,7 +1442,6 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map )
         map->UnsetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
 
         cr->SetMapId( 0 );
-        cr->SetMapPid( 0 );
     }
     else
     {

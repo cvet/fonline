@@ -26,16 +26,11 @@ void CritterManager::DeleteNpc( Critter* cr )
         cr->DeleteInventory();
 
         // Delete from maps
-        if( cr->GetMapId() )
-        {
-            Map* map = MapMngr.GetMap( cr->GetMapId() );
-            RUNTIME_ASSERT( map );
+        Map* map = cr->GetMap();
+        if( map )
             MapMngr.EraseCrFromMap( cr, map );
-        }
         else if( cr->GlobalMapGroup )
-        {
             MapMngr.EraseCrFromMap( cr, nullptr );
-        }
     }
     cr->LockMapTransfers--;
 
@@ -125,7 +120,6 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     npc->SetWorldY( loc ? loc->GetWorldY() : 100 );
     npc->SetHome( map->GetId(), hx, hy, dir );
     npc->SetMapId( map->GetId() );
-    npc->SetMapPid( map->GetProtoId() );
     npc->SetHexX( hx );
     npc->SetHexY( hy );
     npc->RefreshName();

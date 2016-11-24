@@ -365,14 +365,14 @@ bool EntityManager::LinkNpc()
         Map* map = MapMngr.GetMap( cr->GetMapId() );
         if( cr->GetMapId() && !map )
         {
-            WriteLog( "Map '{}' ({}) not found, critter '{}', hx {}, hy {}.\n", Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Map {} not found, critter '{}', hx {}, hy {}.\n", cr->GetMapId(), cr->GetName(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
 
         if( !MapMngr.CanAddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 0 ) )
         {
-            WriteLog( "Error parsing npc '{}' ({}) to map '{}' ({}), hx {}, hy {}.\n", cr->GetName(), cr->GetId(), Str::GetName( cr->GetMapPid() ), cr->GetMapId(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Error parsing npc '{}' ({}) to map {}, hx {}, hy {}.\n", cr->GetName(), cr->GetId(), cr->GetMapId(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }

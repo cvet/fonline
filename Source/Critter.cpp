@@ -22,7 +22,6 @@ IntSet Critter::RegProperties;
 PROPERTIES_IMPL( Critter );
 CLASS_PROPERTY_IMPL( Critter, ModelName );
 CLASS_PROPERTY_IMPL( Critter, MapId );
-CLASS_PROPERTY_IMPL( Critter, MapPid );
 CLASS_PROPERTY_IMPL( Critter, HexX );
 CLASS_PROPERTY_IMPL( Critter, HexY );
 CLASS_PROPERTY_IMPL( Critter, Dir );
@@ -190,13 +189,27 @@ bool Critter::CheckFind( int find_type )
            ( FLAG( find_type, FIND_DEAD ) && IsDead() );
 }
 
+Map* Critter::GetMap()
+{
+    Map* map = nullptr;
+    uint map_id = GetMapId();
+    if( map_id )
+    {
+        map = MapMngr.GetMap( map_id );
+        RUNTIME_ASSERT( map );
+    }
+    return map;
+}
+
 void Critter::ProcessVisibleCritters()
 {
     if( IsDestroyed )
         return;
 
+    Map* map = GetMap();
+
     // Global map
-    if( !GetMapId() )
+    if( !map )
     {
         RUNTIME_ASSERT( GlobalMapGroup );
 
@@ -224,24 +237,20 @@ void Critter::ProcessVisibleCritters()
     }
 
     // Local map
-    int  vis;
-    int  look_base_self = GetLookDistance();
-    int  dir_self = GetDir();
-    int  dirs_count = DIRS_COUNT;
-    uint show_cr_dist1 = GetShowCritterDist1();
-    uint show_cr_dist2 = GetShowCritterDist2();
-    uint show_cr_dist3 = GetShowCritterDist3();
-    bool show_cr1 = ( show_cr_dist1 > 0 );
-    bool show_cr2 = ( show_cr_dist2 > 0 );
-    bool show_cr3 = ( show_cr_dist3 > 0 );
+    int   vis;
+    int   look_base_self = GetLookDistance();
+    int   dir_self = GetDir();
+    int   dirs_count = DIRS_COUNT;
+    uint  show_cr_dist1 = GetShowCritterDist1();
+    uint  show_cr_dist2 = GetShowCritterDist2();
+    uint  show_cr_dist3 = GetShowCritterDist3();
+    bool  show_cr1 = ( show_cr_dist1 > 0 );
+    bool  show_cr2 = ( show_cr_dist2 > 0 );
+    bool  show_cr3 = ( show_cr_dist3 > 0 );
 
-    bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
+    bool  show_cr = ( show_cr1 || show_cr2 || show_cr3 );
     // Sneak self
-    int  sneak_base_self = GetSneakCoefficient();
-
-    Map* map = MapMngr.GetMap( GetMapId() );
-    if( !map )
-        return;
+    int   sneak_base_self = GetSneakCoefficient();
 
     CrVec critters;
     map->GetCritters( critters );
@@ -1218,22 +1227,24 @@ bool Critter::DropItem( Item* item, uint count )
         }
     }
 
-    if( !item )
-        return true;
-
-    Map* map = MapMngr.GetMap( GetMapId() );
-    if( !map )
+    // Item part
+    if( item )
     {
-        WriteLog( "Map not found, map id {}, critter '{}'.\n", GetMapId(), GetInfo() );
-        ItemMngr.DeleteItem( item );
-        return true;
+        Map* map = GetMap();
+        if( map )
+        {
+            SendAA_Action( ACTION_DROP_ITEM, -1, item );
+            item->ViewByCritter = this;
+            map->AddItem( item, GetHexX(), GetHexY() );
+            item->ViewByCritter = nullptr;
+            Script::RaiseInternalEvent( ServerFunctions.CritterDropItem, this, item );
+        }
+        else
+        {
+            ItemMngr.DeleteItem( item );
+        }
     }
 
-    SendAA_Action( ACTION_DROP_ITEM, -1, item );
-    item->ViewByCritter = this;
-    map->AddItem( item, GetHexX(), GetHexY() );
-    item->ViewByCritter = nullptr;
-    Script::RaiseInternalEvent( ServerFunctions.CritterDropItem, this, item );
     return true;
 }
 
@@ -1802,9 +1813,9 @@ void Critter::SendMessage( int num, int val, int to )
     break;
     case MESSAGE_TO_ALL_ON_MAP:
     {
-        Map* map = MapMngr.GetMap( GetMapId() );
+        Map* map = GetMap();
         if( !map )
-            return;
+            break;
 
         CrVec critters;
         map->GetCritters( critters );
@@ -1848,9 +1859,10 @@ void Critter::SetHome( uint map_id, ushort hx, ushort hy, uchar dir )
 
 bool Critter::IsInHome()
 {
-    if( !GetMapId() )
+    uint map_id = GetMapId();
+    if( !map_id )
         return true;
-    return GetHomeDir() == GetDir() && GetHomeHexX() == GetHexX() && GetHomeHexY() == GetHexY() && GetHomeMapId() == GetMapId();
+    return map_id == GetHomeMapId() && GetHomeDir() == GetDir() && GetHomeHexX() == GetHexX() && GetHomeHexY() == GetHexY();
 }
 
 /************************************************************************/
@@ -2386,7 +2398,8 @@ void Client::Send_LoadMap( Map* map )
     hash      hash_scen = 0;
 
     if( !map )
-        map = MapMngr.GetMap( GetMapId() );
+        map = GetMap();
+
     if( map )
     {
         loc = map->GetLocation();
@@ -3855,6 +3868,7 @@ void Npc::SetTarget( int reason, Critter* target, int min_hp, bool is_gag )
     AIDataPlane* plane = new AIDataPlane( AI_PLANE_ATTACK, AI_PLANE_ATTACK_PRIORITY );
     if( !plane )
         return;
+
     plane->Attack.TargId = target->GetId();
     plane->Attack.MinHp = min_hp;
     plane->Attack.LastHexX = ( target->GetMapId() ? target->GetHexX() : 0 );
