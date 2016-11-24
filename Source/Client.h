@@ -392,7 +392,7 @@ public:
         static bool          Crit_GetVisible( CritterCl* cr );
         static void          Crit_set_ContourColor( CritterCl* cr, uint value );
         static uint          Crit_get_ContourColor( CritterCl* cr );
-        static void          Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines );
+        static void          Crit_GetNameTextInfo( CritterCl* cr, bool& name_visible, int& x, int& y, int& w, int& h, int& lines );
 
         static Item*         Item_Clone( Item* item, uint count );
         static bool          Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );

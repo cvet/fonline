@@ -6924,12 +6924,12 @@ uint FOClient::SScriptFunc::Crit_get_ContourColor( CritterCl* cr )
     return cr->ContourColor;
 }
 
-void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines )
+void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& name_visible, int& x, int& y, int& w, int& h, int& lines )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
-    cr->GetNameTextInfo( nameVisible, x, y, w, h, lines );
+    cr->GetNameTextInfo( name_visible, x, y, w, h, lines );
 }
 
 Item* FOClient::SScriptFunc::Item_Clone( Item* item, uint count )
@@ -7502,8 +7502,12 @@ uint FOClient::SScriptFunc::Global_GetCrittersDistantion( CritterCl* cr1, Critte
 {
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R0( "Map is not loaded." );
+    if( !cr1 )
+        SCRIPT_ERROR_R0( "Critter1 arg is null." );
     if( cr1->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter1 arg is destroyed." );
+    if( !cr2 )
+        SCRIPT_ERROR_R0( "Critter2 arg is null." );
     if( cr2->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter2 arg is destroyed." );
     return DistGame( cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY() );

@@ -399,7 +399,7 @@ public:
         static CScriptArray* Npc_GetPlanes( Critter* npc );
         static CScriptArray* Npc_GetPlanesIdentifier( Critter* npc, int identifier );
         static CScriptArray* Npc_GetPlanesIdentifier2( Critter* npc, int identifier, uint identifier_ext );
-        static bool          Npc_AddPlane( Critter* npc, AIDataPlane& plane );
+        static bool          Npc_AddPlane( Critter* npc, AIDataPlane* plane );
         static void          Npc_NextPlane( Critter* npc, int reason );
 
         static void Crit_SendMessage( Critter* cr, int num, int val, int to );

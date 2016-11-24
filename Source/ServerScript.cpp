@@ -892,6 +892,8 @@ bool FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptA
         SCRIPT_ERROR_R0( "Transfers locked." );
     if( !cr->GetMapId() )
         SCRIPT_ERROR_R0( "Critter already on global." );
+    if( !group )
+        SCRIPT_ERROR_R0( "Group arg is null." );
 
     if( !MapMngr.TransitToGlobal( cr, 0, true ) )
         SCRIPT_ERROR_R0( "Transit fail." );
@@ -992,6 +994,8 @@ void FOServer::SScriptFunc::Crit_ViewMap( Critter* cr, Map* map, uint look, usho
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+    if( !map )
+        SCRIPT_ERROR_R( "Map arg is null." );
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Map arg is destroyed." );
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
@@ -1124,11 +1128,14 @@ bool FOServer::SScriptFunc::Crit_IsSeeCr( Critter* cr, Critter* cr_ )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
+    if( !cr_ )
+        SCRIPT_ERROR_R0( "Critter arg is null." );
     if( cr_->IsDestroyed )
-        return false;
+        SCRIPT_ERROR_R0( "Critter arg is destroyed." );
+
     if( cr == cr_ )
         return true;
+
     CrVec& critters = ( cr->GetMapId() ? cr->VisCrSelf : *cr->GlobalMapGroup );
     return std::find( critters.begin(), critters.end(), cr_ ) != critters.end();
 }
@@ -1137,9 +1144,11 @@ bool FOServer::SScriptFunc::Crit_IsSeenByCr( Critter* cr, Critter* cr_ )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
+    if( !cr_ )
+        SCRIPT_ERROR_R0( "Critter arg is null." );
     if( cr_->IsDestroyed )
-        return false;
+        SCRIPT_ERROR_R0( "Critter arg is destroyed." );
+
     if( cr == cr_ )
         return true;
 
@@ -1151,6 +1160,8 @@ bool FOServer::SScriptFunc::Crit_IsSeeItem( Critter* cr, Item* item )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( !item )
+        SCRIPT_ERROR_R0( "Item arg is null." );
     if( item->IsDestroyed )
         SCRIPT_ERROR_R0( "Item arg is destroyed." );
 
@@ -1489,24 +1500,26 @@ CScriptArray* FOServer::SScriptFunc::Npc_GetPlanesIdentifier2( Critter* npc, int
     return Script::CreateArrayRef( "NpcPlane[]", planes );
 }
 
-bool FOServer::SScriptFunc::Npc_AddPlane( Critter* npc, AIDataPlane& plane )
+bool FOServer::SScriptFunc::Npc_AddPlane( Critter* npc, AIDataPlane* plane )
 {
     if( npc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( !npc->IsNpc() )
         SCRIPT_ERROR_R0( "Critter is not npc." );
+    if( !plane )
+        SCRIPT_ERROR_R0( "Plane arg is null." );
 
     Npc* npc_ = (Npc*) npc;
     if( npc_->IsNoPlanes() )
         npc_->SetWait( 0 );
-    if( plane.Assigned )
+    if( plane->Assigned )
     {
-        npc_->AddPlane( REASON_FROM_SCRIPT, plane.GetCopy(), false );
+        npc_->AddPlane( REASON_FROM_SCRIPT, plane->GetCopy(), false );
     }
     else
     {
-        plane.AddRef();
-        npc_->AddPlane( REASON_FROM_SCRIPT, &plane, false );
+        plane->AddRef();
+        npc_->AddPlane( REASON_FROM_SCRIPT, plane, false );
     }
     return true;
 }
@@ -1539,6 +1552,8 @@ void FOServer::SScriptFunc::Crit_SendCombatResult( Critter* cr, CScriptArray* ar
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( arr->GetSize() > GameOpt.FloodSize / sizeof( uint ) )
         SCRIPT_ERROR_R( "Elements count is greater than maximum." );
+    if( !arr )
+        SCRIPT_ERROR_R( "Array arg is null." );
 
     cr->Send_CombatResult( (uint*) arr->At( 0 ), arr->GetSize() );
 }
@@ -1547,6 +1562,8 @@ void FOServer::SScriptFunc::Crit_Action( Critter* cr, int action, int action_ext
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+    if( item && item->IsDestroyed )
+        SCRIPT_ERROR_R( "Item arg is destroyed." );
 
     cr->SendAA_Action( action, action_ext, item );
 }
@@ -1555,6 +1572,8 @@ void FOServer::SScriptFunc::Crit_Animate( Critter* cr, uint anim1, uint anim2, I
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+    if( item && item->IsDestroyed )
+        SCRIPT_ERROR_R( "Item arg is destroyed." );
 
     cr->SendAA_Animate( anim1, anim2, item, clear_sequence, delay_play );
 }
@@ -2451,6 +2470,8 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersSeeing( Map* map, CScriptArr
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( !critters )
+        SCRIPT_ERROR_R0( "Critters arg is null." );
 
     CrVec result_critters;
     for( int i = 0, j = critters->GetSize(); i < j; i++ )
@@ -2539,6 +2560,8 @@ uint FOServer::SScriptFunc::Map_GetPathLengthCr( Map* map, Critter* cr, ushort t
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( !cr )
+        SCRIPT_ERROR_R0( "Critter arg is null." );
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter arg is destroyed." );
     if( to_hx >= map->GetWidth() || to_hy >= map->GetHeight() )
@@ -3032,8 +3055,12 @@ bool FOServer::SScriptFunc::Location_Reload( Location* loc )
 
 uint FOServer::SScriptFunc::Global_GetCrittersDistantion( Critter* cr1, Critter* cr2 )
 {
+    if( !cr1 )
+        SCRIPT_ERROR_R0( "Critter1 arg is null." );
     if( cr1->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter1 arg is destroyed." );
+    if( !cr2 )
+        SCRIPT_ERROR_R0( "Critter2 arg is null." );
     if( cr2->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter2 arg is destroyed." );
     if( cr1->GetMapId() != cr2->GetMapId() )
@@ -3055,8 +3082,12 @@ Item* FOServer::SScriptFunc::Global_GetItem( uint item_id )
 
 void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* to_cr, bool skip_checks )
 {
+    if( !item )
+        SCRIPT_ERROR_R( "Item arg is null." );
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Item arg is destroyed." );
+    if( !to_cr )
+        SCRIPT_ERROR_R( "Critter arg is null." );
     if( to_cr->IsDestroyed )
         SCRIPT_ERROR_R( "Critter arg is destroyed." );
 
@@ -3070,10 +3101,14 @@ void FOServer::SScriptFunc::Global_MoveItemCr( Item* item, uint count, Critter* 
 
 void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
 {
+    if( !item )
+        SCRIPT_ERROR_R( "Item arg is null." );
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Item arg is destroyed." );
+    if( !to_map )
+        SCRIPT_ERROR_R( "Map arg is null." );
     if( to_map->IsDestroyed )
-        SCRIPT_ERROR_R( "Container arg is destroyed." );
+        SCRIPT_ERROR_R( "Map arg is destroyed." );
     if( to_hx >= to_map->GetWidth() || to_hy >= to_map->GetHeight() )
         SCRIPT_ERROR_R( "Invalid hexex args." );
 
@@ -3087,8 +3122,12 @@ void FOServer::SScriptFunc::Global_MoveItemMap( Item* item, uint count, Map* to_
 
 void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks )
 {
+    if( !item )
+        SCRIPT_ERROR_R( "Item arg is null." );
     if( item->IsDestroyed )
         SCRIPT_ERROR_R( "Item arg is destroyed." );
+    if( !to_cont )
+        SCRIPT_ERROR_R( "Container arg is null." );
     if( to_cont->IsDestroyed )
         SCRIPT_ERROR_R( "Container arg is destroyed." );
 
@@ -3102,6 +3141,10 @@ void FOServer::SScriptFunc::Global_MoveItemCont( Item* item, uint count, Item* t
 
 void FOServer::SScriptFunc::Global_MoveItemsCr( CScriptArray* items, Critter* to_cr, bool skip_checks )
 {
+    if( !items )
+        SCRIPT_ERROR_R( "Items arg is null." );
+    if( !to_cr )
+        SCRIPT_ERROR_R( "Critter arg is null." );
     if( to_cr->IsDestroyed )
         SCRIPT_ERROR_R( "Critter arg is destroyed." );
 
@@ -3117,8 +3160,12 @@ void FOServer::SScriptFunc::Global_MoveItemsCr( CScriptArray* items, Critter* to
 
 void FOServer::SScriptFunc::Global_MoveItemsMap( CScriptArray* items, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks )
 {
+    if( !items )
+        SCRIPT_ERROR_R( "Items arg is null." );
+    if( !to_map )
+        SCRIPT_ERROR_R( "Map arg is null." );
     if( to_map->IsDestroyed )
-        SCRIPT_ERROR_R( "Container arg is destroyed." );
+        SCRIPT_ERROR_R( "Map arg is destroyed." );
     if( to_hx >= to_map->GetWidth() || to_hy >= to_map->GetHeight() )
         SCRIPT_ERROR_R( "Invalid hexex args." );
 
@@ -3134,6 +3181,10 @@ void FOServer::SScriptFunc::Global_MoveItemsMap( CScriptArray* items, Map* to_ma
 
 void FOServer::SScriptFunc::Global_MoveItemsCont( CScriptArray* items, Item* to_cont, uint stack_id, bool skip_checks )
 {
+    if( !items )
+        SCRIPT_ERROR_R( "Items arg is null." );
+    if( !to_cont )
+        SCRIPT_ERROR_R( "Container arg is null." );
     if( to_cont->IsDestroyed )
         SCRIPT_ERROR_R( "Container arg is destroyed." );
 
@@ -3172,6 +3223,9 @@ void FOServer::SScriptFunc::Global_DeleteItems( CScriptArray* items )
 
 void FOServer::SScriptFunc::Global_DeleteItemsById( CScriptArray* items )
 {
+    if( !items )
+        SCRIPT_ERROR_R( "Items arg is null." );
+
     ItemVec items_to_delete;
     for( int i = 0, j = items->GetSize(); i < j; i++ )
     {
@@ -3261,32 +3315,33 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
         SCRIPT_ERROR_R0( "Unable to create location '%s'.", Str::GetName( loc_pid ) );
 
     // Add known locations to critters
-    if( !critters )
-        return loc->GetId();
-    for( uint i = 0, j = critters->GetSize(); i < j; i++ )
+    if( critters )
     {
-        Critter* cr = *(Critter**) critters->At( i );
-
-        cr->AddKnownLoc( loc->GetId() );
-        if( !cr->GetMapId() )
-            cr->Send_GlobalLocation( loc, true );
-        if( loc->IsNonEmptyAutomaps() )
-            cr->Send_AutomapsInfo( nullptr, loc );
-
-        ushort        zx = GM_ZONE( loc->GetWorldX() );
-        ushort        zy = GM_ZONE( loc->GetWorldY() );
-        CScriptArray* gmap_fog = cr->GetGlobalMapFog();
-        if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
-            gmap_fog->Resize( GM_ZONES_FOG_SIZE );
-        TwoBitMask gmap_mask( GM__MAXZONEX, GM__MAXZONEY, (uchar*) gmap_fog->At( 0 ) );
-        if( gmap_mask.Get2Bit( zx, zy ) == GM_FOG_FULL )
+        for( uint i = 0, j = critters->GetSize(); i < j; i++ )
         {
-            gmap_mask.Set2Bit( zx, zy, GM_FOG_HALF );
-            cr->SetGlobalMapFog( gmap_fog );
+            Critter* cr = *(Critter**) critters->At( i );
+
+            cr->AddKnownLoc( loc->GetId() );
             if( !cr->GetMapId() )
-                cr->Send_GlobalMapFog( zx, zy, GM_FOG_HALF );
+                cr->Send_GlobalLocation( loc, true );
+            if( loc->IsNonEmptyAutomaps() )
+                cr->Send_AutomapsInfo( nullptr, loc );
+
+            ushort        zx = GM_ZONE( loc->GetWorldX() );
+            ushort        zy = GM_ZONE( loc->GetWorldY() );
+            CScriptArray* gmap_fog = cr->GetGlobalMapFog();
+            if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
+                gmap_fog->Resize( GM_ZONES_FOG_SIZE );
+            TwoBitMask gmap_mask( GM__MAXZONEX, GM__MAXZONEY, (uchar*) gmap_fog->At( 0 ) );
+            if( gmap_mask.Get2Bit( zx, zy ) == GM_FOG_FULL )
+            {
+                gmap_mask.Set2Bit( zx, zy, GM_FOG_HALF );
+                cr->SetGlobalMapFog( gmap_fog );
+                if( !cr->GetMapId() )
+                    cr->Send_GlobalMapFog( zx, zy, GM_FOG_HALF );
+            }
+            gmap_fog->Release();
         }
-        gmap_fog->Release();
     }
     return loc->GetId();
 }
@@ -3440,10 +3495,14 @@ CScriptArray* FOServer::SScriptFunc::Global_GetZoneLocationIds( ushort zx, ushor
 
 bool FOServer::SScriptFunc::Global_RunDialogNpc( Critter* player, Critter* npc, bool ignore_distance )
 {
+    if( !player )
+        SCRIPT_ERROR_R0( "Player arg is null." );
     if( player->IsDestroyed )
         SCRIPT_ERROR_R0( "Player arg is destroyed." );
     if( !player->IsPlayer() )
         SCRIPT_ERROR_R0( "Player arg is not player." );
+    if( !npc )
+        SCRIPT_ERROR_R0( "Npc arg is null." );
     if( npc->IsDestroyed )
         SCRIPT_ERROR_R0( "Npc arg is destroyed." );
     if( !npc->IsNpc() )
@@ -3458,10 +3517,14 @@ bool FOServer::SScriptFunc::Global_RunDialogNpc( Critter* player, Critter* npc, 
 
 bool FOServer::SScriptFunc::Global_RunDialogNpcDlgPack( Critter* player, Critter* npc, uint dlg_pack, bool ignore_distance )
 {
+    if( !player )
+        SCRIPT_ERROR_R0( "Player arg is null." );
     if( player->IsDestroyed )
         SCRIPT_ERROR_R0( "Player arg is destroyed." );
     if( !player->IsPlayer() )
         SCRIPT_ERROR_R0( "Player arg is not player." );
+    if( !npc )
+        SCRIPT_ERROR_R0( "Npc arg is null." );
     if( npc->IsDestroyed )
         SCRIPT_ERROR_R0( "Npc arg is destroyed." );
     if( !npc->IsNpc() )
@@ -3476,6 +3539,8 @@ bool FOServer::SScriptFunc::Global_RunDialogNpcDlgPack( Critter* player, Critter
 
 bool FOServer::SScriptFunc::Global_RunDialogHex( Critter* player, uint dlg_pack, ushort hx, ushort hy, bool ignore_distance )
 {
+    if( !player )
+        SCRIPT_ERROR_R0( "Player arg is null." );
     if( player->IsDestroyed )
         SCRIPT_ERROR_R0( "Player arg is destroyed." );
     if( !player->IsPlayer() )
@@ -3573,6 +3638,10 @@ static void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )
 bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory )
 {
     // Check
+    if( !cr1 )
+        SCRIPT_ERROR_R0( "Critter1 arg is null." );
+    if( !cr2 )
+        SCRIPT_ERROR_R0( "Critter2 arg is null." );
     if( cr1->IsDestroyed )
         SCRIPT_ERROR_R0( "Critter1 is destroyed." );
     if( cr2->IsDestroyed )
