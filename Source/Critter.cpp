@@ -104,21 +104,11 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     DisableSend = 0;
     CanBeRemoved = false;
     Name = "";
-    ItemSlotMain = ItemSlotExt = defItemSlotHand = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor = defItemSlotArmor = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
-    defItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
-    defItemSlotArmor->SetAccessory( ITEM_ACCESSORY_CRITTER );
-    defItemSlotHand->SetCritId( id );
-    defItemSlotArmor->SetCritId( id );
-    defItemSlotHand->SetCritSlot( SLOT_HAND1 );
-    defItemSlotArmor->SetCritSlot( SLOT_ARMOR );
 }
 
 Critter::~Critter()
 {
     RUNTIME_ASSERT( !GlobalMapGroup );
-    SAFEREL( defItemSlotHand );
-    SAFEREL( defItemSlotArmor );
 }
 
 void Critter::SetBreakTime( uint ms )
@@ -150,11 +140,6 @@ uint Critter::GetAttackDist( Item* weap, int use )
     uint dist = 1;
     Script::RaiseInternalEvent( ServerFunctions.CritterGetAttackDistantion, this, weap, use, &dist );
     return dist;
-}
-
-uint Critter::GetUseDist()
-{
-    return 1 + GetMultihex();
 }
 
 bool Critter::IsLife()
@@ -952,7 +937,7 @@ void Critter::AddItem( Item*& item, bool send )
     if( send )
     {
         Send_AddItem( item );
-        if( item->GetCritSlot() != SLOT_INV )
+        if( item->GetCritSlot() )
             SendAA_MoveItem( item, ACTION_REFRESH, 0 );
     }
 
@@ -967,30 +952,9 @@ void Critter::SetItem( Item* item )
     invItems.push_back( item );
 
     if( item->GetAccessory() != ITEM_ACCESSORY_CRITTER )
-        item->SetCritSlot( SLOT_INV );
+        item->SetCritSlot( 0 );
     item->SetAccessory( ITEM_ACCESSORY_CRITTER );
     item->SetCritId( Id );
-
-    switch( item->GetCritSlot() )
-    {
-    case SLOT_INV:
-        break;
-    case SLOT_HAND1:
-        RUNTIME_ASSERT( !ItemSlotMain->GetId() );
-        ItemSlotMain = item;
-        break;
-    case SLOT_HAND2:
-        RUNTIME_ASSERT( !ItemSlotExt->GetId() );
-        ItemSlotExt = item;
-        break;
-    case SLOT_ARMOR:
-        RUNTIME_ASSERT( !ItemSlotArmor->GetId() );
-        RUNTIME_ASSERT( item->IsArmor() );
-        ItemSlotArmor = item;
-        break;
-    default:
-        break;
-    }
 }
 
 void Critter::EraseItem( Item* item, bool send )
@@ -1002,10 +966,10 @@ void Critter::EraseItem( Item* item, bool send )
     invItems.erase( it );
 
     item->SetAccessory( ITEM_ACCESSORY_NONE );
-    TakeDefaultItem( item->GetCritSlot() );
+
     if( send )
         Send_EraseItem( item );
-    if( item->GetCritSlot() != SLOT_INV )
+    if( item->GetCritSlot() )
         SendAA_MoveItem( item, ACTION_REFRESH, 0 );
 
     Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, item->GetCritSlot() );
@@ -1074,7 +1038,7 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
             {
-                if( item->GetCritSlot() == SLOT_INV )
+                if( !item->GetCritSlot() )
                     return item;
                 another_slot = item;
             }
@@ -1136,156 +1100,6 @@ uint Critter::CountItemPid( hash pid )
             res += item->GetCount();
     }
     return res;
-}
-
-bool Critter::MoveItem( Item* item, uchar to_slot )
-{
-    if( !SlotEnabled[ to_slot ] )
-    {
-        WriteLog( "Slot {} is not allowed, critter '{}'.\n", to_slot, GetInfo() );
-        return false;
-    }
-
-    Item* item_swap = ( to_slot != SLOT_INV ? GetItemSlot( to_slot ) : nullptr );
-    if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, this, item, to_slot, item_swap ) )
-    {
-        WriteLog( "Can't move item '{}' to slot {}, critter '{}'.\n", item->GetName(), to_slot, GetInfo() );
-        return false;
-    }
-
-    uchar from_slot = item->GetCritSlot();
-    TakeDefaultItem( from_slot );
-    TakeDefaultItem( to_slot );
-    if( to_slot == SLOT_HAND1 )
-        ItemSlotMain = item;
-    else if( to_slot == SLOT_HAND2 )
-        ItemSlotExt = item;
-    else if( to_slot == SLOT_ARMOR )
-        ItemSlotArmor = item;
-    if( item_swap )
-    {
-        if( from_slot == SLOT_HAND1 )
-            ItemSlotMain = item_swap;
-        else if( from_slot == SLOT_HAND2 )
-            ItemSlotExt = item_swap;
-        else if( from_slot == SLOT_ARMOR )
-            ItemSlotArmor = item_swap;
-    }
-
-    item->SetCritSlot( to_slot );
-    if( item_swap )
-        item_swap->SetCritSlot( from_slot );
-
-    SendAA_MoveItem( item, ACTION_MOVE_ITEM, from_slot );
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item, from_slot );
-    if( item_swap )
-        Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, this, item_swap, to_slot );
-
-    return true;
-}
-
-bool Critter::DropItem( Item* item, uint count )
-{
-    if( !ItemMngr.ItemCheckMove( item, item->GetCount(), this, this ) )
-    {
-        WriteLog( "Drop item is not allwed, critter '{}'.\n", GetInfo() );
-        return false;
-    }
-
-    if( !count || count > item->GetCount() )
-    {
-        Send_AddItem( item );
-        return false;
-    }
-
-    bool full_drop = ( !item->GetStackable() || count >= item->GetCount() );
-    if( !full_drop )
-    {
-        if( GetMapId() )
-        {
-            Item* item_ = ItemMngr.SplitItem( item, count );
-            if( !item_ )
-            {
-                Send_AddItem( item );
-                return false;
-            }
-            item = item_;
-        }
-        else
-        {
-            item->ChangeCount( -(int) count );
-            item = nullptr;
-        }
-    }
-    else
-    {
-        EraseItem( item, false );
-        if( !GetMapId() )
-        {
-            ItemMngr.DeleteItem( item );
-            item = nullptr;
-        }
-    }
-
-    // Item part
-    if( item )
-    {
-        Map* map = GetMap();
-        if( map )
-        {
-            SendAA_Action( ACTION_DROP_ITEM, -1, item );
-            item->ViewByCritter = this;
-            map->AddItem( item, GetHexX(), GetHexY() );
-            item->ViewByCritter = nullptr;
-            Script::RaiseInternalEvent( ServerFunctions.CritterDropItem, this, item );
-        }
-        else
-        {
-            ItemMngr.DeleteItem( item );
-        }
-    }
-
-    return true;
-}
-
-void Critter::TakeDefaultItem( uchar slot )
-{
-    switch( slot )
-    {
-    case SLOT_HAND1:
-        ItemSlotMain = defItemSlotHand;
-        break;
-    case SLOT_HAND2:
-        ItemSlotExt = defItemSlotHand;
-        break;
-    case SLOT_ARMOR:
-        ItemSlotArmor = defItemSlotArmor;
-        break;
-    default:
-        break;
-    }
-
-    if( slot == SLOT_HAND1 || slot == SLOT_HAND2 )
-    {
-        hash       hands_pid = GetHandsItemProtoId();
-        ProtoItem* proto_hand = ( hands_pid ? ProtoMngr.GetProtoItem( hands_pid ) : nullptr );
-        if( !proto_hand )
-            proto_hand = ProtoMngr.GetProtoItem( ITEM_DEF_SLOT );
-        RUNTIME_ASSERT( proto_hand );
-
-        defItemSlotHand->SetProto( proto_hand );
-        defItemSlotHand->SetMode( GetHandsItemMode() );
-    }
-    else if( slot == SLOT_ARMOR )
-    {
-        hash       armor_pid = ITEM_DEF_ARMOR;
-        ProtoItem* proto_armor = ( armor_pid ? ProtoMngr.GetProtoItem( armor_pid ) : nullptr );
-        if( !proto_armor )
-            proto_armor = ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR );
-        RUNTIME_ASSERT( proto_armor );
-
-        defItemSlotArmor->SetProto( proto_armor );
-    }
 }
 
 uint Critter::CountItems()
@@ -3409,7 +3223,6 @@ void Client::Send_SomeItem( Item* item )
     Bout << msg_len;
     Bout << item->GetId();
     Bout << item->GetProtoId();
-    Bout << item->GetCritSlot();
     NET_WRITE_PROPERTIES( Bout, data, data_sizes );
     BOUT_END( this );
 }

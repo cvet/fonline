@@ -189,12 +189,6 @@
 #define FCRIT_DISCONNECT            ( 0x00080000 )
 #define FCRIT_CHOSEN                ( 0x00100000 )
 
-// Slots
-#define SLOT_INV                    ( 0 )
-#define SLOT_HAND1                  ( 1 )
-#define SLOT_HAND2                  ( 2 )
-#define SLOT_ARMOR                  ( 3 )
-
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.
 // Input: I - integer value 'uint answerI', S - string value 'string& answerS' in 'answer_' function.

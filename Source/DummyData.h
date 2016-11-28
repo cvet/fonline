@@ -57,6 +57,7 @@ struct AIDataPlane
 
 struct Entity
 {
+    int  Props;
     int  Type;
     int  Id;
     int  ProtoId;
@@ -222,8 +223,7 @@ struct BindClass
     static void Crit_GetItems()                 {}
     static void Crit_GetItemsBySlot()           {}
     static void Crit_GetItemsByType()           {}
-    static void Crit_GetSlotItem()              {}
-    static void Crit_MoveItem()                 {}
+    static void Crit_ChangeItemSlot()           {}
     static void Crit_DropItem()                 {}
     static void Crit_SetCond()                  {}
     static void Crit_CloseDialog()              {}
@@ -418,7 +418,6 @@ struct BindClass
     static void Crit_GetItems()         {}
     static void Crit_GetItemsBySlot()   {}
     static void Crit_GetItemsByType()   {}
-    static void Crit_GetSlotItem()      {}
     static void Crit_SetVisible()       {}
     static void Crit_GetVisible()       {}
     static void Crit_set_ContourColor() {}

@@ -342,8 +342,9 @@ void FOServer::ProcessAI( Npc* npc )
 
             if( r0 )
             {
-                weap = npc->ItemSlotMain;
-                RUNTIME_ASSERT( r0 == weap->GetId() );
+                weap = npc->GetItem( r0, false );
+                RUNTIME_ASSERT( weap );
+                weap->AddRef();
             }
             else
             {
@@ -354,17 +355,11 @@ void FOServer::ProcessAI( Npc* npc )
                 }
 
                 ProtoItem* unarmed = ProtoMngr.GetProtoItem( r2 );
-                if( !unarmed )
-                    unarmed = ProtoMngr.GetProtoItem( ITEM_DEF_SLOT );
-
-                Item* def_item_main = npc->GetHandsItem();
-                if( def_item_main->Proto != unarmed )
-                    def_item_main->SetProto( unarmed );
-
-                weap = def_item_main;
+                RUNTIME_ASSERT( unarmed );
+                weap = new Item( 0, unarmed );
             }
             use = r1;
-            npc->ItemSlotMain->SetMode( MAKE_ITEM_MODE( use, 0 ) );
+            weap->SetMode( MAKE_ITEM_MODE( use, 0 ) );
 
             /************************************************************************/
             /* Step 2: Move to target                                               */
@@ -760,7 +755,7 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             }
             else if( demand.Type == DR_PROP_ITEM )
             {
-                entity = master->ItemSlotMain;
+                entity = master->GetItemSlot( 1 );
                 prop_registrator = Item::PropertiesRegistrator;
             }
             else if( demand.Type == DR_PROP_LOCATION )
@@ -981,7 +976,7 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             }
             else if( result.Type == DR_PROP_ITEM )
             {
-                entity = master->ItemSlotMain;
+                entity = master->GetItemSlot( 1 );
                 prop_registrator = Item::PropertiesRegistrator;
             }
             else if( result.Type == DR_PROP_LOCATION )

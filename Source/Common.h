@@ -406,7 +406,6 @@ struct ServerScriptFunctions
     void* CritterShowItemOnMap;
     void* CritterHideItemOnMap;
     void* CritterChangeItemOnMap;
-    void* CritterDropItem;
     void* CritterMessage;
     void* CritterTalk;
     void* CritterBarter;

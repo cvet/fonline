@@ -349,16 +349,6 @@ bool ProtoManager::LoadProtosFromFiles()
         WriteLog( "Player proto 'Player.focr' not loaded.\n" );
         errors++;
     }
-    if( !itemProtos.count( ITEM_DEF_SLOT ) )
-    {
-        WriteLog( "Item default slot proto not loaded.\n" );
-        errors++;
-    }
-    if( !itemProtos.count( ITEM_DEF_ARMOR ) )
-    {
-        WriteLog(  "Item default armor proto not loaded.\n" );
-        errors++;
-    }
     if( errors )
         return false;
 

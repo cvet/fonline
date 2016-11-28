@@ -1521,7 +1521,7 @@ void HexManager::CollectLightSources()
         for( auto it_ = cr->InvItems.begin(), end_ = cr->InvItems.end(); it_ != end_; ++it_ )
         {
             Item* item = *it_;
-            if( item->GetIsLight() && item->GetCritSlot() != SLOT_INV )
+            if( item->GetIsLight() && item->GetCritSlot() )
             {
                 lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags(), &cr->SprOx, &cr->SprOy ) );
                 added = true;

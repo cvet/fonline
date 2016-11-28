@@ -1819,18 +1819,9 @@ void FOMapper::IntDraw()
 
             SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, w, h, false, true, col );
 
-            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), Str::FormatBuf( "x%u", child->GetCount() ), FT_NOBREAK, COLOR_TEXT_WHITE );
-            if( child->GetAccessory() == ITEM_ACCESSORY_CRITTER && child->GetCritSlot() != SLOT_INV )
-            {
-                if( child->GetCritSlot() == SLOT_HAND1 )
-                    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), "Main", FT_NOBREAK, COLOR_TEXT_WHITE );
-                else if( child->GetCritSlot() == SLOT_HAND2 )
-                    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), "Ext", FT_NOBREAK, COLOR_TEXT_WHITE );
-                else if( child->GetCritSlot() == SLOT_ARMOR )
-                    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), "Armor", FT_NOBREAK, COLOR_TEXT_WHITE );
-                else
-                    SprMngr.DrawStr( Rect( x, y, x + w, y + h ), Str::ItoA( child->GetCritSlot() ), FT_NOBREAK, COLOR_TEXT_WHITE );
-            }
+            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), fmt::format( "x{}", child->GetCount() ), FT_NOBREAK, COLOR_TEXT_WHITE );
+            if( child->GetAccessory() == ITEM_ACCESSORY_CRITTER && child->GetCritSlot() )
+                SprMngr.DrawStr( Rect( x, y, x + w, y + h ), fmt::format( "Slot {}", child->GetCritSlot() ), FT_NOBREAK, COLOR_TEXT_WHITE );
         }
     }
     else if( IntMode == INT_MODE_LIST )
@@ -1841,7 +1832,7 @@ void FOMapper::IntDraw()
         for( ; i < j; i++, x += w )
         {
             ProtoMap* pm = LoadedProtoMaps[ i ];
-            SprMngr.DrawStr( Rect( x, y, x + w, y + h ), Str::FormatBuf( " '%s'", pm->GetName() ), 0, pm == ActiveProtoMap ? COLOR_IFACE_RED : COLOR_TEXT );
+            SprMngr.DrawStr( Rect( x, y, x + w, y + h ), fmt::format( " '{}'", pm->GetName() ), 0, pm == ActiveProtoMap ? COLOR_IFACE_RED : COLOR_TEXT );
         }
     }
 
@@ -2374,43 +2365,16 @@ void FOMapper::IntLMouseDown()
                     CritterCl* cr = (CritterCl*) SelectedEntities[ 0 ];
                     uchar      anim1 = ( InContItem->IsWeapon() ? InContItem->GetWeapon_Anim1() : 0 );
 
-                    if( InContItem->IsArmor() )
-                    {
-                        if( InContItem->GetCritSlot() != SLOT_INV )
-                        {
-                            InContItem->SetCritSlot( SLOT_INV );
-                        }
-                        else
-                        {
-                            uchar to_slot = InContItem->GetCritSlot();
-                            to_slot = to_slot ? to_slot : SLOT_ARMOR;
-                            for( auto& child : cr->GetChildren() )
-                                if( ( (Item*) child )->GetCritSlot() == to_slot )
-                                    ( (Item*) child )->SetCritSlot( SLOT_INV );
-                            InContItem->SetCritSlot( to_slot );
-                        }
-                    }
-                    else if( !InContItem->IsArmor() )
-                    {
-                        if( InContItem->GetCritSlot() == SLOT_HAND1 )
-                        {
-                            for( auto& child : cr->GetChildren() )
-                                if( ( (Item*) child )->GetCritSlot() == SLOT_HAND2 )
-                                    ( (Item*) child )->SetCritSlot( SLOT_INV );
-                            InContItem->SetCritSlot( SLOT_HAND2 );
-                        }
-                        else if( InContItem->GetCritSlot() == SLOT_HAND2 )
-                        {
-                            InContItem->SetCritSlot( SLOT_INV );
-                        }
-                        else
-                        {
-                            for( auto& child : cr->GetChildren() )
-                                if( ( (Item*) child )->GetCritSlot() == SLOT_HAND1 )
-                                    ( (Item*) child )->SetCritSlot( SLOT_INV );
-                            InContItem->SetCritSlot( SLOT_HAND1 );
-                        }
-                    }
+                    int        to_slot = InContItem->GetCritSlot() + 1;
+                    while( !CritterCl::SlotEnabled[ to_slot % 256 ] )
+                        to_slot++;
+                    to_slot %= 256;
+
+                    for( auto& child : cr->GetChildren() )
+                        if( ( (Item*) child )->GetCritSlot() == to_slot )
+                            ( (Item*) child )->SetCritSlot( 0 );
+
+                    InContItem->SetCritSlot( to_slot );
 
                     cr->AnimateStay();
                 }

@@ -61,17 +61,10 @@ public:
     UShortVec     LastHexX, LastHexY;
     uint          Flags;
     Effect*       DrawEffect;
-
     string        Name;
     string        NameOnHead;
     string        Avatar;
-
     ItemVec       InvItems;
-    Item*         DefItemSlotHand;
-    Item*         DefItemSlotArmor;
-    Item*         ItemSlotMain;
-    Item*         ItemSlotExt;
-    Item*         ItemSlotArmor;
 
     static bool   SlotEnabled[ 0x100 ];
     static IntSet RegProperties;
@@ -109,7 +102,6 @@ public:
     bool   CheckFind( int find_type );
 
     uint GetAttackDist();
-    uint GetUseDist();
 
     // Items
 public:
@@ -154,7 +146,7 @@ public:
 
     // Animation
 public:
-    uint GetAnim1( Item* anim_item = nullptr );
+    uint GetAnim1();
     uint GetAnim2();
     void ProcessAnim( bool animate_stay, bool is2d, uint anim1, uint anim2, Item* item );
     int* GetLayers3dData();

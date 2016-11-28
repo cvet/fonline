@@ -168,7 +168,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterShowItemOnMap );
     BIND_INTERNAL_EVENT( CritterHideItemOnMap );
     BIND_INTERNAL_EVENT( CritterChangeItemOnMap );
-    BIND_INTERNAL_EVENT( CritterDropItem );
     BIND_INTERNAL_EVENT( CritterMessage );
     BIND_INTERNAL_EVENT( CritterTalk );
     BIND_INTERNAL_EVENT( CritterBarter );
@@ -192,8 +191,6 @@ bool FOServer::InitScriptSystem()
     Globals = new GlobalVars();
     Critter::SetPropertyRegistrator( registrators[ 1 ] );
     Critter::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
-    Critter::PropertiesRegistrator->SetNativeSetCallback( "HandsItemProtoId", OnSetCritterHandsItemProtoId );
-    Critter::PropertiesRegistrator->SetNativeSetCallback( "HandsItemMode", OnSetCritterHandsItemMode );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Count", OnSetItemCount );
@@ -1256,34 +1253,7 @@ CScriptArray* FOServer::SScriptFunc::Crit_GetItemsByType( Critter* cr, int type 
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-Item* FOServer::SScriptFunc::Crit_GetSlotItem( Critter* cr, int slot )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    Item* item = nullptr;
-    switch( slot )
-    {
-    case SLOT_HAND1:
-        item = cr->ItemSlotMain;
-        break;
-    case SLOT_HAND2:
-        item = ( cr->ItemSlotExt->GetId() ? cr->ItemSlotExt : cr->GetHandsItem() );
-        break;
-    case SLOT_ARMOR:
-        item = cr->ItemSlotArmor;
-        break;
-    default:
-        item = cr->GetItemSlot( slot );
-        break;
-    }
-
-    if( item && !item->GetId() && ( item == cr->ItemSlotMain || item == cr->ItemSlotExt ) )
-        item->SetMode( cr->GetHandsItemMode() );
-    return item;
-}
-
-void FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uchar to_slot )
+void FOServer::SScriptFunc::Crit_ChangeItemSlot( Critter* cr, uint item_id, uchar slot )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
@@ -1294,27 +1264,27 @@ void FOServer::SScriptFunc::Crit_MoveItem( Critter* cr, uint item_id, uchar to_s
         SCRIPT_ERROR_R( "Item not found." );
 
     // To slot arg is equal of current item slot
-    if( item->GetCritSlot() == to_slot )
+    if( item->GetCritSlot() == slot )
         return;
 
-    if( !cr->MoveItem( item, to_slot ) )
-        SCRIPT_ERROR_R( "Fail to move item." );
-}
+    if( !Critter::SlotEnabled[ slot ] )
+        SCRIPT_ERROR_R( "Slot is not allowed." );
 
-void FOServer::SScriptFunc::Crit_DropItem( Critter* cr, uint item_id, uint count )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( !item_id )
-        SCRIPT_ERROR_R( "Item id arg is zero." );
-    Item* item = cr->GetItem( item_id, cr->IsPlayer() );
-    if( !item )
-        SCRIPT_ERROR_R( "Item not found." );
+    if( !Script::RaiseInternalEvent( ServerFunctions.CritterCheckMoveItem, cr, item, slot ) )
+        SCRIPT_ERROR_R( "Can't move item" );
 
-    if( !count )
-        count = item->GetCount();
-    if( !cr->DropItem( item, count ) )
-        SCRIPT_ERROR_R( "Fail to drop item." );
+    Item* item_swap = ( slot ? cr->GetItemSlot( slot ) : nullptr );
+    uchar from_slot = item->GetCritSlot();
+
+    item->SetCritSlot( slot );
+    if( item_swap )
+        item_swap->SetCritSlot( from_slot );
+
+    cr->SendAA_MoveItem( item, ACTION_MOVE_ITEM, from_slot );
+
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, cr, item, from_slot );
+    if( item_swap )
+        Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, cr, item_swap, slot );
 }
 
 void FOServer::SScriptFunc::Crit_SetCond( Critter* cr, int cond )

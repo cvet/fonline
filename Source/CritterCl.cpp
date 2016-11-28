@@ -86,14 +86,6 @@ CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::Cr
     Name = "";
     NameOnHead = "";
     Avatar = "";
-    ItemSlotMain = ItemSlotExt = DefItemSlotHand = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_SLOT ) );
-    ItemSlotArmor = DefItemSlotArmor = new Item( 0, ProtoMngr.GetProtoItem( ITEM_DEF_ARMOR ) );
-    DefItemSlotHand->SetAccessory( ITEM_ACCESSORY_CRITTER );
-    DefItemSlotArmor->SetAccessory( ITEM_ACCESSORY_CRITTER );
-    DefItemSlotHand->SetCritId( id );
-    DefItemSlotArmor->SetCritId( id );
-    DefItemSlotHand->SetCritSlot( SLOT_HAND1 );
-    DefItemSlotArmor->SetCritSlot( SLOT_ARMOR );
     tickFidget = Timer::GameTick() + Random( GameOpt.CritterFidgetTime, GameOpt.CritterFidgetTime * 2 );
     memzero( &stayAnim, sizeof( stayAnim ) );
     DrawEffect = Effect::Critter;
@@ -113,22 +105,11 @@ CritterCl::~CritterCl()
     SprMngr.FreePure3dAnimation( Anim3d );
     SprMngr.FreePure3dAnimation( Anim3dStay );
     Anim3d = Anim3dStay = nullptr;
-    SAFEREL( DefItemSlotHand );
-    SAFEREL( DefItemSlotArmor );
-    ItemSlotMain = ItemSlotExt = DefItemSlotHand = ItemSlotArmor = DefItemSlotArmor = nullptr;
 }
 
 void CritterCl::Init()
 {
     RefreshAnim();
-
-    ProtoItem* unarmed = ProtoMngr.GetProtoItem( GetHandsItemProtoId() );
-    if( unarmed )
-    {
-        ItemSlotMain->SetProto( unarmed );
-        ItemSlotMain->SetMode( GetHandsItemMode() );
-    }
-
     AnimateStay();
 
     SpriteInfo* si = SprMngr.GetSpriteInfo( SprId );
@@ -171,45 +152,15 @@ void CritterCl::AddItem( Item* item )
     item->SetAccessory( ITEM_ACCESSORY_CRITTER );
     item->SetCritId( Id );
 
-    bool anim_stay = true;
-    switch( item->GetCritSlot() )
-    {
-    case SLOT_HAND1:
-        ItemSlotMain = item;
-        break;
-    case SLOT_HAND2:
-        ItemSlotExt = item;
-        break;
-    case SLOT_ARMOR:
-        ItemSlotArmor = item;
-        break;
-    default:
-        if( item == ItemSlotMain )
-            ItemSlotMain = DefItemSlotHand;
-        else if( item == ItemSlotExt )
-            ItemSlotExt = DefItemSlotHand;
-        else if( item == ItemSlotArmor )
-            ItemSlotArmor = DefItemSlotArmor;
-        else
-            anim_stay = false;
-        break;
-    }
-
     InvItems.push_back( item );
     Item::SortItems( InvItems );
-    if( anim_stay && !IsAnim() )
+
+    if( item->GetCritSlot() && !IsAnim() )
         AnimateStay();
 }
 
 void CritterCl::DeleteItem( Item* item, bool animate )
 {
-    if( ItemSlotMain == item )
-        ItemSlotMain = DefItemSlotHand;
-    if( ItemSlotExt == item )
-        ItemSlotExt = DefItemSlotHand;
-    if( ItemSlotArmor == item )
-        ItemSlotArmor = DefItemSlotArmor;
-
     item->SetAccessory( ITEM_ACCESSORY_NONE );
     item->SetCritId( 0 );
     item->SetCritSlot( 0 );
@@ -276,7 +227,7 @@ Item* CritterCl::GetItemByPidInvPriority( hash item_pid )
             Item* item = *it;
             if( item->GetProtoId() == item_pid )
             {
-                if( item->GetCritSlot() == SLOT_INV )
+                if( !item->GetCritSlot() )
                     return item;
                 another_slot = item;
             }
@@ -359,20 +310,11 @@ bool CritterCl::CheckFind( int find_type )
 
 uint CritterCl::GetAttackDist()
 {
-    Item* weap = ItemSlotMain;
-    if( !weap->IsWeapon() )
-        return 0;
-
     uint dist = 0;
     #ifdef FONLINE_CLIENT
-    Script::RaiseInternalEvent( ClientFunctions.CritterGetAttackDistantion, this, weap, weap->GetMode(), &dist );
+    Script::RaiseInternalEvent( ClientFunctions.CritterGetAttackDistantion, this, nullptr, 0, &dist );
     #endif
     return dist;
-}
-
-uint CritterCl::GetUseDist()
-{
-    return 1 + GetMultihex();
 }
 
 void CritterCl::DrawStay( Rect r )
@@ -671,7 +613,7 @@ void CritterCl::Animate( uint anim1, uint anim2, Item* item )
 {
     uchar dir = GetDir();
     if( !anim1 )
-        anim1 = GetAnim1( item );
+        anim1 = GetAnim1();
     if( item )
         item = item->Clone();
 
@@ -812,19 +754,16 @@ bool CritterCl::IsFree()
     return Timer::GameTick() - StartTick >= TickCount;
 }
 
-uint CritterCl::GetAnim1( Item* anim_item /* = NULL */ )
+uint CritterCl::GetAnim1()
 {
-    if( !anim_item )
-        anim_item = ItemSlotMain;
-
     switch( GetCond() )
     {
     case COND_LIFE:
-        return GetAnim1Life() | ( anim_item->IsWeapon() ? anim_item->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Life() ? GetAnim1Life() : ANIM1_UNARMED;
     case COND_KNOCKOUT:
-        return GetAnim1Knockout() | ( anim_item->IsWeapon() ? anim_item->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Knockout() ? GetAnim1Knockout() : ANIM1_UNARMED;
     case COND_DEAD:
-        return GetAnim1Dead() | ( anim_item->IsWeapon() ? anim_item->GetWeapon_Anim1() : ANIM1_UNARMED );
+        return GetAnim1Dead() ? GetAnim1Dead() : ANIM1_UNARMED;
     default:
         break;
     }

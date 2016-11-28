@@ -880,8 +880,6 @@ static Mutex                    HashNamesLocker;
 static map< hash, const char* > HashNames;
 
 #define HASH_IMPL( var, name )    hash var = Str::GetHash( name )
-HASH_IMPL( ITEM_DEF_SLOT, "DefaultWeapon" );
-HASH_IMPL( ITEM_DEF_ARMOR, "DefaultArmor" );
 HASH_IMPL( SP_SCEN_IBLOCK, "MinimapInvisibleBlock" );
 HASH_IMPL( SP_SCEN_TRIGGER, "Trigger" );
 HASH_IMPL( SP_WALL_BLOCK_LIGHT, "BlockLight" );

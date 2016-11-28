@@ -2894,14 +2894,12 @@ void FOClient::Net_OnCritterMove()
 
 void FOClient::Net_OnSomeItem()
 {
-    uint  msg_len;
-    uint  item_id;
-    hash  item_pid;
-    uchar slot;
+    uint msg_len;
+    uint item_id;
+    hash item_pid;
     Bin >> msg_len;
     Bin >> item_id;
     Bin >> item_pid;
-    Bin >> slot;
     NET_READ_PROPERTIES( Bin, TempPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
@@ -2911,7 +2909,6 @@ void FOClient::Net_OnSomeItem()
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( item_pid );
     RUNTIME_ASSERT( proto_item );
     SomeItem = new Item( item_id, proto_item );
-    SomeItem->SetCritSlot( slot );
     SomeItem->Props.RestoreData( TempPropertiesData );
 }
 
@@ -3326,7 +3323,7 @@ void FOClient::Net_OnChosenAddItem()
     }
 
     Item* prev_item = Chosen->GetItem( item_id );
-    uchar prev_slot = SLOT_INV;
+    uchar prev_slot = 0;
     uint  prev_light_hash = 0;
     if( prev_item )
     {
@@ -3348,9 +3345,8 @@ void FOClient::Net_OnChosenAddItem()
 
     Chosen->AddItem( item );
 
-    if( slot == SLOT_HAND1 || prev_slot == SLOT_HAND1 )
-        RebuildLookBorders = true;
-    if( item->LightGetHash() != prev_light_hash && ( slot != SLOT_INV || prev_slot != SLOT_INV ) )
+    RebuildLookBorders = true;
+    if( item->LightGetHash() != prev_light_hash && ( slot || prev_slot ) )
         HexMngr.RebuildLight();
     if( item->GetIsHidden() )
         Chosen->DeleteItem( item, true );
@@ -3382,7 +3378,7 @@ void FOClient::Net_OnChosenEraseItem()
     }
 
     Item* clone = item->Clone();
-    bool  rebuild_light = ( item->GetIsLight() && item->GetCritSlot() != SLOT_INV );
+    bool  rebuild_light = ( item->GetIsLight() && item->GetCritSlot() );
     Chosen->DeleteItem( item, true );
     if( rebuild_light )
         HexMngr.RebuildLight();
@@ -6327,28 +6323,6 @@ void FOClient::OnSendItemValue( Entity* entity, Property* prop )
     }
 }
 
-void FOClient::OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value )
-{
-    CritterCl* cr = (CritterCl*) entity;
-    hash       value = *(hash*) cur_value;
-
-    ProtoItem* unarmed = ProtoMngr.GetProtoItem( value ? value : ITEM_DEF_SLOT );
-    if( !unarmed )
-        unarmed = ProtoMngr.GetProtoItem( ITEM_DEF_SLOT );
-    RUNTIME_ASSERT( unarmed );
-
-    cr->DefItemSlotHand->SetProto( unarmed );
-    cr->DefItemSlotHand->SetMode( 0 );
-}
-
-void FOClient::OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value )
-{
-    CritterCl* cr = (CritterCl*) entity;
-    uchar      value = *(uchar*) cur_value;
-
-    cr->DefItemSlotHand->SetMode( value );
-}
-
 void FOClient::OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
@@ -6609,8 +6583,6 @@ bool FOClient::ReloadScripts()
     Globals = new GlobalVars();
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
     CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
-    CritterCl::PropertiesRegistrator->SetNativeSetCallback( "HandsItemProtoId", OnSetCritterHandsItemProtoId );
-    CritterCl::PropertiesRegistrator->SetNativeSetCallback( "HandsItemMode", OnSetCritterHandsItemMode );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
@@ -6863,30 +6835,6 @@ CScriptArray* FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int typ
     ItemVec items;
     cr->GetItemsType( type, items );
     return Script::CreateArrayRef( "Item[]", items );
-}
-
-Item* FOClient::SScriptFunc::Crit_GetSlotItem( CritterCl* cr, int slot )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    Item* item = nullptr;
-    switch( slot )
-    {
-    case SLOT_HAND1:
-        item = cr->ItemSlotMain;
-        break;
-    case SLOT_HAND2:
-        item = ( cr->ItemSlotExt->GetId() ? cr->ItemSlotExt : cr->DefItemSlotHand );
-        break;
-    case SLOT_ARMOR:
-        item = cr->ItemSlotArmor;
-        break;
-    default:
-        item = cr->GetItemSlot( slot );
-        break;
-    }
-    return item;
 }
 
 void FOClient::SScriptFunc::Crit_SetVisible( CritterCl* cr, bool visible )
@@ -7348,30 +7296,6 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         }
         else
         {
-            if( from_slot == SLOT_HAND1 || to_slot == SLOT_HAND1 )
-                Self->Chosen->ItemSlotMain = Self->Chosen->DefItemSlotHand;
-            if( from_slot == SLOT_HAND2 || to_slot == SLOT_HAND2 )
-                Self->Chosen->ItemSlotExt = Self->Chosen->DefItemSlotHand;
-            if( from_slot == SLOT_ARMOR || to_slot == SLOT_ARMOR )
-                Self->Chosen->ItemSlotArmor = Self->Chosen->DefItemSlotArmor;
-
-            if( to_slot == SLOT_HAND1 )
-                Self->Chosen->ItemSlotMain = item;
-            else if( to_slot == SLOT_HAND2 )
-                Self->Chosen->ItemSlotExt = item;
-            else if( to_slot == SLOT_ARMOR )
-                Self->Chosen->ItemSlotArmor = item;
-
-            if( item_swap )
-            {
-                if( from_slot == SLOT_HAND1 )
-                    Self->Chosen->ItemSlotMain = item_swap;
-                else if( from_slot == SLOT_HAND2 )
-                    Self->Chosen->ItemSlotExt = item_swap;
-                else if( from_slot == SLOT_ARMOR )
-                    Self->Chosen->ItemSlotArmor = item_swap;
-            }
-
             item->SetCritSlot( to_slot );
             if( item_swap )
                 item_swap->SetCritSlot( from_slot );
@@ -7382,9 +7306,8 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         }
 
         // Light
-        if( to_slot == SLOT_HAND1 || from_slot == SLOT_HAND1 )
-            Self->RebuildLookBorders = true;
-        if( is_light && ( to_slot == SLOT_INV || ( from_slot == SLOT_INV && to_slot != -1 ) ) )
+        Self->RebuildLookBorders = true;
+        if( is_light && ( !to_slot || ( !from_slot && to_slot != -1 ) ) )
             Self->HexMngr.RebuildLight();
 
         // Notify scripts about item changing

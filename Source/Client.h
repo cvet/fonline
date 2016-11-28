@@ -229,8 +229,6 @@ public:
     static void OnSendGlobalValue( Entity* entity, Property* prop );
     static void OnSendCritterValue( Entity* entity, Property* prop );
     static void OnSendItemValue( Entity* entity, Property* prop );
-    static void OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value );
@@ -387,7 +385,6 @@ public:
         static CScriptArray* Crit_GetItems( CritterCl* cr );
         static CScriptArray* Crit_GetItemsBySlot( CritterCl* cr, uchar slot );
         static CScriptArray* Crit_GetItemsByType( CritterCl* cr, int type );
-        static Item*         Crit_GetSlotItem( CritterCl* cr, int slot );
         static void          Crit_SetVisible( CritterCl* cr, bool visible );
         static bool          Crit_GetVisible( CritterCl* cr );
         static void          Crit_set_ContourColor( CritterCl* cr, uint value );

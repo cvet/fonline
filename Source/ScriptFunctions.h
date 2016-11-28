@@ -239,11 +239,26 @@ void Global_OpenLink( string link )
     #endif
 }
 
-Item* Global_GetProtoItem( hash pid )
+Item* Global_GetProtoItem( hash pid, CScriptDict* props )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
-    return proto != nullptr ? new Item( 0, proto ) : nullptr;
+    if( !proto )
+        return nullptr;
+
+    Item* item = new Item( 0, proto );
+    if( props )
+    {
+        for( asUINT i = 0; i < props->GetSize(); i++ )
+        {
+            if( !Properties::SetValueAsIntProps( (Properties*) &item->Props, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
+            {
+                item->Release();
+                return nullptr;
+            }
+        }
+    }
+    return item;
     #else
     return nullptr;
     #endif

@@ -2210,25 +2210,3 @@ void FOServer::OnSendLocationValue( Entity* entity, Property* prop )
         }
     }
 }
-
-void FOServer::OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value )
-{
-    Critter*   cr = (Critter*) entity;
-    hash       value = *(hash*) cur_value;
-
-    ProtoItem* unarmed = ProtoMngr.GetProtoItem( value ? value : ITEM_DEF_SLOT );
-    if( !unarmed )
-        unarmed = ProtoMngr.GetProtoItem( ITEM_DEF_SLOT );
-    RUNTIME_ASSERT( unarmed );
-
-    cr->GetHandsItem()->SetProto( unarmed );
-    cr->GetHandsItem()->SetMode( 0 );
-}
-
-void FOServer::OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value )
-{
-    Critter* cr = (Critter*) entity;
-    uchar    value = *(uchar*) cur_value;
-
-    cr->GetHandsItem()->SetMode( value );
-}

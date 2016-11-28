@@ -117,10 +117,6 @@ public:
     static void OnSendMapValue( Entity* entity, Property* prop );
     static void OnSendLocationValue( Entity* entity, Property* prop );
 
-    // Critters
-    static void OnSetCritterHandsItemProtoId( Entity* entity, Property* prop, void* cur_value, void* old_value );
-    static void OnSetCritterHandsItemMode( Entity* entity, Property* prop, void* cur_value, void* old_value );
-
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks );
     static void  OnSendItemValue( Entity* entity, Property* prop );
@@ -384,9 +380,7 @@ public:
         static CScriptArray* Crit_GetItems( Critter* cr );
         static CScriptArray* Crit_GetItemsBySlot( Critter* cr, int slot );
         static CScriptArray* Crit_GetItemsByType( Critter* cr, int type );
-        static Item*         Crit_GetSlotItem( Critter* cr, int slot );
-        static void          Crit_MoveItem( Critter* cr, uint item_id, uchar to_slot );
-        static void          Crit_DropItem( Critter* cr, uint item_id, uint count );
+        static void          Crit_ChangeItemSlot( Critter* cr, uint item_id, uchar slot );
         static void          Crit_SetCond( Critter* cr, int cond );
         static void          Crit_CloseDialog( Critter* cr );
 

@@ -176,17 +176,8 @@ public:
     // Items
 protected:
     ItemVec invItems;
-    Item*   defItemSlotHand;
-    Item*   defItemSlotArmor;
-
-    void TakeDefaultItem( uchar slot );
 
 public:
-    Item* ItemSlotMain;
-    Item* ItemSlotExt;
-    Item* ItemSlotArmor;
-
-    Item*    GetHandsItem() { return defItemSlotHand; }
     void     AddItem( Item*& item, bool send );
     void     SetItem( Item* item );
     void     EraseItem( Item* item, bool send );
@@ -200,8 +191,6 @@ public:
     void     GetItemsSlot( int slot, ItemVec& items );
     void     GetItemsType( int type, ItemVec& items );
     uint     CountItemPid( hash item_pid );
-    bool     MoveItem( Item* item, uchar to_slot );
-    bool     DropItem( Item* item, uint count );
     uint     RealCountItems() { return (uint) invItems.size(); }
     uint     CountItems();
     ItemVec& GetInventory();
@@ -291,7 +280,6 @@ public:
     const char* GetInfo();
     void        SendMessage( int num, int val, int to );
     uint        GetAttackDist( Item* weap, int use );
-    uint        GetUseDist();
     bool        IsLife();
     bool        IsDead();
     bool        IsKnockout();

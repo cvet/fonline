@@ -64,8 +64,6 @@ class Critter;
 
 // Special item pids
 #define HASH_DECL( var )              extern hash var
-HASH_DECL( ITEM_DEF_SLOT );
-HASH_DECL( ITEM_DEF_ARMOR );
 HASH_DECL( SP_SCEN_IBLOCK );
 HASH_DECL( SP_SCEN_TRIGGER );
 HASH_DECL( SP_WALL_BLOCK_LIGHT );
