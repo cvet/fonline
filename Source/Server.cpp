@@ -1286,14 +1286,7 @@ void FOServer::Process( Client* cl )
             case NETMSG_SEND_TALK_NPC:
             {
                 CHECK_BUSY;
-                Process_Dialog( cl, false );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SEND_SAY_NPC:
-            {
-                CHECK_BUSY;
-                Process_Dialog( cl, true );
+                Process_Dialog( cl );
                 BIN_END( cl );
                 continue;
             }

@@ -148,7 +148,6 @@ public:
     void Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data );
     void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
-    void Net_SendSayNpc( uchar is_npc, uint id_to_talk, const char* str );
     void Net_SendGetGameInfo();
     void Net_SendGiveMap( bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash );
     void Net_SendLoadMapOk();

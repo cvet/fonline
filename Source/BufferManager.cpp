@@ -280,8 +280,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_PLAY_SOUND_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_TALK_NPC:
         return ( NETMSG_SEND_TALK_NPC_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_SEND_SAY_NPC:
-        return ( NETMSG_SEND_SAY_NPC_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GET_INFO:
         return ( NETMSG_SEND_GET_TIME_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_GAME_INFO:
@@ -502,9 +500,6 @@ void BufferManager::SkipMsg( uint msg )
         break;
     case NETMSG_SEND_TALK_NPC:
         size = NETMSG_SEND_TALK_NPC_SIZE;
-        break;
-    case NETMSG_SEND_SAY_NPC:
-        size = NETMSG_SEND_SAY_NPC_SIZE;
         break;
     case NETMSG_SEND_GET_INFO:
         size = NETMSG_SEND_GET_TIME_SIZE;

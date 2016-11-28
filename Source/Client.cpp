@@ -2318,14 +2318,6 @@ void FOClient::Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer )
     Bout << answer;
 }
 
-void FOClient::Net_SendSayNpc( uchar is_npc, uint id_to_talk, const char* str )
-{
-    Bout << NETMSG_SEND_SAY_NPC;
-    Bout << is_npc;
-    Bout << id_to_talk;
-    Bout.Push( str, MAX_SAY_NPC_TEXT );
-}
-
 void FOClient::Net_SendGetGameInfo()
 {
     Bout << NETMSG_SEND_GET_INFO;
@@ -7207,12 +7199,6 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         uint talker_id = Str::AtoI( args[ 2 ].c_str() );
         uint answer_index = Str::AtoI( args[ 3 ].c_str() );
         Self->Net_SendTalk( is_npc, talker_id, answer_index );
-    }
-    else if( cmd == "DialogSay" )
-    {
-        bool is_npc = Str::AtoI( args[ 1 ].c_str() ) != 0;
-        uint talker_id = Str::AtoI( args[ 2 ].c_str() );
-        Self->Net_SendSayNpc( is_npc, talker_id, args[ 3 ].c_str() );
     }
     else if( cmd == "DrawMiniMap" && args.size() >= 6 )
     {

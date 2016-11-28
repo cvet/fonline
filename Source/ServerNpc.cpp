@@ -1375,29 +1375,22 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     cl->Send_Talk();
 }
 
-void FOServer::Process_Dialog( Client* cl, bool is_say )
+void FOServer::Process_Dialog( Client* cl )
 {
     uchar is_npc;
-    uint  id_npc_talk;
+    uint  talk_id;
     uchar num_answer;
-    char  str[ MAX_SAY_NPC_TEXT + 1 ];
 
     cl->Bin >> is_npc;
-    cl->Bin >> id_npc_talk;
+    cl->Bin >> talk_id;
+    cl->Bin >> num_answer;
 
-    if( !is_say )
+    if( ( is_npc && ( cl->Talk.TalkType != TALK_WITH_NPC || cl->Talk.TalkNpc != talk_id ) ) ||
+        ( !is_npc && ( cl->Talk.TalkType != TALK_WITH_HEX || cl->Talk.DialogPackId != talk_id ) ) )
     {
-        cl->Bin >> num_answer;
-    }
-    else
-    {
-        cl->Bin.Pop( str, MAX_SAY_NPC_TEXT );
-        str[ MAX_SAY_NPC_TEXT ] = 0;
-        if( !Str::Length( str ) )
-        {
-            WriteLog( "Say text length is zero, client '{}'.\n", cl->GetInfo() );
-            return;
-        }
+        cl->CloseTalk();
+        WriteLog( "Invalid talk id {} {}, client '{}'.\n", is_npc, talk_id, cl->GetInfo() );
+        return;
     }
 
     if( cl->GetIsHide() )
@@ -1408,52 +1401,29 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
     DialogPack* dialog_pack = nullptr;
     DialogsVec* dialogs = nullptr;
 
+    // Find npc
     if( is_npc )
     {
-        // Find npc
-        npc = CrMngr.GetNpc( id_npc_talk );
+        npc = CrMngr.GetNpc( talk_id );
         if( !npc )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
             cl->CloseTalk();
-            WriteLog( "Npc with id {} not found, client '{}'.\n", id_npc_talk, cl->GetInfo() );
-            return;
-        }
-
-        // Close another talk
-        if( cl->Talk.TalkType != TALK_NONE && ( cl->Talk.TalkType != TALK_WITH_NPC || cl->Talk.TalkNpc != npc->GetId() ) )
-            cl->CloseTalk();
-
-        // Begin dialog
-        if( cl->Talk.TalkType == TALK_NONE )
-        {
-            if( num_answer != ANSWER_BEGIN )
-                return;
-            Dialog_Begin( cl, npc, 0, 0, 0, false );
-            return;
-        }
-
-        // Set dialogs
-        dialog_pack = DlgMngr.GetDialog( cl->Talk.DialogPackId );
-        dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
-        if( !dialogs || !dialogs->size() )
-        {
-            cl->CloseTalk();
-            WriteLog( "No dialogs, npc '{}', client '{}'.\n", npc->GetInfo(), cl->GetInfo() );
+            WriteLog( "Npc with id {} not found, client '{}'.\n", talk_id, cl->GetInfo() );
             return;
         }
     }
-    else
+
+    // Set dialogs
+    dialog_pack = DlgMngr.GetDialog( cl->Talk.DialogPackId );
+    dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
+    if( !dialogs || !dialogs->size() )
     {
-        // Set dialogs
-        dialog_pack = DlgMngr.GetDialog( id_npc_talk );
-        dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
-        if( !dialogs || !dialogs->size() )
-        {
-            WriteLog( "No dialogs, dialog '{}' hx {}, hy {}, client '{}'.\n", Str::GetName( id_npc_talk ), cl->Talk.TalkHexX, cl->Talk.TalkHexY, cl->GetInfo() );
-            return;
-        }
+        cl->CloseTalk();
+        WriteLog( "No dialogs, npc '{}', client '{}'.\n", npc->GetInfo(), cl->GetInfo() );
+        return;
     }
+
 
     // Continue dialog
     Dialog*       cur_dialog = &cl->Talk.CurDialog;
@@ -1464,32 +1434,6 @@ void FOServer::Process_Dialog( Client* cl, bool is_say )
 
     if( !cl->Talk.Barter )
     {
-        // Say about
-        if( is_say )
-        {
-            if( cur_dialog->DlgScript <= NOT_ANSWER_BEGIN_BATTLE )
-                return;
-
-            string str_ = str;
-            Script::PrepareContext( cur_dialog->DlgScript, cl->GetInfo() );
-            Script::SetArgEntity( cl );
-            Script::SetArgEntity( npc );
-            Script::SetArgObject( &str_ );
-
-            cl->Talk.Locked = true;
-            force_dialog = 0;
-            if( Script::RunPrepared() && cur_dialog->RetVal )
-                force_dialog = Script::GetReturnedUInt();
-            cl->Talk.Locked = false;
-
-            if( force_dialog )
-            {
-                dlg_id = force_dialog;
-                goto label_ForceDialog;
-            }
-            return;
-        }
-
         // Barter
         if( num_answer == ANSWER_BARTER )
             goto label_Barter;

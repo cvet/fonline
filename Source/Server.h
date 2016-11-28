@@ -53,7 +53,7 @@ public:
     static void Process_Text( Client* cl );
     static void Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
     static void Process_Command2( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
-    static void Process_Dialog( Client* cl, bool is_say );
+    static void Process_Dialog( Client* cl );
     static void Process_GiveMap( Client* cl );
     static void Process_SetUserHoloStr( Client* cl );
     static void Process_GetUserHoloStr( Client* cl );

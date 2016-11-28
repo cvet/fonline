@@ -148,7 +148,6 @@
 #define MAX_NAME                    ( 30 )
 #define MIN_NAME                    ( 1 )
 #define MAX_CHAT_MESSAGE            ( 100 )
-#define MAX_SAY_NPC_TEXT            ( 25 )
 #define MAX_SCENERY                 ( 5000 )
 #define MAX_DIALOG_TEXT             ( MAX_FOTEXT )
 #define MAX_DLG_LEN_IN_BYTES        ( 64 * 1024 )
