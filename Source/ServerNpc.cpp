@@ -1424,7 +1424,6 @@ void FOServer::Process_Dialog( Client* cl )
         return;
     }
 
-
     // Continue dialog
     Dialog*       cur_dialog = &cl->Talk.CurDialog;
     uint          last_dialog = cur_dialog->Id;
@@ -1478,7 +1477,6 @@ void FOServer::Process_Dialog( Client* cl )
         else
             dlg_id = answer->Link;
 
-label_ForceDialog:
         // Special links
         switch( dlg_id )
         {
