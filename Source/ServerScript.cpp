@@ -1106,15 +1106,14 @@ CScriptArray* FOServer::SScriptFunc::Npc_GetTalkedPlayers( Critter* cr )
         SCRIPT_ERROR_R0( "Critter is not npc." );
 
     CrVec players;
-    for( auto it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
+    for( auto cr_ : cr->VisCr )
     {
-        Critter* cr = *it;
-        if( !cr->IsPlayer() )
-            continue;
-
-        Client* cl = (Client*) cr;
-        if( cl->Talk.TalkType == TALK_WITH_NPC && cl->Talk.TalkNpc == cr->GetId() )
-            players.push_back( cl );
+        if( cr_->IsPlayer() )
+        {
+            Client* cl = (Client*) cr_;
+            if( cl->Talk.TalkType == TALK_WITH_NPC && cl->Talk.TalkNpc == cr->GetId() )
+                players.push_back( cl );
+        }
     }
 
     SortCritterByDist( cr, players );

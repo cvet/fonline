@@ -46,8 +46,6 @@ public:
     CLASS_PROPERTY( uint, TimeoutTransfer );
     CLASS_PROPERTY( uint, TimeoutRemoveFromGame );
     CLASS_PROPERTY( bool, IsHide );
-    CLASS_PROPERTY( hash, HandsItemProtoId );
-    CLASS_PROPERTY( uchar, HandsItemMode );
     CLASS_PROPERTY( ushort, WorldX );
     CLASS_PROPERTY( ushort, WorldY );
     CLASS_PROPERTY( uint, GlobalMapLeaderId );

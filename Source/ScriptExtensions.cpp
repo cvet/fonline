@@ -61,7 +61,7 @@ static CScriptArray* CScriptArray_Clone( asITypeInfo* ti, const CScriptArray** o
     {
         asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
-            ctx->SetException( "Array nullptr" );
+            ctx->SetException( "Array is null" );
         return nullptr;
     }
 
@@ -76,7 +76,7 @@ static void CScriptArray_Set( CScriptArray* arr, const CScriptArray** other )
     {
         asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
-            ctx->SetException( "Array nullptr" );
+            ctx->SetException( "Array is null" );
         return;
     }
 
@@ -89,7 +89,7 @@ static void CScriptArray_InsertArrAt( CScriptArray* arr, uint index, const CScri
     {
         asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
-            ctx->SetException( "Array nullptr" );
+            ctx->SetException( "Array is null" );
         return;
     }
 
@@ -102,7 +102,7 @@ static void CScriptArray_InsertArrFirst( CScriptArray* arr, const CScriptArray**
     {
         asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
-            ctx->SetException( "Array nullptr" );
+            ctx->SetException( "Array is null" );
         return;
     }
 
@@ -115,7 +115,7 @@ static void CScriptArray_InsertArrLast( CScriptArray* arr, const CScriptArray** 
     {
         asIScriptContext* ctx = asGetActiveContext();
         if( ctx )
-            ctx->SetException( "Array nullptr" );
+            ctx->SetException( "Array is null" );
         return;
     }
 
@@ -271,8 +271,17 @@ static CScriptArray* ScriptString_Split( const string& delim, const string& str 
     return array;
 }
 
-static string ScriptString_Join( const CScriptArray* array, const string& delim )
+static string ScriptString_Join( const CScriptArray** parray, const string& delim )
 {
+    const CScriptArray* array = *parray;
+    if( !array )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Array is null" );
+        return "";
+    }
+
     // Create the new string
     string str = "";
     if( array->GetSize() )

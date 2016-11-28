@@ -98,8 +98,6 @@ public:
     CLASS_PROPERTY( ushort, HomeHexY );
     CLASS_PROPERTY( uchar, HomeDir );
     CLASS_PROPERTY( bool, IsHide );
-    CLASS_PROPERTY( hash, HandsItemProtoId );
-    CLASS_PROPERTY( uchar, HandsItemMode );
     CLASS_PROPERTY( CScriptArray *, KnownLocations );
     CLASS_PROPERTY( CScriptArray *, ConnectionIp );
     CLASS_PROPERTY( CScriptArray *, ConnectionPort );

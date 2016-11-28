@@ -50,8 +50,6 @@ CLASS_PROPERTY_IMPL( Critter, LookDistance );
 CLASS_PROPERTY_IMPL( Critter, DialogId );
 CLASS_PROPERTY_IMPL( Critter, NpcRole );
 CLASS_PROPERTY_IMPL( Critter, TeamId );
-CLASS_PROPERTY_IMPL( Critter, HandsItemProtoId );
-CLASS_PROPERTY_IMPL( Critter, HandsItemMode );
 CLASS_PROPERTY_IMPL( Critter, MaxTalkers );
 CLASS_PROPERTY_IMPL( Critter, TalkDistance );
 CLASS_PROPERTY_IMPL( Critter, CurrentHp );

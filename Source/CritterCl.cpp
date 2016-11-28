@@ -32,8 +32,6 @@ CLASS_PROPERTY_IMPL( CritterCl, LookDistance );
 CLASS_PROPERTY_IMPL( CritterCl, Anim3dLayer );
 CLASS_PROPERTY_IMPL( CritterCl, Gender );
 CLASS_PROPERTY_IMPL( CritterCl, DialogId );
-CLASS_PROPERTY_IMPL( CritterCl, HandsItemProtoId );
-CLASS_PROPERTY_IMPL( CritterCl, HandsItemMode );
 CLASS_PROPERTY_IMPL( CritterCl, WorldX );
 CLASS_PROPERTY_IMPL( CritterCl, WorldY );
 CLASS_PROPERTY_IMPL( CritterCl, GlobalMapLeaderId );
