@@ -122,6 +122,19 @@ static void CScriptArray_InsertArrLast( CScriptArray* arr, const CScriptArray** 
     arr->InsertAt( arr->GetSize() - 1, **other );
 }
 
+static bool CScriptArray_Equals( CScriptArray* arr, const CScriptArray** other )
+{
+    if( !*other )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Array is null" );
+        return false;
+    }
+
+    return *arr == **other;
+}
+
 void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
 {
     int r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const T&in)", asFUNCTION( CScriptArray_InsertFirst ), asCALL_CDECL_OBJFIRST );
@@ -154,6 +167,8 @@ void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "void insertLast(const array<T>&in)", asFUNCTION( CScriptArray_InsertArrFirst ), asCALL_CDECL_OBJFIRST );
     RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "array<T>", "bool equals(const array<T>&in)", asFUNCTION( CScriptArray_Equals ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
 }
 
 static CScriptDict* ScriptDict_Clone( asITypeInfo* ti, const CScriptDict** other )
@@ -164,9 +179,24 @@ static CScriptDict* ScriptDict_Clone( asITypeInfo* ti, const CScriptDict** other
     return clone;
 }
 
+static bool ScriptDict_Equals( CScriptDict* dict, const CScriptDict** other )
+{
+    if( !*other )
+    {
+        asIScriptContext* ctx = asGetActiveContext();
+        if( ctx )
+            ctx->SetException( "Dict is null" );
+        return false;
+    }
+
+    return *dict == **other;
+}
+
 void Script::RegisterScriptDictExtensions( asIScriptEngine* engine )
 {
     int r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>&in)", asFUNCTION( ScriptDict_Clone ), asCALL_CDECL );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool equals(const dict<T1,T2>&in)", asFUNCTION( ScriptDict_Equals ), asCALL_CDECL_OBJFIRST );
     RUNTIME_ASSERT( r >= 0 );
 }
 

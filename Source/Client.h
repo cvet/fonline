@@ -59,7 +59,7 @@ public:
     void TryExit();
     bool IsCurInWindow();
     void FlashGameWindow();
-    int  MainLoop();
+    void MainLoop();
     void NetDisconnect();
 
     bool       Active;

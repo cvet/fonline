@@ -249,7 +249,7 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", asMETHOD(CScriptDict, Set), asCALL_THISCALL); assert(r >= 0);
 
     // The assignment operator
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)", asMETHOD(CScriptDict, operator=), asCALL_THISCALL); assert(r >= 0);
+    // Patch r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)", asMETHOD(CScriptDict, operator=), asCALL_THISCALL); assert(r >= 0);
 
     // Other methods
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void set(const T1&in, const T2&in)", asMETHOD(CScriptDict, Set), asCALL_THISCALL); assert(r >= 0);
@@ -263,7 +263,7 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(uint index) const", asMETHOD(CScriptDict, GetKey), asCALL_THISCALL); assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(uint index) const", asMETHOD(CScriptDict, GetValue), asCALL_THISCALL); assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", asMETHOD(CScriptDict, Exists), asCALL_THISCALL); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const", asMETHOD(CScriptDict, operator==), asCALL_THISCALL); assert(r >= 0);
+    // Patch r = engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const", asMETHOD(CScriptDict, operator==), asCALL_THISCALL); assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", asMETHOD(CScriptDict, IsEmpty), asCALL_THISCALL); assert(r >= 0);
 
     // Register GC behaviors in case the dict needs to be garbage collected

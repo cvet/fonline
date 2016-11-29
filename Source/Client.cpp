@@ -816,7 +816,7 @@ void FOClient::LookBordersPrepare()
     HexMngr.SetFog( LookBorders, ShootBorders, &Chosen->SprOx, &Chosen->SprOy );
 }
 
-int FOClient::MainLoop()
+void FOClient::MainLoop()
 {
     // Fixed FPS
     double start_loop = Timer::AccurateTick();
@@ -944,7 +944,7 @@ int FOClient::MainLoop()
         {
             ShowMainScreen( SCREEN_LOGIN );
             AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_FAIL ) );
-            return 1;
+            return;
         }
 
         // After connect things
@@ -1000,7 +1000,7 @@ int FOClient::MainLoop()
     if( IsVideoPlayed() )
     {
         RenderVideo();
-        return 1;
+        return;
     }
 
     CHECK_MULTIPLY_WINDOWS3;
@@ -1067,8 +1067,6 @@ int FOClient::MainLoop()
             Thread::Sleep( -GameOpt.FixedFPS );
         }
     }
-
-    return 1;
 }
 
 void FOClient::ScreenFade( uint time, uint from_color, uint to_color, bool push_back )

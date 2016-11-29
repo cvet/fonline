@@ -136,10 +136,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Loop
     while( !GameOpt.Quit )
-    {
-        if( !engine->MainLoop() )
-            Thread::Sleep( 100 );
-    }
+        engine->MainLoop();
 
     // Finish script
     Script::RunMandatorySuspended();
