@@ -307,7 +307,7 @@ CScriptDict::CScriptDict(asITypeInfo* ot, void* listBuffer)
     asIScriptEngine* engine = ot->GetEngine();
     asBYTE*          buffer = (asBYTE*)listBuffer;
     asUINT           length = *(asUINT*)buffer;
-    buffer += 4;
+    buffer += sizeof(asUINT);
 
     while (length--)
     {
@@ -699,12 +699,9 @@ static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value)
 
     if (subTypeId & asTYPEID_OBJHANDLE)
     {
-        void* tmp = *(void**)ptr;
         *(void**)ptr = *(void**)value;
         if (*(void**)value)
             subType->GetEngine()->AddRefScriptObject(*(void**)value, subType);
-        if (tmp)
-            subType->GetEngine()->ReleaseScriptObject(tmp, subType);
     }
     else if (subTypeId == asTYPEID_BOOL ||
         subTypeId == asTYPEID_INT8 ||
@@ -731,7 +728,7 @@ static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
     int              subTypeId = objType->GetSubTypeId(subTypeIndex);
     asIScriptEngine* engine = objType->GetEngine();
 
-    if ((subTypeId & asTYPEID_MASK_OBJECT) && !(subTypeId & asTYPEID_OBJHANDLE))
+    if (subTypeId & asTYPEID_MASK_OBJECT && !(subTypeId & asTYPEID_OBJHANDLE))
     {
         engine->ReleaseScriptObject(value, engine->GetTypeInfoById(subTypeId));
     }

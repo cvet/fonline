@@ -7,7 +7,7 @@
 // Global_LoadImage
 #include "PNG/png.h"
 
-void* ASDebugMalloc( size_t size )
+static void* ASDebugMalloc( size_t size )
 {
     size += sizeof( size_t );
     MEMORY_PROCESS( MEMORY_ANGEL_SCRIPT, (int) size );
@@ -16,7 +16,7 @@ void* ASDebugMalloc( size_t size )
     return ++ptr;
 }
 
-void ASDebugFree( void* ptr )
+static void ASDebugFree( void* ptr )
 {
     size_t* ptr_ = (size_t*) ptr;
     size_t  size = *( --ptr_ );
@@ -30,7 +30,7 @@ static map< void*, string > ASDbgMemoryPtr;
 static char                 ASDbgMemoryBuf[ 1024 ];
 static Mutex                ASDbgMemoryLocker;
 
-void* ASDeepDebugMalloc( size_t size )
+static void* ASDeepDebugMalloc( size_t size )
 {
     size += sizeof( size_t );
     size_t* ptr = (size_t*) malloc( size );
@@ -51,7 +51,7 @@ void* ASDeepDebugMalloc( size_t size )
     return ++ptr;
 }
 
-void ASDeepDebugFree( void* ptr )
+static void ASDeepDebugFree( void* ptr )
 {
     size_t* ptr_ = (size_t*) ptr;
     size_t  size = *( --ptr_ );

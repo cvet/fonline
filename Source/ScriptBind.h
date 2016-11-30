@@ -346,7 +346,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "bool RunDialog(Critter@+ player, C
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool RunDialog(Critter@+ player, uint dialogPack, uint16 hexX, uint16 hexY, bool ignoreDistance)", asFUNCTION( BIND_CLASS Global_RunDialogHex ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int64 WorldItemCount(hash protoId)", asFUNCTION( BIND_CLASS Global_WorldItemCount ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterFuncdef( "void TextListenerFunc(Critter@+, string)" ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddTextListener(int sayType, string firstStr, uint parameter, TextListenerFunc@ func)", asFUNCTION( BIND_CLASS Global_AddTextListener ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddTextListener(int sayType, string firstStr, uint parameter, TextListenerFunc@+ func)", asFUNCTION( BIND_CLASS Global_AddTextListener ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseTextListener(int sayType, string firstStr, uint parameter)", asFUNCTION( BIND_CLASS Global_EraseTextListener ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "NpcPlane@ CreatePlane()", asFUNCTION( BIND_CLASS Global_CreatePlane ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool SwapCritters(Critter@+ cr1, Critter@+ cr2, bool withInventory)", asFUNCTION( BIND_CLASS Global_SwapCritters ), asCALL_CDECL ) );
@@ -459,7 +459,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void LockScreenScroll(Critter@+ cr
 BIND_ASSERT( engine->RegisterGlobalFunction( "int GetFog(uint16 zoneX, uint16 zoneY)", asFUNCTION( BIND_CLASS Global_GetFog ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDayTime(uint dayPart)", asFUNCTION( BIND_CLASS Global_GetDayTime ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b)", asFUNCTION( BIND_CLASS Global_GetDayColor ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, dictionary@ params = null)", asFUNCTION( BIND_CLASS Global_ShowScreen ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, dictionary@+ params = null)", asFUNCTION( BIND_CLASS Global_ShowScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen = 0)", asFUNCTION( BIND_CLASS Global_HideScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
@@ -829,22 +829,22 @@ BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithIValue(int value)" ) );
 BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithUValue(uint value)" ) );
 BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithIValues(array<int>@+ values)" ) );
 BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithUValues(array<uint>@+ values)" ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFunc@ func)", asFUNCTION( ScriptInvoker::Global_DeferredCall ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValue@ func, int value)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValue ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValue@ func, uint value)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValue ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValues@ func, const array<int>@+ values)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValues ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValues@ func, const array<uint>@+ values)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFunc@+ func)", asFUNCTION( ScriptInvoker::Global_DeferredCall ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValue@+ func, int value)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValue ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValue@+ func, uint value)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValue ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValues@+ func, const array<int>@+ values)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValues@+ func, const array<uint>@+ values)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValues ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsDeferredCallPending(uint id)", asFUNCTION( ScriptInvoker::Global_IsDeferredCallPending ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool CancelDeferredCall(uint id)", asFUNCTION( ScriptInvoker::Global_CancelDeferredCall ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetDeferredCallData(uint id, uint& delay, array<int>@+ values)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetDeferredCallData(uint id, uint& delay, array<uint>@+ values)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallData ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDeferredCallsList(array<uint>@+ ids)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallsList ), asCALL_CDECL ) );
 #ifdef BIND_SERVER
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFunc@ func)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCall ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValue@ func, int value)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValue ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValue@ func, uint value)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValue ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValues@ func, const array<int>@+ values)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValues ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValues@ func, const array<uint>@+ values)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFunc@+ func)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCall ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValue@+ func, int value)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValue ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValue@+ func, uint value)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValue ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValues@+ func, const array<int>@+ values)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValues ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValues@+ func, const array<uint>@+ values)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValues ), asCALL_CDECL ) );
 #endif
 
 #define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )
@@ -861,11 +861,11 @@ void* reg_props = engine->CreateScriptObject( engine->GetTypeInfoByDecl( "array<
 BIND_ASSERT( engine->RegisterGlobalProperty( "array<CritterProperty>@ CritterPropertyRegProperties", new void*( reg_props ) ) ); // Todo: Leak
 #endif
 #if defined ( BIND_SERVER )
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict<CritterProperty, int>@ props = null)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
-BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict<ItemProperty, int>@ props = null)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict<CritterProperty, int>@+ props = null)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict<ItemProperty, int>@+ props = null)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
 #endif
 
-BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@ props = null)", asFUNCTION( Global_GetProtoItem ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@+ props = null)", asFUNCTION( Global_GetProtoItem ), asCALL_CDECL ) );
 
 /************************************************************************/
 /*                                                                      */
