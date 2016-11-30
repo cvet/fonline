@@ -172,6 +172,9 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
 
     if( layer_changed )
     {
+        // Store previous cuts
+        CutDataVec old_cuts = allCuts;
+
         // Store disabled meshes
         for( size_t i = 0, j = allMeshes.size(); i < j; i++ )
             allMeshesDisabled[ i ] = allMeshes[ i ].Disabled;
@@ -246,19 +249,19 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                         continue;
                     }
 
-                    bool aviable = false;
+                    bool available = false;
                     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
                     {
                         Animation3d* anim3d = *it;
                         if( anim3d->animLink.Id == link.Id )
                         {
                             anim3d->childChecker = true;
-                            aviable = true;
+                            available = true;
                             break;
                         }
                     }
 
-                    if( !aviable )
+                    if( !available )
                     {
                         Animation3d* anim3d = nullptr;
 
@@ -324,7 +327,9 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
                 it = childAnimations.erase( it );
             }
             else
+            {
                 ++it;
+            }
         }
 
         // Compare changed effect
@@ -348,6 +353,10 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             for( size_t i = 0, j = allMeshes.size(); i < j && !mesh_changed; i++ )
                 mesh_changed = ( allMeshesDisabled[ i ] != allMeshes[ i ].Disabled );
         }
+
+        // Affect cut
+        if( !mesh_changed )
+            mesh_changed = ( allCuts != old_cuts );
     }
 
     if( animController && index >= 0 )
@@ -1503,29 +1512,6 @@ bool Animation3dEntity::Load( const char* name )
                 delete istr;
                 istr = new istrstream( &big_buf[ istr_pos ] );
             }
-            else if( Str::Compare( token, "Root" ) )
-            {
-                if( layer == -1 )
-                {
-                    link = &animDataDefault;
-                }
-                else if( !layer_val )
-                {
-                    WriteLog( "Wrong layer '{}' zero value.\n", layer );
-                    link = &dummy_link;
-                }
-                else
-                {
-                    animData.push_back( AnimParams() );
-                    link = &animData.back();
-                    memzero( link, sizeof( AnimParams ) );
-                    link->Id = ++link_id;
-                    link->Layer = layer;
-                    link->LayerValue = layer_val;
-                }
-
-                mesh = 0;
-            }
             else if( Str::Compare( token, "Mesh" ) )
             {
                 ( *istr ) >> buf;
@@ -1548,6 +1534,29 @@ bool Animation3dEntity::Load( const char* name )
                     layer_val = (int) ConvertParamValue( buf, convert_value_fail );
 
                 link = &dummy_link;
+                mesh = 0;
+            }
+            else if( Str::Compare( token, "Root" ) )
+            {
+                if( layer == -1 )
+                {
+                    link = &animDataDefault;
+                }
+                else if( !layer_val )
+                {
+                    WriteLog( "Wrong layer '{}' zero value.\n", layer );
+                    link = &dummy_link;
+                }
+                else
+                {
+                    animData.push_back( AnimParams() );
+                    link = &animData.back();
+                    memzero( link, sizeof( AnimParams ) );
+                    link->Id = ++link_id;
+                    link->Layer = layer;
+                    link->LayerValue = layer_val;
+                }
+
                 mesh = 0;
             }
             else if( Str::Compare( token, "Attach" ) )
