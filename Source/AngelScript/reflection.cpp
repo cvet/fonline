@@ -274,8 +274,7 @@ static ScriptTypeOf* ScriptTypeOfFactory2(asITypeInfo* ot, void* ref)
 {
     if (ot->GetSubType()->GetTypeId() <= asTYPEID_DOUBLE)
         return new ScriptTypeOf(nullptr);
-    if (ot->GetSubType()->GetTypeId() & asOBJ_REF)
-        ref = *(void**)ref;
+    ref = *(void**)ref;
     return new ScriptTypeOf(((asIScriptObject*)ref)->GetObjectType());
 }
 
