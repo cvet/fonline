@@ -1281,9 +1281,9 @@ void FOServer::SScriptFunc::Crit_ChangeItemSlot( Critter* cr, uint item_id, ucha
 
     cr->SendAA_MoveItem( item, ACTION_MOVE_ITEM, from_slot );
 
-    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, cr, item, from_slot );
     if( item_swap )
         Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, cr, item_swap, slot );
+    Script::RaiseInternalEvent( ServerFunctions.CritterMoveItem, cr, item, from_slot );
 }
 
 void FOServer::SScriptFunc::Crit_SetCond( Critter* cr, int cond )
