@@ -1310,9 +1310,12 @@ bool MapManager::Transit( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir
     else
     {
         // Different maps
-        uint multihex = cr->GetMultihex();
-        if( !map->FindStartHex( hx, hy, multihex, radius, true ) && !map->FindStartHex( hx, hy, multihex, radius, false ) )
-            return false;
+        if( map )
+        {
+            uint multihex = cr->GetMultihex();
+            if( !map->FindStartHex( hx, hy, multihex, radius, true ) && !map->FindStartHex( hx, hy, multihex, radius, false ) )
+                return false;
+        }
         if( !CanAddCrToMap( cr, map, hx, hy, leader_id ) )
             return false;
 
