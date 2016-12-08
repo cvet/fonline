@@ -167,14 +167,13 @@ string FOServer::GetIngamePlayersStatistics()
     result += "Name                 Id         Ip              Online  Cond     X     Y     Location and map\n";
     for( uint i = 0, j = (uint) players.size(); i < j; i++ )
     {
-        Client*     cl = players[ i ];
-        const char* name = cl->GetName();
-        Map*        map = MapMngr.GetMap( cl->GetMapId() );
-        Location*   loc = ( map ? map->GetLocation() : nullptr );
+        Client*   cl = players[ i ];
+        Map*      map = MapMngr.GetMap( cl->GetMapId() );
+        Location* loc = ( map ? map->GetLocation() : nullptr );
 
         Str::Format( str_loc, "%s (%u) %s (%u)", map ? loc->GetName() : "", map ? loc->GetId() : 0, map ? map->GetName() : "", map ? map->GetId() : 0 );
         Str::Format( str, "%-20s %-10u %-15s %-7s %-8s %-5u %-5u %s\n",
-                     cl->GetName(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->GetCond() ],
+                     cl->Name.c_str(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->GetCond() ],
                      map ? cl->GetHexX() : cl->GetWorldX(), map ? cl->GetHexY() : cl->GetWorldY(), map ? str_loc : "Global map" );
         result += str;
     }
