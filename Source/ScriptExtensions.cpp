@@ -205,6 +205,11 @@ static void ScriptString_Clear( string& str )
     str.clear();
 }
 
+static uint ScriptString_LengthUtf8( const string& str )
+{
+    return Str::LengthUTF8( str.c_str() );
+}
+
 static int ScriptString_ToInt( const string& str, int defaultValue )
 {
     const char* p = str.c_str();
@@ -333,6 +338,8 @@ static string ScriptString_Join( const CScriptArray** parray, const string& deli
 void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
 {
     int r = engine->RegisterObjectMethod( "string", "void clear()", asFUNCTION( ScriptString_Clear ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "uint lengthUtf8() const", asFUNCTION( ScriptString_LengthUtf8 ), asCALL_CDECL_OBJFIRST );
     RUNTIME_ASSERT( r >= 0 );
 
     // Conversion methods

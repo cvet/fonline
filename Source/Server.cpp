@@ -3388,7 +3388,7 @@ bool FOServer::LoadClient( Client* cl )
         return true;
 
     char      fname[ MAX_FOPATH ];
-    Str::Format( fname, "Save/Clients/%s.foclient", cl->Name );
+    Str::Format( fname, "Save/Clients/%s.foclient", cl->Name.c_str() );
     IniParser client_data;
     if( !client_data.AppendFile( fname ) )
     {
