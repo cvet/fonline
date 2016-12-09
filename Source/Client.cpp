@@ -3878,8 +3878,10 @@ void FOClient::Net_OnLoadMap()
 
     CHECK_IN_BUFF_ERROR;
 
-    ScriptFunc.ClientCurMap->IsDestroyed = true;
-    ScriptFunc.ClientCurLocation->IsDestroyed = true;
+    if( ScriptFunc.ClientCurMap )
+        ScriptFunc.ClientCurMap->IsDestroyed = true;
+    if( ScriptFunc.ClientCurLocation )
+        ScriptFunc.ClientCurLocation->IsDestroyed = true;
     SAFEREL( ScriptFunc.ClientCurMap );
     SAFEREL( ScriptFunc.ClientCurLocation );
     if( map_pid )
