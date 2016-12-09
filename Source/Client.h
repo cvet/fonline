@@ -214,7 +214,6 @@ public:
     void OnText( const char* str, uint crid, int how_say );
     void OnMapText( const char* str, ushort hx, ushort hy, uint color );
     void CrittersProcess();
-    void SoundProcess();
     void WaitPing();
 
     uint PingTick, PingCallTick;
@@ -272,7 +271,6 @@ public:
     };
 
     ShowVideoVec  ShowVideos;
-    string        MusicAfterVideo;
     int           MusicVolumeRestore;
     VideoContext* CurVideo;
 

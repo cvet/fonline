@@ -20,9 +20,7 @@
 #define STR_CLIENT_DATA_OUTDATED           ( 16 )
 #define STR_START_SINGLEPLAYER             ( 17 )
 
-// Music/Video
-#define STR_MUSIC_MAIN_THEME               ( 80 )
-#define STR_MUSIC_GLOBAL_MAP               ( 85 )
+// Video
 #define STR_VIDEO_INTRO_BEGIN              ( 90 )
 #define STR_VIDEO_INTRO_END                ( 99 )
 
@@ -297,11 +295,11 @@
 #define STR_SP_NEW_GAME_FAIL               ( 1075 )
 
 // Parameters
-#define STR_PARAM_NAME( index )                      ( 100000 + ( index ) * 10 + 1 )
-#define STR_PARAM_DESC( index )                      ( 100000 + ( index ) * 10 + 2 )
-#define STR_PARAM_NAME_SHORT( index )                ( 100000 + ( index ) * 10 + 3 )
-#define STR_STAT_LEVEL( val )                        ( ( val ) > 10 ? ( 2310 ) : ( ( val ) < 1 ? ( 2301 ) : 2300 + ( val ) ) )
-#define STR_STAT_LEVEL_ABB( val )                    ( ( val ) > 10 ? ( 2320 ) : ( ( val ) < 1 ? ( 2311 ) : 2310 + ( val ) ) )
+#define STR_PARAM_NAME( index )                   ( 100000 + ( index ) * 10 + 1 )
+#define STR_PARAM_DESC( index )                   ( 100000 + ( index ) * 10 + 2 )
+#define STR_PARAM_NAME_SHORT( index )             ( 100000 + ( index ) * 10 + 3 )
+#define STR_STAT_LEVEL( val )                     ( ( val ) > 10 ? ( 2310 ) : ( ( val ) < 1 ? ( 2301 ) : 2300 + ( val ) ) )
+#define STR_STAT_LEVEL_ABB( val )                 ( ( val ) > 10 ? ( 2320 ) : ( ( val ) < 1 ? ( 2311 ) : 2310 + ( val ) ) )
 #define STR_NEXT_LEVEL_NAME                ( 4001 )
 #define STR_UNSPENT_SKILL_POINTS_NAME      ( 4002 )
 #define STR_LEVEL_NAME                     ( 4003 )
@@ -333,8 +331,8 @@
 #define STR_SKILL_NONEED_DOCTOR            ( 3403 )
 #define STR_SKILL_NOFIRSTAID_NEEDDOCTOR    ( 3404 )
 #define STR_SKILL_NODOCTOR_NEEDFIRSTAID    ( 3405 )
-#define STR_SKILL_HEAL_DMG( dmg )                    ( 3410 + ( dmg ) )
-#define STR_SKILL_NOHEAL_DMG( dmg )                  ( 3420 + ( dmg ) )
+#define STR_SKILL_HEAL_DMG( dmg )                 ( 3410 + ( dmg ) )
+#define STR_SKILL_NOHEAL_DMG( dmg )               ( 3420 + ( dmg ) )
 #define STR_SKILL_STEAL_TRIED_GET          ( 3430 )
 #define STR_SKILL_STEAL_TRIED_PUT          ( 3431 )
 #define STR_SKILL_LOCKPICK_FAIL            ( 3440 )
@@ -361,19 +359,19 @@
 #define STR_KARMA_GEN_GEN_NAME2            ( 6001 )
 #define STR_KARMA_GEN_GEN_DESC             ( 6002 )
 #define STR_KARMA_GEN_COUNT                ( 6099 )
-#define STR_KARMA_GEN_VAL( num )                     ( 6100 + ( num ) * 3 )
-#define STR_KARMA_GEN_NAME( num )                    ( 6100 + ( num ) * 3 + 1 )
-#define STR_KARMA_GEN_SKILLDEX( num )                ( 6100 + ( num ) * 3 + 2 )
+#define STR_KARMA_GEN_VAL( num )                  ( 6100 + ( num ) * 3 )
+#define STR_KARMA_GEN_NAME( num )                 ( 6100 + ( num ) * 3 + 1 )
+#define STR_KARMA_GEN_SKILLDEX( num )             ( 6100 + ( num ) * 3 + 2 )
 #define STR_TOWNREP_TITLE_NAME             ( 6405 )
 #define STR_TOWNREP_TITLE_DESC             ( 6406 )
-#define STR_TOWNREP_RATIO_NAME( val )                ( 6500 + ( ( val ) >= GameOpt.ReputationLoved ? 0 : ( ( val ) >= GameOpt.ReputationLiked ? 1 : ( ( val ) >= GameOpt.ReputationAccepted ? 2 : ( ( val ) >= GameOpt.ReputationNeutral ? 3 : ( ( val ) >= GameOpt.ReputationAntipathy ? 4 : ( ( val ) >= GameOpt.ReputationHated ? 5 : 6 ) ) ) ) ) ) )
-#define STR_TOWNREP_RATIO_DESC( val )                ( 6550 + ( ( val ) >= GameOpt.ReputationLoved ? 0 : ( ( val ) >= GameOpt.ReputationLiked ? 1 : ( ( val ) >= GameOpt.ReputationAccepted ? 2 : ( ( val ) >= GameOpt.ReputationNeutral ? 3 : ( ( val ) >= GameOpt.ReputationAntipathy ? 4 : ( ( val ) >= GameOpt.ReputationHated ? 5 : 6 ) ) ) ) ) ) )
+#define STR_TOWNREP_RATIO_NAME( val )             ( 6500 + ( ( val ) >= GameOpt.ReputationLoved ? 0 : ( ( val ) >= GameOpt.ReputationLiked ? 1 : ( ( val ) >= GameOpt.ReputationAccepted ? 2 : ( ( val ) >= GameOpt.ReputationNeutral ? 3 : ( ( val ) >= GameOpt.ReputationAntipathy ? 4 : ( ( val ) >= GameOpt.ReputationHated ? 5 : 6 ) ) ) ) ) ) )
+#define STR_TOWNREP_RATIO_DESC( val )             ( 6550 + ( ( val ) >= GameOpt.ReputationLoved ? 0 : ( ( val ) >= GameOpt.ReputationLiked ? 1 : ( ( val ) >= GameOpt.ReputationAccepted ? 2 : ( ( val ) >= GameOpt.ReputationNeutral ? 3 : ( ( val ) >= GameOpt.ReputationAntipathy ? 4 : ( ( val ) >= GameOpt.ReputationHated ? 5 : 6 ) ) ) ) ) ) )
 #define STR_ADDICT_TITLE_NAME              ( 6900 )
 #define STR_ADDICT_TITLE_DESC              ( 6901 )
 
 // Kills
-#define STR_KILL_NAME( num )                         ( 8000 + ( num ) )
-#define STR_KILL_DESC( num )                         ( 8100 + ( num ) )
+#define STR_KILL_NAME( num )                      ( 8000 + ( num ) )
+#define STR_KILL_DESC( num )                      ( 8100 + ( num ) )
 
 // Items
 #define STR_ITEM_LOOK                      ( 10000 )
@@ -419,8 +417,8 @@
 #define STR_CRITTER_CANT_MOVE              ( 12600 )
 
 // Scores
-#define STR_SCORES_TITLE( score )                    ( 13000 + ( score ) * 10 )
-#define STR_SCORES_NAME( score )                     ( 13000 + ( score ) * 10 + 1 )
+#define STR_SCORES_TITLE( score )                 ( 13000 + ( score ) * 10 )
+#define STR_SCORES_NAME( score )                  ( 13000 + ( score ) * 10 + 1 )
 
 // Help
 #define STR_GAME_HELP                      ( 2000000000 )
@@ -435,24 +433,22 @@
 // ***************************************************************************************
 
 // Global map info
-#define STR_LOC_NAME( loc_pid )                      LOC_STR_ID( loc_pid, 0 )
-#define STR_LOC_INFO( loc_pid )                      LOC_STR_ID( loc_pid, 1 )
-#define STR_LOC_PIC( loc_pid )                       LOC_STR_ID( loc_pid, 5 )
-#define STR_LOC_LABEL_PIC( loc_pid )                 LOC_STR_ID( loc_pid, 6 )
-#define STR_LOC_MAP_NAME( loc_pid, map_index )       LOC_STR_ID( loc_pid, 1000 + ( map_index ) * 10 + 0 )
-#define STR_LOC_MAP_MUSIC( loc_pid, map_index )      LOC_STR_ID( loc_pid, 1000 + ( map_index ) * 10 + 1 )
-#define STR_LOC_MAP_AMBIENT( loc_pid, map_index )    LOC_STR_ID( loc_pid, 1000 + ( map_index ) * 10 + 2 )
-#define STR_LOC_ENTRANCE_NAME( loc_pid, ent )        LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 0 )
-#define STR_LOC_ENTRANCE_PICX( loc_pid, ent )        LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 1 )
-#define STR_LOC_ENTRANCE_PICY( loc_pid, ent )        LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 2 )
+#define STR_LOC_NAME( loc_pid )                   LOC_STR_ID( loc_pid, 0 )
+#define STR_LOC_INFO( loc_pid )                   LOC_STR_ID( loc_pid, 1 )
+#define STR_LOC_PIC( loc_pid )                    LOC_STR_ID( loc_pid, 5 )
+#define STR_LOC_LABEL_PIC( loc_pid )              LOC_STR_ID( loc_pid, 6 )
+#define STR_LOC_MAP_NAME( loc_pid, map_index )    LOC_STR_ID( loc_pid, 1000 + ( map_index ) * 10 + 0 )
+#define STR_LOC_ENTRANCE_NAME( loc_pid, ent )     LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 0 )
+#define STR_LOC_ENTRANCE_PICX( loc_pid, ent )     LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 1 )
+#define STR_LOC_ENTRANCE_PICY( loc_pid, ent )     LOC_STR_ID( loc_pid, 2000 + ( ent ) * 10 + 2 )
 
 // ***************************************************************************************
 // ***  FODLG.MSG  ***********************************************************************
 // ***************************************************************************************
 
-#define STR_NPC_NAME( num )                          ( ( ( num ) & DLGID_MASK ) | 10 )
-#define STR_NPC_PID_NAME( pid )                      ( CR_STR_ID( pid, 1 ) )
-#define STR_NPC_AVATAR( num )                        ( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 11 : 0 )
+#define STR_NPC_NAME( num )                       ( ( ( num ) & DLGID_MASK ) | 10 )
+#define STR_NPC_PID_NAME( pid )                   ( CR_STR_ID( pid, 1 ) )
+#define STR_NPC_AVATAR( num )                     ( ( num ) != 0 ? ( ( num ) & DLGID_MASK ) | 11 : 0 )
 
 // ***************************************************************************************
 // ***  FOQUEST.MSG  *********************************************************************
@@ -460,8 +456,8 @@
 
 #define STR_QUEST_NUMBER                   ( 4 )
 #define STR_QUEST_PROCESS                  ( 5 )
-#define STR_QUEST_MAP( num )                         ( ( num ) * 1000 + 101 )
-#define STR_QUEST_INFO( num )                        ( ( num ) * 1000 + 102 )
+#define STR_QUEST_MAP( num )                      ( ( num ) * 1000 + 101 )
+#define STR_QUEST_INFO( num )                     ( ( num ) * 1000 + 102 )
 
 // ***************************************************************************************
 // ***  FOCOMBAT.MSG  ********************************************************************

@@ -22,11 +22,9 @@ public:
     bool PlaySound( const char* name );
     bool PlayMusic( const char* fname, uint pos = 0, uint repeat = MUSIC_REPEAT_TIME );
     void StopMusic();
-    void PlayAmbient( const char* str );
-
-    void ProcessSounds( uchar* output );
 
 private:
+    void   ProcessSounds( uchar* output );
     bool   ProcessSound( Sound* sound );
     Sound* Load( const char* fname, bool is_music );
     bool   LoadWAV( Sound* sound, const char* fname );

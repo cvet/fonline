@@ -3,6 +3,7 @@
 #include "ResourceManager.h"
 #include "Text.h"
 #include "FileManager.h"
+#include <functional>
 
 // Manager instance
 SoundManager SndMngr;
@@ -62,11 +63,6 @@ public:
     }
 };
 
-void AudioCallback( void* userdata, Uint8* stream, int len )
-{
-    SndMngr.ProcessSounds( stream );
-}
-
 // SoundManager
 bool SoundManager::Init()
 {
@@ -96,8 +92,13 @@ bool SoundManager::Init()
     desired.samples = 0;               // Audio buffer size in samples (power of 2)
     desired.padding = 0;               // Necessary for some compile environments
     desired.size = 0;                  // Audio buffer size in bytes (calculated)
-    desired.callback = AudioCallback;
-    desired.userdata = nullptr;
+    desired.callback = [] ( void* userdata, Uint8 * stream, int len )
+    {
+        auto& func = *( std::function< void(const SoundManager&, uchar*) >* )userdata;
+        func( SndMngr, stream );
+    };
+    desired.userdata = new std::function< void(SoundManager&, uchar*) >( &SoundManager::ProcessSounds );
+
     DeviceID = SDL_OpenAudioDevice( nullptr, 0, &desired, &SoundSpec, SDL_AUDIO_ALLOW_ANY_CHANGE );
     if( DeviceID < 2 )
     {
@@ -667,57 +668,4 @@ void SoundManager::StopMusic()
         }
     }
     SDL_UnlockAudioDevice( DeviceID );
-}
-
-void SoundManager::PlayAmbient( const char* str )
-{
-    if( !isActive || !GameOpt.SoundVolume )
-        return;
-
-    int  rnd = Random( 1, 100 );
-
-    char name[ MAX_FOPATH ];
-    char num[ 64 ];
-
-    for( int i = 0; *str; ++i, ++str )
-    {
-        // Read name
-        name[ i ] = *str;
-
-        if( *str == ':' )
-        {
-            if( !i )
-                return;
-            name[ i ] = '\0';
-            str++;
-
-            // Read number
-            int j;
-            for( j = 0; *str && *str != ','; ++j, ++str )
-                num[ j ] = *str;
-            if( !j )
-                return;
-            num[ j ] = '\0';
-
-            // Check
-            int k = Str::AtoI( num );
-            if( rnd <= k )
-            {
-                if( !Str::CompareCase( name, "blank" ) )
-                    PlaySound( name );
-                return;
-            }
-
-            rnd -= k;
-            i = -1;
-
-            while( *str == ' ' )
-                str++;
-            if( *str != ',' )
-                return;
-            while( *str == ' ' )
-                str++;
-            str++;
-        }
-    }
 }

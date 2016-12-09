@@ -28,12 +28,12 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "GlobalVars@ Globals", &Globals ) )
 
 // Map and location for client and mapper
 #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-BIND_ASSERT( engine->RegisterObjectType( "Map", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &BIND_CLASS ClientCurMap ) );
-BIND_ASSERT( engine->RegisterObjectType( "Location", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
-BIND_ASSERT( engine->RegisterGlobalProperty( "Location@ CurLocation", &BIND_CLASS ClientCurLocation ) );
+REGISTER_ENTITY( "Map" );
 REGISTER_ENTITY_CAST( "Map", Map );
+REGISTER_ENTITY( "Location" );
 REGISTER_ENTITY_CAST( "Location", Location );
+BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &BIND_CLASS ClientCurMap ) );
+BIND_ASSERT( engine->RegisterGlobalProperty( "Location@ CurLocation", &BIND_CLASS ClientCurLocation ) );
 #endif
 
 #ifdef BIND_SERVER
@@ -439,7 +439,6 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "void QuakeScreen(uint noise, uint 
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool PlaySound(string soundName)", asFUNCTION( BIND_CLASS Global_PlaySound ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool PlayMusic(string musicName, uint pos, uint repeat)", asFUNCTION( BIND_CLASS Global_PlayMusic ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void PlayVideo(string videoName, bool canStop)", asFUNCTION( BIND_CLASS Global_PlayVideo ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetCurrentMapPid()", asFUNCTION( BIND_CLASS Global_GetCurrentMapPid ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string text)", asFUNCTION( BIND_CLASS Global_Message ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string text, int type)", asFUNCTION( BIND_CLASS Global_MessageType ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_MessageMsg ), asCALL_CDECL ) );

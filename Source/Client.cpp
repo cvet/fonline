@@ -414,27 +414,16 @@ bool FOClient::Init()
     // Intro
     else if( !MainConfig->IsKey( "", "SkipIntro" ) )
     {
-        if( CurLang.Msg[ TEXTMSG_GAME ].Count( STR_MUSIC_MAIN_THEME ) )
-            MusicAfterVideo = CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_MUSIC_MAIN_THEME );
         for( uint i = STR_VIDEO_INTRO_BEGIN; i < STR_VIDEO_INTRO_END; i++ )
             if( CurLang.Msg[ TEXTMSG_GAME ].Count( i ) )
                 AddVideo( CurLang.Msg[ TEXTMSG_GAME ].GetStr( i, 0 ), true, false );
 
         if( !IsVideoPlayed() )
-        {
             ScreenFadeOut();
-            if( MusicAfterVideo != "" )
-            {
-                SndMngr.PlayMusic( MusicAfterVideo.c_str() );
-                MusicAfterVideo = "";
-            }
-        }
     }
     else
     {
         ScreenFadeOut();
-        if( CurLang.Msg[ TEXTMSG_GAME ].Count( STR_MUSIC_MAIN_THEME ) )
-            SndMngr.PlayMusic( CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_MUSIC_MAIN_THEME ) );
     }
 
     // Disable dumps if multiple window detected
@@ -971,7 +960,6 @@ void FOClient::MainLoop()
     ParseMouse();
 
     // Process
-    SoundProcess();
     AnimProcess();
     CHECK_MULTIPLY_WINDOWS1;
 
@@ -3618,7 +3606,6 @@ void FOClient::Net_OnEndParseToGame()
     {
         HexMngr.FindSetCenter( Chosen->GetHexX(), Chosen->GetHexY() );
         Chosen->AnimateStay();
-        SndMngr.PlayAmbient( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
         ShowMainScreen( SCREEN_GAME );
         HexMngr.RebuildLight();
     }
@@ -3626,11 +3613,6 @@ void FOClient::Net_OnEndParseToGame()
     {
         ShowMainScreen( SCREEN_GLOBAL_MAP );
     }
-
-    if( IsVideoPlayed() )
-        MusicAfterVideo = CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_MUSIC( CurMapLocPid, CurMapIndexInLoc ) );
-    else
-        SndMngr.PlayMusic( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_MUSIC( CurMapLocPid, CurMapIndexInLoc ) ) );
 
     WriteLog( "Entering to game complete.\n" );
 }
@@ -3896,6 +3878,8 @@ void FOClient::Net_OnLoadMap()
 
     CHECK_IN_BUFF_ERROR;
 
+    ScriptFunc.ClientCurMap->IsDestroyed = true;
+    ScriptFunc.ClientCurLocation->IsDestroyed = true;
     SAFEREL( ScriptFunc.ClientCurMap );
     SAFEREL( ScriptFunc.ClientCurLocation );
     if( map_pid )
@@ -4464,7 +4448,6 @@ void FOClient::Net_OnViewMap()
         return;
 
     HexMngr.FindSetCenter( hx, hy );
-    SndMngr.PlayAmbient( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
     ShowMainScreen( SCREEN_GAME );
     ScreenFadeOut();
     HexMngr.RebuildLight();
@@ -5734,18 +5717,6 @@ const char* FOClient::FmtGameText( uint str_num, ... )
     return res;
 }
 
-void FOClient::SoundProcess()
-{
-    // Ambient
-    static uint next_ambient = 0;
-    if( Timer::GameTick() > next_ambient )
-    {
-        if( IsMainScreen( SCREEN_GAME ) )
-            SndMngr.PlayAmbient( CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_AMBIENT( CurMapLocPid, CurMapIndexInLoc ) ) );
-        next_ambient = Timer::GameTick() + Random( AMBIENT_SOUND_TIME / 2, AMBIENT_SOUND_TIME );
-    }
-}
-
 void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_sequence )
 {
     // Stop current
@@ -6089,18 +6060,9 @@ void FOClient::NextVideo()
 
         // Manage next
         if( ShowVideos.size() )
-        {
             PlayVideo();
-        }
         else
-        {
             ScreenFadeOut();
-            if( MusicAfterVideo != "" )
-            {
-                SndMngr.PlayMusic( MusicAfterVideo.c_str() );
-                MusicAfterVideo = "";
-            }
-        }
     }
 }
 

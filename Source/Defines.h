@@ -32,7 +32,6 @@
 #define TEMP_BUF_SIZE               ( 8192 )
 #define MAX_FOPATH                  UTF8_BUF_SIZE( 2048 )
 #define MAX_HOLO_INFO               ( 250 )
-#define AMBIENT_SOUND_TIME          ( 60000 )  // Random(X/2,X);
 #define EFFECT_SCRIPT_VALUES        ( 10 )
 #define ABC_SIZE                    ( 26 )
 #define DIRS_COUNT                  ( GameOpt.MapHexagonal ? 6 : 8 )
