@@ -200,14 +200,184 @@ void Script::RegisterScriptDictExtensions( asIScriptEngine* engine )
     RUNTIME_ASSERT( r >= 0 );
 }
 
+static bool IndexUTF8ToRaw( const string& str, int& index, uint* length = nullptr, uint offset = 0 )
+{
+    if( index < 0 )
+    {
+        index = (int) Str::LengthUTF8( str.c_str() ) + index;
+        if( index < 0 )
+        {
+            index = 0;
+            if( length )
+            {
+                if( !str.empty() )
+                    Str::DecodeUTF8( str.c_str(), length );
+                else
+                    *length = 0;
+            }
+            return false;
+        }
+    }
+
+    const char* begin = str.c_str() + offset;
+    const char* s = begin;
+    while( *s )
+    {
+        uint ch_length;
+        Str::DecodeUTF8( s, &ch_length );
+        if( index > 0 )
+        {
+            s += ch_length;
+            index--;
+        }
+        else
+        {
+            index = (uint) ( s - begin );
+            if( length )
+                *length = ch_length;
+            return true;
+        }
+    }
+    index = (uint) ( s - begin );
+    if( length )
+        *length = 0;
+    return false;
+}
+
+static int IndexRawToUTF8( const string& str, int index )
+{
+    int         result = 0;
+    const char* s = str.c_str();
+    while( index > 0 && *s )
+    {
+        uint ch_length;
+        Str::DecodeUTF8( s, &ch_length );
+        s += ch_length;
+        index -= ch_length;
+        result++;
+    }
+    return result;
+}
+
 static void ScriptString_Clear( string& str )
 {
     str.clear();
 }
 
-static uint ScriptString_LengthUtf8( const string& str )
+static string ScriptString_SubString( const string& str, int start, int count )
+{
+    if( !IndexUTF8ToRaw( str, start ) )
+        return "";
+    if( count >= 0 )
+        IndexUTF8ToRaw( str, count, NULL, start );
+    return str.substr( start, count >= 0 ? count : std::string::npos );
+}
+
+static int ScriptString_FindFirst( const string& str, const string& sub, int start )
+{
+    if( !IndexUTF8ToRaw( str, start ) )
+        return -1;
+    int pos = (int) str.find( sub, start );
+    return pos != -1 ? IndexRawToUTF8( str, pos ) : -1;
+}
+
+static int ScriptString_FindLast( const string& str, const string& sub, int start )
+{
+    if( !IndexUTF8ToRaw( str, start ) )
+        return -1;
+    int pos = (int) str.rfind( sub );
+    return pos != -1 && pos >= start ? IndexRawToUTF8( str, pos ) : -1;
+}
+
+static int ScriptString_FindFirstOf( const string& str, const string& chars, int start )
+{
+    if( !IndexUTF8ToRaw( str, start ) )
+        return -1;
+    int pos = (int) str.find_first_of( chars, start );
+    return pos != -1 ? IndexRawToUTF8( str, pos ) : -1;
+}
+
+static int ScriptString_FindFirstNotOf( const string& str, const string& chars, int start )
+{
+    if( !IndexUTF8ToRaw( str, start ) )
+        return -1;
+    int pos =  (int) str.find_first_not_of( chars, start );
+    return pos != -1 ? IndexRawToUTF8( str, pos ) : -1;
+}
+
+static int ScriptString_FindLastOf( const string& str, const string& chars, int start )
+{
+    if( !IndexUTF8ToRaw( str, start ) )
+        return -1;
+    int pos = (int) str.find_last_of( chars );
+    return pos != -1 && pos >= start ? IndexRawToUTF8( str, pos ) : -1;
+}
+
+static int ScriptString_FindLastNotOf( const string& str, const string& chars, int start )
+{
+    if( !IndexUTF8ToRaw( str, start ) )
+        return -1;
+    int pos = (int) str.find_last_not_of( chars, start );
+    return pos != -1 && pos >= start ? IndexRawToUTF8( str, pos ) : -1;
+}
+
+static string ScriptString_GetAt( const string& str, int i )
+{
+    uint length;
+    if( !IndexUTF8ToRaw( str, i, &length ) )
+    {
+        // Set a script exception
+        asIScriptContext* ctx = asGetActiveContext();
+        ctx->SetException( "Out of range" );
+
+        // Return a null pointer
+        return 0;
+    }
+
+    return string( str.c_str() + i, length );
+}
+
+static void ScriptString_SetAt( string& str, int i, string& value )
+{
+    uint length;
+    if( !IndexUTF8ToRaw( str, i, &length ) )
+    {
+        // Set a script exception
+        asIScriptContext* ctx = asGetActiveContext();
+        ctx->SetException( "Out of range" );
+        return;
+    }
+
+    if( length )
+        str.erase( i, length );
+    if( value.length() )
+        str.insert( i, value.c_str() );
+}
+
+static uint ScriptString_Length( const string& str )
 {
     return Str::LengthUTF8( str.c_str() );
+}
+
+static uint ScriptString_RawLength( const string& str )
+{
+    return (uint) str.length();
+}
+
+static void ScriptString_RawResize( string& str, uint length )
+{
+    str.resize( length );
+}
+
+static uchar ScriptString_RawGet( const string& str, uint index )
+{
+    return index < (uint) str.length() ? str[ index ] : 0;
+}
+
+static void ScriptString_RawSet( string& str, uint index, uchar value )
+{
+    if( index < (uint) str.length() )
+        str[ index ] = (char) value;
 }
 
 static int ScriptString_ToInt( const string& str, int defaultValue )
@@ -271,14 +441,14 @@ static bool ScriptString_EndsWith( const string& str, const string& other )
 static string ScriptString_Lower( const string& str )
 {
     string result = str;
-    std::transform( result.begin(), result.end(), result.begin(), tolower );
+    Str::LowerUTF8( (char*) result.c_str() );
     return result;
 }
 
 static string ScriptString_Upper( const string& str )
 {
     string result = str;
-    std::transform( result.begin(), result.end(), result.begin(), toupper );
+    Str::UpperUTF8( (char*) result.c_str() );
     return result;
 }
 
@@ -339,7 +509,36 @@ void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
 {
     int r = engine->RegisterObjectMethod( "string", "void clear()", asFUNCTION( ScriptString_Clear ), asCALL_CDECL_OBJFIRST );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "uint lengthUtf8() const", asFUNCTION( ScriptString_LengthUtf8 ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "uint length() const", asFUNCTION( ScriptString_Length ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "uint rawLength() const", asFUNCTION( ScriptString_RawLength ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "void rawResize(uint)", asFUNCTION( ScriptString_RawResize ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "uint8 rawGet(uint) const", asFUNCTION( ScriptString_RawGet ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "void rawSet(uint, uint8)", asFUNCTION( ScriptString_RawSet ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+
+    r = engine->RegisterObjectMethod( "string", "string substr(uint start = 0, int count = -1) const", asFUNCTION( ScriptString_SubString ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findFirst(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirst ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findFirstOf(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirstOf ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findFirstNotOf(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirstNotOf ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findLast(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLast ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findLastOf(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLastOf ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "int findLastNotOf(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLastNotOf ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+
+    // Register the index operator, both as a mutator and as an inspector
+    r = engine->RegisterObjectMethod( "string", "string get_opIndex(int) const", asFUNCTION( ScriptString_GetAt ), asCALL_CDECL_OBJFIRST );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "void set_opIndex(int, const string &in)", asFUNCTION( ScriptString_SetAt ), asCALL_CDECL_OBJFIRST );
     RUNTIME_ASSERT( r >= 0 );
 
     // Conversion methods
