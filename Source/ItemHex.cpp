@@ -147,12 +147,18 @@ void ItemHex::Process()
     // Effect
     if( IsDynamicEffect() && !IsFinishing() )
     {
-        if( Timer::GameTick() >= effLastTick + EFFECT_0_TIME_PROC )
+        float dt = Timer::GameTick() - effLastTick;
+        if( dt > 0 )
         {
-            EffOffsX += effSx * EFFECT_0_SPEED_MUL;
-            EffOffsY += effSy * EFFECT_0_SPEED_MUL;
-            effCurX += effSx * EFFECT_0_SPEED_MUL;
-            effCurY += effSy * EFFECT_0_SPEED_MUL;
+            float speed = GetFlyEffectSpeed();
+            if( speed == 0 )
+                speed = 1.0f;
+
+            EffOffsX += effSx * dt * speed;
+            EffOffsY += effSy * dt * speed;
+            effCurX += effSx * dt * speed;
+            effCurY += effSy * dt * speed;
+
             SetAnimOffs();
             effLastTick = Timer::GameTick();
             if( DistSqrt( (int) effCurX, (int) effCurY, effStartX, effStartY ) >= effDist )

@@ -204,6 +204,7 @@ public:
     CLASS_PROPERTY( short, OffsetX );
     CLASS_PROPERTY( short, OffsetY );
     CLASS_PROPERTY( int, TriggerNum );
+    CLASS_PROPERTY( float, FlyEffectSpeed );
 
 public:
     Item( uint id, ProtoItem* proto );

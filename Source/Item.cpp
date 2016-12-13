@@ -108,6 +108,7 @@ CLASS_PROPERTY_IMPL( Item, RadioChannel );
 CLASS_PROPERTY_IMPL( Item, RadioFlags );
 CLASS_PROPERTY_IMPL( Item, RadioBroadcastSend );
 CLASS_PROPERTY_IMPL( Item, RadioBroadcastRecv );
+CLASS_PROPERTY_IMPL( Item, FlyEffectSpeed );
 
 Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, PropertiesRegistrator, proto )
 {

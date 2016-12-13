@@ -5,9 +5,6 @@
 #include "Item.h"
 #include "SpriteManager.h"
 
-#define EFFECT_0_TIME_PROC    ( 10 )
-#define EFFECT_0_SPEED_MUL    ( 10.0f )
-
 struct AnyFrames;
 
 class ItemHex: public Item
