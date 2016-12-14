@@ -384,7 +384,7 @@ Randomizer MulWndRandom;
 #define MULTIPLY_WINDOWS_FAIL6     SprMngr.Finish();
 #define MULTIPLY_WINDOWS_FAIL7     GraphicLoader::LoadModel( NULL );
 #define MULTIPLY_WINDOWS_FAIL8     Finish();
-#define MULTIPLY_WINDOWS_FAIL9     SndMngr.ClearSounds(); SndMngr.Finish();
+#define MULTIPLY_WINDOWS_FAIL9     SndMngr.StopSounds(); SndMngr.Finish();
 #define CHECK_MULTIPLY_WINDOWS( num, f1, f2, f3 )                             \
     do                                                                        \
     {                                                                         \

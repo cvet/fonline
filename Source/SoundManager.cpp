@@ -118,21 +118,14 @@ void SoundManager::Finish()
 {
     WriteLog( "Sound manager finish.\n" );
 
-    ClearSounds();
+    StopSounds();
+    StopMusic();
+
     SDL_CloseAudioDevice( DeviceID );
     DeviceID = 0;
 
     isActive = false;
     WriteLog( "Sound manager finish complete.\n" );
-}
-
-void SoundManager::ClearSounds()
-{
-    SDL_LockAudioDevice( DeviceID );
-    for( auto it = soundsActive.begin(); it != soundsActive.end(); ++it )
-        delete *it;
-    soundsActive.clear();
-    SDL_UnlockAudioDevice( DeviceID );
 }
 
 void SoundManager::ProcessSounds( uchar* output )
@@ -213,6 +206,7 @@ bool SoundManager::ProcessSound( Sound* sound )
         if( Timer::GameTick() >= sound->NextPlay )
         {
             // Set buffer to beginning
+            sound->ConvertedBufCur = 0;
             if( sound->Streamable && sound->StreamType == Sound::OGG )
                 ov_raw_seek( &sound->OggDescriptor, 0 );
 
@@ -633,7 +627,7 @@ bool SoundManager::PlaySound( const char* name )
     return false;
 }
 
-bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
+bool SoundManager::PlayMusic( const char* fname, uint repeat_time )
 {
     if( !isActive )
         return true;
@@ -646,13 +640,31 @@ bool SoundManager::PlayMusic( const char* fname, uint pos, uint repeat )
         return false;
 
     sound->IsMusic = true;
-    sound->RepeatTime = repeat;
+    sound->RepeatTime = repeat_time;
     return true;
+}
+
+void SoundManager::StopSounds()
+{
+    SDL_LockAudioDevice( DeviceID );
+    for( auto it = soundsActive.begin(); it != soundsActive.end();)
+    {
+        Sound* sound = *it;
+        if( !sound->IsMusic )
+        {
+            delete *it;
+            it = soundsActive.erase( it );
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    SDL_UnlockAudioDevice( DeviceID );
 }
 
 void SoundManager::StopMusic()
 {
-    // Find and erase old music
     SDL_LockAudioDevice( DeviceID );
     for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {

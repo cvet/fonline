@@ -3899,7 +3899,7 @@ void FOClient::Net_OnLoadMap()
     CurMapIndexInLoc = map_index_in_loc;
     GameMapTexts.clear();
     HexMngr.UnloadMap();
-    SndMngr.ClearSounds();
+    SndMngr.StopSounds();
     ShowMainScreen( SCREEN_WAIT );
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
@@ -5839,7 +5839,7 @@ void FOClient::PlayVideo()
     {
         MusicVolumeRestore = GameOpt.MusicVolume;
         GameOpt.MusicVolume = 100;
-        SndMngr.PlayMusic( video.SoundName.c_str(), 0, 0 );
+        SndMngr.PlayMusic( video.SoundName.c_str(), 0 );
     }
 }
 
@@ -7551,9 +7551,15 @@ bool FOClient::SScriptFunc::Global_PlaySound( string sound_name )
     return SndMngr.PlaySound( sound_name.c_str() );
 }
 
-bool FOClient::SScriptFunc::Global_PlayMusic( string music_name, uint pos, uint repeat )
+bool FOClient::SScriptFunc::Global_PlayMusic( string music_name, uint repeat_time )
 {
-    return SndMngr.PlayMusic( music_name.c_str(), pos, repeat );
+    if( music_name.empty() )
+    {
+        SndMngr.StopMusic();
+        return true;
+    }
+
+    return SndMngr.PlayMusic( music_name.c_str(), repeat_time );
 }
 
 void FOClient::SScriptFunc::Global_PlayVideo( string video_name, bool can_stop )

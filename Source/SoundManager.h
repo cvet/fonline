@@ -17,10 +17,10 @@ public:
 
     bool Init();
     void Finish();
-    void ClearSounds();
 
     bool PlaySound( const char* name );
-    bool PlayMusic( const char* fname, uint pos = 0, uint repeat = MUSIC_REPEAT_TIME );
+    bool PlayMusic( const char* fname, uint repeat_time );
+    void StopSounds();
     void StopMusic();
 
 private:

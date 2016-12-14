@@ -147,7 +147,7 @@ void ItemHex::Process()
     // Effect
     if( IsDynamicEffect() && !IsFinishing() )
     {
-        float dt = Timer::GameTick() - effLastTick;
+        float dt = (float) ( Timer::GameTick() - effLastTick );
         if( dt > 0 )
         {
             float speed = GetFlyEffectSpeed();

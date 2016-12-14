@@ -412,7 +412,7 @@ public:
         static void          Global_FlushScreen( uint from_color, uint to_color, uint ms );
         static void          Global_QuakeScreen( uint noise, uint ms );
         static bool          Global_PlaySound( string sound_name );
-        static bool          Global_PlayMusic( string music_name, uint pos, uint repeat );
+        static bool          Global_PlayMusic( string music_name, uint repeat_time );
         static void          Global_PlayVideo( string video_name, bool can_stop );
 
         static hash   Global_GetCurrentMapPid();

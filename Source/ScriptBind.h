@@ -437,7 +437,7 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPathLength(Critter@+ cr, u
 BIND_ASSERT( engine->RegisterGlobalFunction( "void FlushScreen(uint fromColor, uint toColor, uint timeMs)", asFUNCTION( BIND_CLASS Global_FlushScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void QuakeScreen(uint noise, uint timeMs)", asFUNCTION( BIND_CLASS Global_QuakeScreen ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "bool PlaySound(string soundName)", asFUNCTION( BIND_CLASS Global_PlaySound ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "bool PlayMusic(string musicName, uint pos, uint repeat)", asFUNCTION( BIND_CLASS Global_PlayMusic ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "bool PlayMusic(string musicName, uint repeatTime = 0)", asFUNCTION( BIND_CLASS Global_PlayMusic ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void PlayVideo(string videoName, bool canStop)", asFUNCTION( BIND_CLASS Global_PlayVideo ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string text)", asFUNCTION( BIND_CLASS Global_Message ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string text, int type)", asFUNCTION( BIND_CLASS Global_MessageType ), asCALL_CDECL ) );
