@@ -30,10 +30,7 @@ private:
     bool   LoadWAV( Sound* sound, const char* fname );
     bool   LoadACM( Sound* sound, const char* fname, bool is_music );
     bool   LoadOGG( Sound* sound, const char* fname );
-    bool   Streaming( Sound* sound );
-    bool   StreamingWAV( Sound* sound );
-    bool   StreamingACM( Sound* sound );
-    bool   StreamingOGG( Sound* sound );
+    bool   StreamOGG( Sound* sound );
     bool   ConvertData( Sound* sound );
 
     bool     isActive;

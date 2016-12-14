@@ -22,25 +22,24 @@ SDL_AudioSpec     SoundSpec;
 class Sound
 {
 public:
-    uchar* BaseBuf;
-    uint   BaseBufSize;
+    uchar*         BaseBuf;
+    uint           BaseBufSize;
 
-    uchar* ConvertedBuf;
-    uint   ConvertedBufSize;
-    uint   ConvertedBufCur;
+    uchar*         ConvertedBuf;
+    uint           ConvertedBufSize;
+    uint           ConvertedBufCur;
 
-    uchar* OutputBuf;
+    uchar*         OutputBuf;
 
-    int    OriginalFormat;
-    int    OriginalChannels;
-    int    OriginalRate;
+    int            OriginalFormat;
+    int            OriginalChannels;
+    int            OriginalRate;
 
-    bool   IsMusic;
-    uint   NextPlay;
-    uint   RepeatTime;
+    bool           IsMusic;
+    uint           NextPlay;
+    uint           RepeatTime;
 
-    bool   Streamable;
-    enum { WAV, ACM, OGG } StreamType;
+    bool           StreamableOGG;
 
     OggVorbis_File OggDescriptor;
 
@@ -48,7 +47,7 @@ public:
              ConvertedBufSize( 0 ), ConvertedBufCur( 0 ), OutputBuf( nullptr ),
              OriginalFormat( 0 ), OriginalChannels( 0 ), OriginalRate( 0 ),
              IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),
-             Streamable( false ), StreamType( WAV )
+             StreamableOGG( false )
     {
         OutputBuf = new uchar[ SoundSpec.size ];
     }
@@ -58,7 +57,7 @@ public:
             SAFEDELA( ConvertedBuf );
         SAFEDELA( BaseBuf );
         SAFEDELA( OutputBuf );
-        if( Streamable && StreamType == OGG )
+        if( StreamableOGG )
             ov_clear( &OggDescriptor );
     }
 };
@@ -165,7 +164,7 @@ bool SoundManager::ProcessSound( Sound* sound )
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
-            while( offset < whole && sound->Streamable && Streaming( sound ) )
+            while( offset < whole && sound->StreamableOGG && StreamOGG( sound ) )
             {
                 uint write = sound->ConvertedBufSize - sound->ConvertedBufCur;
                 if( offset + write > whole )
@@ -186,9 +185,8 @@ bool SoundManager::ProcessSound( Sound* sound )
             sound->ConvertedBufCur += whole;
         }
 
-        // Stream empty buffer
-        if( sound->ConvertedBufCur == sound->ConvertedBufSize && sound->Streamable )
-            return Streaming( sound );
+        if( sound->StreamableOGG && sound->ConvertedBufCur == sound->ConvertedBufSize )
+            StreamOGG( sound );
 
         // Continue processing
         return true;
@@ -207,12 +205,8 @@ bool SoundManager::ProcessSound( Sound* sound )
         {
             // Set buffer to beginning
             sound->ConvertedBufCur = 0;
-            if( sound->Streamable && sound->StreamType == Sound::OGG )
+            if( sound->StreamableOGG )
                 ov_raw_seek( &sound->OggDescriptor, 0 );
-
-            // Stream
-            if( sound->Streamable )
-                Streaming( sound );
 
             // Drop timer
             sound->NextPlay = 0;
@@ -513,37 +507,17 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
 
     if( !result )
     {
-        sound->Streamable = false;
+        sound->StreamableOGG = false;
         ov_clear( &sound->OggDescriptor );
     }
     else
     {
-        sound->Streamable = true;
-        sound->StreamType = Sound::OGG;
+        sound->StreamableOGG = true;
     }
     return ConvertData( sound );
 }
 
-bool SoundManager::Streaming( Sound* sound )
-{
-    if( !( ( sound->StreamType == Sound::WAV && StreamingWAV( sound ) ) ||
-           ( sound->StreamType == Sound::ACM && StreamingACM( sound ) ) ||
-           ( sound->StreamType == Sound::OGG && StreamingOGG( sound ) ) ) )
-        return false;
-    return true;
-}
-
-bool SoundManager::StreamingWAV( Sound* sound )
-{
-    return false;
-}
-
-bool SoundManager::StreamingACM( Sound* sound )
-{
-    return false;
-}
-
-bool SoundManager::StreamingOGG( Sound* sound )
+bool SoundManager::StreamOGG( Sound* sound )
 {
     int  result = 0;
     uint decoded = 0;
