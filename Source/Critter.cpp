@@ -2777,17 +2777,24 @@ void Client::Send_Talk()
         uchar all_answers = (uchar) Talk.CurDialog.Answers.size();
         msg_len += sizeof( uint ) + sizeof( uint ) * all_answers + sizeof( uint ) + sizeof( ushort ) + (uint) Talk.Lexems.length();
 
+        uint talk_time = Talk.TalkTime;
+        if( talk_time )
+        {
+            uint diff = Timer::GameTick() - Talk.StartTick;
+            talk_time = ( diff < talk_time ? talk_time - diff : 1 );
+        }
+
         Bout << msg_len;
         Bout << is_npc;
         Bout << talk_id;
         Bout << all_answers;
-        Bout << (ushort) Talk.Lexems.length();                                  // Lexems length
+        Bout << (ushort) Talk.Lexems.length();                              // Lexems length
         if( Talk.Lexems.length() )
-            Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );      // Lexems string
-        Bout << Talk.CurDialog.TextId;                                          // Main text_id
+            Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );  // Lexems string
+        Bout << Talk.CurDialog.TextId;                                      // Main text_id
         for( auto it = Talk.CurDialog.Answers.begin(), end = Talk.CurDialog.Answers.end(); it != end; ++it )
-            Bout << it->TextId;                                                 // Answers text_id
-        Bout << uint( Talk.TalkTime - ( Timer::GameTick() - Talk.StartTick ) ); // Talk time
+            Bout << it->TextId;                                             // Answers text_id
+        Bout << talk_time;                                                  // Talk time
     }
     BOUT_END( this );
 }
@@ -3263,7 +3270,7 @@ void Client::ProcessTalk( bool force )
         return;
 
     // Check time of talk
-    if( Timer::GameTick() - Talk.StartTick > Talk.TalkTime )
+    if( Talk.TalkTime && Timer::GameTick() - Talk.StartTick > Talk.TalkTime )
     {
         CloseTalk();
         return;
