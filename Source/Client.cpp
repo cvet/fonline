@@ -27,7 +27,7 @@ void  zlib_free_( void* opaque, void* address )                          { free(
 #define MOUSE_BUTTON_EXT3          ( 8 )
 #define MOUSE_BUTTON_EXT4          ( 9 )
 
-#ifdef FO_OSX_IOS
+#ifdef FO_IOS
 int HandleAppEvents( void* userdata, SDL_Event* event )
 {
     switch( event->type )
@@ -142,7 +142,7 @@ bool FOClient::Init()
     UID_PREPARE_UID4_1;
 
     // SDL events
-    #ifdef FO_OSX_IOS
+    #ifdef FO_IOS
     SDL_SetEventFilter( HandleAppEvents, nullptr );
     #endif
 
@@ -554,7 +554,7 @@ void FOClient::UpdateFiles( bool early_call )
                     if( files_changed )
                     {
                         FileManager::ClearDataFiles();
-                        #ifdef FO_OSX_IOS
+                        #ifdef FO_IOS
                         FileManager::InitDataFiles( "../../Documents/" );
                         #endif
                         FileManager::InitDataFiles( CLIENT_DATA );
@@ -1201,7 +1201,10 @@ void FOClient::ParseKeyboard()
 
         // Key script event
         if( dikdw )
-            Script::RaiseInternalEvent( ClientFunctions.KeyDown, dikdw, &string( event_text ) );
+        {
+            string s = event_text;
+            Script::RaiseInternalEvent( ClientFunctions.KeyDown, dikdw, &s );
+        }
 
         if( dikup )
             Script::RaiseInternalEvent( ClientFunctions.KeyUp, dikup );

@@ -311,7 +311,10 @@ CScriptArray* GetLoadedModules()
     CScriptArray* modules = CScriptArray::Create(engine->GetTypeInfoByDecl("string[]"));
 
     for (asUINT i = 0; i < engine->GetModuleCount(); i++)
-        modules->InsertLast(&string(engine->GetModuleByIndex(i)->GetName()));
+    {
+        string name = engine->GetModuleByIndex(i)->GetName();
+        modules->InsertLast(&name);
+    }
     return modules;
 }
 
@@ -386,10 +389,12 @@ static asUINT GetCallstack(CScriptArray* modules, CScriptArray* names, CScriptAr
         line = ctx->GetLineNumber(i, &column);
         if (func)
         {
-            modules->InsertLast(&string(func->GetModuleName()));
+            string name = func->GetModuleName();
+            modules->InsertLast(&name);
 
             bool include_ns = (include_namespace && func->GetNamespace()[0]);
-            names->InsertLast(&string(func->GetDeclaration(include_object_name, include_ns, include_param_names)));
+            string decl = func->GetDeclaration(include_object_name, include_ns, include_param_names);
+            names->InsertLast(&decl);
 
             lines->InsertLast(&line);
             columns->InsertLast(&column);

@@ -839,7 +839,7 @@ void GetClientOptions()
     # define READ_CFG_STR_DEF( cfg, key, def_val )    Str::Copy( buf, MainConfig->GetStr( "", key, def_val ) )
 
     // Data files
-    # ifdef FO_OSX_IOS
+    # ifdef FO_IOS
     FileManager::InitDataFiles( "../../Documents/" );
     # endif
     FileManager::InitDataFiles( CLIENT_DATA );
@@ -967,7 +967,7 @@ void GetClientOptions()
     Script::SetRunTimeout( 0, 0 );
     # endif
 
-    # ifdef FO_OSX_IOS
+    # ifdef FO_IOS
     GameOpt.ScreenWidth = 1024;
     GameOpt.ScreenHeight = 768;
     GameOpt.FixedFPS = 0;

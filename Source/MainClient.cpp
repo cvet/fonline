@@ -122,7 +122,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     }
 
     // iOS loop
-    #ifdef FO_OSX_IOS
+    #ifdef FO_IOS
     struct App
     {
         static void ShowFrame( void* engine )

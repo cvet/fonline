@@ -2,13 +2,13 @@
 #define ___PLATFORM_SPECIFIC___
 
 //
-// Operating system
+// Operating system (passed by cmake)
 // FO_WINDOWS
 // FO_LINUX
-// FO_OSX
-//  FO_OSX_MAC
-//  FO_OSX_IOS
+// FO_MAC
+// FO_IOS
 // FO_ANDROID
+// FO_WEB
 //
 // CPU
 // FO_X86
@@ -22,40 +22,13 @@
 // FO_OGL_ES
 //
 
-//
-// GCC options
-// Compiler
-//  Directories
-//   ../Source
-//  Options
-//   -std=gnu++0x
-//   -W
-//   -Wno-invalid-offsetof
-//   -Wno-unused-result
-// Linker
-//  Directories
-//   ../Lib/Linux or ../Lib/OSX
-//
-
-// Detect operating system
-#if defined ( _WIN32 ) || defined ( _WIN64 )
-# define FO_WINDOWS
-#elif defined ( __linux__ ) && !defined ( ANDROID ) && !defined ( __ANDROID__ )
-# define FO_LINUX
-#elif defined ( __APPLE__ )
-# include <TargetConditionals.h>
-# define FO_OSX
-# if defined ( TARGET_OS_IPHONE ) && TARGET_OS_IPHONE == 1
-#  define FO_OSX_IOS
-#  define FO_OGL_ES
-# else
-#  define FO_OSX_MAC
-# endif
-#elif defined ( ANDROID ) || defined ( __ANDROID__ )
-# define FO_ANDROID
-# define FO_OGL_ES
-#else
+#if !defined ( FO_WINDOWS ) && !defined ( FO_LINUX ) && !defined ( FO_MAC ) && \
+    !defined ( FO_ANDROID ) && !defined ( FO_IOS ) && !defined ( FO_WEB )
 # error "Unknown operating system."
+#endif
+
+#if defined ( FO_MAC ) || defined ( FO_IOS )
+# include <TargetConditionals.h>
 #endif
 
 // Detect compiler
@@ -77,7 +50,7 @@
 #endif
 
 // TLS
-#if !defined ( FO_OSX_IOS ) && !defined ( FO_ANDROID )
+#if !defined ( FO_IOS ) && !defined ( FO_ANDROID )
 # if defined ( FO_MSVC )
 #  define THREAD    __declspec( thread )
 # elif defined ( FO_GCC )

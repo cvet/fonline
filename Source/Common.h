@@ -194,7 +194,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 # ifndef FO_OGL_ES
 #  include "GL/glew.h"
 #  include "SDL_opengl.h"
-#  ifdef FO_OSX_MAC
+#  ifdef FO_MAC
 #   undef glGenVertexArrays
 #   undef glBindVertexArray
 #   undef glDeleteVertexArrays
@@ -237,7 +237,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  define glDrawBuffer( a )
 #  define GL_MAX_COLOR_TEXTURE_SAMPLES            0
 #  define GL_TEXTURE_2D_MULTISAMPLE               0
-#  ifdef FO_OSX
+#  if defined ( FO_MAC ) || defined ( FO_IOS )
 #   define glRenderbufferStorageMultisample       glRenderbufferStorageMultisampleAPPLE
 #   define glRenderbufferStorageMultisampleEXT    glRenderbufferStorageMultisampleAPPLE
 #  endif

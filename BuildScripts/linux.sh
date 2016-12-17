@@ -1,8 +1,19 @@
 #!/bin/bash
 
 # Usage:
-# Install: freeglut3-dev, libssl-dev, libevent
-# export FO_SOURCE=<source> && $FO_SOURCE/BuildScripts/linux.sh
+# export FO_SOURCE=<source> && sudo -E "$FO_SOURCE/BuildScripts/linux.sh"
+
+if [ "$EUID" -ne 0 ]; then
+	echo "Run as root"
+	exit
+fi
+
+sudo apt-get -y update
+sudo apt-get -y install build-essential
+sudo apt-get -y install cmake
+sudo apt-get -y install freeglut3-dev
+sudo apt-get -y install libssl-dev
+sudo apt-get -y install libevent
 
 if [ "$FO_CLEAR" = "TRUE" ]; then
 	rm -rf linux
@@ -12,17 +23,10 @@ cd linux
 
 mkdir x86
 cd x86
-export CMAKE_C_FLAGS=-m32
-cmake -G "Unix Makefiles" $FO_SOURCE/Source
+cmake -G "Unix Makefiles" -C "$FO_SOURCE/BuildScripts/linux32.cache.cmake" "$FO_SOURCE/Source" && make
 cd ../
 
 mkdir x64
 cd x64
-export CMAKE_C_FLAGS=-m64
-cmake -G "Unix Makefiles" $FO_SOURCE/Source
+cmake -G "Unix Makefiles" -C "$FO_SOURCE/BuildScripts/linux64.cache.cmake" "$FO_SOURCE/Source" && make
 cd ../
-
-cmake --build ./x86 --config RelWithDebInfo --target FOnline
-cmake --build ./x86 --config RelWithDebInfo --target FOnlineServer
-cmake --build ./x86 --config RelWithDebInfo --target Mapper
-cmake --build ./x86 --config RelWithDebInfo --target ASCompiler

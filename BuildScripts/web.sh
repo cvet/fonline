@@ -32,4 +32,4 @@ source ./emsdk_env.sh
 cd ../
 emcc -v
 
-cmake -C $FO_SOURCE/BuildScripts/web.cache.cmake $FO_SOURCE/Source && make
+cmake -G "Unix Makefiles" -C "$FO_SOURCE/BuildScripts/web.cache.cmake" "$FO_SOURCE/Source" && make
