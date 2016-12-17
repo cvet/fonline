@@ -544,7 +544,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    FileManager::GetWritePath( "", PT_SERVER_DUMPS, dump_path_dir );
+    FileManager::GetWritePath( "./Dumps/", dump_path_dir );
     # else
     Str::Copy( dump_path_dir, "./" );
     # endif

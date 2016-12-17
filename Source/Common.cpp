@@ -68,7 +68,7 @@ void InitialSetup( uint argc, char** argv )
         #ifdef FO_WINDOWS
         SetCurrentDirectory( GameOpt.WorkDir.c_str() );
         #else
-        chdir( work_dir );
+        chdir( GameOpt.WorkDir.c_str() );
         #endif
     }
     char buf[ TEMP_BUF_SIZE ];

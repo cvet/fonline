@@ -6,9 +6,9 @@
 typedef void ( *LogFuncPtr )( const char* str );
 
 // Write formatted text
+void WriteLogMessage( const string& message );
 template< typename ... Args >
 inline void WriteLog( const string& message, Args ... args ) { WriteLogMessage( fmt::format( message, args ... ) ); }
-void        WriteLogMessage( const string& message );
 
 // Append logging to
 void LogToFile( const string& fname );              // File
