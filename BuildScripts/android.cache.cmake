@@ -1,10 +1,5 @@
 # CMake initial cache
 
-# Build commands
-# cd <build dir>
-# export FO_SOURCE=<source> && export ANDROID_NDK=<ndk> && cmake -C $FO_SOURCE/BuildScripts/android.cache.cmake $FO_SOURCE/Source
-# make
-
 if( NOT DEFINED "ENV{FO_SOURCE}" )
 	message( FATAL_ERROR "Define FO_SOURCE" )
 endif()
