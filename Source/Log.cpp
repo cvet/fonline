@@ -15,7 +15,6 @@ static string*              LogBufferStr;
 static bool                 ToDebugOutput;
 static bool                 LoggingWithTime;
 static bool                 LoggingWithThread;
-static uint                 StartLogTime;
 
 void LogToFile( const string& fname )
 {
@@ -103,10 +102,7 @@ void WriteLogMessage( const string& message )
 
     if( LoggingWithTime )
     {
-        if( StartLogTime == 0 )
-            StartLogTime = Timer::FastTick();
-
-        uint delta = Timer::FastTick() - StartLogTime;
+        uint delta = ( uint ) Timer::AccurateTick();
         uint seconds = delta / 1000;
         uint minutes = seconds / 60 % 60;
         uint hours = seconds / 60 / 60;

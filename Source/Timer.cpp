@@ -5,31 +5,20 @@
 # include <Mmsystem.h>
 # if defined ( FO_MSVC )
 #  pragma comment(lib,"Winmm.lib")
-# elif defined ( FO_GCC )
-// Linker option: -lwinmm
 # endif
 #else
 # include <sys/time.h>
 #endif
 
-uint LastGameTick = 0;
-uint SkipGameTick = 0;
-bool GameTickPaused = false;
+static double InitialAccurateTick = 0;
+static uint   TimerTick = 0;
+static uint   LastGameTick = 0;
+static uint   SkipGameTick = 0;
+static bool   GameTickPaused = false;
 
 #ifdef FO_WINDOWS
-int64 QPCStartValue = 0;
-int64 QPCFrequency = 0;
-#endif
-
-#ifndef FO_WINDOWS
-void SetTick();
-void UpdateTick( void* );
-Thread        TimerUpdateThread;
-volatile uint TimerTick = 0;
-volatile bool QuitTick = false;
-# ifndef FO_LINUX
-double        InitialAccurateTick = 0;
-# endif
+static int64 QPCStartValue = 0;
+static int64 QPCFrequency = 0;
 #endif
 
 void Timer::Init()
@@ -37,37 +26,23 @@ void Timer::Init()
     #ifdef FO_WINDOWS
     QueryPerformanceCounter( (LARGE_INTEGER*) &QPCStartValue );
     QueryPerformanceFrequency( (LARGE_INTEGER*) &QPCFrequency );
-    timeBeginPeriod( 1 );
-    #else
-    # ifndef FO_LINUX
-    InitialAccurateTick = AccurateTick();
-    # endif
-    SetTick();
-    TimerUpdateThread.Start( UpdateTick, "UpdateTick" );
     #endif
 
+    InitialAccurateTick = AccurateTick();
     LastGameTick = FastTick();
     SkipGameTick = LastGameTick;
     GameTickPaused = false;
+    UpdateTick();
 }
 
-void Timer::Finish()
+void Timer::UpdateTick()
 {
-    #ifdef FO_WINDOWS
-    timeEndPeriod( 1 );
-    #else
-    InterlockedExchange( &QuitTick, true );
-    TimerUpdateThread.Wait();
-    #endif
+    TimerTick = (uint) AccurateTick();
 }
 
 uint Timer::FastTick()
 {
-    #ifdef FO_WINDOWS
-    return timeGetTime();
-    #else
     return TimerTick;
-    #endif
 }
 
 double Timer::AccurateTick()
@@ -75,11 +50,11 @@ double Timer::AccurateTick()
     #ifdef FO_WINDOWS
     int64 qpc_value;
     QueryPerformanceCounter( (LARGE_INTEGER*) &qpc_value );
-    return (double) ( (double) ( qpc_value - QPCStartValue ) / (double) QPCFrequency * 1000.0 );
+    return (double) ( (double) ( qpc_value - QPCStartValue ) / (double) QPCFrequency * 1000.0 ) - InitialAccurateTick;
     #else
     struct timeval tv;
     gettimeofday( &tv, nullptr );
-    return (double) ( tv.tv_sec * 1000000 + tv.tv_usec ) / 1000.0;
+    return (double) ( tv.tv_sec * 1000000 + tv.tv_usec ) / 1000.0 - InitialAccurateTick;
     #endif
 }
 
@@ -298,27 +273,3 @@ void Timer::ProcessGameTime()
         GameOpt.Second = st.Second;
     }
 }
-
-#ifndef FO_WINDOWS
-void SetTick()
-{
-    # ifdef FO_LINUX
-    struct timespec tv;
-    clock_gettime( CLOCK_MONOTONIC, &tv );
-    uint            timer_tick = (uint) ( tv.tv_sec * 1000 + tv.tv_nsec / 1000000 );
-    InterlockedExchange( &TimerTick, timer_tick );
-    # else
-    uint timer_tick = (uint) ( Timer::AccurateTick() - InitialAccurateTick );
-    InterlockedExchange( &TimerTick, timer_tick );
-    # endif
-}
-
-void UpdateTick( void* ) // Thread
-{
-    while( !QuitTick )
-    {
-        SetTick();
-        Thread::Sleep( 1 );
-    }
-}
-#endif

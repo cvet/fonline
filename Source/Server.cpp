@@ -370,6 +370,8 @@ void FOServer::MainLoop()
 
 void FOServer::LogicTick()
 {
+    Timer::UpdateTick();
+
     // Cycle time
     double frame_begin = Timer::AccurateTick();
 

@@ -80,7 +80,7 @@ public:
 
     static const char* GetActiveFuncName();
 
-    static void Watcher();
+    static void Watcher( void* );
     static void SetRunTimeout( uint abort_timeout, uint message_timeout );
 
     static void Define( const char* def, ... );

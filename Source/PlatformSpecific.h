@@ -50,7 +50,7 @@
 #endif
 
 // TLS
-#if !defined ( FO_IOS ) && !defined ( FO_ANDROID )
+#if !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB )
 # if defined ( FO_MSVC )
 #  define THREAD    __declspec( thread )
 # elif defined ( FO_GCC )

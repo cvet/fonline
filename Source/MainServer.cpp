@@ -226,9 +226,6 @@ int main( int argc, char** argv )
             Thread::Sleep( 100 );
     }
 
-    // Finish
-    Timer::Finish();
-
     return 0;
 }
 

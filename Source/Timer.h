@@ -16,7 +16,7 @@ struct DateTimeStamp
 namespace Timer
 {
     void Init();
-    void Finish();
+    void UpdateTick();
 
     uint   FastTick();
     double AccurateTick();

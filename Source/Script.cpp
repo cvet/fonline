@@ -91,11 +91,15 @@ static ContextVec BusyContexts;
 static Mutex      ContextsLocker;
 
 // Script watcher
+#ifndef FONLINE_CLIENT
+# define SCRIPT_WATCHER
+#endif
+#ifdef SCRIPT_WATCHER
 static Thread ScriptWatcherThread;
 static bool   ScriptWatcherFinish = false;
-static void ScriptWatcher( void* );
 static uint   RunTimeoutAbort = 600000;   // 10 minutes
 static uint   RunTimeoutMessage = 300000; // 5 minutes
+#endif
 
 bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls,
                    uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display )
@@ -293,8 +297,10 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target
     GameOpt.ScriptGetReturnedObject = &GameOptScript::ScriptGetReturnedObject;
     GameOpt.ScriptGetReturnedAddress = &GameOptScript::ScriptGetReturnedAddress;
 
+    #ifdef SCRIPT_WATCHER
     ScriptWatcherFinish = false;
-    ScriptWatcherThread.Start( ScriptWatcher, "ScriptWatcher" );
+    ScriptWatcherThread.Start( Script::Watcher, "ScriptWatcher" );
+    #endif
     return true;
 }
 
@@ -308,10 +314,13 @@ void Script::Finish()
         edata->Profiler->Finish();
     SAFEDEL( edata->Profiler );
     SAFEDEL( edata->Invoker );
+
+    #ifdef SCRIPT_WATCHER
     RunTimeoutAbort = 0;
     RunTimeoutMessage = 0;
     ScriptWatcherFinish = true;
     ScriptWatcherThread.Wait();
+    #endif
 
     for( auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it )
         it->Clear();
@@ -1031,13 +1040,9 @@ const char* Script::GetActiveFuncName()
     return func->GetName();
 }
 
-void ScriptWatcher( void* )
+void Script::Watcher( void* )
 {
-    Script::Watcher();
-}
-
-void Script::Watcher()
-{
+    #ifdef SCRIPT_WATCHER
     while( !ScriptWatcherFinish )
     {
         // Execution timeout
@@ -1057,12 +1062,15 @@ void Script::Watcher()
 
         Thread::Sleep( 100 );
     }
+    #endif
 }
 
 void Script::SetRunTimeout( uint abort_timeout, uint message_timeout )
 {
+    #ifdef SCRIPT_WATCHER
     RunTimeoutAbort = abort_timeout;
     RunTimeoutMessage = message_timeout;
+    #endif
 }
 
 /************************************************************************/
@@ -1964,7 +1972,7 @@ bool Script::RunPrepared()
             if( state != asEXECUTION_EXCEPTION )
             {
                 if( state == asEXECUTION_ABORTED )
-                    HandleException( ctx, "Execution of script stopped due to timeout %u (ms).", RunTimeoutAbort );
+                    HandleException( ctx, "Execution of script aborted (due to timeout)." );
                 else
                     HandleException( ctx, "Execution of script stopped due to %s.", ContextStatesStr[ (int) state ] );
             }
@@ -1972,10 +1980,12 @@ bool Script::RunPrepared()
             ReturnContext( ctx );
             return false;
         }
+        #ifdef SCRIPT_WATCHER
         else if( RunTimeoutMessage && delta >= RunTimeoutMessage )
         {
             WriteLog( "Script work time {} in context '{}'.\n", delta, ctx_data->Info );
         }
+        #endif
 
         if( result < 0 )
         {

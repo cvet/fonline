@@ -158,7 +158,6 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     #endif
     WriteLog( "FOnline finished.\n" );
     LogFinish();
-    Timer::Finish();
 
     return 0;
 }

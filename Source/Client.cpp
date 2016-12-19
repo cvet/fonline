@@ -807,6 +807,8 @@ void FOClient::LookBordersPrepare()
 
 void FOClient::MainLoop()
 {
+    Timer::UpdateTick();
+
     // Fixed FPS
     double start_loop = Timer::AccurateTick();
 

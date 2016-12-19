@@ -794,25 +794,26 @@ extern InterprocessData SingleplayerData;
 
 class Thread
 {
+    # ifndef FONLINE_CLIENT
 private:
-    static THREAD char threadName[ 64 ];
-    static SizeTStrMap threadNames;
-    static Mutex       threadNamesLocker;
-    bool               isStarted;
-    ThreadType         threadId;
+    bool       isStarted;
+    ThreadType threadId;
 
 public:
     Thread();
     void Start( void ( * func )( void* ), const char* name, void* arg = nullptr );
     void Wait();
     void Release();
-
-    # if defined ( FO_WINDOWS )
-    HANDLE GetWindowsHandle();
-    # elif defined ( FO_LINUX )
-    pid_t GetPid();
+    # else
+    Thread() = delete;
     # endif
 
+private:
+    static THREAD char threadName[ 64 ];
+    static SizeTStrMap threadNames;
+    static Mutex       threadNamesLocker;
+
+public:
     static size_t      GetCurrentId();
     static void        SetCurrentName( const char* name );
     static const char* GetCurrentName();

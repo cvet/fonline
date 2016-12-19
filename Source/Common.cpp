@@ -1507,15 +1507,12 @@ InterprocessData SingleplayerData;
 
 #if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
 
-THREAD char Thread::threadName[ 64 ] = { 0 };
-SizeTStrMap Thread::threadNames;
-Mutex       Thread::threadNamesLocker;
-
-# ifdef FO_WINDOWS
-DWORD WINAPI ThreadBeginExecution( void* args )
-# else
-void* ThreadBeginExecution( void* args )
-# endif
+# ifndef FONLINE_CLIENT
+#  ifdef FO_WINDOWS
+static DWORD WINAPI ThreadBeginExecution( void* args )
+#  else
+static void* ThreadBeginExecution( void* args )
+#  endif
 {
     void** args_ = (void**) args;
     void   ( * func )( void* ) = ( void ( * )( void* ) )args_[ 0 ];
@@ -1525,11 +1522,11 @@ void* ThreadBeginExecution( void* args )
     delete[] name;
     free( args );
     func( func_arg );
-    # ifdef FO_WINDOWS
+    #  ifdef FO_WINDOWS
     return 0;
-    # else
+    #  else
     return nullptr;
-    # endif
+    #  endif
 }
 
 Thread::Thread()
@@ -1542,12 +1539,12 @@ void Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = N
     void** args = (void**) malloc( sizeof( void* ) * 3 );
     char*  name_ = Str::Duplicate( name );
     args[ 0 ] = (void*) func, args[ 1 ] = arg, args[ 2 ] = name_;
-    # ifdef FO_WINDOWS
+    #  ifdef FO_WINDOWS
     threadId = CreateThread( nullptr, 0, ThreadBeginExecution, args, 0, nullptr );
     isStarted = ( threadId != nullptr );
-    # else
+    #  else
     isStarted = ( pthread_create( &threadId, nullptr, ThreadBeginExecution, args ) == 0 );
-    # endif
+    #  endif
     RUNTIME_ASSERT( isStarted );
 }
 
@@ -1555,11 +1552,11 @@ void Thread::Wait()
 {
     if( isStarted )
     {
-        # ifdef FO_WINDOWS
+        #  ifdef FO_WINDOWS
         WaitForSingleObject( threadId, INFINITE );
-        # else
+        #  else
         pthread_join( threadId, nullptr );
-        # endif
+        #  endif
         isStarted = false;
     }
 }
@@ -1569,18 +1566,11 @@ void Thread::Release()
     isStarted = false;
     threadId = 0;
 }
-
-# if defined ( FO_WINDOWS )
-HANDLE Thread::GetWindowsHandle()
-{
-    return threadId;
-}
-# elif defined ( FO_LINUX )
-pid_t Thread::GetPid()
-{
-    return (pid_t) threadId;
-}
 # endif
+
+THREAD char Thread::threadName[ 64 ] = { 0 };
+SizeTStrMap Thread::threadNames;
+Mutex       Thread::threadNamesLocker;
 
 size_t Thread::GetCurrentId()
 {
