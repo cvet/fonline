@@ -776,22 +776,14 @@ const char* Str::UItoA( uint value )
 const char* Str::I64toA( int64 value )
 {
     static THREAD char str[ 128 ];
-    #ifdef FO_X64
     sprintf( str, "%lld", value );
-    #else
-    sprintf( str, "%ld", value );
-    #endif
     return str;
 }
 
 const char* Str::UI64toA( uint64 value )
 {
     static THREAD char str[ 128 ];
-    #ifdef FO_X64
     sprintf( str, "%llu", value );
-    #else
-    sprintf( str, "%lu", value );
-    #endif
     return str;
 }
 
