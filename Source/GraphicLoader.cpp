@@ -4,7 +4,10 @@
 #include "Timer.h"
 #include "SpriteManager.h"
 #include "ResourceManager.h"
-#include "png.h"
+
+#if defined ( FO_WINDOWS ) || defined ( FO_LINUX )
+# include "png.h"
+#endif
 
 /************************************************************************/
 /* Models                                                               */
@@ -875,6 +878,7 @@ uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_w
 
 void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint height )
 {
+    #if defined ( FO_WINDOWS ) || defined ( FO_LINUX )
     // Initialize stuff
     png_structp png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr );
     if( !png_ptr )
@@ -932,6 +936,7 @@ void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint he
     FileManager fm;
     fm.SetData( &result_png[ 0 ], (uint) result_png.size() );
     fm.SaveFile( fname );
+    #endif
 }
 
 uchar* GraphicLoader::LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height )

@@ -461,7 +461,7 @@ void CreateDump( const char* appendix, const char* message )
     TopLevelFilterReadableDump( nullptr );
 }
 
-#elif !defined ( FO_ANDROID )
+#elif !defined ( FO_ANDROID ) && !defined ( FO_WEB )
 
 # include "FileManager.h"
 # include <signal.h>
@@ -656,7 +656,7 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 }
 
 #else
-# pragma MESSAGE( "Android exception handling" )
+# pragma MESSAGE( "Exception handling is disabled" )
 
 void CatchExceptions( const char* app_name, int app_ver )
 {
