@@ -11,9 +11,17 @@ fi
 sudo apt-get -y update
 sudo apt-get -y install build-essential
 sudo apt-get -y install cmake
+sudo apt-get -y install libx11-dev
 sudo apt-get -y install freeglut3-dev
 sudo apt-get -y install libssl-dev
-sudo apt-get -y install libevent
+sudo apt-get -y install libevent-dev
+# x86
+sudo apt-get -y install gcc-multilib
+sudo apt-get -y install g++-multilib
+sudo apt-get -y install libx11-dev:i386
+sudo apt-get -y install freeglut3-dev:i386
+sudo apt-get -y install libssl-dev:i386
+sudo apt-get -y install libevent-dev:i386
 
 if [ "$FO_CLEAR" = "TRUE" ]; then
 	rm -rf linux

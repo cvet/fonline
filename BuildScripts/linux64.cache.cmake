@@ -1,6 +1,4 @@
 # CMake initial cache
 
-set( CMAKE_SYSTEM_NAME Linux )
-set( CMAKE_C_COMPILER gcc -m32 )
-set( CMAKE_CXX_COMPILER g++ -m32 )
-set( CMAKE_SIZEOF_VOID_P 8 )
+set( CMAKE_SYSTEM_NAME "Linux" CACHE PATH "" FORCE )
+set( HAVE_POLL_FINE_EXITCODE 0 CACHE STRING "" FORCE )
