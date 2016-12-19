@@ -46,7 +46,6 @@ private:
 
     // Dynamic display
     bool           isDynamicDisplay;
-    Mutex          callPathsLocker;
     IntCallPathMap callPaths;
     uint           totalCallPaths;
 

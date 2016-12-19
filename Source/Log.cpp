@@ -6,7 +6,9 @@
 # include "FL/Fl_Text_Display.H"
 #endif
 
+#ifndef NO_THREADING
 static Mutex                LogLocker;
+#endif
 static void*                LogFileHandle;
 static vector< LogFuncPtr > LogFunctions;
 static bool                 LogFunctionsInProcess;
@@ -18,7 +20,9 @@ static bool                 LoggingWithThread;
 
 void LogToFile( const string& fname )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     if( LogFileHandle )
         FileClose( LogFileHandle );
@@ -30,7 +34,9 @@ void LogToFile( const string& fname )
 
 void LogToFunc( LogFuncPtr func_ptr, bool enable )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     if( func_ptr )
     {
@@ -48,14 +54,18 @@ void LogToFunc( LogFuncPtr func_ptr, bool enable )
 
 void LogToTextBox( void* text_box )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     LogTextBox = text_box;
 }
 
 void LogToBuffer( bool enable )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     SAFEDEL( LogBufferStr );
     if( enable )
@@ -64,14 +74,18 @@ void LogToBuffer( bool enable )
 
 void LogToDebugOutput( bool enable )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     ToDebugOutput = enable;
 }
 
 void LogFinish()
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     LogToFile( "" );
     LogToFunc( nullptr, false );
@@ -82,14 +96,16 @@ void LogFinish()
 
 void WriteLogMessage( const string& message )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     if( LogFunctionsInProcess )
         return;
 
     string result;
 
-    #if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
+    #ifndef NO_THREADING
     if( LoggingWithThread )
     {
         const char* name = Thread::GetCurrentName();
@@ -151,21 +167,27 @@ void WriteLogMessage( const string& message )
 
 void LogWithTime( bool enable )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     LoggingWithTime = enable;
 }
 
 void LogWithThread( bool enable )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     LoggingWithThread = enable;
 }
 
 void LogGetBuffer( std::string& buf )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
+    #endif
 
     if( LogBufferStr )
     {

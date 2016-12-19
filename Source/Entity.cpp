@@ -28,12 +28,12 @@ const char* ProtoEntity::GetName() const
 
 void ProtoEntity::AddRef() const
 {
-    InterlockedIncrement( &RefCounter );
+    RefCounter++;
 }
 
 void ProtoEntity::Release() const
 {
-    if( !InterlockedDecrement( &RefCounter ) )
+    if( --RefCounter == 0 )
         delete this;
 }
 
@@ -81,7 +81,7 @@ const char* Entity::GetName() const
 
 void Entity::AddRef() const
 {
-    InterlockedIncrement( &RefCounter );
+    RefCounter++;
 }
 
 EntityVec Entity::GetChildren() const
@@ -119,7 +119,7 @@ EntityVec Entity::GetChildren() const
 
 void Entity::Release() const
 {
-    if( !InterlockedDecrement( &RefCounter ) )
+    if( --RefCounter == 0 )
     {
         if( Type == EntityType::Global )
             delete (GlobalVars*) this;

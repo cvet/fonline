@@ -67,12 +67,16 @@ void BufferManager::SetEncryptKey( uint seed )
 
 void BufferManager::Lock()
 {
+    #ifndef NO_THREADING
     bufLocker.Lock();
+    #endif
 }
 
 void BufferManager::Unlock()
 {
+    #ifndef NO_THREADING
     bufLocker.Unlock();
+    #endif
 }
 
 void BufferManager::Refresh()

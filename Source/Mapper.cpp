@@ -1444,12 +1444,12 @@ void FOMapper::MainLoop()
             {
                 double sleep = need_elapsed - elapsed + balance;
                 balance = fmod ( sleep, 1.0 );
-                Thread::Sleep( (uint) floor( sleep) );
+                Thread_Sleep( (uint) floor( sleep) );
             }
         }
         else
         {
-            Thread::Sleep( -GameOpt.FixedFPS );
+            Thread_Sleep( -GameOpt.FixedFPS );
         }
     }
 }

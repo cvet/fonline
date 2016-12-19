@@ -54,7 +54,8 @@ class FOClient
 public:
     static FOClient* Self;
     FOClient();
-    bool Init();
+    bool Init1();
+    bool Init2();
     void Finish();
     void TryExit();
     bool IsCurInWindow();
@@ -62,7 +63,7 @@ public:
     void MainLoop();
     void NetDisconnect();
 
-    bool       Active;
+    int        InitCalls;
     uint*      UID1;
     string     Password;
     HexManager HexMngr;
@@ -99,6 +100,10 @@ public:
     typedef vector< UpdateFile > UpdateFileVec;
 
     bool           UpdateFilesInProgress;
+    uint           UpdateFilesConnectTimeout;
+    uint           UpdateFilesTick;
+    bool           UpdateFilesCacheChanged;
+    bool           UpdateFilesFilesChanged;
     bool           UpdateFilesAborted;
     bool           UpdateFilesFontLoaded;
     string         UpdateFilesText;
@@ -107,10 +112,9 @@ public:
     bool           UpdateFileActive;
     void*          UpdateFileTemp;
 
-    void UpdateFiles( bool early_call );
+    void UpdateFilesLoop( bool early_call );
     void UpdateFilesAddText( uint num_str, const char* num_str_str );
     void UpdateFilesAbort( uint num_str, const char* num_str_str );
-    void UpdateFilesWait( uint time );
 
     // Network
     char*         ComBuf;

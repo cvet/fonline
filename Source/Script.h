@@ -54,8 +54,7 @@ public:
     static void              FinishContext( asIScriptContext* ctx );
     static asIScriptContext* RequestContext();
     static void              ReturnContext( asIScriptContext* ctx );
-    static void              GetExecutionContexts( ContextVec& contexts );
-    static void              ReleaseExecutionContexts();
+    static ContextVec        GetExecutionContexts();
     static void              RaiseException( const char* message, ... );
     static void              PassException();
     static void              HandleException( asIScriptContext* ctx, const char* message, ... );

@@ -11,9 +11,6 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
     InitialSetup( argc, argv );
 
-    // Threading
-    Thread::SetCurrentName( "Main" );
-
     // Disable SIGPIPE signal
     #ifndef FO_WINDOWS
     signal( SIGPIPE, SIG_IGN );
@@ -115,14 +112,9 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Create engine
     FOClient* engine = new FOClient();
-    if( !engine->Init() )
-    {
-        WriteLog( "FOnline engine initialization fail.\n" );
-        ExitProcess( -1 );
-    }
 
-    // iOS loop
-    #ifdef FO_IOS
+    // iOS or Web loop
+    #if defined ( FO_IOS ) || defined ( FO_WEB )
     struct App
     {
         static void ShowFrame( void* engine )
@@ -130,13 +122,42 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
             ( (FOClient*) engine )->MainLoop();
         }
     };
+    # ifdef FO_IOS
     SDL_iPhoneSetAnimationCallback( MainWindow, 1, App::ShowFrame, engine );
+    # else
+    emscripten_set_main_loop_arg( App::ShowFrame, engine, 60, 1 );
+    # endif
     return 0;
-    #endif
 
-    // Loop
+    #else
+    // Default loop
     while( !GameOpt.Quit )
+    {
+        double start_loop = Timer::AccurateTick();
+
         engine->MainLoop();
+
+        if( !GameOpt.VSync && GameOpt.FixedFPS )
+        {
+            if( GameOpt.FixedFPS > 0 )
+            {
+                static double balance = 0.0;
+                double        elapsed = Timer::AccurateTick() - start_loop;
+                double        need_elapsed = 1000.0 / (double) GameOpt.FixedFPS;
+                if( need_elapsed > elapsed )
+                {
+                    double sleep = need_elapsed - elapsed + balance;
+                    balance = fmod ( sleep, 1.0 );
+                    Thread_Sleep( (uint) floor( sleep ) );
+                }
+            }
+            else
+            {
+                Thread_Sleep( -GameOpt.FixedFPS );
+            }
+        }
+    }
+    #endif
 
     // Finish script
     Script::RunMandatorySuspended();

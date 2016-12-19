@@ -72,7 +72,7 @@ FOClient::FOClient()
 {
     Self = this;
 
-    Active = false;
+    InitCalls = 0;
     ComLen = 4096;
     ComBuf = new char[ ComLen ];
     ZStreamOk = false;
@@ -84,6 +84,10 @@ FOClient::FOClient()
     InitNetReason = INIT_NET_REASON_NONE;
 
     UpdateFilesInProgress = false;
+    UpdateFilesConnectTimeout = 0;
+    UpdateFilesTick = 0;
+    UpdateFilesCacheChanged = false;
+    UpdateFilesFilesChanged = false;
     UpdateFilesAborted = false;
     UpdateFilesFontLoaded = false;
     UpdateFilesText = "";
@@ -111,7 +115,7 @@ FOClient::FOClient()
 }
 
 uint* UID1;
-bool FOClient::Init()
+bool FOClient::Init1()
 {
     WriteLog( "Engine initialization...\n" );
 
@@ -263,9 +267,11 @@ bool FOClient::Init()
     const char* lang_name = MainConfig->GetStr( "", "Language", DEFAULT_LANGUAGE );
     CurLang.LoadFromCache( lang_name );
 
-    // Update
-    UpdateFiles( true );
+    return true;
+}
 
+bool FOClient::Init2()
+{
     // Find valid cache
     if( !CurLang.IsAllMsgLoaded )
     {
@@ -403,7 +409,6 @@ bool FOClient::Init()
     ShootBorders.clear();
 
     WriteLog( "Engine initialization complete.\n" );
-    Active = true;
 
     // Begin game
     if( MainConfig->IsKey( "", "Start" ) && !Singleplayer )
@@ -433,148 +438,156 @@ bool FOClient::Init()
     return true;
 }
 
-void FOClient::UpdateFiles( bool early_call )
+void FOClient::UpdateFilesLoop( bool early_call )
 {
-    // Load font
-    SprMngr.PushAtlasType( RES_ATLAS_STATIC );
-    UpdateFilesFontLoaded = SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false );
-    if( !UpdateFilesFontLoaded )
-        UpdateFilesFontLoaded = SprMngr.LoadFontBMF( FONT_DEFAULT, "Default" );
-    if( UpdateFilesFontLoaded )
-        SprMngr.BuildFonts();
-    SprMngr.PopAtlasType();
+    // Process input
+    SDL_Event event;
+    while( SDL_PollEvent( &event ) )
+        if( ( event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE ) || event.type == SDL_QUIT )
+            ExitProcess( 0 );
 
-    // Update
-    UpdateFilesAddText( STR_CHECK_UPDATES, "Check updates..." );
-    UpdateFilesInProgress = true;
-    UpdateFilesText = "";
-    bool cache_changed = false;
-    bool files_changed = false;
-    for( int t = 0; t < 5; t++ )
+    if( !UpdateFilesFontLoaded )
     {
+        // Load font
+        SprMngr.PushAtlasType( RES_ATLAS_STATIC );
+        UpdateFilesFontLoaded = SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false );
+        if( !UpdateFilesFontLoaded )
+            UpdateFilesFontLoaded = SprMngr.LoadFontBMF( FONT_DEFAULT, "Default" );
+        if( UpdateFilesFontLoaded )
+            SprMngr.BuildFonts();
+        SprMngr.PopAtlasType();
+    }
+
+    if( !IsConnected )
+    {
+        if( Timer::FastTick() < UpdateFilesConnectTimeout )
+            return;
+        UpdateFilesConnectTimeout = Timer::FastTick() + 5000;
+
         // Connect to server
         UpdateFilesAddText( STR_CONNECT_TO_SERVER, "Connect to server..." );
         const char* host = ( GameOpt.UpdateServerHost.length() > 0 ? GameOpt.UpdateServerHost.c_str() : GameOpt.Host.c_str() );
         ushort      port = ( GameOpt.UpdateServerPort != 0 ? GameOpt.UpdateServerPort : GameOpt.Port );
-        if( !NetConnect( host, port ) )
+        if( NetConnect( host, port ) )
+        {
+            UpdateFilesAddText( STR_CONNECTION_ESTABLISHED, "Connection established." );
+
+            // Update
+            UpdateFilesAddText( STR_CHECK_UPDATES, "Check updates..." );
+            UpdateFilesText = "";
+
+            // Data synchronization
+            UpdateFilesAddText( STR_DATA_SYNCHRONIZATION, "Data synchronization..." );
+
+            // Clean up
+            UpdateFilesAborted = false;
+            SAFEDEL( UpdateFilesList );
+            UpdateFileActive = false;
+            FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
+            UpdateFilesTick = Timer::FastTick();
+            UpdateFilesCacheChanged = false;
+            UpdateFilesFilesChanged = false;
+
+            Net_SendUpdate();
+        }
+        else
         {
             UpdateFilesAddText( STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!" );
-            UpdateFilesWait( 10000 );
-            continue;
         }
-        UpdateFilesAddText( STR_CONNECTION_ESTABLISHED, "Connection established." );
-
-        // Data synchronization
-        UpdateFilesAddText( STR_DATA_SYNCHRONIZATION, "Data Synchronization..." );
-
-        UpdateFilesAborted = false;
-        SAFEDEL( UpdateFilesList );
-        UpdateFileActive = false;
-        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
-
-        Net_SendUpdate();
-
-        uint tick = Timer::FastTick();
-        while( IsConnected )
+    }
+    else
+    {
+        string progress = "";
+        if( UpdateFilesList && !UpdateFilesList->empty() )
         {
-            if( !early_call && UpdateFilesList && !UpdateFilesList->empty() )
-                UpdateFilesAbort( STR_CLIENT_DATA_OUTDATED, "Client data outdated!" );
+            progress += "\n";
+            for( size_t i = 0, j = UpdateFilesList->size(); i < j; i++ )
+            {
+                UpdateFile& update_file = ( *UpdateFilesList )[ i ];
+                float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
+                float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
+                char        buf[ MAX_FOTEXT ];
+                char        name[ MAX_FOPATH ];
 
-            int    dots = ( Timer::FastTick() - tick ) / 100 % 50 + 1;
+                Str::Copy( name, update_file.Name.c_str() );
+                FileManager::FormatPath( name );
+
+                progress += Str::Format( buf, "%s %.2f / %.2f MB\n", name, cur, max );
+            }
+            progress += "\n";
+        }
+
+        if( !Singleplayer )
+        {
+            int    dots = ( Timer::FastTick() - UpdateFilesTick ) / 100 % 50 + 1;
             string dots_str = "";
             for( int i = 0; i < dots; i++ )
                 dots_str += ".";
 
-            string progress = "";
-            if( UpdateFilesList && !UpdateFilesList->empty() )
-            {
-                progress += "\n";
-                for( size_t i = 0, j = UpdateFilesList->size(); i < j; i++ )
-                {
-                    UpdateFile& update_file = ( *UpdateFilesList )[ i ];
-                    float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
-                    float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
-                    char        buf[ MAX_FOTEXT ];
-                    char        name[ MAX_FOPATH ];
-
-                    Str::Copy( name, update_file.Name.c_str() );
-                    FileManager::FormatPath( name );
-
-                    progress += Str::Format( buf, "%s %.2f / %.2f MB\n", name, cur, max );
-                }
-                progress += "\n";
-            }
-
-            if( !Singleplayer )
-            {
-                SprMngr.BeginScene( COLOR_RGB( 50, 50, 50 ) );
-                string update_text = UpdateFilesText + progress + dots_str;
-                SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), update_text.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
-                SprMngr.EndScene();
-            }
-
-            if( UpdateFilesList && !UpdateFileActive )
-            {
-                if( !UpdateFilesList->empty() )
-                {
-                    if( UpdateFileTemp )
-                        FileClose( UpdateFileTemp );
-
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
-                    if( !UpdateFileTemp )
-                    {
-                        UpdateFilesAddText( STR_FILESYSTEM_ERROR, "File system error!" );
-                        NetDisconnect();
-                        UpdateFilesWait( 10000 );
-                        continue;
-                    }
-
-                    if( UpdateFilesList->front().Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
-                        cache_changed = true;
-                    else
-                        files_changed = true;
-
-                    UpdateFileActive = true;
-
-                    Bout << NETMSG_GET_UPDATE_FILE;
-                    Bout << UpdateFilesList->front().Index;
-                }
-                else
-                {
-                    // Done
-                    SAFEDEL( UpdateFilesList );
-                    UpdateFilesInProgress = false;
-                    NetDisconnect();
-
-                    // Reinitialize data
-                    if( cache_changed )
-                    {
-                        CurLang.LoadFromCache( CurLang.NameStr );
-                    }
-                    if( files_changed )
-                    {
-                        FileManager::ClearDataFiles();
-                        #ifdef FO_IOS
-                        FileManager::InitDataFiles( "../../Documents/" );
-                        #endif
-                        FileManager::InitDataFiles( CLIENT_DATA );
-                    }
-
-                    return;
-                }
-            }
-
-            UpdateFilesWait( 0 );
-
-            ParseSocket();
+            SprMngr.BeginScene( COLOR_RGB( 50, 50, 50 ) );
+            string update_text = UpdateFilesText + progress + dots_str;
+            SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), update_text.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
+            SprMngr.EndScene();
         }
 
-        if( !UpdateFilesAborted )
-            UpdateFilesAddText( STR_CONNECTION_FAILTURE, "Connection failure!" );
-        UpdateFilesWait( 10000 );
-    }
+        if( UpdateFilesList && !UpdateFileActive )
+        {
+            if( !UpdateFilesList->empty() )
+            {
+                if( UpdateFileTemp )
+                    FileClose( UpdateFileTemp );
 
-    ExitProcess( 0 );
+                UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
+                if( !UpdateFileTemp )
+                {
+                    UpdateFilesAddText( STR_FILESYSTEM_ERROR, "File system error!" );
+                    SAFEDEL( UpdateFilesList );
+                    NetDisconnect();
+                    return;
+                }
+
+                if( UpdateFilesList->front().Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
+                    UpdateFilesCacheChanged = true;
+                else
+                    UpdateFilesFilesChanged = true;
+
+                UpdateFileActive = true;
+
+                Bout << NETMSG_GET_UPDATE_FILE;
+                Bout << UpdateFilesList->front().Index;
+            }
+            else
+            {
+                // Done
+                UpdateFilesInProgress = false;
+                SAFEDEL( UpdateFilesList );
+                NetDisconnect();
+
+                // Reinitialize data
+                if( UpdateFilesCacheChanged )
+                {
+                    CurLang.LoadFromCache( CurLang.NameStr );
+                }
+                if( UpdateFilesFilesChanged )
+                {
+                    FileManager::ClearDataFiles();
+                    #ifdef FO_IOS
+                    FileManager::InitDataFiles( "../../Documents/" );
+                    #endif
+                    FileManager::InitDataFiles( CLIENT_DATA );
+                }
+
+                return;
+            }
+        }
+
+        ParseSocket();
+
+        if( !IsConnected && !UpdateFilesAborted )
+            UpdateFilesAddText( STR_CONNECTION_FAILTURE, "Connection failure!" );
+        if( !early_call && UpdateFilesList && !UpdateFilesList->empty() )
+            UpdateFilesAbort( STR_CLIENT_DATA_OUTDATED, "Client data outdated!" );
+    }
 }
 
 void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
@@ -585,6 +598,8 @@ void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
         num_str = STR_START_SINGLEPLAYER;
         num_str_str = "Start singleplayer...";
     }
+
+    WriteLog( "{}\n", num_str_str );
 
     if( !UpdateFilesFontLoaded )
     {
@@ -600,8 +615,6 @@ void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
         SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
         SprMngr.EndScene();
     }
-
-    UpdateFilesWait( 0 );
 }
 
 void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
@@ -629,21 +642,6 @@ void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
     }
 }
 
-void FOClient::UpdateFilesWait( uint time )
-{
-    uint tick = Timer::FastTick();
-    do
-    {
-        SDL_Event event;
-        while( SDL_PollEvent( &event ) )
-            if( ( event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE ) || event.type == SDL_QUIT )
-                ExitProcess( 0 );
-        if( time )
-            Thread::Sleep( 1 );
-    }
-    while( Timer::FastTick() - tick < time );
-}
-
 void FOClient::Finish()
 {
     WriteLog( "Engine finish...\n" );
@@ -659,7 +657,6 @@ void FOClient::Finish()
 
     FileManager::ClearDataFiles();
 
-    Active = false;
     WriteLog( "Engine finish complete.\n" );
 }
 
@@ -809,8 +806,31 @@ void FOClient::MainLoop()
 {
     Timer::UpdateTick();
 
-    // Fixed FPS
-    double start_loop = Timer::AccurateTick();
+    if( GameOpt.Quit )
+        return;
+
+    if( UpdateFilesInProgress )
+    {
+        UpdateFilesLoop( InitCalls < 2 );
+        return;
+    }
+
+    if( InitCalls < 2 )
+    {
+        if( ( InitCalls == 0 && !Init1() ) || ( InitCalls == 1 && !Init2() ) )
+        {
+            WriteLog( "FOnline engine initialization failed.\n" );
+            GameOpt.Quit = true;
+            return;
+        }
+
+        InitCalls++;
+        if( InitCalls == 1 )
+        {
+            UpdateFilesInProgress = true;
+            return;
+        }
+    }
 
     // FPS counter
     static uint last_call = Timer::FastTick();
@@ -917,15 +937,11 @@ void FOClient::MainLoop()
     CHECK_MULTIPLY_WINDOWS0;
 
     // Network
-    if( InitNetReason != INIT_NET_REASON_NONE )
+    if( InitNetReason != INIT_NET_REASON_NONE && !UpdateFilesInProgress )
     {
         // Reason
         int reason = InitNetReason;
         InitNetReason = INIT_NET_REASON_NONE;
-
-        // Check updates
-        if( reason != INIT_NET_REASON_LOGIN2 )
-            UpdateFiles( false );
 
         // Wait screen
         ShowMainScreen( SCREEN_WAIT );
@@ -1036,27 +1052,6 @@ void FOClient::MainLoop()
     CHECK_MULTIPLY_WINDOWS5;
 
     SprMngr.EndScene();
-
-    // Fixed FPS
-    if( !GameOpt.VSync && GameOpt.FixedFPS )
-    {
-        if( GameOpt.FixedFPS > 0 )
-        {
-            static double balance = 0.0;
-            double        elapsed = Timer::AccurateTick() - start_loop;
-            double        need_elapsed = 1000.0 / (double) GameOpt.FixedFPS;
-            if( need_elapsed > elapsed )
-            {
-                double sleep = need_elapsed - elapsed + balance;
-                balance = fmod ( sleep, 1.0 );
-                Thread::Sleep( (uint) floor( sleep) );
-            }
-        }
-        else
-        {
-            Thread::Sleep( -GameOpt.FixedFPS );
-        }
-    }
 }
 
 void FOClient::ScreenFade( uint time, uint from_color, uint to_color, bool push_back )
@@ -1328,7 +1323,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
                 return false;
             if( SingleplayerData.NetPort )
                 break;
-            Thread::Sleep( 1000 );
+            Thread_Sleep( 1000 );
         }
         if( !SingleplayerData.NetPort )
             return false;
@@ -1371,6 +1366,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
         }
     }
     // Proxy connect
+    #if !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB )
     else
     {
         if( connect( Sock, (sockaddr*) &ProxyAddr, sizeof( sockaddr_in ) ) )
@@ -1380,7 +1376,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
         }
 
 // ==========================================
-        #define SEND_RECV                                      \
+        # define SEND_RECV                                     \
             do {                                               \
                 if( !NetOutput() )                             \
                 {                                              \
@@ -1403,7 +1399,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
                         WriteLog( "Proxy answer timeout.\n" ); \
                         return false;                          \
                     }                                          \
-                    Thread::Sleep( 1 );                        \
+                    Thread_Sleep( 1 );                         \
                 }                                              \
             }                                                  \
             while( 0 )
@@ -1524,13 +1520,6 @@ bool FOClient::NetConnect( const char* host, ushort port )
             Bout.Push( buf, Str::Length( buf ) );
             SEND_RECV;
             buf = Bin.GetCurData();
-            /*if(strstr(buf," 407 "))
-               {
-                    char* buf=(char*)Str::FormatBuf("CONNECT %s:%d HTTP/1.0\r\nProxy-authorization: basic \r\n\r\n",inet_ntoa(SockAddr.sin_addr),OptPort);
-                    Bout.Push(buf,strlen(buf));
-                    SEND_RECV;
-                    buf=Bin.GetCurData();
-               }*/
             if( !Str::Substring( buf, " 200 " ) )
             {
                 WriteLog( "Proxy connection error, receive message '{}'.\n", buf );
@@ -1543,9 +1532,12 @@ bool FOClient::NetConnect( const char* host, ushort port )
             return false;
         }
 
+        # undef SEND_RECV
+
         Bin.Reset();
         Bout.Reset();
     }
+    #endif
 
     ZStream.zalloc = zlib_alloc_;
     ZStream.zfree = zlib_free_;
@@ -1829,7 +1821,10 @@ void FOClient::NetProcess()
                 WriteLog( "World loaded, enter to it.\n" );
             }
             if( LoginCheckData() )
+            {
                 InitNetReason = INIT_NET_REASON_LOGIN2;
+                UpdateFileActive = true;
+            }
             break;
 
         case NETMSG_PING:
@@ -6937,7 +6932,10 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         GameOpt.Name = args[ 1 ];
         Self->Password = args[ 2 ];
         if( Self->LoginCheckData() )
+        {
             Self->InitNetReason = INIT_NET_REASON_LOGIN;
+            Self->UpdateFileActive = true;
+        }
     }
     else if( cmd == "Register" )
     {
@@ -6950,11 +6948,13 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
                 Self->RegProps.push_back( Str::AtoI( args[ i + 1 ].c_str() ) );
             }
             Self->InitNetReason = INIT_NET_REASON_REG;
+            Self->UpdateFileActive = true;
         }
     }
     else if( cmd == "CustomConnect" )
     {
         Self->InitNetReason = INIT_NET_REASON_CUSTOM;
+        Self->UpdateFileActive = true;
     }
     else if( cmd == "SaveLoginPassCache" && args.size() >= 3 )
     {

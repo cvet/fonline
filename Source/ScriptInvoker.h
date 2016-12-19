@@ -26,7 +26,6 @@ class ScriptInvoker
 private:
     uint             lastDeferredCallId;
     DeferredCallList deferredCalls;
-    Mutex            deferredCallsLocker;
 
     ScriptInvoker();
     uint   AddDeferredCall( uint delay, bool saved, asIScriptFunction* func, int* value, CScriptArray* values );

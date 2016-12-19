@@ -189,12 +189,6 @@ void InitialSetup( uint argc, char** argv )
     #endif
 }
 
-#ifndef FO_WINDOWS
-// Mutex static stuff
-bool                Mutex::attrInitialized = false;
-pthread_mutexattr_t Mutex::mutexAttr;
-#endif
-
 // Default randomizer
 Randomizer DefaultRandomizer;
 int Random( int minimum, int maximum )
@@ -892,7 +886,7 @@ void GetClientOptions()
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.MessNotify, "WinNotify" );
     GameOpt.SoundNotify = MainConfig->GetInt( "", "SoundNotify", false ) != 0;
     GETOPTIONS_CMD_LINE_BOOL( GameOpt.SoundNotify, "SoundNotify" );
-    GameOpt.Port = MainConfig->GetInt( "", "RemotePort", 4000 );
+    GameOpt.Port = MainConfig->GetInt( "", "RemotePort", 4010 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.Port, "RemotePort" );
     GETOPTIONS_CHECK( GameOpt.Port, 0, 0xFFFF, 4000 );
     GameOpt.UpdateServerPort = MainConfig->GetInt( "", "UpdateServerPort", 0 );
@@ -967,10 +961,11 @@ void GetClientOptions()
     Script::SetRunTimeout( 0, 0 );
     # endif
 
-    # ifdef FO_IOS
+    # if defined ( FO_IOS ) || defined ( FO_ANDROID ) || defined ( FO_WEB )
     GameOpt.ScreenWidth = 1024;
     GameOpt.ScreenHeight = 768;
     GameOpt.FixedFPS = 0;
+    GameOpt.ProxyType = 0;
     # endif
 }
 
@@ -1505,14 +1500,33 @@ InterprocessData SingleplayerData;
 /* Thread                                                               */
 /************************************************************************/
 
-#if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
+#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
+void Thread_Sleep( uint ms )
+{
+    # if defined ( FO_WINDOWS )
+    Sleep( ms );
+    # else
+    struct timespec req;
+    req.tv_sec = ms / 1000;
+    req.tv_nsec = ( ms % 1000 ) * 1000000;
+    while( nanosleep( &req, &req ) == -1 && errno == EINTR )
+        continue;
+    # endif
+}
+#endif
 
-# ifndef FONLINE_CLIENT
-#  ifdef FO_WINDOWS
+#if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT ) && !defined ( FONLINE_CLIENT )
+# ifndef FO_WINDOWS
+// Mutex static stuff
+bool                Mutex::attrInitialized = false;
+pthread_mutexattr_t Mutex::mutexAttr;
+# endif
+
+# ifdef FO_WINDOWS
 static DWORD WINAPI ThreadBeginExecution( void* args )
-#  else
+# else
 static void* ThreadBeginExecution( void* args )
-#  endif
+# endif
 {
     void** args_ = (void**) args;
     void   ( * func )( void* ) = ( void ( * )( void* ) )args_[ 0 ];
@@ -1522,11 +1536,11 @@ static void* ThreadBeginExecution( void* args )
     delete[] name;
     free( args );
     func( func_arg );
-    #  ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     return 0;
-    #  else
+    # else
     return nullptr;
-    #  endif
+    # endif
 }
 
 Thread::Thread()
@@ -1539,12 +1553,12 @@ void Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = N
     void** args = (void**) malloc( sizeof( void* ) * 3 );
     char*  name_ = Str::Duplicate( name );
     args[ 0 ] = (void*) func, args[ 1 ] = arg, args[ 2 ] = name_;
-    #  ifdef FO_WINDOWS
+    # ifdef FO_WINDOWS
     threadId = CreateThread( nullptr, 0, ThreadBeginExecution, args, 0, nullptr );
     isStarted = ( threadId != nullptr );
-    #  else
+    # else
     isStarted = ( pthread_create( &threadId, nullptr, ThreadBeginExecution, args ) == 0 );
-    #  endif
+    # endif
     RUNTIME_ASSERT( isStarted );
 }
 
@@ -1552,11 +1566,11 @@ void Thread::Wait()
 {
     if( isStarted )
     {
-        #  ifdef FO_WINDOWS
+        # ifdef FO_WINDOWS
         WaitForSingleObject( threadId, INFINITE );
-        #  else
+        # else
         pthread_join( threadId, nullptr );
-        #  endif
+        # endif
         isStarted = false;
     }
 }
@@ -1566,7 +1580,6 @@ void Thread::Release()
     isStarted = false;
     threadId = 0;
 }
-# endif
 
 THREAD char Thread::threadName[ 64 ] = { 0 };
 SizeTStrMap Thread::threadNames;
@@ -1601,24 +1614,6 @@ const char* Thread::FindName( uint thread_id )
     SCOPE_LOCK( threadNamesLocker );
     auto it = threadNames.find( thread_id );
     return it != threadNames.end() ? it->second.c_str() : nullptr;
-}
-
-void Thread::Sleep( uint ms )
-{
-    # ifdef FO_WINDOWS
-    ::Sleep( ms );
-    # else
-    struct timespec req;
-    req.tv_sec = ms / 1000;
-    req.tv_nsec = ( ms % 1000 ) * 1000000;
-    while( nanosleep( &req, &req ) == -1 && errno == EINTR )
-        continue;
-    # endif
-}
-
-void Thread_Sleep( uint ms ) // Used in Mutex.h as extern function
-{
-    Thread::Sleep( ms );
 }
 
 #endif

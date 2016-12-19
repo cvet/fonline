@@ -57,7 +57,6 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
     else
     {
         call.Id = ++lastDeferredCallId;
-        SCOPE_LOCK( deferredCallsLocker );
         deferredCalls.push_back( call );
     }
     return call.Id;
@@ -65,8 +64,6 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
 
 bool ScriptInvoker::IsDeferredCallPending( uint id )
 {
-    SCOPE_LOCK( deferredCallsLocker );
-
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
         if( it->Id == id )
             return true;
@@ -75,8 +72,6 @@ bool ScriptInvoker::IsDeferredCallPending( uint id )
 
 bool ScriptInvoker::CancelDeferredCall( uint id )
 {
-    SCOPE_LOCK( deferredCallsLocker );
-
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
         if( it->Id == id )
@@ -90,8 +85,6 @@ bool ScriptInvoker::CancelDeferredCall( uint id )
 
 bool ScriptInvoker::GetDeferredCallData( uint id, DeferredCall& data )
 {
-    SCOPE_LOCK( deferredCallsLocker );
-
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
         DeferredCall& call = *it;
@@ -106,8 +99,6 @@ bool ScriptInvoker::GetDeferredCallData( uint id, DeferredCall& data )
 
 void ScriptInvoker::GetDeferredCallsList( IntVec& ids )
 {
-    SCOPE_LOCK( deferredCallsLocker );
-
     ids.reserve( deferredCalls.size() );
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
         ids.push_back( it->Id );
@@ -120,8 +111,6 @@ void ScriptInvoker::Process()
     {
         done = true;
 
-        deferredCallsLocker.Lock();
-
         uint tick = Timer::FastTick();
         for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
         {
@@ -130,16 +119,11 @@ void ScriptInvoker::Process()
             {
                 DeferredCall call = *it;
                 it = deferredCalls.erase( it );
-                deferredCallsLocker.Unlock();
-
                 RunDeferredCall( call );
                 done = false;
                 break;
             }
         }
-
-        if( done )
-            deferredCallsLocker.Unlock();
     }
 }
 
@@ -172,8 +156,6 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call )
 
 void ScriptInvoker::SaveDeferredCalls( IniParser& data )
 {
-    SCOPE_LOCK( deferredCallsLocker );
-
     data.SetStr( "GeneralSettings", "LastDeferredCallId", Str::UItoA( lastDeferredCallId ) );
 
     uint tick = Timer::FastTick();
@@ -209,8 +191,6 @@ void ScriptInvoker::SaveDeferredCalls( IniParser& data )
 
 bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 {
-    SCOPE_LOCK( deferredCallsLocker );
-
     WriteLog( "Load deferred calls...\n" );
 
     lastDeferredCallId = Str::AtoUI( data.GetStr( "GeneralSettings", "LastDeferredCallId" ) );
@@ -297,8 +277,6 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 
 string ScriptInvoker::GetStatistics()
 {
-    SCOPE_LOCK( deferredCallsLocker );
-
     char   buf[ MAX_FOTEXT ];
     uint   tick = Timer::FastTick();
     string result = Str::Format( buf, "Deferred calls count: %u\n", (uint) deferredCalls.size() );

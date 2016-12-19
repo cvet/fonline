@@ -90,7 +90,6 @@
 #include "Exception.h"
 #include "FlexRect.h"
 #include "Randomizer.h"
-#include "Mutex.h"
 #include "Text.h"
 #include "FileManager.h"
 #include "FileSystem.h"
@@ -789,7 +788,12 @@ extern InterprocessData SingleplayerData;
 /* Threads                                                              */
 /************************************************************************/
 
-#if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT )
+#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
+void Thread_Sleep( uint ms );
+#endif
+
+#if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT ) && !defined ( FONLINE_CLIENT )
+# include "Mutex.h"
 
 # ifdef FO_WINDOWS
 #  define ThreadType    HANDLE
@@ -800,7 +804,6 @@ extern InterprocessData SingleplayerData;
 
 class Thread
 {
-    # ifndef FONLINE_CLIENT
 private:
     bool       isStarted;
     ThreadType threadId;
@@ -810,9 +813,6 @@ public:
     void Start( void ( * func )( void* ), const char* name, void* arg = nullptr );
     void Wait();
     void Release();
-    # else
-    Thread() = delete;
-    # endif
 
 private:
     static THREAD char threadName[ 64 ];
@@ -824,9 +824,10 @@ public:
     static void        SetCurrentName( const char* name );
     static const char* GetCurrentName();
     static const char* FindName( uint thread_id );
-    static void        Sleep( uint ms );
 };
 
+#else
+# define NO_THREADING
 #endif
 
 /************************************************************************/

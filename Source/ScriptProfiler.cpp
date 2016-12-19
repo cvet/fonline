@@ -140,8 +140,6 @@ void ScriptProfiler::Process( asIScriptContext* ctx )
 
 void ScriptProfiler::ProcessStack( CallStack& stack )
 {
-    SCOPE_LOCK( callPathsLocker );
-
     totalCallPaths++;
     int       top_id = stack.back().Id;
     CallPath* path;
@@ -213,8 +211,6 @@ string ScriptProfiler::GetStatistics()
 {
     if( !isDynamicDisplay )
         return "Dynamic display is disabled.";
-
-    SCOPE_LOCK( callPathsLocker );
 
     if( !totalCallPaths )
         return "No calls recorded.";

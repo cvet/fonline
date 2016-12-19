@@ -738,6 +738,7 @@ void FOClient::SaveLoadProcessDone()
         {
             SaveLoadFileName = SaveLoadDataSlots[ SaveLoadSlotIndex ].FileName;
             InitNetReason = INIT_NET_REASON_LOAD;
+            UpdateFileActive = true;
         }
         else
         {

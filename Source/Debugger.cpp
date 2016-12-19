@@ -1,6 +1,5 @@
 #include "Common.h"
 #include "Debugger.h"
-#include "Mutex.h"
 
 #define MAX_BLOCKS       ( 25 )
 #define MAX_ENTRY        ( 2000 )
@@ -110,13 +109,17 @@ const char* MemBlockNames[ MAX_MEM_NODES ] =
     "Angel Script ",
 };
 
+#ifndef NO_THREADING
 static Mutex* MemLocker = nullptr;
+#endif
 
 void Debugger::Memory( int block, int value )
 {
+    #ifndef NO_THREADING
     if( !MemLocker )
         MemLocker = new Mutex();
     MemLocker->Lock();
+    #endif
 
     if( value )
     {
@@ -135,7 +138,9 @@ void Debugger::Memory( int block, int value )
         }
     }
 
+    #ifndef NO_THREADING
     MemLocker->Unlock();
+    #endif
 }
 
 struct MemNodeStr
@@ -152,9 +157,11 @@ static MemNodeStrVec MemNodesStr;
 
 void Debugger::MemoryStr( const char* block, int value )
 {
+    #ifndef NO_THREADING
     if( !MemLocker )
         MemLocker = new Mutex();
     MemLocker->Lock();
+    #endif
 
     if( block && value )
     {
@@ -190,14 +197,18 @@ void Debugger::MemoryStr( const char* block, int value )
         }
     }
 
+    #ifndef NO_THREADING
     MemLocker->Unlock();
+    #endif
 }
 
 const char* Debugger::GetMemoryStatistics()
 {
+    #ifndef NO_THREADING
     if( !MemLocker )
         MemLocker = new Mutex();
     MemLocker->Lock();
+    #endif
 
     #pragma MESSAGE("Exclude static var.")
     static string result;
@@ -264,7 +275,9 @@ const char* Debugger::GetMemoryStatistics()
         result += "\n  Disabled\n";
     #endif
 
+    #ifndef NO_THREADING
     MemLocker->Unlock();
+    #endif
     return result.c_str();
 }
 
@@ -281,7 +294,9 @@ static bool                         MemoryTrace;
 typedef pair< StackInfo*, size_t > StackInfoSize;
 static map< size_t, StackInfoSize > PtrStackInfoSize;
 static map< size_t, StackInfo* >    StackHashStackInfo;
+#ifndef NO_THREADING
 static Mutex                        MemoryAllocLocker;
+#endif
 static uint                         MemoryAllocRecursion;
 
 #define ALLOCATE_PTR( ptr, size, param )                                   \
@@ -478,7 +493,9 @@ DECLARE_PATCH( LPVOID, HeapAlloc, ( HANDLE hHeap, DWORD dwFlags, DWORD_PTR dwByt
 {
     if( MemoryTrace )
     {
+        # ifndef NO_THREADING
         SCOPE_LOCK( MemoryAllocLocker );
+        # endif
         MemoryAllocRecursion++;
         void* ptr = Patch_HeapAlloc.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, dwBytes );
         MemoryAllocRecursion--;
@@ -497,7 +514,9 @@ DECLARE_PATCH( LPVOID, HeapReAlloc, ( HANDLE hHeap, DWORD dwFlags, LPVOID lpMem,
 {
     if( MemoryTrace )
     {
+        # ifndef NO_THREADING
         SCOPE_LOCK( MemoryAllocLocker );
+        # endif
         MemoryAllocRecursion++;
         void* ptr = Patch_HeapReAlloc.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, lpMem, dwBytes );
         MemoryAllocRecursion--;
@@ -517,7 +536,9 @@ DECLARE_PATCH( BOOL, HeapFree, ( HANDLE hHeap, DWORD dwFlags, LPVOID lpMem ) )
 {
     if( MemoryTrace )
     {
+        # ifndef NO_THREADING
         SCOPE_LOCK( MemoryAllocLocker );
+        # endif
         MemoryAllocRecursion++;
         BOOL result = Patch_HeapFree.Call( hHeap, dwFlags | HEAP_NO_SERIALIZE, lpMem );
         MemoryAllocRecursion--;
@@ -661,7 +682,9 @@ struct ChunkSorter
 };
 string Debugger::GetTraceMemory()
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( MemoryAllocLocker );
+    #endif
     MemoryAllocRecursion++;
 
     // Sort by chunks count

@@ -88,10 +88,9 @@ struct ContextData
 };
 static ContextVec FreeContexts;
 static ContextVec BusyContexts;
-static Mutex      ContextsLocker;
 
 // Script watcher
-#ifndef FONLINE_CLIENT
+#if 0
 # define SCRIPT_WATCHER
 #endif
 #ifdef SCRIPT_WATCHER
@@ -794,17 +793,14 @@ void Script::CreateContext()
     if( edata->Profiler )
         ctx->SetLineCallback( asFUNCTION( ProfilerContextCallback ), edata->Profiler, asCALL_CDECL );
 
-    SCOPE_LOCK( ContextsLocker );
     FreeContexts.push_back( ctx );
 }
 
 void Script::FinishContext( asIScriptContext* ctx )
 {
-    ContextsLocker.Lock();
     auto it = std::find( FreeContexts.begin(), FreeContexts.end(), ctx );
     RUNTIME_ASSERT( it != FreeContexts.end() );
     FreeContexts.erase( it );
-    ContextsLocker.Unlock();
 
     delete (ContextData*) ctx->GetUserData();
     ctx->Release();
@@ -813,8 +809,6 @@ void Script::FinishContext( asIScriptContext* ctx )
 
 asIScriptContext* Script::RequestContext()
 {
-    SCOPE_LOCK( ContextsLocker );
-
     if( FreeContexts.empty() )
         CreateContext();
 
@@ -826,8 +820,6 @@ asIScriptContext* Script::RequestContext()
 
 void Script::ReturnContext( asIScriptContext* ctx )
 {
-    SCOPE_LOCK( ContextsLocker );
-
     auto it = std::find( BusyContexts.begin(), BusyContexts.end(), ctx );
     RUNTIME_ASSERT( it != BusyContexts.end() );
     BusyContexts.erase( it );
@@ -837,15 +829,9 @@ void Script::ReturnContext( asIScriptContext* ctx )
     memzero( ctx_data, sizeof( ContextData ) );
 }
 
-void Script::GetExecutionContexts( ContextVec& contexts )
+ContextVec Script::GetExecutionContexts()
 {
-    ContextsLocker.Lock();
-    contexts = BusyContexts;
-}
-
-void Script::ReleaseExecutionContexts()
-{
-    ContextsLocker.Unlock();
+    return BusyContexts;
 }
 
 void Script::RaiseException( const char* message, ... )
@@ -1048,8 +1034,6 @@ void Script::Watcher( void* )
         // Execution timeout
         if( RunTimeoutAbort )
         {
-            SCOPE_LOCK( ContextsLocker );
-
             uint cur_tick = Timer::FastTick();
             for( auto it = BusyContexts.begin(); it != BusyContexts.end(); ++it )
             {
@@ -1060,7 +1044,7 @@ void Script::Watcher( void* )
             }
         }
 
-        Thread::Sleep( 100 );
+        Thread_Sleep( 100 );
     }
     #endif
 }
@@ -2030,9 +2014,7 @@ void Script::RunPreparedSuspend()
 asIScriptContext* Script::SuspendCurrentContext( uint time )
 {
     asIScriptContext* ctx = asGetActiveContext();
-    ContextsLocker.Lock();
     RUNTIME_ASSERT( std::find( BusyContexts.begin(), BusyContexts.end(), ctx ) != BusyContexts.end() );
-    ContextsLocker.Unlock();
     if( ctx->GetFunction( ctx->GetCallstackSize() - 1 )->GetReturnTypeId() != asTYPEID_VOID )
         SCRIPT_ERROR_R0( "Can't yield context which must return value." );
     ctx->Suspend();
@@ -2054,8 +2036,6 @@ void Script::RunSuspended()
     // Collect contexts to resume
     ContextVec resume_contexts;
     {
-        SCOPE_LOCK( ContextsLocker );
-
         if( BusyContexts.empty() )
             return;
 
@@ -2098,8 +2078,6 @@ void Script::RunMandatorySuspended()
         // Collect contexts to resume
         ContextVec resume_contexts;
         {
-            SCOPE_LOCK( ContextsLocker );
-
             if( BusyContexts.empty() )
                 break;
 

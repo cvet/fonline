@@ -544,7 +544,7 @@ void FOServer::LogicTick()
 
     // Sleep
     if( ServerGameSleep >= 0 )
-        Thread::Sleep( ServerGameSleep );
+        Thread_Sleep( ServerGameSleep );
 }
 
 void FOServer::Net_Listen( void* )
@@ -704,7 +704,7 @@ void FOServer::NetIO_Loop( void* )
         // Return 1 if no events, wait some time and run loop again
         if( result == 1 )
         {
-            Thread::Sleep( 10 );
+            Thread_Sleep( 10 );
             continue;
         }
 
@@ -3648,7 +3648,7 @@ void FOServer::Dump_Work( void* args )
                 WriteLog( "Unable to save client to '{}'.\n", d->TypeName.c_str() );
 
             // Sleep some time
-            Thread::Sleep( 1 );
+            Thread_Sleep( 1 );
         }
         else
         {
@@ -3658,7 +3658,7 @@ void FOServer::Dump_Work( void* args )
 
             // Sleep some time
             if( index++ % 1000 == 0 )
-                Thread::Sleep( 1 );
+                Thread_Sleep( 1 );
         }
 
         delete d->Props;

@@ -9,7 +9,9 @@ class BufferManager
 {
 private:
     bool isError;
+    #ifndef NO_THREADING
     Mutex bufLocker;
+    #endif
     char* bufData;
     uint bufLen;
     uint bufEndPos;

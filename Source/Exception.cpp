@@ -213,8 +213,12 @@ LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         {
             DWORD       tid = threads_ids[ i ];
             HANDLE      t = OpenThread( THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, tid );
+            # ifndef NO_THREADING
             const char* tname = Thread::FindName( tid );
             fprintf( f, "Thread '%s' (%u%s)\n", tname ? tname : "Unknown", tid, !i ? ", current" : "" );
+            # else
+            fprintf( f, "Thread %u (%s)\n", tid, !i ? ", current" : "" );
+            # endif
 
             CONTEXT context;
             memset( &context, 0, sizeof( context ) );
@@ -604,7 +608,11 @@ void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         // DumpAngelScript( f );
 
         // Threads
+        # ifndef NO_THREADING
         fprintf( f, "Thread '%s' (%zu%s)\n", Thread::GetCurrentName(), Thread::GetCurrentId(), ", current" );
+        # else
+        fprintf( f, "Thread %s\n", ", current" );
+        # endif
 
         // Stack
         int skip = 0;
@@ -672,8 +680,7 @@ void CreateDump( const char* appendix, const char* message )
 
 static void DumpAngelScript( FILE* f )
 {
-    ContextVec contexts;
-    Script::GetExecutionContexts( contexts );
+    ContextVec contexts = Script::GetExecutionContexts();
     if( !contexts.empty() )
     {
         fprintf( f, "AngelScript\n" );
@@ -681,7 +688,6 @@ static void DumpAngelScript( FILE* f )
             fprintf( f, "%s", Script::MakeContextTraceback( contexts[ i ] ).c_str() );
         fprintf( f, "\n" );
     }
-    Script::ReleaseExecutionContexts();
 }
 
 bool RaiseAssert( const char* message, const char* file, int line )

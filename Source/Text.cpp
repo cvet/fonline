@@ -876,7 +876,9 @@ char* Str::GetBigBuf()
     return BigBuf;
 }
 
+#ifndef NO_THREADING
 static Mutex                    HashNamesLocker;
+#endif
 static map< hash, const char* > HashNames;
 
 #define HASH_IMPL( var, name )    hash var = Str::GetHash( name )
@@ -915,7 +917,9 @@ hash Str::GetHash( const char* name )
         return 0;
 
     // Add hash
+    #ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
+    #endif
 
     auto ins = HashNames.insert( PAIR( h, (const char*) nullptr ) );
     if( ins.second )
@@ -928,7 +932,9 @@ hash Str::GetHash( const char* name )
 
 const char* Str::GetName( hash h )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
+    #endif
 
     auto it = HashNames.find( h );
     if( it == HashNames.end() )
@@ -942,7 +948,9 @@ const char* Str::GetName( hash h )
 
 void Str::SaveHashes( StrMap& hashes )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
+    #endif
 
     char buf[ MAX_FOTEXT ];
     for( auto& kv : HashNames )
@@ -951,7 +959,9 @@ void Str::SaveHashes( StrMap& hashes )
 
 void Str::LoadHashes( StrMap& hashes )
 {
+    #ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
+    #endif
 
     for( auto& kv : hashes )
         GetHash( kv.second.c_str() );
