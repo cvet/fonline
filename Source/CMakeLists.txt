@@ -269,6 +269,7 @@ set( COMMON_SOURCE
 	ScriptPragmas.cpp ScriptPragmas.h
 	ScriptProfiler.cpp ScriptProfiler.h
 	Text.cpp Text.h
+	Threading.cpp Threading.h
 	Timer.cpp Timer.h
 	Types.h
 )

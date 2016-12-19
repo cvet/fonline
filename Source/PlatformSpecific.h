@@ -57,22 +57,11 @@
 # error "Unknown CPU."
 #endif
 
-// TLS
-#if !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB )
-# if defined ( FO_MSVC )
-#  define THREAD    __declspec( thread )
-# elif defined ( FO_GCC )
-#  define THREAD    __thread
-# endif
-#else
-# define THREAD
-#endif
-
 // Function name
 #if defined ( FO_MSVC )
-# define _FUNC_     __FUNCTION__
+# define _FUNC_    __FUNCTION__
 #elif defined ( FO_GCC )
-# define _FUNC_     __PRETTY_FUNCTION__
+# define _FUNC_    __PRETTY_FUNCTION__
 #endif
 
 // Disable deprecated notification in GCC

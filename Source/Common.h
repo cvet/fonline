@@ -98,6 +98,11 @@
 #include "AngelScript/sdk/add_on/scriptdictionary/scriptdictionary.h"
 #include "AngelScript/scriptdict.h"
 
+#if defined ( FONLINE_NPCEDITOR ) || defined ( FONLINE_MRFIXIT ) || defined ( FONLINE_CLIENT )
+# define NO_THREADING
+#endif
+#include "Threading.h"
+
 #define ___MSG1( x )                      # x
 #define ___MSG0( x )                      ___MSG1( x )
 #define MESSAGE( desc )                   message( __FILE__ "(" ___MSG0( __LINE__ ) "):" # desc )
@@ -783,52 +788,6 @@ public:
 
 extern bool             Singleplayer;
 extern InterprocessData SingleplayerData;
-
-/************************************************************************/
-/* Threads                                                              */
-/************************************************************************/
-
-#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
-void Thread_Sleep( uint ms );
-#endif
-
-#if !defined ( FONLINE_NPCEDITOR ) && !defined ( FONLINE_MRFIXIT ) && !defined ( FONLINE_CLIENT )
-# include "Mutex.h"
-
-# ifdef FO_WINDOWS
-#  define ThreadType    HANDLE
-# else
-#  include <pthread.h>
-#  define ThreadType    pthread_t
-# endif
-
-class Thread
-{
-private:
-    bool       isStarted;
-    ThreadType threadId;
-
-public:
-    Thread();
-    void Start( void ( * func )( void* ), const char* name, void* arg = nullptr );
-    void Wait();
-    void Release();
-
-private:
-    static THREAD char threadName[ 64 ];
-    static SizeTStrMap threadNames;
-    static Mutex       threadNamesLocker;
-
-public:
-    static size_t      GetCurrentId();
-    static void        SetCurrentName( const char* name );
-    static const char* GetCurrentName();
-    static const char* FindName( uint thread_id );
-};
-
-#else
-# define NO_THREADING
-#endif
 
 /************************************************************************/
 /* Memory pool                                                          */

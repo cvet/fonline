@@ -1,28 +1,50 @@
-#ifndef __MUTEX__
-#define __MUTEX__
+#ifndef __THREADING__
+#define __THREADING__
 
 #include "Common.h"
 
-#define DEFAULT_SPIN_COUNT              ( 4000 )
-#define SCOPE_LOCK( mutex )                               volatile MutexLocker< decltype( mutex ) > scope_lock_ ## mutex( mutex )
+#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
+void Thread_Sleep( uint ms );
+#endif
 
-#ifdef FO_WINDOWS
+#ifndef NO_THREADING
 
-# ifdef FO_MSVC
-#  include <intrin.h>
-#  define InterlockedCompareExchange    _InterlockedCompareExchange
-#  define InterlockedExchange           _InterlockedExchange
-#  define InterlockedIncrement          _InterlockedIncrement
-#  define InterlockedDecrement          _InterlockedDecrement
+// TLS
+# if defined ( FO_MSVC )
+#  define THREAD                         __declspec( thread )
+# elif defined ( FO_GCC )
+#  define THREAD                         __thread
+# else
+#  error No TLS
 # endif
+
+# ifdef FO_WINDOWS
+#  define ThreadType                     HANDLE
+# else
+#  include <pthread.h>
+#  define ThreadType                     pthread_t
+# endif
+
+# define DEFAULT_SPIN_COUNT              ( 4000 )
+# define SCOPE_LOCK( mutex )                               volatile MutexLocker< decltype( mutex ) > scope_lock_ ## mutex( mutex )
+
+# ifdef FO_WINDOWS
+
+#  ifdef FO_MSVC
+#   include <intrin.h>
+#   define InterlockedCompareExchange    _InterlockedCompareExchange
+#   define InterlockedExchange           _InterlockedExchange
+#   define InterlockedIncrement          _InterlockedIncrement
+#   define InterlockedDecrement          _InterlockedDecrement
+#  endif
 
 class Mutex
 {
 private:
     CRITICAL_SECTION mutexCS;
-    # if !defined ( FO_MAC ) && !defined ( FO_IOS )
+    #  if !defined ( FO_MAC ) && !defined ( FO_IOS )
     int              dummyData[ 5 ];
-    # endif
+    #  endif
     Mutex( const Mutex& ) {}
     void operator=( const Mutex& ) {}
 
@@ -51,22 +73,22 @@ public:
     void* GetHandle() { return mutexEvent; }
 };
 
-#else
+# else
 
-# include <pthread.h>
+#  include <pthread.h>
 
-# define InterlockedCompareExchange( val, exch, comp )    __sync_val_compare_and_swap( val, comp, exch )
-# define InterlockedExchange( val, newval )               __sync_lock_test_and_set( val, newval )
-# define InterlockedIncrement( val )                      __sync_add_and_fetch( val, 1 )
-# define InterlockedDecrement( val )                      __sync_sub_and_fetch( val, 1 )
+#  define InterlockedCompareExchange( val, exch, comp )    __sync_val_compare_and_swap( val, comp, exch )
+#  define InterlockedExchange( val, newval )               __sync_lock_test_and_set( val, newval )
+#  define InterlockedIncrement( val )                      __sync_add_and_fetch( val, 1 )
+#  define InterlockedDecrement( val )                      __sync_sub_and_fetch( val, 1 )
 
 class Mutex
 {
 private:
     pthread_mutex_t mutexCS;
-    # if !defined ( FO_MAC ) && !defined ( FO_IOS )
+    #  if !defined ( FO_MAC ) && !defined ( FO_IOS )
     int             dummyData[ 5 ];
-    # endif
+    #  endif
     Mutex( const Mutex& ) {}
     void operator=( const Mutex& ) {}
 
@@ -137,7 +159,7 @@ public:
     }
 };
 
-#endif
+# endif
 
 class MutexCode
 {
@@ -228,4 +250,35 @@ public:
     ~MutexLocker() { pMutex.Unlock(); }
 };
 
-#endif // __MUTEX__
+class Thread
+{
+private:
+    bool       isStarted;
+    ThreadType threadId;
+
+public:
+    Thread();
+    void Start( void ( * func )( void* ), const char* name, void* arg = nullptr );
+    void Wait();
+    void Release();
+
+private:
+    static THREAD char threadName[ 64 ];
+    static SizeTStrMap threadNames;
+    static Mutex       threadNamesLocker;
+
+public:
+    static size_t      GetCurrentId();
+    static void        SetCurrentName( const char* name );
+    static const char* GetCurrentName();
+    static const char* FindName( uint thread_id );
+};
+
+#else
+
+// TLS
+# define THREAD
+
+#endif
+
+#endif // __THREADING__
