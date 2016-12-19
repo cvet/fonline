@@ -31,6 +31,10 @@
 # include <TargetConditionals.h>
 #endif
 
+#if defined ( FO_IOS ) || defined ( FO_ANDROID ) || defined ( FO_WEB )
+# define FO_OGL_ES
+#endif
+
 // Detect compiler
 #if defined ( __GNUC__ )
 # define FO_GCC

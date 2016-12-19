@@ -253,6 +253,12 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #   define GL_MAX                                 GL_MAX_EXT
 #   define GL_MIN                                 GL_MIN_EXT
 #  endif
+#  ifdef FO_WEB
+#   define GL_MAX                                 GL_MAX_EXT
+#   define GL_MIN                                 GL_MIN_EXT
+#   define glRenderbufferStorageMultisample( a, b, c, d, e )
+#   define glRenderbufferStorageMultisampleEXT( a, b, c, d, e )
+#  endif
 #  define glTexImage2DMultisample( a, b, c, d, e, f )
 # endif
 # include "GL/glu_stuff.h"

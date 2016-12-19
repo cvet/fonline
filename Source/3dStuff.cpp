@@ -1207,7 +1207,7 @@ void Animation3d::DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow_dis
 bool Animation3d::StartUp()
 {
     // Calculate max effect bones
-    #ifndef FO_ANDROID
+    #ifndef FO_OGL_ES
     GLint max_uniform_components = 0;
     GL( glGetIntegerv( GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components ) );
     if( max_uniform_components < 1024 )

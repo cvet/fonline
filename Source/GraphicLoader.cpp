@@ -532,7 +532,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
             GL( glBindAttribLocation( program, 7, "InBlendIndices" ) );
         }
 
-        #ifndef FO_ANDROID
+        #ifndef FO_OGL_ES
         if( GL_HAS( get_program_binary ) )
             GL( glProgramParameteri( program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE ) );
         #endif

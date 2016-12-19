@@ -158,10 +158,15 @@ bool SpriteManager::Init()
     OGL_framebuffer_multisample = false;
     OGL_packed_depth_stencil = false;
     OGL_texture_multisample = false;
-    OGL_vertex_array_object = true;
-    OGL_get_program_binary = false;
-    # ifdef FO_ANDROID
     OGL_vertex_array_object = false;
+    OGL_get_program_binary = false;
+    # ifdef FO_IOS
+    OGL_vertex_array_object = true;
+    OGL_framebuffer_multisample = true;
+    OGL_texture_multisample = true;
+    # endif
+    # ifdef FO_WEB
+    OGL_vertex_array_object = true;
     # endif
     #endif
 
