@@ -139,7 +139,7 @@ set( SDL_ATOMIC OFF CACHE STRING "" FORCE )
 set( SDL_JOYSTICK OFF CACHE STRING "" FORCE )
 set( SDL_HAPTIC OFF CACHE STRING "" FORCE )
 set( SDL_POWER OFF CACHE STRING "" FORCE )
-set( SDL_THREADS OFF CACHE STRING "" FORCE )
+set( SDL_THREADS ON CACHE STRING "" FORCE )
 set( SDL_TIMERS OFF CACHE STRING "" FORCE )
 set( SDL_FILE OFF CACHE STRING "" FORCE )
 set( SDL_CPUINFO OFF CACHE STRING "" FORCE )
@@ -331,7 +331,6 @@ set( SERVER_SOURCE
 	MainServer.cpp
 	Map.cpp Map.h
 	MapManager.cpp MapManager.h
-	Mutex.h
 	Server.cpp Server.h
 	ServerClient.cpp
 	ServerItem.cpp
