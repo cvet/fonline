@@ -858,7 +858,6 @@ void FOClient::MainLoop()
             }
             else
             {
-                // if( error == 115 )
                 WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
             }
         }
@@ -1406,7 +1405,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     Bin.SetEncryptKey( 0 );
     Bout.SetEncryptKey( 0 );
 
-    if( ( Sock = socket( AF_INET, SOCK_STREAM, 0 ) ) == INVALID_SOCKET )
+    if( ( Sock = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP ) ) == INVALID_SOCKET )
     {
         WriteLog( "Create socket error '{}'.\n", GetLastSocketError() );
         return false;
@@ -1440,17 +1439,14 @@ bool FOClient::NetConnect( const char* host, ushort port )
         }
 
         int r = connect( Sock, (sockaddr*) &SockAddr, sizeof( sockaddr_in ) );
-        if( r )
+        #ifdef FO_WINDOWS
+        if( r == INVALID_SOCKET && WSAGetLastError() != WSAEWOULDBLOCK )
+        #else
+        if( r == INVALID_SOCKET && errno != EINPROGRESS )
+        #endif
         {
-            #ifdef FO_WINDOWS
-            if( WSAGetLastError() != WSAEWOULDBLOCK )
-            #else
-            if( errno != EINPROGRESS )
-            #endif
-            {
-                WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
-                return false;
-            }
+            WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
+            return false;
         }
     }
     // Proxy connect

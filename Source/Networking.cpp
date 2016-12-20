@@ -328,11 +328,15 @@ class NetWebSocketsServer: public NetServerBase
 
     void AcceptConnection( std::error_code error, web_sockets::connection_ptr connection )
     {
-        connection->send( "hello" );
         if( !error )
+        {
+            connection->start();
             connectionCallback( new NetConnectionWS( &server, connection ) );
+        }
         else
+        {
             WriteLog( "Accept error: {}.\n", error.message() );
+        }
 
         AcceptNext();
     }
@@ -341,6 +345,9 @@ public:
     NetWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback )
     {
         connectionCallback = callback;
+
+        server.set_error_channels( websocketpp::log::alevel::all );
+        server.set_access_channels( websocketpp::log::alevel::all );
 
         server.init_asio();
         server.listen( port );
