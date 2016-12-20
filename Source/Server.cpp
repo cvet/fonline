@@ -16,15 +16,9 @@ uint                        FOServer::UpdateLastTick = 0;
 ClVec                       FOServer::LogClients;
 Thread                      FOServer::ListenThread;
 SOCKET                      FOServer::ListenSock = INVALID_SOCKET;
-#if defined ( USE_LIBEVENT )
-event_base*                 FOServer::NetIOEventHandler = nullptr;
-Thread                      FOServer::NetIOThread;
-uint                        FOServer::NetIOThreadsCount = 0;
-#else // IOCP
 HANDLE                      FOServer::NetIOCompletionPort = nullptr;
 Thread*                     FOServer::NetIOThreads = nullptr;
 uint                        FOServer::NetIOThreadsCount = 0;
-#endif
 ClVec                       FOServer::ConnectedClients;
 Mutex                       FOServer::ConnectedClientsLocker;
 FOServer::Statistics_       FOServer::Statistics;
@@ -105,17 +99,6 @@ void FOServer::Finish()
     ListenSock = INVALID_SOCKET;
     ListenThread.Wait();
 
-    #if defined ( USE_LIBEVENT )
-    // Net IO events
-    event_base* eb = NetIOEventHandler;
-    NetIOEventHandler = nullptr;
-    if( eb )
-        event_base_loopbreak( eb );
-    NetIOThread.Wait();
-    if( eb )
-        event_base_free( eb );
-    NetIOThreadsCount = 0;
-    #else // IOCP
     for( uint i = 0; i < NetIOThreadsCount; i++ )
         PostQueuedCompletionStatus( NetIOCompletionPort, 0, 1, nullptr );
     for( uint i = 0; i < NetIOThreadsCount; i++ )
@@ -124,7 +107,6 @@ void FOServer::Finish()
     NetIOThreadsCount = 0;
     CloseHandle( NetIOCompletionPort );
     NetIOCompletionPort = nullptr;
-    #endif
 
     // Managers
     EntityMngr.ClearEntities();
@@ -386,18 +368,8 @@ void FOServer::LogicTick()
         // Disconnect
         if( cl->IsOffline() )
         {
-            #if defined ( USE_LIBEVENT )
-            cl->Bout.Lock();
-            bool empty = cl->Bout.IsEmpty();
-            cl->Bout.Unlock();
-            if( empty )
-                cl->Shutdown();
-            #else
             if( InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
-            {
                 cl->Shutdown();
-            }
-            #endif
 
             if( cl->GetOfflineTime() > 60 * 60 * 1000 )         // 1 hour
             {
@@ -407,13 +379,9 @@ void FOServer::LogicTick()
         }
 
         // Check for removing
-        #if defined ( USE_LIBEVENT )
-        if( cl->Sock == INVALID_SOCKET )
-        #else
         if( cl->Sock == INVALID_SOCKET &&
             InterlockedCompareExchange( &cl->NetIOIn->Operation, 0, 0 ) == WSAOP_FREE &&
             InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
-        #endif
         {
             DisconnectClient( cl );
 
@@ -620,18 +588,6 @@ void FOServer::Net_Listen( void* )
         }
         cl->ZstrmInit = true;
 
-        #if defined ( USE_LIBEVENT )
-        // Net IO events handling
-        bufferevent* bev = bufferevent_socket_new( NetIOEventHandler, sock, BEV_OPT_THREADSAFE );   // BEV_OPT_DEFER_CALLBACKS
-        if( !bev )
-        {
-            WriteLog( "Create new buffer event fail.\n" );
-            closesocket( sock );
-            delete cl;
-            continue;
-        }
-        bufferevent_lock( bev );
-        #else // IOCP
         // CompletionPort
         if( !CreateIoCompletionPort( (HANDLE) sock, NetIOCompletionPort, 0, 0 ) )
         {
@@ -650,7 +606,6 @@ void FOServer::Net_Listen( void* )
             delete cl;
             continue;
         }
-        #endif
 
         // Add to connected collection
         ConnectedClientsLocker.Lock();
@@ -658,259 +613,8 @@ void FOServer::Net_Listen( void* )
         ConnectedClients.push_back( cl );
         Statistics.CurOnline++;
         ConnectedClientsLocker.Unlock();
-
-        #if defined ( USE_LIBEVENT )
-        // Setup timeouts
-        # if !defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
-        timeval tv = { 0, 5 * 1000 };  // Check output data every 5ms
-        bufferevent_set_timeouts( bev, nullptr, &tv );
-        # endif
-
-        // Setup bandwidth
-        const uint                  rate = 100000; // 100kb per second
-        static ev_token_bucket_cfg* rate_cfg = nullptr;
-        if( !rate_cfg )
-            rate_cfg = ev_token_bucket_cfg_new( rate, rate, rate, rate, nullptr );
-        if( !Singleplayer )
-            bufferevent_set_rate_limit( bev, rate_cfg );
-
-        // Setup callbacks
-        Client::NetIOArg* arg = new Client::NetIOArg();
-        arg->PClient = cl;
-        arg->BEV = bev;
-        cl->NetIOArgPtr = arg;
-        cl->AddRef();         // Released in Shutdown
-        bufferevent_setcb( bev, NetIO_Input, NetIO_Output, NetIO_Event, cl->NetIOArgPtr );
-
-        // Begin handle net events
-        bufferevent_enable( bev, EV_WRITE | EV_READ );
-        bufferevent_unlock( bev );
-        #endif
     }
 }
-
-#if defined ( USE_LIBEVENT )
-
-void FOServer::NetIO_Loop( void* )
-{
-    while( true )
-    {
-        event_base* eb = NetIOEventHandler;
-        if( !eb )
-            break;
-
-        int result = event_base_loop( eb, 0 );
-
-        // Return 1 if no events, wait some time and run loop again
-        if( result == 1 )
-        {
-            Thread_Sleep( 10 );
-            continue;
-        }
-
-        // Error
-        if( result == -1 )
-            WriteLog( "Error.\n" );
-
-        // End of work
-        // event_base_loopbreak called
-        break;
-    }
-}
-
-void CheckThreadName()
-{
-    static uint thread_count = 0;
-    const char* cur_name = Thread::GetCurrentName();
-    if( !cur_name[ 0 ] )
-    {
-        char thread_name[ MAX_FOTEXT ];
-        Str::Format( thread_name, "NetWork%u", thread_count++ );
-        Thread::SetCurrentName( thread_name );
-    }
-}
-
-void FOServer::NetIO_Event( bufferevent* bev, short what, void* arg )
-{
-    CheckThreadName();
-
-    Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
-    Mutex&            locker = arg_->Locker;
-    SCOPE_LOCK( locker );
-    Client*           cl = arg_->PClient;
-
-    # if !defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
-    if( ( what & ( BEV_EVENT_TIMEOUT | BEV_EVENT_WRITING ) ) == ( BEV_EVENT_TIMEOUT | BEV_EVENT_WRITING ) )
-    {
-        // Process offline
-        if( cl->IsOffline() )
-        {
-            // If no data to send than shutdown
-            bool is_empty = false;
-            cl->Bout.Lock();
-            if( cl->Bout.IsEmpty() )
-                is_empty = true;
-            cl->Bout.Unlock();
-            if( is_empty )
-            {
-                cl->Shutdown();
-                return;
-            }
-
-            // Disable reading
-            if( bufferevent_get_enabled() & EV_READ )
-                bufferevent_disable( bev, EV_READ );
-
-            // Disable timeout
-            bufferevent_set_timeouts( bev, nullptr, nullptr );
-        }
-
-        // Try send again
-        bufferevent_enable( bev, EV_WRITE );
-        NetIO_Output( bev, arg );
-    }
-    else if( what & ( BEV_EVENT_ERROR | BEV_EVENT_EOF ) )
-    # else
-    if( what & ( BEV_EVENT_ERROR | BEV_EVENT_EOF ) )
-    # endif
-    {
-        // Shutdown on errors
-        cl->Shutdown();
-    }
-}
-
-void FOServer::NetIO_Input( bufferevent* bev, void* arg )
-{
-    CheckThreadName();
-
-    Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
-    Mutex&            locker = arg_->Locker;
-    SCOPE_LOCK( locker );
-    Client*           cl = arg_->PClient;
-
-    if( cl->IsOffline() )
-    {
-        evbuffer* input = bufferevent_get_input( bev );
-        uint      read_len = (uint) evbuffer_get_length( input );
-        if( read_len )
-            evbuffer_drain( input, read_len );
-        bufferevent_disable( bev, EV_READ );
-        return;
-    }
-
-    evbuffer* input = bufferevent_get_input( bev );
-    uint      read_len = (uint) evbuffer_get_length( input );
-    if( read_len )
-    {
-        cl->Bin.Lock();
-        if( cl->Bin.GetCurPos() + read_len >= GameOpt.FloodSize && !Singleplayer )
-        {
-            WriteLog( "Flood.\n" );
-            cl->Disconnect();
-            cl->Bin.Reset();
-            cl->Bin.Unlock();
-            cl->Shutdown();
-            return;
-        }
-
-        cl->Bin.GrowBuf( read_len );
-        char* data = cl->Bin.GetData();
-        uint  pos = cl->Bin.GetEndPos();
-        cl->Bin.SetEndPos( pos + read_len );
-
-        if( evbuffer_remove( input, data + pos, read_len ) != (int) read_len )
-        {
-            WriteLog( "Receive fail.\n" );
-            cl->Bin.Unlock();
-            cl->Shutdown();
-        }
-        else
-        {
-            cl->Bin.Unlock();
-            Statistics.BytesRecv += read_len;
-        }
-    }
-}
-
-void FOServer::NetIO_Output( bufferevent* bev, void* arg )
-{
-    CheckThreadName();
-
-    Client::NetIOArg* arg_ = (Client::NetIOArg*) arg;
-    Mutex&            locker = arg_->Locker;
-    SCOPE_LOCK( locker );
-    Client*           cl = arg_->PClient;
-
-    cl->Bout.Lock();
-    if( cl->Bout.IsEmpty() )   // Nothing to send
-    {
-        cl->Bout.Unlock();
-        if( cl->IsOffline() )
-            cl->Shutdown();
-        return;
-    }
-
-    // Compress
-    const uint         output_buffer_len = 100000; // 100kb
-    static THREAD char output_buffer[ output_buffer_len ];
-    uint               write_len = 0;
-    if( !GameOpt.DisableZlibCompression && !cl->DisableZlib )
-    {
-        uint to_compr = cl->Bout.GetEndPos();
-        if( to_compr > output_buffer_len )
-            to_compr = output_buffer_len;
-
-        cl->Zstrm.next_in = (uchar*) cl->Bout.GetCurData();
-        cl->Zstrm.avail_in = to_compr;
-        cl->Zstrm.next_out = (uchar*) output_buffer;
-        cl->Zstrm.avail_out = output_buffer_len;
-
-        if( deflate( &cl->Zstrm, Z_SYNC_FLUSH ) != Z_OK )
-        {
-            WriteLog( "Deflate fail.\n" );
-            cl->Disconnect();
-            cl->Bout.Reset();
-            cl->Bout.Unlock();
-            cl->Shutdown();
-            return;
-        }
-
-        uint compr = cl->Zstrm.next_out - (uchar*) output_buffer;
-        uint real = cl->Zstrm.next_in - (uchar*) cl->Bout.GetCurData();
-        write_len = compr;
-        cl->Bout.Cut( real );
-        Statistics.DataReal += real;
-        Statistics.DataCompressed += compr;
-    }
-    // Without compressing
-    else
-    {
-        uint len = cl->Bout.GetEndPos();
-        if( len > output_buffer_len )
-            len = output_buffer_len;
-        memcpy( output_buffer, cl->Bout.GetCurData(), len );
-        write_len = len;
-        cl->Bout.Cut( len );
-        Statistics.DataReal += len;
-        Statistics.DataCompressed += len;
-    }
-    if( cl->Bout.IsEmpty() )
-        cl->Bout.Reset();
-    cl->Bout.Unlock();
-
-    // Append to buffer
-    if( bufferevent_write( bev, output_buffer, write_len ) )
-    {
-        WriteLog( "Send fail.\n" );
-        cl->Shutdown();
-    }
-    else
-    {
-        Statistics.BytesSend += write_len;
-    }
-}
-
-#else // IOCP
 
 void FOServer::NetIO_Work( void* )
 {
@@ -1056,8 +760,6 @@ void FOServer::NetIO_Output( Client::NetIOArg* io )
         cl->Disconnect();
     }
 }
-
-#endif
 
 void FOServer::Process( Client* cl )
 {
@@ -2854,51 +2556,6 @@ bool FOServer::InitReal()
     if( !NetIOThreadsCount )
         NetIOThreadsCount = CpuCount;
 
-    #if defined ( USE_LIBEVENT )
-    // Net IO events initialization
-    struct ELCB
-    {
-        static void Callback( int severity, const char* msg ) { WriteLog( "Libevent - severity {}, msg '{}'.\n", severity, msg ); }
-    };
-    struct EFCB
-    {
-        static void Callback( int err ) { WriteLog( "Libevent - error {}.\n", err ); }
-    };
-    event_set_log_callback( ELCB::Callback );
-    event_set_fatal_callback( EFCB::Callback );
-
-    // evthread_enable_lock_debuging();
-
-    # ifdef FO_WINDOWS
-    evthread_use_windows_threads();
-    # else
-    evthread_use_pthreads();
-    # endif
-
-    event_config* event_cfg = event_config_new();
-    # ifdef FO_WINDOWS
-    event_config_set_flag( event_cfg, EVENT_BASE_FLAG_STARTUP_IOCP );
-    # endif
-    event_config_set_num_cpus_hint( event_cfg, NetIOThreadsCount );
-    NetIOEventHandler = event_base_new_with_config( event_cfg );
-    event_config_free( event_cfg );
-    if( !NetIOEventHandler )
-    {
-        WriteLog( "Can't create Net IO events handler.\n" );
-        closesocket( ListenSock );
-        return false;
-    }
-    NetIOThread.Start( NetIO_Loop, "NetLoop" );
-    WriteLog( "Network IO threads started, count {}.\n", NetIOThreadsCount );
-
-    // Listen
-    ListenThread.Start( Net_Listen, "NetListen" );
-    WriteLog( "Network listen thread started.\n" );
-
-    # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
-    Client::SendData = &NetIO_Output;
-    # endif
-    #else // IOCP
     NetIOCompletionPort = CreateIoCompletionPort( INVALID_HANDLE_VALUE, nullptr, 0, NetIOThreadsCount );
     if( !NetIOCompletionPort )
     {
@@ -2925,7 +2582,6 @@ bool FOServer::InitReal()
     }
 
     Client::SendData = &NetIO_Output;
-    #endif
 
     ScriptSystemUpdate();
 

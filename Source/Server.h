@@ -15,12 +15,8 @@
 #include "EntityManager.h"
 #include "ProtoManager.h"
 
-#if defined ( USE_LIBEVENT )
-# include "event2/event.h"
-# include "event2/bufferevent.h"
-# include "event2/buffer.h"
-# include "event2/thread.h"
-#endif
+#define ASIO_STANDALONE
+#include "asio.hpp"
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EXT( client, 0, return )
@@ -192,24 +188,12 @@ public:
 
     static void Net_Listen( void* );
 
-    #if defined ( USE_LIBEVENT )
-    static event_base* NetIOEventHandler;
-    static Thread      NetIOThread;
-    static uint        NetIOThreadsCount;
-
-    static void NetIO_Loop( void* );
-    static void NetIO_Event( bufferevent* bev, short what, void* arg );
-    static void NetIO_Input( bufferevent* bev, void* arg );
-    static void NetIO_Output( bufferevent* bev, void* arg );
-    #else // IOCP
     static HANDLE  NetIOCompletionPort;
     static Thread* NetIOThreads;
     static uint    NetIOThreadsCount;
-
     static void NetIO_Work( void* );
     static void NetIO_Input( Client::NetIOArg* io );
     static void NetIO_Output( Client::NetIOArg* io );
-    #endif
 
     // Dump save/load
     #define WORLD_SAVE_MAX_INDEX    ( 9999 )

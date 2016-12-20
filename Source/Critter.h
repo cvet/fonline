@@ -12,12 +12,6 @@
 #include "NetProtocol.h"
 #include "Entity.h"
 
-#if defined ( USE_LIBEVENT )
-# include "event2/event.h"
-# include "event2/bufferevent.h"
-# include "event2/buffer.h"
-#endif
-
 // Plane results
 #define PLANE_KEEP            ( 1 )
 #define PLANE_DISCARD         ( 2 )
@@ -343,40 +337,6 @@ public:
     int           UpdateFileIndex;
     uint          UpdateFilePortion;
 
-    #if defined ( USE_LIBEVENT )
-    struct NetIOArg
-    {
-        Mutex         Locker;
-        Client*       PClient;
-        bufferevent*  BEV;
-        # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
-        MutexSpinlock BEVLocker;
-        # endif
-    }* NetIOArgPtr;
-    # define BIN_BEGIN( cl_ )     cl_->Bin.Lock()
-    # define BIN_END( cl_ )       cl_->Bin.Unlock()
-    # define BOUT_BEGIN( cl_ )    cl_->Bout.Lock()
-    # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
-    typedef void ( *SendCallback )( bufferevent*, void* );
-    static SendCallback SendData;
-    #  define BOUT_END( cl_ )                                                 \
-        cl_->Bout.Unlock();                                                   \
-        cl_->NetIOArgPtr->BEVLocker.Lock();                                   \
-        if( cl_->NetIOArgPtr->BEV )                                           \
-        {                                                                     \
-            bufferevent_lock( cl_->NetIOArgPtr->BEV );                        \
-            cl_->NetIOArgPtr->BEVLocker.Unlock();                             \
-            ( *Client::SendData )( cl_->NetIOArgPtr->BEV, cl_->NetIOArgPtr ); \
-            bufferevent_unlock( cl_->NetIOArgPtr->BEV );                      \
-        }                                                                     \
-        else                                                                  \
-        {                                                                     \
-            cl_->NetIOArgPtr->BEVLocker.Unlock();                             \
-        }
-    # else
-    #  define BOUT_END( cl_ )     cl_->Bout.Unlock();
-    # endif
-    #else // IOCP
     struct NetIOArg
     {
         WSAOVERLAPPED OV;
@@ -387,19 +347,19 @@ public:
         DWORD         Flags;
         DWORD         Bytes;
     }* NetIOIn, * NetIOOut;
-    # define WSA_BUF_SIZE    ( 4096 )
-    # define WSAOP_FREE      ( 0 )
-    # define WSAOP_SEND      ( 1 )
-    # define WSAOP_RECV      ( 2 )
+    #define WSA_BUF_SIZE    ( 4096 )
+    #define WSAOP_FREE      ( 0 )
+    #define WSAOP_SEND      ( 1 )
+    #define WSAOP_RECV      ( 2 )
     typedef void ( *SendCallback )( NetIOArg* );
     static SendCallback SendData;
-    # define BIN_BEGIN( cl_ )     cl_->Bin.Lock()
-    # define BIN_END( cl_ )       cl_->Bin.Unlock()
-    # define BOUT_BEGIN( cl_ )    cl_->Bout.Lock()
-    # define BOUT_END( cl_ )                                                                                                                         \
+    #define BIN_BEGIN( cl_ )     cl_->Bin.Lock()
+    #define BIN_END( cl_ )       cl_->Bin.Unlock()
+    #define BOUT_BEGIN( cl_ )    cl_->Bout.Lock()
+    #define BOUT_END( cl_ )                                                                                                                          \
         cl_->Bout.Unlock(); if( !cl_->IsOffline() && InterlockedCompareExchange( &cl_->NetIOOut->Operation, WSAOP_SEND, WSAOP_FREE ) == WSAOP_FREE ) \
             ( *Client::SendData )( cl_->NetIOOut )
-    #endif
+
     void Shutdown();
 
 public:

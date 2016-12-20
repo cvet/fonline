@@ -1931,9 +1931,7 @@ void Critter::ContinueTimeEvents( int offs_time )
 /* Client                                                               */
 /************************************************************************/
 
-#if !defined ( USE_LIBEVENT ) || defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
 Client::SendCallback Client::SendData = nullptr;
-#endif
 
 Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
 {
@@ -1963,9 +1961,6 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
     LastSayEqualCount = 0;
     memzero( UID, sizeof( UID ) );
 
-    #if defined ( USE_LIBEVENT )
-    NetIOArgPtr = nullptr;
-    #else // IOCP
     MEMORY_PROCESS( MEMORY_CLIENT, WSA_BUF_SIZE * 2 );
     NetIOIn = new NetIOArg();
     memzero( &NetIOIn->OV, sizeof( NetIOIn->OV ) );
@@ -1983,7 +1978,6 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
     NetIOOut->Operation = WSAOP_FREE;
     NetIOOut->Flags = 0;
     NetIOOut->Bytes = 0;
-    #endif
 }
 
 Client::~Client()
@@ -1995,9 +1989,6 @@ Client::~Client()
         ZstrmInit = false;
     }
 
-    #if defined ( USE_LIBEVENT )
-    SAFEDEL( NetIOArgPtr );
-    #else // IOCP
     MEMORY_PROCESS( MEMORY_CLIENT, -(int) ( WSA_BUF_SIZE * 2 ) );
     if( NetIOIn )
     {
@@ -2009,7 +2000,6 @@ Client::~Client()
         SAFEDELA( NetIOOut->Buffer.buf );
         SAFEDEL( NetIOOut );
     }
-    #endif
 }
 
 void Client::Shutdown()
@@ -2017,22 +2007,6 @@ void Client::Shutdown()
     if( Sock == INVALID_SOCKET )
         return;
 
-    #if defined ( USE_LIBEVENT )
-    # if defined ( LIBEVENT_TIMEOUTS_WORKAROUND )
-    NetIOArgPtr->BEVLocker.Lock();
-    bufferevent_free( NetIOArgPtr->BEV );
-    NetIOArgPtr->BEV = nullptr;
-    NetIOArgPtr->BEVLocker.Unlock();
-    # else
-    bufferevent_free( NetIOArgPtr->BEV );
-    # endif
-
-    shutdown( Sock, SD_BOTH );
-    closesocket( Sock );
-    Sock = INVALID_SOCKET;
-
-    Release();
-    #else
     NetIOIn->Locker.Lock();
     NetIOOut->Locker.Lock();
     shutdown( Sock, SD_BOTH );
@@ -2040,7 +2014,6 @@ void Client::Shutdown()
     Sock = INVALID_SOCKET;
     NetIOOut->Locker.Unlock();
     NetIOIn->Locker.Unlock();
-    #endif
 }
 
 uint Client::GetIp()

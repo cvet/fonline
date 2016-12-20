@@ -208,10 +208,6 @@ if( WIN32 )
 	add_subdirectory( "NCodeHook" )
 	set( NCODEHOOK "NCodeHook" )
 endif()
-if( NOT WIN32 )
-	set( EVENT2 "libevent.a" )
-	set( EVENT2_PTHREADS "libevent_pthreads.a" )
-endif()
 
 file( GLOB Assimp_SOURCE "Assimp/*.* Assimp/Compiler/*.*" )
 source_group( "ThirdParty\\Assimp" FILES ${Assimp_SOURCE} )
@@ -240,8 +236,12 @@ source_group( "ThirdParty\\Json" FILES ${Json_SOURCE} )
 file( GLOB fmt_SOURCE "fmt/fmt/*.*" )
 source_group( "ThirdParty\\fmt" FILES ${fmt_SOURCE} )
 
-file( GLOB Asio_SOURCE "Asio/include/asio.hpp" )
-source_group( "ThirdParty\\Asio" FILES ${Asio_SOURCE} )
+if( NOT BUILD_ONLY_CLIENT )
+	set( ASIO_DIR "Asio" )
+	file( GLOB Asio_SOURCE "Asio/include/asio.hpp" )
+	source_group( "ThirdParty\\Asio" FILES ${Asio_SOURCE} )
+	include_directories( "${ASIO_DIR}/include" )
+endif()
 
 set( COMMON_SOURCE
 	${Json_SOURCE}
@@ -287,7 +287,6 @@ set( SERVER_CLIENT_MAPPER_SOURCE
 	ProtoMap.cpp ProtoMap.h
 )
 set( SERVER_CLIENT_SOURCE
-	${Asio_SOURCE}
 	Access.h
 	BufferManager.cpp BufferManager.h
 	DataMask.h
@@ -321,6 +320,7 @@ set( SERVER_SOURCE
 	${SERVER_CLIENT_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
 	${fbxsdk_SOURCE}
+	${Asio_SOURCE}
 	AI.h
 	Critter.cpp Critter.h
 	CritterData.h
@@ -392,13 +392,13 @@ if( NOT BUILD_ONLY_CLIENT )
 	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Server.rc" )
 	set_target_properties( FOnlineServer PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES}" )
-	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "fltk" "${EVENT2}" "${EVENT2_PTHREADS}" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "fltk" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
 
 	if( NOT WIN32 )
 		add_executable( FOnlineServerDaemon ${SERVER_SOURCE} "Server.rc" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES} -DSERVER_DAEMON" )
-		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${EVENT2}" "${EVENT2_PTHREADS}" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
+		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "${CMAKE_DL_LIBS}" )
 	endif()
 
 	add_executable( Mapper WIN32 ${MAPPER_SOURCE} "Mapper.rc" )
