@@ -15,9 +15,6 @@
 #include "EntityManager.h"
 #include "ProtoManager.h"
 
-#define ASIO_STANDALONE
-#include "asio.hpp"
-
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EXT( client, 0, return )
 #define CHECK_IN_BUFF_ERROR_EXT( client, before_disconnect, after_disconnect )                      \

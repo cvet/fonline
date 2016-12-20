@@ -237,10 +237,8 @@ file( GLOB fmt_SOURCE "fmt/fmt/*.*" )
 source_group( "ThirdParty\\fmt" FILES ${fmt_SOURCE} )
 
 if( NOT BUILD_ONLY_CLIENT )
-	set( ASIO_DIR "Asio" )
-	file( GLOB Asio_SOURCE "Asio/include/asio.hpp" )
-	source_group( "ThirdParty\\Asio" FILES ${Asio_SOURCE} )
-	include_directories( "${ASIO_DIR}/include" )
+	include_directories( "Asio/include" )
+	include_directories( "websocketpp" )
 endif()
 
 set( COMMON_SOURCE
@@ -320,7 +318,6 @@ set( SERVER_SOURCE
 	${SERVER_CLIENT_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
 	${fbxsdk_SOURCE}
-	${Asio_SOURCE}
 	AI.h
 	Critter.cpp Critter.h
 	CritterData.h

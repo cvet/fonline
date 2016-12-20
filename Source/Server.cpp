@@ -4,6 +4,17 @@
 #include "minizip/zip.h"
 #include "ResourceConverter.h"
 
+#define ASIO_STANDALONE
+#include "asio.hpp"
+
+#define _WEBSOCKETPP_CPP11_FUNCTIONAL_
+#define _WEBSOCKETPP_CPP11_SYSTEM_ERROR_
+#define _WEBSOCKETPP_CPP11_RANDOM_DEVICE_
+#define _WEBSOCKETPP_CPP11_MEMORY_
+#define _WEBSOCKETPP_CPP11_STL_
+#include "websocketpp/config/asio_no_tls.hpp"
+#include "websocketpp/server.hpp"
+
 void* zlib_alloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 void  zlib_free( void* opaque, void* address )                          { free( address ); }
 
