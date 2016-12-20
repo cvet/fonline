@@ -19,18 +19,15 @@ public:
     virtual void DisableCompression() = 0;
     virtual void Dispatch() = 0;
     virtual void Disconnect() = 0;
-    virtual void Shutdown() = 0;
 };
 
 class NetServerBase
 {
 public:
-    virtual void SetConnectionCallback( std::function< void(NetConnection*) > callback ) = 0;
-    virtual bool Listen( ushort port ) = 0;
-    virtual void Shutdown() = 0;
+    virtual ~NetServerBase() = 0;
 
-    static NetServerBase* CreateTcpServer();
-    static NetServerBase* CreateWebSocketsServer();
+    static NetServerBase* StartTcpServer( ushort port, std::function< void(NetConnection*) > callback );
+    static NetServerBase* StartWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback );
 };
 
 #endif // __NETWORKING__

@@ -1986,6 +1986,11 @@ bool Client::IsOffline()
     return Connection->IsDisconnected;
 }
 
+void Client::Disconnect()
+{
+    Connection->Disconnect();
+}
+
 void Client::RemoveFromGame()
 {
     CanBeRemoved = true;

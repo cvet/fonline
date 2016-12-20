@@ -87,8 +87,6 @@ void FOServer::Finish()
     ConnectedClientsLocker.Unlock();
 
     // Shutdown servers
-    TcpServer->Shutdown();
-    WebSocketsServer->Shutdown();
     SAFEDEL( TcpServer );
     SAFEDEL( WebSocketsServer );
 
@@ -2245,7 +2243,7 @@ bool FOServer::InitReal()
             if( update_port )
                 port = update_port;
         }
-        WriteLog( "Starting server on port {}.\n", port );
+        WriteLog( "Starting server on port {} and {}.\n", port, port + 1 );
     }
     else
     {
@@ -2253,20 +2251,10 @@ bool FOServer::InitReal()
         WriteLog( "Starting server on free port.\n", port );
     }
 
-    TcpServer = NetServerBase::CreateTcpServer();
-    WebSocketsServer = NetServerBase::CreateWebSocketsServer();
-    TcpServer->SetConnectionCallback( FOServer::OnNewConnection );
-    WebSocketsServer->SetConnectionCallback( FOServer::OnNewConnection );
-    if( !TcpServer->Listen( port ) )
-    {
-        WriteLog( "Tpc server can't start listen port {}.\n", port );
+    if( !( TcpServer = NetServerBase::StartTcpServer( port, FOServer::OnNewConnection ) ) )
         return false;
-    }
-    if( !WebSocketsServer->Listen( port + 1 ) )
-    {
-        WriteLog( "Web sockets server can't start listen port {}.\n", port + 1 );
+    if( !( WebSocketsServer = NetServerBase::StartWebSocketsServer( port + 1, FOServer::OnNewConnection ) ) )
         return false;
-    }
 
     // Script timeouts
     Script::SetRunTimeout( GameOpt.ScriptRunSuspendTimeout, GameOpt.ScriptRunMessageTimeout );

@@ -339,6 +339,7 @@ public:
     ushort      GetPort();
     bool        IsOnline();
     bool        IsOffline();
+    void        Disconnect();
     void        RemoveFromGame();
     uint        GetOfflineTime();
     const char* GetBinPassHash();

@@ -859,7 +859,7 @@ void FOClient::MainLoop()
             else
             {
                 // if( error == 115 )
-                WriteLog( "Can't connect to game server, error '{}' {}.\n", GetLastSocketError(), error );
+                WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
             }
         }
         else
@@ -1343,6 +1343,10 @@ void ContainerWheelScroll( int items_count, int cont_height, int item_height, in
 
 bool FOClient::NetConnect( const char* host, ushort port )
 {
+    #ifdef FO_WEB
+    port++;
+    #endif
+
     if( !Singleplayer )
         WriteLog( "Connecting to server '{}:{}'.\n", host, port );
     else

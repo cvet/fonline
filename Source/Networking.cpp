@@ -10,6 +10,7 @@
 #define _WEBSOCKETPP_CPP11_STL_
 #include "websocketpp/config/asio_no_tls.hpp"
 #include "websocketpp/server.hpp"
+typedef websocketpp::server< websocketpp::config::asio > web_sockets;
 
 static void* ZlibAlloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 static void  ZlibFree( void* opaque, void* address )                          { free( address ); }
@@ -18,194 +19,367 @@ NetConnection::~NetConnection() {}
 
 class NetConnectionImpl: public NetConnection
 {
-    SOCKET    Sock;
-    UCharVec  NetIOBuffer;
-    bool      DisableZlib;
-    z_stream* Zstrm;
+protected:
+    static const uint BufSize = 4096;
 
-    NetConnectionImpl( bool use_compression )
+    z_stream*         zStream;
+    uchar             outBuf[ BufSize ];
+
+public:
+    NetConnectionImpl()
     {
-        if( use_compression )
+        IsDisconnected = false;
+        DisconnectTick = 0;
+
+        if( !GameOpt.DisableZlibCompression )
         {
-            Zstrm = new z_stream();
-            Zstrm->zalloc = ZlibAlloc;
-            Zstrm->zfree = ZlibFree;
-            Zstrm->opaque = nullptr;
-            int result = deflateInit( Zstrm, Z_BEST_SPEED );
+            zStream = new z_stream();
+            zStream->zalloc = ZlibAlloc;
+            zStream->zfree = ZlibFree;
+            zStream->opaque = nullptr;
+            int result = deflateInit( zStream, Z_BEST_SPEED );
             RUNTIME_ASSERT( result == Z_OK );
-        }
-        else
-        {
-            Zstrm = nullptr;
         }
     }
 
     virtual ~NetConnectionImpl() override
     {
+        Dispatch();
         Disconnect();
-        if( Zstrm )
-            deflateEnd( Zstrm );
-        SAFEDEL( Zstrm );
+
+        if( zStream )
+            deflateEnd( zStream );
+        SAFEDEL( zStream );
     }
 
     virtual void DisableCompression() override
     {
-        if( Zstrm )
-            deflateEnd( Zstrm );
-        SAFEDEL( Zstrm );
+        if( zStream )
+            deflateEnd( zStream );
+        SAFEDEL( zStream );
     }
 
     virtual void Dispatch() override
-    {}
+    {
+        if( IsDisconnected )
+            return;
+
+        // Nothing to send
+        Bout.Lock();
+        if( Bout.IsEmpty() )
+        {
+            Bout.Unlock();
+            return;
+        }
+
+        // Compress
+        uint out_len = 0;
+        if( zStream )
+        {
+            uint to_compr = Bout.GetEndPos();
+            if( to_compr > BufSize )
+                to_compr = BufSize;
+
+            zStream->next_in = (Bytef*) Bout.GetCurData();
+            zStream->avail_in = to_compr;
+            zStream->next_out = (Bytef*) outBuf;
+            zStream->avail_out = BufSize;
+
+            int result = deflate( zStream, Z_SYNC_FLUSH );
+            RUNTIME_ASSERT( result == Z_OK );
+
+            uint compr = (uint) ( (size_t) zStream->next_out - (size_t) outBuf );
+            uint real = (uint) ( (size_t) zStream->next_in - (size_t) Bout.GetCurData() );
+            out_len = compr;
+            Bout.Cut( real );
+        }
+        // Without compressing
+        else
+        {
+            uint len = Bout.GetEndPos();
+            if( len > BufSize )
+                len = BufSize;
+            memcpy( outBuf, Bout.GetCurData(), len );
+            out_len = len;
+            Bout.Cut( len );
+        }
+        if( Bout.IsEmpty() )
+            Bout.Reset();
+        Bout.Unlock();
+
+        RUNTIME_ASSERT( out_len > 0 );
+        DispatchImpl( outBuf, out_len );
+    }
 
     virtual void Disconnect() override
     {
-        // Connection->IsDisconnected = true;
-        // if( !Connection->DisconnectTick )
-        //    Connection->DisconnectTick = Timer::FastTick();
-        // Bin.LockReset();
-        // Bout.LockReset();
+        if( IsDisconnected )
+            return;
+
+        IsDisconnected = true;
+        if( !DisconnectTick )
+            DisconnectTick = Timer::FastTick();
+
+        DisconnectImpl();
     }
 
-    virtual void Shutdown() override
-    {}
+protected:
+    virtual void DispatchImpl( const uchar* buf, uint len ) = 0;
+    virtual void DisconnectImpl() = 0;
+
+    void ReceiveCallback( const uchar* buf, uint len )
+    {
+        Bin.Lock();
+        if( Bin.GetCurPos() + len >= GameOpt.FloodSize && !Singleplayer )
+        {
+            Bin.Reset();
+            Bin.Unlock();
+            Disconnect();
+            return;
+        }
+        Bin.Push( (const char*) buf, len, true );
+        Bin.Unlock();
+    }
 };
+
+class NetConnectionAsio: public NetConnectionImpl
+{
+    asio::ip::tcp::socket* socket;
+    uchar                  inBuf[ BufSize ];
+
+    void NextAsyncRead()
+    {
+        asio::async_read( *socket, asio::buffer( inBuf, BufSize ), asio::transfer_at_least( 1 ),
+                          std::bind( &NetConnectionAsio::AsyncRead, this, std::placeholders::_1, std::placeholders::_2 ) );
+    }
+
+    void AsyncRead( std::error_code error, size_t bytes )
+    {
+        if( !error )
+        {
+            ReceiveCallback( inBuf, (uint) bytes );
+            NextAsyncRead();
+        }
+        else
+        {
+            Disconnect();
+        }
+    }
+
+    void AsyncWrite( std::error_code error, size_t bytes )
+    {
+        if( !error )
+            Dispatch();
+        else
+            Disconnect();
+    }
+
+    virtual void DispatchImpl( const uchar* buf, uint len ) override
+    {
+        asio::async_write( *socket, asio::buffer( buf, len ),
+                           std::bind( &NetConnectionAsio::AsyncWrite, this, std::placeholders::_1, std::placeholders::_2 ) );
+    }
+
+    virtual void DisconnectImpl() override
+    {
+        socket->shutdown( asio::ip::tcp::socket::shutdown_receive );
+        socket->close();
+    }
+
+public:
+    NetConnectionAsio( asio::ip::tcp::socket* socket ): socket( socket )
+    {
+        NextAsyncRead();
+    }
+
+    virtual ~NetConnectionAsio() override
+    {
+        delete socket;
+    }
+};
+
+NetServerBase::~NetServerBase() {}
 
 class NetTcpServer: public NetServerBase
 {
-    virtual void SetConnectionCallback( std::function< void(NetConnection*) > callback ) override
-    {}
+    std::function< void(NetConnection*) > connectionCallback;
+    asio::io_service                      ioService;
+    asio::ip::tcp::acceptor               acceptor;
+    std::thread                           runThread;
 
-    virtual bool Listen( ushort port ) override
+    void Run()
     {
-        return false;
+        ioService.run();
     }
 
-    virtual void Shutdown() override
-    {}
+    void AcceptNext()
+    {
+        asio::ip::tcp::socket* socket = new asio::ip::tcp::socket( ioService );
+        acceptor.async_accept( *socket,
+                               std::bind( &NetTcpServer::AcceptConnection, this, std::placeholders::_1, socket ) );
+    }
+
+    void AcceptConnection( std::error_code error, asio::ip::tcp::socket* socket )
+    {
+        if( !error )
+        {
+            connectionCallback( new NetConnectionAsio( socket ) );
+        }
+        else
+        {
+            WriteLog( "Accept error: {}.\n", error.message() );
+            delete socket;
+        }
+
+        AcceptNext();
+    }
+
+public:
+    NetTcpServer( ushort port, std::function< void(NetConnection*) > callback ): acceptor( ioService, asio::ip::tcp::endpoint( asio::ip::tcp::v4(), port ) )
+    {
+        connectionCallback = callback;
+        AcceptNext();
+        runThread = std::thread( &NetTcpServer::Run, this );
+    }
+
+    virtual ~NetTcpServer() override
+    {
+        ioService.stop();
+        runThread.join();
+    }
+};
+
+class NetConnectionWS: public NetConnectionImpl
+{
+    web_sockets*                server;
+    web_sockets::connection_ptr connection;
+
+    void OnMessage( web_sockets::message_ptr msg )
+    {
+        const string& payload = msg->get_payload();
+        RUNTIME_ASSERT( !payload.empty() );
+        ReceiveCallback( (const uchar*) payload.c_str(), (uint) payload.length() );
+    }
+
+    void OnFail()
+    {
+        WriteLog( "Fail: {}.\n", connection->get_ec().message() );
+        Disconnect();
+    }
+
+    void OnClose()
+    {
+        // ...
+    }
+
+    void OnHttp()
+    {
+        RUNTIME_ASSERT( "!OnHttp" );
+    }
+
+    bool Validate()
+    {
+        return true;
+    }
+
+    virtual void DispatchImpl( const uchar* buf, uint len ) override
+    {
+        std::error_code error = connection->send( buf, len, websocketpp::frame::opcode::binary );
+        if( !error )
+            Dispatch();
+        else
+            Disconnect();
+    }
+
+    virtual void DisconnectImpl() override
+    {
+        std::error_code error;
+        connection->terminate( error );
+    }
+
+public:
+    NetConnectionWS( web_sockets* server, web_sockets::connection_ptr connection ): server( server ), connection( connection )
+    {
+        connection->set_message_handler( websocketpp::lib::bind( &NetConnectionWS::OnMessage, this, websocketpp::lib::placeholders::_2 ) );
+        connection->set_fail_handler( websocketpp::lib::bind( &NetConnectionWS::OnFail, this ) );
+        connection->set_close_handler( websocketpp::lib::bind( &NetConnectionWS::OnClose, this ) );
+        connection->set_http_handler( websocketpp::lib::bind( &NetConnectionWS::OnHttp, this ) );
+        connection->set_validate_handler( websocketpp::lib::bind( &NetConnectionWS::Validate, this ) );
+    }
 };
 
 class NetWebSocketsServer: public NetServerBase
 {
-    virtual void SetConnectionCallback( std::function< void(NetConnection*) > callback ) override
-    {}
+    std::function< void(NetConnection*) > connectionCallback;
+    web_sockets                           server;
+    std::thread                           runThread;
 
-    virtual bool Listen( ushort port ) override
+    void Run()
     {
-        return false;
+        server.run();
     }
 
-    virtual void Shutdown() override
-    {}
+    void AcceptNext()
+    {
+        web_sockets::connection_ptr connection = server.get_connection();
+        server.async_accept( connection, websocketpp::lib::bind( &NetWebSocketsServer::AcceptConnection, this,
+                                                                 websocketpp::lib::placeholders::_1, connection ) );
+    }
+
+    void AcceptConnection( std::error_code error, web_sockets::connection_ptr connection )
+    {
+        connection->send( "hello" );
+        if( !error )
+            connectionCallback( new NetConnectionWS( &server, connection ) );
+        else
+            WriteLog( "Accept error: {}.\n", error.message() );
+
+        AcceptNext();
+    }
+
+public:
+    NetWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback )
+    {
+        connectionCallback = callback;
+
+        server.init_asio();
+        server.listen( port );
+        server.start_accept();
+
+        AcceptNext();
+
+        runThread = std::thread( &NetWebSocketsServer::Run, this );
+    }
+
+    virtual ~NetWebSocketsServer() override
+    {
+        server.stop();
+        runThread.join();
+    }
 };
 
-/*void FOServer::NetIO_Input( Client::NetIOArg* io )
-   {
-    Client* cl = (Client*) io->PClient;
-
-    if( cl->IsOffline() )
-    {
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        return;
-    }
-
-    cl->Connection->Bin.Lock();
-    if( cl->Connection->Bin.GetCurPos() + io->Bytes >= GameOpt.FloodSize && !Singleplayer )
-    {
-        WriteLog( "Flood.\n" );
-        cl->Connection->Bin.Reset();
-        cl->Connection->Bin.Unlock();
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        cl->Disconnect();
-        return;
-    }
-    cl->Connection->Bin.Push( io->Buffer.buf, io->Bytes, true );
-    cl->Connection->Bin.Unlock();
-
-    io->Flags = 0;
-    DWORD bytes;
-    if( WSARecv( cl->Sock, &io->Buffer, 1, &bytes, &io->Flags, &io->OV, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
-    {
-        WriteLog( "Recv fail, error '{}'.\n", GetLastSocketError() );
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        cl->Disconnect();
-    }
-   }
-
-   void FOServer::NetIO_Output( Client::NetIOArg* io )
-   {
-    Client* cl = (Client*) io->PClient;
-
-    // Nothing to send
-    cl->Connection->Bout.Lock();
-    if( cl->Connection->Bout.IsEmpty() )
-    {
-        cl->Connection->Bout.Unlock();
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        return;
-    }
-
-    // Compress
-    if( !GameOpt.DisableZlibCompression && !cl->DisableZlib )
-    {
-        uint to_compr = cl->Connection->Bout.GetEndPos();
-        if( to_compr > WSA_BUF_SIZE )
-            to_compr = WSA_BUF_SIZE;
-
-        cl->Zstrm.next_in = (Bytef*) cl->Connection->Bout.GetCurData();
-        cl->Zstrm.avail_in = to_compr;
-        cl->Zstrm.next_out = (Bytef*) io->Buffer.buf;
-        cl->Zstrm.avail_out = WSA_BUF_SIZE;
-
-        if( deflate( &cl->Zstrm, Z_SYNC_FLUSH ) != Z_OK )
-        {
-            WriteLog( "Deflate fail.\n" );
-            cl->Connection->Bout.Reset();
-            cl->Connection->Bout.Unlock();
-            InterlockedExchange( &io->Operation, WSAOP_FREE );
-            cl->Disconnect();
-            return;
-        }
-
-        uint compr = (uint) ( (size_t) cl->Zstrm.next_out - (size_t) io->Buffer.buf );
-        uint real = (uint) ( (size_t) cl->Zstrm.next_in - (size_t) cl->Connection->Bout.GetCurData() );
-        io->Buffer.len = compr;
-        cl->Connection->Bout.Cut( real );
-        Statistics.DataReal += real;
-        Statistics.DataCompressed += compr;
-    }
-    // Without compressing
-    else
-    {
-        uint len = cl->Connection->Bout.GetEndPos();
-        if( len > WSA_BUF_SIZE )
-            len = WSA_BUF_SIZE;
-        memcpy( io->Buffer.buf, cl->Connection->Bout.GetCurData(), len );
-        io->Buffer.len = len;
-        cl->Connection->Bout.Cut( len );
-        Statistics.DataReal += len;
-        Statistics.DataCompressed += len;
-    }
-    if( cl->Connection->Bout.IsEmpty() )
-        cl->Connection->Bout.Reset();
-    cl->Connection->Bout.Unlock();
-
-    // Send
-    DWORD bytes;
-    if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
-    {
-        WriteLog( "Send fail, error '{}'.\n", GetLastSocketError() );
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        cl->Disconnect();
-    }
-   }*/
-
-NetServerBase* NetServerBase::CreateTcpServer()
+NetServerBase* NetServerBase::StartTcpServer( ushort port, std::function< void(NetConnection*) > callback )
 {
-    return new NetTcpServer();
+    try
+    {
+        return new NetTcpServer( port, callback );
+    }
+    catch( std::exception ex )
+    {
+        WriteLog( "Can't start Tcp server: {}.\n", ex.what() );
+        return nullptr;
+    }
 }
 
-NetServerBase* NetServerBase::CreateWebSocketsServer()
+NetServerBase* NetServerBase::StartWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback )
 {
-    return new NetWebSocketsServer();
+    try
+    {
+        return new NetWebSocketsServer( port, callback );
+    }
+    catch( std::exception ex )
+    {
+        WriteLog( "Can't start Web sockets server: {}.\n", ex.what() );
+        return nullptr;
+    }
 }
