@@ -393,6 +393,7 @@ bool BufferManager::NeedProcess()
     default:
         // Unknown message
         Reset();
+        WriteLog( "Error! Unknown message!\n" );
         isError = true;
         return false;
     }

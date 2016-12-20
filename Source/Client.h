@@ -100,6 +100,7 @@ public:
     typedef vector< UpdateFile > UpdateFileVec;
 
     bool           UpdateFilesInProgress;
+    bool           UpdateFilesConnection;
     uint           UpdateFilesConnectTimeout;
     uint           UpdateFilesTick;
     bool           UpdateFilesCacheChanged;
@@ -130,6 +131,7 @@ public:
     uint*         UID0;
     bool          UIDFail;
     Item*         SomeItem;
+    bool          IsConnecting;
     bool          IsConnected;
     bool          InitNetBegin;
     int           InitNetReason;

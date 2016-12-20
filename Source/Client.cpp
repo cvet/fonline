@@ -80,10 +80,12 @@ FOClient::FOClient()
     BytesReceive = 0;
     BytesRealReceive = 0;
     BytesSend = 0;
+    IsConnecting = false;
     IsConnected = false;
     InitNetReason = INIT_NET_REASON_NONE;
 
     UpdateFilesInProgress = false;
+    UpdateFilesConnection = false;
     UpdateFilesConnectTimeout = 0;
     UpdateFilesTick = 0;
     UpdateFilesCacheChanged = false;
@@ -460,6 +462,12 @@ void FOClient::UpdateFilesLoop( bool early_call )
 
     if( !IsConnected )
     {
+        if( UpdateFilesConnection )
+        {
+            UpdateFilesConnection = false;
+            UpdateFilesAddText( STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!" );
+        }
+
         if( Timer::FastTick() < UpdateFilesConnectTimeout )
             return;
         UpdateFilesConnectTimeout = Timer::FastTick() + 5000;
@@ -468,8 +476,14 @@ void FOClient::UpdateFilesLoop( bool early_call )
         UpdateFilesAddText( STR_CONNECT_TO_SERVER, "Connect to server..." );
         const char* host = ( GameOpt.UpdateServerHost.length() > 0 ? GameOpt.UpdateServerHost.c_str() : GameOpt.Host.c_str() );
         ushort      port = ( GameOpt.UpdateServerPort != 0 ? GameOpt.UpdateServerPort : GameOpt.Port );
-        if( NetConnect( host, port ) )
+        NetConnect( host, port );
+        UpdateFilesConnection = true;
+    }
+    else
+    {
+        if( UpdateFilesConnection )
         {
+            UpdateFilesConnection = false;
             UpdateFilesAddText( STR_CONNECTION_ESTABLISHED, "Connection established." );
 
             // Update
@@ -490,13 +504,7 @@ void FOClient::UpdateFilesLoop( bool early_call )
 
             Net_SendUpdate();
         }
-        else
-        {
-            UpdateFilesAddText( STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!" );
-        }
-    }
-    else
-    {
+
         string progress = "";
         if( UpdateFilesList && !UpdateFilesList->empty() )
         {
@@ -598,8 +606,6 @@ void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
         num_str = STR_START_SINGLEPLAYER;
         num_str_str = "Start singleplayer...";
     }
-
-    WriteLog( "{}\n", num_str_str );
 
     if( !UpdateFilesFontLoaded )
     {
@@ -806,8 +812,63 @@ void FOClient::MainLoop()
 {
     Timer::UpdateTick();
 
+    // FPS counter
+    static uint last_call = Timer::FastTick();
+    static uint call_counter = 0;
+    if( ( Timer::FastTick() - last_call ) >= 1000 )
+    {
+        GameOpt.FPS = call_counter;
+        call_counter = 0;
+        last_call = Timer::FastTick();
+    }
+    else
+    {
+        call_counter++;
+    }
+
     if( GameOpt.Quit )
         return;
+
+    // Network connection
+    if( IsConnecting )
+    {
+        timeval tv;
+        tv.tv_sec = 0;
+        tv.tv_usec = 0;
+        FD_ZERO( &SockSet );
+        FD_SET( Sock, &SockSet );
+        if( select( (int) Sock + 1, nullptr, &SockSet, nullptr, &tv ) != SOCKET_ERROR )
+        {
+            int       error = 0;
+            #ifdef FO_WINDOWS
+            int       len = sizeof( error );
+            #else
+            socklen_t len = sizeof( error );
+            #endif
+            if( getsockopt( Sock, SOL_SOCKET, SO_ERROR, (char*) &error, &len ) != SOCKET_ERROR && !error )
+            {
+                if( FD_ISSET( Sock, &SockSet ) )
+                {
+                    // Connected
+                    WriteLog( "Connection established.\n" );
+                    IsConnecting = false;
+                    IsConnected = true;
+                }
+                return;
+            }
+            else
+            {
+                // if( error == 115 )
+                WriteLog( "Can't connect to game server, error '{}' {}.\n", GetLastSocketError(), error );
+            }
+        }
+        else
+        {
+            WriteLog( "Select error '{}'.\n", GetLastSocketError() );
+        }
+        IsConnecting = false;
+        return;
+    }
 
     if( UpdateFilesInProgress )
     {
@@ -830,20 +891,6 @@ void FOClient::MainLoop()
             UpdateFilesInProgress = true;
             return;
         }
-    }
-
-    // FPS counter
-    static uint last_call = Timer::FastTick();
-    static uint call_counter = 0;
-    if( ( Timer::FastTick() - last_call ) >= 1000 )
-    {
-        GameOpt.FPS = call_counter;
-        call_counter = 0;
-        last_call = Timer::FastTick();
-    }
-    else
-    {
-        call_counter++;
     }
 
     // Input events
@@ -939,30 +986,35 @@ void FOClient::MainLoop()
     // Network
     if( InitNetReason != INIT_NET_REASON_NONE && !UpdateFilesInProgress )
     {
-        // Reason
-        int reason = InitNetReason;
-        InitNetReason = INIT_NET_REASON_NONE;
-
         // Wait screen
-        ShowMainScreen( SCREEN_WAIT );
+        if( !IsMainScreen( SCREEN_WAIT ) )
+            ShowMainScreen( SCREEN_WAIT );
 
         // Connect to server
-        if( !NetConnect( GameOpt.Host.c_str(), GameOpt.Port ) )
+        if( !IsConnected )
         {
-            ShowMainScreen( SCREEN_LOGIN );
-            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_FAIL ) );
-            return;
+            if( !NetConnect( GameOpt.Host.c_str(), GameOpt.Port ) )
+            {
+                ShowMainScreen( SCREEN_LOGIN );
+                AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_FAIL ) );
+            }
         }
+        else
+        {
+            // Reason
+            int reason = InitNetReason;
+            InitNetReason = INIT_NET_REASON_NONE;
 
-        // After connect things
-        if( reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_LOGIN2 )
-            Net_SendLogIn( GameOpt.Name.c_str(), Password.c_str() );
-        else if( reason == INIT_NET_REASON_REG )
-            Net_SendCreatePlayer();
-        // else if( reason == INIT_NET_REASON_LOAD )
-        //    Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
-        else if( reason != INIT_NET_REASON_CUSTOM )
-            RUNTIME_ASSERT( !"Unreachable place" );
+            // After connect things
+            if( reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_LOGIN2 )
+                Net_SendLogIn( GameOpt.Name.c_str(), Password.c_str() );
+            else if( reason == INIT_NET_REASON_REG )
+                Net_SendCreatePlayer();
+            // else if( reason == INIT_NET_REASON_LOAD )
+            //    Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
+            else if( reason != INIT_NET_REASON_CUSTOM )
+                RUNTIME_ASSERT( !"Unreachable place" );
+        }
     }
 
     // Parse Net
@@ -1296,7 +1348,21 @@ bool FOClient::NetConnect( const char* host, ushort port )
     else
         WriteLog( "Connecting to server.\n" );
 
+    IsConnecting = false;
     IsConnected = false;
+
+    if( !ZStreamOk )
+    {
+        ZStream.zalloc = zlib_alloc_;
+        ZStream.zfree = zlib_free_;
+        ZStream.opaque = nullptr;
+        if( inflateInit( &ZStream ) != Z_OK )
+        {
+            WriteLog( "ZStream InflateInit error.\n" );
+            return false;
+        }
+        ZStreamOk = true;
+    }
 
     #ifdef FO_WINDOWS
     WSADATA wsa;
@@ -1336,11 +1402,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     Bin.SetEncryptKey( 0 );
     Bout.SetEncryptKey( 0 );
 
-    #ifdef FO_WINDOWS
-    if( ( Sock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, 0 ) ) == INVALID_SOCKET )
-    #else
     if( ( Sock = socket( AF_INET, SOCK_STREAM, 0 ) ) == INVALID_SOCKET )
-    #endif
     {
         WriteLog( "Create socket error '{}'.\n", GetLastSocketError() );
         return false;
@@ -1352,17 +1414,39 @@ bool FOClient::NetConnect( const char* host, ushort port )
     {
         int optval = 1;
         if( setsockopt( Sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
-            WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", WSAGetLastError() );
+            WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", GetLastSocketError() );
     }
     #endif
 
     // Direct connect
     if( !GameOpt.ProxyType || Singleplayer )
     {
-        if( connect( Sock, (sockaddr*) &SockAddr, sizeof( sockaddr_in ) ) )
+        // Set non blocking mode
+        #ifdef FO_WINDOWS
+        unsigned long mode = 1;
+        if( ioctlsocket( Sock, FIONBIO, &mode ) )
+        #else
+        int flags = fcntl( Sock, F_GETFL, 0 );
+        RUNTIME_ASSERT( flags >= 0 );
+        if( fcntl( Sock, F_SETFL, flags | O_NONBLOCK ) )
+        #endif
         {
-            WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
+            WriteLog( "Can't set non-blocking mode to socket, error '{}'.\n", GetLastSocketError() );
             return false;
+        }
+
+        int r = connect( Sock, (sockaddr*) &SockAddr, sizeof( sockaddr_in ) );
+        if( r )
+        {
+            #ifdef FO_WINDOWS
+            if( WSAGetLastError() != WSAEWOULDBLOCK )
+            #else
+            if( errno != EINPROGRESS )
+            #endif
+            {
+                WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
+                return false;
+            }
         }
     }
     // Proxy connect
@@ -1536,21 +1620,12 @@ bool FOClient::NetConnect( const char* host, ushort port )
 
         Bin.Reset();
         Bout.Reset();
+
+        IsConnected = true;
     }
     #endif
 
-    ZStream.zalloc = zlib_alloc_;
-    ZStream.zfree = zlib_free_;
-    ZStream.opaque = nullptr;
-    if( inflateInit( &ZStream ) != Z_OK )
-    {
-        WriteLog( "ZStream InflateInit error.\n" );
-        return false;
-    }
-    ZStreamOk = true;
-
-    IsConnected = true;
-    WriteLog( "Connection established.\n" );
+    IsConnecting = true;
     return true;
 }
 
