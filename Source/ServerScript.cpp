@@ -220,11 +220,6 @@ void FOServer::FinishScriptSystem()
     WriteLog( "Script system finish complete.\n" );
 }
 
-void FOServer::ScriptSystemUpdate()
-{
-    Script::SetRunTimeout( GameOpt.ScriptRunSuspendTimeout, GameOpt.ScriptRunMessageTimeout );
-}
-
 bool FOServer::DialogScriptDemand( DemandResult& demand, Critter* master, Critter* slave )
 {
     int bind_id = (int) demand.ParamId;

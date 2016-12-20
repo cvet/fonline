@@ -1381,9 +1381,9 @@ void FOServer::Process_Dialog( Client* cl )
     uint  talk_id;
     uchar num_answer;
 
-    cl->Bin >> is_npc;
-    cl->Bin >> talk_id;
-    cl->Bin >> num_answer;
+    cl->Connection->Bin >> is_npc;
+    cl->Connection->Bin >> talk_id;
+    cl->Connection->Bin >> num_answer;
 
     if( ( is_npc && ( cl->Talk.TalkType != TALK_WITH_NPC || cl->Talk.TalkNpc != talk_id ) ) ||
         ( !is_npc && ( cl->Talk.TalkType != TALK_WITH_HEX || cl->Talk.DialogPackId != talk_id ) ) )

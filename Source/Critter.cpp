@@ -1569,14 +1569,14 @@ void Critter::Send_AddAllItems()
 
     Client* cl = (Client*) this;
     BOUT_BEGIN( cl );
-    cl->Bout << NETMSG_CLEAR_ITEMS;
+    cl->Connection->Bout << NETMSG_CLEAR_ITEMS;
     BOUT_END( cl );
 
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
         Send_AddItem( *it );
 
     BOUT_BEGIN( cl );
-    cl->Bout << NETMSG_ALL_ITEMS_SEND;
+    cl->Connection->Bout << NETMSG_ALL_ITEMS_SEND;
     BOUT_END( cl );
 }
 
@@ -1931,18 +1931,13 @@ void Critter::ContinueTimeEvents( int offs_time )
 /* Client                                                               */
 /************************************************************************/
 
-Client::SendCallback Client::SendData = nullptr;
-
-Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
+Client::Client( NetConnection* conn, ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
 {
-    ZstrmInit = false;
+    Connection = conn;
     Access = ACCESS_DEFAULT;
     pingOk = true;
     LanguageMsg = 0;
     GameState = STATE_NONE;
-    IsDisconnected = false;
-    DisconnectTick = 0;
-    DisableZlib = false;
     LastSendedMapTick = 0;
     RadioMessageSended = 0;
     UpdateFileIndex = -1;
@@ -1952,7 +1947,6 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
     MEMORY_PROCESS( MEMORY_CLIENT, sizeof( Client ) + 40 + sizeof( Item ) * 2 );
 
     SETFLAG( Flags, FCRIT_PLAYER );
-    Sock = INVALID_SOCKET;
     pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
     Talk.Clear();
     talkNextTick = Timer::GameTick() + PROCESS_TALK_TICK;
@@ -1960,92 +1954,36 @@ Client::Client( ProtoCritter* proto ): Critter( 0, EntityType::Client, proto )
     LastSay[ 0 ] = 0;
     LastSayEqualCount = 0;
     memzero( UID, sizeof( UID ) );
-
-    MEMORY_PROCESS( MEMORY_CLIENT, WSA_BUF_SIZE * 2 );
-    NetIOIn = new NetIOArg();
-    memzero( &NetIOIn->OV, sizeof( NetIOIn->OV ) );
-    NetIOIn->PClient = this;
-    NetIOIn->Buffer.buf = new char[ WSA_BUF_SIZE ];
-    NetIOIn->Buffer.len = WSA_BUF_SIZE;
-    NetIOIn->Operation = WSAOP_RECV;
-    NetIOIn->Flags = 0;
-    NetIOIn->Bytes = 0;
-    NetIOOut = new NetIOArg();
-    memzero( &NetIOOut->OV, sizeof( NetIOOut->OV ) );
-    NetIOOut->PClient = this;
-    NetIOOut->Buffer.buf = new char[ WSA_BUF_SIZE ];
-    NetIOOut->Buffer.len = WSA_BUF_SIZE;
-    NetIOOut->Operation = WSAOP_FREE;
-    NetIOOut->Flags = 0;
-    NetIOOut->Bytes = 0;
 }
 
 Client::~Client()
 {
-    MEMORY_PROCESS( MEMORY_CLIENT, -(int) ( sizeof( Client ) + 40 + sizeof( Item ) * 2 ) );
-    if( ZstrmInit )
-    {
-        deflateEnd( &Zstrm );
-        ZstrmInit = false;
-    }
-
-    MEMORY_PROCESS( MEMORY_CLIENT, -(int) ( WSA_BUF_SIZE * 2 ) );
-    if( NetIOIn )
-    {
-        SAFEDELA( NetIOIn->Buffer.buf );
-        SAFEDEL( NetIOIn );
-    }
-    if( NetIOOut )
-    {
-        SAFEDELA( NetIOOut->Buffer.buf );
-        SAFEDEL( NetIOOut );
-    }
-}
-
-void Client::Shutdown()
-{
-    if( Sock == INVALID_SOCKET )
-        return;
-
-    NetIOIn->Locker.Lock();
-    NetIOOut->Locker.Lock();
-    shutdown( Sock, SD_BOTH );
-    closesocket( Sock );
-    Sock = INVALID_SOCKET;
-    NetIOOut->Locker.Unlock();
-    NetIOIn->Locker.Unlock();
+    SAFEDEL( Connection );
 }
 
 uint Client::GetIp()
 {
-    return From.sin_addr.s_addr;
+    return Connection->From.sin_addr.s_addr;
 }
 
 const char* Client::GetIpStr()
 {
-    return inet_ntoa( From.sin_addr );
+    return inet_ntoa( Connection->From.sin_addr );
 }
 
 ushort Client::GetPort()
 {
-    return From.sin_port;
+    return Connection->From.sin_port;
 }
 
 bool Client::IsOnline()
 {
-    return !IsDisconnected;
+    return !Connection->IsDisconnected;
 }
 
 bool Client::IsOffline()
 {
-    return IsDisconnected;
-}
-
-void Client::Disconnect()
-{
-    IsDisconnected = true;
-    if( !DisconnectTick )
-        DisconnectTick = Timer::FastTick();
+    return Connection->IsDisconnected;
 }
 
 void Client::RemoveFromGame()
@@ -2055,7 +1993,7 @@ void Client::RemoveFromGame()
 
 uint Client::GetOfflineTime()
 {
-    return Timer::FastTick() - DisconnectTick;
+    return Timer::FastTick() - Connection->DisconnectTick;
 }
 
 const char* Client::GetBinPassHash()
@@ -2086,14 +2024,13 @@ void Client::PingClient()
 {
     if( !pingOk )
     {
-        Disconnect();
-        Bout.LockReset();
+        Connection->Disconnect();
         return;
     }
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_PING;
-    Bout << (uchar) PING_CLIENT;
+    Connection->Bout << NETMSG_PING;
+    Connection->Bout << (uchar) PING_CLIENT;
     BOUT_END( this );
 
     pingNextTick = Timer::FastTick() + PING_CLIENT_LIFE_TIME;
@@ -2123,33 +2060,33 @@ void Client::Send_AddCritter( Critter* cr )
     msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
-    Bout << msg;
-    Bout << msg_len;
-    Bout << cr->GetId();
-    Bout << cr->GetHexX();
-    Bout << cr->GetHexY();
-    Bout << cr->GetDir();
-    Bout << cr->GetCond();
-    Bout << cr->GetAnim1Life();
-    Bout << cr->GetAnim1Knockout();
-    Bout << cr->GetAnim1Dead();
-    Bout << cr->GetAnim2Life();
-    Bout << cr->GetAnim2Knockout();
-    Bout << cr->GetAnim2Dead();
-    Bout << cr->Flags;
+    Connection->Bout << msg;
+    Connection->Bout << msg_len;
+    Connection->Bout << cr->GetId();
+    Connection->Bout << cr->GetHexX();
+    Connection->Bout << cr->GetHexY();
+    Connection->Bout << cr->GetDir();
+    Connection->Bout << cr->GetCond();
+    Connection->Bout << cr->GetAnim1Life();
+    Connection->Bout << cr->GetAnim1Knockout();
+    Connection->Bout << cr->GetAnim1Dead();
+    Connection->Bout << cr->GetAnim2Life();
+    Connection->Bout << cr->GetAnim2Knockout();
+    Connection->Bout << cr->GetAnim2Dead();
+    Connection->Bout << cr->Flags;
 
     if( is_npc )
     {
         Npc* npc = (Npc*) cr;
-        Bout << npc->GetProtoId();
+        Connection->Bout << npc->GetProtoId();
     }
     else
     {
         Client* cl = (Client*) cr;
-        Bout.Push( cl->Name.c_str(), UTF8_BUF_SIZE( MAX_NAME ) );
+        Connection->Bout.Push( cl->Name.c_str(), UTF8_BUF_SIZE( MAX_NAME ) );
     }
 
-    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
+    NET_WRITE_PROPERTIES( Connection->Bout, data, data_sizes );
 
     BOUT_END( this );
 
@@ -2163,8 +2100,8 @@ void Client::Send_RemoveCritter( Critter* cr )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_REMOVE_CRITTER;
-    Bout << cr->GetId();
+    Connection->Bout << NETMSG_REMOVE_CRITTER;
+    Connection->Bout << cr->GetId();
     BOUT_END( this );
 }
 
@@ -2210,19 +2147,19 @@ void Client::Send_LoadMap( Map* map )
     }
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_LOADMAP;
-    Bout << msg_len;
-    Bout << pid_map;
-    Bout << pid_loc;
-    Bout << map_index_in_loc;
-    Bout << map_time;
-    Bout << map_rain;
-    Bout << hash_tiles;
-    Bout << hash_scen;
+    Connection->Bout << NETMSG_LOADMAP;
+    Connection->Bout << msg_len;
+    Connection->Bout << pid_map;
+    Connection->Bout << pid_loc;
+    Connection->Bout << map_index_in_loc;
+    Connection->Bout << map_time;
+    Connection->Bout << map_rain;
+    Connection->Bout << hash_tiles;
+    Connection->Bout << hash_scen;
     if( map )
     {
-        NET_WRITE_PROPERTIES( Bout, map_data, map_data_sizes );
-        NET_WRITE_PROPERTIES( Bout, loc_data, loc_data_sizes );
+        NET_WRITE_PROPERTIES( Connection->Bout, map_data, map_data_sizes );
+        NET_WRITE_PROPERTIES( Connection->Bout, loc_data, loc_data_sizes );
     }
     BOUT_END( this );
 
@@ -2262,32 +2199,32 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, Entity* enti
     if( is_pod )
     {
         BOUT_BEGIN( this );
-        Bout << NETMSG_POD_PROPERTY( data_size, additional_args );
+        Connection->Bout << NETMSG_POD_PROPERTY( data_size, additional_args );
     }
     else
     {
         uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( char ) + additional_args * sizeof( uint ) + sizeof( ushort ) + data_size;
         BOUT_BEGIN( this );
-        Bout << NETMSG_COMPLEX_PROPERTY;
-        Bout << msg_len;
+        Connection->Bout << NETMSG_COMPLEX_PROPERTY;
+        Connection->Bout << msg_len;
     }
 
-    Bout << (char) type;
+    Connection->Bout << (char) type;
 
     switch( type )
     {
     case NetProperty::CritterItem:
-        Bout << ( (Item*) entity )->GetCritId();
-        Bout << entity->Id;
+        Connection->Bout << ( (Item*) entity )->GetCritId();
+        Connection->Bout << entity->Id;
         break;
     case NetProperty::Critter:
-        Bout << entity->Id;
+        Connection->Bout << entity->Id;
         break;
     case NetProperty::MapItem:
-        Bout << entity->Id;
+        Connection->Bout << entity->Id;
         break;
     case NetProperty::ChosenItem:
-        Bout << entity->Id;
+        Connection->Bout << entity->Id;
         break;
     default:
         break;
@@ -2295,15 +2232,15 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, Entity* enti
 
     if( is_pod )
     {
-        Bout << (ushort) prop->GetRegIndex();
-        Bout.Push( (char*) data, data_size );
+        Connection->Bout << (ushort) prop->GetRegIndex();
+        Connection->Bout.Push( (char*) data, data_size );
         BOUT_END( this );
     }
     else
     {
-        Bout << (ushort) prop->GetRegIndex();
+        Connection->Bout << (ushort) prop->GetRegIndex();
         if( data_size )
-            Bout.Push( (char*) data, data_size );
+            Connection->Bout.Push( (char*) data, data_size );
         BOUT_END( this );
     }
 }
@@ -2314,11 +2251,11 @@ void Client::Send_Move( Critter* from_cr, uint move_params )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_MOVE;
-    Bout << from_cr->GetId();
-    Bout << move_params;
-    Bout << from_cr->GetHexX();
-    Bout << from_cr->GetHexY();
+    Connection->Bout << NETMSG_CRITTER_MOVE;
+    Connection->Bout << from_cr->GetId();
+    Connection->Bout << move_params;
+    Connection->Bout << from_cr->GetHexX();
+    Connection->Bout << from_cr->GetHexY();
     BOUT_END( this );
 }
 
@@ -2328,9 +2265,9 @@ void Client::Send_Dir( Critter* from_cr )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_DIR;
-    Bout << from_cr->GetId();
-    Bout << from_cr->GetDir();
+    Connection->Bout << NETMSG_CRITTER_DIR;
+    Connection->Bout << from_cr->GetId();
+    Connection->Bout << from_cr->GetDir();
     BOUT_END( this );
 }
 
@@ -2345,11 +2282,11 @@ void Client::Send_Action( Critter* from_cr, int action, int action_ext, Item* it
         Send_SomeItem( item );
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_ACTION;
-    Bout << from_cr->GetId();
-    Bout << action;
-    Bout << action_ext;
-    Bout << (bool) ( item ? true : false );
+    Connection->Bout << NETMSG_CRITTER_ACTION;
+    Connection->Bout << from_cr->GetId();
+    Connection->Bout << action;
+    Connection->Bout << action_ext;
+    Connection->Bout << (bool) ( item ? true : false );
     BOUT_END( this );
 }
 
@@ -2384,20 +2321,20 @@ void Client::Send_MoveItem( Critter* from_cr, Item* item, uchar action, uchar pr
     }
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_MOVE_ITEM;
-    Bout << msg_len;
-    Bout << from_cr->GetId();
-    Bout << action;
-    Bout << prev_slot;
-    Bout << (bool) ( item ? true : false );
-    Bout << (ushort) items.size();
+    Connection->Bout << NETMSG_CRITTER_MOVE_ITEM;
+    Connection->Bout << msg_len;
+    Connection->Bout << from_cr->GetId();
+    Connection->Bout << action;
+    Connection->Bout << prev_slot;
+    Connection->Bout << (bool) ( item ? true : false );
+    Connection->Bout << (ushort) items.size();
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
         Item* item_ = items[ i ];
-        Bout << item_->GetCritSlot();
-        Bout << item_->GetId();
-        Bout << item_->GetProtoId();
-        NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
+        Connection->Bout << item_->GetCritSlot();
+        Connection->Bout << item_->GetId();
+        Connection->Bout << item_->GetProtoId();
+        NET_WRITE_PROPERTIES( Connection->Bout, items_data[ i ], items_data_sizes[ i ] );
     }
     BOUT_END( this );
 }
@@ -2412,13 +2349,13 @@ void Client::Send_Animate( Critter* from_cr, uint anim1, uint anim2, Item* item,
         Send_SomeItem( item );
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_ANIMATE;
-    Bout << from_cr->GetId();
-    Bout << anim1;
-    Bout << anim2;
-    Bout << (bool) ( item ? true : false );
-    Bout << clear_sequence;
-    Bout << delay_play;
+    Connection->Bout << NETMSG_CRITTER_ANIMATE;
+    Connection->Bout << from_cr->GetId();
+    Connection->Bout << anim1;
+    Connection->Bout << anim2;
+    Connection->Bout << (bool) ( item ? true : false );
+    Connection->Bout << clear_sequence;
+    Connection->Bout << delay_play;
     BOUT_END( this );
 }
 
@@ -2428,11 +2365,11 @@ void Client::Send_SetAnims( Critter* from_cr, int cond, uint anim1, uint anim2 )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_SET_ANIMS;
-    Bout << from_cr->GetId();
-    Bout << cond;
-    Bout << anim1;
-    Bout << anim2;
+    Connection->Bout << NETMSG_CRITTER_SET_ANIMS;
+    Connection->Bout << from_cr->GetId();
+    Connection->Bout << cond;
+    Connection->Bout << anim1;
+    Connection->Bout << anim2;
     BOUT_END( this );
 }
 
@@ -2450,14 +2387,14 @@ void Client::Send_AddItemOnMap( Item* item )
     msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_ADD_ITEM_ON_MAP;
-    Bout << msg_len;
-    Bout << item->GetId();
-    Bout << item->GetProtoId();
-    Bout << item->GetHexX();
-    Bout << item->GetHexY();
-    Bout << is_added;
-    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
+    Connection->Bout << NETMSG_ADD_ITEM_ON_MAP;
+    Connection->Bout << msg_len;
+    Connection->Bout << item->GetId();
+    Connection->Bout << item->GetProtoId();
+    Connection->Bout << item->GetHexX();
+    Connection->Bout << item->GetHexY();
+    Connection->Bout << is_added;
+    NET_WRITE_PROPERTIES( Connection->Bout, data, data_sizes );
     BOUT_END( this );
 }
 
@@ -2467,9 +2404,9 @@ void Client::Send_EraseItemFromMap( Item* item )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_ERASE_ITEM_FROM_MAP;
-    Bout << item->GetId();
-    Bout << item->ViewPlaceOnMap;
+    Connection->Bout << NETMSG_ERASE_ITEM_FROM_MAP;
+    Connection->Bout << item->GetId();
+    Connection->Bout << item->ViewPlaceOnMap;
     BOUT_END( this );
 }
 
@@ -2479,10 +2416,10 @@ void Client::Send_AnimateItem( Item* item, uchar from_frm, uchar to_frm )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_ANIMATE_ITEM;
-    Bout << item->GetId();
-    Bout << from_frm;
-    Bout << to_frm;
+    Connection->Bout << NETMSG_ANIMATE_ITEM;
+    Connection->Bout << item->GetId();
+    Connection->Bout << from_frm;
+    Connection->Bout << to_frm;
     BOUT_END( this );
 }
 
@@ -2500,12 +2437,12 @@ void Client::Send_AddItem( Item* item )
     msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_ADD_ITEM;
-    Bout << msg_len;
-    Bout << item->GetId();
-    Bout << item->GetProtoId();
-    Bout << item->GetCritSlot();
-    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
+    Connection->Bout << NETMSG_ADD_ITEM;
+    Connection->Bout << msg_len;
+    Connection->Bout << item->GetId();
+    Connection->Bout << item->GetProtoId();
+    Connection->Bout << item->GetCritSlot();
+    NET_WRITE_PROPERTIES( Connection->Bout, data, data_sizes );
     BOUT_END( this );
 }
 
@@ -2515,8 +2452,8 @@ void Client::Send_EraseItem( Item* item )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_REMOVE_ITEM;
-    Bout << item->GetId();
+    Connection->Bout << NETMSG_REMOVE_ITEM;
+    Connection->Bout << item->GetId();
     BOUT_END( this );
 }
 
@@ -2539,17 +2476,17 @@ void Client::Send_SomeItems( CScriptArray* items_arr, int param )
     }
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_SOME_ITEMS;
-    Bout << msg_len;
-    Bout << param;
-    Bout << ( items_arr == nullptr );
-    Bout << (uint) items.size();
+    Connection->Bout << NETMSG_SOME_ITEMS;
+    Connection->Bout << msg_len;
+    Connection->Bout << param;
+    Connection->Bout << ( items_arr == nullptr );
+    Connection->Bout << (uint) items.size();
     for( size_t i = 0, j = items.size(); i < j; i++ )
     {
         Item* item = items[ i ];
-        Bout << item->GetId();
-        Bout << item->GetProtoId();
-        NET_WRITE_PROPERTIES( Bout, items_data[ i ], items_data_sizes[ i ] );
+        Connection->Bout << item->GetId();
+        Connection->Bout << item->GetProtoId();
+        NET_WRITE_PROPERTIES( Connection->Bout, items_data[ i ], items_data_sizes[ i ] );
     }
     BOUT_END( this );
 }
@@ -2576,13 +2513,13 @@ void Client::Send_GlobalInfo( uchar info_flags )
 
     // Parse message
     BOUT_BEGIN( this );
-    Bout << NETMSG_GLOBAL_INFO;
-    Bout << msg_len;
-    Bout << info_flags;
+    Connection->Bout << NETMSG_GLOBAL_INFO;
+    Connection->Bout << msg_len;
+    Connection->Bout << info_flags;
 
     if( FLAG( info_flags, GM_INFO_LOCATIONS ) )
     {
-        Bout << loc_count;
+        Connection->Bout << loc_count;
 
         char empty_loc[ SEND_LOCATION_SIZE ] = { 0, 0, 0, 0 };
         for( ushort i = 0; i < loc_count;)
@@ -2592,12 +2529,12 @@ void Client::Send_GlobalInfo( uchar info_flags )
             if( loc && !loc->GetToGarbage() )
             {
                 i++;
-                Bout << loc_id;
-                Bout << loc->GetProtoId();
-                Bout << loc->GetWorldX();
-                Bout << loc->GetWorldY();
-                Bout << loc->GetRadius();
-                Bout << loc->GetColor();
+                Connection->Bout << loc_id;
+                Connection->Bout << loc->GetProtoId();
+                Connection->Bout << loc->GetWorldX();
+                Connection->Bout << loc->GetWorldY();
+                Connection->Bout << loc->GetRadius();
+                Connection->Bout << loc->GetColor();
                 uchar count = 0;
                 if( loc->IsNonEmptyMapEntrances() )
                 {
@@ -2605,13 +2542,13 @@ void Client::Send_GlobalInfo( uchar info_flags )
                     count = (uchar) ( map_entrances->GetSize() / 2 );
                     map_entrances->Release();
                 }
-                Bout << count;
+                Connection->Bout << count;
             }
             else
             {
                 loc_count--;
                 EraseKnownLoc( loc_id );
-                Bout.Push( empty_loc, sizeof( empty_loc ) );
+                Connection->Bout.Push( empty_loc, sizeof( empty_loc ) );
             }
         }
     }
@@ -2622,7 +2559,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
         CScriptArray* gmap_fog = GetGlobalMapFog();
         if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
             gmap_fog->Resize( GM_ZONES_FOG_SIZE );
-        Bout.Push( (char*) gmap_fog->At( 0 ), GM_ZONES_FOG_SIZE );
+        Connection->Bout.Push( (char*) gmap_fog->At( 0 ), GM_ZONES_FOG_SIZE );
         gmap_fog->Release();
     }
     BOUT_END( this );
@@ -2640,16 +2577,16 @@ void Client::Send_GlobalLocation( Location* loc, bool add )
     uint  msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( info_flags ) + sizeof( add ) + SEND_LOCATION_SIZE;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_GLOBAL_INFO;
-    Bout << msg_len;
-    Bout << info_flags;
-    Bout << add;
-    Bout << loc->GetId();
-    Bout << loc->GetProtoId();
-    Bout << loc->GetWorldX();
-    Bout << loc->GetWorldY();
-    Bout << loc->GetRadius();
-    Bout << loc->GetColor();
+    Connection->Bout << NETMSG_GLOBAL_INFO;
+    Connection->Bout << msg_len;
+    Connection->Bout << info_flags;
+    Connection->Bout << add;
+    Connection->Bout << loc->GetId();
+    Connection->Bout << loc->GetProtoId();
+    Connection->Bout << loc->GetWorldX();
+    Connection->Bout << loc->GetWorldY();
+    Connection->Bout << loc->GetRadius();
+    Connection->Bout << loc->GetColor();
     uchar count = 0;
     if( loc->IsNonEmptyMapEntrances() )
     {
@@ -2657,7 +2594,7 @@ void Client::Send_GlobalLocation( Location* loc, bool add )
         count = (uchar) ( map_entrances->GetSize() / 2 );
         map_entrances->Release();
     }
-    Bout << count;
+    Connection->Bout << count;
     BOUT_END( this );
 }
 
@@ -2670,12 +2607,12 @@ void Client::Send_GlobalMapFog( ushort zx, ushort zy, uchar fog )
     uint  msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( info_flags ) + sizeof( zx ) + sizeof( zy ) + sizeof( fog );
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_GLOBAL_INFO;
-    Bout << msg_len;
-    Bout << info_flags;
-    Bout << zx;
-    Bout << zy;
-    Bout << fog;
+    Connection->Bout << NETMSG_GLOBAL_INFO;
+    Connection->Bout << msg_len;
+    Connection->Bout << info_flags;
+    Connection->Bout << zx;
+    Connection->Bout << zy;
+    Connection->Bout << fog;
     BOUT_END( this );
 }
 
@@ -2685,11 +2622,11 @@ void Client::Send_XY( Critter* cr )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_XY;
-    Bout << cr->GetId();
-    Bout << cr->GetHexX();
-    Bout << cr->GetHexY();
-    Bout << cr->GetDir();
+    Connection->Bout << NETMSG_CRITTER_XY;
+    Connection->Bout << cr->GetId();
+    Connection->Bout << cr->GetHexX();
+    Connection->Bout << cr->GetHexY();
+    Connection->Bout << cr->GetDir();
     BOUT_END( this );
 }
 
@@ -2706,9 +2643,9 @@ void Client::Send_AllProperties()
     msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_ALL_PROPERTIES;
-    Bout << msg_len;
-    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
+    Connection->Bout << NETMSG_ALL_PROPERTIES;
+    Connection->Bout << msg_len;
+    NET_WRITE_PROPERTIES( Connection->Bout, data, data_sizes );
     BOUT_END( this );
 }
 
@@ -2718,10 +2655,10 @@ void Client::Send_CustomCommand( Critter* cr, ushort cmd, int val )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CUSTOM_COMMAND;
-    Bout << cr->GetId();
-    Bout << cmd;
-    Bout << val;
+    Connection->Bout << NETMSG_CUSTOM_COMMAND;
+    Connection->Bout << cr->GetId();
+    Connection->Bout << cmd;
+    Connection->Bout << val;
     BOUT_END( this );
 }
 
@@ -2736,14 +2673,14 @@ void Client::Send_Talk()
     uint  msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( is_npc ) + sizeof( talk_id ) + sizeof( uchar );
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_TALK_NPC;
+    Connection->Bout << NETMSG_TALK_NPC;
 
     if( close )
     {
-        Bout << msg_len;
-        Bout << is_npc;
-        Bout << talk_id;
-        Bout << uchar( 0 );
+        Connection->Bout << msg_len;
+        Connection->Bout << is_npc;
+        Connection->Bout << talk_id;
+        Connection->Bout << uchar( 0 );
     }
     else
     {
@@ -2757,17 +2694,17 @@ void Client::Send_Talk()
             talk_time = ( diff < talk_time ? talk_time - diff : 1 );
         }
 
-        Bout << msg_len;
-        Bout << is_npc;
-        Bout << talk_id;
-        Bout << all_answers;
-        Bout << (ushort) Talk.Lexems.length();                              // Lexems length
+        Connection->Bout << msg_len;
+        Connection->Bout << is_npc;
+        Connection->Bout << talk_id;
+        Connection->Bout << all_answers;
+        Connection->Bout << (ushort) Talk.Lexems.length();                              // Lexems length
         if( Talk.Lexems.length() )
-            Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );  // Lexems string
-        Bout << Talk.CurDialog.TextId;                                      // Main text_id
+            Connection->Bout.Push( Talk.Lexems.c_str(), (uint) Talk.Lexems.length() );  // Lexems string
+        Connection->Bout << Talk.CurDialog.TextId;                                      // Main text_id
         for( auto it = Talk.CurDialog.Answers.begin(), end = Talk.CurDialog.Answers.end(); it != end; ++it )
-            Bout << it->TextId;                                             // Answers text_id
-        Bout << talk_time;                                                  // Talk time
+            Connection->Bout << it->TextId;                                             // Answers text_id
+        Connection->Bout << talk_time;                                                  // Talk time
     }
     BOUT_END( this );
 }
@@ -2801,20 +2738,20 @@ void Client::Send_GameInfo( Map* map )
         day_color_arr->Release();
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_GAME_INFO;
-    Bout << GameOpt.YearStart;
-    Bout << GameOpt.Year;
-    Bout << GameOpt.Month;
-    Bout << GameOpt.Day;
-    Bout << GameOpt.Hour;
-    Bout << GameOpt.Minute;
-    Bout << GameOpt.Second;
-    Bout << GameOpt.TimeMultiplier;
-    Bout << time;
-    Bout << rain;
-    Bout << no_log_out;
-    Bout.Push( (const char*) day_time, sizeof( day_time ) );
-    Bout.Push( (const char*) day_color, sizeof( day_color ) );
+    Connection->Bout << NETMSG_GAME_INFO;
+    Connection->Bout << GameOpt.YearStart;
+    Connection->Bout << GameOpt.Year;
+    Connection->Bout << GameOpt.Month;
+    Connection->Bout << GameOpt.Day;
+    Connection->Bout << GameOpt.Hour;
+    Connection->Bout << GameOpt.Minute;
+    Connection->Bout << GameOpt.Second;
+    Connection->Bout << GameOpt.TimeMultiplier;
+    Connection->Bout << time;
+    Connection->Bout << rain;
+    Connection->Bout << no_log_out;
+    Connection->Bout.Push( (const char*) day_time, sizeof( day_time ) );
+    Connection->Bout.Push( (const char*) day_color, sizeof( day_color ) );
     BOUT_END( this );
 }
 
@@ -2838,13 +2775,13 @@ void Client::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar
                    sizeof( unsafe_text ) + sizeof( str_len ) + str_len;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_CRITTER_TEXT;
-    Bout << msg_len;
-    Bout << from_id;
-    Bout << how_say;
-    Bout << unsafe_text;
-    Bout << str_len;
-    Bout.Push( s_str, str_len );
+    Connection->Bout << NETMSG_CRITTER_TEXT;
+    Connection->Bout << msg_len;
+    Connection->Bout << from_id;
+    Connection->Bout << how_say;
+    Connection->Bout << unsafe_text;
+    Connection->Bout << str_len;
+    Connection->Bout.Push( s_str, str_len );
     BOUT_END( this );
 }
 
@@ -2857,11 +2794,11 @@ void Client::Send_TextMsg( Critter* from_cr, uint num_str, uchar how_say, ushort
     uint from_id = ( from_cr ? from_cr->GetId() : 0 );
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_MSG;
-    Bout << from_id;
-    Bout << how_say;
-    Bout << num_msg;
-    Bout << num_str;
+    Connection->Bout << NETMSG_MSG;
+    Connection->Bout << from_id;
+    Connection->Bout << how_say;
+    Connection->Bout << num_msg;
+    Connection->Bout << num_str;
     BOUT_END( this );
 }
 
@@ -2873,11 +2810,11 @@ void Client::Send_TextMsg( uint from_id, uint num_str, uchar how_say, ushort num
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_MSG;
-    Bout << from_id;
-    Bout << how_say;
-    Bout << num_msg;
-    Bout << num_str;
+    Connection->Bout << NETMSG_MSG;
+    Connection->Bout << from_id;
+    Connection->Bout << how_say;
+    Connection->Bout << num_msg;
+    Connection->Bout << num_str;
     BOUT_END( this );
 }
 
@@ -2899,14 +2836,14 @@ void Client::Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ush
     uint msg_len = NETMSG_MSG_SIZE + sizeof( lex_len ) + lex_len;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_MSG_LEX;
-    Bout << msg_len;
-    Bout << from_id;
-    Bout << how_say;
-    Bout << num_msg;
-    Bout << num_str;
-    Bout << lex_len;
-    Bout.Push( lexems, lex_len );
+    Connection->Bout << NETMSG_MSG_LEX;
+    Connection->Bout << msg_len;
+    Connection->Bout << from_id;
+    Connection->Bout << how_say;
+    Connection->Bout << num_msg;
+    Connection->Bout << num_str;
+    Connection->Bout << lex_len;
+    Connection->Bout.Push( lexems, lex_len );
     BOUT_END( this );
 }
 
@@ -2927,14 +2864,14 @@ void Client::Send_TextMsgLex( uint from_id, uint num_str, uchar how_say, ushort 
     uint msg_len = NETMSG_MSG_SIZE + sizeof( lex_len ) + lex_len;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_MSG_LEX;
-    Bout << msg_len;
-    Bout << from_id;
-    Bout << how_say;
-    Bout << num_msg;
-    Bout << num_str;
-    Bout << lex_len;
-    Bout.Push( lexems, lex_len );
+    Connection->Bout << NETMSG_MSG_LEX;
+    Connection->Bout << msg_len;
+    Connection->Bout << from_id;
+    Connection->Bout << how_say;
+    Connection->Bout << num_msg;
+    Connection->Bout << num_str;
+    Connection->Bout << lex_len;
+    Connection->Bout.Push( lexems, lex_len );
     BOUT_END( this );
 }
 
@@ -2947,14 +2884,14 @@ void Client::Send_MapText( ushort hx, ushort hy, uint color, const char* text, u
                    sizeof( text_len ) + text_len + sizeof( unsafe_text );
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_MAP_TEXT;
-    Bout << msg_len;
-    Bout << hx;
-    Bout << hy;
-    Bout << color;
-    Bout << text_len;
-    Bout.Push( text, text_len );
-    Bout << unsafe_text;
+    Connection->Bout << NETMSG_MAP_TEXT;
+    Connection->Bout << msg_len;
+    Connection->Bout << hx;
+    Connection->Bout << hy;
+    Connection->Bout << color;
+    Connection->Bout << text_len;
+    Connection->Bout.Push( text, text_len );
+    Connection->Bout << unsafe_text;
     BOUT_END( this );
 }
 
@@ -2964,12 +2901,12 @@ void Client::Send_MapTextMsg( ushort hx, ushort hy, uint color, ushort num_msg, 
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_MAP_TEXT_MSG;
-    Bout << hx;
-    Bout << hy;
-    Bout << color;
-    Bout << num_msg;
-    Bout << num_str;
+    Connection->Bout << NETMSG_MAP_TEXT_MSG;
+    Connection->Bout << hx;
+    Connection->Bout << hy;
+    Connection->Bout << color;
+    Connection->Bout << num_msg;
+    Connection->Bout << num_str;
     BOUT_END( this );
 }
 
@@ -2981,16 +2918,16 @@ void Client::Send_MapTextMsgLex( ushort hx, ushort hy, uint color, ushort num_ms
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) * 2 + sizeof( uint ) + sizeof( ushort ) + sizeof( uint ) + sizeof( lexems_len ) + lexems_len;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_MAP_TEXT_MSG_LEX;
-    Bout << msg_len;
-    Bout << hx;
-    Bout << hy;
-    Bout << color;
-    Bout << num_msg;
-    Bout << num_str;
-    Bout << lexems_len;
+    Connection->Bout << NETMSG_MAP_TEXT_MSG_LEX;
+    Connection->Bout << msg_len;
+    Connection->Bout << hx;
+    Connection->Bout << hy;
+    Connection->Bout << color;
+    Connection->Bout << num_msg;
+    Connection->Bout << num_str;
+    Connection->Bout << lexems_len;
     if( lexems_len )
-        Bout.Push( lexems, lexems_len );
+        Connection->Bout.Push( lexems, lexems_len );
     BOUT_END( this );
 }
 
@@ -3004,11 +2941,11 @@ void Client::Send_CombatResult( uint* combat_res, uint len )
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( len ) + len * sizeof( uint );
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_COMBAT_RESULTS;
-    Bout << msg_len;
-    Bout << len;
+    Connection->Bout << NETMSG_COMBAT_RESULTS;
+    Connection->Bout << msg_len;
+    Connection->Bout << len;
     if( len )
-        Bout.Push( (char*) combat_res, len * sizeof( uint ) );
+        Connection->Bout.Push( (char*) combat_res, len * sizeof( uint ) );
     BOUT_END( this );
 }
 
@@ -3034,30 +2971,30 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
         }
 
         BOUT_BEGIN( this );
-        Bout << NETMSG_AUTOMAPS_INFO;
-        Bout << msg_len;
-        Bout << (bool) true;        // Clear list
-        Bout << (ushort) locs->size();
+        Connection->Bout << NETMSG_AUTOMAPS_INFO;
+        Connection->Bout << msg_len;
+        Connection->Bout << (bool) true;        // Clear list
+        Connection->Bout << (ushort) locs->size();
         for( uint i = 0, j = (uint) locs->size(); i < j; i++ )
         {
             Location* loc_ = ( *locs )[ i ];
-            Bout << loc_->GetId();
-            Bout << loc_->GetProtoId();
+            Connection->Bout << loc_->GetId();
+            Connection->Bout << loc_->GetProtoId();
             if( loc_->IsNonEmptyAutomaps() )
             {
                 CScriptArray* automaps = loc_->GetAutomaps();
-                Bout << (ushort) automaps->GetSize();
+                Connection->Bout << (ushort) automaps->GetSize();
                 for( uint k = 0, l = (uint) automaps->GetSize(); k < l; k++ )
                 {
                     hash pid = *(hash*) automaps->At( k );
-                    Bout << pid;
-                    Bout << (uchar) loc_->GetMapIndex( pid );
+                    Connection->Bout << pid;
+                    Connection->Bout << (uchar) loc_->GetMapIndex( pid );
                 }
                 automaps->Release();
             }
             else
             {
-                Bout << (ushort) 0;
+                Connection->Bout << (ushort) 0;
             }
 
         }
@@ -3073,20 +3010,20 @@ void Client::Send_AutomapsInfo( void* locs_vec, Location* loc )
             msg_len += ( sizeof( hash ) + sizeof( uchar ) ) * (uint) automaps->GetSize();
 
         BOUT_BEGIN( this );
-        Bout << NETMSG_AUTOMAPS_INFO;
-        Bout << msg_len;
-        Bout << (bool) false;        // Append this information
-        Bout << (ushort) 1;
-        Bout << loc->GetId();
-        Bout << loc->GetProtoId();
-        Bout << (ushort) ( automaps ? automaps->GetSize() : 0 );
+        Connection->Bout << NETMSG_AUTOMAPS_INFO;
+        Connection->Bout << msg_len;
+        Connection->Bout << (bool) false;        // Append this information
+        Connection->Bout << (ushort) 1;
+        Connection->Bout << loc->GetId();
+        Connection->Bout << loc->GetProtoId();
+        Connection->Bout << (ushort) ( automaps ? automaps->GetSize() : 0 );
         if( automaps )
         {
             for( uint i = 0, j = (uint) automaps->GetSize(); i < j; i++ )
             {
                 hash pid = *(hash*) automaps->At( i );
-                Bout << pid;
-                Bout << (uchar) loc->GetMapIndex( pid );
+                Connection->Bout << pid;
+                Connection->Bout << (uchar) loc->GetMapIndex( pid );
             }
         }
         BOUT_END( this );
@@ -3102,11 +3039,11 @@ void Client::Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_EFFECT;
-    Bout << eff_pid;
-    Bout << hx;
-    Bout << hy;
-    Bout << radius;
+    Connection->Bout << NETMSG_EFFECT;
+    Connection->Bout << eff_pid;
+    Connection->Bout << hx;
+    Connection->Bout << hy;
+    Connection->Bout << radius;
     BOUT_END( this );
 }
 
@@ -3116,14 +3053,14 @@ void Client::Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort 
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_FLY_EFFECT;
-    Bout << eff_pid;
-    Bout << from_crid;
-    Bout << to_crid;
-    Bout << from_hx;
-    Bout << from_hy;
-    Bout << to_hx;
-    Bout << to_hy;
+    Connection->Bout << NETMSG_FLY_EFFECT;
+    Connection->Bout << eff_pid;
+    Connection->Bout << from_crid;
+    Connection->Bout << to_crid;
+    Connection->Bout << from_hx;
+    Connection->Bout << from_hy;
+    Connection->Bout << to_hx;
+    Connection->Bout << to_hy;
     BOUT_END( this );
 }
 
@@ -3133,9 +3070,9 @@ void Client::Send_PlaySound( uint crid_synchronize, const char* sound_name )
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_PLAY_SOUND;
-    Bout << crid_synchronize;
-    Bout.Push( sound_name, 100 );
+    Connection->Bout << NETMSG_PLAY_SOUND;
+    Connection->Bout << crid_synchronize;
+    Connection->Bout.Push( sound_name, 100 );
     BOUT_END( this );
 }
 
@@ -3145,11 +3082,11 @@ void Client::Send_ViewMap()
         return;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_VIEW_MAP;
-    Bout << ViewMapHx;
-    Bout << ViewMapHy;
-    Bout << ViewMapLocId;
-    Bout << ViewMapLocEnt;
+    Connection->Bout << NETMSG_VIEW_MAP;
+    Connection->Bout << ViewMapHx;
+    Connection->Bout << ViewMapHy;
+    Connection->Bout << ViewMapLocId;
+    Connection->Bout << ViewMapLocEnt;
     BOUT_END( this );
 }
 
@@ -3167,24 +3104,24 @@ void Client::Send_CheckUIDS()
     uint       msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uid ) + sizeof( uidxor ) + sizeof( rnd_count ) * 2 + rnd_count + rnd_count2;
 
     BOUT_BEGIN( this );
-    Bout << msg;
-    Bout << msg_len;
-    Bout << uid[ 3 ];
-    Bout << uidxor[ 0 ];
-    Bout << rnd_count;
-    Bout << uid[ 1 ];
-    Bout << uidxor[ 2 ];
+    Connection->Bout << msg;
+    Connection->Bout << msg_len;
+    Connection->Bout << uid[ 3 ];
+    Connection->Bout << uidxor[ 0 ];
+    Connection->Bout << rnd_count;
+    Connection->Bout << uid[ 1 ];
+    Connection->Bout << uidxor[ 2 ];
     for( int i = 0; i < rnd_count; i++ )
-        Bout << (uchar) Random( 0, 255 );
-    Bout << uid[ 2 ];
-    Bout << uidxor[ 1 ];
-    Bout << uid[ 4 ];
-    Bout << rnd_count2;
-    Bout << uidxor[ 3 ];
-    Bout << uidxor[ 4 ];
-    Bout << uid[ 0 ];
+        Connection->Bout << (uchar) Random( 0, 255 );
+    Connection->Bout << uid[ 2 ];
+    Connection->Bout << uidxor[ 1 ];
+    Connection->Bout << uid[ 4 ];
+    Connection->Bout << rnd_count2;
+    Connection->Bout << uidxor[ 3 ];
+    Connection->Bout << uidxor[ 4 ];
+    Connection->Bout << uid[ 0 ];
     for( int i = 0; i < rnd_count2; i++ )
-        Bout << (uchar) Random( 0, 255 );
+        Connection->Bout << (uchar) Random( 0, 255 );
     BOUT_END( this );
 }
 
@@ -3197,11 +3134,11 @@ void Client::Send_SomeItem( Item* item )
     msg_len += sizeof( ushort ) + whole_data_size;
 
     BOUT_BEGIN( this );
-    Bout << NETMSG_SOME_ITEM;
-    Bout << msg_len;
-    Bout << item->GetId();
-    Bout << item->GetProtoId();
-    NET_WRITE_PROPERTIES( Bout, data, data_sizes );
+    Connection->Bout << NETMSG_SOME_ITEM;
+    Connection->Bout << msg_len;
+    Connection->Bout << item->GetId();
+    Connection->Bout << item->GetProtoId();
+    NET_WRITE_PROPERTIES( Connection->Bout, data, data_sizes );
     BOUT_END( this );
 }
 
@@ -3211,7 +3148,7 @@ void Client::Send_CustomMessage( uint msg )
         return;
 
     BOUT_BEGIN( this );
-    Bout << msg;
+    Connection->Bout << msg;
     BOUT_END( this );
 }
 
@@ -3223,10 +3160,10 @@ void Client::Send_CustomMessage( uint msg, uchar* data, uint data_size )
     uint msg_len = sizeof( msg ) + sizeof( msg_len ) + data_size;
 
     BOUT_BEGIN( this );
-    Bout << msg;
-    Bout << msg_len;
+    Connection->Bout << msg;
+    Connection->Bout << msg_len;
     if( data_size )
-        Bout.Push( (char*) data, data_size );
+        Connection->Bout.Push( (char*) data, data_size );
     BOUT_END( this );
 }
 

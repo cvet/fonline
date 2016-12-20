@@ -4,32 +4,14 @@
 #include "minizip/zip.h"
 #include "ResourceConverter.h"
 
-#define ASIO_STANDALONE
-#include "asio.hpp"
-
-#define _WEBSOCKETPP_CPP11_FUNCTIONAL_
-#define _WEBSOCKETPP_CPP11_SYSTEM_ERROR_
-#define _WEBSOCKETPP_CPP11_RANDOM_DEVICE_
-#define _WEBSOCKETPP_CPP11_MEMORY_
-#define _WEBSOCKETPP_CPP11_STL_
-#include "websocketpp/config/asio_no_tls.hpp"
-#include "websocketpp/server.hpp"
-
-void* zlib_alloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
-void  zlib_free( void* opaque, void* address )                          { free( address ); }
-
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
 
-uint                        FOServer::CpuCount = 1;
 int                         FOServer::UpdateIndex = -1;
 int                         FOServer::UpdateLastIndex = -1;
 uint                        FOServer::UpdateLastTick = 0;
 ClVec                       FOServer::LogClients;
-Thread                      FOServer::ListenThread;
-SOCKET                      FOServer::ListenSock = INVALID_SOCKET;
-HANDLE                      FOServer::NetIOCompletionPort = nullptr;
-Thread*                     FOServer::NetIOThreads = nullptr;
-uint                        FOServer::NetIOThreadsCount = 0;
+NetServerBase*              FOServer::TcpServer;
+NetServerBase*              FOServer::WebSocketsServer;
 ClVec                       FOServer::ConnectedClients;
 Mutex                       FOServer::ConnectedClientsLocker;
 FOServer::Statistics_       FOServer::Statistics;
@@ -104,20 +86,11 @@ void FOServer::Finish()
     }
     ConnectedClientsLocker.Unlock();
 
-    // Listen
-    shutdown( ListenSock, SD_BOTH );
-    closesocket( ListenSock );
-    ListenSock = INVALID_SOCKET;
-    ListenThread.Wait();
-
-    for( uint i = 0; i < NetIOThreadsCount; i++ )
-        PostQueuedCompletionStatus( NetIOCompletionPort, 0, 1, nullptr );
-    for( uint i = 0; i < NetIOThreadsCount; i++ )
-        NetIOThreads[ i ].Wait();
-    SAFEDELA( NetIOThreads );
-    NetIOThreadsCount = 0;
-    CloseHandle( NetIOCompletionPort );
-    NetIOCompletionPort = nullptr;
+    // Shutdown servers
+    TcpServer->Shutdown();
+    WebSocketsServer->Shutdown();
+    SAFEDEL( TcpServer );
+    SAFEDEL( WebSocketsServer );
 
     // Managers
     EntityMngr.ClearEntities();
@@ -376,40 +349,23 @@ void FOServer::LogicTick()
     ConnectedClientsLocker.Unlock();
     for( Client* cl : clients )
     {
-        // Disconnect
-        if( cl->IsOffline() )
-        {
-            if( InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
-                cl->Shutdown();
-
-            if( cl->GetOfflineTime() > 60 * 60 * 1000 )         // 1 hour
-            {
-                WriteLog( "Offline connection timeout, force shutdown. Ip '{}', name '{}'.\n", cl->GetIpStr(), cl->GetName() );
-                cl->Shutdown();
-            }
-        }
-
         // Check for removing
-        if( cl->Sock == INVALID_SOCKET &&
-            InterlockedCompareExchange( &cl->NetIOIn->Operation, 0, 0 ) == WSAOP_FREE &&
-            InterlockedCompareExchange( &cl->NetIOOut->Operation, 0, 0 ) == WSAOP_FREE )
+        if( cl->IsOffline() )
         {
             DisconnectClient( cl );
 
             ConnectedClientsLocker.Lock();
             auto it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
-            if( it != ConnectedClients.end() )
-            {
-                ConnectedClients.erase( it );
-                Statistics.CurOnline--;
-            }
+            RUNTIME_ASSERT( it != ConnectedClients.end() );
+            ConnectedClients.erase( it );
+            Statistics.CurOnline--;
             ConnectedClientsLocker.Unlock();
 
             cl->Release();
             continue;
         }
 
-        // Process net
+        // Process network messages
         Process( cl );
         cl->Release();
     }
@@ -526,257 +482,35 @@ void FOServer::LogicTick()
         Thread_Sleep( ServerGameSleep );
 }
 
-void FOServer::Net_Listen( void* )
+void FOServer::OnNewConnection( NetConnection* connection )
 {
-    while( true )
+    ConnectedClientsLocker.Lock();
+    uint count = (uint) ConnectedClients.size();
+    ConnectedClientsLocker.Unlock();
+    if( count >= MAX_CLIENTS_IN_GAME )
     {
-        // Blocked
-        sockaddr_in from;
-        #ifdef FO_WINDOWS
-        int         addrsize = sizeof( from );
-        SOCKET      sock = WSAAccept( ListenSock, (sockaddr*) &from, &addrsize, nullptr, 0 );
-        #else
-        int         addrsize = sizeof( from );
-        SOCKET      sock = accept( ListenSock, (sockaddr*) &from, &addrsize );
-        #endif
-        if( sock == INVALID_SOCKET )
-        {
-            // End of work
-            #ifdef FO_WINDOWS
-            int error = WSAGetLastError();
-            if( error == WSAEINTR || error == WSAENOTSOCK )
-                break;
-            #else
-            if( errno == EINVAL )
-                break;
-            #endif
-
-            WriteLog( "Listen error '{}'. Continue listening.\n", GetLastSocketError() );
-            continue;
-        }
-
-        ConnectedClientsLocker.Lock();
-        uint count = (uint) ConnectedClients.size();
-        ConnectedClientsLocker.Unlock();
-        if( count >= MAX_CLIENTS_IN_GAME )
-        {
-            closesocket( sock );
-            continue;
-        }
-
-        if( GameOpt.DisableTcpNagle )
-        {
-            #ifdef FO_WINDOWS
-            int optval = 1;
-            if( setsockopt( sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
-                WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", GetLastSocketError() );
-            #else
-            // socklen_t optval = 1;
-            // if( setsockopt( sock, IPPROTO_TCP, 1, &optval, sizeof( optval ) ) )
-            //    WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", GetLastSocketError() );
-            #endif
-        }
-
-        ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( Str::GetHash( "Player" ) );
-        RUNTIME_ASSERT( cl_proto );
-        Client*       cl = new Client( cl_proto );
-
-        // Socket
-        cl->Sock = sock;
-        cl->From = from;
-
-        // ZLib
-        cl->Zstrm.zalloc = zlib_alloc;
-        cl->Zstrm.zfree = zlib_free;
-        cl->Zstrm.opaque = nullptr;
-        int result = deflateInit( &cl->Zstrm, Z_BEST_SPEED );
-        if( result != Z_OK )
-        {
-            WriteLog( "Client Zlib deflateInit fail, error {} '{}'.\n", result, zError( result ) );
-            closesocket( sock );
-            delete cl;
-            continue;
-        }
-        cl->ZstrmInit = true;
-
-        // CompletionPort
-        if( !CreateIoCompletionPort( (HANDLE) sock, NetIOCompletionPort, 0, 0 ) )
-        {
-            WriteLog( "CreateIoCompletionPort fail, error {}.\n", GetLastError() );
-            closesocket( sock );
-            delete cl;
-            continue;
-        }
-
-        // First receive queue
-        DWORD bytes;
-        if( WSARecv( cl->Sock, &cl->NetIOIn->Buffer, 1, &bytes, &cl->NetIOIn->Flags, &cl->NetIOIn->OV, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
-        {
-            WriteLog( "First recv fail, error '{}'.\n", GetLastSocketError() );
-            closesocket( sock );
-            delete cl;
-            continue;
-        }
-
-        // Add to connected collection
-        ConnectedClientsLocker.Lock();
-        cl->GameState = STATE_CONNECTED;
-        ConnectedClients.push_back( cl );
-        Statistics.CurOnline++;
-        ConnectedClientsLocker.Unlock();
-    }
-}
-
-void FOServer::NetIO_Work( void* )
-{
-    while( true )
-    {
-        DWORD             bytes;
-        uint              key;
-        Client::NetIOArg* io;
-        BOOL              ok = GetQueuedCompletionStatus( NetIOCompletionPort, &bytes, (PULONG_PTR) &key, (LPOVERLAPPED*) &io, INFINITE );
-        if( key == 1 )
-            break;                // End of work
-
-        io->Locker.Lock();
-        Client* cl = (Client*) io->PClient;
-        cl->AddRef();
-
-        if( ok && bytes )
-        {
-            switch( InterlockedCompareExchange( &io->Operation, 0, 0 ) )
-            {
-            case WSAOP_SEND:
-                Statistics.BytesSend += bytes;
-                NetIO_Output( io );
-                break;
-            case WSAOP_RECV:
-                Statistics.BytesRecv += bytes;
-                io->Bytes = bytes;
-                NetIO_Input( io );
-                break;
-            default:
-                RUNTIME_ASSERT( !"Unreachable place" );
-                break;
-            }
-        }
-        else
-        {
-            InterlockedExchange( &io->Operation, WSAOP_FREE );
-            cl->Disconnect();
-        }
-
-        io->Locker.Unlock();
-        cl->Release();
-    }
-}
-
-void FOServer::NetIO_Input( Client::NetIOArg* io )
-{
-    Client* cl = (Client*) io->PClient;
-
-    if( cl->IsOffline() )
-    {
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
+        connection->Disconnect();
         return;
     }
 
-    cl->Bin.Lock();
-    if( cl->Bin.GetCurPos() + io->Bytes >= GameOpt.FloodSize && !Singleplayer )
-    {
-        WriteLog( "Flood.\n" );
-        cl->Bin.Reset();
-        cl->Bin.Unlock();
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        cl->Disconnect();
-        return;
-    }
-    cl->Bin.Push( io->Buffer.buf, io->Bytes, true );
-    cl->Bin.Unlock();
+    // Allocate client
+    ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( Str::GetHash( "Player" ) );
+    RUNTIME_ASSERT( cl_proto );
+    Client*       cl = new Client( connection, cl_proto );
 
-    io->Flags = 0;
-    DWORD bytes;
-    if( WSARecv( cl->Sock, &io->Buffer, 1, &bytes, &io->Flags, &io->OV, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
-    {
-        WriteLog( "Recv fail, error '{}'.\n", GetLastSocketError() );
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        cl->Disconnect();
-    }
-}
-
-void FOServer::NetIO_Output( Client::NetIOArg* io )
-{
-    Client* cl = (Client*) io->PClient;
-
-    // Nothing to send
-    cl->Bout.Lock();
-    if( cl->Bout.IsEmpty() )
-    {
-        cl->Bout.Unlock();
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        return;
-    }
-
-    // Compress
-    if( !GameOpt.DisableZlibCompression && !cl->DisableZlib )
-    {
-        uint to_compr = cl->Bout.GetEndPos();
-        if( to_compr > WSA_BUF_SIZE )
-            to_compr = WSA_BUF_SIZE;
-
-        cl->Zstrm.next_in = (Bytef*) cl->Bout.GetCurData();
-        cl->Zstrm.avail_in = to_compr;
-        cl->Zstrm.next_out = (Bytef*) io->Buffer.buf;
-        cl->Zstrm.avail_out = WSA_BUF_SIZE;
-
-        if( deflate( &cl->Zstrm, Z_SYNC_FLUSH ) != Z_OK )
-        {
-            WriteLog( "Deflate fail.\n" );
-            cl->Bout.Reset();
-            cl->Bout.Unlock();
-            InterlockedExchange( &io->Operation, WSAOP_FREE );
-            cl->Disconnect();
-            return;
-        }
-
-        uint compr = (uint) ( (size_t) cl->Zstrm.next_out - (size_t) io->Buffer.buf );
-        uint real = (uint) ( (size_t) cl->Zstrm.next_in - (size_t) cl->Bout.GetCurData() );
-        io->Buffer.len = compr;
-        cl->Bout.Cut( real );
-        Statistics.DataReal += real;
-        Statistics.DataCompressed += compr;
-    }
-    // Without compressing
-    else
-    {
-        uint len = cl->Bout.GetEndPos();
-        if( len > WSA_BUF_SIZE )
-            len = WSA_BUF_SIZE;
-        memcpy( io->Buffer.buf, cl->Bout.GetCurData(), len );
-        io->Buffer.len = len;
-        cl->Bout.Cut( len );
-        Statistics.DataReal += len;
-        Statistics.DataCompressed += len;
-    }
-    if( cl->Bout.IsEmpty() )
-        cl->Bout.Reset();
-    cl->Bout.Unlock();
-
-    // Send
-    DWORD bytes;
-    if( WSASend( cl->Sock, &io->Buffer, 1, &bytes, 0, (LPOVERLAPPED) io, nullptr ) == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING )
-    {
-        WriteLog( "Send fail, error '{}'.\n", GetLastSocketError() );
-        InterlockedExchange( &io->Operation, WSAOP_FREE );
-        cl->Disconnect();
-    }
+    // Add to connected collection
+    ConnectedClientsLocker.Lock();
+    cl->GameState = STATE_CONNECTED;
+    ConnectedClients.push_back( cl );
+    Statistics.CurOnline++;
+    ConnectedClientsLocker.Unlock();
 }
 
 void FOServer::Process( Client* cl )
 {
     if( cl->IsOffline() || cl->IsDestroyed )
     {
-        cl->Bin.LockReset();
+        cl->Connection->Bin.LockReset();
         return;
     }
 
@@ -784,12 +518,12 @@ void FOServer::Process( Client* cl )
     if( cl->GameState == STATE_CONNECTED )
     {
         BIN_BEGIN( cl );
-        if( cl->Bin.IsEmpty() )
-            cl->Bin.Reset();
-        cl->Bin.Refresh();
-        if( cl->Bin.NeedProcess() )
+        if( cl->Connection->Bin.IsEmpty() )
+            cl->Connection->Bin.Reset();
+        cl->Connection->Bin.Refresh();
+        if( cl->Connection->Bin.NeedProcess() )
         {
-            cl->Bin >> msg;
+            cl->Connection->Bin >> msg;
 
             uint tick = Timer::FastTick();
             switch( msg )
@@ -798,8 +532,9 @@ void FOServer::Process( Client* cl )
             {
                 uint answer[ 4 ] = { CrMngr.PlayersInGame(), Statistics.Uptime, 0, 0 };
                 BOUT_BEGIN( cl );
-                cl->Bout.Push( (char*) answer, sizeof( answer ) );
-                cl->DisableZlib = true;
+                cl->Connection->DisableCompression();
+                cl->Connection->Bout.Push( (char*) answer, sizeof( answer ) );
+
                 BOUT_END( cl );
                 cl->Disconnect();
             }
@@ -856,7 +591,7 @@ void FOServer::Process( Client* cl )
                 BIN_END( cl );
                 break;
             default:
-                cl->Bin.SkipMsg( msg );
+                cl->Connection->Bin.SkipMsg( msg );
                 BIN_END( cl );
                 break;
             }
@@ -877,17 +612,17 @@ void FOServer::Process( Client* cl )
     }
     else if( cl->GameState == STATE_TRANSFERRING )
     {
-        #define CHECK_BUSY                                                                                             \
-            if( cl->IsBusy() && !Singleplayer ) { cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; \
+        #define CHECK_BUSY                                                                                                         \
+            if( cl->IsBusy() && !Singleplayer ) { cl->Connection->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; \
             }
 
         BIN_BEGIN( cl );
-        if( cl->Bin.IsEmpty() )
-            cl->Bin.Reset();
-        cl->Bin.Refresh();
-        if( cl->Bin.NeedProcess() )
+        if( cl->Connection->Bin.IsEmpty() )
+            cl->Connection->Bin.Reset();
+        cl->Connection->Bin.Refresh();
+        if( cl->Connection->Bin.NeedProcess() )
         {
-            cl->Bin >> msg;
+            cl->Connection->Bin >> msg;
 
             uint tick = Timer::FastTick();
             switch( msg )
@@ -907,7 +642,7 @@ void FOServer::Process( Client* cl )
                 BIN_END( cl );
                 break;
             default:
-                cl->Bin.SkipMsg( msg );
+                cl->Connection->Bin.SkipMsg( msg );
                 BIN_END( cl );
                 break;
             }
@@ -921,27 +656,27 @@ void FOServer::Process( Client* cl )
     else if( cl->GameState == STATE_PLAYING )
     {
         #define MESSAGES_PER_CYCLE    ( 5 )
-        #define CHECK_BUSY                                    \
-            if( cl->IsBusy() && !Singleplayer )               \
-            {                                                 \
-                cl->Bin.MoveReadPos( -int( sizeof( msg ) ) ); \
-                BIN_END( cl );                                \
-                return;                                       \
+        #define CHECK_BUSY                                                \
+            if( cl->IsBusy() && !Singleplayer )                           \
+            {                                                             \
+                cl->Connection->Bin.MoveReadPos( -int( sizeof( msg ) ) ); \
+                BIN_END( cl );                                            \
+                return;                                                   \
             }
 
         for( int i = 0; i < MESSAGES_PER_CYCLE; i++ )
         {
             BIN_BEGIN( cl );
-            if( cl->Bin.IsEmpty() )
-                cl->Bin.Reset();
-            cl->Bin.Refresh();
-            if( !cl->Bin.NeedProcess() )
+            if( cl->Connection->Bin.IsEmpty() )
+                cl->Connection->Bin.Reset();
+            cl->Connection->Bin.Refresh();
+            if( !cl->Connection->Bin.NeedProcess() )
             {
                 CHECK_IN_BUFF_ERROR_EXT( cl, 0, 0 );
                 BIN_END( cl );
                 break;
             }
-            cl->Bin >> msg;
+            cl->Connection->Bin >> msg;
 
             uint tick = Timer::FastTick();
             switch( msg )
@@ -972,7 +707,7 @@ void FOServer::Process( Client* cl )
                     }
                 };
                 cl_ = cl;
-                Process_Command( cl->Bin, LogCB::Message, cl, nullptr );
+                Process_Command( cl->Connection->Bin, LogCB::Message, cl, nullptr );
                 BIN_END( cl );
                 continue;
             }
@@ -1077,13 +812,13 @@ void FOServer::Process( Client* cl )
             }
             default:
             {
-                cl->Bin.SkipMsg( msg );
+                cl->Connection->Bin.SkipMsg( msg );
                 BIN_END( cl );
                 continue;
             }
             }
 
-            cl->Bin.SkipMsg( msg );
+            cl->Connection->Bin.SkipMsg( msg );
             BIN_END( cl );
         }
     }
@@ -1096,9 +831,9 @@ void FOServer::Process_Text( Client* cl )
     ushort len = 0;
     char   str[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
 
-    cl->Bin >> msg_len;
-    cl->Bin >> how_say;
-    cl->Bin >> len;
+    cl->Connection->Bin >> msg_len;
+    cl->Connection->Bin >> how_say;
+    cl->Connection->Bin >> len;
     CHECK_IN_BUFF_ERROR( cl );
 
     if( !len || len >= sizeof( str ) )
@@ -1108,7 +843,7 @@ void FOServer::Process_Text( Client* cl )
         return;
     }
 
-    cl->Bin.Pop( str, len );
+    cl->Connection->Bin.Pop( str, len );
     str[ len ] = '\0';
     CHECK_IN_BUFF_ERROR( cl );
 
@@ -2500,21 +2235,6 @@ bool FOServer::InitReal()
     Statistics.ServerStartTick = Timer::FastTick();
 
     // Net
-    #ifdef FO_WINDOWS
-    WSADATA wsa;
-    if( WSAStartup( MAKEWORD( 2, 2 ), &wsa ) )
-    {
-        WriteLog( "WSAStartup error.\n" );
-        return false;
-    }
-    #endif
-
-    #ifdef FO_WINDOWS
-    ListenSock = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED );
-    #else
-    ListenSock = socket( AF_INET, SOCK_STREAM, 0 );
-    #endif
-
     ushort port;
     if( !Singleplayer )
     {
@@ -2533,90 +2253,40 @@ bool FOServer::InitReal()
         WriteLog( "Starting server on free port.\n", port );
     }
 
-    sockaddr_in sin;
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons( port );
-    sin.sin_addr.s_addr = INADDR_ANY;
-
-    if( ::bind( ListenSock, (sockaddr*) &sin, sizeof( sin ) ) == SOCKET_ERROR )
+    TcpServer = NetServerBase::CreateTcpServer();
+    WebSocketsServer = NetServerBase::CreateWebSocketsServer();
+    TcpServer->SetConnectionCallback( FOServer::OnNewConnection );
+    WebSocketsServer->SetConnectionCallback( FOServer::OnNewConnection );
+    if( !TcpServer->Listen( port ) )
     {
-        WriteLog( "Bind error.\n" );
+        WriteLog( "Tpc server can't start listen port {}.\n", port );
+        return false;
+    }
+    if( !WebSocketsServer->Listen( port + 1 ) )
+    {
+        WriteLog( "Web sockets server can't start listen port {}.\n", port + 1 );
         return false;
     }
 
-    if( Singleplayer )
-    {
-        int namelen = sizeof( sin );
-        if( getsockname( ListenSock, (sockaddr*) &sin, &namelen ) )
-        {
-            WriteLog( "Getsockname error.\n" );
-            closesocket( ListenSock );
-            return false;
-        }
-        WriteLog( "Taked port {}.\n", sin.sin_port );
-    }
-
-    if( listen( ListenSock, SOMAXCONN ) == SOCKET_ERROR )
-    {
-        WriteLog( "Listen error!" );
-        closesocket( ListenSock );
-        return false;
-    }
-
-    NetIOThreadsCount = MainConfig->GetInt( "", "NetWorkThread", 0 );
-    if( !NetIOThreadsCount )
-        NetIOThreadsCount = CpuCount;
-
-    NetIOCompletionPort = CreateIoCompletionPort( INVALID_HANDLE_VALUE, nullptr, 0, NetIOThreadsCount );
-    if( !NetIOCompletionPort )
-    {
-        WriteLog( "Can't create IO Completion Port, error {}.\n", GetLastError() );
-        shutdown( ListenSock, SD_BOTH );
-        closesocket( ListenSock );
-        return false;
-    }
-
-    WriteLog( "Starting net listen thread.\n" );
-    ListenThread.Start( Net_Listen, "NetListen" );
-
-    WriteLog( "Starting net work threads, count {}.\n", NetIOThreadsCount );
-    NetIOThreads = new Thread[ NetIOThreadsCount ];
-    for( uint i = 0; i < NetIOThreadsCount; i++ )
-    {
-        char thread_name[ MAX_FOTEXT ];
-        if( NetIOThreadsCount > 1 )
-            Str::Format( thread_name, "NetWork%u", i );
-        else
-            Str::Format( thread_name, "NetWork" );
-
-        NetIOThreads[ i ].Start( NetIO_Work, thread_name );
-    }
-
-    Client::SendData = &NetIO_Output;
-
-    ScriptSystemUpdate();
+    // Script timeouts
+    Script::SetRunTimeout( GameOpt.ScriptRunSuspendTimeout, GameOpt.ScriptRunMessageTimeout );
 
     // World saver
     SaveWorldTime = MainConfig->GetInt( "", "WorldSaveTime", 60 ) * 60 * 1000;
     SaveWorldNextTick = Timer::FastTick() + SaveWorldTime;
-
-    Active = true;
 
     // Inform client about end of initialization
     #ifdef FO_WINDOWS
     if( Singleplayer )
     {
         if( !SingleplayerData.Lock() )
-        {
-            shutdown( ListenSock, SD_BOTH );
-            closesocket( ListenSock );
             return false;
-        }
-        SingleplayerData.NetPort = sin.sin_port;
+        SingleplayerData.NetPort = port;
         SingleplayerData.Unlock();
     }
     #endif
 
+    Active = true;
     return true;
 }
 
@@ -3096,8 +2766,6 @@ bool FOServer::NewWorld()
     if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
     {
         WriteLog( "Start script fail.\n" );
-        shutdown( ListenSock, SD_BOTH );
-        closesocket( ListenSock );
         return false;
     }
 
@@ -3221,8 +2889,6 @@ bool FOServer::LoadWorld( const char* fname )
     if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
     {
         WriteLog( "Start script fail.\n" );
-        shutdown( ListenSock, SD_BOTH );
-        closesocket( ListenSock );
         return false;
     }
 

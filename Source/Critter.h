@@ -2,14 +2,13 @@
 #define __CRITTER__
 
 #include "Common.h"
-#include "zlib/zlib.h"
-#include "BufferManager.h"
+#include "NetProtocol.h"
+#include "Networking.h"
 #include "Item.h"
 #include "Dialogs.h"
 #include "AI.h"
 #include "CritterData.h"
 #include "DataMask.h"
-#include "NetProtocol.h"
 #include "Entity.h"
 
 // Plane results
@@ -310,57 +309,29 @@ public:
     bool   CanBeRemoved;
 };
 
+#define BIN_BEGIN( cl_ )     cl_->Connection->Bin.Lock()
+#define BIN_END( cl_ )       cl_->Connection->Bin.Unlock()
+#define BOUT_BEGIN( cl_ )    cl_->Connection->Bout.Lock()
+#define BOUT_END( cl_ )      cl_->Connection->Bout.Unlock(); cl_->Connection->Dispatch()
+
 class Client: public Critter
 {
 public:
-    Client( ProtoCritter* proto );
+    Client( NetConnection* conn, ProtoCritter* proto );
     ~Client();
 
-    uchar         Access;
-    uint          LanguageMsg;
-    uint          UID[ 5 ];
-    SOCKET        Sock;
-    sockaddr_in   From;
-    BufferManager Bin, Bout;
-    UCharVec      NetIOBuffer;
-    int           GameState;
-    bool          IsDisconnected;
-    uint          DisconnectTick;
-    bool          DisableZlib;
-    z_stream      Zstrm;
-    bool          ZstrmInit;
-    uint          LastActivityTime;
-    uint          LastSendedMapTick;
-    char          LastSay[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
-    uint          LastSayEqualCount;
-    uint          RadioMessageSended;
-    int           UpdateFileIndex;
-    uint          UpdateFilePortion;
-
-    struct NetIOArg
-    {
-        WSAOVERLAPPED OV;
-        Mutex         Locker;
-        void*         PClient;
-        WSABUF        Buffer;
-        long          Operation;
-        DWORD         Flags;
-        DWORD         Bytes;
-    }* NetIOIn, * NetIOOut;
-    #define WSA_BUF_SIZE    ( 4096 )
-    #define WSAOP_FREE      ( 0 )
-    #define WSAOP_SEND      ( 1 )
-    #define WSAOP_RECV      ( 2 )
-    typedef void ( *SendCallback )( NetIOArg* );
-    static SendCallback SendData;
-    #define BIN_BEGIN( cl_ )     cl_->Bin.Lock()
-    #define BIN_END( cl_ )       cl_->Bin.Unlock()
-    #define BOUT_BEGIN( cl_ )    cl_->Bout.Lock()
-    #define BOUT_END( cl_ )                                                                                                                          \
-        cl_->Bout.Unlock(); if( !cl_->IsOffline() && InterlockedCompareExchange( &cl_->NetIOOut->Operation, WSAOP_SEND, WSAOP_FREE ) == WSAOP_FREE ) \
-            ( *Client::SendData )( cl_->NetIOOut )
-
-    void Shutdown();
+    NetConnection* Connection;
+    uchar          Access;
+    uint           LanguageMsg;
+    uint           UID[ 5 ];
+    int            GameState;
+    uint           LastActivityTime;
+    uint           LastSendedMapTick;
+    char           LastSay[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
+    uint           LastSayEqualCount;
+    uint           RadioMessageSended;
+    int            UpdateFileIndex;
+    uint           UpdateFilePortion;
 
 public:
     uint        GetIp();
@@ -368,7 +339,6 @@ public:
     ushort      GetPort();
     bool        IsOnline();
     bool        IsOffline();
-    void        Disconnect();
     void        RemoveFromGame();
     uint        GetOfflineTime();
     const char* GetBinPassHash();

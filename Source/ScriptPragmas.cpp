@@ -1527,7 +1527,7 @@ public:
         }
 
         Client* cl = (Client*) cr;
-        BufferManager& net_buf = cl->Bout;
+        BufferManager& net_buf = cl->Connection->Bout;
         # else
         BufferManager& net_buf = FOClient::Self->Bout;
         # endif
@@ -1556,7 +1556,7 @@ public:
         #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
         # ifdef FONLINE_SERVER
         Client* cl = (Client*) context;
-        BufferManager& net_buf = cl->Bin;
+        BufferManager& net_buf = cl->Connection->Bin;
         # else
         BufferManager& net_buf = *(BufferManager*) context;
         # endif

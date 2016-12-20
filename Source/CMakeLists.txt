@@ -328,6 +328,7 @@ set( SERVER_SOURCE
 	MainServer.cpp
 	Map.cpp Map.h
 	MapManager.cpp MapManager.h
+	Networking.cpp Networking.h
 	Server.cpp Server.h
 	ServerClient.cpp
 	ServerItem.cpp

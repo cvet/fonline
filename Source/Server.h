@@ -2,6 +2,8 @@
 #define __SERVER__
 
 #include "Common.h"
+#include "NetProtocol.h"
+#include "Networking.h"
 #include "Script.h"
 #include "Item.h"
 #include "Critter.h"
@@ -10,7 +12,6 @@
 #include "CritterManager.h"
 #include "ItemManager.h"
 #include "Dialogs.h"
-#include "NetProtocol.h"
 #include "Access.h"
 #include "EntityManager.h"
 #include "ProtoManager.h"
@@ -18,12 +19,11 @@
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EXT( client, 0, return )
 #define CHECK_IN_BUFF_ERROR_EXT( client, before_disconnect, after_disconnect )                      \
-    if( client->Bin.IsError() )                                                                     \
+    if( client->Connection->Bin.IsError() )                                                         \
     {                                                                                               \
         WriteLog( "Wrong network data from client '{}', line {}.\n", client->GetInfo(), __LINE__ ); \
         before_disconnect;                                                                          \
         client->Disconnect();                                                                       \
-        client->Bin.LockReset();                                                                    \
         after_disconnect;                                                                           \
     }
 
@@ -81,7 +81,6 @@ public:
     static bool InitScriptSystem();
     static bool PostInitScriptSystem();
     static void FinishScriptSystem();
-    static void ScriptSystemUpdate();
 
     // Dialogs demand and result
     static bool DialogScriptDemand( DemandResult& demand, Critter* master, Critter* slave );
@@ -132,7 +131,6 @@ public:
     static void Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance );
 
     // Main
-    static uint    CpuCount;
     static int     UpdateIndex, UpdateLastIndex;
     static uint    UpdateLastTick;
     static bool    Active, ActiveInProcess, ActiveOnce;
@@ -177,23 +175,16 @@ public:
 
     static void LogicTick();
 
-    // Net IO
-    static ClVec  ConnectedClients;
-    static Mutex  ConnectedClientsLocker;
-    static SOCKET ListenSock;
-    static Thread ListenThread;
+    // Net
+    static NetServerBase* TcpServer;
+    static NetServerBase* WebSocketsServer;
+    static ClVec          ConnectedClients;
+    static Mutex          ConnectedClientsLocker;
 
-    static void Net_Listen( void* );
-
-    static HANDLE  NetIOCompletionPort;
-    static Thread* NetIOThreads;
-    static uint    NetIOThreadsCount;
-    static void NetIO_Work( void* );
-    static void NetIO_Input( Client::NetIOArg* io );
-    static void NetIO_Output( Client::NetIOArg* io );
+    static void OnNewConnection( NetConnection* connection );
 
     // Dump save/load
-    #define WORLD_SAVE_MAX_INDEX    ( 9999 )
+    #define WORLD_SAVE_MAX_INDEX             ( 9999 )
 
     struct EntityDump
     {
@@ -223,8 +214,8 @@ public:
     static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );
 
     // Banned
-    #define BANS_FNAME_ACTIVE       "Save/Bans/Active.txt"
-    #define BANS_FNAME_EXPIRED      "Save/Bans/Expired.txt"
+    #define BANS_FNAME_ACTIVE                "Save/Bans/Active.txt"
+    #define BANS_FNAME_EXPIRED               "Save/Bans/Expired.txt"
     struct ClientBanned
     {
         DateTimeStamp BeginTime;

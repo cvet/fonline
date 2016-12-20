@@ -275,7 +275,7 @@ void FOServer::Process_Update( Client* cl )
 {
     // Net protocol
     ushort proto_ver = 0;
-    cl->Bin >> proto_ver;
+    cl->Connection->Bin >> proto_ver;
     if( proto_ver != FONLINE_VERSION )
     {
         cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
@@ -285,9 +285,9 @@ void FOServer::Process_Update( Client* cl )
 
     // Begin data encrypting
     uint encrypt_key;
-    cl->Bin >> encrypt_key;
-    cl->Bin.SetEncryptKey( encrypt_key + 521 );
-    cl->Bout.SetEncryptKey( encrypt_key + 3491 );
+    cl->Connection->Bin >> encrypt_key;
+    cl->Connection->Bin.SetEncryptKey( encrypt_key + 521 );
+    cl->Connection->Bout.SetEncryptKey( encrypt_key + 3491 );
 
     // Send update files list with global properties
     uint       msg_len = sizeof( NETMSG_UPDATE_FILES_LIST ) + sizeof( msg_len ) + sizeof( uint ) + (uint) UpdateFilesList.size();
@@ -296,19 +296,19 @@ void FOServer::Process_Update( Client* cl )
     uint       whole_data_size = Globals->Props.StoreData( false, &global_vars_data, &global_vars_data_sizes );
     msg_len += sizeof( ushort ) + whole_data_size;
     BOUT_BEGIN( cl );
-    cl->Bout << NETMSG_UPDATE_FILES_LIST;
-    cl->Bout << msg_len;
-    cl->Bout << (uint) UpdateFilesList.size();
+    cl->Connection->Bout << NETMSG_UPDATE_FILES_LIST;
+    cl->Connection->Bout << msg_len;
+    cl->Connection->Bout << (uint) UpdateFilesList.size();
     if( !UpdateFilesList.empty() )
-        cl->Bout.Push( (char*) &UpdateFilesList[ 0 ], (uint) UpdateFilesList.size() );
-    NET_WRITE_PROPERTIES( cl->Bout, global_vars_data, global_vars_data_sizes );
+        cl->Connection->Bout.Push( (char*) &UpdateFilesList[ 0 ], (uint) UpdateFilesList.size() );
+    NET_WRITE_PROPERTIES( cl->Connection->Bout, global_vars_data, global_vars_data_sizes );
     BOUT_END( cl );
 }
 
 void FOServer::Process_UpdateFile( Client* cl )
 {
     uint file_index;
-    cl->Bin >> file_index;
+    cl->Connection->Bin >> file_index;
 
     if( file_index >= (uint) UpdateFiles.size() )
     {
@@ -355,8 +355,8 @@ void FOServer::Process_UpdateFileData( Client* cl )
     }
 
     BOUT_BEGIN( cl );
-    cl->Bout << NETMSG_UPDATE_FILE_DATA;
-    cl->Bout.Push( (char*) data, sizeof( data ) );
+    cl->Connection->Bout << NETMSG_UPDATE_FILE_DATA;
+    cl->Connection->Bout.Push( (char*) data, sizeof( data ) );
     BOUT_END( cl );
 }
 
@@ -386,11 +386,11 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     uint msg_len;
-    cl->Bin >> msg_len;
+    cl->Connection->Bin >> msg_len;
 
     // Protocol version
     ushort proto_ver = 0;
-    cl->Bin >> proto_ver;
+    cl->Connection->Bin >> proto_ver;
     if( proto_ver != FONLINE_VERSION )
     {
         cl->Send_TextMsg( cl, STR_NET_WRONG_NETPROTO, SAY_NETMSG, TEXTMSG_GAME );
@@ -399,23 +399,23 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Begin data encrypting
-    cl->Bin.SetEncryptKey( 1234567890 );
-    cl->Bout.SetEncryptKey( 1234567890 );
+    cl->Connection->Bin.SetEncryptKey( 1234567890 );
+    cl->Connection->Bout.SetEncryptKey( 1234567890 );
 
     // Name
     char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
-    cl->Bin.Pop( name, sizeof( name ) );
+    cl->Connection->Bin.Pop( name, sizeof( name ) );
     name[ sizeof( name ) - 1 ] = 0;
     cl->Name = name;
 
     // Password hash
     char pass_hash[ PASS_HASH_SIZE ];
-    cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
+    cl->Connection->Bin.Pop( pass_hash, PASS_HASH_SIZE );
     cl->SetBinPassHash( pass_hash );
 
     // Receive params
     ushort props_count = 0;
-    cl->Bin >> props_count;
+    cl->Connection->Bin >> props_count;
 
     if( props_count > ( ushort ) Critter::RegProperties.size() )
     {
@@ -428,8 +428,8 @@ void FOServer::Process_CreateClient( Client* cl )
     {
         int enum_value;
         int value;
-        cl->Bin >> enum_value;
-        cl->Bin >> value;
+        cl->Connection->Bin >> enum_value;
+        cl->Connection->Bin >> value;
 
         if( !Critter::RegProperties.count( enum_value ) )
         {
@@ -590,7 +590,7 @@ void FOServer::Process_CreateClient( Client* cl )
         cl->Send_TextMsg( cl, STR_SP_NEW_GAME_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
 
     BOUT_BEGIN( cl );
-    cl->Bout << (uint) NETMSG_REGISTER_SUCCESS;
+    cl->Connection->Bout << (uint) NETMSG_REGISTER_SUCCESS;
     BOUT_END( cl );
 
     cl->Disconnect();
@@ -634,7 +634,7 @@ void FOServer::Process_LogIn( Client*& cl )
 
     // Net protocol
     ushort proto_ver = 0;
-    cl->Bin >> proto_ver;
+    cl->Connection->Bin >> proto_ver;
     if( proto_ver != FONLINE_VERSION )
     {
         cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
@@ -645,20 +645,20 @@ void FOServer::Process_LogIn( Client*& cl )
     // UIDs
     uint uidxor, uidor, uidcalc;
     uint uid[ 5 ];
-    cl->Bin >> uid[ 4 ];
+    cl->Connection->Bin >> uid[ 4 ];
 
     // Begin data encrypting
-    cl->Bin.SetEncryptKey( uid[ 4 ] + 12345 );
-    cl->Bout.SetEncryptKey( uid[ 4 ] + 12345 );
+    cl->Connection->Bin.SetEncryptKey( uid[ 4 ] + 12345 );
+    cl->Connection->Bout.SetEncryptKey( uid[ 4 ] + 12345 );
 
     // Login, password hash
     char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
-    cl->Bin.Pop( name, sizeof( name ) );
+    cl->Connection->Bin.Pop( name, sizeof( name ) );
     name[ sizeof( name ) - 1 ] = 0;
     cl->Name = name;
-    cl->Bin >> uid[ 1 ];
+    cl->Connection->Bin >> uid[ 1 ];
     char pass_hash[ PASS_HASH_SIZE ];
-    cl->Bin.Pop( pass_hash, PASS_HASH_SIZE );
+    cl->Connection->Bin.Pop( pass_hash, PASS_HASH_SIZE );
 
     if( Singleplayer )
     {
@@ -678,19 +678,19 @@ void FOServer::Process_LogIn( Client*& cl )
     uint textmsg_hash[ TEXTMSG_COUNT ];
     uint item_hash[ ITEM_MAX_TYPES ];
 
-    cl->Bin >> msg_language;
+    cl->Connection->Bin >> msg_language;
     for( int i = 0; i < TEXTMSG_COUNT; i++ )
-        cl->Bin >> textmsg_hash[ i ];
-    cl->Bin >> uidxor;
-    cl->Bin >> uid[ 3 ];
-    cl->Bin >> uid[ 2 ];
-    cl->Bin >> uidor;
+        cl->Connection->Bin >> textmsg_hash[ i ];
+    cl->Connection->Bin >> uidxor;
+    cl->Connection->Bin >> uid[ 3 ];
+    cl->Connection->Bin >> uid[ 2 ];
+    cl->Connection->Bin >> uidor;
     for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-        cl->Bin >> item_hash[ i ];
-    cl->Bin >> uidcalc;
-    cl->Bin >> uid[ 0 ];
+        cl->Connection->Bin >> item_hash[ i ];
+    cl->Connection->Bin >> uidcalc;
+    cl->Connection->Bin >> uid[ 0 ];
     char dummy[ 100 ];
-    cl->Bin.Pop( dummy, 100 );
+    cl->Connection->Bin.Pop( dummy, 100 );
     CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
 
     // Language
@@ -926,88 +926,30 @@ void FOServer::Process_LogIn( Client*& cl )
     {
         ConnectedClientsLocker.Lock();
 
-        // Check founded critter for online
-        if( std::find( ConnectedClients.begin(), ConnectedClients.end(), cl_old ) != ConnectedClients.end() )
-        {
-            ConnectedClientsLocker.Unlock();
-            cl_old->Send_TextMsg( cl, STR_NET_KNOCK_KNOCK, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Send_TextMsg( cl, STR_NET_PLAYER_IN_GAME, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
+        // Disconnect current connection
+        if( !cl_old->Connection->IsDisconnected )
+            cl_old->Disconnect();
 
-        // Find current client in online collection
-        auto it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
-        if( it == ConnectedClients.end() )
-        {
-            ConnectedClientsLocker.Unlock();
-            cl->Disconnect();
-            return;
-        }
-
-        // Swap
-        BIN_END( cl );
-
-        // Swap data that used in NetIO_* functions
-        cl->NetIOIn->Locker.Lock();
-        cl->NetIOOut->Locker.Lock();
-        cl_old->NetIOIn->Locker.Lock();
-        cl_old->NetIOOut->Locker.Lock();
-
-        // Current critter dropped or previous still online
-        // Cancel swapping
-        if( cl->Sock == INVALID_SOCKET || cl_old->Sock != INVALID_SOCKET )
-        {
-            cl_old->NetIOOut->Locker.Unlock();
-            cl_old->NetIOIn->Locker.Unlock();
-            cl->NetIOOut->Locker.Unlock();
-            cl->NetIOIn->Locker.Unlock();
-            ConnectedClientsLocker.Unlock();
-            cl->Disconnect();
-            BIN_BEGIN( cl );
-            return;
-        }
-
-        // Assign to ConnectedClients
-        cl_old->AddRef();
-        *it = cl_old;
-
-        // Swap net data
-        cl_old->Bin = cl->Bin;
-        cl_old->Bout = cl->Bout;
-        std::swap( cl_old->IsDisconnected, cl->IsDisconnected );
-        std::swap( cl_old->DisconnectTick, cl->DisconnectTick );
+        // Swap data
+        std::swap( cl_old->Connection, cl->Connection );
         cl_old->GameState = STATE_CONNECTED;
         cl->GameState = STATE_NONE;
-        cl_old->Sock = cl->Sock;
-        cl->Sock = INVALID_SOCKET;
-        memcpy( &cl_old->From, &cl->From, sizeof( cl_old->From ) );
         cl_old->LastActivityTime = 0;
         UNSETFLAG( cl_old->Flags, FCRIT_DISCONNECT );
         SETFLAG( cl->Flags, FCRIT_DISCONNECT );
-        std::swap( cl_old->Zstrm, cl->Zstrm );
-
-        std::swap( cl_old->NetIOIn, cl->NetIOIn );
-        std::swap( cl_old->NetIOOut, cl->NetIOOut );
-        cl_old->NetIOIn->PClient = cl_old;
-        cl_old->NetIOOut->PClient = cl_old;
-        cl->NetIOIn->PClient = cl;
-        cl->NetIOOut->PClient = cl;
-
         cl->IsDestroyed = true;
-        Script::RemoveEventsEntity( cl );
         cl_old->IsDestroyed = false;
+        Script::RemoveEventsEntity( cl );
 
-        cl->NetIOOut->Locker.Unlock();
-        cl->NetIOIn->Locker.Unlock();
-        cl_old->NetIOOut->Locker.Unlock();
-        cl_old->NetIOIn->Locker.Unlock();
-
+        // Change in list
+        cl_old->AddRef();
+        auto it = std::find( ConnectedClients.begin(), ConnectedClients.end(), cl );
+        RUNTIME_ASSERT( it != ConnectedClients.end() );
+        *it = cl_old;
         cl->Release();
         cl = cl_old;
 
         ConnectedClientsLocker.Unlock();
-        BIN_BEGIN( cl );
 
         // Erase from save
         EraseSaveClient( cl->GetId() );
@@ -1177,15 +1119,15 @@ void FOServer::Process_LogIn( Client*& cl )
     uint       whole_data_size = Globals->Props.StoreData( false, &global_vars_data, &global_vars_data_sizes );
     msg_len += sizeof( ushort ) + whole_data_size;
     BOUT_BEGIN( cl );
-    cl->Bout << NETMSG_LOGIN_SUCCESS;
-    cl->Bout << msg_len;
-    cl->Bout << bin_seed;
-    cl->Bout << bout_seed;
-    NET_WRITE_PROPERTIES( cl->Bout, global_vars_data, global_vars_data_sizes );
+    cl->Connection->Bout << NETMSG_LOGIN_SUCCESS;
+    cl->Connection->Bout << msg_len;
+    cl->Connection->Bout << bin_seed;
+    cl->Connection->Bout << bout_seed;
+    NET_WRITE_PROPERTIES( cl->Connection->Bout, global_vars_data, global_vars_data_sizes );
     BOUT_END( cl );
 
-    cl->Bin.SetEncryptKey( bin_seed );
-    cl->Bout.SetEncryptKey( bout_seed );
+    cl->Connection->Bin.SetEncryptKey( bin_seed );
+    cl->Connection->Bout.SetEncryptKey( bout_seed );
 
     cl->Send_LoadMap( nullptr );
 }
@@ -1203,18 +1145,18 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
     ushort   fname_len;
     char     fname[ MAX_FOTEXT ];
     UCharVec pic_data;
-    cl->Bin >> msg_len;
-    cl->Bin >> save;
-    cl->Bin >> fname_len;
-    cl->Bin.Pop( fname, fname_len );
+    cl->Connection->Bin >> msg_len;
+    cl->Connection->Bin >> save;
+    cl->Connection->Bin >> fname_len;
+    cl->Connection->Bin.Pop( fname, fname_len );
     fname[ fname_len ] = 0;
     if( save )
     {
         uint pic_data_len;
-        cl->Bin >> pic_data_len;
+        cl->Connection->Bin >> pic_data_len;
         pic_data.resize( pic_data_len );
         if( pic_data_len )
-            cl->Bin.Pop( (char*) &pic_data[ 0 ], pic_data_len );
+            cl->Connection->Bin.Pop( (char*) &pic_data[ 0 ], pic_data_len );
     }
 
     CHECK_IN_BUFF_ERROR( cl );
@@ -1239,7 +1181,7 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
         cl->Send_TextMsg( cl, STR_SP_LOAD_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
 
         BOUT_BEGIN( cl );
-        cl->Bout << (uint) NETMSG_REGISTER_SUCCESS;
+        cl->Connection->Bout << (uint) NETMSG_REGISTER_SUCCESS;
         BOUT_END( cl );
         cl->Disconnect();
     }
@@ -1347,11 +1289,11 @@ void FOServer::Process_GiveMap( Client* cl )
     hash hash_tiles;
     hash hash_scen;
 
-    cl->Bin >> automap;
-    cl->Bin >> map_pid;
-    cl->Bin >> loc_id;
-    cl->Bin >> hash_tiles;
-    cl->Bin >> hash_scen;
+    cl->Connection->Bin >> automap;
+    cl->Connection->Bin >> map_pid;
+    cl->Connection->Bin >> loc_id;
+    cl->Connection->Bin >> hash_tiles;
+    cl->Connection->Bin >> hash_scen;
     CHECK_IN_BUFF_ERROR( cl );
 
     if( !Singleplayer )
@@ -1437,24 +1379,24 @@ void FOServer::Send_MapData( Client* cl, ProtoMap* pmap, bool send_tiles, bool s
 
     // Header
     BOUT_BEGIN( cl );
-    cl->Bout << msg;
-    cl->Bout << msg_len;
-    cl->Bout << map_pid;
-    cl->Bout << maxhx;
-    cl->Bout << maxhy;
-    cl->Bout << send_tiles;
-    cl->Bout << send_scenery;
+    cl->Connection->Bout << msg;
+    cl->Connection->Bout << msg_len;
+    cl->Connection->Bout << map_pid;
+    cl->Connection->Bout << maxhx;
+    cl->Connection->Bout << maxhy;
+    cl->Connection->Bout << send_tiles;
+    cl->Connection->Bout << send_scenery;
     if( send_tiles )
     {
-        cl->Bout << (uint) ( pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
+        cl->Connection->Bout << (uint) ( pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
         if( pmap->Tiles.size() )
-            cl->Bout.Push( (char*) &pmap->Tiles[ 0 ], (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
+            cl->Connection->Bout.Push( (char*) &pmap->Tiles[ 0 ], (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
     }
     if( send_scenery )
     {
-        cl->Bout << (uint) pmap->SceneryData.size();
+        cl->Connection->Bout << (uint) pmap->SceneryData.size();
         if( pmap->SceneryData.size() )
-            cl->Bout.Push( (char*) &pmap->SceneryData[ 0 ], (uint) pmap->SceneryData.size() );
+            cl->Connection->Bout.Push( (char*) &pmap->SceneryData[ 0 ], (uint) pmap->SceneryData.size() );
     }
     BOUT_END( cl );
 }
@@ -1465,9 +1407,9 @@ void FOServer::Process_Move( Client* cl )
     ushort hx;
     ushort hy;
 
-    cl->Bin >> move_params;
-    cl->Bin >> hx;
-    cl->Bin >> hy;
+    cl->Connection->Bin >> move_params;
+    cl->Connection->Bin >> hx;
+    cl->Connection->Bin >> hy;
     CHECK_IN_BUFF_ERROR( cl );
 
     if( !cl->GetMapId() )
@@ -1936,7 +1878,7 @@ void FOServer::Process_ContainerItem( Client* cl )
 void FOServer::Process_Dir( Client* cl )
 {
     uchar dir;
-    cl->Bin >> dir;
+    cl->Connection->Bin >> dir;
     CHECK_IN_BUFF_ERROR( cl );
 
     if( !cl->GetMapId() || dir >= DIRS_COUNT || cl->GetDir() == dir || cl->IsTalking() )
@@ -1954,7 +1896,7 @@ void FOServer::Process_Ping( Client* cl )
 {
     uchar ping;
 
-    cl->Bin >> ping;
+    cl->Connection->Bin >> ping;
     CHECK_IN_BUFF_ERROR( cl );
 
     if( ping == PING_CLIENT )
@@ -1990,8 +1932,8 @@ void FOServer::Process_Ping( Client* cl )
     }
 
     BOUT_BEGIN( cl );
-    cl->Bout << NETMSG_PING;
-    cl->Bout << ping;
+    cl->Connection->Bout << NETMSG_PING;
+    cl->Connection->Bout << ping;
     BOUT_END( cl );
 }
 
@@ -2004,10 +1946,10 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     ushort            property_index = 0;
 
     if( data_size == 0 )
-        cl->Bin >> msg_len;
+        cl->Connection->Bin >> msg_len;
 
     char type_ = 0;
-    cl->Bin >> type_;
+    cl->Connection->Bin >> type_;
     type = (NetProperty::Type) type_;
 
     uint additional_args = 0;
@@ -2015,26 +1957,26 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     {
     case NetProperty::CritterItem:
         additional_args = 2;
-        cl->Bin >> cr_id;
-        cl->Bin >> item_id;
+        cl->Connection->Bin >> cr_id;
+        cl->Connection->Bin >> item_id;
         break;
     case NetProperty::Critter:
         additional_args = 1;
-        cl->Bin >> cr_id;
+        cl->Connection->Bin >> cr_id;
         break;
     case NetProperty::MapItem:
         additional_args = 1;
-        cl->Bin >> item_id;
+        cl->Connection->Bin >> item_id;
         break;
     case NetProperty::ChosenItem:
         additional_args = 1;
-        cl->Bin >> item_id;
+        cl->Connection->Bin >> item_id;
         break;
     default:
         break;
     }
 
-    cl->Bin >> property_index;
+    cl->Connection->Bin >> property_index;
 
     CHECK_IN_BUFF_ERROR( cl );
 
@@ -2042,7 +1984,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     if( data_size != 0 )
     {
         data.resize( data_size );
-        cl->Bin.Pop( (char*) &data[ 0 ], data_size );
+        cl->Connection->Bin.Pop( (char*) &data[ 0 ], data_size );
     }
     else
     {
@@ -2051,7 +1993,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         if( len > 0xFFFF )         // For now 64Kb for all
             return;
         data.resize( len );
-        cl->Bin.Pop( (char*) &data[ 0 ], len );
+        cl->Connection->Bin.Pop( (char*) &data[ 0 ], len );
     }
 
     CHECK_IN_BUFF_ERROR( cl );
