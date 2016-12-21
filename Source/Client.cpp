@@ -1787,6 +1787,13 @@ int FOClient::NetInput( bool unpack )
         if( len < 0 )
         #endif
         {
+            #ifdef FO_WINDOWS
+            if( WSAGetLastError() == WSAEWOULDBLOCK )
+            #else
+            if( errno == EINPROGRESS )
+            #endif
+                break;
+
             WriteLog( "Socket error (2) while receive from server, error '{}'.\n", GetLastSocketError() );
             return -1;
         }
