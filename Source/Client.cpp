@@ -833,38 +833,8 @@ void FOClient::MainLoop()
     // Network connection
     if( IsConnecting )
     {
-        timeval tv;
-        tv.tv_sec = 0;
-        tv.tv_usec = 0;
-        FD_ZERO( &SockSet );
-        FD_SET( Sock, &SockSet );
-        int r = select( (int) Sock + 1, nullptr, &SockSet, nullptr, &tv );
-        if( r == 1 )
-        {
-            WriteLog( "Connection established.\n" );
-            IsConnected = true;
-        }
-        else if( r == 0 )
-        {
-            // Wait connection
-            int       error = 0;
-            #ifdef FO_WINDOWS
-            int       len = sizeof( error );
-            #else
-            socklen_t len = sizeof( error );
-            #endif
-            if( getsockopt( Sock, SOL_SOCKET, SO_ERROR, (char*) &error, &len ) != SOCKET_ERROR && !error )
-                return;
-
-            WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
-        }
-        else
-        {
-            WriteLog( "Select error '{}'.\n", GetLastSocketError() );
-        }
-
-        IsConnecting = false;
-        return;
+        if( !CheckSocketStatus( true ) )
+            return;
     }
 
     if( UpdateFilesInProgress )
@@ -1336,6 +1306,55 @@ void ContainerWheelScroll( int items_count, int cont_height, int item_height, in
         cont_scroll = MAX( 0, items_count - height_items );
 }
 
+bool FOClient::CheckSocketStatus( bool for_write )
+{
+    timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    FD_ZERO( &SockSet );
+    FD_SET( Sock, &SockSet );
+    int r = select( (int) Sock + 1, for_write ? nullptr : &SockSet, for_write ? &SockSet : nullptr, nullptr, &tv );
+    if( r == 1 )
+    {
+        // Ready
+        if( IsConnecting )
+        {
+            WriteLog( "Connection established.\n" );
+            IsConnecting = false;
+            IsConnected = true;
+        }
+        return true;
+    }
+    else if( r == 0 )
+    {
+        // Not ready
+        int       error = 0;
+        #ifdef FO_WINDOWS
+        int       len = sizeof( error );
+        #else
+        socklen_t len = sizeof( error );
+        #endif
+        if( getsockopt( Sock, SOL_SOCKET, SO_ERROR, (char*) &error, &len ) != SOCKET_ERROR && !error )
+            return false;
+
+        WriteLog( "Socket error {}.\n", GetLastSocketError() );
+    }
+    else
+    {
+        // Error
+        WriteLog( "Socket select error '{}'.\n", GetLastSocketError() );
+    }
+
+    if( IsConnecting )
+    {
+        WriteLog( "Can't connect to server.\n" );
+        IsConnecting = false;
+    }
+
+    NetDisconnect();
+    return false;
+}
+
 bool FOClient::NetConnect( const char* host, ushort port )
 {
     #ifdef FO_WEB
@@ -1692,20 +1711,8 @@ bool FOClient::NetOutput()
         return false;
     if( Bout.IsEmpty() )
         return true;
-
-    timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-    FD_ZERO( &SockSet );
-    FD_ZERO( &SockSetErr );
-    FD_SET( Sock, &SockSet );
-    FD_SET( Sock, &SockSetErr );
-    if( select( (int) Sock + 1, nullptr, &SockSet, &SockSetErr, &tv ) == SOCKET_ERROR )
-        WriteLog( "Select error '{}'.\n", GetLastSocketError() );
-    if( FD_ISSET( Sock, &SockSetErr ) )
-        WriteLog( "Socket error.\n" );
-    if( !FD_ISSET( Sock, &SockSet ) )
-        return true;
+    if( !CheckSocketStatus( true ) )
+        return IsConnected;
 
     int tosend = Bout.GetEndPos();
     int sendpos = 0;
@@ -1736,18 +1743,7 @@ bool FOClient::NetOutput()
 
 int FOClient::NetInput( bool unpack )
 {
-    timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-    FD_ZERO( &SockSet );
-    FD_ZERO( &SockSetErr );
-    FD_SET( Sock, &SockSet );
-    FD_SET( Sock, &SockSetErr );
-    if( select( (int) Sock + 1, &SockSet, nullptr, &SockSetErr, &tv ) == SOCKET_ERROR )
-        WriteLog( "Select error '{}'.\n", GetLastSocketError() );
-    if( FD_ISSET( Sock, &SockSetErr ) )
-        WriteLog( "Socket error.\n" );
-    if( !FD_ISSET( Sock, &SockSet ) )
+    if( !CheckSocketStatus( false ) )
         return 0;
 
     #ifdef FO_WINDOWS

@@ -274,7 +274,8 @@ class NetConnectionWS: public NetConnectionImpl
 
     void OnHttp()
     {
-        RUNTIME_ASSERT( "!OnHttp" );
+        // Prevent use this feature
+        Disconnect();
     }
 
     virtual void DispatchImpl( const uchar* buf, uint len ) override

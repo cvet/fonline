@@ -127,7 +127,7 @@ public:
     uint          BytesReceive, BytesRealReceive, BytesSend;
     sockaddr_in   SockAddr, ProxyAddr;
     SOCKET        Sock;
-    fd_set        SockSet, SockSetErr;
+    fd_set        SockSet;
     uint*         UID0;
     bool          UIDFail;
     Item*         SomeItem;
@@ -141,6 +141,7 @@ public:
     UCharVecVec   TempPropertiesDataExt;
     UCharVec      TempPropertyData;
 
+    bool CheckSocketStatus( bool for_write );
     bool NetConnect( const char* host, ushort port );
     bool FillSockAddr( sockaddr_in& saddr, const char* host, ushort port );
     void ParseSocket();

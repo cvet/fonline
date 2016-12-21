@@ -160,8 +160,11 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     #endif
 
     // Finish script
-    Script::RunMandatorySuspended();
-    Script::RaiseInternalEvent( ClientFunctions.Finish, _FUNC_, "Game" );
+    if( Script::GetEngine() )
+    {
+        Script::RunMandatorySuspended();
+        Script::RaiseInternalEvent( ClientFunctions.Finish, _FUNC_, "Game" );
+    }
 
     // Just kill process
     // System automatically clean up all resources
