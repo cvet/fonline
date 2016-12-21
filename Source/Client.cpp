@@ -442,12 +442,6 @@ bool FOClient::Init2()
 
 void FOClient::UpdateFilesLoop( bool early_call )
 {
-    // Process input
-    SDL_Event event;
-    while( SDL_PollEvent( &event ) )
-        if( ( event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE ) || event.type == SDL_QUIT )
-            ExitProcess( 0 );
-
     if( !UpdateFilesFontLoaded )
     {
         // Load font
@@ -634,17 +628,14 @@ void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
         UpdateFileTemp = nullptr;
     }
 
-    while( num_str == STR_CLIENT_OUTDATED || num_str == STR_CLIENT_OUTDATED_APP_STORE || num_str == STR_CLIENT_OUTDATED_GOOGLE_PLAY ||
-           num_str == STR_CLIENT_UPDATED || num_str == STR_CLIENT_DATA_OUTDATED )
+    if( num_str == STR_CLIENT_OUTDATED || num_str == STR_CLIENT_OUTDATED_APP_STORE || num_str == STR_CLIENT_OUTDATED_GOOGLE_PLAY ||
+        num_str == STR_CLIENT_UPDATED || num_str == STR_CLIENT_DATA_OUTDATED )
     {
         SprMngr.BeginScene( COLOR_RGB( 255, 0, 0 ) );
         SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
         SprMngr.EndScene();
 
-        SDL_Event event;
-        while( SDL_PollEvent( &event ) )
-            if( event.type == SDL_KEYDOWN || event.type == SDL_QUIT )
-                ExitProcess( 0 );
+        GameOpt.Quit = true;
     }
 }
 
@@ -826,6 +817,16 @@ void FOClient::MainLoop()
         call_counter++;
     }
 
+    // Check for quit, poll pending events
+    if( InitCalls < 2 )
+    {
+        SDL_Event event;
+        while( SDL_PollEvent( &event ) )
+            if( ( event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE ) || event.type == SDL_QUIT )
+                GameOpt.Quit = true;
+    }
+
+    // Game end
     if( GameOpt.Quit )
         return;
 
@@ -837,8 +838,15 @@ void FOClient::MainLoop()
         tv.tv_usec = 0;
         FD_ZERO( &SockSet );
         FD_SET( Sock, &SockSet );
-        if( select( (int) Sock + 1, nullptr, &SockSet, nullptr, &tv ) != SOCKET_ERROR )
+        int r = select( (int) Sock + 1, nullptr, &SockSet, nullptr, &tv );
+        if( r == 1 )
         {
+            WriteLog( "Connection established.\n" );
+            IsConnected = true;
+        }
+        else if( r == 0 )
+        {
+            // Wait connection
             int       error = 0;
             #ifdef FO_WINDOWS
             int       len = sizeof( error );
@@ -846,25 +854,15 @@ void FOClient::MainLoop()
             socklen_t len = sizeof( error );
             #endif
             if( getsockopt( Sock, SOL_SOCKET, SO_ERROR, (char*) &error, &len ) != SOCKET_ERROR && !error )
-            {
-                if( FD_ISSET( Sock, &SockSet ) )
-                {
-                    // Connected
-                    WriteLog( "Connection established.\n" );
-                    IsConnecting = false;
-                    IsConnected = true;
-                }
                 return;
-            }
-            else
-            {
-                WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
-            }
+
+            WriteLog( "Can't connect to game server, error '{}'.\n", GetLastSocketError() );
         }
         else
         {
             WriteLog( "Select error '{}'.\n", GetLastSocketError() );
         }
+
         IsConnecting = false;
         return;
     }
@@ -886,10 +884,8 @@ void FOClient::MainLoop()
 
         InitCalls++;
         if( InitCalls == 1 )
-        {
             UpdateFilesInProgress = true;
-            return;
-        }
+        return;
     }
 
     // Input events

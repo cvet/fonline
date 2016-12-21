@@ -319,6 +319,13 @@ class NetWebSocketsServer: public NetServerBase
         connectionCallback( new NetConnectionWS( &server, connection ) );
     }
 
+    bool OnValidate( websocketpp::connection_hdl hdl )
+    {
+        web_sockets::connection_ptr connection = server.get_con_from_hdl( hdl );
+        connection->select_subprotocol( "binary" );
+        return true;
+    }
+
 public:
     NetWebSocketsServer( ushort port, std::function< void(NetConnection*) > callback )
     {
@@ -326,6 +333,7 @@ public:
 
         server.init_asio();
         server.set_open_handler( websocketpp::lib::bind( &NetWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1 ) );
+        server.set_validate_handler( websocketpp::lib::bind( &NetWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1 ) );
         server.listen( port );
         server.start_accept();
 
