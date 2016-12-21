@@ -269,17 +269,12 @@ class NetConnectionWS: public NetConnectionImpl
 
     void OnClose()
     {
-        // ...
+        Disconnect();
     }
 
     void OnHttp()
     {
         RUNTIME_ASSERT( "!OnHttp" );
-    }
-
-    bool Validate()
-    {
-        return true;
     }
 
     virtual void DispatchImpl( const uchar* buf, uint len ) override
@@ -304,7 +299,6 @@ public:
         connection->set_fail_handler( websocketpp::lib::bind( &NetConnectionWS::OnFail, this ) );
         connection->set_close_handler( websocketpp::lib::bind( &NetConnectionWS::OnClose, this ) );
         connection->set_http_handler( websocketpp::lib::bind( &NetConnectionWS::OnHttp, this ) );
-        connection->set_validate_handler( websocketpp::lib::bind( &NetConnectionWS::Validate, this ) );
     }
 };
 
@@ -319,26 +313,10 @@ class NetWebSocketsServer: public NetServerBase
         server.run();
     }
 
-    void AcceptNext()
+    void OnOpen( websocketpp::connection_hdl hdl )
     {
-        web_sockets::connection_ptr connection = server.get_connection();
-        server.async_accept( connection, websocketpp::lib::bind( &NetWebSocketsServer::AcceptConnection, this,
-                                                                 websocketpp::lib::placeholders::_1, connection ) );
-    }
-
-    void AcceptConnection( std::error_code error, web_sockets::connection_ptr connection )
-    {
-        if( !error )
-        {
-            connection->start();
-            connectionCallback( new NetConnectionWS( &server, connection ) );
-        }
-        else
-        {
-            WriteLog( "Accept error: {}.\n", error.message() );
-        }
-
-        AcceptNext();
+        web_sockets::connection_ptr connection = server.get_con_from_hdl( hdl );
+        connectionCallback( new NetConnectionWS( &server, connection ) );
     }
 
 public:
@@ -346,14 +324,10 @@ public:
     {
         connectionCallback = callback;
 
-        server.set_error_channels( websocketpp::log::alevel::all );
-        server.set_access_channels( websocketpp::log::alevel::all );
-
         server.init_asio();
+        server.set_open_handler( websocketpp::lib::bind( &NetWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1 ) );
         server.listen( port );
         server.start_accept();
-
-        AcceptNext();
 
         runThread = std::thread( &NetWebSocketsServer::Run, this );
     }

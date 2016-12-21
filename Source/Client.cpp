@@ -1359,11 +1359,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
         ZStream.zalloc = zlib_alloc_;
         ZStream.zfree = zlib_free_;
         ZStream.opaque = nullptr;
-        if( inflateInit( &ZStream ) != Z_OK )
-        {
-            WriteLog( "ZStream InflateInit error.\n" );
-            return false;
-        }
+        RUNTIME_ASSERT( inflateInit( &ZStream ) == Z_OK );
         ZStreamOk = true;
     }
 
@@ -1405,7 +1401,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     Bin.SetEncryptKey( 0 );
     Bout.SetEncryptKey( 0 );
 
-    if( ( Sock = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP ) ) == INVALID_SOCKET )
+    if( ( Sock = socket( PF_INET, SOCK_STREAM, IPPROTO_TCP ) ) == INVALID_SOCKET )
     {
         WriteLog( "Create socket error '{}'.\n", GetLastSocketError() );
         return false;
