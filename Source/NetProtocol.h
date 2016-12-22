@@ -812,31 +812,31 @@ public:
 // Properties serialization helpers
 // ////////////////////////////////////////////////////////////////////////
 
-#define NET_WRITE_PROPERTIES( bout, data_vec, data_sizes_vec )        \
-    {                                                                 \
-        bout << (ushort) data_vec->size();                            \
-        for( size_t i_ = 0, j_ = data_vec->size(); i_ < j_; i_++ )    \
-        {                                                             \
-            uint data_size_ = data_sizes_vec->at( i_ );               \
-            bout << data_size_;                                       \
-            if( data_size_ )                                          \
-                bout.Push( (char*) data_vec->at( i_ ), data_size_ );  \
-        }                                                             \
+#define NET_WRITE_PROPERTIES( bout, data_vec, data_sizes_vec )     \
+    {                                                              \
+        bout << (ushort) data_vec->size();                         \
+        for( size_t i_ = 0, j_ = data_vec->size(); i_ < j_; i_++ ) \
+        {                                                          \
+            uint data_size_ = data_sizes_vec->at( i_ );            \
+            bout << data_size_;                                    \
+            if( data_size_ )                                       \
+                bout.Push( data_vec->at( i_ ), data_size_ );       \
+        }                                                          \
     }
 
-#define NET_READ_PROPERTIES( bin, data_vec )                          \
-    {                                                                 \
-        ushort data_count_;                                           \
-        bin >> data_count_;                                           \
-        data_vec.resize( data_count_ );                               \
-        for( ushort i_ = 0; i_ < data_count_; i_++ )                  \
-        {                                                             \
-            uint data_size_;                                          \
-            Bin >> data_size_;                                        \
-            data_vec[ i_ ].resize( data_size_ );                      \
-            if( data_size_ )                                          \
-                Bin.Pop( (char*) &data_vec[ i_ ][ 0 ], data_size_ );  \
-        }                                                             \
+#define NET_READ_PROPERTIES( bin, data_vec )                  \
+    {                                                         \
+        ushort data_count_;                                   \
+        bin >> data_count_;                                   \
+        data_vec.resize( data_count_ );                       \
+        for( ushort i_ = 0; i_ < data_count_; i_++ )          \
+        {                                                     \
+            uint data_size_;                                  \
+            Bin >> data_size_;                                \
+            data_vec[ i_ ].resize( data_size_ );              \
+            if( data_size_ )                                  \
+                Bin.Pop( &data_vec[ i_ ][ 0 ], data_size_ );  \
+        }                                                     \
     }
 
 #endif // __NET_PROTOCOL__

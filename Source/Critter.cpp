@@ -2238,14 +2238,14 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, Entity* enti
     if( is_pod )
     {
         Connection->Bout << (ushort) prop->GetRegIndex();
-        Connection->Bout.Push( (char*) data, data_size );
+        Connection->Bout.Push( data, data_size );
         BOUT_END( this );
     }
     else
     {
         Connection->Bout << (ushort) prop->GetRegIndex();
         if( data_size )
-            Connection->Bout.Push( (char*) data, data_size );
+            Connection->Bout.Push( data, data_size );
         BOUT_END( this );
     }
 }
@@ -2564,7 +2564,7 @@ void Client::Send_GlobalInfo( uchar info_flags )
         CScriptArray* gmap_fog = GetGlobalMapFog();
         if( gmap_fog->GetSize() != GM_ZONES_FOG_SIZE )
             gmap_fog->Resize( GM_ZONES_FOG_SIZE );
-        Connection->Bout.Push( (char*) gmap_fog->At( 0 ), GM_ZONES_FOG_SIZE );
+        Connection->Bout.Push( gmap_fog->At( 0 ), GM_ZONES_FOG_SIZE );
         gmap_fog->Release();
     }
     BOUT_END( this );
@@ -2755,8 +2755,8 @@ void Client::Send_GameInfo( Map* map )
     Connection->Bout << time;
     Connection->Bout << rain;
     Connection->Bout << no_log_out;
-    Connection->Bout.Push( (const char*) day_time, sizeof( day_time ) );
-    Connection->Bout.Push( (const char*) day_color, sizeof( day_color ) );
+    Connection->Bout.Push( day_time, sizeof( day_time ) );
+    Connection->Bout.Push( day_color, sizeof( day_color ) );
     BOUT_END( this );
 }
 
@@ -2950,7 +2950,7 @@ void Client::Send_CombatResult( uint* combat_res, uint len )
     Connection->Bout << msg_len;
     Connection->Bout << len;
     if( len )
-        Connection->Bout.Push( (char*) combat_res, len * sizeof( uint ) );
+        Connection->Bout.Push( combat_res, len * sizeof( uint ) );
     BOUT_END( this );
 }
 
@@ -3168,7 +3168,7 @@ void Client::Send_CustomMessage( uint msg, uchar* data, uint data_size )
     Connection->Bout << msg;
     Connection->Bout << msg_len;
     if( data_size )
-        Connection->Bout.Push( (char*) data, data_size );
+        Connection->Bout.Push( data, data_size );
     BOUT_END( this );
 }
 

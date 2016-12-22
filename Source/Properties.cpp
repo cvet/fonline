@@ -1158,7 +1158,7 @@ Properties& Properties::operator=( const Properties& other )
 }
 
 template< >
-string Properties::GetPropValue( Property* prop )
+string Properties::GetPropValue< string >( Property* prop )
 {
     RUNTIME_ASSERT( prop->dataType == Property::DataType::String );
     RUNTIME_ASSERT( sizeof( string ) == prop->baseSize );

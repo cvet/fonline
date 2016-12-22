@@ -3,122 +3,81 @@
 
 #include "Common.h"
 
-#define CRYPT_KEYS_COUNT    ( 50 )
-
 class BufferManager
 {
-private:
-    bool isError;
-    #ifndef NO_THREADING
-    Mutex bufLocker;
-    #endif
-    char* bufData;
-    uint bufLen;
-    uint bufEndPos;
-    uint bufReadPos;
-    bool encryptActive;
-    int encryptKeyPos;
-    uint encryptKeys[ CRYPT_KEYS_COUNT ];
+public:
+    static const uint DefaultBufSize = 4096;
+    static const int  CryptKeysCount = 50;
 
-    void CopyBuf( const char* from, char* to, const char* mask, uint crypt_key, uint len );
+private:
+    bool   isError;
+    #ifndef NO_THREADING
+    Mutex  bufLocker;
+    #endif
+    uchar* bufData;
+    uint   bufLen;
+    uint   bufEndPos;
+    uint   bufReadPos;
+    bool   encryptActive;
+    int    encryptKeyPos;
+    uint   encryptKeys[ CryptKeysCount ];
+
+    uint EncryptKey( int move );
+    void CopyBuf( const uchar* from, uchar* to, uint crypt_key, uint len );
 
 public:
     BufferManager();
-    BufferManager( uint alen );
-    BufferManager& operator=( const BufferManager& r );
     ~BufferManager();
 
-    void  SetEncryptKey( uint seed );
-    void  Lock();
-    void  Unlock();
-    void  Refresh();
-    void  Reset();
-    void  LockReset();
-    void  Push( const char* buf, uint len, bool no_crypt = false );
-    void  Push( const char* buf, const char* mask, uint len );
-    void  Pop( char* buf, uint len );
-    void  Cut( uint len );
-    void  GrowBuf( uint len );
-    char* GetData()             { return bufData; }
-    char* GetCurData()          { return bufData + bufReadPos; }
-    uint  GetLen()              { return bufLen; }
-    uint  GetCurPos()           { return bufReadPos; }
-    void  SetEndPos( uint pos ) { bufEndPos = pos; }
-    uint  GetEndPos()           { return bufEndPos; }
-    void  MoveReadPos( int val );
-    bool  IsError()               { return isError; }
-    void  SetError()              { isError = true; }
-    bool  IsEmpty()               { return bufReadPos >= bufEndPos; }
-    bool  IsHaveSize( uint size ) { return bufReadPos + size <= bufEndPos; }
-    bool  NeedProcess();
-    void  SkipMsg( uint msg );
+    void   SetEncryptKey( uint seed );
+    void   Lock();
+    void   Unlock();
+    void   Refresh();
+    void   Reset();
+    void   LockReset();
+    void   Push( const void* buf, uint len, bool no_crypt = false );
+    void   Pop( void* buf, uint len );
+    void   Cut( uint len );
+    void   GrowBuf( uint len );
+    uchar* GetData()             { return bufData; }
+    uchar* GetCurData()          { return bufData + bufReadPos; }
+    uint   GetLen()              { return bufLen; }
+    uint   GetCurPos()           { return bufReadPos; }
+    void   SetEndPos( uint pos ) { bufEndPos = pos; }
+    uint   GetEndPos()           { return bufEndPos; }
+    void   MoveReadPos( int val );
+    bool   IsError()               { return isError; }
+    void   SetError()              { isError = true; }
+    bool   IsEmpty()               { return bufReadPos >= bufEndPos; }
+    bool   IsHaveSize( uint size ) { return bufReadPos + size <= bufEndPos; }
+    bool   NeedProcess();
+    void   SkipMsg( uint msg );
 
     template< typename T >
     BufferManager& operator<<( const T& i )
     {
-        if( isError )
-            return *this;
-        if( bufEndPos + sizeof( T ) >= bufLen )
-            GrowBuf( sizeof( T ) );
-        *(T*) ( bufData + bufEndPos ) = i ^ EncryptKey( sizeof( T ) );
-        bufEndPos += sizeof( T );
+        Push( &i, sizeof( T ) );
         return *this;
     }
 
     template< typename T >
     BufferManager& operator>>( T& i )
     {
-        if( isError )
-            return *this;
-        if( bufReadPos + sizeof( T ) > bufEndPos )
-        {
-            isError = true;
-            WriteLog( "Buffer Manager Error!\n" );
-            return *this;
-        }
-        i = *(T*) ( bufData + bufReadPos ) ^ EncryptKey( sizeof( T ) );
-        bufReadPos += sizeof( T );
+        Pop( &i, sizeof( T ) );
         return *this;
     }
 
-    BufferManager& operator<<( const bool& b )
-    {
-        *this << (uchar) ( b ? 1 : 0 );
-        return *this;
-    }
+    // Disable copying
+    BufferManager( const BufferManager& other ) = delete;
+    BufferManager& operator=( const BufferManager& other ) = delete;
 
-    BufferManager& operator>>( bool& b )
-    {
-        uchar i = 0;
-        *this >> i;
-        b = ( i != 0 );
-        return *this;
-    }
-
-    // Disable transferring some types
-private:
-    BufferManager& operator<<( const uint64& i );
-    BufferManager& operator>>( uint64& i );
-    BufferManager& operator<<( const float& i );
-    BufferManager& operator>>( float& i );
-    BufferManager& operator<<( const double& i );
-    BufferManager& operator>>( double& i );
-
-private:
-    inline uint EncryptKey( int move )
-    {
-        if( !encryptActive )
-            return 0;
-        uint key = encryptKeys[ encryptKeyPos ];
-        encryptKeyPos += move;
-        if( encryptKeyPos < 0 || encryptKeyPos >= CRYPT_KEYS_COUNT )
-        {
-            encryptKeyPos %= CRYPT_KEYS_COUNT;
-            if( encryptKeyPos < 0 )
-                encryptKeyPos += CRYPT_KEYS_COUNT;
-        }
-        return key;
-    }
+    // Disable transferring of some types
+    BufferManager& operator<<( const uint64& i ) = delete;
+    BufferManager& operator>>( uint64& i ) = delete;
+    BufferManager& operator<<( const float& i ) = delete;
+    BufferManager& operator>>( float& i ) = delete;
+    BufferManager& operator<<( const double& i ) = delete;
+    BufferManager& operator>>( double& i ) = delete;
 };
 
 #endif // __BUFFER_MANAGER__

@@ -118,7 +118,7 @@ public:
     void UpdateFilesAbort( uint num_str, const char* num_str_str );
 
     // Network
-    char*         ComBuf;
+    uchar*        ComBuf;
     uint          ComLen;
     BufferManager Bin;
     BufferManager Bout;

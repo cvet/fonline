@@ -19,17 +19,16 @@ NetConnection::~NetConnection() {}
 
 class NetConnectionImpl: public NetConnection
 {
-protected:
-    static const uint BufSize = 4096;
-
-    z_stream*         zStream;
-    uchar             outBuf[ BufSize ];
+    z_stream* zStream;
+    uchar     outBuf[ BufferManager::DefaultBufSize ];
 
 public:
     NetConnectionImpl()
     {
         IsDisconnected = false;
         DisconnectTick = 0;
+        zStream = nullptr;
+        memzero( outBuf, sizeof( outBuf ) );
 
         if( !GameOpt.DisableZlibCompression )
         {
@@ -71,44 +70,9 @@ public:
             Bout.Unlock();
             return;
         }
-
-        // Compress
-        uint out_len = 0;
-        if( zStream )
-        {
-            uint to_compr = Bout.GetEndPos();
-            if( to_compr > BufSize )
-                to_compr = BufSize;
-
-            zStream->next_in = (Bytef*) Bout.GetCurData();
-            zStream->avail_in = to_compr;
-            zStream->next_out = (Bytef*) outBuf;
-            zStream->avail_out = BufSize;
-
-            int result = deflate( zStream, Z_SYNC_FLUSH );
-            RUNTIME_ASSERT( result == Z_OK );
-
-            uint compr = (uint) ( (size_t) zStream->next_out - (size_t) outBuf );
-            uint real = (uint) ( (size_t) zStream->next_in - (size_t) Bout.GetCurData() );
-            out_len = compr;
-            Bout.Cut( real );
-        }
-        // Without compressing
-        else
-        {
-            uint len = Bout.GetEndPos();
-            if( len > BufSize )
-                len = BufSize;
-            memcpy( outBuf, Bout.GetCurData(), len );
-            out_len = len;
-            Bout.Cut( len );
-        }
-        if( Bout.IsEmpty() )
-            Bout.Reset();
         Bout.Unlock();
 
-        RUNTIME_ASSERT( out_len > 0 );
-        DispatchImpl( outBuf, out_len );
+        DispatchImpl();
     }
 
     virtual void Disconnect() override
@@ -124,8 +88,53 @@ public:
     }
 
 protected:
-    virtual void DispatchImpl( const uchar* buf, uint len ) = 0;
+    virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
+
+    const uchar* SendCallback( uint& out_len )
+    {
+        Bout.Lock();
+
+        // Compress
+        if( zStream )
+        {
+            uint to_compr = Bout.GetEndPos();
+            if( to_compr > sizeof( outBuf ) )
+                to_compr = sizeof( outBuf );
+
+            zStream->next_in = Bout.GetCurData();
+            zStream->avail_in = to_compr;
+            zStream->next_out = outBuf;
+            zStream->avail_out = sizeof( outBuf );
+
+            int result = deflate( zStream, Z_SYNC_FLUSH );
+            RUNTIME_ASSERT( result == Z_OK );
+
+            uint compr = (uint) ( (size_t) zStream->next_out - (size_t) outBuf );
+            uint real = (uint) ( (size_t) zStream->next_in - (size_t) Bout.GetCurData() );
+            out_len = compr;
+            Bout.Cut( real );
+        }
+        // Without compressing
+        else
+        {
+            uint len = Bout.GetEndPos();
+            if( len > sizeof( outBuf ) )
+                len = sizeof( outBuf );
+            memcpy( outBuf, Bout.GetCurData(), len );
+            out_len = len;
+            Bout.Cut( len );
+        }
+
+        // Normalize buffer size
+        if( Bout.IsEmpty() )
+            Bout.Reset();
+
+        Bout.Unlock();
+
+        RUNTIME_ASSERT( out_len > 0 );
+        return outBuf;
+    }
 
     void ReceiveCallback( const uchar* buf, uint len )
     {
@@ -137,7 +146,7 @@ protected:
             Disconnect();
             return;
         }
-        Bin.Push( (const char*) buf, len, true );
+        Bin.Push( buf, len, true );
         Bin.Unlock();
     }
 };
@@ -145,11 +154,12 @@ protected:
 class NetConnectionAsio: public NetConnectionImpl
 {
     asio::ip::tcp::socket* socket;
-    uchar                  inBuf[ BufSize ];
+    bool                   writePending;
+    uchar                  inBuf[ BufferManager::DefaultBufSize ];
 
     void NextAsyncRead()
     {
-        asio::async_read( *socket, asio::buffer( inBuf, BufSize ), asio::transfer_at_least( 1 ),
+        asio::async_read( *socket, asio::buffer( inBuf ), asio::transfer_at_least( 1 ),
                           std::bind( &NetConnectionAsio::AsyncRead, this, std::placeholders::_1, std::placeholders::_2 ) );
     }
 
@@ -168,16 +178,23 @@ class NetConnectionAsio: public NetConnectionImpl
 
     void AsyncWrite( std::error_code error, size_t bytes )
     {
+        writePending = false;
         if( !error )
             Dispatch();
         else
             Disconnect();
     }
 
-    virtual void DispatchImpl( const uchar* buf, uint len ) override
+    virtual void DispatchImpl() override
     {
-        asio::async_write( *socket, asio::buffer( buf, len ),
-                           std::bind( &NetConnectionAsio::AsyncWrite, this, std::placeholders::_1, std::placeholders::_2 ) );
+        if( !writePending )
+        {
+            writePending = true;
+            uint         len = 0;
+            const uchar* buf = SendCallback( len );
+            asio::async_write( *socket, asio::buffer( buf, len ),
+                               std::bind( &NetConnectionAsio::AsyncWrite, this, std::placeholders::_1, std::placeholders::_2 ) );
+        }
     }
 
     virtual void DisconnectImpl() override
@@ -189,6 +206,10 @@ class NetConnectionAsio: public NetConnectionImpl
 public:
     NetConnectionAsio( asio::ip::tcp::socket* socket ): socket( socket )
     {
+        if( GameOpt.DisableTcpNagle )
+            socket->set_option( asio::ip::tcp::no_delay( true ) );
+        memzero( inBuf, sizeof( inBuf ) );
+        writePending = false;
         NextAsyncRead();
     }
 
@@ -278,8 +299,10 @@ class NetConnectionWS: public NetConnectionImpl
         Disconnect();
     }
 
-    virtual void DispatchImpl( const uchar* buf, uint len ) override
+    virtual void DispatchImpl() override
     {
+        uint            len = 0;
+        const uchar*    buf = SendCallback( len );
         std::error_code error = connection->send( buf, len, websocketpp::frame::opcode::binary );
         if( !error )
             Dispatch();
@@ -296,6 +319,8 @@ class NetConnectionWS: public NetConnectionImpl
 public:
     NetConnectionWS( web_sockets* server, web_sockets::connection_ptr connection ): server( server ), connection( connection )
     {
+        if( GameOpt.DisableTcpNagle )
+            connection->get_raw_socket().set_option( asio::ip::tcp::no_delay( true ) );
         connection->set_message_handler( websocketpp::lib::bind( &NetConnectionWS::OnMessage, this, websocketpp::lib::placeholders::_2 ) );
         connection->set_fail_handler( websocketpp::lib::bind( &NetConnectionWS::OnFail, this ) );
         connection->set_close_handler( websocketpp::lib::bind( &NetConnectionWS::OnClose, this ) );

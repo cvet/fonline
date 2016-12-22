@@ -27,6 +27,10 @@ STATIC_ASSERT( sizeof( void* ) == 8 );
 #endif
 STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 
+#ifdef AS_BIG_ENDIAN
+# error "Big Endian architectures not supported."
+#endif
+
 #pragma MESSAGE("Add TARGET_HEX.")
 
 /************************************************************************/
@@ -1093,7 +1097,6 @@ string GetLastSocketError()
         CASE_SOCK_ERROR( WSA_QOS_EFILTERCOUNT, "An incorrect number of QOS FILTERSPECs were specified in the FLOWDESCRIPTOR." );
         CASE_SOCK_ERROR( WSA_QOS_EOBJLENGTH, "An object with an invalid ObjectLength field was specified in the QOS provider-specific buffer." );
         CASE_SOCK_ERROR( WSA_QOS_EFLOWCOUNT, "An incorrect number of flow descriptors was specified in the QOS structure." );
-//	CASE_SOCK_ERROR(WSA_QOS_EUNKOWNPSOBJ,"An unrecognized object was found in the QOS provider-specific buffer.");
         CASE_SOCK_ERROR( WSA_QOS_EPOLICYOBJ, "An invalid policy object was found in the QOS provider-specific buffer." );
         CASE_SOCK_ERROR( WSA_QOS_EFLOWDESC, "An invalid QOS flow descriptor was found in the flow descriptor list." );
         CASE_SOCK_ERROR( WSA_QOS_EPSFLOWSPEC, "An invalid or inconsistent flowspec was found in the QOS provider specific buffer." );

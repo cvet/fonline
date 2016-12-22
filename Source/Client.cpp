@@ -73,8 +73,8 @@ FOClient::FOClient()
     Self = this;
 
     InitCalls = 0;
-    ComLen = 4096;
-    ComBuf = new char[ ComLen ];
+    ComLen = BufferManager::DefaultBufSize;
+    ComBuf = new uchar[ ComLen ];
     ZStreamOk = false;
     Sock = INVALID_SOCKET;
     BytesReceive = 0;
@@ -1423,14 +1423,12 @@ bool FOClient::NetConnect( const char* host, ushort port )
     }
 
     // Nagle
-    #ifdef FO_WINDOWS
     if( GameOpt.DisableTcpNagle )
     {
         int optval = 1;
         if( setsockopt( Sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
             WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", GetLastSocketError() );
     }
-    #endif
 
     // Direct connect
     if( !GameOpt.ProxyType || Singleplayer )
@@ -1614,7 +1612,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
             char* buf = (char*) Str::FormatBuf( "CONNECT %s:%d HTTP/1.0\r\n\r\n", inet_ntoa( SockAddr.sin_addr ), port );
             Bout.Push( buf, Str::Length( buf ) );
             SEND_RECV;
-            buf = Bin.GetCurData();
+            buf = (char*) Bin.GetCurData();
             if( !Str::Substring( buf, " 200 " ) )
             {
                 WriteLog( "Proxy connection error, receive message '{}'.\n", buf );
@@ -1721,7 +1719,7 @@ bool FOClient::NetOutput()
         #ifdef FO_WINDOWS
         DWORD  len;
         WSABUF buf;
-        buf.buf = Bout.GetData() + sendpos;
+        buf.buf = (char*) Bout.GetData() + sendpos;
         buf.len = tosend - sendpos;
         if( WSASend( Sock, &buf, 1, &len, 0, nullptr, nullptr ) == SOCKET_ERROR || len == 0 )
         #else
@@ -1750,12 +1748,12 @@ int FOClient::NetInput( bool unpack )
     DWORD  len;
     DWORD  flags = 0;
     WSABUF buf;
-    buf.buf = ComBuf;
+    buf.buf = (char*) ComBuf;
     buf.len = ComLen;
     if( WSARecv( Sock, &buf, 1, &len, &flags, nullptr, nullptr ) == SOCKET_ERROR )
     #else
-    int len = (int) recv( Sock, ComBuf, ComLen, 0 );
-    if( len < 0 )
+    int len = recv( Sock, ComBuf, ComLen, 0 );
+    if( len == SOCKET_ERROR )
     #endif
     {
         WriteLog( "Socket error while receive from server, error '{}'.\n", GetLastSocketError() );
@@ -1767,11 +1765,11 @@ int FOClient::NetInput( bool unpack )
         return -2;
     }
 
-    uint pos = len;
+    uint pos = (uint) len;
     while( pos == ComLen )
     {
-        uint  newcomlen = ( ComLen << 1 );
-        char* combuf = new char[ newcomlen ];
+        uint   newcomlen = ( ComLen << 1 );
+        uchar* combuf = new uchar[ newcomlen ];
         memcpy( combuf, ComBuf, ComLen );
         SAFEDELA( ComBuf );
         ComBuf = combuf;
@@ -1779,12 +1777,12 @@ int FOClient::NetInput( bool unpack )
 
         #ifdef FO_WINDOWS
         flags = 0;
-        buf.buf = ComBuf + pos;
+        buf.buf = (char*) ComBuf + pos;
         buf.len = ComLen - pos;
         if( WSARecv( Sock, &buf, 1, &len, &flags, nullptr, nullptr ) == SOCKET_ERROR )
         #else
-        int len = (int) recv( Sock, ComBuf + pos, ComLen - pos, 0 );
-        if( len < 0 )
+        len = recv( Sock, ComBuf + pos, ComLen - pos, 0 );
+        if( len == SOCKET_ERROR )
         #endif
         {
             #ifdef FO_WINDOWS
@@ -1811,9 +1809,9 @@ int FOClient::NetInput( bool unpack )
 
     if( unpack && !GameOpt.DisableZlibCompression )
     {
-        ZStream.next_in = (uchar*) ComBuf;
+        ZStream.next_in = ComBuf;
         ZStream.avail_in = pos;
-        ZStream.next_out = (uchar*) Bin.GetData() + Bin.GetEndPos();
+        ZStream.next_out = Bin.GetData() + Bin.GetEndPos();
         ZStream.avail_out = Bin.GetLen() - Bin.GetEndPos();
 
         if( inflate( &ZStream, Z_SYNC_FLUSH ) != Z_OK )
@@ -1826,7 +1824,7 @@ int FOClient::NetInput( bool unpack )
 
         while( ZStream.avail_in )
         {
-            Bin.GrowBuf( 2048 );
+            Bin.GrowBuf( BufferManager::DefaultBufSize );
 
             ZStream.next_out = (uchar*) Bin.GetData() + Bin.GetEndPos();
             ZStream.avail_out = Bin.GetLen() - Bin.GetEndPos();
@@ -2228,7 +2226,7 @@ void FOClient::Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_dat
     {
         Bout << (uint) pic_data->size();
         if( pic_data->size() )
-            Bout.Push( (char*) &( *pic_data )[ 0 ], (uint) pic_data->size() );
+            Bout.Push( &( *pic_data )[ 0 ], (uint) pic_data->size() );
     }
 
     WriteLog( "complete.\n" );
@@ -2356,13 +2354,13 @@ void FOClient::Net_SendProperty( NetProperty::Type type, Property* prop, Entity*
     if( is_pod )
     {
         Bout << (ushort) prop->GetRegIndex();
-        Bout.Push( (char*) data, data_size );
+        Bout.Push( data, data_size );
     }
     else
     {
         Bout << (ushort) prop->GetRegIndex();
         if( data_size )
-            Bout.Push( (char*) data, data_size );
+            Bout.Push( data, data_size );
     }
 }
 
@@ -3528,7 +3526,7 @@ void FOClient::Net_OnCombatResult()
     if( data_count )
     {
         data_vec.resize( data_count );
-        Bin.Pop( (char*) &data_vec[ 0 ], data_count * sizeof( uint ) );
+        Bin.Pop( &data_vec[ 0 ], data_count * sizeof( uint ) );
     }
 
     CHECK_IN_BUFF_ERROR;
@@ -3731,14 +3729,14 @@ void FOClient::Net_OnProperty( uint data_size )
     if( data_size != 0 )
     {
         TempPropertyData.resize( data_size );
-        Bin.Pop( (char*) &TempPropertyData[ 0 ], data_size );
+        Bin.Pop(  &TempPropertyData[ 0 ], data_size );
     }
     else
     {
         uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - sizeof( char ) - additional_args * sizeof( uint ) - sizeof( ushort );
         TempPropertyData.resize( len );
         if( len )
-            Bin.Pop( (char*) &TempPropertyData[ 0 ], len );
+            Bin.Pop(  &TempPropertyData[ 0 ], len );
     }
 
     CHECK_IN_BUFF_ERROR;
@@ -3907,8 +3905,8 @@ void FOClient::Net_OnGameInfo()
     Bin >> time;
     Bin >> rain;
     Bin >> no_log_out;
-    Bin.Pop( (char*) day_time, sizeof( int ) * 4 );
-    Bin.Pop( (char*) day_color, sizeof( uchar ) * 12 );
+    Bin.Pop(  day_time, sizeof( int ) * 4 );
+    Bin.Pop(  day_color, sizeof( uchar ) * 12 );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -4211,7 +4209,7 @@ void FOClient::Net_OnGlobalInfo()
 
     if( FLAG( info_flags, GM_INFO_ZONES_FOG ) )
     {
-        Bin.Pop( (char*) GmapFog.GetData(), GM_ZONES_FOG_SIZE );
+        Bin.Pop(  GmapFog.GetData(), GM_ZONES_FOG_SIZE );
     }
 
     if( FLAG( info_flags, GM_INFO_FOG ) )
@@ -4316,7 +4314,7 @@ void FOClient::Net_OnUpdateFilesList()
     Bin >> data_size;
     data.resize( data_size );
     if( data_size )
-        Bin.Pop( (char*) &data[ 0 ], (uint) data.size() );
+        Bin.Pop( &data[ 0 ], (uint) data.size() );
     NET_READ_PROPERTIES( Bin, GlovalVarsPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
@@ -4382,7 +4380,7 @@ void FOClient::Net_OnUpdateFileData()
 {
     // Get portion
     uchar data[ FILE_UPDATE_PORTION ];
-    Bin.Pop( (char*) data, sizeof( data ) );
+    Bin.Pop( data, sizeof( data ) );
 
     CHECK_IN_BUFF_ERROR;
 

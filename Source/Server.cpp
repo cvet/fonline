@@ -531,7 +531,7 @@ void FOServer::Process( Client* cl )
                 uint answer[ 4 ] = { CrMngr.PlayersInGame(), Statistics.Uptime, 0, 0 };
                 BOUT_BEGIN( cl );
                 cl->Connection->DisableCompression();
-                cl->Connection->Bout.Push( (char*) answer, sizeof( answer ) );
+                cl->Connection->Bout.Push( answer, sizeof( answer ) );
 
                 BOUT_END( cl );
                 cl->Disconnect();

@@ -300,7 +300,7 @@ void FOServer::Process_Update( Client* cl )
     cl->Connection->Bout << msg_len;
     cl->Connection->Bout << (uint) UpdateFilesList.size();
     if( !UpdateFilesList.empty() )
-        cl->Connection->Bout.Push( (char*) &UpdateFilesList[ 0 ], (uint) UpdateFilesList.size() );
+        cl->Connection->Bout.Push( &UpdateFilesList[ 0 ], (uint) UpdateFilesList.size() );
     NET_WRITE_PROPERTIES( cl->Connection->Bout, global_vars_data, global_vars_data_sizes );
     BOUT_END( cl );
 }
@@ -356,7 +356,7 @@ void FOServer::Process_UpdateFileData( Client* cl )
 
     BOUT_BEGIN( cl );
     cl->Connection->Bout << NETMSG_UPDATE_FILE_DATA;
-    cl->Connection->Bout.Push( (char*) data, sizeof( data ) );
+    cl->Connection->Bout.Push( data, sizeof( data ) );
     BOUT_END( cl );
 }
 
@@ -1156,7 +1156,7 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
         cl->Connection->Bin >> pic_data_len;
         pic_data.resize( pic_data_len );
         if( pic_data_len )
-            cl->Connection->Bin.Pop( (char*) &pic_data[ 0 ], pic_data_len );
+            cl->Connection->Bin.Pop( &pic_data[ 0 ], pic_data_len );
     }
 
     CHECK_IN_BUFF_ERROR( cl );
@@ -1390,13 +1390,13 @@ void FOServer::Send_MapData( Client* cl, ProtoMap* pmap, bool send_tiles, bool s
     {
         cl->Connection->Bout << (uint) ( pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
         if( pmap->Tiles.size() )
-            cl->Connection->Bout.Push( (char*) &pmap->Tiles[ 0 ], (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
+            cl->Connection->Bout.Push( &pmap->Tiles[ 0 ], (uint) pmap->Tiles.size() * sizeof( ProtoMap::Tile ) );
     }
     if( send_scenery )
     {
         cl->Connection->Bout << (uint) pmap->SceneryData.size();
         if( pmap->SceneryData.size() )
-            cl->Connection->Bout.Push( (char*) &pmap->SceneryData[ 0 ], (uint) pmap->SceneryData.size() );
+            cl->Connection->Bout.Push( &pmap->SceneryData[ 0 ], (uint) pmap->SceneryData.size() );
     }
     BOUT_END( cl );
 }
@@ -1984,7 +1984,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     if( data_size != 0 )
     {
         data.resize( data_size );
-        cl->Connection->Bin.Pop( (char*) &data[ 0 ], data_size );
+        cl->Connection->Bin.Pop( &data[ 0 ], data_size );
     }
     else
     {
@@ -1993,7 +1993,7 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         if( len > 0xFFFF )         // For now 64Kb for all
             return;
         data.resize( len );
-        cl->Connection->Bin.Pop( (char*) &data[ 0 ], len );
+        cl->Connection->Bin.Pop( &data[ 0 ], len );
     }
 
     CHECK_IN_BUFF_ERROR( cl );

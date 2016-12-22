@@ -3,45 +3,18 @@
 #include "NetProtocol.h"
 #include "Randomizer.h"
 
-#define NET_BUFFER_SIZE    ( 2048 )
-
 BufferManager::BufferManager()
 {
-    MEMORY_PROCESS( MEMORY_NET_BUFFER, NET_BUFFER_SIZE + sizeof( BufferManager ) );
-    bufLen = NET_BUFFER_SIZE;
+    MEMORY_PROCESS( MEMORY_NET_BUFFER, DefaultBufSize + sizeof( BufferManager ) );
+    isError = false;
+    bufLen = DefaultBufSize;
     bufEndPos = 0;
     bufReadPos = 0;
-    bufData = new char[ bufLen ];
+    bufData = new uchar[ bufLen ];
+    memzero( bufData, bufLen );
     encryptActive = false;
-    isError = false;
-}
-
-BufferManager::BufferManager( uint alen )
-{
-    MEMORY_PROCESS( MEMORY_NET_BUFFER, alen + sizeof( BufferManager ) );
-    bufLen = alen;
-    bufEndPos = 0;
-    bufReadPos = 0;
-    bufData = new char[ bufLen ];
-    encryptActive = false;
-    isError = false;
-}
-
-BufferManager& BufferManager::operator=( const BufferManager& r )
-{
-    MEMORY_PROCESS( MEMORY_NET_BUFFER, -(int) bufLen );
-    MEMORY_PROCESS( MEMORY_NET_BUFFER, r.bufLen );
-    isError = r.isError;
-    bufLen = r.bufLen;
-    bufEndPos = r.bufEndPos;
-    bufReadPos = r.bufReadPos;
-    SAFEDELA( bufData );
-    bufData = new char[ bufLen ];
-    memcpy( bufData, r.bufData, bufLen );
-    encryptActive = r.encryptActive;
-    encryptKeyPos = r.encryptKeyPos;
-    memcpy( encryptKeys, r.encryptKeys, sizeof( encryptKeys ) );
-    return *this;
+    encryptKeyPos = 0;
+    memzero( encryptKeys, sizeof( encryptKeys ) );
 }
 
 BufferManager::~BufferManager()
@@ -59,10 +32,27 @@ void BufferManager::SetEncryptKey( uint seed )
     }
 
     Randomizer rnd( seed );
-    for( int i = 0; i < CRYPT_KEYS_COUNT; i++ )
+    for( int i = 0; i < CryptKeysCount; i++ )
         encryptKeys[ i ] = ( rnd.Random( 0x1000, 0xFFFF ) | rnd.Random( 0x1000, 0xFFFF ) );
     encryptKeyPos = 0;
     encryptActive = true;
+}
+
+uint BufferManager::EncryptKey( int move )
+{
+    uint key = 0;
+    if( encryptActive )
+    {
+        key = encryptKeys[ encryptKeyPos ];
+        encryptKeyPos += move;
+        if( encryptKeyPos < 0 || encryptKeyPos >= CryptKeysCount )
+        {
+            encryptKeyPos %= CryptKeysCount;
+            if( encryptKeyPos < 0 )
+                encryptKeyPos += CryptKeysCount;
+        }
+    }
+    return key;
 }
 
 void BufferManager::Lock()
@@ -86,7 +76,6 @@ void BufferManager::Refresh()
     if( bufReadPos > bufEndPos )
     {
         isError = true;
-        WriteLog( "Error!\n" );
         return;
     }
     if( bufReadPos )
@@ -102,13 +91,14 @@ void BufferManager::Reset()
 {
     bufEndPos = 0;
     bufReadPos = 0;
-    if( bufLen > NET_BUFFER_SIZE )
+    if( bufLen > DefaultBufSize )
     {
         MEMORY_PROCESS( MEMORY_NET_BUFFER, -(int) bufLen );
-        MEMORY_PROCESS( MEMORY_NET_BUFFER, NET_BUFFER_SIZE );
-        bufLen = NET_BUFFER_SIZE;
+        MEMORY_PROCESS( MEMORY_NET_BUFFER, DefaultBufSize );
+        bufLen = DefaultBufSize;
         SAFEDELA( bufData );
-        bufData = new char[ bufLen ];
+        bufData = new uchar[ bufLen ];
+        memzero( bufData, bufLen );
     }
 }
 
@@ -127,7 +117,8 @@ void BufferManager::GrowBuf( uint len )
     while( bufEndPos + len >= bufLen )
         bufLen <<= 1;
     MEMORY_PROCESS( MEMORY_NET_BUFFER, bufLen );
-    char* new_buf = new char[ bufLen ];
+    uchar* new_buf = new uchar[ bufLen ];
+    memzero( new_buf, bufLen );
     memcpy( new_buf, bufData, bufEndPos );
     SAFEDELA( bufData );
     bufData = new_buf;
@@ -139,37 +130,26 @@ void BufferManager::MoveReadPos( int val )
     EncryptKey( val );
 }
 
-void BufferManager::Push( const char* buf, uint len, bool no_crypt /* = false */ )
+void BufferManager::Push( const void* buf, uint len, bool no_crypt /* = false */ )
 {
     if( isError || !len )
         return;
     if( bufEndPos + len >= bufLen )
         GrowBuf( len );
-    CopyBuf( buf, bufData + bufEndPos, nullptr, no_crypt ? 0 : EncryptKey( len ), len );
+    CopyBuf( (const uchar*) buf, bufData + bufEndPos, no_crypt ? 0 : EncryptKey( len ), len );
     bufEndPos += len;
 }
 
-void BufferManager::Push( const char* buf, const char* mask, uint len )
-{
-    if( isError || !len || !mask )
-        return;
-    if( bufEndPos + len >= bufLen )
-        GrowBuf( len );
-    CopyBuf( buf, bufData + bufEndPos, mask, EncryptKey( len ), len );
-    bufEndPos += len;
-}
-
-void BufferManager::Pop( char* buf, uint len )
+void BufferManager::Pop( void* buf, uint len )
 {
     if( isError || !len )
         return;
     if( bufReadPos + len > bufEndPos )
     {
         isError = true;
-        WriteLog( "Error!\n" );
         return;
     }
-    CopyBuf( bufData + bufReadPos, buf, nullptr, EncryptKey( len ), len );
+    CopyBuf( bufData + bufReadPos, (uchar*) buf, EncryptKey( len ), len );
     bufReadPos += len;
 }
 
@@ -180,35 +160,18 @@ void BufferManager::Cut( uint len )
     if( bufReadPos + len > bufEndPos )
     {
         isError = true;
-        WriteLog( "Error!\n" );
         return;
     }
-    char* buf = bufData + bufReadPos;
+    uchar* buf = bufData + bufReadPos;
     for( uint i = 0; i + bufReadPos + len < bufEndPos; i++ )
         buf[ i ] = buf[ i + len ];
     bufEndPos -= len;
 }
 
-void BufferManager::CopyBuf( const char* from, char* to, const char* mask, uint crypt_key, uint len )
+void BufferManager::CopyBuf( const uchar* from, uchar* to, uint crypt_key, uint len )
 {
-    if( mask )
-    {
-        if( len % sizeof( uint ) )
-            for( uint i = 0; i < len; i++, to++, from++, mask++ )
-                *to = ( *from & *mask ) ^ crypt_key;
-        else
-            for( uint i = 0, j = sizeof( uint ); i < len; i += j, to += j, from += j, mask += j )
-                *(uint*) to = ( *(uint*) from & *(uint*) mask ) ^ crypt_key;
-    }
-    else
-    {
-        if( len % sizeof( uint ) )
-            for( uint i = 0; i < len; i++, to++, from++ )
-                *to = *from ^ crypt_key;
-        else
-            for( uint i = 0, j = sizeof( uint ); i < len; i += j, to += j, from += j )
-                *(uint*) to = *(uint*) from ^ crypt_key;
-    }
+    for( uint i = 0; i < len; i++, to++, from++ )
+        *to = *from ^ crypt_key;
 }
 
 bool BufferManager::NeedProcess()
@@ -393,7 +356,6 @@ bool BufferManager::NeedProcess()
     default:
         // Unknown message
         Reset();
-        WriteLog( "Error! Unknown message!\n" );
         isError = true;
         return false;
     }
