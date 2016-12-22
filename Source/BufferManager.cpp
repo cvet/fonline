@@ -33,14 +33,14 @@ void BufferManager::SetEncryptKey( uint seed )
 
     Randomizer rnd( seed );
     for( int i = 0; i < CryptKeysCount; i++ )
-        encryptKeys[ i ] = ( rnd.Random( 0x1000, 0xFFFF ) | rnd.Random( 0x1000, 0xFFFF ) );
+        encryptKeys[ i ] = (uchar) rnd.Random( 1, 255 );
     encryptKeyPos = 0;
     encryptActive = true;
 }
 
-uint BufferManager::EncryptKey( int move )
+uchar BufferManager::EncryptKey( int move )
 {
-    uint key = 0;
+    uchar key = 0;
     if( encryptActive )
     {
         key = encryptKeys[ encryptKeyPos ];
@@ -136,7 +136,7 @@ void BufferManager::Push( const void* buf, uint len, bool no_crypt /* = false */
         return;
     if( bufEndPos + len >= bufLen )
         GrowBuf( len );
-    CopyBuf( (const uchar*) buf, bufData + bufEndPos, no_crypt ? 0 : EncryptKey( len ), len );
+    CopyBuf( buf, bufData + bufEndPos, no_crypt ? 0 : EncryptKey( len ), len );
     bufEndPos += len;
 }
 
@@ -149,7 +149,7 @@ void BufferManager::Pop( void* buf, uint len )
         isError = true;
         return;
     }
-    CopyBuf( bufData + bufReadPos, (uchar*) buf, EncryptKey( len ), len );
+    CopyBuf( bufData + bufReadPos, buf, EncryptKey( len ), len );
     bufReadPos += len;
 }
 
@@ -168,17 +168,21 @@ void BufferManager::Cut( uint len )
     bufEndPos -= len;
 }
 
-void BufferManager::CopyBuf( const uchar* from, uchar* to, uint crypt_key, uint len )
+void BufferManager::CopyBuf( const void* from, void* to, uchar crypt_key, uint len )
 {
-    for( uint i = 0; i < len; i++, to++, from++ )
-        *to = *from ^ crypt_key;
+    const uchar* from_ = (const uchar*) from;
+    uchar*       to_ = (uchar*) to;
+    for( uint i = 0; i < len; i++, to_++, from_++ )
+        *to_ = *from_ ^ crypt_key;
 }
 
 bool BufferManager::NeedProcess()
 {
-    if( bufReadPos + sizeof( uint ) > bufEndPos )
+    uint msg = 0;
+    if( bufReadPos + sizeof( msg ) > bufEndPos )
         return false;
-    uint msg = *(uint*) ( bufData + bufReadPos ) ^ EncryptKey( 0 );
+
+    CopyBuf( bufData + bufReadPos, &msg, EncryptKey( 0 ), sizeof( msg ) );
 
     // Known size
     switch( msg )
@@ -312,11 +316,12 @@ bool BufferManager::NeedProcess()
     }
 
     // Changeable size
-    if( bufReadPos + sizeof( uint ) + sizeof( uint ) > bufEndPos )
+    uint msg_len = 0;
+    if( bufReadPos + sizeof( msg ) + sizeof( msg_len ) > bufEndPos )
         return false;
 
-    EncryptKey( sizeof( uint ) );
-    uint msg_len = *(uint*) ( bufData + bufReadPos + sizeof( uint ) ) ^ EncryptKey( -(int) sizeof( uint ) );
+    EncryptKey( sizeof( msg ) );
+    CopyBuf( bufData + bufReadPos + sizeof( msg ), &msg_len, EncryptKey( -(int) sizeof( msg ) ), sizeof( msg_len ) );
 
     switch( msg )
     {
@@ -352,7 +357,7 @@ bool BufferManager::NeedProcess()
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
     case NETMSG_ALL_PROPERTIES:
-        return ( msg_len + bufReadPos <= bufEndPos );
+        return bufReadPos + msg_len <= bufEndPos;
     default:
         // Unknown message
         Reset();
@@ -593,8 +598,9 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_ALL_PROPERTIES:
     {
         // Changeable size
+        uint msg_len = 0;
         EncryptKey( sizeof( msg ) );
-        uint msg_len = *(uint*) ( bufData + bufReadPos + sizeof( msg ) ) ^ EncryptKey( -(int) sizeof( msg ) );
+        CopyBuf( bufData + bufReadPos + sizeof( msg ), &msg_len, EncryptKey( -(int) sizeof( msg ) ), sizeof( msg_len ) );
         size = msg_len;
     }
     break;

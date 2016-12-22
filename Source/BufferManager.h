@@ -20,10 +20,10 @@ private:
     uint   bufReadPos;
     bool   encryptActive;
     int    encryptKeyPos;
-    uint   encryptKeys[ CryptKeysCount ];
+    uchar  encryptKeys[ CryptKeysCount ];
 
-    uint EncryptKey( int move );
-    void CopyBuf( const uchar* from, uchar* to, uint crypt_key, uint len );
+    uchar EncryptKey( int move );
+    void  CopyBuf( const void* from, void* to, uchar crypt_key, uint len );
 
 public:
     BufferManager();
