@@ -1963,17 +1963,17 @@ Client::~Client()
 
 uint Client::GetIp()
 {
-    return Connection->From.sin_addr.s_addr;
+    return Connection->Ip;
 }
 
 const char* Client::GetIpStr()
 {
-    return inet_ntoa( Connection->From.sin_addr );
+    return Connection->Host.c_str();
 }
 
 ushort Client::GetPort()
 {
-    return Connection->From.sin_port;
+    return Connection->Port;
 }
 
 bool Client::IsOnline()

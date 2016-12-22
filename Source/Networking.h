@@ -9,7 +9,9 @@
 class NetConnection
 {
 public:
-    sockaddr_in   From;
+    uint          Ip;
+    string        Host;
+    ushort        Port;
     BufferManager Bin;
     BufferManager Bout;
     bool          IsDisconnected;

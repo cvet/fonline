@@ -206,6 +206,10 @@ class NetConnectionAsio: public NetConnectionImpl
 public:
     NetConnectionAsio( asio::ip::tcp::socket* socket ): socket( socket )
     {
+        Ip = socket->remote_endpoint().address().to_v4().to_ulong();
+        Host = socket->remote_endpoint().address().to_string();
+        Port = socket->remote_endpoint().port();
+
         if( GameOpt.DisableTcpNagle )
             socket->set_option( asio::ip::tcp::no_delay( true ) );
         memzero( inBuf, sizeof( inBuf ) );
@@ -319,6 +323,10 @@ class NetConnectionWS: public NetConnectionImpl
 public:
     NetConnectionWS( web_sockets* server, web_sockets::connection_ptr connection ): server( server ), connection( connection )
     {
+        Ip = connection->get_raw_socket().remote_endpoint().address().to_v4().to_ulong();
+        Host = connection->get_raw_socket().remote_endpoint().address().to_string();
+        Port = connection->get_raw_socket().remote_endpoint().port();
+
         if( GameOpt.DisableTcpNagle )
             connection->get_raw_socket().set_option( asio::ip::tcp::no_delay( true ) );
         connection->set_message_handler( websocketpp::lib::bind( &NetConnectionWS::OnMessage, this, websocketpp::lib::placeholders::_2 ) );
