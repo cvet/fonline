@@ -62,6 +62,8 @@ protected:
 };
 
 void RegisterScriptReflection(asIScriptEngine* engine);
+void RegisterScriptReflection_Native(asIScriptEngine* engine);
+void RegisterScriptReflection_Generic(asIScriptEngine* engine);
 
 END_AS_NAMESPACE
 

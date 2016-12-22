@@ -414,6 +414,14 @@ void RegisterMethod(asIScriptEngine* engine, const char* declaration, const asSF
 
 void RegisterScriptReflection(asIScriptEngine* engine)
 {
+    if (strstr(asGetLibraryOptions(), "AS_MAX_PORTABILITY") == 0)
+        RegisterScriptReflection_Native(engine);
+    else
+        RegisterScriptReflection_Generic(engine);
+}
+
+void RegisterScriptReflection_Native(asIScriptEngine* engine)
+{
     engine->SetDefaultNamespace("reflection");
 
     engine->RegisterObjectType("type", sizeof(ScriptType), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);
@@ -462,6 +470,11 @@ void RegisterScriptReflection(asIScriptEngine* engine)
     engine->RegisterGlobalFunction("uint getCallstack( string[]& modules, string[]& names, uint[]& lines, uint[]& columns, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true)", asFUNCTION(GetCallstack), asCALL_CDECL);
 
     engine->SetDefaultNamespace("");
+}
+
+void RegisterScriptReflection_Generic(asIScriptEngine* engine)
+{
+    assert(false);
 }
 
 END_AS_NAMESPACE

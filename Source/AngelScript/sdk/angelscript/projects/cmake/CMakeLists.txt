@@ -161,5 +161,5 @@ endif()
 # Don't override the default runtime output path to avoid conflicts when building for multiple target platforms
 #set(RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/../../bin)
 
-
-set_target_properties(${ANGELSCRIPT_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS "-DAS_NO_EXCEPTIONS" )
+#!
+set_target_properties(${ANGELSCRIPT_LIBRARY_NAME} PROPERTIES COMPILE_FLAGS "-DAS_NO_EXCEPTIONS -DAS_NO_THREADS" )

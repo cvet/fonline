@@ -1,5 +1,38 @@
 #include "Script.h"
 
+#define REGISTER_FUNCTION( decl, func, conv )                                                           \
+    do                                                                                                  \
+    {                                                                                                   \
+        int r;                                                                                          \
+        if( !max_poratbility )                                                                          \
+            r = engine->RegisterGlobalFunction( decl, asFUNCTION( func ), conv );                       \
+        /*else*/                                                                                        \
+        /*r = engine->RegisterGlobalFunction( decl, asFUNCTION( func ## _Generic ), asCALL_GENERIC );*/ \
+        RUNTIME_ASSERT( r >= 0 );                                                                       \
+    } while( 0 )
+
+#define REGISTER_METHOD( type, decl, func, conv )                                                       \
+    do                                                                                                  \
+    {                                                                                                   \
+        int r;                                                                                          \
+        if( !max_poratbility )                                                                          \
+            engine->RegisterObjectMethod( type, decl, asFUNCTION( func ), conv );                       \
+        /*else*/                                                                                        \
+        /*engine->RegisterObjectMethod( type, decl, asFUNCTION( func ## _Generic ), asCALL_GENERIC );*/ \
+        RUNTIME_ASSERT( r >= 0 );                                                                       \
+    } while( 0 )
+
+#define REGISTER_BEHAVIOUR( type, beh, decl, func, conv )                                      \
+    do                                                                                         \
+    {                                                                                          \
+        int r;                                                                                 \
+        if( !max_poratbility )                                                                 \
+            r = engine->RegisterObjectBehaviour( type, beh, decl, asFUNCTION( func ), conv );  \
+        /*else \
+            /*r = engine->RegisterObjectBehaviour( type, beh, decl, asFUNCTION( func ## _Generic ), asCALL_GENERIC );*/ \
+        RUNTIME_ASSERT( r >= 0 );                                                                                       \
+    } while( 0 )
+
 static void CScriptArray_InsertFirst( CScriptArray* arr, void* value )
 {
     arr->InsertAt( 0, value );
@@ -137,38 +170,24 @@ static bool CScriptArray_Equals( CScriptArray* arr, const CScriptArray** other )
 
 void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
 {
-    int r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const T&in)", asFUNCTION( CScriptArray_InsertFirst ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void removeFirst()", asFUNCTION( CScriptArray_RemoveFirst ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void grow(uint)", asFUNCTION( CScriptArray_Grow ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void reduce(uint)", asFUNCTION( CScriptArray_Reduce ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "T& first()", asFUNCTION( CScriptArray_First ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "const T& first() const", asFUNCTION( CScriptArray_First ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "T& last()", asFUNCTION( CScriptArray_Last ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "const T& last() const", asFUNCTION( CScriptArray_Last ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void clear()", asFUNCTION( CScriptArray_Clear ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "bool exists(const T&in) const", asFUNCTION( CScriptArray_Exists ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectBehaviour( "array<T>", asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>&in)", asFUNCTION( CScriptArray_Clone ), asCALL_CDECL );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void set(const array<T>&in)", asFUNCTION( CScriptArray_Set ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void insertAt(uint, const array<T>&in)", asFUNCTION( CScriptArray_InsertArrAt ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const array<T>&in)", asFUNCTION( CScriptArray_InsertArrFirst ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void insertLast(const array<T>&in)", asFUNCTION( CScriptArray_InsertArrFirst ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "bool equals(const array<T>&in)", asFUNCTION( CScriptArray_Equals ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
+    bool max_poratbility = strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) != nullptr;
+
+    REGISTER_METHOD( "array<T>", "void insertFirst(const T&in)", CScriptArray_InsertFirst, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "void removeFirst()", CScriptArray_RemoveFirst, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "void grow(uint)", CScriptArray_Grow, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "void reduce(uint)", CScriptArray_Reduce, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "T& first()", CScriptArray_First, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "const T& first() const", CScriptArray_First, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "T& last()", CScriptArray_Last, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "const T& last() const", CScriptArray_Last, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "void clear()", CScriptArray_Clear, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "bool exists(const T&in) const", CScriptArray_Exists, asCALL_CDECL_OBJFIRST );
+    REGISTER_BEHAVIOUR( "array<T>", asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>&in)", CScriptArray_Clone, asCALL_CDECL );
+    REGISTER_METHOD( "array<T>", "void set(const array<T>&in)", CScriptArray_Set, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "void insertAt(uint, const array<T>&in)", CScriptArray_InsertArrAt, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "void insertFirst(const array<T>&in)", CScriptArray_InsertArrFirst, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "void insertLast(const array<T>&in)", CScriptArray_InsertArrFirst, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "array<T>", "bool equals(const array<T>&in)", CScriptArray_Equals, asCALL_CDECL_OBJFIRST );
 }
 
 static CScriptDict* ScriptDict_Clone( asITypeInfo* ti, const CScriptDict** other )
@@ -194,10 +213,10 @@ static bool ScriptDict_Equals( CScriptDict* dict, const CScriptDict** other )
 
 void Script::RegisterScriptDictExtensions( asIScriptEngine* engine )
 {
-    int r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>&in)", asFUNCTION( ScriptDict_Clone ), asCALL_CDECL );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool equals(const dict<T1,T2>&in)", asFUNCTION( ScriptDict_Equals ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
+    bool max_poratbility = strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) != nullptr;
+
+    REGISTER_BEHAVIOUR( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>&in)", ScriptDict_Clone, asCALL_CDECL );
+    REGISTER_METHOD( "dict<T1,T2>", "bool equals(const dict<T1,T2>&in)", ScriptDict_Equals, asCALL_CDECL_OBJFIRST );
 }
 
 static bool IndexUTF8ToRaw( const string& str, int& index, uint* length = nullptr, uint offset = 0 )
@@ -264,6 +283,11 @@ static void ScriptString_Clear( string& str )
     str.clear();
 }
 
+static void ScriptString_Clear_Generic( asIScriptGeneric* gen )
+{
+    ScriptString_Clear( *(string*) gen->GetArgAddress( 0 ) );
+}
+
 static string ScriptString_SubString( const string& str, int start, int count )
 {
     if( !IndexUTF8ToRaw( str, start ) )
@@ -271,6 +295,12 @@ static string ScriptString_SubString( const string& str, int start, int count )
     if( count >= 0 )
         IndexUTF8ToRaw( str, count, NULL, start );
     return str.substr( start, count >= 0 ? count : std::string::npos );
+}
+
+static void ScriptString_SubString_Generic( asIScriptGeneric* gen )
+{
+    new ( gen->GetAddressOfReturnLocation() )string( ScriptString_SubString(
+                                                         *(string*) gen->GetArgAddress( 0 ), *(int*) gen->GetArgAddress( 1 ), *(int*) gen->GetArgAddress( 2 ) ) );
 }
 
 static int ScriptString_FindFirst( const string& str, const string& sub, int start )
@@ -507,59 +537,39 @@ static string ScriptString_Join( const CScriptArray** parray, const string& deli
 
 void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
 {
-    int r = engine->RegisterObjectMethod( "string", "void clear()", asFUNCTION( ScriptString_Clear ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "uint length() const", asFUNCTION( ScriptString_Length ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "uint rawLength() const", asFUNCTION( ScriptString_RawLength ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "void rawResize(uint)", asFUNCTION( ScriptString_RawResize ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "uint8 rawGet(uint) const", asFUNCTION( ScriptString_RawGet ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "void rawSet(uint, uint8)", asFUNCTION( ScriptString_RawSet ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
+    bool max_poratbility = strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) != nullptr;
 
-    r = engine->RegisterObjectMethod( "string", "string substr(uint start = 0, int count = -1) const", asFUNCTION( ScriptString_SubString ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findFirst(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirst ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findFirstOf(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirstOf ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findFirstNotOf(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirstNotOf ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findLast(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLast ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findLastOf(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLastOf ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findLastNotOf(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLastNotOf ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
+    REGISTER_METHOD( "string", "void clear()", ScriptString_Clear, asCALL_CDECL_OBJFIRST );
+
+    REGISTER_METHOD( "string", "uint length() const", ScriptString_Length, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "uint rawLength() const", ScriptString_RawLength, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "void rawResize(uint)", ScriptString_RawResize, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "uint8 rawGet(uint) const", ScriptString_RawGet, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "void rawSet(uint, uint8)", ScriptString_RawSet, asCALL_CDECL_OBJFIRST );
+
+    REGISTER_METHOD( "string", "string substr(uint start = 0, int count = -1) const", ScriptString_SubString, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "int findFirst(const string &in, uint start = 0) const", ScriptString_FindFirst, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "int findFirstOf(const string &in, uint start = 0) const", ScriptString_FindFirstOf, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "int findFirstNotOf(const string &in, uint start = 0) const", ScriptString_FindFirstNotOf, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "int findLast(const string &in, int start = -1) const", ScriptString_FindLast, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "int findLastOf(const string &in, int start = -1) const", ScriptString_FindLastOf, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "int findLastNotOf(const string &in, int start = -1) const", ScriptString_FindLastNotOf, asCALL_CDECL_OBJFIRST );
 
     // Register the index operator, both as a mutator and as an inspector
-    r = engine->RegisterObjectMethod( "string", "string get_opIndex(int) const", asFUNCTION( ScriptString_GetAt ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "void set_opIndex(int, const string &in)", asFUNCTION( ScriptString_SetAt ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
+    REGISTER_METHOD( "string", "string get_opIndex(int) const", ScriptString_GetAt, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "void set_opIndex(int, const string &in)", ScriptString_SetAt, asCALL_CDECL_OBJFIRST );
 
     // Conversion methods
-    r = engine->RegisterObjectMethod( "string", "int toInt(int defaultValue = 0) const", asFUNCTION( ScriptString_ToInt ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "float toFloat(float defaultValue = 0) const", asFUNCTION( ScriptString_ToFloat ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
+    REGISTER_METHOD( "string", "int toInt(int defaultValue = 0) const", ScriptString_ToInt, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "float toFloat(float defaultValue = 0) const", ScriptString_ToFloat, asCALL_CDECL_OBJFIRST );
 
     // Find methods
-    r = engine->RegisterObjectMethod( "string", "bool startsWith(const string &in) const", asFUNCTION( ScriptString_StartsWith ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "bool endsWith(const string &in) const", asFUNCTION( ScriptString_EndsWith ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
+    REGISTER_METHOD( "string", "bool startsWith(const string &in) const", ScriptString_StartsWith, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "bool endsWith(const string &in) const", ScriptString_EndsWith, asCALL_CDECL_OBJFIRST );
 
-    r = engine->RegisterObjectMethod( "string", "string lower() const", asFUNCTION( ScriptString_Lower ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "string upper() const", asFUNCTION( ScriptString_Upper ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
+    REGISTER_METHOD( "string", "string lower() const", ScriptString_Lower, asCALL_CDECL_OBJFIRST );
+    REGISTER_METHOD( "string", "string upper() const", ScriptString_Upper, asCALL_CDECL_OBJFIRST );
 
-    r = engine->RegisterObjectMethod( "string", "array<string>@ split(const string &in) const", asFUNCTION( ScriptString_Split ), asCALL_CDECL_OBJLAST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterGlobalFunction( "string join(const array<string>@ &in, const string &in)", asFUNCTION( ScriptString_Join ), asCALL_CDECL );
-    RUNTIME_ASSERT( r >= 0 );
+    REGISTER_METHOD( "string", "array<string>@ split(const string &in) const", ScriptString_Split, asCALL_CDECL_OBJLAST );
+    REGISTER_FUNCTION( "string join(const array<string>@ &in, const string &in)", ScriptString_Join, asCALL_CDECL );
 }
