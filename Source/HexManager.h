@@ -242,16 +242,17 @@ public:
 public:
     struct AutoScroll_
     {
-        bool   Active;
-        bool   CanStop;
-        double OffsX, OffsY;
-        double OffsXStep, OffsYStep;
-        double Speed;
-        uint   LockedCritter;
+        bool  Active;
+        bool  CanStop;
+        float OffsX, OffsY;
+        float OffsXStep, OffsYStep;
+        float Speed;
+        uint  LockedCritter;
     } AutoScroll;
 
     bool Scroll();
-    void ScrollToHex( int hx, int hy, double speed, bool can_stop );
+    void ScrollToHex( int hx, int hy, float speed, bool can_stop );
+    void ScrollOffset( int ox, int oy, float speed, bool can_stop );
 
 private:
     bool ScrollCheckPos( int(&positions)[ 4 ], int dir1, int dir2 );

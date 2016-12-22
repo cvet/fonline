@@ -2145,9 +2145,9 @@ bool HexManager::Scroll()
     {
         CritterCl* cr = GetCritter( AutoScroll.LockedCritter );
         if( cr && ( cr->GetHexX() != screenHexX || cr->GetHexY() != screenHexY ) )
-            ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.02, true );
+            ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.02f, true );
         // if( cr && DistSqrt( cr->GetHexX(), cr->GetHexY(), screenHexX, screenHexY ) > 4 )
-        //     ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.5, true );
+        //     ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.5f, true );
     }
 
     if( AutoScroll.Active )
@@ -2159,22 +2159,22 @@ bool HexManager::Scroll()
         if( xscroll > SCROLL_OX )
         {
             xscroll = SCROLL_OX;
-            AutoScroll.OffsXStep = (double) SCROLL_OX;
+            AutoScroll.OffsXStep = (float) SCROLL_OX;
         }
         if( xscroll < -SCROLL_OX )
         {
             xscroll = -SCROLL_OX;
-            AutoScroll.OffsXStep = -(double) SCROLL_OX;
+            AutoScroll.OffsXStep = -(float) SCROLL_OX;
         }
         if( yscroll > SCROLL_OY )
         {
             yscroll = SCROLL_OY;
-            AutoScroll.OffsYStep = (double) SCROLL_OY;
+            AutoScroll.OffsYStep = (float) SCROLL_OY;
         }
         if( yscroll < -SCROLL_OY )
         {
             yscroll = -SCROLL_OY;
-            AutoScroll.OffsYStep = -(double) SCROLL_OY;
+            AutoScroll.OffsYStep = -(float) SCROLL_OY;
         }
 
         AutoScroll.OffsX -= xscroll;
@@ -2408,22 +2408,31 @@ bool HexManager::ScrollCheck( int xmod, int ymod )
     return false;
 }
 
-void HexManager::ScrollToHex( int hx, int hy, double speed, bool can_stop )
+void HexManager::ScrollToHex( int hx, int hy, float speed, bool can_stop )
 {
-    if( !IsMapLoaded() )
-        return;
-
     int sx, sy;
     GetScreenHexes( sx, sy );
-    int x, y;
-    GetHexInterval( sx, sy, hx, hy, x, y );
-    AutoScroll.Active = true;
+    int ox, oy;
+    GetHexInterval( sx, sy, hx, hy, ox, oy );
+    AutoScroll.Active = false;
+    ScrollOffset( ox, oy, speed, can_stop );
+}
+
+void HexManager::ScrollOffset( int ox, int oy, float speed, bool can_stop )
+{
+    if( !AutoScroll.Active )
+    {
+        AutoScroll.Active = true;
+        AutoScroll.OffsX = 0;
+        AutoScroll.OffsY = 0;
+        AutoScroll.OffsXStep = 0.0;
+        AutoScroll.OffsYStep = 0.0;
+    }
+
     AutoScroll.CanStop = can_stop;
-    AutoScroll.OffsX = -x;
-    AutoScroll.OffsY = -y;
-    AutoScroll.OffsXStep = 0.0;
-    AutoScroll.OffsYStep = 0.0;
     AutoScroll.Speed = speed;
+    AutoScroll.OffsX += -ox;
+    AutoScroll.OffsY += -oy;
 }
 
 void HexManager::SetCritter( CritterCl* cr )

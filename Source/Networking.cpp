@@ -94,13 +94,14 @@ protected:
     const uchar* SendCallback( uint& out_len )
     {
         Bout.Lock();
+        RUNTIME_ASSERT( !Bout.IsEmpty() );
 
         // Compress
         if( zStream )
         {
             uint to_compr = Bout.GetEndPos();
-            if( to_compr > sizeof( outBuf ) )
-                to_compr = sizeof( outBuf );
+            if( to_compr > sizeof( outBuf ) - 32 )
+                to_compr = sizeof( outBuf ) - 32;
 
             zStream->next_in = Bout.GetCurData();
             zStream->avail_in = to_compr;

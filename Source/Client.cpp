@@ -3225,7 +3225,7 @@ void FOClient::Net_OnCustomCommand()
                 Chosen->SetHexX( hx );
                 Chosen->SetHexY( hy );
                 HexMngr.SetCritter( Chosen );
-                HexMngr.ScrollToHex( Chosen->GetHexX(), Chosen->GetHexY(), 0.1, true );
+                HexMngr.ScrollToHex( Chosen->GetHexX(), Chosen->GetHexY(), 0.1f, true );
             }
         }
         break;
@@ -7760,16 +7760,25 @@ string FOClient::SScriptFunc::Global_FormatTags( string text, string lexems )
     return buf;
 }
 
-void FOClient::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )
+void FOClient::SScriptFunc::Global_MoveScreenToHex( ushort hx, ushort hy, uint speed, bool can_stop )
 {
     if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R( "Invalid hex args." );
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R( "Map is not loaded." );
+
     if( !speed )
         Self->HexMngr.FindSetCenter( hx, hy );
     else
-        Self->HexMngr.ScrollToHex( hx, hy, double(speed) / 1000.0, can_stop );
+        Self->HexMngr.ScrollToHex( hx, hy, (float) speed / 1000.0f, can_stop );
+}
+
+void FOClient::SScriptFunc::Global_MoveScreenOffset( int ox, int oy, uint speed, bool can_stop )
+{
+    if( !Self->HexMngr.IsMapLoaded() )
+        SCRIPT_ERROR_R( "Map is not loaded." );
+
+    Self->HexMngr.ScrollOffset( ox, oy, (float) speed / 1000.0f, can_stop );
 }
 
 void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same )

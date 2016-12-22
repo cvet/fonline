@@ -437,7 +437,8 @@ public:
         static string Global_ReplaceTextStr( string text, string replace, string str );
         static string Global_ReplaceTextInt( string text, string replace, int i );
         static string Global_FormatTags( string text, string lexems );
-        static void   Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop );
+        static void   Global_MoveScreenToHex( ushort hx, ushort hy, uint speed, bool can_stop );
+        static void   Global_MoveScreenOffset( int ox, int oy, uint speed, bool can_stop );
         static void   Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same );
         static int    Global_GetFog( ushort zone_x, ushort zone_y );
         static uint   Global_GetDayTime( uint day_part );

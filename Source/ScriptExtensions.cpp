@@ -11,15 +11,15 @@
         RUNTIME_ASSERT( r >= 0 );                                                                        \
     } while( 0 )
 
-#define REGISTER_METHOD( type, decl, func, conv )                                                        \
-    do                                                                                                   \
-    {                                                                                                    \
-        int r;                                                                                           \
-        if( !max_poratbility )                                                                           \
-            engine->RegisterObjectMethod( type, decl, asFUNCTION( func ), conv );                        \
-        else                                                                                             \
-            engine->RegisterObjectMethod( type, decl, asFUNCTION( func ## _Generic ), asCALL_GENERIC );  \
-        RUNTIME_ASSERT( r >= 0 );                                                                        \
+#define REGISTER_METHOD( type, decl, func, conv )                                                            \
+    do                                                                                                       \
+    {                                                                                                        \
+        int r;                                                                                               \
+        if( !max_poratbility )                                                                               \
+            r = engine->RegisterObjectMethod( type, decl, asFUNCTION( func ), conv );                        \
+        else                                                                                                 \
+            r = engine->RegisterObjectMethod( type, decl, asFUNCTION( func ## _Generic ), asCALL_GENERIC );  \
+        RUNTIME_ASSERT( r >= 0 );                                                                            \
     } while( 0 )
 
 #define REGISTER_BEHAVIOUR( type, beh, decl, func, conv )                                                            \

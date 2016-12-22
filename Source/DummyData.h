@@ -566,7 +566,8 @@ struct BindClass
     static void Global_IsMsgStr()           {}
     static void Global_ReplaceTextStr()     {}
     static void Global_ReplaceTextInt()     {}
-    static void Global_MoveScreen()         {}
+    static void Global_MoveScreenToHex()    {}
+    static void Global_MoveScreenOffset()   {}
     static void Global_MoveHexByDir()       {}
     static void Global_LoadSprite()         {}
     static void Global_LoadSpriteHash()     {}

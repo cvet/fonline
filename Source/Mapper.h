@@ -420,7 +420,8 @@ public:
         static void Global_TabSelect( int tab, string sub_tab, bool show );
         static void Global_TabSetName( int tab, string tab_name );
 
-        static void   Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop );
+        static void   Global_MoveScreenToHex( ushort hx, ushort hy, uint speed, bool can_stop );
+        static void   Global_MoveScreenOffset( int ox, int oy, uint speed, bool can_stop );
         static void   Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
         static string Global_GetIfaceIniStr( string key );
         static bool   Global_LoadDataFile( string dat_name );

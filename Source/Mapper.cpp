@@ -5063,16 +5063,25 @@ void FOMapper::SScriptFunc::Global_TabSetName( int tab, string tab_name )
     Self->TabsName[ tab ] = tab_name;
 }
 
-void FOMapper::SScriptFunc::Global_MoveScreen( ushort hx, ushort hy, uint speed, bool can_stop )
+void FOMapper::SScriptFunc::Global_MoveScreenToHex( ushort hx, ushort hy, uint speed, bool can_stop )
 {
     if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
         SCRIPT_ERROR_R( "Invalid hex args." );
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R( "Map is not loaded." );
+
     if( !speed )
         Self->HexMngr.FindSetCenter( hx, hy );
     else
-        Self->HexMngr.ScrollToHex( hx, hy, double(speed) / 1000.0, can_stop );
+        Self->HexMngr.ScrollToHex( hx, hy, (float) speed / 1000.0f, can_stop );
+}
+
+void FOMapper::SScriptFunc::Global_MoveScreenOffset( int ox, int oy, uint speed, bool can_stop )
+{
+    if( !Self->HexMngr.IsMapLoaded() )
+        SCRIPT_ERROR_R( "Map is not loaded." );
+
+    Self->HexMngr.ScrollOffset( ox, oy, (float) speed / 1000.0f, can_stop );
 }
 
 void FOMapper::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps )
