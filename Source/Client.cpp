@@ -1765,8 +1765,8 @@ int FOClient::NetInput( bool unpack )
         return -2;
     }
 
-    uint pos = (uint) len;
-    while( pos == ComLen )
+    uint whole_len = (uint) len;
+    while( whole_len == ComLen )
     {
         uint   newcomlen = ( ComLen << 1 );
         uchar* combuf = new uchar[ newcomlen ];
@@ -1777,8 +1777,8 @@ int FOClient::NetInput( bool unpack )
 
         #ifdef FO_WINDOWS
         flags = 0;
-        buf.buf = (char*) ComBuf + pos;
-        buf.len = ComLen - pos;
+        buf.buf = (char*) ComBuf + whole_len;
+        buf.len = ComLen - whole_len;
         if( WSARecv( Sock, &buf, 1, &len, &flags, nullptr, nullptr ) == SOCKET_ERROR )
         #else
         len = recv( Sock, ComBuf + pos, ComLen - pos, 0 );
@@ -1801,26 +1801,24 @@ int FOClient::NetInput( bool unpack )
             return -2;
         }
 
-        pos += len;
+        whole_len += len;
     }
 
     Bin.Refresh();
-    uint old_pos = Bin.GetEndPos();     // Fix position
+    uint old_pos = Bin.GetEndPos();
 
     if( unpack && !GameOpt.DisableZlibCompression )
     {
         ZStream.next_in = ComBuf;
-        ZStream.avail_in = pos;
+        ZStream.avail_in = whole_len;
         ZStream.next_out = Bin.GetData() + Bin.GetEndPos();
         ZStream.avail_out = Bin.GetLen() - Bin.GetEndPos();
 
-        if( inflate( &ZStream, Z_SYNC_FLUSH ) != Z_OK )
-        {
-            WriteLog( "ZStream Inflate error.\n" );
-            return -3;
-        }
+        int first_inflate = inflate( &ZStream, Z_SYNC_FLUSH );
+        RUNTIME_ASSERT( first_inflate == Z_OK );
 
-        Bin.SetEndPos( (uint) ( (size_t) ZStream.next_out - (size_t) Bin.GetData() ) );
+        uint uncompr = (uint) ( (size_t) ZStream.next_out - (size_t) Bin.GetData() );
+        Bin.SetEndPos( uncompr );
 
         while( ZStream.avail_in )
         {
@@ -1829,21 +1827,19 @@ int FOClient::NetInput( bool unpack )
             ZStream.next_out = (uchar*) Bin.GetData() + Bin.GetEndPos();
             ZStream.avail_out = Bin.GetLen() - Bin.GetEndPos();
 
-            if( inflate( &ZStream, Z_SYNC_FLUSH ) != Z_OK )
-            {
-                WriteLog( "ZStream Inflate continue error.\n" );
-                return -4;
-            }
+            int next_inflate = inflate( &ZStream, Z_SYNC_FLUSH );
+            RUNTIME_ASSERT( next_inflate == Z_OK );
 
-            Bin.SetEndPos( (uint) ( (size_t) ZStream.next_out - (size_t) Bin.GetData() ) );
+            uncompr = (uint) ( (size_t) ZStream.next_out - (size_t) Bin.GetData() );
+            Bin.SetEndPos( uncompr );
         }
     }
     else
     {
-        Bin.Push( ComBuf, pos, true );
+        Bin.Push( ComBuf, whole_len, true );
     }
 
-    BytesReceive += pos;
+    BytesReceive += whole_len;
     BytesRealReceive += Bin.GetEndPos() - old_pos;
     return Bin.GetEndPos() - old_pos;
 }
