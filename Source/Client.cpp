@@ -1781,7 +1781,7 @@ int FOClient::NetInput( bool unpack )
         buf.len = ComLen - whole_len;
         if( WSARecv( Sock, &buf, 1, &len, &flags, nullptr, nullptr ) == SOCKET_ERROR )
         #else
-        len = recv( Sock, ComBuf + pos, ComLen - pos, 0 );
+        len = recv( Sock, ComBuf + whole_len, ComLen - whole_len, 0 );
         if( len == SOCKET_ERROR )
         #endif
         {

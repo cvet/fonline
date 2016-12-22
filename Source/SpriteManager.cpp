@@ -387,7 +387,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth_stencil, bool multis
             samples = MIN( GameOpt.MultiSampling, max_samples );
 
             // Flush effect
-            Effect::FlushRenderTargetMSDefault = GraphicLoader::LoadEffect( "Flush_RenderTargetMS.glsl", true );
+            Effect::FlushRenderTargetMSDefault = GraphicLoader::LoadEffect( "Effects/Flush_RenderTargetMS.glsl", true );
             if( Effect::FlushRenderTargetMSDefault )
                 Effect::FlushRenderTargetMS = new Effect( *Effect::FlushRenderTargetMSDefault );
             else

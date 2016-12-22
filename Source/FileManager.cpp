@@ -332,6 +332,7 @@ uchar FileManager::GetUChar()
 {
     if( curPos + sizeof( uchar ) > fileSize )
         return 0;
+
     uchar res = 0;
     res = fileBuf[ curPos++ ];
     return res;

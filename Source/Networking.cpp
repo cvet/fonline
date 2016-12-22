@@ -324,8 +324,9 @@ class NetConnectionWS: public NetConnectionImpl
 public:
     NetConnectionWS( web_sockets* server, web_sockets::connection_ptr connection ): server( server ), connection( connection )
     {
-        Ip = connection->get_raw_socket().remote_endpoint().address().to_v4().to_ulong();
-        Host = connection->get_raw_socket().remote_endpoint().address().to_string();
+        const auto& address = connection->get_raw_socket().remote_endpoint().address();
+        Ip = ( address.is_v4() ? address.to_v4().to_ulong() : uint( -1 ) );
+        Host = address.to_string();
         Port = connection->get_raw_socket().remote_endpoint().port();
 
         if( GameOpt.DisableTcpNagle )

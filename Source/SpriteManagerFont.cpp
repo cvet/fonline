@@ -314,12 +314,11 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
     char     image_name[ MAX_FOPATH ] = { 0 };
 
     uint     font_cache_len;
-    uchar*   font_cache_init = Crypt.GetCache( fname, font_cache_len );
-    uchar*   font_cache = font_cache_init;
+    uchar*   font_cache_buf = Crypt.GetCache( fname, font_cache_len );
     uint64   write_time = fm.GetWriteTime();
-    if( !font_cache || write_time > *(uint64*) font_cache )
+    if( !font_cache_buf || write_time > *(uint64*) font_cache_buf )
     {
-        SAFEDELA( font_cache_init );
+        SAFEDELA( font_cache_buf );
 
         // Parse data
         istrstream str( (char*) fm.GetBuf() );
@@ -416,82 +415,56 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
         }
 
         // Save cache
-        uint image_name_len = Str::Length( image_name );
-        uint font_cache_len = sizeof( uint64 ) + sizeof( uint ) + image_name_len + sizeof( int ) * 2 +
-                              sizeof( uint ) + ( sizeof( uint ) + sizeof( short ) * 7 ) * (uint) font.Letters.size();
-        font_cache_init = new uchar[ font_cache_len ];
-        font_cache = font_cache_init;
-        *(uint64*) font_cache = write_time;
-        font_cache += sizeof( uint64 );
-        *(uint*) font_cache = image_name_len;
-        font_cache += sizeof( uint );
-        memcpy( font_cache, image_name, image_name_len );
-        font_cache += image_name_len;
-        *(int*) font_cache = font.LineHeight;
-        font_cache += sizeof( int );
-        *(int*) font_cache = font.YAdvance;
-        font_cache += sizeof( int );
-        *(uint*) font_cache = (uint) font.Letters.size();
-        font_cache += sizeof( uint );
+        uint     image_name_len = Str::Length( image_name );
+        UCharVec font_cache;
+        WriteData( font_cache, write_time );
+        WriteData( font_cache, image_name_len );
+        WriteDataArr( font_cache, image_name, image_name_len );
+        WriteData( font_cache, font.LineHeight );
+        WriteData( font_cache, font.YAdvance );
+        WriteData( font_cache, (uint) font.Letters.size() );
+
         for( LetterMapIt it = font.Letters.begin(), end = font.Letters.end(); it != end; ++it )
         {
             Letter& l = it->second;
-            *(int*) font_cache = it->first;
-            font_cache += sizeof( uint );
-            *(short*) font_cache = l.PosX;
-            font_cache += sizeof( short );
-            *(short*) font_cache = l.PosY;
-            font_cache += sizeof( short );
-            *(short*) font_cache = l.W;
-            font_cache += sizeof( short );
-            *(short*) font_cache = l.H;
-            font_cache += sizeof( short );
-            *(short*) font_cache = l.OffsX;
-            font_cache += sizeof( short );
-            *(short*) font_cache = l.OffsY;
-            font_cache += sizeof( short );
-            *(short*) font_cache = l.XAdvance;
-            font_cache += sizeof( short );
+            WriteData( font_cache, it->first );
+            WriteData( font_cache, l.PosX );
+            WriteData( font_cache, l.PosY );
+            WriteData( font_cache, l.W );
+            WriteData( font_cache, l.H );
+            WriteData( font_cache, l.OffsX );
+            WriteData( font_cache, l.OffsY );
+            WriteData( font_cache, l.XAdvance );
         }
-        Crypt.SetCache( fname, font_cache_init, font_cache_len );
-        SAFEDELA( font_cache_init );
+        Crypt.SetCache( fname, &font_cache[ 0 ], (uint) font_cache.size() );
     }
     else
     {
+        UCharVec font_cache;
+        WriteDataArr( font_cache, font_cache_buf, font_cache_len );
+        SAFEDELA( font_cache_buf );
+
         // Load from cache
-        font_cache += sizeof( uint64 );
-        uint image_name_len = *(uint*) font_cache;
-        font_cache += sizeof( uint );
-        memcpy( image_name, font_cache, image_name_len );
-        font_cache += image_name_len;
+        uint   pos = 0;
+        uint64 dummy = ReadData< uint64 >( font_cache, pos );
+        uint   image_name_len = ReadData< uint >( font_cache, pos );
+        memcpy( image_name, ReadDataArr< uchar >( font_cache, image_name_len, pos ), image_name_len );
         image_name[ image_name_len ] = 0;
-        font.LineHeight = *(int*) font_cache;
-        font_cache += sizeof( int );
-        font.YAdvance = *(int*) font_cache;
-        font_cache += sizeof( int );
-        uint letters_count = *(uint*) font_cache;
-        font_cache += sizeof( uint );
+        font.LineHeight = ReadData< int >( font_cache, pos );
+        font.YAdvance = ReadData< int >( font_cache, pos );
+        uint letters_count = ReadData< uint >( font_cache, pos );
         while( letters_count-- )
         {
-            uint    letter = *(uint*) font_cache;
-            font_cache += sizeof( uint );
+            uint    letter = ReadData< uint >( font_cache, pos );
             Letter& l = font.Letters[ letter ];
-            l.PosX = *(short*) font_cache;
-            font_cache += sizeof( short );
-            l.PosY = *(short*) font_cache;
-            font_cache += sizeof( short );
-            l.W = *(short*) font_cache;
-            font_cache += sizeof( short );
-            l.H = *(short*) font_cache;
-            font_cache += sizeof( short );
-            l.OffsX = *(short*) font_cache;
-            font_cache += sizeof( short );
-            l.OffsY = *(short*) font_cache;
-            font_cache += sizeof( short );
-            l.XAdvance = *(short*) font_cache;
-            font_cache += sizeof( short );
+            l.PosX = ReadData< short >( font_cache, pos );
+            l.PosY = ReadData< short >( font_cache, pos );
+            l.W = ReadData< short >( font_cache, pos );
+            l.H = ReadData< short >( font_cache, pos );
+            l.OffsX = ReadData< short >( font_cache, pos );
+            l.OffsY = ReadData< short >( font_cache, pos );
+            l.XAdvance = ReadData< short >( font_cache, pos );
         }
-        SAFEDELA( font_cache_init );
     }
 
     bool make_gray = false;
