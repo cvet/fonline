@@ -607,8 +607,6 @@ struct BindClass
     static void Global_GetDistantion() {}
 };
 
-#include "ScriptFunctions.h"
-
 #ifdef BIND_CLIENT
 int BindClass::ClientCurMap;
 int BindClass::ClientCurLocation;

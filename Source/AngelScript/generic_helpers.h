@@ -1,33 +1,37 @@
 #pragma once
 
-#define WRAP_CDECL_TO_GENERIC_0(func) \
-    static void func ## _Generic(asIScriptGeneric* gen) { func(); }
-#define WRAP_CDECL_TO_GENERIC_1(func, arg1) \
-    static void func ## _Generic(asIScriptGeneric* gen) { func(*(arg1*) gen->GetArgAddress(0)); }
-#define WRAP_CDECL_TO_GENERIC_2(func, arg1, arg2) \
-    static void func ## _Generic(asIScriptGeneric* gen) { func(*(arg1*) gen->GetArgAddress(0), *(arg2*) gen->GetArgAddress(1)); }
-#define WRAP_CDECL_TO_GENERIC_3(func, arg1, arg2, arg3) \
-    static void func ## _Generic(asIScriptGeneric* gen) { func(*(arg1*) gen->GetArgAddress(0), *(arg2*) gen->GetArgAddress(1), *(arg3*) gen->GetArgAddress(2)); }
+template<typename R>
+struct GenericWrapCdecl
+{
+    template<typename Fn, Fn fn> static void Call(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) R(fn()); }
+    template<typename Fn, Fn fn, typename T1> static void Call(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) R(fn(*(T1*)gen->GetAddressOfArg(0))); }
+    template<typename Fn, Fn fn, typename T1, typename T2> static void Call(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) R(fn(*(T1*)gen->GetAddressOfArg(0), *(T2*)gen->GetAddressOfArg(1))); }
+    template<typename Fn, Fn fn, typename T1, typename T2, typename T3> static void Call(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) R(fn(*(T1*)gen->GetAddressOfArg(0), *(T2*)gen->GetAddressOfArg(2), *(T3*)gen->GetAddressOfArg(2))); }
+};
+template<>
+struct GenericWrapCdecl<void>
+{
+    template<typename Fn, Fn fn> static void Call(asIScriptGeneric* gen) { fn(); }
+    template<typename Fn, Fn fn, typename T1> static void Call(asIScriptGeneric* gen) { fn(*(T1*)gen->GetAddressOfArg(0)); }
+    template<typename Fn, Fn fn, typename T1, typename T2> static void Call(asIScriptGeneric* gen) { fn(*(T1*)gen->GetAddressOfArg(0), *(T2*)gen->GetAddressOfArg(1)); }
+    template<typename Fn, Fn fn, typename T1, typename T2, typename T3> static void Call(asIScriptGeneric* gen) { fn(*(T1*)gen->GetAddressOfArg(0), *(T2*)gen->GetAddressOfArg(2), *(T3*)gen->GetAddressOfArg(2)); }
+};
+#define WRAP_CDECL_TO_GENERIC(ret, func, ...) static void func ## _Generic(asIScriptGeneric* gen) { GenericWrapCdecl<ret>::Call<decltype(&func), &func, ##__VA_ARGS__>(gen); }
 
-#define WRAP_CDECL_TO_GENERIC_0_RET(func, ret) \
-    static void func ## _Generic(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) ret(func()); }
-#define WRAP_CDECL_TO_GENERIC_1_RET(func, arg1, ret) \
-    static void func ## _Generic(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) ret(func(*(arg1*) gen->GetArgAddress(0))); }
-#define WRAP_CDECL_TO_GENERIC_2_RET(func, arg1, arg2, ret) \
-    static void func ## _Generic(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) ret(func(*(arg1*) gen->GetArgAddress(0), *(arg2*) gen->GetArgAddress(1))); }
-#define WRAP_CDECL_TO_GENERIC_3_RET(func, arg1, arg2, arg3, ret) \
-    static void func ## _Generic(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) ret(func(*(arg1*) gen->GetArgAddress(0), *(arg2*) gen->GetArgAddress(1), *(arg3*) gen->GetArgAddress(2))); }
-
-#define WRAP_THISCALL_TO_GENERIC_0(type, func) \
-    static void type ## _ ## func ## _Generic(asIScriptGeneric* gen) { ((type*)gen->GetObject())->func(); }
-#define WRAP_THISCALL_TO_GENERIC_1(type, func, arg1) \
-    static void type ## _ ## func ## _Generic(asIScriptGeneric* gen) { ((type*)gen->GetObject())->func(*(arg1*)gen->GetArgAddress(0)); }
-#define WRAP_THISCALL_TO_GENERIC_2(type, func, arg1, arg2) \
-    static void type ## _ ## func ## _Generic(asIScriptGeneric* gen) { ((type*)gen->GetObject())->func(*(arg1*)gen->GetArgAddress(0), *(arg2*)gen->GetArgAddress(1)); }
-
-#define WRAP_THISCALL_TO_GENERIC_0_RET(type, func, ret) \
-    static void type ## _ ## func ## _Generic(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) ret(((type*)gen->GetObject())->func()); }
-#define WRAP_THISCALL_TO_GENERIC_1_RET(type, func, arg1, ret) \
-    static void type ## _ ## func ## _Generic(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) ret(((type*)gen->GetObject())->func(*(arg1*)gen->GetArgAddress(0))); }
-#define WRAP_THISCALL_TO_GENERIC_2_RET(type, func, arg1, arg2, ret) \
-    static void type ## _ ## func ## _Generic(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) ret(((type*)gen->GetObject())->func(*(arg1*)gen->GetArgAddress(0), *(arg2*)gen->GetArgAddress(1))); }
+template<typename T, typename R>
+struct GenericWrapThiscall
+{
+    template<typename Fn, Fn fn> static void Call(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) R((((T*)gen->GetObject())->*fn)()); }
+    template<typename Fn, Fn fn, typename T1> static void Call(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) R((((T*)gen->GetObject())->*fn)(*(T1*)gen->GetAddressOfArg(0))); }
+    template<typename Fn, Fn fn, typename T1, typename T2> static void Call(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) R((((T*)gen->GetObject())->*fn)(*(T1*)gen->GetAddressOfArg(0), *(T2*)gen->GetAddressOfArg(1))); }
+    template<typename Fn, Fn fn, typename T1, typename T2, typename T3> static void Call(asIScriptGeneric* gen) { new(gen->GetAddressOfReturnLocation()) R((((T*)gen->GetObject())->*fn)(*(T1*)gen->GetAddressOfArg(0), *(T2*)gen->GetAddressOfArg(1), *(T3*)gen->GetAddressOfArg(2))); }
+};
+template<typename T>
+struct GenericWrapThiscall<T, void>
+{
+    template<typename Fn, Fn fn> static void Call(asIScriptGeneric* gen) { (((T*)gen->GetObject())->*fn)(); }
+    template<typename Fn, Fn fn, typename T1> static void Call(asIScriptGeneric* gen) { (((T*)gen->GetObject())->*fn)(*(T1*)gen->GetAddressOfArg(0)); }
+    template<typename Fn, Fn fn, typename T1, typename T2> static void Call(asIScriptGeneric* gen) { (((T*)gen->GetObject())->*fn)(*(T1*)gen->GetAddressOfArg(0), *(T2*)gen->GetAddressOfArg(1)); }
+    template<typename Fn, Fn fn, typename T1, typename T2, typename T3> static void Call(asIScriptGeneric* gen) { (((T*)gen->GetObject())->*fn)(*(T1*)gen->GetAddressOfArg(0), *(T2*)gen->GetAddressOfArg(1), *(T3*)gen->GetAddressOfArg(2)); }
+};
+#define WRAP_THISCALL_TO_GENERIC(ret, type, func, ...) static void type ## _ ## func ## _Generic(asIScriptGeneric* gen) { GenericWrapThiscall<type, ret>::Call<decltype(&type::func), &type::func, ##__VA_ARGS__>(gen); }

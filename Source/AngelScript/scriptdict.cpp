@@ -816,28 +816,28 @@ static CScriptDict* CScriptDict_CreateList(asITypeInfo* ti, void* list)
     return CScriptDict::Create(ti, list);
 }
 
-WRAP_CDECL_TO_GENERIC_2_RET(CScriptDict_TemplateCallback, asITypeInfo*, bool, bool);
-WRAP_CDECL_TO_GENERIC_1(CScriptDict_Create, asITypeInfo*);
-WRAP_CDECL_TO_GENERIC_2(CScriptDict_CreateList, asITypeInfo*, void*);
-WRAP_THISCALL_TO_GENERIC_0(CScriptDict, AddRef);
-WRAP_THISCALL_TO_GENERIC_0(CScriptDict, Release);
-WRAP_THISCALL_TO_GENERIC_2(CScriptDict, Set, void*, void*);
-WRAP_THISCALL_TO_GENERIC_2(CScriptDict, SetIfNotExist, void*, void*);
-WRAP_THISCALL_TO_GENERIC_1_RET(CScriptDict, Remove, void*, bool);
-WRAP_THISCALL_TO_GENERIC_1_RET(CScriptDict, RemoveValues, void*, asUINT);
-WRAP_THISCALL_TO_GENERIC_0_RET(CScriptDict, GetSize, asUINT);
-WRAP_THISCALL_TO_GENERIC_0(CScriptDict, Clear);
-WRAP_THISCALL_TO_GENERIC_1_RET(CScriptDict, Get, void*, void*);
-WRAP_THISCALL_TO_GENERIC_2_RET(CScriptDict, GetDefault, void*, void*, void*);
-WRAP_THISCALL_TO_GENERIC_1_RET(CScriptDict, GetKey, asUINT, void*);
-WRAP_THISCALL_TO_GENERIC_1_RET(CScriptDict, GetValue, asUINT, void*);
-WRAP_THISCALL_TO_GENERIC_1_RET(CScriptDict, Exists, void*, bool);
-WRAP_THISCALL_TO_GENERIC_0_RET(CScriptDict, IsEmpty, bool);
-WRAP_THISCALL_TO_GENERIC_0_RET(CScriptDict, GetRefCount, int);
-WRAP_THISCALL_TO_GENERIC_0(CScriptDict, SetFlag);
-WRAP_THISCALL_TO_GENERIC_0_RET(CScriptDict, GetFlag, bool);
-WRAP_THISCALL_TO_GENERIC_1(CScriptDict, EnumReferences, asIScriptEngine*);
-WRAP_THISCALL_TO_GENERIC_1(CScriptDict, ReleaseAllHandles, asIScriptEngine*);
+WRAP_CDECL_TO_GENERIC(bool, CScriptDict_TemplateCallback, asITypeInfo*, bool);
+WRAP_CDECL_TO_GENERIC(CScriptDict*, CScriptDict_Create, asITypeInfo*);
+WRAP_CDECL_TO_GENERIC(CScriptDict*, CScriptDict_CreateList, asITypeInfo*, void*);
+WRAP_THISCALL_TO_GENERIC(void, CScriptDict, AddRef);
+WRAP_THISCALL_TO_GENERIC(void, CScriptDict, Release);
+WRAP_THISCALL_TO_GENERIC(void, CScriptDict, Set, void*, void*);
+WRAP_THISCALL_TO_GENERIC(void, CScriptDict, SetIfNotExist, void*, void*);
+WRAP_THISCALL_TO_GENERIC(bool, CScriptDict, Remove, void*);
+WRAP_THISCALL_TO_GENERIC(asUINT, CScriptDict, RemoveValues, void*);
+WRAP_THISCALL_TO_GENERIC(asUINT, CScriptDict, GetSize);
+WRAP_THISCALL_TO_GENERIC(void, CScriptDict, Clear);
+WRAP_THISCALL_TO_GENERIC(void*, CScriptDict, Get, void*);
+WRAP_THISCALL_TO_GENERIC(void*, CScriptDict, GetDefault, void*, void*);
+WRAP_THISCALL_TO_GENERIC(void*, CScriptDict, GetKey, asUINT);
+WRAP_THISCALL_TO_GENERIC(void*, CScriptDict, GetValue, asUINT);
+WRAP_THISCALL_TO_GENERIC(bool, CScriptDict, Exists, void*);
+WRAP_THISCALL_TO_GENERIC(bool, CScriptDict, IsEmpty);
+WRAP_THISCALL_TO_GENERIC(int, CScriptDict, GetRefCount);
+WRAP_THISCALL_TO_GENERIC(void, CScriptDict, SetFlag);
+WRAP_THISCALL_TO_GENERIC(bool, CScriptDict, GetFlag);
+WRAP_THISCALL_TO_GENERIC(void, CScriptDict, EnumReferences, asIScriptEngine*);
+WRAP_THISCALL_TO_GENERIC(void, CScriptDict, ReleaseAllHandles, asIScriptEngine*);
 
 static void RegisterScriptDict_Generic(asIScriptEngine* engine)
 {

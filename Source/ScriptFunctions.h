@@ -1,9 +1,5 @@
 // Common functions for server, client, mapper
 // Works in scripts compiler
-#ifndef FONLINE_SCRIPT_COMPILER
-# include "SHA/sha1.h"
-# include "SHA/sha2.h"
-#endif
 
 template< class T >
 static Entity* EntityDownCast( T* a )
@@ -45,24 +41,24 @@ static T* EntityUpCast( Entity* a )
     return nullptr;
 }
 
-void Global_Assert( bool condition )
+static void Global_Assert( bool condition )
 {
     if( !condition )
         Script::RaiseException( "Assertion failed" );
 }
 
-void Global_ThrowException( string message )
+static void Global_ThrowException( string message )
 {
     Script::RaiseException( "%s", message.c_str() );
 }
 
-int Global_Random( int min, int max )
+static int Global_Random( int min, int max )
 {
     static Randomizer script_randomizer;
     return script_randomizer.Random( min, max );
 }
 
-void Global_Log( string text )
+static void Global_Log( string text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     Script::Log( text.c_str() );
@@ -71,7 +67,7 @@ void Global_Log( string text )
     #endif
 }
 
-bool Global_StrToInt( string text, int& result )
+static bool Global_StrToInt( string text, int& result )
 {
     if( text.empty() || !Str::IsNumber( text.c_str() ) )
         return false;
@@ -79,7 +75,7 @@ bool Global_StrToInt( string text, int& result )
     return true;
 }
 
-bool Global_StrToFloat( string text, float& result )
+static bool Global_StrToFloat( string text, float& result )
 {
     if( text.empty() )
         return false;
@@ -87,44 +83,44 @@ bool Global_StrToFloat( string text, float& result )
     return true;
 }
 
-uint Global_GetDistantion( ushort hx1, ushort hy1, ushort hx2, ushort hy2 )
+static uint Global_GetDistantion( ushort hx1, ushort hy1, ushort hx2, ushort hy2 )
 {
     return DistGame( hx1, hy1, hx2, hy2 );
 }
 
-uchar Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
+static uchar Global_GetDirection( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
 {
     return GetFarDir( from_hx, from_hy, to_hx, to_hy );
 }
 
-uchar Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset )
+static uchar Global_GetOffsetDir( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float offset )
 {
     return GetFarDir( from_hx, from_hy, to_hx, to_hy, offset );
 }
 
-uint Global_GetTick()
+static uint Global_GetTick()
 {
     return Timer::FastTick();
 }
 
-uint Global_GetAngelScriptProperty( int property )
+static uint Global_GetAngelScriptProperty( int property )
 {
     return (uint) asGetActiveContext()->GetEngine()->GetEngineProperty( (asEEngineProp) property );
 }
 
-bool Global_SetAngelScriptProperty( int property, uint value )
+static bool Global_SetAngelScriptProperty( int property, uint value )
 {
     return asGetActiveContext()->GetEngine()->SetEngineProperty( (asEEngineProp) property, value ) >= 0;
 }
 
-hash Global_GetStrHash( string str )
+static hash Global_GetStrHash( string str )
 {
     if( str.empty() )
         return 0;
     return Str::GetHash( str.c_str() );
 }
 
-string Global_GetHashStr( hash h )
+static string Global_GetHashStr( hash h )
 {
     if( !h )
         return "";
@@ -132,12 +128,12 @@ string Global_GetHashStr( hash h )
     return str ? str : "";
 }
 
-uint Global_DecodeUTF8( string text, uint& length )
+static uint Global_DecodeUTF8( string text, uint& length )
 {
     return Str::DecodeUTF8( text.c_str(), &length );
 }
 
-string Global_EncodeUTF8( uint ucs )
+static string Global_EncodeUTF8( uint ucs )
 {
     char buf[ 5 ];
     uint len = Str::EncodeUTF8( ucs, buf );
@@ -145,7 +141,7 @@ string Global_EncodeUTF8( uint ucs )
     return buf;
 }
 
-uint Global_GetFolderFileNames( string path, string ext, bool include_subdirs, CScriptArray* result )
+static uint Global_GetFolderFileNames( string path, string ext, bool include_subdirs, CScriptArray* result )
 {
     StrVec files;
     FileManager::GetFolderFileNames( path.c_str(), include_subdirs, !ext.empty() ? ext.c_str() : nullptr, files );
@@ -159,12 +155,12 @@ uint Global_GetFolderFileNames( string path, string ext, bool include_subdirs, C
     return (uint) files.size();
 }
 
-bool Global_DeleteFile( string filename )
+static bool Global_DeleteFile( string filename )
 {
     return FileManager::DeleteFile( filename.c_str() );
 }
 
-void Global_CreateDirectoryTree( string path )
+static void Global_CreateDirectoryTree( string path )
 {
     char tmp[ MAX_FOPATH ];
     Str::Copy( tmp, path.c_str() );
@@ -173,28 +169,14 @@ void Global_CreateDirectoryTree( string path )
     CreateDirectoryTree( tmp );
 }
 
-void Global_Yield( uint time )
+static void Global_Yield( uint time )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     Script::SuspendCurrentContext( time );
     #endif
 }
 
-#ifndef FONLINE_SCRIPT_COMPILER
-static size_t WriteMemoryCallback( char* ptr, size_t size, size_t nmemb, void* userdata )
-{
-    string& result = *(string*) userdata;
-    size_t  len = size * nmemb;
-    if( len )
-    {
-        result.resize( result.size() + len );
-        memcpy( &result[ result.size() - len ], ptr, len );
-    }
-    return len;
-}
-#endif
-
-string Global_SHA1( string text )
+static string Global_SHA1( string text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     SHA1_CTX ctx;
@@ -213,7 +195,7 @@ string Global_SHA1( string text )
     #endif
 }
 
-string Global_SHA2( string text )
+static string Global_SHA2( string text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     const uint digest_size = 32;
@@ -230,7 +212,7 @@ string Global_SHA2( string text )
     #endif
 }
 
-void Global_OpenLink( string link )
+static void Global_OpenLink( string link )
 {
     #ifdef FO_WINDOWS
     ShellExecute( nullptr, "open", link.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
@@ -239,7 +221,7 @@ void Global_OpenLink( string link )
     #endif
 }
 
-Item* Global_GetProtoItem( hash pid, CScriptDict* props )
+static Item* Global_GetProtoItem( hash pid, CScriptDict* props )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );

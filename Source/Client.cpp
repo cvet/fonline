@@ -2,7 +2,6 @@
 #include "Client.h"
 #include "Access.h"
 #include "Defence.h"
-#include "ScriptFunctions.h"
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR                  \
@@ -6434,6 +6433,20 @@ void FOClient::OnSendLocationValue( Entity* entity, Property* prop )
 /* Scripts                                                              */
 /************************************************************************/
 
+namespace ClientBind
+{
+    #undef BIND_SERVER
+    #undef BIND_CLIENT
+    #undef BIND_MAPPER
+    #undef BIND_CLASS
+    #undef BIND_ASSERT
+    #undef BIND_DUMMY_DATA
+    #define BIND_CLIENT
+    #define BIND_CLASS    FOClient::SScriptFunc::
+    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
+    #include "ScriptBind.h"
+}
+
 bool FOClient::ReloadScripts()
 {
     WriteLog( "Load scripts...\n" );
@@ -6456,17 +6469,10 @@ bool FOClient::ReloadScripts()
         return false;
     }
 
-    // Properties
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-
     // Bind stuff
-    #define BIND_CLIENT
-    #define BIND_CLASS    FOClient::SScriptFunc::
-    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); bind_errors++; }
-    asIScriptEngine* engine = Script::GetEngine();
-    int              bind_errors = 0;
-    #include "ScriptBind.h"
-
+    asIScriptEngine*      engine = Script::GetEngine();
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
+    int                   bind_errors = ClientBind::Bind( engine, registrators );
     if( bind_errors )
     {
         WriteLog( "Bind fail, errors {}.\n", bind_errors );

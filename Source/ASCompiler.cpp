@@ -19,54 +19,51 @@
 int Compile( const char* target, FileManager& file, const char* path, const char* path_prep, vector< const char* >& defines, vector< const char* >& run_func );
 
 // Server
-#define BIND_SERVER
-#define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); bind_errors++; }
 namespace ServerBind
 {
-    #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
-    {
-        int bind_errors = 0;
-        #include "ScriptBind.h"
-        return bind_errors;
-    }
+    #undef BIND_SERVER
+    #undef BIND_CLIENT
+    #undef BIND_MAPPER
+    #undef BIND_CLASS
+    #undef BIND_ASSERT
+    #undef BIND_DUMMY_DATA
+    #define BIND_SERVER
+    #define BIND_CLASS    BindClass::
+    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); errors++; }
+    #define BIND_DUMMY_DATA
+    #include "ScriptBind.h"
 }
 
 // Client
-#undef BIND_SERVER
-#undef BIND_CLASS
-#undef BIND_ASSERT
-#define BIND_CLIENT
-#define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); bind_errors++; }
 namespace ClientBind
 {
-    #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
-    {
-        int bind_errors = 0;
-        #include "ScriptBind.h"
-        return bind_errors;
-    }
+    #undef BIND_SERVER
+    #undef BIND_CLIENT
+    #undef BIND_MAPPER
+    #undef BIND_CLASS
+    #undef BIND_ASSERT
+    #undef BIND_DUMMY_DATA
+    #define BIND_CLIENT
+    #define BIND_CLASS    BindClass::
+    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); errors++; }
+    #define BIND_DUMMY_DATA
+    #include "ScriptBind.h"
 }
 
 // Mapper
-#undef BIND_CLIENT
-#undef BIND_CLASS
-#undef BIND_ASSERT
-#define BIND_MAPPER
-#define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); bind_errors++; }
 namespace MapperBind
 {
-    #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
-    {
-        int bind_errors = 0;
-        #include "ScriptBind.h"
-        return bind_errors;
-    }
+    #undef BIND_SERVER
+    #undef BIND_CLIENT
+    #undef BIND_MAPPER
+    #undef BIND_CLASS
+    #undef BIND_ASSERT
+    #undef BIND_DUMMY_DATA
+    #define BIND_MAPPER
+    #define BIND_CLASS    BindClass::
+    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line " # x ".\n" ); errors++; }
+    #define BIND_DUMMY_DATA
+    #include "ScriptBind.h"
 }
 
 int main( int argc, char* argv[] )

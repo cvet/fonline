@@ -1,7 +1,6 @@
 #include "Common.h"
 #include "Mapper.h"
 #include "Script.h"
-#include "ScriptFunctions.h"
 #include "ResourceConverter.h"
 
 bool      FOMapper::SpritesCanDraw = false;
@@ -4275,6 +4274,20 @@ bool FOMapper::SaveLogFile()
     return true;
 }
 
+namespace MapperBind
+{
+    #undef BIND_SERVER
+    #undef BIND_CLIENT
+    #undef BIND_MAPPER
+    #undef BIND_CLASS
+    #undef BIND_ASSERT
+    #undef BIND_DUMMY_DATA
+    #define BIND_MAPPER
+    #define BIND_CLASS    FOMapper::SScriptFunc::
+    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
+    #include "ScriptBind.h"
+}
+
 bool FOMapper::InitScriptSystem()
 {
     WriteLog( "Script system initialization...\n" );
@@ -4287,16 +4300,10 @@ bool FOMapper::InitScriptSystem()
         return false;
     }
 
-    // Properties
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-
     // Bind vars and functions, look bind.h
-    asIScriptEngine* engine = Script::GetEngine();
-    #define BIND_MAPPER
-    #define BIND_CLASS    FOMapper::SScriptFunc::
-    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
-    int errors = 0;
-    #include <ScriptBind.h>
+    asIScriptEngine*      engine = Script::GetEngine();
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
+    int                   errors = MapperBind::Bind( engine, registrators );
     if( errors )
         return false;
 

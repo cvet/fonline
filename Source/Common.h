@@ -98,6 +98,8 @@
 #include "AngelScript/sdk/add_on/scriptarray/scriptarray.h"
 #include "AngelScript/sdk/add_on/scriptdictionary/scriptdictionary.h"
 #include "AngelScript/scriptdict.h"
+#include "SHA/sha1.h"
+#include "SHA/sha2.h"
 
 #if defined ( FONLINE_NPCEDITOR ) || defined ( FONLINE_MRFIXIT ) || defined ( FONLINE_CLIENT )
 # define NO_THREADING

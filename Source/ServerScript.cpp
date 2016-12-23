@@ -1,7 +1,6 @@
 #include "Common.h"
 #include "Server.h"
 #include "AngelScript/preprocessor.h"
-#include "ScriptFunctions.h"
 #include "curl/curl.h"
 
 // Global_LoadImage
@@ -71,6 +70,20 @@ static void ASDeepDebugFree( void* ptr )
     free( ptr_ );
 }
 
+namespace ServerBind
+{
+    #undef BIND_SERVER
+    #undef BIND_CLIENT
+    #undef BIND_MAPPER
+    #undef BIND_CLASS
+    #undef BIND_ASSERT
+    #undef BIND_DUMMY_DATA
+    #define BIND_SERVER
+    #define BIND_CLASS    FOServer::SScriptFunc::
+    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); return false; }
+    #include "ScriptBind.h"
+}
+
 bool FOServer::InitScriptSystem()
 {
     WriteLog( "Script system initialization...\n" );
@@ -101,15 +114,11 @@ bool FOServer::InitScriptSystem()
         return false;
     }
 
-    // Properties
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-
     // Bind vars and functions, look bind.h
-    asIScriptEngine* engine = Script::GetEngine();
-    #define BIND_SERVER
-    #define BIND_CLASS    FOServer::SScriptFunc::
-    #define BIND_ASSERT( x )               if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); return false; }
-    #include "ScriptBind.h"
+    asIScriptEngine*      engine = Script::GetEngine();
+    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
+    if( ServerBind::Bind( engine, registrators ) )
+        return false;
 
     // Load script modules
     Script::Undef( nullptr );
@@ -250,22 +259,19 @@ uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critte
 /* Client script processing                                             */
 /************************************************************************/
 
-#undef BIND_SERVER
-#undef BIND_CLASS
-#undef BIND_ASSERT
-#define BIND_CLIENT
-#define BIND_CLASS    BindClass::
-#define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); bind_errors++; }
-
 namespace ClientBind
 {
+    #undef BIND_SERVER
+    #undef BIND_CLIENT
+    #undef BIND_MAPPER
+    #undef BIND_CLASS
+    #undef BIND_ASSERT
+    #undef BIND_DUMMY_DATA
+    #define BIND_CLIENT
+    #define BIND_CLASS    BindClass::
+    #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
     #include "DummyData.h"
-    static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
-    {
-        int bind_errors = 0;
-        #include "ScriptBind.h"
-        return bind_errors;
-    }
+    #include "ScriptBind.h"
 }
 
 bool FOServer::ReloadClientScripts()
@@ -4064,6 +4070,18 @@ uint FOServer::SScriptFunc::Global_GetImageColor( uint index, uint x, uint y )
         break;
     }
     return result;
+}
+
+static size_t WriteMemoryCallback( char* ptr, size_t size, size_t nmemb, void* userdata )
+{
+    string& result = *(string*) userdata;
+    size_t  len = size * nmemb;
+    if( len )
+    {
+        result.resize( result.size() + len );
+        memcpy( &result[ result.size() - len ], ptr, len );
+    }
+    return len;
 }
 
 void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result )
