@@ -157,6 +157,7 @@ class NetConnectionAsio: public NetConnectionImpl
     asio::ip::tcp::socket* socket;
     bool                   writePending;
     uchar                  inBuf[ BufferManager::DefaultBufSize ];
+    asio::error_code       dummyError;
 
     void NextAsyncRead()
     {
@@ -200,8 +201,8 @@ class NetConnectionAsio: public NetConnectionImpl
 
     virtual void DisconnectImpl() override
     {
-        socket->shutdown( asio::ip::tcp::socket::shutdown_receive );
-        socket->close();
+        socket->shutdown( asio::ip::tcp::socket::shutdown_receive, dummyError );
+        socket->close( dummyError );
     }
 
 public:
@@ -212,7 +213,7 @@ public:
         Port = socket->remote_endpoint().port();
 
         if( GameOpt.DisableTcpNagle )
-            socket->set_option( asio::ip::tcp::no_delay( true ) );
+            socket->set_option( asio::ip::tcp::no_delay( true ), dummyError );
         memzero( inBuf, sizeof( inBuf ) );
         writePending = false;
         NextAsyncRead();
@@ -235,7 +236,8 @@ class NetTcpServer: public NetServerBase
 
     void Run()
     {
-        ioService.run();
+        asio::error_code error;
+        ioService.run( error );
     }
 
     void AcceptNext()
@@ -330,7 +332,11 @@ public:
         Port = connection->get_raw_socket().remote_endpoint().port();
 
         if( GameOpt.DisableTcpNagle )
-            connection->get_raw_socket().set_option( asio::ip::tcp::no_delay( true ) );
+        {
+            asio::error_code error;
+            connection->get_raw_socket().set_option( asio::ip::tcp::no_delay( true ), error );
+        }
+
         connection->set_message_handler( websocketpp::lib::bind( &NetConnectionWS::OnMessage, this, websocketpp::lib::placeholders::_2 ) );
         connection->set_fail_handler( websocketpp::lib::bind( &NetConnectionWS::OnFail, this ) );
         connection->set_close_handler( websocketpp::lib::bind( &NetConnectionWS::OnClose, this ) );
