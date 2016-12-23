@@ -1,4 +1,5 @@
 #include "Script.h"
+#include "generic_helpers.h"
 
 #define REGISTER_FUNCTION( decl, func, conv )                                                            \
     do                                                                                                   \
@@ -33,37 +34,17 @@
         RUNTIME_ASSERT( r >= 0 );                                                                                    \
     } while( 0 )
 
-#define CREATE_GENERIC_FUNCTION_1( func, arg1 )                    \
-    static void func ## _Generic( asIScriptGeneric * gen ) { func( \
-                                                                 *(arg1*) gen->GetArgAddress( 0 ) ); }
-#define CREATE_GENERIC_FUNCTION_2( func, arg1, arg2 )              \
-    static void func ## _Generic( asIScriptGeneric * gen ) { func( \
-                                                                 *(arg1*) gen->GetArgAddress( 0 ), *(arg2*) gen->GetArgAddress( 1 ) ); }
-#define CREATE_GENERIC_FUNCTION_3( func, arg1, arg2, arg3 )        \
-    static void func ## _Generic( asIScriptGeneric * gen ) { func( \
-                                                                 *(arg1*) gen->GetArgAddress( 0 ), *(arg2*) gen->GetArgAddress( 1 ), *(arg3*) gen->GetArgAddress( 2 ) ); }
-
-#define CREATE_GENERIC_FUNCTION_1_RET( func, arg1, ret )                                                         \
-    static void func ## _Generic( asIScriptGeneric * gen ) { new ( gen->GetAddressOfReturnLocation() )ret( func( \
-                                                                                                               *(arg1*) gen->GetArgAddress( 0 ) ) ); }
-#define CREATE_GENERIC_FUNCTION_2_RET( func, arg1, arg2, ret )                                                   \
-    static void func ## _Generic( asIScriptGeneric * gen ) { new ( gen->GetAddressOfReturnLocation() )ret( func( \
-                                                                                                               *(arg1*) gen->GetArgAddress( 0 ), *(arg2*) gen->GetArgAddress( 1 ) ) ); }
-#define CREATE_GENERIC_FUNCTION_3_RET( func, arg1, arg2, arg3, ret )                                             \
-    static void func ## _Generic( asIScriptGeneric * gen ) { new ( gen->GetAddressOfReturnLocation() )ret( func( \
-                                                                                                               *(arg1*) gen->GetArgAddress( 0 ), *(arg2*) gen->GetArgAddress( 1 ), *(arg3*) gen->GetArgAddress( 2 ) ) ); }
-
 static void CScriptArray_InsertFirst( CScriptArray* arr, void* value )
 {
     arr->InsertAt( 0, value );
 }
-CREATE_GENERIC_FUNCTION_2( CScriptArray_InsertFirst, CScriptArray *, void* );
+WRAP_CDECL_TO_GENERIC_2( CScriptArray_InsertFirst, CScriptArray *, void* );
 
 static void CScriptArray_RemoveFirst( CScriptArray* arr )
 {
     arr->RemoveAt( 0 );
 }
-CREATE_GENERIC_FUNCTION_1( CScriptArray_RemoveFirst, CScriptArray* );
+WRAP_CDECL_TO_GENERIC_1( CScriptArray_RemoveFirst, CScriptArray* );
 
 static void CScriptArray_Grow( CScriptArray* arr, asUINT numElements )
 {
@@ -72,7 +53,7 @@ static void CScriptArray_Grow( CScriptArray* arr, asUINT numElements )
 
     arr->Resize( arr->GetSize() + numElements );
 }
-CREATE_GENERIC_FUNCTION_2( CScriptArray_Grow, CScriptArray *, asUINT );
+WRAP_CDECL_TO_GENERIC_2( CScriptArray_Grow, CScriptArray *, asUINT );
 
 static void CScriptArray_Reduce( CScriptArray* arr, asUINT numElements )
 {
@@ -89,32 +70,32 @@ static void CScriptArray_Reduce( CScriptArray* arr, asUINT numElements )
     }
     arr->Resize( size - numElements );
 }
-CREATE_GENERIC_FUNCTION_2( CScriptArray_Reduce, CScriptArray *, asUINT );
+WRAP_CDECL_TO_GENERIC_2( CScriptArray_Reduce, CScriptArray *, asUINT );
 
 static void* CScriptArray_First( CScriptArray* arr )
 {
     return arr->At( 0 );
 }
-CREATE_GENERIC_FUNCTION_1_RET( CScriptArray_First, CScriptArray *, void* );
+WRAP_CDECL_TO_GENERIC_1_RET( CScriptArray_First, CScriptArray *, void* );
 
 static void* CScriptArray_Last( CScriptArray* arr )
 {
     return arr->At( arr->GetSize() - 1 );
 }
-CREATE_GENERIC_FUNCTION_1_RET( CScriptArray_Last, CScriptArray *, void* );
+WRAP_CDECL_TO_GENERIC_1_RET( CScriptArray_Last, CScriptArray *, void* );
 
 static void CScriptArray_Clear( CScriptArray* arr )
 {
     if( arr->GetSize() > 0 )
         arr->Resize( 0 );
 }
-CREATE_GENERIC_FUNCTION_1( CScriptArray_Clear, CScriptArray* );
+WRAP_CDECL_TO_GENERIC_1( CScriptArray_Clear, CScriptArray* );
 
 static bool CScriptArray_Exists( const CScriptArray* arr, void* value )
 {
     return arr->Find( 0, value ) != -1;
 }
-CREATE_GENERIC_FUNCTION_2_RET( CScriptArray_Exists, const CScriptArray *, void*, bool );
+WRAP_CDECL_TO_GENERIC_2_RET( CScriptArray_Exists, const CScriptArray *, void*, bool );
 
 static CScriptArray* CScriptArray_Clone( asITypeInfo* ti, const CScriptArray** other )
 {
@@ -130,7 +111,7 @@ static CScriptArray* CScriptArray_Clone( asITypeInfo* ti, const CScriptArray** o
     *clone = **other;
     return clone;
 }
-CREATE_GENERIC_FUNCTION_2_RET( CScriptArray_Clone, asITypeInfo *, const CScriptArray * *, CScriptArray* );
+WRAP_CDECL_TO_GENERIC_2_RET( CScriptArray_Clone, asITypeInfo *, const CScriptArray * *, CScriptArray* );
 
 static void CScriptArray_Set( CScriptArray* arr, const CScriptArray** other )
 {
@@ -144,7 +125,7 @@ static void CScriptArray_Set( CScriptArray* arr, const CScriptArray** other )
 
     *arr = **other;
 }
-CREATE_GENERIC_FUNCTION_2( CScriptArray_Set, CScriptArray *, const CScriptArray * * );
+WRAP_CDECL_TO_GENERIC_2( CScriptArray_Set, CScriptArray *, const CScriptArray * * );
 
 static void CScriptArray_InsertArrAt( CScriptArray* arr, uint index, const CScriptArray** other )
 {
@@ -158,7 +139,7 @@ static void CScriptArray_InsertArrAt( CScriptArray* arr, uint index, const CScri
 
     arr->InsertAt( index, **other );
 }
-CREATE_GENERIC_FUNCTION_3( CScriptArray_InsertArrAt, CScriptArray *, uint, const CScriptArray * * );
+WRAP_CDECL_TO_GENERIC_3( CScriptArray_InsertArrAt, CScriptArray *, uint, const CScriptArray * * );
 
 static void CScriptArray_InsertArrFirst( CScriptArray* arr, const CScriptArray** other )
 {
@@ -172,7 +153,7 @@ static void CScriptArray_InsertArrFirst( CScriptArray* arr, const CScriptArray**
 
     arr->InsertAt( 0, **other );
 }
-CREATE_GENERIC_FUNCTION_2( CScriptArray_InsertArrFirst, CScriptArray *, const CScriptArray * * );
+WRAP_CDECL_TO_GENERIC_2( CScriptArray_InsertArrFirst, CScriptArray *, const CScriptArray * * );
 
 static void CScriptArray_InsertArrLast( CScriptArray* arr, const CScriptArray** other )
 {
@@ -186,7 +167,7 @@ static void CScriptArray_InsertArrLast( CScriptArray* arr, const CScriptArray** 
 
     arr->InsertAt( arr->GetSize() - 1, **other );
 }
-CREATE_GENERIC_FUNCTION_2( CScriptArray_InsertArrLast, CScriptArray *, const CScriptArray * * );
+WRAP_CDECL_TO_GENERIC_2( CScriptArray_InsertArrLast, CScriptArray *, const CScriptArray * * );
 
 static bool CScriptArray_Equals( CScriptArray* arr, const CScriptArray** other )
 {
@@ -200,7 +181,7 @@ static bool CScriptArray_Equals( CScriptArray* arr, const CScriptArray** other )
 
     return *arr == **other;
 }
-CREATE_GENERIC_FUNCTION_2_RET( CScriptArray_Equals, CScriptArray *, const CScriptArray * *, bool );
+WRAP_CDECL_TO_GENERIC_2_RET( CScriptArray_Equals, CScriptArray *, const CScriptArray * *, bool );
 
 void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
 {
@@ -231,7 +212,7 @@ static CScriptDict* ScriptDict_Clone( asITypeInfo* ti, const CScriptDict** other
         *clone = **other;
     return clone;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptDict_Clone, asITypeInfo *, const CScriptDict * *, CScriptDict* );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptDict_Clone, asITypeInfo *, const CScriptDict * *, CScriptDict* );
 
 static bool ScriptDict_Equals( CScriptDict* dict, const CScriptDict** other )
 {
@@ -245,7 +226,7 @@ static bool ScriptDict_Equals( CScriptDict* dict, const CScriptDict** other )
 
     return *dict == **other;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptDict_Equals, CScriptDict *, const CScriptDict * *, bool );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptDict_Equals, CScriptDict *, const CScriptDict * *, bool );
 
 void Script::RegisterScriptDictExtensions( asIScriptEngine* engine )
 {
@@ -318,7 +299,7 @@ static void ScriptString_Clear( string& str )
 {
     str.clear();
 }
-CREATE_GENERIC_FUNCTION_1( ScriptString_Clear, string );
+WRAP_CDECL_TO_GENERIC_1( ScriptString_Clear, string );
 
 static string ScriptString_SubString( const string& str, int start, int count )
 {
@@ -328,7 +309,7 @@ static string ScriptString_SubString( const string& str, int start, int count )
         IndexUTF8ToRaw( str, count, NULL, start );
     return str.substr( start, count >= 0 ? count : std::string::npos );
 }
-CREATE_GENERIC_FUNCTION_3_RET( ScriptString_SubString, const string, int, int, string );
+WRAP_CDECL_TO_GENERIC_3_RET( ScriptString_SubString, const string, int, int, string );
 
 static int ScriptString_FindFirst( const string& str, const string& sub, int start )
 {
@@ -337,7 +318,7 @@ static int ScriptString_FindFirst( const string& str, const string& sub, int sta
     int pos = (int) str.find( sub, start );
     return pos != -1 ? IndexRawToUTF8( str, pos ) : -1;
 }
-CREATE_GENERIC_FUNCTION_3_RET( ScriptString_FindFirst, const string, const string, int, int );
+WRAP_CDECL_TO_GENERIC_3_RET( ScriptString_FindFirst, const string, const string, int, int );
 
 static int ScriptString_FindLast( const string& str, const string& sub, int start )
 {
@@ -346,7 +327,7 @@ static int ScriptString_FindLast( const string& str, const string& sub, int star
     int pos = (int) str.rfind( sub );
     return pos != -1 && pos >= start ? IndexRawToUTF8( str, pos ) : -1;
 }
-CREATE_GENERIC_FUNCTION_3_RET( ScriptString_FindLast, const string, const string, int, int );
+WRAP_CDECL_TO_GENERIC_3_RET( ScriptString_FindLast, const string, const string, int, int );
 
 static int ScriptString_FindFirstOf( const string& str, const string& chars, int start )
 {
@@ -355,7 +336,7 @@ static int ScriptString_FindFirstOf( const string& str, const string& chars, int
     int pos = (int) str.find_first_of( chars, start );
     return pos != -1 ? IndexRawToUTF8( str, pos ) : -1;
 }
-CREATE_GENERIC_FUNCTION_3_RET( ScriptString_FindFirstOf, const string, const string, int, int );
+WRAP_CDECL_TO_GENERIC_3_RET( ScriptString_FindFirstOf, const string, const string, int, int );
 
 static int ScriptString_FindFirstNotOf( const string& str, const string& chars, int start )
 {
@@ -364,7 +345,7 @@ static int ScriptString_FindFirstNotOf( const string& str, const string& chars, 
     int pos =  (int) str.find_first_not_of( chars, start );
     return pos != -1 ? IndexRawToUTF8( str, pos ) : -1;
 }
-CREATE_GENERIC_FUNCTION_3_RET( ScriptString_FindFirstNotOf, const string, const string, int, int );
+WRAP_CDECL_TO_GENERIC_3_RET( ScriptString_FindFirstNotOf, const string, const string, int, int );
 
 static int ScriptString_FindLastOf( const string& str, const string& chars, int start )
 {
@@ -373,7 +354,7 @@ static int ScriptString_FindLastOf( const string& str, const string& chars, int 
     int pos = (int) str.find_last_of( chars );
     return pos != -1 && pos >= start ? IndexRawToUTF8( str, pos ) : -1;
 }
-CREATE_GENERIC_FUNCTION_3_RET( ScriptString_FindLastOf, const string, const string, int, int );
+WRAP_CDECL_TO_GENERIC_3_RET( ScriptString_FindLastOf, const string, const string, int, int );
 
 static int ScriptString_FindLastNotOf( const string& str, const string& chars, int start )
 {
@@ -382,7 +363,7 @@ static int ScriptString_FindLastNotOf( const string& str, const string& chars, i
     int pos = (int) str.find_last_not_of( chars, start );
     return pos != -1 && pos >= start ? IndexRawToUTF8( str, pos ) : -1;
 }
-CREATE_GENERIC_FUNCTION_3_RET( ScriptString_FindLastNotOf, const string, const string, int, int );
+WRAP_CDECL_TO_GENERIC_3_RET( ScriptString_FindLastNotOf, const string, const string, int, int );
 
 static string ScriptString_GetAt( const string& str, int i )
 {
@@ -399,7 +380,7 @@ static string ScriptString_GetAt( const string& str, int i )
 
     return string( str.c_str() + i, length );
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptString_GetAt, const string, int, string );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptString_GetAt, const string, int, string );
 
 static void ScriptString_SetAt( string& str, int i, string& value )
 {
@@ -417,38 +398,38 @@ static void ScriptString_SetAt( string& str, int i, string& value )
     if( value.length() )
         str.insert( i, value.c_str() );
 }
-CREATE_GENERIC_FUNCTION_3( ScriptString_SetAt, string, int, string );
+WRAP_CDECL_TO_GENERIC_3( ScriptString_SetAt, string, int, string );
 
 static uint ScriptString_Length( const string& str )
 {
     return Str::LengthUTF8( str.c_str() );
 }
-CREATE_GENERIC_FUNCTION_1_RET( ScriptString_Length, const string, uint );
+WRAP_CDECL_TO_GENERIC_1_RET( ScriptString_Length, const string, uint );
 
 static uint ScriptString_RawLength( const string& str )
 {
     return (uint) str.length();
 }
-CREATE_GENERIC_FUNCTION_1_RET( ScriptString_RawLength, const string, uint );
+WRAP_CDECL_TO_GENERIC_1_RET( ScriptString_RawLength, const string, uint );
 
 static void ScriptString_RawResize( string& str, uint length )
 {
     str.resize( length );
 }
-CREATE_GENERIC_FUNCTION_2( ScriptString_RawResize, string, uint );
+WRAP_CDECL_TO_GENERIC_2( ScriptString_RawResize, string, uint );
 
 static uchar ScriptString_RawGet( const string& str, uint index )
 {
     return index < (uint) str.length() ? str[ index ] : 0;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptString_RawGet, string, uint, uchar );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptString_RawGet, string, uint, uchar );
 
 static void ScriptString_RawSet( string& str, uint index, uchar value )
 {
     if( index < (uint) str.length() )
         str[ index ] = (char) value;
 }
-CREATE_GENERIC_FUNCTION_3( ScriptString_RawSet, string, int, uchar );
+WRAP_CDECL_TO_GENERIC_3( ScriptString_RawSet, string, int, uchar );
 
 static int ScriptString_ToInt( const string& str, int defaultValue )
 {
@@ -473,7 +454,7 @@ static int ScriptString_ToInt( const string& str, int defaultValue )
 
     return result;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptString_ToInt, const string, int, int );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptString_ToInt, const string, int, int );
 
 static float ScriptString_ToFloat( const string& str, float defaultValue )
 {
@@ -494,7 +475,7 @@ static float ScriptString_ToFloat( const string& str, float defaultValue )
 
     return result;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptString_ToFloat, const string, float, float );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptString_ToFloat, const string, float, float );
 
 static bool ScriptString_StartsWith( const string& str, const string& other )
 {
@@ -502,7 +483,7 @@ static bool ScriptString_StartsWith( const string& str, const string& other )
         return false;
     return str.compare( 0, other.length(), other ) == 0;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptString_StartsWith, const string, const string, bool );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptString_StartsWith, const string, const string, bool );
 
 static bool ScriptString_EndsWith( const string& str, const string& other )
 {
@@ -510,7 +491,7 @@ static bool ScriptString_EndsWith( const string& str, const string& other )
         return false;
     return str.compare( str.length() - other.length(), other.length(), other ) == 0;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptString_EndsWith, const string, const string, bool );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptString_EndsWith, const string, const string, bool );
 
 static string ScriptString_Lower( const string& str )
 {
@@ -518,7 +499,7 @@ static string ScriptString_Lower( const string& str )
     Str::LowerUTF8( (char*) result.c_str() );
     return result;
 }
-CREATE_GENERIC_FUNCTION_1_RET( ScriptString_Lower, const string, string );
+WRAP_CDECL_TO_GENERIC_1_RET( ScriptString_Lower, const string, string );
 
 static string ScriptString_Upper( const string& str )
 {
@@ -526,7 +507,7 @@ static string ScriptString_Upper( const string& str )
     Str::UpperUTF8( (char*) result.c_str() );
     return result;
 }
-CREATE_GENERIC_FUNCTION_1_RET( ScriptString_Upper, const string, string );
+WRAP_CDECL_TO_GENERIC_1_RET( ScriptString_Upper, const string, string );
 
 static CScriptArray* ScriptString_Split( const string& delim, const string& str )
 {
@@ -551,7 +532,7 @@ static CScriptArray* ScriptString_Split( const string& delim, const string& str 
 
     return array;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptString_Split, const string, const string, CScriptArray* );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptString_Split, const string, const string, CScriptArray* );
 
 static string ScriptString_Join( const CScriptArray** parray, const string& delim )
 {
@@ -581,7 +562,7 @@ static string ScriptString_Join( const CScriptArray** parray, const string& deli
 
     return str;
 }
-CREATE_GENERIC_FUNCTION_2_RET( ScriptString_Join, const CScriptArray * *, const string, string );
+WRAP_CDECL_TO_GENERIC_2_RET( ScriptString_Join, const CScriptArray * *, const string, string );
 
 void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
 {

@@ -32,19 +32,19 @@ public:
     virtual bool operator==(const CScriptDict&) const;
 
     // Dict manipulation
-    virtual asUINT  GetSize() const;
-    virtual bool  IsEmpty() const;
-    virtual void  Set(void* key, void* value);
-    virtual void  SetIfNotExist(void* key, void* value);
-    virtual bool  Remove(void* key);
-    virtual asUINT  RemoveValues(void* value);
-    virtual void  Clear();
-    virtual void* Get(void* key);
-    virtual void* GetDefault(void* key, void* defaultValue);
-    virtual void* GetKey(asUINT index);
-    virtual void* GetValue(asUINT index);
-    virtual bool  Exists(void* key) const;
-    virtual void  GetMap(std::vector< std::pair< void*, void* > >& data);
+    virtual asUINT GetSize() const;
+    virtual bool   IsEmpty() const;
+    virtual void   Set(void* key, void* value);
+    virtual void   SetIfNotExist(void* key, void* value);
+    virtual bool   Remove(void* key);
+    virtual asUINT RemoveValues(void* value);
+    virtual void   Clear();
+    virtual void*  Get(void* key);
+    virtual void*  GetDefault(void* key, void* defaultValue);
+    virtual void*  GetKey(asUINT index);
+    virtual void*  GetValue(asUINT index);
+    virtual bool   Exists(void* key) const;
+    virtual void   GetMap(std::vector< std::pair< void*, void* > >& data);
 
     // GC methods
     virtual int  GetRefCount();
