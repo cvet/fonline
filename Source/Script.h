@@ -9,6 +9,7 @@
 #include "preprocessor.h"
 #include <vector>
 #include <string>
+#include "generic_helpers.h"
 
 #define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( error, ## __VA_ARGS__ ); return; } while( 0 )
 #define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( error, ## __VA_ARGS__ ); return 0; } while( 0 )
@@ -77,7 +78,6 @@ public:
 
     static void HandleRpc( void* context );
 
-    static bool        IsMaxPortability();
     static const char* GetActiveFuncName();
 
     static void Watcher( void* );

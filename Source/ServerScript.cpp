@@ -270,7 +270,7 @@ namespace ClientBind
     #define BIND_CLIENT
     #define BIND_CLASS    BindClass::
     #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
-    #include "DummyData.h"
+    #define BIND_DUMMY_DATA
     #include "ScriptBind.h"
 }
 

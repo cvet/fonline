@@ -193,6 +193,7 @@ list( REMOVE_ITEM THEORA_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${THEORA_DIR}/lib/e
 source_group( "ThirdParty\\theora" FILES ${THEORA_SOURCE} )
 include_directories( "${THEORA_DIR}/include" )
 
+add_definitions( "-DAS_NO_EXCEPTIONS -DAS_NO_THREADS -DAS_MAX_PORTABILITY" )
 set( ANGEL_SCRIPT_DIR "AngelScript" )
 add_subdirectory( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/projects/cmake" )
 add_subdirectory( "${ANGEL_SCRIPT_DIR}" )
