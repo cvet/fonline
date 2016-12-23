@@ -5,7 +5,7 @@
     do                                                                                                   \
     {                                                                                                    \
         int r;                                                                                           \
-        if( !max_poratbility )                                                                           \
+        if( !Script::IsMaxPortability() )                                                                \
             r = engine->RegisterGlobalFunction( decl, asFUNCTION( func ), conv );                        \
         else                                                                                             \
             r = engine->RegisterGlobalFunction( decl, asFUNCTION( func ## _Generic ), asCALL_GENERIC );  \
@@ -16,7 +16,7 @@
     do                                                                                                       \
     {                                                                                                        \
         int r;                                                                                               \
-        if( !max_poratbility )                                                                               \
+        if( !Script::IsMaxPortability() )                                                                    \
             r = engine->RegisterObjectMethod( type, decl, asFUNCTION( func ), conv );                        \
         else                                                                                                 \
             r = engine->RegisterObjectMethod( type, decl, asFUNCTION( func ## _Generic ), asCALL_GENERIC );  \
@@ -27,7 +27,7 @@
     do                                                                                                               \
     {                                                                                                                \
         int r;                                                                                                       \
-        if( !max_poratbility )                                                                                       \
+        if( !Script::IsMaxPortability() )                                                                            \
             r = engine->RegisterObjectBehaviour( type, beh, decl, asFUNCTION( func ), conv );                        \
         else                                                                                                         \
             r = engine->RegisterObjectBehaviour( type, beh, decl, asFUNCTION( func ## _Generic ), asCALL_GENERIC );  \
@@ -185,8 +185,6 @@ WRAP_CDECL_TO_GENERIC( bool, CScriptArray_Equals, CScriptArray *, const CScriptA
 
 void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
 {
-    bool max_poratbility = strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) != nullptr;
-
     REGISTER_METHOD( "array<T>", "void insertFirst(const T&in)", CScriptArray_InsertFirst, asCALL_CDECL_OBJFIRST );
     REGISTER_METHOD( "array<T>", "void removeFirst()", CScriptArray_RemoveFirst, asCALL_CDECL_OBJFIRST );
     REGISTER_METHOD( "array<T>", "void grow(uint)", CScriptArray_Grow, asCALL_CDECL_OBJFIRST );
@@ -230,8 +228,6 @@ WRAP_CDECL_TO_GENERIC( bool, ScriptDict_Equals, CScriptDict *, const CScriptDict
 
 void Script::RegisterScriptDictExtensions( asIScriptEngine* engine )
 {
-    bool max_poratbility = strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) != nullptr;
-
     REGISTER_BEHAVIOUR( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>&in)", ScriptDict_Clone, asCALL_CDECL );
     REGISTER_METHOD( "dict<T1,T2>", "bool equals(const dict<T1,T2>&in)", ScriptDict_Equals, asCALL_CDECL_OBJFIRST );
 }
@@ -566,8 +562,6 @@ WRAP_CDECL_TO_GENERIC( string, ScriptString_Join, const CScriptArray * *, const 
 
 void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
 {
-    bool max_poratbility = strstr( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) != nullptr;
-
     REGISTER_METHOD( "string", "void clear()", ScriptString_Clear, asCALL_CDECL_OBJFIRST );
 
     REGISTER_METHOD( "string", "uint length() const", ScriptString_Length, asCALL_CDECL_OBJFIRST );

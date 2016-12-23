@@ -11,6 +11,7 @@
 #include "AngelScript/sdk/add_on/weakref/weakref.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include <strstream>
+#include "generic_helpers.h"
 
 #if defined ( FO_X86 ) && !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB )
 # define ALLOW_NATIVE_CALLS
@@ -98,6 +99,10 @@ static bool   ScriptWatcherFinish = false;
 static uint   RunTimeoutAbort = 600000;   // 10 minutes
 static uint   RunTimeoutMessage = 300000; // 5 minutes
 #endif
+
+WRAP_CDECL_TO_GENERIC_NAMED( void, Script::CallbackMessage, CallbackMessage, asSMessageInfo *, void* );
+WRAP_CDECL_TO_GENERIC_NAMED( void, Script::CallbackException, CallbackException, asIScriptContext *, void* );
+WRAP_CDECL_TO_GENERIC_NAMED( void, Script::ProfilerContextCallback, ProfilerContextCallback, asIScriptContext *, void* );
 
 bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls,
                    uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display )
@@ -723,7 +728,10 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
         return nullptr;
     }
 
-    engine->SetMessageCallback( asFUNCTION( CallbackMessage ), nullptr, asCALL_CDECL );
+    if( !IsMaxPortability() )
+        engine->SetMessageCallback( asFUNCTION( CallbackMessage ), nullptr, asCALL_CDECL );
+    else
+        engine->SetMessageCallback( asFUNCTION( CallbackMessage_Generic ), nullptr, asCALL_GENERIC );
 
     engine->SetEngineProperty( asEP_ALLOW_UNSAFE_REFERENCES, true );
     engine->SetEngineProperty( asEP_USE_CHARACTER_LITERALS, true );
@@ -780,7 +788,12 @@ void Script::CreateContext()
 {
     asIScriptContext* ctx = Engine->CreateContext();
     RUNTIME_ASSERT( ctx );
-    int               r = ctx->SetExceptionCallback( asFUNCTION( CallbackException ), nullptr, asCALL_CDECL );
+
+    int r;
+    if( !IsMaxPortability() )
+        r = ctx->SetExceptionCallback( asFUNCTION( CallbackException ), nullptr, asCALL_CDECL );
+    else
+        r = ctx->SetExceptionCallback( asFUNCTION( CallbackException_Generic ), nullptr, asCALL_GENERIC );
     RUNTIME_ASSERT( r >= 0 );
 
     ContextData* ctx_data = new ContextData();
@@ -789,7 +802,13 @@ void Script::CreateContext()
 
     EngineData* edata = (EngineData*) Engine->GetUserData();
     if( edata->Profiler )
-        ctx->SetLineCallback( asFUNCTION( ProfilerContextCallback ), edata->Profiler, asCALL_CDECL );
+    {
+        if( !IsMaxPortability() )
+            r = ctx->SetLineCallback( asFUNCTION( ProfilerContextCallback ), edata->Profiler, asCALL_CDECL );
+        else
+            r = ctx->SetLineCallback( asFUNCTION( ProfilerContextCallback_Generic ), edata->Profiler, asCALL_GENERIC );
+        RUNTIME_ASSERT( r >= 0 );
+    }
 
     FreeContexts.push_back( ctx );
 }
@@ -1010,6 +1029,12 @@ void Script::HandleRpc( void* context )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     edata->PragmaCB->HandleRpc( context );
+}
+
+bool Script::IsMaxPortability()
+{
+    static bool max_portability = ( Str::Substring( asGetLibraryOptions(), "AS_MAX_PORTABILITY" ) != nullptr );
+    return max_portability;
 }
 
 const char* Script::GetActiveFuncName()

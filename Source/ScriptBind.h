@@ -10,10 +10,10 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     int errors = 0;
     BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
     BIND_ASSERT( engine->RegisterTypedef( "resource", "uint" ) );
-// Todo: register new type with automating string - number convertation, exclude GetStrHash
-// BIND_ASSERT( engine->RegisterObjectType( "hash", 0, asOBJ_VALUE | asOBJ_POD ) );
+    // Todo: register new type with automating string - number convertation, exclude GetStrHash
+    // BIND_ASSERT( engine->RegisterObjectType( "hash", 0, asOBJ_VALUE | asOBJ_POD ) );
 
-// Entity
+    // Entity
     #define REGISTER_ENTITY( class_name )                                                                                                         \
         BIND_ASSERT( engine->RegisterObjectType( class_name, 0, asOBJ_REF ) );                                                                    \
         BIND_ASSERT( engine->RegisterObjectBehaviour( class_name, asBEHAVE_ADDREF, "void f()", asMETHOD( Entity, AddRef ), asCALL_THISCALL ) );   \
@@ -23,8 +23,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
         BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const bool IsDestroyed", OFFSETOF( Entity, IsDestroyed ) ) );                   \
         BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const bool IsDestroying", OFFSETOF( Entity, IsDestroying ) ) );                 \
         BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const int RefCounter", OFFSETOF( Entity, RefCounter ) ) );
-/*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "Entity@ Parent", OFFSETOF( Entity, Parent ) ) );*/
-/*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const array<Entity@> Children", OFFSETOF( Entity, Children ) ) );*/
+    /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "Entity@ Parent", OFFSETOF( Entity, Parent ) ) );*/
+    /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const array<Entity@> Children", OFFSETOF( Entity, Children ) ) );*/
     #define REGISTER_ENTITY_CAST( class_name, real_class )                                                                                                                   \
         BIND_ASSERT( engine->RegisterObjectMethod( "Entity", class_name "@ opCast()", asFUNCTION( ( EntityUpCast< real_class >) ), asCALL_CDECL_OBJFIRST ) );                \
         BIND_ASSERT( engine->RegisterObjectMethod( "Entity", "const " class_name "@ opCast() const", asFUNCTION( ( EntityUpCast< real_class >) ), asCALL_CDECL_OBJFIRST ) ); \
@@ -32,11 +32,11 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
         BIND_ASSERT( engine->RegisterObjectMethod( class_name, "const Entity@ opImplCast() const", asFUNCTION( ( EntityDownCast< real_class >) ), asCALL_CDECL_OBJFIRST ) );
     REGISTER_ENTITY( "Entity" );
 
-// Global vars
+    // Global vars
     BIND_ASSERT( engine->RegisterObjectType( "GlobalVars", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "GlobalVars@ Globals", &Globals ) );
 
-// Map and location for client and mapper
+    // Map and location for client and mapper
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
     REGISTER_ENTITY( "Map" );
     REGISTER_ENTITY_CAST( "Map", Map );
@@ -47,9 +47,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #endif
 
     #ifdef BIND_SERVER
-/************************************************************************/
-/* Types                                                                */
-/************************************************************************/
+    /************************************************************************/
+    /* Types                                                                */
+    /************************************************************************/
     REGISTER_ENTITY( "Item" );
     REGISTER_ENTITY_CAST( "Item", Item );
     REGISTER_ENTITY( "Critter" );
@@ -63,13 +63,13 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_ADDREF, "void f()", asMETHOD( AIDataPlane, AddRef ), asCALL_THISCALL ) );
     BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_RELEASE, "void f()", asMETHOD( AIDataPlane, Release ), asCALL_THISCALL ) );
 
-/************************************************************************/
-/* NpcPlane                                                             */
-/************************************************************************/
+    /************************************************************************/
+    /* NpcPlane                                                             */
+    /************************************************************************/
     BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Type", OFFSETOF( AIDataPlane, Type ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Priority", OFFSETOF( AIDataPlane, Priority ) ) );
 
-// BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "NpcPlane@ Child", OFFSETOF( AIDataPlane, Type ) ) );
+    // BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "NpcPlane@ Child", OFFSETOF( AIDataPlane, Type ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Identifier", OFFSETOF( AIDataPlane, Identifier ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint IdentifierExt", OFFSETOF( AIDataPlane, IdentifierExt ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Run", OFFSETOF( AIDataPlane, Pick.IsRun ) ) );
@@ -100,10 +100,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterFuncdef( "void NpcPlaneMiscFunc(Critter@+)" ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "bool Misc_SetScript(NpcPlaneMiscFunc@+ func)", asFUNCTION( BIND_CLASS NpcPlane_Misc_SetScript ), asCALL_CDECL_OBJFIRST ) );
 
-/************************************************************************/
-/* Item                                                                 */
-/************************************************************************/
-
+    /************************************************************************/
+    /* Item                                                                 */
+    /************************************************************************/
     BIND_ASSERT( engine->RegisterFuncdef( "void ItemInitFunc(Item@+, bool)" ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetScript(ItemInitFunc@+ func)", asFUNCTION( BIND_CLASS Item_SetScript ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddItem(hash protoId, uint count, uint stackId)", asFUNCTION( BIND_CLASS Item_AddItem ), asCALL_CDECL_OBJFIRST ) );
@@ -114,9 +113,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint fromFrame, uint toFrame)", asFUNCTION( BIND_CLASS Item_Animate ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallSceneryFunction(Critter@+ cr, Item@+ item, int param) const", asFUNCTION( BIND_CLASS Item_CallSceneryFunction ), asCALL_CDECL_OBJFIRST ) );
 
-/************************************************************************/
-/* Critter                                                              */
-/************************************************************************/
+    /************************************************************************/
+    /* Critter                                                              */
+    /************************************************************************/
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsPlayer() const", asFUNCTION( BIND_CLASS Crit_IsPlayer ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsNpc() const", asFUNCTION( BIND_CLASS Crit_IsNpc ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "int GetAccess() const", asFUNCTION( BIND_CLASS Cl_GetAccess ), asCALL_CDECL_OBJFIRST ) );
@@ -221,13 +220,13 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint EraseTimeEvents(int identifier)", asFUNCTION( BIND_CLASS Crit_EraseTimeEvents ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint EraseTimeEvents(array<int>@+ identifiers)", asFUNCTION( BIND_CLASS Crit_EraseTimeEventsArr ), asCALL_CDECL_OBJFIRST ) );
 
-// Parameters
+    // Parameters
     BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const string Name", OFFSETOF( Critter, Name ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const bool IsRunning", OFFSETOF( Critter, IsRunning ) ) );
 
-/************************************************************************/
-/* Map                                                                  */
-/************************************************************************/
+    /************************************************************************/
+    /* Map                                                                  */
+    /************************************************************************/
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Location@+ GetLocation()", asFUNCTION( BIND_CLASS Map_GetLocation ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "const Location@+ GetLocation() const", asFUNCTION( BIND_CLASS Map_GetLocation ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterFuncdef( "void MapInitFunc(Map@+, bool)" ) );
@@ -302,9 +301,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool Reload()", asFUNCTION( BIND_CLASS Map_Reload ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps) const", asFUNCTION( BIND_CLASS Map_MoveHexByDir ), asCALL_CDECL_OBJFIRST ) );
 
-/************************************************************************/
-/* Location                                                             */
-/************************************************************************/
+    /************************************************************************/
+    /* Location                                                             */
+    /************************************************************************/
     BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetMapCount() const", asFUNCTION( BIND_CLASS Location_GetMapCount ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Location", "Map@+ GetMap(hash mapPid)", asFUNCTION( BIND_CLASS Location_GetMap ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Location", "const Map@+ GetMap(hash mapPid) const", asFUNCTION( BIND_CLASS Location_GetMap ), asCALL_CDECL_OBJFIRST ) );
@@ -316,9 +315,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Location", "uint GetEntrances(array<uint>@+ mapsIndex, array<hash>@+ entires) const", asFUNCTION( BIND_CLASS Location_GetEntrances ), asCALL_CDECL_OBJFIRST ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Location", "bool Reload()", asFUNCTION( BIND_CLASS Location_Reload ), asCALL_CDECL_OBJFIRST ) );
 
-/************************************************************************/
-/* Global                                                               */
-/************************************************************************/
+    /************************************************************************/
+    /* Global                                                               */
+    /************************************************************************/
     BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetItem(uint itemId)", asFUNCTION( BIND_CLASS Global_GetItem ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item@+ item, uint count, Critter@+ toCr, bool skipChecks = false)", asFUNCTION( BIND_CLASS Global_MoveItemCr ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveItem(Item@+ item, uint count, Item@+ toCont, uint stackId, bool skipChecks = false)", asFUNCTION( BIND_CLASS Global_MoveItemCont ), asCALL_CDECL ) );
@@ -639,7 +638,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreenOffset(int ox, int oy, uint speed, bool canStop = false)", asFUNCTION( BIND_CLASS Global_MoveScreenOffset ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", asFUNCTION( BIND_CLASS Global_GetHexPos ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorHex ), asCALL_CDECL ) );
-// BIND_ASSERT( engine->RegisterGlobalFunction( "MapperObject@ GetMonitorObject(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorObject ), asCALL_CDECL ) );
+    // BIND_ASSERT( engine->RegisterGlobalFunction( "MapperObject@ GetMonitorObject(int x, int y, bool ignoreInterface = false)", asFUNCTION( BIND_CLASS Global_GetMonitorObject ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveHexByDir(uint16& hexX, uint16& hexY, uint8 dir, uint steps)", asFUNCTION( BIND_CLASS Global_MoveHexByDir ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "string GetIfaceIniStr(string key)", asFUNCTION( BIND_CLASS Global_GetIfaceIniStr ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadFont(int font, string fontFileName)", asFUNCTION( BIND_CLASS Global_LoadFont ), asCALL_CDECL ) );
@@ -798,7 +797,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadDataFile(string dataFileName)", asFUNCTION( BIND_CLASS Global_LoadDataFile ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, bool enableSend)", asFUNCTION( BIND_CLASS Global_AllowSlot ), asCALL_CDECL ) );
 
-// ScriptFunctions.h
+    // ScriptFunctions.h
     BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in)", asFUNCTION( Global_Assert ), asCALL_CDECL ) );
@@ -834,7 +833,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "string SHA2(string text)", asFUNCTION( Global_SHA2 ), asCALL_CDECL ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(string link)", asFUNCTION( Global_OpenLink ), asCALL_CDECL ) );
 
-// Invoker
+    // Invoker
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFunc()" ) );
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithIValue(int value)" ) );
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithUValue(uint value)" ) );
@@ -878,9 +877,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@+ props = null)", asFUNCTION( Global_GetProtoItem ), asCALL_CDECL ) );
 
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
+    /************************************************************************/
+    /*                                                                      */
+    /************************************************************************/
 
     return errors;
 }

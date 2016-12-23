@@ -77,6 +77,7 @@ public:
 
     static void HandleRpc( void* context );
 
+    static bool        IsMaxPortability();
     static const char* GetActiveFuncName();
 
     static void Watcher( void* );
