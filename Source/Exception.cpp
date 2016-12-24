@@ -16,7 +16,9 @@ char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
 
 #if defined ( FO_WINDOWS )
 
-# include <windows.h>
+# define WINVER    0x0501 // Windows XP
+# define WIN32_LEAN_AND_MEAN
+# include <Windows.h>
 # include <stdio.h>
 # include <DbgHelp.h>
 # pragma comment(lib, "Dbghelp.lib")

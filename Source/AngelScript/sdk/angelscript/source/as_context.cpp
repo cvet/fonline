@@ -5177,6 +5177,19 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	m_regs.objectRegister = gen.objectRegister;
 	m_regs.objectType = descr->returnType.GetTypeInfo();
 
+	// Patch
+	if( (descr->returnType.IsObject() || descr->returnType.IsFuncdef()) && !descr->returnType.IsReference() )
+	{
+		if( descr->returnType.IsObjectHandle() )
+		{
+			if( sysFunc->returnAutoHandle && m_regs.objectRegister )
+			{
+				asASSERT( !(descr->returnType.GetTypeInfo()->flags & asOBJ_NOCOUNT) );
+				m_engine->CallObjectMethod(m_regs.objectRegister, descr->returnType.GetTypeInfo()->CastToObjectType()->beh.addref);
+			}
+		}
+	}
+
 	// Clean up arguments
 	const asUINT cleanCount = sysFunc->cleanArgs.GetLength();
 	if( cleanCount )

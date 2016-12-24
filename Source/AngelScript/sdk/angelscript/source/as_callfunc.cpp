@@ -222,6 +222,19 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 			}
 		}
 
+		// Patch
+		if (n < internal->paramAutoHandles.GetLength() && internal->paramAutoHandles[n])
+		{
+			asSSystemFunctionInterface::SClean clean;
+			clean.op = 0; // call release
+			if (dt.IsFuncdef())
+				clean.ot = &engine->functionBehaviours;
+			else
+				clean.ot = dt.GetTypeInfo()->CastToObjectType();
+			clean.off = short(offset);
+			internal->cleanArgs.PushLast(clean);
+		}
+
 		if( dt.IsObject() && !dt.IsObjectHandle() && !dt.IsReference() )
 			offset += AS_PTR_SIZE;
 		else

@@ -1963,7 +1963,7 @@ bool PropertyRegistrator::Init()
 template< typename T >
 static void Property_GetValue_Generic( asIScriptGeneric* gen )
 {
-    ( (Property*) gen->GetAuxiliary() )->GetValue< T >( (Entity*) gen->GetObject() );
+    new ( gen->GetAddressOfReturnLocation() )T( ( (Property*) gen->GetAuxiliary() )->GetValue< T >( (Entity*) gen->GetObject() ) );
 }
 
 template< typename T1, typename T2 >

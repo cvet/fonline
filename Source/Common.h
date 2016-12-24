@@ -21,12 +21,7 @@
 #include <algorithm>
 #include <functional>
 #include <math.h>
-#ifdef FO_WINDOWS
-# define WINVER                                   0x0501 // Windows XP
-# define WIN32_LEAN_AND_MEAN
-# include <Windows.h>
-# include <Shellapi.h>
-#else
+#ifndef FO_WINDOWS
 # include <errno.h>
 # include <string.h> // strerror
 # include <unistd.h>

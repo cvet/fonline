@@ -167,7 +167,7 @@ void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "void insertLast(const array<T>&in)", SCRIPT_FUNC_THIS( CScriptArray_InsertArrFirst ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "bool equals(const array<T>&in)", SCRIPT_FUNC_THIS( CScriptArray_Equals ), SCRIPT_FUNC_THIS_CONV );
+    r = engine->RegisterObjectMethod( "array<T>", "bool equals(const array<T>&in) const", SCRIPT_FUNC_THIS( CScriptArray_Equals ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 }
 
@@ -196,7 +196,7 @@ void Script::RegisterScriptDictExtensions( asIScriptEngine* engine )
 {
     int r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>&in)", SCRIPT_FUNC( ScriptDict_Clone ), SCRIPT_FUNC_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool equals(const dict<T1,T2>&in)", SCRIPT_FUNC_THIS( ScriptDict_Equals ), SCRIPT_FUNC_THIS_CONV );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool equals(const dict<T1,T2>&in) const", SCRIPT_FUNC_THIS( ScriptDict_Equals ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 }
 

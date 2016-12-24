@@ -32,23 +32,23 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     // BIND_ASSERT( engine->RegisterObjectType( "hash", 0, asOBJ_VALUE | asOBJ_POD ) );
 
     // Entity
-    #define REGISTER_ENTITY( class_name )                                                                                                                 \
-        BIND_ASSERT( engine->RegisterObjectType( class_name, 0, asOBJ_REF ) );                                                                            \
-        BIND_ASSERT( engine->RegisterObjectBehaviour( class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( Entity, AddRef ), SCRIPT_METHOD_CONV ) );   \
-        BIND_ASSERT( engine->RegisterObjectBehaviour( class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( Entity, Release ), SCRIPT_METHOD_CONV ) ); \
-        BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const uint Id", OFFSETOF( Entity, Id ) ) );                                             \
-        BIND_ASSERT( engine->RegisterObjectMethod( class_name, "hash get_ProtoId() const", SCRIPT_METHOD( Entity, GetProtoId ), SCRIPT_METHOD_CONV ) );   \
-        BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const bool IsDestroyed", OFFSETOF( Entity, IsDestroyed ) ) );                           \
-        BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const bool IsDestroying", OFFSETOF( Entity, IsDestroying ) ) );                         \
-        BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const int RefCounter", OFFSETOF( Entity, RefCounter ) ) );
-    /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "Entity@ Parent", OFFSETOF( Entity, Parent ) ) );*/
-    /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const array<Entity@> Children", OFFSETOF( Entity, Children ) ) );*/
+    #define REGISTER_ENTITY( class_name, real_class )                                                                                                         \
+        BIND_ASSERT( engine->RegisterObjectType( class_name, 0, asOBJ_REF ) );                                                                                \
+        BIND_ASSERT( engine->RegisterObjectBehaviour( class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( real_class, AddRef ), SCRIPT_METHOD_CONV ) );   \
+        BIND_ASSERT( engine->RegisterObjectBehaviour( class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( real_class, Release ), SCRIPT_METHOD_CONV ) ); \
+        BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const uint Id", OFFSETOF( real_class, Id ) ) );                                             \
+        BIND_ASSERT( engine->RegisterObjectMethod( class_name, "hash get_ProtoId() const", SCRIPT_METHOD( real_class, GetProtoId ), SCRIPT_METHOD_CONV ) );   \
+        BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const bool IsDestroyed", OFFSETOF( real_class, IsDestroyed ) ) );                           \
+        BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const bool IsDestroying", OFFSETOF( real_class, IsDestroying ) ) );                         \
+        BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const int RefCounter", OFFSETOF( real_class, RefCounter ) ) );
+    /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "Entity@ Parent", OFFSETOF( real_class, Parent ) ) );*/
+    /*BIND_ASSERT( engine->RegisterObjectProperty( class_name, "const array<Entity@> Children", OFFSETOF( real_class, Children ) ) );*/
     #define REGISTER_ENTITY_CAST( class_name, real_class )                                                                                                                         \
         BIND_ASSERT( engine->RegisterObjectMethod( "Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS( ( EntityUpCast< real_class >) ), SCRIPT_FUNC_THIS_CONV ) );                \
         BIND_ASSERT( engine->RegisterObjectMethod( "Entity", "const " class_name "@ opCast() const", SCRIPT_FUNC_THIS( ( EntityUpCast< real_class >) ), SCRIPT_FUNC_THIS_CONV ) ); \
         BIND_ASSERT( engine->RegisterObjectMethod( class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS( ( EntityDownCast< real_class >) ), SCRIPT_FUNC_THIS_CONV ) );             \
         BIND_ASSERT( engine->RegisterObjectMethod( class_name, "const Entity@ opImplCast() const", SCRIPT_FUNC_THIS( ( EntityDownCast< real_class >) ), SCRIPT_FUNC_THIS_CONV ) );
-    REGISTER_ENTITY( "Entity" );
+    REGISTER_ENTITY( "Entity", Entity );
 
     // Global vars
     BIND_ASSERT( engine->RegisterObjectType( "GlobalVars", 0, asOBJ_REF | asOBJ_NOCOUNT ) );
@@ -56,9 +56,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     // Map and location for client and mapper
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-    REGISTER_ENTITY( "Map" );
+    REGISTER_ENTITY( "Map", Map );
     REGISTER_ENTITY_CAST( "Map", Map );
-    REGISTER_ENTITY( "Location" );
+    REGISTER_ENTITY( "Location", Location );
     REGISTER_ENTITY_CAST( "Location", Location );
     BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &BIND_CLASS ClientCurMap ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "Location@ CurLocation", &BIND_CLASS ClientCurLocation ) );
@@ -68,13 +68,13 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     /************************************************************************/
     /* Types                                                                */
     /************************************************************************/
-    REGISTER_ENTITY( "Item" );
+    REGISTER_ENTITY( "Item", Item );
     REGISTER_ENTITY_CAST( "Item", Item );
-    REGISTER_ENTITY( "Critter" );
+    REGISTER_ENTITY( "Critter", Critter );
     REGISTER_ENTITY_CAST( "Critter", Critter );
-    REGISTER_ENTITY( "Map" );
+    REGISTER_ENTITY( "Map", Map );
     REGISTER_ENTITY_CAST( "Map", Map );
-    REGISTER_ENTITY( "Location" );
+    REGISTER_ENTITY( "Location", Location );
     REGISTER_ENTITY_CAST( "Location", Location );
 
     BIND_ASSERT( engine->RegisterObjectType( "NpcPlane", 0, asOBJ_REF ) );
@@ -390,9 +390,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-    REGISTER_ENTITY( "Critter" );
+    REGISTER_ENTITY( "Critter", CritterCl );
     REGISTER_ENTITY_CAST( "Critter", CritterCl );
-    REGISTER_ENTITY( "Item" );
+    REGISTER_ENTITY( "Item", Item );
     REGISTER_ENTITY_CAST( "Item", Item );
     #endif
 
