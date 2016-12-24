@@ -723,7 +723,7 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
         return nullptr;
     }
 
-    engine->SetMessageCallback( asFUNCTION( CallbackMessage ), nullptr, asCALL_CDECL );
+    engine->SetMessageCallback( SCRIPT_FUNC( CallbackMessage ), nullptr, SCRIPT_FUNC_CONV );
 
     engine->SetEngineProperty( asEP_ALLOW_UNSAFE_REFERENCES, true );
     engine->SetEngineProperty( asEP_USE_CHARACTER_LITERALS, true );
@@ -781,7 +781,7 @@ void Script::CreateContext()
     asIScriptContext* ctx = Engine->CreateContext();
     RUNTIME_ASSERT( ctx );
 
-    int r = ctx->SetExceptionCallback( asFUNCTION( CallbackException ), nullptr, asCALL_CDECL );
+    int r = ctx->SetExceptionCallback( SCRIPT_FUNC( CallbackException ), nullptr, SCRIPT_FUNC_CONV );
     RUNTIME_ASSERT( r >= 0 );
 
     ContextData* ctx_data = new ContextData();
@@ -791,7 +791,7 @@ void Script::CreateContext()
     EngineData* edata = (EngineData*) Engine->GetUserData();
     if( edata->Profiler )
     {
-        r = ctx->SetLineCallback( asFUNCTION( ProfilerContextCallback ), edata->Profiler, asCALL_CDECL );
+        r = ctx->SetLineCallback( SCRIPT_FUNC( ProfilerContextCallback ), edata->Profiler, SCRIPT_FUNC_CONV );
         RUNTIME_ASSERT( r >= 0 );
     }
 

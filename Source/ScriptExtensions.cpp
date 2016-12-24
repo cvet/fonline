@@ -137,37 +137,37 @@ static bool CScriptArray_Equals( CScriptArray* arr, const CScriptArray** other )
 
 void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
 {
-    int r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const T&in)", asFUNCTION( CScriptArray_InsertFirst ), asCALL_CDECL_OBJFIRST );
+    int r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const T&in)", SCRIPT_FUNC_THIS( CScriptArray_InsertFirst ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void removeFirst()", asFUNCTION( CScriptArray_RemoveFirst ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "void removeFirst()", SCRIPT_FUNC_THIS( CScriptArray_RemoveFirst ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void grow(uint)", asFUNCTION( CScriptArray_Grow ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "void grow(uint)", SCRIPT_FUNC_THIS( CScriptArray_Grow ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void reduce(uint)", asFUNCTION( CScriptArray_Reduce ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "void reduce(uint)", SCRIPT_FUNC_THIS( CScriptArray_Reduce ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "T& first()", asFUNCTION( CScriptArray_First ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "T& first()", SCRIPT_FUNC_THIS( CScriptArray_First ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "const T& first() const", asFUNCTION( CScriptArray_First ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "const T& first() const", SCRIPT_FUNC_THIS( CScriptArray_First ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "T& last()", asFUNCTION( CScriptArray_Last ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "T& last()", SCRIPT_FUNC_THIS( CScriptArray_Last ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "const T& last() const", asFUNCTION( CScriptArray_Last ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "const T& last() const", SCRIPT_FUNC_THIS( CScriptArray_Last ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void clear()", asFUNCTION( CScriptArray_Clear ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "void clear()", SCRIPT_FUNC_THIS( CScriptArray_Clear ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "bool exists(const T&in) const", asFUNCTION( CScriptArray_Exists ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "bool exists(const T&in) const", SCRIPT_FUNC_THIS( CScriptArray_Exists ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectBehaviour( "array<T>", asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>&in)", asFUNCTION( CScriptArray_Clone ), asCALL_CDECL );
+    r = engine->RegisterObjectBehaviour( "array<T>", asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>&in)", SCRIPT_FUNC( CScriptArray_Clone ), SCRIPT_FUNC_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void set(const array<T>&in)", asFUNCTION( CScriptArray_Set ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "void set(const array<T>&in)", SCRIPT_FUNC_THIS( CScriptArray_Set ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void insertAt(uint, const array<T>&in)", asFUNCTION( CScriptArray_InsertArrAt ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "void insertAt(uint, const array<T>&in)", SCRIPT_FUNC_THIS( CScriptArray_InsertArrAt ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const array<T>&in)", asFUNCTION( CScriptArray_InsertArrFirst ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const array<T>&in)", SCRIPT_FUNC_THIS( CScriptArray_InsertArrFirst ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void insertLast(const array<T>&in)", asFUNCTION( CScriptArray_InsertArrFirst ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "void insertLast(const array<T>&in)", SCRIPT_FUNC_THIS( CScriptArray_InsertArrFirst ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "bool equals(const array<T>&in)", asFUNCTION( CScriptArray_Equals ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "array<T>", "bool equals(const array<T>&in)", SCRIPT_FUNC_THIS( CScriptArray_Equals ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 }
 
@@ -194,9 +194,9 @@ static bool ScriptDict_Equals( CScriptDict* dict, const CScriptDict** other )
 
 void Script::RegisterScriptDictExtensions( asIScriptEngine* engine )
 {
-    int r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>&in)", asFUNCTION( ScriptDict_Clone ), asCALL_CDECL );
+    int r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>&in)", SCRIPT_FUNC( ScriptDict_Clone ), SCRIPT_FUNC_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool equals(const dict<T1,T2>&in)", asFUNCTION( ScriptDict_Equals ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool equals(const dict<T1,T2>&in)", SCRIPT_FUNC_THIS( ScriptDict_Equals ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 }
 
@@ -452,7 +452,7 @@ static string ScriptString_Upper( const string& str )
     return result;
 }
 
-static CScriptArray* ScriptString_Split( const string& delim, const string& str )
+static CScriptArray* ScriptString_Split( const string& str, const string& delim )
 {
     CScriptArray* array = Script::CreateArray( "string[]" );
 
@@ -507,59 +507,59 @@ static string ScriptString_Join( const CScriptArray** parray, const string& deli
 
 void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
 {
-    int r = engine->RegisterObjectMethod( "string", "void clear()", asFUNCTION( ScriptString_Clear ), asCALL_CDECL_OBJFIRST );
+    int r = engine->RegisterObjectMethod( "string", "void clear()", SCRIPT_FUNC_THIS( ScriptString_Clear ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "uint length() const", asFUNCTION( ScriptString_Length ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "uint length() const", SCRIPT_FUNC_THIS( ScriptString_Length ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "uint rawLength() const", asFUNCTION( ScriptString_RawLength ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "uint rawLength() const", SCRIPT_FUNC_THIS( ScriptString_RawLength ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "void rawResize(uint)", asFUNCTION( ScriptString_RawResize ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "void rawResize(uint)", SCRIPT_FUNC_THIS( ScriptString_RawResize ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "uint8 rawGet(uint) const", asFUNCTION( ScriptString_RawGet ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "uint8 rawGet(uint) const", SCRIPT_FUNC_THIS( ScriptString_RawGet ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "void rawSet(uint, uint8)", asFUNCTION( ScriptString_RawSet ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "void rawSet(uint, uint8)", SCRIPT_FUNC_THIS( ScriptString_RawSet ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 
-    r = engine->RegisterObjectMethod( "string", "string substr(uint start = 0, int count = -1) const", asFUNCTION( ScriptString_SubString ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "string substr(uint start = 0, int count = -1) const", SCRIPT_FUNC_THIS( ScriptString_SubString ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findFirst(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirst ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "int findFirst(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS( ScriptString_FindFirst ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findFirstOf(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirstOf ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "int findFirstOf(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS( ScriptString_FindFirstOf ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findFirstNotOf(const string &in, uint start = 0) const", asFUNCTION( ScriptString_FindFirstNotOf ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "int findFirstNotOf(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS( ScriptString_FindFirstNotOf ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findLast(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLast ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "int findLast(const string &in, int start = -1) const", SCRIPT_FUNC_THIS( ScriptString_FindLast ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findLastOf(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLastOf ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "int findLastOf(const string &in, int start = -1) const", SCRIPT_FUNC_THIS( ScriptString_FindLastOf ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "int findLastNotOf(const string &in, int start = -1) const", asFUNCTION( ScriptString_FindLastNotOf ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "int findLastNotOf(const string &in, int start = -1) const", SCRIPT_FUNC_THIS( ScriptString_FindLastNotOf ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 
     // Register the index operator, both as a mutator and as an inspector
-    r = engine->RegisterObjectMethod( "string", "string get_opIndex(int) const", asFUNCTION( ScriptString_GetAt ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "string get_opIndex(int) const", SCRIPT_FUNC_THIS( ScriptString_GetAt ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "void set_opIndex(int, const string &in)", asFUNCTION( ScriptString_SetAt ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "void set_opIndex(int, const string &in)", SCRIPT_FUNC_THIS( ScriptString_SetAt ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 
     // Conversion methods
-    r = engine->RegisterObjectMethod( "string", "int toInt(int defaultValue = 0) const", asFUNCTION( ScriptString_ToInt ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "int toInt(int defaultValue = 0) const", SCRIPT_FUNC_THIS( ScriptString_ToInt ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "float toFloat(float defaultValue = 0) const", asFUNCTION( ScriptString_ToFloat ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "float toFloat(float defaultValue = 0) const", SCRIPT_FUNC_THIS( ScriptString_ToFloat ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 
     // Find methods
-    r = engine->RegisterObjectMethod( "string", "bool startsWith(const string &in) const", asFUNCTION( ScriptString_StartsWith ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "bool startsWith(const string &in) const", SCRIPT_FUNC_THIS( ScriptString_StartsWith ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "bool endsWith(const string &in) const", asFUNCTION( ScriptString_EndsWith ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-
-    r = engine->RegisterObjectMethod( "string", "string lower() const", asFUNCTION( ScriptString_Lower ), asCALL_CDECL_OBJFIRST );
-    RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "string", "string upper() const", asFUNCTION( ScriptString_Upper ), asCALL_CDECL_OBJFIRST );
+    r = engine->RegisterObjectMethod( "string", "bool endsWith(const string &in) const", SCRIPT_FUNC_THIS( ScriptString_EndsWith ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 
-    r = engine->RegisterObjectMethod( "string", "array<string>@ split(const string &in) const", asFUNCTION( ScriptString_Split ), asCALL_CDECL_OBJLAST );
+    r = engine->RegisterObjectMethod( "string", "string lower() const", SCRIPT_FUNC_THIS( ScriptString_Lower ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterGlobalFunction( "string join(const array<string>@ &in, const string &in)", asFUNCTION( ScriptString_Join ), asCALL_CDECL );
+    r = engine->RegisterObjectMethod( "string", "string upper() const", SCRIPT_FUNC_THIS( ScriptString_Upper ), SCRIPT_FUNC_THIS_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+
+    r = engine->RegisterObjectMethod( "string", "array<string>@ split(const string &in) const", SCRIPT_FUNC_THIS( ScriptString_Split ), SCRIPT_FUNC_THIS_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterGlobalFunction( "string join(const array<string>@ &in, const string &in)", SCRIPT_FUNC( ScriptString_Join ), SCRIPT_FUNC_CONV );
     RUNTIME_ASSERT( r >= 0 );
 }

@@ -1942,7 +1942,7 @@ bool PropertyRegistrator::Init()
 
     char decl[ MAX_FOTEXT ];
     Str::Format( decl, "int GetAsInt(%s) const", enum_type.c_str() );
-    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, SCRIPT_FUNC_THIS( Properties::GetValueAsInt ) );
+    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, SCRIPT_FUNC_THIS( Properties::GetValueAsInt ), SCRIPT_FUNC_THIS_CONV );
     if( result < 0 )
     {
         WriteLog( "Register entity method '{}' fail, error {}.\n", decl, result );
@@ -1950,7 +1950,7 @@ bool PropertyRegistrator::Init()
     }
 
     Str::Format( decl, "void SetAsInt(%s,int)", enum_type.c_str() );
-    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, SCRIPT_FUNC_THIS( Properties::SetValueAsInt ) );
+    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, SCRIPT_FUNC_THIS( Properties::SetValueAsInt ), SCRIPT_FUNC_THIS_CONV );
     if( result < 0 )
     {
         WriteLog( "Register entity method '{}' fail, error {}.\n", decl, result );

@@ -12,13 +12,19 @@
 
 #ifdef AS_MAX_PORTABILITY
 # include "AngelScript/sdk/add_on/autowrapper/aswrappedcall.h"
-# define SCRIPT_FUNC( name )             WRAP_FN( name ), asCALL_GENERIC
-# define SCRIPT_FUNC_THIS( name )        WRAP_OBJ_FIRST( name ), asCALL_GENERIC
-# define SCRIPT_METHOD( name )           WRAP_MFN( name ), asCALL_GENERIC
+# define SCRIPT_FUNC( name )             WRAP_FN( name )
+# define SCRIPT_FUNC_THIS( name )        WRAP_OBJ_FIRST( name )
+# define SCRIPT_METHOD( type, name )     WRAP_MFN( type, name )
+# define SCRIPT_FUNC_CONV         asCALL_GENERIC
+# define SCRIPT_FUNC_THIS_CONV    asCALL_GENERIC
+# define SCRIPT_METHOD_CONV       asCALL_GENERIC
 #else
-# define SCRIPT_FUNC( name )             asFUNCTION( name ), asCALL_CDECL
-# define SCRIPT_FUNC_THIS( name )        asFUNCTION( name ), asCALL_CDECL_OBJFIRST
-# define SCRIPT_METHOD( name )           asMETHOD( name ), asCALL_THISCALL
+# define SCRIPT_FUNC( name )             asFUNCTION( name )
+# define SCRIPT_FUNC_THIS( name )        asFUNCTION( name )
+# define SCRIPT_METHOD( type, name )     asMETHOD( type, name )
+# define SCRIPT_FUNC_CONV         asCALL_CDECL
+# define SCRIPT_FUNC_THIS_CONV    asCALL_CDECL_OBJFIRST
+# define SCRIPT_METHOD_CONV       asCALL_THISCALL
 #endif
 
 #define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( error, ## __VA_ARGS__ ); return; } while( 0 )

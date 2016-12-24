@@ -161,7 +161,7 @@ public:
         if( func_name.find( "::" ) == string::npos )
         {
             // Register global function
-            result = engine->RegisterGlobalFunction( func_name.c_str(), asFUNCTION( func ), asCALL_CDECL );
+            result = engine->RegisterGlobalFunction( func_name.c_str(), asFUNCTION( func ), SCRIPT_FUNC_CONV );
         }
         else
         {
@@ -177,7 +177,7 @@ public:
             string class_name;
             class_name.assign( func_name, i, j - i );
             func_name.erase( i, j - i + 2 );
-            result = engine->RegisterObjectMethod( class_name.c_str(), func_name.c_str(), asFUNCTION( func ), asCALL_CDECL_OBJFIRST );
+            result = engine->RegisterObjectMethod( class_name.c_str(), func_name.c_str(), asFUNCTION( func ), SCRIPT_FUNC_THIS_CONV );
         }
         if( result < 0 )
         {
@@ -216,6 +216,11 @@ public:
         return entity;
     }
 
+    static void CreateEntity_Generic( asIScriptGeneric* gen )
+    {
+        gen->SetReturnObject( ( (EntityCreator*) gen->GetAuxiliary() )->CreateEntity() );
+    }
+
     bool RestoreEntity( uint id, const StrMap& props_data )
     {
         CustomEntity* entity = new CustomEntity( id, SubType, Registrator );
@@ -237,6 +242,11 @@ public:
         entity->Release();
     }
 
+    static void DeleteEntity_Generic( asIScriptGeneric* gen )
+    {
+        ( (EntityCreator*) gen->GetAuxiliary() )->DeleteEntity( (CustomEntity*) gen->GetArgObject( 0 ) );
+    }
+
     void DeleteEntityById( uint id )
     {
         CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
@@ -247,6 +257,11 @@ public:
         entity->Release();
     }
 
+    static void DeleteEntityById_Generic( asIScriptGeneric* gen )
+    {
+        ( (EntityCreator*) gen->GetAuxiliary() )->DeleteEntityById( gen->GetArgDWord( 0 ) );
+    }
+
     CustomEntity* GetEntity( uint id )
     {
         CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
@@ -255,12 +270,21 @@ public:
         return nullptr;
     }
 
+    static void GetEntity_Generic( asIScriptGeneric* gen )
+    {
+        gen->SetReturnObject( ( (EntityCreator*) gen->GetAuxiliary() )->GetEntity( gen->GetArgDWord( 0 ) ) );
+    }
+
     #else
     CustomEntity* CreateEntity()                                     { return nullptr; }
+    static void   CreateEntity_Generic( asIScriptGeneric* gen )      {}
     bool          RestoreEntity( uint id, const StrMap& props_data ) { return false; }
     void          DeleteEntity( CustomEntity* entity )               {}
+    static void   DeleteEntity_Generic( asIScriptGeneric* gen )      {}
     void          DeleteEntityById( uint id )                        {}
+    static void   DeleteEntityById_Generic( asIScriptGeneric* gen )  {}
     CustomEntity* GetEntity( uint id )                               { return nullptr; }
+    static void   GetEntity_Generic( asIScriptGeneric* gen )         {}
     #endif
 };
 
@@ -302,8 +326,8 @@ public:
 
         // Create object
         if( engine->RegisterObjectType( class_name.c_str(), 0, asOBJ_REF ) < 0 ||
-            engine->RegisterObjectBehaviour( class_name.c_str(), asBEHAVE_ADDREF, "void f()", asMETHOD( Entity, AddRef ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectBehaviour( class_name.c_str(), asBEHAVE_RELEASE, "void f()", asMETHOD( Entity, Release ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectBehaviour( class_name.c_str(), asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( Entity, AddRef ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectBehaviour( class_name.c_str(), asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( Entity, Release ), SCRIPT_METHOD_CONV ) < 0 ||
             engine->RegisterObjectProperty( class_name.c_str(), "const uint Id", OFFSETOF( Entity, Id ) ) < 0 ||
             engine->RegisterObjectProperty( class_name.c_str(), "const bool IsDestroyed", OFFSETOF( Entity, IsDestroyed ) ) < 0 ||
             engine->RegisterObjectProperty( class_name.c_str(), "const bool IsDestroying", OFFSETOF( Entity, IsDestroying ) ) < 0 )
@@ -317,10 +341,10 @@ public:
         if( isServer )
         {
             char buf[ MAX_FOTEXT ];
-            if( engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Create%s()", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, CreateEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s@+ entity)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(uint id)", class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntityById ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Get%s(uint id)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, GetEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 )
+            if( engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Create%s()", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::CreateEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s@+ entity)", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::DeleteEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(uint id)", class_name.c_str() ), asFUNCTION( EntityCreator::DeleteEntityById_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Get%s(uint id)", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::GetEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 )
             {
                 WriteLog( "Error in 'entity' pragma '{}', fail to register management functions.\n", text.c_str() );
                 return false;
@@ -1213,13 +1237,13 @@ public:
         if( ( func_def_id = engine->RegisterFuncdef( Str::Format( buf, "void %sFunc(%s)", event_name, args ) ) ) < 0 ||
             engine->RegisterFuncdef( Str::Format( buf, "bool %sFuncBool(%s)", event_name, args ) ) < 0 ||
             engine->RegisterObjectType( event_name, 0, asOBJ_REF ) < 0 ||
-            engine->RegisterObjectBehaviour( event_name, asBEHAVE_ADDREF, "void f()", asMETHOD( ScriptEvent, AddRef ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectBehaviour( event_name, asBEHAVE_RELEASE, "void f()", asMETHOD( ScriptEvent, Release ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFunc@+)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFuncBool@+)", event_name ), asMETHOD( ScriptEvent, Subscribe ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFunc@+)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@+)", event_name ), asMETHOD( ScriptEvent, Unsubscribe ), asCALL_THISCALL ) < 0 ||
-            engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", asMETHOD( ScriptEvent, UnsubscribeAll ), asCALL_THISCALL ) < 0 ||
+            engine->RegisterObjectBehaviour( event_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( ScriptEvent, AddRef ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectBehaviour( event_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( ScriptEvent, Release ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFunc@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFuncBool@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFunc@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", SCRIPT_METHOD( ScriptEvent, UnsubscribeAll ), SCRIPT_METHOD_CONV ) < 0 ||
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
             return false;
 
