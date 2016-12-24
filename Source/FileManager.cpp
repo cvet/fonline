@@ -799,7 +799,7 @@ char* FileManager::EraseExtension( char* path )
     return path;
 }
 
-string FileManager::CombinePath( const char* path, const char* relative_dir )
+string FileManager::ForwardPath( const char* path, const char* relative_dir )
 {
     char fname[ MAX_FOTEXT ];
     ExtractFileName( path, fname );
@@ -964,8 +964,8 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
                 }
 
                 const char* link_str = (const char*) link.GetBuf();
-                path = FileManager::CombinePath( path.c_str(), link_str );
-                relative_path = FileManager::CombinePath( relative_path.c_str(), link_str );
+                path = FileManager::ForwardPath( path.c_str(), link_str );
+                relative_path = FileManager::ForwardPath( relative_path.c_str(), link_str );
             }
 
             FileManager::EraseExtension( fname );
