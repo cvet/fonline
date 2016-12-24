@@ -1,11 +1,5 @@
 #ifdef BIND_DUMMY_DATA
 # include "DummyData.h"
-# pragma push_macro( "AUTO_CONV_FUNC" )
-# pragma push_macro( "AUTO_CONV_TYPE" )
-# undef AUTO_CONV_FUNC
-# undef AUTO_CONV_TYPE
-# define AUTO_CONV_FUNC( ... )    asFUNCTION( 1 )
-# define AUTO_CONV_TYPE( ... )    asCALL_GENERIC
 #endif
 
 #include "ScriptFunctions.h"
@@ -844,22 +838,22 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithUValue(uint value)" ) );
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithIValues(array<int>@+ values)" ) );
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithUValues(array<uint>@+ values)" ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFunc@+ func)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_DeferredCall, uint, asIScriptFunction* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValue@+ func, int value)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_DeferredCallWithValue, uint, asIScriptFunction *, int ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValue@+ func, uint value)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_DeferredCallWithValue, uint, asIScriptFunction *, uint ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValues@+ func, const array<int>@+ values)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_DeferredCallWithValues, uint, asIScriptFunction *, CScriptArray* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValues@+ func, const array<uint>@+ values)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_DeferredCallWithValues, uint, asIScriptFunction *, CScriptArray* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsDeferredCallPending(uint id)", AUTO_CONV_FUNC( bool, ScriptInvoker::Global_IsDeferredCallPending, uint ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool CancelDeferredCall(uint id)", AUTO_CONV_FUNC( bool, ScriptInvoker::Global_CancelDeferredCall, uint ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetDeferredCallData(uint id, uint& delay, array<int>@+ values)", AUTO_CONV_FUNC( bool, ScriptInvoker::Global_GetDeferredCallData, uint, uint, CScriptArray* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetDeferredCallData(uint id, uint& delay, array<uint>@+ values)", AUTO_CONV_FUNC( bool, ScriptInvoker::Global_GetDeferredCallData, uint, uint, CScriptArray* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDeferredCallsList(array<uint>@+ ids)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_GetDeferredCallsList, CScriptArray* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFunc@+ func)", asFUNCTION( ScriptInvoker::Global_DeferredCall ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValue@+ func, int value)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValue ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValue@+ func, uint value)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValue ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithIValues@+ func, const array<int>@+ values)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValues ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DeferredCall(uint delay, CallFuncWithUValues@+ func, const array<uint>@+ values)", asFUNCTION( ScriptInvoker::Global_DeferredCallWithValues ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsDeferredCallPending(uint id)", asFUNCTION( ScriptInvoker::Global_IsDeferredCallPending ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool CancelDeferredCall(uint id)", asFUNCTION( ScriptInvoker::Global_CancelDeferredCall ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetDeferredCallData(uint id, uint& delay, array<int>@+ values)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallData ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetDeferredCallData(uint id, uint& delay, array<uint>@+ values)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallData ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDeferredCallsList(array<uint>@+ ids)", asFUNCTION( ScriptInvoker::Global_GetDeferredCallsList ), asCALL_CDECL ) );
     #ifdef BIND_SERVER
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFunc@+ func)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_SavedDeferredCall, uint, asIScriptFunction* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValue@+ func, int value)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_SavedDeferredCallWithValue, uint, asIScriptFunction *, int ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValue@+ func, uint value)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_SavedDeferredCallWithValue, uint, asIScriptFunction *, uint ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValues@+ func, const array<int>@+ values)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_SavedDeferredCallWithValues, uint, asIScriptFunction *, CScriptArray* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValues@+ func, const array<uint>@+ values)", AUTO_CONV_FUNC( uint, ScriptInvoker::Global_SavedDeferredCallWithValues, uint, asIScriptFunction *, CScriptArray* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFunc@+ func)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCall ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValue@+ func, int value)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValue ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValue@+ func, uint value)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValue ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithIValues@+ func, const array<int>@+ values)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValues ), asCALL_CDECL ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint SavedDeferredCall(uint delay, CallFuncWithUValues@+ func, const array<uint>@+ values)", asFUNCTION( ScriptInvoker::Global_SavedDeferredCallWithValues ), asCALL_CDECL ) );
     #endif
 
     #define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )
@@ -870,17 +864,17 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT_EXT( registrators[ 4 ]->Init() );
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void AddRegistrationProperty(CritterProperty prop)", AUTO_CONV_FUNC( void, BIND_CLASS Global_AddRegistrationProperty, int ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void AddRegistrationProperty(CritterProperty prop)", asFUNCTION( BIND_CLASS Global_AddRegistrationProperty ), asCALL_CDECL ) );
 
     void* reg_props = engine->CreateScriptObject( engine->GetTypeInfoByDecl( "array<CritterProperty>" ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "array<CritterProperty>@ CritterPropertyRegProperties", new void*( reg_props ) ) ); // Todo: Leak
     #endif
     #if defined ( BIND_SERVER )
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict<CritterProperty, int>@+ props = null)", AUTO_CONV_FUNC( Critter*, BIND_CLASS Map_AddNpc, hash, ushort, ushort, uchar, CScriptDict* ), AUTO_CONV_TYPE( asCALL_CDECL_OBJFIRST ) ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict<ItemProperty, int>@+ props = null)", AUTO_CONV_FUNC( Item*, BIND_CLASS Map_AddItem, ushort, ushort, hash, uint, CScriptDict* ), AUTO_CONV_TYPE( asCALL_CDECL_OBJFIRST ) ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict<CritterProperty, int>@+ props = null)", asFUNCTION( BIND_CLASS Map_AddNpc ), asCALL_CDECL_OBJFIRST ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict<ItemProperty, int>@+ props = null)", asFUNCTION( BIND_CLASS Map_AddItem ), asCALL_CDECL_OBJFIRST ) );
     #endif
 
-    BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@+ props = null)", AUTO_CONV_FUNC( Item*, Global_GetProtoItem, hash, CScriptDict* ), AUTO_CONV_TYPE( asCALL_CDECL ) ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@+ props = null)", asFUNCTION( Global_GetProtoItem ), asCALL_CDECL ) );
 
     /************************************************************************/
     /*                                                                      */
@@ -888,8 +882,3 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     return errors;
 }
-
-#ifdef BIND_DUMMY_DATA
-# pragma pop_macro( "AUTO_CONV_FUNC" )
-# pragma pop_macro( "AUTO_CONV_TYPE" )
-#endif

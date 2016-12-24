@@ -3,10 +3,9 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h> // sprintf
+#include "../autowrapper/aswrappedcall.h"
 
 #include "scriptdict.h"
-
-#include "generic_helpers.h"
 
 using namespace std;
 
@@ -816,57 +815,37 @@ static CScriptDict* CScriptDict_CreateList(asITypeInfo* ti, void* list)
     return CScriptDict::Create(ti, list);
 }
 
-WRAP_CDECL_TO_GENERIC(bool, CScriptDict_TemplateCallback, asITypeInfo*, bool);
-WRAP_CDECL_TO_GENERIC(CScriptDict*, CScriptDict_Create, asITypeInfo*);
-WRAP_CDECL_TO_GENERIC(CScriptDict*, CScriptDict_CreateList, asITypeInfo*, void*);
-WRAP_THISCALL_TO_GENERIC(void, CScriptDict, AddRef);
-WRAP_THISCALL_TO_GENERIC(void, CScriptDict, Release);
-WRAP_THISCALL_TO_GENERIC(void, CScriptDict, Set, void*, void*);
-WRAP_THISCALL_TO_GENERIC(void, CScriptDict, SetIfNotExist, void*, void*);
-WRAP_THISCALL_TO_GENERIC(bool, CScriptDict, Remove, void*);
-WRAP_THISCALL_TO_GENERIC(asUINT, CScriptDict, RemoveValues, void*);
-WRAP_THISCALL_TO_GENERIC(asUINT, CScriptDict, GetSize);
-WRAP_THISCALL_TO_GENERIC(void, CScriptDict, Clear);
-WRAP_THISCALL_TO_GENERIC(void*, CScriptDict, Get, void*);
-WRAP_THISCALL_TO_GENERIC(void*, CScriptDict, GetDefault, void*, void*);
-WRAP_THISCALL_TO_GENERIC(void*, CScriptDict, GetKey, asUINT);
-WRAP_THISCALL_TO_GENERIC(void*, CScriptDict, GetValue, asUINT);
-WRAP_THISCALL_TO_GENERIC(bool, CScriptDict, Exists, void*);
-WRAP_THISCALL_TO_GENERIC(bool, CScriptDict, IsEmpty);
-WRAP_THISCALL_TO_GENERIC(int, CScriptDict, GetRefCount);
-WRAP_THISCALL_TO_GENERIC(void, CScriptDict, SetFlag);
-WRAP_THISCALL_TO_GENERIC(bool, CScriptDict, GetFlag);
-WRAP_THISCALL_TO_GENERIC(void, CScriptDict, EnumReferences, asIScriptEngine*);
-WRAP_THISCALL_TO_GENERIC(void, CScriptDict, ReleaseAllHandles, asIScriptEngine*);
-
 static void RegisterScriptDict_Generic(asIScriptEngine* engine)
 {
     int r = 0;
+    UNUSED_VAR(r);
     r = engine->RegisterObjectType("dict<class T1, class T2>", 0, asOBJ_REF | asOBJ_GC | asOBJ_TEMPLATE); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", asFUNCTION(CScriptDict_TemplateCallback_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in)", asFUNCTION(CScriptDict_Create_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", asFUNCTION(CScriptDict_CreateList_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_ADDREF, "void f()", asFUNCTION(CScriptDict_AddRef_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_RELEASE, "void f()", asFUNCTION(CScriptDict_Release_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", asFUNCTION(CScriptDict_Get_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", asFUNCTION(CScriptDict_Set_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set(const T1&in, const T2&in)", asFUNCTION(CScriptDict_Set_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void setIfNotExist(const T1&in, const T2&in)", asFUNCTION(CScriptDict_SetIfNotExist_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", asFUNCTION(CScriptDict_Remove_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint removeValues(const T2&in)", asFUNCTION(CScriptDict_RemoveValues_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint length() const", asFUNCTION(CScriptDict_GetSize_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", asFUNCTION(CScriptDict_Clear_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in) const", asFUNCTION(CScriptDict_Get_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", asFUNCTION(CScriptDict_GetDefault_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(uint index) const", asFUNCTION(CScriptDict_GetKey_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(uint index) const", asFUNCTION(CScriptDict_GetValue_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", asFUNCTION(CScriptDict_Exists_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", asFUNCTION(CScriptDict_IsEmpty_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_GETREFCOUNT, "int f()", asFUNCTION(CScriptDict_GetRefCount_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_SETGCFLAG, "void f()", asFUNCTION(CScriptDict_SetFlag_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_GETGCFLAG, "bool f()", asFUNCTION(CScriptDict_GetFlag_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_ENUMREFS, "void f(int&in)", asFUNCTION(CScriptDict_EnumReferences_Generic), asCALL_GENERIC); assert(r >= 0);
-    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_RELEASEREFS, "void f(int&in)", asFUNCTION(CScriptDict_ReleaseAllHandles_Generic), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", WRAP_FN(CScriptDict_TemplateCallback), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int&in)", WRAP_FN_PR(CScriptDict::Create, (asITypeInfo*), CScriptDict*), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_LIST_FACTORY, "dict<T1,T2>@ f(int&in type, int&in list) {repeat {T1, T2}}", WRAP_FN_PR(CScriptDict::Create, (asITypeInfo *, void*), CScriptDict*), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_ADDREF, "void f()", WRAP_MFN(CScriptDict, AddRef), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_RELEASE, "void f()", WRAP_MFN(CScriptDict, Release), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get_opIndex(const T1&in) const", WRAP_MFN(CScriptDict, Get), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set_opIndex(const T1&in, const T2&in)", WRAP_MFN(CScriptDict, Set), asCALL_GENERIC); assert(r >= 0);
+    // Patch r = engine->RegisterObjectMethod("dict<T1,T2>", "dict<T1,T2>& opAssign(const dict<T1,T2>&in)", WRAP_MFN(CScriptDict, operator=), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "void set(const T1&in, const T2&in)", WRAP_MFN(CScriptDict, Set), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "void setIfNotExist(const T1&in, const T2&in)", WRAP_MFN(CScriptDict, SetIfNotExist), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", WRAP_MFN(CScriptDict, Remove), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint removeValues(const T2&in)", WRAP_MFN(CScriptDict, RemoveValues), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint length() const", WRAP_MFN(CScriptDict, GetSize), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "void clear()", WRAP_MFN(CScriptDict, Clear), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in) const", WRAP_MFN(CScriptDict, Get), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& get(const T1&in, const T2&in) const", WRAP_MFN(CScriptDict, GetDefault), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T1& getKey(uint index) const", WRAP_MFN(CScriptDict, GetKey), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "const T2& getValue(uint index) const", WRAP_MFN(CScriptDict, GetValue), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool exists(const T1&in) const", WRAP_MFN(CScriptDict, Exists), asCALL_GENERIC); assert(r >= 0);
+    // Patch r = engine->RegisterObjectMethod("dict<T1,T2>", "bool opEquals(const dict<T1,T2>&in) const", WRAP_MFN(CScriptDict, operator==), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectMethod("dict<T1,T2>", "bool isEmpty() const", WRAP_MFN(CScriptDict, IsEmpty), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_GETREFCOUNT, "int f()", WRAP_MFN(CScriptDict, GetRefCount), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_SETGCFLAG, "void f()", WRAP_MFN(CScriptDict, SetFlag), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_GETGCFLAG, "bool f()", WRAP_MFN(CScriptDict, GetFlag), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_ENUMREFS, "void f(int&in)", WRAP_MFN(CScriptDict, EnumReferences), asCALL_GENERIC); assert(r >= 0);
+    r = engine->RegisterObjectBehaviour("dict<T1,T2>", asBEHAVE_RELEASEREFS, "void f(int&in)", WRAP_MFN(CScriptDict, ReleaseAllHandles), asCALL_GENERIC); assert(r >= 0);
 }
 
 END_AS_NAMESPACE
