@@ -3840,35 +3840,46 @@ void FOServer::SScriptFunc::Global_SetTime( ushort multiplier, ushort year, usho
     SetGameTime( multiplier, year, month, day, hour, minute, second );
 }
 
-bool FOServer::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, void* ref, int type_id )
+void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen )
 {
+    int   prop_enum_value = gen->GetArgDWord( 0 );
+    void* ref = gen->GetArgAddress( 1 );
+    int   type_id = gen->GetArgTypeId( 1 );
+    gen->SetReturnByte( 0 );
     RUNTIME_ASSERT( ref );
 
     Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Critter::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
     string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
-        SCRIPT_ERROR_R0( result.c_str() );
-    return true;
+        SCRIPT_ERROR_R( result.c_str() );
+
+    gen->SetReturnByte( 1 );
 }
 
-bool FOServer::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, void* ref, int type_id, bool deferred )
+void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen )
 {
+    int   prop_enum_value = gen->GetArgDWord( 0 );
+    void* ref = gen->GetArgAddress( 1 );
+    int   type_id = gen->GetArgTypeId( 1 );
+    bool  deferred = gen->GetArgByte( 2 ) != 0;
+    gen->SetReturnByte( 0 );
     RUNTIME_ASSERT( ref );
 
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
     string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )
-        SCRIPT_ERROR_R0( result.c_str() );
-    return true;
+        SCRIPT_ERROR_R( result.c_str() );
+
+    gen->SetReturnByte( 1 );
 }
 
 void FOServer::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )

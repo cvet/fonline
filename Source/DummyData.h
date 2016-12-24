@@ -488,11 +488,11 @@ struct BindClass
     static void DataRef_Index() {}
     static void DataVal_Index() {}
 
-    static void Global_GetTime()                 {}
-    static void Global_SetPropertyGetCallback()  {}
-    static void Global_AddPropertySetCallback()  {}
-    static void Global_AddRegistrationProperty() {}
-    static void Global_GetGlobalMapRelief()      {}
+    static void Global_GetTime()                                       {}
+    static void Global_SetPropertyGetCallback( asIScriptGeneric* gen ) {}
+    static void Global_AddPropertySetCallback( asIScriptGeneric* gen ) {}
+    static void Global_AddRegistrationProperty()                       {}
+    static void Global_GetGlobalMapRelief()                            {}
     #endif
 
     #ifdef BIND_MAPPER

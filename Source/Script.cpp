@@ -723,9 +723,7 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
         return nullptr;
     }
 
-    #ifdef AS_MAX_PORTABILITY
     engine->SetMessageCallback( asFUNCTION( CallbackMessage ), nullptr, asCALL_CDECL );
-    #endif
 
     engine->SetEngineProperty( asEP_ALLOW_UNSAFE_REFERENCES, true );
     engine->SetEngineProperty( asEP_USE_CHARACTER_LITERALS, true );
@@ -783,10 +781,8 @@ void Script::CreateContext()
     asIScriptContext* ctx = Engine->CreateContext();
     RUNTIME_ASSERT( ctx );
 
-    #ifdef AS_MAX_PORTABILITY
     int r = ctx->SetExceptionCallback( asFUNCTION( CallbackException ), nullptr, asCALL_CDECL );
     RUNTIME_ASSERT( r >= 0 );
-    #endif
 
     ContextData* ctx_data = new ContextData();
     memzero( ctx_data, sizeof( ContextData ) );
@@ -795,10 +791,8 @@ void Script::CreateContext()
     EngineData* edata = (EngineData*) Engine->GetUserData();
     if( edata->Profiler )
     {
-        #ifdef AS_MAX_PORTABILITY
         r = ctx->SetLineCallback( asFUNCTION( ProfilerContextCallback ), edata->Profiler, asCALL_CDECL );
         RUNTIME_ASSERT( r >= 0 );
-        #endif
     }
 
     FreeContexts.push_back( ctx );

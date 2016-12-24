@@ -8139,31 +8139,46 @@ void FOClient::SScriptFunc::Global_GetTime( ushort& year, ushort& month, ushort&
     milliseconds = dt.Milliseconds;
 }
 
-bool FOClient::SScriptFunc::Global_SetPropertyGetCallback( int prop_enum_value, void* ref, int type_id )
+void FOClient::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen )
 {
+    int   prop_enum_value = gen->GetArgDWord( 0 );
+    void* ref = gen->GetArgAddress( 1 );
+    int   type_id = gen->GetArgTypeId( 1 );
+    gen->SetReturnByte( 0 );
+    RUNTIME_ASSERT( ref );
+
     Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
     string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
-        SCRIPT_ERROR_R0( result.c_str() );
-    return true;
+        SCRIPT_ERROR_R( result.c_str() );
+
+    gen->SetReturnByte( 1 );
 }
 
-bool FOClient::SScriptFunc::Global_AddPropertySetCallback( int prop_enum_value, void* ref, int type_id, bool deferred )
+void FOClient::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen )
 {
+    int   prop_enum_value = gen->GetArgDWord( 0 );
+    void* ref = gen->GetArgAddress( 1 );
+    int   type_id = gen->GetArgTypeId( 1 );
+    bool  deferred = gen->GetArgByte( 2 ) != 0;
+    gen->SetReturnByte( 0 );
+    RUNTIME_ASSERT( ref );
+
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R0( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
 
     string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )
-        SCRIPT_ERROR_R0( result.c_str() );
-    return true;
+        SCRIPT_ERROR_R( result.c_str() );
+
+    gen->SetReturnByte( 1 );
 }
 
 void FOClient::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )

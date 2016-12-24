@@ -341,10 +341,17 @@ public:
         if( isServer )
         {
             char buf[ MAX_FOTEXT ];
+            #ifdef AS_MAX_PORTABILITY
             if( engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Create%s()", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::CreateEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
                 engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s@+ entity)", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::DeleteEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
                 engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(uint id)", class_name.c_str() ), asFUNCTION( EntityCreator::DeleteEntityById_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
                 engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Get%s(uint id)", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::GetEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 )
+            #else
+            if( engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Create%s()", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, CreateEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s@+ entity)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(uint id)", class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntityById ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Get%s(uint id)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, GetEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 )
+            #endif
             {
                 WriteLog( "Error in 'entity' pragma '{}', fail to register management functions.\n", text.c_str() );
                 return false;

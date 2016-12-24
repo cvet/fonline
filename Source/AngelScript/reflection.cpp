@@ -475,25 +475,12 @@ void RegisterScriptReflection_Native(asIScriptEngine* engine)
 
 static void ScriptType_Instantiate_Generic(asIScriptGeneric* gen)
 {
-    ((ScriptType*)gen->GetObject())->Instantiate(*(void**)gen->GetArgAddress(0), gen->GetArgTypeId(0));
+    ((ScriptType*)gen->GetObject())->Instantiate(gen->GetArgAddress(0), gen->GetArgTypeId(0));
 }
 
 static void ScriptType_InstantiateCopy_Generic(asIScriptGeneric* gen)
 {
-    ((ScriptType*)gen->GetObject())->InstantiateCopy(*(void**)gen->GetArgAddress(0), gen->GetArgTypeId(0), *(void**)gen->GetArgAddress(1), gen->GetArgTypeId(1));
-}
-
-static void ScriptType_GetMethodDeclaration_Generic(asIScriptGeneric* gen)
-{
-    new(gen->GetAddressOfReturnLocation()) string(((ScriptType*)gen->GetObject())->GetMethodDeclaration(
-        *(asUINT*)gen->GetArgAddress(0), *(bool*)gen->GetArgAddress(1), *(bool*)gen->GetArgAddress(2), *(bool*)gen->GetArgAddress(3)));
-}
-
-static void GetCallstack_Generic(asIScriptGeneric* gen)
-{
-    new(gen->GetAddressOfReturnLocation()) asUINT(GetCallstack(
-        *(CScriptArray**)gen->GetArgAddress(0), *(CScriptArray**)gen->GetArgAddress(1), *(CScriptArray**)gen->GetArgAddress(2), *(CScriptArray**)gen->GetArgAddress(3),
-        *(bool*)gen->GetArgAddress(4), *(bool*)gen->GetArgAddress(5), *(bool*)gen->GetArgAddress(6)));
+    ((ScriptType*)gen->GetObject())->InstantiateCopy(gen->GetArgAddress(0), gen->GetArgTypeId(0), gen->GetArgAddress(1), gen->GetArgTypeId(1));
 }
 
 static void RegisterMethod_Generic(asIScriptEngine* engine, const char* declaration, const asSFuncPtr& func_pointer)
@@ -534,8 +521,8 @@ void RegisterScriptReflection_Generic(asIScriptEngine* engine)
     RegisterMethod_Generic(engine, "bool implements(const type&in other) const", WRAP_MFN(ScriptType, Implements));
     RegisterMethod_Generic(engine, "bool opEquals(const type&in other) const", WRAP_MFN(ScriptType, Equals));
     RegisterMethod_Generic(engine, "bool derivesFrom(const type&in other) const", WRAP_MFN(ScriptType, DerivesFrom));
-    RegisterMethod_Generic(engine, "void instantiate(?&out instance) const", WRAP_MFN(ScriptType, Instantiate));
-    RegisterMethod_Generic(engine, "void instantiate(?&in copyFrom, ?&out instance) const", WRAP_MFN(ScriptType, InstantiateCopy));
+    RegisterMethod_Generic(engine, "void instantiate(?&out instance) const", asFUNCTION(ScriptType_Instantiate_Generic));
+    RegisterMethod_Generic(engine, "void instantiate(?&in copyFrom, ?&out instance) const", asFUNCTION(ScriptType_InstantiateCopy_Generic));
     RegisterMethod_Generic(engine, "uint get_methodsCount() const", WRAP_MFN(ScriptType, GetMethodsCount));
     RegisterMethod_Generic(engine, "string getMethodDeclaration(uint index, bool includeObjectName = false, bool includeNamespace = false, bool includeParamNames = true) const", WRAP_MFN(ScriptType, GetMethodDeclaration));
     RegisterMethod_Generic(engine, "uint get_propertiesCount() const", WRAP_MFN(ScriptType, GetPropertiesCount));

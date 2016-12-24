@@ -513,8 +513,8 @@ public:
         static CScriptArray* Global_GetAllMaps( hash pid );
         static CScriptArray* Global_GetAllLocations( hash pid );
         static void          Global_GetTime( ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds );
-        static bool          Global_SetPropertyGetCallback( int prop_enum_value, void* ref, int type_id );
-        static bool          Global_AddPropertySetCallback( int prop_enum_value, void* ref, int type_id, bool deferred );
+        static void          Global_SetPropertyGetCallback( asIScriptGeneric* gen );
+        static void          Global_AddPropertySetCallback( asIScriptGeneric* gen );
         static void          Global_AllowSlot( uchar index, bool enable_send );
         static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( string dat_name );

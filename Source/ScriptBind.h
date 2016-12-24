@@ -3,12 +3,22 @@
 # pragma push_macro( "SCRIPT_FUNC" )
 # pragma push_macro( "SCRIPT_FUNC_THIS" )
 # pragma push_macro( "SCRIPT_METHOD" )
+# pragma push_macro( "SCRIPT_FUNC_CONV" )
+# pragma push_macro( "SCRIPT_FUNC_THIS_CONV" )
+# pragma push_macro( "SCRIPT_METHOD_CONV" )
 # undef SCRIPT_FUNC
 # undef SCRIPT_FUNC_THIS
 # undef SCRIPT_METHOD
-# define SCRIPT_FUNC( ... )         asFUNCTION( 1 )
-# define SCRIPT_FUNC_THIS( ... )    asFUNCTION( 1 )
-# define SCRIPT_METHOD( ... )       asFUNCTION( 1 )
+# undef SCRIPT_FUNC_CONV
+# undef SCRIPT_FUNC_THIS_CONV
+# undef SCRIPT_METHOD_CONV
+# define SCRIPT_FUNC( ... )         asFUNCTION( DummyFunc )
+# define SCRIPT_FUNC_THIS( ... )    asFUNCTION( DummyFunc )
+# define SCRIPT_METHOD( ... )       asFUNCTION( DummyFunc )
+# define SCRIPT_FUNC_CONV         asCALL_GENERIC
+# define SCRIPT_FUNC_THIS_CONV    asCALL_GENERIC
+# define SCRIPT_METHOD_CONV       asCALL_GENERIC
+static void DummyFunc( asIScriptGeneric* gen ) {}
 #endif
 
 #include "ScriptFunctions.h"
@@ -514,8 +524,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", SCRIPT_FUNC( BIND_CLASS Global_GetFullSecond ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTime(uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)", SCRIPT_FUNC( BIND_CLASS Global_GetTime ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetGameTime(uint fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)", SCRIPT_FUNC( BIND_CLASS Global_GetGameTime ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetPropertyGetCallback(int propertyValue, ?&in func)", SCRIPT_FUNC( BIND_CLASS Global_SetPropertyGetCallback ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddPropertySetCallback(int propertyValue, ?&in func, bool deferred)", SCRIPT_FUNC( BIND_CLASS Global_AddPropertySetCallback ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetPropertyGetCallback(int propertyValue, ?&in func)", asFUNCTION( BIND_CLASS Global_SetPropertyGetCallback ), asCALL_GENERIC ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddPropertySetCallback(int propertyValue, ?&in func, bool deferred)", asFUNCTION( BIND_CLASS Global_AddPropertySetCallback ), asCALL_GENERIC ) );
 
     BIND_ASSERT( engine->RegisterGlobalProperty( "const uint16 __Year", &GameOpt.Year ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "const uint16 __Month", &GameOpt.Month ) );
@@ -896,4 +906,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 # pragma pop_macro( "SCRIPT_FUNC" )
 # pragma pop_macro( "SCRIPT_FUNC_THIS" )
 # pragma pop_macro( "SCRIPT_METHOD" )
+# pragma pop_macro( "SCRIPT_FUNC_CONV" )
+# pragma pop_macro( "SCRIPT_FUNC_THIS_CONV" )
+# pragma pop_macro( "SCRIPT_METHOD_CONV" )
 #endif
