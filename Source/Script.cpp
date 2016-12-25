@@ -7,6 +7,7 @@
 #include "AngelScript/sdk/add_on/scriptstdstring/scriptstdstring.h"
 #include "AngelScript/sdk/add_on/scriptfile/scriptfile.h"
 #include "AngelScript/sdk/add_on/scriptany/scriptany.h"
+#include "AngelScript/sdk/add_on/datetime/datetime.h"
 #include "AngelScript/sdk/add_on/scriptmath/scriptmath.h"
 #include "AngelScript/sdk/add_on/weakref/weakref.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
@@ -744,6 +745,7 @@ asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, co
     RegisterScriptDict( engine );
     RegisterScriptDictExtensions( engine );
     RegisterScriptFile( engine );
+    RegisterScriptDateTime( engine );
     RegisterScriptMath( engine );
     RegisterScriptWeakRef( engine );
     RegisterScriptReflection( engine );
