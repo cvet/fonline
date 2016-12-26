@@ -125,7 +125,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     # ifdef FO_IOS
     SDL_iPhoneSetAnimationCallback( MainWindow, 1, App::ShowFrame, engine );
     # else
-    emscripten_set_main_loop_arg( App::ShowFrame, engine, 60, 1 );
+    emscripten_set_main_loop_arg( App::ShowFrame, engine, GameOpt.FixedFPS, 1 );
     # endif
     return 0;
 

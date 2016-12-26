@@ -109,7 +109,7 @@ public:
     void SetAlwaysOnTop( bool enable );
 
     // Render targets
-    RenderTarget* CreateRenderTarget( bool depth_stencil, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect = nullptr, RenderTarget* rt_refresh = nullptr );
+    RenderTarget* CreateRenderTarget( bool depth, bool multisampling, bool screen_size, uint width, uint height, bool tex_linear, Effect* effect = nullptr, RenderTarget* rt_refresh = nullptr );
     void          CleanRenderTarget( RenderTarget* rt );
     void          DeleteRenderTarget( RenderTarget*& rt );
     void          PushRenderTarget( RenderTarget* rt );
@@ -117,7 +117,7 @@ public:
     void          DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from = nullptr, const Rect* region_to = nullptr );
     uint          GetRenderTargetPixel( RenderTarget* rt, int x, int y );
     void          ClearCurrentRenderTarget( uint color );
-    void          ClearCurrentRenderTargetDS( bool depth, bool stencil );
+    void          ClearCurrentRenderTargetDepth();
     void          RefreshViewport();
     RenderTarget* Get3dRenderTarget( uint width, uint height );
 

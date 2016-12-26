@@ -252,18 +252,19 @@ void Preprocessor::LineNumberTranslator::Store( std::vector< unsigned char >& da
     // Write data
     data.resize( size );
     unsigned char* cur = &data[ 0 ];
-    *(unsigned int*) cur = (unsigned int) lines.size();
+    unsigned int tmp;
+    memcpy( cur, &( tmp = (unsigned int) lines.size() ), sizeof( unsigned int ) );
     cur += sizeof( unsigned int );
     for( size_t i = 0; i < lines.size(); i++ )
     {
         Entry& entry = lines[ i ];
-        *(unsigned int*) cur = (unsigned int) entry.File.length();
+        memcpy( cur, &( tmp = (unsigned int) entry.File.length() ), sizeof( unsigned int ) );
         cur += sizeof( unsigned int );
         memcpy( cur, entry.File.c_str(), entry.File.length() );
         cur += entry.File.length();
-        *(unsigned int*) cur = entry.StartLine;
+        memcpy( cur, &( tmp = (unsigned int) entry.StartLine ), sizeof( unsigned int ) );
         cur += sizeof( unsigned int );
-        *(unsigned int*) cur = entry.Offset;
+        memcpy( cur, &( tmp = (unsigned int) entry.Offset ), sizeof( unsigned int ) );
         cur += sizeof( unsigned int );
     }
 }
@@ -272,19 +273,21 @@ void Preprocessor::LineNumberTranslator::Restore( const std::vector< unsigned ch
 {
     // Read data
     const unsigned char* cur = &data[ 0 ];
-    unsigned int         count = *(unsigned int*) cur;
+    unsigned int         count;
+    memcpy( &count, cur, sizeof( unsigned int ) );
     cur += sizeof( unsigned int );
     lines.resize( count );
     for( size_t i = 0; i < lines.size(); i++ )
     {
         Entry& entry = lines[ i ];
-        entry.File.resize( *(unsigned int*) cur );
+        memcpy( &count, cur, sizeof( unsigned int ) );
+        entry.File.resize( count );
         cur += sizeof( unsigned int );
         memcpy( &entry.File[ 0 ], cur, entry.File.length() );
         cur += entry.File.length();
-        entry.StartLine = *(unsigned int*) cur;
+        memcpy( &entry.StartLine, cur, sizeof( unsigned int ) );
         cur += sizeof( unsigned int );
-        entry.Offset = *(unsigned int*) cur;
+        memcpy( &entry.Offset, cur, sizeof( unsigned int ) );
         cur += sizeof( unsigned int );
     }
 }

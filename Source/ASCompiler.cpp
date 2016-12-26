@@ -233,7 +233,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
 
     // Make module name
     char module_name[ MAX_FOTEXT ];
-    Str::Copy(  module_name, file_name );
+    Str::Copy( module_name, file_name );
     FileManager::EraseExtension( module_name );
 
     // Start compilation

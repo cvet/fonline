@@ -2719,7 +2719,7 @@ bool FOServer::LoadClient( Client* cl )
     IniParser client_data;
     if( !client_data.AppendFile( fname ) )
     {
-        WriteLog(  "Unable to open client save file '{}'.\n", fname );
+        WriteLog( "Unable to open client save file '{}'.\n", fname );
         return false;
     }
     if( !client_data.IsApp( "Client" ) )

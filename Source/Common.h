@@ -271,7 +271,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  pragma comment( lib, "Winmm.lib" )
 #  pragma comment( lib, "Imm32.lib" )
 # endif
-# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); if( err__ != GL_NO_ERROR ) { WriteLog( # expr ", error {:#X}.\n", err__ ); ExitProcess( 0 ); } } }
+# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); RUNTIME_ASSERT_STR( err__ == GL_NO_ERROR, fmt::format( # expr " error {:#X}", err__ ).c_str() ); } }
 
 extern bool OGL_version_2_0;
 extern bool OGL_vertex_buffer_object;

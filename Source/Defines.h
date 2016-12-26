@@ -136,7 +136,7 @@
 #define FH_NOSHOOT                  BIN16( 00100000, 00000010 )
 
 // Client map
-#define CLIENT_MAP_FORMAT_VER       ( 9 )
+#define CLIENT_MAP_FORMAT_VER       ( 10 )
 
 // Coordinates
 #define MAXHEX_DEF                  ( 200 )

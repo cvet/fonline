@@ -3613,7 +3613,7 @@ bool HexManager::LoadMap( hash map_pid )
 
     if( fm.GetBEUInt() != CLIENT_MAP_FORMAT_VER )
     {
-        WriteLog( "Map format is not supported.\n" );
+        WriteLog( "Map format is deprecated.\n" );
         return false;
     }
 
@@ -3670,28 +3670,20 @@ bool HexManager::LoadMap( hash map_pid )
 
     // Scenery
     curHashScen = ( scen_len ? Crypt.MurmurHash2( fm.GetCurBuf(), scen_len ) : maxhx * maxhy );
-    const uchar* scen_data = fm.GetCurBuf();
-    uint         scen_count = *(uint*) scen_data;
-    scen_data += sizeof( uint );
+    uint scen_count = fm.GetLEUInt();
     for( uint i = 0; i < scen_count; i++ )
     {
-        uint id = *(uint*) scen_data;
-        scen_data += sizeof( uint );
-        hash proto_id = *(hash*) scen_data;
-        scen_data += sizeof( hash );
-
-        uint        datas_size = *(uint*) scen_data;
-        scen_data += sizeof( uint );
+        uint        id = fm.GetLEUInt();
+        hash        proto_id = fm.GetLEUInt();
+        uint        datas_size = fm.GetLEUInt();
         UCharVecVec props_data( datas_size );
         for( uint i = 0; i < datas_size; i++ )
         {
-            uint data_size = *(uint*) scen_data;
-            scen_data += sizeof( uint );
+            uint data_size = fm.GetLEUInt();
             if( data_size )
             {
                 props_data[ i ].resize( data_size );
-                memcpy( &props_data[ i ][ 0 ], scen_data, data_size );
-                scen_data += data_size;
+                fm.CopyMem( &props_data[ i ][ 0 ], data_size );
             }
         }
         Properties props( Item::PropertiesRegistrator );

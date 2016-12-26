@@ -3724,14 +3724,14 @@ void FOClient::Net_OnProperty( uint data_size )
     if( data_size != 0 )
     {
         TempPropertyData.resize( data_size );
-        Bin.Pop(  &TempPropertyData[ 0 ], data_size );
+        Bin.Pop( &TempPropertyData[ 0 ], data_size );
     }
     else
     {
         uint len = msg_len - sizeof( uint ) - sizeof( msg_len ) - sizeof( char ) - additional_args * sizeof( uint ) - sizeof( ushort );
         TempPropertyData.resize( len );
         if( len )
-            Bin.Pop(  &TempPropertyData[ 0 ], len );
+            Bin.Pop( &TempPropertyData[ 0 ], len );
     }
 
     CHECK_IN_BUFF_ERROR;
@@ -3900,8 +3900,8 @@ void FOClient::Net_OnGameInfo()
     Bin >> time;
     Bin >> rain;
     Bin >> no_log_out;
-    Bin.Pop(  day_time, sizeof( int ) * 4 );
-    Bin.Pop(  day_color, sizeof( uchar ) * 12 );
+    Bin.Pop( day_time, sizeof( int ) * 4 );
+    Bin.Pop( day_color, sizeof( uchar ) * 12 );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -4204,7 +4204,7 @@ void FOClient::Net_OnGlobalInfo()
 
     if( FLAG( info_flags, GM_INFO_ZONES_FOG ) )
     {
-        Bin.Pop(  GmapFog.GetData(), GM_ZONES_FOG_SIZE );
+        Bin.Pop( GmapFog.GetData(), GM_ZONES_FOG_SIZE );
     }
 
     if( FLAG( info_flags, GM_INFO_FOG ) )

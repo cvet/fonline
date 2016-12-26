@@ -281,7 +281,7 @@ struct RenderTarget
 {
     GLuint       FBO;
     Texture*     TargetTexture;
-    GLuint       DepthStencilBuffer;
+    GLuint       DepthBuffer;
     Effect*      DrawEffect;
     bool         Multisampling;
     bool         ScreenSize;
