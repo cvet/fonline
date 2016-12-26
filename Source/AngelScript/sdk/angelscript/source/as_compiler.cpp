@@ -5079,6 +5079,7 @@ int asCCompiler::GetVariableOffset(int varIndex)
 {
 	// Return offset to the last dword on the stack
 
+#if 0 // Patch
 	// Start at 1 as offset 0 is reserved for the this pointer (or first argument for global functions)
 	int varOffset = 1;
 
@@ -5090,6 +5091,22 @@ int asCCompiler::GetVariableOffset(int varIndex)
 		else
 			varOffset += variableAllocations[n].GetSizeOnStackDWords();
 	}
+#else
+	// Start at 1 as offset 0 is reserved for the this pointer (or first argument for global functions)
+	int varOffset = 1 + 1;
+
+	// Skip lower variables
+	for( int n = 0; n < varIndex; n++ )
+	{
+		int size;
+		if( !variableIsOnHeap[n] && variableAllocations[n].IsObject() )
+			size = variableAllocations[n].GetSizeInMemoryDWords();
+		else
+			size = variableAllocations[n].GetSizeOnStackDWords();
+
+		varOffset += size + size % 2;
+	}
+#endif
 
 	if( varIndex < (int)variableAllocations.GetLength() )
 	{
@@ -5109,6 +5126,7 @@ int asCCompiler::GetVariableOffset(int varIndex)
 
 int asCCompiler::GetVariableSlot(int offset)
 {
+#if 0 // Patch
 	int varOffset = 1;
 	for( asUINT n = 0; n < variableAllocations.GetLength(); n++ )
 	{
@@ -5122,6 +5140,24 @@ int asCCompiler::GetVariableSlot(int offset)
 
 		varOffset++;
 	}
+#else
+	int varOffset = 1 + 1;
+	for( asUINT n = 0; n < variableAllocations.GetLength(); n++ )
+	{
+		int size;
+		if( !variableIsOnHeap[n] && variableAllocations[n].IsObject() )
+			size = variableAllocations[n].GetSizeInMemoryDWords();
+		else
+			size = variableAllocations[n].GetSizeOnStackDWords();
+
+		varOffset += -1 + (size + size % 2);
+
+		if( varOffset == offset )
+			return n;
+
+		varOffset++;
+	}
+#endif
 
 	return -1;
 }
