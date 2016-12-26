@@ -2,21 +2,20 @@
 #include "Exception.h"
 #include "Script.h"
 
-char DumpMess[] =
+static char DumpMess[] =
 {
     "Please send this file '%s' on e-mail 'support@fonline.ru'."
     "The theme of the letter should contain a word 'dump'. In the letter specify "
     "under what circumstances there was a failure. Thanks."
 };
 
-char AppName[ MAX_FOTEXT ] = { 0 };
-char AppVer[ MAX_FOTEXT ] = { 0 };
-char ManualDumpAppendix[ MAX_FOTEXT ] = { 0 };
-char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
+static char AppName[ MAX_FOTEXT ] = { 0 };
+static char AppVer[ MAX_FOTEXT ] = { 0 };
+static char ManualDumpAppendix[ MAX_FOTEXT ] = { 0 };
+static char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
 
 #if defined ( FO_WINDOWS )
 
-# define WINVER    0x0501 // Windows XP
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
 # include <stdio.h>
@@ -28,8 +27,7 @@ char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
 # include "Timer.h"
 # include "FileManager.h"
 
-LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
-LONG WINAPI TopLevelFilterMiniDump( EXCEPTION_POINTERS* except );
+static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
 
 # pragma MESSAGE( "Dump AS stack trace?" )
 static void DumpAngelScript( FILE* f );
@@ -64,7 +62,7 @@ void CatchExceptions( const char* app_name, int app_ver )
 # ifdef FO_X86
 #  pragma warning( disable : 4748 )
 # endif
-LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
+static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 {
     LONG retval = EXCEPTION_CONTINUE_SEARCH;
     char mess[ MAX_FOTEXT ];
@@ -478,10 +476,10 @@ void CreateDump( const char* appendix, const char* message )
 
 # define BACKTRACE_BUFFER_COUNT    ( 100 )
 
-void TerminationHandler( int signum, siginfo_t* siginfo, void* context );
-bool sigactionsSetted = false;
-struct sigaction oldSIGSEGV;
-struct sigaction oldSIGFPE;
+static void TerminationHandler( int signum, siginfo_t* siginfo, void* context );
+static bool SigactionsSetted = false;
+static struct sigaction OldSIGSEGV;
+static struct sigaction OldSIGFPE;
 
 static void DumpAngelScript( FILE* f );
 
@@ -491,7 +489,7 @@ void CatchExceptions( const char* app_name, int app_ver )
         Str::Copy( AppName, app_name );
     Str::Format( AppVer, "%d", app_ver );
 
-    if( app_name && !sigactionsSetted )
+    if( app_name && !SigactionsSetted )
     {
         // SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGTERM
         // CTRL-C - sends SIGINT which default action is to terminate the application.
@@ -508,7 +506,7 @@ void CatchExceptions( const char* app_name, int app_ver )
         memset( &act, 0, sizeof( act ) );
         act.sa_sigaction = &TerminationHandler;
         act.sa_flags = SA_SIGINFO;
-        sigaction( SIGSEGV, &act, &oldSIGSEGV );
+        sigaction( SIGSEGV, &act, &OldSIGSEGV );
 
         /*
            SIGFPE
@@ -518,16 +516,16 @@ void CatchExceptions( const char* app_name, int app_ver )
         memset( &act, 0, sizeof( act ) );
         act.sa_sigaction = &TerminationHandler;
         act.sa_flags = SA_SIGINFO;
-        sigaction( SIGFPE, &act, &oldSIGFPE );
+        sigaction( SIGFPE, &act, &OldSIGFPE );
 
-        sigactionsSetted = true;
+        SigactionsSetted = true;
     }
-    else if( !app_name && sigactionsSetted )
+    else if( !app_name && SigactionsSetted )
     {
-        sigaction( SIGSEGV, &oldSIGSEGV, nullptr );
-        sigaction( SIGFPE, &oldSIGFPE, nullptr );
+        sigaction( SIGSEGV, &OldSIGSEGV, nullptr );
+        sigaction( SIGFPE, &OldSIGFPE, nullptr );
 
-        sigactionsSetted = false;
+        SigactionsSetted = false;
     }
 }
 
@@ -539,7 +537,7 @@ void CreateDump( const char* appendix, const char* message )
     TerminationHandler( 0, nullptr, nullptr );
 }
 
-void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
+static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 {
     char mess[ MAX_FOTEXT ];
     char dump_path[ MAX_FOPATH ];
