@@ -3,6 +3,52 @@
 #include "Access.h"
 #include "Defence.h"
 
+#ifdef MEMORY_DEBUG
+static bool                 ASDbgMemoryCanWork = false;
+static THREAD bool          ASDbgMemoryInUse = false;
+static map< void*, string > ASDbgMemoryPtr;
+static char                 ASDbgMemoryBuf[ 1024 ];
+
+static void* ASDeepDebugMalloc( size_t size )
+{
+    size += sizeof( size_t );
+    size_t* ptr = (size_t*) malloc( size );
+    *ptr = size;
+
+    if( ASDbgMemoryCanWork && !ASDbgMemoryInUse )
+    {
+        ASDbgMemoryInUse = true;
+        const char* func = Script::GetActiveFuncName();
+        Str::Format( ASDbgMemoryBuf, "AS : %s", func ? func : "<nullptr>" );
+        MEMORY_PROCESS_STR( ASDbgMemoryBuf, (int) size );
+        ASDbgMemoryPtr.insert( PAIR( ptr, string( ASDbgMemoryBuf ) ) );
+        ASDbgMemoryInUse = false;
+    }
+    MEMORY_PROCESS( MEMORY_ANGEL_SCRIPT, (int) size );
+
+    return ++ptr;
+}
+
+static void ASDeepDebugFree( void* ptr )
+{
+    size_t* ptr_ = (size_t*) ptr;
+    size_t  size = *( --ptr_ );
+
+    if( ASDbgMemoryCanWork )
+    {
+        auto it = ASDbgMemoryPtr.find( ptr_ );
+        if( it != ASDbgMemoryPtr.end() )
+        {
+            MEMORY_PROCESS_STR( it->second.c_str(), -(int) size );
+            ASDbgMemoryPtr.erase( it );
+        }
+    }
+    MEMORY_PROCESS( MEMORY_ANGEL_SCRIPT, -(int) size );
+
+    free( ptr_ );
+}
+#endif
+
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR                  \
     if( Bin.IsError() )                      \
@@ -6459,6 +6505,10 @@ bool FOClient::ReloadScripts()
         return false;
     }
 
+    #ifdef MEMORY_DEBUG
+    asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
+    #endif
+
     // Reinitialize engine
     Script::Finish();
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT );
@@ -6600,6 +6650,10 @@ bool FOClient::ReloadScripts()
 
     if( errors )
         return false;
+
+    #ifdef MEMORY_DEBUG
+    ASDbgMemoryCanWork = true;
+    #endif
 
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );

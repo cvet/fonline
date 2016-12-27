@@ -58,7 +58,10 @@ public:
         SAFEDELA( BaseBuf );
         SAFEDELA( OutputBuf );
         if( StreamableOGG )
+        {
+            delete (FileManager*) OggDescriptor.datasource;
             ov_clear( &OggDescriptor );
+        }
     }
 };
 
@@ -476,6 +479,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     if( !vi )
     {
         WriteLog( "ov_info error.\n" );
+        SAFEDEL( fm );
         ov_clear( &sound->OggDescriptor );
         return false;
     }
@@ -508,6 +512,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     if( !result )
     {
         sound->StreamableOGG = false;
+        SAFEDEL( fm );
         ov_clear( &sound->OggDescriptor );
     }
     else

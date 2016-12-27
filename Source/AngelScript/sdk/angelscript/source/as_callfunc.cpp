@@ -183,7 +183,8 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 	{
 		asCDataType &dt = func->parameterTypes[n];
 
-		if( (dt.IsObject() || dt.IsFuncdef()) && !dt.IsReference() )
+		// Patch
+		/*if( (dt.IsObject() || dt.IsFuncdef()) && !dt.IsReference() )
 		{
 			if (dt.IsFuncdef())
 			{
@@ -220,7 +221,7 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 
 				internal->cleanArgs.PushLast(clean);
 			}
-		}
+		}*/
 
 		// Patch
 		if (n < internal->paramAutoHandles.GetLength() && internal->paramAutoHandles[n])

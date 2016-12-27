@@ -159,6 +159,10 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     }
     #endif
 
+    #ifdef MEMORY_DEBUG
+    WriteLog( "{}", Debugger::GetMemoryStatistics() );
+    #endif
+
     // Finish script
     if( Script::GetEngine() )
     {

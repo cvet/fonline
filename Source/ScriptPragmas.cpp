@@ -912,6 +912,7 @@ public:
 };
 
 // #pragma event MyEvent (Critter&, int, bool)
+extern bool as_builder_ForceAutoHandles;
 class EventPragma
 {
     class ScriptEvent
@@ -1241,6 +1242,7 @@ public:
         char             buf[ MAX_FOTEXT ];
         asIScriptEngine* engine = Script::GetEngine();
         int              func_def_id;
+        as_builder_ForceAutoHandles = true;
         if( ( func_def_id = engine->RegisterFuncdef( Str::Format( buf, "void %sFunc(%s)", event_name, args ) ) ) < 0 ||
             engine->RegisterFuncdef( Str::Format( buf, "bool %sFuncBool(%s)", event_name, args ) ) < 0 ||
             engine->RegisterObjectType( event_name, 0, asOBJ_REF ) < 0 ||
@@ -1252,7 +1254,11 @@ public:
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
             engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", SCRIPT_METHOD( ScriptEvent, UnsubscribeAll ), SCRIPT_METHOD_CONV ) < 0 ||
             engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
+        {
+            as_builder_ForceAutoHandles = false;
             return false;
+        }
+        as_builder_ForceAutoHandles = false;
 
         ScriptEvent* event = new ScriptEvent();
         event->Name = event_name;
