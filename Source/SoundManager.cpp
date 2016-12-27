@@ -42,6 +42,7 @@ public:
     bool           StreamableOGG;
 
     OggVorbis_File OggDescriptor;
+    FileManager    OggFile;
 
     Sound(): BaseBuf( nullptr ), BaseBufSize( 0 ), ConvertedBuf( nullptr ),
              ConvertedBufSize( 0 ), ConvertedBufCur( 0 ), OutputBuf( nullptr ),
@@ -58,10 +59,7 @@ public:
         SAFEDELA( BaseBuf );
         SAFEDELA( OutputBuf );
         if( StreamableOGG )
-        {
-            delete (FileManager*) OggDescriptor.datasource;
             ov_clear( &OggDescriptor );
-        }
     }
 };
 
@@ -434,12 +432,8 @@ long Ogg_tell_func( void* datasource )
 
 bool SoundManager::LoadOGG( Sound* sound, const char* fname )
 {
-    FileManager* fm = new FileManager();
-    if( !fm || !fm->LoadFile( fname ) )
-    {
-        SAFEDEL( fm );
+    if( !sound->OggFile.LoadFile( fname ) )
         return false;
-    }
 
     ov_callbacks callbacks;
     callbacks.read_func = &Ogg_read_func;
@@ -447,7 +441,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     callbacks.close_func = &Ogg_close_func;
     callbacks.tell_func = &Ogg_tell_func;
 
-    int error = ov_open_callbacks( fm, &sound->OggDescriptor, nullptr, 0, callbacks );
+    int error = ov_open_callbacks( &sound->OggFile, &sound->OggDescriptor, nullptr, 0, callbacks );
     if( error )
     {
         WriteLog( "Open OGG file '{}' fail, error:\n", fname );
@@ -478,19 +472,14 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     vorbis_info* vi = ov_info( &sound->OggDescriptor, -1 );
     if( !vi )
     {
-        WriteLog( "ov_info error.\n" );
-        SAFEDEL( fm );
-        ov_clear( &sound->OggDescriptor );
+        WriteLog( "Ogg info error.\n" );
         return false;
     }
 
     sound->OriginalFormat = AUDIO_S16;
     sound->OriginalChannels = vi->channels;
     sound->OriginalRate = (int) vi->rate;
-
     sound->BaseBuf = new unsigned char[ STREAMING_PORTION ];
-    if( !sound->BaseBuf )
-        return false;
 
     int  result = 0;
     uint decoded = 0;
@@ -512,8 +501,8 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     if( !result )
     {
         sound->StreamableOGG = false;
-        SAFEDEL( fm );
         ov_clear( &sound->OggDescriptor );
+        sound->OggFile.UnloadFile();
     }
     else
     {
