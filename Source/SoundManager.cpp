@@ -15,8 +15,8 @@ SoundManager SndMngr;
 #include "vorbis/codec.h"
 #include "vorbis/vorbisfile.h"
 
-SDL_AudioDeviceID DeviceID = 0;
-SDL_AudioSpec     SoundSpec;
+static SDL_AudioDeviceID DeviceID = 0;
+static SDL_AudioSpec     SoundSpec;
 
 // Sound structure
 class Sound
@@ -26,6 +26,7 @@ public:
     uint           BaseBufSize;
 
     uchar*         ConvertedBuf;
+    uint           ConvertedBufRealSize;
     uint           ConvertedBufSize;
     uint           ConvertedBufCur;
 
@@ -42,10 +43,9 @@ public:
     bool           StreamableOGG;
 
     OggVorbis_File OggDescriptor;
-    FileManager    OggFile;
 
     Sound(): BaseBuf( nullptr ), BaseBufSize( 0 ), ConvertedBuf( nullptr ),
-             ConvertedBufSize( 0 ), ConvertedBufCur( 0 ), OutputBuf( nullptr ),
+             ConvertedBufRealSize( 0 ), ConvertedBufSize( 0 ), ConvertedBufCur( 0 ), OutputBuf( nullptr ),
              OriginalFormat( 0 ), OriginalChannels( 0 ), OriginalRate( 0 ),
              IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),
              StreamableOGG( false )
@@ -391,13 +391,13 @@ bool SoundManager::LoadACM( Sound* sound, const char* fname, bool is_music )
     return ConvertData( sound );
 }
 
-size_t Ogg_read_func( void* ptr, size_t size, size_t nmemb, void* datasource )
+static size_t Ogg_read_func( void* ptr, size_t size, size_t nmemb, void* datasource )
 {
     FileManager* fm = (FileManager*) datasource;
     return fm->CopyMem( ptr, (uint) size ) ? size : 0;
 }
 
-int Ogg_seek_func( void* datasource, ogg_int64_t offset, int whence )
+static int Ogg_seek_func( void* datasource, ogg_int64_t offset, int whence )
 {
     FileManager* fm = (FileManager*) datasource;
     switch( whence )
@@ -417,14 +417,14 @@ int Ogg_seek_func( void* datasource, ogg_int64_t offset, int whence )
     return 0;
 }
 
-int Ogg_close_func( void* datasource )
+static int Ogg_close_func( void* datasource )
 {
     FileManager* fm = (FileManager*) datasource;
     delete fm;
     return 0;
 }
 
-long Ogg_tell_func( void* datasource )
+static long Ogg_tell_func( void* datasource )
 {
     FileManager* fm = (FileManager*) datasource;
     return fm->GetCurPos();
@@ -432,8 +432,12 @@ long Ogg_tell_func( void* datasource )
 
 bool SoundManager::LoadOGG( Sound* sound, const char* fname )
 {
-    if( !sound->OggFile.LoadFile( fname ) )
+    FileManager* fm = new FileManager();
+    if( !fm->LoadFile( fname ) )
+    {
+        SAFEDEL( fm );
         return false;
+    }
 
     ov_callbacks callbacks;
     callbacks.read_func = &Ogg_read_func;
@@ -441,7 +445,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     callbacks.close_func = &Ogg_close_func;
     callbacks.tell_func = &Ogg_tell_func;
 
-    int error = ov_open_callbacks( &sound->OggFile, &sound->OggDescriptor, nullptr, 0, callbacks );
+    int error = ov_open_callbacks( fm, &sound->OggDescriptor, nullptr, 0, callbacks );
     if( error )
     {
         WriteLog( "Open OGG file '{}' fail, error:\n", fname );
@@ -473,6 +477,7 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     if( !vi )
     {
         WriteLog( "Ogg info error.\n" );
+        ov_clear( &sound->OggDescriptor );
         return false;
     }
 
@@ -494,20 +499,18 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
             break;
     }
     if( result < 0 )
+    {
+        ov_clear( &sound->OggDescriptor );
         return false;
+    }
 
     sound->BaseBufSize = decoded;
 
     if( !result )
-    {
-        sound->StreamableOGG = false;
         ov_clear( &sound->OggDescriptor );
-        sound->OggFile.UnloadFile();
-    }
     else
-    {
         sound->StreamableOGG = true;
-    }
+
     return ConvertData( sound );
 }
 
@@ -545,18 +548,23 @@ bool SoundManager::ConvertData( Sound* sound )
     if( r == 1 )
     {
         cvt.len = sound->BaseBufSize;
-        cvt.buf = (Uint8*) SDL_malloc( cvt.len * cvt.len_mult );
+        if( cvt.len * cvt.len_mult > sound->ConvertedBufRealSize )
+        {
+            sound->ConvertedBufRealSize = cvt.len * cvt.len_mult;
+            SAFEDELA( sound->ConvertedBuf );
+            sound->ConvertedBuf = new unsigned char[ sound->ConvertedBufRealSize ];
+        }
+        cvt.buf = (Uint8*) sound->ConvertedBuf;
         memcpy( cvt.buf, sound->BaseBuf, sound->BaseBufSize );
+
         if( SDL_ConvertAudio( &cvt ) )
         {
             WriteLog( "SDL_ConvertAudio fail, error '{}'.\n", SDL_GetError() );
             return false;
         }
+
         sound->ConvertedBufCur = 0;
         sound->ConvertedBufSize = cvt.len_cvt;
-        sound->ConvertedBuf = new unsigned char[ sound->ConvertedBufSize ];
-        memcpy( sound->ConvertedBuf, cvt.buf, sound->ConvertedBufSize );
-        SDL_free( cvt.buf );
     }
     else
     {

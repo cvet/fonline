@@ -5091,22 +5091,6 @@ int asCCompiler::GetVariableOffset(int varIndex)
 		else
 			varOffset += variableAllocations[n].GetSizeOnStackDWords();
 	}
-#else
-	// Start at 1 as offset 0 is reserved for the this pointer (or first argument for global functions)
-	int varOffset = 1 + 1;
-
-	// Skip lower variables
-	for( int n = 0; n < varIndex; n++ )
-	{
-		int size;
-		if( !variableIsOnHeap[n] && variableAllocations[n].IsObject() )
-			size = variableAllocations[n].GetSizeInMemoryDWords();
-		else
-			size = variableAllocations[n].GetSizeOnStackDWords();
-
-		varOffset += size + size % 2;
-	}
-#endif
 
 	if( varIndex < (int)variableAllocations.GetLength() )
 	{
@@ -5119,6 +5103,38 @@ int asCCompiler::GetVariableOffset(int varIndex)
 		if( size > 1 )
 			varOffset += size-1;
 	}
+#else
+	// Start at 1 as offset 0 is reserved for the this pointer (or first argument for global functions)
+	int varOffset = 1;
+
+	// Skip lower variables
+	for( int n = 0; n < varIndex; n++ )
+	{
+		int size;
+		if( !variableIsOnHeap[n] && variableAllocations[n].IsObject() )
+			size = variableAllocations[n].GetSizeInMemoryDWords();
+		else
+			size = variableAllocations[n].GetSizeOnStackDWords();
+
+		if(size == 2 && varOffset % 2 != 0)
+			varOffset++;
+		varOffset += size;
+	}
+
+	if( varIndex < (int)variableAllocations.GetLength() )
+	{
+		// For variables larger than 1 dword the returned offset should be to the last dword
+		int size;
+		if( !variableIsOnHeap[varIndex] && variableAllocations[varIndex].IsObject() )
+			size = variableAllocations[varIndex].GetSizeInMemoryDWords();
+		else
+			size = variableAllocations[varIndex].GetSizeOnStackDWords();
+		if(size == 2 && varOffset % 2 != 0)
+			varOffset++;
+		if( size > 1 )
+			varOffset += size-1;
+	}
+#endif
 
 	return varOffset;
 }
@@ -5141,7 +5157,7 @@ int asCCompiler::GetVariableSlot(int offset)
 		varOffset++;
 	}
 #else
-	int varOffset = 1 + 1;
+	int varOffset = 1;
 	for( asUINT n = 0; n < variableAllocations.GetLength(); n++ )
 	{
 		int size;
@@ -5150,12 +5166,12 @@ int asCCompiler::GetVariableSlot(int offset)
 		else
 			size = variableAllocations[n].GetSizeOnStackDWords();
 
-		varOffset += -1 + (size + size % 2);
+		if(size == 2 && varOffset % 2 != 0)
+			varOffset++;
+		varOffset += size;
 
-		if( varOffset == offset )
+		if( varOffset - 1 == offset )
 			return n;
-
-		varOffset++;
 	}
 #endif
 
