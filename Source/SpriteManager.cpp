@@ -743,7 +743,19 @@ void SpriteManager::RefreshViewport()
         screen_size = true;
     }
 
-    GL( glViewport( 0, 0, w, h ) );
+    if( screen_size && GameOpt.FullScreen )
+    {
+        // Preserve aspect ratio in fullscreen mode
+        float native_aspect = (float) w / h;
+        float aspect = (float) GameOpt.ScreenWidth / GameOpt.ScreenHeight;
+        int   new_w = (int) roundf( ( aspect <= native_aspect ? (float) h * aspect : (float) h * native_aspect ) );
+        int   new_h = (int) roundf( ( aspect <= native_aspect ? (float) w / native_aspect : (float) w / aspect ) );
+        GL( glViewport( ( w - new_w ) / 2, ( h - new_h ) / 2, new_w, new_h ) );
+    }
+    else
+    {
+        GL( glViewport( 0, 0, w, h ) );
+    }
 
     if( screen_size )
     {

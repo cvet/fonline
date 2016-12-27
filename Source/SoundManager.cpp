@@ -548,7 +548,7 @@ bool SoundManager::ConvertData( Sound* sound )
     if( r == 1 )
     {
         cvt.len = sound->BaseBufSize;
-        if( cvt.len * cvt.len_mult > sound->ConvertedBufRealSize )
+        if( cvt.len * cvt.len_mult > (int) sound->ConvertedBufRealSize )
         {
             sound->ConvertedBufRealSize = cvt.len * cvt.len_mult;
             SAFEDELA( sound->ConvertedBuf );
