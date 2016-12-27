@@ -838,7 +838,7 @@ void FOClient::LookBordersPrepare()
     if( !ShootBorders.empty() )
     {
         ShootBorders.push_back( *ShootBorders.begin() );
-        ShootBorders.insert( ShootBorders.begin(), PrepPoint( base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA( 0, 0, 0, 0 ), &Chosen->SprOx, &Chosen->SprOy ) );
+        ShootBorders.insert( ShootBorders.begin(), PrepPoint( base_x + HEX_OX, base_y + HEX_OY, COLOR_RGBA( 255, 0, 0, 0 ), &Chosen->SprOx, &Chosen->SprOy ) );
     }
 
     HexMngr.SetFog( LookBorders, ShootBorders, &Chosen->SprOx, &Chosen->SprOy );
