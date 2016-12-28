@@ -94,7 +94,11 @@ protected:
     const uchar* SendCallback( uint& out_len )
     {
         Bout.Lock();
-        RUNTIME_ASSERT( !Bout.IsEmpty() );
+        if( Bout.IsEmpty() )
+        {
+            Bout.Unlock();
+            return nullptr;
+        }
 
         // Compress
         if( zStream )
@@ -155,7 +159,7 @@ protected:
 class NetConnectionAsio: public NetConnectionImpl
 {
     asio::ip::tcp::socket* socket;
-    bool                   writePending;
+    volatile long          writePending;
     uchar                  inBuf[ BufferManager::DefaultBufSize ];
     asio::error_code       dummyError;
 
@@ -180,7 +184,8 @@ class NetConnectionAsio: public NetConnectionImpl
 
     void AsyncWrite( std::error_code error, size_t bytes )
     {
-        writePending = false;
+        InterlockedExchange( &writePending, 0 );
+
         if( !error )
             Dispatch();
         else
@@ -189,13 +194,19 @@ class NetConnectionAsio: public NetConnectionImpl
 
     virtual void DispatchImpl() override
     {
-        if( !writePending )
+        if( InterlockedExchange( &writePending, 1 ) == 0 )
         {
-            writePending = true;
             uint         len = 0;
             const uchar* buf = SendCallback( len );
-            asio::async_write( *socket, asio::buffer( buf, len ),
-                               std::bind( &NetConnectionAsio::AsyncWrite, this, std::placeholders::_1, std::placeholders::_2 ) );
+            if( buf )
+            {
+                asio::async_write( *socket, asio::buffer( buf, len ),
+                                   std::bind( &NetConnectionAsio::AsyncWrite, this, std::placeholders::_1, std::placeholders::_2 ) );
+            }
+            else
+            {
+                InterlockedExchange( &writePending, 0 );
+            }
         }
     }
 
@@ -215,7 +226,7 @@ public:
         if( GameOpt.DisableTcpNagle )
             socket->set_option( asio::ip::tcp::no_delay( true ), dummyError );
         memzero( inBuf, sizeof( inBuf ) );
-        writePending = false;
+        writePending = 0;
         NextAsyncRead();
     }
 
@@ -308,13 +319,16 @@ class NetConnectionWS: public NetConnectionImpl
 
     virtual void DispatchImpl() override
     {
-        uint            len = 0;
-        const uchar*    buf = SendCallback( len );
-        std::error_code error = connection->send( buf, len, websocketpp::frame::opcode::binary );
-        if( !error )
-            Dispatch();
-        else
-            Disconnect();
+        uint         len = 0;
+        const uchar* buf = SendCallback( len );
+        if( buf )
+        {
+            std::error_code error = connection->send( buf, len, websocketpp::frame::opcode::binary );
+            if( !error )
+                Dispatch();
+            else
+                Disconnect();
+        }
     }
 
     virtual void DisconnectImpl() override
