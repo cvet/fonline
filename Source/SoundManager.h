@@ -3,10 +3,6 @@
 
 #include "Common.h"
 
-#define SOUND_DEFAULT_EXT    ".acm"
-#define MUSIC_REPEAT_TIME    ( Random( 240, 360 ) * 1000 )   // 4-6 minutes
-#define STREAMING_PORTION    ( 0x10000 )
-
 class Sound;
 typedef vector< Sound* > SoundVec;
 
@@ -14,7 +10,6 @@ class SoundManager
 {
 public:
     SoundManager(): isActive( false ) {}
-
     bool Init();
     void Finish();
 
@@ -25,7 +20,7 @@ public:
 
 private:
     void   ProcessSounds( uchar* output );
-    bool   ProcessSound( Sound* sound );
+    bool   ProcessSound( Sound* sound, uchar* output );
     Sound* Load( const char* fname, bool is_music );
     bool   LoadWAV( Sound* sound, const char* fname );
     bool   LoadACM( Sound* sound, const char* fname, bool is_music );
@@ -34,7 +29,9 @@ private:
     bool   ConvertData( Sound* sound );
 
     bool     isActive;
+    uint     streamingPortion;
     SoundVec soundsActive;
+    UCharVec outputBuf;
 };
 
 extern SoundManager SndMngr;

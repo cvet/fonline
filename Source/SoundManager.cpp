@@ -22,44 +22,39 @@ static SDL_AudioSpec     SoundSpec;
 class Sound
 {
 public:
-    uchar*         BaseBuf;
-    uint           BaseBufSize;
+    uchar*          BaseBuf;
+    uint            BaseBufSize;
 
-    uchar*         ConvertedBuf;
-    uint           ConvertedBufRealSize;
-    uint           ConvertedBufSize;
-    uint           ConvertedBufCur;
+    bool            CvtBuilded;
+    SDL_AudioCVT    Cvt;
+    uchar*          ConvertedBuf;
+    uint            ConvertedBufRealSize;
+    uint            ConvertedBufSize;
+    uint            ConvertedBufCur;
 
-    uchar*         OutputBuf;
+    int             OriginalFormat;
+    int             OriginalChannels;
+    int             OriginalRate;
 
-    int            OriginalFormat;
-    int            OriginalChannels;
-    int            OriginalRate;
+    bool            IsMusic;
+    uint            NextPlay;
+    uint            RepeatTime;
 
-    bool           IsMusic;
-    uint           NextPlay;
-    uint           RepeatTime;
+    OggVorbis_File* OggStream;
 
-    bool           StreamableOGG;
-
-    OggVorbis_File OggDescriptor;
-
-    Sound(): BaseBuf( nullptr ), BaseBufSize( 0 ), ConvertedBuf( nullptr ),
-             ConvertedBufRealSize( 0 ), ConvertedBufSize( 0 ), ConvertedBufCur( 0 ), OutputBuf( nullptr ),
+    Sound(): BaseBuf( nullptr ), BaseBufSize( 0 ), ConvertedBuf( nullptr ), CvtBuilded( false ),
+             ConvertedBufRealSize( 0 ), ConvertedBufSize( 0 ), ConvertedBufCur( 0 ),
              OriginalFormat( 0 ), OriginalChannels( 0 ), OriginalRate( 0 ),
              IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),
-             StreamableOGG( false )
-    {
-        OutputBuf = new uchar[ SoundSpec.size ];
-    }
+             OggStream( nullptr )
+    {}
     ~Sound()
     {
-        if( ConvertedBuf != BaseBuf )
-            SAFEDELA( ConvertedBuf );
         SAFEDELA( BaseBuf );
-        SAFEDELA( OutputBuf );
-        if( StreamableOGG )
-            ov_clear( &OggDescriptor );
+        SAFEDELA( ConvertedBuf );
+        if( OggStream )
+            ov_clear( OggStream );
+        SAFEDEL( OggStream );
     }
 };
 
@@ -85,13 +80,17 @@ bool SoundManager::Init()
 
     // Create audio device
     SDL_AudioSpec desired;
-    desired.freq = 22050;              // DSP frequency -- samples per second
-    desired.format = AUDIO_S16;        // Audio data format
-    desired.channels = 2;              // Number of channels: 1 mono, 2 stereo
-    desired.silence = 0;               // Audio buffer silence value (calculated)
-    desired.samples = 0;               // Audio buffer size in samples (power of 2)
-    desired.padding = 0;               // Necessary for some compile environments
-    desired.size = 0;                  // Audio buffer size in bytes (calculated)
+    memzero( &desired, sizeof( desired ) );
+    #ifdef FO_WEB
+    desired.format = AUDIO_F32;
+    desired.freq = 48000;
+    desired.channels = 2;
+    streamingPortion = 0x20000; // 128kb
+    #else
+    desired.format = AUDIO_S16;
+    desired.freq = 44100;
+    streamingPortion = 0x10000; // 64kb
+    #endif
     desired.callback = [] ( void* userdata, Uint8 * stream, int len )
     {
         auto& func = *( std::function< void(const SoundManager&, uchar*) >* )userdata;
@@ -105,6 +104,8 @@ bool SoundManager::Init()
         WriteLog( "SDL Open audio device fail, error '{}'.\n", SDL_GetError() );
         return false;
     }
+
+    outputBuf.resize( SoundSpec.size );
 
     // Start playing
     SDL_PauseAudioDevice( DeviceID, 0 );
@@ -130,14 +131,15 @@ void SoundManager::Finish()
 
 void SoundManager::ProcessSounds( uchar* output )
 {
-    memzero( output, SoundSpec.size );
+    memset( output, SoundSpec.silence, SoundSpec.size );
+
     for( auto it = soundsActive.begin(); it != soundsActive.end();)
     {
         Sound* sound = *it;
-        if( SndMngr.ProcessSound( sound ) )
+        if( SndMngr.ProcessSound( sound, &outputBuf[ 0 ] ) )
         {
             int volume = CLAMP( sound->IsMusic ? GameOpt.MusicVolume : GameOpt.SoundVolume, 0, 100 ) * SDL_MIX_MAXVOLUME / 100;
-            SDL_MixAudioFormat( output, sound->OutputBuf, SoundSpec.format, SoundSpec.size, volume );
+            SDL_MixAudioFormat( output, &outputBuf[ 0 ], SoundSpec.format, SoundSpec.size, volume );
             ++it;
         }
         else
@@ -148,45 +150,42 @@ void SoundManager::ProcessSounds( uchar* output )
     }
 }
 
-bool SoundManager::ProcessSound( Sound* sound )
+bool SoundManager::ProcessSound( Sound* sound, uchar* output )
 {
     // Playing
-    uint samples = SoundSpec.samples;
-    uint sample_size = SoundSpec.size / samples / SoundSpec.channels;
-    uint channels = SoundSpec.channels;
+    uint whole = SoundSpec.size;
     if( sound->ConvertedBufCur < sound->ConvertedBufSize )
     {
-        uint whole = samples * sample_size * channels;
         if( whole > sound->ConvertedBufSize - sound->ConvertedBufCur )
         {
             // Flush last part of buffer
             uint offset = sound->ConvertedBufSize - sound->ConvertedBufCur;
-            memcpy( sound->OutputBuf, sound->ConvertedBuf + sound->ConvertedBufCur, offset );
+            memcpy( output, sound->ConvertedBuf + sound->ConvertedBufCur, offset );
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
-            while( offset < whole && sound->StreamableOGG && StreamOGG( sound ) )
+            while( offset < whole && sound->OggStream && StreamOGG( sound ) )
             {
                 uint write = sound->ConvertedBufSize - sound->ConvertedBufCur;
                 if( offset + write > whole )
                     write = whole - offset;
-                memcpy( sound->OutputBuf + offset, sound->ConvertedBuf + sound->ConvertedBufCur, write );
+                memcpy( output + offset, sound->ConvertedBuf + sound->ConvertedBufCur, write );
                 sound->ConvertedBufCur += write;
                 offset += write;
             }
 
             // Cut off end
             if( offset < whole )
-                memzero( sound->OutputBuf + offset, whole - offset );
+                memset( output + offset, SoundSpec.silence, whole - offset );
         }
         else
         {
             // Copy
-            memcpy( sound->OutputBuf, sound->ConvertedBuf + sound->ConvertedBufCur, whole );
+            memcpy( output, sound->ConvertedBuf + sound->ConvertedBufCur, whole );
             sound->ConvertedBufCur += whole;
         }
 
-        if( sound->StreamableOGG && sound->ConvertedBufCur == sound->ConvertedBufSize )
+        if( sound->OggStream && sound->ConvertedBufCur == sound->ConvertedBufSize )
             StreamOGG( sound );
 
         // Continue processing
@@ -206,23 +205,23 @@ bool SoundManager::ProcessSound( Sound* sound )
         {
             // Set buffer to beginning
             sound->ConvertedBufCur = 0;
-            if( sound->StreamableOGG )
-                ov_raw_seek( &sound->OggDescriptor, 0 );
+            if( sound->OggStream )
+                ov_raw_seek( sound->OggStream, 0 );
 
             // Drop timer
             sound->NextPlay = 0;
 
             // Process without silent
-            return ProcessSound( sound );
+            return ProcessSound( sound, output );
         }
 
         // Give silent
-        memzero( sound->OutputBuf, samples * sample_size * channels );
+        memset( output, SoundSpec.silence, whole );
         return true;
     }
 
     // Give silent
-    memzero( sound->OutputBuf, samples * sample_size * channels );
+    memset( output, SoundSpec.silence, whole );
     return false;
 }
 
@@ -236,7 +235,7 @@ Sound* SoundManager::Load( const char* fname, bool is_music )
     {
         // Default ext
         ext = fname_ + Str::Length( fname_ );
-        Str::Append( fname_, SOUND_DEFAULT_EXT );
+        Str::Append( fname_, ".acm" );
     }
     else
     {
@@ -445,7 +444,8 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
     callbacks.close_func = &Ogg_close_func;
     callbacks.tell_func = &Ogg_tell_func;
 
-    int error = ov_open_callbacks( fm, &sound->OggDescriptor, nullptr, 0, callbacks );
+    sound->OggStream = new OggVorbis_File();
+    int error = ov_open_callbacks( fm, sound->OggStream, nullptr, 0, callbacks );
     if( error )
     {
         WriteLog( "Open OGG file '{}' fail, error:\n", fname );
@@ -473,43 +473,40 @@ bool SoundManager::LoadOGG( Sound* sound, const char* fname )
         return false;
     }
 
-    vorbis_info* vi = ov_info( &sound->OggDescriptor, -1 );
+    vorbis_info* vi = ov_info( sound->OggStream, -1 );
     if( !vi )
     {
         WriteLog( "Ogg info error.\n" );
-        ov_clear( &sound->OggDescriptor );
         return false;
     }
 
     sound->OriginalFormat = AUDIO_S16;
     sound->OriginalChannels = vi->channels;
     sound->OriginalRate = (int) vi->rate;
-    sound->BaseBuf = new unsigned char[ STREAMING_PORTION ];
+    sound->BaseBuf = new unsigned char[ streamingPortion ];
 
     int  result = 0;
     uint decoded = 0;
     while( true )
     {
-        int portion = MIN( (uint) 4096, STREAMING_PORTION - decoded );
-        result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, nullptr );
+        result = (int) ov_read( sound->OggStream, (char*) sound->BaseBuf + decoded, streamingPortion - decoded, 0, 2, 1, nullptr );
         if( result <= 0 )
             break;
         decoded += result;
-        if( decoded >= STREAMING_PORTION )
+        if( decoded >= streamingPortion )
             break;
     }
     if( result < 0 )
-    {
-        ov_clear( &sound->OggDescriptor );
         return false;
-    }
 
     sound->BaseBufSize = decoded;
 
+    // No need streaming
     if( !result )
-        ov_clear( &sound->OggDescriptor );
-    else
-        sound->StreamableOGG = true;
+    {
+        ov_clear( sound->OggStream );
+        SAFEDEL( sound->OggStream );
+    }
 
     return ConvertData( sound );
 }
@@ -520,12 +517,11 @@ bool SoundManager::StreamOGG( Sound* sound )
     uint decoded = 0;
     while( true )
     {
-        int portion = MIN( (uint) 4096, STREAMING_PORTION - decoded );
-        result = (int) ov_read( &sound->OggDescriptor, (char*) sound->BaseBuf + decoded, portion, 0, 2, 1, nullptr );
+        result = (int) ov_read( sound->OggStream, (char*) sound->BaseBuf + decoded, streamingPortion - decoded, 0, 2, 1, nullptr );
         if( result <= 0 )
             break;
         decoded += result;
-        if( decoded >= STREAMING_PORTION )
+        if( decoded >= streamingPortion )
             break;
     }
     if( result < 0 || !decoded )
@@ -537,41 +533,36 @@ bool SoundManager::StreamOGG( Sound* sound )
 
 bool SoundManager::ConvertData( Sound* sound )
 {
-    SDL_AudioCVT cvt;
-    int          r = SDL_BuildAudioCVT( &cvt, sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate,
-                                        SoundSpec.format, SoundSpec.channels, SoundSpec.freq );
-    if( r == -1 )
+    if( !sound->CvtBuilded )
     {
-        WriteLog( "SDL_BuildAudioCVT fail, error '{}'.\n", SDL_GetError() );
-        return false;
-    }
-    if( r == 1 )
-    {
-        cvt.len = sound->BaseBufSize;
-        if( cvt.len * cvt.len_mult > (int) sound->ConvertedBufRealSize )
+        sound->CvtBuilded = true;
+        if( SDL_BuildAudioCVT( &sound->Cvt, sound->OriginalFormat, sound->OriginalChannels, sound->OriginalRate,
+                               SoundSpec.format, SoundSpec.channels, SoundSpec.freq ) == -1 )
         {
-            sound->ConvertedBufRealSize = cvt.len * cvt.len_mult;
-            SAFEDELA( sound->ConvertedBuf );
-            sound->ConvertedBuf = new unsigned char[ sound->ConvertedBufRealSize ];
-        }
-        cvt.buf = (Uint8*) sound->ConvertedBuf;
-        memcpy( cvt.buf, sound->BaseBuf, sound->BaseBufSize );
-
-        if( SDL_ConvertAudio( &cvt ) )
-        {
-            WriteLog( "SDL_ConvertAudio fail, error '{}'.\n", SDL_GetError() );
+            WriteLog( "SDL_BuildAudioCVT fail, error '{}'.\n", SDL_GetError() );
             return false;
         }
+    }
 
-        sound->ConvertedBufCur = 0;
-        sound->ConvertedBufSize = cvt.len_cvt;
-    }
-    else
+    sound->Cvt.len = sound->BaseBufSize;
+    if( sound->Cvt.len * sound->Cvt.len_mult > (int) sound->ConvertedBufRealSize )
     {
-        sound->ConvertedBufCur = 0;
-        sound->ConvertedBufSize = sound->BaseBufSize;
-        sound->ConvertedBuf = sound->BaseBuf;
+        sound->ConvertedBufRealSize = sound->Cvt.len * sound->Cvt.len_mult * 4;
+        SAFEDELA( sound->ConvertedBuf );
+        sound->ConvertedBuf = new unsigned char[ sound->ConvertedBufRealSize ];
     }
+    sound->Cvt.buf = (Uint8*) sound->ConvertedBuf;
+    memcpy( sound->Cvt.buf, sound->BaseBuf, sound->BaseBufSize );
+
+    if( SDL_ConvertAudio( &sound->Cvt ) )
+    {
+        WriteLog( "SDL_ConvertAudio fail, error '{}'.\n", SDL_GetError() );
+        return false;
+    }
+
+    sound->ConvertedBufCur = 0;
+    sound->ConvertedBufSize = sound->Cvt.len_cvt;
+
     return true;
 }
 

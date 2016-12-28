@@ -6203,7 +6203,8 @@ SDL_Upsample_F32LSB_2c(SDL_AudioCVT * cvt, SDL_AudioFormat format)
     fprintf(stderr, "Upsample arbitrary (x%f) AUDIO_F32LSB, 2 channels.\n", cvt->rate_incr);
 #endif
 
-    const int srcsize = cvt->len_cvt - 128;
+    //const int srcsize = cvt->len_cvt - 128;
+    const int srcsize = cvt->len_cvt; // Patch
     const int dstsize = (int) (((double)(cvt->len_cvt/8)) * cvt->rate_incr) * 8;
     register int eps = 0;
     float *dst = ((float *) (cvt->buf + dstsize)) - 2;
