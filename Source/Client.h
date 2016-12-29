@@ -54,10 +54,10 @@ class FOClient
 public:
     static FOClient* Self;
     FOClient();
-    bool Init1();
-    bool Init2();
+    bool PreInit();
+    bool PostInit();
     void Finish(); // Not used
-    void Restart();
+    bool Restart();
     void TryExit();
     bool IsCurInWindow();
     void FlashGameWindow();
@@ -101,18 +101,21 @@ public:
     typedef vector< UpdateFile > UpdateFileVec;
 
     bool           UpdateFilesInProgress;
-    bool           UpdateFilesNeedRestart;
+    bool           UpdateFilesCacheChanged;
+    bool           UpdateFilesFilesChanged;
     bool           UpdateFilesConnection;
     uint           UpdateFilesConnectTimeout;
     uint           UpdateFilesTick;
     bool           UpdateFilesAborted;
     bool           UpdateFilesFontLoaded;
     string         UpdateFilesText;
+    string         UpdateFilesProgress;
     UpdateFileVec* UpdateFilesList;
     uint           UpdateFilesWholeSize;
     bool           UpdateFileDownloading;
     void*          UpdateFileTemp;
 
+    void UpdateFilesStart();
     void UpdateFilesLoop();
     void UpdateFilesAddText( uint num_str, const char* num_str_str );
     void UpdateFilesAbort( uint num_str, const char* num_str_str );
@@ -515,8 +518,6 @@ public:
 /************************************************************************/
 /* Interface                                                            */
 /************************************************************************/
-    int InitIface();
-
     bool LoginCheckData();
     bool RegCheckData();
 
@@ -566,8 +567,8 @@ public:
 /* Global map                                                           */
 /************************************************************************/
     // Mask
-    TwoBitMask GmapFog;
-    PointVec   GmapFogPix;
+    TwoBitMask* GmapFog;
+    PointVec    GmapFogPix;
 
     // Locations
     struct GmapLocation

@@ -100,6 +100,12 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     }
     #endif
 
+    // Hard restart, need wait before event dissapeared
+    #ifdef FO_WINDOWS
+    if( wcsstr( GetCommandLineW(), L" --restart" ) )
+        Thread_Sleep( 500 );
+    #endif
+
     // Check for already runned window
     #ifndef DEV_VERSION
     # ifdef FO_WINDOWS

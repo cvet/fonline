@@ -87,7 +87,17 @@ public:
         memset( data, fill, width_b * height );
     }
 
-    void Create( uint width_2bit, uint height_2bit, uchar* ptr )
+    uchar* GetData()
+    {
+        return data;
+    }
+
+    TwoBitMask()
+    {
+        memset( this, 0, sizeof( TwoBitMask ) );
+    }
+
+    TwoBitMask( uint width_2bit, uint height_2bit, uchar* ptr )
     {
         if( !width_2bit )
             width_2bit = 1;
@@ -108,21 +118,6 @@ public:
             data = new uchar[ width_b * height ];
             Fill( 0 );
         }
-    }
-
-    uchar* GetData()
-    {
-        return data;
-    }
-
-    TwoBitMask()
-    {
-        memset( this, 0, sizeof( TwoBitMask ) );
-    }
-
-    TwoBitMask( uint width_2bit, uint height_2bit, uchar* ptr )
-    {
-        Create( width_2bit, height_2bit, ptr );
     }
 
     ~TwoBitMask()

@@ -133,13 +133,15 @@ FOClient::FOClient()
     InitNetReason = INIT_NET_REASON_NONE;
 
     UpdateFilesInProgress = false;
-    UpdateFilesNeedRestart = false;
+    UpdateFilesCacheChanged = false;
+    UpdateFilesFilesChanged = false;
     UpdateFilesConnection = false;
     UpdateFilesConnectTimeout = 0;
     UpdateFilesTick = 0;
     UpdateFilesAborted = false;
     UpdateFilesFontLoaded = false;
     UpdateFilesText = "";
+    UpdateFilesProgress = "";
     UpdateFilesList = nullptr;
     UpdateFilesWholeSize = 0;
     UpdateFileDownloading = false;
@@ -161,10 +163,11 @@ FOClient::FOClient()
     CurMapIndexInLoc = 0;
 
     SomeItem = nullptr;
+    GmapFog = nullptr;
 }
 
 uint* UID1;
-bool FOClient::Init1()
+bool FOClient::PreInit()
 {
     GET_UID0( UID0 );
     UID_PREPARE_UID4_0;
@@ -317,7 +320,7 @@ bool FOClient::Init1()
     return true;
 }
 
-bool FOClient::Init2()
+bool FOClient::PostInit()
 {
     // Find valid cache
     if( !CurLang.IsAllMsgLoaded )
@@ -396,13 +399,34 @@ bool FOClient::Init2()
         return false;
     }
 
-    // Initialize main interface
-    int result = InitIface();
-    if( result != 0 )
+    // Minimap
+    LmapZoom = 2;
+    LmapSwitchHi = false;
+    LmapPrepareNextTick = 0;
+
+    // Global map
+    SAFEDEL( GmapFog );
+    GmapFog = new TwoBitMask( GM__MAXZONEX, GM__MAXZONEY, nullptr );
+
+    // PickUp
+    PupTransferType = 0;
+    PupContId = 0;
+    PupContPid = 0;
+
+    // Pipboy
+    Automaps.clear();
+
+    // Save/Load
+    if( Singleplayer )
     {
-        WriteLog( "Interface initialization fail on line {}.\n", result );
-        return false;
+        SaveLoadDataSlots.clear();
+        SaveLoadDraft = SprMngr.CreateRenderTarget( false, false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
+        SaveLoadProcessDraft = false;
+        SaveLoadDraftValid = false;
     }
+
+    // Hex field sprites
+    HexMngr.ReloadSprites();
 
     // Load fonts
     if( !SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false ) )
@@ -499,6 +523,7 @@ void FOClient::Finish()
     Script::Finish();
 
     SAFEDELA( ComBuf );
+    SAFEDEL( GmapFog );
 
     FileManager::ClearDataFiles();
 
@@ -507,23 +532,96 @@ void FOClient::Finish()
     WriteLog( "Engine finish complete.\n" );
 }
 
-void FOClient::Restart()
-{}
+bool FOClient::Restart()
+{
+    #ifdef FO_WINDOWS
+    wchar_t path[ MAX_FOPATH ];
+    DWORD   r = GetModuleFileNameW( nullptr, path, MAX_FOPATH );
+    RUNTIME_ASSERT( r );
+
+    PROCESS_INFORMATION pi;
+    memzero( &pi, sizeof( pi ) );
+    STARTUPINFOW        sui;
+    memzero( &sui, sizeof( sui ) );
+    sui.cb = sizeof( sui );
+    wchar_t command_line[ TEMP_BUF_SIZE ];
+    wcscpy( command_line, GetCommandLineW() );
+    wcscat( command_line, L" --restart" );
+    r = CreateProcessW( path, command_line, nullptr, nullptr, FALSE,
+                        NORMAL_PRIORITY_CLASS, nullptr, nullptr, &sui, &pi );
+    RUNTIME_ASSERT_STR( r, "Unable to create process" );
+
+    CloseHandle( pi.hProcess );
+    CloseHandle( pi.hThread );
+    ExitProcess( 0 );
+    #endif
+
+    return false;
+}
+
+void FOClient::UpdateFilesStart()
+{
+    UpdateFilesInProgress = true;
+    UpdateFilesCacheChanged = false;
+    UpdateFilesFilesChanged = false;
+    UpdateFilesConnection = false;
+    UpdateFilesConnectTimeout = 0;
+    UpdateFilesTick = 0;
+    UpdateFilesAborted = false;
+    UpdateFilesFontLoaded = false;
+    UpdateFilesText = "";
+    UpdateFilesProgress = "";
+    UpdateFilesList = nullptr;
+    UpdateFilesWholeSize = 0;
+    UpdateFileDownloading = false;
+    UpdateFileTemp = nullptr;
+}
 
 void FOClient::UpdateFilesLoop()
 {
-    if( !UpdateFilesFontLoaded )
+    // Update indication
+    if( !Singleplayer && InitCalls < 2 )
     {
         // Load font
-        SprMngr.PushAtlasType( RES_ATLAS_STATIC );
-        UpdateFilesFontLoaded = SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false );
         if( !UpdateFilesFontLoaded )
-            UpdateFilesFontLoaded = SprMngr.LoadFontBMF( FONT_DEFAULT, "Default" );
-        if( UpdateFilesFontLoaded )
-            SprMngr.BuildFonts();
-        SprMngr.PopAtlasType();
+        {
+            SprMngr.PushAtlasType( RES_ATLAS_STATIC );
+            UpdateFilesFontLoaded = SprMngr.LoadFontFO( FONT_DEFAULT, "Default", false );
+            if( !UpdateFilesFontLoaded )
+                UpdateFilesFontLoaded = SprMngr.LoadFontBMF( FONT_DEFAULT, "Default" );
+            if( UpdateFilesFontLoaded )
+                SprMngr.BuildFonts();
+            SprMngr.PopAtlasType();
+        }
+
+        // Running dots
+        int    dots = ( Timer::FastTick() - UpdateFilesTick ) / 100 % 50 + 1;
+        string dots_str = "";
+        for( int i = 0; i < dots; i++ )
+            dots_str += ".";
+
+        // State
+        SprMngr.BeginScene( COLOR_RGB( 50, 50, 50 ) );
+        string update_text = UpdateFilesText + UpdateFilesProgress + dots_str;
+        SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), update_text.c_str(),
+                         FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
+        SprMngr.EndScene();
+    }
+    else
+    {
+        // Wait screen
+        if( !IsMainScreen( SCREEN_WAIT ) )
+            ShowMainScreen( SCREEN_WAIT );
+
+        SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
+        DrawIfaceLayer( 1 );
+        DrawIfaceLayer( 2 );
+        DrawIfaceLayer( 3 );
+        DrawIfaceLayer( 4 );
+        SprMngr.EndScene();
     }
 
+    // Logic
     if( !IsConnected )
     {
         if( UpdateFilesConnection )
@@ -558,7 +656,8 @@ void FOClient::UpdateFilesLoop()
             UpdateFilesAddText( STR_DATA_SYNCHRONIZATION, "Data synchronization..." );
 
             // Clean up
-            UpdateFilesNeedRestart = false;
+            UpdateFilesCacheChanged = false;
+            UpdateFilesFilesChanged = false;
             UpdateFilesAborted = false;
             SAFEDEL( UpdateFilesList );
             UpdateFileDownloading = false;
@@ -568,10 +667,10 @@ void FOClient::UpdateFilesLoop()
             Net_SendUpdate();
         }
 
-        string progress = "";
+        UpdateFilesProgress = "";
         if( UpdateFilesList && !UpdateFilesList->empty() )
         {
-            progress += "\n";
+            UpdateFilesProgress += "\n";
             for( size_t i = 0, j = UpdateFilesList->size(); i < j; i++ )
             {
                 UpdateFile& update_file = ( *UpdateFilesList )[ i ];
@@ -583,22 +682,9 @@ void FOClient::UpdateFilesLoop()
                 Str::Copy( name, update_file.Name.c_str() );
                 FileManager::FormatPath( name );
 
-                progress += Str::Format( buf, "%s %.2f / %.2f MB\n", name, cur, max );
+                UpdateFilesProgress += Str::Format( buf, "%s %.2f / %.2f MB\n", name, cur, max );
             }
-            progress += "\n";
-        }
-
-        if( !Singleplayer )
-        {
-            int    dots = ( Timer::FastTick() - UpdateFilesTick ) / 100 % 50 + 1;
-            string dots_str = "";
-            for( int i = 0; i < dots; i++ )
-                dots_str += ".";
-
-            SprMngr.BeginScene( COLOR_RGB( 50, 50, 50 ) );
-            string update_text = UpdateFilesText + progress + dots_str;
-            SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), update_text.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
-            SprMngr.EndScene();
+            UpdateFilesProgress += "\n";
         }
 
         if( UpdateFilesList && !UpdateFileDownloading )
@@ -617,8 +703,12 @@ void FOClient::UpdateFilesLoop()
                     return;
                 }
 
+                if( UpdateFilesList->front().Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
+                    UpdateFilesCacheChanged = true;
+                else
+                    UpdateFilesFilesChanged = true;
+
                 UpdateFileDownloading = true;
-                UpdateFilesNeedRestart = true;
 
                 Bout << NETMSG_GET_UPDATE_FILE;
                 Bout << UpdateFilesList->front().Index;
@@ -628,12 +718,34 @@ void FOClient::UpdateFilesLoop()
                 // Done
                 UpdateFilesInProgress = false;
                 SAFEDEL( UpdateFilesList );
-                NetDisconnect();
-                if( UpdateFilesNeedRestart )
+
+                // Disconnect from non game server
+                if( InitCalls < 2 || !GameOpt.UpdateServerHost.empty() || GameOpt.UpdateServerPort != 0 )
+                    NetDisconnect();
+
+                // Reinitialize data
+                if( UpdateFilesCacheChanged || UpdateFilesFilesChanged )
                 {
-                    UpdateFilesNeedRestart = false;
-                    Restart();
+                    if( InitCalls < 2 )
+                    {
+                        if( UpdateFilesCacheChanged )
+                            CurLang.LoadFromCache( CurLang.NameStr );
+                        if( UpdateFilesFilesChanged )
+                        {
+                            FileManager::ClearDataFiles();
+                            #ifdef FO_IOS
+                            FileManager::InitDataFiles( "../../Documents/" );
+                            #endif
+                            FileManager::InitDataFiles( CLIENT_DATA );
+                        }
+                    }
+                    else
+                    {
+                        if( !Restart() )
+                            GameOpt.Quit = true;
+                    }
                 }
+
                 return;
             }
         }
@@ -654,19 +766,14 @@ void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
         num_str_str = "Start singleplayer...";
     }
 
-    if( !UpdateFilesFontLoaded )
-    {
-        WriteLog( "Update files message '{}'.\n", num_str_str );
-        SprMngr.BeginScene( COLOR_RGB( Random( 0, 255 ), Random( 0, 255 ), Random( 0, 255 ) ) );
-        SprMngr.EndScene();
-    }
-    else
+    if( UpdateFilesFontLoaded )
     {
         const char* text = ( CurLang.Msg[ TEXTMSG_GAME ].Count( num_str ) ? CurLang.Msg[ TEXTMSG_GAME ].GetStr( num_str ) : num_str_str );
         UpdateFilesText += string( text ) + "\n";
-        SprMngr.BeginScene( COLOR_RGB( 50, 50, 50 ) );
-        SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
-        SprMngr.EndScene();
+    }
+    else
+    {
+        WriteLog( "Update files message '{}'.\n", num_str_str );
     }
 }
 
@@ -879,7 +986,7 @@ void FOClient::MainLoop()
 
     if( InitCalls < 2 )
     {
-        if( ( InitCalls == 0 && !Init1() ) || ( InitCalls == 1 && !Init2() ) )
+        if( ( InitCalls == 0 && !PreInit() ) || ( InitCalls == 1 && !PostInit() ) )
         {
             WriteLog( "FOnline engine initialization failed.\n" );
             GameOpt.Quit = true;
@@ -888,7 +995,7 @@ void FOClient::MainLoop()
 
         InitCalls++;
         if( InitCalls == 1 )
-            UpdateFilesInProgress = true;
+            UpdateFilesStart();
         return;
     }
 
@@ -1097,7 +1204,6 @@ void FOClient::MainLoop()
     DrawIfaceLayer( 3 );
     DrawIfaceLayer( 4 );
 
-    SprMngr.Flush();
     ProcessScreenEffectFading();
 
     CHECK_MULTIPLY_WINDOWS5;
@@ -1140,6 +1246,8 @@ void FOClient::ScreenQuake( int noise, uint time )
 
 void FOClient::ProcessScreenEffectFading()
 {
+    SprMngr.Flush();
+
     PointVec full_screen_quad;
     SprMngr.PrepareSquare( full_screen_quad, Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), 0 );
 
@@ -4236,7 +4344,7 @@ void FOClient::Net_OnGlobalInfo()
 
     if( FLAG( info_flags, GM_INFO_ZONES_FOG ) )
     {
-        Bin.Pop( GmapFog.GetData(), GM_ZONES_FOG_SIZE );
+        Bin.Pop( GmapFog->GetData(), GM_ZONES_FOG_SIZE );
     }
 
     if( FLAG( info_flags, GM_INFO_FOG ) )
@@ -4246,7 +4354,7 @@ void FOClient::Net_OnGlobalInfo()
         Bin >> zx;
         Bin >> zy;
         Bin >> fog;
-        GmapFog.Set2Bit( zx, zy, fog );
+        GmapFog->Set2Bit( zx, zy, fog );
     }
 
     if( FLAG( info_flags, GM_INFO_CRITTERS ) )
@@ -7060,6 +7168,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     else if( cmd == "CustomConnect" )
     {
         Self->InitNetReason = INIT_NET_REASON_CUSTOM;
+        Self->UpdateFilesStart();
     }
     else if( cmd == "SaveLoginPassCache" && args.size() >= 3 )
     {
@@ -7837,7 +7946,7 @@ int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )
         SCRIPT_ERROR_R0( "Chosen is destroyed." );
     if( zone_x >= GameOpt.GlobalMapWidth || zone_y >= GameOpt.GlobalMapHeight )
         SCRIPT_ERROR_R0( "Invalid world map pos arg." );
-    return Self->GmapFog.Get2Bit( zone_x, zone_y );
+    return Self->GmapFog->Get2Bit( zone_x, zone_y );
 }
 
 uint FOClient::SScriptFunc::Global_GetDayTime( uint day_part )
