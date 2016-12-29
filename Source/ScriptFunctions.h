@@ -215,7 +215,7 @@ static string Global_SHA2( string text )
 static void Global_OpenLink( string link )
 {
     #ifdef FO_WINDOWS
-    ShellExecute( nullptr, "open", link.c_str(), nullptr, nullptr, SW_SHOWNORMAL );
+    ShellExecuteW( nullptr, L"open", CharToWideChar( link ).c_str(), nullptr, nullptr, SW_SHOWNORMAL );
     #else
     system( ( string( "xdg-open " ) + link ).c_str() );
     #endif

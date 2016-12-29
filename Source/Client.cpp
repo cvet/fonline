@@ -115,6 +115,9 @@ int          FOClient::SpritesCanDraw = 0;
 static uint* UID4 = nullptr;
 FOClient::FOClient()
 {
+    WriteLog( "Engine initialization...\n" );
+
+    RUNTIME_ASSERT( !Self );
     Self = this;
 
     InitCalls = 0;
@@ -130,17 +133,16 @@ FOClient::FOClient()
     InitNetReason = INIT_NET_REASON_NONE;
 
     UpdateFilesInProgress = false;
+    UpdateFilesNeedRestart = false;
     UpdateFilesConnection = false;
     UpdateFilesConnectTimeout = 0;
     UpdateFilesTick = 0;
-    UpdateFilesCacheChanged = false;
-    UpdateFilesFilesChanged = false;
     UpdateFilesAborted = false;
     UpdateFilesFontLoaded = false;
     UpdateFilesText = "";
     UpdateFilesList = nullptr;
     UpdateFilesWholeSize = 0;
-    UpdateFileActive = false;
+    UpdateFileDownloading = false;
     UpdateFileTemp = nullptr;
 
     Chosen = nullptr;
@@ -164,8 +166,6 @@ FOClient::FOClient()
 uint* UID1;
 bool FOClient::Init1()
 {
-    WriteLog( "Engine initialization...\n" );
-
     GET_UID0( UID0 );
     UID_PREPARE_UID4_0;
 
@@ -174,7 +174,7 @@ bool FOClient::Init1()
     if( !Singleplayer )
     {
         # ifdef FO_WINDOWS
-        HANDLE h = CreateEvent( nullptr, FALSE, FALSE, "_fosync_" );
+        HANDLE h = CreateEventW( nullptr, FALSE, FALSE, L"_fosync_" );
         if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
             memset( MulWndArray, 1, sizeof( MulWndArray ) );
         # else
@@ -485,7 +485,32 @@ bool FOClient::Init2()
     return true;
 }
 
-void FOClient::UpdateFilesLoop( bool early_call )
+void FOClient::Finish()
+{
+    RUNTIME_ASSERT( !"Not used" );
+
+    WriteLog( "Engine finish...\n" );
+
+    NetDisconnect();
+    ResMngr.Finish();
+    HexMngr.Finish();
+    SprMngr.Finish();
+    SndMngr.Finish();
+    Script::Finish();
+
+    SAFEDELA( ComBuf );
+
+    FileManager::ClearDataFiles();
+
+    Self = nullptr;
+
+    WriteLog( "Engine finish complete.\n" );
+}
+
+void FOClient::Restart()
+{}
+
+void FOClient::UpdateFilesLoop()
 {
     if( !UpdateFilesFontLoaded )
     {
@@ -533,13 +558,12 @@ void FOClient::UpdateFilesLoop( bool early_call )
             UpdateFilesAddText( STR_DATA_SYNCHRONIZATION, "Data synchronization..." );
 
             // Clean up
+            UpdateFilesNeedRestart = false;
             UpdateFilesAborted = false;
             SAFEDEL( UpdateFilesList );
-            UpdateFileActive = false;
+            UpdateFileDownloading = false;
             FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
             UpdateFilesTick = Timer::FastTick();
-            UpdateFilesCacheChanged = false;
-            UpdateFilesFilesChanged = false;
 
             Net_SendUpdate();
         }
@@ -577,7 +601,7 @@ void FOClient::UpdateFilesLoop( bool early_call )
             SprMngr.EndScene();
         }
 
-        if( UpdateFilesList && !UpdateFileActive )
+        if( UpdateFilesList && !UpdateFileDownloading )
         {
             if( !UpdateFilesList->empty() )
             {
@@ -593,12 +617,8 @@ void FOClient::UpdateFilesLoop( bool early_call )
                     return;
                 }
 
-                if( UpdateFilesList->front().Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
-                    UpdateFilesCacheChanged = true;
-                else
-                    UpdateFilesFilesChanged = true;
-
-                UpdateFileActive = true;
+                UpdateFileDownloading = true;
+                UpdateFilesNeedRestart = true;
 
                 Bout << NETMSG_GET_UPDATE_FILE;
                 Bout << UpdateFilesList->front().Index;
@@ -609,21 +629,11 @@ void FOClient::UpdateFilesLoop( bool early_call )
                 UpdateFilesInProgress = false;
                 SAFEDEL( UpdateFilesList );
                 NetDisconnect();
-
-                // Reinitialize data
-                if( UpdateFilesCacheChanged )
+                if( UpdateFilesNeedRestart )
                 {
-                    CurLang.LoadFromCache( CurLang.NameStr );
+                    UpdateFilesNeedRestart = false;
+                    Restart();
                 }
-                if( UpdateFilesFilesChanged )
-                {
-                    FileManager::ClearDataFiles();
-                    #ifdef FO_IOS
-                    FileManager::InitDataFiles( "../../Documents/" );
-                    #endif
-                    FileManager::InitDataFiles( CLIENT_DATA );
-                }
-
                 return;
             }
         }
@@ -632,8 +642,6 @@ void FOClient::UpdateFilesLoop( bool early_call )
 
         if( !IsConnected && !UpdateFilesAborted )
             UpdateFilesAddText( STR_CONNECTION_FAILTURE, "Connection failure!" );
-        if( !early_call && UpdateFilesList && !UpdateFilesList->empty() )
-            UpdateFilesAbort( STR_CLIENT_DATA_OUTDATED, "Client data outdated!" );
     }
 }
 
@@ -673,8 +681,7 @@ void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
         UpdateFileTemp = nullptr;
     }
 
-    if( num_str == STR_CLIENT_OUTDATED || num_str == STR_CLIENT_OUTDATED_APP_STORE || num_str == STR_CLIENT_OUTDATED_GOOGLE_PLAY ||
-        num_str == STR_CLIENT_UPDATED || num_str == STR_CLIENT_DATA_OUTDATED )
+    if( num_str == STR_CLIENT_OUTDATED || num_str == STR_CLIENT_OUTDATED_APP_STORE || num_str == STR_CLIENT_OUTDATED_GOOGLE_PLAY || num_str == STR_CLIENT_UPDATED )
     {
         SprMngr.BeginScene( COLOR_RGB( 255, 0, 0 ) );
         SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
@@ -682,24 +689,6 @@ void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
 
         GameOpt.Quit = true;
     }
-}
-
-void FOClient::Finish()
-{
-    WriteLog( "Engine finish...\n" );
-
-    NetDisconnect();
-    ResMngr.Finish();
-    HexMngr.Finish();
-    SprMngr.Finish();
-    SndMngr.Finish();
-    Script::Finish();
-
-    SAFEDELA( ComBuf );
-
-    FileManager::ClearDataFiles();
-
-    WriteLog( "Engine finish complete.\n" );
 }
 
 void FOClient::DeleteCritters()
@@ -884,7 +873,7 @@ void FOClient::MainLoop()
 
     if( UpdateFilesInProgress )
     {
-        UpdateFilesLoop( InitCalls < 2 );
+        UpdateFilesLoop();
         return;
     }
 
@@ -1930,10 +1919,7 @@ void FOClient::NetProcess()
                 WriteLog( "World loaded, enter to it.\n" );
             }
             if( LoginCheckData() )
-            {
                 InitNetReason = INIT_NET_REASON_LOGIN2;
-                UpdateFileActive = true;
-            }
             break;
 
         case NETMSG_PING:
@@ -4475,7 +4461,7 @@ void FOClient::Net_OnUpdateFileData()
 
         FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
         UpdateFilesList->erase( UpdateFilesList->begin() );
-        UpdateFileActive = false;
+        UpdateFileDownloading = false;
     }
 }
 
@@ -7056,10 +7042,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         GameOpt.Name = args[ 1 ];
         Self->Password = args[ 2 ];
         if( Self->LoginCheckData() )
-        {
             Self->InitNetReason = INIT_NET_REASON_LOGIN;
-            Self->UpdateFileActive = true;
-        }
     }
     else if( cmd == "Register" )
     {
@@ -7072,13 +7055,11 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
                 Self->RegProps.push_back( Str::AtoI( args[ i + 1 ].c_str() ) );
             }
             Self->InitNetReason = INIT_NET_REASON_REG;
-            Self->UpdateFileActive = true;
         }
     }
     else if( cmd == "CustomConnect" )
     {
         Self->InitNetReason = INIT_NET_REASON_CUSTOM;
-        Self->UpdateFileActive = true;
     }
     else if( cmd == "SaveLoginPassCache" && args.size() >= 3 )
     {

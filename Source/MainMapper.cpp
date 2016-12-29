@@ -52,7 +52,5 @@ int main( int argc, char** argv )
     SAFEDEL( mapper );
 
     WriteLog( "FOnline finished.\n" );
-    LogFinish();
-
     return 0;
 }

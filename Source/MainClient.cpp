@@ -7,6 +7,14 @@
 # include <signal.h>
 #endif
 
+static void ClientEntry( void* )
+{
+    static FOClient* client;
+    if( !client )
+        client = new FOClient();
+    client->MainLoop();
+}
+
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
     InitialSetup( argc, argv );
@@ -24,16 +32,15 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
 
     // Logging
     LogToFile( "FOnline.log" );
-    LogToDebugOutput( true );
 
     // Singleplayer mode initialization
     #ifdef FO_WINDOWS
-    char full_path[ MAX_FOPATH ] = { 0 };
-    char path[ MAX_FOPATH ] = { 0 };
-    char name[ MAX_FOPATH ] = { 0 };
-    GetModuleFileName( nullptr, full_path, MAX_FOPATH );
-    FileManager::ExtractDir( full_path, path );
-    FileManager::ExtractFileName( full_path, name );
+    wchar_t full_path[ MAX_FOPATH ] = { 0 };
+    char    path[ MAX_FOPATH ] = { 0 };
+    char    name[ MAX_FOPATH ] = { 0 };
+    GetModuleFileNameW( nullptr, full_path, MAX_FOPATH );
+    FileManager::ExtractDir( WideCharToChar( full_path ).c_str(), path );
+    FileManager::ExtractFileName( WideCharToChar( full_path ).c_str(), name );
     if( Str::Substring( name, "Singleplayer" ) || MainConfig->IsKey( "", "Singleplayer" ) )
     {
         WriteLog( "Singleplayer mode.\n" );
@@ -72,15 +79,18 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         // Process attributes
         PROCESS_INFORMATION server;
         memzero( &server, sizeof( server ) );
-        STARTUPINFOA        sui;
+        STARTUPINFOW        sui;
         memzero( &sui, sizeof( sui ) );
         sui.cb = sizeof( sui );
-        HANDLE client_process = OpenProcess( SYNCHRONIZE, TRUE, GetCurrentProcessId() );
-        char   command_line[ 2048 ];
+        HANDLE  client_process = OpenProcess( SYNCHRONIZE, TRUE, GetCurrentProcessId() );
+
+        wchar_t command_line[ 2048 ];
+        wcscpy( command_line, CharToWideChar( fmt::format( "\"{}{}\" -singleplayer {} {} {} -logpath {}", server_dir, server_exe,
+                                                           (void*) map_file, (void*) client_process, server_cmdline, path ) ).c_str() );
 
         // Start server
-        Str::Format( command_line, "\"%s%s\" -singleplayer %p %p %s -logpath %s", server_dir, server_exe, map_file, client_process, server_cmdline, path );
-        if( !CreateProcess( nullptr, command_line, nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, server_dir, &sui, &server ) )
+        if( !CreateProcessW( nullptr, command_line, nullptr, nullptr, TRUE,
+                             NORMAL_PRIORITY_CLASS, nullptr, CharToWideChar( server_dir ).c_str(), &sui, &server ) )
         {
             WriteLog( "Can't start server process, error {}.\n", GetLastError() );
             return 0;
@@ -93,7 +103,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     // Check for already runned window
     #ifndef DEV_VERSION
     # ifdef FO_WINDOWS
-    HANDLE h = CreateEvent( nullptr, FALSE, FALSE, "fonline_instance" );
+    HANDLE h = CreateEventW( nullptr, FALSE, FALSE, L"fonline_instance" );
     if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
     {
         ShowMessage( "FOnline engine instance is already running." );
@@ -110,24 +120,12 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     // Start message
     WriteLog( "Starting FOnline (version {})...\n", FONLINE_VERSION );
 
-    // Create engine
-    FOClient* engine = new FOClient();
-
     // iOS or Web loop
-    #if defined ( FO_IOS ) || defined ( FO_WEB )
-    struct App
-    {
-        static void ShowFrame( void* engine )
-        {
-            ( (FOClient*) engine )->MainLoop();
-        }
-    };
-    # ifdef FO_IOS
-    SDL_iPhoneSetAnimationCallback( MainWindow, 1, App::ShowFrame, engine );
-    # else
-    emscripten_set_main_loop_arg( App::ShowFrame, engine, GameOpt.FixedFPS, 1 );
-    # endif
-    return 0;
+    #if defined ( FO_IOS )
+    SDL_iPhoneSetAnimationCallback( MainWindow, 1, ClientEntry, nullptr );
+
+    #elif defined ( FO_WEB )
+    emscripten_set_main_loop_arg( ClientEntry, nullptr, GameOpt.FixedFPS, 1 );
 
     #else
     // Default loop
@@ -135,7 +133,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     {
         double start_loop = Timer::AccurateTick();
 
-        engine->MainLoop();
+        ClientEntry( nullptr );
 
         if( !GameOpt.VSync && GameOpt.FixedFPS )
         {
@@ -157,11 +155,6 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
             }
         }
     }
-    #endif
-
-    #ifdef MEMORY_DEBUG
-    WriteLog( "{}", Debugger::GetMemoryStatistics() );
-    #endif
 
     // Finish script
     if( Script::GetEngine() )
@@ -170,22 +163,15 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         Script::RaiseInternalEvent( ClientFunctions.Finish, _FUNC_, "Game" );
     }
 
+    // Memory stats
+    # ifdef MEMORY_DEBUG
+    WriteLog( "{}", Debugger::GetMemoryStatistics() );
+    # endif
+
     // Just kill process
     // System automatically clean up all resources
     WriteLog( "Exit from game.\n" );
-    ExitProcess( 0 );
-
-    // Destroy engine
-    engine->Finish();
-    SAFEDEL( engine );
-
-    // Finish
-    #ifdef FO_WINDOWS
-    if( Singleplayer )
-        SingleplayerData.Finish();
     #endif
-    WriteLog( "FOnline finished.\n" );
-    LogFinish();
 
     return 0;
 }

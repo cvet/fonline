@@ -336,25 +336,25 @@ uint UIDDUMMY10 = -1;
 #endif
 
 #ifdef FO_WINDOWS
-# define GET_UID4( result )                                                                          \
-    result = new uint();                                                                             \
-    DWORD d_vol = 0;                                                                                 \
-    UID_DUMMY_CALCS2;                                                                                \
-    if( GetVolumeInformation( uid4_str, NULL, NULL, &d_vol, NULL, NULL, NULL, 0 ) != ERROR_SUCCESS ) \
-        d_vol ^= 0x12345678;                                                                         \
-    else                                                                                             \
-        d_vol = 0;                                                                                   \
-    UID_DUMMY_CALCS4;                                                                                \
-    *result = d_vol + UID_CHANGE;                                                                    \
-    UID_DUMMY_CALCS6;                                                                                \
-    UID_DUMMY_CALCS6;                                                                                \
-    UID_FLAGS( *result, 0x00000800, 0x00004000 );                                                    \
-    UID_DUMMY_CALCS7;                                                                                \
-    UID_CALC( *result );                                                                             \
-    UIDCACHE[ 4 ] = *result;                                                                         \
-    UID_DUMMY_CALCS8;                                                                                \
-    UIDCACHE[ 4 ] = *result;                                                                         \
-    UIDCACHE2[ 4 ] = *result;                                                                        \
+# define GET_UID4( result )                                                                                                     \
+    result = new uint();                                                                                                        \
+    DWORD d_vol = 0;                                                                                                            \
+    UID_DUMMY_CALCS2;                                                                                                           \
+    if( GetVolumeInformationW( CharToWideChar( uid4_str ).c_str(), NULL, NULL, &d_vol, NULL, NULL, NULL, 0 ) != ERROR_SUCCESS ) \
+        d_vol ^= 0x12345678;                                                                                                    \
+    else                                                                                                                        \
+        d_vol = 0;                                                                                                              \
+    UID_DUMMY_CALCS4;                                                                                                           \
+    *result = d_vol + UID_CHANGE;                                                                                               \
+    UID_DUMMY_CALCS6;                                                                                                           \
+    UID_DUMMY_CALCS6;                                                                                                           \
+    UID_FLAGS( *result, 0x00000800, 0x00004000 );                                                                               \
+    UID_DUMMY_CALCS7;                                                                                                           \
+    UID_CALC( *result );                                                                                                        \
+    UIDCACHE[ 4 ] = *result;                                                                                                    \
+    UID_DUMMY_CALCS8;                                                                                                           \
+    UIDCACHE[ 4 ] = *result;                                                                                                    \
+    UIDCACHE2[ 4 ] = *result;                                                                                                   \
     UID_DUMMY_CALCS2
 #else
 # define GET_UID4( result )                       \
@@ -383,7 +383,7 @@ Randomizer MulWndRandom;
 #define MULTIPLY_WINDOWS_FAIL5     HexMngr.Init();
 #define MULTIPLY_WINDOWS_FAIL6     SprMngr.Finish();
 #define MULTIPLY_WINDOWS_FAIL7     GraphicLoader::LoadModel( NULL );
-#define MULTIPLY_WINDOWS_FAIL8     Finish();
+#define MULTIPLY_WINDOWS_FAIL8     HexMngr.Finish();
 #define MULTIPLY_WINDOWS_FAIL9     SndMngr.StopSounds(); SndMngr.Finish();
 #define CHECK_MULTIPLY_WINDOWS( num, f1, f2, f3 )                             \
     do                                                                        \

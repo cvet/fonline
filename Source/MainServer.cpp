@@ -20,27 +20,27 @@
 # endif
 #endif
 
-void InitAdminManager();
+static void InitAdminManager();
 
 /************************************************************************/
 /* GUI & Windows service version                                        */
 /************************************************************************/
 
 #ifndef SERVER_DAEMON
-void GUIInit();
-void GUICallback( Fl_Widget* widget, void* data );
-void UpdateInfo();
-void UpdateLog();
-void CheckTextBoxSize( bool force );
-void GameLoopThread( void* );
-void GUIUpdate( void* );
-Rect       MainInitRect, LogInitRect, InfoInitRect;
-int        SplitProcent = 90;
-Thread     LoopThread;
-MutexEvent GameInitEvent;
-FOServer   Server;
-string     UpdateLogName;
-Thread     GUIUpdateThread;
+static void GUIInit();
+static void GUICallback( Fl_Widget* widget, void* data );
+static void UpdateInfo();
+static void UpdateLog();
+static void CheckTextBoxSize( bool force );
+static void GameLoopThread( void* );
+static void GUIUpdate( void* );
+static Rect       MainInitRect, LogInitRect, InfoInitRect;
+static int        SplitProcent = 90;
+static Thread     LoopThread;
+static MutexEvent GameInitEvent;
+static FOServer   Server;
+static string     UpdateLogName;
+static Thread     GUIUpdateThread;
 
 // GUI
 static Fl_Window* GuiWindow;
@@ -49,8 +49,7 @@ static Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLa
 static Fl_Button* GuiBtnRlClScript, * GuiBtnSaveWorld, * GuiBtnSaveLog, * GuiBtnSaveInfo,
 * GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnDeferredCalls,
 * GuiBtnProperties, * GuiBtnItemsCount, * GuiBtnProfiler, * GuiBtnStartStop, * GuiBtnSplitUp, * GuiBtnSplitDown;
-static Fl_Check_Button* GuiCBtnScriptDebug, * GuiCBtnLogging, * GuiCBtnLoggingTime,
-* GuiCBtnLoggingThread, * GuiCBtnAutoUpdate;
+static Fl_Check_Button* GuiCBtnAutoUpdate;
 static Fl_Text_Display* GuiLog, * GuiInfo;
 static int              GUISizeMod = 0;
 
@@ -66,7 +65,7 @@ static int              GUIMessageExit = 1;
 
 // Windows service
 # ifdef FO_WINDOWS
-void ServiceMain( bool as_service );
+static void ServiceMain( bool as_service );
 # endif
 
 // Main
@@ -92,12 +91,6 @@ int main( int argc, char** argv )
     MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
-
-    // Logging
-    LogWithTime( MainConfig->GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
-    LogWithThread( MainConfig->GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
-    if( MainConfig->IsKey( "", "LoggingDebugOutput" ) )
-        LogToDebugOutput( true );
 
     // Update stuff
     if( !Singleplayer && MainConfig->IsKey( "", "GameServer" ) )
@@ -162,15 +155,11 @@ int main( int argc, char** argv )
     WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
 
     FOQuit = true;
-    Script::SetLogDebugInfo( false );
 
     if( GuiWindow )
     {
+        LogToBuffer( true );
         GuiCBtnAutoUpdate->value( 0 );
-        GuiCBtnLogging->value( MainConfig->GetInt( "", "Logging", 1 ) != 0 ? 1 : 0 );
-        GuiCBtnLoggingTime->value( MainConfig->GetInt( "", "LoggingTime", 1 ) != 0 ? 1 : 0 );
-        GuiCBtnLoggingThread->value( MainConfig->GetInt( "", "LoggingThread", 1 ) != 0 ? 1 : 0 );
-        GuiCBtnScriptDebug->value( 0 );
     }
 
     // Autostart
@@ -229,7 +218,7 @@ int main( int argc, char** argv )
     return 0;
 }
 
-void GUIInit()
+static void GUIInit()
 {
     // Setup
     struct
@@ -336,10 +325,10 @@ void GUIInit()
 
     // Check buttons
     GUISetup.Setup( GuiCBtnAutoUpdate   = new Fl_Check_Button( GUI_SIZE4( 5, 339, 110, 10 ), "Update info every second" ) );
-    GUISetup.Setup( GuiCBtnLogging      = new Fl_Check_Button( GUI_SIZE4( 5, 349, 110, 10 ), "Logging" ) );
-    GUISetup.Setup( GuiCBtnLoggingTime  = new Fl_Check_Button( GUI_SIZE4( 5, 359, 110, 10 ), "Logging with time" ) );
-    GUISetup.Setup( GuiCBtnLoggingThread = new Fl_Check_Button( GUI_SIZE4( 5, 369, 110, 10 ), "Logging with thread" ) );
-    GUISetup.Setup( GuiCBtnScriptDebug  = new Fl_Check_Button( GUI_SIZE4( 5, 379, 110, 10 ), "Script debug info" ) );
+    // GUISetup.Setup( GuiCBtnLogging      = new Fl_Check_Button( GUI_SIZE4( 5, 349, 110, 10 ), "Logging" ) );
+    // GUISetup.Setup( GuiCBtnLoggingTime  = new Fl_Check_Button( GUI_SIZE4( 5, 359, 110, 10 ), "Logging with time" ) );
+    // GUISetup.Setup( GuiCBtnLoggingThread = new Fl_Check_Button( GUI_SIZE4( 5, 369, 110, 10 ), "Logging with thread" ) );
+    // GUISetup.Setup( GuiCBtnScriptDebug  = new Fl_Check_Button( GUI_SIZE4( 5, 379, 110, 10 ), "Script debug info" ) );
 
     // Text boxes
     GUISetup.Setup( GuiLog = new Fl_Text_Display( GUI_SIZE4( 133, 7, 358, 195 ) ) );
@@ -372,7 +361,7 @@ void GUIInit()
     GuiWindow->show( dummy_argc, dummy_argv );
 }
 
-void GUICallback( Fl_Widget* widget, void* data )
+static void GUICallback( Fl_Widget* widget, void* data )
 {
     if( widget == GuiWindow )
     {
@@ -494,25 +483,6 @@ void GUICallback( Fl_Widget* widget, void* data )
         CheckTextBoxSize( true );
         GuiLog->scroll( MAX_INT, 0 );
     }
-    else if( widget == GuiCBtnScriptDebug )
-    {
-        Script::SetLogDebugInfo( GuiCBtnScriptDebug->value() ? true : false );
-    }
-    else if( widget == GuiCBtnLogging )
-    {
-        if( GuiCBtnLogging->value() )
-            LogToBuffer( true );
-        else
-            LogToBuffer( false );
-    }
-    else if( widget == GuiCBtnLoggingTime )
-    {
-        LogWithTime( GuiCBtnLogging->value() ? true : false );
-    }
-    else if( widget == GuiCBtnLoggingThread )
-    {
-        LogWithThread( GuiCBtnLoggingThread->value() ? true : false );
-    }
     else if( widget == GuiCBtnAutoUpdate )
     {
         if( GuiCBtnAutoUpdate->value() )
@@ -522,7 +492,7 @@ void GUICallback( Fl_Widget* widget, void* data )
     }
 }
 
-void GUIUpdate( void* )
+static void GUIUpdate( void* )
 {
     while( true )
     {
@@ -531,7 +501,7 @@ void GUIUpdate( void* )
     }
 }
 
-void UpdateInfo()
+static void UpdateInfo()
 {
     static char   str[ MAX_FOTEXT ];
     static string std_str;
@@ -637,7 +607,7 @@ void UpdateInfo()
     }
 }
 
-void UpdateLog()
+static void UpdateLog()
 {
     string str;
     LogGetBuffer( str );
@@ -649,7 +619,7 @@ void UpdateLog()
     }
 }
 
-void CheckTextBoxSize( bool force )
+static void CheckTextBoxSize( bool force )
 {
     static Rect last_rmain;
     if( force || GuiWindow->x() != last_rmain[ 0 ] || GuiWindow->y() != last_rmain[ 1 ] ||
@@ -683,7 +653,7 @@ void CheckTextBoxSize( bool force )
     }
 }
 
-void GameLoopThread( void* )
+static void GameLoopThread( void* )
 {
     GetServerOptions();
 
@@ -691,9 +661,6 @@ void GameLoopThread( void* )
     {
         if( GuiWindow )
         {
-            if( GuiCBtnLogging->value() == 0 )
-                LogToTextBox( nullptr );
-
             // Enable buttons
             GuiBtnRlClScript->activate();
             GuiBtnSaveWorld->activate();
@@ -719,7 +686,6 @@ void GameLoopThread( void* )
 
     if( GuiWindow )
         UpdateLog();
-    LogFinish();
     if( Singleplayer )
         ExitProcess( 0 );
     if( GuiWindow && GracefulExit )
@@ -733,12 +699,12 @@ void GameLoopThread( void* )
 /************************************************************************/
 #ifdef FO_WINDOWS
 
-SERVICE_STATUS_HANDLE FOServiceStatusHandle;
-VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv );
-VOID WINAPI FOServiceCtrlHandler( DWORD opcode );
-void        SetFOServiceStatus( uint state );
+static SERVICE_STATUS_HANDLE FOServiceStatusHandle;
+static VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv );
+static VOID WINAPI FOServiceCtrlHandler( DWORD opcode );
+static void        SetFOServiceStatus( uint state );
 
-void ServiceMain( bool as_service )
+static void ServiceMain( bool as_service )
 {
     // Binary started as service
     if( as_service )
@@ -810,7 +776,7 @@ void ServiceMain( bool as_service )
         CloseServiceHandle( manager );
 }
 
-VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
+static VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 {
     Thread::SetCurrentName( "Service" );
     LogToFile( "FOnlineServer.log" );
@@ -836,7 +802,7 @@ VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
         SetFOServiceStatus( SERVICE_STOPPED );
 }
 
-VOID WINAPI FOServiceCtrlHandler( DWORD opcode )
+static VOID WINAPI FOServiceCtrlHandler( DWORD opcode )
 {
     switch( opcode )
     {
@@ -858,7 +824,7 @@ VOID WINAPI FOServiceCtrlHandler( DWORD opcode )
     SetFOServiceStatus( 0 );
 }
 
-void SetFOServiceStatus( uint state )
+static void SetFOServiceStatus( uint state )
 {
     static uint last_state = 0;
     static uint check_point = 0;
@@ -894,10 +860,10 @@ void SetFOServiceStatus( uint state )
 
 # include <sys/stat.h>
 
-void DaemonLoop();
-void GameLoopThread( void* );
-FOServer Server;
-Thread   LoopThread;
+static void DaemonLoop();
+static void GameLoopThread( void* );
+static FOServer Server;
+static Thread   LoopThread;
 
 int main( int argc, char** argv )
 {
@@ -960,8 +926,6 @@ int main( int argc, char** argv )
     // Logging
     LogWithTime( MainConfig->GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
     LogWithThread( MainConfig->GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
-    if( Str::Substring( CommandLine, "-logdebugoutput" ) || Str::Substring( CommandLine, "-LoggingDebugOutput" ) || MainConfig->GetInt( "", "LoggingDebugOutput", 0 ) != 0 )
-        LogToDebugOutput( true );
     LogToFile( "./FOnlineServerDaemon.log" );
 
     // Log version
@@ -981,7 +945,7 @@ int main( int argc, char** argv )
     return 0;
 }
 
-void DaemonLoop()
+static void DaemonLoop()
 {
     // Autostart server
     LoopThread.Start( GameLoopThread, "Main" );
@@ -994,7 +958,7 @@ void DaemonLoop()
         Thread_Sleep( 1000 );
 }
 
-void GameLoopThread( void* )
+static void GameLoopThread( void* )
 {
     GetServerOptions();
 
@@ -1029,18 +993,18 @@ struct Session
 };
 typedef vector< Session* > SessionVec;
 
-void AdminWork( void* );
-void AdminManager( void* );
-Thread AdminManagerThread;
+static void AdminWork( void* );
+static void AdminManager( void* );
+static Thread AdminManagerThread;
 
-void InitAdminManager()
+static void InitAdminManager()
 {
     ushort port = MainConfig->GetInt( "", "AdminPanelPort", 0 );
     if( port )
         AdminManagerThread.Start( AdminManager, "AdminPanelManager", new ushort( port ) );
 }
 
-void AdminManager( void* port_ )
+static void AdminManager( void* port_ )
 {
     ushort port = *(ushort*) port_;
     delete (ushort*) port_;
@@ -1180,7 +1144,7 @@ void AdminManager( void* port_ )
         }                                                                         \
     } while( 0 )
 
-void AdminWork( void* session_ )
+static void AdminWork( void* session_ )
 {
     // Data
     Session* s = (Session*) session_;

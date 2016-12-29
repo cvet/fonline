@@ -56,7 +56,7 @@
 
 // DLL
 #ifdef FO_WINDOWS
-# define DLL_Load( name )                 (void*) LoadLibrary( name )
+# define DLL_Load( name )                 (void*) LoadLibraryW( CharToWideChar( name ).c_str() )
 # define DLL_Free( h )                    FreeLibrary( (HMODULE) h )
 # define DLL_GetAddress( h, pname )       (size_t*) GetProcAddress( (HMODULE) h, pname )
 # define DLL_Error()                      Str::ItoA( GetLastError() )
@@ -182,6 +182,12 @@ inline TIt PtrCollectionFind( TIt it, TIt end, const T& v )
 #define MAX_HEX_OFFSET                            ( 50 ) // Must be not odd
 void GetHexOffsets( bool odd, short*& sx, short*& sy );
 void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int& y );
+
+#ifdef FO_WINDOWS
+std::wstring CharToWideChar( const char* str );
+std::wstring CharToWideChar( const std::string& str );
+std::string  WideCharToChar( const wchar_t* str );
+#endif
 
 /************************************************************************/
 /* Client & Mapper                                                      */

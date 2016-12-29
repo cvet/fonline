@@ -17,7 +17,6 @@
 #define STR_CLIENT_OUTDATED_APP_STORE      ( 13 )
 #define STR_CLIENT_OUTDATED_GOOGLE_PLAY    ( 14 )
 #define STR_CLIENT_UPDATED                 ( 15 )
-#define STR_CLIENT_DATA_OUTDATED           ( 16 )
 #define STR_START_SINGLEPLAYER             ( 17 )
 
 // Video

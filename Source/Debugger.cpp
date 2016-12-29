@@ -347,6 +347,8 @@ static uint                         MemoryAllocRecursion;
 #ifdef FO_WINDOWS
 // Stack
 # pragma warning( disable : 4748 )
+# pragma warning( disable : 4091 )
+# pragma warning( disable : 4996 )
 # include <DbgHelp.h>
 # pragma comment( lib, "Dbghelp.lib" )
 # include "FileManager.h"
@@ -579,7 +581,7 @@ DECLARE_PATCH( BOOL, HeapFree, ( HANDLE hHeap, DWORD dwFlags, LPVOID lpMem ) )
 
 bool PatchWindowsAlloc()
 {
-    HMODULE hkernel32 = GetModuleHandle( "kernel32" );
+    HMODULE hkernel32 = GetModuleHandleW( L"kernel32" );
     if( !hkernel32 )
         return false;
     INSTALL_PATCH( HeapCreate );

@@ -19,6 +19,8 @@ static char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
 # define WIN32_LEAN_AND_MEAN
 # include <Windows.h>
 # include <stdio.h>
+# pragma warning( disable : 4091 )
+# pragma warning( disable : 4996 )
 # include <DbgHelp.h>
 # pragma comment(lib, "Dbghelp.lib")
 # include <Psapi.h>
@@ -92,13 +94,13 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         fprintf( f, "Application\n" );
         fprintf( f, "\tName        %s\n", AppName );
         fprintf( f, "\tVersion     %s\n",  AppVer );
-        OSVERSIONINFOA ver;
-        memset( &ver, 0, sizeof( OSVERSIONINFOA ) );
+        OSVERSIONINFOW ver;
+        memset( &ver, 0, sizeof( OSVERSIONINFOW ) );
         ver.dwOSVersionInfoSize = sizeof( ver );
-        if( GetVersionEx( (OSVERSIONINFOA*) &ver ) )
+        if( GetVersionExW( (OSVERSIONINFOW*) &ver ) )
         {
             fprintf( f, "\tOS          %d.%d.%d (%s)\n",
-                     ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, ver.szCSDVersion );
+                     ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, WideCharToChar( ver.szCSDVersion ).c_str() );
         }
         fprintf( f, "\tTimestamp   %04d.%02d.%02d %02d:%02d:%02d\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
         fprintf( f, "\n" );
@@ -431,11 +433,11 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         {
             for( int i = 0; i < (int) ( needed / sizeof( HMODULE ) ); i++ )
             {
-                char module_name[ MAX_PATH ] = { 0 };
-                if( GetModuleFileNameEx( process, modules[ i ], module_name, sizeof( module_name ) ) )
-                    fprintf( f, "\t%s (%p)\n", module_name, modules[ i ] );
+                wchar_t module_name[ MAX_PATH ] = { 0 };
+                if( GetModuleFileNameExW( process, modules[ i ], module_name, sizeof( module_name ) ) )
+                    fprintf( f, "\t%s (%p)\n", WideCharToChar( module_name ).c_str(), modules[ i ] );
                 else
-                    fprintf( f, "\tGetModuleFileNameEx fail\n" );
+                    fprintf( f, "\tGetModuleFileNameExW fail\n" );
             }
         }
 

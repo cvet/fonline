@@ -56,7 +56,8 @@ public:
     FOClient();
     bool Init1();
     bool Init2();
-    void Finish();
+    void Finish(); // Not used
+    void Restart();
     void TryExit();
     bool IsCurInWindow();
     void FlashGameWindow();
@@ -100,20 +101,19 @@ public:
     typedef vector< UpdateFile > UpdateFileVec;
 
     bool           UpdateFilesInProgress;
+    bool           UpdateFilesNeedRestart;
     bool           UpdateFilesConnection;
     uint           UpdateFilesConnectTimeout;
     uint           UpdateFilesTick;
-    bool           UpdateFilesCacheChanged;
-    bool           UpdateFilesFilesChanged;
     bool           UpdateFilesAborted;
     bool           UpdateFilesFontLoaded;
     string         UpdateFilesText;
     UpdateFileVec* UpdateFilesList;
     uint           UpdateFilesWholeSize;
-    bool           UpdateFileActive;
+    bool           UpdateFileDownloading;
     void*          UpdateFileTemp;
 
-    void UpdateFilesLoop( bool early_call );
+    void UpdateFilesLoop();
     void UpdateFilesAddText( uint num_str, const char* num_str_str );
     void UpdateFilesAbort( uint num_str, const char* num_str_str );
 

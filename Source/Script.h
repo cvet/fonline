@@ -153,7 +153,6 @@ public:
     static void Log( const char* str );
     static void LogA( const char* str );
     static void LogError( const char* call_func, const char* error );
-    static void SetLogDebugInfo( bool enabled );
 
     static void CallbackMessage( const asSMessageInfo* msg, void* param );
     static void CallbackException( asIScriptContext* ctx, void* param );

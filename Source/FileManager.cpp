@@ -601,7 +601,7 @@ void FileManager::SetLEUInt( uint data )
 void FileManager::ResetCurrentDir()
 {
     #ifdef FO_WINDOWS
-    SetCurrentDirectory( GameOpt.WorkDir.c_str() );
+    SetCurrentDirectoryW( CharToWideChar( GameOpt.WorkDir ).c_str() );
     #else
     chdir( GameOpt.WorkDir.c_str() );
     #endif
@@ -615,7 +615,7 @@ void FileManager::SetCurrentDir( const char* dir, const char* write_dir )
     ResolvePath( dir_ );
 
     #ifdef FO_WINDOWS
-    SetCurrentDirectory( dir_ );
+    SetCurrentDirectoryW( CharToWideChar( dir_ ).c_str() );
     #else
     chdir( dir_ );
     #endif

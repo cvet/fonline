@@ -71,7 +71,6 @@ public:
 typedef vector< BindFunction > BindFunctionVec;
 
 static asIScriptEngine* Engine = nullptr;
-static bool             LogDebugInfo = false;
 static BindFunctionVec  BindedFunctions;
 static HashIntMap       ScriptFuncBinds;   // Func Num -> Bind Id
 static bool             LoadLibraryCompiler = false;
@@ -407,11 +406,12 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     char new_path[ MAX_FOPATH ];
     FileManager::ExtractDir( dll_path, new_path );
     ResolvePath( new_path );
-    char cur_path[ MAX_FOPATH ];
     #ifdef FO_WINDOWS
-    GetCurrentDirectory( MAX_FOPATH, cur_path );
-    SetCurrentDirectory( new_path );
+    wchar_t cur_path[ MAX_FOPATH ];
+    GetCurrentDirectoryW( MAX_FOPATH, cur_path );
+    SetCurrentDirectoryW( CharToWideChar( new_path ).c_str() );
     #else
+    char cur_path[ MAX_FOPATH ];
     getcwd( cur_path, MAX_FOPATH );
     chdir( new_path );
     #endif
@@ -421,7 +421,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     // Load dynamic library
     void* dll = DLL_Load( file_name );
     #ifdef FO_WINDOWS
-    SetCurrentDirectory( cur_path );
+    SetCurrentDirectoryW( cur_path );
     #else
     chdir( cur_path );
     #endif
@@ -2204,24 +2204,10 @@ void Script::Log( const char* str )
         WriteLog( "<unknown> : {}.\n", str );
         return;
     }
-    if( LogDebugInfo )
-    {
-        int                                 line = ctx->GetLineNumber( 0 );
-        Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
-        ContextData*                        ctx_data = (ContextData*) ctx->GetUserData();
-        WriteLog( "Script callback: {} : {} : Line {} : {}.\n", str, func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ), ctx_data->Info );
-    }
-    else
-    {
-        int                                 line = ctx->GetLineNumber( 0 );
-        Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
-        WriteLog( "{} : {}\n", Preprocessor::ResolveOriginalFile( line, lnt ), str );
-    }
-}
 
-void Script::SetLogDebugInfo( bool enabled )
-{
-    LogDebugInfo = enabled;
+    int                                 line = ctx->GetLineNumber( 0 );
+    Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
+    WriteLog( "{} : {}\n", Preprocessor::ResolveOriginalFile( line, lnt ), str );
 }
 
 void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
@@ -2231,6 +2217,7 @@ void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
         type = "Warning";
     else if( msg->type == asMSGTYPE_INFORMATION )
         type = "Info";
+
     WriteLog( "{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile( msg->row ), type, msg->message, Preprocessor::ResolveOriginalLine( msg->row ) );
 }
 

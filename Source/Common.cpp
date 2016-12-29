@@ -72,18 +72,20 @@ void InitialSetup( uint argc, char** argv )
     if( !GameOpt.WorkDir.empty() )
     {
         #ifdef FO_WINDOWS
-        SetCurrentDirectory( GameOpt.WorkDir.c_str() );
+        SetCurrentDirectoryW( CharToWideChar( GameOpt.WorkDir ).c_str() );
         #else
         chdir( GameOpt.WorkDir.c_str() );
         #endif
     }
-    char buf[ TEMP_BUF_SIZE ];
     #ifdef FO_WINDOWS
-    GetCurrentDirectory( sizeof( buf ), buf );
+    wchar_t buf[ TEMP_BUF_SIZE ];
+    GetCurrentDirectoryW( TEMP_BUF_SIZE, buf );
+    GameOpt.WorkDir = WideCharToChar( buf );
     #else
+    char buf[ TEMP_BUF_SIZE ];
     getcwd( buf, sizeof( buf ) );
-    #endif
     GameOpt.WorkDir = buf;
+    #endif
 
     // Injected config
     static char InternalConfig[ 5032 ] =
@@ -573,9 +575,7 @@ void ShowMessage( const char* message )
     SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline", message, nullptr );
     #else
     # ifdef FO_WINDOWS
-    wchar_t message_wc[ MAX_FOTEXT ];
-    MultiByteToWideChar( CP_UTF8, 0, message, -1, message_wc, MAX_FOPATH );
-    MessageBoxW( nullptr, message_wc, L"FOnline", MB_OK );
+    MessageBoxW( nullptr, CharToWideChar( message ).c_str(), L"FOnline", MB_OK );
     # else
     // Todo: Linux
     # endif
@@ -745,6 +745,38 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
         y = ( dy + dx ) * GameOpt.MapHexLineHeight;
     }
 }
+
+#ifdef FO_WINDOWS
+std::wstring CharToWideChar( const char* str )
+{
+    int len = (int) strlen( str );
+    if( !len )
+        return L"";
+    wchar_t* buf = (wchar_t*) alloca( len * sizeof( wchar_t ) * 2 );
+    int      r = MultiByteToWideChar( CP_UTF8, 0, str, len, buf, len );
+    return std::wstring( buf, r );
+}
+
+std::wstring CharToWideChar( const std::string& str )
+{
+    int len = (int) str.length();
+    if( !len )
+        return L"";
+    wchar_t* buf = (wchar_t*) alloca( len * sizeof( wchar_t ) * 2 );
+    int      r = MultiByteToWideChar( CP_UTF8, 0, str.c_str(), len, buf, len );
+    return std::wstring( buf, r );
+}
+
+std::string WideCharToChar( const wchar_t* str )
+{
+    int len = (int) wcslen( str );
+    if( !len )
+        return "";
+    char* buf = (char*) alloca( UTF8_BUF_SIZE( len ) );
+    int   r = WideCharToMultiByte( CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr );
+    return std::string( buf, r );
+}
+#endif
 
 /************************************************************************/
 /*                                                                      */
@@ -950,18 +982,6 @@ void GetClientOptions()
         WriteLog( "File logging off.\n" );
         LogToFile( nullptr );
     }
-
-    logging = MainConfig->GetInt( "", "LoggingDebugOutput", 0 ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( logging, "LoggingDebugOutput" );
-    if( logging )
-        LogToDebugOutput( true );
-
-    logging = MainConfig->GetInt( "", "LoggingTime", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( logging, "LoggingTime" );
-    LogWithTime( logging );
-    logging = MainConfig->GetInt( "", "LoggingThread", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( logging, "LoggingThread" );
-    LogWithThread( logging );
 
     # ifdef FONLINE_MAPPER
     Script::SetRunTimeout( 0, 0 );
