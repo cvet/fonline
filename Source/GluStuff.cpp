@@ -1,4 +1,4 @@
-#include "glu_stuff.h"
+#include "GluStuff.h"
 #include <math.h>
 
 void gluStuffOrtho(float* matrix, float left, float right, float bottom, float top, float near, float far)
@@ -31,9 +31,9 @@ void gluStuffOrtho(float* matrix, float left, float right, float bottom, float t
 	matrix[15] = 1.0f;
 }
 
-void __gluMultMatricesf(const float a[16], const float b[16], float r[16]);
-void __gluMultMatrixVecf(const float matrix[16], const float in[4], float out[4]);
-int __gluInvertMatrixf(const float m[16], float invOut[16]);
+static void __gluMultMatricesf(const float a[16], const float b[16], float r[16]);
+static void __gluMultMatrixVecf(const float matrix[16], const float in[4], float out[4]);
+static int __gluInvertMatrixf(const float m[16], float invOut[16]);
 
 int gluStuffProject(float objx, float objy, float objz, const float modelMatrix[16], const float projMatrix[16], const int viewport[4], float *winx, float *winy, float *winz)
 {
@@ -99,7 +99,7 @@ int gluStuffUnProject(float winx, float winy, float winz, const float modelMatri
 	return(1);
 }
 
-void __gluMultMatricesf(const float a[16], const float b[16], float r[16])
+static void __gluMultMatricesf(const float a[16], const float b[16], float r[16])
 {
 	int i, j;
 
@@ -114,7 +114,7 @@ void __gluMultMatricesf(const float a[16], const float b[16], float r[16])
 	}
 }
 
-void __gluMultMatrixVecf(const float matrix[16], const float in[4], float out[4])
+static void __gluMultMatrixVecf(const float matrix[16], const float in[4], float out[4])
 {
 	int i;
 
@@ -127,7 +127,7 @@ void __gluMultMatrixVecf(const float matrix[16], const float in[4], float out[4]
 	}
 }
 
-int __gluInvertMatrixf(const float m[16], float invOut[16])
+static int __gluInvertMatrixf(const float m[16], float invOut[16])
 {
 	float inv[16], det;
 	int i;

@@ -199,6 +199,7 @@ std::string  WideCharToChar( const wchar_t* str );
 
 # include "SDL.h"
 # include "SDL_syswm.h"
+# include "GluStuff.h"
 # ifndef FO_OGL_ES
 #  include "GL/glew.h"
 #  include "SDL_opengl.h"
@@ -269,7 +270,6 @@ std::string  WideCharToChar( const wchar_t* str );
 #  endif
 #  define glTexImage2DMultisample( a, b, c, d, e, f )
 # endif
-# include "GL/glu_stuff.h"
 # ifdef FO_MSVC
 #  pragma comment( lib, "opengl32.lib" )
 #  pragma comment( lib, "glu32.lib" )

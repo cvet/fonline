@@ -28,18 +28,21 @@ if( WIN32 )
 	set( OS "WINDOWS" )
 	set( CMAKE_CONFIGURATION_TYPES "RelWithDebInfo" CACHE STRING "" FORCE )
 	link_directories( "${CMAKE_CURRENT_SOURCE_DIR}/Lib/Windows/Release/${ARCH_STR}" )
+	set( USE_GLEW YES )
 elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Linux" )
 	set( OS "LINUX" )
 	set( CMAKE_CONFIGURATION_TYPES "RelWithDebInfo" CACHE STRING "" FORCE )
 	find_package( X11 REQUIRED )
 	find_package( OpenGL REQUIRED )
 	set( RENDER_LIBS "GL" )
+	set( USE_GLEW YES )
 	link_directories( "${CMAKE_CURRENT_SOURCE_DIR}/Lib/Linux/${ARCH_STR}" )
 elseif( APPLE AND NOT IOS_PLATFORM )
 	set( OS "MAC" )
 	set( CMAKE_CONFIGURATION_TYPES "RelWithDebInfo" CACHE STRING "" FORCE )
 	find_package( OpenGL REQUIRED )
 	set( RENDER_LIBS "${OPENGL_LIBRARIES}" )
+	set( USE_GLEW YES )
 	set( BUILD_ONLY_CLIENT YES )
 elseif( APPLE AND IOS_PLATFORM )
 	set( OS "IOS" )
@@ -203,8 +206,10 @@ include_directories( "${ANGEL_SCRIPT_DIR}/sdk/angelscript/include" "${ANGEL_SCRI
 add_subdirectory( "Acm" )
 add_subdirectory( "SHA" )
 
-add_subdirectory( "GL" )
-set( GLExt "GLExt" )
+if( USE_GLEW )
+	file( GLOB GLEW_SOURCE "GL/*.*" )
+	source_group( "ThirdParty\\GLEW" FILES ${Assimp_SOURCE} )
+endif()
 
 if( WIN32 )
 	add_subdirectory( "NCodeHook" )
@@ -295,10 +300,12 @@ set( SERVER_ASCOMPILER_SOURCE
 	DummyData.h
 )
 set( CLIENT_MAPPER_SOURCE
+	${GLEW_SOURCE}
 	3dStuff.cpp 3dStuff.h
 	CritterCl.cpp CritterCl.h
 	F2Palette.h
 	FlexRect.h
+	GluStuff.cpp GluStuff.h
 	GraphicLoader.cpp GraphicLoader.h
 	HexManager.cpp HexManager.h
 	ItemHex.cpp ItemHex.h
@@ -386,7 +393,7 @@ else()
 	set_target_properties( FOnline PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CLIENT_OUTPUT} )
 endif()
 set_target_properties( FOnline PROPERTIES OUTPUT_NAME "FOnline${CLIENT_POSTFIX}" COMPILE_FLAGS "${CLIENT_DEFINES}" )
-target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${RENDER_LIBS}" "${GLExt}" "${CMAKE_DL_LIBS}" "${CLIENT_LIBS}" )
+target_link_libraries( FOnline "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "Acm" "SHA" "${NCODEHOOK}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" "${CLIENT_LIBS}" )
 
 if( NOT BUILD_ONLY_CLIENT )
 	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Server.rc" )
@@ -404,7 +411,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	add_executable( Mapper WIN32 ${MAPPER_SOURCE} "Mapper.rc" )
 	set_target_properties( Mapper PROPERTIES ${RO0} ${MAPPER_OUTPUT} ${RO1} ${MAPPER_OUTPUT} ${RO2} ${MAPPER_OUTPUT} ${RO3} ${MAPPER_OUTPUT} ${RO4} ${MAPPER_OUTPUT} )
 	set_target_properties( Mapper PROPERTIES OUTPUT_NAME "Mapper${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${MAPPER_DEFINES}" )
-	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${FBXSDK}" "${RENDER_LIBS}" "${GLExt}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( Mapper "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SDL2main" "SDL2-static" "SHA" "${NCODEHOOK}" "${FBXSDK}" "${RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 
 	add_executable( ASCompiler ${ASCOMPILER_SOURCE} )
 	set_target_properties( ASCompiler PROPERTIES ${RO0} ${ASCOMPILER_OUTPUT} ${RO1} ${ASCOMPILER_OUTPUT} ${RO2} ${ASCOMPILER_OUTPUT} ${RO3} ${ASCOMPILER_OUTPUT} ${RO4} ${ASCOMPILER_OUTPUT} )
@@ -413,5 +420,5 @@ if( NOT BUILD_ONLY_CLIENT )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline Mapper ASCompiler PROPERTY FOLDER "Binaries")
-	set_property( TARGET Acm Angelscript AngelscriptExt fltk GLExt ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl PROPERTY FOLDER "Libraries")
+	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl PROPERTY FOLDER "Libraries")
 endif()
