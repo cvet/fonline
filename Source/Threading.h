@@ -3,7 +3,7 @@
 
 #include "Common.h"
 
-#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
+#if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC ) || defined( FO_ANDROID )
 void Thread_Sleep( uint ms );
 #endif
 

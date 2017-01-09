@@ -212,7 +212,6 @@ std::string  WideCharToChar( const wchar_t* str );
 #   define glDeleteVertexArrays                   glDeleteVertexArraysAPPLE
 #  endif
 # else
-#  define GL_GLEXT_PROTOTYPES
 #  include "SDL_opengles2.h"
 #  define glGenVertexArrays                       glGenVertexArraysOES
 #  define glBindVertexArray                       glBindVertexArrayOES
