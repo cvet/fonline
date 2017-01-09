@@ -208,7 +208,7 @@ add_subdirectory( "SHA" )
 
 if( USE_GLEW )
 	file( GLOB GLEW_SOURCE "GL/*.*" )
-	source_group( "ThirdParty\\GLEW" FILES ${Assimp_SOURCE} )
+	source_group( "ThirdParty\\GLEW" FILES ${GLEW_SOURCE} )
 endif()
 
 if( WIN32 )
