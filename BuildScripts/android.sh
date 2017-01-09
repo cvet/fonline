@@ -56,5 +56,5 @@ cd ../
 
 cd FOnline
 ant clean debug
-# ant install
+ant debug install
 cd ../
