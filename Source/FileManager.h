@@ -9,7 +9,7 @@
 class FileManager
 {
 public:
-    static void InitDataFiles( const char* path );
+    static void InitDataFiles( const char* path, bool set_write_dir = true );
     static bool LoadDataFile( const char* path );
     static void ClearDataFiles();
 

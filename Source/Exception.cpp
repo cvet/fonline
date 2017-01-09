@@ -694,18 +694,22 @@ static void DumpAngelScript( FILE* f )
 
 bool RaiseAssert( const char* message, const char* file, int line )
 {
-    // Create dump
     char buf[ MAX_FOTEXT ];
     char file_[ MAX_FOPATH ];
     FileManager::ExtractFileName( file, file_ );
+    WriteLog( "Runtime assert: {} in {} ({})\n", message, file_, line );
+
+    #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
+    // Create dump
     Str::Format( buf, "AssertFailed_v%u_%s(%u)", FONLINE_VERSION, file_, line );
     CreateDump( buf, message );
 
     // Show message
     Str::Format( buf, "Assert failed!\nVersion: %u\nFile: %s (%u)\n\n%s", FONLINE_VERSION, file_, line, message );
     ShowMessage( buf );
+    #endif
 
     // Shut down
-    ExitProcess( 0 );
+    ExitProcess( 1 );
     return true;
 }

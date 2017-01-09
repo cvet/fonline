@@ -23,9 +23,13 @@ FileManager::~FileManager()
     UnloadFile();
 }
 
-void FileManager::InitDataFiles( const char* path )
+void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true */ )
 {
-    RUNTIME_ASSERT( path && ( !path[ 0 ] || path[ Str::Length( path ) - 1 ] == '/' || path[ Str::Length( path ) - 1 ] == '\\' ) );
+    // Format path
+    RUNTIME_ASSERT( path );
+    char formatted_path[ MAX_FOPATH ];
+    Str::Copy( formatted_path, path );
+    FormatPath( formatted_path );
 
     // Init internal data file
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -34,38 +38,36 @@ void FileManager::InitDataFiles( const char* path )
     #endif
 
     // Redirect path
-    void* redirection_link = FileOpen( ( string( path ) + "Redirection.link" ).c_str(), false );
+    void* redirection_link = FileOpen( ( string( formatted_path ) + "Redirection.link" ).c_str(), false );
     if( redirection_link )
     {
         char link[ MAX_FOPATH ];
         uint len = FileGetSize( redirection_link );
         FileRead( redirection_link, link, len );
         link[ len ] = 0;
-        Str::Insert( link, path );
-        FormatPath( link );
-        InitDataFiles( link );
+        Str::Insert( link, formatted_path );
+        InitDataFiles( link, set_write_dir );
         return;
     }
 
     // Write path first
-    if( writeDir.empty() )
-        writeDir = path;
+    if( set_write_dir )
+        writeDir = formatted_path;
 
     // Process dir
-    if( !LoadDataFile( path ) )
+    if( !LoadDataFile( formatted_path ) )
         RUNTIME_ASSERT( !"Unable to load files in folder." );
 
     // Extension of this path
-    void* extension_link = FileOpen( ( string( path ) + "Extension.link" ).c_str(), false );
+    void* extension_link = FileOpen( ( string( formatted_path ) + "Extension.link" ).c_str(), false );
     if( extension_link )
     {
         char link[ MAX_FOPATH ];
         uint len = FileGetSize( extension_link );
         FileRead( extension_link, link, len );
         link[ len ] = 0;
-        Str::Insert( link, path );
-        FormatPath( link );
-        InitDataFiles( link );
+        Str::Insert( link, formatted_path );
+        InitDataFiles( link, false );
     }
 }
 
@@ -93,7 +95,7 @@ bool FileManager::LoadDataFile( const char* path )
             return false;
         }
 
-        dataFiles.push_back( data_file );
+        dataFiles.insert( dataFiles.begin(), data_file );
     }
 
     // Inner data files

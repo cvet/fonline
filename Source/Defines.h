@@ -28,6 +28,13 @@
 
 // Generic
 #define CLIENT_DATA                 "./Data/"
+#if defined ( FO_IOS )
+# define CLIENT_DATA_EXT            "../../Documents/"
+#elif defined ( FO_ANDROID )
+# define CLIENT_DATA_EXT            SDL_AndroidGetInternalStoragePath()
+#else
+# define CLIENT_DATA_EXT            nullptr
+#endif
 #define WORLD_START_TIME            "07:00 30:10:2246 x00"
 #define TEMP_BUF_SIZE               ( 8192 )
 #define MAX_FOPATH                  UTF8_BUF_SIZE( 2048 )

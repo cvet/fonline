@@ -871,10 +871,9 @@ void GetClientOptions()
     # define READ_CFG_STR_DEF( cfg, key, def_val )    Str::Copy( buf, MainConfig->GetStr( "", key, def_val ) )
 
     // Data files
-    # ifdef FO_IOS
-    FileManager::InitDataFiles( "../../Documents/" );
-    # endif
     FileManager::InitDataFiles( CLIENT_DATA );
+    if( CLIENT_DATA_EXT )
+        FileManager::InitDataFiles( CLIENT_DATA_EXT );
 
     // Cached configuration
     MainConfig->AppendFile( "Cache/" CONFIG_NAME );

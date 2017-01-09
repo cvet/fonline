@@ -146,12 +146,6 @@ public:
 
 DataFile* OpenDataFile( const char* path )
 {
-    if( !path || !path[ 0 ] )
-    {
-        WriteLog( "Invalid file name, empty or nullptr.\n" );
-        return nullptr;
-    }
-
     const char* ext = FileManager::GetExtension( path );
     if( ext && Str::CompareCase( ext, "dat" ) )
     {

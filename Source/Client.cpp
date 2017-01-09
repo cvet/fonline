@@ -733,10 +733,9 @@ void FOClient::UpdateFilesLoop()
                         if( UpdateFilesFilesChanged )
                         {
                             FileManager::ClearDataFiles();
-                            #ifdef FO_IOS
-                            FileManager::InitDataFiles( "../../Documents/" );
-                            #endif
                             FileManager::InitDataFiles( CLIENT_DATA );
+                            if( CLIENT_DATA_EXT )
+                                FileManager::InitDataFiles( CLIENT_DATA_EXT );
                         }
                     }
                     else
