@@ -197,8 +197,8 @@ Android_VideoQuit(_THIS)
 void
 Android_SetScreenResolution(int width, int height, Uint32 format, float rate)
 {
-    SDL_VideoDevice* device = 0;
-    SDL_VideoDisplay* display = 0;
+    SDL_VideoDevice* device = 0; // Patch
+    SDL_VideoDisplay* display = 0; // Patch
 
     Android_ScreenWidth = width;
     Android_ScreenHeight = height;
@@ -211,10 +211,10 @@ Android_SetScreenResolution(int width, int height, Uint32 format, float rate)
       example happen when the Activity enters or exists immersive mode,
       which can happen after VideoInit().
     */
-    device = SDL_GetVideoDevice();
+    device = SDL_GetVideoDevice(); // Patch
     if (device && device->num_displays > 0)
     {
-        display = &device->displays[0];
+        display = &device->displays[0]; // Patch
         display->desktop_mode.format = Android_ScreenFormat;
         display->desktop_mode.w = Android_ScreenWidth;
         display->desktop_mode.h = Android_ScreenHeight;
@@ -226,7 +226,7 @@ Android_SetScreenResolution(int width, int height, Uint32 format, float rate)
 
         /* Force the current mode to match the resize otherwise the SDL_WINDOWEVENT_RESTORED event
          * will fall back to the old mode */
-        display = SDL_GetDisplayForWindow(Android_Window);
+        display = SDL_GetDisplayForWindow(Android_Window); // Patch
 
         display->current_mode.format = format;
         display->current_mode.w = width;
