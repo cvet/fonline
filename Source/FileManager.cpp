@@ -27,9 +27,10 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
 {
     // Format path
     RUNTIME_ASSERT( path );
-    char formatted_path[ MAX_FOPATH ];
-    Str::Copy( formatted_path, path );
-    FormatPath( formatted_path );
+    char fixed_path[ MAX_FOPATH ];
+    Str::Copy( fixed_path, path );
+    if( fixed_path[ Str::Length( fixed_path ) - 1 ] != '/' )
+        Str::Append( fixed_path, "/" );
 
     // Init internal data file
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -38,35 +39,37 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
     #endif
 
     // Redirect path
-    void* redirection_link = FileOpen( ( string( formatted_path ) + "Redirection.link" ).c_str(), false );
+    void* redirection_link = FileOpen( ( string( fixed_path ) + "Redirection.link" ).c_str(), false );
     if( redirection_link )
     {
         char link[ MAX_FOPATH ];
         uint len = FileGetSize( redirection_link );
         FileRead( redirection_link, link, len );
         link[ len ] = 0;
-        Str::Insert( link, formatted_path );
+        Str::Insert( link, fixed_path );
+        FormatPath( link );
         InitDataFiles( link, set_write_dir );
         return;
     }
 
     // Write path first
     if( set_write_dir )
-        writeDir = formatted_path;
+        writeDir = fixed_path;
 
     // Process dir
-    if( !LoadDataFile( formatted_path ) )
+    if( !LoadDataFile( fixed_path ) )
         RUNTIME_ASSERT( !"Unable to load files in folder." );
 
     // Extension of this path
-    void* extension_link = FileOpen( ( string( formatted_path ) + "Extension.link" ).c_str(), false );
+    void* extension_link = FileOpen( ( string( fixed_path ) + "Extension.link" ).c_str(), false );
     if( extension_link )
     {
         char link[ MAX_FOPATH ];
         uint len = FileGetSize( extension_link );
         FileRead( extension_link, link, len );
         link[ len ] = 0;
-        Str::Insert( link, formatted_path );
+        Str::Insert( link, fixed_path );
+        FormatPath( link );
         InitDataFiles( link, false );
     }
 }
