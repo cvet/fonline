@@ -759,21 +759,10 @@ void FOClient::UpdateFilesLoop()
 
 void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
 {
-    if( Singleplayer )
-    {
-        UpdateFilesText = "";
-        num_str = STR_START_SINGLEPLAYER;
-        num_str_str = "Start singleplayer...";
-    }
-
-    if( UpdateFilesFontLoaded )
+    if( !Singleplayer && UpdateFilesFontLoaded )
     {
         const char* text = ( CurLang.Msg[ TEXTMSG_GAME ].Count( num_str ) ? CurLang.Msg[ TEXTMSG_GAME ].GetStr( num_str ) : num_str_str );
         UpdateFilesText += string( text ) + "\n";
-    }
-    else
-    {
-        WriteLog( "Update files message '{}'.\n", num_str_str );
     }
 }
 
