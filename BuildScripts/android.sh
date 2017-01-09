@@ -55,5 +55,6 @@ cmake -G "Unix Makefiles" -C "$FO_SOURCE/BuildScripts/android.cache.cmake" "$FO_
 cd ../
 
 cd FOnline
-ant debug
+ant clean debug
+# ant install
 cd ../
