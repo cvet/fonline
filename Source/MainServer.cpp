@@ -869,7 +869,7 @@ int main( int argc, char** argv )
 {
     InitialSetup( argc, argv );
 
-    if( !Str::Substring( CommandLine, "-nodetach" ) )
+    if( !Str::Substring( GameOpt.CommandLine.c_str(), "-nodetach" ) )
     {
         // Start daemon
         pid_t parpid = fork();
@@ -914,29 +914,23 @@ int main( int argc, char** argv )
     // Timer
     Timer::Init();
 
-    // Config
-    IniParser& cfg = IniParser::GetServerConfig();
-
     // Memory debugging
     MemoryDebugLevel = MainConfig->GetInt( "", "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
 
-
     // Logging
-    LogWithTime( MainConfig->GetInt( "", "LoggingTime", 1 ) == 0 ? false : true );
-    LogWithThread( MainConfig->GetInt( "", "LoggingThread", 1 ) == 0 ? false : true );
     LogToFile( "./FOnlineServerDaemon.log" );
 
     // Log version
     WriteLog( "FOnline server daemon, version {}.\n", FONLINE_VERSION );
-    if( Str::Length( CommandLine ) > 0 )
-        WriteLog( "Command line '{}'.\n", CommandLine );
+    if( !GameOpt.CommandLine.empty() )
+        WriteLog( "Command line '{}'.\n", GameOpt.CommandLine );
 
     // Update stuff
-    if( !Singleplayer && Str::Substring( CommandLine, "-game" ) )
+    if( !Singleplayer && Str::Substring( GameOpt.CommandLine.c_str(), "-game" ) )
         GameOpt.GameServer = true, GameOpt.UpdateServer = false;
-    else if( !Singleplayer && Str::Substring( CommandLine, "-update" ) )
+    else if( !Singleplayer && Str::Substring( GameOpt.CommandLine.c_str(), "-update" ) )
         GameOpt.GameServer = false, GameOpt.UpdateServer = true;
     else
         GameOpt.GameServer = true, GameOpt.UpdateServer = true;
@@ -1055,7 +1049,11 @@ static void AdminManager( void* port_ )
         if( select( (int) listen_sock + 1, &sock_set, nullptr, nullptr, &tv ) > 0 )
         {
             sockaddr_in from;
+            #ifdef FO_WINDOWS
             int         len = sizeof( from );
+            #else
+            socklen_t   len = sizeof( from );
+            #endif
             SOCKET      sock = accept( listen_sock, (sockaddr*) &from, &len );
             if( sock != INVALID_SOCKET )
             {

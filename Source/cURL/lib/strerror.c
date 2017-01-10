@@ -29,7 +29,7 @@
       (defined(HAVE_POSIX_STRERROR_R) && defined(HAVE_VXWORKS_STRERROR_R)) || \
       (defined(HAVE_GLIBC_STRERROR_R) && defined(HAVE_VXWORKS_STRERROR_R)) || \
       (defined(HAVE_POSIX_STRERROR_R) && defined(HAVE_GLIBC_STRERROR_R))
-#    error "strerror_r MUST be either POSIX, glibc or vxworks-style"
+// Patch #    error "strerror_r MUST be either POSIX, glibc or vxworks-style"
 #  endif
 #endif
 

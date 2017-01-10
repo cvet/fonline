@@ -2004,7 +2004,7 @@ uint Client::GetOfflineTime()
 const char* Client::GetBinPassHash()
 {
     static THREAD char pass_hash[ PASS_HASH_SIZE ];
-    string&            str = GetPassHash();
+    string             str = GetPassHash();
     RUNTIME_ASSERT( str.length() == PASS_HASH_SIZE * 2 );
     for( asUINT i = 0, j = (uint) str.length(); i < j; i += 2 )
         pass_hash[ i / 2 ] = Str::StrToHex( str.c_str() + i );

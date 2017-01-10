@@ -632,7 +632,9 @@ StackInfo* GetStackInfo( const void* caller )
 
 # include <malloc.h>
 
-Mutex HookLocker;
+# ifndef NO_THREADING
+static Mutex HookLocker;
+# endif
 
 void* malloc_hook( size_t size, const void* caller );
 void* realloc_hook( void* ptr, size_t size, const void* caller );
@@ -640,7 +642,9 @@ void  free_hook( void* ptr, const void* caller );
 
 void* malloc_hook( size_t size, const void* caller )
 {
+    # ifndef NO_THREADING
     SCOPE_LOCK( HookLocker );
+    # endif
 
     __malloc_hook = nullptr;
     void* ptr = malloc( size );
@@ -652,7 +656,9 @@ void* malloc_hook( size_t size, const void* caller )
 
 void* realloc_hook( void* ptr, size_t size, const void* caller )
 {
+    # ifndef NO_THREADING
     SCOPE_LOCK( HookLocker );
+    # endif
 
     __realloc_hook = nullptr;
     if( MemoryTrace )
@@ -666,7 +672,9 @@ void* realloc_hook( void* ptr, size_t size, const void* caller )
 
 void free_hook( void* ptr, const void* caller )
 {
+    # ifndef NO_THREADING
     SCOPE_LOCK( HookLocker );
+    # endif
 
     __free_hook = nullptr;
     free( ptr );
