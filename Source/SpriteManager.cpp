@@ -4373,7 +4373,7 @@ bool SpriteManager::DrawContours()
 
 bool SpriteManager::CollectContour( int x, int y, SpriteInfo* si, Sprite* spr )
 {
-    if( !rtContours || !rtContoursMid )
+    if( !rtContours || !rtContoursMid || !Effect::Contour )
         return true;
 
     Rect     borders = Rect( x - 1, y - 1, x + si->Width + 1, y + si->Height + 1 );

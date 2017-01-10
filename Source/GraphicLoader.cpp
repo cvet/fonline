@@ -834,7 +834,6 @@ bool GraphicLoader::LoadDefaultEffects()
     LOAD_EFFECT( Effect::Light, "Primitive_Light", true, nullptr );
     LOAD_EFFECT( Effect::Fog, "Primitive_Fog", true, nullptr );
     LOAD_EFFECT( Effect::Font, "Font_Default", true, nullptr );
-    LOAD_EFFECT( Effect::Contour, "Contour_Default", true, nullptr );
     LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, nullptr );
     LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, nullptr );
     LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, nullptr );
@@ -846,6 +845,8 @@ bool GraphicLoader::LoadDefaultEffects()
         WriteLog( "Default effects not loaded.\n" );
         return false;
     }
+
+    LOAD_EFFECT( Effect::Contour, "Contour_Default", true, nullptr );
     return true;
 }
 

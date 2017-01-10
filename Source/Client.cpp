@@ -1473,7 +1473,7 @@ bool FOClient::CheckSocketStatus( bool for_write )
         if( getsockopt( Sock, SOL_SOCKET, SO_ERROR, (char*) &error, &len ) != SOCKET_ERROR && !error )
             return false;
 
-        WriteLog( "Socket error {}.\n", GetLastSocketError() );
+        WriteLog( "Socket error '{}'.\n", GetLastSocketError() );
     }
     else
     {
