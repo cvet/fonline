@@ -1,6 +1,7 @@
 rem Usage:
 rem set "FO_SOURCE=<source>" && %FO_SOURCE%\BuildScripts\windows.bat
 
+SET FO_SDK="%FO_SOURCE%\..\FOnline"
 SET BUILD_DIR=%CD%
 
 IF "%FO_CLEAR%"=="TRUE" RMDIR /S /Q "%BUILD_DIR%\windows"
@@ -25,3 +26,8 @@ cmake --build "%BUILD_DIR%\windows\x86" --config RelWithDebInfo --target FOnline
 cmake --build "%BUILD_DIR%\windows\x86" --config RelWithDebInfo --target Mapper
 cmake --build "%BUILD_DIR%\windows\x86" --config RelWithDebInfo --target ASCompiler
 cmake --build "%BUILD_DIR%\windows\x86" --config RelWithDebInfo --target FOnline
+
+XCOPY /S /Y "%BUILD_DIR%\windows\Client" "%FO_SDK%\Binaries\Client\Windows"
+XCOPY /S /Y "%BUILD_DIR%\windows\Server" "%FO_SDK%\Binaries\Server"
+XCOPY /S /Y "%BUILD_DIR%\windows\Mapper" "%FO_SDK%\Binaries\Mapper"
+XCOPY /S /Y "%BUILD_DIR%\windows\ASCompiler" "%FO_SDK%\Binaries\ASCompiler"

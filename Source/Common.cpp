@@ -872,8 +872,12 @@ void GetClientOptions()
 
     // Data files
     FileManager::InitDataFiles( CLIENT_DATA );
-    if( CLIENT_DATA_EXT )
-        FileManager::InitDataFiles( CLIENT_DATA_EXT );
+    # if defined ( FO_IOS )
+    FileManager::InitDataFiles( "../../Documents/" );
+    # elif defined ( FO_ANDROID )
+    FileManager::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
+    FileManager::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
+    # endif
 
     // Cached configuration
     MainConfig->AppendFile( "Cache/" CONFIG_NAME );

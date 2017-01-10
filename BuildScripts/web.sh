@@ -3,6 +3,8 @@
 # Usage:
 # export FO_SOURCE=<source> && sudo -E "$FO_SOURCE/BuildScripts/web.sh"
 
+export FO_SDK="$FO_SOURCE/../FOnline"
+
 if [ "$EUID" -ne 0 ]; then
 	echo "Run as root"
 	exit
@@ -33,3 +35,5 @@ cd ../
 emcc -v
 
 cmake -G "Unix Makefiles" -C "$FO_SOURCE/BuildScripts/web.cache.cmake" "$FO_SOURCE/Source" && make
+
+cp -r Web "$FO_SDK/Binaries/Client"

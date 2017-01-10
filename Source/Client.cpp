@@ -729,13 +729,19 @@ void FOClient::UpdateFilesLoop()
                     if( InitCalls < 2 )
                     {
                         if( UpdateFilesCacheChanged )
+                        {
                             CurLang.LoadFromCache( CurLang.NameStr );
+                        }
                         if( UpdateFilesFilesChanged )
                         {
                             FileManager::ClearDataFiles();
                             FileManager::InitDataFiles( CLIENT_DATA );
-                            if( CLIENT_DATA_EXT )
-                                FileManager::InitDataFiles( CLIENT_DATA_EXT );
+                            #if defined ( FO_IOS )
+                            FileManager::InitDataFiles( "../../Documents/" );
+                            #elif defined ( FO_ANDROID )
+                            FileManager::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
+                            FileManager::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
+                            #endif
                         }
                     }
                     else

@@ -260,7 +260,7 @@ struct FileDesc
 static void SetRelativePath( const char* fname, char* result )
 {
     result[ 0 ] = 0;
-    if( fname[ 0 ] != '.' )
+    if( fname[ 0 ] != '.' && fname[ 0 ] != '/' )
         Str::Copy( result, MAX_FOPATH, "./" );
     Str::Append( result, MAX_FOPATH, fname );
     NormalizePathSlashes( result );

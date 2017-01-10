@@ -3,6 +3,7 @@
 # Usage:
 # export FO_SOURCE=<source> && sudo -E "$FO_SOURCE/BuildScripts/android.sh"
 
+export FO_SDK="$FO_SOURCE/../FOnline"
 export ANDROID_NDK_VERSION="android-ndk-r12b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 
@@ -39,8 +40,8 @@ echo y | ./android update sdk --no-ui
 cd ../
 cd ../
 
-mkdir FOnline
-cp -r "$FO_SOURCE/BuildScripts/android-project/." "./FOnline/"
+mkdir Android
+cp -r "$FO_SOURCE/BuildScripts/android-project/." "./Android/"
 
 export ANDROID_ABI=armeabi-v7a
 mkdir $ANDROID_ABI
@@ -54,6 +55,4 @@ cd $ANDROID_ABI
 cmake -G "Unix Makefiles" -C "$FO_SOURCE/BuildScripts/android.cache.cmake" "$FO_SOURCE/Source" && make
 cd ../
 
-cd FOnline
-ant clean debug
-cd ../
+cp -r Android "$FO_SDK/Binaries/Client"
