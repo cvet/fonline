@@ -989,13 +989,6 @@ void GetClientOptions()
     # ifdef FONLINE_MAPPER
     Script::SetRunTimeout( 0, 0 );
     # endif
-
-    # if defined ( FO_IOS ) || defined ( FO_ANDROID ) || defined ( FO_WEB )
-    GameOpt.ScreenWidth = 1024;
-    GameOpt.ScreenHeight = 768;
-    GameOpt.FixedFPS = 0;
-    GameOpt.ProxyType = 0;
-    # endif
 }
 
 ClientScriptFunctions ClientFunctions;

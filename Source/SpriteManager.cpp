@@ -64,18 +64,27 @@ bool SpriteManager::Init()
     drawQuadCount = 1024;
     curDrawQuad = 0;
 
-    #if defined ( FO_ANDROID ) || defined ( FO_IOS )
-    SDL_DisplayMode mode;
-    int             r = SDL_GetCurrentDisplayMode( 0, &mode );
-    RUNTIME_ASSERT( !r && "SDL_GetCurrentDisplayMode" );
-    GameOpt.ScreenWidth = mode.w;
-    GameOpt.ScreenHeight = mode.h;
-    while( GameOpt.ScreenWidth >= 2048 )
-    {
-        GameOpt.ScreenWidth /= 2;
-        GameOpt.ScreenHeight /= 2;
-    }
+    // Detect tablets
+    bool is_tablet = false;
+    #if defined ( FO_IOS ) || defined ( FO_ANDROID )
+    is_tablet = true;
     #endif
+    #if defined ( FO_WINDOWS )
+    is_tablet = ( GetSystemMetrics( SM_TABLETPC ) != 0 );
+    #endif
+    if( is_tablet )
+    {
+        SDL_DisplayMode mode;
+        int             r = SDL_GetCurrentDisplayMode( 0, &mode );
+        RUNTIME_ASSERT( !r && "SDL_GetCurrentDisplayMode" );
+        GameOpt.ScreenWidth = mode.w;
+        GameOpt.ScreenHeight = mode.h;
+        while( GameOpt.ScreenWidth >= 2048 )
+        {
+            GameOpt.ScreenWidth /= 2;
+            GameOpt.ScreenHeight /= 2;
+        }
+    }
 
     // Initialize window
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
@@ -87,10 +96,11 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
     uint window_create_flags = ( SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
     window_create_flags |= ( GameOpt.FullScreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0 );
-    #if defined ( FO_ANDROID ) || defined ( FO_IOS )
-    window_create_flags |= SDL_WINDOW_FULLSCREEN;
-    window_create_flags |= SDL_WINDOW_BORDERLESS;
-    #endif
+    if( is_tablet )
+    {
+        window_create_flags |= SDL_WINDOW_FULLSCREEN;
+        window_create_flags |= SDL_WINDOW_BORDERLESS;
+    }
     #ifdef FO_OGL_ES
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
