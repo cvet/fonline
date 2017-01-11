@@ -219,8 +219,9 @@ class NetConnectionAsio: public NetConnectionImpl
 public:
     NetConnectionAsio( asio::ip::tcp::socket* socket ): socket( socket )
     {
-        Ip = socket->remote_endpoint().address().to_v4().to_ulong();
-        Host = socket->remote_endpoint().address().to_string();
+        const auto& address = socket->remote_endpoint().address();
+        Ip = ( address.is_v4() ? address.to_v4().to_ulong() : uint( -1 ) );
+        Host = address.to_string();
         Port = socket->remote_endpoint().port();
 
         if( GameOpt.DisableTcpNagle )
@@ -274,7 +275,7 @@ class NetTcpServer: public NetServerBase
     }
 
 public:
-    NetTcpServer( ushort port, std::function< void(NetConnection*) > callback ): acceptor( ioService, asio::ip::tcp::endpoint( asio::ip::tcp::v4(), port ) )
+    NetTcpServer( ushort port, std::function< void(NetConnection*) > callback ): acceptor( ioService, asio::ip::tcp::endpoint( asio::ip::tcp::v6(), port ) )
     {
         connectionCallback = callback;
         AcceptNext();
@@ -390,7 +391,7 @@ public:
         server.init_asio();
         server.set_open_handler( websocketpp::lib::bind( &NetWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1 ) );
         server.set_validate_handler( websocketpp::lib::bind( &NetWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1 ) );
-        server.listen( port );
+        server.listen( asio::ip::tcp::v6(), port );
         server.start_accept();
 
         runThread = std::thread( &NetWebSocketsServer::Run, this );
