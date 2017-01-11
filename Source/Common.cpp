@@ -1137,7 +1137,7 @@ string GetLastSocketError()
 
 string GetLastSocketError()
 {
-    return fmt::format( "{}", strerror( errno ) );
+    return fmt::format( "{} ({})", strerror( errno ), errno );
 }
 
 #endif

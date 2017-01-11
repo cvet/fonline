@@ -379,8 +379,9 @@ class NetWebSocketsServer: public NetServerBase
     bool OnValidate( websocketpp::connection_hdl hdl )
     {
         web_sockets::connection_ptr connection = server.get_con_from_hdl( hdl );
-        connection->select_subprotocol( "binary" );
-        return true;
+        std::error_code             error;
+        connection->select_subprotocol( "binary", error );
+        return !error;
     }
 
 public:
