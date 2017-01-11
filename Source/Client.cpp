@@ -72,7 +72,7 @@ void  zlib_free_( void* opaque, void* address )                          { free(
 #define MOUSE_BUTTON_EXT3          ( 8 )
 #define MOUSE_BUTTON_EXT4          ( 9 )
 
-#ifdef FO_IOS
+#if defined ( FO_ANDROID ) || defined ( FO_IOS )
 int HandleAppEvents( void* userdata, SDL_Event* event )
 {
     switch( event->type )
@@ -196,7 +196,7 @@ bool FOClient::PreInit()
     UID_PREPARE_UID4_1;
 
     // SDL events
-    #ifdef FO_IOS
+    #if defined ( FO_ANDROID ) || defined ( FO_IOS )
     SDL_SetEventFilter( HandleAppEvents, nullptr );
     #endif
 
@@ -1048,8 +1048,6 @@ void FOClient::MainLoop()
         }
         else if( event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP )
         {
-            MainWindowMouseEvents.push_back( event.type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP );
-            MainWindowMouseEvents.push_back( MOUSE_BUTTON_LEFT );
             GameOpt.MouseX = (int) ( event.tfinger.x * (float) GameOpt.ScreenWidth );
             GameOpt.MouseY = (int) ( event.tfinger.y * (float) GameOpt.ScreenHeight );
         }

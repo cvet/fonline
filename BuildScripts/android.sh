@@ -40,7 +40,7 @@ echo y | ./android update sdk --no-ui
 cd ../
 cd ../
 
-rm -rf Android
+rm -rf Android/*
 mkdir Android
 cp -r "$FO_SOURCE/BuildScripts/android-project/." "./Android/"
 

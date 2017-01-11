@@ -64,6 +64,19 @@ bool SpriteManager::Init()
     drawQuadCount = 1024;
     curDrawQuad = 0;
 
+    #if defined ( FO_ANDROID ) || defined ( FO_IOS )
+    SDL_DisplayMode mode;
+    int             r = SDL_GetCurrentDisplayMode( 0, &mode );
+    RUNTIME_ASSERT( !r && "SDL_GetCurrentDisplayMode" );
+    GameOpt.ScreenWidth = mode.w;
+    GameOpt.ScreenHeight = mode.h;
+    while( GameOpt.ScreenWidth >= 2048 )
+    {
+        GameOpt.ScreenWidth /= 2;
+        GameOpt.ScreenHeight /= 2;
+    }
+    #endif
+
     // Initialize window
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 0 );
@@ -74,7 +87,7 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
     uint window_create_flags = ( SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN );
     window_create_flags |= ( GameOpt.FullScreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0 );
-    #ifdef FO_IOS
+    #if defined ( FO_ANDROID ) || defined ( FO_IOS )
     window_create_flags |= SDL_WINDOW_FULLSCREEN;
     window_create_flags |= SDL_WINDOW_BORDERLESS;
     #endif
