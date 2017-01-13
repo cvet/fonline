@@ -74,7 +74,7 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
     }
 }
 
-bool FileManager::LoadDataFile( const char* path )
+bool FileManager::LoadDataFile( const char* path, bool skip_inner /* = false */ )
 {
     DataFile* data_file = nullptr;
 
@@ -97,28 +97,31 @@ bool FileManager::LoadDataFile( const char* path )
             WriteLog( "Load data '{}' fail.\n", path );
             return false;
         }
-
-        dataFiles.insert( dataFiles.begin(), data_file );
     }
 
     // Inner data files
-    if( data_file )
+    if( data_file && !skip_inner )
     {
         StrVec files;
         data_file->GetFileNames( "", false, "dat", files );
         data_file->GetFileNames( "", false, "zip", files );
         data_file->GetFileNames( "", false, "bos", files );
-        data_file->GetFileNames( "packs/", true, "dat", files );
-        data_file->GetFileNames( "packs/", true, "zip", files );
-        data_file->GetFileNames( "packs/", true, "bos", files );
 
-        std::sort( files.begin(), files.end(), std::greater< string >() );
+        std::sort( files.begin(), files.end(), std::less< string >() );
 
         for( size_t i = 0; i < files.size(); i++ )
-            if( !LoadDataFile( ( string( "" ) + path + files[ i ] ).c_str() ) )
-                RUNTIME_ASSERT( !"Unable to load data file." );
+        {
+            if( !LoadDataFile( ( string( path ) + files[ i ] ).c_str(), true ) )
+            {
+                WriteLog( "Unable to load inner data file." );
+                return false;
+            }
+        }
     }
 
+    // Put to begin of list
+    if( data_file )
+        dataFiles.insert( dataFiles.begin(), data_file );
     return data_file != nullptr;
 }
 

@@ -871,6 +871,7 @@ void GetClientOptions()
     # define READ_CFG_STR_DEF( cfg, key, def_val )    Str::Copy( buf, MainConfig->GetStr( "", key, def_val ) )
 
     // Data files
+    FileManager::ClearDataFiles();
     FileManager::InitDataFiles( CLIENT_DATA );
     # if defined ( FO_IOS )
     FileManager::InitDataFiles( "../../Documents/" );

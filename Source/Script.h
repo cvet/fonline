@@ -31,7 +31,8 @@
 #define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( error, ## __VA_ARGS__ ); return 0; } while( 0 )
 
 typedef void ( *EndExecutionCallback )();
-typedef vector< asIScriptContext* > ContextVec;
+typedef vector< asIScriptContext* >           ContextVec;
+typedef std::function< void ( const char* ) > ExceptionCallback;
 
 struct EngineData
 {
@@ -72,10 +73,12 @@ public:
     static asIScriptContext* RequestContext();
     static void              ReturnContext( asIScriptContext* ctx );
     static ContextVec        GetExecutionContexts();
-    static void              RaiseException( const char* message, ... );
-    static void              PassException();
-    static void              HandleException( asIScriptContext* ctx, const char* message, ... );
-    static string            MakeContextTraceback( asIScriptContext* ctx );
+
+    static void   SetExceptionCallback( ExceptionCallback callback );
+    static void   RaiseException( const char* message, ... );
+    static void   PassException();
+    static void   HandleException( asIScriptContext* ctx, const char* message, ... );
+    static string MakeContextTraceback( asIScriptContext* ctx );
 
     static ScriptInvoker* GetInvoker();
     static string         GetDeferredCallsStatistics();

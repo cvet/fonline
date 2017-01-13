@@ -84,6 +84,7 @@ bool SpriteManager::Init()
             GameOpt.ScreenWidth /= 2;
             GameOpt.ScreenHeight /= 2;
         }
+        GameOpt.FullScreen = true;
     }
 
     // Initialize window

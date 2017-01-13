@@ -57,7 +57,7 @@ public:
     bool PreInit();
     bool PostInit();
     void Finish(); // Not used
-    bool Restart();
+    void Restart();
     void TryExit();
     bool IsCurInWindow();
     void FlashGameWindow();
@@ -65,6 +65,7 @@ public:
     void NetDisconnect();
 
     int        InitCalls;
+    bool       DoRestart;
     uint*      UID1;
     string     Password;
     HexManager HexMngr;

@@ -70,10 +70,11 @@ public:
 };
 typedef vector< BindFunction > BindFunctionVec;
 
-static asIScriptEngine* Engine = nullptr;
-static BindFunctionVec  BindedFunctions;
-static HashIntMap       ScriptFuncBinds;   // Func Num -> Bind Id
-static bool             LoadLibraryCompiler = false;
+static asIScriptEngine*  Engine = nullptr;
+static BindFunctionVec   BindedFunctions;
+static HashIntMap        ScriptFuncBinds;  // Func Num -> Bind Id
+static bool              LoadLibraryCompiler = false;
+static ExceptionCallback OnException;
 
 // Contexts
 struct ContextData
@@ -329,7 +330,8 @@ void Script::Finish()
     Preprocessor::UndefAll();
     UnloadScripts();
 
-    RUNTIME_ASSERT( BusyContexts.empty() );
+    while( !BusyContexts.empty() )
+        ReturnContext( BusyContexts[ 0 ] );
     while( !FreeContexts.empty() )
         FinishContext( FreeContexts[ 0 ] );
 
@@ -838,6 +840,11 @@ ContextVec Script::GetExecutionContexts()
     return BusyContexts;
 }
 
+void Script::SetExceptionCallback( ExceptionCallback callback )
+{
+    OnException = callback;
+}
+
 void Script::RaiseException( const char* message, ... )
 {
     asIScriptContext* ctx = asGetActiveContext();
@@ -884,11 +891,8 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
 
     WriteLog( "{}", buf );
 
-    #ifndef FONLINE_SERVER
-    CreateDump( "ScriptException", buf );
-    ShowMessage( buf );
-    ExitProcess( 0 );
-    #endif
+    if( OnException )
+        OnException( buf );
 }
 
 string Script::MakeContextTraceback( asIScriptContext* ctx )

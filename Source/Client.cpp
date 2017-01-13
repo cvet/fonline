@@ -121,6 +121,7 @@ FOClient::FOClient()
     Self = this;
 
     InitCalls = 0;
+    DoRestart = false;
     ComLen = BufferManager::DefaultBufSize;
     ComBuf = new uchar[ ComLen ];
     ZStreamOk = false;
@@ -458,6 +459,7 @@ bool FOClient::PostInit()
     ProtoMngr.LoadProtosFromBinaryData( protos_data );
 
     // Hex manager
+    HexMngr.Finish();
     if( !HexMngr.Init() )
         return false;
 
@@ -480,27 +482,6 @@ bool FOClient::PostInit()
     ShootBorders.clear();
 
     WriteLog( "Engine initialization complete.\n" );
-
-    // Begin game
-    if( MainConfig->IsKey( "", "Start" ) && !Singleplayer )
-    {
-        if( LoginCheckData() )
-            InitNetReason = INIT_NET_REASON_LOGIN;
-    }
-    // Intro
-    else if( !MainConfig->IsKey( "", "SkipIntro" ) )
-    {
-        for( uint i = STR_VIDEO_INTRO_BEGIN; i < STR_VIDEO_INTRO_END; i++ )
-            if( CurLang.Msg[ TEXTMSG_GAME ].Count( i ) )
-                AddVideo( CurLang.Msg[ TEXTMSG_GAME ].GetStr( i, 0 ), true, false );
-
-        if( !IsVideoPlayed() )
-            ScreenFadeOut();
-    }
-    else
-    {
-        ScreenFadeOut();
-    }
 
     // Disable dumps if multiple window detected
     if( MulWndArray[ 11 ] )
@@ -532,7 +513,26 @@ void FOClient::Finish()
     WriteLog( "Engine finish complete.\n" );
 }
 
-bool FOClient::Restart()
+void FOClient::Restart()
+{
+    WriteLog( "Engine reinitialization.\n" );
+
+    NetDisconnect();
+
+    if( PostInit() )
+    {
+        if( LoginCheckData() )
+            InitNetReason = INIT_NET_REASON_LOGIN;
+        else
+            ScreenFadeOut();
+    }
+    else
+    {
+        GameOpt.Quit = true;
+    }
+}
+
+static void HardRestart()
 {
     #ifdef FO_WINDOWS
     wchar_t path[ MAX_FOPATH ];
@@ -555,8 +555,6 @@ bool FOClient::Restart()
     CloseHandle( pi.hThread );
     ExitProcess( 0 );
     #endif
-
-    return false;
 }
 
 void FOClient::UpdateFilesStart()
@@ -724,31 +722,14 @@ void FOClient::UpdateFilesLoop()
                     NetDisconnect();
 
                 // Reinitialize data
-                if( UpdateFilesCacheChanged || UpdateFilesFilesChanged )
+                if( InitCalls >= 2 && ( UpdateFilesCacheChanged || UpdateFilesFilesChanged ) )
                 {
-                    if( InitCalls < 2 )
-                    {
-                        if( UpdateFilesCacheChanged )
-                        {
-                            CurLang.LoadFromCache( CurLang.NameStr );
-                        }
-                        if( UpdateFilesFilesChanged )
-                        {
-                            FileManager::ClearDataFiles();
-                            FileManager::InitDataFiles( CLIENT_DATA );
-                            #if defined ( FO_IOS )
-                            FileManager::InitDataFiles( "../../Documents/" );
-                            #elif defined ( FO_ANDROID )
-                            FileManager::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
-                            FileManager::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
-                            #endif
-                        }
-                    }
-                    else
-                    {
-                        if( !Restart() )
-                            GameOpt.Quit = true;
-                    }
+                    if( UpdateFilesCacheChanged )
+                        CurLang.LoadFromCache( CurLang.NameStr );
+                    if( UpdateFilesFilesChanged )
+                        GetClientOptions();
+
+                    DoRestart = true;
                 }
 
                 return;
@@ -965,6 +946,13 @@ void FOClient::MainLoop()
     if( GameOpt.Quit )
         return;
 
+    // Restart logic
+    if( DoRestart )
+    {
+        DoRestart = false;
+        Restart();
+    }
+
     // Network connection
     if( IsConnecting )
     {
@@ -989,7 +977,32 @@ void FOClient::MainLoop()
 
         InitCalls++;
         if( InitCalls == 1 )
+        {
             UpdateFilesStart();
+        }
+        else if( InitCalls == 2 )
+        {
+            // Begin game
+            if( MainConfig->IsKey( "", "Start" ) && !Singleplayer )
+            {
+                if( LoginCheckData() )
+                    InitNetReason = INIT_NET_REASON_LOGIN;
+            }
+            // Intro
+            else if( !MainConfig->IsKey( "", "SkipIntro" ) )
+            {
+                for( uint i = STR_VIDEO_INTRO_BEGIN; i < STR_VIDEO_INTRO_END; i++ )
+                    if( CurLang.Msg[ TEXTMSG_GAME ].Count( i ) )
+                        AddVideo( CurLang.Msg[ TEXTMSG_GAME ].GetStr( i, 0 ), true, false );
+
+                if( !IsVideoPlayed() )
+                    ScreenFadeOut();
+            }
+            else
+            {
+                ScreenFadeOut();
+            }
+        }
         return;
     }
 
@@ -1792,11 +1805,21 @@ bool FOClient::FillSockAddr( sockaddr_in& saddr, const char* host, ushort port )
 
 void FOClient::NetDisconnect()
 {
+    if( IsConnecting )
+    {
+        IsConnecting = false;
+        if( Sock != INVALID_SOCKET )
+            closesocket( Sock );
+        Sock = INVALID_SOCKET;
+    }
+
     if( !IsConnected )
         return;
 
     WriteLog( "Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}.\n",
               BytesSend, BytesReceive, BytesReceive + BytesSend, BytesRealReceive );
+
+    IsConnected = false;
 
     if( ZStreamOk )
         inflateEnd( &ZStream );
@@ -1804,7 +1827,6 @@ void FOClient::NetDisconnect()
     if( Sock != INVALID_SOCKET )
         closesocket( Sock );
     Sock = INVALID_SOCKET;
-    IsConnected = false;
 
     HexMngr.UnloadMap();
     DeleteCritters();
@@ -6604,6 +6626,11 @@ bool FOClient::ReloadScripts()
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
+    Script::SetExceptionCallback([ this ] ( const char* str )
+                                 {
+                                     ShowMessage( str );
+                                     DoRestart = true;
+                                 } );
 
     // Bind stuff
     asIScriptEngine*      engine = Script::GetEngine();

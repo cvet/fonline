@@ -4299,6 +4299,12 @@ bool FOMapper::InitScriptSystem()
         WriteLog( "Script system initialization fail.\n" );
         return false;
     }
+    Script::SetExceptionCallback([] (const char* str)
+                                 {
+                                     CreateDump( "ScriptException", str );
+                                     ShowMessage( str );
+                                     ExitProcess( 0 );
+                                 } );
 
     // Bind vars and functions, look bind.h
     asIScriptEngine*      engine = Script::GetEngine();
