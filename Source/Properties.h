@@ -10,7 +10,6 @@
     vector< pair< const char*, Property** > > class_name::PropertiesList;         \
     void class_name::SetPropertyRegistrator( PropertyRegistrator * registrator )  \
     {                                                                             \
-        SAFEDEL( PropertiesRegistrator );                                         \
         PropertiesRegistrator = registrator;                                      \
         PropertiesRegistrator->FinishRegistration();                              \
         for( auto it = PropertiesList.begin(); it != PropertiesList.end(); it++ ) \

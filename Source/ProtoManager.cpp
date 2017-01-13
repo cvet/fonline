@@ -265,12 +265,16 @@ void ProtoManager::ClearProtos()
 {
     for( auto& proto : itemProtos )
         proto.second->Release();
+    itemProtos.clear();
     for( auto& proto : crProtos )
         proto.second->Release();
+    crProtos.clear();
     for( auto& proto : mapProtos )
         proto.second->Release();
+    mapProtos.clear();
     for( auto& proto : locProtos )
         proto.second->Release();
+    locProtos.clear();
 }
 
 bool ProtoManager::LoadProtosFromFiles()

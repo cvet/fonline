@@ -369,6 +369,12 @@ bool FOClient::PostInit()
     WaitDraw();
     SprMngr.EndScene();
 
+    // Clean up previous data
+    SAFEDEL( Globals );
+    SAFEREL( ScriptFunc.ClientCurMap );
+    SAFEREL( ScriptFunc.ClientCurLocation );
+    ProtoMngr.ClearProtos();
+
     // Scripts
     if( !ReloadScripts() )
         return false;
@@ -6617,8 +6623,10 @@ bool FOClient::ReloadScripts()
     asSetGlobalMemoryFunctions( ASDeepDebugMalloc, ASDeepDebugFree );
     #endif
 
-    // Reinitialize engine
+    // Finish previous
     Script::Finish();
+
+    // Reinitialize engine
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( PRAGMA_CLIENT );
     if( !Script::Init( pragma_callback, "CLIENT", true, 0, 0, false ) )
     {
@@ -6770,7 +6778,6 @@ bool FOClient::ReloadScripts()
 
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
     GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
-    SAFEDEL( Globals );
     Globals = new GlobalVars();
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
     CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
