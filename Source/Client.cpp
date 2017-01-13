@@ -728,15 +728,12 @@ void FOClient::UpdateFilesLoop()
                     NetDisconnect();
 
                 // Reinitialize data
+                if( UpdateFilesCacheChanged )
+                    CurLang.LoadFromCache( CurLang.NameStr );
+                if( UpdateFilesFilesChanged )
+                    GetClientOptions();
                 if( InitCalls >= 2 && ( UpdateFilesCacheChanged || UpdateFilesFilesChanged ) )
-                {
-                    if( UpdateFilesCacheChanged )
-                        CurLang.LoadFromCache( CurLang.NameStr );
-                    if( UpdateFilesFilesChanged )
-                        GetClientOptions();
-
                     DoRestart = true;
-                }
 
                 return;
             }
