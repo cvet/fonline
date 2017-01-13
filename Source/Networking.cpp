@@ -187,7 +187,7 @@ class NetConnectionAsio: public NetConnectionImpl
         InterlockedExchange( &writePending, 0 );
 
         if( !error )
-            Dispatch();
+            DispatchImpl();
         else
             Disconnect();
     }
@@ -205,6 +205,12 @@ class NetConnectionAsio: public NetConnectionImpl
             }
             else
             {
+                if( IsDisconnected )
+                {
+                    socket->shutdown( asio::ip::tcp::socket::shutdown_both, dummyError );
+                    socket->close( dummyError );
+                }
+
                 InterlockedExchange( &writePending, 0 );
             }
         }
@@ -212,8 +218,15 @@ class NetConnectionAsio: public NetConnectionImpl
 
     virtual void DisconnectImpl() override
     {
-        socket->shutdown( asio::ip::tcp::socket::shutdown_receive, dummyError );
-        socket->close( dummyError );
+        if( !writePending )
+        {
+            socket->shutdown( asio::ip::tcp::socket::shutdown_both, dummyError );
+            socket->close( dummyError );
+        }
+        else
+        {
+            socket->shutdown( asio::ip::tcp::socket::shutdown_receive, dummyError );
+        }
     }
 
 public:
@@ -326,7 +339,7 @@ class NetConnectionWS: public NetConnectionImpl
         {
             std::error_code error = connection->send( buf, len, websocketpp::frame::opcode::binary );
             if( !error )
-                Dispatch();
+                DispatchImpl();
             else
                 Disconnect();
         }

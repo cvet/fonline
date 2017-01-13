@@ -276,18 +276,20 @@ void FOServer::Process_Update( Client* cl )
     // Net protocol
     ushort proto_ver = 0;
     cl->Connection->Bin >> proto_ver;
-    if( proto_ver != FONLINE_VERSION )
-    {
-        cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
-        cl->Disconnect();
-        return;
-    }
 
     // Begin data encrypting
     uint encrypt_key;
     cl->Connection->Bin >> encrypt_key;
     cl->Connection->Bin.SetEncryptKey( encrypt_key + 521 );
     cl->Connection->Bout.SetEncryptKey( encrypt_key + 3491 );
+
+    // Check protocol
+    if( proto_ver != FONLINE_VERSION )
+    {
+        cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
+        cl->Disconnect();
+        return;
+    }
 
     // Send update files list with global properties
     uint       msg_len = sizeof( NETMSG_UPDATE_FILES_LIST ) + sizeof( msg_len ) + sizeof( uint ) + (uint) UpdateFilesList.size();
@@ -369,6 +371,26 @@ void FOServer::Process_CreateClient( Client* cl )
         return;
     }
 
+    // Read message
+    uint msg_len;
+    cl->Connection->Bin >> msg_len;
+
+    // Protocol version
+    ushort proto_ver = 0;
+    cl->Connection->Bin >> proto_ver;
+
+    // Begin data encrypting
+    cl->Connection->Bin.SetEncryptKey( 1234567890 );
+    cl->Connection->Bout.SetEncryptKey( 1234567890 );
+
+    // Check protocol
+    if( proto_ver != FONLINE_VERSION )
+    {
+        cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
+        cl->Disconnect();
+        return;
+    }
+
     // Check for ban by ip
     {
         SCOPE_LOCK( BannedLocker );
@@ -384,23 +406,6 @@ void FOServer::Process_CreateClient( Client* cl )
             return;
         }
     }
-
-    uint msg_len;
-    cl->Connection->Bin >> msg_len;
-
-    // Protocol version
-    ushort proto_ver = 0;
-    cl->Connection->Bin >> proto_ver;
-    if( proto_ver != FONLINE_VERSION )
-    {
-        cl->Send_TextMsg( cl, STR_NET_WRONG_NETPROTO, SAY_NETMSG, TEXTMSG_GAME );
-        cl->Disconnect();
-        return;
-    }
-
-    // Begin data encrypting
-    cl->Connection->Bin.SetEncryptKey( 1234567890 );
-    cl->Connection->Bout.SetEncryptKey( 1234567890 );
 
     // Name
     char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
@@ -635,12 +640,6 @@ void FOServer::Process_LogIn( Client*& cl )
     // Net protocol
     ushort proto_ver = 0;
     cl->Connection->Bin >> proto_ver;
-    if( proto_ver != FONLINE_VERSION )
-    {
-        cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
-        cl->Disconnect();
-        return;
-    }
 
     // UIDs
     uint uidxor, uidor, uidcalc;
@@ -650,6 +649,14 @@ void FOServer::Process_LogIn( Client*& cl )
     // Begin data encrypting
     cl->Connection->Bin.SetEncryptKey( uid[ 4 ] + 12345 );
     cl->Connection->Bout.SetEncryptKey( uid[ 4 ] + 12345 );
+
+    // Check protocol
+    if( proto_ver != FONLINE_VERSION )
+    {
+        cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
+        cl->Disconnect();
+        return;
+    }
 
     // Login, password hash
     char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
