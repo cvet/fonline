@@ -383,6 +383,7 @@ void GetServerOptions();
 
 struct ServerScriptFunctions
 {
+    void* GenerateResources;
     void* Init;
     void* Start;
     void* GenerateWorld;

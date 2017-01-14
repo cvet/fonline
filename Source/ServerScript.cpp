@@ -144,6 +144,7 @@ bool FOServer::InitScriptSystem()
 
     // Bind game functions
     #define BIND_INTERNAL_EVENT( name )    ServerFunctions.name = Script::FindInternalEvent( "Event" # name )
+    BIND_INTERNAL_EVENT( GenerateResources );
     BIND_INTERNAL_EVENT( Init );
     BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( GenerateWorld );

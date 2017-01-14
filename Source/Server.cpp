@@ -3031,7 +3031,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     WriteLog( "Generate update files...\n" );
 
     // Generate resources
-    ResourceConverter::Generate( resource_names );
+    bool changed = ResourceConverter::Generate( resource_names );
 
     // Clear collections
     for( auto it = UpdateFiles.begin(), end = UpdateFiles.end(); it != end; ++it )
@@ -3140,6 +3140,9 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     }
 
     WriteLog( "Generate update files complete.\n" );
+
+    if( first_generation && changed )
+        Script::RaiseInternalEvent( ServerFunctions.GenerateResources );
 }
 
 /************************************************************************/

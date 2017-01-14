@@ -212,6 +212,11 @@ static string Global_SHA2( string text )
     #endif
 }
 
+static int Global_SystemCall( string command )
+{
+    return system( command.c_str() );
+}
+
 static void Global_OpenLink( string link )
 {
     #ifdef FO_WINDOWS
