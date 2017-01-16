@@ -4109,7 +4109,7 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
     {
         asIScriptContext* Context;
         Thread*           WorkThread;
-        const string*     Url;
+        string            Url;
         CScriptDict*      Post;
         bool*             Success;
         string*           Result;
@@ -4118,10 +4118,13 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
     RequestData* request_data = new RequestData();
     request_data->Context = ctx;
     request_data->WorkThread = new Thread();
-    request_data->Url = &url;
+    request_data->Url = url;
     request_data->Post = post;
     request_data->Success = &success;
     request_data->Result = &result;
+
+    if( post )
+        post->AddRef();
 
     auto request_func = [] (void* data)
     {
@@ -4140,7 +4143,7 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
         CURL*        curl = curl_easy_init();
         if( curl )
         {
-            curl_easy_setopt( curl, CURLOPT_URL, request_data->Url->c_str() );
+            curl_easy_setopt( curl, CURLOPT_URL, request_data->Url.c_str() );
             curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
             curl_easy_setopt( curl, CURLOPT_WRITEDATA, &result );
 
@@ -4186,6 +4189,8 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
         Script::ResumeContext( request_data->Context );
         request_data->WorkThread->Release();
         delete request_data->WorkThread;
+        if( request_data->Post )
+            request_data->Post->Release();
         delete request_data;
     };
     request_data->WorkThread->Start( request_func, "WebRequest", request_data );
