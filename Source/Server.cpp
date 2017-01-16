@@ -3030,6 +3030,14 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 
     WriteLog( "Generate update files...\n" );
 
+    // Disconnect all connected clients to force data updating
+    if( !first_generation )
+    {
+        ConnectedClientsLocker.Lock();
+        for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
+            ( *it )->Disconnect();
+    }
+
     // Generate resources
     bool changed = ResourceConverter::Generate( resource_names );
 
@@ -3061,7 +3069,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
             WriteData( UpdateFilesList, (short) Str::Length( msg_cache_name ) );
             WriteDataArr( UpdateFilesList, msg_cache_name, Str::Length( msg_cache_name ) );
             WriteData( UpdateFilesList, update_file.Size );
-            WriteData( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
+            WriteData( UpdateFilesList, Crypt.MurmurHash2( update_file.Data, update_file.Size ) );
         }
     }
 
@@ -3078,7 +3086,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     WriteData( UpdateFilesList, (short) Str::Length( CACHE_PROTOS ) );
     WriteDataArr( UpdateFilesList, CACHE_PROTOS, Str::Length( CACHE_PROTOS ) );
     WriteData( UpdateFilesList, update_file.Size );
-    WriteData( UpdateFilesList, Crypt.Crc32( update_file.Data, update_file.Size ) );
+    WriteData( UpdateFilesList, Crypt.MurmurHash2( update_file.Data, update_file.Size ) );
 
     // Fill files
     StrVec file_paths;
@@ -3086,29 +3094,6 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     for( size_t i = 0; i < file_paths.size(); i++ )
     {
         string      file_path = file_paths[ i ];
-        string      file_name_target = file_path;
-        uint        hash = 0;
-
-        const char* ext = FileManager::GetExtension( file_path.c_str() );
-        if( ext && ( Str::CompareCase( ext, "crc" ) || Str::CompareCase( ext, "txt" ) || Str::CompareCase( ext, "lst" ) ) )
-        {
-            FileManager crc;
-            if( !crc.LoadFile( ( "Update/" + file_path ).c_str() ) )
-            {
-                WriteLog( "Can't load file '{}'.\n", file_path.c_str() );
-                continue;
-            }
-
-            if( crc.GetFsize() == 0 )
-            {
-                WriteLog( "Can't calculate hash of empty file '{}'.\n", file_path.c_str() );
-                continue;
-            }
-
-            file_name_target = file_name_target.substr( 0, file_name_target.length() - 4 );
-            hash = Crypt.Crc32( crc.GetBuf(), crc.GetFsize() );
-        }
-
         FileManager file;
         if( !file.LoadFile( ( "Update/" + file_path ).c_str() ) )
         {
@@ -3121,28 +3106,48 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
         update_file.Data = file.ReleaseBuffer();
         UpdateFiles.push_back( update_file );
 
-        WriteData( UpdateFilesList, (short) file_name_target.length() );
-        WriteDataArr( UpdateFilesList, file_name_target.c_str(), (uint) file_name_target.length() );
+        WriteData( UpdateFilesList, (short) file_path.length() );
+        WriteDataArr( UpdateFilesList, file_path.c_str(), (uint) file_path.length() );
         WriteData( UpdateFilesList, update_file.Size );
-        WriteData( UpdateFilesList, hash );
+        WriteData( UpdateFilesList, Crypt.MurmurHash2( update_file.Data, update_file.Size ) );
+    }
+
+    WriteLog( "Generate update files complete.\n" );
+
+    // Callback after generation
+    if( first_generation && changed )
+        Script::RaiseInternalEvent( ServerFunctions.ResourcesGenerated );
+
+    // Append binaries
+    StrVec binary_paths;
+    FileManager::GetFolderFileNames( "Binaries/", true, nullptr, binary_paths );
+    for( size_t i = 0; i < binary_paths.size(); i++ )
+    {
+        string      file_path = binary_paths[ i ];
+        FileManager file;
+        if( !file.LoadFile( ( "Binaries/" + file_path ).c_str() ) )
+        {
+            WriteLog( "Can't load file '{}'.\n", file_path.c_str() );
+            continue;
+        }
+
+        memzero( &update_file, sizeof( update_file ) );
+        update_file.Size = file.GetFsize();
+        update_file.Data = file.ReleaseBuffer();
+        UpdateFiles.push_back( update_file );
+
+        WriteData( UpdateFilesList, (short) file_path.length() );
+        WriteDataArr( UpdateFilesList, file_path.c_str(), (uint) file_path.length() );
+        WriteData( UpdateFilesList, update_file.Size );
+        WriteData( UpdateFilesList, Crypt.MurmurHash2( update_file.Data, update_file.Size ) );
     }
 
     // Complete files list
     WriteData( UpdateFilesList, (short) -1 );
 
-    // Disconnect all connected clients to force data updating
+    // Allow clients to connect
     if( !first_generation )
-    {
-        ConnectedClientsLocker.Lock();
-        for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
-            ( *it )->Disconnect();
         ConnectedClientsLocker.Unlock();
-    }
-
-    WriteLog( "Generate update files complete.\n" );
-
-    if( first_generation && changed )
-        Script::RaiseInternalEvent( ServerFunctions.ResourcesGenerated );
 }
 
 /************************************************************************/

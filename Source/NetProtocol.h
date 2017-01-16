@@ -7,7 +7,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0x5EAD << 17 ) | ( ( number ) << 8 ) | ( 0xAA ) ) )
+#define MAKE_NETMSG_HEADER( number )    ( (uint) ( ( 0x5EAD << 16 ) | ( ( number ) << 8 ) | ( 0xAA ) ) )
 #define PING_CLIENT_LIFE_TIME               ( 15000 )       // Time to ping client life
 
 // Special message
@@ -153,6 +153,7 @@
 // ////////////////////////////////////////////////////////////////////////
 // Files list to update
 // uint msg_len
+// bool outdated
 // uint files_count
 //   short path_len
 //   char path[path_len]

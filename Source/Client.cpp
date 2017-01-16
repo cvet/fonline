@@ -134,6 +134,7 @@ FOClient::FOClient()
     InitNetReason = INIT_NET_REASON_NONE;
 
     UpdateFilesInProgress = false;
+    UpdateFilesClientOutdated = false;
     UpdateFilesCacheChanged = false;
     UpdateFilesFilesChanged = false;
     UpdateFilesConnection = false;
@@ -538,13 +539,51 @@ void FOClient::Restart()
     }
 }
 
-static void HardRestart()
+void FOClient::UpdateBinary()
 {
     #ifdef FO_WINDOWS
+    // Copy binaries
     wchar_t path[ MAX_FOPATH ];
-    DWORD   r = GetModuleFileNameW( nullptr, path, MAX_FOPATH );
-    RUNTIME_ASSERT( r );
+    DWORD   get_exe_path = GetModuleFileNameW( nullptr, path, MAX_FOPATH );
+    RUNTIME_ASSERT( get_exe_path );
 
+    wchar_t to_dir[ MAX_FOPATH ];
+    size_t  pos = std::wstring( path ).find_last_of( '\\' );
+    RUNTIME_ASSERT( pos != string::npos );
+    wcsncpy( to_dir, path, pos + 1 );
+
+    wchar_t base_name[ MAX_FOPATH ];
+    wcsncpy( base_name, path + pos + 1, wcslen( path ) - pos );
+    pos = std::wstring( base_name ).find_last_of( '.' );
+    RUNTIME_ASSERT( pos != string::npos );
+    base_name[ pos ] = 0;
+
+    wchar_t from_dir[ MAX_FOPATH ];
+    wcscpy( from_dir, CharToWideChar( FileManager::GetWritePath( "" ) ).c_str() );
+
+    BOOL copy_exe = CopyFileW( std::wstring( from_dir ).append( base_name ).append( L".exe" ).c_str(),
+                               std::wstring( to_dir ).append( base_name ).append( L".new.exe" ).c_str(), FALSE );
+    RUNTIME_ASSERT( copy_exe );
+    BOOL delete_old_exe = DeleteFileW( std::wstring( to_dir ).append( base_name ).append( L".old.exe" ).c_str() );
+    RUNTIME_ASSERT( delete_old_exe || GetLastError() == ERROR_FILE_NOT_FOUND );
+    BOOL rename_old_exe = MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str(),
+                                     std::wstring( to_dir ).append( base_name ).append( L".old.exe" ).c_str() );
+    RUNTIME_ASSERT_STR( rename_old_exe, WideCharToChar( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() ).c_str() );
+    BOOL rename_new_exe = MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".new.exe" ).c_str(),
+                                     std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() );
+    RUNTIME_ASSERT( rename_new_exe );
+
+    if( CopyFileW( std::wstring( from_dir ).append( base_name ).append( L".pdb" ).c_str(),
+                   std::wstring( to_dir ).append( base_name ).append( L".new.pdb" ).c_str(), FALSE ) )
+    {
+        DeleteFileW( std::wstring( to_dir ).append( base_name ).append( L".old.pdb" ).c_str() );
+        MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".pdb" ).c_str(),
+                   std::wstring( to_dir ).append( base_name ).append( L".old.pdb" ).c_str() );
+        MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".new.pdb" ).c_str(),
+                   std::wstring( to_dir ).append( base_name ).append( L".pdb" ).c_str() );
+    }
+
+    // Restart client
     PROCESS_INFORMATION pi;
     memzero( &pi, sizeof( pi ) );
     STARTUPINFOW        sui;
@@ -553,19 +592,22 @@ static void HardRestart()
     wchar_t command_line[ TEMP_BUF_SIZE ];
     wcscpy( command_line, GetCommandLineW() );
     wcscat( command_line, L" --restart" );
-    r = CreateProcessW( path, command_line, nullptr, nullptr, FALSE,
-                        NORMAL_PRIORITY_CLASS, nullptr, nullptr, &sui, &pi );
-    RUNTIME_ASSERT_STR( r, "Unable to create process" );
+    BOOL create_process = CreateProcessW( path, command_line, nullptr, nullptr, FALSE,
+                                          NORMAL_PRIORITY_CLASS, nullptr, nullptr, &sui, &pi );
+    RUNTIME_ASSERT( create_process );
 
     CloseHandle( pi.hProcess );
     CloseHandle( pi.hThread );
     ExitProcess( 0 );
+    #else
+    RUNTIME_ASSERT( !"Invalid platform for binary updating" );
     #endif
 }
 
 void FOClient::UpdateFilesStart()
 {
     UpdateFilesInProgress = true;
+    UpdateFilesClientOutdated = false;
     UpdateFilesCacheChanged = false;
     UpdateFilesFilesChanged = false;
     UpdateFilesConnection = false;
@@ -583,6 +625,10 @@ void FOClient::UpdateFilesStart()
 
 void FOClient::UpdateFilesLoop()
 {
+    // Was aborted
+    if( UpdateFilesAborted )
+        return;
+
     // Update indication
     if( !Singleplayer && InitCalls < 2 )
     {
@@ -660,9 +706,9 @@ void FOClient::UpdateFilesLoop()
             UpdateFilesAddText( STR_DATA_SYNCHRONIZATION, "Data synchronization..." );
 
             // Clean up
+            UpdateFilesClientOutdated = false;
             UpdateFilesCacheChanged = false;
             UpdateFilesFilesChanged = false;
-            UpdateFilesAborted = false;
             SAFEDEL( UpdateFilesList );
             UpdateFileDownloading = false;
             FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
@@ -727,6 +773,10 @@ void FOClient::UpdateFilesLoop()
                 if( InitCalls < 2 || !GameOpt.UpdateServerHost.empty() || GameOpt.UpdateServerPort != 0 )
                     NetDisconnect();
 
+                // Update binaries
+                if( UpdateFilesClientOutdated )
+                    UpdateBinary();
+
                 // Reinitialize data
                 if( UpdateFilesCacheChanged )
                     CurLang.LoadFromCache( CurLang.NameStr );
@@ -771,8 +821,6 @@ void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
         SprMngr.BeginScene( COLOR_RGB( 255, 0, 0 ) );
         SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
         SprMngr.EndScene();
-
-        GameOpt.Quit = true;
     }
 }
 
@@ -2563,6 +2611,8 @@ void FOClient::Net_OnWrongNetProto()
         UpdateFilesAbort( STR_CLIENT_OUTDATED, "Client outdated!" );
     else
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_CLIENT_OUTDATED ) );
+
+    GameOpt.Quit = true;
 }
 
 void FOClient::Net_OnLoginSuccess()
@@ -4460,14 +4510,17 @@ void FOClient::Net_OnCheckUID3()
 void FOClient::Net_OnUpdateFilesList()
 {
     uint     msg_len;
+    bool     outdated;
     uint     data_size;
     UCharVec data;
     Bin >> msg_len;
+    Bin >> outdated;
     Bin >> data_size;
     data.resize( data_size );
     if( data_size )
         Bin.Pop( &data[ 0 ], (uint) data.size() );
-    NET_READ_PROPERTIES( Bin, GlovalVarsPropertiesData );
+    if( !outdated )
+        NET_READ_PROPERTIES( Bin, GlovalVarsPropertiesData );
 
     CHECK_IN_BUFF_ERROR;
 
@@ -4477,43 +4530,68 @@ void FOClient::Net_OnUpdateFilesList()
     SAFEDEL( UpdateFilesList );
     UpdateFilesList = new UpdateFileVec();
     UpdateFilesWholeSize = 0;
+    UpdateFilesClientOutdated = outdated;
+
+    #ifdef FO_WINDOWS
+    bool   have_exe = false;
+    string exe_name;
+    if( outdated )
+    {
+        wchar_t path[ MAX_FOPATH ];
+        DWORD   get_exe_path = GetModuleFileNameW( nullptr, path, MAX_FOPATH );
+        RUNTIME_ASSERT( get_exe_path );
+        size_t  pos = std::wstring( path ).find_last_of( '\\' );
+        RUNTIME_ASSERT( pos != string::npos );
+        wchar_t base_name[ MAX_FOPATH ];
+        wcsncpy( base_name, path + pos + 1, wcslen( path ) - pos );
+        exe_name = WideCharToChar( base_name );
+    }
+    #endif
 
     for( uint file_index = 0; ; file_index++ )
     {
         short name_len = fm.GetLEShort();
         if( name_len == -1 )
             break;
-        if( name_len < 0 || name_len >= MAX_FOPATH )
-        {
-            NetDisconnect();
-            break;
-        }
+        RUNTIME_ASSERT( name_len > 0 );
+        RUNTIME_ASSERT( name_len <= MAX_FOPATH - 1 );
 
         char name[ MAX_FOPATH ];
         fm.CopyMem( name, name_len );
         name[ name_len ] = 0;
-
         uint size = fm.GetLEUInt();
         uint hash = fm.GetLEUInt();
 
-        if( name[ 0 ] == '*' )
-        {
-            uint  cur_hash_len;
-            uint* cur_hash = (uint*) Crypt.GetCache( ( string( name ) + CACHE_HASH_APPENDIX ).c_str(), cur_hash_len );
-            if( cur_hash && cur_hash_len == sizeof( hash ) && *cur_hash == hash )
-                continue;
-        }
-        else
+        // Skip platform depended
+        #ifdef FO_WINDOWS
+        if( outdated && Str::CompareCase( exe_name.c_str(), name ) )
+            have_exe = true;
+        const char* ext = FileManager::GetExtension( name );
+        if( !outdated && ext && ( Str::CompareCase( ext, "exe" ) || Str::CompareCase( ext, "pdb" ) ) )
+            continue;
+        #else
+        const char* ext = FileManager::GetExtension( name );
+        if( ext && ( Str::CompareCase( ext, "exe" ) || Str::CompareCase( ext, "pdb" ) ) )
+            continue;
+        #endif
+
+        // Check reserved hash in cache
+        uint  cur_hash_len;
+        uint* cur_hash = (uint*) Crypt.GetCache( ( string( name ) + CACHE_HASH_APPENDIX ).c_str(), cur_hash_len );
+        if( cur_hash && cur_hash_len == sizeof( hash ) && *cur_hash == hash )
+            continue;
+
+        // Check hash on real file
+        if( name[ 0 ] != CACHE_MAGIC_CHAR[ 0 ] )
         {
             FileManager file;
             if( file.LoadFile( name, true ) && file.GetFsize() == size )
             {
-                if( hash == 0 )
+                if( file.LoadFile( name ) && hash == Crypt.MurmurHash2( file.GetBuf(), file.GetFsize() ) )
+                {
+                    Crypt.SetCache( ( string( name ) + CACHE_HASH_APPENDIX ).c_str(), (uchar*) &hash, sizeof( hash ) );
                     continue;
-
-                file.UnloadFile();
-                if( file.LoadFile( name ) && file.GetFsize() > 0 && hash == Crypt.Crc32( file.GetBuf(), file.GetFsize() ) )
-                    continue;
+                }
             }
         }
 
@@ -4526,6 +4604,14 @@ void FOClient::Net_OnUpdateFilesList()
         UpdateFilesList->push_back( update_file );
         UpdateFilesWholeSize += size;
     }
+
+    #ifdef FO_WINDOWS
+    if( UpdateFilesClientOutdated && !have_exe )
+        UpdateFilesAbort( STR_CLIENT_OUTDATED, "Client outdated!" );
+    #else
+    if( UpdateFilesClientOutdated )
+        UpdateFilesAbort( STR_CLIENT_OUTDATED, "Client outdated!" );
+    #endif
 }
 
 void FOClient::Net_OnUpdateFileData()

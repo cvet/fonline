@@ -58,6 +58,7 @@ public:
     bool PostInit();
     void Finish(); // Not used
     void Restart();
+    void UpdateBinary();
     void TryExit();
     bool IsCurInWindow();
     void FlashGameWindow();
@@ -102,6 +103,7 @@ public:
     typedef vector< UpdateFile > UpdateFileVec;
 
     bool           UpdateFilesInProgress;
+    bool           UpdateFilesClientOutdated;
     bool           UpdateFilesCacheChanged;
     bool           UpdateFilesFilesChanged;
     bool           UpdateFilesConnection;

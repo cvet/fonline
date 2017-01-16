@@ -141,7 +141,7 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
 uint AnimMapId( hash model_name, uint anim1, uint anim2, bool is_fallout )
 {
     uint dw[ 4 ] = { model_name, anim1, anim2, is_fallout ? uint( -1 ) : 1 };
-    return Crypt.Crc32( (uchar*) &dw[ 0 ], sizeof( dw ) );
+    return Crypt.MurmurHash2( (uchar*) &dw[ 0 ], sizeof( dw ) );
 }
 
 AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint anim2, int dir )

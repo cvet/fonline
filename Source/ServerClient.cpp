@@ -274,8 +274,9 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
 void FOServer::Process_Update( Client* cl )
 {
     // Net protocol
-    ushort proto_ver = 0;
+    ushort     proto_ver = 0;
     cl->Connection->Bin >> proto_ver;
+    bool       outdated = ( proto_ver != FONLINE_VERSION );
 
     // Begin data encrypting
     uint encrypt_key;
@@ -283,27 +284,25 @@ void FOServer::Process_Update( Client* cl )
     cl->Connection->Bin.SetEncryptKey( encrypt_key + 521 );
     cl->Connection->Bout.SetEncryptKey( encrypt_key + 3491 );
 
-    // Check protocol
-    if( proto_ver != FONLINE_VERSION )
-    {
-        cl->Send_CustomMessage( NETMSG_WRONG_NET_PROTO );
-        cl->Disconnect();
-        return;
-    }
+    // Send update files list
+    uint msg_len = sizeof( NETMSG_UPDATE_FILES_LIST ) + sizeof( msg_len ) + sizeof( bool ) +
+                   sizeof( uint ) + (uint) UpdateFilesList.size();
 
-    // Send update files list with global properties
-    uint       msg_len = sizeof( NETMSG_UPDATE_FILES_LIST ) + sizeof( msg_len ) + sizeof( uint ) + (uint) UpdateFilesList.size();
+    // With global properties
     PUCharVec* global_vars_data;
     UIntVec*   global_vars_data_sizes;
-    uint       whole_data_size = Globals->Props.StoreData( false, &global_vars_data, &global_vars_data_sizes );
-    msg_len += sizeof( ushort ) + whole_data_size;
+    if( !outdated )
+        msg_len += sizeof( ushort ) + Globals->Props.StoreData( false, &global_vars_data, &global_vars_data_sizes );
+
     BOUT_BEGIN( cl );
     cl->Connection->Bout << NETMSG_UPDATE_FILES_LIST;
     cl->Connection->Bout << msg_len;
+    cl->Connection->Bout << outdated;
     cl->Connection->Bout << (uint) UpdateFilesList.size();
     if( !UpdateFilesList.empty() )
         cl->Connection->Bout.Push( &UpdateFilesList[ 0 ], (uint) UpdateFilesList.size() );
-    NET_WRITE_PROPERTIES( cl->Connection->Bout, global_vars_data, global_vars_data_sizes );
+    if( !outdated )
+        NET_WRITE_PROPERTIES( cl->Connection->Bout, global_vars_data, global_vars_data_sizes );
     BOUT_END( cl );
 }
 
