@@ -69,6 +69,7 @@ public:
     static string      ForwardPath( const char* path, const char* relative_dir );
     static bool        CopyFile( const char* from, const char* to );
     static bool        DeleteFile( const char* fname );
+    static void        DeleteDir( const char* dir );
 
     bool        IsLoaded()     { return fileSize != 0; }
     uchar*      GetBuf()       { return fileBuf; }

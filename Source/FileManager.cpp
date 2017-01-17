@@ -855,6 +855,23 @@ bool FileManager::DeleteFile( const char* fname )
     return FileDelete( fname );
 }
 
+void FileManager::DeleteDir( const char* dir )
+{
+    FilesCollection files( nullptr, dir );
+    while( files.IsNextFile() )
+    {
+        const char* path;
+        files.GetNextFile( nullptr, &path, nullptr, true );
+        DeleteFile( path );
+    }
+
+    #ifdef FO_WINDOWS
+    RemoveDirectoryW( CharToWideChar( dir ).c_str() );
+    #else
+    rmdir( CharToWideChar( dir ).c_str() );
+    #endif
+}
+
 void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs )
 {
     char path[ MAX_FOPATH ];

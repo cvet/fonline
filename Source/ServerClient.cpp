@@ -274,9 +274,9 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
 void FOServer::Process_Update( Client* cl )
 {
     // Net protocol
-    ushort     proto_ver = 0;
+    ushort proto_ver = 0;
     cl->Connection->Bin >> proto_ver;
-    bool       outdated = ( proto_ver != FONLINE_VERSION );
+    bool   outdated = ( proto_ver != FONLINE_VERSION );
 
     // Begin data encrypting
     uint encrypt_key;
