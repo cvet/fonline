@@ -6,6 +6,11 @@
 #include "Log.h"
 #include "DataFile.h"
 
+#ifdef FO_MSVC
+# undef CopyFile
+# undef DeleteFile
+#endif
+
 class FileManager
 {
 public:

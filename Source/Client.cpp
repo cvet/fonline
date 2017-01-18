@@ -4575,26 +4575,31 @@ void FOClient::Net_OnUpdateFilesList()
             continue;
         #endif
 
-        // Check reserved hash in cache
+        // Check hash
         uint  cur_hash_len;
         uint* cur_hash = (uint*) Crypt.GetCache( ( string( name ) + CACHE_HASH_APPENDIX ).c_str(), cur_hash_len );
-        if( cur_hash && cur_hash_len == sizeof( hash ) && *cur_hash == hash )
-            continue;
-
-        // Check hash on real file
+        bool  cached_hash_same = ( cur_hash && cur_hash_len == sizeof( hash ) && *cur_hash == hash );
         if( name[ 0 ] != CACHE_MAGIC_CHAR[ 0 ] )
         {
+            // Real file, human can disturb file consistency, make base recheck
             FileManager file;
             if( file.LoadFile( name, true ) && file.GetFsize() == size )
             {
-                if( file.LoadFile( name ) && hash == Crypt.MurmurHash2( file.GetBuf(), file.GetFsize() ) )
+                if( cached_hash_same || ( file.LoadFile( name ) && hash == Crypt.MurmurHash2( file.GetBuf(), file.GetFsize() ) ) )
                 {
                     Crypt.SetCache( ( string( name ) + CACHE_HASH_APPENDIX ).c_str(), (uchar*) &hash, sizeof( hash ) );
                     continue;
                 }
             }
         }
+        else
+        {
+            // In cache, consistency granted
+            if( cached_hash_same )
+                continue;
+        }
 
+        // Get this file
         UpdateFile update_file;
         update_file.Index = file_index;
         update_file.Name = name;

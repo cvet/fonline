@@ -190,7 +190,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     file.LoadFile( path );
     if( !file.IsLoaded() )
     {
-        WriteLog( "Effect file '{}' not found.\n", fname );
+        WriteLog( "Effect file '{}' not found.\n", path );
         return nullptr;
     }
 
