@@ -166,7 +166,7 @@ static void Global_CreateDirectoryTree( string path )
     Str::Copy( tmp, path.c_str() );
     Str::Append( tmp, "/" );
     FileManager::FormatPath( tmp );
-    CreateDirectoryTree( tmp );
+    MakeDirectoryTree( tmp );
 }
 
 static void Global_Yield( uint time )

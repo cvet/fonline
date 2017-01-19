@@ -1180,7 +1180,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
         FileManager::GetFolderFileNames( GameModules[ m ].c_str(), true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
         for( size_t d = 0; d < all_dirs.size(); d++ )
         {
-            if( !Str::CompareCase( all_dirs[ d ].FileName, "Resources" ) )
+            if( !Str::CompareCase( all_dirs[ d ].FileName.c_str(), "Resources" ) )
                 continue;
 
             string      resources_root = GameModules[ m ] + all_dirs_path[ d ];
@@ -1188,7 +1188,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
             FileManager::GetFolderFileNames( resources_root.c_str(), false, nullptr, dummy_vec, nullptr, nullptr, &resources_dirs );
             for( size_t r = 0; r < resources_dirs.size(); r++ )
             {
-                const char*     res_name = resources_dirs[ r ].FileName;
+                const char*     res_name = resources_dirs[ r ].FileName.c_str();
                 FilesCollection resources( nullptr, ( resources_root + res_name + "/" ).c_str() );
 
                 if( !Str::Substring( res_name, "_Raw" ) )
@@ -1215,7 +1215,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     {
                         WriteLog( "Pack resource '{}', files {}...\n", res_name, resources.GetFilesCount() );
 
-                        CreateDirectoryTree( zip_path.c_str() );
+                        MakeDirectoryTree( zip_path.c_str() );
                         zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
                         if( zip )
                         {

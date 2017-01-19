@@ -22,11 +22,10 @@ uint   FileGetSize( void* file );
 bool   FileDelete( const char* fname );
 bool   FileExist( const char* fname );
 bool   FileRename( const char* fname, const char* new_fname );
-void   CreateDirectoryTree( const char* path );
 
 struct FindData
 {
-    char   FileName[ MAX_FOPATH ];
+    string FileName;
     uint   FileSize;
     uint64 WriteTime;
     bool   IsDirectory;
@@ -36,8 +35,9 @@ void* FileFindFirst( const char* path, const char* extension, FindData& fd );
 bool  FileFindNext( void* descriptor, FindData& fd );
 void  FileFindClose( void* descriptor );
 
-bool  MakeDirectory( const char* path );
 char* NormalizePathSlashes( char* path );
 bool  ResolvePath( char* path );
+bool  MakeDirectory( const char* path );
+uint  MakeDirectoryTree( const char* path );
 
 #endif // __FILE_SYSTEM__

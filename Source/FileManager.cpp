@@ -887,7 +887,7 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
             if( fd.FileName[ 0 ] != '_' )
             {
                 Str::Copy( path, cur_dir );
-                Str::Append( path, fd.FileName );
+                Str::Append( path, fd.FileName.c_str() );
                 Str::Append( path, "/" );
 
                 if( dirs )
@@ -903,11 +903,11 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
         {
             if( ext )
             {
-                const char* ext_ = GetExtension( fd.FileName );
+                const char* ext_ = GetExtension( fd.FileName.c_str() );
                 if( ext_ && Str::CompareCase( ext, ext_ ) )
                 {
                     Str::Copy( path, cur_dir );
-                    Str::Append( path, fd.FileName );
+                    Str::Append( path, fd.FileName.c_str() );
                     files_path.push_back( path );
                     if( files )
                         files->push_back( fd );
@@ -916,7 +916,7 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
             else
             {
                 Str::Copy( path, cur_dir );
-                Str::Append( path, fd.FileName );
+                Str::Append( path, fd.FileName.c_str() );
                 files_path.push_back( path );
                 if( files )
                     files->push_back( fd );

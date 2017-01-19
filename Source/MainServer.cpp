@@ -399,7 +399,7 @@ static void GUICallback( Fl_Widget* widget, void* data )
         FileManager::GetWritePath( "Logs/", log_name_dir );
         Str::Format( log_name, "%sFOnlineServer_%s_%04u.%02u.%02u_%02u-%02u-%02u.log",
                      log_name_dir, log == GuiInfo ? UpdateLogName.c_str() : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
-        CreateDirectoryTree( log_name );
+        MakeDirectoryTree( log_name );
         log->buffer()->savefile( log_name );
     }
     else if( widget == GuiBtnCreateDump )

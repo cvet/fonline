@@ -83,7 +83,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
-    CreateDirectoryTree( dump_path );
+    MakeDirectoryTree( dump_path );
     FILE* f = fopen( dump_path, "wt" );
     if( f )
     {
@@ -557,7 +557,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
                  dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
-    CreateDirectoryTree( dump_path );
+    MakeDirectoryTree( dump_path );
     FILE* f = fopen( dump_path, "wt" );
     if( f )
     {

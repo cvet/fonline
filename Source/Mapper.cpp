@@ -4769,10 +4769,10 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
     CScriptArray* names = Script::CreateArray( "string[]" );
     while( true )
     {
-        if( ProtoMap::IsMapFile( Str::FormatBuf( "%s%s", dir_.c_str(), fd.FileName ) ) )
+        if( ProtoMap::IsMapFile( Str::FormatBuf( "%s%s", dir_.c_str(), fd.FileName.c_str() ) ) )
         {
             char  fname[ MAX_FOPATH ];
-            Str::Copy( fname, fd.FileName );
+            Str::Copy( fname, fd.FileName.c_str() );
             char* ext = (char*) FileManager::GetExtension( fname );
             if( ext )
                 *( ext - 1 ) = 0;

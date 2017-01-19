@@ -2630,7 +2630,7 @@ bool FOServer::LoadClientsData()
         }
 
         char client_name[ MAX_FOPATH ];
-        Str::Copy( client_name, file_find_data.FileName );
+        Str::Copy( client_name, file_find_data.FileName.c_str() );
 
         // Take name from file title
         char        name[ MAX_FOPATH ];
