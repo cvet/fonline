@@ -870,9 +870,11 @@ void GetClientOptions()
 
     // Data files
     FileManager::ClearDataFiles();
+    FileManager::InitDataFiles( "$Basic" );
     # if defined ( FO_IOS )
     FileManager::InitDataFiles( "../../Documents/" );
     # elif defined ( FO_ANDROID )
+    FileManager::InitDataFiles( "$Bundle" );
     FileManager::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
     FileManager::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
     # else

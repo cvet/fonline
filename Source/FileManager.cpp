@@ -29,31 +29,28 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
     RUNTIME_ASSERT( path );
     char fixed_path[ MAX_FOPATH ];
     Str::Copy( fixed_path, path );
-    if( fixed_path[ Str::Length( fixed_path ) - 1 ] != '/' )
+    if( fixed_path[ 0 ] != '$' && fixed_path[ Str::Length( fixed_path ) - 1 ] != '/' )
         Str::Append( fixed_path, "/" );
 
-    // Init internal data file
-    #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
-    if( dataFiles.empty() )
-        LoadDataFile( "$Basic" );
-    #endif
-
     // Redirect path
-    void* redirection_link = FileOpen( ( string( fixed_path ) + "Redirection.link" ).c_str(), false );
-    if( redirection_link )
+    if( fixed_path[ 0 ] != '$' )
     {
-        char link[ MAX_FOPATH ];
-        uint len = FileGetSize( redirection_link );
-        FileRead( redirection_link, link, len );
-        link[ len ] = 0;
-        Str::Insert( link, fixed_path );
-        FormatPath( link );
-        InitDataFiles( link, set_write_dir );
-        return;
+        void* redirection_link = FileOpen( ( string( fixed_path ) + "Redirection.link" ).c_str(), false );
+        if( redirection_link )
+        {
+            char link[ MAX_FOPATH ];
+            uint len = FileGetSize( redirection_link );
+            FileRead( redirection_link, link, len );
+            link[ len ] = 0;
+            Str::Insert( link, fixed_path );
+            FormatPath( link );
+            InitDataFiles( link, set_write_dir );
+            return;
+        }
     }
 
     // Write path first
-    if( set_write_dir )
+    if( fixed_path[ 0 ] != '$' && set_write_dir )
         writeDir = fixed_path;
 
     // Process dir
@@ -61,16 +58,19 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
         RUNTIME_ASSERT( !"Unable to load files in folder." );
 
     // Extension of this path
-    void* extension_link = FileOpen( ( string( fixed_path ) + "Extension.link" ).c_str(), false );
-    if( extension_link )
+    if( fixed_path[ 0 ] != '$' )
     {
-        char link[ MAX_FOPATH ];
-        uint len = FileGetSize( extension_link );
-        FileRead( extension_link, link, len );
-        link[ len ] = 0;
-        Str::Insert( link, fixed_path );
-        FormatPath( link );
-        InitDataFiles( link, false );
+        void* extension_link = FileOpen( ( string( fixed_path ) + "Extension.link" ).c_str(), false );
+        if( extension_link )
+        {
+            char link[ MAX_FOPATH ];
+            uint len = FileGetSize( extension_link );
+            FileRead( extension_link, link, len );
+            link[ len ] = 0;
+            Str::Insert( link, fixed_path );
+            FormatPath( link );
+            InitDataFiles( link, false );
+        }
     }
 }
 
@@ -111,7 +111,7 @@ bool FileManager::LoadDataFile( const char* path, bool skip_inner /* = false */ 
 
         for( size_t i = 0; i < files.size(); i++ )
         {
-            if( !LoadDataFile( ( string( path ) + files[ i ] ).c_str(), true ) )
+            if( !LoadDataFile( ( string( path[ 0 ] != '$' ? path : "" ) + files[ i ] ).c_str(), true ) )
             {
                 WriteLog( "Unable to load inner data file." );
                 return false;

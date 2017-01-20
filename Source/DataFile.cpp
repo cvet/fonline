@@ -63,7 +63,6 @@ private:
     struct FileEntry
     {
         string FileName;
-        string ShortFileName;
         uint   FileSize;
         uint64 WriteTime;
     };
@@ -97,7 +96,6 @@ private:
     uchar*      memTree;
     void*       datHandle;
     uint64      writeTime;
-    uint        fileSize;
 
     bool ReadTree();
 
@@ -126,7 +124,6 @@ private:
     string      fileName;
     unzFile     zipHandle;
     uint64      writeTime;
-    uint        fileSize;
 
     bool ReadTree();
 
@@ -140,6 +137,31 @@ public:
     void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result ) { GetFileNames_( filesTreeNames, path, include_subdirs, ext, result ); }
 };
 
+class BundleFile: public DataFile
+{
+private:
+    struct FileEntry
+    {
+        string FileName;
+        uint   FileSize;
+        uint64 WriteTime;
+    };
+    typedef map< string, FileEntry > IndexMap;
+
+    static string packName;
+    IndexMap      filesTree;
+    FileNameVec   filesTreeNames;
+
+public:
+    bool Init( const char* fname );
+
+    const string& GetPackName() { return packName; }
+    bool          IsFilePresent( const char* path, const char* path_lower, uint& size, uint64& write_time );
+    uchar*        OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time );
+    void          GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
+};
+string BundleFile::packName = "$Bundle";
+
 /************************************************************************/
 /* Manage                                                               */
 /************************************************************************/
@@ -147,7 +169,18 @@ public:
 DataFile* OpenDataFile( const char* path )
 {
     const char* ext = FileManager::GetExtension( path );
-    if( ext && Str::CompareCase( ext, "dat" ) )
+    if( Str::Compare( path, "$Bundle" ) )
+    {
+        BundleFile* bundle = new BundleFile();
+        if( !bundle->Init( path ) )
+        {
+            WriteLog( "Unable to open bundle data files.\n", path );
+            delete bundle;
+            return nullptr;
+        }
+        return bundle;
+    }
+    else if( ext && Str::CompareCase( ext, "dat" ) )
     {
         FalloutDatFile* dat = new FalloutDatFile();
         if( !dat->Init( path ) )
@@ -180,7 +213,6 @@ DataFile* OpenDataFile( const char* path )
         }
         return folder;
     }
-
     return nullptr;
 }
 
@@ -212,7 +244,6 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree
     {
         FileEntry fe;
         fe.FileName = basePath + files[ i ];
-        fe.ShortFileName = files[ i ];
         fe.FileSize = find_data[ i ].FileSize;
         fe.WriteTime = find_data[ i ].WriteTime;
 
@@ -330,7 +361,6 @@ bool FalloutDatFile::Init( const char* fname )
         return false;
     }
 
-    fileSize = FileGetSize( datHandle );
     writeTime = FileGetWriteTime( datHandle );
 
     if( !ReadTree() )
@@ -391,8 +421,10 @@ bool FalloutDatFile::ReadTree()
         uchar* end_ptr = memTree + tree_size;
         while( true )
         {
-            uint fnsz = *(uint*) ptr;                            // Include zero
-            uint type = *(uint*) ( ptr + 4 + fnsz + 4 );
+            uint fnsz;                            // Include zero
+            memcpy( &fnsz, ptr, sizeof( fnsz ) );
+            uint type;
+            memcpy( &type, ptr + 4 + fnsz + 4, sizeof( type ) );
 
             if( fnsz > 1 && fnsz < MAX_FOPATH && type != 0x400 ) // Not folder
             {
@@ -459,7 +491,8 @@ bool FalloutDatFile::ReadTree()
     uchar* end_ptr = memTree + tree_size;
     while( true )
     {
-        uint fnsz = *(uint*) ptr;
+        uint fnsz;
+        memcpy( &fnsz, ptr, sizeof( fnsz ) );
 
         if( fnsz && fnsz + 1 < MAX_FOPATH )
         {
@@ -485,13 +518,13 @@ bool FalloutDatFile::IsFilePresent( const char* path, const char* path_lower, ui
     if( !datHandle )
         return false;
 
-    if( filesTree.find( path_lower ) != filesTree.end() )
-    {
-        size = fileSize;
-        write_time = writeTime;
-        return true;
-    }
-    return false;
+    auto it = filesTree.find( path_lower );
+    if( it == filesTree.end() )
+        return false;
+
+    memcpy( &size, it->second + 1, sizeof( size ) );
+    write_time = writeTime;
+    return true;
 }
 
 uchar* FalloutDatFile::OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time )
@@ -504,10 +537,14 @@ uchar* FalloutDatFile::OpenFile( const char* path, const char* path_lower, uint&
         return nullptr;
 
     uchar* ptr = it->second;
-    uchar  type = *ptr;
-    uint   real_size = *(uint*) ( ptr + 1 );
-    uint   packed_size = *(uint*) ( ptr + 5 );
-    uint   offset = *(uint*) ( ptr + 9 );
+    uchar  type;
+    memcpy( &type, ptr, sizeof( type ) );
+    uint   real_size;
+    memcpy( &real_size, ptr + 1, sizeof( real_size ) );
+    uint   packed_size;
+    memcpy( &packed_size, ptr + 5, sizeof( packed_size ) );
+    uint   offset;
+    memcpy( &offset, ptr + 9, sizeof( offset ) );
 
     if( !FileSetPointer( datHandle, offset, SEEK_SET ) )
         return nullptr;
@@ -587,48 +624,68 @@ bool ZipFile::Init( const char* fname )
     fileName = fname;
     zipHandle = nullptr;
 
+    zlib_filefunc_def ffunc;
     if( fname[ 0 ] != '$' )
     {
-        char path[ MAX_FOPATH ];
-        Str::Copy( path, fname );
-        if( !ResolvePath( path ) )
-        {
-            WriteLog( "Can't retrieve file full path.\n" );
-            return false;
-        }
-
         void* file = FileOpen( fname, false );
         if( !file )
         {
-            WriteLog( "Cannot open file.\n" );
+            WriteLog( "Can't open ZIP file '{}'.\n", fname );
             return false;
         }
-
-        fileSize = FileGetSize( file );
         writeTime = FileGetWriteTime( file );
 
-        FileClose( file );
-
-        #ifdef FO_WINDOWS
-        wchar_t path_wc[ MAX_FOPATH ];
-        if( MultiByteToWideChar( CP_UTF8, 0, path, -1, path_wc, MAX_FOPATH ) == 0 ||
-            WideCharToMultiByte( GetACP(), 0, path_wc, -1, path, MAX_FOPATH, nullptr, nullptr ) == 0 )
+        ffunc.zopen_file = [] ( voidpf opaque, const char* filename, int mode )->voidpf
         {
-            WriteLog( "Code page conversion fail.\n" );
-            return false;
-        }
-        #endif
-
-        zipHandle = unzOpen( path );
-        if( !zipHandle )
+            return opaque;
+        };
+        ffunc.zread_file = [] ( voidpf opaque, voidpf stream, void* buf, uLong size )->uLong
         {
-            WriteLog( "Cannot open ZIP file.\n" );
-            return false;
-        }
+            uint rb = 0;
+            FileRead( stream, buf, size, &rb );
+            return rb;
+        };
+        ffunc.zwrite_file = [] ( voidpf opaque, voidpf stream, const void* buf, uLong size )->uLong
+        {
+            return 0;
+        };
+        ffunc.ztell_file = [] ( voidpf opaque, voidpf stream )->long
+        {
+            return (long) FileGetPointer( stream );
+        };
+        ffunc.zseek_file = [] ( voidpf opaque, voidpf stream, uLong offset, int origin )->long
+        {
+            switch( origin )
+            {
+            case ZLIB_FILEFUNC_SEEK_SET:
+                FileSetPointer( stream, (uint) offset, SEEK_SET );
+                break;
+            case ZLIB_FILEFUNC_SEEK_CUR:
+                FileSetPointer( stream, (uint) offset, SEEK_CUR );
+                break;
+            case ZLIB_FILEFUNC_SEEK_END:
+                FileSetPointer( stream, (uint) offset, SEEK_END );
+                break;
+            default:
+                return -1;
+            }
+            return 0;
+        };
+        ffunc.zclose_file = [] ( voidpf opaque, voidpf stream )->int
+        {
+            FileClose( stream );
+            return 0;
+        };
+        ffunc.zerror_file = [] ( voidpf opaque, voidpf stream )->int
+        {
+            if( stream == nullptr )
+                return 1;
+            return 0;
+        };
+        ffunc.opaque = file;
     }
     else
     {
-        fileSize = 0;
         writeTime = 0;
 
         struct MemStream
@@ -638,7 +695,6 @@ bool ZipFile::Init( const char* fname )
             uint         Pos;
         };
 
-        zlib_filefunc_def ffunc;
         ffunc.zopen_file = [] ( voidpf opaque, const char* filename, int mode )->voidpf
         {
             #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
@@ -701,13 +757,13 @@ bool ZipFile::Init( const char* fname )
             return 0;
         };
         ffunc.opaque = nullptr;
+    }
 
-        zipHandle = unzOpen2( fname, &ffunc );
-        if( !zipHandle )
-        {
-            WriteLog( "Cannot open ZIP file in memory.\n" );
-            return false;
-        }
+    zipHandle = unzOpen2( fname, &ffunc );
+    if( !zipHandle )
+    {
+        WriteLog( "Can't read ZIP file '{}'.\n", fname );
+        return false;
     }
 
     if( !ReadTree() )
@@ -769,13 +825,14 @@ bool ZipFile::IsFilePresent( const char* path, const char* path_lower, uint& siz
     if( !zipHandle )
         return false;
 
-    if( filesTree.find( path_lower ) != filesTree.end() )
-    {
-        size = fileSize;
-        write_time = writeTime;
-        return true;
-    }
-    return false;
+    auto it = filesTree.find( path_lower );
+    if( it == filesTree.end() )
+        return false;
+
+    ZipFileInfo& info = it->second;
+    write_time = writeTime;
+    size = info.UncompressedSize;
+    return true;
 }
 
 uchar* ZipFile::OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time )
@@ -813,6 +870,110 @@ uchar* ZipFile::OpenFile( const char* path, const char* path_lower, uint& size, 
     size = info.UncompressedSize;
     buf[ size ] = 0;
     return buf;
+}
+
+/************************************************************************/
+/* Bundle file                                                          */
+/************************************************************************/
+
+bool BundleFile::Init( const char* fname )
+{
+    filesTree.clear();
+    filesTreeNames.clear();
+
+    // Read tree
+    void* f_tree = FileOpen( "FilesTree.txt", false );
+    if( !f_tree )
+    {
+        WriteLog( "Can't open 'FilesTree.txt'.\n" );
+        return false;
+    }
+
+    uint  len = FileGetSize( f_tree );
+    char* buf = new char[ len + 1 ];
+    if( !FileRead( f_tree, buf, len ) )
+    {
+        WriteLog( "Can't read 'FilesTree.txt'.\n" );
+        FileClose( f_tree );
+        return false;
+    }
+    buf[ len ] = 0;
+    FileClose( f_tree );
+
+    // Parse
+    Str::Replacement( buf, '\r', '\n', '\n' );
+    Str::Replacement( buf, '\r', '\n' );
+    StrVec names;
+    Str::ParseLine( buf, '\n', names, Str::ParseLineDummy );
+    char   name_lower[ MAX_FOTEXT ];
+    for( const string& name : names )
+    {
+        void* f = FileOpen( name.c_str(), false );
+        if( !f )
+        {
+            WriteLog( "Can't open file '{}' in bundle.\n", name );
+            return false;
+        }
+
+        FileEntry fe;
+        fe.FileName = name;
+        fe.FileSize = FileGetSize( f );
+        fe.WriteTime = FileGetWriteTime( f );
+
+        Str::Copy( name_lower, name.c_str() );
+        Str::Lower( name_lower );
+        filesTree.insert( PAIR( string( name_lower ), fe ) );
+        filesTreeNames.push_back( PAIR( string( name_lower ), name ) );
+
+        FileClose( f );
+    }
+
+    return true;
+}
+
+bool BundleFile::IsFilePresent( const char* path, const char* path_lower, uint& size, uint64& write_time )
+{
+    auto it = filesTree.find( path_lower );
+    if( it == filesTree.end() )
+        return false;
+
+    FileEntry& fe = it->second;
+    size = fe.FileSize;
+    write_time = fe.WriteTime;
+    return true;
+}
+
+uchar* BundleFile::OpenFile( const char* path, const char* path_lower, uint& size, uint64& write_time )
+{
+    auto it = filesTree.find( path_lower );
+    if( it == filesTree.end() )
+        return nullptr;
+
+    FileEntry& fe = it->second;
+    void*      f = FileOpen( fe.FileName.c_str(), false );
+    if( !f )
+        return nullptr;
+
+    size = fe.FileSize;
+    uchar* buf = new uchar[ size + 1 ];
+    if( !FileRead( f, buf, size ) )
+    {
+        FileClose( f );
+        delete[] buf;
+        return nullptr;
+    }
+    FileClose( f );
+    buf[ size ] = 0;
+    write_time = fe.WriteTime;
+    return buf;
+}
+
+void BundleFile::GetFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
+{
+    StrVec result_;
+    GetFileNames_( filesTreeNames, path, include_subdirs, ext, result_ );
+    if( !result_.empty() )
+        result.insert( result.begin(), result_.begin(), result_.end() );
 }
 
 /************************************************************************/

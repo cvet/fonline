@@ -7,15 +7,6 @@
 # include <sys/stat.h>
 #endif
 
-static void PreparePath( const char* fname, char* result )
-{
-    result[ 0 ] = 0;
-    if( fname[ 0 ] != '.' && fname[ 0 ] != '/' )
-        Str::Copy( result, MAX_FOPATH, "./" );
-    Str::Append( result, MAX_FOPATH, fname );
-    NormalizePathSlashes( result );
-}
-
 #ifdef FO_WINDOWS
 static uint64 FileTimeToUInt64( FILETIME ft )
 {
@@ -58,14 +49,11 @@ struct FileDesc
 
 void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-
-    SDL_RWops* ops = SDL_RWFromFile( fname_, write ? "wb" : "rb" );
+    SDL_RWops* ops = SDL_RWFromFile( fname, write ? "wb" : "rb" );
     if( !ops && write )
     {
-        MakeDirectoryTree( fname_ );
-        ops = SDL_RWFromFile( fname_, "wb" );
+        MakeDirectoryTree( fname );
+        ops = SDL_RWFromFile( fname, "wb" );
     }
     if( !ops )
         return nullptr;
@@ -78,14 +66,11 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
 
 void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-
-    SDL_RWops* ops = SDL_RWFromFile( fname_, "ab" );
+    SDL_RWops* ops = SDL_RWFromFile( fname, "ab" );
     if( !ops )
     {
-        MakeDirectoryTree( fname_ );
-        ops = SDL_RWFromFile( fname_, "ab" );
+        MakeDirectoryTree( fname );
+        ops = SDL_RWFromFile( fname, "ab" );
     }
     if( !ops )
         return nullptr;
@@ -98,14 +83,11 @@ void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 
 void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-
-    SDL_RWops* ops = SDL_RWFromFile( fname_, "r+b" );
+    SDL_RWops* ops = SDL_RWFromFile( fname, "r+b" );
     if( !ops )
     {
-        MakeDirectoryTree( fname_ );
-        ops = SDL_RWFromFile( fname_, "r+b" );
+        MakeDirectoryTree( fname );
+        ops = SDL_RWFromFile( fname, "r+b" );
     }
     if( !ops )
         return nullptr;
@@ -300,64 +282,58 @@ uint FileGetSize( void* file )
 
 struct FileDesc
 {
-    FILE* f;
-    bool  writeThrough;
+    FILE* File;
+    bool  WriteThrough;
 };
 
 void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-
-    FILE* f = fopen( fname_, write ? "wb" : "rb" );
+    FILE* f = fopen( fname, write ? "wb" : "rb" );
     if( !f && write )
     {
-        MakeDirectoryTree( fname_ );
-        f = fopen( fname_, "wb" );
+        MakeDirectoryTree( fname );
+        f = fopen( fname, "wb" );
     }
     if( !f )
         return nullptr;
+
     FileDesc* fd = new FileDesc();
-    fd->f = f;
-    fd->writeThrough = write_through;
+    fd->File = f;
+    fd->WriteThrough = write_through;
     return (void*) fd;
 }
 
 void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-
-    FILE* f = fopen( fname_, "ab" );
+    FILE* f = fopen( fname, "ab" );
     if( !f )
     {
-        MakeDirectoryTree( fname_ );
-        f = fopen( fname_, "ab" );
+        MakeDirectoryTree( fname );
+        f = fopen( fname, "ab" );
     }
     if( !f )
         return nullptr;
+
     FileDesc* fd = new FileDesc();
-    fd->f = f;
-    fd->writeThrough = write_through;
+    fd->File = f;
+    fd->WriteThrough = write_through;
     return (void*) fd;
 }
 
 void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-
-    FILE* f = fopen( fname_, "r+b" );
+    FILE* f = fopen( fname, "r+b" );
     if( !f )
     {
-        MakeDirectoryTree( fname_ );
-        f = fopen( fname_, "r+b" );
+        MakeDirectoryTree( fname );
+        f = fopen( fname, "r+b" );
     }
     if( !f )
         return nullptr;
+
     FileDesc* fd = new FileDesc();
-    fd->f = f;
-    fd->writeThrough = write_through;
+    fd->File = f;
+    fd->WriteThrough = write_through;
     return (void*) fd;
 }
 
@@ -365,14 +341,14 @@ void FileClose( void* file )
 {
     if( file )
     {
-        fclose( ( (FileDesc*) file )->f );
+        fclose( ( (FileDesc*) file )->File );
         delete (FileDesc*) file;
     }
 }
 
 bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
 {
-    uint rb_ = (uint) fread( buf, sizeof( char ), len, ( (FileDesc*) file )->f );
+    uint rb_ = (uint) fread( buf, sizeof( char ), len, ( (FileDesc*) file )->File );
     if( rb )
         *rb = rb_;
     return rb_ == len;
@@ -380,25 +356,25 @@ bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
 
 bool FileWrite( void* file, const void* buf, uint len )
 {
-    bool result = ( (uint) fwrite( buf, sizeof( char ), len, ( (FileDesc*) file )->f ) == len );
-    if( result && ( (FileDesc*) file )->writeThrough )
-        fflush( ( (FileDesc*) file )->f );
+    bool result = ( (uint) fwrite( buf, sizeof( char ), len, ( (FileDesc*) file )->File ) == len );
+    if( result && ( (FileDesc*) file )->WriteThrough )
+        fflush( ( (FileDesc*) file )->File );
     return result;
 }
 
 bool FileSetPointer( void* file, int offset, int origin )
 {
-    return fseek( ( (FileDesc*) file )->f, offset, origin ) == 0;
+    return fseek( ( (FileDesc*) file )->File, offset, origin ) == 0;
 }
 
 uint FileGetPointer( void* file )
 {
-    return (uint) ftell( ( (FileDesc*) file )->f );
+    return (uint) ftell( ( (FileDesc*) file )->File );
 }
 
 uint64 FileGetWriteTime( void* file )
 {
-    int         fd = fileno( ( (FileDesc*) file )->f );
+    int         fd = fileno( ( (FileDesc*) file )->File );
     struct stat st;
     fstat( fd, &st );
     return (uint64) st.st_mtime;
@@ -406,7 +382,7 @@ uint64 FileGetWriteTime( void* file )
 
 uint FileGetSize( void* file )
 {
-    int         fd = fileno( ( (FileDesc*) file )->f );
+    int         fd = fileno( ( (FileDesc*) file )->File );
     struct stat st;
     fstat( fd, &st );
     return (uint) st.st_size;
@@ -487,28 +463,17 @@ void FileFindClose( void* descriptor )
 
 bool FileDelete( const char* fname )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-
-    return remove( fname_ );
+    return remove( fname );
 }
 
 bool FileExist( const char* fname )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-
-    return !access( fname_, 0 );
+    return !access( fname, 0 );
 }
 
 bool FileRename( const char* fname, const char* new_fname )
 {
-    char fname_[ MAX_FOPATH ];
-    PreparePath( fname, fname_ );
-    char new_fname_[ MAX_FOPATH ];
-    PreparePath( new_fname, new_fname_ );
-
-    return !rename( fname_, new_fname_ );
+    return !rename( fname, new_fname );
 }
 
 struct FileFind
@@ -520,11 +485,8 @@ struct FileFind
 
 void* FileFindFirst( const char* path, const char* extension, FindData& fd )
 {
-    char path_[ MAX_FOPATH ];
-    PreparePath( path, path_ );
-
     // Open dir
-    DIR* h = opendir( path_ );
+    DIR* h = opendir( path );
     if( !h )
         return nullptr;
 
@@ -532,7 +494,7 @@ void* FileFindFirst( const char* path, const char* extension, FindData& fd )
     FileFind* ff = new FileFind;
     memzero( ff, sizeof( FileFind ) );
     ff->d = h;
-    Str::Copy( ff->path, path_ );
+    Str::Copy( ff->path, path );
     if( ff->path[ Str::Length( ff->path ) - 1 ] != '/' )
         Str::Append( ff->path, "/" );
     if( extension )
@@ -643,10 +605,8 @@ bool ResolvePath( char* path )
 
     #else
     char path_[ MAX_FOPATH ];
-    PreparePath( path, path_ );
-    char path__[ MAX_FOPATH ];
-    realpath( path_, path__ );
-    Str::Copy( path, MAX_FOPATH, path__ );
+    realpath( path, path_ );
+    Str::Copy( path, MAX_FOPATH, path_ );
     return true;
     #endif
 }
@@ -657,9 +617,7 @@ bool MakeDirectory( const char* path )
     wchar_t wc[ MAX_FOPATH ];
     return CreateDirectoryW( MBtoWC( path, wc ), nullptr ) != FALSE;
     #else
-    char path_[ MAX_FOPATH ];
-    PreparePath( path, path_ );
-    return mkdir( path_, 0x0777 ) == 0;
+    return mkdir( path, 0x0777 ) == 0;
     #endif
 }
 
