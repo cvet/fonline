@@ -371,6 +371,7 @@ bool FOClient::PostInit()
     SprMngr.EndScene();
 
     // Clean up previous data
+    SAFEREL( SomeItem );
     SAFEDEL( Globals );
     SAFEREL( ScriptFunc.ClientCurMap );
     SAFEREL( ScriptFunc.ClientCurLocation );
