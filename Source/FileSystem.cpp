@@ -40,7 +40,7 @@ static char* WCtoMB( const wchar_t* wc, char* buf )
 }
 #endif
 
-#ifdef FONLINE_CLIENT
+#if defined( FO_ANDROID )
 struct FileDesc
 {
     SDL_RWops* Ops;
