@@ -212,9 +212,124 @@ static string Global_SHA2( string text )
     #endif
 }
 
+static void PrintLog( const string& prefix, string& log, bool last_call )
+{
+    // Normalize new lines to \n
+    while( true )
+    {
+        size_t pos = log.find( "\r\n" );
+        if( pos != string::npos )
+            log.replace( pos, 2, "\n" );
+        else
+            break;
+    }
+    log.erase( std::remove( log.begin(), log.end(), '\r' ), log.end() );
+
+    // Write own log
+    while( true )
+    {
+        size_t pos = log.find( '\n' );
+        if( pos == string::npos && last_call && !log.empty() )
+            pos = log.size();
+
+        if( pos != string::npos )
+        {
+            WriteLog( "{} : {}\n", prefix, log.substr( 0, pos ) );
+            log.erase( 0, pos + 1 );
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
 static int Global_SystemCall( string command )
 {
-    return system( command.c_str() );
+    #ifdef FO_WINDOWS
+    HANDLE              out_read = nullptr;
+    HANDLE              out_write = nullptr;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof( SECURITY_ATTRIBUTES );
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
+    if( !CreatePipe( &out_read, &out_write, &sa, 0 ) )
+        return -1;
+    if( !SetHandleInformation( out_read, HANDLE_FLAG_INHERIT, 0 ) )
+    {
+        CloseHandle( out_read );
+        CloseHandle( out_write );
+        return -1;
+    }
+
+    STARTUPINFOW si;
+    ZeroMemory( &si, sizeof( STARTUPINFO ) );
+    si.cb = sizeof( STARTUPINFO );
+    si.hStdError = out_write;
+    si.hStdOutput = out_write;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+    si.wShowWindow = SW_HIDE;
+
+    PROCESS_INFORMATION pi;
+    ZeroMemory( &pi, sizeof( PROCESS_INFORMATION ) );
+
+    wchar_t* cmd_line = _wcsdup( CharToWideChar( command ).c_str() );
+    BOOL     result = CreateProcessW( nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi );
+    SAFEDELA( cmd_line );
+    if( !result )
+    {
+        CloseHandle( out_read );
+        CloseHandle( out_write );
+        return -1;
+    }
+
+    string program = command.substr( 0, command.find( ' ' ) );
+    string log;
+    while( true )
+    {
+        Thread_Sleep( 1 );
+
+        DWORD bytes;
+        while( PeekNamedPipe( out_read, nullptr, 0, nullptr, &bytes, nullptr ) && bytes > 0 )
+        {
+            char buf[ TEMP_BUF_SIZE ];
+            if( ReadFile( out_read, buf, sizeof( buf ), &bytes, nullptr ) )
+            {
+                log.append( buf, bytes );
+                PrintLog( program, log, false );
+            }
+        }
+
+        if( WaitForSingleObject( pi.hProcess, 0 ) != WAIT_TIMEOUT )
+            break;
+    }
+    PrintLog( program, log, true );
+
+    DWORD retval;
+    GetExitCodeProcess( pi.hProcess, &retval );
+    CloseHandle( out_read );
+    CloseHandle( out_write );
+    CloseHandle( pi.hProcess );
+    CloseHandle( pi.hThread );
+    return (int) retval;
+
+    #else
+    FILE* in = popen( command.c_str(), "r" );
+    if( !in )
+        return -1;
+
+    string program = command.substr( 0, command.find( ' ' ) );
+    string log;
+    char   buf[ TEMP_BUF_SIZE ];
+    while( fgets( buf, sizeof( buf ), in ) )
+    {
+        log += buf;
+        PrintLog( program, log, false );
+    }
+    PrintLog( program, log, true );
+
+    return pclose( in );
+    #endif
 }
 
 static void Global_OpenLink( string link )
