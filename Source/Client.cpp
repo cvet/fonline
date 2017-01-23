@@ -7639,6 +7639,21 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
 
         Self->Chosen->Alpha = (uchar) alpha;
     }
+    else if( cmd == "SetScreenKeyboard" && args.size() == 2 )
+    {
+        if( SDL_HasScreenKeyboardSupport() )
+        {
+            bool cur = ( SDL_IsTextInputActive() != SDL_FALSE );
+            bool next = Str::AtoB( args[ 1 ].c_str() );
+            if( cur != next )
+            {
+                if( next )
+                    SDL_StartTextInput();
+                else
+                    SDL_StopTextInput();
+            }
+        }
+    }
     else
     {
         SCRIPT_ERROR_R0( "Invalid custom call command." );

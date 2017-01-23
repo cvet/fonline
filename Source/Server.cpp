@@ -2143,7 +2143,7 @@ bool FOServer::Init()
 
 bool FOServer::InitReal()
 {
-    WriteLog( "***   Starting initialization   ****\n" );
+    WriteLog( "***   Starting initialization   ***\n" );
 
     FileManager::InitDataFiles( "./" );
 
