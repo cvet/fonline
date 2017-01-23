@@ -163,7 +163,7 @@ int main( int argc, char** argv )
     }
 
     // Autostart
-    if( MainConfig->IsKey( "", "Start" ) || Singleplayer )
+    if( !MainConfig->IsKey( "", "NoStart" ) )
     {
         if( GuiWindow )
         {
