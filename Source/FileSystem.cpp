@@ -388,7 +388,6 @@ uint FileGetSize( void* file )
     return (uint) st.st_size;
 }
 #endif
-#endif
 
 #ifdef FO_WINDOWS
 bool FileDelete( const char* fname )
