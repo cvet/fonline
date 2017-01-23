@@ -40,7 +40,109 @@ static char* WCtoMB( const wchar_t* wc, char* buf )
 }
 #endif
 
-#if defined( FO_ANDROID )
+#if defined ( FO_WINDOWS )
+
+void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
+{
+    wchar_t wc[ MAX_FOPATH ];
+    HANDLE  file;
+    if( write )
+    {
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+        if( file == INVALID_HANDLE_VALUE )
+        {
+            MakeDirectoryTree( fname );
+            file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+        }
+    }
+    else
+    {
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr );
+    }
+    if( file == INVALID_HANDLE_VALUE )
+        return nullptr;
+    return file;
+}
+
+void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
+{
+    wchar_t wc[ MAX_FOPATH ];
+    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+    if( file == INVALID_HANDLE_VALUE )
+    {
+        MakeDirectoryTree( fname );
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+    }
+    if( file == INVALID_HANDLE_VALUE )
+        return nullptr;
+    if( !FileSetPointer( file, 0, SEEK_END ) )
+    {
+        FileClose( file );
+        return nullptr;
+    }
+    return file;
+}
+
+void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
+{
+    wchar_t wc[ MAX_FOPATH ];
+    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+    if( file == INVALID_HANDLE_VALUE )
+    {
+        MakeDirectoryTree( fname );
+        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+    }
+    if( file == INVALID_HANDLE_VALUE )
+        return nullptr;
+    return file;
+}
+
+void FileClose( void* file )
+{
+    if( file )
+        CloseHandle( (HANDLE) file );
+}
+
+bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
+{
+    DWORD dw = 0;
+    BOOL  result = ReadFile( (HANDLE) file, buf, len, &dw, nullptr );
+    if( rb )
+        *rb = dw;
+    return result && dw == len;
+}
+
+bool FileWrite( void* file, const void* buf, uint len )
+{
+    DWORD dw = 0;
+    return WriteFile( (HANDLE) file, buf, len, &dw, nullptr ) && dw == len;
+}
+
+bool FileSetPointer( void* file, int offset, int origin )
+{
+    return SetFilePointer( (HANDLE) file, offset, nullptr, origin ) != INVALID_SET_FILE_POINTER;
+}
+
+uint FileGetPointer( void* file )
+{
+    return (uint) SetFilePointer( (HANDLE) file, 0, nullptr, FILE_CURRENT );
+}
+
+uint64 FileGetWriteTime( void* file )
+{
+    FILETIME tc, ta, tw;
+    GetFileTime( (HANDLE) file, &tc, &ta, &tw );
+    return FileTimeToUInt64( tw );
+}
+
+uint FileGetSize( void* file )
+{
+    DWORD high;
+    return GetFileSize( (HANDLE) file, &high );
+}
+
+#elif defined ( FO_ANDROID )
+
 struct FileDesc
 {
     SDL_RWops* Ops;
@@ -177,108 +279,6 @@ uint FileGetSize( void* file )
 }
 
 #else
-# ifdef FO_WINDOWS
-
-void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
-{
-    wchar_t wc[ MAX_FOPATH ];
-    HANDLE  file;
-    if( write )
-    {
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
-        if( file == INVALID_HANDLE_VALUE )
-        {
-            MakeDirectoryTree( fname );
-            file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
-        }
-    }
-    else
-    {
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr );
-    }
-    if( file == INVALID_HANDLE_VALUE )
-        return nullptr;
-    return file;
-}
-
-void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
-{
-    wchar_t wc[ MAX_FOPATH ];
-    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
-    if( file == INVALID_HANDLE_VALUE )
-    {
-        MakeDirectoryTree( fname );
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
-    }
-    if( file == INVALID_HANDLE_VALUE )
-        return nullptr;
-    if( !FileSetPointer( file, 0, SEEK_END ) )
-    {
-        FileClose( file );
-        return nullptr;
-    }
-    return file;
-}
-
-void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
-{
-    wchar_t wc[ MAX_FOPATH ];
-    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
-    if( file == INVALID_HANDLE_VALUE )
-    {
-        MakeDirectoryTree( fname );
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
-    }
-    if( file == INVALID_HANDLE_VALUE )
-        return nullptr;
-    return file;
-}
-
-void FileClose( void* file )
-{
-    if( file )
-        CloseHandle( (HANDLE) file );
-}
-
-bool FileRead( void* file, void* buf, uint len, uint* rb /* = NULL */ )
-{
-    DWORD dw = 0;
-    BOOL  result = ReadFile( (HANDLE) file, buf, len, &dw, nullptr );
-    if( rb )
-        *rb = dw;
-    return result && dw == len;
-}
-
-bool FileWrite( void* file, const void* buf, uint len )
-{
-    DWORD dw = 0;
-    return WriteFile( (HANDLE) file, buf, len, &dw, nullptr ) && dw == len;
-}
-
-bool FileSetPointer( void* file, int offset, int origin )
-{
-    return SetFilePointer( (HANDLE) file, offset, nullptr, origin ) != INVALID_SET_FILE_POINTER;
-}
-
-uint FileGetPointer( void* file )
-{
-    return (uint) SetFilePointer( (HANDLE) file, 0, nullptr, FILE_CURRENT );
-}
-
-uint64 FileGetWriteTime( void* file )
-{
-    FILETIME tc, ta, tw;
-    GetFileTime( (HANDLE) file, &tc, &ta, &tw );
-    return FileTimeToUInt64( tw );
-}
-
-uint FileGetSize( void* file )
-{
-    DWORD high;
-    return GetFileSize( (HANDLE) file, &high );
-}
-
-# else
 
 struct FileDesc
 {
@@ -387,7 +387,7 @@ uint FileGetSize( void* file )
     fstat( fd, &st );
     return (uint) st.st_size;
 }
-# endif
+#endif
 #endif
 
 #ifdef FO_WINDOWS
