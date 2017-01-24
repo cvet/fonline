@@ -21,18 +21,11 @@ uint64 FileGetWriteTime( void* file );
 uint   FileGetSize( void* file );
 bool   FileDelete( const char* fname );
 bool   FileExist( const char* fname );
+bool   FileCopy( const char* fname, const char* copy_fname );
 bool   FileRename( const char* fname, const char* new_fname );
 
-struct FindData
-{
-    string FileName;
-    uint   FileSize;
-    uint64 WriteTime;
-    bool   IsDirectory;
-};
-typedef vector< FindData > FindDataVec;
-void* FileFindFirst( const char* path, const char* extension, FindData& fd );
-bool  FileFindNext( void* descriptor, FindData& fd );
+void* FileFindFirst( const char* path, const char* extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir );
+bool  FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir );
 void  FileFindClose( void* descriptor );
 
 char* NormalizePathSlashes( char* path );

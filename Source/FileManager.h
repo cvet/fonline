@@ -2,7 +2,6 @@
 #define __FILE_MANAGER__
 
 #include "Defines.h"
-#include "FileSystem.h"
 #include "Log.h"
 #include "DataFile.h"
 
@@ -10,6 +9,15 @@
 # undef CopyFile
 # undef DeleteFile
 #endif
+
+struct FindData
+{
+    string FileName;
+    uint   FileSize;
+    uint64 WriteTime;
+    bool   IsDirectory;
+};
+typedef vector< FindData > FindDataVec;
 
 class FileManager
 {
@@ -72,9 +80,14 @@ public:
     static const char* GetExtension( const char* path ); // EXT without dot
     static char*       EraseExtension( char* path );     // Erase EXT with dot
     static string      ForwardPath( const char* path, const char* relative_dir );
+    static bool        IsFileExists( const char* fname );
     static bool        CopyFile( const char* from, const char* to );
+    static bool        RenameFile( const char* from, const char* to );
     static bool        DeleteFile( const char* fname );
     static void        DeleteDir( const char* dir );
+    static void        CreateDirectoryTree( const char* path );
+    static bool        ResolvePathInplace( char* path );
+    static void        NormalizePathSlashesInplace( char* path );
 
     bool        IsLoaded()     { return fileSize != 0; }
     uchar*      GetBuf()       { return fileBuf; }

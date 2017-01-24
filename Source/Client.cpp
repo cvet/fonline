@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Access.h"
 #include "Defence.h"
+#include "FileSystem.h"
 
 #ifdef MEMORY_DEBUG
 static bool                 ASDbgMemoryCanWork = false;
@@ -4669,7 +4670,7 @@ void FOClient::Net_OnUpdateFileData()
             char to_path[ MAX_FOPATH ];
             FileManager::GetWritePath( update_file.Name.c_str(), to_path );
             FileManager::FormatPath( to_path );
-            if( !FileManager::CopyFile( FileManager::GetWritePath( "update.temp" ), to_path ) )
+            if( !FileManager::RenameFile( FileManager::GetWritePath( "update.temp" ), to_path ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't copy update.temp file!" );
                 return;

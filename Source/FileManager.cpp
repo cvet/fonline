@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "FileManager.h"
+#include "FileSystem.h"
 
 #define OUT_BUF_START_SIZE    ( 0x100 )
 
@@ -819,35 +820,19 @@ string FileManager::ForwardPath( const char* path, const char* relative_dir )
     return new_path;
 }
 
+bool FileManager::IsFileExists( const char* fname )
+{
+    return FileExist( fname );
+}
+
 bool FileManager::CopyFile( const char* from, const char* to )
 {
-    void* f_from = FileOpen( from, false );
-    if( !f_from )
-        return false;
+    return FileCopy( from, to );
+}
 
-    void* f_to = FileOpen( to, true );
-    if( !f_to )
-    {
-        FileClose( f_from );
-        return false;
-    }
-
-    uint  remaining_size = FileGetSize( f_from );
-    uchar chunk[ 4096 ];
-    bool  fail = false;
-    while( !fail && remaining_size > 0 )
-    {
-        uint read_size = MIN( remaining_size, sizeof( chunk ) );
-        fail = !( FileRead( f_from, chunk, read_size ) && FileWrite( f_to, chunk, read_size ) );
-        remaining_size -= read_size;
-    }
-
-    FileClose( f_to );
-    FileClose( f_from );
-
-    if( fail )
-        FileDelete( to );
-    return !fail;
+bool FileManager::RenameFile( const char* from, const char* to )
+{
+    return FileRename( from, to );
 }
 
 bool FileManager::DeleteFile( const char* fname )
@@ -872,6 +857,21 @@ void FileManager::DeleteDir( const char* dir )
     #endif
 }
 
+void FileManager::CreateDirectoryTree( const char* path )
+{
+    MakeDirectoryTree( path );
+}
+
+bool FileManager::ResolvePathInplace( char* path )
+{
+    return ResolvePath( path );
+}
+
+void FileManager::NormalizePathSlashesInplace( char* path )
+{
+    NormalizePathSlashes( path );
+}
+
 void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs )
 {
     char path[ MAX_FOPATH ];
@@ -879,7 +879,7 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
     Str::Append( path, cur_dir );
 
     FindData fd;
-    void*    h = FileFindFirst( path, nullptr, fd );
+    void*    h = FileFindFirst( path, nullptr, &fd.FileName, &fd.FileSize, &fd.WriteTime, &fd.IsDirectory );
     while( h )
     {
         if( fd.IsDirectory )
@@ -923,7 +923,7 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
             }
         }
 
-        if( !FileFindNext( h, fd ) )
+        if( !FileFindNext( h, &fd.FileName, &fd.FileSize, &fd.WriteTime, &fd.IsDirectory ) )
             break;
     }
     if( h )

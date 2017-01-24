@@ -1197,7 +1197,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     string zip_path = (string) "Update/" + res_name_zip;
                     bool   skip_making_zip = true;
 
-                    MakeDirectoryTree( zip_path.c_str() );
+                    FileManager::CreateDirectoryTree( zip_path.c_str() );
 
                     // Check if file available
                     FileManager zip_file;
@@ -1231,7 +1231,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     {
                         WriteLog( "Pack resource '{}', files {}...\n", res_name, resources.GetFilesCount() );
 
-                        zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
+                        zipFile zip = zipOpen( ( zip_path + ".tmp" ).c_str(), APPEND_STATUS_CREATE );
                         if( zip )
                         {
                             resources.ResetCounter();
@@ -1264,6 +1264,9 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                                     delete converted_file;
                             }
                             zipClose( zip, nullptr );
+
+                            if( !FileManager::RenameFile( ( zip_path + ".tmp" ).c_str(), zip_path.c_str() ) )
+                                WriteLog( "Can't rename file '{}' to '{}'.\n", zip_path + ".tmp", zip_path );
 
                             something_changed = true;
                         }

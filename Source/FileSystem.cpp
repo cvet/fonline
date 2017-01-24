@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "FileSystem.h"
 
 #ifdef FO_WINDOWS
 # include <io.h>
@@ -402,6 +402,13 @@ bool FileExist( const char* fname )
     return !_waccess( MBtoWC( fname, wc ), 0 );
 }
 
+bool FileCopy( const char* fname, const char* copy_fname )
+{
+    wchar_t wc1[ MAX_FOPATH ];
+    wchar_t wc2[ MAX_FOPATH ];
+    return CopyFileW( MBtoWC( fname, wc1 ), MBtoWC( copy_fname, wc2 ), FALSE ) != FALSE;
+}
+
 bool FileRename( const char* fname, const char* new_fname )
 {
     wchar_t wc1[ MAX_FOPATH ];
@@ -409,7 +416,7 @@ bool FileRename( const char* fname, const char* new_fname )
     return MoveFileW( MBtoWC( fname, wc1 ), MBtoWC( new_fname, wc2 ) ) != FALSE;
 }
 
-void* FileFindFirst( const char* path, const char* extension, FindData& fd )
+void* FileFindFirst( const char* path, const char* extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir )
 {
     char query[ MAX_FOPATH ];
     if( extension )
@@ -424,30 +431,38 @@ void* FileFindFirst( const char* path, const char* extension, FindData& fd )
         return nullptr;
 
     char mb[ MAX_FOPATH ];
-    fd.FileName = WCtoMB( wfd.cFileName, mb );
-    fd.IsDirectory = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
-    fd.FileSize = wfd.nFileSizeLow;
-    fd.WriteTime = FileTimeToUInt64( wfd.ftLastWriteTime );
-    if( fd.IsDirectory && ( fd.FileName == "." || fd.FileName == ".." ) )
-        if( !FileFindNext( h, fd ) )
+    if( fname )
+        *fname = WCtoMB( wfd.cFileName, mb );
+    if( is_dir )
+        *is_dir = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
+    if( fsize )
+        *fsize = wfd.nFileSizeLow;
+    if( wtime )
+        *wtime = FileTimeToUInt64( wfd.ftLastWriteTime );
+    if( ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && ( !wcscmp( wfd.cFileName, L"." ) || !wcscmp( wfd.cFileName, L".." ) ) )
+        if( !FileFindNext( h, fname, fsize, wtime, is_dir ) )
             return false;
 
     return h;
 }
 
-bool FileFindNext( void* descriptor, FindData& fd )
+bool FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir )
 {
     WIN32_FIND_DATAW wfd;
     if( !FindNextFileW( (HANDLE) descriptor, &wfd ) )
         return false;
 
     char mb[ MAX_FOPATH ];
-    fd.FileName = WCtoMB( wfd.cFileName, mb );
-    fd.IsDirectory = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
-    fd.FileSize = wfd.nFileSizeLow;
-    fd.WriteTime = FileTimeToUInt64( wfd.ftLastWriteTime );
-    if( fd.IsDirectory && ( fd.FileName == "." || fd.FileName == ".." ) )
-        return FileFindNext( (HANDLE) descriptor, fd );
+    if( fname )
+        *fname = WCtoMB( wfd.cFileName, mb );
+    if( is_dir )
+        *is_dir = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
+    if( fsize )
+        *fsize = wfd.nFileSizeLow;
+    if( wtime )
+        *wtime = FileTimeToUInt64( wfd.ftLastWriteTime );
+    if( ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && ( !wcscmp( wfd.cFileName, L"." ) || !wcscmp( wfd.cFileName, L".." ) ) )
+        return FileFindNext( (HANDLE) descriptor, fname, fsize, wtime, is_dir );
 
     return true;
 }
@@ -470,6 +485,36 @@ bool FileExist( const char* fname )
     return !access( fname, 0 );
 }
 
+bool FileCopy( const char* fname, const char* copy_fname )
+{
+    bool  ok = false;
+    FILE* from = fopen( fname, "rb" );
+    if( from )
+    {
+        FILE* to = fopen( copy_fname, "wb" );
+        if( to )
+        {
+            ok = true;
+            char buf[ BUFSIZ ];
+            while( !feof( from ) )
+            {
+                size_t rb = fread( buf, 1, BUFSIZ, from );
+                size_t rw = fwrite( buf, 1, rb, to );
+                if( !rb || rb != rw )
+                {
+                    ok = false;
+                    break;
+                }
+            }
+            fclose( to );
+            if( !ok )
+                FileDelete( copy_fname );
+        }
+        fclose( from );
+    }
+    return ok;
+}
+
 bool FileRename( const char* fname, const char* new_fname )
 {
     return !rename( fname, new_fname );
@@ -482,7 +527,7 @@ struct FileFind
     char ext[ 32 ];
 };
 
-void* FileFindFirst( const char* path, const char* extension, FindData& fd )
+void* FileFindFirst( const char* path, const char* extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir )
 {
     // Open dir
     DIR* h = opendir( path );
@@ -500,7 +545,7 @@ void* FileFindFirst( const char* path, const char* extension, FindData& fd )
         Str::Copy( ff->ext, extension );
 
     // Find first entire
-    if( !FileFindNext( ff, fd ) )
+    if( !FileFindNext( ff, fname, fsize, wtime, is_dir ) )
     {
         FileFindClose( ff );
         return nullptr;
@@ -508,7 +553,7 @@ void* FileFindFirst( const char* path, const char* extension, FindData& fd )
     return ff;
 }
 
-bool FileFindNext( void* descriptor, FindData& fd )
+bool FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir )
 {
     // Cast descriptor
     FileFind* ff = (FileFind*) descriptor;
@@ -520,17 +565,17 @@ bool FileFindNext( void* descriptor, FindData& fd )
 
     // Skip '.' and '..'
     if( Str::Compare( ent->d_name, "." ) || Str::Compare( ent->d_name, ".." ) )
-        return FileFindNext( descriptor, fd );
+        return FileFindNext( descriptor, fname, fsize, wtime, is_dir );
 
     // Read entire information
     bool        valid = false;
     bool        dir = false;
-    char        fname[ MAX_FOPATH ];
+    char        name[ MAX_FOPATH ];
     uint        file_size;
     uint64      write_time;
-    Str::Format( fname, "%s%s", ff->path, ent->d_name );
+    Str::Format( name, "%s%s", ff->path, ent->d_name );
     struct stat st;
-    if( !stat( fname, &st ) )
+    if( !stat( name, &st ) )
     {
         dir = S_ISDIR( st.st_mode );
         if( dir || S_ISREG( st.st_mode ) )
@@ -543,14 +588,14 @@ bool FileFindNext( void* descriptor, FindData& fd )
 
     // Skip not dirs and regular files
     if( !valid )
-        return FileFindNext( descriptor, fd );
+        return FileFindNext( descriptor, fname, fsize, wtime, is_dir );
 
     // Find by extensions
     if( ff->ext[ 0 ] )
     {
         // Skip dirs
         if( dir )
-            return FileFindNext( descriptor, fd );
+            return FileFindNext( descriptor, fname, fsize, wtime, is_dir );
 
         // Compare extension
         const char* ext = nullptr;
@@ -558,14 +603,18 @@ bool FileFindNext( void* descriptor, FindData& fd )
             if( *name == '.' )
                 ext = name;
         if( !ext || !*( ++ext ) || !Str::CompareCase( ext, ff->ext ) )
-            return FileFindNext( descriptor, fd );
+            return FileFindNext( descriptor, fname, fsize, wtime, is_dir );
     }
 
     // Fill find data
-    fd.FileName = ent->d_name;
-    fd.IsDirectory = dir;
-    fd.FileSize = file_size;
-    fd.WriteTime = write_time;
+    if( fname )
+        *fname = ent->d_name;
+    if( is_dir )
+        *is_dir = dir;
+    if( fsize )
+        *fsize = file_size;
+    if( wtime )
+        *wtime = write_time;
     return true;
 }
 

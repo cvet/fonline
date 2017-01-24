@@ -407,7 +407,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     // Set current directory to DLL
     char new_path[ MAX_FOPATH ];
     FileManager::ExtractDir( dll_path, new_path );
-    ResolvePath( new_path );
+    FileManager::ResolvePathInplace( new_path );
     #ifdef FO_WINDOWS
     wchar_t cur_path[ MAX_FOPATH ];
     GetCurrentDirectoryW( MAX_FOPATH, cur_path );

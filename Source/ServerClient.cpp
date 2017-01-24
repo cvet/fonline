@@ -493,7 +493,7 @@ void FOServer::Process_CreateClient( Client* cl )
             char fname[ MAX_FOPATH ];
             FileManager::GetWritePath( "Save/Clients/", fname );
             Str::Append( fname, ".foclient" );
-            exist = FileExist( fname );
+            exist = FileManager::IsFileExists( fname );
         }
 
         if( exist )

@@ -593,49 +593,6 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
         let.OffsX = -ox;
         let.OffsY = -oy + ( line_height - base_height );
         let.XAdvance = xa + 1;
-
-        // BMF to FOFNT convertation
-        if( false && index == 11111 )
-        {
-            if( Fonts[ 5 ]->Letters.count( id ) )
-                continue;
-            char buf[ 5 ];
-            memzero( buf, sizeof( buf ) );
-            Str::EncodeUTF8( id, buf );
-            void* f = nullptr;
-            if( !FileExist( "./export.txt" ) )
-                f = FileOpen( "./export.txt", true );
-            else
-                f = FileOpenForAppend( "./export.txt" );
-            const char* s = Str::FormatBuf( "Letter '%s'\n", buf );
-            FileWrite( f, s, Str::Length( s ) );
-            s = Str::FormatBuf( "  PositionX %d\n", 256 + let.PosX  );
-            FileWrite( f, s, Str::Length( s ) );
-            s = Str::FormatBuf( "  PositionY %d\n", let.PosY );
-            FileWrite( f, s, Str::Length( s ) );
-            s = Str::FormatBuf( "  Width     %d\n", let.W );
-            FileWrite( f, s, Str::Length( s ) );
-            s = Str::FormatBuf( "  Height    %d\n", let.H );
-            FileWrite( f, s, Str::Length( s ) );
-            if( let.OffsX )
-            {
-                s = Str::FormatBuf( "  OffsetX   %d\n", let.OffsX );
-                FileWrite( f, s, Str::Length( s ) );
-            }
-            if( let.OffsY )
-            {
-                s = Str::FormatBuf( "  OffsetY   %d\n", let.OffsY );
-                FileWrite( f, s, Str::Length( s ) );
-            }
-            if( let.XAdvance )
-            {
-                s = Str::FormatBuf( "  XAdvance  %d\n", let.XAdvance );
-                FileWrite( f, s, Str::Length( s ) );
-            }
-            s = Str::FormatBuf( "\n" );
-            FileWrite( f, s, Str::Length( s ) );
-            FileClose( f );
-        }
     }
 
     font.LineHeight = ( font.Letters.count( 'W' ) ? font.Letters[ 'W' ].H : base_height );

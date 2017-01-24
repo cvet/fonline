@@ -2,6 +2,7 @@
 #include "Mapper.h"
 #include "Script.h"
 #include "ResourceConverter.h"
+#include "FileSystem.h"
 
 bool      FOMapper::SpritesCanDraw = false;
 FOMapper* FOMapper::Self = nullptr;
@@ -111,6 +112,7 @@ bool FOMapper::Init()
     // Resources
     FileManager::SetCurrentDir( ServerWritePath, "./" );
     FileManager::ClearDataFiles();
+    FileManager::InitDataFiles( "$Basic" );
     FileManager::InitDataFiles( "./" );
     ResourceConverter::Generate( nullptr );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
@@ -4259,7 +4261,6 @@ bool FOMapper::SaveLogFile()
     if( !f )
         return false;
 
-
     char   cur_mess[ MAX_FOTEXT ];
     string fmt_log;
     for( uint i = 0; i < MessBox.size(); ++i )
@@ -4756,10 +4757,10 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetLoadedMaps( int& index )
 CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
 {
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    string   dir_ = ( dir.empty() ? GameOpt.WorkDir : dir );
+    string dir_ = ( dir.empty() ? GameOpt.WorkDir : dir );
 
-    FindData fd;
-    void*    h = FileFindFirst( dir_.c_str(), nullptr, fd );
+    string file_find_fname;
+    void*  h = FileFindFirst( dir_.c_str(), nullptr, &file_find_fname, nullptr, nullptr, nullptr );
     if( !h )
     {
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
@@ -4769,10 +4770,10 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
     CScriptArray* names = Script::CreateArray( "string[]" );
     while( true )
     {
-        if( ProtoMap::IsMapFile( Str::FormatBuf( "%s%s", dir_.c_str(), fd.FileName.c_str() ) ) )
+        if( ProtoMap::IsMapFile( Str::FormatBuf( "%s%s", dir_.c_str(), file_find_fname.c_str() ) ) )
         {
             char  fname[ MAX_FOPATH ];
-            Str::Copy( fname, fd.FileName.c_str() );
+            Str::Copy( fname, file_find_fname.c_str() );
             char* ext = (char*) FileManager::GetExtension( fname );
             if( ext )
                 *( ext - 1 ) = 0;
@@ -4783,7 +4784,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
             str = fname;
         }
 
-        if( !FileFindNext( h, fd ) )
+        if( !FileFindNext( h, &file_find_fname, nullptr, nullptr, nullptr ) )
             break;
     }
     FileFindClose( h );

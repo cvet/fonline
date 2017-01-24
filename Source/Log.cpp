@@ -1,5 +1,6 @@
 #include "Log.h"
 #include "Timer.h"
+#include "FileSystem.h"
 #include <stdarg.h>
 
 #ifdef FO_ANDROID

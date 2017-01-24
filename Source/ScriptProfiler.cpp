@@ -1,5 +1,6 @@
 #include "ScriptProfiler.h"
 #include "Script.h"
+#include "FileSystem.h"
 
 ScriptProfiler::ScriptProfiler()
 {

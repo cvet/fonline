@@ -88,7 +88,6 @@
 #include "Randomizer.h"
 #include "Text.h"
 #include "FileManager.h"
-#include "FileSystem.h"
 #include "IniParser.h"
 #include "AngelScript/sdk/add_on/scriptarray/scriptarray.h"
 #include "AngelScript/sdk/add_on/scriptdictionary/scriptdictionary.h"

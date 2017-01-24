@@ -3,6 +3,7 @@
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include "minizip/zip.h"
 #include "ResourceConverter.h"
+#include "FileSystem.h"
 
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
 
@@ -2597,25 +2598,25 @@ bool FOServer::LoadClientsData()
     Str::Copy( clients_path, "Save/Clients/" );
 
     // Index clients
-    int      errors = 0;
-    FindData file_find_data;
-    void*    file_find = nullptr;
+    int    errors = 0;
+    string file_find_fname;
+    void*  file_find = nullptr;
     while( true )
     {
         if( !file_find )
         {
-            file_find = FileFindFirst( clients_path, "foclient", file_find_data );
+            file_find = FileFindFirst( clients_path, "foclient", &file_find_fname, nullptr, nullptr, nullptr );
             if( !file_find )
                 break;
         }
         else
         {
-            if( !FileFindNext( file_find, file_find_data ) )
+            if( !FileFindNext( file_find, &file_find_fname, nullptr, nullptr, nullptr ) )
                 break;
         }
 
         char client_name[ MAX_FOPATH ];
-        Str::Copy( client_name, file_find_data.FileName.c_str() );
+        Str::Copy( client_name, file_find_fname.c_str() );
 
         // Take name from file title
         char        name[ MAX_FOPATH ];

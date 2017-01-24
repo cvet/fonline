@@ -70,7 +70,7 @@ static uint CScriptArray_RemoveAll( CScriptArray* arr, void* value )
 {
     uint count = 0;
     int  index = 0;
-    while( index < arr->GetSize() )
+    while( index < (int) arr->GetSize() )
     {
         index = arr->Find( index, value );
         if( index != -1 )

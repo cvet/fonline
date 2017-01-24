@@ -2,6 +2,7 @@
 #include "DataFile.h"
 #include "minizip/unzip.h"
 #include "FileManager.h"
+#include "FileSystem.h"
 #include "Resources/Resources.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER )
