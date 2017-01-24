@@ -871,14 +871,16 @@ void GetClientOptions()
     // Data files
     FileManager::ClearDataFiles();
     FileManager::InitDataFiles( "$Basic" );
-    # if defined ( FO_IOS )
+    # ifndef FONLINE_MAPPER
+    #  if defined ( FO_IOS )
     FileManager::InitDataFiles( "../../Documents/" );
-    # elif defined ( FO_ANDROID )
+    #  elif defined ( FO_ANDROID )
     FileManager::InitDataFiles( "$Bundle" );
     FileManager::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
     FileManager::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
-    # else
+    #  else
     FileManager::InitDataFiles( CLIENT_DATA );
+    #  endif
     # endif
 
     // Cached configuration

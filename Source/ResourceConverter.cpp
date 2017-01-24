@@ -1194,12 +1194,27 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                 if( !Str::Substring( res_name, "_Raw" ) )
                 {
                     string res_name_zip = (string) res_name + ".zip";
-                    string  zip_path = (string) "Update/" + res_name_zip;
-                    bool        skip_making_zip = true;
+                    string zip_path = (string) "Update/" + res_name_zip;
+                    bool   skip_making_zip = true;
+
+                    MakeDirectoryTree( zip_path.c_str() );
+
+                    // Check if file available
                     FileManager zip_file;
                     if( !zip_file.LoadFile( zip_path.c_str(), true ) )
                         skip_making_zip = false;
 
+                    // Test consistency
+                    if( skip_making_zip )
+                    {
+                        zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_ADDINZIP );
+                        if( !zip )
+                            skip_making_zip = false;
+                        else
+                            zipClose( zip, nullptr );
+                    }
+
+                    // Check timestamps of inner resources
                     while( resources.IsNextFile() )
                     {
                         const char* rel_path;
@@ -1211,11 +1226,11 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             skip_making_zip = false;
                     }
 
+                    // Make zip
                     if( !skip_making_zip )
                     {
                         WriteLog( "Pack resource '{}', files {}...\n", res_name, resources.GetFilesCount() );
 
-                        MakeDirectoryTree( zip_path.c_str() );
                         zipFile zip = zipOpen( zip_path.c_str(), APPEND_STATUS_CREATE );
                         if( zip )
                         {
