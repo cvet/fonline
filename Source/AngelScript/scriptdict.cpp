@@ -597,6 +597,16 @@ bool CScriptDict::operator==(const CScriptDict& other) const
     return true;
 }
 
+asITypeInfo* CScriptDict::GetDictObjectType() const
+{
+    return objType;
+}
+
+int CScriptDict::GetDictTypeId() const
+{
+    return objType->GetTypeId();
+}
+
 // GC behaviour
 void CScriptDict::EnumReferences(asIScriptEngine* engine)
 {

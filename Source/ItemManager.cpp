@@ -148,7 +148,7 @@ void ItemManager::DeleteItem( Item* item )
     item->IsDestroying = true;
 
     // Finish events
-    Script::RaiseInternalEvent( ServerFunctions.ItemFinish, item, true );
+    Script::RaiseInternalEvent( ServerFunctions.ItemFinish, item );
 
     // Tear off from environment
     while( item->GetAccessory() != ITEM_ACCESSORY_NONE || item->ContIsItems() )

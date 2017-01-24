@@ -129,9 +129,8 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
 
     // Generate location maps
     MapVec maps = loc->GetMapsNoLock();   // Already locked
-    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
+    for( auto map : maps )
     {
-        Map* map = *it;
         map->SetLocId( loc->GetId() );
         if( !map->Generate() )
         {
@@ -141,6 +140,15 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
             return nullptr;
         }
     }
+
+    // Init scripts
+    for( auto map : maps )
+    {
+        for( auto item : map->GetItemsNoLock() )
+            Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, true );
+        Script::RaiseInternalEvent( ServerFunctions.MapInit, map, true );
+    }
+    Script::RaiseInternalEvent( ServerFunctions.LocationInit, loc, true );
 
     return loc;
 }
@@ -304,9 +312,9 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
         ( *it )->IsDestroying = true;
 
     // Finish events
-    Script::RaiseInternalEvent( ServerFunctions.LocationFinish, loc, true );
+    Script::RaiseInternalEvent( ServerFunctions.LocationFinish, loc );
     for( auto it = maps.begin(); it != maps.end(); ++it )
-        Script::RaiseInternalEvent( ServerFunctions.MapFinish, *it, true );
+        Script::RaiseInternalEvent( ServerFunctions.MapFinish, *it );
 
     // Send players on global map about this
     ClVec players;

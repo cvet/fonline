@@ -500,13 +500,17 @@ void EntityManager::InitAfterLoad()
         if( entity->IsDestroyed )
             continue;
 
-        if( entity->Type == EntityType::Item )
+        if( entity->Type == EntityType::Location )
         {
-            Item* item = (Item*) entity;
-            if( item->GetScriptId() )
-                item->SetScript( nullptr, false );
-            if( !item->IsDestroyed && item->GetIsRadio() )
-                ItemMngr.RadioRegister( item, true );
+            Location* loc = (Location*) entity;
+            Script::RaiseInternalEvent( ServerFunctions.LocationInit, loc, false );
+        }
+        else if( entity->Type == EntityType::Map )
+        {
+            Map* map = (Map*) entity;
+            Script::RaiseInternalEvent( ServerFunctions.MapInit, map, false );
+            if( map->GetScriptId() )
+                map->SetScript( nullptr, false );
         }
         else if( entity->Type == EntityType::Npc )
         {
@@ -516,64 +520,18 @@ void EntityManager::InitAfterLoad()
             if( !npc->IsDestroyed && npc->GetScriptId() )
                 npc->SetScript( nullptr, false );
         }
-        else if( entity->Type == EntityType::Map )
+        else if( entity->Type == EntityType::Item )
         {
-            Map* map = (Map*) entity;
-            if( map->GetScriptId() )
-                map->SetScript( nullptr, false );
+            Item* item = (Item*) entity;
+            Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, false );
+            if( item->GetScriptId() )
+                item->SetScript( nullptr, false );
+            if( !item->IsDestroyed && item->GetIsRadio() )
+                ItemMngr.RadioRegister( item, true );
         }
     }
 
     WriteLog( "Init entites after load complete.\n" );
-}
-
-void EntityManager::FinishEntities()
-{
-    WriteLog( "Finish entities...\n" );
-
-    EntityMap entities = allEntities;
-    for( auto it = entities.begin(); it != entities.end(); ++it )
-    {
-        Entity* entity = it->second;
-        RUNTIME_ASSERT( !entity->IsDestroyed );
-
-        if( entity->Type == EntityType::Item )
-        {
-            Item* item = (Item*) entity;
-            Script::RaiseInternalEvent( ServerFunctions.ItemFinish, item, false );
-        }
-        else if( entity->Type == EntityType::Npc || entity->Type == EntityType::Client )
-        {
-            Critter* cr = (Critter*) entity;
-            Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cr, false );
-
-//                      if( entity->Type == EntityType::Client )
-//                      {
-//                              Client* cl = (Client*) cr;
-//                              bool    to_delete = cl->Data.ClientToDelete;
-//
-//                              cr->EventFinish( to_delete );
-//                              Script::RaiseInternalEvent(ServerFunctions.CritterFinish, cr, to_delete);
-//
-//                              if( to_delete )
-//                              {
-//                                      cl->DeleteInventory();
-//                                      DeleteClientFile( cl->Name );
-//                              }
-//                      }
-        }
-        else if( entity->Type == EntityType::Location )
-        {
-            Location* loc = (Location*) entity;
-            MapVec    maps;
-            loc->GetMaps( maps );
-            Script::RaiseInternalEvent( ServerFunctions.LocationFinish, loc, false );
-            for( auto it_ = maps.begin(); it_ != maps.end() && !loc->IsDestroyed; ++it_ )
-                Script::RaiseInternalEvent( ServerFunctions.MapFinish, *it_, false );
-        }
-    }
-
-    WriteLog( "Finish entities complete.\n" );
 }
 
 void EntityManager::ClearEntities()

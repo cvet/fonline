@@ -126,15 +126,18 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     // Start message
     WriteLog( "Starting FOnline (version {})...\n", FONLINE_VERSION );
 
-    // iOS or Web loop
+    // Loop
     #if defined ( FO_IOS )
     SDL_iPhoneSetAnimationCallback( MainWindow, 1, ClientEntry, nullptr );
 
     #elif defined ( FO_WEB )
     emscripten_set_main_loop_arg( ClientEntry, nullptr, GameOpt.FixedFPS, 1 );
 
+    #elif defined ( FO_ANDROID )
+    while( !GameOpt.Quit )
+        ClientEntry( nullptr );
+
     #else
-    // Default loop
     while( !GameOpt.Quit )
     {
         double start_loop = Timer::AccurateTick();
@@ -161,6 +164,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
             }
         }
     }
+    #endif
 
     // Finish script
     if( Script::GetEngine() )
@@ -170,14 +174,13 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     }
 
     // Memory stats
-    # ifdef MEMORY_DEBUG
+    #ifdef MEMORY_DEBUG
     WriteLog( "{}", Debugger::GetMemoryStatistics() );
-    # endif
+    #endif
 
     // Just kill process
     // System automatically clean up all resources
     WriteLog( "Exit from game.\n" );
-    #endif
 
     return 0;
 }

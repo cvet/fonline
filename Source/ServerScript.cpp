@@ -146,17 +146,18 @@ bool FOServer::InitScriptSystem()
     #define BIND_INTERNAL_EVENT( name )    ServerFunctions.name = Script::FindInternalEvent( "Event" # name )
     BIND_INTERNAL_EVENT( ResourcesGenerated );
     BIND_INTERNAL_EVENT( Init );
-    BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( GenerateWorld );
+    BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( WorldSave );
     BIND_INTERNAL_EVENT( GlobalMapCritterIn );
     BIND_INTERNAL_EVENT( GlobalMapCritterOut );
-    BIND_INTERNAL_EVENT( LocationEnter );
+    BIND_INTERNAL_EVENT( LocationInit );
     BIND_INTERNAL_EVENT( LocationFinish );
-    BIND_INTERNAL_EVENT( MapLoop );
+    BIND_INTERNAL_EVENT( MapInit );
     BIND_INTERNAL_EVENT( MapFinish );
+    BIND_INTERNAL_EVENT( MapLoop );
     BIND_INTERNAL_EVENT( MapCritterIn );
     BIND_INTERNAL_EVENT( MapCritterOut );
     BIND_INTERNAL_EVENT( MapCheckLook );
@@ -189,6 +190,7 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( PlayerLogin );
     BIND_INTERNAL_EVENT( PlayerGetAccess );
     BIND_INTERNAL_EVENT( PlayerAllowCommand );
+    BIND_INTERNAL_EVENT( ItemInit );
     BIND_INTERNAL_EVENT( ItemFinish );
     BIND_INTERNAL_EVENT( ItemWalk );
     BIND_INTERNAL_EVENT( ItemCheckMove );

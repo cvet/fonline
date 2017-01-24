@@ -161,7 +161,6 @@ public:
     static bool InitLangPacksDialogs( LangPackVec& lang_packs );
     static bool InitLangPacksLocations( LangPackVec& lang_packs );
     static bool InitLangPacksItems( LangPackVec& lang_packs );
-    static void FinishLangPacks();
 
     // Init/Finish
     static bool Init();
@@ -206,7 +205,7 @@ public:
     static bool NewWorld();
     static void SaveWorld( const char* fname );
     static bool LoadWorld( const char* fname );
-    static void UnloadWorld();
+    static void UnloadWorld( bool save );
     static void DumpEntity( Entity* entity );
     static void Dump_Work( void* data );
 

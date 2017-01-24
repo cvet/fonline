@@ -25,6 +25,10 @@ public:
     virtual void AddRef() const;
     virtual void Release() const;
 
+    // Type information
+    asITypeInfo *GetDictObjectType() const;
+    int          GetDictTypeId() const;
+
     // Copy the contents of one dict to another (only if the types are the same)
     virtual CScriptDict& operator=(const CScriptDict& other);
 

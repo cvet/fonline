@@ -55,7 +55,38 @@ static bool CScriptArray_Exists( const CScriptArray* arr, void* value )
     return arr->Find( 0, value ) != -1;
 }
 
-static CScriptArray* CScriptArray_Clone( asITypeInfo* ti, const CScriptArray* other )
+static bool CScriptArray_Remove( CScriptArray* arr, void* value )
+{
+    int index = arr->Find( 0, value );
+    if( index != -1 )
+    {
+        arr->RemoveAt( index );
+        return true;
+    }
+    return false;
+}
+
+static uint CScriptArray_RemoveAll( CScriptArray* arr, void* value )
+{
+    uint count = 0;
+    int  index = 0;
+    while( index < arr->GetSize() )
+    {
+        index = arr->Find( index, value );
+        if( index != -1 )
+        {
+            arr->RemoveAt( index );
+            count++;
+        }
+        else
+        {
+            break;
+        }
+    }
+    return count;
+}
+
+static CScriptArray* CScriptArray_Factory( asITypeInfo* ti, const CScriptArray* other )
 {
     if( !other )
     {
@@ -67,6 +98,13 @@ static CScriptArray* CScriptArray_Clone( asITypeInfo* ti, const CScriptArray* ot
 
     CScriptArray* clone = CScriptArray::Create( ti );
     *clone = *other;
+    return clone;
+}
+
+static CScriptArray* CScriptArray_Clone( const CScriptArray* arr )
+{
+    CScriptArray* clone = CScriptArray::Create( arr->GetArrayObjectType() );
+    *clone = *arr;
     return clone;
 }
 
@@ -157,7 +195,13 @@ void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "bool exists(const T&in) const", SCRIPT_FUNC_THIS( CScriptArray_Exists ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectBehaviour( "array<T>", asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>@+)", SCRIPT_FUNC( CScriptArray_Clone ), SCRIPT_FUNC_CONV );
+    r = engine->RegisterObjectMethod( "array<T>", "bool remove(const T&in)", SCRIPT_FUNC_THIS( CScriptArray_Remove ), SCRIPT_FUNC_THIS_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "array<T>", "uint removeAll(const T&in)", SCRIPT_FUNC_THIS( CScriptArray_RemoveAll ), SCRIPT_FUNC_THIS_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectBehaviour( "array<T>", asBEHAVE_FACTORY, "array<T>@ f(int& in, const array<T>@+)", SCRIPT_FUNC( CScriptArray_Factory ), SCRIPT_FUNC_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "array<T>", "array<T>@ clone() const", SCRIPT_FUNC_THIS( CScriptArray_Clone ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "void set(const array<T>@+)", SCRIPT_FUNC_THIS( CScriptArray_Set ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
@@ -171,7 +215,7 @@ void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
     RUNTIME_ASSERT( r >= 0 );
 }
 
-static CScriptDict* ScriptDict_Clone( asITypeInfo* ti, const CScriptDict* other )
+static CScriptDict* ScriptDict_Factory( asITypeInfo* ti, const CScriptDict* other )
 {
     if( !other )
     {
@@ -183,6 +227,13 @@ static CScriptDict* ScriptDict_Clone( asITypeInfo* ti, const CScriptDict* other 
 
     CScriptDict* clone = CScriptDict::Create( ti );
     *clone = *other;
+    return clone;
+}
+
+static CScriptDict* ScriptDict_Clone( const CScriptDict* dict )
+{
+    CScriptDict* clone = CScriptDict::Create( dict->GetDictObjectType() );
+    *clone = *dict;
     return clone;
 }
 
@@ -201,7 +252,9 @@ static bool ScriptDict_Equals( CScriptDict* dict, const CScriptDict* other )
 
 void Script::RegisterScriptDictExtensions( asIScriptEngine* engine )
 {
-    int r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>@+)", SCRIPT_FUNC( ScriptDict_Clone ), SCRIPT_FUNC_CONV );
+    int r = engine->RegisterObjectBehaviour( "dict<T1,T2>", asBEHAVE_FACTORY, "dict<T1,T2>@ f(int& in, const dict<T1,T2>@+)", SCRIPT_FUNC( ScriptDict_Factory ), SCRIPT_FUNC_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "dict<T1,T2>", "dict<T1,T2>@ clone() const", SCRIPT_FUNC_THIS( ScriptDict_Clone ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "dict<T1,T2>", "bool equals(const dict<T1,T2>@+) const", SCRIPT_FUNC_THIS( ScriptDict_Equals ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );

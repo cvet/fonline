@@ -16,7 +16,7 @@ void CritterManager::DeleteNpc( Critter* cr )
     cr->IsDestroying = true;
 
     // Finish event
-    Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cr, true );
+    Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cr );
 
     // Tear off from environment
     cr->LockMapTransfers++;

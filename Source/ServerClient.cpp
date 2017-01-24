@@ -236,8 +236,12 @@ bool FOServer::MoveRandom( Critter* cr )
 
 bool FOServer::RegenerateMap( Map* map )
 {
+    Script::RaiseInternalEvent( ServerFunctions.MapFinish, map );
     map->DeleteContent();
     map->Generate();
+    for( auto item : map->GetItemsNoLock() )
+        Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, true );
+    Script::RaiseInternalEvent( ServerFunctions.MapInit, map, true );
     return true;
 }
 

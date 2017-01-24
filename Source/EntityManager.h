@@ -40,7 +40,6 @@ public:
 
     void DumpEntities( void ( * dump_entity )( Entity* ), IniParser& data );
     bool LoadEntities( IniParser& data );
-    void FinishEntities();
     void ClearEntities();
 };
 

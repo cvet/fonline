@@ -385,19 +385,20 @@ struct ServerScriptFunctions
 {
     void* ResourcesGenerated;
     void* Init;
-    void* Start;
     void* GenerateWorld;
+    void* Start;
     void* Finish;
     void* Loop;
     void* WorldSave;
     void* GlobalMapCritterIn;
     void* GlobalMapCritterOut;
 
-    void* LocationEnter;
+    void* LocationInit;
     void* LocationFinish;
 
-    void* MapLoop;
+    void* MapInit;
     void* MapFinish;
+    void* MapLoop;
     void* MapCritterIn;
     void* MapCritterOut;
     void* MapCheckLook;
@@ -432,6 +433,7 @@ struct ServerScriptFunctions
     void* PlayerGetAccess;
     void* PlayerAllowCommand;
 
+    void* ItemInit;
     void* ItemFinish;
     void* ItemWalk;
     void* ItemCheckMove;

@@ -94,7 +94,7 @@ void FOServer::Finish()
     EntityMngr.ClearEntities();
     DlgMngr.Finish();
     FinishScriptSystem();
-    FinishLangPacks();
+    LangPacks.clear();
     FileManager::ClearDataFiles();
 
     // Statistics
@@ -199,7 +199,8 @@ void FOServer::RemoveClient( Client* cl )
     Client* cl_ = ( id ? CrMngr.GetPlayer( id ) : nullptr );
     if( cl_ && cl_ == cl )
     {
-        Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cl, cl->GetClientToDelete() );
+        if( cl->GetClientToDelete() )
+            Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cl );
 
         uint map_id = cl->GetMapId();
         uint gm_leader_id = cl->GetGlobalMapLeaderId();
@@ -320,16 +321,7 @@ void FOServer::MainLoop()
 
     WriteLog( "***   Finishing game loop  ***\n" );
 
-    // Finish entities
-    EntityMngr.FinishEntities();
-
-    // Last process
-    ProcessBans();
-    Timer::ProcessGameTime();
-    MapMngr.LocationGarbager();
-
-    // Save
-    SaveWorld( nullptr );
+    UnloadWorld( true );
 }
 
 void FOServer::LogicTick()
@@ -2434,13 +2426,6 @@ bool FOServer::InitLangPacksItems( LangPackVec& lang_packs )
     return true;
 }
 
-void FOServer::FinishLangPacks()
-{
-    WriteLog( "Finish lang packs...\n" );
-    LangPacks.clear();
-    WriteLog( "Finish lang packs complete.\n" );
-}
-
 #pragma MESSAGE("Clients logging may be not thread safe.")
 void FOServer::LogToClients( const char* str )
 {
@@ -2750,7 +2735,7 @@ bool FOServer::LoadClient( Client* cl )
 
 bool FOServer::NewWorld()
 {
-    UnloadWorld();
+    UnloadWorld( false );
 
     Script::RaiseInternalEvent( ServerFunctions.GenerateWorld, &GameOpt.TimeMultiplier, &GameOpt.YearStart,
                                 &GameOpt.Month, &GameOpt.Day, &GameOpt.Hour, &GameOpt.Minute );
@@ -2837,7 +2822,7 @@ void FOServer::SaveWorld( const char* fname )
 
 bool FOServer::LoadWorld( const char* fname )
 {
-    UnloadWorld();
+    UnloadWorld( false );
 
     IniParser data;
     if( !fname )
@@ -2893,18 +2878,18 @@ bool FOServer::LoadWorld( const char* fname )
     return true;
 }
 
-void FOServer::UnloadWorld()
+void FOServer::UnloadWorld( bool save )
 {
-    // End script
+    // Last process
     Script::RaiseInternalEvent( ServerFunctions.Finish );
 
-    // Items
+    // Save
+    if( save )
+        SaveWorld( nullptr );
+
+    // Clean up
     ItemMngr.RadioClear();
-
-    // Entities
     EntityMngr.ClearEntities();
-
-    // Singleplayer header
     SingleplayerSave.Valid = false;
 }
 
