@@ -1965,10 +1965,10 @@ static void Property_GetValue_Generic( asIScriptGeneric* gen )
     new ( gen->GetAddressOfReturnLocation() )T( ( (Property*) gen->GetAuxiliary() )->GetValue< T >( (Entity*) gen->GetObject() ) );
 }
 
-template< typename T1, typename T2 >
+template< typename T >
 static void Property_SetValue_Generic( asIScriptGeneric* gen )
 {
-    ( (Property*) gen->GetAuxiliary() )->SetValue< T2 >( (Entity*) gen->GetObject(), *(T1*) gen->GetAddressOfArg( 0 ) );
+    ( (Property*) gen->GetAuxiliary() )->SetValue< T >( (Entity*) gen->GetObject(), *(T*) gen->GetAddressOfArg( 0 ) );
 }
 
 Property* PropertyRegistrator::Register(
@@ -2194,20 +2194,20 @@ Property* PropertyRegistrator::Register(
         int  result = -1;
         #ifdef AS_MAX_PORTABILITY
         if( data_type == Property::String )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< const string, const string& >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< string >) ), asCALL_GENERIC, prop );
         else if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< void*, void* >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< void* >) ), asCALL_GENERIC, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< char, char >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< char >) ), asCALL_GENERIC, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< short, short >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< short >) ), asCALL_GENERIC, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< int, int >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< int >) ), asCALL_GENERIC, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< int64, int64 >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< int64 >) ), asCALL_GENERIC, prop );
         #else
         if( data_type == Property::String )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< const string& >, ( Entity *, const string & ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< string >, ( Entity *, string ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_type != Property::POD )
             result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< void* >, ( Entity *, void* ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
