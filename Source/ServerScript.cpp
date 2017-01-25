@@ -147,8 +147,7 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( ResourcesGenerated );
     BIND_INTERNAL_EVENT( Init );
     BIND_INTERNAL_EVENT( GenerateWorld );
-    BIND_INTERNAL_EVENT( EarlyStart );
-    BIND_INTERNAL_EVENT( LateStart );
+    BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( WorldSave );
