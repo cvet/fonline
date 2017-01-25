@@ -509,7 +509,7 @@ void EntityManager::InitAfterLoad()
         {
             Map* map = (Map*) entity;
             Script::RaiseInternalEvent( ServerFunctions.MapInit, map, false );
-            if( map->GetScriptId() )
+            if( !map->IsDestroyed && map->GetScriptId() )
                 map->SetScript( nullptr, false );
         }
         else if( entity->Type == EntityType::Npc )
@@ -523,11 +523,12 @@ void EntityManager::InitAfterLoad()
         else if( entity->Type == EntityType::Item )
         {
             Item* item = (Item*) entity;
-            Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, false );
-            if( item->GetScriptId() )
-                item->SetScript( nullptr, false );
-            if( !item->IsDestroyed && item->GetIsRadio() )
+            if( item->GetIsRadio() )
                 ItemMngr.RadioRegister( item, true );
+            if( !item->IsDestroyed )
+                Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, false );
+            if( !item->IsDestroyed && item->GetScriptId() )
+                item->SetScript( nullptr, false );
         }
     }
 

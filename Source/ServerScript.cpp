@@ -147,7 +147,8 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( ResourcesGenerated );
     BIND_INTERNAL_EVENT( Init );
     BIND_INTERNAL_EVENT( GenerateWorld );
-    BIND_INTERNAL_EVENT( Start );
+    BIND_INTERNAL_EVENT( EarlyStart );
+    BIND_INTERNAL_EVENT( LateStart );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( WorldSave );
@@ -840,7 +841,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, usho
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, int entire )
+bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, hash entire )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -855,7 +856,7 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, i
     ushort hx, hy;
     uchar  dir;
     if( !map->GetStartCoord( hx, hy, dir, entire ) )
-        SCRIPT_ERROR_R0( "Entire '%d' not found.", entire );
+        SCRIPT_ERROR_R0( "Entire '%s' not found.", Str::GetName( entire ) );
 
     if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
         SCRIPT_ERROR_R0( "Transit to map entire fail." );
@@ -2604,7 +2605,7 @@ Critter* FOServer::SScriptFunc::Map_GetNpc( Map* map, int npc_role, int find_typ
     return map->GetNpc( npc_role, find_type, skip_count );
 }
 
-uint FOServer::SScriptFunc::Map_CountEntire( Map* map, int entire )
+uint FOServer::SScriptFunc::Map_CountEntire( Map* map, hash entire )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2612,40 +2613,27 @@ uint FOServer::SScriptFunc::Map_CountEntire( Map* map, int entire )
     return map->GetProtoMap()->CountEntire( entire );
 }
 
-uint FOServer::SScriptFunc::Map_GetEntires( Map* map, int entire, CScriptArray* entires, CScriptArray* hx, CScriptArray* hy )
+CScriptArray* FOServer::SScriptFunc::Map_GetAllEntires( Map* map )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    ProtoMap::EntiresVec entires_;
-    map->GetProtoMap()->GetEntires( entire, entires_ );
-    if( entires_.empty() )
-        return 0;
-    if( entires )
-    {
-        uint size = entires->GetSize();
-        entires->Resize( size + (uint) entires_.size() );
-        for( uint i = 0, j = (uint) entires_.size(); i < j; i++ )
-            *(int*) entires->At( size + i ) = entires_[ i ].Number;
-    }
-    if( hx )
-    {
-        uint size = hx->GetSize();
-        hx->Resize( size + (uint) entires_.size() );
-        for( uint i = 0, j = (uint) entires_.size(); i < j; i++ )
-            *(ushort*) hx->At( size + i ) = entires_[ i ].HexX;
-    }
-    if( hy )
-    {
-        uint size = hy->GetSize();
-        hy->Resize( size + (uint) entires_.size() );
-        for( uint i = 0, j = (uint) entires_.size(); i < j; i++ )
-            *(ushort*) hy->At( size + i ) = entires_[ i ].HexY;
-    }
-    return (uint) entires_.size();
+    ProtoMap::EntiresVec entires;
+    map->GetProtoMap()->GetEntires( hash( -1 ), entires );
+
+    HashSet hashes_set;
+    for( auto& e : entires )
+        hashes_set.insert( e.Name );
+
+    HashVec hashes( hashes_set.size() );
+    std::copy( hashes_set.begin(), hashes_set.end(), hashes.begin() );
+
+    CScriptArray* result = Script::CreateArray( "hash[]" );
+    Script::AppendVectorToArray( hashes, result );
+    return result;
 }
 
-bool FOServer::SScriptFunc::Map_GetEntireCoords( Map* map, int entire, uint skip, ushort& hx, ushort& hy )
+bool FOServer::SScriptFunc::Map_GetEntireCoords( Map* map, hash entire, uint skip, ushort& hx, ushort& hy )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2658,7 +2646,7 @@ bool FOServer::SScriptFunc::Map_GetEntireCoords( Map* map, int entire, uint skip
     return true;
 }
 
-bool FOServer::SScriptFunc::Map_GetEntireCoordsDir( Map* map, int entire, uint skip, ushort& hx, ushort& hy, uchar& dir )
+bool FOServer::SScriptFunc::Map_GetEntireCoordsDir( Map* map, hash entire, uint skip, ushort& hx, ushort& hy, uchar& dir )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2672,7 +2660,41 @@ bool FOServer::SScriptFunc::Map_GetEntireCoordsDir( Map* map, int entire, uint s
     return true;
 }
 
-bool FOServer::SScriptFunc::Map_GetNearEntireCoords( Map* map, int& entire, ushort& hx, ushort& hy )
+uint FOServer::SScriptFunc::Map_GetEntireCoordsAll( Map* map, hash entire, CScriptArray* hx, CScriptArray* hy, CScriptArray* dirs )
+{
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    ProtoMap::EntiresVec entires;
+    map->GetProtoMap()->GetEntires( entire, entires );
+    if( entires.empty() )
+        return 0;
+
+    if( hx )
+    {
+        uint size = hx->GetSize();
+        hx->Resize( size + (uint) entires.size() );
+        for( uint i = 0, j = (uint) entires.size(); i < j; i++ )
+            *(ushort*) hx->At( size + i ) = entires[ i ].HexX;
+    }
+    if( hy )
+    {
+        uint size = hy->GetSize();
+        hy->Resize( size + (uint) entires.size() );
+        for( uint i = 0, j = (uint) entires.size(); i < j; i++ )
+            *(ushort*) hy->At( size + i ) = entires[ i ].HexY;
+    }
+    if( dirs )
+    {
+        uint size = dirs->GetSize();
+        dirs->Resize( size + (uint) entires.size() );
+        for( uint i = 0, j = (uint) entires.size(); i < j; i++ )
+            *(uchar*) dirs->At( size + i ) = entires[ i ].Dir;
+    }
+    return (uint) entires.size();
+}
+
+bool FOServer::SScriptFunc::Map_GetNearEntireCoords( Map* map, hash& entire, ushort& hx, ushort& hy )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2680,7 +2702,7 @@ bool FOServer::SScriptFunc::Map_GetNearEntireCoords( Map* map, int& entire, usho
     ProtoMap::MapEntire* near_entire = map->GetProtoMap()->GetEntireNear( entire, hx, hy );
     if( near_entire )
     {
-        entire = near_entire->Number;
+        entire = near_entire->Name;
         hx = near_entire->HexX;
         hy = near_entire->HexY;
         return true;
@@ -2688,7 +2710,7 @@ bool FOServer::SScriptFunc::Map_GetNearEntireCoords( Map* map, int& entire, usho
     return false;
 }
 
-bool FOServer::SScriptFunc::Map_GetNearEntireCoordsDir( Map* map, int& entire, ushort& hx, ushort& hy, uchar& dir )
+bool FOServer::SScriptFunc::Map_GetNearEntireCoordsDir( Map* map, hash& entire, ushort& hx, ushort& hy, uchar& dir )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
@@ -2696,7 +2718,7 @@ bool FOServer::SScriptFunc::Map_GetNearEntireCoordsDir( Map* map, int& entire, u
     ProtoMap::MapEntire* near_entire = map->GetProtoMap()->GetEntireNear( entire, hx, hy );
     if( near_entire )
     {
-        entire = near_entire->Number;
+        entire = near_entire->Name;
         hx = near_entire->HexX;
         hy = near_entire->HexY;
         dir = near_entire->Dir;

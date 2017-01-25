@@ -305,9 +305,10 @@ struct BindClass
     static void Map_GetNpcCount()            {}
     static void Map_GetNpc()                 {}
     static void Map_CountEntire()            {}
-    static void Map_GetEntires()             {}
+    static void Map_GetAllEntires()          {}
     static void Map_GetEntireCoords()        {}
     static void Map_GetEntireCoordsDir()     {}
+    static void Map_GetEntireCoordsAll()     {}
     static void Map_GetNearEntireCoords()    {}
     static void Map_GetNearEntireCoordsDir() {}
     static void Map_IsHexPassed()            {}

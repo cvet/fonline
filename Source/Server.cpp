@@ -2738,6 +2738,7 @@ bool FOServer::NewWorld()
 {
     UnloadWorld( false );
 
+    Script::RaiseInternalEvent( ServerFunctions.EarlyStart );
     Script::RaiseInternalEvent( ServerFunctions.GenerateWorld, &GameOpt.TimeMultiplier, &GameOpt.YearStart,
                                 &GameOpt.Month, &GameOpt.Day, &GameOpt.Hour, &GameOpt.Minute );
 
@@ -2746,12 +2747,7 @@ bool FOServer::NewWorld()
     GameOpt.Second = 0;
     Timer::InitGameTime();
 
-    // Start script
-    if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
-    {
-        WriteLog( "Start script fail.\n" );
-        return false;
-    }
+    Script::RaiseInternalEvent( ServerFunctions.LateStart );
 
     return true;
 }
@@ -2866,15 +2862,13 @@ bool FOServer::LoadWorld( const char* fname )
         return false;
     if( !Globals->Props.LoadFromText( data.GetApp( "Global" ) ) )
         return false;
+
+    Script::RaiseInternalEvent( ServerFunctions.EarlyStart );
+
     if( !EntityMngr.LoadEntities( data ) )
         return false;
 
-    // Start script
-    if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
-    {
-        WriteLog( "Start script fail.\n" );
-        return false;
-    }
+    Script::RaiseInternalEvent( ServerFunctions.LateStart );
 
     return true;
 }

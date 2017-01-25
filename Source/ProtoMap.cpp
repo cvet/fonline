@@ -1099,25 +1099,25 @@ bool ProtoMap::IsMapFile( const char* fname )
 #endif // FONLINE_MAPPER
 
 #ifdef FONLINE_SERVER
-uint ProtoMap::CountEntire( uint num )
+uint ProtoMap::CountEntire( hash name )
 {
-    if( num == uint( -1 ) )
+    if( name == hash( -1 ) )
         return (uint) mapEntires.size();
 
     uint result = 0;
     for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
     {
-        if( mapEntires[ i ].Number == num )
+        if( mapEntires[ i ].Name == name )
             result++;
     }
     return result;
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntire( uint num, uint skip )
+ProtoMap::MapEntire* ProtoMap::GetEntire( hash name, uint skip )
 {
     for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
     {
-        if( num == uint( -1 ) || mapEntires[ i ].Number == num )
+        if( name == hash( -1 ) || mapEntires[ i ].Name == name )
         {
             if( !skip )
                 return &mapEntires[ i ];
@@ -1129,12 +1129,12 @@ ProtoMap::MapEntire* ProtoMap::GetEntire( uint num, uint skip )
     return nullptr;
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntireRandom( uint num )
+ProtoMap::MapEntire* ProtoMap::GetEntireRandom( hash name )
 {
     vector< MapEntire* > entires;
     for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
     {
-        if( num == uint( -1 ) || mapEntires[ i ].Number == num )
+        if( name == hash( -1 ) || mapEntires[ i ].Name == name )
             entires.push_back( &mapEntires[ i ] );
     }
 
@@ -1143,14 +1143,14 @@ ProtoMap::MapEntire* ProtoMap::GetEntireRandom( uint num )
     return entires[ Random( 0, (uint) entires.size() - 1 ) ];
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntireNear( uint num, ushort hx, ushort hy )
+ProtoMap::MapEntire* ProtoMap::GetEntireNear( hash name, ushort hx, ushort hy )
 {
     MapEntire* near_entire = nullptr;
     uint       last_dist = 0;
     for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
     {
         MapEntire& entire = mapEntires[ i ];
-        if( num == uint( -1 ) || entire.Number == num )
+        if( name == hash( -1 ) || entire.Name == name )
         {
             uint dist = DistGame( hx, hy, entire.HexX, entire.HexY );
             if( !near_entire || dist < last_dist )
@@ -1163,14 +1163,14 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear( uint num, ushort hx, ushort hy )
     return near_entire;
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntireNear( uint num, uint num_ext, ushort hx, ushort hy )
+ProtoMap::MapEntire* ProtoMap::GetEntireNear( hash name, hash name_ext, ushort hx, ushort hy )
 {
     MapEntire* near_entire = nullptr;
     uint       last_dist = 0;
     for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
     {
         MapEntire& entire = mapEntires[ i ];
-        if( num == uint( -1 ) || num_ext == uint( -1 ) || entire.Number == num || entire.Number == num_ext )
+        if( name == hash( -1 ) || name_ext == hash( -1 ) || entire.Name == name || entire.Name == name_ext )
         {
             uint dist = DistGame( hx, hy, entire.HexX, entire.HexY );
             if( !near_entire || dist < last_dist )
@@ -1183,10 +1183,10 @@ ProtoMap::MapEntire* ProtoMap::GetEntireNear( uint num, uint num_ext, ushort hx,
     return near_entire;
 }
 
-void ProtoMap::GetEntires( uint num, EntiresVec& entires )
+void ProtoMap::GetEntires( hash name, EntiresVec& entires )
 {
     for( auto& entire : mapEntires )
-        if( num == uint( -1 ) || entire.Number == num )
+        if( name == hash( -1 ) || entire.Name == name )
             entires.push_back( entire );
 }
 

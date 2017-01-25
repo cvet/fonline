@@ -209,7 +209,7 @@ Location* Map::GetLocation()
     return mapLocation;
 }
 
-bool Map::GetStartCoord( ushort& hx, ushort& hy, uchar& dir, uint entire )
+bool Map::GetStartCoord( ushort& hx, ushort& hy, uchar& dir, hash entire )
 {
     ProtoMap::MapEntire* ent;
     ent = GetProtoMap()->GetEntireRandom( entire );

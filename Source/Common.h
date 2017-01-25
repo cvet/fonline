@@ -385,7 +385,8 @@ struct ServerScriptFunctions
     void* ResourcesGenerated;
     void* Init;
     void* GenerateWorld;
-    void* Start;
+    void* EarlyStart;
+    void* LateStart;
     void* Finish;
     void* Loop;
     void* WorldSave;

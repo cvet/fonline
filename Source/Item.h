@@ -157,7 +157,7 @@ public:
     CLASS_PROPERTY( CScriptArray *, BlockLines );
     CLASS_PROPERTY( uint, Weapon_Anim1 );
     CLASS_PROPERTY( hash, Grid_ToMap );
-    CLASS_PROPERTY( int, Grid_ToMapEntire );
+    CLASS_PROPERTY( hash, Grid_ToMapEntire );
     CLASS_PROPERTY( uchar, Grid_ToMapDir );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( int, Accessory ); // enum ItemOwnership

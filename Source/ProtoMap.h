@@ -76,13 +76,13 @@ public:
     // Entires
     struct MapEntire
     {
-        uint   Number;
+        hash   Name;
         ushort HexX;
         ushort HexY;
         uchar  Dir;
 
         MapEntire() { memzero( this, sizeof( MapEntire ) ); }
-        MapEntire( ushort hx, ushort hy, uchar dir, uint type ): Number( type ), HexX( hx ), HexY( hy ), Dir( dir ) {}
+        MapEntire( ushort hx, ushort hy, uchar dir, hash name ): Name( name ), HexX( hx ), HexY( hy ), Dir( dir ) {}
     };
     typedef vector< MapEntire > EntiresVec;
 
@@ -90,12 +90,12 @@ private:
     EntiresVec mapEntires;
 
 public:
-    uint       CountEntire( uint num );
-    MapEntire* GetEntire( uint num, uint skip );
-    MapEntire* GetEntireRandom( uint num );
-    MapEntire* GetEntireNear( uint num, ushort hx, ushort hy );
-    MapEntire* GetEntireNear( uint num, uint num_ext, ushort hx, ushort hy );
-    void       GetEntires( uint num, EntiresVec& entires );
+    uint       CountEntire( hash name );
+    MapEntire* GetEntire( hash name, uint skip );
+    MapEntire* GetEntireRandom( hash name );
+    MapEntire* GetEntireNear( hash name, ushort hx, ushort hy );
+    MapEntire* GetEntireNear( hash name, hash name_ext, ushort hx, ushort hy );
+    void       GetEntires( hash name, EntiresVec& entires );
 
 private:
     string pmapDir;

@@ -60,7 +60,7 @@ public:
     void SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str );
     void SetTextMsgLex( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len );
 
-    bool GetStartCoord( ushort& hx, ushort& hy, uchar& dir, uint entire );
+    bool GetStartCoord( ushort& hx, ushort& hy, uchar& dir, hash entire );
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
     void AddCritter( Critter* cr );

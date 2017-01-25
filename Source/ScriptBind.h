@@ -146,7 +146,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveToDir(uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_MoveToDir ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToHex(uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToHex ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapHex ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, int entireNum)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapEntire ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, hash entire)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapEntire ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobal()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobal ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobal(array<Critter@>@+ group)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobalWithGroup ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobalGroup(uint critterId)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobalGroup ), SCRIPT_FUNC_THIS_CONV ) );
@@ -297,12 +297,13 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetNpcCount(int npcRole, int findType) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetNpcCount ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ GetNpc(int npcRole, int findType, uint skipCount)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetNpc ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "const Critter@+ GetNpc(int npcRole, int findType, uint skipCount) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetNpc ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint CountEntire(int entire) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_CountEntire ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetEntires(int entire, array<int>@+ entires, array<uint16>@+ hexX, array<uint16>@+ hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetEntires ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool GetEntireCoords(int entire, uint skip, uint16& hexX, uint16& hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetEntireCoords ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool GetEntireCoords(int entire, uint skip, uint16& hexX, uint16& hexY, uint8& dir) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetEntireCoordsDir ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool GetNearEntireCoords(int& entire, uint16& hexX, uint16& hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetNearEntireCoords ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool GetNearEntireCoords(int& entire, uint16& hexX, uint16& hexY, uint8& dir) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetNearEntireCoordsDir ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint CountEntire(hash entire) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_CountEntire ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<hash>@ GetAllEntires() const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetAllEntires ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool GetEntireCoords(hash entire, uint skip, uint16& hexX, uint16& hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetEntireCoords ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool GetEntireCoords(hash entire, uint skip, uint16& hexX, uint16& hexY, uint8& dir) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetEntireCoordsDir ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetEntireCoords(hash entire, array<uint16>@+ hexX, array<uint16>@+ hexY, array<uint8>@+ dirs) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetEntireCoordsAll ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool GetNearEntireCoords(hash& entire, uint16& hexX, uint16& hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetNearEntireCoords ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool GetNearEntireCoords(hash& entire, uint16& hexX, uint16& hexY, uint8& dir) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetNearEntireCoordsDir ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool IsHexPassed(uint16 hexX, uint16 hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_IsHexPassed ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool IsHexesPassed(uint16 hexX, uint16 hexY, uint radius) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_IsHexesPassed ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "bool IsHexRaked(uint16 hexX, uint16 hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_IsHexRaked ), SCRIPT_FUNC_THIS_CONV ) );

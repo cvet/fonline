@@ -321,7 +321,7 @@ public:
         static bool          Crit_MoveToDir( Critter* cr, uchar direction );
         static bool          Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir );
         static bool          Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir );
-        static bool          Crit_TransitToMapEntire( Critter* cr, uint map_id, int entire );
+        static bool          Crit_TransitToMapEntire( Critter* cr, uint map_id, hash entire );
         static bool          Crit_TransitToGlobal( Critter* cr );
         static bool          Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray* group );
         static bool          Crit_TransitToGlobalGroup( Critter* cr, uint critter_id );
@@ -431,12 +431,13 @@ public:
         static Critter*      Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, CScriptDict* props );
         static uint          Map_GetNpcCount( Map* map, int npc_role, int find_type );
         static Critter*      Map_GetNpc( Map* map, int npc_role, int find_type, uint skip_count );
-        static uint          Map_CountEntire( Map* map, int entire );
-        static uint          Map_GetEntires( Map* map, int entire, CScriptArray* entires, CScriptArray* hx, CScriptArray* hy );
-        static bool          Map_GetEntireCoords( Map* map, int entire, uint skip, ushort& hx, ushort& hy );
-        static bool          Map_GetEntireCoordsDir( Map* map, int entire, uint skip, ushort& hx, ushort& hy, uchar& dir );
-        static bool          Map_GetNearEntireCoords( Map* map, int& entire, ushort& hx, ushort& hy );
-        static bool          Map_GetNearEntireCoordsDir( Map* map, int& entire, ushort& hx, ushort& hy, uchar& dir );
+        static uint          Map_CountEntire( Map* map, hash entire );
+        static CScriptArray* Map_GetAllEntires( Map* map );
+        static bool          Map_GetEntireCoords( Map* map, hash entire, uint skip, ushort& hx, ushort& hy );
+        static bool          Map_GetEntireCoordsDir( Map* map, hash entire, uint skip, ushort& hx, ushort& hy, uchar& dir );
+        static uint          Map_GetEntireCoordsAll( Map* map, hash entire, CScriptArray* hx, CScriptArray* hy, CScriptArray* dirs );
+        static bool          Map_GetNearEntireCoords( Map* map, hash& entire, ushort& hx, ushort& hy );
+        static bool          Map_GetNearEntireCoordsDir( Map* map, hash& entire, ushort& hx, ushort& hy, uchar& dir );
         static bool          Map_IsHexPassed( Map* map, ushort hex_x, ushort hex_y );
         static bool          Map_IsHexesPassed( Map* map, ushort hex_x, ushort hex_y, uint radius );
         static bool          Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y );
