@@ -202,6 +202,8 @@ void FOServer::RemoveClient( Client* cl )
     {
         if( cl->GetClientToDelete() )
             Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cl );
+        else
+            Script::RaiseInternalEvent( ServerFunctions.PlayerLogout, cl );
 
         uint map_id = cl->GetMapId();
         uint gm_leader_id = cl->GetGlobalMapLeaderId();

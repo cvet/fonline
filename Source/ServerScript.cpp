@@ -190,6 +190,7 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( PlayerLogin );
     BIND_INTERNAL_EVENT( PlayerGetAccess );
     BIND_INTERNAL_EVENT( PlayerAllowCommand );
+    BIND_INTERNAL_EVENT( PlayerLogout );
     BIND_INTERNAL_EVENT( ItemInit );
     BIND_INTERNAL_EVENT( ItemFinish );
     BIND_INTERNAL_EVENT( ItemWalk );

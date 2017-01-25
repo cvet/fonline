@@ -431,6 +431,7 @@ struct ServerScriptFunctions
     void* PlayerLogin;
     void* PlayerGetAccess;
     void* PlayerAllowCommand;
+    void* PlayerLogout;
 
     void* ItemInit;
     void* ItemFinish;
