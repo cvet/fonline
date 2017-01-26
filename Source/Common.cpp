@@ -189,6 +189,9 @@ void InitialSetup( uint argc, char** argv )
             Str::Append( module_path, "/" );
         FileManager::NormalizePathSlashesInplace( module_path );
         FileManager::ResolvePathInplace( module_path );
+        len = Str::Length( module_path );
+        if( len && module_path[ len - 1 ] != '/' && module_path[ len - 1 ] != '\\' )
+            Str::Append( module_path, "/" );
         FileManager::NormalizePathSlashesInplace( module_path );
         GameModules.push_back( module_path );
     }

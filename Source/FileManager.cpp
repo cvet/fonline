@@ -1010,7 +1010,7 @@ FileManager& FilesCollection::GetNextFile( const char** name /* = NULL */, const
 {
     curFileIndex++;
     curFile.LoadFile( filePaths[ curFileIndex - 1 ].c_str(), no_read_data );
-    RUNTIME_ASSERT( curFile.IsLoaded() );
+    RUNTIME_ASSERT_STR( curFile.IsLoaded(), filePaths[ curFileIndex - 1 ].c_str() );
     if( name )
         *name = fileNames[ curFileIndex - 1 ].c_str();
     if( path )
