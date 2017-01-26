@@ -8183,7 +8183,7 @@ bool FOClient::SScriptFunc::Global_LoadFont( int font_index, string font_fname )
 {
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
     bool result;
-    if( font_fname.length() > 0 && font_fname.c_str()[ 0 ] == '*' )
+    if( font_fname.length() > 0 && font_fname[ 0 ] == '*' )
         result = SprMngr.LoadFontFO( font_index, font_fname.c_str() + 1, false, false );
     else
         result = SprMngr.LoadFontBMF( font_index, font_fname.c_str() );
