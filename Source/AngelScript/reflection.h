@@ -16,24 +16,25 @@ class ScriptType
 {
 public:
     ScriptType(asITypeInfo* type);
+    void AddRef() const;
+    void Release() const;
     std::string GetName() const;
     std::string GetNameWithoutNamespace() const;
     std::string GetNamespace() const;
     std::string GetModule() const;
     asUINT GetSize() const;
-    bool IsAssigned() const;
     bool IsGlobal() const;
     bool IsClass() const;
     bool IsInterface() const;
     bool IsEnum() const;
     bool IsFunction() const;
     bool IsShared() const;
-    ScriptType GetBaseType() const;
+    ScriptType* GetBaseType() const;
     asUINT GetInterfaceCount() const;
-    ScriptType GetInterface(asUINT index) const;
-    bool Implements(const ScriptType& other) const;
-    bool Equals(const ScriptType& other);
-    bool DerivesFrom(const ScriptType& other);
+    ScriptType* GetInterface(asUINT index) const;
+    bool Implements(const ScriptType* other) const;
+    bool Equals(const ScriptType* other);
+    bool DerivesFrom(const ScriptType* other);
     void Instantiate(void* out, int out_type_id) const;
     void InstantiateCopy(void* in, int in_type_id, void* out, int out_type_id) const;
     asUINT GetMethodsCount() const;
@@ -44,20 +45,20 @@ public:
     CScriptArray* GetEnumNames() const;
     CScriptArray* GetEnumValues() const;
 
-    asITypeInfo* ObjType;
+protected:
+    mutable int refCount;
+    asITypeInfo* objType;
 };
 
 class ScriptTypeOf : public ScriptType
 {
 public:
     ScriptTypeOf(asITypeInfo* type);
-    void       AddRef() const;
-    void       Release() const;
-    ScriptType ConvertToType() const;
+    void AddRef() const;
+    void Release() const;
+    ScriptType* ConvertToType() const;
 
 protected:
-    ~ScriptTypeOf();
-
     mutable int refCount;
 };
 
