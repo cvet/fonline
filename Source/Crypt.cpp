@@ -171,8 +171,6 @@ uchar* CryptManager::Compress( const uchar* data, uint& data_len )
 {
     uLongf              buf_len = data_len * 110 / 100 + 12;
     AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
-    if( !buf.IsValid() )
-        return nullptr;
 
     if( compress( buf.Get(), &buf_len, data, data_len ) != Z_OK )
         return nullptr;
@@ -227,11 +225,6 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
         {
             buf_len *= 2;
             buf.Reset( new uchar[ buf_len ] );
-            if( !buf.IsValid() )
-            {
-                WriteLog( "Unpack bad alloc, size {}.\n", buf_len );
-                return nullptr;
-            }
         }
         else if( result != Z_OK )
         {
@@ -239,7 +232,9 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
             return nullptr;
         }
         else
+        {
             break;
+        }
     }
 
     data_len = (uint) buf_len;
@@ -560,9 +555,6 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
         }
 
         uchar* data = new uchar[ desc.DataCurLen ];
-        if( !data )
-            return nullptr;
-
         data_len = desc.DataCurLen;
         FileSetPointer( CacheTableFile, sizeof( CacheTable ) + desc.DataOffset, SEEK_SET );
         FileRead( CacheTableFile, data, desc.DataCurLen );
