@@ -146,44 +146,8 @@ void CryptManager::DecryptPassword( char* data, uint len, uint key )
     data[ len - 1 ] = 0;
 }
 
-char* ConvertUTF8ToCP1251( const char* str, uchar* buf, uint buf_len, bool to_lower )
-{
-    memzero( buf, buf_len );
-    for( uint i = 0; *str; i++ )
-    {
-        uint length;
-        uint ch = Str::DecodeUTF8( str, &length );
-        if( ch >= 1072 && 1072 <= 1103 )
-            buf[ i ] = 224 + ( ch - 1072 );
-        else if( ch >= 1040 && 1072 <= 1071 )
-            buf[ i ] = ( to_lower ? 224 : 192 ) + ( ch - 1040 );
-        else if( ch == 1105 )
-            buf[ i ] = 184;
-        else if( ch == 1025 )
-            buf[ i ] = ( to_lower ? 184 : 168 );
-        else if( length >= 4 )
-            buf[ i ] = *str ^ *( str + 1 ) ^ *( str + 2 ) ^ *( str + 3 );
-        else if( length == 3 )
-            buf[ i ] = *str ^ *( str + 1 ) ^ *( str + 2 );
-        else if( length == 2 )
-            buf[ i ] = *str ^ *( str + 1 );
-        else
-            buf[ i ] = ( to_lower ? tolower( *str ) : *str );
-        if( !buf[ i ] )
-            buf[ i ] = 0xAA;
-        str += length;
-    }
-    return (char*) buf;
-}
-
 void CryptManager::ClientPassHash( const char* name, const char* pass, char* pass_hash )
 {
-    // Convert utf8 to cp1251, for backward compatability with older client saves
-    uchar name_[ MAX_NAME + 1 ];
-    name = ConvertUTF8ToCP1251( name, name_, sizeof( name_ ), true );
-    uchar pass_[ MAX_NAME + 1 ];
-    pass = ConvertUTF8ToCP1251( pass, pass_, sizeof( pass_ ), false );
-
     // Calculate hash
     char* bld = new char[ MAX_NAME + 1 ];
     memzero( bld, MAX_NAME + 1 );
