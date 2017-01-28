@@ -441,7 +441,7 @@ void* FileFindFirst( const char* path, const char* extension, string* fname, uin
         *wtime = FileTimeToUInt64( wfd.ftLastWriteTime );
     if( ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) && ( !wcscmp( wfd.cFileName, L"." ) || !wcscmp( wfd.cFileName, L".." ) ) )
         if( !FileFindNext( h, fname, fsize, wtime, is_dir ) )
-            return false;
+            return nullptr;
 
     return h;
 }

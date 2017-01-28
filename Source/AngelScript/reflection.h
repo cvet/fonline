@@ -54,12 +54,7 @@ class ScriptTypeOf : public ScriptType
 {
 public:
     ScriptTypeOf(asITypeInfo* type);
-    void AddRef() const;
-    void Release() const;
     ScriptType* ConvertToType() const;
-
-protected:
-    mutable int refCount;
 };
 
 void RegisterScriptReflection(asIScriptEngine* engine);

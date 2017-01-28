@@ -263,17 +263,6 @@ ScriptTypeOf::ScriptTypeOf(asITypeInfo* ot) : ScriptType(ot)
     refCount = 1;
 }
 
-void ScriptTypeOf::AddRef() const
-{
-    asAtomicInc(refCount);
-}
-
-void ScriptTypeOf::Release() const
-{
-    if (asAtomicDec(refCount) == 0)
-        delete this;
-}
-
 ScriptType* ScriptTypeOf::ConvertToType() const
 {
     return objType ? new ScriptType(objType) : nullptr;

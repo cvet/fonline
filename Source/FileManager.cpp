@@ -101,7 +101,7 @@ bool FileManager::LoadDataFile( const char* path, bool skip_inner /* = false */ 
     }
 
     // Inner data files
-    if( data_file && !skip_inner )
+    if( !skip_inner )
     {
         StrVec files;
         data_file->GetFileNames( "", false, "dat", files );
@@ -121,9 +121,8 @@ bool FileManager::LoadDataFile( const char* path, bool skip_inner /* = false */ 
     }
 
     // Put to begin of list
-    if( data_file )
-        dataFiles.insert( dataFiles.begin(), data_file );
-    return data_file != nullptr;
+    dataFiles.insert( dataFiles.begin(), data_file );
+    return true;
 }
 
 void FileManager::ClearDataFiles()
@@ -207,13 +206,13 @@ bool FileManager::LoadFile( const char* path, bool no_read /* = false */ )
             }
 
             uchar* buf = new uchar[ fileSize + 1 ];
-            if( !buf )
-                return false;
-
-            bool result = FileRead( file, buf, fileSize );
+            bool   result = FileRead( file, buf, fileSize );
             FileClose( file );
             if( !result )
+            {
+                delete[] buf;
                 return false;
+            }
 
             fileBuf = buf;
             fileBuf[ fileSize ] = 0;
@@ -233,9 +232,6 @@ bool FileManager::LoadStream( const uchar* stream, uint length )
 
     fileSize = length;
     fileBuf = new uchar[ fileSize + 1 ];
-    if( !fileBuf )
-        return false;
-
     memcpy( fileBuf, stream, fileSize );
     fileBuf[ fileSize ] = 0;
     curPos = 0;
@@ -458,8 +454,6 @@ bool FileManager::ResizeOutBuf()
     if( !lenOutBuf )
     {
         dataOutBuf = new uchar[ OUT_BUF_START_SIZE ];
-        if( !dataOutBuf )
-            return false;
         lenOutBuf = OUT_BUF_START_SIZE;
         memzero( (void*) dataOutBuf, lenOutBuf );
         return true;
@@ -467,8 +461,6 @@ bool FileManager::ResizeOutBuf()
 
     uchar* old_obuf = dataOutBuf;
     dataOutBuf = new uchar[ lenOutBuf * 2 ];
-    if( !dataOutBuf )
-        return false;
     memzero( (void*) dataOutBuf, lenOutBuf * 2 );
     memcpy( (void*) dataOutBuf, (void*) old_obuf, lenOutBuf );
     SAFEDELA( old_obuf );
