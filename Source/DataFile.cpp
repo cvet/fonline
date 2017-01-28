@@ -409,8 +409,7 @@ bool FalloutDatFile::ReadTree()
         if( !FileRead( datHandle, &files_total, 4 ) )
             return false;
         tree_size -= 28 + 4;     // Subtract information block and files total
-        if( ( memTree = new uchar[ tree_size ] ) == nullptr )
-            return false;
+        memTree = new uchar[ tree_size ];
         memzero( memTree, tree_size );
         if( !FileRead( datHandle, memTree, tree_size ) )
             return false;
@@ -479,8 +478,7 @@ bool FalloutDatFile::ReadTree()
     if( !FileRead( datHandle, &files_total, 4 ) )
         return false;
     tree_size -= 4;
-    if( ( memTree = new uchar[ tree_size ] ) == nullptr )
-        return false;
+    memTree = new uchar[ tree_size ];
     memzero( memTree, tree_size );
     if( !FileRead( datHandle, memTree, tree_size ) )
         return false;
@@ -851,8 +849,6 @@ uchar* ZipFile::OpenFile( const char* path, const char* path_lower, uint& size, 
         return nullptr;
 
     uchar* buf = new uchar[ info.UncompressedSize + 1 ];
-    if( !buf )
-        return nullptr;
 
     if( unzOpenCurrentFile( zipHandle ) != UNZ_OK )
     {
