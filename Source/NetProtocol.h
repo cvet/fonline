@@ -71,9 +71,6 @@
 // ushort proto_ver
 // MAX_NAME name
 // char pass_hash[PASS_HASH_SIZE]
-// ushort params_count
-//  ushort param_index
-//  int param_val
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_REGISTER_SUCCESS             MAKE_NETMSG_HEADER( 4 )

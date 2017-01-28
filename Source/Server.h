@@ -319,12 +319,12 @@ public:
         static Map*          Crit_GetMap( Critter* cr );
         static bool          Crit_MoveRandom( Critter* cr );
         static bool          Crit_MoveToDir( Critter* cr, uchar direction );
-        static bool          Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir );
-        static bool          Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir );
-        static bool          Crit_TransitToMapEntire( Critter* cr, uint map_id, hash entire );
-        static bool          Crit_TransitToGlobal( Critter* cr );
-        static bool          Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray* group );
-        static bool          Crit_TransitToGlobalGroup( Critter* cr, uint critter_id );
+        static void          Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir );
+        static void          Crit_TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir );
+        static void          Crit_TransitToMapEntire( Critter* cr, Map* map, hash entire );
+        static void          Crit_TransitToGlobal( Critter* cr );
+        static void          Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray* group );
+        static void          Crit_TransitToGlobalGroup( Critter* cr, Critter* leader );
         static bool          Crit_IsLife( Critter* cr );
         static bool          Crit_IsKnockout( Critter* cr );
         static bool          Crit_IsDead( Critter* cr );
@@ -482,7 +482,7 @@ public:
         static void          Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, string lexems );
         static uint          Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static void          Global_GetGameTime( uint full_second, ushort& year, ushort& month, ushort& day, ushort& day_of_week, ushort& hour, ushort& minute, ushort& second );
-        static uint          Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, CScriptArray* critters );
+        static Location*     Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, CScriptArray* critters );
         static void          Global_DeleteLocation( Location* loc );
         static void          Global_DeleteLocationById( uint loc_id );
         static Critter*      Global_GetCritter( uint crid );
@@ -516,7 +516,6 @@ public:
         static void          Global_SetPropertyGetCallback( asIScriptGeneric* gen );
         static void          Global_AddPropertySetCallback( asIScriptGeneric* gen );
         static void          Global_AllowSlot( uchar index, bool enable_send );
-        static void          Global_AddRegistrationProperty( int cr_prop );
         static bool          Global_LoadDataFile( string dat_name );
         // static uint Global_GetVersion();
         static bool Global_LoadImage( uint index, string image_name, uint image_depth );

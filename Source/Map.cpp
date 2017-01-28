@@ -273,12 +273,7 @@ bool Map::FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius,
 
 void Map::AddCritter( Critter* cr )
 {
-    // Add critter to collections
-    if( std::find( mapCritters.begin(), mapCritters.end(), cr ) != mapCritters.end() )
-    {
-        WriteLog( "Critter already added!\n" );
-        return;
-    }
+    RUNTIME_ASSERT( std::find( mapCritters.begin(), mapCritters.end(), cr ) == mapCritters.end() );
 
     if( cr->IsPlayer() )
         mapPlayers.push_back( (Client*) cr );
@@ -286,9 +281,8 @@ void Map::AddCritter( Critter* cr )
         mapNpcs.push_back( (Npc*) cr );
     mapCritters.push_back( cr );
 
-    cr->SetMapId( GetId() );
-
     SetFlagCritter( cr->GetHexX(), cr->GetHexY(), cr->GetMultihex(), cr->IsDead() );
+
     cr->SetTimeoutBattle( 0 );
 }
 

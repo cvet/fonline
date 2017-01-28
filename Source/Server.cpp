@@ -204,11 +204,7 @@ void FOServer::RemoveClient( Client* cl )
         if( cl->GetClientToDelete() )
             Script::RaiseInternalEvent( ServerFunctions.CritterFinish, cl );
 
-        uint map_id = cl->GetMapId();
-        uint gm_leader_id = cl->GetGlobalMapLeaderId();
         MapMngr.EraseCrFromMap( cl, cl->GetMap() );
-        cl->SetMapId( map_id );
-        cl->SetGlobalMapLeaderId( gm_leader_id );
 
         // Deferred saving
         EraseSaveClient( cl->GetId() );

@@ -54,18 +54,17 @@ public:
     CLASS_PROPERTY( bool, IsNoFlatten );        // Draw order (migrate to proto? to critter type option?)
 
     // Data
-    uint          NameColor;
-    uint          ContourColor;
-    UShortVec     LastHexX, LastHexY;
-    uint          Flags;
-    Effect*       DrawEffect;
-    string        Name;
-    string        NameOnHead;
-    string        Avatar;
-    ItemVec       InvItems;
+    uint        NameColor;
+    uint        ContourColor;
+    UShortVec   LastHexX, LastHexY;
+    uint        Flags;
+    Effect*     DrawEffect;
+    string      Name;
+    string      NameOnHead;
+    string      Avatar;
+    ItemVec     InvItems;
 
-    static bool   SlotEnabled[ 0x100 ];
-    static IntSet RegProperties;
+    static bool SlotEnabled[ 0x100 ];
 
     CritterCl( uint id, ProtoCritter* proto );
     ~CritterCl();

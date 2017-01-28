@@ -492,7 +492,6 @@ struct BindClass
     static void Global_GetTime()                                       {}
     static void Global_SetPropertyGetCallback( asIScriptGeneric* gen ) {}
     static void Global_AddPropertySetCallback( asIScriptGeneric* gen ) {}
-    static void Global_AddRegistrationProperty()                       {}
     static void Global_GetGlobalMapRelief()                            {}
     #endif
 

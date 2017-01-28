@@ -44,6 +44,10 @@ public:
     // CritData
     CLASS_PROPERTY( hash, ModelName );
     CLASS_PROPERTY( uint, MapId );
+    CLASS_PROPERTY( hash, RefMapId );
+    CLASS_PROPERTY( hash, RefMapPid );
+    CLASS_PROPERTY( uint, RefLocationId );
+    CLASS_PROPERTY( hash, RefLocationPid );
     CLASS_PROPERTY( ushort, HexX );
     CLASS_PROPERTY( ushort, HexY );
     CLASS_PROPERTY( uchar, Dir );
@@ -55,6 +59,8 @@ public:
     CLASS_PROPERTY( ushort, WorldY );
     CLASS_PROPERTY( uint, GlobalMapLeaderId );
     CLASS_PROPERTY( uint, GlobalMapTripId );
+    CLASS_PROPERTY( uint, RefGlobalMapLeaderId );
+    CLASS_PROPERTY( uint, RefGlobalMapTripId );
     CLASS_PROPERTY( ushort, LastMapHexX );
     CLASS_PROPERTY( ushort, LastMapHexY );
     CLASS_PROPERTY( uint, Anim1Life );
@@ -112,16 +118,15 @@ protected:
 
 public:
     // Data
-    bool          CritterIsNpc;
-    uint          Flags;
-    string        Name;
-    bool          IsRunning;
-    int           LockMapTransfers;
-    uint          AllowedToDownloadMap;
+    bool        CritterIsNpc;
+    uint        Flags;
+    string      Name;
+    bool        IsRunning;
+    int         LockMapTransfers;
+    uint        AllowedToDownloadMap;
 
-    static bool   SlotEnabled[ 0x100 ];
-    static bool   SlotDataSendEnabled[ 0x100 ];
-    static IntSet RegProperties;
+    static bool SlotEnabled[ 0x100 ];
+    static bool SlotDataSendEnabled[ 0x100 ];
 
     void DeleteInventory();
 

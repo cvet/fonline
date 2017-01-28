@@ -116,10 +116,9 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
 
     if( dir >= DIRS_COUNT )
         dir = Random( 0, DIRS_COUNT - 1 );
-    npc->SetWorldX( loc ? loc->GetWorldX() : 100 );
-    npc->SetWorldY( loc ? loc->GetWorldY() : 100 );
+    npc->SetWorldX( loc ? loc->GetWorldX() : 0 );
+    npc->SetWorldY( loc ? loc->GetWorldY() : 0 );
     npc->SetHome( map->GetId(), hx, hy, dir );
-    npc->SetMapId( map->GetId() );
     npc->SetHexX( hx );
     npc->SetHexY( hy );
     npc->RefreshName();

@@ -14,14 +14,17 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoCritter, Critter, uint, Multihex );
 /*                                                                      */
 /************************************************************************/
 
-bool   Critter::SlotEnabled[ 0x100 ];
-bool   Critter::SlotDataSendEnabled[ 0x100 ];
-IntSet Critter::RegProperties;
+bool Critter::SlotEnabled[ 0x100 ];
+bool Critter::SlotDataSendEnabled[ 0x100 ];
 
 // Properties
 PROPERTIES_IMPL( Critter );
 CLASS_PROPERTY_IMPL( Critter, ModelName );
 CLASS_PROPERTY_IMPL( Critter, MapId );
+CLASS_PROPERTY_IMPL( Critter, RefMapId );
+CLASS_PROPERTY_IMPL( Critter, RefMapPid );
+CLASS_PROPERTY_IMPL( Critter, RefLocationId );
+CLASS_PROPERTY_IMPL( Critter, RefLocationPid );
 CLASS_PROPERTY_IMPL( Critter, HexX );
 CLASS_PROPERTY_IMPL( Critter, HexY );
 CLASS_PROPERTY_IMPL( Critter, Dir );
@@ -33,6 +36,8 @@ CLASS_PROPERTY_IMPL( Critter, WorldX );
 CLASS_PROPERTY_IMPL( Critter, WorldY );
 CLASS_PROPERTY_IMPL( Critter, GlobalMapLeaderId );
 CLASS_PROPERTY_IMPL( Critter, GlobalMapTripId );
+CLASS_PROPERTY_IMPL( Critter, RefGlobalMapLeaderId );
+CLASS_PROPERTY_IMPL( Critter, RefGlobalMapTripId );
 CLASS_PROPERTY_IMPL( Critter, LastMapHexX );
 CLASS_PROPERTY_IMPL( Critter, LastMapHexY );
 CLASS_PROPERTY_IMPL( Critter, Anim1Life );

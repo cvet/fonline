@@ -74,7 +74,8 @@ public:
     hash       CurMapLocPid;
     uint       CurMapIndexInLoc;
     StrVec     Preload3dFiles;
-    IntVec     RegProps;
+    int        WindowResolutionDiffX;
+    int        WindowResolutionDiffY;
 
     // Screen
     int ScreenModeMain;
@@ -456,7 +457,6 @@ public:
         static void Global_SetPropertyGetCallback( asIScriptGeneric* gen );
         static void Global_AddPropertySetCallback( asIScriptGeneric* gen );
         static void Global_AllowSlot( uchar index, bool enable_send );
-        static void Global_AddRegistrationProperty( int cr_prop );
         static bool Global_LoadDataFile( string dat_name );
 
         static uint Global_LoadSprite( string spr_name );

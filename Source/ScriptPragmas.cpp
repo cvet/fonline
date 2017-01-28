@@ -1186,6 +1186,10 @@ public:
                         if( callback->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool() )
                             return false;
                     }
+                    else
+                    {
+                        return false;
+                    }
                 }
                 else
                 {

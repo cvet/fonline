@@ -247,7 +247,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             }
             else
             {
-                SuspendThread( t );
+                SuspendThread( t ); // -V720
                 GetThreadContext( t, &context );
                 ResumeThread( t );
             }

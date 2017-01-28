@@ -133,6 +133,8 @@ FOClient::FOClient()
     IsConnecting = false;
     IsConnected = false;
     InitNetReason = INIT_NET_REASON_NONE;
+    WindowResolutionDiffX = 0;
+    WindowResolutionDiffY = 0;
 
     UpdateFilesInProgress = false;
     UpdateFilesClientOutdated = false;
@@ -311,6 +313,14 @@ bool FOClient::PreInit()
     UID_PREPARE_UID4_6;
     GET_UID4( UID4 );
 
+    // Cursor position
+    int sw = 0, sh = 0;
+    SDL_GetWindowSize( MainWindow, &sw, &sh );
+    int mx = 0, my = 0;
+    SDL_GetMouseState( &mx, &my );
+    GameOpt.MouseX = GameOpt.LastMouseX = CLAMP( mx, 0, sw - 1 );
+    GameOpt.MouseY = GameOpt.LastMouseY = CLAMP( my, 0, sh - 1 );
+
     // Sound manager
     SndMngr.Init();
     GameOpt.SoundVolume = MainConfig->GetInt( "", "SoundVolume", 100 );
@@ -352,14 +362,6 @@ bool FOClient::PostInit()
     // Basic effects
     if( !GraphicLoader::LoadDefaultEffects() )
         return false;
-
-    // Cursor position
-    int sw = 0, sh = 0;
-    SDL_GetWindowSize( MainWindow, &sw, &sh );
-    int mx = 0, my = 0;
-    SDL_GetMouseState( &mx, &my );
-    GameOpt.MouseX = GameOpt.LastMouseX = CLAMP( mx, 0, sw - 1 );
-    GameOpt.MouseY = GameOpt.LastMouseY = CLAMP( my, 0, sh - 1 );
 
     // Resource manager
     ResMngr.Refresh();
@@ -2366,18 +2368,7 @@ void FOClient::Net_SendCreatePlayer()
 {
     WriteLog( "Player registration..." );
 
-    IntVec reg_props;
-    for( size_t i = 0; i < RegProps.size() / 2; i++ )
-    {
-        if( CritterCl::RegProperties.count( RegProps[ i * 2 ] ) )
-        {
-            reg_props.push_back( RegProps[ i * 2 ] );
-            reg_props.push_back( RegProps[ i * 2 + 1 ] );
-        }
-    }
-
-    ushort count = (ushort) ( reg_props.size() / 2 );
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) + UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE + sizeof( count ) + ( sizeof( int ) + sizeof( int ) ) * count;
+    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) + UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE;
 
     Bout << NETMSG_CREATE_CLIENT;
     Bout << msg_len;
@@ -2395,13 +2386,6 @@ void FOClient::Net_SendCreatePlayer()
     char pass_hash[ PASS_HASH_SIZE ];
     Crypt.ClientPassHash( GameOpt.RegName.c_str(), GameOpt.RegPassword.c_str(), pass_hash );
     Bout.Push( pass_hash, PASS_HASH_SIZE );
-
-    Bout << count;
-    for( size_t i = 0; i < reg_props.size(); i += 2 )
-    {
-        Bout << reg_props[ i ];
-        Bout << reg_props[ i + 1 ];
-    }
 
     WriteLog( "complete.\n" );
 }
@@ -7271,15 +7255,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     else if( cmd == "Register" )
     {
         if( Self->RegCheckData() )
-        {
-            Self->RegProps.clear();
-            for( size_t i = 1; i < args.size(); i += 2 )
-            {
-                Self->RegProps.push_back( Str::AtoI( args[ i ].c_str() ) );
-                Self->RegProps.push_back( Str::AtoI( args[ i + 1 ].c_str() ) );
-            }
             Self->InitNetReason = INIT_NET_REASON_REG;
-        }
     }
     else if( cmd == "CustomConnect" )
     {
@@ -7317,7 +7293,17 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         else
         {
             if( !SDL_SetWindowFullscreen( MainWindow, 0 ) )
+            {
                 GameOpt.FullScreen = false;
+
+                if( Self->WindowResolutionDiffX || Self->WindowResolutionDiffY )
+                {
+                    int x, y;
+                    SDL_GetWindowPosition( MainWindow, &x, &y );
+                    SDL_SetWindowPosition( MainWindow, x - Self->WindowResolutionDiffX, y - Self->WindowResolutionDiffY );
+                    Self->WindowResolutionDiffX = Self->WindowResolutionDiffY = 0;
+                }
+            }
         }
         SprMngr.RefreshViewport();
     }
@@ -7419,9 +7405,17 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         GameOpt.ScreenHeight = h;
         SDL_SetWindowSize( MainWindow, w, h );
 
-        int x, y;
-        SDL_GetWindowPosition( MainWindow, &x, &y );
-        SDL_SetWindowPosition( MainWindow, x - diff_w / 2, y - diff_h / 2 );
+        if( !GameOpt.FullScreen )
+        {
+            int x, y;
+            SDL_GetWindowPosition( MainWindow, &x, &y );
+            SDL_SetWindowPosition( MainWindow, x - diff_w / 2, y - diff_h / 2 );
+        }
+        else
+        {
+            Self->WindowResolutionDiffX += diff_w / 2;
+            Self->WindowResolutionDiffY += diff_h / 2;
+        }
 
         SprMngr.OnResolutionChanged();
         if( Self->HexMngr.IsMapLoaded() )
@@ -8459,18 +8453,6 @@ void FOClient::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
 void FOClient::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 {
     CritterCl::SlotEnabled[ index ] = true;
-}
-
-void FOClient::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
-{
-    CritterCl::RegProperties.insert( cr_prop );
-
-    CScriptArray** props_array;
-    int            props_array_index = Script::GetEngine()->GetGlobalPropertyIndexByName( "CritterPropertyRegProperties" );
-    Script::GetEngine()->GetGlobalPropertyByIndex( props_array_index, nullptr, nullptr, nullptr, nullptr, nullptr, (void**) &props_array );
-    ( *props_array )->Resize( 0 );
-    for( auto it = CritterCl::RegProperties.begin(); it != CritterCl::RegProperties.end(); ++it )
-        ( *props_array )->InsertLast( (void*) &( *it ) );
 }
 
 bool FOClient::SScriptFunc::Global_LoadDataFile( string dat_name )

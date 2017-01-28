@@ -144,12 +144,12 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveRandom()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_MoveRandom ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveToDir(uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_MoveToDir ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToHex(uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToHex ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapHex ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToMap(uint mapId, hash entire)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapEntire ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobal()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobal ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobal(array<Critter@>@+ group)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobalWithGroup ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool TransitToGlobalGroup(uint critterId)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobalGroup ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToHex(uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToHex ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToMap(Map@+ map, uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapHex ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToMap(Map@+ map, hash entire)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapEntire ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToGlobal()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobal ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToGlobal(array<Critter@>@+ group)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobalWithGroup ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToGlobalGroup(Critter@+ leader)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToGlobalGroup ), SCRIPT_FUNC_THIS_CONV ) );
 
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsLife() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_IsLife ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsKnockout() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_IsKnockout ), SCRIPT_FUNC_THIS_CONV ) );
@@ -354,7 +354,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessage(uint16 channel, string text)", SCRIPT_FUNC( BIND_CLASS Global_RadioMessage ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum)", SCRIPT_FUNC( BIND_CLASS Global_RadioMessageMsg ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void RadioMessageMsg(uint16 channel, uint16 textMsg, uint strNum, string lexems)", SCRIPT_FUNC( BIND_CLASS Global_RadioMessageMsgLex ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint CreateLocation(hash locPid, uint16 worldX, uint16 worldY, array<Critter@>@+ critters)", SCRIPT_FUNC( BIND_CLASS Global_CreateLocation ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "Location@+ CreateLocation(hash locPid, uint16 worldX, uint16 worldY, array<Critter@>@+ critters = null)", SCRIPT_FUNC( BIND_CLASS Global_CreateLocation ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteLocation(Location@+ loc)", SCRIPT_FUNC( BIND_CLASS Global_DeleteLocation ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteLocation(uint locId)", SCRIPT_FUNC( BIND_CLASS Global_DeleteLocationById ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetCritter(uint critterId)", SCRIPT_FUNC( BIND_CLASS Global_GetCritter ), SCRIPT_FUNC_CONV ) );
@@ -884,12 +884,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT_EXT( registrators[ 3 ]->Init() );
     BIND_ASSERT_EXT( registrators[ 4 ]->Init() );
 
-    #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void AddRegistrationProperty(CritterProperty prop)", SCRIPT_FUNC( BIND_CLASS Global_AddRegistrationProperty ), SCRIPT_FUNC_CONV ) );
-
-    void* reg_props = engine->CreateScriptObject( engine->GetTypeInfoByDecl( "array<CritterProperty>" ) );
-    BIND_ASSERT( engine->RegisterGlobalProperty( "array<CritterProperty>@ CritterPropertyRegProperties", new void*( reg_props ) ) ); // Todo: Leak
-    #endif
     #if defined ( BIND_SERVER )
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict<CritterProperty, int>@+ props = null)", SCRIPT_FUNC_THIS( BIND_CLASS Map_AddNpc ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict<ItemProperty, int>@+ props = null)", SCRIPT_FUNC_THIS( BIND_CLASS Map_AddItem ), SCRIPT_FUNC_THIS_CONV ) );

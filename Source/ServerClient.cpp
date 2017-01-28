@@ -421,43 +421,6 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Connection->Bin.Pop( pass_hash, PASS_HASH_SIZE );
     cl->SetBinPassHash( pass_hash );
 
-    // Receive params
-    ushort props_count = 0;
-    cl->Connection->Bin >> props_count;
-
-    if( props_count > ( ushort ) Critter::RegProperties.size() )
-    {
-        cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
-        cl->Disconnect();
-        return;
-    }
-
-    for( ushort i = 0; i < props_count; i++ )
-    {
-        int enum_value;
-        int value;
-        cl->Connection->Bin >> enum_value;
-        cl->Connection->Bin >> value;
-
-        if( !Critter::RegProperties.count( enum_value ) )
-        {
-            cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
-
-        Property* prop = Critter::PropertiesRegistrator->FindByEnum( enum_value );
-        if( !prop || !prop->IsPOD() )
-        {
-            WriteLog( "Invalid allowed property '{}'.\n", prop ? prop->GetName() : Str::ItoA( enum_value ) );
-            cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
-
-        Properties::SetValueAsInt( cl, enum_value, value );
-    }
-
     // Check net
     CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
 
@@ -609,7 +572,10 @@ void FOServer::Process_CreateClient( Client* cl )
     RUNTIME_ASSERT( can );
     MapMngr.AddCrToMap( cl, nullptr, 0, 0, 0, 0 );
 
-    Script::RaiseInternalEvent( ServerFunctions.CritterInit, cl, true );
+    if( !Script::RaiseInternalEvent( ServerFunctions.CritterInit, cl, true ) )
+    {
+        // Todo: remove from game
+    }
     SaveClient( cl );
 
     if( !Singleplayer )
@@ -992,89 +958,50 @@ void FOServer::Process_LogIn( Client*& cl )
         }
         SaveClientsLocker.Unlock();
 
-        if( !cl_saved && !LoadClient( cl ) )
+        if( cl_saved )
         {
-            WriteLog( "Error load from data base, client '{}'.\n", cl->GetInfo() );
-            cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
+            cl->Props = cl_saved->Props;
+            EraseSaveClient( id );
+        }
+        else
+        {
+            if( !LoadClient( cl ) )
+            {
+                WriteLog( "Error load from data base, client '{}'.\n", cl->GetInfo() );
+                cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
+                cl->Disconnect();
+                return;
+            }
         }
 
-        if( cl_saved )
-            cl->Props = cl_saved->Props;
+        // Add to collection
+        cl->AddRef();
+        EntityMngr.RegisterEntity( cl );
+
+        // Disable network data sending, because we resend all data later
+        cl->DisableSend++;
 
         // Find items
         ItemMngr.SetCritterItems( cl );
 
-        // Add to map
-        Map* map = MapMngr.GetMap( cl->GetMapId() );
-        if( cl->GetMapId() && ( !map || map->GetIsNoLogOut() ) )
-        {
-            ushort hx, hy;
-            uchar  dir;
-            if( map && map->GetStartCoord( hx, hy, dir, 0 ) )
-            {
-                cl->SetHexX( hx );
-                cl->SetHexY( hy );
-                cl->SetDir( dir );
-            }
-            else
-            {
-                map = nullptr;
-                cl->SetMapId( 0 );
-                cl->SetHexX( 0 );
-                cl->SetHexY( 0 );
-                cl->SetGlobalMapLeaderId( 0 );
-            }
-        }
+        // Initially add on global map
+        cl->SetMapId( 0 );
+        uint ref_gm_leader_id = cl->GetRefGlobalMapLeaderId();
+        uint ref_gm_trip_id = cl->GetRefGlobalMapTripId();
+        bool can = MapMngr.CanAddCrToMap( cl, nullptr, 0, 0, 0 );
+        RUNTIME_ASSERT( can );
+        MapMngr.AddCrToMap( cl, nullptr, 0, 0, 0, 0 );
+        cl->SetRefGlobalMapLeaderId( ref_gm_leader_id );
+        cl->SetRefGlobalMapLeaderId( ref_gm_trip_id );
 
-        ushort hx = cl->GetHexX();
-        ushort hy = cl->GetHexY();
-        uint   leader_id = cl->GetGlobalMapLeaderId();
-        if( map )
+        // Initial scripts
+        if( !Script::RaiseInternalEvent( ServerFunctions.CritterInit, cl, false ) )
         {
-            uint multihex = cl->GetMultihex();
-            if( !map->FindStartHex( hx, hy, multihex, 1, true ) )
-                map->FindStartHex( hx, hy, multihex, 1, false );
+            // Todo: remove from game
         }
-        else
-        {
-            if( leader_id )
-            {
-                Critter* leader = CrMngr.GetCritter( leader_id );
-                if( !leader || leader->GetMapId() || cl->GetGlobalMapTripId() != leader->GetGlobalMapTripId() )
-                {
-                    cl->SetGlobalMapLeaderId( 0 );
-                    leader_id = 0;
-                }
-            }
-        }
+        cl->SetScript( nullptr, false );
 
-        if( !MapMngr.CanAddCrToMap( cl, map, hx, hy, leader_id ) )
-        {
-            WriteLog( "Can't player '{}' on map '{}'.\n", cl->GetInfo(), map ? map->GetName() : "GlobalMap" );
-            cl->Send_TextMsg( cl, STR_NET_HEXES_BUSY, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
-        MapMngr.AddCrToMap( cl, map, hx, hy, cl->GetDir(), leader_id );
-
-        if( cl_saved )
-            EraseSaveClient( id );
-
-        cl->SetTimeoutTransfer( 0 );
-        cl->AddRef();
-        EntityMngr.RegisterEntity( cl );
-
-        cl->DisableSend++;
-        if( cl->GetMapId() )
-        {
-            cl->ProcessVisibleCritters();
-            cl->ProcessVisibleItems();
-        }
-        Script::RaiseInternalEvent( ServerFunctions.CritterInit, cl, false );
-        if( !cl_old )
-            cl->SetScript( nullptr, false );
+        // Restore data sending
         cl->DisableSend--;
     }
 

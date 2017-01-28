@@ -786,24 +786,24 @@ bool FOServer::SScriptFunc::Crit_MoveToDir( Critter* cr, uchar direction )
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir )
+void FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->LockMapTransfers )
-        SCRIPT_ERROR_R0( "Transfers locked." );
-    Map* map = MapMngr.GetMap( cr->GetMapId() );
+        SCRIPT_ERROR_R( "Transfers locked." );
+    Map* map = cr->GetMap();
     if( !map )
-        SCRIPT_ERROR_R0( "Critter is on global." );
+        SCRIPT_ERROR_R( "Critter is on global." );
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
-        SCRIPT_ERROR_R0( "Invalid hexes args." );
+        SCRIPT_ERROR_R( "Invalid hexes args." );
 
     if( hx != cr->GetHexX() || hy != cr->GetHexY() )
     {
         if( dir < DIRS_COUNT && cr->GetDir() != dir )
             cr->SetDir( dir );
         if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, 0, true ) )
-            SCRIPT_ERROR_R0( "Transit fail." );
+            SCRIPT_ERROR_R( "Transit fail." );
     }
     else if( dir < DIRS_COUNT && cr->GetDir() != dir )
     {
@@ -811,25 +811,23 @@ bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy
         cr->Send_Dir( cr );
         cr->SendA_Dir();
     }
-    return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, ushort hx, ushort hy, uchar dir )
+void FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->LockMapTransfers )
-        SCRIPT_ERROR_R0( "Transfers locked." );
-    if( !map_id )
-        SCRIPT_ERROR_R0( "Map id arg is zero." );
-    Map* map = MapMngr.GetMap( map_id );
+        SCRIPT_ERROR_R( "Transfers locked." );
     if( !map )
-        SCRIPT_ERROR_R0( "Map not found." );
+        SCRIPT_ERROR_R( "Map arg is null." );
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R( "Map arg is destroyed." );
     if( dir >= DIRS_COUNT )
         dir = 0;
 
     if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
-        SCRIPT_ERROR_R0( "Transit to map fail." );
+        SCRIPT_ERROR_R( "Transit to map hex fail." );
 
     // Todo: need???
     Location* loc = map->GetLocation();
@@ -838,28 +836,26 @@ bool FOServer::SScriptFunc::Crit_TransitToMapHex( Critter* cr, uint map_id, usho
         cr->SetWorldX( loc->GetWorldX() );
         cr->SetWorldY( loc->GetWorldY() );
     }
-    return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, hash entire )
+void FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, Map* map, hash entire )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->LockMapTransfers )
-        SCRIPT_ERROR_R0( "Transfers locked." );
-    if( !map_id )
-        SCRIPT_ERROR_R0( "Map id arg is zero." );
-    Map* map = MapMngr.GetMap( map_id );
+        SCRIPT_ERROR_R( "Transfers locked." );
     if( !map )
-        SCRIPT_ERROR_R0( "Map not found." );
+        SCRIPT_ERROR_R( "Map arg is null." );
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R( "Map arg is destroyed." );
 
     ushort hx, hy;
     uchar  dir;
     if( !map->GetStartCoord( hx, hy, dir, entire ) )
-        SCRIPT_ERROR_R0( "Entire '%s' not found.", Str::GetName( entire ) );
+        SCRIPT_ERROR_R( "Entire '%s' not found.", Str::GetName( entire ) );
 
     if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
-        SCRIPT_ERROR_R0( "Transit to map entire fail." );
+        SCRIPT_ERROR_R( "Transit to map entire fail." );
 
     Location* loc = map->GetLocation();
     if( loc && DistSqrt( cr->GetWorldX(), cr->GetWorldY(), loc->GetWorldX(), loc->GetWorldY() ) > loc->GetRadius() )
@@ -867,38 +863,32 @@ bool FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, uint map_id, h
         cr->SetWorldX( loc->GetWorldX() );
         cr->SetWorldY( loc->GetWorldY() );
     }
-
-    return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToGlobal( Critter* cr )
+void FOServer::SScriptFunc::Crit_TransitToGlobal( Critter* cr )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->LockMapTransfers )
-        SCRIPT_ERROR_R0( "Transfers locked." );
+        SCRIPT_ERROR_R( "Transfers locked." );
 
-    if( !cr->GetMapId() )
-        return true;  // Already on global
-
-    if( !MapMngr.TransitToGlobal( cr, 0, true ) )
-        SCRIPT_ERROR_R0( "Transit fail." );
-    return true;
+    if( cr->GetMap() && !MapMngr.TransitToGlobal( cr, 0, true ) )
+        SCRIPT_ERROR_R( "Transit fail." );
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray* group )
+void FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray* group )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->LockMapTransfers )
-        SCRIPT_ERROR_R0( "Transfers locked." );
+        SCRIPT_ERROR_R( "Transfers locked." );
     if( !cr->GetMapId() )
-        SCRIPT_ERROR_R0( "Critter already on global." );
+        SCRIPT_ERROR_R( "Critter already on global." );
     if( !group )
-        SCRIPT_ERROR_R0( "Group arg is null." );
+        SCRIPT_ERROR_R( "Group arg is null." );
 
     if( !MapMngr.TransitToGlobal( cr, 0, true ) )
-        SCRIPT_ERROR_R0( "Transit fail." );
+        SCRIPT_ERROR_R( "Transit fail." );
 
     for( int i = 0, j = group->GetSize(); i < j; i++ )
     {
@@ -906,27 +896,25 @@ bool FOServer::SScriptFunc::Crit_TransitToGlobalWithGroup( Critter* cr, CScriptA
         if( cr_ && !cr_->IsDestroyed )
             MapMngr.TransitToGlobal( cr_, cr->GetId(), true );
     }
-    return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToGlobalGroup( Critter* cr, uint critter_id )
+void FOServer::SScriptFunc::Crit_TransitToGlobalGroup( Critter* cr, Critter* leader )
 {
     if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( cr->LockMapTransfers )
-        SCRIPT_ERROR_R0( "Transfers locked." );
+        SCRIPT_ERROR_R( "Transfers locked." );
     if( !cr->GetMapId() )
-        SCRIPT_ERROR_R0( "Critter already on global." );
+        SCRIPT_ERROR_R( "Critter already on global." );
+    if( !leader )
+        SCRIPT_ERROR_R( "Leader arg not found." );
+    if( leader->IsDestroyed )
+        SCRIPT_ERROR_R( "Leader arg is destroyed." );
+    if( !leader->GlobalMapGroup )
+        SCRIPT_ERROR_R( "Leader is not on global map." );
 
-    Critter* cr_global = CrMngr.GetCritter( critter_id );
-    if( !cr_global )
-        SCRIPT_ERROR_R0( "Critter on global not found." );
-    if( cr_global->GetMapId() )
-        SCRIPT_ERROR_R0( "Founded critter is not on global." );
-
-    if( !MapMngr.TransitToGlobal( cr, critter_id, true ) )
-        SCRIPT_ERROR_R0( "Transit fail." );
-    return true;
+    if( !MapMngr.TransitToGlobal( cr, leader->GetId(), true ) )
+        SCRIPT_ERROR_R( "Transit fail." );
 }
 
 bool FOServer::SScriptFunc::Crit_IsLife( Critter* cr )
@@ -3302,7 +3290,7 @@ void FOServer::SScriptFunc::Global_GetGameTime( uint full_second, ushort& year, 
     second = dt.Second;
 }
 
-uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, CScriptArray* critters )
+Location* FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, ushort wy, CScriptArray* critters )
 {
     // Create and generate location
     Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy );
@@ -3338,7 +3326,7 @@ uint FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx, usho
             gmap_fog->Release();
         }
     }
-    return loc->GetId();
+    return loc;
 }
 
 void FOServer::SScriptFunc::Global_DeleteLocation( Location* loc )
@@ -3911,18 +3899,6 @@ void FOServer::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 {
     Critter::SlotEnabled[ index ] = true;
     Critter::SlotDataSendEnabled[ index ] = enable_send;
-}
-
-void FOServer::SScriptFunc::Global_AddRegistrationProperty( int cr_prop )
-{
-    Critter::RegProperties.insert( cr_prop );
-
-    CScriptArray** props_array;
-    int            props_array_index = Script::GetEngine()->GetGlobalPropertyIndexByName( "CritterPropertyRegProperties" );
-    Script::GetEngine()->GetGlobalPropertyByIndex( props_array_index, nullptr, nullptr, nullptr, nullptr, nullptr, (void**) &props_array );
-    ( *props_array )->Resize( 0 );
-    for( auto it = Critter::RegProperties.begin(); it != Critter::RegProperties.end(); ++it )
-        ( *props_array )->InsertLast( (void*) &( *it ) );
 }
 
 bool FOServer::SScriptFunc::Global_LoadDataFile( string dat_name )

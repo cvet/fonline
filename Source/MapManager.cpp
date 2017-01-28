@@ -97,7 +97,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
         return nullptr;
     }
 
-    if( !wx || !wy || wx >= GM__MAXZONEX * GameOpt.GlobalMapZoneLength || wy >= GM__MAXZONEY * GameOpt.GlobalMapZoneLength )
+    if( wx >= GM__MAXZONEX * GameOpt.GlobalMapZoneLength || wy >= GM__MAXZONEY * GameOpt.GlobalMapZoneLength )
     {
         WriteLog( "Invalid location '{}' coordinates.\n", Str::GetName( loc_pid ) );
         return nullptr;
@@ -1392,6 +1392,10 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
         RUNTIME_ASSERT( hx < map->GetWidth() && hy < map->GetHeight() );
 
         cr->SetMapId( map->GetId() );
+        cr->SetRefMapId( map->GetId() );
+        cr->SetRefMapPid( map->GetProtoId() );
+        cr->SetRefLocationId( map->GetLocation() ? map->GetLocation()->GetId() : 0 );
+        cr->SetRefLocationPid( map->GetLocation() ? map->GetLocation()->GetProtoId() : 0 );
         cr->SetHexX( hx );
         cr->SetHexY( hy );
         cr->SetDir( dir );
@@ -1407,7 +1411,9 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
         if( !leader_id || leader_id == cr->GetId() )
         {
             cr->SetGlobalMapLeaderId( cr->GetId() );
+            cr->SetRefGlobalMapLeaderId( cr->GetId() );
             cr->SetGlobalMapTripId( cr->GetGlobalMapTripId() + 1 );
+            cr->SetRefGlobalMapTripId( cr->GetGlobalMapTripId() );
 
             cr->GlobalMapGroup = new CrVec();
             cr->GlobalMapGroup->push_back( cr );
@@ -1421,6 +1427,7 @@ void MapManager::AddCrToMap( Critter* cr, Map* map, ushort hx, ushort hy, uchar 
             cr->SetWorldX( leader->GetWorldX() );
             cr->SetWorldY( leader->GetWorldY() );
             cr->SetGlobalMapLeaderId( leader_id );
+            cr->SetRefGlobalMapLeaderId( leader_id );
             cr->SetGlobalMapTripId( leader->GetGlobalMapTripId() );
 
             for( auto it = leader->GlobalMapGroup->begin(), end = leader->GlobalMapGroup->end(); it != end; ++it )
@@ -1469,6 +1476,7 @@ void MapManager::EraseCrFromMap( Critter* cr, Map* map )
             for( auto group_cr :* cr->GlobalMapGroup )
             {
                 group_cr->SetGlobalMapLeaderId( new_leader->Id );
+                group_cr->SetRefGlobalMapLeaderId( new_leader->Id );
                 group_cr->Send_RemoveCritter( cr );
             }
             cr->GlobalMapGroup = nullptr;
