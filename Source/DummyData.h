@@ -483,6 +483,9 @@ struct BindClass
 
     static int  ClientCurMap;
     static int  ClientCurLocation;
+    static int  IsConnected;
+    static int  IsConnecting;
+    static int  UpdateFilesInProgress;
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
@@ -610,6 +613,9 @@ struct BindClass
 #ifdef BIND_CLIENT
 int BindClass::ClientCurMap;
 int BindClass::ClientCurLocation;
+int BindClass::IsConnected;
+int BindClass::IsConnecting;
+int BindClass::UpdateFilesInProgress;
 #endif
 
 #ifdef BIND_MAPPER

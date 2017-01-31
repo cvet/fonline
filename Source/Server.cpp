@@ -1820,7 +1820,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        if( memcmp( cl_->GetBinPassHash(), pass_hash, PASS_HASH_SIZE ) )
+        if( memcmp( cl_->GetPassword().c_str(), pass_hash, PASS_HASH_SIZE ) )
         {
             logcb( "Invalid password." );
         }
@@ -1849,7 +1849,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        if( memcmp( cl_->GetBinPassHash(), pass_hash, PASS_HASH_SIZE ) )
+        if( memcmp( cl_->GetPassword().c_str(), pass_hash, PASS_HASH_SIZE ) )
         {
             logcb( "Invalid current password." );
         }
@@ -1861,7 +1861,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             if( data )
             {
                 memcpy( data->ClientPassHash, new_pass_hash, PASS_HASH_SIZE );
-                cl_->SetBinPassHash( new_pass_hash );
+                cl_->SetPassword( new_pass_hash );
                 logcb( "Password changed." );
             }
         }
@@ -2637,12 +2637,7 @@ bool FOServer::LoadClientsData()
         RUNTIME_ASSERT( id != 0 );
 
         // Get password hash
-        const char* pass_hash_str = client_data.GetStr( "Client", "PassHash" );
-        RUNTIME_ASSERT( pass_hash_str );
-        RUNTIME_ASSERT( Str::Length( pass_hash_str ) == PASS_HASH_SIZE * 2 );
-        char pass_hash[ PASS_HASH_SIZE ];
-        for( uint i = 0; i < PASS_HASH_SIZE; i++ )
-            pass_hash[ i ] = (char) Str::StrToHex( pass_hash_str + i * 2 );
+        const char* pass_hash_str = client_data.GetStr( "Client", "Password" );
 
         // Check uniqueness of id
         auto it = ClientsData.find( id );
@@ -2657,7 +2652,7 @@ bool FOServer::LoadClientsData()
         ClientData* data = new ClientData();
         memzero( data, sizeof( ClientData ) );
         Str::Copy( data->ClientName, name );
-        memcpy( data->ClientPassHash, pass_hash, PASS_HASH_SIZE );
+        memcpy( data->ClientPassHash, pass_hash_str, Str::Length( pass_hash_str ) );
         ClientsData.insert( PAIR( id, data ) );
     }
 

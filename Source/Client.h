@@ -46,8 +46,7 @@
 #define INIT_NET_REASON_LOGIN     ( 1 )
 #define INIT_NET_REASON_REG       ( 2 )
 #define INIT_NET_REASON_LOAD      ( 3 )
-#define INIT_NET_REASON_LOGIN2    ( 4 )
-#define INIT_NET_REASON_CUSTOM    ( 5 )
+#define INIT_NET_REASON_CUSTOM    ( 4 )
 
 class FOClient
 {
@@ -68,7 +67,6 @@ public:
     int        InitCalls;
     bool       DoRestart;
     uint*      UID1;
-    string     Password;
     HexManager HexMngr;
     hash       CurMapPid;
     hash       CurMapLocPid;
@@ -76,6 +74,8 @@ public:
     StrVec     Preload3dFiles;
     int        WindowResolutionDiffX;
     int        WindowResolutionDiffY;
+    string     LoginName;
+    string     LoginPassword;
 
     // Screen
     int ScreenModeMain;
@@ -157,7 +157,7 @@ public:
     void NetProcess();
 
     void Net_SendUpdate();
-    void Net_SendLogIn( const char* name, const char* pass );
+    void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data );
     void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
@@ -517,12 +517,6 @@ public:
     } ScriptFunc;
 
     static int SpritesCanDraw;
-
-/************************************************************************/
-/* Interface                                                            */
-/************************************************************************/
-    bool LoginCheckData();
-    bool RegCheckData();
 
 /************************************************************************/
 /* Game                                                                 */

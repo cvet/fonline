@@ -23,6 +23,10 @@ static void DummyFunc( asIScriptGeneric* gen ) {}
 
 #include "ScriptFunctions.h"
 
+#ifndef BIND_CLASS_EXT
+# define BIND_CLASS_EXT           BIND_CLASS
+#endif
+
 static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 {
     int errors = 0;
@@ -358,9 +362,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteLocation(Location@+ loc)", SCRIPT_FUNC( BIND_CLASS Global_DeleteLocation ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteLocation(uint locId)", SCRIPT_FUNC( BIND_CLASS Global_DeleteLocationById ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetCritter(uint critterId)", SCRIPT_FUNC( BIND_CLASS Global_GetCritter ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetPlayer(string name)", SCRIPT_FUNC( BIND_CLASS Global_GetPlayer ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPlayerId(string name)", SCRIPT_FUNC( BIND_CLASS Global_GetPlayerId ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "string GetPlayerName(uint playerId)", SCRIPT_FUNC( BIND_CLASS Global_GetPlayerName ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "const Critter@ GetPlayer(string name)", SCRIPT_FUNC( BIND_CLASS Global_GetPlayer ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Critter@>@ GetGlobalMapCritters(uint16 worldX, uint16 worldY, uint radius, int findType)", SCRIPT_FUNC( BIND_CLASS Global_GetGlobalMapCritters ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ GetMap(uint mapId)", SCRIPT_FUNC( BIND_CLASS Global_GetMap ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ GetMapByPid(hash mapPid, uint skipCount)", SCRIPT_FUNC( BIND_CLASS Global_GetMapByPid ), SCRIPT_FUNC_CONV ) );
@@ -519,6 +521,10 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCacheData(string name)", SCRIPT_FUNC( BIND_CLASS Global_IsCacheData ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseCacheData(string name)", SCRIPT_FUNC( BIND_CLASS Global_EraseCacheData ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void SetUserConfig(array<string>@+ keyValues)", SCRIPT_FUNC( BIND_CLASS Global_SetUserConfig ), SCRIPT_FUNC_CONV ) );
+
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IsConnected", &BIND_CLASS_EXT IsConnected ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IsConnecting", &BIND_CLASS_EXT IsConnecting ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IsUpdating", &BIND_CLASS_EXT UpdateFilesInProgress ) );
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
@@ -751,7 +757,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ProxyPort", &GameOpt.ProxyPort ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "string __ProxyUser", &GameOpt.ProxyUser ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "string __ProxyPass", &GameOpt.ProxyPass ) );
-    BIND_ASSERT( engine->RegisterGlobalProperty( "string __Name", &GameOpt.Name ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TextDelay", &GameOpt.TextDelay ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __AlwaysOnTop", &GameOpt.AlwaysOnTop ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "int __FixedFPS", &GameOpt.FixedFPS ) );
@@ -791,8 +796,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ConsoleHistorySize", &GameOpt.ConsoleHistorySize ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "int __SoundVolume", &GameOpt.SoundVolume ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "int __MusicVolume", &GameOpt.MusicVolume ) );
-    BIND_ASSERT( engine->RegisterGlobalProperty( "string __RegName", &GameOpt.RegName ) );
-    BIND_ASSERT( engine->RegisterGlobalProperty( "string __RegPassword", &GameOpt.RegPassword ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ChosenLightColor", &GameOpt.ChosenLightColor ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint8 __ChosenLightDistance", &GameOpt.ChosenLightDistance ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "int __ChosenLightIntensity", &GameOpt.ChosenLightIntensity ) );

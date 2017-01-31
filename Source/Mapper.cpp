@@ -4319,7 +4319,11 @@ bool FOMapper::InitScriptSystem()
     Script::Define( "__MAPPER" );
     Script::Define( "__VERSION %d", FONLINE_VERSION );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    Script::ReloadScripts( "Mapper" );
+    if( !Script::ReloadScripts( "Mapper" ) )
+    {
+        WriteLog( "Invalid mapper scripts.\n" );
+        return false;
+    }
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
     #define BIND_INTERNAL_EVENT( name )    MapperFunctions.name = Script::FindInternalEvent( "Event" # name )

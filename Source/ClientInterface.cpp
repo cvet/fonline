@@ -116,58 +116,6 @@ void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-bool FOClient::LoginCheckData()
-{
-    if( Singleplayer )
-        return true;
-
-    string tmp_str = GameOpt.Name;
-    while( !tmp_str.empty() && tmp_str[ 0 ] == ' ' )
-        tmp_str.erase( 0, 1 );
-    while( !tmp_str.empty() && tmp_str[ tmp_str.length() - 1 ] == ' ' )
-        tmp_str.erase( tmp_str.length() - 1, 1 );
-    GameOpt.Name = tmp_str;
-
-    uint name_len_utf8 = Str::LengthUTF8( GameOpt.Name.c_str() );
-    if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
-        name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
-    {
-        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_LOGIN ) );
-        return false;
-    }
-
-    if( !Str::IsValidUTF8( GameOpt.Name.c_str() ) || Str::Substring( GameOpt.Name.c_str(), "*" ) )
-    {
-        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_NAME_WRONG_CHARS ) );
-        return false;
-    }
-
-    uint pass_len_utf8 = Str::LengthUTF8( Password.c_str() );
-    if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
-        pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
-    {
-        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_PASS ) );
-        return false;
-    }
-
-    if( !Str::IsValidUTF8( Password.c_str() ) || Str::Substring( Password.c_str(), "*" ) )
-    {
-        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_PASS_WRONG_CHARS ) );
-        return false;
-    }
-
-    // Save login and password
-    Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
-    Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
-
-    AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONNECTION ) );
-    return true;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, CritterCl* npc, const char* lexems )
 {
     if( Str::CompareCase( text, "error" ) )

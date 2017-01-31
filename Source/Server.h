@@ -244,7 +244,7 @@ public:
     struct ClientData
     {
         char ClientName[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        char ClientPassHash[ PASS_HASH_SIZE ];
+        char ClientPassHash[ UTF8_BUF_SIZE( MAX_NAME ) ];
         uint SaveIndex;
         uint UID[ 5 ];
         uint UIDEndTick;
@@ -487,8 +487,6 @@ public:
         static void          Global_DeleteLocationById( uint loc_id );
         static Critter*      Global_GetCritter( uint crid );
         static Critter*      Global_GetPlayer( string name );
-        static uint          Global_GetPlayerId( string name );
-        static string        Global_GetPlayerName( uint id );
         static CScriptArray* Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type );
         static void          Global_SetTime( ushort multiplier, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
         static Map*          Global_GetMap( uint map_id );

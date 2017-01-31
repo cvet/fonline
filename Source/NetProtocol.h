@@ -27,7 +27,7 @@
 #define NETMSG_LOGIN                        MAKE_NETMSG_HEADER( 1 )
 #define NETMSG_LOGIN_SIZE                                               \
     ( sizeof( uint ) + sizeof( ushort ) + sizeof( uint ) * 8 /*UIDs*/ + \
-      UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE + sizeof( uint ) + sizeof( uint ) * 10 /*MSG*/ + sizeof( uint ) * 14 /*Proto*/ + 100 )
+      UTF8_BUF_SIZE( MAX_NAME ) * 2 + sizeof( uint ) + sizeof( uint ) * 10 /*MSG*/ + sizeof( uint ) * 14 /*Proto*/ + 100 )
 // ////////////////////////////////////////////////////////////////////////
 // Enter to game
 // Params:
@@ -35,7 +35,7 @@
 // !uint uid4
 // char name[MAX_NAME]
 // !uint uid1
-// char pass_hash[PASS_HASH_SIZE]
+// char pass[MAX_NAME]
 // uint msg_language
 // uint hash_msg_game[TEXTMSG_COUNT]
 // !uint uidxor
@@ -70,7 +70,7 @@
 // uint mag_len
 // ushort proto_ver
 // MAX_NAME name
-// char pass_hash[PASS_HASH_SIZE]
+// MAX_NAME password
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_REGISTER_SUCCESS             MAKE_NETMSG_HEADER( 4 )

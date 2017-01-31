@@ -977,9 +977,6 @@ void GetClientOptions()
     READ_CFG_STR_DEF( *MainConfig, "ProxyPass", "" );
     GETOPTIONS_CMD_LINE_STR( buf, "ProxyPass" );
     GameOpt.ProxyPass = buf;
-    READ_CFG_STR_DEF( *MainConfig, "UserName", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "UserName" );
-    GameOpt.Name = buf;
     READ_CFG_STR_DEF( *MainConfig, "KeyboardRemap", "" );
     GETOPTIONS_CMD_LINE_STR( buf, "KeyboardRemap" );
     GameOpt.KeyboardRemap = buf;
@@ -1280,7 +1277,6 @@ GameOptions::GameOptions()
     ProxyPort = 0;
     ProxyUser = "";
     ProxyPass = "";
-    Name = "";
     ScrollDelay = 10;
     ScrollStep = 1;
     ScrollCheck = true;
@@ -1330,8 +1326,6 @@ GameOptions::GameOptions()
     ConsoleHistorySize = 20;
     SoundVolume = 100;
     MusicVolume = 100;
-    RegName = "";
-    RegPassword = "";
     ChosenLightColor = 0;
     ChosenLightDistance = 4;
     ChosenLightIntensity = 2500;

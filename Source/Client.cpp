@@ -265,46 +265,8 @@ bool FOClient::PreInit()
         return false;
     }
     UID_PREPARE_UID4_3;
-
-    // Check password in config and command line
-    char        pass[ MAX_FOTEXT ];
-    const char* pass_ = MainConfig->GetStr( "UserPass", "" );
-    Str::Copy( pass, pass_ );
-    const char* cmd_line_pass = MainConfig->GetStr( "", "UserPass" );
-    if( cmd_line_pass )
-        Str::Copy( pass, cmd_line_pass );
-    Password = pass;
     GET_UID3( UID3 );
     UID_PREPARE_UID4_4;
-
-    // User and password
-    if( !GameOpt.Name.length() && Password.empty() && !Singleplayer )
-    {
-        bool  fail = false;
-
-        uint  len;
-        char* str = (char*) Crypt.GetCache( "__name", len );
-        if( str && len <= UTF8_BUF_SIZE( MAX_NAME ) )
-            GameOpt.Name = str;
-        else
-            fail = true;
-        delete[] str;
-
-        str = (char*) Crypt.GetCache( "__pass", len );
-        if( str && len <= UTF8_BUF_SIZE( MAX_NAME ) )
-            Password = str;
-        else
-            fail = true;
-        delete[] str;
-
-        if( fail )
-        {
-            GameOpt.Name = "login";
-            Password = "password";
-            Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
-            Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
-        }
-    }
     UID_PREPARE_UID4_5;
 
     // Sprite manager
@@ -531,16 +493,9 @@ void FOClient::Restart()
     NetDisconnect();
 
     if( PostInit() )
-    {
-        if( LoginCheckData() )
-            InitNetReason = INIT_NET_REASON_LOGIN;
-        else
-            ScreenFadeOut();
-    }
+        ScreenFadeOut();
     else
-    {
         GameOpt.Quit = true;
-    }
 }
 
 void FOClient::UpdateBinary()
@@ -664,9 +619,6 @@ void FOClient::UpdateFilesLoop()
     else
     {
         // Wait screen
-        if( !IsMainScreen( SCREEN_WAIT ) )
-            ShowMainScreen( SCREEN_WAIT );
-
         SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
         DrawIfaceLayer( 1 );
         DrawIfaceLayer( 2 );
@@ -1037,26 +989,8 @@ void FOClient::MainLoop()
         }
         else if( InitCalls == 2 )
         {
-            // Begin game
-            if( MainConfig->IsKey( "", "Start" ) && !Singleplayer )
-            {
-                if( LoginCheckData() )
-                    InitNetReason = INIT_NET_REASON_LOGIN;
-            }
-            // Intro
-            else if( !MainConfig->IsKey( "", "SkipIntro" ) )
-            {
-                for( uint i = STR_VIDEO_INTRO_BEGIN; i < STR_VIDEO_INTRO_END; i++ )
-                    if( CurLang.Msg[ TEXTMSG_GAME ].Count( i ) )
-                        AddVideo( CurLang.Msg[ TEXTMSG_GAME ].GetStr( i, 0 ), true, false );
-
-                if( !IsVideoPlayed() )
-                    ScreenFadeOut();
-            }
-            else
-            {
+            if( !IsVideoPlayed() )
                 ScreenFadeOut();
-            }
         }
         return;
     }
@@ -1152,10 +1086,6 @@ void FOClient::MainLoop()
     // Network
     if( InitNetReason != INIT_NET_REASON_NONE && !UpdateFilesInProgress )
     {
-        // Wait screen
-        if( !IsMainScreen( SCREEN_WAIT ) )
-            ShowMainScreen( SCREEN_WAIT );
-
         // Connect to server
         if( !IsConnected )
         {
@@ -1172,8 +1102,8 @@ void FOClient::MainLoop()
             InitNetReason = INIT_NET_REASON_NONE;
 
             // After connect things
-            if( reason == INIT_NET_REASON_LOGIN || reason == INIT_NET_REASON_LOGIN2 )
-                Net_SendLogIn( GameOpt.Name.c_str(), Password.c_str() );
+            if( reason == INIT_NET_REASON_LOGIN )
+                Net_SendLogIn();
             else if( reason == INIT_NET_REASON_REG )
                 Net_SendCreatePlayer();
             // else if( reason == INIT_NET_REASON_LOAD )
@@ -2082,21 +2012,9 @@ void FOClient::NetProcess()
             break;
         case NETMSG_REGISTER_SUCCESS:
             if( !Singleplayer )
-            {
                 WriteLog( "Registration success.\n" );
-                GameOpt.Name = GameOpt.RegName;
-                Password = GameOpt.RegPassword;
-                Crypt.SetCache( "__name", (uchar*) GameOpt.Name.c_str(), (uint) GameOpt.Name.length() + 1 );
-                Crypt.SetCache( "__pass", (uchar*) Password.c_str(), (uint) Password.length() + 1 );
-                GameOpt.RegName = "";
-                GameOpt.RegPassword = "";
-            }
             else
-            {
                 WriteLog( "World loaded, enter to it.\n" );
-            }
-            if( LoginCheckData() )
-                InitNetReason = INIT_NET_REASON_LOGIN2;
             break;
 
         case NETMSG_PING:
@@ -2308,14 +2226,14 @@ void FOClient::Net_SendUpdate()
     Bin.SetEncryptKey( encrypt_key + 3491 );
 }
 
-void FOClient::Net_SendLogIn( const char* name, const char* pass )
+void FOClient::Net_SendLogIn()
 {
     char name_[ UTF8_BUF_SIZE( MAX_NAME ) ] = { 0 };
     char pass_[ UTF8_BUF_SIZE( MAX_NAME ) ] = { 0 };
-    if( name )
-        Str::Copy( name_, name );
-    if( pass )
-        Str::Copy( pass_, pass );
+    memzero( name_, sizeof( name_ ) );
+    Str::Copy( name_, LoginName.c_str() );
+    memzero( pass_, sizeof( pass_ ) );
+    Str::Copy( pass_, LoginPassword.c_str() );
 
     uint uid1 = *UID1;
     Bout << NETMSG_LOGIN;
@@ -2331,9 +2249,7 @@ void FOClient::Net_SendLogIn( const char* name, const char* pass )
     Bout.Push( name_, sizeof( name_ ) );
     Bout << uid1;
     uid4 ^= uid1 * Random( 0, 432157 ) + *UID3;                                                                                                 // UID1
-    char pass_hash[ PASS_HASH_SIZE ];
-    Crypt.ClientPassHash( name_, pass_, pass_hash );
-    Bout.Push( pass_hash, PASS_HASH_SIZE );
+    Bout.Push( pass_, sizeof( pass_ ) );
     uint uid2 = *UID2;
     Bout << CurLang.Name;
     for( int i = 0; i < TEXTMSG_COUNT; i++ )
@@ -2360,7 +2276,7 @@ void FOClient::Net_SendLogIn( const char* name, const char* pass )
     char dummy[ 100 ];
     Bout.Push( dummy, 100 );
 
-    if( !Singleplayer && name )
+    if( !Singleplayer )
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_SUCCESS ) );
 }
 
@@ -2368,7 +2284,7 @@ void FOClient::Net_SendCreatePlayer()
 {
     WriteLog( "Player registration..." );
 
-    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) + UTF8_BUF_SIZE( MAX_NAME ) + PASS_HASH_SIZE;
+    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( ushort ) + UTF8_BUF_SIZE( MAX_NAME ) * 2;
 
     Bout << NETMSG_CREATE_CLIENT;
     Bout << msg_len;
@@ -2381,11 +2297,11 @@ void FOClient::Net_SendCreatePlayer()
 
     char buf[ UTF8_BUF_SIZE( MAX_NAME ) ];
     memzero( buf, sizeof( buf ) );
-    Str::Copy( buf, GameOpt.RegName.c_str() );
+    Str::Copy( buf, LoginName.c_str() );
     Bout.Push( buf, UTF8_BUF_SIZE( MAX_NAME ) );
-    char pass_hash[ PASS_HASH_SIZE ];
-    Crypt.ClientPassHash( GameOpt.RegName.c_str(), GameOpt.RegPassword.c_str(), pass_hash );
-    Bout.Push( pass_hash, PASS_HASH_SIZE );
+    memzero( buf, sizeof( buf ) );
+    Str::Copy( buf, LoginPassword.c_str() );
+    Bout.Push( buf, UTF8_BUF_SIZE( MAX_NAME ) );
 
     WriteLog( "complete.\n" );
 }
@@ -4764,44 +4680,6 @@ void FOClient::SetGameColor( uint color )
     HexMngr.RefreshMap();
 }
 
-bool FOClient::RegCheckData()
-{
-    // Name
-    uint name_len_utf8 = Str::LengthUTF8( GameOpt.RegName.c_str() );
-    if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
-        name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
-    {
-        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_NAME ) );
-        return false;
-    }
-
-    if( !Str::IsValidUTF8( GameOpt.RegName.c_str() ) || Str::Substring( GameOpt.RegName.c_str(), "*" ) )
-    {
-        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_NAME_WRONG_CHARS ) );
-        return false;
-    }
-
-    // Password
-    if( !Singleplayer )
-    {
-        uint pass_len_utf8 = Str::LengthUTF8( GameOpt.RegPassword.c_str() );
-        if( pass_len_utf8 < MIN_NAME || pass_len_utf8 < GameOpt.MinNameLength ||
-            pass_len_utf8 > MAX_NAME || pass_len_utf8 > GameOpt.MaxNameLength )
-        {
-            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_WRONG_PASS ) );
-            return false;
-        }
-
-        if( !Str::IsValidUTF8( GameOpt.RegPassword.c_str() ) || Str::Substring( GameOpt.RegPassword.c_str(), "*" ) )
-        {
-            AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_PASS_WRONG_CHARS ) );
-            return false;
-        }
-    }
-
-    return true;
-}
-
 void FOClient::SetDayTime( bool refresh )
 {
     if( !HexMngr.IsMapLoaded() )
@@ -6676,7 +6554,8 @@ namespace ClientBind
     #undef BIND_ASSERT
     #undef BIND_DUMMY_DATA
     #define BIND_CLIENT
-    #define BIND_CLASS    FOClient::SScriptFunc::
+    #define BIND_CLASS        FOClient::SScriptFunc::
+    #define BIND_CLASS_EXT    FOClient::Self->
     #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
     #include "ScriptBind.h"
 }
@@ -7247,29 +7126,35 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     string cmd = args[ 0 ];
     if( cmd == "Login" && args.size() >= 3 )
     {
-        GameOpt.Name = args[ 1 ];
-        Self->Password = args[ 2 ];
-        if( Self->LoginCheckData() )
+        if( Self->InitNetReason == INIT_NET_REASON_NONE )
+        {
+            Self->LoginName = args[ 1 ];
+            Self->LoginPassword = args[ 2 ];
             Self->InitNetReason = INIT_NET_REASON_LOGIN;
+        }
     }
-    else if( cmd == "Register" )
+    else if( cmd == "Register" && args.size() >= 3 )
     {
-        if( Self->RegCheckData() )
+        if( Self->InitNetReason == INIT_NET_REASON_NONE )
+        {
+            Self->LoginName = args[ 1 ];
+            Self->LoginPassword = args[ 2 ];
             Self->InitNetReason = INIT_NET_REASON_REG;
+        }
     }
     else if( cmd == "CustomConnect" )
     {
-        Self->InitNetReason = INIT_NET_REASON_CUSTOM;
-        Self->UpdateFilesStart();
+        if( Self->InitNetReason == INIT_NET_REASON_NONE )
+        {
+            Self->InitNetReason = INIT_NET_REASON_CUSTOM;
+            if( !Self->UpdateFilesInProgress )
+                Self->UpdateFilesStart();
+        }
     }
     else if( cmd == "SaveLoginPassCache" && args.size() >= 3 )
     {
         Crypt.SetCache( "__name", (uchar*) args[ 1 ].c_str(), (uint) args[ 1 ].length() + 1 );
         Crypt.SetCache( "__pass", (uchar*) args[ 2 ].c_str(), (uint) args[ 2 ].length() + 1 );
-    }
-    else if( cmd == "GetPassword" )
-    {
-        return Self->Password;
     }
     else if( cmd == "DumpAtlases" )
     {

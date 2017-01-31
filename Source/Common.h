@@ -565,7 +565,6 @@ struct GameOptions
     uint        ProxyPort;
     string      ProxyUser;
     string      ProxyPass;
-    string      Name;
     uint        ScrollDelay;
     int         ScrollStep;
     bool        ScrollCheck;
@@ -615,8 +614,6 @@ struct GameOptions
     uint        ConsoleHistorySize;
     int         SoundVolume;
     int         MusicVolume;
-    string      RegName;
-    string      RegPassword;
     uint        ChosenLightColor;
     uchar       ChosenLightDistance;
     int         ChosenLightIntensity;

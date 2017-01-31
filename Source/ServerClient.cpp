@@ -417,9 +417,10 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Name = name;
 
     // Password hash
-    char pass_hash[ PASS_HASH_SIZE ];
-    cl->Connection->Bin.Pop( pass_hash, PASS_HASH_SIZE );
-    cl->SetBinPassHash( pass_hash );
+    char password[ UTF8_BUF_SIZE( MAX_NAME ) ];
+    cl->Connection->Bin.Pop( password, sizeof( password ) );
+    password[ sizeof( password ) - 1 ] = 0;
+    cl->SetPassword( password );
 
     // Check net
     CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
@@ -583,7 +584,7 @@ void FOServer::Process_CreateClient( Client* cl )
         ClientData* data = new ClientData();
         memzero( data, sizeof( ClientData ) );
         Str::Copy( data->ClientName, cl->Name.c_str() );
-        memcpy( data->ClientPassHash, pass_hash, PASS_HASH_SIZE );
+        memcpy( data->ClientPassHash, password, Str::Length( password ) );
 
         SCOPE_LOCK( ClientsDataLocker );
         ClientsData.insert( PAIR( cl->GetId(), data ) );
@@ -633,13 +634,13 @@ void FOServer::Process_LogIn( Client*& cl )
     name[ sizeof( name ) - 1 ] = 0;
     cl->Name = name;
     cl->Connection->Bin >> uid[ 1 ];
-    char pass_hash[ PASS_HASH_SIZE ];
-    cl->Connection->Bin.Pop( pass_hash, PASS_HASH_SIZE );
+    char password[ UTF8_BUF_SIZE( MAX_NAME ) ];
+    cl->Connection->Bin.Pop( password, sizeof( password ) );
 
     if( Singleplayer )
     {
         cl->Name = "";
-        memzero( pass_hash, sizeof( pass_hash ) );
+        memzero( password, sizeof( password ) );
     }
 
     // Prevent brute force by name
@@ -736,7 +737,7 @@ void FOServer::Process_LogIn( Client*& cl )
         SCOPE_LOCK( ClientsDataLocker );
 
         ClientData* data_ = GetClientData( id );
-        if( !data_ || memcmp( pass_hash, data_->ClientPassHash, PASS_HASH_SIZE ) )
+        if( !data_ || !Str::Compare( password, data_->ClientPassHash ) )
         {
             cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
@@ -947,15 +948,12 @@ void FOServer::Process_LogIn( Client*& cl )
         // Find in saved array
         SaveClientsLocker.Lock();
         Client* cl_saved = nullptr;
-        for( auto it = SaveClients.begin(), end = SaveClients.end(); it != end; ++it )
-        {
-            Client* cl_ = *it;
-            if( cl_->GetId() == id )
-            {
-                cl_saved = cl_;
-                break;
-            }
-        }
+        auto    it = std::find_if( SaveClients.begin(), SaveClients.end(), [ id ] ( Client * cl )
+                                   {
+                                       return cl->GetId() == id;
+                                   } );
+        if( it != SaveClients.end() )
+            cl_saved = *it;
         SaveClientsLocker.Unlock();
 
         if( cl_saved )

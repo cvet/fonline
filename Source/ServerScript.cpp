@@ -2771,7 +2771,7 @@ void FOServer::SScriptFunc::Map_SetTextMsgLex( Map* map, ushort hex_x, ushort he
     if( hex_x >= map->GetWidth() || hex_y >= map->GetHeight() )
         SCRIPT_ERROR_R( "Invalid hexes args." );
 
-    map->SetTextMsgLex( hex_x, hex_y, color, text_msg, str_num, lexems.c_str(), (uint) lexems.length() );
+    map->SetTextMsgLex( hex_x, hex_y, color, text_msg, str_num, lexems.c_str(), (ushort) lexems.length() );
 }
 
 void FOServer::SScriptFunc::Map_RunEffect( Map* map, hash eff_pid, ushort hx, ushort hy, uint radius )
@@ -3237,7 +3237,7 @@ void FOServer::SScriptFunc::Global_DeleteNpcById( uint npc_id )
 
 void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, string text )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (uint) text.length(), false, 0, 0, nullptr );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (ushort) text.length(), false, 0, 0, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str )
@@ -3351,49 +3351,44 @@ Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
 
 Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
 {
-    uint len_utf8 = Str::LengthUTF8( name.c_str() );
-    if( len_utf8 < MIN_NAME || len_utf8 < GameOpt.MinNameLength )
-        return nullptr;
-    if( len_utf8 > MAX_NAME || len_utf8 > GameOpt.MaxNameLength )
-        return nullptr;
-
-    return CrMngr.GetPlayer( name.c_str() );
-}
-
-uint FOServer::SScriptFunc::Global_GetPlayerId( string name )
-{
-    uint len_utf8 = Str::LengthUTF8( name.c_str() );
-    if( len_utf8 < MIN_NAME || len_utf8 < GameOpt.MinNameLength )
-        return 0;                                               // SCRIPT_ERROR_R0("Name length is less than minimum.");
-    if( len_utf8 > MAX_NAME || len_utf8 > GameOpt.MaxNameLength )
-        return 0;                                               // SCRIPT_ERROR_R0("Name length is greater than maximum.");
-
+    // Check existance
+    ClientsDataLocker.Lock();
     uint id = MAKE_CLIENT_ID( name.c_str() );
+    bool available = ( GetClientData( id ) != nullptr );
+    ClientsDataLocker.Unlock();
+    if( !available )
+        return false;
 
-    SCOPE_LOCK( ClientsDataLocker );
-    ClientData* data = GetClientData( id );
-    if( data )
-        return id;
-    return 0;
-}
-
-string FOServer::SScriptFunc::Global_GetPlayerName( uint id )
-{
-    if( !id )
-        return nullptr;         // SCRIPT_ERROR_R0("Id arg is zero.");
-
-    if( Singleplayer )
+    // Find online
+    Client* cl = CrMngr.GetPlayer( id );
+    if( cl )
     {
-        if( id == 1 )
-            return SingleplayerSave.Name;
-        return nullptr;
+        cl->AddRef();
+        return cl;
     }
 
-    SCOPE_LOCK( ClientsDataLocker );
-    ClientData* data = GetClientData( id );
-    if( !data )
-        return nullptr;           // SCRIPT_ERROR_R0("Player not found.");
-    return data->ClientName;
+    // Find in saves
+    SaveClientsLocker.Lock();
+    auto it = std::find_if( SaveClients.begin(), SaveClients.end(), [ id ] ( Client * cl ) { return cl->GetId() == id;
+                            } );
+    if( it != SaveClients.end() )
+        cl = *it;
+    SaveClientsLocker.Unlock();
+    if( cl )
+    {
+        cl->IsDestroyed = false;
+        cl->AddRef();
+        return cl;
+    }
+
+    // Load from db
+    ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( Str::GetHash( "Player" ) );
+    RUNTIME_ASSERT( cl_proto );
+    cl = new Client( nullptr, cl_proto );
+    cl->Name = name;
+    if( !LoadClient( cl ) )
+        SCRIPT_ERROR_R0( "Client data db read failed." );
+    return cl;
 }
 
 CScriptArray* FOServer::SScriptFunc::Global_GetGlobalMapCritters( ushort wx, ushort wy, uint radius, int find_type )

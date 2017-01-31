@@ -51,7 +51,7 @@ public:
     CLASS_PROPERTY( ushort, HexX );
     CLASS_PROPERTY( ushort, HexY );
     CLASS_PROPERTY( uchar, Dir );
-    CLASS_PROPERTY( string, PassHash );
+    CLASS_PROPERTY( string, Password );
     CLASS_PROPERTY( int, Cond ); // enum CritterCondition
     CLASS_PROPERTY( bool, ClientToDelete );
     CLASS_PROPERTY( uint, Multihex );
@@ -347,8 +347,6 @@ public:
     void        Disconnect();
     void        RemoveFromGame();
     uint        GetOfflineTime();
-    const char* GetBinPassHash();
-    void        SetBinPassHash( const char* pass_hash );
 
     // Ping
 private:

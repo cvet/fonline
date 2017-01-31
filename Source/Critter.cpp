@@ -28,7 +28,7 @@ CLASS_PROPERTY_IMPL( Critter, RefLocationPid );
 CLASS_PROPERTY_IMPL( Critter, HexX );
 CLASS_PROPERTY_IMPL( Critter, HexY );
 CLASS_PROPERTY_IMPL( Critter, Dir );
-CLASS_PROPERTY_IMPL( Critter, PassHash );
+CLASS_PROPERTY_IMPL( Critter, Password );
 CLASS_PROPERTY_IMPL( Critter, Cond );
 CLASS_PROPERTY_IMPL( Critter, ClientToDelete );
 CLASS_PROPERTY_IMPL( Critter, Multihex );
@@ -2004,25 +2004,6 @@ void Client::RemoveFromGame()
 uint Client::GetOfflineTime()
 {
     return Timer::FastTick() - Connection->DisconnectTick;
-}
-
-const char* Client::GetBinPassHash()
-{
-    static THREAD char pass_hash[ PASS_HASH_SIZE ];
-    string             str = GetPassHash();
-    RUNTIME_ASSERT( str.length() == PASS_HASH_SIZE * 2 );
-    for( asUINT i = 0, j = (uint) str.length(); i < j; i += 2 )
-        pass_hash[ i / 2 ] = Str::StrToHex( str.c_str() + i );
-    return pass_hash;
-}
-
-void Client::SetBinPassHash( const char* pass_hash )
-{
-    string str;
-    str.resize( PASS_HASH_SIZE * 2 );
-    for( uint i = 0; i < PASS_HASH_SIZE; i++ )
-        Str::HexToStr( (uchar) pass_hash[ i ], (char*) str.c_str() + i * 2 );
-    SetPassHash( str );
 }
 
 bool Client::IsToPing()
