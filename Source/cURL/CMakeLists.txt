@@ -1168,6 +1168,8 @@ set(REQUIRE_LIB_DEPS        "no")
 # SUPPORT_PROTOCOLS
 set(VERSIONNUM              "${CURL_VERSION_NUM}")
 
+return()
+
 # Finally generate a "curl-config" matching this config
 configure_file("${CURL_SOURCE_DIR}/curl-config.in"
                "${CURL_BINARY_DIR}/curl-config" @ONLY)

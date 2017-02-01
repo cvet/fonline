@@ -244,10 +244,10 @@ else()
 endif()
 
 if( NOT BUILD_ONLY_CLIENT )
-	set( CURL_DIR "cURL" ) # curl-7.43.0
+	set( CURL_DIR "cURL" ) # curl-7.52.1
 	set( CURL_STATICLIB ON )
 	set( BUILD_CURL_EXE OFF )
-	set( BUILD_CURL_TESTS OFF )
+	set( BUILD_TESTING OFF )
 	add_definitions( "-DCURL_STATICLIB" )
 	add_subdirectory( "cURL" )
 	include_directories( "${CURL_DIR}/include" )
