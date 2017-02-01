@@ -682,14 +682,9 @@ void CreateDump( const char* appendix, const char* message )
 
 static void DumpAngelScript( FILE* f )
 {
-    ContextVec contexts = Script::GetExecutionContexts();
-    if( !contexts.empty() )
-    {
-        fprintf( f, "AngelScript\n" );
-        for( int i = (int) contexts.size() - 1; i >= 0; i-- )
-            fprintf( f, "%s", Script::MakeContextTraceback( contexts[ i ] ).c_str() );
-        fprintf( f, "\n" );
-    }
+    string tb = Script::GetTraceback();
+    if( !tb.empty() )
+        fprintf( f, "AngelScript\n%s", tb.c_str() );
 }
 
 bool RaiseAssert( const char* message, const char* file, int line )

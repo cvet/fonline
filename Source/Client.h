@@ -33,7 +33,6 @@
 #define SCREEN_WAIT               ( 4 )
 // Secondary screens
 #define SCREEN__DIALOG            ( 6 )
-#define SCREEN__DIALOGBOX         ( 8 )
 #define SCREEN__TOWN_VIEW         ( 9 )
 
 // Proxy types
@@ -637,18 +636,6 @@ public:
     void       PupRMouseDown();
     CritVec&   PupGetLootCrits();
     CritterCl* PupGetLootCrit( int scroll );
-
-/************************************************************************/
-/* DialogBox                                                            */
-/************************************************************************/
-    #define DIALOGBOX_NONE            ( 0 )
-    uchar  DlgboxType;
-    uint   DlgboxWait;
-    char   DlgboxText[ MAX_FOTEXT ];
-    string DlgboxButtonText[ 100 ];
-    uint   DlgboxButtonsCount;
-
-    void ShowDialogBox();
 
 /************************************************************************/
 /* Wait                                                                 */

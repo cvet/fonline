@@ -3747,7 +3747,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetAllPlayers()
 {
     CrVec players;
     ClVec all_players;
-    CrMngr.GetClients( all_players, true );
+    CrMngr.GetClients( all_players );
     for( auto it = all_players.begin(), end = all_players.end(); it != end; ++it )
     {
         Critter* player_ = *it;

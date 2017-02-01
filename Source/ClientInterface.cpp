@@ -465,26 +465,6 @@ void FOClient::GmapNullParams()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::ShowDialogBox()
-{
-    CScriptArray* button_texts = Script::CreateArray( "string[]" );
-    for( uint i = 0; i < DlgboxButtonsCount; i++ )
-        button_texts->InsertLast( &DlgboxButtonText[ i ] );
-
-    CScriptDictionary* dict = CScriptDictionary::Create( Script::GetEngine() );
-    int                type = DlgboxType;
-    dict->Set( "BoxType", &type, asTYPEID_INT32 );
-    dict->Set( "WaitTime", &DlgboxWait, asTYPEID_UINT32 );
-    dict->Set( "Buttons", &DlgboxButtonsCount, asTYPEID_UINT32 );
-    string text = DlgboxText;
-    dict->Set( "Text", &text, Script::GetEngine()->GetTypeIdByDecl( "string" ) );
-    dict->Set( "ButtonTexts", &button_texts, Script::GetEngine()->GetTypeIdByDecl( "string[]@" ) );
-
-    ShowScreen( SCREEN__DIALOGBOX, dict );
-
-    button_texts->Release();
-    dict->Release();
-}
 
 void FOClient::WaitDraw()
 {

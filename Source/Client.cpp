@@ -3850,6 +3850,9 @@ void FOClient::Net_OnProperty( uint data_size )
     switch( type )
     {
     case NetProperty::Global:
+        prop = GlobalVars::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            entity = Globals;
         break;
     case NetProperty::Critter:
         prop = CritterCl::PropertiesRegistrator->Get( property_index );
@@ -3881,8 +3884,14 @@ void FOClient::Net_OnProperty( uint data_size )
             entity = ( Chosen ? Chosen->GetItem( item_id ) : nullptr );
         break;
     case NetProperty::Map:
+        prop = Map::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            entity = ScriptFunc.ClientCurMap;
         break;
     case NetProperty::Location:
+        prop = Location::PropertiesRegistrator->Get( property_index );
+        if( prop )
+            entity = ScriptFunc.ClientCurLocation;
         break;
     default:
         RUNTIME_ASSERT( false );

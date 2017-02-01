@@ -72,12 +72,12 @@ public:
     static void              FinishContext( asIScriptContext* ctx );
     static asIScriptContext* RequestContext();
     static void              ReturnContext( asIScriptContext* ctx );
-    static ContextVec        GetExecutionContexts();
 
     static void   SetExceptionCallback( ExceptionCallback callback );
     static void   RaiseException( const char* message, ... );
     static void   PassException();
     static void   HandleException( asIScriptContext* ctx, const char* message, ... );
+    static string GetTraceback();
     static string MakeContextTraceback( asIScriptContext* ctx );
 
     static ScriptInvoker* GetInvoker();

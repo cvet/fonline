@@ -2021,7 +2021,7 @@ void FOServer::OnSendGlobalValue( Entity* entity, Property* prop )
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
         ClVec players;
-        CrMngr.GetClients( players, false );
+        CrMngr.GetClients( players );
         for( auto it = players.begin(); it != players.end(); ++it )
         {
             Client* cl = *it;

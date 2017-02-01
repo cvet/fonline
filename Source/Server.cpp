@@ -125,7 +125,7 @@ string FOServer::GetIngamePlayersStatistics()
     ConnectedClientsLocker.Unlock();
 
     ClVec players;
-    CrMngr.GetClients( players, false );
+    CrMngr.GetClients( players );
 
     Str::Format( str, "Players in game: %u\nConnections: %u\n", players.size(), conn_count );
     result = str;

@@ -835,11 +835,6 @@ void Script::ReturnContext( asIScriptContext* ctx )
     memzero( ctx_data, sizeof( ContextData ) );
 }
 
-ContextVec Script::GetExecutionContexts()
-{
-    return BusyContexts;
-}
-
 void Script::SetExceptionCallback( ExceptionCallback callback )
 {
     OnException = callback;
@@ -893,6 +888,18 @@ void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
 
     if( OnException )
         OnException( buf );
+}
+
+string Script::GetTraceback()
+{
+    string     result = "";
+    ContextVec contexts = BusyContexts;
+    for( int i = (int) contexts.size() - 1; i >= 0; i-- )
+    {
+        result += MakeContextTraceback( contexts[ i ] );
+        result += "\n";
+    }
+    return result;
 }
 
 string Script::MakeContextTraceback( asIScriptContext* ctx )
