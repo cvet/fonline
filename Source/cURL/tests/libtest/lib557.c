@@ -5,11 +5,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2013, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2016, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at http://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.haxx.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -453,6 +453,7 @@ static int test_unsigned_int_formatting(void)
 
 #elif (SIZEOF_INT == 8)
 
+  /* !checksrc! disable LONGLINE all */
   i=1; ui_test[i].num = 0xFFFFFFFFFFFFFFFFU; ui_test[i].expected = "18446744073709551615";
   i++; ui_test[i].num = 0xFFFFFFFF00000000U; ui_test[i].expected = "18446744069414584320";
   i++; ui_test[i].num = 0x00000000FFFFFFFFU; ui_test[i].expected = "4294967295";
@@ -1351,11 +1352,12 @@ static int test_curl_off_t_formatting(void)
       co_test[i].result[j] = 'X';
     co_test[i].result[BUFSZ-1] = '\0';
 
-    (void)curl_msprintf(co_test[i].result, "%" CURL_FORMAT_CURL_OFF_T, co_test[i].num);
+    (void)curl_msprintf(co_test[i].result, "%" CURL_FORMAT_CURL_OFF_T,
+                        co_test[i].num);
 
     if(memcmp(co_test[i].result,
-               co_test[i].expected,
-               strlen(co_test[i].expected))) {
+              co_test[i].expected,
+              strlen(co_test[i].expected))) {
       printf("curl_off_t test #%.2d: Failed (Expected: %s Got: %s)\n",
              i, co_test[i].expected, co_test[i].result);
       failed++;
@@ -1371,11 +1373,290 @@ static int test_curl_off_t_formatting(void)
   return failed;
 }
 
+static int _string_check(int linenumber, char *buf, const char *buf2)
+{
+  if(strcmp(buf, buf2)) {
+    /* they shouldn't differ */
+    printf("sprintf line %d failed:\nwe      '%s'\nsystem: '%s'\n",
+           linenumber, buf, buf2);
+    return 1;
+  }
+  return 0;
+}
+#define string_check(x,y) _string_check(__LINE__, x, y)
+
+static int _strlen_check(int linenumber, char *buf, size_t len)
+{
+  size_t buflen = strlen(buf);
+  if(len != buflen) {
+    /* they shouldn't differ */
+    printf("sprintf strlen:%d failed:\nwe '%d'\nsystem: '%d'\n",
+           linenumber, buflen, len);
+    return 1;
+  }
+  return 0;
+}
+
+#define strlen_check(x,y) _strlen_check(__LINE__, x, y)
+
+/*
+ * The output strings in this test need to have been verified with a system
+ * sprintf() before used here.
+ */
+static int test_string_formatting(void)
+{
+  int errors = 0;
+  char buf[256];
+  curl_msnprintf(buf, sizeof(buf), "%0*d%s", 2, 9, "foo");
+  errors += string_check(buf, "09foo");
+
+  curl_msnprintf(buf, sizeof(buf), "%*.*s", 5, 2, "foo");
+  errors += string_check(buf, "   fo");
+
+  curl_msnprintf(buf, sizeof(buf), "%*.*s", 2, 5, "foo");
+  errors += string_check(buf, "foo");
+
+  curl_msnprintf(buf, sizeof(buf), "%*.*s", 0, 10, "foo");
+  errors += string_check(buf, "foo");
+
+  curl_msnprintf(buf, sizeof(buf), "%-10s", "foo");
+  errors += string_check(buf, "foo       ");
+
+  curl_msnprintf(buf, sizeof(buf), "%10s", "foo");
+  errors += string_check(buf, "       foo");
+
+  curl_msnprintf(buf, sizeof(buf), "%*.*s", -10, -10, "foo");
+  errors += string_check(buf, "foo       ");
+
+  if(!errors)
+    printf("All curl_mprintf() strings tests OK!\n");
+  else
+    printf("Some curl_mprintf() string tests Failed!\n");
+
+  return errors;
+}
+
+static int test_weird_arguments(void)
+{
+  int errors = 0;
+  char buf[256];
+  int rc;
+
+  /* MAX_PARAMETERS is 128, try exact 128! */
+  rc = curl_msnprintf(buf, sizeof(buf),
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 1 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 2 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 3 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 4 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 5 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 6 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 7 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 8 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 9 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 10 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 11 */
+                      "%d%d%d%d%d%d%d%d"     /* 8 */
+                      ,
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 1 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 2 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 3 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 4 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 5 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 6 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 7 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 8 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 9 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 10 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 11 */
+                      0, 1, 2, 3, 4, 5, 6, 7); /* 8 */
+
+  if(rc != 128) {
+    printf("curl_mprintf() returned %d and not 128!\n", rc);
+    errors++;
+  }
+
+  errors += string_check(buf,
+                         "0123456789" /* 10 */
+                         "0123456789" /* 10 1 */
+                         "0123456789" /* 10 2 */
+                         "0123456789" /* 10 3 */
+                         "0123456789" /* 10 4 */
+                         "0123456789" /* 10 5 */
+                         "0123456789" /* 10 6 */
+                         "0123456789" /* 10 7 */
+                         "0123456789" /* 10 8 */
+                         "0123456789" /* 10 9 */
+                         "0123456789" /* 10 10*/
+                         "0123456789" /* 10 11 */
+                         "01234567"   /* 8 */
+    );
+
+  /* MAX_PARAMETERS is 128, try more! */
+  buf[0] = 0;
+  rc = curl_msnprintf(buf, sizeof(buf),
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 1 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 2 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 3 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 4 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 5 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 6 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 7 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 8 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 9 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 10 */
+                      "%d%d%d%d%d%d%d%d%d%d" /* 10 11 */
+                      "%d%d%d%d%d%d%d%d%d"   /* 9 */
+                      ,
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 1 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 2 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 3 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 4 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 5 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 6 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 7 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 8 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 9 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 10 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, /* 10 11 */
+                      0, 1, 2, 3, 4, 5, 6, 7, 8);   /* 9 */
+
+  if(rc != -1) {
+    printf("curl_mprintf() returned %d and not -1!\n", rc);
+    errors++;
+  }
+
+  errors += string_check(buf, "");
+
+  if(errors)
+    printf("Some curl_mprintf() weird arguments tests failed!\n");
+
+  return errors;
+}
+
+/* DBL_MAX value from Linux */
+#define MAXIMIZE -1.7976931348623157081452E+308
+
+static int test_float_formatting(void)
+{
+  int errors = 0;
+  char buf[512]; /* larger than max float size */
+  curl_msnprintf(buf, sizeof(buf), "%f", 9.0);
+  errors += string_check(buf, "9.000000");
+
+  curl_msnprintf(buf, sizeof(buf), "%.1f", 9.1);
+  errors += string_check(buf, "9.1");
+
+  curl_msnprintf(buf, sizeof(buf), "%.2f", 9.1);
+  errors += string_check(buf, "9.10");
+
+  curl_msnprintf(buf, sizeof(buf), "%.0f", 9.1);
+  errors += string_check(buf, "9");
+
+  curl_msnprintf(buf, sizeof(buf), "%0f", 9.1);
+  errors += string_check(buf, "9.100000");
+
+  curl_msnprintf(buf, sizeof(buf), "%10f", 9.1);
+  errors += string_check(buf, "  9.100000");
+
+  curl_msnprintf(buf, sizeof(buf), "%10.3f", 9.1);
+  errors += string_check(buf, "     9.100");
+
+  curl_msnprintf(buf, sizeof(buf), "%-10.3f", 9.1);
+  errors += string_check(buf, "9.100     ");
+
+  curl_msnprintf(buf, sizeof(buf), "%-10.3f", 9.123456);
+  errors += string_check(buf, "9.123     ");
+
+  curl_msnprintf(buf, sizeof(buf), "%.-2f", 9.1);
+  errors += string_check(buf, "9.100000");
+
+  curl_msnprintf(buf, sizeof(buf), "%*f", 10, 9.1);
+  errors += string_check(buf, "  9.100000");
+
+  curl_msnprintf(buf, sizeof(buf), "%*f", 3, 9.1);
+  errors += string_check(buf, "9.100000");
+
+  curl_msnprintf(buf, sizeof(buf), "%*f", 6, 9.2987654);
+  errors += string_check(buf, "9.298765");
+
+  curl_msnprintf(buf, sizeof(buf), "%*f", 6, 9.298765);
+  errors += string_check(buf, "9.298765");
+
+  curl_msnprintf(buf, sizeof(buf), "%*f", 6, 9.29876);
+  errors += string_check(buf, "9.298760");
+
+  curl_msnprintf(buf, sizeof(buf), "%.*f", 6, 9.2987654);
+  errors += string_check(buf, "9.298765");
+  curl_msnprintf(buf, sizeof(buf), "%.*f", 5, 9.2987654);
+  errors += string_check(buf, "9.29877");
+  curl_msnprintf(buf, sizeof(buf), "%.*f", 4, 9.2987654);
+  errors += string_check(buf, "9.2988");
+  curl_msnprintf(buf, sizeof(buf), "%.*f", 3, 9.2987654);
+  errors += string_check(buf, "9.299");
+  curl_msnprintf(buf, sizeof(buf), "%.*f", 2, 9.2987654);
+  errors += string_check(buf, "9.30");
+  curl_msnprintf(buf, sizeof(buf), "%.*f", 1, 9.2987654);
+  errors += string_check(buf, "9.3");
+  curl_msnprintf(buf, sizeof(buf), "%.*f", 0, 9.2987654);
+  errors += string_check(buf, "9");
+
+  /* very large precisions easily turn into system specific outputs so we only
+     check the output buffer length here as we know the internal limit */
+
+  curl_msnprintf(buf, sizeof(buf), "%.*f", (1<<30), 9.2987654);
+  errors += strlen_check(buf, 325);
+
+  curl_msnprintf(buf, sizeof(buf), "%10000.10000f", 9.2987654);
+  errors += strlen_check(buf, 325);
+
+  curl_msnprintf(buf, sizeof(buf), "%240.10000f",
+                 123456789123456789123456789.2987654);
+  errors += strlen_check(buf, 325);
+
+  /* 1<<31 turns negative (-2147483648) when used signed */
+  curl_msnprintf(buf, sizeof(buf), "%*f", (1<<31), 9.1);
+  errors += string_check(buf, "9.100000");
+
+  /* curl_msnprintf() limits a single float output to 325 bytes maximum
+     width */
+  curl_msnprintf(buf, sizeof(buf), "%*f", (1<<30), 9.1);
+  errors += string_check(buf, "                                                                                                                                                                                                                                                                                                                             9.100000");
+  curl_msnprintf(buf, sizeof(buf), "%100000f", 9.1);
+  errors += string_check(buf, "                                                                                                                                                                                                                                                                                                                             9.100000");
+
+  curl_msnprintf(buf, sizeof(buf), "%f", MAXIMIZE);
+  errors += strlen_check(buf, 317);
+
+  curl_msnprintf(buf, 2, "%f", MAXIMIZE);
+  errors += strlen_check(buf, 1);
+  curl_msnprintf(buf, 3, "%f", MAXIMIZE);
+  errors += strlen_check(buf, 2);
+  curl_msnprintf(buf, 4, "%f", MAXIMIZE);
+  errors += strlen_check(buf, 3);
+  curl_msnprintf(buf, 5, "%f", MAXIMIZE);
+  errors += strlen_check(buf, 4);
+  curl_msnprintf(buf, 6, "%f", MAXIMIZE);
+  errors += strlen_check(buf, 5);
+
+  if(!errors)
+    printf("All float strings tests OK!\n");
+  else
+    printf("test_float_formatting Failed!\n");
+
+  return errors;
+}
+/* !checksrc! enable LONGLINE */
 
 int test(char *URL)
 {
   int errors = 0;
   (void)URL; /* not used */
+
+  errors += test_weird_arguments();
 
   errors += test_unsigned_short_formatting();
 
@@ -1390,6 +1671,10 @@ int test(char *URL)
   errors += test_signed_long_formatting();
 
   errors += test_curl_off_t_formatting();
+
+  errors += test_string_formatting();
+
+  errors += test_float_formatting();
 
   if(errors)
     return TEST_ERR_MAJOR_BAD;

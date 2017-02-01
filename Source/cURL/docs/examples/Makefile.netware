@@ -34,7 +34,7 @@ endif
 
 # Edit the path below to point to the base of your libidn package.
 ifndef LIBIDN_PATH
-LIBIDN_PATH = ../../../libidn-1.30
+LIBIDN_PATH = ../../../libidn-1.32
 endif
 
 # Edit the path below to point to the base of your librtmp package.
@@ -60,7 +60,7 @@ endif
 TARGET  = examples
 VERSION	= $(LIBCURL_VERSION)
 COPYR	= Copyright (C) $(LIBCURL_COPYRIGHT_STR)
-DESCR	= cURL ($(LIBARCH))
+DESCR	= curl ($(LIBARCH))
 MTSAFE	= YES
 STACK	= 8192
 SCREEN	= Example Program

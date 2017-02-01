@@ -5,13 +5,13 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 2012 - 2015, Marc Hoersken, <info@marc-hoersken.de>
+ * Copyright (C) 2012 - 2016, Marc Hoersken, <info@marc-hoersken.de>
  * Copyright (C) 2012, Mark Salisbury, <mark.salisbury@hp.com>
- * Copyright (C) 2012 - 2015, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 2012 - 2016, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at http://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.haxx.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -56,10 +56,23 @@
 #include "inet_pton.h" /* for IP addr SNI check */
 #include "curl_multibyte.h"
 #include "warnless.h"
+#include "x509asn1.h"
 #include "curl_printf.h"
+#include "system_win32.h"
+#include "hostcheck.h"
+
+ /* The last #include file should be: */
 #include "curl_memory.h"
-/* The last #include file should be: */
 #include "memdebug.h"
+
+/* ALPN requires version 8.1 of the Windows SDK, which was
+   shipped with Visual Studio 2013, aka _MSC_VER 1800:
+
+   https://technet.microsoft.com/en-us/library/hh831771%28v=ws.11%29.aspx
+*/
+#if defined(_MSC_VER) && (_MSC_VER >= 1800) && !defined(_USING_V110_SDK71_)
+#  define HAS_ALPN 1
+#endif
 
 /* Uncomment to force verbose output
  * #define infof(x, y, ...) printf(y, __VA_ARGS__)
@@ -93,10 +106,15 @@ static CURLcode
 schannel_connect_step1(struct connectdata *conn, int sockindex)
 {
   ssize_t written = -1;
-  struct SessionHandle *data = conn->data;
+  struct Curl_easy *data = conn->data;
   struct ssl_connect_data *connssl = &conn->ssl[sockindex];
   SecBuffer outbuf;
   SecBufferDesc outbuf_desc;
+  SecBuffer inbuf;
+  SecBufferDesc inbuf_desc;
+#ifdef HAS_ALPN
+  unsigned char alpn_buffer[128];
+#endif
   SCHANNEL_CRED schannel_cred;
   SECURITY_STATUS sspi_status = SEC_E_OK;
   struct curl_schannel_cred *old_cred = NULL;
@@ -106,21 +124,47 @@ schannel_connect_step1(struct connectdata *conn, int sockindex)
 #endif
   TCHAR *host_name;
   CURLcode result;
+  const char * const hostname = SSL_IS_PROXY() ? conn->http_proxy.host.name :
+    conn->host.name;
 
   infof(data, "schannel: SSL/TLS connection with %s port %hu (step 1/3)\n",
-        conn->host.name, conn->remote_port);
+        hostname, conn->remote_port);
+
+#ifdef HAS_ALPN
+  /* ALPN is only supported on Windows 8.1 / Server 2012 R2 and above.
+     Also it doesn't seem to be supported for Wine, see curl bug #983. */
+  connssl->use_alpn = conn->bits.tls_enable_alpn &&
+                      !GetProcAddress(GetModuleHandleA("ntdll"),
+                                      "wine_get_version") &&
+                      Curl_verify_windows_version(6, 3, PLATFORM_WINNT,
+                                                  VERSION_GREATER_THAN_EQUAL);
+#else
+  connssl->use_alpn = false;
+#endif
+
+  connssl->cred = NULL;
 
   /* check for an existing re-usable credential handle */
-  if(!Curl_ssl_getsessionid(conn, (void **)&old_cred, NULL)) {
-    connssl->cred = old_cred;
-    infof(data, "schannel: re-using existing credential handle\n");
+  if(data->set.general_ssl.sessionid) {
+    Curl_ssl_sessionid_lock(conn);
+    if(!Curl_ssl_getsessionid(conn, (void **)&old_cred, NULL, sockindex)) {
+      connssl->cred = old_cred;
+      infof(data, "schannel: re-using existing credential handle\n");
+
+      /* increment the reference counter of the credential/session handle */
+      connssl->cred->refcount++;
+      infof(data, "schannel: incremented credential handle refcount = %d\n",
+            connssl->cred->refcount);
+    }
+    Curl_ssl_sessionid_unlock(conn);
   }
-  else {
+
+  if(!connssl->cred) {
     /* setup Schannel API options */
     memset(&schannel_cred, 0, sizeof(schannel_cred));
     schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
 
-    if(data->set.ssl.verifypeer) {
+    if(conn->ssl_config.verifypeer) {
 #ifdef _WIN32_WCE
       /* certificate validation on CE doesn't seem to work right; we'll
          do it following a more manual process. */
@@ -128,27 +172,35 @@ schannel_connect_step1(struct connectdata *conn, int sockindex)
         SCH_CRED_IGNORE_NO_REVOCATION_CHECK |
         SCH_CRED_IGNORE_REVOCATION_OFFLINE;
 #else
-      schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION |
-        SCH_CRED_REVOCATION_CHECK_CHAIN;
+      schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION;
+      /* TODO s/data->set.ssl.no_revoke/SSL_SET_OPTION(no_revoke)/g */
+      if(data->set.ssl.no_revoke)
+        schannel_cred.dwFlags |= SCH_CRED_IGNORE_NO_REVOCATION_CHECK |
+                                 SCH_CRED_IGNORE_REVOCATION_OFFLINE;
+      else
+        schannel_cred.dwFlags |= SCH_CRED_REVOCATION_CHECK_CHAIN;
 #endif
-      infof(data, "schannel: checking server certificate revocation\n");
+      if(data->set.ssl.no_revoke)
+        infof(data, "schannel: disabled server certificate revocation "
+                    "checks\n");
+      else
+        infof(data, "schannel: checking server certificate revocation\n");
     }
     else {
       schannel_cred.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION |
         SCH_CRED_IGNORE_NO_REVOCATION_CHECK |
         SCH_CRED_IGNORE_REVOCATION_OFFLINE;
-      infof(data, "schannel: disable server certificate revocation checks\n");
+      infof(data, "schannel: disabled server certificate revocation checks\n");
     }
 
-    if(!data->set.ssl.verifyhost) {
+    if(!conn->ssl_config.verifyhost) {
       schannel_cred.dwFlags |= SCH_CRED_NO_SERVERNAME_CHECK;
       infof(data, "schannel: verifyhost setting prevents Schannel from "
             "comparing the supplied target name with the subject "
             "names in server certificates. Also disables SNI.\n");
     }
 
-    switch(data->set.ssl.version) {
-    default:
+    switch(conn->ssl_config.version) {
     case CURL_SSLVERSION_DEFAULT:
     case CURL_SSLVERSION_TLSv1:
       schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT |
@@ -164,12 +216,18 @@ schannel_connect_step1(struct connectdata *conn, int sockindex)
     case CURL_SSLVERSION_TLSv1_2:
       schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_2_CLIENT;
       break;
+    case CURL_SSLVERSION_TLSv1_3:
+      failf(data, "Schannel: TLS 1.3 is not yet supported");
+      return CURLE_SSL_CONNECT_ERROR;
     case CURL_SSLVERSION_SSLv3:
       schannel_cred.grbitEnabledProtocols = SP_PROT_SSL3_CLIENT;
       break;
     case CURL_SSLVERSION_SSLv2:
       schannel_cred.grbitEnabledProtocols = SP_PROT_SSL2_CLIENT;
       break;
+    default:
+      failf(data, "Unrecognized parameter passed via CURLOPT_SSLVERSION");
+      return CURLE_SSL_CONNECT_ERROR;
     }
 
     /* allocate memory for the re-usable credential handle */
@@ -180,8 +238,10 @@ schannel_connect_step1(struct connectdata *conn, int sockindex)
       return CURLE_OUT_OF_MEMORY;
     }
     memset(connssl->cred, 0, sizeof(struct curl_schannel_cred));
+    connssl->cred->refcount = 1;
 
-    /* http://msdn.microsoft.com/en-us/library/windows/desktop/aa374716.aspx */
+    /* https://msdn.microsoft.com/en-us/library/windows/desktop/aa374716.aspx
+       */
     sspi_status =
       s_pSecFn->AcquireCredentialsHandle(NULL, (TCHAR *)UNISP_NAME,
                                          SECPKG_CRED_OUTBOUND, NULL,
@@ -202,13 +262,67 @@ schannel_connect_step1(struct connectdata *conn, int sockindex)
   }
 
   /* Warn if SNI is disabled due to use of an IP address */
-  if(Curl_inet_pton(AF_INET, conn->host.name, &addr)
+  if(Curl_inet_pton(AF_INET, hostname, &addr)
 #ifdef ENABLE_IPV6
-     || Curl_inet_pton(AF_INET6, conn->host.name, &addr6)
+     || Curl_inet_pton(AF_INET6, hostname, &addr6)
 #endif
     ) {
     infof(data, "schannel: using IP address, SNI is not supported by OS.\n");
   }
+
+#ifdef HAS_ALPN
+  if(connssl->use_alpn) {
+    int cur = 0;
+    int list_start_index = 0;
+    unsigned int *extension_len = NULL;
+    unsigned short* list_len = NULL;
+
+    /* The first four bytes will be an unsigned int indicating number
+       of bytes of data in the rest of the the buffer. */
+    extension_len = (unsigned int *)(&alpn_buffer[cur]);
+    cur += sizeof(unsigned int);
+
+    /* The next four bytes are an indicator that this buffer will contain
+       ALPN data, as opposed to NPN, for example. */
+    *(unsigned int *)&alpn_buffer[cur] =
+      SecApplicationProtocolNegotiationExt_ALPN;
+    cur += sizeof(unsigned int);
+
+    /* The next two bytes will be an unsigned short indicating the number
+       of bytes used to list the preferred protocols. */
+    list_len = (unsigned short*)(&alpn_buffer[cur]);
+    cur += sizeof(unsigned short);
+
+    list_start_index = cur;
+
+#ifdef USE_NGHTTP2
+    if(data->set.httpversion >= CURL_HTTP_VERSION_2) {
+      memcpy(&alpn_buffer[cur], NGHTTP2_PROTO_ALPN, NGHTTP2_PROTO_ALPN_LEN);
+      cur += NGHTTP2_PROTO_ALPN_LEN;
+      infof(data, "schannel: ALPN, offering %s\n", NGHTTP2_PROTO_VERSION_ID);
+    }
+#endif
+
+    alpn_buffer[cur++] = ALPN_HTTP_1_1_LENGTH;
+    memcpy(&alpn_buffer[cur], ALPN_HTTP_1_1, ALPN_HTTP_1_1_LENGTH);
+    cur += ALPN_HTTP_1_1_LENGTH;
+    infof(data, "schannel: ALPN, offering %s\n", ALPN_HTTP_1_1);
+
+    *list_len = curlx_uitous(cur - list_start_index);
+    *extension_len = *list_len + sizeof(unsigned int) + sizeof(unsigned short);
+
+    InitSecBuffer(&inbuf, SECBUFFER_APPLICATION_PROTOCOLS, alpn_buffer, cur);
+    InitSecBufferDesc(&inbuf_desc, &inbuf, 1);
+  }
+  else
+  {
+    InitSecBuffer(&inbuf, SECBUFFER_EMPTY, NULL, 0);
+    InitSecBufferDesc(&inbuf_desc, &inbuf, 1);
+  }
+#else /* HAS_ALPN */
+  InitSecBuffer(&inbuf, SECBUFFER_EMPTY, NULL, 0);
+  InitSecBufferDesc(&inbuf_desc, &inbuf, 1);
+#endif
 
   /* setup output buffer */
   InitSecBuffer(&outbuf, SECBUFFER_EMPTY, NULL, 0);
@@ -228,15 +342,21 @@ schannel_connect_step1(struct connectdata *conn, int sockindex)
   }
   memset(connssl->ctxt, 0, sizeof(struct curl_schannel_ctxt));
 
-  host_name = Curl_convert_UTF8_to_tchar(conn->host.name);
+  host_name = Curl_convert_UTF8_to_tchar(hostname);
   if(!host_name)
     return CURLE_OUT_OF_MEMORY;
 
-  /* http://msdn.microsoft.com/en-us/library/windows/desktop/aa375924.aspx */
+  /* Schannel InitializeSecurityContext:
+     https://msdn.microsoft.com/en-us/library/windows/desktop/aa375924.aspx
 
+     At the moment we don't pass inbuf unless we're using ALPN since we only
+     use it for that, and Wine (for which we currently disable ALPN) is giving
+     us problems with inbuf regardless. https://github.com/curl/curl/issues/983
+  */
   sspi_status = s_pSecFn->InitializeSecurityContext(
-    &connssl->cred->cred_handle, NULL, host_name,
-    connssl->req_flags, 0, 0, NULL, 0, &connssl->ctxt->ctxt_handle,
+    &connssl->cred->cred_handle, NULL, host_name, connssl->req_flags, 0, 0,
+    (connssl->use_alpn ? &inbuf_desc : NULL),
+    0, &connssl->ctxt->ctxt_handle,
     &outbuf_desc, &connssl->ret_flags, &connssl->ctxt->time_stamp);
 
   Curl_unicodefree(host_name);
@@ -283,7 +403,7 @@ schannel_connect_step2(struct connectdata *conn, int sockindex)
 {
   int i;
   ssize_t nread = -1, written = -1;
-  struct SessionHandle *data = conn->data;
+  struct Curl_easy *data = conn->data;
   struct ssl_connect_data *connssl = &conn->ssl[sockindex];
   unsigned char *reallocated_buffer;
   size_t reallocated_length;
@@ -295,11 +415,13 @@ schannel_connect_step2(struct connectdata *conn, int sockindex)
   TCHAR *host_name;
   CURLcode result;
   bool doread;
+  const char * const hostname = SSL_IS_PROXY() ? conn->http_proxy.host.name :
+    conn->host.name;
 
   doread = (connssl->connecting_state != ssl_connect_2_writing) ? TRUE : FALSE;
 
   infof(data, "schannel: SSL/TLS connection with %s port %hu (step 2/3)\n",
-        conn->host.name, conn->remote_port);
+        hostname, conn->remote_port);
 
   if(!connssl->cred || !connssl->ctxt)
     return CURLE_SSL_CONNECT_ERROR;
@@ -395,12 +517,12 @@ schannel_connect_step2(struct connectdata *conn, int sockindex)
     memcpy(inbuf[0].pvBuffer, connssl->encdata_buffer,
            connssl->encdata_offset);
 
-    host_name = Curl_convert_UTF8_to_tchar(conn->host.name);
+    host_name = Curl_convert_UTF8_to_tchar(hostname);
     if(!host_name)
       return CURLE_OUT_OF_MEMORY;
 
-    /* http://msdn.microsoft.com/en-us/library/windows/desktop/aa375924.aspx */
-
+    /* https://msdn.microsoft.com/en-us/library/windows/desktop/aa375924.aspx
+       */
     sspi_status = s_pSecFn->InitializeSecurityContext(
       &connssl->cred->cred_handle, &connssl->ctxt->ctxt_handle,
       host_name, connssl->req_flags, 0, 0, &inbuf_desc, 0, NULL,
@@ -512,7 +634,7 @@ schannel_connect_step2(struct connectdata *conn, int sockindex)
 #ifdef _WIN32_WCE
   /* Windows CE doesn't do any server certificate validation.
      We have to do it manually. */
-  if(data->set.ssl.verifypeer)
+  if(conn->ssl_config.verifypeer)
     return verify_certificate(conn, sockindex);
 #endif
 
@@ -523,15 +645,20 @@ static CURLcode
 schannel_connect_step3(struct connectdata *conn, int sockindex)
 {
   CURLcode result = CURLE_OK;
-  struct SessionHandle *data = conn->data;
+  struct Curl_easy *data = conn->data;
   struct ssl_connect_data *connssl = &conn->ssl[sockindex];
-  struct curl_schannel_cred *old_cred = NULL;
-  bool incache;
+  SECURITY_STATUS sspi_status = SEC_E_OK;
+  CERT_CONTEXT *ccert_context = NULL;
+  const char * const hostname = SSL_IS_PROXY() ? conn->http_proxy.host.name :
+    conn->host.name;
+#ifdef HAS_ALPN
+  SecPkgContext_ApplicationProtocol alpn_result;
+#endif
 
   DEBUGASSERT(ssl_connect_3 == connssl->connecting_state);
 
   infof(data, "schannel: SSL/TLS connection with %s port %hu (step 3/3)\n",
-        conn->host.name, conn->remote_port);
+        hostname, conn->remote_port);
 
   if(!connssl->cred)
     return CURLE_SSL_CONNECT_ERROR;
@@ -551,34 +678,97 @@ schannel_connect_step3(struct connectdata *conn, int sockindex)
     return CURLE_SSL_CONNECT_ERROR;
   }
 
-  /* increment the reference counter of the credential/session handle */
-  if(connssl->cred && connssl->ctxt) {
-    connssl->cred->refcount++;
-    infof(data, "schannel: incremented credential handle refcount = %d\n",
-          connssl->cred->refcount);
+#ifdef HAS_ALPN
+  if(connssl->use_alpn) {
+    sspi_status = s_pSecFn->QueryContextAttributes(&connssl->ctxt->ctxt_handle,
+      SECPKG_ATTR_APPLICATION_PROTOCOL, &alpn_result);
+
+    if(sspi_status != SEC_E_OK) {
+      failf(data, "schannel: failed to retrieve ALPN result");
+      return CURLE_SSL_CONNECT_ERROR;
+    }
+
+    if(alpn_result.ProtoNegoStatus ==
+       SecApplicationProtocolNegotiationStatus_Success) {
+
+      infof(data, "schannel: ALPN, server accepted to use %.*s\n",
+        alpn_result.ProtocolIdSize, alpn_result.ProtocolId);
+
+#ifdef USE_NGHTTP2
+      if(alpn_result.ProtocolIdSize == NGHTTP2_PROTO_VERSION_ID_LEN &&
+         !memcmp(NGHTTP2_PROTO_VERSION_ID, alpn_result.ProtocolId,
+          NGHTTP2_PROTO_VERSION_ID_LEN)) {
+        conn->negnpn = CURL_HTTP_VERSION_2;
+      }
+      else
+#endif
+      if(alpn_result.ProtocolIdSize == ALPN_HTTP_1_1_LENGTH &&
+         !memcmp(ALPN_HTTP_1_1, alpn_result.ProtocolId,
+           ALPN_HTTP_1_1_LENGTH)) {
+        conn->negnpn = CURL_HTTP_VERSION_1_1;
+      }
+    }
+    else
+      infof(data, "ALPN, server did not agree to a protocol\n");
   }
+#endif
 
   /* save the current session data for possible re-use */
-  incache = !(Curl_ssl_getsessionid(conn, (void **)&old_cred, NULL));
-  if(incache) {
-    if(old_cred != connssl->cred) {
-      infof(data, "schannel: old credential handle is stale, removing\n");
-      Curl_ssl_delsessionid(conn, (void *)old_cred);
-      incache = FALSE;
+  if(data->set.general_ssl.sessionid) {
+    bool incache;
+    struct curl_schannel_cred *old_cred = NULL;
+
+    Curl_ssl_sessionid_lock(conn);
+    incache = !(Curl_ssl_getsessionid(conn, (void **)&old_cred, NULL,
+                                      sockindex));
+    if(incache) {
+      if(old_cred != connssl->cred) {
+        infof(data, "schannel: old credential handle is stale, removing\n");
+        /* we're not taking old_cred ownership here, no refcount++ is needed */
+        Curl_ssl_delsessionid(conn, (void *)old_cred);
+        incache = FALSE;
+      }
     }
+    if(!incache) {
+      result = Curl_ssl_addsessionid(conn, (void *)connssl->cred,
+                                     sizeof(struct curl_schannel_cred),
+                                     sockindex);
+      if(result) {
+        Curl_ssl_sessionid_unlock(conn);
+        failf(data, "schannel: failed to store credential handle");
+        return result;
+      }
+      else {
+        /* this cred session is now also referenced by sessionid cache */
+        connssl->cred->refcount++;
+        infof(data, "schannel: stored credential handle in session cache\n");
+      }
+    }
+    Curl_ssl_sessionid_unlock(conn);
   }
 
-  if(!incache) {
-    result = Curl_ssl_addsessionid(conn, (void *)connssl->cred,
-                                   sizeof(struct curl_schannel_cred));
-    if(result) {
-      failf(data, "schannel: failed to store credential handle");
+  if(data->set.ssl.certinfo) {
+    sspi_status = s_pSecFn->QueryContextAttributes(&connssl->ctxt->ctxt_handle,
+      SECPKG_ATTR_REMOTE_CERT_CONTEXT, &ccert_context);
+
+    if((sspi_status != SEC_E_OK) || (ccert_context == NULL)) {
+      failf(data, "schannel: failed to retrieve remote cert context");
+      return CURLE_SSL_CONNECT_ERROR;
+    }
+
+    result = Curl_ssl_init_certinfo(data, 1);
+    if(!result) {
+      if(((ccert_context->dwCertEncodingType & X509_ASN_ENCODING) != 0) &&
+         (ccert_context->cbCertEncoded > 0)) {
+
+        const char *beg = (const char *) ccert_context->pbCertEncoded;
+        const char *end = beg + ccert_context->cbCertEncoded;
+        result = Curl_extract_certinfo(conn, 0, beg, end);
+      }
+    }
+    CertFreeCertificateContext(ccert_context);
+    if(result)
       return result;
-    }
-    else {
-      connssl->cred->cached = TRUE;
-      infof(data, "schannel: stored credential handle in session cache\n");
-    }
   }
 
   connssl->connecting_state = ssl_connect_done;
@@ -591,10 +781,10 @@ schannel_connect_common(struct connectdata *conn, int sockindex,
                         bool nonblocking, bool *done)
 {
   CURLcode result;
-  struct SessionHandle *data = conn->data;
+  struct Curl_easy *data = conn->data;
   struct ssl_connect_data *connssl = &conn->ssl[sockindex];
   curl_socket_t sockfd = conn->sock[sockindex];
-  long timeout_ms;
+  time_t timeout_ms;
   int what;
 
   /* check if the connection has already been established */
@@ -640,7 +830,8 @@ schannel_connect_common(struct connectdata *conn, int sockindex,
       curl_socket_t readfd = ssl_connect_2_reading ==
         connssl->connecting_state ? sockfd : CURL_SOCKET_BAD;
 
-      what = Curl_socket_ready(readfd, writefd, nonblocking ? 0 : timeout_ms);
+      what = Curl_socket_check(readfd, CURL_SOCKET_BAD, writefd,
+                               nonblocking ? 0 : timeout_ms);
       if(what < 0) {
         /* fatal error */
         failf(data, "select/poll on SSL/TLS socket, errno: %d", SOCKERRNO);
@@ -751,7 +942,7 @@ schannel_send(struct connectdata *conn, int sockindex,
   /* copy data into output buffer */
   memcpy(outbuf[1].pvBuffer, buf, len);
 
-  /* http://msdn.microsoft.com/en-us/library/windows/desktop/aa375390.aspx */
+  /* https://msdn.microsoft.com/en-us/library/windows/desktop/aa375390.aspx */
   sspi_status = s_pSecFn->EncryptMessage(&connssl->ctxt->ctxt_handle, 0,
                                          &outbuf_desc, 0);
 
@@ -781,7 +972,7 @@ schannel_send(struct connectdata *conn, int sockindex,
     /* send entire message or fail */
     while(len > (size_t)written) {
       ssize_t this_write;
-      long timeleft;
+      time_t timeleft;
       int what;
 
       this_write = 0;
@@ -796,8 +987,7 @@ schannel_send(struct connectdata *conn, int sockindex,
         break;
       }
 
-      what = Curl_socket_ready(CURL_SOCKET_BAD, conn->sock[sockindex],
-                               timeleft);
+      what = SOCKET_WRITABLE(conn->sock[sockindex], timeleft);
       if(what < 0) {
         /* fatal error */
         failf(conn->data, "select/poll on SSL socket, errno: %d", SOCKERRNO);
@@ -850,7 +1040,7 @@ schannel_recv(struct connectdata *conn, int sockindex,
 {
   size_t size = 0;
   ssize_t nread = -1;
-  struct SessionHandle *data = conn->data;
+  struct Curl_easy *data = conn->data;
   struct ssl_connect_data *connssl = &conn->ssl[sockindex];
   unsigned char *reallocated_buffer;
   size_t reallocated_length;
@@ -965,7 +1155,8 @@ schannel_recv(struct connectdata *conn, int sockindex,
     InitSecBuffer(&inbuf[3], SECBUFFER_EMPTY, NULL, 0);
     InitSecBufferDesc(&inbuf_desc, inbuf, 4);
 
-    /* http://msdn.microsoft.com/en-us/library/windows/desktop/aa375348.aspx */
+    /* https://msdn.microsoft.com/en-us/library/windows/desktop/aa375348.aspx
+       */
     sspi_status = s_pSecFn->DecryptMessage(&connssl->ctxt->ctxt_handle,
                                            &inbuf_desc, 0, NULL);
 
@@ -1112,12 +1303,10 @@ cleanup:
   */
   if(len && !connssl->decdata_offset && connssl->recv_connection_closed &&
      !connssl->recv_sspi_close_notify) {
-    DWORD winver_full, winver_major, winver_minor;
-    winver_full = GetVersion();
-    winver_major = (DWORD)(LOBYTE(LOWORD(winver_full)));
-    winver_minor = (DWORD)(HIBYTE(LOWORD(winver_full)));
+    bool isWin2k = Curl_verify_windows_version(5, 0, PLATFORM_WINNT,
+                                               VERSION_EQUAL);
 
-    if(winver_major == 5 && winver_minor == 0 && sspi_status == SEC_E_OK)
+    if(isWin2k && sspi_status == SEC_E_OK)
       connssl->recv_sspi_close_notify = true;
     else {
       *err = CURLE_RECV_ERROR;
@@ -1183,7 +1372,7 @@ bool Curl_schannel_data_pending(const struct connectdata *conn, int sockindex)
 
   if(connssl->use) /* SSL/TLS is in use */
     return (connssl->encdata_offset > 0 ||
-            connssl->decdata_offset > 0 ) ? TRUE : FALSE;
+            connssl->decdata_offset > 0) ? TRUE : FALSE;
   else
     return FALSE;
 }
@@ -1197,14 +1386,16 @@ void Curl_schannel_close(struct connectdata *conn, int sockindex)
 
 int Curl_schannel_shutdown(struct connectdata *conn, int sockindex)
 {
-  /* See http://msdn.microsoft.com/en-us/library/windows/desktop/aa380138.aspx
+  /* See https://msdn.microsoft.com/en-us/library/windows/desktop/aa380138.aspx
    * Shutting Down an Schannel Connection
    */
-  struct SessionHandle *data = conn->data;
+  struct Curl_easy *data = conn->data;
   struct ssl_connect_data *connssl = &conn->ssl[sockindex];
+  const char * const hostname = SSL_IS_PROXY() ? conn->http_proxy.host.name :
+    conn->host.name;
 
   infof(data, "schannel: shutting down SSL/TLS connection with %s port %hu\n",
-        conn->host.name, conn->remote_port);
+        hostname, conn->remote_port);
 
   if(connssl->cred && connssl->ctxt) {
     SecBufferDesc BuffDesc;
@@ -1226,7 +1417,7 @@ int Curl_schannel_shutdown(struct connectdata *conn, int sockindex)
       failf(data, "schannel: ApplyControlToken failure: %s",
             Curl_sspi_strerror(conn, sspi_status));
 
-    host_name = Curl_convert_UTF8_to_tchar(conn->host.name);
+    host_name = Curl_convert_UTF8_to_tchar(hostname);
     if(!host_name)
       return CURLE_OUT_OF_MEMORY;
 
@@ -1273,19 +1464,10 @@ int Curl_schannel_shutdown(struct connectdata *conn, int sockindex)
 
   /* free SSPI Schannel API credential handle */
   if(connssl->cred) {
-    /* decrement the reference counter of the credential/session handle */
-    if(connssl->cred->refcount > 0) {
-      connssl->cred->refcount--;
-      infof(data, "schannel: decremented credential handle refcount = %d\n",
-            connssl->cred->refcount);
-    }
-
-    /* if the handle was not cached and the refcount is zero */
-    if(!connssl->cred->cached && connssl->cred->refcount == 0) {
-      infof(data, "schannel: clear credential handle\n");
-      s_pSecFn->FreeCredentialsHandle(&connssl->cred->cred_handle);
-      Curl_safefree(connssl->cred);
-    }
+    Curl_ssl_sessionid_lock(conn);
+    Curl_schannel_session_free(connssl->cred);
+    Curl_ssl_sessionid_unlock(conn);
+    connssl->cred = NULL;
   }
 
   /* free internal buffer for received encrypted data */
@@ -1307,16 +1489,13 @@ int Curl_schannel_shutdown(struct connectdata *conn, int sockindex)
 
 void Curl_schannel_session_free(void *ptr)
 {
+  /* this is expected to be called under sessionid lock */
   struct curl_schannel_cred *cred = ptr;
 
-  if(cred && cred->cached) {
-    if(cred->refcount == 0) {
-      s_pSecFn->FreeCredentialsHandle(&cred->cred_handle);
-      Curl_safefree(cred);
-    }
-    else {
-      cred->cached = FALSE;
-    }
+  cred->refcount--;
+  if(cred->refcount == 0) {
+    s_pSecFn->FreeCredentialsHandle(&cred->cred_handle);
+    Curl_safefree(cred);
   }
 }
 
@@ -1358,11 +1537,14 @@ int Curl_schannel_random(unsigned char *entropy, size_t length)
 static CURLcode verify_certificate(struct connectdata *conn, int sockindex)
 {
   SECURITY_STATUS status;
-  struct SessionHandle *data = conn->data;
+  struct Curl_easy *data = conn->data;
   struct ssl_connect_data *connssl = &conn->ssl[sockindex];
   CURLcode result = CURLE_OK;
   CERT_CONTEXT *pCertContextServer = NULL;
   const CERT_CHAIN_CONTEXT *pChainContext = NULL;
+  const char * const conn_hostname = SSL_IS_PROXY() ?
+    conn->http_proxy.host.name :
+    conn->host.name;
 
   status = s_pSecFn->QueryContextAttributes(&connssl->ctxt->ctxt_handle,
                                             SECPKG_ATTR_REMOTE_CERT_CONTEXT,
@@ -1384,7 +1566,8 @@ static CURLcode verify_certificate(struct connectdata *conn, int sockindex)
                                 NULL,
                                 pCertContextServer->hCertStore,
                                 &ChainPara,
-                                0,
+                                (data->set.ssl.no_revoke ? 0 :
+                                 CERT_CHAIN_REVOCATION_CHECK_CHAIN),
                                 NULL,
                                 &pChainContext)) {
       failf(data, "schannel: CertGetCertificateChain failed: %s",
@@ -1395,63 +1578,88 @@ static CURLcode verify_certificate(struct connectdata *conn, int sockindex)
 
     if(result == CURLE_OK) {
       CERT_SIMPLE_CHAIN *pSimpleChain = pChainContext->rgpChain[0];
-      DWORD dwTrustErrorMask = ~(DWORD)(CERT_TRUST_IS_NOT_TIME_NESTED|
-                                        CERT_TRUST_REVOCATION_STATUS_UNKNOWN);
+      DWORD dwTrustErrorMask = ~(DWORD)(CERT_TRUST_IS_NOT_TIME_NESTED);
       dwTrustErrorMask &= pSimpleChain->TrustStatus.dwErrorStatus;
       if(dwTrustErrorMask) {
-        if(dwTrustErrorMask & CERT_TRUST_IS_PARTIAL_CHAIN)
+        if(dwTrustErrorMask & CERT_TRUST_IS_REVOKED)
+          failf(data, "schannel: CertGetCertificateChain trust error"
+                " CERT_TRUST_IS_REVOKED");
+        else if(dwTrustErrorMask & CERT_TRUST_IS_PARTIAL_CHAIN)
           failf(data, "schannel: CertGetCertificateChain trust error"
                 " CERT_TRUST_IS_PARTIAL_CHAIN");
-        if(dwTrustErrorMask & CERT_TRUST_IS_UNTRUSTED_ROOT)
+        else if(dwTrustErrorMask & CERT_TRUST_IS_UNTRUSTED_ROOT)
           failf(data, "schannel: CertGetCertificateChain trust error"
                 " CERT_TRUST_IS_UNTRUSTED_ROOT");
-        if(dwTrustErrorMask & CERT_TRUST_IS_NOT_TIME_VALID)
+        else if(dwTrustErrorMask & CERT_TRUST_IS_NOT_TIME_VALID)
           failf(data, "schannel: CertGetCertificateChain trust error"
                 " CERT_TRUST_IS_NOT_TIME_VALID");
-        failf(data, "schannel: CertGetCertificateChain error mask: 0x%08x",
-              dwTrustErrorMask);
+        else
+          failf(data, "schannel: CertGetCertificateChain error mask: 0x%08x",
+                dwTrustErrorMask);
         result = CURLE_PEER_FAILED_VERIFICATION;
       }
     }
   }
 
   if(result == CURLE_OK) {
-    if(data->set.ssl.verifyhost) {
-      TCHAR cert_hostname_buff[128];
-      xcharp_u hostname;
-      xcharp_u cert_hostname;
+    if(conn->ssl_config.verifyhost) {
+      TCHAR cert_hostname_buff[256];
       DWORD len;
 
-      cert_hostname.const_tchar_ptr = cert_hostname_buff;
-      hostname.tchar_ptr = Curl_convert_UTF8_to_tchar(conn->host.name);
-
+      /* TODO: Fix this for certificates with multiple alternative names.
+      Right now we're only asking for the first preferred alternative name.
+      Instead we'd need to do all via CERT_NAME_SEARCH_ALL_NAMES_FLAG
+      (if WinCE supports that?) and run this section in a loop for each.
+      https://msdn.microsoft.com/en-us/library/windows/desktop/aa376086.aspx
+      curl: (51) schannel: CertGetNameString() certificate hostname
+      (.google.com) did not match connection (google.com)
+      */
       len = CertGetNameString(pCertContextServer,
                               CERT_NAME_DNS_TYPE,
-                              0,
+                              CERT_NAME_DISABLE_IE4_UTF8_FLAG,
                               NULL,
-                              cert_hostname.tchar_ptr,
-                              128);
-      if(len > 0 && *cert_hostname.tchar_ptr == '*') {
-        /* this is a wildcard cert.  try matching the last len - 1 chars */
-        int hostname_len = strlen(conn->host.name);
-        cert_hostname.tchar_ptr++;
-        if(_tcsicmp(cert_hostname.const_tchar_ptr,
-                    hostname.const_tchar_ptr + hostname_len - len + 2) != 0)
-          result = CURLE_PEER_FAILED_VERIFICATION;
+                              cert_hostname_buff,
+                              256);
+      if(len > 0) {
+        const char *cert_hostname;
+
+        /* Comparing the cert name and the connection hostname encoded as UTF-8
+         * is acceptable since both values are assumed to use ASCII
+         * (or some equivalent) encoding
+         */
+        cert_hostname = Curl_convert_tchar_to_UTF8(cert_hostname_buff);
+        if(!cert_hostname) {
+          result = CURLE_OUT_OF_MEMORY;
+        }
+        else{
+          int match_result;
+
+          match_result = Curl_cert_hostcheck(cert_hostname, conn->host.name);
+          if(match_result == CURL_HOST_MATCH) {
+            infof(data,
+                  "schannel: connection hostname (%s) validated "
+                  "against certificate name (%s)\n",
+                  conn->host.name,
+                  cert_hostname);
+            result = CURLE_OK;
+          }
+          else{
+            failf(data,
+                  "schannel: connection hostname (%s) "
+                  "does not match certificate name (%s)",
+                  conn->host.name,
+                  cert_hostname);
+            result = CURLE_PEER_FAILED_VERIFICATION;
+          }
+          Curl_unicodefree(cert_hostname);
+        }
       }
-      else if(len == 0 || _tcsicmp(hostname.const_tchar_ptr,
-                                   cert_hostname.const_tchar_ptr) != 0) {
+      else {
+        failf(data,
+              "schannel: CertGetNameString did not provide any "
+              "certificate name information");
         result = CURLE_PEER_FAILED_VERIFICATION;
       }
-      if(result == CURLE_PEER_FAILED_VERIFICATION) {
-        char *_cert_hostname;
-        _cert_hostname = Curl_convert_tchar_to_UTF8(cert_hostname.tchar_ptr);
-        failf(data, "schannel: CertGetNameString() certificate hostname "
-              "(%s) did not match connection (%s)",
-              _cert_hostname, conn->host.name);
-        Curl_unicodefree(_cert_hostname);
-      }
-      Curl_unicodefree(hostname.tchar_ptr);
     }
   }
 
