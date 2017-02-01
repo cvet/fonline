@@ -1265,6 +1265,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             }
                             zipClose( zip, nullptr );
 
+                            FileManager::DeleteFile( zip_path.c_str() );
                             if( !FileManager::RenameFile( ( zip_path + ".tmp" ).c_str(), zip_path.c_str() ) )
                                 WriteLog( "Can't rename file '{}' to '{}'.\n", zip_path + ".tmp", zip_path );
 
