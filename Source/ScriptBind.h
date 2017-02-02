@@ -854,6 +854,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "string SHA1(string text)", SCRIPT_FUNC( Global_SHA1 ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "string SHA2(string text)", SCRIPT_FUNC( Global_SHA2 ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command)", SCRIPT_FUNC( Global_SystemCall ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command, string& output)", SCRIPT_FUNC( Global_SystemCallExt ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(string link)", SCRIPT_FUNC( Global_OpenLink ), SCRIPT_FUNC_CONV ) );
 
     // Invoker

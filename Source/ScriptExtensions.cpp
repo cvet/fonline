@@ -512,6 +512,31 @@ static string ScriptString_Upper( const string& str )
     return result;
 }
 
+static string ScriptString_Trim( const string& str, const string& chars )
+{
+    size_t first = str.find_first_not_of( chars );
+    if( first == string::npos )
+        return "";
+    size_t last = str.find_last_not_of( chars );
+    return str.substr( first, ( last - first + 1 ) );
+}
+
+static string ScriptString_TrimBegin( const string& str, const string& chars )
+{
+    size_t first = str.find_first_not_of( chars );
+    if( first == string::npos )
+        return "";
+    return str.substr( first );
+}
+
+static string ScriptString_TrimEnd( const string& str, const string& chars )
+{
+    size_t last = str.find_last_not_of( chars );
+    if( last == string::npos )
+        return str;
+    return str.substr( 0, last + 1 );
+}
+
 static CScriptArray* ScriptString_Split( const string& str, const string& delim )
 {
     CScriptArray* array = Script::CreateArray( "string[]" );
@@ -615,6 +640,13 @@ void Script::RegisterScriptStdStringExtensions( asIScriptEngine* engine )
     r = engine->RegisterObjectMethod( "string", "string lower() const", SCRIPT_FUNC_THIS( ScriptString_Lower ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "string", "string upper() const", SCRIPT_FUNC_THIS( ScriptString_Upper ), SCRIPT_FUNC_THIS_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+
+    r = engine->RegisterObjectMethod( "string", "string trim(const string &in chars = \" \") const", SCRIPT_FUNC_THIS( ScriptString_Trim ), SCRIPT_FUNC_THIS_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string trimBegin(const string &in chars = \" \") const", SCRIPT_FUNC_THIS( ScriptString_TrimBegin ), SCRIPT_FUNC_THIS_CONV );
+    RUNTIME_ASSERT( r >= 0 );
+    r = engine->RegisterObjectMethod( "string", "string trimEnd(const string &in chars = \" \") const", SCRIPT_FUNC_THIS( ScriptString_TrimEnd ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
 
     r = engine->RegisterObjectMethod( "string", "array<string>@ split(const string &in) const", SCRIPT_FUNC_THIS( ScriptString_Split ), SCRIPT_FUNC_THIS_CONV );

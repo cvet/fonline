@@ -212,7 +212,7 @@ static string Global_SHA2( string text )
     #endif
 }
 
-static void PrintLog( const string& prefix, string& log, bool last_call )
+static void PrintLog( string& log, bool last_call, std::function< void(const string&) > log_callback )
 {
     // Normalize new lines to \n
     while( true )
@@ -234,7 +234,7 @@ static void PrintLog( const string& prefix, string& log, bool last_call )
 
         if( pos != string::npos )
         {
-            WriteLog( "{} : {}\n", prefix, log.substr( 0, pos ) );
+            log_callback( log.substr( 0, pos ) );
             log.erase( 0, pos + 1 );
         }
         else
@@ -244,7 +244,7 @@ static void PrintLog( const string& prefix, string& log, bool last_call )
     }
 }
 
-static int Global_SystemCall( string command )
+static int SystemCall( string command, std::function< void(const string&) > log_callback )
 {
     #ifdef FO_WINDOWS
     HANDLE              out_read = nullptr;
@@ -283,7 +283,6 @@ static int Global_SystemCall( string command )
         return -1;
     }
 
-    string program = command.substr( 0, command.find( ' ' ) );
     string log;
     while( true )
     {
@@ -296,14 +295,14 @@ static int Global_SystemCall( string command )
             if( ReadFile( out_read, buf, sizeof( buf ), &bytes, nullptr ) )
             {
                 log.append( buf, bytes );
-                PrintLog( program, log, false );
+                PrintLog( log, false, log_callback );
             }
         }
 
         if( WaitForSingleObject( pi.hProcess, 0 ) != WAIT_TIMEOUT )
             break;
     }
-    PrintLog( program, log, true );
+    PrintLog( log, true, log_callback );
 
     DWORD retval;
     GetExitCodeProcess( pi.hProcess, &retval );
@@ -318,18 +317,37 @@ static int Global_SystemCall( string command )
     if( !in )
         return -1;
 
-    string program = command.substr( 0, command.find( ' ' ) );
     string log;
     char   buf[ TEMP_BUF_SIZE ];
     while( fgets( buf, sizeof( buf ), in ) )
     {
         log += buf;
-        PrintLog( program, log, false );
+        PrintLog( log, false, log_callback );
     }
-    PrintLog( program, log, true );
+    PrintLog( log, true, log_callback );
 
     return pclose( in );
     #endif
+}
+
+static int Global_SystemCall( string command )
+{
+    string prefix = command.substr( 0, command.find( ' ' ) );
+    return SystemCall( command, [ &prefix ] ( const string &line )
+                       {
+                           WriteLog( "{} : {}\n", prefix, line );
+                       } );
+}
+
+static int Global_SystemCallExt( string command, string& output )
+{
+    output = "";
+    return SystemCall( command, [ &output ] ( const string &line )
+                       {
+                           if( !output.empty() )
+                               output += "\n";
+                           output += line;
+                       } );
 }
 
 static void Global_OpenLink( string link )
