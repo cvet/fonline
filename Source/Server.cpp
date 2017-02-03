@@ -1485,7 +1485,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             logcb( "Run script fail." );
     }
     break;
-    case COMMAND_RELOAD_PROTOS:
+    case CMD_RELOAD_PROTOS:
     {
         CHECK_ALLOW_COMMAND;
 
@@ -3071,8 +3071,9 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     memcpy( update_file.Data, &proto_items_data[ 0 ], update_file.Size );
     UpdateFiles.push_back( update_file );
 
-    WriteData( UpdateFilesList, (short) Str::Length( CACHE_PROTOS ) );
-    WriteDataArr( UpdateFilesList, CACHE_PROTOS, Str::Length( CACHE_PROTOS ) );
+    const char* protos_cache_name = "$protos.cache";
+    WriteData( UpdateFilesList, (short) Str::Length( protos_cache_name ) );
+    WriteDataArr( UpdateFilesList, protos_cache_name, Str::Length( protos_cache_name ) );
     WriteData( UpdateFilesList, update_file.Size );
     WriteData( UpdateFilesList, Crypt.MurmurHash2( update_file.Data, update_file.Size ) );
 

@@ -291,12 +291,6 @@
 #define MOVE_PARAM_STEP_DISALLOW    ( 0x10 )
 #define MOVE_PARAM_RUN              ( 0x80000000 )
 
-// Cache names
-#define CACHE_MAGIC_CHAR            "*"
-#define CACHE_HASH_APPENDIX         "_hash"
-#define CACHE_MSG_PREFIX            CACHE_MAGIC_CHAR "msg"
-#define CACHE_PROTOS                CACHE_MAGIC_CHAR "protos"
-
 // Corner type
 #define CORNER_NORTH_SOUTH          ( 0 )
 #define CORNER_WEST                 ( 1 )

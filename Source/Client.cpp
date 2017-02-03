@@ -257,13 +257,6 @@ bool FOClient::PreInit()
     Keyb::Init();
     GET_UID2( UID2 );
     UID_PREPARE_UID4_2;
-
-    // Cache
-    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "Cache/default.cache" ) ) )
-    {
-        WriteLog( "Can't set default cache.\n" );
-        return false;
-    }
     UID_PREPARE_UID4_3;
     GET_UID3( UID3 );
     UID_PREPARE_UID4_4;
@@ -297,24 +290,9 @@ bool FOClient::PreInit()
 
 bool FOClient::PostInit()
 {
-    // Find valid cache
+    // Reload cache
     if( !CurLang.IsAllMsgLoaded )
-    {
-        StrVec processed_langs;
-        processed_langs.push_back( CurLang.NameStr );
-        StrVec msg_entires;
-        Crypt.GetCacheNames( CACHE_MSG_PREFIX, msg_entires );
-        for( size_t i = 0, j = msg_entires.size(); i < j; i++ )
-        {
-            string lang = msg_entires[ i ].substr( Str::Length( CACHE_MSG_PREFIX "\\" ), 4 );
-            if( lang.length() == 4 && std::find( processed_langs.begin(), processed_langs.end(), lang ) == processed_langs.end() )
-            {
-                processed_langs.push_back( lang );
-                if( CurLang.LoadFromCache( lang.c_str() ) )
-                    break;
-            }
-        }
-    }
+        CurLang.LoadFromCache( CurLang.NameStr );
     if( !CurLang.IsAllMsgLoaded )
     {
         WriteLog( "Language packs not found!\n" );
@@ -428,7 +406,7 @@ bool FOClient::PostInit()
 
     // Item prototypes
     UCharVec protos_data;
-    Crypt.GetCache( CACHE_PROTOS, protos_data );
+    Crypt.GetCache( "$protos.cache", protos_data );
     ProtoMngr.LoadProtosFromBinaryData( protos_data );
 
     // Hex manager
@@ -709,7 +687,7 @@ void FOClient::UpdateFilesLoop()
                     return;
                 }
 
-                if( UpdateFilesList->front().Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
+                if( UpdateFilesList->front().Name[ 0 ] == '$' )
                     UpdateFilesCacheChanged = true;
                 else
                     UpdateFilesFilesChanged = true;
@@ -4141,8 +4119,8 @@ void FOClient::Net_OnMap()
 
     WriteLog( "Map {} received...\n", map_pid );
 
-    char map_name[ 256 ];
-    Str::Format( map_name, "map%u", map_pid );
+    char map_name[ TEMP_BUF_SIZE ];
+    Str::Format( map_name, "%u.map", map_pid );
 
     bool  tiles = false;
     char* tiles_data = nullptr;
@@ -4488,9 +4466,9 @@ void FOClient::Net_OnUpdateFilesList()
 
         // Check hash
         uint  cur_hash_len;
-        uint* cur_hash = (uint*) Crypt.GetCache( ( string( name ) + CACHE_HASH_APPENDIX ).c_str(), cur_hash_len );
+        uint* cur_hash = (uint*) Crypt.GetCache( ( string( name ) + ".hash" ).c_str(), cur_hash_len );
         bool  cached_hash_same = ( cur_hash && cur_hash_len == sizeof( hash ) && *cur_hash == hash );
-        if( name[ 0 ] != CACHE_MAGIC_CHAR[ 0 ] )
+        if( name[ 0 ] != '$' )
         {
             // Real file, human can disturb file consistency, make base recheck
             FileManager file;
@@ -4498,7 +4476,7 @@ void FOClient::Net_OnUpdateFilesList()
             {
                 if( cached_hash_same || ( file.LoadFile( name ) && hash == Crypt.MurmurHash2( file.GetBuf(), file.GetFsize() ) ) )
                 {
-                    Crypt.SetCache( ( string( name ) + CACHE_HASH_APPENDIX ).c_str(), (uchar*) &hash, sizeof( hash ) );
+                    Crypt.SetCache( ( string( name ) + ".hash" ).c_str(), (uchar*) &hash, sizeof( hash ) );
                     continue;
                 }
             }
@@ -4561,7 +4539,7 @@ void FOClient::Net_OnUpdateFileData()
         UpdateFileTemp = nullptr;
 
         // Cache
-        if( update_file.Name[ 0 ] == CACHE_MAGIC_CHAR[ 0 ] )
+        if( update_file.Name[ 0 ] == '$' )
         {
             FileManager cache_data;
             if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp" ) ) )
@@ -4571,7 +4549,7 @@ void FOClient::Net_OnUpdateFileData()
             }
 
             Crypt.SetCache( update_file.Name.c_str(), cache_data.GetBuf(), cache_data.GetFsize() );
-            Crypt.SetCache( ( update_file.Name + CACHE_HASH_APPENDIX ).c_str(), (uchar*) &update_file.Hash, sizeof( update_file.Hash ) );
+            Crypt.SetCache( ( update_file.Name + ".hash" ).c_str(), (uchar*) &update_file.Hash, sizeof( update_file.Hash ) );
         }
         // File
         else
@@ -7160,11 +7138,6 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
                 Self->UpdateFilesStart();
         }
     }
-    else if( cmd == "SaveLoginPassCache" && args.size() >= 3 )
-    {
-        Crypt.SetCache( "__name", (uchar*) args[ 1 ].c_str(), (uint) args[ 1 ].length() + 1 );
-        Crypt.SetCache( "__pass", (uchar*) args[ 2 ].c_str(), (uint) args[ 2 ].length() + 1 );
-    }
     else if( cmd == "DumpAtlases" )
     {
         SprMngr.DumpAtlases();
@@ -8888,7 +8861,7 @@ void FOClient::SScriptFunc::Global_SetUserConfig( CScriptArray* key_values )
         cfg_user.SetStr( value.c_str() );
         cfg_user.SetStr( "\n" );
     }
-    cfg_user.SaveFile( "Cache/" CONFIG_NAME );
+    cfg_user.SaveFile( CONFIG_NAME );
 }
 
 Map*      FOClient::SScriptFunc::ClientCurMap;

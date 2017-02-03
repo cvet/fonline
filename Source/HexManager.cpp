@@ -3578,7 +3578,7 @@ bool HexManager::LoadMap( hash map_pid )
 
     // Make name
     char map_name[ 256 ];
-    Str::Format( map_name, "map%u", map_pid );
+    Str::Format( map_name, "%u.map", map_pid );
 
     // Find in cache
     uint   cache_len;
@@ -3800,7 +3800,7 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
     }
 
     char map_name[ 256 ];
-    Str::Format( map_name, "map%u", map_pid );
+    Str::Format( map_name, "%u.map", map_pid );
 
     uint   cache_len;
     uchar* cache = Crypt.GetCache( map_name, cache_len );

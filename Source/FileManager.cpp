@@ -33,20 +33,36 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
     if( fixed_path[ 0 ] != '$' && fixed_path[ Str::Length( fixed_path ) - 1 ] != '/' )
         Str::Append( fixed_path, "/" );
 
-    // Redirect path
+    // Check special files
     if( fixed_path[ 0 ] != '$' )
     {
+        // Redirect path
         void* redirection_link = FileOpen( ( string( fixed_path ) + "Redirection.link" ).c_str(), false );
         if( redirection_link )
         {
             char link[ MAX_FOPATH ];
             uint len = FileGetSize( redirection_link );
             FileRead( redirection_link, link, len );
+            FileClose( redirection_link );
             link[ len ] = 0;
             Str::Insert( link, fixed_path );
             FormatPath( link );
             InitDataFiles( link, set_write_dir );
             return;
+        }
+
+        // Additional path
+        void* extension_link = FileOpen( ( string( fixed_path ) + "Extension.link" ).c_str(), false );
+        if( extension_link )
+        {
+            char link[ MAX_FOPATH ];
+            uint len = FileGetSize( extension_link );
+            FileRead( extension_link, link, len );
+            FileClose( extension_link );
+            link[ len ] = 0;
+            Str::Insert( link, fixed_path );
+            FormatPath( link );
+            InitDataFiles( link, false );
         }
     }
 
@@ -57,22 +73,6 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
     // Process dir
     if( !LoadDataFile( fixed_path ) )
         RUNTIME_ASSERT( !"Unable to load files in folder." );
-
-    // Extension of this path
-    if( fixed_path[ 0 ] != '$' )
-    {
-        void* extension_link = FileOpen( ( string( fixed_path ) + "Extension.link" ).c_str(), false );
-        if( extension_link )
-        {
-            char link[ MAX_FOPATH ];
-            uint len = FileGetSize( extension_link );
-            FileRead( extension_link, link, len );
-            link[ len ] = 0;
-            Str::Insert( link, fixed_path );
-            FormatPath( link );
-            InitDataFiles( link, false );
-        }
-    }
 }
 
 bool FileManager::LoadDataFile( const char* path, bool skip_inner /* = false */ )

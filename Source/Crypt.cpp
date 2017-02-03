@@ -174,6 +174,7 @@ uchar* CryptManager::Compress( const uchar* data, uint& data_len )
 
     if( compress( buf.Get(), &buf_len, data, data_len ) != Z_OK )
         return nullptr;
+
     XOR( (char*) buf.Get(), (uint) buf_len, (char*) &crcTable[ 1 ], sizeof( crcTable ) - 4 );
     XOR( (char*) buf.Get(), 4, (char*) buf.Get() + 4, 4 );
 
@@ -187,6 +188,7 @@ bool CryptManager::Compress( UCharVec& data )
     uchar* result = Compress( &data[ 0 ], result_len );
     if( !result )
         return false;
+
     data.resize( result_len );
     memcpy( &data[ 0 ], result, result_len );
     SAFEDELA( result );
@@ -247,321 +249,88 @@ bool CryptManager::Uncompress( UCharVec& data, uint mul_approx )
     uchar* result = Uncompress( &data[ 0 ], result_len, mul_approx );
     if( !result )
         return false;
+
     data.resize( result_len );
     memcpy( &data[ 0 ], result, result_len );
     SAFEDELA( result );
     return true;
 }
 
-#define MAX_CACHE_DESCRIPTORS    ( 10001 )
-#define CACHE_DATA_VALID         ( 0x08 )
-#define CACHE_SIZE_VALID         ( 0x10 )
-
-struct CacheDescriptor
+static string MakeCachePath( const char* data_name )
 {
-    uint   Rnd2[ 2 ];
-    uchar  Flags;
-    char   Rnd0;
-    ushort Rnd1;
-    uint   DataOffset;
-    uint   DataCurLen;
-    uint   DataMaxLen;
-    uint   Rnd3;
-    uint   DataCrc;
-    uint   Rnd4;
-    char   DataName[ 32 ];
-    uint   TableSize;
-    uint   XorKey[ 5 ];
-    uint   Crc;
-} CacheTable[ MAX_CACHE_DESCRIPTORS ];
+    string path = data_name;
+    std::replace( path.begin(), path.end(), '/', '_' );
+    std::replace( path.begin(), path.end(), '\\', '_' );
+    return FileManager::GetWritePath( string( "Cache/" ).append( path ).c_str() );
+}
 
-void* CacheTableFile = nullptr;
-
-bool CryptManager::IsCacheTable( const char* cache_fname )
+bool CryptManager::IsCache( const char* data_name )
 {
-    if( !cache_fname || !cache_fname[ 0 ] )
-        return false;
-    void* f = FileOpen( cache_fname, false );
-    if( !f )
-        return false;
+    string path = MakeCachePath( data_name ).c_str();
+    void*  f = FileOpen( path.c_str(), false );
+    bool   exists = ( f != nullptr );
     FileClose( f );
-    return true;
+    return exists;
 }
 
-bool CryptManager::CreateCacheTable( const char* cache_fname )
+void CryptManager::EraseCache( const char* data_name )
 {
-    if( CacheTableFile )
-    {
-        FileClose( CacheTableFile );
-        CacheTableFile = nullptr;
-    }
-
-    void* f = FileOpen( cache_fname, true );
-    if( !f )
-        return false;
-
-    for( uint i = 0; i < sizeof( CacheTable ); i++ )
-        ( (uchar*) &CacheTable[ 0 ] )[ i ] = Random( 0, 255 );
-    for( uint i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
-    {
-        CacheDescriptor& desc = CacheTable[ i ];
-        UNSETFLAG( desc.Flags, CACHE_DATA_VALID );
-        UNSETFLAG( desc.Flags, CACHE_SIZE_VALID );
-        desc.TableSize = MAX_CACHE_DESCRIPTORS;
-        CacheDescriptor desc_ = desc;
-        XOR( (char*) &desc_, sizeof( CacheDescriptor ) - 24, (char*) &desc_.XorKey[ 0 ], 20 );
-        FileWrite( f, (void*) &desc_, sizeof( CacheDescriptor ) );
-    }
-
-    FileClose( f );
-    CacheTableFile = FileOpenForReadWrite( cache_fname, true );
-    return CacheTableFile != nullptr;
-}
-
-bool CryptManager::SetCacheTable( const char* cache_fname )
-{
-    if( !cache_fname || !cache_fname[ 0 ] )
-        return false;
-
-    if( CacheTableFile )
-    {
-        FileClose( CacheTableFile );
-        CacheTableFile = nullptr;
-    }
-
-    void* f = FileOpenForReadWrite( cache_fname, true );
-    if( !f )
-        return CreateCacheTable( cache_fname );
-
-    uint len = FileGetSize( f );
-    if( len < sizeof( CacheTable ) )
-    {
-        FileClose( f );
-        return CreateCacheTable( cache_fname );
-    }
-
-    FileRead( f, (void*) &CacheTable[ 0 ], sizeof( CacheTable ) );
-
-    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
-    {
-        CacheDescriptor& desc = CacheTable[ i ];
-        XOR( (char*) &desc, sizeof( CacheDescriptor ) - 24, (char*) &desc.XorKey[ 0 ], 20 );
-        if( desc.TableSize != MAX_CACHE_DESCRIPTORS )
-        {
-            FileClose( f );
-            return CreateCacheTable( cache_fname );
-        }
-    }
-
-    CacheTableFile = f;
-    return true;
-}
-
-void CryptManager::GetCacheNames( const char* start_with, StrVec& names )
-{
-    uint start_with_len = ( start_with ? Str::Length( start_with ) : 0 );
-    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
-    {
-        CacheDescriptor& desc = CacheTable[ i ];
-        if( !FLAG( desc.Flags, CACHE_DATA_VALID ) )
-            continue;
-        if( start_with && !Str::CompareCount( desc.DataName, start_with, start_with_len ) )
-            continue;
-        names.push_back( desc.DataName );
-    }
-}
-
-bool CryptManager::IsCache( const char* name )
-{
-    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
-    {
-        CacheDescriptor& desc = CacheTable[ i ];
-        if( !FLAG( desc.Flags, CACHE_DATA_VALID ) )
-            continue;
-        if( Str::Compare( desc.DataName, name ) )
-            return true;
-    }
-    return false;
-}
-
-void CryptManager::EraseCache( const char* name )
-{
-    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
-    {
-        CacheDescriptor& desc = CacheTable[ i ];
-        if( !FLAG( desc.Flags, CACHE_DATA_VALID ) )
-            continue;
-        if( Str::Compare( desc.DataName, name ) )
-        {
-            UNSETFLAG( desc.Flags, CACHE_DATA_VALID );
-            CacheDescriptor desc_ = desc;
-            XOR( (char*) &desc_, sizeof( CacheDescriptor ) - 24, (char*) &desc_.XorKey[ 0 ], 20 );
-            FileSetPointer( CacheTableFile, i * sizeof( CacheDescriptor ), SEEK_SET );
-            FileWrite( CacheTableFile, (void*) &desc_, sizeof( CacheDescriptor ) );
-            break;
-        }
-    }
+    string path = MakeCachePath( data_name ).c_str();
+    FileDelete( path.c_str() );
 }
 
 void CryptManager::SetCache( const char* data_name, const uchar* data, uint data_len )
 {
-    // Fix path
-    char data_name_[ MAX_FOPATH ];
-    Str::Copy( data_name_, data_name );
-    NormalizePathSlashes( data_name_ );
-
-    // Find data
-    CacheDescriptor desc_;
-    int             desc_place = -1;
-
-    // In prev place
-    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
+    string path = MakeCachePath( data_name ).c_str();
+    void*  f = FileOpen( path.c_str(), true );
+    if( !f )
     {
-        CacheDescriptor& desc = CacheTable[ i ];
-        if( !FLAG( desc.Flags, CACHE_DATA_VALID ) )
-            continue;
-        if( !Str::Compare( data_name_, desc.DataName ) )
-            continue;
-
-        if( data_len > desc.DataMaxLen )
-        {
-            UNSETFLAG( desc.Flags, CACHE_DATA_VALID );
-            CacheDescriptor desc__ = desc;
-            XOR( (char*) &desc__, sizeof( CacheDescriptor ) - 24, (char*) &desc__.XorKey[ 0 ], 20 );
-            FileSetPointer( CacheTableFile, i * sizeof( CacheDescriptor ), SEEK_SET );
-            FileWrite( CacheTableFile, (void*) &desc__, sizeof( CacheDescriptor ) );
-            break;
-        }
-
-        desc.DataCurLen = data_len;
-        desc_ = desc;
-        desc_place = i;
-        goto label_PlaceFound;
+        WriteLog( "Can't open write cache at '{}'.\n", path );
+        return;
     }
 
-    // Valid size
-    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
+    if( !FileWrite( f, data, data_len ) )
     {
-        CacheDescriptor& desc = CacheTable[ i ];
-        if( FLAG( desc.Flags, CACHE_DATA_VALID ) )
-            continue;
-        if( !FLAG( desc.Flags, CACHE_SIZE_VALID ) )
-            continue;
-        if( data_len > desc.DataMaxLen )
-            continue;
-
-        SETFLAG( desc.Flags, CACHE_DATA_VALID );
-        desc.DataCurLen = data_len;
-        Str::Copy( desc.DataName, data_name_ );
-        desc_ = desc;
-        desc_place = i;
-        goto label_PlaceFound;
+        WriteLog( "Can't write cache to '{}'.\n", path );
+        FileClose( f );
+        FileDelete( path.c_str() );
+        return;
     }
 
-    // Add new descriptor
-    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
-    {
-        CacheDescriptor& desc = CacheTable[ i ];
-        if( FLAG( desc.Flags, CACHE_DATA_VALID ) )
-            continue;
-        if( FLAG( desc.Flags, CACHE_SIZE_VALID ) )
-            continue;
-
-        FileSetPointer( CacheTableFile, 0, SEEK_END );
-        int offset = (int) ( FileGetPointer( CacheTableFile ) - sizeof( CacheTable ) );
-        if( offset < 0 )
-            return;
-
-        uint max_len = data_len * 2;
-        if( max_len < 128 )
-        {
-            max_len = 1024;
-            FileWrite( CacheTableFile, (void*) &crcTable[ 1 ], 512 );
-            FileWrite( CacheTableFile, (void*) &crcTable[ 1 ], 512 );
-        }
-        else
-        {
-            FileWrite( CacheTableFile, data, data_len );
-            FileWrite( CacheTableFile, data, data_len );
-        }
-
-        SETFLAG( desc.Flags, CACHE_DATA_VALID );
-        SETFLAG( desc.Flags, CACHE_SIZE_VALID );
-        desc.DataOffset = offset;
-        desc.DataCurLen = data_len;
-        desc.DataMaxLen = max_len;
-        Str::Copy( desc.DataName, data_name_ );
-        desc_ = desc;
-        desc_place = i;
-        goto label_PlaceFound;
-    }
-
-    // Grow table
-    #pragma MESSAGE("Grow cache descriptors table.")
-    WriteLog( "Cache table descriptors ended! Delete 'default.cache' file." );
-    return;
-
-    // Place founded
-label_PlaceFound:
-    CacheDescriptor desc__ = desc_;
-    XOR( (char*) &desc__, sizeof( CacheDescriptor ) - 24, (char*) &desc__.XorKey[ 0 ], 20 );
-    FileSetPointer( CacheTableFile, sizeof( CacheTable ) + desc_.DataOffset, SEEK_SET );
-    XOR( (char*) data, data_len, (char*) &desc__.XorKey[ 0 ], 20 );
-    FileWrite( CacheTableFile, data, data_len );
-    XOR( (char*) data, data_len, (char*) &desc__.XorKey[ 0 ], 20 );
-    FileSetPointer( CacheTableFile, desc_place * sizeof( CacheDescriptor ), SEEK_SET );
-    FileWrite( CacheTableFile, (void*) &desc__, sizeof( CacheDescriptor ) );
+    FileClose( f );
 }
 
 void CryptManager::SetCache( const char* data_name, const string& str )
 {
-    SetCache( data_name, (uchar*) str.c_str(), (uint) str.length() );
+    SetCache( data_name, !str.empty() ? (uchar*) str.c_str() : (uchar*) "", (uint) str.length() );
 }
 
 void CryptManager::SetCache( const char* data_name, UCharVec& data )
 {
-    SetCache( data_name, (uchar*) &data[ 0 ], (uint) data.size() );
+    SetCache( data_name, !data.empty() ? (uchar*) &data[ 0 ] : (uchar*) "", (uint) data.size() );
 }
 
 uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
 {
-    // Fix path
-    char data_name_[ MAX_FOPATH ];
-    Str::Copy( data_name_, data_name );
-    NormalizePathSlashes( data_name_ );
+    string path = MakeCachePath( data_name ).c_str();
+    void*  f = FileOpen( path.c_str(), false );
+    if( !f )
+        return nullptr;
 
-    // For each descriptors
-    for( int i = 0; i < MAX_CACHE_DESCRIPTORS; i++ )
+    data_len = FileGetSize( f );
+    uchar* data = new uchar[ data_len ];
+
+    if( !FileRead( f, data, data_len ) )
     {
-        CacheDescriptor& desc = CacheTable[ i ];
-        if( !FLAG( desc.Flags, CACHE_DATA_VALID ) )
-            continue;
-        if( !Str::Compare( data_name_, desc.DataName ) )
-            continue;
-
-        if( desc.DataCurLen > 0xFFFFFF )
-        {
-            UNSETFLAG( desc.Flags, CACHE_DATA_VALID );
-            UNSETFLAG( desc.Flags, CACHE_SIZE_VALID );
-            return nullptr;
-        }
-
-        uint file_len = FileGetSize( CacheTableFile );
-        if( file_len < sizeof( CacheTable ) + desc.DataOffset + desc.DataCurLen )
-        {
-            UNSETFLAG( desc.Flags, CACHE_DATA_VALID );
-            UNSETFLAG( desc.Flags, CACHE_SIZE_VALID );
-            return nullptr;
-        }
-
-        uchar* data = new uchar[ desc.DataCurLen ];
-        data_len = desc.DataCurLen;
-        FileSetPointer( CacheTableFile, sizeof( CacheTable ) + desc.DataOffset, SEEK_SET );
-        FileRead( CacheTableFile, data, desc.DataCurLen );
-        XOR( (char*) data, data_len, (char*) &desc.XorKey[ 0 ], 20 );
-        return data;
+        WriteLog( "Can't read cache from '{}'.\n", path );
+        SAFEDELA( data );
+        data_len = 0;
+        FileClose( f );
+        return nullptr;
     }
-    return nullptr;
+
+    FileClose( f );
+    return data;
 }
 
 string CryptManager::GetCache( const char* data_name )
@@ -569,7 +338,10 @@ string CryptManager::GetCache( const char* data_name )
     string str;
     uint   result_len;
     uchar* result = GetCache( data_name, result_len );
-    if( result && result_len )
+    if( !result )
+        return str;
+
+    if( result_len )
     {
         str.resize( result_len );
         memcpy( &str[ 0 ], result, result_len );
@@ -585,8 +357,10 @@ bool CryptManager::GetCache( const char* data_name, UCharVec& data )
     uchar* result = GetCache( data_name, result_len );
     if( !result )
         return false;
+
     data.resize( result_len );
-    memcpy( &data[ 0 ], result, result_len );
+    if( result_len )
+        memcpy( &data[ 0 ], result, result_len );
     SAFEDELA( result );
     return true;
 }

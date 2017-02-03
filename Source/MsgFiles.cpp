@@ -492,5 +492,5 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
 
 char* LanguagePack::GetMsgCacheName( int msg_num, char* result )
 {
-    return Str::Format( result, CACHE_MSG_PREFIX "\\%s\\%s", NameStr, TextMsgFileName[ msg_num ] );
+    return Str::Format( result, "$%s-%s.cache", NameStr, TextMsgFileName[ msg_num ] );
 }

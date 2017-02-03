@@ -28,7 +28,7 @@
 #define CMD_RELOADSCRIPTS            ( 17 )
 #define CMD_RELOAD_CLIENT_SCRIPTS    ( 19 )
 #define CMD_RUNSCRIPT                ( 20 )
-#define COMMAND_RELOAD_PROTOS        ( 21 )
+#define CMD_RELOAD_PROTOS            ( 21 )
 #define CMD_REGENMAP                 ( 25 )
 #define CMD_RELOADDIALOGS            ( 26 )
 #define CMD_LOADDIALOG               ( 27 )
@@ -70,7 +70,7 @@ const CmdDef cmdlist[] =
     { "rcs", CMD_RELOAD_CLIENT_SCRIPTS },
     { "runscript", CMD_RUNSCRIPT },
     { "run", CMD_RUNSCRIPT },
-    { "reloadprotos", COMMAND_RELOAD_PROTOS },
+    { "reloadprotos", CMD_RELOAD_PROTOS },
     { "regenmap", CMD_REGENMAP },
     { "reloaddialogs", CMD_RELOADDIALOGS },
     { "loaddialog", CMD_LOADDIALOG },
@@ -393,7 +393,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         buf << param2;
     }
     break;
-    case COMMAND_RELOAD_PROTOS:
+    case CMD_RELOAD_PROTOS:
     {
         buf << msg;
         buf << msg_len;

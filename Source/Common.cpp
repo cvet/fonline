@@ -146,7 +146,7 @@ void InitialSetup( uint argc, char** argv )
     MainConfig->AppendStr( InternalConfig );
 
     // File configs
-    MainConfig->AppendFile( "Cache/" CONFIG_NAME );
+    MainConfig->AppendFile( CONFIG_NAME );
     for( string& config : configs )
         MainConfig->AppendFile( config.c_str() );
 
@@ -887,7 +887,7 @@ void GetClientOptions()
     # endif
 
     // Cached configuration
-    MainConfig->AppendFile( "Cache/" CONFIG_NAME );
+    MainConfig->AppendFile( CONFIG_NAME );
 
     // Language
     READ_CFG_STR_DEF( *MainConfig, "Language", "russ" );

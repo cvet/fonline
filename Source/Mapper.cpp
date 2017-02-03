@@ -98,13 +98,6 @@ bool FOMapper::Init()
     Str::Copy( ClientWritePath, GameOpt.WorkDir.c_str() );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
-    // Cache
-    if( !Crypt.SetCacheTable( FileManager::GetWritePath( "Cache/default.cache" ) ) )
-    {
-        WriteLog( "Can't set default cache.\n" );
-        return false;
-    }
-
     // Sprite manager
     if( !SprMngr.Init() )
         return false;
@@ -278,7 +271,7 @@ bool FOMapper::Init()
     RefreshCurProtos();
 
 // Load console history
-    string history_str = Crypt.GetCache( "mapper_console" );
+    string history_str = Crypt.GetCache( "mapper_console.txt" );
     size_t pos = 0, prev = 0, count = 0;
     while( ( pos = history_str.find( "\n", prev ) ) != std::string::npos )
     {
@@ -3857,7 +3850,7 @@ void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
                 string history_str = "";
                 for( size_t i = 0, j = ConsoleHistory.size(); i < j; i++ )
                     history_str += ConsoleHistory[ i ] + "\n";
-                Crypt.SetCache( "mapper_console", history_str );
+                Crypt.SetCache( "mapper_console.txt", history_str );
 
                 // Process command
                 bool process_command = true;
