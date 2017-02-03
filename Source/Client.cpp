@@ -1553,12 +1553,14 @@ bool FOClient::NetConnect( const char* host, ushort port )
     }
 
     // Nagle
+    #ifndef FO_WEB
     if( GameOpt.DisableTcpNagle )
     {
         int optval = 1;
         if( setsockopt( Sock, IPPROTO_TCP, TCP_NODELAY, (char*) &optval, sizeof( optval ) ) )
             WriteLog( "Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", GetLastSocketError() );
     }
+    #endif
 
     // Direct connect
     if( !GameOpt.ProxyType || Singleplayer )
