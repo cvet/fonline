@@ -445,9 +445,9 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
         SAFEDELA( font_cache_buf );
 
         // Load from cache
-        uint   pos = 0;
-        uint64 dummy = ReadData< uint64 >( font_cache, pos );
-        uint   image_name_len = ReadData< uint >( font_cache, pos );
+        uint pos = 0;
+        ReadData< uint64 >( font_cache, pos );
+        uint image_name_len = ReadData< uint >( font_cache, pos );
         memcpy( image_name, ReadDataArr< uchar >( font_cache, image_name_len, pos ), image_name_len );
         image_name[ image_name_len ] = 0;
         font.LineHeight = ReadData< int >( font_cache, pos );

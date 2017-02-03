@@ -3852,7 +3852,6 @@ void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
 {
     int   prop_enum_value = gen->GetArgDWord( 0 );
     void* ref = gen->GetArgAddress( 1 );
-    int   type_id = gen->GetArgTypeId( 1 );
     gen->SetReturnByte( 0 );
     RUNTIME_ASSERT( ref );
 
@@ -3873,7 +3872,6 @@ void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
 {
     int   prop_enum_value = gen->GetArgDWord( 0 );
     void* ref = gen->GetArgAddress( 1 );
-    int   type_id = gen->GetArgTypeId( 1 );
     bool  deferred = gen->GetArgByte( 2 ) != 0;
     gen->SetReturnByte( 0 );
     RUNTIME_ASSERT( ref );

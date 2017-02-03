@@ -209,7 +209,7 @@ void Script::RegisterScriptArrayExtensions( asIScriptEngine* engine )
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "void insertFirst(const array<T>@+)", SCRIPT_FUNC_THIS( CScriptArray_InsertArrFirst ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
-    r = engine->RegisterObjectMethod( "array<T>", "void insertLast(const array<T>@+)", SCRIPT_FUNC_THIS( CScriptArray_InsertArrFirst ), SCRIPT_FUNC_THIS_CONV );
+    r = engine->RegisterObjectMethod( "array<T>", "void insertLast(const array<T>@+)", SCRIPT_FUNC_THIS( CScriptArray_InsertArrLast ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );
     r = engine->RegisterObjectMethod( "array<T>", "bool equals(const array<T>@+) const", SCRIPT_FUNC_THIS( CScriptArray_Equals ), SCRIPT_FUNC_THIS_CONV );
     RUNTIME_ASSERT( r >= 0 );

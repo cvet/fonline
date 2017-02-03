@@ -42,7 +42,7 @@ public:
 
     OggVorbis_File* OggStream;
 
-    Sound(): BaseBuf( nullptr ), BaseBufSize( 0 ), ConvertedBuf( nullptr ), CvtBuilded( false ),
+    Sound(): BaseBuf( nullptr ), BaseBufSize( 0 ), CvtBuilded( false ), ConvertedBuf( nullptr ),
              ConvertedBufRealSize( 0 ), ConvertedBufSize( 0 ), ConvertedBufCur( 0 ),
              OriginalFormat( 0 ), OriginalChannels( 0 ), OriginalRate( 0 ),
              IsMusic( false ), NextPlay( 0 ), RepeatTime( 0 ),

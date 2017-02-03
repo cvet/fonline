@@ -906,8 +906,6 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
 {
     string                   result = "";
     char                     buf[ MAX_FOTEXT ];
-
-    ContextData*             ctx_data = (ContextData*) ctx->GetUserData();
     int                      line;
     const asIScriptFunction* func;
     int                      stack_size = ctx->GetCallstackSize();
@@ -1109,9 +1107,6 @@ void Script::CallPragmas( const Pragmas& pragmas )
 bool Script::LoadRootModule( StrVec& names, StrVec& contents, string& result_code )
 {
     RUNTIME_ASSERT( Engine->GetModuleCount() == 0 );
-
-    // Binary version
-    uint version = FONLINE_VERSION;
 
     // Set current pragmas
     EngineData* edata = (EngineData*) Engine->GetUserData();
@@ -1956,9 +1951,11 @@ bool Script::RunPrepared()
         ctx_data->StartTick = tick;
         ctx_data->Parent = asGetActiveContext();
 
-        int             result = ctx->Execute();
+        int result = ctx->Execute();
 
-        uint            delta = Timer::FastTick() - tick;
+        #ifdef SCRIPT_WATCHER
+        uint delta = Timer::FastTick() - tick;
+        #endif
 
         asEContextState state = ctx->GetState();
         if( state == asEXECUTION_SUSPENDED )
