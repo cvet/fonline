@@ -283,6 +283,7 @@ uint FileGetSize( void* file )
 struct FileDesc
 {
     FILE* File;
+    bool  Write;
     bool  WriteThrough;
 };
 
@@ -299,6 +300,7 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
 
     FileDesc* fd = new FileDesc();
     fd->File = f;
+    fd->Write = write;
     fd->WriteThrough = write_through;
     return (void*) fd;
 }
@@ -316,6 +318,7 @@ void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
 
     FileDesc* fd = new FileDesc();
     fd->File = f;
+    fd->Write = true;
     fd->WriteThrough = write_through;
     return (void*) fd;
 }
@@ -333,6 +336,7 @@ void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ 
 
     FileDesc* fd = new FileDesc();
     fd->File = f;
+    fd->Write = true;
     fd->WriteThrough = write_through;
     return (void*) fd;
 }
@@ -342,6 +346,16 @@ void FileClose( void* file )
     if( file )
     {
         fclose( ( (FileDesc*) file )->File );
+
+        # ifdef FO_WEB
+        if( ( (FileDesc*) file )->Write )
+        {
+            EM_ASM(
+                FS.syncfs( function( err ) {} );
+                );
+        }
+        # endif
+
         delete (FileDesc*) file;
     }
 }

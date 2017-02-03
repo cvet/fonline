@@ -882,7 +882,8 @@ void GetClientOptions()
     FileManager::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
     FileManager::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
     #  else
-    FileManager::InitDataFiles( CLIENT_DATA );
+    FileManager::InitDataFiles( "./Data/" );
+    FileManager::InitDataFiles( "./PersistentData/" );
     #  endif
     # endif
 

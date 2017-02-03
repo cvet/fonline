@@ -15,6 +15,13 @@ static void ClientEntry( void* )
     client->MainLoop();
 }
 
+#ifdef FO_WEB
+extern "C" void WebInit()
+{
+    emscripten_set_main_loop_arg( ClientEntry, nullptr, 0, 1 );
+}
+#endif
+
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
     InitialSetup( argc, argv );
@@ -131,7 +138,17 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     SDL_iPhoneSetAnimationCallback( MainWindow, 1, ClientEntry, nullptr );
 
     #elif defined ( FO_WEB )
-    emscripten_set_main_loop_arg( ClientEntry, nullptr, GameOpt.FixedFPS, 1 );
+    EM_ASM(
+        FS.mkdir( '/PersistentData' );
+        FS.mount( IDBFS, {}, '/PersistentData' );
+        FS.syncfs( true, function( err )
+                   {
+                       assert( !err );
+                       ccall( 'WebInit', 'v' );
+                   } );
+        );
+    emscripten_exit_with_live_runtime();
+    return 0;
 
     #elif defined ( FO_ANDROID )
     while( !GameOpt.Quit )

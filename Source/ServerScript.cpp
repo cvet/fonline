@@ -3357,7 +3357,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
     bool available = ( GetClientData( id ) != nullptr );
     ClientsDataLocker.Unlock();
     if( !available )
-        return false;
+        return nullptr;
 
     // Find online
     Client* cl = CrMngr.GetPlayer( id );

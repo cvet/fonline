@@ -69,6 +69,7 @@ elseif( EMSCRIPTEN )
 	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/Web" )
 	set( CMAKE_EXECUTABLE_SUFFIX ".js" ) # .html
 	set( WEB_OPTIONS "-s TOTAL_MEMORY=536870912" )
+	set( WEB_OPTIONS "${WEB_OPTIONS} -s EXPORTED_FUNCTIONS=\"['_main', '_WebInit']\"" )
 	set( WEB_OPTIONS "${WEB_OPTIONS} -O3" ) # Release
 	#set( CMAKE_CONFIGURATION_TYPES "Debug" CACHE STRING "" FORCE ) # Debug
 	#set( WEB_OPTIONS "${WEB_OPTIONS} -s SAFE_HEAP=1" ) # Debug
