@@ -881,9 +881,11 @@ void GetClientOptions()
     FileManager::InitDataFiles( "$Bundle" );
     FileManager::InitDataFiles( SDL_AndroidGetInternalStoragePath() );
     FileManager::InitDataFiles( SDL_AndroidGetExternalStoragePath() );
-    #  else
+    #  elif defined ( FO_WEB )
     FileManager::InitDataFiles( "./Data/" );
     FileManager::InitDataFiles( "./PersistentData/" );
+    #  else
+    FileManager::InitDataFiles( CLIENT_DATA );
     #  endif
     # endif
 

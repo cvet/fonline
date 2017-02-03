@@ -675,10 +675,35 @@ void FOClient::UpdateFilesLoop()
         {
             if( !UpdateFilesList->empty() )
             {
-                if( UpdateFileTemp )
-                    FileClose( UpdateFileTemp );
+                UpdateFile& update_file = UpdateFilesList->front();
 
-                UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
+                if( UpdateFileTemp )
+                {
+                    FileClose( UpdateFileTemp );
+                    UpdateFileTemp = nullptr;
+                }
+
+                if( update_file.Name[ 0 ] == '$' )
+                {
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
+                    UpdateFilesCacheChanged = true;
+                }
+                else
+                {
+                    // Web client can receive only cache updates
+                    // Resources must be packed in main bundle
+                    #ifdef FO_WEB
+                    UpdateFilesAddText( STR_CLIENT_OUTDATED, "Client outdated!" );
+                    SAFEDEL( UpdateFilesList );
+                    NetDisconnect();
+                    return;
+                    #endif
+
+                    FileManager::DeleteFile( FileManager::GetWritePath( update_file.Name.c_str() ) );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
+                    UpdateFilesFilesChanged = true;
+                }
+
                 if( !UpdateFileTemp )
                 {
                     UpdateFilesAddText( STR_FILESYSTEM_ERROR, "File system error!" );
@@ -686,11 +711,6 @@ void FOClient::UpdateFilesLoop()
                     NetDisconnect();
                     return;
                 }
-
-                if( UpdateFilesList->front().Name[ 0 ] == '$' )
-                    UpdateFilesCacheChanged = true;
-                else
-                    UpdateFilesFilesChanged = true;
 
                 UpdateFileDownloading = true;
 
@@ -4476,7 +4496,8 @@ void FOClient::Net_OnUpdateFilesList()
             {
                 if( cached_hash_same || ( file.LoadFile( name ) && hash == Crypt.MurmurHash2( file.GetBuf(), file.GetFsize() ) ) )
                 {
-                    Crypt.SetCache( ( string( name ) + ".hash" ).c_str(), (uchar*) &hash, sizeof( hash ) );
+                    if( !cached_hash_same )
+                        Crypt.SetCache( ( string( name ) + ".hash" ).c_str(), (uchar*) &hash, sizeof( hash ) );
                     continue;
                 }
             }
@@ -4521,7 +4542,7 @@ void FOClient::Net_OnUpdateFileData()
     // Write data to temp file
     if( !FileWrite( UpdateFileTemp, data, MIN( update_file.RemaningSize, sizeof( data ) ) ) )
     {
-        UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't write update.temp file!" );
+        UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't write update file!" );
         return;
     }
 
@@ -4544,27 +4565,26 @@ void FOClient::Net_OnUpdateFileData()
             FileManager cache_data;
             if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp" ) ) )
             {
-                UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update.temp file!" );
+                UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update file!" );
                 return;
             }
 
             Crypt.SetCache( update_file.Name.c_str(), cache_data.GetBuf(), cache_data.GetFsize() );
             Crypt.SetCache( ( update_file.Name + ".hash" ).c_str(), (uchar*) &update_file.Hash, sizeof( update_file.Hash ) );
+            FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
         }
         // File
         else
         {
-            char to_path[ MAX_FOPATH ];
-            FileManager::GetWritePath( update_file.Name.c_str(), to_path );
-            FileManager::FormatPath( to_path );
-            if( !FileManager::RenameFile( FileManager::GetWritePath( "update.temp" ), to_path ) )
+            string from_path = FileManager::GetWritePath( "update.temp" );
+            string to_path = FileManager::GetWritePath( update_file.Name.c_str() );
+            if( !FileManager::RenameFile( from_path.c_str(), to_path.c_str() ) )
             {
-                UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't copy update.temp file!" );
+                UpdateFilesAbort( STR_FILESYSTEM_ERROR, fmt::format( "Can't rename file '{}' to '{}'!", from_path, to_path ).c_str() );
                 return;
             }
         }
 
-        FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
         UpdateFilesList->erase( UpdateFilesList->begin() );
         UpdateFileDownloading = false;
     }
