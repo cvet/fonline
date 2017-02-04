@@ -3,6 +3,9 @@
 #include "IniParser.h"
 #include "Crypt.h"
 #include "F2Palette.h"
+#ifdef FO_WEB
+# include <emscripten/html5.h>
+#endif
 
 SpriteManager SprMngr;
 AnyFrames*    SpriteManager::DummyAnimation = nullptr;
@@ -187,7 +190,7 @@ bool SpriteManager::Init()
     OGL_texture_multisample = true;
     # endif
     # ifdef FO_WEB
-    OGL_vertex_array_object = true;
+    OGL_vertex_array_object = emscripten_webgl_enable_extension( emscripten_webgl_get_current_context(), "OES_vertex_array_object" ) != 0;
     # endif
     #endif
 
