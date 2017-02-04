@@ -375,6 +375,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
             }
             else if( Str::Compare( key, "Letter" ) )
             {
+                letter_buf[ 0 ] = 0;
                 str.getline( letter_buf, sizeof( letter_buf ) );
                 char* utf8_letter_begin = Str::Substring( letter_buf, "'" );
                 if( utf8_letter_begin == nullptr )

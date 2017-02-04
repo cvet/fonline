@@ -157,7 +157,7 @@ static void CScriptArray_InsertArrLast( CScriptArray* arr, const CScriptArray* o
         return;
     }
 
-    arr->InsertAt( arr->GetSize() - 1, *other );
+    arr->InsertAt( arr->GetSize(), *other );
 }
 
 static bool CScriptArray_Equals( CScriptArray* arr, const CScriptArray* other )

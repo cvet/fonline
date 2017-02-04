@@ -9,18 +9,19 @@
 
 static void ClientEntry( void* )
 {
-    static FOClient* client;
+    static FOClient* client = nullptr;
     if( !client )
+    {
+        #ifdef FO_WEB
+        // Wait file system synchronization
+        if( emscripten_run_script_int( "Module.syncfsDone" ) != 1 )
+            return;
+        #endif
+
         client = new FOClient();
+    }
     client->MainLoop();
 }
-
-#ifdef FO_WEB
-extern "C" void WebInit()
-{
-    emscripten_set_main_loop_arg( ClientEntry, nullptr, 0, 1 );
-}
-#endif
 
 extern "C" int main( int argc, char** argv ) // Handled by SDL
 {
@@ -141,14 +142,14 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     EM_ASM(
         FS.mkdir( '/PersistentData' );
         FS.mount( IDBFS, {}, '/PersistentData' );
+        Module.syncfsDone = 0;
         FS.syncfs( true, function( err )
                    {
                        assert( !err );
-                       ccall( 'WebInit', 'v' );
+                       Module.syncfsDone = 1;
                    } );
         );
-    emscripten_exit_with_live_runtime();
-    return 0;
+    emscripten_set_main_loop_arg( ClientEntry, nullptr, 0, 1 );
 
     #elif defined ( FO_ANDROID )
     while( !GameOpt.Quit )

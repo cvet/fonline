@@ -469,6 +469,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     else
                         layer = 0;
 
+                    name[ 0 ] = 0;
                     istr.getline( name, MAX_FOTEXT );
                     Str::Trim( name );
 
@@ -503,6 +504,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         while( !istr.eof() && !istr.fail() )
         {
             istr >> field;
+            svalue[ 0 ] = 0;
             istr.getline( svalue, MAX_FOTEXT );
             Str::Trim( svalue );
 

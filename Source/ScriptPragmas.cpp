@@ -641,7 +641,7 @@ public:
         istrstream str( text.c_str() );
         string     class_name, call_type_str;
         str >> class_name >> call_type_str;
-        char       buf[ MAX_FOTEXT ];
+        char       buf[ MAX_FOTEXT ] = { 0 };
         str.getline( buf, MAX_FOTEXT );
         if( str.fail() )
         {
@@ -868,7 +868,7 @@ public:
             WriteLog( "Unable to parse 'enum' pragma '{}'.\n", text.c_str() );
             return false;
         }
-        char other[ MAX_FOTEXT ];
+        char other[ MAX_FOTEXT ] = { 0 };
         str.getline( other, MAX_FOTEXT );
 
         asIScriptEngine* engine = Script::GetEngine();

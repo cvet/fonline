@@ -190,7 +190,8 @@ bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
             ( *it )->childChecker = false;
 
         // Get unused layers and meshes
-        bool unused_layers[ LAYERS3D_COUNT ] = { 0 };
+        bool unused_layers[ LAYERS3D_COUNT ];
+        memzero( unused_layers, sizeof( unused_layers ) );
         for( int i = 0; i < LAYERS3D_COUNT; i++ )
         {
             if( new_layers[ i ] == 0 )
@@ -1426,6 +1427,7 @@ bool Animation3dEntity::Load( const char* name )
             if( comment )
             {
                 *comment = 0;
+                line[ 0 ] = 0;
                 ( *istr ).getline( line, MAX_FOTEXT );
                 if( !Str::Length( token ) )
                     continue;
@@ -1451,6 +1453,7 @@ bool Animation3dEntity::Load( const char* name )
             {
                 // Get swapped words
                 StrVec templates;
+                line[ 0 ] = 0;
                 ( *istr ).getline( line, MAX_FOTEXT );
                 Str::EraseChars( line, '\r' );
                 Str::EraseChars( line, '\n' );
@@ -1609,7 +1612,7 @@ bool Animation3dEntity::Load( const char* name )
                     {
                         if( !Str::Compare( layers[ m ].c_str(), "All" ) )
                         {
-                            int layer = (int) ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
+                            int layer = ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
                             cut->Layers.push_back( layer );
                         }
                         else
@@ -1817,7 +1820,7 @@ bool Animation3dEntity::Load( const char* name )
                 Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
                 for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                 {
-                    int layer = (int) ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
+                    int layer = ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
                     if( layer >= 0 && layer < LAYERS3D_COUNT )
                     {
                         int* tmp = link->DisabledLayers;
@@ -1857,7 +1860,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::Compare( token, "Texture" ) )
             {
                 ( *istr ) >> buf;
-                int index = (int) ConvertParamValue( buf, convert_value_fail );
+                int index = ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
                 if( index >= 0 && index < EFFECT_TEXTURES )
                 {
@@ -1948,7 +1951,7 @@ bool Animation3dEntity::Load( const char* name )
                     data_len = (uint) ints.size() * sizeof( int );
                     data = new uchar[ data_len ];
                     for( uint i = 0, j = (uint) ints.size(); i < j; i++ )
-                        ( (int*) data )[ i ] = (int) ConvertParamValue( ints[ i ].c_str(), convert_value_fail );
+                        ( (int*) data )[ i ] = ConvertParamValue( ints[ i ].c_str(), convert_value_fail );
                 }
                 else
                 {
@@ -1973,9 +1976,9 @@ bool Animation3dEntity::Load( const char* name )
                 // Index animation
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
-                ind1 = (int) ConvertParamValue( buf, convert_value_fail );
+                ind1 = ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                ind2 = (int) ConvertParamValue( buf, convert_value_fail );
+                ind2 = ConvertParamValue( buf, convert_value_fail );
 
                 if( Str::Compare( token, "Anim" ) || Str::Compare( token, "AnimExt" ) )
                 {
@@ -2013,15 +2016,15 @@ bool Animation3dEntity::Load( const char* name )
             {
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
-                ind1 = (int) ConvertParamValue( buf, convert_value_fail );
+                ind1 = ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                ind2 = (int) ConvertParamValue( buf, convert_value_fail );
+                ind2 = ConvertParamValue( buf, convert_value_fail );
 
                 int layer = 0, value = 0;
                 ( *istr ) >> buf;
-                layer = (int) ConvertParamValue( buf, convert_value_fail );
+                layer = ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                value = (int) ConvertParamValue( buf, convert_value_fail );
+                value = ConvertParamValue( buf, convert_value_fail );
 
                 uint index = ( ind1 << 16 ) | ind2;
                 if( !animLayerValues.count( index ) )
@@ -2039,9 +2042,9 @@ bool Animation3dEntity::Load( const char* name )
 
                 int ind1 = 0, ind2 = 0;
                 ( *istr ) >> buf;
-                ind1 = (int) ConvertParamValue( buf, convert_value_fail );
+                ind1 = ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                ind2 = (int) ConvertParamValue( buf, convert_value_fail );
+                ind2 = ConvertParamValue( buf, convert_value_fail );
 
                 if( valuei == 1 )
                     anim1Equals.insert( PAIR( ind1, ind2 ) );
@@ -2075,7 +2078,7 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
 
-                renderAnimDir = (int) ConvertParamValue( buf, convert_value_fail );
+                renderAnimDir = ConvertParamValue( buf, convert_value_fail );
             }
             else if( Str::Compare( token, "DisableShadow" ) )
             {
@@ -2085,9 +2088,9 @@ bool Animation3dEntity::Load( const char* name )
             {
                 int w = 0, h = 0;
                 ( *istr ) >> buf;
-                w = (int) ConvertParamValue( buf, convert_value_fail );
+                w = ConvertParamValue( buf, convert_value_fail );
                 ( *istr ) >> buf;
-                h = (int) ConvertParamValue( buf, convert_value_fail );
+                h = ConvertParamValue( buf, convert_value_fail );
 
                 drawWidth = w;
                 drawHeight = h;
