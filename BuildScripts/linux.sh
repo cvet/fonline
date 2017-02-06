@@ -2,7 +2,6 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-sudo -S true
 sudo apt-get -y update
 sudo apt-get -y install build-essential
 sudo apt-get -y install cmake

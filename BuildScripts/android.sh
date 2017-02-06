@@ -5,10 +5,10 @@ export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 export ANDROID_NDK_VERSION="android-ndk-r12b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 
-sudo -S true
 sudo apt-get -y update
 sudo apt-get -y install build-essential
 sudo apt-get -y install cmake
+sudo apt-get -y install unzip
 sudo apt-get -y install wput
 sudo apt-get -y install ant
 sudo apt-get -y install openjdk-8-jdk
@@ -19,7 +19,6 @@ mkdir android
 cd android
 
 if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
-	sudo apt-get -y install unzip
 	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip" 
 	unzip "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
 	wget "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip" 
