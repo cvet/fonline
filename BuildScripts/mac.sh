@@ -7,7 +7,7 @@ cd $FO_BUILD_DEST
 mkdir mac
 cd mac
 
-/Applications/CMake.app/Contents/bin/cmake -G Xcode $SOURCE_FULL_PATH/Source
+/Applications/CMake.app/Contents/bin/cmake -G Xcode "$SOURCE_FULL_PATH/Source"
 /Applications/CMake.app/Contents/bin/cmake --build . --config RelWithDebInfo --target FOnline
 
 if [ -n "$FO_FTP_DEST" ]; then
