@@ -5,6 +5,7 @@ export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 export ANDROID_NDK_VERSION="android-ndk-r12b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 
+sudo -S true
 sudo apt-get -y update
 sudo apt-get -y install build-essential
 sudo apt-get -y install cmake
