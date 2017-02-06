@@ -1,10 +1,5 @@
 #!/bin/bash
 
-export FO_BUILD_DEST=build_test
-export FO_SOURCE=FOnline/FOnlineSource
-export FO_FTP_DEST=109.167.147.160
-export FO_FTP_USER=lf:qwerty
-
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
 if [ "$EUID" -ne 0 ]; then
