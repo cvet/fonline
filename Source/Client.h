@@ -19,7 +19,7 @@
 #include "MsgFiles.h"
 #include "MapCl.h"
 #include "ProtoManager.h"
-#include "Theora/theoradec.h"
+#include "theora/theoradec.h"
 
 // Fonts
 #define FONT_DEFAULT              ( 0 )
