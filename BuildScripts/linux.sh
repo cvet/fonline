@@ -2,21 +2,21 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-apt-get -y update
-apt-get -y install build-essential
-apt-get -y install cmake
-apt-get -y install wput
-apt-get -y install libx11-dev
-apt-get -y install freeglut3-dev
-apt-get -y install libssl-dev
-apt-get -y install libevent-dev
+sudo apt-get -y update
+sudo apt-get -y install build-essential
+sudo apt-get -y install cmake
+sudo apt-get -y install wput
+sudo apt-get -y install libx11-dev
+sudo apt-get -y install freeglut3-dev
+sudo apt-get -y install libssl-dev
+sudo apt-get -y install libevent-dev
 # x86
-apt-get -y install gcc-multilib
-apt-get -y install g++-multilib
-apt-get -y install libx11-dev:i386
-apt-get -y install freeglut3-dev:i386
-apt-get -y install libssl-dev:i386
-apt-get -y install libevent-dev:i386
+sudo apt-get -y install gcc-multilib
+sudo apt-get -y install g++-multilib
+sudo apt-get -y install libx11-dev:i386
+sudo apt-get -y install freeglut3-dev:i386
+sudo apt-get -y install libssl-dev:i386
+sudo apt-get -y install libevent-dev:i386
 
 mkdir $FO_BUILD_DEST
 cd $FO_BUILD_DEST

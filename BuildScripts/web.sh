@@ -2,14 +2,14 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-apt-get -y update
-apt-get -y install build-essential
-apt-get -y install cmake
-apt-get -y install wput
-apt-get -y install python2.7
-apt-get -y install nodejs
-apt-get -y install default-jre
-apt-get -y install git-core
+sudo apt-get -y update
+sudo apt-get -y install build-essential
+sudo apt-get -y install cmake
+sudo apt-get -y install wput
+sudo apt-get -y install python2.7
+sudo apt-get -y install nodejs
+sudo apt-get -y install default-jre
+sudo apt-get -y install git-core
 
 mkdir $FO_BUILD_DEST
 cd $FO_BUILD_DEST
