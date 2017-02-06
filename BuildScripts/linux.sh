@@ -25,12 +25,14 @@ cd linux
 
 #mkdir x86
 #cd x86
-#cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source" && make
+#cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
+#make
 #cd ../
 
 mkdir x64
 cd x64
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux64.cache.cmake" "$SOURCE_FULL_PATH/Source" && make
+cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux64.cache.cmake" "$SOURCE_FULL_PATH/Source"
+make
 cd ../
 
 if [ -n "$FO_FTP_DEST" ]; then

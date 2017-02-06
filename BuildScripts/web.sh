@@ -19,6 +19,7 @@ cd web
 mkdir emsdk
 cp -r "$SOURCE_FULL_PATH/BuildScripts/emsdk" "./"
 cd emsdk
+chmod +x ./emsdk
 ./emsdk update
 ./emsdk install latest
 ./emsdk activate latest
@@ -26,7 +27,8 @@ source ./emsdk_env.sh
 cd ../
 emcc -v
 
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" "$SOURCE_FULL_PATH/Source" && make
+cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" "$SOURCE_FULL_PATH/Source"
+make
 
 if [ -n "$FO_FTP_DEST" ]; then
 	wput Web ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/
