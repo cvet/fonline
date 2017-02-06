@@ -1,7 +1,7 @@
 # CMake initial cache
 
-if( NOT DEFINED "ENV{FO_SOURCE}" )
-	message( FATAL_ERROR "Define FO_SOURCE" )
+if( NOT DEFINED "ENV{SOURCE_FULL_PATH}" )
+	message( FATAL_ERROR "Define SOURCE_FULL_PATH" )
 endif()
 
-set( CMAKE_TOOLCHAIN_FILE "$ENV{FO_SOURCE}/BuildScripts/ios.toolchain.cmake" CACHE PATH "" FORCE )
+set( CMAKE_TOOLCHAIN_FILE "$ENV{SOURCE_FULL_PATH}/BuildScripts/ios.toolchain.cmake" CACHE PATH "" FORCE )

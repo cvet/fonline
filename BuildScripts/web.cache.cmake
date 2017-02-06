@@ -1,7 +1,7 @@
 # CMake initial cache
 
-if( NOT DEFINED "ENV{FO_SOURCE}" )
-	message( FATAL_ERROR "Define FO_SOURCE" )
+if( NOT DEFINED "ENV{SOURCE_FULL_PATH}" )
+	message( FATAL_ERROR "Define SOURCE_FULL_PATH" )
 endif()
 if( NOT DEFINED "ENV{EMSCRIPTEN}" )
 	message( FATAL_ERROR "Define EMSCRIPTEN" )
