@@ -2,11 +2,6 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-if [ "$EUID" -ne 0 ]; then
-	echo "Run as root"
-	exit
-fi
-
 apt-get -y update
 apt-get -y install build-essential
 apt-get -y install cmake

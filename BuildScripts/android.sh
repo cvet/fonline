@@ -5,11 +5,6 @@ export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 export ANDROID_NDK_VERSION="android-ndk-r12b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 
-if [ "$EUID" -ne 0 ]; then
-	echo "Run as root"
-	exit
-fi
-
 apt-get -y update
 apt-get -y install build-essential
 apt-get -y install cmake
