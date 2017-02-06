@@ -27,7 +27,7 @@ cmake --build windows\x86 --config RelWithDebInfo --target FOnline
 
 IF DEFINED FO_FTP_DEST (
 	PUSHD windows\Client
-	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" . ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" * ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/
 	POPD
 	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" windows/Server --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
 	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" windows/Mapper --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
