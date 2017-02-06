@@ -1,13 +1,19 @@
 #!/bin/bash
 
-# Usage:
-# export FO_SOURCE=<source> && sudo -E $FO_SOURCE/BuildScripts/mac.sh
+export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-if [ "$FO_CLEAR" = "TRUE" ]; then
-	rm -rf mac
-fi
+mkdir $FO_BUILD_DEST
+cd $FO_BUILD_DEST
 mkdir mac
 cd mac
 
-/Applications/CMake.app/Contents/bin/cmake -G Xcode $FO_SOURCE/Source
+/Applications/CMake.app/Contents/bin/cmake -G Xcode $SOURCE_FULL_PATH/Source
 /Applications/CMake.app/Contents/bin/cmake --build . --config RelWithDebInfo --target FOnline
+
+if [ -n "$FO_FTP_DEST" ]; then
+	curl -T Mac/FOnline -u $FO_FTP_USER --ftp-create-dirs ftp://$FO_FTP_DEST/Client/Mac/
+fi
+
+if [ -n "$FO_COPY_DEST" ]; then
+	cp -r Mac "$FO_COPY_DEST/Client"
+fi

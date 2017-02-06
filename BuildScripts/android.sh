@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# Usage:
-# export FO_SOURCE=<source> && sudo -E "$FO_SOURCE/BuildScripts/android.sh"
+export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-export FO_SDK="$FO_SOURCE/../FOnline"
 export ANDROID_NDK_VERSION="android-ndk-r12b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
 
@@ -15,12 +13,12 @@ fi
 apt-get -y update
 apt-get -y install build-essential
 apt-get -y install cmake
+apt-get -y install wput
 apt-get -y install ant
 apt-get -y install openjdk-8-jdk
 
-if [ "$FO_CLEAR" = "TRUE" ]; then
-	rm -rf android
-fi
+mkdir $FO_BUILD_DEST
+cd $FO_BUILD_DEST
 mkdir android
 cd android
 
@@ -42,18 +40,24 @@ cd ../
 
 rm -rf Android/*
 mkdir Android
-cp -r "$FO_SOURCE/BuildScripts/android-project/." "./Android/"
+cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Android/"
 
 export ANDROID_ABI=armeabi-v7a
 mkdir $ANDROID_ABI
 cd $ANDROID_ABI
-cmake -G "Unix Makefiles" -C "$FO_SOURCE/BuildScripts/android.cache.cmake" "$FO_SOURCE/Source" && make
+cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source" && make
 cd ../
 
 export ANDROID_ABI=x86
 mkdir $ANDROID_ABI
 cd $ANDROID_ABI
-cmake -G "Unix Makefiles" -C "$FO_SOURCE/BuildScripts/android.cache.cmake" "$FO_SOURCE/Source" && make
+cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source" && make
 cd ../
 
-cp -r Android "$FO_SDK/Binaries/Client"
+if [ -n "$FO_FTP_DEST" ]; then
+	wput Android ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/
+fi
+
+if [ -n "$FO_COPY_DEST" ]; then
+	cp -r Android "$FO_COPY_DEST/Client"
+fi
