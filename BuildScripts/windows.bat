@@ -26,20 +26,19 @@ cmake --build windows\x86 --config RelWithDebInfo --target ASCompiler
 cmake --build windows\x86 --config RelWithDebInfo --target FOnline
 
 IF DEFINED FO_FTP_DEST (
-	SET WPUT_EXE=%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe
 	PUSHD windows\Client
-	"%WPUT_EXE%" . ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" . ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/
 	POPD
-	"%WPUT_EXE%" windows/Server --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
-	"%WPUT_EXE%" windows/Mapper --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
-	"%WPUT_EXE%" windows/ASCompiler --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" windows/Server --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" windows/Mapper --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" windows/ASCompiler --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
 )
 
 IF DEFINED FO_COPY_DEST (
-	XCOPY /S /Y windows\Client "%FO_COPY_DEST%\Client\Windows\"
-	XCOPY /S /Y windows\Server "%FO_COPY_DEST%\Server\"
-	XCOPY /S /Y windows\Mapper "%FO_COPY_DEST%\Mapper\"
-	XCOPY /S /Y windows\ASCompiler "%FO_COPY_DEST%\ASCompiler\"
+	XCOPY /S /Y windows\Client "..\%FO_COPY_DEST%\Client\Windows\"
+	XCOPY /S /Y windows\Server "..\%FO_COPY_DEST%\Server\"
+	XCOPY /S /Y windows\Mapper "..\%FO_COPY_DEST%\Mapper\"
+	XCOPY /S /Y windows\ASCompiler "..\%FO_COPY_DEST%\ASCompiler\"
 )
 
 POPD
