@@ -294,8 +294,6 @@ extern IntVec        MainWindowKeyboardEvents;
 extern StrVec        MainWindowKeyboardEventsText;
 extern IntVec        MainWindowMouseEvents;
 
-# include "Assimp/aiTypes.h"
-
 const uchar SELECT_ALPHA    = 100;
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );

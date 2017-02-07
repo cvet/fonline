@@ -232,8 +232,7 @@ if( WIN32 )
 	set( NCODEHOOK "NCodeHook" )
 endif()
 
-file( GLOB Assimp_SOURCE "Assimp/*.* Assimp/Compiler/*.*" )
-source_group( "ThirdParty\\Assimp" FILES ${Assimp_SOURCE} )
+include_directories( "Assimp/include" )
 
 file( GLOB fbxsdk_SOURCE "fbxsdk/*.*" )
 source_group( "ThirdParty\\fbxsdk" FILES ${fbxsdk_SOURCE} )

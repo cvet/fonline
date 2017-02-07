@@ -3,8 +3,8 @@
 
 #include "Common.h"
 #include "Defines.h"
-#include "Assimp/aiTypes.h"
-#include "Assimp/aiScene.h"
+#include "assimp/types.h"
+#include "assimp/scene.h"
 #include "FileManager.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_SCRIPT_COMPILER )
