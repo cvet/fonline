@@ -33,8 +33,8 @@ echo y | ./android update sdk --no-ui
 cd ../
 cd ../
 
-rm -rf Android/*
 mkdir Android
+rm -rf Android/*
 cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Android/"
 
 export ANDROID_ABI=armeabi-v7a
@@ -52,7 +52,9 @@ make
 cd ../
 
 if [ -n "$FO_FTP_DEST" ]; then
-	wput Android ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/
+	find Android/* | while read line; do
+		wput $line ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/Android/
+	done
 fi
 
 if [ -n "$FO_COPY_DEST" ]; then
