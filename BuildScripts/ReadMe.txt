@@ -1,4 +1,6 @@
-gocd:fgt43trfcvq23
+windows user - gocd:fgt43trfcvq23
+ftp - fonline:hn45tgfvwq
+gocd web - cvet:h3efrvewq532
 
 FO_BUILD_DEST=FOnlineBuild
 FO_SOURCE=FOnlineSource
