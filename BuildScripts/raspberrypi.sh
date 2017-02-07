@@ -6,7 +6,7 @@ sudo apt-get -y update
 sudo apt-get -y install build-essential
 sudo apt-get -y install cmake
 sudo apt-get -y install wput
-sudo apt-get -y git
+sudo apt-get -y install git
 
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
