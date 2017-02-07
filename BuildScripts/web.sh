@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
