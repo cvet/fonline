@@ -4,7 +4,10 @@ POPD
 
 MKDIR %FO_BUILD_DEST%
 PUSHD %FO_BUILD_DEST%
-MKDIR windows
+IF EXIST windows\Client RD windows\Client /S /Q
+IF EXIST windows\Server RD windows\Server /S /Q
+IF EXIST windows\Mapper RD windows\Mapper /S /Q
+IF EXIST windows\ASCompiler RD windows\ASCompiler /S /Q
 
 MKDIR windows\x86
 PUSHD windows\x86

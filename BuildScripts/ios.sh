@@ -6,6 +6,8 @@ mkdir $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 mkdir ios
 cd ios
+mkdir iOS
+rm -rf iOS/*
 
 /Applications/CMake.app/Contents/bin/cmake -G Xcode -C "$SOURCE_FULL_PATH/BuildScripts/ios.cache.cmake" "$SOURCE_FULL_PATH/Source"
 /Applications/CMake.app/Contents/bin/cmake --build . --config RelWithDebInfo --target FOnline

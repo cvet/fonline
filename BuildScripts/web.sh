@@ -15,6 +15,9 @@ mkdir $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 mkdir web
 cd web
+mkdir Web
+rm -rf Web/*
+cp -r "$SOURCE_FULL_PATH/BuildScripts/web/." "./Web/"
 
 mkdir emsdk
 cp -r "$SOURCE_FULL_PATH/BuildScripts/emsdk" "./"

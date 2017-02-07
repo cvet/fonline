@@ -17,6 +17,9 @@ mkdir $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 mkdir android
 cd android
+mkdir Android
+rm -rf Android/*
+cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Android/"
 
 if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip" 
@@ -32,10 +35,6 @@ cd sdk/tools
 echo y | ./android update sdk --no-ui
 cd ../
 cd ../
-
-mkdir Android
-rm -rf Android/*
-cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Android/"
 
 export ANDROID_ABI=armeabi-v7a
 mkdir $ANDROID_ABI

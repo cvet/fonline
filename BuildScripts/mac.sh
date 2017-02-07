@@ -6,6 +6,8 @@ mkdir $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 mkdir mac
 cd mac
+mkdir Mac
+rm -rf Mac/*
 
 /Applications/CMake.app/Contents/bin/cmake -G Xcode "$SOURCE_FULL_PATH/Source"
 /Applications/CMake.app/Contents/bin/cmake --build . --config RelWithDebInfo --target FOnline

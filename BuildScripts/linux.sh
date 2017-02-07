@@ -22,6 +22,10 @@ mkdir $FO_BUILD_DEST
 cd $FO_BUILD_DEST
 mkdir linux
 cd linux
+rm -rf Client/*
+rm -rf Server/*
+rm -rf Mapper/*
+rm -rf ASCompiler/*
 
 #mkdir x86
 #cd x86
