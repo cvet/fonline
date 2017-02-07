@@ -1,0 +1,11 @@
+#!/bin/bash
+
+sudo apt-get -y update
+sudo apt-get -y install lftp
+
+if [ -n "$FO_FTP_DEST" ]; then
+	lftp -e "rm -r Client; exit" -u $FO_FTP_USER $FO_FTP_DEST
+	lftp -e "rm -r Server; exit" -u $FO_FTP_USER $FO_FTP_DEST
+	lftp -e "rm -r Mapper; exit" -u $FO_FTP_USER $FO_FTP_DEST
+	lftp -e "rm -r ASCompiler; exit" -u $FO_FTP_USER $FO_FTP_DEST
+fi

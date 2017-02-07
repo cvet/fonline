@@ -7,7 +7,8 @@ FO_FTP_USER=lf:qwerty (optional)
 FO_COPY_DEST=D:\_COPY (optional)
 
 Setup Windows:
-Install cmake
+Download and install gocd
+Download and install cmake
 Create user go/password (admin), assign to Go services.
 
 Setup Linux:
@@ -17,4 +18,5 @@ sudo adduser go sudo
 echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 Setup Mac:
-Install cmake
+Download and install gocd
+Download and install cmake
