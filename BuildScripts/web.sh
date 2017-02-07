@@ -11,15 +11,15 @@ sudo apt-get -y install nodejs
 sudo apt-get -y install default-jre
 sudo apt-get -y install git-core
 
-mkdir $FO_BUILD_DEST
+mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
-mkdir web
+mkdir -p web
 cd web
-mkdir Web
+mkdir -p Web
 rm -rf Web/*
 cp -r "$SOURCE_FULL_PATH/BuildScripts/web/." "./Web/"
 
-mkdir emsdk
+mkdir -p emsdk
 cp -r "$SOURCE_FULL_PATH/BuildScripts/emsdk" "./"
 cd emsdk
 chmod +x ./emsdk

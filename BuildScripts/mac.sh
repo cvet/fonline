@@ -2,11 +2,11 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-mkdir $FO_BUILD_DEST
+mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
-mkdir mac
+mkdir -p mac
 cd mac
-mkdir Mac
+mkdir -p Mac
 rm -rf Mac/*
 
 /Applications/CMake.app/Contents/bin/cmake -G Xcode "$SOURCE_FULL_PATH/Source"

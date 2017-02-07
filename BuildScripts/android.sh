@@ -13,11 +13,11 @@ sudo apt-get -y install wput
 sudo apt-get -y install ant
 sudo apt-get -y install openjdk-8-jdk
 
-mkdir $FO_BUILD_DEST
+mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
-mkdir android
+mkdir -p android
 cd android
-mkdir Android
+mkdir -p Android
 rm -rf Android/*
 cp -r "$SOURCE_FULL_PATH/BuildScripts/android-project/." "./Android/"
 
@@ -25,7 +25,7 @@ if [ ! -f "$ANDROID_NDK_VERSION-linux-x86_64.zip" ]; then
 	wget "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip" 
 	unzip "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
 	wget "https://dl.google.com/android/repository/$ANDROID_SDK_VERSION-linux.zip" 
-	mkdir sdk
+	mkdir -p sdk
 	unzip "$ANDROID_SDK_VERSION-linux.zip" -d "./sdk"
 fi
 export ANDROID_NDK="$PWD/$ANDROID_NDK_VERSION"
@@ -37,14 +37,14 @@ cd ../
 cd ../
 
 export ANDROID_ABI=armeabi-v7a
-mkdir $ANDROID_ABI
+mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
 make -j4
 cd ../
 
 export ANDROID_ABI=x86
-mkdir $ANDROID_ABI
+mkdir -p $ANDROID_ABI
 cd $ANDROID_ABI
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
 make -j4

@@ -2,11 +2,11 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-mkdir $FO_BUILD_DEST
+mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
-mkdir ios
+mkdir -p ios
 cd ios
-mkdir iOS
+mkdir -p iOS
 rm -rf iOS/*
 
 /Applications/CMake.app/Contents/bin/cmake -G Xcode -C "$SOURCE_FULL_PATH/BuildScripts/ios.cache.cmake" "$SOURCE_FULL_PATH/Source"
