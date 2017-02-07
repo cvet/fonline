@@ -294,7 +294,7 @@ extern IntVec        MainWindowKeyboardEvents;
 extern StrVec        MainWindowKeyboardEventsText;
 extern IntVec        MainWindowMouseEvents;
 
-const uchar SELECT_ALPHA    = 100;
+const uchar          SELECT_ALPHA    = 100;
 
 uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light );
 void GetClientOptions();
