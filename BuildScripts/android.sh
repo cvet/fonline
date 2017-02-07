@@ -52,7 +52,7 @@ cd ../
 
 if [ -n "$FO_FTP_DEST" ]; then
 	find Android/* | while read line; do
-		wput $line ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/Android/
+		wput $line ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/
 	done
 fi
 
