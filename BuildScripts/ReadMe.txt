@@ -12,10 +12,15 @@ Download and install cmake
 Create user go/password (admin), assign to Go services.
 
 Setup Linux:
+echo "deb https://download.gocd.io/" | sudo tee /etc/apt/sources.list.d/gocd.list
 curl https://download.gocd.io/GOCD-GPG-KEY.asc | sudo apt-key add -
 sudo apt-get update
+sudo apt-get install go-agent
+sudo gedit /etc/default/go-agent GO_SERVER=...
 sudo adduser go sudo
+sudo -i
 echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+reboot
 
 Setup Mac:
 Download and install gocd
