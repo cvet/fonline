@@ -14,3 +14,11 @@ rm -rf iOS/*
 
 #xcodebuild -project "${PROJECT}/${TARGET}_${PLATFORM}/Build/xcode/Unity-iPhone.xcodeproj" -configuration Release -scheme "Unity-iPhone" clean archive -archivePath "${PROJECT}/${TARGET}_${PLATFORM}/Build/xcode/build/Unity-iPhone"
 #xcodebuild -exportArchive -archivePath "${PROJECT}/${TARGET}_${PLATFORM}/Build/xcode/build/Unity-iPhone.xcarchive" -exportFormat ipa -exportPath "${PROJECT}/${TARGET}_${PLATFORM}/Build/Unity-iPhone.ipa" -exportProvisioningProfile "Warfair"
+
+if [ -n "$FO_FTP_DEST" ]; then
+	curl -T iOS/FOnline -u $FO_FTP_USER --ftp-create-dirs ftp://$FO_FTP_DEST/Client/iOS/
+fi
+
+if [ -n "$FO_COPY_DEST" ]; then
+	cp -r iOS "$FO_COPY_DEST/Client"
+fi
