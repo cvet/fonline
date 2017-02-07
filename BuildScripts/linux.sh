@@ -30,13 +30,13 @@ rm -rf ASCompiler/*
 #mkdir x86
 #cd x86
 #cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
-#make
+#make -j4
 #cd ../
 
 mkdir x64
 cd x64
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux64.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make
+make -j4
 cd ../
 
 if [ -n "$FO_FTP_DEST" ]; then

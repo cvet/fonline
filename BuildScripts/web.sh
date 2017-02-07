@@ -31,7 +31,7 @@ cd ../
 emcc -v
 
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make
+make -j4
 
 if [ -n "$FO_FTP_DEST" ]; then
 	wput Web ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/

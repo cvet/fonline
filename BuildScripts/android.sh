@@ -40,14 +40,14 @@ export ANDROID_ABI=armeabi-v7a
 mkdir $ANDROID_ABI
 cd $ANDROID_ABI
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make
+make -j4
 cd ../
 
 export ANDROID_ABI=x86
 mkdir $ANDROID_ABI
 cd $ANDROID_ABI
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/android.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make
+make -j4
 cd ../
 
 if [ -n "$FO_FTP_DEST" ]; then
