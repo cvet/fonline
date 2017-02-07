@@ -58,23 +58,23 @@ SET(ASSIMP_PACKAGE_VERSION "0" CACHE STRING "the package-specific version used f
 add_definitions( -DOPENDDL_NO_USE_CPP11 )
 set_property( GLOBAL PROPERTY CXX_STANDARD 11 )
 
-# Get the current working branch
-EXECUTE_PROCESS(
-  COMMAND git rev-parse --abbrev-ref HEAD
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  OUTPUT_VARIABLE GIT_BRANCH
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  ERROR_QUIET
-)
+#!# Get the current working branch
+#!EXECUTE_PROCESS(
+#!  COMMAND git rev-parse --abbrev-ref HEAD
+#!  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#!  OUTPUT_VARIABLE GIT_BRANCH
+#!  OUTPUT_STRIP_TRAILING_WHITESPACE
+#!  ERROR_QUIET
+#!)
 
 # Get the latest abbreviated commit hash of the working branch
-EXECUTE_PROCESS(
-  COMMAND git log -1 --format=%h
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  OUTPUT_VARIABLE GIT_COMMIT_HASH
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  ERROR_QUIET
-)
+#!EXECUTE_PROCESS(
+#!  COMMAND git log -1 --format=%h
+#!  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#!  OUTPUT_VARIABLE GIT_COMMIT_HASH
+#!  OUTPUT_STRIP_TRAILING_WHITESPACE
+#!  ERROR_QUIET
+#!)
 
 IF(NOT GIT_COMMIT_HASH)
   SET(GIT_COMMIT_HASH 0)
@@ -149,12 +149,12 @@ ELSE()
   SET(CMAKE_DEBUG_POSTFIX "" CACHE STRING "Debug Postfix for lib, samples and tools")
 ENDIF()
 
-# Only generate this target if no higher-level project already has
-IF (NOT TARGET uninstall)
-  # add make uninstall capability
-  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules/cmake_uninstall.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake" IMMEDIATE @ONLY)
-  add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
-ENDIF()
+#!# Only generate this target if no higher-level project already has
+#!IF (NOT TARGET uninstall)
+#!  # add make uninstall capability
+#!  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake-modules/cmake_uninstall.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake" IMMEDIATE @ONLY)
+#!  add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
+#!ENDIF()
 
 
 
@@ -320,6 +320,8 @@ IF(MSVC)
     ON
   )
 ENDIF(MSVC)
+
+return() #!
 
 # Generate a pkg-config .pc for the Assimp library.
 CONFIGURE_FILE( "${PROJECT_SOURCE_DIR}/assimp.pc.in" "${PROJECT_BINARY_DIR}/assimp.pc" @ONLY )

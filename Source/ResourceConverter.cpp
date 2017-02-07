@@ -10,17 +10,6 @@
 static uchar* LoadPNG( const uchar* data, uint data_size, uint& result_width, uint& result_height );
 static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, uint& result_height );
 
-// Assimp functions
-const aiScene* ( *Ptr_aiImportFileFromMemory )( const char* pBuffer, unsigned int pLength, unsigned int pFlags, const char* pHint );
-void           ( * Ptr_aiReleaseImport )( const aiScene* pScene );
-const char*    ( *Ptr_aiGetErrorString )( );
-void           ( * Ptr_aiEnableVerboseLogging )( aiBool d );
-aiLogStream    ( * Ptr_aiGetPredefinedLogStream )( aiDefaultLogStream pStreams, const char* file );
-void           ( * Ptr_aiAttachLogStream )( const aiLogStream* stream );
-unsigned int   ( * Ptr_aiGetMaterialTextureCount )( const aiMaterial* pMat, aiTextureType type );
-aiReturn       ( * Ptr_aiGetMaterialTexture )( const aiMaterial* mat, aiTextureType type, unsigned int  index, aiString* path, aiTextureMapping* mapping, unsigned int* uvindex, float* blend, aiTextureOp* op, aiTextureMapMode* mapmode, unsigned int* flags );
-aiReturn       ( * Ptr_aiGetMaterialFloatArray )( const aiMaterial* pMat, const char* pKey, unsigned int type, unsigned int index, float* pOut, unsigned int* pMax );
-
 static Bone* ConvertAssimpPass1( aiScene* ai_scene, aiNode* ai_node );
 static void  ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, aiScene* ai_scene, aiNode* ai_node );
 
@@ -354,74 +343,23 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
     // Assimp loader
     else
     {
-        // Load Assimp dynamic library
-        static bool binded = false;
-        static bool binded_try = false;
-        if( !binded )
+        // Logging
+        if( GameOpt.AssimpLogging )
         {
-            // Already try
-            if( binded_try )
-                return nullptr;
-            binded_try = true;
-
-            // Library extension
-            #ifdef FO_WINDOWS
-            # define ASSIMP_PATH1    ".\\"
-            # define ASSIMP_PATH2    "data\\Assimp32.dll"
-            #else
-            # define ASSIMP_PATH1    "./"
-            # define ASSIMP_PATH2    "data/Assimp32.so"
-            #endif
-
-            // Check dll availability
-            void* dll = DLL_Load( ASSIMP_PATH1 ASSIMP_PATH2 );
-            if( !dll )
-            {
-                WriteLog( "'" ASSIMP_PATH2 "' not found.\n" );
-                return nullptr;
-            }
-
-            // Bind functions
-            uint errors = 0;
-            #define BIND_ASSIMP_FUNC( f )                                        \
-                Ptr_ ## f = ( decltype( Ptr_ ## f ) )DLL_GetAddress( dll, # f ); \
-                if( !Ptr_ ## f )                                                 \
-                {                                                                \
-                    WriteLog( "Assimp function '" # f "' not found.\n" );        \
-                    errors++;                                                    \
-                }
-            BIND_ASSIMP_FUNC( aiImportFileFromMemory );
-            BIND_ASSIMP_FUNC( aiReleaseImport );
-            BIND_ASSIMP_FUNC( aiGetErrorString );
-            BIND_ASSIMP_FUNC( aiEnableVerboseLogging );
-            BIND_ASSIMP_FUNC( aiGetPredefinedLogStream );
-            BIND_ASSIMP_FUNC( aiAttachLogStream );
-            BIND_ASSIMP_FUNC( aiGetMaterialTextureCount );
-            BIND_ASSIMP_FUNC( aiGetMaterialTexture );
-            BIND_ASSIMP_FUNC( aiGetMaterialFloatArray );
-            #undef BIND_ASSIMP_FUNC
-            if( errors )
-                return nullptr;
-            binded = true;
-
-            // Logging
-            if( GameOpt.AssimpLogging )
-            {
-                Ptr_aiEnableVerboseLogging( true );
-                static aiLogStream c = Ptr_aiGetPredefinedLogStream( aiDefaultLogStream_FILE, "Assimp.log" );
-                Ptr_aiAttachLogStream( &c );
-            }
+            aiEnableVerboseLogging( true );
+            static aiLogStream c = aiGetPredefinedLogStream( aiDefaultLogStream_FILE, "Assimp.log" );
+            aiAttachLogStream( &c );
         }
 
         // Load scene
-        aiScene* scene = (aiScene*) Ptr_aiImportFileFromMemory( (const char*) file.GetBuf(), file.GetFsize(),
-                                                                aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
-                                                                aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-                                                                aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
-                                                                aiProcess_ImproveCacheLocality, "" );
+        aiScene* scene = (aiScene*) aiImportFileFromMemory( (const char*) file.GetBuf(), file.GetFsize(),
+                                                            aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
+                                                            aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
+                                                            aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
+                                                            aiProcess_ImproveCacheLocality, "" );
         if( !scene )
         {
-            WriteLog( "Can't load 3d file, name '{}', error '{}'.\n", name, Ptr_aiGetErrorString() );
+            WriteLog( "Can't load 3d file, name '{}', error '{}'.\n", name, aiGetErrorString() );
             return nullptr;
         }
 
@@ -482,7 +420,7 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
             loaded_animations.push_back( anim_set );
         }
 
-        Ptr_aiReleaseImport( scene );
+        aiReleaseImport( scene );
     }
 
     // Make new file
@@ -597,9 +535,9 @@ static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, 
         // Material
         aiMaterial* material = ai_scene->mMaterials[ ai_mesh->mMaterialIndex ];
         aiString    path;
-        if( Ptr_aiGetMaterialTextureCount( material, aiTextureType_DIFFUSE ) )
+        if( aiGetMaterialTextureCount( material, aiTextureType_DIFFUSE ) )
         {
-            Ptr_aiGetMaterialTexture( material, aiTextureType_DIFFUSE, 0, &path, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
+            aiGetMaterialTexture( material, aiTextureType_DIFFUSE, 0, &path, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
             mesh->DiffuseTexture = path.data;
         }
 
@@ -668,8 +606,8 @@ static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, 
         for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
         {
             Vertex3D& v = mesh->Vertices[ i ];
-            float w = 0.0f;
-            int last_bone = 0;
+            float     w = 0.0f;
+            int       last_bone = 0;
             for( int b = 0; b < BONES_PER_VERTEX; b++ )
             {
                 if( v.BlendIndices[ b ] < 0.0f )
@@ -801,7 +739,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
             {
                 if( Str::Compare( prop_diffuse.GetSrcObject( i )->GetClassId().GetName(), "FbxFileTexture" ) )
                 {
-                    char tex_fname[ MAX_FOPATH ];
+                    char            tex_fname[ MAX_FOPATH ];
                     FbxFileTexture* fbx_file_texture = (FbxFileTexture*) prop_diffuse.GetSrcObject( i );
                     FileManager::ExtractFileName( fbx_file_texture->GetFileName(), tex_fname );
                     mesh->DiffuseTexture = tex_fname;
@@ -818,7 +756,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
         if( fbx_skin )
         {
             // 3DS Max specific - Geometric transform
-            Matrix ms, mr, mt;
+            Matrix     ms, mr, mt;
             FbxVector4 gt = fbx_node->GetGeometricTranslation( FbxNode::eSourcePivot );
             FbxVector4 gr = fbx_node->GetGeometricRotation( FbxNode::eSourcePivot );
             FbxVector4 gs = fbx_node->GetGeometricScaling( FbxNode::eSourcePivot );
@@ -841,7 +779,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
                 fbx_cluster->GetTransformLinkMatrix( link_matrix );
                 FbxAMatrix cur_matrix;
                 fbx_cluster->GetTransformMatrix( cur_matrix );
-                Bone* skin_bone = root_bone->Find( Bone::GetHash( fbx_cluster->GetLink()->GetName() ) );
+                Bone*      skin_bone = root_bone->Find( Bone::GetHash( fbx_cluster->GetLink()->GetName() ) );
                 if( !skin_bone )
                 {
                     WriteLog( "Skin bone '{}' for mesh '{}' not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName() );
@@ -884,7 +822,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
         else
         {
             // 3DS Max specific - Geometric transform
-            Matrix ms, mr, mt;
+            Matrix     ms, mr, mt;
             FbxVector4 gt = fbx_node->GetGeometricTranslation( FbxNode::eSourcePivot );
             FbxVector4 gr = fbx_node->GetGeometricRotation( FbxNode::eSourcePivot );
             FbxVector4 gs = fbx_node->GetGeometricScaling( FbxNode::eSourcePivot );
@@ -910,8 +848,8 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
         for( size_t i = 0, j = mesh->Vertices.size(); i < j; i++ )
         {
             Vertex3D& v = mesh->Vertices[ i ];
-            float w = 0.0f;
-            int last_bone = 0;
+            float     w = 0.0f;
+            int       last_bone = 0;
             for( int b = 0; b < BONES_PER_VERTEX; b++ )
             {
                 if( v.BlendIndices[ b ] < 0.0f )
@@ -1169,8 +1107,8 @@ static uchar* LoadTGA( const uchar* data, uint data_size, uint& result_width, ui
 bool ResourceConverter::Generate( StrVec* resource_names )
 {
     // Generate resources
-    bool        something_changed = false;
-    StrSet      update_file_names;
+    bool   something_changed = false;
+    StrSet update_file_names;
 
     for( size_t m = 0; m < GameModules.size(); m++ )
     {
@@ -1217,7 +1155,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     // Check timestamps of inner resources
                     while( resources.IsNextFile() )
                     {
-                        const char* rel_path;
+                        const char*  rel_path;
                         FileManager& file = resources.GetNextFile( nullptr, nullptr, &rel_path, true );
                         if( resource_names )
                             resource_names->push_back( rel_path );
@@ -1289,7 +1227,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                         char         fname[ MAX_FOTEXT ];
                         FileManager::ExtractFileName( path, fname );
                         Str::Insert( fname, "Update/" );
-                        FileManager  update_file;
+                        FileManager update_file;
                         if( !update_file.LoadFile( fname, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
                         {
                             if( !log_shown )
@@ -1344,7 +1282,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     {
         const char* path;
         update_files.GetNextFile( nullptr, &path, nullptr, true );
-        char fname[ MAX_FOPATH ];
+        char        fname[ MAX_FOPATH ];
         FileManager::ExtractFileName( path, fname );
         if( !update_file_names.count( fname ) )
         {
