@@ -1,4 +1,7 @@
-#!/bin/bash -e
+#!/bin/bash -e -x
+
+[ "$FO_SOURCE" ] || { echo "FO_SOURCE is empty"; exit 1; }
+[ "$FO_BUILD_DEST" ] || { echo "FO_BUILD_DEST is empty"; exit 1; }
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 

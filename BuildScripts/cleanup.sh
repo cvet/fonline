@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -e -x
 
 sudo apt-get -y update
 sudo apt-get -y install lftp
