@@ -10,6 +10,7 @@ sudo apt-get -y install libx11-dev
 sudo apt-get -y install freeglut3-dev
 sudo apt-get -y install libssl-dev
 sudo apt-get -y install libevent-dev
+sudo apt-get -y install libxi-dev
 # x86
 sudo apt-get -y install gcc-multilib
 sudo apt-get -y install g++-multilib
@@ -17,6 +18,7 @@ sudo apt-get -y install libx11-dev:i386
 sudo apt-get -y install freeglut3-dev:i386
 sudo apt-get -y install libssl-dev:i386
 sudo apt-get -y install libevent-dev:i386
+sudo apt-get -y install libxi-dev:i386
 
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
@@ -27,15 +29,15 @@ rm -rf Server/*
 rm -rf Mapper/*
 rm -rf ASCompiler/*
 
-#mkdir -p x86
-#cd x86
-#cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
-#make -j4
-#cd ../
+mkdir -p x86
+cd x86
+cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
+make -j4
+cd ../
 
 mkdir -p x64
 cd x64
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/raspberrypi.cache.cmake" "$SOURCE_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux64.cache.cmake" "$SOURCE_FULL_PATH/Source"
 make -j4
 cd ../
 
