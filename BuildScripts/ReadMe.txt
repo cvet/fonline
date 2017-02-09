@@ -1,6 +1,7 @@
-windows user - gocd:fgt43trfcvq23
+windows - gocd:fgt43trfcvq23
 ftp - fonline:hn45tgfvwq
-gocd web - cvet:h3efrvewq532
+web - cvet:h3efrvewq532
+svn - gocd:fgt43trfcvq23
 
 FO_BUILD_DEST=FOnlineBuild
 FO_SOURCE=FOnlineSource
@@ -14,12 +15,18 @@ Download and install cmake
 Create user go/password (admin), assign to Go services.
 
 Setup Linux:
-echo "deb https://download.gocd.io/" | sudo tee /etc/apt/sources.list.d/gocd.list
-curl https://download.gocd.io/GOCD-GPG-KEY.asc | sudo apt-key add -
 sudo apt-get update
-sudo apt-get install go-agent
+sudo apt-get -y install subversion -> later allow certificate
+sudo apt-get -y install openjdk-8-jdk
+*sudo update-alternatives --config java -> choose java8
+echo "deb https://download.gocd.io /" | sudo tee /etc/apt/sources.list.d/gocd.list
+curl https://download.gocd.io/GOCD-GPG-KEY.asc | sudo apt-key add -
+sudo apt-get -y update
+sudo apt-get -y install go-agent
 sudo gedit /etc/default/go-agent GO_SERVER=...
 sudo adduser go sudo
+sudo su go
+svn info --username gocd --password fgt43trfcvq23 https://cvet.by:8443/svn/FOnlineSource
 sudo -i
 echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 reboot

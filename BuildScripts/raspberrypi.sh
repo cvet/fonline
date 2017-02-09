@@ -5,11 +5,11 @@
 
 export SOURCE_FULL_PATH=$(cd $FO_SOURCE; pwd)
 
-sudo apt-get -y update
-sudo apt-get -y install build-essential
-sudo apt-get -y install cmake
-sudo apt-get -y install wput
-sudo apt-get -y install git
+#sudo apt-get -y update
+#sudo apt-get -y install build-essential
+#sudo apt-get -y install cmake
+#sudo apt-get -y install wput
+#sudo apt-get -y install git
 
 mkdir -p $FO_BUILD_DEST
 cd $FO_BUILD_DEST
@@ -18,7 +18,9 @@ cd raspberrypi
 mkdir -p RaspberryPi
 rm -rf RaspberryPi/*
 
-git clone https://github.com/raspberrypi/tools
+if [ ! -d "./tools" ]; then
+	git clone https://github.com/raspberrypi/tools
+fi
 export PI_TOOLS_HOME=$PWD/tools
 
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/raspberrypi.cache.cmake" "$SOURCE_FULL_PATH/Source"

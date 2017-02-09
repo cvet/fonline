@@ -35,10 +35,10 @@ cmake --build windows\x86 --config RelWithDebInfo --target FOnline
 
 IF DEFINED FO_FTP_DEST (
 	PUSHD windows\Client
-	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" FOnline.exe ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/FOnline.exe
-	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" FOnline.pdb ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/FOnline.pdb
-	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" FOnline64.exe ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/FOnline64.exe
-	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" FOnline64.pdb ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/FOnline64.pdb
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" FOnline.exe ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" FOnline.pdb ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" FOnline64.exe ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/
+	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" FOnline64.pdb ftp://%FO_FTP_USER%@%FO_FTP_DEST%/Client/Windows/
 	POPD
 	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" windows/Server --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
 	"%SOURCE_FULL_PATH%\BuildScripts\wput\wput.exe" windows/Mapper --basename=windows/ ftp://%FO_FTP_USER%@%FO_FTP_DEST%/
