@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2016 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -262,6 +262,7 @@
 #include <fbxsdk/utils/fbxrenamingstrategyutilities.h>
 #include <fbxsdk/utils/fbxrootnodeutility.h>
 #include <fbxsdk/utils/fbxusernotification.h>
+#include <fbxsdk/utils/fbxscenecheckutility.h>
 
 //---------------------------------------------------------------------------------------
 #if defined(FBXSDK_NAMESPACE) && (FBXSDK_NAMESPACE_USING == 1)

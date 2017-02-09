@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2016 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -741,7 +741,7 @@ public:
 	
 	// Internal structure used to keep the mapping information between the control points and the
 	// vertices referencing them
-	class ControlPointToVerticesMap
+	class FBXSDK_DLL ControlPointToVerticesMap
 	{
 	public:
 		ControlPointToVerticesMap();

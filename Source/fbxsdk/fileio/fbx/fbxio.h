@@ -1672,6 +1672,7 @@ public:
 *****************************************************************************************************************************/
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
     bool ProjectOpen (FbxFile * pFile, FbxReader* pReader, bool pCheckCRC = false, bool pOpenMainSection = true, FbxIOFileHeaderInfo* pFileHeaderInfo = NULL);
+	FbxStatus& GetStatus() { return mStatus; }
 
 private:
     // to resolve warning C4512: 'class' : assignment operator could not be generated

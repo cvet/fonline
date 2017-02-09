@@ -1,6 +1,6 @@
 /****************************************************************************************
  
-   Copyright (C) 2015 Autodesk, Inc.
+   Copyright (C) 2016 Autodesk, Inc.
    All rights reserved.
  
    Use of this software is subject to the terms of the Autodesk license agreement
@@ -373,7 +373,7 @@
 // internal usage
 #define IOSN_USETMPFILEPERIPHERAL		 "UseTmpFilePeripheral"
 #define IOSN_CONSTRUCTIONHISTORY         "ConstructionHistory"
-
+#define IOSN_RELAXED_FBX_CHECK           "RelaxedFbxCheck"
 
 //---------------------------
 // import defined path
@@ -593,9 +593,12 @@
 #define IMP_FBX_PASSWORD_ENABLE             IMP_FBX "|" IOSN_PASSWORD_ENABLE 
 #define IMP_FBX_CURRENT_TAKE_NAME           IMP_FBX "|" IOSN_CURRENT_TAKE_NAME
 #define IMP_FBX_EXTRACT_EMBEDDED_DATA       IMP_FBX "|" IOSN_EXTRACT_EMBEDDED_DATA
+// internal use
+#define IMP_RELAXED_FBX_CHECK               IMP_FBX "|" IOSN_RELAXED_FBX_CHECK
 
 #define IMP_BUTTON_WEB_UPDATE           IMP_INFORMATION_GRP "|" IOSN_BUTTON_WEB_UPDATE
 #define IMP_PI_VERSION                  IMP_INFORMATION_GRP "|" IOSN_PI_VERSION
+
 
 // end of import defined path
 //---------------------------
@@ -791,8 +794,8 @@
 #define EXP_MENU_EDIT_PRESET            EXP_PLUGIN_GRP "|" IOSN_MENU_EDIT_PRESET 
 #define EXP_MENU_SAVE_PRESET            EXP_PLUGIN_GRP "|" IOSN_MENU_SAVE_PRESET 
 // internal use
-#define EXP_USETMPFILEPERIPHERAL	    EXP_PLUGIN_GRP "|" IOSN_USETMPFILEPERIPHERAL
-#define EXP_CONSTRUCTIONHISTORY	        EXP_PLUGIN_GRP "|" IOSN_CONSTRUCTIONHISTORY
+#define EXP_USETMPFILEPERIPHERAL        EXP_PLUGIN_GRP "|" IOSN_USETMPFILEPERIPHERAL
+#define EXP_CONSTRUCTIONHISTORY         EXP_PLUGIN_GRP "|" IOSN_CONSTRUCTIONHISTORY
     
 #define EXP_COLLADA_TRIANGULATE         EXP_COLLADA "|" IOSN_COLLADA_TRIANGULATE 
 #define EXP_COLLADA_SINGLEMATRIX        EXP_COLLADA "|" IOSN_COLLADA_SINGLEMATRIX
