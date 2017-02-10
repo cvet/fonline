@@ -35,7 +35,7 @@ export ANDROID_NDK="$PWD/$ANDROID_NDK_VERSION"
 export ANDROID_HOME="$PWD/sdk"
 
 cd sdk/tools
-echo y | ./android update sdk --no-ui
+( while sleep 3; do echo "y"; done ) | ./android update sdk --no-ui
 cd ../
 cd ../
 
