@@ -679,7 +679,7 @@ bool MakeDirectory( const char* path )
     wchar_t wc[ MAX_FOPATH ];
     return CreateDirectoryW( MBtoWC( path, wc ), nullptr ) != FALSE;
     #else
-    return mkdir( path, 0x0777 ) == 0;
+    return mkdir( path, 0777 ) == 0;
     #endif
 }
 
