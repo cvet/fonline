@@ -82,6 +82,7 @@ elseif( EMSCRIPTEN )
 	set( CMAKE_EXECUTABLE_SUFFIX ".js" )
 	set( WEB_OPTIONS "-s TOTAL_MEMORY=268435456" ) # 256 Mb
 	set( WEB_OPTIONS "${WEB_OPTIONS} --memory-init-file 1" )
+	set( WEB_OPTIONS "${WEB_OPTIONS} -s NO_EXIT_RUNTIME=1" )
 	if( FO_DEBUG )
 		set( WEB_OPTIONS "${WEB_OPTIONS} -s SAFE_HEAP=1" )
 	else()
