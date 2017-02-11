@@ -84,7 +84,7 @@ elseif( EMSCRIPTEN )
 	#set( WEB_OPTIONS "${WEB_OPTIONS} --memory-init-file on" )
 	if( FO_DEBUG )
 		set( WEB_OPTIONS "${WEB_OPTIONS} -g4 -s SAFE_HEAP=1 -s ASSERTIONS=2" )
-	else
+	else()
 		set( WEB_OPTIONS "${WEB_OPTIONS} -Oz" )
 	endif()
 	set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${WEB_OPTIONS}" )
