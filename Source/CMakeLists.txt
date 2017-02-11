@@ -81,7 +81,7 @@ elseif( EMSCRIPTEN )
 	set( CLIENT_OUTPUT "${CMAKE_BINARY_DIR}/../Web" )
 	set( CMAKE_EXECUTABLE_SUFFIX ".js" )
 	set( WEB_OPTIONS "-s TOTAL_MEMORY=268435456" ) # 256 Mb
-	set( WEB_OPTIONS "${WEB_OPTIONS} --memory-init-file on" )
+	set( WEB_OPTIONS "${WEB_OPTIONS} --memory-init-file 1" )
 	if( FO_DEBUG )
 		set( WEB_OPTIONS "${WEB_OPTIONS} -s SAFE_HEAP=1" )
 	else()
