@@ -27,7 +27,7 @@ rm -rf ASCompiler/*
 mkdir -p x64
 cd x64
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux64.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make -j4
+make -j4 -n
 cd ../
 
 # x86
@@ -42,7 +42,7 @@ sudo apt-get -y install libxi-dev:i386
 mkdir -p x86
 cd x86
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/linux32.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make -j4
+make -j4 -n
 cd ../
 
 if [ -n "$FO_FTP_DEST" ]; then
