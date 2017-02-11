@@ -41,7 +41,7 @@ cd ../
 
 mkdir -p debug
 cd debug
-cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG "$SOURCE_FULL_PATH/Source"
+cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG=ON "$SOURCE_FULL_PATH/Source"
 make -j4
 cd ../
 
