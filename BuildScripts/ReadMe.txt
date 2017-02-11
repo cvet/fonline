@@ -30,6 +30,7 @@ svn info --username gocd --password fgt43trfcvq23 https://cvet.by:8443/svn/FOnli
 sudo -i
 echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 reboot
+sudo /etc/init.d/go-agent start [start|stop|status|restart]
 
 Setup Mac:
 Download and install gocd
