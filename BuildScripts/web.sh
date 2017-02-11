@@ -36,13 +36,13 @@ emcc -v
 mkdir -p release
 cd release
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make -j4 -n
+make -j4
 cd ../
 
 mkdir -p debug
 cd debug
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/web.cache.cmake" -DFO_DEBUG=ON "$SOURCE_FULL_PATH/Source"
-make -j4 -n
+make -j4
 cd ../
 
 if [ -n "$FO_FTP_DEST" ]; then

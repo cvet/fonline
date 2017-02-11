@@ -24,7 +24,7 @@ fi
 export PI_TOOLS_HOME=$PWD/tools
 
 cmake -G "Unix Makefiles" -C "$SOURCE_FULL_PATH/BuildScripts/raspberrypi.cache.cmake" "$SOURCE_FULL_PATH/Source"
-make -j4 -n
+make -j4
 
 if [ -n "$FO_FTP_DEST" ]; then
 	wput RaspberryPi ftp://$FO_FTP_USER@$FO_FTP_DEST/Client/
