@@ -106,8 +106,10 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     if( item->GetIsRadio() )
         RadioRegister( item, true );
 
-    // Prototype script
-    item->SetScript( nullptr, true );
+    // Scripts
+    Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, true );
+    if( !item->IsDestroyed )
+        item->SetScript( nullptr, true );
 
     // Verify destroying
     if( item->IsDestroyed )
