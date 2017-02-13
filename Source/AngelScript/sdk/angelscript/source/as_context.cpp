@@ -475,7 +475,12 @@ int asCContext::Prepare(asIScriptFunction *func)
 	m_regs.programPointer = 0;
 
 	// Reserve space for the arguments and return value
+#if 0 // Patch
 	m_regs.stackFramePointer = m_regs.stackPointer - m_argumentsSize - m_returnValueSize;
+#else
+	int size = m_argumentsSize - m_returnValueSize;
+	m_regs.stackFramePointer = m_regs.stackPointer - size - (size % 2 == 1 ? 1 : 0);
+#endif
 	m_originalStackPointer   = m_regs.stackPointer;
 	m_regs.stackPointer      = m_regs.stackFramePointer;
 
@@ -1196,9 +1201,15 @@ int asCContext::Execute()
 		if( m_currentFunction->funcType == asFUNC_DELEGATE )
 		{
 			// Push the object pointer onto the stack
+#if 0 // Patch
 			asASSERT( m_regs.stackPointer - AS_PTR_SIZE >= m_stackBlocks[m_stackIndex] );
 			m_regs.stackPointer -= AS_PTR_SIZE;
 			m_regs.stackFramePointer -= AS_PTR_SIZE;
+#else
+			asASSERT( m_regs.stackPointer - 2 >= m_stackBlocks[m_stackIndex] );
+			m_regs.stackPointer -= 2;
+			m_regs.stackFramePointer -= 2;
+#endif
 			*(asPWORD*)m_regs.stackPointer = asPWORD(m_currentFunction->objForDelegate);
 
 			// Make the call to the delegated object method
