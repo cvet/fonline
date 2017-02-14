@@ -22,13 +22,15 @@ void* Property::CreateRefValue( uchar* data, uint data_size )
         {
             if( data_size )
             {
-                uint          arr_size = *(uint*) data;
+                uint arr_size;
+                memcpy( &arr_size, data, sizeof( arr_size ) );
                 data += sizeof( uint );
                 CScriptArray* arr = CScriptArray::Create( asObjType, arr_size );
                 RUNTIME_ASSERT( arr );
                 for( uint i = 0; i < arr_size; i++ )
                 {
-                    uint   str_size = *(uint*) data;
+                    uint str_size;
+                    memcpy( &str_size, data, sizeof( str_size ) );
                     data += sizeof( uint );
                     string str( (char*) data, str_size );
                     arr->SetValue( i, &str );
@@ -68,9 +70,10 @@ void* Property::CreateRefValue( uchar* data, uint data_size )
                 uchar*       data_end = data + data_size;
                 while( data < data_end )
                 {
-                    void*         key = data;
+                    void* key = data;
                     data += key_element_size;
-                    uint          arr_size = *(uint*) data;
+                    uint  arr_size;
+                    memcpy( &arr_size, data, sizeof( arr_size ) );
                     data += sizeof( uint );
                     CScriptArray* arr = CScriptArray::Create( arr_type, arr_size );
                     RUNTIME_ASSERT( arr );
@@ -80,7 +83,8 @@ void* Property::CreateRefValue( uchar* data, uint data_size )
                         {
                             for( uint i = 0; i < arr_size; i++ )
                             {
-                                uint   str_size = *(uint*) data;
+                                uint str_size;
+                                memcpy( &str_size, data, sizeof( str_size ) );
                                 data += sizeof( uint );
                                 string str( (char*) data, str_size );
                                 arr->SetValue( i, &str );
@@ -102,9 +106,10 @@ void* Property::CreateRefValue( uchar* data, uint data_size )
                 uchar* data_end = data + data_size;
                 while( data < data_end )
                 {
-                    void*  key = data;
+                    void* key = data;
                     data += key_element_size;
-                    uint   str_size = *(uint*) data;
+                    uint  str_size;
+                    memcpy( &str_size, data, sizeof( str_size ) );
                     data += sizeof( uint );
                     string str( (char*) data, str_size );
                     dict->Set( key, &str );
@@ -2306,7 +2311,8 @@ Property* PropertyRegistrator::Register(
         }
 
         uint new_size = space_pos + data_size;
-        new_size += 8 - new_size % 8;
+        if( new_size % 8 )
+            new_size += 8 - new_size % 8;
         if( new_size > (uint) space.size() )
             space.resize( new_size );
 
