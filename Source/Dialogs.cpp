@@ -649,9 +649,7 @@ uint DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
     ret_val = false;
 
     if( Str::Compare( str, "NOT_ANSWER_CLOSE_DIALOG" ) || Str::Compare( str, "None" ) )
-        return NOT_ANSWER_CLOSE_DIALOG;
-    if( Str::Compare( str, "NOT_ANSWER_BEGIN_BATTLE" ) || Str::Compare( str, "Attack" ) )
-        return NOT_ANSWER_BEGIN_BATTLE;
+        return 0;
 
     #ifdef FONLINE_SERVER
     uint id = Script::BindByFuncName( str, "uint %s(Critter, Critter, string)", false, true );

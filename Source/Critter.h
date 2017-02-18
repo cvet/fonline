@@ -6,14 +6,9 @@
 #include "Networking.h"
 #include "Item.h"
 #include "Dialogs.h"
-#include "AI.h"
 #include "CritterData.h"
 #include "DataMask.h"
 #include "Entity.h"
-
-// Plane results
-#define PLANE_KEEP            ( 1 )
-#define PLANE_DISCARD         ( 2 )
 
 // Client game states
 #define STATE_NONE            ( 0 )
@@ -104,13 +99,11 @@ public:
     CLASS_PROPERTY( uint, ShowCritterDist2 );
     CLASS_PROPERTY( uint, ShowCritterDist3 );
     CLASS_PROPERTY( hash, ScriptId );
-    CLASS_PROPERTY( CScriptArray *, EnemyStack );
     CLASS_PROPERTY( int, SneakCoefficient );
     // Exclude
     CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
     CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
-    CLASS_PROPERTY( bool, IsNoEnemyStack );     // Migrate enemy stack to scripts
 
 protected:
     Critter( uint id, EntityType type, ProtoCritter* proto );
@@ -284,18 +277,6 @@ public:
     // Timeouts
     bool IsTransferTimeouts( bool send );
 
-    // Home
-    uint TryingGoHomeTick;
-
-    void SetHome( uint map_id, ushort hx, ushort hy, uchar dir );
-    bool IsInHome();
-
-    // Enemy stack
-    void     AddEnemyToStack( uint crid );
-    bool     CheckEnemyInStack( uint crid );
-    void     EraseEnemyInStack( uint crid );
-    Critter* ScanEnemyStack();
-
     // Locations
     bool CheckKnownLocById( uint loc_id );
     bool CheckKnownLocByPid( hash loc_pid );
@@ -422,34 +403,12 @@ public:
     Npc( uint id, ProtoCritter* proto );
     ~Npc();
 
-    // AI
-private:
-    AIDataPlaneVec aiPlanes;
-
-public:
-    bool            AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some_cr = nullptr, Item* some_item = nullptr );
-    void            NextPlane( int reason, Critter* some_cr = nullptr, Item* some_item = nullptr );
-    bool            RunPlane( int reason, uint& r0, uint& r1, uint& r2 );
-    bool            IsPlaneAviable( int plane_type );
-    bool            IsCurPlane( int plane_type );
-    AIDataPlane*    GetCurPlane() { return aiPlanes.size() ? aiPlanes[ 0 ]->GetCurPlane() : nullptr; }
-    AIDataPlaneVec& GetPlanes()   { return aiPlanes; }
-    void            DropPlanes();
-    void            SetBestCurPlane();
-    bool            IsNoPlanes() { return aiPlanes.empty(); }
-
     // Dialogs
 public:
     uint GetTalkedPlayers();
     bool IsTalkedPlayers();
     uint GetBarterPlayers();
     bool IsFreeToTalk();
-    bool IsPlaneNoTalk();
-
-    // Target
-public:
-    void MoveToHex( int reason, ushort hx, ushort hy, uchar ori, bool is_run, uchar cut );
-    void SetTarget( int reason, Critter* target, int min_hp, bool is_gag );
 };
 
 #endif // __CRITTER__

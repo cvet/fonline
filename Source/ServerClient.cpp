@@ -91,16 +91,6 @@ void FOServer::ProcessCritter( Critter* cr )
             cl->CacheValuesNextTick = tick + 3000;
         }
     }
-    // Npc
-    else
-    {
-        // Cast
-        Npc* npc = (Npc*) cr;
-
-        // Process
-        if( npc->IsLife() )
-            ProcessAI( npc );
-    }
 }
 
 bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )

@@ -422,9 +422,6 @@ struct ServerScriptFunctions
     void* CritterTalk;
     void* CritterBarter;
     void* CritterGetAttackDistantion;
-    void* NpcPlaneBegin;
-    void* NpcPlaneEnd;
-    void* NpcPlaneRun;
     void* PlayerRegistration;
     void* PlayerLogin;
     void* PlayerGetAccess;

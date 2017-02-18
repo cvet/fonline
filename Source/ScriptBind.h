@@ -81,47 +81,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     REGISTER_ENTITY( "Location", Location );
     REGISTER_ENTITY_CAST( "Location", Location );
 
-    BIND_ASSERT( engine->RegisterObjectType( "NpcPlane", 0, asOBJ_REF ) );
-    BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( AIDataPlane, AddRef ), SCRIPT_METHOD_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectBehaviour( "NpcPlane", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( AIDataPlane, Release ), SCRIPT_METHOD_CONV ) );
-
-    /************************************************************************/
-    /* NpcPlane                                                             */
-    /************************************************************************/
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Type", OFFSETOF( AIDataPlane, Type ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Priority", OFFSETOF( AIDataPlane, Priority ) ) );
-
-    // BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "NpcPlane@ Child", OFFSETOF( AIDataPlane, Type ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Identifier", OFFSETOF( AIDataPlane, Identifier ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint IdentifierExt", OFFSETOF( AIDataPlane, IdentifierExt ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Run", OFFSETOF( AIDataPlane, Pick.IsRun ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Misc_WaitSecond", OFFSETOF( AIDataPlane, Misc.WaitSecond ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Misc_ScriptId", OFFSETOF( AIDataPlane, Misc.ScriptBindId ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Attack_TargId", OFFSETOF( AIDataPlane, Attack.TargId ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "int Attack_MinHp", OFFSETOF( AIDataPlane, Attack.MinHp ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Attack_IsGag", OFFSETOF( AIDataPlane, Attack.IsGag ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Attack_GagHexX", OFFSETOF( AIDataPlane, Attack.GagHexX ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Attack_GagHexY", OFFSETOF( AIDataPlane, Attack.GagHexY ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Attack_LastHexX", OFFSETOF( AIDataPlane, Attack.LastHexX ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Attack_LastHexY", OFFSETOF( AIDataPlane, Attack.LastHexY ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Walk_HexX", OFFSETOF( AIDataPlane, Walk.HexX ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Walk_HexY", OFFSETOF( AIDataPlane, Walk.HexY ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint8 Walk_Dir", OFFSETOF( AIDataPlane, Walk.Dir ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Walk_Cut", OFFSETOF( AIDataPlane, Walk.Cut ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Pick_HexX", OFFSETOF( AIDataPlane, Pick.HexX ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint16 Pick_HexY", OFFSETOF( AIDataPlane, Pick.HexY ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "hash Pick_Pid", OFFSETOF( AIDataPlane, Pick.Pid ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "uint Pick_UseItemId", OFFSETOF( AIDataPlane, Pick.UseItemId ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Pick_ToOpen", OFFSETOF( AIDataPlane, Pick.ToOpen ) ) );
-    BIND_ASSERT( engine->RegisterObjectProperty( "NpcPlane", "bool Pick_IsRun", OFFSETOF( AIDataPlane, Pick.IsRun ) ) );
-
-    BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "NpcPlane@ GetCopy() const", SCRIPT_FUNC_THIS( BIND_CLASS NpcPlane_GetCopy ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "NpcPlane@+ SetChild(NpcPlane@+ child)", SCRIPT_FUNC_THIS( BIND_CLASS NpcPlane_SetChild ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "NpcPlane@+ GetChild(uint index) const", SCRIPT_FUNC_THIS( BIND_CLASS NpcPlane_GetChild ), SCRIPT_FUNC_THIS_CONV ) );
-
-    BIND_ASSERT( engine->RegisterFuncdef( "void NpcPlaneMiscFunc(Critter@+)" ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "NpcPlane", "bool Misc_SetScript(NpcPlaneMiscFunc@+ func)", SCRIPT_FUNC_THIS( BIND_CLASS NpcPlane_Misc_SetScript ), SCRIPT_FUNC_THIS_CONV ) );
-
     /************************************************************************/
     /* Item                                                                 */
     /************************************************************************/
@@ -194,18 +153,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SayMsg(uint8 howSay, uint16 textMsg, uint strNum, string lexems)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SayMsgLex ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetDir(uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SetDir ), SCRIPT_FUNC_THIS_CONV ) );
 
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint ErasePlane(int planeType, bool all)", SCRIPT_FUNC_THIS( BIND_CLASS Npc_ErasePlane ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool ErasePlane(uint index)", SCRIPT_FUNC_THIS( BIND_CLASS Npc_ErasePlaneIndex ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void DropPlanes()", SCRIPT_FUNC_THIS( BIND_CLASS Npc_DropPlanes ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsNoPlanes() const", SCRIPT_FUNC_THIS( BIND_CLASS Npc_IsNoPlanes ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsCurPlane(int planeType) const", SCRIPT_FUNC_THIS( BIND_CLASS Npc_IsCurPlane ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "NpcPlane@+ GetCurPlane() const", SCRIPT_FUNC_THIS( BIND_CLASS Npc_GetCurPlane ), SCRIPT_FUNC_THIS_CONV ) );                                                 // Todo: const
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<NpcPlane@>@ GetPlanes() const", SCRIPT_FUNC_THIS( BIND_CLASS Npc_GetPlanes ), SCRIPT_FUNC_THIS_CONV ) );                                              // Todo: const
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<NpcPlane@>@ GetPlanes(int identifier) const", SCRIPT_FUNC_THIS( BIND_CLASS Npc_GetPlanesIdentifier ), SCRIPT_FUNC_THIS_CONV ) );                      // Todo: const
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<NpcPlane@>@ GetPlanes(int identifier, uint identifierExt) const", SCRIPT_FUNC_THIS( BIND_CLASS Npc_GetPlanesIdentifier2 ), SCRIPT_FUNC_THIS_CONV ) ); // Todo: const
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool AddPlane(NpcPlane@+ plane)", SCRIPT_FUNC_THIS( BIND_CLASS Npc_AddPlane ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void NextPlane(int reason)", SCRIPT_FUNC_THIS( BIND_CLASS Npc_NextPlane ), SCRIPT_FUNC_THIS_CONV ) );
-
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SendMessage(int num, int val, int to)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SendMessage ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Action(int action, int actionExt, const Item@+ item)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_Action ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Animate(uint anim1, uint anim2, const Item@+ item, bool clearSequence, bool delayPlay)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_Animate ), SCRIPT_FUNC_THIS_CONV ) );
@@ -225,12 +172,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     BIND_ASSERT( engine->RegisterFuncdef( "void CritterInitFunc(Critter@+, bool)" ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool SetScript(CritterInitFunc@+ func)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SetScript ), SCRIPT_FUNC_THIS_CONV ) );
-
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void AddEnemyToStack(uint critterId)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_AddEnemyToStack ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool CheckEnemyInStack(uint critterId) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_CheckEnemyInStack ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void EraseEnemyFromStack(uint critterId)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_EraseEnemyFromStack ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ClearEnemyStack()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_ClearEnemyStack ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ClearEnemyStackNpc()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_ClearEnemyStackNpc ), SCRIPT_FUNC_THIS_CONV ) );
 
     BIND_ASSERT( engine->RegisterFuncdef( "uint TimeEventFunc(Critter@+,int,uint&)" ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool AddTimeEvent(TimeEventFunc@+ func, uint duration, int identifier)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_AddTimeEvent ), SCRIPT_FUNC_THIS_CONV ) );
@@ -378,7 +319,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterFuncdef( "void TextListenerFunc(Critter@+, string)" ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddTextListener(int sayType, string firstStr, uint parameter, TextListenerFunc@+ func)", SCRIPT_FUNC( BIND_CLASS Global_AddTextListener ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseTextListener(int sayType, string firstStr, uint parameter)", SCRIPT_FUNC( BIND_CLASS Global_EraseTextListener ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "NpcPlane@ CreatePlane()", SCRIPT_FUNC( BIND_CLASS Global_CreatePlane ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool SwapCritters(Critter@+ cr1, Critter@+ cr2, bool withInventory)", SCRIPT_FUNC( BIND_CLASS Global_SwapCritters ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Item@>@ GetAllItems(hash pid)", SCRIPT_FUNC( BIND_CLASS Global_GetAllItems ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Critter@>@ GetAllPlayers()", SCRIPT_FUNC( BIND_CLASS Global_GetAllPlayers ), SCRIPT_FUNC_CONV ) );

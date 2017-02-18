@@ -7,7 +7,6 @@
 # include "MapManager.h"
 # include "CritterManager.h"
 # include "ItemManager.h"
-# include "AI.h"
 #endif
 
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Type );

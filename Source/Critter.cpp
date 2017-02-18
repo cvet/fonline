@@ -66,7 +66,6 @@ CLASS_PROPERTY_IMPL( Critter, TimeoutBattle );
 CLASS_PROPERTY_IMPL( Critter, TimeoutTransfer );
 CLASS_PROPERTY_IMPL( Critter, TimeoutRemoveFromGame );
 CLASS_PROPERTY_IMPL( Critter, IsNoUnarmed );
-CLASS_PROPERTY_IMPL( Critter, IsNoEnemyStack );
 CLASS_PROPERTY_IMPL( Critter, IsGeck );
 CLASS_PROPERTY_IMPL( Critter, IsNoHome );
 CLASS_PROPERTY_IMPL( Critter, IsNoWalk );
@@ -85,7 +84,6 @@ CLASS_PROPERTY_IMPL( Critter, ShowCritterDist1 );
 CLASS_PROPERTY_IMPL( Critter, ShowCritterDist2 );
 CLASS_PROPERTY_IMPL( Critter, ShowCritterDist3 );
 CLASS_PROPERTY_IMPL( Critter, ScriptId );
-CLASS_PROPERTY_IMPL( Critter, EnemyStack );
 
 Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, type, PropertiesRegistrator, proto )
 {
@@ -96,7 +94,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     waitEndTick = 0;
     CacheValuesNextTick = 0;
     Flags = 0;
-    TryingGoHomeTick = 0;
     IdleNextTick = 0;
     LockMapTransfers = 0;
     ViewMapId = 0;
@@ -1666,22 +1663,6 @@ const char* Critter::GetInfo()
     return GetName();
 }
 
-void Critter::SetHome( uint map_id, ushort hx, ushort hy, uchar dir )
-{
-    SetHomeMapId( map_id );
-    SetHomeHexX( hx );
-    SetHomeHexY( hy );
-    SetHomeDir( dir );
-}
-
-bool Critter::IsInHome()
-{
-    uint map_id = GetMapId();
-    if( !map_id )
-        return true;
-    return map_id == GetHomeMapId() && GetHomeDir() == GetDir() && GetHomeHexX() == GetHexX() && GetHomeHexY() == GetHexY();
-}
-
 /************************************************************************/
 /* Timeouts                                                             */
 /************************************************************************/
@@ -1701,93 +1682,6 @@ bool Critter::IsTransferTimeouts( bool send )
         return true;
     }
     return false;
-}
-
-/************************************************************************/
-/* Enemy stack                                                          */
-/************************************************************************/
-
-void Critter::AddEnemyToStack( uint crid )
-{
-    if( !crid )
-        return;
-
-    // Find already
-    CScriptArray* enemy_stack = GetEnemyStack();
-    uint          stack_count = enemy_stack->GetSize();
-    for( uint i = 0; i < stack_count; i++ )
-    {
-        if( *(uint*) enemy_stack->At( i ) == crid )
-        {
-            if( i < stack_count - 1 )
-            {
-                enemy_stack->RemoveAt( i );
-                enemy_stack->InsertLast( &crid );
-                SetEnemyStack( enemy_stack );
-            }
-            SAFEREL( enemy_stack );
-            return;
-        }
-    }
-
-    // Add
-    enemy_stack->InsertLast( &crid );
-    SetEnemyStack( enemy_stack );
-    SAFEREL( enemy_stack );
-}
-
-bool Critter::CheckEnemyInStack( uint crid )
-{
-    if( GetIsNoEnemyStack() )
-        return false;
-
-    CScriptArray* enemy_stack = GetEnemyStack();
-    uint          stack_count = enemy_stack->GetSize();
-    for( uint i = 0; i < stack_count; i++ )
-    {
-        if( *(uint*) enemy_stack->At( i ) == crid )
-        {
-            SAFEREL( enemy_stack );
-            return true;
-        }
-    }
-    SAFEREL( enemy_stack );
-    return false;
-}
-
-void Critter::EraseEnemyInStack( uint crid )
-{
-    CScriptArray* enemy_stack = GetEnemyStack();
-    uint          stack_count = enemy_stack->GetSize();
-    for( uint i = 0; i < stack_count; i++ )
-    {
-        if( *(uint*) enemy_stack->At( i ) == crid )
-        {
-            enemy_stack->RemoveAt( i );
-            SetEnemyStack( enemy_stack );
-            break;
-        }
-    }
-    SAFEREL( enemy_stack );
-}
-
-Critter* Critter::ScanEnemyStack()
-{
-    if( GetIsNoEnemyStack() )
-        return nullptr;
-
-    CScriptArray* enemy_stack = GetEnemyStack();
-    for( int i = (int) enemy_stack->GetSize() - 1; i >= 0; i-- )
-    {
-        Critter* enemy = GetCritSelf( *(uint*) enemy_stack->At( i ) );
-        if( enemy && !enemy->IsDead() )
-        {
-            SAFEREL( enemy_stack );
-            return enemy;
-        }
-    }
-    SAFEREL( enemy_stack );
-    return nullptr;
 }
 
 /************************************************************************/
@@ -3195,12 +3089,7 @@ void Client::ProcessTalk( bool force )
             return;
         }
 
-        if( npc->IsPlaneNoTalk() )
-        {
-            Send_TextMsg( this, STR_DIALOG_NPC_BUSY, SAY_NETMSG, TEXTMSG_GAME );
-            CloseTalk();
-            return;
-        }
+        // Todo: IsPlaneNoTalk
     }
 
     // Check distance
@@ -3250,31 +3139,15 @@ void Client::CloseTalk()
             }
         }
 
-        int func_id = Talk.CurDialog.DlgScript;
-        switch( func_id )
+        if( Talk.CurDialog.DlgScript )
         {
-        case NOT_ANSWER_CLOSE_DIALOG:
-            break;
-        case NOT_ANSWER_BEGIN_BATTLE:
-        {
-            if( !npc )
-                break;
-
-            npc->SetTarget( REASON_FROM_DIALOG, this, GameOpt.DeadHitPoints, false );
-        }
-        break;
-        default:
-            if( func_id <= 0 )
-                break;
-
-            Script::PrepareContext( func_id, GetInfo() );
+            Script::PrepareContext( Talk.CurDialog.DlgScript, GetInfo() );
             Script::SetArgEntity( this );
             Script::SetArgEntity( npc );
             Script::SetArgEntity( nullptr );
             Talk.Locked = true;
             Script::RunPrepared();
             Talk.Locked = false;
-            break;
         }
     }
 
@@ -3296,193 +3169,6 @@ Npc::Npc( uint id, ProtoCritter* proto ): Critter( id, EntityType::Npc, proto )
 Npc::~Npc()
 {
     MEMORY_PROCESS( MEMORY_NPC, -(int) ( sizeof( Npc ) + 40 + sizeof( Item ) * 2 ) );
-    DropPlanes();
-}
-
-bool Npc::AddPlane( int reason, AIDataPlane* plane, bool is_child, Critter* some_cr, Item* some_item )
-{
-    if( is_child && aiPlanes.empty() )
-    {
-        plane->Assigned = false;
-        plane->Release();
-        return false;
-    }
-
-    if( plane->Type == AI_PLANE_ATTACK )
-    {
-        for( auto it = aiPlanes.begin(), end = aiPlanes.end(); it != end; ++it )
-        {
-            AIDataPlane* p = *it;
-            if( p->Type == AI_PLANE_ATTACK && p->Attack.TargId == plane->Attack.TargId )
-            {
-                p->Assigned = false;
-                p->Release();
-                aiPlanes.erase( it );
-                break;
-            }
-        }
-    }
-
-    int result = PLANE_KEEP;
-    Script::RaiseInternalEvent( ServerFunctions.NpcPlaneBegin, this, plane, reason, some_cr, some_item, &result );
-    if( result == PLANE_DISCARD )
-    {
-        plane->Release();
-        return false;
-    }
-
-    // Add
-    plane->Assigned = true;
-    if( is_child )
-    {
-        AIDataPlane* parent = aiPlanes[ 0 ]->GetCurPlane();
-        parent->ChildPlane = plane;
-        plane->Priority = parent->Priority;
-    }
-    else
-    {
-        if( !plane->Priority )
-        {
-            aiPlanes.push_back( plane );
-        }
-        else
-        {
-            uint i = 0;
-            for( ; i < aiPlanes.size(); i++ )
-                if( plane->Priority > aiPlanes[ i ]->Priority )
-                    break;
-            aiPlanes.insert( aiPlanes.begin() + i, plane );
-            if( i && plane->Priority == aiPlanes[ 0 ]->Priority )
-                SetBestCurPlane();
-        }
-    }
-    return true;
-}
-
-void Npc::NextPlane( int reason, Critter* some_cr, Item* some_item )
-{
-    if( aiPlanes.empty() )
-        return;
-    SendA_XY();
-
-    AIDataPlane* cur = aiPlanes[ 0 ];
-    AIDataPlane* last = aiPlanes[ 0 ]->GetCurPlane();
-
-    aiPlanes.erase( aiPlanes.begin() );
-    SetBestCurPlane();
-
-    int result = PLANE_KEEP;
-    Script::RaiseInternalEvent( ServerFunctions.NpcPlaneEnd, this, last, reason, some_cr, some_item, &result );
-    if( result == PLANE_KEEP )
-    {
-        uint place = 0;
-        if( aiPlanes.size() )
-        {
-            place = 1;
-            for( uint i = (uint) aiPlanes.size(); place < i; place++ )
-                if( cur->Priority > aiPlanes[ place ]->Priority )
-                    break;
-        }
-        aiPlanes.insert( aiPlanes.begin() + place, cur );
-    }
-    else
-    {
-        if( cur != last )     // Child
-        {
-            cur->DeleteLast();
-            aiPlanes.insert( aiPlanes.begin(), cur );
-        }
-        else         // Main
-        {
-            cur->Assigned = false;
-            cur->Release();
-        }
-    }
-}
-
-bool Npc::RunPlane( int reason, uint& r0, uint& r1, uint& r2 )
-{
-    AIDataPlane* cur = aiPlanes[ 0 ];
-    AIDataPlane* last = aiPlanes[ 0 ]->GetCurPlane();
-    int          result = PLANE_KEEP;
-    Script::RaiseInternalEvent( ServerFunctions.NpcPlaneRun, this, last, reason, &r0, &r1, &r2, &result );
-    return result == PLANE_KEEP;
-}
-
-bool Npc::IsPlaneAviable( int plane_type )
-{
-    for( uint i = 0, j = (uint) aiPlanes.size(); i < j; i++ )
-        if( aiPlanes[ i ]->IsSelfOrHas( plane_type ) )
-            return true;
-    return false;
-}
-
-bool Npc::IsCurPlane( int plane_type )
-{
-    AIDataPlane* p = GetCurPlane();
-    return p ? p->Type == plane_type : false;
-}
-
-void Npc::DropPlanes()
-{
-    for( uint i = 0, j = (uint) aiPlanes.size(); i < j; i++ )
-    {
-        aiPlanes[ i ]->Assigned = false;
-        aiPlanes[ i ]->Release();
-    }
-    aiPlanes.clear();
-}
-
-void Npc::SetBestCurPlane()
-{
-    if( aiPlanes.size() < 2 )
-        return;
-
-    uint type = aiPlanes[ 0 ]->Type;
-    uint priority = aiPlanes[ 0 ]->Priority;
-
-    if( type != AI_PLANE_ATTACK )
-        return;
-
-    int sort_cnt = 1;
-    for( uint i = 1, j = (uint) aiPlanes.size(); i < j; i++ )
-    {
-        if( aiPlanes[ i ]->Priority == priority )
-            sort_cnt++;
-        else
-            break;
-    }
-
-    if( sort_cnt < 2 )
-        return;
-
-    // Find critter with smallest dist
-    int hx = GetHexX();
-    int hy = GetHexY();
-    int best_plane = -1;
-    int best_dist = -1;
-    for( int i = 0; i < sort_cnt; i++ )
-    {
-        Critter* cr = GetCritSelf( aiPlanes[ i ]->Attack.TargId );
-        if( !cr )
-            continue;
-
-        int dist = DistGame( hx, hy, cr->GetHexX(), cr->GetHexY() );
-        if( best_dist >= 0 && dist >= best_dist )
-            continue;
-        else if( dist == best_dist )
-        {
-            Critter* cr2 = GetCritSelf( aiPlanes[ best_plane ]->Attack.TargId );
-            if( !cr || cr->GetCurrentHp() >= cr2->GetCurrentHp() )
-                continue;
-        }
-
-        best_dist = dist;
-        best_plane = i;
-    }
-
-    if( best_plane > 0 )
-        std::swap( aiPlanes[ 0 ], aiPlanes[ best_plane ] );
 }
 
 uint Npc::GetTalkedPlayers()
@@ -3537,64 +3223,4 @@ bool Npc::IsFreeToTalk()
     else if( !max_talkers )
         max_talkers = (uint) GameOpt.NpcMaxTalkers;
     return GetTalkedPlayers() < (uint) max_talkers;
-}
-
-bool Npc::IsPlaneNoTalk()
-{
-    AIDataPlane* p = GetCurPlane();
-    if( !p )
-        return false;
-
-    switch( p->Type )
-    {
-    case AI_PLANE_WALK:
-    case AI_PLANE_ATTACK:
-    case AI_PLANE_PICK:
-        return true;
-    default:
-        break;
-    }
-
-    return false;
-}
-
-void Npc::MoveToHex( int reason, ushort hx, ushort hy, uchar ori, bool is_run, uchar cut )
-{
-    AIDataPlane* plane = new AIDataPlane( AI_PLANE_WALK, AI_PLANE_WALK_PRIORITY );
-    if( !plane )
-        return;
-    plane->Walk.HexX = hx;
-    plane->Walk.HexY = hy;
-    plane->Walk.Dir = ori;
-    plane->Walk.IsRun = is_run;
-    plane->Walk.Cut = cut;
-    AddPlane( reason, plane, false );
-}
-
-void Npc::SetTarget( int reason, Critter* target, int min_hp, bool is_gag )
-{
-    for( uint i = 0, j = (uint) aiPlanes.size(); i < j; i++ )
-    {
-        AIDataPlane* pp = aiPlanes[ i ];
-        if( pp->Type == AI_PLANE_ATTACK && pp->Attack.TargId == target->GetId() )
-        {
-            if( i && pp->Priority == aiPlanes[ 0 ]->Priority )
-                SetBestCurPlane();
-            return;
-        }
-    }
-
-    AIDataPlane* plane = new AIDataPlane( AI_PLANE_ATTACK, AI_PLANE_ATTACK_PRIORITY );
-    if( !plane )
-        return;
-
-    plane->Attack.TargId = target->GetId();
-    plane->Attack.MinHp = min_hp;
-    plane->Attack.LastHexX = ( target->GetMapId() ? target->GetHexX() : 0 );
-    plane->Attack.LastHexY = ( target->GetMapId() ? target->GetHexY() : 0 );
-    plane->Attack.IsGag = is_gag;
-    plane->Attack.GagHexX = target->GetHexX();
-    plane->Attack.GagHexY = target->GetHexY();
-    plane->Attack.IsRun = GameOpt.RtAlwaysRun;
-    AddPlane( reason, plane, false, target, nullptr );
 }

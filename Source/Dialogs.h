@@ -5,36 +5,31 @@
 #include "Text.h"
 #include "MsgFiles.h"
 
-// Special script
-#define NOT_ANSWER_CLOSE_DIALOG    ( 0 )
-#define NOT_ANSWER_BEGIN_BATTLE    ( 1 )
-
 // Dialog flags
-#define DIALOG_FLAG_NO_SHUFFLE     ( 1 )
+#define DIALOG_FLAG_NO_SHUFFLE    ( 1 )
 
 // Answers
-#define DIALOG_END                 ( 0 )
-#define DIALOG_BACK                ( 0xFFE1 )
-#define DIALOG_BARTER              ( 0xFFE2 )
-#define DIALOG_ATTACK              ( 0xFFE3 )
+#define DIALOG_END                ( 0 )
+#define DIALOG_BACK               ( 0xFFE1 )
+#define DIALOG_BARTER             ( 0xFFE2 )
 
 // Types
-#define DR_NONE                    ( 0 )
-#define DR_PROP_GLOBAL             ( 1 )
-#define DR_PROP_CRITTER            ( 2 )
-#define DR_PROP_CRITTER_DICT       ( 3 )
-#define DR_PROP_ITEM               ( 4 )
-#define DR_PROP_LOCATION           ( 5 )
-#define DR_PROP_MAP                ( 6 )
-#define DR_ITEM                    ( 7 )
-#define DR_SCRIPT                  ( 8 )
-#define DR_NO_RECHECK              ( 9 )
-#define DR_OR                      ( 10 )
+#define DR_NONE                   ( 0 )
+#define DR_PROP_GLOBAL            ( 1 )
+#define DR_PROP_CRITTER           ( 2 )
+#define DR_PROP_CRITTER_DICT      ( 3 )
+#define DR_PROP_ITEM              ( 4 )
+#define DR_PROP_LOCATION          ( 5 )
+#define DR_PROP_MAP               ( 6 )
+#define DR_ITEM                   ( 7 )
+#define DR_SCRIPT                 ( 8 )
+#define DR_NO_RECHECK             ( 9 )
+#define DR_OR                     ( 10 )
 
 // Who types
-#define DR_WHO_NONE                ( 0 )
-#define DR_WHO_PLAYER              ( 1 )
-#define DR_WHO_NPC                 ( 2 )
+#define DR_WHO_NONE               ( 0 )
+#define DR_WHO_PLAYER             ( 1 )
+#define DR_WHO_NPC                ( 2 )
 
 class DemandResult
 {
@@ -109,7 +104,7 @@ public:
     { DlgScript = "None"; }
               #else
     {
-        DlgScript = NOT_ANSWER_CLOSE_DIALOG;
+        DlgScript = 0;
         MEMORY_PROCESS( MEMORY_DIALOG, sizeof( Dialog ) );
     }
     Dialog( const Dialog& r )

@@ -183,9 +183,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterTalk );
     BIND_INTERNAL_EVENT( CritterBarter );
     BIND_INTERNAL_EVENT( CritterGetAttackDistantion );
-    BIND_INTERNAL_EVENT( NpcPlaneBegin );
-    BIND_INTERNAL_EVENT( NpcPlaneEnd );
-    BIND_INTERNAL_EVENT( NpcPlaneRun );
     BIND_INTERNAL_EVENT( PlayerRegistration );
     BIND_INTERNAL_EVENT( PlayerLogin );
     BIND_INTERNAL_EVENT( PlayerGetAccess );
@@ -482,55 +479,23 @@ bool FOServer::ReloadClientScripts()
 /* Wrapper functions                                                    */
 /************************************************************************/
 
-int SortCritterHx = 0, SortCritterHy = 0;
-bool SortCritterByDistPred( Critter* cr1, Critter* cr2 )
+static int SortCritterHx = 0;
+static int SortCritterHy = 0;
+static bool SortCritterByDistPred( Critter* cr1, Critter* cr2 )
 {
     return DistGame( SortCritterHx, SortCritterHy, cr1->GetHexX(), cr1->GetHexY() ) < DistGame( SortCritterHx, SortCritterHy, cr2->GetHexX(), cr2->GetHexY() );
 }
-void SortCritterByDist( Critter* cr, CrVec& critters )
+static void SortCritterByDist( Critter* cr, CrVec& critters )
 {
     SortCritterHx = cr->GetHexX();
     SortCritterHy = cr->GetHexY();
     std::sort( critters.begin(), critters.end(), SortCritterByDistPred );
 }
-void SortCritterByDist( int hx, int hy, CrVec& critters )
+static void SortCritterByDist( int hx, int hy, CrVec& critters )
 {
     SortCritterHx = hx;
     SortCritterHy = hy;
     std::sort( critters.begin(), critters.end(), SortCritterByDistPred );
-}
-
-AIDataPlane* FOServer::SScriptFunc::NpcPlane_GetCopy( AIDataPlane* plane )
-{
-    return plane->GetCopy();
-}
-
-AIDataPlane* FOServer::SScriptFunc::NpcPlane_SetChild( AIDataPlane* plane, AIDataPlane* child_plane )
-{
-    if( child_plane->Assigned )
-        child_plane = child_plane->GetCopy();
-    else
-        child_plane->AddRef();
-    plane->ChildPlane = child_plane;
-    return child_plane;
-}
-
-AIDataPlane* FOServer::SScriptFunc::NpcPlane_GetChild( AIDataPlane* plane, uint index )
-{
-    AIDataPlane* result = plane->ChildPlane;
-    for( uint i = 0; i < index && result; i++ )
-        result = result->ChildPlane;
-    return result;
-}
-
-bool FOServer::SScriptFunc::NpcPlane_Misc_SetScript( AIDataPlane* plane, asIScriptFunction* func )
-{
-    uint bind_id = Script::BindByFunc( func, false );
-    if( !bind_id )
-        SCRIPT_ERROR_R0( "Script not found." );
-
-    plane->Misc.ScriptBindId = bind_id;
-    return true;
 }
 
 Item* FOServer::SScriptFunc::Item_AddItem( Item* cont, hash pid, uint count, uint stack_id )
@@ -1311,195 +1276,6 @@ void FOServer::SScriptFunc::Crit_CloseDialog( Critter* cr )
         ( (Client*) cr )->CloseTalk();
 }
 
-uint FOServer::SScriptFunc::Npc_ErasePlane( Critter* npc, int plane_type, bool all )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-
-    Npc*            npc_ = (Npc*) npc;
-    AIDataPlaneVec& planes = npc_->GetPlanes();
-    uint            result = 0;
-    for( auto it = planes.begin(); it != planes.end();)
-    {
-        AIDataPlane* p = *it;
-        if( p->Type == plane_type || plane_type == -1 )
-        {
-            if( !result && it == planes.begin() )
-                npc->SendA_XY();
-
-            p->Assigned = false;
-            p->Release();
-            it = planes.erase( it );
-
-            result++;
-            if( !all )
-                break;
-        }
-        else
-            ++it;
-    }
-
-    return result;
-}
-
-bool FOServer::SScriptFunc::Npc_ErasePlaneIndex( Critter* npc, uint index )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-
-    Npc*            npc_ = (Npc*) npc;
-    AIDataPlaneVec& planes = npc_->GetPlanes();
-    if( index >= planes.size() )
-        SCRIPT_ERROR_R0( "Invalid index arg." );
-
-    AIDataPlane* p = planes[ index ];
-    if( !index )
-        npc->SendA_XY();
-    p->Assigned = false;
-    p->Release();
-    planes.erase( planes.begin() + index );
-    return true;
-}
-
-void FOServer::SScriptFunc::Npc_DropPlanes( Critter* npc )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R( "Critter is not npc." );
-
-    Npc*            npc_ = (Npc*) npc;
-    AIDataPlaneVec& planes = npc_->GetPlanes();
-    npc_->DropPlanes();
-}
-
-bool FOServer::SScriptFunc::Npc_IsNoPlanes( Critter* npc )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-
-    return ( (Npc*) npc )->IsNoPlanes();
-}
-
-bool FOServer::SScriptFunc::Npc_IsCurPlane( Critter* npc, int plane_type )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-
-    Npc* npc_ = (Npc*) npc;
-    return npc_->IsCurPlane( plane_type );
-}
-
-AIDataPlane* FOServer::SScriptFunc::Npc_GetCurPlane( Critter* npc )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-
-    Npc* npc_ = (Npc*) npc;
-    if( npc_->IsNoPlanes() )
-        return nullptr;
-    return npc_->GetPlanes()[ 0 ];
-}
-
-CScriptArray* FOServer::SScriptFunc::Npc_GetPlanes( Critter* npc )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-
-    Npc* npc_ = (Npc*) npc;
-    return Script::CreateArrayRef( "NpcPlane[]", npc_->GetPlanes() );
-}
-
-CScriptArray* FOServer::SScriptFunc::Npc_GetPlanesIdentifier( Critter* npc, int identifier )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-
-    Npc*           npc_ = (Npc*) npc;
-    AIDataPlaneVec planes = npc_->GetPlanes();   // Copy
-    for( auto it = planes.begin(); it != planes.end();)
-    {
-        if( ( *it )->Identifier != identifier )
-            it = planes.erase( it );
-        else
-            ++it;
-    }
-
-    return Script::CreateArrayRef( "NpcPlane[]", planes );
-}
-
-CScriptArray* FOServer::SScriptFunc::Npc_GetPlanesIdentifier2( Critter* npc, int identifier, uint identifier_ext )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-
-    Npc*           npc_ = (Npc*) npc;
-    AIDataPlaneVec planes = npc_->GetPlanes();   // Copy
-    for( auto it = planes.begin(); it != planes.end();)
-    {
-        if( ( *it )->Identifier != identifier || ( *it )->IdentifierExt != identifier_ext )
-            it = planes.erase( it );
-        else
-            ++it;
-    }
-
-    return Script::CreateArrayRef( "NpcPlane[]", planes );
-}
-
-bool FOServer::SScriptFunc::Npc_AddPlane( Critter* npc, AIDataPlane* plane )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R0( "Critter is not npc." );
-    if( !plane )
-        SCRIPT_ERROR_R0( "Plane arg is null." );
-
-    Npc* npc_ = (Npc*) npc;
-    if( npc_->IsNoPlanes() )
-        npc_->SetWait( 0 );
-    if( plane->Assigned )
-    {
-        npc_->AddPlane( REASON_FROM_SCRIPT, plane->GetCopy(), false );
-    }
-    else
-    {
-        plane->AddRef();
-        npc_->AddPlane( REASON_FROM_SCRIPT, plane, false );
-    }
-    return true;
-}
-
-void FOServer::SScriptFunc::Npc_NextPlane( Critter* npc, int reason )
-{
-    if( npc->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( !npc->IsNpc() )
-        SCRIPT_ERROR_R( "Critter is not npc." );
-
-    Npc* npc_ = (Npc*) npc;
-    if( npc_->IsNoPlanes() )
-        SCRIPT_ERROR_R( "Npc does not have any plans." );
-
-    npc_->NextPlane( reason );
-}
-
 void FOServer::SScriptFunc::Crit_SendMessage( Critter* cr, int num, int val, int to )
 {
     if( cr->IsDestroyed )
@@ -1732,66 +1508,6 @@ bool FOServer::SScriptFunc::Crit_SetScript( Critter* cr, asIScriptFunction* func
         cr->SetScriptId( 0 );
     }
     return true;
-}
-
-void FOServer::SScriptFunc::Crit_AddEnemyToStack( Critter* cr, uint critter_id )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( !critter_id )
-        SCRIPT_ERROR_R( "Critter id is zero." );
-
-    cr->AddEnemyToStack( critter_id );
-}
-
-bool FOServer::SScriptFunc::Crit_CheckEnemyInStack( Critter* cr, uint critter_id )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-
-    return cr->CheckEnemyInStack( critter_id );
-}
-
-void FOServer::SScriptFunc::Crit_EraseEnemyFromStack( Critter* cr, uint critter_id )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    cr->EraseEnemyInStack( critter_id );
-}
-
-void FOServer::SScriptFunc::Crit_ClearEnemyStack( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    CScriptArray* enemy_stack = Script::CreateArray( "uint[]" );
-    cr->SetEnemyStack( enemy_stack );
-    enemy_stack->Release();
-}
-
-void FOServer::SScriptFunc::Crit_ClearEnemyStackNpc( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    CScriptArray* enemy_stack = cr->GetEnemyStack();
-    bool          removed = false;
-    for( uint i = 0; i < enemy_stack->GetSize();)
-    {
-        if( !IS_CLIENT_ID( *(uint*) enemy_stack->At( i ) ) )
-        {
-            enemy_stack->RemoveAt( i );
-            removed = true;
-        }
-        else
-        {
-            i++;
-        }
-    }
-    if( removed )
-        cr->SetEnemyStack( enemy_stack );
-    SAFEREL( enemy_stack );
 }
 
 bool FOServer::SScriptFunc::Crit_AddTimeEvent( Critter* cr, asIScriptFunction* func, uint duration, int identifier )
@@ -3578,19 +3294,10 @@ void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, string first
     }
 }
 
-AIDataPlane* FOServer::SScriptFunc::Global_CreatePlane()
-{
-    return new AIDataPlane( 0, 0 );
-}
-
 static void SwapCrittersRefreshNpc( Npc* npc )
 {
     UNSETFLAG( npc->Flags, FCRIT_PLAYER );
     SETFLAG( npc->Flags, FCRIT_NPC );
-    AIDataPlaneVec& planes = npc->GetPlanes();
-    for( auto it = planes.begin(), end = planes.end(); it != end; ++it )
-        delete *it;
-    planes.clear();
 }
 
 static void SwapCrittersRefreshClient( Client* cl, Map* map, Map* prev_map )

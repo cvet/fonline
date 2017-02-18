@@ -367,7 +367,6 @@ set( SERVER_SOURCE
 	${SERVER_CLIENT_SOURCE}
 	${SERVER_ASCOMPILER_SOURCE}
 	${fbxsdk_SOURCE}
-	AI.h
 	Critter.cpp Critter.h
 	CritterData.h
 	CritterManager.h CritterManager.cpp

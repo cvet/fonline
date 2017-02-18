@@ -7,54 +7,6 @@ struct SyncObject
     void Lock() {}
 };
 
-struct AIDataPlane
-{
-    int Type;
-    int Priority;
-    int Identifier;
-    int IdentifierExt;
-
-    struct
-    {
-        int WaitSecond;
-        int ScriptBindId;
-    } Misc;
-
-    struct
-    {
-        int TargId;
-        int MinHp;
-        int IsGag;
-        int GagHexX, GagHexY;
-        int LastHexX, LastHexY;
-        int IsRun;
-    } Attack;
-
-    struct
-    {
-        int HexX;
-        int HexY;
-        int Dir;
-        int IsRun;
-        int Cut;
-    } Walk;
-
-    struct
-    {
-        int HexX;
-        int HexY;
-        int Pid;
-        int UseItemId;
-        int ToOpen;
-        int IsRun;
-    } Pick;
-
-    int  RefCounter;
-
-    void AddRef()  {}
-    void Release() {}
-};
-
 struct Entity
 {
     int  Props;
@@ -228,18 +180,6 @@ struct BindClass
     static void Crit_SetCond()                  {}
     static void Crit_CloseDialog()              {}
 
-    static void Npc_ErasePlane()           {}
-    static void Npc_ErasePlaneIndex()      {}
-    static void Npc_DropPlanes()           {}
-    static void Npc_IsNoPlanes()           {}
-    static void Npc_IsCurPlane()           {}
-    static void Npc_GetCurPlane()          {}
-    static void Npc_GetPlanes()            {}
-    static void Npc_GetPlanesIdentifier()  {}
-    static void Npc_GetPlanesIdentifier2() {}
-    static void Npc_AddPlane()             {}
-    static void Npc_NextPlane()            {}
-
     static void Crit_SendMessage()      {}
     static void Crit_SendCombatResult() {}
     static void Crit_Action()           {}
@@ -257,12 +197,6 @@ struct BindClass
     static void Cl_Disconnect() {}
 
     static void Crit_SetScript() {}
-
-    static void Crit_AddEnemyToStack()     {}
-    static void Crit_CheckEnemyInStack()   {}
-    static void Crit_EraseEnemyFromStack() {}
-    static void Crit_ClearEnemyStack()     {}
-    static void Crit_ClearEnemyStackNpc()  {}
 
     static void Crit_AddTimeEvent()       {}
     static void Crit_AddTimeEventRate()   {}

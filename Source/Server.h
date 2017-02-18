@@ -120,10 +120,6 @@ public:
     static void  OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Npc
-    static void ProcessAI( Npc* npc );
-    static bool AI_Stay( Npc* npc, uint ms );
-    static bool AI_Move( Npc* npc, ushort hx, ushort hy, bool is_run, uint cut, uint trace );
-    static bool AI_MoveToCrit( Npc* npc, uint targ_id, uint cut, uint trace, bool is_run );
     static void ProcessCritter( Critter* cr );
     static bool Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg );
     static bool Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, bool recheck );
@@ -299,11 +295,6 @@ public:
     // Script functions
     struct SScriptFunc
     {
-        static AIDataPlane* NpcPlane_GetCopy( AIDataPlane* plane );
-        static AIDataPlane* NpcPlane_SetChild( AIDataPlane* plane, AIDataPlane* child_plane );
-        static AIDataPlane* NpcPlane_GetChild( AIDataPlane* plane, uint index );
-        static bool         NpcPlane_Misc_SetScript( AIDataPlane* plane, asIScriptFunction* func );
-
         static Item*         Item_AddItem( Item* cont, hash pid, uint count, uint stack_id );
         static CScriptArray* Item_GetItems( Item* cont, uint stack_id );
         static bool          Item_SetScript( Item* item, asIScriptFunction* func );
@@ -355,18 +346,6 @@ public:
         static void          Crit_SetCond( Critter* cr, int cond );
         static void          Crit_CloseDialog( Critter* cr );
 
-        static uint          Npc_ErasePlane( Critter* npc, int plane_type, bool all );
-        static bool          Npc_ErasePlaneIndex( Critter* npc, uint index );
-        static void          Npc_DropPlanes( Critter* npc );
-        static bool          Npc_IsNoPlanes( Critter* npc );
-        static bool          Npc_IsCurPlane( Critter* npc, int plane_type );
-        static AIDataPlane*  Npc_GetCurPlane( Critter* npc );
-        static CScriptArray* Npc_GetPlanes( Critter* npc );
-        static CScriptArray* Npc_GetPlanesIdentifier( Critter* npc, int identifier );
-        static CScriptArray* Npc_GetPlanesIdentifier2( Critter* npc, int identifier, uint identifier_ext );
-        static bool          Npc_AddPlane( Critter* npc, AIDataPlane* plane );
-        static void          Npc_NextPlane( Critter* npc, int reason );
-
         static void Crit_SendMessage( Critter* cr, int num, int val, int to );
         static void Crit_SendCombatResult( Critter* cr, CScriptArray* arr );
         static void Crit_Action( Critter* cr, int action, int action_ext, Item* item );
@@ -384,12 +363,6 @@ public:
         static void Cl_Disconnect( Critter* cl );
 
         static bool Crit_SetScript( Critter* cr, asIScriptFunction* func );
-
-        static void Crit_AddEnemyToStack( Critter* cr, uint critter_id );
-        static bool Crit_CheckEnemyInStack( Critter* cr, uint critter_id );
-        static void Crit_EraseEnemyFromStack( Critter* cr, uint critter_id );
-        static void Crit_ClearEnemyStack( Critter* cr );
-        static void Crit_ClearEnemyStackNpc( Critter* cr );
 
         static bool Crit_AddTimeEvent( Critter* cr, asIScriptFunction* func, uint duration, int identifier );
         static bool Crit_AddTimeEventRate( Critter* cr, asIScriptFunction* func, uint duration, int identifier, uint rate );
@@ -502,7 +475,6 @@ public:
         static int64         Global_WorldItemCount( hash pid );
         static bool          Global_AddTextListener( int say_type, string first_str, uint parameter, asIScriptFunction* func );
         static void          Global_EraseTextListener( int say_type, string first_str, uint parameter );
-        static AIDataPlane*  Global_CreatePlane();
         static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory );
         static CScriptArray* Global_GetAllItems( hash pid );
         static CScriptArray* Global_GetAllPlayers();
