@@ -346,7 +346,6 @@ public:
         static void          Crit_SetCond( Critter* cr, int cond );
         static void          Crit_CloseDialog( Critter* cr );
 
-        static void Crit_SendMessage( Critter* cr, int num, int val, int to );
         static void Crit_SendCombatResult( Critter* cr, CScriptArray* arr );
         static void Crit_Action( Critter* cr, int action, int action_ext, Item* item );
         static void Crit_Animate( Critter* cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );

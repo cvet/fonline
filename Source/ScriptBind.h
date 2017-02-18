@@ -153,7 +153,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SayMsg(uint8 howSay, uint16 textMsg, uint strNum, string lexems)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SayMsgLex ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetDir(uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SetDir ), SCRIPT_FUNC_THIS_CONV ) );
 
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SendMessage(int num, int val, int to)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SendMessage ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Action(int action, int actionExt, const Item@+ item)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_Action ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void Animate(uint anim1, uint anim2, const Item@+ item, bool clearSequence, bool delayPlay)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_Animate ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetAnims(int cond, uint anim1, uint anim2)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SetAnims ), SCRIPT_FUNC_THIS_CONV ) );

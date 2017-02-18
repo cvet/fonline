@@ -1276,14 +1276,6 @@ void FOServer::SScriptFunc::Crit_CloseDialog( Critter* cr )
         ( (Client*) cr )->CloseTalk();
 }
 
-void FOServer::SScriptFunc::Crit_SendMessage( Critter* cr, int num, int val, int to )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-
-    cr->SendMessage( num, val, to );
-}
-
 void FOServer::SScriptFunc::Crit_SendCombatResult( Critter* cr, CScriptArray* arr )
 {
     if( cr->IsDestroyed )

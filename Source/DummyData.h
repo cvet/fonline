@@ -180,7 +180,6 @@ struct BindClass
     static void Crit_SetCond()                  {}
     static void Crit_CloseDialog()              {}
 
-    static void Crit_SendMessage()      {}
     static void Crit_SendCombatResult() {}
     static void Crit_Action()           {}
     static void Crit_Animate()          {}
