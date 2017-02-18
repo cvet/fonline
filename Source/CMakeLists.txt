@@ -106,7 +106,7 @@ set( SERVER_OUTPUT "${CMAKE_BINARY_DIR}/../Server" )
 set( MAPPER_OUTPUT "${CMAKE_BINARY_DIR}/../Mapper" )
 set( ASCOMPILER_OUTPUT "${CMAKE_BINARY_DIR}/../ASCompiler" )
 
-if( MSVC AND NOT DFO_AUTOBUILD )
+if( MSVC AND NOT FO_AUTOBUILD )
 	set( CLIENT_OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/../../FOnline/Binaries/Client" )
 	set( SERVER_OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/../../FOnline/Binaries/Server" )
 	set( MAPPER_OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/../../FOnline/Binaries/Mapper" )
