@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 
-sudo apt-get -y update
+sudo apt-get -y update || true
 sudo apt-get -y install lftp
 
 if [ -n "$FO_FTP_DEST" ]; then
