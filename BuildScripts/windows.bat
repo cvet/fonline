@@ -24,14 +24,14 @@ PUSHD windows\x64
 cmake -G "Visual Studio 14 2015 Win64" "%SOURCE_FULL_PATH%\Source"
 POPD
 
-cmake --build windows\x64 --config RelWithDebInfo --target FOnlineServer -DFO_AUTOBUILD=ON
-cmake --build windows\x64 --config RelWithDebInfo --target Mapper -DFO_AUTOBUILD=ON
-cmake --build windows\x64 --config RelWithDebInfo --target ASCompiler -DFO_AUTOBUILD=ON
-cmake --build windows\x64 --config RelWithDebInfo --target FOnline -DFO_AUTOBUILD=ON
-cmake --build windows\x86 --config RelWithDebInfo --target FOnlineServer -DFO_AUTOBUILD=ON
-cmake --build windows\x86 --config RelWithDebInfo --target Mapper -DFO_AUTOBUILD=ON
-cmake --build windows\x86 --config RelWithDebInfo --target ASCompiler -DFO_AUTOBUILD=ON
-cmake --build windows\x86 --config RelWithDebInfo --target FOnline -DFO_AUTOBUILD=ON
+cmake --build windows\x64 --config RelWithDebInfo --target FOnlineServer
+cmake --build windows\x64 --config RelWithDebInfo --target Mapper
+cmake --build windows\x64 --config RelWithDebInfo --target ASCompiler
+cmake --build windows\x64 --config RelWithDebInfo --target FOnline
+cmake --build windows\x86 --config RelWithDebInfo --target FOnlineServer
+cmake --build windows\x86 --config RelWithDebInfo --target Mapper
+cmake --build windows\x86 --config RelWithDebInfo --target ASCompiler
+cmake --build windows\x86 --config RelWithDebInfo --target FOnline
 
 IF DEFINED FO_FTP_DEST (
 	PUSHD windows\Client
