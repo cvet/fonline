@@ -104,6 +104,8 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     DisableSend = 0;
     CanBeRemoved = false;
     Name = "";
+    memzero( &Moving, sizeof( Moving ) );
+    Moving.State = 1;
 }
 
 Critter::~Critter()

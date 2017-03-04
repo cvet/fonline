@@ -300,8 +300,6 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         Str::Copy( script, read_str );
         if( Str::Compare( script, "NOT_ANSWER_CLOSE_DIALOG" ) )
             Str::Copy( script, "None" );
-        else if( Str::Compare( script, "NOT_ANSWER_BEGIN_BATTLE" ) )
-            Str::Copy( script, "Attack" );
         ret_val = false;
         #else
         script = GetNotAnswerAction( read_str, ret_val );

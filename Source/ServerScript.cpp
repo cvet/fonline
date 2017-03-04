@@ -1808,6 +1808,54 @@ uint FOServer::SScriptFunc::Crit_EraseTimeEventsArr( Critter* cr, CScriptArray* 
     return result;
 }
 
+void FOServer::SScriptFunc::Crit_MoveToCritter( Critter* cr, Critter* target, uint cut, bool is_run )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+    if( !target )
+        SCRIPT_ERROR_R( "Critter arg is null." );
+    if( target->IsDestroyed )
+        SCRIPT_ERROR_R( "Critter arg is destroyed." );
+
+    memzero( &cr->Moving, sizeof( cr->Moving ) );
+    cr->Moving.TargId = target->GetId();
+    cr->Moving.HexX = target->GetHexX();
+    cr->Moving.HexY = target->GetHexY();
+    cr->Moving.Cut = cut;
+    cr->Moving.IsRun = is_run;
+}
+
+void FOServer::SScriptFunc::Crit_MoveToHex( Critter* cr, ushort hx, ushort hy, uint cut, bool is_run )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+
+    memzero( &cr->Moving, sizeof( cr->Moving ) );
+    cr->Moving.HexX = hx;
+    cr->Moving.HexY = hy;
+    cr->Moving.Cut = cut;
+    cr->Moving.IsRun = is_run;
+}
+
+int FOServer::SScriptFunc::Crit_GetMovingState( Critter* cr )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    return cr->Moving.State;
+}
+
+void FOServer::SScriptFunc::Crit_ResetMovingState( Critter* cr, uint& gag_id )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+
+    gag_id = cr->Moving.GagEntityId;
+    memzero( &cr->Moving, sizeof( cr->Moving ) );
+    cr->Moving.State = 1;
+}
+
+
 Location* FOServer::SScriptFunc::Map_GetLocation( Map* map )
 {
     if( map->IsDestroyed )

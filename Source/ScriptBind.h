@@ -182,6 +182,12 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint EraseTimeEvents(int identifier)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_EraseTimeEvents ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint EraseTimeEvents(array<int>@+ identifiers)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_EraseTimeEventsArr ), SCRIPT_FUNC_THIS_CONV ) );
 
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void MoveToCritter(Critter@+ cr, uint cut, bool isRun)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_MoveToCritter ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void MoveToHex(uint16 hexX, uint16 hexY, uint cut, bool isRun)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_MoveToHex ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterEnum( "MovingState" ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "MovingState GetMovingState() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetMovingState ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ResetMovingState(uint& gagId)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_ResetMovingState ), SCRIPT_FUNC_THIS_CONV ) );
+
     // Parameters
     BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const string Name", OFFSETOF( Critter, Name ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "const bool IsRunning", OFFSETOF( Critter, IsRunning ) ) );

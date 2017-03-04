@@ -8,9 +8,11 @@ void FOServer::ProcessCritter( Critter* cr )
     if( Timer::IsGamePaused() )
         return;
 
-    uint tick = Timer::GameTick();
+    // Moving
+    ProcessMove( cr );
 
     // Idle functions
+    uint tick = Timer::GameTick();
     if( tick >= cr->IdleNextTick )
     {
         Script::RaiseInternalEvent( ServerFunctions.CritterIdle, cr );

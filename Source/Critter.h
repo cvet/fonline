@@ -206,6 +206,22 @@ public:
     void SetWait( uint ms ) { waitEndTick = Timer::GameTick() + ms; }
     bool IsWait()           { return Timer::GameTick() < waitEndTick; }
 
+    // Moving
+public:
+    struct
+    {
+        int    State;
+        uint   TargId;
+        ushort HexX;
+        ushort HexY;
+        uint   Cut;
+        bool   IsRun;
+        uint   PathNum;
+        uint   Iter;
+        uint   Trace;
+        uint   GagEntityId;
+    } Moving;
+
     // Send
     volatile int DisableSend;
     bool IsSendDisabled() { return DisableSend > 0; }

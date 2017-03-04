@@ -1,6 +1,185 @@
 #include "Common.h"
 #include "Server.h"
 
+void FOServer::ProcessMove( Critter* cr )
+{
+    #define MOVING_SUCCESS             ( 1 )
+    #define MOVING_TARGET_NOT_FOUND    ( 2 )
+    #define MOVING_CANT_MOVE           ( 3 )
+    #define MOVING_GAG_CRITTER         ( 4 )
+    #define MOVING_GAG_ITEM            ( 5 )
+    #define MOVING_FIND_PATH_ERROR     ( 6 )
+    #define MOVING_HEX_TOO_FAR         ( 7 )
+    #define MOVING_HEX_BUSY            ( 8 )
+    #define MOVING_HEX_BUSY_RING       ( 9 )
+    #define MOVING_DEADLOCK            ( 10 )
+    #define MOVING_TRACE_FAIL          ( 11 )
+
+    if( cr->Moving.State )
+        return;
+
+    // Check for path recalculation
+    if( cr->Moving.PathNum && cr->Moving.TargId )
+    {
+        Critter* targ = cr->GetCritSelf( cr->Moving.TargId );
+        if( !targ || ( ( cr->Moving.HexX || cr->Moving.HexY ) && !CheckDist( targ->GetHexX(), targ->GetHexY(), cr->Moving.HexX, cr->Moving.HexY, 0 ) ) )
+            cr->Moving.PathNum = 0;
+    }
+
+    // Find path if not exist
+    if( !cr->Moving.PathNum )
+    {
+        ushort   hx;
+        ushort   hy;
+        uint     cut;
+        uint     trace;
+        Critter* trace_cr;
+        bool     check_cr = false;
+
+        if( cr->Moving.TargId )
+        {
+            Critter* targ = cr->GetCritSelf( cr->Moving.TargId );
+            if( !targ )
+            {
+                cr->Moving.State = MOVING_TARGET_NOT_FOUND;
+                cr->SendA_XY();
+                return;
+            }
+
+            hx = targ->GetHexX();
+            hy = targ->GetHexY();
+            cut = cr->Moving.Cut;
+            trace = cr->Moving.Trace;
+            trace_cr = targ;
+            check_cr = true;
+        }
+        else
+        {
+            hx = cr->Moving.HexX;
+            hy = cr->Moving.HexY;
+            cut = cr->Moving.Cut;
+            trace = 0;
+            trace_cr = nullptr;
+        }
+
+        PathFindData pfd;
+        pfd.Clear();
+        pfd.MapId = cr->GetMapId();
+        pfd.FromCritter = cr;
+        pfd.FromX = cr->GetHexX();
+        pfd.FromY = cr->GetHexY();
+        pfd.ToX = hx;
+        pfd.ToY = hy;
+        pfd.IsRun = cr->Moving.IsRun;
+        pfd.Multihex = cr->GetMultihex();
+        pfd.Cut = cut;
+        pfd.Trace = trace;
+        pfd.TraceCr = trace_cr;
+        pfd.CheckCrit = true;
+        pfd.CheckGagItems = true;
+
+        if( pfd.IsRun && cr->GetIsNoRun() )
+            pfd.IsRun = false;
+        if( !pfd.IsRun && cr->GetIsNoWalk() )
+        {
+            cr->Moving.State = MOVING_CANT_MOVE;
+            return;
+        }
+
+        int result = MapMngr.FindPath( pfd );
+        if( pfd.GagCritter )
+        {
+            cr->Moving.State = MOVING_GAG_CRITTER;
+            cr->Moving.GagEntityId = pfd.GagCritter->GetId();
+            return;
+        }
+
+        if( pfd.GagItem )
+        {
+            cr->Moving.State = MOVING_GAG_ITEM;
+            cr->Moving.GagEntityId = pfd.GagItem->GetId();
+            return;
+        }
+
+        // Failed
+        if( result != FPATH_OK )
+        {
+            if( result == FPATH_ALREADY_HERE )
+            {
+                cr->Moving.State = MOVING_SUCCESS;
+                return;
+            }
+
+            int reason = 0;
+            switch( result )
+            {
+            case FPATH_MAP_NOT_FOUND:
+                reason = MOVING_FIND_PATH_ERROR;
+                break;
+            case FPATH_TOOFAR:
+                reason = MOVING_HEX_TOO_FAR;
+                break;
+            case FPATH_ERROR:
+                reason = MOVING_FIND_PATH_ERROR;
+                break;
+            case FPATH_INVALID_HEXES:
+                reason = MOVING_FIND_PATH_ERROR;
+                break;
+            case FPATH_TRACE_TARG_NULL_PTR:
+                reason = MOVING_FIND_PATH_ERROR;
+                break;
+            case FPATH_HEX_BUSY:
+                reason = MOVING_HEX_BUSY;
+                break;
+            case FPATH_HEX_BUSY_RING:
+                reason = MOVING_HEX_BUSY_RING;
+                break;
+            case FPATH_DEADLOCK:
+                reason = MOVING_DEADLOCK;
+                break;
+            case FPATH_TRACE_FAIL:
+                reason = MOVING_TRACE_FAIL;
+                break;
+            default:
+                reason = MOVING_FIND_PATH_ERROR;
+                break;
+            }
+
+            cr->Moving.State = reason;
+            cr->SendA_XY();
+            return;
+        }
+
+        // Success
+        cr->Moving.PathNum = pfd.PathNum;
+        cr->Moving.Iter = 0;
+        cr->SetWait( 0 );
+    }
+
+    // Get path and move
+    PathStepVec& path = MapMngr.GetPath( cr->Moving.PathNum );
+    if( cr->Moving.PathNum && cr->Moving.Iter < path.size() )
+    {
+        PathStep& ps = path[ cr->Moving.Iter ];
+        if( !CheckDist( cr->GetHexX(), cr->GetHexY(), ps.HexX, ps.HexY, 1 ) || !Act_Move( cr, ps.HexX, ps.HexY, ps.MoveParams ) )
+        {
+            // Error
+            cr->Moving.PathNum = 0;
+            cr->SendA_XY();
+        }
+        else
+        {
+            // Next
+            cr->Moving.Iter++;
+        }
+    }
+    else
+    {
+        // Done
+        cr->Moving.State = MOVING_SUCCESS;
+    }
+}
+
 bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg )
 {
     if( base_dlg.Id < 2 )

@@ -141,6 +141,7 @@ public:
     static void AddSaveClient( Client* cl );
     static void EraseSaveClient( uint crid );
     static void Process( Client* cl );
+    static void ProcessMove( Critter* cr );
 
     // Log to client
     static ClVec LogClients;
@@ -371,6 +372,11 @@ public:
         static void Crit_EraseTimeEvent( Critter* cr, uint index );
         static uint Crit_EraseTimeEvents( Critter* cr, int identifier );
         static uint Crit_EraseTimeEventsArr( Critter* cr, CScriptArray* identifiers );
+
+        static void Crit_MoveToCritter( Critter* cr, Critter* target, uint cut, bool is_run );
+        static void Crit_MoveToHex( Critter* cr, ushort hx, ushort hy, uint cut, bool is_run );
+        static int  Crit_GetMovingState( Critter* cr );
+        static void Crit_ResetMovingState( Critter* cr, uint& gag_id );
 
         static Location*     Map_GetLocation( Map* map );
         static bool          Map_SetScript( Map* map, asIScriptFunction* func );

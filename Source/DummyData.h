@@ -206,6 +206,11 @@ struct BindClass
     static void Crit_EraseTimeEvents()    {}
     static void Crit_EraseTimeEventsArr() {}
 
+    static void Crit_MoveToCritter()    {}
+    static void Crit_MoveToHex()        {}
+    static void Crit_GetMovingState()   {}
+    static void Crit_ResetMovingState() {}
+
     static void Map_GetLocation()            {}
     static void Map_SetScript()              {}
     static void Map_AddItem()                {}

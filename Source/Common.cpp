@@ -614,7 +614,7 @@ int ConvertParamValue( const char* str, bool& fail )
 
 // Hex offset
 #define HEX_OFFSET_SIZE    ( ( MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2 ) * DIRS_COUNT )
-int           CurHexOffset = 0; // 0 - none, 1 - hexagonal, 2 - square
+static int    CurHexOffset = 0; // 0 - none, 1 - hexagonal, 2 - square
 static short* SXEven = nullptr;
 static short* SYEven = nullptr;
 static short* SXOdd = nullptr;
