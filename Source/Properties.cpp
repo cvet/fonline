@@ -2311,8 +2311,7 @@ Property* PropertyRegistrator::Register(
         }
 
         uint new_size = space_pos + data_size;
-        if( new_size % 8 )
-            new_size += 8 - new_size % 8;
+        new_size += 8 - new_size % 8;
         if( new_size > (uint) space.size() )
             space.resize( new_size );
 
