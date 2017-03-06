@@ -12,14 +12,9 @@ void FOServer::ProcessCritter( Critter* cr )
     ProcessMove( cr );
 
     // Idle functions
-    uint tick = Timer::GameTick();
-    if( tick >= cr->IdleNextTick )
-    {
-        Script::RaiseInternalEvent( ServerFunctions.CritterIdle, cr );
-        if( !cr->GetMapId() )
-            Script::RaiseInternalEvent( ServerFunctions.CritterGlobalMapIdle, cr );
-        cr->IdleNextTick = tick + GameOpt.CritterIdleTick;
-    }
+    Script::RaiseInternalEvent( ServerFunctions.CritterIdle, cr );
+    if( !cr->GetMapId() )
+        Script::RaiseInternalEvent( ServerFunctions.CritterGlobalMapIdle, cr );
 
     // Internal misc/drugs time events
     // One event per cycle
@@ -87,10 +82,10 @@ void FOServer::ProcessCritter( Critter* cr )
 
         // Cache look distance
         #pragma MESSAGE("Disable look distance caching")
-        if( tick >= cl->CacheValuesNextTick )
+        if( Timer::GameTick() >= cl->CacheValuesNextTick )
         {
             cl->LookCacheValue = cl->GetLookDistance();
-            cl->CacheValuesNextTick = tick + 3000;
+            cl->CacheValuesNextTick = Timer::GameTick() + 3000;
         }
     }
 }

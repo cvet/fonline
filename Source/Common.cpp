@@ -1179,7 +1179,6 @@ GameOptions::GameOptions()
     DialogDemandRecheck = false;
     SneakDivider = 6;
     LookMinimum = 6;
-    CritterIdleTick = 10000;
     DeadHitPoints = -6;
 
     Breaktime = 1200;

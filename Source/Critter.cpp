@@ -54,7 +54,6 @@ CLASS_PROPERTY_IMPL( Critter, TE_Identifier );
 CLASS_PROPERTY_IMPL( Critter, LookDistance );
 CLASS_PROPERTY_IMPL( Critter, DialogId );
 CLASS_PROPERTY_IMPL( Critter, NpcRole );
-CLASS_PROPERTY_IMPL( Critter, TeamId );
 CLASS_PROPERTY_IMPL( Critter, MaxTalkers );
 CLASS_PROPERTY_IMPL( Critter, TalkDistance );
 CLASS_PROPERTY_IMPL( Critter, CurrentHp );
@@ -94,7 +93,6 @@ Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, t
     waitEndTick = 0;
     CacheValuesNextTick = 0;
     Flags = 0;
-    IdleNextTick = 0;
     LockMapTransfers = 0;
     ViewMapId = 0;
     ViewMapPid = 0;

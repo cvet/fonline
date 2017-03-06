@@ -468,7 +468,6 @@ struct GameOptions
     bool        DialogDemandRecheck;
     uint        SneakDivider;
     uint        LookMinimum;
-    uint        CritterIdleTick;
     int         DeadHitPoints;
     uint        Breaktime;
     uint        TimeoutTransfer;

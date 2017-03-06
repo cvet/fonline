@@ -16,8 +16,6 @@ struct TraceData
     float       Angle;
     Critter*    FindCr;
     int         FindType;
-    bool        IsCheckTeam;
-    uint        BaseCrTeamId;
     bool        LastPassedSkipCritters;
     void        ( * HexCallback )( Map*, Critter*, ushort, ushort, ushort, ushort, uchar );
     // Output
@@ -28,7 +26,6 @@ struct TraceData
     bool        IsFullTrace;
     bool        IsCritterFounded;
     bool        IsHaveLastPassed;
-    bool        IsTeammateFounded;
 
     TraceData() { memzero( this, sizeof( TraceData ) ); }
 };

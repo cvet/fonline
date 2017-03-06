@@ -17,6 +17,8 @@ void FOServer::ProcessMove( Critter* cr )
 
     if( cr->Moving.State )
         return;
+    if( cr->IsBusy() || cr->IsWait() )
+        return;
 
     // Check for path recalculation
     if( cr->Moving.PathNum && cr->Moving.TargId )

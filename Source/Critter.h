@@ -102,7 +102,6 @@ public:
     CLASS_PROPERTY( int, SneakCoefficient );
     // Exclude
     CLASS_PROPERTY( hash, NpcRole );            // Find Npc criteria (maybe swap to some universal prop/value array as input)
-    CLASS_PROPERTY( hash, TeamId );             // Trace check criteria (maybe swap to some universal prop/value array)
     CLASS_PROPERTY( bool, IsNoUnarmed );        // AI
 
 protected:
@@ -306,8 +305,6 @@ public:
 
     // Other
     CrVec* GlobalMapGroup;
-    uint   IdleNextTick;
-
     bool   CanBeRemoved;
 };
 

@@ -376,7 +376,6 @@ void MapManager::TraceBullet( TraceData& trace )
     trace.IsFullTrace = false;
     trace.IsCritterFounded = false;
     trace.IsHaveLastPassed = false;
-    trace.IsTeammateFounded = false;
     bool last_passed_ok = false;
     for( uint i = 0; ; i++ )
     {
@@ -420,21 +419,13 @@ void MapManager::TraceBullet( TraceData& trace )
             break;
         if( trace.Critters != nullptr && map->IsHexCritter( cx, cy ) )
             map->GetCrittersHex( cx, cy, 0, trace.FindType, *trace.Critters );
-        if( ( trace.FindCr || trace.IsCheckTeam ) && map->IsFlagCritter( cx, cy, false ) )
+        if( trace.FindCr && map->IsFlagCritter( cx, cy, false ) )
         {
             Critter* cr = map->GetHexCritter( cx, cy, false );
-            if( cr )
+            if( cr == trace.FindCr )
             {
-                if( cr == trace.FindCr )
-                {
-                    trace.IsCritterFounded = true;
-                    break;
-                }
-                if( trace.IsCheckTeam && cr->GetTeamId() == trace.BaseCrTeamId )
-                {
-                    trace.IsTeammateFounded = true;
-                    break;
-                }
+                trace.IsCritterFounded = true;
+                break;
             }
         }
 

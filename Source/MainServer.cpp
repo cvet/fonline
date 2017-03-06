@@ -152,8 +152,6 @@ int main( int argc, char** argv )
         LogToBuffer( true );
     }
 
-    WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
-
     FOQuit = true;
 
     if( GuiWindow )
@@ -161,6 +159,8 @@ int main( int argc, char** argv )
         LogToBuffer( true );
         GuiCBtnAutoUpdate->value( 0 );
     }
+
+    WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
 
     // Autostart
     if( !MainConfig->IsKey( "", "NoStart" ) )
