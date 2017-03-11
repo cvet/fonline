@@ -1217,6 +1217,7 @@ GameOptions::GameOptions()
     MinimumOfflineTime = 180000;
     GameServer = false;
     UpdateServer = false;
+    ForceRebuildResources = false;
 
     MapHexagonal = true;
     MapHexWidth = 32;

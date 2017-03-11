@@ -2139,7 +2139,7 @@ bool FOServer::InitReal()
 
     // Delete intermediate files if engine have been updated
     FileManager fm;
-    if( !fm.LoadFile( FileManager::GetWritePath( "Version.txt" ) ) || Str::AtoUI( fm.GetCStr() ) != FONLINE_VERSION )
+    if( !fm.LoadFile( FileManager::GetWritePath( "Version.txt" ) ) || Str::AtoUI( fm.GetCStr() ) != FONLINE_VERSION || GameOpt.ForceRebuildResources )
     {
         fm.SetStr( "%u", FONLINE_VERSION );
         fm.SaveFile( "Version.txt" );

@@ -1224,10 +1224,11 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     {
                         const char*  path;
                         FileManager& file = resources.GetNextFile( nullptr, &path );
+                        char         name[ MAX_FOTEXT ];
+                        FileManager::ExtractFileName( path, name );
                         char         fname[ MAX_FOTEXT ];
-                        FileManager::ExtractFileName( path, fname );
-                        Str::Insert( fname, "Update/" );
-                        FileManager update_file;
+                        Str::Format( fname, "Update/%s", name );
+                        FileManager  update_file;
                         if( !update_file.LoadFile( fname, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
                         {
                             if( !log_shown )
@@ -1269,7 +1270,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             }
                         }
 
-                        update_file_names.insert( fname );
+                        update_file_names.insert( name );
                     }
                 }
             }

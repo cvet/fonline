@@ -219,22 +219,9 @@
 // s - hardcoded server call
 // for all others critters actions call only server
 //                                          flags    actionExt                                                      item
-#define ACTION_MOVE                 ( 0 )   // l
-#define ACTION_RUN                  ( 1 )   // l
 #define ACTION_MOVE_ITEM            ( 2 )   // l s      from slot                                                      +
 #define ACTION_MOVE_ITEM_SWAP       ( 3 )   // l s      from slot                                                      +
-#define ACTION_USE_ITEM             ( 4 )   // l s                                                                     +
 #define ACTION_DROP_ITEM            ( 5 )   // l s      from slot                                                      +
-#define ACTION_USE_WEAPON           ( 6 )   // l        fail attack 8 bit, use index (0-2) 4-7 bits, aim 0-3 bits      +
-#define ACTION_RELOAD_WEAPON        ( 7 )   // l s                                                                     +
-#define ACTION_USE_SKILL            ( 8 )   // l s      skill index (see SK_*)
-#define ACTION_PICK_ITEM            ( 9 )   // l s                                                                     +
-#define ACTION_PICK_CRITTER         ( 10 )  // l        0 - loot, 1 - steal, 2 - push
-#define ACTION_OPERATE_CONTAINER    ( 11 )  // l s      transfer type * 10 + [0 - get, 1 - get all, 2 - put]           + (exclude get all)
-#define ACTION_BARTER               ( 12 )  //   s      0 - item taken, 1 - item given                                 +
-#define ACTION_DODGE                ( 13 )  //          0 - front, 1 - back
-#define ACTION_DAMAGE               ( 14 )  //          0 - front, 1 - back
-#define ACTION_DAMAGE_FORCE         ( 15 )  //          0 - front, 1 - back
 #define ACTION_KNOCKOUT             ( 16 )  //   s      0 - knockout anim2begin
 #define ACTION_STANDUP              ( 17 )  //   s      0 - knockout anim2end
 #define ACTION_FIDGET               ( 18 )  // l

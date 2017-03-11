@@ -497,6 +497,7 @@ struct GameOptions
     uint        MinimumOfflineTime;
     bool        GameServer;
     bool        UpdateServer;
+    bool        ForceRebuildResources;
 
     bool        MapHexagonal;
     int         MapHexWidth;
