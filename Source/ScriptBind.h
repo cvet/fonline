@@ -534,6 +534,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __MinimumOfflineTime", &GameOpt.MinimumOfflineTime ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GameServer", &GameOpt.GameServer ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __UpdateServer", &GameOpt.UpdateServer ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ForceRebuildResources", &GameOpt.ForceRebuildResources ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "string __CommandLine", &GameOpt.CommandLine ) );
     #endif
 

@@ -64,7 +64,7 @@ void FOServer::ProcessCritter( Critter* cr )
         // Ping client
         if( cl->IsToPing() )
         {
-            #ifndef DEV_VERSION
+            #ifndef DISABLE_UIDS
             if( GameOpt.AccountPlayTime && Random( 0, 3 ) == 0 )
                 cl->Send_CheckUIDS();
             #endif
@@ -456,7 +456,7 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Check brute force registration
-    #ifndef DEV_VERSION
+    #ifndef DISABLE_UIDS
     if( GameOpt.RegistrationTimeout && !Singleplayer )
     {
         SCOPE_LOCK( RegIpLocker );
@@ -774,7 +774,7 @@ void FOServer::Process_LogIn( Client*& cl )
     cl->RefreshName();
 
     // Check UIDS
-    #ifndef DEV_VERSION
+    #ifndef DISABLE_UIDS
     if( GameOpt.AccountPlayTime && !Singleplayer )
     {
         int uid_zero = 0;
@@ -1828,7 +1828,7 @@ void FOServer::Process_Ping( Client* cl )
     }
     else if( ping == PING_UID_FAIL )
     {
-        #ifndef DEV_VERSION
+        #ifndef DISABLE_UIDS
         SCOPE_LOCK( ClientsDataLocker );
 
         ClientData* data = GetClientData( cl->GetId() );
