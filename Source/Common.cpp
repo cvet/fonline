@@ -949,8 +949,6 @@ void GetClientOptions()
     GameOpt.ProxyPort = MainConfig->GetInt( "", "ProxyPort", 8080 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyPort, "ProxyPort" );
     GETOPTIONS_CHECK( GameOpt.ProxyPort, 0, 0xFFFF, 1080 );
-    GameOpt.AlwaysRun = MainConfig->GetInt( "", "AlwaysRun", false ) != 0;
-    GETOPTIONS_CMD_LINE_BOOL( GameOpt.AlwaysRun, "AlwaysRun" );
 
     uint dct = 500;
     # ifdef FO_WINDOWS
@@ -1184,7 +1182,6 @@ GameOptions::GameOptions()
     Breaktime = 1200;
     TimeoutTransfer = 3;
     TimeoutBattle = 10;
-    RtAlwaysRun = false;
     RunOnCombat = false;
     RunOnTransfer = false;
     GlobalMapWidth = 28;
@@ -1315,9 +1312,6 @@ GameOptions::GameOptions()
     SpritesZoomMax = MAX_ZOOM;
     SpritesZoomMin = MIN_ZOOM;
     memzero( EffectValues, sizeof( EffectValues ) );
-    AlwaysRun = false;
-    AlwaysRunMoveDist = 1;
-    AlwaysRunUseDist = 5;
     KeyboardRemap = "";
     CritterFidgetTime = 50000;
     Anim2CombatBegin = 0;

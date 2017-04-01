@@ -597,7 +597,9 @@ void Critter::ProcessVisibleItems()
         Item* item = *it;
 
         if( item->GetIsHidden() )
+        {
             continue;
+        }
         else if( item->GetIsAlwaysView() )
         {
             if( AddIdVisItem( item->GetId() ) )
@@ -731,9 +733,13 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
         Item* item = *it;
 
         if( item->GetIsHidden() )
+        {
             continue;
+        }
         else if( item->GetIsAlwaysView() )
+        {
             Send_AddItemOnMap( item );
+        }
         else
         {
             bool allowed = false;
@@ -748,7 +754,6 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
                     dist += item->GetTrapValue();
                 allowed = look >= dist;
             }
-
 
             if( allowed )
                 Send_AddItemOnMap( item );

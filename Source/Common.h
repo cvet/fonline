@@ -473,7 +473,6 @@ struct GameOptions
     uint        Breaktime;
     uint        TimeoutTransfer;
     uint        TimeoutBattle;
-    bool        RtAlwaysRun;
     bool        RunOnCombat;
     bool        RunOnTransfer;
     uint        GlobalMapWidth;
@@ -596,9 +595,6 @@ struct GameOptions
     float       SpritesZoomMax;
     float       SpritesZoomMin;
     float       EffectValues[ EFFECT_SCRIPT_VALUES ];
-    bool        AlwaysRun;
-    uint        AlwaysRunMoveDist;
-    uint        AlwaysRunUseDist;
     string      KeyboardRemap;
     uint        CritterFidgetTime;
     uint        Anim2CombatBegin;

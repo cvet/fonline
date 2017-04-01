@@ -3490,6 +3490,7 @@ void FOClient::Net_OnChosenAddItem()
     item->SetAccessory( ITEM_ACCESSORY_CRITTER );
     item->SetCritId( Chosen->GetId() );
     item->SetCritSlot( slot );
+    RUNTIME_ASSERT( !item->GetIsHidden() );
 
     item->AddRef();
 
@@ -3498,8 +3499,6 @@ void FOClient::Net_OnChosenAddItem()
     RebuildLookBorders = true;
     if( item->LightGetHash() != prev_light_hash && ( slot || prev_slot ) )
         HexMngr.RebuildLight();
-    if( item->GetIsHidden() )
-        Chosen->DeleteItem( item, true );
 
     if( !InitialItemsSend )
         Script::RaiseInternalEvent( ClientFunctions.ItemInvIn, item );
