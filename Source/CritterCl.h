@@ -71,8 +71,6 @@ public:
     void Init();
     void Finish();
 
-    uint   GetId()   { return Id; }
-    string GetInfo() { return Name; }
     bool   IsLastHexes();
     void   FixLastHexes();
     ushort PopLastHexX();
