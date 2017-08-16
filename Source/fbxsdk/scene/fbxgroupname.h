@@ -25,6 +25,8 @@
 #define SUBDEFORMER_PREFIX				"SubDeformer::"
 #define CONSTRAINT_PREFIX				"Constraint::"
 #define CONTROLSET_PLUG_PREFIX			"ControlSetPlug::"
+#define AUDIO_PREFIX					"Audio::"
+#define AUDIO_LAYER_PREFIX				"AudioLayer::"
 #define VIDEO_PREFIX					"Video::"
 #define TEXTURE_PREFIX					"Texture::"
 #define THUMBNAIL_PREFIX				"Thumbnail::"

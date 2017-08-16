@@ -108,6 +108,7 @@
 #define IOSN_DYN_SCALE_CONVERSION       "DynamicScaleConversion"
 #define IOSN_UNITSELECTOR				"UnitsSelector"
 
+#define IOSN_AUDIO						"Audio"
 #define IOSN_ANIMATION          		"Animation"
 #define IOSN_GEOMETRY           		"Geometry"
 #define IOSN_DEFORMATION				"Deformation"
@@ -394,6 +395,7 @@
 #define IMP_FIRST_TIME_RUN_NOTICE       IMP_FIRST_TIME_RUN_NOTICE_GRP "|" IOSN_FIRST_TIME_RUN_NOTICE
 
 #define IMP_GEOMETRY            		IMP_INCLUDE_GRP "|" IOSN_GEOMETRY
+#define IMP_AUDIO						IMP_INCLUDE_GRP "|" IOSN_AUDIO
 #define IMP_ANIMATION           		IMP_INCLUDE_GRP "|" IOSN_ANIMATION
 #define IMP_SETLOCKEDATTRIB				IMP_INCLUDE_GRP "|" IOSN_SETLOCKEDATTRIB
 
@@ -588,6 +590,7 @@
 #define IMP_FBX_MATERIAL                    IMP_FBX "|" IOSN_MATERIAL
 #define IMP_FBX_TEXTURE                     IMP_FBX "|" IOSN_TEXTURE
 #define IMP_FBX_MODEL                       IMP_FBX "|" IOSN_MODEL
+#define IMP_FBX_AUDIO						IMP_FBX "|" IOSN_AUDIO
 #define IMP_FBX_ANIMATION                   IMP_FBX "|" IOSN_ANIMATION
 #define IMP_FBX_PASSWORD                    IMP_FBX "|" IOSN_PASSWORD        
 #define IMP_FBX_PASSWORD_ENABLE             IMP_FBX "|" IOSN_PASSWORD_ENABLE 
@@ -651,6 +654,7 @@
 #define EXP_LIGHT_GRP					EXP_INCLUDE_GRP "|" IOSN_LIGHT_GRP
 
 #define EXP_GEOMETRY            		EXP_INCLUDE_GRP "|" IOSN_GEOMETRY
+#define EXP_AUDIO           			EXP_INCLUDE_GRP "|" IOSN_AUDIO
 #define EXP_ANIMATION           		EXP_INCLUDE_GRP "|" IOSN_ANIMATION
 #define EXP_PIVOTTONULLS                EXP_INCLUDE_GRP "|" IOSN_PIVOTTONULLS
 #define EXP_LIGHT						EXP_LIGHT_GRP "|" IOSN_LIGHT
@@ -828,6 +832,7 @@
 #define EXP_FBX_MATERIAL                 EXP_FBX "|" IOSN_MATERIAL
 #define EXP_FBX_TEXTURE                  EXP_FBX "|" IOSN_TEXTURE
 #define EXP_FBX_MODEL                    EXP_FBX "|" IOSN_MODEL
+#define EXP_FBX_AUDIO					 EXP_FBX "|" IOSN_AUDIO
 #define EXP_FBX_ANIMATION                EXP_FBX "|" IOSN_ANIMATION
 #define EXP_FBX_EMBEDDED                 EXP_FBX "|" IOSN_EMBEDDED 
 #define EXP_FBX_PASSWORD                 EXP_FBX "|" IOSN_PASSWORD        

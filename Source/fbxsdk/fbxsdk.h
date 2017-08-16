@@ -134,6 +134,8 @@
 
 //---------------------------------------------------------------------------------------
 //Scene Includes
+#include <fbxsdk/scene/fbxaudio.h>
+#include <fbxsdk/scene/fbxaudiolayer.h>
 #include <fbxsdk/scene/fbxcollection.h>
 #include <fbxsdk/scene/fbxcollectionexclusive.h>
 #include <fbxsdk/scene/fbxcontainer.h>
@@ -144,6 +146,7 @@
 #include <fbxsdk/scene/fbxenvironment.h>
 #include <fbxsdk/scene/fbxgroupname.h>
 #include <fbxsdk/scene/fbxlibrary.h>
+#include <fbxsdk/scene/fbxmediaclip.h>
 #include <fbxsdk/scene/fbxobjectmetadata.h>
 #include <fbxsdk/scene/fbxpose.h>
 #include <fbxsdk/scene/fbxreference.h>
