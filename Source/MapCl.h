@@ -27,6 +27,8 @@ public:
     Map( uint id, ProtoMap* proto );
     ~Map();
 };
+typedef map< uint, Map* > MapMap;
+typedef vector< Map* >    MapVec;
 
 class Location: public Entity
 {

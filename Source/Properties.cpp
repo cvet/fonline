@@ -2119,7 +2119,7 @@ Property* PropertyRegistrator::Register(
 
     // Check name for already used
     asITypeInfo* ot = engine->GetTypeInfoByName( scriptClassName.c_str() );
-    RUNTIME_ASSERT( ot );
+    RUNTIME_ASSERT_STR( ot, scriptClassName.c_str() );
     for( asUINT i = 0, j = ot->GetPropertyCount(); i < j; i++ )
     {
         const char* n;

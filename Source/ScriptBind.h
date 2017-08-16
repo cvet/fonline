@@ -64,6 +64,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     REGISTER_ENTITY_CAST( "Map", Map );
     REGISTER_ENTITY( "Location", Location );
     REGISTER_ENTITY_CAST( "Location", Location );
+    #endif
+    #if defined ( BIND_CLIENT )
     BIND_ASSERT( engine->RegisterGlobalProperty( "Map@ CurMap", &BIND_CLASS ClientCurMap ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "Location@ CurLocation", &BIND_CLASS ClientCurLocation ) );
     #endif
@@ -566,14 +568,11 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "string GetTileName(uint16 hexX, uint16 hexY, bool roof, int layer)", SCRIPT_FUNC( BIND_CLASS Global_GetTileName ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void AddTileName(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, string picName)", SCRIPT_FUNC( BIND_CLASS Global_AddTileName ), SCRIPT_FUNC_CONV ) );
 
-    BIND_ASSERT( engine->RegisterObjectType( "MapperMap", 0, asOBJ_REF ) );
-    BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperMap", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( ProtoMap, AddRef ), SCRIPT_METHOD_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectBehaviour( "MapperMap", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( ProtoMap, Release ), SCRIPT_METHOD_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "MapperMap@+ LoadMap(string fileName)", SCRIPT_FUNC( BIND_CLASS Global_LoadMap ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void UnloadMap(MapperMap@+ map)", SCRIPT_FUNC( BIND_CLASS Global_UnloadMap ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(MapperMap@+ map, string customName = \"\")", SCRIPT_FUNC( BIND_CLASS Global_SaveMap ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool ShowMap(MapperMap@+ map)", SCRIPT_FUNC( BIND_CLASS Global_ShowMap ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "array<MapperMap@>@ GetLoadedMaps(int& index)", SCRIPT_FUNC( BIND_CLASS Global_GetLoadedMaps ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ LoadMap(string fileName)", SCRIPT_FUNC( BIND_CLASS Global_LoadMap ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void UnloadMap(Map@+ map)", SCRIPT_FUNC( BIND_CLASS Global_UnloadMap ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(Map@+ map, string customName = \"\")", SCRIPT_FUNC( BIND_CLASS Global_SaveMap ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool ShowMap(Map@+ map)", SCRIPT_FUNC( BIND_CLASS Global_ShowMap ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "array<Map@>@ GetLoadedMaps(int& index)", SCRIPT_FUNC( BIND_CLASS Global_GetLoadedMaps ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<string>@ GetMapFileNames(string dir)", SCRIPT_FUNC( BIND_CLASS Global_GetMapFileNames ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void ResizeMap(uint16 width, uint16 height)", SCRIPT_FUNC( BIND_CLASS Global_ResizeMap ), SCRIPT_FUNC_CONV ) );
 

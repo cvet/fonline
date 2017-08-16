@@ -246,31 +246,32 @@ bool FOMapper::Init()
                 hexX = pmap->GetWorkHexX();
             if( hexY < 0 || hexY >= pmap->GetHeight() )
                 hexY = pmap->GetWorkHexY();
-
             HexMngr.FindSetCenter( hexX, hexY );
-            ActiveProtoMap = pmap;
-            LoadedProtoMaps.push_back( pmap );
-            RunMapLoadScript( pmap );
+
+            Map* map = new Map( 0, pmap );
+            ActiveMap = map;
+            LoadedMaps.push_back( map );
+            RunMapLoadScript( map );
         }
     }
 
-// Start script
+    // Start script
     RunStartScript();
 
-// 3d initialization
+    // 3d initialization
     if( GameOpt.Enable3dRendering && !Animation3d::StartUp() )
     {
         WriteLog( "Can't initialize 3d rendering stuff.\n" );
         return false;
     }
 
-// Refresh resources after start script executed
+    // Refresh resources after start script executed
     ResMngr.Refresh();
     for( int tab = 0; tab < TAB_COUNT; tab++ )
         RefreshTiles( tab );
     RefreshCurProtos();
 
-// Load console history
+    // Load console history
     string history_str = Crypt.GetCache( "mapper_console.txt" );
     size_t pos = 0, prev = 0, count = 0;
     while( ( pos = history_str.find( "\n", prev ) ) != std::string::npos )
@@ -387,7 +388,7 @@ int FOMapper::InitIface()
     SubTabsX = 0;
     SubTabsY = 0;
 
-    ActiveProtoMap = nullptr;
+    ActiveMap = nullptr;
     CurItemProtos = nullptr;
     CurTileHashes = nullptr;
     CurTileNames = nullptr;
@@ -910,14 +911,14 @@ void FOMapper::ParseKeyboard()
                 SelectAll();
                 break;
             case DIK_S:
-                if( ActiveProtoMap )
+                if( ActiveMap )
                 {
-                    HexMngr.GetProtoMap( *ActiveProtoMap );
+                    HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
                     FileManager::SetCurrentDir( ServerWritePath, "./" );
-                    if( ActiveProtoMap->Save( nullptr ) )
+                    if( ( (ProtoMap*) ActiveMap->Proto )->Save( nullptr ) )
                     {
                         AddMess( "Map saved." );
-                        RunMapSaveScript( ActiveProtoMap );
+                        RunMapSaveScript( ActiveMap );
                     }
                     else
                     {
@@ -1823,12 +1824,12 @@ void FOMapper::IntDraw()
     else if( IntMode == INT_MODE_LIST )
     {
         int i = ListScroll;
-        int j = (int) LoadedProtoMaps.size();
+        int j = (int) LoadedMaps.size();
 
         for( ; i < j; i++, x += w )
         {
-            ProtoMap* pm = LoadedProtoMaps[ i ];
-            SprMngr.DrawStr( Rect( x, y, x + w, y + h ), fmt::format( " '{}'", pm->GetName() ), 0, pm == ActiveProtoMap ? COLOR_IFACE_RED : COLOR_TEXT );
+            Map* map = LoadedMaps[ i ];
+            SprMngr.DrawStr( Rect( x, y, x + w, y + h ), fmt::format( " '{}'", map->GetName() ), 0, map == ActiveMap ? COLOR_IFACE_RED : COLOR_TEXT );
         }
     }
 
@@ -1890,7 +1891,7 @@ void FOMapper::IntDraw()
                              "Fps %u\n"
                              "Tile layer %d\n"
                              "%s",
-                             ActiveProtoMap->GetName(),
+                             ActiveMap->GetName(),
                              hex_thru ? hx : -1, hex_thru ? hy : -1,
                              day_time / 60 % 24, day_time % 60,
                              GameOpt.FPS,
@@ -2381,16 +2382,16 @@ void FOMapper::IntLMouseDown()
         {
             ind += ListScroll;
 
-            if( ind < (int) LoadedProtoMaps.size() && ActiveProtoMap != LoadedProtoMaps[ ind ] )
+            if( ind < (int) LoadedMaps.size() && ActiveMap != LoadedMaps[ ind ] )
             {
                 SelectClear();
 
-                if( ActiveProtoMap )
-                    HexMngr.GetProtoMap( *ActiveProtoMap );
-                if( HexMngr.SetProtoMap( *LoadedProtoMaps[ ind ] ) )
+                if( ActiveMap )
+                    HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
+                if( HexMngr.SetProtoMap( *(ProtoMap*) LoadedMaps[ ind ]->Proto ) )
                 {
-                    ActiveProtoMap = LoadedProtoMaps[ ind ];
-                    HexMngr.FindSetCenter( ActiveProtoMap->GetWorkHexX(), ActiveProtoMap->GetWorkHexY() );
+                    ActiveMap = LoadedMaps[ ind ];
+                    HexMngr.FindSetCenter( ActiveMap->GetWorkHexX(), ActiveMap->GetWorkHexY() );
                 }
             }
         }
@@ -3309,7 +3310,7 @@ void FOMapper::SelectDelete()
 
 CritterCl* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
 {
-    RUNTIME_ASSERT( ActiveProtoMap );
+    RUNTIME_ASSERT( ActiveMap );
 
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( pid );
     if( !proto )
@@ -3322,7 +3323,7 @@ CritterCl* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
 
     SelectClear();
 
-    CritterCl* cr = new CritterCl( --ActiveProtoMap->LastEntityId, proto );
+    CritterCl* cr = new CritterCl( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, proto );
     cr->SetHexX( hx );
     cr->SetHexY( hy );
     cr->SetDir( NpcDir );
@@ -3340,7 +3341,7 @@ CritterCl* FOMapper::AddCritter( hash pid, ushort hx, ushort hy )
 
 Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
 {
-    RUNTIME_ASSERT( ActiveProtoMap );
+    RUNTIME_ASSERT( ActiveMap );
 
     // Checks
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
@@ -3359,7 +3360,7 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
     Item* item;
     if( owner )
     {
-        item = new Item( --ActiveProtoMap->LastEntityId, proto_item );
+        item = new Item( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, proto_item );
         if( owner->Type == EntityType::CritterCl )
             ( (CritterCl*) owner )->AddItem( item );
         else if( owner->Type == EntityType::Item || owner->Type == EntityType::ItemHex )
@@ -3367,7 +3368,7 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
     }
     else
     {
-        uint id = HexMngr.AddItem( --ActiveProtoMap->LastEntityId, pid, hx, hy, 0, nullptr );
+        uint id = HexMngr.AddItem( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, pid, hx, hy, 0, nullptr );
         item = HexMngr.GetItemById( id );
     }
 
@@ -3388,7 +3389,7 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
 
 void FOMapper::AddTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof )
 {
-    RUNTIME_ASSERT( ActiveProtoMap );
+    RUNTIME_ASSERT( ActiveMap );
 
     hx -= hx % GameOpt.MapTileStep;
     hy -= hy % GameOpt.MapTileStep;
@@ -3404,7 +3405,7 @@ void FOMapper::AddTile( hash name, ushort hx, ushort hy, short ox, short oy, uch
 
 Entity* FOMapper::CloneEntity( Entity* entity )
 {
-    RUNTIME_ASSERT( ActiveProtoMap );
+    RUNTIME_ASSERT( ActiveMap );
 
     int hx = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
     int hy = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexY() : ( (ItemHex*) entity )->GetHexY() );
@@ -3434,7 +3435,7 @@ Entity* FOMapper::CloneEntity( Entity* entity )
                 return nullptr;
         }
 
-        CritterCl* cr = new CritterCl( --ActiveProtoMap->LastEntityId, (ProtoCritter*) entity->Proto );
+        CritterCl* cr = new CritterCl( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, (ProtoCritter*) entity->Proto );
         cr->Props = ( (CritterCl*) entity )->Props;
         cr->SetHexX( hx );
         cr->SetHexY( hy );
@@ -3445,7 +3446,7 @@ Entity* FOMapper::CloneEntity( Entity* entity )
     }
     else if( entity->Type == EntityType::ItemHex )
     {
-        uint     id = HexMngr.AddItem( --ActiveProtoMap->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr );
+        uint     id = HexMngr.AddItem( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr );
         ItemHex* item = HexMngr.GetItemById( id );
         SelectAdd( item );
         owner = item;
@@ -3455,7 +3456,7 @@ Entity* FOMapper::CloneEntity( Entity* entity )
         RUNTIME_ASSERT( !"Unreachable place" );
     }
 
-    auto                                    pmap = ActiveProtoMap;
+    auto                                    pmap = (ProtoMap*) ActiveMap->Proto;
     std::function< void(Entity*, Entity*) > add_entity_children = [ &add_entity_children, &pmap ] ( Entity * from, Entity * to )
     {
         for( auto& from_child : from->GetChildren() )
@@ -3543,7 +3544,7 @@ void FOMapper::BufferCut()
 
 void FOMapper::BufferPaste( int, int )
 {
-    if( !ActiveProtoMap )
+    if( !ActiveMap )
         return;
 
     SelectClear();
@@ -3580,7 +3581,7 @@ void FOMapper::BufferPaste( int, int )
                     continue;
             }
 
-            CritterCl* cr = new CritterCl( --ActiveProtoMap->LastEntityId, (ProtoCritter*) entity_buf.Proto );
+            CritterCl* cr = new CritterCl( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, (ProtoCritter*) entity_buf.Proto );
             cr->Props = *entity_buf.Props;
             cr->SetHexX( hx );
             cr->SetHexY( hy );
@@ -3591,14 +3592,14 @@ void FOMapper::BufferPaste( int, int )
         }
         else if( entity_buf.Type == EntityType::ItemHex )
         {
-            uint     id = HexMngr.AddItem( --ActiveProtoMap->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr );
+            uint     id = HexMngr.AddItem( --( (ProtoMap*) ActiveMap->Proto )->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr );
             ItemHex* item = HexMngr.GetItemById( id );
             item->Props = *entity_buf.Props;
             SelectAdd( item );
             owner = item;
         }
 
-        auto                                       pmap = ActiveProtoMap;
+        auto                                       pmap = (ProtoMap*) ActiveMap->Proto;
         std::function< void(EntityBuf*, Entity*) > add_entity_children = [ &add_entity_children, &pmap ] ( EntityBuf * entity_buf, Entity * entity )
         {
             for( auto& child_buf : entity_buf->Children )
@@ -3956,8 +3957,8 @@ void FOMapper::ParseCommand( const char* cmd )
 
         SelectClear();
 
-        if( ActiveProtoMap )
-            HexMngr.GetProtoMap( *ActiveProtoMap );
+        if( ActiveMap )
+            HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
         if( !HexMngr.SetProtoMap( *pmap ) )
         {
             AddMess( "Load map fail." );
@@ -3965,12 +3966,14 @@ void FOMapper::ParseCommand( const char* cmd )
         }
 
         HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
-        ActiveProtoMap = pmap;
-        LoadedProtoMaps.push_back( pmap );
+
+        Map* map = new Map( 0, pmap );
+        ActiveMap = map;
+        LoadedMaps.push_back( map );
 
         AddMess( "Load map complete." );
 
-        RunMapLoadScript( pmap );
+        RunMapLoadScript( map );
     }
     // Save map
     else if( *cmd == '^' )
@@ -3985,19 +3988,19 @@ void FOMapper::ParseCommand( const char* cmd )
             return;
         }
 
-        if( !ActiveProtoMap )
+        if( !ActiveMap )
         {
             AddMess( "Map not loaded." );
             return;
         }
 
-        HexMngr.GetProtoMap( *ActiveProtoMap );
+        HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
 
         FileManager::SetCurrentDir( ServerWritePath, "./" );
-        if( ActiveProtoMap->Save( map_name ) )
+        if( ( (ProtoMap*) ActiveMap->Proto )->Save( map_name ) )
         {
             AddMess( "Save map success." );
-            RunMapSaveScript( ActiveProtoMap );
+            RunMapSaveScript( ActiveMap );
         }
         else
         {
@@ -4048,7 +4051,7 @@ void FOMapper::ParseCommand( const char* cmd )
     {
         AddMess( "Playing critter animations." );
 
-        if( !ActiveProtoMap )
+        if( !ActiveMap )
         {
             AddMess( "Map not loaded." );
             return;
@@ -4097,8 +4100,8 @@ void FOMapper::ParseCommand( const char* cmd )
             ProtoMap* pmap = new ProtoMap( Str::GetHash( "new" ) );
             pmap->GenNew();
 
-            if( ActiveProtoMap )
-                HexMngr.GetProtoMap( *ActiveProtoMap );
+            if( ActiveMap )
+                HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
             if( !HexMngr.SetProtoMap( *pmap ) )
             {
                 AddMess( "Create map fail, see log." );
@@ -4108,32 +4111,34 @@ void FOMapper::ParseCommand( const char* cmd )
             AddMess( "Create map success." );
             HexMngr.FindSetCenter( 150, 150 );
 
-            ActiveProtoMap = pmap;
-            LoadedProtoMaps.push_back( pmap );
+            Map* map = new Map( 0, pmap );
+            ActiveMap = map;
+            LoadedMaps.push_back( map );
         }
         else if( Str::CompareCase( cmd_, "unload" ) )
         {
             AddMess( "Unload map." );
 
-            auto it = std::find( LoadedProtoMaps.begin(), LoadedProtoMaps.end(), ActiveProtoMap );
-            if( it == LoadedProtoMaps.end() )
+            auto it = std::find( LoadedMaps.begin(), LoadedMaps.end(), ActiveMap );
+            if( it == LoadedMaps.end() )
                 return;
 
-            LoadedProtoMaps.erase( it );
+            LoadedMaps.erase( it );
             SelectedEntities.clear();
-            ActiveProtoMap->Release();
-            ActiveProtoMap = nullptr;
+            ActiveMap->Proto->Release();
+            ActiveMap->Release();
+            ActiveMap = nullptr;
 
-            if( LoadedProtoMaps.empty() )
+            if( LoadedMaps.empty() )
             {
                 HexMngr.UnloadMap();
                 return;
             }
 
-            if( HexMngr.SetProtoMap( *LoadedProtoMaps[ 0 ] ) )
+            if( HexMngr.SetProtoMap( *(ProtoMap*) LoadedMaps[ 0 ]->Proto ) )
             {
-                ActiveProtoMap = LoadedProtoMaps[ 0 ];
-                HexMngr.FindSetCenter( ActiveProtoMap->GetWorkHexX(), ActiveProtoMap->GetWorkHexY() );
+                ActiveMap = LoadedMaps[ 0 ];
+                HexMngr.FindSetCenter( ActiveMap->GetWorkHexX(), ActiveMap->GetWorkHexY() );
                 return;
             }
         }
@@ -4144,7 +4149,7 @@ void FOMapper::ParseCommand( const char* cmd )
                 RunStartScript();
             AddMess( "Scripts reloaded." );
         }
-        else if( ActiveProtoMap && Str::CompareCase( cmd_, "size" ) )
+        else if( ActiveMap && Str::CompareCase( cmd_, "size" ) )
         {
             AddMess( "Resize map." );
 
@@ -4375,20 +4380,16 @@ void FOMapper::RunStartScript()
     Script::RaiseInternalEvent( MapperFunctions.Start );
 }
 
-void FOMapper::RunMapLoadScript( ProtoMap* pmap )
+void FOMapper::RunMapLoadScript( Map* map )
 {
-    if( !pmap )
-        return;
-
-    Script::RaiseInternalEvent( MapperFunctions.MapLoad, pmap );
+    RUNTIME_ASSERT( map );
+    Script::RaiseInternalEvent( MapperFunctions.MapLoad, map );
 }
 
-void FOMapper::RunMapSaveScript( ProtoMap* pmap )
+void FOMapper::RunMapSaveScript( Map* map )
 {
-    if( !pmap )
-        return;
-
-    Script::RaiseInternalEvent( MapperFunctions.MapSave, pmap );
+    RUNTIME_ASSERT( map );
+    Script::RaiseInternalEvent( MapperFunctions.MapSave, map );
 }
 
 void FOMapper::DrawIfaceLayer( uint layer )
@@ -4679,7 +4680,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
     //
 }
 
-ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
+Map* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
     ProtoMap* pmap = new ProtoMap( Str::GetHash( file_name.c_str() ) );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
@@ -4689,66 +4690,72 @@ ProtoMap* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
         return nullptr;
     }
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
-    Self->LoadedProtoMaps.push_back( pmap );
-    Self->RunMapLoadScript( pmap );
-    return pmap;
+
+    Map* map = new Map( 0, pmap );
+    Self->LoadedMaps.push_back( map );
+    Self->RunMapLoadScript( map );
+    return map;
 }
 
-void FOMapper::SScriptFunc::Global_UnloadMap( ProtoMap* pmap )
+void FOMapper::SScriptFunc::Global_UnloadMap( Map* map )
 {
-    if( !pmap )
+    if( !map )
         SCRIPT_ERROR_R( "Proto map arg nullptr." );
-    auto it = std::find( Self->LoadedProtoMaps.begin(), Self->LoadedProtoMaps.end(), pmap );
-    if( it != Self->LoadedProtoMaps.end() )
-        Self->LoadedProtoMaps.erase( it );
 
-    if( pmap == Self->ActiveProtoMap )
+    auto it = std::find( Self->LoadedMaps.begin(), Self->LoadedMaps.end(), map );
+    if( it != Self->LoadedMaps.end() )
+        Self->LoadedMaps.erase( it );
+
+    if( map == Self->ActiveMap )
     {
         Self->HexMngr.UnloadMap();
         Self->SelectedEntities.clear();
-        Self->ActiveProtoMap = nullptr;
+        Self->ActiveMap = nullptr;
     }
 
-    pmap->Release();
+    map->Proto->Release();
+    map->Release();
 }
 
-bool FOMapper::SScriptFunc::Global_SaveMap( ProtoMap* pmap, string custom_name )
+bool FOMapper::SScriptFunc::Global_SaveMap( Map* map, string custom_name )
 {
-    if( !pmap )
+    if( !map )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
+
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    bool result = pmap->Save( !custom_name.empty() ? custom_name.c_str() : nullptr );
+    bool result = ( (ProtoMap*) map->Proto )->Save( !custom_name.empty() ? custom_name.c_str() : nullptr );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
     if( result )
-        Self->RunMapSaveScript( pmap );
+        Self->RunMapSaveScript( map );
     return result;
 }
 
-bool FOMapper::SScriptFunc::Global_ShowMap( ProtoMap* pmap )
+bool FOMapper::SScriptFunc::Global_ShowMap( Map* map )
 {
-    if( !pmap )
+    if( !map )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
-    if( Self->ActiveProtoMap == pmap )
-        return true;                                                                       // Already
+
+    if( Self->ActiveMap == map )
+        return true;
 
     Self->SelectClear();
-    if( !Self->HexMngr.SetProtoMap( *pmap ) )
+    if( !Self->HexMngr.SetProtoMap( *(ProtoMap*) map->Proto ) )
         return false;
-    Self->HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
-    Self->ActiveProtoMap = pmap;
+    Self->HexMngr.FindSetCenter( map->GetWorkHexX(), map->GetWorkHexY() );
+    Self->ActiveMap = map;
     return true;
 }
 
 CScriptArray* FOMapper::SScriptFunc::Global_GetLoadedMaps( int& index )
 {
     index = -1;
-    for( int i = 0, j = (int) Self->LoadedProtoMaps.size(); i < j; i++ )
+    for( int i = 0, j = (int) Self->LoadedMaps.size(); i < j; i++ )
     {
-        ProtoMap* pmap = Self->LoadedProtoMaps[ i ];
-        if( pmap == Self->ActiveProtoMap )
+        Map* map = Self->LoadedMaps[ i ];
+        if( map == Self->ActiveMap )
             index = i;
     }
-    return Script::CreateArrayRef( "MapperMap[]", Self->LoadedProtoMaps );
+    return Script::CreateArrayRef( "Map[]", Self->LoadedMaps );
 }
 
 CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
@@ -4794,31 +4801,33 @@ void FOMapper::SScriptFunc::Global_ResizeMap( ushort width, ushort height )
 {
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R( "Map not loaded." );
-    RUNTIME_ASSERT( Self->ActiveProtoMap );
+
+    RUNTIME_ASSERT( Self->ActiveMap );
+    ProtoMap* pmap = (ProtoMap*) Self->ActiveMap->Proto;
 
     // Unload current
-    Self->HexMngr.GetProtoMap( *Self->ActiveProtoMap );
+    Self->HexMngr.GetProtoMap( *pmap );
     Self->SelectClear();
     Self->HexMngr.UnloadMap();
 
     // Check size
     int maxhx = CLAMP( width, MAXHEX_MIN, MAXHEX_MAX );
     int maxhy = CLAMP( height, MAXHEX_MIN, MAXHEX_MAX );
-    int old_maxhx = Self->ActiveProtoMap->GetWidth();
-    int old_maxhy = Self->ActiveProtoMap->GetHeight();
+    int old_maxhx = pmap->GetWidth();
+    int old_maxhy = pmap->GetHeight();
     maxhx = CLAMP( maxhx, MAXHEX_MIN, MAXHEX_MAX );
     maxhy = CLAMP( maxhy, MAXHEX_MIN, MAXHEX_MAX );
-    if( Self->ActiveProtoMap->GetWorkHexX() >= maxhx )
-        Self->ActiveProtoMap->SetWorkHexX( maxhx - 1 );
-    if( Self->ActiveProtoMap->GetWorkHexY() >= maxhy )
-        Self->ActiveProtoMap->SetWorkHexY( maxhy - 1 );
-    Self->ActiveProtoMap->SetWidth( maxhx );
-    Self->ActiveProtoMap->SetHeight( maxhy );
+    if( pmap->GetWorkHexX() >= maxhx )
+        pmap->SetWorkHexX( maxhx - 1 );
+    if( pmap->GetWorkHexY() >= maxhy )
+        pmap->SetWorkHexY( maxhy - 1 );
+    pmap->SetWidth( maxhx );
+    pmap->SetHeight( maxhy );
 
     // Delete truncated entities
     if( maxhx < old_maxhx || maxhy < old_maxhy )
     {
-        for( auto it = Self->ActiveProtoMap->AllEntities.begin(); it != Self->ActiveProtoMap->AllEntities.end();)
+        for( auto it = pmap->AllEntities.begin(); it != pmap->AllEntities.end();)
         {
             Entity* entity = *it;
             int     hx = ( entity->Type == EntityType::CritterCl ? ( (CritterCl*) entity )->GetHexX() : ( (ItemHex*) entity )->GetHexX() );
@@ -4826,7 +4835,7 @@ void FOMapper::SScriptFunc::Global_ResizeMap( ushort width, ushort height )
             if( hx >= maxhx || hy >= maxhy )
             {
                 entity->Release();
-                it = Self->ActiveProtoMap->AllEntities.erase( it );
+                it = pmap->AllEntities.erase( it );
             }
             else
             {
@@ -4838,19 +4847,19 @@ void FOMapper::SScriptFunc::Global_ResizeMap( ushort width, ushort height )
     // Delete truncated tiles
     if( maxhx < old_maxhx || maxhy < old_maxhy )
     {
-        for( auto it = Self->ActiveProtoMap->Tiles.begin(); it != Self->ActiveProtoMap->Tiles.end();)
+        for( auto it = pmap->Tiles.begin(); it != pmap->Tiles.end();)
         {
             ProtoMap::Tile& tile = *it;
             if( tile.HexX >= maxhx || tile.HexY >= maxhy )
-                it = Self->ActiveProtoMap->Tiles.erase( it );
+                it = pmap->Tiles.erase( it );
             else
                 ++it;
         }
     }
 
     // Update visibility
-    Self->HexMngr.SetProtoMap( *Self->ActiveProtoMap );
-    Self->HexMngr.FindSetCenter( Self->ActiveProtoMap->GetWorkHexX(), Self->ActiveProtoMap->GetWorkHexY() );
+    Self->HexMngr.SetProtoMap( *pmap );
+    Self->HexMngr.FindSetCenter( pmap->GetWorkHexX(), pmap->GetWorkHexY() );
 }
 
 uint FOMapper::SScriptFunc::Global_TabGetTileDirs( int tab, CScriptArray* dir_names, CScriptArray* include_subdirs )

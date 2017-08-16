@@ -178,8 +178,8 @@ public:
     void IntSetMode( int mode );
 
     // Maps
-    ProtoMapVec LoadedProtoMaps;
-    ProtoMap*   ActiveProtoMap;
+    MapVec LoadedMaps;
+    Map*   ActiveMap;
 
     // Tabs
     #define DEFAULT_SUB_TAB            "000 - all"
@@ -369,8 +369,8 @@ public:
     bool InitScriptSystem();
     void FinishScriptSystem();
     void RunStartScript();
-    void RunMapLoadScript( ProtoMap* pmap );
-    void RunMapSaveScript( ProtoMap* pmap );
+    void RunMapLoadScript( Map* map );
+    void RunMapSaveScript( Map* map );
     void DrawIfaceLayer( uint layer );
 
     struct SScriptFunc
@@ -402,10 +402,10 @@ public:
         static void   Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string pic_name );
 
         static void          Global_AllowSlot( uchar index, bool enable_send );
-        static ProtoMap*     Global_LoadMap( string file_name );
-        static void          Global_UnloadMap( ProtoMap* pmap );
-        static bool          Global_SaveMap( ProtoMap* pmap, string custom_name );
-        static bool          Global_ShowMap( ProtoMap* pmap );
+        static Map*          Global_LoadMap( string file_name );
+        static void          Global_UnloadMap( Map* pmap );
+        static bool          Global_SaveMap( Map* pmap, string custom_name );
+        static bool          Global_ShowMap( Map* pmap );
         static CScriptArray* Global_GetLoadedMaps( int& index );
         static CScriptArray* Global_GetMapFileNames( string dir );
         static void          Global_ResizeMap( ushort width, ushort height );
