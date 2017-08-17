@@ -434,8 +434,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
         {
             for( int i = 0; i < TEXTMSG_COUNT; i++ )
             {
-                char name_[ MAX_FOTEXT ];
-                Str::Copy( name_, TextMsgFileName[ i ] );
+                string name_ = TextMsgFileName[ i ];
                 FileManager::EraseExtension( name_ );
                 if( Str::CompareCase( name_, name ) )
                 {

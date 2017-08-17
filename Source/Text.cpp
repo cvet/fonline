@@ -77,6 +77,11 @@ void Str::Lower( char* str )
     }
 }
 
+void Str::Lower( string& str )
+{
+    std::transform( str.begin(), str.end(), str.begin(), tolower );
+}
+
 uint Str::LowerUTF8( uint ucs )
 {
     // Taked from FLTK
@@ -187,9 +192,14 @@ void Str::Upper( char* str )
     }
 }
 
+void Str::Upper( string& str )
+{
+    std::transform( str.begin(), str.end(), str.begin(), toupper );
+}
+
 uint Str::UpperUTF8( uint ucs )
 {
-    // Taked from FLTK
+    // Taken from FLTK
     static unsigned short* table = nullptr;
     if( !table )
     {

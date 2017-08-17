@@ -1511,8 +1511,8 @@ void FOMapper::RefreshTiles( int tab )
         for( auto it = tiles.begin(), end = tiles.end(); it != end; ++it )
         {
             const string& fname = *it;
-            const char*   ext = FileManager::GetExtension( fname.c_str() );
-            if( !ext )
+            string        ext = FileManager::GetExtension( fname );
+            if( ext.empty() )
                 continue;
 
             // Check format availability
@@ -1526,15 +1526,14 @@ void FOMapper::RefreshTiles( int tab )
                 }
             }
             if( !format_aviable )
-                format_aviable = Is3dExtensionSupported( ext );
+                format_aviable = Is3dExtensionSupported( ext.c_str() );
 
             if( format_aviable )
             {
                 // Make primary collection name
-                char path_[ MAX_FOPATH ];
-                FileManager::ExtractDir( fname.c_str(), path_ );
-                if( !path_[ 0 ] )
-                    Str::Copy( path_, "root" );
+                string path_ = FileManager::ExtractDir( fname );
+                if( path_.empty() )
+                    path_ = "root";
                 uint path_index = PathIndex[ path_ ];
                 if( !path_index )
                 {
@@ -4776,11 +4775,8 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
     {
         if( ProtoMap::IsMapFile( Str::FormatBuf( "%s%s", dir_.c_str(), file_find_fname.c_str() ) ) )
         {
-            char  fname[ MAX_FOPATH ];
-            Str::Copy( fname, file_find_fname.c_str() );
-            char* ext = (char*) FileManager::GetExtension( fname );
-            if( ext )
-                *( ext - 1 ) = 0;
+            string fname = file_find_fname;
+            FileManager::EraseExtension( fname );
 
             int     len = names->GetSize();
             names->Resize( names->GetSize() + 1 );

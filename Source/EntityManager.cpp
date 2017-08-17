@@ -481,7 +481,7 @@ bool EntityManager::LinkItems()
 
 void EntityManager::InitAfterLoad()
 {
-    WriteLog( "Init entites after load...\n" );
+    WriteLog( "Init entities after load...\n" );
 
     // Process visible
     CrVec critters;

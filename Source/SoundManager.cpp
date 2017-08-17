@@ -227,25 +227,20 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output )
 
 Sound* SoundManager::Load( const char* fname, bool is_music )
 {
-    char fname_[ MAX_FOPATH ];
-    Str::Copy( fname_, fname );
+    string fname_ = fname;
+    string ext = FileManager::GetExtension( fname );
 
-    const char* ext = FileManager::GetExtension( fname );
-    if( !ext )
+    // Default ext
+    if( ext.empty() )
     {
-        // Default ext
-        ext = fname_ + Str::Length( fname_ );
-        Str::Append( fname_, ".acm" );
-    }
-    else
-    {
-        --ext;
+        ext = "acm";
+        fname_ += "." + ext;
     }
 
     Sound* sound = new Sound();
-    if( !( ( Str::CompareCase( ext, ".wav" ) && LoadWAV( sound, fname_ ) ) ||
-           ( Str::CompareCase( ext, ".acm" ) && LoadACM( sound, fname_, is_music ) ) ||
-           ( Str::CompareCase( ext, ".ogg" ) && LoadOGG( sound, fname_ ) ) ) )
+    if( !( ( Str::CompareCase( ext, "wav" ) && LoadWAV( sound, fname_.c_str() ) ) ||
+           ( Str::CompareCase( ext, "acm" ) && LoadACM( sound, fname_.c_str(), is_music ) ) ||
+           ( Str::CompareCase( ext, "ogg" ) && LoadOGG( sound, fname_.c_str() ) ) ) )
     {
         delete sound;
         return nullptr;
@@ -572,8 +567,7 @@ bool SoundManager::PlaySound( const char* name )
         return true;
 
     // Make 'NAME'
-    char name_[ MAX_FOPATH ];
-    Str::Copy( name_, name );
+    string name_ = name;
     FileManager::EraseExtension( name_ );
     Str::Upper( name_ );
 
@@ -586,10 +580,10 @@ bool SoundManager::PlaySound( const char* name )
     // Check random pattern 'NAME_X'
     uint count = 0;
     char buf[ MAX_FOPATH ];
-    while( names.find( Str::Format( buf, "%s_%d", name_, count + 1 ) ) != names.end() )
+    while( names.find( Str::Format( buf, "%s_%d", name_.c_str(), count + 1 ) ) != names.end() )
         count++;
     if( count )
-        return Load( names.find( Str::Format( buf, "%s_%d", name_, Random( 1, count ) ) )->second.c_str(), false ) != nullptr;
+        return Load( names.find( Str::Format( buf, "%s_%d", name_.c_str(), Random( 1, count ) ) )->second.c_str(), false ) != nullptr;
 
     return false;
 }

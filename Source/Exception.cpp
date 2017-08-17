@@ -69,19 +69,18 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     LONG retval = EXCEPTION_CONTINUE_SEARCH;
     char mess[ MAX_FOTEXT ];
     char dump_path[ MAX_FOPATH ];
-    char dump_path_dir[ MAX_FOPATH ];
 
     FileManager::ResetCurrentDir();
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
     const char*   dump_str = except ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    FileManager::GetWritePath( "Dumps/", dump_path_dir );
+    string        dump_path_dir = FileManager::GetWritePath( "Dumps/" );
     # else
-    Str::Copy( dump_path_dir, "./" );
+    string        dump_path_dir = "./";
     # endif
     Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
-                 dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+                 dump_path_dir.c_str(), dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FileManager::CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path, "wt" );
@@ -361,8 +360,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                     if( SymGetLineFromAddr64( process, stack.AddrPC.Offset, &callstack.offsetFromLine, &line ) )
                     {
                         callstack.lineNumber = line.LineNumber;
-                        strcpy_s( callstack.lineFileName, line.FileName );
-                        FileManager::ExtractFileName( callstack.lineFileName, callstack.lineFileName );
+                        strcpy_s( callstack.lineFileName, FileManager::ExtractFileName( line.FileName ).c_str() );
                     }
 
                     IMAGEHLP_MODULE64 module;
@@ -690,17 +688,16 @@ static void DumpAngelScript( FILE* f )
 bool RaiseAssert( const char* message, const char* file, int line )
 {
     char buf[ MAX_FOTEXT ];
-    char file_[ MAX_FOPATH ];
-    FileManager::ExtractFileName( file, file_ );
+    string file_ = FileManager::ExtractFileName( file );
     WriteLog( "Runtime assert: {} in {} ({})\n", message, file_, line );
 
     #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
     // Create dump
-    Str::Format( buf, "AssertFailed_v%u_%s(%u)", FONLINE_VERSION, file_, line );
+    Str::Format( buf, "AssertFailed_v%u_%s(%u)", FONLINE_VERSION, file_.c_str(), line );
     CreateDump( buf, message );
 
     // Show message
-    Str::Format( buf, "Assert failed!\nVersion: %u\nFile: %s (%u)\n\n%s", FONLINE_VERSION, file_, line, message );
+    Str::Format( buf, "Assert failed!\nVersion: %u\nFile: %s (%u)\n\n%s", FONLINE_VERSION, file_.c_str(), line, message );
     ShowMessage( buf );
     #endif
 

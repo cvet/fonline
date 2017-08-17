@@ -126,10 +126,9 @@ MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* m
 
     // First try load from textures folder
     SprMngr.PushAtlasType( RES_ATLAS_TEXTURES );
-    char path[ MAX_FOPATH ];
-    FileManager::ExtractDir( model_path, path );
-    Str::Append( path, texture_name );
-    AnyFrames* anim = SprMngr.LoadAnimation( path );
+    string     path = FileManager::ExtractDir( model_path );
+    path += texture_name;
+    AnyFrames* anim = SprMngr.LoadAnimation( path.c_str() );
     SprMngr.PopAtlasType();
     if( !anim )
         return nullptr;
@@ -161,8 +160,7 @@ EffectVec GraphicLoader::loadedEffects;
 Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, const char* defines /* = NULL */, const char* model_path /* = NULL */, EffectDefault* defaults /* = NULL */, uint defaults_count /* = 0 */ )
 {
     // Erase extension
-    char fname[ MAX_FOPATH ];
-    Str::Copy( fname, effect_name );
+    string fname = effect_name;
     FileManager::EraseExtension( fname );
 
     // Reset defaults to NULL if it's count is zero
@@ -170,25 +168,22 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
         defaults = nullptr;
 
     // Try find already loaded effect
-    char loaded_fname[ MAX_FOPATH ];
-    Str::Copy( loaded_fname, fname );
+    string loaded_fname = fname;
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect = *it;
-        if( Str::CompareCase( effect->Name.c_str(), loaded_fname ) && Str::Compare( effect->Defines.c_str(), defines ? defines : "" ) && effect->Defaults == defaults )
+        if( Str::CompareCase( effect->Name, loaded_fname ) && Str::Compare( effect->Defines, defines ? defines : "" ) && effect->Defaults == defaults )
             return effect;
     }
 
     // Add extension
-    Str::Append( fname, ".glsl" );
+    fname += ".glsl";
 
     // Load text file
-    char path[ MAX_FOPATH ];
-    FileManager::ExtractDir( model_path, path );
-    Str::Append( path, fname );
+    string      path = FileManager::ExtractDir( model_path );
+    path += fname;
     FileManager file;
-    file.LoadFile( path );
-    if( !file.IsLoaded() )
+    if( !file.LoadFile( path ) )
     {
         WriteLog( "Effect file '{}' not found.\n", path );
         return nullptr;
@@ -229,7 +224,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Load passes
     for( uint pass = 0; pass < passes; pass++ )
-        if( !LoadEffectPass( &effect, fname, file, pass, use_in_2d, defines, defaults, defaults_count ) )
+        if( !LoadEffectPass( &effect, fname.c_str(), file, pass, use_in_2d, defines, defaults, defaults_count ) )
             return nullptr;
 
     // Process commands
@@ -341,11 +336,11 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
     GLuint     program = 0;
 
     // Make effect binary file name
-    char binary_fname[ MAX_FOPATH ] = { 0 };
+    string binary_fname;
     if( GL_HAS( get_program_binary ) )
     {
-        Str::Copy( binary_fname, "Cache/" );
-        Str::Append( binary_fname, fname );
+        binary_fname = "Cache/";
+        binary_fname += fname;
         FileManager::EraseExtension( binary_fname );
         if( defines )
         {
@@ -356,15 +351,15 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
             Str::Replacement( binary_fname_defines, '\r', '\n', '_' );             // EOL's to '_'
             Str::Replacement( binary_fname_defines, '\r', '_' );                   // EOL's to '_'
             Str::Replacement( binary_fname_defines, '\n', '_' );                   // EOL's to '_'
-            Str::Append( binary_fname, "_" );
-            Str::Append( binary_fname, binary_fname_defines );
+            binary_fname += "_";
+            binary_fname += binary_fname_defines;
         }
         #ifdef FO_X64
-        Str::Append( binary_fname, "_x64" );
+        binary_fname += "_x64";
         #endif
-        Str::Append( binary_fname, "_" );
-        Str::Append( binary_fname, Str::UItoA( pass ) );
-        Str::Append( binary_fname, ".glslb" );
+        binary_fname += "_";
+        binary_fname += Str::UItoA( pass );
+        binary_fname += ".glslb";
     }
 
     // Load from binary

@@ -250,19 +250,18 @@ void FOServer::RemoveClient( Client* cl )
 void FOServer::DeleteClientFile( const char* client_name )
 {
     // Make old name
-    char clients_path[ MAX_FOPATH ];
-    FileManager::GetWritePath( "Save/Clients/", clients_path );
-    char old_client_fname[ MAX_FOPATH ];
-    Str::Format( old_client_fname, "%s%s.client", clients_path, client_name );
+    string clients_path = FileManager::GetWritePath( "Save/Clients/" );
+    char   old_client_fname[ MAX_FOPATH ];
+    Str::Format( old_client_fname, "%s%s.client", clients_path.c_str(), client_name );
 
     // Make new name
     char new_client_fname[ MAX_FOPATH ];
     for( uint i = 0; ; i++ )
     {
         if( !i )
-            Str::Format( new_client_fname, "%s%s.foclient_deleted", clients_path, client_name, i );
+            Str::Format( new_client_fname, "%s%s.foclient_deleted", clients_path.c_str(), client_name, i );
         else
-            Str::Format( new_client_fname, "%s%s~%u.foclient_deleted", clients_path, client_name, i );
+            Str::Format( new_client_fname, "%s%s~%u.foclient_deleted", clients_path.c_str(), client_name, i );
         if( FileExist( new_client_fname ) )
             continue;
         break;
@@ -2591,8 +2590,7 @@ bool FOServer::LoadClientsData()
     WriteLog( "Indexing client data...\n" );
 
     // Path to client saves
-    char clients_path[ MAX_FOPATH ];
-    Str::Copy( clients_path, "Save/Clients/" );
+    string clients_path = "Save/Clients/";
 
     // Index clients
     int    errors = 0;
@@ -2602,7 +2600,7 @@ bool FOServer::LoadClientsData()
     {
         if( !file_find )
         {
-            file_find = FileFindFirst( clients_path, "foclient", &file_find_fname, nullptr, nullptr, nullptr );
+            file_find = FileFindFirst( clients_path.c_str(), "foclient", &file_find_fname, nullptr, nullptr, nullptr );
             if( !file_find )
                 break;
         }
@@ -2612,18 +2610,15 @@ bool FOServer::LoadClientsData()
                 break;
         }
 
-        char client_name[ MAX_FOPATH ];
-        Str::Copy( client_name, file_find_fname.c_str() );
+        string client_name = file_find_fname;
 
         // Take name from file title
-        char        name[ MAX_FOPATH ];
-        const char* ext = FileManager::GetExtension( client_name );
-        Str::Copy( name, client_name );
+        string name = client_name;
         FileManager::EraseExtension( name );
 
         // Take id and password from file
         char      client_fname[ MAX_FOPATH ];
-        Str::Format( client_fname, "%s%s", clients_path, client_name );
+        Str::Format( client_fname, "%s%s", clients_path.c_str(), client_name.c_str() );
         IniParser client_data;
         if( !client_data.AppendFile( client_fname ) )
         {
@@ -2633,7 +2628,7 @@ bool FOServer::LoadClientsData()
         }
 
         // Generate user id
-        uint id = MAKE_CLIENT_ID( name );
+        uint id = MAKE_CLIENT_ID( name.c_str() );
         RUNTIME_ASSERT( id != 0 );
 
         // Get password hash
@@ -2651,7 +2646,7 @@ bool FOServer::LoadClientsData()
         // Add client information
         ClientData* data = new ClientData();
         memzero( data, sizeof( ClientData ) );
-        Str::Copy( data->ClientName, name );
+        Str::Copy( data->ClientName, name.c_str() );
         memcpy( data->ClientPassHash, pass_hash_str, Str::Length( pass_hash_str ) );
         ClientsData.insert( PAIR( id, data ) );
     }
@@ -2985,10 +2980,9 @@ void FOServer::Dump_Work( void* args )
     // Delete old dump files
     for( uint index : SaveWorldDeleteIndexes )
     {
-        char  dir[ MAX_FOTEXT ];
-        FileManager::ExtractDir( fname, dir );
-        char  path[ MAX_FOTEXT ];
-        void* f = FileOpen( Str::Format( path, "%sAuto%04d.foworld", dir, index ), false );
+        string dir = FileManager::ExtractDir( fname );
+        char   path[ MAX_FOTEXT ];
+        void*  f = FileOpen( Str::Format( path, "%sAuto%04d.foworld", dir.c_str(), index ), false );
         if( f )
         {
             FileClose( f );

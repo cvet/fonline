@@ -22,11 +22,14 @@ typedef vector< FindData > FindDataVec;
 class FileManager
 {
 public:
-    static void InitDataFiles( const char* path, bool set_write_dir = true );
-    static bool LoadDataFile( const char* path, bool skip_inner = false );
+    static void InitDataFiles( const string& path, bool set_write_dir = true );
+    static bool LoadDataFile( const string& path, bool skip_inner = false );
     static void ClearDataFiles();
 
-    bool   LoadFile( const char* path, bool no_read = false );
+    FileManager( const string& path, bool no_read = false );
+    FileManager( const uchar* stream, uint length );
+
+    bool   LoadFile( const string& path, bool no_read = false );
     bool   LoadStream( const uchar* stream, uint length );
     void   UnloadFile();
     uchar* ReleaseBuffer();
@@ -56,7 +59,7 @@ public:
     void   SetPosOutBuf( uint pos );
     uchar* GetOutBuf()    { return dataOutBuf; }
     uint   GetOutBufLen() { return endOutBuf; }
-    bool   SaveFile( const char* fname );
+    bool   SaveFile( const string& fname );
 
     void SetData( void* data, uint len );
     void SetStr( const char* fmt, ... );
@@ -68,26 +71,24 @@ public:
     void SetBEUInt( uint data );
     void SetLEUInt( uint data );
 
-    static void        ResetCurrentDir();
-    static void        SetCurrentDir( const char* dir, const char* write_dir );
-    static const char* GetWritePath( const char* fname );
-    static void        GetWritePath( const char* fname, char* result );
-    static hash        GetPathHash( const char* fname );
-    static void        FormatPath( char* path );
-    static void        ExtractDir( const char* path, char* dir );
-    static void        ExtractFileName( const char* path, char* name );
-    static void        CombinePath( const char* base_path, const char* path, char* result );
-    static const char* GetExtension( const char* path ); // EXT without dot
-    static char*       EraseExtension( char* path );     // Erase EXT with dot
-    static string      ForwardPath( const char* path, const char* relative_dir );
-    static bool        IsFileExists( const char* fname );
-    static bool        CopyFile( const char* from, const char* to );
-    static bool        RenameFile( const char* from, const char* to );
-    static bool        DeleteFile( const char* fname );
-    static void        DeleteDir( const char* dir );
-    static void        CreateDirectoryTree( const char* path );
-    static bool        ResolvePathInplace( char* path );
-    static void        NormalizePathSlashesInplace( char* path );
+    static void   ResetCurrentDir();
+    static void   SetCurrentDir( const string& dir, const string& write_dir );
+    static string GetWritePath( const string& fname );
+    static void   FormatPath( string& path );
+    static string ExtractDir( const string& path );
+    static string ExtractFileName( const string& path );
+    static string CombinePath( const string& base_path, const string& path );
+    static string GetExtension( const string& path ); // Extension without dot
+    static void   EraseExtension( string& path );     // Erase extension with dot
+    static string ForwardPath( const string& path, const string& relative_dir );
+    static bool   IsFileExists( const string& fname );
+    static bool   CopyFile( const string& from, const string& to );
+    static bool   RenameFile( const string& from, const string& to );
+    static bool   DeleteFile( const string& fname );
+    static void   DeleteDir( const string& dir );
+    static void   CreateDirectoryTree( const string& path );
+    static void   ResolvePath( string& path );
+    static void   NormalizePathSlashes( string& path );
 
     bool        IsLoaded()     { return fileSize != 0; }
     uchar*      GetBuf()       { return fileBuf; }
@@ -99,8 +100,8 @@ public:
     uint64      GetWriteTime() { return writeTime; }
 
     static DataFileVec& GetDataFiles() { return dataFiles; }
-    static void         GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr );
-    static void         GetDataFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result );
+    static void         GetFolderFileNames( const string& path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr );
+    static void         GetDataFileNames( const string& path, bool include_subdirs, const char* ext, StrVec& result );
 
     FileManager();
     ~FileManager();

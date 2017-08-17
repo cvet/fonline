@@ -1299,37 +1299,37 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = 
     if( !fname || !fname[ 0 ] )
         return dummy;
 
-    const char* ext = FileManager::GetExtension( fname );
-    if( !ext )
+    string ext = FileManager::GetExtension( fname );
+    if( ext.empty() )
     {
         WriteLog( "Extension not found, file '{}'.\n", fname );
         return dummy;
     }
 
     AnyFrames* result = nullptr;
-    if( Str::CompareCase( ext, "png" ) )
+    if( ext == "png" )
         result = LoadAnimationOther( fname, &GraphicLoader::LoadPNG );
-    else if( Str::CompareCase( ext, "tga" ) )
+    else if( ext == "tga" )
         result = LoadAnimationOther( fname, &GraphicLoader::LoadTGA );
-    else if( Str::CompareCase( ext, "frm" ) )
+    else if( ext == "frm" )
         result = LoadAnimationFrm( fname, frm_anim_pix );
-    else if( Str::CompareCase( ext, "rix" ) )
+    else if( ext == "rix" )
         result = LoadAnimationRix( fname );
-    else if( Str::CompareCase( ext, "fofrm" ) )
+    else if( ext == "fofrm" )
         result = LoadAnimationFofrm( fname );
-    else if( Str::CompareCase( ext, "art" ) )
+    else if( ext == "art" )
         result = LoadAnimationArt( fname );
-    else if( Str::CompareCase( ext, "spr" ) )
+    else if( ext == "spr" )
         result = LoadAnimationSpr( fname );
-    else if( Str::CompareCase( ext, "zar" ) )
+    else if( ext == "zar" )
         result = LoadAnimationZar( fname );
-    else if( Str::CompareCase( ext, "til" ) )
+    else if( ext == "til" )
         result = LoadAnimationTil( fname );
-    else if( Str::CompareCase( ext, "mos" ) )
+    else if( ext == "mos" )
         result = LoadAnimationMos( fname );
-    else if( Str::CompareCase( ext, "bam" ) )
+    else if( ext == "bam" )
         result = LoadAnimationBam( fname );
-    else if( Is3dExtensionSupported( ext ) )
+    else if( Is3dExtensionSupported( ext.c_str() ) )
         result = LoadAnimation3d( fname );
     else
         WriteLog( "Unsupported image file format '{}', file '{}'.\n", ext, fname );
@@ -1370,10 +1370,9 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
     bool load_from_fr = false;
     if( !fm.IsLoaded() )
     {
-        char  fname_[ MAX_FOPATH ];
+        char fname_[ MAX_FOPATH ];
         Str::Copy( fname_, fname );
-        char* ext = (char*) FileManager::GetExtension( fname_ );
-        *( ext + 2 ) = '0';
+        fname_[ Str::Length( fname_ ) - 1 ] = '0';
         if( !fm.LoadFile( fname_ ) )
             return nullptr;
         load_from_fr = true;
@@ -1421,10 +1420,9 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
 
         if( dir && load_from_fr )
         {
-            char  fname_[ MAX_FOPATH ];
+            char fname_[ MAX_FOPATH ];
             Str::Copy( fname_, fname );
-            char* ext = (char*) FileManager::GetExtension( fname_ );
-            *( ext + 2 ) = '0' + dir;
+            fname_[ Str::Length( fname_ ) - 1 ] = '0' + dir;
             if( !fm.LoadFile( fname_ ) )
             {
                 if( dir > 1 )
@@ -1465,7 +1463,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
         uint  palette_entry[ 256 ];
         char  palette_name[ MAX_FOPATH ];
         Str::Copy( palette_name, fname );
-        Str::Copy( (char*) FileManager::GetExtension( palette_name ), 4, "pal" );
+        Str::Copy( &palette_name[ Str::Length( palette_name ) - 3 ], 4, "pal" );
         FileManager fm_palette;
         if( fm_palette.LoadFile( palette_name ) )
         {
@@ -1748,13 +1746,12 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
             oy = fofrm.GetInt( dir_str, "offs_y", oy );
         }
 
-        char frm_dir[ MAX_FOTEXT ];
-        FileManager::ExtractDir( fname, frm_dir );
+        string frm_dir = FileManager::ExtractDir( fname );
 
-        uint frames = 0;
-        bool no_info = false;
-        bool load_fail = false;
-        char buf[ MAX_FOTEXT ];
+        uint   frames = 0;
+        bool   no_info = false;
+        bool   load_fail = false;
+        char   buf[ MAX_FOTEXT ];
         for( int frm = 0; frm < frm_num; frm++ )
         {
             const char* frm_name;
@@ -1765,7 +1762,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
                 break;
             }
 
-            Str::Copy( buf, frm_dir );
+            Str::Copy( buf, frm_dir.c_str() );
             Str::Append( buf, frm_name );
             AnyFrames* anim = LoadAnimation( buf );
             if( !anim )
@@ -1964,7 +1961,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname )
         char* delim = Str::Substring( file_name, "$" );
         if( delim )
         {
-            const char* ext = FileManager::GetExtension( file_name ) - 1;
+            const char* ext = &file_name[ Str::Length( file_name ) - 4 ];
             uint        len = (uint) ( (size_t) ext - (size_t) delim );
 
             for( uint i = 1; i < len; i++ )
@@ -2294,7 +2291,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname )
         if( delim )
         {
             // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
-            const char* ext = FileManager::GetExtension( file_name ) - 1;
+            const char* ext = &file_name[ Str::Length( file_name ) - 4 ];
             uint        len = (uint) ( (size_t) ext - (size_t) delim );
             if( len > 1 )
             {
@@ -3080,7 +3077,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname )
     if( delim )
     {
         // Format: fileName$5-6.spr
-        const char* ext = FileManager::GetExtension( file_name ) - 1;
+        const char* ext = &file_name[ Str::Length( file_name ) - 4 ];
         uint        len = (uint) ( (size_t) ext - (size_t) delim );
         if( len > 1 )
         {

@@ -438,15 +438,6 @@ void FOServer::Process_CreateClient( Client* cl )
         bool exist = ( GetClientData( id ) != nullptr );
         SaveClientsLocker.Unlock();
 
-        if( !exist )
-        {
-            // Avoid created files rewriting
-            char fname[ MAX_FOPATH ];
-            FileManager::GetWritePath( "Save/Clients/", fname );
-            Str::Append( fname, ".foclient" );
-            exist = FileManager::IsFileExists( fname );
-        }
-
         if( exist )
         {
             cl->Send_TextMsg( cl, STR_NET_ACCOUNT_ALREADY, SAY_NETMSG, TEXTMSG_GAME );

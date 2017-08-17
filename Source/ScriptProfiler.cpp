@@ -29,12 +29,9 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
         DateTimeStamp dt;
         Timer::GetCurrentDateTime( dt );
 
-        char dump_file_path[ MAX_FOPATH ];
-        Str::Copy( dump_file_path, FileManager::GetWritePath( "Profiler/" ) );
-
         char dump_file[ MAX_FOPATH ];
         Str::Format( dump_file, "%sProfiler_%04u.%02u.%02u_%02u-%02u-%02u.foprof",
-                     dump_file_path, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+                     FileManager::GetWritePath( "Profiler/" ).c_str(), dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
         saveFileHandle = FileOpen( dump_file, true );
         if( !saveFileHandle )

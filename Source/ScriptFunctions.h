@@ -144,7 +144,7 @@ static string Global_EncodeUTF8( uint ucs )
 static uint Global_GetFolderFileNames( string path, string ext, bool include_subdirs, CScriptArray* result )
 {
     StrVec files;
-    FileManager::GetFolderFileNames( path.c_str(), include_subdirs, !ext.empty() ? ext.c_str() : nullptr, files );
+    FileManager::GetFolderFileNames( path, include_subdirs, !ext.empty() ? ext.c_str() : nullptr, files );
 
     if( result )
     {
@@ -157,16 +157,13 @@ static uint Global_GetFolderFileNames( string path, string ext, bool include_sub
 
 static bool Global_DeleteFile( string filename )
 {
-    return FileManager::DeleteFile( filename.c_str() );
+    return FileManager::DeleteFile( filename );
 }
 
 static void Global_CreateDirectoryTree( string path )
 {
-    char tmp[ MAX_FOPATH ];
-    Str::Copy( tmp, path.c_str() );
-    Str::Append( tmp, "/" );
-    FileManager::FormatPath( tmp );
-    FileManager::CreateDirectoryTree( tmp );
+    FileManager::FormatPath( path );
+    FileManager::CreateDirectoryTree( path );
 }
 
 static void Global_Yield( uint time )

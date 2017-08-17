@@ -19,25 +19,34 @@ FileManager::FileManager()
     lenOutBuf = 0;
 }
 
+FileManager::FileManager( const string& path, bool no_read /* = false */ ): FileManager()
+{
+    LoadFile( path, no_read );
+}
+
+FileManager::FileManager( const uchar* stream, uint length ): FileManager()
+{
+    LoadStream( stream, length );
+}
+
 FileManager::~FileManager()
 {
     UnloadFile();
 }
 
-void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true */ )
+void FileManager::InitDataFiles( const string& path, bool set_write_dir /* = true */ )
 {
     // Format path
-    RUNTIME_ASSERT( path );
-    char fixed_path[ MAX_FOPATH ];
-    Str::Copy( fixed_path, path );
-    if( fixed_path[ 0 ] != '$' && fixed_path[ Str::Length( fixed_path ) - 1 ] != '/' )
-        Str::Append( fixed_path, "/" );
+    string fixed_path = path;
+    Str::Trim( fixed_path );
+    if( !fixed_path.empty() && fixed_path.front() != '$' && fixed_path.back() != '/' )
+        fixed_path += "/";
 
     // Check special files
-    if( fixed_path[ 0 ] != '$' )
+    if( fixed_path.empty() || fixed_path.front() != '$' )
     {
         // Redirect path
-        void* redirection_link = FileOpen( ( string( fixed_path ) + "Redirection.link" ).c_str(), false );
+        void* redirection_link = FileOpen( ( fixed_path + "Redirection.link" ).c_str(), false );
         if( redirection_link )
         {
             char link[ MAX_FOPATH ];
@@ -45,14 +54,16 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
             FileRead( redirection_link, link, len );
             FileClose( redirection_link );
             link[ len ] = 0;
-            Str::Insert( link, fixed_path );
-            FormatPath( link );
-            InitDataFiles( link, set_write_dir );
+
+            string link_str = fixed_path;
+            link_str += link;
+            FormatPath( link_str );
+            InitDataFiles( link_str, set_write_dir );
             return;
         }
 
         // Additional path
-        void* extension_link = FileOpen( ( string( fixed_path ) + "Extension.link" ).c_str(), false );
+        void* extension_link = FileOpen( ( fixed_path + "Extension.link" ).c_str(), false );
         if( extension_link )
         {
             char link[ MAX_FOPATH ];
@@ -60,14 +71,16 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
             FileRead( extension_link, link, len );
             FileClose( extension_link );
             link[ len ] = 0;
-            Str::Insert( link, fixed_path );
-            FormatPath( link );
-            InitDataFiles( link, false );
+
+            string link_str = fixed_path;
+            link_str += link;
+            FormatPath( link_str );
+            InitDataFiles( link_str, false );
         }
     }
 
     // Write path first
-    if( fixed_path[ 0 ] != '$' && set_write_dir )
+    if( set_write_dir && ( fixed_path.empty() || fixed_path[ 0 ] != '$' ) )
         writeDir = fixed_path;
 
     // Process dir
@@ -75,7 +88,7 @@ void FileManager::InitDataFiles( const char* path, bool set_write_dir /* = true 
         RUNTIME_ASSERT( !"Unable to load files in folder." );
 }
 
-bool FileManager::LoadDataFile( const char* path, bool skip_inner /* = false */ )
+bool FileManager::LoadDataFile( const string& path, bool skip_inner /* = false */ )
 {
     DataFile* data_file = nullptr;
 
@@ -92,7 +105,7 @@ bool FileManager::LoadDataFile( const char* path, bool skip_inner /* = false */ 
     // Add new
     if( !data_file )
     {
-        data_file = OpenDataFile( path );
+        data_file = OpenDataFile( path.c_str() );
         if( !data_file )
         {
             WriteLog( "Load data '{}' fail.\n", path );
@@ -153,18 +166,16 @@ uchar* FileManager::ReleaseBuffer()
     return tmp;
 }
 
-bool FileManager::LoadFile( const char* path, bool no_read /* = false */ )
+bool FileManager::LoadFile( const string& path, bool no_read /* = false */ )
 {
     UnloadFile();
 
-    if( path[ 0 ] != '.' && path[ 0 ] != '/' && *path && path[ 1 ] != ':' )
+    if( !path.empty() && path[ 0 ] != '.' && path[ 0 ] != '/' && ( path.length() < 2 || path[ 1 ] != ':' ) )
     {
         // Make data path
-        char data_path[ MAX_FOPATH ];
-        Str::Copy( data_path, path );
+        string data_path = path;
         FormatPath( data_path );
-        char data_path_lower[ MAX_FOPATH ];
-        Str::Copy( data_path_lower, data_path );
+        string data_path_lower = data_path;
         Str::Lower( data_path_lower );
 
         // Find file in every data file
@@ -173,7 +184,7 @@ bool FileManager::LoadFile( const char* path, bool no_read /* = false */ )
             DataFile* dat = *it;
             if( !no_read )
             {
-                fileBuf = dat->OpenFile( data_path, data_path_lower, fileSize, writeTime );
+                fileBuf = dat->OpenFile( data_path.c_str(), data_path_lower.c_str(), fileSize, writeTime );
                 if( fileBuf )
                 {
                     curPos = 0;
@@ -182,18 +193,17 @@ bool FileManager::LoadFile( const char* path, bool no_read /* = false */ )
             }
             else
             {
-                if( dat->IsFilePresent( data_path, data_path_lower, fileSize, writeTime ) )
+                if( dat->IsFilePresent( data_path.c_str(), data_path_lower.c_str(), fileSize, writeTime ) )
                     return true;
             }
         }
     }
     else
     {
-        char folder_path[ MAX_FOPATH ] = { 0 };
-        Str::Copy( folder_path, path );
+        string folder_path = path;
         FormatPath( folder_path );
 
-        void* file = FileOpen( folder_path, false );
+        void* file = FileOpen( folder_path.c_str(), false );
         if( file )
         {
             writeTime = FileGetWriteTime( file );
@@ -490,15 +500,12 @@ void FileManager::SetPosOutBuf( uint pos )
     posOutBuf = pos;
 }
 
-bool FileManager::SaveFile( const char* fname )
+bool FileManager::SaveFile( const string& fname )
 {
     RUNTIME_ASSERT( dataOutBuf || !endOutBuf );
 
-    char fpath[ MAX_FOPATH ];
-    Str::Copy( fpath, GetWritePath( fname ) );
-    FormatPath( fpath );
-
-    void* file = FileOpen( fpath, true );
+    string fpath = GetWritePath( fname );
+    void*  file = FileOpen( fpath.c_str(), true );
     if( !file )
         return false;
 
@@ -619,42 +626,30 @@ void FileManager::ResetCurrentDir()
     #endif
 }
 
-void FileManager::SetCurrentDir( const char* dir, const char* write_dir )
+void FileManager::SetCurrentDir( const string& dir, const string& write_dir )
 {
-    char dir_[ MAX_FOPATH ];
-    Str::Copy( dir_, dir );
-    FormatPath( dir_ );
-    ResolvePath( dir_ );
+    string fixed_dir = dir;
+    FormatPath( fixed_dir );
+    ResolvePath( fixed_dir );
 
     #ifdef FO_WINDOWS
-    SetCurrentDirectoryW( CharToWideChar( dir_ ).c_str() );
+    SetCurrentDirectoryW( CharToWideChar( fixed_dir.c_str() ).c_str() );
     #else
-    chdir( dir_ );
+    chdir( fixed_dir.c_str() );
     #endif
 
     writeDir = write_dir;
 }
 
-const char* FileManager::GetWritePath( const char* fname )
+string FileManager::GetWritePath( const string& fname )
 {
-    #pragma RACE_CONDITION
-    static char path[ MAX_FOPATH ];
-    Str::Copy( path, writeDir.c_str() );
-    Str::Append( path, fname );
+    string path = writeDir;
+    path += fname;
+    FormatPath( path );
     return path;
 }
 
-void FileManager::GetWritePath( const char* fname, char* result )
-{
-    Str::Copy( result, MAX_FOPATH, GetWritePath( fname ) );
-}
-
-hash FileManager::GetPathHash( const char* fname )
-{
-    return Str::GetHash( fname );
-}
-
-void FileManager::FormatPath( char* path )
+void FileManager::FormatPath( string& path )
 {
     // Trim
     Str::Trim( path );
@@ -664,193 +659,145 @@ void FileManager::FormatPath( char* path )
 
     // Erase first './'
     while( path[ 0 ] == '.' && path[ 1 ] == '/' )
-    {
-        char* str = path;
-        char* str_ = str + 2;
-        for( ; *str_; str++, str_++ )
-            *str = *str_;
-        *str = 0;
-    }
+        path.erase( 0, 2 );
 
     // Skip first '../'
-    while( path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == '/' )
-        path += 3;
-
-    // Erase './'
-    char* str = Str::Substring( path, "./" );
-    if( str && ( str == path || *( str - 1 ) != '.' ) )
+    uint back_count = 0;
+    while( path.length() >= 3 && path[ 0 ] == '.' && path[ 1 ] == '.' && path[ 2 ] == '/' )
     {
-        // Erase interval
-        char* str_ = str + 2;
-        for( ; *str_; str++, str_++ )
-            *str = *str_;
-        *str = 0;
-
-        // Recursive look
-        FormatPath( path );
-        return;
+        back_count++;
+        path.erase( 0, 3 );
     }
 
-    // Erase 'folder/../'
-    str = Str::Substring( path, "../" );
-    if( str )
+    // Replace '/./' to '/'
+    while( true )
     {
-        // Erase interval
-        char* str_ = str + 3;
-        str -= 2;
-        for( ; str >= path; str-- )
-            if( *str == '/' )
-                break;
-        if( str < path )
-            str = path;
-        else
-            str++;
-        for( ; *str_; str++, str_++ )
-            *str = *str_;
-        *str = 0;
+        size_t pos = path.find( "/./" );
+        if( pos == string::npos )
+            break;
 
-        // Recursive look
-        FormatPath( path );
-        return;
+        path.replace( pos, 3, "/" );
     }
 
-    // Merge '//' to '/'
-    Str::Replacement( path, '/', '/', '/' );
+    // Replace '//' to '/'
+    while( true )
+    {
+        size_t pos = path.find( "//" );
+        if( pos == string::npos )
+            break;
+
+        path.replace( pos, 2, "/" );
+    }
+
+    // Replace 'folder/../' to '/'
+    while( true )
+    {
+        size_t pos = path.find( "/../" );
+        if( pos == string::npos || pos == 0 )
+            break;
+
+        size_t pos2 = path.rfind( '/', pos - 1 );
+        if( pos2 == string::npos )
+            break;
+
+        path.erase( pos2 + 1, pos - pos2 - 1 + 3 );
+    }
+
+    // Apply skipped '../'
+    for( uint i = 0; i < back_count; i++ )
+        path.insert( 0, "../" );
 }
 
-void FileManager::ExtractDir( const char* path, char* dir )
+string FileManager::ExtractDir( const string& path )
 {
-    char buf[ MAX_FOPATH ];
-    Str::Copy( buf, path );
-    FormatPath( buf );
-
-    const char* str = Str::Substring( buf, "/" );
-    if( str )
-    {
-        str++;
-        while( true )
-        {
-            const char* str_ = Str::Substring( str, "/" );
-            if( str_ )
-                str = str_ + 1;
-            else
-                break;
-        }
-        size_t len = str - buf;
-        if( len )
-            memcpy( dir, buf, len );
-        dir[ len ] = 0;
-    }
-    else
-    {
-        dir[ 0 ] = 0;
-    }
-}
-
-void FileManager::ExtractFileName( const char* path, char* name )
-{
-    char buf[ MAX_FOPATH ];
-    Str::Copy( buf, path );
-    FormatPath( buf );
-
-    const char* str = Str::Substring( buf, "/" );
-    if( str )
-    {
-        str++;
-        while( true )
-        {
-            const char* str_ = Str::Substring( str, "/" );
-            if( str_ )
-                str = str_ + 1;
-            else
-                break;
-        }
-        int len = 0;
-        for( ; *str; len++, str++ )
-            name[ len ] = *str;
-        name[ len ] = 0;
-    }
-    else
-    {
-        Str::Copy( name, MAX_FOPATH, path );
-    }
-}
-
-void FileManager::CombinePath( const char* base_path, const char* path, char* result )
-{
-    FileManager::ExtractDir( base_path, result );
-    if( result[ 0 ] && result[ Str::Length( result ) - 1 ] != '/' && path[ 0 ] != '/' )
-        Str::Append( result, MAX_FOTEXT, "/" );
-    Str::Append( result, MAX_FOTEXT, path );
+    string result = path;
     FormatPath( result );
+
+    size_t pos = result.find_last_of( '/' );
+    if( pos != string::npos )
+        result = result.substr( 0, pos + 1 );
+    else if( !result.empty() && result.back() != '/' )
+        result += "/";
+    return result;
 }
 
-const char* FileManager::GetExtension( const char* path )
+string FileManager::ExtractFileName( const string& path )
 {
-    if( !path )
-        return nullptr;
-    const char* last_dot = nullptr;
-    for( ; *path; path++ )
-        if( *path == '.' )
-            last_dot = path;
-    if( !last_dot )
-        return nullptr;
-    last_dot++;
-    if( !*last_dot )
-        return nullptr;
-    return last_dot;
+    string result = path;
+    FormatPath( result );
+
+    size_t pos = result.find_last_of( '/' );
+    if( pos != string::npos )
+        result = result.substr( pos + 1 );
+    return result;
 }
 
-char* FileManager::EraseExtension( char* path )
+string FileManager::CombinePath( const string& base_path, const string& path )
 {
-    if( !path )
-        return nullptr;
-    char* ext = (char*) GetExtension( path );
-    if( ext )
-        *( ext - 1 ) = 0;
-    return path;
+    string result = FileManager::ExtractDir( base_path );
+    if( !result.empty() && result.back() != '/' && ( path.empty() || path.front() != '/' ) )
+        result += "/";
+    result += path;
+    FormatPath( result );
+    return result;
 }
 
-string FileManager::ForwardPath( const char* path, const char* relative_dir )
+string FileManager::GetExtension( const string& path )
 {
-    char fname[ MAX_FOTEXT ];
-    ExtractFileName( path, fname );
-    char new_path[ MAX_FOTEXT ];
-    ExtractDir( path, new_path );
-    Str::Append( new_path, relative_dir );
+    size_t dot = path.find_last_of( '.' );
+    string ext = dot != string::npos ? path.substr( dot + 1 ) : "";
+    Str::Lower( ext );
+    return ext;
+}
+
+void FileManager::EraseExtension( string& path )
+{
+    size_t dot = path.find_last_of( '.' );
+    if( dot != string::npos )
+        path.erase( dot );
+}
+
+string FileManager::ForwardPath( const string& path, const string& relative_dir )
+{
+    string fname = ExtractFileName( path );
+    string new_path = ExtractDir( path );
+    new_path += relative_dir;
     FormatPath( new_path );
-    Str::Append( new_path, fname );
+    new_path += fname;
     return new_path;
 }
 
-bool FileManager::IsFileExists( const char* fname )
+bool FileManager::IsFileExists( const string& fname )
 {
-    return FileExist( fname );
+    return FileExist( fname.c_str() );
 }
 
-bool FileManager::CopyFile( const char* from, const char* to )
+bool FileManager::CopyFile( const string& from, const string& to )
 {
-    return FileCopy( from, to );
+    string dir = ExtractDir( to );
+    if( !dir.empty() )
+        MakeDirectoryTree( dir.c_str() );
+
+    return FileCopy( from.c_str(), to.c_str() );
 }
 
-bool FileManager::RenameFile( const char* from, const char* to )
+bool FileManager::RenameFile( const string& from, const string& to )
 {
-    char dir[ MAX_FOPATH ];
-    ExtractDir( to, dir );
-    if( dir[ 0 ] )
-        MakeDirectoryTree( dir );
+    string dir = ExtractDir( to );
+    if( !dir.empty() )
+        MakeDirectoryTree( dir.c_str() );
 
-    return FileRename( from, to );
+    return FileRename( from.c_str(), to.c_str() );
 }
 
-bool FileManager::DeleteFile( const char* fname )
+bool FileManager::DeleteFile( const string& fname )
 {
-    return FileDelete( fname );
+    return FileDelete( fname.c_str() );
 }
 
-void FileManager::DeleteDir( const char* dir )
+void FileManager::DeleteDir( const string& dir )
 {
-    FilesCollection files( nullptr, dir );
+    FilesCollection files( nullptr, dir.c_str() );
     while( files.IsNextFile() )
     {
         const char* path;
@@ -865,19 +812,27 @@ void FileManager::DeleteDir( const char* dir )
     #endif
 }
 
-void FileManager::CreateDirectoryTree( const char* path )
+void FileManager::CreateDirectoryTree( const string& path )
 {
-    MakeDirectoryTree( path );
+    MakeDirectoryTree( path.c_str() );
 }
 
-bool FileManager::ResolvePathInplace( char* path )
+void FileManager::ResolvePath( string& path )
 {
-    return ResolvePath( path );
+    char buf[ MAX_FOTEXT ];
+    path.copy( buf, path.length() );
+    buf[ path.length() ] = 0;
+    ::ResolvePath( buf );
+    path = buf;
 }
 
-void FileManager::NormalizePathSlashesInplace( char* path )
+void FileManager::NormalizePathSlashes( string& path )
 {
-    NormalizePathSlashes( path );
+    char buf[ MAX_FOTEXT ];
+    path.copy( buf, path.length() );
+    buf[ path.length() ] = 0;
+    ::NormalizePathSlashes( buf );
+    path = buf;
 }
 
 void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs )
@@ -911,8 +866,7 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
         {
             if( ext )
             {
-                const char* ext_ = GetExtension( fd.FileName.c_str() );
-                if( ext_ && Str::CompareCase( ext, ext_ ) )
+                if( GetExtension( fd.FileName ) == ext )
                 {
                     Str::Copy( path, cur_dir );
                     Str::Append( path, fd.FileName.c_str() );
@@ -938,29 +892,21 @@ void FileManager::RecursiveDirLook( const char* base_dir, const char* cur_dir, b
         FileFindClose( h );
 }
 
-void FileManager::GetFolderFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files /* = NULL */, StrVec* dirs_path /* = NULL */, FindDataVec* dirs /* = NULL */ )
+void FileManager::GetFolderFileNames( const string& path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files /* = NULL */, StrVec* dirs_path /* = NULL */, FindDataVec* dirs /* = NULL */ )
 {
-    // Format path
-    char path_[ MAX_FOPATH ];
-    Str::Copy( path_, path );
-    FormatPath( path_ );
-
-    // Find in folder files
-    RecursiveDirLook( path_, "", include_subdirs, ext, files_path, files, dirs_path, dirs );
+    string fixed_path = path;
+    FormatPath( fixed_path );
+    RecursiveDirLook( fixed_path.c_str(), "", include_subdirs, ext, files_path, files, dirs_path, dirs );
 }
 
-void FileManager::GetDataFileNames( const char* path, bool include_subdirs, const char* ext, StrVec& result )
+void FileManager::GetDataFileNames( const string& path, bool include_subdirs, const char* ext, StrVec& result )
 {
-    // Format path
-    char path_[ MAX_FOPATH ];
-    Str::Copy( path_, path );
-    FormatPath( path_ );
-
-    // Find in dat files
+    string fixed_path = path;
+    FormatPath( fixed_path );
     for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
     {
         DataFile* dat = *it;
-        dat->GetFileNames( path_, include_subdirs, ext, result );
+        dat->GetFileNames( fixed_path.c_str(), include_subdirs, ext, result );
     }
 }
 
@@ -977,17 +923,15 @@ FilesCollection::FilesCollection( const char* ext, const char* fixed_dir /* = NU
     for( size_t d = 0; d < find_dirs.size(); d++ )
     {
         StrVec paths;
-        FileManager::GetFolderFileNames( find_dirs[ d ].c_str(), true, ext, paths );
+        FileManager::GetFolderFileNames( find_dirs[ d ], true, ext, paths );
         for( size_t i = 0; i < paths.size(); i++ )
         {
-            char   fname[ MAX_FOPATH ];
-            FileManager::ExtractFileName( paths[ i ].c_str(), fname );
+            string fname = FileManager::ExtractFileName( paths[ i ] );
             string path = find_dirs[ d ] + paths[ i ];
             string relative_path = paths[ i ];
 
             // Link to another file
-            const char* link_ext = FileManager::GetExtension( path.c_str() );
-            if( link_ext && Str::CompareCase( link_ext, "link" ) )
+            if( FileManager::GetExtension( path ) == "link" )
             {
                 FileManager link;
                 if( !link.LoadFile( path.c_str() ) )

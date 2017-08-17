@@ -371,14 +371,13 @@ bool FOServer::ReloadClientScripts()
         {
             // Make file name
             const char* extensions[] = { ".dll", ".so" };
-            char        fname[ MAX_FOPATH ];
-            Str::Copy( fname, dll_path.c_str() );
+            string      fname = dll_path;
             FileManager::EraseExtension( fname );
-            Str::Append( fname, extensions[ d ] );
+            fname += extensions[ d ];
 
             // Erase first './'
-            if( Str::CompareCount( fname, "./", Str::Length( "./" ) ) )
-                Str::EraseInterval( fname, Str::Length( "./" ) );
+            if( Str::CompareCount( fname, "./", 2 ) )
+                fname.erase( 0, 2 );
 
             // Load dll
             FileManager dll;
@@ -3675,8 +3674,8 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, string image_name, uin
         SCRIPT_ERROR_R0( "Wrong image depth arg." );
 
     // Check extension
-    const char* ext = FileManager::GetExtension( image_name.c_str() );
-    if( !ext || !Str::CompareCase( ext, "png" ) )
+    string ext = FileManager::GetExtension( image_name );
+    if( ext != "png" )
         SCRIPT_ERROR_R0( "Wrong extension. Allowed only PNG." );
 
     // Load file to memory

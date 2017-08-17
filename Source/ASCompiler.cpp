@@ -16,7 +16,7 @@
 #include "AngelScript/sdk/add_on/weakref/weakref.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 
-int Compile( const char* target, FileManager& file, const char* path, const char* path_prep, vector< const char* >& defines, vector< const char* >& run_func );
+int Compile( string target, FileManager& file, string path, string path_prep, const StrVec& defines, const StrVec& run_func );
 
 // Server
 namespace ServerBind
@@ -89,11 +89,11 @@ int main( int argc, char* argv[] )
     }
 
     // Parse args
-    const char*           target = nullptr;
-    const char*           arg_path = argv[ 1 ];
-    const char*           arg_path_prep = nullptr;
-    vector< const char* > defines;
-    vector< const char* > run_func;
+    const char* target = nullptr;
+    const char* arg_path = argv[ 1 ];
+    const char* arg_path_prep = nullptr;
+    StrVec      defines;
+    StrVec      run_func;
     for( int i = 2; i < argc; i++ )
     {
         // Server / Client / Mapper
@@ -115,23 +115,18 @@ int main( int argc, char* argv[] )
     }
 
     // Fix path
-    char path[ MAX_FOTEXT ];
-    char path_prep[ MAX_FOTEXT ];
-    Str::Copy( path, arg_path );
-    FileManager::NormalizePathSlashesInplace( path );
+    string path = arg_path;
+    FileManager::NormalizePathSlashes( path );
+
+    string path_prep;
     if( arg_path_prep )
     {
-        Str::Copy( path_prep, arg_path_prep );
-        FileManager::NormalizePathSlashesInplace( path_prep );
-    }
-    else
-    {
-        path_prep[ 0 ] = 0;
+        path_prep = arg_path_prep;
+        FileManager::NormalizePathSlashes( path_prep );
     }
 
     // Set current directory
-    char dir[ MAX_FOTEXT ];
-    FileManager::ExtractDir( path, dir );
+    string dir = FileManager::ExtractDir( path );
     FileManager::SetCurrentDir( dir, "./" );
 
     FileManager file;
@@ -196,7 +191,7 @@ int main( int argc, char* argv[] )
     return 0;
 }
 
-int Compile( const char* target, FileManager& file, const char* path, const char* fname_prep, vector< const char* >& defines, vector< const char* >& run_func )
+int Compile( string target, FileManager& file, string path, string fname_prep, const StrVec& defines, const StrVec& run_func )
 {
     // Pragma callback
     int pragma_type = PRAGMA_UNKNOWN;
@@ -211,7 +206,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
 
     // Engine
-    if( !Script::Init( pragma_callback, target, true, 0, false, false ) )
+    if( !Script::Init( pragma_callback, target.c_str(), true, 0, false, false ) )
         return -1;
     asIScriptEngine* engine = Script::GetEngine();
     Script::SetLoadLibraryCompiler( true );
@@ -228,17 +223,14 @@ int Compile( const char* target, FileManager& file, const char* path, const char
         WriteLog( "Warning, bind result: {}.\n", bind_errors );
 
     // Get file name
-    char file_name[ MAX_FOTEXT ];
-    FileManager::ExtractFileName( path, file_name );
+    string file_name = FileManager::ExtractFileName( path );
 
     // Make module name
-    char module_name[ MAX_FOTEXT ];
-    Str::Copy( module_name, file_name );
+    string module_name = file_name;
     FileManager::EraseExtension( module_name );
 
     // Start compilation
-    char target_lower[ MAX_FOTEXT ];
-    Str::Copy( target_lower, target );
+    string target_lower = target;
     Str::Lower( target_lower );
     WriteLog( "Compiling '{}' as {} script...\n", file_name, target_lower );
     double tick = Timer::AccurateTick();
@@ -249,9 +241,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     Preprocessor::Define( fmt::format( "__VERSION {}", FONLINE_VERSION ) );
 
     Preprocessor::Define( "__ASCOMPILER" );
-    char target_define[ MAX_FOTEXT ];
-    Str::Copy( target_define, "__" );
-    Str::Append( target_define, target );
+    string target_define = "__" + target;
     Preprocessor::Define( target_define );
     for( size_t i = 0; i < defines.size(); i++ )
         Preprocessor::Define( string( defines[ i ] ) );
@@ -264,7 +254,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     else if( Str::Compare( target, "MAPPER" ) )
         target = "Mapper";
 
-    if( !Script::ReloadScripts( target ) )
+    if( !Script::ReloadScripts( target.c_str() ) )
         return -1;
 
     // Finish pragmas
@@ -282,7 +272,7 @@ int Compile( const char* target, FileManager& file, const char* path, const char
     for( size_t i = 0; i < run_func.size(); i++ )
     {
         WriteLog( "Executing 'void {}()'.\n", run_func[ i ] );
-        uint bind_id = Script::BindByFuncName( run_func[ i ], "void %s()", true );
+        uint bind_id = Script::BindByFuncName( run_func[ i ].c_str(), "void %s()", true );
         if( bind_id )
         {
             Script::PrepareContext( bind_id, "ASCompiler" );

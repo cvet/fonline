@@ -1022,8 +1022,7 @@ bool ProtoMap::Load()
     }
 
     // Store path
-    char dir[ MAX_FOPATH ];
-    FileManager::ExtractDir( path, dir );
+    string dir = FileManager::ExtractDir( path );
     pmapDir = dir;
 
     // Load from file
@@ -1083,11 +1082,11 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
 bool ProtoMap::IsMapFile( const char* fname )
 {
-    const char* ext = FileManager::GetExtension( fname );
-    if( !ext )
+    string ext = FileManager::GetExtension( fname );
+    if( ext.empty() )
         return false;
 
-    if( Str::CompareCase( ext, "fomap" ) )
+    if( ext == "fomap" )
     {
         // Check text format
         IniParser txt;

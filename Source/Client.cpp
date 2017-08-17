@@ -660,13 +660,12 @@ void FOClient::UpdateFilesLoop()
                 UpdateFile& update_file = ( *UpdateFilesList )[ i ];
                 float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
                 float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
-                char        buf[ MAX_FOTEXT ];
-                char        name[ MAX_FOPATH ];
 
-                Str::Copy( name, update_file.Name.c_str() );
+                string      name = update_file.Name;
                 FileManager::FormatPath( name );
 
-                UpdateFilesProgress += Str::Format( buf, "%s %.2f / %.2f MB\n", name, cur, max );
+                char buf[ MAX_FOTEXT ];
+                UpdateFilesProgress += Str::Format( buf, "%s %.2f / %.2f MB\n", name.c_str(), cur, max );
             }
             UpdateFilesProgress += "\n";
         }
@@ -685,7 +684,7 @@ void FOClient::UpdateFilesLoop()
 
                 if( update_file.Name[ 0 ] == '$' )
                 {
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ).c_str(), true );
                     UpdateFilesCacheChanged = true;
                 }
                 else
@@ -700,7 +699,7 @@ void FOClient::UpdateFilesLoop()
                     #endif
 
                     FileManager::DeleteFile( FileManager::GetWritePath( update_file.Name.c_str() ) );
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ).c_str(), true );
                     UpdateFilesFilesChanged = true;
                 }
 
@@ -4474,14 +4473,14 @@ void FOClient::Net_OnUpdateFilesList()
 
         // Skip platform depended
         #ifdef FO_WINDOWS
-        if( outdated && Str::CompareCase( exe_name.c_str(), name ) )
+        if( outdated && Str::CompareCase( exe_name, name ) )
             have_exe = true;
-        const char* ext = FileManager::GetExtension( name );
-        if( !outdated && ext && ( Str::CompareCase( ext, "exe" ) || Str::CompareCase( ext, "pdb" ) ) )
+        string ext = FileManager::GetExtension( name );
+        if( !outdated && ( ext == "exe" || ext == "pdb" ) )
             continue;
         #else
-        const char* ext = FileManager::GetExtension( name );
-        if( ext && ( Str::CompareCase( ext, "exe" ) || Str::CompareCase( ext, "pdb" ) ) )
+        string ext = FileManager::GetExtension( name );
+        if( ext == "exe" || ext == "pdb" )
             continue;
         #endif
 
@@ -4564,7 +4563,7 @@ void FOClient::Net_OnUpdateFileData()
         if( update_file.Name[ 0 ] == '$' )
         {
             FileManager cache_data;
-            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp" ) ) )
+            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp" ).c_str() ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update file!" );
                 return;
@@ -8800,21 +8799,15 @@ bool FOClient::SScriptFunc::Global_IsMapHexRaked( ushort hx, ushort hy )
 
 bool FOClient::SScriptFunc::Global_SaveScreenshot( string file_path )
 {
-    char screen_path[ MAX_FOPATH ];
-    Str::Copy( screen_path, file_path.c_str() );
-    FileManager::FormatPath( screen_path );
-
-    SprMngr.SaveTexture( nullptr, screen_path, true );
+    FileManager::FormatPath( file_path );
+    SprMngr.SaveTexture( nullptr, file_path.c_str(), true );
     return true;
 }
 
 bool FOClient::SScriptFunc::Global_SaveText( string file_path, string text )
 {
-    char text_path[ MAX_FOPATH ];
-    Str::Copy( text_path, file_path.c_str() );
-    FileManager::FormatPath( text_path );
-
-    void* f = FileOpen( text_path, true );
+    FileManager::FormatPath( file_path );
+    void* f = FileOpen( file_path.c_str(), true );
     if( !f )
         return false;
 

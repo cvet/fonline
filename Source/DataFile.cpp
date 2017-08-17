@@ -169,7 +169,7 @@ string BundleFile::packName = "$Bundle";
 
 DataFile* OpenDataFile( const char* path )
 {
-    const char* ext = FileManager::GetExtension( path );
+    string ext = FileManager::GetExtension( path );
     if( Str::Compare( path, "$Bundle" ) )
     {
         BundleFile* bundle = new BundleFile();
@@ -181,7 +181,7 @@ DataFile* OpenDataFile( const char* path )
         }
         return bundle;
     }
-    else if( ext && Str::CompareCase( ext, "dat" ) )
+    else if( ext == "dat" )
     {
         FalloutDatFile* dat = new FalloutDatFile();
         if( !dat->Init( path ) )
@@ -192,7 +192,7 @@ DataFile* OpenDataFile( const char* path )
         }
         return dat;
     }
-    else if( ( ext && ( Str::CompareCase( ext, "zip" ) || Str::CompareCase( ext, "bos" ) ) ) || path[ 0 ] == '$' )
+    else if( ext == "zip" || ext == "bos" || path[ 0 ] == '$' )
     {
         ZipFile* zip = new ZipFile();
         if( !zip->Init( path ) )
@@ -238,7 +238,7 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree
 
     StrVec      files;
     FindDataVec find_data;
-    FileManager::GetFolderFileNames( basePath.c_str(), true, nullptr, files, &find_data );
+    FileManager::GetFolderFileNames( basePath, true, nullptr, files, &find_data );
 
     char name_lower[ MAX_FOTEXT ];
     for( size_t i = 0, j = files.size(); i < j; i++ )

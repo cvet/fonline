@@ -178,21 +178,13 @@ void InitialSetup( uint argc, char** argv )
     Str::ParseLine( modules, ';', modules_arr, Str::ParseLineDummy );
     for( size_t i = 0; i < modules_arr.size(); i++ )
     {
-        char module_path[ MAX_FOPATH ];
-        Str::Copy( module_path, GameOpt.ServerDir.c_str() );
-        uint len = Str::Length( module_path );
-        if( len && module_path[ len - 1 ] != '/' && module_path[ len - 1 ] != '\\' )
-            Str::Append( module_path, "/" );
-        Str::Append( module_path, modules_arr[ i ].c_str() );
-        len = Str::Length( module_path );
-        if( len && module_path[ len - 1 ] != '/' && module_path[ len - 1 ] != '\\' )
-            Str::Append( module_path, "/" );
-        FileManager::NormalizePathSlashesInplace( module_path );
-        FileManager::ResolvePathInplace( module_path );
-        len = Str::Length( module_path );
-        if( len && module_path[ len - 1 ] != '/' && module_path[ len - 1 ] != '\\' )
-            Str::Append( module_path, "/" );
-        FileManager::NormalizePathSlashesInplace( module_path );
+        string module_path = FileManager::CombinePath( GameOpt.ServerDir, modules_arr[ i ] );
+        FileManager::NormalizePathSlashes( module_path );
+        FileManager::ResolvePath( module_path );
+        if( !module_path.empty() && module_path.back() != '/' && module_path.back() != '\\' )
+            module_path += "/";
+
+        FileManager::NormalizePathSlashes( module_path );
         GameModules.push_back( module_path );
     }
     #endif

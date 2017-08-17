@@ -139,10 +139,10 @@ static void FixTexCoord( float& x, float& y )
 
 FileManager* ResourceConverter::Convert( const char* name, FileManager& file )
 {
-    const char* ext = FileManager::GetExtension( name );
-    if( ext && Str::CompareCase( ext, "png" ) || Str::CompareCase( ext, "tga" ) )
+    string ext = FileManager::GetExtension( name );
+    if( ext == "png" || ext == "tga" )
         return ConvertImage( name, file );
-    if( ext && Is3dExtensionSupported( ext ) && !Str::CompareCase( ext, "fo3d" ) )
+    if( !ext.empty() && Is3dExtensionSupported( ext.c_str() ) && ext != "fo3d" )
         return Convert3d( name, file );
     file.SwitchToWrite();
     return &file;
@@ -150,10 +150,10 @@ FileManager* ResourceConverter::Convert( const char* name, FileManager& file )
 
 FileManager* ResourceConverter::ConvertImage( const char* name, FileManager& file )
 {
-    uchar*      data;
-    uint        width, height;
-    const char* ext = FileManager::GetExtension( name );
-    if( Str::CompareCase( ext, "png" ) )
+    uchar* data;
+    uint   width, height;
+    string ext = FileManager::GetExtension( name );
+    if( ext == "png" )
         data = LoadPNG( file.GetBuf(), file.GetFsize(), width, height );
     else
         data = LoadTGA( file.GetBuf(), file.GetFsize(), width, height );
@@ -177,8 +177,8 @@ FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
     AnimSetVec loaded_animations;
 
     // FBX loader
-    const char* ext = FileManager::GetExtension( name );
-    if( Str::CompareCase( ext, "fbx" ) )
+    string ext = FileManager::GetExtension( name );
+    if( ext == "fbx" )
     {
         // Create manager
         static FbxManager* fbx_manager = nullptr;
@@ -739,10 +739,8 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
             {
                 if( Str::Compare( prop_diffuse.GetSrcObject( i )->GetClassId().GetName(), "FbxFileTexture" ) )
                 {
-                    char            tex_fname[ MAX_FOPATH ];
                     FbxFileTexture* fbx_file_texture = (FbxFileTexture*) prop_diffuse.GetSrcObject( i );
-                    FileManager::ExtractFileName( fbx_file_texture->GetFileName(), tex_fname );
-                    mesh->DiffuseTexture = tex_fname;
+                    mesh->DiffuseTexture = FileManager::ExtractFileName( fbx_file_texture->GetFileName() );
                     break;
                 }
             }
@@ -1115,7 +1113,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
         StrVec      dummy_vec;
         StrVec      all_dirs_path;
         FindDataVec all_dirs;
-        FileManager::GetFolderFileNames( GameModules[ m ].c_str(), true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
+        FileManager::GetFolderFileNames( GameModules[ m ], true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
         for( size_t d = 0; d < all_dirs.size(); d++ )
         {
             if( !Str::CompareCase( all_dirs[ d ].FileName.c_str(), "Resources" ) )
@@ -1123,7 +1121,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
             string      resources_root = GameModules[ m ] + all_dirs_path[ d ];
             FindDataVec resources_dirs;
-            FileManager::GetFolderFileNames( resources_root.c_str(), false, nullptr, dummy_vec, nullptr, nullptr, &resources_dirs );
+            FileManager::GetFolderFileNames( resources_root, false, nullptr, dummy_vec, nullptr, nullptr, &resources_dirs );
             for( size_t r = 0; r < resources_dirs.size(); r++ )
             {
                 const char*     res_name = resources_dirs[ r ].FileName.c_str();
@@ -1251,8 +1249,8 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
                         if( resource_names )
                         {
-                            const char* ext = FileManager::GetExtension( fname );
-                            if( ext && ( Str::CompareCase( ext, "zip" ) || Str::CompareCase( ext, "dat" ) || Str::CompareCase( ext, "bos" ) ) )
+                            string ext = FileManager::GetExtension( fname );
+                            if( ext == "zip" || ext == "bos" || ext == "dat" )
                             {
                                 DataFile* inner = OpenDataFile( path );
                                 if( inner )

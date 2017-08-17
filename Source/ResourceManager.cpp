@@ -19,20 +19,19 @@ void ResourceManager::Refresh()
             // Hash all files
             StrVec file_names;
             data_file->GetFileNames( "", true, nullptr, file_names );
-            char   buf[ MAX_FOTEXT ];
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
             {
                 // File name
-                FileManager::ExtractFileName( it->c_str(), buf );
-                Str::GetHash( buf );
-                Str::Lower( buf );
-                Str::GetHash( buf );
+                string name = FileManager::ExtractFileName( it->c_str() );
+                Str::GetHash( name.c_str() );
+                Str::Lower( name );
+                Str::GetHash( name.c_str() );
 
                 // Full path
-                Str::Copy( buf, it->c_str() );
-                Str::GetHash( buf );
-                Str::Lower( buf );
-                Str::GetHash( buf );
+                name = it->c_str();
+                Str::GetHash( name.c_str() );
+                Str::Lower( name );
+                Str::GetHash( name.c_str() );
             }
 
             // Splashes
@@ -49,13 +48,12 @@ void ResourceManager::Refresh()
             data_file->GetFileNames( "", true, "wav", sounds );
             data_file->GetFileNames( "", true, "acm", sounds );
             data_file->GetFileNames( "", true, "ogg", sounds );
-            char sound_name[ MAX_FOPATH ];
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
             {
-                Str::Copy( sound_name, it->c_str() );
+                string sound_name = it->c_str();
                 FileManager::EraseExtension( sound_name );
                 Str::Upper( sound_name );
-                soundNames.insert( PAIR( string( sound_name ), *it ) );
+                soundNames.insert( PAIR( sound_name, *it ) );
             }
 
             processedDats.push_back( data_file );
@@ -626,8 +624,8 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
 uint ResourceManager::GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
 {
     uint spr_id = 0;
-    const char* ext = FileManager::GetExtension( Str::GetName( model_name ) );
-    if( !ext || !Str::CompareCase( ext, "fo3d" ) )
+    string ext = FileManager::GetExtension( Str::GetName( model_name ) );
+    if( ext != "fo3d" )
     {
         AnyFrames* anim = GetCrit2dAnim( model_name, anim1, anim2, dir );
         spr_id = ( anim ? anim->GetSprId( 0 ) : 0 );

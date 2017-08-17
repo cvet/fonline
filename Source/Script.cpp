@@ -349,8 +349,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     }
 
     // Find in already loaded
-    char dll_name_lower[ MAX_FOPATH ];
-    Str::Copy( dll_name_lower, dll_name );
+    string dll_name_lower = dll_name;
     #ifdef FO_WINDOWS
     Str::Lower( dll_name_lower );
     #endif
@@ -359,20 +358,19 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
         return it->second.second;
 
     // Make path
-    char dll_path[ MAX_FOPATH ];
-    Str::Copy( dll_path, dll_name_lower );
+    string dll_path = dll_name_lower;
     FileManager::EraseExtension( dll_path );
 
-    #if defined ( FO_X64 )
     // Add '64' appendix
-    Str::Append( dll_path, "64" );
+    #if defined ( FO_X64 )
+    dll_path += "64";
     #endif
 
     // Client path fixes
     #ifdef FONLINE_CLIENT
-    Str::Insert( dll_path, "Cache/" );
-    Str::Replacement( dll_path, '\\', '.' );
-    Str::Replacement( dll_path, '/', '.' );
+    dll_path.insert( 0, "Cache/" );
+    std::replace( dll_path.begin(), dll_path.end(), '\\', '.' );
+    std::replace( dll_path.begin(), dll_path.end(), '/', '.' );
     #endif
 
     // Server path fixes
@@ -390,24 +388,23 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
         if( Str::CompareCase( dll_path, name ) )
         {
             founded = true;
-            Str::Copy( dll_path, path );
+            dll_path = path;
             break;
         }
     }
     if( !founded )
     {
         # ifdef FO_WINDOWS
-        Str::Append( dll_path, ".dll" );
+        dll_path += ".dll";
         # else
-        Str::Append( dll_path, ".so" );
+        dll_path += ".so";
         # endif
     }
     #endif
 
     // Set current directory to DLL
-    char new_path[ MAX_FOPATH ];
-    FileManager::ExtractDir( dll_path, new_path );
-    FileManager::ResolvePathInplace( new_path );
+    string new_path = FileManager::ExtractDir( dll_path );
+    FileManager::ResolvePath( new_path );
     #ifdef FO_WINDOWS
     wchar_t cur_path[ MAX_FOPATH ];
     GetCurrentDirectoryW( MAX_FOPATH, cur_path );
@@ -417,8 +414,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     getcwd( cur_path, MAX_FOPATH );
     chdir( new_path );
     #endif
-    char file_name[ MAX_FOPATH ];
-    FileManager::ExtractFileName( dll_path, file_name );
+    string file_name = FileManager::ExtractFileName( dll_path );
 
     // Load dynamic library
     void* dll = DLL_Load( file_name );

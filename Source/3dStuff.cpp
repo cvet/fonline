@@ -1374,8 +1374,8 @@ Animation3dEntity::~Animation3dEntity()
 
 bool Animation3dEntity::Load( const char* name )
 {
-    const char* ext = FileManager::GetExtension( name );
-    if( !ext )
+    string ext = FileManager::GetExtension( name );
+    if( ext.empty() )
         return false;
 
     // Load fonline 3d file
@@ -1385,12 +1385,13 @@ bool Animation3dEntity::Load( const char* name )
         FileManager fo3d;
         if( !fo3d.LoadFile( name ) )
             return false;
+
         char* big_buf = Str::GetBigBuf();
         fo3d.CopyMem( big_buf, fo3d.GetFsize() );
         big_buf[ fo3d.GetFsize() ] = 0;
 
         // Parse
-        char             model[ MAX_FOPATH ] = { 0 };
+        string           model;
         char             render_fname[ MAX_FOPATH ] = { 0 };
         char             render_anim[ MAX_FOPATH ] = { 0 };
         vector< size_t > anim_indexes;
@@ -1447,7 +1448,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::Compare( token, "Model" ) )
             {
                 ( *istr ) >> buf;
-                FileManager::CombinePath( name, buf, model );
+                model = FileManager::CombinePath( name, buf );
             }
             else if( Str::Compare( token, "Include" ) )
             {
@@ -1464,10 +1465,7 @@ bool Animation3dEntity::Load( const char* name )
                     templates[ i ] = string( "%" ).append( templates[ i ] ).append( "%" );
 
                 // Include file path
-                char fname[ MAX_FOPATH ];
-                FileManager::CombinePath( name, templates[ 0 ].c_str(), fname );
-
-                // Load file
+                string      fname = FileManager::CombinePath( name, templates[ 0 ] );
                 FileManager fo3d_ex;
                 if( !fo3d_ex.LoadFile( fname ) )
                 {
@@ -1574,9 +1572,8 @@ bool Animation3dEntity::Load( const char* name )
                 link->Layer = layer;
                 link->LayerValue = layer_val;
 
-                char fname[ MAX_FOPATH ];
-                FileManager::CombinePath( name, buf, fname );
-                link->ChildFName = Str::Duplicate( fname );
+                string fname = FileManager::CombinePath( name, buf );
+                link->ChildFName = Str::Duplicate( fname.c_str() );
 
                 mesh = 0;
             }
@@ -1589,9 +1586,8 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::Compare( token, "Cut" ) )
             {
                 ( *istr ) >> buf;
-                char              fname[ MAX_FOPATH ];
-                FileManager::CombinePath( name, buf, fname );
-                Animation3dXFile* area = Animation3dXFile::GetXFile( fname );
+                string            fname = FileManager::CombinePath( name, buf );
+                Animation3dXFile* area = Animation3dXFile::GetXFile( fname.c_str() );
                 if( area )
                 {
                     // Add cut
@@ -2106,7 +2102,7 @@ bool Animation3dEntity::Load( const char* name )
         }
 
         // Process pathes
-        if( !model[ 0 ] )
+        if( model.empty() )
         {
             WriteLog( "'Model' section not found in file '{}'.\n", name );
             return false;
@@ -2120,7 +2116,7 @@ bool Animation3dEntity::Load( const char* name )
         }
 
         // Load x file
-        Animation3dXFile* xfile = Animation3dXFile::GetXFile( model );
+        Animation3dXFile* xfile = Animation3dXFile::GetXFile( model.c_str() );
         if( !xfile )
             return false;
 
@@ -2149,17 +2145,17 @@ bool Animation3dEntity::Load( const char* name )
         {
             for( uint i = 0, j = (uint) anim_indexes.size(); i < j; i += 3 )
             {
-                int   anim_index = (int) anim_indexes[ i + 0 ];
-                char* anim_fname = (char*) anim_indexes[ i + 1 ];
-                char* anim_name = (char*) anim_indexes[ i + 2 ];
+                int    anim_index = (int) anim_indexes[ i + 0 ];
+                char*  anim_fname = (char*) anim_indexes[ i + 1 ];
+                char*  anim_name = (char*) anim_indexes[ i + 2 ];
 
-                char  anim_path[ MAX_FOPATH ];
+                string anim_path;
                 if( Str::Compare( anim_fname, "ModelFile" ) )
-                    Str::Copy( anim_path, model );
+                    anim_path = model;
                 else
-                    FileManager::CombinePath( name, anim_fname, anim_path );
+                    anim_path = FileManager::CombinePath( name, anim_fname );
 
-                AnimSet* set = GraphicLoader::LoadAnimation( anim_path, anim_name );
+                AnimSet* set = GraphicLoader::LoadAnimation( anim_path.c_str(), anim_name );
                 if( set )
                 {
                     animController->RegisterAnimationSet( set );
