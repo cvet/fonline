@@ -559,8 +559,8 @@ bool Script::ReloadScripts( const char* target )
         }
 
         // Get first line
-        char line[ MAX_FOTEXT ];
-        if( !file.GetLine( line, sizeof( line ) ) )
+        string line = file.GetNonEmptyLine();
+        if( line.empty() )
         {
             WriteLog( "Error in script '{}', file empty.\n", name );
             errors++;

@@ -282,30 +282,40 @@ bool FileManager::FindFragment( const uchar* fragment, uint fragment_len, uint b
     return false;
 }
 
-bool FileManager::GetLine( char* str, uint len )
+string FileManager::GetNonEmptyLine()
 {
     if( curPos >= fileSize )
-        return false;
+        return "";
 
-    uint wpos = 0;
-    for( ; wpos < len && curPos < fileSize; curPos++, wpos++ )
+    while( curPos < fileSize )
     {
-        if( fileBuf[ curPos ] == '\r' || fileBuf[ curPos ] == '\n' || fileBuf[ curPos ] == '#' || fileBuf[ curPos ] == ';' )
+        uint start = curPos;
+        uint len = 0;
+        while( curPos < fileSize )
         {
-            for( ; curPos < fileSize; curPos++ )
-                if( fileBuf[ curPos ] == '\n' )
-                    break;
+            if( fileBuf[ curPos ] == '\r' || fileBuf[ curPos ] == '\n' || fileBuf[ curPos ] == '#' || fileBuf[ curPos ] == ';' )
+            {
+                for( ; curPos < fileSize; curPos++ )
+                    if( fileBuf[ curPos ] == '\n' )
+                        break;
+                curPos++;
+                break;
+            }
+
             curPos++;
-            break;
+            len++;
         }
 
-        str[ wpos ] = fileBuf[ curPos ];
+        if( len )
+        {
+            string line( (const char*) &fileBuf[ start ], len );
+            Str::Trim( line );
+            if( !line.empty() )
+                return line;
+        }
     }
 
-    str[ wpos ] = 0;
-    if( !str[ 0 ] )
-        return GetLine( str, len );          // Skip empty line
-    return true;
+    return "";
 }
 
 bool FileManager::CopyMem( void* ptr, uint size )

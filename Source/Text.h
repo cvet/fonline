@@ -31,6 +31,7 @@ namespace Str
 
     char*       Substring( char* str, const char* sub_str );
     const char* Substring( const char* str, const char* sub_str );
+    const char* Substring( const string& str, const char* sub_str );
     char*       LastSubstring( char* str, const char* sub_str );
     const char* LastSubstring( const char* str, const char* sub_str );
 
@@ -42,10 +43,14 @@ namespace Str
     uint Length( const char* str );
     uint LengthUTF8( const char* str );
     bool Compare( const char* str1, const char* str2 );
+    bool Compare( const string& str1, const string& str2 );
     bool CompareCase( const char* str1, const char* str2 );
+    bool CompareCase( const string& str1, const string& str2 );
     bool CompareCaseUTF8( const char* str1, const char* str2 );
     bool CompareCount( const char* str1, const char* str2, uint max_count );
+    bool CompareCount( const string& str1, const string& str2, uint max_count );
     bool CompareCaseCount( const char* str1, const char* str2, uint max_count );
+    bool CompareCaseCount( const string& str1, const string& str2, uint max_count );
     bool CompareCaseCountUTF8( const char* str1, const char* str2, uint max_count );
 
     char*       Format( char* buf, const char* format, ... );
@@ -63,6 +68,7 @@ namespace Str
     void  Replacement( char* str, char from, char to );
     void  Replacement( char* str, char from1, char from2, char to );
     char* Trim( char* str, uint* trimmed = nullptr );
+    void  Trim( string& str, uint* trimmed = nullptr );
 
     void SkipLine( char*& str );
     void GoTo( char*& str, char ch, bool skip_char = false );

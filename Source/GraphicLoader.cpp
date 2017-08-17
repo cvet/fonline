@@ -196,14 +196,16 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
     // Parse effect commands
     vector< StrVec > commands;
-    char             line[ MAX_FOTEXT ];
-    while( file.GetLine( line, sizeof( line ) ) )
+    while( true )
     {
-        Str::Trim( line );
+        string line = file.GetNonEmptyLine();
+        if( line.empty() )
+            break;
+
         if( Str::CompareCaseCount( line, "Effect ", Str::Length( "Effect " ) ) )
         {
             StrVec tokens;
-            Str::ParseLine( line + Str::Length( "Effect " ), ' ', tokens, Str::ParseLineDummy );
+            Str::ParseLine( line.c_str() + Str::Length( "Effect " ), ' ', tokens, Str::ParseLineDummy );
             if( !tokens.empty() )
                 commands.push_back( tokens );
         }

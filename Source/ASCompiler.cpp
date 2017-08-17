@@ -141,8 +141,8 @@ int main( int argc, char* argv[] )
         return -1;
     }
 
-    char line[ MAX_FOTEXT ];
-    if( !file.GetLine( line, MAX_FOTEXT ) )
+    string line = file.GetNonEmptyLine();
+    if( line.empty() )
     {
         WriteLog( "File '{}' empty.\n", path );
         return -1;

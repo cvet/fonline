@@ -233,6 +233,11 @@ const char* Str::Substring( const char* str, const char* sub_str )
     return strstr( str, sub_str );
 }
 
+const char* Str::Substring( const string& str, const char* sub_str )
+{
+    return strstr( str.c_str(), sub_str );
+}
+
 char* Str::LastSubstring( char* str, const char* sub_str )
 {
     uint  len = Length( sub_str );
@@ -421,6 +426,13 @@ bool Str::Compare( const char* str1, const char* str2 )
     return *str1 == 0 && *str2 == 0;
 }
 
+bool Str::Compare( const string& str1, const string& str2 )
+{
+    if( str1.length() != str2.length() )
+        return false;
+    return str1 == str2;
+}
+
 bool Str::CompareCase( const char* str1, const char* str2 )
 {
     while( *str1 && *str2 )
@@ -436,6 +448,17 @@ bool Str::CompareCase( const char* str1, const char* str2 )
         str1++, str2++;
     }
     return *str1 == 0 && *str2 == 0;
+}
+
+bool Str::CompareCase( const string& str1, const string& str2 )
+{
+    if( str1.length() != str2.length() )
+        return false;
+
+    for( size_t i = 0; i < str1.length(); i++ )
+        if( tolower( str1[ i ] ) != tolower( str2[ i ] ) )
+            return false;
+    return true;
 }
 
 bool Str::CompareCaseUTF8( const char* str1, const char* str2 )
@@ -461,6 +484,19 @@ bool Str::CompareCount( const char* str1, const char* str2, uint max_count )
     return max_count == 0;
 }
 
+bool Str::CompareCount( const string& str1, const string& str2, uint max_count )
+{
+    if( str1.length() != str2.length() )
+        return false;
+
+    if( max_count > str1.length() )
+        max_count = (uint) str1.length();
+    for( uint i = 0; i < max_count; i++ )
+        if( str1[ i ] != str2[ i ] )
+            return false;
+    return true;
+}
+
 bool Str::CompareCaseCount( const char* str1, const char* str2, uint max_count )
 {
     while( *str1 && *str2 && max_count )
@@ -477,6 +513,19 @@ bool Str::CompareCaseCount( const char* str1, const char* str2, uint max_count )
         max_count--;
     }
     return max_count == 0;
+}
+
+bool Str::CompareCaseCount( const string& str1, const string& str2, uint max_count )
+{
+    if( str1.length() != str2.length() )
+        return false;
+
+    if( max_count > str1.length() )
+        max_count = (uint) str1.length();
+    for( uint i = 0; i < max_count; i++ )
+        if( tolower( str1[ i ] ) != tolower( str2[ i ] ) )
+            return false;
+    return true;
 }
 
 bool Str::CompareCaseCountUTF8( const char* str1, const char* str2, uint max_count )
@@ -710,6 +759,33 @@ char* Str::Trim( char* str, uint* trimmed /* = NULL */ )
     *( back + 1 ) = 0;
 
     return str;
+}
+
+void Str::Trim( string& str, uint* trimmed /* = nullptr */ )
+{
+    // Left trim
+    size_t l = str.find_first_not_of( " \n\r\t" );
+    if( l == string::npos )
+    {
+        if( trimmed )
+            *trimmed = (uint) str.size();
+        str.erase();
+    }
+    else if( l > 0 )
+    {
+        if( trimmed )
+            *trimmed = (uint) l;
+        str.erase( 0, l );
+
+        // Right trim
+        size_t r = str.find_last_not_of( " \n\r\t" );
+        if( r < str.length() - 1 )
+        {
+            if( trimmed )
+                *trimmed += (uint) ( str.length() - r - 1 );
+            str.erase( r + 1 );
+        }
+    }
 }
 
 void Str::SkipLine( char*& str )
