@@ -824,6 +824,11 @@ bool FileManager::CopyFile( const char* from, const char* to )
 
 bool FileManager::RenameFile( const char* from, const char* to )
 {
+    char dir[ MAX_FOPATH ];
+    ExtractDir( to, dir );
+    if( dir[ 0 ] )
+        MakeDirectoryTree( dir );
+
     return FileRename( from, to );
 }
 

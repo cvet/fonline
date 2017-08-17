@@ -1223,11 +1223,10 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     while( resources.IsNextFile() )
                     {
                         const char*  path;
-                        FileManager& file = resources.GetNextFile( nullptr, &path );
-                        char         name[ MAX_FOTEXT ];
-                        FileManager::ExtractFileName( path, name );
+                        const char*  rel_path;
+                        FileManager& file = resources.GetNextFile( nullptr, &path, &rel_path );
                         char         fname[ MAX_FOTEXT ];
-                        Str::Format( fname, "Update/%s", name );
+                        Str::Format( fname, "Update/%s", rel_path );
                         FileManager  update_file;
                         if( !update_file.LoadFile( fname, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
                         {
@@ -1270,7 +1269,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             }
                         }
 
-                        update_file_names.insert( name );
+                        update_file_names.insert( rel_path );
                     }
                 }
             }
@@ -1282,10 +1281,9 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     while( update_files.IsNextFile() )
     {
         const char* path;
-        update_files.GetNextFile( nullptr, &path, nullptr, true );
-        char        fname[ MAX_FOPATH ];
-        FileManager::ExtractFileName( path, fname );
-        if( !update_file_names.count( fname ) )
+        const char* rel_path;
+        update_files.GetNextFile( nullptr, &path, &rel_path, true );
+        if( !update_file_names.count( rel_path ) )
         {
             FileManager::DeleteFile( path );
             something_changed = true;
