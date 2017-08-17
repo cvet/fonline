@@ -566,8 +566,8 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     next_block = block_len + fm.GetCurPos() + 1;
 
     // Image name
-    char image_name[ MAX_FOPATH ] = { 0 };
-    fm.GetStrNT( image_name );
+    string image_name = fm.GetStrNT();
+    image_name.insert( 0, "Fonts/" );
 
     // Chars
     fm.SetCurPos( next_block );
@@ -601,8 +601,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     font.MakeGray = true;
 
     // Load image
-    Str::Insert( image_name, "Fonts/" );
-    AnyFrames* image_normal = LoadAnimation( image_name );
+    AnyFrames* image_normal = LoadAnimation( image_name.c_str() );
     if( !image_normal )
     {
         WriteLog( "Image file '{}' not found.\n", image_name );
@@ -611,7 +610,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     font.ImageNormal = image_normal;
 
     // Create bordered instance
-    AnyFrames* image_bordered = LoadAnimation( image_name );
+    AnyFrames* image_bordered = LoadAnimation( image_name.c_str() );
     if( !image_bordered )
     {
         WriteLog( "Can't load twice file '{}'.\n", image_name );

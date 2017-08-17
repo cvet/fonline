@@ -330,17 +330,18 @@ bool FileManager::CopyMem( void* ptr, uint size )
     return true;
 }
 
-void FileManager::GetStrNT( char* str )
+string FileManager::GetStrNT()
 {
-    if( !str || curPos + 1 > fileSize )
-        return;
+    if( curPos + 1 > fileSize )
+        return "";
 
-    uint len = 1;
-    while( *( fileBuf + curPos + len - 1 ) )
+    uint len = 0;
+    while( *( fileBuf + curPos + len ) )
         len++;
 
-    memcpy( str, fileBuf + curPos, len );
-    curPos += len;
+    string str( (const char*) &fileBuf[ curPos ], len );
+    curPos += len + 1;
+    return str;
 }
 
 uchar FileManager::GetUChar()

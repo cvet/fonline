@@ -38,7 +38,7 @@ public:
 
     string GetNonEmptyLine();
     bool   CopyMem( void* ptr, uint size );
-    void   GetStrNT( char* str ); // Null terminated
+    string GetStrNT(); // Null terminated
     uchar  GetUChar();
     ushort GetBEUShort();
     short  GetBEShort() { return (short) GetBEUShort(); }
