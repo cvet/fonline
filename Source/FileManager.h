@@ -129,8 +129,8 @@ class FilesCollection
 public:
     FilesCollection( const string& ext, const string& fixed_dir = "" );
     bool         IsNextFile();
-    FileManager& GetNextFile( const char** name = nullptr, const char** path = nullptr, const char** relative_path = nullptr, bool no_read_data = false );
-    FileManager& FindFile( const string& name, const char** path = nullptr, const char** relative_path = nullptr, bool no_read_data = false );
+    FileManager& GetNextFile( string* name = nullptr, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false );
+    FileManager& FindFile( const string& name, string* path = nullptr, string* relative_path = nullptr, bool no_read_data = false );
     uint         GetFilesCount();
     void         ResetCounter();
 

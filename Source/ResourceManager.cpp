@@ -23,15 +23,15 @@ void ResourceManager::Refresh()
             {
                 // File name
                 string name = FileManager::ExtractFileName( it->c_str() );
-                Str::GetHash( name.c_str() );
+                Str::GetHash( name );
                 Str::Lower( name );
-                Str::GetHash( name.c_str() );
+                Str::GetHash( name );
 
                 // Full path
                 name = it->c_str();
-                Str::GetHash( name.c_str() );
+                Str::GetHash( name );
                 Str::Lower( name );
-                Str::GetHash( name.c_str() );
+                Str::GetHash( name );
             }
 
             // Splashes

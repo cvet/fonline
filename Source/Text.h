@@ -97,13 +97,18 @@ namespace Str
     char* GetBigBuf();                      // Just big buffer, 1mb
 
     // Name hashes
-    hash        GetHash( const char* name );
+    hash        GetHash( const string& name );
     const char* GetName( hash h );
     void        SaveHashes( StrMap& hashes );
     void        LoadHashes( StrMap& hashes );
 
     // Parse str
     const char* ParseLineDummy( const char* str );
+    template< typename Cont, class Func >
+    void ParseLine( const string& str, char divider, Cont& result, Func f )
+    {
+        ParseLine( str.c_str(), divider, result, f );
+    }
     template< typename Cont, class Func >
     void ParseLine( const char* str, char divider, Cont& result, Func f )
     {

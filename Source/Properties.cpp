@@ -1564,7 +1564,7 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
         if( is_hashes[ deep ] )
         {
             RUNTIME_ASSERT( type_id == asTYPEID_UINT32 );
-            hash v = Str::GetHash( DecodeString( value ).c_str() );
+            hash v = Str::GetHash( DecodeString( value ) );
             memcpy( pod_buf, &v, sizeof( v ) );
             return pod_buf;
         }

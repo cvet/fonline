@@ -976,29 +976,19 @@ HASH_IMPL( SP_GRID_EXITGRID, "ExitGrid" );
 HASH_IMPL( SP_GRID_ENTIRE, "Entrance" );
 HASH_IMPL( SP_MISC_SCRBLOCK, "ScrollBlock" );
 
-hash Str::GetHash( const char* name )
+hash Str::GetHash( const string& name )
 {
-    if( !name || !name[ 0 ] )
+    if( name.empty() )
         return 0;
 
-    // Copy and swap '\' to '/'
-    char        name_[ MAX_FOTEXT ];
-    uint        len = 0;
-    const char* from = name;
-    char*       to = name_;
-    for( ; *from && len < MAX_FOTEXT - 1; from++, to++, len++ )
-        *to = ( *from != '\\' ? *from : '/' );
-    *to = 0;
-
-    // Trim specific chars
-    uint trimmed = 0;
-    Str::Trim( name_, &trimmed );
-    len -= trimmed;
-    if( !len )
+    string fixed_name = name;
+    FileManager::NormalizePathSlashes( fixed_name );
+    Str::Trim( fixed_name );
+    if( fixed_name.empty() )
         return 0;
 
     // Calculate hash
-    hash h = Crypt.MurmurHash2( (const uchar*) name_, len );
+    hash h = Crypt.MurmurHash2( (const uchar*) fixed_name.c_str(), (uint) fixed_name.length() );
     if( !h )
         return 0;
 
@@ -1009,9 +999,9 @@ hash Str::GetHash( const char* name )
 
     auto ins = HashNames.insert( PAIR( h, (const char*) nullptr ) );
     if( ins.second )
-        ins.first->second = Str::Duplicate( name_ );
-    else if( !Str::Compare( ins.first->second, name_ ) )
-        WriteLog( "Hash collision detected for names '{}' and '{}', hash {:#X}.\n", name_, ins.first->second, h );
+        ins.first->second = Str::Duplicate( fixed_name.c_str() );
+    else if( !Str::Compare( ins.first->second, fixed_name ) )
+        WriteLog( "Hash collision detected for names '{}' and '{}', hash {:#X}.\n", fixed_name, ins.first->second, h );
 
     return h;
 }
@@ -1050,7 +1040,7 @@ void Str::LoadHashes( StrMap& hashes )
     #endif
 
     for( auto& kv : hashes )
-        GetHash( kv.second.c_str() );
+        GetHash( kv.second );
 }
 
 const char* Str::ParseLineDummy( const char* str )

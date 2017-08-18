@@ -3108,7 +3108,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
 {
     // Check existance
     ClientsDataLocker.Lock();
-    uint id = MAKE_CLIENT_ID( name.c_str() );
+    uint id = MAKE_CLIENT_ID( name );
     bool available = ( GetClientData( id ) != nullptr );
     ClientsDataLocker.Unlock();
     if( !available )

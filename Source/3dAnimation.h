@@ -28,7 +28,7 @@ private:
     HashVecVec    bonesHierarchy;
 
 public:
-    void SetData( const char* fname, const char* name, float ticks, float tps )
+    void SetData( const string& fname, const string& name, float ticks, float tps )
     {
         animFileName = fname;
         animName = name;
@@ -51,14 +51,14 @@ public:
         bonesHierarchy.push_back( hierarchy );
     }
 
-    const char* GetFileName()
+    const string& GetFileName()
     {
-        return animFileName.c_str();
+        return animFileName;
     }
 
-    const char* GetName()
+    const string& GetName()
     {
-        return animName.c_str();
+        return animName;
     }
 
     uint GetBoneOutputCount()
@@ -273,7 +273,7 @@ public:
         return ( *sets )[ index ];
     }
 
-    AnimSet* GetAnimationSetByName( const char* name )
+    AnimSet* GetAnimationSetByName( const string& name )
     {
         for( auto it = sets->begin(), end = sets->end(); it != end; ++it )
         {

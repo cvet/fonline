@@ -74,7 +74,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
     map< hash, map< string, StrMap > > files_texts;
     while( files.IsNextFile() )
     {
-        const char*  proto_name;
+        string       proto_name;
         FileManager& file = files.GetNextFile( &proto_name );
         if( !file.IsLoaded() )
         {
@@ -92,9 +92,9 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
             fopro.GetApps( "Header", protos_data );
         for( auto& pkv : protos_data )
         {
-            auto&       kv = *pkv;
-            const char* name = ( kv.count( "$Name" ) ? kv[ "$Name" ].c_str() : proto_name );
-            hash        pid = Str::GetHash( name );
+            auto&         kv = *pkv;
+            const string& name = ( kv.count( "$Name" ) ? kv[ "$Name" ] : proto_name );
+            hash          pid = Str::GetHash( name );
             if( files_protos.count( pid ) )
             {
                 WriteLog( "Proto '{}' already loaded.\n", name );
@@ -148,7 +148,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
                     }
                     else
                     {
-                        hash inject_name_hash = Str::GetHash( inject_name.c_str() );
+                        hash inject_name_hash = Str::GetHash( inject_name );
                         if( !files_protos.count( inject_name_hash ) )
                         {
                             WriteLog( "Proto '{}' not found for injection from proto '{}'.\n", inject_name.c_str(), Str::GetName( inject_kv.first ) );
@@ -181,7 +181,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
             Str::ParseLine( parent_name_line, ' ', parent_names, Str::ParseLineDummy );
             for( auto& parent_name : parent_names )
             {
-                hash parent_pid = Str::GetHash( parent_name.c_str() );
+                hash parent_pid = Str::GetHash( parent_name );
                 auto parent = files_protos.find( parent_pid );
                 if( parent == files_protos.end() )
                 {
@@ -447,7 +447,7 @@ bool ProtoManager::ValidateProtoResources( StrVec& resource_names )
 {
     HashSet hashes;
     for( auto& name : resource_names )
-        hashes.insert( Str::GetHash( name.c_str() ) );
+        hashes.insert( Str::GetHash( name ) );
 
     int errors = 0;
     errors += ValidateProtoResourcesExt( itemProtos, hashes );

@@ -117,7 +117,7 @@ static hash Global_GetStrHash( string str )
 {
     if( str.empty() )
         return 0;
-    return Str::GetHash( str.c_str() );
+    return Str::GetHash( str );
 }
 
 static string Global_GetHashStr( hash h )

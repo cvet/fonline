@@ -1571,7 +1571,7 @@ void FOMapper::RefreshTiles( int tab )
                 }
 
                 // Write tile
-                hash hash = Str::GetHash( fname.c_str() );
+                hash hash = Str::GetHash( fname );
                 Tabs[ tab ][ DEFAULT_SUB_TAB ].TileHashes.push_back( hash );
                 Tabs[ tab ][ DEFAULT_SUB_TAB ].TileNames.push_back( fname );
                 Tabs[ tab ][ collection_name ].TileHashes.push_back( hash );
@@ -4670,7 +4670,7 @@ void FOMapper::SScriptFunc::Global_AddTileName( ushort hx, ushort hy, int ox, in
     oy = CLAMP( oy, -MAX_MOVE_OY, MAX_MOVE_OY );
     layer = CLAMP( layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
 
-    hash pic_hash = Str::GetHash( pic_name.c_str() );
+    hash pic_hash = Str::GetHash( pic_name );
     Self->HexMngr.SetTile( pic_hash, hx, hy, ox, oy, layer, roof, false );
 }
 
@@ -4681,7 +4681,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 
 Map* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
-    ProtoMap* pmap = new ProtoMap( Str::GetHash( file_name.c_str() ) );
+    ProtoMap* pmap = new ProtoMap( Str::GetHash( file_name ) );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
     if( !pmap->Load() )
     {

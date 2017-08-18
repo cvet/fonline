@@ -800,7 +800,7 @@ void FileManager::DeleteDir( const string& dir )
     FilesCollection files( "", dir.c_str() );
     while( files.IsNextFile() )
     {
-        const char* path;
+        string path;
         files.GetNextFile( nullptr, &path, nullptr, true );
         DeleteFile( path );
     }
@@ -928,21 +928,21 @@ bool FilesCollection::IsNextFile()
     return curFileIndex < fileNames.size();
 }
 
-FileManager& FilesCollection::GetNextFile( const char** name /* = nullptr */, const char** path /* = nullptr */, const char** relative_path /* = nullptr */, bool no_read_data /* = false */ )
+FileManager& FilesCollection::GetNextFile( string* name /* = nullptr */, string* path /* = nullptr */, string* relative_path /* = nullptr */, bool no_read_data /* = false */ )
 {
     curFileIndex++;
     curFile.LoadFile( filePaths[ curFileIndex - 1 ], no_read_data );
     RUNTIME_ASSERT_STR( curFile.IsLoaded(), filePaths[ curFileIndex - 1 ].c_str() );
     if( name )
-        *name = fileNames[ curFileIndex - 1 ].c_str();
+        *name = fileNames[ curFileIndex - 1 ];
     if( path )
-        *path = filePaths[ curFileIndex - 1 ].c_str();
+        *path = filePaths[ curFileIndex - 1 ];
     if( relative_path )
-        *relative_path = fileRelativePaths[ curFileIndex - 1 ].c_str();
+        *relative_path = fileRelativePaths[ curFileIndex - 1 ];
     return curFile;
 }
 
-FileManager& FilesCollection::FindFile( const string& name, const char** path /* = nullptr */, const char** relative_path /* = nullptr */, bool no_read_data /* = false */ )
+FileManager& FilesCollection::FindFile( const string& name, string* path /* = nullptr */, string* relative_path /* = nullptr */, bool no_read_data /* = false */ )
 {
     curFile.UnloadFile();
     for( size_t i = 0; i < fileNames.size(); i++ )

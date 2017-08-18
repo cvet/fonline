@@ -2628,7 +2628,7 @@ bool FOServer::LoadClientsData()
         }
 
         // Generate user id
-        uint id = MAKE_CLIENT_ID( name.c_str() );
+        uint id = MAKE_CLIENT_ID( name );
         RUNTIME_ASSERT( id != 0 );
 
         // Get password hash

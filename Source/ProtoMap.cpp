@@ -169,7 +169,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         }
 
         uint          id = Str::AtoUI( kv[ "$Id" ].c_str() );
-        hash          proto_id = Str::GetHash( kv[ "$Proto" ].c_str() );
+        hash          proto_id = Str::GetHash( kv[ "$Proto" ] );
         ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
         if( !proto )
         {
@@ -207,7 +207,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         }
 
         uint       id = Str::AtoUI( kv[ "$Id" ].c_str() );
-        hash       proto_id = Str::GetHash( kv[ "$Proto" ].c_str() );
+        hash       proto_id = Str::GetHash( kv[ "$Proto" ] );
         ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
         if( !proto )
         {
@@ -240,7 +240,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             continue;
         }
 
-        hash name = Str::GetHash( kv[ "PicMap" ].c_str() );
+        hash name = Str::GetHash( kv[ "PicMap" ] );
         int  hx = Str::AtoI( kv[ "HexX" ].c_str() );
         int  hy = Str::AtoI( kv[ "HexY" ].c_str() );
         int  ox = ( kv.count( "OffsetX" ) ? Str::AtoI( kv[ "OffsetX" ].c_str() ) : 0 );
@@ -372,7 +372,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             }
         }
         if( !script_name.empty() )
-            SetScriptId( Str::GetHash( script_name.c_str() ) );
+            SetScriptId( Str::GetHash( script_name ) );
         CScriptArray* arr = Script::CreateArray( "int[]" );
         Script::AppendVectorToArray( vec, arr );
         SetDayTime( arr );
@@ -408,9 +408,9 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     hx *= 2;
                     hy *= 2;
                     if( type == "tile" )
-                        Tiles.push_back( Tile( Str::GetHash( name.c_str() ), hx, hy, 0, 0, 0, false ) );
+                        Tiles.push_back( Tile( Str::GetHash( name ), hx, hy, 0, 0, 0, false ) );
                     else if( type == "roof" )
-                        Tiles.push_back( Tile( Str::GetHash( name.c_str() ), hx, hy, 0, 0, 0, true ) );
+                        Tiles.push_back( Tile( Str::GetHash( name ), hx, hy, 0, 0, 0, true ) );
                     else if( type == "0" )
                         Tiles.push_back( Tile( Str::AtoUI( name.c_str() ), hx, hy, 0, 0, 0, false ) );
                     else if( type == "1" )
@@ -1013,7 +1013,7 @@ bool ProtoMap::Load()
 {
     // Find file
     FilesCollection maps( "fomap" );
-    const char* path;
+    string path;
     FileManager& map_file = maps.FindFile( GetName(), &path );
     if( !map_file.IsLoaded() )
     {

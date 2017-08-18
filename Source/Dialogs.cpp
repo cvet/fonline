@@ -89,7 +89,7 @@ bool DialogManager::LoadDialogs()
     uint            files_loaded = 0;
     while( files.IsNextFile() )
     {
-        const char*  name;
+        string       name;
         FileManager& file = files.GetNextFile( &name );
         if( !file.IsLoaded() )
         {
@@ -97,7 +97,7 @@ bool DialogManager::LoadDialogs()
             continue;
         }
 
-        DialogPack* pack = ParseDialog( name, (char*) file.GetBuf() );
+        DialogPack* pack = ParseDialog( name.c_str(), (char*) file.GetBuf() );
         if( !pack )
         {
             WriteLog( "Unable to parse dialog '{}'.\n", name );

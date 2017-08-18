@@ -629,7 +629,7 @@ struct GameOptions
     bool        ( * IsSpriteHit )( void*, int, int, bool );
 
     const char* ( *GetNameByHash )( hash );
-    hash        ( * GetHashByName )( const char* );
+    hash        ( * GetHashByName )( const string& );
 
     uint        ( * ScriptBind )( const char*, const char*, bool );
     void        ( * ScriptPrepare )( uint );

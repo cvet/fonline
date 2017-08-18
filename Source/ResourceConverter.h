@@ -9,9 +9,9 @@ public:
     static bool Generate( StrVec* resource_names );
 
 private:
-    static FileManager* Convert( const char* name, FileManager& file );
-    static FileManager* ConvertImage( const char* name, FileManager& file );
-    static FileManager* Convert3d( const char* name, FileManager& file );
+    static FileManager* Convert( const string& name, FileManager& file );
+    static FileManager* ConvertImage( const string& name, FileManager& file );
+    static FileManager* Convert3d( const string& name, FileManager& file );
 };
 
 #endif // __RESOURCE_CONVERTER__

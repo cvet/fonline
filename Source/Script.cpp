@@ -383,7 +383,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     bool            founded = false;
     while( dlls.IsNextFile() )
     {
-        const char* name, * path;
+        string name, path;
         dlls.GetNextFile( &name, &path, nullptr, true );
         if( Str::CompareCase( dll_path, name ) )
         {

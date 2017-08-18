@@ -137,7 +137,7 @@ static void FixTexCoord( float& x, float& y )
         y = fmodf( y, 1.0f );
 }
 
-FileManager* ResourceConverter::Convert( const char* name, FileManager& file )
+FileManager* ResourceConverter::Convert( const string& name, FileManager& file )
 {
     string ext = FileManager::GetExtension( name );
     if( ext == "png" || ext == "tga" )
@@ -148,7 +148,7 @@ FileManager* ResourceConverter::Convert( const char* name, FileManager& file )
     return &file;
 }
 
-FileManager* ResourceConverter::ConvertImage( const char* name, FileManager& file )
+FileManager* ResourceConverter::ConvertImage( const string& name, FileManager& file )
 {
     uchar* data;
     uint   width, height;
@@ -170,7 +170,7 @@ FileManager* ResourceConverter::ConvertImage( const char* name, FileManager& fil
     return converted_file;
 }
 
-FileManager* ResourceConverter::Convert3d( const char* name, FileManager& file )
+FileManager* ResourceConverter::Convert3d( const string& name, FileManager& file )
 {
     // Result bone
     Bone*      root_bone = nullptr;
@@ -1153,10 +1153,10 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     // Check timestamps of inner resources
                     while( resources.IsNextFile() )
                     {
-                        const char*  rel_path;
-                        FileManager& file = resources.GetNextFile( nullptr, nullptr, &rel_path, true );
+                        string       relative_path;
+                        FileManager& file = resources.GetNextFile( nullptr, nullptr, &relative_path, true );
                         if( resource_names )
-                            resource_names->push_back( rel_path );
+                            resource_names->push_back( relative_path );
 
                         if( skip_making_zip && file.GetWriteTime() > zip_file.GetWriteTime() )
                             skip_making_zip = false;
@@ -1173,7 +1173,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             resources.ResetCounter();
                             while( resources.IsNextFile() )
                             {
-                                const char*  relative_path;
+                                string       relative_path;
                                 FileManager& file = resources.GetNextFile( nullptr, nullptr, &relative_path );
                                 FileManager* converted_file = Convert( relative_path, file );
                                 if( !converted_file )
@@ -1184,7 +1184,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
                                 zip_fileinfo zfi;
                                 memzero( &zfi, sizeof( zfi ) );
-                                if( zipOpenNewFileInZip( zip, relative_path, &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
+                                if( zipOpenNewFileInZip( zip, relative_path.c_str(), &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
                                 {
                                     if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
                                         WriteLog( "Can't write file '{}' in zip file '{}'.\n", relative_path, zip_path.c_str() );
@@ -1220,11 +1220,9 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     bool log_shown = false;
                     while( resources.IsNextFile() )
                     {
-                        const char*  path;
-                        const char*  rel_path;
-                        FileManager& file = resources.GetNextFile( nullptr, &path, &rel_path );
-                        char         fname[ MAX_FOTEXT ];
-                        Str::Format( fname, "Update/%s", rel_path );
+                        string       path, relative_path;
+                        FileManager& file = resources.GetNextFile( nullptr, &path, &relative_path );
+                        string       fname = "Update/" + relative_path;
                         FileManager  update_file;
                         if( !update_file.LoadFile( fname, true ) || file.GetWriteTime() > update_file.GetWriteTime() )
                         {
@@ -1267,7 +1265,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             }
                         }
 
-                        update_file_names.insert( rel_path );
+                        update_file_names.insert( relative_path );
                     }
                 }
             }
@@ -1278,10 +1276,9 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     FilesCollection update_files( "", "Update/" );
     while( update_files.IsNextFile() )
     {
-        const char* path;
-        const char* rel_path;
-        update_files.GetNextFile( nullptr, &path, &rel_path, true );
-        if( !update_file_names.count( rel_path ) )
+        string path, relative_path;
+        update_files.GetNextFile( nullptr, &path, &relative_path, true );
+        if( !update_file_names.count( relative_path ) )
         {
             FileManager::DeleteFile( path );
             something_changed = true;

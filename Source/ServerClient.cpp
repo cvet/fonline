@@ -708,7 +708,7 @@ void FOServer::Process_LogIn( Client*& cl )
     }
 
     // Get client account data
-    uint       id = MAKE_CLIENT_ID( cl->Name.c_str() );
+    uint       id = MAKE_CLIENT_ID( cl->Name );
     ClientData data;
     if( !Singleplayer )
     {

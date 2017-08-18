@@ -424,7 +424,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
     FilesCollection msg_files( "msg" );
     while( msg_files.IsNextFile() )
     {
-        const char*  name, * path;
+        string       name, path;
         FileManager& msg_file = msg_files.GetNextFile( &name, &path );
 
         // Check pattern '...Texts/lang/file'
