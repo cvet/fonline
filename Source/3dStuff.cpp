@@ -1458,7 +1458,7 @@ bool Animation3dEntity::Load( const char* name )
                 ( *istr ).getline( line, MAX_FOTEXT );
                 Str::EraseChars( line, '\r' );
                 Str::EraseChars( line, '\n' );
-                Str::ParseLine( line, ' ', templates, Str::ParseLineDummy );
+                templates = Str::Split( line, ' ' );
                 if( templates.empty() )
                     continue;
                 for( uint i = 1, j = (uint) templates.size(); i < j - 1; i += 2 )
@@ -1602,8 +1602,7 @@ bool Animation3dEntity::Load( const char* name )
 
                     // Layers
                     ( *istr ) >> buf;
-                    StrVec layers;
-                    Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
+                    StrVec layers = Str::Split( buf, '-' );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
                         if( !Str::Compare( layers[ m ].c_str(), "All" ) )
@@ -1621,8 +1620,7 @@ bool Animation3dEntity::Load( const char* name )
 
                     // Shapes
                     ( *istr ) >> buf;
-                    StrVec shapes;
-                    Str::ParseLine( buf, '-', shapes, Str::ParseLineDummy );
+                    StrVec shapes = Str::Split( buf, '-' );
 
                     // Unskin bone
                     ( *istr ) >> buf;
@@ -1812,8 +1810,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::Compare( token, "DisableLayer" ) )
             {
                 ( *istr ) >> buf;
-                StrVec layers;
-                Str::ParseLine( buf, '-', layers, Str::ParseLineDummy );
+                StrVec layers = Str::Split( buf, '-' );
                 for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                 {
                     int layer = ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
@@ -1837,8 +1834,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::Compare( token, "DisableMesh" ) )
             {
                 ( *istr ) >> buf;
-                StrVec meshes;
-                Str::ParseLine( buf, '-', meshes, Str::ParseLineDummy );
+                StrVec meshes = Str::Split( buf, '-' );
                 for( uint m = 0, n = (uint) meshes.size(); m < n; m++ )
                 {
                     uint mesh_name_hash = 0;
@@ -1928,8 +1924,7 @@ bool Animation3dEntity::Load( const char* name )
                 else if( Str::Compare( buf, "Float" ) || Str::Compare( buf, "Floats" ) )
                 {
                     type = EffectDefault::Float;
-                    StrVec floats;
-                    Str::ParseLine( def_value, '-', floats, Str::ParseLineDummy );
+                    StrVec floats = Str::Split( def_value, '-' );
                     if( floats.empty() )
                         continue;
                     data_len = (uint) floats.size() * sizeof( float );
@@ -1940,8 +1935,7 @@ bool Animation3dEntity::Load( const char* name )
                 else if( Str::Compare( buf, "Int" ) || Str::Compare( buf, "Dword" ) )
                 {
                     type = EffectDefault::Int;
-                    StrVec ints;
-                    Str::ParseLine( def_value, '-', ints, Str::ParseLineDummy );
+                    StrVec ints = Str::Split( def_value, '-' );
                     if( ints.empty() )
                         continue;
                     data_len = (uint) ints.size() * sizeof( int );

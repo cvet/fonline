@@ -224,7 +224,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         if( call.IsValues )
         {
             call.ValuesSigned = Str::CompareCase( kv[ "ValuesSigned" ].c_str(), "true" );
-            Str::ParseLine( kv[ "Values" ].c_str(), ' ', call.Values, Str::AtoI );
+            call.Values = Str::SplitToInt( kv[ "Values" ], ' ' );
         }
         else
         {

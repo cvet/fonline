@@ -198,8 +198,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
 
         if( Str::CompareCaseCount( line, "Effect ", Str::Length( "Effect " ) ) )
         {
-            StrVec tokens;
-            Str::ParseLine( line.c_str() + Str::Length( "Effect " ), ' ', tokens, Str::ParseLineDummy );
+            StrVec tokens = Str::Split( line.substr( Str::Length( "Effect " ) ), ' ' );
             if( !tokens.empty() )
                 commands.push_back( tokens );
         }

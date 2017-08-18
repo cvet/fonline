@@ -174,8 +174,7 @@ void InitialSetup( uint argc, char** argv )
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER ) || defined ( FONLINE_SCRIPT_COMPILER )
     const char* modules = MainConfig->GetStr( "", "Modules" );
     RUNTIME_ASSERT( modules );
-    StrVec      modules_arr;
-    Str::ParseLine( modules, ';', modules_arr, Str::ParseLineDummy );
+    StrVec      modules_arr = Str::Split( modules, ';' );
     for( size_t i = 0; i < modules_arr.size(); i++ )
     {
         string module_path = FileManager::CombinePath( GameOpt.ServerDir, modules_arr[ i ] );

@@ -101,51 +101,9 @@ namespace Str
     void        SaveHashes( StrMap& hashes );
     void        LoadHashes( StrMap& hashes );
 
-    // Parse str
-    const char* ParseLineDummy( const char* str );
-    template< typename Cont, class Func >
-    void ParseLine( const string& str, char divider, Cont& result, Func f )
-    {
-        ParseLine( str.c_str(), divider, result, f );
-    }
-    template< typename Cont, class Func >
-    void ParseLine( const char* str, char divider, Cont& result, Func f )
-    {
-        result.clear();
-        char buf[ MAX_FOTEXT ];
-        for( uint buf_pos = 0; ; str++ )
-        {
-            if( *str == divider || *str == 0 || buf_pos >= sizeof( buf ) - 1 )
-            {
-                if( buf_pos )
-                {
-                    buf[ buf_pos ] = 0;
-                    Trim( buf );
-                    if( buf[ 0 ] )
-                        result.push_back( typename Cont::value_type( f( buf ) ) );
-                    buf_pos = 0;
-                }
-
-                if( *str == 0 )
-                    break;
-            }
-            else
-            {
-                buf[ buf_pos ] = *str;
-                buf_pos++;
-            }
-        }
-    }
-
-    // New string stuff
-    template< typename ... Args >
-    string String_Format( const string& format, Args ... args )
-    {
-        size_t                    size = snprintf( nullptr, 0, format.c_str(), args ... ) + 1;
-        std::unique_ptr< char[] > buf( new char[ size ] );
-        snprintf( buf.get(), size, format.c_str(), args ... );
-        return string( buf.get(), buf.get() + size - 1 );
-    }
+    // Split exclude empty entries
+    StrVec Split( const string& line, char divider );
+    IntVec SplitToInt( const string& line, char divider );
 }
 
 class _str // Todo: do it
@@ -155,8 +113,8 @@ class _str // Todo: do it
 public:
     _str( const string& s ): s( s ) {}
     operator string&() { return s; }
-    _str operator+( const char* r )   { return _str( s + string( r ) ); }
-    _str operator+( const string& r ) { return _str( s + r ); }
+    _str        operator+( const char* r )                  { return _str( s + string( r ) ); }
+    _str        operator+( const string& r )                { return _str( s + r ); }
     friend _str operator+( const _str& l, const string& r ) { return _str( l.s + r ); }
 
     _str& lower()

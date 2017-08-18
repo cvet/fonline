@@ -172,13 +172,6 @@ void DialogManager::Finish()
     WriteLog( "Dialog manager finish complete.\n" );
 }
 
-string ParseLangKey( const char* str )
-{
-    while( *str == ' ' )
-        str++;
-    return string( str );
-}
-
 DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data )
 {
     IniParser fodlg;
@@ -210,8 +203,8 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     if( pack->PackId <= 0xFFFF )
         LOAD_FAIL( "Invalid hash for dialog name." );
 
-    Str::ParseLine( lang_key, ' ', lang_apps, ParseLangKey );
-    if( !lang_apps.size() )
+    lang_apps = Str::Split( lang_key, ' ' );
+    if( lang_apps.empty() )
         LOAD_FAIL( "Lang app is empty." );
 
     for( uint i = 0, j = (uint) lang_apps.size(); i < j; i++ )

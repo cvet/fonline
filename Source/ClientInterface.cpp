@@ -516,7 +516,7 @@ void FOClient::SaveLoadCollect()
         // Picture data
         UCharVec pic_data;
         if( settings.count( "SaveLoadPicture" ) )
-            Str::ParseLine( settings[ "SaveLoadPicture" ].c_str(), ' ', pic_data, Str::AtoUI );
+            Str::ParseLine( settings[ "SaveLoadPicture" ], ' ', pic_data, Str::AtoUI );
 
         // Game time
         ushort year = Str::AtoI( settings[ "Year" ].c_str() );

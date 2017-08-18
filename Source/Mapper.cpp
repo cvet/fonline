@@ -4057,8 +4057,7 @@ void FOMapper::ParseCommand( const char* cmd )
         }
 
         cmd++;
-        IntVec anims;
-        Str::ParseLine( cmd, ' ', anims, atoi );
+        IntVec anims = Str::SplitToInt( cmd, ' ' );
         if( anims.empty() )
             return;
 

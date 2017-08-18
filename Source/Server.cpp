@@ -156,15 +156,15 @@ void FOServer::GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVe
 
     const char* s;
     if( ( s = MainConfig->GetStr( "", "Access_client" ) ) )
-        Str::ParseLine( s, ' ', client, Str::ParseLineDummy );
+        client = Str::Split( s, ' ' );
     if( ( s = MainConfig->GetStr( "", "Access_tester" ) ) )
-        Str::ParseLine( s, ' ', tester, Str::ParseLineDummy );
+        tester = Str::Split( s, ' ' );
     if( ( s = MainConfig->GetStr( "", "Access_moder" ) ) )
-        Str::ParseLine( s, ' ', moder, Str::ParseLineDummy );
+        moder = Str::Split( s, ' ' );
     if( ( s = MainConfig->GetStr( "", "Access_admin" ) ) )
-        Str::ParseLine( s, ' ', admin, Str::ParseLineDummy );
+        admin = Str::Split( s, ' ' );
     if( ( s = MainConfig->GetStr( "", "AccessNames_admin" ) ) )
-        Str::ParseLine( s, ' ', admin_names, Str::ParseLineDummy );
+        admin_names = Str::Split( s, ' ' );
 }
 
 void FOServer::DisconnectClient( Client* cl )

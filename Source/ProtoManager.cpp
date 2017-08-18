@@ -136,8 +136,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
         {
             if( inject_kv.second.count( key_name ) )
             {
-                StrVec inject_names;
-                Str::ParseLine( inject_kv.second[ key_name ].c_str(), ' ', inject_names, Str::ParseLineDummy );
+                StrVec inject_names = Str::Split( inject_kv.second[ key_name ], ' ' );
                 for( auto& inject_name : inject_names )
                 {
                     if( inject_name == "All" )
@@ -177,8 +176,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
         std::function< bool(const char*, StrMap&) > fill_parent = [ &fill_parent, &base_name, &files_protos, &final_kv ] ( const char* name, StrMap & cur_kv )
         {
             const char* parent_name_line = ( cur_kv.count( "$Parent" ) ? cur_kv[ "$Parent" ].c_str() : "" );
-            StrVec      parent_names;
-            Str::ParseLine( parent_name_line, ' ', parent_names, Str::ParseLineDummy );
+            StrVec      parent_names = Str::Split( parent_name_line, ' ' );
             for( auto& parent_name : parent_names )
             {
                 hash parent_pid = Str::GetHash( parent_name );

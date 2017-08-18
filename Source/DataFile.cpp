@@ -865,9 +865,7 @@ bool BundleFile::Init( const string& fname )
     // Parse
     Str::Replacement( buf, '\r', '\n', '\n' );
     Str::Replacement( buf, '\r', '\n' );
-    StrVec names;
-    Str::ParseLine( buf, '\n', names, Str::ParseLineDummy );
-    for( const string& name : names )
+    for( const string& name : Str::Split( buf, '\n' ) )
     {
         void* f = FileOpen( name, false );
         if( !f )

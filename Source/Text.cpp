@@ -2,6 +2,7 @@
 #include "Text.h"
 #include "Crypt.h"
 #include "FLTK/src/xutf8/headers/case.h"
+#include <sstream>
 
 void Str::Copy( char* to, uint size, const char* from )
 {
@@ -1026,7 +1027,30 @@ void Str::LoadHashes( StrMap& hashes )
         GetHash( kv.second );
 }
 
-const char* Str::ParseLineDummy( const char* str )
+StrVec Str::Split( const string& line, char divider )
 {
-    return str;
+    StrVec            result;
+    std::stringstream ss( line );
+    string            item;
+    while( std::getline( ss, item, divider ) )
+    {
+        Trim( item );
+        if( !item.empty() )
+            result.push_back( std::move( item ) );
+    }
+    return result;
+}
+
+IntVec Str::SplitToInt( const string& line, char divider )
+{
+    IntVec            result;
+    std::stringstream ss( line );
+    string            item;
+    while( std::getline( ss, item, divider ) )
+    {
+        Trim( item );
+        if( !item.empty() )
+            result.push_back( AtoI( item.c_str() ) );
+    }
+    return result;
 }
