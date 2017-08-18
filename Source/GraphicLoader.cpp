@@ -160,8 +160,7 @@ EffectVec GraphicLoader::loadedEffects;
 Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, const char* defines /* = NULL */, const char* model_path /* = NULL */, EffectDefault* defaults /* = NULL */, uint defaults_count /* = 0 */ )
 {
     // Erase extension
-    string fname = effect_name;
-    FileManager::EraseExtension( fname );
+    string fname = FileManager::EraseExtension( effect_name );
 
     // Reset defaults to NULL if it's count is zero
     if( defaults_count == 0 )
@@ -341,7 +340,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
     {
         binary_fname = "Cache/";
         binary_fname += fname;
-        FileManager::EraseExtension( binary_fname );
+        binary_fname = FileManager::EraseExtension( binary_fname );
         if( defines )
         {
             char binary_fname_defines[ MAX_FOPATH ];

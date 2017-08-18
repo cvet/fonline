@@ -74,12 +74,12 @@ public:
     static void   ResetCurrentDir();
     static void   SetCurrentDir( const string& dir, const string& write_dir );
     static string GetWritePath( const string& fname );
-    static void   FormatPath( string& path );
+    static string FormatPath( const string& path );
     static string ExtractDir( const string& path );
     static string ExtractFileName( const string& path );
     static string CombinePath( const string& base_path, const string& path );
-    static string GetExtension( const string& path ); // Extension without dot
-    static void   EraseExtension( string& path );     // Erase extension with dot
+    static string GetExtension( const string& path );   // Extension without dot
+    static string EraseExtension( const string& path ); // Erase extension with dot
     static string ForwardPath( const string& path, const string& relative_dir );
     static bool   IsFileExists( const string& fname );
     static bool   CopyFile( const string& from, const string& to );
@@ -87,8 +87,8 @@ public:
     static bool   DeleteFile( const string& fname );
     static void   DeleteDir( const string& dir );
     static void   CreateDirectoryTree( const string& path );
-    static void   ResolvePath( string& path );
-    static void   NormalizePathSlashes( string& path );
+    static string ResolvePath( const string& path );
+    static string NormalizePathSlashes( const string& path );
 
     bool        IsLoaded()     { return fileSize != 0; }
     uchar*      GetBuf()       { return fileBuf; }

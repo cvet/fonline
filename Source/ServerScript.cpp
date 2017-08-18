@@ -371,9 +371,7 @@ bool FOServer::ReloadClientScripts()
         {
             // Make file name
             const char* extensions[] = { ".dll", ".so" };
-            string      fname = dll_path;
-            FileManager::EraseExtension( fname );
-            fname += extensions[ d ];
+            string      fname = FileManager::EraseExtension( dll_path ) + extensions[ d ];
 
             // Erase first './'
             if( Str::CompareCount( fname, "./", 2 ) )

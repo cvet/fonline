@@ -28,8 +28,8 @@ void* FileFindFirst( const string& path, const string& extension, string* fname,
 bool  FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, bool* is_dir );
 void  FileFindClose( void* descriptor );
 
-void NormalizePathSlashes( string& path );
-void ResolvePath( string& path );
+void NormalizePathSlashesInplace( string& path );
+void ResolvePathInplace( string& path );
 void MakeDirectory( const string& path );
 void MakeDirectoryTree( const string& path );
 

@@ -4775,9 +4775,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
     {
         if( ProtoMap::IsMapFile( Str::FormatBuf( "%s%s", dir_.c_str(), file_find_fname.c_str() ) ) )
         {
-            string fname = file_find_fname;
-            FileManager::EraseExtension( fname );
-
+            string  fname = FileManager::EraseExtension( file_find_fname );
             int     len = names->GetSize();
             names->Resize( names->GetSize() + 1 );
             string& str = *(string*) names->At( len );

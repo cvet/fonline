@@ -358,8 +358,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
         return it->second.second;
 
     // Make path
-    string dll_path = dll_name_entry;
-    FileManager::EraseExtension( dll_path );
+    string dll_path = FileManager::EraseExtension( dll_name_entry );
 
     // Add '64' appendix
     #if defined ( FO_X64 )
@@ -404,7 +403,7 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
 
     // Set current directory to DLL
     string new_path = FileManager::ExtractDir( dll_path );
-    FileManager::ResolvePath( new_path );
+    new_path = FileManager::ResolvePath( new_path );
     #ifdef FO_WINDOWS
     wchar_t cur_path[ MAX_FOPATH ];
     GetCurrentDirectoryW( MAX_FOPATH, cur_path );

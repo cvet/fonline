@@ -29,7 +29,7 @@ static std::wstring MBtoWC( const string& mb )
 static string WCtoMB( const wchar_t* wc )
 {
     string mb = WideCharToChar( wc );
-    NormalizePathSlashes( mb );
+    NormalizePathSlashesInplace( mb );
     return mb;
 }
 
@@ -617,12 +617,12 @@ void FileFindClose( void* descriptor )
 }
 #endif
 
-void NormalizePathSlashes( string& path )
+void NormalizePathSlashesInplace( string& path )
 {
     std::replace( path.begin(), path.end(), '\\', '/' );
 }
 
-void ResolvePath( string& path )
+void ResolvePathInplace( string& path )
 {
     #ifdef FO_WINDOWS
     DWORD    len = GetFullPathNameW( MBtoWC( path ).c_str(), 0, nullptr, nullptr );
@@ -630,7 +630,7 @@ void ResolvePath( string& path )
     if( GetFullPathNameW( MBtoWC( path ).c_str(), len + 1, buf, nullptr ) == len )
     {
         path = WCtoMB( buf );
-        NormalizePathSlashes( path );
+        NormalizePathSlashesInplace( path );
     }
 
     #else
@@ -656,7 +656,7 @@ void MakeDirectoryTree( const string& path )
 {
     uint   result = 0;
     string work = path;
-    NormalizePathSlashes( work );
+    NormalizePathSlashesInplace( work );
     for( size_t i = 0; i < work.length(); i++ )
         if( work[ i ] == '/' )
             MakeDirectory( work.substr( 0, i ) );

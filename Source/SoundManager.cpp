@@ -567,8 +567,7 @@ bool SoundManager::PlaySound( const char* name )
         return true;
 
     // Make 'NAME'
-    string sound_name = name;
-    FileManager::EraseExtension( sound_name );
+    string sound_name = FileManager::EraseExtension( name );
     sound_name = Str::Upper( sound_name );
 
     // Find base

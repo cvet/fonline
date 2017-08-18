@@ -965,8 +965,7 @@ hash Str::GetHash( const string& name )
     if( name.empty() )
         return 0;
 
-    string fixed_name = name;
-    FileManager::NormalizePathSlashes( fixed_name );
+    string fixed_name = FileManager::NormalizePathSlashes( name );
     Str::Trim( fixed_name );
     if( fixed_name.empty() )
         return 0;

@@ -2613,8 +2613,7 @@ bool FOServer::LoadClientsData()
         string client_name = file_find_fname;
 
         // Take name from file title
-        string name = client_name;
-        FileManager::EraseExtension( name );
+        string name = FileManager::EraseExtension( client_name );
 
         // Take id and password from file
         char      client_fname[ MAX_FOPATH ];

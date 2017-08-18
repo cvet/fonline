@@ -114,16 +114,9 @@ int main( int argc, char* argv[] )
             run_func.push_back( argv[ ++i ] );
     }
 
-    // Fix path
-    string path = arg_path;
-    FileManager::NormalizePathSlashes( path );
-
-    string path_prep;
-    if( arg_path_prep )
-    {
-        path_prep = arg_path_prep;
-        FileManager::NormalizePathSlashes( path_prep );
-    }
+    // Paths
+    string path = FileManager::NormalizePathSlashes( arg_path );
+    string path_prep = ( arg_path_prep ? FileManager::NormalizePathSlashes( arg_path_prep ) : "" );
 
     // Set current directory
     string dir = FileManager::ExtractDir( path );
@@ -226,8 +219,7 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
     string file_name = FileManager::ExtractFileName( path );
 
     // Make module name
-    string module_name = file_name;
-    FileManager::EraseExtension( module_name );
+    string module_name = FileManager::EraseExtension( file_name );
 
     // Start compilation
     string target_lower = Str::Lower( target );

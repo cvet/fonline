@@ -18,7 +18,7 @@ typedef vector< pair< string, string > > FileNameVec;
 static void GetFileNames_( const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext, StrVec& result )
 {
     string path_fixed = Str::Lower( path );
-    FileManager::NormalizePathSlashes( path_fixed );
+    path_fixed = FileManager::NormalizePathSlashes( path_fixed );
     if( !path_fixed.empty() && path_fixed.back() != '/' )
         path_fixed += "/";
     size_t len = path_fixed.length();
@@ -399,7 +399,7 @@ bool FalloutDatFile::ReadTree()
             if( fnsz > 1 && fnsz < MAX_FOPATH && type != 0x400 ) // Not folder
             {
                 string name( (const char*) ptr + 4, fnsz );
-                NormalizePathSlashes( name );
+                name = FileManager::NormalizePathSlashes( name );
                 string name_lower = Str::Lower( name );
 
                 if( type == 2 )
@@ -463,7 +463,7 @@ bool FalloutDatFile::ReadTree()
         if( fnsz && fnsz + 1 < MAX_FOPATH )
         {
             string name( (const char*) ptr + 4, fnsz );
-            NormalizePathSlashes( name );
+            name = FileManager::NormalizePathSlashes( name );
             string name_lower = Str::Lower( name );
 
             filesTree.insert( PAIR( name_lower, ptr + 4 + fnsz ) );
@@ -769,8 +769,7 @@ bool ZipFile::ReadTree()
 
         if( !( info.external_fa & 0x10 ) )   // Not folder
         {
-            string name = buf;
-            NormalizePathSlashes( name );
+            string name = FileManager::NormalizePathSlashes( buf );
             string name_lower = Str::Lower( name );
             zip_info.Pos = pos;
             zip_info.UncompressedSize = (int) info.uncompressed_size;

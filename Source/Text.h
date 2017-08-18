@@ -148,4 +148,28 @@ namespace Str
     }
 }
 
+class _str // Todo: do it
+{
+    string s;
+
+public:
+    _str( const string& s ): s( s ) {}
+    operator string&() { return s; }
+    _str operator+( const char* r )   { return _str( s + string( r ) ); }
+    _str operator+( const string& r ) { return _str( s + r ); }
+    friend _str operator+( const _str& l, const string& r ) { return _str( l.s + r ); }
+
+    _str& lower()
+    {
+        s = Str::Lower( s );
+        return *this;
+    }
+
+    _str& upper()
+    {
+        s = Str::Upper( s );
+        return *this;
+    }
+};
+
 #endif // ___TEXT___

@@ -47,8 +47,7 @@ void ResourceManager::Refresh()
             data_file->GetFileNames( "", true, "ogg", sounds );
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
             {
-                string sound_name = *it;
-                FileManager::EraseExtension( sound_name );
+                string sound_name = FileManager::EraseExtension( *it );
                 sound_name = Str::Upper( sound_name );
                 soundNames.insert( PAIR( sound_name, *it ) );
             }

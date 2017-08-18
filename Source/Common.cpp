@@ -179,12 +179,12 @@ void InitialSetup( uint argc, char** argv )
     for( size_t i = 0; i < modules_arr.size(); i++ )
     {
         string module_path = FileManager::CombinePath( GameOpt.ServerDir, modules_arr[ i ] );
-        FileManager::NormalizePathSlashes( module_path );
-        FileManager::ResolvePath( module_path );
+        module_path = FileManager::NormalizePathSlashes( module_path );
+        module_path = FileManager::ResolvePath( module_path );
         if( !module_path.empty() && module_path.back() != '/' && module_path.back() != '\\' )
             module_path += "/";
 
-        FileManager::NormalizePathSlashes( module_path );
+        module_path = FileManager::NormalizePathSlashes( module_path );
         GameModules.push_back( module_path );
     }
     #endif

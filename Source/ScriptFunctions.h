@@ -162,8 +162,7 @@ static bool Global_DeleteFile( string filename )
 
 static void Global_CreateDirectoryTree( string path )
 {
-    FileManager::FormatPath( path );
-    FileManager::CreateDirectoryTree( path );
+    FileManager::CreateDirectoryTree( FileManager::FormatPath( path ) );
 }
 
 static void Global_Yield( uint time )

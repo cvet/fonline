@@ -434,8 +434,7 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
         {
             for( int i = 0; i < TEXTMSG_COUNT; i++ )
             {
-                string name_ = TextMsgFileName[ i ];
-                FileManager::EraseExtension( name_ );
+                string name_ = FileManager::EraseExtension( TextMsgFileName[ i ] );
                 if( Str::CompareCase( name_, name ) )
                 {
                     if( !Msg[ i ].LoadFromString( (char*) msg_file.GetBuf(), msg_file.GetFsize() ) )

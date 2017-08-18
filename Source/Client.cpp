@@ -660,11 +660,9 @@ void FOClient::UpdateFilesLoop()
                 UpdateFile& update_file = ( *UpdateFilesList )[ i ];
                 float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
                 float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
+                string      name = FileManager::FormatPath( update_file.Name );
 
-                string      name = update_file.Name;
-                FileManager::FormatPath( name );
-
-                char buf[ MAX_FOTEXT ];
+                char        buf[ MAX_FOTEXT ];
                 UpdateFilesProgress += Str::Format( buf, "%s %.2f / %.2f MB\n", name.c_str(), cur, max );
             }
             UpdateFilesProgress += "\n";
@@ -8799,15 +8797,13 @@ bool FOClient::SScriptFunc::Global_IsMapHexRaked( ushort hx, ushort hy )
 
 bool FOClient::SScriptFunc::Global_SaveScreenshot( string file_path )
 {
-    FileManager::FormatPath( file_path );
-    SprMngr.SaveTexture( nullptr, file_path.c_str(), true );
+    SprMngr.SaveTexture( nullptr, FileManager::FormatPath( file_path ).c_str(), true );
     return true;
 }
 
 bool FOClient::SScriptFunc::Global_SaveText( string file_path, string text )
 {
-    FileManager::FormatPath( file_path );
-    void* f = FileOpen( file_path, true );
+    void* f = FileOpen( FileManager::FormatPath( file_path ), true );
     if( !f )
         return false;
 
