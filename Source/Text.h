@@ -22,12 +22,11 @@ namespace Str
 
     char* Duplicate( const char* str );
 
-    void Lower( char* str );
-    void Lower( string& str );
+    string Lower( const string& str );
+    string Upper( const string& str );
+
     uint LowerUTF8( uint ucs );
     void LowerUTF8( char* str );
-    void Upper( char* str );
-    void Upper( string& str );
     uint UpperUTF8( uint ucs );
     void UpperUTF8( char* str );
 

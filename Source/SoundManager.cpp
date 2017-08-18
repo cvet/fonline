@@ -567,23 +567,23 @@ bool SoundManager::PlaySound( const char* name )
         return true;
 
     // Make 'NAME'
-    string name_ = name;
-    FileManager::EraseExtension( name_ );
-    Str::Upper( name_ );
+    string sound_name = name;
+    FileManager::EraseExtension( sound_name );
+    sound_name = Str::Upper( sound_name );
 
     // Find base
     StrMap& names = ResMngr.GetSoundNames();
-    auto    it = names.find( name_ );
+    auto    it = names.find( sound_name );
     if( it != names.end() )
         return Load( it->second.c_str(), false ) != nullptr;
 
     // Check random pattern 'NAME_X'
     uint count = 0;
     char buf[ MAX_FOPATH ];
-    while( names.find( Str::Format( buf, "%s_%d", name_.c_str(), count + 1 ) ) != names.end() )
+    while( names.find( Str::Format( buf, "%s_%d", sound_name.c_str(), count + 1 ) ) != names.end() )
         count++;
     if( count )
-        return Load( names.find( Str::Format( buf, "%s_%d", name_.c_str(), Random( 1, count ) ) )->second.c_str(), false ) != nullptr;
+        return Load( names.find( Str::Format( buf, "%s_%d", sound_name.c_str(), Random( 1, count ) ) )->second.c_str(), false ) != nullptr;
 
     return false;
 }

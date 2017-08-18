@@ -230,8 +230,7 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
     FileManager::EraseExtension( module_name );
 
     // Start compilation
-    string target_lower = target;
-    Str::Lower( target_lower );
+    string target_lower = Str::Lower( target );
     WriteLog( "Compiling '{}' as {} script...\n", file_name, target_lower );
     double tick = Timer::AccurateTick();
 

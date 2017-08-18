@@ -24,14 +24,11 @@ void ResourceManager::Refresh()
                 // File name
                 string name = FileManager::ExtractFileName( it->c_str() );
                 Str::GetHash( name );
-                Str::Lower( name );
-                Str::GetHash( name );
+                Str::GetHash( Str::Lower( name ) );
 
                 // Full path
-                name = it->c_str();
-                Str::GetHash( name );
-                Str::Lower( name );
-                Str::GetHash( name );
+                Str::GetHash( *it );
+                Str::GetHash( Str::Lower( *it ) );
             }
 
             // Splashes
@@ -50,9 +47,9 @@ void ResourceManager::Refresh()
             data_file->GetFileNames( "", true, "ogg", sounds );
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
             {
-                string sound_name = it->c_str();
+                string sound_name = *it;
                 FileManager::EraseExtension( sound_name );
-                Str::Upper( sound_name );
+                sound_name = Str::Upper( sound_name );
                 soundNames.insert( PAIR( sound_name, *it ) );
             }
 

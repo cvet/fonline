@@ -17,8 +17,7 @@ typedef vector< pair< string, string > > FileNameVec;
 
 static void GetFileNames_( const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext, StrVec& result )
 {
-    string path_fixed = path;
-    Str::Lower( path_fixed );
+    string path_fixed = Str::Lower( path );
     FileManager::NormalizePathSlashes( path_fixed );
     if( !path_fixed.empty() && path_fixed.back() != '/' )
         path_fixed += "/";
@@ -221,7 +220,6 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree
     FindDataVec find_data;
     FileManager::GetFolderFileNames( basePath, true, "", files, &find_data );
 
-    char name_lower[ MAX_FOTEXT ];
     for( size_t i = 0, j = files.size(); i < j; i++ )
     {
         FileEntry fe;
@@ -229,10 +227,9 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree
         fe.FileSize = find_data[ i ].FileSize;
         fe.WriteTime = find_data[ i ].WriteTime;
 
-        Str::Copy( name_lower, files[ i ].c_str() );
-        Str::Lower( name_lower );
-        files_tree.insert( PAIR( string( name_lower ), fe ) );
-        files_tree_names.push_back( PAIR( string( name_lower ), files[ i ] ) );
+        string name_lower = Str::Lower( files[ i ] );
+        files_tree.insert( PAIR( name_lower, fe ) );
+        files_tree_names.push_back( PAIR( name_lower, files[ i ] ) );
     }
 }
 
@@ -403,8 +400,7 @@ bool FalloutDatFile::ReadTree()
             {
                 string name( (const char*) ptr + 4, fnsz );
                 NormalizePathSlashes( name );
-                string name_lower = name;
-                Str::Lower( name_lower );
+                string name_lower = Str::Lower( name );
 
                 if( type == 2 )
                     *( ptr + 4 + fnsz + 7 ) = 1;               // Compressed
@@ -468,8 +464,7 @@ bool FalloutDatFile::ReadTree()
         {
             string name( (const char*) ptr + 4, fnsz );
             NormalizePathSlashes( name );
-            string name_lower = name;
-            Str::Lower( name_lower );
+            string name_lower = Str::Lower( name );
 
             filesTree.insert( PAIR( name_lower, ptr + 4 + fnsz ) );
             filesTreeNames.push_back( PAIR( name_lower, name ) );
@@ -776,8 +771,7 @@ bool ZipFile::ReadTree()
         {
             string name = buf;
             NormalizePathSlashes( name );
-            string name_lower = name;
-            Str::Lower( name_lower );
+            string name_lower = Str::Lower( name );
             zip_info.Pos = pos;
             zip_info.UncompressedSize = (int) info.uncompressed_size;
             filesTree.insert( PAIR( name_lower, zip_info ) );
@@ -874,7 +868,6 @@ bool BundleFile::Init( const string& fname )
     Str::Replacement( buf, '\r', '\n' );
     StrVec names;
     Str::ParseLine( buf, '\n', names, Str::ParseLineDummy );
-    char   name_lower[ MAX_FOTEXT ];
     for( const string& name : names )
     {
         void* f = FileOpen( name, false );
@@ -889,10 +882,9 @@ bool BundleFile::Init( const string& fname )
         fe.FileSize = FileGetSize( f );
         fe.WriteTime = FileGetWriteTime( f );
 
-        Str::Copy( name_lower, name.c_str() );
-        Str::Lower( name_lower );
-        filesTree.insert( PAIR( string( name_lower ), fe ) );
-        filesTreeNames.push_back( PAIR( string( name_lower ), name ) );
+        string name_lower = Str::Lower( name );
+        filesTree.insert( PAIR( name_lower, fe ) );
+        filesTreeNames.push_back( PAIR( name_lower, name ) );
 
         FileClose( f );
     }

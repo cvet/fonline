@@ -349,16 +349,16 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     }
 
     // Find in already loaded
-    string dll_name_lower = dll_name;
+    string dll_name_entry = dll_name;
     #ifdef FO_WINDOWS
-    Str::Lower( dll_name_lower );
+    dll_name_entry = Str::Lower( dll_name_entry );
     #endif
-    auto it = edata->LoadedDlls.find( dll_name_lower );
+    auto it = edata->LoadedDlls.find( dll_name_entry );
     if( it != edata->LoadedDlls.end() )
         return it->second.second;
 
     // Make path
-    string dll_path = dll_name_lower;
+    string dll_path = dll_name_entry;
     FileManager::EraseExtension( dll_path );
 
     // Add '64' appendix
@@ -469,8 +469,8 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
         (func) ( LoadLibraryCompiler );
 
     // Add to collection for current engine
-    auto value = PAIR( string( dll_path ), dll );
-    edata->LoadedDlls.insert( PAIR( string( dll_name_lower ), value ) );
+    auto value = PAIR( dll_path, dll );
+    edata->LoadedDlls.insert( PAIR( dll_name_entry, value ) );
 
     return dll;
 }

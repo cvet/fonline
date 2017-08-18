@@ -67,19 +67,18 @@ char* Str::Duplicate( const char* str )
     return dup;
 }
 
-void Str::Lower( char* str )
+string Str::Lower( const string& str )
 {
-    while( *str )
-    {
-        if( *str >= 'A' && *str <= 'Z' )
-            *str += 0x20;
-        str++;
-    }
+    string str_lower = str;
+    std::transform( str_lower.begin(), str_lower.end(), str_lower.begin(), tolower );
+    return str_lower;
 }
 
-void Str::Lower( string& str )
+string Str::Upper( const string& str )
 {
-    std::transform( str.begin(), str.end(), str.begin(), tolower );
+    string str_upper = str;
+    std::transform( str_upper.begin(), str_upper.end(), str_upper.begin(), toupper );
+    return str_upper;
 }
 
 uint Str::LowerUTF8( uint ucs )
@@ -180,21 +179,6 @@ void Str::LowerUTF8( char* str )
         if( length_ == length )
             memcpy( str, buf, length );
     }
-}
-
-void Str::Upper( char* str )
-{
-    while( *str )
-    {
-        if( *str >= 'a' && *str <= 'z' )
-            *str -= 0x20;
-        str++;
-    }
-}
-
-void Str::Upper( string& str )
-{
-    std::transform( str.begin(), str.end(), str.begin(), toupper );
 }
 
 uint Str::UpperUTF8( uint ucs )

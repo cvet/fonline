@@ -175,8 +175,7 @@ bool FileManager::LoadFile( const string& path, bool no_read /* = false */ )
         // Make data path
         string data_path = path;
         FormatPath( data_path );
-        string data_path_lower = data_path;
-        Str::Lower( data_path_lower );
+        string data_path_lower = Str::Lower( data_path );
 
         // Find file in every data file
         for( auto it = dataFiles.begin(), end = dataFiles.end(); it != end; ++it )
@@ -745,9 +744,8 @@ string FileManager::CombinePath( const string& base_path, const string& path )
 string FileManager::GetExtension( const string& path )
 {
     size_t dot = path.find_last_of( '.' );
-    string ext = dot != string::npos ? path.substr( dot + 1 ) : "";
-    Str::Lower( ext );
-    return ext;
+    string ext = ( dot != string::npos ? path.substr( dot + 1 ) : "" );
+    return Str::Lower( ext );
 }
 
 void FileManager::EraseExtension( string& path )
