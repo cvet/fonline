@@ -144,7 +144,7 @@ static string Global_EncodeUTF8( uint ucs )
 static uint Global_GetFolderFileNames( string path, string ext, bool include_subdirs, CScriptArray* result )
 {
     StrVec files;
-    FileManager::GetFolderFileNames( path, include_subdirs, !ext.empty() ? ext.c_str() : nullptr, files );
+    FileManager::GetFolderFileNames( path, include_subdirs, ext, files );
 
     if( result )
     {

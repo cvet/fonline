@@ -26,7 +26,7 @@ void LogToFile( const string& fname )
     LogFileHandle = nullptr;
 
     if( !fname.empty() )
-        LogFileHandle = FileOpen( fname.c_str(), true, true );
+        LogFileHandle = FileOpen( fname, true, true );
 }
 
 void LogToFunc( LogFuncPtr func_ptr, bool enable )

@@ -18,7 +18,7 @@ void ResourceManager::Refresh()
         {
             // Hash all files
             StrVec file_names;
-            data_file->GetFileNames( "", true, nullptr, file_names );
+            data_file->GetFileNames( "", true, "", file_names );
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
             {
                 // File name

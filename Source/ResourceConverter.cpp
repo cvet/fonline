@@ -1113,7 +1113,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
         StrVec      dummy_vec;
         StrVec      all_dirs_path;
         FindDataVec all_dirs;
-        FileManager::GetFolderFileNames( GameModules[ m ], true, nullptr, dummy_vec, nullptr, &all_dirs_path, &all_dirs );
+        FileManager::GetFolderFileNames( GameModules[ m ], true, "", dummy_vec, nullptr, &all_dirs_path, &all_dirs );
         for( size_t d = 0; d < all_dirs.size(); d++ )
         {
             if( !Str::CompareCase( all_dirs[ d ].FileName.c_str(), "Resources" ) )
@@ -1121,11 +1121,11 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
             string      resources_root = GameModules[ m ] + all_dirs_path[ d ];
             FindDataVec resources_dirs;
-            FileManager::GetFolderFileNames( resources_root, false, nullptr, dummy_vec, nullptr, nullptr, &resources_dirs );
+            FileManager::GetFolderFileNames( resources_root, false, "", dummy_vec, nullptr, nullptr, &resources_dirs );
             for( size_t r = 0; r < resources_dirs.size(); r++ )
             {
                 const char*     res_name = resources_dirs[ r ].FileName.c_str();
-                FilesCollection resources( nullptr, ( resources_root + res_name + "/" ).c_str() );
+                FilesCollection resources( "", resources_root + res_name + "/" );
 
                 if( !Str::Substring( res_name, "_Raw" ) )
                 {
@@ -1256,7 +1256,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                                 if( inner )
                                 {
                                     StrVec inner_files;
-                                    inner->GetFileNames( "", true, nullptr, inner_files );
+                                    inner->GetFileNames( "", true, "", inner_files );
                                     resource_names->insert( resource_names->end(), inner_files.begin(), inner_files.end() );
                                     delete inner;
                                 }
@@ -1275,7 +1275,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     }
 
     // Delete unnecessary update files
-    FilesCollection update_files( nullptr, "Update/" );
+    FilesCollection update_files( "", "Update/" );
     while( update_files.IsNextFile() )
     {
         const char* path;

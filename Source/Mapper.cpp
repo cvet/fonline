@@ -1488,7 +1488,7 @@ void FOMapper::RefreshTiles( int tab )
         bool    include_subdirs = ttab.TileSubDirs[ t ];
 
         StrVec  tiles;
-        FileManager::GetDataFileNames( path.c_str(), include_subdirs, nullptr, tiles );
+        FileManager::GetDataFileNames( path.c_str(), include_subdirs, "", tiles );
 
         struct StrComparator_
         {
@@ -4763,7 +4763,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
     string dir_ = ( dir.empty() ? GameOpt.WorkDir : dir );
 
     string file_find_fname;
-    void*  h = FileFindFirst( dir_.c_str(), nullptr, &file_find_fname, nullptr, nullptr, nullptr );
+    void*  h = FileFindFirst( dir_, "", &file_find_fname, nullptr, nullptr, nullptr );
     if( !h )
     {
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );

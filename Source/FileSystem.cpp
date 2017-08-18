@@ -19,59 +19,48 @@ static uint64 FileTimeToUInt64( FILETIME ft )
     return PACKUINT64( t.ul.HighPart, t.ul.LowPart );
 }
 
-static wchar_t* MBtoWC( const char* mb, wchar_t* buf )
+static std::wstring MBtoWC( const string& mb )
 {
-    char mb_[ MAX_FOPATH ];
-    Str::Copy( mb_, mb );
-    for( char* s = mb_; *s; s++ )
-        if( *s == '/' )
-            *s = '\\';
-    if( MultiByteToWideChar( CP_UTF8, 0, mb_, -1, buf, MAX_FOPATH - 1 ) == 0 )
-        buf[ 0 ] = 0;
-    return buf;
+    string mb_ = mb;
+    std::replace( mb_.begin(), mb_.end(), '/', '\\' );
+    return CharToWideChar( mb_ );
 }
 
-static char* WCtoMB( const wchar_t* wc, char* buf )
+static string WCtoMB( const wchar_t* wc )
 {
-    if( WideCharToMultiByte( CP_UTF8, 0, wc, -1, buf, MAX_FOPATH - 1, nullptr, nullptr ) == 0 )
-        buf[ 0 ] = 0;
-    NormalizePathSlashes( buf );
-    return buf;
+    string mb = WideCharToChar( wc );
+    NormalizePathSlashes( mb );
+    return mb;
 }
-#endif
 
-#if defined ( FO_WINDOWS )
-
-void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
+void* FileOpen( const string& fname, bool write, bool write_through /* = false */ )
 {
-    wchar_t wc[ MAX_FOPATH ];
-    HANDLE  file;
+    HANDLE file;
     if( write )
     {
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+        file = CreateFileW( MBtoWC( fname ).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
         if( file == INVALID_HANDLE_VALUE )
         {
             MakeDirectoryTree( fname );
-            file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+            file = CreateFileW( MBtoWC( fname ).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
         }
     }
     else
     {
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr );
+        file = CreateFileW( MBtoWC( fname ).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr );
     }
     if( file == INVALID_HANDLE_VALUE )
         return nullptr;
     return file;
 }
 
-void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
+void* FileOpenForAppend( const string& fname, bool write_through /* = false */ )
 {
-    wchar_t wc[ MAX_FOPATH ];
-    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+    HANDLE file = CreateFileW( MBtoWC( fname ).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
     if( file == INVALID_HANDLE_VALUE )
     {
         MakeDirectoryTree( fname );
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+        file = CreateFileW( MBtoWC( fname ).c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, CREATE_ALWAYS, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
     }
     if( file == INVALID_HANDLE_VALUE )
         return nullptr;
@@ -83,14 +72,13 @@ void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
     return file;
 }
 
-void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
+void* FileOpenForReadWrite( const string& fname, bool write_through /* = false */ )
 {
-    wchar_t wc[ MAX_FOPATH ];
-    HANDLE  file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+    HANDLE file = CreateFileW( MBtoWC( fname ).c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
     if( file == INVALID_HANDLE_VALUE )
     {
         MakeDirectoryTree( fname );
-        file = CreateFileW( MBtoWC( fname, wc ), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
+        file = CreateFileW( MBtoWC( fname ).c_str(), GENERIC_WRITE | GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, write_through ? FILE_FLAG_WRITE_THROUGH : 0, nullptr );
     }
     if( file == INVALID_HANDLE_VALUE )
         return nullptr;
@@ -149,13 +137,13 @@ struct FileDesc
     bool       WriteThrough;
 };
 
-void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
+void* FileOpen( const string& fname, bool write, bool write_through /* = false */ )
 {
-    SDL_RWops* ops = SDL_RWFromFile( fname, write ? "wb" : "rb" );
+    SDL_RWops* ops = SDL_RWFromFile( fname.c_str(), write ? "wb" : "rb" );
     if( !ops && write )
     {
         MakeDirectoryTree( fname );
-        ops = SDL_RWFromFile( fname, "wb" );
+        ops = SDL_RWFromFile( fname.c_str(), "wb" );
     }
     if( !ops )
         return nullptr;
@@ -166,13 +154,13 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
     return (void*) fd;
 }
 
-void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
+void* FileOpenForAppend( const string& fname, bool write_through /* = false */ )
 {
-    SDL_RWops* ops = SDL_RWFromFile( fname, "ab" );
+    SDL_RWops* ops = SDL_RWFromFile( fname.c_str(), "ab" );
     if( !ops )
     {
         MakeDirectoryTree( fname );
-        ops = SDL_RWFromFile( fname, "ab" );
+        ops = SDL_RWFromFile( fname.c_str(), "ab" );
     }
     if( !ops )
         return nullptr;
@@ -183,13 +171,13 @@ void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
     return (void*) fd;
 }
 
-void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
+void* FileOpenForReadWrite( const string& fname, bool write_through /* = false */ )
 {
-    SDL_RWops* ops = SDL_RWFromFile( fname, "r+b" );
+    SDL_RWops* ops = SDL_RWFromFile( fname.c_str(), "r+b" );
     if( !ops )
     {
         MakeDirectoryTree( fname );
-        ops = SDL_RWFromFile( fname, "r+b" );
+        ops = SDL_RWFromFile( fname.c_str(), "r+b" );
     }
     if( !ops )
         return nullptr;
@@ -287,13 +275,13 @@ struct FileDesc
     bool  WriteThrough;
 };
 
-void* FileOpen( const char* fname, bool write, bool write_through /* = false */ )
+void* FileOpen( const string& fname, bool write, bool write_through /* = false */ )
 {
-    FILE* f = fopen( fname, write ? "wb" : "rb" );
+    FILE* f = fopen( fname.c_str(), write ? "wb" : "rb" );
     if( !f && write )
     {
         MakeDirectoryTree( fname );
-        f = fopen( fname, "wb" );
+        f = fopen( fname.c_str(), "wb" );
     }
     if( !f )
         return nullptr;
@@ -305,13 +293,13 @@ void* FileOpen( const char* fname, bool write, bool write_through /* = false */ 
     return (void*) fd;
 }
 
-void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
+void* FileOpenForAppend( const string& fname, bool write_through /* = false */ )
 {
-    FILE* f = fopen( fname, "ab" );
+    FILE* f = fopen( fname.c_str(), "ab" );
     if( !f )
     {
         MakeDirectoryTree( fname );
-        f = fopen( fname, "ab" );
+        f = fopen( fname.c_str(), "ab" );
     }
     if( !f )
         return nullptr;
@@ -323,13 +311,13 @@ void* FileOpenForAppend( const char* fname, bool write_through /* = false */ )
     return (void*) fd;
 }
 
-void* FileOpenForReadWrite( const char* fname, bool write_through /* = false */ )
+void* FileOpenForReadWrite( const string& fname, bool write_through /* = false */ )
 {
-    FILE* f = fopen( fname, "r+b" );
+    FILE* f = fopen( fname.c_str(), "r+b" );
     if( !f )
     {
         MakeDirectoryTree( fname );
-        f = fopen( fname, "r+b" );
+        f = fopen( fname.c_str(), "r+b" );
     }
     if( !f )
         return nullptr;
@@ -404,49 +392,39 @@ uint FileGetSize( void* file )
 #endif
 
 #ifdef FO_WINDOWS
-bool FileDelete( const char* fname )
+bool FileDelete( const string& fname )
 {
-    wchar_t wc[ MAX_FOPATH ];
-    return DeleteFileW( MBtoWC( fname, wc ) ) != FALSE;
+    return DeleteFileW( MBtoWC( fname ).c_str() ) != FALSE;
 }
 
-bool FileExist( const char* fname )
+bool FileExist( const string& fname )
 {
-    wchar_t wc[ MAX_FOPATH ];
-    return !_waccess( MBtoWC( fname, wc ), 0 );
+    return !_waccess( MBtoWC( fname ).c_str(), 0 );
 }
 
-bool FileCopy( const char* fname, const char* copy_fname )
+bool FileCopy( const string& fname, const string& copy_fname )
 {
-    wchar_t wc1[ MAX_FOPATH ];
-    wchar_t wc2[ MAX_FOPATH ];
-    return CopyFileW( MBtoWC( fname, wc1 ), MBtoWC( copy_fname, wc2 ), FALSE ) != FALSE;
+    return CopyFileW( MBtoWC( fname ).c_str(), MBtoWC( copy_fname ).c_str(), FALSE ) != FALSE;
 }
 
-bool FileRename( const char* fname, const char* new_fname )
+bool FileRename( const string& fname, const string& new_fname )
 {
-    wchar_t wc1[ MAX_FOPATH ];
-    wchar_t wc2[ MAX_FOPATH ];
-    return MoveFileW( MBtoWC( fname, wc1 ), MBtoWC( new_fname, wc2 ) ) != FALSE;
+    return MoveFileW( MBtoWC( fname ).c_str(), MBtoWC( new_fname ).c_str() ) != FALSE;
 }
 
-void* FileFindFirst( const char* path, const char* extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir )
+void* FileFindFirst( const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir )
 {
-    char query[ MAX_FOPATH ];
-    if( extension )
-        Str::Format( query, "%s*.%s", path, extension );
-    else
-        Str::Format( query, "%s*", path );
+    string query = path + "*";
+    if( !extension.empty() )
+        query = "." + extension;
 
     WIN32_FIND_DATAW wfd;
-    wchar_t          wc[ MAX_FOPATH ];
-    HANDLE           h = FindFirstFileW( MBtoWC( query, wc ), &wfd );
+    HANDLE           h = FindFirstFileW( MBtoWC( query ).c_str(), &wfd );
     if( h == INVALID_HANDLE_VALUE )
         return nullptr;
 
-    char mb[ MAX_FOPATH ];
     if( fname )
-        *fname = WCtoMB( wfd.cFileName, mb );
+        *fname = WCtoMB( wfd.cFileName );
     if( is_dir )
         *is_dir = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
     if( fsize )
@@ -466,9 +444,8 @@ bool FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, 
     if( !FindNextFileW( (HANDLE) descriptor, &wfd ) )
         return false;
 
-    char mb[ MAX_FOPATH ];
     if( fname )
-        *fname = WCtoMB( wfd.cFileName, mb );
+        *fname = WCtoMB( wfd.cFileName );
     if( is_dir )
         *is_dir = ( wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != 0;
     if( fsize )
@@ -489,23 +466,23 @@ void FileFindClose( void* descriptor )
 
 #else
 
-bool FileDelete( const char* fname )
+bool FileDelete( const string& fname )
 {
-    return remove( fname );
+    return remove( fname.c_str() );
 }
 
-bool FileExist( const char* fname )
+bool FileExist( const string& fname )
 {
-    return !access( fname, 0 );
+    return !access( fname.c_str(), 0 );
 }
 
-bool FileCopy( const char* fname, const char* copy_fname )
+bool FileCopy( const string& fname, const string& copy_fname )
 {
     bool  ok = false;
-    FILE* from = fopen( fname, "rb" );
+    FILE* from = fopen( fname.c_str(), "rb" );
     if( from )
     {
-        FILE* to = fopen( copy_fname, "wb" );
+        FILE* to = fopen( copy_fname.c_str(), "wb" );
         if( to )
         {
             ok = true;
@@ -529,34 +506,33 @@ bool FileCopy( const char* fname, const char* copy_fname )
     return ok;
 }
 
-bool FileRename( const char* fname, const char* new_fname )
+bool FileRename( const string& fname, const string& new_fname )
 {
-    return !rename( fname, new_fname );
+    return !rename( fname.c_str(), new_fname.c_str() );
 }
 
 struct FileFind
 {
-    DIR* d;
-    char path[ MAX_FOPATH ];
-    char ext[ 32 ];
+    DIR*   d = nullptr;
+    string path;
+    string ext;
 };
 
-void* FileFindFirst( const char* path, const char* extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir )
+void* FileFindFirst( const string& path, const string& extension, string* fname, uint* fsize, uint64* wtime, bool* is_dir )
 {
     // Open dir
-    DIR* h = opendir( path );
+    DIR* h = opendir( path.c_str() );
     if( !h )
         return nullptr;
 
     // Create own descriptor
-    FileFind* ff = new FileFind;
-    memzero( ff, sizeof( FileFind ) );
+    FileFind* ff = new FileFind();
     ff->d = h;
-    Str::Copy( ff->path, path );
-    if( ff->path[ Str::Length( ff->path ) - 1 ] != '/' )
-        Str::Append( ff->path, "/" );
-    if( extension )
-        Str::Copy( ff->ext, extension );
+    ff->path = path;
+    if( !ff->path.empty() && ff->path.back() != '/' )
+        ff->path += "/";
+    if( !extension.empty() )
+        ff->ext = extension;
 
     // Find first entire
     if( !FileFindNext( ff, fname, fsize, wtime, is_dir ) )
@@ -584,12 +560,10 @@ bool FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, 
     // Read entire information
     bool        valid = false;
     bool        dir = false;
-    char        name[ MAX_FOPATH ];
     uint        file_size;
     uint64      write_time;
-    Str::Format( name, "%s%s", ff->path, ent->d_name );
     struct stat st;
-    if( !stat( name, &st ) )
+    if( !stat( ( ff->path + ent->d_name ).c_str(), &st ) )
     {
         dir = S_ISDIR( st.st_mode );
         if( dir || S_ISREG( st.st_mode ) )
@@ -605,7 +579,7 @@ bool FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, 
         return FileFindNext( descriptor, fname, fsize, wtime, is_dir );
 
     // Find by extensions
-    if( ff->ext[ 0 ] )
+    if( !ff->ext.empty() )
     {
         // Skip dirs
         if( dir )
@@ -643,61 +617,47 @@ void FileFindClose( void* descriptor )
 }
 #endif
 
-char* NormalizePathSlashes( char* path )
+void NormalizePathSlashes( string& path )
 {
-    for( char* s = path; *s; s++ )
-        if( *s == '\\' )
-            *s = '/';
-    return path;
+    std::replace( path.begin(), path.end(), '\\', '/' );
 }
 
-bool ResolvePath( char* path )
+void ResolvePath( string& path )
 {
     #ifdef FO_WINDOWS
-    wchar_t path_[ MAX_FOPATH ];
-    wchar_t wc[ MAX_FOPATH ];
-    if( !GetFullPathNameW( MBtoWC( path, wc ), MAX_FOPATH, path_, nullptr ) )
-        return false;
-    char mb[ MAX_FOPATH ];
-    Str::Copy( path, MAX_FOPATH, WCtoMB( path_, mb ) );
-    for( char* s = path; *s; s++ )
-        if( *s == '/' )
-            *s = '\\';
-    return true;
-
-    #else
-    char path_[ MAX_FOPATH ];
-    realpath( path, path_ );
-    Str::Copy( path, MAX_FOPATH, path_ );
-    return true;
-    #endif
-}
-
-bool MakeDirectory( const char* path )
-{
-    #ifdef FO_WINDOWS
-    wchar_t wc[ MAX_FOPATH ];
-    return CreateDirectoryW( MBtoWC( path, wc ), nullptr ) != FALSE;
-    #else
-    return mkdir( path, 0777 ) == 0;
-    #endif
-}
-
-uint MakeDirectoryTree( const char* path )
-{
-    uint  result = 0;
-    char* work = Str::Duplicate( path );
-    NormalizePathSlashes( work );
-    for( char* ptr = work; *ptr; ++ptr )
+    DWORD    len = GetFullPathNameW( MBtoWC( path ).c_str(), 0, nullptr, nullptr );
+    wchar_t* buf = (wchar_t*) alloca( len * sizeof( wchar_t ) + 1 );
+    if( GetFullPathNameW( MBtoWC( path ).c_str(), len + 1, buf, nullptr ) == len )
     {
-        if( *ptr == '/' )
-        {
-            *ptr = 0;
-            if( MakeDirectory( work ) )
-                result++;
-            *ptr = '/';
-        }
+        path = WCtoMB( buf );
+        NormalizePathSlashes( path );
     }
-    delete[] work;
-    return result;
+
+    #else
+    char* buf = realpath( path.c_str(), nullptr );
+    if( buf )
+    {
+        path = buf;
+        free( buf );
+    }
+    #endif
+}
+
+void MakeDirectory( const string& path )
+{
+    #ifdef FO_WINDOWS
+    CreateDirectoryW( MBtoWC( path ).c_str(), nullptr );
+    #else
+    mkdir( path, 0777 );
+    #endif
+}
+
+void MakeDirectoryTree( const string& path )
+{
+    uint   result = 0;
+    string work = path;
+    NormalizePathSlashes( work );
+    for( size_t i = 0; i < work.length(); i++ )
+        if( work[ i ] == '/' )
+            MakeDirectory( work.substr( 0, i ) );
 }

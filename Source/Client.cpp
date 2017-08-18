@@ -684,7 +684,7 @@ void FOClient::UpdateFilesLoop()
 
                 if( update_file.Name[ 0 ] == '$' )
                 {
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ).c_str(), true );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
                     UpdateFilesCacheChanged = true;
                 }
                 else
@@ -698,8 +698,8 @@ void FOClient::UpdateFilesLoop()
                     return;
                     #endif
 
-                    FileManager::DeleteFile( FileManager::GetWritePath( update_file.Name.c_str() ) );
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ).c_str(), true );
+                    FileManager::DeleteFile( FileManager::GetWritePath( update_file.Name ) );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
                     UpdateFilesFilesChanged = true;
                 }
 
@@ -8807,7 +8807,7 @@ bool FOClient::SScriptFunc::Global_SaveScreenshot( string file_path )
 bool FOClient::SScriptFunc::Global_SaveText( string file_path, string text )
 {
     FileManager::FormatPath( file_path );
-    void* f = FileOpen( file_path.c_str(), true );
+    void* f = FileOpen( file_path, true );
     if( !f )
         return false;
 

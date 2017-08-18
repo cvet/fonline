@@ -2600,7 +2600,7 @@ bool FOServer::LoadClientsData()
     {
         if( !file_find )
         {
-            file_find = FileFindFirst( clients_path.c_str(), "foclient", &file_find_fname, nullptr, nullptr, nullptr );
+            file_find = FileFindFirst( clients_path, "foclient", &file_find_fname, nullptr, nullptr, nullptr );
             if( !file_find )
                 break;
         }
@@ -3073,7 +3073,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 
     // Fill files
     StrVec file_paths;
-    FileManager::GetFolderFileNames( "Update/", true, nullptr, file_paths );
+    FileManager::GetFolderFileNames( "Update/", true, "", file_paths );
     for( size_t i = 0; i < file_paths.size(); i++ )
     {
         string      file_path = file_paths[ i ];
@@ -3103,7 +3103,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 
     // Append binaries
     StrVec binary_paths;
-    FileManager::GetFolderFileNames( "Binaries/", true, nullptr, binary_paths );
+    FileManager::GetFolderFileNames( "Binaries/", true, "", binary_paths );
     for( size_t i = 0; i < binary_paths.size(); i++ )
     {
         string      file_path = binary_paths[ i ];

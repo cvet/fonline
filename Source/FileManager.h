@@ -100,8 +100,8 @@ public:
     uint64      GetWriteTime() { return writeTime; }
 
     static DataFileVec& GetDataFiles() { return dataFiles; }
-    static void         GetFolderFileNames( const string& path, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr );
-    static void         GetDataFileNames( const string& path, bool include_subdirs, const char* ext, StrVec& result );
+    static void         GetFolderFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files = nullptr, StrVec* dirs_path = nullptr, FindDataVec* dirs = nullptr );
+    static void         GetDataFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result );
 
     FileManager();
     ~FileManager();
@@ -121,16 +121,16 @@ private:
 
     uint64             writeTime;
 
-    static void RecursiveDirLook( const char* base_dir, const char* cur_dir, bool include_subdirs, const char* ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs );
+    static void RecursiveDirLook( const string& base_dir, const string& cur_dir, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs );
 };
 
 class FilesCollection
 {
 public:
-    FilesCollection( const char* ext, const char* fixed_dir = nullptr );
+    FilesCollection( const string& ext, const string& fixed_dir = "" );
     bool         IsNextFile();
     FileManager& GetNextFile( const char** name = nullptr, const char** path = nullptr, const char** relative_path = nullptr, bool no_read_data = false );
-    FileManager& FindFile( const char* name, const char** path = nullptr, const char** relative_path = nullptr, bool no_read_data = false );
+    FileManager& FindFile( const string& name, const char** path = nullptr, const char** relative_path = nullptr, bool no_read_data = false );
     uint         GetFilesCount();
     void         ResetCounter();
 

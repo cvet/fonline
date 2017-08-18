@@ -261,13 +261,13 @@ static string MakeCachePath( const char* data_name )
     string path = data_name;
     std::replace( path.begin(), path.end(), '/', '_' );
     std::replace( path.begin(), path.end(), '\\', '_' );
-    return FileManager::GetWritePath( string( "Cache/" ).append( path ).c_str() );
+    return FileManager::GetWritePath( "Cache/" + path );
 }
 
 bool CryptManager::IsCache( const char* data_name )
 {
-    string path = MakeCachePath( data_name ).c_str();
-    void*  f = FileOpen( path.c_str(), false );
+    string path = MakeCachePath( data_name );
+    void*  f = FileOpen( path, false );
     bool   exists = ( f != nullptr );
     FileClose( f );
     return exists;
@@ -275,14 +275,14 @@ bool CryptManager::IsCache( const char* data_name )
 
 void CryptManager::EraseCache( const char* data_name )
 {
-    string path = MakeCachePath( data_name ).c_str();
-    FileDelete( path.c_str() );
+    string path = MakeCachePath( data_name );
+    FileDelete( path );
 }
 
 void CryptManager::SetCache( const char* data_name, const uchar* data, uint data_len )
 {
-    string path = MakeCachePath( data_name ).c_str();
-    void*  f = FileOpen( path.c_str(), true );
+    string path = MakeCachePath( data_name );
+    void*  f = FileOpen( path, true );
     if( !f )
     {
         WriteLog( "Can't open write cache at '{}'.\n", path );
@@ -293,7 +293,7 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
     {
         WriteLog( "Can't write cache to '{}'.\n", path );
         FileClose( f );
-        FileDelete( path.c_str() );
+        FileDelete( path );
         return;
     }
 
@@ -312,8 +312,8 @@ void CryptManager::SetCache( const char* data_name, UCharVec& data )
 
 uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
 {
-    string path = MakeCachePath( data_name ).c_str();
-    void*  f = FileOpen( path.c_str(), false );
+    string path = MakeCachePath( data_name );
+    void*  f = FileOpen( path, false );
     if( !f )
         return nullptr;
 
