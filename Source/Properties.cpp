@@ -987,16 +987,16 @@ string Property::SetGetCallback( asIScriptFunction* func )
     return "";
 
     /*char decl[ MAX_FOTEXT ];
-       Xfmt::format( decl, "%s%s %s(const %s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
+       X_str( decl, "%s%s %s(const %s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
        uint bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
        if( !bind_id )
        {
-        Xfmt::format( decl, "%s%s %s(const %s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
+        X_str( decl, "%s%s %s(const %s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
         bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
         if( !bind_id )
         {
             char buf[ MAX_FOTEXT ];
-            Xfmt::format( buf, decl, script_func );
+            X_str( buf, decl, script_func );
             return "Unable to bind function '" + string( buf ) + "'.";
         }
         getCallbackArgs = 1;
@@ -1029,28 +1029,28 @@ string Property::AddSetCallback( asIScriptFunction* func, bool deferred )
     return "";
 
     /*char decl[ MAX_FOTEXT ];
-       Xfmt::format( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
+       X_str( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
        uint  bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
        if( !bind_id )
        {
-        Xfmt::format( decl, "void %s(%s%s&,%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
+        X_str( decl, "void %s(%s%s&,%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
         bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
         if( !bind_id )
         {
-            Xfmt::format( decl, "void %s(%s%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
+            X_str( decl, "void %s(%s%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
             bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
             if( !bind_id )
             {
-                Xfmt::format( decl, "void %s(%s%s&,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str() );
+                X_str( decl, "void %s(%s%s&,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str() );
                 bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
                 if( !bind_id )
                 {
-                    Xfmt::format( decl, "void %s(%s%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str() );
+                    X_str( decl, "void %s(%s%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str() );
                     bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
                     if( !bind_id )
                     {
                         char buf[ MAX_FOTEXT ];
-                        Xfmt::format( buf, decl, script_func );
+                        X_str( buf, decl, script_func );
                         return "Unable to bind function '" + string( buf ) + "'.";
                     }
                     else
@@ -1944,7 +1944,7 @@ bool PropertyRegistrator::Init()
         return false;
     }
 
-    string decl = fmt::format( "int GetAsInt({}) const", enum_type );
+    string decl = _str( "int GetAsInt({}) const", enum_type );
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), SCRIPT_FUNC_THIS( Properties::GetValueAsInt ), SCRIPT_FUNC_THIS_CONV );
     if( result < 0 )
     {
@@ -1952,7 +1952,7 @@ bool PropertyRegistrator::Init()
         return false;
     }
 
-    decl = fmt::format( "void SetAsInt({},int)", enum_type );
+    decl = _str( "void SetAsInt({},int)", enum_type );
     result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), SCRIPT_FUNC_THIS( Properties::SetValueAsInt ), SCRIPT_FUNC_THIS_CONV );
     if( result < 0 )
     {
@@ -2153,7 +2153,7 @@ Property* PropertyRegistrator::Register(
     bool is_handle = ( data_type == Property::Array || data_type == Property::Dict );
     if( !disable_get )
     {
-        string decl = fmt::format( "const {}{} get_{}() const", type_name, is_handle ? "@" : "", name );
+        string decl = _str( "const {}{} get_{}() const", type_name, is_handle ? "@" : "", name );
         int  result = -1;
         #ifdef AS_MAX_PORTABILITY
         if( data_type == Property::String )
@@ -2192,7 +2192,7 @@ Property* PropertyRegistrator::Register(
     // Register setter
     if( !disable_set )
     {
-        string decl = fmt::format( "void set_{}({}{}{})", name, is_handle ? "const " : "", type_name, is_handle ? "@" : "" );
+        string decl = _str( "void set_{}({}{}{})", name, is_handle ? "const " : "", type_name, is_handle ? "@" : "" );
         int  result = -1;
         #ifdef AS_MAX_PORTABILITY
         if( data_type == Property::String )
@@ -2229,7 +2229,7 @@ Property* PropertyRegistrator::Register(
     }
 
     // Register enum values for property reflection
-    string enum_value_name = fmt::format( "{}::{}", enumTypeName, name );
+    string enum_value_name = _str( "{}::{}", enumTypeName, name );
     int  enum_value = (int) Str::GetHash( enum_value_name );
     int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
     if( result < 0 )
@@ -2241,7 +2241,7 @@ Property* PropertyRegistrator::Register(
     // Add property to group
     if( group )
     {
-        string full_decl = fmt::format( "const array<{}>@ {}{}", enumTypeName, enumTypeName, group );
+        string full_decl = _str( "const array<{}>@ {}{}", enumTypeName, enumTypeName, group );
 
         CScriptArray* group_array = nullptr;
         if( enumGroups.count( full_decl ) )
@@ -2249,7 +2249,7 @@ Property* PropertyRegistrator::Register(
 
         if( !group_array )
         {
-            string decl = fmt::format( "array<{}>", enumTypeName );
+            string decl = _str( "array<{}>", enumTypeName );
             asITypeInfo* enum_array_type = engine->GetTypeInfoByDecl( decl.c_str() );
             if( !enum_array_type )
             {

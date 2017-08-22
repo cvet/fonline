@@ -19,7 +19,7 @@ static void* ASDeepDebugMalloc( size_t size )
     {
         ASDbgMemoryInUse = true;
         const char* func = Script::GetActiveFuncName();
-        string      buf = fmt::format( "AS : {}", func ? func : "<nullptr>" );
+        string      buf = _str( "AS : {}", func ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( buf.c_str(), (int) size );
         ASDbgMemoryPtr.insert( PAIR( ptr, buf ) );
         ASDbgMemoryInUse = false;
@@ -660,7 +660,7 @@ void FOClient::UpdateFilesLoop()
                 float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
                 float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
                 string      name = FileManager::FormatPath( update_file.Name );
-                UpdateFilesProgress += fmt::format( "{:.2f} {} / {:.2f} MB\n", name, cur, max );
+                UpdateFilesProgress += _str( "{:.2f} {} / {:.2f} MB\n", name, cur, max );
             }
             UpdateFilesProgress += "\n";
         }
@@ -1735,7 +1735,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
         }
         else if( GameOpt.ProxyType == PROXY_HTTP )
         {
-            string buf = fmt::format( "CONNECT {}:{} HTTP/1.0\r\n\r\n", inet_ntoa( SockAddr.sin_addr ), port );
+            string buf = _str( "CONNECT {}:{} HTTP/1.0\r\n\r\n", inet_ntoa( SockAddr.sin_addr ), port );
             Bout.Push( buf.c_str(), (uint) buf.length() );
             SEND_RECV;
             buf = (const char*) Bin.GetCurData();
@@ -1991,7 +1991,7 @@ void FOClient::NetProcess()
         if( GameOpt.DebugNet )
         {
             static uint count = 0;
-            AddMess( FOMB_GAME, fmt::format( "{:04}) Input net message {}.", count, ( msg >> 8 ) & 0xFF ) );
+            AddMess( FOMB_GAME, _str( "{:04}) Input net message {}.", count, ( msg >> 8 ) & 0xFF ) );
             WriteLog( "{}) Input net message {}.\n", count, ( msg >> 8 ) & 0xFF );
             count++;
         }
@@ -3263,7 +3263,7 @@ void FOClient::Net_OnCustomCommand()
     CHECK_IN_BUFF_ERROR;
 
     if( GameOpt.DebugNet )
-        AddMess( FOMB_GAME, fmt::format( " - crid {} index {} value {}.", crid, index, value ) );
+        AddMess( FOMB_GAME, _str( " - crid {} index {} value {}.", crid, index, value ) );
 
     CritterCl* cr = GetCritter( crid );
     if( !cr )
@@ -3272,7 +3272,7 @@ void FOClient::Net_OnCustomCommand()
     if( cr->IsChosen() )
     {
         if( GameOpt.DebugNet )
-            AddMess( FOMB_GAME, fmt::format( " - index {} value {}.", index, value ) );
+            AddMess( FOMB_GAME, _str( " - index {} value {}.", index, value ) );
 
         switch( index )
         {
@@ -3364,7 +3364,7 @@ void FOClient::Net_OnCritterXY()
     CHECK_IN_BUFF_ERROR;
 
     if( GameOpt.DebugNet )
-        AddMess( FOMB_GAME, fmt::format( " - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir ) );
+        AddMess( FOMB_GAME, _str( " - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir ) );
 
     if( !HexMngr.IsMapLoaded() )
         return;
@@ -4134,7 +4134,7 @@ void FOClient::Net_OnMap()
 
     WriteLog( "Map {} received...\n", map_pid );
 
-    string map_name = fmt::format( "{}.map", map_pid );
+    string map_name = _str( "{}.map", map_pid );
     bool   tiles = false;
     char*  tiles_data = nullptr;
     uint   tiles_len = 0;
@@ -4573,7 +4573,7 @@ void FOClient::Net_OnUpdateFileData()
             string to_path = FileManager::GetWritePath( update_file.Name.c_str() );
             if( !FileManager::RenameFile( from_path.c_str(), to_path.c_str() ) )
             {
-                UpdateFilesAbort( STR_FILESYSTEM_ERROR, fmt::format( "Can't rename file '{}' to '{}'!", from_path, to_path ).c_str() );
+                UpdateFilesAbort( STR_FILESYSTEM_ERROR, _str( "Can't rename file '{}' to '{}'!", from_path, to_path ).c_str() );
                 return;
             }
         }
@@ -7254,7 +7254,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "Version" )
     {
-        return fmt::format( "{}", FONLINE_VERSION );
+        return _str( FONLINE_VERSION );
     }
     else if( cmd == "BytesSend" )
     {
@@ -7347,7 +7347,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
 //                      DateTime dt;
 //                      Timer::GetCurrentDateTime(dt);
 //                      char     log_path[MAX_FOPATH];
-//                      Xfmt::format(log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
+//                      X_str(log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
 //                              dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 //              }
 
@@ -7897,7 +7897,7 @@ string FOClient::SScriptFunc::Global_ReplaceTextInt( string text, string replace
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
         return text;
-    return string( text ).replace( pos, replace.length(), fmt::format( "{}", i ) );
+    return string( text ).replace( pos, replace.length(), _str( i ) );
 }
 
 string FOClient::SScriptFunc::Global_FormatTags( string text, string lexems )

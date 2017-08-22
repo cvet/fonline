@@ -1382,7 +1382,7 @@ void FOMapper::MainLoop()
                 if( cr->SprDrawValid )
                 {
                     if( DrawCrExtInfo == 1 )
-                        cr->SetText( fmt::format( "|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId() ).c_str(), COLOR_TEXT_WHITE, 60000000 );
+                        cr->SetText( _str( "|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId() ).c_str(), COLOR_TEXT_WHITE, 60000000 );
                     else
                         cr->SetText( "", COLOR_TEXT_WHITE, 60000000 );
                     cr->DrawTextOnHead();
@@ -1538,7 +1538,7 @@ void FOMapper::RefreshTiles( int tab )
                     path_index = (uint) PathIndex.size();
                     PathIndex[ path_ ] = path_index;
                 }
-                string collection_name = fmt::format( "{:03} - {}", path_index, path_ );
+                string collection_name = _str( "{:03} - {}", path_index, path_ );
 
                 // Make secondary collection name
                 string collection_name_ex;
@@ -1813,9 +1813,9 @@ void FOMapper::IntDraw()
 
             SprMngr.DrawSpriteSize( anim->GetCurSprId(), x, y, w, h, false, true, col );
 
-            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), fmt::format( "x{}", child->GetCount() ), FT_NOBREAK, COLOR_TEXT_WHITE );
+            SprMngr.DrawStr( Rect( x, y + h - 15, x + w, y + h ), _str( "x{}", child->GetCount() ), FT_NOBREAK, COLOR_TEXT_WHITE );
             if( child->GetAccessory() == ITEM_ACCESSORY_CRITTER && child->GetCritSlot() )
-                SprMngr.DrawStr( Rect( x, y, x + w, y + h ), fmt::format( "Slot {}", child->GetCritSlot() ), FT_NOBREAK, COLOR_TEXT_WHITE );
+                SprMngr.DrawStr( Rect( x, y, x + w, y + h ), _str( "Slot {}", child->GetCritSlot() ), FT_NOBREAK, COLOR_TEXT_WHITE );
         }
     }
     else if( IntMode == INT_MODE_LIST )
@@ -1826,7 +1826,7 @@ void FOMapper::IntDraw()
         for( ; i < j; i++, x += w )
         {
             Map* map = LoadedMaps[ i ];
-            SprMngr.DrawStr( Rect( x, y, x + w, y + h ), fmt::format( " '{}'", map->GetName() ), 0, map == ActiveMap ? COLOR_IFACE_RED : COLOR_TEXT );
+            SprMngr.DrawStr( Rect( x, y, x + w, y + h ), _str( " '{}'", map->GetName() ), 0, map == ActiveMap ? COLOR_IFACE_RED : COLOR_TEXT );
         }
     }
 
@@ -1863,7 +1863,7 @@ void FOMapper::IntDraw()
                 count = (uint) stab.NpcProtos.size();
             if( !count )
                 count = (uint) stab.ItemProtos.size();
-            name += fmt::format( " ({})", count );
+            name += _str( " ({})", count );
             SprMngr.DrawStr( r, name.c_str(), 0, color );
 
             posy -= line_height;
@@ -1881,7 +1881,7 @@ void FOMapper::IntDraw()
             hex_thru = true;
         int day_time = HexMngr.GetDayTime();
         SprMngr.DrawStr( Rect( GameOpt.ScreenWidth - 100, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ),
-                         fmt::format(
+                         _str(
                              "Map '{}'\n"
                              "Hex {} {}\n"
                              "Time {} : {}\n"
@@ -1979,7 +1979,7 @@ void FOMapper::DrawLine( const char* name, const char* type_name, const char* te
             text = ObjCurLineValue.c_str();
         }
     }
-    string str = fmt::format( "{}{}{}{}", name, type_name ? " (" : "", type_name ? type_name : "", type_name ? ")" : "" );
+    string str = _str( "{}{}{}{}", name, type_name ? " (" : "", type_name ? type_name : "", type_name ? ")" : "" );
     str += "........................................................................................................";
     SprMngr.DrawStr( Rect( Rect( x, y, x + w / 2, y + h ), 0, 0 ), str, FT_NOBREAK, col );
     str = ( text ? text : "" );
@@ -4030,7 +4030,7 @@ void FOMapper::ParseCommand( const char* cmd )
             if( Script::RunPrepared() )
             {
                 string sstr_ = *(string*) Script::GetReturnedObject();
-                AddMessFormat( fmt::format( "Result: {}", sstr_ ).c_str() );
+                AddMessFormat( _str( "Result: {}", sstr_ ).c_str() );
             }
             else
             {
@@ -4168,11 +4168,11 @@ void FOMapper::ParseCommand( const char* cmd )
 
 void FOMapper::AddMess( const char* message_text )
 {
-    string        str = fmt::format( "|{} {} |{} {}\n", COLOR_TEXT, 149, COLOR_TEXT, message_text );
+    string        str = _str( "|{} {} |{} {}\n", COLOR_TEXT, 149, COLOR_TEXT, message_text );
 
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
-    string        mess_time = fmt::format( mess_time, "{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second );
+    string        mess_time = _str( mess_time, "{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second );
 
     MessBox.push_back( MessBoxMessage( 0, str.c_str(), mess_time.c_str() ) );
     MessBoxScroll = 0;
@@ -4240,8 +4240,8 @@ bool FOMapper::SaveLogFile()
 
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
-    string        log_path = fmt::format( log_path, "./mapper_messbox_{:02}-{:02}-{}_{:02}-{:02}-{:02}.txt",
-                                          dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
+    string        log_path = _str( log_path, "./mapper_messbox_{:02}-{:02}-{}_{:02}-{:02}-{:02}.txt",
+                                   dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
     void* f = FileOpen( log_path, true );
     if( !f )
@@ -5209,7 +5209,7 @@ string FOMapper::SScriptFunc::Global_ReplaceTextInt( string text, string replace
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
         return text;
-    return string( text ).replace( pos, replace.length(), fmt::format( "{}", i ) );
+    return string( text ).replace( pos, replace.length(), _str( i ) );
 }
 
 void FOMapper::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )

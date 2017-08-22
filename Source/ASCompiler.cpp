@@ -229,7 +229,7 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
     // Preprocessor defines
     Preprocessor::UndefAll();
 
-    Preprocessor::Define( fmt::format( "__VERSION {}", FONLINE_VERSION ) );
+    Preprocessor::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
 
     Preprocessor::Define( "__ASCOMPILER" );
     string target_define = "__" + target;

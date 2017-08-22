@@ -124,18 +124,18 @@ string FOServer::GetIngamePlayersStatistics()
     ClVec players;
     CrMngr.GetClients( players );
 
-    string result = fmt::format( "Players in game: {}\nConnections: {}\n", players.size(), conn_count );
+    string result = _str( "Players in game: {}\nConnections: {}\n", players.size(), conn_count );
     result += "Name                 Id         Ip              Online  Cond     X     Y     Location and map\n";
     for( Client* cl : players )
     {
         Map*      map = MapMngr.GetMap( cl->GetMapId() );
         Location* loc = ( map ? map->GetLocation() : nullptr );
 
-        string    str_loc = fmt::format( "{} ({}) {} ({})",
-                                         map ? loc->GetName() : "", map ? loc->GetId() : 0, map ? map->GetName() : "", map ? map->GetId() : 0 );
-        result += fmt::format( "{:<20} {:<10} {:<15} {:<7} {:<8} {:<5} {:<5} {}\n",
-                               cl->Name.c_str(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->GetCond() ],
-                               map ? cl->GetHexX() : cl->GetWorldX(), map ? cl->GetHexY() : cl->GetWorldY(), map ? str_loc : "Global map" );
+        string    str_loc = _str( "{} ({}) {} ({})",
+                                  map ? loc->GetName() : "", map ? loc->GetId() : 0, map ? map->GetName() : "", map ? map->GetId() : 0 );
+        result += _str( "{:<20} {:<10} {:<15} {:<7} {:<8} {:<5} {:<5} {}\n",
+                        cl->Name.c_str(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->GetCond() ],
+                        map ? cl->GetHexX() : cl->GetWorldX(), map ? cl->GetHexY() : cl->GetWorldY(), map ? str_loc : "Global map" );
     }
     return result;
 }
@@ -246,16 +246,16 @@ void FOServer::DeleteClientFile( const char* client_name )
 {
     // Make old name
     string clients_path = FileManager::GetWritePath( "Save/Clients/" );
-    string old_client_fname = fmt::format( "{}{}.client", clients_path, client_name );
+    string old_client_fname = _str( "{}{}.client", clients_path, client_name );
 
     // Make new name
     string new_client_fname;
     for( uint i = 0; ; i++ )
     {
         if( !i )
-            new_client_fname = fmt::format( "{}{}.foclient_deleted", clients_path, client_name, i );
+            new_client_fname = _str( "{}{}.foclient_deleted", clients_path, client_name, i );
         else
-            new_client_fname = fmt::format( "{}{}~{}.foclient_deleted", clients_path, client_name, i );
+            new_client_fname = _str( "{}{}~{}.foclient_deleted", clients_path, client_name, i );
         if( FileExist( new_client_fname ) )
             continue;
         break;
@@ -1013,8 +1013,8 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
 
-        string istr = fmt::format( istr, "|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ",
-                                   cl_->GetName(), cl_->GetId() );
+        string istr = _str( istr, "|0xFF00FF00 Name: |0xFFFF0000 {}|0xFF00FF00 , Id: |0xFFFF0000 {}|0xFF00FF00 , Access: ",
+                            cl_->GetName(), cl_->GetId() );
         switch( cl_->Access )
         {
         case ACCESS_CLIENT:
@@ -1069,9 +1069,9 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         }
 
         ConnectedClientsLocker.Lock();
-        string str = fmt::format( "Connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.",
-                                  ConnectedClients.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(),
-                                  Timer::FastTick() / 1000 / 60, ( Timer::FastTick() - Statistics.ServerStartTick ) / 1000 / 60 );
+        string str = _str( "Connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.",
+                           ConnectedClients.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(),
+                           Timer::FastTick() / 1000 / 60, ( Timer::FastTick() - Statistics.ServerStartTick ) / 1000 / 60 );
         ConnectedClientsLocker.Unlock();
         result += str;
 
@@ -1109,7 +1109,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         uint        id = MAKE_CLIENT_ID( name );
         ClientData* cd = GetClientData( id );
         if( cd )
-            logcb( fmt::format( "Client id is {}.", id ).c_str() );
+            logcb( _str( "Client id is {}.", id ).c_str() );
         else
             logcb( "Client not found." );
 
@@ -1590,7 +1590,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         bool error = DlgMngr.LoadDialogs();
         InitLangPacksDialogs( LangPacks );
         GenerateUpdateFiles();
-        logcb( fmt::format( "Dialogs reload done{}.", error ? ", with errors." : "" ).c_str() );
+        logcb( _str( "Dialogs reload done{}.", error ? ", with errors." : "" ).c_str() );
     }
     break;
     case CMD_LOADDIALOG:
@@ -1703,17 +1703,17 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             for( auto it = Banned.begin(), end = Banned.end(); it != end; ++it )
             {
                 ClientBanned& ban = *it;
-                logcb( fmt::format( "--- {:3} ---", index ).c_str() );
+                logcb( _str( "--- {:3} ---", index ).c_str() );
                 if( ban.ClientName[ 0 ] )
-                    logcb( fmt::format( "User: {}", ban.ClientName ).c_str() );
+                    logcb( _str( "User: {}", ban.ClientName ).c_str() );
                 if( ban.ClientIp )
-                    logcb( fmt::format( "UserIp: {}", ban.ClientIp ).c_str() );
-                logcb( fmt::format( "BeginTime: {} {} {} {} {}", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute ).c_str() );
-                logcb( fmt::format( "EndTime: {} {} {} {} {}", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute ).c_str() );
+                    logcb( _str( "UserIp: {}", ban.ClientIp ).c_str() );
+                logcb( _str( "BeginTime: {} {} {} {} {}", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute ).c_str() );
+                logcb( _str( "EndTime: {} {} {} {} {}", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute ).c_str() );
                 if( ban.BannedBy[ 0 ] )
-                    logcb( fmt::format( "BannedBy: {}", ban.BannedBy ).c_str() );
+                    logcb( _str( "BannedBy: {}", ban.BannedBy ).c_str() );
                 if( ban.BanInfo[ 0 ] )
-                    logcb( fmt::format( "Comment: {}", ban.BanInfo ).c_str() );
+                    logcb( _str( "Comment: {}", ban.BanInfo ).c_str() );
                 index++;
             }
         }
@@ -1927,7 +1927,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         command[ command_len ] = 0;
         Str::Trim( command );
 
-        string console_name = fmt::format( "DevConsole ({})", cl_ ? cl_->GetName() : admin_panel );
+        string console_name = _str( "DevConsole ({})", cl_ ? cl_->GetName() : admin_panel );
 
         // Get module
         asIScriptEngine* engine = Script::GetEngine();
@@ -1969,7 +1969,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         {
             WriteLog( "{} : Execute '{}'.\n", console_name, command );
 
-            string             func_code = fmt::format( "void Execute(){\n{};\n}", command );
+            string             func_code = _str( "void Execute(){\n{};\n}", command );
             asIScriptFunction* func = nullptr;
             int                r = mod->CompileFunction( "DevConsole", func_code.c_str(), -1, asCOMP_ADD_TO_MODULE, &func );
             if( r >= 0 )
@@ -2271,7 +2271,7 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
     uint cur_lang = 0;
     while( true )
     {
-        string      cur_str_lang = fmt::format( "Language_{}", cur_lang );
+        string      cur_str_lang = _str( "Language_{}", cur_lang );
         const char* lang_name = MainConfig->GetStr( "", cur_str_lang.c_str() );
         if( !lang_name )
             break;
@@ -2676,7 +2676,7 @@ bool FOServer::LoadClient( Client* cl )
     if( Singleplayer )
         return true;
 
-    string    fname = fmt::format( "Save/Clients/{}.foclient", cl->Name );
+    string    fname = _str( "Save/Clients/{}.foclient", cl->Name );
     IniParser client_data;
     if( !client_data.AppendFile( fname.c_str() ) )
     {
@@ -2748,7 +2748,7 @@ void FOServer::SaveWorld( const char* fname )
     string auto_fname;
     if( !fname )
     {
-        auto_fname = fmt::format( "{}Auto{:04}.foworld", FileManager::GetWritePath( "Save/" ), SaveWorldIndex + 1 );
+        auto_fname = _str( "{}Auto{:04}.foworld", FileManager::GetWritePath( "Save/" ), SaveWorldIndex + 1 );
         fname = auto_fname.c_str();
         if( ++SaveWorldIndex >= WORLD_SAVE_MAX_INDEX )
             SaveWorldIndex = 0;
@@ -2796,7 +2796,7 @@ bool FOServer::LoadWorld( const char* fname )
     {
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
         {
-            string auto_fname = fmt::format( auto_fname, "Save/Auto{:04}.foworld", i );
+            string auto_fname = _str( auto_fname, "Save/Auto{:04}.foworld", i );
             if( data.AppendFile( auto_fname.c_str() ) )
             {
                 WriteLog( "Load world from dump file '{}'.\n", auto_fname );
@@ -2959,7 +2959,7 @@ void FOServer::Dump_Work( void* args )
     for( uint index : SaveWorldDeleteIndexes )
     {
         string dir = FileManager::ExtractDir( fname );
-        string path = fmt::format( "{}Auto{:04}.foworld", dir, index );
+        string path = _str( "{}Auto{:04}.foworld", dir, index );
         void*  f = FileOpen( path, false );
         if( f )
         {

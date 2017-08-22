@@ -57,25 +57,25 @@ string MapManager::GetLocationsMapsStatistics()
     EntityVec maps;
     EntityMngr.GetEntities( EntityType::Map, maps );
 
-    string result = fmt::format( "Locations count: {}\n", (uint) locations.size() );
-    result += fmt::format( "Maps count: {}\n", (uint) maps.size() );
+    string result = _str( "Locations count: {}\n", (uint) locations.size() );
+    result += _str( "Maps count: {}\n", (uint) maps.size() );
     result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain Script\n";
     for( auto it = locations.begin(), end = locations.end(); it != end; ++it )
     {
         Location* loc = (Location*) *it;
-        result += fmt::format( "{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n",
-                               loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false",
-                               loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false" );
+        result += _str( "{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n",
+                        loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false",
+                        loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false" );
 
         MapVec& maps = loc->GetMapsNoLock();
         uint    map_index = 0;
         for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
         {
             Map* map = *it_;
-            result += fmt::format( "     {:02}) {:<20} {:<9}   {:<4} {:<4} {:<50}\n",
-                                   map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
-                                   map->GetScriptId() ? Str::GetName( map->GetScriptId() ) : "" );
+            result += _str( "     {:02}) {:<20} {:<9}   {:<4} {:<4} {:<50}\n",
+                            map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
+                            map->GetScriptId() ? Str::GetName( map->GetScriptId() ) : "" );
             map_index++;
         }
     }

@@ -90,11 +90,11 @@ void WriteLogMessage( const string& message )
     uint   minutes = seconds / 60 % 60;
     uint   hours = seconds / 60 / 60;
     if( hours )
-        time += fmt::format( "[{:0=3}:{:0=2}:{:0=2}:{:0=3}] ", hours, minutes, seconds % 60, delta % 1000 );
+        time += _str( "[{:0=3}:{:0=2}:{:0=2}:{:0=3}] ", hours, minutes, seconds % 60, delta % 1000 );
     else if( minutes )
-        time += fmt::format( "[{:0=2}:{:0=2}:{:0=3}] ", minutes, seconds % 60, delta % 1000 );
+        time += _str( "[{:0=2}:{:0=2}:{:0=3}] ", minutes, seconds % 60, delta % 1000 );
     else
-        time += fmt::format( "[{:0=2}:{:0=3}] ", seconds % 60, delta % 1000 );
+        time += _str( "[{:0=2}:{:0=3}] ", seconds % 60, delta % 1000 );
 
     // Result message
     string result = time + message;

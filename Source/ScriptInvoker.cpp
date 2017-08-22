@@ -278,24 +278,24 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 string ScriptInvoker::GetStatistics()
 {
     uint   tick = Timer::FastTick();
-    string result = fmt::format( "Deferred calls count: {}\n", (uint) deferredCalls.size() );
+    string result = _str( "Deferred calls count: {}\n", (uint) deferredCalls.size() );
     result += "Id         Delay      Saved    Function                                                              Values\n";
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
         DeferredCall& call = *it;
         string        func_name = Script::GetBindFuncName( call.BindId );
-        result += fmt::format( "{:<10} {:<10} {:<8} {:<70}", call.Id, tick < call.FireTick ? call.FireTick - tick : 0,
-                               call.Saved ? "true" : "false", func_name.c_str() );
+        result += _str( "{:<10} {:<10} {:<8} {:<70}", call.Id, tick < call.FireTick ? call.FireTick - tick : 0,
+                        call.Saved ? "true" : "false", func_name.c_str() );
         if( call.IsValue )
         {
             result += "Single:";
-            result += fmt::format( " {}", call.Value );
+            result += _str( " {}", call.Value );
         }
         else if( call.IsValues )
         {
             result += "Multiple:";
             for( size_t i = 0; i < call.Values.size(); i++ )
-                result += fmt::format( " {}", call.Values[ i ] );
+                result += _str( " {}", call.Values[ i ] );
         }
         else
         {

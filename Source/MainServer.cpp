@@ -395,8 +395,8 @@ static void GUICallback( Fl_Widget* widget, void* data )
         Timer::GetCurrentDateTime( dt );
         Fl_Text_Display* log = ( widget == GuiBtnSaveLog ? GuiLog : GuiInfo );
         string           log_name_dir = FileManager::GetWritePath( "Logs/" );
-        string           log_name = fmt::format( "{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
-                                                 log_name_dir, log == GuiInfo ? UpdateLogName : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+        string           log_name = _str( "{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
+                                          log_name_dir, log == GuiInfo ? UpdateLogName : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
         FileManager::CreateDirectoryTree( log_name );
         log->buffer()->savefile( log_name.c_str() );
     }
@@ -501,9 +501,6 @@ static void GUIUpdate( void* )
 
 static void UpdateInfo()
 {
-    static char   str[ MAX_FOTEXT ];
-    static string std_str;
-
     struct Label
     {
         static void Update( Fl_Box* label, const string& text )
@@ -519,32 +516,32 @@ static void UpdateInfo()
     if( Server.Started() )
     {
         DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
-        Label::Update( GuiLabelGameTime, fmt::format( str, "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, GameOpt.TimeMultiplier ) );
-        Label::Update( GuiLabelClients, fmt::format( str, "Connections: {}", Server.Statistics.CurOnline ) );
-        Label::Update( GuiLabelIngame, fmt::format( str, "Players in game: {}", CrMngr.PlayersInGame() ) );
-        Label::Update( GuiLabelNPC, fmt::format( str, "NPC in game: {}", CrMngr.NpcInGame() ) );
-        Label::Update( GuiLabelLocCount, fmt::format( str, "Locations: {} ({})", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
-        Label::Update( GuiLabelItemsCount, fmt::format( str, "Items: {}", ItemMngr.GetItemsCount() ) );
-        Label::Update( GuiLabelFPS, fmt::format( str, "Cycles per second: {}", Server.Statistics.FPS ) );
-        Label::Update( GuiLabelDelta, fmt::format( str, "Cycle time: {}", Server.Statistics.CycleTime ) );
+        Label::Update( GuiLabelGameTime, _str( "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, GameOpt.TimeMultiplier ) );
+        Label::Update( GuiLabelClients, _str( "Connections: {}", Server.Statistics.CurOnline ) );
+        Label::Update( GuiLabelIngame, _str( "Players in game: {}", CrMngr.PlayersInGame() ) );
+        Label::Update( GuiLabelNPC, _str( "NPC in game: {}", CrMngr.NpcInGame() ) );
+        Label::Update( GuiLabelLocCount, _str( "Locations: {} ({})", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
+        Label::Update( GuiLabelItemsCount, _str( "Items: {}", ItemMngr.GetItemsCount() ) );
+        Label::Update( GuiLabelFPS, _str( "Cycles per second: {}", Server.Statistics.FPS ) );
+        Label::Update( GuiLabelDelta, _str( "Cycle time: {}", Server.Statistics.CycleTime ) );
     }
     else
     {
-        Label::Update( GuiLabelGameTime, fmt::format( str, "Time: n/a" ) );
-        Label::Update( GuiLabelClients, fmt::format( str, "Connections: n/a" ) );
-        Label::Update( GuiLabelIngame, fmt::format( str, "Players in game: n/a" ) );
-        Label::Update( GuiLabelNPC, fmt::format( str, "NPC in game: n/a" ) );
-        Label::Update( GuiLabelLocCount, fmt::format( str, "Locations: n/a" ) );
-        Label::Update( GuiLabelItemsCount, fmt::format( str, "Items: n/a" ) );
-        Label::Update( GuiLabelFPS, fmt::format( str, "Cycles per second: n/a" ) );
-        Label::Update( GuiLabelDelta, fmt::format( str, "Cycle time: n/a" ) );
+        Label::Update( GuiLabelGameTime, _str( "Time: n/a" ) );
+        Label::Update( GuiLabelClients, _str( "Connections: n/a" ) );
+        Label::Update( GuiLabelIngame, _str( "Players in game: n/a" ) );
+        Label::Update( GuiLabelNPC, _str( "NPC in game: n/a" ) );
+        Label::Update( GuiLabelLocCount, _str( "Locations: n/a" ) );
+        Label::Update( GuiLabelItemsCount, _str( "Items: n/a" ) );
+        Label::Update( GuiLabelFPS, _str( "Cycles per second: n/a" ) );
+        Label::Update( GuiLabelDelta, _str( "Cycle time: n/a" ) );
     }
 
     uint seconds = Server.Statistics.Uptime;
-    Label::Update( GuiLabelUptime, fmt::format( str, "Uptime: {:02}:{:02}:{:02}", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 ) );
-    Label::Update( GuiLabelSend, fmt::format( str, "KBytes Send: {}", Server.Statistics.BytesSend / 1024 ) );
-    Label::Update( GuiLabelRecv, fmt::format( str, "KBytes Recv: {}", Server.Statistics.BytesRecv / 1024 ) );
-    Label::Update( GuiLabelCompress, fmt::format( str, "Compress ratio: {}", (double) Server.Statistics.DataReal / ( Server.Statistics.DataCompressed ? Server.Statistics.DataCompressed : 1 ) ) );
+    Label::Update( GuiLabelUptime, _str( "Uptime: {:02}:{:02}:{:02}", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 ) );
+    Label::Update( GuiLabelSend, _str( "KBytes Send: {}", Server.Statistics.BytesSend / 1024 ) );
+    Label::Update( GuiLabelRecv, _str( "KBytes Recv: {}", Server.Statistics.BytesRecv / 1024 ) );
+    Label::Update( GuiLabelCompress, _str( "Compress ratio: {}", (double) Server.Statistics.DataReal / ( Server.Statistics.DataCompressed ? Server.Statistics.DataCompressed : 1 ) ) );
 
     if( FOServer::UpdateIndex == -1 && FOServer::UpdateLastTick && FOServer::UpdateLastTick + 1000 < Timer::FastTick() )
     {
@@ -554,51 +551,52 @@ static void UpdateInfo()
 
     if( FOServer::UpdateIndex != -1 )
     {
+        string info;
         switch( FOServer::UpdateIndex )
         {
         case 0:         // Memory
-            std_str = Debugger::GetMemoryStatistics();
+            info = Debugger::GetMemoryStatistics();
             UpdateLogName = "Memory";
             break;
         case 1:         // Players
             if( !Server.Started() )
                 break;
-            std_str = Server.GetIngamePlayersStatistics();
+            info = Server.GetIngamePlayersStatistics();
             UpdateLogName = "Players";
             break;
         case 2:         // Locations and maps
             if( !Server.Started() )
                 break;
-            std_str = MapMngr.GetLocationsMapsStatistics();
+            info = MapMngr.GetLocationsMapsStatistics();
             UpdateLogName = "LocationsAndMaps";
             break;
         case 3:         // Deferred calls
             if( !Server.Started() )
                 break;
-            std_str = Script::GetDeferredCallsStatistics();
+            info = Script::GetDeferredCallsStatistics();
             UpdateLogName = "DeferredCalls";
             break;
         case 4:         // Properties
             if( !Server.Started() )
                 break;
-            std_str = "WIP";
+            info = "WIP";
             UpdateLogName = "Properties";
             break;
         case 5:         // Items count
             if( !Server.Started() )
                 break;
-            std_str = ItemMngr.GetItemsStatistics();
+            info = ItemMngr.GetItemsStatistics();
             UpdateLogName = "ItemsCount";
             break;
         case 6:         // Profiler
-            std_str = Script::GetProfilerStatistics();
+            info = Script::GetProfilerStatistics();
             UpdateLogName = "Profiler";
             break;
         default:
             UpdateLogName = "";
             break;
         }
-        GuiInfo->buffer()->text( std_str.c_str() );
+        GuiInfo->buffer()->text( info.c_str() );
         if( !GuiBtnSaveInfo->active() )
             GuiBtnSaveInfo->activate();
         FOServer::UpdateIndex = -1;
@@ -742,7 +740,7 @@ static void ServiceMain( bool as_service )
     // Compile service path
     char   exe_path[ MAX_FOPATH ];
     GetModuleFileName( GetModuleHandle( nullptr ), exe_path, MAX_FOPATH );
-    string path = fmt::format( "\"{}\" --service {}", exe_path, GameOpt.CommandLine );
+    string path = _str( "\"{}\" --service {}", exe_path, GameOpt.CommandLine );
 
     // Change executable path, if changed
     if( service )
@@ -1132,7 +1130,7 @@ static void AdminManager( void* port_ )
     } while( 0 )
 
 /*
-   string buf = fmt::format(format, ## __VA_ARGS__);                       \
+   string buf = _str(format, ## __VA_ARGS__);                       \
         uint   buf_len = (uint) buf.length() + 1;                                 \
         if( send( s->Sock, buf.c_str(), buf_len, 0 ) != (int) buf_len )           \
         {                                                                         \
@@ -1195,7 +1193,7 @@ static void AdminWork( void* session_ )
                 if( pos < (int) admin_names.size() )
                     admin_name = admin_names[ pos ];
                 else
-                    admin_name = fmt::format( "{}", pos );
+                    admin_name = _str( pos );
 
                 s->Authorized = true;
                 ADMIN_LOG( "Authorized for admin '{}', IP '{}'.\n", admin_name, inet_ntoa( s->From.sin_addr ) );

@@ -276,7 +276,7 @@ std::string  WideCharToChar( const wchar_t* str );
 #  pragma comment( lib, "Winmm.lib" )
 #  pragma comment( lib, "Imm32.lib" )
 # endif
-# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); RUNTIME_ASSERT_STR( err__ == GL_NO_ERROR, fmt::format( # expr " error {:#X}", err__ ).c_str() ); } }
+# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); RUNTIME_ASSERT_STR( err__ == GL_NO_ERROR, _str( # expr " error {:#X}", err__ ).c_str() ); } }
 
 extern bool OGL_version_2_0;
 extern bool OGL_vertex_buffer_object;

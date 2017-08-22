@@ -1068,7 +1068,7 @@ void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int&
 
         str = ( NameOnHead.empty() ? Name : NameOnHead );
         if( GameOpt.ShowCritId )
-            str += fmt::format( "  {}", GetId() );
+            str += _str( "  {}", GetId() );
         if( FLAG( Flags, FCRIT_DISCONNECT ) )
             str += GameOpt.PlayerOffAppendix;
     }
@@ -1109,7 +1109,7 @@ void CritterCl::DrawTextOnHead()
         {
             str = ( NameOnHead.empty() ? Name : NameOnHead );
             if( GameOpt.ShowCritId )
-                str += fmt::format( " ({})", GetId() );
+                str += _str( " ({})", GetId() );
             if( FLAG( Flags, FCRIT_DISCONNECT ) )
                 str += GameOpt.PlayerOffAppendix;
             color = ( NameColor ? NameColor : COLOR_CRITTER_NAME );

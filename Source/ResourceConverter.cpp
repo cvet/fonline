@@ -472,7 +472,7 @@ static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, 
         else
         {
             mesh_bone = new Bone();
-            mesh_bone->NameHash = Bone::GetHash( fmt::format( "{}_{}", ai_node->mName.data, m + 1 ).c_str() );
+            mesh_bone->NameHash = Bone::GetHash( _str( "{}_{}", ai_node->mName.data, m + 1 ).c_str() );
             mesh_bone->CombinedTransformationMatrix = Matrix();
             if( parent_bone )
             {

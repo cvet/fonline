@@ -225,8 +225,8 @@ public:
 
         string        GetBanLexems()
         {
-            return fmt::format( "$banby{}$time{}$reason{}", BannedBy[ 0 ] ? BannedBy : "?",
-                                Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" );
+            return _str( "$banby{}$time{}$reason{}", BannedBy[ 0 ] ? BannedBy : "?",
+                         Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" );
         }
     };
     typedef vector< ClientBanned > ClientBannedVec;

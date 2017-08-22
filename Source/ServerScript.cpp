@@ -40,7 +40,7 @@ static void* ASDeepDebugMalloc( size_t size )
         SCOPE_LOCK( ASDbgMemoryLocker );
         ASDbgMemoryInUse = true;
         const char* func = Script::GetActiveFuncName();
-        ASDbgMemoryBuf = fmt::format( "AS : {}", func ? func : "<nullptr>" );
+        ASDbgMemoryBuf = _str( "AS : {}", func ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( ASDbgMemoryBuf.c_str(), (int) size );
         ASDbgMemoryPtr.insert( PAIR( ptr, ASDbgMemoryBuf ) );
         ASDbgMemoryInUse = false;
@@ -246,7 +246,7 @@ bool FOServer::DialogScriptDemand( DemandResult& demand, Critter* master, Critte
 uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critter* slave )
 {
     int bind_id = (int) result.ParamId;
-    Script::PrepareContext( bind_id, fmt::format( "Critter '{}', func '{}'", master->GetInfo(), Script::GetBindFuncName( bind_id ) ) );
+    Script::PrepareContext( bind_id, _str( "Critter '{}', func '{}'", master->GetInfo(), Script::GetBindFuncName( bind_id ) ) );
     Script::SetArgEntity( master );
     Script::SetArgEntity( slave );
     for( int i = 0; i < result.ValuesCount; i++ )

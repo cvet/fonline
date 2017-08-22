@@ -112,22 +112,21 @@ class _str // Todo: do it
 
 public:
     _str( const string& s ): s( s ) {}
+    _str( const char* s ): s( s ) {}
+    template< typename T > _str( const T& a ): s( fmt::format< T >( "{}", a ) ) {}
+    template< typename ... Args > _str( const string& format, Args ... args ): s( fmt::format( format, args ... ) ) {}
     operator string&() { return s; }
     _str        operator+( const char* r )                  { return _str( s + string( r ) ); }
     _str        operator+( const string& r )                { return _str( s + r ); }
     friend _str operator+( const _str& l, const string& r ) { return _str( l.s + r ); }
+    const char* c_str()                                     { return s.c_str(); }
 
-    _str& lower()
-    {
-        s = Str::Lower( s );
-        return *this;
-    }
-
-    _str& upper()
-    {
-        s = Str::Upper( s );
-        return *this;
-    }
+    // bool compareCase
+    // _str& trim();
+    _str& lower();
+    _str& upper();
+    bool  isInt();
+    int   toInt();
 };
 
 #endif // ___TEXT___

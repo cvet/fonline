@@ -29,8 +29,8 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
         DateTimeStamp dt;
         Timer::GetCurrentDateTime( dt );
 
-        string dump_file = fmt::format( "{}Profiler_{}.{}.{}_{}-{}-{}.foprof",
-                                        FileManager::GetWritePath( "Profiler/" ), dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+        string dump_file = _str( "{}Profiler_{}.{}.{}_{}-{}-{}.foprof",
+                                 FileManager::GetWritePath( "Profiler/" ), dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
         saveFileHandle = FileOpen( dump_file, true );
         if( !saveFileHandle )
@@ -186,7 +186,7 @@ static void TraverseCallPaths( asIScriptEngine* engine, CallPath* path, vector< 
     asIScriptFunction* func = engine->GetFunctionById( path->Id );
     string             name;
     if( func )
-        name = fmt::format( "{} : {}", func->GetModuleName(), func->GetDeclaration() );
+        name = _str( "{} : {}", func->GetModuleName(), func->GetDeclaration() );
     else
         name = "???";
 
@@ -219,13 +219,13 @@ string ScriptProfiler::GetStatistics()
     for( auto it = callPaths.begin(), end = callPaths.end(); it != end; ++it )
         TraverseCallPaths( scriptEngine, it->second, lines, 0, max_depth, max_len, (float) totalCallPaths );
 
-    result += fmt::format( "{} Inclusive %  Exclusive %\n\n", max_len );
+    result += _str( "{} Inclusive %  Exclusive %\n\n", max_len );
 
     for( uint i = 0; i < lines.size(); i++ )
     {
-        result += fmt::format( "{}{}   {}       {}\n", lines[ i ].Depth, "",
-                               max_len - lines[ i ].Depth, lines[ i ].FuncName,
-                               lines[ i ].Incl, lines[ i ].Excl );
+        result += _str( "{}{}   {}       {}\n", lines[ i ].Depth, "",
+                        max_len - lines[ i ].Depth, lines[ i ].FuncName,
+                        lines[ i ].Incl, lines[ i ].Excl );
     }
 
     return result;

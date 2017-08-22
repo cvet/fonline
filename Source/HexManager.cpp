@@ -2068,7 +2068,7 @@ void HexManager::DrawMap()
     if( drawCursorX < 0 )
         DrawCursor( cursorXPic->GetCurSprId() );
     else if( drawCursorX > 0 )
-        DrawCursor( fmt::format( "{}", drawCursorX ).c_str() );
+        DrawCursor( _str( drawCursorX ).c_str() );
 
     // Draw map from render target
     if( rtMap )
@@ -3577,7 +3577,7 @@ bool HexManager::LoadMap( hash map_pid )
         ReloadSprites();
 
     // Make name
-    string map_name = fmt::format( "{}.map", map_pid );
+    string map_name = _str( "{}.map", map_pid );
 
     // Find in cache
     uint   cache_len;
@@ -3798,7 +3798,7 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
         return;
     }
 
-    string map_name = fmt::format( "{}.map", map_pid );
+    string map_name = _str( "{}.map", map_pid );
 
     uint   cache_len;
     uchar* cache = Crypt.GetCache( map_name.c_str(), cache_len );

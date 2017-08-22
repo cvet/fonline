@@ -4,6 +4,33 @@
 #include "FLTK/src/xutf8/headers/case.h"
 #include <sstream>
 
+_str& _str::lower()
+{
+    std::transform( s.begin(), s.end(), s.begin(), tolower );
+    return *this;
+}
+
+_str& _str::upper()
+{
+    std::transform( s.begin(), s.end(), s.begin(), toupper );
+    return *this;
+}
+
+bool _str::isInt()
+{
+    if( s.empty() || ( !isdigit( s[ 0 ] ) && s[ 0 ] != '-' && s[ 0 ] != '+' ) )
+        return false;
+
+    char* p;
+    strtol( s.c_str(), &p, 10 );
+    return *p == 0;
+}
+
+int _str::toInt()
+{
+    return strtol( s.c_str(), nullptr, 10 );
+}
+
 void Str::Copy( char* to, uint size, const char* from )
 {
     if( !from )

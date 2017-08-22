@@ -301,7 +301,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
         return true;
 
     // Load font data
-    string      fname = fmt::format( fname, "Fonts/{}.fofnt", font_name );
+    string      fname = _str( fname, "Fonts/{}.fofnt", font_name );
     FileManager fm;
     if( !fm.LoadFile( fname ) )
     {
@@ -518,7 +518,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     FileManager fm;
     FileManager fm_tex;
 
-    if( !fm.LoadFile( fmt::format( "Fonts/{}.fnt", font_name ) ) )
+    if( !fm.LoadFile( _str( "Fonts/{}.fnt", font_name ) ) )
     {
         WriteLog( "Font file '{}.fnt' not found.\n", font_name );
         return false;

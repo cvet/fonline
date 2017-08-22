@@ -1657,9 +1657,9 @@ void Critter::RefreshName()
         hash        dlg_pack_id = GetDialogId();
         DialogPack* dlg_pack = ( dlg_pack_id ? DlgMngr.GetDialog( dlg_pack_id ) : nullptr );
         if( dlg_pack )
-            Name = fmt::format( "{} {} (Npc)", dlg_pack->PackName.c_str(), GetId() );
+            Name = _str( "{} {} (Npc)", dlg_pack->PackName, GetId() );
         else
-            Name = fmt::format( "{} (Npc)", GetId() );
+            Name = _str( "{} (Npc)", GetId() );
     }
 }
 

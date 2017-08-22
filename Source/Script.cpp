@@ -907,7 +907,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
     // Print system function
     asIScriptFunction* sys_func = ctx->GetSystemFunction();
     if( sys_func )
-        result += fmt::format( "\t{}\n", sys_func->GetDeclaration( true, true, true ) );
+        result += _str( "\t{}\n", sys_func->GetDeclaration( true, true, true ) );
 
     // Print current function
     if( ctx->GetState() == asEXECUTION_EXCEPTION )
@@ -923,7 +923,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
     if( func )
     {
         Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
-        result += fmt::format( "\t{} : Line {}\n", func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ) );
+        result += _str( "\t{} : Line {}\n", func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ) );
     }
 
     // Print call stack
@@ -934,7 +934,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
         if( func )
         {
             Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
-            result += fmt::format( "\t{} : Line {}\n", func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ) );
+            result += _str( "\t{} : Line {}\n", func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ) );
         }
     }
 
@@ -1313,7 +1313,7 @@ uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_te
         // Find function
         string decl_;
         if( decl && decl[ 0 ] )
-            decl_ = fmt::format( decl, func_name );
+            decl_ = _str( decl, func_name );
         else
             decl_ = func_name;
 
@@ -1581,13 +1581,13 @@ void Script::CacheEnumValues()
         const char*  enum_ns = enum_type->GetNamespace();
         enum_ns = ( enum_ns && enum_ns[ 0 ] ? enum_ns : nullptr );
         const char*  enum_name = enum_type->GetName();
-        string       name = fmt::format( "{}{}{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
+        string       name = _str( "{}{}{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
         IntStrMap&   value_names = cached_enum_names.insert( PAIR( name, IntStrMap() ) ).first->second;
         for( asUINT k = 0, l = enum_type->GetEnumValueCount(); k < l; k++ )
         {
             int    value;
             string value_name = enum_type->GetEnumValueByIndex( k, &value );
-            name = fmt::format( "{}{}{}::{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name );
+            name = _str( "{}{}{}::{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name );
             cached_enums.insert( PAIR( name, value ) );
             value_names.insert( PAIR( value, value_name ) );
         }
@@ -1602,13 +1602,13 @@ void Script::CacheEnumValues()
         const char*  enum_ns = enum_type->GetNamespace();
         enum_ns = ( enum_ns && enum_ns[ 0 ] ? enum_ns : nullptr );
         const char*  enum_name = enum_type->GetName();
-        string       name = fmt::format( "{}{}{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
+        string       name = _str( "{}{}{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
         IntStrMap&   value_names = cached_enum_names.insert( PAIR( name, IntStrMap() ) ).first->second;
         for( asUINT k = 0, l = enum_type->GetEnumValueCount(); k < l; k++ )
         {
             int    value;
             string value_name = enum_type->GetEnumValueByIndex( k, &value );
-            name = fmt::format( "{}{}{}::{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name );
+            name = _str( "{}{}{}::{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name );
             cached_enums.insert( PAIR( name, value ) );
             value_names.insert( PAIR( value, value_name ) );
         }
@@ -1625,7 +1625,7 @@ void Script::CacheEnumValues()
         if( ns[ 0 ] && Str::CompareCount( ns, "Content", 7 ) )
         {
             RUNTIME_ASSERT( type_id == asTYPEID_UINT32 ); // hash
-            string name = fmt::format( "{}::{}", ns, name );
+            string name = _str( "{}::{}", ns, name );
             cached_enums.insert( PAIR( name, (int) *value ) );
         }
     }

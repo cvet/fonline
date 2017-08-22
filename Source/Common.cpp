@@ -1023,12 +1023,12 @@ string GetLastSocketError()
     int    error = WSAGetLastError();
     # define CASE_SOCK_ERROR( code, message ) \
     case code:                                \
-        result += fmt::format( "{}, {}, {}", # code, code, message ); break
+        result += _str( "{}, {}, {}", # code, code, message ); break
 
     switch( error )
     {
     default:
-        result += fmt::format( "{}, unknown error code.", error );
+        result += _str( "{}, unknown error code.", error );
         break;
         CASE_SOCK_ERROR( WSAEINTR, "A blocking operation was interrupted by a call to WSACancelBlockingCall." );
         CASE_SOCK_ERROR( WSAEBADF, "The file handle supplied is not valid." );
@@ -1126,7 +1126,7 @@ string GetLastSocketError()
 
 string GetLastSocketError()
 {
-    return fmt::format( "{} ({})", strerror( errno ), errno );
+    return _str( "{} ({})", strerror( errno ), errno );
 }
 
 #endif

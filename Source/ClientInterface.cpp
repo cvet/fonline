@@ -220,7 +220,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
             // Lexems
             else if( Str::Length( tag ) > 4 && tag[ 0 ] == 'l' && tag[ 1 ] == 'e' && tag[ 2 ] == 'x' && tag[ 3 ] == ' ' )
             {
-                const char* s = Str::Substring( lexems ? lexems : "", fmt::format( "${}", &tag[ 4 ] ).c_str() );
+                const char* s = Str::Substring( lexems ? lexems : "", _str( "${}", &tag[ 4 ] ).c_str() );
                 if( s )
                 {
                     s += Str::Length( &tag[ 4 ] ) + 1;
@@ -250,7 +250,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
                     if( msg_type < 0 || msg_type >= TEXTMSG_COUNT )
                         Str::Copy( tag, "<msg tag, unknown type>" );
                     else if( !CurLang.Msg[ msg_type ].Count( str_num ) )
-                        Str::Copy( tag, fmt::format( "<msg tag, string {} not found>", str_num ).c_str() );
+                        Str::Copy( tag, _str( "<msg tag, string {} not found>", str_num ).c_str() );
                     else
                         Str::Copy( tag, CurLang.Msg[ msg_type ].GetStr( str_num ) );
                 }

@@ -91,8 +91,8 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         HANDLE  client_process = OpenProcess( SYNCHRONIZE, TRUE, GetCurrentProcessId() );
 
         wchar_t command_line[ 2048 ];
-        wcscpy( command_line, CharToWideChar( fmt::format( "\"{}{}\" -singleplayer {} {} {} -logpath {}", server_dir, server_exe,
-                                                           (void*) map_file, (void*) client_process, server_cmdline, path ) ).c_str() );
+        wcscpy( command_line, CharToWideChar( _str( "\"{}{}\" -singleplayer {} {} {} -logpath {}", server_dir, server_exe,
+                                                    (void*) map_file, (void*) client_process, server_cmdline, path ) ).c_str() );
 
         // Start server
         if( !CreateProcessW( nullptr, command_line, nullptr, nullptr, TRUE,

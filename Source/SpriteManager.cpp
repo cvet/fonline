@@ -527,13 +527,13 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling,
     {
         GLenum status;
         GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
-        RUNTIME_ASSERT_STR( status == GL_FRAMEBUFFER_COMPLETE, fmt::format( "Framebuffer not created, status {:#X}.\n", status ).c_str() );
+        RUNTIME_ASSERT_STR( status == GL_FRAMEBUFFER_COMPLETE, _str( "Framebuffer not created, status {:#X}.\n", status ).c_str() );
     }
     else // framebuffer_object_ext
     {
         GLenum status;
         GL( status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT ) );
-        RUNTIME_ASSERT_STR( status == GL_FRAMEBUFFER_COMPLETE_EXT, fmt::format( "FramebufferExt not created, status {:#X}.\n", status ).c_str() );
+        RUNTIME_ASSERT_STR( status == GL_FRAMEBUFFER_COMPLETE_EXT, _str( "FramebufferExt not created, status {:#X}.\n", status ).c_str() );
     }
 
     // Effect
@@ -1152,13 +1152,13 @@ void SpriteManager::DumpAtlases()
         atlases_memory_size += atlas->Width * atlas->Height * 4;
     }
 
-    string path = fmt::format( "./{}_{}.{:03}mb/", (uint) time( nullptr ), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000 );
+    string path = _str( "./{}_{}.{:03}mb/", (uint) time( nullptr ), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000 );
 
     int    cnt = 0;
     for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
     {
         TextureAtlas* atlas = *it;
-        string        fname = fmt::format( "{}{}_{}_{}x{}.png", path, cnt, atlas->Type, atlas->Width, atlas->Height );
+        string        fname = _str( "{}{}_{}_{}x{}.png", path, cnt, atlas->Type, atlas->Width, atlas->Height );
         SaveTexture( atlas->TextureOwner, fname.c_str(), false );
         cnt++;
     }
@@ -1722,7 +1722,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
         anims.clear();
         anims_offs.clear();
 
-        string dir_str = fmt::format( "dir_{}", dir );
+        string dir_str = _str( "dir_{}", dir );
         bool   no_app = !fofrm.IsApp( dir_str.c_str() );
 
         if( no_app )
@@ -1751,7 +1751,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
         for( int frm = 0; frm < frm_num; frm++ )
         {
             const char* frm_name;
-            if( !( frm_name = fofrm.GetStr( no_app ? "" : dir_str.c_str(), fmt::format( "frm_{}", frm ).c_str() ) ) &&
+            if( !( frm_name = fofrm.GetStr( no_app ? "" : dir_str.c_str(), _str( "frm_{}", frm ).c_str() ) ) &&
                 ( frm != 0 || !( frm_name = fofrm.GetStr( no_app ? "" : dir_str.c_str(), "frm" ) ) ) )
             {
                 no_info = true;
@@ -1769,8 +1769,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
             frames += anim->CntFrm;
             anims.push_back( anim );
 
-            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str.c_str(), fmt::format( "next_x_{}", frm ).c_str(), 0 ) );
-            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str.c_str(), fmt::format( "next_y_{}", frm ).c_str(), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str.c_str(), _str( "next_x_{}", frm ).c_str(), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str.c_str(), _str( "next_y_{}", frm ).c_str(), 0 ) );
         }
 
         // No frames found or error
@@ -4188,7 +4188,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             if( spr->DrawOrderType >= DRAW_ORDER_FLAT && spr->DrawOrderType < DRAW_ORDER )
                 y1 -= (int) ( 40.0f / z );
 
-            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), fmt::format( "{}", spr->TreeIndex ).c_str(), 0 );
+            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), _str( spr->TreeIndex ).c_str(), 0 );
         }
         #endif
 

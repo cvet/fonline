@@ -167,7 +167,7 @@ bool Item::SetScript( asIScriptFunction* func, bool first_time )
 
     if( GetScriptId() )
     {
-        Script::PrepareScriptFuncContext( GetScriptId(), fmt::format( "Item '{}' ({})", GetName(), GetId() ) );
+        Script::PrepareScriptFuncContext( GetScriptId(), _str( "Item '{}' ({})", GetName(), GetId() ) );
         Script::SetArgEntity( this );
         Script::SetArgBool( first_time );
         Script::RunPrepared();

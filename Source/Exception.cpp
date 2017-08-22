@@ -77,8 +77,8 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
     # else
     string        dump_path_dir = "./";
     # endif
-    string        dump_path = fmt::format( "{}{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
-                                           dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+    string        dump_path = _str( "{}{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
+                                    dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FileManager::CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path.c_str(), "wt" );
@@ -442,11 +442,11 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 
         fclose( f );
 
-        mess = fmt::format( DumpMess, dump_path );
+        mess = _str( DumpMess, dump_path );
     }
     else
     {
-        mess = fmt::format( mess, "Error while create dump file - Error create file, path '{}', err {}.", dump_path, GetLastError() );
+        mess = _str( mess, "Error while create dump file - Error create file, path '{}', err {}.", dump_path, GetLastError() );
     }
 
     if( except )
@@ -547,8 +547,8 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     # else
     string dump_path_dir = "./";
     # endif
-    string dump_path = fmt::format( "{}{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
-                                    dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+    string dump_path = _str( "{}{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
+                             dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FileManager::CreateDirectoryTree( dump_path );
     FILE* f = fopen( dump_path.c_str(), "wt" );
@@ -644,11 +644,11 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         free( symbols );
         fclose( f );
 
-        mess = fmt::format( DumpMess, dump_path );
+        mess = _str( DumpMess, dump_path );
     }
     else
     {
-        mess = fmt::format( "Error while create dump file - Error create file, path '{}'.", dump_path );
+        mess = _str( "Error while create dump file - Error create file, path '{}'.", dump_path );
     }
 
     // if( siginfo )
@@ -687,10 +687,10 @@ bool RaiseAssert( const string& message, const string& file, int line )
 
     #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
     // Create dump
-    CreateDump( fmt::format( "AssertFailed_v{}_{}({})", FONLINE_VERSION, name, line ), message );
+    CreateDump( _str( "AssertFailed_v{}_{}({})", FONLINE_VERSION, name, line ), message );
 
     // Show message
-    ShowMessage( fmt::format( "Assert failed!\nVersion: {}\nFile: {} ({})\n\n{}", FONLINE_VERSION, name, line, message ).c_str() );
+    ShowMessage( _str( "Assert failed!\nVersion: {}\nFile: {} ({})\n\n{}", FONLINE_VERSION, name, line, message ).c_str() );
     #endif
 
     // Shut down

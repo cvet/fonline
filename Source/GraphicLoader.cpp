@@ -430,16 +430,16 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         #endif
 
         // Internal definitions
-        string internal_defines = fmt::format( "#define PASS{}\n#define MAX_BONES {}\n", pass, Effect::MaxBones );
+        string internal_defines = _str( "#define PASS{}\n#define MAX_BONES {}\n", pass, Effect::MaxBones );
 
         // Create shaders
         GLuint vs, fs;
         GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
         GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-        string        buf = fmt::format( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", internal_defines, defines ? defines : "", "\n", str );
+        string        buf = _str( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", internal_defines, defines ? defines : "", "\n", str );
         const GLchar* vs_str = &buf[ 0 ];
         GL( glShaderSource( vs, 1, &vs_str, nullptr ) );
-        buf = fmt::format( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines ? defines : "", "\n", str );
+        buf = _str( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines ? defines : "", "\n", str );
         const GLchar* fs_str = &buf[ 0 ];
         GL( glShaderSource( fs, 1, &fs_str, nullptr ) );
 
@@ -592,18 +592,18 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
     effect_pass.IsTextures = false;
     for( int i = 0; i < EFFECT_TEXTURES; i++ )
     {
-        GL( effect_pass.Textures[ i ] = glGetUniformLocation( program, fmt::format( "Texture{}", i ).c_str() ) );
+        GL( effect_pass.Textures[ i ] = glGetUniformLocation( program, _str( "Texture{}", i ).c_str() ) );
         if( effect_pass.Textures[ i ] != -1 )
         {
             effect_pass.IsTextures = true;
-            GL( effect_pass.TexturesSize[ i ] = glGetUniformLocation( program, fmt::format( "Texture%dSize", i ).c_str() ) );
-            GL( effect_pass.TexturesAtlasOffset[ i ] = glGetUniformLocation( program, fmt::format( "Texture{}AtlasOffset", i ).c_str() ) );
+            GL( effect_pass.TexturesSize[ i ] = glGetUniformLocation( program, _str( "Texture%dSize", i ).c_str() ) );
+            GL( effect_pass.TexturesAtlasOffset[ i ] = glGetUniformLocation( program, _str( "Texture{}AtlasOffset", i ).c_str() ) );
         }
     }
     effect_pass.IsScriptValues = false;
     for( int i = 0; i < EFFECT_SCRIPT_VALUES; i++ )
     {
-        GL( effect_pass.ScriptValues[ i ] = glGetUniformLocation( program, fmt::format( "EffectValue{}", i ).c_str() ) );
+        GL( effect_pass.ScriptValues[ i ] = glGetUniformLocation( program, _str( "EffectValue{}", i ).c_str() ) );
         if( effect_pass.ScriptValues[ i ] != -1 )
             effect_pass.IsScriptValues = true;
     }

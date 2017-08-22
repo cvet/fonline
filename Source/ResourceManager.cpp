@@ -440,13 +440,13 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( hash model_name, uint anim1, uin
 
     // Try load fofrm
     const char* name = Str::GetName( model_name );
-    string spr_name = fmt::format( "{}{}{}.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
+    string spr_name = _str( "{}{}{}.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
     AnyFrames* frames = SprMngr.LoadAnimation( spr_name.c_str() );
 
     // Try load fallout frames
     if( !frames )
     {
-        spr_name = fmt::format( "{}{}{}.frm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
+        spr_name = _str( "{}{}{}.frm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
         frames = SprMngr.LoadAnimation( spr_name.c_str() );
     }
     SprMngr.PopAtlasType();
