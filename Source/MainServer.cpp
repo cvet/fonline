@@ -393,13 +393,12 @@ static void GUICallback( Fl_Widget* widget, void* data )
     {
         DateTimeStamp    dt;
         Timer::GetCurrentDateTime( dt );
-        char             log_name[ MAX_FOTEXT ];
         Fl_Text_Display* log = ( widget == GuiBtnSaveLog ? GuiLog : GuiInfo );
         string           log_name_dir = FileManager::GetWritePath( "Logs/" );
-        Str::Format( log_name, "%sFOnlineServer_%s_%04u.%02u.%02u_%02u-%02u-%02u.log",
-                     log_name_dir.c_str(), log == GuiInfo ? UpdateLogName.c_str() : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+        string           log_name = fmt::format( "{}FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log",
+                                                 log_name_dir, log == GuiInfo ? UpdateLogName : "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
         FileManager::CreateDirectoryTree( log_name );
-        log->buffer()->savefile( log_name );
+        log->buffer()->savefile( log_name.c_str() );
     }
     else if( widget == GuiBtnCreateDump )
     {
@@ -507,11 +506,11 @@ static void UpdateInfo()
 
     struct Label
     {
-        static void Update( Fl_Box* label, char* text )
+        static void Update( Fl_Box* label, const string& text )
         {
             if( !Str::Compare( text, (char*) label->label() ) )
             {
-                Str::Copy( (char*) label->label(), GUI_LABEL_BUF_SIZE, text );
+                Str::Copy( (char*) label->label(), GUI_LABEL_BUF_SIZE, text.c_str() );
                 label->redraw_label();
             }
         }
@@ -520,32 +519,32 @@ static void UpdateInfo()
     if( Server.Started() )
     {
         DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
-        Label::Update( GuiLabelGameTime, Str::Format( str, "Time: %02u.%02u.%04u %02u:%02u:%02u x%u", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, GameOpt.TimeMultiplier ) );
-        Label::Update( GuiLabelClients, Str::Format( str, "Connections: %u", Server.Statistics.CurOnline ) );
-        Label::Update( GuiLabelIngame, Str::Format( str, "Players in game: %u", CrMngr.PlayersInGame() ) );
-        Label::Update( GuiLabelNPC, Str::Format( str, "NPC in game: %u", CrMngr.NpcInGame() ) );
-        Label::Update( GuiLabelLocCount, Str::Format( str, "Locations: %u (%u)", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
-        Label::Update( GuiLabelItemsCount, Str::Format( str, "Items: %u", ItemMngr.GetItemsCount() ) );
-        Label::Update( GuiLabelFPS, Str::Format( str, "Cycles per second: %u", Server.Statistics.FPS ) );
-        Label::Update( GuiLabelDelta, Str::Format( str, "Cycle time: %d", Server.Statistics.CycleTime ) );
+        Label::Update( GuiLabelGameTime, fmt::format( str, "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, GameOpt.TimeMultiplier ) );
+        Label::Update( GuiLabelClients, fmt::format( str, "Connections: {}", Server.Statistics.CurOnline ) );
+        Label::Update( GuiLabelIngame, fmt::format( str, "Players in game: {}", CrMngr.PlayersInGame() ) );
+        Label::Update( GuiLabelNPC, fmt::format( str, "NPC in game: {}", CrMngr.NpcInGame() ) );
+        Label::Update( GuiLabelLocCount, fmt::format( str, "Locations: {} ({})", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount() ) );
+        Label::Update( GuiLabelItemsCount, fmt::format( str, "Items: {}", ItemMngr.GetItemsCount() ) );
+        Label::Update( GuiLabelFPS, fmt::format( str, "Cycles per second: {}", Server.Statistics.FPS ) );
+        Label::Update( GuiLabelDelta, fmt::format( str, "Cycle time: {}", Server.Statistics.CycleTime ) );
     }
     else
     {
-        Label::Update( GuiLabelGameTime, Str::Format( str, "Time: n/a" ) );
-        Label::Update( GuiLabelClients, Str::Format( str, "Connections: n/a" ) );
-        Label::Update( GuiLabelIngame, Str::Format( str, "Players in game: n/a" ) );
-        Label::Update( GuiLabelNPC, Str::Format( str, "NPC in game: n/a" ) );
-        Label::Update( GuiLabelLocCount, Str::Format( str, "Locations: n/a" ) );
-        Label::Update( GuiLabelItemsCount, Str::Format( str, "Items: n/a" ) );
-        Label::Update( GuiLabelFPS, Str::Format( str, "Cycles per second: n/a" ) );
-        Label::Update( GuiLabelDelta, Str::Format( str, "Cycle time: n/a" ) );
+        Label::Update( GuiLabelGameTime, fmt::format( str, "Time: n/a" ) );
+        Label::Update( GuiLabelClients, fmt::format( str, "Connections: n/a" ) );
+        Label::Update( GuiLabelIngame, fmt::format( str, "Players in game: n/a" ) );
+        Label::Update( GuiLabelNPC, fmt::format( str, "NPC in game: n/a" ) );
+        Label::Update( GuiLabelLocCount, fmt::format( str, "Locations: n/a" ) );
+        Label::Update( GuiLabelItemsCount, fmt::format( str, "Items: n/a" ) );
+        Label::Update( GuiLabelFPS, fmt::format( str, "Cycles per second: n/a" ) );
+        Label::Update( GuiLabelDelta, fmt::format( str, "Cycle time: n/a" ) );
     }
 
     uint seconds = Server.Statistics.Uptime;
-    Label::Update( GuiLabelUptime, Str::Format( str, "Uptime: %2u:%2u:%2u", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 ) );
-    Label::Update( GuiLabelSend, Str::Format( str, "KBytes Send: %u", Server.Statistics.BytesSend / 1024 ) );
-    Label::Update( GuiLabelRecv, Str::Format( str, "KBytes Recv: %u", Server.Statistics.BytesRecv / 1024 ) );
-    Label::Update( GuiLabelCompress, Str::Format( str, "Compress ratio: %g", (double) Server.Statistics.DataReal / ( Server.Statistics.DataCompressed ? Server.Statistics.DataCompressed : 1 ) ) );
+    Label::Update( GuiLabelUptime, fmt::format( str, "Uptime: {:02}:{:02}:{:02}", seconds / 60 / 60, seconds / 60 % 60, seconds % 60 ) );
+    Label::Update( GuiLabelSend, fmt::format( str, "KBytes Send: {}", Server.Statistics.BytesSend / 1024 ) );
+    Label::Update( GuiLabelRecv, fmt::format( str, "KBytes Recv: {}", Server.Statistics.BytesRecv / 1024 ) );
+    Label::Update( GuiLabelCompress, fmt::format( str, "Compress ratio: {}", (double) Server.Statistics.DataReal / ( Server.Statistics.DataCompressed ? Server.Statistics.DataCompressed : 1 ) ) );
 
     if( FOServer::UpdateIndex == -1 && FOServer::UpdateLastTick && FOServer::UpdateLastTick + 1000 < Timer::FastTick() )
     {
@@ -741,10 +740,9 @@ static void ServiceMain( bool as_service )
     SC_HANDLE service = OpenService( manager, "FOnlineServer", SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_START );
 
     // Compile service path
-    char exe_path[ MAX_FOPATH ];
+    char   exe_path[ MAX_FOPATH ];
     GetModuleFileName( GetModuleHandle( nullptr ), exe_path, MAX_FOPATH );
-    char path[ MAX_FOPATH ];
-    Str::Format( path, "\"%s\" --service %s", exe_path, GameOpt.CommandLine.c_str() );
+    string path = fmt::format( "\"{}\" --service {}", exe_path, GameOpt.CommandLine );
 
     // Change executable path, if changed
     if( service )
@@ -752,7 +750,7 @@ static void ServiceMain( bool as_service )
         LPQUERY_SERVICE_CONFIG service_cfg = (LPQUERY_SERVICE_CONFIG) calloc( 8192, 1 );
         DWORD                  dw;
         if( QueryServiceConfig( service, service_cfg, 8192, &dw ) && !Str::CompareCase( service_cfg->lpBinaryPathName, path ) )
-            ChangeServiceConfig( service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
+            ChangeServiceConfig( service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
         free( service_cfg );
     }
 
@@ -760,7 +758,7 @@ static void ServiceMain( bool as_service )
     if( !service )
     {
         service = CreateService( manager, "FOnlineServer", "FOnlineServer", SERVICE_ALL_ACCESS,
-                                 SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path, nullptr, nullptr, nullptr, nullptr, nullptr );
+                                 SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr );
 
         if( service )
             MessageBox( nullptr, "\'FOnlineServer\' service registered.", "FOnlineServer", MB_OK | MB_ICONASTERISK );
@@ -1127,25 +1125,27 @@ static void AdminManager( void* port_ )
     }
 }
 
-#define ADMIN_PREFIX    "Admin panel (%s): "
-#define ADMIN_LOG( format, ... )                                                  \
-    do {                                                                          \
-        WriteLog( ADMIN_PREFIX format, admin_name, ## __VA_ARGS__ );              \
-        char buf[ MAX_FOTEXT ];                                                   \
-        Str::Format( buf, format, ## __VA_ARGS__ );                               \
-        uint buf_len = Str::Length( buf ) + 1;                                    \
-        if( send( s->Sock, buf, buf_len, 0 ) != (int) buf_len )                   \
+#define ADMIN_PREFIX    "Admin panel ({}): "
+#define ADMIN_LOG( format, ... )                                     \
+    do {                                                             \
+        WriteLog( ADMIN_PREFIX format, admin_name, ## __VA_ARGS__ ); \
+    } while( 0 )
+
+/*
+   string buf = fmt::format(format, ## __VA_ARGS__);                       \
+        uint   buf_len = (uint) buf.length() + 1;                                 \
+        if( send( s->Sock, buf.c_str(), buf_len, 0 ) != (int) buf_len )           \
         {                                                                         \
             WriteLog( ADMIN_PREFIX "Send data fail, disconnect.\n", admin_name ); \
             goto label_Finish;                                                    \
         }                                                                         \
-    } while( 0 )
+ */
 
 static void AdminWork( void* session_ )
 {
     // Data
     Session* s = (Session*) session_;
-    char     admin_name[ MAX_FOTEXT ] = { "Not authorized" };
+    string   admin_name = "Not authorized";
 
     // Welcome string
     char welcome[] = { "Welcome to FOnline admin panel.\nEnter access key: " };
@@ -1193,12 +1193,12 @@ static void AdminWork( void* session_ )
             if( pos != -1 )
             {
                 if( pos < (int) admin_names.size() )
-                    Str::Copy( admin_name, admin_names[ pos ].c_str() );
+                    admin_name = admin_names[ pos ];
                 else
-                    Str::Format( admin_name, "%d", pos );
+                    admin_name = fmt::format( "{}", pos );
 
                 s->Authorized = true;
-                ADMIN_LOG( "Authorized for admin '%s', IP '%s'.\n", admin_name, inet_ntoa( s->From.sin_addr ) );
+                ADMIN_LOG( "Authorized for admin '{}', IP '{}'.\n", admin_name, inet_ntoa( s->From.sin_addr ) );
                 continue;
             }
             else
@@ -1226,7 +1226,7 @@ static void AdminWork( void* session_ )
             if( !Str::CompareCase( &cmd[ 4 ], "disable" ) )
             {
                 LogToFile( &cmd[ 4 ] );
-                ADMIN_LOG( "Logging to file '%s'.\n", &cmd[ 4 ] );
+                ADMIN_LOG( "Logging to file '{}'.\n", &cmd[ 4 ] );
             }
             else
             {
@@ -1305,9 +1305,9 @@ static void AdminWork( void* session_ )
         {
             if( Server.Started() )
             {
-                static THREAD char*  admin_name_ptr;
-                static THREAD SOCKET sock;
-                static THREAD bool   send_fail;
+                static THREAD string* admin_name_ptr;
+                static THREAD SOCKET  sock;
+                static THREAD bool    send_fail;
                 struct LogCB
                 {
                     static void Message( const char* str )
@@ -1325,12 +1325,12 @@ static void AdminWork( void* session_ )
 
                         if( !send_fail && send( sock, buf, buf_len, 0 ) != (int) buf_len )
                         {
-                            WriteLog( ADMIN_PREFIX "Send data fail, disconnect.\n", admin_name_ptr );
+                            WriteLog( ADMIN_PREFIX "Send data fail, disconnect.\n", *admin_name_ptr );
                             send_fail = true;
                         }
                     }
                 };
-                admin_name_ptr = admin_name;
+                admin_name_ptr = &admin_name;
                 sock = s->Sock;
                 send_fail = false;
 
@@ -1341,7 +1341,7 @@ static void AdminWork( void* session_ )
                     uint msg;
                     buf >> msg;
                     WriteLog( ADMIN_PREFIX "Execute command '{}'.\n", admin_name, cmd );
-                    Server.Process_Command( buf, LogCB::Message, nullptr, admin_name );
+                    Server.Process_Command( buf, LogCB::Message, nullptr, admin_name.c_str() );
                 }
 
                 if( send_fail )
@@ -1354,7 +1354,7 @@ static void AdminWork( void* session_ )
         }
         else if( Str::Length( cmd ) > 0 )
         {
-            ADMIN_LOG( "Unknown command '%s'.\n", cmd );
+            ADMIN_LOG( "Unknown command '{}'.\n", cmd );
         }
     }
 

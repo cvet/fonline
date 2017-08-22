@@ -391,7 +391,7 @@ void FOServer::Process_CreateClient( Client* cl )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED_IP, SAY_NETMSG, TEXTMSG_GAME );
             // cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
-            cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, Str::FormatBuf( "$time%u", GetBanTime( *ban ) ) );
+            cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, fmt::format( "$time{}", GetBanTime( *ban ) ).c_str() );
             cl->Disconnect();
             return;
         }
@@ -462,7 +462,7 @@ void FOServer::Process_CreateClient( Client* cl )
             if( tick - last_reg < reg_tick )
             {
                 cl->Send_TextMsg( cl, STR_NET_REGISTRATION_IP_WAIT, SAY_NETMSG, TEXTMSG_GAME );
-                cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, Str::FormatBuf( "$time%u", ( reg_tick - ( tick - last_reg ) ) / 60000 + 1 ) );
+                cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, fmt::format( "$time{}", ( reg_tick - ( tick - last_reg ) ) / 60000 + 1 ).c_str() );
                 cl->Disconnect();
                 return;
             }
@@ -681,8 +681,8 @@ void FOServer::Process_LogIn( Client*& cl )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED_IP, SAY_NETMSG, TEXTMSG_GAME );
             if( Str::CompareCaseUTF8( ban->ClientName, cl->Name.c_str() ) )
-                cl->Send_TextMsgLex( cl, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, ban->GetBanLexems() );
-            cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, Str::FormatBuf( "$time%u", GetBanTime( *ban ) ) );
+                cl->Send_TextMsgLex( cl, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, ban->GetBanLexems().c_str() );
+            cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, fmt::format( "$time{}", GetBanTime( *ban ) ).c_str() );
             cl->Disconnect();
             return;
         }
@@ -738,8 +738,8 @@ void FOServer::Process_LogIn( Client*& cl )
         if( ban && !Singleplayer )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Send_TextMsgLex( cl, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, ban->GetBanLexems() );
-            cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, Str::FormatBuf( "$time%u", GetBanTime( *ban ) ) );
+            cl->Send_TextMsgLex( cl, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, ban->GetBanLexems().c_str() );
+            cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, fmt::format( "$time{}", GetBanTime( *ban ) ).c_str() );
             cl->Disconnect();
             return;
         }

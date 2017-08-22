@@ -2068,7 +2068,7 @@ void HexManager::DrawMap()
     if( drawCursorX < 0 )
         DrawCursor( cursorXPic->GetCurSprId() );
     else if( drawCursorX > 0 )
-        DrawCursor( Str::FormatBuf( "%u", drawCursorX ) );
+        DrawCursor( fmt::format( "{}", drawCursorX ).c_str() );
 
     // Draw map from render target
     if( rtMap )
@@ -3577,12 +3577,11 @@ bool HexManager::LoadMap( hash map_pid )
         ReloadSprites();
 
     // Make name
-    char map_name[ 256 ];
-    Str::Format( map_name, "%u.map", map_pid );
+    string map_name = fmt::format( "{}.map", map_pid );
 
     // Find in cache
     uint   cache_len;
-    uchar* cache = Crypt.GetCache( map_name, cache_len );
+    uchar* cache = Crypt.GetCache( map_name.c_str(), cache_len );
     if( !cache )
     {
         WriteLog( "Load map '{}' from cache fail.\n", map_name );
@@ -3799,11 +3798,10 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
         return;
     }
 
-    char map_name[ 256 ];
-    Str::Format( map_name, "%u.map", map_pid );
+    string map_name = fmt::format( "{}.map", map_pid );
 
     uint   cache_len;
-    uchar* cache = Crypt.GetCache( map_name, cache_len );
+    uchar* cache = Crypt.GetCache( map_name.c_str(), cache_len );
     if( !cache )
     {
         WriteLog( "Load map '{}' from cache fail.\n", map_name );

@@ -76,9 +76,9 @@ public:
     bool  IsAllMsgLoaded;
     FOMsg Msg[ TEXTMSG_COUNT ];
 
-    bool  LoadFromFiles( const char* lang_name );
-    bool  LoadFromCache( const char* lang_name );
-    char* GetMsgCacheName( int msg_num, char* result );
+    bool   LoadFromFiles( const char* lang_name );
+    bool   LoadFromCache( const char* lang_name );
+    string GetMsgCacheName( int msg_num );
 
     LanguagePack();
     bool operator==( const uint& other ) { return Name == other; }

@@ -29,9 +29,8 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
         DateTimeStamp dt;
         Timer::GetCurrentDateTime( dt );
 
-        char dump_file[ MAX_FOPATH ];
-        Str::Format( dump_file, "%sProfiler_%04u.%02u.%02u_%02u-%02u-%02u.foprof",
-                     FileManager::GetWritePath( "Profiler/" ).c_str(), dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+        string dump_file = fmt::format( "{}Profiler_{}.{}.{}_{}-{}-{}.foprof",
+                                        FileManager::GetWritePath( "Profiler/" ), dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
         saveFileHandle = FileOpen( dump_file, true );
         if( !saveFileHandle )
@@ -80,13 +79,12 @@ void ScriptProfiler::EndModules()
             if( !func )
                 continue;
 
-            char buf[ MAX_FOTEXT ] = { 0 };
             FileWrite( saveFileHandle, &i, 4 );
 
-            Str::Format( buf, "%s", func->GetModuleName() );
-            FileWrite( saveFileHandle, buf, Str::Length( buf ) + 1 );
-            Str::Format( buf, "%s", func->GetDeclaration() );
-            FileWrite( saveFileHandle, buf, Str::Length( buf ) + 1 );
+            string buf = func->GetModuleName();
+            FileWrite( saveFileHandle, buf.c_str(), (uint) buf.length() + 1 );
+            buf = func->GetDeclaration();
+            FileWrite( saveFileHandle, buf.c_str(), (uint) buf.length() + 1 );
         }
 
         dummy = -1;
@@ -180,21 +178,21 @@ struct OutputLine
     uint   Depth;
     float  Incl;
     float  Excl;
-    OutputLine( char* text, uint depth, float incl, float excl ): FuncName( text ), Depth( depth ), Incl( incl ), Excl( excl ) {}
+    OutputLine( const char* text, uint depth, float incl, float excl ): FuncName( text ), Depth( depth ), Incl( incl ), Excl( excl ) {}
 };
 
 static void TraverseCallPaths( asIScriptEngine* engine, CallPath* path, vector< OutputLine >& lines, uint depth, uint& max_depth, uint& max_len, float total_call_paths )
 {
     asIScriptFunction* func = engine->GetFunctionById( path->Id );
-    char               name[ MAX_FOTEXT ] = { 0 };
+    string             name;
     if( func )
-        Str::Format( name, "%s : %s", func->GetModuleName(), func->GetDeclaration() );
+        name = fmt::format( "{} : {}", func->GetModuleName(), func->GetDeclaration() );
     else
-        Str::Copy( name, 4, "???\0" );
+        name = "???";
 
-    lines.push_back( OutputLine( name, depth, 100.0f * (float) path->Incl / total_call_paths, 100.0f * (float) path->Excl / total_call_paths ) );
+    lines.push_back( OutputLine( name.c_str(), depth, 100.0f * (float) path->Incl / total_call_paths, 100.0f * (float) path->Excl / total_call_paths ) );
 
-    uint len = Str::Length( name ) + depth;
+    uint len = (uint) name.length() + depth;
     if( len > max_len )
         max_len = len;
     depth += 2;
@@ -221,16 +219,13 @@ string ScriptProfiler::GetStatistics()
     for( auto it = callPaths.begin(), end = callPaths.end(); it != end; ++it )
         TraverseCallPaths( scriptEngine, it->second, lines, 0, max_depth, max_len, (float) totalCallPaths );
 
-    char buf[ MAX_FOTEXT ] = { 0 };
-    Str::Format( buf, "%-*s Inclusive %%  Exclusive %%\n\n", max_len, "" );
-    result += buf;
+    result += fmt::format( "{} Inclusive %  Exclusive %\n\n", max_len );
 
     for( uint i = 0; i < lines.size(); i++ )
     {
-        Str::Format( buf, "%*s%-*s   %6.2f       %6.2f\n", lines[ i ].Depth, "",
-                     max_len - lines[ i ].Depth, lines[ i ].FuncName.c_str(),
-                     lines[ i ].Incl, lines[ i ].Excl );
-        result += buf;
+        result += fmt::format( "{}{}   {}       {}\n", lines[ i ].Depth, "",
+                               max_len - lines[ i ].Depth, lines[ i ].FuncName,
+                               lines[ i ].Incl, lines[ i ].Excl );
     }
 
     return result;

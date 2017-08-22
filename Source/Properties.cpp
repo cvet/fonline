@@ -987,16 +987,16 @@ string Property::SetGetCallback( asIScriptFunction* func )
     return "";
 
     /*char decl[ MAX_FOTEXT ];
-       Str::Format( decl, "%s%s %s(const %s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
+       Xfmt::format( decl, "%s%s %s(const %s&,%s)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
        uint bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
        if( !bind_id )
        {
-        Str::Format( decl, "%s%s %s(const %s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
+        Xfmt::format( decl, "%s%s %s(const %s&)", typeName.c_str(), !IsPOD() ? "@" : "", "%s", registrator->scriptClassName.c_str() );
         bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
         if( !bind_id )
         {
             char buf[ MAX_FOTEXT ];
-            Str::Format( buf, decl, script_func );
+            Xfmt::format( buf, decl, script_func );
             return "Unable to bind function '" + string( buf ) + "'.";
         }
         getCallbackArgs = 1;
@@ -1029,28 +1029,28 @@ string Property::AddSetCallback( asIScriptFunction* func, bool deferred )
     return "";
 
     /*char decl[ MAX_FOTEXT ];
-       Str::Format( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
+       Xfmt::format( decl, "void %s(%s%s&,%s,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str(), typeName.c_str() );
        uint  bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
        if( !bind_id )
        {
-        Str::Format( decl, "void %s(%s%s&,%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
+        Xfmt::format( decl, "void %s(%s%s&,%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str(), registrator->enumTypeName.c_str() );
         bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
         if( !bind_id )
         {
-            Str::Format( decl, "void %s(%s%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
+            Xfmt::format( decl, "void %s(%s%s&,%s)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), registrator->enumTypeName.c_str() );
             bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
             if( !bind_id )
             {
-                Str::Format( decl, "void %s(%s%s&,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str() );
+                Xfmt::format( decl, "void %s(%s%s&,%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str(), typeName.c_str() );
                 bind_id = ( !deferred ? Script::BindByFuncNameInRuntime( script_func, decl, false, true ) : 0 );
                 if( !bind_id )
                 {
-                    Str::Format( decl, "void %s(%s%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str() );
+                    Xfmt::format( decl, "void %s(%s%s&)", "%s", deferred ? "" : "const ", registrator->scriptClassName.c_str() );
                     bind_id = Script::BindByFuncNameInRuntime( script_func, decl, false, true );
                     if( !bind_id )
                     {
                         char buf[ MAX_FOTEXT ];
-                        Str::Format( buf, decl, script_func );
+                        Xfmt::format( buf, decl, script_func );
                         return "Unable to bind function '" + string( buf ) + "'.";
                     }
                     else
@@ -1944,17 +1944,16 @@ bool PropertyRegistrator::Init()
         return false;
     }
 
-    char decl[ MAX_FOTEXT ];
-    Str::Format( decl, "int GetAsInt(%s) const", enum_type.c_str() );
-    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, SCRIPT_FUNC_THIS( Properties::GetValueAsInt ), SCRIPT_FUNC_THIS_CONV );
+    string decl = fmt::format( "int GetAsInt({}) const", enum_type );
+    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), SCRIPT_FUNC_THIS( Properties::GetValueAsInt ), SCRIPT_FUNC_THIS_CONV );
     if( result < 0 )
     {
         WriteLog( "Register entity method '{}' fail, error {}.\n", decl, result );
         return false;
     }
 
-    Str::Format( decl, "void SetAsInt(%s,int)", enum_type.c_str() );
-    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, SCRIPT_FUNC_THIS( Properties::SetValueAsInt ), SCRIPT_FUNC_THIS_CONV );
+    decl = fmt::format( "void SetAsInt({},int)", enum_type );
+    result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), SCRIPT_FUNC_THIS( Properties::SetValueAsInt ), SCRIPT_FUNC_THIS_CONV );
     if( result < 0 )
     {
         WriteLog( "Register entity method '{}' fail, error {}.\n", decl, result );
@@ -2154,35 +2153,34 @@ Property* PropertyRegistrator::Register(
     bool is_handle = ( data_type == Property::Array || data_type == Property::Dict );
     if( !disable_get )
     {
-        char decl[ MAX_FOTEXT ];
-        Str::Format( decl, "const %s%s get_%s() const", type_name, is_handle ? "@" : "", name );
+        string decl = fmt::format( "const {}{} get_{}() const", type_name, is_handle ? "@" : "", name );
         int  result = -1;
         #ifdef AS_MAX_PORTABILITY
         if( data_type == Property::String )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Property_GetValue_Generic< string >), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( Property_GetValue_Generic< string >), asCALL_GENERIC, prop );
         else if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Property_GetValue_Generic< void* >), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( Property_GetValue_Generic< void* >), asCALL_GENERIC, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Property_GetValue_Generic< char >), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( Property_GetValue_Generic< char >), asCALL_GENERIC, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Property_GetValue_Generic< short >), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( Property_GetValue_Generic< short >), asCALL_GENERIC, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Property_GetValue_Generic< int >), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( Property_GetValue_Generic< int >), asCALL_GENERIC, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Property_GetValue_Generic< int64 >), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( Property_GetValue_Generic< int64 >), asCALL_GENERIC, prop );
         #else
         if( data_type == Property::String )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< string >, (Entity*), string ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, GetValue< string >, (Entity*), string ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< void* >, (Entity*), void* ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, GetValue< void* >, (Entity*), void* ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< char >, (Entity*), char ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, GetValue< char >, (Entity*), char ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< short >, (Entity*), short ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, GetValue< short >, (Entity*), short ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int >, (Entity*), int ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, GetValue< int >, (Entity*), int ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, GetValue< int64 >, (Entity*), int64 ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, GetValue< int64 >, (Entity*), int64 ), asCALL_THISCALL_OBJFIRST, prop );
         #endif
         if( result < 0 )
         {
@@ -2194,35 +2192,34 @@ Property* PropertyRegistrator::Register(
     // Register setter
     if( !disable_set )
     {
-        char decl[ MAX_FOTEXT ];
-        Str::Format( decl, "void set_%s(%s%s%s)", name, is_handle ? "const " : "", type_name, is_handle ? "@" : "" );
+        string decl = fmt::format( "void set_{}({}{}{})", name, is_handle ? "const " : "", type_name, is_handle ? "@" : "" );
         int  result = -1;
         #ifdef AS_MAX_PORTABILITY
         if( data_type == Property::String )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< string >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( ( Property_SetValue_Generic< string >) ), asCALL_GENERIC, prop );
         else if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< void* >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( ( Property_SetValue_Generic< void* >) ), asCALL_GENERIC, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< char >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( ( Property_SetValue_Generic< char >) ), asCALL_GENERIC, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< short >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( ( Property_SetValue_Generic< short >) ), asCALL_GENERIC, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< int >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( ( Property_SetValue_Generic< int >) ), asCALL_GENERIC, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( ( Property_SetValue_Generic< int64 >) ), asCALL_GENERIC, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asFUNCTION( ( Property_SetValue_Generic< int64 >) ), asCALL_GENERIC, prop );
         #else
         if( data_type == Property::String )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< string >, ( Entity *, string ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, SetValue< string >, ( Entity *, string ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_type != Property::POD )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< void* >, ( Entity *, void* ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, SetValue< void* >, ( Entity *, void* ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 1 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< char >, ( Entity *, char ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, SetValue< char >, ( Entity *, char ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 2 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< short >, ( Entity *, short ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, SetValue< short >, ( Entity *, short ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 4 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int >, ( Entity *, int ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, SetValue< int >, ( Entity *, int ), void ), asCALL_THISCALL_OBJFIRST, prop );
         else if( data_size == 8 )
-            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asMETHODPR( Property, SetValue< int64 >, ( Entity *, int64 ), void ), asCALL_THISCALL_OBJFIRST, prop );
+            result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl.c_str(), asMETHODPR( Property, SetValue< int64 >, ( Entity *, int64 ), void ), asCALL_THISCALL_OBJFIRST, prop );
         #endif
         if( result < 0 )
         {
@@ -2232,8 +2229,7 @@ Property* PropertyRegistrator::Register(
     }
 
     // Register enum values for property reflection
-    char enum_value_name[ MAX_FOTEXT ];
-    Str::Format( enum_value_name, "%s::%s", enumTypeName.c_str(), name );
+    string enum_value_name = fmt::format( "{}::{}", enumTypeName, name );
     int  enum_value = (int) Str::GetHash( enum_value_name );
     int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
     if( result < 0 )
@@ -2245,8 +2241,7 @@ Property* PropertyRegistrator::Register(
     // Add property to group
     if( group )
     {
-        char full_decl[ MAX_FOTEXT ];
-        Str::Format( full_decl, "const array<%s>@ %s%s", enumTypeName.c_str(), enumTypeName.c_str(), group );
+        string full_decl = fmt::format( "const array<{}>@ {}{}", enumTypeName, enumTypeName, group );
 
         CScriptArray* group_array = nullptr;
         if( enumGroups.count( full_decl ) )
@@ -2254,9 +2249,8 @@ Property* PropertyRegistrator::Register(
 
         if( !group_array )
         {
-            char decl[ MAX_FOTEXT ];
-            Str::Format( decl, "array<%s>", enumTypeName.c_str() );
-            asITypeInfo* enum_array_type = engine->GetTypeInfoByDecl( decl );
+            string decl = fmt::format( "array<{}>", enumTypeName );
+            asITypeInfo* enum_array_type = engine->GetTypeInfoByDecl( decl.c_str() );
             if( !enum_array_type )
             {
                 WriteLog( "Invalid type for property group '{}'.\n", decl );
@@ -2272,7 +2266,7 @@ Property* PropertyRegistrator::Register(
 
             enumGroups.insert( PAIR( string( full_decl ), group_array ) );
 
-            int result = engine->RegisterGlobalProperty( full_decl, &enumGroups[ full_decl ] );
+            int result = engine->RegisterGlobalProperty( full_decl.c_str(), &enumGroups[ full_decl ] );
             if( result < 0 )
             {
                 WriteLog( "Register entity property group '{}' fail, error {}.\n", full_decl, result );

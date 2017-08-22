@@ -4,15 +4,15 @@
 
 static char DumpMess[] =
 {
-    "Please send this file '%s' on e-mail 'support@fonline.ru'."
+    "Please send this file '{}' on e-mail 'support@fonline.ru'."
     "The theme of the letter should contain a word 'dump'. In the letter specify "
     "under what circumstances there was a failure. Thanks."
 };
 
-static char AppName[ MAX_FOTEXT ] = { 0 };
-static char AppVer[ MAX_FOTEXT ] = { 0 };
-static char ManualDumpAppendix[ MAX_FOTEXT ] = { 0 };
-static char ManualDumpMessage[ MAX_FOTEXT ] = { 0 };
+static string AppName;
+static string AppVer;
+static string ManualDumpAppendix;
+static string ManualDumpMessage;
 
 #if defined ( FO_WINDOWS )
 
@@ -49,13 +49,12 @@ typedef struct _IMAGEHLP_MODULE64_V2
     CHAR     LoadedImageName[ 256 ]; // symbol file name
 } IMAGEHLP_MODULE64_V2;
 
-void CatchExceptions( const char* app_name, int app_ver )
+void CatchExceptions( const string& app_name, int app_ver )
 {
-    if( app_name )
-        Str::Copy( AppName, app_name );
-    Str::Format( AppVer, "%d", app_ver );
+    AppName = app_name;
+    AppVer = Str::ItoA( app_ver );
 
-    if( app_name )
+    if( !app_name.empty() )
         SetUnhandledExceptionFilter( TopLevelFilterReadableDump );
     else
         SetUnhandledExceptionFilter( nullptr );
@@ -66,33 +65,32 @@ void CatchExceptions( const char* app_name, int app_ver )
 # endif
 static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 {
-    LONG retval = EXCEPTION_CONTINUE_SEARCH;
-    char mess[ MAX_FOTEXT ];
-    char dump_path[ MAX_FOPATH ];
+    LONG   retval = EXCEPTION_CONTINUE_SEARCH;
+    string mess;
 
     FileManager::ResetCurrentDir();
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
-    const char*   dump_str = except ? "CrashDump" : ManualDumpAppendix;
+    string        dump_str = except ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
     string        dump_path_dir = FileManager::GetWritePath( "Dumps/" );
     # else
     string        dump_path_dir = "./";
     # endif
-    Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
-                 dump_path_dir.c_str(), dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+    string        dump_path = fmt::format( "{}{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
+                                           dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FileManager::CreateDirectoryTree( dump_path );
-    FILE* f = fopen( dump_path, "wt" );
+    FILE* f = fopen( dump_path.c_str(), "wt" );
     if( f )
     {
         // Generic info
         fprintf( f, "Message\n" );
-        fprintf( f, "%s\n", ManualDumpMessage );
+        fprintf( f, "%s\n", ManualDumpMessage.c_str() );
         fprintf( f, "\n" );
         fprintf( f, "Application\n" );
-        fprintf( f, "\tName        %s\n", AppName );
-        fprintf( f, "\tVersion     %s\n",  AppVer );
+        fprintf( f, "\tName        %s\n", AppName.c_str() );
+        fprintf( f, "\tVersion     %s\n",  AppVer.c_str() );
         OSVERSIONINFOW ver;
         memset( &ver, 0, sizeof( OSVERSIONINFOW ) );
         ver.dwOSVersionInfoSize = sizeof( ver );
@@ -444,23 +442,23 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
 
         fclose( f );
 
-        Str::Format( mess, DumpMess, dump_path );
+        mess = fmt::format( DumpMess, dump_path );
     }
     else
     {
-        Str::Format( mess, "Error while create dump file - Error create file, path '%s', err %d.", dump_path, GetLastError() );
+        mess = fmt::format( mess, "Error while create dump file - Error create file, path '{}', err {}.", dump_path, GetLastError() );
     }
 
     if( except )
-        ShowMessage( mess );
+        ShowMessage( mess.c_str() );
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
-void CreateDump( const char* appendix, const char* message )
+void CreateDump( const string& appendix, const string& message )
 {
-    Str::Copy( ManualDumpAppendix, appendix );
-    Str::Copy( ManualDumpMessage, message );
+    ManualDumpAppendix = appendix;
+    ManualDumpMessage = message;
 
     TopLevelFilterReadableDump( nullptr );
 }
@@ -483,13 +481,12 @@ static struct sigaction OldSIGFPE;
 
 static void DumpAngelScript( FILE* f );
 
-void CatchExceptions( const char* app_name, int app_ver )
+void CatchExceptions( const string& app_name, int app_ver )
 {
-    if( app_name )
-        Str::Copy( AppName, app_name );
-    Str::Format( AppVer, "%d", app_ver );
+    AppName = app_name;
+    AppVer = Str::ItoA( app_ver );
 
-    if( app_name && !SigactionsSetted )
+    if( !app_name.empty() && !SigactionsSetted )
     {
         // SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGTERM
         // CTRL-C - sends SIGINT which default action is to terminate the application.
@@ -520,7 +517,7 @@ void CatchExceptions( const char* app_name, int app_ver )
 
         SigactionsSetted = true;
     }
-    else if( !app_name && SigactionsSetted )
+    else if( app_name.empty() && SigactionsSetted )
     {
         sigaction( SIGSEGV, &OldSIGSEGV, nullptr );
         sigaction( SIGFPE, &OldSIGFPE, nullptr );
@@ -529,43 +526,41 @@ void CatchExceptions( const char* app_name, int app_ver )
     }
 }
 
-void CreateDump( const char* appendix, const char* message )
+void CreateDump( const string& appendix, const string& message )
 {
-    Str::Copy( ManualDumpAppendix, appendix );
-    Str::Copy( ManualDumpMessage, message );
+    ManualDumpAppendix = appendix;
+    ManualDumpMessage = message;
 
     TerminationHandler( 0, nullptr, nullptr );
 }
 
 static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 {
-    char mess[ MAX_FOTEXT ];
-    char dump_path[ MAX_FOPATH ];
-    char dump_path_dir[ MAX_FOPATH ];
+    string mess;
 
     FileManager::ResetCurrentDir();
     DateTimeStamp    dt;
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    FileManager::GetWritePath( "./Dumps/", dump_path_dir );
+    string dump_path_dir = FileManager::GetWritePath( "./Dumps/" );
     # else
-    Str::Copy( dump_path_dir, "./" );
+    string dump_path_dir = "./";
     # endif
-    Str::Format( dump_path, "%s%s_%s_%s_%04d.%02d.%02d_%02d-%02d-%02d.txt",
-                 dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+    string dump_path = fmt::format( "{}{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt",
+                                    dump_path_dir, dump_str, AppName, AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
 
     FileManager::CreateDirectoryTree( dump_path );
-    FILE* f = fopen( dump_path, "wt" );
+    FILE* f = fopen( dump_path.c_str(), "wt" );
     if( f )
     {
         // Generic info
         fprintf( f, "Message\n" );
-        fprintf( f, "\t%s\n", ManualDumpMessage );
+        fprintf( f, "\t%s\n", ManualDumpMessage.c_str() );
         fprintf( f, "\n" );
         fprintf( f, "Application\n" );
-        fprintf( f, "\tName        %s\n", AppName );
-        fprintf( f, "\tVersion     %s\n",  AppVer );
+        fprintf( f, "\tName        %s\n", AppName.c_str() );
+        fprintf( f, "\tVersion     %s\n",  AppVer.c_str() );
         struct utsname ver;
         uname( &ver );
         fprintf( f, "\tOS          %s / %s / %s\n", ver.sysname, ver.release, ver.version );
@@ -649,11 +644,11 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         free( symbols );
         fclose( f );
 
-        Str::Format( mess, DumpMess, dump_path );
+        mess = fmt::format( DumpMess, dump_path );
     }
     else
     {
-        Str::Format( mess, "Error while create dump file - Error create file, path '%s'.", dump_path );
+        mess = fmt::format( "Error while create dump file - Error create file, path '{}'.", dump_path );
     }
 
     // if( siginfo )
@@ -666,12 +661,12 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
 #else
 # pragma MESSAGE( "Exception handling is disabled" )
 
-void CatchExceptions( const char* app_name, int app_ver )
+void CatchExceptions( const string& app_name, int app_ver )
 {
     //
 }
 
-void CreateDump( const char* appendix, const char* message )
+void CreateDump( const string& appendix, const string& message )
 {
     //
 }
@@ -685,20 +680,17 @@ static void DumpAngelScript( FILE* f )
         fprintf( f, "AngelScript\n%s", tb.c_str() );
 }
 
-bool RaiseAssert( const char* message, const char* file, int line )
+bool RaiseAssert( const string& message, const string& file, int line )
 {
-    char buf[ MAX_FOTEXT ];
-    string file_ = FileManager::ExtractFileName( file );
-    WriteLog( "Runtime assert: {} in {} ({})\n", message, file_, line );
+    string name = FileManager::ExtractFileName( file );
+    WriteLog( "Runtime assert: {} in {} ({})\n", message, name, line );
 
     #if defined ( FO_WINDOWS ) || defined ( FO_LINUX ) || defined ( FO_MAC )
     // Create dump
-    Str::Format( buf, "AssertFailed_v%u_%s(%u)", FONLINE_VERSION, file_.c_str(), line );
-    CreateDump( buf, message );
+    CreateDump( fmt::format( "AssertFailed_v{}_{}({})", FONLINE_VERSION, name, line ), message );
 
     // Show message
-    Str::Format( buf, "Assert failed!\nVersion: %u\nFile: %s (%u)\n\n%s", FONLINE_VERSION, file_.c_str(), line, message );
-    ShowMessage( buf );
+    ShowMessage( fmt::format( "Assert failed!\nVersion: {}\nFile: {} ({})\n\n{}", FONLINE_VERSION, name, line, message ).c_str() );
     #endif
 
     // Shut down

@@ -215,31 +215,29 @@ const char* Debugger::GetMemoryStatistics()
     result = "Memory statistics:\n";
 
     #ifdef FONLINE_CLIENT
-    char  buf[ 512 ];
     int64 all_alloc = 0, all_dealloc = 0;
     result += "\n  Level 2                                                  Memory        Alloc         Free    Min block    Max block\n";
     for( auto it = MemNodesStr.begin(), end = MemNodesStr.end(); it != end; ++it )
     {
         MemNodeStr& node = *it;
         # ifdef FO_WINDOWS
-        Str::Format( buf, "%-50s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+        string      buf = fmt::format( "{:<50} : {:<12} {:<12} {:<12} {:<12} {:<12}\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
         # else
-        Str::Format( buf, "%-50s : %12lld %12lld %12lld %12lld %12lld\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+        string      buf = fmt::format( "{:<50} : {:<12} {:<12} {:<12} {:<12} {:<12}\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
         # endif
         result += buf;
         all_alloc += node.AllocMem;
         all_dealloc += node.DeallocMem;
     }
     # ifdef FO_WINDOWS
-    Str::Format( buf, "Whole memory                                       : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+    string buf = fmt::format( "Whole memory                                       : {:<12} {:<12} {:<12}\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
     # else
-    Str::Format( buf, "Whole memory                                       : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+    string buf = fmt::format( "Whole memory                                       : {:<12} {:<12} {:<12}\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
     # endif
     result += buf;
     #endif
 
     #ifdef FONLINE_SERVER
-    char  buf[ 512 ];
     int64 all_alloc = 0, all_dealloc = 0;
 
     if( MemoryDebugLevel >= 1 )
@@ -249,18 +247,18 @@ const char* Debugger::GetMemoryStatistics()
         {
             MemNode& node = MemNodes[ i ];
             # ifdef FO_WINDOWS
-            Str::Format( buf, "%s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+            string   buf = fmt::format( "{:<50} : {:<12} {:<12} {:<12} {:<12} {:<12}\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # else
-            Str::Format( buf, "%s : %12lld %12lld %12lld %12lld %12lld\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+            string   buf = fmt::format( "{:<50} : {:<12} {:<12} {:<12} {:<12} {:<12}\n", MemBlockNames[ i ], node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # endif
             result += buf;
             all_alloc += node.AllocMem;
             all_dealloc += node.DeallocMem;
         }
         # ifdef FO_WINDOWS
-        Str::Format( buf, "Whole memory  : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+        string buf = fmt::format( "Whole memory  : {:<12} {:<12} {:<12}\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # else
-        Str::Format( buf, "Whole memory  : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+        string buf = fmt::format( "Whole memory  : {:<12} {:<12} {:<12}\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # endif
         result += buf;
     }
@@ -273,18 +271,18 @@ const char* Debugger::GetMemoryStatistics()
         {
             MemNodeStr& node = *it;
             # ifdef FO_WINDOWS
-            Str::Format( buf, "%-50s : %12I64d %12I64d %12I64d %12I64d %12I64d\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+            string      buf = fmt::format( "{:<50} : {:<12} {:<12} {:<12} {:<12} {:<12}\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # else
-            Str::Format( buf, "%-50s : %12lld %12lld %12lld %12lld %12lld\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
+            string      buf = fmt::format( "{:<50} : {:<12} {:<12} {:<12} {:<12} {:<12}\n", node.Name, node.AllocMem - node.DeallocMem, node.AllocMem, node.DeallocMem, node.MinAlloc, node.MaxAlloc );
             # endif
             result += buf;
             all_alloc += node.AllocMem;
             all_dealloc += node.DeallocMem;
         }
         # ifdef FO_WINDOWS
-        Str::Format( buf, "Whole memory                                       : %12I64d %12I64d %12I64d\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+        string buf = fmt::format( "Whole memory                                       : {:<12} {:<12} {:<12}\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # else
-        Str::Format( buf, "Whole memory                                       : %12lld %12lld %12lld\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
+        string buf = fmt::format( "Whole memory                                       : {:<12} {:<12} {:<12}\n", all_alloc - all_dealloc, all_alloc, all_dealloc );
         # endif
         result += buf;
     }

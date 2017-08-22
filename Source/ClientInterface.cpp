@@ -106,7 +106,7 @@ void FOClient::GameDraw()
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::AddMess( int mess_type, const char* msg, bool script_call )
+void FOClient::AddMess( int mess_type, const string& msg, bool script_call )
 {
     string text = msg;
     Script::RaiseInternalEvent( ClientFunctions.MessageBox, &text, mess_type, script_call );
@@ -220,7 +220,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
             // Lexems
             else if( Str::Length( tag ) > 4 && tag[ 0 ] == 'l' && tag[ 1 ] == 'e' && tag[ 2 ] == 'x' && tag[ 3 ] == ' ' )
             {
-                const char* s = Str::Substring( lexems ? lexems : "", Str::FormatBuf( "$%s", &tag[ 4 ] ) );
+                const char* s = Str::Substring( lexems ? lexems : "", fmt::format( "${}", &tag[ 4 ] ).c_str() );
                 if( s )
                 {
                     s += Str::Length( &tag[ 4 ] ) + 1;
@@ -250,7 +250,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
                     if( msg_type < 0 || msg_type >= TEXTMSG_COUNT )
                         Str::Copy( tag, "<msg tag, unknown type>" );
                     else if( !CurLang.Msg[ msg_type ].Count( str_num ) )
-                        Str::Copy( tag, Str::FormatBuf( "<msg tag, string %u not found>", str_num ) );
+                        Str::Copy( tag, fmt::format( "<msg tag, string {} not found>", str_num ).c_str() );
                     else
                         Str::Copy( tag, CurLang.Msg[ msg_type ].GetStr( str_num ) );
                 }
@@ -539,10 +539,10 @@ void FOClient::SaveLoadCollect()
         // Fill slot data
         SaveLoadDataSlot slot;
         slot.Name = save_name;
-        slot.Info = Str::FormatBuf( "%s\n%02d.%02d.%04d %02d:%02d:%02d\n", save_name,
+        slot.Info = Xfmt::formatBuf( "%s\n%02d.%02d.%04d %02d:%02d:%02d\n", save_name,
                                     settings[ "RealDay" ].c_str(), settings[ "RealMonth" ].c_str(), settings[ "RealYear" ].c_str(),
                                     settings[ "RealHour" ].c_str(), settings[ "RealMinute" ].c_str(), settings[ "RealSecond" ].c_str() );
-        slot.InfoExt = Str::FormatBuf( "%s\n%02d %3s %04d %02d%02d\n%s", cr_name.c_str(),
+        slot.InfoExt = Xfmt::formatBuf( "%s\n%02d %3s %04d %02d%02d\n%s", cr_name.c_str(),
                                        day, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_MONTH( month ) ), year, hour, minute,
                                        CurLang.Msg[ TEXTMSG_LOCATIONS ].GetStr( STR_LOC_MAP_NAME( CurMapLocPid, CurMapIndexInLoc ) ) );
         slot.FileName = fname_ex;

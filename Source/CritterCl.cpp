@@ -1056,7 +1056,7 @@ void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int&
 {
     nameVisible = false;
 
-    char str[ MAX_FOTEXT ];
+    string str;
     if( strTextOnHead.empty() )
     {
         if( IsPlayer() && !GameOpt.ShowPlayerNames )
@@ -1066,25 +1066,22 @@ void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int&
 
         nameVisible = true;
 
-        if( !NameOnHead.empty() )
-            Str::Copy( str, NameOnHead.c_str() );
-        else
-            Str::Copy( str, Name.c_str() );
+        str = ( NameOnHead.empty() ? Name : NameOnHead );
         if( GameOpt.ShowCritId )
-            Str::Append( str, Str::FormatBuf( "  %u", GetId() ) );
+            str += fmt::format( "  {}", GetId() );
         if( FLAG( Flags, FCRIT_DISCONNECT ) )
-            Str::Append( str, GameOpt.PlayerOffAppendix.c_str() );
+            str += GameOpt.PlayerOffAppendix;
     }
     else
     {
-        Str::Copy( str, strTextOnHead.c_str() );
+        str = strTextOnHead;
     }
 
     Rect tr = GetTextRect();
     x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
     y = (int) ( (float) ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
 
-    SprMngr.GetTextInfo( 200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines );
+    SprMngr.GetTextInfo( 200, 70, str.c_str(), -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines );
     x += 100 - ( w / 2 );
     y += 70 - h;
 }
@@ -1101,28 +1098,25 @@ void CritterCl::DrawTextOnHead()
 
     if( SprDrawValid )
     {
-        Rect tr = GetTextRect();
-        int  x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
-        int  y = (int) ( (float) ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
-        Rect r( x, y, x + 200, y + 70 );
+        Rect   tr = GetTextRect();
+        int    x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
+        int    y = (int) ( (float) ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
+        Rect   r( x, y, x + 200, y + 70 );
 
-        char str[ MAX_FOTEXT ];
-        uint color;
+        string str;
+        uint   color;
         if( strTextOnHead.empty() )
         {
-            if( !NameOnHead.empty() )
-                Str::Copy( str, NameOnHead.c_str() );
-            else
-                Str::Copy( str, Name.c_str() );
+            str = ( NameOnHead.empty() ? Name : NameOnHead );
             if( GameOpt.ShowCritId )
-                Str::Append( str, Str::FormatBuf( " (%u)", GetId() ) );
+                str += fmt::format( " ({})", GetId() );
             if( FLAG( Flags, FCRIT_DISCONNECT ) )
-                Str::Append( str, GameOpt.PlayerOffAppendix.c_str() );
+                str += GameOpt.PlayerOffAppendix;
             color = ( NameColor ? NameColor : COLOR_CRITTER_NAME );
         }
         else
         {
-            Str::Copy( str, strTextOnHead.c_str() );
+            str = strTextOnHead;
             color = textOnHeadColor;
 
             if( tickTextDelay > 500 )

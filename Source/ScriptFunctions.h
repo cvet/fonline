@@ -122,8 +122,6 @@ static hash Global_GetStrHash( string str )
 
 static string Global_GetHashStr( hash h )
 {
-    if( !h )
-        return "";
     const char* str = Str::GetName( h );
     return str ? str : "";
 }

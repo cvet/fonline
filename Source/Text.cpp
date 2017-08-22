@@ -534,25 +534,6 @@ bool Str::CompareCaseCountUTF8( const char* str1, const char* str2, uint max_cou
     return CompareCount( str1_buf, str2_buf, max_count );
 }
 
-char* Str::Format( char* buf, const char* format, ... )
-{
-    va_list list;
-    va_start( list, format );
-    vsprintf( buf, format, list );
-    va_end( list );
-    return buf;
-}
-
-const char* Str::FormatBuf( const char* format, ... )
-{
-    static THREAD char buf[ 0x4000 ];
-    va_list            list;
-    va_start( list, format );
-    vsprintf( buf, format, list );
-    va_end( list );
-    return buf;
-}
-
 void Str::ChangeValue( char* str, int value )
 {
     for( int i = 0; str[ i ]; ++i )
@@ -681,6 +662,16 @@ void Str::CopyBack( char* str )
     }
 }
 
+void Str::ReplaceText( string& str, const string& from, const string& to )
+{
+    size_t start_pos = 0;
+    while( ( start_pos = str.find( from, start_pos ) ) != std::string::npos )
+    {
+        str.replace( start_pos, from.length(), to );
+        start_pos += to.length();
+    }
+}
+
 void Str::ReplaceText( char* str, const char* from, const char* to )
 {
     uint from_len = Length( from );
@@ -707,6 +698,11 @@ void Str::Replacement( char* str, char from, char to )
     }
 }
 
+void Str::Replacement( string& str, char from, char to )
+{
+    std::replace( str.begin(), str.end(), from, to );
+}
+
 void Str::Replacement( char* str, char from1, char from2, char to )
 {
     while( *str && *( str + 1 ) )
@@ -721,6 +717,11 @@ void Str::Replacement( char* str, char from1, char from2, char to )
             ++str;
         }
     }
+}
+
+void Str::Replacement( string& str, char from1, char from2, char to )
+{
+    ReplaceText( str, string( { from1, from2 } ), string( { to } ) );
 }
 
 char* Str::Trim( char* str, uint* trimmed /* = NULL */ )
@@ -997,12 +998,8 @@ const char* Str::GetName( hash h )
     #endif
 
     auto it = HashNames.find( h );
-    if( it == HashNames.end() )
-    {
-        static THREAD char error[ MAX_FOTEXT ];
-        Format( error, "(unknown hash %u)", h );
-        return error;
-    }
+    if( !h || it == HashNames.end() )
+        return nullptr;
     return it->second;
 }
 
@@ -1012,9 +1009,8 @@ void Str::SaveHashes( StrMap& hashes )
     SCOPE_LOCK( HashNamesLocker );
     #endif
 
-    char buf[ MAX_FOTEXT ];
     for( auto& kv : HashNames )
-        hashes[ Str::Format( buf, "%u", kv.first ) ] = kv.second;
+        hashes[ UItoA( kv.first ) ] = kv.second;
 }
 
 void Str::LoadHashes( StrMap& hashes )

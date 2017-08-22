@@ -54,9 +54,6 @@ namespace Str
     bool CompareCaseCount( const string& str1, const string& str2, uint max_count );
     bool CompareCaseCountUTF8( const char* str1, const char* str2, uint max_count );
 
-    char*       Format( char* buf, const char* format, ... );
-    const char* FormatBuf( const char* format, ... );
-
     void  ChangeValue( char* str, int value );
     void  EraseInterval( char* str, uint len );
     void  Insert( char* to, const char* from, uint from_len = 0 );
@@ -66,8 +63,11 @@ namespace Str
     void  CopyWord( char* to, const char* from, char end, bool include_end = false );
     void  CopyBack( char* str );
     void  ReplaceText( char* str, const char* from, const char* to );
+    void  ReplaceText( string& str, const string& from, const string& to );
     void  Replacement( char* str, char from, char to );
+    void  Replacement( string& str, char from, char to );
     void  Replacement( char* str, char from1, char from2, char to );
+    void  Replacement( string& str, char from1, char from2, char to );
     char* Trim( char* str, uint* trimmed = nullptr );
     void  Trim( string& str, uint* trimmed = nullptr );
 

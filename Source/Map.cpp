@@ -1115,7 +1115,7 @@ bool Map::SetScript( asIScriptFunction* func, bool first_time )
 
     if( GetScriptId() )
     {
-        Script::PrepareScriptFuncContext( GetScriptId(), Str::FormatBuf( "Map '%s' (%u)", GetName(), GetId() ) );
+        Script::PrepareScriptFuncContext( GetScriptId(), fmt::format( "Map '{}' ({})", GetName(), GetId() ) );
         Script::SetArgEntity( this );
         Script::SetArgBool( first_time );
         Script::RunPrepared();

@@ -578,11 +578,10 @@ bool SoundManager::PlaySound( const char* name )
 
     // Check random pattern 'NAME_X'
     uint count = 0;
-    char buf[ MAX_FOPATH ];
-    while( names.find( Str::Format( buf, "%s_%d", sound_name.c_str(), count + 1 ) ) != names.end() )
+    while( names.find( fmt::format( "{}_{}", sound_name, count + 1 ) ) != names.end() )
         count++;
     if( count )
-        return Load( names.find( Str::Format( buf, "%s_%d", sound_name.c_str(), Random( 1, count ) ) )->second.c_str(), false ) != nullptr;
+        return Load( names.find( fmt::format( "{}_{}", sound_name, Random( 1, count ) ) )->second.c_str(), false ) != nullptr;
 
     return false;
 }

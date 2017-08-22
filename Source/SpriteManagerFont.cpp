@@ -301,8 +301,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
         return true;
 
     // Load font data
-    char        fname[ MAX_FOPATH ];
-    Str::Format( fname, "Fonts/%s.fofnt", font_name );
+    string      fname = fmt::format( fname, "Fonts/{}.fofnt", font_name );
     FileManager fm;
     if( !fm.LoadFile( fname ) )
     {
@@ -314,7 +313,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
     char     image_name[ MAX_FOPATH ] = { 0 };
 
     uint     font_cache_len;
-    uchar*   font_cache_buf = Crypt.GetCache( fname, font_cache_len );
+    uchar*   font_cache_buf = Crypt.GetCache( fname.c_str(), font_cache_len );
     uint64   write_time = fm.GetWriteTime();
     if( !font_cache_buf || write_time > *(uint64*) font_cache_buf )
     {
@@ -437,7 +436,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
             WriteData( font_cache, l.OffsY );
             WriteData( font_cache, l.XAdvance );
         }
-        Crypt.SetCache( fname, &font_cache[ 0 ], (uint) font_cache.size() );
+        Crypt.SetCache( fname.c_str(), &font_cache[ 0 ], (uint) font_cache.size() );
     }
     else
     {
@@ -519,7 +518,7 @@ bool SpriteManager::LoadFontBMF( int index, const char* font_name )
     FileManager fm;
     FileManager fm_tex;
 
-    if( !fm.LoadFile( Str::FormatBuf( "Fonts/%s.fnt", font_name ) ) )
+    if( !fm.LoadFile( fmt::format( "Fonts/{}.fnt", font_name ) ) )
     {
         WriteLog( "Font file '{}.fnt' not found.\n", font_name );
         return false;

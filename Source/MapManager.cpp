@@ -57,31 +57,25 @@ string MapManager::GetLocationsMapsStatistics()
     EntityVec maps;
     EntityMngr.GetEntities( EntityType::Map, maps );
 
-    static string result;
-    char          str[ MAX_FOTEXT ];
-    Str::Format( str, "Locations count: %u\n", (uint) locations.size() );
-    result = str;
-    Str::Format( str, "Maps count: %u\n", (uint) maps.size() );
-    result += str;
+    string result = fmt::format( "Locations count: {}\n", (uint) locations.size() );
+    result += fmt::format( "Maps count: {}\n", (uint) maps.size() );
     result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain Script\n";
     for( auto it = locations.begin(), end = locations.end(); it != end; ++it )
     {
         Location* loc = (Location*) *it;
-        Str::Format( str, "%-20s %-10u   %-5u %-5u %-6u %08X %-7s %-11s %-9d %-11s %-5s\n",
-                     loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false",
-                     loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false" );
-        result += str;
+        result += fmt::format( "{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n",
+                               loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false",
+                               loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false" );
 
         MapVec& maps = loc->GetMapsNoLock();
         uint    map_index = 0;
         for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
         {
             Map* map = *it_;
-            Str::Format( str, "     %2u) %-20s %-9u   %-4d %-4u %-50s\n",
-                         map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
-                         map->GetScriptId() ? Str::GetName( map->GetScriptId() ) : "" );
-            result += str;
+            result += fmt::format( "     {:02}) {:<20} {:<9}   {:<4} {:<4} {:<50}\n",
+                                   map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
+                                   map->GetScriptId() ? Str::GetName( map->GetScriptId() ) : "" );
             map_index++;
         }
     }

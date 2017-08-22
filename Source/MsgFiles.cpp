@@ -461,9 +461,8 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
     int errors = 0;
     for( int i = 0; i < TEXTMSG_COUNT; i++ )
     {
-        char   cache_name[ MAX_FOTEXT ];
         uint   buf_len;
-        uchar* buf = Crypt.GetCache( GetMsgCacheName( i, cache_name ), buf_len );
+        uchar* buf = Crypt.GetCache( GetMsgCacheName( i ).c_str(), buf_len );
         if( buf )
         {
             UCharVec data;
@@ -487,7 +486,7 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
     return IsAllMsgLoaded;
 }
 
-char* LanguagePack::GetMsgCacheName( int msg_num, char* result )
+string LanguagePack::GetMsgCacheName( int msg_num )
 {
-    return Str::Format( result, "$%s-%s.cache", NameStr, TextMsgFileName[ msg_num ] );
+    return fmt::format( "${}-{}.cache", NameStr, TextMsgFileName[ msg_num ] );
 }

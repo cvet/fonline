@@ -1152,16 +1152,14 @@ void SpriteManager::DumpAtlases()
         atlases_memory_size += atlas->Width * atlas->Height * 4;
     }
 
-    char path[ MAX_FOPATH ];
-    Str::Format( path, "./%u_%u.%03umb/", (uint) time( nullptr ), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000 );
+    string path = fmt::format( "./{}_{}.{:03}mb/", (uint) time( nullptr ), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000 );
 
-    int cnt = 0;
+    int    cnt = 0;
     for( auto it = allAtlases.begin(), end = allAtlases.end(); it != end; ++it )
     {
         TextureAtlas* atlas = *it;
-        char          fname[ MAX_FOPATH ];
-        Str::Format( fname, "%s%d_%d_%ux%u.png", path, cnt, atlas->Type, atlas->Width, atlas->Height );
-        SaveTexture( atlas->TextureOwner, fname, false );
+        string        fname = fmt::format( "{}{}_{}_{}x{}.png", path, cnt, atlas->Type, atlas->Width, atlas->Height );
+        SaveTexture( atlas->TextureOwner, fname.c_str(), false );
         cnt++;
     }
 }
@@ -1724,9 +1722,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
         anims.clear();
         anims_offs.clear();
 
-        char dir_str[ 16 ];
-        Str::Format( dir_str, "dir_%d", dir );
-        bool no_app = !fofrm.IsApp( dir_str );
+        string dir_str = fmt::format( "dir_{}", dir );
+        bool   no_app = !fofrm.IsApp( dir_str.c_str() );
 
         if( no_app )
         {
@@ -1742,8 +1739,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
         }
         else
         {
-            ox = fofrm.GetInt( dir_str, "offs_x", ox );
-            oy = fofrm.GetInt( dir_str, "offs_y", oy );
+            ox = fofrm.GetInt( dir_str.c_str(), "offs_x", ox );
+            oy = fofrm.GetInt( dir_str.c_str(), "offs_y", oy );
         }
 
         string frm_dir = FileManager::ExtractDir( fname );
@@ -1751,23 +1748,20 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
         uint   frames = 0;
         bool   no_info = false;
         bool   load_fail = false;
-        char   buf[ MAX_FOTEXT ];
         for( int frm = 0; frm < frm_num; frm++ )
         {
             const char* frm_name;
-            if( !( frm_name = fofrm.GetStr( no_app ? "" : dir_str, Str::Format( buf, "frm_%d", frm ) ) ) &&
-                ( frm != 0 || !( frm_name = fofrm.GetStr( no_app ? "" : dir_str, "frm" ) ) ) )
+            if( !( frm_name = fofrm.GetStr( no_app ? "" : dir_str.c_str(), fmt::format( "frm_{}", frm ).c_str() ) ) &&
+                ( frm != 0 || !( frm_name = fofrm.GetStr( no_app ? "" : dir_str.c_str(), "frm" ) ) ) )
             {
                 no_info = true;
                 break;
             }
 
-            Str::Copy( buf, frm_dir.c_str() );
-            Str::Append( buf, frm_name );
-            AnyFrames* anim = LoadAnimation( buf );
+            AnyFrames* anim = LoadAnimation( ( frm_dir + frm_name ).c_str() );
             if( !anim )
             {
-                WriteLog( "Anim '{}' not found.\n", buf );
+                WriteLog( "Anim '{}' not found.\n", frm_dir + frm_name );
                 load_fail = true;
                 break;
             }
@@ -1775,8 +1769,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
             frames += anim->CntFrm;
             anims.push_back( anim );
 
-            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str, Str::FormatBuf( buf, "next_x_%d", frm ), 0 ) );
-            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str, Str::FormatBuf( buf, "next_y_%d", frm ), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str.c_str(), fmt::format( "next_x_{}", frm ).c_str(), 0 ) );
+            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str.c_str(), fmt::format( "next_y_{}", frm ).c_str(), 0 ) );
         }
 
         // No frames found or error
@@ -4194,9 +4188,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             if( spr->DrawOrderType >= DRAW_ORDER_FLAT && spr->DrawOrderType < DRAW_ORDER )
                 y1 -= (int) ( 40.0f / z );
 
-            char str[ 32 ];
-            Str::Format( str, "%u", spr->TreeIndex );
-            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), str, 0 );
+            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), fmt::format( "{}", spr->TreeIndex ).c_str(), 0 );
         }
         #endif
 

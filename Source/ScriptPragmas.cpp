@@ -340,20 +340,19 @@ public:
         EntityCreator* entity_creator = new EntityCreator( isServer, class_name.c_str() );
         if( isServer )
         {
-            char buf[ MAX_FOTEXT ];
             #ifdef AS_MAX_PORTABILITY
-            if( engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Create%s()", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::CreateEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s@+ entity)", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::DeleteEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(uint id)", class_name.c_str() ), asFUNCTION( EntityCreator::DeleteEntityById_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Get%s(uint id)", class_name.c_str(), class_name.c_str() ), asFUNCTION( EntityCreator::GetEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 )
+            if( engine->RegisterGlobalFunction( fmt::format( "{}@+ Create{}()", class_name, class_name ).c_str(), asFUNCTION( EntityCreator::CreateEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( fmt::format( "void Delete{}({}@+ entity)", class_name, class_name ).c_str(), asFUNCTION( EntityCreator::DeleteEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( fmt::format( "void Delete{}(uint id)", class_name ).c_str(), asFUNCTION( EntityCreator::DeleteEntityById_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( fmt::format( "{}@+ Get{}(uint id)", class_name, class_name ).c_str(), asFUNCTION( EntityCreator::GetEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 )
             #else
-            if( engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Create%s()", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, CreateEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(%s@+ entity)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "void Delete%s(uint id)", class_name.c_str() ), asMETHOD( EntityCreator, DeleteEntityById ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( Str::Format( buf, "%s@+ Get%s(uint id)", class_name.c_str(), class_name.c_str() ), asMETHOD( EntityCreator, GetEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 )
+            if( engine->RegisterGlobalFunction( fmt::format( "{}@+ Create{}()", class_name, class_name ).c_str(), asMETHOD( EntityCreator, CreateEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( fmt::format( "void Delete{}({}@+ entity)", class_name, class_name ).c_str(), asMETHOD( EntityCreator, DeleteEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( fmt::format( "void Delete{}(uint id)", class_name ).c_str(), asMETHOD( EntityCreator, DeleteEntityById ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+                engine->RegisterGlobalFunction( fmt::format( "{}@+ Get{}(uint id)", class_name, class_name ).c_str(), asMETHOD( EntityCreator, GetEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 )
             #endif
             {
-                WriteLog( "Error in 'entity' pragma '{}', fail to register management functions.\n", text.c_str() );
+                WriteLog( "Error in 'entity' pragma '{}', fail to register management functions.\n", text );
                 return false;
             }
         }
@@ -787,10 +786,9 @@ public:
         // Register file
         engine->SetDefaultNamespace( "Content" );
         engine->SetDefaultNamespace( ns );
-        char prop_name[ MAX_FOTEXT ];
-        Str::Format( prop_name, "const hash %s", name );
+        string prop_name = fmt::format( "const hash {}", name );
         dataStorage.push_back( h );
-        int result = engine->RegisterGlobalProperty( prop_name, &dataStorage.back() );
+        int    result = engine->RegisterGlobalProperty( prop_name.c_str(), &dataStorage.back() );
         engine->SetDefaultNamespace( "" );
         if( result < 0 )
         {
@@ -894,8 +892,7 @@ public:
         }
         else
         {
-            char buf[ MAX_FOTEXT ];
-            value = Str::GetHash( Str::Format( buf, "%s::%s", enum_name, value_name ) );
+            value = Str::GetHash( fmt::format( "{}::{}", enum_name, value_name ) );
         }
 
         result = engine->RegisterEnumValue( enum_name, value_name, value );
@@ -1241,21 +1238,20 @@ public:
         Str::Copy( args, text.substr( args_begin + 1, args_end - args_begin - 1 ).c_str() );
         Str::Trim( args );
 
-        char             buf[ MAX_FOTEXT ];
         asIScriptEngine* engine = Script::GetEngine();
         int              func_def_id;
         as_builder_ForceAutoHandles = true;
-        if( ( func_def_id = engine->RegisterFuncdef( Str::Format( buf, "void %sFunc(%s)", event_name, args ) ) ) < 0 ||
-            engine->RegisterFuncdef( Str::Format( buf, "bool %sFuncBool(%s)", event_name, args ) ) < 0 ||
+        if( ( func_def_id = engine->RegisterFuncdef( fmt::format( "void {}Func({})", event_name, args ).c_str() ) ) < 0 ||
+            engine->RegisterFuncdef( fmt::format( "bool {}FuncBool({})", event_name, args ).c_str() ) < 0 ||
             engine->RegisterObjectType( event_name, 0, asOBJ_REF ) < 0 ||
             engine->RegisterObjectBehaviour( event_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( ScriptEvent, AddRef ), SCRIPT_METHOD_CONV ) < 0 ||
             engine->RegisterObjectBehaviour( event_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( ScriptEvent, Release ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFunc@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Subscribe(%sFuncBool@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFunc@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "void Unsubscribe(%sFuncBool@+)", event_name ), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, fmt::format( "void Subscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, fmt::format( "void Subscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, fmt::format( "void Unsubscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name, fmt::format( "void Unsubscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
             engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", SCRIPT_METHOD( ScriptEvent, UnsubscribeAll ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, Str::Format( buf, "bool Raise(%s)", args ), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
+            engine->RegisterObjectMethod( event_name, fmt::format( "bool Raise({})", args ).c_str(), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
         {
             as_builder_ForceAutoHandles = false;
             return false;
@@ -1308,10 +1304,10 @@ public:
                 Str::Copy( arg_name, name );
                 arg_name[ 0 ] = toupper( arg_name[ 0 ] );
 
-                if( engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeTo%s(%s, %sFunc@+)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void SubscribeTo%s(%s, %sFuncBool@+)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void UnsubscribeFrom%s(%s, %sFunc@+)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, Str::Format( buf, "void UnsubscribeFrom%s(%s, %sFuncBool@+)", arg_name, arg_type, event_name ), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
+                if( engine->RegisterObjectMethod( event_name, fmt::format( "void SubscribeTo{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, fmt::format( "void SubscribeTo{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, fmt::format( "void UnsubscribeFrom{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name, fmt::format( "void UnsubscribeFrom{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
                     return false;
             }
         }
@@ -1321,7 +1317,7 @@ public:
         event->Deferred = Str::Substring( options, "deferred" ) != nullptr;
 
         events.push_back( event );
-        if( engine->RegisterGlobalProperty( Str::Format( buf, "%s@ __%s", event_name, event_name ), &events.back() ) < 0 )
+        if( engine->RegisterGlobalProperty( fmt::format( "{}@ __{}", event_name, event_name ).c_str(), &events.back() ) < 0 )
         {
             events.pop_back();
             return false;
@@ -1433,8 +1429,7 @@ public:
         // Verify args
         asIScriptEngine* engine = Script::GetEngine();
 
-        char buf[ MAX_FOTEXT ];
-        int func_def_id = engine->RegisterFuncdef( Str::Format( buf, "void %sRpcFunc(%s)", name, args ) );
+        int func_def_id = engine->RegisterFuncdef( fmt::format( "void {}RpcFunc({})", name, args ).c_str() );
         if( func_def_id < 0 )
         {
             WriteLog( "Invalid function in 'rpc' pragma '{}'.\n", text.c_str() );
@@ -1490,10 +1485,11 @@ public:
         // Register
         if( ( pragmaType == PRAGMA_SERVER ) == Str::Compare( type, "Client" ) )
         {
-            Str::Format( buf, "void %s(%s) const", name, args );
-            if( engine->RegisterObjectMethod( "RpcCaller", buf, asFUNCTION( Rpc ), asCALL_GENERIC, new uint( curOutIndex++ ) ) < 0 )
+            string method_name = fmt::format( "void {}({}) const", name, args );
+            if( engine->RegisterObjectMethod( "RpcCaller", method_name.c_str(),
+                                              asFUNCTION( Rpc ), asCALL_GENERIC, new uint( curOutIndex++ ) ) < 0 )
             {
-                WriteLog( "Invalid method '{}' in 'rpc' pragma '{}'.\n", buf, text.c_str() );
+                WriteLog( "Invalid method '{}' in 'rpc' pragma '{}'.\n", method_name, text.c_str() );
                 return false;
             }
         }
@@ -1514,11 +1510,9 @@ public:
         #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT )
         for( auto& func_desc : inFuncDesc )
         {
-            char decl[ MAX_FOTEXT ];
-            Str::Format( decl, "void %s(%s%s%s)", "%s", pragmaType == PRAGMA_SERVER ? "Critter" : "",
-                         pragmaType == PRAGMA_SERVER && func_desc.second.length() > 0 ? ", " : "", func_desc.second.c_str() );
-
-            uint bind_id = Script::BindByFuncName( func_desc.first.c_str(), decl, false, false );
+            string decl = fmt::format( "void {}({}{}{})", "{}", pragmaType == PRAGMA_SERVER ? "Critter" : "",
+                                       pragmaType == PRAGMA_SERVER && func_desc.second.length() > 0 ? ", " : "", func_desc.second.c_str() );
+            uint bind_id = Script::BindByFuncName( func_desc.first.c_str(), decl.c_str(), false, false );
             if( bind_id )
             {
                 inFunc.push_back( Script::GetBindFunc( bind_id ) );

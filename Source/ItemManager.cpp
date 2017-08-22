@@ -801,12 +801,7 @@ string ItemManager::GetItemsStatistics()
                } );
 
     string result = "Name                                     Count\n";
-    char   str[ MAX_FOTEXT ];
-    for( auto it = protos.begin(), end = protos.end(); it != end; ++it )
-    {
-        ProtoItem* proto_item = *it;
-        Str::Format( str, "%-40s %-20s\n", proto_item->GetName(), Str::I64toA( proto_item->InstanceCount ) );
-        result += str;
-    }
+    for( ProtoItem* proto_item : protos )
+        result += fmt::format( "{:<40} {:<20}\n", proto_item->GetName(), Str::I64toA( proto_item->InstanceCount ) );
     return result;
 }

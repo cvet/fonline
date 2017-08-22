@@ -8,7 +8,6 @@
 static bool                 ASDbgMemoryCanWork = false;
 static THREAD bool          ASDbgMemoryInUse = false;
 static map< void*, string > ASDbgMemoryPtr;
-static char                 ASDbgMemoryBuf[ 1024 ];
 
 static void* ASDeepDebugMalloc( size_t size )
 {
@@ -20,9 +19,9 @@ static void* ASDeepDebugMalloc( size_t size )
     {
         ASDbgMemoryInUse = true;
         const char* func = Script::GetActiveFuncName();
-        Str::Format( ASDbgMemoryBuf, "AS : %s", func ? func : "<nullptr>" );
-        MEMORY_PROCESS_STR( ASDbgMemoryBuf, (int) size );
-        ASDbgMemoryPtr.insert( PAIR( ptr, string( ASDbgMemoryBuf ) ) );
+        string      buf = fmt::format( "AS : {}", func ? func : "<nullptr>" );
+        MEMORY_PROCESS_STR( buf.c_str(), (int) size );
+        ASDbgMemoryPtr.insert( PAIR( ptr, buf ) );
         ASDbgMemoryInUse = false;
     }
     MEMORY_PROCESS( MEMORY_ANGEL_SCRIPT, (int) size );
@@ -436,7 +435,7 @@ bool FOClient::PostInit()
 
     // Disable dumps if multiple window detected
     if( MulWndArray[ 11 ] )
-        CatchExceptions( nullptr, 0 );
+        CatchExceptions( "", 0 );
 
     return true;
 }
@@ -661,9 +660,7 @@ void FOClient::UpdateFilesLoop()
                 float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
                 float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
                 string      name = FileManager::FormatPath( update_file.Name );
-
-                char        buf[ MAX_FOTEXT ];
-                UpdateFilesProgress += Str::Format( buf, "%s %.2f / %.2f MB\n", name.c_str(), cur, max );
+                UpdateFilesProgress += fmt::format( "{:.2f} {} / {:.2f} MB\n", name, cur, max );
             }
             UpdateFilesProgress += "\n";
         }
@@ -1738,11 +1735,11 @@ bool FOClient::NetConnect( const char* host, ushort port )
         }
         else if( GameOpt.ProxyType == PROXY_HTTP )
         {
-            char* buf = (char*) Str::FormatBuf( "CONNECT %s:%d HTTP/1.0\r\n\r\n", inet_ntoa( SockAddr.sin_addr ), port );
-            Bout.Push( buf, Str::Length( buf ) );
+            string buf = fmt::format( "CONNECT {}:{} HTTP/1.0\r\n\r\n", inet_ntoa( SockAddr.sin_addr ), port );
+            Bout.Push( buf.c_str(), (uint) buf.length() );
             SEND_RECV;
-            buf = (char*) Bin.GetCurData();
-            if( !Str::Substring( buf, " 200 " ) )
+            buf = (const char*) Bin.GetCurData();
+            if( buf.find( " 200 " ) == string::npos )
             {
                 WriteLog( "Proxy connection error, receive message '{}'.\n", buf );
                 return false;
@@ -1994,7 +1991,7 @@ void FOClient::NetProcess()
         if( GameOpt.DebugNet )
         {
             static uint count = 0;
-            AddMess( FOMB_GAME, Str::FormatBuf( "%04u) Input net message %u.", count, ( msg >> 8 ) & 0xFF ) );
+            AddMess( FOMB_GAME, fmt::format( "{:04}) Input net message {}.", count, ( msg >> 8 ) & 0xFF ) );
             WriteLog( "{}) Input net message {}.\n", count, ( msg >> 8 ) & 0xFF );
             count++;
         }
@@ -3266,7 +3263,7 @@ void FOClient::Net_OnCustomCommand()
     CHECK_IN_BUFF_ERROR;
 
     if( GameOpt.DebugNet )
-        AddMess( FOMB_GAME, Str::FormatBuf( " - crid %u index %u value %d.", crid, index, value ) );
+        AddMess( FOMB_GAME, fmt::format( " - crid {} index {} value {}.", crid, index, value ) );
 
     CritterCl* cr = GetCritter( crid );
     if( !cr )
@@ -3275,7 +3272,7 @@ void FOClient::Net_OnCustomCommand()
     if( cr->IsChosen() )
     {
         if( GameOpt.DebugNet )
-            AddMess( FOMB_GAME, Str::FormatBuf( " - index %u value %d.", index, value ) );
+            AddMess( FOMB_GAME, fmt::format( " - index {} value {}.", index, value ) );
 
         switch( index )
         {
@@ -3367,7 +3364,7 @@ void FOClient::Net_OnCritterXY()
     CHECK_IN_BUFF_ERROR;
 
     if( GameOpt.DebugNet )
-        AddMess( FOMB_GAME, Str::FormatBuf( " - crid %u hx %u hy %u dir %u.", crid, hx, hy, dir ) );
+        AddMess( FOMB_GAME, fmt::format( " - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir ) );
 
     if( !HexMngr.IsMapLoaded() )
         return;
@@ -4137,15 +4134,13 @@ void FOClient::Net_OnMap()
 
     WriteLog( "Map {} received...\n", map_pid );
 
-    char map_name[ TEMP_BUF_SIZE ];
-    Str::Format( map_name, "%u.map", map_pid );
-
-    bool  tiles = false;
-    char* tiles_data = nullptr;
-    uint  tiles_len = 0;
-    bool  scen = false;
-    char* scen_data = nullptr;
-    uint  scen_len = 0;
+    string map_name = fmt::format( "{}.map", map_pid );
+    bool   tiles = false;
+    char*  tiles_data = nullptr;
+    uint   tiles_len = 0;
+    bool   scen = false;
+    char*  scen_data = nullptr;
+    uint   scen_len = 0;
 
     if( send_tiles )
     {
@@ -4172,7 +4167,7 @@ void FOClient::Net_OnMap()
     CHECK_IN_BUFF_ERROR;
 
     uint        cache_len;
-    uchar*      cache = Crypt.GetCache( map_name, cache_len );
+    uchar*      cache = Crypt.GetCache( map_name.c_str(), cache_len );
     FileManager fm;
 
     if( cache && fm.LoadStream( cache, cache_len ) )
@@ -4242,7 +4237,7 @@ void FOClient::Net_OnMap()
         fm.SetData( buf, obuf_len );
         delete[] buf;
 
-        Crypt.SetCache( map_name, fm.GetOutBuf(), fm.GetOutBufLen() );
+        Crypt.SetCache( map_name.c_str(), fm.GetOutBuf(), fm.GetOutBufLen() );
     }
     else
     {
@@ -7259,8 +7254,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "Version" )
     {
-        char buf[ 1024 ];
-        return Str::Format( buf, "%d", FONLINE_VERSION );
+        return fmt::format( "{}", FONLINE_VERSION );
     }
     else if( cmd == "BytesSend" )
     {
@@ -7353,7 +7347,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
 //                      DateTime dt;
 //                      Timer::GetCurrentDateTime(dt);
 //                      char     log_path[MAX_FOPATH];
-//                      Str::Format(log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
+//                      Xfmt::format(log_path, "messbox_%04d.%02d.%02d_%02d-%02d-%02d.txt",
 //                              dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 //              }
 
@@ -7903,9 +7897,7 @@ string FOClient::SScriptFunc::Global_ReplaceTextInt( string text, string replace
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
         return text;
-    char val[ 32 ];
-    Str::Format( val, "%d", i );
-    return string( text ).replace( pos, replace.length(), val );
+    return string( text ).replace( pos, replace.length(), fmt::format( "{}", i ) );
 }
 
 string FOClient::SScriptFunc::Global_FormatTags( string text, string lexems )

@@ -223,7 +223,11 @@ public:
         bool operator==( const char* name ) { return Str::CompareCaseUTF8( name, ClientName ); }
         bool operator==( const uint ip )    { return ClientIp == ip; }
 
-        const char*   GetBanLexems() { return Str::FormatBuf( "$banby%s$time%d$reason%s", BannedBy[ 0 ] ? BannedBy : "?", Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" ); }
+        string        GetBanLexems()
+        {
+            return fmt::format( "$banby{}$time{}$reason{}", BannedBy[ 0 ] ? BannedBy : "?",
+                                Timer::GetTimeDifference( EndTime, BeginTime ) / 60 / 60, BanInfo[ 0 ] ? BanInfo : "just for fun" );
+        }
     };
     typedef vector< ClientBanned > ClientBannedVec;
     static ClientBannedVec Banned;

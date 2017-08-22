@@ -118,7 +118,7 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
     // Register enum
 
 //      char enum_type[ MAX_FOTEXT ];
-//      Str::Format( enum_type, "%sFunc",  )
+//      Xfmt::format( enum_type, "%sFunc",  )
 //      bool is_client = (class_name[ Str::Length( class_name ) - 2 ] == 'C' && class_name[ Str::Length( class_name ) - 1 ] == 'l');
 //      RUNTIME_ASSERT(enumTypeName.length() > 0);
 //
@@ -167,11 +167,10 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
         }
 
         asIScriptFunction* func = engine->GetFunctionById( result );
-        char               bind_decl[ MAX_FOTEXT ];
-        Str::Copy( bind_decl, decl );
+        string             bind_decl = decl;
         Str::ReplaceText( bind_decl, func->GetName(), "%s" );
-        char* args = Str::Substring( bind_decl, "(" );
-        Str::Insert( args + 1, Str::FormatBuf( "%s&%s", scriptClassName.c_str(), func->GetParamCount() > 0 ? ", " : "" ) );
+        size_t             args_pos = bind_decl.find( '(' );
+        bind_decl.insert( args_pos + 1, fmt::format( "{}&{}", scriptClassName, func->GetParamCount() > 0 ? ", " : "" ) );
         method->bindFunc = bind_func;
         method->bindDecl = bind_decl;
     }

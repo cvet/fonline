@@ -701,7 +701,7 @@ public:
 /************************************************************************/
     #define FOMB_GAME                 ( 0 )
     #define FOMB_TALK                 ( 1 )
-    void AddMess( int mess_type, const char* msg, bool script_call = false );
+    void AddMess( int mess_type, const string& msg, bool script_call = false );
 };
 
 // Fonts
