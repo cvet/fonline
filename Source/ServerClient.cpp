@@ -40,7 +40,7 @@ void FOServer::ProcessCritter( Critter* cr )
             cr->EraseCrTimeEvent( 0 );
 
             uint time = GameOpt.TimeMultiplier * 1800;             // 30 minutes on error
-            Script::PrepareScriptFuncContext( func_num, cr->GetInfo() );
+            Script::PrepareScriptFuncContext( func_num, cr->GetName() );
             Script::SetArgEntity( cr );
             Script::SetArgUInt( identifier );
             Script::SetArgAddress( &rate );
@@ -242,7 +242,7 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
         {
             if( out_trigger && out_trigger->SceneryScriptBindId )
             {
-                Script::PrepareContext( out_trigger->SceneryScriptBindId, cr->GetInfo() );
+                Script::PrepareContext( out_trigger->SceneryScriptBindId, cr->GetName() );
                 Script::SetArgEntity( cr );
                 Script::SetArgEntity( out_trigger );
                 Script::SetArgBool( false );
@@ -251,7 +251,7 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
             }
             if( in_trigger && in_trigger->SceneryScriptBindId )
             {
-                Script::PrepareContext( in_trigger->SceneryScriptBindId, cr->GetInfo() );
+                Script::PrepareContext( in_trigger->SceneryScriptBindId, cr->GetName() );
                 Script::SetArgEntity( cr );
                 Script::SetArgEntity( in_trigger );
                 Script::SetArgBool( true );
@@ -943,7 +943,7 @@ void FOServer::Process_LogIn( Client*& cl )
         {
             if( !LoadClient( cl ) )
             {
-                WriteLog( "Error load from data base, client '{}'.\n", cl->GetInfo() );
+                WriteLog( "Error load from data base, client '{}'.\n", cl->GetName() );
                 cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
                 cl->Disconnect();
                 return;
@@ -1152,7 +1152,7 @@ void FOServer::Process_ParseToGame( Client* cl )
     {
         if( !map )
         {
-            WriteLog( "Map not found, client '{}'.\n", cl->GetInfo() );
+            WriteLog( "Map not found, client '{}'.\n", cl->GetName() );
             cl->Disconnect();
             return;
         }
@@ -1222,7 +1222,7 @@ void FOServer::Process_GiveMap( Client* cl )
     ProtoMap* pmap = ProtoMngr.GetProtoMap( map_pid );
     if( !pmap )
     {
-        WriteLog( "Map prototype not found, client '{}'.\n", cl->GetInfo() );
+        WriteLog( "Map prototype not found, client '{}'.\n", cl->GetName() );
         cl->Disconnect();
         return;
     }
@@ -1231,14 +1231,14 @@ void FOServer::Process_GiveMap( Client* cl )
     {
         if( !cl->CheckKnownLocById( loc_id ) )
         {
-            WriteLog( "Request for loading unknown automap, client '{}'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading unknown automap, client '{}'.\n", cl->GetName() );
             return;
         }
 
         Location* loc = MapMngr.GetLocation( loc_id );
         if( !loc )
         {
-            WriteLog( "Request for loading incorrect automap, client '{}'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading incorrect automap, client '{}'.\n", cl->GetName() );
             return;
         }
 
@@ -1252,7 +1252,7 @@ void FOServer::Process_GiveMap( Client* cl )
         }
         if( !found )
         {
-            WriteLog( "Request for loading incorrect automap, client '{}'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading incorrect automap, client '{}'.\n", cl->GetName() );
             return;
         }
     }
@@ -1261,7 +1261,7 @@ void FOServer::Process_GiveMap( Client* cl )
         Map* map = cl->GetMap();
         if( !map || ( map_pid != map->GetProtoId() && cl->ViewMapPid != map_pid ) )
         {
-            WriteLog( "Request for loading incorrect map, client '{}'.\n", cl->GetInfo() );
+            WriteLog( "Request for loading incorrect map, client '{}'.\n", cl->GetName() );
             return;
         }
     }
@@ -1825,7 +1825,7 @@ void FOServer::Process_Ping( Client* cl )
         ClientData* data = GetClientData( cl->GetId() );
         if( data )
         {
-            WriteLog( "Wrong UID, client '{}'. Disconnect.\n", cl->GetInfo() );
+            WriteLog( "Wrong UID, client '{}'. Disconnect.\n", cl->GetName() );
             for( int i = 0; i < 5; i++ )
                 data->UID[ i ] = Random( 0, 10000 );
             data->UIDEndTick = Timer::FastTick() + GameOpt.AccountPlayTime * 1000;
@@ -1840,7 +1840,7 @@ void FOServer::Process_Ping( Client* cl )
     }
     else
     {
-        WriteLog( "Unknown ping {}, client '{}'.\n", ping, cl->GetInfo() );
+        WriteLog( "Unknown ping {}, client '{}'.\n", ping, cl->GetName() );
         return;
     }
 

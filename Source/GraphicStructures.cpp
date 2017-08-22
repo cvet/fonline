@@ -396,7 +396,7 @@ void Bone::FixAfterLoad( Bone* root_bone )
 
 uint Bone::GetHash( const char* name )
 {
-    return Str::GetHash( name );
+    return _str( name ).toHash();
 }
 
 //

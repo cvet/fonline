@@ -47,7 +47,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
     {
-        WriteLog( "Critter proto '{}' not found.\n", Str::GetName( proto_id ) );
+        WriteLog( "Critter proto '{}' not found.\n", _str().parseHash( proto_id ) );
         return nullptr;
     }
 
@@ -143,14 +143,14 @@ bool CritterManager::RestoreNpc( uint id, hash proto_id, const StrMap& props_dat
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
     {
-        WriteLog( "Proto critter '{}' is not loaded.\n", Str::GetName( proto_id ) );
+        WriteLog( "Proto critter '{}' is not loaded.\n", _str().parseHash( proto_id ) );
         return false;
     }
 
     Npc* npc = new Npc( id, proto );
     if( !npc->Props.LoadFromText( props_data ) )
     {
-        WriteLog( "Fail to restore properties for critter '{}' ({}).\n", Str::GetName( proto_id ), id );
+        WriteLog( "Fail to restore properties for critter '{}' ({}).\n", _str().parseHash( proto_id ), id );
         npc->Release();
         return false;
     }
@@ -244,7 +244,7 @@ Client* CritterManager::GetPlayer( const char* name )
     for( auto it = entities.begin(); it != entities.end(); ++it )
     {
         Client* cl_ = (Client*) *it;
-        if( Str::CompareCaseUTF8( name, cl_->GetName() ) )
+        if( Str::CompareCaseUTF8( name, cl_->GetName().c_str() ) )
         {
             cl = cl_;
             break;

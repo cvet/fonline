@@ -31,6 +31,17 @@ _str& _str::replace( char from, char to )
     return *this;
 }
 
+_str& _str::replace( const string& from, const string& to )
+{
+    size_t pos = 0;
+    while( ( pos = s.find( from, pos ) ) != std::string::npos )
+    {
+        s.replace( pos, from.length(), to );
+        pos += to.length();
+    }
+    return *this;
+}
+
 _str& _str::lower()
 {
     std::transform( s.begin(), s.end(), s.begin(), tolower );
@@ -206,6 +217,81 @@ std::wstring _str::toWideChar()
     return std::wstring( buf, len );
 }
 #endif
+
+#ifndef NO_THREADING
+static Mutex               HashNamesLocker;
+#endif
+static map< hash, string > HashNames;
+
+#define HASH_IMPL( var, name )    hash var = _str( name ).toHash()
+HASH_IMPL( SP_SCEN_IBLOCK, "MinimapInvisibleBlock" );
+HASH_IMPL( SP_SCEN_TRIGGER, "Trigger" );
+HASH_IMPL( SP_WALL_BLOCK_LIGHT, "BlockLight" );
+HASH_IMPL( SP_WALL_BLOCK, "Block" );
+HASH_IMPL( SP_GRID_EXITGRID, "ExitGrid" );
+HASH_IMPL( SP_GRID_ENTIRE, "Entrance" );
+HASH_IMPL( SP_MISC_SCRBLOCK, "ScrollBlock" );
+
+hash _str::toHash()
+{
+    if( s.empty() )
+        return 0;
+
+    normalizePathSlashes();
+    trim();
+    if( s.empty() )
+        return 0;
+
+    // Calculate hash
+    hash h = Crypt.MurmurHash2( (const uchar*) s.c_str(), (uint) s.length() );
+    if( !h )
+        return 0;
+
+    // Add hash
+    #ifndef NO_THREADING
+    SCOPE_LOCK( HashNamesLocker );
+    #endif
+
+    auto ins = HashNames.insert( PAIR( h, "" ) );
+    if( ins.second )
+        ins.first->second = s;
+    else if( ins.first->second != s )
+        WriteLog( "Hash collision detected for names '{}' and '{}', hash {:#X}.\n", s, ins.first->second, h );
+
+    return h;
+}
+
+string _str::parseHash( hash h )
+{
+    #ifndef NO_THREADING
+    SCOPE_LOCK( HashNamesLocker );
+    #endif
+
+    auto it = HashNames.find( h );
+    if( h || it != HashNames.end() )
+        s += it->second;
+    return *this;
+}
+
+void _str::saveHashes( StrMap& hashes )
+{
+    #ifndef NO_THREADING
+    SCOPE_LOCK( HashNamesLocker );
+    #endif
+
+    for( auto& kv : HashNames )
+        hashes[ Str::UItoA( kv.first ) ] = kv.second;
+}
+
+void _str::loadHashes( StrMap& hashes )
+{
+    #ifndef NO_THREADING
+    SCOPE_LOCK( HashNamesLocker );
+    #endif
+
+    for( auto& kv : hashes )
+        _str( kv.second ).toHash();
+}
 
 void Str::Copy( char* to, uint size, const char* from )
 {
@@ -1075,80 +1161,6 @@ static THREAD char BigBuf[ BIG_BUF_SIZE ] = { 0 };
 char* Str::GetBigBuf()
 {
     return BigBuf;
-}
-
-#ifndef NO_THREADING
-static Mutex                    HashNamesLocker;
-#endif
-static map< hash, const char* > HashNames;
-
-#define HASH_IMPL( var, name )    hash var = Str::GetHash( name )
-HASH_IMPL( SP_SCEN_IBLOCK, "MinimapInvisibleBlock" );
-HASH_IMPL( SP_SCEN_TRIGGER, "Trigger" );
-HASH_IMPL( SP_WALL_BLOCK_LIGHT, "BlockLight" );
-HASH_IMPL( SP_WALL_BLOCK, "Block" );
-HASH_IMPL( SP_GRID_EXITGRID, "ExitGrid" );
-HASH_IMPL( SP_GRID_ENTIRE, "Entrance" );
-HASH_IMPL( SP_MISC_SCRBLOCK, "ScrollBlock" );
-
-hash Str::GetHash( const string& name )
-{
-    if( name.empty() )
-        return 0;
-
-    string fixed_name = _str( name ).normalizePathSlashes().trim();
-    if( fixed_name.empty() )
-        return 0;
-
-    // Calculate hash
-    hash h = Crypt.MurmurHash2( (const uchar*) fixed_name.c_str(), (uint) fixed_name.length() );
-    if( !h )
-        return 0;
-
-    // Add hash
-    #ifndef NO_THREADING
-    SCOPE_LOCK( HashNamesLocker );
-    #endif
-
-    auto ins = HashNames.insert( PAIR( h, (const char*) nullptr ) );
-    if( ins.second )
-        ins.first->second = Str::Duplicate( fixed_name.c_str() );
-    else if( !Str::Compare( ins.first->second, fixed_name ) )
-        WriteLog( "Hash collision detected for names '{}' and '{}', hash {:#X}.\n", fixed_name, ins.first->second, h );
-
-    return h;
-}
-
-const char* Str::GetName( hash h )
-{
-    #ifndef NO_THREADING
-    SCOPE_LOCK( HashNamesLocker );
-    #endif
-
-    auto it = HashNames.find( h );
-    if( !h || it == HashNames.end() )
-        return nullptr;
-    return it->second;
-}
-
-void Str::SaveHashes( StrMap& hashes )
-{
-    #ifndef NO_THREADING
-    SCOPE_LOCK( HashNamesLocker );
-    #endif
-
-    for( auto& kv : HashNames )
-        hashes[ UItoA( kv.first ) ] = kv.second;
-}
-
-void Str::LoadHashes( StrMap& hashes )
-{
-    #ifndef NO_THREADING
-    SCOPE_LOCK( HashNamesLocker );
-    #endif
-
-    for( auto& kv : hashes )
-        GetHash( kv.second );
 }
 
 StrVec Str::Split( const string& line, char divider )

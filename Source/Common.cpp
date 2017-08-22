@@ -80,7 +80,7 @@ void InitialSetup( uint argc, char** argv )
     #ifdef FO_WINDOWS
     wchar_t buf[ TEMP_BUF_SIZE ];
     GetCurrentDirectoryW( TEMP_BUF_SIZE, buf );
-    GameOpt.WorkDir = _str( "" ).parseWideChar( buf );
+    GameOpt.WorkDir = _str().parseWideChar( buf );
     #else
     char buf[ TEMP_BUF_SIZE ];
     getcwd( buf, sizeof( buf ) );
@@ -580,7 +580,7 @@ int ConvertParamValue( const char* str, bool& fail )
     }
 
     if( str[ 0 ] == '@' && str[ 1 ] )
-        return Str::GetHash( str + 1 );
+        return _str( str + 1 ).toHash();
     if( Str::IsNumber( str ) )
         return Str::AtoI( str );
     if( Str::CompareCase( str, "true" ) )
@@ -1301,8 +1301,13 @@ GameOptions::GameOptions()
     GetSpriteColor = nullptr;
     IsSpriteHit = nullptr;
 
-    GetNameByHash = &Str::GetName;
-    GetHashByName = &Str::GetHash;
+    struct StrWrapper
+    {
+        static string GetName( hash h )          { return _str().parseHash( h ); }
+        static hash   GetHash( const string& s ) { return _str( s ).toHash(); }
+    };
+    GetNameByHash = &StrWrapper::GetName;
+    GetHashByName = &StrWrapper::GetHash;
 
     ScriptBind = nullptr;
     ScriptPrepare = nullptr;

@@ -663,7 +663,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
 {
     if( cl->Talk.Locked )
     {
-        WriteLog( "Dialog locked, client '{}'.\n", cl->GetInfo() );
+        WriteLog( "Dialog locked, client '{}'.\n", cl->GetName() );
         return;
     }
     if( cl->Talk.TalkType != TALK_NONE )
@@ -690,7 +690,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         {
             if( cl->GetMapId() != npc->GetMapId() )
             {
-                WriteLog( "Different maps, npc '{}' {}, client '{}' {}.\n", npc->GetInfo(), npc->GetMapId(), cl->GetInfo(), cl->GetMapId() );
+                WriteLog( "Different maps, npc '{}' {}, client '{}' {}.\n", npc->GetName(), npc->GetMapId(), cl->GetName(), cl->GetMapId() );
                 return;
             }
 
@@ -701,7 +701,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
                 cl->Send_XY( cl );
                 cl->Send_XY( npc );
                 cl->Send_TextMsg( cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME );
-                WriteLog( "Wrong distance to npc '{}', client '{}'.\n", npc->GetInfo(), cl->GetInfo() );
+                WriteLog( "Wrong distance to npc '{}', client '{}'.\n", npc->GetName(), cl->GetName() );
                 return;
             }
 
@@ -731,7 +731,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         if( !npc->IsLife() )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_LIFE, SAY_NETMSG, TEXTMSG_GAME );
-            WriteLog( "Npc '{}' bad condition, client '{}'.\n", npc->GetInfo(), cl->GetInfo() );
+            WriteLog( "Npc '{}' bad condition, client '{}'.\n", npc->GetName(), cl->GetName() );
             return;
         }
 
@@ -767,7 +767,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         {
             cl->Send_XY( cl );
             cl->Send_TextMsg( cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME );
-            WriteLog( "Wrong distance to hexes, hx {}, hy {}, client '{}'.\n", hx, hy, cl->GetInfo() );
+            WriteLog( "Wrong distance to hexes, hx {}, hy {}, client '{}'.\n", hx, hy, cl->GetName() );
             return;
         }
 
@@ -775,7 +775,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
         dialogs = ( dialog_pack ? &dialog_pack->Dialogs : nullptr );
         if( !dialogs || !dialogs->size() )
         {
-            WriteLog( "No dialogs, hx {}, hy {}, client '{}'.\n", hx, hy, cl->GetInfo() );
+            WriteLog( "No dialogs, hx {}, hy {}, client '{}'.\n", hx, hy, cl->GetName() );
             return;
         }
     }
@@ -809,7 +809,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     if( it_d == dialogs->end() )
     {
         cl->Send_TextMsg( cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-        WriteLog( "Dialog from link {} not found, client '{}', dialog pack {}.\n", go_dialog, cl->GetInfo(), dialog_pack->PackId );
+        WriteLog( "Dialog from link {} not found, client '{}', dialog pack {}.\n", go_dialog, cl->GetName(), dialog_pack->PackId );
         return;
     }
 
@@ -817,7 +817,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     if( !Dialog_Compile( npc, cl, *it_d, cl->Talk.CurDialog ) )
     {
         cl->Send_TextMsg( cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-        WriteLog( "Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetInfo(), dialog_pack->PackId );
+        WriteLog( "Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetName(), dialog_pack->PackId );
         return;
     }
 
@@ -846,7 +846,7 @@ void FOServer::Dialog_Begin( Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, 
     if( cl->Talk.CurDialog.DlgScript )
     {
         string lexems;
-        Script::PrepareContext( cl->Talk.CurDialog.DlgScript, cl->GetInfo() );
+        Script::PrepareContext( cl->Talk.CurDialog.DlgScript, cl->GetName() );
         Script::SetArgEntity( cl );
         Script::SetArgEntity( npc );
         Script::SetArgObject( &lexems );
@@ -894,7 +894,7 @@ void FOServer::Process_Dialog( Client* cl )
         ( !is_npc && ( cl->Talk.TalkType != TALK_WITH_HEX || cl->Talk.DialogPackId != talk_id ) ) )
     {
         cl->CloseTalk();
-        WriteLog( "Invalid talk id {} {}, client '{}'.\n", is_npc, talk_id, cl->GetInfo() );
+        WriteLog( "Invalid talk id {} {}, client '{}'.\n", is_npc, talk_id, cl->GetName() );
         return;
     }
 
@@ -914,7 +914,7 @@ void FOServer::Process_Dialog( Client* cl )
         {
             cl->Send_TextMsg( cl, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
             cl->CloseTalk();
-            WriteLog( "Npc with id {} not found, client '{}'.\n", talk_id, cl->GetInfo() );
+            WriteLog( "Npc with id {} not found, client '{}'.\n", talk_id, cl->GetName() );
             return;
         }
     }
@@ -925,7 +925,7 @@ void FOServer::Process_Dialog( Client* cl )
     if( !dialogs || !dialogs->size() )
     {
         cl->CloseTalk();
-        WriteLog( "No dialogs, npc '{}', client '{}'.\n", npc->GetInfo(), cl->GetInfo() );
+        WriteLog( "No dialogs, npc '{}', client '{}'.\n", npc->GetName(), cl->GetName() );
         return;
     }
 
@@ -959,7 +959,7 @@ void FOServer::Process_Dialog( Client* cl )
         // Invalid answer
         if( num_answer >= cur_dialog->Answers.size() )
         {
-            WriteLog( "Wrong number of answer {}, client '{}'.\n", num_answer, cl->GetInfo() );
+            WriteLog( "Wrong number of answer {}, client '{}'.\n", num_answer, cl->GetName() );
             cl->Send_Talk();             // Refresh
             return;
         }
@@ -970,7 +970,7 @@ void FOServer::Process_Dialog( Client* cl )
         // Check demand again
         if( !Dialog_CheckDemand( npc, cl, *answer, true ) )
         {
-            WriteLog( "Secondary check of dialog demands fail, client '{}'.\n", cl->GetInfo() );
+            WriteLog( "Secondary check of dialog demands fail, client '{}'.\n", cl->GetName() );
             cl->CloseTalk();             // End
             return;
         }
@@ -1030,7 +1030,7 @@ label_Barter:
     {
         cl->CloseTalk();
         cl->Send_TextMsg( cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME );
-        WriteLog( "Dialog from link {} not found, client '{}', dialog pack {}.\n", dlg_id, cl->GetInfo(), dialog_pack->PackId );
+        WriteLog( "Dialog from link {} not found, client '{}', dialog pack {}.\n", dlg_id, cl->GetName(), dialog_pack->PackId );
         return;
     }
 
@@ -1039,7 +1039,7 @@ label_Barter:
     {
         cl->CloseTalk();
         cl->Send_TextMsg( cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-        WriteLog( "Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetInfo(), dialog_pack->PackId );
+        WriteLog( "Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetName(), dialog_pack->PackId );
         return;
     }
 
@@ -1051,7 +1051,7 @@ label_Barter:
     if( cl->Talk.CurDialog.DlgScript )
     {
         string lexems;
-        Script::PrepareContext( cl->Talk.CurDialog.DlgScript, cl->GetInfo() );
+        Script::PrepareContext( cl->Talk.CurDialog.DlgScript, cl->GetName() );
         Script::SetArgEntity( cl );
         Script::SetArgEntity( npc );
         Script::SetArgObject( &lexems );

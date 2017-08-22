@@ -226,7 +226,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             auto& kv = *pkv;
             uint  id = Str::AtoUI( kv[ "$Id" ].c_str() );
             auto  proto_it = kv.find( "$Proto" );
-            hash  proto_id = ( proto_it != kv.end() ? Str::GetHash( proto_it->second ) : 0 );
+            hash  proto_id = ( proto_it != kv.end() ? _str( proto_it->second ).toHash() : 0 );
 
             if( type == EntityType::Item )
             {

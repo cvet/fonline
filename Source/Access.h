@@ -259,7 +259,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: additem hx hy name count." );
             break;
         }
-        hash pid = Str::GetHash( proto_name );
+        hash pid = _str( proto_name ).toHash();
         msg_len += sizeof( hex_x ) + sizeof( hex_y ) + sizeof( pid ) + sizeof( count );
 
         buf << msg;
@@ -280,7 +280,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: additemself name count." );
             break;
         }
-        hash pid = Str::GetHash( proto_name );
+        hash pid = _str( proto_name ).toHash();
         msg_len += sizeof( pid ) + sizeof( count );
 
         buf << msg;
@@ -301,7 +301,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: addnpc hx hy dir name." );
             break;
         }
-        hash pid = Str::GetHash( proto_name );
+        hash pid = _str( proto_name ).toHash();
         msg_len += sizeof( hex_x ) + sizeof( hex_y ) + sizeof( dir ) + sizeof( pid );
 
         buf << msg;
@@ -323,7 +323,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             logcb( "Invalid arguments. Example: addloc wx wy name." );
             break;
         }
-        hash pid = Str::GetHash( proto_name );
+        hash pid = _str( proto_name ).toHash();
         msg_len += sizeof( wx ) + sizeof( wy ) + sizeof( pid );
 
         buf << msg;

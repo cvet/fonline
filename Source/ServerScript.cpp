@@ -233,7 +233,7 @@ void FOServer::FinishScriptSystem()
 bool FOServer::DialogScriptDemand( DemandResult& demand, Critter* master, Critter* slave )
 {
     int bind_id = (int) demand.ParamId;
-    Script::PrepareContext( bind_id, master->GetInfo() );
+    Script::PrepareContext( bind_id, master->GetName() );
     Script::SetArgEntity( master );
     Script::SetArgEntity( slave );
     for( int i = 0; i < demand.ValuesCount; i++ )
@@ -246,7 +246,7 @@ bool FOServer::DialogScriptDemand( DemandResult& demand, Critter* master, Critte
 uint FOServer::DialogScriptResult( DemandResult& result, Critter* master, Critter* slave )
 {
     int bind_id = (int) result.ParamId;
-    Script::PrepareContext( bind_id, _str( "Critter '{}', func '{}'", master->GetInfo(), Script::GetBindFuncName( bind_id ) ) );
+    Script::PrepareContext( bind_id, _str( "Critter '{}', func '{}'", master->GetName(), Script::GetBindFuncName( bind_id ) ) );
     Script::SetArgEntity( master );
     Script::SetArgEntity( slave );
     for( int i = 0; i < result.ValuesCount; i++ )
@@ -500,7 +500,7 @@ Item* FOServer::SScriptFunc::Item_AddItem( Item* cont, hash pid, uint count, uin
     if( cont->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( !ProtoMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", Str::GetName( pid ) );
+        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", _str().parseHash( pid ) );
 
     if( !count )
         count = 1;
@@ -655,7 +655,7 @@ bool FOServer::SScriptFunc::Item_CallSceneryFunction( Item* scenery, Critter* cr
     if( !scenery->SceneryScriptBindId )
         return false;
 
-    Script::PrepareContext( scenery->SceneryScriptBindId, cr->GetInfo() );
+    Script::PrepareContext( scenery->SceneryScriptBindId, cr->GetName() );
     Script::SetArgEntity( cr );
     Script::SetArgEntity( scenery );
     Script::SetArgEntity( item );
@@ -814,7 +814,7 @@ void FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, Map* map, hash
     ushort hx, hy;
     uchar  dir;
     if( !map->GetStartCoord( hx, hy, dir, entire ) )
-        SCRIPT_ERROR_R( "Entire '%s' not found.", Str::GetName( entire ) );
+        SCRIPT_ERROR_R( "Entire '%s' not found.", _str().parseHash( entire ) );
 
     if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
         SCRIPT_ERROR_R( "Transit to map entire fail." );
@@ -1146,7 +1146,7 @@ Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
     if( !pid )
         SCRIPT_ERROR_R0( "Proto id arg is zero." );
     if( !ProtoMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid proto '%s'.", Str::GetName( pid ) );
+        SCRIPT_ERROR_R0( "Invalid proto '%s'.", _str().parseHash( pid ) );
 
     if( !count )
         count = 1;
@@ -1886,7 +1886,7 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
     if( !proto )
-        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", Str::GetName( proto_id ) );
+        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", _str().parseHash( proto_id ) );
     if( !map->IsPlaceForProtoItem( hx, hy, proto ) )
         SCRIPT_ERROR_R0( "No place for item." );
 
@@ -2307,7 +2307,7 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
-        SCRIPT_ERROR_R0( "Proto '%s' not found.", Str::GetName( proto_id ) );
+        SCRIPT_ERROR_R0( "Proto '%s' not found.", _str().parseHash( proto_id ) );
 
     Critter* npc = nullptr;
     if( props )
@@ -3048,7 +3048,7 @@ Location* FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx,
     // Create and generate location
     Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy );
     if( !loc )
-        SCRIPT_ERROR_R0( "Unable to create location '%s'.", Str::GetName( loc_pid ) );
+        SCRIPT_ERROR_R0( "Unable to create location '%s'.", _str().parseHash( loc_pid ) );
 
     // Add known locations to critters
     if( critters )
@@ -3135,7 +3135,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
     }
 
     // Load from db
-    ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( Str::GetHash( "Player" ) );
+    ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( _str( "Player" ).toHash() );
     RUNTIME_ASSERT( cl_proto );
     cl = new Client( nullptr, cl_proto );
     cl->Name = name;
@@ -3603,7 +3603,7 @@ void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
     prop = ( prop ? prop : Critter::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '%s' not found.", _str().parseHash( prop_enum_value ) );
 
     string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
@@ -3623,7 +3623,7 @@ void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '%s' not found.", _str().parseHash( prop_enum_value ) );
 
     string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )

@@ -372,7 +372,7 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLog( "Proto not found '{}'.\n", Str::GetName( pid ) );
+        WriteLog( "Proto not found '{}'.\n", _str().parseHash( pid ) );
         return 0;
     }
 
@@ -434,7 +434,7 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     ItemHex* item = GetItemById( id );
     if( !item )
     {
-        WriteLog( "Item '{}' not found.\n", Str::GetName( id ) );
+        WriteLog( "Item '{}' not found.\n", _str().parseHash( id ) );
         return;
     }
 
@@ -646,7 +646,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
     ProtoItem* proto = ProtoMngr.GetProtoItem( eff_pid );
     if( !proto )
     {
-        WriteLog( "Proto '{}' not found.\n", Str::GetName( eff_pid ) );
+        WriteLog( "Proto '{}' not found.\n", _str().parseHash( eff_pid ) );
         return false;
     }
 

@@ -117,13 +117,12 @@ static hash Global_GetStrHash( string str )
 {
     if( str.empty() )
         return 0;
-    return Str::GetHash( str );
+    return _str( str ).toHash();
 }
 
 static string Global_GetHashStr( hash h )
 {
-    const char* str = Str::GetName( h );
-    return str ? str : "";
+    return _str().parseHash( h );
 }
 
 static uint Global_DecodeUTF8( string text, uint& length )

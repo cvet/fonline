@@ -87,7 +87,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     ProtoItem* proto = ProtoMngr.GetProtoItem( pid );
     if( !proto )
     {
-        WriteLog( "Proto item '{}' not found.\n", Str::GetName( pid ) );
+        WriteLog( "Proto item '{}' not found.\n", _str().parseHash( pid ) );
         return nullptr;
     }
 
@@ -114,7 +114,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     // Verify destroying
     if( item->IsDestroyed )
     {
-        WriteLog( "Item destroyed after prototype '{}' initialization.\n", Str::GetName( pid ) );
+        WriteLog( "Item destroyed after prototype '{}' initialization.\n", _str().parseHash( pid ) );
         return nullptr;
     }
 
@@ -126,14 +126,14 @@ bool ItemManager::RestoreItem( uint id, hash proto_id, const StrMap& props_data 
     ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
     if( !proto )
     {
-        WriteLog( "Proto item '{}' is not loaded.\n", Str::GetName( proto_id ) );
+        WriteLog( "Proto item '{}' is not loaded.\n", _str().parseHash( proto_id ) );
         return false;
     }
 
     Item* item = new Item( id, proto );
     if( !item->Props.LoadFromText( props_data ) )
     {
-        WriteLog( "Fail to restore properties for item '{}' ({}).\n", Str::GetName( proto_id ), id );
+        WriteLog( "Fail to restore properties for item '{}' ({}).\n", _str().parseHash( proto_id ), id );
         item->Release();
         return false;
     }
@@ -797,7 +797,7 @@ string ItemManager::GetItemsStatistics()
 
     std::sort( protos.begin(), protos.end(), [] ( ProtoItem * p1, ProtoItem * p2 )
                {
-                   return strcmp( p1->GetName(), p2->GetName() ) < 0;
+                   return p1->GetName().compare( p2->GetName() );
                } );
 
     string result = "Name                                     Count\n";

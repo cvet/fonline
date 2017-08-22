@@ -22,11 +22,10 @@ void ResourceManager::Refresh()
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
             {
                 string name = *it;
-                Str::GetHash( name );
-                Str::GetHash( _str( name ).lower() );
-                name = _str( name ).extractFileName();
-                Str::GetHash( name );
-                Str::GetHash( _str( name ).lower() );
+                _str( name ).toHash();
+                _str( name ).lower().toHash();
+                _str( name ).extractFileName().toHash();
+                _str( name ).extractFileName().lower().toHash();
             }
 
             // Splashes
@@ -114,12 +113,12 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
         return it->second.Anim;
 
     // Load new animation
-    const char* fname = Str::GetName( name_hash );
-    if( !fname )
+    string fname = _str().parseHash( name_hash );
+    if( fname.empty() )
         return nullptr;
 
     SprMngr.PushAtlasType( res_type );
-    AnyFrames* anim = SprMngr.LoadAnimation( fname, false, true );
+    AnyFrames* anim = SprMngr.LoadAnimation( fname.c_str(), false, true );
     SprMngr.PopAtlasType();
 
     loadedAnims.insert( PAIR( name_hash, LoadedAnim( res_type, anim ) ) );
@@ -151,7 +150,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
     while( true )
     {
         // Load
-        if( Str::CompareCount( "art/critters/", Str::GetName( model_name ), 13 ) )
+        if( Str::CompareCount( "art/critters/", _str().parseHash( model_name ), 13 ) )
         {
             // Hardcoded
             anim = LoadFalloutAnim( model_name, anim1, anim2 );
@@ -433,7 +432,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( hash model_name, uint anim1, uin
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
 
     // Try load fofrm
-    const char* name = Str::GetName( model_name );
+    string name = _str().parseHash( model_name );
     string spr_name = _str( "{}{}{}.fofrm", name, frm_ind[ anim1 ], frm_ind[ anim2 ] );
     AnyFrames* frames = SprMngr.LoadAnimation( spr_name.c_str() );
 
@@ -597,7 +596,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
     }
 
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ).c_str(), true );
     SprMngr.PopAtlasType();
     if( !anim3d )
         return nullptr;
@@ -613,7 +612,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
 uint ResourceManager::GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
 {
     uint spr_id = 0;
-    string ext = _str( Str::GetName( model_name ) ).getFileExtension();
+    string ext = _str( _str().parseHash( model_name ) ).getFileExtension();
     if( ext != "fo3d" )
     {
         AnyFrames* anim = GetCrit2dAnim( model_name, anim1, anim2, dir );

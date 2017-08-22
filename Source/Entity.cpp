@@ -21,9 +21,9 @@ ProtoEntity::~ProtoEntity()
     //
 }
 
-const char* ProtoEntity::GetName() const
+string ProtoEntity::GetName() const
 {
-    return Str::GetName( ProtoId );
+    return _str().parseHash( ProtoId );
 }
 
 void ProtoEntity::AddRef() const
@@ -74,7 +74,7 @@ hash Entity::GetProtoId() const
     return Proto ? Proto->ProtoId : 0;
 }
 
-const char* Entity::GetName() const
+string Entity::GetName() const
 {
     return Proto ? Proto->GetName() : "Unnamed";
 }

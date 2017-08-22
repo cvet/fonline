@@ -776,7 +776,7 @@ public:
             return true;
 
         // Add to collection
-        hash h = Str::GetHash( name );
+        hash h = _str( name ).toHash();
         filesToCheck[ group_index ].insert( PAIR( string( name ), h ) );
 
         // Register file
@@ -886,7 +886,7 @@ public:
         }
         else
         {
-            value = Str::GetHash( _str( "{}::{}", enum_name, value_name ) );
+            value = _str( "{}::{}", enum_name, value_name ).toHash();
         }
 
         result = engine->RegisterEnumValue( enum_name, value_name, value );

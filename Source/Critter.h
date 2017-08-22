@@ -278,16 +278,15 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo();
 
-    bool        IsPlayer() { return !CritterIsNpc; }
-    bool        IsNpc()    { return CritterIsNpc; }
-    void        RefreshName();
-    const char* GetInfo();
-    void        SendMessage( int num, int val, int to );
-    uint        GetAttackDist( Item* weap, int use );
-    bool        IsLife();
-    bool        IsDead();
-    bool        IsKnockout();
-    bool        CheckFind( int find_type );
+    bool IsPlayer() { return !CritterIsNpc; }
+    bool IsNpc()    { return CritterIsNpc; }
+    void RefreshName();
+    void SendMessage( int num, int val, int to );
+    uint GetAttackDist( Item* weap, int use );
+    bool IsLife();
+    bool IsDead();
+    bool IsKnockout();
+    bool CheckFind( int find_type );
 
     // Timeouts
     bool IsTransferTimeouts( bool send );

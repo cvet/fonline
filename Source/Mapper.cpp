@@ -177,7 +177,7 @@ bool FOMapper::Init()
     {
         std::sort( kv.second.NpcProtos.begin(), kv.second.NpcProtos.end(), [] ( ProtoCritter * a, ProtoCritter * b )
                    {
-                       return strcmp( a->GetName(), b->GetName() );
+                       return a->GetName().compare( b->GetName() );
                    } );
     }
 
@@ -192,7 +192,7 @@ bool FOMapper::Init()
     {
         std::sort( kv.second.ItemProtos.begin(), kv.second.ItemProtos.end(), [] ( ProtoItem * a, ProtoItem * b )
                    {
-                       return strcmp( a->GetName(), b->GetName() );
+                       return a->GetName().compare( b->GetName() );
                    } );
     }
 
@@ -233,7 +233,7 @@ bool FOMapper::Init()
 
         FileManager::SetCurrentDir( ServerWritePath, "./" );
 
-        ProtoMap* pmap = new ProtoMap( Str::GetHash( map_name ) );
+        ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
         bool      initialized = pmap->Load();
 
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
@@ -524,7 +524,7 @@ uint FOMapper::AnimLoad( uint name_hash, int res_type )
 
 uint FOMapper::AnimLoad( const char* fname, int res_type )
 {
-    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( fname ), res_type );
+    AnyFrames* anim = ResMngr.GetAnim( _str( fname ).toHash(), res_type );
     if( !anim )
         return 0;
     IfaceAnim* ianim = new IfaceAnim( anim, res_type );
@@ -1569,7 +1569,7 @@ void FOMapper::RefreshTiles( int tab )
                 }
 
                 // Write tile
-                hash hash = Str::GetHash( fname );
+                hash hash = _str( fname ).toHash();
                 Tabs[ tab ][ DEFAULT_SUB_TAB ].TileHashes.push_back( hash );
                 Tabs[ tab ][ DEFAULT_SUB_TAB ].TileNames.push_back( fname );
                 Tabs[ tab ][ collection_name ].TileHashes.push_back( hash );
@@ -1935,7 +1935,7 @@ void FOMapper::ObjDraw()
     }
 
     DrawLine( "Id", nullptr, string( Str::UItoA( entity->Id ) ).append( " (" ).append( Str::ItoA( entity->Id ) ).append( ")" ).c_str(), true, r );
-    DrawLine( "ProtoName", nullptr, Str::GetName( entity->GetProtoId() ), true, r );
+    DrawLine( "ProtoName", nullptr, _str().parseHash( entity->GetProtoId() ).c_str(), true, r );
     if( cr )
         DrawLine( "Type", nullptr, "Critter", true, r );
     else if( item && !item->IsScenery() )
@@ -3942,7 +3942,7 @@ void FOMapper::ParseCommand( const char* cmd )
             return;
         }
 
-        ProtoMap* pmap = new ProtoMap( Str::GetHash( map_name ) );
+        ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
         FileManager::SetCurrentDir( ServerWritePath, "./" );
         if( !pmap->Load() )
         {
@@ -4093,7 +4093,7 @@ void FOMapper::ParseCommand( const char* cmd )
 
         if( Str::CompareCase( cmd_, "new" ) )
         {
-            ProtoMap* pmap = new ProtoMap( Str::GetHash( "new" ) );
+            ProtoMap* pmap = new ProtoMap( _str( "new" ).toHash() );
             pmap->GenNew();
 
             if( ActiveMap )
@@ -4638,7 +4638,7 @@ string FOMapper::SScriptFunc::Global_GetTileName( ushort hx, ushort hy, bool roo
     for( size_t i = 0, j = tiles.size(); i < j; i++ )
     {
         if( tiles[ i ].Layer == layer )
-            return Str::GetName( tiles[ i ].Name );
+            return _str().parseHash( tiles[ i ].Name );
     }
     return "";
 }
@@ -4659,7 +4659,7 @@ void FOMapper::SScriptFunc::Global_AddTileName( ushort hx, ushort hy, int ox, in
     oy = CLAMP( oy, -MAX_MOVE_OY, MAX_MOVE_OY );
     layer = CLAMP( layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
 
-    hash pic_hash = Str::GetHash( pic_name );
+    hash pic_hash = _str( pic_name ).toHash();
     Self->HexMngr.SetTile( pic_hash, hx, hy, ox, oy, layer, roof, false );
 }
 
@@ -4670,7 +4670,7 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 
 Map* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
-    ProtoMap* pmap = new ProtoMap( Str::GetHash( file_name ) );
+    ProtoMap* pmap = new ProtoMap( _str( file_name ).toHash() );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
     if( !pmap->Load() )
     {
@@ -5717,7 +5717,7 @@ void FOMapper::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
     {
         if( anim3d )
             SprMngr.FreePure3dAnimation( anim3d );
-        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), false );
+        anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ).c_str(), false );
         DrawCritter3dCrType[ instance ] = model_name;
         DrawCritter3dFailToLoad[ instance ] = false;
 

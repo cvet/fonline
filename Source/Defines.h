@@ -157,7 +157,7 @@
 
 // Critters
 #define MAX_CRIT_TYPES              ( 1000 )
-#define MAKE_CLIENT_ID( name )                ( ( 1 << 31 ) | Str::GetHash( name ) )
+#define MAKE_CLIENT_ID( name )                ( ( 1 << 31 ) | _str( name ).toHash() )
 #define IS_CLIENT_ID( id )                    ( ( ( id ) >> 31 ) != 0 )
 #define MAX_ANSWERS                 ( 100 )
 #define PROCESS_TALK_TICK           ( 1000 )

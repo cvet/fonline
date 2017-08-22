@@ -94,7 +94,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
         {
             auto&         kv = *pkv;
             const string& name = ( kv.count( "$Name" ) ? kv[ "$Name" ] : proto_name );
-            hash          pid = Str::GetHash( name );
+            hash          pid = _str( name ).toHash();
             if( files_protos.count( pid ) )
             {
                 WriteLog( "Proto '{}' already loaded.\n", name );
@@ -147,10 +147,10 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
                     }
                     else
                     {
-                        hash inject_name_hash = Str::GetHash( inject_name );
+                        hash inject_name_hash = _str( inject_name ).toHash();
                         if( !files_protos.count( inject_name_hash ) )
                         {
-                            WriteLog( "Proto '{}' not found for injection from proto '{}'.\n", inject_name.c_str(), Str::GetName( inject_kv.first ) );
+                            WriteLog( "Proto '{}' not found for injection from proto '{}'.\n", inject_name.c_str(), _str().parseHash( inject_kv.first ) );
                             errors++;
                             continue;
                         }
@@ -167,30 +167,30 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
     // Protos
     for( auto& kv : files_protos )
     {
-        hash        pid = kv.first;
-        const char* base_name = Str::GetName( pid );
+        hash   pid = kv.first;
+        string base_name = _str().parseHash( pid );
         RUNTIME_ASSERT( protos.count( pid ) == 0 );
 
         // Fill content from parents
-        StrMap                                      final_kv;
-        std::function< bool(const char*, StrMap&) > fill_parent = [ &fill_parent, &base_name, &files_protos, &final_kv ] ( const char* name, StrMap & cur_kv )
+        StrMap                                        final_kv;
+        std::function< bool(const string&, StrMap&) > fill_parent = [ &fill_parent, &base_name, &files_protos, &final_kv ] ( const string &name, StrMap & cur_kv )
         {
             const char* parent_name_line = ( cur_kv.count( "$Parent" ) ? cur_kv[ "$Parent" ].c_str() : "" );
             StrVec      parent_names = Str::Split( parent_name_line, ' ' );
             for( auto& parent_name : parent_names )
             {
-                hash parent_pid = Str::GetHash( parent_name );
+                hash parent_pid = _str( parent_name ).toHash();
                 auto parent = files_protos.find( parent_pid );
                 if( parent == files_protos.end() )
                 {
                     if( base_name == name )
-                        WriteLog( "Proto '{}' fail to load parent '{}'.\n", base_name, parent_name.c_str() );
+                        WriteLog( "Proto '{}' fail to load parent '{}'.\n", base_name, parent_name );
                     else
-                        WriteLog( "Proto '{}' fail to load parent '{}' for proto '{}'.\n", base_name, parent_name.c_str(), name );
+                        WriteLog( "Proto '{}' fail to load parent '{}' for proto '{}'.\n", base_name, parent_name, name );
                     return false;
                 }
 
-                if( !fill_parent( parent_name.c_str(), parent->second ) )
+                if( !fill_parent( parent_name, parent->second ) )
                     return false;
                 InsertMapValues( parent->second, final_kv, true );
             }
@@ -346,7 +346,7 @@ bool ProtoManager::LoadProtosFromFiles()
     #endif
 
     // Check player proto
-    if( !crProtos.count( Str::GetHash( "Player" ) ) )
+    if( !crProtos.count( _str( "Player" ).toHash() ) )
     {
         WriteLog( "Player proto 'Player.focr' not loaded.\n" );
         errors++;
@@ -363,7 +363,7 @@ bool ProtoManager::LoadProtosFromFiles()
             hash map_pid = *(hash*) map_pids->At( i );
             if( !mapProtos.count( map_pid ) )
             {
-                WriteLog( "Proto map '{}' not found for proto location '{}'.\n", Str::GetName( map_pid ), kv.second->GetName() );
+                WriteLog( "Proto map '{}' not found for proto location '{}'.\n", _str().parseHash( map_pid ), kv.second->GetName() );
                 errors++;
             }
         }
@@ -432,7 +432,7 @@ static int ValidateProtoResourcesExt( map< hash, T* >& protos,  HashSet& hashes 
                 hash h = proto->Props.template GetPropValue< hash >( prop );
                 if( h && !hashes.count( h ) )
                 {
-                    WriteLog( "Resource '{}' not found for property '{}' in prototype '{}'.\n", Str::GetName( h ), prop->GetName(), proto->GetName() );
+                    WriteLog( "Resource '{}' not found for property '{}' in prototype '{}'.\n", _str().parseHash( h ), prop->GetName(), proto->GetName() );
                     errors++;
                 }
             }
@@ -445,7 +445,7 @@ bool ProtoManager::ValidateProtoResources( StrVec& resource_names )
 {
     HashSet hashes;
     for( auto& name : resource_names )
-        hashes.insert( Str::GetHash( name ) );
+        hashes.insert( _str( name ).toHash() );
 
     int errors = 0;
     errors += ValidateProtoResourcesExt( itemProtos, hashes );

@@ -1139,7 +1139,7 @@ bool Critter::SetScript( asIScriptFunction* func, bool first_time )
         func_num = Script::BindScriptFuncNumByFunc( func );
         if( !func_num )
         {
-            WriteLog( "Script bind fail, critter '{}'.\n", GetInfo() );
+            WriteLog( "Script bind fail, critter '{}'.\n", GetName() );
             return false;
         }
         SetScriptId( func_num );
@@ -1151,7 +1151,7 @@ bool Critter::SetScript( asIScriptFunction* func, bool first_time )
 
     if( func_num )
     {
-        Script::PrepareScriptFuncContext( func_num, GetInfo() );
+        Script::PrepareScriptFuncContext( func_num, GetName() );
         Script::SetArgEntity( this );
         Script::SetArgBool( first_time );
         Script::RunPrepared();
@@ -1661,11 +1661,6 @@ void Critter::RefreshName()
         else
             Name = _str( "{} (Npc)", GetId() );
     }
-}
-
-const char* Critter::GetInfo()
-{
-    return GetName();
 }
 
 /************************************************************************/
@@ -3146,7 +3141,7 @@ void Client::CloseTalk()
 
         if( Talk.CurDialog.DlgScript )
         {
-            Script::PrepareContext( Talk.CurDialog.DlgScript, GetInfo() );
+            Script::PrepareContext( Talk.CurDialog.DlgScript, GetName() );
             Script::SetArgEntity( this );
             Script::SetArgEntity( npc );
             Script::SetArgEntity( nullptr );

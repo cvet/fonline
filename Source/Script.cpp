@@ -53,7 +53,7 @@ public:
         NativeFuncAddr = 0;
     }
 
-    BindFunction( size_t native_func_addr, const char* func_name )
+    BindFunction( size_t native_func_addr, const string& func_name )
     {
         IsScriptCall = false;
         NativeFuncAddr = native_func_addr;
@@ -338,7 +338,7 @@ void Script::Finish()
     FinishEngine( Engine );     // Finish default engine
 }
 
-void* Script::LoadDynamicLibrary( const char* dll_name )
+void* Script::LoadDynamicLibrary( const string& dll_name )
 {
     // Check for disabled client native calls
     EngineData* edata = (EngineData*) Engine->GetUserData();
@@ -1299,28 +1299,28 @@ bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_da
     return true;
 }
 
-uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_temp, bool disable_log /* = false */ )
+uint Script::BindByFuncName( const string& func_name, const string& decl, bool is_temp, bool disable_log /* = false */ )
 {
     // Detect native dll
-    const char* dll_pos = Str::Substring( func_name, ".dll::" );
-    if( !dll_pos )
+    size_t dll_pos = func_name.find( ".dll::" );
+    if( dll_pos == string::npos )
     {
         // Collect functions in all modules
         RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
 
         // Find function
-        string decl_;
-        if( decl && decl[ 0 ] )
-            decl_ = _str( decl, func_name );
+        string func_decl;
+        if( !decl.empty() )
+            func_decl = _str( decl ).replace( "%s", func_name );
         else
-            decl_ = func_name;
+            func_decl = func_name;
 
         asIScriptModule*   module = Engine->GetModuleByIndex( 0 );
-        asIScriptFunction* script_func = module->GetFunctionByDecl( decl_.c_str() );
+        asIScriptFunction* script_func = module->GetFunctionByDecl( func_decl.c_str() );
         if( !script_func )
         {
             if( !disable_log )
-                WriteLog( "Function '{}' not found.\n", decl_ );
+                WriteLog( "Function '{}' not found.\n", func_decl );
             return 0;
         }
 
@@ -1347,10 +1347,8 @@ uint Script::BindByFuncName( const char* func_name, const char* decl, bool is_te
     else
     {
         // my.dll::Func1
-        char dll_name[ MAX_FOTEXT ];
-        char dll_func_name[ MAX_FOTEXT ];
-        Str::CopyCount( dll_name, func_name, ( uint ) std::distance( func_name, dll_pos + Str::Length( ".dll" ) ) );
-        Str::Copy( dll_func_name, dll_pos + Str::Length( ".dll::" ) );
+        string dll_name = func_name.substr( 0, dll_pos + 4 );
+        string dll_func_name = func_name.substr( dll_pos + 6 );
 
         // Load dynamic library
         void* dll = LoadDynamicLibrary( dll_name );
@@ -1424,7 +1422,7 @@ uint Script::BindByFuncNum( hash func_num, bool is_temp, bool disable_log /* = f
     if( !func )
     {
         if( !disable_log )
-            WriteLog( "Function '{}' not found.\n", Str::GetName( func_num ) );
+            WriteLog( "Function '{}' not found.\n", _str().parseHash( func_num ) );
         return 0;
     }
 
@@ -1465,7 +1463,7 @@ hash Script::GetFuncNum( asIScriptFunction* func )
         Str::Copy( script_name, func->GetNamespace() );
         Str::Append( script_name, "::" );
         Str::Append( script_name, func->GetName() );
-        func_num_ptr = new hash( Str::GetHash( script_name ) );
+        func_num_ptr = new hash( _str( script_name ).toHash() );
         func->SetUserData( func_num_ptr );
     }
     return *func_num_ptr;
@@ -1486,7 +1484,7 @@ asIScriptFunction* Script::FindFunc( hash func_num )
     return nullptr;
 }
 
-hash Script::BindScriptFuncNumByFuncName( const char* func_name, const char* decl )
+hash Script::BindScriptFuncNumByFuncName( const string& func_name, const string& decl )
 {
     // Bind function
     int bind_id = Script::BindByFuncName( func_name, decl, false );

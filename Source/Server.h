@@ -21,7 +21,7 @@
 #define CHECK_IN_BUFF_ERROR_EXT( client, before_disconnect, after_disconnect )                      \
     if( client->Connection->Bin.IsError() )                                                         \
     {                                                                                               \
-        WriteLog( "Wrong network data from client '{}', line {}.\n", client->GetInfo(), __LINE__ ); \
+        WriteLog( "Wrong network data from client '{}', line {}.\n", client->GetName(), __LINE__ ); \
         before_disconnect;                                                                          \
         client->Disconnect();                                                                       \
         after_disconnect;                                                                           \

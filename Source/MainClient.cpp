@@ -45,8 +45,8 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     #ifdef FO_WINDOWS
     wchar_t full_path[ MAX_FOPATH ] = { 0 };
     GetModuleFileNameW( nullptr, full_path, MAX_FOPATH );
-    string  path = _str( "" ).parseWideChar( full_path ).extractDir();
-    string  name = _str( "" ).parseWideChar( full_path ).extractFileName();
+    string  path = _str().parseWideChar( full_path ).extractDir();
+    string  name = _str().parseWideChar( full_path ).extractFileName();
     if( Str::Substring( name, "Singleplayer" ) || MainConfig->IsKey( "", "Singleplayer" ) )
     {
         WriteLog( "Singleplayer mode.\n" );

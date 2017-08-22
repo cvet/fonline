@@ -169,7 +169,7 @@ void ScriptInvoker::SaveDeferredCalls( IniParser& data )
         StrMap& kv = data.SetApp( "DeferredCall" );
 
         kv[ "Id" ] = Str::UItoA( call.Id );
-        kv[ "Script" ] = Str::GetName( call.FuncNum );
+        kv[ "Script" ] = _str().parseHash( call.FuncNum );
         kv[ "Delay" ] = Str::UItoA( call.FireTick > tick ? call.FireTick - tick : 0 );
 
         if( call.IsValue )
@@ -262,7 +262,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         call.BindId = Script::BindByFuncNum( call.FuncNum, false );
         if( !call.BindId )
         {
-            WriteLog( "Unable to bind script function '{}' for deferred call {}.\n", Str::GetName( call.FuncNum ), call.Id );
+            WriteLog( "Unable to bind script function '{}' for deferred call {}.\n", _str().parseHash( call.FuncNum ), call.Id );
             errors++;
             continue;
         }

@@ -38,9 +38,9 @@ public:
     const hash   ProtoId;
     mutable long RefCounter;
 
-    const char* GetName() const;
-    void        AddRef() const;
-    void        Release() const;
+    string GetName() const;
+    void   AddRef() const;
+    void   Release() const;
 };
 
 class Entity
@@ -59,13 +59,13 @@ public:
     bool             IsDestroyed;
     bool             IsDestroying;
 
-    uint        GetId() const;
-    void        SetId( uint id );
-    hash        GetProtoId() const;
-    const char* GetName() const;
-    void        AddRef() const;
-    void        Release() const;
-    EntityVec   GetChildren() const;
+    uint      GetId() const;
+    void      SetId( uint id );
+    hash      GetProtoId() const;
+    string    GetName() const;
+    void      AddRef() const;
+    void      Release() const;
+    EntityVec GetChildren() const;
 };
 
 class CustomEntity: public Entity

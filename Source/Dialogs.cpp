@@ -185,7 +185,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     const char* dlg_buf = fodlg.GetAppContent( "dialog" );
     istrstream  input( dlg_buf );
     const char* lang_buf = nullptr;
-    pack->PackId = Str::GetHash( pack_name );
+    pack->PackId = _str( pack_name ).toHash();
     pack->PackName = pack_name;
     StrVec lang_apps;
 
@@ -464,7 +464,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
         // Value
         input >> svalue;
         if( is_hash )
-            ivalue = (int) Str::GetHash( svalue );
+            ivalue = (int) _str( svalue ).toHash();
         else
             ivalue = ConvertParamValue( svalue, fail );
     }
@@ -482,7 +482,7 @@ DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand
 
         // Name
         input >> name;
-        id = Str::GetHash( name );
+        id = _str( name ).toHash();
         #pragma MESSAGE("Check item name.")
 
         // Operator

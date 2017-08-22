@@ -97,7 +97,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         if( GetVersionExW( (OSVERSIONINFOW*) &ver ) )
         {
             fprintf( f, "\tOS          %d.%d.%d (%s)\n",
-                     ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, _str( "" ).parseWideChar( ver.szCSDVersion ).c_str() );
+                     ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, _str().parseWideChar( ver.szCSDVersion ).c_str() );
         }
         fprintf( f, "\tTimestamp   %04d.%02d.%02d %02d:%02d:%02d\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
         fprintf( f, "\n" );
@@ -431,7 +431,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
             {
                 wchar_t module_name[ MAX_PATH ] = { 0 };
                 if( GetModuleFileNameExW( process, modules[ i ], module_name, sizeof( module_name ) ) )
-                    fprintf( f, "\t%s (%p)\n", _str( "" ).parseWideChar( module_name ).c_str(), modules[ i ] );
+                    fprintf( f, "\t%s (%p)\n", _str().parseWideChar( module_name ).c_str(), modules[ i ] );
                 else
                     fprintf( f, "\tGetModuleFileNameExW fail\n" );
             }

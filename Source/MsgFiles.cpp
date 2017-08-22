@@ -305,7 +305,7 @@ bool FOMsg::LoadFromString( const char* str, uint str_len )
         pbuf++;
 
         // Parse number
-        uint num1 = (uint) ( Str::IsNumber( num1_begin ) ? Str::AtoI( num1_begin ) : Str::GetHash( num1_begin ) );
+        uint num1 = (uint) ( Str::IsNumber( num1_begin ) ? Str::AtoI( num1_begin ) : _str( num1_begin ).toHash() );
 
         // Skip '{'
         Str::GoTo( pbuf, '{', true );
@@ -321,7 +321,7 @@ bool FOMsg::LoadFromString( const char* str, uint str_len )
         pbuf++;
 
         // Parse number
-        uint num2 = ( num2_begin[ 0 ] ? ( Str::IsNumber( num2_begin ) ? Str::AtoI( num2_begin ) : Str::GetHash( num2_begin ) ) : 0 );
+        uint num2 = ( num2_begin[ 0 ] ? ( Str::IsNumber( num2_begin ) ? Str::AtoI( num2_begin ) : _str( num2_begin ).toHash() ) : 0 );
 
         // Goto '{'
         Str::GoTo( pbuf, '{', true );

@@ -52,7 +52,7 @@ public:
     static bool Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
     static void Finish();
 
-    static void* LoadDynamicLibrary( const char* dll_name );
+    static void* LoadDynamicLibrary( const string& dll_name );
     static void  SetLoadLibraryCompiler( bool enabled );
 
     static void UnloadScripts();
@@ -108,7 +108,7 @@ public:
     static bool LoadRootModule( StrVec& names, StrVec& contents, string& result_code );
     static bool RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_data );
 
-    static uint               BindByFuncName( const char* func_name, const char* decl, bool is_temp, bool disable_log = false );
+    static uint               BindByFuncName( const string& func_name, const string& decl, bool is_temp, bool disable_log = false );
     static uint               BindByFunc( asIScriptFunction* func, bool is_temp, bool disable_log = false );
     static uint               BindByFuncNum( hash func_num, bool is_temp, bool disable_log = false );
     static asIScriptFunction* GetBindFunc( uint bind_id );
@@ -116,7 +116,7 @@ public:
 
     static hash               GetFuncNum( asIScriptFunction* func );
     static asIScriptFunction* FindFunc( hash func_num );
-    static hash               BindScriptFuncNumByFuncName( const char* func_name, const char* decl );
+    static hash               BindScriptFuncNumByFuncName( const string& func_name, const string& decl );
     static hash               BindScriptFuncNumByFunc( asIScriptFunction* func );
     static uint               GetScriptFuncBindId( hash func_num );
     static void               PrepareScriptFuncContext( hash func_num, const string& ctx_info );

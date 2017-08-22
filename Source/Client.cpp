@@ -504,7 +504,7 @@ void FOClient::UpdateBinary()
     RUNTIME_ASSERT( delete_old_exe || GetLastError() == ERROR_FILE_NOT_FOUND );
     BOOL rename_old_exe = MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str(),
                                      std::wstring( to_dir ).append( base_name ).append( L".old.exe" ).c_str() );
-    RUNTIME_ASSERT_STR( rename_old_exe, _str( "" ).parseWideChar( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() ).c_str() );
+    RUNTIME_ASSERT_STR( rename_old_exe, _str().parseWideChar( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() ).c_str() );
     BOOL rename_new_exe = MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".new.exe" ).c_str(),
                                      std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() );
     RUNTIME_ASSERT( rename_new_exe );
@@ -2588,7 +2588,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
     }
     else
     {
-        ProtoCritter* proto = ProtoMngr.GetProtoCritter( is_npc ? npc_pid : Str::GetHash( "Player" ) );
+        ProtoCritter* proto = ProtoMngr.GetProtoCritter( is_npc ? npc_pid : _str( "Player" ).toHash() );
         RUNTIME_ASSERT( proto );
         CritterCl*    cr = new CritterCl( crid, proto );
         cr->Props.RestoreData( TempPropertiesData );
@@ -3709,7 +3709,7 @@ void FOClient::Net_OnFlyEffect()
 
     if( !HexMngr.RunEffect( eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy ) )
     {
-        WriteLog( "Run effect '{}' fail.\n", Str::GetName( eff_pid ) );
+        WriteLog( "Run effect '{}' fail.\n", _str().parseHash( eff_pid ) );
         return;
     }
 }
@@ -4446,7 +4446,7 @@ void FOClient::Net_OnUpdateFilesList()
         RUNTIME_ASSERT( pos != string::npos );
         wchar_t base_name[ MAX_FOPATH ];
         wcsncpy( base_name, path + pos + 1, wcslen( path ) - pos );
-        exe_name = _str( "" ).parseWideChar( base_name );
+        exe_name = _str().parseWideChar( base_name );
     }
     #endif
 
@@ -6288,7 +6288,7 @@ uint FOClient::AnimLoad( uint name_hash, int res_type )
 
 uint FOClient::AnimLoad( const char* fname, int res_type )
 {
-    AnyFrames* anim = ResMngr.GetAnim( Str::GetHash( fname ), res_type );
+    AnyFrames* anim = ResMngr.GetAnim( _str( fname ).toHash(), res_type );
     if( !anim )
         return 0;
     IfaceAnim* ianim = new IfaceAnim( anim, res_type );
@@ -8297,7 +8297,7 @@ void FOClient::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
     prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '%s' not found.", _str().parseHash( prop_enum_value ) );
 
     string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
@@ -8318,7 +8318,7 @@ void FOClient::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R( "Property '%s' not found.", Str::GetName( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '%s' not found.", _str().parseHash( prop_enum_value ) );
 
     string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )
@@ -8625,7 +8625,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
         if( anim3d )
             SprMngr.FreePure3dAnimation( anim3d );
         SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-        anim3d = SprMngr.LoadPure3dAnimation( Str::GetName( model_name ), false );
+        anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ).c_str(), false );
         SprMngr.PopAtlasType();
         DrawCritter3dCrType[ instance ] = model_name;
         DrawCritter3dFailToLoad[ instance ] = false;

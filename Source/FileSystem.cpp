@@ -26,7 +26,7 @@ static std::wstring MBtoWC( const string& mb )
 
 static string WCtoMB( const wchar_t* wc )
 {
-    return _str( "" ).parseWideChar( wc ).normalizePathSlashes();
+    return _str().parseWideChar( wc ).normalizePathSlashes();
 }
 
 void* FileOpen( const string& fname, bool write, bool write_through /* = false */ )

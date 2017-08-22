@@ -475,7 +475,7 @@ void FOServer::OnNewConnection( NetConnection* connection )
     }
 
     // Allocate client
-    ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( Str::GetHash( "Player" ) );
+    ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( _str( "Player" ).toHash() );
     RUNTIME_ASSERT( cl_proto );
     Client*       cl = new Client( connection, cl_proto );
 
@@ -833,7 +833,7 @@ void FOServer::Process_Text( Client* cl )
         cl->LastSayEqualCount++;
         if( cl->LastSayEqualCount >= 10 )
         {
-            WriteLog( "Flood detected, client '{}'. Disconnect.\n", cl->GetInfo() );
+            WriteLog( "Flood detected, client '{}'. Disconnect.\n", cl->GetName() );
             cl->Disconnect();
             return;
         }
@@ -960,7 +960,7 @@ void FOServer::Process_Text( Client* cl )
 
     for( int i = 0; i < listen_count; i++ )
     {
-        Script::PrepareContext( listen_func_id[ i ], cl->GetInfo() );
+        Script::PrepareContext( listen_func_id[ i ], cl->GetName() );
         Script::SetArgEntity( cl );
         Script::SetArgObject( &listen_str[ i ] );
         Script::RunPrepared();
@@ -1458,7 +1458,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             break;
         }
 
-        Script::PrepareContext( bind_id, cl_ ? cl_->GetInfo() : "AdminPanel" );
+        Script::PrepareContext( bind_id, cl_ ? cl_->GetName() : "AdminPanel" );
         Script::SetArgObject( cl_ );
         Script::SetArgUInt( param0 );
         Script::SetArgUInt( param1 );
@@ -2367,7 +2367,7 @@ bool FOServer::InitLangPacksLocations( LangPackVec& lang_packs )
                     continue;
 
                 if( lang.Msg[ TEXTMSG_LOCATIONS ].IsIntersects( *ploc->Texts[ i ] ) )
-                    WriteLog( "Warning! Location '{}' text intersection detected, send notification about this to developers.\n", Str::GetName( ploc->ProtoId ) );
+                    WriteLog( "Warning! Location '{}' text intersection detected, send notification about this to developers.\n", _str().parseHash( ploc->ProtoId ) );
 
                 lang.Msg[ TEXTMSG_LOCATIONS ] += *ploc->Texts[ i ];
             }
@@ -2817,7 +2817,7 @@ bool FOServer::LoadWorld( const char* fname )
     }
 
     // Main data
-    Str::LoadHashes( data.GetApp( "Hashes" ) );
+    _str::loadHashes( data.GetApp( "Hashes" ) );
     if( !LoadGameInfoFile( data ) )
         return false;
     if( !Script::LoadDeferredCalls( data ) )
@@ -2893,7 +2893,7 @@ void FOServer::DumpEntity( Entity* entity )
     if( entity->Id )
         kv[ "$Id" ] = Str::UItoA( entity->Id );
     if( entity->Proto )
-        kv[ "$Proto" ] = Str::GetName( entity->Proto->ProtoId );
+        kv[ "$Proto" ] = _str().parseHash( entity->Proto->ProtoId );
     if( entity->Type == EntityType::Custom )
         kv[ "$ClassName" ] = ( (CustomEntity*) entity )->Props.GetClassName();
     if( entity->Type == EntityType::Client )
@@ -2942,7 +2942,7 @@ void FOServer::Dump_Work( void* args )
     DumpedEntities.clear();
 
     // Save hashes
-    Str::SaveHashes( data->SetApp( "Hashes" ) );
+    _str::saveHashes( data->SetApp( "Hashes" ) );
 
     // Save world to file
     if( !data->SaveFile( fname ) )

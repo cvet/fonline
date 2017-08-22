@@ -125,7 +125,7 @@ void ProtoMap::SaveTextFormat( IniParser& file )
     for( auto& tile : Tiles )
     {
         StrMap& kv = file.SetApp( "Tile" );
-        kv[ "PicMap" ] = Str::GetName( tile.Name );
+        kv[ "PicMap" ] = _str().parseHash( tile.Name );
         kv[ "HexX" ] = Str::UItoA( tile.HexX );
         kv[ "HexY" ] = Str::UItoA( tile.HexY );
         if( tile.OffsX )
@@ -169,11 +169,11 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         }
 
         uint          id = Str::AtoUI( kv[ "$Id" ].c_str() );
-        hash          proto_id = Str::GetHash( kv[ "$Proto" ] );
+        hash          proto_id = _str( kv[ "$Proto" ] ).toHash();
         ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
         if( !proto )
         {
-            WriteLog( "Proto critter '{}' not found.\n", Str::GetName( proto_id ) );
+            WriteLog( "Proto critter '{}' not found.\n", _str().parseHash( proto_id ) );
             errors++;
             continue;
         }
@@ -185,7 +185,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         #endif
         if( !npc->Props.LoadFromText( kv ) )
         {
-            WriteLog( "Unable to load critter '{}' properties.\n", Str::GetName( proto_id ) );
+            WriteLog( "Unable to load critter '{}' properties.\n", _str().parseHash( proto_id ) );
             errors++;
             continue;
         }
@@ -207,11 +207,11 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         }
 
         uint       id = Str::AtoUI( kv[ "$Id" ].c_str() );
-        hash       proto_id = Str::GetHash( kv[ "$Proto" ] );
+        hash       proto_id = _str( kv[ "$Proto" ] ).toHash();
         ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
         if( !proto )
         {
-            WriteLog( "Proto item '{}' not found.\n", Str::GetName( proto_id ) );
+            WriteLog( "Proto item '{}' not found.\n", _str().parseHash( proto_id ) );
             errors++;
             continue;
         }
@@ -219,7 +219,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         Item* item = new Item( id, proto );
         if( !item->Props.LoadFromText( kv ) )
         {
-            WriteLog( "Unable to load item '{}' properties.\n", Str::GetName( proto_id ) );
+            WriteLog( "Unable to load item '{}' properties.\n", _str().parseHash( proto_id ) );
             errors++;
             continue;
         }
@@ -240,7 +240,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             continue;
         }
 
-        hash name = Str::GetHash( kv[ "PicMap" ] );
+        hash name = _str( kv[ "PicMap" ] ).toHash();
         int  hx = Str::AtoI( kv[ "HexX" ].c_str() );
         int  hy = Str::AtoI( kv[ "HexY" ].c_str() );
         int  ox = ( kv.count( "OffsetX" ) ? Str::AtoI( kv[ "OffsetX" ].c_str() ) : 0 );
@@ -249,13 +249,13 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         bool is_roof = ( kv.count( "IsRoof" ) ? Str::AtoB( kv[ "IsRoof" ].c_str() ) : false );
         if( hx < 0 || hx >= GetWidth() || hy < 0 || hy > GetHeight() )
         {
-            WriteLog( "Tile '{}' have wrong hex position {} {}.\n", Str::GetName( name ), hx, hy );
+            WriteLog( "Tile '{}' have wrong hex position {} {}.\n", _str().parseHash( name ), hx, hy );
             errors++;
             continue;
         }
         if( layer < 0 || layer > 255 )
         {
-            WriteLog( "Tile '{}' have wrong layer value {}.\n", Str::GetName( name ), layer );
+            WriteLog( "Tile '{}' have wrong layer value {}.\n", _str().parseHash( name ), layer );
             errors++;
             continue;
         }
@@ -372,7 +372,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             }
         }
         if( !script_name.empty() )
-            SetScriptId( Str::GetHash( script_name ) );
+            SetScriptId( _str( script_name ).toHash() );
         CScriptArray* arr = Script::CreateArray( "int[]" );
         Script::AppendVectorToArray( vec, arr );
         SetDayTime( arr );
@@ -408,9 +408,9 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     hx *= 2;
                     hy *= 2;
                     if( type == "tile" )
-                        Tiles.push_back( Tile( Str::GetHash( name ), hx, hy, 0, 0, 0, false ) );
+                        Tiles.push_back( Tile( _str( name ).toHash(), hx, hy, 0, 0, 0, false ) );
                     else if( type == "roof" )
-                        Tiles.push_back( Tile( Str::GetHash( name ), hx, hy, 0, 0, 0, true ) );
+                        Tiles.push_back( Tile( _str( name ).toHash(), hx, hy, 0, 0, 0, true ) );
                     else if( type == "0" )
                         Tiles.push_back( Tile( Str::AtoUI( name.c_str() ), hx, hy, 0, 0, 0, false ) );
                     else if( type == "1" )
@@ -472,7 +472,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     std::getline( istr, name, '\n' );
                     name = _str( name ).trim();
 
-                    Tiles.push_back( Tile( Str::GetHash( name ), hx, hy, ox, oy, layer, is_roof ) );
+                    Tiles.push_back( Tile( _str( name ).toHash(), hx, hy, ox, oy, layer, is_roof ) );
                 }
             }
         }
@@ -529,7 +529,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     hash proto_id = 0;
                     if( field == "ProtoName" )
                     {
-                        proto_id = Str::GetHash( svalue );
+                        proto_id = _str( svalue ).toHash();
                         if( is_critter && !ProtoMngr.GetProtoCritter( proto_id ) )
                         {
                             WriteLog( "Critter prototype '{}' not found.\n", svalue );
@@ -623,9 +623,9 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                             if( cur_prop )
                             {
                                 if( !Str::IsNumber( svalue.c_str() ) )
-                                    Str::GetHash( svalue );
+                                    _str( svalue ).toHash();
                                 if( cur_prop->IsHash() )
-                                    cur_prop->SetPODValueAsInt( entities.back(), Str::GetHash( svalue ) );
+                                    cur_prop->SetPODValueAsInt( entities.back(), _str( svalue ).toHash() );
                                 else if( cur_prop->IsEnum() )
                                     cur_prop->SetPODValueAsInt( entities.back(), Script::GetEnumValue( cur_prop->GetTypeName(), svalue.c_str(), fail ) );
                                 else
@@ -644,11 +644,11 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
 
                     if( field == "PicMapName" )
                     {
-                        ( (Item*) entities.back() )->SetPicMap( Str::GetHash( svalue ) );
+                        ( (Item*) entities.back() )->SetPicMap( _str( svalue ).toHash() );
                     }
                     else if( field == "PicInvName" )
                     {
-                        ( (Item*) entities.back() )->SetPicInv( Str::GetHash( svalue ) );
+                        ( (Item*) entities.back() )->SetPicInv( _str( svalue ).toHash() );
                     }
                     else
                     {
@@ -661,7 +661,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                         if( field == "Scenery_CanTalk" )
                             ( (Item*) entities.back() )->SetIsCanTalk( ivalue != 0 );
                         if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
-                            ( (Item*) entities.back() )->SetGrid_ToMap( Str::GetHash( svalue ) );
+                            ( (Item*) entities.back() )->SetGrid_ToMap( _str( svalue ).toHash() );
                         SET_FIELD_ITEM( "Scenery_ToEntire", Grid_ToMapEntire );
                         SET_FIELD_ITEM( "Scenery_ToDir", Grid_ToMapDir );
                         SET_FIELD_ITEM( "Scenery_SpriteCut", SpriteCut );
@@ -680,15 +680,15 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         AdditionalFields& entity_addon = entities_addon[ i ];
         if( !entity_addon.ScriptName.empty() || !entity_addon.FuncName.empty() )
         {
-            char script_name[ MAX_FOTEXT ] = { 0 };
-            Str::Copy( script_name, entity_addon.ScriptName.c_str() );
-            if( script_name[ 0 ] )
-                Str::Append( script_name, "@" );
-            Str::Append( script_name, entity_addon.FuncName.c_str() );
+            string script_name = entity_addon.ScriptName;
+            if( !script_name.empty() )
+                script_name += "@";
+            script_name += entity_addon.FuncName;
+
             if( entity->Type == MUTUAL_CRITTER_TYPE )
-                ( (MUTUAL_CRITTER*) entity )->SetScriptId( Str::GetHash( script_name ) );
+                ( (MUTUAL_CRITTER*) entity )->SetScriptId( _str( script_name ).toHash() );
             else if( entity->Type == EntityType::Item )
-                ( (Item*) entity )->SetScriptId( Str::GetHash( script_name ) );
+                ( (Item*) entity )->SetScriptId( _str( script_name ).toHash() );
         }
     }
 
@@ -954,10 +954,10 @@ bool ProtoMap::BindScripts( EntityVec& entities )
     // Map script
     if( GetScriptId() )
     {
-        hash func_num = Script::BindScriptFuncNumByFuncName( Str::GetName( GetScriptId() ), "void %s(Map, bool)" );
+        hash func_num = Script::BindScriptFuncNumByFuncName( _str().parseHash( GetScriptId() ), "void %s(Map, bool)" );
         if( !func_num )
         {
-            WriteLog( "Map '{}', can't bind map function '{}'.\n", GetName(), Str::GetName( GetScriptId() ) );
+            WriteLog( "Map '{}', can't bind map function '{}'.\n", GetName(), _str().parseHash( GetScriptId() ) );
             errors++;
         }
     }
@@ -967,7 +967,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
     {
         if( entity->Type == MUTUAL_CRITTER_TYPE && ( (MUTUAL_CRITTER*) entity )->GetScriptId() )
         {
-            const char* func_name = Str::GetName( ( (MUTUAL_CRITTER*) entity )->GetScriptId() );
+            string func_name = _str().parseHash( ( (MUTUAL_CRITTER*) entity )->GetScriptId() );
             hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Critter, bool)" );
             if( !func_num )
             {
@@ -977,7 +977,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
         }
         else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
         {
-            const char* func_name = Str::GetName( ( (Item*) entity )->GetScriptId() );
+            string func_name = _str().parseHash( ( (Item*) entity )->GetScriptId() );
             hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Item, bool)" );
             if( !func_num )
             {
@@ -988,7 +988,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
         else if( entity->Type == EntityType::Item && ( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
         {
             Item* item = (Item*) entity;
-            const char* func_name = Str::GetName( item->GetScriptId() );
+            string func_name = _str().parseHash( item->GetScriptId() );
             uint bind_id = 0;
             if( item->GetProtoId() != SP_SCEN_TRIGGER )
                 bind_id = Script::BindByFuncName( func_name, "bool %s(Critter, const Item, Item, int)", false );

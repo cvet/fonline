@@ -1475,7 +1475,7 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
         {
             if( type_id != asTYPEID_UINT32 )
                 RUNTIME_ASSERT( type_id == asTYPEID_UINT32 );
-            return VALUE_AS( hash ) ? CodeString( Str::GetName( VALUE_AS( hash ) ), deep ) : CodeString( "", deep );
+            return VALUE_AS( hash ) ? CodeString( _str().parseHash( VALUE_AS( hash ) ), deep ) : CodeString( "", deep );
         }
 
         CHECK_PRIMITIVE( asTYPEID_BOOL, bool, Str::BtoA );
@@ -1564,7 +1564,7 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
         if( is_hashes[ deep ] )
         {
             RUNTIME_ASSERT( type_id == asTYPEID_UINT32 );
-            hash v = Str::GetHash( DecodeString( value ) );
+            hash v = _str( DecodeString( value ) ).toHash();
             memcpy( pod_buf, &v, sizeof( v ) );
             return pod_buf;
         }
@@ -2230,7 +2230,7 @@ Property* PropertyRegistrator::Register(
 
     // Register enum values for property reflection
     string enum_value_name = _str( "{}::{}", enumTypeName, name );
-    int  enum_value = (int) Str::GetHash( enum_value_name );
+    int  enum_value = (int) _str( enum_value_name ).toHash();
     int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
     if( result < 0 )
     {

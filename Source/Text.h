@@ -90,41 +90,32 @@ namespace Str
 
     char* GetBigBuf();                      // Just big buffer, 1mb
 
-    // Name hashes
-    hash        GetHash( const string& name );
-    const char* GetName( hash h );
-    void        SaveHashes( StrMap& hashes );
-    void        LoadHashes( StrMap& hashes );
-
     // Split exclude empty entries
     StrVec Split( const string& line, char divider );
     IntVec SplitToInt( const string& line, char divider );
 }
 
-class _str // Todo: do it
+class _str
 {
     string s;
 
 public:
+    _str() {}
     _str( const _str& r ): s( r.s ) {}
     _str( const string& s ): s( s ) {}
     _str( const char* s ): s( s ) {}
-    // template< typename T > _str( const T& a ): s( fmt::format< T >( "{}", a ) ) {}
     template< typename ... Args > _str( const string& format, Args ... args ): s( fmt::format( format, args ... ) ) {}
     operator string&() { return s; }
-    // _str        operator+( const _str& r ) const               { return _str( s + r.s ); }
-    // _str        operator+( const string& r ) const               { return _str( s + r ); }
-    _str        operator+( const char* r ) const            { return _str( s + string( r ) ); }
-    friend _str operator+( const _str& l, const string& r ) { return _str( l.s + r ); }
-    // bool        operator==(const _str& r) const { return s == r.s; }
+    _str        operator+( const char* r ) const             { return _str( s + string( r ) ); }
+    friend _str operator+( const _str& l, const string& r )  { return _str( l.s + r ); }
     friend bool operator==( const _str& l, const string& r ) { return l.s == r; }
     bool        operator!=( const _str& r ) const            { return s != r.s; }
     friend bool operator!=( const _str& l, const string& r ) { return l.s != r; }
     const char* c_str()                                      { return s.c_str(); }
 
-    // bool compareCase
     _str& trim();
     _str& replace( char from, char to );
+    _str& replace( const string& from, const string& to );
     _str& lower();
     _str& upper();
     bool  isInt();
@@ -144,6 +135,11 @@ public:
     _str&        parseWideChar( const wchar_t* str );
     std::wstring toWideChar();
     #endif
+
+    hash        toHash();
+    string      parseHash( hash h );
+    static void saveHashes( StrMap& hashes );
+    static void loadHashes( StrMap& hashes );
 };
 
 #endif // ___TEXT___
