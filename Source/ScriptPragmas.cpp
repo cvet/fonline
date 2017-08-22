@@ -655,12 +655,8 @@ public:
         }
         *separator = 0;
 
-        char decl[ MAX_FOTEXT ];
-        char script_func[ MAX_FOTEXT ];
-        Str::Copy( decl, buf );
-        Str::Copy( script_func, separator + 1 );
-        Str::Trim( decl );
-        Str::Trim( script_func );
+        string decl = _str( buf ).trim();
+        string script_func = _str( separator + 1 ).trim();
 
         // Parse access type
         Method::CallType call_type = (Method::CallType) 0;
@@ -700,7 +696,7 @@ public:
             return false;
 
         // Register
-        if( !registrator->Register( decl, script_func, call_type ) )
+        if( !registrator->Register( decl.c_str(), script_func.c_str(), call_type ) )
         {
             WriteLog( "Unable to register 'method' pragma '{}'.\n", text.c_str() );
             return false;
@@ -879,11 +875,9 @@ public:
         const char* assign = Str::Substring( other, "=" );
         if( assign )
         {
-            bool fail = false;
-            char buf[ MAX_FOTEXT ];
-            Str::Copy( buf, assign + 1 );
-            Str::Trim( buf );
-            value = ConvertParamValue( buf, fail );
+            bool   fail = false;
+            string buf = _str( assign + 1 ).trim();
+            value = ConvertParamValue( buf.c_str(), fail );
             if( fail )
             {
                 WriteLog( "Error in 'enum' pragma '{}', value conversation error.\n", text.c_str() );
@@ -1225,33 +1219,28 @@ public:
             return false;
         }
 
-        char event_name[ MAX_FOTEXT ];
-        Str::Copy( event_name, text.substr( 0, args_begin ).c_str() );
-        Str::Trim( event_name );
-        if( Str::Length( event_name ) == 0 )
+        string event_name = _str( text.substr( 0, args_begin ) ).trim();
+        if( event_name.empty() )
         {
             WriteLog( "Unable to parse 'event' pragma '{}'.\n", text.c_str() );
             return false;
         }
 
-        char args[ MAX_FOTEXT ];
-        Str::Copy( args, text.substr( args_begin + 1, args_end - args_begin - 1 ).c_str() );
-        Str::Trim( args );
-
+        string           args = _str( text.substr( args_begin + 1, args_end - args_begin - 1 ) ).trim();
         asIScriptEngine* engine = Script::GetEngine();
         int              func_def_id;
         as_builder_ForceAutoHandles = true;
         if( ( func_def_id = engine->RegisterFuncdef( _str( "void {}Func({})", event_name, args ).c_str() ) ) < 0 ||
             engine->RegisterFuncdef( _str( "bool {}FuncBool({})", event_name, args ).c_str() ) < 0 ||
-            engine->RegisterObjectType( event_name, 0, asOBJ_REF ) < 0 ||
-            engine->RegisterObjectBehaviour( event_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( ScriptEvent, AddRef ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectBehaviour( event_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( ScriptEvent, Release ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, _str( "void Subscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, _str( "void Subscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, _str( "void Unsubscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, _str( "void Unsubscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, "void UnsubscribeAll()", SCRIPT_METHOD( ScriptEvent, UnsubscribeAll ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name, _str( "bool Raise({})", args ).c_str(), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
+            engine->RegisterObjectType( event_name.c_str(), 0, asOBJ_REF ) < 0 ||
+            engine->RegisterObjectBehaviour( event_name.c_str(), asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( ScriptEvent, AddRef ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectBehaviour( event_name.c_str(), asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( ScriptEvent, Release ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name.c_str(), _str( "void Subscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name.c_str(), _str( "void Subscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name.c_str(), _str( "void Unsubscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name.c_str(), _str( "void Unsubscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name.c_str(), "void UnsubscribeAll()", SCRIPT_METHOD( ScriptEvent, UnsubscribeAll ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod( event_name.c_str(), _str( "bool Raise({})", args ).c_str(), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
         {
             as_builder_ForceAutoHandles = false;
             return false;
@@ -1304,10 +1293,10 @@ public:
                 Str::Copy( arg_name, name );
                 arg_name[ 0 ] = toupper( arg_name[ 0 ] );
 
-                if( engine->RegisterObjectMethod( event_name, _str( "void SubscribeTo{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, _str( "void SubscribeTo{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, _str( "void UnsubscribeFrom{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name, _str( "void UnsubscribeFrom{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
+                if( engine->RegisterObjectMethod( event_name.c_str(), _str( "void SubscribeTo{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name.c_str(), _str( "void SubscribeTo{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name.c_str(), _str( "void UnsubscribeFrom{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod( event_name.c_str(), _str( "void UnsubscribeFrom{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
                     return false;
             }
         }
@@ -1422,9 +1411,7 @@ public:
             WriteLog( "Unable to parse 'rpc' pragma '{}'.\n", text.c_str() );
             return false;
         }
-        char args[ MAX_FOTEXT ];
-        Str::Copy( args, text.substr( args_begin + 1, args_end - args_begin - 1 ).c_str() );
-        Str::Trim( args );
+        string args = _str( text.substr( args_begin + 1, args_end - args_begin - 1 ) ).trim();
 
         // Verify args
         asIScriptEngine* engine = Script::GetEngine();
@@ -1436,7 +1423,7 @@ public:
             return false;
         }
 
-        if( Str::Substring( args, "@" ) )
+        if( args.find( '@' ) != string::npos )
         {
             WriteLog( "Handles is not allowed for 'rpc' pragma '{}'.\n", text.c_str() );
             return false;

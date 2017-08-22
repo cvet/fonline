@@ -3,6 +3,33 @@
 #include "Crypt.h"
 #include "FLTK/src/xutf8/headers/case.h"
 #include <sstream>
+#include "FileSystem.h"
+
+_str& _str::trim()
+{
+    // Left trim
+    size_t l = s.find_first_not_of( " \n\r\t" );
+    if( l == string::npos )
+    {
+        s.erase();
+    }
+    else if( l > 0 )
+    {
+        s.erase( 0, l );
+
+        // Right trim
+        size_t r = s.find_last_not_of( " \n\r\t" );
+        if( r < s.length() - 1 )
+            s.erase( r + 1 );
+    }
+    return *this;
+}
+
+_str& _str::replace( char from, char to )
+{
+    std::replace( s.begin(), s.end(), from, to );
+    return *this;
+}
 
 _str& _str::lower()
 {
@@ -30,6 +57,155 @@ int _str::toInt()
 {
     return strtol( s.c_str(), nullptr, 10 );
 }
+
+_str& _str::formatPath()
+{
+    trim();
+    normalizePathSlashes();
+
+    // Erase first './'
+    while( s[ 0 ] == '.' && s[ 1 ] == '/' )
+        s.erase( 0, 2 );
+
+    // Skip first '../'
+    uint back_count = 0;
+    while( s.length() >= 3 && s[ 0 ] == '.' &&
+           s[ 1 ] == '.' && s[ 2 ] == '/' )
+    {
+        back_count++;
+        s.erase( 0, 3 );
+    }
+
+    // Replace '/./' to '/'
+    while( true )
+    {
+        size_t pos = s.find( "/./" );
+        if( pos == string::npos )
+            break;
+
+        s.replace( pos, 3, "/" );
+    }
+
+    // Replace '//' to '/'
+    while( true )
+    {
+        size_t pos = s.find( "//" );
+        if( pos == string::npos )
+            break;
+
+        s.replace( pos, 2, "/" );
+    }
+
+    // Replace 'folder/../' to '/'
+    while( true )
+    {
+        size_t pos = s.find( "/../" );
+        if( pos == string::npos || pos == 0 )
+            break;
+
+        size_t pos2 = s.rfind( '/', pos - 1 );
+        if( pos2 == string::npos )
+            break;
+
+        s.erase( pos2 + 1, pos - pos2 - 1 + 3 );
+    }
+
+    // Apply skipped '../'
+    for( uint i = 0; i < back_count; i++ )
+        s.insert( 0, "../" );
+
+    return *this;
+}
+
+_str& _str::extractDir()
+{
+    formatPath();
+    size_t pos = s.find_last_of( '/' );
+    if( pos != string::npos )
+        s = s.substr( 0, pos + 1 );
+    else if( !s.empty() && s.back() != '/' )
+        s += "/";
+    return *this;
+}
+
+_str& _str::extractFileName()
+{
+    formatPath();
+    size_t pos = s.find_last_of( '/' );
+    if( pos != string::npos )
+        s = s.substr( pos + 1 );
+    return *this;
+}
+
+_str& _str::getFileExtension()
+{
+    size_t dot = s.find_last_of( '.' );
+    s = ( dot != string::npos ? s.substr( dot + 1 ) : "" );
+    lower();
+    return *this;
+}
+
+_str& _str::eraseFileExtension()
+{
+    size_t dot = s.find_last_of( '.' );
+    if( dot != string::npos )
+        s = s.substr( 0, dot );
+    return *this;
+}
+
+_str& _str::combinePath( const string& path )
+{
+    extractDir();
+    if( !s.empty() && s.back() != '/' && ( path.empty() || path.front() != '/' ) )
+        s += "/";
+    s += path;
+    formatPath();
+    return *this;
+}
+
+_str& _str::forwardPath( const string& relative_dir )
+{
+    string dir = _str( *this ).extractDir();
+    string name = _str( *this ).extractFileName();
+    s = dir + relative_dir + name;
+    formatPath();
+    return *this;
+}
+
+_str& _str::resolvePath()
+{
+    ResolvePathInplace( s );
+    return *this;
+}
+
+_str& _str::normalizePathSlashes()
+{
+    NormalizePathSlashesInplace( s );
+    return *this;
+}
+
+#ifdef FO_WINDOWS
+_str& _str::parseWideChar( const wchar_t* str )
+{
+    int len = (int) wcslen( str );
+    if( len )
+    {
+        char* buf = (char*) alloca( UTF8_BUF_SIZE( len ) );
+        int   r = WideCharToMultiByte( CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr );
+        s += string( buf, r );
+    }
+    return *this;
+}
+
+std::wstring _str::toWideChar()
+{
+    if( s.empty() )
+        return L"";
+    wchar_t* buf = (wchar_t*) alloca( s.length() * sizeof( wchar_t ) * 2 );
+    int      len = MultiByteToWideChar( CP_UTF8, 0, s.c_str(), (int) s.length(), buf, (int) s.length() );
+    return std::wstring( buf, len );
+}
+#endif
 
 void Str::Copy( char* to, uint size, const char* from )
 {
@@ -93,20 +269,6 @@ char* Str::Duplicate( const char* str )
         memcpy( dup, str, len );
     dup[ len ] = 0;
     return dup;
-}
-
-string Str::Lower( const string& str )
-{
-    string str_lower = str;
-    std::transform( str_lower.begin(), str_lower.end(), str_lower.begin(), tolower );
-    return str_lower;
-}
-
-string Str::Upper( const string& str )
-{
-    string str_upper = str;
-    std::transform( str_upper.begin(), str_upper.end(), str_upper.begin(), toupper );
-    return str_upper;
 }
 
 uint Str::LowerUTF8( uint ucs )
@@ -751,66 +913,6 @@ void Str::Replacement( string& str, char from1, char from2, char to )
     ReplaceText( str, string( { from1, from2 } ), string( { to } ) );
 }
 
-char* Str::Trim( char* str, uint* trimmed /* = NULL */ )
-{
-    char* front = str;
-    while( *front && ( *front == ' ' || *front == '\t' || *front == '\n' || *front == '\r' ) )
-    {
-        front++;
-        if( trimmed )
-            *trimmed++;
-    }
-
-    if( front != str )
-    {
-        char* str_ = str;
-        while( *front )
-            *str_++ = *front++;
-        *str_ = 0;
-    }
-
-    char* back = str;
-    while( *back )
-        back++;
-    back--;
-    while( back >= str && ( *back == ' ' || *back == '\t' || *back == '\n' || *back == '\r' ) )
-    {
-        back--;
-        if( trimmed )
-            *trimmed++;
-    }
-    *( back + 1 ) = 0;
-
-    return str;
-}
-
-void Str::Trim( string& str, uint* trimmed /* = nullptr */ )
-{
-    // Left trim
-    size_t l = str.find_first_not_of( " \n\r\t" );
-    if( l == string::npos )
-    {
-        if( trimmed )
-            *trimmed = (uint) str.size();
-        str.erase();
-    }
-    else if( l > 0 )
-    {
-        if( trimmed )
-            *trimmed = (uint) l;
-        str.erase( 0, l );
-
-        // Right trim
-        size_t r = str.find_last_not_of( " \n\r\t" );
-        if( r < str.length() - 1 )
-        {
-            if( trimmed )
-                *trimmed += (uint) ( str.length() - r - 1 );
-            str.erase( r + 1 );
-        }
-    }
-}
-
 void Str::SkipLine( char*& str )
 {
     while( *str && *str != '\n' )
@@ -994,8 +1096,7 @@ hash Str::GetHash( const string& name )
     if( name.empty() )
         return 0;
 
-    string fixed_name = FileManager::NormalizePathSlashes( name );
-    Str::Trim( fixed_name );
+    string fixed_name = _str( name ).normalizePathSlashes().trim();
     if( fixed_name.empty() )
         return 0;
 
@@ -1057,7 +1158,7 @@ StrVec Str::Split( const string& line, char divider )
     string            item;
     while( std::getline( ss, item, divider ) )
     {
-        Trim( item );
+        item = _str( item ).trim();
         if( !item.empty() )
             result.push_back( std::move( item ) );
     }
@@ -1071,7 +1172,7 @@ IntVec Str::SplitToInt( const string& line, char divider )
     string            item;
     while( std::getline( ss, item, divider ) )
     {
-        Trim( item );
+        item = _str( item ).trim();
         if( !item.empty() )
             result.push_back( AtoI( item.c_str() ) );
     }

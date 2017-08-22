@@ -90,17 +90,13 @@ const CmdDef cmdlist[] =
 
 inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( const char* ), const char* name )
 {
-    char args[ MAX_FOTEXT ];
-    Str::Copy( args, str );
-    Str::Trim( args );
-
-    char  cmd_str[ MAX_FOTEXT ];
-    Str::Copy( cmd_str, args );
-    char* space = Str::Substring( cmd_str, " " );
-    if( space )
+    string args = _str( str ).trim();
+    string cmd_str = args;
+    size_t space = cmd_str.find( ' ' );
+    if( space != string::npos )
     {
-        *space = 0;
-        Str::EraseInterval( args, Str::Length( cmd_str ) );
+        cmd_str = args.substr( 0, space );
+        args.erase( 0, cmd_str.length() );
     }
 
     uchar cmd = 0;
@@ -132,7 +128,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     case CMD_GAMEINFO:
     {
         int type;
-        if( sscanf( args, "%d", &type ) != 1 )
+        if( sscanf( args.c_str(), "%d", &type ) != 1 )
         {
             logcb( "Invalid arguments. Example: gameinfo type." );
             break;
@@ -148,7 +144,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     case CMD_CRITID:
     {
         char name[ MAX_FOTEXT ];
-        if( sscanf( args, "%s", name ) != 1 )
+        if( sscanf( args.c_str(), "%s", name ) != 1 )
         {
             logcb( "Invalid arguments. Example: id name." );
             break;
@@ -168,7 +164,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         uint   crid;
         ushort hex_x;
         ushort hex_y;
-        if( sscanf( args, "%u%hu%hu", &crid, &hex_x, &hex_y ) != 3 )
+        if( sscanf( args.c_str(), "%u%hu%hu", &crid, &hex_x, &hex_y ) != 3 )
         {
             logcb( "Invalid arguments. Example: move crid hx hy." );
             break;
@@ -186,7 +182,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     case CMD_DISCONCRIT:
     {
         uint crid;
-        if( sscanf( args, "%u", &crid ) != 1 )
+        if( sscanf( args.c_str(), "%u", &crid ) != 1 )
         {
             logcb( "Invalid arguments. Example: disconnect crid." );
             break;
@@ -211,7 +207,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         uint crid;
         char property_name[ 256 ];
         int  property_value;
-        if( sscanf( args, "%u%s%d", &crid, property_name, &property_value ) != 3 )
+        if( sscanf( args.c_str(), "%u%s%d", &crid, property_name, &property_value ) != 3 )
         {
             logcb( "Invalid arguments. Example: prop crid prop_name value." );
             break;
@@ -230,7 +226,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     {
         char name_access[ MAX_FOTEXT ];
         char pasw_access[ MAX_FOTEXT ];
-        if( sscanf( args, "%s%s", name_access, pasw_access ) != 2 )
+        if( sscanf( args.c_str(), "%s%s", name_access, pasw_access ) != 2 )
         {
             logcb( "Invalid arguments. Example: getaccess name password." );
             break;
@@ -258,7 +254,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         ushort hex_y;
         char   proto_name[ MAX_FOTEXT ];
         uint   count;
-        if( sscanf( args, "%hu%hu%s%u", &hex_x, &hex_y, proto_name, &count ) != 4 )
+        if( sscanf( args.c_str(), "%hu%hu%s%u", &hex_x, &hex_y, proto_name, &count ) != 4 )
         {
             logcb( "Invalid arguments. Example: additem hx hy name count." );
             break;
@@ -279,7 +275,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     {
         char proto_name[ MAX_FOTEXT ];
         uint count;
-        if( sscanf( args, "%s%u", proto_name, &count ) != 2 )
+        if( sscanf( args.c_str(), "%s%u", proto_name, &count ) != 2 )
         {
             logcb( "Invalid arguments. Example: additemself name count." );
             break;
@@ -300,7 +296,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         ushort hex_y;
         uchar  dir;
         char   proto_name[ MAX_FOTEXT ];
-        if( sscanf( args, "%hd%hd%hhd%s", &hex_x, &hex_y, &dir, proto_name ) != 4 )
+        if( sscanf( args.c_str(), "%hd%hd%hhd%s", &hex_x, &hex_y, &dir, proto_name ) != 4 )
         {
             logcb( "Invalid arguments. Example: addnpc hx hy dir name." );
             break;
@@ -322,7 +318,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         ushort wx;
         ushort wy;
         char   proto_name[ MAX_FOTEXT ];
-        if( sscanf( args, "%hd%hd%s", &wx, &wy, proto_name ) != 3 )
+        if( sscanf( args.c_str(), "%hd%hd%s", &wx, &wy, proto_name ) != 3 )
         {
             logcb( "Invalid arguments. Example: addloc wx wy name." );
             break;
@@ -374,7 +370,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         char script_name[ MAX_FOTEXT ];
         char func_name[ MAX_FOTEXT ];
         uint param0, param1, param2;
-        if( sscanf( args, "%s%d%d%d", func_name, &param0, &param1, &param2 ) != 4 )
+        if( sscanf( args.c_str(), "%s%d%d%d", func_name, &param0, &param1, &param2 ) != 4 )
         {
             logcb( "Invalid arguments. Example: runscript module::func param0 param1 param2." );
             break;
@@ -456,7 +452,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     case CMD_LOADDIALOG:
     {
         char dlg_name[ 128 ];
-        if( sscanf( args, "%s", dlg_name ) != 1 )
+        if( sscanf( args.c_str(), "%s", dlg_name ) != 1 )
         {
             logcb( "Invalid arguments. Example: loaddialog name." );
             break;
@@ -486,7 +482,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         int hour;
         int minute;
         int second;
-        if( sscanf( args, "%d%d%d%d%d%d%d", &multiplier, &year, &month, &day, &hour, &minute, &second ) != 7 )
+        if( sscanf( args.c_str(), "%d%d%d%d%d%d%d", &multiplier, &year, &month, &day, &hour, &minute, &second ) != 7 )
         {
             logcb( "Invalid arguments. Example: settime tmul year month day hour minute second." );
             break;
@@ -507,7 +503,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_BAN:
     {
-        istrstream str_( args );
+        istrstream str_( args.c_str() );
         char       params[ 128 ] = { 0 };
         char       name[ 128 ] = { 0 };
         uint       ban_hours = 0;
@@ -556,7 +552,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         }
 
         char pass[ 128 ];
-        if( sscanf( args, "%s", pass ) != 1 )
+        if( sscanf( args.c_str(), "%s", pass ) != 1 )
         {
             logcb( "Invalid arguments. Example: deleteself user_password." );
             break;
@@ -582,7 +578,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
 
         char pass[ MAX_FOTEXT ];
         char new_pass[ MAX_FOTEXT ];
-        if( sscanf( args, "%s%s", pass, new_pass ) != 2 )
+        if( sscanf( args.c_str(), "%s%s", pass, new_pass ) != 2 )
         {
             logcb( "Invalid arguments. Example: changepassword current_password new_password." );
             break;
@@ -621,7 +617,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     case CMD_LOG:
     {
         char flags[ 128 ];
-        if( sscanf( args, "%s", flags ) != 1 )
+        if( sscanf( args.c_str(), "%s", flags ) != 1 )
         {
             logcb( "Invalid arguments. Example: log flag. Valid flags: '+' attach, '-' detach, '--' detach all." );
             break;
@@ -638,7 +634,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     case CMD_DEV_FUNC:
     case CMD_DEV_GVAR:
     {
-        ushort command_len = Str::Length( args );
+        ushort command_len = Str::Length( args.c_str() );
         if( !command_len )
             break;
 
@@ -648,7 +644,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         buf << msg_len;
         buf << cmd;
         buf << command_len;
-        buf.Push( args, command_len );
+        buf.Push( args.c_str(), command_len );
     }
     break;
     default:

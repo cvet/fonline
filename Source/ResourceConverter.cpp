@@ -139,7 +139,7 @@ static void FixTexCoord( float& x, float& y )
 
 FileManager* ResourceConverter::Convert( const string& name, FileManager& file )
 {
-    string ext = FileManager::GetExtension( name );
+    string ext = _str( name ).getFileExtension();
     if( ext == "png" || ext == "tga" )
         return ConvertImage( name, file );
     if( !ext.empty() && Is3dExtensionSupported( ext.c_str() ) && ext != "fo3d" )
@@ -152,7 +152,7 @@ FileManager* ResourceConverter::ConvertImage( const string& name, FileManager& f
 {
     uchar* data;
     uint   width, height;
-    string ext = FileManager::GetExtension( name );
+    string ext = _str( name ).getFileExtension();
     if( ext == "png" )
         data = LoadPNG( file.GetBuf(), file.GetFsize(), width, height );
     else
@@ -177,7 +177,7 @@ FileManager* ResourceConverter::Convert3d( const string& name, FileManager& file
     AnimSetVec loaded_animations;
 
     // FBX loader
-    string ext = FileManager::GetExtension( name );
+    string ext = _str( name ).getFileExtension();
     if( ext == "fbx" )
     {
         // Create manager
@@ -738,7 +738,7 @@ static void ConvertFbxPass2( Bone* root_bone, Bone* bone, FbxNode* fbx_node )
                 if( Str::Compare( prop_diffuse.GetSrcObject( i )->GetClassId().GetName(), "FbxFileTexture" ) )
                 {
                     FbxFileTexture* fbx_file_texture = (FbxFileTexture*) prop_diffuse.GetSrcObject( i );
-                    mesh->DiffuseTexture = FileManager::ExtractFileName( fbx_file_texture->GetFileName() );
+                    mesh->DiffuseTexture = _str( fbx_file_texture->GetFileName() ).extractFileName();
                     break;
                 }
             }
@@ -1245,7 +1245,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
 
                         if( resource_names )
                         {
-                            string ext = FileManager::GetExtension( fname );
+                            string ext = _str( fname ).getFileExtension();
                             if( ext == "zip" || ext == "bos" || ext == "dat" )
                             {
                                 DataFile* inner = OpenDataFile( path );

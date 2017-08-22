@@ -420,8 +420,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         }
         else
         {
-            char   name[ MAX_FOTEXT ];
-            int    hx, hy;
+            int hx, hy;
             int    ox, oy, layer;
             bool   is_roof;
             size_t len;
@@ -469,9 +468,9 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     else
                         layer = 0;
 
-                    name[ 0 ] = 0;
-                    istr.getline( name, MAX_FOTEXT );
-                    Str::Trim( name );
+                    string name;
+                    std::getline( istr, name, '\n' );
+                    name = _str( name ).trim();
 
                     Tiles.push_back( Tile( Str::GetHash( name ), hx, hy, ox, oy, layer, is_roof ) );
                 }
@@ -495,179 +494,177 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
     {
         bool       fail = false;
         istrstream istr( objects_str );
-        string     field;
-        char       svalue[ MAX_FOTEXT ];
-        int        ivalue;
         int        is_critter = false;
         Property*  cur_prop = nullptr;
         uint       auto_id = uint( -1 );
         while( !istr.eof() && !istr.fail() )
         {
+            string     field;
             istr >> field;
-            svalue[ 0 ] = 0;
-            istr.getline( svalue, MAX_FOTEXT );
-            Str::Trim( svalue );
 
-            if( !istr.fail() )
+            string svalue;
+            std::getline( istr, svalue, '\n' );
+            svalue = _str( svalue ).trim();
+
+            if( istr.fail() )
+                continue;
+            int ivalue = Str::AtoI( svalue.c_str() );
+
+            if( field == "MapObjType" )
             {
-                ivalue = Str::AtoI( svalue );
-
-                if( field == "MapObjType" )
+                if( ivalue == MAP_OBJECT_CRITTER )
                 {
-                    if( ivalue == MAP_OBJECT_CRITTER )
+                    is_critter = true;
+                }
+                else
+                {
+                    RUNTIME_ASSERT( ivalue == MAP_OBJECT_ITEM || ivalue == MAP_OBJECT_SCENERY );
+                    is_critter = false;
+                }
+            }
+            else
+            {
+                if( field == "ProtoId" || field == "ProtoName" )
+                {
+                    hash proto_id = 0;
+                    if( field == "ProtoName" )
                     {
-                        is_critter = true;
+                        proto_id = Str::GetHash( svalue );
+                        if( is_critter && !ProtoMngr.GetProtoCritter( proto_id ) )
+                        {
+                            WriteLog( "Critter prototype '{}' not found.\n", svalue );
+                            fail = true;
+                        }
+                        else if( !is_critter && !ProtoMngr.GetProtoItem( proto_id ) )
+                        {
+                            WriteLog( "Item prototype '{}' not found.\n", svalue );
+                            fail = true;
+                        }
+                    }
+                    if( fail )
+                        break;
+
+                    if( is_critter )
+                    {
+                        #ifdef FONLINE_SERVER
+                        Npc* cr = new Npc( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
+                        #else
+                        CritterCl* cr = new CritterCl( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
+                        #endif
+                        cr->SetCond( COND_LIFE );
+                        entities.push_back( cr );
+                        entities_addon.push_back( AdditionalFields() );
                     }
                     else
                     {
-                        RUNTIME_ASSERT( ivalue == MAP_OBJECT_ITEM || ivalue == MAP_OBJECT_SCENERY );
-                        is_critter = false;
+                        Item* item = new Item( auto_id--, ProtoMngr.GetProtoItem( proto_id ) );
+                        entities.push_back( item );
+                        entities_addon.push_back( AdditionalFields() );
+                    }
+
+                    continue;
+                }
+
+                #define SET_FIELD_CRITTER( field_name, prop )                         \
+                    if( field == field_name && is_critter )                           \
+                    {                                                                 \
+                        ( (MUTUAL_CRITTER*) entities.back() )->Set ## prop( ivalue ); \
+                        continue;                                                     \
+                    }
+                #define SET_FIELD_ITEM( field_name, prop )                  \
+                    if( field == field_name && !is_critter )                \
+                    {                                                       \
+                        ( (Item*) entities.back() )->Set ## prop( ivalue ); \
+                        continue;                                           \
+                    }
+                SET_FIELD_CRITTER( "MapX", HexX );
+                SET_FIELD_CRITTER( "MapY", HexY );
+                SET_FIELD_ITEM( "MapX", HexX );
+                SET_FIELD_ITEM( "MapY", HexY );
+                if( field == "UID" )
+                    entities_addon.back().UID = ivalue;
+                else if( field == "ContainerUID" )
+                    entities_addon.back().ContainerUID = ivalue;
+                else if( field == "ParentUID" )
+                    entities_addon.back().ParentUID = ivalue;
+                SET_FIELD_ITEM( "LightColor", LightColor );
+                if( field == "LightDay" )
+                    ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ( ( ivalue & 3 ) << 6 ) );
+                if( field == "LightDirOff" )
+                    ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ivalue );
+                SET_FIELD_ITEM( "LightDistance", LightDistance );
+                SET_FIELD_ITEM( "LightIntensity", LightIntensity );
+                if( field == "ScriptName" )
+                    entities_addon.back().ScriptName = svalue;
+                if( field == "FuncName" )
+                    entities_addon.back().FuncName = svalue;
+
+                if( is_critter )
+                {
+                    SET_FIELD_CRITTER( "Critter_Dir", Dir );
+                    SET_FIELD_CRITTER( "Dir", Dir );
+                    SET_FIELD_CRITTER( "Critter_Cond", Cond );
+                    SET_FIELD_CRITTER( "Critter_Anim1", Anim1Life );
+                    SET_FIELD_CRITTER( "Critter_Anim2", Anim2Life );
+
+                    if( field.size() >= 18 /*"Critter_ParamIndex" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
+                    {
+                        if( field.substr( 13, 5 ) == "Index" )
+                        {
+                            cur_prop = MUTUAL_CRITTER::PropertiesRegistrator->Find( svalue.c_str() );
+                            if( !cur_prop )
+                            {
+                                WriteLog( "Critter property '{}' not found.\n", svalue );
+                                fail = true;
+                            }
+                        }
+                        else
+                        {
+                            if( cur_prop )
+                            {
+                                if( !Str::IsNumber( svalue.c_str() ) )
+                                    Str::GetHash( svalue );
+                                if( cur_prop->IsHash() )
+                                    cur_prop->SetPODValueAsInt( entities.back(), Str::GetHash( svalue ) );
+                                else if( cur_prop->IsEnum() )
+                                    cur_prop->SetPODValueAsInt( entities.back(), Script::GetEnumValue( cur_prop->GetTypeName(), svalue.c_str(), fail ) );
+                                else
+                                    cur_prop->SetPODValueAsInt( entities.back(), ConvertParamValue( svalue.c_str(), fail ) );
+                                cur_prop = nullptr;
+                            }
+                        }
                     }
                 }
                 else
                 {
-                    if( field == "ProtoId" || field == "ProtoName" )
+                    SET_FIELD_ITEM( "OffsetX", OffsetX );
+                    SET_FIELD_ITEM( "OffsetY", OffsetY );
+                    SET_FIELD_ITEM( "PicMapName", PicMap );
+                    SET_FIELD_ITEM( "PicInvName", PicInv );
+
+                    if( field == "PicMapName" )
                     {
-                        hash proto_id = 0;
-                        if( field == "ProtoName" )
-                        {
-                            proto_id = Str::GetHash( svalue );
-                            if( is_critter && !ProtoMngr.GetProtoCritter( proto_id ) )
-                            {
-                                WriteLog( "Critter prototype '{}' not found.\n", svalue );
-                                fail = true;
-                            }
-                            else if( !is_critter && !ProtoMngr.GetProtoItem( proto_id ) )
-                            {
-                                WriteLog( "Item prototype '{}' not found.\n", svalue );
-                                fail = true;
-                            }
-                        }
-                        if( fail )
-                            break;
-
-                        if( is_critter )
-                        {
-                            #ifdef FONLINE_SERVER
-                            Npc* cr = new Npc( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
-                            #else
-                            CritterCl* cr = new CritterCl( auto_id--, ProtoMngr.GetProtoCritter( proto_id ) );
-                            #endif
-                            cr->SetCond( COND_LIFE );
-                            entities.push_back( cr );
-                            entities_addon.push_back( AdditionalFields() );
-                        }
-                        else
-                        {
-                            Item* item = new Item( auto_id--, ProtoMngr.GetProtoItem( proto_id ) );
-                            entities.push_back( item );
-                            entities_addon.push_back( AdditionalFields() );
-                        }
-
-                        continue;
+                        ( (Item*) entities.back() )->SetPicMap( Str::GetHash( svalue ) );
                     }
-
-                    #define SET_FIELD_CRITTER( field_name, prop )                         \
-                        if( field == field_name && is_critter )                           \
-                        {                                                                 \
-                            ( (MUTUAL_CRITTER*) entities.back() )->Set ## prop( ivalue ); \
-                            continue;                                                     \
-                        }
-                    #define SET_FIELD_ITEM( field_name, prop )                  \
-                        if( field == field_name && !is_critter )                \
-                        {                                                       \
-                            ( (Item*) entities.back() )->Set ## prop( ivalue ); \
-                            continue;                                           \
-                        }
-                    SET_FIELD_CRITTER( "MapX", HexX );
-                    SET_FIELD_CRITTER( "MapY", HexY );
-                    SET_FIELD_ITEM( "MapX", HexX );
-                    SET_FIELD_ITEM( "MapY", HexY );
-                    if( field == "UID" )
-                        entities_addon.back().UID = ivalue;
-                    else if( field == "ContainerUID" )
-                        entities_addon.back().ContainerUID = ivalue;
-                    else if( field == "ParentUID" )
-                        entities_addon.back().ParentUID = ivalue;
-                    SET_FIELD_ITEM( "LightColor", LightColor );
-                    if( field == "LightDay" )
-                        ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ( ( ivalue & 3 ) << 6 ) );
-                    if( field == "LightDirOff" )
-                        ( (Item*) entities.back() )->SetLightFlags( ( (Item*) entities.back() )->GetLightFlags() | ivalue );
-                    SET_FIELD_ITEM( "LightDistance", LightDistance );
-                    SET_FIELD_ITEM( "LightIntensity", LightIntensity );
-                    if( field == "ScriptName" )
-                        entities_addon.back().ScriptName = svalue;
-                    if( field == "FuncName" )
-                        entities_addon.back().FuncName = svalue;
-
-                    if( is_critter )
+                    else if( field == "PicInvName" )
                     {
-                        SET_FIELD_CRITTER( "Critter_Dir", Dir );
-                        SET_FIELD_CRITTER( "Dir", Dir );
-                        SET_FIELD_CRITTER( "Critter_Cond", Cond );
-                        SET_FIELD_CRITTER( "Critter_Anim1", Anim1Life );
-                        SET_FIELD_CRITTER( "Critter_Anim2", Anim2Life );
-
-                        if( field.size() >= 18 /*"Critter_ParamIndex" or "Critter_ParamValue" */ && field.substr( 0, 13 ) == "Critter_Param" )
-                        {
-                            if( field.substr( 13, 5 ) == "Index" )
-                            {
-                                cur_prop = MUTUAL_CRITTER::PropertiesRegistrator->Find( svalue );
-                                if( !cur_prop )
-                                {
-                                    WriteLog( "Critter property '{}' not found.\n", svalue );
-                                    fail = true;
-                                }
-                            }
-                            else
-                            {
-                                if( cur_prop )
-                                {
-                                    if( !Str::IsNumber( svalue ) )
-                                        Str::GetHash( svalue );
-                                    if( cur_prop->IsHash() )
-                                        cur_prop->SetPODValueAsInt( entities.back(), Str::GetHash( svalue ) );
-                                    else if( cur_prop->IsEnum() )
-                                        cur_prop->SetPODValueAsInt( entities.back(), Script::GetEnumValue( cur_prop->GetTypeName(), svalue, fail ) );
-                                    else
-                                        cur_prop->SetPODValueAsInt( entities.back(), ConvertParamValue( svalue, fail ) );
-                                    cur_prop = nullptr;
-                                }
-                            }
-                        }
+                        ( (Item*) entities.back() )->SetPicInv( Str::GetHash( svalue ) );
                     }
                     else
                     {
-                        SET_FIELD_ITEM( "OffsetX", OffsetX );
-                        SET_FIELD_ITEM( "OffsetY", OffsetY );
-                        SET_FIELD_ITEM( "PicMapName", PicMap );
-                        SET_FIELD_ITEM( "PicInvName", PicInv );
+                        SET_FIELD_ITEM( "Item_Count", Count );
+                        SET_FIELD_ITEM( "Item_ItemSlot", Slot );
+                        SET_FIELD_ITEM( "Item_TrapValue", TrapValue );
+                        if( field == "Item_InContainer" )
+                            entities_addon.back().ContainerUID = ivalue;
 
-                        if( field == "PicMapName" )
-                        {
-                            ( (Item*) entities.back() )->SetPicMap( Str::GetHash( svalue ) );
-                        }
-                        else if( field == "PicInvName" )
-                        {
-                            ( (Item*) entities.back() )->SetPicInv( Str::GetHash( svalue ) );
-                        }
-                        else
-                        {
-                            SET_FIELD_ITEM( "Item_Count", Count );
-                            SET_FIELD_ITEM( "Item_ItemSlot", Slot );
-                            SET_FIELD_ITEM( "Item_TrapValue", TrapValue );
-                            if( field == "Item_InContainer" )
-                                entities_addon.back().ContainerUID = ivalue;
-
-                            if( field == "Scenery_CanTalk" )
-                                ( (Item*) entities.back() )->SetIsCanTalk( ivalue != 0 );
-                            if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
-                                ( (Item*) entities.back() )->SetGrid_ToMap( Str::GetHash( svalue ) );
-                            SET_FIELD_ITEM( "Scenery_ToEntire", Grid_ToMapEntire );
-                            SET_FIELD_ITEM( "Scenery_ToDir", Grid_ToMapDir );
-                            SET_FIELD_ITEM( "Scenery_SpriteCut", SpriteCut );
-                        }
+                        if( field == "Scenery_CanTalk" )
+                            ( (Item*) entities.back() )->SetIsCanTalk( ivalue != 0 );
+                        if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
+                            ( (Item*) entities.back() )->SetGrid_ToMap( Str::GetHash( svalue ) );
+                        SET_FIELD_ITEM( "Scenery_ToEntire", Grid_ToMapEntire );
+                        SET_FIELD_ITEM( "Scenery_ToDir", Grid_ToMapDir );
+                        SET_FIELD_ITEM( "Scenery_SpriteCut", SpriteCut );
                     }
                 }
             }
@@ -1022,7 +1019,7 @@ bool ProtoMap::Load()
     }
 
     // Store path
-    string dir = FileManager::ExtractDir( path );
+    string dir = _str( path ).extractDir();
     pmapDir = dir;
 
     // Load from file
@@ -1082,7 +1079,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
 bool ProtoMap::IsMapFile( const char* fname )
 {
-    string ext = FileManager::GetExtension( fname );
+    string ext = _str( fname ).getFileExtension();
     if( ext.empty() )
         return false;
 

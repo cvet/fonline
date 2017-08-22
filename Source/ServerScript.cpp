@@ -371,7 +371,7 @@ bool FOServer::ReloadClientScripts()
         {
             // Make file name
             const char* extensions[] = { ".dll", ".so" };
-            string      fname = FileManager::EraseExtension( dll_path ) + extensions[ d ];
+            string      fname = _str( dll_path ).eraseFileExtension() + extensions[ d ];
 
             // Erase first './'
             if( Str::CompareCount( fname, "./", 2 ) )
@@ -383,7 +383,7 @@ bool FOServer::ReloadClientScripts()
             {
                 if( !d )
                 {
-                    WriteLog( "Can't load dll '{}'.\n", dll_name.c_str() );
+                    WriteLog( "Can't load dll '{}'.\n", dll_name );
                     errors++;
                 }
                 continue;
@@ -3672,7 +3672,7 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, string image_name, uin
         SCRIPT_ERROR_R0( "Wrong image depth arg." );
 
     // Check extension
-    string ext = FileManager::GetExtension( image_name );
+    string ext = _str( image_name ).getFileExtension();
     if( ext != "png" )
         SCRIPT_ERROR_R0( "Wrong extension. Allowed only PNG." );
 

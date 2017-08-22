@@ -126,7 +126,7 @@ MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* m
 
     // First try load from textures folder
     SprMngr.PushAtlasType( RES_ATLAS_TEXTURES );
-    string     path = FileManager::ExtractDir( model_path );
+    string     path = _str( model_path ).extractDir();
     path += texture_name;
     AnyFrames* anim = SprMngr.LoadAnimation( path.c_str() );
     SprMngr.PopAtlasType();
@@ -160,7 +160,7 @@ EffectVec GraphicLoader::loadedEffects;
 Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, const char* defines /* = NULL */, const char* model_path /* = NULL */, EffectDefault* defaults /* = NULL */, uint defaults_count /* = 0 */ )
 {
     // Erase extension
-    string fname = FileManager::EraseExtension( effect_name );
+    string fname = _str( effect_name ).eraseFileExtension();
 
     // Reset defaults to NULL if it's count is zero
     if( defaults_count == 0 )
@@ -179,9 +179,8 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     fname += ".glsl";
 
     // Load text file
-    string      path = FileManager::ExtractDir( model_path );
-    path += fname;
     FileManager file;
+    string      path = _str( model_path ).extractDir() + fname;
     if( !file.LoadFile( path ) )
     {
         WriteLog( "Effect file '{}' not found.\n", path );
@@ -339,7 +338,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
     {
         binary_fname = "Cache/";
         binary_fname += fname;
-        binary_fname = FileManager::EraseExtension( binary_fname );
+        binary_fname = _str( binary_fname ).eraseFileExtension();
         if( defines )
         {
             char binary_fname_defines[ MAX_FOPATH ];

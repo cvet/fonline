@@ -21,16 +21,12 @@ static uint64 FileTimeToUInt64( FILETIME ft )
 
 static std::wstring MBtoWC( const string& mb )
 {
-    string mb_ = mb;
-    std::replace( mb_.begin(), mb_.end(), '/', '\\' );
-    return CharToWideChar( mb_ );
+    return _str( mb ).replace( '/', '\\' ).toWideChar();
 }
 
 static string WCtoMB( const wchar_t* wc )
 {
-    string mb = WideCharToChar( wc );
-    NormalizePathSlashesInplace( mb );
-    return mb;
+    return _str( "" ).parseWideChar( wc ).normalizePathSlashes();
 }
 
 void* FileOpen( const string& fname, bool write, bool write_through /* = false */ )

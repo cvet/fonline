@@ -415,7 +415,7 @@ StackInfo* GetStackInfo( HANDLE heap )
         if( SymGetLineFromAddr64( ProcessHandle, offset, &callstack.offsetFromLine, &line ) )
         {
             callstack.lineNumber = line.LineNumber;
-            strcpy_s( callstack.lineFileName, FileManager::ExtractFileName( line.FileName ).c_str() );
+            strcpy_s( callstack.lineFileName, _str( line.FileName ).extractFileName().c_str() );
         }
 
         IMAGEHLP_MODULE64 module;

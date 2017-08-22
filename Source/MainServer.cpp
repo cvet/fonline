@@ -121,11 +121,10 @@ int main( int argc, char** argv )
         Timer::SetGamePause( true );
 
         // Logging
-        char log_path[ MAX_FOPATH ] = { 0 };
+        string log_path;
         if( !MainConfig->IsKey( "", "NoLogPath" ) && MainConfig->IsKey( "", "LogPath" ) )
-            Str::Copy( log_path, MainConfig->GetStr( "", "LogPath" ) );
-        Str::Trim( log_path );
-        Str::Append( log_path, "FOnlineServer.log" );
+            log_path = MainConfig->GetStr( "", "LogPath" );
+        log_path = _str( log_path ).trim() + "FOnlineServer.log";
         LogToFile( log_path );
 
         WriteLog( "Singleplayer mode.\n" );
@@ -1158,9 +1157,9 @@ static void AdminWork( void* session_ )
     while( true )
     {
         // Get command
-        char cmd[ MAX_FOTEXT ];
-        memzero( cmd, sizeof( cmd ) );
-        int  len = recv( s->Sock, cmd, sizeof( cmd ), 0 );
+        char cmd_raw[ MAX_FOTEXT ];
+        memzero( cmd_raw, sizeof( cmd_raw ) );
+        int  len = recv( s->Sock, cmd_raw, sizeof( cmd_raw ), 0 );
         if( len <= 0 || len == MAX_FOTEXT )
         {
             if( !len )
@@ -1171,8 +1170,8 @@ static void AdminWork( void* session_ )
         }
         if( len > 200 )
             len = 200;
-        cmd[ len ] = 0;
-        Str::Trim( cmd );
+        cmd_raw[ len ] = 0;
+        string cmd = _str( cmd_raw ).trim();
 
         // Authorization
         if( !s->Authorized )
@@ -1193,7 +1192,7 @@ static void AdminWork( void* session_ )
                 if( pos < (int) admin_names.size() )
                     admin_name = admin_names[ pos ];
                 else
-                    admin_name = _str( pos );
+                    admin_name = _str( "{}", pos );
 
                 s->Authorized = true;
                 ADMIN_LOG( "Authorized for admin '{}', IP '{}'.\n", admin_name, inet_ntoa( s->From.sin_addr ) );
@@ -1299,7 +1298,7 @@ static void AdminWork( void* session_ )
             else
                 ADMIN_LOG( "Unknown state.\n" );
         }
-        else if( cmd[ 0 ] == '~' )
+        else if( !cmd.empty() && cmd[ 0 ] == '~' )
         {
             if( Server.Started() )
             {
@@ -1350,7 +1349,7 @@ static void AdminWork( void* session_ )
                 ADMIN_LOG( "Can't run command for not started server.\n" );
             }
         }
-        else if( Str::Length( cmd ) > 0 )
+        else if( cmd.length() > 0 )
         {
             ADMIN_LOG( "Unknown command '{}'.\n", cmd );
         }

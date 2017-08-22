@@ -72,7 +72,7 @@ void InitialSetup( uint argc, char** argv )
     if( !GameOpt.WorkDir.empty() )
     {
         #ifdef FO_WINDOWS
-        SetCurrentDirectoryW( CharToWideChar( GameOpt.WorkDir ).c_str() );
+        SetCurrentDirectoryW( _str( GameOpt.WorkDir ).toWideChar().c_str() );
         #else
         chdir( GameOpt.WorkDir.c_str() );
         #endif
@@ -80,7 +80,7 @@ void InitialSetup( uint argc, char** argv )
     #ifdef FO_WINDOWS
     wchar_t buf[ TEMP_BUF_SIZE ];
     GetCurrentDirectoryW( TEMP_BUF_SIZE, buf );
-    GameOpt.WorkDir = WideCharToChar( buf );
+    GameOpt.WorkDir = _str( "" ).parseWideChar( buf );
     #else
     char buf[ TEMP_BUF_SIZE ];
     getcwd( buf, sizeof( buf ) );
@@ -177,14 +177,10 @@ void InitialSetup( uint argc, char** argv )
     StrVec      modules_arr = Str::Split( modules, ';' );
     for( size_t i = 0; i < modules_arr.size(); i++ )
     {
-        string module_path = FileManager::CombinePath( GameOpt.ServerDir, modules_arr[ i ] );
-        module_path = FileManager::NormalizePathSlashes( module_path );
-        module_path = FileManager::ResolvePath( module_path );
+        string module_path = _str( GameOpt.ServerDir ).combinePath( modules_arr[ i ] ).normalizePathSlashes().resolvePath();
         if( !module_path.empty() && module_path.back() != '/' && module_path.back() != '\\' )
             module_path += "/";
-
-        module_path = FileManager::NormalizePathSlashes( module_path );
-        GameModules.push_back( module_path );
+        GameModules.push_back( _str( module_path ).normalizePathSlashes() );
     }
     #endif
 }
@@ -567,7 +563,7 @@ void ShowMessage( const char* message )
     SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline", message, nullptr );
     #else
     # ifdef FO_WINDOWS
-    MessageBoxW( nullptr, CharToWideChar( message ).c_str(), L"FOnline", MB_OK );
+    MessageBoxW( nullptr, _str( message ).toWideChar().c_str(), L"FOnline", MB_OK );
     # else
     // Todo: Linux
     # endif
@@ -737,38 +733,6 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
         y = ( dy + dx ) * GameOpt.MapHexLineHeight;
     }
 }
-
-#ifdef FO_WINDOWS
-std::wstring CharToWideChar( const char* str )
-{
-    int len = (int) strlen( str );
-    if( !len )
-        return L"";
-    wchar_t* buf = (wchar_t*) alloca( len * sizeof( wchar_t ) * 2 );
-    int      r = MultiByteToWideChar( CP_UTF8, 0, str, len, buf, len );
-    return std::wstring( buf, r );
-}
-
-std::wstring CharToWideChar( const std::string& str )
-{
-    int len = (int) str.length();
-    if( !len )
-        return L"";
-    wchar_t* buf = (wchar_t*) alloca( len * sizeof( wchar_t ) * 2 );
-    int      r = MultiByteToWideChar( CP_UTF8, 0, str.c_str(), len, buf, len );
-    return std::wstring( buf, r );
-}
-
-std::string WideCharToChar( const wchar_t* str )
-{
-    int len = (int) wcslen( str );
-    if( !len )
-        return "";
-    char* buf = (char*) alloca( UTF8_BUF_SIZE( len ) );
-    int   r = WideCharToMultiByte( CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr );
-    return std::string( buf, r );
-}
-#endif
 
 /************************************************************************/
 /*                                                                      */

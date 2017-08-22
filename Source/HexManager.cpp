@@ -2068,7 +2068,7 @@ void HexManager::DrawMap()
     if( drawCursorX < 0 )
         DrawCursor( cursorXPic->GetCurSprId() );
     else if( drawCursorX > 0 )
-        DrawCursor( _str( drawCursorX ).c_str() );
+        DrawCursor( _str( "{}", drawCursorX ).c_str() );
 
     // Draw map from render target
     if( rtMap )

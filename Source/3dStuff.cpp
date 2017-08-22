@@ -1374,7 +1374,7 @@ Animation3dEntity::~Animation3dEntity()
 
 bool Animation3dEntity::Load( const char* name )
 {
-    string ext = FileManager::GetExtension( name );
+    string ext = _str( name ).getFileExtension();
     if( ext.empty() )
         return false;
 
@@ -1448,7 +1448,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::Compare( token, "Model" ) )
             {
                 ( *istr ) >> buf;
-                model = FileManager::CombinePath( name, buf );
+                model = _str( name ).combinePath( buf );
             }
             else if( Str::Compare( token, "Include" ) )
             {
@@ -1465,7 +1465,7 @@ bool Animation3dEntity::Load( const char* name )
                     templates[ i ] = string( "%" ).append( templates[ i ] ).append( "%" );
 
                 // Include file path
-                string      fname = FileManager::CombinePath( name, templates[ 0 ] );
+                string      fname = _str( name ).combinePath( templates[ 0 ] );
                 FileManager fo3d_ex;
                 if( !fo3d_ex.LoadFile( fname ) )
                 {
@@ -1572,7 +1572,7 @@ bool Animation3dEntity::Load( const char* name )
                 link->Layer = layer;
                 link->LayerValue = layer_val;
 
-                string fname = FileManager::CombinePath( name, buf );
+                string fname = _str( name ).combinePath( buf );
                 link->ChildFName = Str::Duplicate( fname.c_str() );
 
                 mesh = 0;
@@ -1586,7 +1586,7 @@ bool Animation3dEntity::Load( const char* name )
             else if( Str::Compare( token, "Cut" ) )
             {
                 ( *istr ) >> buf;
-                string            fname = FileManager::CombinePath( name, buf );
+                string            fname = _str( name ).combinePath( buf );
                 Animation3dXFile* area = Animation3dXFile::GetXFile( fname.c_str() );
                 if( area )
                 {
@@ -2147,7 +2147,7 @@ bool Animation3dEntity::Load( const char* name )
                 if( Str::Compare( anim_fname, "ModelFile" ) )
                     anim_path = model;
                 else
-                    anim_path = FileManager::CombinePath( name, anim_fname );
+                    anim_path = _str( name ).combinePath( anim_fname );
 
                 AnimSet* set = GraphicLoader::LoadAnimation( anim_path.c_str(), anim_name );
                 if( set )

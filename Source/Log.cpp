@@ -115,7 +115,7 @@ void WriteLogMessage( const string& message )
     }
 
     #ifdef FO_WINDOWS
-    OutputDebugStringW( CharToWideChar( result ).c_str() );
+    OutputDebugStringW( _str( result ).toWideChar().c_str() );
     #endif
 
     #ifndef FO_ANDROID

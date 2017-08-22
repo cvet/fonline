@@ -45,8 +45,8 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     #ifdef FO_WINDOWS
     wchar_t full_path[ MAX_FOPATH ] = { 0 };
     GetModuleFileNameW( nullptr, full_path, MAX_FOPATH );
-    string  path = FileManager::ExtractDir( WideCharToChar( full_path ).c_str() );
-    string  name = FileManager::ExtractFileName( WideCharToChar( full_path ).c_str() );
+    string  path = _str( "" ).parseWideChar( full_path ).extractDir();
+    string  name = _str( "" ).parseWideChar( full_path ).extractFileName();
     if( Str::Substring( name, "Singleplayer" ) || MainConfig->IsKey( "", "Singleplayer" ) )
     {
         WriteLog( "Singleplayer mode.\n" );
@@ -91,12 +91,12 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         HANDLE  client_process = OpenProcess( SYNCHRONIZE, TRUE, GetCurrentProcessId() );
 
         wchar_t command_line[ 2048 ];
-        wcscpy( command_line, CharToWideChar( _str( "\"{}{}\" -singleplayer {} {} {} -logpath {}", server_dir, server_exe,
-                                                    (void*) map_file, (void*) client_process, server_cmdline, path ) ).c_str() );
+        wcscpy( command_line, _str( "\"{}{}\" -singleplayer {} {} {} -logpath {}", server_dir, server_exe,
+                                    (void*) map_file, (void*) client_process, server_cmdline, path ).toWideChar().c_str() );
 
         // Start server
         if( !CreateProcessW( nullptr, command_line, nullptr, nullptr, TRUE,
-                             NORMAL_PRIORITY_CLASS, nullptr, CharToWideChar( server_dir ).c_str(), &sui, &server ) )
+                             NORMAL_PRIORITY_CLASS, nullptr, _str( server_dir ).toWideChar().c_str(), &sui, &server ) )
         {
             WriteLog( "Can't start server process, error {}.\n", GetLastError() );
             return 0;

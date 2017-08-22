@@ -160,7 +160,7 @@ static bool Global_DeleteFile( string filename )
 
 static void Global_CreateDirectoryTree( string path )
 {
-    FileManager::CreateDirectoryTree( FileManager::FormatPath( path ) );
+    FileManager::CreateDirectoryTree( _str( path ).formatPath() );
 }
 
 static void Global_Yield( uint time )
@@ -267,7 +267,7 @@ static int SystemCall( string command, std::function< void(const string&) > log_
     PROCESS_INFORMATION pi;
     ZeroMemory( &pi, sizeof( PROCESS_INFORMATION ) );
 
-    wchar_t* cmd_line = _wcsdup( CharToWideChar( command ).c_str() );
+    wchar_t* cmd_line = _wcsdup( _str( command ).toWideChar().c_str() );
     BOOL     result = CreateProcessW( nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi );
     SAFEDELA( cmd_line );
     if( !result )
@@ -347,7 +347,7 @@ static int Global_SystemCallExt( string command, string& output )
 static void Global_OpenLink( string link )
 {
     #ifdef FO_WINDOWS
-    ShellExecuteW( nullptr, L"open", CharToWideChar( link ).c_str(), nullptr, nullptr, SW_SHOWNORMAL );
+    ShellExecuteW( nullptr, L"open", _str( link ).toWideChar().c_str(), nullptr, nullptr, SW_SHOWNORMAL );
     #else
     system( ( string( "xdg-open " ) + link ).c_str() );
     #endif

@@ -681,10 +681,7 @@ void FOServer::Process( Client* cl )
                 {
                     static void Message( const char* str )
                     {
-                        char buf[ MAX_FOTEXT ];
-                        Str::Copy( buf, str );
-                        Str::Trim( buf );
-                        cl_->Send_Text( cl_, buf, SAY_NETMSG );
+                        cl_->Send_Text( cl_, _str( str ).trim().c_str(), SAY_NETMSG );
                     }
                 };
                 cl_ = cl;
@@ -1921,12 +1918,12 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     case CMD_DEV_GVAR:
     {
         ushort command_len = 0;
-        char   command[ MAX_FOTEXT ];
+        char   command_raw[ MAX_FOTEXT ];
         buf >> command_len;
-        buf.Pop( command, command_len );
-        command[ command_len ] = 0;
-        Str::Trim( command );
+        buf.Pop( command_raw, command_len );
+        command_raw[ command_len ] = 0;
 
+        string command = _str( command_raw ).trim();
         string console_name = _str( "DevConsole ({})", cl_ ? cl_->GetName() : admin_panel );
 
         // Get module
@@ -1986,13 +1983,13 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         {
             WriteLog( "{} : Set function '{}'.\n", console_name, command );
 
-            mod->CompileFunction( "DevConsole", command, 0, asCOMP_ADD_TO_MODULE, nullptr );
+            mod->CompileFunction( "DevConsole", command.c_str(), 0, asCOMP_ADD_TO_MODULE, nullptr );
         }
         else if( cmd == CMD_DEV_GVAR )
         {
             WriteLog( "{} : Set global var '{}'.\n", console_name, command );
 
-            mod->CompileGlobalVar( "DevConsole", command, 0 );
+            mod->CompileGlobalVar( "DevConsole", command.c_str(), 0 );
         }
     }
     break;
@@ -2595,12 +2592,8 @@ bool FOServer::LoadClientsData()
                 break;
         }
 
-        string client_name = file_find_fname;
-
-        // Take name from file title
-        string name = FileManager::EraseExtension( client_name );
-
-        // Take id and password from file
+        string    client_name = file_find_fname;
+        string    name = _str( client_name ).eraseFileExtension();
         string    client_fname = clients_path + client_name;
         IniParser client_data;
         if( !client_data.AppendFile( client_fname.c_str() ) )
@@ -2958,7 +2951,7 @@ void FOServer::Dump_Work( void* args )
     // Delete old dump files
     for( uint index : SaveWorldDeleteIndexes )
     {
-        string dir = FileManager::ExtractDir( fname );
+        string dir = _str( fname ).extractDir();
         string path = _str( "{}Auto{:04}.foworld", dir, index );
         void*  f = FileOpen( path, false );
         if( f )

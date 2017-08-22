@@ -22,9 +22,6 @@ namespace Str
 
     char* Duplicate( const char* str );
 
-    string Lower( const string& str );
-    string Upper( const string& str );
-
     uint LowerUTF8( uint ucs );
     void LowerUTF8( char* str );
     uint UpperUTF8( uint ucs );
@@ -54,22 +51,20 @@ namespace Str
     bool CompareCaseCount( const string& str1, const string& str2, uint max_count );
     bool CompareCaseCountUTF8( const char* str1, const char* str2, uint max_count );
 
-    void  ChangeValue( char* str, int value );
-    void  EraseInterval( char* str, uint len );
-    void  Insert( char* to, const char* from, uint from_len = 0 );
-    void  EraseWords( char* str, char begin, char end );
-    void  EraseWords( char* str, const char* word );
-    void  EraseChars( char* str, char ch );
-    void  CopyWord( char* to, const char* from, char end, bool include_end = false );
-    void  CopyBack( char* str );
-    void  ReplaceText( char* str, const char* from, const char* to );
-    void  ReplaceText( string& str, const string& from, const string& to );
-    void  Replacement( char* str, char from, char to );
-    void  Replacement( string& str, char from, char to );
-    void  Replacement( char* str, char from1, char from2, char to );
-    void  Replacement( string& str, char from1, char from2, char to );
-    char* Trim( char* str, uint* trimmed = nullptr );
-    void  Trim( string& str, uint* trimmed = nullptr );
+    void ChangeValue( char* str, int value );
+    void EraseInterval( char* str, uint len );
+    void Insert( char* to, const char* from, uint from_len = 0 );
+    void EraseWords( char* str, char begin, char end );
+    void EraseWords( char* str, const char* word );
+    void EraseChars( char* str, char ch );
+    void CopyWord( char* to, const char* from, char end, bool include_end = false );
+    void CopyBack( char* str );
+    void ReplaceText( char* str, const char* from, const char* to );
+    void ReplaceText( string& str, const string& from, const string& to );
+    void Replacement( char* str, char from, char to );
+    void Replacement( string& str, char from, char to );
+    void Replacement( char* str, char from1, char from2, char to );
+    void Replacement( string& str, char from1, char from2, char to );
 
     void SkipLine( char*& str );
     void GoTo( char*& str, char ch, bool skip_char = false );
@@ -111,22 +106,44 @@ class _str // Todo: do it
     string s;
 
 public:
+    _str( const _str& r ): s( r.s ) {}
     _str( const string& s ): s( s ) {}
     _str( const char* s ): s( s ) {}
-    template< typename T > _str( const T& a ): s( fmt::format< T >( "{}", a ) ) {}
+    // template< typename T > _str( const T& a ): s( fmt::format< T >( "{}", a ) ) {}
     template< typename ... Args > _str( const string& format, Args ... args ): s( fmt::format( format, args ... ) ) {}
     operator string&() { return s; }
-    _str        operator+( const char* r )                  { return _str( s + string( r ) ); }
-    _str        operator+( const string& r )                { return _str( s + r ); }
+    // _str        operator+( const _str& r ) const               { return _str( s + r.s ); }
+    // _str        operator+( const string& r ) const               { return _str( s + r ); }
+    _str        operator+( const char* r ) const            { return _str( s + string( r ) ); }
     friend _str operator+( const _str& l, const string& r ) { return _str( l.s + r ); }
-    const char* c_str()                                     { return s.c_str(); }
+    // bool        operator==(const _str& r) const { return s == r.s; }
+    friend bool operator==( const _str& l, const string& r ) { return l.s == r; }
+    bool        operator!=( const _str& r ) const            { return s != r.s; }
+    friend bool operator!=( const _str& l, const string& r ) { return l.s != r; }
+    const char* c_str()                                      { return s.c_str(); }
 
     // bool compareCase
-    // _str& trim();
+    _str& trim();
+    _str& replace( char from, char to );
     _str& lower();
     _str& upper();
     bool  isInt();
     int   toInt();
+
+    _str& formatPath();
+    _str& extractDir();
+    _str& extractFileName();
+    _str& getFileExtension();   // Extension without dot
+    _str& eraseFileExtension(); // Erase extension with dot
+    _str& combinePath( const string& path );
+    _str& forwardPath( const string& relative_dir );
+    _str& resolvePath();
+    _str& normalizePathSlashes();
+
+    #ifdef FO_WINDOWS
+    _str&        parseWideChar( const wchar_t* str );
+    std::wstring toWideChar();
+    #endif
 };
 
 #endif // ___TEXT___

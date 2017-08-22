@@ -351,14 +351,14 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     // Find in already loaded
     string dll_name_entry = dll_name;
     #ifdef FO_WINDOWS
-    dll_name_entry = Str::Lower( dll_name_entry );
+    dll_name_entry = _str( dll_name_entry ).lower();
     #endif
     auto it = edata->LoadedDlls.find( dll_name_entry );
     if( it != edata->LoadedDlls.end() )
         return it->second.second;
 
     // Make path
-    string dll_path = FileManager::EraseExtension( dll_name_entry );
+    string dll_path = _str( dll_name_entry ).eraseFileExtension();
 
     // Add '64' appendix
     #if defined ( FO_X64 )
@@ -402,25 +402,23 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
     #endif
 
     // Set current directory to DLL
-    string new_path = FileManager::ExtractDir( dll_path );
-    new_path = FileManager::ResolvePath( new_path );
+    string  new_path = _str( dll_path ).extractDir().resolvePath();
     #ifdef FO_WINDOWS
-    wchar_t cur_path[ MAX_FOPATH ];
-    GetCurrentDirectoryW( MAX_FOPATH, cur_path );
-    SetCurrentDirectoryW( CharToWideChar( new_path ).c_str() );
+    wchar_t prev_path[ MAX_FOPATH ];
+    GetCurrentDirectoryW( MAX_FOPATH, prev_path );
+    SetCurrentDirectoryW( _str( new_path ).toWideChar().c_str() );
     #else
-    char cur_path[ MAX_FOPATH ];
-    getcwd( cur_path, MAX_FOPATH );
+    char prev_path[ MAX_FOPATH ];
+    getcwd( prev_path, MAX_FOPATH );
     chdir( new_path );
     #endif
-    string file_name = FileManager::ExtractFileName( dll_path );
 
     // Load dynamic library
-    void* dll = DLL_Load( file_name );
+    void* dll = DLL_Load( _str( dll_path ).extractFileName() );
     #ifdef FO_WINDOWS
-    SetCurrentDirectoryW( cur_path );
+    SetCurrentDirectoryW( prev_path );
     #else
-    chdir( cur_path );
+    chdir( prev_path );
     #endif
     if( !dll )
         return nullptr;

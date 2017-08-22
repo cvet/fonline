@@ -17,8 +17,7 @@ typedef vector< pair< string, string > > FileNameVec;
 
 static void GetFileNames_( const FileNameVec& fnames, const string& path, bool include_subdirs, const string& ext, StrVec& result )
 {
-    string path_fixed = Str::Lower( path );
-    path_fixed = FileManager::NormalizePathSlashes( path_fixed );
+    string path_fixed = _str( path ).lower().normalizePathSlashes();
     if( !path_fixed.empty() && path_fixed.back() != '/' )
         path_fixed += "/";
     size_t len = path_fixed.length();
@@ -30,7 +29,7 @@ static void GetFileNames_( const FileNameVec& fnames, const string& path, bool i
                                                             ( len > 0 && fname.first.find_last_of( '/' ) < len ) ||
                                                             ( len == 0 && fname.first.find_last_of( '/' ) == string::npos ) ) )
         {
-            if( ext.empty() || FileManager::GetExtension( fname.first ) == ext )
+            if( ext.empty() || _str( fname.first ).getFileExtension() == ext )
                 add = true;
         }
         if( add && std::find( result.begin(), result.end(), fname.second ) == result.end() )
@@ -149,7 +148,7 @@ string BundleFile::packName = "$Bundle";
 
 DataFile* OpenDataFile( const string& path )
 {
-    string ext = FileManager::GetExtension( path );
+    string ext = _str( path ).getFileExtension();
     if( Str::Compare( path, "$Bundle" ) )
     {
         BundleFile* bundle = new BundleFile();
@@ -227,7 +226,7 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree
         fe.FileSize = find_data[ i ].FileSize;
         fe.WriteTime = find_data[ i ].WriteTime;
 
-        string name_lower = Str::Lower( files[ i ] );
+        string name_lower = _str( files[ i ] ).lower();
         files_tree.insert( PAIR( name_lower, fe ) );
         files_tree_names.push_back( PAIR( name_lower, files[ i ] ) );
     }
@@ -398,9 +397,8 @@ bool FalloutDatFile::ReadTree()
 
             if( fnsz > 1 && fnsz < MAX_FOPATH && type != 0x400 ) // Not folder
             {
-                string name( (const char*) ptr + 4, fnsz );
-                name = FileManager::NormalizePathSlashes( name );
-                string name_lower = Str::Lower( name );
+                string name = _str( string( (const char*) ptr + 4, fnsz ) ).normalizePathSlashes();
+                string name_lower = _str( name ).lower();
 
                 if( type == 2 )
                     *( ptr + 4 + fnsz + 7 ) = 1;               // Compressed
@@ -462,9 +460,8 @@ bool FalloutDatFile::ReadTree()
 
         if( fnsz && fnsz + 1 < MAX_FOPATH )
         {
-            string name( (const char*) ptr + 4, fnsz );
-            name = FileManager::NormalizePathSlashes( name );
-            string name_lower = Str::Lower( name );
+            string name = _str( string( (const char*) ptr + 4, fnsz ) ).normalizePathSlashes();
+            string name_lower = _str( name ).lower();
 
             filesTree.insert( PAIR( name_lower, ptr + 4 + fnsz ) );
             filesTreeNames.push_back( PAIR( name_lower, name ) );
@@ -769,8 +766,9 @@ bool ZipFile::ReadTree()
 
         if( !( info.external_fa & 0x10 ) )   // Not folder
         {
-            string name = FileManager::NormalizePathSlashes( buf );
-            string name_lower = Str::Lower( name );
+            string name = _str( buf ).normalizePathSlashes();
+            string name_lower = _str( name ).lower();
+
             zip_info.Pos = pos;
             zip_info.UncompressedSize = (int) info.uncompressed_size;
             filesTree.insert( PAIR( name_lower, zip_info ) );
@@ -879,7 +877,7 @@ bool BundleFile::Init( const string& fname )
         fe.FileSize = FileGetSize( f );
         fe.WriteTime = FileGetWriteTime( f );
 
-        string name_lower = Str::Lower( name );
+        string name_lower = _str( name ).lower();
         filesTree.insert( PAIR( name_lower, fe ) );
         filesTreeNames.push_back( PAIR( name_lower, name ) );
 

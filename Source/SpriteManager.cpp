@@ -1297,7 +1297,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = 
     if( !fname || !fname[ 0 ] )
         return dummy;
 
-    string ext = FileManager::GetExtension( fname );
+    string ext = _str( fname ).getFileExtension();
     if( ext.empty() )
     {
         WriteLog( "Extension not found, file '{}'.\n", fname );
@@ -1743,7 +1743,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
             oy = fofrm.GetInt( dir_str.c_str(), "offs_y", oy );
         }
 
-        string frm_dir = FileManager::ExtractDir( fname );
+        string frm_dir = _str( fname ).extractDir();
 
         uint   frames = 0;
         bool   no_info = false;
@@ -4188,7 +4188,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             if( spr->DrawOrderType >= DRAW_ORDER_FLAT && spr->DrawOrderType < DRAW_ORDER )
                 y1 -= (int) ( 40.0f / z );
 
-            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), _str( spr->TreeIndex ).c_str(), 0 );
+            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), _str( "{}", spr->TreeIndex ).c_str(), 0 );
         }
         #endif
 

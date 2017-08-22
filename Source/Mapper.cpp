@@ -1509,7 +1509,7 @@ void FOMapper::RefreshTiles( int tab )
         for( auto it = tiles.begin(), end = tiles.end(); it != end; ++it )
         {
             const string& fname = *it;
-            string        ext = FileManager::GetExtension( fname );
+            string        ext = _str( fname ).getFileExtension();
             if( ext.empty() )
                 continue;
 
@@ -1529,16 +1529,16 @@ void FOMapper::RefreshTiles( int tab )
             if( format_aviable )
             {
                 // Make primary collection name
-                string path_ = FileManager::ExtractDir( fname );
-                if( path_.empty() )
-                    path_ = "root";
-                uint path_index = PathIndex[ path_ ];
+                string dir = _str( fname ).extractDir();
+                if( dir.empty() )
+                    dir = "root";
+                uint path_index = PathIndex[ dir ];
                 if( !path_index )
                 {
                     path_index = (uint) PathIndex.size();
-                    PathIndex[ path_ ] = path_index;
+                    PathIndex[ dir ] = path_index;
                 }
-                string collection_name = _str( "{:03} - {}", path_index, path_ );
+                string collection_name = _str( "{:03} - {}", path_index, dir );
 
                 // Make secondary collection name
                 string collection_name_ex;
@@ -4764,7 +4764,7 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
     {
         if( ProtoMap::IsMapFile( ( dir_ + file_find_fname ).c_str() ) )
         {
-            string  fname = FileManager::EraseExtension( file_find_fname );
+            string  fname = _str( file_find_fname ).eraseFileExtension();
             int     len = names->GetSize();
             names->Resize( names->GetSize() + 1 );
             string& str = *(string*) names->At( len );
@@ -5209,7 +5209,7 @@ string FOMapper::SScriptFunc::Global_ReplaceTextInt( string text, string replace
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
         return text;
-    return string( text ).replace( pos, replace.length(), _str( i ) );
+    return string( text ).replace( pos, replace.length(), _str( "{}", i ) );
 }
 
 void FOMapper::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )

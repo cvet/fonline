@@ -115,12 +115,10 @@ int main( int argc, char* argv[] )
     }
 
     // Paths
-    string path = FileManager::NormalizePathSlashes( arg_path );
-    string path_prep = ( arg_path_prep ? FileManager::NormalizePathSlashes( arg_path_prep ) : "" );
+    string path = _str( arg_path ).normalizePathSlashes();
+    string path_prep = ( arg_path_prep ? _str( arg_path_prep ).normalizePathSlashes() : "" );
 
-    // Set current directory
-    string dir = FileManager::ExtractDir( path );
-    FileManager::SetCurrentDir( dir, "./" );
+    FileManager::SetCurrentDir( _str( path ).extractDir(), "./" );
 
     FileManager file;
     if( !file.LoadFile( path ) )
@@ -216,13 +214,13 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
         WriteLog( "Warning, bind result: {}.\n", bind_errors );
 
     // Get file name
-    string file_name = FileManager::ExtractFileName( path );
+    string file_name = _str( path ).extractFileName();
 
     // Make module name
-    string module_name = FileManager::EraseExtension( file_name );
+    string module_name = _str( file_name ).eraseFileExtension();
 
     // Start compilation
-    string target_lower = Str::Lower( target );
+    string target_lower = _str( target ).lower();
     WriteLog( "Compiling '{}' as {} script...\n", file_name, target_lower );
     double tick = Timer::AccurateTick();
 

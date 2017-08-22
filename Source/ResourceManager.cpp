@@ -21,14 +21,12 @@ void ResourceManager::Refresh()
             data_file->GetFileNames( "", true, "", file_names );
             for( auto it = file_names.begin(), end = file_names.end(); it != end; ++it )
             {
-                // File name
-                string name = FileManager::ExtractFileName( it->c_str() );
+                string name = *it;
                 Str::GetHash( name );
-                Str::GetHash( Str::Lower( name ) );
-
-                // Full path
-                Str::GetHash( *it );
-                Str::GetHash( Str::Lower( *it ) );
+                Str::GetHash( _str( name ).lower() );
+                name = _str( name ).extractFileName();
+                Str::GetHash( name );
+                Str::GetHash( _str( name ).lower() );
             }
 
             // Splashes
@@ -46,11 +44,7 @@ void ResourceManager::Refresh()
             data_file->GetFileNames( "", true, "acm", sounds );
             data_file->GetFileNames( "", true, "ogg", sounds );
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
-            {
-                string sound_name = FileManager::EraseExtension( *it );
-                sound_name = Str::Upper( sound_name );
-                soundNames.insert( PAIR( sound_name, *it ) );
-            }
+                soundNames.insert( PAIR( _str( *it ).eraseFileExtension().upper(), *it ) );
 
             processedDats.push_back( data_file );
         }
@@ -619,7 +613,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
 uint ResourceManager::GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
 {
     uint spr_id = 0;
-    string ext = FileManager::GetExtension( Str::GetName( model_name ) );
+    string ext = _str( Str::GetName( model_name ) ).getFileExtension();
     if( ext != "fo3d" )
     {
         AnyFrames* anim = GetCrit2dAnim( model_name, anim1, anim2, dir );

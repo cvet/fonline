@@ -495,7 +495,7 @@ void FOClient::UpdateBinary()
     base_name[ pos ] = 0;
 
     wchar_t from_dir[ MAX_FOPATH ];
-    wcscpy( from_dir, CharToWideChar( FileManager::GetWritePath( "" ) ).c_str() );
+    wcscpy( from_dir, _str( FileManager::GetWritePath( "" ) ).toWideChar().c_str() );
 
     BOOL copy_exe = CopyFileW( std::wstring( from_dir ).append( base_name ).append( L".exe" ).c_str(),
                                std::wstring( to_dir ).append( base_name ).append( L".new.exe" ).c_str(), FALSE );
@@ -504,7 +504,7 @@ void FOClient::UpdateBinary()
     RUNTIME_ASSERT( delete_old_exe || GetLastError() == ERROR_FILE_NOT_FOUND );
     BOOL rename_old_exe = MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str(),
                                      std::wstring( to_dir ).append( base_name ).append( L".old.exe" ).c_str() );
-    RUNTIME_ASSERT_STR( rename_old_exe, WideCharToChar( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() ).c_str() );
+    RUNTIME_ASSERT_STR( rename_old_exe, _str( "" ).parseWideChar( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() ).c_str() );
     BOOL rename_new_exe = MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".new.exe" ).c_str(),
                                      std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() );
     RUNTIME_ASSERT( rename_new_exe );
@@ -659,7 +659,7 @@ void FOClient::UpdateFilesLoop()
                 UpdateFile& update_file = ( *UpdateFilesList )[ i ];
                 float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
                 float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
-                string      name = FileManager::FormatPath( update_file.Name );
+                string      name = _str( update_file.Name ).formatPath();
                 UpdateFilesProgress += _str( "{:.2f} {} / {:.2f} MB\n", name, cur, max );
             }
             UpdateFilesProgress += "\n";
@@ -4446,7 +4446,7 @@ void FOClient::Net_OnUpdateFilesList()
         RUNTIME_ASSERT( pos != string::npos );
         wchar_t base_name[ MAX_FOPATH ];
         wcsncpy( base_name, path + pos + 1, wcslen( path ) - pos );
-        exe_name = WideCharToChar( base_name );
+        exe_name = _str( "" ).parseWideChar( base_name );
     }
     #endif
 
@@ -4468,11 +4468,11 @@ void FOClient::Net_OnUpdateFilesList()
         #ifdef FO_WINDOWS
         if( outdated && Str::CompareCase( exe_name, name ) )
             have_exe = true;
-        string ext = FileManager::GetExtension( name );
+        string ext = _str( name ).getFileExtension();
         if( !outdated && ( ext == "exe" || ext == "pdb" ) )
             continue;
         #else
-        string ext = FileManager::GetExtension( name );
+        string ext = _str( name ).getFileExtension();
         if( ext == "exe" || ext == "pdb" )
             continue;
         #endif
@@ -7254,7 +7254,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "Version" )
     {
-        return _str( FONLINE_VERSION );
+        return _str( "{}", FONLINE_VERSION );
     }
     else if( cmd == "BytesSend" )
     {
@@ -7897,7 +7897,7 @@ string FOClient::SScriptFunc::Global_ReplaceTextInt( string text, string replace
     size_t pos = text.find( replace, 0 );
     if( pos == std::string::npos )
         return text;
-    return string( text ).replace( pos, replace.length(), _str( i ) );
+    return string( text ).replace( pos, replace.length(), _str( "{}", i ) );
 }
 
 string FOClient::SScriptFunc::Global_FormatTags( string text, string lexems )
@@ -8789,13 +8789,13 @@ bool FOClient::SScriptFunc::Global_IsMapHexRaked( ushort hx, ushort hy )
 
 bool FOClient::SScriptFunc::Global_SaveScreenshot( string file_path )
 {
-    SprMngr.SaveTexture( nullptr, FileManager::FormatPath( file_path ).c_str(), true );
+    SprMngr.SaveTexture( nullptr, _str( file_path ).formatPath().c_str(), true );
     return true;
 }
 
 bool FOClient::SScriptFunc::Global_SaveText( string file_path, string text )
 {
-    void* f = FileOpen( FileManager::FormatPath( file_path ), true );
+    void* f = FileOpen( _str( file_path ).formatPath(), true );
     if( !f )
         return false;
 

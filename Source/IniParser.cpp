@@ -43,23 +43,19 @@ void IniParser::ParseStr( const char* str )
         app_content.reserve( 0xFFFF );
 
     istrstream istr( str );
-    CharVec    big_buf( 1000000 );
-    char*      line = &big_buf[ 0 ];
-    char       buf[ MAX_FOTEXT ];
-    while( istr.getline( line, 1000000 ) )
+    string     line;
+    while( std::getline( istr, line, '\n' ) )
     {
         // New section
         if( line[ 0 ] == '[' )
         {
             // Parse name
-            const char* begin = &line[ 1 ];
-            const char* end = Str::Substring( begin, "]" );
-            if( !end )
+            size_t end = line.find( ']' );
+            if( end == string::npos )
                 continue;
 
-            Str::CopyCount( buf, begin, (uint) ( end - begin ) );
-            Str::Trim( buf );
-            if( !buf[ 0 ] )
+            string buf = _str( line.substr( 1, end - 1 ) ).trim();
+            if( buf.empty() )
                 continue;
 
             // Store current section content
@@ -70,7 +66,7 @@ void IniParser::ParseStr( const char* str )
             }
 
             // Add new section
-            auto it = appKeyValues.insert( PAIR( string( buf ), StrMap() ) );
+            auto it = appKeyValues.insert( PAIR( buf, StrMap() ) );
             appKeyValuesOrder.push_back( it );
             cur_app = &it->second;
         }
@@ -82,16 +78,17 @@ void IniParser::ParseStr( const char* str )
                 app_content.append( line ).append( "\n" );
 
             // Cut comments
-            Str::Trim( line );
-            char* comment = Str::Substring( line, "#" );
+            line = _str( line ).trim();
+            char* comment = (char*) Str::Substring( line, "#" );
             if( comment )
                 *comment = 0;
 
             // Parse key value
             char* begin = &line[ 0 ];
-            char* value = nullptr;
 
             // Text format {}{}{}
+            string key;
+            string value;
             if( begin[ 0 ] == '{' )
             {
                 char* pbuf = begin;
@@ -145,7 +142,7 @@ void IniParser::ParseStr( const char* str )
                 if( !num )
                     continue;
 
-                Str::Copy( buf, Str::UItoA( num ) );
+                key = Str::UItoA( num );
                 value = _pbuf;
             }
             else
@@ -156,15 +153,15 @@ void IniParser::ParseStr( const char* str )
                     continue;
 
                 // Parse key value
-                Str::CopyCount( buf, begin, (uint) ( separator - begin ) );
+                key = string( begin, (size_t) ( separator - begin ) );
                 value = separator + 1;
-                Str::Trim( buf );
-                Str::Trim( value );
+                key = _str( key ).trim();
+                value = _str( value ).trim();
             }
 
             // Store entire
-            if( buf[ 0 ] )
-                ( *cur_app )[ buf ] = value;
+            if( !key.empty() )
+                ( *cur_app )[ key ] = std::move( value );
         }
     }
     RUNTIME_ASSERT( istr.eof() );

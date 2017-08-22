@@ -336,25 +336,25 @@ uint UIDDUMMY10 = -1;
 #endif
 
 #ifdef FO_WINDOWS
-# define GET_UID4( result )                                                                                                     \
-    result = new uint();                                                                                                        \
-    DWORD d_vol = 0;                                                                                                            \
-    UID_DUMMY_CALCS2;                                                                                                           \
-    if( GetVolumeInformationW( CharToWideChar( uid4_str ).c_str(), NULL, NULL, &d_vol, NULL, NULL, NULL, 0 ) != ERROR_SUCCESS ) \
-        d_vol ^= 0x12345678;                                                                                                    \
-    else                                                                                                                        \
-        d_vol = 0;                                                                                                              \
-    UID_DUMMY_CALCS4;                                                                                                           \
-    *result = d_vol + UID_CHANGE;                                                                                               \
-    UID_DUMMY_CALCS6;                                                                                                           \
-    UID_DUMMY_CALCS6;                                                                                                           \
-    UID_FLAGS( *result, 0x00000800, 0x00004000 );                                                                               \
-    UID_DUMMY_CALCS7;                                                                                                           \
-    UID_CALC( *result );                                                                                                        \
-    UIDCACHE[ 4 ] = *result;                                                                                                    \
-    UID_DUMMY_CALCS8;                                                                                                           \
-    UIDCACHE[ 4 ] = *result;                                                                                                    \
-    UIDCACHE2[ 4 ] = *result;                                                                                                   \
+# define GET_UID4( result )                                                                                                        \
+    result = new uint();                                                                                                           \
+    DWORD d_vol = 0;                                                                                                               \
+    UID_DUMMY_CALCS2;                                                                                                              \
+    if( GetVolumeInformationW( _str( uid4_str ).toWideChar().c_str(), NULL, NULL, &d_vol, NULL, NULL, NULL, 0 ) != ERROR_SUCCESS ) \
+        d_vol ^= 0x12345678;                                                                                                       \
+    else                                                                                                                           \
+        d_vol = 0;                                                                                                                 \
+    UID_DUMMY_CALCS4;                                                                                                              \
+    *result = d_vol + UID_CHANGE;                                                                                                  \
+    UID_DUMMY_CALCS6;                                                                                                              \
+    UID_DUMMY_CALCS6;                                                                                                              \
+    UID_FLAGS( *result, 0x00000800, 0x00004000 );                                                                                  \
+    UID_DUMMY_CALCS7;                                                                                                              \
+    UID_CALC( *result );                                                                                                           \
+    UIDCACHE[ 4 ] = *result;                                                                                                       \
+    UID_DUMMY_CALCS8;                                                                                                              \
+    UIDCACHE[ 4 ] = *result;                                                                                                       \
+    UIDCACHE2[ 4 ] = *result;                                                                                                      \
     UID_DUMMY_CALCS2
 #else
 # define GET_UID4( result )                       \

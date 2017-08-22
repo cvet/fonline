@@ -228,7 +228,7 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output )
 Sound* SoundManager::Load( const char* fname, bool is_music )
 {
     string fname_ = fname;
-    string ext = FileManager::GetExtension( fname );
+    string ext = _str( fname ).getFileExtension();
 
     // Default ext
     if( ext.empty() )
@@ -567,8 +567,7 @@ bool SoundManager::PlaySound( const char* name )
         return true;
 
     // Make 'NAME'
-    string sound_name = FileManager::EraseExtension( name );
-    sound_name = Str::Upper( sound_name );
+    string sound_name = _str( name ).eraseFileExtension().upper();
 
     // Find base
     StrMap& names = ResMngr.GetSoundNames();
