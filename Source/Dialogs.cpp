@@ -201,7 +201,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     if( pack->PackId <= 0xFFFF )
         LOAD_FAIL( "Invalid hash for dialog name." );
 
-    lang_apps = Str::Split( lang_key, ' ' );
+    lang_apps = _str( lang_key ).split( ' ' );
     if( lang_apps.empty() )
         LOAD_FAIL( "Lang app is empty." );
 

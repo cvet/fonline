@@ -520,10 +520,10 @@ public:
         int64  max_value = 0;
         string get_callback;
         StrVec set_callbacks;
-        StrVec opt_entries = Str::Split( options_buf, ',' );
+        StrVec opt_entries = _str( options_buf ).split( ',' );
         for( size_t i = 0, j = opt_entries.size(); i < j; i++ )
         {
-            StrVec opt_entry = Str::Split( opt_entries[ i ], '=' );
+            StrVec opt_entry = _str( opt_entries[ i ] ).split( '=' );
             if( opt_entry.size() != 2 )
             {
                 WriteLog( "Error in 'property' pragma '{}', invalid options entry.\n", text.c_str() );

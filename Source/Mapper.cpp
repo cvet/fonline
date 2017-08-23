@@ -4053,7 +4053,7 @@ void FOMapper::ParseCommand( const char* cmd )
         }
 
         cmd++;
-        IntVec anims = Str::SplitToInt( cmd, ' ' );
+        IntVec anims = _str( cmd ).splitToInt( ' ' );
         if( anims.empty() )
             return;
 
@@ -5113,7 +5113,7 @@ void FOMapper::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
 
 string FOMapper::SScriptFunc::Global_GetIfaceIniStr( string key )
 {
-    return Self->IfaceIni.GetStr( "", key.c_str(), "" );
+    return Self->IfaceIni.GetStr( "", key, "" );
 }
 
 void FOMapper::SScriptFunc::Global_Message( string msg )

@@ -75,10 +75,6 @@ namespace Str
     uchar StrToHex( const char* str );
 
     char* GetBigBuf();                      // Just big buffer, 1mb
-
-    // Split exclude empty entries
-    StrVec Split( const string& line, char divider );
-    IntVec SplitToInt( const string& line, char divider );
 }
 
 class _str
@@ -108,6 +104,9 @@ public:
     _str& replace( const string& from, const string& to );
     _str& lower();
     _str& upper();
+
+    StrVec split( char divider );
+    IntVec splitToInt( char divider );
 
     bool   isNumber();
     int    toInt();

@@ -174,7 +174,7 @@ void InitialSetup( uint argc, char** argv )
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER ) || defined ( FONLINE_SCRIPT_COMPILER )
     RUNTIME_ASSERT_STR( MainConfig->IsKey( "", "Modules" ), "'Modules' not found in config files" );
     string modules = MainConfig->GetStr( "", "Modules" );
-    for( const string& module : Str::Split( modules, ';' ) )
+    for( const string& module : _str( modules ).split( ';' ) )
     {
         string module_path = _str( GameOpt.ServerDir ).combinePath( module ).normalizePathSlashes().resolvePath();
         if( !module_path.empty() && module_path.back() != '/' && module_path.back() != '\\' )

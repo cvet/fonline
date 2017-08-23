@@ -409,7 +409,7 @@ bool LanguagePack::LoadFromFiles( const string& lang_name )
         FileManager& msg_file = msg_files.GetNextFile( &name, &path );
 
         // Check pattern '...Texts/lang/file'
-        StrVec dirs = Str::Split( path, '/' );
+        StrVec dirs = _str( path ).split( '/' );
         if( dirs.size() >= 3 && dirs[ dirs.size() - 3 ] == "Texts" && dirs[ dirs.size() - 2 ] == lang_name )
         {
             for( int i = 0; i < TEXTMSG_COUNT; i++ )

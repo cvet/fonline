@@ -143,23 +143,11 @@ string FOServer::GetIngamePlayersStatistics()
 // Accesses
 void FOServer::GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names )
 {
-    client.clear();
-    tester.clear();
-    moder.clear();
-    admin.clear();
-    admin_names.clear();
-
-    string s;
-    if( !( s = MainConfig->GetStr( "", "Access_client" ) ).empty() )
-        client = Str::Split( s, ' ' );
-    if( !( s = MainConfig->GetStr( "", "Access_tester" ) ).empty() )
-        tester = Str::Split( s, ' ' );
-    if( !( s = MainConfig->GetStr( "", "Access_moder" ) ).empty() )
-        moder = Str::Split( s, ' ' );
-    if( !( s = MainConfig->GetStr( "", "Access_admin" ) ).empty() )
-        admin = Str::Split( s, ' ' );
-    if( !( s = MainConfig->GetStr( "", "AccessNames_admin" ) ).empty() )
-        admin_names = Str::Split( s, ' ' );
+    client = _str( MainConfig->GetStr( "", "Access_client" ) ).split( ' ' );
+    tester = _str( MainConfig->GetStr( "", "Access_tester" ) ).split( ' ' );
+    moder = _str( MainConfig->GetStr( "", "Access_moder" ) ).split( ' ' );
+    admin = _str( MainConfig->GetStr( "", "Access_admin" ) ).split( ' ' );
+    admin_names = _str( MainConfig->GetStr( "", "AccessNames_admin" ) ).split( ' ' );
 }
 
 void FOServer::DisconnectClient( Client* cl )

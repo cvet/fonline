@@ -71,6 +71,34 @@ _str& _str::upper()
     return *this;
 }
 
+StrVec _str::split( char divider )
+{
+    StrVec            result;
+    std::stringstream ss( s );
+    string            entry;
+    while( std::getline( ss, entry, divider ) )
+    {
+        entry = _str( entry ).trim();
+        if( !entry.empty() )
+            result.push_back( entry );
+    }
+    return result;
+}
+
+IntVec _str::splitToInt( char divider )
+{
+    IntVec            result;
+    std::stringstream ss( s );
+    string            entry;
+    while( std::getline( ss, entry, divider ) )
+    {
+        entry = _str( entry ).trim();
+        if( !entry.empty() )
+            result.push_back( _str( entry ).toInt() );
+    }
+    return result;
+}
+
 bool _str::isNumber()
 {
     if( s.empty() )
@@ -1118,32 +1146,4 @@ static THREAD char BigBuf[ BIG_BUF_SIZE ] = { 0 };
 char* Str::GetBigBuf()
 {
     return BigBuf;
-}
-
-StrVec Str::Split( const string& line, char divider )
-{
-    StrVec            result;
-    std::stringstream ss( line );
-    string            item;
-    while( std::getline( ss, item, divider ) )
-    {
-        item = _str( item ).trim();
-        if( !item.empty() )
-            result.push_back( std::move( item ) );
-    }
-    return result;
-}
-
-IntVec Str::SplitToInt( const string& line, char divider )
-{
-    IntVec            result;
-    std::stringstream ss( line );
-    string            item;
-    while( std::getline( ss, item, divider ) )
-    {
-        item = _str( item ).trim();
-        if( !item.empty() )
-            result.push_back( _str( item ).toInt() );
-    }
-    return result;
 }

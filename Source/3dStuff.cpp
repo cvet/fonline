@@ -1458,7 +1458,7 @@ bool Animation3dEntity::Load( const string& name )
                 ( *istr ).getline( line, MAX_FOTEXT );
                 Str::EraseChars( line, '\r' );
                 Str::EraseChars( line, '\n' );
-                templates = Str::Split( line, ' ' );
+                templates = _str( line ).split( ' ' );
                 if( templates.empty() )
                     continue;
                 for( uint i = 1, j = (uint) templates.size(); i < j - 1; i += 2 )
@@ -1602,7 +1602,7 @@ bool Animation3dEntity::Load( const string& name )
 
                     // Layers
                     ( *istr ) >> buf;
-                    StrVec layers = Str::Split( buf, '-' );
+                    StrVec layers = _str( buf ).split( '-' );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
                         if( layers[ m ] == "All" )
@@ -1620,7 +1620,7 @@ bool Animation3dEntity::Load( const string& name )
 
                     // Shapes
                     ( *istr ) >> buf;
-                    StrVec shapes = Str::Split( buf, '-' );
+                    StrVec shapes = _str( buf ).split( '-' );
 
                     // Unskin bone
                     ( *istr ) >> buf;
@@ -1810,7 +1810,7 @@ bool Animation3dEntity::Load( const string& name )
             else if( Str::Compare( token, "DisableLayer" ) )
             {
                 ( *istr ) >> buf;
-                StrVec layers = Str::Split( buf, '-' );
+                StrVec layers = _str( buf ).split( '-' );
                 for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                 {
                     int layer = ConvertParamValue( layers[ m ], convert_value_fail );
@@ -1834,7 +1834,7 @@ bool Animation3dEntity::Load( const string& name )
             else if( Str::Compare( token, "DisableMesh" ) )
             {
                 ( *istr ) >> buf;
-                StrVec meshes = Str::Split( buf, '-' );
+                StrVec meshes = _str( buf ).split( '-' );
                 for( uint m = 0, n = (uint) meshes.size(); m < n; m++ )
                 {
                     uint mesh_name_hash = 0;
@@ -1924,7 +1924,7 @@ bool Animation3dEntity::Load( const string& name )
                 else if( Str::Compare( buf, "Float" ) || Str::Compare( buf, "Floats" ) )
                 {
                     type = EffectDefault::Float;
-                    StrVec floats = Str::Split( def_value, '-' );
+                    StrVec floats = _str( def_value ).split( '-' );
                     if( floats.empty() )
                         continue;
                     data_len = (uint) floats.size() * sizeof( float );
@@ -1935,7 +1935,7 @@ bool Animation3dEntity::Load( const string& name )
                 else if( Str::Compare( buf, "Int" ) || Str::Compare( buf, "Dword" ) )
                 {
                     type = EffectDefault::Int;
-                    StrVec ints = Str::Split( def_value, '-' );
+                    StrVec ints = _str( def_value ).split( '-' );
                     if( ints.empty() )
                         continue;
                     data_len = (uint) ints.size() * sizeof( int );
