@@ -107,7 +107,7 @@ void IniParser::ParseStr( const char* str )
                 pbuf++;
 
                 // Parse number
-                uint num1 = (uint) ( Str::IsNumber( num1_begin ) ? Str::AtoI( num1_begin ) : _str( num1_begin ).toHash() );
+                uint num1 = (uint) ( _str( num1_begin ).isNumber() ? _str( num1_begin ).toInt() : _str( num1_begin ).toHash() );
 
                 // Skip '{'
                 Str::GoTo( pbuf, '{', true );
@@ -124,12 +124,13 @@ void IniParser::ParseStr( const char* str )
                 pbuf++;
 
                 // Parse number
-                uint num2 = ( num2_begin[ 0 ] ? ( Str::IsNumber( num2_begin ) ? Str::AtoI( num2_begin ) : _str( num2_begin ).toHash() ) : 0 );
+                uint num2 = ( num2_begin[ 0 ] ? ( _str( num2_begin ).isNumber() ? _str( num2_begin ).toInt() : _str( num2_begin ).toHash() ) : 0 );
 
                 // Goto '{'
                 Str::GoTo( pbuf, '{', true );
                 if( !*pbuf )
                     continue;
+
                 // Find '}'
                 char* _pbuf = pbuf;
                 Str::GoTo( pbuf, '}', false );
@@ -142,7 +143,7 @@ void IniParser::ParseStr( const char* str )
                 if( !num )
                     continue;
 
-                key = Str::UItoA( num );
+                key = _str( "{}", num );
                 value = _pbuf;
             }
             else
@@ -228,7 +229,7 @@ int IniParser::GetInt( const char* app_name, const char* key_name, int def_val /
         return 1;
     if( str && str->length() == 5 && Str::CompareCase( str->c_str(), "false" ) )
         return 0;
-    return str ? Str::AtoI( str->c_str() ) : def_val;
+    return str ? _str( *str ).toInt() : def_val;
 }
 
 void IniParser::SetStr( const char* app_name, const char* key_name, const char* val )
@@ -249,7 +250,7 @@ void IniParser::SetStr( const char* app_name, const char* key_name, const char* 
 
 void IniParser::SetInt( const char* app_name, const char* key_name, int val )
 {
-    SetStr( app_name, key_name, Str::ItoA( val ) );
+    SetStr( app_name, key_name, _str( "{}", val ).c_str() );
 }
 
 StrMap& IniParser::GetApp( const char* app_name )

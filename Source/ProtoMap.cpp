@@ -103,7 +103,7 @@ void ProtoMap::SaveTextFormat( IniParser& file )
         if( entity->Type == MUTUAL_CRITTER_TYPE )
         {
             StrMap& kv = file.SetApp( "Critter" );
-            kv[ "$Id" ] = Str::UItoA( entity->Id );
+            kv[ "$Id" ] = _str( "{}", entity->Id );
             kv[ "$Proto" ] = entity->Proto->GetName();
             entity->Props.SaveToText( kv, &entity->Proto->Props );
         }
@@ -115,7 +115,7 @@ void ProtoMap::SaveTextFormat( IniParser& file )
         if( entity->Type == EntityType::Item )
         {
             StrMap& kv = file.SetApp( "Item" );
-            kv[ "$Id" ] = Str::UItoA( entity->Id );
+            kv[ "$Id" ] = _str( "{}", entity->Id );
             kv[ "$Proto" ] = entity->Proto->GetName();
             entity->Props.SaveToText( kv, &entity->Proto->Props );
         }
@@ -126,16 +126,16 @@ void ProtoMap::SaveTextFormat( IniParser& file )
     {
         StrMap& kv = file.SetApp( "Tile" );
         kv[ "PicMap" ] = _str().parseHash( tile.Name );
-        kv[ "HexX" ] = Str::UItoA( tile.HexX );
-        kv[ "HexY" ] = Str::UItoA( tile.HexY );
+        kv[ "HexX" ] = _str( "{}", tile.HexX );
+        kv[ "HexY" ] = _str( "{}", tile.HexY );
         if( tile.OffsX )
-            kv[ "OffsetX" ] = Str::ItoA( tile.OffsX );
+            kv[ "OffsetX" ] = _str( "{}", tile.OffsX );
         if( tile.OffsY )
-            kv[ "OffsetY" ] = Str::ItoA( tile.OffsY );
+            kv[ "OffsetY" ] = _str( "{}", tile.OffsY );
         if( tile.Layer )
-            kv[ "Layer" ] = Str::UItoA( tile.Layer );
+            kv[ "Layer" ] = _str( "{}", tile.Layer );
         if( tile.IsRoof )
-            kv[ "IsRoof" ] = Str::BtoA( tile.IsRoof );
+            kv[ "IsRoof" ] = _str( "{}", tile.IsRoof );
     }
 }
 #endif
@@ -168,7 +168,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             continue;
         }
 
-        uint          id = Str::AtoUI( kv[ "$Id" ].c_str() );
+        uint          id = _str( kv[ "$Id" ] ).toUInt();
         hash          proto_id = _str( kv[ "$Proto" ] ).toHash();
         ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
         if( !proto )
@@ -206,7 +206,7 @@ bool ProtoMap::LoadTextFormat( const char* buf )
             continue;
         }
 
-        uint       id = Str::AtoUI( kv[ "$Id" ].c_str() );
+        uint       id = _str( kv[ "$Id" ] ).toUInt();
         hash       proto_id = _str( kv[ "$Proto" ] ).toHash();
         ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
         if( !proto )
@@ -241,12 +241,12 @@ bool ProtoMap::LoadTextFormat( const char* buf )
         }
 
         hash name = _str( kv[ "PicMap" ] ).toHash();
-        int  hx = Str::AtoI( kv[ "HexX" ].c_str() );
-        int  hy = Str::AtoI( kv[ "HexY" ].c_str() );
-        int  ox = ( kv.count( "OffsetX" ) ? Str::AtoI( kv[ "OffsetX" ].c_str() ) : 0 );
-        int  oy = ( kv.count( "OffsetY" ) ? Str::AtoI( kv[ "OffsetY" ].c_str() ) : 0 );
-        int  layer = ( kv.count( "Layer" ) ? Str::AtoI( kv[ "Layer" ].c_str() ) : 0 );
-        bool is_roof = ( kv.count( "IsRoof" ) ? Str::AtoB( kv[ "IsRoof" ].c_str() ) : false );
+        int  hx = _str( kv[ "HexX" ] ).toUInt();
+        int  hy = _str( kv[ "HexY" ] ).toUInt();
+        int  ox = ( kv.count( "OffsetX" ) ? _str( kv[ "OffsetX" ] ).toUInt() : 0 );
+        int  oy = ( kv.count( "OffsetY" ) ? _str( kv[ "OffsetY" ] ).toUInt() : 0 );
+        int  layer = ( kv.count( "Layer" ) ? _str( kv[ "Layer" ] ).toUInt() : 0 );
+        bool is_roof = ( kv.count( "IsRoof" ) ? _str( kv[ "IsRoof" ] ).toBool() : false );
         if( hx < 0 || hx >= GetWidth() || hy < 0 || hy > GetHeight() )
         {
             WriteLog( "Tile '{}' have wrong hex position {} {}.\n", _str().parseHash( name ), hx, hy );
@@ -412,9 +412,9 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     else if( type == "roof" )
                         Tiles.push_back( Tile( _str( name ).toHash(), hx, hy, 0, 0, 0, true ) );
                     else if( type == "0" )
-                        Tiles.push_back( Tile( Str::AtoUI( name.c_str() ), hx, hy, 0, 0, 0, false ) );
+                        Tiles.push_back( Tile( _str( name ).toUInt(), hx, hy, 0, 0, 0, false ) );
                     else if( type == "1" )
-                        Tiles.push_back( Tile( Str::AtoUI( name.c_str() ), hx, hy, 0, 0, 0, true ) );
+                        Tiles.push_back( Tile( _str( name ).toUInt(), hx, hy, 0, 0, 0, true ) );
                 }
             }
         }
@@ -508,7 +508,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
 
             if( istr.fail() )
                 continue;
-            int ivalue = Str::AtoI( svalue.c_str() );
+            int ivalue = _str( svalue ).toInt();
 
             if( field == "MapObjType" )
             {
@@ -622,7 +622,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                         {
                             if( cur_prop )
                             {
-                                if( !Str::IsNumber( svalue.c_str() ) )
+                                if( !_str( svalue ).isNumber() )
                                     _str( svalue ).toHash();
                                 if( cur_prop->IsHash() )
                                     cur_prop->SetPODValueAsInt( entities.back(), _str( svalue ).toHash() );

@@ -5,6 +5,17 @@
 #include <sstream>
 #include "FileSystem.h"
 
+bool _str::compareIgnoreCase( const string& r )
+{
+    if( s.length() != r.length() )
+        return false;
+
+    for( size_t i = 0; i < s.length(); i++ )
+        if( tolower( s[ i ] ) != tolower( r[ i ] ) )
+            return false;
+    return true;
+}
+
 _str& _str::trim()
 {
     // Left trim
@@ -54,8 +65,14 @@ _str& _str::upper()
     return *this;
 }
 
-bool _str::isInt()
+bool _str::isNumber()
 {
+    if( s.empty() )
+        return false;
+    trim();
+    if( s.empty() )
+        return false;
+
     if( s.empty() || ( !isdigit( s[ 0 ] ) && s[ 0 ] != '-' && s[ 0 ] != '+' ) )
         return false;
 
@@ -66,7 +83,47 @@ bool _str::isInt()
 
 int _str::toInt()
 {
-    return strtol( s.c_str(), nullptr, 10 );
+    return (int) toInt64();
+}
+
+uint _str::toUInt()
+{
+    return (uint) toInt64();
+}
+
+int64 _str::toInt64()
+{
+    trim();
+    if( s.length() >= 2 && s[ 0 ] == '0' && ( s[ 1 ] == 'x' || s[ 1 ] == 'X' ) )
+        return strtoll( s.substr( 2 ).c_str(), nullptr, 16 );
+    return strtoll( s.c_str(), nullptr, 10 );
+}
+
+uint64 _str::toUInt64()
+{
+    trim();
+    if( s.length() >= 2 && s[ 0 ] == '0' && ( s[ 1 ] == 'x' || s[ 1 ] == 'X' ) )
+        return strtoull( s.substr( 2 ).c_str(), nullptr, 16 );
+    return strtoull( s.c_str(), nullptr, 10 );
+}
+
+float _str::toFloat()
+{
+    return (float) atof( s.c_str() );
+}
+
+double _str::toDouble()
+{
+    return atof( s.c_str() );
+}
+
+bool _str::toBool()
+{
+    if( compareIgnoreCase( "true" ) )
+        return true;
+    if( compareIgnoreCase( "false" ) )
+        return false;
+    return toInt() != 0;
 }
 
 _str& _str::formatPath()
@@ -261,7 +318,7 @@ hash _str::toHash()
     return h;
 }
 
-string _str::parseHash( hash h )
+_str& _str::parseHash( hash h )
 {
     #ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
@@ -280,7 +337,7 @@ void _str::saveHashes( StrMap& hashes )
     #endif
 
     for( auto& kv : HashNames )
-        hashes[ Str::UItoA( kv.first ) ] = kv.second;
+        hashes[ _str( "{}", kv.first ) ] = kv.second;
 }
 
 void _str::loadHashes( StrMap& hashes )
@@ -1015,122 +1072,6 @@ void Str::GoTo( char*& str, char ch, bool skip_char /* = false */ )
         ++str;
 }
 
-bool Str::IsNumber( const char* str )
-{
-    // Check number it or not
-    bool is_number = true;
-    uint pos = 0;
-    uint len = Length( str );
-    for( uint i = 0, j = len; i < j; i++, pos++ )
-        if( str[ i ] != ' ' && str[ i ] != '\t' )
-            break;
-    if( pos >= len )
-        is_number = false;            // Empty string
-    for( uint i = pos, j = len; i < j; i++, pos++ )
-    {
-        if( !( ( str[ i ] >= '0' && str[ i ] <= '9' ) || ( i == 0 && str[ i ] == '-' ) ) )
-        {
-            is_number = false;           // Found not a number
-            break;
-        }
-    }
-    if( is_number && str[ pos - 1 ] == '-' )
-        return false;
-    return is_number;
-}
-
-const char* Str::BtoA( bool value )
-{
-    static THREAD char str[ 128 ];
-    sprintf( str, "%s", value ? "true" : "false" );
-    return str;
-}
-
-const char* Str::ItoA( int value )
-{
-    static THREAD char str[ 128 ];
-    sprintf( str, "%d", value );
-    return str;
-}
-
-const char* Str::UItoA( uint value )
-{
-    static THREAD char str[ 128 ];
-    sprintf( str, "%u", value );
-    return str;
-}
-
-const char* Str::I64toA( int64 value )
-{
-    static THREAD char str[ 128 ];
-    sprintf( str, "%lld", value );
-    return str;
-}
-
-const char* Str::UI64toA( uint64 value )
-{
-    static THREAD char str[ 128 ];
-    sprintf( str, "%llu", value );
-    return str;
-}
-
-const char* Str::FtoA( float value )
-{
-    static THREAD char str[ 128 ];
-    sprintf( str, "%f", value );
-    return str;
-}
-
-const char* Str::DFtoA( double value )
-{
-    static THREAD char str[ 128 ];
-    sprintf( str, "%lf", value );
-    return str;
-}
-
-bool Str::AtoB( const char* str )
-{
-    if( Str::CompareCase( str, "True" ) )
-        return true;
-    if( Str::CompareCase( str, "False" ) )
-        return false;
-    return Str::AtoI( str ) != 0;
-}
-
-int Str::AtoI( const char* str )
-{
-    return (int) AtoI64( str );
-}
-
-uint Str::AtoUI( const char* str )
-{
-    return (uint) AtoI64( str );
-}
-
-int64 Str::AtoI64( const char* str )
-{
-    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return strtoll( str + 2, nullptr, 16 );
-    return strtoll( str, nullptr, 10 );
-}
-
-uint64 Str::AtoUI64( const char* str )
-{
-    if( str[ 0 ] && str[ 0 ] == '0' && ( str[ 1 ] == 'x' || str[ 1 ] == 'X' ) )
-        return strtoull( str + 2, nullptr, 16 );
-    return strtoull( str, nullptr, 10 );
-}
-
-float Str::AtoF( const char* str )
-{
-    return (float) atof( str );
-}
-
-double Str::AtoDF( const char* str )
-{
-    return atof( str );
-}
-
 void Str::HexToStr( uchar hex, char* str )
 {
     for( int i = 0; i < 2; i++ )
@@ -1186,7 +1127,7 @@ IntVec Str::SplitToInt( const string& line, char divider )
     {
         item = _str( item ).trim();
         if( !item.empty() )
-            result.push_back( AtoI( item.c_str() ) );
+            result.push_back( _str( item ).toInt() );
     }
     return result;
 }

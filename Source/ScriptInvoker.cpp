@@ -156,7 +156,7 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call )
 
 void ScriptInvoker::SaveDeferredCalls( IniParser& data )
 {
-    data.SetStr( "GeneralSettings", "LastDeferredCallId", Str::UItoA( lastDeferredCallId ) );
+    data.SetStr( "GeneralSettings", "LastDeferredCallId", _str( "{}", lastDeferredCallId ).c_str() );
 
     uint tick = Timer::FastTick();
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
@@ -168,14 +168,14 @@ void ScriptInvoker::SaveDeferredCalls( IniParser& data )
 
         StrMap& kv = data.SetApp( "DeferredCall" );
 
-        kv[ "Id" ] = Str::UItoA( call.Id );
+        kv[ "Id" ] = _str( "{}", call.Id );
         kv[ "Script" ] = _str().parseHash( call.FuncNum );
-        kv[ "Delay" ] = Str::UItoA( call.FireTick > tick ? call.FireTick - tick : 0 );
+        kv[ "Delay" ] = _str( "{}", call.FireTick > tick ? call.FireTick - tick : 0 );
 
         if( call.IsValue )
         {
             kv[ "ValueSigned" ] = ( call.ValueSigned ? "true" : "false" );
-            kv[ "Value" ] = Str::ItoA( call.Value );
+            kv[ "Value" ] = _str( "{}", call.Value );
         }
 
         if( call.IsValues )
@@ -183,7 +183,7 @@ void ScriptInvoker::SaveDeferredCalls( IniParser& data )
             kv[ "ValuesSigned" ] = ( call.ValuesSigned ? "true" : "false" );
             string values;
             for( int v : call.Values )
-                values.append( Str::ItoA( v ) ).append( " " );
+                values.append( _str( "{}", v ) ).append( " " );
             kv[ "Values" ] = values;
         }
     }
@@ -193,7 +193,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 {
     WriteLog( "Load deferred calls...\n" );
 
-    lastDeferredCallId = Str::AtoUI( data.GetStr( "GeneralSettings", "LastDeferredCallId" ) );
+    lastDeferredCallId = _str( data.GetStr( "GeneralSettings", "LastDeferredCallId" ) ).toUInt();
 
     int          errors = 0;
     PStrMapVec   deferred_calls;
@@ -204,15 +204,15 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
     {
         auto& kv = *pkv;
 
-        call.Id = Str::AtoUI( kv[ "Id" ].c_str() );
-        call.FireTick = tick + Str::AtoUI( kv[ "Delay" ].c_str() );
+        call.Id = _str( kv[ "Id" ] ).toUInt();
+        call.FireTick = tick + _str( kv[ "Delay" ] ).toUInt();
         RUNTIME_ASSERT( call.FireTick != 0 );
 
         call.IsValue = ( kv.count( "Value" ) > 0 );
         if( call.IsValue )
         {
             call.ValueSigned = Str::CompareCase( kv[ "ValueSigned" ].c_str(), "true" );
-            call.Value = Str::AtoI( kv[ "Value" ].c_str() );
+            call.Value = _str( kv[ "Value" ] ).toInt();
         }
         else
         {

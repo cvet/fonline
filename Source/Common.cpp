@@ -581,11 +581,11 @@ int ConvertParamValue( const char* str, bool& fail )
 
     if( str[ 0 ] == '@' && str[ 1 ] )
         return _str( str + 1 ).toHash();
-    if( Str::IsNumber( str ) )
-        return Str::AtoI( str );
-    if( Str::CompareCase( str, "true" ) )
+    if( _str( str ).isNumber() )
+        return _str( str ).toInt();
+    if( _str( str ).compareIgnoreCase( "true" ) )
         return 1;
-    if( Str::CompareCase( str, "false" ) )
+    if( _str( str ).compareIgnoreCase( "false" ) )
         return 0;
 
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )

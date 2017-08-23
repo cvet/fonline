@@ -1930,7 +1930,7 @@ bool Animation3dEntity::Load( const char* name )
                     data_len = (uint) floats.size() * sizeof( float );
                     data = new uchar[ data_len ];
                     for( uint i = 0, j = (uint) floats.size(); i < j; i++ )
-                        ( (float*) data )[ i ] = Str::AtoF( floats[ i ].c_str() );
+                        ( (float*) data )[ i ] = _str( "{}", floats[ i ] ).toFloat();
                 }
                 else if( Str::Compare( buf, "Int" ) || Str::Compare( buf, "Dword" ) )
                 {

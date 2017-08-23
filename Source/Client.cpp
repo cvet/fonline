@@ -7220,9 +7220,9 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "SetMousePos" && args.size() == 4 )
     {
-        int  x = Str::AtoI( args[ 1 ].c_str() );
-        int  y = Str::AtoI( args[ 2 ].c_str() );
-        bool motion = Str::AtoB( args[ 3 ].c_str() );
+        int  x = _str( args[ 1 ] ).toInt();
+        int  y = _str( args[ 2 ] ).toInt();
+        bool motion = _str( args[ 3 ] ).toBool();
         if( motion )
         {
             SDL_WarpMouseInWindow( MainWindow, x, y );
@@ -7258,11 +7258,11 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "BytesSend" )
     {
-        return Str::ItoA( Self->BytesSend );
+        return _str( "{}", Self->BytesSend );
     }
     else if( cmd == "BytesReceive" )
     {
-        return Str::ItoA( Self->BytesReceive );
+        return _str( "{}", Self->BytesReceive );
     }
     else if( cmd == "GetLanguage" )
     {
@@ -7275,8 +7275,8 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "SetResolution" && args.size() >= 3 )
     {
-        int w = Str::AtoI( args[ 1 ].c_str() );
-        int h = Str::AtoI( args[ 2 ].c_str() );
+        int w = _str( args[ 1 ] ).toInt();
+        int h = _str( args[ 2 ] ).toInt();
         int diff_w = w - GameOpt.ScreenWidth;
         int diff_h = h - GameOpt.ScreenHeight;
 
@@ -7365,19 +7365,19 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "DialogAnswer" && args.size() >= 4 )
     {
-        bool is_npc = Str::Compare( args[ 1 ].c_str(), "true" );
-        uint talker_id = Str::AtoI( args[ 2 ].c_str() );
-        uint answer_index = Str::AtoI( args[ 3 ].c_str() );
+        bool is_npc = Str::Compare( args[ 1 ], "true" );
+        uint talker_id = _str( args[ 2 ] ).toUInt();
+        uint answer_index = _str( args[ 3 ] ).toUInt();
         Self->Net_SendTalk( is_npc, talker_id, answer_index );
     }
     else if( cmd == "DrawMiniMap" && args.size() >= 6 )
     {
         static int zoom, x, y, x2, y2;
-        zoom = Str::AtoI( args[ 1 ].c_str() );
-        x = Str::AtoI( args[ 2 ].c_str() );
-        y = Str::AtoI( args[ 3 ].c_str() );
-        x2 = x + Str::AtoI( args[ 4 ].c_str() );
-        y2 = y + Str::AtoI( args[ 5 ].c_str() );
+        zoom = _str( args[ 1 ] ).toInt();
+        x = _str( args[ 2 ] ).toInt();
+        y = _str( args[ 3 ] ).toInt();
+        x2 = x + _str( args[ 4 ] ).toInt();
+        y2 = y + _str( args[ 5 ] ).toInt();
 
         if( zoom != Self->LmapZoom || x != Self->LmapWMap[ 0 ] || y != Self->LmapWMap[ 1 ] || x2 != Self->LmapWMap[ 2 ] || y2 != Self->LmapWMap[ 3 ] )
         {
@@ -7401,7 +7401,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "SetCrittersContour" && args.size() == 2 )
     {
-        int countour_type = Str::AtoI( args[ 1 ].c_str() );
+        int countour_type = _str( args[ 1 ] ).toInt();
         Self->HexMngr.SetCrittersContour( countour_type );
     }
     else if( cmd == "SaveGame" && args.size() == 2 )
@@ -7410,7 +7410,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "SingleplayerPause" && args.size() == 2 )
     {
-        bool pause = Str::AtoB( args[ 1 ].c_str() );
+        bool pause = _str( args[ 1 ] ).toBool();
         if( Singleplayer )
             SingleplayerData.Pause = pause;
     }
@@ -7420,16 +7420,16 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "ChangeDir" && args.size() == 2 )
     {
-        int dir = Str::AtoI( args[ 1 ].c_str() );
+        int dir = _str( args[ 1 ] ).toInt();
         Self->Chosen->ChangeDir( dir );
         Self->Net_SendDir();
     }
     else if( cmd == "MoveItem" && args.size() == 5 )
     {
-        uint  item_count = Str::AtoUI( args[ 1 ].c_str() );
-        uint  item_id = Str::AtoUI( args[ 2 ].c_str() );
-        uint  item_swap_id = Str::AtoUI( args[ 3 ].c_str() );
-        int   to_slot = Str::AtoI( args[ 4 ].c_str() );
+        uint  item_count = _str( args[ 1 ] ).toUInt();
+        uint  item_id = _str( args[ 2 ] ).toUInt();
+        uint  item_swap_id = _str( args[ 3 ] ).toUInt();
+        int   to_slot = _str( args[ 4 ] ).toInt();
         Item* item = Self->Chosen->GetItem( item_id );
         Item* item_swap = ( item_swap_id ? Self->Chosen->GetItem( item_swap_id ) : nullptr );
         Item* old_item = item->Clone();
@@ -7471,8 +7471,8 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "SkipRoof" && args.size() == 3 )
     {
-        uint hx = Str::AtoUI( args[ 1 ].c_str() );
-        uint hy = Str::AtoUI( args[ 2 ].c_str() );
+        uint hx = _str( args[ 1 ] ).toUInt();
+        uint hy = _str( args[ 2 ] ).toUInt();
         Self->HexMngr.SetSkipRoof( hx, hy );
     }
     else if( cmd == "RebuildLookBorders" )
@@ -7481,10 +7481,10 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "TransitCritter" && args.size() == 5 )
     {
-        int  hx = Str::AtoI( args[ 1 ].c_str() );
-        int  hy = Str::AtoI( args[ 2 ].c_str() );
-        bool animate = Str::AtoB( args[ 3 ].c_str() );
-        bool force = Str::AtoB( args[ 4 ].c_str() );
+        int  hx = _str( args[ 1 ] ).toInt();
+        int  hy = _str( args[ 2 ] ).toInt();
+        bool animate = _str( args[ 3 ] ).toBool();
+        bool force = _str( args[ 4 ] ).toBool();
 
         Self->HexMngr.TransitCritter( Self->Chosen, hx, hy, animate, force );
     }
@@ -7492,7 +7492,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     {
         UCharVec dirs;
         for( size_t i = 1; i < args.size(); i++ )
-            dirs.push_back( ( uchar ) Str::AtoI( args[ i ].c_str() ) );
+            dirs.push_back( (uchar) _str( args[ i ] ).toInt() );
 
         Self->Net_SendMove( dirs );
 
@@ -7509,7 +7509,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "ChosenAlpha" && args.size() == 2 )
     {
-        int alpha = Str::AtoI( args[ 1 ].c_str() );
+        int alpha = _str( args[ 1 ] ).toInt();
 
         Self->Chosen->Alpha = (uchar) alpha;
     }
@@ -7518,7 +7518,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
         if( SDL_HasScreenKeyboardSupport() )
         {
             bool cur = ( SDL_IsTextInputActive() != SDL_FALSE );
-            bool next = Str::AtoB( args[ 1 ].c_str() );
+            bool next = _str( args[ 1 ] ).toBool();
             if( cur != next )
             {
                 if( next )

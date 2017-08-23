@@ -3079,11 +3079,11 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname )
             memcpy( params, delim + 1, len - 1 );
             params[ len - 1 ] = 0;
 
-            need_cycle = Str::AtoI( params );
+            need_cycle = _str( params ).toInt();
             const char* next_param = Str::Substring( params, "-" );
             if( next_param )
             {
-                specific_frame = Str::AtoI( next_param + 1 );
+                specific_frame = _str( next_param + 1 ).toInt();
                 if( specific_frame < 0 )
                     specific_frame = -1;
             }

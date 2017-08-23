@@ -69,22 +69,6 @@ namespace Str
     void SkipLine( char*& str );
     void GoTo( char*& str, char ch, bool skip_char = false );
 
-    bool        IsNumber( const char* str );
-    const char* BtoA( bool value );
-    const char* ItoA( int value );
-    const char* UItoA( uint value );
-    const char* I64toA( int64 value );
-    const char* UI64toA( uint64 value );
-    const char* FtoA( float value );
-    const char* DFtoA( double value );
-    bool        AtoB( const char* str );
-    int         AtoI( const char* str );
-    uint        AtoUI( const char* str );
-    int64       AtoI64( const char* str );
-    uint64      AtoUI64( const char* str );
-    float       AtoF( const char* str );
-    double      AtoDF( const char* str );
-
     void  HexToStr( uchar hex, char* str ); // 2 bytes string
     uchar StrToHex( const char* str );
 
@@ -106,20 +90,30 @@ public:
     _str( const char* s ): s( s ) {}
     template< typename ... Args > _str( const string& format, Args ... args ): s( fmt::format( format, args ... ) ) {}
     operator string&() { return s; }
-    _str        operator+( const char* r ) const             { return _str( s + string( r ) ); }
-    friend _str operator+( const _str& l, const string& r )  { return _str( l.s + r ); }
-    friend bool operator==( const _str& l, const string& r ) { return l.s == r; }
-    bool        operator!=( const _str& r ) const            { return s != r.s; }
-    friend bool operator!=( const _str& l, const string& r ) { return l.s != r; }
-    const char* c_str()                                      { return s.c_str(); }
+    _str          operator+( const char* r ) const             { return _str( s + string( r ) ); }
+    friend _str   operator+( const _str& l, const string& r )  { return _str( l.s + r ); }
+    friend bool   operator==( const _str& l, const string& r ) { return l.s == r; }
+    bool          operator!=( const _str& r ) const            { return s != r.s; }
+    friend bool   operator!=( const _str& l, const string& r ) { return l.s != r; }
+    const char*   c_str() const                                { return s.c_str(); }
+    const string& str() const                                  { return s; }
+
+    bool compareIgnoreCase( const string& r );
 
     _str& trim();
     _str& replace( char from, char to );
     _str& replace( const string& from, const string& to );
     _str& lower();
     _str& upper();
-    bool  isInt();
-    int   toInt();
+
+    bool   isNumber();
+    int    toInt();
+    uint   toUInt();
+    int64  toInt64();
+    uint64 toUInt64();
+    float  toFloat();
+    double toDouble();
+    bool   toBool();
 
     _str& formatPath();
     _str& extractDir();
@@ -137,9 +131,18 @@ public:
     #endif
 
     hash        toHash();
-    string      parseHash( hash h );
+    _str&       parseHash( hash h );
     static void saveHashes( StrMap& hashes );
     static void loadHashes( StrMap& hashes );
 };
+
+namespace fmt
+{
+    template< typename ArgFormatter >
+    void format_arg( BasicFormatter< char, ArgFormatter >& f, const char*& format_str, const _str& s )
+    {
+        f.writer().write( "{}", s.str() );
+    }
+}
 
 #endif // ___TEXT___

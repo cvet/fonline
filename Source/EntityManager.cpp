@@ -182,7 +182,7 @@ void EntityManager::GetLocations( LocVec& locs )
 
 void EntityManager::DumpEntities( void ( * dump_entity )( Entity* ), IniParser& data )
 {
-    data.SetStr( "GeneralSettings", "LastEntityId", Str::UItoA( currentId ) );
+    data.SetStr( "GeneralSettings", "LastEntityId", _str( "{}", currentId ).c_str() );
 
     EntityType query[] = { EntityType::Location, EntityType::Map, EntityType::Npc, EntityType::Item, EntityType::Custom };
     for( int q = 0; q < 5; q++ )
@@ -201,7 +201,7 @@ bool EntityManager::LoadEntities( IniParser& data )
 {
     WriteLog( "Load entities...\n" );
 
-    currentId = Str::AtoUI( data.GetStr( "GeneralSettings", "LastEntityId" ) );
+    currentId = _str( data.GetStr( "GeneralSettings", "LastEntityId" ) ).toUInt();
 
     uint       whole_count = 0;
     EntityType query[] = { EntityType::Location, EntityType::Map, EntityType::Npc, EntityType::Item, EntityType::Custom };
@@ -224,7 +224,7 @@ bool EntityManager::LoadEntities( IniParser& data )
         for( auto& pkv : entities )
         {
             auto& kv = *pkv;
-            uint  id = Str::AtoUI( kv[ "$Id" ].c_str() );
+            uint  id = _str( kv[ "$Id" ] ).toUInt();
             auto  proto_it = kv.find( "$Proto" );
             hash  proto_id = ( proto_it != kv.end() ? _str( proto_it->second ).toHash() : 0 );
 

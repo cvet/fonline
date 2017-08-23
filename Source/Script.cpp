@@ -1627,12 +1627,11 @@ void Script::CacheEnumValues()
     }
 }
 
-int Script::GetEnumValue( const char* enum_value_name, bool& fail )
+int Script::GetEnumValue( const string& enum_value_name, bool& fail )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     const auto& cached_enums = edata->CachedEnums;
-    string      key = enum_value_name;
-    auto        it = cached_enums.find( key );
+    auto        it = cached_enums.find( enum_value_name );
     if( it == cached_enums.end() )
     {
         WriteLog( "Enum value '{}' not found.\n", enum_value_name );
@@ -1642,26 +1641,21 @@ int Script::GetEnumValue( const char* enum_value_name, bool& fail )
     return it->second;
 }
 
-int Script::GetEnumValue( const char* enum_name, const char* value_name, bool& fail )
+int Script::GetEnumValue( const string& enum_name, const string& value_name, bool& fail )
 {
-    if( Str::IsNumber( value_name ) )
-        return Str::AtoI( value_name );
-
-    char buf[ MAX_FOTEXT ];
-    Str::Copy( buf, enum_name );
-    Str::Append( buf, "::" );
-    Str::Append( buf, value_name );
-    return GetEnumValue( buf, fail );
+    if( _str( value_name ).isNumber() )
+        return _str( value_name ).toInt();
+    return GetEnumValue( _str( "{}::{}", enum_name, value_name ), fail );
 }
 
-const char* Script::GetEnumValueName( const char* enum_name, int value )
+string Script::GetEnumValueName( const string& enum_name, int value )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     const auto& cached_enum_names = edata->CachedEnumNames;
     auto        it = cached_enum_names.find( enum_name );
     RUNTIME_ASSERT( it != cached_enum_names.end() );
     auto        it_value = it->second.find( value );
-    return it_value != it->second.end() ? it_value->second.c_str() : Str::ItoA( value );
+    return it_value != it->second.end() ? it_value->second : _str( "{}", value );
 }
 
 /************************************************************************/

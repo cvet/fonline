@@ -1467,9 +1467,9 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
         RUNTIME_ASSERT( type_id != asTYPEID_VOID );
 
         #define VALUE_AS( ctype )    ( *(ctype*) ( ptr ) )
-        #define CHECK_PRIMITIVE( astype, ctype, toa ) \
-            if( type_id == astype )                   \
-                return toa( VALUE_AS( ctype ) );
+        #define CHECK_PRIMITIVE( astype, ctype ) \
+            if( type_id == astype )              \
+                return _str( "{}", VALUE_AS( ctype ) );
 
         if( is_hashes[ deep ] )
         {
@@ -1478,17 +1478,17 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
             return VALUE_AS( hash ) ? CodeString( _str().parseHash( VALUE_AS( hash ) ), deep ) : CodeString( "", deep );
         }
 
-        CHECK_PRIMITIVE( asTYPEID_BOOL, bool, Str::BtoA );
-        CHECK_PRIMITIVE( asTYPEID_INT8, char, Str::ItoA );
-        CHECK_PRIMITIVE( asTYPEID_INT16, short, Str::ItoA );
-        CHECK_PRIMITIVE( asTYPEID_INT32, int, Str::ItoA );
-        CHECK_PRIMITIVE( asTYPEID_INT64, int64, Str::I64toA );
-        CHECK_PRIMITIVE( asTYPEID_UINT8, uchar, Str::UItoA );
-        CHECK_PRIMITIVE( asTYPEID_UINT16, ushort, Str::UItoA );
-        CHECK_PRIMITIVE( asTYPEID_UINT32, uint, Str::UItoA );
-        CHECK_PRIMITIVE( asTYPEID_UINT64, uint64, Str::UI64toA );
-        CHECK_PRIMITIVE( asTYPEID_DOUBLE, double, Str::DFtoA );
-        CHECK_PRIMITIVE( asTYPEID_FLOAT, float, Str::FtoA );
+        CHECK_PRIMITIVE( asTYPEID_BOOL, bool );
+        CHECK_PRIMITIVE( asTYPEID_INT8, char );
+        CHECK_PRIMITIVE( asTYPEID_INT16, short );
+        CHECK_PRIMITIVE( asTYPEID_INT32, int );
+        CHECK_PRIMITIVE( asTYPEID_INT64, int64 );
+        CHECK_PRIMITIVE( asTYPEID_UINT8, uchar );
+        CHECK_PRIMITIVE( asTYPEID_UINT16, ushort );
+        CHECK_PRIMITIVE( asTYPEID_UINT32, uint );
+        CHECK_PRIMITIVE( asTYPEID_UINT64, uint64 );
+        CHECK_PRIMITIVE( asTYPEID_DOUBLE, double );
+        CHECK_PRIMITIVE( asTYPEID_FLOAT, float );
         return Script::GetEnumValueName( Script::GetEngine()->GetTypeDeclaration( type_id ), VALUE_AS( int ) );
 
         #undef VALUE_AS
@@ -1553,12 +1553,12 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
     {
         RUNTIME_ASSERT( type_id != asTYPEID_VOID );
 
-        #define CHECK_PRIMITIVE( astype, ctype, ato )   \
-            if( type_id == astype )                     \
-            {                                           \
-                ctype v = (ctype) ato( value );         \
-                memcpy( pod_buf, &v, sizeof( ctype ) ); \
-                return pod_buf;                         \
+        #define CHECK_PRIMITIVE( astype, ctype, ato )           \
+            if( type_id == astype )                             \
+            {                                                   \
+                ctype v = (ctype) _str( value ). ## ato ## ( ); \
+                memcpy( pod_buf, &v, sizeof( ctype ) );         \
+                return pod_buf;                                 \
             }
 
         if( is_hashes[ deep ] )
@@ -1569,17 +1569,17 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
             return pod_buf;
         }
 
-        CHECK_PRIMITIVE( asTYPEID_BOOL, bool, Str::AtoB );
-        CHECK_PRIMITIVE( asTYPEID_INT8, char, Str::AtoI );
-        CHECK_PRIMITIVE( asTYPEID_INT16, short, Str::AtoI );
-        CHECK_PRIMITIVE( asTYPEID_INT32, int, Str::AtoI );
-        CHECK_PRIMITIVE( asTYPEID_INT64, int64, Str::AtoI64 );
-        CHECK_PRIMITIVE( asTYPEID_UINT8, uchar, Str::AtoUI );
-        CHECK_PRIMITIVE( asTYPEID_UINT16, ushort, Str::AtoUI );
-        CHECK_PRIMITIVE( asTYPEID_UINT32, uint, Str::AtoUI );
-        CHECK_PRIMITIVE( asTYPEID_UINT64, uint64, Str::AtoUI64 );
-        CHECK_PRIMITIVE( asTYPEID_DOUBLE, double, Str::AtoDF );
-        CHECK_PRIMITIVE( asTYPEID_FLOAT, float, Str::AtoF );
+        CHECK_PRIMITIVE( asTYPEID_BOOL, bool, toBool );
+        CHECK_PRIMITIVE( asTYPEID_INT8, char, toInt );
+        CHECK_PRIMITIVE( asTYPEID_INT16, short, toInt );
+        CHECK_PRIMITIVE( asTYPEID_INT32, int, toInt );
+        CHECK_PRIMITIVE( asTYPEID_INT64, int64, toInt64 );
+        CHECK_PRIMITIVE( asTYPEID_UINT8, uchar, toUInt );
+        CHECK_PRIMITIVE( asTYPEID_UINT16, ushort, toUInt );
+        CHECK_PRIMITIVE( asTYPEID_UINT32, uint, toUInt );
+        CHECK_PRIMITIVE( asTYPEID_UINT64, uint64, toUInt64 );
+        CHECK_PRIMITIVE( asTYPEID_DOUBLE, double, toDouble );
+        CHECK_PRIMITIVE( asTYPEID_FLOAT, float, toFloat );
 
         int v = Script::GetEnumValue( Script::GetEngine()->GetTypeDeclaration( type_id ), value, is_error );
         memcpy( pod_buf, &v, sizeof( v ) );

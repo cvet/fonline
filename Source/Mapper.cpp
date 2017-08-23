@@ -1934,7 +1934,7 @@ void FOMapper::ObjDraw()
         }
     }
 
-    DrawLine( "Id", nullptr, string( Str::UItoA( entity->Id ) ).append( " (" ).append( Str::ItoA( entity->Id ) ).append( ")" ).c_str(), true, r );
+    DrawLine( "Id", nullptr, string( _str( "{}", entity->Id ) ).append( " (" ).append( _str( "{}", entity->Id ) ).append( ")" ).c_str(), true, r );
     DrawLine( "ProtoName", nullptr, _str().parseHash( entity->GetProtoId() ).c_str(), true, r );
     if( cr )
         DrawLine( "Type", nullptr, "Critter", true, r );

@@ -1198,7 +1198,7 @@ void Location::BindScript()
     if( GetEntranceScript() )
     {
         string func_name = _str().parseHash( GetEntranceScript() );
-        EntranceScriptBindId = Script::BindByFuncName( func_name.c_str(), "bool %s(Location, Critter[], uint8 entranceIndex)", false );
+        EntranceScriptBindId = Script::BindByFuncName( func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false );
     }
 }
 

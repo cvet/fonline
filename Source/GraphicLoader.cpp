@@ -355,7 +355,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         binary_fname += "_x64";
         #endif
         binary_fname += "_";
-        binary_fname += Str::UItoA( pass );
+        binary_fname += _str( "{}", pass );
         binary_fname += ".glslb";
     }
 

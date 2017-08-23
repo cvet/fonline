@@ -802,6 +802,6 @@ string ItemManager::GetItemsStatistics()
 
     string result = "Name                                     Count\n";
     for( ProtoItem* proto_item : protos )
-        result += _str( "{:<40} {:<20}\n", proto_item->GetName(), Str::I64toA( proto_item->InstanceCount ) );
+        result += _str( "{:<40} {:<20}\n", proto_item->GetName(), _str( "{}", proto_item->InstanceCount ).c_str() );
     return result;
 }

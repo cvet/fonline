@@ -261,7 +261,7 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
     for( size_t i = 0; i < run_func.size(); i++ )
     {
         WriteLog( "Executing 'void {}()'.\n", run_func[ i ] );
-        uint bind_id = Script::BindByFuncName( run_func[ i ].c_str(), "void %s()", true );
+        uint bind_id = Script::BindByFuncName( run_func[ i ], "void %s()", true );
         if( bind_id )
         {
             Script::PrepareContext( bind_id, "ASCompiler" );

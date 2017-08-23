@@ -52,7 +52,7 @@ typedef struct _IMAGEHLP_MODULE64_V2
 void CatchExceptions( const string& app_name, int app_ver )
 {
     AppName = app_name;
-    AppVer = Str::ItoA( app_ver );
+    AppVer = _str( "{}", app_ver );
 
     if( !app_name.empty() )
         SetUnhandledExceptionFilter( TopLevelFilterReadableDump );
@@ -484,7 +484,7 @@ static void DumpAngelScript( FILE* f );
 void CatchExceptions( const string& app_name, int app_ver )
 {
     AppName = app_name;
-    AppVer = Str::ItoA( app_ver );
+    AppVer = _str( "{}", app_ver );
 
     if( !app_name.empty() && !SigactionsSetted )
     {

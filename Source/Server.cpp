@@ -2014,7 +2014,7 @@ void FOServer::SaveGameInfoFile( IniParser& data )
 
         string pic_data_str;
         for( uchar& x : SingleplayerSave.PicData )
-            pic_data_str.append( Str::ItoA( x ) ).append( " " );
+            pic_data_str.append( _str( "{}", x ) ).append( " " );
         if( !SingleplayerSave.PicData.empty() )
             pic_data_str.pop_back();
         kv[ "SaveLoadPicture" ] = pic_data_str;
@@ -2025,23 +2025,23 @@ void FOServer::SaveGameInfoFile( IniParser& data )
     uint64        ft;
     Timer::GetCurrentDateTime( cur_time );
     Timer::DateTimeToFullTime( cur_time, ft );
-    kv[ "RealYear" ] = Str::ItoA( cur_time.Year );
-    kv[ "RealMonth" ] = Str::ItoA( cur_time.Month );
-    kv[ "RealDay" ] = Str::ItoA( cur_time.Day );
-    kv[ "RealHour" ] = Str::ItoA( cur_time.Hour );
-    kv[ "RealMinute" ] = Str::ItoA( cur_time.Minute );
-    kv[ "RealSecond" ] = Str::ItoA( cur_time.Second );
-    kv[ "SaveTimestamp" ] = Str::UI64toA( ft );
+    kv[ "RealYear" ] = _str( "{}", cur_time.Year );
+    kv[ "RealMonth" ] = _str( "{}", cur_time.Month );
+    kv[ "RealDay" ] = _str( "{}", cur_time.Day );
+    kv[ "RealHour" ] = _str( "{}", cur_time.Hour );
+    kv[ "RealMinute" ] = _str( "{}", cur_time.Minute );
+    kv[ "RealSecond" ] = _str( "{}", cur_time.Second );
+    kv[ "SaveTimestamp" ] = _str( "{}", ft );
 
     // Game time
-    kv[ "YearStart" ] = Str::ItoA( GameOpt.YearStart );
-    kv[ "Year" ] = Str::ItoA( GameOpt.Year );
-    kv[ "Month" ] = Str::ItoA( GameOpt.Month );
-    kv[ "Day" ] = Str::ItoA( GameOpt.Day );
-    kv[ "Hour" ] = Str::ItoA( GameOpt.Hour );
-    kv[ "Minute" ] = Str::ItoA( GameOpt.Minute );
-    kv[ "Second" ] = Str::ItoA( GameOpt.Second );
-    kv[ "TimeMultiplier" ] = Str::ItoA( GameOpt.TimeMultiplier );
+    kv[ "YearStart" ] = _str( "{}", GameOpt.YearStart );
+    kv[ "Year" ] = _str( "{}", GameOpt.Year );
+    kv[ "Month" ] = _str( "{}", GameOpt.Month );
+    kv[ "Day" ] = _str( "{}", GameOpt.Day );
+    kv[ "Hour" ] = _str( "{}", GameOpt.Hour );
+    kv[ "Minute" ] = _str( "{}", GameOpt.Minute );
+    kv[ "Second" ] = _str( "{}", GameOpt.Second );
+    kv[ "TimeMultiplier" ] = _str( "{}", GameOpt.TimeMultiplier );
 }
 
 bool FOServer::LoadGameInfoFile( IniParser& data )
@@ -2060,14 +2060,14 @@ bool FOServer::LoadGameInfoFile( IniParser& data )
     }
 
     // Time
-    GameOpt.YearStart = Str::AtoI( kv[ "YearStart" ].c_str() );
-    GameOpt.Year = Str::AtoI( kv[ "Year" ].c_str() );
-    GameOpt.Month = Str::AtoI( kv[ "Month" ].c_str() );
-    GameOpt.Day = Str::AtoI( kv[ "Day" ].c_str() );
-    GameOpt.Hour = Str::AtoI( kv[ "Hour" ].c_str() );
-    GameOpt.Minute = Str::AtoI( kv[ "Minute" ].c_str() );
-    GameOpt.Second = Str::AtoI( kv[ "Second" ].c_str() );
-    GameOpt.TimeMultiplier = Str::AtoI( kv[ "TimeMultiplier" ].c_str() );
+    GameOpt.YearStart = _str( kv[ "YearStart" ] ).toInt();
+    GameOpt.Year = _str( kv[ "Year" ] ).toInt();
+    GameOpt.Month = _str( kv[ "Month" ] ).toInt();
+    GameOpt.Day = _str( kv[ "Day" ] ).toInt();
+    GameOpt.Hour = _str( kv[ "Hour" ] ).toInt();
+    GameOpt.Minute = _str( kv[ "Minute" ] ).toInt();
+    GameOpt.Second = _str( kv[ "Second" ] ).toInt();
+    GameOpt.TimeMultiplier = _str( kv[ "TimeMultiplier" ] ).toInt();
     Timer::InitGameTime();
 
     WriteLog( "Load game info complete.\n" );
@@ -2122,7 +2122,7 @@ bool FOServer::InitReal()
 
     // Delete intermediate files if engine have been updated
     FileManager fm;
-    if( !fm.LoadFile( FileManager::GetWritePath( "Version.txt" ) ) || Str::AtoUI( fm.GetCStr() ) != FONLINE_VERSION || GameOpt.ForceRebuildResources )
+    if( !fm.LoadFile( FileManager::GetWritePath( "Version.txt" ) ) || _str( fm.GetCStr() ).toInt() != FONLINE_VERSION || GameOpt.ForceRebuildResources )
     {
         fm.SetStr( "%u", FONLINE_VERSION );
         fm.SaveFile( "Version.txt" );
@@ -2891,7 +2891,7 @@ void FOServer::DumpEntity( Entity* entity )
     d->ProtoProps = ( entity->Proto ? &entity->Proto->Props : nullptr );
     StrMap& kv = d->ExtraData;
     if( entity->Id )
-        kv[ "$Id" ] = Str::UItoA( entity->Id );
+        kv[ "$Id" ] = _str( "{}", entity->Id );
     if( entity->Proto )
         kv[ "$Proto" ] = _str().parseHash( entity->Proto->ProtoId );
     if( entity->Type == EntityType::Custom )

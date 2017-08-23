@@ -121,10 +121,10 @@ public:
     static uint               GetScriptFuncBindId( hash func_num );
     static void               PrepareScriptFuncContext( hash func_num, const string& ctx_info );
 
-    static void        CacheEnumValues();
-    static int         GetEnumValue( const char* enum_value_name, bool& fail );
-    static int         GetEnumValue( const char* enum_name, const char* value_name, bool& fail );
-    static const char* GetEnumValueName( const char* enum_name, int value );
+    static void   CacheEnumValues();
+    static int    GetEnumValue( const string& enum_value_name, bool& fail );
+    static int    GetEnumValue( const string& enum_name, const string& value_name, bool& fail );
+    static string GetEnumValueName( const string& enum_name, int value );
 
     // Script execution
     static void              PrepareContext( uint bind_id, const string& ctx_info );

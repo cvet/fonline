@@ -69,17 +69,17 @@ static void Global_Log( string text )
 
 static bool Global_StrToInt( string text, int& result )
 {
-    if( text.empty() || !Str::IsNumber( text.c_str() ) )
+    if( !_str( text ).isNumber() )
         return false;
-    result = Str::AtoI( text.c_str() );
+    result = _str( text ).toInt();
     return true;
 }
 
 static bool Global_StrToFloat( string text, float& result )
 {
-    if( text.empty() )
+    if( !_str( text ).isNumber() )
         return false;
-    result = (float) strtod( text.c_str(), nullptr );
+    result = _str( text ).toFloat();
     return true;
 }
 

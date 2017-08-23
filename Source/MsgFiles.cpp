@@ -142,7 +142,7 @@ int FOMsg::GetInt( uint num )
         break;
     }
 
-    return Str::AtoI( it->second );
+    return _str( it->second ).toInt();
 }
 
 uint FOMsg::GetBinary( uint num, UCharVec& data  )
@@ -305,7 +305,7 @@ bool FOMsg::LoadFromString( const char* str, uint str_len )
         pbuf++;
 
         // Parse number
-        uint num1 = (uint) ( Str::IsNumber( num1_begin ) ? Str::AtoI( num1_begin ) : _str( num1_begin ).toHash() );
+        uint num1 = (uint) ( _str( num1_begin ).isNumber() ? _str( num1_begin ).toInt() : _str( num1_begin ).toHash() );
 
         // Skip '{'
         Str::GoTo( pbuf, '{', true );
@@ -321,7 +321,7 @@ bool FOMsg::LoadFromString( const char* str, uint str_len )
         pbuf++;
 
         // Parse number
-        uint num2 = ( num2_begin[ 0 ] ? ( Str::IsNumber( num2_begin ) ? Str::AtoI( num2_begin ) : _str( num2_begin ).toHash() ) : 0 );
+        uint num2 = ( num2_begin[ 0 ] ? ( _str( num2_begin ).isNumber() ? _str( num2_begin ).toInt() : _str( num2_begin ).toHash() ) : 0 );
 
         // Goto '{'
         Str::GoTo( pbuf, '{', true );
@@ -349,7 +349,7 @@ void FOMsg::LoadFromMap( const StrMap& kv )
 {
     for( auto& kv_ : kv )
     {
-        uint num = Str::AtoUI( kv_.first.c_str() );
+        uint num = _str( kv_.first ).toUInt();
         if( num )
             AddStr( num, kv_.second );
     }
@@ -359,13 +359,7 @@ bool FOMsg::SaveToFile( const char* fname, bool to_data )
 {
     string str;
     for( auto it = strData.begin(), end = strData.end(); it != end; it++ )
-    {
-        str += "{";
-        str += Str::UItoA( it->first );
-        str += "}{}{";
-        str += it->second;
-        str += "}\n";
-    }
+        str += _str( "{{{}}}{{}}{{{}}}", it->first, it->second );
 
     char*       buf = (char*) str.c_str();
     uint        buf_len = (uint) str.length();

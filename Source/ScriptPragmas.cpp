@@ -803,7 +803,7 @@ public:
         {
             if( !DlgMngr.GetDialog( it->second ) )
             {
-                WriteLog( "Dialog file '{}' not found.\n", it->first.c_str() );
+                WriteLog( "Dialog file '{}' not found.\n", it->first );
                 errors++;
             }
         }
@@ -811,7 +811,7 @@ public:
         {
             if( !ProtoMngr.GetProtoItem( it->second ) )
             {
-                WriteLog( "Item file '{}' not found.\n", it->first.c_str() );
+                WriteLog( "Item file '{}' not found.\n", it->first );
                 errors++;
             }
         }
@@ -819,7 +819,7 @@ public:
         {
             if( !ProtoMngr.GetProtoCritter( it->second ) )
             {
-                WriteLog( "Critter file '{}' not found.\n", it->first.c_str() );
+                WriteLog( "Critter file '{}' not found.\n", it->first );
                 errors++;
             }
         }
@@ -827,7 +827,7 @@ public:
         {
             if( !ProtoMngr.GetProtoLocation( it->second ) )
             {
-                WriteLog( "Location file '{}' not found.\n", it->first.c_str() );
+                WriteLog( "Location file '{}' not found.\n", it->first );
                 errors++;
             }
         }
@@ -835,7 +835,7 @@ public:
         {
             if( !ProtoMngr.GetProtoMap( it->second ) )
             {
-                WriteLog( "Map file '{}' not found.\n", it->first.c_str() );
+                WriteLog( "Map file '{}' not found.\n", it->first );
                 errors++;
             }
         }
@@ -857,7 +857,7 @@ public:
         str >> enum_name >> value_name;
         if( str.fail() )
         {
-            WriteLog( "Unable to parse 'enum' pragma '{}'.\n", text.c_str() );
+            WriteLog( "Unable to parse 'enum' pragma '{}'.\n", text );
             return false;
         }
         char other[ MAX_FOTEXT ] = { 0 };
@@ -867,7 +867,7 @@ public:
         int              result = engine->RegisterEnum( enum_name );
         if( result < 0 && result != asALREADY_REGISTERED )
         {
-            WriteLog( "Error in 'enum' pragma '{}', register enum error {}.\n", text.c_str(), result );
+            WriteLog( "Error in 'enum' pragma '{}', register enum error {}.\n", text, result );
             return false;
         }
 
@@ -880,7 +880,7 @@ public:
             value = ConvertParamValue( buf.c_str(), fail );
             if( fail )
             {
-                WriteLog( "Error in 'enum' pragma '{}', value conversation error.\n", text.c_str() );
+                WriteLog( "Error in 'enum' pragma '{}', value conversation error.\n", text );
                 return false;
             }
         }
@@ -892,7 +892,7 @@ public:
         result = engine->RegisterEnumValue( enum_name, value_name, value );
         if( result < 0 )
         {
-            WriteLog( "Error in 'enum' pragma '{}', register enum value error {}.\n", text.c_str(), result );
+            WriteLog( "Error in 'enum' pragma '{}', register enum value error {}.\n", text, result );
             return false;
         }
 
@@ -1499,7 +1499,7 @@ public:
         {
             string decl = _str( "void {}({}{}{})", "{}", pragmaType == PRAGMA_SERVER ? "Critter" : "",
                                 pragmaType == PRAGMA_SERVER && func_desc.second.length() > 0 ? ", " : "", func_desc.second.c_str() );
-            uint bind_id = Script::BindByFuncName( func_desc.first.c_str(), decl.c_str(), false, false );
+            uint bind_id = Script::BindByFuncName( func_desc.first, decl, false, false );
             if( bind_id )
             {
                 inFunc.push_back( Script::GetBindFunc( bind_id ) );

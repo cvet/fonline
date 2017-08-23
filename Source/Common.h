@@ -60,7 +60,7 @@
 # define DLL_Load( name )                 (void*) LoadLibraryW( _str( name ).toWideChar().c_str() )
 # define DLL_Free( h )                    FreeLibrary( (HMODULE) h )
 # define DLL_GetAddress( h, pname )       (size_t*) GetProcAddress( (HMODULE) h, _str( pname ).c_str() )
-# define DLL_Error()                      Str::ItoA( GetLastError() )
+# define DLL_Error()                      _str( "{}", GetLastError() )
 #else
 # include <dlfcn.h>
 # define DLL_Load( name )                 (void*) dlopen( _str( name ).c_str(), RTLD_NOW | RTLD_LOCAL )
@@ -270,7 +270,7 @@ void GetHexInterval( int from_hx, int from_hy, int to_hx, int to_hy, int& x, int
 #  pragma comment( lib, "Winmm.lib" )
 #  pragma comment( lib, "Imm32.lib" )
 # endif
-# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); RUNTIME_ASSERT_STR( err__ == GL_NO_ERROR, _str( # expr " error {:#X}", err__ ).c_str() ); } }
+# define GL( expr )             { expr; if( GameOpt.OpenGLDebug ) { GLenum err__ = glGetError(); RUNTIME_ASSERT_STR( err__ == GL_NO_ERROR, _str( # expr " error {:#X}", err__ ) ); } }
 
 extern bool OGL_version_2_0;
 extern bool OGL_vertex_buffer_object;
