@@ -313,7 +313,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
     char     image_name[ MAX_FOPATH ] = { 0 };
 
     uint     font_cache_len;
-    uchar*   font_cache_buf = Crypt.GetCache( fname.c_str(), font_cache_len );
+    uchar*   font_cache_buf = Crypt.GetCache( fname, font_cache_len );
     uint64   write_time = fm.GetWriteTime();
     if( !font_cache_buf || write_time > *(uint64*) font_cache_buf )
     {
@@ -436,7 +436,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
             WriteData( font_cache, l.OffsY );
             WriteData( font_cache, l.XAdvance );
         }
-        Crypt.SetCache( fname.c_str(), &font_cache[ 0 ], (uint) font_cache.size() );
+        Crypt.SetCache( fname, &font_cache[ 0 ], (uint) font_cache.size() );
     }
     else
     {

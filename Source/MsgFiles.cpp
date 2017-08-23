@@ -456,7 +456,7 @@ bool LanguagePack::LoadFromCache( const char* lang_name )
     for( int i = 0; i < TEXTMSG_COUNT; i++ )
     {
         uint   buf_len;
-        uchar* buf = Crypt.GetCache( GetMsgCacheName( i ).c_str(), buf_len );
+        uchar* buf = Crypt.GetCache( GetMsgCacheName( i ), buf_len );
         if( buf )
         {
             UCharVec data;

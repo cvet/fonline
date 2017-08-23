@@ -14,7 +14,7 @@ public:
     CryptManager();
 
     // Returns Crc32 of data
-    uint Crc32( const char* data );
+    uint Crc32( const string& data );
     uint Crc32( const uchar* data, uint len );
     void Crc32( const uchar* data, uint len, uint& crc );
 
@@ -31,7 +31,7 @@ public:
     void DecryptPassword( char* data, uint len, uint key );
 
     // Client credentials SHA-2 hash
-    void ClientPassHash( const char* name, const char* pass, char* pass_hash );
+    string ClientPassHash( const string& name, const string& pass );
 
     // Xor the text
     void TextXOR( char* data, uint len, char* xor_key, uint xor_len );
@@ -45,14 +45,14 @@ public:
     bool   Uncompress( UCharVec& data, uint mul_approx );
 
     // Cache stuff
-    bool   IsCache( const char* data_name );
-    void   EraseCache( const char* data_name );
-    void   SetCache( const char* data_name, const uchar* data, uint data_len );
-    void   SetCache( const char* data_name, const string& str );
-    void   SetCache( const char* data_name, UCharVec& data );
-    uchar* GetCache( const char* data_name, uint& data_len );
-    string GetCache( const char* data_name );
-    bool   GetCache( const char* data_name, UCharVec& data );
+    bool   IsCache( const string& data_name );
+    void   EraseCache( const string& data_name );
+    void   SetCache( const string& data_name, const uchar* data, uint data_len );
+    void   SetCache( const string& data_name, const string& str );
+    void   SetCache( const string& data_name, UCharVec& data );
+    uchar* GetCache( const string& data_name, uint& data_len );
+    string GetCache( const string& data_name );
+    bool   GetCache( const string& data_name, UCharVec& data );
 };
 
 extern CryptManager Crypt;

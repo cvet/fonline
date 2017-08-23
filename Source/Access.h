@@ -558,14 +558,13 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             break;
         }
         Str::Replacement( pass, '*', ' ' );
-        char pass_hash[ PASS_HASH_SIZE ];
-        Crypt.ClientPassHash( name, pass, pass_hash );
+        string pass_hash = Crypt.ClientPassHash( name, pass );
         msg_len += PASS_HASH_SIZE;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf.Push( pass_hash, PASS_HASH_SIZE );
+        buf.Push( pass_hash.c_str(), PASS_HASH_SIZE );
     }
     break;
     case CMD_CHANGE_PASSWORD:
@@ -593,18 +592,16 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
             break;
         }
 
-        char pass_hash[ PASS_HASH_SIZE ];
-        Crypt.ClientPassHash( name, pass, pass_hash );
+        string pass_hash = Crypt.ClientPassHash( name, pass );
         Str::Replacement( new_pass, '*', ' ' );
-        char new_pass_hash[ PASS_HASH_SIZE ];
-        Crypt.ClientPassHash( name, new_pass, new_pass_hash );
+        string new_pass_hash = Crypt.ClientPassHash( name, new_pass );
         msg_len += PASS_HASH_SIZE * 2;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf.Push( pass_hash, PASS_HASH_SIZE );
-        buf.Push( new_pass_hash, PASS_HASH_SIZE );
+        buf.Push( pass_hash.c_str(), PASS_HASH_SIZE );
+        buf.Push( new_pass_hash.c_str(), PASS_HASH_SIZE );
     }
     break;
     case CMD_DROP_UID:

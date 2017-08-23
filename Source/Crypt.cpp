@@ -18,13 +18,13 @@ CryptManager::CryptManager()
     }
 }
 
-uint CryptManager::Crc32( const char* data )
+uint CryptManager::Crc32( const string& data )
 {
     const uint CRC_MASK = 0xD202EF8D;
     uint       value = 0;
-    while( *data )
+    for( char ch : data )
     {
-        value = crcTable[ (uchar) value ^ ( uchar ) * data++ ] ^ value >> 8;
+        value = crcTable[ (uchar) value ^ (uchar) ch ] ^ value >> 8;
         value ^= CRC_MASK;
     }
     return value;
@@ -146,25 +146,27 @@ void CryptManager::DecryptPassword( char* data, uint len, uint key )
     data[ len - 1 ] = 0;
 }
 
-void CryptManager::ClientPassHash( const char* name, const char* pass, char* pass_hash )
+string CryptManager::ClientPassHash( const string& name, const string& pass )
 {
-    // Calculate hash
-    char* bld = new char[ MAX_NAME + 1 ];
+    char*  bld = new char[ MAX_NAME + 1 ];
     memzero( bld, MAX_NAME + 1 );
-    uint  pass_len = Str::Length( pass );
-    uint  name_len = Str::Length( name );
+    size_t pass_len = pass.length();
+    size_t name_len = name.length();
     if( pass_len > MAX_NAME )
         pass_len = MAX_NAME;
-    Str::Copy( bld, MAX_NAME + 1, pass );
+    memcpy( bld, pass.c_str(), pass_len );
     if( pass_len < MAX_NAME )
         bld[ pass_len++ ] = '*';
-    if( name_len )
-    {
-        for( ; pass_len < MAX_NAME; pass_len++ )
-            bld[ pass_len ] = name[ pass_len % name_len ];
-    }
+    for( ; name_len && pass_len < MAX_NAME; pass_len++ )
+        bld[ pass_len ] = name[ pass_len % name_len ];
+
+    char* pass_hash = new char[ MAX_NAME + 1 ];
+    memzero( pass_hash, MAX_NAME + 1 );
     sha256( (const uchar*) bld, MAX_NAME, (uchar*) pass_hash );
+    string result = pass_hash;
     delete[] bld;
+    delete[] pass_hash;
+    return result;
 }
 
 uchar* CryptManager::Compress( const uchar* data, uint& data_len )
@@ -256,15 +258,12 @@ bool CryptManager::Uncompress( UCharVec& data, uint mul_approx )
     return true;
 }
 
-static string MakeCachePath( const char* data_name )
+static string MakeCachePath( const string& data_name )
 {
-    string path = data_name;
-    std::replace( path.begin(), path.end(), '/', '_' );
-    std::replace( path.begin(), path.end(), '\\', '_' );
-    return FileManager::GetWritePath( "Cache/" + path );
+    return FileManager::GetWritePath( "Cache/" + _str( data_name ).replace( '/', '_' ).replace( '\\', '_' ) );
 }
 
-bool CryptManager::IsCache( const char* data_name )
+bool CryptManager::IsCache( const string& data_name )
 {
     string path = MakeCachePath( data_name );
     void*  f = FileOpen( path, false );
@@ -273,13 +272,13 @@ bool CryptManager::IsCache( const char* data_name )
     return exists;
 }
 
-void CryptManager::EraseCache( const char* data_name )
+void CryptManager::EraseCache( const string& data_name )
 {
     string path = MakeCachePath( data_name );
     FileDelete( path );
 }
 
-void CryptManager::SetCache( const char* data_name, const uchar* data, uint data_len )
+void CryptManager::SetCache( const string& data_name, const uchar* data, uint data_len )
 {
     string path = MakeCachePath( data_name );
     void*  f = FileOpen( path, true );
@@ -300,17 +299,17 @@ void CryptManager::SetCache( const char* data_name, const uchar* data, uint data
     FileClose( f );
 }
 
-void CryptManager::SetCache( const char* data_name, const string& str )
+void CryptManager::SetCache( const string& data_name, const string& str )
 {
     SetCache( data_name, !str.empty() ? (uchar*) str.c_str() : (uchar*) "", (uint) str.length() );
 }
 
-void CryptManager::SetCache( const char* data_name, UCharVec& data )
+void CryptManager::SetCache( const string& data_name, UCharVec& data )
 {
     SetCache( data_name, !data.empty() ? (uchar*) &data[ 0 ] : (uchar*) "", (uint) data.size() );
 }
 
-uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
+uchar* CryptManager::GetCache( const string& data_name, uint& data_len )
 {
     string path = MakeCachePath( data_name );
     void*  f = FileOpen( path, false );
@@ -333,7 +332,7 @@ uchar* CryptManager::GetCache( const char* data_name, uint& data_len )
     return data;
 }
 
-string CryptManager::GetCache( const char* data_name )
+string CryptManager::GetCache( const string& data_name )
 {
     string str;
     uint   result_len;
@@ -350,7 +349,7 @@ string CryptManager::GetCache( const char* data_name )
     return str;
 }
 
-bool CryptManager::GetCache( const char* data_name, UCharVec& data )
+bool CryptManager::GetCache( const string& data_name, UCharVec& data )
 {
     data.clear();
     uint   result_len;

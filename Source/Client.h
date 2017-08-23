@@ -120,8 +120,8 @@ public:
 
     void UpdateFilesStart();
     void UpdateFilesLoop();
-    void UpdateFilesAddText( uint num_str, const char* num_str_str );
-    void UpdateFilesAbort( uint num_str, const char* num_str_str );
+    void UpdateFilesAddText( uint num_str, const string& num_str_str );
+    void UpdateFilesAbort( uint num_str, const string& num_str_str );
 
     // Network
     uchar*        ComBuf;

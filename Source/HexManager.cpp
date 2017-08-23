@@ -3581,7 +3581,7 @@ bool HexManager::LoadMap( hash map_pid )
 
     // Find in cache
     uint   cache_len;
-    uchar* cache = Crypt.GetCache( map_name.c_str(), cache_len );
+    uchar* cache = Crypt.GetCache( map_name, cache_len );
     if( !cache )
     {
         WriteLog( "Load map '{}' from cache fail.\n", map_name );
@@ -3801,7 +3801,7 @@ void HexManager::GetMapHash( hash map_pid, hash& hash_tiles, hash& hash_scen )
     string map_name = _str( "{}.map", map_pid );
 
     uint   cache_len;
-    uchar* cache = Crypt.GetCache( map_name.c_str(), cache_len );
+    uchar* cache = Crypt.GetCache( map_name, cache_len );
     if( !cache )
     {
         WriteLog( "Load map '{}' from cache fail.\n", map_name );

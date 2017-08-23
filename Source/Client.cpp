@@ -744,16 +744,16 @@ void FOClient::UpdateFilesLoop()
     }
 }
 
-void FOClient::UpdateFilesAddText( uint num_str, const char* num_str_str )
+void FOClient::UpdateFilesAddText( uint num_str, const string& num_str_str )
 {
     if( !Singleplayer && UpdateFilesFontLoaded )
     {
-        const char* text = ( CurLang.Msg[ TEXTMSG_GAME ].Count( num_str ) ? CurLang.Msg[ TEXTMSG_GAME ].GetStr( num_str ) : num_str_str );
-        UpdateFilesText += string( text ) + "\n";
+        string text = ( CurLang.Msg[ TEXTMSG_GAME ].Count( num_str ) ? CurLang.Msg[ TEXTMSG_GAME ].GetStr( num_str ) : num_str_str );
+        UpdateFilesText += text + "\n";
     }
 }
 
-void FOClient::UpdateFilesAbort( uint num_str, const char* num_str_str )
+void FOClient::UpdateFilesAbort( uint num_str, const string& num_str_str )
 {
     UpdateFilesAddText( num_str, num_str_str );
     UpdateFilesAborted = true;
@@ -4167,7 +4167,7 @@ void FOClient::Net_OnMap()
     CHECK_IN_BUFF_ERROR;
 
     uint        cache_len;
-    uchar*      cache = Crypt.GetCache( map_name.c_str(), cache_len );
+    uchar*      cache = Crypt.GetCache( map_name, cache_len );
     FileManager fm;
 
     if( cache && fm.LoadStream( cache, cache_len ) )
@@ -4237,7 +4237,7 @@ void FOClient::Net_OnMap()
         fm.SetData( buf, obuf_len );
         delete[] buf;
 
-        Crypt.SetCache( map_name.c_str(), fm.GetOutBuf(), fm.GetOutBufLen() );
+        Crypt.SetCache( map_name, fm.GetOutBuf(), fm.GetOutBufLen() );
     }
     else
     {
@@ -4479,7 +4479,7 @@ void FOClient::Net_OnUpdateFilesList()
 
         // Check hash
         uint  cur_hash_len;
-        uint* cur_hash = (uint*) Crypt.GetCache( ( string( name ) + ".hash" ).c_str(), cur_hash_len );
+        uint* cur_hash = (uint*) Crypt.GetCache( _str( "{}.hash", name ), cur_hash_len );
         bool  cached_hash_same = ( cur_hash && cur_hash_len == sizeof( hash ) && *cur_hash == hash );
         if( name[ 0 ] != '$' )
         {
@@ -4490,7 +4490,7 @@ void FOClient::Net_OnUpdateFilesList()
                 if( cached_hash_same || ( file.LoadFile( name ) && hash == Crypt.MurmurHash2( file.GetBuf(), file.GetFsize() ) ) )
                 {
                     if( !cached_hash_same )
-                        Crypt.SetCache( ( string( name ) + ".hash" ).c_str(), (uchar*) &hash, sizeof( hash ) );
+                        Crypt.SetCache( _str( "{}.hash", name ), (uchar*) &hash, sizeof( hash ) );
                     continue;
                 }
             }
@@ -4562,8 +4562,8 @@ void FOClient::Net_OnUpdateFileData()
                 return;
             }
 
-            Crypt.SetCache( update_file.Name.c_str(), cache_data.GetBuf(), cache_data.GetFsize() );
-            Crypt.SetCache( ( update_file.Name + ".hash" ).c_str(), (uchar*) &update_file.Hash, sizeof( update_file.Hash ) );
+            Crypt.SetCache( update_file.Name, cache_data.GetBuf(), cache_data.GetFsize() );
+            Crypt.SetCache( update_file.Name + ".hash", (uchar*) &update_file.Hash, sizeof( update_file.Hash ) );
             FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
         }
         // File
@@ -4571,9 +4571,9 @@ void FOClient::Net_OnUpdateFileData()
         {
             string from_path = FileManager::GetWritePath( "update.temp" );
             string to_path = FileManager::GetWritePath( update_file.Name.c_str() );
-            if( !FileManager::RenameFile( from_path.c_str(), to_path.c_str() ) )
+            if( !FileManager::RenameFile( from_path, to_path ) )
             {
-                UpdateFilesAbort( STR_FILESYSTEM_ERROR, _str( "Can't rename file '{}' to '{}'!", from_path, to_path ).c_str() );
+                UpdateFilesAbort( STR_FILESYSTEM_ERROR, _str( "Can't rename file '{}' to '{}'!", from_path, to_path ) );
                 return;
             }
         }
@@ -5943,7 +5943,7 @@ void FOClient::PlayVideo()
     // Open file
     if( !CurVideo->RawData.LoadFile( video.FileName.c_str() ) )
     {
-        WriteLog( "Video file '{}' not found.\n", video.FileName.c_str() );
+        WriteLog( "Video file '{}' not found.\n", video.FileName );
         SAFEDEL( CurVideo );
         NextVideo();
         return;
@@ -8809,7 +8809,7 @@ void FOClient::SScriptFunc::Global_SetCacheData( string name, const CScriptArray
 {
     UCharVec data_vec;
     Script::AssignScriptArrayInVector( data_vec, data );
-    Crypt.SetCache( name.c_str(), data_vec );
+    Crypt.SetCache( name, data_vec );
 }
 
 void FOClient::SScriptFunc::Global_SetCacheDataSize( string name, const CScriptArray* data, uint data_size )
@@ -8817,13 +8817,13 @@ void FOClient::SScriptFunc::Global_SetCacheDataSize( string name, const CScriptA
     UCharVec data_vec;
     Script::AssignScriptArrayInVector( data_vec, data );
     data_vec.resize( data_size );
-    Crypt.SetCache( name.c_str(), data_vec );
+    Crypt.SetCache( name, data_vec );
 }
 
 CScriptArray* FOClient::SScriptFunc::Global_GetCacheData( string name )
 {
     UCharVec data_vec;
-    if( !Crypt.GetCache( name.c_str(), data_vec ) )
+    if( !Crypt.GetCache( name, data_vec ) )
         return nullptr;
 
     CScriptArray* arr = Script::CreateArray( "uint8[]" );
@@ -8833,22 +8833,22 @@ CScriptArray* FOClient::SScriptFunc::Global_GetCacheData( string name )
 
 void FOClient::SScriptFunc::Global_SetCacheDataStr( string name, string str )
 {
-    Crypt.SetCache( name.c_str(), str );
+    Crypt.SetCache( name, str );
 }
 
 string FOClient::SScriptFunc::Global_GetCacheDataStr( string name )
 {
-    return Crypt.GetCache( name.c_str() );
+    return Crypt.GetCache( name );
 }
 
 bool FOClient::SScriptFunc::Global_IsCacheData( string name )
 {
-    return Crypt.IsCache( name.c_str() );
+    return Crypt.IsCache( name );
 }
 
 void FOClient::SScriptFunc::Global_EraseCacheData( string name )
 {
-    Crypt.EraseCache( name.c_str() );
+    Crypt.EraseCache( name );
 }
 
 void FOClient::SScriptFunc::Global_SetUserConfig( CScriptArray* key_values )
