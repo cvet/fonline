@@ -30,7 +30,7 @@ typedef vector< Matrix* >    MatrixPtrVec;
 struct Bone;
 typedef vector< Bone* >      BoneVec;
 
-extern bool Is3dExtensionSupported( const char* ext );
+extern bool Is3dExtensionSupported( const string& ext );
 
 //
 // Vertex2D
@@ -455,7 +455,7 @@ struct Bone
     void        Save( FileManager& file );
     void        Load( FileManager& file );
     void        FixAfterLoad( Bone* root_bone );
-    static uint GetHash( const char* name );
+    static uint GetHash( const string& name );
 };
 
 //

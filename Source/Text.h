@@ -35,7 +35,9 @@ namespace Str
 
     bool IsValidUTF8( uint ucs );
     bool IsValidUTF8( const char* str );
+    bool IsValidUTF8( const string& str );
     uint DecodeUTF8( const char* str, uint* length );
+    uint DecodeUTF8( const string& str, uint* length );
     uint EncodeUTF8( uint ucs, char* buf );
 
     uint Length( const char* str );
@@ -102,6 +104,7 @@ public:
 
     _str& trim();
     _str& replace( char from, char to );
+    _str& replace( char from1, char from2, char to );
     _str& replace( const string& from, const string& to );
     _str& lower();
     _str& upper();

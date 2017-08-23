@@ -286,11 +286,11 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
     map_ini.AppendStr( buf );
 
     // Header
-    const char* header_str = map_ini.GetAppContent( "Header" );
-    int         version = -1;
-    if( header_str )
+    string header_str = map_ini.GetAppContent( "Header" );
+    int    version = -1;
+    if( !header_str.empty() )
     {
-        istrstream istr( header_str );
+        istrstream istr( header_str.c_str() );
         string     field, value;
         int        ivalue;
         string     script_name;
@@ -301,7 +301,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
             istr >> field >> value;
             if( !istr.fail() )
             {
-                ivalue = atoi( value.c_str() );
+                ivalue = _str( value ).toInt();
                 if( field == "Version" )
                 {
                     version = ivalue;
@@ -389,10 +389,10 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
         return false;
 
     // Tiles
-    const char* tiles_str = map_ini.GetAppContent( "Tiles" );
-    if( tiles_str )
+    string tiles_str = map_ini.GetAppContent( "Tiles" );
+    if( !tiles_str.empty() )
     {
-        istrstream istr( tiles_str );
+        istrstream istr( tiles_str.c_str() );
         string     type;
         if( version == FO_MAP_VERSION_TEXT1 )
         {
@@ -489,11 +489,11 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
     };
     vector< AdditionalFields > entities_addon;
     EntityVec entities;
-    const char* objects_str = map_ini.GetAppContent( "Objects" );
-    if( objects_str )
+    string objects_str = map_ini.GetAppContent( "Objects" );
+    if( !objects_str.empty() )
     {
         bool       fail = false;
-        istrstream istr( objects_str );
+        istrstream istr( objects_str.c_str() );
         int        is_critter = false;
         Property*  cur_prop = nullptr;
         uint       auto_id = uint( -1 );
@@ -1069,9 +1069,9 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
 
     // Save
     string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : string( GetName() ) ) + ".fomap";
-    if( !file.SaveFile( save_fname.c_str() ) )
+    if( !file.SaveFile( save_fname ) )
     {
-        WriteLog( "Unable write file '{}' in modules.\n", save_fname.c_str() );
+        WriteLog( "Unable write file '{}' in modules.\n", save_fname );
         return false;
     }
     return true;

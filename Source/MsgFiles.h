@@ -15,12 +15,12 @@
 #define TEXTMSG_INTERNAL     ( 8 )
 #define TEXTMSG_LOCATIONS    ( 9 )
 #define TEXTMSG_COUNT        ( 10 )
-extern const char* TextMsgFileName[ TEXTMSG_COUNT ];
+extern string TextMsgFileName[ TEXTMSG_COUNT ];
 
 #define DEFAULT_LANGUAGE     "russ"
 #define MSG_ERROR_MESSAGE    "error"
 
-typedef multimap< uint, const char* > FOMsgMap;
+typedef multimap< uint, string > FOMsgMap;
 
 class FOMsg
 {
@@ -31,28 +31,27 @@ public:
     FOMsg& operator=( const FOMsg& other );
     FOMsg& operator+=( const FOMsg& other );
 
-    void AddStr( uint num, const char* str );
     void AddStr( uint num, const string& str );
     void AddBinary( uint num, const uchar* binary, uint len );
 
-    const char* GetStr( uint num );
-    const char* GetStr( uint num, uint skip );
-    uint        GetStrNumUpper( uint num );
-    uint        GetStrNumLower( uint num );
-    int         GetInt( uint num );
-    uint        GetBinary( uint num, UCharVec& data );
-    uint        Count( uint num );
-    void        EraseStr( uint num );
-    uint        GetSize();
-    bool        IsIntersects( const FOMsg& other );
+    string GetStr( uint num );
+    string GetStr( uint num, uint skip );
+    uint   GetStrNumUpper( uint num );
+    uint   GetStrNumLower( uint num );
+    int    GetInt( uint num );
+    uint   GetBinary( uint num, UCharVec& data );
+    uint   Count( uint num );
+    void   EraseStr( uint num );
+    uint   GetSize();
+    bool   IsIntersects( const FOMsg& other );
 
     // Serialization
     void GetBinaryData( UCharVec& data );
     bool LoadFromBinaryData( const UCharVec& data );
-    bool LoadFromFile( const char* fname );
-    bool LoadFromString( const char* str, uint str_len );
+    bool LoadFromFile( const string& fname );
+    bool LoadFromString( const string& str, uint str_len );
     void LoadFromMap( const StrMap& kv );
-    bool SaveToFile( const char* fname, bool to_data );
+    bool SaveToFile( const string& fname, bool to_data );
     void Clear();
 
 private:
@@ -60,7 +59,7 @@ private:
     FOMsgMap strData;
 
 public:
-    static int GetMsgType( const char* type_name );
+    static int GetMsgType( const string& type_name );
 };
 typedef vector< FOMsg* > FOMsgVec;
 
@@ -76,8 +75,8 @@ public:
     bool  IsAllMsgLoaded;
     FOMsg Msg[ TEXTMSG_COUNT ];
 
-    bool   LoadFromFiles( const char* lang_name );
-    bool   LoadFromCache( const char* lang_name );
+    bool   LoadFromFiles( const string& lang_name );
+    bool   LoadFromCache( const string& lang_name );
     string GetMsgCacheName( int msg_num );
 
     LanguagePack();

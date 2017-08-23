@@ -115,7 +115,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
                         map< string, StrMap > texts;
                         files_texts.insert( PAIR( pid, texts ) );
                     }
-                    files_texts[ pid ].insert( PAIR( app_name, fopro.GetApp( app_name.c_str() ) ) );
+                    files_texts[ pid ].insert( PAIR( app_name, fopro.GetApp( app_name ) ) );
                 }
             }
         }

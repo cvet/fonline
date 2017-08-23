@@ -78,9 +78,9 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         }
 
         // Config parsing
-        const char* server_exe = "FOnlineServer.exe";
-        const char* server_dir = MainConfig->GetStr( "", "ServerDir", "" );
-        const char* server_cmdline = MainConfig->GetStr( "", "ServerCommandLine", "" );
+        string server_exe = "FOnlineServer.exe";
+        string server_dir = MainConfig->GetStr( "", "ServerDir" );
+        string server_cmdline = MainConfig->GetStr( "", "ServerCommandLine" );
 
         // Process attributes
         PROCESS_INFORMATION server;

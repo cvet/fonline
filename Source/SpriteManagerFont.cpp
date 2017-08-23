@@ -90,7 +90,7 @@ struct FontFormatInfo
     StrVec*   StrLines;
     bool      IsError;
 
-    void      Init( FontData* font, uint flags, const Rect& region, const char* str_in )
+    void      Init( FontData* font, uint flags, const Rect& region, const string& str_in )
     {
         CurFont = font;
         Flags = flags;
@@ -103,7 +103,7 @@ struct FontFormatInfo
         memzero( LineWidth, sizeof( LineWidth ) );
         memzero( LineSpaceWidth, sizeof( LineSpaceWidth ) );
         OffsColDots = 0;
-        Str::Copy( Str, str_in );
+        Str::Copy( Str, str_in.c_str() );
         PStr = Str;
         DefColor = COLOR_TEXT;
         StrLines = nullptr;
@@ -294,7 +294,7 @@ void SpriteManager::BuildFont( int index )
     SAFEDELA( data_bordered );
 }
 
-bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_bordered, bool skip_if_loaded /* = true */ )
+bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bordered, bool skip_if_loaded /* = true */ )
 {
     // Skip if loaded
     if( skip_if_loaded && index < (int) Fonts.size() && Fonts[ index ] )
@@ -506,7 +506,7 @@ bool SpriteManager::LoadFontFO( int index, const char* font_name, bool not_borde
     return true;
 }
 
-bool SpriteManager::LoadFontBMF( int index, const char* font_name )
+bool SpriteManager::LoadFontBMF( int index, const string& font_name )
 {
     if( index < 0 )
     {
@@ -1173,7 +1173,7 @@ bool SpriteManager::DrawStr( const Rect& r, const string& str, uint flags, uint 
     return true;
 }
 
-int SpriteManager::GetLinesCount( int width, int height, const char* str, int num_font /* = -1 */ )
+int SpriteManager::GetLinesCount( int width, int height, const string& str, int num_font /* = -1 */ )
 {
     if( width <= 0 || height <= 0 )
         return 0;
@@ -1182,7 +1182,7 @@ int SpriteManager::GetLinesCount( int width, int height, const char* str, int nu
     if( !font )
         return 0;
 
-    if( !str )
+    if( str.empty() )
         return height / ( font->LineHeight + font->YAdvance );
 
     static FontFormatInfo fi;
@@ -1194,7 +1194,7 @@ int SpriteManager::GetLinesCount( int width, int height, const char* str, int nu
     return fi.LinesInRect;
 }
 
-int SpriteManager::GetLinesHeight( int width, int height, const char* str, int num_font /* = -1 */ )
+int SpriteManager::GetLinesHeight( int width, int height, const string& str, int num_font /* = -1 */ )
 {
     if( width <= 0 || height <= 0 )
         return 0;
@@ -1219,7 +1219,7 @@ int SpriteManager::GetLineHeight( int num_font /* = -1 */ )
     return font->LineHeight;
 }
 
-void SpriteManager::GetTextInfo( int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines )
+void SpriteManager::GetTextInfo( int width, int height, const string& str, int num_font, int flags, int& tw, int& th, int& lines )
 {
     tw = th = lines = 0;
 
@@ -1227,7 +1227,7 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
     if( !font )
         return;
 
-    if( !str )
+    if( str.empty() )
     {
         tw = width;
         th = height;
@@ -1246,11 +1246,11 @@ void SpriteManager::GetTextInfo( int width, int height, const char* str, int num
     tw = fi.MaxCurX - fi.Region.L;
 }
 
-int SpriteManager::SplitLines( const Rect& r, const char* cstr, int num_font, StrVec& str_vec )
+int SpriteManager::SplitLines( const Rect& r, const string& cstr, int num_font, StrVec& str_vec )
 {
     // Check & Prepare
     str_vec.clear();
-    if( !cstr || !cstr[ 0 ] )
+    if( cstr.empty() )
         return 0;
 
     // Get font
@@ -1266,7 +1266,7 @@ int SpriteManager::SplitLines( const Rect& r, const char* cstr, int num_font, St
     return (int) str_vec.size();
 }
 
-bool SpriteManager::HaveLetter( int num_font, const char* letter )
+bool SpriteManager::HaveLetter( int num_font, const string& letter )
 {
     FontData* font = GetFont( num_font );
     if( !font )

@@ -1178,7 +1178,7 @@ public:
     {
         while( errors.String[ errors.String.length() - 1 ] == '\n' )
             errors.String.pop_back();
-        WriteLog( "Preprocessor message '{}'.\n", errors.String.c_str() );
+        WriteLog( "Preprocessor message '{}'.\n", errors.String );
     }
 
     if( errors_count )

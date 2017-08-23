@@ -281,8 +281,8 @@ bool FOClient::PreInit()
     GameOpt.MusicVolume = MainConfig->GetInt( "", "MusicVolume", 100 );
 
     // Language Packs
-    const char* lang_name = MainConfig->GetStr( "", "Language", DEFAULT_LANGUAGE );
-    CurLang.LoadFromCache( lang_name );
+    string lang_name = MainConfig->GetStr( "", "Language", DEFAULT_LANGUAGE );
+    CurLang.LoadFromCache( lang_name.c_str() );
 
     return true;
 }
@@ -2724,7 +2724,7 @@ void FOClient::Net_OnTextMsg( bool with_lexems )
     if( msg.Count( num_str ) )
     {
         char str[ MAX_FOTEXT ];
-        Str::Copy( str, msg.GetStr( num_str ) );
+        Str::Copy( str, msg.GetStr( num_str ).c_str() );
         FormatTags( str, Chosen, GetCritter( crid ), lexems );
         OnText( str, crid, how_say );
     }
@@ -2914,7 +2914,7 @@ void FOClient::Net_OnMapTextMsg()
     }
 
     static char str[ MAX_FOTEXT ];
-    Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ) );
+    Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ).c_str() );
     FormatTags( str, Chosen, nullptr, "" );
 
     OnMapText( str, hx, hy, color );
@@ -2953,7 +2953,7 @@ void FOClient::Net_OnMapTextMsgLex()
     }
 
     char str[ MAX_FOTEXT ];
-    Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ) );
+    Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ).c_str() );
     FormatTags( str, Chosen, nullptr, lexems );
 
     OnMapText( str, hx, hy, color );
@@ -3958,13 +3958,13 @@ void FOClient::Net_OnChosenTalk()
     }
 
     char str[ MAX_FOTEXT ];
-    Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( text_id ) );
+    Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( text_id ).c_str() );
     FormatTags( str, Chosen, npc, lexems );
     string        text_to_script = str;
     CScriptArray* answers_to_script = Script::CreateArray( "string[]" );
     for( size_t i = 0; i < answers_texts.size(); i++ )
     {
-        Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( answers_texts[ i ] ) );
+        Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( answers_texts[ i ] ).c_str() );
         FormatTags( str, Chosen, npc, lexems );
         string sstr = str;
         answers_to_script->InsertLast( &sstr );
@@ -5883,7 +5883,7 @@ const char* FOClient::FmtGameText( uint str_num, ... )
     static char res[ MAX_FOTEXT ];
     static char str[ MAX_FOTEXT ];
 
-    Str::Copy( str, CurLang.Msg[ TEXTMSG_GAME ].GetStr( str_num ) );
+    Str::Copy( str, CurLang.Msg[ TEXTMSG_GAME ].GetStr( str_num ).c_str() );
     Str::Replacement( str, '\\', 'n', '\n' );
 
     va_list list;
@@ -6616,15 +6616,15 @@ bool FOClient::ReloadScripts()
             break;
         RUNTIME_ASSERT( msg_script.Count( i + 1 ) );
 
-        const char* dll_name = msg_script.GetStr( i );
-        UCharVec    dll_binary;
+        string   dll_name = msg_script.GetStr( i );
+        UCharVec dll_binary;
         if( !msg_script.GetBinary( i + 1, dll_binary ) )
             break;
 
         // Fix slashes
         char dll_name_[ MAX_FOPATH ];
         Str::Copy( dll_name_, "Cache/" );
-        Str::Append( dll_name_, dll_name );
+        Str::Append( dll_name_, dll_name.c_str() );
         Str::Replacement( dll_name_, '\\', '.' );
         Str::Replacement( dll_name_, '/', '.' );
         dll_name = dll_name_;

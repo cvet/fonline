@@ -110,7 +110,7 @@ bool SpriteManager::Init()
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
     SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
     #endif
-    MainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ), SDL_WINDOWPOS_CENTERED,
+    MainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str(), SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
     if( !MainWindow )
     {
@@ -198,7 +198,7 @@ bool SpriteManager::Init()
     #define CHECK_EXTENSION( ext, critical  )                                     \
         if( !GL_HAS( ext ) )                                                      \
         {                                                                         \
-            const char* msg = ( critical ? "Critical" : "Not critical" );         \
+            string msg = ( critical ? "Critical" : "Not critical" );              \
             WriteLog( "OpenGL extension '" # ext "' not supported. {}.\n", msg ); \
             if( critical )                                                        \
                 extension_errors++;                                               \
@@ -1164,7 +1164,7 @@ void SpriteManager::DumpAtlases()
     }
 }
 
-void SpriteManager::SaveTexture( Texture* tex, const char* fname, bool flip )
+void SpriteManager::SaveTexture( Texture* tex, const string& fname, bool flip )
 {
     // Size
     int w = ( tex ? tex->Width : 0 );
@@ -1290,11 +1290,11 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
     SAFEDELA( data );
 }
 
-AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = false */, bool frm_anim_pix /* = false */ )
+AnyFrames* SpriteManager::LoadAnimation( const string& fname, bool use_dummy /* = false */, bool frm_anim_pix /* = false */ )
 {
     AnyFrames* dummy = ( use_dummy ? DummyAnimation : nullptr );
 
-    if( !fname || !fname[ 0 ] )
+    if( fname.empty() )
         return dummy;
 
     string ext = _str( fname ).getFileExtension();
@@ -1327,7 +1327,7 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = 
         result = LoadAnimationMos( fname );
     else if( ext == "bam" )
         result = LoadAnimationBam( fname );
-    else if( Is3dExtensionSupported( ext.c_str() ) )
+    else if( Is3dExtensionSupported( ext ) )
         result = LoadAnimation3d( fname );
     else
         WriteLog( "Unsupported image file format '{}', file '{}'.\n", ext, fname );
@@ -1335,9 +1335,9 @@ AnyFrames* SpriteManager::LoadAnimation( const char* fname, bool use_dummy /* = 
     return result ? result : dummy;
 }
 
-AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const char* fname )
+AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const string& fname )
 {
-    if( !fname || !fname[ 0 ] )
+    if( fname.empty() )
         return anim;
 
     // Release old images
@@ -1356,7 +1356,7 @@ AnyFrames* SpriteManager::ReloadAnimation( AnyFrames* anim, const char* fname )
     return LoadAnimation( fname );
 }
 
-AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* = false */ )
+AnyFrames* SpriteManager::LoadAnimationFrm( const string& fname, bool anim_pix /* = false */ )
 {
     // Load file
     FileManager fm;
@@ -1369,7 +1369,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
     if( !fm.IsLoaded() )
     {
         char fname_[ MAX_FOPATH ];
-        Str::Copy( fname_, fname );
+        Str::Copy( fname_, fname.c_str() );
         fname_[ Str::Length( fname_ ) - 1 ] = '0';
         if( !fm.LoadFile( fname_ ) )
             return nullptr;
@@ -1419,7 +1419,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
         if( dir && load_from_fr )
         {
             char fname_[ MAX_FOPATH ];
-            Str::Copy( fname_, fname );
+            Str::Copy( fname_, fname.c_str() );
             fname_[ Str::Length( fname_ ) - 1 ] = '0' + dir;
             if( !fm.LoadFile( fname_ ) )
             {
@@ -1460,7 +1460,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
         uint* palette = (uint*) FoPalette;
         uint  palette_entry[ 256 ];
         char  palette_name[ MAX_FOPATH ];
-        Str::Copy( palette_name, fname );
+        Str::Copy( palette_name, fname.c_str() );
         Str::Copy( &palette_name[ Str::Length( palette_name ) - 3 ], 4, "pal" );
         FileManager fm_palette;
         if( fm_palette.LoadFile( palette_name ) )
@@ -1645,7 +1645,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const char* fname, bool anim_pix /* 
     return base_anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationRix( const char* fname )
+AnyFrames* SpriteManager::LoadAnimationRix( const string& fname )
 {
     FileManager fm;
     if( !fm.LoadFile( fname ) )
@@ -1682,7 +1682,7 @@ AnyFrames* SpriteManager::LoadAnimationRix( const char* fname )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
+AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
 {
     // Load file
     FileManager fm;
@@ -1709,7 +1709,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
 
     Effect* effect = nullptr;
     if( fofrm.IsKey( "", "effect" ) )
-        effect = GraphicLoader::LoadEffect( fofrm.GetStr( "", "effect" ), true );
+        effect = GraphicLoader::LoadEffect( fofrm.GetStr( "", "effect" ).c_str(), true );
 
     AnimVec anims;
     IntVec  anims_offs;
@@ -1750,9 +1750,9 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
         bool   load_fail = false;
         for( int frm = 0; frm < frm_num; frm++ )
         {
-            const char* frm_name;
-            if( !( frm_name = fofrm.GetStr( no_app ? "" : dir_str.c_str(), _str( "frm_{}", frm ).c_str() ) ) &&
-                ( frm != 0 || !( frm_name = fofrm.GetStr( no_app ? "" : dir_str.c_str(), "frm" ) ) ) )
+            string frm_name;
+            if( ( frm_name = fofrm.GetStr( no_app ? "" : dir_str, _str( "frm_{}", frm ) ) ).empty() &&
+                ( frm != 0 || ( frm_name = fofrm.GetStr( no_app ? "" : dir_str, "frm" ) ).empty() ) )
             {
                 no_info = true;
                 break;
@@ -1818,7 +1818,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const char* fname )
     return base_anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimation3d( const char* fname )
+AnyFrames* SpriteManager::LoadAnimation3d( const string& fname )
 {
     if( !GameOpt.Enable3dRendering )
         return nullptr;
@@ -1904,7 +1904,7 @@ label_LoadOneSpr:
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationArt( const char* fname )
+AnyFrames* SpriteManager::LoadAnimationArt( const string& fname )
 {
     AnyFrames* base_anim = nullptr;
 
@@ -1950,7 +1950,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname )
         bool mirror_ver = false;
         uint frm_from = 0;
         uint frm_to = 100000;
-        Str::Copy( file_name, fname );
+        Str::Copy( file_name, fname.c_str() );
 
         char* delim = Str::Substring( file_name, "$" );
         if( delim )
@@ -2228,7 +2228,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const char* fname )
 }
 
 #define SPR_CACHED_COUNT    ( 10 )
-AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname )
+AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
 {
     AnyFrames* base_anim = nullptr;
 
@@ -2269,7 +2269,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname )
 
         // Parameters
         char file_name[ MAX_FOPATH ];
-        Str::Copy( file_name, fname );
+        Str::Copy( file_name, fname.c_str() );
 
         // Animation
         char seq_name[ MAX_FOPATH ] = { 0 };
@@ -2742,7 +2742,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const char* fname )
     return base_anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationZar( const char* fname )
+AnyFrames* SpriteManager::LoadAnimationZar( const string& fname )
 {
     // Open file
     FileManager fm;
@@ -2838,7 +2838,7 @@ AnyFrames* SpriteManager::LoadAnimationZar( const char* fname )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationTil( const char* fname )
+AnyFrames* SpriteManager::LoadAnimationTil( const string& fname )
 {
     // Open file
     FileManager fm;
@@ -2957,7 +2957,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const char* fname )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationMos( const char* fname )
+AnyFrames* SpriteManager::LoadAnimationMos( const string& fname )
 {
     FileManager fm;
     if( !fm.LoadFile( fname ) )
@@ -3058,11 +3058,11 @@ AnyFrames* SpriteManager::LoadAnimationMos( const char* fname )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationBam( const char* fname )
+AnyFrames* SpriteManager::LoadAnimationBam( const string& fname )
 {
     // Parameters
     char file_name[ MAX_FOPATH ];
-    Str::Copy( file_name, fname );
+    Str::Copy( file_name, fname.c_str() );
 
     uint  need_cycle = 0;
     int   specific_frame = -1;
@@ -3215,7 +3215,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const char* fname )
     return anim;
 }
 
-AnyFrames* SpriteManager::LoadAnimationOther( const char* fname, uchar* ( *loader )( const uchar *, uint, uint &, uint & ) )
+AnyFrames* SpriteManager::LoadAnimationOther( const string& fname, uchar* ( *loader )( const uchar *, uint, uint &, uint & ) )
 {
     // Load file
     FileManager fm;
@@ -3288,7 +3288,7 @@ bool SpriteManager::Draw3d( int x, int y, Animation3d* anim3d, uint color )
     return true;
 }
 
-Animation3d* SpriteManager::LoadPure3dAnimation( const char* fname, bool auto_redraw )
+Animation3d* SpriteManager::LoadPure3dAnimation( const string& fname, bool auto_redraw )
 {
     if( !GameOpt.Enable3dRendering )
         return nullptr;
@@ -3366,7 +3366,7 @@ void SpriteManager::FreePure3dAnimation( Animation3d* anim3d )
     }
 }
 
-bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const char* fname )
+bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const string& fname )
 {
     FileManager fm;
     fm.SetBEUInt( FAST_FORMAT_SIGNATURE );
@@ -3391,7 +3391,7 @@ bool SpriteManager::SaveAnimationInFastFormat( AnyFrames* anim, const char* fnam
     return fm.SaveFile( fname );
 }
 
-bool SpriteManager::TryLoadAnimationInFastFormat( const char* fname, FileManager& fm, AnyFrames*& anim )
+bool SpriteManager::TryLoadAnimationInFastFormat( const string& fname, FileManager& fm, AnyFrames*& anim )
 {
     // Null result
     anim = nullptr;
@@ -3792,7 +3792,7 @@ void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )
     rect.B = y + si->Height;
 }
 
-void SpriteManager::InitializeEgg( const char* egg_name )
+void SpriteManager::InitializeEgg( const string& egg_name )
 {
     #ifndef DISABLE_EGG
     eggValid = false;

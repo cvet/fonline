@@ -3,7 +3,7 @@
 #include "Crypt.h"
 #include "FileManager.h"
 
-const char* TextMsgFileName[ TEXTMSG_COUNT ] =
+string TextMsgFileName[ TEXTMSG_COUNT ] =
 {
     "FOTEXT.MSG",
     "FODLG.MSG",
@@ -52,14 +52,9 @@ FOMsg& FOMsg::operator+=( const FOMsg& other )
     return *this;
 }
 
-void FOMsg::AddStr( uint num, const char* str )
-{
-    strData.insert( PAIR( num, Str::Duplicate( str ) ) );
-}
-
 void FOMsg::AddStr( uint num, const string& str )
 {
-    strData.insert( PAIR( num, Str::Duplicate( str.c_str() ) ) );
+    strData.insert( PAIR( num, str ) );
 }
 
 void FOMsg::AddBinary( uint num, const uchar* binary, uint len )
@@ -76,7 +71,7 @@ void FOMsg::AddBinary( uint num, const uchar* binary, uint len )
     AddStr( num, (char*) &str[ 0 ] );
 }
 
-const char* FOMsg::GetStr( uint num )
+string FOMsg::GetStr( uint num )
 {
     uint str_count = (uint) strData.count( num );
     auto it = strData.find( num );
@@ -96,7 +91,7 @@ const char* FOMsg::GetStr( uint num )
     return it->second;
 }
 
-const char* FOMsg::GetStr( uint num, uint skip )
+string FOMsg::GetStr( uint num, uint skip )
 {
     uint str_count = (uint) strData.count( num );
     auto it = strData.find( num );
@@ -152,8 +147,8 @@ uint FOMsg::GetBinary( uint num, UCharVec& data  )
     if( !Count( num ) )
         return 0;
 
-    const char* str = GetStr( num );
-    uint        len = Str::Length( str ) / 2;
+    string str = GetStr( num );
+    size_t len = str.length() / 2;
     data.resize( len );
     for( uint i = 0; i < len; i++ )
         data[ i ] = Str::StrToHex( &str[ i * 2 ] );
@@ -171,14 +166,9 @@ void FOMsg::EraseStr( uint num )
     {
         auto it = strData.find( num );
         if( it != strData.end() )
-        {
-            SAFEDELA( it->second );
             strData.erase( it );
-        }
         else
-        {
             break;
-        }
     }
 }
 
@@ -203,15 +193,15 @@ void FOMsg::GetBinaryData( UCharVec& data )
     memcpy( &data[ 0 ], &count, sizeof( count ) );
     for( auto it = strData.begin(), end = strData.end(); it != end; ++it )
     {
-        uint        num = it->first;
-        const char* str = it->second;
-        uint        str_len = ( str ? Str::Length( str ) : 0 );
+        uint          num = it->first;
+        const string& str = it->second;
+        uint          str_len = (uint) str.length();
 
         data.resize( data.size() + sizeof( num ) + sizeof( str_len ) + str_len );
         memcpy( &data[ data.size() - ( sizeof( num ) + sizeof( str_len ) + str_len ) ], &num, sizeof( num ) );
         memcpy( &data[ data.size() - ( sizeof( str_len ) + str_len ) ], &str_len, sizeof( str_len ) );
         if( str_len )
-            memcpy( &data[ data.size() - str_len ], (void*) str, str_len );
+            memcpy( &data[ data.size() - str_len ], (void*) str.c_str(), str_len );
     }
 
     // Compress
@@ -256,7 +246,7 @@ bool FOMsg::LoadFromBinaryData( const UCharVec& data )
     return true;
 }
 
-bool FOMsg::LoadFromFile( const char* fname )
+bool FOMsg::LoadFromFile( const string& fname )
 {
     Clear();
 
@@ -267,12 +257,12 @@ bool FOMsg::LoadFromFile( const char* fname )
     return LoadFromString( (char*) file.GetBuf(), file.GetFsize() );
 }
 
-bool FOMsg::LoadFromString( const char* str, uint str_len )
+bool FOMsg::LoadFromString( const string& str, uint str_len )
 {
     bool  fail = false;
 
     char* str_copy = new char[ str_len + 1 ];
-    memcpy( str_copy, str, str_len );
+    memcpy( str_copy, str.c_str(), str_len );
     str_copy[ str_len ] = 0;
 
     for( char* pbuf = str_copy; *pbuf;)
@@ -355,7 +345,7 @@ void FOMsg::LoadFromMap( const StrMap& kv )
     }
 }
 
-bool FOMsg::SaveToFile( const char* fname, bool to_data )
+bool FOMsg::SaveToFile( const string& fname, bool to_data )
 {
     string str;
     for( auto it = strData.begin(), end = strData.end(); it != end; it++ )
@@ -366,20 +356,15 @@ bool FOMsg::SaveToFile( const char* fname, bool to_data )
 
     FileManager fm;
     fm.SetData( buf, buf_len );
-    if( !fm.SaveFile( fname ) )
-        return false;
-
-    return true;
+    return fm.SaveFile( fname );
 }
 
 void FOMsg::Clear()
 {
-    for( auto it = strData.begin(), end = strData.end(); it != end; ++it )
-        SAFEDELA( it->second );
     strData.clear();
 }
 
-int FOMsg::GetMsgType( const char* type_name )
+int FOMsg::GetMsgType( const string& type_name )
 {
     if( Str::CompareCase( type_name, "text" ) )
         return TEXTMSG_TEXT;
@@ -410,9 +395,11 @@ LanguagePack::LanguagePack()
     IsAllMsgLoaded = false;
 }
 
-bool LanguagePack::LoadFromFiles( const char* lang_name )
+bool LanguagePack::LoadFromFiles( const string& lang_name )
 {
-    memcpy( NameStr, lang_name, 4 );
+    RUNTIME_ASSERT( lang_name.length() == 4 );
+    memcpy( NameStr, lang_name.c_str(), 4 );
+    NameStr[ 4 ] = 0;
     bool            fail = false;
 
     FilesCollection msg_files( "msg" );
@@ -448,9 +435,11 @@ bool LanguagePack::LoadFromFiles( const char* lang_name )
     return IsAllMsgLoaded;
 }
 
-bool LanguagePack::LoadFromCache( const char* lang_name )
+bool LanguagePack::LoadFromCache( const string& lang_name )
 {
-    memcpy( NameStr, lang_name, 4 );
+    RUNTIME_ASSERT( lang_name.length() == 4 );
+    memcpy( NameStr, lang_name.c_str(), 4 );
+    NameStr[ 4 ] = 0;
 
     int errors = 0;
     for( int i = 0; i < TEXTMSG_COUNT; i++ )

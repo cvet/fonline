@@ -252,7 +252,7 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
                     else if( !CurLang.Msg[ msg_type ].Count( str_num ) )
                         Str::Copy( tag, _str( "<msg tag, string {} not found>", str_num ).c_str() );
                     else
-                        Str::Copy( tag, CurLang.Msg[ msg_type ].GetStr( str_num ) );
+                        Str::Copy( tag, CurLang.Msg[ msg_type ].GetStr( str_num ).c_str() );
                 }
             }
             // Script

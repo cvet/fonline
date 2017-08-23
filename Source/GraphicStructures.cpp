@@ -1,16 +1,16 @@
 #include "GraphicStructures.h"
 
-bool Is3dExtensionSupported( const char* ext )
+bool Is3dExtensionSupported( const string& ext )
 {
-    static const char* arr[] =
+    static const string arr[] =
     {
         "fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase", "ply", "dxf", "lwo", "lxo", "stl", "ms3d",
         "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh", "csm", "b3d", "q3d", "cob",
         "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl", "hmp", "ndo", "ac"
     };
 
-    for( int i = 0, j = sizeof( arr ) / sizeof( arr[ 0 ] ); i < j; i++ )
-        if( Str::CompareCase( ext, arr[ i ] ) )
+    for( const string& entry : arr )
+        if( entry == ext )
             return true;
     return false;
 }
@@ -394,7 +394,7 @@ void Bone::FixAfterLoad( Bone* root_bone )
         Children[ i ]->FixAfterLoad( root_bone );
 }
 
-uint Bone::GetHash( const char* name )
+uint Bone::GetHash( const string& name )
 {
     return _str( name ).toHash();
 }

@@ -42,6 +42,12 @@ _str& _str::replace( char from, char to )
     return *this;
 }
 
+_str& _str::replace( char from1, char from2, char to )
+{
+    replace( string( { from1, from2 } ), string( { to } ) );
+    return *this;
+}
+
 _str& _str::replace( const string& from, const string& to )
 {
     size_t pos = 0;
@@ -600,6 +606,11 @@ bool Str::IsValidUTF8( uint ucs )
     return ucs != 0xFFFD /* Unicode REPLACEMENT CHARACTER */ && ucs <= 0x10FFFF;
 }
 
+bool Str::IsValidUTF8( const string& str )
+{
+    return IsValidUTF8( str.c_str() );
+}
+
 bool Str::IsValidUTF8( const char* str )
 {
     while( *str )
@@ -610,6 +621,11 @@ bool Str::IsValidUTF8( const char* str )
         str += length;
     }
     return true;
+}
+
+uint Str::DecodeUTF8( const string& str, uint* length )
+{
+    return DecodeUTF8( str.c_str(), length );
 }
 
 uint Str::DecodeUTF8( const char* str, uint* length )

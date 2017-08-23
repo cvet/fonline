@@ -141,7 +141,7 @@ public:
     static void         SetScreenSize( int width, int height );
     static void         Finish();
     static void         BeginScene();
-    static Animation3d* GetAnimation( const char* name, bool is_child );
+    static Animation3d* GetAnimation( const string& name, bool is_child );
     static void         AnimateFaster();
     static void         AnimateSlower();
     static Vector       Convert2dTo3d( int x, int y );
@@ -178,13 +178,13 @@ private:
     int  GetAnimationIndex( uint& anim1, uint& anim2, float* speed, bool combat_first );
     int  GetAnimationIndexEx( uint anim1, uint anim2, float* speed );
 
-    bool         Load( const char* name );
+    bool         Load( const string& name );
     Animation3d* CloneAnimation();
 
 public:
     Animation3dEntity();
     ~Animation3dEntity();
-    static Animation3dEntity* GetEntity( const char* name );
+    static Animation3dEntity* GetEntity( const string& name );
 };
 
 class Animation3dXFile
@@ -199,12 +199,12 @@ private:
     BoneVec                    allBones;
     BoneVec                    allDrawBones;
 
-    static Animation3dXFile* GetXFile( const char* xname );
+    static Animation3dXFile* GetXFile( const string& xname );
 
     void SetupBones();
     void SetupAnimationOutput( AnimController* anim_controller );
 
-    MeshTexture* GetTexture( const char* tex_name );
+    MeshTexture* GetTexture( const string& tex_name );
     Effect*      GetEffect( EffectInstance* effect_inst );
 
 public:

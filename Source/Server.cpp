@@ -149,16 +149,16 @@ void FOServer::GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVe
     admin.clear();
     admin_names.clear();
 
-    const char* s;
-    if( ( s = MainConfig->GetStr( "", "Access_client" ) ) )
+    string s;
+    if( !( s = MainConfig->GetStr( "", "Access_client" ) ).empty() )
         client = Str::Split( s, ' ' );
-    if( ( s = MainConfig->GetStr( "", "Access_tester" ) ) )
+    if( !( s = MainConfig->GetStr( "", "Access_tester" ) ).empty() )
         tester = Str::Split( s, ' ' );
-    if( ( s = MainConfig->GetStr( "", "Access_moder" ) ) )
+    if( !( s = MainConfig->GetStr( "", "Access_moder" ) ).empty() )
         moder = Str::Split( s, ' ' );
-    if( ( s = MainConfig->GetStr( "", "Access_admin" ) ) )
+    if( !( s = MainConfig->GetStr( "", "Access_admin" ) ).empty() )
         admin = Str::Split( s, ' ' );
-    if( ( s = MainConfig->GetStr( "", "AccessNames_admin" ) ) )
+    if( !( s = MainConfig->GetStr( "", "AccessNames_admin" ) ).empty() )
         admin_names = Str::Split( s, ' ' );
 }
 
@@ -2268,12 +2268,12 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
     uint cur_lang = 0;
     while( true )
     {
-        string      cur_str_lang = _str( "Language_{}", cur_lang );
-        const char* lang_name = MainConfig->GetStr( "", cur_str_lang.c_str() );
-        if( !lang_name )
+        string cur_str_lang = _str( "Language_{}", cur_lang );
+        string lang_name = MainConfig->GetStr( "", cur_str_lang );
+        if( lang_name.empty() )
             break;
 
-        if( Str::Length( lang_name ) != 4 )
+        if( lang_name.length() != 4 )
         {
             WriteLog( "Language name not equal to four letters.\n" );
             return false;
@@ -2287,7 +2287,7 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
         }
 
         LanguagePack lang;
-        if( !lang.LoadFromFiles( lang_name ) )
+        if( !lang.LoadFromFiles( lang_name.c_str() ) )
         {
             WriteLog( "Unable to init Language pack {}.\n", cur_lang );
             return false;
@@ -2548,18 +2548,18 @@ void FOServer::LoadBans()
         memzero( &ban, sizeof( ban ) );
         DateTimeStamp time;
         memzero( &time, sizeof( time ) );
-        const char*   s;
-        if( ( s = bans_txt.GetStr( "Ban", "User" ) ) )
-            Str::Copy( ban.ClientName, s );
+        string        s;
+        if( !( s = bans_txt.GetStr( "Ban", "User" ) ).empty() )
+            Str::Copy( ban.ClientName, s.c_str() );
         ban.ClientIp = bans_txt.GetInt( "Ban", "UserIp", 0 );
-        if( ( s = bans_txt.GetStr( "Ban", "BeginTime" ) ) && sscanf( s, "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute ) )
+        if( !( s = bans_txt.GetStr( "Ban", "BeginTime" ) ).empty() && sscanf( s.c_str(), "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute ) )
             ban.BeginTime = time;
-        if( ( s = bans_txt.GetStr( "Ban", "EndTime" ) ) && sscanf( s, "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute ) )
+        if( !( s = bans_txt.GetStr( "Ban", "EndTime" ) ).empty() && sscanf( s.c_str(), "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute ) )
             ban.EndTime = time;
-        if( ( s = bans_txt.GetStr( "Ban", "BannedBy" ) ) )
-            Str::Copy( ban.BannedBy, s );
-        if( ( s = bans_txt.GetStr( "Ban", "Comment" ) ) )
-            Str::Copy( ban.BanInfo, s );
+        if( !( s = bans_txt.GetStr( "Ban", "BannedBy" ) ).empty() )
+            Str::Copy( ban.BannedBy, s.c_str() );
+        if( !( s = bans_txt.GetStr( "Ban", "Comment" ) ).empty() )
+            Str::Copy( ban.BanInfo, s.c_str() );
         Banned.push_back( ban );
 
         bans_txt.GotoNextApp( "Ban" );
@@ -2596,7 +2596,7 @@ bool FOServer::LoadClientsData()
         string    name = _str( client_name ).eraseFileExtension();
         string    client_fname = clients_path + client_name;
         IniParser client_data;
-        if( !client_data.AppendFile( client_fname.c_str() ) )
+        if( !client_data.AppendFile( client_fname ) )
         {
             WriteLog( "Unable to open client save file '{}'.\n", client_fname );
             errors++;
@@ -2606,9 +2606,6 @@ bool FOServer::LoadClientsData()
         // Generate user id
         uint id = MAKE_CLIENT_ID( name );
         RUNTIME_ASSERT( id != 0 );
-
-        // Get password hash
-        const char* pass_hash_str = client_data.GetStr( "Client", "Password" );
 
         // Check uniqueness of id
         auto it = ClientsData.find( id );
@@ -2623,7 +2620,8 @@ bool FOServer::LoadClientsData()
         ClientData* data = new ClientData();
         memzero( data, sizeof( ClientData ) );
         Str::Copy( data->ClientName, name.c_str() );
-        memcpy( data->ClientPassHash, pass_hash_str, Str::Length( pass_hash_str ) );
+        string pass_hash_str = client_data.GetStr( "Client", "Password" );
+        memcpy( data->ClientPassHash, pass_hash_str.c_str(), pass_hash_str.length() );
         ClientsData.insert( PAIR( id, data ) );
     }
 
@@ -2656,7 +2654,7 @@ bool FOServer::SaveClient( Client* cl )
     IniParser data;
     string    fname = "Save/Clients/" + cl->Name + ".foclient";
     cl->Props.SaveToText( data.SetApp( "Client" ), &cl->Proto->Props );
-    if( !data.SaveFile( fname.c_str() ) )
+    if( !data.SaveFile( fname ) )
     {
         WriteLog( "Unable to save client '{}'.\n", fname );
         return false;
@@ -2671,7 +2669,7 @@ bool FOServer::LoadClient( Client* cl )
 
     string    fname = _str( "Save/Clients/{}.foclient", cl->Name );
     IniParser client_data;
-    if( !client_data.AppendFile( fname.c_str() ) )
+    if( !client_data.AppendFile( fname ) )
     {
         WriteLog( "Unable to open client save file '{}'.\n", fname );
         return false;
@@ -2790,7 +2788,7 @@ bool FOServer::LoadWorld( const char* fname )
         for( int i = WORLD_SAVE_MAX_INDEX; i >= 1; i-- )
         {
             string auto_fname = _str( auto_fname, "Save/Auto{:04}.foworld", i );
-            if( data.AppendFile( auto_fname.c_str() ) )
+            if( data.AppendFile( auto_fname ) )
             {
                 WriteLog( "Load world from dump file '{}'.\n", auto_fname );
                 SaveWorldIndex = i;
@@ -2919,8 +2917,8 @@ void FOServer::Dump_Work( void* args )
             kv.insert( d->ExtraData.begin(), d->ExtraData.end() );
             d->Props->SaveToText( kv, d->ProtoProps );
             RUNTIME_ASSERT( !Str::Compare( d->TypeName.c_str(), "err.foclient" ) );
-            if( !client_data.SaveFile( ( "Save/Clients/" + d->TypeName ).c_str() ) )
-                WriteLog( "Unable to save client to '{}'.\n", d->TypeName.c_str() );
+            if( !client_data.SaveFile( "Save/Clients/" + d->TypeName ) )
+                WriteLog( "Unable to save client to 'Save/Clients/{}'.\n", d->TypeName );
 
             // Sleep some time
             Thread_Sleep( 1 );

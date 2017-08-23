@@ -130,9 +130,9 @@ int main( int argc, char** argv )
         WriteLog( "Singleplayer mode.\n" );
 
         // Shared data
-        const char* ptr = MainConfig->GetStr( "", "Singleplayer" );
-        HANDLE      map_file = nullptr;
-        if( sscanf( ptr, "%p%p", &map_file, &SingleplayerClientProcess ) != 2 || !SingleplayerData.Attach( map_file ) )
+        string sp = MainConfig->GetStr( "", "Singleplayer" );
+        HANDLE map_file = nullptr;
+        if( sscanf( sp.c_str(), "%p%p", &map_file, &SingleplayerClientProcess ) != 2 || !SingleplayerData.Attach( map_file ) )
         {
             WriteLog( "Can't attach to mapped file {}.\n", map_file );
             return 0;

@@ -33,18 +33,18 @@ void GraphicLoader::DestroyModel( Bone* root_bone )
     delete root_bone;
 }
 
-Bone* GraphicLoader::LoadModel( const char* fname )
+Bone* GraphicLoader::LoadModel( const string& fname )
 {
     // Find already loaded
     for( size_t i = 0, j = loadedModelNames.size(); i < j; i++ )
     {
-        if( Str::CompareCase( loadedModelNames[ i ].c_str(), fname ) )
+        if( Str::CompareCase( loadedModelNames[ i ], fname ) )
             return loadedModels[ i ];
     }
 
     // Add to already processed
     for( size_t i = 0, j = processedFiles.size(); i < j; i++ )
-        if( Str::CompareCase( processedFiles[ i ].c_str(), fname ) )
+        if( Str::CompareCase( processedFiles[ i ], fname ) )
             return nullptr;
     processedFiles.push_back( fname );
 
@@ -76,7 +76,7 @@ Bone* GraphicLoader::LoadModel( const char* fname )
     return root_bone;
 }
 
-AnimSet* GraphicLoader::LoadAnimation( const char* anim_fname, const char* anim_name )
+AnimSet* GraphicLoader::LoadAnimation( const string& anim_fname, const string& anim_name )
 {
     // Find in already loaded
     bool take_first = Str::CompareCase( anim_name, "Base" );
@@ -89,7 +89,7 @@ AnimSet* GraphicLoader::LoadAnimation( const char* anim_fname, const char* anim_
 
     // Check maybe file already processed and nothing founded
     for( size_t i = 0, j = processedFiles.size(); i < j; i++ )
-        if( Str::CompareCase( processedFiles[ i ].c_str(), anim_fname ) )
+        if( Str::CompareCase( processedFiles[ i ], anim_fname ) )
             return nullptr;
 
     // File not processed, load and recheck animations
@@ -105,16 +105,16 @@ AnimSet* GraphicLoader::LoadAnimation( const char* anim_fname, const char* anim_
 
 MeshTextureVec GraphicLoader::loadedMeshTextures;
 
-MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* model_path )
+MeshTexture* GraphicLoader::LoadTexture( const string& texture_name, const string& model_path )
 {
-    if( !texture_name || !texture_name[ 0 ] )
+    if( texture_name.empty() )
         return nullptr;
 
     // Try find already loaded texture
     for( auto it = loadedMeshTextures.begin(), end = loadedMeshTextures.end(); it != end; ++it )
     {
         MeshTexture* texture = *it;
-        if( Str::CompareCase( texture->Name.c_str(), texture_name ) )
+        if( Str::CompareCase( texture->Name, texture_name ) )
             return texture && texture->Id ? texture : nullptr;
     }
 
@@ -126,9 +126,7 @@ MeshTexture* GraphicLoader::LoadTexture( const char* texture_name, const char* m
 
     // First try load from textures folder
     SprMngr.PushAtlasType( RES_ATLAS_TEXTURES );
-    string     path = _str( model_path ).extractDir();
-    path += texture_name;
-    AnyFrames* anim = SprMngr.LoadAnimation( path.c_str() );
+    AnyFrames* anim = SprMngr.LoadAnimation( _str( model_path ).extractDir() + texture_name );
     SprMngr.PopAtlasType();
     if( !anim )
         return nullptr;
@@ -157,12 +155,12 @@ void GraphicLoader::DestroyTextures()
 
 EffectVec GraphicLoader::loadedEffects;
 
-Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, const char* defines /* = NULL */, const char* model_path /* = NULL */, EffectDefault* defaults /* = NULL */, uint defaults_count /* = 0 */ )
+Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, const string& defines /* = "" */, const string& model_path /* = "" */, EffectDefault* defaults /* = nullptr */, uint defaults_count /* = 0 */ )
 {
     // Erase extension
     string fname = _str( effect_name ).eraseFileExtension();
 
-    // Reset defaults to NULL if it's count is zero
+    // Reset defaults to nullptr if it's count is zero
     if( defaults_count == 0 )
         defaults = nullptr;
 
@@ -171,7 +169,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect = *it;
-        if( Str::CompareCase( effect->Name, loaded_fname ) && Str::Compare( effect->Defines, defines ? defines : "" ) && effect->Defaults == defaults )
+        if( Str::CompareCase( effect->Name, loaded_fname ) && effect->Defines == defines && effect->Defaults == defaults )
             return effect;
     }
 
@@ -211,13 +209,13 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     bool fail = false;
     uint passes = 1;
     for( size_t i = 0; i < commands.size(); i++ )
-        if( commands[ i ].size() >= 2 && Str::CompareCase( commands[ i ][ 0 ].c_str(), "Passes" ) )
+        if( commands[ i ].size() >= 2 && Str::CompareCase( commands[ i ][ 0 ], "Passes" ) )
             passes = ConvertParamValue( commands[ i ][ 1 ].c_str(), fail );
 
     // New effect
     Effect effect;
     effect.Name = loaded_fname;
-    effect.Defines = ( defines ? defines : "" );
+    effect.Defines = defines;
 
     // Load passes
     for( uint pass = 0; pass < passes; pass++ )
@@ -326,7 +324,7 @@ Effect* GraphicLoader::LoadEffect( const char* effect_name, bool use_in_2d, cons
     return loadedEffects.back();
 }
 
-bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManager& file, uint pass, bool use_in_2d, const char* defines, EffectDefault* defaults, uint defaults_count )
+bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileManager& file, uint pass, bool use_in_2d, const string& defines, EffectDefault* defaults, uint defaults_count )
 {
     EffectPass effect_pass;
     memzero( &effect_pass, sizeof( effect_pass ) );
@@ -339,17 +337,14 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         binary_fname = "Cache/";
         binary_fname += fname;
         binary_fname = _str( binary_fname ).eraseFileExtension();
-        if( defines )
+        if( !defines.empty() )
         {
-            char binary_fname_defines[ MAX_FOPATH ];
-            Str::Copy( binary_fname_defines, defines );
-            Str::Replacement( binary_fname_defines, '\t', ' ' );                   // Tabs to spaces
-            Str::Replacement( binary_fname_defines, ' ', ' ', ' ' );               // Multiple spaces to single
-            Str::Replacement( binary_fname_defines, '\r', '\n', '_' );             // EOL's to '_'
-            Str::Replacement( binary_fname_defines, '\r', '_' );                   // EOL's to '_'
-            Str::Replacement( binary_fname_defines, '\n', '_' );                   // EOL's to '_'
-            binary_fname += "_";
-            binary_fname += binary_fname_defines;
+            binary_fname += _str( "_" + defines ).
+                            replace( '\t', ' ' ).       // Tabs to spaces
+                            replace( ' ', ' ', ' ' ).   // Multiple spaces to single
+                            replace( '\r', '\n', '_' ). // EOL's to '_'
+                            replace( '\r', '_' ).       // EOL's to '_'
+                            replace( '\n', '_' );       // EOL's to '_'
         }
         #ifdef FO_X64
         binary_fname += "_x64";
@@ -435,10 +430,10 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const char* fname, FileManag
         GLuint vs, fs;
         GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
         GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-        string        buf = _str( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", internal_defines, defines ? defines : "", "\n", str );
+        string        buf = _str( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", internal_defines, defines, "\n", str );
         const GLchar* vs_str = &buf[ 0 ];
         GL( glShaderSource( vs, 1, &vs_str, nullptr ) );
-        buf = _str( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines ? defines : "", "\n", str );
+        buf = _str( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines, "\n", str );
         const GLchar* fs_str = &buf[ 0 ];
         GL( glShaderSource( fs, 1, &fs_str, nullptr ) );
 
@@ -863,7 +858,7 @@ uchar* GraphicLoader::LoadPNG( const uchar* data, uint data_size, uint& result_w
     return result;
 }
 
-void GraphicLoader::SavePNG( const char* fname, uchar* data, uint width, uint height )
+void GraphicLoader::SavePNG( const string& fname, uchar* data, uint width, uint height )
 {
     #if defined ( FO_WINDOWS ) || defined ( FO_LINUX )
     // Initialize stuff

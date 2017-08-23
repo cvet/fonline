@@ -182,7 +182,7 @@ void EntityManager::GetLocations( LocVec& locs )
 
 void EntityManager::DumpEntities( void ( * dump_entity )( Entity* ), IniParser& data )
 {
-    data.SetStr( "GeneralSettings", "LastEntityId", _str( "{}", currentId ).c_str() );
+    data.SetStr( "GeneralSettings", "LastEntityId", _str( "{}", currentId ) );
 
     EntityType query[] = { EntityType::Location, EntityType::Map, EntityType::Npc, EntityType::Item, EntityType::Custom };
     for( int q = 0; q < 5; q++ )
@@ -201,7 +201,7 @@ bool EntityManager::LoadEntities( IniParser& data )
 {
     WriteLog( "Load entities...\n" );
 
-    currentId = _str( data.GetStr( "GeneralSettings", "LastEntityId" ) ).toUInt();
+    currentId = _str( data.GetStr( "GeneralSettings", "LastEntityId", "0" ) ).toUInt();
 
     uint       whole_count = 0;
     EntityType query[] = { EntityType::Location, EntityType::Map, EntityType::Npc, EntityType::Item, EntityType::Custom };

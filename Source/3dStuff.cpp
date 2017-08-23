@@ -1271,7 +1271,7 @@ void Animation3d::Finish()
     Animation3dXFile::xFiles.clear();
 }
 
-Animation3d* Animation3d::GetAnimation( const char* name, bool is_child )
+Animation3d* Animation3d::GetAnimation( const string& name, bool is_child )
 {
     Animation3dEntity* entity = Animation3dEntity::GetEntity( name );
     if( !entity )
@@ -1372,7 +1372,7 @@ Animation3dEntity::~Animation3dEntity()
     delete animController;
 }
 
-bool Animation3dEntity::Load( const char* name )
+bool Animation3dEntity::Load( const string& name )
 {
     string ext = _str( name ).getFileExtension();
     if( ext.empty() )
@@ -1587,7 +1587,7 @@ bool Animation3dEntity::Load( const char* name )
             {
                 ( *istr ) >> buf;
                 string            fname = _str( name ).combinePath( buf );
-                Animation3dXFile* area = Animation3dXFile::GetXFile( fname.c_str() );
+                Animation3dXFile* area = Animation3dXFile::GetXFile( fname );
                 if( area )
                 {
                     // Add cut
@@ -1605,9 +1605,9 @@ bool Animation3dEntity::Load( const char* name )
                     StrVec layers = Str::Split( buf, '-' );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
-                        if( !Str::Compare( layers[ m ].c_str(), "All" ) )
+                        if( layers[ m ] == "All" )
                         {
-                            int layer = ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
+                            int layer = ConvertParamValue( layers[ m ], convert_value_fail );
                             cut->Layers.push_back( layer );
                         }
                         else
@@ -1646,8 +1646,8 @@ bool Animation3dEntity::Load( const char* name )
                     // Parse shapes
                     for( uint m = 0, n = (uint) shapes.size(); m < n; m++ )
                     {
-                        uint shape_name = Bone::GetHash( shapes[ m ].c_str() );
-                        if( Str::Compare( shapes[ m ].c_str(), "All" ) )
+                        hash shape_name = Bone::GetHash( shapes[ m ] );
+                        if( shapes[ m ] == "All" )
                             shape_name = 0;
                         for( size_t k = 0, l = area->allDrawBones.size(); k < l; k++ )
                         {
@@ -1813,7 +1813,7 @@ bool Animation3dEntity::Load( const char* name )
                 StrVec layers = Str::Split( buf, '-' );
                 for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                 {
-                    int layer = ConvertParamValue( layers[ m ].c_str(), convert_value_fail );
+                    int layer = ConvertParamValue( layers[ m ], convert_value_fail );
                     if( layer >= 0 && layer < LAYERS3D_COUNT )
                     {
                         int* tmp = link->DisabledLayers;
@@ -1838,8 +1838,8 @@ bool Animation3dEntity::Load( const char* name )
                 for( uint m = 0, n = (uint) meshes.size(); m < n; m++ )
                 {
                     uint mesh_name_hash = 0;
-                    if( !Str::Compare( meshes[ m ].c_str(), "All" ) )
-                        mesh_name_hash = Bone::GetHash( meshes[ m ].c_str() );
+                    if( meshes[ m ] != "All" )
+                        mesh_name_hash = Bone::GetHash( meshes[ m ] );
                     uint* tmp = link->DisabledMesh;
                     link->DisabledMesh = new uint[ link->DisabledMeshCount + 1 ];
                     for( uint h = 0; h < link->DisabledMeshCount; h++ )
@@ -1941,7 +1941,7 @@ bool Animation3dEntity::Load( const char* name )
                     data_len = (uint) ints.size() * sizeof( int );
                     data = new uchar[ data_len ];
                     for( uint i = 0, j = (uint) ints.size(); i < j; i++ )
-                        ( (int*) data )[ i ] = ConvertParamValue( ints[ i ].c_str(), convert_value_fail );
+                        ( (int*) data )[ i ] = ConvertParamValue( ints[ i ], convert_value_fail );
                 }
                 else
                 {
@@ -2110,7 +2110,7 @@ bool Animation3dEntity::Load( const char* name )
         }
 
         // Load x file
-        Animation3dXFile* xfile = Animation3dXFile::GetXFile( model.c_str() );
+        Animation3dXFile* xfile = Animation3dXFile::GetXFile( model );
         if( !xfile )
             return false;
 
@@ -2149,7 +2149,7 @@ bool Animation3dEntity::Load( const char* name )
                 else
                     anim_path = _str( name ).combinePath( anim_fname );
 
-                AnimSet* set = GraphicLoader::LoadAnimation( anim_path.c_str(), anim_name );
+                AnimSet* set = GraphicLoader::LoadAnimation( anim_path, anim_name );
                 if( set )
                 {
                     animController->RegisterAnimationSet( set );
@@ -2323,7 +2323,7 @@ Animation3d* Animation3dEntity::CloneAnimation()
     return a3d;
 }
 
-Animation3dEntity* Animation3dEntity::GetEntity( const char* name )
+Animation3dEntity* Animation3dEntity::GetEntity( const string& name )
 {
     // Try find instance
     Animation3dEntity* entity = nullptr;
@@ -2368,7 +2368,7 @@ Animation3dXFile::~Animation3dXFile()
     rootBone = nullptr;
 }
 
-Animation3dXFile* Animation3dXFile::GetXFile( const char* xname )
+Animation3dXFile* Animation3dXFile::GetXFile( const string& xname )
 {
     Animation3dXFile* xfile = nullptr;
 
@@ -2443,17 +2443,17 @@ void Animation3dXFile::SetupAnimationOutput( AnimController* anim_controller )
     SetupAnimationOutputExt( anim_controller, rootBone );
 }
 
-MeshTexture* Animation3dXFile::GetTexture( const char* tex_name )
+MeshTexture* Animation3dXFile::GetTexture( const string& tex_name )
 {
-    MeshTexture* texture = GraphicLoader::LoadTexture( tex_name, fileName.c_str() );
+    MeshTexture* texture = GraphicLoader::LoadTexture( tex_name, fileName );
     if( !texture )
-        WriteLog( "Can't load texture '{}'.\n", tex_name ? tex_name : "nullptr" );
+        WriteLog( "Can't load texture '{}'.\n", tex_name );
     return texture;
 }
 
 Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
 {
-    Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, nullptr, fileName.c_str(), effect_inst->Defaults, effect_inst->DefaultsCount );
+    Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, nullptr, fileName, effect_inst->Defaults, effect_inst->DefaultsCount );
     if( !effect )
         WriteLog( "Can't load effect '{}'.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
     return effect;

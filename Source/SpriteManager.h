@@ -130,7 +130,7 @@ public:
     bool IsAccumulateAtlasActive();
     void DestroyAtlases( int atlas_type );
     void DumpAtlases();
-    void SaveTexture( Texture* tex, const char* fname, bool flip );   // tex == NULL is back buffer
+    void SaveTexture( Texture* tex, const string& fname, bool flip );   // tex == NULL is back buffer
 
 private:
     int             atlasWidth, atlasHeight;
@@ -147,30 +147,30 @@ private:
 
     // Load sprites
 public:
-    AnyFrames*   LoadAnimation( const char* fname, bool use_dummy = false, bool frm_anim_pix = false );
-    AnyFrames*   ReloadAnimation( AnyFrames* anim, const char* fname );
-    Animation3d* LoadPure3dAnimation( const char* fname, bool auto_redraw );
+    AnyFrames*   LoadAnimation( const string& fname, bool use_dummy = false, bool frm_anim_pix = false );
+    AnyFrames*   ReloadAnimation( AnyFrames* anim, const string& fname );
+    Animation3d* LoadPure3dAnimation( const string& fname, bool auto_redraw );
     void         RefreshPure3dAnimationSprite( Animation3d* anim3d );
     void         FreePure3dAnimation( Animation3d* anim3d );
-    bool         SaveAnimationInFastFormat( AnyFrames* anim, const char* fname );
-    bool         TryLoadAnimationInFastFormat( const char* fname, FileManager& fm, AnyFrames*& anim );
+    bool         SaveAnimationInFastFormat( AnyFrames* anim, const string& fname );
+    bool         TryLoadAnimationInFastFormat( const string& fname, FileManager& fm, AnyFrames*& anim );
 
 private:
     SprInfoVec     sprData;
     Animation3dVec autoRedrawAnim3d;
 
     AnyFrames* CreateAnimation( uint frames, uint ticks );
-    AnyFrames* LoadAnimationFrm( const char* fname, bool anim_pix );
-    AnyFrames* LoadAnimationRix( const char* fname );
-    AnyFrames* LoadAnimationFofrm( const char* fname );
-    AnyFrames* LoadAnimation3d( const char* fname );
-    AnyFrames* LoadAnimationArt( const char* fname );
-    AnyFrames* LoadAnimationSpr( const char* fname );
-    AnyFrames* LoadAnimationZar( const char* fname );
-    AnyFrames* LoadAnimationTil( const char* fname );
-    AnyFrames* LoadAnimationMos( const char* fname );
-    AnyFrames* LoadAnimationBam( const char* fname );
-    AnyFrames* LoadAnimationOther( const char* fname, uchar * ( *loader )( const uchar *, uint, uint &, uint & ) );
+    AnyFrames* LoadAnimationFrm( const string& fname, bool anim_pix );
+    AnyFrames* LoadAnimationRix( const string& fname );
+    AnyFrames* LoadAnimationFofrm( const string& fname );
+    AnyFrames* LoadAnimation3d( const string& fname );
+    AnyFrames* LoadAnimationArt( const string& fname );
+    AnyFrames* LoadAnimationSpr( const string& fname );
+    AnyFrames* LoadAnimationZar( const string& fname );
+    AnyFrames* LoadAnimationTil( const string& fname );
+    AnyFrames* LoadAnimationMos( const string& fname );
+    AnyFrames* LoadAnimationBam( const string& fname );
+    AnyFrames* LoadAnimationOther( const string &fname, uchar * ( *loader )( const uchar *, uint, uint &, uint & ) );
     bool Render3d( Animation3d* anim3d );
 
     // Draw
@@ -263,7 +263,7 @@ private:
     float       eggAtlasWidth, eggAtlasHeight;
 
 public:
-    void InitializeEgg( const char* egg_name );
+    void InitializeEgg( const string& egg_name );
     bool CompareHexEgg( ushort hx, ushort hy, int egg_type );
     void SetEgg( ushort hx, ushort hy, Sprite* spr );
     void EggNotValid() { eggValid = false; }
@@ -276,16 +276,16 @@ public:
     void ClearFonts();
     void SetDefaultFont( int index, uint color );
     void SetFontEffect( int index, Effect* effect );
-    bool LoadFontFO( int index, const char* font_name, bool not_bordered, bool skip_if_loaded = true );
-    bool LoadFontBMF( int index, const char* font_name );
+    bool LoadFontFO( int index, const string& font_name, bool not_bordered, bool skip_if_loaded = true );
+    bool LoadFontBMF( int index, const string& font_name );
     void BuildFonts();
     bool DrawStr( const Rect& r, const string& str, uint flags, uint color = 0, int num_font = -1 );
-    int  GetLinesCount( int width, int height, const char* str, int num_font = -1 );
-    int  GetLinesHeight( int width, int height, const char* str, int num_font = -1 );
+    int  GetLinesCount( int width, int height, const string& str, int num_font = -1 );
+    int  GetLinesHeight( int width, int height, const string& str, int num_font = -1 );
     int  GetLineHeight( int num_font = -1 );
-    void GetTextInfo( int width, int height, const char* str, int num_font, int flags, int& tw, int& th, int& lines );
-    int  SplitLines( const Rect& r, const char* cstr, int num_font, StrVec& str_vec );
-    bool HaveLetter( int num_font, const char* letter );
+    void GetTextInfo( int width, int height, const string& str, int num_font, int flags, int& tw, int& th, int& lines );
+    int  SplitLines( const Rect& r, const string& cstr, int num_font, StrVec& str_vec );
+    bool HaveLetter( int num_font, const string& letter );
 };
 
 extern SpriteManager SprMngr;

@@ -182,21 +182,19 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     #define VERIFY_STR_ID( str_id )    ( uint( str_id ) <= ~DLGID_MASK )
 
     DialogPack* pack = new DialogPack();
-    const char* dlg_buf = fodlg.GetAppContent( "dialog" );
-    istrstream  input( dlg_buf );
-    const char* lang_buf = nullptr;
+    string      dlg_buf = fodlg.GetAppContent( "dialog" );
+    istrstream  input( dlg_buf.c_str() );
+    string      lang_buf;
     pack->PackId = _str( pack_name ).toHash();
     pack->PackName = pack_name;
     StrVec lang_apps;
 
     // Comment
-    const char* comment = fodlg.GetAppContent( "comment" );
-    if( comment )
-        pack->Comment = comment;
+    pack->Comment = fodlg.GetAppContent( "comment" );
 
     // Texts
-    const char* lang_key = fodlg.GetStr( "data", "lang" );
-    if( !lang_key )
+    string lang_key = fodlg.GetStr( "data", "lang" );
+    if( lang_key.empty() )
         LOAD_FAIL( "Lang app not found." );
 
     // Check dialog pack
@@ -213,12 +211,12 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         if( lang_app.size() != 4 )
             LOAD_FAIL( "Language length not equal 4." );
 
-        lang_buf = fodlg.GetAppContent( lang_app.c_str() );
-        if( !lang_buf )
+        lang_buf = fodlg.GetAppContent( lang_app );
+        if( lang_buf.empty() )
             LOAD_FAIL( "One of the lang section not found." );
 
         FOMsg temp_msg;
-        if( !temp_msg.LoadFromString( lang_buf, Str::Length( lang_buf ) ) )
+        if( !temp_msg.LoadFromString( lang_buf.c_str(), (uint) lang_buf.length() ) )
             LOAD_FAIL( "Load MSG fail." );
 
         if( temp_msg.GetStrNumUpper( 100000000 + ~DLGID_MASK ) )
@@ -234,11 +232,11 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
             uint new_str_num = DLG_STR_ID( pack->PackId, ( str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000 ) );
             for( uint n = 0; n < count; n++ )
             {
-                const char* str = temp_msg.GetStr( str_num, n );
-                if( Str::Substring( str, "\n\\[" ) )
+                string str = temp_msg.GetStr( str_num, n );
+                if( str.find( "\n\\[" ) != string::npos )
                 {
                     char  str_copy[ MAX_FOTEXT ];
-                    Str::Copy( str_copy, str );
+                    Str::Copy( str_copy, str.c_str() );
                     char* s = str_copy;
                     while( s = Str::Substring( s, "\n\\[" ) )
                         Str::EraseInterval( s + 1, 1 );
@@ -253,7 +251,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     }
 
     // Dialog
-    if( !dlg_buf )
+    if( dlg_buf.empty() )
         LOAD_FAIL( "Dialog section not found." );
 
     char ch;

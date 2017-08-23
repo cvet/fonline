@@ -157,8 +157,8 @@ bool FOMapper::Init()
 
     // Language Packs
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    const char* lang_name = MainConfig->GetStr( "", "Language_0", DEFAULT_LANGUAGE );
-    if( !CurLang.LoadFromFiles( lang_name ) )
+    string lang_name = MainConfig->GetStr( "", "Language_0", DEFAULT_LANGUAGE );
+    if( !CurLang.LoadFromFiles( lang_name.c_str() ) )
         return false;
 
     // Prototypes
@@ -226,13 +226,11 @@ bool FOMapper::Init()
     HexMngr.SwitchShowTrack();
     ChangeGameTime();
 
-    if( MainConfig->GetStr( "", "Map" ) )
+    if( MainConfig->IsKey( "", "Map" ) )
     {
-        char map_name[ MAX_FOPATH ];
-        Str::Copy( map_name, MainConfig->GetStr( "", "Map" ) );
-
         FileManager::SetCurrentDir( ServerWritePath, "./" );
 
+        string    map_name = MainConfig->GetStr( "", "Map" );
         ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
         bool      initialized = pmap->Load();
 
@@ -292,14 +290,14 @@ bool FOMapper::Init()
 
 bool FOMapper::IfaceLoadRect( Rect& comp, const char* name )
 {
-    const char* res = IfaceIni.GetStr( "", name );
-    if( !res )
+    string res = IfaceIni.GetStr( "", name );
+    if( res.empty() )
     {
         WriteLog( "Signature '{}' not found.\n", name );
         return false;
     }
 
-    if( sscanf( res, "%d%d%d%d", &comp[ 0 ], &comp[ 1 ], &comp[ 2 ], &comp[ 3 ] ) != 4 )
+    if( sscanf( res.c_str(), "%d%d%d%d", &comp[ 0 ], &comp[ 1 ], &comp[ 2 ], &comp[ 3 ] ) != 4 )
     {
         comp.Clear();
         WriteLog( "Unable to parse signature '{}'.\n", name );
@@ -5127,7 +5125,7 @@ void FOMapper::SScriptFunc::Global_MessageMsg( int text_msg, uint str_num )
 {
     if( text_msg >= TEXTMSG_COUNT )
         SCRIPT_ERROR_R( "Invalid text msg arg." );
-    Self->AddMess( Self->CurLang.Msg[ text_msg ].GetStr( str_num ) );
+    Self->AddMess( Self->CurLang.Msg[ text_msg ].GetStr( str_num ).c_str() );
 }
 
 void FOMapper::SScriptFunc::Global_MapMessage( string text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy )

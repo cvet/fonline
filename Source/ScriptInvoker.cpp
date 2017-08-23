@@ -156,7 +156,7 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call )
 
 void ScriptInvoker::SaveDeferredCalls( IniParser& data )
 {
-    data.SetStr( "GeneralSettings", "LastDeferredCallId", _str( "{}", lastDeferredCallId ).c_str() );
+    data.SetStr( "GeneralSettings", "LastDeferredCallId", _str( "{}", lastDeferredCallId ) );
 
     uint tick = Timer::FastTick();
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
@@ -193,7 +193,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
 {
     WriteLog( "Load deferred calls...\n" );
 
-    lastDeferredCallId = _str( data.GetStr( "GeneralSettings", "LastDeferredCallId" ) ).toUInt();
+    lastDeferredCallId = _str( data.GetStr( "GeneralSettings", "LastDeferredCallId", "0" ) ).toUInt();
 
     int          errors = 0;
     PStrMapVec   deferred_calls;

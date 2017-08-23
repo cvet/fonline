@@ -148,7 +148,7 @@ void InitialSetup( uint argc, char** argv )
     // File configs
     MainConfig->AppendFile( CONFIG_NAME );
     for( string& config : configs )
-        MainConfig->AppendFile( config.c_str() );
+        MainConfig->AppendFile( config );
 
     // Command line config
     for( uint i = 0; i < argc; i++ )
@@ -167,17 +167,16 @@ void InitialSetup( uint argc, char** argv )
             i++;
         }
 
-        MainConfig->SetStr( "", arg + 1, arg_value.c_str() );
+        MainConfig->SetStr( "", arg + 1, arg_value );
     }
 
     // Cache modules
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER ) || defined ( FONLINE_SCRIPT_COMPILER )
-    const char* modules = MainConfig->GetStr( "", "Modules" );
-    RUNTIME_ASSERT( modules );
-    StrVec      modules_arr = Str::Split( modules, ';' );
-    for( size_t i = 0; i < modules_arr.size(); i++ )
+    RUNTIME_ASSERT_STR( MainConfig->IsKey( "", "Modules" ), "'Modules' not found in config files" );
+    string modules = MainConfig->GetStr( "", "Modules" );
+    for( const string& module : Str::Split( modules, ';' ) )
     {
-        string module_path = _str( GameOpt.ServerDir ).combinePath( modules_arr[ i ] ).normalizePathSlashes().resolvePath();
+        string module_path = _str( GameOpt.ServerDir ).combinePath( module ).normalizePathSlashes().resolvePath();
         if( !module_path.empty() && module_path.back() != '/' && module_path.back() != '\\' )
             module_path += "/";
         GameModules.push_back( _str( module_path ).normalizePathSlashes() );
@@ -557,10 +556,10 @@ bool IntersectCircleLine( int cx, int cy, int radius, int x1, int y1, int x2, in
     return a + b + c < 0;
 }
 
-void ShowMessage( const char* message )
+void ShowMessage( const string& message )
 {
     #if defined ( FO_CLIENT ) || defined ( FO_MAPPER )
-    SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline", message, nullptr );
+    SDL_ShowSimpleMessageBox( SDL_MESSAGEBOX_ERROR, "FOnline", message.c_str(), nullptr );
     #else
     # ifdef FO_WINDOWS
     MessageBoxW( nullptr, _str( message ).toWideChar().c_str(), L"FOnline", MB_OK );
@@ -570,9 +569,9 @@ void ShowMessage( const char* message )
     #endif
 }
 
-int ConvertParamValue( const char* str, bool& fail )
+int ConvertParamValue( const string& str, bool& fail )
 {
-    if( !str[ 0 ] )
+    if( str.empty() )
     {
         WriteLog( "Empty parameter value.\n" );
         fail = true;
@@ -580,7 +579,7 @@ int ConvertParamValue( const char* str, bool& fail )
     }
 
     if( str[ 0 ] == '@' && str[ 1 ] )
-        return _str( str + 1 ).toHash();
+        return _str( str.substr( 1 ) ).toHash();
     if( _str( str ).isNumber() )
         return _str( str ).toInt();
     if( _str( str ).compareIgnoreCase( "true" ) )
@@ -807,24 +806,24 @@ uint GetColorDay( int* day_time, uchar* colors, int game_time, int* light )
 void GetClientOptions()
 {
     // Defines
-    # define GETOPTIONS_CMD_LINE_INT( opt, str_id )                        \
-        do { const char* str = MainConfig->GetStr( "", str_id ); if( str ) \
+    # define GETOPTIONS_CMD_LINE_INT( opt, str_id )                            \
+        do { string str = MainConfig->GetStr( "", str_id ); if( !str.empty() ) \
                  opt = MainConfig->GetInt( "", str_id ); } while( 0 )
-    # define GETOPTIONS_CMD_LINE_BOOL( opt, str_id )                       \
-        do { const char* str = MainConfig->GetStr( "", str_id ); if( str ) \
+    # define GETOPTIONS_CMD_LINE_BOOL( opt, str_id )                           \
+        do { string str = MainConfig->GetStr( "", str_id ); if( !str.empty() ) \
                  opt = MainConfig->GetInt( "", str_id ) != 0; } while( 0 )
-    # define GETOPTIONS_CMD_LINE_BOOL_ON( opt, str_id )                    \
-        do { const char* str = MainConfig->GetStr( "", str_id ); if( str ) \
+    # define GETOPTIONS_CMD_LINE_BOOL_ON( opt, str_id )                        \
+        do { string str = MainConfig->GetStr( "", str_id ); if( !str.empty() ) \
                  opt = true; } while( 0 )
-    # define GETOPTIONS_CMD_LINE_STR( opt, str_id )                        \
-        do { const char* str = MainConfig->GetStr( "", str_id ); if( str ) \
-                 Str::Copy( opt, str ); } while( 0 )
+    # define GETOPTIONS_CMD_LINE_STR( opt, str_id )                            \
+        do { string str = MainConfig->GetStr( "", str_id ); if( !str.empty() ) \
+                 Str::Copy( opt, str.c_str() ); } while( 0 )
     # define GETOPTIONS_CHECK( val_, min_, max_, def_ )                 \
         do { int val__ = (int) val_; if( val__ < min_ || val__ > max_ ) \
                  val_ = def_; } while( 0 )
 
     char buf[ MAX_FOTEXT ];
-    # define READ_CFG_STR_DEF( cfg, key, def_val )    Str::Copy( buf, MainConfig->GetStr( "", key, def_val ) )
+    # define READ_CFG_STR_DEF( cfg, key, def_val )    Str::Copy( buf, MainConfig->GetStr( "", key, def_val ).c_str() )
 
     // Data files
     FileManager::ClearDataFiles();
