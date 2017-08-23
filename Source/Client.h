@@ -234,7 +234,7 @@ public:
     // MSG File
     LanguagePack CurLang;
 
-    const char* FmtGameText( uint str_num, ... );
+    string FmtGameText( uint str_num, ... );
 
     // Properties callbacks
     static void OnSendGlobalValue( Entity* entity, Property* prop );
@@ -544,7 +544,7 @@ public:
     uchar DlgIsNpc;
     uint  DlgNpcId;
 
-    void  FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl * player, CritterCl * npc, const char* lexems );
+    void FormatTags( string& text, CritterCl* player, CritterCl* npc, const string& lexems );
 
 /************************************************************************/
 /* Mini-map                                                             */

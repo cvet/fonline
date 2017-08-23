@@ -8,25 +8,26 @@
 #include <list>
 #include <vector>
 #include <deque>
-#include <strstream>
+// #include <strstream>
+#include <sstream>
 
 #if defined ( FO_MSVC )
-typedef unsigned char    uchar;
-typedef unsigned short   ushort;
-typedef unsigned int     uint;
-typedef unsigned __int64 uint64;
-typedef __int64          int64;
+using uchar = unsigned char;
+using ushort = unsigned short;
+using uint = unsigned int;
+using uint64 = unsigned __int64;
+using int64 = __int64;
 #elif defined ( FO_GCC )
 # include <inttypes.h>
-typedef unsigned char    uchar;
-typedef unsigned short   ushort;
-typedef unsigned int     uint;
-typedef uint64_t         uint64;
-typedef int64_t          int64;
+using uchar = unsigned char;
+using ushort = unsigned short;
+using uint = unsigned int;
+using uint64 = uint64_t;
+using int64 = int64_t;
 #endif
 
-typedef uint             hash;
-typedef uint             max_t;
+using hash = uint;
+using max_t = uint;
 
 using std::string;
 using std::list;
@@ -36,78 +37,78 @@ using std::multimap;
 using std::set;
 using std::deque;
 using std::pair;
-using std::istrstream;
+using std::istringstream;
 
 #define PAIR( k, v )    pair< decltype( k ), decltype( v ) >( k, v )
 
-typedef map< string, uchar >     StrUCharMap;
-typedef map< uchar, string >     UCharStrMap;
-typedef map< string, string >    StrMap;
-typedef map< uint, string >      UIntStrMap;
-typedef map< string, ushort >    StrUShortMap;
-typedef map< string, uint >      StrUIntMap;
-typedef map< string, int64 >     StrInt64Map;
-typedef map< string, void* >     StrPtrMap;
-typedef map< ushort, string >    UShortStrMap;
-typedef map< string, uint >      StrUIntMap;
-typedef map< uint, uint >        UIntMap;
-typedef map< int, int >          IntMap;
-typedef map< int, float >        IntFloatMap;
-typedef map< int, void* >        IntPtrMap;
-typedef map< uint, float >       UIntFloatMap;
-typedef map< ushort, uint >      UShortUIntMap;
-typedef map< size_t, string >    SizeTStrMap;
-typedef map< uint, int >         UIntIntMap;
-typedef map< hash, int >         HashIntMap;
-typedef map< hash, uint >        HashUIntMap;
-typedef map< int, string >       IntStrMap;
-typedef map< string, int >       StrIntMap;
+using StrUCharMap = map< string, uchar >;
+using UCharStrMap = map< uchar, string >;
+using StrMap = map< string, string >;
+using UIntStrMap = map< uint, string >;
+using StrUShortMap = map< string, ushort >;
+using StrUIntMap = map< string, uint >;
+using StrInt64Map = map< string, int64 >;
+using StrPtrMap = map< string, void* >;
+using UShortStrMap = map< ushort, string >;
+using StrUIntMap = map< string, uint >;
+using UIntMap = map< uint, uint >;
+using IntMap = map< int, int >;
+using IntFloatMap = map< int, float >;
+using IntPtrMap = map< int, void* >;
+using UIntFloatMap = map< uint, float >;
+using UShortUIntMap = map< ushort, uint >;
+using SizeTStrMap = map< size_t, string >;
+using UIntIntMap = map< uint, int >;
+using HashIntMap = map< hash, int >;
+using HashUIntMap = map< hash, uint >;
+using IntStrMap = map< int, string >;
+using StrIntMap = map< string, int >;
 
-typedef multimap< uint, string > UIntStrMulMap;
+using UIntStrMulMap = multimap< uint, string >;
 
-typedef vector< void* >          PtrVec;
-typedef vector< int >            IntVec;
-typedef vector< uchar >          UCharVec;
-typedef vector< UCharVec >       UCharVecVec;
-typedef vector< short >          ShortVec;
-typedef vector< ushort >         UShortVec;
-typedef vector< uint >           UIntVec;
-typedef vector< UIntVec >        UIntVecVec;
-typedef vector< char >           CharVec;
-typedef vector< string >         StrVec;
-typedef vector< char* >          PCharVec;
-typedef vector< uchar* >         PUCharVec;
-typedef vector< float >          FloatVec;
-typedef vector< uint64 >         UInt64Vec;
-typedef vector< bool >           BoolVec;
-typedef vector< size_t >         SizeVec;
-typedef vector< hash >           HashVec;
-typedef vector< HashVec >        HashVecVec;
-typedef vector< max_t >          MaxTVec;
-typedef vector< StrMap* >        PStrMapVec;
+using PtrVec = vector< void* >;
+using IntVec = vector< int >;
+using UCharVec = vector< uchar >;
+using UCharVecVec = vector< UCharVec >;
+using ShortVec = vector< short >;
+using UShortVec = vector< ushort >;
+using UIntVec = vector< uint >;
+using UIntVecVec = vector< UIntVec >;
+using CharVec = vector< char >;
+using StrVec = vector< string >;
+using PCharVec = vector< char* >;
+using PUCharVec = vector< uchar* >;
+using FloatVec = vector< float >;
+using UInt64Vec = vector< uint64 >;
+using BoolVec = vector< bool >;
+using SizeVec = vector< size_t >;
+using HashVec = vector< hash >;
+using HashVecVec = vector< HashVec >;
+using MaxTVec = vector< max_t >;
+using PStrMapVec = vector< StrMap* >;
 
-typedef set< string >            StrSet;
-typedef set< uchar >             UCharSet;
-typedef set< ushort >            UShortSet;
-typedef set< uint >              UIntSet;
-typedef set< int >               IntSet;
-typedef set< hash >              HashSet;
+using StrSet = set< string >;
+using UCharSet = set< uchar >;
+using UShortSet = set< ushort >;
+using UIntSet = set< uint >;
+using IntSet = set< int >;
+using HashSet = set< hash >;
 
-typedef pair< int, int >         IntPair;
-typedef pair< ushort, ushort >   UShortPair;
-typedef pair< uint, uint >       UIntPair;
-typedef pair< char, char >       CharPair;
-typedef pair< char*, char* >     PCharPair;
-typedef pair< uchar, uchar >     UCharPair;
+using IntPair = pair< int, int >;
+using UShortPair = pair< ushort, ushort >;
+using UIntPair = pair< uint, uint >;
+using CharPair = pair< char, char >;
+using PCharPair = pair< char*, char* >;
+using UCharPair = pair< uchar, uchar >;
 
-typedef vector< UShortPair >     UShortPairVec;
-typedef vector< IntPair >        IntPairVec;
-typedef vector< UIntPair >       UIntPairVec;
-typedef vector< PCharPair >      PCharPairVec;
-typedef vector< UCharPair >      UCharPairVec;
+using UShortPairVec = vector< UShortPair >;
+using IntPairVec = vector< IntPair >;
+using UIntPairVec = vector< UIntPair >;
+using PCharPairVec = vector< PCharPair >;
+using UCharPairVec = vector< UCharPair >;
 
-typedef map< uint, UIntPair >    UIntUIntPairMap;
-typedef map< uint, IntPairVec >  UIntIntPairVecMap;
-typedef map< uint, HashVec >     UIntHashVecMap;
+using UIntUIntPairMap = map< uint, UIntPair >;
+using UIntIntPairVecMap = map< uint, IntPairVec >;
+using UIntHashVecMap = map< uint, HashVec >;
 
 #endif // ___TYPES___

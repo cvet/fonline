@@ -1386,12 +1386,11 @@ bool Animation3dEntity::Load( const string& name )
         if( !fo3d.LoadFile( name ) )
             return false;
 
-        string file_buf = fo3d.GetCStr();
-
         // Parse
+        string           file_buf = fo3d.GetCStr();
         string           model;
-        char             render_fname[ MAX_FOPATH ] = { 0 };
-        char             render_anim[ MAX_FOPATH ] = { 0 };
+        string           render_fname;
+        string           render_anim;
         vector< size_t > anim_indexes;
         bool             disable_animation_interpolation = false;
         bool             convert_value_fail = false;
@@ -1406,11 +1405,10 @@ bool Animation3dEntity::Load( const string& name )
         AnimParams*      link = &animDataDefault;
         static uint      link_id = 0;
 
-        istrstream*      istr = new istrstream( file_buf.c_str() );
+        istringstream*   istr = new istringstream( file_buf );
         bool             closed = false;
-        char             token[ MAX_FOTEXT ];
-        char             line[ MAX_FOTEXT ];
-        char             buf[ MAX_FOTEXT ];
+        string           token;
+        string           buf;
         float            valuei = 0;
         float            valuef = 0.0f;
         while( !( *istr ).eof() )
@@ -1419,15 +1417,16 @@ bool Animation3dEntity::Load( const string& name )
             if( ( *istr ).fail() )
                 break;
 
-            char* comment = Str::Substring( token, ";" );
-            if( !comment )
-                comment = Str::Substring( token, "#" );
-            if( comment )
+            size_t comment = token.find( ';' );
+            if( comment == string::npos )
+                comment = token.find( '#' );
+            if( comment != string::npos )
             {
-                *comment = 0;
-                line[ 0 ] = 0;
-                ( *istr ).getline( line, MAX_FOTEXT );
-                if( !Str::Length( token ) )
+                token = token.substr( 0, comment );
+
+                string line;
+                std::getline( *istr, line, '\n' );
+                if( token.empty() )
                     continue;
             }
 
@@ -1451,15 +1450,14 @@ bool Animation3dEntity::Load( const string& name )
             {
                 // Get swapped words
                 StrVec templates;
-                line[ 0 ] = 0;
-                ( *istr ).getline( line, MAX_FOTEXT );
-                Str::EraseChars( line, '\r' );
-                Str::EraseChars( line, '\n' );
-                templates = _str( line ).split( ' ' );
+                string line;
+                std::getline( *istr, line, '\n' );
+                templates = _str( line ).trim().split( ' ' );
                 if( templates.empty() )
                     continue;
-                for( uint i = 1, j = (uint) templates.size(); i < j - 1; i += 2 )
-                    templates[ i ] = string( "%" ).append( templates[ i ] ).append( "%" );
+
+                for( size_t i = 1; i < templates.size() - 1; i += 2 )
+                    templates[ i ] = _str( "%{}%", templates[ i ] );
 
                 // Include file path
                 string      fname = _str( name ).combinePath( templates[ 0 ] );
@@ -1482,12 +1480,12 @@ bool Animation3dEntity::Load( const string& name )
 
                 // Reinitialize stream
                 delete istr;
-                istr = new istrstream( file_buf.c_str() );
+                istr = new istringstream( file_buf );
             }
             else if( Str::Compare( token, "Mesh" ) )
             {
                 ( *istr ) >> buf;
-                if( !Str::Compare( buf, "All" ) )
+                if( buf != "All" )
                     mesh = Bone::GetHash( buf );
                 else
                     mesh = 0;
@@ -1597,7 +1595,7 @@ bool Animation3dEntity::Load( const string& name )
                     // Unskin bone
                     ( *istr ) >> buf;
                     cut->UnskinBone = Bone::GetHash( buf );
-                    if( Str::Compare( buf, "-" ) )
+                    if( buf == "-" )
                         cut->UnskinBone = 0;
 
                     // Unskin shape
@@ -1606,8 +1604,8 @@ bool Animation3dEntity::Load( const string& name )
                     cut->RevertUnskinShape = false;
                     if( cut->UnskinBone )
                     {
-                        cut->RevertUnskinShape = ( buf[ 0 ] == '~' );
-                        unskin_shape_name = Bone::GetHash( buf[ 0 ] == '~' ? buf + 1 : buf );
+                        cut->RevertUnskinShape = ( !buf.empty() && buf[ 0 ] == '~' );
+                        unskin_shape_name = Bone::GetHash( !buf.empty() && buf[ 0 ] == '~' ? buf.substr( 1 ) : buf );
                         for( size_t k = 0, l = area->allDrawBones.size(); k < l; k++ )
                         {
                             if( unskin_shape_name == area->allDrawBones[ k ]->NameHash )
@@ -1887,29 +1885,31 @@ bool Animation3dEntity::Load( const string& name )
                 EffectDefault::EType type;
                 uchar*               data = nullptr;
                 uint                 data_len = 0;
-                if( Str::Compare( buf, "String" ) )
+                if( buf == "String" )
                 {
                     type = EffectDefault::String;
                     data = (uchar*) Str::Duplicate( def_value );
                     data_len = Str::Length( (char*) data );
                 }
-                else if( Str::Compare( buf, "Float" ) || Str::Compare( buf, "Floats" ) )
+                else if( buf == "Float" || buf == "Floats" )
                 {
                     type = EffectDefault::Float;
                     StrVec floats = _str( def_value ).split( '-' );
                     if( floats.empty() )
                         continue;
+
                     data_len = (uint) floats.size() * sizeof( float );
                     data = new uchar[ data_len ];
                     for( uint i = 0, j = (uint) floats.size(); i < j; i++ )
                         ( (float*) data )[ i ] = _str( "{}", floats[ i ] ).toFloat();
                 }
-                else if( Str::Compare( buf, "Int" ) || Str::Compare( buf, "Dword" ) )
+                else if( buf == "Int" || buf == "Dword" )
                 {
                     type = EffectDefault::Int;
                     StrVec ints = _str( def_value ).split( '-' );
                     if( ints.empty() )
                         continue;
+
                     data_len = (uint) ints.size() * sizeof( int );
                     data = new uchar[ data_len ];
                     for( uint i = 0, j = (uint) ints.size(); i < j; i++ )
@@ -2016,12 +2016,10 @@ bool Animation3dEntity::Load( const string& name )
             else if( Str::Compare( token, "RenderFrame" ) || Str::Compare( token, "RenderFrames" ) )
             {
                 anim_indexes.push_back( 0 );
-                ( *istr ) >> buf;
-                Str::Copy( render_fname, buf );
-                anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
-                ( *istr ) >> buf;
-                Str::Copy( render_anim, buf );
-                anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
+                ( *istr ) >> render_fname;
+                anim_indexes.push_back( ( size_t ) Str::Duplicate( render_fname ) );
+                ( *istr ) >> render_anim;
+                anim_indexes.push_back( ( size_t ) Str::Duplicate( render_anim ) );
 
                 ( *istr ) >> renderAnimProcFrom;
 
@@ -2193,23 +2191,6 @@ bool Animation3dEntity::Load( const string& name )
     }
 
     return true;
-}
-
-void Animation3dEntity::ProcessTemplateDefines( char* str, StrVec& def )
-{
-    for( int i = 1, j = (int) def.size(); i < j - 1; i += 2 )
-    {
-        const char* from = def[ i ].c_str();
-        const char* to = def[ i + 1 ].c_str();
-
-        char*       token = Str::Substring( str, from );
-        while( token )
-        {
-            Str::EraseInterval( token, Str::Length( from ) );
-            Str::Insert( token, to );
-            token = Str::Substring( str, from );
-        }
-    }
 }
 
 int Animation3dEntity::GetAnimationIndex( uint& anim1, uint& anim2, float* speed, bool combat_first )

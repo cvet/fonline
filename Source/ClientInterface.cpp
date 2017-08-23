@@ -116,41 +116,40 @@ void FOClient::AddMess( int mess_type, const string& msg, bool script_call )
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, CritterCl* npc, const char* lexems )
+void FOClient::FormatTags( string& text, CritterCl* player, CritterCl* npc, const string& lexems )
 {
-    if( Str::CompareCase( text, "error" ) )
+    if( text == "error" )
     {
-        Str::Copy( text, "Text not found!" );
+        text = "Text not found!";
         return;
     }
 
-    char*           str = text;
-    vector< char* > dialogs;
-    int             sex = 0;
-    bool            sex_tags = false;
-    char            tag[ MAX_FOTEXT ];
+    StrVec dialogs;
+    int    sex = 0;
+    bool   sex_tags = false;
+    string tag;
     tag[ 0 ] = 0;
 
-    for( int i = 0; str[ i ];)
+    for( size_t i = 0; i < text.length();)
     {
-        switch( str[ i ] )
+        switch( text[ i ] )
         {
         case '#':
         {
-            str[ i ] = '\n';
+            text[ i ] = '\n';
         }
         break;
         case '|':
         {
             if( sex_tags )
             {
-                Str::CopyWord( tag, &str[ i + 1 ], '|', false );
-                Str::EraseInterval( &str[ i ], Str::Length( tag ) + 2 );
+                tag = _str( text.substr( i + 1 ) ).substringUntil( '|' );
+                text.erase( i, tag.length() + 2 );
 
                 if( sex )
                 {
                     if( sex == 1 )
-                        Str::Insert( &str[ i ], tag );
+                        text.insert( i, tag );
                     sex--;
                 }
                 continue;
@@ -159,128 +158,105 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
         break;
         case '@':
         {
-            if( str[ i + 1 ] == '@' )
+            if( text[ i + 1 ] == '@' )
             {
-                str[ i ] = 0;
-                dialogs.push_back( str );
-                str = &str[ i + 2 ];
+                dialogs.push_back( text.substr( 0, i ) );
+                text.erase( 0, i + 2 );
                 i = 0;
                 continue;
             }
 
-            tag[ 0 ] = 0;
-            Str::CopyWord( tag, &str[ i + 1 ], '@', false );
-            Str::EraseInterval( &str[ i ], Str::Length( tag ) + 2 );
-
-            if( !Str::Length( tag ) )
+            tag = _str( text.substr( i + 1 ) ).substringUntil( '@' );
+            text.erase( i, tag.length() + 2 );
+            if( tag.empty() )
                 break;
 
             // Player name
-            if( Str::CompareCase( tag, "pname" ) )
+            if( _str( tag ).compareIgnoreCase( "pname" ) )
             {
-                Str::Copy( tag, player ? player->GetName().c_str() : "" );
+                tag = ( player ? player->GetName() : "" );
             }
             // Npc name
-            else if( Str::CompareCase( tag, "nname" ) )
+            else if( _str( tag ).compareIgnoreCase( "nname" ) )
             {
-                Str::Copy( tag, npc ? npc->GetName().c_str() : "" );
+                tag = ( npc ? npc->GetName() : "" );
             }
             // Sex
-            else if( Str::CompareCase( tag, "sex" ) )
+            else if( _str( tag ).compareIgnoreCase( "sex" ) )
             {
                 sex = ( player ? player->GetGender() + 1 : 1 );
                 sex_tags = true;
                 continue;
             }
             // Random
-            else if( Str::CompareCase( tag, "rnd" ) )
+            else if( _str( tag ).compareIgnoreCase( "rnd" ) )
             {
-                char*           str_ = str + i;
-                Str::GoTo( str_, '|', false );
-                char*           last_separator = str_;
-                vector< char* > rnd;
-                while( *str_ )
-                {
-                    last_separator = str_;
-                    rnd.push_back( str_ );
-                    str_++;
-                    Str::GoTo( str_, '|', false );
-                }
+                size_t first = text.find_first_of( '|', i );
+                size_t last = text.find_last_of( '|', i );
+                StrVec rnd = _str( text.substr( first, last - first + 1 ) ).split( '|' );
+                text.erase( first, last - first + 1 );
                 if( !rnd.empty() )
-                    rnd.pop_back();
-                if( !rnd.empty() )
-                {
-                    char* rnd_str = rnd[ Random( 0, (int) rnd.size() - 1 ) ];
-                    str_ = rnd_str + 1;
-                    Str::GoTo( str_, '|' );
-                    Str::CopyCount( tag, rnd_str + 1, (uint) ( str_ - rnd_str ) - 1 );
-                    Str::EraseInterval( str + i, (uint) ( last_separator - ( str + i ) ) + 1 );
-                }
+                    text.insert( first, rnd[ Random( 0, (int) rnd.size() - 1 ) ] );
             }
             // Lexems
-            else if( Str::Length( tag ) > 4 && tag[ 0 ] == 'l' && tag[ 1 ] == 'e' && tag[ 2 ] == 'x' && tag[ 3 ] == ' ' )
+            else if( tag.length() > 4 && tag[ 0 ] == 'l' && tag[ 1 ] == 'e' && tag[ 2 ] == 'x' && tag[ 3 ] == ' ' )
             {
-                const char* s = Str::Substring( lexems ? lexems : "", _str( "${}", &tag[ 4 ] ).c_str() );
-                if( s )
+                string lex = "$" + tag.substr( 4 );
+                size_t pos = lexems.find( lex );
+                if( pos != string::npos )
                 {
-                    s += Str::Length( &tag[ 4 ] ) + 1;
-                    if( *s == ' ' )
-                        s++;
-                    Str::CopyWord( tag, s, '$', false );
+                    pos += lex.length() + 1;
+                    tag = _str( lexems.substr( pos ) ).substringUntil( '$' ).trim();
                 }
                 else
                 {
-                    Str::Copy( tag, "<lexem not found>" );
+                    tag = "<lexem not found>";
                 }
             }
             // Msg text
-            else if( Str::Length( tag ) > 4 && tag[ 0 ] == 'm' && tag[ 1 ] == 's' && tag[ 2 ] == 'g' && tag[ 3 ] == ' ' )
+            else if( tag.length() > 4 && tag[ 0 ] == 'm' && tag[ 1 ] == 's' && tag[ 2 ] == 'g' && tag[ 3 ] == ' ' )
             {
-                char msg_type_name[ 64 ];
-                uint str_num;
-                Str::EraseChars( &tag[ 4 ], '(' );
-                Str::EraseChars( &tag[ 4 ], ')' );
-                if( sscanf( &tag[ 4 ], "%s %u", msg_type_name, &str_num ) != 2 )
-                {
-                    Str::Copy( tag, "<msg tag parse fail>" );
-                }
-                else
+                tag = _str( tag ).erase( '(' ).erase( ')' );
+                istringstream itag( tag );
+                string        msg_type_name;
+                uint          str_num;
+                if( itag >> msg_type_name >> str_num )
                 {
                     int msg_type = FOMsg::GetMsgType( msg_type_name );
                     if( msg_type < 0 || msg_type >= TEXTMSG_COUNT )
-                        Str::Copy( tag, "<msg tag, unknown type>" );
+                        tag = "<msg tag, unknown type>";
                     else if( !CurLang.Msg[ msg_type ].Count( str_num ) )
-                        Str::Copy( tag, _str( "<msg tag, string {} not found>", str_num ).c_str() );
+                        tag = _str( "<msg tag, string {} not found>", str_num );
                     else
-                        Str::Copy( tag, CurLang.Msg[ msg_type ].GetStr( str_num ).c_str() );
+                        tag = CurLang.Msg[ msg_type ].GetStr( str_num );
+                }
+                else
+                {
+                    tag = "<msg tag parse fail>";
                 }
             }
             // Script
-            else if( Str::Length( tag ) > 7 && tag[ 0 ] == 's' && tag[ 1 ] == 'c' && tag[ 2 ] == 'r' && tag[ 3 ] == 'i' && tag[ 4 ] == 'p' && tag[ 5 ] == 't' && tag[ 6 ] == ' ' )
+            else if( tag.length() > 7 && tag[ 0 ] == 's' && tag[ 1 ] == 'c' && tag[ 2 ] == 'r' && tag[ 3 ] == 'i' && tag[ 4 ] == 'p' && tag[ 5 ] == 't' && tag[ 6 ] == ' ' )
             {
-                char func_name[ MAX_FOTEXT ];
-                Str::CopyWord( func_name, &tag[ 7 ], '$', false );
-                uint bind_id = Script::BindByFuncName( func_name, "string %s(string)", true );
-                Str::Copy( tag, "<script function not found>" );
+                string func_name = _str( tag.substr( 7 ) ).substringUntil( '$' );
+                uint   bind_id = Script::BindByFuncName( func_name, "string %s(string)", true );
+                tag = "<script function not found>";
                 if( bind_id )
                 {
-                    string script_lexems = lexems ? lexems : "";
+                    string script_lexems = lexems;
                     Script::PrepareContext( bind_id, "Game" );
                     Script::SetArgObject( &script_lexems );
                     if( Script::RunPrepared() )
-                    {
-                        string& result = *(string*) Script::GetReturnedObject();
-                        Str::Copy( tag, result.c_str() );
-                    }
+                        tag = *(string*) Script::GetReturnedObject();
                 }
             }
             // Error
             else
             {
-                Str::Copy( tag, "<error>" );
+                tag = "<error>";
             }
 
-            Str::Insert( str + i, tag );
+            text.insert( i, tag );
         }
             continue;
         default:
@@ -290,8 +266,8 @@ void FOClient::FormatTags( char(&text)[ MAX_FOTEXT ], CritterCl* player, Critter
         ++i;
     }
 
-    dialogs.push_back( str );
-    Str::Copy( text, dialogs[ Random( 0, (uint) dialogs.size() - 1 ) ] );
+    dialogs.push_back( text );
+    text = dialogs[ Random( 0, (uint) dialogs.size() - 1 ) ];
 }
 
 // ==============================================================================================================================

@@ -1083,9 +1083,8 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     break;
     case CMD_CRITID:
     {
-        char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        buf.Pop( name, sizeof( name ) );
-        name[ sizeof( name ) - 1 ] = 0;
+        string name;
+        buf >> name;
 
         CHECK_ALLOW_COMMAND;
 
@@ -1196,11 +1195,11 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     break;
     case CMD_PROPERTY:
     {
-        uint crid;
-        char property_name[ 256 ];
-        int  property_value;
+        uint   crid;
+        string property_name;
+        int    property_value;
         buf >> crid;
-        buf.Pop( property_name, sizeof( property_name ) );
+        buf >> property_name;
         buf >> property_value;
 
         CHECK_ALLOW_COMMAND;
@@ -1231,12 +1230,10 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     break;
     case CMD_GETACCESS:
     {
-        char name_access[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        char pasw_access[ UTF8_BUF_SIZE( 128 ) ];
-        buf.Pop( name_access, sizeof( name_access ) );
-        buf.Pop( pasw_access, sizeof( pasw_access ) );
-        name_access[ sizeof( name_access ) - 1 ] = 0;
-        pasw_access[ sizeof( pasw_access ) - 1 ] = 0;
+        string name_access;
+        string pasw_access;
+        buf >> name_access;
+        buf >> pasw_access;
 
         CHECK_ALLOW_COMMAND;
         CHECK_ADMIN_PANEL;
@@ -1245,13 +1242,13 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         GetAccesses( client, tester, moder, admin, admin_names );
 
         int wanted_access = -1;
-        if( Str::Compare( name_access, "client" ) && std::find( client.begin(), client.end(), pasw_access ) != client.end() )
+        if( name_access == "client" && std::find( client.begin(), client.end(), pasw_access ) != client.end() )
             wanted_access = ACCESS_CLIENT;
-        else if( Str::Compare( name_access, "tester" ) && std::find( tester.begin(), tester.end(), pasw_access ) != tester.end() )
+        else if( name_access == "tester" && std::find( tester.begin(), tester.end(), pasw_access ) != tester.end() )
             wanted_access = ACCESS_TESTER;
-        else if( Str::Compare( name_access, "moder" ) && std::find( moder.begin(), moder.end(), pasw_access ) != moder.end() )
+        else if( name_access == "moder" && std::find( moder.begin(), moder.end(), pasw_access ) != moder.end() )
             wanted_access = ACCESS_MODER;
-        else if( Str::Compare( name_access, "admin" ) && std::find( admin.begin(), admin.end(), pasw_access ) != admin.end() )
+        else if( name_access == "admin" && std::find( admin.begin(), admin.end(), pasw_access ) != admin.end() )
             wanted_access = ACCESS_ADMIN;
 
         bool allow = false;
@@ -1433,7 +1430,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
 
         CHECK_ALLOW_COMMAND;
 
-        if( !Str::Length( func_name ) )
+        if( func_name.empty() )
         {
             logcb( "Fail, length is zero." );
             break;
@@ -1580,9 +1577,8 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
     break;
     case CMD_LOADDIALOG:
     {
-        char dlg_name[ 128 ];
-        buf.Pop( dlg_name, 128 );
-        dlg_name[ 127 ] = 0;
+        string dlg_name;
+        buf >> dlg_name;
 
         CHECK_ALLOW_COMMAND;
 
@@ -1590,7 +1586,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         FileManager&    fm = dialogs.FindFile( dlg_name );
         if( fm.IsLoaded() )
         {
-            DialogPack* pack = DlgMngr.ParseDialog( dlg_name, (char*) fm.GetBuf() );
+            DialogPack* pack = DlgMngr.ParseDialog( dlg_name.c_str(), (char*) fm.GetBuf() );
             if( pack )
             {
                 DlgMngr.EraseDialog( pack->PackId );

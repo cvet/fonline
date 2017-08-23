@@ -20,6 +20,7 @@ namespace Str
     template< int Size >
     inline void AppendCount( char(&to)[ Size ], const char* from, uint count ) { return Append( to, Size < count + 1 ? Size : count + 1, from ); }
 
+    char* Duplicate( const string& str );
     char* Duplicate( const char* str );
 
     uint LowerUTF8( uint ucs );
@@ -53,24 +54,6 @@ namespace Str
     bool CompareCaseCount( const string& str1, const string& str2, uint max_count );
     bool CompareCaseCountUTF8( const char* str1, const char* str2, uint max_count );
 
-    void ChangeValue( char* str, int value );
-    void EraseInterval( char* str, uint len );
-    void Insert( char* to, const char* from, uint from_len = 0 );
-    void EraseWords( char* str, char begin, char end );
-    void EraseWords( char* str, const char* word );
-    void EraseChars( char* str, char ch );
-    void CopyWord( char* to, const char* from, char end, bool include_end = false );
-    void CopyBack( char* str );
-    void ReplaceText( char* str, const char* from, const char* to );
-    void ReplaceText( string& str, const string& from, const string& to );
-    void Replacement( char* str, char from, char to );
-    void Replacement( string& str, char from, char to );
-    void Replacement( char* str, char from1, char from2, char to );
-    void Replacement( string& str, char from1, char from2, char to );
-
-    void SkipLine( char*& str );
-    void GoTo( char*& str, char ch, bool skip_char = false );
-
     void  HexToStr( uchar hex, char* str ); // 2 bytes string
     uchar StrToHex( const char* str );
 }
@@ -96,7 +79,10 @@ public:
 
     bool compareIgnoreCase( const string& r );
 
+    _str& substringUntil( char end );
     _str& trim();
+    _str& erase( char what );
+    _str& erase( char begin, char end );
     _str& replace( char from, char to );
     _str& replace( char from1, char from2, char to );
     _str& replace( const string& from, const string& to );

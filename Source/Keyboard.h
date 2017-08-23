@@ -15,9 +15,8 @@ namespace Keyb
 
     void   Init();
     void   Lost();
-    void   GetChar( uchar dik, const char* dik_text, string& str, uint* position, uint max, int flags );
-    void   GetChar( uchar dik, const char* dik_text, char* str, uint str_size, uint* position, uint max, int flags );
-    void   EraseInvalidChars( char* str, int flags );
+    void   GetChar( uchar dik, const string& dik_text, string& str, uint* position, uint max, int flags );
+    void   EraseInvalidChars( string& str, int flags );
     uchar  MapKey( ushort code );
     ushort UnmapKey( uchar key );
 }

@@ -148,7 +148,7 @@ uint FOMsg::GetBinary( uint num, UCharVec& data  )
         return 0;
 
     string str = GetStr( num );
-    size_t len = str.length() / 2;
+    uint   len = (uint) str.length() / 2;
     data.resize( len );
     for( uint i = 0; i < len; i++ )
         data[ i ] = Str::StrToHex( &str[ i * 2 ] );
@@ -259,79 +259,37 @@ bool FOMsg::LoadFromFile( const string& fname )
 
 bool FOMsg::LoadFromString( const string& str, uint str_len )
 {
-    bool  fail = false;
+    bool          fail = false;
 
-    char* str_copy = new char[ str_len + 1 ];
-    memcpy( str_copy, str.c_str(), str_len );
-    str_copy[ str_len ] = 0;
-
-    for( char* pbuf = str_copy; *pbuf;)
+    istringstream istr( str );
+    string        line;
+    while( std::getline( istr, line, '\n' ) )
     {
-        // Comments
-        if( *pbuf == '#' || *pbuf == ';' )
+        uint   num = 0;
+        size_t offset = 0;
+        for( int i = 0; i < 3; i++ )
         {
-            Str::SkipLine( pbuf );
-            continue;
+            size_t first = line.find( '{', offset );
+            size_t last = line.find( '}', first );
+            if( first == string::npos || last == string::npos )
+            {
+                fail = true;
+                break;
+            }
+
+            string str = line.substr( first + 1, last - first - 1 );
+            offset = last + 1;
+            if( i == 0 && !num )
+                num = ( _str( str ).isNumber() ? _str( str ).toInt() : _str( str ).toHash() );
+            else if( i == 1 && num )
+                num += ( !str.empty() ? ( _str( str ).isNumber() ? _str( str ).toInt() : _str( str ).toHash() ) : 0 );
+            else if( i == 2 && num )
+                AddStr( num, str );
+            else
+                fail = true;
         }
-
-        // Find '{'
-        if( *pbuf != '{' )
-        {
-            pbuf++;
-            continue;
-        }
-
-        // Skip '{'
-        pbuf++;
-        if( !*pbuf )
-            break;
-
-        // Goto '}'
-        const char* num1_begin = pbuf;
-        Str::GoTo( pbuf, '}', false );
-        if( !*pbuf )
-            break;
-        *pbuf = 0;
-        pbuf++;
-
-        // Parse number
-        uint num1 = (uint) ( _str( num1_begin ).isNumber() ? _str( num1_begin ).toInt() : _str( num1_begin ).toHash() );
-
-        // Skip '{'
-        Str::GoTo( pbuf, '{', true );
-        if( !*pbuf )
-            break;
-
-        // Goto '}'
-        const char* num2_begin = pbuf;
-        Str::GoTo( pbuf, '}', false );
-        if( !*pbuf )
-            break;
-        *pbuf = 0;
-        pbuf++;
-
-        // Parse number
-        uint num2 = ( num2_begin[ 0 ] ? ( _str( num2_begin ).isNumber() ? _str( num2_begin ).toInt() : _str( num2_begin ).toHash() ) : 0 );
-
-        // Goto '{'
-        Str::GoTo( pbuf, '{', true );
-        if( !*pbuf )
-            break;
-
-        // Find '}'
-        char* _pbuf = pbuf;
-        Str::GoTo( pbuf, '}', false );
-        if( !*pbuf )
-            break;
-        *pbuf = 0;
-        pbuf++;
-
-        uint num = num1 + num2;
-        if( num )
-            AddStr( num, _pbuf );
     }
 
-    SAFEDELA( str_copy );
     return !fail;
 }
 

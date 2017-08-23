@@ -174,9 +174,8 @@ private:
     bool                        calcualteTangetSpace;
     uint                        drawWidth, drawHeight;
 
-    void ProcessTemplateDefines( char* str, StrVec& def );
-    int  GetAnimationIndex( uint& anim1, uint& anim2, float* speed, bool combat_first );
-    int  GetAnimationIndexEx( uint anim1, uint anim2, float* speed );
+    int GetAnimationIndex( uint& anim1, uint& anim2, float* speed, bool combat_first );
+    int GetAnimationIndexEx( uint anim1, uint anim2, float* speed );
 
     bool         Load( const string& name );
     Animation3d* CloneAnimation();

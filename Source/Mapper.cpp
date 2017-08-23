@@ -3932,9 +3932,8 @@ void FOMapper::ParseCommand( const char* cmd )
     if( *cmd == '~' )
     {
         cmd++;
-        char map_name[ MAX_FOTEXT ];
-        Str::CopyWord( map_name, cmd, ' ', false );
-        if( !map_name[ 0 ] )
+        string map_name = _str( cmd ).trim();
+        if( map_name.empty() )
         {
             AddMess( "Error parse map name." );
             return;
@@ -3975,9 +3974,8 @@ void FOMapper::ParseCommand( const char* cmd )
     {
         cmd++;
 
-        char map_name[ MAX_FOTEXT ];
-        Str::CopyWord( map_name, cmd, ' ', false );
-        if( !map_name[ 0 ] )
+        string map_name = _str( cmd ).trim();
+        if( map_name.empty() )
         {
             AddMess( "Error parse map name." );
             return;
@@ -3992,7 +3990,7 @@ void FOMapper::ParseCommand( const char* cmd )
         HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
 
         FileManager::SetCurrentDir( ServerWritePath, "./" );
-        if( ( (ProtoMap*) ActiveMap->Proto )->Save( map_name ) )
+        if( ( (ProtoMap*) ActiveMap->Proto )->Save( map_name.c_str() ) )
         {
             AddMess( "Save map success." );
             RunMapSaveScript( ActiveMap );
@@ -4007,16 +4005,15 @@ void FOMapper::ParseCommand( const char* cmd )
     else if( *cmd == '#' )
     {
         cmd++;
-        char func_name[ MAX_FOTEXT ];
-        char str[ MAX_FOTEXT ] = { 0 };
-        if( sscanf( cmd, "%s", func_name ) != 1 || !Str::Length( func_name ) )
+        istringstream icmd( cmd );
+        string        func_name;
+        if( !( icmd >> func_name ) )
         {
             AddMess( "Function name not typed." );
             return;
         }
-        Str::Copy( str, cmd + Str::Length( func_name ) );
-        while( str[ 0 ] == ' ' )
-            Str::CopyBack( str );
+        string str = _str( icmd.str() ).trim();
+
 
         // Reparse module
         uint bind_id = Script::BindByFuncName( func_name, "string %s(string)", true );
@@ -4244,12 +4241,11 @@ bool FOMapper::SaveLogFile()
     if( !f )
         return false;
 
-    char   cur_mess[ MAX_FOTEXT ];
+    string cur_mess;
     string fmt_log;
     for( uint i = 0; i < MessBox.size(); ++i )
     {
-        Str::Copy( cur_mess, MessBox[ i ].Mess.c_str() );
-        Str::EraseWords( cur_mess, '|', ' ' );
+        cur_mess = _str( MessBox[ i ].Mess ).erase( '|', ' ' );
         fmt_log += MessBox[ i ].Time + string( cur_mess );
     }
 

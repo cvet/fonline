@@ -310,7 +310,7 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
     }
 
     FontData font;
-    char     image_name[ MAX_FOPATH ] = { 0 };
+    string   image_name;
 
     uint     font_cache_len;
     uchar*   font_cache_buf = Crypt.GetCache( fname, font_cache_len );
@@ -320,11 +320,11 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
         SAFEDELA( font_cache_buf );
 
         // Parse data
-        istrstream str( (char*) fm.GetBuf() );
-        char       key[ MAX_FOTEXT ];
-        char       letter_buf[ MAX_FOTEXT ];
-        Letter*    cur_letter = nullptr;
-        int        version = -1;
+        istringstream str( (char*) fm.GetBuf() );
+        char          key[ MAX_FOTEXT ];
+        char          letter_buf[ MAX_FOTEXT ];
+        Letter*       cur_letter = nullptr;
+        int           version = -1;
         while( !str.eof() && !str.fail() )
         {
             // Get key
@@ -415,11 +415,10 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
         }
 
         // Save cache
-        uint     image_name_len = Str::Length( image_name );
         UCharVec font_cache;
         WriteData( font_cache, write_time );
-        WriteData( font_cache, image_name_len );
-        WriteDataArr( font_cache, image_name, image_name_len );
+        WriteData( font_cache, (uint) image_name.length() );
+        WriteDataArr( font_cache, image_name.c_str(), (uint) image_name.length() );
         WriteData( font_cache, font.LineHeight );
         WriteData( font_cache, font.YAdvance );
         WriteData( font_cache, (uint) font.Letters.size() );
@@ -448,8 +447,7 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
         uint pos = 0;
         ReadData< uint64 >( font_cache, pos );
         uint image_name_len = ReadData< uint >( font_cache, pos );
-        memcpy( image_name, ReadDataArr< uchar >( font_cache, image_name_len, pos ), image_name_len );
-        image_name[ image_name_len ] = 0;
+        image_name.assign( (char*) ReadDataArr< uchar >( font_cache, image_name_len, pos ), image_name_len );
         font.LineHeight = ReadData< int >( font_cache, pos );
         font.YAdvance = ReadData< int >( font_cache, pos );
         uint letters_count = ReadData< uint >( font_cache, pos );
@@ -468,15 +466,15 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
     }
 
     bool make_gray = false;
-    if( image_name[ Str::Length( image_name ) - 1 ] == '*' )
+    if( image_name.back() == '*' )
     {
         make_gray = true;
-        image_name[ Str::Length( image_name ) - 1 ] = 0;
+        image_name.substr( 0, image_name.size() - 1 );
     }
     font.MakeGray = make_gray;
 
     // Load image
-    Str::Insert( image_name, "Fonts/" );
+    image_name.insert( 0, "Fonts/" );
     AnyFrames* image_normal = LoadAnimation( image_name );
     if( !image_normal )
     {
@@ -626,6 +624,56 @@ bool SpriteManager::LoadFontBMF( int index, const string& font_name )
     return true;
 }
 
+static void Str_GoTo( char*& str, char ch, bool skip_char = false )
+{
+    while( *str && *str != ch )
+        ++str;
+    if( skip_char && *str )
+        ++str;
+}
+
+
+static void Str_EraseInterval( char* str, uint len )
+{
+    if( !str || !len )
+        return;
+
+    char* str2 = str + len;
+    while( *str2 )
+    {
+        *str = *str2;
+        ++str;
+        ++str2;
+    }
+
+    *str = 0;
+}
+
+static void Str_Insert( char* to, const char* from, uint from_len = 0 )
+{
+    if( !to || !from )
+        return;
+
+    if( !from_len )
+        from_len = Str::Length( from );
+    if( !from_len )
+        return;
+
+    char* end_to = to;
+    while( *end_to )
+        ++end_to;
+
+    for( ; end_to >= to; --end_to )
+        *( end_to + from_len ) = *end_to;
+
+    while( from_len-- )
+    {
+        *to = *from;
+        ++to;
+        ++from;
+    }
+}
+
 void FormatText( FontFormatInfo& fi, int fmt_type )
 {
     char*     str = fi.PStr;
@@ -640,14 +688,12 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
 
     if( fmt_type != FORMAT_TYPE_DRAW && fmt_type != FORMAT_TYPE_LCOUNT && fmt_type != FORMAT_TYPE_SPLIT )
     {
-        WriteLog( "error1\n" );
         fi.IsError = true;
         return;
     }
 
     if( fmt_type == FORMAT_TYPE_SPLIT && !fi.StrLines )
     {
-        WriteLog( "error2\n" );
         fi.IsError = true;
         return;
     }
@@ -663,9 +709,9 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
     while( *str_ )
     {
         char* s0 = str_;
-        Str::GoTo( str_, '|' );
+        Str_GoTo( str_, '|' );
         char* s1 = str_;
-        Str::GoTo( str_, ' ' );
+        Str_GoTo( str_, ' ' );
         char* s2 = str_;
 
         // TODO: optimize
@@ -739,7 +785,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
                     if( str[ j ] == '\n' )
                         break;
 
-                Str::EraseInterval( &str[ i ], j - i );
+                Str_EraseInterval( &str[ i ], j - i );
                 letter = str[ i ];
                 i_advance = 1;
                 if( fmt_type == FORMAT_TYPE_DRAW )
@@ -770,7 +816,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
                 {
                     letter = '\n';
                     i_advance = 1;
-                    Str::Insert( &str[ i ], "\n" );
+                    Str_Insert( &str[ i ], "\n" );
                     if( fmt_type == FORMAT_TYPE_DRAW )
                         for( int k = MAX_FOTEXT - 1; k > i; k-- )
                             fi.ColorDots[ k ] = fi.ColorDots[ k - 1 ];
@@ -786,7 +832,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
                             break;
                     if( j > ii )
                     {
-                        Str::EraseInterval( &str[ ii ], j - ii );
+                        Str_EraseInterval( &str[ ii ], j - ii );
                         if( fmt_type == FORMAT_TYPE_DRAW )
                             for( int k = ii, l = MAX_FOTEXT - ( j - ii ); k < l; k++ )
                                 fi.ColorDots[ k ] = fi.ColorDots[ k + ( j - ii ) ];
@@ -830,7 +876,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
             else
             {
                 skip_line--;
-                Str::EraseInterval( str, i + i_advance );
+                Str_EraseInterval( str, i + i_advance );
                 offs_col += i + i_advance;
                 //	if(fmt_type==FORMAT_TYPE_DRAW)
                 //		for(int k=0,l=MAX_FOTEXT-(i+1);k<l;k++) fi.ColorDots[k]=fi.ColorDots[k+i+1];

@@ -8,6 +8,7 @@ class BufferManager
 public:
     static const uint DefaultBufSize = 4096;
     static const int  CryptKeysCount = 50;
+    static const int  StringLenSize  = sizeof( ushort );
 
 private:
     bool   isError;
@@ -53,6 +54,7 @@ public:
     bool   NeedProcess();
     void   SkipMsg( uint msg );
 
+    // Generic specification
     template< typename T >
     BufferManager& operator<<( const T& i )
     {
@@ -64,6 +66,26 @@ public:
     BufferManager& operator>>( T& i )
     {
         Pop( &i, sizeof( T ) );
+        return *this;
+    }
+
+    // String specification
+    BufferManager& operator<<( const string& i )
+    {
+        RUNTIME_ASSERT( i.length() <= 65535 );
+        ushort len = (ushort) i.length();
+        Push( &len, sizeof( len ) );
+        Push( i.c_str(), len );
+        return *this;
+    }
+
+    BufferManager& operator>>( string& i )
+    {
+        ushort len = 0;
+        Pop( &len, sizeof( len ) );
+        char*  buf = (char*) alloca( len );
+        Pop( buf, len );
+        i.assign( buf, len );
         return *this;
     }
 

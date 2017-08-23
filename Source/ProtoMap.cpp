@@ -290,12 +290,12 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
     int    version = -1;
     if( !header_str.empty() )
     {
-        istrstream istr( header_str.c_str() );
-        string     field, value;
-        int        ivalue;
-        string     script_name;
-        IntVec     vec = { 300, 600, 1140, 1380 };
-        UCharVec   vec2 = { 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29 };
+        istringstream istr( header_str );
+        string        field, value;
+        int           ivalue;
+        string        script_name;
+        IntVec        vec = { 300, 600, 1140, 1380 };
+        UCharVec      vec2 = { 18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29 };
         while( !istr.eof() && !istr.fail() )
         {
             istr >> field >> value;
@@ -392,7 +392,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
     string tiles_str = map_ini.GetAppContent( "Tiles" );
     if( !tiles_str.empty() )
     {
-        istrstream istr( tiles_str.c_str() );
+        istringstream istr( tiles_str );
         string     type;
         if( version == FO_MAP_VERSION_TEXT1 )
         {
@@ -493,7 +493,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
     if( !objects_str.empty() )
     {
         bool       fail = false;
-        istrstream istr( objects_str.c_str() );
+        istringstream istr( objects_str );
         int        is_critter = false;
         Property*  cur_prop = nullptr;
         uint       auto_id = uint( -1 );

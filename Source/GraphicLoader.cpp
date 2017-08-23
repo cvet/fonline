@@ -403,19 +403,16 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
     if( !file_binary.IsLoaded() )
     {
         // Get version
-        CharVec file_buf;
-        file_buf.resize( file.GetFsize() + 1 );
-        Str::Copy( &file_buf[ 0 ], (uint) file_buf.size(), (char*) file.GetBuf() );
-        char* str = &file_buf[ 0 ];
-        Str::Replacement( str, '\r', '\n', '\n' );
-        char* ver = Str::Substring( str, "#version" );
-        if( ver )
+        string file_content = _str( file.GetCStr() ).replace( '\r', '\n', '\n' );
+        string version;
+        size_t ver_begin = file_content.find( "#version" );
+        if( ver_begin != string::npos )
         {
-            char* ver_end = Str::Substring( ver, "\n" );
-            if( ver_end )
+            size_t ver_end = file_content.find( '\n', ver_begin );
+            if( ver_end != string::npos )
             {
-                str = ver_end + 1;
-                *ver_end = 0;
+                version = file_content.substr( ver_begin, ver_end - ver_begin );
+                file_content = file_content.substr( ver_end + 1 );
             }
         }
         #ifdef FO_OGL_ES
@@ -430,10 +427,10 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
         GLuint vs, fs;
         GL( vs = glCreateShader( GL_VERTEX_SHADER ) );
         GL( fs = glCreateShader( GL_FRAGMENT_SHADER ) );
-        string        buf = _str( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define VERTEX_SHADER\n", internal_defines, defines, "\n", str );
+        string        buf = _str( "{}{}{}{}{}{}{}", version, "\n", "#define VERTEX_SHADER\n", internal_defines, defines, "\n", file_content );
         const GLchar* vs_str = &buf[ 0 ];
         GL( glShaderSource( vs, 1, &vs_str, nullptr ) );
-        buf = _str( "{}{}{}{}{}{}{}", ver ? ver : "", "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines, "\n", str );
+        buf = _str( "{}{}{}{}{}{}{}", version, "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines, "\n", file_content );
         const GLchar* fs_str = &buf[ 0 ];
         GL( glShaderSource( fs, 1, &fs_str, nullptr ) );
 
@@ -474,7 +471,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
         GL( glGetShaderiv( vs, GL_COMPILE_STATUS, &compiled ) );
         if( !compiled )
         {
-            WriteLog( "Vertex shader not compiled, effect '{}'.\n", fname, str );
+            WriteLog( "Vertex shader not compiled, effect '{}'.\n", fname );
             ShaderInfo::Log( "Vertex shader", vs );
             GL( glDeleteShader( vs ) );
             GL( glDeleteShader( fs ) );

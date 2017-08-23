@@ -167,8 +167,7 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
         }
 
         asIScriptFunction* func = engine->GetFunctionById( result );
-        string             bind_decl = decl;
-        Str::ReplaceText( bind_decl, func->GetName(), "%s" );
+        string             bind_decl = _str( decl ).replace( func->GetName(), "%s" );
         size_t             args_pos = bind_decl.find( '(' );
         bind_decl.insert( args_pos + 1, _str( "{}&{}", scriptClassName, func->GetParamCount() > 0 ? ", " : "" ) );
         method->bindFunc = bind_func;

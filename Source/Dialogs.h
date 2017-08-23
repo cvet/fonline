@@ -182,7 +182,7 @@ private:
     DialogPackMap dialogPacks;
     string        lastErrors;
 
-    DemandResult* LoadDemandResult( istrstream& input, bool is_demand );
+    DemandResult* LoadDemandResult( istringstream& input, bool is_demand );
     bool          CheckLockTime( int time );
     uint          GetNotAnswerAction( const char* str, bool& ret_val );
     char          GetDRType( const char* str );

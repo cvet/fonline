@@ -2672,7 +2672,11 @@ void FOClient::Net_OnText()
     }
 
     if( unsafe_text )
-        Keyb::EraseInvalidChars( str, KIF_NO_SPEC_SYMBOLS );
+    {
+        string str_ = str;
+        Keyb::EraseInvalidChars( str_, KIF_NO_SPEC_SYMBOLS );
+        Str::Copy( str, str_.c_str() );
+    }
 
     OnText( str, crid, how_say );
 }
@@ -2721,10 +2725,9 @@ void FOClient::Net_OnTextMsg( bool with_lexems )
     FOMsg& msg = CurLang.Msg[ msg_num ];
     if( msg.Count( num_str ) )
     {
-        char str[ MAX_FOTEXT ];
-        Str::Copy( str, msg.GetStr( num_str ).c_str() );
+        string str = msg.GetStr( num_str );
         FormatTags( str, Chosen, GetCritter( crid ), lexems );
-        OnText( str, crid, how_say );
+        OnText( str.c_str(), crid, how_say );
     }
 }
 
@@ -2799,7 +2802,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
 
     // CritterCl on head text
     if( fstr_cr && cr )
-        cr->SetText( FmtGameText( fstr_cr, fstr ), COLOR_TEXT, text_delay );
+        cr->SetText( FmtGameText( fstr_cr, fstr ).c_str(), COLOR_TEXT, text_delay );
 
     // Message box text
     if( fstr_mb )
@@ -2883,7 +2886,11 @@ void FOClient::Net_OnMapText()
     }
 
     if( unsafe_text )
-        Keyb::EraseInvalidChars( str, KIF_NO_SPEC_SYMBOLS );
+    {
+        string str_ = str;
+        Keyb::EraseInvalidChars( str_, KIF_NO_SPEC_SYMBOLS );
+        Str::Copy( str, str_.c_str() );
+    }
 
     OnMapText( str, hx, hy, color );
 }
@@ -2909,11 +2916,9 @@ void FOClient::Net_OnMapTextMsg()
         return;
     }
 
-    static char str[ MAX_FOTEXT ];
-    Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ).c_str() );
+    string str = CurLang.Msg[ msg_num ].GetStr( num_str );
     FormatTags( str, Chosen, nullptr, "" );
-
-    OnMapText( str, hx, hy, color );
+    OnMapText( str.c_str(), hx, hy, color );
 }
 
 void FOClient::Net_OnMapTextMsgLex()
@@ -2948,11 +2953,9 @@ void FOClient::Net_OnMapTextMsgLex()
         return;
     }
 
-    char str[ MAX_FOTEXT ];
-    Str::Copy( str, CurLang.Msg[ msg_num ].GetStr( num_str ).c_str() );
+    string str = CurLang.Msg[ msg_num ].GetStr( num_str );
     FormatTags( str, Chosen, nullptr, lexems );
-
-    OnMapText( str, hx, hy, color );
+    OnMapText( str.c_str(), hx, hy, color );
 }
 
 void FOClient::Net_OnCritterDir()
@@ -3953,14 +3956,13 @@ void FOClient::Net_OnChosenTalk()
         answers_texts.push_back( answ_text_id );
     }
 
-    char str[ MAX_FOTEXT ];
-    Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( text_id ).c_str() );
+    string        str = CurLang.Msg[ TEXTMSG_DLG ].GetStr( text_id );
     FormatTags( str, Chosen, npc, lexems );
     string        text_to_script = str;
     CScriptArray* answers_to_script = Script::CreateArray( "string[]" );
-    for( size_t i = 0; i < answers_texts.size(); i++ )
+    for( uint answers_text : answers_texts )
     {
-        Str::Copy( str, CurLang.Msg[ TEXTMSG_DLG ].GetStr( answers_texts[ i ] ).c_str() );
+        str = CurLang.Msg[ TEXTMSG_DLG ].GetStr( answers_text );
         FormatTags( str, Chosen, npc, lexems );
         string sstr = str;
         answers_to_script->InsertLast( &sstr );
@@ -5874,19 +5876,14 @@ void FOClient::FlashGameWindow()
     #endif
 }
 
-const char* FOClient::FmtGameText( uint str_num, ... )
+string FOClient::FmtGameText( uint str_num, ... )
 {
-    static char res[ MAX_FOTEXT ];
-    static char str[ MAX_FOTEXT ];
-
-    Str::Copy( str, CurLang.Msg[ TEXTMSG_GAME ].GetStr( str_num ).c_str() );
-    Str::Replacement( str, '\\', 'n', '\n' );
-
+    string  str = _str( CurLang.Msg[ TEXTMSG_GAME ].GetStr( str_num ) ).replace( '\\', 'n', '\n' );
+    char    res[ MAX_FOTEXT ];
     va_list list;
     va_start( list, str_num );
-    vsprintf( res, str, list );
+    vsprintf( res, str.c_str(), list );
     va_end( list );
-
     return res;
 }
 
@@ -6617,20 +6614,12 @@ bool FOClient::ReloadScripts()
         if( !msg_script.GetBinary( i + 1, dll_binary ) )
             break;
 
-        // Fix slashes
-        char dll_name_[ MAX_FOPATH ];
-        Str::Copy( dll_name_, "Cache/" );
-        Str::Append( dll_name_, dll_name.c_str() );
-        Str::Replacement( dll_name_, '\\', '.' );
-        Str::Replacement( dll_name_, '/', '.' );
-        dll_name = dll_name_;
-
         // Save to cache
         FileManager dll;
         if( dll.LoadStream( &dll_binary[ 0 ], (uint) dll_binary.size() ) )
         {
             dll.SwitchToWrite();
-            dll.SaveFile( dll_name );
+            dll.SaveFile( _str( "Cache/{}", dll_name ).normalizePathSlashes().replace( '/', '.' ) );
         }
     }
 
@@ -7898,10 +7887,8 @@ string FOClient::SScriptFunc::Global_ReplaceTextInt( string text, string replace
 
 string FOClient::SScriptFunc::Global_FormatTags( string text, string lexems )
 {
-    char buf[ MAX_FOTEXT ];
-    Str::Copy( buf, text.c_str() );
-    Self->FormatTags( buf, Self->Chosen, nullptr, lexems.length() > 0 ? lexems.c_str() : nullptr );
-    return buf;
+    Self->FormatTags( text, Self->Chosen, nullptr, lexems );
+    return text;
 }
 
 void FOClient::SScriptFunc::Global_MoveScreenToHex( ushort hx, ushort hy, uint speed, bool can_stop )

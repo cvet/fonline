@@ -181,10 +181,10 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     #define LOAD_FAIL( err )           { WriteLog( "Dialog '{}' - {}\n", pack_name, err ); delete pack; return nullptr; }
     #define VERIFY_STR_ID( str_id )    ( uint( str_id ) <= ~DLGID_MASK )
 
-    DialogPack* pack = new DialogPack();
-    string      dlg_buf = fodlg.GetAppContent( "dialog" );
-    istrstream  input( dlg_buf.c_str() );
-    string      lang_buf;
+    DialogPack*   pack = new DialogPack();
+    string        dlg_buf = fodlg.GetAppContent( "dialog" );
+    istringstream input( dlg_buf );
+    string        lang_buf;
     pack->PackId = _str( pack_name ).toHash();
     pack->PackName = pack_name;
     StrVec lang_apps;
@@ -231,22 +231,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
             uint count = temp_msg.Count( str_num );
             uint new_str_num = DLG_STR_ID( pack->PackId, ( str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000 ) );
             for( uint n = 0; n < count; n++ )
-            {
-                string str = temp_msg.GetStr( str_num, n );
-                if( str.find( "\n\\[" ) != string::npos )
-                {
-                    char  str_copy[ MAX_FOTEXT ];
-                    Str::Copy( str_copy, str.c_str() );
-                    char* s = str_copy;
-                    while( s = Str::Substring( s, "\n\\[" ) )
-                        Str::EraseInterval( s + 1, 1 );
-                    pack->Texts[ i ]->AddStr( new_str_num, str_copy );
-                }
-                else
-                {
-                    pack->Texts[ i ]->AddStr( new_str_num, str );
-                }
-            }
+                pack->Texts[ i ]->AddStr( new_str_num, _str( temp_msg.GetStr( str_num, n ) ).replace( "\n\\[", "\n[" ) );
         }
     }
 
@@ -391,7 +376,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     return pack;
 }
 
-DemandResult* DialogManager::LoadDemandResult( istrstream& input, bool is_demand )
+DemandResult* DialogManager::LoadDemandResult( istringstream& input, bool is_demand )
 {
     bool  fail = false;
     char  who = DR_WHO_PLAYER;

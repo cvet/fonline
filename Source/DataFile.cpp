@@ -857,13 +857,14 @@ bool BundleFile::Init( const string& fname )
         FileClose( f_tree );
         return false;
     }
-    buf[ len ] = 0;
     FileClose( f_tree );
 
+    buf[ len ] = 0;
+    StrVec names = _str( buf ).replace( '\r', '\n', '\n' ).replace( '\r', '\n' ).split( '\n' );
+    delete[] buf;
+
     // Parse
-    Str::Replacement( buf, '\r', '\n', '\n' );
-    Str::Replacement( buf, '\r', '\n' );
-    for( const string& name : _str( buf ).split( '\n' ) )
+    for( const string& name : names )
     {
         void* f = FileOpen( name, false );
         if( !f )

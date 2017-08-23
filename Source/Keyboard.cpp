@@ -17,8 +17,7 @@ namespace Keyb
     bool CtrlDwn = false;
     bool AltDwn = false;
 
-    void GetCharInternal( uchar dik, const char* dik_text, char* str, uint* position, uint max, int flags );
-    bool IsInvalidChar( const char* str, uint flags );
+    bool IsInvalidChar( const string& str, uint flags );
 }
 
 void Keyb::Init()
@@ -26,7 +25,8 @@ void Keyb::Init()
     // User keys mapping
     for( uint i = 0; i < 0x100; i++ )
         KeysMapUser[ i ] = i;
-    istrstream str( GameOpt.KeyboardRemap.c_str() );
+
+    istringstream str( GameOpt.KeyboardRemap );
     while( !str.eof() )
     {
         int from, to;
@@ -46,34 +46,17 @@ void Keyb::Lost()
     ShiftDwn = false;
 }
 
-void Keyb::GetChar( uchar dik, const char* dik_text, string& str, uint* position, uint max, int flags )
-{
-    uint  len = str.length() + MAX_FOTEXT;
-    char* buf = new char[ len ];
-    Str::Copy( buf, len, str.c_str() );
-    GetCharInternal( dik, dik_text, buf, position, max, flags );
-    str = buf;
-    delete[] buf;
-}
-
-void Keyb::GetChar( uchar dik, const char* dik_text, char* str, uint str_size, uint* position, uint max, int flags )
-{
-    string str_ = str;
-    GetChar( dik, dik_text, str_, position, max, flags );
-    Str::Copy( str, str_size, str_.c_str() );
-}
-
-void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* position, uint max, int flags )
+void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* position, uint max, int flags )
 {
     if( AltDwn )
         return;
 
     bool  ctrl_shift = ( CtrlDwn || ShiftDwn );
 
-    uint  dik_text_len_utf8 = Str::LengthUTF8( dik_text );
-    uint  dik_text_len = Str::Length( dik_text );
-    uint  str_len_utf8 = Str::LengthUTF8( str );
-    uint  str_len = Str::Length( str );
+    uint  dik_text_len_utf8 = Str::LengthUTF8( dik_text.c_str() );
+    uint  dik_text_len = Str::Length( dik_text.c_str() );
+    uint  str_len_utf8 = Str::LengthUTF8( str.c_str() );
+    uint  str_len = Str::Length( str.c_str() );
 
     uint  position_ = str_len;
     uint& pos = ( position ? *position : position_ );
@@ -138,10 +121,10 @@ void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* po
     // Clipboard
     else if( CtrlDwn && !ShiftDwn && str_len > 0 && ( dik == DIK_C || dik == DIK_X ) )
     {
-        SDL_SetClipboardText( str );
+        SDL_SetClipboardText( str.c_str() );
         if( dik == DIK_X )
         {
-            *str = '\0';
+            str.clear();
             pos = 0;
         }
     }
@@ -157,17 +140,16 @@ void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* po
     }
     else if( dik == DIK_CLIPBOARD_PASTE )
     {
-        char* text = Str::Duplicate( dik_text );
+        string text = dik_text;
         EraseInvalidChars( text, flags );
-        uint  text_len = Str::Length( text );
-        if( text_len != 0 )
+        if( !text.empty() )
         {
-            uint text_len_utf8 = Str::LengthUTF8( text );
+            uint text_len_utf8 = Str::LengthUTF8( text.c_str() );
             uint erase_len_utf8 = 0;
             if( str_len_utf8 + text_len_utf8 > max )
                 erase_len_utf8 = str_len_utf8 + text_len_utf8 - max;
 
-            uint text_pos = text_len;
+            uint text_pos = (uint) text.length();
             while( erase_len_utf8 )
             {
                 text_pos--;
@@ -177,10 +159,9 @@ void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* po
             }
             text[ text_pos ] = '\0';
 
-            Str::Insert( &str[ pos ], text );
-            pos += Str::Length( text );
+            str.insert( pos, text );
+            pos += (uint) text.length();
         }
-        delete[] text;
     }
     // Text input
     else
@@ -194,50 +175,54 @@ void Keyb::GetCharInternal( uchar dik, const char* dik_text, char* str, uint* po
         if( IsInvalidChar( dik_text, flags ) )
             return;
 
-        Str::Insert( &str[ pos ], dik_text );
+        str.insert( pos, dik_text );
         pos += dik_text_len;
     }
 }
 
-void Keyb::EraseInvalidChars( char* str, int flags )
+void Keyb::EraseInvalidChars( string& str, int flags )
 {
-    while( *str )
+    for( size_t i = 0; i < str.length();)
     {
         uint length;
-        int  ch = Str::DecodeUTF8( str, &length );
-        if( ch < 0 || IsInvalidChar( str, flags ) )
-            Str::EraseInterval( str, length );
-        str += length;
+        int  ch = Str::DecodeUTF8( str.substr( i ), &length );
+        if( ch < 0 || IsInvalidChar( str.substr( i ), flags ) )
+            str.erase( i, length );
+        else
+            i += length;
     }
 }
 
-bool Keyb::IsInvalidChar( const char* str, uint flags )
+bool Keyb::IsInvalidChar( const string& str, uint flags )
 {
     if( !Str::IsValidUTF8( str ) )
         return false;
-    if( flags & KIF_NO_SPEC_SYMBOLS && ( *str == '\n' || *str == '\r' || *str == '\t' ) )
+    if( flags & KIF_NO_SPEC_SYMBOLS && str.find_first_of( "\n\r\t" ) != string::npos )
         return true;
-    if( flags & KIF_ONLY_NUMBERS && !( *str >= '0' && *str <= '9' ) )
+    if( flags & KIF_ONLY_NUMBERS && str.find_first_not_of( "0123456789" ) != string::npos )
         return true;
     if( flags & KIF_FILE_NAME )
     {
-        switch( *str )
+        for( char ch : str )
         {
-        case '\\':
-        case '/':
-        case ':':
-        case '*':
-        case '?':
-        case '"':
-        case '<':
-        case '>':
-        case '|':
-        case '\n':
-        case '\r':
-        case '\t':
-            return true;
-        default:
-            break;
+            switch( ch )
+            {
+            case '\\' :
+            case '/'  :
+            case ':'  :
+            case '*'  :
+            case '?'  :
+            case '"'  :
+            case '<'  :
+            case '>'  :
+            case '|'  :
+            case '\n' :
+            case '\r' :
+            case '\t' :
+                return true;
+            default:
+                break;
+            }
         }
     }
     return !SprMngr.HaveLetter( -1, str );

@@ -1888,7 +1888,7 @@ void Properties::SetSendIgnore( Property* prop, Entity* entity )
     sendIgnoreProperty = prop;
 }
 
-PropertyRegistrator::PropertyRegistrator( bool is_server, const char* script_class_name )
+PropertyRegistrator::PropertyRegistrator( bool is_server, const string& script_class_name )
 {
     registrationFinished = false;
     isServer = is_server;
@@ -2440,10 +2440,10 @@ Property* PropertyRegistrator::Get( uint property_index )
     return nullptr;
 }
 
-Property* PropertyRegistrator::Find( const char* property_name )
+Property* PropertyRegistrator::Find( const string& property_name )
 {
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
-        if( Str::Compare( property_name, registeredProperties[ i ]->propName.c_str() ) )
+        if( property_name == registeredProperties[ i ]->propName )
             return registeredProperties[ i ];
     return nullptr;
 }

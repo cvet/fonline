@@ -42,8 +42,8 @@ void IniParser::ParseStr( const string& str )
     if( collectContent )
         app_content.reserve( 0xFFFF );
 
-    istrstream istr( str.c_str() );
-    string     line;
+    istringstream istr( str );
+    string        line;
     while( std::getline( istr, line, '\n' ) )
     {
         // New section
@@ -83,86 +83,35 @@ void IniParser::ParseStr( const string& str )
             if( comment )
                 *comment = 0;
 
-            // Parse key value
-            char* begin = &line[ 0 ];
-
             // Text format {}{}{}
-            string key;
-            string value;
-            if( begin[ 0 ] == '{' )
+            if( line[ 0 ] == '{' )
             {
-                char* pbuf = begin;
+                uint   num = 0;
+                size_t offset = 0;
+                for( int i = 0; i < 3; i++ )
+                {
+                    size_t first = line.find( '{', offset );
+                    size_t last = line.find( '}', first );
+                    if( first == string::npos || last == string::npos )
+                        break;
 
-                // Skip '{'
-                pbuf++;
-                if( !*pbuf )
-                    continue;
-
-                // Goto '}'
-                const char* num1_begin = pbuf;
-                Str::GoTo( pbuf, '}', false );
-                if( !*pbuf )
-                    continue;
-                *pbuf = 0;
-                pbuf++;
-
-                // Parse number
-                uint num1 = (uint) ( _str( num1_begin ).isNumber() ? _str( num1_begin ).toInt() : _str( num1_begin ).toHash() );
-
-                // Skip '{'
-                Str::GoTo( pbuf, '{', true );
-                if( !*pbuf )
-                    continue;
-
-                // Goto '}'
-                const char* num2_begin = pbuf;
-                Str::GoTo( pbuf, '}', false );
-                if( !*pbuf )
-                    continue;
-
-                *pbuf = 0;
-                pbuf++;
-
-                // Parse number
-                uint num2 = ( num2_begin[ 0 ] ? ( _str( num2_begin ).isNumber() ? _str( num2_begin ).toInt() : _str( num2_begin ).toHash() ) : 0 );
-
-                // Goto '{'
-                Str::GoTo( pbuf, '{', true );
-                if( !*pbuf )
-                    continue;
-
-                // Find '}'
-                char* _pbuf = pbuf;
-                Str::GoTo( pbuf, '}', false );
-                if( !*pbuf )
-                    continue;
-
-                *pbuf = 0;
-                pbuf++;
-                uint num = num1 + num2;
-                if( !num )
-                    continue;
-
-                key = _str( "{}", num );
-                value = _pbuf;
+                    string str = line.substr( first + 1, last - first - 1 );
+                    offset = last + 1;
+                    if( i == 0 && !num )
+                        num = ( _str( str ).isNumber() ? _str( str ).toInt() : _str( str ).toHash() );
+                    else if( i == 1 && num )
+                        num += ( !str.empty() ? ( _str( str ).isNumber() ? _str( str ).toInt() : _str( str ).toHash() ) : 0 );
+                    else if( i == 2 && num )
+                        ( *cur_app )[ _str( "{}", num ) ] = str;
+                }
             }
             else
             {
                 // Key value format
-                char* separator = Str::Substring( begin, "=" );
-                if( !separator )
-                    continue;
-
-                // Parse key value
-                key = string( begin, (size_t) ( separator - begin ) );
-                value = separator + 1;
-                key = _str( key ).trim();
-                value = _str( value ).trim();
+                size_t separator = line.find( '=' );
+                if( separator != string::npos )
+                    ( *cur_app )[ _str( line.substr( 0, separator ) ).trim() ] = _str( line.substr( separator + 1 ) ).trim();
             }
-
-            // Store entire
-            if( !key.empty() )
-                ( *cur_app )[ key ] = std::move( value );
         }
     }
     RUNTIME_ASSERT( istr.eof() );

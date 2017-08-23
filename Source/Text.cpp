@@ -16,6 +16,14 @@ bool _str::compareIgnoreCase( const string& r )
     return true;
 }
 
+_str& _str::substringUntil( char end )
+{
+    size_t pos = s.find( end );
+    if( pos != string::npos )
+        s = s.substr( 0, pos );
+    return *this;
+}
+
 _str& _str::trim()
 {
     // Left trim
@@ -32,6 +40,29 @@ _str& _str::trim()
         size_t r = s.find_last_not_of( " \n\r\t" );
         if( r < s.length() - 1 )
             s.erase( r + 1 );
+    }
+    return *this;
+}
+
+_str& _str::erase( char what )
+{
+    s.erase( std::remove( s.begin(), s.end(), what ), s.end() );
+    return *this;
+}
+
+_str& _str::erase( char begin, char end )
+{
+    while( true )
+    {
+        size_t begin_pos = s.find( begin );
+        if( begin_pos == string::npos )
+            break;
+
+        size_t end_pos = s.find( end, begin_pos + 1 );
+        if( end_pos == string::npos )
+            break;
+
+        s.erase( begin_pos, end_pos - begin_pos + 1 );
     }
     return *this;
 }
@@ -343,7 +374,7 @@ hash _str::toHash()
     SCOPE_LOCK( HashNamesLocker );
     #endif
 
-    auto ins = HashNames.insert( PAIR( h, "" ) );
+    auto ins = HashNames.insert( std::make_pair( h, "" ) );
     if( ins.second )
         ins.first->second = s;
     else if( ins.first->second != s )
@@ -434,6 +465,11 @@ void Str::Append( char* to, uint size, const char* from )
         memcpy( ptr, from, from_len );
         ptr[ from_len ] = 0;
     }
+}
+
+char* Str::Duplicate( const string& str )
+{
+    return Duplicate( str.c_str() );
 }
 
 char* Str::Duplicate( const char* str )
@@ -908,212 +944,6 @@ bool Str::CompareCaseCountUTF8( const char* str1, const char* str2, uint max_cou
     LowerUTF8( str1_buf );
     LowerUTF8( str2_buf );
     return CompareCount( str1_buf, str2_buf, max_count );
-}
-
-void Str::ChangeValue( char* str, int value )
-{
-    for( int i = 0; str[ i ]; ++i )
-        str[ i ] += value;
-}
-
-void Str::EraseInterval( char* str, uint len )
-{
-    if( !str || !len )
-        return;
-
-    char* str2 = str + len;
-    while( *str2 )
-    {
-        *str = *str2;
-        ++str;
-        ++str2;
-    }
-
-    *str = 0;
-}
-
-void Str::Insert( char* to, const char* from, uint from_len /* = 0 */ )
-{
-    if( !to || !from )
-        return;
-
-    if( !from_len )
-        from_len = Length( from );
-    if( !from_len )
-        return;
-
-    char* end_to = to;
-    while( *end_to )
-        ++end_to;
-
-    for( ; end_to >= to; --end_to )
-        *( end_to + from_len ) = *end_to;
-
-    while( from_len-- )
-    {
-        *to = *from;
-        ++to;
-        ++from;
-    }
-}
-
-void Str::EraseWords( char* str, char begin, char end )
-{
-    if( !str )
-        return;
-
-    for( int i = 0; str[ i ]; ++i )
-    {
-        if( str[ i ] == begin )
-        {
-            for( int k = i + 1; ; ++k )
-            {
-                if( !str[ k ] || str[ k ] == end )
-                {
-                    EraseInterval( &str[ i ], k - i + 1 );
-                    break;
-                }
-            }
-            i--;
-        }
-    }
-}
-
-void Str::EraseWords( char* str, const char* word )
-{
-    if( !str || !word )
-        return;
-
-    char* sub_str = Substring( str, word );
-    while( sub_str )
-    {
-        EraseInterval( sub_str, Length( word ) );
-        sub_str = Substring( sub_str, word );
-    }
-}
-
-void Str::EraseChars( char* str, char ch )
-{
-    if( !str )
-        return;
-
-    while( *str )
-    {
-        if( *str == ch )
-            CopyBack( str );
-        else
-            ++str;
-    }
-}
-
-void Str::CopyWord( char* to, const char* from, char end, bool include_end /* = false */ )
-{
-    if( !from || !to )
-        return;
-
-    *to = 0;
-
-    while( *from && *from != end )
-    {
-        *to = *from;
-        to++;
-        from++;
-    }
-
-    if( include_end && *from )
-    {
-        *to = *from;
-        to++;
-    }
-
-    *to = 0;
-}
-
-void Str::CopyBack( char* str )
-{
-    while( *str )
-    {
-        *str = *( str + 1 );
-        str++;
-    }
-}
-
-void Str::ReplaceText( string& str, const string& from, const string& to )
-{
-    size_t start_pos = 0;
-    while( ( start_pos = str.find( from, start_pos ) ) != std::string::npos )
-    {
-        str.replace( start_pos, from.length(), to );
-        start_pos += to.length();
-    }
-}
-
-void Str::ReplaceText( char* str, const char* from, const char* to )
-{
-    uint from_len = Length( from );
-    uint to_len = Length( to );
-    while( true )
-    {
-        str = Substring( str, from );
-        if( !str )
-            break;
-
-        EraseInterval( str, from_len );
-        Insert( str, to, to_len );
-        str += to_len;
-    }
-}
-
-void Str::Replacement( char* str, char from, char to )
-{
-    while( *str )
-    {
-        if( *str == from )
-            *str = to;
-        ++str;
-    }
-}
-
-void Str::Replacement( string& str, char from, char to )
-{
-    std::replace( str.begin(), str.end(), from, to );
-}
-
-void Str::Replacement( char* str, char from1, char from2, char to )
-{
-    while( *str && *( str + 1 ) )
-    {
-        if( *str == from1 && *( str + 1 ) == from2 )
-        {
-            CopyBack( str );
-            *str = to;
-        }
-        else
-        {
-            ++str;
-        }
-    }
-}
-
-void Str::Replacement( string& str, char from1, char from2, char to )
-{
-    ReplaceText( str, string( { from1, from2 } ), string( { to } ) );
-}
-
-void Str::SkipLine( char*& str )
-{
-    while( *str && *str != '\n' )
-        ++str;
-    if( *str )
-        ++str;
-}
-
-void Str::GoTo( char*& str, char ch, bool skip_char /* = false */ )
-{
-    while( *str && *str != ch )
-        ++str;
-    if( skip_char && *str )
-        ++str;
 }
 
 void Str::HexToStr( uchar hex, char* str )

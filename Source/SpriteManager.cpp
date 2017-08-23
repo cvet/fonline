@@ -1943,24 +1943,23 @@ AnyFrames* SpriteManager::LoadAnimationArt( const string& fname )
             dir_art = ( dir + 1 ) % 8;
         }
 
-        char file_name[ MAX_FOPATH ];
-        int  palette_index = 0; // 0..3
-        bool transparent = false;
-        bool mirror_hor = false;
-        bool mirror_ver = false;
-        uint frm_from = 0;
-        uint frm_to = 100000;
-        Str::Copy( file_name, fname.c_str() );
+        string file_name = fname;
+        int    palette_index = 0; // 0..3
+        bool   transparent = false;
+        bool   mirror_hor = false;
+        bool   mirror_ver = false;
+        uint   frm_from = 0;
+        uint   frm_to = 100000;
 
-        char* delim = Str::Substring( file_name, "$" );
-        if( delim )
+        size_t delim = file_name.find( '$' );
+        if( delim != string::npos )
         {
-            const char* ext = &file_name[ Str::Length( file_name ) - 4 ];
-            uint        len = (uint) ( (size_t) ext - (size_t) delim );
-
-            for( uint i = 1; i < len; i++ )
+            string opt = file_name.substr( delim + 1 );
+            string ext = _str( opt ).getFileExtension();
+            opt = opt.substr( 0, opt.size() - ext.size() );
+            for( size_t i = 0; i < opt.length(); i++ )
             {
-                switch( delim[ i ] )
+                switch( opt[ i ] )
                 {
                 case '0':
                     palette_index = 0;
@@ -1988,19 +1987,24 @@ AnyFrames* SpriteManager::LoadAnimationArt( const string& fname )
                     break;
                 case 'F':
                 case 'f':
+                {
                     // name$1vf5-7.art
-                    uint a, b;
-                    if( sscanf( &delim[ i + 1 ], "%u-%u", &a, &b ) == 2 )
-                        frm_from = a, frm_to = b, i += 3;
-                    else if( sscanf( &delim[ i + 1 ], "%u", &a ) == 1 )
-                        frm_from = a, frm_to = a, i += 1;
-                    break;
+                    string        f = opt.substr( i );
+                    istringstream idelim( f );
+                    char          ch;
+                    if( f.find( '-' ) != string::npos )
+                        idelim >> frm_from >> ch >> frm_to, i += 3;
+                    else
+                        idelim >> frm_from, frm_to = frm_from, i += 1;
+                }
+                break;
                 default:
                     break;
                 }
             }
 
-            Str::EraseInterval( delim, len );
+            file_name.erase( delim );
+            file_name += "." + ext;
         }
         if( !file_name[ 0 ] )
             return nullptr;
@@ -2268,11 +2272,10 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
         }
 
         // Parameters
-        char file_name[ MAX_FOPATH ];
-        Str::Copy( file_name, fname.c_str() );
+        string file_name = fname;
 
         // Animation
-        char seq_name[ MAX_FOPATH ] = { 0 };
+        string seq_name;
 
         // Color offsets
         // 0 - other
@@ -2281,31 +2284,28 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
         // 3 - armor
         int   rgb_offs[ 4 ][ 3 ] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 } };
 
-        char* delim = Str::Substring( file_name, "$" );
-        if( delim )
+        size_t delim = file_name.find( '$' );
+        if( delim != string::npos )
         {
             // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
-            const char* ext = &file_name[ Str::Length( file_name ) - 4 ];
-            uint        len = (uint) ( (size_t) ext - (size_t) delim );
-            if( len > 1 )
+            string opt = file_name.substr( delim + 1 );
+            string ext = _str( opt ).getFileExtension();
+            opt = opt.substr( 0, opt.size() - ext.size() );
+
+            size_t first = opt.find_first_of( '[' );
+            size_t last = opt.find_last_of( ']', first );
+            seq_name = ( last != string::npos ? opt.substr( last + 1 ) : opt );
+
+            while( first != string::npos && last != string::npos )
             {
-                memcpy( seq_name, delim + 1, len - 1 );
-                seq_name[ len - 1 ] = 0;
+                last = opt.find_first_of( ']', first );
+                string entry = opt.substr( first, last - first - 1 );
+                istringstream ientry( entry );
 
-                // Parse rgb offsets
-                char* rgb_beg = Str::Substring( seq_name, "[" );
-                while( rgb_beg )
+                // Parse numbers
+                int rgb[ 4 ];
+                if( ientry >> rgb[ 0 ] >> rgb[ 1 ] >> rgb[ 2 ] >> rgb[ 3 ] )
                 {
-                    // Find end of offsets data
-                    char* rgb_end = Str::Substring( rgb_beg + 1, "]" );
-                    if( !rgb_end )
-                        break;
-
-                    // Parse numbers
-                    int rgb[ 4 ];
-                    if( sscanf( rgb_beg + 1, "%d,%d,%d,%d", &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], &rgb[ 3 ] ) != 4 )
-                        break;
-
                     // To one part
                     if( rgb[ 0 ] >= 0 && rgb[ 0 ] <= 3 )
                     {
@@ -2323,15 +2323,15 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                             rgb_offs[ i ][ 2 ] = rgb[ 3 ];                                             // B
                         }
                     }
-
-                    // Erase from name and find again
-                    Str::EraseInterval( rgb_beg, (uint) ( rgb_end - rgb_beg + 1 ) );
-                    rgb_beg = Str::Substring( seq_name, "[" );
                 }
+
+                first = opt.find_first_of( '[', last );
             }
-            Str::EraseInterval( delim, len );
+
+            file_name.erase( delim );
+            file_name += "." + ext;
         }
-        if( !file_name[ 0 ] )
+        if( file_name.empty() )
             return nullptr;
 
         // Cache last 10 big SPR files (for critters)
@@ -2385,7 +2385,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                 cached[ index ] = new SprCache();
                 if( !cached[ index ] )
                     return nullptr;
-                Str::Copy( cached[ index ]->fileName, file_name );
+                Str::Copy( cached[ index ]->fileName, file_name.c_str() );
                 cached[ index ]->fm = fm;
                 fm.ReleaseBuffer();
             }
@@ -2396,7 +2396,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                     cached[ index ] = new SprCache();
                 else
                     cached[ index ]->fm.UnloadFile();
-                Str::Copy( cached[ index ]->fileName, file_name );
+                Str::Copy( cached[ index ]->fileName, file_name.c_str() );
                 cached[ index ]->fm = fm;
                 fm.ReleaseBuffer();
             }
@@ -2444,7 +2444,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
 
             ushort index = fm.GetLEUShort();
 
-            if( !seq_name[ 0 ] || Str::CompareCase( name, seq_name ) )
+            if( seq_name.empty() || _str( seq_name ).compareIgnoreCase( name ) )
             {
                 anim_index = index;
 
@@ -3061,36 +3061,32 @@ AnyFrames* SpriteManager::LoadAnimationMos( const string& fname )
 AnyFrames* SpriteManager::LoadAnimationBam( const string& fname )
 {
     // Parameters
-    char file_name[ MAX_FOPATH ];
-    Str::Copy( file_name, fname.c_str() );
-
+    string file_name = fname;
     uint  need_cycle = 0;
     int   specific_frame = -1;
 
-    char* delim = Str::Substring( file_name, "$" );
-    if( delim )
+    size_t delim = file_name.find( '$' );
+    if( delim != string::npos )
     {
-        // Format: fileName$5-6.spr
-        const char* ext = &file_name[ Str::Length( file_name ) - 4 ];
-        uint        len = (uint) ( (size_t) ext - (size_t) delim );
-        if( len > 1 )
-        {
-            char params[ MAX_FOPATH ];
-            memcpy( params, delim + 1, len - 1 );
-            params[ len - 1 ] = 0;
+        string opt = file_name.substr( delim + 1 );
+        string ext = _str( opt ).getFileExtension();
+        opt = opt.substr( 0, opt.size() - ext.size() );
 
-            need_cycle = _str( params ).toInt();
-            const char* next_param = Str::Substring( params, "-" );
-            if( next_param )
-            {
-                specific_frame = _str( next_param + 1 ).toInt();
-                if( specific_frame < 0 )
-                    specific_frame = -1;
-            }
+        // Format: fileName$5-6.spr
+        istringstream idelim( opt );
+        idelim >> need_cycle;
+        if( opt.find( '-' ) != string::npos )
+        {
+            char ch;
+            idelim >> ch >> specific_frame;
+            if( specific_frame < 0 )
+                specific_frame = -1;
         }
-        Str::EraseInterval( delim, len );
+
+        file_name.erase( delim );
+        file_name += "." + ext;
     }
-    if( !file_name[ 0 ] )
+    if( file_name.empty() )
         return nullptr;
 
     // Load file
