@@ -4057,7 +4057,7 @@ void FOMapper::ParseCommand( const char* cmd )
         if( anims.empty() )
             return;
 
-        if( SelectedEntities.size() )
+        if( !SelectedEntities.empty() )
         {
             for( auto& entity : SelectedEntities )
             {
@@ -4072,10 +4072,9 @@ void FOMapper::ParseCommand( const char* cmd )
         }
         else
         {
-            CritMap& crits = HexMngr.GetCritters();
-            for( auto it = crits.begin(); it != crits.end(); ++it )
+            for( auto& cr_kv : HexMngr.GetCritters() )
             {
-                CritterCl* cr = it->second;
+                CritterCl* cr = cr_kv.second;
                 cr->ClearAnim();
                 for( uint j = 0; j < anims.size() / 2; j++ )
                     cr->Animate( anims[ j * 2 ], anims[ j * 2 + 1 ], nullptr );

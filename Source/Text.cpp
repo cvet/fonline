@@ -1141,9 +1141,3 @@ uchar Str::StrToHex( const char* str )
     }
     return result;
 }
-
-static THREAD char BigBuf[ BIG_BUF_SIZE ] = { 0 };
-char* Str::GetBigBuf()
-{
-    return BigBuf;
-}

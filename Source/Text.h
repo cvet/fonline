@@ -73,8 +73,6 @@ namespace Str
 
     void  HexToStr( uchar hex, char* str ); // 2 bytes string
     uchar StrToHex( const char* str );
-
-    char* GetBigBuf();                      // Just big buffer, 1mb
 }
 
 class _str

@@ -653,11 +653,10 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
     }
 
     // Colorize
-    uint* dots = nullptr;
-    uint  d_offs = 0;
-    char* str_ = str;
-    char* big_buf = Str::GetBigBuf();
-    big_buf[ 0 ] = 0;
+    uint*  dots = nullptr;
+    uint   d_offs = 0;
+    char*  str_ = str;
+    string buf;
     if( fmt_type == FORMAT_TYPE_DRAW && !FLAG( flags, FT_NO_COLORIZE ) )
         dots = fi.ColorDots;
 
@@ -681,14 +680,14 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         }
 
         *s1 = 0;
-        Str::Append( big_buf, 0x10000, s0 );
+        buf += s0;
 
         if( !*str_ )
             break;
         str_++;
     }
 
-    Str::Copy( str, FONT_BUF_LEN, big_buf );
+    Str::Copy( str, FONT_BUF_LEN, buf.c_str() );
 
     // Skip lines
     uint skip_line = ( FLAG( flags, FT_SKIPLINES( 0 ) ) ? flags >> 16 : 0 );

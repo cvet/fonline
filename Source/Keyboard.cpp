@@ -48,10 +48,12 @@ void Keyb::Lost()
 
 void Keyb::GetChar( uchar dik, const char* dik_text, string& str, uint* position, uint max, int flags )
 {
-    char* big_buf = Str::GetBigBuf();
-    Str::Copy( big_buf, BIG_BUF_SIZE, str.c_str() );
-    GetCharInternal( dik, dik_text, big_buf, position, max, flags );
-    str = big_buf;
+    uint  len = str.length() + MAX_FOTEXT;
+    char* buf = new char[ len ];
+    Str::Copy( buf, len, str.c_str() );
+    GetCharInternal( dik, dik_text, buf, position, max, flags );
+    str = buf;
+    delete[] buf;
 }
 
 void Keyb::GetChar( uchar dik, const char* dik_text, char* str, uint str_size, uint* position, uint max, int flags )

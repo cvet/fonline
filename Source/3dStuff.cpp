@@ -1386,9 +1386,7 @@ bool Animation3dEntity::Load( const string& name )
         if( !fo3d.LoadFile( name ) )
             return false;
 
-        char* big_buf = Str::GetBigBuf();
-        fo3d.CopyMem( big_buf, fo3d.GetFsize() );
-        big_buf[ fo3d.GetFsize() ] = 0;
+        string file_buf = fo3d.GetCStr();
 
         // Parse
         string           model;
@@ -1408,8 +1406,7 @@ bool Animation3dEntity::Load( const string& name )
         AnimParams*      link = &animDataDefault;
         static uint      link_id = 0;
 
-        int              istr_pos = 0;
-        istrstream*      istr = new istrstream( big_buf );
+        istrstream*      istr = new istrstream( file_buf.c_str() );
         bool             closed = false;
         char             token[ MAX_FOTEXT ];
         char             line[ MAX_FOTEXT ];
@@ -1474,43 +1471,18 @@ bool Animation3dEntity::Load( const string& name )
                 }
 
                 // Words swapping
-                uint  len = fo3d_ex.GetFsize();
-                char* pbuf = (char*) fo3d_ex.ReleaseBuffer();
+                string new_content = fo3d_ex.GetCStr();
                 if( templates.size() > 2 )
-                {
-                    // Grow buffer for longer swapped words
-                    char* tmp_pbuf = new char[ len + MAX_FOTEXT ];
-                    memcpy( tmp_pbuf, pbuf, len );
-                    tmp_pbuf[ len ] = 0;
-                    delete[] pbuf;
-                    pbuf = tmp_pbuf;
+                    for( size_t i = 1; i < templates.size() - 1; i += 2 )
+                        new_content = _str( new_content ).replace( templates[ i ], templates[ i + 1 ] );
 
-                    // Swap words
-                    for( int i = 1, j = (int) templates.size(); i < j - 1; i += 2 )
-                    {
-                        const char* from = templates[ i ].c_str();
-                        const char* to = templates[ i + 1 ].c_str();
-
-                        char*       replace = Str::Substring( pbuf, from );
-                        while( replace )
-                        {
-                            Str::EraseInterval( replace, Str::Length( from ) );
-                            Str::Insert( replace, to );
-                            replace = Str::Substring( pbuf, from );
-                        }
-                    }
-                }
-
-                // Insert new buffer to main file
-                istr_pos += (int) ( *istr ).tellg();
-                Str::Insert( &big_buf[ istr_pos ], " " );
-                Str::Insert( &big_buf[ istr_pos + 1 ], pbuf );
-                Str::Insert( &big_buf[ istr_pos + 1 + Str::Length( pbuf ) ], " " );
-                delete[] pbuf;
+                // Insert new buffer
+                size_t cur_pos = ( *istr ).tellg();
+                file_buf = _str( "{}\n{}", new_content, file_buf.substr( cur_pos ) );
 
                 // Reinitialize stream
                 delete istr;
-                istr = new istrstream( &big_buf[ istr_pos ] );
+                istr = new istrstream( file_buf.c_str() );
             }
             else if( Str::Compare( token, "Mesh" ) )
             {

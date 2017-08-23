@@ -2660,10 +2660,8 @@ void FOClient::Net_OnText()
     Bin >> unsafe_text;
 
     Bin >> len;
-    Bin.Pop( str, MIN( len, ushort( MAX_FOTEXT ) ) );
-    if( len > MAX_FOTEXT )
-        Bin.Pop( Str::GetBigBuf(), len - MAX_FOTEXT );
-    str[ MIN( len, ushort( MAX_FOTEXT ) ) ] = 0;
+    Bin.Pop( str, len );
+    str[ len ] = 0;
 
     CHECK_IN_BUFF_ERROR;
 
@@ -2871,10 +2869,8 @@ void FOClient::Net_OnMapText()
     Bin >> color;
 
     Bin >> len;
-    Bin.Pop( str, MIN( len, ushort( MAX_FOTEXT ) ) );
-    if( len > MAX_FOTEXT )
-        Bin.Pop( Str::GetBigBuf(), len - MAX_FOTEXT );
-    str[ MIN( len, ushort( MAX_FOTEXT ) ) ] = 0;
+    Bin.Pop( str, len );
+    str[ len ] = 0;
 
     Bin >> unsafe_text;
 
