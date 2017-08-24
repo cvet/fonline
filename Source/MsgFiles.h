@@ -49,7 +49,7 @@ public:
     void GetBinaryData( UCharVec& data );
     bool LoadFromBinaryData( const UCharVec& data );
     bool LoadFromFile( const string& fname );
-    bool LoadFromString( const string& str, uint str_len );
+    bool LoadFromString( const string& str );
     void LoadFromMap( const StrMap& kv );
     bool SaveToFile( const string& fname, bool to_data );
     void Clear();

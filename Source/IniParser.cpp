@@ -29,7 +29,7 @@ void IniParser::ParseStr( const string& str )
     auto    it_app = appKeyValues.find( "" );
     if( it_app == appKeyValues.end() )
     {
-        auto it = appKeyValues.insert( PAIR( string( "" ), StrMap() ) );
+        auto it = appKeyValues.insert( PAIR( "", StrMap() ) );
         appKeyValuesOrder.push_back( it );
         cur_app = &it->second;
     }
@@ -128,11 +128,11 @@ bool IniParser::SaveFile( const string& fname )
     for( auto& app_it : appKeyValuesOrder )
     {
         auto& app = *app_it;
-        str.append( string( "[" ).append( app.first ).append( "]" ).append( "\n" ) );
+        str += _str( "[{}]\n", app.first );
         for( const auto& kv : app.second )
             if( !kv.first.empty() )
-                str.append( string( kv.first ).append( " = " ).append( kv.second ).append( "\n" ) );
-        str.append( "\n" );
+                str += _str( "{} = {}\n", kv.first, kv.second );
+        str += "\n";
     }
 
     FileManager f;
@@ -188,7 +188,7 @@ void IniParser::SetStr( const string& app_name, const string& key_name, const st
     {
         StrMap key_values;
         key_values[ key_name ] = val;
-        auto   it = appKeyValues.insert( PAIR( string( app_name ), key_values ) );
+        auto   it = appKeyValues.insert( PAIR( app_name, key_values ) );
         appKeyValuesOrder.push_back( it );
     }
     else
@@ -220,7 +220,7 @@ void IniParser::GetApps( const string& app_name, PStrMapVec& key_values )
 
 StrMap& IniParser::SetApp( const string& app_name )
 {
-    auto it = appKeyValues.insert( PAIR( string( app_name ), StrMap() ) );
+    auto it = appKeyValues.insert( PAIR( app_name, StrMap() ) );
     appKeyValuesOrder.push_back( it );
     return it->second;
 }

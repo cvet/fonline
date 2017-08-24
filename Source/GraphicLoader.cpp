@@ -783,8 +783,8 @@ Effect* Effect::Skinned3d, * Effect::Skinned3dDefault;
 bool GraphicLoader::LoadMinimalEffects()
 {
     uint effect_errors = 0;
-    LOAD_EFFECT( Effect::Font, "Font_Default", true, nullptr );
-    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, nullptr );
+    LOAD_EFFECT( Effect::Font, "Font_Default", true, "" );
+    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, "" );
     if( effect_errors > 0 )
     {
         WriteLog( "Minimal effects not loaded.\n" );
@@ -798,40 +798,40 @@ bool GraphicLoader::LoadDefaultEffects()
     // Default effects
     uint effect_errors = 0;
     #ifndef DISABLE_EGG
-    LOAD_EFFECT( Effect::Generic, "2D_Default", true, nullptr );
-    LOAD_EFFECT( Effect::Critter, "2D_Default", true, nullptr );
-    LOAD_EFFECT( Effect::Roof, "2D_Default", true, nullptr );
+    LOAD_EFFECT( Effect::Generic, "2D_Default", true, "" );
+    LOAD_EFFECT( Effect::Critter, "2D_Default", true, "" );
+    LOAD_EFFECT( Effect::Roof, "2D_Default", true, "" );
     #else
-    LOAD_EFFECT( Effect::Generic, "2D_WithoutEgg", true, nullptr );
-    LOAD_EFFECT( Effect::Critter, "2D_WithoutEgg", true, nullptr );
-    LOAD_EFFECT( Effect::Roof, "2D_WithoutEgg", true, nullptr );
+    LOAD_EFFECT( Effect::Generic, "2D_WithoutEgg", true, "" );
+    LOAD_EFFECT( Effect::Critter, "2D_WithoutEgg", true, "" );
+    LOAD_EFFECT( Effect::Roof, "2D_WithoutEgg", true, "" );
     #endif
-    LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, nullptr );
-    LOAD_EFFECT( Effect::Iface, "Interface_Default", true, nullptr );
-    LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, nullptr );
-    LOAD_EFFECT( Effect::Light, "Primitive_Light", true, nullptr );
-    LOAD_EFFECT( Effect::Fog, "Primitive_Fog", true, nullptr );
-    LOAD_EFFECT( Effect::Font, "Font_Default", true, nullptr );
-    LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, nullptr );
-    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, nullptr );
-    LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, nullptr );
-    LOAD_EFFECT( Effect::FlushMap, "Flush_Map", true, nullptr );
-    LOAD_EFFECT( Effect::FlushLight, "Flush_Light", true, nullptr );
-    LOAD_EFFECT( Effect::FlushFog, "Flush_Fog", true, nullptr );
+    LOAD_EFFECT( Effect::Rain, "2D_WithoutEgg", true, "" );
+    LOAD_EFFECT( Effect::Iface, "Interface_Default", true, "" );
+    LOAD_EFFECT( Effect::Primitive, "Primitive_Default", true, "" );
+    LOAD_EFFECT( Effect::Light, "Primitive_Light", true, "" );
+    LOAD_EFFECT( Effect::Fog, "Primitive_Fog", true, "" );
+    LOAD_EFFECT( Effect::Font, "Font_Default", true, "" );
+    LOAD_EFFECT( Effect::Tile, "2D_WithoutEgg", true, "" );
+    LOAD_EFFECT( Effect::FlushRenderTarget, "Flush_RenderTarget", true, "" );
+    LOAD_EFFECT( Effect::FlushPrimitive, "Flush_Primitive", true, "" );
+    LOAD_EFFECT( Effect::FlushMap, "Flush_Map", true, "" );
+    LOAD_EFFECT( Effect::FlushLight, "Flush_Light", true, "" );
+    LOAD_EFFECT( Effect::FlushFog, "Flush_Fog", true, "" );
     if( effect_errors > 0 )
     {
         WriteLog( "Default effects not loaded.\n" );
         return false;
     }
 
-    LOAD_EFFECT( Effect::Contour, "Contour_Default", true, nullptr );
+    LOAD_EFFECT( Effect::Contour, "Contour_Default", true, "" );
     return true;
 }
 
 bool GraphicLoader::Load3dEffects()
 {
     uint effect_errors = 0;
-    LOAD_EFFECT( Effect::Skinned3d, "3D_Skinned", false, nullptr );
+    LOAD_EFFECT( Effect::Skinned3d, "3D_Skinned", false, "" );
     if( effect_errors > 0 )
     {
         WriteLog( "3D effects not loaded.\n" );

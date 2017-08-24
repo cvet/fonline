@@ -410,7 +410,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling,
             samples = MIN( GameOpt.MultiSampling, max_samples );
 
             // Flush effect
-            Effect::FlushRenderTargetMSDefault = GraphicLoader::LoadEffect( "Flush_RenderTargetMS.glsl", true, nullptr, "Effects/" );
+            Effect::FlushRenderTargetMSDefault = GraphicLoader::LoadEffect( "Flush_RenderTargetMS.glsl", true, "", "Effects/" );
             if( Effect::FlushRenderTargetMSDefault )
                 Effect::FlushRenderTargetMS = new Effect( *Effect::FlushRenderTargetMSDefault );
             else
@@ -1709,7 +1709,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
 
     Effect* effect = nullptr;
     if( fofrm.IsKey( "", "effect" ) )
-        effect = GraphicLoader::LoadEffect( fofrm.GetStr( "", "effect" ).c_str(), true );
+        effect = GraphicLoader::LoadEffect( fofrm.GetStr( "", "effect" ), true );
 
     AnimVec anims;
     IntVec  anims_offs;

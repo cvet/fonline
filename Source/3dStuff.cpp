@@ -2406,7 +2406,7 @@ MeshTexture* Animation3dXFile::GetTexture( const string& tex_name )
 
 Effect* Animation3dXFile::GetEffect( EffectInstance* effect_inst )
 {
-    Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, nullptr, fileName, effect_inst->Defaults, effect_inst->DefaultsCount );
+    Effect* effect = GraphicLoader::LoadEffect( effect_inst->EffectFilename, false, "", fileName, effect_inst->Defaults, effect_inst->DefaultsCount );
     if( !effect )
         WriteLog( "Can't load effect '{}'.\n", effect_inst && effect_inst->EffectFilename ? effect_inst->EffectFilename : "nullptr" );
     return effect;

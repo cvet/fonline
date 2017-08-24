@@ -32,9 +32,10 @@ _str& _str::trim()
     {
         s.erase();
     }
-    else if( l > 0 )
+    else if( l >= 0 )
     {
-        s.erase( 0, l );
+        if( l > 0 )
+            s.erase( 0, l );
 
         // Right trim
         size_t r = s.find_last_not_of( " \n\r\t" );

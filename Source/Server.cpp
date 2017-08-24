@@ -2909,7 +2909,7 @@ void FOServer::Dump_Work( void* args )
         }
         else
         {
-            StrMap& kv = data->SetApp( d->TypeName.c_str() );
+            StrMap& kv = data->SetApp( d->TypeName );
             kv.insert( d->ExtraData.begin(), d->ExtraData.end() );
             d->Props->SaveToText( kv, d->ProtoProps );
 

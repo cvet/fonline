@@ -216,7 +216,7 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
             LOAD_FAIL( "One of the lang section not found." );
 
         FOMsg temp_msg;
-        if( !temp_msg.LoadFromString( lang_buf.c_str(), (uint) lang_buf.length() ) )
+        if( !temp_msg.LoadFromString( lang_buf ) )
             LOAD_FAIL( "Load MSG fail." );
 
         if( temp_msg.GetStrNumUpper( 100000000 + ~DLGID_MASK ) )

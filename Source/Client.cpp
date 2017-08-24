@@ -8078,7 +8078,7 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     if( !effect_name.empty() )
     {
         bool use_in_2d = !( effect_type & EFFECT_3D_SKINNED );
-        effect = GraphicLoader::LoadEffect( effect_name.c_str(), use_in_2d, !effect_defines.empty() ? effect_defines.c_str() : nullptr );
+        effect = GraphicLoader::LoadEffect( effect_name, use_in_2d, effect_defines );
         if( !effect )
             SCRIPT_ERROR_R0( "Effect not found or have some errors, see log file." );
     }

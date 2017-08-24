@@ -254,10 +254,10 @@ bool FOMsg::LoadFromFile( const string& fname )
     if( !file.LoadFile( fname ) )
         return false;
 
-    return LoadFromString( (char*) file.GetBuf(), file.GetFsize() );
+    return LoadFromString( file.GetCStr() );
 }
 
-bool FOMsg::LoadFromString( const string& str, uint str_len )
+bool FOMsg::LoadFromString( const string& str )
 {
     bool          fail = false;
 
@@ -273,8 +273,22 @@ bool FOMsg::LoadFromString( const string& str, uint str_len )
             size_t last = line.find( '}', first );
             if( first == string::npos || last == string::npos )
             {
-                fail = true;
-                break;
+                if( i == 2 && first != string::npos )
+                {
+                    string additional_line;
+                    while( last == string::npos && std::getline( istr, additional_line, '\n' ) )
+                    {
+                        line += "\n" + additional_line;
+                        last = line.find( '}', first );
+                    }
+                }
+
+                if( first == string::npos || last == string::npos )
+                {
+                    if( i > 0 || first != string::npos )
+                        fail = true;
+                    break;
+                }
             }
 
             string str = line.substr( first + 1, last - first - 1 );
@@ -375,7 +389,7 @@ bool LanguagePack::LoadFromFiles( const string& lang_name )
                 string msg_name = _str( TextMsgFileName[ i ] ).eraseFileExtension();
                 if( Str::CompareCase( msg_name, name ) )
                 {
-                    if( !Msg[ i ].LoadFromString( (char*) msg_file.GetBuf(), msg_file.GetFsize() ) )
+                    if( !Msg[ i ].LoadFromString( msg_file.GetCStr() ) )
                     {
                         WriteLog( "Invalid MSG file '{}'.\n", path );
                         fail = true;
