@@ -2721,13 +2721,16 @@ void FOServer::SaveWorld( const char* fname )
     delete_indexes->Release();
 
     // Make file name
-    string auto_fname;
+    string final_name;
     if( !fname )
     {
-        auto_fname = _str( "{}Auto{:04}.foworld", FileManager::GetWritePath( "Save/" ), SaveWorldIndex + 1 );
-        fname = auto_fname.c_str();
+        final_name = _str( "{}Auto{:04}.foworld", FileManager::GetWritePath( "Save/" ), SaveWorldIndex + 1 );
         if( ++SaveWorldIndex >= WORLD_SAVE_MAX_INDEX )
             SaveWorldIndex = 0;
+    }
+    else
+    {
+        final_name = fname;
     }
 
     // Collect data
@@ -2753,7 +2756,11 @@ void FOServer::SaveWorld( const char* fname )
     SaveClientsLocker.Unlock();
 
     // Flush on disk
-    const void* args[] = { data, Str::Duplicate( fname ) };
+    void* args = new void*[ 2 ]
+    {
+        data,
+        Str::Duplicate( final_name ),
+    };
     if( !Singleplayer )
         DumpThread.Start( Dump_Work, "SaveWorld", args );
     else
@@ -2948,6 +2955,7 @@ void FOServer::Dump_Work( void* args )
     // Clean up
     delete data;
     delete[] fname;
+    delete[] args;
 
     // Report
     WriteLog( "World flushed on disk in {} ms.\n", Timer::AccurateTick() - tick );

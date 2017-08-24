@@ -254,7 +254,7 @@ class Thread
 {
 private:
     bool       isStarted;
-    ThreadType threadId;
+    ThreadType threadHandle;
 
 public:
     Thread();
@@ -271,7 +271,7 @@ public:
     static size_t      GetCurrentId();
     static void        SetCurrentName( const char* name );
     static const char* GetCurrentName();
-    static const char* FindName( uint thread_id );
+    static const char* FindName( size_t thread_id );
 };
 
 #else

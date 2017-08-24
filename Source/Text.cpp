@@ -535,8 +535,6 @@ char* Str::Duplicate( const char* str )
 {
     uint  len = Length( str );
     char* dup = new char[ len + 1 ];
-    if( !dup )
-        return nullptr;
     if( len )
         memcpy( dup, str, len );
     dup[ len ] = 0;

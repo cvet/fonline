@@ -55,10 +55,10 @@ void Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = N
     char*  name_ = Str::Duplicate( name );
     args[ 0 ] = (void*) func, args[ 1 ] = arg, args[ 2 ] = name_;
     # ifdef FO_WINDOWS
-    threadId = CreateThread( nullptr, 0, ThreadBeginExecution, args, 0, nullptr );
-    isStarted = ( threadId != nullptr );
+    threadHandle = CreateThread( nullptr, 0, ThreadBeginExecution, args, 0, nullptr );
+    isStarted = ( threadHandle != nullptr );
     # else
-    isStarted = ( pthread_create( &threadId, nullptr, ThreadBeginExecution, args ) == 0 );
+    isStarted = ( pthread_create( &threadHandle, nullptr, ThreadBeginExecution, args ) == 0 );
     # endif
     RUNTIME_ASSERT( isStarted );
 }
@@ -68,9 +68,9 @@ void Thread::Wait()
     if( isStarted )
     {
         # ifdef FO_WINDOWS
-        WaitForSingleObject( threadId, INFINITE );
+        WaitForSingleObject( threadHandle, INFINITE );
         # else
-        pthread_join( threadId, nullptr );
+        pthread_join( threadHandle, nullptr );
         # endif
         isStarted = false;
     }
@@ -79,7 +79,7 @@ void Thread::Wait()
 void Thread::Release()
 {
     isStarted = false;
-    threadId = 0;
+    threadHandle = 0;
 }
 
 THREAD char Thread::threadName[ 64 ] = { 0 };
@@ -110,7 +110,7 @@ const char* Thread::GetCurrentName()
     return threadName;
 }
 
-const char* Thread::FindName( uint thread_id )
+const char* Thread::FindName( size_t thread_id )
 {
     SCOPE_LOCK( threadNamesLocker );
     auto it = threadNames.find( thread_id );

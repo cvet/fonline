@@ -25,6 +25,7 @@ STATIC_ASSERT( sizeof( void* ) == 4 );
 STATIC_ASSERT( sizeof( size_t ) == 8 );
 STATIC_ASSERT( sizeof( void* ) == 8 );
 #endif
+STATIC_ASSERT( sizeof( size_t ) == sizeof( void* ) );
 STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 
 // Some checks from AngelScript config
