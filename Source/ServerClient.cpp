@@ -413,14 +413,14 @@ void FOServer::Process_CreateClient( Client* cl )
     CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
 
     // Check data
-    if( !Str::IsValidUTF8( cl->Name.c_str() ) || Str::Substring( cl->Name.c_str(), "*" ) )
+    if( !_str( cl->Name ).isValidUtf8() || cl->Name.find( '*' ) != string::npos )
     {
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
     }
 
-    uint name_len_utf8 = Str::LengthUTF8( cl->Name.c_str() );
+    uint name_len_utf8 = _str( cl->Name ).lengthUtf8();
     if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength ||
         name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
@@ -680,7 +680,7 @@ void FOServer::Process_LogIn( Client*& cl )
         if( ban && !Singleplayer )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED_IP, SAY_NETMSG, TEXTMSG_GAME );
-            if( Str::CompareCaseUTF8( ban->ClientName, cl->Name.c_str() ) )
+            if( _str( ban->ClientName ).compareIgnoreCaseUtf8( cl->Name ) )
                 cl->Send_TextMsgLex( cl, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, ban->GetBanLexems().c_str() );
             cl->Send_TextMsgLex( cl, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, _str( "$time{}", GetBanTime( *ban ) ).c_str() );
             cl->Disconnect();
@@ -691,7 +691,7 @@ void FOServer::Process_LogIn( Client*& cl )
     // Check login/password
     if( !Singleplayer )
     {
-        uint name_len_utf8 = Str::LengthUTF8( cl->Name.c_str() );
+        uint name_len_utf8 = _str( cl->Name ).lengthUtf8();
         if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength || name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
         {
             cl->Send_TextMsg( cl, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME );
@@ -699,7 +699,7 @@ void FOServer::Process_LogIn( Client*& cl )
             return;
         }
 
-        if( !Str::IsValidUTF8( cl->Name.c_str() ) || Str::Substring( cl->Name.c_str(), "*" ) )
+        if( !_str( cl->Name ).isValidUtf8() || cl->Name.find( '*' ) != string::npos )
         {
             cl->Send_TextMsg( cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();

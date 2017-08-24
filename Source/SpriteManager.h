@@ -285,7 +285,7 @@ public:
     int  GetLineHeight( int num_font = -1 );
     void GetTextInfo( int width, int height, const string& str, int num_font, int flags, int& tw, int& th, int& lines );
     int  SplitLines( const Rect& r, const string& cstr, int num_font, StrVec& str_vec );
-    bool HaveLetter( int num_font, const string& letter );
+    bool HaveLetter( int num_font, uint letter );
 };
 
 extern SpriteManager SprMngr;

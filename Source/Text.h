@@ -23,36 +23,21 @@ namespace Str
     char* Duplicate( const string& str );
     char* Duplicate( const char* str );
 
-    uint LowerUTF8( uint ucs );
-    void LowerUTF8( char* str );
-    uint UpperUTF8( uint ucs );
-    void UpperUTF8( char* str );
-
     char*       Substring( char* str, const char* sub_str );
     const char* Substring( const char* str, const char* sub_str );
     const char* Substring( const string& str, const char* sub_str );
     char*       LastSubstring( char* str, const char* sub_str );
     const char* LastSubstring( const char* str, const char* sub_str );
 
-    bool IsValidUTF8( uint ucs );
-    bool IsValidUTF8( const char* str );
-    bool IsValidUTF8( const string& str );
-    uint DecodeUTF8( const char* str, uint* length );
-    uint DecodeUTF8( const string& str, uint* length );
-    uint EncodeUTF8( uint ucs, char* buf );
-
     uint Length( const char* str );
-    uint LengthUTF8( const char* str );
     bool Compare( const char* str1, const char* str2 );
     bool Compare( const string& str1, const string& str2 );
     bool CompareCase( const char* str1, const char* str2 );
     bool CompareCase( const string& str1, const string& str2 );
-    bool CompareCaseUTF8( const char* str1, const char* str2 );
     bool CompareCount( const char* str1, const char* str2, uint max_count );
     bool CompareCount( const string& str1, const string& str2, uint max_count );
     bool CompareCaseCount( const char* str1, const char* str2, uint max_count );
     bool CompareCaseCount( const string& str1, const string& str2, uint max_count );
-    bool CompareCaseCountUTF8( const char* str1, const char* str2, uint max_count );
 
     void  HexToStr( uchar hex, char* str ); // 2 bytes string
     uchar StrToHex( const char* str );
@@ -78,6 +63,9 @@ public:
     const string& str() const                                  { return s; }
 
     bool compareIgnoreCase( const string& r );
+    bool compareIgnoreCaseUtf8( const string& r );
+    bool isValidUtf8();
+    uint lengthUtf8();
 
     _str& substringUntil( char end );
     _str& trim();
@@ -87,7 +75,9 @@ public:
     _str& replace( char from1, char from2, char to );
     _str& replace( const string& from, const string& to );
     _str& lower();
+    _str& lowerUtf8();
     _str& upper();
+    _str& upperUtf8();
 
     StrVec split( char divider );
     IntVec splitToInt( char divider );
@@ -121,6 +111,15 @@ public:
     static void saveHashes( StrMap& hashes );
     static void loadHashes( StrMap& hashes );
 };
+
+namespace utf8
+{
+    bool IsValid( uint ucs );
+    uint Decode( const char* str, uint* length );
+    uint Encode( uint ucs, char(&buf)[ 4 ] );
+    uint Lower( uint ucs );
+    uint Upper( uint ucs );
+}
 
 namespace fmt
 {

@@ -127,15 +127,14 @@ static string Global_GetHashStr( hash h )
 
 static uint Global_DecodeUTF8( string text, uint& length )
 {
-    return Str::DecodeUTF8( text.c_str(), &length );
+    return utf8::Decode( text.c_str(), &length );
 }
 
 static string Global_EncodeUTF8( uint ucs )
 {
-    char buf[ 5 ];
-    uint len = Str::EncodeUTF8( ucs, buf );
-    buf[ len ] = 0;
-    return buf;
+    char buf[ 4 ];
+    uint len = utf8::Encode( ucs, buf );
+    return string( buf, len );
 }
 
 static uint Global_GetFolderFileNames( string path, string ext, bool include_subdirs, CScriptArray* result )

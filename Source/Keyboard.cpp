@@ -17,7 +17,7 @@ namespace Keyb
     bool CtrlDwn = false;
     bool AltDwn = false;
 
-    bool IsInvalidChar( const string& str, uint flags );
+    bool IsInvalidChar( const char* str, uint flags, uint& length );
 }
 
 void Keyb::Init()
@@ -53,10 +53,9 @@ void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* positi
 
     bool  ctrl_shift = ( CtrlDwn || ShiftDwn );
 
-    uint  dik_text_len_utf8 = Str::LengthUTF8( dik_text.c_str() );
-    uint  dik_text_len = Str::Length( dik_text.c_str() );
-    uint  str_len_utf8 = Str::LengthUTF8( str.c_str() );
-    uint  str_len = Str::Length( str.c_str() );
+    uint  dik_text_len_utf8 = _str( dik_text ).lengthUtf8();
+    uint  str_len_utf8 = _str( str ).lengthUtf8();
+    uint  str_len = (uint) str.length();
 
     uint  position_ = str_len;
     uint& pos = ( position ? *position : position_ );
@@ -144,7 +143,7 @@ void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* positi
         EraseInvalidChars( text, flags );
         if( !text.empty() )
         {
-            uint text_len_utf8 = Str::LengthUTF8( text.c_str() );
+            uint text_len_utf8 = _str( text ).lengthUtf8();
             uint erase_len_utf8 = 0;
             if( str_len_utf8 + text_len_utf8 > max )
                 erase_len_utf8 = str_len_utf8 + text_len_utf8 - max;
@@ -172,11 +171,17 @@ void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* positi
             return;
         if( CtrlDwn )
             return;
-        if( IsInvalidChar( dik_text, flags ) )
-            return;
+
+        for( size_t i = 0; i < dik_text.length();)
+        {
+            uint length;
+            if( IsInvalidChar( dik_text.c_str() + i, flags, length ) )
+                return;
+            i += length;
+        }
 
         str.insert( pos, dik_text );
-        pos += dik_text_len;
+        pos += (uint) dik_text.length();
     }
 }
 
@@ -185,47 +190,48 @@ void Keyb::EraseInvalidChars( string& str, int flags )
     for( size_t i = 0; i < str.length();)
     {
         uint length;
-        int  ch = Str::DecodeUTF8( str.substr( i ), &length );
-        if( ch < 0 || IsInvalidChar( str.substr( i ), flags ) )
+        if( IsInvalidChar( str.c_str() + i, flags, length ) )
             str.erase( i, length );
         else
             i += length;
     }
 }
 
-bool Keyb::IsInvalidChar( const string& str, uint flags )
+bool Keyb::IsInvalidChar( const char* str, uint flags, uint& length )
 {
-    if( !Str::IsValidUTF8( str ) )
+    uint ucs = utf8::Decode( str, &length );
+    if( !utf8::IsValid( ucs ) )
         return false;
-    if( flags & KIF_NO_SPEC_SYMBOLS && str.find_first_of( "\n\r\t" ) != string::npos )
-        return true;
-    if( flags & KIF_ONLY_NUMBERS && str.find_first_not_of( "0123456789" ) != string::npos )
-        return true;
-    if( flags & KIF_FILE_NAME )
+
+    if( length == 1 )
     {
-        for( char ch : str )
+        if( flags & KIF_NO_SPEC_SYMBOLS && ( *str == '\n' || *str == '\r' || *str == '\t' ) )
+            return true;
+        if( flags & KIF_ONLY_NUMBERS && !( *str >= '0' && *str <= '9' ) )
+            return true;
+        if( flags & KIF_FILE_NAME )
         {
-            switch( ch )
+            switch( *str )
             {
-            case '\\' :
-            case '/'  :
-            case ':'  :
-            case '*'  :
-            case '?'  :
-            case '"'  :
-            case '<'  :
-            case '>'  :
-            case '|'  :
-            case '\n' :
-            case '\r' :
-            case '\t' :
+            case '\\':
+            case '/':
+            case ':':
+            case '*':
+            case '?':
+            case '"':
+            case '<':
+            case '>':
+            case '|':
+            case '\n':
+            case '\r':
+            case '\t':
                 return true;
             default:
                 break;
             }
         }
     }
-    return !SprMngr.HaveLetter( -1, str );
+    return !SprMngr.HaveLetter( -1, ucs );
 }
 
 uchar Keyb::MapKey( ushort code )

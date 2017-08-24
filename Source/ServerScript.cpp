@@ -3323,7 +3323,7 @@ void FOServer::SScriptFunc::Global_EraseTextListener( int say_type, string first
     for( auto it = TextListeners.begin(), end = TextListeners.end(); it != end; ++it )
     {
         TextListen& tl = *it;
-        if( say_type == tl.SayType && Str::CompareCaseUTF8( first_str.c_str(), tl.FirstStr ) && tl.Parameter == parameter )
+        if( say_type == tl.SayType && _str( first_str ).compareIgnoreCaseUtf8( tl.FirstStr ) && tl.Parameter == parameter )
         {
             TextListeners.erase( it );
             return;

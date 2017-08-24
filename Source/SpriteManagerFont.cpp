@@ -385,8 +385,8 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
                 utf8_letter_begin++;
 
                 uint letter_len;
-                uint letter = Str::DecodeUTF8( utf8_letter_begin, &letter_len );
-                if( !Str::IsValidUTF8( letter ) )
+                uint letter = utf8::Decode( utf8_letter_begin, &letter_len );
+                if( !utf8::IsValid( letter ) )
                 {
                     WriteLog( "Font '{}' invalid UTF8 letter at  '{}'.\n", fname, letter_buf );
                     return false;
@@ -745,7 +745,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
     for( int i = 0, i_advance = 1; str[ i ]; i += i_advance )
     {
         uint letter_len;
-        uint letter = Str::DecodeUTF8( &str[ i ], &letter_len );
+        uint letter = utf8::Decode( &str[ i ], &letter_len );
         i_advance = letter_len;
 
         int x_advance;
@@ -993,7 +993,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
     for( int i = 0, i_advance = 1; ; i += i_advance )
     {
         uint letter_len;
-        uint letter = Str::DecodeUTF8( &str[ i ], &letter_len );
+        uint letter = utf8::Decode( &str[ i ], &letter_len );
         i_advance = letter_len;
 
         switch( letter )
@@ -1130,7 +1130,7 @@ bool SpriteManager::DrawStr( const Rect& r, const string& str, uint flags, uint 
         }
 
         uint letter_len;
-        uint letter = Str::DecodeUTF8( &str_[ i ], &letter_len );
+        uint letter = utf8::Decode( &str_[ i ], &letter_len );
         i_advance = letter_len;
 
         switch( letter )
@@ -1311,10 +1311,10 @@ int SpriteManager::SplitLines( const Rect& r, const string& cstr, int num_font, 
     return (int) str_vec.size();
 }
 
-bool SpriteManager::HaveLetter( int num_font, const string& letter )
+bool SpriteManager::HaveLetter( int num_font, uint letter )
 {
     FontData* font = GetFont( num_font );
     if( !font )
         return false;
-    return font->Letters.count( Str::DecodeUTF8( letter, nullptr ) ) > 0;
+    return font->Letters.count( letter ) > 0;
 }

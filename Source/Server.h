@@ -220,8 +220,8 @@ public:
         char          ClientName[ UTF8_BUF_SIZE( MAX_NAME ) ];
         char          BannedBy[ UTF8_BUF_SIZE( MAX_NAME ) ];
         char          BanInfo[ UTF8_BUF_SIZE( 128 ) ];
-        bool operator==( const char* name ) { return Str::CompareCaseUTF8( name, ClientName ); }
-        bool operator==( const uint ip )    { return ClientIp == ip; }
+        bool operator==( const string& name ) { return _str( name ).compareIgnoreCaseUtf8( ClientName ); }
+        bool operator==( const uint ip )      { return ClientIp == ip; }
 
         string        GetBanLexems()
         {

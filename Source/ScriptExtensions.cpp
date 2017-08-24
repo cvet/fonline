@@ -264,14 +264,14 @@ static bool IndexUTF8ToRaw( const string& str, int& index, uint* length = nullpt
 {
     if( index < 0 )
     {
-        index = (int) Str::LengthUTF8( str.c_str() ) + index;
+        index = (int) _str( str ).lengthUtf8() + index;
         if( index < 0 )
         {
             index = 0;
             if( length )
             {
                 if( !str.empty() )
-                    Str::DecodeUTF8( str.c_str(), length );
+                    utf8::Decode( str.c_str(), length );
                 else
                     *length = 0;
             }
@@ -284,7 +284,7 @@ static bool IndexUTF8ToRaw( const string& str, int& index, uint* length = nullpt
     while( *s )
     {
         uint ch_length;
-        Str::DecodeUTF8( s, &ch_length );
+        utf8::Decode( s, &ch_length );
         if( index > 0 )
         {
             s += ch_length;
@@ -311,7 +311,7 @@ static int IndexRawToUTF8( const string& str, int index )
     while( index > 0 && *s )
     {
         uint ch_length;
-        Str::DecodeUTF8( s, &ch_length );
+        utf8::Decode( s, &ch_length );
         s += ch_length;
         index -= ch_length;
         result++;
@@ -329,7 +329,7 @@ static string ScriptString_SubString( const string& str, int start, int count )
     if( !IndexUTF8ToRaw( str, start ) )
         return "";
     if( count >= 0 )
-        IndexUTF8ToRaw( str, count, NULL, start );
+        IndexUTF8ToRaw( str, count, nullptr, start );
     return str.substr( start, count >= 0 ? count : std::string::npos );
 }
 
@@ -416,7 +416,7 @@ static void ScriptString_SetAt( string& str, int i, string& value )
 
 static uint ScriptString_Length( const string& str )
 {
-    return Str::LengthUTF8( str.c_str() );
+    return _str( str ).lengthUtf8();
 }
 
 static uint ScriptString_RawLength( const string& str )
@@ -446,7 +446,7 @@ static int ScriptString_ToInt( const string& str, int defaultValue )
     while( *p == ' ' || *p == '\t' )
         ++p;
 
-    char* end_str = NULL;
+    char* end_str = nullptr;
     int   result;
     if( p[ 0 ] && p[ 0 ] == '0' && ( p[ 1 ] == 'x' || p[ 1 ] == 'X' ) )
         result = (int) strtol( p + 2, &end_str, 16 );
@@ -500,16 +500,12 @@ static bool ScriptString_EndsWith( const string& str, const string& other )
 
 static string ScriptString_Lower( const string& str )
 {
-    string result = str;
-    Str::LowerUTF8( (char*) result.c_str() );
-    return result;
+    return _str( str ).lowerUtf8();
 }
 
 static string ScriptString_Upper( const string& str )
 {
-    string result = str;
-    Str::UpperUTF8( (char*) result.c_str() );
-    return result;
+    return _str( str ).upperUtf8();
 }
 
 static string ScriptString_Trim( const string& str, const string& chars )

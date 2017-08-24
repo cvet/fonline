@@ -918,7 +918,7 @@ void FOServer::Process_Text( Client* cl )
         {
             TextListen& tl = TextListeners[ i ];
             if( tl.SayType == SAY_RADIO && std::find( channels.begin(), channels.end(), tl.Parameter ) != channels.end() &&
-                Str::CompareCaseCountUTF8( str, tl.FirstStr, tl.FirstStrLen ) )
+                _str( string( str ).substr( 0, tl.FirstStrLen ) ).compareIgnoreCaseUtf8( tl.FirstStr ) )
             {
                 listen_func_id[ listen_count ] = tl.FuncId;
                 listen_str[ listen_count ] = str;
@@ -934,7 +934,8 @@ void FOServer::Process_Text( Client* cl )
         for( uint i = 0; i < TextListeners.size(); i++ )
         {
             TextListen& tl = TextListeners[ i ];
-            if( tl.SayType == how_say && tl.Parameter == pid && Str::CompareCaseCountUTF8( str, tl.FirstStr, tl.FirstStrLen ) )
+            if( tl.SayType == how_say && tl.Parameter == pid &&
+                _str( string( str ).substr( 0, tl.FirstStrLen ) ).compareIgnoreCaseUtf8( tl.FirstStr ) )
             {
                 listen_func_id[ listen_count ] = tl.FuncId;
                 listen_str[ listen_count ] = str;
@@ -1700,7 +1701,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
         }
         else if( Str::CompareCase( params, "add" ) || Str::CompareCase( params, "add+" ) )
         {
-            uint name_len = Str::LengthUTF8( name );
+            uint name_len = _str( name ).lengthUtf8();
             if( name_len < MIN_NAME || name_len < GameOpt.MinNameLength || name_len > MAX_NAME || name_len > GameOpt.MaxNameLength || !ban_hours )
             {
                 logcb( "Invalid arguments." );
@@ -1752,7 +1753,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
                 for( auto it = Banned.begin(); it != Banned.end();)
                 {
                     ClientBanned& ban = *it;
-                    if( Str::CompareCaseUTF8( ban.ClientName, name ) )
+                    if( _str( ban.ClientName ).compareIgnoreCaseUtf8( name ) )
                     {
                         SaveBan( ban, true );
                         it = Banned.erase( it );

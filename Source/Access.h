@@ -565,7 +565,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
         pass = _str( pass ).replace( '*', ' ' );
 
         // Check the new password's validity
-        uint pass_len = Str::LengthUTF8( new_pass.c_str() );
+        uint pass_len = _str( new_pass ).lengthUtf8();
         if( pass_len < MIN_NAME || pass_len < GameOpt.MinNameLength || pass_len > MAX_NAME || pass_len > GameOpt.MaxNameLength )
         {
             logcb( "Invalid new password." );

@@ -244,7 +244,7 @@ Client* CritterManager::GetPlayer( const char* name )
     for( auto it = entities.begin(); it != entities.end(); ++it )
     {
         Client* cl_ = (Client*) *it;
-        if( Str::CompareCaseUTF8( name, cl_->GetName().c_str() ) )
+        if( _str( name ).compareIgnoreCaseUtf8( cl_->GetName() ) )
         {
             cl = cl_;
             break;

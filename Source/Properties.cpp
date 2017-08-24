@@ -1278,9 +1278,9 @@ static const char* ReadToken( const char* str, string& result )
     const char* s = str;
 
     uint length;
-    Str::DecodeUTF8( s, &length );
+    utf8::Decode( s, &length );
     while( length == 1 && ( *s == ' ' || *s == '\t' ) )
-        Str::DecodeUTF8( ++s, &length );
+        utf8::Decode( ++s, &length );
 
     if( !*s )
         return nullptr;
@@ -1298,7 +1298,7 @@ static const char* ReadToken( const char* str, string& result )
                 ++s;
                 if( *s )
                 {
-                    Str::DecodeUTF8( s, &length );
+                    utf8::Decode( s, &length );
                     s += length;
                 }
             }
@@ -1318,7 +1318,7 @@ static const char* ReadToken( const char* str, string& result )
             {
                 s += length;
             }
-            Str::DecodeUTF8( s, &length );
+            utf8::Decode( s, &length );
         }
     }
     else
@@ -1328,7 +1328,7 @@ static const char* ReadToken( const char* str, string& result )
         {
             if( length == 1 && *s == '\\' )
             {
-                Str::DecodeUTF8( ++s, &length );
+                utf8::Decode( ++s, &length );
                 s += length;
             }
             else if( length == 1 && ( *s == ' ' || *s == '\t' ) )
@@ -1339,7 +1339,7 @@ static const char* ReadToken( const char* str, string& result )
             {
                 s += length;
             }
-            Str::DecodeUTF8( s, &length );
+            utf8::Decode( s, &length );
         }
     }
 
@@ -1365,7 +1365,7 @@ static string CodeString( const string& str, int deep )
     uint length;
     while( *s )
     {
-        Str::DecodeUTF8( s, &length );
+        utf8::Decode( s, &length );
         if( length == 1 )
         {
             switch( *s )
@@ -1414,17 +1414,17 @@ static string DecodeString( const string& str )
     const char* s = str.c_str();
     uint length;
 
-    Str::DecodeUTF8( s, &length );
+    utf8::Decode( s, &length );
     bool is_braces = ( length == 1 && *s == '{' );
     if( is_braces )
         s++;
 
     while( *s )
     {
-        Str::DecodeUTF8( s, &length );
+        utf8::Decode( s, &length );
         if( length == 1 && *s == '\\' )
         {
-            Str::DecodeUTF8( ++s, &length );
+            utf8::Decode( ++s, &length );
 
             switch( *s )
             {

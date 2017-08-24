@@ -2733,21 +2733,18 @@ void FOClient::Net_OnTextMsg( bool with_lexems )
 
 void FOClient::OnText( const char* str, uint crid, int how_say )
 {
-    char fstr[ MAX_FOTEXT ];
-    Str::Copy( fstr, str );
-    uint len = Str::Length( str );
-    if( !len )
+    string fstr = str;
+    if( fstr.empty() )
         return;
 
-    uint   text_delay = GameOpt.TextDelay + len * 100;
+    uint   text_delay = GameOpt.TextDelay + (uint) fstr.length() * 100;
     string sstr = fstr;
     bool   result = Script::RaiseInternalEvent( ClientFunctions.InMessage, &sstr, &how_say, &crid, &text_delay );
     if( !result )
         return;
 
-    Str::Copy( fstr, sstr.c_str() );
-    len = Str::Length( fstr );
-    if( !len )
+    fstr = sstr;
+    if( fstr.empty() )
         return;
 
     // Type stream
@@ -2766,7 +2763,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
         fstr_mb = STR_MBSHOUT;
     case SAY_SHOUT_ON_HEAD:
         fstr_cr = STR_CRSHOUT;
-        Str::UpperUTF8( fstr );
+        fstr = _str( fstr ).upperUtf8();
         break;
     case SAY_EMOTE:
         fstr_mb = STR_MBEMOTE;
@@ -2777,7 +2774,7 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
         fstr_mb = STR_MBWHISP;
     case SAY_WHISP_ON_HEAD:
         fstr_cr = STR_CRWHISP;
-        Str::LowerUTF8( fstr );
+        fstr = _str( fstr ).lowerUtf8();
         break;
     case SAY_SOCIAL:
         fstr_cr = STR_CRSOCIAL;
@@ -2802,14 +2799,14 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
 
     // CritterCl on head text
     if( fstr_cr && cr )
-        cr->SetText( FmtGameText( fstr_cr, fstr ).c_str(), COLOR_TEXT, text_delay );
+        cr->SetText( FmtGameText( fstr_cr, fstr.c_str() ).c_str(), COLOR_TEXT, text_delay );
 
     // Message box text
     if( fstr_mb )
     {
         if( how_say == SAY_NETMSG )
         {
-            AddMess( mess_type, FmtGameText( fstr_mb, fstr ) );
+            AddMess( mess_type, FmtGameText( fstr_mb, fstr.c_str() ) );
         }
         else if( how_say == SAY_RADIO )
         {
@@ -2820,11 +2817,11 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
                 if( radio )
                     channel = radio->GetRadioChannel();
             }
-            AddMess( mess_type, FmtGameText( fstr_mb, channel, fstr ) );
+            AddMess( mess_type, FmtGameText( fstr_mb, channel, fstr.c_str() ) );
         }
         else
         {
-            AddMess( mess_type, FmtGameText( fstr_mb, crit_name.c_str(), fstr ) );
+            AddMess( mess_type, FmtGameText( fstr_mb, crit_name.c_str(), fstr.c_str() ) );
         }
     }
 
