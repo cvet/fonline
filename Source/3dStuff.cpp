@@ -1965,12 +1965,12 @@ bool Animation3dEntity::Load( const string& name )
                 else
                 {
                     ( *istr ) >> valuef;
-                    animSpeed.insert( PAIR( ( ind1 << 16 ) | ind2, valuef ) );
+                    animSpeed.insert( std::make_pair( ( ind1 << 16 ) | ind2, valuef ) );
 
                     if( Str::Compare( token, "AnimSpeedExt" ) )
                     {
                         ( *istr ) >> valuef;
-                        animSpeed.insert( PAIR( ( ind1 << 16 ) | ( ind2 | 0x8000 ), valuef ) );
+                        animSpeed.insert( std::make_pair( ( ind1 << 16 ) | ( ind2 | 0x8000 ), valuef ) );
                     }
                 }
             }
@@ -1990,7 +1990,7 @@ bool Animation3dEntity::Load( const string& name )
 
                 uint index = ( ind1 << 16 ) | ind2;
                 if( !animLayerValues.count( index ) )
-                    animLayerValues.insert( PAIR( index, IntPairVec() ) );
+                    animLayerValues.insert( std::make_pair( index, IntPairVec() ) );
                 animLayerValues[ index ].push_back( IntPair( layer, value ) );
             }
             else if( Str::Compare( token, "FastTransitionBone" ) )
@@ -2009,9 +2009,9 @@ bool Animation3dEntity::Load( const string& name )
                 ind2 = ConvertParamValue( buf, convert_value_fail );
 
                 if( valuei == 1 )
-                    anim1Equals.insert( PAIR( ind1, ind2 ) );
+                    anim1Equals.insert( std::make_pair( ind1, ind2 ) );
                 else if( valuei == 2 )
-                    anim2Equals.insert( PAIR( ind1, ind2 ) );
+                    anim2Equals.insert( std::make_pair( ind1, ind2 ) );
             }
             else if( Str::Compare( token, "RenderFrame" ) || Str::Compare( token, "RenderFrames" ) )
             {
@@ -2128,7 +2128,7 @@ bool Animation3dEntity::Load( const string& name )
                     if( anim_index == -1 )
                         renderAnim = set_index;
                     else if( anim_index )
-                        animIndexes.insert( PAIR( anim_index, set_index ) );
+                        animIndexes.insert( std::make_pair( anim_index, set_index ) );
                 }
                 else
                 {
@@ -2364,7 +2364,7 @@ Animation3dXFile* Animation3dXFile::GetXFile( const string& xname )
 
 void SetupBonesExt( multimap< uint, Bone* >& bones, Bone* bone, uint depth )
 {
-    bones.insert( PAIR( depth, bone ) );
+    bones.insert( std::make_pair( depth, bone ) );
     for( size_t i = 0, j = bone->Children.size(); i < j; i++ )
         SetupBonesExt( bones, bone->Children[ i ], depth + 1 );
 }

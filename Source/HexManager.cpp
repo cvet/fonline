@@ -659,7 +659,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
 
     if( from_hx != to_hx || from_hy != to_hy )
     {
-        item->EffSteps.push_back( PAIR( from_hx, from_hy ) );
+        item->EffSteps.push_back( std::make_pair( from_hx, from_hy ) );
         TraceBullet( from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, false, nullptr, 0, nullptr, nullptr, &item->EffSteps, false );
         int x, y;
         GetHexInterval( from_hx, from_hy, to_hx, to_hy, x, y );
@@ -2527,7 +2527,7 @@ void HexManager::AddCritter( CritterCl* cr )
 {
     if( allCritters.count( cr->GetId() ) )
         return;
-    allCritters.insert( PAIR( cr->GetId(), cr ) );
+    allCritters.insert( std::make_pair( cr->GetId(), cr ) );
     if( cr->IsChosen() )
         chosenId = cr->GetId();
     SetCritter( cr );
@@ -2925,7 +2925,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
     grid_oy = start_y;
     GRID( start_x, start_y ) = numindex;
     coords.clear();
-    coords.push_back( PAIR( start_x, start_y ) );
+    coords.push_back( std::make_pair( start_x, start_y ) );
 
     uint mh = ( cr ? cr->GetMultihex() : 0 );
     int  p = 0;
@@ -3001,7 +3001,7 @@ bool HexManager::FindPath( CritterCl* cr, ushort start_x, ushort start_y, ushort
                 }
 
                 GRID( nx, ny ) = numindex;
-                coords.push_back( PAIR( nx, ny ) );
+                coords.push_back( std::make_pair( nx, ny ) );
 
                 if( cut >= 0 && CheckDist( nx, ny, end_x, end_y, cut ) )
                 {
@@ -3441,7 +3441,7 @@ bool HexManager::TraceBullet( ushort hx, ushort hy, ushort tx, ushort ty, uint d
 
         if( steps )
         {
-            steps->push_back( PAIR( cx, cy ) );
+            steps->push_back( std::make_pair( cx, cy ) );
             continue;
         }
 
@@ -4263,7 +4263,7 @@ void HexManager::GetHexesRect( const Rect& rect, UShortPairVec& hexes )
             for( int i = 0; i <= adx; i++ )
             {
                 if( hx >= 0 && hy >= 0 && hx < maxHexX && hy < maxHexY )
-                    hexes.push_back( PAIR( hx, hy ) );
+                    hexes.push_back( std::make_pair( hx, hy ) );
 
                 if( dx >= 0 )
                 {
@@ -4337,7 +4337,7 @@ void HexManager::GetHexesRect( const Rect& rect, UShortPairVec& hexes )
             for( int j = ( i & 1 ) ? 1 : 0; j < hw; j += 2 )
             {
                 if( hx >= 0 && hy >= 0 && hx < maxHexX && hy < maxHexY )
-                    hexes.push_back( PAIR( hx, hy ) );
+                    hexes.push_back( std::make_pair( hx, hy ) );
 
                 if( rw > 0 )
                     hx--, hy++;

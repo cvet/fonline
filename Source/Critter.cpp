@@ -838,10 +838,10 @@ bool Critter::AddCrIntoVisVec( Critter* add_cr )
         return false;
 
     VisCr.push_back( add_cr );
-    VisCrMap.insert( PAIR( add_cr->GetId(), add_cr ) );
+    VisCrMap.insert( std::make_pair( add_cr->GetId(), add_cr ) );
 
     add_cr->VisCrSelf.push_back( this );
-    add_cr->VisCrSelfMap.insert( PAIR( this->GetId(), this ) );
+    add_cr->VisCrSelfMap.insert( std::make_pair( this->GetId(), this ) );
     return true;
 }
 

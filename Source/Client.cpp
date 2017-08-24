@@ -21,7 +21,7 @@ static void* ASDeepDebugMalloc( size_t size )
         const char* func = Script::GetActiveFuncName();
         string      buf = _str( "AS : {}", func ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( buf.c_str(), (int) size );
-        ASDbgMemoryPtr.insert( PAIR( ptr, buf ) );
+        ASDbgMemoryPtr.insert( std::make_pair( ptr, buf ) );
         ASDbgMemoryInUse = false;
     }
     MEMORY_PROCESS( MEMORY_ANGEL_SCRIPT, (int) size );
@@ -3004,7 +3004,7 @@ void FOClient::Net_OnCritterMove()
     {
         cr->MoveSteps.resize( cr->CurMoveStep > 0 ? cr->CurMoveStep : 0 );
         if( cr->CurMoveStep >= 0 )
-            cr->MoveSteps.push_back( PAIR( new_hx, new_hy ) );
+            cr->MoveSteps.push_back( std::make_pair( new_hx, new_hy ) );
 
         for( int i = 0, j = cr->CurMoveStep + 1; i < MOVE_PARAM_STEP_COUNT; i++, j++ )
         {
@@ -3023,7 +3023,7 @@ void FOClient::Net_OnCritterMove()
             MoveHexByDir( new_hx, new_hy, dir, HexMngr.GetWidth(), HexMngr.GetHeight() );
             if( j < 0 )
                 continue;
-            cr->MoveSteps.push_back( PAIR( new_hx, new_hy ) );
+            cr->MoveSteps.push_back( std::make_pair( new_hx, new_hy ) );
         }
         cr->CurMoveStep++;
     }

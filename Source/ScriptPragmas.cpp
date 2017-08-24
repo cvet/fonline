@@ -366,7 +366,7 @@ public:
 
         // Add creator
         RUNTIME_ASSERT( !entityCreators.count( class_name ) );
-        entityCreators.insert( PAIR( class_name, entity_creator ) );
+        entityCreators.insert( std::make_pair( class_name, entity_creator ) );
         return true;
     }
 
@@ -777,7 +777,7 @@ public:
 
         // Add to collection
         hash h = _str( name ).toHash();
-        filesToCheck[ group_index ].insert( PAIR( string( name ), h ) );
+        filesToCheck[ group_index ].insert( std::make_pair( string( name ), h ) );
 
         // Register file
         engine->SetDefaultNamespace( "Content" );
@@ -991,10 +991,10 @@ public:
 
             asIScriptFunction* callback = (asIScriptFunction*) gen->GetArgObject( 1 );
             callback->AddRef();
-            auto               it = arg_info.Callbacks.insert( PAIR( value, callback ) );
+            auto               it = arg_info.Callbacks.insert( std::make_pair( value, callback ) );
 
             if( arg_info.IsObjectEntity )
-                event->EntityCallbacks->insert( PAIR( (Entity*) gen->GetArgObject( 0 ), PAIR( &arg_info.Callbacks, it ) ) );
+                event->EntityCallbacks->insert( std::make_pair( (Entity*) gen->GetArgObject( 0 ), std::make_pair( &arg_info.Callbacks, it ) ) );
         }
 
         static void UnsubscribeFrom( asIScriptGeneric* gen )
@@ -1484,7 +1484,7 @@ public:
         {
             string func_name = cur_file;
             func_name.append( "::" ).append( name );
-            inFuncDesc.push_back( PAIR( func_name, string( args ) ) );
+            inFuncDesc.push_back( std::make_pair( func_name, string( args ) ) );
         }
 
         return true;

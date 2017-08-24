@@ -42,7 +42,7 @@ static void* ASDeepDebugMalloc( size_t size )
         const char* func = Script::GetActiveFuncName();
         ASDbgMemoryBuf = _str( "AS : {}", func ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( ASDbgMemoryBuf.c_str(), (int) size );
-        ASDbgMemoryPtr.insert( PAIR( ptr, ASDbgMemoryBuf ) );
+        ASDbgMemoryPtr.insert( std::make_pair( ptr, ASDbgMemoryBuf ) );
         ASDbgMemoryInUse = false;
     }
     MEMORY_PROCESS( MEMORY_ANGEL_SCRIPT, (int) size );

@@ -470,7 +470,7 @@ void FOServer::Process_CreateClient( Client* cl )
         }
         else
         {
-            RegIp.insert( PAIR( ip, Timer::FastTick() ) );
+            RegIp.insert( std::make_pair( ip, Timer::FastTick() ) );
         }
     }
     #endif
@@ -565,7 +565,7 @@ void FOServer::Process_CreateClient( Client* cl )
         memcpy( data->ClientPassHash, password, Str::Length( password ) );
 
         SCOPE_LOCK( ClientsDataLocker );
-        ClientsData.insert( PAIR( cl->GetId(), data ) );
+        ClientsData.insert( std::make_pair( cl->GetId(), data ) );
     }
     else
     {

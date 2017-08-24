@@ -1711,7 +1711,7 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
         }
 
         // Serialize to text and store in map
-        key_values.insert( PAIR( prop->propName, SavePropertyToText( prop ) ) );
+        key_values.insert( std::make_pair( prop->propName, SavePropertyToText( prop ) ) );
     }
 }
 
@@ -2264,7 +2264,7 @@ Property* PropertyRegistrator::Register(
                 return nullptr;
             }
 
-            enumGroups.insert( PAIR( string( full_decl ), group_array ) );
+            enumGroups.insert( std::make_pair( string( full_decl ), group_array ) );
 
             int result = engine->RegisterGlobalProperty( full_decl.c_str(), &enumGroups[ full_decl ] );
             if( result < 0 )

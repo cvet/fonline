@@ -227,8 +227,8 @@ void FolderFile::CollectFilesTree( IndexMap& files_tree, FileNameVec& files_tree
         fe.WriteTime = find_data[ i ].WriteTime;
 
         string name_lower = _str( files[ i ] ).lower();
-        files_tree.insert( PAIR( name_lower, fe ) );
-        files_tree_names.push_back( PAIR( name_lower, files[ i ] ) );
+        files_tree.insert( std::make_pair( name_lower, fe ) );
+        files_tree_names.push_back( std::make_pair( name_lower, files[ i ] ) );
     }
 }
 
@@ -402,8 +402,8 @@ bool FalloutDatFile::ReadTree()
 
                 if( type == 2 )
                     *( ptr + 4 + fnsz + 7 ) = 1;               // Compressed
-                filesTree.insert( PAIR( name_lower, ptr + 4 + fnsz + 7 ) );
-                filesTreeNames.push_back( PAIR( name_lower, name ) );
+                filesTree.insert( std::make_pair( name_lower, ptr + 4 + fnsz + 7 ) );
+                filesTreeNames.push_back( std::make_pair( name_lower, name ) );
             }
 
             if( ptr + fnsz + 24 >= end_ptr )
@@ -463,8 +463,8 @@ bool FalloutDatFile::ReadTree()
             string name = _str( string( (const char*) ptr + 4, fnsz ) ).normalizePathSlashes();
             string name_lower = _str( name ).lower();
 
-            filesTree.insert( PAIR( name_lower, ptr + 4 + fnsz ) );
-            filesTreeNames.push_back( PAIR( name_lower, name ) );
+            filesTree.insert( std::make_pair( name_lower, ptr + 4 + fnsz ) );
+            filesTreeNames.push_back( std::make_pair( name_lower, name ) );
         }
 
         if( ptr + fnsz + 17 >= end_ptr )
@@ -771,8 +771,8 @@ bool ZipFile::ReadTree()
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = (int) info.uncompressed_size;
-            filesTree.insert( PAIR( name_lower, zip_info ) );
-            filesTreeNames.push_back( PAIR( name_lower, name ) );
+            filesTree.insert( std::make_pair( name_lower, zip_info ) );
+            filesTreeNames.push_back( std::make_pair( name_lower, name ) );
         }
 
         if( i + 1 < gi.number_entry && unzGoToNextFile( zipHandle ) != UNZ_OK )
@@ -879,8 +879,8 @@ bool BundleFile::Init( const string& fname )
         fe.WriteTime = FileGetWriteTime( f );
 
         string name_lower = _str( name ).lower();
-        filesTree.insert( PAIR( name_lower, fe ) );
-        filesTreeNames.push_back( PAIR( name_lower, name ) );
+        filesTree.insert( std::make_pair( name_lower, fe ) );
+        filesTreeNames.push_back( std::make_pair( name_lower, name ) );
 
         FileClose( f );
     }

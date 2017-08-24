@@ -39,8 +39,6 @@ using std::deque;
 using std::pair;
 using std::istringstream;
 
-#define PAIR( k, v )    pair< decltype( k ), decltype( v ) >( k, v )
-
 using StrUCharMap = map< string, uchar >;
 using UCharStrMap = map< uchar, string >;
 using StrMap = map< string, string >;

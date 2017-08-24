@@ -2606,7 +2606,7 @@ bool FOServer::LoadClientsData()
         Str::Copy( data->ClientName, name.c_str() );
         string pass_hash_str = client_data.GetStr( "Client", "Password" );
         memcpy( data->ClientPassHash, pass_hash_str.c_str(), pass_hash_str.length() );
-        ClientsData.insert( PAIR( id, data ) );
+        ClientsData.insert( std::make_pair( id, data ) );
     }
 
     // Clean up
@@ -3097,7 +3097,7 @@ bool FOServer::CheckBruteForceIp( uint ip )
 
     // Get entire for this ip
     uint tick = Timer::FastTick();
-    auto it = BruteForceIps.insert( PAIR( ip, PAIR( tick, 0 ) ) );
+    auto it = BruteForceIps.insert( std::make_pair( ip, std::make_pair( tick, 0 ) ) );
 
     // Newly inserted
     if( it.second )
@@ -3130,7 +3130,7 @@ bool FOServer::CheckBruteForceName( const char* name )
 
     // Get entire for this name
     uint tick = Timer::FastTick();
-    auto it = BruteForceNames.insert( PAIR( string( name ), tick ) );
+    auto it = BruteForceNames.insert( std::make_pair( string( name ), tick ) );
 
     // Newly inserted
     if( it.second )

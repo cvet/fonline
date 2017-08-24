@@ -54,7 +54,7 @@ FOMsg& FOMsg::operator+=( const FOMsg& other )
 
 void FOMsg::AddStr( uint num, const string& str )
 {
-    strData.insert( PAIR( num, str ) );
+    strData.insert( std::make_pair( num, str ) );
 }
 
 void FOMsg::AddBinary( uint num, const uchar* binary, uint len )

@@ -466,8 +466,8 @@ void* Script::LoadDynamicLibrary( const string& dll_name )
         (func) ( LoadLibraryCompiler );
 
     // Add to collection for current engine
-    auto value = PAIR( dll_path, dll );
-    edata->LoadedDlls.insert( PAIR( dll_name_entry, value ) );
+    auto value = std::make_pair( dll_path, dll );
+    edata->LoadedDlls.insert( std::make_pair( dll_name_entry, value ) );
 
     return dll;
 }
@@ -1506,7 +1506,7 @@ hash Script::BindScriptFuncNumByFuncName( const string& func_name, const string&
 
     // Store
     if( it == ScriptFuncBinds.end() )
-        ScriptFuncBinds.insert( PAIR( func_num, bind_id ) );
+        ScriptFuncBinds.insert( std::make_pair( func_num, bind_id ) );
 
     return func_num;
 }
@@ -1528,7 +1528,7 @@ hash Script::BindScriptFuncNumByFunc( asIScriptFunction* func )
 
     // Store
     if( it == ScriptFuncBinds.end() )
-        ScriptFuncBinds.insert( PAIR( func_num, bind_id ) );
+        ScriptFuncBinds.insert( std::make_pair( func_num, bind_id ) );
 
     return func_num;
 }
@@ -1578,14 +1578,14 @@ void Script::CacheEnumValues()
         enum_ns = ( enum_ns && enum_ns[ 0 ] ? enum_ns : nullptr );
         const char*  enum_name = enum_type->GetName();
         string       name = _str( "{}{}{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
-        IntStrMap&   value_names = cached_enum_names.insert( PAIR( name, IntStrMap() ) ).first->second;
+        IntStrMap&   value_names = cached_enum_names.insert( std::make_pair( name, IntStrMap() ) ).first->second;
         for( asUINT k = 0, l = enum_type->GetEnumValueCount(); k < l; k++ )
         {
             int    value;
             string value_name = enum_type->GetEnumValueByIndex( k, &value );
             name = _str( "{}{}{}::{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name );
-            cached_enums.insert( PAIR( name, value ) );
-            value_names.insert( PAIR( value, value_name ) );
+            cached_enums.insert( std::make_pair( name, value ) );
+            value_names.insert( std::make_pair( value, value_name ) );
         }
     }
 
@@ -1599,14 +1599,14 @@ void Script::CacheEnumValues()
         enum_ns = ( enum_ns && enum_ns[ 0 ] ? enum_ns : nullptr );
         const char*  enum_name = enum_type->GetName();
         string       name = _str( "{}{}{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name );
-        IntStrMap&   value_names = cached_enum_names.insert( PAIR( name, IntStrMap() ) ).first->second;
+        IntStrMap&   value_names = cached_enum_names.insert( std::make_pair( name, IntStrMap() ) ).first->second;
         for( asUINT k = 0, l = enum_type->GetEnumValueCount(); k < l; k++ )
         {
             int    value;
             string value_name = enum_type->GetEnumValueByIndex( k, &value );
             name = _str( "{}{}{}::{}", enum_ns ? enum_ns : "", enum_ns ? "::" : "", enum_name, value_name );
-            cached_enums.insert( PAIR( name, value ) );
-            value_names.insert( PAIR( value, value_name ) );
+            cached_enums.insert( std::make_pair( name, value ) );
+            value_names.insert( std::make_pair( value, value_name ) );
         }
     }
 
@@ -1622,7 +1622,7 @@ void Script::CacheEnumValues()
         {
             RUNTIME_ASSERT( type_id == asTYPEID_UINT32 ); // hash
             string name = _str( "{}::{}", ns, name );
-            cached_enums.insert( PAIR( name, (int) *value ) );
+            cached_enums.insert( std::make_pair( name, (int) *value ) );
         }
     }
 }

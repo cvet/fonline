@@ -29,7 +29,7 @@ void IniParser::ParseStr( const string& str )
     auto    it_app = appKeyValues.find( "" );
     if( it_app == appKeyValues.end() )
     {
-        auto it = appKeyValues.insert( PAIR( "", StrMap() ) );
+        auto it = appKeyValues.insert( std::make_pair( "", StrMap() ) );
         appKeyValuesOrder.push_back( it );
         cur_app = &it->second;
     }
@@ -66,7 +66,7 @@ void IniParser::ParseStr( const string& str )
             }
 
             // Add new section
-            auto it = appKeyValues.insert( PAIR( buf, StrMap() ) );
+            auto it = appKeyValues.insert( std::make_pair( buf, StrMap() ) );
             appKeyValuesOrder.push_back( it );
             cur_app = &it->second;
         }
@@ -188,7 +188,7 @@ void IniParser::SetStr( const string& app_name, const string& key_name, const st
     {
         StrMap key_values;
         key_values[ key_name ] = val;
-        auto   it = appKeyValues.insert( PAIR( app_name, key_values ) );
+        auto   it = appKeyValues.insert( std::make_pair( app_name, key_values ) );
         appKeyValuesOrder.push_back( it );
     }
     else
@@ -220,7 +220,7 @@ void IniParser::GetApps( const string& app_name, PStrMapVec& key_values )
 
 StrMap& IniParser::SetApp( const string& app_name )
 {
-    auto it = appKeyValues.insert( PAIR( app_name, StrMap() ) );
+    auto it = appKeyValues.insert( std::make_pair( app_name, StrMap() ) );
     appKeyValuesOrder.push_back( it );
     return it->second;
 }

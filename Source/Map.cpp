@@ -86,7 +86,7 @@ bool Map::Generate()
             WriteLog( "Create npc '{}' on map '{}' fail, continue generate.\n", base_cr->GetName(), GetName() );
             continue;
         }
-        id_map.insert( PAIR( base_cr->GetId(), npc->GetId() ) );
+        id_map.insert( std::make_pair( base_cr->GetId(), npc->GetId() ) );
 
         // Check condition
         if( npc->GetCond() != COND_LIFE )
@@ -112,7 +112,7 @@ bool Map::Generate()
             WriteLog( "Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), GetName() );
             continue;
         }
-        id_map.insert( PAIR( base_item->GetId(), item->GetId() ) );
+        id_map.insert( std::make_pair( base_item->GetId(), item->GetId() ) );
 
         // Other values
         if( item->IsDoor() && item->GetOpened() )

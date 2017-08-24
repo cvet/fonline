@@ -24,14 +24,14 @@
     inline prop_type Get ## prop() { return Property ## prop->GetValue< prop_type >( this ); }                  \
     inline void      Set ## prop( prop_type value ) { Property ## prop->SetValue< prop_type >( this, value ); } \
     inline bool      IsNonEmpty ## prop() { uint data_size = 0; Property ## prop->GetRawData( this, data_size ); return data_size > 0; }
-#define CLASS_PROPERTY_IMPL( class_name, prop )                                                    \
-    Property * class_name::Property ## prop;                                                       \
-    struct _ ## class_name ## Property ## prop ## Initializer                                      \
-    {                                                                                              \
-        _ ## class_name ## Property ## prop ## Initializer()                                       \
-        {                                                                                          \
-            class_name::PropertiesList.push_back( PAIR( # prop, &class_name::Property ## prop ) ); \
-        }                                                                                          \
+#define CLASS_PROPERTY_IMPL( class_name, prop )                                                              \
+    Property * class_name::Property ## prop;                                                                 \
+    struct _ ## class_name ## Property ## prop ## Initializer                                                \
+    {                                                                                                        \
+        _ ## class_name ## Property ## prop ## Initializer()                                                 \
+        {                                                                                                    \
+            class_name::PropertiesList.push_back( std::make_pair( # prop, &class_name::Property ## prop ) ); \
+        }                                                                                                    \
     } _ ## class_name ## Property ## prop ## Initializer
 #define CLASS_PROPERTY_ALIAS( prop_type, prop ) \
     prop_type Get ## prop();                    \

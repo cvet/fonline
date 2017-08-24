@@ -2598,12 +2598,8 @@ void FOMapper::IntLMouseUp()
                     int ty = MAX( SelectHY1, SelectHY2 );
 
                     for( int i = fx; i <= tx; i++ )
-                    {
                         for( int j = fy; j <= ty; j++ )
-                        {
-                            h.push_back( PAIR( i, j ) );
-                        }
-                    }
+                            h.push_back( std::make_pair( i, j ) );
                 }
                 else                                                                      // SELECT_TYPE_NEW
                 {

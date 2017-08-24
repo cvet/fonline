@@ -731,7 +731,7 @@ uint SpriteManager::GetRenderTargetPixel( RenderTarget* rt, int x, int y )
     }
 
     // Refresh picks
-    rt->LastPixelPicks->insert( rt->LastPixelPicks->begin(), PAIR( xy, result ) );
+    rt->LastPixelPicks->insert( rt->LastPixelPicks->begin(), std::make_pair( xy, result ) );
     if( rt->LastPixelPicks->size() > MAX_STORED_PIXEL_PICKS )
         rt->LastPixelPicks->pop_back();
 

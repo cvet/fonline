@@ -19,7 +19,7 @@ void EntityManager::RegisterEntity( Entity* entity )
     if( !entity->GetId() )
         entity->SetId( ++currentId );
 
-    auto it = allEntities.insert( PAIR( entity->GetId(), entity ) );
+    auto it = allEntities.insert( std::make_pair( entity->GetId(), entity ) );
     RUNTIME_ASSERT( it.second );
     entitiesCount[ (int) entity->Type ]++;
 }

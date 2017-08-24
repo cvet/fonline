@@ -43,7 +43,7 @@ void ResourceManager::Refresh()
             data_file->GetFileNames( "", true, "acm", sounds );
             data_file->GetFileNames( "", true, "ogg", sounds );
             for( auto it = sounds.begin(), end = sounds.end(); it != end; ++it )
-                soundNames.insert( PAIR( _str( *it ).eraseFileExtension().upper(), *it ) );
+                soundNames.insert( std::make_pair( _str( *it ).eraseFileExtension().upper(), *it ) );
 
             processedDats.push_back( data_file );
         }
@@ -121,7 +121,7 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
     AnyFrames* anim = SprMngr.LoadAnimation( fname.c_str(), false, true );
     SprMngr.PopAtlasType();
 
-    loadedAnims.insert( PAIR( name_hash, LoadedAnim( res_type, anim ) ) );
+    loadedAnims.insert( std::make_pair( name_hash, LoadedAnim( res_type, anim ) ) );
     return anim;
 }
 
@@ -278,7 +278,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
     }
 
     // Store
-    critterFrames.insert( PAIR( id, anim ) );
+    critterFrames.insert( std::make_pair( id, anim ) );
     return anim ? anim->GetDir( dir ) : nullptr;
 }
 
@@ -444,7 +444,7 @@ AnyFrames* ResourceManager::LoadFalloutAnimSpr( hash model_name, uint anim1, uin
     }
     SprMngr.PopAtlasType();
 
-    critterFrames.insert( PAIR( AnimMapId( model_name, anim1, anim2, true ), frames ) );
+    critterFrames.insert( std::make_pair( AnimMapId( model_name, anim1, anim2, true ), frames ) );
     if( !frames )
         return nullptr;
 

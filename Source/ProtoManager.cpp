@@ -44,7 +44,7 @@ static void ReadProtosFromBinary( UCharVec& data, uint& pos, map< hash, T* >& pr
         }
         proto->Props.RestoreData( props_data, props_data_sizes );
         RUNTIME_ASSERT( !protos.count( pid ) );
-        protos.insert( PAIR( pid, proto ) );
+        protos.insert( std::make_pair( pid, proto ) );
     }
 }
 
@@ -57,7 +57,7 @@ static void InsertMapValues( const StrMap& from_kv, StrMap& to_kv, bool overwrit
             if( overwrite )
                 to_kv[ kv.first ] = kv.second;
             else
-                to_kv.insert( PAIR( kv.first, kv.second ) );
+                to_kv.insert( std::make_pair( kv.first, kv.second ) );
         }
     }
 }
@@ -102,7 +102,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
                 continue;
             }
 
-            files_protos.insert( PAIR( pid, kv ) );
+            files_protos.insert( std::make_pair( pid, kv ) );
 
             StrSet apps;
             fopro.GetAppNames( apps );
@@ -113,9 +113,9 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
                     if( !files_texts.count( pid ) )
                     {
                         map< string, StrMap > texts;
-                        files_texts.insert( PAIR( pid, texts ) );
+                        files_texts.insert( std::make_pair( pid, texts ) );
                     }
-                    files_texts[ pid ].insert( PAIR( app_name, fopro.GetApp( app_name ) ) );
+                    files_texts[ pid ].insert( std::make_pair( app_name, fopro.GetApp( app_name ) ) );
                 }
             }
         }
@@ -218,7 +218,7 @@ static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& 
         }
 
         // Add to collection
-        protos.insert( PAIR( pid, proto ) );
+        protos.insert( std::make_pair( pid, proto ) );
     }
     if( errors )
         return errors;

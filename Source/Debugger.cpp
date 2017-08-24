@@ -321,13 +321,13 @@ static Mutex                        MemoryAllocLocker;
 #endif
 static uint                         MemoryAllocRecursion;
 
-#define ALLOCATE_PTR( ptr, size, param )                                   \
-    if( ptr )                                                              \
-    {                                                                      \
-        StackInfo* si = GetStackInfo( param );                             \
-        si->Size += size;                                                  \
-        si->Chunks++;                                                      \
-        PtrStackInfoSize.insert( PAIR( (size_t) ptr, PAIR( si, size ) ) ); \
+#define ALLOCATE_PTR( ptr, size, param )                                                       \
+    if( ptr )                                                                                  \
+    {                                                                                          \
+        StackInfo* si = GetStackInfo( param );                                                 \
+        si->Size += size;                                                                      \
+        si->Chunks++;                                                                          \
+        PtrStackInfoSize.insert( std::make_pair( (size_t) ptr, std::make_pair( si, size ) ) ); \
     }
 #define DEALLOCATE_PTR( ptr )                            \
     if( ptr )                                            \
@@ -465,7 +465,7 @@ StackInfo* GetStackInfo( HANDLE heap )
     si->Heap = (size_t) heap;
     si->Chunks = 0;
     si->Size = 0;
-    StackHashStackInfo.insert( PAIR( (size_t) hash, si ) );
+    StackHashStackInfo.insert( std::make_pair( (size_t) hash, si ) );
     return si;
 }
 
@@ -619,7 +619,7 @@ StackInfo* GetStackInfo( const void* caller )
     si->Heap = 0;
     si->Chunks = 0;
     si->Size = 0;
-    StackHashStackInfo.insert( PAIR( (size_t) caller, si ) );
+    StackHashStackInfo.insert( std::make_pair( (size_t) caller, si ) );
     return si;
 }
 

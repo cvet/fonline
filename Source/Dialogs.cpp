@@ -136,7 +136,7 @@ bool DialogManager::AddDialog( DialogPack* pack )
         }
     }
 
-    dialogPacks.insert( PAIR( pack->PackId, pack ) );
+    dialogPacks.insert( std::make_pair( pack->PackId, pack ) );
     return true;
 }
 

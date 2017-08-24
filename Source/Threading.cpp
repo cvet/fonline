@@ -102,7 +102,7 @@ void Thread::SetCurrentName( const char* name )
 
     Str::Copy( threadName, name );
     SCOPE_LOCK( threadNamesLocker );
-    threadNames.insert( PAIR( GetCurrentId(), string( threadName ) ) );
+    threadNames.insert( std::make_pair( GetCurrentId(), threadName ) );
 }
 
 const char* Thread::GetCurrentName()

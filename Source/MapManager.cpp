@@ -536,7 +536,7 @@ int MapManager::FindPath( PathFindData& pfd )
     gag_coords.reserve( 100 );
 
     // First point
-    coords.push_back( PAIR( from_hx, from_hy ) );
+    coords.push_back( std::make_pair( from_hx, from_hy ) );
 
     // Begin search
     int    p = 0, p_togo = 1;
@@ -573,17 +573,17 @@ int MapManager::FindPath( PathFindData& pfd )
                     ushort flags = map->GetHexFlags( nx, ny );
                     if( !FLAG( flags, FH_NOWAY ) )
                     {
-                        coords.push_back( PAIR( nx, ny ) );
+                        coords.push_back( std::make_pair( nx, ny ) );
                         g = numindex;
                     }
                     else if( check_gag_items && FLAG( flags, FH_GAG_ITEM << 8 ) )
                     {
-                        gag_coords.push_back( PAIR( nx, ny ) );
+                        gag_coords.push_back( std::make_pair( nx, ny ) );
                         g = numindex | 0x4000;
                     }
                     else if( check_cr && FLAG( flags, FH_CRITTER << 8 ) )
                     {
-                        cr_coords.push_back( PAIR( nx, ny ) );
+                        cr_coords.push_back( std::make_pair( nx, ny ) );
                         g = numindex | 0x8000;
                     }
                     else
@@ -626,7 +626,7 @@ int MapManager::FindPath( PathFindData& pfd )
 
                     if( map->IsMovePassed( nx, ny, j, multihex ) )
                     {
-                        coords.push_back( PAIR( nx, ny ) );
+                        coords.push_back( std::make_pair( nx, ny ) );
                         g = numindex;
                     }
                     else
