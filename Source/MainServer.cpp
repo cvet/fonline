@@ -1307,7 +1307,7 @@ static void AdminWork( void* session_ )
                     if( buf.empty() || buf.back() != '\n' )
                         buf += "\n";
 
-                    if( !send_fail && send( s->Sock, buf.c_str(), buf.length() + 1, 0 ) != (int) buf.length() + 1 )
+                    if( !send_fail && send( s->Sock, buf.c_str(), (int) buf.length() + 1, 0 ) != (int) buf.length() + 1 )
                     {
                         WriteLog( ADMIN_PREFIX "Send data fail, disconnect.\n", admin_name );
                         send_fail = true;

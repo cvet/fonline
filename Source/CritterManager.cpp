@@ -71,34 +71,32 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
             return nullptr;
         }
 
-        static THREAD int cur_step = 0;
-        short             hx_ = hx;
-        short             hy_ = hy;
-        short*            sx, * sy;
+        short  hx_ = hx;
+        short  hy_ = hy;
+        short* sx, * sy;
         GetHexOffsets( hx & 1, sx, sy );
 
         // Find in 2 hex radius
-        for( int i = 0; ; i++ )
+        int pos = -1;
+        while( true )
         {
-            if( i >= 18 )
+            pos++;
+            if( pos >= 18 )
             {
                 WriteLog( "All positions busy, map '{}', hx {}, hy {}.\n", map->GetName(), hx, hy );
                 return nullptr;
             }
-            cur_step++;
-            if( cur_step >= 18 )
-                cur_step = 0;
-            if( hx_ + sx[ cur_step ] < 0 || hx_ + sx[ cur_step ] >= map->GetWidth() )
+            if( hx_ + sx[ pos ] < 0 || hx_ + sx[ pos ] >= map->GetWidth() )
                 continue;
-            if( hy_ + sy[ cur_step ] < 0 || hy_ + sy[ cur_step ] >= map->GetHeight() )
+            if( hy_ + sy[ pos ] < 0 || hy_ + sy[ pos ] >= map->GetHeight() )
                 continue;
-            if( !map->IsHexesPassed( hx_ + sx[ cur_step ], hy_ + sy[ cur_step ], multihex ) )
+            if( !map->IsHexesPassed( hx_ + sx[ pos ], hy_ + sy[ pos ], multihex ) )
                 continue;
             break;
         }
 
-        hx_ += sx[ cur_step ];
-        hy_ += sy[ cur_step ];
+        hx_ += sx[ pos ];
+        hy_ += sy[ pos ];
         hx = hx_;
         hy = hy_;
     }

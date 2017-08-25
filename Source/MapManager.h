@@ -119,6 +119,7 @@ public:
 private:
     PathStepVec pathesPool[ FPATH_DATA_SIZE ];
     uint        pathNumCur;
+    bool        smoothSwitcher;
 
 public:
     Map*         CreateMap( hash proto_id, Location* loc );

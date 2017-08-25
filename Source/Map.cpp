@@ -237,23 +237,24 @@ bool Map::FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius,
     if( seek_radius > MAX_HEX_OFFSET )
         seek_radius = MAX_HEX_OFFSET;
 
-    static THREAD int cur_step = 0;
-    short             hx_ = hx;
-    short             hy_ = hy;
-    short*            sx, * sy;
+    short  hx_ = hx;
+    short  hy_ = hy;
+    short* sx, * sy;
     GetHexOffsets( hx & 1, sx, sy );
-    int               cnt = NumericalNumber( seek_radius ) * DIRS_COUNT;
+    int    max_pos = NumericalNumber( seek_radius ) * DIRS_COUNT;
 
-    for( int i = 0; ; i++ )
+    int    pos = -1;
+    while( true )
     {
-        if( i >= cnt )
+        pos++;
+        if( pos >= max_pos )
             return false;
 
-        cur_step++;
-        if( cur_step >= cnt )
-            cur_step = 0;
-        short nx = hx_ + sx[ cur_step ];
-        short ny = hy_ + sy[ cur_step ];
+        pos++;
+        if( pos >= max_pos )
+            pos = 0;
+        short nx = hx_ + sx[ pos ];
+        short ny = hy_ + sy[ pos ];
 
         if( nx < 0 || nx >= GetWidth() || ny < 0 || ny >= GetHeight() )
             continue;
@@ -264,8 +265,8 @@ bool Map::FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius,
         break;
     }
 
-    hx_ += sx[ cur_step ];
-    hy_ += sy[ cur_step ];
+    hx_ += sx[ pos ];
+    hy_ += sy[ pos ];
     hx = hx_;
     hy = hy_;
     return true;

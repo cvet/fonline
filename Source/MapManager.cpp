@@ -18,14 +18,7 @@ MapManager::MapManager(): runGarbager( true )
         pathesPool[ i ].reserve( 100 );
 
     runGarbager = false;
-}
-
-UIntPair EntranceParser( const char* str )
-{
-    int val1, val2;
-    if( sscanf( str, "%d %d", &val1, &val2 ) != 2 || val1 < 0 || val1 > 0xFF || val2 < 0 || val2 > 0xFF )
-        return UIntPair( -1, -1 );
-    return UIntPair( val1, val2 );
+    smoothSwitcher = false;
 }
 
 bool MapManager::RestoreLocation( uint id, hash proto_id, const StrMap& props_data )
@@ -684,9 +677,8 @@ label_FindOk:
     path.resize( numindex - 1 );
 
     // Smooth data
-    static THREAD bool smooth_switcher = false;
     if( !GameOpt.MapSmoothPath )
-        smooth_switcher = false;
+        smoothSwitcher = false;
 
     int smooth_count = 0, smooth_iteration = 0;
     if( GameOpt.MapSmoothPath && !GameOpt.MapHexagonal )
@@ -717,11 +709,11 @@ label_FindOk:
             if( GameOpt.MapHexagonal )
             {
                 if( numindex & 1 )
-                    smooth_switcher = !smooth_switcher;
+                    smoothSwitcher = !smoothSwitcher;
             }
             else
             {
-                smooth_switcher = ( smooth_count < 2 || smooth_iteration % smooth_count );
+                smoothSwitcher = ( smooth_count < 2 || smooth_iteration % smooth_count );
             }
         }
 
@@ -729,7 +721,7 @@ label_FindOk:
         PathStep& ps = path[ numindex - 1 ];
         ps.HexX = cx;
         ps.HexY = cy;
-        int dir = FindPathGrid( cx, cy, numindex, smooth_switcher );
+        int dir = FindPathGrid( cx, cy, numindex, smoothSwitcher );
         if( dir == -1 )
             return FPATH_ERROR;
         ps.Dir = dir;

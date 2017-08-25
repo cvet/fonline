@@ -58,7 +58,7 @@ class Thread
     static Mutex       threadNamesLocker;
 
 public:
-    using ThreadFunc = void(void*);
+    using ThreadFunc = std::function< void(void*) >;
 
     Thread() = default;
     Thread( const Thread& ) = delete;
@@ -73,11 +73,6 @@ public:
     static const char* GetCurrentName();
     static const char* FindName( size_t thread_id );
 };
-
-#else
-
-// TLS
-# define THREAD
 
 #endif
 
