@@ -76,6 +76,7 @@ private:
     uchar*      memTree;
     void*       datHandle;
     uint64      writeTime;
+    UCharVec    readBuf;
 
     bool ReadTree();
 
@@ -325,6 +326,7 @@ bool FalloutDatFile::Init( const string& fname )
     datHandle = nullptr;
     memTree = nullptr;
     fileName = fname;
+    readBuf.resize( 0x40000 );
 
     datHandle = FileOpen( fname, false );
     if( !datHandle )
@@ -546,12 +548,9 @@ uchar* FalloutDatFile::OpenFile( const string& path, const string& path_lower, u
         {
             if( !stream.avail_in && left > 0 )
             {
-                #pragma RACE_CONDITION
-                static uchar read_buf[ 0x40000 ];
-
-                stream.next_in = read_buf;
+                stream.next_in = &readBuf[ 0 ];
                 uint rb;
-                if( !FileRead( datHandle, read_buf, left > sizeof( read_buf ) ? sizeof( read_buf ) : left, &rb ) )
+                if( !FileRead( datHandle, &readBuf[ 0 ], MIN( left, (uint) readBuf.size() ), &rb ) )
                 {
                     delete[] buf;
                     return nullptr;
@@ -559,6 +558,7 @@ uchar* FalloutDatFile::OpenFile( const string& path, const string& path_lower, u
                 stream.avail_in = rb;
                 left -= rb;
             }
+
             int r = inflate( &stream, Z_NO_FLUSH );
             if( r != Z_OK && r != Z_STREAM_END )
             {
