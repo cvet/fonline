@@ -301,7 +301,7 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
         return true;
 
     // Load font data
-    string      fname = _str( fname, "Fonts/{}.fofnt", font_name );
+    string      fname = _str( "Fonts/{}.fofnt", font_name );
     FileManager fm;
     if( !fm.LoadFile( fname ) )
     {

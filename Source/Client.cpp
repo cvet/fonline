@@ -660,7 +660,7 @@ void FOClient::UpdateFilesLoop()
                 float       cur = (float) ( update_file.Size - update_file.RemaningSize ) / ( 1024.0f * 1024.0f );
                 float       max = MAX( (float) update_file.Size / ( 1024.0f * 1024.0f ), 0.01f );
                 string      name = _str( update_file.Name ).formatPath();
-                UpdateFilesProgress += _str( "{:.2f} {} / {:.2f} MB\n", name, cur, max );
+                UpdateFilesProgress += _str( "{} {:.2f} / {:.2f} MB\n", name, cur, max );
             }
             UpdateFilesProgress += "\n";
         }

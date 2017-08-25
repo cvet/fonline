@@ -23,63 +23,28 @@ bool                Mutex::attrInitialized = false;
 pthread_mutexattr_t Mutex::mutexAttr;
 # endif
 
-# ifdef FO_WINDOWS
-static DWORD WINAPI ThreadBeginExecution( void* args )
-# else
-static void* ThreadBeginExecution( void* args )
-# endif
+static void* ThreadBeginExecution( Thread::ThreadFunc func, char* name, void* arg )
 {
-    void** args_ = (void**) args;
-    void   ( * func )( void* ) = ( void ( * )( void* ) )args_[ 0 ];
-    void*  func_arg = args_[ 1 ];
-    char*  name = (char*) args_[ 2 ];
     Thread::SetCurrentName( name );
     delete[] name;
-    free( args );
-    func( func_arg );
-    # ifdef FO_WINDOWS
-    return 0;
-    # else
+    func( arg );
     return nullptr;
-    # endif
 }
 
-Thread::Thread()
+void Thread::Start( ThreadFunc func, const string& name, void* arg /* = nullptr */ )
 {
-    isStarted = false;
-}
-
-void Thread::Start( void ( * func )( void* ), const char* name, void* arg /* = NULL */ )
-{
-    void** args = (void**) malloc( sizeof( void* ) * 3 );
-    char*  name_ = Str::Duplicate( name );
-    args[ 0 ] = (void*) func, args[ 1 ] = arg, args[ 2 ] = name_;
-    # ifdef FO_WINDOWS
-    threadHandle = CreateThread( nullptr, 0, ThreadBeginExecution, args, 0, nullptr );
-    isStarted = ( threadHandle != nullptr );
-    # else
-    isStarted = ( pthread_create( &threadHandle, nullptr, ThreadBeginExecution, args ) == 0 );
-    # endif
-    RUNTIME_ASSERT( isStarted );
+    std::thread t( ThreadBeginExecution, func, Str::Duplicate( name ), arg );
+    thread.swap( t );
 }
 
 void Thread::Wait()
 {
-    if( isStarted )
-    {
-        # ifdef FO_WINDOWS
-        WaitForSingleObject( threadHandle, INFINITE );
-        # else
-        pthread_join( threadHandle, nullptr );
-        # endif
-        isStarted = false;
-    }
+    thread.join();
 }
 
-void Thread::Release()
+void Thread::Detach()
 {
-    isStarted = false;
-    threadHandle = 0;
+    thread.detach();
 }
 
 THREAD char Thread::threadName[ 64 ] = { 0 };

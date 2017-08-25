@@ -123,18 +123,18 @@ public:
     void DeleteInventory();
 
     // Visible critters and items
-    CrVec         VisCr;
-    CrVec         VisCrSelf;
-    CrMap         VisCrMap;
-    CrMap         VisCrSelfMap;
-    UIntSet       VisCr1, VisCr2, VisCr3;
-    UIntSet       VisItem;
-    MutexSpinlock VisItemLocker;
-    uint          ViewMapId;
-    hash          ViewMapPid;
-    ushort        ViewMapLook, ViewMapHx, ViewMapHy;
-    uchar         ViewMapDir;
-    uint          ViewMapLocId, ViewMapLocEnt;
+    CrVec   VisCr;
+    CrVec   VisCrSelf;
+    CrMap   VisCrMap;
+    CrMap   VisCrSelfMap;
+    UIntSet VisCr1, VisCr2, VisCr3;
+    UIntSet VisItem;
+    Mutex   VisItemLocker;
+    uint    ViewMapId;
+    hash    ViewMapPid;
+    ushort  ViewMapLook, ViewMapHx, ViewMapHy;
+    uchar   ViewMapDir;
+    uint    ViewMapLocId, ViewMapLocEnt;
 
     Map* GetMap();
 

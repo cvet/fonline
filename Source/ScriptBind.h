@@ -107,7 +107,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Map@+ GetMap()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetMap ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Map@+ GetMap() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetMap ), SCRIPT_FUNC_THIS_CONV ) );
 
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveRandom()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_MoveRandom ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveToDir(uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_MoveToDir ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToHex(uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToHex ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToMap(Map@+ map, uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapHex ), SCRIPT_FUNC_THIS_CONV ) );

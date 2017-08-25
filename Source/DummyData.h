@@ -140,7 +140,6 @@ struct BindClass
     static void Cl_SetAccess()                  {}
     static void Crit_SetLexems()                {}
     static void Crit_GetMap()                   {}
-    static void Crit_MoveRandom()               {}
     static void Crit_MoveToDir()                {}
     static void Crit_TransitToHex()             {}
     static void Crit_TransitToMapHex()          {}

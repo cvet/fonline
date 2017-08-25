@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "Server.h"
+#include <random>
 
 void FOServer::ProcessMove( Critter* cr )
 {
@@ -200,7 +201,11 @@ bool FOServer::Dialog_Compile( Npc* npc, Client* cl, const Dialog& base_dlg, Dia
     }
 
     if( !GameOpt.NoAnswerShuffle && !compiled_dlg.IsNoShuffle() )
-        std::random_shuffle( compiled_dlg.Answers.begin(), compiled_dlg.Answers.end() );
+    {
+        static std::random_device rd;
+        static std::mt19937       g( rd() );
+        std::shuffle( compiled_dlg.Answers.begin(), compiled_dlg.Answers.end(), g );
+    }
     return true;
 }
 

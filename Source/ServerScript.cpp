@@ -717,16 +717,6 @@ Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
     return MapMngr.GetMap( cr->GetMapId() );
 }
 
-bool FOServer::SScriptFunc::Crit_MoveRandom( Critter* cr )
-{
-    if( cr->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( !cr->GetMapId() )
-        SCRIPT_ERROR_R0( "Critter is on global." );
-
-    return MoveRandom( cr );
-}
-
 bool FOServer::SScriptFunc::Crit_MoveToDir( Critter* cr, uchar direction )
 {
     if( cr->IsDestroyed )
@@ -3924,7 +3914,7 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
         *request_data->Success = success;
         *request_data->Result = result;
         Script::ResumeContext( request_data->Context );
-        request_data->WorkThread->Release();
+        request_data->WorkThread->Detach();
         delete request_data->WorkThread;
         if( request_data->Post )
             request_data->Post->Release();

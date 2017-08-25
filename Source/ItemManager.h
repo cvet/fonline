@@ -51,7 +51,7 @@ public:
 
     // Items statistics
 private:
-    MutexSpinlock itemCountLocker;
+    Mutex itemCountLocker;
 
 public:
     void   ChangeItemStatistics( hash pid, int val );

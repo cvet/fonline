@@ -34,13 +34,13 @@ static void UpdateLog();
 static void CheckTextBoxSize( bool force );
 static void GameLoopThread( void* );
 static void GUIUpdate( void* );
-static Rect       MainInitRect, LogInitRect, InfoInitRect;
-static int        SplitProcent = 90;
-static Thread     LoopThread;
-static MutexEvent GameInitEvent;
-static FOServer   Server;
-static string     UpdateLogName;
-static Thread     GUIUpdateThread;
+static Rect     MainInitRect, LogInitRect, InfoInitRect;
+static int      SplitProcent = 90;
+static Thread   LoopThread;
+static bool     GameInitEvent;
+static FOServer Server;
+static string   UpdateLogName;
+static Thread   GUIUpdateThread;
 
 // GUI
 static Fl_Window* GuiWindow;
@@ -99,9 +99,6 @@ int main( int argc, char** argv )
         GameOpt.GameServer = false, GameOpt.UpdateServer = true;
     else
         GameOpt.GameServer = true, GameOpt.UpdateServer = true;
-
-    // Init event
-    GameInitEvent.Disallow();
 
     // Service
     if( MainConfig->IsKey( "", "Service" ) )
@@ -668,7 +665,7 @@ static void GameLoopThread( void* )
             GuiBtnProfiler->activate();
         }
 
-        GameInitEvent.Allow();
+        GameInitEvent = true;
         Server.MainLoop();
         Server.Finish();
         UpdateInfo();
@@ -676,7 +673,7 @@ static void GameLoopThread( void* )
     else
     {
         WriteLog( "Initialization fail!\n" );
-        GameInitEvent.Allow();
+        GameInitEvent = true;
     }
 
     if( GuiWindow )
@@ -788,7 +785,8 @@ static VOID WINAPI FOServiceStart( DWORD argc, LPTSTR* argv )
 
     FOQuit = false;
     LoopThread.Start( GameLoopThread, "Main" );
-    GameInitEvent.Wait();
+    while( !GameInitEvent )
+        Thread_Sleep( 0 );
 
     if( Server.Started() )
         SetFOServiceStatus( SERVICE_RUNNING );

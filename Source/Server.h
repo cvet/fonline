@@ -70,7 +70,6 @@ public:
     // Actions
     static bool Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params );
 
-    static bool MoveRandom( Critter* cr );
     static bool RegenerateMap( Map* map );
     static void VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir );
 
@@ -313,7 +312,6 @@ public:
         static int           Cl_GetAccess( Critter* cl );
         static bool          Cl_SetAccess( Critter* cl, int access );
         static Map*          Crit_GetMap( Critter* cr );
-        static bool          Crit_MoveRandom( Critter* cr );
         static bool          Crit_MoveToDir( Critter* cr, uchar direction );
         static void          Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir );
         static void          Crit_TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir );

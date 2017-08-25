@@ -188,39 +188,6 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     return true;
 }
 
-bool FOServer::MoveRandom( Critter* cr )
-{
-    UCharVec dirs( 6 );
-    for( int i = 0; i < 6; i++ )
-        dirs[ i ] = i;
-    std::random_shuffle( dirs.begin(), dirs.end() );
-
-    Map* map = cr->GetMap();
-    if( !map )
-        return false;
-
-    uint   multihex = cr->GetMultihex();
-    ushort maxhx = map->GetWidth();
-    ushort maxhy = map->GetHeight();
-
-    for( int i = 0; i < 6; i++ )
-    {
-        uchar  dir = dirs[ i ];
-        ushort hx = cr->GetHexX();
-        ushort hy = cr->GetHexY();
-        if( MoveHexByDir( hx, hy, dir, maxhx, maxhy ) && map->IsMovePassed( hx, hy, dir, multihex ) )
-        {
-            if( Act_Move( cr, hx, hy, 0 ) )
-            {
-                cr->Send_Move( cr, 0 );
-                return true;
-            }
-            return false;
-        }
-    }
-    return false;
-}
-
 bool FOServer::RegenerateMap( Map* map )
 {
     Script::RaiseInternalEvent( ServerFunctions.MapFinish, map );
