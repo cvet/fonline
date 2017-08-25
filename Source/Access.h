@@ -88,7 +88,7 @@ const CmdDef cmdlist[] =
     { "gvar", CMD_DEV_GVAR },
 };
 
-inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( const char* ), const char* name )
+inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, const string& name )
 {
     string args = _str( str ).trim();
     string cmd_str = args;
@@ -525,7 +525,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_DELETE_ACCOUNT:
     {
-        if( !name )
+        if( name.empty() )
         {
             logcb( "Can't execute this command." );
             break;
@@ -549,7 +549,7 @@ inline bool PackCommand( const char* str, BufferManager& buf, void ( * logcb )( 
     break;
     case CMD_CHANGE_PASSWORD:
     {
-        if( !name )
+        if( name.empty() )
         {
             logcb( "Can't execute this command." );
             break;

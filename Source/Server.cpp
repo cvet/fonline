@@ -73,7 +73,7 @@ void FOServer::Finish()
     SaveWorldNextTick = 0;
 
     // Logging clients
-    LogToFunc( &FOServer::LogToClients, false );
+    LogToFunc( FOServer::LogToClients, false );
     for( auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
         ( *it )->Release();
     LogClients.clear();
@@ -664,16 +664,10 @@ void FOServer::Process( Client* cl )
             }
             case NETMSG_SEND_COMMAND:
             {
-                static THREAD Client* cl_;
-                struct LogCB
-                {
-                    static void Message( const char* str )
-                    {
-                        cl_->Send_Text( cl_, _str( str ).trim().c_str(), SAY_NETMSG );
-                    }
-                };
-                cl_ = cl;
-                Process_Command( cl->Connection->Bin, LogCB::Message, cl, nullptr );
+                Process_Command( cl->Connection->Bin, [ cl ] ( auto s )
+                                 {
+                                     cl->Send_Text( cl, _str( s ).trim().c_str(), SAY_NETMSG );
+                                 }, cl, "" );
                 BIN_END( cl );
                 continue;
             }
@@ -956,14 +950,14 @@ void FOServer::Process_Text( Client* cl )
     }
 }
 
-void FOServer::Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl_, const char* admin_panel )
+void FOServer::Process_Command( BufferManager& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
 {
     LogToFunc( logcb, true );
-    Process_Command2( buf, logcb, cl_, admin_panel );
+    Process_CommandReal( buf, logcb, cl_, admin_panel );
     LogToFunc( logcb, false );
 }
 
-void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const char* ), Client* cl_, const char* admin_panel )
+void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* cl_, const string& admin_panel )
 {
     uint  msg_len = 0;
     uchar cmd = 0;
@@ -1716,7 +1710,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             Timer::GetCurrentDateTime( ban.BeginTime );
             ban.EndTime = ban.BeginTime;
             Timer::ContinueTime( ban.EndTime, ban_hours * 60 * 60 );
-            Str::Copy( ban.BannedBy, cl_ ? cl_->Name.c_str() : admin_panel );
+            Str::Copy( ban.BannedBy, cl_ ? cl_->Name.c_str() : admin_panel.c_str() );
             Str::Copy( ban.BanInfo, info );
 
             Banned.push_back( ban );
@@ -1873,7 +1867,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             return;
         }
 
-        LogToFunc( &FOServer::LogToClients, false );
+        LogToFunc( FOServer::LogToClients, false );
         auto it = std::find( LogClients.begin(), LogClients.end(), cl_ );
         if( action == 0 && it != LogClients.end() )           // Detach current
         {
@@ -1895,7 +1889,7 @@ void FOServer::Process_Command2( BufferManager& buf, void ( * logcb )( const cha
             LogClients.clear();
         }
         if( !LogClients.empty() )
-            LogToFunc( &FOServer::LogToClients, true );
+            LogToFunc( FOServer::LogToClients, true );
     }
     break;
     case CMD_DEV_EXEC:
@@ -2391,9 +2385,9 @@ bool FOServer::InitLangPacksItems( LangPackVec& lang_packs )
 }
 
 #pragma MESSAGE("Clients logging may be not thread safe.")
-void FOServer::LogToClients( const char* str )
+void FOServer::LogToClients( const string& str )
 {
-    ushort str_len = Str::Length( str );
+    ushort str_len = (ushort) str.length();
     if( str_len && str[ str_len - 1 ] == '\n' )
         str_len--;
     if( str_len )
@@ -2403,7 +2397,7 @@ void FOServer::LogToClients( const char* str )
             Client* cl = *it;
             if( cl->IsOnline() )
             {
-                cl->Send_TextEx( 0, str, str_len, SAY_NETMSG, false );
+                cl->Send_TextEx( 0, str.c_str(), str_len, SAY_NETMSG, false );
                 ++it;
             }
             else
@@ -2413,7 +2407,7 @@ void FOServer::LogToClients( const char* str )
             }
         }
         if( LogClients.empty() )
-            LogToFunc( &FOServer::LogToClients, false );
+            LogToFunc( FOServer::LogToClients, false );
     }
 }
 

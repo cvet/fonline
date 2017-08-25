@@ -8,12 +8,12 @@
 #endif
 
 #ifndef NO_THREADING
-static Mutex                LogLocker;
+static Mutex             LogLocker;
 #endif
-static void*                LogFileHandle;
-static vector< LogFuncPtr > LogFunctions;
-static bool                 LogFunctionsInProcess;
-static string*              LogBufferStr;
+static void*             LogFileHandle;
+static vector< LogFunc > LogFunctions;
+static bool              LogFunctionsInProcess;
+static string*           LogBufferStr;
 
 void LogToFile( const string& fname )
 {
@@ -29,19 +29,26 @@ void LogToFile( const string& fname )
         LogFileHandle = FileOpen( fname, true, true );
 }
 
-void LogToFunc( LogFuncPtr func_ptr, bool enable )
+void LogToFunc( LogFunc func, bool enable )
 {
     #ifndef NO_THREADING
     SCOPE_LOCK( LogLocker );
     #endif
 
-    if( func_ptr )
+    if( func )
     {
-        vector< LogFuncPtr >::iterator it = std::find( LogFunctions.begin(), LogFunctions.end(), func_ptr );
-        if( enable && it == LogFunctions.end() )
-            LogFunctions.push_back( func_ptr );
-        else if( !enable && it != LogFunctions.end() )
-            LogFunctions.erase( it );
+        size_t index = 0;
+        for( auto& f : LogFunctions )
+        {
+            if( f.target< LogFunc >() == func.target< LogFunc >() )
+            {
+                LogFunctions.erase( LogFunctions.begin() + index );
+                break;
+            }
+            index++;
+        }
+        if( enable )
+            LogFunctions.push_back( func );
     }
     else if( !enable )
     {
@@ -109,8 +116,8 @@ void WriteLogMessage( const string& message )
     if( !LogFunctions.empty() )
     {
         LogFunctionsInProcess = true;
-        for( size_t i = 0, j = LogFunctions.size(); i < j; i++ )
-            ( *LogFunctions[ i ] )( result.c_str() );
+        for( auto& func : LogFunctions )
+            func( result );
         LogFunctionsInProcess = false;
     }
 

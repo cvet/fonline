@@ -7288,32 +7288,13 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "Command" && args.size() >= 2 )
     {
-        char str[ MAX_FOTEXT ] = { 0 };
+        string str;
+        for( size_t i = 1; i < args.size(); i++ )
+            str += args[ i ] + " ";
+        str = _str( str ).trim();
 
-        for( uint i = 1, j = (uint) args.size(); i < j; i++ )
-        {
-            if( i > 1 )
-                Str::Append( str, " " );
-            Str::Append( str, args[ i ].c_str() );
-        }
-
-        static char buf[ MAX_FOTEXT ];
-        static char buf_separator[ MAX_FOTEXT ];
-        struct LogCB
-        {
-            static void Message( const char* msg )
-            {
-                if( Str::Length( buf ) > 0 && Str::Length( buf_separator ) > 0 )
-                    Str::Append( buf, buf_separator );
-
-                Str::Append( buf, msg );
-            }
-        };
-
-        Str::Copy( buf, "" );
-        Str::Copy( buf_separator, separator.c_str() );
-
-        if( !PackCommand( str, Self->Bout, LogCB::Message, Self->Chosen->Name.c_str() ) )
+        string buf;
+        if( !PackCommand( str, Self->Bout, [ &buf, &separator ] ( auto s ) { buf += s + separator; }, Self->Chosen->Name ) )
             return "UNKNOWN";
 
         return buf;

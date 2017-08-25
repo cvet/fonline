@@ -44,12 +44,10 @@ public:
     static void Process_SingleplayerSaveLoad( Client* cl );
     static void Process_Dir( Client* cl );
     static void Process_Text( Client* cl );
-    static void Process_Command( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
-    static void Process_Command2( BufferManager& buf, void ( * logcb )( const char* ), Client* cl, const char* admin_panel );
+    static void Process_Command( BufferManager& buf, LogFunc logcb, Client* cl, const string& admin_panel );
+    static void Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* cl, const string& admin_panel );
     static void Process_Dialog( Client* cl );
     static void Process_GiveMap( Client* cl );
-    static void Process_SetUserHoloStr( Client* cl );
-    static void Process_GetUserHoloStr( Client* cl );
     static void Process_Ping( Client* cl );
     static void Process_Property( Client* cl, uint data_size );
 
@@ -144,7 +142,7 @@ public:
 
     // Log to client
     static ClVec LogClients;
-    static void LogToClients( const char* str );
+    static void LogToClients( const string& str );
 
     // Game time
     static void SaveGameInfoFile( IniParser& data );

@@ -1300,43 +1300,28 @@ static void AdminWork( void* session_ )
         {
             if( Server.Started() )
             {
-                static THREAD string* admin_name_ptr;
-                static THREAD SOCKET  sock;
-                static THREAD bool    send_fail;
-                struct LogCB
+                bool    send_fail = false;
+                LogFunc func = [ &admin_name, &s, &send_fail ] ( const string &str )
                 {
-                    static void Message( const char* str )
-                    {
-                        char buf[ MAX_FOTEXT ];
-                        Str::Copy( buf, str );
-                        uint buf_len = Str::Length( buf );
-                        if( !buf_len || buf[ buf_len - 1 ] != '\n' )
-                        {
-                            buf[ buf_len ] = '\n';
-                            buf[ buf_len + 1 ] = 0;
-                            buf_len++;
-                        }
-                        buf_len++;
+                    string buf = str;
+                    if( buf.empty() || buf.back() != '\n' )
+                        buf += "\n";
 
-                        if( !send_fail && send( sock, buf, buf_len, 0 ) != (int) buf_len )
-                        {
-                            WriteLog( ADMIN_PREFIX "Send data fail, disconnect.\n", *admin_name_ptr );
-                            send_fail = true;
-                        }
+                    if( !send_fail && send( s->Sock, buf.c_str(), buf.length() + 1, 0 ) != (int) buf.length() + 1 )
+                    {
+                        WriteLog( ADMIN_PREFIX "Send data fail, disconnect.\n", admin_name );
+                        send_fail = true;
                     }
                 };
-                admin_name_ptr = &admin_name;
-                sock = s->Sock;
-                send_fail = false;
 
                 BufferManager buf;
-                PackCommand( &cmd[ 1 ], buf, LogCB::Message, nullptr );
+                PackCommand( cmd.substr( 1 ), buf, func, "" );
                 if( !buf.IsEmpty() )
                 {
                     uint msg;
                     buf >> msg;
                     WriteLog( ADMIN_PREFIX "Execute command '{}'.\n", admin_name, cmd );
-                    Server.Process_Command( buf, LogCB::Message, nullptr, admin_name.c_str() );
+                    Server.Process_Command( buf, func, nullptr, admin_name );
                 }
 
                 if( send_fail )

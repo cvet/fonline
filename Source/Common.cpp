@@ -1341,7 +1341,10 @@ GameOptions::GameOptions()
 
     Random = &::Random;
     GetTick = &Timer::FastTick;
-    SetLogCallback = &LogToFunc;
+    SetLogCallback = [] ( void ( * func )( const char* ), bool enable ) {
+        LogToFunc([ func ] ( const string &s ) { func( s.c_str() );
+                  }, enable );
+    };
     AddPropertyCallback = &::AddPropertyCallback;
 }
 
