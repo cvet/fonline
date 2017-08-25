@@ -31,6 +31,12 @@ static void* ThreadBeginExecution( Thread::ThreadFunc func, char* name, void* ar
     return nullptr;
 }
 
+Thread::~Thread()
+{
+    if( thread.joinable() )
+        thread.detach();
+}
+
 void Thread::Start( ThreadFunc func, const string& name, void* arg /* = nullptr */ )
 {
     std::thread t( ThreadBeginExecution, func, Str::Duplicate( name ), arg );
@@ -39,12 +45,8 @@ void Thread::Start( ThreadFunc func, const string& name, void* arg /* = nullptr 
 
 void Thread::Wait()
 {
-    thread.join();
-}
-
-void Thread::Detach()
-{
-    thread.detach();
+    if( thread.joinable() )
+        thread.join();
 }
 
 THREAD char Thread::threadName[ 64 ] = { 0 };

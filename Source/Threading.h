@@ -61,12 +61,12 @@ public:
     using ThreadFunc = std::function< void(void*) >;
 
     Thread() = default;
+    ~Thread();
     Thread( const Thread& ) = delete;
     Thread& operator=( const Thread& ) = delete;
 
     void Start( ThreadFunc func, const string& name, void* arg = nullptr );
     void Wait();
-    void Detach();
 
     static size_t      GetCurrentId();
     static void        SetCurrentName( const char* name );

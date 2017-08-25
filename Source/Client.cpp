@@ -755,21 +755,20 @@ void FOClient::UpdateFilesAddText( uint num_str, const string& num_str_str )
 
 void FOClient::UpdateFilesAbort( uint num_str, const string& num_str_str )
 {
-    UpdateFilesAddText( num_str, num_str_str );
     UpdateFilesAborted = true;
+
+    UpdateFilesAddText( num_str, num_str_str );
     NetDisconnect();
+
     if( UpdateFileTemp )
     {
         FileClose( UpdateFileTemp );
         UpdateFileTemp = nullptr;
     }
 
-    if( num_str == STR_CLIENT_OUTDATED || num_str == STR_CLIENT_OUTDATED_APP_STORE || num_str == STR_CLIENT_OUTDATED_GOOGLE_PLAY || num_str == STR_CLIENT_UPDATED )
-    {
-        SprMngr.BeginScene( COLOR_RGB( 255, 0, 0 ) );
-        SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText.c_str(), FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
-        SprMngr.EndScene();
-    }
+    SprMngr.BeginScene( COLOR_RGB( 255, 0, 0 ) );
+    SprMngr.DrawStr( Rect( 0, 0, GameOpt.ScreenWidth, GameOpt.ScreenHeight ), UpdateFilesText, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT );
+    SprMngr.EndScene();
 }
 
 void FOClient::DeleteCritters()
@@ -4550,14 +4549,24 @@ void FOClient::Net_OnUpdateFileData()
         // Cache
         if( update_file.Name[ 0 ] == '$' )
         {
-            FileManager cache_data;
-            if( !cache_data.LoadFile( FileManager::GetWritePath( "update.temp" ).c_str() ) )
+            void* temp_file = FileOpen( FileManager::GetWritePath( "update.temp" ), false );
+            if( !temp_file )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update file!" );
                 return;
             }
 
-            Crypt.SetCache( update_file.Name, cache_data.GetBuf(), cache_data.GetFsize() );
+            uint     len = FileGetSize( temp_file );
+            UCharVec buf( len );
+            if( !FileRead( temp_file, &buf[ 0 ], len ) )
+            {
+                UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't read update file!" );
+                FileClose( temp_file );
+                return;
+            }
+            FileClose( temp_file );
+
+            Crypt.SetCache( update_file.Name, &buf[ 0 ], len );
             Crypt.SetCache( update_file.Name + ".hash", (uchar*) &update_file.Hash, sizeof( update_file.Hash ) );
             FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
         }
@@ -4565,7 +4574,7 @@ void FOClient::Net_OnUpdateFileData()
         else
         {
             string from_path = FileManager::GetWritePath( "update.temp" );
-            string to_path = FileManager::GetWritePath( update_file.Name.c_str() );
+            string to_path = FileManager::GetWritePath( update_file.Name );
             if( !FileManager::RenameFile( from_path, to_path ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, _str( "Can't rename file '{}' to '{}'!", from_path, to_path ) );
@@ -8362,7 +8371,7 @@ uint FOClient::SScriptFunc::Global_GetPixelColor( uint spr_id, int frame_index, 
 
 void FOClient::SScriptFunc::Global_GetTextInfo( string text, int w, int h, int font, int flags, int& tw, int& th, int& lines )
 {
-    SprMngr.GetTextInfo( w, h, !text.empty() ? text.c_str() : nullptr, font, flags, tw, th, lines );
+    SprMngr.GetTextInfo( w, h, text, font, flags, tw, th, lines );
 }
 
 void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )

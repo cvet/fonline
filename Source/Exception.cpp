@@ -134,6 +134,9 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
                 CASE_EXCEPTION( EXCEPTION_INVALID_DISPOSITION );
                 CASE_EXCEPTION( EXCEPTION_GUARD_PAGE );
                 CASE_EXCEPTION( EXCEPTION_INVALID_HANDLE );
+            case 0xE06D7363:
+                fprintf( f, "Unhandled C++ Exception" );
+                break;
             default:
                 fprintf( f, "0x%0X", except->ExceptionRecord->ExceptionCode );
                 break;
@@ -543,7 +546,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     Timer::GetCurrentDateTime( dt );
     const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
-    string dump_path_dir = FileManager::GetWritePath( "./Dumps/" );
+    string dump_path_dir = FileManager::GetWritePath( "Dumps/" );
     # else
     string dump_path_dir = "./";
     # endif

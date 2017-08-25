@@ -37,7 +37,7 @@ FileManager::~FileManager()
 void FileManager::InitDataFiles( const string& path, bool set_write_dir /* = true */ )
 {
     // Format path
-    string fixed_path = _str( path ).trim();
+    string fixed_path = _str( path ).formatPath();
     if( !fixed_path.empty() && fixed_path.front() != '$' && fixed_path.back() != '/' )
         fixed_path += "/";
 
@@ -613,15 +613,16 @@ void FileManager::ResetCurrentDir()
 
 void FileManager::SetCurrentDir( const string& dir, const string& write_dir )
 {
-    string fixed_dir = _str( dir ).formatPath().resolvePath();
-
+    string resolved_dir = _str( dir ).formatPath().resolvePath();
     #ifdef FO_WINDOWS
-    SetCurrentDirectoryW( _str( fixed_dir ).toWideChar().c_str() );
+    SetCurrentDirectoryW( _str( resolved_dir ).toWideChar().c_str() );
     #else
-    chdir( fixed_dir.c_str() );
+    chdir( resolved_dir.c_str() );
     #endif
 
-    writeDir = write_dir;
+    writeDir = _str( write_dir ).formatPath();
+    if( !writeDir.empty() && writeDir.back() != '/' )
+        writeDir += "/";
 }
 
 string FileManager::GetWritePath( const string& fname )

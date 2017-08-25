@@ -3914,7 +3914,6 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
         *request_data->Success = success;
         *request_data->Result = result;
         Script::ResumeContext( request_data->Context );
-        request_data->WorkThread->Detach();
         delete request_data->WorkThread;
         if( request_data->Post )
             request_data->Post->Release();
