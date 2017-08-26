@@ -603,7 +603,7 @@ static void UpdateLog()
 {
     string str;
     LogGetBuffer( str );
-    if( str.length() )
+    if( !str.empty() )
     {
         GuiLog->buffer()->append( str.c_str() );
         if( Fl::focus() != GuiLog )

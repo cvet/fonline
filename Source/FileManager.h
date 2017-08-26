@@ -81,7 +81,7 @@ public:
     static void   DeleteDir( const string& dir );
     static void   CreateDirectoryTree( const string& path );
 
-    bool        IsLoaded()     { return fileSize != 0; }
+    bool        IsLoaded()     { return fileLoaded; }
     uchar*      GetBuf()       { return fileBuf; }
     const char* GetCStr()      { return (const char*) fileBuf; }
     uchar*      GetCurBuf()    { return fileBuf + curPos; }
@@ -101,6 +101,7 @@ private:
     static DataFileVec dataFiles;
     static string      writeDir;
 
+    bool               fileLoaded;
     uint               fileSize;
     uchar*             fileBuf;
     uint               curPos;

@@ -814,16 +814,25 @@ bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
 
 void CritterCl::RefreshAnim()
 {
-    // Check 3d availability
+    // Release previous
     SprMngr.FreePure3dAnimation( Anim3d );
     SprMngr.FreePure3dAnimation( Anim3dStay );
-    Anim3d = Anim3dStay = nullptr;
+    Anim3d = nullptr;
+    Anim3dStay = nullptr;
+
+    // Check 3d availability
+    string model_name = _str().parseHash( GetModelName() );
+    string ext = _str( model_name ).getFileExtension();
+    if( !Is3dExtensionSupported( ext ) )
+        return;
+
+    // Try load
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( GetModelName() ).c_str(), true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( model_name, true );
     if( anim3d )
     {
         Anim3d = anim3d;
-        Anim3dStay = SprMngr.LoadPure3dAnimation( _str().parseHash( GetModelName() ).c_str(), false );
+        Anim3dStay = SprMngr.LoadPure3dAnimation( model_name, false );
 
         Anim3d->SetDir( GetDir() );
         SprId = Anim3d->SprId;

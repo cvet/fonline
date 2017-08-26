@@ -9,6 +9,7 @@ string      FileManager::writeDir;
 
 FileManager::FileManager()
 {
+    fileLoaded = false;
     curPos = 0;
     fileSize = 0;
     writeTime = 0;
@@ -138,6 +139,7 @@ void FileManager::ClearDataFiles()
 
 void FileManager::UnloadFile()
 {
+    fileLoaded = false;
     SAFEDELA( fileBuf );
     fileSize = 0;
     writeTime = 0;
@@ -150,6 +152,7 @@ void FileManager::UnloadFile()
 
 uchar* FileManager::ReleaseBuffer()
 {
+    fileLoaded = false;
     uchar* tmp = fileBuf;
     fileBuf = nullptr;
     fileSize = 0;
@@ -173,17 +176,30 @@ bool FileManager::LoadFile( const string& path, bool no_read /* = false */ )
             DataFile* dat = *it;
             if( !no_read )
             {
-                fileBuf = dat->OpenFile( data_path, data_path_lower, fileSize, writeTime );
+                uint   file_size;
+                uint64 write_time;
+                fileBuf = dat->OpenFile( data_path, data_path_lower, file_size, write_time );
                 if( fileBuf )
                 {
                     curPos = 0;
+                    fileSize = file_size;
+                    writeTime = write_time;
+                    fileLoaded = true;
                     return true;
                 }
             }
             else
             {
-                if( dat->IsFilePresent( data_path, data_path_lower, fileSize, writeTime ) )
+                uint   file_size;
+                uint64 write_time;
+                if( dat->IsFilePresent( data_path, data_path_lower, file_size, write_time ) )
+                {
+                    curPos = 0;
+                    fileSize = file_size;
+                    writeTime = write_time;
+                    fileLoaded = true;
                     return true;
+                }
             }
         }
     }
@@ -192,27 +208,32 @@ bool FileManager::LoadFile( const string& path, bool no_read /* = false */ )
         void* file = FileOpen( _str( path ).formatPath(), false );
         if( file )
         {
-            writeTime = FileGetWriteTime( file );
-            fileSize = FileGetSize( file );
+            uint   file_size = FileGetSize( file );
+            uint64 write_time = FileGetWriteTime( file );
 
-            if( no_read )
+            if( !no_read )
+            {
+                uchar* buf = new uchar[ file_size + 1 ];
+                bool   result = FileRead( file, buf, file_size );
+                FileClose( file );
+                if( !result )
+                {
+                    delete[] buf;
+                    return false;
+                }
+
+                fileBuf = buf;
+                fileBuf[ file_size ] = 0;
+            }
+            else
             {
                 FileClose( file );
-                return true;
             }
 
-            uchar* buf = new uchar[ fileSize + 1 ];
-            bool   result = FileRead( file, buf, fileSize );
-            FileClose( file );
-            if( !result )
-            {
-                delete[] buf;
-                return false;
-            }
-
-            fileBuf = buf;
-            fileBuf[ fileSize ] = 0;
             curPos = 0;
+            fileSize = file_size;
+            writeTime = write_time;
+            fileLoaded = true;
             return true;
         }
     }
@@ -231,27 +252,32 @@ bool FileManager::LoadStream( const uchar* stream, uint length )
     memcpy( fileBuf, stream, fileSize );
     fileBuf[ fileSize ] = 0;
     curPos = 0;
+    fileLoaded = true;
     return true;
 }
 
 void FileManager::SetCurPos( uint pos )
 {
+    RUNTIME_ASSERT( fileBuf );
     curPos = pos;
 }
 
 void FileManager::GoForward( uint offs )
 {
+    RUNTIME_ASSERT( fileBuf );
     curPos += offs;
 }
 
 void FileManager::GoBack( uint offs )
 {
+    RUNTIME_ASSERT( fileBuf );
     curPos -= offs;
 }
 
 bool FileManager::FindFragment( const uchar* fragment, uint fragment_len, uint begin_offs )
 {
-    if( !fileBuf || fragment_len > fileSize )
+    RUNTIME_ASSERT( fileBuf );
+    if( fragment_len > fileSize )
         return false;
 
     for( uint i = begin_offs; i < fileSize - fragment_len; i++ )
@@ -280,6 +306,7 @@ bool FileManager::FindFragment( const uchar* fragment, uint fragment_len, uint b
 
 string FileManager::GetNonEmptyLine()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos >= fileSize )
         return "";
 
@@ -315,6 +342,7 @@ string FileManager::GetNonEmptyLine()
 
 bool FileManager::CopyMem( void* ptr, uint size )
 {
+    RUNTIME_ASSERT( fileBuf );
     if( !size )
         return false;
     if( curPos + size > fileSize )
@@ -327,6 +355,7 @@ bool FileManager::CopyMem( void* ptr, uint size )
 
 string FileManager::GetStrNT()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + 1 > fileSize )
         return "";
 
@@ -341,6 +370,7 @@ string FileManager::GetStrNT()
 
 uchar FileManager::GetUChar()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( uchar ) > fileSize )
         return 0;
 
@@ -351,6 +381,7 @@ uchar FileManager::GetUChar()
 
 ushort FileManager::GetBEUShort()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( ushort ) > fileSize )
         return 0;
 
@@ -363,6 +394,7 @@ ushort FileManager::GetBEUShort()
 
 ushort FileManager::GetLEUShort()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( ushort ) > fileSize )
         return 0;
 
@@ -375,6 +407,7 @@ ushort FileManager::GetLEUShort()
 
 uint FileManager::GetBEUInt()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( uint ) > fileSize )
         return 0;
 
@@ -387,6 +420,7 @@ uint FileManager::GetBEUInt()
 
 uint FileManager::GetLEUInt()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( uint ) > fileSize )
         return 0;
 
@@ -399,6 +433,7 @@ uint FileManager::GetLEUInt()
 
 uint FileManager::GetLE3UChar()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( uchar ) * 3 > fileSize )
         return 0;
 
@@ -411,6 +446,7 @@ uint FileManager::GetLE3UChar()
 
 float FileManager::GetBEFloat()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( float ) > fileSize )
         return 0.0f;
 
@@ -423,6 +459,7 @@ float FileManager::GetBEFloat()
 
 float FileManager::GetLEFloat()
 {
+    RUNTIME_ASSERT( fileBuf );
     if( curPos + sizeof( float ) > fileSize )
         return 0.0f;
 
@@ -435,6 +472,8 @@ float FileManager::GetLEFloat()
 
 void FileManager::SwitchToRead()
 {
+    RUNTIME_ASSERT( dataOutBuf );
+    fileLoaded = true;
     fileBuf = dataOutBuf;
     dataOutBuf = nullptr;
     fileSize = endOutBuf;
@@ -446,6 +485,8 @@ void FileManager::SwitchToRead()
 
 void FileManager::SwitchToWrite()
 {
+    RUNTIME_ASSERT( fileBuf );
+    fileLoaded = false;
     dataOutBuf = fileBuf;
     fileBuf = nullptr;
     lenOutBuf = fileSize;

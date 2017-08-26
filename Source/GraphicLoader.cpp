@@ -37,10 +37,8 @@ Bone* GraphicLoader::LoadModel( const string& fname )
 {
     // Find already loaded
     for( size_t i = 0, j = loadedModelNames.size(); i < j; i++ )
-    {
         if( _str( loadedModelNames[ i ] ).compareIgnoreCase( fname ) )
             return loadedModels[ i ];
-    }
 
     // Add to already processed
     for( size_t i = 0, j = processedFiles.size(); i < j; i++ )

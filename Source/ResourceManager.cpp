@@ -118,7 +118,7 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
         return nullptr;
 
     SprMngr.PushAtlasType( res_type );
-    AnyFrames* anim = SprMngr.LoadAnimation( fname.c_str(), false, true );
+    AnyFrames* anim = SprMngr.LoadAnimation( fname, false, true );
     SprMngr.PopAtlasType();
 
     loadedAnims.insert( std::make_pair( name_hash, LoadedAnim( res_type, anim ) ) );
@@ -177,7 +177,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                     if( !str.empty() )
                     {
                         SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-                        anim = SprMngr.LoadAnimation( str.c_str() );
+                        anim = SprMngr.LoadAnimation( str );
                         SprMngr.PopAtlasType();
 
                         // Fix by dirs
@@ -596,7 +596,7 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
     }
 
     SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ).c_str(), true );
+    Animation3d* anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ), true );
     SprMngr.PopAtlasType();
     if( !anim3d )
         return nullptr;
@@ -633,7 +633,7 @@ AnyFrames* ResourceManager::GetRandomSplash()
     int rnd = Random( 0, (int) splashNames.size() - 1 );
     static AnyFrames* splash = nullptr;
     SprMngr.PushAtlasType( RES_ATLAS_SPLASH, true );
-    splash = SprMngr.ReloadAnimation( splash, splashNames[ rnd ].c_str() );
+    splash = SprMngr.ReloadAnimation( splash, splashNames[ rnd ] );
     SprMngr.PopAtlasType();
     return splash;
 }

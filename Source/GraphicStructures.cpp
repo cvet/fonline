@@ -2,14 +2,14 @@
 
 bool Is3dExtensionSupported( const string& ext )
 {
-    static const string arr[] =
+    static const string supported_formats[] =
     {
         "fo3d", "fbx", "x", "3ds", "obj", "dae", "blend", "ase", "ply", "dxf", "lwo", "lxo", "stl", "ms3d",
         "scn", "smd", "vta", "mdl", "md2", "md3", "pk3", "mdc", "md5", "bvh", "csm", "b3d", "q3d", "cob",
         "q3s", "mesh", "xml", "irrmesh", "irr", "nff", "nff", "off", "raw", "ter", "mdl", "hmp", "ndo", "ac"
     };
 
-    for( const string& entry : arr )
+    for( const string& entry : supported_formats )
         if( entry == ext )
             return true;
     return false;

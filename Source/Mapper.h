@@ -373,6 +373,12 @@ public:
     void RunMapSaveScript( Map* map );
     void DrawIfaceLayer( uint layer );
 
+    static void OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value );
+
     struct SScriptFunc
     {
         static Item*         Item_AddChild( Item* item, hash pid );

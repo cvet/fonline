@@ -4323,6 +4323,20 @@ bool FOMapper::InitScriptSystem()
     Globals = new GlobalVars();
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
     Map::SetPropertyRegistrator( registrators[ 3 ] );
     Location::SetPropertyRegistrator( registrators[ 4 ] );
 
@@ -4370,6 +4384,79 @@ void FOMapper::DrawIfaceLayer( uint layer )
     SpritesCanDraw = true;
     Script::RaiseInternalEvent( MapperFunctions.RenderIface, layer );
     SpritesCanDraw = false;
+}
+
+void FOMapper::OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value )
+{
+    // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
+
+    Item* item = (Item*) entity;
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
+    {
+        ItemHex* hex_item = (ItemHex*) item;
+        bool     rebuild_cache = false;
+        if( prop == Item::PropertyIsColorize )
+            hex_item->RefreshAlpha();
+        else if( prop == Item::PropertyIsBadItem )
+            hex_item->SetSprite( nullptr );
+        else if( prop == Item::PropertyIsShootThru )
+            rebuild_cache = true;
+        else if( prop == Item::PropertyIsLightThru )
+            Self->HexMngr.RebuildLight(), rebuild_cache = true;
+        else if( prop == Item::PropertyIsNoBlock )
+            rebuild_cache = true;
+        if( rebuild_cache )
+            Self->HexMngr.GetField( hex_item->GetHexX(), hex_item->GetHexY() ).ProcessCache();
+    }
+}
+
+void FOMapper::OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value )
+{
+    // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
+
+    if( Self->HexMngr.IsMapLoaded() )
+        Self->HexMngr.RebuildLight();
+}
+
+void FOMapper::OnSetItemPicMap( Entity* entity, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) entity;
+
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
+    {
+        ItemHex* hex_item = (ItemHex*) item;
+        hex_item->RefreshAnim();
+    }
+}
+
+void FOMapper::OnSetItemOffsetXY( Entity* entity, Property* prop, void* cur_value, void* old_value )
+{
+    // OffsetX, OffsetY
+
+    Item* item = (Item*) entity;
+
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX && Self->HexMngr.IsMapLoaded() )
+    {
+        ItemHex* hex_item = (ItemHex*) item;
+        hex_item->SetAnimOffs();
+        Self->HexMngr.ProcessHexBorders( hex_item );
+    }
+}
+
+void FOMapper::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value )
+{
+    Item* item = (Item*) entity;
+    bool  cur = *(bool*) cur_value;
+    bool  old = *(bool*) old_value;
+
+    if( item->IsDoor() || item->IsContainer() )
+    {
+        ItemHex* hex_item = (ItemHex*) item;
+        if( !old && cur )
+            hex_item->SetAnimFromStart();
+        if( old && !cur )
+            hex_item->SetAnimFromEnd();
+    }
 }
 
 Item* FOMapper::SScriptFunc::Item_AddChild( Item* item, hash pid )

@@ -2323,42 +2323,30 @@ Animation3dXFile::~Animation3dXFile()
 
 Animation3dXFile* Animation3dXFile::GetXFile( const string& xname )
 {
-    Animation3dXFile* xfile = nullptr;
-
-    for( auto it = xFiles.begin(), end = xFiles.end(); it != end; ++it )
-    {
-        Animation3dXFile* x = *it;
+    for( Animation3dXFile* x : xFiles )
         if( x->fileName == xname )
-        {
-            xfile = x;
-            break;
-        }
+            return x;
+
+    // Load
+    Bone* root_bone = GraphicLoader::LoadModel( xname );
+    if( !root_bone )
+    {
+        WriteLog( "Unable to load 3d file '{}'.\n", xname );
+        return nullptr;
     }
 
+    Animation3dXFile* xfile = new Animation3dXFile();
     if( !xfile )
     {
-        // Load
-        Bone* root_bone = GraphicLoader::LoadModel( xname );
-        if( !root_bone )
-        {
-            WriteLog( "Unable to load 3d file '{}'.\n", xname );
-            return nullptr;
-        }
-
-        xfile = new Animation3dXFile();
-        if( !xfile )
-        {
-            WriteLog( "Allocation fail, x file '{}'.\n", xname );
-            return nullptr;
-        }
-
-        xfile->fileName = xname;
-        xfile->rootBone = root_bone;
-        xfile->SetupBones();
-
-        xFiles.push_back( xfile );
+        WriteLog( "Allocation fail, x file '{}'.\n", xname );
+        return nullptr;
     }
 
+    xfile->fileName = xname;
+    xfile->rootBone = root_bone;
+    xfile->SetupBones();
+
+    xFiles.push_back( xfile );
     return xfile;
 }
 

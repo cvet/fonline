@@ -8574,7 +8574,7 @@ void FOClient::SScriptFunc::Global_DrawCritter3d( uint instance, hash model_name
         if( anim3d )
             SprMngr.FreePure3dAnimation( anim3d );
         SprMngr.PushAtlasType( RES_ATLAS_DYNAMIC );
-        anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ).c_str(), false );
+        anim3d = SprMngr.LoadPure3dAnimation( _str().parseHash( model_name ), false );
         SprMngr.PopAtlasType();
         DrawCritter3dCrType[ instance ] = model_name;
         DrawCritter3dFailToLoad[ instance ] = false;
@@ -8738,7 +8738,7 @@ bool FOClient::SScriptFunc::Global_IsMapHexRaked( ushort hx, ushort hy )
 
 bool FOClient::SScriptFunc::Global_SaveScreenshot( string file_path )
 {
-    SprMngr.SaveTexture( nullptr, _str( file_path ).formatPath().c_str(), true );
+    SprMngr.SaveTexture( nullptr, _str( file_path ).formatPath(), true );
     return true;
 }
 
@@ -8803,14 +8803,11 @@ void FOClient::SScriptFunc::Global_EraseCacheData( string name )
 void FOClient::SScriptFunc::Global_SetUserConfig( CScriptArray* key_values )
 {
     FileManager cfg_user;
-    for( int i = 0, j = (int) key_values->GetSize(); i < j - 1; i += 2 )
+    for( int i = 0; i < key_values->GetSize() - 1; i += 2 )
     {
         string& key = *(string*) key_values->At( i );
         string& value = *(string*) key_values->At( i + 1 );
-        cfg_user.SetStr( key.c_str() );
-        cfg_user.SetStr( " = " );
-        cfg_user.SetStr( value.c_str() );
-        cfg_user.SetStr( "\n" );
+        cfg_user.SetStr( _str( "{} = {}\n", key, value ) );
     }
     cfg_user.SaveFile( CONFIG_NAME );
 }
