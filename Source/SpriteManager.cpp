@@ -1455,9 +1455,10 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const string& fname, bool anim_pix /
         AnyFrames* anim = base_anim->GetDir( dir );
 
         // Make palette
-        uint* palette = (uint*) FoPalette;
-        uint  palette_entry[ 256 ];
-        if( FileManager fm_palette = FileManager( _str( fname ).eraseFileExtension() + ".pal" ) )
+        uint*       palette = (uint*) FoPalette;
+        uint        palette_entry[ 256 ];
+        FileManager fm_palette;
+        if( fm_palette.LoadFile( _str( fname ).eraseFileExtension() + ".pal" ) )
         {
             for( uint i = 0; i < 256; i++ )
             {

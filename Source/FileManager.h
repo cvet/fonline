@@ -29,8 +29,6 @@ public:
     FileManager( const string& path, bool no_read = false );
     FileManager( const uchar* stream, uint length );
 
-    explicit operator bool() { return IsLoaded(); }
-
     bool   LoadFile( const string& path, bool no_read = false );
     bool   LoadStream( const uchar* stream, uint length );
     void   UnloadFile();
