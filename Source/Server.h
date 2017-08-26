@@ -93,8 +93,7 @@ public:
     {
         uint   FuncId;
         int    SayType;
-        char   FirstStr[ TEXT_LISTEN_FIRST_STR_MAX_LEN + 1 ];
-        uint   FirstStrLen;
+        string FirstStr;
         uint64 Parameter;
     };
     typedef vector< TextListen > TextListenVec;

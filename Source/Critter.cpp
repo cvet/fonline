@@ -1451,7 +1451,7 @@ void Critter::SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool un
     if( !str || !str[ 0 ] )
         return;
 
-    ushort str_len = Str::Length( str );
+    ushort str_len = (ushort) strlen( str );
     uint   from_id = GetId();
 
     if( IsPlayer() )
@@ -2646,7 +2646,8 @@ void Client::Send_Text( Critter* from_cr, const char* s_str, uchar how_say )
         return;
     if( !s_str || !s_str[ 0 ] )
         return;
-    ushort s_len = Str::Length( s_str );
+
+    ushort s_len = (ushort) strlen( s_str );
     uint   from_id = ( from_cr ? from_cr->GetId() : 0 );
     Send_TextEx( from_id, s_str, s_len, how_say, false );
 }
@@ -2710,7 +2711,7 @@ void Client::Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ush
     if( !num_str )
         return;
 
-    ushort lex_len = Str::Length( lexems );
+    ushort lex_len = (ushort) strlen( lexems );
     if( !lex_len || lex_len > MAX_DLG_LEXEMS_TEXT )
     {
         Send_TextMsg( from_cr, num_str, how_say, num_msg );
@@ -2739,7 +2740,7 @@ void Client::Send_TextMsgLex( uint from_id, uint num_str, uchar how_say, ushort 
     if( !num_str )
         return;
 
-    ushort lex_len = Str::Length( lexems );
+    ushort lex_len = (ushort) strlen( lexems );
     if( !lex_len || lex_len > MAX_DLG_LEXEMS_TEXT )
     {
         Send_TextMsg( from_id, num_str, how_say, num_msg );

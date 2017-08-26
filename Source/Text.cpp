@@ -34,9 +34,19 @@ bool _str::compareIgnoreCaseUtf8( const string& r )
     return _str( s ).lowerUtf8() == _str( r ).lowerUtf8();
 }
 
+bool _str::startsWith( char r )
+{
+    return s.length() >= 1 && s.front() == r;
+}
+
 bool _str::startsWith( const string& r )
 {
     return s.length() >= r.length() && s.compare( 0, r.length(), r ) == 0;
+}
+
+bool _str::endsWith( char r )
+{
+    return s.length() >= 1 && s.back() == r;
 }
 
 bool _str::endsWith( const string& r )
@@ -522,15 +532,13 @@ void _str::loadHashes( StrMap& hashes )
         _str( kv.second ).toHash();
 }
 
-void Str::Copy( char* to, uint size, const char* from )
+void Str::Copy( char* to, size_t size, const char* from )
 {
-    if( !from )
-    {
-        to[ 0 ] = 0;
-        return;
-    }
+    RUNTIME_ASSERT( to );
+    RUNTIME_ASSERT( from );
+    RUNTIME_ASSERT( size > 0 );
 
-    uint from_len = Length( from );
+    size_t from_len = strlen( from );
     if( !from_len )
     {
         to[ 0 ] = 0;
@@ -549,19 +557,22 @@ void Str::Copy( char* to, uint size, const char* from )
     }
 }
 
-void Str::Append( char* to, uint size, const char* from )
+void Str::Append( char* to, size_t size, const char* from )
 {
-    uint from_len = Length( from );
+    RUNTIME_ASSERT( to );
+    RUNTIME_ASSERT( from );
+    RUNTIME_ASSERT( size > 0 );
+
+    size_t from_len = strlen( from );
     if( !from_len )
         return;
 
-    uint to_len = Length( to );
-    uint to_free = size - to_len;
-    if( (int) to_free <= 1 )
+    size_t to_len = strlen( to );
+    if( to_len + 1 >= size )
         return;
 
-    char* ptr = to + to_len;
-
+    size_t to_free = size - to_len;
+    char*  ptr = to + to_len;
     if( from_len >= to_free )
     {
         memcpy( ptr, from, to_free - 1 );
@@ -581,20 +592,12 @@ char* Str::Duplicate( const string& str )
 
 char* Str::Duplicate( const char* str )
 {
-    uint  len = Length( str );
-    char* dup = new char[ len + 1 ];
+    size_t len = strlen( str );
+    char*  dup = new char[ len + 1 ];
     if( len )
         memcpy( dup, str, len );
     dup[ len ] = 0;
     return dup;
-}
-
-uint Str::Length( const char* str )
-{
-    const char* str_ = str;
-    while( *str )
-        str++;
-    return (uint) ( str - str_ );
 }
 
 bool Str::Compare( const char* str1, const char* str2 )
@@ -606,13 +609,6 @@ bool Str::Compare( const char* str1, const char* str2 )
         str1++, str2++;
     }
     return *str1 == 0 && *str2 == 0;
-}
-
-bool Str::Compare( const string& str1, const string& str2 )
-{
-    if( str1.length() != str2.length() )
-        return false;
-    return str1 == str2;
 }
 
 void Str::HexToStr( uchar hex, char* str )

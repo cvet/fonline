@@ -757,7 +757,7 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                     if( text )
                         map->SetText( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, text_len, unsafe_text );
                     else if( lexems )
-                        map->SetTextMsgLex( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str, lexems, Str::Length( lexems ) );
+                        map->SetTextMsgLex( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str, lexems, (ushort) strlen( lexems ) );
                     else
                         map->SetTextMsg( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str );
                 }

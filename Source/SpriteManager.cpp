@@ -1368,10 +1368,9 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const string& fname, bool anim_pix /
     bool load_from_fr = false;
     if( !fm.IsLoaded() )
     {
-        char fname_[ MAX_FOPATH ];
-        Str::Copy( fname_, fname.c_str() );
-        fname_[ Str::Length( fname_ ) - 1 ] = '0';
-        if( !fm.LoadFile( fname_ ) )
+        string fixed_fname = fname;
+        fixed_fname.back() = '0';
+        if( !fm.LoadFile( fixed_fname ) )
             return nullptr;
         load_from_fr = true;
     }
@@ -1418,14 +1417,13 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const string& fname, bool anim_pix /
 
         if( dir && load_from_fr )
         {
-            char fname_[ MAX_FOPATH ];
-            Str::Copy( fname_, fname.c_str() );
-            fname_[ Str::Length( fname_ ) - 1 ] = '0' + dir;
-            if( !fm.LoadFile( fname_ ) )
+            string fixed_fname = fname;
+            fixed_fname.back() = '0' + dir;
+            if( !fm.LoadFile( fixed_fname ) )
             {
                 if( dir > 1 )
                 {
-                    WriteLog( "File '{}' not found.\n", fname_ );
+                    WriteLog( "File '{}' not found.\n", fixed_fname );
                     AnyFrames::Destroy( base_anim );
                     return nullptr;
                 }
@@ -1459,11 +1457,7 @@ AnyFrames* SpriteManager::LoadAnimationFrm( const string& fname, bool anim_pix /
         // Make palette
         uint* palette = (uint*) FoPalette;
         uint  palette_entry[ 256 ];
-        char  palette_name[ MAX_FOPATH ];
-        Str::Copy( palette_name, fname.c_str() );
-        Str::Copy( &palette_name[ Str::Length( palette_name ) - 3 ], 4, "pal" );
-        FileManager fm_palette;
-        if( fm_palette.LoadFile( palette_name ) )
+        if( FileManager fm_palette = FileManager( _str( fname ).eraseFileExtension() + ".pal" ) )
         {
             for( uint i = 0; i < 256; i++ )
             {

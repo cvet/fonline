@@ -186,11 +186,11 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
 {
     // Pragma callback
     int pragma_type = PRAGMA_UNKNOWN;
-    if( Str::Compare( target, "SERVER" ) )
+    if( target == "SERVER" )
         pragma_type = PRAGMA_SERVER;
-    else if( Str::Compare( target, "CLIENT" ) )
+    else if( target == "CLIENT" )
         pragma_type = PRAGMA_CLIENT;
-    else if( Str::Compare( target, "MAPPER" ) )
+    else if( target == "MAPPER" )
         pragma_type = PRAGMA_MAPPER;
 
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( pragma_type );
@@ -204,11 +204,11 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
 
     // Bind
     int bind_errors = 0;
-    if( Str::Compare( target, "SERVER" ) )
+    if( target == "SERVER" )
         bind_errors = ServerBind::Bind( engine, registrators );
-    else if( Str::Compare( target, "CLIENT" ) )
+    else if( target == "CLIENT" )
         bind_errors = ClientBind::Bind( engine, registrators );
-    else if( Str::Compare( target, "MAPPER" ) )
+    else if( target == "MAPPER" )
         bind_errors = MapperBind::Bind( engine, registrators );
     if( bind_errors )
         WriteLog( "Warning, bind result: {}.\n", bind_errors );
@@ -236,11 +236,11 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
         Preprocessor::Define( string( defines[ i ] ) );
 
     // Compile
-    if( Str::Compare( target, "SERVER" ) )
+    if( target == "SERVER" )
         target = "Server";
-    else if( Str::Compare( target, "CLIENT" ) )
+    else if( target == "CLIENT" )
         target = "Client";
-    else if( Str::Compare( target, "MAPPER" ) )
+    else if( target == "MAPPER" )
         target = "Mapper";
 
     if( !Script::ReloadScripts( target.c_str() ) )

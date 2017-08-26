@@ -39,8 +39,8 @@ static void* ASDeepDebugMalloc( size_t size )
     {
         SCOPE_LOCK( ASDbgMemoryLocker );
         ASDbgMemoryInUse = true;
-        const char* func = Script::GetActiveFuncName();
-        ASDbgMemoryBuf = _str( "AS : {}", func ? func : "<nullptr>" );
+        string func = Script::GetActiveFuncName();
+        ASDbgMemoryBuf = _str( "AS : {}", !func.empty() ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( ASDbgMemoryBuf.c_str(), (int) size );
         ASDbgMemoryPtr.insert( std::make_pair( ptr, ASDbgMemoryBuf ) );
         ASDbgMemoryInUse = false;
@@ -123,7 +123,7 @@ bool FOServer::InitScriptSystem()
     // Load script modules
     Script::Undef( nullptr );
     Script::Define( "__SERVER" );
-    Script::Define( "__VERSION %d", FONLINE_VERSION );
+    Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
     if( !Script::ReloadScripts( "Server" ) )
     {
         Script::Finish();
@@ -324,7 +324,7 @@ bool FOServer::ReloadClientScripts()
     // Load script modules
     Script::Undef( "__SERVER" );
     Script::Define( "__CLIENT" );
-    Script::Define( "__VERSION %d", FONLINE_VERSION );
+    Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
     Script::SetLoadLibraryCompiler( true );
 
     FOMsg msg_script;
@@ -500,7 +500,7 @@ Item* FOServer::SScriptFunc::Item_AddItem( Item* cont, hash pid, uint count, uin
     if( cont->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
     if( !ProtoMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", _str().parseHash( pid ) );
+        SCRIPT_ERROR_R0( "Invalid proto '{}' arg.", _str().parseHash( pid ) );
 
     if( !count )
         count = 1;
@@ -804,7 +804,7 @@ void FOServer::SScriptFunc::Crit_TransitToMapEntire( Critter* cr, Map* map, hash
     ushort hx, hy;
     uchar  dir;
     if( !map->GetStartCoord( hx, hy, dir, entire ) )
-        SCRIPT_ERROR_R( "Entire '%s' not found.", _str().parseHash( entire ) );
+        SCRIPT_ERROR_R( "Entire '{}' not found.", _str().parseHash( entire ) );
 
     if( !MapMngr.Transit( cr, map, hx, hy, dir, 2, 0, true ) )
         SCRIPT_ERROR_R( "Transit to map entire fail." );
@@ -1136,7 +1136,7 @@ Item* FOServer::SScriptFunc::Crit_AddItem( Critter* cr, hash pid, uint count )
     if( !pid )
         SCRIPT_ERROR_R0( "Proto id arg is zero." );
     if( !ProtoMngr.GetProtoItem( pid ) )
-        SCRIPT_ERROR_R0( "Invalid proto '%s'.", _str().parseHash( pid ) );
+        SCRIPT_ERROR_R0( "Invalid proto '{}'.", _str().parseHash( pid ) );
 
     if( !count )
         count = 1;
@@ -1876,7 +1876,7 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
     if( !proto )
-        SCRIPT_ERROR_R0( "Invalid proto '%s' arg.", _str().parseHash( proto_id ) );
+        SCRIPT_ERROR_R0( "Invalid proto '{}' arg.", _str().parseHash( proto_id ) );
     if( !map->IsPlaceForProtoItem( hx, hy, proto ) )
         SCRIPT_ERROR_R0( "No place for item." );
 
@@ -2297,7 +2297,7 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
         SCRIPT_ERROR_R0( "Invalid hexes args." );
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
-        SCRIPT_ERROR_R0( "Proto '%s' not found.", _str().parseHash( proto_id ) );
+        SCRIPT_ERROR_R0( "Proto '{}' not found.", _str().parseHash( proto_id ) );
 
     Critter* npc = nullptr;
     if( props )
@@ -3038,7 +3038,7 @@ Location* FOServer::SScriptFunc::Global_CreateLocation( hash loc_pid, ushort wx,
     // Create and generate location
     Location* loc = MapMngr.CreateLocation( loc_pid, wx, wy );
     if( !loc )
-        SCRIPT_ERROR_R0( "Unable to create location '%s'.", _str().parseHash( loc_pid ) );
+        SCRIPT_ERROR_R0( "Unable to create location '{}'.", _str().parseHash( loc_pid ) );
 
     // Add known locations to critters
     if( critters )
@@ -3296,8 +3296,7 @@ bool FOServer::SScriptFunc::Global_AddTextListener( int say_type, string first_s
     TextListen tl;
     tl.FuncId = func_id;
     tl.SayType = say_type;
-    Str::Copy( tl.FirstStr, first_str.c_str() );
-    tl.FirstStrLen = Str::Length( tl.FirstStr );
+    tl.FirstStr = first_str;
     tl.Parameter = parameter;
 
     SCOPE_LOCK( TextListenersLocker );
@@ -3593,7 +3592,7 @@ void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
     prop = ( prop ? prop : Critter::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R( "Property '%s' not found.", _str().parseHash( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
     string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
@@ -3613,7 +3612,7 @@ void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R( "Property '%s' not found.", _str().parseHash( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
     string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )
@@ -3668,9 +3667,9 @@ bool FOServer::SScriptFunc::Global_LoadImage( uint index, string image_name, uin
 
     // Load file to memory
     FilesCollection images( "png" );
-    FileManager&    fm = images.FindFile( image_name.substr( 0, image_name.find_last_of( '.' ) ).c_str() );
+    FileManager&    fm = images.FindFile( image_name.substr( 0, image_name.find_last_of( '.' ) ) );
     if( !fm.IsLoaded() )
-        SCRIPT_ERROR_R0( "File '%s' not found.", image_name.c_str() );
+        SCRIPT_ERROR_R0( "File '{}' not found.", image_name );
 
     // Load PNG from memory
     png_structp pp = png_create_read_struct( PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr );

@@ -82,8 +82,8 @@ public:
         ModifiableMask       = 0x2600,
     };
 
-    const char*  GetName();
-    const char*  GetTypeName();
+    string       GetName();
+    string       GetTypeName();
     uint         GetRegIndex();
     int          GetEnumValue();
     AccessType   GetAccess();
@@ -198,17 +198,17 @@ public:
     ~Properties();
     Properties&          operator=( const Properties& other );
     Property*            FindByEnum( int enum_value );
-    void*                FindData( const char* property_name );
+    void*                FindData( const string& property_name );
     uint                 StoreData( bool with_protected, PUCharVec** all_data, UIntVec** all_data_sizes );
     void                 RestoreData( PUCharVec& all_data, UIntVec& all_data_sizes );
     void                 RestoreData( UCharVecVec& all_data );
     bool                 LoadFromText( const StrMap& key_values );
     void                 SaveToText( StrMap& key_values, Properties* base );
-    bool                 LoadPropertyFromText( Property* prop, const char* text );
+    bool                 LoadPropertyFromText( Property* prop, const string& text );
     string               SavePropertyToText( Property* prop );
     static int           GetValueAsInt( Entity* entity, int enum_value );
     static void          SetValueAsInt( Entity* entity, int enum_value, int value );
-    static bool          SetValueAsIntByName( Entity* entity, const char* enum_name, int value );
+    static bool          SetValueAsIntByName( Entity* entity, const string& enum_name, int value );
     static bool          SetValueAsIntProps( Properties* props, int enum_value, int value );
     string               GetClassName();
     void                 SetSendIgnore( Property* prop, Entity* entity );
@@ -281,14 +281,14 @@ public:
     PropertyRegistrator( bool is_server, const string& class_name );
     ~PropertyRegistrator();
     bool      Init();
-    Property* Register( const char* type_name, const char* name, Property::AccessType access, bool is_const, const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
+    Property* Register( const string& type_name, const string& name, Property::AccessType access, bool is_const, const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
     void      SetDefaults( const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
     void      FinishRegistration();
     uint      GetCount();
     Property* Find( const string& property_name );
     Property* FindByEnum( int enum_value );
     Property* Get( uint property_index );
-    void      SetNativeSetCallback( const char* property_name, NativeCallback callback );
+    void      SetNativeSetCallback( const string& property_name, NativeCallback callback );
     void      SetNativeSendCallback( NativeSendCallback callback );
     uint      GetWholeDataSize();
     string    GetClassName();

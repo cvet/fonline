@@ -52,14 +52,14 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
     return true;
 }
 
-void ScriptProfiler::AddModule( const char* module_name, const char* script_code )
+void ScriptProfiler::AddModule( const string& module_name, const string& script_code )
 {
     RUNTIME_ASSERT( curStage == ProfilerInitialized );
 
     if( saveFileHandle )
     {
-        FileWrite( saveFileHandle, module_name, Str::Length( module_name ) + 1 );
-        FileWrite( saveFileHandle, script_code, Str::Length( script_code ) + 1 );
+        FileWrite( saveFileHandle, module_name.c_str(), (uint) module_name.length() + 1 );
+        FileWrite( saveFileHandle, script_code.c_str(), (uint) script_code.length() + 1 );
     }
 }
 
@@ -178,7 +178,7 @@ struct OutputLine
     uint   Depth;
     float  Incl;
     float  Excl;
-    OutputLine( const char* text, uint depth, float incl, float excl ): FuncName( text ), Depth( depth ), Incl( incl ), Excl( excl ) {}
+    OutputLine( const string& text, uint depth, float incl, float excl ): FuncName( text ), Depth( depth ), Incl( incl ), Excl( excl ) {}
 };
 
 static void TraverseCallPaths( asIScriptEngine* engine, CallPath* path, vector< OutputLine >& lines, uint depth, uint& max_depth, uint& max_len, float total_call_paths )

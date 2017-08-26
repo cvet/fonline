@@ -314,7 +314,7 @@ public:
     Entity*    InspectorEntity;
 
     void    ObjDraw();
-    void    DrawLine( const char* name, const char* type_name, const char* text, bool is_const, Rect& r );
+    void    DrawLine( const string& name, const string& type_name, const string& text, bool is_const, Rect& r );
     void    ObjKeyDown( uchar dik, const char* dik_text );
     void    ObjKeyDownApply( Entity* entity );
     void    SelectEntityProp( int line );
@@ -341,7 +341,7 @@ public:
     void ConsoleKeyDown( uchar dik, const char* dik_text );
     void ConsoleKeyUp( uchar dik );
     void ConsoleProcess();
-    void ParseCommand( const char* cmd );
+    void ParseCommand( const string& command );
 
     // Mess box
     struct MessBoxMessage

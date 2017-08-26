@@ -1931,14 +1931,14 @@ void FOMapper::ObjDraw()
         }
     }
 
-    DrawLine( "Id", nullptr, string( _str( "{}", entity->Id ) ).append( " (" ).append( _str( "{}", entity->Id ) ).append( ")" ).c_str(), true, r );
-    DrawLine( "ProtoName", nullptr, _str().parseHash( entity->GetProtoId() ).c_str(), true, r );
+    DrawLine( "Id", "", _str( "{} ({})", entity->Id, (int) entity->Id ), true, r );
+    DrawLine( "ProtoName", "", _str().parseHash( entity->GetProtoId() ).c_str(), true, r );
     if( cr )
-        DrawLine( "Type", nullptr, "Critter", true, r );
+        DrawLine( "Type", "", "Critter", true, r );
     else if( item && !item->IsScenery() )
-        DrawLine( "Type", nullptr, "Item", true, r );
+        DrawLine( "Type", "", "Item", true, r );
     else if( item && item->IsScenery() )
-        DrawLine( "Type", nullptr, "Scenery", true, r );
+        DrawLine( "Type", "", "Scenery", true, r );
     else
         RUNTIME_ASSERT( !"Unreachable place" );
 
@@ -1947,7 +1947,7 @@ void FOMapper::ObjDraw()
         if( prop )
         {
             string value = entity->Props.SavePropertyToText( prop );
-            DrawLine( prop->GetName(), prop->GetTypeName(), value.c_str(), prop->IsConst(), r );
+            DrawLine( prop->GetName(), prop->GetTypeName(), value, prop->IsConst(), r );
         }
         else
         {
@@ -1957,7 +1957,7 @@ void FOMapper::ObjDraw()
     }
 }
 
-void FOMapper::DrawLine( const char* name, const char* type_name, const char* text, bool is_const, Rect& r )
+void FOMapper::DrawLine( const string& name, const string& type_name, const string& text, bool is_const, Rect& r )
 {
     uint col = COLOR_TEXT;
     int  x = r.L;
@@ -1967,20 +1967,22 @@ void FOMapper::DrawLine( const char* name, const char* type_name, const char* te
     col = COLOR_TEXT;
     if( is_const )
         col = COLOR_TEXT_DWHITE;
+
+    string result_text = text;
     if( ObjCurLine == ( y - ObjWWork[ 1 ] - ObjY ) / DRAW_NEXT_HEIGHT )
     {
         col = COLOR_TEXT_WHITE;
         if( !is_const && ObjCurLineValue != ObjCurLineInitValue )
         {
             col = COLOR_TEXT_RED;
-            text = ObjCurLineValue.c_str();
+            result_text = ObjCurLineValue;
         }
     }
-    string str = _str( "{}{}{}{}", name, type_name ? " (" : "", type_name ? type_name : "", type_name ? ")" : "" );
+
+    string str = _str( "{}{}{}{}", name, !type_name.empty() ? " (" : "", !type_name.empty() ? type_name : "", !type_name.empty() ? ")" : "" );
     str += "........................................................................................................";
     SprMngr.DrawStr( Rect( Rect( x, y, x + w / 2, y + h ), 0, 0 ), str, FT_NOBREAK, col );
-    str = ( text ? text : "" );
-    SprMngr.DrawStr( Rect( Rect( x + w / 2, y, x + w, y + h ), 0, 0 ), str, FT_NOBREAK, col );
+    SprMngr.DrawStr( Rect( Rect( x + w / 2, y, x + w, y + h ), 0, 0 ), result_text, FT_NOBREAK, col );
     r.T += DRAW_NEXT_HEIGHT;
     r.B += DRAW_NEXT_HEIGHT;
 }
@@ -3918,16 +3920,15 @@ void FOMapper::ConsoleProcess()
     }
 }
 
-void FOMapper::ParseCommand( const char* cmd )
+void FOMapper::ParseCommand( const string& command )
 {
-    if( !cmd || !*cmd )
+    if( command.empty() )
         return;
 
     // Load map
-    if( *cmd == '~' )
+    if( command[ 0 ] == '~' )
     {
-        cmd++;
-        string map_name = _str( cmd ).trim();
+        string map_name = _str( command.substr( 1 ) ).trim();
         if( map_name.empty() )
         {
             AddMess( "Error parse map name." );
@@ -3965,11 +3966,9 @@ void FOMapper::ParseCommand( const char* cmd )
         RunMapLoadScript( map );
     }
     // Save map
-    else if( *cmd == '^' )
+    else if( command[ 0 ] == '^' )
     {
-        cmd++;
-
-        string map_name = _str( cmd ).trim();
+        string map_name = _str( command.substr( 1 ) ).trim();
         if( map_name.empty() )
         {
             AddMess( "Error parse map name." );
@@ -3997,10 +3996,9 @@ void FOMapper::ParseCommand( const char* cmd )
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
     }
     // Run script
-    else if( *cmd == '#' )
+    else if( command[ 0 ] == '#' )
     {
-        cmd++;
-        istringstream icmd( cmd );
+        istringstream icmd( command.substr( 1 ) );
         string        func_name;
         if( !( icmd >> func_name ) )
         {
@@ -4034,7 +4032,7 @@ void FOMapper::ParseCommand( const char* cmd )
         }
     }
     // Critter animations
-    else if( *cmd == '@' )
+    else if( command[ 0 ] == '@' )
     {
         AddMess( "Playing critter animations." );
 
@@ -4044,8 +4042,7 @@ void FOMapper::ParseCommand( const char* cmd )
             return;
         }
 
-        cmd++;
-        IntVec anims = _str( cmd ).splitToInt( ' ' );
+        IntVec anims = _str( command.substr( 1 ) ).splitToInt( ' ' );
         if( anims.empty() )
             return;
 
@@ -4074,13 +4071,14 @@ void FOMapper::ParseCommand( const char* cmd )
         }
     }
     // Other
-    else if( *cmd == '*' )
+    else if( command[ 0 ] == '*' )
     {
-        char cmd_[ MAX_FOTEXT ];
-        if( sscanf( cmd + 1, "%s", cmd_ ) != 1 )
+        istringstream icommand( command.substr( 1 ) );
+        string        command_ext;
+        if( !( icommand >> command_ext ) )
             return;
 
-        if( cmd_ == "new" )
+        if( command_ext == "new" )
         {
             ProtoMap* pmap = new ProtoMap( _str( "new" ).toHash() );
             pmap->GenNew();
@@ -4100,7 +4098,7 @@ void FOMapper::ParseCommand( const char* cmd )
             ActiveMap = map;
             LoadedMaps.push_back( map );
         }
-        else if( cmd_ == "unload" )
+        else if( command_ext == "unload" )
         {
             AddMess( "Unload map." );
 
@@ -4127,20 +4125,19 @@ void FOMapper::ParseCommand( const char* cmd )
                 return;
             }
         }
-        else if( cmd_ == "scripts" )
+        else if( command_ext == "scripts" )
         {
             FinishScriptSystem();
             if( InitScriptSystem() )
                 RunStartScript();
             AddMess( "Scripts reloaded." );
         }
-        else if( ActiveMap && cmd_ == "size" )
+        else if( command_ext == "size" && ActiveMap )
         {
             AddMess( "Resize map." );
 
-            cmd += Str::Length( "*size" );
             int maxhx, maxhy;
-            if( sscanf( cmd, "%d%d", &maxhx, &maxhy ) != 2 )
+            if( !( icommand >> maxhx >> maxhy ) )
             {
                 AddMess( "Invalid args." );
                 return;
@@ -4274,7 +4271,7 @@ bool FOMapper::InitScriptSystem()
         WriteLog( "Script system initialization fail.\n" );
         return false;
     }
-    Script::SetExceptionCallback([] (const char* str)
+    Script::SetExceptionCallback([] ( const string &str )
                                  {
                                      CreateDump( "ScriptException", str );
                                      ShowMessage( str );
@@ -4291,7 +4288,7 @@ bool FOMapper::InitScriptSystem()
     // Load scripts
     Script::Undef( nullptr );
     Script::Define( "__MAPPER" );
-    Script::Define( "__VERSION %d", FONLINE_VERSION );
+    Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
     if( !Script::ReloadScripts( "Mapper" ) )
     {

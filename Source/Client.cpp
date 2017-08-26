@@ -18,8 +18,8 @@ static void* ASDeepDebugMalloc( size_t size )
     if( ASDbgMemoryCanWork && !ASDbgMemoryInUse )
     {
         ASDbgMemoryInUse = true;
-        const char* func = Script::GetActiveFuncName();
-        string      buf = _str( "AS : {}", func ? func : "<nullptr>" );
+        string func = Script::GetActiveFuncName();
+        string buf = _str( "AS : {}", !func.empty() ? func : "<nullptr>" );
         MEMORY_PROCESS_STR( buf.c_str(), (int) size );
         ASDbgMemoryPtr.insert( std::make_pair( ptr, buf ) );
         ASDbgMemoryInUse = false;
@@ -2307,7 +2307,7 @@ void FOClient::Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_dat
         WriteLog( "Request load from file '{}'...", fname );
 
     uint   msg = NETMSG_SINGLEPLAYER_SAVE_LOAD;
-    ushort fname_len = Str::Length( fname );
+    ushort fname_len = (ushort) strlen( fname );
     uint   msg_len = sizeof( msg ) + sizeof( save ) + sizeof( fname_len ) + fname_len;
     if( save )
         msg_len += sizeof( uint ) + (uint) pic_data->size();
@@ -2730,7 +2730,7 @@ void FOClient::Net_OnTextMsg( bool with_lexems )
     }
 }
 
-void FOClient::OnText( const char* str, uint crid, int how_say )
+void FOClient::OnText( const string& str, uint crid, int how_say )
 {
     string fstr = str;
     if( fstr.empty() )
@@ -2827,12 +2827,10 @@ void FOClient::OnText( const char* str, uint crid, int how_say )
     FlashGameWindow();
 }
 
-void FOClient::OnMapText( const char* str, ushort hx, ushort hy, uint color )
+void FOClient::OnMapText( const string& str, ushort hx, ushort hy, uint color )
 {
-    uint   len = Str::Length( str );
-    uint   text_delay = GameOpt.TextDelay + len * 100;
+    uint   text_delay = GameOpt.TextDelay + (uint) str.length() * 100;
     string sstr = str;
-
     Script::RaiseInternalEvent( ClientFunctions.MapMessage, &sstr, &hx, &hy, &color, &text_delay );
 
     MapText t;
@@ -2914,7 +2912,7 @@ void FOClient::Net_OnMapTextMsg()
 
     string str = CurLang.Msg[ msg_num ].GetStr( num_str );
     FormatTags( str, Chosen, nullptr, "" );
-    OnMapText( str.c_str(), hx, hy, color );
+    OnMapText( str, hx, hy, color );
 }
 
 void FOClient::Net_OnMapTextMsgLex()
@@ -2951,7 +2949,7 @@ void FOClient::Net_OnMapTextMsgLex()
 
     string str = CurLang.Msg[ msg_num ].GetStr( num_str );
     FormatTags( str, Chosen, nullptr, lexems );
-    OnMapText( str.c_str(), hx, hy, color );
+    OnMapText( str, hx, hy, color );
 }
 
 void FOClient::Net_OnCritterDir()
@@ -6405,7 +6403,7 @@ void FOClient::OnSendGlobalValue( Entity* entity, Property* prop )
     if( prop->GetAccess() == Property::PublicFullModifiable )
         Self->Net_SendProperty( NetProperty::Global, prop, Globals );
     else
-        SCRIPT_ERROR_R( "Unable to send global modifiable property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R( "Unable to send global modifiable property '{}'", prop->GetName() );
 }
 
 void FOClient::OnSendCritterValue( Entity* entity, Property* prop )
@@ -6416,7 +6414,7 @@ void FOClient::OnSendCritterValue( Entity* entity, Property* prop )
     else if( prop->GetAccess() == Property::PublicFullModifiable )
         Self->Net_SendProperty( NetProperty::Critter, prop, cr );
     else
-        SCRIPT_ERROR_R( "Unable to send critter modifiable property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R( "Unable to send critter modifiable property '{}'", prop->GetName() );
 }
 
 void FOClient::OnSendItemValue( Entity* entity, Property* prop )
@@ -6433,18 +6431,18 @@ void FOClient::OnSendItemValue( Entity* entity, Property* prop )
             else if( cr && prop->GetAccess() == Property::PublicFullModifiable )
                 Self->Net_SendProperty( NetProperty::CritterItem, prop, item );
             else
-                SCRIPT_ERROR_R( "Unable to send item (a critter) modifiable property '%s'", prop->GetName() );
+                SCRIPT_ERROR_R( "Unable to send item (a critter) modifiable property '{}'", prop->GetName() );
         }
         else if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
         {
             if( prop->GetAccess() == Property::PublicFullModifiable )
                 Self->Net_SendProperty( NetProperty::MapItem, prop, item );
             else
-                SCRIPT_ERROR_R( "Unable to send item (a map) modifiable property '%s'", prop->GetName() );
+                SCRIPT_ERROR_R( "Unable to send item (a map) modifiable property '{}'", prop->GetName() );
         }
         else
         {
-            SCRIPT_ERROR_R( "Unable to send item (a container) modifiable property '%s'", prop->GetName() );
+            SCRIPT_ERROR_R( "Unable to send item (a container) modifiable property '{}'", prop->GetName() );
         }
     }
 }
@@ -6527,7 +6525,7 @@ void FOClient::OnSendMapValue( Entity* entity, Property* prop )
     if( prop->GetAccess() == Property::PublicFullModifiable )
         Self->Net_SendProperty( NetProperty::Map, prop, Globals );
     else
-        SCRIPT_ERROR_R( "Unable to send map modifiable property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R( "Unable to send map modifiable property '{}'", prop->GetName() );
 }
 
 void FOClient::OnSendLocationValue( Entity* entity, Property* prop )
@@ -6535,7 +6533,7 @@ void FOClient::OnSendLocationValue( Entity* entity, Property* prop )
     if( prop->GetAccess() == Property::PublicFullModifiable )
         Self->Net_SendProperty( NetProperty::Location, prop, Globals );
     else
-        SCRIPT_ERROR_R( "Unable to send location modifiable property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R( "Unable to send location modifiable property '{}'", prop->GetName() );
 }
 
 /************************************************************************/
@@ -6584,7 +6582,7 @@ bool FOClient::ReloadScripts()
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
     }
-    Script::SetExceptionCallback([ this ] ( const char* str )
+    Script::SetExceptionCallback([ this ] ( const string &str )
                                  {
                                      ShowMessage( str );
                                      DoRestart = true;
@@ -6604,7 +6602,7 @@ bool FOClient::ReloadScripts()
     // Options
     Script::Undef( nullptr );
     Script::Define( "__CLIENT" );
-    Script::Define( "__VERSION %d", FONLINE_VERSION );
+    Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
 
     // Store dlls
     for( int i = STR_INTERNAL_SCRIPT_DLLS; ; i += 2 )
@@ -7335,7 +7333,7 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     }
     else if( cmd == "DialogAnswer" && args.size() >= 4 )
     {
-        bool is_npc = Str::Compare( args[ 1 ], "true" );
+        bool is_npc = ( args[ 1 ] == "true" );
         uint talker_id = _str( args[ 2 ] ).toUInt();
         uint answer_index = _str( args[ 3 ] ).toUInt();
         Self->Net_SendTalk( is_npc, talker_id, answer_index );
@@ -8265,7 +8263,7 @@ void FOClient::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
     prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R( "Property '%s' not found.", _str().parseHash( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
     string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
@@ -8286,11 +8284,11 @@ void FOClient::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
     Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
-        SCRIPT_ERROR_R( "Property '%s' not found.", _str().parseHash( prop_enum_value ) );
+        SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
     string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )
-        SCRIPT_ERROR_R( result.c_str() );
+        SCRIPT_ERROR_R( result );
 
     gen->SetReturnByte( 1 );
 }
@@ -8302,7 +8300,7 @@ void FOClient::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 
 bool FOClient::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
-    if( FileManager::LoadDataFile( dat_name.c_str() ) )
+    if( FileManager::LoadDataFile( dat_name ) )
     {
         ResMngr.Refresh();
         return true;

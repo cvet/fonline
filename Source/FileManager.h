@@ -29,6 +29,8 @@ public:
     FileManager( const string& path, bool no_read = false );
     FileManager( const uchar* stream, uint length );
 
+    explicit operator bool() { return IsLoaded(); }
+
     bool   LoadFile( const string& path, bool no_read = false );
     bool   LoadStream( const uchar* stream, uint length );
     void   UnloadFile();
@@ -61,9 +63,9 @@ public:
     uint   GetOutBufLen() { return endOutBuf; }
     bool   SaveFile( const string& fname );
 
-    void SetData( void* data, uint len );
-    void SetStr( const char* fmt, ... );
-    void SetStrNT( const char* fmt, ... );
+    void SetData( const void* data, uint len );
+    void SetStr( const string& str );
+    void SetStrNT( const string& str );
     void SetUChar( uchar data );
     void SetBEUShort( ushort data );
     void SetBEShort( short data ) { SetBEUShort( (ushort) data ); }

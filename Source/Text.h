@@ -9,23 +9,17 @@
 
 namespace Str
 {
-    void Copy( char* to, uint size, const char* from );
+    void Copy( char* to, size_t size, const char* from );
     template< int Size >
     inline void Copy( char(&to)[ Size ], const char* from ) { return Copy( to, Size, from ); }
-    template< int Size >
-    inline void CopyCount( char(&to)[ Size ], const char* from, uint count ) { return Copy( to, Size < count + 1 ? Size : count + 1, from ); }
-    void        Append( char* to, uint size, const char* from );
+    void        Append( char* to, size_t size, const char* from );
     template< int Size >
     inline void Append( char(&to)[ Size ], const char* from ) { return Append( to, Size, from ); }
-    template< int Size >
-    inline void AppendCount( char(&to)[ Size ], const char* from, uint count ) { return Append( to, Size < count + 1 ? Size : count + 1, from ); }
 
     char* Duplicate( const string& str );
     char* Duplicate( const char* str );
 
-    uint Length( const char* str );
     bool Compare( const char* str1, const char* str2 );
-    bool Compare( const string& str1, const string& str2 );
 
     void  HexToStr( uchar hex, char* str ); // 2 bytes string
     uchar StrToHex( const char* str );
@@ -54,7 +48,9 @@ public:
     bool empty();
     bool compareIgnoreCase( const string& r );
     bool compareIgnoreCaseUtf8( const string& r );
+    bool startsWith( char r );
     bool startsWith( const string& r );
+    bool endsWith( char r );
     bool endsWith( const string& r );
     bool isValidUtf8();
     uint lengthUtf8();

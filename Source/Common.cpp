@@ -154,9 +154,8 @@ void InitialSetup( uint argc, char** argv )
     // Command line config
     for( uint i = 0; i < argc; i++ )
     {
-        const char* arg = argv[ i ];
-        uint        arg_len = Str::Length( arg );
-        if( arg_len < 2 || arg[ 0 ] != '-' )
+        string arg = argv[ i ];
+        if( arg.length() < 2 || arg[ 0 ] != '-' )
             continue;
 
         string arg_value;
@@ -168,7 +167,7 @@ void InitialSetup( uint argc, char** argv )
             i++;
         }
 
-        MainConfig->SetStr( "", arg + 1, arg_value );
+        MainConfig->SetStr( "", arg.substr( 1 ), arg_value );
     }
 
     // Cache modules

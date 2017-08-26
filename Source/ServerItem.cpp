@@ -86,7 +86,7 @@ void FOServer::OnSetItemCount( Entity* entity, Property* prop, void* cur_value, 
         if( !item->GetStackable() )
             SCRIPT_ERROR_R( "Trying to change count of not stackable item." );
         else
-            SCRIPT_ERROR_R( "Item count can't be zero or negative (%d).", (int) cur );
+            SCRIPT_ERROR_R( "Item count can't be zero or negative ({}).", (int) cur );
     }
 }
 

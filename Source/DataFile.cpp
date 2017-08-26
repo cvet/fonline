@@ -150,7 +150,7 @@ string BundleFile::packName = "$Bundle";
 DataFile* OpenDataFile( const string& path )
 {
     string ext = _str( path ).getFileExtension();
-    if( Str::Compare( path, "$Bundle" ) )
+    if( path == "$Bundle" )
     {
         BundleFile* bundle = new BundleFile();
         if( !bundle->Init( path ) )

@@ -504,7 +504,7 @@ bool FileManager::SaveFile( const string& fname )
     return true;
 }
 
-void FileManager::SetData( void* data, uint len )
+void FileManager::SetData( const void* data, uint len )
 {
     if( !len )
         return;
@@ -521,28 +521,14 @@ void FileManager::SetData( void* data, uint len )
         endOutBuf = posOutBuf;
 }
 
-void FileManager::SetStr( const char* fmt, ... )
+void FileManager::SetStr( const string& str )
 {
-    char    str[ MAX_FOTEXT ];
-
-    va_list list;
-    va_start( list, fmt );
-    vsprintf( str, fmt, list );
-    va_end( list );
-
-    SetData( str, Str::Length( str ) );
+    SetData( str.c_str(), (uint) str.length() );
 }
 
-void FileManager::SetStrNT( const char* fmt, ... )
+void FileManager::SetStrNT( const string& str )
 {
-    char    str[ MAX_FOTEXT ];
-
-    va_list list;
-    va_start( list, fmt );
-    vsprintf( str, fmt, list );
-    va_end( list );
-
-    SetData( str, Str::Length( str ) + 1 );
+    SetData( str.c_str(), (uint) str.length() + 1 );
 }
 
 void FileManager::SetUChar( uchar data )
@@ -779,7 +765,7 @@ FileManager& FilesCollection::GetNextFile( string* name /* = nullptr */, string*
 {
     curFileIndex++;
     curFile.LoadFile( filePaths[ curFileIndex - 1 ], no_read_data );
-    RUNTIME_ASSERT_STR( curFile.IsLoaded(), filePaths[ curFileIndex - 1 ].c_str() );
+    RUNTIME_ASSERT_STR( curFile.IsLoaded(), filePaths[ curFileIndex - 1 ] );
     if( name )
         *name = fileNames[ curFileIndex - 1 ];
     if( path )

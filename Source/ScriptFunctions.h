@@ -49,7 +49,7 @@ static void Global_Assert( bool condition )
 
 static void Global_ThrowException( string message )
 {
-    Script::RaiseException( "%s", message.c_str() );
+    Script::RaiseException( message );
 }
 
 static int Global_Random( int min, int max )
@@ -61,7 +61,7 @@ static int Global_Random( int min, int max )
 static void Global_Log( string text )
 {
     #ifndef FONLINE_SCRIPT_COMPILER
-    Script::Log( text.c_str() );
+    Script::Log( text );
     #else
     printf( "%s\n", text.c_str() );
     #endif

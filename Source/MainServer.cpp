@@ -501,7 +501,7 @@ static void UpdateInfo()
     {
         static void Update( Fl_Box* label, const string& text )
         {
-            if( !Str::Compare( text, (char*) label->label() ) )
+            if( text != (char*) label->label() )
             {
                 Str::Copy( (char*) label->label(), GUI_LABEL_BUF_SIZE, text.c_str() );
                 label->redraw_label();
@@ -1143,9 +1143,9 @@ static void AdminWork( void* session_ )
     string   admin_name = "Not authorized";
 
     // Welcome string
-    char welcome[] = { "Welcome to FOnline admin panel.\nEnter access key: " };
-    uint welcome_len = Str::Length( welcome ) + 1;
-    if( send( s->Sock, welcome, welcome_len, 0 ) != (int) welcome_len )
+    string welcome = "Welcome to FOnline admin panel.\nEnter access key: ";
+    int    welcome_len = (int) welcome.length() + 1;
+    if( send( s->Sock, welcome.c_str(), welcome_len, 0 ) != welcome_len )
     {
         WriteLog( "Admin connection first send fail, disconnect.\n" );
         goto label_Finish;
@@ -1179,7 +1179,7 @@ static void AdminWork( void* session_ )
             int    pos = -1;
             for( size_t i = 0, j = admin.size(); i < j; i++ )
             {
-                if( Str::Compare( admin[ i ].c_str(), cmd ) )
+                if( admin[ i ] == cmd )
                 {
                     pos = (int) i;
                     break;
@@ -1199,8 +1199,8 @@ static void AdminWork( void* session_ )
             else
             {
                 WriteLog( "Wrong access key entered in admin panel from IP '{}', disconnect.\n", inet_ntoa( s->From.sin_addr ) );
-                char failstr[] = { "Wrong access key!\n" };
-                send( s->Sock, failstr, Str::Length( failstr ) + 1, 0 );
+                string failstr = "Wrong access key!\n";
+                send( s->Sock, failstr.c_str(), (int) failstr.length() + 1, 0 );
                 goto label_Finish;
             }
         }

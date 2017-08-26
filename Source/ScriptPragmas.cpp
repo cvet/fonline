@@ -377,7 +377,7 @@ public:
         return true;
     }
 
-    bool RestoreEntity( const char* class_name, uint id, const StrMap& props_data )
+    bool RestoreEntity( const string& class_name, uint id, const StrMap& props_data )
     {
         EntityCreator* entity_creator = entityCreators[ class_name ];
         return entity_creator->RestoreEntity( id, props_data );
@@ -530,28 +530,28 @@ public:
                 return false;
             }
 
-            const char*   opt_name = opt_entry[ 0 ].c_str();
+            const string& opt_name = opt_entry[ 0 ];
             const string& opt_svalue = opt_entry[ 1 ];
 
-            if( Str::Compare( opt_name, "Group" ) )
+            if( opt_name == "Group" )
             {
                 group = opt_svalue;
             }
-            else if( Str::Compare( opt_name, "Min" ) )
+            else if( opt_name == "Min" )
             {
                 check_min_value = true;
                 min_value = ConvertParamValue( opt_svalue, fail );
             }
-            else if( Str::Compare( opt_name, "Max" ) )
+            else if( opt_name == "Max" )
             {
                 check_max_value = true;
                 max_value = ConvertParamValue( opt_svalue, fail );
             }
-            else if( Str::Compare( opt_name, "GetCallabck" ) )
+            else if( opt_name == "GetCallabck" )
             {
                 get_callback = opt_svalue;
             }
-            else if( Str::Compare( opt_name, "SetCallabck" ) )
+            else if( opt_name == "SetCallabck" )
             {
                 set_callbacks.push_back( opt_svalue );
             }
@@ -1280,17 +1280,14 @@ public:
                     arg_info.IsObjectEntity = true;
             }
 
-            if( name && Str::Length( name ) > 0 )
+            if( name && name[ 0 ] )
             {
-                char arg_type[ MAX_FOTEXT ];
-                Str::Copy( arg_type, engine->GetTypeDeclaration( type_id ) );
+                string arg_type = engine->GetTypeDeclaration( type_id );
                 if( flags & asTM_INOUTREF )
-                    Str::Append( arg_type, "&" );
+                    arg_type += "&";
 
-                char arg_name[ MAX_FOTEXT ];
-                Str::Copy( arg_name, name );
-                arg_name[ 0 ] = toupper( arg_name[ 0 ] );
-
+                string arg_name = name;
+                arg_name = _str( arg_name.substr( 0, 1 ) ).upper() + _str( arg_name.substr( 1 ) );
                 if( engine->RegisterObjectMethod( event_name.c_str(), _str( "void SubscribeTo{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
                     engine->RegisterObjectMethod( event_name.c_str(), _str( "void SubscribeTo{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
                     engine->RegisterObjectMethod( event_name.c_str(), _str( "void UnsubscribeFrom{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
@@ -1313,7 +1310,7 @@ public:
         return true;
     }
 
-    void* Find( const char* event_name )
+    void* Find( const string& event_name )
     {
         for( ScriptEvent* event : events )
             if( event->Name == event_name )
@@ -1767,12 +1764,12 @@ PropertyRegistrator** ScriptPragmaCallback::GetPropertyRegistrators()
     return propertyPragma->GetPropertyRegistrators();
 }
 
-bool ScriptPragmaCallback::RestoreEntity( const char* class_name, uint id, const StrMap& props_data )
+bool ScriptPragmaCallback::RestoreEntity( const string& class_name, uint id, const StrMap& props_data )
 {
     return entityPragma->RestoreEntity( class_name, id, props_data );
 }
 
-void* ScriptPragmaCallback::FindInternalEvent( const char* event_name )
+void* ScriptPragmaCallback::FindInternalEvent( const string& event_name )
 {
     return eventPragma->Find( event_name );
 }

@@ -27,12 +27,12 @@
 # define SCRIPT_METHOD_CONV       asCALL_THISCALL
 #endif
 
-#define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( error, ## __VA_ARGS__ ); return; } while( 0 )
-#define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( error, ## __VA_ARGS__ ); return 0; } while( 0 )
+#define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( _str( error, ## __VA_ARGS__ ) ); return; } while( 0 )
+#define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( _str( error, ## __VA_ARGS__ ) ); return 0; } while( 0 )
 
 typedef void ( *EndExecutionCallback )();
-typedef vector< asIScriptContext* >           ContextVec;
-typedef std::function< void ( const char* ) > ExceptionCallback;
+typedef vector< asIScriptContext* >             ContextVec;
+typedef std::function< void ( const string& ) > ExceptionCallback;
 
 struct EngineData
 {
@@ -49,20 +49,20 @@ struct EngineData
 class Script
 {
 public:
-    static bool Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
+    static bool Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls, uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display );
     static void Finish();
 
     static void* LoadDynamicLibrary( const string& dll_name );
     static void  SetLoadLibraryCompiler( bool enabled );
 
     static void UnloadScripts();
-    static bool ReloadScripts( const char* target );
+    static bool ReloadScripts( const string& target );
     static bool PostInitScriptSystem();
     static bool RunModuleInitFunctions();
 
     static asIScriptEngine* GetEngine();
     static void             SetEngine( asIScriptEngine* engine );
-    static asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls );
+    static asIScriptEngine* CreateEngine( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls );
     static void             RegisterScriptArrayExtensions( asIScriptEngine* engine );
     static void             RegisterScriptDictExtensions( asIScriptEngine* engine );
     static void             RegisterScriptStdStringExtensions( asIScriptEngine* engine );
@@ -74,9 +74,9 @@ public:
     static void              ReturnContext( asIScriptContext* ctx );
 
     static void   SetExceptionCallback( ExceptionCallback callback );
-    static void   RaiseException( const char* message, ... );
+    static void   RaiseException( const string& message );
     static void   PassException();
-    static void   HandleException( asIScriptContext* ctx, const char* message, ... );
+    static void   HandleException( asIScriptContext* ctx, const string& message );
     static string GetTraceback();
     static string MakeContextTraceback( asIScriptContext* ctx );
 
@@ -89,21 +89,21 @@ public:
     static void   ProfilerContextCallback( asIScriptContext* ctx, void* obj );
     static string GetProfilerStatistics();
 
-    static bool RestoreEntity( const char* class_name, uint id, const StrMap& props_data );
+    static bool RestoreEntity( const string& class_name, uint id, const StrMap& props_data );
 
-    static void* FindInternalEvent( const char* event_name );
+    static void* FindInternalEvent( const string& event_name );
     static bool  RaiseInternalEvent( void* event_ptr, ... );
     static void  RemoveEventsEntity( Entity* entity );
 
     static void HandleRpc( void* context );
 
-    static const char* GetActiveFuncName();
+    static string GetActiveFuncName();
 
     static void Watcher( void* );
     static void SetRunTimeout( uint abort_timeout, uint message_timeout );
 
-    static void Define( const char* def, ... );
-    static void Undef( const char* def );
+    static void Define( const string& define );
+    static void Undef( const string& define );
     static void CallPragmas( const Pragmas& pragmas );
     static bool LoadRootModule( StrVec& names, StrVec& contents, string& result_code );
     static bool RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_data );
@@ -153,18 +153,18 @@ public:
     static void*             GetReturnedRawAddress();
 
     // Logging
-    static void Log( const char* str );
-    static void LogA( const char* str );
-    static void LogError( const char* call_func, const char* error );
+    static void Log( const string& str );
+    static void LogA( const string& str );
+    static void LogError( const string& call_func, const string& error );
 
     static void CallbackMessage( const asSMessageInfo* msg, void* param );
     static void CallbackException( asIScriptContext* ctx, void* param );
 
     // Arrays stuff
-    static CScriptArray* CreateArray( const char* type );
+    static CScriptArray* CreateArray( const string& type );
 
     template< typename Type >
-    static CScriptArray* CreateArrayRef( const char* type, const vector< Type* >& vec )
+    static CScriptArray* CreateArrayRef( const string& type, const vector< Type* >& vec )
     {
         CScriptArray* arr = CreateArray( type );
         AppendVectorToArrayRef( vec, arr );

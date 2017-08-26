@@ -654,7 +654,7 @@ static void Str_Insert( char* to, const char* from, uint from_len = 0 )
         return;
 
     if( !from_len )
-        from_len = Str::Length( from );
+        from_len = (uint) strlen( from );
     if( !from_len )
         return;
 
@@ -900,7 +900,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
 
     if( skip_line_end )
     {
-        int len = (int) Str::Length( str );
+        int len = (int) strlen( str );
         for( int i = len - 2; i >= 0; i-- )
         {
             if( str[ i ] == '\n' )

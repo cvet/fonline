@@ -17,7 +17,7 @@
 # define ALLOW_NATIVE_CALLS
 #endif
 
-static const char* ContextStatesStr[] =
+static const string ContextStatesStr[] =
 {
     "Finished",
     "Suspended",
@@ -100,7 +100,7 @@ static uint   RunTimeoutAbort = 600000;   // 10 minutes
 static uint   RunTimeoutMessage = 300000; // 5 minutes
 #endif
 
-bool Script::Init( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls,
+bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls,
                    uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display )
 {
     // Create default engine
@@ -494,7 +494,7 @@ void Script::UnloadScripts()
         Engine->GetModuleByIndex( 0 )->Discard();
 }
 
-bool Script::ReloadScripts( const char* target )
+bool Script::ReloadScripts( const string& target )
 {
     WriteLog( "Reload scripts...\n" );
 
@@ -710,7 +710,7 @@ void Script::SetEngine( asIScriptEngine* engine )
     Engine = engine;
 }
 
-asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, const char* dll_target, bool allow_native_calls )
+asIScriptEngine* Script::CreateEngine( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls )
 {
     asIScriptEngine* engine = asCreateScriptEngine( ANGELSCRIPT_VERSION );
     if( !engine )
@@ -833,22 +833,16 @@ void Script::SetExceptionCallback( ExceptionCallback callback )
     OnException = callback;
 }
 
-void Script::RaiseException( const char* message, ... )
+void Script::RaiseException( const string& message )
 {
     asIScriptContext* ctx = asGetActiveContext();
     if( ctx && ctx->GetState() == asEXECUTION_EXCEPTION )
         return;
 
-    va_list list;
-    va_start( list, message );
-    char    buf[ MAX_FOTEXT ];
-    vsnprintf( buf, MAX_FOTEXT, message, list );
-    va_end( list );
-
     if( ctx )
-        ctx->SetException( buf );
+        ctx->SetException( message.c_str() );
     else
-        HandleException( nullptr, "Engine exception: %s\n", buf );
+        HandleException( nullptr, _str( "{}", "Engine exception: {}\n", message ) );
 }
 
 void Script::PassException()
@@ -856,22 +850,18 @@ void Script::PassException()
     RaiseException( "Pass" );
 }
 
-void Script::HandleException( asIScriptContext* ctx, const char* message, ... )
+void Script::HandleException( asIScriptContext* ctx, const string& message )
 {
-    va_list list;
-    va_start( list, message );
-    char    buf[ MAX_FOTEXT ];
-    vsnprintf( buf, MAX_FOTEXT, message, list );
-    va_end( list );
+    string buf = message;
 
     if( ctx )
     {
-        Str::Append( buf, "\n" );
+        buf += "\n";
 
         asIScriptContext* ctx_ = ctx;
         while( ctx_ )
         {
-            Str::Append( buf, MakeContextTraceback( ctx_ ).c_str() );
+            buf += MakeContextTraceback( ctx_ );
             ContextData* ctx_data = (ContextData*) ctx_->GetUserData();
             ctx_ = ctx_data->Parent;
         }
@@ -983,13 +973,13 @@ string Script::GetProfilerStatistics()
     return "Profiler not enabled.";
 }
 
-bool Script::RestoreEntity( const char* class_name, uint id, const StrMap& props_data )
+bool Script::RestoreEntity( const string& class_name, uint id, const StrMap& props_data )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     return edata->PragmaCB->RestoreEntity( class_name, id, props_data );
 }
 
-void* Script::FindInternalEvent( const char* event_name )
+void* Script::FindInternalEvent( const string& event_name )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     void*       result = edata->PragmaCB->FindInternalEvent( event_name );
@@ -1019,15 +1009,14 @@ void Script::HandleRpc( void* context )
     edata->PragmaCB->HandleRpc( context );
 }
 
-const char* Script::GetActiveFuncName()
+string Script::GetActiveFuncName()
 {
-    static const char error[] = "<error>";
     asIScriptContext* ctx = asGetActiveContext();
     if( !ctx )
-        return error;
+        return "";
     asIScriptFunction* func = ctx->GetFunction( 0 );
     if( !func )
-        return error;
+        return "";
     return func->GetName();
 }
 
@@ -1066,20 +1055,15 @@ void Script::SetRunTimeout( uint abort_timeout, uint message_timeout )
 /* Load / Bind                                                          */
 /************************************************************************/
 
-void Script::Define( const char* def, ... )
+void Script::Define( const string& define )
 {
-    va_list list;
-    va_start( list, def );
-    char    buf[ MAX_FOTEXT ];
-    vsnprintf( buf, MAX_FOTEXT, def, list );
-    va_end( list );
-    Preprocessor::Define( buf );
+    Preprocessor::Define( define );
 }
 
-void Script::Undef( const char* def )
+void Script::Undef( const string& define )
 {
-    if( def )
-        Preprocessor::Undef( def );
+    if( !define.empty() )
+        Preprocessor::Undef( define );
     else
         Preprocessor::UndefAll();
 }
@@ -1953,7 +1937,7 @@ bool Script::RunPrepared()
                 if( state == asEXECUTION_ABORTED )
                     HandleException( ctx, "Execution of script aborted (due to timeout)." );
                 else
-                    HandleException( ctx, "Execution of script stopped due to %s.", ContextStatesStr[ (int) state ] );
+                    HandleException( ctx, _str( "Execution of script stopped due to {}.", ContextStatesStr[ (int) state ] ) );
             }
             ctx->Abort();
             ReturnContext( ctx );
@@ -2181,7 +2165,7 @@ void* Script::GetReturnedRawAddress()
 /* Logging                                                              */
 /************************************************************************/
 
-void Script::Log( const char* str )
+void Script::Log( const string& str )
 {
     asIScriptContext* ctx = asGetActiveContext();
     if( !ctx )
@@ -2214,19 +2198,18 @@ void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
 
 void Script::CallbackException( asIScriptContext* ctx, void* param )
 {
-    const char* str = ctx->GetExceptionString();
-    uint        str_len = Str::Length( str );
-    if( !Str::Compare( str, "Pass" ) )
-        HandleException( ctx, "Script exception: %s%s", str, str_len > 0 && str[ str_len - 1 ] != '.' ? "." : "" );
+    string str = ctx->GetExceptionString();
+    if( str != "Pass" )
+        HandleException( ctx, _str( "Script exception: {}{}", str, !_str( str ).endsWith( '.' ) ? "." : "" ) );
 }
 
 /************************************************************************/
 /* Array                                                                */
 /************************************************************************/
 
-CScriptArray* Script::CreateArray( const char* type )
+CScriptArray* Script::CreateArray( const string& type )
 {
-    return CScriptArray::Create( Engine->GetTypeInfoById( Engine->GetTypeIdByDecl( type ) ) );
+    return CScriptArray::Create( Engine->GetTypeInfoById( Engine->GetTypeIdByDecl( type.c_str() ) ) );
 }
 
 /************************************************************************/

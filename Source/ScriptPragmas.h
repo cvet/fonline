@@ -53,8 +53,8 @@ public:
     void                  Finish();
     bool                  IsError();
     PropertyRegistrator** GetPropertyRegistrators();
-    bool                  RestoreEntity( const char* class_name, uint id, const StrMap& props_data );
-    void*                 FindInternalEvent( const char* event_name );
+    bool                  RestoreEntity( const string& class_name, uint id, const StrMap& props_data );
+    void*                 FindInternalEvent( const string& event_name );
     bool                  RaiseInternalEvent( void* event_ptr, va_list args );
     void                  RemoveEventsEntity( Entity* entity );
     void                  HandleRpc( void* context );

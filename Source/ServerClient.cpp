@@ -529,7 +529,7 @@ void FOServer::Process_CreateClient( Client* cl )
         ClientData* data = new ClientData();
         memzero( data, sizeof( ClientData ) );
         Str::Copy( data->ClientName, cl->Name.c_str() );
-        memcpy( data->ClientPassHash, password, Str::Length( password ) );
+        memcpy( data->ClientPassHash, password, strlen( password ) );
 
         SCOPE_LOCK( ClientsDataLocker );
         ClientsData.insert( std::make_pair( cl->GetId(), data ) );

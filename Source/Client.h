@@ -224,8 +224,8 @@ public:
     void Net_OnCheckUID4();
     void Net_OnViewMap();
 
-    void OnText( const char* str, uint crid, int how_say );
-    void OnMapText( const char* str, ushort hx, ushort hy, uint color );
+    void OnText( const string& str, uint crid, int how_say );
+    void OnMapText( const string& str, ushort hx, ushort hy, uint color );
     void CrittersProcess();
     void WaitPing();
 

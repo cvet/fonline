@@ -357,8 +357,8 @@ void Property::GenericGet( Entity* entity, void* ret_value )
     // Validate entity
     if( entity->IsDestroyed )
     {
-        SCRIPT_ERROR_R( "Attempt to get property '%s %s::%s' on destroyed entity.",
-                        typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+        SCRIPT_ERROR_R( "Attempt to get property '{} {}::{}' on destroyed entity.",
+                        typeName, properties->registrator->scriptClassName, propName );
     }
 
     // Virtual property
@@ -366,14 +366,14 @@ void Property::GenericGet( Entity* entity, void* ret_value )
     {
         if( !getCallback )
         {
-            SCRIPT_ERROR_R( "'Get' callback is not assigned for virtual property '%s %s::%s'.",
-                            typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+            SCRIPT_ERROR_R( "'Get' callback is not assigned for virtual property '{} {}::{}'.",
+                            typeName, properties->registrator->scriptClassName, propName );
         }
 
         if( properties->getCallbackLocked[ getIndex ] )
         {
-            SCRIPT_ERROR_R( "Recursive call for virtual property '%s %s::%s'.",
-                            typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+            SCRIPT_ERROR_R( "Recursive call for virtual property '{} {}::{}'.",
+                            typeName, properties->registrator->scriptClassName, propName );
         }
 
         properties->getCallbackLocked[ getIndex ] = true;
@@ -459,8 +459,8 @@ void Property::GenericSet( Entity* entity, void* new_value )
     // Validate entity
     if( entity->IsDestroyed )
     {
-        SCRIPT_ERROR_R( "Attempt to set property '%s %s::%s' on destroyed entity.",
-                        typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+        SCRIPT_ERROR_R( "Attempt to set property '{} {}::{}' on destroyed entity.",
+                        typeName, properties->registrator->scriptClassName, propName );
     }
 
     // Dereference ref types
@@ -472,8 +472,8 @@ void Property::GenericSet( Entity* entity, void* new_value )
     {
         if( setCallbacks.empty() )
         {
-            SCRIPT_ERROR_R( "'Set' callback is not assigned for virtual property '%s %s::%s'.",
-                            typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+            SCRIPT_ERROR_R( "'Set' callback is not assigned for virtual property '{} {}::{}'.",
+                            typeName, properties->registrator->scriptClassName, propName );
         }
 
         for( size_t i = 0; i < setCallbacks.size(); i++ )
@@ -531,8 +531,8 @@ void Property::GenericSet( Entity* entity, void* new_value )
         // Check for null
         if( !new_value )
         {
-            SCRIPT_ERROR_R( "Attempt to set null on property '%s %s::%s'.",
-                            typeName.c_str(), properties->registrator->scriptClassName.c_str(), propName.c_str() );
+            SCRIPT_ERROR_R( "Attempt to set null on property '{} {}::{}'.",
+                            typeName, properties->registrator->scriptClassName, propName );
         }
 
         // Expand new value data for comparison
@@ -752,14 +752,14 @@ void Property::GenericSet( Entity* entity, void* new_value )
     }
 }
 
-const char* Property::GetName()
+string Property::GetName()
 {
-    return propName.c_str();
+    return propName;
 }
 
-const char* Property::GetTypeName()
+string Property::GetTypeName()
 {
-    return typeName.c_str();
+    return typeName;
 }
 
 uint Property::GetRegIndex()
@@ -1176,7 +1176,7 @@ Property* Properties::FindByEnum( int enum_value )
     return registrator->FindByEnum( enum_value );
 }
 
-void* Properties::FindData( const char* property_name )
+void* Properties::FindData( const string& property_name )
 {
     if( !registrator )
         return 0;
@@ -1640,11 +1640,11 @@ bool Properties::LoadFromText( const StrMap& key_values )
     bool is_error = false;
     for( const auto& kv : key_values )
     {
-        const char* key = kv.first.c_str();
-        const char* value = kv.second.c_str();
+        const string& key = kv.first;
+        const string& value = kv.second;
 
         // Skip technical fields
-        if( !key[ 0 ] || key[ 0 ] == '$' )
+        if( key.empty() || key[ 0 ] == '$' )
             continue;
 
         // Find property
@@ -1715,7 +1715,7 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
     }
 }
 
-bool Properties::LoadPropertyFromText( Property* prop, const char* text )
+bool Properties::LoadPropertyFromText( Property* prop, const string& text )
 {
     RUNTIME_ASSERT( prop );
     RUNTIME_ASSERT( registrator == prop->registrator );
@@ -1725,7 +1725,7 @@ bool Properties::LoadPropertyFromText( Property* prop, const char* text )
     // Parse
     uchar pod_buf[ 8 ];
     bool is_hashes[] = { prop->isHash || prop->isResource, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2 };
-    void* value = ReadValue( text, prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error );
+    void* value = ReadValue( text.c_str(), prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error );
 
     // Assign
     if( prop->podDataOffset != uint( -1 ) )
@@ -1782,11 +1782,11 @@ int Properties::GetValueAsInt( Entity* entity, int enum_value )
 {
     Property* prop = entity->Props.registrator->FindByEnum( enum_value );
     if( !prop )
-        SCRIPT_ERROR_R0( "Enum '%d' not found", enum_value );
+        SCRIPT_ERROR_R0( "Enum '{}' not found", enum_value );
     if( !prop->IsPOD() )
-        SCRIPT_ERROR_R0( "Can't retreive integer value from non POD property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R0( "Can't retreive integer value from non POD property '{}'", prop->GetName() );
     if( !prop->IsReadable() )
-        SCRIPT_ERROR_R0( "Can't retreive integer value from non readable property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R0( "Can't retreive integer value from non readable property '{}'", prop->GetName() );
 
     return prop->GetPODValueAsInt( entity );
 }
@@ -1795,24 +1795,24 @@ void Properties::SetValueAsInt( Entity* entity, int enum_value, int value )
 {
     Property* prop = entity->Props.registrator->FindByEnum( enum_value );
     if( !prop )
-        SCRIPT_ERROR_R( "Enum '%d' not found", enum_value );
+        SCRIPT_ERROR_R( "Enum '{}' not found", enum_value );
     if( !prop->IsPOD() )
-        SCRIPT_ERROR_R( "Can't set integer value to non POD property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R( "Can't set integer value to non POD property '{}'", prop->GetName() );
     if( !prop->IsWritable() )
-        SCRIPT_ERROR_R( "Can't set integer value to non writable property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R( "Can't set integer value to non writable property '{}'", prop->GetName() );
 
     prop->SetPODValueAsInt( entity, value );
 }
 
-bool Properties::SetValueAsIntByName( Entity* entity, const char* enum_name, int value )
+bool Properties::SetValueAsIntByName( Entity* entity, const string& enum_name, int value )
 {
     Property* prop = entity->Props.registrator->Find( enum_name );
     if( !prop )
-        SCRIPT_ERROR_R0( "Enum '%s' not found", enum_name );
+        SCRIPT_ERROR_R0( "Enum '{}' not found", enum_name );
     if( !prop->IsPOD() )
-        SCRIPT_ERROR_R0( "Can't set by name integer value from non POD property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R0( "Can't set by name integer value from non POD property '{}'", prop->GetName() );
     if( !prop->IsWritable() )
-        SCRIPT_ERROR_R0( "Can't set integer value to non writable property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R0( "Can't set integer value to non writable property '{}'", prop->GetName() );
 
     prop->SetPODValueAsInt( entity, value );
     return true;
@@ -1822,13 +1822,13 @@ bool Properties::SetValueAsIntProps( Properties* props, int enum_value, int valu
 {
     Property* prop = props->registrator->FindByEnum( enum_value );
     if( !prop )
-        SCRIPT_ERROR_R0( "Enum '%d' not found", enum_value );
+        SCRIPT_ERROR_R0( "Enum '{}' not found", enum_value );
     if( !prop->IsPOD() )
-        SCRIPT_ERROR_R0( "Can't set integer value to non POD property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R0( "Can't set integer value to non POD property '{}'", prop->GetName() );
     if( !prop->IsWritable() )
-        SCRIPT_ERROR_R0( "Can't set integer value to non writable property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R0( "Can't set integer value to non writable property '{}'", prop->GetName() );
     if( prop->accessType & Property::VirtualMask )
-        SCRIPT_ERROR_R0( "Can't set integer value to virtual property '%s'", prop->GetName() );
+        SCRIPT_ERROR_R0( "Can't set integer value to virtual property '{}'", prop->GetName() );
 
     if( prop->isBoolDataType )
     {
@@ -1933,14 +1933,14 @@ bool PropertyRegistrator::Init()
     int result = engine->RegisterEnum( enum_type.c_str() );
     if( result < 0 )
     {
-        WriteLog( "Register entity property enum '{}' fail, error {}.\n", enum_type.c_str(), result );
+        WriteLog( "Register entity property enum '{}' fail, error {}.\n", enum_type, result );
         return false;
     }
 
     result = engine->RegisterEnumValue( enum_type.c_str(), "Invalid", 0 );
     if( result < 0 )
     {
-        WriteLog( "Register entity property enum '{}::Invalid' zero value fail, error {}.\n", enum_type.c_str(), result );
+        WriteLog( "Register entity property enum '{}::Invalid' zero value fail, error {}.\n", enum_type, result );
         return false;
     }
 
@@ -1976,13 +1976,13 @@ static void Property_SetValue_Generic( asIScriptGeneric* gen )
 }
 
 Property* PropertyRegistrator::Register(
-    const char* type_name,
-    const char* name,
+    const string& type_name,
+    const string& name,
     Property::AccessType access,
     bool is_const,
-    const char* group /* = NULL */,
-    int64* min_value /* = NULL */,
-    int64* max_value /* = NULL */
+    const char* group /* = nullptr */,
+    int64* min_value /* = nullptr */,
+    int64* max_value /* = nullptr */
     )
 {
     if( registrationFinished )
@@ -2001,7 +2001,7 @@ Property* PropertyRegistrator::Register(
     RUNTIME_ASSERT( engine );
 
     // Extract type
-    int type_id = engine->GetTypeIdByDecl( type_name );
+    int type_id = engine->GetTypeIdByDecl( type_name.c_str() );
     if( type_id < 0 )
     {
         WriteLog( "Invalid type '{}'.\n", type_name );
@@ -2027,7 +2027,7 @@ Property* PropertyRegistrator::Register(
     {
         data_type = Property::POD;
 
-        int type_id = engine->GetTypeIdByDecl( type_name );
+        int type_id = engine->GetTypeIdByDecl( type_name.c_str() );
         int primitive_size = engine->GetSizeOfPrimitiveType( type_id );
         if( primitive_size <= 0 )
         {
@@ -2117,12 +2117,12 @@ Property* PropertyRegistrator::Register(
 
     // Check name for already used
     asITypeInfo* ot = engine->GetTypeInfoByName( scriptClassName.c_str() );
-    RUNTIME_ASSERT_STR( ot, scriptClassName.c_str() );
+    RUNTIME_ASSERT_STR( ot, scriptClassName );
     for( asUINT i = 0, j = ot->GetPropertyCount(); i < j; i++ )
     {
         const char* n;
         ot->GetProperty( i, &n );
-        if( Str::Compare( n, name ) )
+        if( name == n )
         {
             WriteLog( "Trying to register already registered property '{}'.\n", name );
             return nullptr;
@@ -2230,10 +2230,10 @@ Property* PropertyRegistrator::Register(
     // Register enum values for property reflection
     string enum_value_name = _str( "{}::{}", enumTypeName, name );
     int  enum_value = (int) _str( enum_value_name ).toHash();
-    int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name, enum_value );
+    int  result = engine->RegisterEnumValue( enumTypeName.c_str(), name.c_str(), enum_value );
     if( result < 0 )
     {
-        WriteLog( "Register entity property enum '{}::{}' value {} fail, error {}.\n", enumTypeName.c_str(), name, enum_value, result );
+        WriteLog( "Register entity property enum '{}::{}' value {} fail, error {}.\n", enumTypeName, name, enum_value, result );
         return nullptr;
     }
 
@@ -2361,11 +2361,11 @@ Property* PropertyRegistrator::Register(
     prop->isConst = is_const;
     prop->asObjTypeId = type_id;
     prop->asObjType = as_obj_type;
-    prop->isHash = Str::Compare( type_name, "hash" );
+    prop->isHash = type_name == "hash";
     prop->isHashSubType0 = is_hash_sub0;
     prop->isHashSubType1 = is_hash_sub1;
     prop->isHashSubType2 = is_hash_sub2;
-    prop->isResource = Str::Compare( type_name, "resource" );
+    prop->isResource = type_name == "resource";
     prop->isIntDataType = is_int_data_type;
     prop->isSignedIntDataType = is_signed_int_data_type;
     prop->isFloatDataType = is_float_data_type;
@@ -2391,9 +2391,9 @@ Property* PropertyRegistrator::Register(
 }
 
 void PropertyRegistrator::SetDefaults(
-    const char* group /* = NULL */,
-    int64* min_value /* = NULL */,
-    int64* max_value     /* = NULL */
+    const char* group /* = nullptr */,
+    int64* min_value /* = nullptr */,
+    int64* max_value     /* = nullptr */
     )
 {
     SAFEDELA( defaultGroup );
@@ -2441,30 +2441,30 @@ Property* PropertyRegistrator::Get( uint property_index )
 
 Property* PropertyRegistrator::Find( const string& property_name )
 {
-    for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
-        if( property_name == registeredProperties[ i ]->propName )
-            return registeredProperties[ i ];
+    for( auto& prop : registeredProperties )
+        if( prop->propName == property_name )
+            return prop;
     return nullptr;
 }
 
 Property* PropertyRegistrator::FindByEnum( int enum_value )
 {
-    for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
-        if( registeredProperties[ i ]->enumValue == enum_value )
-            return registeredProperties[ i ];
+    for( auto& prop : registeredProperties )
+        if( prop->enumValue == enum_value )
+            return prop;
     return nullptr;
 }
 
-void PropertyRegistrator::SetNativeSetCallback( const char* property_name, NativeCallback callback )
+void PropertyRegistrator::SetNativeSetCallback( const string& property_name, NativeCallback callback )
 {
-    RUNTIME_ASSERT( property_name );
+    RUNTIME_ASSERT( !property_name.empty() );
     Find( property_name )->nativeSetCallback = callback;
 }
 
 void PropertyRegistrator::SetNativeSendCallback( NativeSendCallback callback )
 {
-    for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
-        registeredProperties[ i ]->nativeSendCallback = callback;
+    for( auto& prop : registeredProperties )
+        prop->nativeSendCallback = callback;
 }
 
 uint PropertyRegistrator::GetWholeDataSize()

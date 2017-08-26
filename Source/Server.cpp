@@ -912,7 +912,7 @@ void FOServer::Process_Text( Client* cl )
         {
             TextListen& tl = TextListeners[ i ];
             if( tl.SayType == SAY_RADIO && std::find( channels.begin(), channels.end(), tl.Parameter ) != channels.end() &&
-                _str( string( str ).substr( 0, tl.FirstStrLen ) ).compareIgnoreCaseUtf8( tl.FirstStr ) )
+                _str( string( str ).substr( 0, tl.FirstStr.length() ) ).compareIgnoreCaseUtf8( tl.FirstStr ) )
             {
                 listen_func_id[ listen_count ] = tl.FuncId;
                 listen_str[ listen_count ] = str;
@@ -929,7 +929,7 @@ void FOServer::Process_Text( Client* cl )
         {
             TextListen& tl = TextListeners[ i ];
             if( tl.SayType == how_say && tl.Parameter == pid &&
-                _str( string( str ).substr( 0, tl.FirstStrLen ) ).compareIgnoreCaseUtf8( tl.FirstStr ) )
+                _str( string( str ).substr( 0, tl.FirstStr.length() ) ).compareIgnoreCaseUtf8( tl.FirstStr ) )
             {
                 listen_func_id[ listen_count ] = tl.FuncId;
                 listen_str[ listen_count ] = str;
@@ -1356,7 +1356,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
 
         Script::Undef( nullptr );
         Script::Define( "__SERVER" );
-        Script::Define( "__VERSION %d", FONLINE_VERSION );
+        Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
         if( Script::ReloadScripts( "Server" ) )
             logcb( "Success." );
         else
@@ -2100,7 +2100,7 @@ bool FOServer::InitReal()
     FileManager fm;
     if( !fm.LoadFile( FileManager::GetWritePath( "Version.txt" ) ) || _str( fm.GetCStr() ).toInt() != FONLINE_VERSION || GameOpt.ForceRebuildResources )
     {
-        fm.SetStr( "%u", FONLINE_VERSION );
+        fm.SetStr( _str( "{}", FONLINE_VERSION ) );
         fm.SaveFile( "Version.txt" );
         FileManager::DeleteDir( "Update/" );
         FileManager::DeleteDir( "Binaries/" );
@@ -2467,15 +2467,15 @@ void FOServer::SaveBan( ClientBanned& ban, bool expired )
 
     fm.SetStr( "[Ban]\n" );
     if( ban.ClientName[ 0 ] )
-        fm.SetStr( "User = %s\n", ban.ClientName );
+        fm.SetStr( _str( "User = {}\n", ban.ClientName ) );
     if( ban.ClientIp )
-        fm.SetStr( "UserIp = %u\n", ban.ClientIp );
-    fm.SetStr( "BeginTime = %u %u %u %u %u\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute );
-    fm.SetStr( "EndTime = %u %u %u %u %u\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute );
+        fm.SetStr( _str( "UserIp = {}\n", ban.ClientIp ) );
+    fm.SetStr( _str( "BeginTime = {} {} {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute ) );
+    fm.SetStr( _str( "EndTime = {} {} {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute ) );
     if( ban.BannedBy[ 0 ] )
-        fm.SetStr( "BannedBy = %s\n", ban.BannedBy );
+        fm.SetStr( _str( "BannedBy = {}\n", ban.BannedBy ) );
     if( ban.BanInfo[ 0 ] )
-        fm.SetStr( "Comment = %s\n", ban.BanInfo );
+        fm.SetStr( _str( "Comment = {}\n", ban.BanInfo ) );
     fm.SetStr( "\n" );
 
     if( !fm.SaveFile( fname ) )
@@ -2492,15 +2492,15 @@ void FOServer::SaveBans()
         ClientBanned& ban = *it;
         fm.SetStr( "[Ban]\n" );
         if( ban.ClientName[ 0 ] )
-            fm.SetStr( "User = %s\n", ban.ClientName );
+            fm.SetStr( _str( "User = {}\n", ban.ClientName ) );
         if( ban.ClientIp )
-            fm.SetStr( "UserIp = %u\n", ban.ClientIp );
-        fm.SetStr( "BeginTime = %u %u %u %u %u\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute );
-        fm.SetStr( "EndTime = %u %u %u %u %u\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute );
+            fm.SetStr( _str( "UserIp = {}\n", ban.ClientIp ) );
+        fm.SetStr( _str( "BeginTime = {} {} {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute ) );
+        fm.SetStr( _str( "EndTime = {} {} {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute ) );
         if( ban.BannedBy[ 0 ] )
-            fm.SetStr( "BannedBy = %s\n", ban.BannedBy );
+            fm.SetStr( _str( "BannedBy = {}\n", ban.BannedBy ) );
         if( ban.BanInfo[ 0 ] )
-            fm.SetStr( "Comment = %s\n", ban.BanInfo );
+            fm.SetStr( _str( "Comment = {}\n", ban.BanInfo ) );
         fm.SetStr( "\n" );
     }
 
@@ -3017,9 +3017,9 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     memcpy( update_file.Data, &proto_items_data[ 0 ], update_file.Size );
     UpdateFiles.push_back( update_file );
 
-    const char* protos_cache_name = "$protos.cache";
-    WriteData( UpdateFilesList, (short) Str::Length( protos_cache_name ) );
-    WriteDataArr( UpdateFilesList, protos_cache_name, Str::Length( protos_cache_name ) );
+    const string protos_cache_name = "$protos.cache";
+    WriteData( UpdateFilesList, (short) protos_cache_name.length() );
+    WriteDataArr( UpdateFilesList, protos_cache_name.c_str(), (uint) protos_cache_name.length() );
     WriteData( UpdateFilesList, update_file.Size );
     WriteData( UpdateFilesList, Crypt.MurmurHash2( update_file.Data, update_file.Size ) );
 
