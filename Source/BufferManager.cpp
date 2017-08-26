@@ -247,8 +247,6 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_EFFECT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_FLY_EFFECT:
         return ( NETMSG_FLY_EFFECT_SIZE + bufReadPos <= bufEndPos );
-    case NETMSG_PLAY_SOUND:
-        return ( NETMSG_PLAY_SOUND_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_TALK_NPC:
         return ( NETMSG_SEND_TALK_NPC_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_SEND_GET_INFO:
@@ -349,6 +347,7 @@ bool BufferManager::NeedProcess()
     case NETMSG_SOME_ITEMS:
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_COMBAT_RESULTS:
+    case NETMSG_PLAY_SOUND:
     case NETMSG_TALK_NPC:
     case NETMSG_MAP:
     case NETMSG_RPC:
@@ -467,9 +466,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_FLY_EFFECT:
         size = NETMSG_FLY_EFFECT_SIZE;
         break;
-    case NETMSG_PLAY_SOUND:
-        size = NETMSG_PLAY_SOUND_SIZE;
-        break;
     case NETMSG_SEND_TALK_NPC:
         size = NETMSG_SEND_TALK_NPC_SIZE;
         break;
@@ -585,6 +581,7 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_SOME_ITEMS:
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_COMBAT_RESULTS:
+    case NETMSG_PLAY_SOUND:
     case NETMSG_TALK_NPC:
     case NETMSG_MAP:
     case NETMSG_RPC:

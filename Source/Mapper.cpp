@@ -6,8 +6,8 @@
 
 bool      FOMapper::SpritesCanDraw = false;
 FOMapper* FOMapper::Self = nullptr;
-char      FOMapper::ServerWritePath[ MAX_FOPATH ];
-char      FOMapper::ClientWritePath[ MAX_FOPATH ];
+string    FOMapper::ServerWritePath;
+string    FOMapper::ClientWritePath;
 Map*      FOMapper::SScriptFunc::ClientCurMap = nullptr;
 Location* FOMapper::SScriptFunc::ClientCurLocation = nullptr;
 
@@ -94,8 +94,8 @@ bool FOMapper::Init()
     GameOpt.ScrollCheck = false;
 
     // Setup write paths
-    Str::Copy( ServerWritePath, GameOpt.ServerDir.c_str() );
-    Str::Copy( ClientWritePath, GameOpt.WorkDir.c_str() );
+    ServerWritePath = GameOpt.ServerDir;
+    ClientWritePath = GameOpt.WorkDir;
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
 
     // Sprite manager

@@ -1254,15 +1254,15 @@ void Critter::Send_GameInfo( Map* map )
     if( IsPlayer() )
         ( (Client*) this )->Send_GameInfo( map );
 }
-void Critter::Send_Text( Critter* from_cr, const char* s_str, uchar how_say )
+void Critter::Send_Text( Critter* from_cr, const string& text, uchar how_say )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_Text( from_cr, s_str, how_say );
+        ( (Client*) this )->Send_Text( from_cr, text, how_say );
 }
-void Critter::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, bool unsafe_text )
+void Critter::Send_TextEx( uint from_id, const string& text, uchar how_say, bool unsafe_text )
 {
     if( IsPlayer() )
-        ( (Client*) this )->Send_TextEx( from_id, s_str, str_len, how_say, unsafe_text );
+        ( (Client*) this )->Send_TextEx( from_id, text, how_say, unsafe_text );
 }
 void Critter::Send_TextMsg( Critter* from_cr, uint str_num, uchar how_say, ushort num_msg )
 {
@@ -1324,7 +1324,7 @@ void Critter::Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort
     if( IsPlayer() )
         ( (Client*) this )->Send_FlyEffect( eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy );
 }
-void Critter::Send_PlaySound( uint crid_synchronize, const char* sound_name )
+void Critter::Send_PlaySound( uint crid_synchronize, const string& sound_name )
 {
     if( IsPlayer() )
         ( (Client*) this )->Send_PlaySound( crid_synchronize, sound_name );
@@ -1446,16 +1446,15 @@ void Critter::SendAA_SetAnims( int cond, uint anim1, uint anim2 )
     }
 }
 
-void Critter::SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool unsafe_text )
+void Critter::SendAA_Text( CrVec& to_cr, const string& text, uchar how_say, bool unsafe_text )
 {
-    if( !str || !str[ 0 ] )
+    if( text.empty() )
         return;
 
-    ushort str_len = (ushort) strlen( str );
-    uint   from_id = GetId();
+    uint from_id = GetId();
 
     if( IsPlayer() )
-        Send_TextEx( from_id, str, str_len, how_say, unsafe_text );
+        Send_TextEx( from_id, text, how_say, unsafe_text );
 
     if( to_cr.empty() )
         return;
@@ -1466,18 +1465,15 @@ void Critter::SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool un
     else if( how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD )
         dist = GameOpt.WhisperDist + GetMultihex();
 
-    for( auto it = to_cr.begin(), end = to_cr.end(); it != end; ++it )
+    for( Critter* cr : to_cr )
     {
-        Critter* cr = *it;
         if( cr == this || !cr->IsPlayer() )
             continue;
 
-        // SYNC_LOCK(cr);
-
         if( dist == -1 )
-            cr->Send_TextEx( from_id, str, str_len, how_say, unsafe_text );
+            cr->Send_TextEx( from_id, text, how_say, unsafe_text );
         else if( CheckDist( GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex() ) )
-            cr->Send_TextEx( from_id, str, str_len, how_say, unsafe_text );
+            cr->Send_TextEx( from_id, text, how_say, unsafe_text );
     }
 }
 
@@ -2640,34 +2636,32 @@ void Client::Send_GameInfo( Map* map )
     BOUT_END( this );
 }
 
-void Client::Send_Text( Critter* from_cr, const char* s_str, uchar how_say )
+void Client::Send_Text( Critter* from_cr, const string& text, uchar how_say )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
-    if( !s_str || !s_str[ 0 ] )
+    if( text.empty() )
         return;
 
-    ushort s_len = (ushort) strlen( s_str );
-    uint   from_id = ( from_cr ? from_cr->GetId() : 0 );
-    Send_TextEx( from_id, s_str, s_len, how_say, false );
+    uint from_id = ( from_cr ? from_cr->GetId() : 0 );
+    Send_TextEx( from_id, text, how_say, false );
 }
 
-void Client::Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, bool unsafe_text )
+void Client::Send_TextEx( uint from_id, const string& text, uchar how_say, bool unsafe_text )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( from_id ) + sizeof( how_say ) +
-                   sizeof( unsafe_text ) + sizeof( str_len ) + str_len;
+                   BufferManager::StringLenSize + (uint) text.length() + sizeof( unsafe_text );
 
     BOUT_BEGIN( this );
     Connection->Bout << NETMSG_CRITTER_TEXT;
     Connection->Bout << msg_len;
     Connection->Bout << from_id;
     Connection->Bout << how_say;
+    Connection->Bout << text;
     Connection->Bout << unsafe_text;
-    Connection->Bout << str_len;
-    Connection->Bout.Push( s_str, str_len );
     BOUT_END( this );
 }
 
@@ -2761,13 +2755,13 @@ void Client::Send_TextMsgLex( uint from_id, uint num_str, uchar how_say, ushort 
     BOUT_END( this );
 }
 
-void Client::Send_MapText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text )
+void Client::Send_MapText( ushort hx, ushort hy, uint color, const string& text, bool unsafe_text )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
     uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( hx ) + sizeof( hy ) + sizeof( color ) +
-                   sizeof( text_len ) + text_len + sizeof( unsafe_text );
+                   BufferManager::StringLenSize + (uint) text.length() + sizeof( unsafe_text );
 
     BOUT_BEGIN( this );
     Connection->Bout << NETMSG_MAP_TEXT;
@@ -2775,8 +2769,7 @@ void Client::Send_MapText( ushort hx, ushort hy, uint color, const char* text, u
     Connection->Bout << hx;
     Connection->Bout << hy;
     Connection->Bout << color;
-    Connection->Bout << text_len;
-    Connection->Bout.Push( text, text_len );
+    Connection->Bout << text;
     Connection->Bout << unsafe_text;
     BOUT_END( this );
 }
@@ -2950,15 +2943,19 @@ void Client::Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort 
     BOUT_END( this );
 }
 
-void Client::Send_PlaySound( uint crid_synchronize, const char* sound_name )
+void Client::Send_PlaySound( uint crid_synchronize, const string& sound_name )
 {
     if( IsSendDisabled() || IsOffline() )
         return;
 
+    uint msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( crid_synchronize ) +
+                   BufferManager::StringLenSize + (uint) sound_name.length();
+
     BOUT_BEGIN( this );
     Connection->Bout << NETMSG_PLAY_SOUND;
+    Connection->Bout << msg_len;
     Connection->Bout << crid_synchronize;
-    Connection->Bout.Push( sound_name, 100 );
+    Connection->Bout << sound_name;
     BOUT_END( this );
 }
 

@@ -1323,16 +1323,13 @@ void FOServer::SScriptFunc::Crit_PlaySound( Critter* cr, string sound_name, bool
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
-    char sound_name_[ 100 ];
-    Str::Copy( sound_name_, sound_name.c_str() );
-    uint crid = cr->GetId();
-
     if( send_self )
-        cr->Send_PlaySound( crid, sound_name_ );
+        cr->Send_PlaySound( cr->GetId(), sound_name );
+
     for( auto it = cr->VisCr.begin(), end = cr->VisCr.end(); it != end; ++it )
     {
         Critter* cr_ = *it;
-        cr_->Send_PlaySound( crid, sound_name_ );
+        cr_->Send_PlaySound( cr->GetId(), sound_name );
     }
 }
 
@@ -2494,7 +2491,7 @@ void FOServer::SScriptFunc::Map_SetText( Map* map, ushort hex_x, ushort hex_y, u
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
     if( hex_x >= map->GetWidth() || hex_y >= map->GetHeight() )
         SCRIPT_ERROR_R( "Invalid hexes args." );
-    map->SetText( hex_x, hex_y, color, text.c_str(), (ushort) text.length(), false );
+    map->SetText( hex_x, hex_y, color, text, false );
 }
 
 void FOServer::SScriptFunc::Map_SetTextMsg( Map* map, ushort hex_x, ushort hex_y, uint color, ushort text_msg, uint str_num )
@@ -2588,15 +2585,12 @@ void FOServer::SScriptFunc::Map_PlaySound( Map* map, string sound_name )
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
-    char sound_name_[ 100 ];
-    Str::Copy( sound_name_, sound_name.c_str() );
-
     ClVec players;
     map->GetPlayers( players );
     for( auto it = players.begin(), end = players.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        cr->Send_PlaySound( 0, sound_name_ );
+        cr->Send_PlaySound( 0, sound_name );
     }
 }
 
@@ -2607,16 +2601,13 @@ void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, string sound_name, us
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
         SCRIPT_ERROR_R( "Invalid hexes args." );
 
-    char sound_name_[ 100 ];
-    Str::Copy( sound_name_, sound_name.c_str() );
-
     ClVec players;
     map->GetPlayers( players );
     for( auto it = players.begin(), end = players.end(); it != end; ++it )
     {
         Critter* cr = *it;
         if( CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius ) )
-            cr->Send_PlaySound( 0, sound_name_ );
+            cr->Send_PlaySound( 0, sound_name );
     }
 }
 
@@ -2980,17 +2971,18 @@ void FOServer::SScriptFunc::Global_DeleteNpcById( uint npc_id )
 
 void FOServer::SScriptFunc::Global_RadioMessage( ushort channel, string text )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text.c_str(), (ushort) text.length(), false, 0, 0, nullptr );
+    if( !text.empty() )
+        ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text, false, 0, 0, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsg( ushort channel, ushort text_msg, uint num_str )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, false, text_msg, num_str, nullptr );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, text_msg, num_str, nullptr );
 }
 
 void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort text_msg, uint num_str, string lexems )
 {
-    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, nullptr, 0, false, text_msg, num_str, !lexems.empty() ? lexems.c_str() : nullptr );
+    ItemMngr.RadioSendTextEx( channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, text_msg, num_str, !lexems.empty() ? lexems.c_str() : nullptr );
 }
 
 uint FOServer::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )

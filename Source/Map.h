@@ -56,7 +56,7 @@ public:
     Location* GetLocation();
     void      SetLocation( Location* loc ) { mapLocation = loc; }
 
-    void SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text );
+    void SetText( ushort hx, ushort hy, uint color, const string& text, bool unsafe_text );
     void SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str );
     void SetTextMsgLex( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len );
 

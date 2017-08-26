@@ -1124,16 +1124,15 @@ bool Map::SetScript( asIScriptFunction* func, bool first_time )
     return true;
 }
 
-void Map::SetText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text )
+void Map::SetText( ushort hx, ushort hy, uint color, const string& text, bool unsafe_text )
 {
     if( hx >= GetWidth() || hy >= GetHeight() )
         return;
 
-    for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
+    for( Client* cl : mapPlayers )
     {
-        Client* cl = *it;
         if( cl->LookCacheValue >= DistGame( hx, hy, cl->GetHexX(), cl->GetHexY() ) )
-            cl->Send_MapText( hx, hy, color, text, text_len, unsafe_text );
+            cl->Send_MapText( hx, hy, color, text, unsafe_text );
     }
 }
 
@@ -1142,9 +1141,8 @@ void Map::SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint nu
     if( hx >= GetWidth() || hy >= GetHeight() || !num_str )
         return;
 
-    for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
+    for( Client* cl : mapPlayers )
     {
-        Client* cl = *it;
         if( cl->LookCacheValue >= DistGame( hx, hy, cl->GetHexX(), cl->GetHexY() ) )
             cl->Send_MapTextMsg( hx, hy, color, text_msg, num_str );
     }
@@ -1155,9 +1153,8 @@ void Map::SetTextMsgLex( ushort hx, ushort hy, uint color, ushort text_msg, uint
     if( hx >= GetWidth() || hy >= GetHeight() || !num_str )
         return;
 
-    for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
+    for( Client* cl : mapPlayers )
     {
-        Client* cl = *it;
         if( cl->LookCacheValue >= DistGame( hx, hy, cl->GetHexX(), cl->GetHexY() ) )
             cl->Send_MapTextMsgLex( hx, hy, color, text_msg, num_str, lexems, lexems_len );
     }

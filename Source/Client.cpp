@@ -2649,18 +2649,14 @@ void FOClient::Net_OnText()
     uint   msg_len;
     uint   crid;
     uchar  how_say;
+    string text;
     bool   unsafe_text;
-    ushort len;
-    char   str[ MAX_FOTEXT + 1 ];
 
     Bin >> msg_len;
     Bin >> crid;
     Bin >> how_say;
+    Bin >> text;
     Bin >> unsafe_text;
-
-    Bin >> len;
-    Bin.Pop( str, len );
-    str[ len ] = 0;
 
     CHECK_IN_BUFF_ERROR;
 
@@ -2671,13 +2667,8 @@ void FOClient::Net_OnText()
     }
 
     if( unsafe_text )
-    {
-        string str_ = str;
-        Keyb::EraseInvalidChars( str_, KIF_NO_SPEC_SYMBOLS );
-        Str::Copy( str, str_.c_str() );
-    }
-
-    OnText( str, crid, how_say );
+        Keyb::EraseInvalidChars( text, KIF_NO_SPEC_SYMBOLS );
+    OnText( text, crid, how_say );
 }
 
 void FOClient::Net_OnTextMsg( bool with_lexems )
@@ -2856,37 +2847,27 @@ void FOClient::Net_OnMapText()
     uint   msg_len;
     ushort hx, hy;
     uint   color;
-    ushort len;
-    char   str[ MAX_FOTEXT + 1 ];
+    string text;
     bool   unsafe_text;
 
     Bin >> msg_len;
     Bin >> hx;
     Bin >> hy;
     Bin >> color;
-
-    Bin >> len;
-    Bin.Pop( str, len );
-    str[ len ] = 0;
-
+    Bin >> text;
     Bin >> unsafe_text;
 
     CHECK_IN_BUFF_ERROR;
 
     if( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() )
     {
-        WriteLog( "Invalid coords, hx {}, hy {}, text '{}'.\n", hx, hy, str );
+        WriteLog( "Invalid coords, hx {}, hy {}, text '{}'.\n", hx, hy, text );
         return;
     }
 
     if( unsafe_text )
-    {
-        string str_ = str;
-        Keyb::EraseInvalidChars( str_, KIF_NO_SPEC_SYMBOLS );
-        Str::Copy( str, str_.c_str() );
-    }
-
-    OnMapText( str, hx, hy, color );
+        Keyb::EraseInvalidChars( text, KIF_NO_SPEC_SYMBOLS );
+    OnMapText( text, hx, hy, color );
 }
 
 void FOClient::Net_OnMapTextMsg()
@@ -3709,14 +3690,16 @@ void FOClient::Net_OnFlyEffect()
 
 void FOClient::Net_OnPlaySound()
 {
-    uint synchronize_crid;
-    char sound_name[ 101 ];
+    uint   msg_len;
+    uint   synchronize_crid;
+    string sound_name;
+    Bin >> msg_len;
     Bin >> synchronize_crid;
-    Bin.Pop( sound_name, 100 );
-    sound_name[ 100 ] = 0;
-    SndMngr.PlaySound( sound_name );
+    Bin >> sound_name;
 
     CHECK_IN_BUFF_ERROR;
+
+    SndMngr.PlaySound( sound_name );
 }
 
 void FOClient::Net_OnPing()

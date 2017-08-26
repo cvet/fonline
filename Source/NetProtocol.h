@@ -234,9 +234,8 @@
 // uint msg_len
 // CrID crid
 // uchar how_say
+// string text
 // bool unsafe_text
-// ushort len
-// char[len] str
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MSG                          MAKE_NETMSG_HEADER( 33 )
@@ -273,8 +272,8 @@
 // ushort hx
 // ushort hy
 // uint color
-// ushort len
-// char[len] str
+// string text
+// bool unsafe_text
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MAP_TEXT_MSG                 MAKE_NETMSG_HEADER( 36 )
@@ -570,12 +569,12 @@
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_PLAY_SOUND                   MAKE_NETMSG_HEADER( 101 )
-#define NETMSG_PLAY_SOUND_SIZE              ( sizeof( uint ) + sizeof( uint ) + 100 )
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
+// uint msg_len
 // uint crid_synchronize
-// char sound_name[16]
+// string sound_name
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

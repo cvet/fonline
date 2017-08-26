@@ -602,7 +602,7 @@ void ItemManager::RadioRegister( Item* radio, bool add )
     }
 }
 
-void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels )
+void ItemManager::RadioSendText( Critter* cr, const string& text, bool unsafe_text, ushort text_msg, uint num_str, UShortVec& channels )
 {
     ItemVec radios;
     ItemVec items = cr->GetItemsNoLock();
@@ -614,9 +614,6 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
         {
             channels.push_back( item->GetRadioChannel() );
             radios.push_back( item );
-
-            if( radios.size() > 100 )
-                break;
         }
     }
 
@@ -624,13 +621,12 @@ void ItemManager::RadioSendText( Critter* cr, const char* text, ushort text_len,
     {
         RadioSendTextEx( channels[ i ],
                          radios[ i ]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(),
-                         text, text_len, unsafe_text, text_msg, num_str, nullptr );
+                         text, unsafe_text, text_msg, num_str, nullptr );
     }
 }
 
 void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy,
-                                   const char* text, ushort text_len, bool unsafe_text,
-                                   ushort text_msg, uint num_str, const char* lexems )
+                                   const string& text, bool unsafe_text, ushort text_msg, uint num_str, const char* lexems )
 {
     // Broadcast
     if( broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD &&
@@ -718,8 +714,8 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                             continue;
                     }
 
-                    if( text )
-                        cl->Send_TextEx( radio->GetId(), text, text_len, SAY_RADIO, unsafe_text );
+                    if( !text.empty() )
+                        cl->Send_TextEx( radio->GetId(), text, SAY_RADIO, unsafe_text );
                     else if( lexems )
                         cl->Send_TextMsgLex( radio->GetId(), num_str, SAY_RADIO, text_msg, lexems );
                     else
@@ -754,8 +750,8 @@ void ItemManager::RadioSendTextEx( ushort channel, int broadcast_type, uint from
                             continue;
                     }
 
-                    if( text )
-                        map->SetText( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, text_len, unsafe_text );
+                    if( !text.empty() )
+                        map->SetText( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, unsafe_text );
                     else if( lexems )
                         map->SetTextMsgLex( radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str, lexems, (ushort) strlen( lexems ) );
                     else

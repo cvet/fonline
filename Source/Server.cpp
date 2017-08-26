@@ -804,7 +804,7 @@ void FOServer::Process_Text( Client* cl )
     }
 
     cl->Connection->Bin.Pop( str, len );
-    str[ len ] = '\0';
+    str[ len ] = 0;
     CHECK_IN_BUFF_ERROR( cl );
 
     if( !cl->IsLife() && how_say >= SAY_NORM && how_say <= SAY_RADIO )
@@ -872,7 +872,7 @@ void FOServer::Process_Text( Client* cl )
         if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_WHISP, true );
         else
-            cl->Send_TextEx( cl->GetId(), str, len, SAY_WHISP, true );
+            cl->Send_TextEx( cl->GetId(), str, SAY_WHISP, true );
     }
     break;
     case SAY_SOCIAL:
@@ -885,9 +885,9 @@ void FOServer::Process_Text( Client* cl )
         if( cl->GetMapId() )
             cl->SendAA_Text( cl->VisCr, str, SAY_WHISP, true );
         else
-            cl->Send_TextEx( cl->GetId(), str, len, SAY_WHISP, true );
+            cl->Send_TextEx( cl->GetId(), str, SAY_WHISP, true );
 
-        ItemMngr.RadioSendText( cl, str, len, true, 0, 0, channels );
+        ItemMngr.RadioSendText( cl, str, true, 0, 0, channels );
         if( channels.empty() )
         {
             cl->Send_TextMsg( cl, STR_RADIO_CANT_SEND, SAY_NETMSG, TEXTMSG_GAME );
@@ -2367,17 +2367,17 @@ bool FOServer::InitLangPacksItems( LangPackVec& lang_packs )
 #pragma MESSAGE("Clients logging may be not thread safe.")
 void FOServer::LogToClients( const string& str )
 {
-    ushort str_len = (ushort) str.length();
-    if( str_len && str[ str_len - 1 ] == '\n' )
-        str_len--;
-    if( str_len )
+    string str_fixed = str;
+    if( !str_fixed.empty() && str.back() == '\n' )
+        str_fixed.erase( str.length() - 1 );
+    if( !str_fixed.empty() )
     {
         for( auto it = LogClients.begin(); it < LogClients.end();)
         {
             Client* cl = *it;
             if( cl->IsOnline() )
             {
-                cl->Send_TextEx( 0, str.c_str(), str_len, SAY_NETMSG, false );
+                cl->Send_TextEx( 0, str_fixed, SAY_NETMSG, false );
                 ++it;
             }
             else

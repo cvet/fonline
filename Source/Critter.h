@@ -243,8 +243,8 @@ public:
     void Send_AllProperties();
     void Send_Talk();
     void Send_GameInfo( Map* map );
-    void Send_Text( Critter* from_cr, const char* s_str, uchar how_say );
-    void Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, bool unsafe_text );
+    void Send_Text( Critter* from_cr, const string& text, uchar how_say );
+    void Send_TextEx( uint from_id, const string& text, uchar how_say, bool unsafe_text );
     void Send_TextMsg( Critter* from_cr, uint str_num, uchar how_say, ushort num_msg );
     void Send_TextMsg( uint from_id, uint str_num, uchar how_say, ushort num_msg );
     void Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
@@ -257,7 +257,7 @@ public:
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
-    void Send_PlaySound( uint crid_synchronize, const char* sound_name );
+    void Send_PlaySound( uint crid_synchronize, const string& sound_name );
 
     // Send all
     void SendA_Property( NetProperty::Type type, Property* prop, Entity* entity );
@@ -268,7 +268,7 @@ public:
     void SendAA_MoveItem( Item* item, uchar action, uchar prev_slot );
     void SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void SendAA_SetAnims( int cond, uint anim1, uint anim2 );
-    void SendAA_Text( CrVec& to_cr, const char* str, uchar how_say, bool unsafe_text );
+    void SendAA_Text( CrVec& to_cr, const string& text, uchar how_say, bool unsafe_text );
     void SendAA_Msg( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg );
     void SendAA_MsgLex( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void SendA_Dir();
@@ -373,8 +373,8 @@ public:
     void Send_AllProperties();
     void Send_Talk();
     void Send_GameInfo( Map* map );
-    void Send_Text( Critter* from_cr, const char* s_str, uchar how_say );
-    void Send_TextEx( uint from_id, const char* s_str, ushort str_len, uchar how_say, bool unsafe_text );
+    void Send_Text( Critter* from_cr, const string& text, uchar how_say );
+    void Send_TextEx( uint from_id, const string& text, uchar how_say, bool unsafe_text );
     void Send_TextMsg( Critter* from_cr, uint str_num, uchar how_say, ushort num_msg );
     void Send_TextMsg( uint from_id, uint str_num, uchar how_say, ushort num_msg );
     void Send_TextMsgLex( Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
@@ -387,11 +387,10 @@ public:
     void Send_AutomapsInfo( void* locs_vec, Location* loc );
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
-    void Send_PlaySound( uint crid_synchronize, const char* sound_name );
-    void Send_MapText( ushort hx, ushort hy, uint color, const char* text, ushort text_len, bool unsafe_text );
+    void Send_PlaySound( uint crid_synchronize, const string& sound_name );
+    void Send_MapText( ushort hx, ushort hy, uint color, const string& text, bool unsafe_text );
     void Send_MapTextMsg( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str );
     void Send_MapTextMsgLex( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len );
-    void Send_UserHoloStr( uint str_num, const char* text, ushort text_len );
     void Send_ViewMap();
     void Send_CheckUIDS();
     void Send_SomeItem( Item* item );                                     // Without checks
