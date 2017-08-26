@@ -66,11 +66,39 @@ uint _str::lengthUtf8()
     return length;
 }
 
-_str& _str::substringUntil( char end )
+_str& _str::substringUntil( char separator )
 {
-    size_t pos = s.find( end );
+    size_t pos = s.find( separator );
     if( pos != string::npos )
         s = s.substr( 0, pos );
+    return *this;
+}
+
+_str& _str::substringUntil( string separator )
+{
+    size_t pos = s.find( separator );
+    if( pos != string::npos )
+        s = s.substr( 0, pos );
+    return *this;
+}
+
+_str& _str::substringAfter( char separator )
+{
+    size_t pos = s.find( separator );
+    if( pos != string::npos )
+        s = s.substr( pos + 1 );
+    else
+        s.erase();
+    return *this;
+}
+
+_str& _str::substringAfter( string separator )
+{
+    size_t pos = s.find( separator );
+    if( pos != string::npos )
+        s = s.substr( pos + separator.length() );
+    else
+        s.erase();
     return *this;
 }
 
@@ -559,51 +587,6 @@ char* Str::Duplicate( const char* str )
         memcpy( dup, str, len );
     dup[ len ] = 0;
     return dup;
-}
-
-char* Str::Substring( char* str, const char* sub_str )
-{
-    return strstr( str, sub_str );
-}
-
-const char* Str::Substring( const char* str, const char* sub_str )
-{
-    return strstr( str, sub_str );
-}
-
-const char* Str::Substring( const string& str, const char* sub_str )
-{
-    return strstr( str.c_str(), sub_str );
-}
-
-char* Str::LastSubstring( char* str, const char* sub_str )
-{
-    uint  len = Length( sub_str );
-    char* last = nullptr;
-    while( true )
-    {
-        str = strstr( str, sub_str );
-        if( !str )
-            break;
-        last = str;
-        str += len;
-    }
-    return last;
-}
-
-const char* Str::LastSubstring( const char* str, const char* sub_str )
-{
-    uint        len = Length( sub_str );
-    const char* last = nullptr;
-    while( true )
-    {
-        str = strstr( str, sub_str );
-        if( !str )
-            break;
-        last = str;
-        str += len;
-    }
-    return last;
 }
 
 uint Str::Length( const char* str )

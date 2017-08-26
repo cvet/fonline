@@ -47,7 +47,7 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
     GetModuleFileNameW( nullptr, full_path, MAX_FOPATH );
     string  path = _str().parseWideChar( full_path ).extractDir();
     string  name = _str().parseWideChar( full_path ).extractFileName();
-    if( Str::Substring( name, "Singleplayer" ) || MainConfig->IsKey( "", "Singleplayer" ) )
+    if( name.find( "Singleplayer" ) != string::npos || MainConfig->IsKey( "", "Singleplayer" ) )
     {
         WriteLog( "Singleplayer mode.\n" );
         Singleplayer = true;

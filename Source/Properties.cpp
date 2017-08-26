@@ -2065,13 +2065,13 @@ Property* PropertyRegistrator::Register(
             WriteLog( "Invalid property type '{}', array elements must have POD/string type.\n", type_name );
             return nullptr;
         }
-        if( Str::Substring( type_name, "resource" ) )
+        if( _str( type_name ).str().find( "resource" ) != string::npos )
         {
             WriteLog( "Invalid property type '{}', array elements can't be resource type.\n", type_name );
             return nullptr;
         }
 
-        is_hash_sub0 = ( Str::Substring( type_name, "hash" ) != nullptr );
+        is_hash_sub0 = ( _str( type_name ).str().find( "hash" ) != string::npos );
     }
     else if( Str::Compare( as_obj_type->GetName(), "dict" ) )
     {
@@ -2098,17 +2098,16 @@ Property* PropertyRegistrator::Register(
                 return nullptr;
             }
         }
-        if( ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) != nullptr ) ||
-            ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) == nullptr && !is_dict_of_array ) ||
-            ( Str::Substring( type_name, "resource" ) != nullptr && Str::Substring( Str::Substring( type_name, "resource" ), "," ) == nullptr && is_dict_of_array ) )
+        if( _str( type_name ).str().find( "resource" ) != string::npos )
         {
             WriteLog( "Invalid property type '{}', dict elements can't be resource type.\n", type_name );
             return nullptr;
         }
 
-        is_hash_sub0 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) != nullptr );
-        is_hash_sub1 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) == nullptr && !is_dict_of_array );
-        is_hash_sub2 = ( Str::Substring( type_name, "hash" ) != nullptr && Str::Substring( Str::Substring( type_name, "hash" ), "," ) == nullptr && is_dict_of_array );
+        string t = _str( type_name ).str();
+        is_hash_sub0 = ( t.find( "hash" ) != string::npos && t.find( ",", t.find( "hash" ) ) != string::npos );
+        is_hash_sub1 = ( t.find( "hash" ) != string::npos && t.find( ",", t.find( "hash" ) ) == string::npos && !is_dict_of_array );
+        is_hash_sub2 = ( t.find( "hash" ) != string::npos && t.find( ",", t.find( "hash" ) ) == string::npos && is_dict_of_array );
     }
     else
     {

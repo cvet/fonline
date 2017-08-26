@@ -23,12 +23,6 @@ namespace Str
     char* Duplicate( const string& str );
     char* Duplicate( const char* str );
 
-    char*       Substring( char* str, const char* sub_str );
-    const char* Substring( const char* str, const char* sub_str );
-    const char* Substring( const string& str, const char* sub_str );
-    char*       LastSubstring( char* str, const char* sub_str );
-    const char* LastSubstring( const char* str, const char* sub_str );
-
     uint Length( const char* str );
     bool Compare( const char* str1, const char* str2 );
     bool Compare( const string& str1, const string& str2 );
@@ -65,7 +59,10 @@ public:
     bool isValidUtf8();
     uint lengthUtf8();
 
-    _str& substringUntil( char end );
+    _str& substringUntil( char separator );
+    _str& substringUntil( string separator );
+    _str& substringAfter( char separator );
+    _str& substringAfter( string separator );
     _str& trim();
     _str& erase( char what );
     _str& erase( char begin, char end );

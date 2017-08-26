@@ -321,8 +321,8 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
 
         // Parse data
         istringstream str( (char*) fm.GetBuf() );
-        char          key[ MAX_FOTEXT ];
-        char          letter_buf[ MAX_FOTEXT ];
+        string        key;
+        string        letter_buf;
         Letter*       cur_letter = nullptr;
         int           version = -1;
         while( !str.eof() && !str.fail() )
@@ -331,17 +331,17 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
             str >> key;
 
             // Cut off comments
-            char* comment = Str::Substring( key, "#" );
-            if( comment )
-                *comment = 0;
-            comment = Str::Substring( key, ";" );
-            if( comment )
-                *comment = 0;
+            size_t comment = key.find( '#' );
+            if( comment != string::npos )
+                key.erase( comment );
+            comment = key.find( ';' );
+            if( comment != string::npos )
+                key.erase( comment );
 
             // Check version
             if( version == -1 )
             {
-                if( !Str::Compare( key, "Version" ) )
+                if( key != "Version" )
                 {
                     WriteLog( "Font '{}' 'Version' signature not found (used deprecated format of 'fofnt').\n", fname );
                     return false;
@@ -356,28 +356,27 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
             }
 
             // Get value
-            if( Str::Compare( key, "Image" ) )
+            if( key == "Image" )
             {
                 str >> image_name;
             }
-            else if( Str::Compare( key, "LineHeight" ) )
+            else if( key == "LineHeight" )
             {
                 str >> font.LineHeight;
             }
-            else if( Str::Compare( key, "YAdvance" ) )
+            else if( key == "YAdvance" )
             {
                 str >> font.YAdvance;
             }
-            else if( Str::Compare( key, "End" ) )
+            else if( key == "End" )
             {
                 break;
             }
-            else if( Str::Compare( key, "Letter" ) )
+            else if( key == "Letter" )
             {
-                letter_buf[ 0 ] = 0;
-                str.getline( letter_buf, sizeof( letter_buf ) );
-                char* utf8_letter_begin = Str::Substring( letter_buf, "'" );
-                if( utf8_letter_begin == nullptr )
+                std::getline( str, letter_buf, '\n' );
+                size_t utf8_letter_begin = letter_buf.find( '\'' );
+                if( utf8_letter_begin == string::npos )
                 {
                     WriteLog( "Font '{}' invalid letter specification.\n", fname );
                     return false;
@@ -385,7 +384,7 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
                 utf8_letter_begin++;
 
                 uint letter_len;
-                uint letter = utf8::Decode( utf8_letter_begin, &letter_len );
+                uint letter = utf8::Decode( letter_buf.c_str() + utf8_letter_begin, &letter_len );
                 if( !utf8::IsValid( letter ) )
                 {
                     WriteLog( "Font '{}' invalid UTF8 letter at  '{}'.\n", fname, letter_buf );
@@ -398,19 +397,19 @@ bool SpriteManager::LoadFontFO( int index, const string& font_name, bool not_bor
             if( !cur_letter )
                 continue;
 
-            if( Str::Compare( key, "PositionX" ) )
+            if( key == "PositionX" )
                 str >> cur_letter->PosX;
-            else if( Str::Compare( key, "PositionY" ) )
+            else if( key == "PositionY" )
                 str >> cur_letter->PosY;
-            else if( Str::Compare( key, "Width" ) )
+            else if( key == "Width" )
                 str >> cur_letter->W;
-            else if( Str::Compare( key, "Height" ) )
+            else if( key == "Height" )
                 str >> cur_letter->H;
-            else if( Str::Compare( key, "OffsetX" ) )
+            else if( key == "OffsetX" )
                 str >> cur_letter->OffsX;
-            else if( Str::Compare( key, "OffsetY" ) )
+            else if( key == "OffsetY" )
                 str >> cur_letter->OffsY;
-            else if( Str::Compare( key, "XAdvance" ) )
+            else if( key == "XAdvance" )
                 str >> cur_letter->XAdvance;
         }
 

@@ -561,7 +561,7 @@ bool Script::ReloadScripts( const char* target )
         }
 
         // Check signature
-        if( !Str::Substring( line, "FOS" ) )
+        if( line.find( "FOS" ) == string::npos )
         {
             WriteLog( "Error in script '{}', invalid header '{}'.\n", name, line );
             errors++;
@@ -573,7 +573,7 @@ bool Script::ReloadScripts( const char* target )
             continue;
 
         // Skip different targets
-        if( !Str::Substring( line, target ) && !Str::Substring( line, "Common" ) )
+        if( line.find( target ) == string::npos && line.find( "Common" ) == string::npos )
             continue;
 
         // Add file names
@@ -582,7 +582,7 @@ bool Script::ReloadScripts( const char* target )
         // Append
         ScriptEntry entry;
         entry.Name = name;
-        entry.Content = string( "namespace " ).append( name ).append( "{" ).append( (char*) file.GetBuf() ).append( "\n}\n" );
+        entry.Content = _str( "namespace {}{{{}\n}}\n", name, (const char*) file.GetBuf() );
         entry.SortValue = sort_value;
         entry.SortValueExt = ++file_index;
         scripts.push_back( entry );

@@ -137,7 +137,7 @@ int main( int argc, char* argv[] )
     if( !target )
     {
         // Check script signature
-        if( !Str::Substring( line, "FOS" ) )
+        if( line.find( "FOS" ) == string::npos )
         {
             WriteLog( "FOnline script signature 'FOS' not found in first line.\n" );
             return -1;
@@ -145,7 +145,7 @@ int main( int argc, char* argv[] )
 
         // Compile as server script
         int result = -1;
-        if( Str::Substring( line, "Server" ) || Str::Substring( line, "Common" ) )
+        if( line.find( "Server" ) != string::npos || line.find( "Common" ) != string::npos )
         {
             result = Compile( "SERVER", file, path, path_prep, defines, run_func );
             if( result != 0 )
@@ -153,7 +153,7 @@ int main( int argc, char* argv[] )
         }
 
         // Compile as client script
-        if( Str::Substring( line, "Client" ) || Str::Substring( line, "Common" ) )
+        if( line.find( "Client" ) != string::npos || line.find( "Common" ) != string::npos )
         {
             result = Compile( "CLIENT", file, path, path_prep, defines, run_func );
             if( result != 0 )
@@ -161,7 +161,7 @@ int main( int argc, char* argv[] )
         }
 
         // Compile as mapper script
-        if( Str::Substring( line, "Mapper" ) || Str::Substring( line, "Common" ) )
+        if( line.find( "Mapper" ) != string::npos || line.find( "Common" ) != string::npos )
         {
             result = Compile( "MAPPER", file, path, path_prep, defines, run_func );
             if( result != 0 )

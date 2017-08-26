@@ -1106,26 +1106,26 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     bool   something_changed = false;
     StrSet update_file_names;
 
-    for( size_t m = 0; m < GameModules.size(); m++ )
+    for( const auto& module : GameModules )
     {
         StrVec      dummy_vec;
         StrVec      all_dirs_path;
         FindDataVec all_dirs;
-        FileManager::GetFolderFileNames( GameModules[ m ], true, "", dummy_vec, nullptr, &all_dirs_path, &all_dirs );
+        FileManager::GetFolderFileNames( module, true, "", dummy_vec, nullptr, &all_dirs_path, &all_dirs );
         for( size_t d = 0; d < all_dirs.size(); d++ )
         {
             if( !_str( all_dirs[ d ].FileName ).compareIgnoreCase( "Resources" ) )
                 continue;
 
-            string      resources_root = GameModules[ m ] + all_dirs_path[ d ];
+            string      resources_root = module + all_dirs_path[ d ];
             FindDataVec resources_dirs;
             FileManager::GetFolderFileNames( resources_root, false, "", dummy_vec, nullptr, nullptr, &resources_dirs );
             for( size_t r = 0; r < resources_dirs.size(); r++ )
             {
-                const char*     res_name = resources_dirs[ r ].FileName.c_str();
+                const string&   res_name = resources_dirs[ r ].FileName;
                 FilesCollection resources( "", resources_root + res_name + "/" );
 
-                if( !Str::Substring( res_name, "_Raw" ) )
+                if( res_name.find( "_Raw" ) == string::npos )
                 {
                     string res_name_zip = (string) res_name + ".zip";
                     string zip_path = (string) "Update/" + res_name_zip;

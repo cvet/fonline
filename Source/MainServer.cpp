@@ -861,7 +861,7 @@ int main( int argc, char** argv )
 {
     InitialSetup( argc, argv );
 
-    if( !Str::Substring( GameOpt.CommandLine.c_str(), "-nodetach" ) )
+    if( GameOpt.CommandLine.find( "-nodetach" ) == string::npos )
     {
         // Start daemon
         pid_t parpid = fork();
@@ -920,9 +920,9 @@ int main( int argc, char** argv )
         WriteLog( "Command line '{}'.\n", GameOpt.CommandLine );
 
     // Update stuff
-    if( !Singleplayer && Str::Substring( GameOpt.CommandLine.c_str(), "-game" ) )
+    if( !Singleplayer && GameOpt.CommandLine.find( "-game" ) != string::npos )
         GameOpt.GameServer = true, GameOpt.UpdateServer = false;
-    else if( !Singleplayer && Str::Substring( GameOpt.CommandLine.c_str(), "-update" ) )
+    else if( !Singleplayer && GameOpt.CommandLine.find( "-update" ) != string::npos )
         GameOpt.GameServer = false, GameOpt.UpdateServer = true;
     else
         GameOpt.GameServer = true, GameOpt.UpdateServer = true;

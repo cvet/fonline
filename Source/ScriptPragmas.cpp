@@ -638,8 +638,8 @@ public:
         istringstream str( text );
         string        class_name, call_type_str;
         str >> class_name >> call_type_str;
-        char          buf[ MAX_FOTEXT ] = { 0 };
-        str.getline( buf, MAX_FOTEXT );
+        string        line;
+        std::getline( str, line, '\n' );
         if( str.fail() )
         {
             WriteLog( "Error in 'method' pragma '{}'.\n", text );
@@ -647,16 +647,15 @@ public:
         }
 
         // Decl
-        char* separator = Str::Substring( buf, "=" );
-        if( !separator )
+        size_t separator =  line.find( '=' );
+        if( separator == string::npos )
         {
             WriteLog( "Error in 'method' pragma declaration '{}'.\n", text );
             return false;
         }
-        *separator = 0;
 
-        string decl = _str( buf ).trim();
-        string script_func = _str( separator + 1 ).trim();
+        string decl = _str( line.substr( 0, separator ) ).trim();
+        string script_func = _str( line.substr( separator + 1 ) ).trim();
 
         // Parse access type
         Method::CallType call_type = (Method::CallType) 0;
@@ -860,8 +859,8 @@ public:
             WriteLog( "Unable to parse 'enum' pragma '{}'.\n", text );
             return false;
         }
-        char other[ MAX_FOTEXT ] = { 0 };
-        str.getline( other, MAX_FOTEXT );
+        string other;
+        std::getline( str, other, '\n' );
 
         asIScriptEngine* engine = Script::GetEngine();
         int              result = engine->RegisterEnum( enum_name );
@@ -871,13 +870,12 @@ public:
             return false;
         }
 
-        int         value;
-        const char* assign = Str::Substring( other, "=" );
-        if( assign )
+        int    value;
+        size_t separator = other.find( '=' );
+        if( separator != string::npos )
         {
-            bool   fail = false;
-            string buf = _str( assign + 1 ).trim();
-            value = ConvertParamValue( buf, fail );
+            bool fail = false;
+            value = ConvertParamValue( _str( other.substr( separator + 1 ) ).trim(), fail );
             if( fail )
             {
                 WriteLog( "Error in 'enum' pragma '{}', value conversation error.\n", text );
@@ -1301,9 +1299,9 @@ public:
             }
         }
 
-        char options[ MAX_FOTEXT ];
-        Str::Copy( options, text.substr( args_end + 1 ).c_str() );
-        event->Deferred = Str::Substring( options, "deferred" ) != nullptr;
+        string options;
+        options = text.substr( args_end + 1 );
+        event->Deferred = ( options.find( "deferred" ) != string::npos );
 
         events.push_back( event );
         if( engine->RegisterGlobalProperty( _str( "{}@ __{}", event_name, event_name ).c_str(), &events.back() ) < 0 )

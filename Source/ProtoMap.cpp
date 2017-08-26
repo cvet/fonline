@@ -1024,7 +1024,7 @@ bool ProtoMap::Load()
 
     // Load from file
     const char* data = map_file.GetCStr();
-    bool is_old_format = ( Str::Substring( data, "[Header]" ) && Str::Substring( data, "[Tiles]" ) && Str::Substring( data, "[Objects]" ) );
+    bool is_old_format = ( strstr( data, "[Header]" ) && strstr( data, "[Tiles]" ) && strstr( data, "[Objects]" ) );
     if( is_old_format && !LoadOldTextFormat( data ) )
     {
         WriteLog( "Unable to load map '{}' from old map format.\n", GetName() );

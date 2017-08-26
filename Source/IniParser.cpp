@@ -47,7 +47,7 @@ void IniParser::ParseStr( const string& str )
     while( std::getline( istr, line, '\n' ) )
     {
         // New section
-        if( line[ 0 ] == '[' )
+        if( !line.empty() && line[ 0 ] == '[' )
         {
             // Parse name
             size_t end = line.find( ']' );
@@ -79,9 +79,11 @@ void IniParser::ParseStr( const string& str )
 
             // Cut comments
             line = _str( line ).trim();
-            char* comment = (char*) Str::Substring( line, "#" );
-            if( comment )
-                *comment = 0;
+            size_t comment = line.find( '#' );
+            if( comment != string::npos )
+                line.erase( comment );
+            if( line.empty() )
+                continue;
 
             // Text format {}{}{}
             if( line[ 0 ] == '{' )

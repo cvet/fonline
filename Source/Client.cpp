@@ -5903,14 +5903,12 @@ void FOClient::AddVideo( const char* video_name, bool can_stop, bool clear_seque
     ShowVideo sw;
 
     // Paths
-    char  str[ MAX_FOPATH ];
-    Str::Copy( str, video_name );
-    char* sound = Str::Substring( str, "|" );
-    if( sound )
+    string str = video_name;
+    size_t sound_pos = str.find( '|' );
+    if( sound_pos != string::npos )
     {
-        *sound = 0;
-        sound++;
-        sw.SoundName += sound;
+        sw.SoundName += str.substr( sound_pos + 1 );
+        str.erase( sound_pos );
     }
     sw.FileName += str;
 
