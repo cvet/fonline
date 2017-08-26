@@ -1711,25 +1711,25 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         return;
 
     bool ok = false;
-    if( Str::CompareCase( pragma.Name, "ignore" ) && ignorePragma )
+    if( _str( pragma.Name ).compareIgnoreCase( "ignore" ) && ignorePragma )
         ok = ignorePragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "globalvar" ) && globalVarPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "globalvar" ) && globalVarPragma )
         ok = globalVarPragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "bindfunc" ) && bindFuncPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "bindfunc" ) && bindFuncPragma )
         ok = bindFuncPragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "property" ) && propertyPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "property" ) && propertyPragma )
         ok = propertyPragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "method" ) && methodPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "method" ) && methodPragma )
         ok = methodPragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "entity" ) && entityPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "entity" ) && entityPragma )
         ok = entityPragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "content" ) && contentPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "content" ) && contentPragma )
         ok = contentPragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "enum" ) && enumPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "enum" ) && enumPragma )
         ok = enumPragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "event" ) && eventPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "event" ) && eventPragma )
         ok = eventPragma->Call( pragma.Text );
-    else if( Str::CompareCase( pragma.Name, "rpc" ) && rpcPragma )
+    else if( _str( pragma.Name ).compareIgnoreCase( "rpc" ) && rpcPragma )
         ok = rpcPragma->Call( pragma.Text, pragma.CurrentFile );
     else
         WriteLog( "Unknown pragma instance, name '{}' text '{}'.\n", pragma.Name, pragma.Text ), ok = false;

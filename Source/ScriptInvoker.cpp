@@ -211,7 +211,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         call.IsValue = ( kv.count( "Value" ) > 0 );
         if( call.IsValue )
         {
-            call.ValueSigned = Str::CompareCase( kv[ "ValueSigned" ].c_str(), "true" );
+            call.ValueSigned = _str( kv[ "ValueSigned" ] ).compareIgnoreCase( "true" );
             call.Value = _str( kv[ "Value" ] ).toInt();
         }
         else
@@ -223,7 +223,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         call.IsValues = ( kv.count( "Values" ) > 0 );
         if( call.IsValues )
         {
-            call.ValuesSigned = Str::CompareCase( kv[ "ValuesSigned" ].c_str(), "true" );
+            call.ValuesSigned = _str( kv[ "ValuesSigned" ] ).compareIgnoreCase( "true" );
             call.Values = _str( kv[ "Values" ] ).splitToInt( ' ' );
         }
         else

@@ -338,25 +338,25 @@ void FOMsg::Clear()
 
 int FOMsg::GetMsgType( const string& type_name )
 {
-    if( Str::CompareCase( type_name, "text" ) )
+    if( _str( type_name ).compareIgnoreCase( "text" ) )
         return TEXTMSG_TEXT;
-    else if( Str::CompareCase( type_name, "dlg" ) )
+    else if( _str( type_name ).compareIgnoreCase( "dlg" ) )
         return TEXTMSG_DLG;
-    else if( Str::CompareCase( type_name, "item" ) )
+    else if( _str( type_name ).compareIgnoreCase( "item" ) )
         return TEXTMSG_ITEM;
-    else if( Str::CompareCase( type_name, "obj" ) )
+    else if( _str( type_name ).compareIgnoreCase( "obj" ) )
         return TEXTMSG_ITEM;
-    else if( Str::CompareCase( type_name, "game" ) )
+    else if( _str( type_name ).compareIgnoreCase( "game" ) )
         return TEXTMSG_GAME;
-    else if( Str::CompareCase( type_name, "gm" ) )
+    else if( _str( type_name ).compareIgnoreCase( "gm" ) )
         return TEXTMSG_GM;
-    else if( Str::CompareCase( type_name, "combat" ) )
+    else if( _str( type_name ).compareIgnoreCase( "combat" ) )
         return TEXTMSG_COMBAT;
-    else if( Str::CompareCase( type_name, "quest" ) )
+    else if( _str( type_name ).compareIgnoreCase( "quest" ) )
         return TEXTMSG_QUEST;
-    else if( Str::CompareCase( type_name, "holo" ) )
+    else if( _str( type_name ).compareIgnoreCase( "holo" ) )
         return TEXTMSG_HOLO;
-    else if( Str::CompareCase( type_name, "internal" ) )
+    else if( _str( type_name ).compareIgnoreCase( "internal" ) )
         return TEXTMSG_INTERNAL;
     return -1;
 }
@@ -387,7 +387,7 @@ bool LanguagePack::LoadFromFiles( const string& lang_name )
             for( int i = 0; i < TEXTMSG_COUNT; i++ )
             {
                 string msg_name = _str( TextMsgFileName[ i ] ).eraseFileExtension();
-                if( Str::CompareCase( msg_name, name ) )
+                if( _str( msg_name ).compareIgnoreCase( name ) )
                 {
                     if( !Msg[ i ].LoadFromString( msg_file.GetCStr() ) )
                     {

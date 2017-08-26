@@ -743,7 +743,7 @@ static void ServiceMain( bool as_service )
     {
         LPQUERY_SERVICE_CONFIG service_cfg = (LPQUERY_SERVICE_CONFIG) calloc( 8192, 1 );
         DWORD                  dw;
-        if( QueryServiceConfig( service, service_cfg, 8192, &dw ) && !Str::CompareCase( service_cfg->lpBinaryPathName, path ) )
+        if( QueryServiceConfig( service, service_cfg, 8192, &dw ) && !_str( service_cfg->lpBinaryPathName ).compareIgnoreCase( path ) )
             ChangeServiceConfig( service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, path.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
         free( service_cfg );
     }
@@ -1206,30 +1206,30 @@ static void AdminWork( void* session_ )
         }
 
         // Process commands
-        if( Str::CompareCase( cmd, "exit" ) )
+        if( cmd == "exit" )
         {
             ADMIN_LOG( "Disconnect from admin panel.\n" );
             goto label_Finish;
         }
-        else if( Str::CompareCase( cmd, "kill" ) )
+        else if( cmd == "kill" )
         {
             ADMIN_LOG( "Kill whole process.\n" );
             ExitProcess( 0 );
         }
         else if( _str( cmd ).startsWith( "log " ) )
         {
-            if( !Str::CompareCase( &cmd[ 4 ], "disable" ) )
+            if( cmd.substr( 4 ) == "disable" )
             {
-                LogToFile( &cmd[ 4 ] );
-                ADMIN_LOG( "Logging to file '{}'.\n", &cmd[ 4 ] );
+                LogToFile( cmd.substr( 4 ) );
+                ADMIN_LOG( "Logging to file '{}'.\n", cmd.substr( 4 ) );
             }
             else
             {
-                LogToFile( nullptr );
+                LogToFile( "" );
                 ADMIN_LOG( "Logging disabled.\n" );
             }
         }
-        else if( Str::CompareCase( cmd, "start" ) )
+        else if( cmd == "start" )
         {
             if( Server.Starting() )
                 ADMIN_LOG( "Server already starting.\n" );
@@ -1260,7 +1260,7 @@ static void AdminWork( void* session_ )
                 }
             }
         }
-        else if( Str::CompareCase( cmd, "stop" ) )
+        else if( cmd == "stop" )
         {
             if( Server.Starting() )
                 ADMIN_LOG( "Server starting, wait.\n" );
@@ -1283,7 +1283,7 @@ static void AdminWork( void* session_ )
                 }
             }
         }
-        else if( Str::CompareCase( cmd, "state" ) )
+        else if( cmd == "state" )
         {
             if( Server.Starting() )
                 ADMIN_LOG( "Server starting.\n" );
@@ -1332,7 +1332,7 @@ static void AdminWork( void* session_ )
                 ADMIN_LOG( "Can't run command for not started server.\n" );
             }
         }
-        else if( cmd.length() > 0 )
+        else if( !cmd.empty() )
         {
             ADMIN_LOG( "Unknown command '{}'.\n", cmd );
         }

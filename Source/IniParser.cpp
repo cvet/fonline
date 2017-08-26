@@ -174,9 +174,9 @@ string IniParser::GetStr( const string& app_name, const string& key_name, const 
 int IniParser::GetInt( const string& app_name, const string& key_name, int def_val /* = 0 */  )
 {
     string* str = GetRawValue( app_name, key_name );
-    if( str && str->length() == 4 && Str::CompareCase( *str, "true" ) )
+    if( str && str->length() == 4 && _str( *str ).compareIgnoreCase( "true" ) )
         return 1;
-    if( str && str->length() == 5 && Str::CompareCase( *str, "false" ) )
+    if( str && str->length() == 5 && _str( *str ).compareIgnoreCase( "false" ) )
         return 0;
     return str ? _str( *str ).toInt() : def_val;
 }

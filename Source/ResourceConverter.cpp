@@ -1114,7 +1114,7 @@ bool ResourceConverter::Generate( StrVec* resource_names )
         FileManager::GetFolderFileNames( GameModules[ m ], true, "", dummy_vec, nullptr, &all_dirs_path, &all_dirs );
         for( size_t d = 0; d < all_dirs.size(); d++ )
         {
-            if( !Str::CompareCase( all_dirs[ d ].FileName.c_str(), "Resources" ) )
+            if( !_str( all_dirs[ d ].FileName ).compareIgnoreCase( "Resources" ) )
                 continue;
 
             string      resources_root = GameModules[ m ] + all_dirs_path[ d ];

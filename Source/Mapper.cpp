@@ -1447,12 +1447,11 @@ void FOMapper::MainLoop()
 
 void FOMapper::RefreshTiles( int tab )
 {
-    const char* formats[] =
+    static const string formats[] =
     {
         "frm", "fofrm", "bmp", "dds", "dib", "hdr", "jpg",
         "jpeg", "pfm", "png", "tga", "spr", "til", "zar", "art"
     };
-    size_t      formats_count = sizeof( formats ) / sizeof( formats[ 0 ] );
 
     // Clear old tile names
     for( auto it = Tabs[ tab ].begin(); it != Tabs[ tab ].end();)
@@ -1513,16 +1512,16 @@ void FOMapper::RefreshTiles( int tab )
 
             // Check format availability
             bool format_aviable = false;
-            for( uint i = 0; i < formats_count; i++ )
+            for( auto& format : formats )
             {
-                if( Str::CompareCase( formats[ i ], ext ) )
+                if( format == ext )
                 {
                     format_aviable = true;
                     break;
                 }
             }
             if( !format_aviable )
-                format_aviable = Is3dExtensionSupported( ext.c_str() );
+                format_aviable = Is3dExtensionSupported( ext );
 
             if( format_aviable )
             {
@@ -4081,7 +4080,7 @@ void FOMapper::ParseCommand( const char* cmd )
         if( sscanf( cmd + 1, "%s", cmd_ ) != 1 )
             return;
 
-        if( Str::CompareCase( cmd_, "new" ) )
+        if( cmd_ == "new" )
         {
             ProtoMap* pmap = new ProtoMap( _str( "new" ).toHash() );
             pmap->GenNew();
@@ -4101,7 +4100,7 @@ void FOMapper::ParseCommand( const char* cmd )
             ActiveMap = map;
             LoadedMaps.push_back( map );
         }
-        else if( Str::CompareCase( cmd_, "unload" ) )
+        else if( cmd_ == "unload" )
         {
             AddMess( "Unload map." );
 
@@ -4128,14 +4127,14 @@ void FOMapper::ParseCommand( const char* cmd )
                 return;
             }
         }
-        else if( Str::CompareCase( cmd_, "scripts" ) )
+        else if( cmd_ == "scripts" )
         {
             FinishScriptSystem();
             if( InitScriptSystem() )
                 RunStartScript();
             AddMess( "Scripts reloaded." );
         }
-        else if( ActiveMap && Str::CompareCase( cmd_, "size" ) )
+        else if( ActiveMap && cmd_ == "size" )
         {
             AddMess( "Resize map." );
 

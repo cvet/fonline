@@ -32,8 +32,6 @@ namespace Str
     uint Length( const char* str );
     bool Compare( const char* str1, const char* str2 );
     bool Compare( const string& str1, const string& str2 );
-    bool CompareCase( const char* str1, const char* str2 );
-    bool CompareCase( const string& str1, const string& str2 );
 
     void  HexToStr( uchar hex, char* str ); // 2 bytes string
     uchar StrToHex( const char* str );

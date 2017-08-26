@@ -1651,23 +1651,20 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
     break;
     case CMD_BAN:
     {
-        char name[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        char params[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        uint ban_hours;
-        char info[ UTF8_BUF_SIZE( MAX_CHAT_MESSAGE ) ];
-        buf.Pop( name, sizeof( name ) );
-        name[ sizeof( name ) - 1 ] = 0;
-        buf.Pop( params, sizeof( params ) );
-        params[ sizeof( params ) - 1 ] = 0;
+        string name;
+        string params;
+        uint   ban_hours;
+        string info;
+        buf >> name;
+        buf >> params;
         buf >> ban_hours;
-        buf.Pop( info, sizeof( info ) );
-        info[ sizeof( info ) - 1 ] = 0;
+        buf >> info;
 
         CHECK_ALLOW_COMMAND;
 
         SCOPE_LOCK( BannedLocker );
 
-        if( Str::CompareCase( params, "list" ) )
+        if( _str( params ).compareIgnoreCase( "list" ) )
         {
             if( Banned.empty() )
             {
@@ -1679,21 +1676,21 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
             for( auto it = Banned.begin(), end = Banned.end(); it != end; ++it )
             {
                 ClientBanned& ban = *it;
-                logcb( _str( "--- {:3} ---", index ).c_str() );
+                logcb( _str( "--- {:3} ---", index ) );
                 if( ban.ClientName[ 0 ] )
-                    logcb( _str( "User: {}", ban.ClientName ).c_str() );
+                    logcb( _str( "User: {}", ban.ClientName ) );
                 if( ban.ClientIp )
-                    logcb( _str( "UserIp: {}", ban.ClientIp ).c_str() );
-                logcb( _str( "BeginTime: {} {} {} {} {}", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute ).c_str() );
-                logcb( _str( "EndTime: {} {} {} {} {}", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute ).c_str() );
+                    logcb( _str( "UserIp: {}", ban.ClientIp ) );
+                logcb( _str( "BeginTime: {} {} {} {} {}", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute ) );
+                logcb( _str( "EndTime: {} {} {} {} {}", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute ) );
                 if( ban.BannedBy[ 0 ] )
-                    logcb( _str( "BannedBy: {}", ban.BannedBy ).c_str() );
+                    logcb( _str( "BannedBy: {}", ban.BannedBy ) );
                 if( ban.BanInfo[ 0 ] )
-                    logcb( _str( "Comment: {}", ban.BanInfo ).c_str() );
+                    logcb( _str( "Comment: {}", ban.BanInfo ) );
                 index++;
             }
         }
-        else if( Str::CompareCase( params, "add" ) || Str::CompareCase( params, "add+" ) )
+        else if( _str( params ).compareIgnoreCase( "add" ) || _str( params ).compareIgnoreCase( "add+" ) )
         {
             uint name_len = _str( name ).lengthUtf8();
             if( name_len < MIN_NAME || name_len < GameOpt.MinNameLength || name_len > MAX_NAME || name_len > GameOpt.MaxNameLength || !ban_hours )
@@ -1702,16 +1699,16 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
                 return;
             }
 
-            Client*      cl_banned = CrMngr.GetPlayer( name );
+            Client*      cl_banned = CrMngr.GetPlayer( name.c_str() );
             ClientBanned ban;
             memzero( &ban, sizeof( ban ) );
-            Str::Copy( ban.ClientName, name );
-            ban.ClientIp = ( cl_banned && strstr( params, "+" ) ? cl_banned->GetIp() : 0 );
+            Str::Copy( ban.ClientName, name.c_str() );
+            ban.ClientIp = ( cl_banned && params.find( '+' ) != string::npos ? cl_banned->GetIp() : 0 );
             Timer::GetCurrentDateTime( ban.BeginTime );
             ban.EndTime = ban.BeginTime;
             Timer::ContinueTime( ban.EndTime, ban_hours * 60 * 60 );
             Str::Copy( ban.BannedBy, cl_ ? cl_->Name.c_str() : admin_panel.c_str() );
-            Str::Copy( ban.BanInfo, info );
+            Str::Copy( ban.BanInfo, info.c_str() );
 
             Banned.push_back( ban );
             SaveBan( ban, false );
@@ -1724,16 +1721,16 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
                 cl_banned->Disconnect();
             }
         }
-        else if( Str::CompareCase( params, "delete" ) )
+        else if( _str( params ).compareIgnoreCase( "delete" ) )
         {
-            if( !Str::Length( name ) )
+            if( name.empty() )
             {
                 logcb( "Invalid arguments." );
                 return;
             }
 
             bool resave = false;
-            if( Str::CompareCase( name, "*" ) )
+            if( name == "*" )
             {
                 int index = (int) ban_hours - 1;
                 if( index >= 0 && index < (int) Banned.size() )
@@ -2030,7 +2027,7 @@ bool FOServer::LoadGameInfoFile( IniParser& data )
     StrMap& kv = data.GetApp( "GeneralSettings" );
 
     // Singleplayer info
-    if( kv.count( "Singleplayer" ) && Str::CompareCase( kv[ "Singleplayer" ].c_str(), "true" ) )
+    if( kv.count( "Singleplayer" ) && _str( kv[ "Singleplayer" ] ).compareIgnoreCase( "true" ) )
     {
         StrMap& client_kv = data.GetApp( "Client" );
         SingleplayerSave.CrProps->LoadFromText( client_kv );

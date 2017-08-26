@@ -4460,7 +4460,7 @@ void FOClient::Net_OnUpdateFilesList()
 
         // Skip platform depended
         #ifdef FO_WINDOWS
-        if( outdated && Str::CompareCase( exe_name, name ) )
+        if( outdated && _str( exe_name ).compareIgnoreCase( name ) )
             have_exe = true;
         string ext = _str( name ).getFileExtension();
         if( !outdated && ( ext == "exe" || ext == "pdb" ) )
@@ -6013,7 +6013,7 @@ void FOClient::PlayVideo()
     {
         MusicVolumeRestore = GameOpt.MusicVolume;
         GameOpt.MusicVolume = 100;
-        SndMngr.PlayMusic( video.SoundName.c_str(), 0 );
+        SndMngr.PlayMusic( video.SoundName, 0 );
     }
 }
 
@@ -7743,7 +7743,7 @@ void FOClient::SScriptFunc::Global_QuakeScreen( uint noise, uint ms )
 
 bool FOClient::SScriptFunc::Global_PlaySound( string sound_name )
 {
-    return SndMngr.PlaySound( sound_name.c_str() );
+    return SndMngr.PlaySound( sound_name );
 }
 
 bool FOClient::SScriptFunc::Global_PlayMusic( string music_name, uint repeat_time )
@@ -7754,7 +7754,7 @@ bool FOClient::SScriptFunc::Global_PlayMusic( string music_name, uint repeat_tim
         return true;
     }
 
-    return SndMngr.PlayMusic( music_name.c_str(), repeat_time );
+    return SndMngr.PlayMusic( music_name, repeat_time );
 }
 
 void FOClient::SScriptFunc::Global_PlayVideo( string video_name, bool can_stop )
@@ -7772,12 +7772,12 @@ hash FOClient::SScriptFunc::Global_GetCurrentMapPid()
 
 void FOClient::SScriptFunc::Global_Message( string msg )
 {
-    Self->AddMess( FOMB_GAME, msg.c_str(), true );
+    Self->AddMess( FOMB_GAME, msg, true );
 }
 
 void FOClient::SScriptFunc::Global_MessageType( string msg, int type )
 {
-    Self->AddMess( type, msg.c_str(), true );
+    Self->AddMess( type, msg, true );
 }
 
 void FOClient::SScriptFunc::Global_MessageMsg( int text_msg, uint str_num )

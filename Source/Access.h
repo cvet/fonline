@@ -102,7 +102,7 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
 
     uchar         cmd = 0;
     for( uint cur_cmd = 0; cur_cmd < sizeof( cmdlist ) / sizeof( CmdDef ); cur_cmd++ )
-        if( Str::CompareCase( cmd_str, cmdlist[ cur_cmd ].cmd ) )
+        if( _str( cmd_str ).compareIgnoreCase( cmdlist[ cur_cmd ].cmd ) )
             cmd = cmdlist[ cur_cmd ].id;
     if( !cmd )
         return false;
@@ -505,7 +505,8 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
             args_str >> ban_hours;
         if( !args_str.fail() )
             info = args_str.str();
-        if( !Str::CompareCase( params, "add" ) && !Str::CompareCase( params, "add+" ) && !Str::CompareCase( params, "delete" ) && !Str::CompareCase( params, "list" ) )
+        if( !_str( params ).compareIgnoreCase( "add" ) && !_str( params ).compareIgnoreCase( "add+" ) &&
+            !_str( params ).compareIgnoreCase( "delete" ) && !_str( params ).compareIgnoreCase( "list" ) )
         {
             logcb( "Invalid arguments. Example: ban [add,add+,delete,list] [user] [hours] [comment]." );
             break;

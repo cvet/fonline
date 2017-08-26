@@ -13,18 +13,18 @@ public:
     bool Init();
     void Finish();
 
-    bool PlaySound( const char* name );
-    bool PlayMusic( const char* fname, uint repeat_time );
+    bool PlaySound( const string& name );
+    bool PlayMusic( const string& fname, uint repeat_time );
     void StopSounds();
     void StopMusic();
 
 private:
     void   ProcessSounds( uchar* output );
     bool   ProcessSound( Sound* sound, uchar* output );
-    Sound* Load( const char* fname, bool is_music );
-    bool   LoadWAV( Sound* sound, const char* fname );
-    bool   LoadACM( Sound* sound, const char* fname, bool is_music );
-    bool   LoadOGG( Sound* sound, const char* fname );
+    Sound* Load( const string& fname, bool is_music );
+    bool   LoadWAV( Sound* sound, const string& fname );
+    bool   LoadACM( Sound* sound, const string& fname, bool is_music );
+    bool   LoadOGG( Sound* sound, const string& fname );
     bool   StreamOGG( Sound* sound );
     bool   ConvertData( Sound* sound );
 

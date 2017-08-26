@@ -632,34 +632,6 @@ bool Str::Compare( const string& str1, const string& str2 )
     return str1 == str2;
 }
 
-bool Str::CompareCase( const char* str1, const char* str2 )
-{
-    while( *str1 && *str2 )
-    {
-        char c1 = *str1;
-        char c2 = *str2;
-        if( c1 >= 'A' && c1 <= 'Z' )
-            c1 += 0x20;
-        if( c2 >= 'A' && c2 <= 'Z' )
-            c2 += 0x20;
-        if( c1 != c2 )
-            return false;
-        str1++, str2++;
-    }
-    return *str1 == 0 && *str2 == 0;
-}
-
-bool Str::CompareCase( const string& str1, const string& str2 )
-{
-    if( str1.length() != str2.length() )
-        return false;
-
-    for( size_t i = 0; i < str1.length(); i++ )
-        if( tolower( str1[ i ] ) != tolower( str2[ i ] ) )
-            return false;
-    return true;
-}
-
 void Str::HexToStr( uchar hex, char* str )
 {
     for( int i = 0; i < 2; i++ )

@@ -38,13 +38,13 @@ Bone* GraphicLoader::LoadModel( const string& fname )
     // Find already loaded
     for( size_t i = 0, j = loadedModelNames.size(); i < j; i++ )
     {
-        if( Str::CompareCase( loadedModelNames[ i ], fname ) )
+        if( _str( loadedModelNames[ i ] ).compareIgnoreCase( fname ) )
             return loadedModels[ i ];
     }
 
     // Add to already processed
     for( size_t i = 0, j = processedFiles.size(); i < j; i++ )
-        if( Str::CompareCase( processedFiles[ i ], fname ) )
+        if( _str( processedFiles[ i ] ).compareIgnoreCase( fname ) )
             return nullptr;
     processedFiles.push_back( fname );
 
@@ -79,17 +79,17 @@ Bone* GraphicLoader::LoadModel( const string& fname )
 AnimSet* GraphicLoader::LoadAnimation( const string& anim_fname, const string& anim_name )
 {
     // Find in already loaded
-    bool take_first = Str::CompareCase( anim_name, "Base" );
-    for( uint i = 0, j = (uint) loadedAnimations.size(); i < j; i++ )
+    bool take_first = anim_name == "Base";
+    for( size_t i = 0; i < loadedAnimations.size(); i++ )
     {
         AnimSet* anim = (AnimSet*) loadedAnimations[ i ];
-        if( Str::CompareCase( anim->GetFileName(), anim_fname ) && ( Str::CompareCase( anim->GetName(), anim_name ) || take_first ) )
+        if( _str( anim->GetFileName() ).compareIgnoreCase( anim_fname ) && ( take_first || _str( anim->GetName() ).compareIgnoreCase( anim_name ) ) )
             return anim;
     }
 
     // Check maybe file already processed and nothing founded
-    for( size_t i = 0, j = processedFiles.size(); i < j; i++ )
-        if( Str::CompareCase( processedFiles[ i ], anim_fname ) )
+    for( size_t i = 0; i < processedFiles.size(); i++ )
+        if( _str( processedFiles[ i ] ).compareIgnoreCase( anim_fname ) )
             return nullptr;
 
     // File not processed, load and recheck animations
@@ -114,7 +114,7 @@ MeshTexture* GraphicLoader::LoadTexture( const string& texture_name, const strin
     for( auto it = loadedMeshTextures.begin(), end = loadedMeshTextures.end(); it != end; ++it )
     {
         MeshTexture* texture = *it;
-        if( Str::CompareCase( texture->Name, texture_name ) )
+        if( _str( texture->Name ).compareIgnoreCase( texture_name ) )
             return texture && texture->Id ? texture : nullptr;
     }
 
@@ -169,7 +169,7 @@ Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, co
     for( auto it = loadedEffects.begin(), end = loadedEffects.end(); it != end; ++it )
     {
         Effect* effect = *it;
-        if( Str::CompareCase( effect->Name, loaded_fname ) && effect->Defines == defines && effect->Defaults == defaults )
+        if( _str( effect->Name ).compareIgnoreCase( loaded_fname ) && effect->Defines == defines && effect->Defaults == defaults )
             return effect;
     }
 
@@ -209,8 +209,8 @@ Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, co
     bool fail = false;
     uint passes = 1;
     for( size_t i = 0; i < commands.size(); i++ )
-        if( commands[ i ].size() >= 2 && Str::CompareCase( commands[ i ][ 0 ], "Passes" ) )
-            passes = ConvertParamValue( commands[ i ][ 1 ].c_str(), fail );
+        if( commands[ i ].size() >= 2 && commands[ i ][ 0 ] == "Passes" )
+            passes = ConvertParamValue( commands[ i ][ 1 ], fail );
 
     // New effect
     Effect effect;
@@ -219,57 +219,57 @@ Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, co
 
     // Load passes
     for( uint pass = 0; pass < passes; pass++ )
-        if( !LoadEffectPass( &effect, fname.c_str(), file, pass, use_in_2d, defines, defaults, defaults_count ) )
+        if( !LoadEffectPass( &effect, fname, file, pass, use_in_2d, defines, defaults, defaults_count ) )
             return nullptr;
 
     // Process commands
     for( size_t i = 0; i < commands.size(); i++ )
     {
-        static auto get_gl_blend_func = [] (const char* s)
+        static auto get_gl_blend_func = [] ( const string &s )
         {
-            if( Str::Compare( s, "GL_ZERO" ) )
+            if( s == "GL_ZERO" )
                 return GL_ZERO;
-            if( Str::Compare( s, "GL_ONE" ) )
+            if( s == "GL_ONE" )
                 return GL_ONE;
-            if( Str::Compare( s, "GL_SRC_COLOR" ) )
+            if( s == "GL_SRC_COLOR" )
                 return GL_SRC_COLOR;
-            if( Str::Compare( s, "GL_ONE_MINUS_SRC_COLOR" ) )
+            if( s == "GL_ONE_MINUS_SRC_COLOR" )
                 return GL_ONE_MINUS_SRC_COLOR;
-            if( Str::Compare( s, "GL_DST_COLOR" ) )
+            if( s == "GL_DST_COLOR" )
                 return GL_DST_COLOR;
-            if( Str::Compare( s, "GL_ONE_MINUS_DST_COLOR" ) )
+            if( s == "GL_ONE_MINUS_DST_COLOR" )
                 return GL_ONE_MINUS_DST_COLOR;
-            if( Str::Compare( s, "GL_SRC_ALPHA" ) )
+            if( s == "GL_SRC_ALPHA" )
                 return GL_SRC_ALPHA;
-            if( Str::Compare( s, "GL_ONE_MINUS_SRC_ALPHA" ) )
+            if( s == "GL_ONE_MINUS_SRC_ALPHA" )
                 return GL_ONE_MINUS_SRC_ALPHA;
-            if( Str::Compare( s, "GL_DST_ALPHA" ) )
+            if( s == "GL_DST_ALPHA" )
                 return GL_DST_ALPHA;
-            if( Str::Compare( s, "GL_ONE_MINUS_DST_ALPHA" ) )
+            if( s == "GL_ONE_MINUS_DST_ALPHA" )
                 return GL_ONE_MINUS_DST_ALPHA;
-            if( Str::Compare( s, "GL_CONSTANT_COLOR" ) )
+            if( s == "GL_CONSTANT_COLOR" )
                 return GL_CONSTANT_COLOR;
-            if( Str::Compare( s, "GL_ONE_MINUS_CONSTANT_COLOR" ) )
+            if( s == "GL_ONE_MINUS_CONSTANT_COLOR" )
                 return GL_ONE_MINUS_CONSTANT_COLOR;
-            if( Str::Compare( s, "GL_CONSTANT_ALPHA" ) )
+            if( s == "GL_CONSTANT_ALPHA" )
                 return GL_CONSTANT_ALPHA;
-            if( Str::Compare( s, "GL_ONE_MINUS_CONSTANT_ALPHA" ) )
+            if( s == "GL_ONE_MINUS_CONSTANT_ALPHA" )
                 return GL_ONE_MINUS_CONSTANT_ALPHA;
-            if( Str::Compare( s, "GL_SRC_ALPHA_SATURATE" ) )
+            if( s == "GL_SRC_ALPHA_SATURATE" )
                 return GL_SRC_ALPHA_SATURATE;
             return -1;
         };
-        static auto get_gl_blend_equation = [] (const char* s)
+        static auto get_gl_blend_equation = [] ( const string &s )
         {
-            if( Str::Compare( s, "GL_FUNC_ADD" ) )
+            if( s == "GL_FUNC_ADD" )
                 return GL_FUNC_ADD;
-            if( Str::Compare( s, "GL_FUNC_SUBTRACT" ) )
+            if( s == "GL_FUNC_SUBTRACT" )
                 return GL_FUNC_SUBTRACT;
-            if( Str::Compare( s, "GL_FUNC_REVERSE_SUBTRACT" ) )
+            if( s == "GL_FUNC_REVERSE_SUBTRACT" )
                 return GL_FUNC_REVERSE_SUBTRACT;
-            if( Str::Compare( s, "GL_MAX" ) )
+            if( s == "GL_MAX" )
                 return GL_MAX;
-            if( Str::Compare( s, "GL_MIN" ) )
+            if( s == "GL_MIN" )
                 return GL_MIN;
             return -1;
         };
@@ -277,22 +277,22 @@ Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, co
         StrVec& tokens = commands[ i ];
         if( tokens[ 0 ] == "Pass" && tokens.size() >= 3 )
         {
-            uint pass = ConvertParamValue( tokens[ 1 ].c_str(), fail );
+            uint pass = ConvertParamValue( tokens[ 1 ], fail );
             if( pass < passes )
             {
                 EffectPass& effect_pass = effect.Passes[ pass ];
                 if( tokens[ 2 ] == "BlendFunc" && tokens.size() >= 5 )
                 {
                     effect_pass.IsNeedProcess = effect_pass.IsChangeStates = true;
-                    effect_pass.BlendFuncParam1 = get_gl_blend_func( tokens[ 3 ].c_str() );
-                    effect_pass.BlendFuncParam2 = get_gl_blend_func( tokens[ 4 ].c_str() );
+                    effect_pass.BlendFuncParam1 = get_gl_blend_func( tokens[ 3 ] );
+                    effect_pass.BlendFuncParam2 = get_gl_blend_func( tokens[ 4 ] );
                     if( effect_pass.BlendFuncParam1 == -1 || effect_pass.BlendFuncParam2 == -1 )
                         fail = true;
                 }
                 else if( tokens[ 2 ] == "BlendEquation" && tokens.size() >= 4 )
                 {
                     effect_pass.IsNeedProcess = effect_pass.IsChangeStates = true;
-                    effect_pass.BlendEquation = get_gl_blend_equation( tokens[ 3 ].c_str() );
+                    effect_pass.BlendEquation = get_gl_blend_equation( tokens[ 3 ] );
                     if( effect_pass.BlendEquation == -1 )
                         fail = true;
                 }

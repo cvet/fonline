@@ -585,8 +585,8 @@ bool FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, 
         const char* ext = nullptr;
         for( const char* name = ent->d_name; *name; name++ )
             if( *name == '.' )
-                ext = name;
-        if( !ext || !*( ++ext ) || !Str::CompareCase( ext, ff->ext ) )
+                ext = name + 1;
+        if( !ext || !*ext || strcasecmp( ext, ff->ext ) )
             return FileFindNext( descriptor, fname, fsize, wtime, is_dir );
     }
 

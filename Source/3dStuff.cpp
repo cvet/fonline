@@ -1379,7 +1379,7 @@ bool Animation3dEntity::Load( const string& name )
         return false;
 
     // Load fonline 3d file
-    if( Str::CompareCase( ext, "fo3d" ) )
+    if( ext == "fo3d" )
     {
         // Load main fo3d file
         FileManager fo3d;

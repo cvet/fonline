@@ -943,7 +943,7 @@ void GetClientOptions()
     if( !logging )
     {
         WriteLog( "File logging off.\n" );
-        LogToFile( nullptr );
+        LogToFile( "" );
     }
 
     # ifdef FONLINE_MAPPER

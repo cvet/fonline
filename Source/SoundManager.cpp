@@ -225,22 +225,22 @@ bool SoundManager::ProcessSound( Sound* sound, uchar* output )
     return false;
 }
 
-Sound* SoundManager::Load( const char* fname, bool is_music )
+Sound* SoundManager::Load( const string& fname, bool is_music )
 {
-    string fname_ = fname;
+    string fixed_fname = fname;
     string ext = _str( fname ).getFileExtension();
 
     // Default ext
     if( ext.empty() )
     {
         ext = "acm";
-        fname_ += "." + ext;
+        fixed_fname += "." + ext;
     }
 
     Sound* sound = new Sound();
-    if( !( ( Str::CompareCase( ext, "wav" ) && LoadWAV( sound, fname_.c_str() ) ) ||
-           ( Str::CompareCase( ext, "acm" ) && LoadACM( sound, fname_.c_str(), is_music ) ) ||
-           ( Str::CompareCase( ext, "ogg" ) && LoadOGG( sound, fname_.c_str() ) ) ) )
+    if( !( ( ext == "wav" && LoadWAV( sound, fixed_fname ) ) ||
+           ( ext == "acm" && LoadACM( sound, fixed_fname, is_music ) ) ||
+           ( ext == "ogg" && LoadOGG( sound, fixed_fname ) ) ) )
     {
         delete sound;
         return nullptr;
@@ -252,7 +252,7 @@ Sound* SoundManager::Load( const char* fname, bool is_music )
     return sound;
 }
 
-bool SoundManager::LoadWAV( Sound* sound, const char* fname )
+bool SoundManager::LoadWAV( Sound* sound, const string& fname )
 {
     FileManager fm;
     if( !fm.LoadFile( fname ) )
@@ -353,7 +353,7 @@ bool SoundManager::LoadWAV( Sound* sound, const char* fname )
     return ConvertData( sound );
 }
 
-bool SoundManager::LoadACM( Sound* sound, const char* fname, bool is_music )
+bool SoundManager::LoadACM( Sound* sound, const string& fname, bool is_music )
 {
     FileManager fm;
     if( !fm.LoadFile( fname ) )
@@ -424,7 +424,7 @@ static long Ogg_tell_func( void* datasource )
     return fm->GetCurPos();
 }
 
-bool SoundManager::LoadOGG( Sound* sound, const char* fname )
+bool SoundManager::LoadOGG( Sound* sound, const string& fname )
 {
     FileManager* fm = new FileManager();
     if( !fm->LoadFile( fname ) )
@@ -561,7 +561,7 @@ bool SoundManager::ConvertData( Sound* sound )
     return true;
 }
 
-bool SoundManager::PlaySound( const char* name )
+bool SoundManager::PlaySound( const string& name )
 {
     if( !isActive || !GameOpt.SoundVolume )
         return true;
@@ -573,19 +573,19 @@ bool SoundManager::PlaySound( const char* name )
     StrMap& names = ResMngr.GetSoundNames();
     auto    it = names.find( sound_name );
     if( it != names.end() )
-        return Load( it->second.c_str(), false ) != nullptr;
+        return Load( it->second, false ) != nullptr;
 
     // Check random pattern 'NAME_X'
     uint count = 0;
     while( names.find( _str( "{}_{}", sound_name, count + 1 ) ) != names.end() )
         count++;
     if( count )
-        return Load( names.find( _str( "{}_{}", sound_name, Random( 1, count ) ) )->second.c_str(), false ) != nullptr;
+        return Load( names.find( _str( "{}_{}", sound_name, Random( 1, count ) ) )->second, false ) != nullptr;
 
     return false;
 }
 
-bool SoundManager::PlayMusic( const char* fname, uint repeat_time )
+bool SoundManager::PlayMusic( const string& fname, uint repeat_time )
 {
     if( !isActive )
         return true;

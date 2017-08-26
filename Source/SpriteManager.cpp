@@ -2347,7 +2347,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
         {
             if( !cached[ i ] )
                 break;
-            if( Str::CompareCase( file_name, cached[ i ]->fileName ) )
+            if( _str( file_name ).compareIgnoreCase( cached[ i ]->fileName ) )
             {
                 index = i;
                 break;

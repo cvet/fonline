@@ -97,20 +97,20 @@ int main( int argc, char* argv[] )
     for( int i = 2; i < argc; i++ )
     {
         // Server / Client / Mapper
-        if( Str::CompareCase( argv[ i ], "-server" ) )
+        if( argv[ i ] == "-server" )
             target = "SERVER";
-        else if( Str::CompareCase( argv[ i ], "-client" ) )
+        else if( argv[ i ] == "-client" )
             target = "CLIENT";
-        else if( Str::CompareCase( argv[ i ], "-mapper" ) )
+        else if( argv[ i ] == "-mapper" )
             target = "MAPPER";
         // Preprocessor output
-        else if( Str::CompareCase( argv[ i ], "-p" ) && i + 1 < argc )
+        else if( argv[ i ] == "-p" && i + 1 < argc )
             arg_path_prep = argv[ ++i ];
         // Define
-        else if( Str::CompareCase( argv[ i ], "-d" ) && i + 1 < argc )
+        else if( argv[ i ] == "-d" && i + 1 < argc )
             defines.push_back( argv[ ++i ] );
         // Run function
-        else if( Str::CompareCase( argv[ i ], "-run" ) && i + 1 < argc )
+        else if( argv[ i ] == "-run" && i + 1 < argc )
             run_func.push_back( argv[ ++i ] );
     }
 
