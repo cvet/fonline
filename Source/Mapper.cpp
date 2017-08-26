@@ -4286,7 +4286,7 @@ bool FOMapper::InitScriptSystem()
         return false;
 
     // Load scripts
-    Script::Undef( nullptr );
+    Script::Undef( "" );
     Script::Define( "__MAPPER" );
     Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
     FileManager::SetCurrentDir( ServerWritePath, "./" );

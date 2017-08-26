@@ -1337,7 +1337,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
     {
         CHECK_ALLOW_COMMAND;
 
-        Script::Undef( nullptr );
+        Script::Undef( "" );
         Script::Define( "__SERVER" );
         Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
         if( Script::ReloadScripts( "Server" ) )

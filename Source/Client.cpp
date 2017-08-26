@@ -6583,7 +6583,7 @@ bool FOClient::ReloadScripts()
     }
 
     // Options
-    Script::Undef( nullptr );
+    Script::Undef( "" );
     Script::Define( "__CLIENT" );
     Script::Define( _str( "__VERSION {}", FONLINE_VERSION ) );
 
