@@ -79,7 +79,7 @@ static ExceptionCallback OnException;
 // Contexts
 struct ContextData
 {
-    char              Info[ MAX_FOTEXT ];
+    char              Info[ 1024 ];
     uint              StartTick;
     uint              SuspendEndTick;
     Entity*           EntityArgs[ 20 ];
@@ -1443,10 +1443,7 @@ hash Script::GetFuncNum( asIScriptFunction* func )
     hash* func_num_ptr = (hash*) func->GetUserData();
     if( !func_num_ptr )
     {
-        char script_name[ MAX_FOTEXT ];
-        Str::Copy( script_name, func->GetNamespace() );
-        Str::Append( script_name, "::" );
-        Str::Append( script_name, func->GetName() );
+        string script_name = _str( "{}::{}", func->GetNamespace(), func->GetName() );
         func_num_ptr = new hash( _str( script_name ).toHash() );
         func->SetUserData( func_num_ptr );
     }

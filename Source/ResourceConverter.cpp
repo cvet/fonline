@@ -235,15 +235,6 @@ FileManager* ResourceConverter::Convert3d( const string& name, FileManager& file
         // Import the scene
         if( !fbx_importer->Import( fbx_scene ) )
         {
-            // Todo: Password
-            /*if (fbx_importer->GetStatus().GetCode() == FbxStatus::ePasswordError)
-               {
-                    char password[MAX_FOTEXT];
-                    IOS_REF.SetStringProp(IMP_FBX_PASSWORD, FbxString(password));
-                    IOS_REF.SetBoolProp(IMP_FBX_PASSWORD_ENABLE, true);
-                    if(!fbx_importer->Import(pScene) && lImporter->GetStatus().GetCode() == FbxStatus::ePasswordError)
-                            return NULL;
-               }*/
             WriteLog( "Can't import scene, file '{}'.\n", name );
             return nullptr;
         }

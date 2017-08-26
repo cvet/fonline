@@ -172,7 +172,7 @@ class DialogManager
 public:
     bool        LoadDialogs();
     void        Finish();
-    DialogPack* ParseDialog( const char* pack_name, const char* data );
+    DialogPack* ParseDialog( const string& pack_name, const string& data );
     bool        AddDialog( DialogPack* pack );
     DialogPack* GetDialog( hash pack_id );
     DialogPack* GetDialogByIndex( uint index );
@@ -184,8 +184,8 @@ private:
 
     DemandResult* LoadDemandResult( istringstream& input, bool is_demand );
     bool          CheckLockTime( int time );
-    uint          GetNotAnswerAction( const char* str, bool& ret_val );
-    char          GetDRType( const char* str );
+    uint          GetNotAnswerAction( const string& str, bool& ret_val );
+    char          GetDRType( const string& str );
     char          GetWho( char who );
     bool          CheckOper( char oper );
 };

@@ -10,7 +10,7 @@
 
 DialogManager DlgMngr;
 
-int GetPropEnumIndex( const char* str, bool is_demand, int& type, bool& is_hash )
+int GetPropEnumIndex( const string& str, bool is_demand, int& type, bool& is_hash )
 {
     #ifdef FONLINE_SERVER
     Property* prop_global = GlobalVars::PropertiesRegistrator->Find( str );
@@ -172,7 +172,7 @@ void DialogManager::Finish()
     WriteLog( "Dialog manager finish complete.\n" );
 }
 
-DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data )
+DialogPack* DialogManager::ParseDialog( const string& pack_name, const string& data )
 {
     IniParser fodlg;
     fodlg.CollectContent();
@@ -244,18 +244,18 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
     if( ch != '&' )
         return nullptr;
 
-    uint dlg_id;
-    uint text_id;
-    uint link;
-    char read_str[ MAX_FOTEXT ];
-    bool ret_val;
+    uint   dlg_id;
+    uint   text_id;
+    uint   link;
+    string read_str;
+    bool   ret_val;
 
     #ifdef FONLINE_NPCEDITOR
-    char script[ MAX_FOTEXT ];
+    string script;
     #else
-    int  script;
+    int    script;
     #endif
-    uint flags;
+    uint   flags;
 
     while( true )
     {
@@ -273,9 +273,9 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
         if( input.fail() )
             LOAD_FAIL( "Bad not answer action." );
         #ifdef FONLINE_NPCEDITOR
-        Str::Copy( script, read_str );
-        if( Str::Compare( script, "NOT_ANSWER_CLOSE_DIALOG" ) )
-            Str::Copy( script, "None" );
+        script = read_str;
+        if( script == "NOT_ANSWER_CLOSE_DIALOG" )
+            script = "None";
         ret_val = false;
         #else
         script = GetNotAnswerAction( read_str, ret_val );
@@ -378,17 +378,17 @@ DialogPack* DialogManager::ParseDialog( const char* pack_name, const char* data 
 
 DemandResult* DialogManager::LoadDemandResult( istringstream& input, bool is_demand )
 {
-    bool  fail = false;
-    char  who = DR_WHO_PLAYER;
-    char  oper = '=';
-    int   values_count = 0;
-    char  svalue[ MAX_FOTEXT ] = { 0 };
-    int   ivalue = 0;
-    max_t id = 0;
-    char  type_str[ MAX_FOTEXT ];
-    char  name[ MAX_FOTEXT ] = { 0 };
-    bool  no_recheck = false;
-    bool  ret_value = false;
+    bool   fail = false;
+    char   who = DR_WHO_PLAYER;
+    char   oper = '=';
+    int    values_count = 0;
+    string svalue;
+    int    ivalue = 0;
+    max_t  id = 0;
+    string type_str;
+    string name;
+    bool   no_recheck = false;
+    bool   ret_value = false;
 
     #ifdef FONLINE_NPCEDITOR
     string script_val[ 5 ];
@@ -618,11 +618,11 @@ DemandResult* DialogManager::LoadDemandResult( istringstream& input, bool is_dem
     return &result;
 }
 
-uint DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
+uint DialogManager::GetNotAnswerAction( const string& str, bool& ret_val )
 {
     ret_val = false;
 
-    if( Str::Compare( str, "NOT_ANSWER_CLOSE_DIALOG" ) || Str::Compare( str, "None" ) )
+    if( str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None" )
         return 0;
 
     #ifdef FONLINE_SERVER
@@ -638,17 +638,17 @@ uint DialogManager::GetNotAnswerAction( const char* str, bool& ret_val )
     return 0;
 }
 
-char DialogManager::GetDRType( const char* str )
+char DialogManager::GetDRType( const string& str )
 {
-    if( Str::Compare( str, "Property" ) || Str::Compare( str, "_param" ) )
+    if( str == "Property" || str == "_param" )
         return DR_PROP_CRITTER;
-    else if( Str::Compare( str, "Item" ) || Str::Compare( str, "_item" ) )
+    else if( str == "Item" || str == "_item" )
         return DR_ITEM;
-    else if( Str::Compare( str, "Script" ) || Str::Compare( str, "_script" ) )
+    else if( str == "Script" || str == "_script" )
         return DR_SCRIPT;
-    else if( Str::Compare( str, "NoRecheck" ) || Str::Compare( str, "no_recheck" ) )
+    else if( str == "NoRecheck" || str == "no_recheck" )
         return DR_NO_RECHECK;
-    else if( Str::Compare( str, "Or" ) || Str::Compare( str, "or" ) )
+    else if( str == "Or" || str == "or" )
         return DR_OR;
     return DR_NONE;
 }

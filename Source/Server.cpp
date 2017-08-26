@@ -1055,25 +1055,8 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
         ConnectedClientsLocker.Unlock();
         result += str;
 
-        const char* ptext = result.c_str();
-        uint        text_begin = 0;
-        char        buf[ MAX_FOTEXT ];
-        for( uint i = 0, j = (uint) result.length(); i < j; i++ )
-        {
-            if( result[ i ] == '\n' )
-            {
-                uint len = i - text_begin;
-                if( len )
-                {
-                    if( len >= MAX_FOTEXT )
-                        len = MAX_FOTEXT - 1;
-                    memcpy( buf, &ptext[ text_begin ], len );
-                    buf[ len ] = 0;
-                    logcb( buf );
-                }
-                text_begin = i + 1;
-            }
-        }
+        for( const auto& line : _str( result ).split( '\n' ) )
+            logcb( line );
     }
     break;
     case CMD_CRITID:

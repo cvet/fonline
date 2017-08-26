@@ -471,8 +471,8 @@ public:
             return false;
         }
 
-        char options_buf[ MAX_FOTEXT ] = { 0 };
-        str.getline( options_buf, MAX_FOTEXT );
+        string options;
+        std::getline( str, options, '\n' );
 
         // Parse access type
         Property::AccessType access = (Property::AccessType) 0;
@@ -520,7 +520,7 @@ public:
         int64  max_value = 0;
         string get_callback;
         StrVec set_callbacks;
-        StrVec opt_entries = _str( options_buf ).split( ',' );
+        StrVec opt_entries = _str( options ).split( ',' );
         for( size_t i = 0, j = opt_entries.size(); i < j; i++ )
         {
             StrVec opt_entry = _str( opt_entries[ i ] ).split( '=' );
@@ -726,8 +726,8 @@ public:
     {
         // Read all
         istringstream str( text );
-        char          group[ MAX_FOTEXT ];
-        char          name[ MAX_FOTEXT ];
+        string        group;
+        string        name;
         str >> group >> name;
         if( str.fail() )
         {
@@ -739,27 +739,27 @@ public:
         asIScriptEngine* engine = Script::GetEngine();
         int              group_index;
         const char*      ns;
-        if( Str::Compare( group, "Dialog" ) )
+        if( group == "Dialog" )
         {
             group_index = 0;
             ns = "Content::Dialog";
         }
-        else if( Str::Compare( group, "Item" ) )
+        else if( group == "Item" )
         {
             group_index = 1;
             ns = "Content::Item";
         }
-        else if( Str::Compare( group, "Critter" ) )
+        else if( group == "Critter" )
         {
             group_index = 2;
             ns = "Content::Critter";
         }
-        else if( Str::Compare( group, "Location" ) )
+        else if( group == "Location" )
         {
             group_index = 3;
             ns = "Content::Location";
         }
-        else if( Str::Compare( group, "Map" ) )
+        else if( group == "Map" )
         {
             group_index = 4;
             ns = "Content::Map";
@@ -776,7 +776,7 @@ public:
 
         // Add to collection
         hash h = _str( name ).toHash();
-        filesToCheck[ group_index ].insert( std::make_pair( string( name ), h ) );
+        filesToCheck[ group_index ].insert( std::make_pair( name, h ) );
 
         // Register file
         engine->SetDefaultNamespace( "Content" );
@@ -851,8 +851,8 @@ public:
     {
         // Read all
         istringstream str( text );
-        char          enum_name[ MAX_FOTEXT ];
-        char          value_name[ MAX_FOTEXT ];
+        string        enum_name;
+        string        value_name;
         str >> enum_name >> value_name;
         if( str.fail() )
         {
@@ -863,7 +863,7 @@ public:
         std::getline( str, other, '\n' );
 
         asIScriptEngine* engine = Script::GetEngine();
-        int              result = engine->RegisterEnum( enum_name );
+        int              result = engine->RegisterEnum( enum_name.c_str() );
         if( result < 0 && result != asALREADY_REGISTERED )
         {
             WriteLog( "Error in 'enum' pragma '{}', register enum error {}.\n", text, result );
@@ -887,7 +887,7 @@ public:
             value = _str( "{}::{}", enum_name, value_name ).toHash();
         }
 
-        result = engine->RegisterEnumValue( enum_name, value_name, value );
+        result = engine->RegisterEnumValue( enum_name.c_str(), value_name.c_str(), value );
         if( result < 0 )
         {
             WriteLog( "Error in 'enum' pragma '{}', register enum value error {}.\n", text, result );
@@ -1384,8 +1384,8 @@ public:
             Init();
         }
 
-        char type[ MAX_FOTEXT ];
-        char name[ MAX_FOTEXT ];
+        string type;
+        string name;
         istringstream str( text );
         str >> type >> name;
         if( str.fail() )
@@ -1393,7 +1393,7 @@ public:
             WriteLog( "Unable to parse 'rpc' pragma '{}'.\n", text );
             return false;
         }
-        if( !Str::Compare( type, "Server" ) && !Str::Compare( type, "Client" ) )
+        if( type != "Server" && type != "Client" )
         {
             WriteLog( "Invalid type in 'rpc' pragma '{}'.\n", text );
             return false;
@@ -1465,7 +1465,7 @@ public:
         }
 
         // Register
-        if( ( pragmaType == PRAGMA_SERVER ) == Str::Compare( type, "Client" ) )
+        if( ( pragmaType == PRAGMA_SERVER ) == ( type == "Client" ) )
         {
             string method_name = _str( "void {}({}) const", name, args );
             if( engine->RegisterObjectMethod( "RpcCaller", method_name.c_str(),
@@ -1477,8 +1477,7 @@ public:
         }
         else
         {
-            string func_name = cur_file;
-            func_name.append( "::" ).append( name );
+            string func_name = _str( "{}::{}", cur_file, name );
             inFuncDesc.push_back( std::make_pair( func_name, string( args ) ) );
         }
 

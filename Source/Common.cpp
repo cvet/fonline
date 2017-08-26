@@ -817,13 +817,13 @@ void GetClientOptions()
                  opt = true; } while( 0 )
     # define GETOPTIONS_CMD_LINE_STR( opt, str_id )                            \
         do { string str = MainConfig->GetStr( "", str_id ); if( !str.empty() ) \
-                 Str::Copy( opt, str.c_str() ); } while( 0 )
+                 opt = str; } while( 0 )
     # define GETOPTIONS_CHECK( val_, min_, max_, def_ )                 \
         do { int val__ = (int) val_; if( val__ < min_ || val__ > max_ ) \
                  val_ = def_; } while( 0 )
 
-    char buf[ MAX_FOTEXT ];
-    # define READ_CFG_STR_DEF( cfg, key, def_val )    Str::Copy( buf, MainConfig->GetStr( "", key, def_val ).c_str() )
+    string buf;
+    # define READ_CFG_STR_DEF( cfg, key, def_val )    buf = MainConfig->GetStr( "", key, def_val )
 
     // Data files
     FileManager::ClearDataFiles();

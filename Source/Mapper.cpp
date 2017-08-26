@@ -2023,7 +2023,7 @@ void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
     else
     {
         if( !ObjCurLineIsConst )
-            Keyb::GetChar( dik, dik_text, ObjCurLineValue, nullptr, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
+            Keyb::GetChar( dik, dik_text, ObjCurLineValue, "", MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
     }
 }
 
@@ -3916,7 +3916,7 @@ void FOMapper::ConsoleProcess()
         ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
 //		if((ConsoleAccelerate*=4)>=CONSOLE_MAX_ACCELERATE) ConsoleAccelerate=CONSOLE_MAX_ACCELERATE;
 
-        Keyb::GetChar( ConsoleLastKey, ConsoleLastKeyText.c_str(), ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
+        Keyb::GetChar( ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
     }
 }
 

@@ -2423,7 +2423,6 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
 
         // Find sequence
         bool seq_founded = false;
-        char name[ MAX_FOTEXT ];
         uint seq_cnt = fm.GetLEUInt();
         for( uint seq = 0; seq < seq_cnt; seq++ )
         {
@@ -2433,6 +2432,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
             fm.GoForward( sizeof( uint ) * item_cnt );               // uint  unknown3[item_cnt]
 
             uint len = fm.GetLEUInt();
+            char name[ MAX_FOPATH ];
             fm.CopyMem( name, len );
             name[ len ] = 0;
 

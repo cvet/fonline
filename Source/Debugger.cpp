@@ -736,23 +736,14 @@ string Debugger::GetTraceMemory()
     // Print
     string str;
     str.reserve( 1000000 );
-    char   buf[ MAX_FOTEXT ];
     str += "Unfreed memory:\n";
-    sprintf( buf, "  Whole blocks %lld\n", (int64) blocks_chunks.size() );
-    str += buf;
-    sprintf( buf, "  Whole size   %lld\n", (int64) whole_size );
-    str += buf;
-    sprintf( buf, "  Whole chunks %lld\n", (int64) whole_chunks );
-    str += buf;
+    str += _str( "  Whole blocks {}\n", (int64) blocks_chunks.size() );
+    str += _str( "  Whole size   {}\n", (int64) whole_size );
+    str += _str( "  Whole chunks {}\n", (int64) whole_chunks );
     str += "\n";
     uint cur = 0;
-    for( auto it = blocks_chunks.begin(), end = blocks_chunks.end(); it != end; ++it )
-    {
-        StackInfo* si = *it;
-        sprintf( buf, "%06u) Size %-10zu Chunks %-10zu Heap %zu\n", cur++, si->Size, si->Chunks, si->Heap );
-        str += buf;
-        str += si->Name;
-    }
+    for( StackInfo* si : blocks_chunks )
+        str += _str( "{:06}) Size {:<10} Chunks {:<10} Heap {}\n{}", cur++, si->Size, si->Chunks, si->Heap, si->Name );
 
     MemoryAllocRecursion--;
     return str;
