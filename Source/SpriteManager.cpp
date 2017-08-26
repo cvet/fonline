@@ -2965,7 +2965,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const string& fname )
 
     // Read signature
     char head[ 8 ];
-    if( !fm.CopyMem( head, 8 ) || !Str::CompareCount( head, "MOS", 3 ) )
+    if( !fm.CopyMem( head, 8 ) || !_str( head ).startsWith( "MOS" ) )
         return nullptr;
 
     // Packed
@@ -2983,7 +2983,7 @@ AnyFrames* SpriteManager::LoadAnimationMos( const string& fname )
         fm.LoadStream( data, data_len );
         delete[] data;
 
-        if( !fm.CopyMem( head, 8 ) || !Str::CompareCount( head, "MOS", 3 ) )
+        if( !fm.CopyMem( head, 8 ) || !_str( head ).startsWith( "MOS" ) )
             return nullptr;
     }
 
@@ -3096,7 +3096,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const string& fname )
 
     // Read signature
     char head[ 8 ];
-    if( !fm.CopyMem( head, 8 ) || !Str::CompareCount( head, "BAM", 3 ) )
+    if( !fm.CopyMem( head, 8 ) || !_str( head ).startsWith( "BAM" ) )
         return nullptr;
 
     // Packed
@@ -3114,7 +3114,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const string& fname )
         fm.LoadStream( data, data_len );
         delete[] data;
 
-        if( !fm.CopyMem( head, 8 ) || !Str::CompareCount( head, "BAM", 3 ) )
+        if( !fm.CopyMem( head, 8 ) || !_str( head ).startsWith( "BAM" ) )
             return nullptr;
     }
 

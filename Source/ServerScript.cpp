@@ -374,7 +374,7 @@ bool FOServer::ReloadClientScripts()
             string      fname = _str( dll_path ).eraseFileExtension() + extensions[ d ];
 
             // Erase first './'
-            if( Str::CompareCount( fname, "./", 2 ) )
+            if( _str( fname ).startsWith( "./" ) )
                 fname.erase( 0, 2 );
 
             // Load dll

@@ -5,6 +5,16 @@
 #include <sstream>
 #include "FileSystem.h"
 
+uint _str::length()
+{
+    return (uint) s.length();
+}
+
+bool _str::empty()
+{
+    return s.empty();
+}
+
 bool _str::compareIgnoreCase( const string& r )
 {
     if( s.length() != r.length() )
@@ -22,6 +32,16 @@ bool _str::compareIgnoreCaseUtf8( const string& r )
         return false;
 
     return _str( s ).lowerUtf8() == _str( r ).lowerUtf8();
+}
+
+bool _str::startsWith( const string& r )
+{
+    return s.length() >= r.length() && s.compare( 0, r.length(), r ) == 0;
+}
+
+bool _str::endsWith( const string& r )
+{
+    return s.length() >= r.length() && s.compare( s.length() - r.length(), r.length(), r ) == 0;
 }
 
 bool _str::isValidUtf8()
@@ -635,62 +655,6 @@ bool Str::CompareCase( const string& str1, const string& str2 )
         return false;
 
     for( size_t i = 0; i < str1.length(); i++ )
-        if( tolower( str1[ i ] ) != tolower( str2[ i ] ) )
-            return false;
-    return true;
-}
-
-bool Str::CompareCount( const char* str1, const char* str2, uint max_count )
-{
-    while( *str1 && *str2 && max_count )
-    {
-        if( *str1 != *str2 )
-            return false;
-        str1++, str2++;
-        max_count--;
-    }
-    return max_count == 0;
-}
-
-bool Str::CompareCount( const string& str1, const string& str2, uint max_count )
-{
-    if( str1.length() != str2.length() )
-        return false;
-
-    if( max_count > str1.length() )
-        max_count = (uint) str1.length();
-    for( uint i = 0; i < max_count; i++ )
-        if( str1[ i ] != str2[ i ] )
-            return false;
-    return true;
-}
-
-bool Str::CompareCaseCount( const char* str1, const char* str2, uint max_count )
-{
-    while( *str1 && *str2 && max_count )
-    {
-        char c1 = *str1;
-        char c2 = *str2;
-        if( c1 >= 'A' && c1 <= 'Z' )
-            c1 += 0x20;
-        if( c2 >= 'A' && c2 <= 'Z' )
-            c2 += 0x20;
-        if( c1 != c2 )
-            return false;
-        str1++, str2++;
-        max_count--;
-    }
-    return max_count == 0;
-}
-
-bool Str::CompareCaseCount( const string& str1, const string& str2, uint max_count )
-{
-    if( str1.length() != str2.length() )
-        return false;
-
-    if( max_count > str1.length() )
-        max_count = (uint) str1.length();
-    for( uint i = 0; i < max_count; i++ )
         if( tolower( str1[ i ] ) != tolower( str2[ i ] ) )
             return false;
     return true;

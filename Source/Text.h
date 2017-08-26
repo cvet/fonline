@@ -34,10 +34,6 @@ namespace Str
     bool Compare( const string& str1, const string& str2 );
     bool CompareCase( const char* str1, const char* str2 );
     bool CompareCase( const string& str1, const string& str2 );
-    bool CompareCount( const char* str1, const char* str2, uint max_count );
-    bool CompareCount( const string& str1, const string& str2, uint max_count );
-    bool CompareCaseCount( const char* str1, const char* str2, uint max_count );
-    bool CompareCaseCount( const string& str1, const string& str2, uint max_count );
 
     void  HexToStr( uchar hex, char* str ); // 2 bytes string
     uchar StrToHex( const char* str );
@@ -62,8 +58,12 @@ public:
     const char*   c_str() const                                { return s.c_str(); }
     const string& str() const                                  { return s; }
 
+    uint length();
+    bool empty();
     bool compareIgnoreCase( const string& r );
     bool compareIgnoreCaseUtf8( const string& r );
+    bool startsWith( const string& r );
+    bool endsWith( const string& r );
     bool isValidUtf8();
     uint lengthUtf8();
 

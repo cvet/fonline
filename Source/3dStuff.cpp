@@ -567,7 +567,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             MeshTexture* texture = nullptr;
 
             // Get texture
-            if( Str::CompareCount( data.TextureName[ i ], "Parent", 6 ) )     // Parent_MeshName
+            if( _str( data.TextureName[ i ] ).startsWith( "Parent" ) )     // Parent_MeshName
             {
                 if( parentAnimation )
                 {
@@ -612,7 +612,7 @@ void Animation3d::SetAnimData( AnimParams& data, bool clear )
             Effect* effect = nullptr;
 
             // Get effect
-            if( Str::CompareCount( data.EffectInst[ i ].EffectFilename, "Parent", 6 ) )     // Parent_MeshName
+            if( _str( data.EffectInst[ i ].EffectFilename ).startsWith( "Parent" ) )     // Parent_MeshName
             {
                 if( parentAnimation )
                 {
@@ -1575,7 +1575,7 @@ bool Animation3dEntity::Load( const string& name )
                     StrVec layers = _str( buf ).split( '-' );
                     for( uint m = 0, n = (uint) layers.size(); m < n; m++ )
                     {
-                        if( layers[ m ] == "All" )
+                        if( layers[ m ] != "All" )
                         {
                             int layer = ConvertParamValue( layers[ m ], convert_value_fail );
                             cut->Layers.push_back( layer );

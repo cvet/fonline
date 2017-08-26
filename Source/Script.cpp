@@ -1618,7 +1618,7 @@ void Script::CacheEnumValues()
         int         type_id;
         hash*       value;
         Engine->GetGlobalPropertyByIndex( i, &name, &ns, &type_id, nullptr, nullptr, (void**) &value );
-        if( ns[ 0 ] && Str::CompareCount( ns, "Content", 7 ) )
+        if( _str( ns ).startsWith( "Content" ) )
         {
             RUNTIME_ASSERT( type_id == asTYPEID_UINT32 ); // hash
             string name = _str( "{}::{}", ns, name );

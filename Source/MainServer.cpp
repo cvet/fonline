@@ -1216,7 +1216,7 @@ static void AdminWork( void* session_ )
             ADMIN_LOG( "Kill whole process.\n" );
             ExitProcess( 0 );
         }
-        else if( Str::CompareCaseCount( cmd, "log ", 4 ) )
+        else if( _str( cmd ).startsWith( "log " ) )
         {
             if( !Str::CompareCase( &cmd[ 4 ], "disable" ) )
             {

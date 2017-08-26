@@ -193,13 +193,13 @@ Effect* GraphicLoader::LoadEffect( const string& effect_name, bool use_in_2d, co
         if( line.empty() )
             break;
 
-        if( Str::CompareCaseCount( line, "Effect ", Str::Length( "Effect " ) ) )
+        if( _str( line ).startsWith( "Effect " ) )
         {
-            StrVec tokens = _str( line.substr( Str::Length( "Effect " ) ) ).split( ' ' );
+            StrVec tokens = _str( line.substr( _str( "Effect " ).length() ) ).split( ' ' );
             if( !tokens.empty() )
                 commands.push_back( tokens );
         }
-        else if( Str::CompareCaseCount( line, "#version", Str::Length( "#version" ) ) )
+        else if( _str( line ).startsWith( "#version" ) )
         {
             break;
         }

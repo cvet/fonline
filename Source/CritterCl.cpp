@@ -386,7 +386,7 @@ void CritterCl::Move( int dir )
 
     if( !Anim3d )
     {
-        if( Str::CompareCount( "art/critters/", _str().parseHash( GetModelName() ), 13 ) )
+        if( _str().parseHash( GetModelName() ).startsWith( "art/critters/" ) )
         {
             uint       anim1 = ( IsRunning ? ANIM1_UNARMED : GetAnim1() );
             uint       anim2 = ( IsRunning ? ANIM2_RUN : ANIM2_WALK );

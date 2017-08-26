@@ -150,7 +150,7 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
     while( true )
     {
         // Load
-        if( Str::CompareCount( "art/critters/", _str().parseHash( model_name ), 13 ) )
+        if( _str().parseHash( model_name ).startsWith( "art/critters/" ) )
         {
             // Hardcoded
             anim = LoadFalloutAnim( model_name, anim1, anim2 );
