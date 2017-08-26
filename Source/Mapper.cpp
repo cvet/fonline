@@ -2023,7 +2023,7 @@ void FOMapper::ObjKeyDown( uchar dik, const char* dik_text )
     else
     {
         if( !ObjCurLineIsConst )
-            Keyb::GetChar( dik, dik_text, ObjCurLineValue, "", MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
+            Keyb::GetChar( dik, dik_text, ObjCurLineValue, nullptr, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS );
     }
 }
 

@@ -83,9 +83,8 @@ public:
     {
         ushort len = 0;
         Pop( &len, sizeof( len ) );
-        char*  buf = (char*) alloca( len );
-        Pop( buf, len );
-        i.assign( buf, len );
+        i.resize( len );
+        Pop( &i[ 0 ], len );
         return *this;
     }
 
