@@ -479,44 +479,22 @@ void FOClient::UpdateBinary()
 {
     #ifdef FO_WINDOWS
     // Copy binaries
-    wchar_t path[ MAX_FOPATH ];
-    DWORD   get_exe_path = GetModuleFileNameW( nullptr, path, MAX_FOPATH );
-    RUNTIME_ASSERT( get_exe_path );
-
-    wchar_t to_dir[ MAX_FOPATH ];
-    size_t  pos = std::wstring( path ).find_last_of( '\\' );
-    RUNTIME_ASSERT( pos != string::npos );
-    wcsncpy( to_dir, path, pos + 1 );
-
-    wchar_t base_name[ MAX_FOPATH ];
-    wcsncpy( base_name, path + pos + 1, wcslen( path ) - pos );
-    pos = std::wstring( base_name ).find_last_of( '.' );
-    RUNTIME_ASSERT( pos != string::npos );
-    base_name[ pos ] = 0;
-
-    wchar_t from_dir[ MAX_FOPATH ];
-    wcscpy( from_dir, _str( FileManager::GetWritePath( "" ) ).toWideChar().c_str() );
-
-    BOOL copy_exe = CopyFileW( std::wstring( from_dir ).append( base_name ).append( L".exe" ).c_str(),
-                               std::wstring( to_dir ).append( base_name ).append( L".new.exe" ).c_str(), FALSE );
-    RUNTIME_ASSERT( copy_exe );
-    BOOL delete_old_exe = DeleteFileW( std::wstring( to_dir ).append( base_name ).append( L".old.exe" ).c_str() );
-    RUNTIME_ASSERT( delete_old_exe || GetLastError() == ERROR_FILE_NOT_FOUND );
-    BOOL rename_old_exe = MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str(),
-                                     std::wstring( to_dir ).append( base_name ).append( L".old.exe" ).c_str() );
-    RUNTIME_ASSERT_STR( rename_old_exe, _str().parseWideChar( std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() ).c_str() );
-    BOOL rename_new_exe = MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".new.exe" ).c_str(),
-                                     std::wstring( to_dir ).append( base_name ).append( L".exe" ).c_str() );
-    RUNTIME_ASSERT( rename_new_exe );
-
-    if( CopyFileW( std::wstring( from_dir ).append( base_name ).append( L".pdb" ).c_str(),
-                   std::wstring( to_dir ).append( base_name ).append( L".new.pdb" ).c_str(), FALSE ) )
+    string exe_path = FileManager::GetExePath();
+    string to_dir = _str( exe_path ).extractDir();
+    string base_name = _str( exe_path ).extractFileName().eraseFileExtension();
+    string from_dir = FileManager::GetWritePath( "" );
+    bool   copy_to_new = FileManager::CopyFile( from_dir + base_name + ".exe", to_dir + base_name + ".new.exe" );
+    RUNTIME_ASSERT( copy_to_new );
+    FileManager::DeleteDir( to_dir + base_name + ".old.exe" );
+    bool rename_to_old = FileManager::RenameFile( to_dir + base_name + ".exe", to_dir + base_name + ".old.exe" );
+    RUNTIME_ASSERT( rename_to_old );
+    bool rename_to_new = FileManager::RenameFile( to_dir + base_name + ".new.exe", to_dir + base_name + ".exe" );
+    RUNTIME_ASSERT( rename_to_new );
+    if( FileManager::CopyFile( from_dir + base_name + ".pdb", to_dir + base_name + ".new.pdb" ) )
     {
-        DeleteFileW( std::wstring( to_dir ).append( base_name ).append( L".old.pdb" ).c_str() );
-        MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".pdb" ).c_str(),
-                   std::wstring( to_dir ).append( base_name ).append( L".old.pdb" ).c_str() );
-        MoveFileW( std::wstring( to_dir ).append( base_name ).append( L".new.pdb" ).c_str(),
-                   std::wstring( to_dir ).append( base_name ).append( L".pdb" ).c_str() );
+        FileManager::DeleteFile( to_dir + base_name + ".old.pdb" );
+        FileManager::RenameFile( to_dir + base_name + ".pdb", to_dir + base_name + ".old.pdb" );
+        FileManager::RenameFile( to_dir + base_name + ".new.pdb", to_dir + base_name + ".pdb" );
     }
 
     // Restart client
@@ -528,7 +506,7 @@ void FOClient::UpdateBinary()
     wchar_t command_line[ TEMP_BUF_SIZE ];
     wcscpy( command_line, GetCommandLineW() );
     wcscat( command_line, L" --restart" );
-    BOOL create_process = CreateProcessW( path, command_line, nullptr, nullptr, FALSE,
+    BOOL create_process = CreateProcessW( _str( exe_path ).toWideChar().c_str(), command_line, nullptr, nullptr, FALSE,
                                           NORMAL_PRIORITY_CLASS, nullptr, nullptr, &sui, &pi );
     RUNTIME_ASSERT( create_process );
 
@@ -4413,16 +4391,7 @@ void FOClient::Net_OnUpdateFilesList()
     bool   have_exe = false;
     string exe_name;
     if( outdated )
-    {
-        wchar_t path[ MAX_FOPATH ];
-        DWORD   get_exe_path = GetModuleFileNameW( nullptr, path, MAX_FOPATH );
-        RUNTIME_ASSERT( get_exe_path );
-        size_t  pos = std::wstring( path ).find_last_of( '\\' );
-        RUNTIME_ASSERT( pos != string::npos );
-        wchar_t base_name[ MAX_FOPATH ];
-        wcsncpy( base_name, path + pos + 1, wcslen( path ) - pos );
-        exe_name = _str().parseWideChar( base_name );
-    }
+        exe_name = _str( FileManager::GetExePath() ).extractFileName();
     #endif
 
     for( uint file_index = 0; ; file_index++ )
@@ -4430,14 +4399,12 @@ void FOClient::Net_OnUpdateFilesList()
         short name_len = fm.GetLEShort();
         if( name_len == -1 )
             break;
-        RUNTIME_ASSERT( name_len > 0 );
-        RUNTIME_ASSERT( name_len <= MAX_FOPATH - 1 );
 
-        char name[ MAX_FOPATH ];
-        fm.CopyMem( name, name_len );
-        name[ name_len ] = 0;
-        uint size = fm.GetLEUInt();
-        uint hash = fm.GetLEUInt();
+        RUNTIME_ASSERT( name_len > 0 );
+        string name = string( (const char*) fm.GetCurBuf(), name_len );
+        fm.GoForward( name_len );
+        uint   size = fm.GetLEUInt();
+        uint   hash = fm.GetLEUInt();
 
         // Skip platform depended
         #ifdef FO_WINDOWS

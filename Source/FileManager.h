@@ -80,6 +80,7 @@ public:
     static bool   DeleteFile( const string& fname );
     static void   DeleteDir( const string& dir );
     static void   CreateDirectoryTree( const string& path );
+    static string GetExePath();
 
     bool        IsLoaded()     { return fileLoaded; }
     uchar*      GetBuf()       { return fileBuf; }

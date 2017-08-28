@@ -2332,7 +2332,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
         // Cache last 10 big SPR files (for critters)
         struct SprCache
         {
-            char        fileName[ MAX_FOPATH ];
+            string      fileName;
             FileManager fm;
         } static* cached[ SPR_CACHED_COUNT + 1 ] = { 0 };         // Last index for last loaded
 
@@ -2380,7 +2380,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                 cached[ index ] = new SprCache();
                 if( !cached[ index ] )
                     return nullptr;
-                Str::Copy( cached[ index ]->fileName, file_name.c_str() );
+                cached[ index ]->fileName = file_name;
                 cached[ index ]->fm = fm;
                 fm.ReleaseBuffer();
             }
@@ -2391,7 +2391,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                     cached[ index ] = new SprCache();
                 else
                     cached[ index ]->fm.UnloadFile();
-                Str::Copy( cached[ index ]->fileName, file_name.c_str() );
+                cached[ index ]->fileName = file_name;
                 cached[ index ]->fm = fm;
                 fm.ReleaseBuffer();
             }
@@ -2432,11 +2432,9 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
             fm.GoForward( sizeof( short ) * item_cnt );
             fm.GoForward( sizeof( uint ) * item_cnt );               // uint  unknown3[item_cnt]
 
-            uint len = fm.GetLEUInt();
-            char name[ MAX_FOPATH ];
-            fm.CopyMem( name, len );
-            name[ len ] = 0;
-
+            uint name_len = fm.GetLEUInt();
+            string name = string( (const char*) fm.GetCurBuf(), name_len );
+            fm.GoForward( name_len );
             ushort index = fm.GetLEUShort();
 
             if( seq_name.empty() || _str( seq_name ).compareIgnoreCase( name ) )
@@ -2444,7 +2442,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                 anim_index = index;
 
                 // Read frame numbers
-                fm.GoBack( sizeof( ushort ) + len + sizeof( uint ) +
+                fm.GoBack( sizeof( ushort ) + name_len + sizeof( uint ) +
                            sizeof( uint ) * item_cnt + sizeof( short ) * item_cnt );
 
                 for( uint i = 0; i < item_cnt; i++ )

@@ -707,6 +707,18 @@ void FileManager::CreateDirectoryTree( const string& path )
     MakeDirectoryTree( path );
 }
 
+string FileManager::GetExePath()
+{
+    #ifdef FO_WINDOWS
+    wchar_t exe_path[ MAX_FOPATH ];
+    DWORD   r = GetModuleFileNameW( GetModuleHandle( nullptr ), exe_path, sizeof( exe_path ) );
+    RUNTIME_ASSERT_STR( r, "Get executable path failed" );
+    return _str().parseWideChar( exe_path );
+    #else
+    RUNTIME_ASSERT( !"Invalid platform for executable path" );
+    #endif
+}
+
 void FileManager::RecursiveDirLook( const string& base_dir, const string& cur_dir, bool include_subdirs, const string& ext, StrVec& files_path, FindDataVec* files, StrVec* dirs_path, FindDataVec* dirs )
 {
     FindData fd;

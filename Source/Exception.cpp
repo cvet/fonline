@@ -199,12 +199,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         }
 
         // Set exe dir for PDB symbols
-        wchar_t exe_path[ TEMP_BUF_SIZE ];
-        GetModuleFileNameW( GetModuleHandle( nullptr ), exe_path, sizeof( exe_path ) );
-        wchar_t* last_slash = wcsrchr( exe_path, '\\' );
-        if( last_slash )
-            *last_slash = 0;
-        SetCurrentDirectoryW( exe_path );
+        SetCurrentDirectoryW( _str( FileManager::GetExePath() ).extractDir().toWideChar().c_str() );
 
         // Init symbols
         SymInitialize( process, nullptr, TRUE );

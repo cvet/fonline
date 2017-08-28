@@ -734,9 +734,7 @@ static void ServiceMain( bool as_service )
     SC_HANDLE service = OpenService( manager, "FOnlineServer", SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_START );
 
     // Compile service path
-    char   exe_path[ MAX_FOPATH ];
-    GetModuleFileName( GetModuleHandle( nullptr ), exe_path, MAX_FOPATH );
-    string path = _str( "\"{}\" --service {}", exe_path, GameOpt.CommandLine );
+    string path = _str( "\"{}\" --service {}", FileManager::GetExePath(), GameOpt.CommandLine );
 
     // Change executable path, if changed
     if( service )

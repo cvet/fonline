@@ -397,7 +397,7 @@ bool FalloutDatFile::ReadTree()
             uint type;
             memcpy( &type, ptr + 4 + fnsz + 4, sizeof( type ) );
 
-            if( fnsz > 1 && fnsz < MAX_FOPATH && type != 0x400 ) // Not folder
+            if( fnsz > 1 && type != 0x400 ) // Not folder
             {
                 string name = _str( string( (const char*) ptr + 4, fnsz ) ).normalizePathSlashes();
                 string name_lower = _str( name ).lower();
@@ -460,7 +460,7 @@ bool FalloutDatFile::ReadTree()
         uint fnsz;
         memcpy( &fnsz, ptr, sizeof( fnsz ) );
 
-        if( fnsz && fnsz + 1 < MAX_FOPATH )
+        if( fnsz )
         {
             string name = _str( string( (const char*) ptr + 4, fnsz ) ).normalizePathSlashes();
             string name_lower = _str( name ).lower();
