@@ -21,6 +21,7 @@
 # define MUTUAL_CRITTER_TYPE    EntityType::CritterCl
 #endif
 
+CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, string, FileDir );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, Width );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, Height );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, ushort, WorkHexX );
@@ -1019,8 +1020,7 @@ bool ProtoMap::Load()
     }
 
     // Store path
-    string dir = _str( path ).extractDir();
-    pmapDir = dir;
+    SetFileDir( _str( path ).extractDir() );
 
     // Load from file
     const char* data = map_file.GetCStr();
@@ -1061,14 +1061,14 @@ void ProtoMap::GenNew()
     arr2->Release();
 }
 
-bool ProtoMap::Save( const char* custom_name /* = NULL */ )
+bool ProtoMap::Save( const string& custom_name )
 {
     // Fill data
     IniParser file;
     SaveTextFormat( file );
 
     // Save
-    string save_fname = pmapDir + ( custom_name && *custom_name ? string( custom_name ) : string( GetName() ) ) + ".fomap";
+    string save_fname = GetFileDir() + ( !custom_name.empty() ? custom_name : GetName() ) + ".fomap";
     if( !file.SaveFile( save_fname ) )
     {
         WriteLog( "Unable write file '{}' in modules.\n", save_fname );
@@ -1077,7 +1077,7 @@ bool ProtoMap::Save( const char* custom_name /* = NULL */ )
     return true;
 }
 
-bool ProtoMap::IsMapFile( const char* fname )
+bool ProtoMap::IsMapFile( const string& fname )
 {
     string ext = _str( fname ).getFileExtension();
     if( ext.empty() )

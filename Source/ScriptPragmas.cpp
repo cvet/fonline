@@ -521,7 +521,7 @@ public:
         string get_callback;
         StrVec set_callbacks;
         StrVec opt_entries = _str( options ).split( ',' );
-        for( size_t i = 0, j = opt_entries.size(); i < j; i++ )
+        for( size_t i = 0; i < opt_entries.size(); i++ )
         {
             StrVec opt_entry = _str( opt_entries[ i ] ).split( '=' );
             if( opt_entry.size() != 2 )

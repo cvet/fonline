@@ -1161,16 +1161,6 @@ Properties& Properties::operator=( const Properties& other )
     return *this;
 }
 
-template< >
-string Properties::GetPropValue< string >( Property* prop )
-{
-    RUNTIME_ASSERT( prop->dataType == Property::DataType::String );
-    RUNTIME_ASSERT( sizeof( string ) == prop->baseSize );
-    uint   data_size;
-    uchar* data = prop->GetPropRawData( this, data_size );
-    return string( (char*) data, data_size );
-}
-
 Property* Properties::FindByEnum( int enum_value )
 {
     return registrator->FindByEnum( enum_value );

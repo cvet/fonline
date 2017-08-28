@@ -19,6 +19,7 @@ public:
     CLASS_PROPERTY( uint, LoopTime3 );
     CLASS_PROPERTY( uint, LoopTime4 );
     CLASS_PROPERTY( uint, LoopTime5 );
+    CLASS_PROPERTY( string, FileDir );
     CLASS_PROPERTY( ushort, Width );
     CLASS_PROPERTY( ushort, Height );
     CLASS_PROPERTY( ushort, WorkHexX );

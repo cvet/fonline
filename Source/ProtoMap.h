@@ -13,6 +13,7 @@
 class ProtoMap: public ProtoEntity
 {
 public:
+    CLASS_PROPERTY_ALIAS( string, FileDir );
     CLASS_PROPERTY_ALIAS( ushort, Width );
     CLASS_PROPERTY_ALIAS( ushort, Height );
     CLASS_PROPERTY_ALIAS( ushort, WorkHexX );
@@ -97,16 +98,13 @@ public:
     MapEntire* GetEntireNear( hash name, hash name_ext, ushort hx, ushort hy );
     void       GetEntires( hash name, EntiresVec& entires );
 
-private:
-    string pmapDir;
-
 public:
     bool Load();
 
     #ifdef FONLINE_MAPPER
     void        GenNew();
-    bool        Save( const char* custom_name = nullptr );
-    static bool IsMapFile( const char* fname );
+    bool        Save( const string& custom_name );
+    static bool IsMapFile( const string& fname );
     #endif
 
     #ifdef FONLINE_SERVER

@@ -8803,7 +8803,7 @@ void FOClient::SScriptFunc::Global_EraseCacheData( string name )
 void FOClient::SScriptFunc::Global_SetUserConfig( CScriptArray* key_values )
 {
     FileManager cfg_user;
-    for( int i = 0; i < key_values->GetSize() - 1; i += 2 )
+    for( asUINT i = 0; i < key_values->GetSize() - 1; i += 2 )
     {
         string& key = *(string*) key_values->At( i );
         string& value = *(string*) key_values->At( i + 1 );

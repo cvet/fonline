@@ -913,7 +913,7 @@ void FOMapper::ParseKeyboard()
                 {
                     HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
                     FileManager::SetCurrentDir( ServerWritePath, "./" );
-                    if( ( (ProtoMap*) ActiveMap->Proto )->Save( nullptr ) )
+                    if( ( (ProtoMap*) ActiveMap->Proto )->Save( "" ) )
                     {
                         AddMess( "Map saved." );
                         RunMapSaveScript( ActiveMap );
@@ -3984,7 +3984,7 @@ void FOMapper::ParseCommand( const string& command )
         HexMngr.GetProtoMap( *(ProtoMap*) ActiveMap->Proto );
 
         FileManager::SetCurrentDir( ServerWritePath, "./" );
-        if( ( (ProtoMap*) ActiveMap->Proto )->Save( map_name.c_str() ) )
+        if( ( (ProtoMap*) ActiveMap->Proto )->Save( map_name ) )
         {
             AddMess( "Save map success." );
             RunMapSaveScript( ActiveMap );
@@ -4783,7 +4783,7 @@ bool FOMapper::SScriptFunc::Global_SaveMap( Map* map, string custom_name )
         SCRIPT_ERROR_R0( "Proto map arg nullptr." );
 
     FileManager::SetCurrentDir( ServerWritePath, "./" );
-    bool result = ( (ProtoMap*) map->Proto )->Save( !custom_name.empty() ? custom_name.c_str() : nullptr );
+    bool result = ( (ProtoMap*) map->Proto )->Save( custom_name );
     FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
     if( result )
         Self->RunMapSaveScript( map );

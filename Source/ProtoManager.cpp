@@ -64,12 +64,12 @@ static void InsertMapValues( const StrMap& from_kv, StrMap& to_kv, bool overwrit
 
 #pragma warning( disable : 4503 )
 template< class T >
-static int ParseProtos( const char* ext, const char* app_name, map< hash, T* >& protos )
+static int ParseProtos( const string& ext, const string& app_name, map< hash, T* >& protos )
 {
     int errors = 0;
 
     // Collect data
-    FilesCollection                    files( ext ? ext : "" );
+    FilesCollection                    files( ext );
     map< hash, StrMap >                files_protos;
     map< hash, map< string, StrMap > > files_texts;
     while( files.IsNextFile() )

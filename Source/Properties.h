@@ -234,6 +234,16 @@ public:
         return result;
     }
 
+    template< >
+    string Properties::GetPropValue< string >( Property* prop )
+    {
+        RUNTIME_ASSERT( prop->dataType == Property::DataType::String );
+        RUNTIME_ASSERT( sizeof( string ) == prop->baseSize );
+        uint   data_size;
+        uchar* data = prop->GetPropRawData( this, data_size );
+        return string( (char*) data, data_size );
+    }
+
     template< typename T >
     void SetPropValue( Property* prop, T value )
     {

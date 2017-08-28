@@ -11,9 +11,9 @@
 # include "MapCl.h"
 #endif
 
-ProtoEntity::ProtoEntity( hash proto_id, PropertyRegistrator* registartor ): Props( registartor ), ProtoId( proto_id )
+ProtoEntity::ProtoEntity( hash proto_id, PropertyRegistrator* registartor ): Props( registartor ), ProtoId( proto_id ), RefCounter( 1 )
 {
-    RefCounter = 1;
+    //
 }
 
 ProtoEntity::~ProtoEntity()
@@ -37,13 +37,9 @@ void ProtoEntity::Release() const
         delete this;
 }
 
-Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto ): Props( registartor ), Id( id ), Type( type ), Proto( proto )
+Entity::Entity( uint id, EntityType type, PropertyRegistrator* registartor, ProtoEntity* proto ): Props( registartor ), Id( id ), Type( type ), Proto( proto ), RefCounter( 1 ), IsDestroyed( false ), IsDestroying( false )
 {
     RUNTIME_ASSERT( Type != EntityType::None );
-
-    RefCounter = 1;
-    IsDestroyed = false;
-    IsDestroying = false;
 
     if( Proto )
     {

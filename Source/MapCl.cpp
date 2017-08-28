@@ -1,6 +1,7 @@
 #include "MapCl.h"
 
 PROPERTIES_IMPL( Map );
+CLASS_PROPERTY_IMPL( Map, FileDir );
 CLASS_PROPERTY_IMPL( Map, Width );
 CLASS_PROPERTY_IMPL( Map, Height );
 CLASS_PROPERTY_IMPL( Map, WorkHexX );

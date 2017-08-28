@@ -11,6 +11,7 @@ class Map: public Entity
 {
 public:
     PROPERTIES_HEADER();
+    CLASS_PROPERTY( string, FileDir );
     CLASS_PROPERTY( ushort, Width );
     CLASS_PROPERTY( ushort, Height );
     CLASS_PROPERTY( ushort, WorkHexX );

@@ -21,11 +21,11 @@ enum class EntityType
 };
 
 class Entity;
-typedef vector< Entity* >         EntityVec;
-typedef map< uint, Entity* >      EntityMap;
+using EntityVec = vector< Entity* >;
+using EntityMap = map< uint, Entity* >;
 class ProtoEntity;
-typedef vector< ProtoEntity* >    ProtoEntityVec;
-typedef map< hash, ProtoEntity* > ProtoEntityMap;
+using ProtoEntityVec = vector< ProtoEntity* >;
+using ProtoEntityMap = map< hash, ProtoEntity* >;
 
 class ProtoEntity
 {
