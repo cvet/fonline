@@ -410,7 +410,7 @@ void* Script::LoadDynamicLibrary( const string& dll_name )
     #else
     char prev_path[ MAX_FOPATH ];
     getcwd( prev_path, MAX_FOPATH );
-    chdir( new_path );
+    chdir( new_path.c_str() );
     #endif
 
     // Load dynamic library
@@ -1636,7 +1636,7 @@ string Script::GetEnumValueName( const string& enum_name, int value )
     auto        it = cached_enum_names.find( enum_name );
     RUNTIME_ASSERT( it != cached_enum_names.end() );
     auto        it_value = it->second.find( value );
-    return it_value != it->second.end() ? it_value->second : _str( "{}", value );
+    return it_value != it->second.end() ? it_value->second : _str( "{}", value ).str();
 }
 
 /************************************************************************/

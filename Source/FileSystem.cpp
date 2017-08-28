@@ -586,7 +586,7 @@ bool FileFindNext( void* descriptor, string* fname, uint* fsize, uint64* wtime, 
         for( const char* name = ent->d_name; *name; name++ )
             if( *name == '.' )
                 ext = name + 1;
-        if( !ext || !*ext || strcasecmp( ext, ff->ext ) )
+        if( !ext || !*ext || strcasecmp( ext, ff->ext.c_str() ) )
             return FileFindNext( descriptor, fname, fsize, wtime, is_dir );
     }
 
@@ -644,7 +644,7 @@ void MakeDirectory( const string& path )
     #ifdef FO_WINDOWS
     CreateDirectoryW( MBtoWC( path ).c_str(), nullptr );
     #else
-    mkdir( path, 0777 );
+    mkdir( path.c_str(), 0777 );
     #endif
 }
 

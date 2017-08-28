@@ -1543,12 +1543,12 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
     {
         RUNTIME_ASSERT( type_id != asTYPEID_VOID );
 
-        #define CHECK_PRIMITIVE( astype, ctype, ato )           \
-            if( type_id == astype )                             \
-            {                                                   \
-                ctype v = (ctype) _str( value ). ## ato ## ( ); \
-                memcpy( pod_buf, &v, sizeof( ctype ) );         \
-                return pod_buf;                                 \
+        #define CHECK_PRIMITIVE( astype, ctype, ato )   \
+            if( type_id == astype )                     \
+            {                                           \
+                ctype v = (ctype) _str( value ).ato();  \
+                memcpy( pod_buf, &v, sizeof( ctype ) ); \
+                return pod_buf;                         \
             }
 
         if( is_hashes[ deep ] )

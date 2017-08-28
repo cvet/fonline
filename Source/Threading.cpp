@@ -17,12 +17,6 @@ void Thread_Sleep( uint ms )
 
 #ifndef NO_THREADING
 
-# ifndef FO_WINDOWS
-// Mutex static stuff
-bool                Mutex::attrInitialized = false;
-pthread_mutexattr_t Mutex::mutexAttr;
-# endif
-
 static void* ThreadBeginExecution( Thread::ThreadFunc func, char* name, void* arg )
 {
     Thread::SetCurrentName( name );

@@ -698,7 +698,7 @@ void FileManager::DeleteDir( const string& dir )
     #ifdef FO_WINDOWS
     RemoveDirectoryW( _str( dir ).toWideChar().c_str() );
     #else
-    rmdir( dir );
+    rmdir( dir.c_str() );
     #endif
 }
 

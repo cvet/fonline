@@ -15,6 +15,10 @@ typedef websocketpp::server< websocketpp::config::asio > web_sockets;
 static void* ZlibAlloc( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 static void  ZlibFree( void* opaque, void* address )                          { free( address ); }
 
+#ifndef FO_WINDOWS
+# define InterlockedExchange( val, newval )    __sync_lock_test_and_set( val, newval )
+#endif
+
 NetConnection::~NetConnection() {}
 
 class NetConnectionImpl: public NetConnection

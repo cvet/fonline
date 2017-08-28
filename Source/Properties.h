@@ -234,8 +234,7 @@ public:
         return result;
     }
 
-    template< >
-    string Properties::GetPropValue< string >( Property* prop )
+    string GetPropValue( Property* prop )
     {
         RUNTIME_ASSERT( prop->dataType == Property::DataType::String );
         RUNTIME_ASSERT( sizeof( string ) == prop->baseSize );

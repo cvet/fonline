@@ -539,7 +539,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
     FileManager::ResetCurrentDir();
     DateTimeStamp    dt;
     Timer::GetCurrentDateTime( dt );
-    const char* dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
+    string dump_str = siginfo ? "CrashDump" : ManualDumpAppendix;
     # ifdef FONLINE_SERVER
     string dump_path_dir = FileManager::GetWritePath( "Dumps/" );
     # else
