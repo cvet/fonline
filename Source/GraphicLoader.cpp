@@ -414,8 +414,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
             }
         }
         #ifdef FO_OGL_ES
-        char ios_data[] = { "precision lowp float;\n" };
-        ver = ios_data;
+        version = "precision lowp float;\n";
         #endif
 
         // Internal definitions
