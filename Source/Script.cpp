@@ -597,16 +597,7 @@ bool Script::ReloadScripts( const string& target )
                        return a.SortValueExt < b.SortValueExt;
                    return a.SortValue < b.SortValue;
                } );
-    StrVec names;
-    StrVec paths;
-    StrVec contents;
-    for( auto& s : scripts )
-    {
-        names.push_back( s.Name );
-        paths.push_back( s.Path );
-        contents.push_back( s.Content );
-    }
-    if( names.empty() )
+    if( scripts.empty() )
     {
         WriteLog( "No scripts found.\n" );
         return false;
