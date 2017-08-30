@@ -5,53 +5,6 @@
 
 CryptManager Crypt;
 
-CryptManager::CryptManager()
-{
-    // Create crc32 mass
-    const uint CRC_POLY = 0xEDB88320;
-    uint       i, j, r;
-    for( i = 0; i < 0x100; i++ )
-    {
-        for( r = i, j = 0x8; j; j-- )
-            r = ( ( r & 1 ) ? ( r >> 1 ) ^ CRC_POLY : r >> 1 );
-        crcTable[ i ] = r;
-    }
-}
-
-uint CryptManager::Crc32( const string& data )
-{
-    const uint CRC_MASK = 0xD202EF8D;
-    uint       value = 0;
-    for( char ch : data )
-    {
-        value = crcTable[ (uchar) value ^ (uchar) ch ] ^ value >> 8;
-        value ^= CRC_MASK;
-    }
-    return value;
-}
-
-uint CryptManager::Crc32( const uchar* data, uint len )
-{
-    const uint CRC_MASK = 0xD202EF8D;
-    uint       value = 0;
-    while( len-- )
-    {
-        value = crcTable[ (uchar) value ^ *data++ ] ^ value >> 8;
-        value ^= CRC_MASK;
-    }
-    return value;
-}
-
-void CryptManager::Crc32( const uchar* data, uint len, uint& crc )
-{
-    const uint CRC_MASK = 0xD202EF8D;
-    while( len-- )
-    {
-        crc = crcTable[ (uchar) crc ^ *data++ ] ^ crc >> 8;
-        crc ^= CRC_MASK;
-    }
-}
-
 uint CryptManager::MurmurHash2( const uchar* data, uint len )
 {
     const uint m = 0x5BD1E995;
@@ -96,54 +49,10 @@ uint CryptManager::MurmurHash2( const uchar* data, uint len )
     return h;
 }
 
-uint CryptManager::CheckSum( const uchar* data, uint len )
+void CryptManager::XOR( uchar* data, uint len, const uchar* xor_key, uint xor_len )
 {
-    uint value = 0;
-    while( len-- )
-        value += *data++;
-    return value;
-}
-
-void CryptManager::XOR( char* data, uint len, char* xor_key, uint xor_len )
-{
-    for( uint i = 0, k = 0; i < len; ++i, ++k )
-    {
-        if( k >= xor_len )
-            k = 0;
-        data[ i ] ^= xor_key[ k ];
-    }
-}
-
-void CryptManager::TextXOR( char* data, uint len, char* xor_key, uint xor_len )
-{
-    char cur_char;
-    for( uint i = 0, k = 0; i < len; ++i, ++k )
-    {
-        if( k >= xor_len )
-            k = 0;
-
-        cur_char = ( data[ i ] - ( i + 5 ) * ( i * 5 ) ) ^ xor_key[ k ];
-
-        #define TRUECHAR( a )                    \
-            ( ( ( a ) >= 32 && ( a ) <= 126 ) || \
-              ( ( a ) >= -64 && ( a ) <= -1 ) )
-
-        if( TRUECHAR( cur_char ) )
-            data[ i ] = cur_char;
-    }
-}
-
-void CryptManager::DecryptPassword( char* data, uint len, uint key )
-{
-    for( uint i = 10; i < len + 10; i++ )
-        Crypt.XOR( &data[ i - 10 ], 1, (char*) &i, 1 );
-    XOR( data, len, (char*) &key, sizeof( key ) );
-    for( uint i = 0; i < ( len - 1 ) / 2; i++ )
-        std::swap( data[ i ], data[ len - 1 - i ] );
-    uint slen = data[ len - 1 ];
-    for( uint i = slen; i < len; i++ )
-        data[ i ] = 0;
-    data[ len - 1 ] = 0;
+    for( uint i = 0; i < len; i++ )
+        data[ i ] ^= xor_key[ i % xor_len ];
 }
 
 string CryptManager::ClientPassHash( const string& name, const string& pass )
@@ -171,17 +80,17 @@ string CryptManager::ClientPassHash( const string& name, const string& pass )
 
 uchar* CryptManager::Compress( const uchar* data, uint& data_len )
 {
-    uLongf              buf_len = data_len * 110 / 100 + 12;
-    AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
+    uLongf buf_len = data_len * 110 / 100 + 12;
+    uchar* buf = new uchar[ buf_len ];
 
-    if( compress( buf.Get(), &buf_len, data, data_len ) != Z_OK )
+    if( compress( buf, &buf_len, data, data_len ) != Z_OK )
+    {
+        SAFEDELA( buf );
         return nullptr;
-
-    XOR( (char*) buf.Get(), (uint) buf_len, (char*) &crcTable[ 1 ], sizeof( crcTable ) - 4 );
-    XOR( (char*) buf.Get(), 4, (char*) buf.Get() + 4, 4 );
+    }
 
     data_len = (uint) buf_len;
-    return buf.Release();
+    return buf;
 }
 
 bool CryptManager::Compress( UCharVec& data )
@@ -206,32 +115,25 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
         return nullptr;
     }
 
-    AutoPtrArr< uchar > buf( new uchar[ buf_len ] );
-    AutoPtrArr< uchar > data_( new uchar[ data_len ] );
-
-    memcpy( data_.Get(), data, data_len );
-    if( *(ushort*) data_.Get() != 0x9C78 )
-    {
-        XOR( (char*) data_.Get(), 4, (char*) data_.Get() + 4, 4 );
-        XOR( (char*) data_.Get(), data_len, (char*) &crcTable[ 1 ], sizeof( crcTable ) - 4 );
-    }
-
-    if( *(ushort*) data_.Get() != 0x9C78 )
+    if( data_len < 2 || *(ushort*) data != 0x9C78 )
     {
         WriteLog( "Unpack signature not found.\n" );
         return nullptr;
     }
 
+    uchar* buf = new uchar[ buf_len ];
     while( true )
     {
-        int result = uncompress( buf.Get(), &buf_len, data_.Get(), data_len );
+        int result = uncompress( buf, &buf_len, data, data_len );
         if( result == Z_BUF_ERROR )
         {
             buf_len *= 2;
-            buf.Reset( new uchar[ buf_len ] );
+            SAFEDELA( buf );
+            buf = new uchar[ buf_len ];
         }
         else if( result != Z_OK )
         {
+            SAFEDELA( buf );
             WriteLog( "Unpack error {}.\n", result );
             return nullptr;
         }
@@ -242,7 +144,7 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
     }
 
     data_len = (uint) buf_len;
-    return buf.Release();
+    return buf;
 }
 
 bool CryptManager::Uncompress( UCharVec& data, uint mul_approx )

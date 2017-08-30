@@ -46,6 +46,16 @@ struct EngineData
     map< string, IntStrMap >             CachedEnumNames;
 };
 
+struct ScriptEntry
+{
+    string Name;
+    string Path;
+    string Content;
+    int    SortValue;
+    int    SortValueExt;
+};
+using ScriptEntryVec = vector< ScriptEntry >;
+
 class Script
 {
 public:
@@ -105,7 +115,7 @@ public:
     static void Define( const string& define );
     static void Undef( const string& define );
     static void CallPragmas( const Pragmas& pragmas );
-    static bool LoadRootModule( StrVec& names, StrVec& contents, string& result_code );
+    static bool LoadRootModule( const ScriptEntryVec& scripts, string& result_code );
     static bool RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_data );
 
     static uint               BindByFuncName( const string& func_name, const string& decl, bool is_temp, bool disable_log = false );

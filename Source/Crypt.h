@@ -5,42 +5,14 @@
 
 class CryptManager
 {
-private:
-    // Crc32 table
-    uint crcTable[ 0x100 ];
-
 public:
-    // Init Crypt Manager
-    CryptManager();
-
-    // Returns Crc32 of data
-    uint Crc32( const string& data );
-    uint Crc32( const uchar* data, uint len );
-    void Crc32( const uchar* data, uint len, uint& crc );
-
-    // Returns hash
-    uint MurmurHash2( const uchar* data, uint len );
-
-    // Returns CheckSum of data
-    uint CheckSum( const uchar* data, uint len );
-
-    // Xor the data
-    void XOR( char* data, uint len, char* xor_key, uint xor_len );
-
-    // Password encrypt
-    void DecryptPassword( char* data, uint len, uint key );
-
-    // Client credentials SHA-2 hash
+    uint   MurmurHash2( const uchar* data, uint len );
+    void   XOR( uchar* data, uint len, const uchar* xor_key, uint xor_len );
     string ClientPassHash( const string& name, const string& pass );
 
-    // Xor the text
-    void TextXOR( char* data, uint len, char* xor_key, uint xor_len );
-
-    // Compress zlib
+    // Compressor
     uchar* Compress( const uchar* data, uint& data_len );
     bool   Compress( UCharVec& data );
-
-    // Uncompress zlib
     uchar* Uncompress( const uchar* data, uint& data_len, uint mul_approx );
     bool   Uncompress( UCharVec& data, uint mul_approx );
 

@@ -359,23 +359,20 @@ bool SoundManager::LoadACM( Sound* sound, const string& fname, bool is_music )
     if( !fm.LoadFile( fname ) )
         return false;
 
-    int                     channels = 0;
-    int                     freq = 0;
-    int                     samples = 0;
-    AutoPtr< CACMUnpacker > acm( new CACMUnpacker( fm.GetBuf(), (int) fm.GetFsize(), channels, freq, samples ) );
-    if( !acm.IsValid() )
-    {
-        WriteLog( "ACMUnpacker init fail.\n" );
-        return false;
-    }
+    int           channels = 0;
+    int           freq = 0;
+    int           samples = 0;
+    CACMUnpacker* acm = new CACMUnpacker( fm.GetBuf(), (int) fm.GetFsize(), channels, freq, samples );
 
     sound->OriginalFormat = AUDIO_S16;
     sound->OriginalChannels = ( is_music ? 2 : 1 );
     sound->OriginalRate = 22050;
-
     sound->BaseBufSize = samples * 2;
     sound->BaseBuf = new unsigned char[ sound->BaseBufSize ];
+
     int dec_data = acm->readAndDecompress( (ushort*) sound->BaseBuf, sound->BaseBufSize );
+    delete acm;
+
     if( dec_data != (int) sound->BaseBufSize )
     {
         WriteLog( "Decode Acm error.\n" );

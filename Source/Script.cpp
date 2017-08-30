@@ -582,6 +582,7 @@ bool Script::ReloadScripts( const string& target )
         // Append
         ScriptEntry entry;
         entry.Name = name;
+        entry.Path = path;
         entry.Content = _str( "namespace {}{{{}\n}}\n", name, (const char*) file.GetBuf() );
         entry.SortValue = sort_value;
         entry.SortValueExt = ++file_index;
@@ -597,10 +598,12 @@ bool Script::ReloadScripts( const string& target )
                    return a.SortValue < b.SortValue;
                } );
     StrVec names;
+    StrVec paths;
     StrVec contents;
     for( auto& s : scripts )
     {
         names.push_back( s.Name );
+        paths.push_back( s.Path );
         contents.push_back( s.Content );
     }
     if( names.empty() )
@@ -1080,7 +1083,7 @@ void Script::CallPragmas( const Pragmas& pragmas )
         Preprocessor::CallPragma( pragmas[ i ] );
 }
 
-bool Script::LoadRootModule( StrVec& names, StrVec& contents, string& result_code )
+bool Script::LoadRootModule( const ScriptEntryVec& scripts, string& result_code )
 {
     RUNTIME_ASSERT( Engine->GetModuleCount() == 0 );
 
@@ -1091,21 +1094,22 @@ bool Script::LoadRootModule( StrVec& names, StrVec& contents, string& result_cod
     // File loader
     class MemoryFileLoader: public Preprocessor::FileLoader
     {
-        string* rootScript;
-        StrVec& includeScripts;
-        int     includeDeep;
+        string*        rootScript;
+        ScriptEntryVec includeScripts;
+        int            includeDeep;
 
 public:
-        MemoryFileLoader( string& root, StrVec& scripts ): rootScript( &root ), includeScripts( scripts ), includeDeep( 0 ) {}
-        virtual ~MemoryFileLoader() {}
+        MemoryFileLoader( string& root, const ScriptEntryVec& scripts ): rootScript( &root ), includeScripts( scripts ), includeDeep( 0 ) {}
+        virtual ~MemoryFileLoader() = default;
 
-        virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data )
+        virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data, std::string& file_path ) override
         {
             if( rootScript )
             {
                 data.resize( rootScript->length() );
                 memcpy( &data[ 0 ], rootScript->c_str(), rootScript->length() );
                 rootScript = nullptr;
+                file_path = "(Root)";
                 return true;
             }
 
@@ -1154,7 +1158,7 @@ public:
     }
 
     // Preprocess
-    MemoryFileLoader              loader( root, contents );
+    MemoryFileLoader              loader( root, scripts );
     Preprocessor::StringOutStream result, errors;
     int                           errors_count = Preprocessor::Preprocess( path, result, &errors, &loader );
 
@@ -2190,7 +2194,11 @@ void Script::CallbackMessage( const asSMessageInfo* msg, void* param )
     else if( msg->type == asMSGTYPE_INFORMATION )
         type = "Info";
 
+    #ifdef FONLINE_SCRIPT_COMPILER
+    WriteLog( "{}({}): {}: {}\n", Preprocessor::ResolveOriginalFile( msg->row ), Preprocessor::ResolveOriginalLine( msg->row ), type, msg->message );
+    #else
     WriteLog( "{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile( msg->row ), type, msg->message, Preprocessor::ResolveOriginalLine( msg->row ) );
+    #endif
 }
 
 void Script::CallbackException( asIScriptContext* ctx, void* param )

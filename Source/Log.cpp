@@ -10,10 +10,20 @@
 #ifndef NO_THREADING
 static Mutex             LogLocker;
 #endif
+static bool              LogDisableTimestamp;
 static void*             LogFileHandle;
 static vector< LogFunc > LogFunctions;
 static bool              LogFunctionsInProcess;
 static string*           LogBufferStr;
+
+void LogWithoutTimestamp()
+{
+    #ifndef NO_THREADING
+    SCOPE_LOCK( LogLocker );
+    #endif
+
+    LogDisableTimestamp = true;
+}
 
 void LogToFile( const string& fname )
 {
@@ -90,21 +100,22 @@ void WriteLogMessage( const string& message )
     if( LogFunctionsInProcess )
         return;
 
-    // Timestamp
-    string time;
-    uint   delta = ( uint ) Timer::AccurateTick();
-    uint   seconds = delta / 1000;
-    uint   minutes = seconds / 60 % 60;
-    uint   hours = seconds / 60 / 60;
-    if( hours )
-        time += _str( "[{:0=3}:{:0=2}:{:0=2}:{:0=3}] ", hours, minutes, seconds % 60, delta % 1000 );
-    else if( minutes )
-        time += _str( "[{:0=2}:{:0=2}:{:0=3}] ", minutes, seconds % 60, delta % 1000 );
-    else
-        time += _str( "[{:0=2}:{:0=3}] ", seconds % 60, delta % 1000 );
-
-    // Result message
-    string result = time + message;
+    // Make message
+    string result;
+    if( !LogDisableTimestamp )
+    {
+        uint delta = ( uint ) Timer::AccurateTick();
+        uint seconds = delta / 1000;
+        uint minutes = seconds / 60 % 60;
+        uint hours = seconds / 60 / 60;
+        if( hours )
+            result += _str( "[{:0=3}:{:0=2}:{:0=2}:{:0=3}] ", hours, minutes, seconds % 60, delta % 1000 );
+        else if( minutes )
+            result += _str( "[{:0=2}:{:0=2}:{:0=3}] ", minutes, seconds % 60, delta % 1000 );
+        else
+            result += _str( "[{:0=2}:{:0=3}] ", seconds % 60, delta % 1000 );
+    }
+    result += message;
 
     // Write logs
     if( LogFileHandle )

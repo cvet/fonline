@@ -623,7 +623,7 @@ void ResolvePathInplace( string& path )
     #ifdef FO_WINDOWS
     DWORD    len = GetFullPathNameW( MBtoWC( path ).c_str(), 0, nullptr, nullptr );
     wchar_t* buf = (wchar_t*) alloca( len * sizeof( wchar_t ) + 1 );
-    if( GetFullPathNameW( MBtoWC( path ).c_str(), len + 1, buf, nullptr ) == len )
+    if( GetFullPathNameW( MBtoWC( path ).c_str(), len + 1, buf, nullptr ) )
     {
         path = WCtoMB( buf );
         NormalizePathSlashesInplace( path );

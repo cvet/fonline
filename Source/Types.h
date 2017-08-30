@@ -8,7 +8,6 @@
 #include <list>
 #include <vector>
 #include <deque>
-// #include <strstream>
 #include <sstream>
 
 #if defined ( FO_MSVC )

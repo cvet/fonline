@@ -227,7 +227,7 @@ Preprocessor::LineNumberTranslator::Entry& Preprocessor::LineNumberTranslator::S
             return lines[ i - 1 ];
         }
     }
-    return lines[ lines.size() - 1 ];     // Line must be in last block
+    return lines.back();     // Line must be in last block
 }
 
 void Preprocessor::LineNumberTranslator::AddLineRange( const std::string& file, unsigned int start_line, unsigned int offset )
@@ -934,7 +934,8 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
         FilesPreprocessed.push_back( CurrentFileRoot );
 
     std::vector< char > data;
-    bool                loaded = file_source.LoadFile( RootPath, filename, data );
+    std::string         file_path;
+    bool                loaded = file_source.LoadFile( RootPath, filename, data, file_path );
     if( !loaded )
     {
         PrintErrorMessage( std::string( "Could not open file " ) + RootPath + filename );
@@ -1033,7 +1034,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
             else if( value == "#include" )
             {
                 if( LNT )
-                    LNT->AddLineRange( current_file, start_line, CurrentLine - LinesThisFile );
+                    LNT->AddLineRange( file_path, start_line, CurrentLine - LinesThisFile );
                 unsigned int save_lines_this_file = LinesThisFile;
                 std::string  file_name;
                 ParseIf( directive, file_name );
@@ -1085,7 +1086,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
     }
 
     if( LNT )
-        LNT->AddLineRange( current_file, start_line, CurrentLine - LinesThisFile );
+        LNT->AddLineRange( file_path, start_line, CurrentLine - LinesThisFile );
 
     file_source.FileLoaded();
 }
@@ -1198,10 +1199,10 @@ Preprocessor::LineNumberTranslator* Preprocessor::RestoreLineNumberTranslator( c
     return lnt;
 }
 
-const char* Preprocessor::ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt )
+std::string Preprocessor::ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt )
 {
     lnt = ( lnt ? lnt : LNT );
-    return lnt ? lnt->Search( line_number ).File.c_str() : "ERROR";
+    return lnt ? lnt->Search( line_number ).File : "ERROR";
 }
 
 unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt )
@@ -1239,7 +1240,7 @@ void Preprocessor::PrintLexemList( LexemList& out, OutStream& destination )
 /* File loader                                                          */
 /************************************************************************/
 
-bool Preprocessor::FileLoader::LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data )
+bool Preprocessor::FileLoader::LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data, std::string& file_path )
 {
     FILE* fs = fopen( ( dir + file_name ).c_str(), "rb" );
     if( !fs )
@@ -1258,6 +1259,7 @@ bool Preprocessor::FileLoader::LoadFile( const std::string& dir, const std::stri
     }
     fclose( fs );
 
+    file_path = dir + file_name;
     return true;
 }
 

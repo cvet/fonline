@@ -68,6 +68,7 @@ namespace MapperBind
 
 int main( int argc, char* argv[] )
 {
+    LogWithoutTimestamp();
     InitialSetup( argc, argv );
 
     // Initialization
