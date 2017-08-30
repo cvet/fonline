@@ -174,7 +174,7 @@ uint64 CryptManager::MurmurHash2_64( const uchar* data, uint len )
     #if defined ( FO_X64 )
     return MurmurHash64A( data, len );
     #elif defined ( FO_X86 )
-    return MurmurHash64B( data, len )
+    return MurmurHash64B( data, len );
     #endif
 }
 
