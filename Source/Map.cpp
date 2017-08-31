@@ -63,12 +63,12 @@ void Map::DeleteContent()
 
         // Delete npc
         PcVec del_npcs = mapNpcs;
-        for( auto del_npc : del_npcs )
+        for( Npc* del_npc : del_npcs )
             CrMngr.DeleteNpc( del_npc );
 
         // Delete items
         ItemVec del_items = mapItems;
-        for( auto del_item : del_items )
+        for( Item* del_item : del_items )
             ItemMngr.DeleteItem( del_item );
     }
     RUNTIME_ASSERT( mapItemsById.empty() );
@@ -81,7 +81,7 @@ bool Map::Generate()
     UIntMap id_map;
 
     // Generate npc
-    for( auto base_cr : GetProtoMap()->CrittersVec )
+    for( Critter* base_cr : GetProtoMap()->CrittersVec )
     {
         // Create npc
         Npc* npc = CrMngr.CreateNpc( base_cr->GetProtoId(), &base_cr->Props, this, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true );
@@ -107,7 +107,7 @@ bool Map::Generate()
     }
 
     // Generate hex items
-    for( auto base_item : GetProtoMap()->HexItemsVec )
+    for( Item* base_item : GetProtoMap()->HexItemsVec )
     {
         // Create item
         Item* item = ItemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
@@ -130,7 +130,7 @@ bool Map::Generate()
     }
 
     // Add children items
-    for( auto base_item : GetProtoMap()->ChildItemsVec )
+    for( Item* base_item : GetProtoMap()->ChildItemsVec )
     {
         // Map id
         uint parent_id = 0;
@@ -173,7 +173,7 @@ bool Map::Generate()
     }
 
     // Visible
-    for( auto npc : GetNpcs() )
+    for( Npc* npc : GetNpcs() )
     {
         npc->ProcessVisibleCritters();
         npc->ProcessVisibleItems();
@@ -278,7 +278,7 @@ void Map::AddCritter( Critter* cr )
 
     if( cr->IsPlayer() )
         mapPlayers.push_back( (Client*) cr );
-    else
+    if( cr->IsNpc() )
         mapNpcs.push_back( (Npc*) cr );
     mapCritters.push_back( cr );
 
@@ -314,7 +314,7 @@ void Map::EraseCritter( Critter* cr )
 
 void Map::KickPlayersToGlobalMap()
 {
-    for( auto player : GetPlayers() )
+    for( Client* player : GetPlayers() )
         MapMngr.TransitToGlobal( player, 0, true );
 }
 
@@ -1115,7 +1115,7 @@ Map* Location::GetMapByIndex( uint index )
 
 Map* Location::GetMapByPid( hash map_pid )
 {
-    for( auto map : locMaps )
+    for( Map* map : locMaps )
     {
         if( map->GetProtoId() == map_pid )
             return map;
@@ -1126,7 +1126,7 @@ Map* Location::GetMapByPid( hash map_pid )
 uint Location::GetMapIndex( hash map_pid )
 {
     uint index = 0;
-    for( auto map : locMaps )
+    for( Map* map : locMaps )
     {
         if( map->GetProtoId() == map_pid )
             return index;
@@ -1152,7 +1152,7 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
     }
 
     Map* to_map = nullptr;
-    for( auto map : locMaps )
+    for( Map* map : locMaps )
     {
         if( map->GetProtoId() == grid_to_map )
         {
@@ -1188,7 +1188,7 @@ bool Location::IsCanEnter( uint players_count )
     if( !max_palyers )
         return true;
 
-    for( auto map : locMaps )
+    for( Map* map : locMaps )
     {
         players_count += map->GetPlayersCount();
         if( players_count >= max_palyers )
@@ -1199,7 +1199,7 @@ bool Location::IsCanEnter( uint players_count )
 
 bool Location::IsNoCrit()
 {
-    for( auto map : locMaps )
+    for( Map* map : locMaps )
         if( map->GetCrittersCount() )
             return false;
     return true;
@@ -1207,7 +1207,7 @@ bool Location::IsNoCrit()
 
 bool Location::IsNoPlayer()
 {
-    for( auto map : locMaps )
+    for( Map* map : locMaps )
         if( map->GetPlayersCount() )
             return false;
     return true;
@@ -1215,7 +1215,7 @@ bool Location::IsNoPlayer()
 
 bool Location::IsNoNpc()
 {
-    for( auto map : locMaps )
+    for( Map* map : locMaps )
         if( map->GetNpcsCount() )
             return false;
     return true;
@@ -1227,13 +1227,13 @@ bool Location::IsCanDelete()
         return false;
 
     // Check for players
-    for( auto map : locMaps )
+    for( Map* map : locMaps )
         if( map->GetPlayersCount() )
             return false;
 
     // Check for npc
     MapVec maps = locMaps;
-    for( auto map : maps )
+    for( Map* map : maps )
     {
         for( Npc* npc : map->GetNpcs() )
             if( npc->GetIsGeck() || ( !npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId() ) || npc->IsHaveGeckItem() )
