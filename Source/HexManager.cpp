@@ -18,30 +18,56 @@ Field::~Field()
     SAFEDEL( Tiles[ 0 ] );
     SAFEDEL( Tiles[ 1 ] );
     SAFEDEL( Items );
+    SAFEDEL( BlockLinesItems );
 }
 
-void Field::AddItem( ItemHex* item )
+void Field::AddItem( ItemHex* item, ItemHex* block_lines_item )
 {
-    if( !Items )
-        Items = new ItemHexVec();
+    RUNTIME_ASSERT( item || block_lines_item );
 
-    Items->push_back( item );
+    if( item )
+    {
+        item->HexScrX = &ScrX;
+        item->HexScrY = &ScrY;
+
+        if( !Items )
+            Items = new ItemHexVec();
+        Items->push_back( item );
+    }
+    if( block_lines_item )
+    {
+        if( !BlockLinesItems )
+            BlockLinesItems = new ItemHexVec();
+        BlockLinesItems->push_back( block_lines_item );
+    }
+
     ProcessCache();
 }
 
-void Field::EraseItem( ItemHex* item )
+void Field::EraseItem( ItemHex* item, ItemHex* block_lines_item )
 {
-    if( !Items )
-        return;
+    RUNTIME_ASSERT( item || block_lines_item );
 
-    auto it = std::find( Items->begin(), Items->end(), item );
-    if( it != Items->end() )
+    if( item )
     {
+        RUNTIME_ASSERT( Items );
+        auto it = std::find( Items->begin(), Items->end(), item );
+        RUNTIME_ASSERT( it != Items->end() );
         Items->erase( it );
         if( Items->empty() )
-            SAFEDEL( DeadCrits );
-        ProcessCache();
+            SAFEDEL( Items );
     }
+    if( block_lines_item )
+    {
+        RUNTIME_ASSERT( BlockLinesItems );
+        auto it = std::find( BlockLinesItems->begin(), BlockLinesItems->end(), block_lines_item );
+        RUNTIME_ASSERT( it != BlockLinesItems->end() );
+        BlockLinesItems->erase( it );
+        if( BlockLinesItems->empty() )
+            SAFEDEL( BlockLinesItems );
+    }
+
+    ProcessCache();
 }
 
 Field::Tile& Field::AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof )
@@ -144,12 +170,12 @@ void Field::ProcessCache()
     Flags.IsNoLight = false;
     Flags.ScrollBlock = false;
     Corner = 0;
+
     if( Items )
     {
-        for( auto it = Items->begin(), end = Items->end(); it != end; ++it )
+        for( ItemHex* item :* Items )
         {
-            ItemHex* item = *it;
-            hash     pid = item->GetProtoId();
+            hash pid = item->GetProtoId();
             if( item->IsWall() )
             {
                 Flags.IsWall = true;
@@ -172,6 +198,18 @@ void Field::ProcessCache()
                 Flags.IsNotRaked = true;
             if( pid == SP_MISC_SCRBLOCK )
                 Flags.ScrollBlock = true;
+            if( !item->GetIsLightThru() )
+                Flags.IsNoLight = true;
+        }
+    }
+
+    if( BlockLinesItems )
+    {
+        for( ItemHex* item :* BlockLinesItems )
+        {
+            Flags.IsNotPassed = true;
+            if( !item->GetIsShootThru() )
+                Flags.IsNotRaked = true;
             if( !item->GetIsLightThru() )
                 Flags.IsNoLight = true;
         }
@@ -328,25 +366,26 @@ void HexManager::ReloadSprites()
     SetRainAnimation( nullptr, nullptr );
 }
 
-void HexManager::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
+void HexManager::AddFieldItem( ushort hx, ushort hy, ItemHex* item )
 {
-    bool raked = item->GetIsShootThru();
-    bool light = item->GetIsLightThru();
-    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                              Field& field = GetField( hx, hy );
-                              field.Flags.IsNotPassed = true;
-                              if( !raked )
-                                  field.Flags.IsNotRaked = true;
-                              if( !light )
-                                  field.Flags.IsNoLight = true;
-                              );
+    GetField( hx, hy ).AddItem( item, nullptr );
+    if( item->IsNonEmptyBlockLines() )
+    {
+        FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                                  GetField( hx, hy ).AddItem( nullptr, item );
+                                  );
+    }
 }
 
-void HexManager::ReplaceItemBlocks( ushort hx, ushort hy, Item* item )
+void HexManager::EraseFieldItem( ushort hx, ushort hy, ItemHex* item )
 {
-    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                              GetField( hx, hy ).ProcessCache();
-                              );
+    GetField( hx, hy ).EraseItem( item, nullptr );
+    if( item->IsNonEmptyBlockLines() )
+    {
+        FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                                  GetField( hx, hy ).EraseItem( nullptr, item );
+                                  );
+    }
 }
 
 uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data )
@@ -448,8 +487,6 @@ void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, Item
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
 
-    if( item->IsNonEmptyBlockLines() )
-        ReplaceItemBlocks( hx, hy, item );
     if( item->SprDrawValid )
         item->SprDraw->Unvalidate();
 
@@ -459,7 +496,7 @@ void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, Item
     if( it_hex_items )
         *it_hex_items = it;
 
-    GetField( hx, hy ).EraseItem( item );
+    EraseFieldItem( hx, hy, item );
 
     if( item->GetIsLight() || !item->GetIsLightThru() )
         RebuildLight();
@@ -486,25 +523,26 @@ void HexManager::ProcessItems()
             {
                 ushort hx = item->GetHexX();
                 ushort hy = item->GetHexY();
+
                 int    x, y;
                 GetHexInterval( hx, hy, step.first, step.second, x, y );
                 item->EffOffsX -= x;
                 item->EffOffsY -= y;
-                Field& f = GetField( hx, hy );
-                Field& f_ = GetField( step.first, step.second );
-                f.EraseItem( item );
-                f_.AddItem( item );
+
+                EraseFieldItem( hx, hy, item );
+
+                Field& f = GetField( step.first, step.second );
                 item->SetHexX( step.first );
                 item->SetHexY( step.second );
+
+                AddFieldItem( step.first, step.second, item );
+
                 if( item->SprDrawValid )
                     item->SprDraw->Unvalidate();
-
-                item->HexScrX = &f_.ScrX;
-                item->HexScrY = &f_.ScrY;
                 if( GetHexToDraw( step.first, step.second ) )
                 {
                     item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), step.first, step.second + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
-                                                            f_.ScrX + HEX_OX, f_.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
+                                                            f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                             &item->DrawEffect, &item->SprDrawValid );
                     if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsGenericOrGrid() ) )
                         item->SprDraw->SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
@@ -522,24 +560,16 @@ void HexManager::ProcessItems()
 
 bool ItemCompScen( ItemHex* o1, ItemHex* o2 ) { return o1->IsGenericOrGrid() && !o2->IsGenericOrGrid(); }
 bool ItemCompWall( ItemHex* o1, ItemHex* o2 ) { return o1->IsWall() && !o2->IsWall(); }
-// bool ItemCompSort(ItemHex* o1, ItemHex* o2){return o1->IsWall() && !o2->IsWall();}
 void HexManager::PushItem( ItemHex* item )
 {
     hexItems.push_back( item );
 
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
-
-    Field& f = GetField( hx, hy );
-    item->HexScrX = &f.ScrX;
-    item->HexScrY = &f.ScrY;
-    f.AddItem( item );
-
-    // Blocks
-    if( item->IsNonEmptyBlockLines() )
-        PlaceItemBlocks( hx, hy, item );
+    AddFieldItem( hx, hy, item );
 
     // Sort
+    Field& f = GetField( hx, hy );
     std::sort( f.Items->begin(), f.Items->end(), ItemCompScen );
     std::sort( f.Items->begin(), f.Items->end(), ItemCompWall );
 }
@@ -670,7 +700,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
 
     item->SetEffect( sx, sy, dist, GetFarDir( from_hx, from_hy, to_hx, to_hy ) );
 
-    f.AddItem( item );
+    AddFieldItem( from_hx, from_hy, item );
     hexItems.push_back( item );
 
     if( GetHexToDraw( from_hx, from_hy ) )

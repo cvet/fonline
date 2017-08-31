@@ -10,6 +10,8 @@
 class Map;
 class Location;
 
+using ItemVecMap = map< uint, ItemVec >;
+
 class Map: public Entity
 {
 public:
@@ -37,13 +39,19 @@ public:
     ~Map();
 
 private:
-    uchar*    hexFlags;
-    int       hexFlagsSize;
-    CrVec     mapCritters;
-    ClVec     mapPlayers;
-    PcVec     mapNpcs;
-    ItemVec   hexItems;
-    Location* mapLocation;
+    uchar*     hexFlags;
+    int        hexFlagsSize;
+    CrVec      mapCritters;
+    ClVec      mapPlayers;
+    PcVec      mapNpcs;
+    ItemVec    mapItems;
+    ItemMap    mapItemsById;
+    ItemVecMap mapItemsByHex;
+    ItemVecMap mapBlockLinesByHex;
+    Location*  mapLocation;
+
+    void PlaceItemBlocks( ushort hx, ushort hy, Item* item );
+    void RemoveItemBlocks( ushort hx, ushort hy, Item* item );
 
 public:
     uint LoopLastTick[ 5 ];
@@ -82,16 +90,15 @@ public:
     Item* GetItemContainer( ushort hx, ushort hy );
     Item* GetItemGag( ushort hx, ushort hy );
 
-    ItemVec& GetItemsNoLock() { return hexItems; }
-    void     GetItemsHex( ushort hx, ushort hy, ItemVec& items );
-    void     GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items );
-    void     GetItemsPid( hash pid, ItemVec& items );
-    void     GetItemsType( int type, ItemVec& items );
-    void     GetItemsTrap( ushort hx, ushort hy, ItemVec& items );
-    void     RecacheHexBlock( ushort hx, ushort hy );
-    void     RecacheHexShoot( ushort hx, ushort hy );
-    void     RecacheHexBlockShoot( ushort hx, ushort hy );
+    ItemVec GetItems() { return mapItems; } // Make copy
+    void    GetItemsHex( ushort hx, ushort hy, ItemVec& items );
+    void    GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items );
+    void    GetItemsPid( hash pid, ItemVec& items );
+    void    GetItemsType( int type, ItemVec& items );
+    void    GetItemsTrap( ushort hx, ushort hy, ItemVec& items );
 
+    bool   IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item );
+    void   RecacheHexFlags( ushort hx, ushort hy );
     ushort GetHexFlags( ushort hx, ushort hy );
     void   SetHexFlag( ushort hx, ushort hy, uchar flag );
     void   UnsetHexFlag( ushort hx, ushort hy, uchar flag );
@@ -100,7 +107,6 @@ public:
     bool IsHexRaked( ushort hx, ushort hy );
     bool IsHexesPassed( ushort hx, ushort hy, uint radius );
     bool IsMovePassed( ushort hx, ushort hy, uchar dir, uint multihex );
-    bool IsHexItem( ushort hx, ushort hy )    { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_ITEM ); }
     bool IsHexTrap( ushort hx, ushort hy )    { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_WALK_ITEM ); }
     bool IsHexCritter( ushort hx, ushort hy ) { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_CRITTER | FH_DEAD_CRITTER ); }
     bool IsHexGag( ushort hx, ushort hy )     { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_GAG_ITEM ); }
@@ -115,31 +121,25 @@ public:
     Critter* GetHexCritter( ushort hx, ushort hy, bool dead );
     void     GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVec& critters ); // Critters append
 
-    void   GetCritters( CrVec& critters );
-    void   GetPlayers( ClVec& players );
-    void   GetNpcs( PcVec& npcs );
-    CrVec& GetCrittersNoLock() { return mapCritters; }
-    ClVec& GetPlayersNoLock()  { return mapPlayers; }
-    PcVec& GetNpcsNoLock()     { return mapNpcs; }
-    uint   GetCrittersCount();
-    uint   GetPlayersCount();
-    uint   GetNpcsCount();
+    CrVec  GetCritters();
+    ClVec  GetPlayers();
+    PcVec  GetNpcs();
+    CrVec& GetCrittersRaw()   { return mapCritters; }
+    ClVec& GetPlayersRaw()    { return mapPlayers; }
+    PcVec& GetNpcsRaw()       { return mapNpcs; }
+    uint   GetCrittersCount() { return (uint) mapCritters.size(); }
+    uint   GetPlayersCount()  { return (uint) mapPlayers.size(); }
+    uint   GetNpcsCount()     { return (uint) mapNpcs.size(); }
 
     // Sends
     void SendEffect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void SendFlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
 
-    // Cars
-public:
-    bool IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item );
-    void PlaceItemBlocks( ushort hx, ushort hy, Item* item );
-    void ReplaceItemBlocks( ushort hx, ushort hy, Item* item );
-
     // Script
     bool SetScript( asIScriptFunction* func, bool first_time );
 };
-typedef map< uint, Map* > MapMap;
-typedef vector< Map* >    MapVec;
+using MapMap = map< uint, Map* >;
+using MapVec = vector< Map* >;
 
 class Location: public Entity
 {
@@ -170,10 +170,10 @@ public:
     int  GeckCount;
 
     void           BindScript();
-    ProtoLocation* GetProtoLoc()   { return (ProtoLocation*) Proto; }
-    bool           IsLocVisible()  { return !GetHidden() || ( GetGeckVisible() && GeckCount > 0 ); }
-    MapVec&        GetMapsNoLock() { return locMaps; };
-    void           GetMaps( MapVec& maps );
+    ProtoLocation* GetProtoLoc()  { return (ProtoLocation*) Proto; }
+    bool           IsLocVisible() { return !GetHidden() || ( GetGeckVisible() && GeckCount > 0 ); }
+    MapVec&        GetMapsRaw()   { return locMaps; };
+    MapVec         GetMaps();
     uint           GetMapsCount() { return (uint) locMaps.size(); }
     Map*           GetMapByIndex( uint index );
     Map*           GetMapByPid( hash map_pid );
@@ -186,7 +186,7 @@ public:
     bool IsNoNpc();
     bool IsCanDelete();
 };
-typedef map< uint, Location* > LocMap;
-typedef vector< Location* >    LocVec;
+using LocMap = map< uint, Location* >;
+using LocVec = vector< Location* >;
 
 #endif // __MAP__

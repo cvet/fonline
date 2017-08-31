@@ -144,7 +144,7 @@ static uint Global_GetFolderFileNames( string path, string ext, bool include_sub
 
     if( result )
     {
-        for( auto& f : files )
+        for( string f : files )
             result->InsertLast( &f );
     }
 

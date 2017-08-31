@@ -211,6 +211,7 @@ bool FOServer::InitScriptSystem()
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemRecacheHex );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemRecacheHex );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsGag", OnSetItemRecacheHex );
+    Item::PropertiesRegistrator->SetNativeSetCallback( "BlockLines", OnSetItemBlockLines );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsGeck", OnSetItemIsGeck );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsRadio", OnSetItemIsRadio );
     Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
@@ -2073,27 +2074,19 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersByPids( Map* map, hash pid, 
     CrVec critters;
     if( !pid )
     {
-        CrVec map_critters;
-        map->GetCritters( map_critters );
+        CrVec map_critters = map->GetCritters();
         critters.reserve( map_critters.size() );
-        for( auto it = map_critters.begin(), end = map_critters.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
+        for( Critter* cr : map_critters )
             if( cr->CheckFind( find_type ) )
                 critters.push_back( cr );
-        }
     }
     else
     {
-        PcVec map_npcs;
-        map->GetNpcs( map_npcs );
+        PcVec map_npcs = map->GetNpcs();
         critters.reserve( map_npcs.size() );
-        for( auto it = map_npcs.begin(), end = map_npcs.end(); it != end; ++it )
-        {
-            Npc* npc = *it;
+        for( Npc* npc : map_npcs )
             if( npc->GetProtoId() == pid && npc->CheckFind( find_type ) )
                 critters.push_back( npc );
-        }
     }
 
     return Script::CreateArrayRef( "Critter[]", critters );
@@ -2154,11 +2147,8 @@ CScriptArray* FOServer::SScriptFunc::Map_GetCrittersWhoViewPath( Map* map, ushor
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
     CrVec critters;
-    CrVec map_critters;
-    map->GetCritters( map_critters );
-    for( auto it = map_critters.begin(), end = map_critters.end(); it != end; ++it )
+    for( Critter* cr : map->GetCritters() )
     {
-        Critter* cr = *it;
         if( cr->CheckFind( find_type ) &&
             std::find( critters.begin(), critters.end(), cr ) == critters.end() &&
             IntersectCircleLine( cr->GetHexX(), cr->GetHexY(), cr->GetLookDistance(), from_hx, from_hy, to_hx, to_hy ) )
@@ -2585,13 +2575,8 @@ void FOServer::SScriptFunc::Map_PlaySound( Map* map, string sound_name )
     if( map->IsDestroyed )
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
-    ClVec players;
-    map->GetPlayers( players );
-    for( auto it = players.begin(), end = players.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
+    for( Critter* cr : map->GetPlayers() )
         cr->Send_PlaySound( 0, sound_name );
-    }
 }
 
 void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, string sound_name, ushort hx, ushort hy, uint radius )
@@ -2601,14 +2586,9 @@ void FOServer::SScriptFunc::Map_PlaySoundRadius( Map* map, string sound_name, us
     if( hx >= map->GetWidth() || hy >= map->GetHeight() )
         SCRIPT_ERROR_R( "Invalid hexes args." );
 
-    ClVec players;
-    map->GetPlayers( players );
-    for( auto it = players.begin(), end = players.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
+    for( Critter* cr : map->GetPlayers() )
         if( CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius ) )
             cr->Send_PlaySound( 0, sound_name );
-    }
 }
 
 bool FOServer::SScriptFunc::Map_Reload( Map* map )
@@ -2672,13 +2652,9 @@ Map* FOServer::SScriptFunc::Location_GetMap( Location* loc, hash map_pid )
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    MapVec& maps = loc->GetMapsNoLock();
-    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
-    {
-        Map* map = *it;
+    for( Map* map : loc->GetMaps() )
         if( map->GetProtoId() == map_pid )
             return map;
-    }
     return nullptr;
 }
 
@@ -2687,7 +2663,7 @@ Map* FOServer::SScriptFunc::Location_GetMapByIndex( Location* loc, uint index )
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    MapVec& maps = loc->GetMapsNoLock();
+    MapVec maps = loc->GetMaps();
     if( index >= maps.size() )
         SCRIPT_ERROR_R0( "Invalid index arg." );
 
@@ -2699,9 +2675,7 @@ CScriptArray* FOServer::SScriptFunc::Location_GetMaps( Location* loc )
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    MapVec maps;
-    loc->GetMaps( maps );
-    return Script::CreateArrayRef( "Map[]", maps );
+    return Script::CreateArrayRef( "Map[]", loc->GetMaps() );
 }
 
 bool FOServer::SScriptFunc::Location_GetEntrance( Location* loc, uint entrance, uint& map_index, hash& entire )
@@ -2759,14 +2733,9 @@ bool FOServer::SScriptFunc::Location_Reload( Location* loc )
     if( loc->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    MapVec maps;
-    loc->GetMaps( maps );
-    for( auto it = maps.begin(), end = maps.end(); it != end; ++it )
-    {
-        Map* map = *it;
+    for( Map* map : loc->GetMaps() )
         if( !RegenerateMap( map ) )
             SCRIPT_ERROR_R0( "Reload map in location fail." );
-    }
     return true;
 }
 
@@ -3364,9 +3333,9 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     if( !map2 )
         SCRIPT_ERROR_R0( "Map of Critter2 not found." );
 
-    CrVec& cr_map1 = map1->GetCrittersNoLock();
-    ClVec& cl_map1 = map1->GetPlayersNoLock();
-    PcVec& npc_map1 = map1->GetNpcsNoLock();
+    CrVec& cr_map1 = map1->GetCrittersRaw();
+    ClVec& cl_map1 = map1->GetPlayersRaw();
+    PcVec& npc_map1 = map1->GetNpcsRaw();
     auto   it_cr = std::find( cr_map1.begin(), cr_map1.end(), cr1 );
     if( it_cr != cr_map1.end() )
         cr_map1.erase( it_cr );
@@ -3377,9 +3346,9 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
     if( it_pc != npc_map1.end() )
         npc_map1.erase( it_pc );
 
-    CrVec& cr_map2 = map2->GetCrittersNoLock();
-    ClVec& cl_map2 = map2->GetPlayersNoLock();
-    PcVec& npc_map2 = map2->GetNpcsNoLock();
+    CrVec& cr_map2 = map2->GetCrittersRaw();
+    ClVec& cl_map2 = map2->GetPlayersRaw();
+    PcVec& npc_map2 = map2->GetNpcsRaw();
     it_cr = std::find( cr_map2.begin(), cr_map2.end(), cr1 );
     if( it_cr != cr_map2.end() )
         cr_map2.erase( it_cr );

@@ -754,7 +754,11 @@ static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
 static bool Less(int typeId, const void* a, const void* b)
 {
     if (typeId == stringTypeId)
-        return *(string*)a < *(string*)b;
+    {
+        const std::string& aStr = *(const std::string*)a;
+        const std::string& bStr = *(const std::string*)b;
+        return aStr < bStr;
+    }
 
     if (!(typeId & asTYPEID_MASK_OBJECT))
     {
@@ -791,7 +795,11 @@ static bool Less(int typeId, const void* a, const void* b)
 static bool Equals(int typeId, const void* a, const void* b)
 {
     if (typeId == stringTypeId)
-        return *(string*)a == *(string*)b;
+    {
+        const std::string& aStr = *(const std::string*)a;
+        const std::string& bStr = *(const std::string*)b;
+        return aStr == bStr;
+    }
 
     if (!(typeId & asTYPEID_MASK_OBJECT))
     {

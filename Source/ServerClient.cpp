@@ -193,7 +193,7 @@ bool FOServer::RegenerateMap( Map* map )
     Script::RaiseInternalEvent( ServerFunctions.MapFinish, map );
     map->DeleteContent();
     map->Generate();
-    for( auto item : map->GetItemsNoLock() )
+    for( auto item : map->GetItems() )
         Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, true );
     Script::RaiseInternalEvent( ServerFunctions.MapInit, map, true );
     return true;
@@ -2001,12 +2001,7 @@ void FOServer::OnSendLocationValue( Entity* entity, Property* prop )
     if( ( prop->GetAccess() & Property::PublicMask ) != 0 )
     {
         Location* loc = (Location*) entity;
-        MapVec    maps;
-        loc->GetMaps( maps );
-        for( auto it = maps.begin(); it != maps.end(); ++it )
-        {
-            Map* map = *it;
+        for( Map* map : loc->GetMaps() )
             map->SendProperty( NetProperty::Location, prop, loc );
-        }
     }
 }

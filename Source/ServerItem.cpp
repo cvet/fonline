@@ -99,7 +99,11 @@ void FOServer::OnSetItemChangeView( Entity* entity, Property* prop, void* cur_va
     {
         Map* map = MapMngr.GetMap( item->GetMapId() );
         if( map )
+        {
             map->ChangeViewItem( item );
+            if( prop == Item::PropertyIsTrap )
+                map->RecacheHexFlags( item->GetHexX(), item->GetHexY() );
+        }
     }
     else if( item->GetAccessory() == ITEM_ACCESSORY_CRITTER )
     {
@@ -126,39 +130,20 @@ void FOServer::OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_va
     {
         Map* map = MapMngr.GetMap( item->GetMapId() );
         if( map )
+            map->RecacheHexFlags( item->GetHexX(), item->GetHexY() );
+    }
+}
+
+void FOServer::OnSetItemBlockLines( Entity* entity, Property* prop, void* cur_value, void* old_value )
+{
+    // BlockLines
+    Item* item = (Item*) entity;
+    if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
+    {
+        Map* map = MapMngr.GetMap( item->GetMapId() );
+        if( map )
         {
-            bool recache_block = false;
-            bool recache_shoot = false;
-
-            if( prop == Item::PropertyIsNoBlock )
-            {
-                if( value )
-                    recache_block = true;
-                else
-                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM );
-            }
-
-            else if( prop == Item::PropertyIsShootThru )
-            {
-                if( value )
-                    recache_shoot = true;
-                else
-                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_NRAKE_ITEM );
-            }
-            else if( prop == Item::PropertyIsGag )
-            {
-                if( !value )
-                    recache_block = true;
-                else
-                    map->SetHexFlag( item->GetHexX(), item->GetHexY(), FH_GAG_ITEM );
-            }
-
-            if( recache_block && recache_shoot )
-                map->RecacheHexBlockShoot( item->GetHexX(), item->GetHexY() );
-            else if( recache_block )
-                map->RecacheHexBlock( item->GetHexX(), item->GetHexY() );
-            else if( recache_shoot )
-                map->RecacheHexShoot( item->GetHexX(), item->GetHexY() );
+            #pragma MESSAGE( "Make BlockLines changable in runtime." )
         }
     }
 }
@@ -200,7 +185,7 @@ void FOServer::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
             {
                 Map* map = MapMngr.GetMap( item->GetMapId() );
                 if( map )
-                    map->RecacheHexBlockShoot( item->GetHexX(), item->GetHexY() );
+                    map->RecacheHexFlags( item->GetHexX(), item->GetHexY() );
             }
         }
         if( old && !cur )

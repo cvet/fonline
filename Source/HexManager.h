@@ -82,6 +82,7 @@ struct Field
     AnyFrames*  SimplyTile[ 2 ]; // Tile / Roof
     TileVec*    Tiles[ 2 ];      // Tile / Roof
     ItemHexVec* Items;
+    ItemHexVec* BlockLinesItems;
     short       RoofNum;
 
     struct
@@ -100,9 +101,11 @@ struct Field
 
     uchar Corner;
 
+    Field() = default;
     ~Field();
-    void  AddItem( ItemHex* item );
-    void  EraseItem( ItemHex* item );
+
+    void  AddItem( ItemHex* item, ItemHex* block_lines_item );
+    void  EraseItem( ItemHex* item, ItemHex* block_lines_item );
     Tile& AddTile( AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof );
     void  EraseTile( uint index, bool is_roof );
     uint  GetTilesCount( bool is_roof );
@@ -290,8 +293,8 @@ public:
 private:
     ItemHexVec hexItems;
 
-    void PlaceItemBlocks( ushort hx, ushort hy, Item* item );
-    void ReplaceItemBlocks( ushort hx, ushort hy, Item* item );
+    void AddFieldItem( ushort hx, ushort hy, ItemHex* item );
+    void EraseFieldItem( ushort hx, ushort hy, ItemHex* item );
 
 public:
     uint        AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added, UCharVecVec* data );

@@ -848,10 +848,7 @@ void FOServer::Process_Text( Client* cl )
             if( !map )
                 return;
 
-            CrVec critters;
-            map->GetCritters( critters );
-
-            cl->SendAA_Text( critters, str, SAY_SHOUT, true );
+            cl->SendAA_Text( map->GetCritters(), str, SAY_SHOUT, true );
         }
         else
         {

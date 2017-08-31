@@ -61,11 +61,9 @@ string MapManager::GetLocationsMapsStatistics()
                         loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false",
                         loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false" );
 
-        MapVec& maps = loc->GetMapsNoLock();
-        uint    map_index = 0;
-        for( auto it_ = maps.begin(), end_ = maps.end(); it_ != end_; ++it_ )
+        uint map_index = 0;
+        for( Map* map : loc->GetMaps() )
         {
-            Map* map = *it_;
             result += _str( "     {:02}) {:<20} {:<9}   {:<4} {:<4} {:<50}\n",
                             map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
                             map->GetScriptId() ? _str().parseHash( map->GetScriptId() ) : "" );
@@ -101,8 +99,7 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
         if( !map )
         {
             WriteLog( "Create map '{}' for location '{}' fail.\n", _str().parseHash( map_pid ), _str().parseHash( loc_pid ) );
-            MapVec& maps = loc->GetMapsNoLock();
-            for( auto& map : maps )
+            for( auto& map : loc->GetMapsRaw() )
                 map->Release();
             loc->Release();
             pids->Release();
@@ -115,8 +112,8 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
     EntityMngr.RegisterEntity( loc );
 
     // Generate location maps
-    MapVec maps = loc->GetMapsNoLock();   // Already locked
-    for( auto map : maps )
+    MapVec maps = loc->GetMaps();
+    for( Map* map : maps )
     {
         map->SetLocId( loc->GetId() );
         if( !map->Generate() )
@@ -129,9 +126,9 @@ Location* MapManager::CreateLocation( hash loc_pid, ushort wx, ushort wy )
     }
 
     // Init scripts
-    for( auto map : maps )
+    for( Map* map : maps )
     {
-        for( auto item : map->GetItemsNoLock() )
+        for( Item* item : map->GetItems() )
             Script::RaiseInternalEvent( ServerFunctions.ItemInit, item, true );
         Script::RaiseInternalEvent( ServerFunctions.MapInit, map, true );
     }
@@ -150,7 +147,7 @@ Map* MapManager::CreateMap( hash proto_id, Location* loc )
     }
 
     Map*    map = new Map( 0, proto_map, loc );
-    MapVec& maps = loc->GetMapsNoLock();
+    MapVec& maps = loc->GetMapsRaw();
     map->SetLocId( loc->GetId() );
     map->SetLocMapIndex( (uint) maps.size() );
     maps.push_back( map );
@@ -288,8 +285,7 @@ void MapManager::LocationGarbager()
 void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
 {
     // Start deleting
-    MapVec maps;
-    loc->GetMaps( maps );
+    MapVec maps = loc->GetMaps();
 
     // Redundant calls
     if( loc->IsDestroying || loc->IsDestroyed )
@@ -310,17 +306,14 @@ void MapManager::DeleteLocation( Location* loc, ClVec* gmap_players )
         CrMngr.GetClients( players, true );
         gmap_players = &players;
     }
-    for( auto it = gmap_players->begin(); it != gmap_players->end(); ++it )
-    {
-        Client* cl = *it;
+    for( Client* cl :* gmap_players )
         if( cl->CheckKnownLocById( loc->GetId() ) )
             cl->Send_GlobalLocation( loc, false );
-    }
 
     // Delete maps
-    for( auto it = maps.begin(); it != maps.end(); ++it )
-        ( *it )->DeleteContent();
-    loc->GetMapsNoLock().clear();
+    for( Map* map : maps )
+        map->DeleteContent();
+    loc->GetMapsRaw().clear();
 
     // Erase from main collections
     EntityMngr.UnregisterEntity( loc );

@@ -125,7 +125,6 @@
 // Map copy
 #define FH_CRITTER                  BIN8( 00000001 )
 #define FH_DEAD_CRITTER             BIN8( 00000010 )
-#define FH_ITEM                     BIN8( 00000100 )
 #define FH_DOOR                     BIN8( 00001000 )
 #define FH_BLOCK_ITEM               BIN8( 00010000 )
 #define FH_NRAKE_ITEM               BIN8( 00100000 )

@@ -111,6 +111,7 @@ public:
     static void  OnSetItemCount( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemChangeView( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value );
+    static void  OnSetItemBlockLines( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemIsGeck( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemIsRadio( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void  OnSetItemOpened( Entity* entity, Property* prop, void* cur_value, void* old_value );

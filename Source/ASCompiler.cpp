@@ -260,7 +260,7 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
     WriteLog( "Success ({} ms).\n", Timer::AccurateTick() - tick );
 
     // Execute functions
-    for( auto func_name : run_func )
+    for( string func_name : run_func )
     {
         if( func_name.find( "::" ) == string::npos )
             func_name = _str( path ).extractFileName().eraseFileExtension() + "::" + func_name;

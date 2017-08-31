@@ -56,21 +56,24 @@ Map::~Map()
 
 void Map::DeleteContent()
 {
-    while( !mapCritters.empty() || !hexItems.empty() )
+    while( !mapCritters.empty() || !mapItems.empty() )
     {
         // Transit players to global map
         KickPlayersToGlobalMap();
 
         // Delete npc
-        PcVec del_npc = mapNpcs;
-        for( auto it = del_npc.begin(); it != del_npc.end(); ++it )
-            CrMngr.DeleteNpc( *it );
+        PcVec del_npcs = mapNpcs;
+        for( auto del_npc : del_npcs )
+            CrMngr.DeleteNpc( del_npc );
 
         // Delete items
-        ItemVec del_items = hexItems;
-        for( auto it = del_items.begin(); it != del_items.end(); ++it )
-            ItemMngr.DeleteItem( *it );
+        ItemVec del_items = mapItems;
+        for( auto del_item : del_items )
+            ItemMngr.DeleteItem( del_item );
     }
+    RUNTIME_ASSERT( mapItemsById.empty() );
+    RUNTIME_ASSERT( mapItemsByHex.empty() );
+    RUNTIME_ASSERT( mapBlockLinesByHex.empty() );
 }
 
 bool Map::Generate()
@@ -78,7 +81,7 @@ bool Map::Generate()
     UIntMap id_map;
 
     // Generate npc
-    for( auto& base_cr : GetProtoMap()->CrittersVec )
+    for( auto base_cr : GetProtoMap()->CrittersVec )
     {
         // Create npc
         Npc* npc = CrMngr.CreateNpc( base_cr->GetProtoId(), &base_cr->Props, this, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true );
@@ -104,7 +107,7 @@ bool Map::Generate()
     }
 
     // Generate hex items
-    for( auto& base_item : GetProtoMap()->HexItemsVec )
+    for( auto base_item : GetProtoMap()->HexItemsVec )
     {
         // Create item
         Item* item = ItemMngr.CreateItem( base_item->GetProtoId(), 0, &base_item->Props );
@@ -127,7 +130,7 @@ bool Map::Generate()
     }
 
     // Add children items
-    for( auto& base_item : GetProtoMap()->ChildItemsVec )
+    for( auto base_item : GetProtoMap()->ChildItemsVec )
     {
         // Map id
         uint parent_id = 0;
@@ -169,12 +172,8 @@ bool Map::Generate()
         }
     }
 
-    // Npc initialization
-    PcVec npcs;
-    GetNpcs( npcs );
-
     // Visible
-    for( auto& npc : npcs )
+    for( auto npc : GetNpcs() )
     {
         npc->ProcessVisibleCritters();
         npc->ProcessVisibleItems();
@@ -315,11 +314,8 @@ void Map::EraseCritter( Critter* cr )
 
 void Map::KickPlayersToGlobalMap()
 {
-    ClVec players;
-    GetPlayers( players );
-
-    for( auto it = players.begin(), end = players.end(); it != end; ++it )
-        MapMngr.TransitToGlobal( *it, 0, true );
+    for( auto player : GetPlayers() )
+        MapMngr.TransitToGlobal( player, 0, true );
 }
 
 bool Map::AddItem( Item* item, ushort hx, ushort hy )
@@ -334,13 +330,9 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
     SetItem( item, hx, hy );
 
     // Process critters view
-    CrVec critters;
-    GetCritters( critters );
-
     item->ViewPlaceOnMap = true;
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( Critter* cr : GetCritters() )
     {
-        Critter* cr = *it;
         if( !item->GetIsHidden() || item->GetIsAlwaysView() )
         {
             if( !item->GetIsAlwaysView() )           // Check distance for non-hide items
@@ -373,52 +365,47 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
 
 void Map::SetItem( Item* item, ushort hx, ushort hy )
 {
-    if( GetItem( item->GetId() ) )
-    {
-        WriteLog( "Item already added!\n" );
-        return;
-    }
+    RUNTIME_ASSERT( !mapItemsById.count( item->GetId() ) );
 
     item->SetAccessory( ITEM_ACCESSORY_HEX );
     item->SetMapId( Id );
     item->SetHexX( hx );
     item->SetHexY( hy );
 
-    hexItems.push_back( item );
-    SetHexFlag( hx, hy, FH_ITEM );
+    mapItems.push_back( item );
+    mapItemsById.insert( std::make_pair( item->GetId(), item ) );
+    mapItemsByHex.insert( std::make_pair( ( hy << 16 ) | hx, ItemVec() ) ).first->second.push_back( item );
 
-    if( !item->GetIsNoBlock() )
-        SetHexFlag( hx, hy, FH_BLOCK_ITEM );
-    if( !item->GetIsShootThru() )
-        SetHexFlag( hx, hy, FH_NRAKE_ITEM );
-    if( item->GetIsGag() )
-        SetHexFlag( hx, hy, FH_GAG_ITEM );
-    if( item->IsNonEmptyBlockLines() )
-        PlaceItemBlocks( hx, hy, item );
-
-    if( item->GetIsTrap() )
-        SetHexFlag( hx, hy, FH_WALK_ITEM );
     if( item->GetIsGeck() )
         mapLocation->GeckCount++;
+
+    RecacheHexFlags( hx, hy );
+
+    if( item->IsNonEmptyBlockLines() )
+        PlaceItemBlocks( hx, hy, item );
 }
 
 void Map::EraseItem( uint item_id )
 {
     RUNTIME_ASSERT( item_id );
+    auto  it = mapItemsById.find( item_id );
+    RUNTIME_ASSERT( it != mapItemsById.end() );
+    Item* item = it->second;
+    mapItemsById.erase( it );
 
-    auto it = hexItems.begin();
-    auto end = hexItems.end();
-    for( ; it != end; ++it )
-        if( ( *it )->GetId() == item_id )
-            break;
-    if( it == hexItems.end() )
-        return;
-
-    Item* item = *it;
-    hexItems.erase( it );
+    auto it_all = std::find( mapItems.begin(), mapItems.end(), item );
+    RUNTIME_ASSERT( it_all != mapItems.end() );
+    mapItems.erase( it_all );
 
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
+    auto   it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    RUNTIME_ASSERT( it_hex_all != mapItemsByHex.end() );
+    auto   it_hex = std::find( it_hex_all->second.begin(), it_hex_all->second.end(), item );
+    RUNTIME_ASSERT( it_hex != it_hex_all->second.end() );
+    it_hex_all->second.erase( it_hex );
+    if( it_hex_all->second.empty() )
+        mapItemsByHex.erase( it_hex_all );
 
     item->SetAccessory( ITEM_ACCESSORY_NONE );
     item->SetMapId( 0 );
@@ -427,24 +414,16 @@ void Map::EraseItem( uint item_id )
 
     if( item->GetIsGeck() )
         mapLocation->GeckCount--;
-    if( !item->GetIsNoBlock() && !item->GetIsShootThru() )
-        RecacheHexBlockShoot( hx, hy );
-    else if( !item->GetIsNoBlock() )
-        RecacheHexBlock( hx, hy );
-    else if( !item->GetIsShootThru() )
-        RecacheHexShoot( hx, hy );
+
+    RecacheHexFlags( hx, hy );
+
     if( item->IsNonEmptyBlockLines() )
-        ReplaceItemBlocks( hx, hy, item );
+        RemoveItemBlocks( hx, hy, item );
 
     // Process critters view
-    CrVec critters;
-    GetCritters( critters );
-
     item->ViewPlaceOnMap = true;
-    for( auto it_ = critters.begin(), end_ = critters.end(); it_ != end_; ++it_ )
+    for( Critter* cr : GetCritters() )
     {
-        Critter* cr = *it_;
-
         if( cr->DelIdVisItem( item->GetId() ) )
         {
             cr->Send_EraseItemFromMap( item );
@@ -459,11 +438,8 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
     if( type == NetProperty::MapItem )
     {
         Item* item = (Item*) entity;
-        CrVec critters;
-        GetCritters( critters );
-        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+        for( Critter* cr : GetCritters() )
         {
-            Critter* cr = *it;
             if( cr->CountIdVisItem( item->GetId() ) )
             {
                 cr->Send_Property( type, prop, entity );
@@ -473,11 +449,8 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
     }
     else if( type == NetProperty::Map || type == NetProperty::Location )
     {
-        CrVec critters;
-        GetCritters( critters );
-        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+        for( Critter* cr : GetCritters() )
         {
-            Critter* cr = *it;
             cr->Send_Property( type, prop, entity );
             if( type == NetProperty::Map && ( prop == Map::PropertyDayTime || prop == Map::PropertyDayColor ) )
                 cr->Send_GameInfo( nullptr );
@@ -491,13 +464,8 @@ void Map::SendProperty( NetProperty::Type type, Property* prop, Entity* entity )
 
 void Map::ChangeViewItem( Item* item )
 {
-    CrVec critters;
-    GetCritters( critters );
-
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( Critter* cr : GetCritters() )
     {
-        Critter* cr = *it;
-
         if( cr->CountIdVisItem( item->GetId() ) )
         {
             if( item->GetIsHidden() )
@@ -557,185 +525,174 @@ void Map::ChangeViewItem( Item* item )
 
 void Map::AnimateItem( Item* item, uchar from_frm, uchar to_frm )
 {
-    for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
-    {
-        Client* cl = *it;
+    for( Client* cl : mapPlayers )
         if( cl->CountIdVisItem( item->GetId() ) )
             cl->Send_AnimateItem( item, from_frm, to_frm );
-    }
 }
 
-#pragma MESSAGE("Add explicit sync lock.")
 Item* Map::GetItem( uint item_id )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetId() == item_id )
-            return item;
-    }
-    return nullptr;
+    auto it = mapItemsById.find( item_id );
+    return it != mapItemsById.end() ? it->second : nullptr;
 }
 
 Item* Map::GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    if( it_hex_all != mapItemsByHex.end() )
     {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy && ( item_pid == 0 || item->GetProtoId() == item_pid ) &&
-            ( !picker || ( !item->GetIsHidden() && picker->CountIdVisItem( item->GetId() ) ) ) )
-            return item;
+        for( Item* item : it_hex_all->second )
+        {
+            if( ( item_pid == 0 || item->GetProtoId() == item_pid ) &&
+                ( !picker || ( !item->GetIsHidden() && picker->CountIdVisItem( item->GetId() ) ) ) )
+                return item;
+        }
     }
     return nullptr;
 }
 
 Item* Map::GetItemDoor( ushort hx, ushort hy )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    if( it_hex_all != mapItemsByHex.end() )
     {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsDoor() )
-            return item;
+        for( Item* item : it_hex_all->second )
+            if( item->IsDoor() )
+                return item;
     }
     return nullptr;
 }
 
 Item* Map::GetItemCar( ushort hx, ushort hy )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    if( it_hex_all != mapItemsByHex.end() )
     {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsCar() )
-            return item;
+        for( Item* item : it_hex_all->second )
+            if( item->IsCar() )
+                return item;
     }
     return nullptr;
 }
 
 Item* Map::GetItemContainer( ushort hx, ushort hy )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    if( it_hex_all != mapItemsByHex.end() )
     {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy && item->IsContainer() )
-            return item;
+        for( Item* item : it_hex_all->second )
+            if( item->IsContainer() )
+                return item;
     }
     return nullptr;
 }
 
 Item* Map::GetItemGag( ushort hx, ushort hy )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    if( it_hex_all != mapItemsByHex.end() )
     {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy && item->GetIsGag() )
-            return item;
+        for( Item* item : it_hex_all->second )
+            if( item->GetIsGag() )
+                return item;
     }
     return nullptr;
 }
 
 void Map::GetItemsHex( ushort hx, ushort hy, ItemVec& items )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy )
+    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    if( it_hex_all != mapItemsByHex.end() )
+        for( Item* item : it_hex_all->second )
             items.push_back( item );
-    }
 }
 
 void Map::GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
+    for( Item* item : mapItems )
         if( ( !pid || item->GetProtoId() == pid ) && DistGame( item->GetHexX(), item->GetHexY(), hx, hy ) <= radius )
             items.push_back( item );
-    }
 }
 
 void Map::GetItemsPid( hash pid, ItemVec& items )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
+    for( Item* item : mapItems )
         if( !pid || item->GetProtoId() == pid )
             items.push_back( item );
-    }
 }
 
 void Map::GetItemsType( int type, ItemVec& items )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
+    for( Item* item : mapItems )
         if( item->GetType() == type )
             items.push_back( item );
-    }
 }
 
 void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps )
 {
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    if( it_hex_all != mapItemsByHex.end() )
     {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy && item->GetIsTrap() )
-            traps.push_back( item );
+        for( Item* item : it_hex_all->second )
+            if( item->GetIsTrap() )
+                traps.push_back( item );
     }
-    if( !traps.size() )
-        UnsetHexFlag( hx, hy, FH_WALK_ITEM );
 }
 
-void Map::RecacheHexBlock( ushort hx, ushort hy )
+bool Map::IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item )
 {
-    UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
-    UnsetHexFlag( hx, hy, FH_GAG_ITEM );
-    bool is_block = false;
-    bool is_gag = false;
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy )
-        {
-            if( !is_block && !item->GetIsNoBlock() )
-                is_block = true;
-            if( !is_gag && item->GetIsGag() )
-                is_gag = true;
-            if( is_block && is_gag )
-                break;
-        }
-    }
-    if( is_block )
-        SetHexFlag( hx, hy, FH_BLOCK_ITEM );
-    if( is_gag )
-        SetHexFlag( hx, hy, FH_GAG_ITEM );
+    if( !IsHexPassed( hx, hy ) )
+        return false;
+
+    FOREACH_PROTO_ITEM_LINES( proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                              if( IsHexCritter( hx, hy ) )
+                                  return false;
+                              );
+    return true;
 }
 
-void Map::RecacheHexShoot( ushort hx, ushort hy )
+void Map::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
 {
-    UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy && !item->GetIsShootThru() )
-        {
-            SetHexFlag( hx, hy, FH_NRAKE_ITEM );
-            break;
-        }
-    }
+    bool raked = item->GetIsShootThru();
+    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                              mapBlockLinesByHex.insert( std::make_pair( ( hy << 16 ) | hx, ItemVec() ) ).first->second.push_back( item );
+
+                              RecacheHexFlags( hx, hy );
+                              );
 }
 
-void Map::RecacheHexBlockShoot( ushort hx, ushort hy )
+void Map::RemoveItemBlocks( ushort hx, ushort hy, Item* item )
+{
+    bool raked = item->GetIsShootThru();
+    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
+                              auto it_hex_all_bl = mapBlockLinesByHex.find( ( hy << 16 ) | hx );
+                              RUNTIME_ASSERT( it_hex_all_bl != mapBlockLinesByHex.end() );
+                              auto it_hex_bl = std::find( it_hex_all_bl->second.begin(), it_hex_all_bl->second.end(), item );
+                              RUNTIME_ASSERT( it_hex_bl != it_hex_all_bl->second.end() );
+                              it_hex_all_bl->second.erase( it_hex_bl );
+                              if( it_hex_all_bl->second.empty() )
+                                  mapBlockLinesByHex.erase( it_hex_all_bl );
+
+                              RecacheHexFlags( hx, hy );
+                              );
+}
+
+void Map::RecacheHexFlags( ushort hx, ushort hy )
 {
     UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
     UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
     UnsetHexFlag( hx, hy, FH_GAG_ITEM );
+    UnsetHexFlag( hx, hy, FH_WALK_ITEM );
+
     bool is_block = false;
     bool is_nrake = false;
     bool is_gag = false;
-    for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
+    bool is_trap = false;
+
+    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
+    if( it_hex_all != mapItemsByHex.end() )
     {
-        Item* item = *it;
-        if( item->GetHexX() == hx && item->GetHexY() == hy )
+        for( Item* item : it_hex_all->second )
         {
             if( !is_block && !item->GetIsNoBlock() )
                 is_block = true;
@@ -743,16 +700,39 @@ void Map::RecacheHexBlockShoot( ushort hx, ushort hy )
                 is_nrake = true;
             if( !is_gag && item->GetIsGag() )
                 is_gag = true;
-            if( is_block && is_nrake && is_gag )
+            if( !is_trap && item->GetIsTrap() )
+                is_trap = true;
+            if( is_block && is_nrake && is_gag && is_trap )
                 break;
         }
     }
+
+    if( !is_block && !is_nrake )
+    {
+        auto it_hex_all_bl = mapBlockLinesByHex.find( ( hy << 16 ) | hx );
+        if( it_hex_all_bl != mapBlockLinesByHex.end() )
+        {
+            is_block = true;
+
+            for( Item* item : it_hex_all_bl->second )
+            {
+                if( !item->GetIsShootThru() )
+                {
+                    is_nrake = true;
+                    break;
+                }
+            }
+        }
+    }
+
     if( is_block )
         SetHexFlag( hx, hy, FH_BLOCK_ITEM );
     if( is_nrake )
         SetHexFlag( hx, hy, FH_NRAKE_ITEM );
     if( is_gag )
         SetHexFlag( hx, hy, FH_GAG_ITEM );
+    if( is_trap )
+        SetHexFlag( hx, hy, FH_WALK_ITEM );
 }
 
 ushort Map::GetHexFlags( ushort hx, ushort hy )
@@ -889,13 +869,9 @@ void Map::UnsetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead )
     if( dead )
     {
         uint dead_count = 0;
-
-        for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
+        for( Critter* cr : mapCritters )
             if( cr->GetHexX() == hx && cr->GetHexY() == hy && cr->IsDead() )
                 dead_count++;
-        }
 
         if( dead_count <= 1 )
             UnsetHexFlag( hx, hy, FH_DEAD_CRITTER );
@@ -924,35 +900,25 @@ void Map::UnsetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead )
 
 uint Map::GetNpcCount( int npc_role, int find_type )
 {
-    PcVec npcs;
-    GetNpcs( npcs );
-
     uint result = 0;
-    for( auto it = npcs.begin(), end = npcs.end(); it != end; ++it )
-    {
-        Npc* npc = *it;
+    for( Npc* npc : GetNpcs() )
         if( npc->GetNpcRole() == npc_role && npc->CheckFind( find_type ) )
             result++;
-    }
     return result;
 }
 
 Critter* Map::GetCritter( uint crid )
 {
-    for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
-    {
-        Critter* cr = *it;
+    for( Critter* cr : mapCritters )
         if( cr->GetId() == crid )
             return cr;
-    }
     return nullptr;
 }
 
 Critter* Map::GetNpc( int npc_role, int find_type, uint skip_count )
 {
-    for( auto it = mapNpcs.begin(), end = mapNpcs.end(); it != end; ++it )
+    for( Npc* npc : mapNpcs )
     {
-        Npc* npc = *it;
         if( npc->GetNpcRole() == npc_role && npc->CheckFind( find_type ) )
         {
             if( skip_count )
@@ -969,9 +935,8 @@ Critter* Map::GetHexCritter( ushort hx, ushort hy, bool dead )
     if( !IsFlagCritter( hx, hy, dead ) )
         return nullptr;
 
-    for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
+    for( Critter* cr : mapCritters )
     {
-        Critter* cr = *it;
         if( cr->IsDead() == dead )
         {
             int mh = cr->GetMultihex();
@@ -994,112 +959,47 @@ void Map::GetCrittersHex( ushort hx, ushort hy, uint radius, int find_type, CrVe
 {
     CrVec find_critters;
     find_critters.reserve( mapCritters.size() );
-    for( auto it = mapCritters.begin(), end = mapCritters.end(); it != end; ++it )
+    for( Critter* cr : mapCritters )
     {
-        Critter* cr = *it;
         if( cr->CheckFind( find_type ) && CheckDist( hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex() ) )
             find_critters.push_back( cr );
     }
 
     // Store result, append
-    if( find_critters.size() )
+    if( !find_critters.empty() )
     {
         critters.reserve( critters.size() + find_critters.size() );
         critters.insert( critters.end(), find_critters.begin(), find_critters.end() );
     }
 }
 
-void Map::GetCritters( CrVec& critters )
+CrVec Map::GetCritters()
 {
-    critters = mapCritters;
+    return mapCritters;
 }
 
-void Map::GetPlayers( ClVec& players )
+ClVec Map::GetPlayers()
 {
-    players = mapPlayers;
+    return mapPlayers;
 }
 
-void Map::GetNpcs( PcVec& npcs )
+PcVec Map::GetNpcs()
 {
-    npcs = mapNpcs;
-}
-
-uint Map::GetCrittersCount()
-{
-    return (uint) mapCritters.size();
-}
-
-uint Map::GetPlayersCount()
-{
-    return (uint) mapPlayers.size();
-}
-
-uint Map::GetNpcsCount()
-{
-    return (uint) mapNpcs.size();
+    return mapNpcs;
 }
 
 void Map::SendEffect( hash eff_pid, ushort hx, ushort hy, ushort radius )
 {
-    for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
-    {
-        Client* cl = *it;
+    for( Client* cl : mapPlayers )
         if( CheckDist( cl->GetHexX(), cl->GetHexY(), hx, hy, cl->LookCacheValue + radius ) )
             cl->Send_Effect( eff_pid, hx, hy, radius );
-    }
 }
 
 void Map::SendFlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy )
 {
-    for( auto it = mapPlayers.begin(), end = mapPlayers.end(); it != end; ++it )
-    {
-        Client* cl = *it;
+    for( Client* cl : mapPlayers )
         if( IntersectCircleLine( cl->GetHexX(), cl->GetHexY(), cl->LookCacheValue, from_hx, from_hy, to_hx, to_hy ) )
             cl->Send_FlyEffect( eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy );
-    }
-}
-
-bool Map::IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item )
-{
-    if( !IsHexPassed( hx, hy ) )
-        return false;
-
-    FOREACH_PROTO_ITEM_LINES( proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                              if( IsHexCritter( hx, hy ) )
-                                  return false;
-                              // if( !IsHexPassed( hx, hy ) )
-                              //    return false;
-                              );
-    return true;
-}
-
-void Map::PlaceItemBlocks( ushort hx, ushort hy, Item* item )
-{
-    bool raked = item->GetIsShootThru();
-    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                              SetHexFlag( hx, hy, FH_BLOCK_ITEM );
-                              if( !raked )
-                                  SetHexFlag( hx, hy, FH_NRAKE_ITEM );
-                              );
-}
-
-void Map::ReplaceItemBlocks( ushort hx, ushort hy, Item* item )
-{
-    bool raked = item->GetIsShootThru();
-    FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(),
-                              UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
-                              if( !raked )
-                              {
-                                  UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
-                                  if( IsHexItem( hx, hy ) )
-                                      RecacheHexBlockShoot( hx, hy );
-                              }
-                              else
-                              {
-                                  if( IsHexItem( hx, hy ) )
-                                      RecacheHexBlock( hx, hy );
-                              }
-                              );
 }
 
 bool Map::SetScript( asIScriptFunction* func, bool first_time )
@@ -1201,9 +1101,9 @@ void Location::BindScript()
     }
 }
 
-void Location::GetMaps( MapVec& maps )
+MapVec Location::GetMaps()
 {
-    maps = locMaps;
+    return locMaps;
 }
 
 Map* Location::GetMapByIndex( uint index )
@@ -1215,7 +1115,7 @@ Map* Location::GetMapByIndex( uint index )
 
 Map* Location::GetMapByPid( hash map_pid )
 {
-    for( auto& map : locMaps )
+    for( auto map : locMaps )
     {
         if( map->GetProtoId() == map_pid )
             return map;
@@ -1226,7 +1126,7 @@ Map* Location::GetMapByPid( hash map_pid )
 uint Location::GetMapIndex( hash map_pid )
 {
     uint index = 0;
-    for( auto& map : locMaps )
+    for( auto map : locMaps )
     {
         if( map->GetProtoId() == map_pid )
             return index;
@@ -1252,7 +1152,7 @@ bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, 
     }
 
     Map* to_map = nullptr;
-    for( auto& map : locMaps )
+    for( auto map : locMaps )
     {
         if( map->GetProtoId() == grid_to_map )
         {
@@ -1288,7 +1188,7 @@ bool Location::IsCanEnter( uint players_count )
     if( !max_palyers )
         return true;
 
-    for( auto& map : locMaps )
+    for( auto map : locMaps )
     {
         players_count += map->GetPlayersCount();
         if( players_count >= max_palyers )
@@ -1299,7 +1199,7 @@ bool Location::IsCanEnter( uint players_count )
 
 bool Location::IsNoCrit()
 {
-    for( auto& map : locMaps )
+    for( auto map : locMaps )
         if( map->GetCrittersCount() )
             return false;
     return true;
@@ -1307,7 +1207,7 @@ bool Location::IsNoCrit()
 
 bool Location::IsNoPlayer()
 {
-    for( auto& map : locMaps )
+    for( auto map : locMaps )
         if( map->GetPlayersCount() )
             return false;
     return true;
@@ -1315,7 +1215,7 @@ bool Location::IsNoPlayer()
 
 bool Location::IsNoNpc()
 {
-    for( auto& map : locMaps )
+    for( auto map : locMaps )
         if( map->GetNpcsCount() )
             return false;
     return true;
@@ -1327,23 +1227,17 @@ bool Location::IsCanDelete()
         return false;
 
     // Check for players
-    for( auto& map : locMaps )
+    for( auto map : locMaps )
         if( map->GetPlayersCount() )
             return false;
 
     // Check for npc
     MapVec maps = locMaps;
-    for( auto& map : maps )
+    for( auto map : maps )
     {
-        PcVec npcs;
-        map->GetNpcs( npcs );
-
-        for( auto it_ = npcs.begin(), end_ = npcs.end(); it_ != end_; ++it_ )
-        {
-            Npc* npc = *it_;
+        for( Npc* npc : map->GetNpcs() )
             if( npc->GetIsGeck() || ( !npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId() ) || npc->IsHaveGeckItem() )
                 return false;
-        }
     }
     return true;
 }

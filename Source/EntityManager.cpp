@@ -314,7 +314,7 @@ bool EntityManager::LinkMaps()
             continue;
         }
 
-        MapVec& maps = loc->GetMapsNoLock();
+        MapVec& maps = loc->GetMapsRaw();
         if( loc_map_index >= (uint) maps.size() )
             maps.resize( loc_map_index + 1 );
         maps[ loc_map_index ] = map;
@@ -326,7 +326,7 @@ bool EntityManager::LinkMaps()
     MapMngr.GetLocations( locs );
     for( auto& loc : locs )
     {
-        MapVec& maps = loc->GetMapsNoLock();
+        MapVec& maps = loc->GetMapsRaw();
         for( size_t i = 0; i < maps.size(); i++ )
         {
             if( !maps[ i ] )

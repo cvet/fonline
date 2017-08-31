@@ -222,27 +222,23 @@ void Critter::ProcessVisibleCritters()
     }
 
     // Local map
-    int   vis;
-    int   look_base_self = GetLookDistance();
-    int   dir_self = GetDir();
-    int   dirs_count = DIRS_COUNT;
-    uint  show_cr_dist1 = GetShowCritterDist1();
-    uint  show_cr_dist2 = GetShowCritterDist2();
-    uint  show_cr_dist3 = GetShowCritterDist3();
-    bool  show_cr1 = ( show_cr_dist1 > 0 );
-    bool  show_cr2 = ( show_cr_dist2 > 0 );
-    bool  show_cr3 = ( show_cr_dist3 > 0 );
+    int  vis;
+    int  look_base_self = GetLookDistance();
+    int  dir_self = GetDir();
+    int  dirs_count = DIRS_COUNT;
+    uint show_cr_dist1 = GetShowCritterDist1();
+    uint show_cr_dist2 = GetShowCritterDist2();
+    uint show_cr_dist3 = GetShowCritterDist3();
+    bool show_cr1 = ( show_cr_dist1 > 0 );
+    bool show_cr2 = ( show_cr_dist2 > 0 );
+    bool show_cr3 = ( show_cr_dist3 > 0 );
 
-    bool  show_cr = ( show_cr1 || show_cr2 || show_cr3 );
+    bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
     // Sneak self
-    int   sneak_base_self = GetSneakCoefficient();
+    int  sneak_base_self = GetSneakCoefficient();
 
-    CrVec critters;
-    map->GetCritters( critters );
-
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+    for( Critter* cr : map->GetCritters() )
     {
-        Critter* cr = *it;
         if( cr == this || cr->IsDestroyed )
             continue;
 
@@ -590,12 +586,9 @@ void Critter::ProcessVisibleItems()
     if( !map )
         return;
 
-    int     look = GetLookDistance();
-    ItemVec items = map->GetItemsNoLock();
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+    int look = GetLookDistance();
+    for( Item* item : map->GetItems() )
     {
-        Item* item = *it;
-
         if( item->GetIsHidden() )
         {
             continue;
@@ -651,14 +644,10 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
     Send_GameInfo( map );
 
     // Critters
-    int   dirs_count = DIRS_COUNT;
-    int   vis;
-    CrVec critters;
-    map->GetCritters( critters );
-
-    for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
+    int dirs_count = DIRS_COUNT;
+    int vis;
+    for( Critter* cr : map->GetCritters() )
     {
-        Critter* cr = *it;
         if( cr == this || cr->IsDestroyed )
             continue;
 
@@ -727,11 +716,8 @@ void Critter::ViewMap( Map* map, int look, ushort hx, ushort hy, int dir )
     }
 
     // Items
-    ItemVec items = map->GetItemsNoLock();
-    for( auto it = items.begin(), end = items.end(); it != end; ++it )
+    for( Item* item : map->GetItems() )
     {
-        Item* item = *it;
-
         if( item->GetIsHidden() )
         {
             continue;
@@ -1632,13 +1618,8 @@ void Critter::SendMessage( int num, int val, int to )
         if( !map )
             break;
 
-        CrVec critters;
-        map->GetCritters( critters );
-        for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
-        {
-            Critter* cr = *it;
+        for( Critter* cr : map->GetCritters() )
             Script::RaiseInternalEvent( ServerFunctions.CritterMessage, cr, this, num, val );
-        }
     }
     break;
     default:
