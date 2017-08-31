@@ -4158,7 +4158,7 @@ void FOMapper::AddMess( const char* message_text )
 
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
-    string        mess_time = _str( mess_time, "{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second );
+    string        mess_time = _str( "{:02}:{:02}:{:02} ", dt.Hour, dt.Minute, dt.Second );
 
     MessBox.push_back( MessBoxMessage( 0, str.c_str(), mess_time.c_str() ) );
     MessBoxScroll = 0;
@@ -4226,7 +4226,7 @@ bool FOMapper::SaveLogFile()
 
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
-    string        log_path = _str( log_path, "./mapper_messbox_{:02}-{:02}-{}_{:02}-{:02}-{:02}.txt",
+    string        log_path = _str( "./mapper_messbox_{:02}-{:02}-{}_{:02}-{:02}-{:02}.txt",
                                    dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second );
 
     void* f = FileOpen( log_path, true );
