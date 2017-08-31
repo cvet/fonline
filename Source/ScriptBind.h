@@ -794,8 +794,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ AddItem(uint16 hexX, uint16 hexY, hash protoId, uint count, dict<ItemProperty, int>@+ props = null)", SCRIPT_FUNC_THIS( BIND_CLASS Map_AddItem ), SCRIPT_FUNC_THIS_CONV ) );
     #endif
 
-    BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@+ props = null)", SCRIPT_FUNC( Global_GetProtoItem ), SCRIPT_FUNC_CONV ) );
-
     // ScriptFunctions.h
     #ifdef FONLINE_SCRIPT_COMPILER
     # undef SCRIPT_FUNC
@@ -839,6 +837,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command)", SCRIPT_FUNC( Global_SystemCall ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command, string& output)", SCRIPT_FUNC( Global_SystemCallExt ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(string link)", SCRIPT_FUNC( Global_OpenLink ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@+ props = null)", SCRIPT_FUNC( Global_GetProtoItem ), SCRIPT_FUNC_CONV ) );
 
     /************************************************************************/
     /*                                                                      */

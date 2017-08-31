@@ -170,7 +170,6 @@ static void Global_Yield( uint time )
 
 static string Global_SHA1( string text )
 {
-    #ifndef FONLINE_SCRIPT_COMPILER
     SHA1_CTX ctx;
     SHA1_Init( &ctx );
     SHA1_Update( &ctx, (uchar*) text.c_str(), text.length() );
@@ -182,14 +181,10 @@ static string Global_SHA1( string text )
     for( uint i = 0; i < sizeof( hex_digest ); i++ )
         hex_digest[ i ] = nums[ i % 2 ? digest[ i / 2 ] & 0xF : digest[ i / 2 ] >> 4 ];
     return string( hex_digest, sizeof( hex_digest ) );
-    #else
-    return "";
-    #endif
 }
 
 static string Global_SHA2( string text )
 {
-    #ifndef FONLINE_SCRIPT_COMPILER
     const uint digest_size = 32;
     uchar      digest[ digest_size ];
     sha256( (uchar*) text.c_str(), (uint) text.length(), digest );
@@ -199,9 +194,6 @@ static string Global_SHA2( string text )
     for( uint i = 0; i < sizeof( hex_digest ); i++ )
         hex_digest[ i ] = nums[ i % 2 ? digest[ i / 2 ] & 0xF : digest[ i / 2 ] >> 4 ];
     return string( hex_digest, sizeof( hex_digest ) );
-    #else
-    return nullptr;
-    #endif
 }
 
 static void PrintLog( string& log, bool last_call, std::function< void(const string&) > log_callback )
