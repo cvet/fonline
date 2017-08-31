@@ -63,7 +63,7 @@ static void Global_Log( string text )
     #ifndef FONLINE_SCRIPT_COMPILER
     Script::Log( text );
     #else
-    printf( "%s\n", text.c_str() );
+    WriteLog( "{}\n", text );
     #endif
 }
 

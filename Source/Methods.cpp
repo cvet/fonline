@@ -127,14 +127,14 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
 //      int result = engine->RegisterEnum(enum_type.c_str());
 //      if (result < 0)
 //      {
-//              WriteLog("Register object property enum '{}' fail, error {}.\n", enum_type.c_str(), result);
+//              WriteLog("Register object property enum '{}' fail, error {}.\n", enum_type, result);
 //              return false;
 //      }
 //
 //      result = engine->RegisterEnumValue(enum_type.c_str(), "Invalid", 0);
 //      if (result < 0)
 //      {
-//              WriteLog("Register object property enum '{}::Invalid' zero value fail, error {}.\n", enum_type.c_str(), result);
+//              WriteLog("Register object property enum '{}::Invalid' zero value fail, error {}.\n", enum_type, result);
 //              return false;
 //      }
 

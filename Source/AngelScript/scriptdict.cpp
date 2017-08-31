@@ -50,6 +50,8 @@ struct DictMapComparator
     int typeId;
 };
 
+static int stringTypeId;
+
 typedef map< void*, void*, DictMapComparator > DictMap;
 
 CScriptDict* CScriptDict::Create(asITypeInfo* ot)
@@ -222,6 +224,8 @@ void RegisterScriptDict(asIScriptEngine* engine)
         RegisterScriptDict_Native(engine);
     else
         RegisterScriptDict_Generic(engine);
+
+    stringTypeId = engine->GetTypeIdByDecl("string");
 }
 
 static void RegisterScriptDict_Native(asIScriptEngine* engine)
@@ -749,6 +753,9 @@ static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
 
 static bool Less(int typeId, const void* a, const void* b)
 {
+    if (typeId == stringTypeId)
+        return *(string*)a < *(string*)b;
+
     if (!(typeId & asTYPEID_MASK_OBJECT))
     {
         // Simple compare of values
@@ -783,6 +790,9 @@ static bool Less(int typeId, const void* a, const void* b)
 
 static bool Equals(int typeId, const void* a, const void* b)
 {
+    if (typeId == stringTypeId)
+        return *(string*)a == *(string*)b;
+
     if (!(typeId & asTYPEID_MASK_OBJECT))
     {
         // Simple compare of values

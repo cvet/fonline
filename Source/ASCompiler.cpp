@@ -98,20 +98,21 @@ int main( int argc, char* argv[] )
     for( int i = 2; i < argc; i++ )
     {
         // Server / Client / Mapper
-        if( argv[ i ] == "-server" )
+        string arg = argv[ i ];
+        if( arg == "-server" )
             target = "SERVER";
-        else if( argv[ i ] == "-client" )
+        else if( arg == "-client" )
             target = "CLIENT";
-        else if( argv[ i ] == "-mapper" )
+        else if( arg == "-mapper" )
             target = "MAPPER";
         // Preprocessor output
-        else if( argv[ i ] == "-p" && i + 1 < argc )
+        else if( arg == "-p" && i + 1 < argc )
             arg_path_prep = argv[ ++i ];
         // Define
-        else if( argv[ i ] == "-d" && i + 1 < argc )
+        else if( arg == "-d" && i + 1 < argc )
             defines.push_back( argv[ ++i ] );
         // Run function
-        else if( argv[ i ] == "-run" && i + 1 < argc )
+        else if( arg == "-run" && i + 1 < argc )
             run_func.push_back( argv[ ++i ] );
     }
 
@@ -259,10 +260,13 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
     WriteLog( "Success ({} ms).\n", Timer::AccurateTick() - tick );
 
     // Execute functions
-    for( size_t i = 0; i < run_func.size(); i++ )
+    for( auto func_name : run_func )
     {
-        WriteLog( "Executing 'void {}()'.\n", run_func[ i ] );
-        uint bind_id = Script::BindByFuncName( run_func[ i ], "void %s()", true );
+        if( func_name.find( "::" ) == string::npos )
+            func_name = _str( path ).extractFileName().eraseFileExtension() + "::" + func_name;
+
+        WriteLog( "Executing 'void {}()'.\n", func_name );
+        uint bind_id = Script::BindByFuncName( func_name, "void %s()", true );
         if( bind_id )
         {
             Script::PrepareContext( bind_id, "ASCompiler" );

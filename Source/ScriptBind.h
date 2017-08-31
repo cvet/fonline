@@ -758,44 +758,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadDataFile(string dataFileName)", SCRIPT_FUNC( BIND_CLASS Global_LoadDataFile ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, bool enableSend)", SCRIPT_FUNC( BIND_CLASS Global_AllowSlot ), SCRIPT_FUNC_CONV ) );
 
-    // ScriptFunctions.h
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "int Random(int min, int max)", SCRIPT_FUNC( Global_Random ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Log(string text)", SCRIPT_FUNC( Global_Log ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToInt(string text, int& result)", SCRIPT_FUNC( Global_StrToInt ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToFloat(string text, float& result)", SCRIPT_FUNC( Global_StrToFloat ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDistantion(uint16 hexX1, uint16 hexY1, uint16 hexX2, uint16 hexY2)", SCRIPT_FUNC( Global_GetDistantion ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 GetDirection(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY)", SCRIPT_FUNC( Global_GetDirection ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 GetOffsetDir(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY, float offset)", SCRIPT_FUNC( Global_GetOffsetDir ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTick()", SCRIPT_FUNC( Global_GetTick ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAngelScriptProperty(int property)", SCRIPT_FUNC( Global_GetAngelScriptProperty ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void SetAngelScriptProperty(int property, uint value)", SCRIPT_FUNC( Global_SetAngelScriptProperty ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetStrHash(string str)", SCRIPT_FUNC( Global_GetStrHash ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "string GetHashStr(hash h)", SCRIPT_FUNC( Global_GetHashStr ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DecodeUTF8(string text, uint& length)", SCRIPT_FUNC( Global_DecodeUTF8 ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "string EncodeUTF8(uint ucs)", SCRIPT_FUNC( Global_EncodeUTF8 ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "array<string>@ GetFolderFileNames(string path, string extension, bool includeSubdirs)", SCRIPT_FUNC( Global_GetFolderFileNames ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string fileName)", SCRIPT_FUNC( Global_DeleteFile ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string path)", SCRIPT_FUNC( Global_CreateDirectoryTree ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", SCRIPT_FUNC( Global_Yield ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "string SHA1(string text)", SCRIPT_FUNC( Global_SHA1 ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "string SHA2(string text)", SCRIPT_FUNC( Global_SHA2 ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command)", SCRIPT_FUNC( Global_SystemCall ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command, string& output)", SCRIPT_FUNC( Global_SystemCallExt ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(string link)", SCRIPT_FUNC( Global_OpenLink ), SCRIPT_FUNC_CONV ) );
-
     // Invoker
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFunc()" ) );
     BIND_ASSERT( engine->RegisterFuncdef( "void CallFuncWithIValue(int value)" ) );
@@ -833,6 +795,50 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #endif
 
     BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@+ props = null)", SCRIPT_FUNC( Global_GetProtoItem ), SCRIPT_FUNC_CONV ) );
+
+    // ScriptFunctions.h
+    #ifdef FONLINE_SCRIPT_COMPILER
+    # undef SCRIPT_FUNC
+    # undef SCRIPT_FUNC_CONV
+    # define SCRIPT_FUNC         asFUNCTION
+    # define SCRIPT_FUNC_CONV    asCALL_CDECL
+    #endif
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Assert(bool condition, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_Assert ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void ThrowException(string message, const ?&in, const ?&in, const ?&in, const ?&in, const ?&in)", SCRIPT_FUNC( Global_ThrowException ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "int Random(int min, int max)", SCRIPT_FUNC( Global_Random ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Log(string text)", SCRIPT_FUNC( Global_Log ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToInt(string text, int& result)", SCRIPT_FUNC( Global_StrToInt ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool StrToFloat(string text, float& result)", SCRIPT_FUNC( Global_StrToFloat ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDistantion(uint16 hexX1, uint16 hexY1, uint16 hexX2, uint16 hexY2)", SCRIPT_FUNC( Global_GetDistantion ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 GetDirection(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY)", SCRIPT_FUNC( Global_GetDirection ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 GetOffsetDir(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY, float offset)", SCRIPT_FUNC( Global_GetOffsetDir ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTick()", SCRIPT_FUNC( Global_GetTick ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAngelScriptProperty(int property)", SCRIPT_FUNC( Global_GetAngelScriptProperty ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void SetAngelScriptProperty(int property, uint value)", SCRIPT_FUNC( Global_SetAngelScriptProperty ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetStrHash(string str)", SCRIPT_FUNC( Global_GetStrHash ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "string GetHashStr(hash h)", SCRIPT_FUNC( Global_GetHashStr ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint DecodeUTF8(string text, uint& length)", SCRIPT_FUNC( Global_DecodeUTF8 ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "string EncodeUTF8(uint ucs)", SCRIPT_FUNC( Global_EncodeUTF8 ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "array<string>@ GetFolderFileNames(string path, string extension, bool includeSubdirs)", SCRIPT_FUNC( Global_GetFolderFileNames ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool DeleteFile(string fileName)", SCRIPT_FUNC( Global_DeleteFile ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void CreateDirectoryTree(string path)", SCRIPT_FUNC( Global_CreateDirectoryTree ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void Yield(uint time)", SCRIPT_FUNC( Global_Yield ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "string SHA1(string text)", SCRIPT_FUNC( Global_SHA1 ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "string SHA2(string text)", SCRIPT_FUNC( Global_SHA2 ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command)", SCRIPT_FUNC( Global_SystemCall ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command, string& output)", SCRIPT_FUNC( Global_SystemCallExt ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(string link)", SCRIPT_FUNC( Global_OpenLink ), SCRIPT_FUNC_CONV ) );
 
     /************************************************************************/
     /*                                                                      */

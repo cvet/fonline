@@ -427,7 +427,7 @@ void* Script::LoadDynamicLibrary( const string& dll_name )
     size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
     if( !ptr )
     {
-        WriteLog( "Wrong script DLL '{}', expected target '{}', but found '{}{}{}{}'.\n", dll_name, edata->DllTarget.c_str(),
+        WriteLog( "Wrong script DLL '{}', expected target '{}', but found '{}{}{}{}'.\n", dll_name, edata->DllTarget,
                   DLL_GetAddress( dll, "SERVER" ) ? "SERVER" : "", DLL_GetAddress( dll, "CLIENT" ) ? "CLIENT" : "", DLL_GetAddress( dll, "MAPPER" ) ? "MAPPER" : "",
                   !DLL_GetAddress( dll, "SERVER" ) && !DLL_GetAddress( dll, "CLIENT" ) && !DLL_GetAddress( dll, "MAPPER" ) ? "Nothing" : "" );
         DLL_Free( dll );
