@@ -39,7 +39,7 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     mapLocation = location;
 
     hexFlags = nullptr;
-    memzero( LoopLastTick, sizeof( LoopLastTick ) );
+    memzero( loopLastTick, sizeof( loopLastTick ) );
 
     hexFlagsSize = GetWidth() * GetHeight();
     hexFlags = new uchar[ hexFlagsSize ];
@@ -197,9 +197,9 @@ void Map::Process()
 
 void Map::ProcessLoop( int index, uint time, uint tick )
 {
-    if( time && tick - LoopLastTick[ index ] >= time )
+    if( time && tick - loopLastTick[ index ] >= time )
     {
-        LoopLastTick[ index ] = tick;
+        loopLastTick[ index ] = tick;
         Script::RaiseInternalEvent( ServerFunctions.MapLoop, this, index + 1 );
     }
 }

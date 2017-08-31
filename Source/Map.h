@@ -49,13 +49,12 @@ private:
     ItemVecMap mapItemsByHex;
     ItemVecMap mapBlockLinesByHex;
     Location*  mapLocation;
+    uint       loopLastTick[ 5 ];
 
     void PlaceItemBlocks( ushort hx, ushort hy, Item* item );
     void RemoveItemBlocks( ushort hx, ushort hy, Item* item );
 
 public:
-    uint LoopLastTick[ 5 ];
-
     bool Generate();
     void DeleteContent();
     void Process();
