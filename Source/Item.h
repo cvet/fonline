@@ -138,7 +138,6 @@ public:
     PROPERTIES_HEADER();
     CLASS_PROPERTY( int, Type );
     CLASS_PROPERTY( bool, Stackable );
-    CLASS_PROPERTY( bool, GroundLevel );
     CLASS_PROPERTY( bool, Opened );
     CLASS_PROPERTY( int, Corner );
     CLASS_PROPERTY( uchar, Slot );

@@ -50,7 +50,6 @@ CLASS_PROPERTY_IMPL( Item, LightFlags );
 CLASS_PROPERTY_IMPL( Item, LightColor );
 CLASS_PROPERTY_IMPL( Item, Type );
 CLASS_PROPERTY_IMPL( Item, Stackable );
-CLASS_PROPERTY_IMPL( Item, GroundLevel );
 CLASS_PROPERTY_IMPL( Item, Opened );
 CLASS_PROPERTY_IMPL( Item, Corner );
 CLASS_PROPERTY_IMPL( Item, Slot );
