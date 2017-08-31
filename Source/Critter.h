@@ -268,9 +268,9 @@ public:
     void SendAA_MoveItem( Item* item, uchar action, uchar prev_slot );
     void SendAA_Animate( uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play );
     void SendAA_SetAnims( int cond, uint anim1, uint anim2 );
-    void SendAA_Text( CrVec& to_cr, const string& text, uchar how_say, bool unsafe_text );
-    void SendAA_Msg( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg );
-    void SendAA_MsgLex( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
+    void SendAA_Text( const CrVec& to_cr, const string& text, uchar how_say, bool unsafe_text );
+    void SendAA_Msg( const CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg );
+    void SendAA_MsgLex( const CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems );
     void SendA_Dir();
     void SendA_CustomCommand( ushort num_param, int val );
 

@@ -1432,7 +1432,7 @@ void Critter::SendAA_SetAnims( int cond, uint anim1, uint anim2 )
     }
 }
 
-void Critter::SendAA_Text( CrVec& to_cr, const string& text, uchar how_say, bool unsafe_text )
+void Critter::SendAA_Text( const CrVec& to_cr, const string& text, uchar how_say, bool unsafe_text )
 {
     if( text.empty() )
         return;
@@ -1463,7 +1463,7 @@ void Critter::SendAA_Text( CrVec& to_cr, const string& text, uchar how_say, bool
     }
 }
 
-void Critter::SendAA_Msg( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg )
+void Critter::SendAA_Msg( const CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg )
 {
     if( IsPlayer() )
         Send_TextMsg( this, num_str, how_say, num_msg );
@@ -1494,7 +1494,7 @@ void Critter::SendAA_Msg( CrVec& to_cr, uint num_str, uchar how_say, ushort num_
     }
 }
 
-void Critter::SendAA_MsgLex( CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems )
+void Critter::SendAA_MsgLex( const CrVec& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems )
 {
     if( IsPlayer() )
         Send_TextMsgLex( this, num_str, how_say, num_msg, lexems );
