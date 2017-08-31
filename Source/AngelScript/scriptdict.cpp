@@ -1,5 +1,6 @@
 #include <new>
 #include <stdlib.h>
+#include <string.h>
 #include <string>
 #include <assert.h>
 #include <stdio.h> // sprintf
