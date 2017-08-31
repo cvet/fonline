@@ -546,7 +546,7 @@ bool Script::ReloadScripts( const string& target )
         FileManager& file = raw_files.GetNextFile( &file_name, &file_full_name );
         if( !file.IsLoaded() )
         {
-            WriteLog( "Unable to open file '{}'.\n", name );
+            WriteLog( "Unable to open file '{}'.\n", path );
             errors++;
             continue;
         }
@@ -555,7 +555,7 @@ bool Script::ReloadScripts( const string& target )
         string line = file.GetNonEmptyLine();
         if( line.empty() )
         {
-            WriteLog( "Error in script '{}', file empty.\n", name );
+            WriteLog( "Error in script '{}', file empty.\n", path );
             errors++;
             continue;
         }
@@ -563,7 +563,7 @@ bool Script::ReloadScripts( const string& target )
         // Check signature
         if( line.find( "FOS" ) == string::npos )
         {
-            WriteLog( "Error in script '{}', invalid header '{}'.\n", name, line );
+            WriteLog( "Error in script '{}', invalid header '{}'.\n", path, line );
             errors++;
             continue;
         }

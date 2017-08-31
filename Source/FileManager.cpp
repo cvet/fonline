@@ -765,7 +765,7 @@ void FileManager::GetFolderFileNames( const string& path, bool include_subdirs, 
 void FileManager::GetDataFileNames( const string& path, bool include_subdirs, const string& ext, StrVec& result )
 {
     for( DataFile* dataFile : dataFiles )
-        dataFile->GetFileNames( _str( path ).formatPath(), include_subdirs, !ext.empty() ? ext.c_str() : nullptr, result );
+        dataFile->GetFileNames( _str( path ).formatPath(), include_subdirs, ext, result );
 }
 
 FilesCollection::FilesCollection( const string& ext, const string& fixed_dir /* = "" */ )

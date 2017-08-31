@@ -147,9 +147,13 @@ void InitialSetup( uint argc, char** argv )
     MainConfig->AppendStr( InternalConfig );
 
     // File configs
+    string config_dir;
     MainConfig->AppendFile( CONFIG_NAME );
     for( string& config : configs )
+    {
+        config_dir = _str( config ).extractDir();
         MainConfig->AppendFile( config );
+    }
 
     // Command line config
     for( uint i = 0; i < argc; i++ )
@@ -176,7 +180,7 @@ void InitialSetup( uint argc, char** argv )
     string modules = MainConfig->GetStr( "", "Modules" );
     for( const string& module : _str( modules ).split( ';' ) )
     {
-        string module_path = _str( GameOpt.ServerDir ).combinePath( module ).normalizePathSlashes().resolvePath();
+        string module_path = _str( config_dir ).combinePath( module ).normalizePathSlashes().resolvePath();
         if( !module_path.empty() && module_path.back() != '/' && module_path.back() != '\\' )
             module_path += "/";
         GameModules.push_back( _str( module_path ).normalizePathSlashes() );

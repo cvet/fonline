@@ -4154,7 +4154,7 @@ void FOMapper::ParseCommand( const string& command )
 
 void FOMapper::AddMess( const char* message_text )
 {
-    string        str = _str( "|{} {} |{} {}\n", COLOR_TEXT, 149, COLOR_TEXT, message_text );
+    string        str = _str( "|{} - |{} {}\n", COLOR_TEXT, COLOR_TEXT, message_text );
 
     DateTimeStamp dt;
     Timer::GetCurrentDateTime( dt );
