@@ -197,81 +197,81 @@ if(OPTION_LARGE_FILE)
 endif(OPTION_LARGE_FILE)
 
 #######################################################################
-option(OPTION_USE_SYSTEM_ZLIB "use system zlib" ON)
-
-if(OPTION_USE_SYSTEM_ZLIB AND LIB_zlib)
-   include(FindZLIB)
-endif(OPTION_USE_SYSTEM_ZLIB AND LIB_zlib)
-
-if(OPTION_USE_SYSTEM_ZLIB AND ZLIB_FOUND)
-   set(FLTK_ZLIB_LIBRARIES ${ZLIB_LIBRARIES})
-   include_directories(${ZLIB_INCLUDE_DIRS})
-   set(FLTK_BUILTIN_ZLIB_FOUND FALSE)
-else()
-   add_subdirectory(zlib)
-   set(FLTK_ZLIB_LIBRARIES fltk_z)
-   set(ZLIB_INCLUDE_DIR ${FLTK_SOURCE_DIR}/zlib)
-   include_directories(${FLTK_SOURCE_DIR}/zlib)
-   set(FLTK_BUILTIN_ZLIB_FOUND TRUE)
-endif(OPTION_USE_SYSTEM_ZLIB AND ZLIB_FOUND)
-
-if(OPTION_USE_SYSTEM_ZLIB AND NOT ZLIB_FOUND)
-   message(STATUS "\ncannot find system zlib library - using built-in\n")
-endif(OPTION_USE_SYSTEM_ZLIB AND NOT ZLIB_FOUND)
-
-set(HAVE_LIBZ 1)
-
-#######################################################################
-option(OPTION_USE_SYSTEM_LIBJPEG "use system libjpeg" ON)
-
-if(OPTION_USE_SYSTEM_LIBJPEG AND LIB_jpeg)
-   include(FindJPEG)
-endif(OPTION_USE_SYSTEM_LIBJPEG AND LIB_jpeg)
-
-if(OPTION_USE_SYSTEM_LIBJPEG AND JPEG_FOUND)
-   set(FLTK_JPEG_LIBRARIES ${JPEG_LIBRARIES})
-   include_directories(${JPEG_INCLUDE_DIR})
-   set(FLTK_BUILTIN_JPEG_FOUND FALSE)
-else()
-   add_subdirectory(jpeg)
-   set(FLTK_JPEG_LIBRARIES fltk_jpeg)
-   include_directories(${FLTK_SOURCE_DIR}/jpeg)
-   set(FLTK_BUILTIN_JPEG_FOUND TRUE)
-endif(OPTION_USE_SYSTEM_LIBJPEG AND JPEG_FOUND)
-
-if(OPTION_USE_SYSTEM_LIBJPEG AND NOT JPEG_FOUND)
-   message(STATUS "\ncannot find system jpeg library - using built-in\n")
-endif(OPTION_USE_SYSTEM_LIBJPEG AND NOT JPEG_FOUND)
-
-set(HAVE_LIBJPEG 1)
+#!option(OPTION_USE_SYSTEM_ZLIB "use system zlib" ON)
+#!
+#!if(OPTION_USE_SYSTEM_ZLIB AND LIB_zlib)
+#!   include(FindZLIB)
+#!endif(OPTION_USE_SYSTEM_ZLIB AND LIB_zlib)
+#!
+#!if(OPTION_USE_SYSTEM_ZLIB AND ZLIB_FOUND)
+#!   set(FLTK_ZLIB_LIBRARIES ${ZLIB_LIBRARIES})
+#!   include_directories(${ZLIB_INCLUDE_DIRS})
+#!   set(FLTK_BUILTIN_ZLIB_FOUND FALSE)
+#!else()
+#!   add_subdirectory(zlib)
+#!   set(FLTK_ZLIB_LIBRARIES fltk_z)
+#!   set(ZLIB_INCLUDE_DIR ${FLTK_SOURCE_DIR}/zlib)
+#!   include_directories(${FLTK_SOURCE_DIR}/zlib)
+#!   set(FLTK_BUILTIN_ZLIB_FOUND TRUE)
+#!endif(OPTION_USE_SYSTEM_ZLIB AND ZLIB_FOUND)
+#!
+#!if(OPTION_USE_SYSTEM_ZLIB AND NOT ZLIB_FOUND)
+#!   message(STATUS "\ncannot find system zlib library - using built-in\n")
+#!endif(OPTION_USE_SYSTEM_ZLIB AND NOT ZLIB_FOUND)
+#!
+#!set(HAVE_LIBZ 1)
 
 #######################################################################
-option(OPTION_USE_SYSTEM_LIBPNG "use system libpng" ON)
+#!option(OPTION_USE_SYSTEM_LIBJPEG "use system libjpeg" ON)
+#!
+#!if(OPTION_USE_SYSTEM_LIBJPEG AND LIB_jpeg)
+#!   include(FindJPEG)
+#!endif(OPTION_USE_SYSTEM_LIBJPEG AND LIB_jpeg)
+#!
+#!if(OPTION_USE_SYSTEM_LIBJPEG AND JPEG_FOUND)
+#!   set(FLTK_JPEG_LIBRARIES ${JPEG_LIBRARIES})
+#!   include_directories(${JPEG_INCLUDE_DIR})
+#!   set(FLTK_BUILTIN_JPEG_FOUND FALSE)
+#!else()
+#!   add_subdirectory(jpeg)
+#!   set(FLTK_JPEG_LIBRARIES fltk_jpeg)
+#!   include_directories(${FLTK_SOURCE_DIR}/jpeg)
+#!   set(FLTK_BUILTIN_JPEG_FOUND TRUE)
+#!endif(OPTION_USE_SYSTEM_LIBJPEG AND JPEG_FOUND)
+#!
+#!if(OPTION_USE_SYSTEM_LIBJPEG AND NOT JPEG_FOUND)
+#!   message(STATUS "\ncannot find system jpeg library - using built-in\n")
+#!endif(OPTION_USE_SYSTEM_LIBJPEG AND NOT JPEG_FOUND)
+#!
+#!set(HAVE_LIBJPEG 1)
 
-if(OPTION_USE_SYSTEM_LIBPNG AND LIB_png)
-   include(FindPNG)
-endif(OPTION_USE_SYSTEM_LIBPNG AND LIB_png)
-
-if(OPTION_USE_SYSTEM_LIBPNG AND PNG_FOUND)
-   set(FLTK_PNG_LIBRARIES ${PNG_LIBRARIES})
-   include_directories(${PNG_INCLUDE_DIR})
-   add_definitions(${PNG_DEFINITIONS})
-   set(FLTK_BUILTIN_PNG_FOUND FALSE)
-else()
-   add_subdirectory(png)
-   set(FLTK_PNG_LIBRARIES fltk_png)
-   set(HAVE_PNG_H 1)
-   set(HAVE_PNG_GET_VALID 1)
-   set(HAVE_PNG_SET_TRNS_TO_ALPHA 1)
-   include_directories(${FLTK_SOURCE_DIR}/png)
-   set(FLTK_BUILTIN_PNG_FOUND TRUE)
-endif(OPTION_USE_SYSTEM_LIBPNG AND PNG_FOUND)
-
-if(OPTION_USE_SYSTEM_LIBPNG AND NOT PNG_FOUND)
-   message(STATUS "\ncannot find system png library - using built-in\n")
-endif(OPTION_USE_SYSTEM_LIBPNG AND NOT PNG_FOUND)
-
-set(HAVE_LIBPNG 1)
+#######################################################################
+#!option(OPTION_USE_SYSTEM_LIBPNG "use system libpng" ON)
+#!
+#!if(OPTION_USE_SYSTEM_LIBPNG AND LIB_png)
+#!   include(FindPNG)
+#!endif(OPTION_USE_SYSTEM_LIBPNG AND LIB_png)
+#!
+#!if(OPTION_USE_SYSTEM_LIBPNG AND PNG_FOUND)
+#!   set(FLTK_PNG_LIBRARIES ${PNG_LIBRARIES})
+#!   include_directories(${PNG_INCLUDE_DIR})
+#!   add_definitions(${PNG_DEFINITIONS})
+#!   set(FLTK_BUILTIN_PNG_FOUND FALSE)
+#!else()
+#!   add_subdirectory(png)
+#!   set(FLTK_PNG_LIBRARIES fltk_png)
+#!   set(HAVE_PNG_H 1)
+#!   set(HAVE_PNG_GET_VALID 1)
+#!   set(HAVE_PNG_SET_TRNS_TO_ALPHA 1)
+#!   include_directories(${FLTK_SOURCE_DIR}/png)
+#!   set(FLTK_BUILTIN_PNG_FOUND TRUE)
+#!endif(OPTION_USE_SYSTEM_LIBPNG AND PNG_FOUND)
+#!
+#!if(OPTION_USE_SYSTEM_LIBPNG AND NOT PNG_FOUND)
+#!   message(STATUS "\ncannot find system png library - using built-in\n")
+#!endif(OPTION_USE_SYSTEM_LIBPNG AND NOT PNG_FOUND)
+#!
+#!set(HAVE_LIBPNG 1)
 
 #######################################################################
 if(X11_Xinerama_FOUND)

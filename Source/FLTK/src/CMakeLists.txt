@@ -277,6 +277,8 @@ endif (USE_XFT)
 FL_ADD_LIBRARY(fltk STATIC "${STATIC_FILES}")
 target_link_libraries(fltk ${OPTIONAL_LIBS})
 
+return() #!
+
 #######################################################################
 
 FL_ADD_LIBRARY(fltk_forms STATIC "${FLCPPFILES}")

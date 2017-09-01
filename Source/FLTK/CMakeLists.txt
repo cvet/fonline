@@ -74,4 +74,4 @@ endif(OPTION_BUILD_EXAMPLES)
 #######################################################################
 # installation
 #######################################################################
-include(CMake/install.cmake)
+#!include(CMake/install.cmake)

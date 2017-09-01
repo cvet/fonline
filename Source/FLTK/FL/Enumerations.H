@@ -43,7 +43,7 @@
  ******************************************************************************
  */
 
-#include <FL/abi-version.h>
+//!#include <FL/abi-version.h>
 
 #  include "Fl_Export.H"
 #  include "fl_types.h"
