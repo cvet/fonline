@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Return_Button.cxx 9637 2012-07-24 04:37:22Z matt $"
+// "$Id: Fl_Return_Button.cxx 10775 2015-06-27 15:20:23Z AlbrechtS $"
 //
 // Return button widget for the Fast Light Tool Kit (FLTK).
 //
@@ -40,12 +40,13 @@ int fl_return_arrow(int x, int y, int w, int h) {
 
 void Fl_Return_Button::draw() {
   if (type() == FL_HIDDEN_BUTTON) return;
-  draw_box(value() ? (down_box()?down_box():fl_down(box())) : box(),
-	   value() ? selection_color() : color());
+  Fl_Boxtype bt = value() ? (down_box()?down_box():fl_down(box())) : box();
+  int dx = Fl::box_dx(bt);
+  draw_box(bt, value() ? selection_color() : color());
   int W = h();
   if (w()/3 < W) W = w()/3;
-  fl_return_arrow(x()+w()-W-4, y(), W, h());
-  draw_label(x(), y(), w()-W+4, h());
+  fl_return_arrow(x()+w()-(W+dx), y(), W, h());
+  draw_label(x()+dx, y(), w()-(dx+W+dx), h());
   if (Fl::focus() == this) draw_focus();
 }
 
@@ -67,5 +68,5 @@ Fl_Return_Button::Fl_Return_Button(int X, int Y, int W, int H,const char *l)
 
 
 //
-// End of "$Id: Fl_Return_Button.cxx 9637 2012-07-24 04:37:22Z matt $".
+// End of "$Id: Fl_Return_Button.cxx 10775 2015-06-27 15:20:23Z AlbrechtS $".
 //

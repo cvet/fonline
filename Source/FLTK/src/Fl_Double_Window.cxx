@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Double_Window.cxx 10335 2014-09-23 10:48:36Z manolo $"
+// "$Id: Fl_Double_Window.cxx 11312 2016-03-08 05:18:28Z manolo $"
 //
 // Double-buffered window code for the Fast Light Tool Kit (FLTK).
 //
@@ -129,14 +129,44 @@ void Fl_Graphics_Driver::copy_offscreen(int x, int y, int w, int h, Fl_Offscreen
 
 #if defined(USE_X11)
 
+#if HAVE_XRENDER
+#include <X11/extensions/Xrender.h>
+#endif
+
 void Fl_Xlib_Graphics_Driver::copy_offscreen(int x, int y, int w, int h, Fl_Offscreen pixmap, int srcx, int srcy) {
   XCopyArea(fl_display, pixmap, fl_window, fl_gc, srcx, srcy, w, h, x, y);
 }
 
+void Fl_Xlib_Graphics_Driver::copy_offscreen_with_alpha(int x, int y, int w, int h,
+						        Fl_Offscreen pixmap, int srcx, int srcy) {
+#if HAVE_XRENDER
+  XRenderPictureAttributes srcattr;
+  memset(&srcattr, 0, sizeof(XRenderPictureAttributes));
+  static XRenderPictFormat *srcfmt = XRenderFindStandardFormat(fl_display, PictStandardARGB32);
+  static XRenderPictFormat *dstfmt = XRenderFindStandardFormat(fl_display, PictStandardRGB24);
 
-// maybe someone feels inclined to implement alpha blending on X11?
+  Picture src = XRenderCreatePicture(fl_display, pixmap, srcfmt, 0, &srcattr);
+  Picture dst = XRenderCreatePicture(fl_display, fl_window, dstfmt, 0, &srcattr);
+
+  if (!src || !dst) {
+    fprintf(stderr, "Failed to create Render pictures (%lu %lu)\n", src, dst);
+    return;
+  }
+
+  const Fl_Region clipr = fl_clip_region();
+  if (clipr)
+    XRenderSetPictureClipRegion(fl_display, dst, clipr);
+
+  XRenderComposite(fl_display, PictOpOver, src, None, dst, srcx, srcy, 0, 0,
+  			x, y, w, h);
+
+  XRenderFreePicture(fl_display, src);
+  XRenderFreePicture(fl_display, dst);
+#endif
+}
+
 char fl_can_do_alpha_blending() {
-  return 0;
+  return Fl_X::xrender_supported();
 }
 #elif defined(WIN32)
 
@@ -283,7 +313,7 @@ void Fl_Quartz_Graphics_Driver::copy_offscreen(int x,int y,int w,int h,Fl_Offscr
   CGImageRef img = CGImageCreate( sw, sh, 8, 4*8, 4*sw, lut, alpha,
     src_bytes, 0L, false, kCGRenderingIntentDefault);
   // fl_push_clip();
-  CGRect rect = { { x, y }, { w, h } };
+  CGRect rect = CGRectMake(x, y, w, h);
   Fl_X::q_begin_image(rect, srcx, srcy, sw, sh);
   CGContextDrawImage(fl_gc, rect, img);
   Fl_X::q_end_image();
@@ -331,8 +361,9 @@ void fl_begin_offscreen(Fl_Offscreen ctx) {
 /** Quit sending drawing commands to the current offscreen buffer.
  */
 void fl_end_offscreen() {
-  Fl_X::q_release_context();
   fl_pop_clip();
+  CGContextRestoreGState(fl_gc); // matches CGContextSaveGState in fl_begin_offscreen()
+  CGContextFlush(fl_gc);
   if (stack_ix>0)
     stack_ix--;
   else
@@ -475,7 +506,10 @@ void Fl_Double_Window::hide() {
   Fl_X* myi = Fl_X::i(this);
   if (myi && myi->other_xid) {
 #if USE_XDBE
-    if (!use_xdbe)
+    if (use_xdbe) {
+      XdbeDeallocateBackBufferName(fl_display, myi->other_xid);
+    }
+    else
 #endif
       fl_delete_offscreen(myi->other_xid);
   }
@@ -511,5 +545,5 @@ Fl_Overlay_Window::Fl_Overlay_Window(int X, int Y, int W, int H, const char *l)
 
   
 //
-// End of "$Id: Fl_Double_Window.cxx 10335 2014-09-23 10:48:36Z manolo $".
+// End of "$Id: Fl_Double_Window.cxx 11312 2016-03-08 05:18:28Z manolo $".
 //

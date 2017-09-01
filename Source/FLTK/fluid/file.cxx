@@ -1,5 +1,5 @@
 //
-// "$Id: file.cxx 10381 2014-10-15 20:51:39Z ianmacarthur $"
+// "$Id: file.cxx 11952 2016-09-20 12:57:18Z AlbrechtS $"
 //
 // Fluid file routines for the Fast Light Tool Kit (FLTK).
 //
@@ -8,7 +8,7 @@
 // They are somewhat similar to tcl, using matching { and }
 // to quote strings.
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -26,6 +26,8 @@
 #include "../src/flstring.h"
 #include <stdarg.h>
 #include "alignment_panel.h"
+#include <FL/Fl.H>
+#include "Fl_Widget_Type.h"
 
 ////////////////////////////////////////////////////////////////
 // BASIC FILE WRITING:
@@ -85,11 +87,13 @@ void write_word(const char *w) {
   putc('}', fout);
 }
 
-// write an arbitrary formatted word, or a comment, etc:
+// write an arbitrary formatted word, or a comment, etc.
+// if needspace is set, then one space is written before the string
+// unless the format starts with a newline character ('\n'):
 void write_string(const char *format, ...) {
   va_list args;
   va_start(args, format);
-  if (needspace) fputc(' ',fout);
+  if (needspace && *format != '\n') fputc(' ',fout);
   vfprintf(fout, format, args);
   va_end(args);
   needspace = !isspace(format[strlen(format)-1] & 255);
@@ -292,9 +296,6 @@ const char *read_word(int wantbrace) {
 
 ////////////////////////////////////////////////////////////////
 
-#include <FL/Fl.H>
-#include "Fl_Widget_Type.h"
-
 // global int variables:
 extern int i18n_type;
 extern const char* i18n_include;
@@ -338,7 +339,7 @@ int write_file(const char *filename, int selected_only) {
       p->write();
       write_string("\n");
       int q = p->level;
-      for (p = p->next; p && p->level > q; p = p->next);
+      for (p = p->next; p && p->level > q; p = p->next) {/*empty*/}
     } else {
       p = p->next;
     }
@@ -637,5 +638,5 @@ void read_fdesign() {
 }
 
 //
-// End of "$Id: file.cxx 10381 2014-10-15 20:51:39Z ianmacarthur $".
+// End of "$Id: file.cxx 11952 2016-09-20 12:57:18Z AlbrechtS $".
 //

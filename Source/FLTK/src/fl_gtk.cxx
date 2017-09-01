@@ -1,5 +1,5 @@
 //
-// "$Id: fl_gtk.cxx 10232 2014-08-21 12:13:47Z cand $"
+// "$Id: fl_gtk.cxx 10781 2015-07-09 00:10:44Z AlbrechtS $"
 //
 // "GTK" drawing routines for the Fast Light Tool Kit (FLTK).
 //
@@ -30,10 +30,8 @@ extern void fl_internal_boxtype(Fl_Boxtype, Fl_Box_Draw_F*);
 
 
 static void gtk_color(Fl_Color c) {
-  if (Fl::draw_box_active()) fl_color(c);
-  else fl_color(fl_inactive(c));
+  Fl::set_box_color(c);
 }
-
 
 static void gtk_up_frame(int x, int y, int w, int h, Fl_Color c) {
   gtk_color(fl_color_average(FL_WHITE, c, 0.5));
@@ -204,7 +202,7 @@ static void draw(int which, int x,int y,int w,int h, int inset)
 }
 
 static void gtk_round_up_box(int x, int y, int w, int h, Fl_Color c) {
-  fl_color(c);
+  gtk_color(c);
   draw(FILL,	    x,   y, w,   h, 2);
 
   gtk_color(fl_color_average(FL_BLACK, c, 0.025f));
@@ -235,7 +233,7 @@ static void gtk_round_up_box(int x, int y, int w, int h, Fl_Color c) {
 }
 
 static void gtk_round_down_box(int x, int y, int w, int h, Fl_Color c) {
-  fl_color(c);
+  gtk_color(c);
   draw(FILL,	    x,   y, w,   h, 2);
 
   gtk_color(fl_color_average(FL_BLACK, c, 0.05f));
@@ -291,5 +289,5 @@ Fl_Boxtype fl_define_FL_GTK_UP_BOX() {
 
 
 //
-// End of "$Id: fl_gtk.cxx 10232 2014-08-21 12:13:47Z cand $".
+// End of "$Id: fl_gtk.cxx 10781 2015-07-09 00:10:44Z AlbrechtS $".
 //

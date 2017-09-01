@@ -1,5 +1,5 @@
 //
-// "$Id: fl_color_mac.cxx 9151 2011-10-26 11:17:31Z manolo $"
+// "$Id: fl_color_mac.cxx 10739 2015-05-30 13:46:59Z manolo $"
 //
 // MacOS color functions for the Fast Light Tool Kit (FLTK).
 //
@@ -63,6 +63,7 @@ void Fl_Quartz_Graphics_Driver::color(uchar r, uchar g, uchar b) {
   float fr = r/255.0f;
   float fg = g/255.0f;
   float fb = b/255.0f;
+  if (!fl_gc) return; // no context yet? We will assign the color later.
   CGContextSetRGBFillColor(fl_gc, fr, fg, fb, 1.0f);
   CGContextSetRGBStrokeColor(fl_gc, fr, fg, fb, 1.0f);
 }
@@ -74,5 +75,5 @@ void Fl::set_color(Fl_Color i, unsigned c) {
 }
 
 //
-// End of "$Id: fl_color_mac.cxx 9151 2011-10-26 11:17:31Z manolo $".
+// End of "$Id: fl_color_mac.cxx 10739 2015-05-30 13:46:59Z manolo $".
 //

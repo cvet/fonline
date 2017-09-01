@@ -1,5 +1,5 @@
 //
-// "$Id: unittests.cxx 9978 2013-09-16 20:25:14Z greg.ercolano $"
+// "$Id: unittests.cxx 10565 2015-02-09 18:04:31Z AlbrechtS $"
 //
 // Unit tests for the Fast Light Tool Kit (FLTK).
 //
@@ -171,6 +171,8 @@ void Browser_CB(Fl_Widget*, void*) {
 // registered tests to the browser widget.
 int main(int argc, char **argv) {
   Fl::args(argc,argv);
+  Fl::get_system_colors();
+  Fl::scheme(Fl::scheme()); // init scheme before instantiating tests
   Fl::visual(FL_RGB);
   mainwin = new MainWindow(MAINWIN_W, MAINWIN_H, "Fltk Unit Tests");
   browser = new Fl_Hold_Browser(BROWSER_X, BROWSER_Y, BROWSER_W, BROWSER_H, "Unit Tests");
@@ -197,5 +199,5 @@ int main(int argc, char **argv) {
 }
 
 //
-// End of "$Id: unittests.cxx 9978 2013-09-16 20:25:14Z greg.ercolano $".
+// End of "$Id: unittests.cxx 10565 2015-02-09 18:04:31Z AlbrechtS $".
 //

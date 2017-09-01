@@ -1,10 +1,10 @@
 #
-# "$Id: CMakeLists.txt 10092 2014-02-02 00:49:50Z AlbrechtS $"
+# "$Id: export.cmake 11742 2016-05-16 14:43:37Z AlbrechtS $"
 #
 # Main CMakeLists.txt to build the FLTK project using CMake (www.cmake.org)
 # Written by Michael Surette
 #
-# Copyright 1998-2010 by Bill Spitzak and others.
+# Copyright 1998-2016 by Bill Spitzak and others.
 #
 # This library is free software. Distribution and use rights are outlined in
 # the file "COPYING" which should have been included with this file.  If this
@@ -21,28 +21,35 @@
 # final config and export
 #######################################################################
 # Set the fluid executable path
-#if(CMAKE_CROSSCOMPILING)
-#   find_file(FLUID_PATH
-#      NAMES fluid fluid.exe
-#      PATHS ENV PATH
-#      NO_CMAKE_FIND_ROOT_PATH
-#   )
-#   add_executable(fluid IMPORTED)
-#   set(FLTK_FLUID_EXECUTABLE ${FLUID_PATH})
-#   set(FLUID)       # no export
-#   set_target_properties(fluid
-#      PROPERTIES IMPORTED_LOCATION ${FLUID_PATH}
-#   )
-#else()
-#   add_subdirectory(fluid)
-#   set(FLTK_FLUID_EXECUTABLE fluid)
-#   set(FLUID fluid) # export
-#endif(CMAKE_CROSSCOMPILING)
+if(CMAKE_CROSSCOMPILING)
+   find_file(FLUID_PATH
+      NAMES fluid fluid.exe
+      PATHS ENV PATH
+      NO_CMAKE_FIND_ROOT_PATH
+   )
+   add_executable(fluid IMPORTED)
+   set(FLTK_FLUID_EXECUTABLE ${FLUID_PATH})
+   set(FLUID)       # no export
+   set_target_properties(fluid
+      PROPERTIES IMPORTED_LOCATION ${FLUID_PATH}
+   )
+else()
+   add_subdirectory(fluid)
+   set(FLTK_FLUID_EXECUTABLE fluid)
+   set(FLUID fluid) # export
+endif(CMAKE_CROSSCOMPILING)
 
 add_subdirectory(src)
 
 # generate FLTK-Targets.cmake for build directory use
 export(TARGETS ${FLUID} ${FLTK_LIBRARIES} FILE ${CMAKE_BINARY_DIR}/FLTK-Targets.cmake)
+
+# generate FLTK-Functions.cmake for build directory use
+configure_file(
+    ${FLTK_SOURCE_DIR}/CMake/FLTK-Functions.cmake
+    ${FLTK_BINARY_DIR}/FLTK-Functions.cmake
+    COPYONLY
+    )
 
 # generate FLTKConfig.cmake for build directory use
 set(INCLUDE_DIRS "${FLTK_INCLUDE_DIRS}")
@@ -61,26 +68,18 @@ configure_file(
    @ONLY
 )
 
-# generate config.h
-configure_file(
-   "${FLTK_SOURCE_DIR}/configh.cmake.in"
-   "${FLTK_BINARY_DIR}/config.h"
-   @ONLY
-)
+# generate fltk-config for build directory use
+set(prefix ${FLTK_BINARY_DIR})
+set(exec_prefix "\${prefix}")
+set(includedir "${FLTK_SOURCE_DIR}")
+set(BINARY_DIR "${FLTK_BINARY_DIR}")
+set(libdir "\${exec_prefix}/lib")
+set(srcdir ".")
 
-# generate fltk-config
-get_filename_component(CC ${CMAKE_C_COMPILER} NAME)
-get_filename_component(CXX ${CMAKE_CXX_COMPILER} NAME)
-
-string(REPLACE ";" " " C_FLAGS "${FLTK_CFLAGS}")
-
-if(X11_Xext_FOUND)
-   list(APPEND FLTK_LDLIBS -lXext)
-endif(X11_Xext_FOUND)
-string(REPLACE ";" " " LD_LIBS "${FLTK_LDLIBS}")
+set(LIBNAME "${libdir}/libfltk.a")
 
 configure_file(
-   "${FLTK_SOURCE_DIR}/fltk-config.cmake.in"
+   "${FLTK_SOURCE_DIR}/fltk-config.in"
    "${FLTK_BINARY_DIR}/fltk-config"
    @ONLY
 )
@@ -90,7 +89,38 @@ if(UNIX)
    )
 endif(UNIX)
 
+# prepare some variables for config.h
+
+if(IS_ABSOLUTE "${FLTK_DATADIR}")
+  set(PREFIX_DATA "${FLTK_DATADIR}/fltk")
+else(IS_ABSOLUTE "${FLTK_DATADIR}")
+  set(PREFIX_DATA "${CMAKE_INSTALL_PREFIX}/${FLTK_DATADIR}/fltk")
+endif(IS_ABSOLUTE "${FLTK_DATADIR}")
+
+if(IS_ABSOLUTE "${FLTK_DOCDIR}")
+  set(PREFIX_DOC "${FLTK_DOCDIR}/fltk")
+else(IS_ABSOLUTE "${FLTK_DOCDIR}")
+  set(PREFIX_DOC "${CMAKE_INSTALL_PREFIX}/${FLTK_DOCDIR}/fltk")
+endif(IS_ABSOLUTE "${FLTK_DOCDIR}")
+
+set(CONFIG_H_IN configh.cmake.in)
+set(CONFIG_H config.h)
+
+# generate config.h
+
+configure_file(
+   "${FLTK_SOURCE_DIR}/${CONFIG_H_IN}"
+   "${FLTK_BINARY_DIR}/${CONFIG_H}"
+   @ONLY
+)
+
 if(OPTION_CREATE_LINKS)
+   # Set PREFIX_INCLUDE to the proper value.
+   if(IS_ABSOLUTE ${FLTK_INCLUDEDIR})
+      set(PREFIX_INCLUDE ${FLTK_INCLUDEDIR})
+   else()
+      set(PREFIX_INCLUDE "${CMAKE_INSTALL_PREFIX}/${FLTK_INCLUDEDIR}")
+   endif(IS_ABSOLUTE ${FLTK_INCLUDEDIR})
    configure_file(
       "${FLTK_SOURCE_DIR}/CMake/install-symlinks.cmake.in"
       "${FLTK_BINARY_DIR}/install-symlinks.cmake"

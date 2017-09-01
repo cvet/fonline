@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_get_system_colors.cxx 10126 2014-04-19 14:55:15Z greg.ercolano $"
+// "$Id: Fl_get_system_colors.cxx 10598 2015-03-01 20:16:56Z AlbrechtS $"
 //
 // System color support for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -130,19 +130,23 @@ int fl_parse_color(const char* p, uchar& r, uchar& g, uchar& b) {
   } else return 0;
 }
 #endif // WIN32 || __APPLE__
+
+
 /** \fn Fl::get_system_colors()
     Read the user preference colors from the system and use them to call
-    Fl::foreground(), Fl::background(), and 
-    Fl::background2().  This is done by
-    Fl_Window::show(argc,argv) before applying the -fg and -bg
-    switches.
+    Fl::foreground(), Fl::background(), and Fl::background2().
+
+    This is done by Fl_Window::show(argc,argv) before applying
+    the -fg and -bg switches.
     
-    <P>On X this reads some common values from the Xdefaults database.
+    On X this reads some common values from the Xdefaults database.
     KDE users can set these values by running the "krdb" program, and
     newer versions of KDE set this automatically if you check the "apply
     style to other X programs" switch in their control panel.
 */
-#if defined(WIN32)
+
+#if defined(WIN32)				// --- WIN32 ---
+
 static void
 getsyscolor(int what, const char* arg, void (*func)(uchar,uchar,uchar))
 {
@@ -165,7 +169,8 @@ void Fl::get_system_colors() {
   getsyscolor(COLOR_HIGHLIGHT,	0,     set_selection_color);
 }
 
-#elif defined(__APPLE__)
+#elif defined(__APPLE__)			// --- APPLE ---
+
 // MacOS X currently supports two color schemes - Blue and Graphite.
 // Since we aren't emulating the Aqua interface (even if Apple would
 // let us), we use some defaults that are similar to both.  The
@@ -194,7 +199,8 @@ void Fl::get_system_colors()
   set_selection_color(0x00, 0x00, 0x80);
 #endif
 }
-#else
+
+#else						// --- X11 ---
 
 // Read colors that KDE writes to the xrdb database.
 
@@ -231,7 +237,7 @@ void Fl::get_system_colors()
   getsyscolor("Text", "selectBackground", 0, "#000080", set_selection_color);
 }
 
-#endif
+#endif					// --- WIN32 | APPLE | X11 ---
 
 
 //// Simple implementation of 2.0 Fl::scheme() interface...
@@ -280,6 +286,8 @@ static Fl_Pixmap	tile(tile_xpm);
 
     If the resulting scheme name is not defined, the default scheme will
     be used and Fl::scheme() will return NULL.
+
+    \see Fl::is_scheme()
 */
 int Fl::scheme(const char *s) {
   if (!s) {
@@ -347,7 +355,7 @@ int Fl::reload_scheme() {
 
     tile.uncache();
 
-    if (!scheme_bg_) scheme_bg_ = new Fl_Tiled_Image(&tile, w(), h());
+    if (!scheme_bg_) scheme_bg_ = new Fl_Tiled_Image(&tile, 0, 0);
 
     // Load plastic buttons, etc...
     set_boxtype(FL_UP_FRAME,        FL_PLASTIC_UP_FRAME);
@@ -430,6 +438,14 @@ int Fl::reload_scheme() {
   }
 
   // Set (or clear) the background tile for all windows...
+
+  // FIXME: This makes it impossible to assign a background image
+  // and/or a label to a window. IMHO we should be able to assign a
+  // background image to a window. Currently (as of FLTK 1.3.3) there
+  // is the workaround to use a group inside the window to achieve this.
+  // See also STR #3075.
+  // AlbrechtS, 01 Mar 2015
+
   for (win = first_window(); win; win = next_window(win)) {
     win->labeltype(scheme_bg_ ? FL_NORMAL_LABEL : FL_NO_LABEL);
     win->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE | FL_ALIGN_CLIP);
@@ -442,5 +458,5 @@ int Fl::reload_scheme() {
 
 
 //
-// End of "$Id: Fl_get_system_colors.cxx 10126 2014-04-19 14:55:15Z greg.ercolano $".
+// End of "$Id: Fl_get_system_colors.cxx 10598 2015-03-01 20:16:56Z AlbrechtS $".
 //

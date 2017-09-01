@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_get_key_mac.cxx 9952 2013-07-23 16:02:44Z manolo $"
+// "$Id: Fl_get_key_mac.cxx 10747 2015-06-10 10:53:25Z manolo $"
 //
 // MacOS keyboard state routines for the Fast Light Tool Kit (FLTK).
 //
@@ -244,7 +244,7 @@ int Fl::event_key(int k) {
 //: returns true, if that key is pressed right now
 int Fl::get_key(int k) {
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_4
-  if(CGEventSourceKeyState != NULL) {
+  if (&CGEventSourceKeyState != NULL) {
     return (int)CGEventSourceKeyState(kCGEventSourceStateCombinedSessionState, fltk2mac(k) );
     }
   else 
@@ -275,5 +275,5 @@ int Fl::get_key(int k) {
 }
 
 //
-// End of "$Id: Fl_get_key_mac.cxx 9952 2013-07-23 16:02:44Z manolo $".
+// End of "$Id: Fl_get_key_mac.cxx 10747 2015-06-10 10:53:25Z manolo $".
 //

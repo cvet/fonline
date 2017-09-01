@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Choice.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Choice.H 10513 2015-01-10 22:05:15Z greg.ercolano $"
 //
 // Choice header file for the Fast Light Tool Kit (FLTK).
 //
@@ -38,10 +38,17 @@
   often to control a single variable rather than do individual callbacks,
   some of the Fl_Menu_Button methods are redescribed here in those terms.
 
-  When the user picks an item off the menu the value() is set to that item
-  and then the item's callback is done with the menu_button as the
-  \c Fl_Widget* argument. If the item does not have a callback the
-  menu_button's callback is done instead.
+  When the user clicks a menu item, value() is set to that item
+  and then:
+
+      - The item's callback is done if one has been set; the
+        Fl_Choice is passed as the Fl_Widget* argument, 
+        along with any userdata configured for the callback.
+
+      - If the item does not have a callback, the Fl_Choice widget's
+        callback is done instead, along with any userdata configured
+        for it.  The callback can determine which item was picked using
+        value(), mvalue(), item_pathname(), etc.
 
   All three mouse buttons pop up the menu. The Forms behavior of the first
   two buttons to increment/decrement the choice is not implemented.  This
@@ -95,5 +102,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Choice.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Choice.H 10513 2015-01-10 22:05:15Z greg.ercolano $".
 //

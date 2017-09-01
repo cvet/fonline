@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Type.cxx 9992 2013-09-24 19:58:24Z greg.ercolano $"
+// "$Id: Fl_Type.cxx 12059 2016-10-28 21:33:45Z AlbrechtS $"
 //
 // Widget type code for the Fast Light Tool Kit (FLTK).
 //
@@ -15,7 +15,7 @@
 // not in the linked list and are not written to files or
 // copied or otherwise examined.
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -166,6 +166,43 @@ extern int show_comments;
 
 ////////////////////////////////////////////////////////////////
 
+// Copy the given string str to buffer p with no more than maxl characters.
+// Add "..." if string was truncated.
+// If parameter quote is true (not 0) the string is quoted with "".
+// Quote characters are NOT counted.
+// The returned buffer (string) is terminated with a null byte.
+// Returns pointer to end of string (before terminating null byte).
+// Note: the buffer p must be large enough to hold (4 * (maxl+1) + 1) bytes
+// or (4 * (maxl+1) + 3) bytes if quoted, e.g. "123..." because each UTF-8
+// character can consist of 4 bytes, "..." adds 3 bytes, quotes '""' add two
+// bytes, and the terminating null byte adds another byte.
+// This supports Unicode code points up to U+10FFFF (standard as of 10/2016).
+// Sanity checks for illegal UTF-8 sequences are included.
+
+static char *copy_trunc(char *p, const char *str, int maxl, int quote) {
+
+  int size = 0;				// truncated string size in characters
+  int bs;				// size of UTF-8 character in bytes
+  const char *end = str + strlen(str);	// end of input string
+  if (quote) *p++ = '"';		// opening quote
+  while (size < maxl) {			// maximum <maxl> characters
+    if (!(*str & (-32))) break;		// end of string (0 or control char)
+    bs = fl_utf8len(*str);		// size of next character
+    if (bs <= 0) break;			// some error - leave
+    if (str + bs > end) break;		// UTF-8 sequence beyond end of string
+    while (bs--) *p++ = *str++;		// copy that character into the buffer
+    size++;				// count copied characters
+  }
+  if (*str) {				// string was truncated
+    strcpy(p,"..."); p += 3;
+  }
+  if (quote) *p++ = '"';		// closing quote
+  *p = 0;				// terminating null byte
+  return p;
+}
+
+////////////////////////////////////////////////////////////////
+
 class Widget_Browser : public Fl_Browser_ {
   friend class Fl_Type;
 
@@ -190,6 +227,14 @@ public:
 static Widget_Browser *widget_browser;
 Fl_Widget *make_widget_browser(int x,int y,int w,int h) {
   return (widget_browser = new Widget_Browser(x,y,w,h));
+}
+
+void redraw_widget_browser(Fl_Type *caller)
+{
+  if (caller) {
+    widget_browser->display(caller);
+  }
+  widget_browser->redraw();
 }
 
 void select(Fl_Type *o, int v) {
@@ -234,9 +279,9 @@ int Widget_Browser::item_height(void *l) const {
   Fl_Type *t = (Fl_Type*)l;
   if (t->visible) {
     if (show_comments && t->comment())
-      return textsize()*2+1;
+      return textsize()*2+4;
     else
-      return textsize()+2;
+      return textsize()+5;
   }
   return 0;
 }
@@ -253,51 +298,96 @@ const char* Fl_Type::title() {
 
 extern const char* subclassname(Fl_Type*);
 
+
+/**
+  Draw an item in the widget browser.
+
+  A browser line starts with a variable size space. This space directly
+  relates to the level of the type entry.
+
+  If this type has the ability to store children, a triangle follows,
+  pointing right (closed) or pointing down (open, children shown).
+
+  Next follows an icon that is specific to the type. This makes it easy to
+  spot certain types.
+
+  Now follows some text. For classes and widgets, this is the type itself,
+  followed by the name of the object. Other objects show their content as
+  text, possibly abbreviated with an ellipsis.
+
+  \param v	v is a pointer to the actual widget type and can be cast safely
+		to Fl_Type
+  \param X,Y	these give the position in window coordinates of the top left 
+		corner of this line
+*/
 void Widget_Browser::item_draw(void *v, int X, int Y, int, int) const {
+  // cast to a more general type
   Fl_Type *l = (Fl_Type *)v;
-  X += 3 + 18 + l->level * 12;
+
+  char buf[340]; // edit buffer: large enough to hold 80 UTF-8 chars + nul
+
+  // calculate the horizontal start position of this item
+  // 3 is the edge of the browser
+  // 13 is the width of the arrow that indicates children for the item
+  // 18 is the width of the icon
+  // 12 is the indent per level
+  X += 3 + 13 + 18 + l->level * 12;
+
+  // calculate the horizontal start position and width of the separator line
+  int x1 = X;
+  int w1 = w() - x1;
+
+  // items can contain a comment. If they do, the comment gets a second text
+  // line inside this browser line
   int comment_incr = 0;
   if (show_comments && l->comment()) {
-    char buf[82], *d = buf;
-    const char *s = l->comment();
-    for (int i=0; i<80; i++) {
-      char c = *s++;
-      if (c==0 || c=='\n') break;
-      *d++ = c;
-    }
-    *d = 0;
+    copy_trunc(buf, l->comment(), 80, 0);
     comment_incr = textsize()-1;
     if (l->new_selected) fl_color(fl_contrast(FL_DARK_GREEN,FL_SELECTION_COLOR));
     else fl_color(fl_contrast(FL_DARK_GREEN,color()));
     fl_font(textfont()+FL_ITALIC, textsize()-2);
-    fl_draw(buf, (l->is_parent())?X+12:X, Y+12);
+    fl_draw(buf, X, Y+12);
     Y += comment_incr/2;
     comment_incr -= comment_incr/2;
   }
+  
   if (l->new_selected) fl_color(fl_contrast(FL_FOREGROUND_COLOR,FL_SELECTION_COLOR));
   else fl_color(FL_FOREGROUND_COLOR);
-  Fl_Pixmap *pm = pixmap[l->pixmapID()];
-  if (pm) pm->draw(X-18, Y);
-  switch (l->is_public()) {
-    case 0: lock_pixmap.draw(X - 17, Y); break;
-    case 2: protected_pixmap.draw(X - 17, Y); break;
-  }
+  
+  // Width=10: Draw the triangle that indicates possible children
   if (l->is_parent()) {
+    X = X - 18 - 13;
     if (!l->next || l->next->level <= l->level) {
       if (l->open_!=(l==pushedtitle)) {
+        // an outlined triangle to the right indicates closed item, no children
         fl_loop(X,Y+7,X+5,Y+12,X+10,Y+7);
       } else {
+        // an outlined triangle to the bottom indicates open item, no children
         fl_loop(X+2,Y+2,X+7,Y+7,X+2,Y+12);
       }
     } else {
       if (l->open_!=(l==pushedtitle)) {
+        // a filled triangle to the right indicates closed item, with children
         fl_polygon(X,Y+7,X+5,Y+12,X+10,Y+7);
       } else {
+        // a filled triangle to the bottom indicates open item, with children
         fl_polygon(X+2,Y+2,X+7,Y+7,X+2,Y+12);
       }
     }
-    X += 10;
+    X = X + 13 + 18;
   }
+  
+  // Width=18: Draw the icon associated with the type.
+  Fl_Pixmap *pm = pixmap[l->pixmapID()];
+  if (pm) pm->draw(X-18, Y);
+  
+  // Add tags on top of the icon for locked and protected types.
+  switch (l->is_public()) {
+    case 0: lock_pixmap.draw(X - 17, Y); break;
+    case 2: protected_pixmap.draw(X - 17, Y); break;
+  }
+  
+  // Indent=12 per level: Now write the text that comes after the graphics representation
   Y += comment_incr;
   if (l->is_widget() || l->is_class()) {
     const char* c = subclassname(l);
@@ -309,43 +399,33 @@ void Widget_Browser::item_draw(void *v, int X, int Y, int, int) const {
     if (c) {
       fl_font(textfont()|FL_BOLD, textsize());
       fl_draw(c, X, Y+13);
-    } else if ((c=l->label())) {
-      char buf[100]; char* p = buf;
-      *p++ = '"';
-      int b,l=strlen(c);           // size in bytes
-      for (int i = 20; i>0;i--) {  // maximum 20 characters
-        if (*c==0) break;          // end of string
-        fl_utf8decode(c, c+l, &b); // b=size of char in bytes
-        if (b==-1) break;          // some error - leave
-        l-=b;                      // l = bytes left in string
-        while (b--)*p++ = *c++;    // copy that character into the buffer
-      }
-      if (*c) {strcpy(p,"..."); p+=3;} // there would be more to this string
-      *p++ = '"';
-      *p = 0;
+    } else if ((c = l->label())) {
+      copy_trunc(buf, c, 20, 1); // quoted string
       fl_draw(buf, X, Y+13);
     }
   } else {
-    const char* c = l->title();
-    char buf[60]; char* p = buf;
-    for (int i = 55; i--;) {
-      if (! (*c & -32)) break;
-      *p++ = *c++;
-    }
-    if (*c) {strcpy(p,"..."); p+=3;}
-    *p = 0;
+    copy_trunc(buf, l->title(), 55, 0);
     fl_font(textfont() | (l->is_code_block() && (l->level==0 || l->parent->is_class())?0:FL_BOLD), textsize());
     fl_draw(buf, X, Y+13);
+  }
+
+  // draw a thin line below the item if this item is not selected
+  // (if it is selected this additional line would look bad)
+  if (!l->new_selected) {
+    fl_color(fl_lighter(FL_GRAY));
+    fl_line(x1,Y+16,x1+w1,Y+16);
   }
 }
 
 int Widget_Browser::item_width(void *v) const {
+
+  char buf[340]; // edit buffer: large enough to hold 80 UTF-8 chars + nul
+
   Fl_Type *l = (Fl_Type *)v;
 
   if (!l->visible) return 0;
 
-  int W = 3 + 16 + 18 + l->level*10;
-  if (l->is_parent()) W += 10;
+  int W = 3 + 13 + 18 + l->level * 12;
 
   if (l->is_widget() || l->is_class()) {
     const char* c = l->type_name();
@@ -356,27 +436,12 @@ int Widget_Browser::item_width(void *v) const {
     if (c) {
       fl_font(textfont()|FL_BOLD, textsize());
       W += int(fl_width(c));
-    } else if ((c=l->label())) {
-      char buf[50]; char* p = buf;
-      *p++ = '"';
-      for (int i = 20; i--;) {
-	if (! (*c & -32)) break;
-	*p++ = *c++;
-      }
-      if (*c) {strcpy(p,"..."); p+=3;}
-      *p++ = '"';
-      *p = 0;
+    } else if (l->label()) {
+      copy_trunc(buf, l->label(), 20, 1); // quoted string
       W += int(fl_width(buf));
     }
   } else {
-    const char* c = l->title();
-    char buf[60]; char* p = buf;
-    for (int i = 55; i--;) {
-      if (! (*c & -32)) break;
-      *p++ = *c++;
-    }
-    if (*c) {strcpy(p,"..."); p+=3;}
-    *p = 0;
+    copy_trunc(buf, l->title(), 55, 0);
     fl_font(textfont() | (l->is_code_block() && (l->level==0 || l->parent->is_class())?0:FL_BOLD), textsize());
     W += int(fl_width(buf));
   }
@@ -392,6 +457,21 @@ void Widget_Browser::callback() {
   selection_changed((Fl_Type*)selection());
 }
 
+
+/**
+  Override the event handling for this browser.
+
+  The vertical mouse position corresponds to an entry in the type tree.
+  The horizontal position has the following hot zones:
+  - 0-3 is the widget frame and ignored
+  - the next hot zone starts 12*indent pixels further to the right
+  - the next 13 pixels refer to the arrow that indicates children for the item
+  - 18 pixels follow for the icon
+  - the remaining part is filled with text
+
+  \param[in] e the incoming event type
+  \return 0 if the event is not supported, and 1 if the event was "used up"
+*/
 int Widget_Browser::handle(int e) {
   static Fl_Type *title;
   Fl_Type *l;
@@ -401,7 +481,7 @@ int Widget_Browser::handle(int e) {
     if (!Fl::event_inside(X,Y,W,H)) break;
     l = (Fl_Type*)find_item(Fl::event_y());
     if (l) {
-      X += 12*l->level + 18 - hposition();
+      X += 3 + 12*l->level - hposition();
       if (l->is_parent() && Fl::event_x()>X && Fl::event_x()<X+13) {
 	title = pushedtitle = l;
 	redraw_line(l);
@@ -413,7 +493,7 @@ int Widget_Browser::handle(int e) {
     if (!title) break;
     l = (Fl_Type*)find_item(Fl::event_y());
     if (l) {
-      X += 12*l->level + 18 - hposition();
+      X += 3 + 12*l->level - hposition();
       if (l->is_parent() && Fl::event_x()>X && Fl::event_x()<X+13) ;
       else l = 0;
     }
@@ -443,7 +523,7 @@ int Widget_Browser::handle(int e) {
 	  k->visible = 1;
 	  if (k->is_parent() && !k->open_) {
 	    Fl_Type *j;
-	    for (j = k->next; j && j->level>k->level; j = j->next);
+	    for (j = k->next; j && j->level>k->level; j = j->next) {/*empty*/}
 	    k = j;
 	  } else
 	    k = k->next;
@@ -500,7 +580,7 @@ void Fl_Type::add(Fl_Type *p) {
   Fl_Type *q;
   int newlevel;
   if (p) {
-    for (q = p->next; q && q->level > p->level; q = q->next);
+    for (q = p->next; q && q->level > p->level; q = q->next) {/*empty*/}
     newlevel = p->level+1;
   } else {
     q = 0;
@@ -639,7 +719,9 @@ void Fl_Type::user_data_type(const char *n) {
 }
 
 void Fl_Type::comment(const char *n) {
-  storestring(n, comment_, 1);
+  if (storestring(n,comment_,1)) {
+    if (visible) widget_browser->redraw();
+  }
 }
 
 void Fl_Type::open() {
@@ -675,6 +757,7 @@ int Fl_Type::is_menu_item() const {return 0;}
 int Fl_Type::is_menu_button() const {return 0;}
 int Fl_Type::is_group() const {return 0;}
 int Fl_Type::is_window() const {return 0;}
+int Fl_Type::is_code() const {return 0;}
 int Fl_Type::is_code_block() const {return 0;}
 int Fl_Type::is_decl_block() const {return 0;}
 int Fl_Type::is_comment() const {return 0;}
@@ -693,7 +776,7 @@ void select_all_cb(Fl_Widget *,void *) {
   Fl_Type *p = Fl_Type::current ? Fl_Type::current->parent : 0;
   if (in_this_only) {
     Fl_Type *t = p;
-    for (; t && t != in_this_only; t = t->parent);
+    for (; t && t != in_this_only; t = t->parent) {/*empty*/}
     if (t != in_this_only) p = in_this_only;
   }
   for (;;) {
@@ -717,7 +800,7 @@ void select_none_cb(Fl_Widget *,void *) {
   Fl_Type *p = Fl_Type::current ? Fl_Type::current->parent : 0;
   if (in_this_only) {
     Fl_Type *t = p;
-    for (; t && t != in_this_only; t = t->parent);
+    for (; t && t != in_this_only; t = t->parent) {/*empty*/}
     if (t != in_this_only) p = in_this_only;
   }
   for (;;) {
@@ -739,7 +822,7 @@ void select_none_cb(Fl_Widget *,void *) {
 
 static void delete_children(Fl_Type *p) {
   Fl_Type *f;
-  for (f = p; f && f->next && f->next->level > p->level; f = f->next);
+  for (f = p; f && f->next && f->next->level > p->level; f = f->next) {/*empty*/}
   for (; f != p; ) {
     Fl_Type *g = f->prev;
     delete f;
@@ -770,7 +853,7 @@ void Fl_Type::move_before(Fl_Type* g) {
   if (level != g->level) printf("move_before levels don't match! %d %d\n",
 				level, g->level);
   Fl_Type* n;
-  for (n = next; n && n->level > level; n = n->next);
+  for (n = next; n && n->level > level; n = n->next) {/*empty*/}
   if (n == g) return;
   Fl_Type *l = n ? n->prev : Fl_Type::last;
   prev->next = n;
@@ -785,6 +868,7 @@ void Fl_Type::move_before(Fl_Type* g) {
   widget_browser->redraw();
 }
 
+
 // move selected widgets in their parent's list:
 void earlier_cb(Fl_Widget*,void*) {
   Fl_Type *f;
@@ -793,7 +877,7 @@ void earlier_cb(Fl_Widget*,void*) {
     Fl_Type* nxt = f->next;
     if (f->selected) {
       Fl_Type* g;
-      for (g = f->prev; g && g->level > f->level; g = g->prev);
+      for (g = f->prev; g && g->level > f->level; g = g->prev) {/*empty*/}
       if (g && g->level == f->level && !g->selected) {
         f->move_before(g);
         mod = 1;
@@ -811,7 +895,7 @@ void later_cb(Fl_Widget*,void*) {
     Fl_Type* prv = f->prev;
     if (f->selected) {
       Fl_Type* g;
-      for (g = f->next; g && g->level > f->level; g = g->next);
+      for (g = f->next; g && g->level > f->level; g = g->next) {/*empty*/}
       if (g && g->level == f->level && !g->selected) {
         g->move_before(f);
         mod = 1;
@@ -900,7 +984,7 @@ void Fl_Type::read_property(const char *c) {
 int Fl_Type::read_fdesign(const char*, const char*) {return 0;}
 
 /**
- * Return 1 if the list contains a function with the given signature at the top level
+  Return 1 if the list contains a function with the given signature at the top level.
  */
 int has_toplevel_function(const char *rtype, const char *sig) {
   Fl_Type *child;
@@ -915,18 +999,18 @@ int has_toplevel_function(const char *rtype, const char *sig) {
 }
 
 /**
- * Write a comment inot the header file.
- */
+  Write a comment into the header file.
+*/
 void Fl_Type::write_comment_h(const char *pre)
 {
-  if (comment()) {
+  if (comment() && *comment()) {
     write_h("%s/**\n", pre);
     const char *s = comment();
-    write_h("%s   ", pre);
+    write_h("%s ", pre);
     while(*s) {
       if (*s=='\n') {
         if (s[1]) {
-          write_h("\n%s   ", pre);
+          write_h("\n%s ", pre);
         }
       } else {
         write_h("%c", *s); // FIXME this is much too slow!
@@ -938,18 +1022,18 @@ void Fl_Type::write_comment_h(const char *pre)
 }
 
 /**
- * Write a comment inot the header file.
- */
+  Write a comment into the source file.
+*/
 void Fl_Type::write_comment_c(const char *pre)
 {
-  if (comment()) {
+  if (comment() && *comment()) {
     write_c("%s/**\n", pre);
     const char *s = comment();
-    write_c("%s   ", pre);
+    write_c("%s ", pre);
     while(*s) {
       if (*s=='\n') {
         if (s[1]) {
-          write_c("\n%s   ", pre);
+          write_c("\n%s ", pre);
         }
       } else {
         write_c("%c", *s); // FIXME this is much too slow!
@@ -961,9 +1045,40 @@ void Fl_Type::write_comment_c(const char *pre)
 }
 
 /**
- * Make sure that the given item is visible in the browser by opening
- * all parent groups and moving the item into the visible space.
- */
+  Write a comment into the source file.
+*/
+void Fl_Type::write_comment_inline_c(const char *pre)
+{
+  if (comment() && *comment()) {
+    const char *s = comment();
+    if (strchr(s, '\n')==0L) {
+      // single line comment
+      if (pre) write_c("%s", pre);
+      write_c("// %s\n", s);
+      if (!pre) write_c("%s  ", indent());
+    } else {
+      write_c("%s/*\n", pre?pre:"");
+      if (pre) write_c("%s ", pre); else write_c("%s   ", indent());
+      while(*s) {
+        if (*s=='\n') {
+          if (s[1]) {
+            if (pre) write_c("\n%s ", pre); else write_c("\n%s   ", indent());
+          }
+        } else {
+          write_c("%c", *s); // FIXME this is much too slow!
+        }
+        s++;
+      }
+      if (pre) write_c("\n%s */\n", pre); else write_c("\n%s   */\n", indent());
+      if (!pre) write_c("%s  ", indent());
+    }
+  }
+}
+
+/**
+  Make sure that the given item is visible in the browser by opening
+  all parent groups and moving the item into the visible space.
+*/
 void reveal_in_browser(Fl_Type *t) {
   Fl_Type *p = t->parent;
   if (p) {
@@ -980,34 +1095,34 @@ void reveal_in_browser(Fl_Type *t) {
 }
 
 /**
- * Build widgets and dataset needed in live mode.
- * \return a widget pointer that the live mode initiator can 'show()'
- * \see leave_live_mode()
- */
+  Build widgets and dataset needed in live mode.
+  \return a widget pointer that the live mode initiator can 'show()'
+  \see leave_live_mode()
+*/
 Fl_Widget *Fl_Type::enter_live_mode(int) {
   return 0L;
 }
 
 /**
- * Release all resources created when enetring live mode.
- * \see enter_live_mode()
- */
+  Release all resources created when entering live mode.
+  \see enter_live_mode()
+*/
 void Fl_Type::leave_live_mode() {
 }
 
 /**
- * Copy all needed properties for this tye into the live object.
- */
+  Copy all needed properties for this type into the live object.
+*/
 void Fl_Type::copy_properties() {
 }
 
 /**
- * Check whether callback name is declared anywhere else by the user
- *
- * \b Warning: this just checks that the name is declared somewhere,
- * but it should probably also check that the name corresponds to a
- * plain function or a member function within the same class and that
- * the parameter types match.
+  Check whether callback \p cbname is declared anywhere else by the user.
+
+  \b Warning: this just checks that the name is declared somewhere,
+  but it should probably also check that the name corresponds to a
+  plain function or a member function within the same class and that
+  the parameter types match.
  */
 int Fl_Type::user_defined(const char* cbname) const {
   for (Fl_Type* p = Fl_Type::first; p ; p = p->next)
@@ -1020,5 +1135,5 @@ int Fl_Type::user_defined(const char* cbname) const {
 
 
 //
-// End of "$Id: Fl_Type.cxx 9992 2013-09-24 19:58:24Z greg.ercolano $".
+// End of "$Id: Fl_Type.cxx 12059 2016-10-28 21:33:45Z AlbrechtS $".
 //

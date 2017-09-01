@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Menu_Type.cxx 9082 2011-09-28 20:43:05Z matt $"
+// "$Id: Fl_Menu_Type.cxx 10696 2015-04-10 19:26:17Z AlbrechtS $"
 //
 // Menu item code for the Fast Light Tool Kit (FLTK).
 //
@@ -291,6 +291,7 @@ void Fl_Menu_Item_Type::write_item() {
     "FL_IMAGE_LABEL"
   };
 
+  write_comment_inline_c(" ");
   write_c(" {");
   if (image) write_c("0");
   else if (label()) write_cstring(label()); // we will call i18n when the widget is instantiated for the first time
@@ -317,13 +318,14 @@ void Fl_Menu_Item_Type::write_item() {
     write_c(" (void*)(%s),", user_data());
   else
     write_c(" 0,");
-  write_c(" %d, %s, %d, %d, %d", flags(),
+  write_c(" %d, (uchar)%s, %d, %d, %d", flags(),
 	  labeltypes[o->labeltype()], o->labelfont(), o->labelsize(), o->labelcolor());
   write_c("},\n");
 }
 
 void Fl_Menu_Item_Type::write_code1() {
   int i; const char* mname = menu_name(i);
+
   if (!prev->is_menu_item()) {
     // for first menu item, declare the array
     if (class_name(1)) {
@@ -652,5 +654,5 @@ void shortcut_in_cb(Shortcut_Button* i, void* v) {
 }
 
 //
-// End of "$Id: Fl_Menu_Type.cxx 9082 2011-09-28 20:43:05Z matt $".
+// End of "$Id: Fl_Menu_Type.cxx 10696 2015-04-10 19:26:17Z AlbrechtS $".
 //

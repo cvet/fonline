@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Tabs.cxx 10122 2014-03-24 18:24:59Z greg.ercolano $"
+// "$Id: Fl_Tabs.cxx 11970 2016-09-23 14:03:40Z AlbrechtS $"
 //
 // Tab widget for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -15,7 +15,6 @@
 //
 //     http://www.fltk.org/str.php
 //
-
 
 // This is the "file card tabs" interface to allow you to put lots and lots
 // of buttons and switches in a panel, as popularized by many toolkits.
@@ -42,7 +41,7 @@
 // Return value is the index of the selected item.
 
 int Fl_Tabs::tab_positions() {
-  int nc = children();
+  const int nc = children();
   if (nc != tab_count) {
     clear_tab_positions();
     if (nc) {
@@ -87,7 +86,7 @@ int Fl_Tabs::tab_positions() {
   for (i = 0; i<nc; i++) {
     if (tab_pos[i] >= i*EXTRASPACE) break;
     tab_pos[i] = i*EXTRASPACE;
-    int W = w()-1-EXTRASPACE*(children()-i) - tab_pos[i];
+    int W = w()-1-EXTRASPACE*(nc-i) - tab_pos[i];
     if (tab_width[i] > W) tab_width[i] = W;
   }
   // adjust edges according to visiblity:
@@ -131,7 +130,7 @@ Fl_Widget *Fl_Tabs::which(int event_x, int event_y) {
   }
   if (event_x < x()) return 0;
   Fl_Widget *ret = 0L;
-  int nc = children();
+  const int nc = children();
   tab_positions();
   for (int i=0; i<nc; i++) {
     if (event_x < x()+tab_pos[i+1]) {
@@ -174,7 +173,7 @@ int Fl_Tabs::handle(int event) {
     o = which(Fl::event_x(), Fl::event_y());
     if (event == FL_RELEASE) {
       push(0);
-      if (o && Fl::visible_focus() && Fl::focus()!=this) { 
+      if (o && Fl::visible_focus() && Fl::focus()!=this) {
         Fl::focus(this);
         redraw_tabs();
       }
@@ -201,7 +200,7 @@ int Fl_Tabs::handle(int event) {
       return ret;
     else if ( (H<0) && (Fl::event_y() < y()+h()+H) )
       return ret;
-    else { 
+    else {
       n = which(Fl::event_x(), Fl::event_y());
       if (!n) n = this;
     }
@@ -224,7 +223,8 @@ int Fl_Tabs::handle(int event) {
   case FL_KEYBOARD:
     switch (Fl::event_key()) {
       case FL_Left:
-        if (child(0)->visible()) return 0;
+	if (!children()) return 0;
+	if (child(0)->visible()) return 0;
 	for (i = 1; i < children(); i ++)
 	  if (child(i)->visible()) break;
 	value(child(i - 1));
@@ -232,7 +232,8 @@ int Fl_Tabs::handle(int event) {
 	do_callback();
         return 1;
       case FL_Right:
-        if (child(children() - 1)->visible()) return 0;
+	if (!children()) return 0;
+	if (child(children() - 1)->visible()) return 0;
 	for (i = 0; i < children(); i ++)
 	  if (child(i)->visible()) break;
 	value(child(i + 1));
@@ -285,12 +286,13 @@ int Fl_Tabs::push(Fl_Widget *o) {
   return 1;
 }
 
-/**  
-   Gets the currently visible widget/tab.
-   The value() is the first visible child (or the last child if none
-   are visible) and this also hides any other children.
-   This allows the tabs to be deleted, moved to other groups, and
-   show()/hide() called without it screwing up.
+/**
+  Gets the currently visible widget/tab.
+
+  The value() is the first visible child (or the last child if none
+  are visible) and this also hides any other children.
+  This allows the tabs to be deleted, moved to other groups, and
+  show()/hide() called without it screwing up.
 */
 Fl_Widget* Fl_Tabs::value() {
   Fl_Widget* v = 0;
@@ -350,7 +352,7 @@ void Fl_Tabs::draw() {
     if (v) update_child(*v);
   }
   if (damage() & (FL_DAMAGE_SCROLL|FL_DAMAGE_ALL)) {
-    int nc = children();
+    const int nc = children();
     int selected = tab_positions();
     int i;
     Fl_Widget*const* a = array();
@@ -396,7 +398,7 @@ void Fl_Tabs::draw_tab(int x1, int x2, int W, int H, Fl_Widget* o, int what) {
     Fl_Color oc = o->labelcolor();
 
     // Draw the label using the current color...
-    o->labelcolor(sel ? labelcolor() : o->labelcolor());    
+    o->labelcolor(sel ? labelcolor() : o->labelcolor());
     o->draw_label(x1, y() + yofs, W, H - yofs, FL_ALIGN_CENTER);
 
     // Restore the original label color...
@@ -437,30 +439,36 @@ void Fl_Tabs::draw_tab(int x1, int x2, int W, int H, Fl_Widget* o, int what) {
 }
 
 /**
-    Creates a new Fl_Tabs widget using the given position, size,
-    and label string. The default boxtype is FL_THIN_UP_BOX.
+  Creates a new Fl_Tabs widget using the given position, size,
+  and label string. The default boxtype is FL_THIN_UP_BOX.
 
-    Use add(Fl_Widget*) to add each child, which are usually
-    Fl_Group widgets. The children should be sized to stay
-    away from the top or bottom edge of the Fl_Tabs widget,
-    which is where the tabs will be drawn.
+  Use add(Fl_Widget*) to add each child, which are usually
+  Fl_Group widgets. The children should be sized to stay
+  away from the top or bottom edge of the Fl_Tabs widget,
+  which is where the tabs will be drawn.
 
-    All children of Fl_Tabs should have the same size and exactly fit on top of 
-    each other. They should only leave space above or below where that tabs will 
-    go, but not on the sides. If the first child of Fl_Tabs is set to 
-    "resizable()", the riders will not resize when the tabs are resized.
+  All children of Fl_Tabs should have the same size and exactly fit on top of
+  each other. They should only leave space above or below where the tabs will
+  go, but not on the sides. If the first child of Fl_Tabs is set to
+  "resizable()", the riders will not resize when the tabs are resized.
 
-    The destructor <I>also deletes all the children</I>. This
-    allows a whole tree to be deleted at once, without having to
-    keep a pointer to all the children in the user code. A kludge
-    has been done so the Fl_Tabs and all of its children
-    can be automatic (local) variables, but you must declare the
-    Fl_Tabs widget <I>first</I> so that it is destroyed last.
+  The destructor <I>also deletes all the children</I>. This
+  allows a whole tree to be deleted at once, without having to
+  keep a pointer to all the children in the user code. A kludge
+  has been done so the Fl_Tabs and all of its children
+  can be automatic (local) variables, but you must declare the
+  Fl_Tabs widget <I>first</I> so that it is destroyed last.
 */
 Fl_Tabs::Fl_Tabs(int X,int Y,int W, int H, const char *l) :
   Fl_Group(X,Y,W,H,l)
 {
   box(FL_THIN_UP_BOX);
+#if FLTK_ABI_VERSION >= 10304
+  // NEW (nothing)
+#else
+  // OLD (init to prevent 'unused' warnings) -- STR #3169
+  value_ = 0;	// NOTE: this member unused -- STR #3169
+#endif
   push_ = 0;
   tab_pos = 0;
   tab_width = 0;
@@ -472,27 +480,27 @@ Fl_Tabs::~Fl_Tabs() {
 }
 
 /**
-    Returns the position and size available to be used by its children.
+  Returns the position and size available to be used by its children.
 
-    If there isn't any child yet the \p tabh parameter will be used to
-    calculate the return values. This assumes that the children's labelsize
-    is the same as the Fl_Tabs' labelsize and adds a small border.
+  If there isn't any child yet the \p tabh parameter will be used to
+  calculate the return values. This assumes that the children's labelsize
+  is the same as the Fl_Tabs' labelsize and adds a small border.
 
-    If there are already children, the values of child(0) are returned, and
-    \p tabh is ignored.
+  If there are already children, the values of child(0) are returned, and
+  \p tabh is ignored.
 
-    \note Children should always use the same positions and sizes.
+  \note Children should always use the same positions and sizes.
 
-    \p tabh can be one of
-    \li    0: calculate label size, tabs on top
-    \li   -1: calculate label size, tabs on bottom
-    \li >  0: use given \p tabh value, tabs on top (height = tabh)
-    \li < -1: use given \p tabh value, tabs on bottom (height = -tabh)
+  \p tabh can be one of
+  \li    0: calculate label size, tabs on top
+  \li   -1: calculate label size, tabs on bottom
+  \li >  0: use given \p tabh value, tabs on top (height = tabh)
+  \li < -1: use given \p tabh value, tabs on bottom (height = -tabh)
 
-    \param[in]	tabh		position and optional height of tabs (see above)
-    \param[out]	rx,ry,rw,rh	(x,y,w,h) of client area for children
+  \param[in]	tabh		position and optional height of tabs (see above)
+  \param[out]	rx,ry,rw,rh	(x,y,w,h) of client area for children
 
-    \since	FLTK 1.3.0
+  \since	FLTK 1.3.0
 */
 void Fl_Tabs::client_area(int &rx, int &ry, int &rw, int &rh, int tabh) {
 
@@ -540,5 +548,5 @@ void Fl_Tabs::clear_tab_positions() {
 }
 
 //
-// End of "$Id: Fl_Tabs.cxx 10122 2014-03-24 18:24:59Z greg.ercolano $".
+// End of "$Id: Fl_Tabs.cxx 11970 2016-09-23 14:03:40Z AlbrechtS $".
 //

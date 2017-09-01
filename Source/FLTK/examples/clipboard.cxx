@@ -1,5 +1,5 @@
 //
-// "$Id: clipboard.cxx 10377 2014-10-14 11:53:51Z AlbrechtS $"
+// "$Id: clipboard.cxx 11712 2016-05-05 07:21:24Z manolo $"
 //
 // Clipboard display test application for the Fast Light Tool Kit (FLTK).
 //
@@ -25,6 +25,9 @@
 #include <FL/Fl_Button.H>
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
+#ifdef WIN32
+#include <windows.h>
+#endif // WIN32
 
 /* Displays and follows the content of the clipboard with either image or text data
  */
@@ -158,9 +161,7 @@ int main(int argc, char **argv)
   win->end();
   win->resizable(tabs);
   win->show(argc,argv);
-#if defined(__APPLE__) || defined(WIN32)
   clip_callback(1, tabs); // use clipboard content at start
-#endif
   Fl::add_clipboard_notify(clip_callback, tabs); // will update with new clipboard content immediately or at application activation
 
   Fl_Image::RGB_scaling(FL_RGB_SCALING_BILINEAR); // set bilinear image scaling method
@@ -168,5 +169,5 @@ int main(int argc, char **argv)
 }
 
 //
-// End of "$Id: clipboard.cxx 10377 2014-10-14 11:53:51Z AlbrechtS $".
+// End of "$Id: clipboard.cxx 11712 2016-05-05 07:21:24Z manolo $".
 //

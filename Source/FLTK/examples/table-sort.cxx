@@ -1,5 +1,5 @@
 //
-// "$Id: table-sort.cxx 9837 2013-03-17 06:06:52Z greg.ercolano $"
+// "$Id: table-sort.cxx 11493 2016-03-31 21:50:34Z AlbrechtS $"
 //
 //	table-sort -- An example application using a sortable Fl_Table
 //                
@@ -31,6 +31,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <vector>
 #include <algorithm>            // STL sort
 
@@ -45,7 +46,6 @@ static const char *G_header[] = { "Date", "Time", "Size", "Filename", "", "", ""
 #  endif
 #else /*WIN32*/
 // UNIX
-#  include <ctype.h>
 #  define DIRCMD          "ls -l"
 static const char *G_header[] = { "Perms", "#L", "Own", "Group", "Size", "Date", "", "", "Filename", 0 };
 #endif /*WIN32*/
@@ -287,5 +287,5 @@ int main() {
 }
 
 //
-// End of "$Id: table-sort.cxx 9837 2013-03-17 06:06:52Z greg.ercolano $".
+// End of "$Id: table-sort.cxx 11493 2016-03-31 21:50:34Z AlbrechtS $".
 //

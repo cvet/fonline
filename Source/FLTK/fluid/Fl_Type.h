@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Type.h 10093 2014-02-04 00:34:41Z AlbrechtS $"
+// "$Id: Fl_Type.h 11952 2016-09-20 12:57:18Z AlbrechtS $"
 //
 // Widget type header file for the Fast Light Tool Kit (FLTK).
 //
@@ -12,7 +12,7 @@
 // but it was easier to implement this by using the file read/write
 // that is needed to save the setup anyways.
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -30,6 +30,13 @@
 #include <FL/Fl_Plugin.H>
 #include "Fluid_Image.h"
 #include <FL/fl_draw.H>
+#include <stdarg.h>
+
+#ifdef WIN32
+  #include "ExternalCodeEditor_WIN32.h"
+#else
+  #include "ExternalCodeEditor_UNIX.h"
+#endif
 
 void set_modflag(int mf);
 
@@ -108,7 +115,7 @@ public:
   virtual void open();	// what happens when you double-click
 
   // read and write data to a saved file:
-  void write();
+  virtual void write();
   virtual void write_properties();
   virtual void read_property(const char *);
   virtual int read_fdesign(const char*, const char*);
@@ -119,6 +126,7 @@ public:
   virtual void write_code2(); // code and .h after children
   void write_comment_h(const char *ind=""); // write the commentary text into the header file
   void write_comment_c(const char *ind=""); // write the commentary text into the source file
+  void write_comment_inline_c(const char *ind=0L); // write the commentary text
 
   // live mode
   virtual Fl_Widget *enter_live_mode(int top=0); // build wdgets needed for live mode
@@ -141,6 +149,7 @@ public:
   virtual int is_menu_button() const;
   virtual int is_group() const;
   virtual int is_window() const;
+  virtual int is_code() const;
   virtual int is_code_block() const;
   virtual int is_decl_block() const;
   virtual int is_comment() const;
@@ -183,15 +192,56 @@ public:
 };
 
 class Fl_Code_Type : public Fl_Type {
+  ExternalCodeEditor editor_;
 public:
   Fl_Type *make();
+  void write();
   void write_code1();
   void write_code2();
   void open();
   virtual const char *type_name() {return "code";}
   int is_code_block() const {return 0;}
+  int is_code() const {return 1;}
   int pixmapID() { return 8; }
   virtual int is_public() const;
+  // See if external editor is open
+  int is_editing() {
+    return editor_.is_editing();
+  }
+  // Reap the editor's pid
+  // Returns:
+  //   -2 -- editor not open
+  //   -1 -- wait failed
+  //    0 -- process still running
+  //   >0 -- process finished + reaped (returns pid)
+  //
+  int reap_editor() {
+    return editor_.reap_editor();
+  }
+  // Handle external editor file modifications
+  // If changed, record keeping is updated and file's contents is loaded into ram
+  //
+  // Returns:
+  //     0 -- file unchanged or not editing
+  //     1 -- file changed, internal records updated, 'code' has new content
+  //    -1 -- error getting file info (get_ms_errmsg() has reason)
+  //
+  // TODO: Figure out how saving a fluid file can be intercepted to grab 
+  //       current contents of editor file..
+  //
+  int handle_editor_changes() {
+    const char *newcode = 0;
+    switch ( editor_.handle_changes(&newcode) ) {
+      case 1: {            // (1)=changed
+        name(newcode);     // update value in ram
+        free((void*)newcode);
+        return 1;
+      }
+      case -1: return -1;  // (-1)=error -- couldn't read file (dialog showed reason)
+      default: break;      // (0)=no change
+    }
+    return 0;
+  }
 };
 
 class Fl_CodeBlock_Type : public Fl_Type {
@@ -788,6 +838,7 @@ public:
 };
 // object list operations:
 Fl_Widget *make_widget_browser(int X,int Y,int W,int H);
+void redraw_widget_browser(Fl_Type*);
 extern int modflag;
 void delete_all(int selected_only=0);
 void selection_changed(Fl_Type* new_current);
@@ -811,6 +862,7 @@ int write_declare(const char *, ...) __fl_attr((__format__ (__printf__, 1, 2)));
 int is_id(char);
 const char* unique_id(void* o, const char*, const char*, const char*);
 void write_c(const char*, ...) __fl_attr((__format__ (__printf__, 1, 2)));
+void vwrite_c(const char* format, va_list args);
 void write_h(const char*, ...) __fl_attr((__format__ (__printf__, 1, 2)));
 void write_cstring(const char *);
 void write_cstring(const char *,int length);
@@ -861,5 +913,5 @@ public:
 
 
 //
-// End of "$Id: Fl_Type.h 10093 2014-02-04 00:34:41Z AlbrechtS $".
+// End of "$Id: Fl_Type.h 11952 2016-09-20 12:57:18Z AlbrechtS $".
 //

@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Function_Type.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Function_Type.cxx 11952 2016-09-20 12:57:18Z AlbrechtS $"
 //
 // C function type code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -15,16 +15,24 @@
 //
 //     http://www.fltk.org/str.php
 //
-
 #include <FL/Fl.H>
+#include <FL/Fl_Window.H>
 #include <FL/Fl_Preferences.H>
 #include <FL/Fl_File_Chooser.H>
 #include "Fl_Type.h"
 #include <FL/fl_show_input.H>
 #include <FL/Fl_File_Chooser.H>
+#include "alignment_panel.h"
 #include "../src/flstring.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#ifdef WIN32
+  #include "ExternalCodeEditor_WIN32.h"
+#else
+  #include "ExternalCodeEditor_UNIX.h"
+#endif
 
 extern int i18n_type;
 extern const char* i18n_include;
@@ -33,11 +41,12 @@ extern const char* i18n_file;
 extern const char* i18n_set;
 extern char i18n_program[];
 
-extern int compile_only;
+extern int batch_mode;
 
 extern void redraw_browser();
 extern void goto_source_dir();
 extern void leave_source_dir();
+extern Fl_Window *main_window;
 
 ////////////////////////////////////////////////////////////////
 // quick check of any C code for legality, returns an error message
@@ -434,6 +443,14 @@ Fl_Type *Fl_Code_Type::make() {
 }
 
 void Fl_Code_Type::open() {
+  // Using an external code editor? Open it..
+  if ( G_use_external_editor && G_external_editor_command[0] ) {
+    const char *cmd = G_external_editor_command;
+    const char *code = name();
+    if ( editor_.open_editor(cmd, code) == 0 )
+      return;   // return if editor opened ok, fallthru to built-in if not
+  }
+  // Use built-in code editor..
   if (!code_panel) make_code_panel();
   const char *text = name();
   code_input->buffer()->text( text ? text : "" );
@@ -459,9 +476,23 @@ BREAK2:
 
 Fl_Code_Type Fl_Code_type;
 
+void Fl_Code_Type::write() {
+  // External editor changes? If so, load changes into ram, update mtime/size
+  if ( handle_editor_changes() == 1 ) {
+    main_window->redraw();    // tell fluid to redraw; edits may affect tree's contents
+  }
+  Fl_Type::write();
+}
+
 void Fl_Code_Type::write_code1() {
+  // External editor changes? If so, load changes into ram, update mtime/size
+  if ( handle_editor_changes() == 1 ) {
+    main_window->redraw();    // tell fluid to redraw; edits may affect tree's contents
+  }
+
   const char* c = name();
   if (!c) return;
+
   const char *pch;
   const char *ind = indent();
   while( (pch=strchr(c,'\n')) )
@@ -920,9 +951,9 @@ void Fl_Data_Type::write_code1() {
     }
   }
   // if we are in interactive mode, we pop up a warning dialog 
-  // giving the error: (compile_only && !write_sourceview)
+  // giving the error: (batch_mode && !write_sourceview) ???
   if (message && !write_sourceview) {
-    if (compile_only)
+    if (batch_mode)
       fprintf(stderr, "FLUID ERROR: %s %s\n", message, fn);
     else
       fl_alert("%s\n%s\n", message, fn);
@@ -1461,5 +1492,5 @@ int Fl_Class_Type::has_function(const char *rtype, const char *sig) const {
 }
 
 //
-// End of "$Id: Fl_Function_Type.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_Function_Type.cxx 11952 2016-09-20 12:57:18Z AlbrechtS $".
 //

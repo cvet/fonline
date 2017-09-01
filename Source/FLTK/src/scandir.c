@@ -1,5 +1,5 @@
 /*
- * "$Id: scandir.c 9858 2013-04-05 14:14:08Z manolo $"
+ * "$Id: scandir.c 11243 2016-02-27 15:14:42Z AlbrechtS $"
  *
  * This is a placekeeper stub that pulls in scandir implementations for host
  * systems that do not provide a compatible one natively
@@ -27,6 +27,9 @@
 #  endif /* HAVE_SCANDIR */
 #endif
 
+/* Avoid "ISO C forbids an empty translation unit" warning */
+typedef int dummy;
+
 /*
- * End of "$Id: scandir.c 9858 2013-04-05 14:14:08Z manolo $".
+ * End of "$Id: scandir.c 11243 2016-02-27 15:14:42Z AlbrechtS $".
  */

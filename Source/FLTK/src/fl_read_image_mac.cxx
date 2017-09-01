@@ -1,5 +1,5 @@
 //
-// "$Id: fl_read_image_mac.cxx 10078 2014-01-22 20:39:21Z manolo $"
+// "$Id: fl_read_image_mac.cxx 10468 2014-11-25 09:03:30Z manolo $"
 //
 // WIN32 image reading routines for the Fast Light Tool Kit (FLTK).
 //
@@ -42,9 +42,7 @@ fl_read_image(uchar *p,		// I - Pixel buffer or NULL to allocate
     if( (sw - x < w) || (sh - y < h) )  return NULL;
     }
   else { // reading from current window
-    Fl_Window *window = Fl_Window::current();
-    while(window->window()) window = window->window();
-    base = Fl_X::bitmap_from_window_rect(window,x,y,w,h,&delta);
+    base = Fl_X::bitmap_from_window_rect(Fl_Window::current(),x,y,w,h,&delta);
     if (!base) return NULL;
     rowBytes = delta*w;
     x = y = 0;
@@ -70,5 +68,5 @@ fl_read_image(uchar *p,		// I - Pixel buffer or NULL to allocate
 
 
 //
-// End of "$Id: fl_read_image_mac.cxx 10078 2014-01-22 20:39:21Z manolo $".
+// End of "$Id: fl_read_image_mac.cxx 10468 2014-11-25 09:03:30Z manolo $".
 //

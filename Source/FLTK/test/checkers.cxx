@@ -1,5 +1,5 @@
 //
-// "$Id: checkers.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: checkers.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $"
 //
 // Checkers game for the Fast Light Tool Kit (FLTK).
 //
@@ -500,7 +500,7 @@ int fullexpand(node *f, int level) {
   node* n = f->son;
   if (!n->jump && n->brother) {if (level<1) return(1); level--;}
   int i;
-  node* sons[32]; for (i=0; (sons[i++] = n); n = n->brother);
+  node* sons[32]; for (i=0; (sons[i++] = n); n = n->brother) {/*empty*/}
   int ret = 1;
   for (i=0; ret && (n = sons[i++]);) {
     makemove(n);
@@ -1358,5 +1358,5 @@ int main(int argc, char **argv) {
 }
 
 //
-// End of "$Id: checkers.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: checkers.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $".
 //

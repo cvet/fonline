@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Window_fullscreen.cxx 10189 2014-06-11 09:10:53Z ossman $"
+// "$Id: Fl_Window_fullscreen.cxx 10652 2015-03-25 19:15:19Z AlbrechtS $"
 //
 // Fullscreen window support for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -36,6 +36,9 @@ int Fl_Window::no_fullscreen_x = 0;
 int Fl_Window::no_fullscreen_y = 0;
 int Fl_Window::no_fullscreen_w = 0;
 int Fl_Window::no_fullscreen_h = 0;
+#endif
+
+#if FLTK_ABI_VERSION < 10303
 int Fl_Window::fullscreen_screen_top = -1;
 int Fl_Window::fullscreen_screen_bottom = -1;
 int Fl_Window::fullscreen_screen_left = -1;
@@ -118,5 +121,5 @@ void Fl_Window::fullscreen_screens(int top, int bottom, int left, int right) {
 
 
 //
-// End of "$Id: Fl_Window_fullscreen.cxx 10189 2014-06-11 09:10:53Z ossman $".
+// End of "$Id: Fl_Window_fullscreen.cxx 10652 2015-03-25 19:15:19Z AlbrechtS $".
 //

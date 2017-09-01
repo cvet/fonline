@@ -1,9 +1,9 @@
 //
-// "$Id: Enumerations.H 10382 2014-10-15 21:00:20Z ianmacarthur $"
+// "$Id: Enumerations.H 11803 2016-07-09 18:43:31Z AlbrechtS $"
 //
 // Enumerations for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2014 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -23,11 +23,27 @@
 #ifndef Fl_Enumerations_H
 #define Fl_Enumerations_H
 
-/* Uncomment the following FLTK_ABI_VERSION line to enable ABI breaking fixes
- * in the current patch release of FLTK. ** Use for static builds only! **
- * For more info on this macro, see: http://fltk.org/cmp.php#FLTK_ABI_VERSION
+/*
+ ******************************************************************************
+ * Notes on FL_ABI_VERSION and deprecated (obsolete) FLTK_ABI_VERSION:
+ *
+ * (1)	FLTK_ABI_VERSION is deprecated, but still defined below.
+ *	Do NOT define FLTK_ABI_VERSION here - it would be overwritten later.
+ *
+ * (2)	FL_ABI_VERSION is now (as of FLTK 1.3.4) defined by configure
+ *	or CMake. Do NOT define it here. Its definition will be included
+ *	below by "#include <FL/abi-version.h>".
+ *
+ * (3)	If you use the provided IDE files (Windows VC++ or Xcode) you should
+ *	edit the definition in the provided file abi-version.ide. The correct
+ *	file is `/path/to/fltk/abi-version.ide' .
+ *
+ ******************************************************************************
+ * For more informations on FL_ABI_VERSION see README.abi-version.txt.
+ ******************************************************************************
  */
-//#define FLTK_ABI_VERSION 10303
+
+#include <FL/abi-version.h>
 
 #  include "Fl_Export.H"
 #  include "fl_types.h"
@@ -59,22 +75,127 @@
 
    FLTK remains binary compatible between patches.
  */
-#define FL_PATCH_VERSION	3
+#define FL_PATCH_VERSION	4
 
 /**
     The FLTK version number as a \em double.
 
-    FL_VERSION is a double that describes the major and minor version numbers.
-    Version 1.1 is actually stored as 1.01 to allow for more than 9 minor
-    releases.
+    FL_VERSION is a \em double that describes the major, minor, and patch
+    version numbers.
+
+    Version 1.2.3 is actually stored as 1.0203 to allow for more than 9
+    minor and patch releases.
+
+    \deprecated This \p double version number is retained for compatibility
+    with existing program code. New code should use \em int FL_API_VERSION
+    instead. FL_VERSION is deprecated because comparisons of floating point
+    values may fail due to rounding errors. However, there are currently no
+    plans to remove this deprecated constant.
+
+    FL_VERSION is equivalent to <em>(double)FL_API_VERSION / 10000</em>.
+
+    \see Fl::version() (deprecated as well)
+    \see FL_API_VERSION
+    \see Fl::api_version()
+ */
+#define FL_VERSION	( (double)FL_MAJOR_VERSION + \
+			  (double)FL_MINOR_VERSION * 0.01 + \
+			  (double)FL_PATCH_VERSION * 0.0001 )
+
+/**
+    The FLTK API version number as an \em int.
+
+    FL_API_VERSION is an \em int that describes the major, minor, and patch
+    version numbers.
+
+    Version 1.2.3 is actually stored as 10203 to allow for more than 9
+    minor and patch releases.
 
     The FL_MAJOR_VERSION, FL_MINOR_VERSION, and FL_PATCH_VERSION constants
     give the integral values for the major, minor, and patch releases
     respectively.
+
+    \note FL_API_VERSION is intended to replace the deprecated
+    \em double FL_VERSION.
+
+    \see Fl::api_version()
  */
-#define FL_VERSION		((double)FL_MAJOR_VERSION + \
-				 (double)FL_MINOR_VERSION * 0.01 + \
-				 (double)FL_PATCH_VERSION * 0.0001)
+#define FL_API_VERSION (FL_MAJOR_VERSION*10000 + FL_MINOR_VERSION*100 + FL_PATCH_VERSION)
+
+/**
+    The FLTK ABI (Application Binary Interface) version number as an \em int.
+
+    FL_ABI_VERSION is an \em int that describes the major, minor, and patch
+    ABI version numbers in the same format as FL_API_VERSION.
+
+    The ABI version number \p FL_ABI_VERSION is usually the same as the
+    API version \p FL_API_VERSION with the last two digits set to '00'.
+
+    FLTK retains the ABI (Application Binary Interface) during patch
+    releases of the same major and minor versions. Examples:
+
+    \verbatim
+      FLTK Version  FL_API_VERSION  FL_ABI_VERSION  FL_VERSION (deprecated)
+        1.3.0          10300           10300           1.0300
+	1.3.4          10304           10300           1.0304
+    \endverbatim
+
+    Version 1.2.3 is actually stored as 10203 to allow for more than 9
+    minor and patch releases.
+
+    The FL_MAJOR_VERSION, FL_MINOR_VERSION, and FL_PATCH_VERSION constants
+    give the integral values for the major, minor, and patch releases
+    respectively.
+
+    To enable new ABI-breaking features in patch releases you can configure
+    FLTK to use a higher FL_ABI_VERSION.
+
+    \see README.abi-version.txt
+ */
+#ifndef FL_ABI_VERSION
+#define FL_ABI_VERSION (FL_MAJOR_VERSION*10000 + FL_MINOR_VERSION*100)
+#endif
+
+/*
+  Check if FL_ABI_VERSION is out of allowed range; redefine if necessary.
+
+  This is done to prevent users from defining an illegal ABI version.
+
+  Rule: FL_MAJOR_VERSION * 10000 + FL_MINOR_VERSION * 100
+	  <= FL_ABI_VERSION <= FL_API_VERSION.
+
+  Example (FLTK 1.3.4):
+
+    10300 <= FL_ABI_VERSION <= 10304
+
+  Note: configure + CMake can be used to define FL_ABI_VERSION, but they
+  do not check validity. This is done here.
+*/
+
+#if FL_ABI_VERSION < FL_MAJOR_VERSION*10000 + FL_MINOR_VERSION*100
+
+# undef FL_ABI_VERSION
+# define FL_ABI_VERSION (FL_MAJOR_VERSION*10000 + FL_MINOR_VERSION*100)
+
+#elif FL_ABI_VERSION > FL_API_VERSION
+
+# undef FL_ABI_VERSION
+# define FL_ABI_VERSION FL_API_VERSION
+
+#endif
+
+/*
+  FLTK_ABI_VERSION is deprecated (replaced by FL_ABI_VERSION).
+
+  This deprecated constant will be removed in FLTK 1.4.0 and later.
+  Please use FL_ABI_VERSION when FLTK 1.4.0 has been released.
+*/
+
+#ifdef FLTK_ABI_VERSION
+#undef FLTK_ABI_VERSION
+#endif
+
+#define FLTK_ABI_VERSION FL_ABI_VERSION
 
 /*@}*/	// group: Version Numbers
 
@@ -91,8 +212,12 @@
     valid until the next event is read from the window system, so it 
     is ok to look at it outside of the handle() method.
 
+    Event numbers can be converted to their actual names using the
+    \ref fl_eventnames[] array defined in \#include &lt;FL/names.h&gt;
+
     \sa Fl::event_text(), Fl::event_key(), class Fl::
  */
+// DEV NOTE: Keep this list in sync with FL/names.H
 enum Fl_Event {	// events
   /** No event. */
   FL_NO_EVENT		= 0,
@@ -296,7 +421,12 @@ enum Fl_Event {	// events
   FL_SCREEN_CONFIGURATION_CHANGED = 24,
   /** The fullscreen state of the window has changed
    */
-   FL_FULLSCREEN         = 25
+  FL_FULLSCREEN         = 25,
+  /** The user has made a zoom/pinch/magnification gesture. 
+      The Fl::event_dy() method can be used to find magnification amount,
+      Fl::event_x() and Fl::event_y() are set as well.
+     */
+  FL_ZOOM_GESTURE	= 26
 };
 
 /** \name When Conditions */
@@ -470,7 +600,7 @@ enum Fl_When { // Fl_Widget::when():
 		\see src/Fl_get_system_colors.cxx
 */
 /*@{*/
-enum Fl_Boxtype { // boxtypes (if you change these you must fix fl_boxtype.C):
+enum Fl_Boxtype { // boxtypes (if you change these you must fix fl_boxtype.cxx):
 
   FL_NO_BOX = 0,		///< nothing is drawn at all, this box is invisible
   FL_FLAT_BOX,			///< a flat box
@@ -513,21 +643,21 @@ enum Fl_Boxtype { // boxtypes (if you change these you must fix fl_boxtype.C):
   _FL_GTK_UP_BOX,		///< gtk+ version of FL_UP_BOX
   _FL_GTK_DOWN_BOX,		///< gtk+ version of FL_DOWN_BOX
   _FL_GTK_UP_FRAME,		///< gtk+ version of FL_UP_FRAME
-  _FL_GTK_DOWN_FRAME,		///< gtk+ version of FL_DOWN_RAME
+  _FL_GTK_DOWN_FRAME,		///< gtk+ version of FL_DOWN_FRAME
   _FL_GTK_THIN_UP_BOX,		///< gtk+ version of FL_THIN_UP_BOX
   _FL_GTK_THIN_DOWN_BOX,	///< gtk+ version of FL_THIN_DOWN_BOX
-  _FL_GTK_THIN_UP_FRAME,	///< gtk+ version of FL_UP_FRAME
+  _FL_GTK_THIN_UP_FRAME,	///< gtk+ version of FL_THIN_UP_FRAME
   _FL_GTK_THIN_DOWN_FRAME,	///< gtk+ version of FL_THIN_DOWN_FRAME
   _FL_GTK_ROUND_UP_BOX,		///< gtk+ version of FL_ROUND_UP_BOX
   _FL_GTK_ROUND_DOWN_BOX,	///< gtk+ version of FL_ROUND_DOWN_BOX
-  _FL_GLEAM_UP_BOX,		///< gleam version of FL_GLEAM_UP_BOX
-  _FL_GLEAM_DOWN_BOX,		///< gleam version of FL_GLEAM_DOWN_BOX
-  _FL_GLEAM_UP_FRAME, 		///< gleam version of FL_GLEAM_UP_FRAME
-  _FL_GLEAM_DOWN_FRAME,		///< gleam version of FL_GLEAM_DOWN_FRAME
-  _FL_GLEAM_THIN_UP_BOX,    	///< gleam version of FL_GLEAM_THIN_UP_BOX
-  _FL_GLEAM_THIN_DOWN_BOX,	///< gleam version of FL_GLEAM_THIN_DOWN_BOX
-  _FL_GLEAM_ROUND_UP_BOX,   	///< gleam version of FL_GLEAM_ROUND_UP_BOX
-  _FL_GLEAM_ROUND_DOWN_BOX,	///< gleam version of FL_GLEAM_ROUND_DOWN_BOX
+  _FL_GLEAM_UP_BOX,		///< gleam version of FL_UP_BOX
+  _FL_GLEAM_DOWN_BOX,		///< gleam version of FL_DOWN_BOX
+  _FL_GLEAM_UP_FRAME,		///< gleam version of FL_UP_FRAME
+  _FL_GLEAM_DOWN_FRAME,		///< gleam version of FL_DOWN_FRAME
+  _FL_GLEAM_THIN_UP_BOX,	///< gleam version of FL_THIN_UP_BOX
+  _FL_GLEAM_THIN_DOWN_BOX,	///< gleam version of FL_THIN_DOWN_BOX
+  _FL_GLEAM_ROUND_UP_BOX,	///< gleam version of FL_ROUND_UP_BOX
+  _FL_GLEAM_ROUND_DOWN_BOX,	///< gleam version of FL_ROUND_DOWN_BOX
   FL_FREE_BOXTYPE		///< the first free box type for creation of new box types
 };
 extern FL_EXPORT Fl_Boxtype fl_define_FL_ROUND_UP_BOX();
@@ -620,27 +750,27 @@ inline Fl_Boxtype fl_frame(Fl_Boxtype b) {
 
 /**
    The labeltype() method sets the type of the label.
-   
+
    The following standard label types are included:
-   
+
    \todo	The doxygen comments are incomplete, and some labeltypes
-   		are starting with an underscore. Also, there are three
+   	start with an underscore. Also, there are three
 		external functions undocumented (yet):
 		  - fl_define_FL_SHADOW_LABEL()
 		  - fl_define_FL_ENGRAVED_LABEL()
 		  - fl_define_FL_EMBOSSED_LABEL()
 */
 enum Fl_Labeltype {	// labeltypes:
-  FL_NORMAL_LABEL	= 0,	///< draws the text (0)
-  FL_NO_LABEL,			///< does nothing
-  _FL_SHADOW_LABEL,		///< draws a drop shadow under the text
-  _FL_ENGRAVED_LABEL,		///< draws edges as though the text is engraved
-  _FL_EMBOSSED_LABEL,		///< draws edges as though the text is raised
-  _FL_MULTI_LABEL,		///< ?
-  _FL_ICON_LABEL,		///< draws the icon associated with the text
-  _FL_IMAGE_LABEL,		///< ?
+  FL_NORMAL_LABEL	= 0, ///< draws the text (0)
+  FL_NO_LABEL,         ///< does nothing
+  _FL_SHADOW_LABEL,    ///< draws a drop shadow under the text
+  _FL_ENGRAVED_LABEL,	 ///< draws edges as though the text is engraved
+  _FL_EMBOSSED_LABEL,  ///< draws edges as though the text is raised
+  _FL_MULTI_LABEL,     ///< draws a composite label \see Fl_Multi_Label
+  _FL_ICON_LABEL,      ///< draws the icon associated with the text
+  _FL_IMAGE_LABEL,     ///< the label displays an "icon" based on a Fl_Image
 
-  FL_FREE_LABELTYPE		///< first free labeltype to use for creating own labeltypes
+  FL_FREE_LABELTYPE    ///< first free labeltype to use for creating own labeltypes
 };
 
 /** 
@@ -658,29 +788,37 @@ extern Fl_Labeltype FL_EXPORT fl_define_FL_EMBOSSED_LABEL();
 
 /** \name Alignment Flags 
     Flags to control the label alignment. 
-    This controls how the label is displayed next to or inside the widget. 
-    The default value is FL_ALIGN_CENTER for most widgets, which centers the label
-    inside the widget.
 
-    Flags can be or'd to achieve a combination of alignments.
+    This controls how the label is displayed next to or inside the widget. 
+    The default value is FL_ALIGN_CENTER (0) for most widgets, which centers
+    the label inside the widget.
+
+    Flags can be or'd to achieve a combination of alignments, but there
+    are some "magic values" (e.g. combinations of TOP and BOTTOM and of
+    LEFT and RIGHT) that have special meanings (see below). For instance:<BR>
+    FL_ALIGN_TOP_LEFT == (FL_ALIGN_TOP|FL_ALIGN_LEFT) != FL_ALIGN_LEFT_TOP.
 
     \code
-    Outside alignments:
-               TOP_LEFT        TOP       TOP_RIGHT
-       LEFT_TOP+---------------------------------+RIGHT_TOP
-               |                                 |
-           LEFT|                                 |RIGHT
-               |                                 |
-    LEFT_BOTTOM+---------------------------------+RIGHT_BOTTOM
-               BOTTOM_RIGHT   BOTTOM   BOTTOM_LEFT
+    Outside alignments (FL_ALIGN_INSIDE is not set):
 
-    Inside alignments:
+               TOP_LEFT        TOP       TOP_RIGHT
+               +---------------------------------+
+       LEFT_TOP|                                 |RIGHT_TOP
+               |                                 |
+           LEFT|             CENTER              |RIGHT
+               |                                 |
+    LEFT_BOTTOM|                                 |RIGHT_BOTTOM
+               +---------------------------------+
+               BOTTOM_LEFT   BOTTOM   BOTTOM_RIGHT
+
+    Inside alignments (FL_ALIGN_INSIDE is set):
+
                +---------------------------------+
                |TOP_LEFT       TOP      TOP_RIGHT|
                |                                 |
-               |LEFT                        RIGHT|
+               |LEFT         CENTER         RIGHT|
                |                                 |
-               |BOTTOM_RIGHT  BOTTOM  BOTTOM_LEFT|
+               |BOTTOM_LEFT  BOTTOM  BOTTOM_RIGHT|
                +---------------------------------+
     \endcode
     \see #FL_ALIGN_CENTER, etc.
@@ -772,7 +910,7 @@ extern FL_EXPORT Fl_Fontsize FL_NORMAL_SIZE;	///< normal font size
 /** \name Colors 
     The Fl_Color type holds an FLTK color value.
 
-    Colors are either 8-bit indexes into a virtual colormap
+    Colors are either 8-bit indexes into a <a href="fltk-colormap.png">virtual colormap</a>
     or 24-bit RGB color values. (See \ref drawing_colors for the default FLTK colormap)
 
     Color indices occupy the lower 8 bits of the value, while
@@ -867,19 +1005,19 @@ inline Fl_Color fl_rgb_color(uchar g) {
   else return (Fl_Color)(((((g << 8) | g) << 8) | g) << 8);
 }
 
-/** Returns a gray color value from black (i == 0) to white (i == FL_NUM_GRAY - 1). 
-    FL_NUM_GRAY is defined to be 24 in the current FLTK release. 
+/** Returns a gray color value from black (i == 0) to white (i == FL_NUM_GRAY - 1).
+    FL_NUM_GRAY is defined to be 24 in the current FLTK release.
     To get the closest FLTK gray value to an 8-bit grayscale color 'I' use:
 
- \code 
+ \code
    fl_gray_ramp(I * (FL_NUM_GRAY - 1) / 255)
  \endcode
-*/ 
+*/
 inline Fl_Color fl_gray_ramp(int i) {return (Fl_Color)(i+FL_GRAY_RAMP);}
 
 /** Returns a color out of the color cube.
 
-  \p r must be in the range 0 to FL_NUM_RED (5) minus 1, 
+  \p r must be in the range 0 to FL_NUM_RED (5) minus 1,
   \p g must be in the range 0 to FL_NUM_GREEN (8) minus 1,
   \p b must be in the range 0 to FL_NUM_BLUE (5) minus 1.
 
@@ -894,7 +1032,7 @@ inline Fl_Color fl_gray_ramp(int i) {return (Fl_Color)(i+FL_GRAY_RAMP);}
 inline Fl_Color fl_color_cube(int r, int g, int b) {
   return (Fl_Color)((b*FL_NUM_RED + r) * FL_NUM_GREEN + g + FL_COLOR_CUBE);}
 
-/*@}*/		// group: Colors  
+/*@}*/		// group: Colors
 
 /** \name Cursors */
 /*@{*/
@@ -955,7 +1093,8 @@ enum Fl_Mode {
   FL_RGB8	= 64,
   FL_MULTISAMPLE= 128,
   FL_STEREO     = 256,
-  FL_FAKE_SINGLE = 512	// Fake single buffered windows using double-buffer
+  FL_FAKE_SINGLE = 512,	// Fake single buffered windows using double-buffer
+  FL_OPENGL3    = 1024
 };
 
 // image alpha blending
@@ -984,5 +1123,5 @@ enum Fl_Damage {
 #endif
 
 //
-// End of "$Id: Enumerations.H 10382 2014-10-15 21:00:20Z ianmacarthur $".
+// End of "$Id: Enumerations.H 11803 2016-07-09 18:43:31Z AlbrechtS $".
 //

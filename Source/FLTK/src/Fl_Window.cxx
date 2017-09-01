@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Window.cxx 10405 2014-10-29 15:53:52Z manolo $"
+// "$Id: Fl_Window.cxx 11881 2016-08-20 17:08:27Z AlbrechtS $"
 //
 // Window widget class for the Fast Light Tool Kit (FLTK).
 //
@@ -53,12 +53,21 @@ void Fl_Window::_Fl_Window() {
   size_range_set = 0;
   minw = maxw = minh = maxh = 0;
   shape_data_ = NULL;
+
 #if FLTK_ABI_VERSION >= 10301
   no_fullscreen_x = 0;
   no_fullscreen_y = 0;
   no_fullscreen_w = w();
   no_fullscreen_h = h();
 #endif
+
+#if FLTK_ABI_VERSION >= 10303
+  fullscreen_screen_top = -1;
+  fullscreen_screen_bottom = -1;
+  fullscreen_screen_left = -1;
+  fullscreen_screen_right = -1;
+#endif
+
   callback((Fl_Callback*)default_callback);
 }
 
@@ -286,14 +295,19 @@ const char *Fl_Window::xclass() const
 
 /** Sets a single default window icon.
 
-  \param[in] icon default icon for all windows subsequently created
+  If \p icon is NULL the current default icons are removed.
+
+  \param[in] icon default icon for all windows subsequently created or NULL
 
   \see Fl_Window::default_icons(const Fl_RGB_Image *[], int)
   \see Fl_Window::icon(const Fl_RGB_Image *)
   \see Fl_Window::icons(const Fl_RGB_Image *[], int)
  */
 void Fl_Window::default_icon(const Fl_RGB_Image *icon) {
-  default_icons(&icon, 1);
+  if (icon)
+    default_icons(&icon, 1);
+  else
+    default_icons(&icon, 0);
 }
 
 /** Sets the default window icons.
@@ -307,7 +321,7 @@ void Fl_Window::default_icon(const Fl_RGB_Image *icon) {
   variable or free the images immediately after this call.
 
   \param[in] icons default icons for all windows subsequently created
-  \param[in] count number of images in \p icons. set to 0 to remove
+  \param[in] count number of images in \p icons. Set to 0 to remove
                    the current default icons
 
   \see Fl_Window::default_icon(const Fl_RGB_Image *)
@@ -318,25 +332,45 @@ void Fl_Window::default_icons(const Fl_RGB_Image *icons[], int count) {
   Fl_X::set_default_icons(icons, count);
 }
 
-/** Sets a single window icon.
+/** Sets or resets a single window icon.
 
-  \param[in] icon icon for this window
+  A window icon \e can be changed while the window is shown, but this
+  \e may be platform and/or window manager dependent. To be sure that
+  the window displays the correct window icon you should always set the
+  icon before the window is shown.
+
+  If a window icon has not been set for a particular window, then the
+  default window icon (see links below) or the system default icon will
+  be used.
+
+  \param[in] icon icon for this window, NULL to reset window icon.
 
   \see Fl_Window::default_icon(const Fl_RGB_Image *)
   \see Fl_Window::default_icons(const Fl_RGB_Image *[], int)
   \see Fl_Window::icons(const Fl_RGB_Image *[], int)
  */
 void Fl_Window::icon(const Fl_RGB_Image *icon) {
-  icons(&icon, 1);
+  if (icon)
+    icons(&icon, 1);
+  else
+    icons(&icon, 0);
 }
 
 /** Sets the window icons.
 
+  You may set multiple window icons with different sizes. Dependent on
+  the platform and system settings the best (or the first) icon will be
+  chosen.
+
   The given images in \p icons are copied. You can use a local
   variable or free the images immediately after this call.
 
+  If \p count is zero, current icons are removed. If \p count is greater than
+  zero (must not be negative), then \p icons[] must contain at least \p count
+  valid image pointers (not NULL). Otherwise the behavior is undefined.
+
   \param[in] icons icons for this window
-  \param[in] count number of images in \p icons. set to 0 to remove
+  \param[in] count number of images in \p icons. Set to 0 to remove
                    the current icons
 
   \see Fl_Window::default_icon(const Fl_RGB_Image *)
@@ -401,28 +435,46 @@ void Fl_Window::free_icons() {
 #endif
 }
 
+
+#ifndef __APPLE__
 /**
-  Waits for the window to be fully displayed after calling show().
+  Waits for the window to be displayed after calling show().
 
   Fl_Window::show() is not guaranteed to show and draw the window on
   all platforms immediately. Instead this is done in the background;
-  particularly on X11 this will take a few messages (client server
-  roundtrips) to display the window.
+  particularly on X11 it will take a few messages (client server
+  roundtrips) to display the window. Usually this small delay doesn't
+  matter, but in some cases you may want to have the window instantiated
+  and displayed synchronously.
 
-  Usually this small delay doesn't matter, but in some cases you may
-  want to have the window instantiated and displayed synchronously.
-
-  Currently (as of FLTK 1.3.3) this method only has an effect on X11.
-  On Windows and Mac OS X show() is always synchronous. If you want to
-  write portable code and need this synchronous show() feature, add
-  win->wait_for_expose() on all platforms, FLTK will just do the
+  Currently (as of FLTK 1.3.4) this method has an effect on X11 and Mac OS.
+  On Windows, show() is always synchronous. The effect of show() varies with
+  versions of Mac OS X: early versions have the window appear on the screen
+  when show() returns, later versions don't.
+  If you want to write portable code and need this synchronous show() feature,
+  add win->wait_for_expose() on all platforms, and FLTK will just do the
   right thing.
 
   This method can be used for displaying splash screens before
   calling Fl::run() or for having exact control over which window
-  has focus after calling show().
+  has the focus after calling show().
 
   If the window is not shown(), this method does nothing.
+
+  \note Depending on the platform and window manager wait_for_expose()
+    may not guarantee that the window is fully drawn when it is called.
+    Under X11 it may only make sure that the window is \b mapped, i.e.
+    the internal (OS dependent) window object was created (and maybe
+    shown on the desktop as an empty frame or something like that).
+    You may need to call Fl::flush() after wait_for_expose() to make
+    sure the window and all its widgets are drawn and thus visible.
+
+  \note FLTK does the best it can do to make sure that all widgets
+    get drawn if you call wait_for_expose() and Fl::flush(). However,
+    dependent on the window manager it can not be guaranteed that this
+    does always happen synchronously. The only guaranteed behavior that
+    all widgets are eventually drawn is if the FLTK event loop is run
+    continuously, for instance with Fl::run().
 
   \see virtual void Fl_Window::show()
 
@@ -433,13 +485,13 @@ void Fl_Window::free_icons() {
 
     // do more window initialization here ...
 
-    win->show();			// show window
-    win->wait_for_expose();		// wait, until displayed
-    Fl::flush();			// make sure everything gets drawn
+    win->show();                // show window
+    win->wait_for_expose();     // wait, until displayed
+    Fl::flush();                // make sure everything gets drawn
 
     // do more initialization work that needs some time here ...
 
-    Fl::run();				// start FLTK event loop
+    Fl::run();                  // start FLTK event loop
   \endcode
 
   Note that the window will not be responsive until the event loop
@@ -452,7 +504,8 @@ void Fl_Window::wait_for_expose() {
     Fl::wait();
   }
 }
+#endif  // ! __APPLE__
 
 //
-// End of "$Id: Fl_Window.cxx 10405 2014-10-29 15:53:52Z manolo $".
+// End of "$Id: Fl_Window.cxx 11881 2016-08-20 17:08:27Z AlbrechtS $".
 //

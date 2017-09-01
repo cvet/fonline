@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Tree_Item_Array.H 10271 2014-09-04 18:56:52Z greg.ercolano $"
+// "$Id: Fl_Tree_Item_Array.H 11534 2016-04-05 20:35:29Z AlbrechtS $"
 //
 
 #ifndef _FL_TREE_ITEM_ARRAY_H
@@ -8,7 +8,7 @@
 #include <FL/Fl.H>
 #include "Fl_Export.H"
 
-class FL_EXPORT Fl_Tree_Item;	// forward decl must *precede* first doxygen comment block
+class Fl_Tree_Item;		// forward decl must *precede* first doxygen comment block
 				// or doxygen will not document our class..
 
 //////////////////////////
@@ -109,5 +109,5 @@ public:
 #endif /*_FL_TREE_ITEM_ARRAY_H*/
 
 //
-// End of "$Id: Fl_Tree_Item_Array.H 10271 2014-09-04 18:56:52Z greg.ercolano $".
+// End of "$Id: Fl_Tree_Item_Array.H 11534 2016-04-05 20:35:29Z AlbrechtS $".
 //

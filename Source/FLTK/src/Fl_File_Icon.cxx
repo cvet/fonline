@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_File_Icon.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_File_Icon.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $"
 //
 // Fl_File_Icon routines.
 //
@@ -120,7 +120,7 @@ Fl_File_Icon::~Fl_File_Icon() {
   // Find the icon in the list...
   for (current = first_, prev = (Fl_File_Icon *)0;
        current != this && current != (Fl_File_Icon *)0;
-       prev = current, current = current->next_);
+       prev = current, current = current->next_) {/*empty*/}
 
   // Remove the icon from the list as needed...
   if (current)
@@ -479,5 +479,5 @@ Fl_File_Icon::labeltype(const Fl_Label *o,	// I - Label data
 
 
 //
-// End of "$Id: Fl_File_Icon.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_File_Icon.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $".
 //

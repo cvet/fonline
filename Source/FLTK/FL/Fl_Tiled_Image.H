@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Tiled_Image.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_Tiled_Image.H 10598 2015-03-01 20:16:56Z AlbrechtS $"
 //
 // Tiled image header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -26,17 +26,15 @@
 
 
 /**
-  This class supports tiling of images
-  over a specified area. The source (tile) image is <B>not</B>
-  copied unless you call the color_average(),
-  desaturate(),
-  or inactive()
-  methods.
+  This class supports tiling of images over a specified area.
+
+  The source (tile) image is \b not copied unless you call the
+  color_average(), desaturate(), or inactive() methods.
 */
 class FL_EXPORT Fl_Tiled_Image : public Fl_Image {
   protected:
 
-  Fl_Image	*image_;		// The image that is shared
+  Fl_Image	*image_;		// The image that is tiled
   int		alloc_image_;		// Did we allocate this image?
 
   public:
@@ -50,12 +48,12 @@ class FL_EXPORT Fl_Tiled_Image : public Fl_Image {
   virtual void desaturate();
   virtual void draw(int X, int Y, int W, int H, int cx, int cy);
   void draw(int X, int Y) { draw(X, Y, w(), h(), 0, 0); }
-  /** Gets The image that is shared */ 
+  /** Gets The image that is tiled */
   Fl_Image *image() { return image_; }
 };
 
 #endif // !Fl_Tiled_Image_H
 
 //
-// End of "$Id: Fl_Tiled_Image.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// End of "$Id: Fl_Tiled_Image.H 10598 2015-03-01 20:16:56Z AlbrechtS $"
 //

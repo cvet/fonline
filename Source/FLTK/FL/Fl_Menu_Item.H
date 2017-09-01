@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Menu_Item.H 10282 2014-09-06 19:03:43Z AlbrechtS $"
+// "$Id: Fl_Menu_Item.H 11786 2016-06-18 00:32:18Z greg.ercolano $"
 //
 // Menu item header file for the Fast Light Tool Kit (FLTK).
 //
@@ -26,6 +26,9 @@
 #    undef check
 #  endif
 
+// doxygen needs the following line to enable e.g. ::FL_MENU_TOGGLE to link to the enums
+/// @file
+
 enum { // values for flags:
   FL_MENU_INACTIVE = 1,		///< Deactivate menu item (gray out)
   FL_MENU_TOGGLE= 2,		///< Item is a checkbox toggle (shows checkbox for on/off state)
@@ -47,40 +50,40 @@ class Fl_Menu_;
   is used by the Fl_Menu_ class.  
   \code
   struct Fl_Menu_Item {
-   const char*		text;     // label()
-   ulong		shortcut_;
-   Fl_Callback*		callback_;
-   void*		user_data_;
-   int			flags;
-   uchar		labeltype_;
-   uchar		labelfont_;
-   uchar		labelsize_;
-   uchar		labelcolor_;
+   const char*   text;     // label()
+   ulong         shortcut_;
+   Fl_Callback*  callback_;
+   void*         user_data_;
+   int           flags;
+   uchar         labeltype_;
+   uchar         labelfont_;
+   uchar         labelsize_;
+   uchar         labelcolor_;
   };
   
   enum { // values for flags:
-   FL_MENU_INACTIVE	= 1,      // Deactivate menu item (gray out)
-   FL_MENU_TOGGLE	= 2,      // Item is a checkbox toggle (shows checkbox for on/off state)
-   FL_MENU_VALUE	= 4,      // The on/off state for checkbox/radio buttons (if set, state is 'on')
-   FL_MENU_RADIO	= 8,      // Item is a radio button (one checkbox of many can be on)
-   FL_MENU_INVISIBLE	= 0x10,   // Item will not show up (shortcut will work)
-   FL_SUBMENU_POINTER	= 0x20,   // Indicates user_data() is a pointer to another menu array
-   FL_SUBMENU		= 0x40,   // This item is a submenu to other items
-   FL_MENU_DIVIDER	= 0x80,   // Creates divider line below this item. Also ends a group of radio buttons.
-   FL_MENU_HORIZONTAL	= 0x100   // ??? -- reserved
+   FL_MENU_INACTIVE   = 1,      // Deactivate menu item (gray out)
+   FL_MENU_TOGGLE     = 2,      // Item is a checkbox toggle (shows checkbox for on/off state)
+   FL_MENU_VALUE      = 4,      // The on/off state for checkbox/radio buttons (if set, state is 'on')
+   FL_MENU_RADIO      = 8,      // Item is a radio button (one checkbox of many can be on)
+   FL_MENU_INVISIBLE  = 0x10,   // Item will not show up (shortcut will work)
+   FL_SUBMENU_POINTER = 0x20,   // Indicates user_data() is a pointer to another menu array
+   FL_SUBMENU         = 0x40,   // This item is a submenu to other items
+   FL_MENU_DIVIDER    = 0x80,   // Creates divider line below this item. Also ends a group of radio buttons.
+   FL_MENU_HORIZONTAL = 0x100   // ??? -- reserved
   };
   \endcode
   Typically menu items are statically defined; for example:
   \code
   Fl_Menu_Item popup[] = {
-   {"&alpha",   FL_ALT+'a', the_cb, (void*)1},
-   {"&beta",    FL_ALT+'b', the_cb, (void*)2},
-   {"gamma",    FL_ALT+'c', the_cb, (void*)3, FL_MENU_DIVIDER},
-   {"&strange",  0,   strange_cb},
-   {"&charm",    0,   charm_cb},
-   {"&truth",    0,   truth_cb},
-   {"b&eauty",   0,   beauty_cb},
-   {"sub&menu",  0,   0, 0, FL_SUBMENU},
+   {"&alpha",    FL_ALT+'a', the_cb, (void*)1},
+   {"&beta",     FL_ALT+'b', the_cb, (void*)2},
+   {"gamma",     FL_ALT+'c', the_cb, (void*)3, FL_MENU_DIVIDER},
+   {"&strange",  0,          strange_cb},
+   {"&charm",    0,          charm_cb},
+   {"&truth",    0,          truth_cb},
+   {"b&eauty",   0,          beauty_cb},
+   {"sub&menu",  0,          0, 0, FL_SUBMENU},
    {"one"},
    {"two"},
    {"three"},
@@ -240,7 +243,7 @@ struct FL_EXPORT Fl_Menu_Item {
     for the menu item's callback function.
     \see Fl_Callback_p Fl_MenuItem::callback() const
    */
-  void callback(Fl_Callback1*c, long p=0) {callback_=(Fl_Callback*)c; user_data_=(void*)p;}
+  void callback(Fl_Callback1*c, long p=0) {callback_=(Fl_Callback*)c; user_data_=(void*)(fl_intptr_t)p;}
 
   /**
     Gets the user_data() argument that is sent to the callback function.
@@ -264,7 +267,7 @@ struct FL_EXPORT Fl_Menu_Item {
     and stores it in the menu item's userdata() member.
     This may not be portable to some machines.
   */
-  void argument(long v) {user_data_ = (void*)v;}
+  void argument(long v) {user_data_ = (void*)(fl_intptr_t)v;}
 
   /** Gets what key combination shortcut will trigger the menu item. */
   int shortcut() const {return shortcut_;}
@@ -394,7 +397,7 @@ struct FL_EXPORT Fl_Menu_Item {
     the callback.
     You must first check that callback() is non-zero before calling this.
   */
-  void do_callback(Fl_Widget* o,long arg) const {callback_(o, (void*)arg);}
+  void do_callback(Fl_Widget* o,long arg) const {callback_(o, (void*)(fl_intptr_t)arg);}
 
   // back-compatibility, do not use:
 
@@ -436,5 +439,5 @@ enum {	// back-compatibility enum:
 #endif
 
 //
-// End of "$Id: Fl_Menu_Item.H 10282 2014-09-06 19:03:43Z AlbrechtS $".
+// End of "$Id: Fl_Menu_Item.H 11786 2016-06-18 00:32:18Z greg.ercolano $".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Copy_Surface.H 10406 2014-10-29 19:57:42Z cand $"
+// "$Id: Fl_Copy_Surface.H 10928 2015-11-24 14:26:52Z manolo $"
 //
 // Copy-to-clipboard code for the Fast Light Tool Kit (FLTK).
 //
@@ -21,10 +21,7 @@
 
 #include <FL/Fl_Paged_Device.H>
 #include <FL/Fl_Printer.H>
-
-#if defined(__APPLE__)
-#include <ApplicationServices/ApplicationServices.h>
-#endif
+#include <FL/x.H>
 
 /** Supports copying of graphical data to the clipboard.
  
@@ -45,11 +42,11 @@
  \endcode
  Platform details:
  \li MSWindows: Transparent RGB images copy without transparency.
- The graphical data is copied to the clipboard as an 'enhanced metafile'.
- \li Mac OS: The graphical data is copied to the clipboard (a.k.a. pasteboard) in 2 'flavors': 
- 1) in vectorial form as PDF data; 2) in bitmap form as a TIFF image (or PICT for Mac OS 10.3). 
+ The graphical data are copied to the clipboard as an 'enhanced metafile'.
+ \li Mac OS: The graphical data are copied to the clipboard (a.k.a. pasteboard) in two 'flavors':
+ 1) in vectorial form as PDF data; 2) in bitmap form as a TIFF image. 
  Applications to which the clipboard content is pasted can use the flavor that suits them best.
- \li X11: the graphical data is copied to the clipboard as an image in BMP format.
+ \li X11: the graphical data are copied to the clipboard as an image in BMP format.
 */
 class FL_EXPORT Fl_Copy_Surface : public Fl_Surface_Device {
 private:
@@ -79,6 +76,11 @@ public:
   ~Fl_Copy_Surface();
   void set_current();
   void draw(Fl_Widget* widget, int delta_x = 0, int delta_y = 0);
+  void draw_decorated_window(Fl_Window* win, int delta_x = 0, int delta_y = 0);
+  /** Returns the pixel width of the copy surface */
+  int w() { return width; }
+  /** Returns the pixel height of the copy surface */
+  int h() { return height; }
 };
 
 #if defined(__APPLE__)
@@ -131,5 +133,5 @@ public:
 #endif // Fl_Copy_Surface_H
 
 //
-// End of "$Id: Fl_Copy_Surface.H 10406 2014-10-29 19:57:42Z cand $".
+// End of "$Id: Fl_Copy_Surface.H 10928 2015-11-24 14:26:52Z manolo $".
 //

@@ -308,7 +308,6 @@ void agvSwitchMoveMode(int move)
       Ex    = -EyeDist*sin(TORAD(EyeAz))*cos(TORAD(EyeEl));
       Ey    =  EyeDist*sin(TORAD(EyeEl));
       Ez    =  EyeDist*(cos(TORAD(EyeAz))*cos(TORAD(EyeEl)));
-      EyeAz =  EyeAz;
       EyeEl = -EyeEl;
       EyeMove = INIT_MOVE;
       break;
@@ -484,8 +483,9 @@ static void normalize(GLfloat v[3])
 
   if (d == 0)
     fprintf(stderr, "Zero length vector in normalize\n");
-  else
+  else {
     v[0] /= d; v[1] /= d; v[2] /= d;
+  }
 }
 
   /* calculates a normalized crossproduct to v1, v2 */

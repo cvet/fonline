@@ -1,9 +1,9 @@
 //
-// "$Id: fluid.cxx 10113 2014-02-25 04:24:41Z greg.ercolano $"
+// "$Id: fluid.cxx 12044 2016-10-17 18:21:11Z greg.ercolano $"
 //
 // FLUID main entry for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -83,6 +83,9 @@ extern "C"
 #endif // HAVE_LIBPNG && HAVE_LIBZ
 }
 
+//
+// Globals..
+//
 static Fl_Help_Dialog *help_dialog = 0;
 
 Fl_Preferences	fluid_prefs(Fl_Preferences::USER, "fltk.org", "fluid");
@@ -91,6 +94,9 @@ int gridy = 5;
 int snap = 1;
 int show_guides = 1;
 int show_comments = 1;
+int G_use_external_editor = 0;
+int G_debug = 0;
+char G_external_editor_command[512];
 int show_coredevmenus = 1;
 
 // File history info...
@@ -124,7 +130,7 @@ void goto_source_dir() {
   if (p <= filename) return; // it is in the current directory
   char buffer[FL_PATH_MAX];
   strlcpy(buffer, filename, sizeof(buffer));
-  int n = p-filename; if (n>1) n--; buffer[n] = 0;
+  int n = (int)(p-filename); if (n>1) n--; buffer[n] = 0;
   if (!pwd) {
     pwd = getcwd(0,FL_PATH_MAX);
     if (!pwd) {fprintf(stderr,"getwd : %s\n",strerror(errno)); return;}
@@ -183,6 +189,41 @@ static char* cutfname(int which = 0) {
   }
 
   return name[which];
+}
+
+// Timer to watch for external editor modifications
+//    If one or more external editors open, check if their files were modified.
+//    If so: reload to ram, update size/mtime records, and change fluid's 'modified' state.
+//
+static void external_editor_timer(void*) {
+  int editors_open = ExternalCodeEditor::editors_open();
+  if ( G_debug ) printf("--- TIMER --- External editors open=%d\n", editors_open);
+  if ( editors_open > 0 ) {
+    // Walk tree looking for files modified by external editors.
+    int modified = 0;
+    for (Fl_Type *p = Fl_Type::first; p; p = p->next) {
+      if ( p->is_code() ) {
+        Fl_Code_Type *code = (Fl_Code_Type*)p;
+        // Code changed by external editor?
+        if ( code->handle_editor_changes() ) {	// updates ram, file size/mtime
+          modified++;
+        }
+        if ( code->is_editing() ) {             // editor open?
+          code->reap_editor();                  // Try to reap; maybe it recently closed
+        }
+      }
+    }
+    if ( modified ) set_modflag(1);
+  }
+  // Repeat timeout if editors still open
+  //    The ExternalCodeEditor class handles start/stopping timer, we just
+  //    repeat_timeout() if it's already on. NOTE: above code may have reaped
+  //    only open editor, which would disable further timeouts. So *recheck*
+  //    if editors still open, to ensure we don't accidentally re-enable them.
+  //
+  if ( ExternalCodeEditor::editors_open() ) {
+    Fl::repeat_timeout(2.0, external_editor_timer);
+  }
 }
 
 void save_cb(Fl_Widget *, void *v) {
@@ -371,6 +412,10 @@ void revert_cb(Fl_Widget *,void *) {
 }
 
 void exit_cb(Fl_Widget *,void *) {
+
+  // Stop any external editor update timers
+  ExternalCodeEditor::stop_update_timer();
+
   if (modflag)
     switch (fl_choice("Do you want to save changes to this user\n"
                       "interface before exiting?", "Cancel",
@@ -403,6 +448,12 @@ void exit_cb(Fl_Widget *,void *) {
     delete help_dialog;
 
   undo_clear();
+
+  // Destroy tree
+  //    Doing so causes dtors to automatically close all external editors
+  //    and cleans up editor tmp files. Then remove fluid tmpdir /last/.
+  delete_all();
+  ExternalCodeEditor::tmpdir_clear();
 
   exit(0);
 }
@@ -563,6 +614,11 @@ void new_cb(Fl_Widget *, void *v) {
 
   template_panel->label("New");
 
+  if ( template_browser->size() == 1 ) { // only one item?
+    template_browser->value(1);          // select it
+    template_browser->do_callback();
+  }
+
   // Show the panel and wait for the user to do something...
   template_panel->show();
   while (template_panel->shown()) Fl::wait();
@@ -634,8 +690,10 @@ void new_cb(Fl_Widget *, void *v) {
 }
 
 int exit_early = 0;
-int compile_only = 0;
-int compile_strings = 0;
+int update_file = 0;		// fluid -u
+int compile_file = 0;		// fluid -c
+int compile_strings = 0;	// fluic -cs
+int batch_mode = 0;		// if set (-c, -u) don't open display
 int header_file_set = 0;
 int code_file_set = 0;
 const char* header_file_name = ".h";
@@ -668,12 +726,12 @@ void write_cb(Fl_Widget *, void *) {
   } else {
     strlcpy(hname, header_file_name, sizeof(hname));
   }
-  if (!compile_only) goto_source_dir();
+  if (!batch_mode) goto_source_dir();
   int x = write_code(cname,hname);
-  if (!compile_only) leave_source_dir();
+  if (!batch_mode) leave_source_dir();
   strlcat(cname, " and ", sizeof(cname));
   strlcat(cname, hname, sizeof(cname));
-  if (compile_only) {
+  if (batch_mode) {
     if (!x) {fprintf(stderr,"%s : %s\n",cname,strerror(errno)); exit(1);}
   } else {
     if (!x) {
@@ -693,10 +751,10 @@ void write_strings_cb(Fl_Widget *, void *) {
   char sname[FL_PATH_MAX];
   strlcpy(sname, fl_filename_name(filename), sizeof(sname));
   fl_filename_setext(sname, sizeof(sname), exts[i18n_type]);
-  if (!compile_only) goto_source_dir();
+  if (!batch_mode) goto_source_dir();
   int x = write_strings(sname);
-  if (!compile_only) leave_source_dir();
-  if (compile_only) {
+  if (!batch_mode) leave_source_dir();
+  if (batch_mode) {
     if (x) {fprintf(stderr,"%s : %s\n",sname,strerror(errno)); exit(1);}
   } else {
     if (x) {
@@ -1097,7 +1155,7 @@ Fl_Menu_Item Main_Menu[] = {
 extern void fill_in_New_Menu();
 
 void scheme_cb(Fl_Choice *, void *) {
-  if (compile_only)
+  if (batch_mode)
     return;
 
   switch (scheme_choice->value()) {
@@ -1169,7 +1227,7 @@ void toggle_sourceview_b_cb(Fl_Button*, void *) {
 }
 
 void make_main_window() {
-  if (!compile_only) {
+  if (!batch_mode) {
     fluid_prefs.get("snap", snap, 1);
     fluid_prefs.get("gridx", gridx, 5);
     fluid_prefs.get("gridy", gridy, 5);
@@ -1200,7 +1258,7 @@ void make_main_window() {
     main_window->end();
   }
 
-  if (!compile_only) {
+  if (!batch_mode) {
     load_history();
     make_settings_window();
     make_global_settings_window();
@@ -1294,7 +1352,7 @@ public:
   Fl_Process() {_fpt= NULL;}
   ~Fl_Process() {if (_fpt) close();}
 
-  // FIXME: popen needs the utf8 equivalen fl_popen
+  // FIXME: popen needs the UTF-8 equivalent fl_popen
   FILE * popen	(const char *cmd, const char *mode="r");
   //not necessary here: FILE * fl_fopen	(const char *file, const char *mode="r");
   int  close();
@@ -1420,14 +1478,14 @@ static bool prepare_shell_command(const char * &command)  { // common pre-shell 
     save_cb(0, 0);
   }
   if (shell_writecode_button->value()) {
-    compile_only = 1;
+    batch_mode = 1;
     write_cb(0, 0);
-    compile_only = 0;
+    batch_mode = 0;
   }
   if (shell_writemsgs_button->value()) {
-    compile_only = 1;
+    batch_mode = 1;
     write_strings_cb(0, 0);
-    compile_only = 0;
+    batch_mode = 0;
   }
   return true;
 }
@@ -1510,7 +1568,7 @@ void set_filename(const char *c) {
   if (filename) free((void *)filename);
   filename = c ? strdup(c) : NULL;
 
-  if (filename && !compile_only) 
+  if (filename && !batch_mode)
     update_history(filename);
 
   set_modflag(modflag);
@@ -1647,7 +1705,7 @@ void set_modflag(int mf) {
   // if the UI was modified in any way, update the Source View panel
   if (sourceview_panel && sourceview_panel->visible() && sv_autorefresh->value())
   {
-    // we will only update ealiest 0.5 seconds after the last change, and only
+    // we will only update earliest 0.5 seconds after the last change, and only
     // if no other change was made, so dragging a widget will not generate any
     // CPU load
     Fl::remove_timeout(update_sourceview_timer, 0);
@@ -1662,8 +1720,9 @@ void set_modflag(int mf) {
 ////////////////////////////////////////////////////////////////
 
 static int arg(int argc, char** argv, int& i) {
-  if (argv[i][1] == 'c' && !argv[i][2]) {compile_only = 1; i++; return 1;}
-  if (argv[i][1] == 'c' && argv[i][2] == 's' && !argv[i][3]) {compile_only = 1; compile_strings = 1; i++; return 1;}
+  if (argv[i][1] == 'u' && !argv[i][2]) {update_file++; batch_mode++; i++; return 1;}
+  if (argv[i][1] == 'c' && !argv[i][2]) {compile_file++; batch_mode++; i++; return 1;}
+  if (argv[i][1] == 'c' && argv[i][2] == 's' && !argv[i][3]) {compile_file++; compile_strings++; batch_mode++; i++; return 1;}
   if (argv[i][1] == 'o' && !argv[i][2] && i+1 < argc) {
     code_file_name = argv[i+1];
     code_file_set  = 1;
@@ -1708,18 +1767,18 @@ static void sigint(SIGARG) {
 }
 #endif
 
-
 int main(int argc,char **argv) {
   int i = 1;
   
   if (!Fl::args(argc,argv,i,arg) || i < argc-1) {
     static const char *msg = 
       "usage: %s <switches> name.fl\n"
+      " -u : update .fl file and exit (may be combined with '-c' or '-cs')\n"
       " -c : write .cxx and .h and exit\n"
       " -cs : write .cxx and .h and strings and exit\n"
       " -o <name> : .cxx output filename, or extension if <name> starts with '.'\n"
       " -h <name> : .h output filename, or extension if <name> starts with '.'\n";
-    int len = strlen(msg) + strlen(argv[0]) + strlen(Fl::help);
+    int len = (int)(strlen(msg) + strlen(argv[0]) + strlen(Fl::help));
     Fl_Plugin_Manager pm("commandline");
     int i, n = pm.plugins();
     for (i=0; i<n; i++) {
@@ -1752,7 +1811,7 @@ int main(int argc,char **argv) {
 
 
   if (c) set_filename(c);
-  if (!compile_only) {
+  if (!batch_mode) {
 #ifdef __APPLE__
     fl_open_callback(apple_open_cb);
 #endif // __APPLE__
@@ -1770,15 +1829,23 @@ int main(int argc,char **argv) {
   }
   undo_suspend();
   if (c && !read_file(c,0)) {
-    if (compile_only) {
+    if (batch_mode) {
       fprintf(stderr,"%s : %s\n", c, strerror(errno));
       exit(1);
     }
     fl_message("Can't read %s: %s", c, strerror(errno));
   }
   undo_resume();
-  if (compile_only) {
-    if (compile_strings) write_strings_cb(0,0);
+
+  if (update_file) {		// fluid -u
+    write_file(c,0);
+    if (!compile_file)
+      exit(0);
+  }
+
+  if (compile_file) {		// fluid -c[s]
+    if (compile_strings)
+      write_strings_cb(0,0);
     write_cb(0,0);
     exit(0);
   }
@@ -1787,6 +1854,9 @@ int main(int argc,char **argv) {
 #ifndef WIN32
   signal(SIGINT,sigint);
 #endif
+
+  // Set (but do not start) timer callback for external editor updates
+  ExternalCodeEditor::set_update_timer_callback(external_editor_timer);
 
   grid_cb(horizontal_input, 0); // Makes sure that windows get snap params...
 
@@ -1804,5 +1874,5 @@ int main(int argc,char **argv) {
 }
 
 //
-// End of "$Id: fluid.cxx 10113 2014-02-25 04:24:41Z greg.ercolano $".
+// End of "$Id: fluid.cxx 12044 2016-10-17 18:21:11Z greg.ercolano $".
 //

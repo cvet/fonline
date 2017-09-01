@@ -1,5 +1,5 @@
 //
-// "$Id: shapedwindow.cxx 10325 2014-09-21 14:10:36Z manolo $"
+// "$Id: shapedwindow.cxx 11493 2016-03-31 21:50:34Z AlbrechtS $"
 //
 // shapedwindow example source file for the Fast Light Tool Kit (FLTK).
 //
@@ -20,6 +20,7 @@
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl.H>
+#include <FL/fl_draw.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Image.H>
 #include <FL/Fl_Tiled_Image.H>
@@ -46,7 +47,7 @@ public:
     else if (event == FL_DRAG) {
       int deltax = Fl::event_x_root() - fromx;
       int deltay = Fl::event_y_root() - fromy;
-      window()->resize(winx + deltax, winy + deltay, window()->w(), window()->h());
+      window()->position(winx + deltax, winy + deltay);
       return 1;
     }
     return Fl_Box::handle(event);
@@ -86,7 +87,7 @@ Fl_RGB_Image* prepare_shape(int w)
   Fl_RGB_Image* img = surf->image();
   delete surf;
   current->set_current();
-  return img; // return depth-3 white image on black background
+  return img; // return white image on black background
 }
 
 int main(int argc, char **argv) {
@@ -121,5 +122,5 @@ int main(int argc, char **argv) {
 }
 
 //
-// End of "$Id: shapedwindow.cxx 10325 2014-09-21 14:10:36Z manolo $".
+// End of "$Id: shapedwindow.cxx 11493 2016-03-31 21:50:34Z AlbrechtS $".
 //

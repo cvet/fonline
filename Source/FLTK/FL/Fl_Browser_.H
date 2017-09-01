@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Browser_.H 9846 2013-03-23 21:24:18Z greg.ercolano $"
+// "$Id: Fl_Browser_.H 11464 2016-03-29 11:34:10Z AlbrechtS $"
 //
 // Common browser header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -319,7 +319,7 @@ public:
     If this value is zero (default), this widget will use the 
     Fl::scrollbar_size() value as the scrollbar's width.
   
-    \returns Scrollbar size in pixels, or 0 if the global Fl::scrollsize() is being used.
+    \returns Scrollbar size in pixels, or 0 if the global Fl::scrollbar_size() is being used.
     \see Fl::scrollbar_size(int)
   */
   int scrollbar_size() const {
@@ -384,5 +384,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Browser_.H 9846 2013-03-23 21:24:18Z greg.ercolano $".
+// End of "$Id: Fl_Browser_.H 11464 2016-03-29 11:34:10Z AlbrechtS $".
 //

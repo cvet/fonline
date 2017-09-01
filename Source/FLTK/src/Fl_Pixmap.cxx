@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Pixmap.cxx 9706 2012-11-06 20:46:14Z matt $"
+// "$Id: Fl_Pixmap.cxx 11868 2016-08-09 15:19:46Z AlbrechtS $"
 //
 // Pixmap drawing code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2012 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -16,15 +16,6 @@
 //     http://www.fltk.org/str.php
 //
 
-/** \fn Fl_Pixmap::Fl_Pixmap(const char **data)
-  The constructors create a new pixmap from the specified XPM data.*/
-
-/** \fn Fl_Pixmap::Fl_Pixmap(const unsigned char * const *data)
-  The constructors create a new pixmap from the specified XPM data.*/
-
-/** \fn Fl_Pixmap::Fl_Pixmap(const unsigned char **data)
-  The constructors create a new pixmap from the specified XPM data.*/
-
 // Draws X pixmap data, keeping it stashed in a server pixmap so it
 // redraws fast.
 
@@ -32,6 +23,7 @@
 // Implemented without using the xpm library (which I can't use because
 // it interferes with the color cube used by fl_draw_image).
 
+#include <config.h>
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <FL/x.H>
@@ -39,6 +31,22 @@
 #include <FL/Fl_Menu_Item.H>
 #include <FL/Fl_Pixmap.H>
 #include <FL/Fl_Printer.H>
+
+#if defined(USE_X11)
+#  if HAVE_X11_XREGION_H
+#    include <X11/Xregion.h>
+#  else // if the X11/Xregion.h header is not available, we assume this is the layout of an X11 Region:
+typedef struct {
+  short x1, x2, y1, y2;
+} BOX;
+struct _XRegion {
+  long size;
+  long numRects;
+  BOX *rects;
+  BOX extents;
+};
+#  endif // HAVE_X11_XREGION_H
+#endif   // USE_X11
 
 #include <stdio.h>
 #include "flstring.h"
@@ -128,14 +136,20 @@ int Fl_Pixmap::prepare(int XP, int YP, int WP, int HP, int &cx, int &cy,
   return 0;
 }
 
-#ifdef __APPLE__
+//------------------------------------------------------------------------------
+#ifdef __APPLE__					// Apple, Mac OS X
+//------------------------------------------------------------------------------
+
 void Fl_Quartz_Graphics_Driver::draw(Fl_Pixmap *pxm, int XP, int YP, int WP, int HP, int cx, int cy) {
   int X, Y, W, H;
   if (pxm->prepare(XP, YP, WP, HP, cx, cy, X, Y, W, H)) return;
   copy_offscreen(X, Y, W, H, (Fl_Offscreen)pxm->id_, cx, cy);
 }
 
-#elif defined(WIN32)
+//------------------------------------------------------------------------------
+#elif defined(WIN32)					// Windows GDI
+//------------------------------------------------------------------------------
+
 void Fl_GDI_Graphics_Driver::draw(Fl_Pixmap *pxm, int XP, int YP, int WP, int HP, int cx, int cy) {
   int X, Y, W, H;
   if (pxm->prepare(XP, YP, WP, HP, cx, cy, X, Y, W, H)) return;
@@ -172,7 +186,7 @@ void Fl_GDI_Printer_Graphics_Driver::draw(Fl_Pixmap *pxm, int XP, int YP, int WP
     int save = SaveDC(new_gc);
     SelectObject(new_gc, (void*)pxm->id_);
     // print all of offscreen but its parts in background color
-    fl_TransparentBlt(fl_gc, X, Y, W, H, new_gc, cx, cy, pxm->w(), pxm->h(), pxm->pixmap_bg_color );
+    fl_TransparentBlt(fl_gc, X, Y, W, H, new_gc, cx, cy, W, H, pxm->pixmap_bg_color );
     RestoreDC(new_gc,save);
     DeleteDC(new_gc);
   }
@@ -181,34 +195,54 @@ void Fl_GDI_Printer_Graphics_Driver::draw(Fl_Pixmap *pxm, int XP, int YP, int WP
   }
 }
 
-#else // Xlib
+//------------------------------------------------------------------------------
+#else							// X11, Xlib
+//------------------------------------------------------------------------------
+
 void Fl_Xlib_Graphics_Driver::draw(Fl_Pixmap *pxm, int XP, int YP, int WP, int HP, int cx, int cy) {
   int X, Y, W, H;
   if (pxm->prepare(XP, YP, WP, HP, cx, cy, X, Y, W, H)) return;
   if (pxm->mask_) {
-    // I can't figure out how to combine a mask with existing region,
-    // so cut the image down to a clipped rectangle:
-    int nx, ny; fl_clip_box(X,Y,W,H,nx,ny,W,H);
-    cx += nx-X; X = nx;
-    cy += ny-Y; Y = ny;
     // make X use the bitmap as a mask:
     XSetClipMask(fl_display, fl_gc, pxm->mask_);
-    int ox = X-cx; if (ox < 0) ox += pxm->w();
-    int oy = Y-cy; if (oy < 0) oy += pxm->h();
     XSetClipOrigin(fl_display, fl_gc, X-cx, Y-cy);
-  }
-  copy_offscreen(X, Y, W, H, pxm->id_, cx, cy);
-  if (pxm->mask_) {
+    if (clip_region()) {
+      // At this point, XYWH is the bounding box of the intersection between
+      // the current clip region and the (portion of the) pixmap we have to draw.
+      // The current clip region is often a rectangle. But, when a window with rounded
+      // corners is moved above another window, expose events may create a complex clip
+      // region made of several (e.g., 10) rectangles. We have to draw only in the clip
+      // region, and also to mask out the transparent pixels of the image. This can't
+      // be done in a single Xlib call for a multi-rectangle clip region. Thus, we
+      // process each rectangle of the intersection between the clip region and XYWH.
+      // See also STR #3206.
+      Region r = XRectangleRegion(X,Y,W,H);
+      XIntersectRegion(r, clip_region(), r);
+      int X1, Y1, W1, H1;
+      for (int i = 0; i < r->numRects; i++) {
+        X1 = r->rects[i].x1;
+        Y1 = r->rects[i].y1;
+        W1 = r->rects[i].x2 - r->rects[i].x1;
+        H1 = r->rects[i].y2 - r->rects[i].y1;
+        copy_offscreen(X1, Y1, W1, H1, pxm->id_, cx + (X1 - X), cy + (Y1 - Y));
+      }
+      XDestroyRegion(r);
+    } else {
+      copy_offscreen(X, Y, W, H, pxm->id_, cx, cy);
+    }
     // put the old clip region back
     XSetClipOrigin(fl_display, fl_gc, 0, 0);
-    fl_restore_clip();
+    restore_clip();
   }
+  else copy_offscreen(X, Y, W, H, pxm->id_, cx, cy);
 }
 
-#endif
+//------------------------------------------------------------------------------
+#endif							// (platform-specific)
+//------------------------------------------------------------------------------
 
 /**
-  The destructor free all memory and server resources that are used by
+  The destructor frees all memory and server resources that are used by
   the pixmap.
 */
 Fl_Pixmap::~Fl_Pixmap() {
@@ -321,7 +355,7 @@ Fl_Image *Fl_Pixmap::copy(int W, int H) {
 
   sprintf(new_info, "%d %d %d %d", W, H, ncolors, chars_per_pixel);
 
-  // Figure out Bresenheim step/modulus values...
+  // Figure out Bresenham step/modulus values...
   xmod   = w() % W;
   xstep  = (w() / W) * chars_per_pixel;
   ymod   = h() % H;
@@ -533,5 +567,5 @@ void Fl_Pixmap::desaturate() {
 }
 
 //
-// End of "$Id: Fl_Pixmap.cxx 9706 2012-11-06 20:46:14Z matt $".
+// End of "$Id: Fl_Pixmap.cxx 11868 2016-08-09 15:19:46Z AlbrechtS $".
 //

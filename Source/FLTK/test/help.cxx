@@ -1,5 +1,5 @@
 //
-// "$Id: help.cxx 10097 2014-02-08 20:44:09Z greg.ercolano $"
+// "$Id: help.cxx 11916 2016-09-03 07:35:59Z manolo $"
 //
 // Fl_Help_Dialog test program.
 //
@@ -26,26 +26,6 @@
 
 #include <FL/Fl_Help_Dialog.H>
 
-
-#ifdef USING_XCODE
-#include <ApplicationServices/ApplicationServices.h>
-void set_app_dir() {
-  char app_path[2048];
-  CFBundleRef app = CFBundleGetMainBundle();
-  CFURLRef url = CFBundleCopyBundleURL(app);    
-  CFStringRef cc_app_path = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
-  CFStringGetCString(cc_app_path, app_path, 2048, kCFStringEncodingUTF8);
-  if (*app_path) {
-    char *n = strrchr(app_path, '/');
-    if (n) {
-      *n = 0;
-      chdir(app_path);
-    }
-  }
-}
-#endif
-
-
 //
 // 'main()' - Display the help GUI...
 //
@@ -59,22 +39,19 @@ main(int  argc,			// I - Number of command-line arguments
 
   help = new Fl_Help_Dialog;
 
-  int argn = 1;
   
-#ifdef USING_XCODE
-  
-  if (argc>argn && strncmp(argv[1], "-psn_", 5)==0)
-    argn++;
-  set_app_dir();
-  
-  if (argc <= argn)
-    help->load("../../../../test/help-test.html");
-  else
-    help->load(argv[argn]);
+#ifdef __APPLE__
+
+    char buf[2048];
+    strcpy(buf, argv[0]);
+    char *slash = strrchr(buf, '/');
+    if (slash)
+      strcpy(slash, "/../Resources/help-test.html");
+    help->load(buf);
   
 #else
   
-  if (argc <= argn)
+  if (argc <= 1)
     help->load("help-test.html");
   else
     help->load(argv[1]);
@@ -92,5 +69,5 @@ main(int  argc,			// I - Number of command-line arguments
 
 
 //
-// End of "$Id: help.cxx 10097 2014-02-08 20:44:09Z greg.ercolano $".
+// End of "$Id: help.cxx 11916 2016-09-03 07:35:59Z manolo $".
 //

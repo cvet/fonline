@@ -1,9 +1,9 @@
 //
-// "$Id: fl_set_fonts_mac.cxx 10014 2013-10-30 13:36:16Z manolo $"
+// "$Id: fl_set_fonts_mac.cxx 11943 2016-09-13 11:51:24Z manolo $"
 //
 // MacOS font utilities for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -29,6 +29,7 @@
 
 // turn a stored font name into a pretty name:
 const char* Fl::get_font_name(Fl_Font fnum, int* ap) {
+  if (!fl_fonts) fl_fonts = Fl_X::calc_fl_fonts();
   Fl_Fontdesc *f = fl_fonts + fnum;
   if (!f->fontname[0]) {
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5
@@ -136,7 +137,7 @@ if(fl_mac_os_version >= Fl_X::CoreText_threshold) {
 }
 else {
 #endif
-#if ! __LP64__
+#if (!defined(__LP64__) || !__LP64__) && MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_11
   ItemCount oFontCount, oCountAgain;
   ATSUFontID *oFontIDs;
   // How many fonts?
@@ -180,6 +181,7 @@ else {
 
 static int array[128];
 int Fl::get_font_sizes(Fl_Font fnum, int*& sizep) {
+  if (!fl_fonts) fl_fonts = Fl_X::calc_fl_fonts();
   Fl_Fontdesc *s = fl_fonts+fnum;
   if (!s->name) s = fl_fonts; // empty slot in table, use entry 0
   int cnt = 0;
@@ -193,5 +195,5 @@ int Fl::get_font_sizes(Fl_Font fnum, int*& sizep) {
 }
 
 //
-// End of "$Id: fl_set_fonts_mac.cxx 10014 2013-10-30 13:36:16Z manolo $".
+// End of "$Id: fl_set_fonts_mac.cxx 11943 2016-09-13 11:51:24Z manolo $".
 //

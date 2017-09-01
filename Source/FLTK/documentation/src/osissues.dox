@@ -682,6 +682,52 @@ US keyboard will set \c FL_ALT in Fl::event_state(),
 set Fl::event_key() to 'y' and return the Yen symbol in
 Fl::event_text().
 
+Right Click simulation with Ctrl Click
+\par
+The Apple HIG guidelines indicate applications should support
+'Ctrl Click' to simulate 'Right Click' for e.g. context menus,
+so users with one-button mice and one-click trackpads can still
+access right-click features. However, paraphrasing 
+<A HREF="http://www.fltk.org/newsgroups.php?gfltk.coredev+v:14725">
+Manolo's comment on the fltk.coredev newsgroup</A>:
+\par
+<UL><LI>
+    <I>FLTK does /not/ support Ctrl-Click == Right Click itself because Mac OS
+    X event processing doesn't support this at the system level: the system
+    reports left-clicks with the ctrl modifier when the user ctrl-clicks, and
+    OS X system preferences don't allow changing this behavior. Therefore,
+    applications must handle simulation of Right Click with Ctrl Click
+    in the application code.</I>
+</LI></UL>
+\par
+Ian MacArthur provided the following handle() method code snippet
+showing an example of how to do this:
+\code
+    case FL_PUSH:
+    {
+	int btn = Fl::event_button();
+#ifdef __APPLE__
+	int ev_state = Fl::event_state();
+#endif
+	//
+	// Context menu can be called up in one of two ways: -
+	//     1 - right click, as normally used on Windows and Linux
+	//     2 - Ctrl + left click, as sometimes used on Mac
+	//
+#ifdef __APPLE__
+	// On apple, check right click, and ctrl+left click
+	if ((btn == FL_RIGHT_MOUSE) || (ev_state == (FL_CTRL | FL_BUTTON1)))
+#else
+	// On other platforms, only check right click as ctrl+left is used for selections
+	if (btn == FL_RIGHT_MOUSE)
+#endif
+	{
+	    // Did we right click on the object?..
+\endcode
+\par
+There is a thread about this subject on fltk.coredev (Aug 1-14, 2014)
+entitled "[RFC] Right click emulation for one button mouse on Mac".
+
 Apple "Quit" Event
 
 \par
@@ -716,8 +762,7 @@ Fl_Window *fl_find(Window xid)
 
 \par
 Returns the Fl_Window that corresponds to the given window reference,
-or \c NULL if not found. FLTK windows that are children of top-level
-windows share the \c Window of the top-level window.
+or \c NULL if not found.
 
 void fl_mac_set_about( Fl_Callback *cb, void *user_data, int shortcut) 
 
@@ -779,10 +824,36 @@ Set <tt>"Print Front Window" = "";</tt> therein so the application menu doesn't 
 To localize the application name itself, create a file <tt>InfoPlist.strings</tt> in each .lproj directory
 and put <tt>CFBundleName = "localized name";</tt> in each such file.
 
-Fl_Double_Window
+\subsection osissues_retina OpenGL and 'retina' displays
+It is possible to have OpenGL produce graphics at the high pixel resolution allowed by the so-called 'retina' displays
+present on recent Apple hardware.
+For this, call 
+\verbatim
+Fl::use_high_res_GL(1); 
+\endverbatim
+before any Fl_Gl_Window is shown. Also, adapt your Fl_Gl_Window::draw() and Fl_Gl_Window::draw_overlay() methods replacing
+\verbatim
+glViewport(0, 0, w(), h());
+\endverbatim
+by
+\verbatim
+glViewport(0, 0, pixel_w(), pixel_h());
+\endverbatim
+making use of the Fl_Gl_Window::pixel_w() and Fl_Gl_Window::pixel_h() methods that return the width and height of
+the GL scene in pixels: if the Fl_Gl_Window is mapped on a retina display, these methods return twice as much as
+reported by Fl_Widget::w() and Fl_Widget::h(); if it's mapped on a regular display, they return the same values
+as w() and h(). These methods dynamically change their values if the window is moved into/out from a retina
+display. If Fl::use_high_res_GL(1) is not called, all Fl_Gl_Window 's are drawn at low resolution.
+These methods are synonyms of w() and h() on non-Mac OS X platforms, so the source code remains cross-platform.
 
-OS X double-buffers all windows automatically. On OS X,
-Fl_Window and Fl_Double_Window are handled
+The Fl_Gl_Window::pixels_per_unit() method is useful when the OpenGL code depends on the pixel dimension
+of the GL scene. This occurs, e.g., if a window's handle() method uses Fl::event_x() and Fl::event_y()
+whose returned values should be multiplied by Fl_Gl_Window::pixels_per_unit() to obtain the adequate pixel units.
+This method may also be useful, for example, to adjust the width of a line in a high resolution GL scene.
+
+\subsection double_window Fl_Double_Window
+
+OS X double-buffers all windows automatically. On OS X, Fl_Window and Fl_Double_Window are handled
 internally in the same way.
 
 \subsection osissues_mac_files Mac File System Specifics

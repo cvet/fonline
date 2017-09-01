@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_XBM_Image.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_XBM_Image.cxx 12026 2016-10-14 14:33:14Z AlbrechtS $"
 //
 // Fl_XBM_Image routines.
 //
-// Copyright 1997-2010 by Bill Spitzak and others.
+// Copyright 1997-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -37,7 +37,8 @@
 
 /**  
   The constructor loads the named XBM file from the given name filename.
-  <P>The destructor free all memory and server resources that are used by 
+
+  The destructor frees all memory and server resources that are used by
   the image.
 */
 Fl_XBM_Image::Fl_XBM_Image(const char *name) : Fl_Bitmap((const char *)0,0,0) {
@@ -90,7 +91,7 @@ Fl_XBM_Image::Fl_XBM_Image(const char *name) : Fl_Bitmap((const char *)0,0,0) {
         *ptr++ = (uchar)t;
 	i ++;
       }
-      while (*a && *a++ != ',');
+      while (*a && *a++ != ',') {/*empty*/}
     }
   }
 
@@ -99,5 +100,5 @@ Fl_XBM_Image::Fl_XBM_Image(const char *name) : Fl_Bitmap((const char *)0,0,0) {
 
 
 //
-// End of "$Id: Fl_XBM_Image.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_XBM_Image.cxx 12026 2016-10-14 14:33:14Z AlbrechtS $".
 //

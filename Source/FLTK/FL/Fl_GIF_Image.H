@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_GIF_Image.H 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fl_GIF_Image.H 10732 2015-05-23 23:42:26Z matt $"
 //
 // GIF image header file for the Fast Light Tool Kit (FLTK).
 //
@@ -24,10 +24,10 @@
 #  include "Fl_Pixmap.H"
 
 /**
-  The Fl_GIF_Image class supports loading, caching,
-  and drawing of Compuserve GIF<SUP>SM</SUP> images. The class
-  loads the first image and supports transparency.
-*/
+ The Fl_GIF_Image class supports loading, caching,
+ and drawing of Compuserve GIF<SUP>SM</SUP> images. The class
+ loads the first image and supports transparency.
+ */
 class FL_EXPORT Fl_GIF_Image : public Fl_Pixmap {
 
   public:
@@ -38,5 +38,5 @@ class FL_EXPORT Fl_GIF_Image : public Fl_Pixmap {
 #endif
 
 //
-// End of "$Id: Fl_GIF_Image.H 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fl_GIF_Image.H 10732 2015-05-23 23:42:26Z matt $".
 //

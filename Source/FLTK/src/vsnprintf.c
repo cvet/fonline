@@ -1,5 +1,5 @@
 /*
- * "$Id: vsnprintf.c 10229 2014-08-21 12:01:46Z cand $"
+ * "$Id: vsnprintf.c 11243 2016-02-27 15:14:42Z AlbrechtS $"
  *
  * snprintf() and vsnprintf() functions for the Fast Light Tool Kit (FLTK).
  *
@@ -128,7 +128,7 @@ int fl_vsnprintf(char* buffer, size_t bufsize, const char* format, va_list ap) {
 	case 'e' :
 	case 'f' :
 	case 'g' :
-	  if ((width + 2) > sizeof(temp)) break;
+	  if ((width + 2) > (int)sizeof(temp)) break;
 
 	  sprintf(temp, tformat, va_arg(ap, double));
 
@@ -153,7 +153,7 @@ int fl_vsnprintf(char* buffer, size_t bufsize, const char* format, va_list ap) {
 	case 'o' :
 	case 'u' :
 	case 'x' :
-	  if ((width + 2) > sizeof(temp)) break;
+	  if ((width + 2) > (int)sizeof(temp)) break;
 
 #ifdef HAVE_LONG_LONG
 	  if (size == 'L')
@@ -179,7 +179,7 @@ int fl_vsnprintf(char* buffer, size_t bufsize, const char* format, va_list ap) {
 	  break;
 	    
 	case 'p' : /* Pointer value */
-	  if ((width + 2) > sizeof(temp)) break;
+	  if ((width + 2) > (int)sizeof(temp)) break;
 
 	  sprintf(temp, tformat, va_arg(ap, void *));
 
@@ -254,7 +254,7 @@ int fl_vsnprintf(char* buffer, size_t bufsize, const char* format, va_list ap) {
   if (bufptr) *bufptr = '\0';
 
   return (bytes);
-#endif //HAVE_VSNPRINTF
+#endif /* HAVE_VSNPRINTF */
 }
 
 int fl_snprintf(char* str, size_t size, const char* fmt, ...) {
@@ -271,6 +271,6 @@ int fl_snprintf(char* str, size_t size, const char* fmt, ...) {
 #endif
 
 /*
- * End of "$Id: vsnprintf.c 10229 2014-08-21 12:01:46Z cand $".
+ * End of "$Id: vsnprintf.c 11243 2016-02-27 15:14:42Z AlbrechtS $".
  */
 

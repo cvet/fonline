@@ -1,5 +1,5 @@
 //
-// "$Id: glpuzzle.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: glpuzzle.cxx 10498 2014-12-20 07:19:23Z manolo $"
 //
 // OpenGL puzzle demo for the Fast Light Tool Kit (FLTK).
 //
@@ -1416,6 +1416,7 @@ main(int argc, char **argv)
 {
   long i;
 
+  Fl::use_high_res_GL(1);
   glutInit(&argc, argv);
   for (i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
@@ -1473,5 +1474,5 @@ main(int argc, char **argv)
 #endif // added for fltk's distribution
 
 //
-// End of "$Id: glpuzzle.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: glpuzzle.cxx 10498 2014-12-20 07:19:23Z manolo $".
 //

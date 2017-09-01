@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Paged_Device.cxx 10116 2014-03-05 12:55:34Z manolo $"
+// "$Id: Fl_Paged_Device.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //
 // implementation of Fl_Paged_Device class for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 2010-2011 by Bill Spitzak and others.
+// Copyright 2010-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -56,19 +56,21 @@ void Fl_Paged_Device::print_widget(Fl_Widget* widget, int delta_x, int delta_y)
     translate(new_x - old_x, new_y - old_y );
   }
   // if widget is a main window, clip all drawings to the window area
-  if (is_window && !widget->window()) fl_push_clip(0, 0, widget->w(), widget->h() );
+  if (is_window && !widget->window()) {
+    fl_push_clip(0, 0, widget->w(), widget->h() );
+#ifdef __APPLE__ // for Mac OS X 10.6 and above, make window with rounded bottom corners
+    if ( fl_mac_os_version >= 100600 && driver()->class_name() == Fl_Quartz_Graphics_Driver::class_id ) {
+      Fl_X::clip_to_rounded_corners(fl_gc, widget->w(), widget->h());
+    }
+#endif
+  }
   // we do some trickery to recognize OpenGL windows and draw them via a plugin
   int drawn_by_plugin = 0;
   if (widget->as_gl_window()) {
     Fl_Plugin_Manager pm("fltk:device");  
     Fl_Device_Plugin *pi = (Fl_Device_Plugin*)pm.plugin("opengl.device.fltk.org");
     if (pi) {
-      int height = 0;
-#ifdef __APPLE__
-      int width;
-      this->printable_rect(&width, &height);
-#endif
-      drawn_by_plugin = pi->print(widget, 0, 0, height);
+      drawn_by_plugin = pi->print(widget, 0, 0, 0);
     }
   }
   if (!drawn_by_plugin) {
@@ -135,6 +137,9 @@ void Fl_Paged_Device::print_window_part(Fl_Window *win, int x, int y, int w, int
   win->make_current();
   uchar *image_data;
   image_data = fl_read_image(NULL, x, y, w, h);
+#ifdef __APPLE__
+  Fl_X::q_release_context(); // matches make_current() call above
+#endif
   if (save_front != win) save_front->show();
   current->set_current();
   fl_draw_image(image_data, delta_x, delta_y, w, h, 3);
@@ -148,7 +153,7 @@ void Fl_Paged_Device::print_window_part(Fl_Window *win, int x, int y, int w, int
 /**
  @brief Starts a print job.
 
- @param[in] pagecount the total number of pages of the job
+ @param[in] pagecount the total number of pages of the job (or 0 if you don't know the number of pages)
  @param[out] frompage if non-null, *frompage is set to the first page the user wants printed
  @param[out] topage if non-null, *topage is set to the last page the user wants printed
  @return 0 if OK, non-zero if any error
@@ -290,5 +295,5 @@ const Fl_Paged_Device::page_format Fl_Paged_Device::page_formats[NO_PAGE_FORMATS
 };
 
 //
-// End of "$Id: Fl_Paged_Device.cxx 10116 2014-03-05 12:55:34Z manolo $".
+// End of "$Id: Fl_Paged_Device.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $".
 //

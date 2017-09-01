@@ -1,5 +1,5 @@
 //
-// "$Id: fl_arci.cxx 9023 2011-08-30 07:50:16Z AlbrechtS $"
+// "$Id: fl_arci.cxx 10825 2015-08-05 20:20:30Z manolo $"
 //
 // Arc (integer) drawing functions for the Fast Light Tool Kit (FLTK).
 //
@@ -119,5 +119,5 @@ void Fl_Graphics_Driver::pie(int x,int y,int w,int h,double a1,double a2) {
 }
 
 //
-// End of "$Id: fl_arci.cxx 9023 2011-08-30 07:50:16Z AlbrechtS $".
+// End of "$Id: fl_arci.cxx 10825 2015-08-05 20:20:30Z manolo $".
 //

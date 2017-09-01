@@ -1,5 +1,5 @@
 //
-// "$Id: x.H 10412 2014-10-29 20:25:46Z cand $"
+// "$Id: x.H 10932 2015-11-26 16:34:58Z manolo $"
 //
 // X11 header file for the Fast Light Tool Kit (FLTK).
 //
@@ -20,17 +20,6 @@
 // calling Xlib.  You should include this file if (and ONLY if) you
 // need to call Xlib directly.  These symbols may not exist on non-X
 // systems.
-
-/** \class Fl_Mac_App_Menu 
- Mac OS-specific class allowing to localize the application menu.
- 
- These character strings are used to build the application menu. They can be localized
- at run time to any UTF-8 text by placing instructions such as this \e very 
- early in the program:
- \verbatim
- Fl_Mac_App_Menu::print = "Imprimer la fenêtre";
- \endverbatim
-*/
 
 #if !defined(Fl_X_H) && !defined(FL_DOXYGEN) 
 #  define Fl_X_H
@@ -84,6 +73,7 @@ extern FL_EXPORT ulong fl_event_time;
 // off-screen pixmaps: create, destroy, draw into, copy to window:
 typedef ulong Fl_Offscreen;
 #    define fl_create_offscreen(w,h) XCreatePixmap(fl_display, RootWindow(fl_display, fl_screen), w, h, fl_visual->depth)
+#    define fl_create_offscreen_with_alpha(w,h) XCreatePixmap(fl_display, RootWindow(fl_display, fl_screen), w, h, 32)
 // begin/end are macros that save the old state in local variables:
 #    define fl_begin_offscreen(pixmap) \
   Window _sw=fl_window; fl_window=pixmap; \
@@ -132,6 +122,7 @@ private:
   XFontStruct *ptr;
 };
 extern FL_EXPORT Fl_XFont_On_Demand fl_xfont;
+extern FL_EXPORT XFontStruct* fl_X_core_font();
 
 // this object contains all X-specific stuff about a window:
 // Warning: this object is highly subject to change!  
@@ -160,6 +151,7 @@ public:
   static void x(Fl_Window* wi, int X) {wi->x(X);}
   static void y(Fl_Window* wi, int Y) {wi->y(Y);}
   static int ewmh_supported();
+  static int xrender_supported();
   static void activate_window(Window w);
 };
 
@@ -187,5 +179,5 @@ extern FL_EXPORT int fl_parse_color(const char* p, uchar& r, uchar& g, uchar& b)
 #endif
 
 //
-// End of "$Id: x.H 10412 2014-10-29 20:25:46Z cand $".
+// End of "$Id: x.H 10932 2015-11-26 16:34:58Z manolo $".
 //

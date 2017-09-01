@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Help_View.H 10039 2013-12-30 14:18:18Z AlbrechtS $"
+// "$Id: Fl_Help_View.H 11761 2016-05-31 09:12:40Z manolo $"
 //
 // Help Viewer widget definitions.
 //
@@ -187,7 +187,7 @@ struct Fl_Help_Target {
      - macr micro middot
      - nbsp not Ntilde ntilde
      - Oacute oacute Ocirc ocirc Ograve ograve ordf ordm Oslash oslash Otilde otilde Ouml ouml
-     - para premil plusmn pound
+     - para permil plusmn pound
      - quot
      - raquo reg
      - sect shy sup1 sup2 sup3 szlig
@@ -283,7 +283,7 @@ public:
 private:
 #endif
 
-  void          hv_draw(const char *t, int x, int y);
+  void          hv_draw(const char *t, int x, int y, int entity_extra_length = 0);
   char          begin_selection();
   char          extend_selection();
   void          end_selection(int c=0);
@@ -395,5 +395,5 @@ public:
 #endif // !Fl_Help_View_H
 
 //
-// End of "$Id: Fl_Help_View.H 10039 2013-12-30 14:18:18Z AlbrechtS $".
+// End of "$Id: Fl_Help_View.H 11761 2016-05-31 09:12:40Z manolo $".
 //

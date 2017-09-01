@@ -1,5 +1,5 @@
 //
-// "$Id: fl_vertex.cxx 9239 2012-02-17 09:47:04Z manolo $"
+// "$Id: fl_vertex.cxx 10825 2015-08-05 20:20:30Z manolo $"
 //
 // Portable drawing routines for the Fast Light Tool Kit (FLTK).
 //
@@ -273,5 +273,5 @@ void Fl_Graphics_Driver::circle(double x, double y,double r) {
 }
 
 //
-// End of "$Id: fl_vertex.cxx 9239 2012-02-17 09:47:04Z manolo $".
+// End of "$Id: fl_vertex.cxx 10825 2015-08-05 20:20:30Z manolo $".
 //

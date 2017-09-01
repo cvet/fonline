@@ -1,10 +1,10 @@
 #
-# "$Id: CMakeLists.txt 10092 2014-02-02 00:49:50Z AlbrechtS $"
+# "$Id: install.cmake 11742 2016-05-16 14:43:37Z AlbrechtS $"
 #
 # Main CMakeLists.txt to build the FLTK project using CMake (www.cmake.org)
 # Written by Michael Surette
 #
-# Copyright 1998-2010 by Bill Spitzak and others.
+# Copyright 1998-2016 by Bill Spitzak and others.
 #
 # This library is free software. Distribution and use rights are outlined in
 # the file "COPYING" which should have been included with this file.  If this
@@ -32,8 +32,12 @@ add_custom_target(uninstall
 )
 
 install(DIRECTORY ${FLTK_SOURCE_DIR}/FL
-   DESTINATION include USE_SOURCE_PERMISSIONS
+   DESTINATION ${FLTK_INCLUDEDIR} USE_SOURCE_PERMISSIONS
    PATTERN ".svn" EXCLUDE
+)
+
+install(DIRECTORY ${FLTK_BINARY_DIR}/FL
+   DESTINATION ${FLTK_INCLUDEDIR} USE_SOURCE_PERMISSIONS
 )
 
 if(OPTION_CREATE_LINKS)
@@ -43,7 +47,7 @@ endif(OPTION_CREATE_LINKS)
 # generate FLTKConfig.cmake for installed directory use
 set(INCLUDE_DIRS ${CMAKE_INSTALL_PREFIX}/include)
 
-set(CONFIG_PATH ${CMAKE_INSTALL_PREFIX}/@FLTK_CONFIG_PATH@)
+set(CONFIG_PATH ${CMAKE_INSTALL_PREFIX}/${FLTK_CONFIG_PATH})
 
 install(EXPORT FLTK-Targets
    DESTINATION ${FLTK_CONFIG_PATH}
@@ -56,8 +60,10 @@ configure_file(
    @ONLY
 )
 
-install(FILES ${FLTK_BINARY_DIR}/etc/FLTKConfig.cmake
-   DESTINATION ${FLTK_CONFIG_PATH}
+install(FILES
+    ${FLTK_BINARY_DIR}/etc/FLTKConfig.cmake
+    ${FLTK_SOURCE_DIR}/CMake/FLTK-Functions.cmake
+    DESTINATION ${FLTK_CONFIG_PATH}
 )
 
 configure_file(
@@ -70,11 +76,36 @@ install(FILES ${FLTK_BINARY_DIR}/etc/UseFLTK.cmake
    DESTINATION ${FLTK_CONFIG_PATH}
 )
 
+# generate fltk-config
+set(prefix ${CMAKE_INSTALL_PREFIX})
+set(exec_prefix "\${prefix}")
+set(includedir "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
+set(BINARY_DIR)
+set(libdir "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
+set(srcdir ".")
+
+set(LIBNAME "${libdir}/libfltk.a")
+
+configure_file(
+   "${FLTK_SOURCE_DIR}/fltk-config.in"
+   "${FLTK_BINARY_DIR}/bin/fltk-config"
+   @ONLY
+)
 if(UNIX)
+   execute_process(COMMAND chmod 755 fltk-config
+      WORKING_DIRECTORY "${FLTK_BINARY_DIR}/bin"
+   )
+endif(UNIX)
+
+install(PROGRAMS ${FLTK_BINARY_DIR}/bin/fltk-config
+   DESTINATION ${FLTK_BINDIR}
+)
+
+if(UNIX OR MSYS OR (MINGW AND CMAKE_CROSSCOMPILING))
    macro(INSTALL_MAN FILE LEVEL)
    install(FILES
       ${FLTK_SOURCE_DIR}/documentation/src/${FILE}.man
-      DESTINATION man/man${LEVEL}
+      DESTINATION ${FLTK_MANDIR}/man${LEVEL}
       RENAME ${FILE}.${LEVEL}
    )
    endmacro(INSTALL_MAN FILE LEVEL)
@@ -86,4 +117,4 @@ if(UNIX)
    INSTALL_MAN(checkers 6)
    INSTALL_MAN(sudoku 6)
 
-endif(UNIX)
+endif(UNIX OR MSYS OR (MINGW AND CMAKE_CROSSCOMPILING))

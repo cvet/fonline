@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Table.cxx 10225 2014-08-03 16:40:58Z greg.ercolano $"
+// "$Id: Fl_Table.cxx 11849 2016-07-29 09:23:44Z AlbrechtS $"
 //
 // Fl_Table -- A table widget
 //
@@ -491,14 +491,14 @@ void Fl_Table::recalc_dimensions() {
     int scrollsize = Fl::scrollbar_size();
 #endif
     // Second pass: Check for interference
-    if ( !hideh & hidev ) { hidev = (( table_h - tih + scrollsize ) <= 0 ); } 
-    if ( !hidev & hideh ) { hideh = (( table_w - tiw + scrollsize ) <= 0 ); } 
+    if ( !hideh && hidev ) { hidev = (( table_h - tih + scrollsize ) <= 0 ); }
+    if ( !hidev && hideh ) { hideh = (( table_w - tiw + scrollsize ) <= 0 ); }
     // Determine scrollbar visibility, trim ti[xywh]/to[xywh]
-    if ( hidev ) { vscrollbar->hide(); } 
+    if ( hidev ) { vscrollbar->hide(); }
     else { vscrollbar->show(); tiw -= scrollsize; tow -= scrollsize; }
-    if ( hideh ) { hscrollbar->hide(); } 
+    if ( hideh ) { hscrollbar->hide(); }
     else { hscrollbar->show(); tih -= scrollsize; toh -= scrollsize; }
-  } 
+  }
   // Resize the child table
   table->resize(tox, toy, tow, toh);
   table->init_sizes();
@@ -1289,8 +1289,8 @@ void Fl_Table::draw() {
         fl_rectf(tix, tiy + table_h, tiw, tih - table_h, color()); 
         if ( row_header() ) {
           // NOTE:
-          //     Careful with that lower corner; don't use tih; when eg. 
-          //     table->box(FL_THIN_UPFRAME) and hscrollbar hidden, 
+          //     Careful with that lower corner; don't use tih; when eg.
+          //     table->box(FL_THIN_UP_FRAME) and hscrollbar hidden,
           //     leaves a row of dead pixels.
           //
           fl_rectf(wix, tiy + table_h, row_header_width(), 
@@ -1314,5 +1314,5 @@ void Fl_Table::draw() {
 }
 
 //
-// End of "$Id: Fl_Table.cxx 10225 2014-08-03 16:40:58Z greg.ercolano $".
+// End of "$Id: Fl_Table.cxx 11849 2016-07-29 09:23:44Z AlbrechtS $".
 //

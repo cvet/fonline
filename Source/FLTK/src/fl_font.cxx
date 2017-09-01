@@ -1,5 +1,5 @@
 //
-// "$Id: fl_font.cxx 9325 2012-04-05 05:12:30Z fabien $"
+// "$Id: fl_font.cxx 10504 2014-12-21 10:11:18Z manolo $"
 //
 // Font selection code for the Fast Light Tool Kit (FLTK).
 //
@@ -55,6 +55,12 @@
 #  include "fl_font_x.cxx"
 #endif // WIN32
 
+#if ! (defined(WIN32) || defined(__APPLE__))
+XFontStruct *fl_X_core_font()
+{
+  return fl_xfont.value();
+}
+#endif
 
 double fl_width(const char* c) {
   if (c) return fl_width(c, (int) strlen(c));
@@ -86,5 +92,5 @@ void fl_draw(const char* str, int l, float x, float y) {
 #endif
 }
 //
-// End of "$Id: fl_font.cxx 9325 2012-04-05 05:12:30Z fabien $".
+// End of "$Id: fl_font.cxx 10504 2014-12-21 10:11:18Z manolo $".
 //

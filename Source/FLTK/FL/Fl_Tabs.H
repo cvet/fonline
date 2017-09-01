@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Tabs.H 10120 2014-03-23 17:36:59Z greg.ercolano $"
+// "$Id: Fl_Tabs.H 10492 2014-12-19 03:41:45Z greg.ercolano $"
 //
 // Tab header file for the Fast Light Tool Kit (FLTK).
 //
@@ -199,7 +199,12 @@
 	such as using the arrow keys while at the left or right end of the tabs.
 */
 class FL_EXPORT Fl_Tabs : public Fl_Group {
-  Fl_Widget *value_;
+#if FLTK_ABI_VERSION >= 10304
+  // NEW (nothing)
+#else
+  // OLD (maintained for ABI compat)
+  Fl_Widget *value_;	// NOTE: this member no longer used -- STR #3169
+#endif
   Fl_Widget *push_;
   int *tab_pos;		// array of x-offsets of tabs per child + 1
   int *tab_width;	// array of widths of tabs per child + 1
@@ -237,5 +242,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Tabs.H 10120 2014-03-23 17:36:59Z greg.ercolano $".
+// End of "$Id: Fl_Tabs.H 10492 2014-12-19 03:41:45Z greg.ercolano $".
 //

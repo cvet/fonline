@@ -1,5 +1,5 @@
 //
-// "$Id: fullscreen.cxx 10189 2014-06-11 09:10:53Z ossman $"
+// "$Id: fullscreen.cxx 11797 2016-06-22 08:46:02Z manolo $"
 //
 
 //
@@ -84,7 +84,7 @@ void shape_window::draw() {
     valid(1);
 //  printf("init\n");
     glLoadIdentity();
-    glViewport(0,0,w(),h());
+    glViewport(0,0,pixel_w(),pixel_h());
   }
   glClear(GL_COLOR_BUFFER_BIT);
   glColor3f(.5,.6,.7);
@@ -240,8 +240,10 @@ void update_screeninfo(Fl_Widget *b, void *p) {
     browser->add(line);
     for (int n = 0; n < Fl::screen_count(); n++) {
 	int x, y, w, h;
+        float dpih, dpiv;
 	Fl::screen_xywh(x, y, w, h, n);
-	sprintf(line, "Screen %d: %dx%d@%d,%d", n, w, h, x, y);
+        Fl::screen_dpi(dpih, dpiv, n);
+        sprintf(line, "Screen %d: %dx%d@%d,%d DPI:%.1fx%.1f", n, w, h, x, y, dpih, dpiv);
 	browser->add(line);
 	Fl::screen_work_area(x, y, w, h, n);
 	sprintf(line, "Work area %d: %dx%d@%d,%d", n, w, h, x, y);
@@ -267,6 +269,7 @@ int arg(int, char **argv, int &i) {
 
 int main(int argc, char **argv) {
 
+  Fl::use_high_res_GL(1);
   int i=0;
   if (Fl::args(argc,argv,i,arg) < argc)
     Fl::fatal("Options are:\n -2 = 2 windows\n -f = startup fullscreen\n%s",Fl::help);
@@ -345,5 +348,5 @@ int main(int argc, char **argv) {
 }
 
 //
-// End of "$Id: fullscreen.cxx 10189 2014-06-11 09:10:53Z ossman $".
+// End of "$Id: fullscreen.cxx 11797 2016-06-22 08:46:02Z manolo $".
 //

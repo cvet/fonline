@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_PNG_Image.cxx 9980 2013-09-21 16:41:23Z greg.ercolano $"
+// "$Id: Fl_PNG_Image.cxx 11535 2016-04-05 21:12:49Z AlbrechtS $"
 //
 // Fl_PNG_Image routines.
 //
@@ -71,17 +71,23 @@ extern "C" {
 
 
 /**
-  The constructor loads the named PNG image from the given png filename.
+ The constructor loads the named PNG image from the given png filename.
 
-  The destructor frees all memory and server resources that are used by
-  the image.
+ The destructor frees all memory and server resources that are used by
+ the image.
 
-  \param[in] filename	Name of PNG file to read
-*/
+ Use Fl_Image::fail() to check if Fl_PNG_Image failed to load. fail() returns
+ ERR_FILE_ACCESS if the file could not be opened or read, ERR_FORMAT if the
+ PNG format could not be decoded, and ERR_NO_IMAGE if the image could not
+ be loaded for another reason.
+
+ \param[in] filename	Name of PNG file to read
+ */
 Fl_PNG_Image::Fl_PNG_Image (const char *filename): Fl_RGB_Image(0,0,0)
 {
   load_png_(filename, NULL, 0);
 }
+
 
 /** 
  \brief Constructor that reads a PNG image from memory.
@@ -101,6 +107,7 @@ Fl_PNG_Image::Fl_PNG_Image (
   load_png_(name_png, buffer, maxsize);
 }
 
+
 void Fl_PNG_Image::load_png_(const char *name_png, const unsigned char *buffer_png, int maxsize)
 {
 #if defined(HAVE_LIBPNG) && defined(HAVE_LIBZ)
@@ -108,13 +115,16 @@ void Fl_PNG_Image::load_png_(const char *name_png, const unsigned char *buffer_p
   FILE *fp = NULL;	  // File pointer
   int channels;	  // Number of color channels
   png_structp pp; // PNG read pointer
-  png_infop info; // PNG info pointers
+  png_infop info = 0; // PNG info pointers
   png_bytep *rows;// PNG row pointers
   fl_png_memory png_mem_data;
   int from_memory = (buffer_png != NULL); // true if reading image from memory
 
   if (!from_memory) {
-    if ((fp = fl_fopen(name_png, "rb")) == NULL) return;
+    if ((fp = fl_fopen(name_png, "rb")) == NULL) {
+      ld(ERR_FILE_ACCESS);
+      return;
+    }
   }
   const char *display_name = (name_png ? name_png : "In-memory PNG data");
 
@@ -125,6 +135,7 @@ void Fl_PNG_Image::load_png_(const char *name_png, const unsigned char *buffer_p
     if (pp) png_destroy_read_struct(&pp, NULL, NULL);
     if (!from_memory) fclose(fp);
     Fl::warning("Cannot allocate memory to read PNG file or data \"%s\".\n", display_name);
+    w(0); h(0); d(0); ld(ERR_FORMAT);
     return;
   }
   
@@ -133,6 +144,7 @@ void Fl_PNG_Image::load_png_(const char *name_png, const unsigned char *buffer_p
     png_destroy_read_struct(&pp, &info, NULL);
     if (!from_memory) fclose(fp);
     Fl::warning("PNG file or data \"%s\" is too large or contains errors!\n", display_name);
+    w(0); h(0); d(0); ld(ERR_FORMAT);
     return;
   }
 
@@ -223,5 +235,5 @@ void Fl_PNG_Image::load_png_(const char *name_png, const unsigned char *buffer_p
 
 
 //
-// End of "$Id: Fl_PNG_Image.cxx 9980 2013-09-21 16:41:23Z greg.ercolano $".
+// End of "$Id: Fl_PNG_Image.cxx 11535 2016-04-05 21:12:49Z AlbrechtS $".
 //

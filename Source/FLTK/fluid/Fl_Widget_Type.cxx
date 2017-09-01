@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Widget_Type.cxx 10113 2014-02-25 04:24:41Z greg.ercolano $"
+// "$Id: Fl_Widget_Type.cxx 11952 2016-09-20 12:57:18Z AlbrechtS $"
 //
 // Widget type code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -215,8 +215,14 @@ Fl_Widget_Type::~Fl_Widget_Type() {
   }
   if (subclass_) free((void*)subclass_);
   if (tooltip_) free((void*)tooltip_);
-  if (image_name_) free((void*)image_name_);
-  if (inactive_name_) free((void*)inactive_name_);
+  if (image_name_) {
+    free((void*)image_name_);
+    if (image) image->decrement();
+  }
+  if (inactive_name_) {
+    free((void*)inactive_name_);
+    if (inactive) inactive->decrement();
+  }
   for (int n=0; n<NUM_EXTRA_CODE; n++) {
     if (extra_code_[n]) free((void*) extra_code_[n]);
   }
@@ -1126,23 +1132,23 @@ static Fl_Button* relative(Fl_Widget* o, int i) {
 }
 
 static Fl_Menu_Item alignmenu[] = {
-  {"FL_ALIGN_CENTER",0,0,(void*)(FL_ALIGN_CENTER)},
-  {"FL_ALIGN_TOP",0,0,(void*)(FL_ALIGN_TOP)},
-  {"FL_ALIGN_BOTTOM",0,0,(void*)(FL_ALIGN_BOTTOM)},
-  {"FL_ALIGN_LEFT",0,0,(void*)(FL_ALIGN_LEFT)},
-  {"FL_ALIGN_RIGHT",0,0,(void*)(FL_ALIGN_RIGHT)},
-  {"FL_ALIGN_INSIDE",0,0,(void*)(FL_ALIGN_INSIDE)},
-  {"FL_ALIGN_CLIP",0,0,(void*)(FL_ALIGN_CLIP)},
-  {"FL_ALIGN_WRAP",0,0,(void*)(FL_ALIGN_WRAP)},
-  {"FL_ALIGN_TEXT_OVER_IMAGE",0,0,(void*)(FL_ALIGN_TEXT_OVER_IMAGE)},
-  {"FL_ALIGN_TOP_LEFT",0,0,(void*)(FL_ALIGN_TOP_LEFT)},
-  {"FL_ALIGN_TOP_RIGHT",0,0,(void*)(FL_ALIGN_TOP_RIGHT)},
-  {"FL_ALIGN_BOTTOM_LEFT",0,0,(void*)(FL_ALIGN_BOTTOM_LEFT)},
-  {"FL_ALIGN_BOTTOM_RIGHT",0,0,(void*)(FL_ALIGN_BOTTOM_RIGHT)},
-  {"FL_ALIGN_LEFT_TOP",0,0,(void*)(FL_ALIGN_LEFT_TOP)},
-  {"FL_ALIGN_RIGHT_TOP",0,0,(void*)(FL_ALIGN_RIGHT_TOP)},
-  {"FL_ALIGN_LEFT_BOTTOM",0,0,(void*)(FL_ALIGN_LEFT_BOTTOM)},
-  {"FL_ALIGN_RIGHT_BOTTOM",0,0,(void*)(FL_ALIGN_RIGHT_BOTTOM)},
+  {"FL_ALIGN_CENTER",0,0,(void*)(fl_intptr_t)(FL_ALIGN_CENTER)},
+  {"FL_ALIGN_TOP",0,0,(void*)(fl_intptr_t)(FL_ALIGN_TOP)},
+  {"FL_ALIGN_BOTTOM",0,0,(void*)(fl_intptr_t)(FL_ALIGN_BOTTOM)},
+  {"FL_ALIGN_LEFT",0,0,(void*)(fl_intptr_t)(FL_ALIGN_LEFT)},
+  {"FL_ALIGN_RIGHT",0,0,(void*)(fl_intptr_t)(FL_ALIGN_RIGHT)},
+  {"FL_ALIGN_INSIDE",0,0,(void*)(fl_intptr_t)(FL_ALIGN_INSIDE)},
+  {"FL_ALIGN_CLIP",0,0,(void*)(fl_intptr_t)(FL_ALIGN_CLIP)},
+  {"FL_ALIGN_WRAP",0,0,(void*)(fl_intptr_t)(FL_ALIGN_WRAP)},
+  {"FL_ALIGN_TEXT_OVER_IMAGE",0,0,(void*)(fl_intptr_t)(FL_ALIGN_TEXT_OVER_IMAGE)},
+  {"FL_ALIGN_TOP_LEFT",0,0,(void*)(fl_intptr_t)(FL_ALIGN_TOP_LEFT)},
+  {"FL_ALIGN_TOP_RIGHT",0,0,(void*)(fl_intptr_t)(FL_ALIGN_TOP_RIGHT)},
+  {"FL_ALIGN_BOTTOM_LEFT",0,0,(void*)(fl_intptr_t)(FL_ALIGN_BOTTOM_LEFT)},
+  {"FL_ALIGN_BOTTOM_RIGHT",0,0,(void*)(fl_intptr_t)(FL_ALIGN_BOTTOM_RIGHT)},
+  {"FL_ALIGN_LEFT_TOP",0,0,(void*)(fl_intptr_t)(FL_ALIGN_LEFT_TOP)},
+  {"FL_ALIGN_RIGHT_TOP",0,0,(void*)(fl_intptr_t)(FL_ALIGN_RIGHT_TOP)},
+  {"FL_ALIGN_LEFT_BOTTOM",0,0,(void*)(fl_intptr_t)(FL_ALIGN_LEFT_BOTTOM)},
+  {"FL_ALIGN_RIGHT_BOTTOM",0,0,(void*)(fl_intptr_t)(FL_ALIGN_RIGHT_BOTTOM)},
 {0}};
 
 void align_cb(Fl_Button* i, void *v) {
@@ -1259,7 +1265,31 @@ void callback_cb(CodeEditor* i, void *v) {
     for (Fl_Type *o = Fl_Type::first; o; o = o->next) {
       if (o->selected) {
         o->callback(c);
-	mod = 1;
+        mod = 1;
+      }
+    }
+    if (mod) set_modflag(1);
+    free(c);
+  }
+}
+
+void comment_cb(Fl_Text_Editor* i, void *v) {
+  if (v == LOAD) {
+    const char *cmttext = current_widget->comment();
+    i->buffer()->text( cmttext ? cmttext : "" );
+  } else {
+    int mod = 0;
+    char *c = i->buffer()->text();
+    const char *d = c_check(c);
+    if (d) {
+      fl_message("Error in comment: %s",d);
+      if (i->window()) i->window()->make_current();
+      haderror = 1;
+    }
+    for (Fl_Type *o = Fl_Type::first; o; o = o->next) {
+      if (o->selected) {
+        o->comment(c);
+        mod = 1;
       }
     }
     if (mod) set_modflag(1);
@@ -1946,7 +1976,7 @@ const char *array_name(Fl_Widget_Type *o) {
   Fl_Type *t = o->prev;
   Fl_Type *tp = o;
   const char *cn = o->class_name(1);
-  for (; t && t->class_name(1) == cn; tp = t, t = t->prev);
+  for (; t && t->class_name(1) == cn; tp = t, t = t->prev) {/*empty*/}
   for (t = tp; t && t->class_name(1) == cn; t = t->next) {
     if (t == o) {sawthis=1; continue;}
     const char *e = t->name();
@@ -2127,6 +2157,7 @@ void Fl_Widget_Type::write_code1() {
   }
 
   write_c("%s{ ", indent());
+  write_comment_inline_c();
   if (varused) write_c("%s* o = ", t);
   if (name()) write_c("%s = ", name());
   if (is_window()) {
@@ -2162,7 +2193,7 @@ void Fl_Widget_Type::write_code1() {
 
   indentation += 2;
 
-  if (wused) write_c("%sw = o;\n", indent());
+  if (wused) write_c("%sw = o; if (w) {/* empty */}\n", indent());
 
   write_widget_code();
 }
@@ -2679,7 +2710,7 @@ int Fl_Widget_Type::read_fdesign(const char* propname, const char* value) {
     if (sscanf(value,"%f %f %f %f",&x,&y,&w,&h) == 4) {
       if (fdesign_flip) {
 	Fl_Type *p;
-	for (p = parent; p && !p->is_window(); p = p->parent);
+	for (p = parent; p && !p->is_window(); p = p->parent) {/*empty*/}
 	if (p && p->is_widget()) y = ((Fl_Widget_Type*)p)->o->h()-(y+h);
       }	  
       x += pasteoffset;
@@ -2870,5 +2901,5 @@ void Fl_Pack_Type::copy_properties()
 }
 
 //
-// End of "$Id: Fl_Widget_Type.cxx 10113 2014-02-25 04:24:41Z greg.ercolano $".
+// End of "$Id: Fl_Widget_Type.cxx 11952 2016-09-20 12:57:18Z AlbrechtS $".
 //

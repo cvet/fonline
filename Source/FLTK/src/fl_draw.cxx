@@ -1,9 +1,9 @@
 //
-// "$Id: fl_draw.cxx 10265 2014-09-03 10:07:33Z AlbrechtS $"
+// "$Id: fl_draw.cxx 11847 2016-07-24 08:53:08Z AlbrechtS $"
 //
 // Label drawing code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -129,7 +129,7 @@ static const char* expand_text_(const char* from, char*& buf, int maxbuf, double
  Also word-wrap if width exceeds maxw.
  Returns a pointer to the start of the next line of characters.
  Sets n to the number of characters put into the buffer.
- Sets width to the width of the string in the current font.
+ Sets width to the width of the string in the \ref drawing_fl_font "current font".
  */
 const char*
 fl_expand_text(const char* from, char* buf, int maxbuf, double maxw, int& n,
@@ -174,7 +174,7 @@ void fl_draw(
       // Start with a symbol...
       for (symptr = symbol[0];
            *str && !isspace(*str) && symptr < (symbol[0] + sizeof(symbol[0]) - 1);
-           *symptr++ = *str++);
+           *symptr++ = *str++) {/*empty*/}
       *symptr = '\0';
       if (isspace(*str)) str++;
       symwidth[0] = (w < h ? w : h);
@@ -354,9 +354,13 @@ void fl_draw(
   fl_draw() function with \p align parameter. If the incoming \p w
   is non-zero it will wrap to that width.
 
-  The 'current font' is used to do the width/height calculations,
-  so unless its value is known at the time fl_measure() is called,
-  it is advised to first set the current font with fl_font().
+  The \ref drawing_fl_font "current font" is used to do the width/height
+  calculations, so unless its value is known at the time fl_measure() is
+  called, it is advised to first set the current font with fl_font().
+  With event-driven GUI programming you can never be sure which
+  widget was exposed and redrawn last, nor which font it used.
+  If you have not called fl_font() explicitly in your own code,
+  the width and height may be set to unexpected values, even zero!
 
   \b Note: In the general use case, it's a common error to forget to set
   \p w to 0 before calling fl_measure() when wrap behavior isn't needed.
@@ -452,5 +456,5 @@ int fl_height(int font, int size) {
 }
 
 //
-// End of "$Id: fl_draw.cxx 10265 2014-09-03 10:07:33Z AlbrechtS $".
+// End of "$Id: fl_draw.cxx 11847 2016-07-24 08:53:08Z AlbrechtS $".
 //

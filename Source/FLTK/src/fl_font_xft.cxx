@@ -1,9 +1,9 @@
 //
-// "$Id: fl_font_xft.cxx 10232 2014-08-21 12:13:47Z cand $"
+// "$Id: fl_font_xft.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //
 // Xft font code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 2001-2011 Bill Spitzak and others.
+// Copyright 2001-2016 Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -57,6 +57,8 @@
 #include <X11/Xft/Xft.h>
 
 #include <math.h>
+
+#define USE_OVERLAY 0
 
 // The predefined fonts that FLTK has:
 static Fl_Fontdesc built_in_table[] = {
@@ -693,5 +695,5 @@ void Fl_Xlib_Graphics_Driver::rtl_draw(const char* c, int n, int x, int y) {
 #endif
 
 //
-// End of "$Id: fl_font_xft.cxx 10232 2014-08-21 12:13:47Z cand $"
+// End of "$Id: fl_font_xft.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //

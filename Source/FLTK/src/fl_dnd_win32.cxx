@@ -1,5 +1,5 @@
 //
-// "$Id: fl_dnd_win32.cxx 9677 2012-08-18 11:32:50Z AlbrechtS $"
+// "$Id: fl_dnd_win32.cxx 11131 2016-02-07 10:10:52Z AlbrechtS $"
 //
 // Drag & Drop code for the Fast Light Tool Kit (FLTK).
 //
@@ -134,6 +134,8 @@ public:
     }
     px = pt.x; py = pt.y;
     lastEffect = *pdwEffect;
+    // show insert position if dnd'ing in the same window/process (STR #3209)
+    Fl::flush();
     return S_OK;
   }
   HRESULT STDMETHODCALLTYPE DragLeave() {
@@ -334,7 +336,7 @@ public:
       delete this;
     return nTemp;
   }
-  STDMETHODIMP GiveFeedback( ulong ) { return DRAGDROP_S_USEDEFAULTCURSORS; }
+  STDMETHODIMP GiveFeedback( DWORD ) { return DRAGDROP_S_USEDEFAULTCURSORS; }
   STDMETHODIMP QueryContinueDrag( BOOL esc, DWORD keyState ) {
     if ( esc )
       return DRAGDROP_S_CANCEL;
@@ -546,5 +548,5 @@ int Fl::dnd()
 }
 
 //
-// End of "$Id: fl_dnd_win32.cxx 9677 2012-08-18 11:32:50Z AlbrechtS $".
+// End of "$Id: fl_dnd_win32.cxx 11131 2016-02-07 10:10:52Z AlbrechtS $".
 //

@@ -1,9 +1,9 @@
 //
-// "$Id: device.cxx 10159 2014-05-23 16:47:21Z manolo $"
+// "$Id: device.cxx 11156 2016-02-11 20:42:51Z manolo $"
 //
 // Device test program for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Roman Kantor and others.
+// Copyright 1998-2016 by Roman Kantor and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -551,15 +551,30 @@ const  char *operation;
 
 void copy(Fl_Widget *, void *data) {
   if (strcmp(operation, "Fl_Image_Surface") == 0) {
-    Fl_Image_Surface *rgb_surf = new Fl_Image_Surface(target->w()+20, target->h()+10);
+    Fl_Image_Surface *rgb_surf;
+    int W, H, decorated;
+    if (target->as_window() && !target->parent()) {
+      W = target->as_window()->decorated_w();
+      H = target->as_window()->decorated_h();
+      decorated = 1;
+     }
+    else {
+      W = target->w();
+      H = target->h();
+      decorated = 0;
+    }
+    rgb_surf = new Fl_Image_Surface(W, H, 1);
     rgb_surf->set_current();
-    fl_color(FL_BLUE);fl_rectf(0,0,1000,1000);
-    rgb_surf->draw(target,10,5);
-    Fl_Image *img = rgb_surf->image();
+    if (decorated)
+      rgb_surf->draw_decorated_window(target->as_window());
+    else
+      rgb_surf->draw(target);
+    Fl_Image *img = rgb_surf->highres_image();
     delete rgb_surf;
     Fl_Display_Device::display_device()->set_current();
-    Fl_Window* g2 = new Fl_Window(img->w(), img->h());
-    Fl_Box *b = new Fl_Box(FL_NO_BOX,0,0,img->w(), img->h(),0);
+    Fl_Window* g2 = new Fl_Window(img->w()+10, img->h()+10);
+    g2->color(FL_YELLOW);
+    Fl_Box *b = new Fl_Box(FL_NO_BOX,5,5,img->w(), img->h(),0);
     b->image(img);
     g2->end();
     g2->show();
@@ -568,10 +583,18 @@ void copy(Fl_Widget *, void *data) {
   
   
   if (strcmp(operation, "Fl_Copy_Surface") == 0) {
-    Fl_Copy_Surface *copy_surf = new Fl_Copy_Surface(target->w()+10, target->h()+20);
-    copy_surf->set_current();
-    fl_color(FL_YELLOW);fl_rectf(0,0,1000,1000);
-    copy_surf->draw(target, 5, 10);
+    Fl_Copy_Surface *copy_surf;
+    if (target->as_window() && !target->parent()) {
+      copy_surf = new Fl_Copy_Surface(target->as_window()->decorated_w(), target->as_window()->decorated_h());
+      copy_surf->set_current();
+      copy_surf->draw_decorated_window(target->as_window(), 0, 0);
+    }
+    else {
+      copy_surf = new Fl_Copy_Surface(target->w()+10, target->h()+20);
+      copy_surf->set_current();
+      fl_color(FL_YELLOW);fl_rectf(0,0,copy_surf->w(), copy_surf->h());
+      copy_surf->draw(target, 5, 10);
+    }
     delete copy_surf;
     Fl_Display_Device::display_device()->set_current();  
     }
@@ -701,7 +724,7 @@ int main(int argc, char ** argv) {
   g1->end();
   
   Fl_Group *g2 = new Fl_Group(w3->x(),w3->y(),w3->w(),w3->h());
-  rb = new Fl_Radio_Round_Button(170,5,150,12, "Window"); 
+  rb = new Fl_Radio_Round_Button(170,5,150,12, "Decorated Window"); 
   rb->set(); rb->callback(target_cb, w2); target = w2;
   rb = new Fl_Radio_Round_Button(170,22,150,12, "Sub-window"); rb->callback(target_cb, w3);
   rb = new Fl_Radio_Round_Button(170,39,150,12, "Group"); rb->callback(target_cb, group);
@@ -718,5 +741,5 @@ int main(int argc, char ** argv) {
 }
 
 //
-// End of "$Id: device.cxx 10159 2014-05-23 16:47:21Z manolo $"
+// End of "$Id: device.cxx 11156 2016-02-11 20:42:51Z manolo $"
 //

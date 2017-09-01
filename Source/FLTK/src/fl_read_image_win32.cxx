@@ -1,9 +1,9 @@
 //
-// "$Id: fl_read_image_win32.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: fl_read_image_win32.cxx 10436 2014-11-06 16:48:57Z manolo $"
 //
 // WIN32 image reading routines for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2014 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -16,12 +16,8 @@
 //     http://www.fltk.org/str.php
 //
 
-//
-// 'fl_read_image()' - Read an image from the current window.
-//
-
-uchar *				// O - Pixel buffer or NULL if failed
-fl_read_image(uchar *p,		// I - Pixel buffer or NULL to allocate
+static uchar *				// O - Pixel buffer or NULL if failed
+read_win_rectangle(uchar *p,		// I - Pixel buffer or NULL to allocate
               int   X,		// I - Left position
 	      int   Y,		// I - Top position
 	      int   w,		// I - Width of area to read
@@ -120,5 +116,5 @@ fl_read_image(uchar *p,		// I - Pixel buffer or NULL to allocate
 }
 
 //
-// End of "$Id: fl_read_image_win32.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: fl_read_image_win32.cxx 10436 2014-11-06 16:48:57Z manolo $".
 //

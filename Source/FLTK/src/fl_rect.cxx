@@ -1,5 +1,5 @@
 //
-// "$Id: fl_rect.cxx 10401 2014-10-28 13:44:09Z manolo $"
+// "$Id: fl_rect.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $"
 //
 // Rectangle drawing routines for the Fast Light Tool Kit (FLTK).
 //
@@ -40,7 +40,7 @@ extern int fl_line_width_;
 
 #ifdef __APPLE_QUARTZ__
 extern float fl_quartz_line_width_;
-#define USINGQUARTZPRINTER  (Fl_Surface_Device::surface() != Fl_Display_Device::display_device())
+#define USINGQUARTZPRINTER  (Fl_Surface_Device::surface()->class_name() == Fl_Printer::class_id)
 #endif
 
 #ifdef USE_X11
@@ -205,6 +205,14 @@ void Fl_Graphics_Driver::xyline(int x, int y, int x1) {
   CGContextMoveToPoint(fl_gc, x, y);
   CGContextAddLineToPoint(fl_gc, x1, y);
   CGContextStrokePath(fl_gc);
+  if (Fl_Display_Device::high_resolution()) {
+    /* On retina displays, all xyline() and yxline() functions produce lines that are half-unit
+     (or one pixel) too short at both ends. This is corrected by filling at both ends rectangles
+     of size one unit by line-width.
+     */
+    CGContextFillRect(fl_gc, CGRectMake(x-0.5 , y  - fl_quartz_line_width_/2, 1 , fl_quartz_line_width_));
+    CGContextFillRect(fl_gc, CGRectMake(x1-0.5 , y  - fl_quartz_line_width_/2, 1 , fl_quartz_line_width_));
+  }
   if (USINGQUARTZPRINTER || fl_quartz_line_width_ > 1.5f) CGContextSetShouldAntialias(fl_gc, false);
 #else
 # error unsupported platform
@@ -229,6 +237,10 @@ void Fl_Graphics_Driver::xyline(int x, int y, int x1, int y2) {
   CGContextAddLineToPoint(fl_gc, x1, y);
   CGContextAddLineToPoint(fl_gc, x1, y2);
   CGContextStrokePath(fl_gc);
+  if (Fl_Display_Device::high_resolution()) {
+    CGContextFillRect(fl_gc, CGRectMake(x-0.5, y  - fl_quartz_line_width_/2, 1 , fl_quartz_line_width_));
+    CGContextFillRect(fl_gc, CGRectMake(x1  -  fl_quartz_line_width_/2, y2-0.5, fl_quartz_line_width_, 1));
+  }
   if (USINGQUARTZPRINTER || fl_quartz_line_width_ > 1.5f) CGContextSetShouldAntialias(fl_gc, false);
 #else
 #error unsupported platform
@@ -256,6 +268,10 @@ void Fl_Graphics_Driver::xyline(int x, int y, int x1, int y2, int x3) {
   CGContextAddLineToPoint(fl_gc, x1, y2);
   CGContextAddLineToPoint(fl_gc, x3, y2);
   CGContextStrokePath(fl_gc);
+  if (Fl_Display_Device::high_resolution()) {
+    CGContextFillRect(fl_gc, CGRectMake(x-0.5, y  - fl_quartz_line_width_/2, 1 , fl_quartz_line_width_));
+    CGContextFillRect(fl_gc, CGRectMake(x3-0.5, y2  - fl_quartz_line_width_/2, 1 , fl_quartz_line_width_));
+  }
   if (USINGQUARTZPRINTER || fl_quartz_line_width_ > 1.5f) CGContextSetShouldAntialias(fl_gc, false);
 #else
 # error unsupported platform
@@ -274,6 +290,10 @@ void Fl_Graphics_Driver::yxline(int x, int y, int y1) {
   CGContextMoveToPoint(fl_gc, x, y);
   CGContextAddLineToPoint(fl_gc, x, y1);
   CGContextStrokePath(fl_gc);
+  if (Fl_Display_Device::high_resolution()) {
+    CGContextFillRect(fl_gc, CGRectMake(x  -  fl_quartz_line_width_/2, y-0.5, fl_quartz_line_width_, 1));
+    CGContextFillRect(fl_gc, CGRectMake(x  -  fl_quartz_line_width_/2, y1-0.5, fl_quartz_line_width_, 1));
+  }
   if (USINGQUARTZPRINTER || fl_quartz_line_width_ > 1.5f) CGContextSetShouldAntialias(fl_gc, false);
 #else
 # error unsupported platform
@@ -298,6 +318,10 @@ void Fl_Graphics_Driver::yxline(int x, int y, int y1, int x2) {
   CGContextAddLineToPoint(fl_gc, x, y1);
   CGContextAddLineToPoint(fl_gc, x2, y1);
   CGContextStrokePath(fl_gc);
+  if (Fl_Display_Device::high_resolution()) {
+    CGContextFillRect(fl_gc, CGRectMake(x  -  fl_quartz_line_width_/2, y-0.5, fl_quartz_line_width_, 1));
+    CGContextFillRect(fl_gc, CGRectMake(x2-0.5, y1  - fl_quartz_line_width_/2, 1 , fl_quartz_line_width_));
+  }
   if (USINGQUARTZPRINTER || fl_quartz_line_width_ > 1.5f) CGContextSetShouldAntialias(fl_gc, false);
 #else
 # error unsupported platform
@@ -325,6 +349,10 @@ void Fl_Graphics_Driver::yxline(int x, int y, int y1, int x2, int y3) {
   CGContextAddLineToPoint(fl_gc, x2, y1);
   CGContextAddLineToPoint(fl_gc, x2, y3);
   CGContextStrokePath(fl_gc);
+  if (Fl_Display_Device::high_resolution()) {
+    CGContextFillRect(fl_gc, CGRectMake(x  -  fl_quartz_line_width_/2, y-0.5, fl_quartz_line_width_, 1));
+    CGContextFillRect(fl_gc, CGRectMake(x2  -  fl_quartz_line_width_/2, y3-0.5, fl_quartz_line_width_, 1));
+  }
   if (USINGQUARTZPRINTER || fl_quartz_line_width_ > 1.5f) CGContextSetShouldAntialias(fl_gc, false);
 #else
 # error unsupported platform
@@ -513,6 +541,7 @@ Fl_Region XRectangleRegion(int x, int y, int w, int h) {
 
 void Fl_Graphics_Driver::restore_clip() {
   fl_clip_state_number++;
+  if (!fl_gc) return;
   Fl_Region r = rstack[rstackptr];
 #if defined(USE_X11)
   if (r) XSetRegion(fl_display, fl_gc, r);
@@ -520,16 +549,10 @@ void Fl_Graphics_Driver::restore_clip() {
 #elif defined(WIN32)
   SelectClipRgn(fl_gc, r); //if r is NULL, clip is automatically cleared
 #elif defined(__APPLE_QUARTZ__)
-  if ( fl_window ) { // clipping for a true window
+  if ( fl_window || fl_gc ) { // clipping for a true window or an offscreen buffer
     Fl_X::q_clear_clipping();
     Fl_X::q_fill_context();//flip coords if bitmap context
     //apply program clip
-    if (r) {
-      CGContextClipToRects(fl_gc, r->rects, r->count);
-    }
-  } else if (fl_gc) { // clipping for an offscreen drawing world (CGBitmap)
-    Fl_X::q_clear_clipping();
-    Fl_X::q_fill_context();
     if (r) {
       CGContextClipToRects(fl_gc, r->rects, r->count);
     }
@@ -696,10 +719,10 @@ int Fl_Graphics_Driver::clip_box(int x, int y, int w, int h, int& X, int& Y, int
       else u = CGRectUnion(u, test);
     }
   }
-  X = int(u.origin.x);
-  Y = int(u.origin.y);
-  W = int(u.size.width + 1);
-  H = int(u.size.height + 1);
+  X = int(u.origin.x + 0.5); // reverse offset introduced by fl_cgrectmake_cocoa()
+  Y = int(u.origin.y + 0.5);
+  W = int(u.size.width + 0.5); // round to nearest integer
+  H = int(u.size.height + 0.5);
   if(CGRectIsEmpty(u)) W = H = 0;
   return ! CGRectEqualToRect(arg, u);
 #else
@@ -708,5 +731,5 @@ int Fl_Graphics_Driver::clip_box(int x, int y, int w, int h, int& X, int& Y, int
 }
 
 //
-// End of "$Id: fl_rect.cxx 10401 2014-10-28 13:44:09Z manolo $".
+// End of "$Id: fl_rect.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: table-spreadsheet.cxx 10087 2014-01-27 06:47:04Z greg.ercolano $"
+// "$Id: table-spreadsheet.cxx 10835 2015-08-19 21:38:17Z greg.ercolano $"
 //
 //	Simple example of an interactive spreadsheet using Fl_Table.
 //	Uses Mr. Satan's technique of instancing an Fl_Input around.
@@ -162,7 +162,7 @@ void Spreadsheet::draw_cell(TableContext context, int R,int C, int X,int Y,int W
       if ( C < cols()-1 && R < rows()-1 ) {
 	fl_draw_box(FL_THIN_UP_BOX, X,Y,W,H, is_selected(R,C) ? FL_YELLOW : FL_WHITE);
       } else {
-	fl_draw_box(FL_THIN_UP_BOX, X,Y,W,H, 0xbbddbb00);	// money green
+	fl_draw_box(FL_THIN_UP_BOX, X,Y,W,H, is_selected(R,C) ? 0xddffdd00 : 0xbbddbb00);	// money green
       }
       // Text
       fl_push_clip(X+3, Y+3, W-6, H-6);
@@ -275,5 +275,5 @@ int main() {
 }
 
 //
-// End of "$Id: table-spreadsheet.cxx 10087 2014-01-27 06:47:04Z greg.ercolano $".
+// End of "$Id: table-spreadsheet.cxx 10835 2015-08-19 21:38:17Z greg.ercolano $".
 //

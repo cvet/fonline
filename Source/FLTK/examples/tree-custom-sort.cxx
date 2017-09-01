@@ -1,5 +1,5 @@
 //
-// "$Id: tree-custom-sort.cxx 10319 2014-09-17 16:27:01Z greg.ercolano $"
+// "$Id: tree-custom-sort.cxx 11870 2016-08-11 12:37:30Z AlbrechtS $"
 //
 //	Simple Fl_Tree custom (numeric) sort example. - erco 12/16/2013
 //      Demonstrates custom sorting of Fl_Tree items.
@@ -29,7 +29,7 @@ Fl_Tree *G_tree = 0;
 
 // Resort the tree
 void MySortCallback(Fl_Widget*, void *data) {
-  int dir = int(long(data));		// forward or reverse
+  int dir = int(fl_intptr_t(data));		// forward or reverse
   Fl_Tree_Item *i = G_tree->root();
   // Bubble sort
   for ( int ax=0; ax<i->children(); ax++ ) {
@@ -77,5 +77,5 @@ int main(int argc, char *argv[]) {
 }
 
 //
-// End of "$Id: tree-custom-sort.cxx 10319 2014-09-17 16:27:01Z greg.ercolano $".
+// End of "$Id: tree-custom-sort.cxx 11870 2016-08-11 12:37:30Z AlbrechtS $".
 //

@@ -1,9 +1,9 @@
 //
-// "$Id: threads.h 9980 2013-09-21 16:41:23Z greg.ercolano $"
+// "$Id: threads.h 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //
 // Simple threading API for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -34,7 +34,7 @@
 #ifndef Threads_H
 #  define Threads_H
 
-#  if HAVE_PTHREAD_H
+#  ifdef HAVE_PTHREAD_H
 // Use POSIX threading...
 
 #    include <pthread.h>
@@ -77,5 +77,5 @@ static int fl_create_thread(Fl_Thread& t, Fl_Thread_Func* f, void* p) {
 #endif // !Threads_h
 
 //
-// End of "$Id: threads.h 9980 2013-09-21 16:41:23Z greg.ercolano $".
+// End of "$Id: threads.h 11094 2016-01-31 02:49:56Z AlbrechtS $".
 //

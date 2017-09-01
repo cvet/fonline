@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Group.cxx 10261 2014-08-29 12:10:11Z cand $"
+// "$Id: Fl_Group.cxx 10945 2015-12-02 09:59:37Z manolo $"
 //
 // Group widget for the Fast Light Tool Kit (FLTK).
 //
@@ -877,5 +877,5 @@ Fl_Spinner::Fl_Spinner(int X, int Y, int W, int H, const char *L)
 
 
 //
-// End of "$Id: Fl_Group.cxx 10261 2014-08-29 12:10:11Z cand $".
+// End of "$Id: Fl_Group.cxx 10945 2015-12-02 09:59:37Z manolo $".
 //

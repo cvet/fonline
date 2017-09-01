@@ -4,6 +4,7 @@
 <H1>Simple HTML Tests</H1>
 <UL>
     <LI> <a href="#Plain Test">Plain Text Test</A>
+    <LI> <a href="#Entity Test">HTML Entity Test</A>
     <LI> <a href="#Pre Test">PRE (preformatted Text) Test</A>
     <LI> <a href="#Headings">Heading Tests</A>
     <LI> <a href="#Lists">UL, OL, DL Lists</A>
@@ -38,7 +39,30 @@
     <FONT FACE="Serif">This should be Serif. 0123456789</FONT><BR>
     <FONT FACE="Courier">This should be Courier. 0123456789</FONT><BR>
     <FONT FACE="Symbol">This should be Symbol. 0123456789</FONT>
-<P>
+    <P>
+
+<A NAME="Entity Test"></A>
+<B>HTML Entities: named, hexadecimal, and decimal</B><P>
+    <b>Special characters, formatted as named "HTML Entities", e.g. "&amp;euro;":</b><br>
+    Euro and "dagger": "&euro;" "&dagger;"<br>
+    Umlaut characters : "&auml;" "&euml;" "&iuml;" "&ouml;" "&uuml;" "&szlig;"<br>
+    Umlaut characters : "&Auml;" "&Euml;" "&Iuml;" "&Ouml;" "&Uuml;"<br>
+    Special characters : "&bull;" "&permil;" "&copy;" "&trade;" "&reg;"<br>
+    <br>
+    <b>Other scripts, formatted as hexadecimal "HTML Entities", e.g. "&amp;#x20ac;":</b><br>
+    (Should be the same symbols as below)<br>
+    Euro and "dagger": "&#x20ac;" "&#x2020;"<br>
+    Japanese (Hiragana) : "&#x3050;" "&#x306e;"<br>
+    Japanese (Katakana) : "&#x30c0;" "&#x30dd;"<br>
+    Chinese (CJK Unified Ideographs) : "&#x4e2d;" "&#x4e33;"<br>
+    <br>
+    <b>Other scripts, formatted as decimal "HTML Entities", e.g. "&amp;#8364;":</b><br>
+    (Should be the same symbols as above)<br>
+    Euro and "dagger": "&#8364;" "&#8224;"<br>
+    Japanese (Hiragana) : "&#12368;" "&#12398;"<br>
+    Japanese (Katakana) : "&#12480;" "&#12509;"<br>
+    Chinese (CJK Unified Ideographs) : "&#20013;" "&#20019;"<br>
+    <P>
 
 <A NAME="Pre Test"></A>
 <B>Preformatted paragraphs</B><PRE>
@@ -69,10 +93,10 @@ The following 2 paragraphs should be indented 8 spaces.
         authors decide to use it.  You can use it for your
         libraries, too.
 
-The following text content should all be indented 4 apces.
+The following text content should all be indented 4 spaces.
 
     <I>Italic content.</I> <B>Bold content</B> <BIG>Big content.</BIG>
-    <SMALL>Small content.</SMALL> <U>Underline content.</U> <STRIKE>Strike out content.</STRIKE>.
+    <SMALL>Small content.</SMALL> <U>Underline content.</U> <STRIKE>Strike out content.</STRIKE>
     <FONT COLOR=RED>Red font content.</FONT> <FONT COLOR=#ff8800>Orange #ff8800 font content.</FONT>
     <FONT COLOR=BLUE>Blue font content.</FONT>
 </PRE>
@@ -198,7 +222,7 @@ End of DL.
 
 <A NAME="Center"></A>
 <B>Testing Centered Text And Image</B>
-<center>This text should be centered. What follows is a line break..
+<center>This text should be centered. What follows is a line break.
 <BR>
 After the line break, still centered. What follows is a paragraph break.
 <P>
@@ -206,7 +230,7 @@ This text should be in a paragraph break. This is paragraph #1 of 2.
 <P>
 This text should be in a paragraph break as well. This is paragraph #2 of 2.
 <P>
-What follows should be a centered image..<BR>
+What follows should be a centered image.<BR>
 <IMG SRC="../documentation/src/FL200.png"><BR>
 That should be a centered image.
 <P>
@@ -235,7 +259,7 @@ This text should be between two horizontal lines.
       6 Space
        7 Space            __
         8 Space             |
-    	4 Space + 1 Tab     |-- shold all be
+    	4 Space + 1 Tab     |-- should all be
 	1 Tab             __|   same indent level
 	 1 Tab + 1 Space
 	  1 Tab + 2 Space

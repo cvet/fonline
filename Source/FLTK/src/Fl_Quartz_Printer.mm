@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Quartz_Printer.mm 10393 2014-10-26 15:23:03Z manolo $"
+// "$Id: Fl_Quartz_Printer.mm 11943 2016-09-13 11:51:24Z manolo $"
 //
 // Mac OS X-specific printing support (objective-c++) for the Fast Light Tool Kit (FLTK).
 //
@@ -80,14 +80,16 @@ int Fl_System_Printer::start_job (int pagecount, int *frompage, int *topage)
     PMGetFirstPage(printSettings, &from32); 
     if (frompage) *frompage = (int)from32;
     PMGetLastPage(printSettings, &to32); 
-    if (topage) *topage = (int)to32;
-    if(topage && *topage > pagecount) *topage = pagecount;
+    if (topage) {
+      *topage = (int)to32;
+      if (*topage > pagecount && pagecount > 0) *topage = pagecount;
+    }
     status = PMSessionBeginCGDocumentNoDialog(printSession, printSettings, pageFormat);//from 10.4
   }
   else
 #endif
   {
-#if !__LP64__
+#if !defined(__LP64__) || !__LP64__
     Boolean accepted;
     status = PMCreateSession(&printSession);
     if (status != noErr) return 1;
@@ -238,13 +240,13 @@ int Fl_System_Printer::start_page (void)
 {	
   OSStatus status = PMSessionBeginPageNoDialog(printSession, pageFormat, NULL);
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_4
-  if ( PMSessionGetCGGraphicsContext != NULL ) {
+  if ( &PMSessionGetCGGraphicsContext != NULL ) {
     status = PMSessionGetCGGraphicsContext(printSession, &fl_gc);
   }
   else
 #endif
   {
-#if ! __LP64_
+#if !defined(__LP64__) || !__LP64__
     PMSessionGetGraphicsContext_type PMSessionGetGraphicsContext =
       (PMSessionGetGraphicsContext_type)Fl_X::get_carbon_function("PMSessionGetGraphicsContext");
     status = PMSessionGetGraphicsContext(printSession, NULL, (void **)&fl_gc);
@@ -302,7 +304,7 @@ void Fl_System_Printer::end_job (void)
     fl_alert ("PM Session error %d", (int)status);
   }
   PMSessionEndDocumentNoDialog(printSession);
-#if !__LP64__
+#if !defined(__LP64__) || !__LP64__
   if (fl_mac_os_version < 100500) {
     PMRelease(printSettings);
     PMRelease(pageFormat);
@@ -324,11 +326,10 @@ void Fl_System_Printer::print_window_part(Fl_Window *win, int x, int y, int w, i
   win->show();
   fl_gc = NULL;
   Fl::check();
-  win->make_current();
   CGImageRef img = Fl_X::CGImage_from_window_rect(win, x, y, w, h);
   if (save_front != win) save_front->show();
   current->set_current();
-  CGRect rect = { { delta_x, delta_y }, { w, h } };
+  CGRect rect = CGRectMake(delta_x, delta_y, w, h);
   Fl_X::q_begin_image(rect, 0, 0, w, h);
   CGContextDrawImage(fl_gc, rect, img);
   Fl_X::q_end_image();
@@ -338,5 +339,5 @@ void Fl_System_Printer::print_window_part(Fl_Window *win, int x, int y, int w, i
 #endif // __APPLE__
 
 //
-// End of "$Id: Fl_Quartz_Printer.mm 10393 2014-10-26 15:23:03Z manolo $".
+// End of "$Id: Fl_Quartz_Printer.mm 11943 2016-09-13 11:51:24Z manolo $".
 //

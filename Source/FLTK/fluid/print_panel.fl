@@ -1,13 +1,13 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0303 
-header_name {.h} 
+version 1.0304
+header_name {.h}
 code_name {.cxx}
 comment {//
-// "$Id: print_panel.fl 10353 2014-10-05 00:03:27Z AlbrechtS $"
+// "$Id: print_panel.fl 11952 2016-09-20 12:57:18Z AlbrechtS $"
 //
 // FLUID print panel for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -20,28 +20,28 @@ comment {//
 //     http://www.fltk.org/str.php
 //
 } {in_source in_header
-} 
+}
 
 decl {\#include <stdio.h>} {private local
-} 
+}
 
 decl {\#include <stdlib.h>} {private local
-} 
+}
 
 decl {\#include "../src/flstring.h"} {private local
-} 
+}
 
 decl {\#include <FL/Fl_Preferences.H>} {private local
-} 
+}
 
 decl {extern Fl_Preferences fluid_prefs;} {private local
-} 
+}
 
 Function {make_print_panel()} {open
 } {
   Fl_Window print_panel {
     label Print open
-    xywh {394 209 465 235} type Double modal visible
+    xywh {394 209 465 235} type Double hide modal
   } {
     Fl_Group print_panel_controls {open
       xywh {10 10 447 216}
@@ -215,7 +215,7 @@ print_collate_group[1 - i]->hide();}
     label {Printer Properties}
     callback {print_properties_panel->hide();
 print_update_status();} open
-    xywh {400 537 290 130} type Double modal visible
+    xywh {400 537 290 130} type Double hide modal
   } {
     Fl_Choice print_page_size {
       label {Page Size:}
@@ -277,10 +277,10 @@ print_update_status();}
       xywh {60 95 53 25}
     }
   }
-} 
+}
 
 decl {void print_cb(Fl_Return_Button *, void *);} {public local
-} 
+}
 
 Function {print_load()} {open return_type void
 } {
@@ -328,7 +328,7 @@ if (defname[0]) {
 
 
 print_update_status();} {}
-} 
+}
 
 Function {print_update_status()} {open return_type void
 } {
@@ -357,10 +357,10 @@ print_page_size->value(val);
 snprintf(name, sizeof(name), "%s/output_mode", printer);
 fluid_prefs.get(name, val, 0);
 print_output_mode[val]->setonly();} {}
-} 
+}
 
 comment {
 //
-// End of "$Id: print_panel.fl 10353 2014-10-05 00:03:27Z AlbrechtS $".
+// End of "$Id: print_panel.fl 11952 2016-09-20 12:57:18Z AlbrechtS $".
 //} {in_source in_header
-} 
+}

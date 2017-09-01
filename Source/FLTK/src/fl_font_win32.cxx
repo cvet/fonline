@@ -1,9 +1,9 @@
 //
-// "$Id: fl_font_win32.cxx 10226 2014-08-19 12:36:12Z AlbrechtS $"
+// "$Id: fl_font_win32.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //
 // WIN32 font selection routines for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2012 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -383,6 +383,8 @@ exit_error:
 
 void Fl_GDI_Graphics_Driver::draw(const char* str, int n, int x, int y) {
   COLORREF oldColor = SetTextColor(fl_gc, fl_RGB());
+  // avoid crash if no font has been set yet
+  if (!font_descriptor()) this->font(FL_HELVETICA, FL_NORMAL_SIZE);
   SelectObject(fl_gc, font_descriptor()->fid);
   int wn = fl_utf8toUtf16(str, n, wstr, wstr_len);
   if(wn >= wstr_len) {
@@ -442,5 +444,5 @@ void Fl_GDI_Graphics_Driver::rtl_draw(const char* c, int n, int x, int y) {
 }
 #endif
 //
-// End of "$Id: fl_font_win32.cxx 10226 2014-08-19 12:36:12Z AlbrechtS $".
+// End of "$Id: fl_font_win32.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Tree.H 10275 2014-09-05 12:04:28Z cand $"
+// "$Id: Fl_Tree.H 11975 2016-09-24 22:47:28Z AlbrechtS $"
 //
 
 #ifndef FL_TREE_H
@@ -51,7 +51,6 @@
 ///                  |--- Fl_Tree_Select (enum)         // Selection modes
 ///                  |--- Fl_Tree_Sort (enum)           // Sort behavior
 /// \endcode
-///
 ///     Similar to Fl_Browser, Fl_Tree is a browser of Fl_Tree_Item's arranged
 ///     in a parented hierarchy, or 'tree'. Subtrees can be expanded or closed.
 ///     Items can be added, deleted, inserted, sorted and re-ordered.
@@ -227,8 +226,8 @@
 ///     \image html tree-elements.png
 ///     \image latex tree-elements.png "Fl_Tree elements" width=6cm
 /// \par
-///     The following shows the protected 'tree inner' (tix..)
-///     and 'tree outer' (tox..) dimension variables:
+///     The following shows the protected dimension variables 'tree inner' (tix..)
+///     and 'tree outer' (tox..):
 ///     \image html tree-dimensions.png "Fl_Tree inner/outer dimensions" width=6cm
 ///     \image latex tree-dimensions.png "Fl_Tree inner/outer dimensions" width=6cm
 ///
@@ -331,7 +330,7 @@ class FL_EXPORT Fl_Tree : public Fl_Group {
   int            _scrollbar_size;		// size of scrollbar trough
 #if FLTK_ABI_VERSION >= 10301
   // NEW: 
-  Fl_Tree_Item *_lastselect;
+  Fl_Tree_Item *_lastselect;			// used to extend selections
 #else /*FLTK_ABI_VERSION*/
   // OLD: static data inside handle() method
 #endif /*FLTK_ABI_VERSION*/
@@ -422,7 +421,7 @@ public:
   Fl_Tree_Item *next_item(Fl_Tree_Item *item, int dir=FL_Down, bool visible=false);
 #if FLTK_ABI_VERSION >= 10303
   Fl_Tree_Item *next_selected_item(Fl_Tree_Item *item=0, int dir=FL_Down);
-  int get_selected_items(Fl_Tree_Item_Array &items);
+  int get_selected_items(Fl_Tree_Item_Array &ret_items);
 #else
   Fl_Tree_Item *next_selected_item(Fl_Tree_Item *item=0);
   Fl_Tree_Item *next_selected_item(Fl_Tree_Item *item, int dir);
@@ -575,5 +574,5 @@ public:
 #endif /*FL_TREE_H*/
 
 //
-// End of "$Id: Fl_Tree.H 10275 2014-09-05 12:04:28Z cand $".
+// End of "$Id: Fl_Tree.H 11975 2016-09-24 22:47:28Z AlbrechtS $".
 //

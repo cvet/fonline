@@ -1,4 +1,4 @@
-/* "$Id: utf8Wrap.c 10248 2014-08-23 08:41:58Z cand $"
+/* "$Id: utf8Wrap.c 11243 2016-02-27 15:14:42Z AlbrechtS $"
  *
  * Author: Jean-Marc Lienher ( http://oksid.ch )
  * Copyright 2000-2003 by O'ksi'D.
@@ -229,11 +229,7 @@ static void
 load_fonts(Display 	   *dpy,
 	   XUtf8FontStruct *font_set) {
 
-  int i;
-  /* char **list; */
-
-  i = 0;
-  /* list = NULL; */
+  int i = 0;
 
   font_set->fonts = (XFontStruct**) malloc(sizeof(XFontStruct*) *
                                            font_set->nb_font);
@@ -383,7 +379,7 @@ XUtf8DrawRtlString(Display 		*display,
       ptr = buf + 128;
     }
 
-    ulen = XFastConvertUtf8ToUcs((unsigned char*)string, num_bytes, &ucs);
+    ulen = XFastConvertUtf8ToUcs((const unsigned char*)string, num_bytes, &ucs);
 
     if (ulen < 1) ulen = 1;
 
@@ -398,7 +394,7 @@ XUtf8DrawRtlString(Display 		*display,
     while (fnum < nb_font) {
       if (fonts[fnum] && ucs2fontmap(glyph, ucs, encodings[fnum]) >= 0) {
 	if (encodings[fnum] != 0 ||
-	    (ucs >= ranges[fnum * 2] && ucs <= ranges[fnum * 2 + 1])) {
+	    ((int)ucs >= ranges[fnum * 2] && (int)ucs <= ranges[fnum * 2 + 1])) {
 	  break;
 	}
       }
@@ -500,7 +496,7 @@ XUtf8DrawString(Display 	*display,
       i = 0;
     }
 
-    ulen = XFastConvertUtf8ToUcs((unsigned char*)string, num_bytes, &ucs);
+    ulen = XFastConvertUtf8ToUcs((const unsigned char*)string, num_bytes, &ucs);
 
     if (ulen < 1) ulen = 1;
 
@@ -515,8 +511,8 @@ XUtf8DrawString(Display 	*display,
     while (fnum < nb_font) {
       if (fonts[fnum] && ucs2fontmap(glyph, ucs, encodings[fnum]) >= 0) {
 	if (encodings[fnum] != 0 ||
-	    (ucs >= ranges[fnum * 2] &&
-	    ucs <= ranges[fnum * 2 + 1])) {
+	    ((int)ucs >= ranges[fnum * 2] &&
+	     (int)ucs <= ranges[fnum * 2 + 1])) {
 	  break;
 	}
       }
@@ -633,7 +629,7 @@ XUtf8_measure_extents(
       i = 0;
     }
 
-    ulen = XFastConvertUtf8ToUcs((unsigned char*)string, num_bytes, &ucs);
+    ulen = XFastConvertUtf8ToUcs((const unsigned char*)string, num_bytes, &ucs);
 
     if (ulen < 1) ulen = 1;
 
@@ -648,8 +644,8 @@ XUtf8_measure_extents(
     while (fnum < nb_font) {
       if (fonts[fnum] && ucs2fontmap(glyph, ucs, encodings[fnum]) >= 0) {
 	if (encodings[fnum] != 0 ||
-	    (ucs >= ranges[fnum * 2] &&
-	    ucs <= ranges[fnum * 2 + 1])) {
+	    ((int)ucs >= ranges[fnum * 2] &&
+	     (int)ucs <= ranges[fnum * 2 + 1])) {
 	  break;
 	}
       }
@@ -756,7 +752,7 @@ XUtf8TextWidth(XUtf8FontStruct 	*font_set,
       i = 0;
     }
 
-    ulen = XFastConvertUtf8ToUcs((unsigned char*)string, num_bytes, &ucs);
+    ulen = XFastConvertUtf8ToUcs((const unsigned char*)string, num_bytes, &ucs);
 
     if (ulen < 1) ulen = 1;
 
@@ -773,8 +769,8 @@ XUtf8TextWidth(XUtf8FontStruct 	*font_set,
     while (fnum < nb_font) {
       if (fonts[fnum] && ucs2fontmap(glyph, ucs, encodings[fnum]) >= 0) {
 	if (encodings[fnum] != 0 ||
-		(ucs >= ranges[fnum * 2] &&
-		ucs <= ranges[fnum * 2 + 1])) {
+	    ((int)ucs >= ranges[fnum * 2] &&
+	     (int)ucs <= ranges[fnum * 2 + 1])) {
 	  break;
 	}
       }
@@ -816,24 +812,20 @@ XUtf8TextWidth(XUtf8FontStruct 	*font_set,
 /**  get the X font and glyph ID of a UCS char                              **/
 /*****************************************************************************/
 int
-XGetUtf8FontAndGlyph(XUtf8FontStruct  *font_set,
-		     unsigned int     ucs,
-		     XFontStruct      **fnt,
-		     unsigned short   *id) {
+fl_XGetUtf8FontAndGlyph(XUtf8FontStruct  *font_set,
+			unsigned int     ucs,
+			XFontStruct      **fnt,
+			unsigned short   *id) {
 
-  /* int             x; */
   int             *encodings; /* encodings array */
   XFontStruct     **fonts;    /* fonts array */
   int             fnum;       /* index of the current font in the fonts array*/
-  /* int             i; */         /* current byte in the XChar2b buffer */
   int             first;      /* first valid font index */
-  /* int             last_fnum; */ /* font index of the previous char */
   int             nb_font;    /* quantity of fonts in the font array */
   char 		  glyph[2];   /* byte1 and byte2 value of the UTF-8 char */
   int             *ranges;    /* sub range of iso10646 */
 
   nb_font = font_set->nb_font;
-  /* x = 0; */
 
   if (nb_font < 1) {
     /* there is no font in the font_set :-( */
@@ -843,7 +835,6 @@ XGetUtf8FontAndGlyph(XUtf8FontStruct  *font_set,
   ranges = font_set->ranges;
   fonts = font_set->fonts;
   encodings = font_set->encodings;
-  /* i = 0; */
   fnum = 0;
 
   while(fnum < nb_font && !fonts[fnum]) fnum++;
@@ -853,18 +844,16 @@ XGetUtf8FontAndGlyph(XUtf8FontStruct  *font_set,
   }
 
   first = fnum;
-  /* last_fnum = fnum; */
 
   /*
-   * find the first encoding which can be used to
-   * draw the glyph
+   * find the first encoding which can be used to draw the glyph
    */
   fnum = first;
   while (fnum < nb_font) {
     if (fonts[fnum] && ucs2fontmap(glyph, ucs, encodings[fnum]) >= 0) {
       if (encodings[fnum] != 0 ||
-          (ucs >= ranges[fnum * 2] &&
-	  ucs <= ranges[fnum * 2 + 1])) {
+          ((int)ucs >= ranges[fnum * 2] &&
+	   (int)ucs <= ranges[fnum * 2 + 1])) {
 	break;
       }
     }
@@ -895,9 +884,7 @@ XUtf8UcsWidth(XUtf8FontStruct  *font_set,
   XFontStruct 	**fonts;    /* fonts array */
   Fl_XChar2b 	buf[8];     /* drawing buffer */
   int 		fnum;       /* index of the current font in the fonts array*/
-  /*int 		i;*/          /* current byte in the XChar2b buffer */
   int 		first;      /* first valid font index */
-  /*int 		last_fnum;*/ /* font index of the previous char */
   int 		nb_font;    /* quantity of fonts in the font array */
   char 		glyph[2];   /* byte1 and byte2 value of the UTF-8 char */
   int		*ranges;    /* sub range of iso10646 */
@@ -914,7 +901,6 @@ XUtf8UcsWidth(XUtf8FontStruct  *font_set,
   ranges = font_set->ranges;
   fonts = font_set->fonts;
   encodings = font_set->encodings;
-  /* i = 0; */
   fnum = 0;
 
   while(fnum < nb_font && !fonts[fnum]) fnum++;
@@ -924,7 +910,6 @@ XUtf8UcsWidth(XUtf8FontStruct  *font_set,
   }
 
   first = fnum;
-  /* last_fnum = fnum; */
 
   no_spc = XUtf8IsNonSpacing(ucs);
   if (no_spc) ucs = no_spc;
@@ -937,8 +922,8 @@ XUtf8UcsWidth(XUtf8FontStruct  *font_set,
   while (fnum < nb_font) {
     if (fonts[fnum] &&
 	ucs2fontmap(glyph, ucs, encodings[fnum]) >= 0) {
-      if (encodings[fnum] != 0 || (ucs >= ranges[fnum * 2] &&
-	  ucs <= ranges[fnum * 2 + 1])) {
+      if (encodings[fnum] != 0 || ((int)ucs >= ranges[fnum * 2] &&
+	  (int)ucs <= ranges[fnum * 2 + 1])) {
 	break;
       }
     }
@@ -1039,5 +1024,5 @@ XFreeUtf8FontStruct(Display 	    *dpy,
 #endif /* X11 only */
 
 /*
- *  End of "$Id: utf8Wrap.c 10248 2014-08-23 08:41:58Z cand $".
+ *  End of "$Id: utf8Wrap.c 11243 2016-02-27 15:14:42Z AlbrechtS $".
  */

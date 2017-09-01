@@ -1,9 +1,9 @@
 //
-// "$Id: glut.H 9373 2012-04-22 02:45:09Z fabien $"
+// "$Id: glut.H 10665 2015-04-03 11:04:43Z AlbrechtS $"
 //
 // GLUT emulation header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -231,13 +231,8 @@ enum {GLUT_NOT_VISIBLE, GLUT_VISIBLE};
 
 FL_EXPORT void glutIdleFunc(void (*f)());
 
-// Warning: this cast may not work on all machines:
 inline void glutTimerFunc(unsigned int msec, void (*f)(int), int value) {
-#if defined(__LP64__)
-  Fl::add_timeout(msec*.001, (void (*)(void *))f, (void *) (long long) value);
-#else
-  Fl::add_timeout(msec*.001, (void (*)(void *))f, (void *)value);
-#endif
+  Fl::add_timeout(msec*.001, (void (*)(void *))f, (void *)(fl_intptr_t)value);
 }
 
 inline void glutMenuStateFunc(void (*f)(int state)) {
@@ -482,5 +477,5 @@ FL_EXPORT void glutSolidIcosahedron();
 #endif // !Fl_glut_H
 
 //
-// End of "$Id: glut.H 9373 2012-04-22 02:45:09Z fabien $".
+// End of "$Id: glut.H 10665 2015-04-03 11:04:43Z AlbrechtS $".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: menubar.cxx 9241 2012-02-18 08:29:30Z manolo $"
+// "$Id: menubar.cxx 10938 2015-12-01 10:03:23Z manolo $"
 //
 // Menubar test program for the Fast Light Tool Kit (FLTK).
 //
@@ -127,10 +127,10 @@ Fl_Menu_Item menutable[] = {
     {"Italic",	0, 0, 0, 0, 0, FL_ITALIC, 14},
     {"BoldItalic",0,0,0, 0, 0, FL_BOLD+FL_ITALIC, 14},
     {"Small",	0, 0, 0, 0, 0, FL_BOLD+FL_ITALIC, 10},
-    {"Emboss",	0, 0, 0, 0, FL_EMBOSSED_LABEL},
-    {"Engrave",	0, 0, 0, 0, FL_ENGRAVED_LABEL},
-    {"Shadow",	0, 0, 0, 0, FL_SHADOW_LABEL},
-    {"@->",	0, 0, 0, 0, FL_SYMBOL_LABEL},
+    {"Emboss",	0, 0, 0, 0, (uchar)FL_EMBOSSED_LABEL},
+    {"Engrave",	0, 0, 0, 0, (uchar)FL_ENGRAVED_LABEL},
+    {"Shadow",	0, 0, 0, 0, (uchar)FL_SHADOW_LABEL},
+    {"@->",	0, 0, 0, 0, (uchar)FL_SYMBOL_LABEL},
     {0},
   {"&International",0,0,0,FL_SUBMENU},
     {"Sharp Ess",0x0000df},
@@ -237,10 +237,20 @@ int main(int argc, char **argv) {
   ch2.callback(menu_location_cb, &menubar);
 #endif
   window.end();
+  
+#ifdef __APPLE__
+  Fl_Menu_Item custom[] = {
+    {"Preferences…",	0,	test_cb, NULL, FL_MENU_DIVIDER},
+    {"Radio1",	0,	test_cb, NULL, FL_MENU_RADIO|FL_MENU_VALUE},
+    {"Radio2",	0,	test_cb, NULL, FL_MENU_RADIO},
+    {0}
+  };
+  Fl_Mac_App_Menu::custom_application_menu_items(custom);
+#endif
   window.show(argc, argv);
   return Fl::run();
 }
 
 //
-// End of "$Id: menubar.cxx 9241 2012-02-18 08:29:30Z manolo $".
+// End of "$Id: menubar.cxx 10938 2015-12-01 10:03:23Z manolo $".
 //

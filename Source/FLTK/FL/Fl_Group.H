@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Group.H 10261 2014-08-29 12:10:11Z cand $"
+// "$Id: Fl_Group.H 10446 2014-11-10 22:09:11Z AlbrechtS $"
 //
 // Group header file for the Fast Light Tool Kit (FLTK).
 //
@@ -125,12 +125,14 @@ public:
     In these examples the gray area is the resizable:
 
     \image html resizebox1.png
+
+    <br>
     
     \image html resizebox2.png
     
     \image latex resizebox1.png "before resize"  width=4cm
     
-    \image latex resizebox2.png "after resize"   width=4cm
+    \image latex resizebox2.png "after resize"   width=4.85cm
 
     The resizable may be set to the group itself, in which case all the
     contents are resized. This is the default value for Fl_Group,
@@ -222,5 +224,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Group.H 10261 2014-08-29 12:10:11Z cand $".
+// End of "$Id: Fl_Group.H 10446 2014-11-10 22:09:11Z AlbrechtS $".
 //

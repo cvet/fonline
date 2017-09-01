@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_PostScript.cxx 10308 2014-09-13 17:51:20Z manolo $"
+// "$Id: Fl_PostScript.cxx 10645 2015-03-21 08:45:42Z manolo $"
 //
 // PostScript device support for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 2010-2011 by Bill Spitzak and others.
+// Copyright 2010-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -236,13 +236,15 @@ static const char * prolog =
 "/GL { setgray } bind def\n"
 "/SRGB { setrgbcolor } bind def\n"
 
+"/A85RLE { /ASCII85Decode filter /RunLengthDecode filter } bind def\n" // ASCII85Decode followed by RunLengthDecode filters
+
 //  color images 
 
 "/CI { GS /py exch def /px exch def /sy exch def /sx exch def\n"
 "translate \n"
 "sx sy scale px py 8 \n"
 "[ px 0 0 py neg 0 py ]\n"
-"currentfile /ASCIIHexDecode filter\n false 3"
+"currentfile A85RLE\n false 3"
 " colorimage GR\n"
 "} bind def\n"
 
@@ -254,7 +256,7 @@ static const char * prolog =
 
 
 "[ px 0 0 py neg 0 py ]\n"
-"currentfile /ASCIIHexDecode filter\n"
+"currentfile A85RLE\n"
 "image GR\n"
 "} bind def\n"
 
@@ -264,7 +266,7 @@ static const char * prolog =
 "translate \n"
 "sx sy scale px py true \n"
 "[ px 0 0 py neg 0 py ]\n"
-"currentfile /ASCIIHexDecode filter\n"
+"currentfile A85RLE\n"
 "imagemask GR\n"
 "} bind def\n"
 
@@ -315,7 +317,7 @@ static const char * prolog_2 =  // prolog relevant only if lang_level >1
 "/Height py def\n"
 "/BitsPerComponent 8 def\n"
 "/Interpolate inter def\n"
-"/DataSource currentfile /ASCIIHexDecode filter def\n"
+"/DataSource currentfile A85RLE def\n"
 "/MultipleDataSources false def\n"
 "/ImageMatrix [ px 0 0 py neg 0 py ] def\n"
 "/Decode [ 0 1 0 1 0 1 ] def\n"
@@ -335,7 +337,7 @@ static const char * prolog_2 =  // prolog relevant only if lang_level >1
 "/BitsPerComponent 8 def\n"
 
 "/Interpolate inter def\n"
-"/DataSource currentfile /ASCIIHexDecode filter def\n"
+"/DataSource currentfile A85RLE def\n"
 "/MultipleDataSources false def\n"
 "/ImageMatrix [ px 0 0 py neg 0 py ] def\n"
 "/Decode [ 0 1 ] def\n"
@@ -440,7 +442,7 @@ static const char * prolog_2_pixmap =  // prolog relevant only if lang_level == 
 "pixmap_w pixmap_h scale "
 "pixmap_sx pixmap_sy 8 "
 "pixmap_mat "
-"currentfile /ASCIIHexDecode filter "
+"currentfile A85RLE "
 "false 3 "
 "colorimage "
 "end "
@@ -458,7 +460,7 @@ static const char * prolog_2_pixmap =  // prolog relevant only if lang_level == 
 "pixmap_sx pixmap_sy\n"
 "true\n"
 "pixmap_mat\n"
-"currentfile /ASCIIHexDecode filter\n"
+"currentfile A85RLE\n"
 "imagemask\n"
 "GR\n"
 "} bind def\n"
@@ -480,7 +482,7 @@ static const char * prolog_3 = // prolog relevant only if lang_level >2
 "/Height py def\n"
 "/BitsPerComponent 8 def\n"
 "/Interpolate inter def\n"
-"/DataSource currentfile /ASCIIHexDecode filter def\n"
+"/DataSource currentfile A85RLE def\n"
 "/MultipleDataSources false def\n"
 "/ImageMatrix [ px 0 0 py neg 0 py ] def\n"
 
@@ -521,7 +523,7 @@ static const char * prolog_3 = // prolog relevant only if lang_level >2
 "/Height py def\n"
 "/BitsPerComponent 8 def\n"
 "/Interpolate inter def\n"
-"/DataSource currentfile /ASCIIHexDecode filter def\n"
+"/DataSource currentfile A85RLE def\n"
 "/MultipleDataSources false def\n"
 "/ImageMatrix [ px 0 0 py neg 0 py ] def\n"
 
@@ -1065,20 +1067,20 @@ static uchar *calc_mask(uchar *img, int w, int h, Fl_Color bg)
 }
 
 // write to PostScript a bitmap image of a UTF8 string
-static void transformed_draw_extra(const char* str, int n, double x, double y, int w, 
-      FILE *output, Fl_PostScript_Graphics_Driver *driver, bool rtl) {
+void Fl_PostScript_Graphics_Driver::transformed_draw_extra(const char* str, int n, double x, double y, int w, bool rtl)
+{
   // scale for bitmask computation
 #if defined(USE_X11) && !USE_XFT
   float scale = 1; // don't scale because we can't expect to have scalable fonts
 #else
   float scale = 2;
 #endif
-  Fl_Fontsize old_size = driver->size();
-  Fl_Font fontnum = driver->Fl_Graphics_Driver::font();
+  Fl_Fontsize old_size = size();
+  Fl_Font fontnum = Fl_Graphics_Driver::font();
   int w_scaled =  (int)(w * (scale + 0.5));
-  int h = (int)(driver->height() * scale);
+  int h = (int)(height() * scale);
   // create an offscreen image of the string
-  Fl_Color text_color = driver->Fl_Graphics_Driver::color();
+  Fl_Color text_color = Fl_Graphics_Driver::color();
   Fl_Color bg_color = fl_contrast(FL_WHITE, text_color);
   Fl_Offscreen off = fl_create_offscreen(w_scaled, (int)(h+3*scale) );
   fl_begin_offscreen(off);
@@ -1099,26 +1101,25 @@ static void transformed_draw_extra(const char* str, int n, double x, double y, i
   // read (most of) the offscreen image
   uchar *img = fl_read_image(NULL, 1, 1, w2, h, 0);
   fl_end_offscreen();
-  driver->font(fontnum, old_size);
+  font(fontnum, old_size);
   fl_delete_offscreen(off);
   // compute the mask of what is not the background
   uchar *mask = calc_mask(img, w2, h, bg_color);
   delete[] img;
   // write the string image to PostScript as a scaled bitmask
   scale = w2 / float(w);
-  driver->clocale_printf("%g %g %g %g %d %d MI\n", x, y - h*0.77/scale, w2/scale, h/scale, w2, h);
+  clocale_printf("%g %g %g %g %d %d MI\n", x, y - h*0.77/scale, w2/scale, h/scale, w2, h);
   uchar *di;
   int wmask = (w2+7)/8;
+  void *rle85 = prepare_rle85();
   for (int j = h - 1; j >= 0; j--){
     di = mask + j * wmask;
     for (int i = 0; i < wmask; i++){
-      //if (!(i%80)) fprintf(output, "\n"); // don't have lines longer than 255 chars
-      fprintf(output, "%2.2x", *di );
+      write_rle85(*di, rle85);
       di++;
     }
-    fprintf(output,"\n");
   }
-  fprintf(output,">\n");
+  close_rle85(rle85); fputc('\n', output);
   delete[] mask;
 }
 
@@ -1152,10 +1153,11 @@ void Fl_PostScript_Graphics_Driver::transformed_draw(const char* str, int n, dou
   int w = (int)width(str, n);
   if (w == 0) return;
   if (Fl_Graphics_Driver::font() >= FL_FREE_FONT) {
-    transformed_draw_extra(str, n, x, y, w, output, this, false);
+    transformed_draw_extra(str, n, x, y, w, false);
     return;
     }
-  fprintf(output, "%d <", w);
+  fprintf(output, "%d <~", w);
+  void *data = prepare85();
   // transforms UTF8 encoding to our custom PostScript encoding as follows:
   // extract each unicode character
   // if unicode <= 0x17F, unicode and PostScript codes are identical
@@ -1176,18 +1178,20 @@ void Fl_PostScript_Graphics_Driver::transformed_draw(const char* str, int n, dou
       utf = code;
       }
     else { // unhandled character: draw all string as bitmap image
-      fprintf(output, "> pop pop\n"); // close and ignore the opened hex string
-      transformed_draw_extra(str, n, x, y, w, output, this, false);
+      fprintf(output, "~> pop pop\n"); // close and ignore the opened hex string
+      transformed_draw_extra(str, n, x, y, w, false);
       return;
     }
-    fprintf(output, "%4.4X", utf);
+    // 2 bytes per character, high-order byte first, encode that to ASCII85
+    uchar c[2]; c[1] = utf & 0xFF; c[0] = (utf & 0xFF00)>>8; write85(data, c, 2);
   }
-  clocale_printf("> %g %g show_pos_width\n", x, y);
+  close85(data);
+  clocale_printf(" %g %g show_pos_width\n", x, y);
 }
 
 void Fl_PostScript_Graphics_Driver::rtl_draw(const char* str, int n, int x, int y) {
   int w = (int)width(str, n);
-  transformed_draw_extra(str, n, x - w, y, w, output, this, true);
+  transformed_draw_extra(str, n, x - w, y, w, true);
 }
 
 void Fl_PostScript_Graphics_Driver::concat(){
@@ -1547,14 +1551,17 @@ void Fl_PostScript_File_Device::end_job (void)
   Fl_Display_Device::display_device()->set_current();
 }
 
+#endif // FL_DOXYGEN
+
 #if ! (defined(__APPLE__) || defined(WIN32) )
+/** Starts a print job. */
 int Fl_PostScript_Printer::start_job(int pages, int *firstpage, int *lastpage) {
   enum Fl_Paged_Device::Page_Format format;
   enum Fl_Paged_Device::Page_Layout layout;
 
   // first test version for print dialog
   if (!print_panel) make_print_panel();
-  print_load();
+  printing_style style = print_load();
   print_selection->deactivate();
   print_all->setonly();
   print_all->do_callback();
@@ -1628,9 +1635,10 @@ int Fl_PostScript_Printer::start_job(int pages, int *firstpage, int *lastpage) {
   // Print: pipe the output into the lp command...
 
   char command[1024];
-  snprintf(command, sizeof(command), "lp -s -d %s -n %d -t '%s' -o media=%s",
-             printer, print_collate_button->value() ? 1 : (int)(print_copies->value() + 0.5),
-	     "FLTK", media);
+  if (style == SystemV) snprintf(command, sizeof(command), "lp -s -d %s -n %d -t '%s' -o media=%s",
+        printer, print_collate_button->value() ? 1 : (int)(print_copies->value() + 0.5), "FLTK", media);
+  else snprintf(command, sizeof(command), "lpr -h -P%s -#%d -T FLTK ",
+                printer, print_collate_button->value() ? 1 : (int)(print_copies->value() + 0.5));
 
   Fl_PostScript_Graphics_Driver *ps = driver();
   ps->output = popen(command, "w");
@@ -1645,8 +1653,7 @@ int Fl_PostScript_Printer::start_job(int pages, int *firstpage, int *lastpage) {
 
 #endif // ! (defined(__APPLE__) || defined(WIN32) )
 
-#endif // FL_DOXYGEN
 
 //
-// End of "$Id: Fl_PostScript.cxx 10308 2014-09-13 17:51:20Z manolo $".
+// End of "$Id: Fl_PostScript.cxx 10645 2015-03-21 08:45:42Z manolo $".
 //

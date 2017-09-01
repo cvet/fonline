@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Text_Editor.cxx 10031 2013-12-13 16:28:38Z manolo $"
+// "$Id: Fl_Text_Editor.cxx 11808 2016-07-14 18:48:43Z greg.ercolano $"
 //
 // Copyright 2001-2010 by Bill Spitzak and others.
 // Original code Copyright Mark Edel.  Permission to distribute under
@@ -172,7 +172,14 @@ void Fl_Text_Editor::add_default_key_bindings(Key_Binding** list) {
 }
 
 /**  Returns the function associated with a key binding.*/
-Fl_Text_Editor::Key_Func Fl_Text_Editor::bound_key_function(int key, int state, Key_Binding* list) {
+#if FLTK_ABI_VERSION < 10304
+// OLD - non-const
+Fl_Text_Editor::Key_Func Fl_Text_Editor::bound_key_function(int key, int state, Key_Binding* list)
+#else
+// NEW - const (STR#3306)
+Fl_Text_Editor::Key_Func Fl_Text_Editor::bound_key_function(int key, int state, Key_Binding* list) const
+#endif
+{
   Key_Binding* cur;
   for (cur = list; cur; cur = cur->next)
     if (cur->key == key)
@@ -192,7 +199,13 @@ void Fl_Text_Editor::remove_all_key_bindings(Key_Binding** list) {
   *list = 0;
 }
 
-/** Removes the key binding associated with the key "key" of state "state" */
+/** Removes the key binding associated with the key \p key of state \p state
+    from the Key_Binding list \p list.
+
+    This can be used in derived classes to remove global key bindings
+    by using the global (static) Key_Binding list
+    Fl_Text_Editor::global_key_bindings.
+*/
 void Fl_Text_Editor::remove_key_binding(int key, int state, Key_Binding** list) {
   Key_Binding *cur, *last = 0;
   for (cur = *list; cur; last = cur, cur = cur->next)
@@ -202,7 +215,14 @@ void Fl_Text_Editor::remove_key_binding(int key, int state, Key_Binding** list) 
   else *list = cur->next;
   delete cur;
 }
-/** Adds a key of state "state" with the function "function" */
+
+/** Adds a \p key of state \p state with the function \p function to an
+    arbitrary key binding list \p list.
+
+    This can be used in derived classes to add global key bindings
+    by using the global (static) Key_Binding list
+    Fl_Text_Editor::global_key_bindings.
+*/
 void Fl_Text_Editor::add_key_binding(int key, int state, Key_Func function,
                                 Key_Binding** list) {
   Key_Binding* kb = new Key_Binding;
@@ -222,7 +242,9 @@ static void kill_selection(Fl_Text_Editor* e) {
   }
 }
 
-/** Inserts the text associated with the key */
+/** Inserts the text associated with key \p 'c' in editor \p 'e'.
+    Honors the current selection and insert/overstrike mode.
+*/
 int Fl_Text_Editor::kf_default(int c, Fl_Text_Editor* e) {
   // FIXME: this function is a mess! Fix this!
   if (!c || (!isprint(c) && c != '\t')) return 0;
@@ -237,11 +259,22 @@ int Fl_Text_Editor::kf_default(int c, Fl_Text_Editor* e) {
   return 1;
 }
 
-/** Ignores the keypress */
+/** Ignores the key \p 'c' in editor \p 'e'.
+    This method can be used as a keyboard binding to disable a key
+    that might otherwise be handled or entered as text.
+
+    An example would be disabling FL_Escape, so that it isn't added
+    to the buffer when invoked by the user.
+*/
 int Fl_Text_Editor::kf_ignore(int, Fl_Text_Editor*) {
   return 0; // don't handle
 }
-/**  Does a backspace in the current buffer.*/
+
+/** Does a backspace for key \p 'c' in the current buffer of editor \p 'e'.
+    Any current selection is deleted.
+    Otherwise, the character left is deleted and the cursor moved.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_backspace(int, Fl_Text_Editor* e) {
   if (!e->buffer()->selected() && e->move_left()) {
     int p1 = e->insert_position();
@@ -255,7 +288,9 @@ int Fl_Text_Editor::kf_backspace(int, Fl_Text_Editor* e) {
   return 1;
 }
 
-/** Inserts a newline at the current cursor position */
+/** Inserts a newline for key \p 'c' at the current cursor position in editor \p 'e'.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_enter(int, Fl_Text_Editor* e) {
   kill_selection(e);
   e->insert("\n");
@@ -266,7 +301,19 @@ int Fl_Text_Editor::kf_enter(int, Fl_Text_Editor* e) {
 }
 
 extern void fl_text_drag_me(int pos, Fl_Text_Display* d);
-/**  Moves the text cursor in the direction indicated by key c.*/
+/** Moves the text cursor in the direction indicated by key \p 'c' in editor \p 'e'.
+    Supported values for 'c' are currently:
+    \code
+        FL_Home      -- moves the cursor to the beginning of the current line
+        FL_End       -- moves the cursor to the end of the current line
+        FL_Left      -- moves the cursor left one character
+        FL_Right     -- moves the cursor right one character
+        FL_Up        -- moves the cursor up one line
+        FL_Down      -- moves the cursor down one line
+        FL_Page_Up   -- moves the cursor up one page
+        FL_Page_Down -- moves the cursor down one page
+    \endcode
+*/
 int Fl_Text_Editor::kf_move(int c, Fl_Text_Editor* e) {
   int i;
   int selected = e->buffer()->selected();
@@ -304,7 +351,9 @@ int Fl_Text_Editor::kf_move(int c, Fl_Text_Editor* e) {
   return 1;
 }
 
-/**  Extends the current selection in the direction of key c.*/
+/** Extends the current selection in the direction of key \p 'c' in editor \p 'e'.
+    \see kf_move()
+*/
 int Fl_Text_Editor::kf_shift_move(int c, Fl_Text_Editor* e) {
   kf_move(c, e);
   fl_text_drag_me(e->insert_position(), e);
@@ -315,7 +364,20 @@ int Fl_Text_Editor::kf_shift_move(int c, Fl_Text_Editor* e) {
     }
   return 1;
 }
-/** Moves the current text cursor in the direction indicated by control key */
+
+/** Moves the current text cursor in the direction indicated by control key \p 'c' in editor \p 'e'.
+    Supported values for 'c' are currently:
+    \code
+        FL_Home      -- moves the cursor to the beginning of the document
+        FL_End       -- moves the cursor to the end of the document
+        FL_Left      -- moves the cursor left one word
+        FL_Right     -- moves the cursor right one word
+        FL_Up        -- scrolls up one line, without moving cursor
+        FL_Down      -- scrolls down one line, without moving cursor
+        FL_Page_Up   -- moves the cursor to the beginning of the top line on the current page
+        FL_Page_Down -- moves the cursor to the beginning of the last line on the current page
+    \endcode
+*/
 int Fl_Text_Editor::kf_ctrl_move(int c, Fl_Text_Editor* e) {
   if (!e->buffer()->selected())
     e->dragPos = e->insert_position();
@@ -355,7 +417,15 @@ int Fl_Text_Editor::kf_ctrl_move(int c, Fl_Text_Editor* e) {
   return 1;
 }
 
-/** Moves the current text cursor in the direction indicated by meta key */
+/** Moves the current text cursor in the direction indicated by meta key \p 'c' in editor \p 'e'.
+    Supported values for 'c' are currently:
+    \code
+        FL_Up        -- moves cursor to the beginning of the current document
+        FL_Down      -- moves cursor to the end of the current document
+        FL_Left      -- moves the cursor to the beginning of the current line
+        FL_Right     -- moves the cursor to the end of the current line
+    \endcode
+*/
 int Fl_Text_Editor::kf_meta_move(int c, Fl_Text_Editor* e) {
   if (!e->buffer()->selected())
     e->dragPos = e->insert_position();
@@ -383,65 +453,99 @@ int Fl_Text_Editor::kf_meta_move(int c, Fl_Text_Editor* e) {
   return 1;
 }
 
-/** Extends the current selection in the direction indicated by meta key c. */
+/** Extends the current selection in the direction indicated by meta key \p 'c' in editor \p 'e'.
+    \see kf_meta_move().
+*/
 int Fl_Text_Editor::kf_m_s_move(int c, Fl_Text_Editor* e) {
   kf_meta_move(c, e);
   fl_text_drag_me(e->insert_position(), e);
   return 1;
 }
 
-/** Extends the current selection in the direction indicated by control key c. */
+/** Extends the current selection in the direction indicated by control key \p 'c' in editor \p 'e'.
+    \see kf_ctrl_move().
+*/
 int Fl_Text_Editor::kf_c_s_move(int c, Fl_Text_Editor* e) {
   kf_ctrl_move(c, e);
   fl_text_drag_me(e->insert_position(), e);
   return 1;
 }
 
-/**  Moves the text cursor to the beginning of the current line.*/
+/** Moves the text cursor to the beginning of the current line in editor \p 'e'.
+    Same as kf_move(FL_Home, e).
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_home(int, Fl_Text_Editor* e) {
     return kf_move(FL_Home, e);
 }
 
-/**  Moves the text cursor to the end of the current line.*/
+/** Moves the text cursor to the end of the current line in editor \p 'e'.
+    Same as kf_move(FL_End, e).
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_end(int, Fl_Text_Editor* e) {
   return kf_move(FL_End, e);
 }
 
-/**  Moves the text cursor one character to the left.*/
+/** Moves the text cursor one character to the left in editor \p 'e'.
+    Same as kf_move(FL_Left, e).
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_left(int, Fl_Text_Editor* e) {
   return kf_move(FL_Left, e);
 }
 
-/**  Moves the text cursor one line up.*/
+/** Moves the text cursor one line up for editor \p 'e'.
+    Same as kf_move(FL_Up, e).
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_up(int, Fl_Text_Editor* e) {
   return kf_move(FL_Up, e);
 }
 
-/**  Moves the text cursor one character to the right.*/
+/** Moves the text cursor one character to the right for editor \p 'e'.
+    Same as kf_move(FL_Right, e).
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_right(int, Fl_Text_Editor* e) {
   return kf_move(FL_Right, e);
 }
-/**  Moves the text cursor one line down.*/
+
+/** Moves the text cursor one line down for editor \p 'e'.
+    Same as kf_move(FL_Down, e).
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_down(int, Fl_Text_Editor* e) {
   return kf_move(FL_Down, e);
 }
 
-/**  Moves the text cursor up one page.*/
+/** Moves the text cursor up one page for editor \p 'e'.
+    Same as kf_move(FL_Page_Up, e).
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_page_up(int, Fl_Text_Editor* e) {
   return kf_move(FL_Page_Up, e);
 }
 
-/**  Moves the text cursor down one page.*/
+/** Moves the text cursor down one page for editor \p 'e'.
+    Same as kf_move(FL_Page_Down, e).
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_page_down(int, Fl_Text_Editor* e) {
   return kf_move(FL_Page_Down, e);
 }
-/**  Toggles the insert mode in the text editor.*/
+
+/** Toggles the insert mode for editor \p 'e'.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_insert(int, Fl_Text_Editor* e) {
   e->insert_mode(e->insert_mode() ? 0 : 1);
   return 1;
 }
 
-/**  Does a delete of selected text or the current character in the current buffer.*/
+/** Does a delete of selected text or the current character in the current buffer of editor \p 'e'.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_delete(int, Fl_Text_Editor* e) {
   if (!e->buffer()->selected()) {
     int p1 = e->insert_position();
@@ -456,7 +560,9 @@ int Fl_Text_Editor::kf_delete(int, Fl_Text_Editor* e) {
   return 1;
 }
 
-/**  Does a copy of selected text or the current character in the current buffer.*/
+/** Does a copy of selected text or the current character in the current buffer of editor \p 'e'.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_copy(int, Fl_Text_Editor* e) {
   if (!e->buffer()->selected()) return 1;
   const char *copy = e->buffer()->selection_text();
@@ -466,7 +572,9 @@ int Fl_Text_Editor::kf_copy(int, Fl_Text_Editor* e) {
   return 1;
 }
 
-/**  Does a cut of selected text in the current buffer.*/
+/** Does a cut of selected text in the current buffer of editor \p 'e'.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_cut(int c, Fl_Text_Editor* e) {
   kf_copy(c, e);
   kill_selection(e);
@@ -475,7 +583,10 @@ int Fl_Text_Editor::kf_cut(int c, Fl_Text_Editor* e) {
   return 1;
 }
 
-/**  Does a paste of selected text in the current buffer.*/
+/** Does a paste of selected text in the current buffer of editor \p 'e'.
+    Any current selection is replaced with the pasted content.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_paste(int, Fl_Text_Editor* e) {
   kill_selection(e);
   Fl::paste(*e, 1);
@@ -485,7 +596,9 @@ int Fl_Text_Editor::kf_paste(int, Fl_Text_Editor* e) {
   return 1;
 }
 
-/**  Selects all text in the current buffer.*/
+/** Selects all text in the current buffer in editor \p 'e'.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_select_all(int, Fl_Text_Editor* e) {
   e->buffer()->select(0, e->buffer()->length());
   const char *copy = e->buffer()->selection_text();
@@ -493,7 +606,11 @@ int Fl_Text_Editor::kf_select_all(int, Fl_Text_Editor* e) {
   free((void*)copy);
   return 1;
 }
-/**  Undo last edit in the current buffer. Also deselect previous selection. */
+
+/** Undo last edit in the current buffer of editor \p 'e'.
+    Also deselects previous selection.
+    The key value \p 'c' is currently unused.
+*/
 int Fl_Text_Editor::kf_undo(int , Fl_Text_Editor* e) {
   e->buffer()->unselect();
   Fl::copy("", 0, 0);
@@ -653,6 +770,57 @@ int Fl_Text_Editor::handle(int event) {
   return Fl_Text_Display::handle(event);
 }
 
+#if FLTK_ABI_VERSION >= 10304
+/**
+Enables or disables Tab key focus navigation.
+
+When disabled (default), tab characters are inserted into
+Fl_Text_Editor. Only the mouse can change focus.  This behavior is
+desireable when Fl_Text_Editor is used, e.g. in a source code editor.
+
+When enabled, Tab navigates focus to the next widget, and Shift-Tab
+navigates focus to the previous widget. This behavior is desireable
+when Fl_Text_Editor is used e.g. in a database input form.
+
+Currently, this method is implemented as a convenience method
+that adjusts the key bindings for the Tab key. This implementation
+detail may change in the future. Know that changing the editor's
+key bindings for Tab and Shift-Tab may affect tab navigation.
+
+\param [in] val If \p val is 0, Tab inserts a tab character (default).<br>
+		If \p val is 1, Tab navigates widget focus.
+
+\see tab_nav(), Fl::OPTION_ARROW_FOCUS.
+\version 1.3.4 ABI feature
+*/
+void Fl_Text_Editor::tab_nav(int val) {
+  if ( val )
+    add_key_binding(FL_Tab, 0, kf_ignore);
+  else
+    remove_key_binding(FL_Tab, 0);
+}
+
+/**
+Check if Tab focus navigation is enabled.
+
+If disabled (default), hitting Tab inserts a tab character into the
+editor buffer.
+
+If enabled, hitting Tab navigates focus to the next widget,
+and Shift-Tab navigates focus to the previous widget.
+
+\returns	if Tab inserts tab characters or moves the focus
+\retval	0	Tab inserts tab characters (default)
+\retval	1	Tab navigation is enabled.
+
+\see tab_nav(int), Fl::OPTION_ARROW_FOCUS.
+\version 1.3.4 ABI feature
+*/
+int Fl_Text_Editor::tab_nav() const {
+  return (bound_key_function(FL_Tab,0)==kf_ignore) ? 1 : 0;
+}
+#endif
+
 //
-// End of "$Id: Fl_Text_Editor.cxx 10031 2013-12-13 16:28:38Z manolo $".
+// End of "$Id: Fl_Text_Editor.cxx 11808 2016-07-14 18:48:43Z greg.ercolano $".
 //

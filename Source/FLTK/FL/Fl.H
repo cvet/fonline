@@ -1,9 +1,9 @@
 //
-// "$Id: Fl.H 10419 2014-10-30 16:05:22Z AlbrechtS $"
+// "$Id: Fl.H 11945 2016-09-16 09:11:48Z manolo $"
 //
 // Main header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -22,6 +22,8 @@
 
 #ifndef Fl_H
 #  define Fl_H
+
+#include <FL/Fl_Export.H>
 
 #ifdef FLTK_HAVE_CAIRO
 # include <FL/Fl_Cairo.H>
@@ -53,6 +55,14 @@ struct Fl_Label;
 #else
 # define FL_SOCKET int
 #endif
+
+
+// Pointers you can use to change FLTK to a foreign language.
+// Note: Similar pointers are defined in FL/fl_ask.H and src/fl_ask.cxx
+extern FL_EXPORT const char* fl_local_ctrl;
+extern FL_EXPORT const char* fl_local_meta;
+extern FL_EXPORT const char* fl_local_alt;
+extern FL_EXPORT const char* fl_local_shift;
 
 /** \defgroup  callback_functions Callback function typedefs
  \brief Typedefs defined in <FL/Fl.H> for callback or handler functions passed as function parameters.
@@ -124,6 +134,9 @@ typedef void (*Fl_Clipboard_Notify_Handler)(int source, void *data);
 */
 class FL_EXPORT Fl {
   Fl() {}; // no constructor!
+  
+private:
+  static int use_high_res_GL_;
   
 public: // should be private!
 #ifndef FL_DOXYGEN
@@ -260,6 +273,36 @@ public:
 
   // API version number
   static double version();
+  static int api_version();
+
+  // ABI version number
+  static int abi_version();
+
+  /**
+    Returns whether the runtime library ABI version is correct.
+
+    This enables you to check the ABI version of the linked FLTK
+    library at runtime.
+
+    Returns 1 (true) if the compiled ABI version (in the header files)
+    and the linked library ABI version (used at runtime) are the same,
+    0 (false) otherwise.
+
+    Argument \p val can be used to query a particular library ABI version.
+    Use for instance 10303 to query if the runtime library is compatible
+    with FLTK ABI version 1.3.3. This is rarely useful.
+
+    The default \p val argument is FL_ABI_VERSION, which checks the version
+    defined at configure time (i.e. in the header files at program
+    compilation time) against the linked library version used at runtime.
+    This is particularly useful if you linked with a shared object library,
+    but it also concerns static linking.
+
+    \see Fl::abi_version()
+  */
+  static inline int abi_check(const int val = FL_ABI_VERSION) {
+    return val == abi_version();
+  }
 
   // argument parsers:
   static int arg(int argc, char **argv, int& i);
@@ -356,15 +399,19 @@ public:
   stdout with a fair degree of accuracy:
   
   \code
-     void callback(void*) {
-       puts("TICK");
-       Fl::repeat_timeout(1.0, callback);
-     }
-  
-     int main() {
-       Fl::add_timeout(1.0, callback);
-       return Fl::run();
-     }
+#include <stdio.h>
+#include <FL/Fl.H>
+#include <FL/Fl_Window.H>
+void callback(void*) {
+  printf("TICK\n");
+  Fl::repeat_timeout(1.0, callback);    // retrigger timeout
+}
+int main() {
+  Fl_Window win(100,100);
+  win.show();
+  Fl::add_timeout(1.0, callback);       // set up first timeout
+  return Fl::run();
+}
   \endcode
   */
   static void add_timeout(double t, Fl_Timeout_Handler,void* = 0); // platform dependent
@@ -620,28 +667,31 @@ public:
   */
   static void event_is_click(int i) {e_is_click = i;}
   /**
-    Gets which particular mouse button caused the current event. 
+    Gets which particular mouse button caused the current event.
+
     This returns garbage if the most recent event was not a FL_PUSH or FL_RELEASE event.
     \retval FL_LEFT_MOUSE \retval FL_MIDDLE_MOUSE \retval FL_RIGHT_MOUSE.
     \see Fl::event_buttons()
   */
   static int event_button()	{return e_keysym-FL_Button;}
   /**
+    Returns the keyboard and mouse button states of the last event.
+
     This is a bitfield of what shift states were on and what mouse buttons
-    were held down during the most recent event. The second version
-    returns non-zero if any of the passed bits are turned on.
-    The legal bits are:
-    
-    \li FL_SHIFT
-    \li FL_CAPS_LOCK
-    \li FL_CTRL
-    \li FL_ALT
-    \li FL_NUM_LOCK
-    \li FL_META
-    \li FL_SCROLL_LOCK
-    \li FL_BUTTON1
-    \li FL_BUTTON2
-    \li FL_BUTTON3
+    were held down during the most recent event.
+
+    The legal event state bits are:
+
+    - FL_SHIFT
+    - FL_CAPS_LOCK
+    - FL_CTRL
+    - FL_ALT
+    - FL_NUM_LOCK
+    - FL_META
+    - FL_SCROLL_LOCK
+    - FL_BUTTON1
+    - FL_BUTTON2
+    - FL_BUTTON3
     
     X servers do not agree on shift states, and FL_NUM_LOCK, FL_META, and
     FL_SCROLL_LOCK may not work. The values were selected to match the
@@ -650,8 +700,13 @@ public:
     <I>after</I> the shift key is pressed or released.
   */
   static int event_state()	{return e_state;}
-  /** See int event_state() */
-  static int event_state(int i) {return e_state&i;}
+
+  /** Returns non-zero if any of the passed event state bits are turned on.
+
+    Use \p mask to pass the event states you're interested in.
+    The legal event state bits are defined in Fl::event_state().
+  */
+  static int event_state(int mask) {return e_state&mask;}
   /**
     Gets which key on the keyboard was last pushed.
 
@@ -796,8 +851,9 @@ public:
   // cut/paste:
   /**
   Copies the data pointed to by \p stuff to the selection buffer 
-  (\p destination is 0) or
-  the clipboard (\p destination is 1).
+  (\p destination is 0), the clipboard (\p destination is 1), or
+  both (\p destination is 2). Copying to both is only relevant on X11,
+  on other platforms it maps to the clipboard (1).
   \p len is the number of relevant bytes in \p stuff.
   \p type is always Fl::clipboard_plain_text.
   The selection buffer is used for
@@ -820,34 +876,41 @@ public:
 #endif
   /**
   Pastes the data from the selection buffer (\p source is 0) or the clipboard 
-  (\p source is 1) into \p receiver.  If \p source is 1,
-  the optional \p type argument indicates what type of data is requested from the clipboard
-  (at present, Fl::clipboard_plain_text - requesting text data - and 
-  Fl::clipboard_image - requesting image data - are possible).
+  (\p source is 1) into \p receiver.  
+
+  The selection buffer (\p source is 0) is used for middle-mouse pastes and for
+  drag-and-drop selections. The clipboard (\p source is 1) is used for
+  copy/cut/paste operations.
+
+  If \p source is 1, the optional \p type argument indicates what type of data is requested from the clipboard.
+  At present, Fl::clipboard_plain_text (requesting text data) and
+  Fl::clipboard_image (requesting image data) are possible.
   Set things up so the handle function of the \p receiver widget will be called with an FL_PASTE event some
-  time in the future if the clipboard does contain data of the requested type. During processing of this event,
-  and if \p type is Fl::clipboard_plain_text, the text data from the specified \p source are in Fl::event_text()
-  with UTF-8 encoding, and the number of characters in Fl::event_length();
-  if \p type is Fl::clipboard_image, Fl::event_clipboard() returns a pointer to the
-  image data, as an Fl_Image *.
-  The receiver
-  should be prepared to be called \e directly by this, or for
+  time in the future if the clipboard does contain data of the requested type. 
+  While processing the FL_PASTE event:
+  \li if \p type is Fl::clipboard_plain_text, the text string from the specified \p source is in Fl::event_text()
+   with UTF-8 encoding, and the number of bytes in Fl::event_length(). 
+   If Fl::paste() gets called during the drop step of a files-drag-and-drop operation,
+   Fl::event_text() contains a list of filenames (see \ref events_dnd).
+  \li if \p type is Fl::clipboard_image, the pointer returned by Fl::event_clipboard() can be safely cast to
+   type Fl_Image * to obtain a pointer to the pasted image. Furthermore, starting with FLTK 1.3.4, the image is
+   of type Fl_RGB_Image across all platforms. 
+   If \p receiver accepts the clipboard image, receiver.handle() should return 1 and the
+   application should take ownership of this image (that is, delete it after use). 
+   Conversely, if receiver.handle() returns 0, the application must not use the image.
+
+  The receiver should be prepared to be called \e directly by this, or for
   it to happen \e later, or possibly <i>not at all</i>.  This
   allows the window system to take as long as necessary to retrieve
   the paste buffer (or even to screw up completely) without complex
   and error-prone synchronization code in FLTK.
-   
-  The selection buffer is used for middle-mouse pastes and for 
-  drag-and-drop selections. The clipboard is used for traditional 
-  copy/cut/paste operations.
-   
+
    \par Platform details for image data:
-   \li Unix/Linux platform: Image data in PNG or BMP formats are recognized. Requires linking with the fltk_images library.
+   \li Unix/Linux platform: Clipboard images in PNG or BMP formats are recognized. Requires linking with the fltk_images library.
    \li MSWindows platform: Both bitmap and vectorial (Enhanced metafile) data from clipboard
    can be pasted as image data.
    \li Mac OS X platform: Both bitmap (TIFF) and vectorial (PDF) data from clipboard
    can be pasted as image data.
-    
    */
 #if FLTK_ABI_VERSION >= 10303 || defined(FL_DOXYGEN)
   static void paste(Fl_Widget &receiver, int source, const char *type = Fl::clipboard_plain_text); // platform dependent
@@ -1050,7 +1113,10 @@ public:
   static int box_dy(Fl_Boxtype);
   static int box_dw(Fl_Boxtype);
   static int box_dh(Fl_Boxtype);
+
   static int draw_box_active();
+  static Fl_Color box_color(Fl_Color);
+  static void set_box_color(Fl_Color);
 
   // back compatibility:
   /** \addtogroup fl_windows 
@@ -1198,21 +1264,33 @@ public:
   static void release_widget_pointer(Fl_Widget *&w);
   static void clear_widget_pointer(Fl_Widget const *w);
   /** @} */
+  
+  /**  sets whether GL windows should be drawn at high resolution on Apple
+   computers with retina displays
+   \version 1.3.4
+   */
+  static void use_high_res_GL(int val) { use_high_res_GL_ = val; }
+  /**  returns whether GL windows should be drawn at high resolution on Apple
+   computers with retina displays.
+   Default is no.
+   \version 1.3.4
+   */
+  static int use_high_res_GL() { return use_high_res_GL_; }
 
 #ifdef FLTK_HAVE_CAIRO
-  /** \defgroup group_cairo Cairo support functions and classes 
+  /** \defgroup group_cairo Cairo Support Functions and Classes
       @{ 
   */
 public:
   // Cairo support API
   static cairo_t * cairo_make_current(Fl_Window* w);
-   /** when FLTK_HAVE_CAIRO is defined and cairo_autolink_context() is true, 
-      any current window dc is linked to a current context.
+   /** when FLTK_HAVE_CAIRO is defined and cairo_autolink_context() is true,
+      any current window dc is linked to a current cairo context.
       This is not the default, because it may not be necessary
       to add cairo support to all fltk supported windows.
       When you wish to associate a cairo context in this mode,
       you need to call explicitly in your draw() overridden method,
-      FL::cairo_make_current(Fl_Window*). This will create a cairo context
+      Fl::cairo_make_current(Fl_Window*). This will create a cairo context
       but only for this Window. 
       Still in custom cairo application it is possible to handle 
       completely this process automatically by setting \p alink to true.
@@ -1336,5 +1414,5 @@ public:
 #endif // !Fl_H
 
 //
-// End of "$Id: Fl.H 10419 2014-10-30 16:05:22Z AlbrechtS $".
+// End of "$Id: Fl.H 11945 2016-09-16 09:11:48Z manolo $".
 //

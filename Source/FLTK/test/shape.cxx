@@ -1,5 +1,5 @@
 //
-// "$Id: shape.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: shape.cxx 10498 2014-12-20 07:19:23Z manolo $"
 //
 // Tiny OpenGL demo program for the Fast Light Tool Kit (FLTK).
 //
@@ -45,7 +45,7 @@ void shape_window::draw() {
   if (!valid()) {
     valid(1);
     glLoadIdentity();
-    glViewport(0, 0, w(), h());
+    glViewport(0, 0, pixel_w(), pixel_h());
   }
 // draw an amazing graphic:
   glClear(GL_COLOR_BUFFER_BIT);
@@ -81,6 +81,7 @@ void sides_cb(Fl_Widget *o, void *p) {
 
 int main(int argc, char **argv) {
 
+  Fl::use_high_res_GL(1);
   Fl_Window window(300, 330);
 
 // the shape window could be it's own window, but here we make it
@@ -104,5 +105,5 @@ int main(int argc, char **argv) {
 }
 
 //
-// End of "$Id: shape.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: shape.cxx 10498 2014-12-20 07:19:23Z manolo $".
 //

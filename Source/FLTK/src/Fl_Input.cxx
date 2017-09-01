@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Input.cxx 10031 2013-12-13 16:28:38Z manolo $"
+// "$Id: Fl_Input.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //
 // Input widget for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -678,7 +678,12 @@ int Fl_Input::handle(int event) {
           dnd_save_mark = mark();
 	  dnd_save_focus = this;
           // drag the data:
-          copy(0); Fl::dnd();
+          copy(0);
+#ifdef __APPLE__
+          Fl_X::dnd(1);
+#else
+          Fl::dnd();
+#endif
           return 1;
         }
       }
@@ -718,7 +723,7 @@ int Fl_Input::handle(int event) {
       // fall through:
     case FL_DND_DRAG: 
       //int p = mouse_position(X, Y, W, H);
-#if DND_OUT_XXXX
+#ifdef DND_OUT_XXXX
       if (Fl::focus()==this && (p>=dnd_save_position && p<=dnd_save_mark ||
                                 p>=dnd_save_mark && p<=dnd_save_position)) {
         position(dnd_save_position, dnd_save_mark);
@@ -734,7 +739,7 @@ int Fl_Input::handle(int event) {
       
     case FL_DND_LEAVE:
       position(dnd_save_position, dnd_save_mark);
-#if DND_OUT_XXXX
+#ifdef DND_OUT_XXXX
       if (!focused())
 #endif
         if (dnd_save_focus && dnd_save_focus != this) {
@@ -844,5 +849,5 @@ int Fl_Secret_Input::handle(int event) {
 }
 
 //
-// End of "$Id: Fl_Input.cxx 10031 2013-12-13 16:28:38Z manolo $".
+// End of "$Id: Fl_Input.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $".
 //

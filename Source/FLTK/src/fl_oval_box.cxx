@@ -1,5 +1,5 @@
 //
-// "$Id: fl_oval_box.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: fl_oval_box.cxx 10781 2015-07-09 00:10:44Z AlbrechtS $"
 //
 // Oval box drawing code for the Fast Light Tool Kit (FLTK).
 //
@@ -24,12 +24,12 @@
 #include <FL/fl_draw.H>
 
 static void fl_oval_flat_box(int x, int y, int w, int h, Fl_Color c) {
-  fl_color(c);
+  Fl::set_box_color(c);
   fl_pie(x, y, w, h, 0, 360);
 }
 
 static void fl_oval_frame(int x, int y, int w, int h, Fl_Color c) {
-  fl_color(c);
+  Fl::set_box_color(c);
   fl_arc(x, y, w, h, 0, 360);
 }
 
@@ -53,5 +53,5 @@ Fl_Boxtype fl_define_FL_OVAL_BOX() {
 }
 
 //
-// End of "$Id: fl_oval_box.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: fl_oval_box.cxx 10781 2015-07-09 00:10:44Z AlbrechtS $".
 //

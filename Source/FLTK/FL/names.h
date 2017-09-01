@@ -1,5 +1,5 @@
 //
-// "$Id: names.h 9299 2012-03-23 16:47:53Z manolo $"
+// "$Id: names.h 10812 2015-07-22 23:34:32Z AlbrechtS $"
 //
 // Event names header file for the Fast Light Tool Kit (FLTK).
 //
@@ -67,7 +67,12 @@ const char * const fl_eventnames[] =
   "FL_DND_LEAVE",
   "FL_DND_RELEASE",
   "FL_SCREEN_CONFIGURATION_CHANGED",
-  "FL_FULLSCREEN"
+  "FL_FULLSCREEN",
+  "FL_ZOOM_GESTURE",
+  "FL_EVENT_27",  // not yet defined, just in case they /will/ be defined ...
+  "FL_EVENT_28",
+  "FL_EVENT_29",
+  "FL_EVENT_30"
 };
 
 /**
@@ -112,5 +117,5 @@ const char * const fl_fontnames[] =
 #endif /* FL_NAMES_H */
 
 //
-// End of "$Id: names.h 9299 2012-03-23 16:47:53Z manolo $".
+// End of "$Id: names.h 10812 2015-07-22 23:34:32Z AlbrechtS $".
 //

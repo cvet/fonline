@@ -1,5 +1,5 @@
 //
-// "$Id: fl_gleam.cxx 10143 2014-05-02 09:13:29Z ianmacarthur $"
+// "$Id: fl_gleam.cxx 11914 2016-09-01 12:41:19Z AlbrechtS $"
 //
 // "Gleam" drawing routines for the Fast Light Tool Kit (FLTK).
 //
@@ -30,8 +30,7 @@
 
 
 static void gleam_color(Fl_Color c) {
-  if (Fl::draw_box_active()) fl_color(c);
-  else fl_color(fl_inactive(c));
+  Fl::set_box_color(c);
 }
 
 static void shade_rect_top_bottom(int x, int y, int w, int h, Fl_Color fg1, Fl_Color fg2, float th) {
@@ -40,12 +39,12 @@ static void shade_rect_top_bottom(int x, int y, int w, int h, Fl_Color fg1, Fl_C
   int h_bottom = ((h/6) < (15) ? (h/6) : (15)); // min(h/6,15);
   int h_flat = h-(h_top+h_bottom);
   int j = 0;
-  float step_size_top = h_top>1?(0.999/(float)(h_top)):1;
-  float step_size_bottom = h_bottom>1?(0.999/(float)(h_bottom)):1;
+  float step_size_top = h_top>1?(0.999f/(float)(h_top)):1;
+  float step_size_bottom = h_bottom>1?(0.999f/(float)(h_bottom)):1;
   // This loop generates the gradient at the top of the widget
   for (float k = 1; k >= 0; k -= step_size_top){
     gleam_color(fl_color_average(fl_color_average(fg1, fg2, th), fg1, k));
-    fl_line(x, y+j, x+w, y+j);
+    fl_xyline(x, y+j, x+w);
     j++;
   }
   gleam_color(fg1);
@@ -53,7 +52,7 @@ static void shade_rect_top_bottom(int x, int y, int w, int h, Fl_Color fg1, Fl_C
   // This loop generates the gradient at the bottom of the widget
   for (float k = 1; k >= 0; k -= step_size_bottom){
     gleam_color(fl_color_average(fg1,fl_color_average(fg1, fg2, th), k));
-    fl_line(x, y+j+h_flat-1, x+w, y+j+h_flat-1);
+    fl_xyline(x, y+j+h_flat-1, x+w);
     j++;
   }
 }
@@ -68,16 +67,16 @@ static void shade_rect_top_bottom_down(int x, int y, int w, int h, Fl_Color bc, 
 
 static void frame_rect(int x, int y, int w, int h, Fl_Color fg1, Fl_Color fg2, Fl_Color lc) {
   gleam_color(fg1);
-  fl_line(x, y+h-1, x, y+1);         //Go from bottom to top left side
-  fl_line(x+w, y+h-1, x+w, y+1);     //Go from bottom to top right side
-  fl_line(x+1, y, x+w-1, y);         //Go across the top
-  fl_line(x+1, y+h, x+w-1, y+h);     //Go across the bottom
+  fl_yxline(x, y+h-1,  y+1);         //Go from bottom to top left side
+  fl_yxline(x+w, y+h-1,  y+1);     //Go from bottom to top right side
+  fl_xyline(x+1, y, x+w-1);         //Go across the top
+  fl_xyline(x+1, y+h, x+w-1);     //Go across the bottom
   gleam_color(fg2);
-  fl_line(x+1, y+h-2, x+1, y+2);     //Go from bottom to top left side
-  fl_line(x+w-1, y+h-2, x+w-1, y+2); //Go from bottom to top right side
+  fl_yxline(x+1, y+h-2, y+2);     //Go from bottom to top left side
+  fl_yxline(x+w-1, y+h-2, y+2); //Go from bottom to top right side
   gleam_color(lc);
-  fl_line(x+2, y+1, x+w-3, y+1);     //Go across the top
-  fl_line(x+2, y+h-1, x+w-3, y+h-1); //Go across the bottom
+  fl_xyline(x+2, y+1, x+w-3);     //Go across the top
+  fl_xyline(x+2, y+h-1, x+w-3); //Go across the bottom
 }
 
 static void frame_rect_up(int x, int y, int w, int h, Fl_Color bc, Fl_Color lc, float th1, float th2) {
@@ -132,6 +131,6 @@ Fl_Boxtype fl_define_FL_GLEAM_UP_BOX() {
 
 
 //
-// End of "$Id: fl_gleam.cxx 10143 2014-05-02 09:13:29Z ianmacarthur $".
+// End of "$Id: fl_gleam.cxx 11914 2016-09-01 12:41:19Z AlbrechtS $".
 //
 

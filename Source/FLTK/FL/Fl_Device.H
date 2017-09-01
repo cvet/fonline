@@ -1,10 +1,10 @@
 //
-// "$Id: Fl_Device.H 10409 2014-10-29 20:11:02Z cand $"
+// "$Id: Fl_Device.H 12030 2016-10-16 15:00:02Z manolo $"
 //
 // Definition of classes Fl_Device, Fl_Graphics_Driver, Fl_Surface_Device, Fl_Display_Device
 // for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 2010-2012 by Bill Spitzak and others.
+// Copyright 2010-2014 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -63,7 +63,8 @@ typedef short COORD_T;
 #endif
 
 /**
- \brief All graphical output devices and all graphics systems.
+ All graphical output devices and all graphics systems.
+ This class supports a rudimentary system of run-time type information.
  */
 class FL_EXPORT Fl_Device {
 public:
@@ -94,11 +95,17 @@ public:
 #define FL_MATRIX_STACK_SIZE 32
 /**
  \brief A virtual class subclassed for each graphics driver FLTK uses.
- *
- The virtual methods of this class are those that a graphics driver should implement to
- support all of FLTK drawing functions.
- <br> The public API for drawing operations is functionally presented in \ref drawing and as function lists
- in the \ref fl_drawings and \ref fl_attributes modules. 
+ Typically, FLTK applications do not use directly objects from this class. Rather, they perform
+ drawing operations (e.g., fl_rectf()) that operate on the current drawing surface (see Fl_Surface_Device).
+ Drawing operations are functionally presented in \ref drawing and as function lists
+ in the \ref fl_drawings and \ref fl_attributes modules. The \ref fl_graphics_driver global variable
+ gives at any time the graphics driver used by all drawing operations. Its value changes when
+ drawing operations are directed to another drawing surface by Fl_Surface_Device::set_current().
+ 
+ \p The Fl_Graphics_Driver class is of interest if one wants to perform new kinds of drawing operations.
+ An example would be to draw to a PDF file. This would involve creating a new Fl_Graphics_Driver derived 
+ class. This new class should implement all virtual methods of the Fl_Graphics_Driver class
+ to support all FLTK drawing functions.
   */
 class FL_EXPORT Fl_Graphics_Driver : public Fl_Device {
 public:
@@ -213,7 +220,7 @@ protected:
   friend void fl_draw_image(Fl_Draw_Image_Cb cb, void* data, int X,int Y,int W,int H, int D);
   friend FL_EXPORT void fl_draw_image_mono(Fl_Draw_Image_Cb cb, void* data, int X,int Y,int W,int H, int D);
   friend FL_EXPORT void gl_start();
-  friend void fl_copy_offscreen(int x, int y, int w, int h, Fl_Offscreen pixmap, int srcx, int srcy);
+  friend FL_EXPORT void fl_copy_offscreen(int x, int y, int w, int h, Fl_Offscreen pixmap, int srcx, int srcy);
   matrix *fl_matrix; /**< Points to the current coordinate transformation matrix */
 
   /** \brief The constructor. */
@@ -397,6 +404,10 @@ public:
   inline Fl_Font_Descriptor *font_descriptor() { return font_descriptor_;}
   /** Sets the current Fl_Font_Descriptor for the graphics driver */
   inline void font_descriptor(Fl_Font_Descriptor *d) { font_descriptor_ = d;}
+#if FLTK_ABI_VERSION >= 10304 || defined(FL_DOXYGEN)
+  virtual
+#endif
+  int draw_scaled(Fl_Image *img, int X, int Y, int W, int H);
   /** \brief The destructor */
   virtual ~Fl_Graphics_Driver() { if (p) free(p); }
 };
@@ -423,6 +434,7 @@ public:
   void draw(Fl_Pixmap *pxm, int XP, int YP, int WP, int HP, int cx, int cy);
   void draw(Fl_Bitmap *pxm, int XP, int YP, int WP, int HP, int cx, int cy);
   void draw(Fl_RGB_Image *img, int XP, int YP, int WP, int HP, int cx, int cy);
+  int draw_scaled(Fl_Image *img, int XP, int YP, int WP, int HP);
   void draw_image(const uchar* buf, int X,int Y,int W,int H, int D=3, int L=0);
   void draw_image(Fl_Draw_Image_Cb cb, void* data, int X,int Y,int W,int H, int D=3);
   void draw_image_mono(const uchar* buf, int X,int Y,int W,int H, int D=1, int L=0);
@@ -483,6 +495,7 @@ public:
   const char *class_name() {return class_id;};
   void draw(Fl_Pixmap *pxm, int XP, int YP, int WP, int HP, int cx, int cy);
   void draw(Fl_Bitmap *bm, int XP, int YP, int WP, int HP, int cx, int cy);
+  int draw_scaled(Fl_Image *img, int XP, int YP, int WP, int HP);
 };
 #endif
 #if !(defined(__APPLE__) || defined(WIN32))
@@ -514,16 +527,37 @@ public:
   int height();
   int descent();
   void copy_offscreen(int x, int y, int w, int h, Fl_Offscreen pixmap, int srcx, int srcy);
+#if ! defined(FL_DOXYGEN)
+  void copy_offscreen_with_alpha(int x, int y, int w, int h, Fl_Offscreen pixmap, int srcx, int srcy);
+#endif
 };
 #endif
 
 /**
- \brief A surface that's susceptible to receive graphical output.
+ A drawing surface that's susceptible to receive graphical output.
+ Any FLTK application has at any time a current drawing surface to which all drawing requests are directed.
+ The current surface is given by Fl_Surface_Device::surface().
+ When main() begins running, the current drawing surface has been set to the computer's display, 
+ an instance of the Fl_Display_Device class.
+
+ A drawing surface other than the computer's display, is typically used as follows:
+ <ol><li> Create \c surface, an object from a particular Fl_Surface_Device derived class (e.g., Fl_Copy_Surface, Fl_Printer).
+ <li> Memorize what is the current drawing surface with <tt> Fl_Surface_Device *old_current = Fl_Surface_Device::surface();</tt>
+ <li> Call \c surface->set_current(); to redirect all graphics requests to \c surface which becomes the new
+ current drawing surface (not necessary with class Fl_Printer because it is done by Fl_Printer::start_job()).
+ <li> At this point any of the \ref fl_drawings (e.g., fl_rect()) or the \ref fl_attributes or \ref drawing_images functions
+ (e.g., fl_draw_image(), Fl_Image::draw()) operates on the new current drawing surface.
+ Certain drawing surfaces allow additional ways to draw to them (e.g., Fl_Printer::print_widget(), Fl_Image_Surface::draw()).
+ <li> After all drawing requests have been performed, redirect graphics requests back to their previous destination
+ with \c old_current->set_current();.
+ <li> Delete \c surface.
+ </ol>
  */
 class FL_EXPORT Fl_Surface_Device : public Fl_Device {
   /** \brief The graphics driver in use by this surface. */
   Fl_Graphics_Driver *_driver;
   static Fl_Surface_Device *_surface; // the surface that currently receives graphics output
+  static Fl_Surface_Device *default_surface(); // create surface is none exists yet
 protected:
   /** \brief Constructor that sets the graphics driver to use for the created surface. */
   Fl_Surface_Device(Fl_Graphics_Driver *graphics_driver) {_driver = graphics_driver; };
@@ -535,30 +569,41 @@ public:
   inline void driver(Fl_Graphics_Driver *graphics_driver) {_driver = graphics_driver;};
   /** \brief Returns the graphics driver of this drawing surface. */
   inline Fl_Graphics_Driver *driver() {return _driver; };
-  /** \brief the surface that currently receives graphics output */
-  static inline Fl_Surface_Device *surface() {return _surface; }; 
+  /** The current drawing surface.
+   In other words, the Fl_Surface_Device object that currently receives all graphics output */
+  static inline Fl_Surface_Device *surface() {
+    return _surface ? _surface : default_surface();
+  };
   /** \brief The destructor. */
   virtual ~Fl_Surface_Device() {}
 };
 
 /**
- \brief A display to which the computer can draw.
+ A display to which the computer can draw.
+ When the program begins running, an Fl_Display_Device instance has been created and made the current drawing surface.
+ There is no need to create any other object of this class.
  */
 class FL_EXPORT Fl_Display_Device : public Fl_Surface_Device {
   static Fl_Display_Device *_display; // the platform display device
+#ifdef __APPLE__
+  friend class Fl_X;
+  friend class Fl_Graphics_Driver;
+  static bool high_res_window_; //< true when drawing to a window of a retina display (Mac OS X only)
+  static bool high_resolution() {return high_res_window_;}
+#endif
 public:
   static const char *class_id;
   const char *class_name() {return class_id;};
-  /** \brief A constructor that sets the graphics driver used by the display */
   Fl_Display_Device(Fl_Graphics_Driver *graphics_driver);
-  /** Returns the platform display device. */
-  static inline Fl_Display_Device *display_device() {return _display;};
+  static Fl_Display_Device *display_device();
 };
 
 /**
  This plugin socket allows the integration of new device drivers for special
- window or screen types. It is currently used to provide an automated printing
- service for OpenGL windows, if linked with fltk_gl.
+ window or screen types. 
+ This class is not intended for use outside the FLTK library.
+ It is currently used to provide an automated printing
+ service and screen capture for OpenGL windows, if linked with fltk_gl.
  */
 class FL_EXPORT Fl_Device_Plugin : public Fl_Plugin {
 public:
@@ -575,10 +620,17 @@ public:
    \param height height of the current drawing area
    */
   virtual int print(Fl_Widget* w, int x, int y, int height) = 0;
+  /** captures a rectangle of a widget as an image
+   \return The captured pixels as an RGB image
+   */
+#ifdef FL_LIBRARY
+    virtual
+#endif
+  Fl_RGB_Image* rectangle_capture(Fl_Widget *widget, int x, int y, int w, int h) {return NULL;}
 };
 
 #endif // Fl_Device_H
 
 //
-// End of "$Id: Fl_Device.H 10409 2014-10-29 20:11:02Z cand $".
+// End of "$Id: Fl_Device.H 12030 2016-10-16 15:00:02Z manolo $".
 //

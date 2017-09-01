@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Copy_Surface.cxx 10209 2014-06-26 16:14:42Z manolo $"
+// "$Id: Fl_Copy_Surface.cxx 11898 2016-08-27 15:17:02Z manolo $"
 //
 // Copy-to-clipboard code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2014 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -22,9 +22,6 @@
 
 #if defined(__APPLE__)
 #include <ApplicationServices/ApplicationServices.h>
-#if defined(__ppc__)
-#include <QuickTime/QuickTimeComponents.h>
-#endif // __ppc__
 
 Fl_Quartz_Surface_::Fl_Quartz_Surface_(int w, int h) : Fl_System_Printer(), width(w), height(h) {
 }
@@ -90,11 +87,14 @@ Fl_Copy_Surface::Fl_Copy_Surface(int w, int h) :  Fl_Surface_Device(NULL)
   int hdots = GetDeviceCaps(hdc, HORZRES);
   int vmm = GetDeviceCaps(hdc, VERTSIZE);
   int vdots = GetDeviceCaps(hdc, VERTRES);
+  int dhr = GetDeviceCaps(hdc, DESKTOPHORZRES); // true number of pixels on display
   ReleaseDC(NULL, hdc);
-  float factorw =  (100. * hmm) / hdots;
-  float factorh =  (100. * vmm) / vdots + 0.5;
+  float factorw = (100.f * hmm) / hdots;
+  float factorh = (100.f * vmm) / vdots;
+  // Global display scaling factor: 1, 1.25, 1.5, 1.75, etc...
+  float scaling = dhr/float(hdots);
   
-  RECT rect; rect.left = 0; rect.top = 0; rect.right = w * factorw; rect.bottom = h * factorh;
+  RECT rect; rect.left = 0; rect.top = 0; rect.right = (LONG)(w * factorw / scaling); rect.bottom = (LONG)(h * factorh / scaling);
   gc = CreateEnhMetaFile (NULL, NULL, &rect, NULL);
   if (gc != NULL) {
     SetTextAlign(gc, TA_BASELINE|TA_LEFT);
@@ -188,7 +188,7 @@ void Fl_Copy_Surface::init_PDF_context(int w, int h)
   pdfdata = CFDataCreateMutable(NULL, 0);
   CGDataConsumerRef myconsumer;
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 1040
-  if(CGDataConsumerCreateWithCFData != NULL) {
+  if (&CGDataConsumerCreateWithCFData != NULL) {
     myconsumer = CGDataConsumerCreateWithCFData(pdfdata); // 10.4
   }
   else 
@@ -212,50 +212,54 @@ void Fl_Copy_Surface::prepare_copy_pdf_and_tiff(int w, int h)
   CGContextSaveGState(gc);
 }
 
-
-void Fl_Copy_Surface::complete_copy_pdf_and_tiff()
+void Fl_Copy_Surface::draw_decorated_window(Fl_Window* win, int delta_x, int delta_y)
 {
-  CGContextRestoreGState(gc);
-  CGContextEndPage(gc);
-  CGContextRelease(gc);
-  PasteboardRef clipboard = NULL;
-  PasteboardCreate(kPasteboardClipboard, &clipboard);
-  PasteboardClear(clipboard); //	first, copy PDF to clipboard 
-  PasteboardPutItemFlavor (clipboard, (PasteboardItemID)1, 
-			   CFSTR("com.adobe.pdf"), // kUTTypePDF
-			   pdfdata, kPasteboardFlavorNoFlags);
-  //second, transform this PDF to a bitmap image and put it as tiff in clipboard
-  CGDataProviderRef prov;
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1040
-  if(fl_mac_os_version >= 100400)
-    prov = CGDataProviderCreateWithCFData(pdfdata); // 10.4
-  else 
-#endif
-    prov = CGDataProviderCreateWithData(NULL, CFDataGetBytePtr(pdfdata), CFDataGetLength(pdfdata), NULL);
-  CGPDFDocumentRef pdfdoc = CGPDFDocumentCreateWithProvider(prov);
-  CGPDFPageRef pdfpage = CGPDFDocumentGetPage(pdfdoc, 1);
-  CGDataProviderRelease(prov);
-  CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-  void *mem = ( fl_mac_os_version >= 100600 ? NULL : malloc(width * height * 4) );
-  gc = CGBitmapContextCreate(mem, width, height, 8, width * 4, space, kCGImageAlphaNoneSkipLast);
-  CFRelease(space);
-  if (gc == NULL) { if (mem) free(mem); return; }
-  CGRect rect = CGRectMake(0, 0, width, height);
-  CGContextSetRGBFillColor(gc,  1,1,1,1);//need to clear background
-  CGContextFillRect(gc, rect);
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1030
-  CGContextDrawPDFPage(gc, pdfpage);  // requires 10.3
-#endif
-  CGPDFDocumentRelease(pdfdoc);
-  CFRelease(pdfdata);
-  PasteboardPutItemFlavor(clipboard, (PasteboardItemID)1, CFSTR("public.tiff"), 
-			  Fl_X::CGBitmapContextToTIFF(gc), kPasteboardFlavorNoFlags);
-  CFRelease(clipboard);    
-  CGContextRelease(gc);
-  if (mem) free(mem);
+  int bt = win->decorated_h() - win->h();
+  draw(win, delta_x, bt + delta_y ); // draw the window content
+  if (win->border()) {
+    // draw the window title bar
+    CGContextSaveGState(gc);
+    CGContextTranslateCTM(gc, delta_x, bt + delta_y);
+    CGContextScaleCTM(gc, 1, -1);
+    Fl_X::clip_to_rounded_corners(gc, win->w(), bt);
+    void *layer = Fl_X::get_titlebar_layer(win);
+    if (layer) {
+      CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
+      // for unknown reason, rendering the layer to the Fl_Copy_Surface pdf graphics context does not work;
+      // we use an auxiliary bitmap context
+      CGContextRef auxgc = CGBitmapContextCreate(NULL, win->w(), bt, 8, 0, cspace, kCGImageAlphaPremultipliedLast);
+      CGColorSpaceRelease(cspace);
+      CGContextTranslateCTM(auxgc, 0, bt);
+      CGContextScaleCTM(auxgc, 1, -1);
+      Fl_X::draw_layer_to_context(layer, auxgc, win->w(), bt);
+      Fl_RGB_Image *image = new Fl_RGB_Image((const uchar*)CGBitmapContextGetData(auxgc), win->w(), bt, 4,
+                                             CGBitmapContextGetBytesPerRow(auxgc)); // 10.2
+      image->draw(0, 0);
+      delete image;
+      CGContextRelease(auxgc);
+    } else {
+      CGImageRef img = Fl_X::CGImage_from_window_rect(win, 0, -bt, win->w(), bt);
+      CGContextDrawImage(gc, CGRectMake(0, 0, win->w(), bt), img);
+      CFRelease(img);
+    }
+    CGContextRestoreGState(gc);
+  }
 }
 
-#endif  // __APPLE__
+#else
+
+/** Copies a window and its borders and title bar to the clipboard. 
+ \param win an FLTK window to copy
+ \param delta_x and \param delta_y give
+ the position in the clipboard of the top-left corner of the window's title bar
+*/
+void Fl_Copy_Surface::draw_decorated_window(Fl_Window* win, int delta_x, int delta_y)
+{
+  helper->draw_decorated_window(win, delta_x, delta_y, this);
+}
+
+#endif // __APPLE__
+
 
 #if !(defined(__APPLE__) || defined(WIN32) || defined(FL_DOXYGEN))
 /* graphics driver that translates all graphics coordinates before calling Xlib */
@@ -395,5 +399,5 @@ const char *Fl_Xlib_Surface_::class_id = "Fl_Xlib_Surface_";
 #endif
 
 //
-// End of "$Id: Fl_Copy_Surface.cxx 10209 2014-06-26 16:14:42Z manolo $".
+// End of "$Id: Fl_Copy_Surface.cxx 11898 2016-08-27 15:17:02Z manolo $".
 //

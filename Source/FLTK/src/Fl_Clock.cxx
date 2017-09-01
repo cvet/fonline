@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Clock.cxx 9637 2012-07-24 04:37:22Z matt $"
+// "$Id: Fl_Clock.cxx 11849 2016-07-29 09:23:44Z AlbrechtS $"
 //
 // Clock widget for the Fast Light Tool Kit (FLTK).
 //
@@ -38,10 +38,14 @@ static void drawhand(double ang,const float v[][2],Fl_Color fill,Fl_Color line)
 {
   fl_push_matrix();
   fl_rotate(ang);
-  fl_color(fill); fl_begin_polygon();
-  int i; for (i=0; i<4; i++) fl_vertex(v[i][0],v[i][1]); fl_end_polygon();
-  fl_color(line); fl_begin_loop();
-  for (i=0; i<4; i++) fl_vertex(v[i][0],v[i][1]); fl_end_loop();
+  fl_color(fill);
+  fl_begin_polygon();
+  int i; for (i=0; i<4; i++) fl_vertex(v[i][0],v[i][1]);
+  fl_end_polygon();
+  fl_color(line);
+  fl_begin_loop();
+  for (i=0; i<4; i++) fl_vertex(v[i][0],v[i][1]);
+  fl_end_loop();
   fl_pop_matrix();
 }
 
@@ -215,5 +219,5 @@ Fl_Round_Clock::Fl_Round_Clock(int X,int Y,int W,int H, const char *L)
 
 
 //
-// End of "$Id: Fl_Clock.cxx 9637 2012-07-24 04:37:22Z matt $".
+// End of "$Id: Fl_Clock.cxx 11849 2016-07-29 09:23:44Z AlbrechtS $".
 //

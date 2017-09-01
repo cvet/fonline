@@ -1,4 +1,4 @@
-// "$Id: Fl_Native_File_Chooser_MAC.mm 10317 2014-09-16 17:34:29Z manolo $"
+// "$Id: Fl_Native_File_Chooser_MAC.mm 12055 2016-10-27 15:43:09Z manolo $"
 //
 // FLTK native OS file chooser widget
 //
@@ -346,7 +346,7 @@ int Fl_Native_File_Chooser::get_saveas_basename(void) {
   char *q = strdup( [[[(NSSavePanel*)_panel URL] path] UTF8String] );
   if ( !(_options & SAVEAS_CONFIRM) ) {
     const char *d = [[[[(NSSavePanel*)_panel URL] path] stringByDeletingLastPathComponent] UTF8String];
-    int l = strlen(d) + 1;
+    int l = (int)strlen(d) + 1;
     if (strcmp(d, "/") == 0) l = 1;
     int lu = strlen(UNLIKELYPREFIX);
     // Remove UNLIKELYPREFIX between directory and filename parts
@@ -532,7 +532,7 @@ int Fl_Native_File_Chooser::runmodal()
   NSString *dir = nil;
   NSString *fname = nil;
   NSString *preset = nil;
-  int retval;
+  NSInteger retval;
   if (_preset_file) {
     preset = [[NSString alloc] initWithUTF8String:_preset_file];
     if (strchr(_preset_file, '/') != NULL) {
@@ -551,7 +551,7 @@ int Fl_Native_File_Chooser::runmodal()
   }
   [dir release];
   [preset release];
-  return retval;
+  return (retval == NSFileHandlingPanelOKButton ? 1 : 0);
 }
 
 // POST BROWSER
@@ -568,6 +568,7 @@ int Fl_Native_File_Chooser::post() {
   if ( _filt_total == 0 ) {	// Make sure they match
     _filt_value = 0;		// TBD: move to someplace more logical?
   }
+  fl_open_display();
   NSAutoreleasePool *localPool;
   localPool = [[NSAutoreleasePool alloc] init];
   switch (_btype) {
@@ -582,8 +583,12 @@ int Fl_Native_File_Chooser::post() {
       _panel =  [NSSavePanel savePanel];
       break;
   }
-  NSString *nstitle = [NSString stringWithUTF8String: (_title ? _title : "No Title")];
-  [(NSSavePanel*)_panel setTitle:nstitle];
+  BOOL is_open_panel = [(NSSavePanel*)_panel isKindOfClass:[NSOpenPanel class]];
+  if (_title) {
+    SEL title_or_message = (is_open_panel && fl_mac_os_version >= 101200) ?
+              @selector(setMessage:) : @selector(setTitle:);
+    [(NSSavePanel*)_panel performSelector:title_or_message withObject:[NSString stringWithUTF8String:_title]];
+  }
   switch (_btype) {
     case BROWSE_MULTI_FILE:
       [(NSOpenPanel*)_panel setAllowsMultipleSelection:YES];
@@ -601,7 +606,6 @@ int Fl_Native_File_Chooser::post() {
   
   // SHOW THE DIALOG
   NSWindow *key = [NSApp keyWindow];
-  BOOL is_open_panel = [(NSSavePanel*)_panel isKindOfClass:[NSOpenPanel class]];
   NSPopUpButton *popup = nil;
   if ( is_open_panel ) {
     if (_filt_total) {
@@ -609,7 +613,7 @@ int Fl_Native_File_Chooser::post() {
       popup = createPopupAccessory((NSSavePanel*)_panel, t, Fl_File_Chooser::show_label, 0);
       delete[] t;
       [[popup menu] addItem:[NSMenuItem separatorItem]];
-      [popup addItemWithTitle:[[NSString alloc] initWithUTF8String:Fl_File_Chooser::all_files_label]];
+      [popup addItemWithTitle:[NSString stringWithUTF8String:Fl_File_Chooser::all_files_label]];
       [popup setAction:@selector(validateVisibleColumns)];
       [popup setTarget:(NSObject*)_panel];
       FLopenDelegate *openDelegate = [[[FLopenDelegate alloc] init] autorelease];
@@ -637,13 +641,13 @@ int Fl_Native_File_Chooser::post() {
   }
   int retval = runmodal();
   if (_filt_total) {
-    _filt_value = [popup indexOfSelectedItem];
+    _filt_value = (int)[popup indexOfSelectedItem];
   }
-  if ( retval == NSOKButton ) {
+  if ( retval == 1 ) {
     if (is_open_panel) {
       clear_pathnames();
       NSArray *array = [(NSOpenPanel*)_panel URLs];
-      _tpathnames = [array count];
+      _tpathnames = (int)[array count];
       _pathnames = new char*[_tpathnames];
       for(int i = 0; i < _tpathnames; i++) {
 	_pathnames[i] = strnew([[(NSURL*)[array objectAtIndex:i] path] UTF8String]);
@@ -653,11 +657,11 @@ int Fl_Native_File_Chooser::post() {
   }
   [key makeKeyWindow];
   [localPool release];
-  return (retval == NSOKButton ? 0 : 1);
+  return (retval == 1 ? 0 : 1);
 }
 
 #endif // __APPLE__
 
 //
-// End of "$Id: Fl_Native_File_Chooser_MAC.mm 10317 2014-09-16 17:34:29Z manolo $".
+// End of "$Id: Fl_Native_File_Chooser_MAC.mm 12055 2016-10-27 15:43:09Z manolo $".
 //

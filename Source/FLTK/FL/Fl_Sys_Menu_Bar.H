@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Sys_Menu_Bar.H 10102 2014-02-11 17:59:20Z manolo $"
+// "$Id: Fl_Sys_Menu_Bar.H 11795 2016-06-22 07:49:34Z greg.ercolano $"
 //
 // MacOS system menu bar header file for the Fast Light Tool Kit (FLTK).
 //
@@ -31,7 +31,14 @@
  \n To use this class, just replace Fl_Menu_Bar by Fl_Sys_Menu_Bar, and, on the Mac platform,
  a system menu at the top of the screen will be available. This menu will match an array
  of Fl_Menu_Item's exactly as with standard FLTK menus.
-  \n A few FLTK features are not supported by the Mac System menu:
+  
+  Changes to the menu state are immediately visible in the menubar when they are made
+  using member functions of the Fl_Sys_Menu_Bar class. Other changes (e.g., by a call to
+  Fl_Menu_Item::set()) should be followed by a call to Fl_Sys_Menu_Bar::update() to be
+  visible in the menubar across all platforms.
+  
+  A few FLTK features are not supported by the Mac System menu:
+
   \li no symbolic labels
   \li no embossed labels
   \li no font sizes
@@ -39,9 +46,20 @@
   You can configure a callback for the 'About' menu item to invoke your own code with fl_mac_set_about().
  */
 class FL_EXPORT Fl_Sys_Menu_Bar : public Fl_Menu_Bar {
+
+#if FLTK_ABI_VERSION >= 10304
+  // NEW -- update() public (STR#3317)
+public:
+  void update();
+protected:
+  void draw();
+#else
+  // OLD -- update() protected
 protected:
   void update();
   void draw();
+#endif
+
 public:
   Fl_Sys_Menu_Bar(int x,int y,int w,int h,const char *l=0);
   ~Fl_Sys_Menu_Bar();
@@ -65,7 +83,7 @@ public:
     return insert(index, label, fl_old_shortcut(shortcut), cb, user_data, flags);
     }
   void remove(int n);
-  void replace(int rank, const char *name);
+  void replace(int index, const char *name);
   /** Set the Fl_Menu_Item array pointer to null, indicating a zero-length menu. 
    \see Fl_Menu_::clear()
    */
@@ -88,17 +106,29 @@ public:
   int mode(int i) const { return Fl_Menu_::mode(i); }
   /** Changes the shortcut of item i to n.
    */
-  void shortcut (int i, int s) { Fl_Menu_::shortcut(i, s); update(); };
+  void shortcut (int i, int s) { Fl_Menu_::shortcut(i, s); update(); }
+  /** Turns the radio item "on" for the menu item and turns "off" adjacent radio items of the same group.*/
+  void setonly (Fl_Menu_Item *item) { Fl_Menu_::setonly(item); update(); }
 };
 
 #else
 
+#if FLTK_ABI_VERSION >= 10304
+// NEW -- small class for update()
+class FL_EXPORT Fl_Sys_Menu_Bar : public Fl_Menu_Bar {
+public:
+  Fl_Sys_Menu_Bar(int x,int y,int w,int h,const char *l=0) : Fl_Menu_Bar(x,y,w,h,l) {}
+  inline void update() {}
+};
+#else
+// OLD -- simple typedef
 typedef Fl_Menu_Bar Fl_Sys_Menu_Bar;
+#endif
 
 #endif // defined(__APPLE__) || defined(FL_DOXYGEN)
 
 #endif // Fl_Sys_Menu_Bar_H
 
 //
-// End of "$Id: Fl_Sys_Menu_Bar.H 10102 2014-02-11 17:59:20Z manolo $".
+// End of "$Id: Fl_Sys_Menu_Bar.H 11795 2016-06-22 07:49:34Z greg.ercolano $".
 //

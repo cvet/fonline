@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Text_Display.H 10152 2014-05-21 06:56:59Z greg.ercolano $"
+// "$Id: Fl_Text_Display.H 11756 2016-05-26 16:39:09Z greg.ercolano $"
 //
 // Header file for Fl_Text_Display class.
 //
-// Copyright 2001-2010 by Bill Spitzak and others.
+// Copyright 2001-2016 by Bill Spitzak and others.
 // Original code Copyright Mark Edel.  Permission to distribute under
 // the LGPL for the FLTK library granted by Mark Edel.
 //
@@ -133,14 +133,23 @@ public:
   typedef void (*Unfinished_Style_Cb)(int, void *);
   
   /** 
-   This structure associates the color, font, andsize of a string to draw
-   with an attribute mask matching attr
+   This structure associates the color, font, and font size of a string to draw
+   with an attribute mask matching attr.
+
+   There must be one entry for each style that can be used in an
+   Fl_Text_Display for displaying text. The style table is an array of
+   struct Style_Table_Entry.
+
+   The style table is associated with an Fl_Text_Display by using
+   Fl_Text_Display::highlight_data().
+   
+   \see Fl_Text_Display::highlight_data()
    */
   struct Style_Table_Entry {
-    Fl_Color    color;
-    Fl_Font     font;
-    Fl_Fontsize size;
-    unsigned    attr;
+    Fl_Color    color;	///< text color
+    Fl_Font     font;	///< text font
+    Fl_Fontsize size;	///< text font size
+    unsigned    attr;	///< currently unused (this may be change in the future)
   };
   
   Fl_Text_Display(int X, int Y, int W, int H, const char *l = 0);
@@ -215,7 +224,7 @@ public:
   
   /**   
    Gets the width/height of the scrollbars.
-   /return width of scrollbars
+   \return width of scrollbars
    */
   int scrollbar_width() const { return scrollbar_width_; }
   
@@ -530,5 +539,5 @@ protected:
 #endif
 
 //
-// End of "$Id: Fl_Text_Display.H 10152 2014-05-21 06:56:59Z greg.ercolano $".
+// End of "$Id: Fl_Text_Display.H 11756 2016-05-26 16:39:09Z greg.ercolano $".
 //

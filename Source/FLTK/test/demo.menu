@@ -35,14 +35,17 @@
 	@w:resize:resize
 
 @main:Drawing\nTests...:@d
+	@d:unit tests:unittests
 	@d:Images...:@di
 		@di:Fl_Bitmap:bitmap
 		@di:Fl_Pixmap:pixmap
 		@di:Fl_RGB\n_Image:image
 		@di:Fl_Shared\n_Image:pixmap_browser
 		@di:Fl_Tiled\n_Image:tiled_image
+		@di:transparency:animated
 	@d:cursor:cursor
 	@d:labels:label
+	@d:offscreen:offscreen
 	@d:rotated text:rotated_text
 	@d:fl_arc:arc
 	@d:fl_curve:curve

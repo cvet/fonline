@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Window_Type.cxx 9080 2011-09-28 20:31:27Z matt $"
+// "$Id: Fl_Window_Type.cxx 10659 2015-04-02 17:19:33Z matt $"
 //
 // Window type code for the Fast Light Tool Kit (FLTK).
 //
@@ -1498,6 +1498,7 @@ void Fl_Widget_Class_Type::write_code1() {
   const char *c = subclass();
   if (!c) c = "Fl_Group";
 
+  write_comment_h();
   write_h("\nclass %s : public %s {\n", name(), c);
   if (strstr(c, "Window")) {
     write_h("  void _%s();\n", trimclassname(name()));
@@ -1596,5 +1597,5 @@ void Fl_Window_Type::copy_properties() {
 
 
 //
-// End of "$Id: Fl_Window_Type.cxx 9080 2011-09-28 20:31:27Z matt $".
+// End of "$Id: Fl_Window_Type.cxx 10659 2015-04-02 17:19:33Z matt $".
 //

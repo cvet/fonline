@@ -1,9 +1,9 @@
 //
-// "$Id: curve.cxx 9392 2012-04-24 02:06:52Z fabien $"
+// "$Id: curve.cxx 10667 2015-04-03 12:31:58Z AlbrechtS $"
 //
 // Curve test program for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -44,7 +44,7 @@ class Drawing : public Fl_Widget {
     if (!points) {
     fl_color(FL_WHITE);
     fl_begin_complex_polygon();
-   fl_curve(args[0],args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
+    fl_curve(args[0],args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
     fl_end_complex_polygon();
     }
     fl_color(FL_BLACK);
@@ -56,7 +56,7 @@ class Drawing : public Fl_Widget {
     fl_end_line();
     fl_color(points ? FL_WHITE : FL_RED);
     points ? fl_begin_points() : fl_begin_line();
-   fl_curve(args[0],args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
+    fl_curve(args[0],args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
     points ? fl_end_points() : fl_end_line();
     fl_pop_matrix();
     fl_pop_clip();
@@ -91,11 +91,7 @@ int main(int argc, char** argv) {
     s->step(1);
     s->value(args[n]);
     s->align(FL_ALIGN_LEFT);
-#ifdef __LP64__
-    s->callback(slider_cb, (void*) (long long)n);
-#else
-    s->callback(slider_cb, (void*)n);
-#endif
+    s->callback(slider_cb, (void*)(fl_intptr_t)n);
   }
   Fl_Toggle_Button but(50,y,50,25,"points");
   but.callback(points_cb);
@@ -106,5 +102,5 @@ int main(int argc, char** argv) {
 }
 
 //
-// End of "$Id: curve.cxx 9392 2012-04-24 02:06:52Z fabien $".
+// End of "$Id: curve.cxx 10667 2015-04-03 12:31:58Z AlbrechtS $".
 //

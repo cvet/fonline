@@ -1,5 +1,5 @@
 #
-# "$Id: Makefile 10339 2014-09-26 23:58:05Z AlbrechtS $"
+# "$Id: Makefile 11918 2016-09-03 08:14:43Z manolo $"
 #
 # Test/example program makefile for the Fast Light Tool Kit (FLTK).
 #
@@ -20,6 +20,7 @@ include ../makeinclude
 
 CPPFILES =\
 	unittests.cxx \
+	animated.cxx \
 	adjuster.cxx \
 	arc.cxx \
 	ask.cxx \
@@ -69,6 +70,7 @@ CPPFILES =\
 	minimum.cxx \
 	native-filechooser.cxx \
 	navigation.cxx \
+	offscreen.cxx \
 	output.cxx \
 	overlay.cxx \
 	pack.cxx \
@@ -98,6 +100,7 @@ CPPFILES =\
 
 ALL =	\
 	unittests$(EXEEXT) \
+	animated$(EXEEXT) \
 	adjuster$(EXEEXT) \
 	arc$(EXEEXT) \
 	ask$(EXEEXT) \
@@ -140,6 +143,7 @@ ALL =	\
 	minimum$(EXEEXT) \
 	native-filechooser$(EXEEXT) \
 	navigation$(EXEEXT) \
+	offscreen$(EXEEXT) \
 	output$(EXEEXT) \
 	overlay$(EXEEXT) \
 	pack$(EXEEXT) \
@@ -286,6 +290,8 @@ unittests.o: unittests.cxx unittest_about.cxx unittest_points.cxx unittest_lines
 
 adjuster$(EXEEXT): adjuster.o
 
+animated$(EXEEXT): animated.o
+
 arc$(EXEEXT): arc.o
 
 ask$(EXEEXT): ask.o
@@ -316,6 +322,8 @@ colbrowser$(EXEEXT): colbrowser.o
 	echo Linking $@...
 	$(CXX) $(ARCHFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ colbrowser.o $(LINKFLTKFORMS) $(LDLIBS)
 	$(OSX_ONLY) ../fltk-config --post $@
+	$(OSX_ONLY) mkdir -p colbrowser.app/Contents/Resources
+	$(OSX_ONLY) cp -f rgb.txt colbrowser.app/Contents/Resources/
 
 color_chooser$(EXEEXT): color_chooser.o
 
@@ -326,6 +334,9 @@ curve$(EXEEXT): curve.o
 demo$(EXEEXT): demo.o
 	echo Linking $@...
 	$(CXX) $(ARCHFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ demo.o $(LINKFLTKFORMS) $(LDLIBS)
+	$(OSX_ONLY) ../fltk-config --post $@
+	$(OSX_ONLY) mkdir -p demo.app/Contents/Resources
+	$(OSX_ONLY) cp -f demo.menu demo.app/Contents/Resources/
 
 device$(EXEEXT): device.o $(IMGLIBNAME)
 	echo Linking $@...
@@ -338,6 +349,7 @@ editor$(EXEEXT): editor.o
 	echo Linking $@...
 	$(CXX) $(ARCHFLAGS) $(CXXFLAGS) $(LDFLAGS) editor.o -o $@ $(LINKFLTKIMG) $(LDLIBS)
 	$(OSX_ONLY) ../fltk-config --post $@
+	$(OSX_ONLY) cp -f ../ide/Xcode4/plists/editor-Info.plist editor.app/Contents/Info.plist
 
 fast_slow$(EXEEXT): fast_slow.o
 fast_slow.cxx:	fast_slow.fl ../fluid/fluid$(EXEEXT)
@@ -360,6 +372,8 @@ help$(EXEEXT): help.o $(IMGLIBNAME)
 	echo Linking $@...
 	$(CXX) $(ARCHFLAGS) $(CXXFLAGS) $(LDFLAGS) help.o -o $@ $(LINKFLTKIMG) $(LDLIBS)
 	$(OSX_ONLY) ../fltk-config --post $@
+	$(OSX_ONLY) mkdir -p help.app/Contents/Resources
+	$(OSX_ONLY) cp -f help-test.html help.app/Contents/Resources/
 
 icon$(EXEEXT): icon.o
 
@@ -409,6 +423,8 @@ native-filechooser$(EXEEXT): native-filechooser.o $(IMGLIBNAME)
 	$(OSX_ONLY) ../fltk-config --post $@
 
 navigation$(EXEEXT): navigation.o
+
+offscreen$(EXEEXT): offscreen.o
 
 output$(EXEEXT): output.o $(FLLIBNAME)
 	echo Linking $@...
@@ -530,5 +546,5 @@ cairo_test$(EXEEXT): cairo_test.o
 	$(OSX_ONLY) ../fltk-config --post $@
 
 #
-# End of "$Id: Makefile 10339 2014-09-26 23:58:05Z AlbrechtS $".
+# End of "$Id: Makefile 11918 2016-09-03 08:14:43Z manolo $".
 #

@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Multi_Browser.H 9637 2012-07-24 04:37:22Z matt $"
+// "$Id: Fl_Multi_Browser.H 10882 2015-11-05 17:54:16Z manolo $"
 //
 // Multi browser header file for the Fast Light Tool Kit (FLTK).
 //
@@ -29,8 +29,10 @@
   which lets the user select any set of the lines.  The user interface
   is Macintosh style: clicking an item turns off all the others and
   selects that one, dragging selects all the items the mouse moves over,
-  and shift + click toggles the items. This is different then how forms
-  did it.  Normally the callback is done when the user releases the
+  and ctrl + click (Cmd+click on the Mac OS platform) toggles the items.  
+  Shift + click extends the selection until the clicked item.
+  This is different from how forms did it.  
+  Normally the callback is done when the user releases the
   mouse, but you can change this with when().
   <P>See Fl_Browser for methods to add and remove lines from the browser.
 */
@@ -48,5 +50,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Multi_Browser.H 9637 2012-07-24 04:37:22Z matt $".
+// End of "$Id: Fl_Multi_Browser.H 10882 2015-11-05 17:54:16Z manolo $".
 //

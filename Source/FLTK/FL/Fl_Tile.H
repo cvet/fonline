@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Tile.H 10385 2014-10-19 14:17:47Z AlbrechtS $"
+// "$Id: Fl_Tile.H 11726 2016-05-09 11:25:57Z AlbrechtS $"
 //
 // Tile header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2014 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file. If this
@@ -28,14 +28,14 @@
 
 class FL_EXPORT Fl_Tile : public Fl_Group {
 public:
-  int handle(int);
-  Fl_Tile(int X,int Y,int W,int H,const char*l=0);
-  void resize(int, int, int, int);
-  void position(int, int, int, int);
+  int handle(int event);
+  Fl_Tile(int X, int Y, int W, int H, const char *L=0);
+  void resize(int X, int Y, int W, int H);
+  void position(int oldx, int oldy, int newx, int newy);
 };
 
 #endif
 
 //
-// End of "$Id: Fl_Tile.H 10385 2014-10-19 14:17:47Z AlbrechtS $".
+// End of "$Id: Fl_Tile.H 11726 2016-05-09 11:25:57Z AlbrechtS $".
 //

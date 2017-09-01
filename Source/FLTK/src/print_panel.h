@@ -1,5 +1,5 @@
 //
-// "$Id: print_panel.h 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: print_panel.h 10619 2015-03-12 15:24:15Z manolo $"
 //
 // Print panel for the Fast Light Tool Kit (FLTK).
 //
@@ -35,12 +35,13 @@
 #include <FL/Fl_Check_Button.H>
 #include <FL/Fl_Return_Button.H>
 #include <FL/Fl_Progress.H>
+enum printing_style {SystemV, BSD};
 static Fl_Double_Window* make_print_panel();
 static void print_cb(Fl_Return_Button *, void *); 
-static void print_load();
+static printing_style print_load();
 static void print_update_status();
 #endif
 
 //
-// End of "$Id: print_panel.h 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: print_panel.h 10619 2015-03-12 15:24:15Z manolo $".
 //

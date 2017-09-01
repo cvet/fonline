@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_PNM_Image.cxx 9709 2012-11-09 16:02:08Z manolo $"
+// "$Id: Fl_PNM_Image.cxx 10751 2015-06-14 17:07:31Z AlbrechtS $"
 //
 // Fl_PNM_Image routines.
 //
@@ -37,11 +37,18 @@
 // 'Fl_PNM_Image::Fl_PNM_Image()' - Load a PNM image...
 //
 
-/** 
-  The constructor loads the named PNM image. 
-  <P>The inherited destructor free all memory and server resources that are used by the image.
-*/
 
+/**
+ The constructor loads the named PNM image.
+
+ The destructor frees all memory and server resources that are used by
+ the image.
+
+ Use Fl_Image::fail() to check if Fl_PNM_Image failed to load. fail() returns
+ ERR_FILE_ACCESS if the file could not be opened or read, ERR_FORMAT if the
+ PNM format could not be decoded, and ERR_NO_IMAGE if the image could not
+ be loaded for another reason.
+ */
 Fl_PNM_Image::Fl_PNM_Image(const char *name)	// I - File to read
   : Fl_RGB_Image(0,0,0) {
   FILE		*fp;		// File pointer
@@ -56,7 +63,10 @@ Fl_PNM_Image::Fl_PNM_Image(const char *name)	// I - File to read
 		maxval;		// Maximum pixel value
 
 
-  if ((fp = fl_fopen(name, "rb")) == NULL) return;
+  if ((fp = fl_fopen(name, "rb")) == NULL) {
+    ld(ERR_FILE_ACCESS);
+    return;
+  }
 
   //
   // Read the file header in the format:
@@ -75,6 +85,7 @@ Fl_PNM_Image::Fl_PNM_Image(const char *name)	// I - File to read
   if (!lineptr) {
     fclose(fp);
     Fl::error("Early end-of-file in PNM file \"%s\"!", name);
+    ld(ERR_FILE_ACCESS);
     return;
   }
 
@@ -122,6 +133,7 @@ Fl_PNM_Image::Fl_PNM_Image(const char *name)	// I - File to read
   if (((size_t)w()) * h() * d() > max_size() ) {
     Fl::warning("PNM file \"%s\" is too large!\n", name);
     fclose(fp);
+    w(0); h(0); d(0); ld(ERR_FORMAT);
     return;
   }
   array       = new uchar[w() * h() * d()];
@@ -133,6 +145,10 @@ Fl_PNM_Image::Fl_PNM_Image(const char *name)	// I - File to read
 
     switch (format) {
       case 1 :
+        for (x = w(); x > 0; x --)
+          if (fscanf(fp, "%d", &val) == 1) *ptr++ = (uchar)(255 * (1-val));
+        break;
+        
       case 2 :
           for (x = w(); x > 0; x --)
             if (fscanf(fp, "%d", &val) == 1) *ptr++ = (uchar)(255 * val / maxval);
@@ -147,17 +163,17 @@ Fl_PNM_Image::Fl_PNM_Image(const char *name)	// I - File to read
           break;
 
       case 4 :
-          for (x = w(), byte = (uchar)getc(fp), bit = 128; x > 0; x --) {
-	    if (byte & bit) *ptr++ = 255;
-	    else *ptr++ = 0;
-
-            if (bit > 1) bit >>= 1;
-            else {
-              bit  = 128;
-              byte = (uchar)getc(fp);
-            }
+        for (x = w(), byte = (uchar)getc(fp), bit = 128; x > 0; x --) {
+          if ((byte & bit) == 0) *ptr++ = 255; // 0 bit for white pixel
+          else *ptr++ = 0; // 1 bit for black pixel
+          
+          if (bit > 1) bit >>= 1;
+          else {
+            bit  = 128;
+            if (x > 1) byte = (uchar)getc(fp);
           }
-          break;
+        }
+        break;
           
       case 5 :
       case 6 :
@@ -189,5 +205,5 @@ Fl_PNM_Image::Fl_PNM_Image(const char *name)	// I - File to read
 
 
 //
-// End of "$Id: Fl_PNM_Image.cxx 9709 2012-11-09 16:02:08Z manolo $".
+// End of "$Id: Fl_PNM_Image.cxx 10751 2015-06-14 17:07:31Z AlbrechtS $".
 //

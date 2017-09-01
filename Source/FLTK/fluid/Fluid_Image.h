@@ -1,5 +1,5 @@
 //
-// "$Id: Fluid_Image.h 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: Fluid_Image.h 10972 2015-12-18 18:56:58Z manolo $"
 //
 // Image header file for the Fast Light Tool Kit (FLTK).
 //
@@ -30,6 +30,7 @@ class Fluid_Image {
   const char *name_;
   int refcount;
   Fl_Shared_Image *img;
+  const char *function_name_;
 protected:
   Fluid_Image(const char *name); // no public constructor
   ~Fluid_Image(); // no public destructor
@@ -41,6 +42,7 @@ public:
   void image(Fl_Widget *); // set the image of this widget
   void deimage(Fl_Widget *); // set the deimage of this widget
   void write_static();
+  void write_initializer(const char *type_name, const char *format, ...);
   void write_code(const char *var, int inactive = 0);
   const char *name() const {return name_;}
 };
@@ -53,5 +55,5 @@ extern const char *ui_find_image_name;
 #endif
 
 //
-// End of "$Id: Fluid_Image.h 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: Fluid_Image.h 10972 2015-12-18 18:56:58Z manolo $".
 //

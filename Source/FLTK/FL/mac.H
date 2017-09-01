@@ -1,9 +1,9 @@
 //
-// "$Id: mac.H 10305 2014-09-13 14:29:53Z manolo $"
+// "$Id: mac.H 12021 2016-10-08 05:59:14Z manolo $"
 //
 // Mac header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -29,7 +29,7 @@
 @class FLWindow; // a subclass of the NSWindow Cocoa class
 typedef FLWindow *Window;
 #else
-typedef class FLWindow_opaque *Window; // pointer to the FLWindow objective-c class
+typedef class FLWindow *Window; // pointer to the FLWindow objective-c class
 #endif // __OBJC__
 
 #if !(defined(FL_LIBRARY) || defined(FL_INTERNALS)) // this part is used when compiling an application program
@@ -41,6 +41,7 @@ typedef struct OpaquePMPrintSettings*   PMPrintSettings;
 typedef struct OpaquePMPageFormat*      PMPageFormat;
 typedef struct OpaquePMPrintSession*    PMPrintSession;
 typedef struct CGImage* CGImageRef;
+typedef struct __CFData* CFMutableDataRef; // used in Fl_Copy_Surface.H
 typedef CGContextRef Fl_Offscreen;
 
 #else // this part must be compiled when building the FLTK libraries
@@ -70,14 +71,37 @@ typedef CGContextRef Fl_Offscreen;
 #ifndef MAC_OS_X_VERSION_10_10
 #define MAC_OS_X_VERSION_10_10 101000
 #endif
+#ifndef MAC_OS_X_VERSION_10_11
+#define MAC_OS_X_VERSION_10_11 101100
+#endif
+#ifndef MAC_OS_X_VERSION_10_12
+#define MAC_OS_X_VERSION_10_12 101200
+#endif
+
+#ifndef NSINTEGER_DEFINED // appears with 10.5 in NSObjCRuntime.h
+#if defined(__LP64__) && __LP64__
+typedef long NSInteger;
+typedef unsigned long NSUInteger;
+#else
+typedef int NSInteger;
+typedef unsigned int NSUInteger;
+#endif
+#endif
 
 #ifdef __OBJC__
 @class NSCursor;
+@class NSOpenGLPixelFormat;
+@class NSOpenGLContext;
 #else
 class NSCursor;
+class NSOpenGLPixelFormat;
+class NSOpenGLContext;
 #endif // __OBJC__
 
 typedef CGContextRef Fl_Offscreen;
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_4
+typedef CGImageAlphaInfo CGBitmapInfo;
+#endif
 
 typedef struct flCocoaRegion {
   int count;
@@ -123,9 +147,14 @@ public:
   Fl_Offscreen other_xid;  // pointer for offscreen bitmaps (overlay window)
   Fl_Window *w;            // FLTK window for 
   Fl_Region region;
-  Fl_Region subRegion;     // region for this specific subwindow
-  Fl_X *next;              // linked tree to support subwindows
-  Fl_X *xidChildren, *xidNext; // more subwindow tree
+#if FLTK_ABI_VERSION < 10304
+  Fl_Region subRegion;     // for ABI compatibility, recycled to replace subRect_
+#endif
+  Fl_X *next;              // chain of mapped windows
+#if FLTK_ABI_VERSION < 10304
+  Fl_X *xidChildren;       // useless with true subwindows, recycled to replace mapped_to_retina_
+  Fl_X *xidNext;           // useless with true subwindows
+#endif
   int wait_for_expose;
   NSCursor *cursor;
   static Fl_X* first;
@@ -133,6 +162,20 @@ public:
   static int fake_X_wm(const Fl_Window*,int&,int&,int&,int&,int&);
   static void make(Fl_Window*);
   void flush();
+  static void set_high_resolution(bool);
+#if FLTK_ABI_VERSION >= 10304
+  CGRect* subRect() { return subRect_; } // getter
+  void subRect(CGRect *r) { subRect_ = r; } // setter
+#else
+  CGRect* subRect() { return (CGRect*)subRegion; } // getter
+  void subRect(CGRect *r) { subRegion = (Fl_Region)r; } // setter
+#endif
+  bool mapped_to_retina();      // is window mapped to retina display?
+  void mapped_to_retina(bool);  // sets whether window is mapped to retina display
+  bool changed_resolution();      // did window just moved to display with another resolution?
+  void changed_resolution(bool);// sets whether window just moved to display with another resolution
+  bool in_windowDidResize();      // is window performing windowDidResize?
+  void in_windowDidResize(bool);  // sets whether window is performing windowDidResize
   // Quartz additions:
   CGContextRef gc;                 // graphics context (NULL when using QD)
   static void q_fill_context();    // fill a Quartz context with current FLTK state
@@ -141,12 +184,18 @@ public:
   static void q_begin_image(CGRect&, int x, int y, int w, int h);
   static void q_end_image();
   // Cocoa additions
+  static NSOpenGLPixelFormat *mode_to_NSOpenGLPixelFormat(int mode, const int*); // computes NSOpenGLPixelFormat from Gl window's mode
+  static NSOpenGLContext* create_GLcontext_for_window(NSOpenGLPixelFormat *pixelformat, NSOpenGLContext *shared_ctx, Fl_Window *window);
+  static void GLcontext_update(NSOpenGLContext*);
+  static void GLcontext_flushbuffer(NSOpenGLContext*);
+  static void GLcontext_release(NSOpenGLContext*);
+  static void GLcontext_makecurrent(NSOpenGLContext*);
+  static void GL_cleardrawable(void);
   void destroy(void);
   void map(void);
   void unmap(void);
-  int unlink(Fl_X* start = NULL);
   void collapse(void);
-  WindowRef window_ref(void);
+  WindowRef window_ref(void); // useless with cocoa GL windows
   void set_key_window(void);
   // OS X doesn't have per window icons
   static void set_default_icons(const Fl_RGB_Image*[], int) {};
@@ -155,22 +204,27 @@ public:
   int set_cursor(const Fl_RGB_Image*, int, int);
   static CGImageRef CGImage_from_window_rect(Fl_Window *win, int x, int y, int w, int h);
   static unsigned char *bitmap_from_window_rect(Fl_Window *win, int x, int y, int w, int h, int *bytesPerPixel);
-  static CFDataRef CGBitmapContextToTIFF(CGContextRef c);
   static Fl_Region intersect_region_and_rect(Fl_Region current, int x,int y,int w, int h);
-  static CGContextRef watch_cursor_image(void);
-  static CGContextRef help_cursor_image(void);
-  static CGContextRef nesw_cursor_image(void);
-  static CGContextRef nwse_cursor_image(void);
-  static CGContextRef none_cursor_image(void);
   static void *get_carbon_function(const char *name);
   static void screen_work_area(int &X, int &Y, int &W, int &H, int n); // compute work area of a given screen
   static int next_marked_length; // next length of marked text after current marked text will have been replaced
   static int insertion_point_location(int *px, int *py, int *pheight); // computes window coordinates & height of insertion point
   static const int CoreText_threshold;  // Mac OS version from which the Core Text API is used to display text
   static Fl_Fontdesc* calc_fl_fonts(void); // computes the fl_fonts global variable
+  static int dnd(int use_selection); // call Fl_X::dnd(1) to support text dragging
+  static int calc_mac_os_version(void); // computes the fl_mac_os_version global variable
+  static void clip_to_rounded_corners(CGContextRef gc, int w, int h);
+  static void *get_titlebar_layer(Fl_Window *win);
+  static void draw_layer_to_context(void *layer, CGContextRef ctxt, int w, int h);
 private:
-  static void relink(Fl_Window*, Fl_Window*);
-  bool subwindow;
+#if FLTK_ABI_VERSION >= 10304
+  CGRect* subRect_;           // makes sure subwindow remains inside its parent window
+  // stores 3 binary flags: whether window is mapped to retina display; whether resolution just changed;
+  // whether window is OpenGL and is currently being resized.
+  unsigned mapped_to_retina_;
+#else
+  bool subwindow;     // for ABI compatibility, useless with true subwindows
+#endif
 };
 
 extern Window fl_window;
@@ -231,6 +285,7 @@ extern int fl_mac_os_version;
  */
 extern class Fl_Sys_Menu_Bar *fl_sys_menu_bar;
 
+struct Fl_Menu_Item;
 
 class Fl_Mac_App_Menu {
 public:
@@ -251,11 +306,12 @@ public:
   static const char *show;
   /** Localizable text for the "Quit xxx" application menu item */
   static const char *quit;
+  static void custom_application_menu_items(const Fl_Menu_Item *m);
 };
 
 /** @} */
 
 //
-// End of "$Id: mac.H 10305 2014-09-13 14:29:53Z manolo $".
+// End of "$Id: mac.H 12021 2016-10-08 05:59:14Z manolo $".
 //
 

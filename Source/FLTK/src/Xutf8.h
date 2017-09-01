@@ -1,4 +1,4 @@
-/* "$Id: Xutf8.h 10248 2014-08-23 08:41:58Z cand $"
+/* "$Id: Xutf8.h 10588 2015-02-22 13:26:00Z AlbrechtS $"
  *
  * Author: Jean-Marc Lienher ( http://oksid.ch )
  * Copyright 2000-2010 by O'ksi'D.
@@ -25,6 +25,7 @@ extern "C" {
 #include <X11/Xlib.h>
 #include <X11/Xlocale.h>
 #include <X11/Xutil.h>
+#include <FL/Fl_Export.H>
 
 typedef struct {
 	int nb_font;
@@ -98,8 +99,8 @@ XUtf8UcsWidth(
 	XUtf8FontStruct  *font_set,
 	unsigned int            ucs);
 
-int
-XGetUtf8FontAndGlyph(
+FL_EXPORT int
+fl_XGetUtf8FontAndGlyph(
         XUtf8FontStruct  *font_set,
         unsigned int            ucs,
         XFontStruct     **fnt,
@@ -180,5 +181,5 @@ XUtf8Toupper(
 #endif
 
 /*
- *  End of "$Id: Xutf8.h 10248 2014-08-23 08:41:58Z cand $".
+ *  End of "$Id: Xutf8.h 10588 2015-02-22 13:26:00Z AlbrechtS $".
  */

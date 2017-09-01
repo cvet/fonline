@@ -1,9 +1,9 @@
 //
-// "$Id: fl_font_mac.cxx 10193 2014-06-14 11:06:42Z manolo $"
+// "$Id: fl_font_mac.cxx 11943 2016-09-13 11:51:24Z manolo $"
 //
 // MacOS font selection routines for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -17,6 +17,9 @@
 //
 
 #include <config.h>
+#include <math.h>
+
+Fl_Fontdesc* fl_fonts = NULL;
 
 /* from fl_utf.c */
 extern unsigned fl_utf8toUtf16(const char* src, unsigned srclen, unsigned short* dst, unsigned dstlen);
@@ -27,6 +30,8 @@ static CFMutableDictionaryRef attributes = NULL;
 #endif
 
 const int Fl_X::CoreText_threshold = 100500; // this represents Mac OS 10.5
+// condition when the ATSU API is available at compile time
+#define HAS_ATSU (!defined(__LP64__) || !__LP64__) && MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_11
 
 Fl_Font_Descriptor::Fl_Font_Descriptor(const char* name, Fl_Fontsize Size) {
   next = 0;
@@ -48,7 +53,7 @@ if (fl_mac_os_version >= Fl_X::CoreText_threshold) {
   double w;
   CTFontGetAdvancesForGlyphs(fontref, kCTFontHorizontalOrientation, glyph, advances, 2);
   w = advances[0].width;
-  if ( abs(advances[0].width - advances[1].width) < 1E-2 ) {//this is a fixed-width font
+  if ( fabs(advances[0].width - advances[1].width) < 1E-2 ) {//this is a fixed-width font
     // slightly rescale fixed-width fonts so the character width has an integral value
     CFRelease(fontref);
     CGFloat fsize = size / ( w/floor(w + 0.5) );
@@ -86,7 +91,7 @@ if (fl_mac_os_version >= Fl_X::CoreText_threshold) {
 }
 else {
 #endif
-#if ! __LP64__
+#if HAS_ATSU
   OSStatus err;
     // fill our structure with a few default values
   ascent = Size*3/4.;
@@ -141,7 +146,7 @@ else {
   // cause ATSU to find a suitable font to render any chars the current font can't do...
   ATSUSetTransientFontMatching (layout, true);
 # endif
-#endif//__LP64__
+#endif//HAS_ATSU
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5
   }
 #endif
@@ -181,10 +186,10 @@ static Fl_Fontdesc built_in_table_PS[] = { // PostScript font names preferred wh
 {"Arial-BoldMT"},
 {"Arial-ItalicMT"},
 {"Arial-BoldItalicMT"},
-{"CourierNewPSMT"},
-{"CourierNewPS-BoldMT"},
-{"CourierNewPS-ItalicMT"},
-{"CourierNewPS-BoldItalicMT"},
+{"Courier"},
+{"Courier-Bold"},
+{"Courier-Oblique"},
+{"Courier-BoldOblique"},
 {"TimesNewRomanPSMT"},
 {"TimesNewRomanPS-BoldMT"},
 {"TimesNewRomanPS-ItalicMT"},
@@ -201,8 +206,8 @@ static Fl_Fontdesc built_in_table_full[] = { // full font names used before 10.5
   {"Arial Bold"},
   {"Arial Italic"},
   {"Arial Bold Italic"},
-  {"Courier New"},
-  {"Courier New Bold"},
+  {"Courier"},
+  {"Courier Bold"},
   {"Courier New Italic"},
   {"Courier New Bold Italic"},
   {"Times New Roman"},
@@ -234,6 +239,7 @@ static UniChar *mac_Utf8_to_Utf16(const char *txt, int len, int *new_len)
 
 Fl_Fontdesc* Fl_X::calc_fl_fonts(void)
 {
+  if (!fl_mac_os_version) fl_mac_os_version = calc_mac_os_version();
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5
   return (fl_mac_os_version >= Fl_X::CoreText_threshold ? built_in_table_PS : built_in_table_full);
 #else
@@ -242,6 +248,7 @@ Fl_Fontdesc* Fl_X::calc_fl_fonts(void)
 }
 
 static Fl_Font_Descriptor* find(Fl_Font fnum, Fl_Fontsize size) {
+  if (!fl_fonts) fl_fonts = Fl_X::calc_fl_fonts();
   Fl_Fontdesc* s = fl_fonts+fnum;
   if (!s->name) s = fl_fonts; // use 0 if fnum undefined
   Fl_Font_Descriptor* f;
@@ -299,6 +306,18 @@ static CGFloat surrogate_width(const UniChar *txt, Fl_Font_Descriptor *fl_fontsi
   if(must_release) CFRelease(font2);
   return a.width;
 }
+
+static CGFloat variation_selector_width(CFStringRef str16, Fl_Font_Descriptor *fl_fontsize)
+{
+  CGFloat retval;
+  CFDictionarySetValue(attributes, kCTFontAttributeName, fl_fontsize->fontref);
+  CFAttributedStringRef mastr = CFAttributedStringCreate(kCFAllocatorDefault, str16, attributes);
+  CTLineRef ctline = CTLineCreateWithAttributedString(mastr);
+  CFRelease(mastr);
+  retval = CTLineGetOffsetForStringIndex(ctline, 2, NULL);
+  CFRelease(ctline);
+  return retval;
+}
 #endif
 
 static double fl_mac_width(const UniChar* txt, int n, Fl_Font_Descriptor *fl_fontsize) {
@@ -312,6 +331,13 @@ if (fl_mac_os_version >= Fl_X::CoreText_threshold) {
     if (uni >= 0xD800 && uni <= 0xDBFF) { // handles the surrogate range
       retval += surrogate_width(&txt[i], fl_fontsize);
       i++; // because a pair of UniChar's represent a single character
+      continue;
+    }
+    if (i+1 < n && txt[i+1] >= 0xFE00 && txt[i+1] <= 0xFE0F) { // handles variation selectors
+      CFStringRef substr = CFStringCreateWithCharacters(NULL, txt + i, 2);
+      retval += variation_selector_width(substr, fl_fontsize);
+      CFRelease(substr);
+      i++;
       continue;
     }
     const int block = 0x10000 / (sizeof(fl_fontsize->width)/sizeof(float*)); // block size
@@ -363,7 +389,7 @@ if (fl_mac_os_version >= Fl_X::CoreText_threshold) {
   return retval;
 } else {
 #endif
-#if ! __LP64__
+#if HAS_ATSU
   OSStatus err;
   Fixed bBefore, bAfter, bAscent, bDescent;
   ATSUTextLayout layout;
@@ -441,7 +467,7 @@ if (fl_mac_os_version >= Fl_X::CoreText_threshold) {
   }
 else {
 #endif
-#if ! __LP64__
+#if HAS_ATSU
   OSStatus err;
   ATSUTextLayout layout;
   ByteCount iSize;
@@ -491,7 +517,7 @@ static void fl_mac_draw(const char *str, int n, float x, float y, Fl_Graphics_Dr
   UniChar *uniStr = mac_Utf8_to_Utf16(str, n, &n);
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5
   if (fl_mac_os_version >= Fl_X::CoreText_threshold) {
-    CFStringRef str16 = CFStringCreateWithCharactersNoCopy(NULL, uniStr, n,  kCFAllocatorNull);
+    CFMutableStringRef str16 = CFStringCreateMutableWithExternalCharactersNoCopy(NULL, uniStr, n,  n, kCFAllocatorNull);
     if (str16 == NULL) return; // shd not happen
     CGColorRef color = flcolortocgcolor(driver->color());
     CFDictionarySetValue (attributes, kCTFontAttributeName, driver->font_descriptor()->fontref);
@@ -509,7 +535,7 @@ static void fl_mac_draw(const char *str, int n, float x, float y, Fl_Graphics_Dr
     CFRelease(ctline);
   } else {
 #endif
-#if ! __LP64__
+#if HAS_ATSU
   OSStatus err;
   // now collect our ATSU resources
   ATSUTextLayout layout = driver->font_descriptor()->layout;
@@ -556,5 +582,5 @@ void Fl_Quartz_Graphics_Driver::rtl_draw(const char* c, int n, int x, int y) {
 }
 
 //
-// End of "$Id: fl_font_mac.cxx 10193 2014-06-14 11:06:42Z manolo $".
+// End of "$Id: fl_font_mac.cxx 11943 2016-09-13 11:51:24Z manolo $".
 //

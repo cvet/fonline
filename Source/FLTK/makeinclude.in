@@ -1,5 +1,5 @@
 #
-# "$Id: makeinclude.in 10351 2014-10-04 22:32:34Z AlbrechtS $"
+# "$Id: makeinclude.in 10653 2015-03-25 20:06:54Z AlbrechtS $"
 #
 # Make include file for the Fast Light Tool Kit (FLTK).
 #
@@ -15,6 +15,18 @@
 #
 #      http://www.fltk.org/str.php
 #
+
+# FLTK version numbers
+
+FL_MAJOR_VERSION	= @FL_MAJOR_VERSION@
+FL_MINOR_VERSION	= @FL_MINOR_VERSION@
+FL_PATCH_VERSION	= @FL_PATCH_VERSION@
+
+FL_DSO_VERSION		= @FL_DSO_VERSION@
+FL_ABI_VERSION		= @FL_ABI_VERSION@
+FL_VERSION		= @FL_VERSION@
+
+# Standard configure variables
 
 prefix		= @prefix@
 exec_prefix	= @exec_prefix@
@@ -167,5 +179,5 @@ UNINSTALL_DESKTOP = @UNINSTALL_DESKTOP@
 	mv t.z $@
 
 #
-# End of "$Id: makeinclude.in 10351 2014-10-04 22:32:34Z AlbrechtS $".
+# End of "$Id: makeinclude.in 10653 2015-03-25 20:06:54Z AlbrechtS $".
 #

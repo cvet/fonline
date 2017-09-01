@@ -1,9 +1,9 @@
 //
-// "$Id: fl_font_x.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: fl_font_x.cxx 11977 2016-09-25 11:07:06Z AlbrechtS $"
 //
 // Standard X11 font selection code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -318,7 +318,13 @@ void Fl_Xlib_Graphics_Driver::draw(const char* c, int n, int x, int y) {
 }
 
 void Fl_Xlib_Graphics_Driver::draw(int angle, const char *str, int n, int x, int y) {
-  fprintf(stderr,"ROTATING TEXT NOT IMPLEMENTED\n");
+  static char warning = 0; // issue warning only once
+  if (!warning && angle != 0) {
+    warning = 1;
+    fprintf(stderr,
+	    "libfltk: rotated text not implemented by X backend.\n"
+	    "  You should use the Xft backend. Check USE_XFT in config.h.\n");
+  }
   this->draw(str, n, (int)x, (int)y);
 }
 
@@ -331,5 +337,5 @@ void Fl_Xlib_Graphics_Driver::rtl_draw(const char* c, int n, int x, int y) {
 }
 #endif // FL_DOXYGEN
 //
-// End of "$Id: fl_font_x.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: fl_font_x.cxx 11977 2016-09-25 11:07:06Z AlbrechtS $".
 //

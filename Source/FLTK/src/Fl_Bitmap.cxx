@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Bitmap.cxx 10132 2014-04-28 09:17:12Z manolo $"
+// "$Id: Fl_Bitmap.cxx 12026 2016-10-14 14:33:14Z AlbrechtS $"
 //
 // Bitmap drawing routines for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -243,7 +243,7 @@ void Fl_Bitmap::draw(int XP, int YP, int WP, int HP, int cx, int cy) {
   fl_graphics_driver->draw(this, XP, YP, WP, HP, cx, cy);
 }
 
-int Fl_Bitmap::start(int XP, int YP, int WP, int HP, int &cx, int &cy, 
+int Fl_Bitmap::start(int XP, int YP, int WP, int HP, int &cx, int &cy,
 		 int &X, int &Y, int &W, int &H)
 {
   if (!array) {
@@ -363,7 +363,7 @@ void Fl_Xlib_Graphics_Driver::draw(Fl_Bitmap *bm, int XP, int YP, int WP, int HP
 #endif
 
 /**
-  The destructor free all memory and server resources that are used by
+  The destructor frees all memory and server resources that are used by
   the bitmap.
 */
 Fl_Bitmap::~Fl_Bitmap() {
@@ -419,7 +419,7 @@ Fl_Image *Fl_Bitmap::copy(int W, int H) {
 		xstep, ystep;	// X & Y step increments
 
 
-  // Figure out Bresenheim step/modulus values...
+  // Figure out Bresenham step/modulus values...
   xmod   = w() % W;
   xstep  = w() / W;
   ymod   = h() % H;
@@ -470,5 +470,5 @@ Fl_Image *Fl_Bitmap::copy(int W, int H) {
 
 
 //
-// End of "$Id: Fl_Bitmap.cxx 10132 2014-04-28 09:17:12Z manolo $".
+// End of "$Id: Fl_Bitmap.cxx 12026 2016-10-14 14:33:14Z AlbrechtS $".
 //

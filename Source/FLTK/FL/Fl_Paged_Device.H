@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Paged_Device.H 9706 2012-11-06 20:46:14Z matt $"
+// "$Id: Fl_Paged_Device.H 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //
 // Printing support for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 2010 by Bill Spitzak and others.
+// Copyright 2010-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -36,6 +36,11 @@
  or Fl_PostScript_File_Device instead.
  */
 class FL_EXPORT Fl_Paged_Device : public Fl_Surface_Device {
+#ifndef __APPLE__
+  friend class Fl_Copy_Surface;
+  friend class Fl_Image_Surface;
+  void draw_decorated_window(Fl_Window *win, int x_offset, int y_offset, Fl_Surface_Device *toset);
+#endif
 public:
   /**
    \brief Possible page formats.
@@ -145,6 +150,6 @@ public:
 #endif // Fl_Paged_Device_H
 
 //
-// End of "$Id: Fl_Paged_Device.H 9706 2012-11-06 20:46:14Z matt $"
+// End of "$Id: Fl_Paged_Device.H 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //
 

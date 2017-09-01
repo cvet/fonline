@@ -621,10 +621,12 @@ ac_includes_default="\
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+BINARY_DIR
 MAKEDEPEND
 CAT6EXT
 CAT3EXT
 CAT1EXT
+USEMMFILES
 UNINSTALL_DESKTOP
 INSTALL_DESKTOP
 THREADS
@@ -696,11 +698,12 @@ CAIROFLAGS
 CAIRODIR
 OPTIM
 ARCHFLAGS
-FL_API_VERSION
+FL_VERSION
+FL_ABI_VERSION
+FL_DSO_VERSION
 FL_PATCH_VERSION
 FL_MINOR_VERSION
 FL_MAJOR_VERSION
-USEMMFILES
 ac_ct_CXX
 CXXFLAGS
 CXX
@@ -764,6 +767,7 @@ enable_cygwin
 enable_x11
 enable_cairoext
 enable_cairo
+with_abiversion
 enable_debug
 enable_cp936
 enable_gl
@@ -782,6 +786,7 @@ enable_xft
 enable_xdbe
 enable_xfixes
 enable_xcursor
+enable_xrender
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1412,7 +1417,7 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-cygwin         use the Cygwin libraries [default=no]
-  --enable-x11            use Cygwin with X11 [default=no]
+  --enable-x11            with Cygwin or Mac OS, use X11 [default=no]
   --enable-cairoext       use fltk code instrumentation for cairo extended use [default=no]
   --enable-cairo          use lib Cairo [default=no]
   --enable-debug          turn on debugging [default=no]
@@ -1429,13 +1434,15 @@ Optional Features:
   --enable-xdbe           turn on Xdbe support [default=yes]
   --enable-xfixes         turn on Xfixes support [default=yes]
   --enable-xcursor        turn on Xcursor support [default=yes]
+  --enable-xrender        turn on Xrender support [default=yes]
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-abiversion       Build with FL_ABI_VERSION, e.g. 10304 for FLTK 1.3.4
   --with-optim="flags"    use custom optimization flags
   --with-archflags="flags"
-                          use custom architecture flags
+			  use custom architecture flags
 			  (possible Mac OS X values include -arch i386, -arch x86_64, -arch ppc)
   --with-links            make header links for common misspellings [default=no]
   --with-x                use the X Window System
@@ -2451,6 +2458,7 @@ ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
 
 
 
@@ -3612,21 +3620,18 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 case $host_os in
     darwin*)
-        if test "x$with_archflags" != x ; then
-            CFLAGS="$CFLAGS $with_archflags"
-        fi
-        USEMMFILES="Yes"
-        ;;
-    *)
-        USEMMFILES="No"
-        ;;
+	if test "x$with_archflags" != x ; then
+	    CFLAGS="$CFLAGS $with_archflags"
+	fi
+	;;
 esac
-
 
 FL_MAJOR_VERSION=1
 FL_MINOR_VERSION=3
-FL_PATCH_VERSION=3
-FL_API_VERSION=${FL_MAJOR_VERSION}.${FL_MINOR_VERSION}
+FL_PATCH_VERSION=4
+FL_DSO_VERSION=${FL_MAJOR_VERSION}.${FL_MINOR_VERSION}
+FL_ABI_VERSION=${FL_MAJOR_VERSION}.${FL_MINOR_VERSION}.0
+FL_VERSION=${FL_MAJOR_VERSION}.${FL_MINOR_VERSION}.${FL_PATCH_VERSION}
 
 
 
@@ -3635,11 +3640,15 @@ FL_API_VERSION=${FL_MAJOR_VERSION}.${FL_MINOR_VERSION}
 
 
 
+
+
+
+USEMMFILES="No"
 
 host_os_gui=$host_os
 case $host_os in
     cygwin*)
-        # Handle Cygwin option *first*, before all other tests.
+	# Handle Cygwin option *first*, before all other tests.
 	# Check whether --enable-cygwin was given.
 if test "${enable_cygwin+set}" = set; then :
   enableval=$enable_cygwin;
@@ -3657,6 +3666,14 @@ fi
 	    fi
 	fi
 	;;
+    darwin*)
+	if test x$enable_x11 = xyes; then
+		host_os_gui="X11"
+		OPTIM="-U__APPLE__ $OPTIM"
+	fi
+	;;
+   *)
+   ;;
 esac
 
 LINKFLTK="../lib/libfltk.a"
@@ -3701,9 +3718,9 @@ if test x$enable_cairoext = xyes; then
 	  $as_echo "#define FLTK_HAVE_CAIRO 1" >>confdefs.h
 
 	  	  	  CAIRODIR="cairo"
-          CAIROFLAGS="`pkg-config --cflags cairo`"
-          CAIROLIBS="-lcairo -lpixman-1"
-          CXXFLAGS="$CAIROFLAGS $CXXFLAGS"
+	  CAIROFLAGS="`pkg-config --cflags cairo`"
+	  CAIROLIBS="-lcairo -lpixman-1"
+	  CXXFLAGS="$CAIROFLAGS $CXXFLAGS"
 	  LINKFLTKCAIRO="../lib/libfltk_cairo.a"
 	  FLTKCAIROOPTION="-L ../cairo -lfltk_cairo$SHAREDSUFFIX"
 	  LIBS="$CAIROLIBS $LIBS"
@@ -3713,9 +3730,9 @@ else
 	  $as_echo "#define FLTK_HAVE_CAIRO 1" >>confdefs.h
 
 	  	  	  CAIRODIR="cairo"
-          CAIROFLAGS="`pkg-config --cflags cairo`"
-          CAIROLIBS="-lcairo -lpixman-1"
-          CXXFLAGS="$CAIROFLAGS $CXXFLAGS"
+	  CAIROFLAGS="`pkg-config --cflags cairo`"
+	  CAIROLIBS="-lcairo -lpixman-1"
+	  CXXFLAGS="$CAIROFLAGS $CXXFLAGS"
 	  LINKFLTKCAIRO="../lib/libfltk_cairo.a"
 	  FLTKCAIROOPTION="-L ../cairo -lfltk_cairo$SHAREDSUFFIX"
     fi
@@ -3745,6 +3762,28 @@ fi
 
 
 
+has_abiversion=""
+
+# Check whether --with-abiversion was given.
+if test "${with_abiversion+set}" = set; then :
+  withval=$with_abiversion;
+fi
+
+has_abiversion="$with_abiversion"
+if test "$has_abiversion" = "yes" ; then
+ has_abiversion=""
+else
+ if test "$has_abiversion" = "no" ; then
+  has_abiversion=""
+ fi
+fi
+if test ! "$has_abiversion" = "" ; then
+
+cat >>confdefs.h <<_ACEOF
+#define FL_ABI_VERSION $has_abiversion
+_ACEOF
+
+fi
 
 # Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then :
@@ -3766,7 +3805,6 @@ if test x$enable_cp936 = xyes; then
     CFLAGS="$CFLAGS -DCP936"
 fi
 
-
 # Check whether --enable-gl was given.
 if test "${enable_gl+set}" = set; then :
   enableval=$enable_gl;
@@ -3785,67 +3823,67 @@ if test x$enable_shared = xyes; then
 
     case $host_os in
 	darwin*)
-            DSONAME="libfltk.$FL_API_VERSION.dylib"
-            FLDSONAME="libfltk_forms.$FL_API_VERSION.dylib"
-            GLDSONAME="libfltk_gl.$FL_API_VERSION.dylib"
-            IMGDSONAME="libfltk_images.$FL_API_VERSION.dylib"
-            CAIRODSONAME="libfltk_cairo.$FL_API_VERSION.dylib"
+	    DSONAME="libfltk.$FL_DSO_VERSION.dylib"
+	    FLDSONAME="libfltk_forms.$FL_DSO_VERSION.dylib"
+	    GLDSONAME="libfltk_gl.$FL_DSO_VERSION.dylib"
+	    IMGDSONAME="libfltk_images.$FL_DSO_VERSION.dylib"
+	    CAIRODSONAME="libfltk_cairo.$FL_DSO_VERSION.dylib"
 	    DSOCOMMAND="\$(CXX) \$(ARCHFLAGS) \$(DSOFLAGS) -dynamiclib -lc -o"
 	    ;;
 
 	solaris*)
-            DSONAME="libfltk.so.$FL_API_VERSION"
-            FLDSONAME="libfltk_forms.so.$FL_API_VERSION"
-            GLDSONAME="libfltk_gl.so.$FL_API_VERSION"
-            IMGDSONAME="libfltk_images.so.$FL_API_VERSION"
-            CAIRODSONAME="libfltk_cairo.so.$FL_API_VERSION"
+	    DSONAME="libfltk.so.$FL_DSO_VERSION"
+	    FLDSONAME="libfltk_forms.so.$FL_DSO_VERSION"
+	    GLDSONAME="libfltk_gl.so.$FL_DSO_VERSION"
+	    IMGDSONAME="libfltk_images.so.$FL_DSO_VERSION"
+	    CAIRODSONAME="libfltk_cairo.so.$FL_DSO_VERSION"
 	    DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -h \$@ \$(LDLIBS) -G $DEBUGFLAG -o"
 	    if test "x$libdir" != "x/usr/lib"; then
 		    DSOLINK="-R$libdir"
-            fi
+	    fi
 	    ;;
 	hpux*)
-            DSONAME="libfltk.sl.$FL_API_VERSION"
-            FLDSONAME="libfltk_forms.sl.$FL_API_VERSION"
-            GLDSONAME="libfltk_gl.sl.$FL_API_VERSION"
-            IMGDSONAME="libfltk_images.sl.$FL_API_VERSION"
-            CAIRODSONAME="libfltk_cairo.sl.$FL_API_VERSION"
+	    DSONAME="libfltk.sl.$FL_DSO_VERSION"
+	    FLDSONAME="libfltk_forms.sl.$FL_DSO_VERSION"
+	    GLDSONAME="libfltk_gl.sl.$FL_DSO_VERSION"
+	    IMGDSONAME="libfltk_images.sl.$FL_DSO_VERSION"
+	    CAIRODSONAME="libfltk_cairo.sl.$FL_DSO_VERSION"
 	    DSOCOMMAND="ld \$(DSOFLAGS) -b -z +h \$@ $DEBUGFLAG -o"
 	    if test "x$libdir" != "x/usr/lib"; then
 		    DSOLINK="-Wl,-rpath,$libdir"
-            fi
+	    fi
 	    ;;
 	irix*)
-            DSONAME="libfltk.so.$FL_API_VERSION"
-            FLDSONAME="libfltk_forms.so.$FL_API_VERSION"
-            GLDSONAME="libfltk_gl.so.$FL_API_VERSION"
-            IMGDSONAME="libfltk_images.so.$FL_API_VERSION"
-            CAIRODSONAME="libfltk_cairo.so.$FL_API_VERSION"
-            DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-soname,\$@,-set_version,sgi1.1 \$(LDLIBS) -shared $DEBUGFLAG -o"
+	    DSONAME="libfltk.so.$FL_DSO_VERSION"
+	    FLDSONAME="libfltk_forms.so.$FL_DSO_VERSION"
+	    GLDSONAME="libfltk_gl.so.$FL_DSO_VERSION"
+	    IMGDSONAME="libfltk_images.so.$FL_DSO_VERSION"
+	    CAIRODSONAME="libfltk_cairo.so.$FL_DSO_VERSION"
+	    DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-soname,\$@,-set_version,sgi1.1 \$(LDLIBS) -shared $DEBUGFLAG -o"
 	    if test "x$libdir" != "x/usr/lib" -a "x$libdir" != "x/usr/lib32" -a "x$libdir" != "x/usr/lib64"; then
 		    DSOLINK="-Wl,-rpath,$libdir"
-            fi
+	    fi
 	    ;;
 	osf*)
-            DSONAME="libfltk.so.$FL_API_VERSION"
-            FLDSONAME="libfltk_forms.so.$FL_API_VERSION"
-            GLDSONAME="libfltk_gl.so.$FL_API_VERSION"
-            IMGDSONAME="libfltk_images.so.$FL_API_VERSION"
-            CAIRODSONAME="libfltk_cairo.so.$FL_API_VERSION"
-            DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-soname,\$@ \$(LDLIBS) -shared $DEBUGFLAG -o"
+	    DSONAME="libfltk.so.$FL_DSO_VERSION"
+	    FLDSONAME="libfltk_forms.so.$FL_DSO_VERSION"
+	    GLDSONAME="libfltk_gl.so.$FL_DSO_VERSION"
+	    IMGDSONAME="libfltk_images.so.$FL_DSO_VERSION"
+	    CAIRODSONAME="libfltk_cairo.so.$FL_DSO_VERSION"
+	    DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-soname,\$@ \$(LDLIBS) -shared $DEBUGFLAG -o"
 	    if test "x$libdir" != "x/usr/lib" -a "x$libdir" != "x/usr/lib32"; then
 		    DSOLINK="-Wl,-rpath,$libdir"
-            fi
+	    fi
 	    ;;
 	linux* | *bsd*)
-            DSONAME="libfltk.so.$FL_API_VERSION"
-            FLDSONAME="libfltk_forms.so.$FL_API_VERSION"
-            GLDSONAME="libfltk_gl.so.$FL_API_VERSION"
-            IMGDSONAME="libfltk_images.so.$FL_API_VERSION"
-            CAIRODSONAME="libfltk_cairo.so.$FL_API_VERSION"
-            DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-soname,\$@ \$(LDLIBS) -shared -fPIC $DEBUGFLAG -o"
+	    DSONAME="libfltk.so.$FL_DSO_VERSION"
+	    FLDSONAME="libfltk_forms.so.$FL_DSO_VERSION"
+	    GLDSONAME="libfltk_gl.so.$FL_DSO_VERSION"
+	    IMGDSONAME="libfltk_images.so.$FL_DSO_VERSION"
+	    CAIRODSONAME="libfltk_cairo.so.$FL_DSO_VERSION"
+	    DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-soname,\$@ \$(LDLIBS) -shared -fPIC $DEBUGFLAG -o"
 
-            # See if the compiler supports -fvisibility...
+	    # See if the compiler supports -fvisibility...
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking if the compiler supports -fvisibility" >&5
 $as_echo_n "checking if the compiler supports -fvisibility... " >&6; }
@@ -3853,16 +3891,15 @@ if ${ac_cv_cxx_fvisibility+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-                    OLDCXXFLAGS="$CXXFLAGS"
-                    CXXFLAGS="$CXXFLAGS -fvisibility=hidden"
-
-                    ac_ext=cpp
+		    OLDCXXFLAGS="$CXXFLAGS"
+		    CXXFLAGS="$CXXFLAGS -fvisibility=hidden"
+		    ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
 ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
-                    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+		    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
@@ -3879,8 +3916,8 @@ else
   ac_cv_cxx_fvisibility=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-                    CXXFLAGS="$OLDCXXFLAGS"
-                    ac_ext=c
+		    CXXFLAGS="$OLDCXXFLAGS"
+		    ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3890,27 +3927,26 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_cxx_fvisibility" >&5
 $as_echo "$ac_cv_cxx_fvisibility" >&6; }
-            if test x"$ac_cv_cxx_fvisibility" = xyes; then
-                OPTIM="$OPTIM -fvisibility=hidden"
-            fi
+	    if test x"$ac_cv_cxx_fvisibility" = xyes; then
+		OPTIM="$OPTIM -fvisibility=hidden"
+	    fi
 
-            # See if the compiler supports -fvisibility-inlines-hidden...
-            { $as_echo "$as_me:${as_lineno-$LINENO}: checking if the compiler supports -fvisibility-inlines-hidden" >&5
+	    # See if the compiler supports -fvisibility-inlines-hidden...
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking if the compiler supports -fvisibility-inlines-hidden" >&5
 $as_echo_n "checking if the compiler supports -fvisibility-inlines-hidden... " >&6; }
 if ${ac_cv_cxx_fvisibility_inlines+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-                    OLDCXXFLAGS="$CXXFLAGS"
-                    CXXFLAGS="$CXXFLAGS -fvisibility-inlines-hidden"
-
-                    ac_ext=cpp
+		    OLDCXXFLAGS="$CXXFLAGS"
+		    CXXFLAGS="$CXXFLAGS -fvisibility-inlines-hidden"
+		    ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
 ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
-                    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+		    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
@@ -3927,8 +3963,8 @@ else
   ac_cv_cxx_fvisibility_inlines=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-                    CXXFLAGS="$OLDCXXFLAGS"
-                    ac_ext=c
+		    CXXFLAGS="$OLDCXXFLAGS"
+		    ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3938,65 +3974,65 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_cxx_fvisibility_inlines" >&5
 $as_echo "$ac_cv_cxx_fvisibility_inlines" >&6; }
-            if test x"$ac_cv_cxx_fvisibility_inlines" = xyes; then
-                CXXFLAGS="$CXXFLAGS -fvisibility-inlines-hidden"
-            fi
+	    if test x"$ac_cv_cxx_fvisibility_inlines" = xyes; then
+		CXXFLAGS="$CXXFLAGS -fvisibility-inlines-hidden"
+	    fi
 
 	    if test "x$libdir" != "x/usr/lib" -a "x$libdir" != "x/usr/lib64"; then
 		    DSOLINK="-Wl,-rpath,$libdir"
-            fi
+	    fi
 	    ;;
 	aix*)
-            DSONAME="libfltk_s.a"
-            FLDSONAME="libfltk_forms_s.a"
-            GLDSONAME="libfltk_gl_s.a"
-            IMGDSONAME="libfltk_images_s.a"
-            CAIRODSONAME="libfltk_cairo_s.a"
-            DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-bexpall,-bM:SRE,-bnoentry -o"
-            SHAREDSUFFIX="_s"
-            ;;
-        cygwin* | mingw*)
+	    DSONAME="libfltk_s.a"
+	    FLDSONAME="libfltk_forms_s.a"
+	    GLDSONAME="libfltk_gl_s.a"
+	    IMGDSONAME="libfltk_images_s.a"
+	    CAIRODSONAME="libfltk_cairo_s.a"
+	    DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-bexpall,-bM:SRE,-bnoentry -o"
+	    SHAREDSUFFIX="_s"
+	    ;;
+	cygwin* | mingw*)
 	    PICFLAG=0
 	    if test x$enable_cygwin != xyes; then
-		DSONAME="mgwfltknox-$FL_API_VERSION.dll"
-		FLDSONAME="mgwfltknox_forms-$FL_API_VERSION.dll"
-		GLDSONAME="mgwfltknox_gl-$FL_API_VERSION.dll"
-		IMGDSONAME="mgwfltknox_images-$FL_API_VERSION.dll"
-		CAIRODSONAME="mgwfltknox_cairo-$FL_API_VERSION.dll"
+		DSONAME="mgwfltknox-$FL_DSO_VERSION.dll"
+		FLDSONAME="mgwfltknox_forms-$FL_DSO_VERSION.dll"
+		GLDSONAME="mgwfltknox_gl-$FL_DSO_VERSION.dll"
+		IMGDSONAME="mgwfltknox_images-$FL_DSO_VERSION.dll"
+		CAIRODSONAME="mgwfltknox_cairo-$FL_DSO_VERSION.dll"
 	    else
 		if test x$enable_x11 = xyes; then
-		    DSONAME="cygfltk-$FL_API_VERSION.dll"
-		    FLDSONAME="cygfltk_forms-$FL_API_VERSION.dll"
-		    GLDSONAME="cygfltk_gl-$FL_API_VERSION.dll"
-		    IMGDSONAME="cygfltk_images-$FL_API_VERSION.dll"
-		    CAIRODSONAME="cygfltk_cairo-$FL_API_VERSION.dll"
+		    DSONAME="cygfltk-$FL_DSO_VERSION.dll"
+		    FLDSONAME="cygfltk_forms-$FL_DSO_VERSION.dll"
+		    GLDSONAME="cygfltk_gl-$FL_DSO_VERSION.dll"
+		    IMGDSONAME="cygfltk_images-$FL_DSO_VERSION.dll"
+		    CAIRODSONAME="cygfltk_cairo-$FL_DSO_VERSION.dll"
 		else
-		    DSONAME="cygfltknox-$FL_API_VERSION.dll"
-		    FLDSONAME="cygfltknox_forms-$FL_API_VERSION.dll"
-		    GLDSONAME="cygfltknox_gl-$FL_API_VERSION.dll"
-		    IMGDSONAME="cygfltknox_images-$FL_API_VERSION.dll"
-		    CAIRODSONAME="cygfltknox_cairo-$FL_API_VERSION.dll"
+		    DSONAME="cygfltknox-$FL_DSO_VERSION.dll"
+		    FLDSONAME="cygfltknox_forms-$FL_DSO_VERSION.dll"
+		    GLDSONAME="cygfltknox_gl-$FL_DSO_VERSION.dll"
+		    IMGDSONAME="cygfltknox_images-$FL_DSO_VERSION.dll"
+		    CAIRODSONAME="cygfltknox_cairo-$FL_DSO_VERSION.dll"
 		fi
 	    fi
 	    #-----------------------------------------------------------
 	    # -Wl,--enable-runtime-pseudo-reloc: See str 1585
 	    # appears to be necessary for older binutils versions < 2.16
 	    #-----------------------------------------------------------
-            LDFLAGS="$LDFLAGS -Wl,--enable-auto-import -Wl,--enable-runtime-pseudo-reloc"
+	    LDFLAGS="$LDFLAGS -Wl,--enable-auto-import -Wl,--enable-runtime-pseudo-reloc"
 	    DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -shared \
-	    	-Wl,--whole-archive -Wl,--export-all-symbols \
+		-Wl,--whole-archive -Wl,--export-all-symbols \
 		-Wl,--enable-runtime-pseudo-reloc -Wl,--enable-auto-import \
 		-Wl,--enable-auto-image-base -o \$@"
 	    ;;
 	*)
-            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Shared libraries may not be supported.  Trying -shared option with compiler." >&5
-$as_echo "$as_me: WARNING: Shared libraries may not be supported.  Trying -shared option with compiler." >&2;}
-            DSONAME="libfltk.so.$FL_API_VERSION"
-            FLDSONAME="libfltk_forms.so.$FL_API_VERSION"
-            GLDSONAME="libfltk_gl.so.$FL_API_VERSION"
-            IMGDSONAME="libfltk_images.so.$FL_API_VERSION"
-            CAIRODSONAME="libfltk_cairo.so.$FL_API_VERSION"
-            DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-soname,\$@ \$(LDLIBS) -shared $DEBUGFLAG -o"
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Shared libraries may not be supported. Trying -shared option with compiler." >&5
+$as_echo "$as_me: WARNING: Shared libraries may not be supported. Trying -shared option with compiler." >&2;}
+	    DSONAME="libfltk.so.$FL_DSO_VERSION"
+	    FLDSONAME="libfltk_forms.so.$FL_DSO_VERSION"
+	    GLDSONAME="libfltk_gl.so.$FL_DSO_VERSION"
+	    IMGDSONAME="libfltk_images.so.$FL_DSO_VERSION"
+	    CAIRODSONAME="libfltk_cairo.so.$FL_DSO_VERSION"
+	    DSOCOMMAND="\$(CXX) \$(DSOFLAGS) -Wl,-soname,\$@ \$(LDLIBS) -shared $DEBUGFLAG -o"
 	    ;;
     esac
 
@@ -4046,13 +4082,6 @@ if test "${with_archflags+set}" = set; then :
   withval=$with_archflags; ARCHFLAGS="$withval"
 fi
 
-case $host_os in
-    darwin*)
-# QD is not supported anymore since 1.3
-	$as_echo "#define __APPLE_QUARTZ__ 1" >>confdefs.h
-
-	;;
-esac
 
 # Find a good install program.  We prefer a C program (faster),
 # so one script is as good as another.  But avoid the broken or
@@ -4239,9 +4268,9 @@ fi
 
 
     if test "x$GROFF" = "x:"; then
-        NROFF="echo"
+	NROFF="echo"
     else
-        NROFF="$GROFF -T ascii"
+	NROFF="$GROFF -T ascii"
     fi
 fi
 # Extract the first word of "doxygen", so it can be a program name with args.
@@ -4477,7 +4506,7 @@ fi
 
 
 if test "x$AR" = "x:"; then
-    as_fn_error aborting. "Configure could not find the library archiver" "$LINENO" 5
+    as_fn_error $? "Configure could not find the library archiver, aborting." "$LINENO" 5
 fi
 
 if test "x$RANLIB" != "x:"; then
@@ -5093,15 +5122,15 @@ if test $ac_cv_sizeof_int -eq 4; then
 
 else
     if test $ac_cv_sizeof_long -eq 4; then
-        $as_echo "#define U32 unsigned long" >>confdefs.h
+	$as_echo "#define U32 unsigned long" >>confdefs.h
 
     fi
 fi
 case $host_os in
     darwin*)
-        ;;
+	;;
     *)
-         { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether byte ordering is bigendian" >&5
+	 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether byte ordering is bigendian" >&5
 $as_echo_n "checking whether byte ordering is bigendian... " >&6; }
 if ${ac_cv_c_bigendian+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -5335,7 +5364,7 @@ $as_echo "#define AC_APPLE_UNIVERSAL_BUILD 1" >>confdefs.h
 
 		fi
 	fi
-        ;;
+	;;
 esac
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether the compiler recognizes bool as a built-in type" >&5
@@ -5343,7 +5372,6 @@ $as_echo_n "checking whether the compiler recognizes bool as a built-in type... 
 if ${ac_cv_cxx_bool+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-
 
 	ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
@@ -5354,16 +5382,16 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-	    int f(int  x){return 1;}
-	    int f(char x){return 1;}
-	    int f(bool x){return 1;}
+		int f(int  x){return 1;}
+		int f(char x){return 1;}
+		int f(bool x){return 1;}
 
 int
 main ()
 {
 
-	    bool b = true;
-	    return f(b);
+		bool b = true;
+		return f(b);
 
   ;
   return 0;
@@ -5548,19 +5576,18 @@ fi
 
 fi
 
-ac_fn_c_check_header_mongrel "$LINENO" "sys/select.h" "ac_cv_header_sys_select_h" "$ac_includes_default"
-if test "x$ac_cv_header_sys_select_h" = xyes; then :
-  $as_echo "#define HAVE_SYS_SELECT_H 1" >>confdefs.h
+for ac_header in sys/select.h sys/stdtypes.h
+do :
+  as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
+_ACEOF
 
 fi
 
-
-ac_fn_c_check_header_mongrel "$LINENO" "sys/stdtypes.h" "ac_cv_header_sys_stdtypes_h" "$ac_includes_default"
-if test "x$ac_cv_header_sys_stdtypes_h" = xyes; then :
-  $as_echo "#define HAVE_SYS_SELECT_H 1" >>confdefs.h
-
-fi
-
+done
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether we have the POSIX compatible scandir() prototype" >&5
@@ -5568,7 +5595,6 @@ $as_echo_n "checking whether we have the POSIX compatible scandir() prototype...
 if ${ac_cv_cxx_scandir_posix+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-
 
 	ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
@@ -5578,11 +5604,11 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
-	  #include <dirent.h>
-	  int func (const char *d, dirent ***list, void *sort) {
-	    int n = scandir(d, list, 0, (int(*)(const dirent **, const dirent **))sort);
-	  }
+#include <dirent.h>
+		  int func (const char *d, dirent ***list, void *sort) {
+		    int n = scandir(d, list, 0, (int(*)(const dirent **, const dirent **))sort);
+		    return n;
+		  }
 
 int
 main ()
@@ -5619,16 +5645,16 @@ else
     ac_fn_c_check_func "$LINENO" "scandir" "ac_cv_func_scandir"
 if test "x$ac_cv_func_scandir" = xyes; then :
 
-        case $host_os in
-            solaris* | *qnx*)
-                { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using $host_os scandir emulation function." >&5
+	case $host_os in
+	    solaris* | *qnx*)
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using $host_os scandir emulation function." >&5
 $as_echo "$as_me: WARNING: Not using $host_os scandir emulation function." >&2;}
-                ;;
-            *)
-                $as_echo "#define HAVE_SCANDIR 1" >>confdefs.h
+		;;
+	    *)
+		$as_echo "#define HAVE_SCANDIR 1" >>confdefs.h
 
-                ;;
-        esac
+		;;
+	esac
 fi
 
 fi
@@ -5637,18 +5663,18 @@ ac_fn_c_check_func "$LINENO" "vsnprintf" "ac_cv_func_vsnprintf"
 if test "x$ac_cv_func_vsnprintf" = xyes; then :
 
     case $host_os in
-        hpux1020)
-            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using built-in vsnprintf function because you are running HP-UX 10.20." >&5
+	hpux1020)
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using built-in vsnprintf function because you are running HP-UX 10.20." >&5
 $as_echo "$as_me: WARNING: Not using built-in vsnprintf function because you are running HP-UX 10.20." >&2;}
-            ;;
-        osf4)
-            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using built-in vsnprintf function because you are running Tru64 4.0." >&5
+	    ;;
+	osf4)
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using built-in vsnprintf function because you are running Tru64 4.0." >&5
 $as_echo "$as_me: WARNING: Not using built-in vsnprintf function because you are running Tru64 4.0." >&2;}
-            ;;
-        *)
-            $as_echo "#define HAVE_VSNPRINTF 1" >>confdefs.h
+	    ;;
+	*)
+	    $as_echo "#define HAVE_VSNPRINTF 1" >>confdefs.h
 
-            ;;
+	    ;;
     esac
 fi
 
@@ -5656,27 +5682,32 @@ ac_fn_c_check_func "$LINENO" "snprintf" "ac_cv_func_snprintf"
 if test "x$ac_cv_func_snprintf" = xyes; then :
 
     case $host_os in
-        hpux1020)
-            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using built-in snprintf function because you are running HP-UX 10.20." >&5
+	hpux1020)
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using built-in snprintf function because you are running HP-UX 10.20." >&5
 $as_echo "$as_me: WARNING: Not using built-in snprintf function because you are running HP-UX 10.20." >&2;}
-            ;;
-        osf4)
-            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using built-in snprintf function because you are running Tru64 4.0." >&5
+	    ;;
+	osf4)
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Not using built-in snprintf function because you are running Tru64 4.0." >&5
 $as_echo "$as_me: WARNING: Not using built-in snprintf function because you are running Tru64 4.0." >&2;}
-            ;;
-        *)
-            $as_echo "#define HAVE_SNPRINTF 1" >>confdefs.h
+	    ;;
+	*)
+	    $as_echo "#define HAVE_SNPRINTF 1" >>confdefs.h
 
-            ;;
+	    ;;
     esac
 fi
 
-ac_fn_c_check_header_mongrel "$LINENO" "strings.h" "ac_cv_header_strings_h" "$ac_includes_default"
+for ac_header in strings.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "strings.h" "ac_cv_header_strings_h" "$ac_includes_default"
 if test "x$ac_cv_header_strings_h" = xyes; then :
-  $as_echo "#define HAVE_STRINGS_H 1" >>confdefs.h
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_STRINGS_H 1
+_ACEOF
 
 fi
 
+done
 
 for ac_func in strcasecmp strlcat strlcpy
 do :
@@ -5691,12 +5722,17 @@ fi
 done
 
 
-ac_fn_c_check_header_mongrel "$LINENO" "locale.h" "ac_cv_header_locale_h" "$ac_includes_default"
+for ac_header in locale.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "locale.h" "ac_cv_header_locale_h" "$ac_includes_default"
 if test "x$ac_cv_header_locale_h" = xyes; then :
-  $as_echo "#define HAVE_LOCALE_H 1" >>confdefs.h
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LOCALE_H 1
+_ACEOF
 
 fi
 
+done
 
 for ac_func in localeconv
 do :
@@ -6102,7 +6138,7 @@ if test "x$ac_cv_header_alsa_asoundlib_h" = xyes; then :
 fi
 
 
-        ;;
+	;;
 esac
 
 
@@ -6171,7 +6207,7 @@ fi
 
 	    if test x$sysjpeginc_ok = xyes; then
 		sysjpeglib_ok=yes
-		fi
+	    fi
 fi
 
 fi
@@ -6255,7 +6291,7 @@ fi
 
 	if test x$syszinc_ok = xyes; then
 	    syszlib_ok=yes
-	    fi
+	fi
 fi
 
 fi
@@ -6497,21 +6533,26 @@ case $host_os in
 esac
 
 if test "x$enable_threads" != xno -a x$check_pthread = xyes; then
-    ac_fn_c_check_header_mongrel "$LINENO" "pthread.h" "ac_cv_header_pthread_h" "$ac_includes_default"
+    for ac_header in pthread.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "pthread.h" "ac_cv_header_pthread_h" "$ac_includes_default"
 if test "x$ac_cv_header_pthread_h" = xyes; then :
-  $as_echo "#define HAVE_PTHREAD_H 1" >>confdefs.h
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_PTHREAD_H 1
+_ACEOF
 
 fi
 
+done
 
 
     if test x$ac_cv_header_pthread_h = xyes; then
 		for flag in -lpthreads -lpthread -pthread; do
-            { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create using $flag" >&5
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create using $flag" >&5
 $as_echo_n "checking for pthread_create using $flag... " >&6; }
 	    SAVELIBS="$LIBS"
 	    LIBS="$flag $LIBS"
-            cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+	    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <pthread.h>
 int
@@ -6529,11 +6570,11 @@ else
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-            { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_pthread" >&5
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_pthread" >&5
 $as_echo "$have_pthread" >&6; }
 
 	    if test $have_pthread = yes; then
-	        $as_echo "#define HAVE_PTHREAD 1" >>confdefs.h
+		$as_echo "#define HAVE_PTHREAD 1" >>confdefs.h
 
 		PTHREAD_FLAGS="-D_THREAD_SAFE -D_REENTRANT"
 
@@ -6541,8 +6582,8 @@ $as_echo "$have_pthread" >&6; }
 		# be POSIX-compliant... :(
 		case $host_os in
 		    solaris*)
-		        PTHREAD_FLAGS="$PTHREAD_FLAGS -D_POSIX_PTHREAD_SEMANTICS"
-		        ;;
+			PTHREAD_FLAGS="$PTHREAD_FLAGS -D_POSIX_PTHREAD_SEMANTICS"
+			;;
 		esac
 		break
 	    fi
@@ -6571,7 +6612,7 @@ case $host_os_gui in
 		# Recent versions of Cygwin are seriously broken and the size
 	# checks don't work because the shell puts out \r\n instead of
 	# \n.  Here we just force U32 to be defined to "unsigned"...
-        $as_echo "#define U32 unsigned" >>confdefs.h
+	$as_echo "#define U32 unsigned" >>confdefs.h
 
 	CFLAGS="-mwindows -DWIN32 -DUSE_OPENGL32 $CFLAGS"
 	CXXFLAGS="-mwindows -DWIN32 -DUSE_OPENGL32 $CXXFLAGS"
@@ -6611,7 +6652,7 @@ fi
 		$as_echo "#define HAVE_PTHREAD 1" >>confdefs.h
 
 	    fi
-        fi
+	fi
 
 	THREADS="threads$EXEEXT"
 
@@ -6622,8 +6663,13 @@ fi
 	;;
 
     darwin*)
-        # MacOS X uses Cocoa for graphics.
-        LIBS="$LIBS -framework Cocoa"
+	$as_echo "#define __APPLE_QUARTZ__ 1" >>confdefs.h
+
+
+	USEMMFILES="Yes"
+
+	# MacOS X uses Cocoa for graphics.
+	LIBS="$LIBS -framework Cocoa"
 
 	if test x$have_pthread = xyes; then
 	    $as_echo "#define HAVE_PTHREAD 1" >>confdefs.h
@@ -6632,17 +6678,17 @@ fi
 	fi
 
 	if test x$enable_gl != xno; then
-            $as_echo "#define HAVE_GL 1" >>confdefs.h
+	    $as_echo "#define HAVE_GL 1" >>confdefs.h
 
-            $as_echo "#define HAVE_GL_GLU_H 1" >>confdefs.h
+	    $as_echo "#define HAVE_GL_GLU_H 1" >>confdefs.h
 
-            GLLIB="-framework AGL -framework OpenGL -framework ApplicationServices"
-        else
+	    GLLIB="-framework OpenGL"
+	else
 	    LINKFLTKGL=""
 	    GLLIBNAME=""
 	    GLDSONAME=""
 	    GLDEMOS=""
-        fi
+	fi
 
 	# Don't make symlinks because HFS+ is not case sensitive...
 	if test "x$with_links" != xyes; then
@@ -7351,7 +7397,7 @@ fi
 
 
 	if test x$no_x = xyes; then
-	    as_fn_error aborting. "Configure could not find required X11 libraries" "$LINENO" 5
+	    as_fn_error $? "Configure could not find required X11 libraries, aborting." "$LINENO" 5
 	fi
 
 	if test "x$X_PRE_LIBS" != x; then
@@ -7469,7 +7515,8 @@ fi
 $as_echo "$ac_cv_lib_GL_glXMakeCurrent" >&6; }
 if test "x$ac_cv_lib_GL_glXMakeCurrent" = xyes; then :
   $as_echo "#define HAVE_GL 1" >>confdefs.h
- GLLIB="-lGL"
+
+		     GLLIB="-lGL"
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for glXMakeCurrent in -lMesaGL" >&5
 $as_echo_n "checking for glXMakeCurrent in -lMesaGL... " >&6; }
@@ -7509,7 +7556,8 @@ fi
 $as_echo "$ac_cv_lib_MesaGL_glXMakeCurrent" >&6; }
 if test "x$ac_cv_lib_MesaGL_glXMakeCurrent" = xyes; then :
   $as_echo "#define HAVE_GL 1" >>confdefs.h
- GLLIB=" -lMesaGL"
+
+			 GLLIB="-lMesaGL"
 fi
 
 fi
@@ -7575,10 +7623,10 @@ fi
 
 
 	    if test x$ac_cv_lib_GL_glXMakeCurrent != xyes -a x$ac_cv_lib_MesaGL_glXMakeCurrent != xyes; then
-		    LINKFLTKGL=""
-		    GLLIBNAME=""
-		    GLDSONAME=""
-		    GLDEMOS=""
+		LINKFLTKGL=""
+		GLLIBNAME=""
+		GLDSONAME=""
+		GLDEMOS=""
 	    fi
 	else
 	    LINKFLTKGL=""
@@ -7587,12 +7635,13 @@ fi
 	    GLDEMOS=""
 	fi
 
-	        # Check whether --enable-xinerama was given.
+		# Check whether --enable-xinerama was given.
 if test "${enable_xinerama+set}" = set; then :
   enableval=$enable_xinerama;
 fi
 
 
+	xinerama_found=no
 	if test x$enable_xinerama != xno; then
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XineramaIsActive in -lXinerama" >&5
 $as_echo_n "checking for XineramaIsActive in -lXinerama... " >&6; }
@@ -7633,19 +7682,21 @@ $as_echo "$ac_cv_lib_Xinerama_XineramaIsActive" >&6; }
 if test "x$ac_cv_lib_Xinerama_XineramaIsActive" = xyes; then :
   $as_echo "#define HAVE_XINERAMA 1" >>confdefs.h
 
-		    LIBS="-lXinerama $LIBS"
+		 LIBS="-lXinerama $LIBS"
+		 xinerama_found=yes
 fi
 
 	fi
 
-	        # Check whether --enable-xft was given.
+		# Check whether --enable-xft was given.
 if test "${enable_xft+set}" = set; then :
   enableval=$enable_xft;
 fi
 
 
+	xft_found=no
 	if test x$enable_xft != xno; then
-            # Extract the first word of "freetype-config", so it can be a program name with args.
+	    # Extract the first word of "freetype-config", so it can be a program name with args.
 set dummy freetype-config; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -7687,11 +7738,11 @@ fi
 
 
 	    if test "x$FTCONFIG" != x; then
-	        CPPFLAGS="`$FTCONFIG --cflags` $CPPFLAGS"
-	        CFLAGS="`$FTCONFIG --cflags` $CFLAGS"
-	        CXXFLAGS="`$FTCONFIG --cflags` $CXXFLAGS"
+		CPPFLAGS="`$FTCONFIG --cflags` $CPPFLAGS"
+		CFLAGS="`$FTCONFIG --cflags` $CFLAGS"
+		CXXFLAGS="`$FTCONFIG --cflags` $CXXFLAGS"
 
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for FcPatternCreate in -lfontconfig" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for FcPatternCreate in -lfontconfig" >&5
 $as_echo_n "checking for FcPatternCreate in -lfontconfig... " >&6; }
 if ${ac_cv_lib_fontconfig_FcPatternCreate+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -7777,7 +7828,8 @@ $as_echo "$ac_cv_lib_Xft_XftDrawCreate" >&6; }
 if test "x$ac_cv_lib_Xft_XftDrawCreate" = xyes; then :
   $as_echo "#define USE_XFT 1" >>confdefs.h
 
-			LIBS="-lXft $LIBS"
+			 LIBS="-lXft $LIBS"
+			 xft_found=yes
 fi
 
 fi
@@ -7786,22 +7838,28 @@ fi
 	    fi
 	fi
 
-	        # Check whether --enable-xdbe was given.
+			if test x$enable_xft != xno -a x$xft_found != xyes; then
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: could not find the required Xft headers and/or libraries." >&5
+$as_echo "$as_me: WARNING: could not find the required Xft headers and/or libraries." >&2;}
+	    { $as_echo "$as_me:${as_lineno-$LINENO}: please install Xft headers and libraries or use 'configure --disable-xft'." >&5
+$as_echo "$as_me: please install Xft headers and libraries or use 'configure --disable-xft'." >&6;}
+	    if test x$enable_xft = xyes; then
+		as_fn_error $? "Aborting." "$LINENO" 5
+	    fi
+	fi
+
+		# Check whether --enable-xdbe was given.
 if test "${enable_xdbe+set}" = set; then :
   enableval=$enable_xdbe;
 fi
 
 
+	xdbe_found=no
 	if test x$enable_xdbe != xno; then
 	    ac_fn_c_check_header_compile "$LINENO" "X11/extensions/Xdbe.h" "ac_cv_header_X11_extensions_Xdbe_h" "#include <X11/Xlib.h>
 "
 if test "x$ac_cv_header_X11_extensions_Xdbe_h" = xyes; then :
-  $as_echo "#define HAVE_XDBE 1" >>confdefs.h
-
-fi
-
-
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XdbeQueryExtension in -lXext" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XdbeQueryExtension in -lXext" >&5
 $as_echo_n "checking for XdbeQueryExtension in -lXext... " >&6; }
 if ${ac_cv_lib_Xext_XdbeQueryExtension+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -7838,27 +7896,29 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_Xext_XdbeQueryExtension" >&5
 $as_echo "$ac_cv_lib_Xext_XdbeQueryExtension" >&6; }
 if test "x$ac_cv_lib_Xext_XdbeQueryExtension" = xyes; then :
-  LIBS="-lXext $LIBS"
+  $as_echo "#define HAVE_XDBE 1" >>confdefs.h
+
+		     LIBS="-lXext $LIBS"
+		     xdbe_found=yes
 fi
+
+fi
+
 
 	fi
 
-	        # Check whether --enable-xfixes was given.
+		# Check whether --enable-xfixes was given.
 if test "${enable_xfixes+set}" = set; then :
   enableval=$enable_xfixes;
 fi
 
 
+	xfixes_found=no
 	if test x$enable_xfixes != xno; then
 	    ac_fn_c_check_header_compile "$LINENO" "X11/extensions/Xfixes.h" "ac_cv_header_X11_extensions_Xfixes_h" "#include <X11/Xlib.h>
 "
 if test "x$ac_cv_header_X11_extensions_Xfixes_h" = xyes; then :
-  $as_echo "#define HAVE_XFIXES 1" >>confdefs.h
-
-fi
-
-
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XFixesQueryExtension in -lXfixes" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XFixesQueryExtension in -lXfixes" >&5
 $as_echo_n "checking for XFixesQueryExtension in -lXfixes... " >&6; }
 if ${ac_cv_lib_Xfixes_XFixesQueryExtension+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -7895,27 +7955,29 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_Xfixes_XFixesQueryExtension" >&5
 $as_echo "$ac_cv_lib_Xfixes_XFixesQueryExtension" >&6; }
 if test "x$ac_cv_lib_Xfixes_XFixesQueryExtension" = xyes; then :
-  LIBS="-lXfixes $LIBS"
+  $as_echo "#define HAVE_XFIXES 1" >>confdefs.h
+
+		     LIBS="-lXfixes $LIBS"
+		     xfixes_found=yes
 fi
+
+fi
+
 
 	fi
 
-	        # Check whether --enable-xcursor was given.
+		# Check whether --enable-xcursor was given.
 if test "${enable_xcursor+set}" = set; then :
   enableval=$enable_xcursor;
 fi
 
 
+	xcursor_found=no
 	if test x$enable_xcursor != xno; then
 	    ac_fn_c_check_header_compile "$LINENO" "X11/Xcursor/Xcursor.h" "ac_cv_header_X11_Xcursor_Xcursor_h" "#include <X11/Xlib.h>
 "
 if test "x$ac_cv_header_X11_Xcursor_Xcursor_h" = xyes; then :
-  $as_echo "#define HAVE_XCURSOR 1" >>confdefs.h
-
-fi
-
-
-	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XcursorImageCreate in -lXcursor" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XcursorImageCreate in -lXcursor" >&5
 $as_echo_n "checking for XcursorImageCreate in -lXcursor... " >&6; }
 if ${ac_cv_lib_Xcursor_XcursorImageCreate+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -7952,10 +8014,84 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_Xcursor_XcursorImageCreate" >&5
 $as_echo "$ac_cv_lib_Xcursor_XcursorImageCreate" >&6; }
 if test "x$ac_cv_lib_Xcursor_XcursorImageCreate" = xyes; then :
-  LIBS="-lXcursor $LIBS"
+  $as_echo "#define HAVE_XCURSOR 1" >>confdefs.h
+
+		     LIBS="-lXcursor $LIBS"
+		     xcursor_found=yes
 fi
 
+fi
+
+
 	fi
+
+		# Check whether --enable-xrender was given.
+if test "${enable_xrender+set}" = set; then :
+  enableval=$enable_xrender;
+fi
+
+
+	xrender_found=no
+	if test x$enable_xrender != xno; then
+	    ac_fn_c_check_header_compile "$LINENO" "X11/extensions/Xrender.h" "ac_cv_header_X11_extensions_Xrender_h" "#include <X11/Xlib.h>
+"
+if test "x$ac_cv_header_X11_extensions_Xrender_h" = xyes; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for XRenderQueryVersion in -lXrender" >&5
+$as_echo_n "checking for XRenderQueryVersion in -lXrender... " >&6; }
+if ${ac_cv_lib_Xrender_XRenderQueryVersion+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lXrender  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char XRenderQueryVersion ();
+int
+main ()
+{
+return XRenderQueryVersion ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_Xrender_XRenderQueryVersion=yes
+else
+  ac_cv_lib_Xrender_XRenderQueryVersion=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_Xrender_XRenderQueryVersion" >&5
+$as_echo "$ac_cv_lib_Xrender_XRenderQueryVersion" >&6; }
+if test "x$ac_cv_lib_Xrender_XRenderQueryVersion" = xyes; then :
+  $as_echo "#define HAVE_XRENDER 1" >>confdefs.h
+
+		     LIBS="-lXrender $LIBS"
+		     xrender_found=yes
+fi
+
+fi
+
+
+	fi
+
+		ac_fn_c_check_header_compile "$LINENO" "X11/Xregion.h" "ac_cv_header_X11_Xregion_h" "#include <X11/Xlib.h>
+"
+if test "x$ac_cv_header_X11_Xregion_h" = xyes; then :
+  $as_echo "#define HAVE_X11_XREGION_H 1" >>confdefs.h
+
+fi
+
+
 
 		# Extract the first word of "xprop", so it can be a program name with args.
 set dummy xprop; ac_word=$2
@@ -8004,18 +8140,18 @@ if ${ac_cv_have_overlay+:} false; then :
 else
   if test "x$XPROP" != x; then
 		if $XPROP -root 2>/dev/null | grep -c "SERVER_OVERLAY_VISUALS" >/dev/null; then
-        	    ac_cv_have_overlay=yes
+		    ac_cv_have_overlay=yes
 		else
-        	    ac_cv_have_overlay=no
+		    ac_cv_have_overlay=no
 		fi
 	    else
-        	ac_cv_have_overlay=no
+		ac_cv_have_overlay=no
 	    fi
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have_overlay" >&5
 $as_echo "$ac_cv_have_overlay" >&6; }
 
-        if test x$ac_cv_have_overlay = xyes; then
+	if test x$ac_cv_have_overlay = xyes; then
 	    $as_echo "#define HAVE_OVERLAY 1" >>confdefs.h
 
 	fi
@@ -8040,6 +8176,8 @@ $as_echo "$ac_cv_have_overlay" >&6; }
 	UNINSTALL_DESKTOP="uninstall-linux"
 	;;
 esac
+
+
 
 
 
@@ -8077,14 +8215,14 @@ esac
 
 if test "$mandir" = "\${prefix}/man" -a "$prefix" = "/usr"; then
     case "$host_os" in
-        *bsd* | darwin* | linux*)
-            # *BSD, Darwin, and Linux
-            mandir="\${prefix}/share/man"
-            ;;
-        irix*)
-            # SGI IRIX
-            mandir="\${prefix}/share/catman"
-            ;;
+	*bsd* | darwin* | linux*)
+	    # *BSD, Darwin, and Linux
+	    mandir="\${prefix}/share/man"
+	    ;;
+	irix*)
+	    # SGI IRIX
+	    mandir="\${prefix}/share/catman"
+	    ;;
     esac
 fi
 
@@ -8098,12 +8236,12 @@ fi
 
 case $host_os in
     irix1-5*)
-        ;;
+	;;
     irix*)
-        if test "$libdir" = "\${exec_prefix}/lib" -a "$exec_prefix" = "\${prefix}" -a "$prefix" = "/usr"; then
-            libdir="/usr/lib32"
-        fi
-        ;;
+	if test "$libdir" = "\${exec_prefix}/lib" -a "$exec_prefix" = "\${prefix}" -a "$prefix" = "/usr"; then
+	    libdir="/usr/lib32"
+	fi
+	;;
 esac
 
 MAKEDEPEND="\$(CXX) -M"
@@ -8121,39 +8259,39 @@ if test -n "$GCC"; then
     # We know that Carbon is deprecated on OS X 10.4. To avoid hundreds of warnings
     # we will temporarily disable 'deprecated' warnings on OS X.
     case $host_os in
-        darwin1-7)
-            ;;
-        darwin*)
-            OPTIM="-Wno-deprecated-declarations $OPTIM"
-            ;;
+	darwin1-7)
+	    ;;
+	darwin*)
+	    OPTIM="-Wno-deprecated-declarations $OPTIM"
+	    ;;
     esac
 
     # Set the default compiler optimizations...
     if test -z "$DEBUGFLAG"; then
-    	#
+	#
 	# Note: Can't use -fomit-frame-pointer - prevents tools like
 	#       libsafe from working!
-        #
+	#
 	#       Don't use -fforce-mem, -fforce-addr, or -fcaller-saves.
 	#       They all seem to make either no difference or enlarge
 	#       the code by a few hundred bytes.
-        #
+	#
 	#       "-Os" seems to be the best compromise between speed and
 	#       code size.  "-O3" and higher seem to make no effective
 	#       difference in the speed of the code, but does bloat the
 	#       library 10+%.
 	#
 
-        if test "x$with_optim" != x; then
+	if test "x$with_optim" != x; then
 	    OPTIM="$with_optim $OPTIM"
 	else
-            OPTIM="-Os $OPTIM"
+	    OPTIM="-Os $OPTIM"
 	fi
     fi
 
     # Generate position-independent code when needed...
     if test $PICFLAG = 1; then
-    	OPTIM="$OPTIM -fPIC"
+	OPTIM="$OPTIM -fPIC"
     fi
 
     # See if GCC supports -fno-exceptions...
@@ -8174,7 +8312,7 @@ main ()
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   OPTIM="$OPTIM -fno-exceptions"
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -8201,7 +8339,7 @@ main ()
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   OPTIM="$OPTIM -fno-strict-aliasing"
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -8209,6 +8347,34 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     CFLAGS="$OLDCFLAGS"
+
+    # See if ld supports -no-undefined...
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking if ld supports -no-undefined" >&5
+$as_echo_n "checking if ld supports -no-undefined... " >&6; }
+    OLDLDFLAGS="$LDFLAGS"
+    LDFLAGS="$LDFLAGS -Wl,-no-undefined"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  DSOFLAGS="$DSOFLAGS -Wl,-no-undefined"
+	 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+    LDFLAGS="$OLDLDFLAGS"
 
     # See if ld supports -Bsymbolic-functions...
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking if ld supports -Bsymbolic-functions" >&5
@@ -8228,7 +8394,7 @@ main ()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
   DSOFLAGS="$DSOFLAGS -Wl,-Bsymbolic-functions"
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -8258,8 +8424,8 @@ main ()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
   DSOFLAGS="$DSOFLAGS -Wl,-gc-sections"
-        OPTIM="$OPTIM -ffunction-sections -fdata-sections"
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	 OPTIM="$OPTIM -ffunction-sections -fdata-sections"
+	 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -8278,7 +8444,7 @@ rm -f core conftest.err conftest.$ac_objext \
     # in CFLAGS and CXXFLAGS so that fltk-config will provide the option
     # to clients - otherwise client apps will not compile properly...
     case $host_os in
-        solaris*)
+	solaris*)
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking if GCC supports -fpermissive" >&5
 $as_echo_n "checking if GCC supports -fpermissive... " >&6; }
 
@@ -8297,11 +8463,11 @@ main ()
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
   CXXFLAGS="$CXXFLAGS -fpermissive"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
   CFLAGS="$OLDCFLAGS"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
@@ -8309,11 +8475,11 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     esac
 else
     case "$host_os" in
-        irix*)
+	irix*)
 	    # Running some flavor of IRIX; see which version and
 	    # set things up according...
 	    if test "$uversion" -ge 62; then
-	        # We are running IRIX 6.2 or higher; uncomment the following
+		# We are running IRIX 6.2 or higher; uncomment the following
 		# lines if you don't have IDO 7.2 or higher:
 		#
 		#     CXX="CC -n32 -mips3"
@@ -8326,26 +8492,26 @@ else
 $as_echo "$as_me: WARNING: FOR BEST RESULTS BEFORE COMPILING: setenv SGI_ABI \"-n32 -mips3\"" >&2;}
 		fi
 
-        	OPTIM="-fullwarn $OPTIM"
+		OPTIM="-fullwarn $OPTIM"
 	    fi
 	    if test -z "$DEBUGFLAG"; then
-        	if test "x$with_optim" != x; then
+		if test "x$with_optim" != x; then
 		    OPTIM="$with_optim $OPTIM"
 		else
-        	    OPTIM="-O2 $OPTIM"
+		    OPTIM="-O2 $OPTIM"
 		    if test $uversion -gt 62; then
-        	        OPTIM="-OPT:Olimit=4000 $OPTIM"
-	            fi
+			OPTIM="-OPT:Olimit=4000 $OPTIM"
+		    fi
 		fi
 	    fi
 	    ;;
 	hpux*)
 	    # Running HP-UX; these options should work for the HP compilers.
 	    if test -z "$DEBUGFLAG"; then
-        	if test "x$with_optim" != x; then
+		if test "x$with_optim" != x; then
 		    OPTIM="$with_optim $OPTIM"
 		else
-        	    OPTIM="+O2 $OPTIM"
+		    OPTIM="+O2 $OPTIM"
 		fi
 	    fi
 
@@ -8359,20 +8525,20 @@ $as_echo "$as_me: WARNING: FOR BEST RESULTS BEFORE COMPILING: setenv SGI_ABI \"-
 	    # Running Digital/Tru64 UNIX; these options should work for the
 	    # Digital/Compaq/NewHP compilers.
 	    if test -z "$DEBUGFLAG"; then
-        	if test "x$with_optim" != x; then
+		if test "x$with_optim" != x; then
 		    OPTIM="$with_optim $OPTIM"
 		else
-        	    OPTIM="-O2 $OPTIM"
+		    OPTIM="-O2 $OPTIM"
 		fi
 	    fi
 	    ;;
 	solaris*)
 	    # Solaris
 	    if test -z "$DEBUGFLAG"; then
-        	if test "x$with_optim" != x; then
+		if test "x$with_optim" != x; then
 		    OPTIM="$with_optim $OPTIM"
 		else
-        	    OPTIM="-xO3 $OPTIM"
+		    OPTIM="-xO3 $OPTIM"
 		fi
 	    fi
 
@@ -8382,10 +8548,10 @@ $as_echo "$as_me: WARNING: FOR BEST RESULTS BEFORE COMPILING: setenv SGI_ABI \"-
 	    ;;
 	aix*)
 	    if test -z "$DEBUGFLAG"; then
-        	if test "x$with_optim" != x; then
+		if test "x$with_optim" != x; then
 		    OPTIM="$with_optim $OPTIM"
 		else
-        	    OPTIM="-O2 $OPTIM"
+		    OPTIM="-O2 $OPTIM"
 		fi
 	    fi
 
@@ -8407,18 +8573,18 @@ OPTIM="$DEBUGFLAG $OPTIM"
 
 case $host_os in
     darwin*)
-        if test "x$with_archflags" != x ; then
-            CFLAGS="`echo $CFLAGS | sed -e "s/$with_archflags//g"`"
-        fi
-        ;;
+	if test "x$with_archflags" != x ; then
+	    CFLAGS="`echo $CFLAGS | sed -e "s/$with_archflags//g"`"
+	fi
+	;;
 esac
 
 case $host_os in
   mingw*)
      # Determine the path where MSys has /usr installed
- 	msyspath=`mount | grep '\/usr ' | cut -d ' ' -f -1 | sed -e 's/\\\/\// g'`
+	msyspath=`mount | grep '\/usr ' | cut -d ' ' -f -1 | sed -e 's/\\\/\// g'`
      # Then substitute that in the WIN32 path instead of /usr
- 	cat >>confdefs.h <<_ACEOF
+	cat >>confdefs.h <<_ACEOF
 #define FLTK_DOCDIR "$msyspath/local/share/doc/fltk"
 _ACEOF
 
@@ -8456,23 +8622,32 @@ echo "-------------------------------------------------------------------------"
 
 case $host_os_gui in
     cygwin* | mingw*)
-        graphics="GDI"
+	graphics="GDI"
 	;;
     darwin*)
-        graphics="Quartz"
-        ;;
+	graphics="Quartz"
+	;;
     *)
-        graphics="X11"
-	if test x$enable_xft != xno; then
-	    graphics="$graphics+Xft"
+	graphics="X11"
+	if test x$xft_found = xyes; then
+	    graphics="$graphics + Xft"
 	fi
-	if test x$enable_xdbe != xno; then
-	    graphics="$graphics+Xdbe"
+	if test x$xdbe_found = xyes; then
+	    graphics="$graphics + Xdbe"
 	fi
-	if test x$enable_xinerama != xno; then
-	    graphics="$graphics+Xinerama"
+	if test x$xfixes_found = xyes; then
+	    graphics="$graphics + Xfixes"
 	fi
-        ;;
+	if test x$xinerama_found = xyes; then
+	    graphics="$graphics + Xinerama"
+	fi
+	if test x$xcursor_found = xyes; then
+	    graphics="$graphics + Xcursor"
+	fi
+	if test x$xrender_found = xyes; then
+	    graphics="$graphics + Xrender"
+	fi
+	;;
 esac
 
 echo "    Directories: prefix=$prefix"
@@ -8512,7 +8687,6 @@ if test x$enable_cairoext = xyes; then
     echo "                 CAIRO=internal_use"
 fi
 
-
 if test x$enable_largefile != xno; then
     echo "    Large Files: YES"
 else
@@ -8531,7 +8705,12 @@ else
     echo "        Threads: YES"
 fi
 
+BINARY_DIR=
+
+
 ac_config_headers="$ac_config_headers config.h:configh.in"
+
+ac_config_headers="$ac_config_headers FL/abi-version.h:abi-version.in"
 
 ac_config_files="$ac_config_files makeinclude fltk.list fltk-config fltk.spec FL/Makefile"
 
@@ -9227,6 +9406,7 @@ for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h:configh.in" ;;
+    "FL/abi-version.h") CONFIG_HEADERS="$CONFIG_HEADERS FL/abi-version.h:abi-version.in" ;;
     "makeinclude") CONFIG_FILES="$CONFIG_FILES makeinclude" ;;
     "fltk.list") CONFIG_FILES="$CONFIG_FILES fltk.list" ;;
     "fltk-config") CONFIG_FILES="$CONFIG_FILES fltk-config" ;;

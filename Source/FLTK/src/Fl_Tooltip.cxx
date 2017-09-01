@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Tooltip.cxx 9706 2012-11-06 20:46:14Z matt $"
+// "$Id: Fl_Tooltip.cxx 10850 2015-09-01 14:27:45Z AlbrechtS $"
 //
 // Tooltip source file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -38,6 +38,10 @@ int		Fl_Tooltip::wrap_width_    = 400;
 #endif
 
 static const char* tip;
+
+// FIXME: this should be a static class variable: Fl_Tooltip::draw_symbols_
+static const int draw_symbols_ = 1; // 1 = draw @-symbols in tooltips, 0 = no
+
 /**
     This widget creates a tooltip box window, with no caption.
 */
@@ -57,6 +61,14 @@ public:
     
     Fl_Menu_Window::show();
   }
+
+  int handle(int e) {
+    if (e == FL_PUSH || e == FL_KEYDOWN) {
+      hide();
+      return 1;
+    }
+    return Fl_Menu_Window::handle(e);
+  }
 };
 
 Fl_Widget* Fl_Tooltip::widget_ = 0;
@@ -74,8 +86,8 @@ Fl_Window *Fl_Tooltip::current_window(void)
 void Fl_TooltipBox::layout() {
   fl_font(Fl_Tooltip::font(), Fl_Tooltip::size());
   int ww = Fl_Tooltip::wrap_width();
-  int hh;
-  fl_measure(tip, ww, hh, FL_ALIGN_LEFT|FL_ALIGN_WRAP|FL_ALIGN_INSIDE);
+  int hh = 0;
+  fl_measure(tip, ww, hh, draw_symbols_);
   ww += (Fl_Tooltip::margin_width() * 2);
   hh += (Fl_Tooltip::margin_height() * 2);
 
@@ -108,7 +120,7 @@ void Fl_TooltipBox::draw() {
   int Y = Fl_Tooltip::margin_height();
   int W = w() - (Fl_Tooltip::margin_width()*2);
   int H = h() - (Fl_Tooltip::margin_height()*2);
-  fl_draw(tip, X, Y, W, H, Fl_Align(FL_ALIGN_LEFT|FL_ALIGN_WRAP));
+  fl_draw(tip, X, Y, W, H, Fl_Align(FL_ALIGN_LEFT|FL_ALIGN_WRAP), 0, draw_symbols_);
 }
 
 static char recent_tooltip;
@@ -123,6 +135,15 @@ static void recent_timeout(void*) {
 
 static char recursion;
 
+// Is top level window iconified?
+static int top_win_iconified_() {
+  Fl_Widget *w = Fl_Tooltip::current();
+  if ( !w ) return 0;
+  Fl_Window *topwin = w->top_window();
+  if ( !topwin ) return 0;
+  return !topwin->visible() ? 1 : 0;
+}
+
 static void tooltip_timeout(void*) {
 #ifdef DEBUG
   puts("tooltip_timeout();");
@@ -130,22 +151,24 @@ static void tooltip_timeout(void*) {
 
   if (recursion) return;
   recursion = 1;
-  if (!tip || !*tip) {
-    if (window) window->hide();
-  } else {
-    int condition = 1;
+  if (!top_win_iconified_()) {   // no tooltip if top win iconified (STR #3157)
+    if (!tip || !*tip) {
+      if (window) window->hide();
+    } else {
+      int condition = 1;
 #if !(defined(__APPLE__) || defined(WIN32))
-    condition = (Fl::grab() == NULL);
+      condition = (Fl::grab() == NULL);
 #endif
-    if ( condition ) {
-      if (!window) window = new Fl_TooltipBox;
-      // this cast bypasses the normal Fl_Window label() code:
-      ((Fl_Widget*)window)->label(tip);
-      window->layout();
-      window->redraw();
-  //    printf("tooltip_timeout: Showing window %p with tooltip \"%s\"...\n",
-  //           window, tip ? tip : "(null)");
-      window->show();
+      if ( condition ) {
+	if (!window) window = new Fl_TooltipBox;
+	// this cast bypasses the normal Fl_Window label() code:
+	((Fl_Widget*)window)->label(tip);
+	window->layout();
+	window->redraw();
+	// printf("tooltip_timeout: Showing window %p with tooltip \"%s\"...\n",
+	//        window, tip ? tip : "(null)");
+	window->show();
+      }
     }
   }
 
@@ -168,7 +191,13 @@ void Fl_Tooltip::enter_(Fl_Widget* w) {
   printf("Fl_Tooltip::enter_(w=%p)\n", w);
   printf("    window=%p\n", window);
 #endif // DEBUG
-
+  if (w && w->as_window() && ((Fl_Window*)w)->tooltip_window()) {
+    // Fix STR #2650: if there's no better place for a tooltip window, don't move it.
+    int oldx = w->x();
+    int oldy = w->y();
+    ((Fl_TooltipBox*)w)->layout();
+    if (w->x() == oldx && w->y() == oldy) return;
+  }
   // find the enclosing group with a tooltip:
   Fl_Widget* tw = w;
   for (;;) {
@@ -346,5 +375,5 @@ void Fl_Widget::copy_tooltip(const char *text) {
 }
 
 //
-// End of "$Id: Fl_Tooltip.cxx 9706 2012-11-06 20:46:14Z matt $".
+// End of "$Id: Fl_Tooltip.cxx 10850 2015-09-01 14:27:45Z AlbrechtS $".
 //

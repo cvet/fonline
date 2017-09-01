@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Widget.H 10289 2014-09-08 08:55:49Z cand $"
+// "$Id: Fl_Widget.H 10677 2015-04-05 09:04:44Z AlbrechtS $"
 //
 // Widget header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2012 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -56,10 +56,11 @@ typedef void (Fl_Callback1)(Fl_Widget*, long);
 
 /** This struct stores all information for a text or mixed graphics label.
 
-    \todo For FLTK 1.3, the Fl_Label type will become a widget by itself. That way
-          we will be avoiding a lot of code duplication by handling labels in 
+    \todo There is an aspiration that the Fl_Label type will become a widget by itself.
+          That way we will be avoiding a lot of code duplication by handling labels in
           a similar fashion to widgets containing text. We also provide an easy
           interface for very complex labels, containing html or vector graphics.
+          However, this re-factoring is not in place in this release.
  */
 struct FL_EXPORT Fl_Label {
   /** label text */
@@ -234,6 +235,16 @@ public:
       \see Fl_Event
    */
   virtual int handle(int event);
+
+  /** Returns whether the current label was assigned with copy_label().
+
+      This can be useful for temporarily overwriting the widget's label
+      and restoring it later.
+
+      \retval 0 current label was assigned with label().
+      \retval 1 current label was assigned with copy_label().
+  */
+  int is_label_copied() const {return ((flags_ & COPIED_LABEL) ? 1 : 0);}
 
   /** Returns a pointer to the parent widget.  
       Usually this is a Fl_Group or Fl_Window. 
@@ -573,7 +584,7 @@ public:
       \param[in] cb new callback
       \param[in] p user data
    */
-  void callback(Fl_Callback1*cb, long p=0) {callback_=(Fl_Callback*)cb; user_data_=(void*)p;}
+  void callback(Fl_Callback1*cb, long p=0) {callback_=(Fl_Callback*)cb; user_data_=(void*)(fl_intptr_t)p;}
 
   /** Gets the user data for this widget.
       Gets the current user data (void *) argument that is passed to the callback function.
@@ -588,6 +599,8 @@ public:
   void user_data(void* v) {user_data_ = v;}
 
   /** Gets the current user data (long) argument that is passed to the callback function.
+      \todo The user data value must be implemented using \em intptr_t or similar
+      to avoid 64-bit machine incompatibilities.
    */
   long argument() const {return (long)(fl_intptr_t)user_data_;}
 
@@ -595,7 +608,7 @@ public:
       \todo The user data value must be implemented using \em intptr_t or similar
       to avoid 64-bit machine incompatibilities.
    */
-  void argument(long v) {user_data_ = (void*)v;}
+  void argument(long v) {user_data_ = (void*)(fl_intptr_t)v;}
 
   /** Returns the conditions under which the callback is called.
 
@@ -824,12 +837,20 @@ public:
    */
   unsigned int  visible_focus() { return flags_ & VISIBLE_FOCUS; }
 
-  /** Sets the default callback for all widgets.
-      Sets the default callback, which puts a pointer to the widget on the queue 
-      returned by Fl::readqueue(). You may want to call this from your own callback.
-      \param[in] cb the new callback
-      \param[in] d user data associated with that callback
-      \see callback(), do_callback(), Fl::readqueue()
+  /** The default callback for all widgets that don't set a callback.
+
+    This callback function puts a pointer to the widget on the queue
+    returned by Fl::readqueue().
+
+    Relying on the default callback and reading the callback queue with
+    Fl::readqueue() is not recommended. If you need a callback, you should
+    set one with Fl_Widget::callback(Fl_Callback *cb, void *data)
+    or one of its variants.
+
+    \param[in] cb the widget given to the callback
+    \param[in] d user data associated with that callback
+
+    \see callback(), do_callback(), Fl::readqueue()
    */
   static void default_callback(Fl_Widget *cb, void *d);
 
@@ -845,7 +866,7 @@ public:
       \param[in] arg call the callback with \p arg as the user data argument
       \see callback()
    */
-  void do_callback(Fl_Widget* o,long arg) {do_callback(o,(void*)arg);}
+  void do_callback(Fl_Widget* o,long arg) {do_callback(o,(void*)(fl_intptr_t)arg);}
 
   // Causes a widget to invoke its callback function with arbitrary arguments.
   // Documentation and implementation in Fl_Widget.cxx
@@ -1015,5 +1036,5 @@ public:
 #endif
 
 //
-// End of "$Id: Fl_Widget.H 10289 2014-09-08 08:55:49Z cand $".
+// End of "$Id: Fl_Widget.H 10677 2015-04-05 09:04:44Z AlbrechtS $".
 //

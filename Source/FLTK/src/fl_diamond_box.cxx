@@ -1,5 +1,5 @@
 //
-// "$Id: fl_diamond_box.cxx 10306 2014-09-13 16:49:47Z manolo $"
+// "$Id: fl_diamond_box.cxx 10781 2015-07-09 00:10:44Z AlbrechtS $"
 //
 // Diamond box code for the Fast Light Tool Kit (FLTK).
 //
@@ -32,7 +32,8 @@ static void fl_diamond_up_box(int x,int y,int w,int h,Fl_Color bgcolor) {
   h &= -2;
   int x1 = x+w/2;
   int y1 = y+h/2;
-  fl_color(bgcolor); fl_polygon(x+3, y1, x1,y+3, x+w-3,y1, x1,y+h-3);
+  Fl::set_box_color(bgcolor);
+  fl_polygon(x+3, y1, x1,y+3, x+w-3,y1, x1,y+h-3);
   const uchar *g = fl_gray_ramp();
   fl_color(g[(int)'W']); fl_line(x+1, y1, x1, y+1, x+w-1, y1);
   fl_color(g[(int)'U']); fl_line(x+2, y1, x1, y+2, x+w-2, y1);
@@ -55,7 +56,8 @@ static void fl_diamond_down_box(int x,int y,int w,int h,Fl_Color bgcolor) {
   fl_color(g[(int)'W']); fl_line(x+2, y1, x1, y+h-2, x+w-2, y1);
   fl_color(g[(int)'U']); fl_line(x+1, y1, x1, y+h-1, x+w-1, y1);
   fl_color(g[(int)'S']); fl_line(x+0, y1, x1, y+h-0, x+w-0, y1);
-  fl_color(bgcolor); fl_polygon(x+3, y1, x1,y+3, x+w-3,y1, x1,y+h-3);
+  Fl::set_box_color(bgcolor);
+  fl_polygon(x+3, y1, x1,y+3, x+w-3,y1, x1,y+h-3);
   fl_color(g[(int)'A']); fl_loop(x+3, y1, x1, y+3, x+w-3, y1, x1, y+h-3);
 }
 
@@ -67,5 +69,5 @@ Fl_Boxtype fl_define_FL_DIAMOND_BOX() {
 }
 
 //
-// End of "$Id: fl_diamond_box.cxx 10306 2014-09-13 16:49:47Z manolo $".
+// End of "$Id: fl_diamond_box.cxx 10781 2015-07-09 00:10:44Z AlbrechtS $".
 //

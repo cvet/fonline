@@ -1,9 +1,9 @@
 //
-// "$Id: tile.cxx 10385 2014-10-19 14:17:47Z AlbrechtS $"
+// "$Id: tile.cxx 11726 2016-05-09 11:25:57Z AlbrechtS $"
 //
-// Tile test program for the Fast Light Tool Kit (FLTK).
+// Fl_Tile test program for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2014 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -30,6 +30,11 @@ int main(int argc, char** argv) {
 
   int dx = 20, dy = dx; // border width of resizable() - see below
   Fl_Tile tile(0,0,300,300);
+
+  // create the symmetrical resize box with dx and dy pixels distance, resp.
+  // from the borders of the Fl_Tile widget before all other children
+  Fl_Box r(tile.x()+dx,tile.y()+dy,tile.w()-2*dx,tile.h()-2*dy);
+  tile.resizable(r);
 
   Fl_Box box0(0,0,150,150,"0");
   box0.box(FL_DOWN_BOX);
@@ -75,12 +80,6 @@ int main(int argc, char** argv) {
   box3b.align(FL_ALIGN_CLIP);
   //tile3.end();
 
-  // create the symmetrical resize box with dx and dy pixels distance, resp.
-  // from the borders of the Fl_Tile widget
-  Fl_Box r(tile.x()+dx,tile.y()+dy,tile.w()-2*dx,tile.h()-2*dy);
-  tile.resizable(r);
-  // r.box(FL_BORDER_FRAME);
-
   tile.end();
   window.end();
 
@@ -94,5 +93,5 @@ int main(int argc, char** argv) {
 }
 
 //
-// End of "$Id: tile.cxx 10385 2014-10-19 14:17:47Z AlbrechtS $".
+// End of "$Id: tile.cxx 11726 2016-05-09 11:25:57Z AlbrechtS $".
 //

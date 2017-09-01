@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_File_Browser.cxx 10145 2014-05-04 13:46:09Z manolo $"
+// "$Id: Fl_File_Browser.cxx 12047 2016-10-19 05:55:03Z manolo $"
 //
 // Fl_File_Browser routines.
 //
@@ -351,9 +351,8 @@ Fl_File_Browser::item_draw(void *p,	// I - List item data
   else
     fl_color(fl_inactive(c));
 
-  for (t = line->txt, ptr = fragment; *t != '\0'; t ++)
-    if (*t == '\n')
-    {
+  for (t = line->txt, ptr = fragment; *t != '\0'; t ++) {
+    if (*t == '\n') {
       // Newline - nul terminate this fragment and draw it...
       *ptr = '\0';
 
@@ -365,21 +364,18 @@ Fl_File_Browser::item_draw(void *p,	// I - List item data
       width  = 0;
       Y      += fl_height();
       column = 0;
-    }
-    else if (*t == column_char())
-    {
+    } else if (*t == column_char()) {
       // Tab - nul terminate this fragment and draw it...
       *ptr = '\0';
 
       int cW = W - width; // Clip width...
 
-      if (columns)
-      {
-        // Try clipping inside this column...
+      if (columns) {
+	// Try clipping inside this column...
 	for (i = 0; i < column && columns[i]; i ++) { ; }
 
-        if (columns[i])
-          cW = columns[i];
+	if (columns[i])
+	  cW = columns[i];
       }
 
       fl_draw(fragment, X + width, Y, cW, fl_height(),
@@ -387,21 +383,18 @@ Fl_File_Browser::item_draw(void *p,	// I - List item data
 
       // Advance to the next column...
       column ++;
-      if (columns)
-      {
+      if (columns) {
 	for (i = 0, width = 0; i < column && columns[i]; i ++)
 	  width += columns[i];
       }
       else
-        width = column * (int)(fl_height() * 0.6 * 8.0);
-
+	width = column * (int)(fl_height() * 0.6 * 8.0);
       ptr = fragment;
     }
     else
       *ptr++ = *t;
-
-  if (ptr > fragment)
-  {
+  }
+  if (ptr > fragment) {
     // Nul terminate this fragment and draw it...
     *ptr = '\0';
 
@@ -641,6 +634,9 @@ Fl_File_Browser::load(const char     *directory,// I - Directory to load
 
     if (mtab != NULL)
     {
+      // We always have the root filesystem
+      add("/", icon);
+      num_files ++;
       while (fgets(line, sizeof(line), mtab) != NULL)
       {
         if (line[0] == '#' || line[0] == '\n')
@@ -648,10 +644,9 @@ Fl_File_Browser::load(const char     *directory,// I - Directory to load
         if (sscanf(line, "%*s%4095s", filename) != 1)
 	  continue;
 
+        if (strcmp("/", filename) == 0) continue; // root was added before
         // Add a trailing slash (except for the root filesystem)
-        if (strcmp("/", filename) != 0) {
-          strlcat(filename, "/", sizeof(filename));
-        }
+        strlcat(filename, "/", sizeof(filename));
 
 //        printf("Fl_File_Browser::load() - adding \"%s\" to list...\n", filename);
         add(filename, icon);
@@ -736,5 +731,5 @@ Fl_File_Browser::filter(const char *pattern)	// I - Pattern string
 
 
 //
-// End of "$Id: Fl_File_Browser.cxx 10145 2014-05-04 13:46:09Z manolo $".
+// End of "$Id: Fl_File_Browser.cxx 12047 2016-10-19 05:55:03Z manolo $".
 //

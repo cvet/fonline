@@ -1,5 +1,5 @@
 #
-# "$Id: Makefile 10224 2014-08-01 20:56:09Z greg.ercolano $"
+# "$Id: Makefile 11994 2016-09-30 11:33:14Z AlbrechtS $"
 #
 # Top-level makefile for the Fast Light Tool Kit (FLTK).
 #
@@ -70,6 +70,7 @@ distclean: clean
 	$(RM) fltk-config fltk.list makeinclude
 	$(RM) fltk.spec
 	$(RM) FL/Makefile
+	$(RM) FL/abi-version.h
 	$(RM) documentation/*.$(CAT1EXT)
 	$(RM) documentation/*.$(CAT3EXT)
 	$(RM) documentation/*.$(CAT6EXT)
@@ -100,7 +101,7 @@ makeinclude: configure configh.in makeinclude.in config.guess config.sub
 	touch config.h
 	chmod +x fltk-config
 
-configure: configure.in
+configure: configure.ac
 	autoconf
 
 config.guess config.sub:
@@ -131,5 +132,5 @@ clang-changes:
 
 
 #
-# End of "$Id: Makefile 10224 2014-08-01 20:56:09Z greg.ercolano $".
+# End of "$Id: Makefile 11994 2016-09-30 11:33:14Z AlbrechtS $".
 #

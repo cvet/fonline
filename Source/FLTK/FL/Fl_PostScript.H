@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_PostScript.H 10308 2014-09-13 17:51:20Z manolo $"
+// "$Id: Fl_PostScript.H 10616 2015-03-11 06:21:17Z manolo $"
 //
 // Support for graphics output to PostScript file for the Fast Light Tool Kit (FLTK).
 //
@@ -27,6 +27,11 @@
 #include <FL/fl_draw.H>
 #include <stdarg.h>
 
+/* Signature of Fl_PostScript::close_command() functions passed as parameters. */
+extern "C" {
+  typedef int (Fl_PostScript_Close_Command)(FILE *);
+}
+
 /**
  \brief PostScript graphical backend.
  *
@@ -53,13 +58,15 @@
  <br> All other unicode characters or all other fonts (FL_FREE_FONT and above) are output as a bitmap.
  <br> FLTK standard fonts are output using the corresponding PostScript standard fonts.
  */
-
-/** Signature of Fl_PostScript::close_command() functions passed as parameters. */
-extern "C" {
-  typedef int (Fl_PostScript_Close_Command)(FILE *);
-}
-
 class FL_EXPORT Fl_PostScript_Graphics_Driver : public Fl_Graphics_Driver {
+private:
+  void transformed_draw_extra(const char* str, int n, double x, double y, int w, bool rtl);
+  void *prepare_rle85();
+  void write_rle85(uchar b, void *data);
+  void close_rle85(void *data);
+  void *prepare85();
+  void write85(void *data, const uchar *p, int len);
+  void close85(void *data);
 public:
   static const char *class_id;
   const char *class_name() {return class_id;};
@@ -206,12 +213,15 @@ class Clip {
   void draw(Fl_Pixmap * pxm,int XP, int YP, int WP, int HP, int cx, int cy);
   void draw(Fl_Bitmap * bitmap,int XP, int YP, int WP, int HP, int cx, int cy);
   void draw(Fl_RGB_Image * rgb,int XP, int YP, int WP, int HP, int cx, int cy);
+  int draw_scaled(Fl_Image *img, int XP, int YP, int WP, int HP);
   int clocale_printf(const char *format, ...);
   ~Fl_PostScript_Graphics_Driver();
 };
 
 /**
- \brief To send graphical output to a PostScript file.
+ To send graphical output to a PostScript file.
+ This class is used exactly as the Fl_Printer class except for the start_job() call,
+ two variants of which are usable and allow to specify what page format and layout are desired.
  */
 class FL_EXPORT Fl_PostScript_File_Device : public Fl_Paged_Device {
 #ifdef __APPLE__
@@ -250,5 +260,5 @@ public:
 #endif // Fl_PostScript_H
 
 //
-// End of "$Id: Fl_PostScript.H 10308 2014-09-13 17:51:20Z manolo $"
+// End of "$Id: Fl_PostScript.H 10616 2015-03-11 06:21:17Z manolo $"
 //

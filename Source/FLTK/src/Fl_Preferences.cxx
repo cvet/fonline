@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Preferences.cxx 10378 2014-10-14 12:10:18Z ianmacarthur $"
+// "$Id: Fl_Preferences.cxx 10715 2015-04-24 21:25:30Z greg.ercolano $"
 //
 // Preferences methods for the Fast Light Tool Kit (FLTK).
 //
@@ -679,7 +679,7 @@ char Fl_Preferences::get( const char *key, char *text, const char *defaultValue,
   }
   if ( !v ) v = defaultValue;
   if ( v ) strlcpy(text, v, maxSize);
-  else text = 0;
+  else *text = 0;
   return ( v != defaultValue );
 }
 
@@ -863,17 +863,17 @@ int Fl_Preferences::size( const char *key ) {
  database without the \c .prefs extension and located in the same directory.
  It then fills the given buffer with the complete path name.
 
- Exmaple:
+ Example:
  \code
  Fl_Preferences prefs( USER, "matthiasm.com", "test" );
  char path[FL_PATH_MAX];
  prefs.getUserdataPath( path );
  \endcode
- creates the preferences database in (MS Windows):
+ ..creates the preferences database in (MS Windows):
  \code
  c:/Documents and Settings/matt/Application Data/matthiasm.com/test.prefs
  \endcode
- and returns the userdata path:
+ ..and returns the userdata path:
  \code
  c:/Documents and Settings/matt/Application Data/matthiasm.com/test/
  \endcode
@@ -954,40 +954,6 @@ Fl_Preferences::Name::~Name() {
 //
 
 int Fl_Preferences::Node::lastEntrySet = -1;
-
-// recursively create a path in the file system
-static char makePath( const char *path ) {
-  if (access(path, 0)) {
-    const char *s = strrchr( path, '/' );
-    if ( !s ) return 0;
-    size_t len = s-path;
-    char *p = (char*)malloc( len+1 );
-    memcpy( p, path, len );
-    p[len] = 0;
-    makePath( p );
-    free( p );
-#if defined(WIN32) && !defined(__CYGWIN__)
-    return ( mkdir( path ) == 0 );
-#else
-    return ( mkdir( path, 0777 ) == 0 );
-#endif // WIN32 && !__CYGWIN__
-  }
-  return 1;
-}
-
-#if 0
-// strip the filename and create a path
-static void makePathForFile( const char *path ) {
-  const char *s = strrchr( path, '/' );
-  if ( !s ) return;
-  int len = s-path;
-  char *p = (char*)malloc( len+1 );
-  memcpy( p, path, len );
-  p[len] = 0;
-  makePath( p );
-  free( p );
-}
-#endif
 
 // create the root node
 // - construct the name of the file that will hold our preferences
@@ -1321,7 +1287,7 @@ int Fl_Preferences::Node::write( FILE *f ) {
 	for ( cnt = 0; cnt < 80; cnt++ )
 	  if ( src[cnt]==0 ) break;
         fputc( '+', f );
-	written = fwrite( src, cnt, 1, f );
+	written += fwrite( src, cnt, 1, f );
         fputc( '\n', f );
 	src += cnt;
       }
@@ -1797,5 +1763,5 @@ int Fl_Plugin_Manager::loadAll(const char *filepath, const char *pattern) {
 }
 
 //
-// End of "$Id: Fl_Preferences.cxx 10378 2014-10-14 12:10:18Z ianmacarthur $".
+// End of "$Id: Fl_Preferences.cxx 10715 2015-04-24 21:25:30Z greg.ercolano $".
 //

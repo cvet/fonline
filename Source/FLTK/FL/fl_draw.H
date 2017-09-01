@@ -1,9 +1,9 @@
 //
-// "$Id: fl_draw.H 10320 2014-09-18 15:25:55Z greg.ercolano $"
+// "$Id: fl_draw.H 11977 2016-09-25 11:07:06Z AlbrechtS $"
 //
 // Portable drawing function header file for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2011 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -605,8 +605,8 @@ FL_EXPORT const char *fl_local_to_mac_roman(const char *t, int n=-1);
 */
 FL_EXPORT void fl_draw(const char* str, int x, int y);
 /**
-  Draws a nul-terminated UTF-8 string starting at the given \p x, \p y location and 
-  rotating \p angle degrees counter-clockwise.
+  Draws a nul-terminated UTF-8 string starting at the given \p x, \p y
+  location and rotating \p angle degrees counter-clockwise.
   This version of fl_draw provides direct access to the text drawing
   function of the underlying OS and is supported by Xft, Win32 and MacOS
   fltk subsets.
@@ -617,8 +617,13 @@ FL_EXPORT void fl_draw(int angle, const char* str, int x, int y);
 */
 inline void fl_draw(const char* str, int n, int x, int y) {fl_graphics_driver->draw(str,n,x,y); }
 /**
-  Draws at the given \p x, \p y location a UTF-8 string of length \p n bytes 
+  Draws at the given \p x, \p y location a UTF-8 string of length \p n bytes
   rotating \p angle degrees counter-clockwise.
+
+  \note When using X11 (Unix, Linux, Cygwin et al.) this needs Xft to work.
+	Under plain X11 (w/o Xft) rotated text is not supported by FLTK.
+	A warning will be issued to stderr at runtime (only once) if you
+	use this method with an angle other than 0.
 */
 inline void fl_draw(int angle, const char* str, int n, int x, int y) {fl_graphics_driver->draw(angle,str,n,x,y); }
 /**
@@ -796,5 +801,5 @@ FL_EXPORT int fl_add_symbol(const char* name, void (*drawit)(Fl_Color), int scal
 #endif
 
 //
-// End of "$Id: fl_draw.H 10320 2014-09-18 15:25:55Z greg.ercolano $".
+// End of "$Id: fl_draw.H 11977 2016-09-25 11:07:06Z AlbrechtS $".
 //

@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Light_Button.cxx 9738 2012-12-07 16:29:49Z AlbrechtS $"
+// "$Id: Fl_Light_Button.cxx 10775 2015-06-27 15:20:23Z AlbrechtS $"
 //
 // Lighted button widget for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -33,13 +33,12 @@ void Fl_Light_Button::draw() {
   if (box()) draw_box(this==Fl::pushed() ? fl_down(box()) : box(), color());
   Fl_Color col = value() ? (active_r() ? selection_color() :
                             fl_inactive(selection_color())) : color();
-  int W;
-  int dx, dy;
 
-  W  = labelsize();
-  dx = Fl::box_dx(box()) + 2;
-  dy = (h() - W) / 2;
-  // if (dy < 0) dy = 0;         // neg. offset o.k. for vertical centering
+  int W  = labelsize();
+  int bx = Fl::box_dx(box());	// box frame width
+  int dx = bx + 2;		// relative position of check mark etc.
+  int dy = (h() - W) / 2;	// neg. offset o.k. for vertical centering
+  int lx = 0;			// relative label position (STR #3237)
 
   if (down_box()) {
     // draw other down_box() styles:
@@ -51,7 +50,7 @@ void Fl_Light_Button::draw() {
         // Check box...
         draw_box(down_box(), x()+dx, y()+dy, W, W, FL_BACKGROUND2_COLOR);
 	if (value()) {
-	  if (Fl::scheme() && !strcmp(Fl::scheme(), "gtk+")) {
+	  if (Fl::is_scheme("gtk+")) {
 	    fl_color(FL_SELECTION_COLOR);
 	  } else {
 	    fl_color(col);
@@ -77,7 +76,7 @@ void Fl_Light_Button::draw() {
 	  int tdx = dx + (W - tW) / 2;
 	  int tdy = dy + (W - tW) / 2;
 
-	  if (Fl::scheme() && !strcmp(Fl::scheme(), "gtk+")) {
+	  if (Fl::is_scheme("gtk+")) {
 	    fl_color(FL_SELECTION_COLOR);
 	    tW --;
 	    fl_pie(x() + tdx - 1, y() + tdy - 1, tW + 3, tW + 3, 0.0, 360.0);
@@ -110,7 +109,7 @@ void Fl_Light_Button::draw() {
 	      break;
 	  }
 
-	  if (Fl::scheme() && !strcmp(Fl::scheme(), "gtk+")) {
+	  if (Fl::is_scheme("gtk+")) {
 	    fl_color(fl_color_average(FL_WHITE, FL_SELECTION_COLOR, 0.5));
 	    fl_arc(x() + tdx, y() + tdy, tW + 1, tW + 1, 60.0, 180.0);
 	  }
@@ -120,22 +119,23 @@ void Fl_Light_Button::draw() {
         draw_box(down_box(), x()+dx, y()+dy, W, W, col);
         break;
     }
+    lx = dx + W + 2;
   } else {
     // if down_box() is zero, draw light button style:
     int hh = h()-2*dy - 2;
     int ww = W/2+1;
     int xx = dx;
     if (w()<ww+2*xx) xx = (w()-ww)/2;
-    if (Fl::scheme() && !strcmp(Fl::scheme(), "plastic")) {
+    if (Fl::is_scheme("plastic")) {
       col = active_r() ? selection_color() : fl_inactive(selection_color());
       fl_color(value() ? col : fl_color_average(col, FL_BLACK, 0.5f));
       fl_pie(x()+xx, y()+dy+1, ww, hh, 0, 360);
     } else {
       draw_box(FL_THIN_DOWN_BOX, x()+xx, y()+dy+1, ww, hh, col);
     }
-    dx = (ww + 2 * dx - W) / 2;
+    lx = dx + ww + 2;
   }
-  draw_label(x()+W+2*dx, y(), w()-W-2*dx, h());
+  draw_label(x()+lx, y(), w()-lx-bx, h());
   if (Fl::focus() == this) draw_focus();
 }
 
@@ -169,5 +169,5 @@ Fl_Radio_Light_Button::Fl_Radio_Light_Button(int X,int Y,int W,int H,const char 
 
 
 //
-// End of "$Id: Fl_Light_Button.cxx 9738 2012-12-07 16:29:49Z AlbrechtS $".
+// End of "$Id: Fl_Light_Button.cxx 10775 2015-06-27 15:20:23Z AlbrechtS $".
 //

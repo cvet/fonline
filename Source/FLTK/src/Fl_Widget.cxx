@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Widget.cxx 9452 2012-05-07 07:18:11Z AlbrechtS $"
+// "$Id: Fl_Widget.cxx 11811 2016-07-15 19:23:16Z AlbrechtS $"
 //
 // Base widget class for the Fast Light Tool Kit (FLTK).
 //
@@ -54,9 +54,24 @@ void Fl_Widget::default_callback(Fl_Widget *o, void * /*v*/) {
   }
 }
 /**
-    All Fl_Widgets that don't have a callback defined use a
-    default callback that puts a pointer to the widget in this queue,
-    and this method reads the oldest widget out of this queue.
+    Reads the default callback queue and returns the first widget.
+
+    All Fl_Widgets that don't have a callback defined use the default
+    callback \p static Fl_Widget::default_callback() that puts a pointer
+    to the widget in a queue. This method reads the oldest widget out
+    of this queue.
+
+    The queue (FIFO) is limited (currently 20 items). If the queue
+    overflows, the oldest entry (Fl_Widget *) is discarded.
+
+    Relying on the default callback and reading the callback queue with
+    Fl::readqueue() is not recommended. If you need a callback, you should
+    set one with Fl_Widget::callback(Fl_Callback *cb, void *data)
+    or one of its variants.
+
+    \see Fl_Widget::callback()
+    \see Fl_Widget::callback(Fl_Callback *cb, void *data)
+    \see Fl_Widget::default_callback()
 */
 Fl_Widget *Fl::readqueue() {
   if (obj_tail==obj_head) return 0;
@@ -126,6 +141,10 @@ Fl_Widget::Fl_Widget(int X, int Y, int W, int H, const char* L) {
 
   parent_ = 0;
   if (Fl_Group::current()) Fl_Group::current()->add(this);
+  if (!fl_graphics_driver) {
+    // Make sure fl_graphics_driver is initialized. Important if we are called by a static initializer.
+    Fl_Display_Device::display_device();
+  }
 }
 
 void Fl_Widget::resize(int X, int Y, int W, int H) {
@@ -324,6 +343,7 @@ Fl_Widget::copy_label(const char *a) {
 */
 void
 Fl_Widget::do_callback(Fl_Widget* o,void* arg) {
+  if (!callback_) return;
   Fl_Widget_Tracker wp(this);
   callback_(o,arg);
   if (wp.deleted()) return;
@@ -332,5 +352,5 @@ Fl_Widget::do_callback(Fl_Widget* o,void* arg) {
 }
 
 //
-// End of "$Id: Fl_Widget.cxx 9452 2012-05-07 07:18:11Z AlbrechtS $".
+// End of "$Id: Fl_Widget.cxx 11811 2016-07-15 19:23:16Z AlbrechtS $".
 //

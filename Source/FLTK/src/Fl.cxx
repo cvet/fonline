@@ -1,9 +1,9 @@
 //
-// "$Id: Fl.cxx 10364 2014-10-08 12:47:20Z ossman $"
+// "$Id: Fl.cxx 11321 2016-03-08 16:58:43Z AlbrechtS $"
 //
 // Main event handling code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -51,7 +51,6 @@
 #include <FL/x.H>
 
 #include <ctype.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include "flstring.h"
 
@@ -73,6 +72,22 @@ extern double fl_mac_flush_and_wait(double time_to_wait);
 //
 // Globals...
 //
+
+// Pointers you can use to change FLTK to a foreign language.
+// Note: Similar pointers are defined in FL/fl_ask.H and src/fl_ask.cxx
+#if !defined(__APPLE__) || defined(FL_DOXYGEN)
+  const char* fl_local_alt   = "Alt";	///< string pointer used in shortcuts, you can change it to another language
+  const char* fl_local_ctrl  = "Ctrl";	///< string pointer used in shortcuts, you can change it to another language
+  const char* fl_local_meta  = "Meta";	///< string pointer used in shortcuts, you can change it to another language
+  const char* fl_local_shift = "Shift";	///< string pointer used in shortcuts, you can change it to another language
+#else
+  const char* fl_local_alt   = "\xe2\x8c\xa5\\"; // U+2325 (option key)
+  const char* fl_local_ctrl  = "\xe2\x8c\x83\\"; // U+2303 (up arrowhead)
+  const char* fl_local_meta  = "\xe2\x8c\x98\\"; // U+2318 (place of interest sign)
+  const char* fl_local_shift = "\xe2\x87\xa7\\"; // U+21E7 (upwards white arrow)
+#endif
+
+// Apple App Menu
 #if defined(__APPLE__) || defined(FL_DOXYGEN)
 const char *Fl_Mac_App_Menu::about = "About %@";
 const char *Fl_Mac_App_Menu::print = "Print Front Window";
@@ -82,6 +97,7 @@ const char *Fl_Mac_App_Menu::hide_others = "Hide Others";
 const char *Fl_Mac_App_Menu::show = "Show All";
 const char *Fl_Mac_App_Menu::quit = "Quit %@";
 #endif // __APPLE__
+
 #ifndef FL_DOXYGEN
 Fl_Widget	*Fl::belowmouse_,
 		*Fl::pushed_,
@@ -127,13 +143,30 @@ char const * const Fl::clipboard_image = "image";
 // 'Fl::version()' - Return the API version number...
 //
 
-double
 /**
   Returns the compiled-in value of the FL_VERSION constant. This
   is useful for checking the version of a shared library.
+
+  \deprecated	Use int Fl::api_version() instead.
 */
-Fl::version() {
+double Fl::version() {
   return FL_VERSION;
+}
+
+/**
+  Returns the compiled-in value of the FL_API_VERSION constant. This
+  is useful for checking the version of a shared library.
+*/
+int Fl::api_version() {
+  return FL_API_VERSION;
+}
+
+/**
+  Returns the compiled-in value of the FL_ABI_VERSION constant. This
+  is useful for checking the version of a shared library.
+*/
+int  Fl::abi_version() {
+  return FL_ABI_VERSION;
 }
 
 /**
@@ -681,20 +714,13 @@ Fl_X* Fl_X::first;
 Fl_Window* fl_find(Window xid) {
   Fl_X *window;
   for (Fl_X **pp = &Fl_X::first; (window = *pp); pp = &window->next)
-#if defined(WIN32) || defined(USE_X11)
-   if (window->xid == xid)
-#elif defined(__APPLE_QUARTZ__)
-   if (window->xid == xid && !window->w->window())
-#else
-# error unsupported platform
-#endif // __APPLE__
-	{
+   if (window->xid == xid) {
       if (window != Fl_X::first && !Fl::modal()) {
-	// make this window be first to speed up searches
-	// this is not done if modal is true to avoid messing up modal stack
-	*pp = window->next;
-	window->next = Fl_X::first;
-	Fl_X::first = window;
+        // make this window be first to speed up searches
+        // this is not done if modal is true to avoid messing up modal stack
+        *pp = window->next;
+        window->next = Fl_X::first;
+        Fl_X::first = window;
       }
       return window->w;
     }
@@ -802,7 +828,7 @@ static handler_link *handlers = 0;
   - \ref FL_SCREEN_CONFIGURATION_CHANGED events.
     Under X11, this event requires the libXrandr.so shared library to be
     loadable at run-time and the X server to implement the RandR extension.
-  - \ref FL_FULLSCREEN events sent to a window that enters of leaves
+  - \ref FL_FULLSCREEN events sent to a window that enters or leaves
     fullscreen mode.
   - System events that FLTK does not recognize.  See fl_xevent.
   - \e Some other events when the widget FLTK selected returns
@@ -829,7 +855,7 @@ void Fl::remove_handler(Fl_Event_Handler ha) {
   handler_link *l, *p;
 
   // Search for the handler in the list...
-  for (l = handlers, p = 0; l && l->handle != ha; p = l, l = l->next);
+  for (l = handlers, p = 0; l && l->handle != ha; p = l, l = l->next) {/*empty*/}
 
   if (l) {
     // Found it, so remove it from the list...
@@ -1124,10 +1150,41 @@ void fl_throw_focus(Fl_Widget *o) {
 
 ////////////////////////////////////////////////////////////////
 
+// Find the first active_r() widget, starting at the widget wi and
+// walking up the widget hierarchy to the top level window.
+//
+// In other words: find_active() returns an active group that contains
+// the inactive widget and all inactive parent groups.
+//
+// This is used to send FL_SHORTCUT events to the Fl::belowmouse() widget
+// in case the target widget itself is inactive_r(). In this case the event
+// is sent to the first active_r() parent.
+//
+// This prevents sending events to inactive widgets that might get the
+// input focus otherwise. The search is fast and light and avoids calling
+// inactive_r() multiple times.
+// See STR #3216.
+//
+// Returns: first active_r() widget "above" the widget wi or NULL if
+// no widget is active. May return the top level window.
+
+static Fl_Widget *find_active(Fl_Widget *wi) {
+  Fl_Widget *found = 0;
+  for (; wi; wi = wi->parent()) {
+    if (wi->active()) {
+      if (!found) found = wi;
+    }
+    else found = 0;
+  }
+  return found;
+}
+
+////////////////////////////////////////////////////////////////
+
 // Call to->handle(), but first replace the mouse x/y with the correct
 // values to account for nested windows. 'window' is the outermost
 // window the event was posted to by the system:
-static int send(int event, Fl_Widget* to, Fl_Window* window) {
+static int send_event(int event, Fl_Widget* to, Fl_Window* window) {
   int dx, dy;
   int old_event = Fl::e_number;
   if (window) {
@@ -1269,7 +1326,7 @@ int Fl::handle_(int e, Fl_Window* window)
     else if (modal() && wi != modal()) return 0;
     pushed_ = wi;
     Fl_Tooltip::current(wi);
-    if (send(e, wi, window)) return 1;
+    if (send_event(e, wi, window)) return 1;
     // raise windows that are clicked on:
     window->show();
     return 1;
@@ -1313,11 +1370,11 @@ int Fl::handle_(int e, Fl_Window* window)
 	  Fl::event_y_root() >= tooltip->y() && Fl::event_y_root() < tooltip->y() + tooltip->h() );
 	}
 	// if inside, send event to tooltip window instead of background window
-	if (inside) ret = send(e, tooltip, window);
-	else ret = (wi && send(e, wi, window));
+	if (inside) ret = send_event(e, tooltip, window);
+	else ret = (wi && send_event(e, wi, window));
       } else
 #endif
-      ret = (wi && send(e, wi, window));
+      ret = (wi && send_event(e, wi, window));
    if (pbm != belowmouse()) {
 #ifdef DEBUG
       printf("Fl::handle(e=%d, window=%p);\n", e, window);
@@ -1337,7 +1394,7 @@ int Fl::handle_(int e, Fl_Window* window)
       wi = pushed();
       pushed_ = 0; // must be zero before callback is done!
     } else if (modal() && wi != modal()) return 0;
-    int r = send(e, wi, window);
+    int r = send_event(e, wi, window);
     fl_fix_focus();
     return r;}
 
@@ -1359,7 +1416,7 @@ int Fl::handle_(int e, Fl_Window* window)
     // a KEYUP there. I believe that the current solution is
     // "close enough".
     for (wi = grab() ? grab() : focus(); wi; wi = wi->parent())
-      if (send(FL_KEYUP, wi, window)) return 1;
+      if (send_event(FL_KEYUP, wi, window)) return 1;
     return 0;
 
   case FL_KEYBOARD:
@@ -1373,7 +1430,7 @@ int Fl::handle_(int e, Fl_Window* window)
 
     // Try it as keystroke, sending it to focus and all parents:
     for (wi = grab() ? grab() : focus(); wi; wi = wi->parent())
-      if (send(FL_KEYBOARD, wi, window)) return 1;
+      if (send_event(FL_KEYBOARD, wi, window)) return 1;
 
     // recursive call to try shortcut:
     if (handle(FL_SHORTCUT, window)) return 1;
@@ -1389,16 +1446,16 @@ int Fl::handle_(int e, Fl_Window* window)
     if (grab()) {wi = grab(); break;} // send it to grab window
 
     // Try it as shortcut, sending to mouse widget and all parents:
-    wi = belowmouse();
+    wi = find_active(belowmouse()); // STR #3216
     if (!wi) {
       wi = modal();
       if (!wi) wi = window;
     } else if (wi->window() != first_window()) {
-      if (send(FL_SHORTCUT, first_window(), first_window())) return 1;
+      if (send_event(FL_SHORTCUT, first_window(), first_window())) return 1;
     }
 
     for (; wi; wi = wi->parent()) {
-      if (send(FL_SHORTCUT, wi, wi->window())) return 1;
+      if (send_event(FL_SHORTCUT, wi, wi->window())) return 1;
     }
 
     // try using add_handle() functions:
@@ -1440,19 +1497,19 @@ int Fl::handle_(int e, Fl_Window* window)
 
     // Try sending it to the "grab" first
     if (grab() && grab()!=modal() && grab()!=window) {
-      if (send(FL_MOUSEWHEEL, grab(), window)) return 1;
+      if (send_event(FL_MOUSEWHEEL, grab(), window)) return 1;
     }
     // Now try sending it to the "modal" window
     if (modal()) {
-      send(FL_MOUSEWHEEL, modal(), window);
+      send_event(FL_MOUSEWHEEL, modal(), window);
       return 1;
     }
     // Finally try sending it to the window, the event occured in
-    if (send(FL_MOUSEWHEEL, window, window)) return 1;
+    if (send_event(FL_MOUSEWHEEL, window, window)) return 1;
   default:
     break;
   }
-  if (wi && send(e, wi, window)) {
+  if (wi && send_event(e, wi, window)) {
     dnd_flag = 0;
     return 1;
   }
@@ -1505,7 +1562,6 @@ void Fl_Window::hide() {
   for (; *pp != ip; pp = &(*pp)->next) if (!*pp) return;
   *pp = ip->next;
 #ifdef __APPLE__
-  ip->unlink();
   // MacOS X manages a single pointer per application. Make sure that hiding
   // a toplevel window will not leave us with some random pointer shape, or
   // worst case, an invisible pointer
@@ -1556,7 +1612,7 @@ void Fl_Window::hide() {
     }
 #elif defined(__APPLE_QUARTZ__)
   Fl_X::q_release_context(ip);
-  if ( ip->xid == fl_window && !parent() )
+  if ( ip->xid == fl_window )
     fl_window = 0;
 #endif
 
@@ -1577,11 +1633,15 @@ void Fl_Window::hide() {
   }
   XDestroyWindow(fl_display, ip->xid);
   // end of fix for STR#3079
-  for (int ii = 0; ii < count; ii++) {
-    doit[ii]->hide();
-    doit[ii]->show();
+  if (count) {
+    int ii;
+    for (ii = 0; ii < count; ii++)  doit[ii]->hide();
+    for (ii = 0; ii < count; ii++)  {
+      if (ii != 0) doit[0]->show(); // Fix for STR#3165
+      doit[ii]->show();
+    }
+    delete[] doit;
   }
-  if (count) delete[] doit;
 #elif defined(__APPLE_QUARTZ__)
   ip->destroy();
 #else
@@ -1872,7 +1932,13 @@ static Fl_Widget	**dwidgets = 0;
   When deleting groups or windows, you must only delete the group or
   window widget and not the individual child widgets.
 
-  \since FLTK 1.3 it is not necessary to remove widgets from their parent
+  \since FLTK 1.3.4 the widget will be hidden immediately, but the actual
+  destruction will be delayed until the event loop is finished. Up to
+  FLTK 1.3.3 windows wouldn't be hidden before the event loop was done,
+  hence you had to hide() a window in your window close callback if
+  you called Fl::delete_widget() to destroy (and hide) the window.
+
+  \since FLTK 1.3.0 it is not necessary to remove widgets from their parent
   groups or windows before calling this, because it will be done in the
   widget's destructor, but it is not a failure to do this nevertheless.
 
@@ -1883,8 +1949,13 @@ static Fl_Widget	**dwidgets = 0;
 */
 void Fl::delete_widget(Fl_Widget *wi) {
   if (!wi) return;
-  
-  // don;t add the same widget twice
+
+  // if the widget is shown(), hide() it (FLTK 1.3.4)
+  if (wi->visible_r()) wi->hide();
+  Fl_Window *win = wi->as_window();
+  if (win && win->shown()) win->hide(); // case of iconified window
+
+  // don't add the same widget twice to the widget delete list
   for (int i = 0; i < num_dwidgets; i++) {
     if (dwidgets[i]==wi) return;
   }
@@ -2189,7 +2260,7 @@ Fl_Widget_Tracker::~Fl_Widget_Tracker()
   Fl::release_widget_pointer(wp_); // remove pointer from watch list
 }
 
-
+int Fl::use_high_res_GL_ = 0;
 //
-// End of "$Id: Fl.cxx 10364 2014-10-08 12:47:20Z ossman $".
+// End of "$Id: Fl.cxx 11321 2016-03-08 16:58:43Z AlbrechtS $".
 //

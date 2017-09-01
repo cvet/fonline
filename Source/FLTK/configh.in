@@ -1,15 +1,14 @@
 /*
- * "$Id: configh.in 10196 2014-06-16 11:17:57Z ossman $"
+ * "$Id: configh.in 11094 2016-01-31 02:49:56Z AlbrechtS $"
  *
  * Configuration file for the Fast Light Tool Kit (FLTK).
- * @configure_input@
  *
- * Copyright 1998-2010 by Bill Spitzak and others.
+ * Copyright 1998-2016 by Bill Spitzak and others.
  *
  * This library is free software. Distribution and use rights are outlined in
  * the file "COPYING" which should have been included with this file.  If this
  * file is missing or damaged, see the license at:
- * 
+ *
  *     http://www.fltk.org/COPYING.php
  *
  * Please report all bugs and problems on the following page:
@@ -21,8 +20,8 @@
  * Where to find files...
  */
 
-#define FLTK_DATADIR	""
-#define FLTK_DOCDIR	""
+#define FLTK_DATADIR ""
+#define FLTK_DOCDIR ""
 
 /*
  * BORDER_WIDTH:
@@ -56,7 +55,7 @@
  * (many broken Mesa RPMs do not...)
  */
 
-#undef HAVE_GL_GLU_H
+#define HAVE_GL_GLU_H 0
 
 /*
  * HAVE_GLXGETPROCADDRESSARB:
@@ -124,10 +123,26 @@
 #define HAVE_XCURSOR 0
 
 /*
+ * HAVE_XRENDER:
+ *
+ * Do we have the X render library?
+ */
+
+#define HAVE_XRENDER 0
+
+/*
+ * HAVE_X11_XREGION_H:
+ *
+ * Do we have the X11 Xregion.h header file ?
+ */
+
+#define HAVE_X11_XREGION_H 0
+
+/*
  * __APPLE_QUARTZ__:
  *
  * All Apple implementations are now based on Quartz and Cocoa,
- * so this flag should always be on for Mac OS X. This flag has 
+ * so this flag should always be on for Mac OS X. This flag has
  * no meaning on operating systems other than Mac OS X.
  */
 
@@ -168,7 +183,7 @@
  *
  * Byte order of your machine: 1 = big-endian, 0 = little-endian.
  */
- 
+
 #ifdef __APPLE__
 #include <mac_endianness.h>
 #else
@@ -229,7 +244,7 @@
  * Whether or not select() call has its own header file.
  */
 
-#undef HAVE_SYS_SELECT_H
+#define HAVE_SYS_SELECT_H 0
 
 /*
  * HAVE_SYS_STDTYPES_H:
@@ -258,8 +273,8 @@
 /*
  * FLTK_USE_CAIRO
  *
- * Do we have the cairo library available and want extended cairo use in fltk ?
- * will implies to link cairo.lib in all fltk based apps.
+ * Do we have the cairo library available and want extended cairo use in FLTK ?
+ * This implies to link cairo.lib in all FLTK based apps.
  */
 
 #undef FLTK_USE_CAIRO
@@ -317,9 +332,9 @@
  * Do we have the dlsym() function and header?
  */
 
-#undef HAVE_DLFCN_H
-#undef HAVE_DLSYM
+#define HAVE_DLFCN_H 0
+#define HAVE_DLSYM 0
 
 /*
- * End of "$Id: configh.in 10196 2014-06-16 11:17:57Z ossman $".
+ * End of "$Id: configh.in 11094 2016-01-31 02:49:56Z AlbrechtS $".
  */

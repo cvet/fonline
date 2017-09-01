@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_x.cxx 10412 2014-10-29 20:25:46Z cand $"
+// "$Id: Fl_x.cxx 12028 2016-10-14 16:35:44Z AlbrechtS $"
 //
 // X specific code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2012 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -69,9 +69,9 @@ static bool have_xfixes = false;
 #  if HAVE_XCURSOR
 #    include <X11/Xcursor/Xcursor.h>
 #  endif
-static Fl_Xlib_Graphics_Driver fl_xlib_driver;
-static Fl_Display_Device fl_xlib_display(&fl_xlib_driver);
-Fl_Display_Device *Fl_Display_Device::_display = &fl_xlib_display;// the platform display
+#  if HAVE_XRENDER
+#    include <X11/extensions/Xrender.h>
+#  endif
 
 ////////////////////////////////////////////////////////////////
 // interface to poll/select call:
@@ -352,6 +352,7 @@ static Atom fl_XaTextUriList;
 static Atom fl_XaImageBmp;
 static Atom fl_XaImagePNG;
 static Atom fl_INCR;
+static Atom fl_NET_WM_PID;
 static Atom fl_NET_WM_NAME;			// utf8 aware window label
 static Atom fl_NET_WM_ICON_NAME;		// utf8 aware window icon name
 static Atom fl_NET_SUPPORTING_WM_CHECK;
@@ -670,7 +671,7 @@ void fl_open_display() {
   if (fl_display) return;
 
   setlocale(LC_CTYPE, "");
-  XSetLocaleModifiers("");
+  XSetLocaleModifiers("@im=");
 
   XSetIOErrorHandler(io_error_handler);
   XSetErrorHandler(xerror_handler);
@@ -716,6 +717,7 @@ void fl_open_display(Display* d) {
   fl_XaImageBmp         = XInternAtom(d, "image/bmp",           0);
   fl_XaImagePNG         = XInternAtom(d, "image/png",           0);
   fl_INCR               = XInternAtom(d, "INCR",                0);
+  fl_NET_WM_PID         = XInternAtom(d, "_NET_WM_PID",         0);
   fl_NET_WM_NAME        = XInternAtom(d, "_NET_WM_NAME",        0);
   fl_NET_WM_ICON_NAME   = XInternAtom(d, "_NET_WM_ICON_NAME",   0);
   fl_NET_SUPPORTING_WM_CHECK = XInternAtom(d, "_NET_SUPPORTING_WM_CHECK", 0);
@@ -891,8 +893,8 @@ int Fl::clipboard_contains(const char *type)
     if (event.type == SelectionNotify && event.xselection.property == None) return 0;
     i++; 
   }
-  while (i < 10 && event.type != SelectionNotify);
-  if (i >= 10) return 0;
+  while (i < 50 && event.type != SelectionNotify);
+  if (i >= 50) return 0;
   XGetWindowProperty(fl_display,
 		     event.xselection.requestor,
 		     event.xselection.property,
@@ -992,6 +994,13 @@ static int get_xwinprop(Window wnd, Atom prop, long max_length,
 
 void Fl::copy(const char *stuff, int len, int clipboard, const char *type) {
   if (!stuff || len<0) return;
+
+  if (clipboard >= 2) {
+    copy(stuff, len, 0, type);
+    copy(stuff, len, 1, type);
+    return;
+  }
+
   if (len+1 > fl_selection_buffer_length[clipboard]) {
     delete[] fl_selection_buffer[clipboard];
     fl_selection_buffer[clipboard] = new char[len+100];
@@ -1469,9 +1478,9 @@ fprintf(stderr,"\n");*/
       sn_buffer[bytesread] = 0;
       convert_crlf(sn_buffer, bytesread);
     }
+    if (!fl_selection_requestor) return 0;
     if (Fl::e_clipboard_type == Fl::clipboard_image) {
       if (bytesread == 0) return 0;
-      Fl_Image *image = 0;
       static char tmp_fname[21];
       static Fl_Shared_Image *shared = 0;
       strcpy(tmp_fname, "/tmp/clipboardXXXXXX");
@@ -1487,18 +1496,23 @@ fprintf(stderr,"\n");*/
       shared = Fl_Shared_Image::get(tmp_fname);
       unlink(tmp_fname);
       if (!shared) return 0;
-      image = shared->copy();
+      uchar *rgb = new uchar[shared->w() * shared->h() * shared->d()];
+      memcpy(rgb, shared->data()[0], shared->w() * shared->h() * shared->d());
+      Fl_RGB_Image *image = new Fl_RGB_Image(rgb, shared->w(), shared->h(), shared->d());
       shared->release();
+      image->alloc_array = 1;
       Fl::e_clipboard_data = (void*)image;
     }
-    if (!fl_selection_requestor) return 0;
-
-    if (Fl::e_clipboard_type == Fl::clipboard_plain_text) {
+    else if (Fl::e_clipboard_type == Fl::clipboard_plain_text) {
       Fl::e_text = sn_buffer ? (char*)sn_buffer : (char *)"";
       Fl::e_length = bytesread;
       }
     int old_event = Fl::e_number;
-    fl_selection_requestor->handle(Fl::e_number = FL_PASTE);
+    int retval = fl_selection_requestor->handle(Fl::e_number = FL_PASTE);
+    if (!retval && Fl::e_clipboard_type == Fl::clipboard_image) {
+      delete (Fl_RGB_Image*)Fl::e_clipboard_data;
+      Fl::e_clipboard_data = NULL;
+    }
     Fl::e_number = old_event;
     // Detect if this paste is due to Xdnd by the property name (I use
     // XA_SECONDARY for that) and send an XdndFinished message. It is not
@@ -1857,7 +1871,7 @@ fprintf(stderr,"\n");*/
     case 149: keysym = FL_Menu; break;
     }
 #  endif
-#  if BACKSPACE_HACK
+#  ifdef BACKSPACE_HACK
     // Attempt to fix keyboards that send "delete" for the key in the
     // upper-right corner of the main keyboard.  But it appears that
     // very few of these remain?
@@ -2211,6 +2225,7 @@ int Fl_X::ewmh_supported() {
   static int result = -1;
 
   if (result == -1) {
+    fl_open_display();
     result = 0;
     unsigned long nitems;
     unsigned long *words = 0;
@@ -2227,6 +2242,23 @@ int Fl_X::ewmh_supported() {
   }
 
   return result;
+}
+
+int Fl_X::xrender_supported() {
+#if HAVE_XRENDER
+  static int result = -1;
+
+  if (result == -1) {
+    fl_open_display();
+
+    int nop1, nop2;
+    result = XRenderQueryExtension(fl_display, &nop1, &nop2);
+  }
+
+  return result;
+#else
+  return 0;
+#endif
 }
 
 extern Fl_Window *fl_xfocus;
@@ -2452,6 +2484,15 @@ void Fl_X::make_xid(Fl_Window* win, XVisualInfo *visual, Colormap colormap)
                                mask, &attr));
   int showit = 1;
 
+  // Set WM_CLIENT_MACHINE and WM_LOCALE_NAME
+  XSetWMProperties(fl_display, xp->xid, NULL, NULL, NULL, 0, NULL, NULL, NULL);
+
+  // Set _NET_WM_PID
+  long pid;
+  pid = getpid();
+  XChangeProperty(fl_display, xp->xid, fl_NET_WM_PID,
+		  XA_CARDINAL, 32, 0, (unsigned char *)&pid, 1);
+
   if (!win->parent() && !attr.override_redirect) {
     // Communicate all kinds 'o junk to the X Window Manager:
 
@@ -2661,6 +2702,8 @@ void Fl_Window::size_range_() {
 static unsigned long *default_net_wm_icons = 0L;
 static size_t default_net_wm_icons_size = 0;
 
+// Note: icons[] *must* contain at least <count> valid image pointers (!NULL),
+//  but: <count> *may* be 0
 static void icons_to_property(const Fl_RGB_Image *icons[], int count,
                               unsigned long **property, size_t *len) {
   size_t sz;
@@ -2684,9 +2727,11 @@ static void icons_to_property(const Fl_RGB_Image *icons[], int count,
     data[1] = image->h();
     data += 2;
 
+    const int extra_data = image->ld() ? (image->ld()-image->w()*image->d()) : 0;
+
     const uchar *in = (const uchar*)*image->data();
-    for (int y = 0;y < image->h();y++) {
-      for (int x = 0;x < image->w();x++) {
+    for (int y = 0; y < image->h(); y++) {
+      for (int x = 0; x < image->w(); x++) {
         switch (image->d()) {
         case 1:
           *data = ( 0xff<<24) | (in[0]<<16) | (in[0]<<8) | in[0];
@@ -2704,7 +2749,7 @@ static void icons_to_property(const Fl_RGB_Image *icons[], int count,
         in += image->d();
         data++;
       }
-      in += image->ld();
+      in += extra_data;
     }
   }
 }
@@ -2820,6 +2865,7 @@ int Fl_X::set_cursor(const Fl_RGB_Image *image, int hotx, int hoty) {
   if (!cursor)
     return 0;
 
+  const int extra_data = image->ld() ? (image->ld()-image->w()*image->d()) : 0;
   const uchar *i = (const uchar*)*image->data();
   XcursorPixel *o = cursor->pixels;
   for (int y = 0;y < image->h();y++) {
@@ -2841,7 +2887,7 @@ int Fl_X::set_cursor(const Fl_RGB_Image *image, int hotx, int hoty) {
       i += image->d();
       o++;
     }
-    i += image->ld();
+    i += extra_data;
   }
 
   cursor->xhot = hotx;
@@ -2988,6 +3034,11 @@ void Fl_Paged_Device::print_window(Fl_Window *win, int x_offset, int y_offset)
     this->print_widget(win, x_offset, y_offset);
     return;
   }
+  draw_decorated_window(win, x_offset, y_offset, this);
+}
+
+void Fl_Paged_Device::draw_decorated_window(Fl_Window *win, int x_offset, int y_offset, Fl_Surface_Device *toset)
+{
   Fl_Display_Device::display_device()->set_current();
   win->show();
   Fl::check();
@@ -3003,7 +3054,7 @@ void Fl_Paged_Device::print_window(Fl_Window *win, int x_offset, int y_offset)
   // and I don't know where to find the window decoration
   if (do_it && root == parent) do_it = 0; 
   if (!do_it) {
-    this->set_current();
+    toset->set_current();
     this->print_widget(win, x_offset, y_offset);
     return;
   }
@@ -3016,7 +3067,7 @@ void Fl_Paged_Device::print_window(Fl_Window *win, int x_offset, int y_offset)
     bottom_image = fl_read_image(NULL, 0, bt + win->h(), -(win->w() + 2*bx), bx);
   }
   fl_window = from;
-  this->set_current();
+  toset->set_current();
   if (top_image) {
     fl_draw_image(top_image, x_offset, y_offset, win->w() + 2 * bx, bt, 3);
     delete[] top_image;
@@ -3074,14 +3125,29 @@ void printFront(Fl_Widget *o, void *data)
   o->window()->show();
 }
 
+#include <FL/Fl_Copy_Surface.H>
+void copyFront(Fl_Widget *o, void *data)
+{
+  o->window()->hide();
+  Fl_Window *win = Fl::first_window();
+  if (!win) return;
+  Fl_Copy_Surface *surf = new Fl_Copy_Surface(win->decorated_w(), win->decorated_h());
+  surf->set_current();
+  surf->draw_decorated_window(win); // draw the window content
+  delete surf; // put the window on the clipboard
+  o->window()->show();
+}
+
 void preparePrintFront(void)
 {
   static int first=1;
   if(!first) return;
   first=0;
-  static Fl_Window w(0,0,150,30);
-  static Fl_Button b(0,0,w.w(),w.h(), "Print front window");
-  b.callback(printFront);
+  static Fl_Window w(0,0,140,60);
+  static Fl_Button bp(0,0,w.w(),30, "Print front window");
+  bp.callback(printFront);
+  static Fl_Button bc(0,30,w.w(),30, "Copy front window");
+  bc.callback(copyFront);
   w.end();
   w.show();
 }
@@ -3090,5 +3156,5 @@ void preparePrintFront(void)
 #endif
 
 //
-// End of "$Id: Fl_x.cxx 10412 2014-10-29 20:25:46Z cand $".
+// End of "$Id: Fl_x.cxx 12028 2016-10-14 16:35:44Z AlbrechtS $".
 //

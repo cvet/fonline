@@ -1,9 +1,9 @@
 //
-// "$Id: glut_compatability.cxx 9697 2012-10-08 10:32:05Z manolo $"
+// "$Id: glut_compatability.cxx 11787 2016-06-22 05:44:14Z manolo $"
 //
 // GLUT emulation routines for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -34,10 +34,13 @@
 #    define GLX_GLXEXT_LEGACY
 #    include <GL/glx.h>
 #  endif // HAVE_GLXGETPROCADDRESSARB
-#  ifdef HAVE_DLFCN_H
+#  if HAVE_DLFCN_H
 #    include <dlfcn.h>
 #  endif // HAVE_DLFCN_H
 #  define MAXWINDOWS 32
+#  ifdef __APPLE__
+#    include <FL/x.H>
+#  endif
 static Fl_Glut_Window *windows[MAXWINDOWS+1];
 
 static void (*glut_idle_func)() = 0; // global glut idle function
@@ -59,7 +62,7 @@ static int indraw;
 void Fl_Glut_Window::draw() {
   glut_window = this;
   indraw = 1;
-  if (!valid()) {reshape(w(),h()); valid(1);}
+  if (!valid()) {reshape(pixel_w(),pixel_h()); valid(1);}
   display();
   indraw = 0;
 }
@@ -70,7 +73,7 @@ void glutSwapBuffers() {
 
 void Fl_Glut_Window::draw_overlay() {
   glut_window = this;
-  if (!valid()) {reshape(w(),h()); valid(1);}
+  if (!valid()) {reshape(pixel_w(),pixel_h()); valid(1);}
   overlaydisplay();
 }
 
@@ -80,6 +83,9 @@ int Fl_Glut_Window::handle(int event) {
   make_current();
   int ex = Fl::event_x();
   int ey = Fl::event_y();
+  float factor = pixels_per_unit();
+  ex = int(ex * factor + 0.5);
+  ey = int(ey * factor + 0.5);
   int button;
   switch (event) {
 
@@ -377,8 +383,8 @@ int glutGet(GLenum type) {
   case GLUT_RETURN_ZERO: return 0;
   case GLUT_WINDOW_X: return glut_window->x();
   case GLUT_WINDOW_Y: return glut_window->y();
-  case GLUT_WINDOW_WIDTH: return glut_window->w();
-  case GLUT_WINDOW_HEIGHT: return glut_window->h();
+  case GLUT_WINDOW_WIDTH: return glut_window->pixel_w();
+  case GLUT_WINDOW_HEIGHT: return glut_window->pixel_h();
   case GLUT_WINDOW_PARENT:
     if (glut_window->parent())
       return ((Fl_Glut_Window *)(glut_window->parent()))->number;
@@ -437,7 +443,7 @@ GLUTproc glutGetProcAddress(const char *procName) {
 #  ifdef WIN32
   return (GLUTproc)wglGetProcAddress((LPCSTR)procName);
 
-#  elif defined(HAVE_DLSYM) && defined(HAVE_DLFCN_H)
+#  elif (HAVE_DLSYM && HAVE_DLFCN_H)
   char symbol[1024];
 
   snprintf(symbol, sizeof(symbol), "_%s", procName);
@@ -509,5 +515,5 @@ void glutIdleFunc(void (*f)())
 #endif // HAVE_GL
 
 //
-// End of "$Id: glut_compatability.cxx 9697 2012-10-08 10:32:05Z manolo $".
+// End of "$Id: glut_compatability.cxx 11787 2016-06-22 05:44:14Z manolo $".
 //

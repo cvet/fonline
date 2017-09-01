@@ -1,5 +1,5 @@
 //
-// "$Id: list_visuals.cxx 9979 2013-09-20 03:36:02Z greg.ercolano $"
+// "$Id: list_visuals.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $"
 //
 // Visual list utility for the Fast Light Tool Kit (FLTK).
 //
@@ -11,7 +11,7 @@
 // This file may be #included in another program to make a function to
 // call to list the visuals.  Fl.H must be included first to indicate this.
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -36,6 +36,8 @@ int main(int, char**) {
 #else
 
 #include <config.h>
+
+#define HAVE_MULTIBUF 0
 
 #ifndef Fl_H
 
@@ -229,5 +231,5 @@ int main(int argc, char **argv) {
 #endif
 
 //
-// End of "$Id: list_visuals.cxx 9979 2013-09-20 03:36:02Z greg.ercolano $".
+// End of "$Id: list_visuals.cxx 11094 2016-01-31 02:49:56Z AlbrechtS $".
 //

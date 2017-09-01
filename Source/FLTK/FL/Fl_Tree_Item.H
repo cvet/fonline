@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Tree_Item.H 10271 2014-09-04 18:56:52Z greg.ercolano $"
+// "$Id: Fl_Tree_Item.H 12034 2016-10-17 12:45:55Z AlbrechtS $"
 //
 
 #ifndef FL_TREE_ITEM_H
@@ -60,8 +60,8 @@
 /// The following shows the Fl_Tree_Item's dimensions, useful when overriding
 /// the draw_item_content() method:
 ///
-///     \image html  Fl_Tree_Item-dimensions.png "Fl_Tree_Item's internal dimensions." width=6cm
-///     \image latex Fl_Tree_Item-dimensions.png "Fl_Tree_Item's internal dimensions." width=6cm
+///   \image html  Fl_Tree_Item-dimensions.png "Fl_Tree_Item's internal dimensions." width=6cm
+///   \image latex Fl_Tree_Item-dimensions.png "Fl_Tree_Item's internal dimensions." width=6cm
 ///
 class Fl_Tree;
 class FL_EXPORT Fl_Tree_Item {
@@ -100,6 +100,9 @@ class FL_EXPORT Fl_Tree_Item {
   int                     _label_xywh[4];	// xywh of label
   Fl_Widget              *_widget;		// item's label widget (optional)
   Fl_Image               *_usericon;		// item's user-specific icon (optional)
+#if FLTK_ABI_VERSION >= 10304
+  Fl_Image               *_userdeicon;		// deactivated usericon
+#endif
   Fl_Tree_Item_Array      _children;		// array of child items
   Fl_Tree_Item           *_parent;		// parent item (=0 if root)
   void                   *_userdata;    	// user data that can be associated with an item
@@ -306,7 +309,15 @@ public:
 #if FLTK_ABI_VERSION >= 10303
   const Fl_Tree_Prefs& prefs() const;
   /// Return the tree for this item.
+  /// \version 1.3.3 (ABI feature)
   const Fl_Tree *tree() const {
+    return(_tree);
+  }
+#endif
+#if FLTK_ABI_VERSION >= 10304
+  /// Return the tree for this item.
+  /// \version 1.3.4 (ABI feature)
+  Fl_Tree *tree() {
     return(_tree);
   }
 #endif
@@ -422,7 +433,15 @@ public:
   }
   int visible_r() const;
 
-  /// Set the item's user icon to an Fl_Image. '0' will disable.
+  /// Set the item's user icon to an Fl_Image. Use '0' to disable.
+  /// No internal copy is made, caller must manage icon's memory.
+  ///
+  /// Note, if you expect your items to be deactivated(),
+  /// use userdeicon(Fl_Image*) to set up a 'grayed out' version of your icon
+  /// to be used for display.
+  ///
+  /// \see userdeicon(Fl_Image*)
+  ///
   void usericon(Fl_Image *val) {
     _usericon = val;
     recalc_tree();		// may change tree geometry
@@ -431,6 +450,42 @@ public:
   Fl_Image *usericon() const {
     return(_usericon);
   }
+  /// Set the usericon to draw when the item is deactivated. Use '0' to disable.
+  /// No internal copy is made; caller must manage icon's memory.
+  ///
+  /// To create a typical 'grayed out' version of your usericon image,
+  /// you can do the following:
+  ///
+  /// \code
+  ///      // Create tree + usericon for items
+  ///      Fl_Tree *tree = new Fl_Tree(..);
+  ///      Fl_Image *usr_icon = new Fl_Pixmap(..); // your usericon
+  ///      Fl_Image *de_icon  = usr_icon->copy();  // make a copy, and..
+  ///      de_icon->inactive();                    // make it 'grayed out'
+  ///      ...
+  ///      for ( .. ) {                 // item loop..
+  ///        item = tree->add("...");   // create new item
+  ///        item->usericon(usr_icon);  // assign usericon to items
+  ///        item->userdeicon(de_icon); // assign userdeicon to items
+  ///        ..
+  ///      }
+  /// \endcode
+  ///
+  /// In the above example, the app should 'delete' the two icons
+  /// when they're no longer needed (e.g. after the tree is destroyed)
+  ///
+  /// \version 1.3.4
+  ///
+#if FLTK_ABI_VERSION >= 10304
+  void userdeicon(Fl_Image* val) {
+    _userdeicon = val;
+  }
+  /// Return the deactivated version of the user icon, if any.
+  /// Returns 0 if none.
+  Fl_Image* userdeicon() const {
+    return _userdeicon;
+  }
+#endif
   //////////////////
   // Events
   //////////////////
@@ -490,5 +545,5 @@ protected:
 #endif /*FL_TREE_ITEM_H*/
 
 //
-// End of "$Id: Fl_Tree_Item.H 10271 2014-09-04 18:56:52Z greg.ercolano $".
+// End of "$Id: Fl_Tree_Item.H 12034 2016-10-17 12:45:55Z AlbrechtS $".
 //

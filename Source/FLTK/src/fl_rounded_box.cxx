@@ -1,9 +1,9 @@
 //
-// "$Id: fl_rounded_box.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: fl_rounded_box.cxx 11814 2016-07-15 22:10:23Z AlbrechtS $"
 //
 // Rounded box drawing routines for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -19,42 +19,56 @@
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 
+// Constants for rounded corner drawing algorithm:
+//
+//  RN = number of segments per corner (must match offset array size)
+//  RS = max. corner radius
+//  BW = box shadow width
+
 #define RN	5
 #define RS	15
 #define BW	3
 
 static double offset[RN] = { 0.0, 0.07612, 0.29289, 0.61732, 1.0};
 
+static inline void fl_vertex_r(double x, double y) {
+  fl_vertex(x + 0.5, y + 0.5);
+}
+
 static void rbox(int fill, int x, int y, int w, int h) {
   int i;
-  int rsx ,rsy, rs;
-  rsx = w*2/5; rsy = h*2/5;
-  if (rsx > rsy) rs = rsy; else  rs = rsx;
+  int rs, rsy;
+  rs = w*2/5; rsy = h*2/5;
+  if (rs > rsy) rs = rsy; // use smaller radius
   if (rs > RS) rs = RS;
-  rsx = rs; rsy = rs;
+  if (rs == 5) rs = 4;	// use only even sizes for small corners (STR #2943)
+  if (rs == 7) rs = 8;	// note: 8 is better than 6 (really)
 
   if (fill) fl_begin_polygon(); else fl_begin_loop();
   for (i=0; i<RN; i++)
-    fl_vertex(x + offset[RN-i-1]*rsx, y + offset[i] * rsy);
+    fl_vertex_r(x + offset[RN-i-1]*rs, y + offset[i] * rs);
   for (i=0; i<RN; i++)
-    fl_vertex(x + offset[i]*rsx, y + h-1 - offset[RN-i-1] * rsy);
+    fl_vertex_r(x + offset[i]*rs, y + h-1 - offset[RN-i-1] * rs);
   for (i=0; i<RN; i++)
-    fl_vertex(x + w-1 - offset[RN-i-1]*rsx, y + h-1 - offset[i] * rsy);
+    fl_vertex_r(x + w-1 - offset[RN-i-1]*rs, y + h-1 - offset[i] * rs);
   for (i=0; i<RN; i++)
-    fl_vertex(x + w-1 - offset[i]*rsx, y + offset[RN-i-1] * rsy);
+    fl_vertex_r(x + w-1 - offset[i]*rs, y + offset[RN-i-1] * rs);
   if (fill) fl_end_polygon(); else fl_end_loop();
 }
 
 static void fl_rflat_box(int x, int y, int w, int h, Fl_Color c) {
-  fl_color(c); rbox(1, x, y, w, h); rbox(0, x, y, w, h);
+  Fl::set_box_color(c);
+  rbox(1, x, y, w, h); rbox(0, x, y, w, h);
 }
 
 static void fl_rounded_frame(int x, int y, int w, int h, Fl_Color c) {
-  fl_color(c); rbox(0, x, y, w, h);
+  Fl::set_box_color(c);
+  rbox(0, x, y, w, h);
 }
 
 static void fl_rounded_box(int x, int y, int w, int h, Fl_Color c) {
-  fl_color(c); rbox(1, x, y, w, h);
+  Fl::set_box_color(c);
+  rbox(1, x, y, w, h);
   fl_color(FL_BLACK); rbox(0, x, y, w, h);
 }
 
@@ -86,5 +100,5 @@ Fl_Boxtype fl_define_FL_RSHADOW_BOX() {
 }
 
 //
-// End of "$Id: fl_rounded_box.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: fl_rounded_box.cxx 11814 2016-07-15 22:10:23Z AlbrechtS $".
 //

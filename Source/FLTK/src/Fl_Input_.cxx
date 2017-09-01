@@ -1,5 +1,5 @@
 //
-// "$Id: Fl_Input_.cxx 10402 2014-10-28 15:33:17Z cand $"
+// "$Id: Fl_Input_.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $"
 //
 // Common input widget routines for the Fast Light Tool Kit (FLTK).
 //
@@ -1213,7 +1213,7 @@ int Fl_Input_::static_value(const char* str, int len) {
       int i = 0;
       // find first different character:
       if (value_) {
-	for (; i<size_ && i<len && str[i]==value_[i]; i++);
+	for (; i<size_ && i<len && str[i]==value_[i]; i++) {/*empty*/}
 	if (i==size_ && i==len) return 0;
       }
       minimal_update(i);
@@ -1338,5 +1338,5 @@ unsigned int Fl_Input_::index(int i) const
 }
 
 //
-// End of "$Id: Fl_Input_.cxx 10402 2014-10-28 15:33:17Z cand $".
+// End of "$Id: Fl_Input_.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $".
 //

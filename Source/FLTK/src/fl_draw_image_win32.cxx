@@ -1,9 +1,9 @@
 //
-// "$Id: fl_draw_image_win32.cxx 9293 2012-03-18 18:48:29Z manolo $"
+// "$Id: fl_draw_image_win32.cxx 11270 2016-03-02 15:45:26Z AlbrechtS $"
 //
 // WIN32 image drawing code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2012 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -103,6 +103,8 @@ static void monodither(uchar* to, const uchar* from, int w, int delta) {
 
 #endif // USE_COLORMAP
 
+static int fl_abs(int v) { return v<0 ? -v : v; }
+
 static void innards(const uchar *buf, int X, int Y, int W, int H,
 		    int delta, int linedelta, int depth,
 		    Fl_Draw_Image_Cb cb, void* userdata)
@@ -117,7 +119,7 @@ static void innards(const uchar *buf, int X, int Y, int W, int H,
   if (indexed || !fl_can_do_alpha_blending()) 
     depth = (depth-1)|1;
 
-  if (!linedelta) linedelta = W*delta;
+  if (!linedelta) linedelta = W*fl_abs(delta);
 
   int x, y, w, h;
   fl_clip_box(X,Y,W,H,x,y,w,h);
@@ -143,11 +145,12 @@ static void innards(const uchar *buf, int X, int Y, int W, int H,
   } else
 #endif
   if (depth<3) {
+    RGBQUAD *bmi_colors = &bmi.bmiColors[0];	// suppress warning (STR #3199)
     for (int i=0; i<256; i++) {
-      bmi.bmiColors[i].rgbBlue = (uchar)i;
-      bmi.bmiColors[i].rgbGreen = (uchar)i;
-      bmi.bmiColors[i].rgbRed = (uchar)i;
-      bmi.bmiColors[i].rgbReserved = (uchar)0; // must be zero
+      bmi_colors[i].rgbBlue = (uchar)i;		// bmi.bmiColors[i]...
+      bmi_colors[i].rgbGreen = (uchar)i;
+      bmi_colors[i].rgbRed = (uchar)i;
+      bmi_colors[i].rgbReserved = (uchar)0; // must be zero
     }
   }
   bmi.bmiHeader.biWidth = w;
@@ -277,8 +280,6 @@ static void innards(const uchar *buf, int X, int Y, int W, int H,
   }
 }
 
-static int fl_abs(int v) { return v<0 ? -v : v; }
-
 void Fl_GDI_Graphics_Driver::draw_image(const uchar* buf, int x, int y, int w, int h, int d, int l){
   if (fl_abs(d)&FL_IMAGE_WITH_ALPHA) {
     d ^= FL_IMAGE_WITH_ALPHA;
@@ -332,5 +333,5 @@ void fl_rectf(int x, int y, int w, int h, uchar r, uchar g, uchar b) {
 }
 
 //
-// End of "$Id: fl_draw_image_win32.cxx 9293 2012-03-18 18:48:29Z manolo $".
+// End of "$Id: fl_draw_image_win32.cxx 11270 2016-03-02 15:45:26Z AlbrechtS $".
 //

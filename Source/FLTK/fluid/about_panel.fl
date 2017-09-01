@@ -1,13 +1,13 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0303 
-header_name {.h} 
+version 1.0304
+header_name {.h}
 code_name {.cxx}
 comment {//
-// "$Id: about_panel.fl 10420 2014-10-30 17:24:57Z AlbrechtS $"
+// "$Id: about_panel.fl 11952 2016-09-20 12:57:18Z AlbrechtS $"
 //
 // About dialog for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2014 by Bill Spitzak and others.
+// Copyright 1998-2016 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -20,17 +20,17 @@ comment {//
 //     http://www.fltk.org/str.php
 //
 } {in_source in_header
-} 
+}
 
 decl {void show_help(const char *name);} {public local
-} 
+}
 
 Function {make_about_panel()} {open
 } {
   Fl_Window about_panel {
     label {About FLUID} open selected
-    xywh {340 195 345 180} type Double color 50 selection_color 47 hotspot
-    code0 {\#include "../src/flstring.h"} non_modal visible
+    xywh {340 195 345 180} type Double color 50 selection_color 47 hide hotspot
+    code0 {\#include "../src/flstring.h"} non_modal
   } {
     Fl_Box {} {
       image {icons/fluid-96.xpm} xywh {10 10 115 120}
@@ -45,7 +45,7 @@ Version x.x.x}
       code2 {o->copy_label(about);}
     }
     Fl_Box {} {
-      label {Copyright 1998-2014 by
+      label {Copyright 1998-2016 by
 Bill Spitzak and others}
       xywh {135 90 200 45} align 148
     }
@@ -60,14 +60,14 @@ Bill Spitzak and others}
       xywh {250 145 83 25}
     }
   }
-} 
+}
 
 data fluid_org_png {
   comment {Embedded image for internal fluid.html web page.} public local filename {../documentation/src/fluid-org.png}
-} 
+}
 
 comment {
 //
-// End of "$Id: about_panel.fl 10420 2014-10-30 17:24:57Z AlbrechtS $".
+// End of "$Id: about_panel.fl 11952 2016-09-20 12:57:18Z AlbrechtS $".
 //} {in_source in_header
-} 
+}

@@ -1,9 +1,9 @@
 //
-// "$Id: arc.cxx 9392 2012-04-24 02:06:52Z fabien $"
+// "$Id: arc.cxx 10667 2015-04-03 12:31:58Z AlbrechtS $"
 //
 // Arc drawing test program for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -75,11 +75,7 @@ int main(int argc, char** argv) {
     s->step(1);
     s->value(args[n]);
     s->align(FL_ALIGN_LEFT);
-#ifdef __LP64__
-    s->callback(slider_cb, (void*)(long long) n);
-#else
-    s->callback(slider_cb, (void*) n);
-#endif
+    s->callback(slider_cb, (void*)(fl_intptr_t)n);
   }
 
   window.end();
@@ -89,6 +85,5 @@ int main(int argc, char** argv) {
 
 
 //
-// End of "$Id: arc.cxx 9392 2012-04-24 02:06:52Z fabien $".
+// End of "$Id: arc.cxx 10667 2015-04-03 12:31:58Z AlbrechtS $".
 //
-

@@ -1,5 +1,8 @@
+# *************************************************************************
+#  FLTK - DO NOT CHANGE when upgrading the JPEG library, unless required. *
+# *************************************************************************
 #
-# "$Id: Makefile 8864 2011-07-19 04:49:30Z greg.ercolano $"
+# "$Id: Makefile 10626 2015-03-16 16:57:13Z AlbrechtS $"
 #
 # JPEG library makefile for the Fast Light Toolkit (FLTK).
 #
@@ -144,5 +147,5 @@ include makedepend
 $(OBJS):	../makeinclude
 
 #
-# End of "$Id: Makefile 8864 2011-07-19 04:49:30Z greg.ercolano $".
+# End of "$Id: Makefile 10626 2015-03-16 16:57:13Z AlbrechtS $".
 #

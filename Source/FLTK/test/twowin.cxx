@@ -1,9 +1,9 @@
 //
-// "$Id: twowin.cxx 10341 2014-09-27 00:07:27Z AlbrechtS $"
+// "$Id: twowin.cxx 10565 2015-02-09 18:04:31Z AlbrechtS $"
 //
 // Cross-window focus test program for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2014 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -31,7 +31,7 @@ static void cb2(Fl_Widget *, void *) {
   b1->take_focus();
 }
 
-int main() {
+int main(int argc, char **argv) {
 
   Fl_Double_Window *win1 = new Fl_Double_Window(200, 200);
   Fl_Button *bb1 = new Fl_Button(10, 10, 100, 100, "b1");
@@ -50,11 +50,11 @@ int main() {
   win1->position(200, 200);
   win2->position(400, 200);
 
-  win1->show();
+  win1->show(argc,argv);
   win2->show();
   return Fl::run();
 }
 
 //
-// End of "$Id: twowin.cxx 10341 2014-09-27 00:07:27Z AlbrechtS $".
+// End of "$Id: twowin.cxx 10565 2015-02-09 18:04:31Z AlbrechtS $".
 //

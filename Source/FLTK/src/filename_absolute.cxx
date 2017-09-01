@@ -1,5 +1,5 @@
 //
-// "$Id: filename_absolute.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $"
+// "$Id: filename_absolute.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $"
 //
 // Filename expansion routines for the Fast Light Tool Kit (FLTK).
 //
@@ -83,7 +83,7 @@ int fl_filename_absolute(char *to, int tolen, const char *from) {
   while (*start == '.') {
     if (start[1]=='.' && isdirsep(start[2])) {
       char *b;
-      for (b = a-1; b >= temp && !isdirsep(*b); b--);
+      for (b = a-1; b >= temp && !isdirsep(*b); b--) {/*empty*/}
       if (b < temp) break;
       a = b;
       start += 3;
@@ -259,5 +259,5 @@ fl_filename_relative(char       *to,	// O - Relative filename
 
 
 //
-// End of "$Id: filename_absolute.cxx 8864 2011-07-19 04:49:30Z greg.ercolano $".
+// End of "$Id: filename_absolute.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $".
 //

@@ -1,9 +1,9 @@
 //
-// "$Id: Fl_Menu.cxx 10211 2014-06-28 12:29:51Z manolo $"
+// "$Id: Fl_Menu.cxx 11321 2016-03-08 16:58:43Z AlbrechtS $"
 //
 // Menu code for the Fast Light Tool Kit (FLTK).
 //
-// Copyright 1998-2010 by Bill Spitzak and others.
+// Copyright 1998-2015 by Bill Spitzak and others.
 //
 // This library is free software. Distribution and use rights are outlined in
 // the file "COPYING" which should have been included with this file.  If this
@@ -29,7 +29,32 @@
 #include <stdio.h>
 #include "flstring.h"
 
-/** Size of the menu starting from this menu item */
+/** Size of the menu starting from this menu item.
+
+  This method counts all menu items starting with \p this menu item,
+  including all menu items in the same (sub)menu level, all nested
+  submenus, \b and the terminating empty (0) menu item.
+
+  It does \b not count menu items referred to by FL_SUBMENU_POINTER
+  menu items (except the single menu item with FL_SUBMENU_POINTER).
+
+  All menu items counted are consecutive in memory (one array).
+
+  Example:
+
+  \code
+    schemechoice = new Fl_Choice(X+125,Y,140,25,"FLTK Scheme");
+    schemechoice->add("none");
+    schemechoice->add("plastic");
+    schemechoice->add("gtk+");
+    schemechoice->add("gleam");
+    printf("schemechoice->menu()->size() = %d\n", schemechoice->menu()->size());
+  \endcode
+
+  Output:
+
+  schemechoice->menu()->%size() = 5
+*/
 int Fl_Menu_Item::size() const {
   const Fl_Menu_Item* m = this;
   int nest = 0;
@@ -189,13 +214,11 @@ void Fl_Menu_Item::draw(int x, int y, int w, int h, const Fl_Menu_* m,
 	int tW = (W - Fl::box_dw(FL_ROUND_DOWN_BOX)) / 2 + 1;
 	if ((W - tW) & 1) tW++;	// Make sure difference is even to center
 	int td = (W - tW) / 2;
-        if (Fl::scheme()) {
-	  if (!strcmp(Fl::scheme(), "gtk+")) {
-	    fl_color(FL_SELECTION_COLOR);
-	    tW --;
-	    fl_pie(x + td + 1, y + d + td - 1, tW + 3, tW + 3, 0.0, 360.0);
-	    fl_color(fl_color_average(FL_WHITE, FL_SELECTION_COLOR, 0.2f));
-	  } else fl_color(labelcolor_);
+        if (Fl::is_scheme("gtk+")) {
+	  fl_color(FL_SELECTION_COLOR);
+	  tW --;
+	  fl_pie(x + td + 1, y + d + td - 1, tW + 3, tW + 3, 0.0, 360.0);
+	  fl_color(fl_color_average(FL_WHITE, FL_SELECTION_COLOR, 0.2f));
 	} else fl_color(labelcolor_);
 
 	switch (tW) {
@@ -224,7 +247,7 @@ void Fl_Menu_Item::draw(int x, int y, int w, int h, const Fl_Menu_* m,
 	    break;
 	}
 
-	if (Fl::scheme() && !strcmp(Fl::scheme(), "gtk+")) {
+	if (Fl::is_scheme("gtk+")) {
 	  fl_color(fl_color_average(FL_WHITE, FL_SELECTION_COLOR, 0.5));
 	  fl_arc(x + td + 2, y + d + td, tW + 1, tW + 1, 60.0, 180.0);
 	}
@@ -232,7 +255,7 @@ void Fl_Menu_Item::draw(int x, int y, int w, int h, const Fl_Menu_* m,
     } else {
       fl_draw_box(FL_DOWN_BOX, x+2, y+d, W, W, FL_BACKGROUND2_COLOR);
       if (value()) {
-	if (Fl::scheme() && !strcmp(Fl::scheme(), "gtk+")) {
+	if (Fl::is_scheme("gtk+")) {
 	  fl_color(FL_SELECTION_COLOR);
 	} else {
 	  fl_color(labelcolor_);
@@ -327,7 +350,7 @@ menuwindow::menuwindow(const Fl_Menu_Item* m, int X, int Y, int Wp, int Hp,
     if (w1 > W) W = w1;
     // calculate the maximum width of all shortcuts
     if (m->shortcut_) {
-      // s is a pointerto the utf8 string for the entire shortcut
+      // s is a pointer to the UTF-8 string for the entire shortcut
       // k points only to the key part (minus the modifier keys)
       const char *k, *s = fl_shortcut_label(m->shortcut_, &k);
       if (fl_utf_nb_char((const unsigned char*)k, (int) strlen(k))<=4) {
@@ -459,10 +482,12 @@ void menuwindow::drawentry(const Fl_Menu_Item* m, int n, int eraseit) {
                    button ? button->textsize() : FL_NORMAL_SIZE);
     const char *k, *s = fl_shortcut_label(m->shortcut_, &k);
     if (fl_utf_nb_char((const unsigned char*)k, (int) strlen(k))<=4) {
-      // righ-align the modifiers and left-align the key
-      char buf[32]; strcpy(buf, s); buf[k-s] = 0;
+      // right-align the modifiers and left-align the key
+      char *buf = (char*)malloc(k-s+1);
+      memcpy(buf, s, k-s); buf[k-s] = 0;
       fl_draw(buf, xx, yy, ww-shortcutWidth, hh, FL_ALIGN_RIGHT);
       fl_draw(  k, xx+ww-shortcutWidth, yy, shortcutWidth, hh, FL_ALIGN_LEFT);
+      free(buf);
     } else {
       // right-align to the menu
       fl_draw(s, xx, yy, ww-4, hh, FL_ALIGN_RIGHT);
@@ -1052,5 +1077,5 @@ const Fl_Menu_Item* Fl_Menu_Item::test_shortcut() const {
 }
 
 //
-// End of "$Id: Fl_Menu.cxx 10211 2014-06-28 12:29:51Z manolo $".
+// End of "$Id: Fl_Menu.cxx 11321 2016-03-08 16:58:43Z AlbrechtS $".
 //

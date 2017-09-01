@@ -16,8 +16,12 @@
  */
 
 /*
- * This file is required on all platforms for utf8 support
+ * This file is required on all platforms for UTF-8 support
  */
+
+#if !defined(WIN32) && !defined(__APPLE__)
+#  include "../Xutf8.h"
+#endif /* !defined(WIN32) && !defined(__APPLE__) */
 
 #include "headers/case.h"
 #include <stdlib.h>

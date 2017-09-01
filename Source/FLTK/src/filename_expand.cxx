@@ -1,5 +1,5 @@
 //
-// "$Id: filename_expand.cxx 9325 2012-04-05 05:12:30Z fabien $"
+// "$Id: filename_expand.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $"
 //
 // Filename expansion routines for the Fast Light Tool Kit (FLTK).
 //
@@ -70,7 +70,7 @@ int fl_filename_expand(char *to,int tolen, const char *from) {
   int ret = 0;
 
   for (char *a=temp; a<end; ) {	// for each slash component
-    char *e; for (e=a; e<end && !isdirsep(*e); e++); // find next slash
+    char *e; for (e=a; e<end && !isdirsep(*e); e++) {/*empty*/} // find next slash
     const char *value = 0; // this will point at substitute value
     switch (*a) {
     case '~':	// a home directory name
@@ -121,5 +121,5 @@ int fl_filename_expand(char *to,int tolen, const char *from) {
 
 
 //
-// End of "$Id: filename_expand.cxx 9325 2012-04-05 05:12:30Z fabien $".
+// End of "$Id: filename_expand.cxx 11243 2016-02-27 15:14:42Z AlbrechtS $".
 //

@@ -1,5 +1,5 @@
 //
-// "$Id: fl_draw_pixmap.cxx 10242 2014-08-22 10:28:50Z AlbrechtS $"
+// "$Id: fl_draw_pixmap.cxx 10568 2015-02-10 14:33:51Z manolo $"
 //
 // Pixmap drawing code for the Fast Light Tool Kit (FLTK).
 //
@@ -253,8 +253,10 @@ int fl_draw_pixmap(const char*const* cdata, int x, int y, Fl_Color bg) {
 #ifdef  __APPLE_QUARTZ__
   if (Fl_Surface_Device::surface() == Fl_Display_Device::display_device()) {
     Fl_RGB_Image* rgb = new Fl_RGB_Image(buffer, w, h, 4);
+    rgb->alloc_array = 1;
     rgb->draw(x, y);
     delete rgb;
+    return 1;
   } else {
 #endif // __APPLE_QUARTZ__
   // build the mask bitmap used by Fl_Pixmap:
@@ -289,5 +291,5 @@ int fl_draw_pixmap(const char*const* cdata, int x, int y, Fl_Color bg) {
 }
 
 //
-// End of "$Id: fl_draw_pixmap.cxx 10242 2014-08-22 10:28:50Z AlbrechtS $".
+// End of "$Id: fl_draw_pixmap.cxx 10568 2015-02-10 14:33:51Z manolo $".
 //
