@@ -1951,7 +1951,7 @@ AnyFrames* SpriteManager::LoadAnimationArt( const string& fname )
         {
             string opt = file_name.substr( delim + 1 );
             string ext = _str( opt ).getFileExtension();
-            opt = opt.substr( 0, opt.size() - ext.size() );
+            opt = _str( opt ).eraseFileExtension();
             for( size_t i = 0; i < opt.length(); i++ )
             {
                 switch( opt[ i ] )
@@ -2285,7 +2285,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
             // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
             string opt = file_name.substr( delim + 1 );
             string ext = _str( opt ).getFileExtension();
-            opt = opt.substr( 0, opt.size() - ext.size() );
+            opt = _str( opt ).eraseFileExtension();
 
             size_t first = opt.find_first_of( '[' );
             size_t last = opt.find_last_of( ']', first );
@@ -3063,7 +3063,7 @@ AnyFrames* SpriteManager::LoadAnimationBam( const string& fname )
     {
         string opt = file_name.substr( delim + 1 );
         string ext = _str( opt ).getFileExtension();
-        opt = opt.substr( 0, opt.size() - ext.size() );
+        opt = _str( opt ).eraseFileExtension();
 
         // Format: fileName$5-6.spr
         istringstream idelim( opt );
