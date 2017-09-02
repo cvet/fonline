@@ -401,7 +401,7 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
     if( !file_binary.IsLoaded() )
     {
         // Get version
-        string file_content = _str( file.GetCStr() ).replace( '\r', '\n', '\n' );
+        string file_content = _str( file.GetCStr() ).normalizeLineEndings();
         string version;
         size_t ver_begin = file_content.find( "#version" );
         if( ver_begin != string::npos )

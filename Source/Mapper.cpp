@@ -279,6 +279,7 @@ bool FOMapper::Init()
         ConsoleHistory.push_back( history_part );
         prev = pos + 1;
     }
+    ConsoleHistory = _str( history_str ).normalizeLineEndings().split( '\n' );
     while( ConsoleHistory.size() > GameOpt.ConsoleHistorySize )
         ConsoleHistory.erase( ConsoleHistory.begin() );
     ConsoleHistoryCur = (int) ConsoleHistory.size();
@@ -3874,7 +3875,7 @@ void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
             return;
         ConsoleHistoryCur--;
         ConsoleStr = ConsoleHistory[ ConsoleHistoryCur ];
-        ConsoleCur = (int) ConsoleStr.length();
+        ConsoleCur = (uint) ConsoleStr.length();
         return;
     case DIK_DOWN:
         if( ConsoleHistoryCur + 1 >= (int) ConsoleHistory.size() )
@@ -3886,7 +3887,7 @@ void FOMapper::ConsoleKeyDown( uchar dik, const char* dik_text )
         }
         ConsoleHistoryCur++;
         ConsoleStr = ConsoleHistory[ ConsoleHistoryCur ];
-        ConsoleCur = (int) ConsoleStr.length();
+        ConsoleCur = (uint) ConsoleStr.length();
         return;
     default:
         Keyb::GetChar( dik, dik_text, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
@@ -3912,10 +3913,7 @@ void FOMapper::ConsoleProcess()
     if( (int) ( Timer::FastTick() - ConsoleKeyTick ) >= CONSOLE_KEY_TICK - ConsoleAccelerate )
     {
         ConsoleKeyTick = Timer::FastTick();
-
         ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
-//		if((ConsoleAccelerate*=4)>=CONSOLE_MAX_ACCELERATE) ConsoleAccelerate=CONSOLE_MAX_ACCELERATE;
-
         Keyb::GetChar( ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS );
     }
 }

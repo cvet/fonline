@@ -57,8 +57,8 @@ void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* positi
     uint  str_len_utf8 = _str( str ).lengthUtf8();
     uint  str_len = (uint) str.length();
 
-    uint  position_ = str_len;
-    uint& pos = ( position ? *position : position_ );
+    uint  position_dummy = str_len;
+    uint& pos = ( position ? *position : position_dummy );
     if( pos > str_len )
         pos = str_len;
 
@@ -90,9 +90,7 @@ void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* positi
             while( pos && ( str[ pos ] & 0xC0 ) == 0x80 )
                 pos--, letter_len++;
 
-            for( uint i = pos; str[ i + letter_len ]; i++ )
-                str[ i ] = str[ i + letter_len ];
-            str[ str_len - letter_len ] = '\0';
+            str.erase( pos, letter_len );
         }
     }
     else if( dik == DIK_DELETE && !ctrl_shift )
@@ -104,9 +102,7 @@ void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* positi
             while( pos_ < str_len && ( str[ pos_ ] & 0xC0 ) == 0x80 )
                 pos_++, letter_len++;
 
-            for( uint i = pos; str[ i + letter_len ]; i++ )
-                str[ i ] = str[ i + letter_len ];
-            str[ str_len - letter_len ] = '\0';
+            str.erase( pos, letter_len );
         }
     }
     else if( dik == DIK_HOME && !ctrl_shift )
@@ -156,7 +152,7 @@ void Keyb::GetChar( uchar dik, const string& dik_text, string& str, uint* positi
                     text_pos--;
                 erase_len_utf8--;
             }
-            text[ text_pos ] = '\0';
+            text.erase( text_pos );
 
             str.insert( pos, text );
             pos += (uint) text.length();

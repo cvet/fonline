@@ -167,6 +167,7 @@ private:
     bool         checkMaxValue;
     int64        minValue;
     int64        maxValue;
+    bool         isTemporary;
 
     // Dynamic data
     PropertyRegistrator* registrator;
@@ -234,15 +235,6 @@ public:
         return result;
     }
 
-    string GetPropValue( Property* prop )
-    {
-        RUNTIME_ASSERT( prop->dataType == Property::DataType::String );
-        RUNTIME_ASSERT( sizeof( string ) == prop->baseSize );
-        uint   data_size;
-        uchar* data = prop->GetPropRawData( this, data_size );
-        return string( (char*) data, data_size );
-    }
-
     template< typename T >
     void SetPropValue( Property* prop, T value )
     {
@@ -281,6 +273,16 @@ private:
     Property*            sendIgnoreProperty;
 };
 
+template< >
+inline string Properties::GetPropValue< string >( Property* prop )
+{
+    RUNTIME_ASSERT( prop->dataType == Property::DataType::String );
+    RUNTIME_ASSERT( sizeof( string ) == prop->baseSize );
+    uint   data_size;
+    uchar* data = prop->GetPropRawData( this, data_size );
+    return string( (char*) data, data_size );
+}
+
 class PropertyRegistrator
 {
     friend class Properties;
@@ -290,8 +292,8 @@ public:
     PropertyRegistrator( bool is_server, const string& class_name );
     ~PropertyRegistrator();
     bool      Init();
-    Property* Register( const string& type_name, const string& name, Property::AccessType access, bool is_const, const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
-    void      SetDefaults( const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr );
+    Property* Register( const string& type_name, const string& name, Property::AccessType access, bool is_const, const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false );
+    void      SetDefaults( const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false );
     void      FinishRegistration();
     uint      GetCount();
     Property* Find( const string& property_name );
@@ -331,6 +333,7 @@ private:
     char*  defaultGroup;
     int64* defaultMinValue;
     int64* defaultMaxValue;
+    bool   defaultTemporary;
 };
 
 #endif // __PROPERTIES__

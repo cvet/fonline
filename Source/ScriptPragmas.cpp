@@ -520,18 +520,18 @@ public:
         int64  max_value = 0;
         string get_callback;
         StrVec set_callbacks;
-        StrVec opt_entries = _str( options ).split( ',' );
-        for( size_t i = 0; i < opt_entries.size(); i++ )
+        bool   is_temporary = false;
+        for( const string& opt_entry_str : _str( options ).split( ',' ) )
         {
-            StrVec opt_entry = _str( opt_entries[ i ] ).split( '=' );
-            if( opt_entry.size() != 2 )
+            StrVec        opt_entry = _str( opt_entry_str ).split( '=' );
+            const string& opt_name = opt_entry[ 0 ];
+            const string& opt_svalue = ( opt_entry.size() > 1 ? opt_entry[ 1 ] : "" );
+
+            if( opt_name != "Temporary" && opt_entry.size() != 2 )
             {
                 WriteLog( "Error in 'property' pragma '{}', invalid options entry.\n", text );
                 return false;
             }
-
-            const string& opt_name = opt_entry[ 0 ];
-            const string& opt_svalue = opt_entry[ 1 ];
 
             if( opt_name == "Group" )
             {
@@ -554,6 +554,10 @@ public:
             else if( opt_name == "SetCallabck" )
             {
                 set_callbacks.push_back( opt_svalue );
+            }
+            else if( opt_name == "Temporary" )
+            {
+                is_temporary = true;
             }
         }
         if( fail )
@@ -586,7 +590,8 @@ public:
         {
             if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access, is_const,
                                         group.length() > 0 ? group.c_str() : nullptr,
-                                        check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr ) )
+                                        check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr,
+                                        is_temporary ) )
             {
                 WriteLog( "Unable to register 'property' pragma '{}'.\n", text );
                 return false;
@@ -597,7 +602,8 @@ public:
         if( is_defaults )
         {
             registrator->SetDefaults( group.length() > 0 ? group.c_str() : nullptr,
-                                      check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr );
+                                      check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr,
+                                      is_temporary );
         }
 
         return true;

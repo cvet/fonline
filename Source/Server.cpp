@@ -2926,7 +2926,7 @@ void FOServer::Dump_Work( void* args )
     // Clean up
     delete data;
     delete[] fname;
-    delete[] args;
+    delete[] (void**) args;
 
     // Report
     WriteLog( "World flushed on disk in {} ms.\n", Timer::AccurateTick() - tick );

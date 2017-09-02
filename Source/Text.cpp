@@ -434,6 +434,13 @@ _str& _str::normalizePathSlashes()
     return *this;
 }
 
+_str& _str::normalizeLineEndings()
+{
+    replace( '\r', '\n', '\n' );
+    replace( '\r', '\n' );
+    return *this;
+}
+
 #ifdef FO_WINDOWS
 _str& _str::parseWideChar( const wchar_t* str )
 {

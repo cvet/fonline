@@ -1459,7 +1459,10 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
         #define VALUE_AS( ctype )    ( *(ctype*) ( ptr ) )
         #define CHECK_PRIMITIVE( astype, ctype ) \
             if( type_id == astype )              \
-                return _str( "{}", VALUE_AS( ctype ) );
+                return _str( "{}", VALUE_AS( ctype ) )
+        #define CHECK_PRIMITIVE_EXT( astype, ctype, ctype_str ) \
+            if( type_id == astype )                             \
+                return _str( "{}", (ctype_str) VALUE_AS( ctype ) )
 
         if( is_hashes[ deep ] )
         {
@@ -1469,7 +1472,7 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
         }
 
         CHECK_PRIMITIVE( asTYPEID_BOOL, bool );
-        CHECK_PRIMITIVE( asTYPEID_INT8, char );
+        CHECK_PRIMITIVE_EXT( asTYPEID_INT8, char, int );
         CHECK_PRIMITIVE( asTYPEID_INT16, short );
         CHECK_PRIMITIVE( asTYPEID_INT32, int );
         CHECK_PRIMITIVE( asTYPEID_INT64, int64 );
@@ -1483,6 +1486,7 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
 
         #undef VALUE_AS
         #undef CHECK_PRIMITIVE
+        #undef CHECK_PRIMITIVE_EXT
     }
     else if( Str::Compare( as_obj_type->GetName(), "string" ) )
     {
@@ -1665,6 +1669,10 @@ void Properties::SaveToText( StrMap& key_values, Properties* base )
     {
         // Skip pure virtual properties
         if( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) )
+            continue;
+
+        // Skip temporary properties
+        if( prop->isTemporary )
             continue;
 
         // Skip same
@@ -1888,6 +1896,7 @@ PropertyRegistrator::PropertyRegistrator( bool is_server, const string& script_c
     defaultGroup = nullptr;
     defaultMinValue = nullptr;
     defaultMaxValue = nullptr;
+    defaultTemporary = false;
     getPropertiesCount = 0;
 }
 
@@ -1972,7 +1981,8 @@ Property* PropertyRegistrator::Register(
     bool is_const,
     const char* group /* = nullptr */,
     int64* min_value /* = nullptr */,
-    int64* max_value /* = nullptr */
+    int64* max_value /* = nullptr */,
+    bool is_temporary /* = false */
     )
 {
     if( registrationFinished )
@@ -2367,6 +2377,7 @@ Property* PropertyRegistrator::Register(
     prop->isDictOfArrayOfString = is_dict_of_array_of_string;
     prop->isReadable = !disable_get;
     prop->isWritable = !disable_set;
+    prop->isTemporary = ( defaultTemporary || is_temporary );
     prop->checkMinValue = ( min_value != nullptr && ( is_int_data_type || is_float_data_type ) );
     prop->checkMaxValue = ( max_value != nullptr && ( is_int_data_type || is_float_data_type ) );
     prop->minValue = ( min_value ? *min_value : 0 );
@@ -2383,12 +2394,14 @@ Property* PropertyRegistrator::Register(
 void PropertyRegistrator::SetDefaults(
     const char* group /* = nullptr */,
     int64* min_value /* = nullptr */,
-    int64* max_value     /* = nullptr */
+    int64* max_value /* = nullptr */,
+    bool is_temporary /* = false */
     )
 {
     SAFEDELA( defaultGroup );
     SAFEDEL( defaultMinValue );
     SAFEDEL( defaultMaxValue );
+    defaultTemporary = false;
 
     if( group )
         defaultGroup = Str::Duplicate( group );
@@ -2396,6 +2409,8 @@ void PropertyRegistrator::SetDefaults(
         defaultMinValue = new int64( *min_value );
     if( max_value )
         defaultMaxValue = new int64( *max_value );
+    if( is_temporary )
+        defaultTemporary = true;
 }
 
 void PropertyRegistrator::FinishRegistration()

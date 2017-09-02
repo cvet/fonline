@@ -91,6 +91,7 @@ public:
     _str& forwardPath( const string& relative_dir );
     _str& resolvePath();
     _str& normalizePathSlashes();
+    _str& normalizeLineEndings();
 
     #ifdef FO_WINDOWS
     _str&        parseWideChar( const wchar_t* str );

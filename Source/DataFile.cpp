@@ -860,7 +860,7 @@ bool BundleFile::Init( const string& fname )
     FileClose( f_tree );
 
     buf[ len ] = 0;
-    StrVec names = _str( buf ).replace( '\r', '\n', '\n' ).replace( '\r', '\n' ).split( '\n' );
+    StrVec names = _str( buf ).normalizeLineEndings().split( '\n' );
     delete[] buf;
 
     // Parse
