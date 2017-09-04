@@ -2370,7 +2370,7 @@ Property* PropertyRegistrator::Register(
 
     prop->propName = name;
     prop->typeName = type_name;
-    prop->componentName =  component_name;
+    prop->componentName = component_name;
     prop->dataType = data_type;
     prop->accessType = access;
     prop->isConst = is_const;
