@@ -26,6 +26,11 @@ string ProtoEntity::GetName() const
     return _str().parseHash( ProtoId );
 }
 
+bool ProtoEntity::HaveComponent( hash name ) const
+{
+    return Components.count( name ) > 0;
+}
+
 void ProtoEntity::AddRef() const
 {
     RefCounter++;
@@ -75,11 +80,6 @@ string Entity::GetName() const
     return Proto ? Proto->GetName() : "Unnamed";
 }
 
-void Entity::AddRef() const
-{
-    RefCounter++;
-}
-
 EntityVec Entity::GetChildren() const
 {
     EntityVec children;
@@ -111,6 +111,11 @@ EntityVec Entity::GetChildren() const
     }
     #endif
     return children;
+}
+
+void Entity::AddRef() const
+{
+    RefCounter++;
 }
 
 void Entity::Release() const

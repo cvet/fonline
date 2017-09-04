@@ -1039,17 +1039,6 @@ Item* Critter::GetItemByPidInvPriority( hash item_pid )
     return nullptr;
 }
 
-Item* Critter::GetItemCar()
-{
-    for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->IsCar() )
-            return item;
-    }
-    return nullptr;
-}
-
 Item* Critter::GetItemSlot( int slot )
 {
     for( auto it = invItems.begin(), end = invItems.end(); it != end; ++it )

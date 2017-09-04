@@ -85,7 +85,6 @@ public:
     Item* GetItem( uint item_id );
     Item* GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker );
     Item* GetItemDoor( ushort hx, ushort hy );
-    Item* GetItemCar( ushort hx, ushort hy );
     Item* GetItemContainer( ushort hx, ushort hy );
     Item* GetItemGag( ushort hx, ushort hy );
 

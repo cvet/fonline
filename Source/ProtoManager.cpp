@@ -11,8 +11,13 @@ static void WriteProtosToBinary( UCharVec& data, const map< hash, T* >& protos )
         hash         proto_id = kv.first;
         ProtoEntity* proto_item = kv.second;
         WriteData( data, proto_id );
-        PUCharVec*   props_data;
-        UIntVec*     props_data_sizes;
+
+        WriteData( data, (ushort) proto_item->Components.size() );
+        for( hash component : proto_item->Components )
+            WriteData( data, component );
+
+        PUCharVec* props_data;
+        UIntVec*   props_data_sizes;
         proto_item->Props.StoreData( true, &props_data, &props_data_sizes );
         WriteData( data, (ushort) props_data->size() );
         for( size_t i = 0; i < props_data->size(); i++ )
@@ -32,8 +37,13 @@ static void ReadProtosFromBinary( UCharVec& data, uint& pos, map< hash, T* >& pr
     uint      protos_count = ReadData< uint >( data, pos );
     for( uint i = 0; i < protos_count; i++ )
     {
-        hash pid = ReadData< hash >( data, pos );
-        T*   proto = new T( pid );
+        hash   proto_id = ReadData< hash >( data, pos );
+        T*     proto = new T( proto_id );
+
+        ushort components_count = ReadData< ushort >( data, pos );
+        for( ushort j = 0; j < components_count; j++ )
+            proto->Components.insert( ReadData< hash >( data, pos ) );
+
         uint data_count = ReadData< ushort >( data, pos );
         props_data.resize( data_count );
         props_data_sizes.resize( data_count );
@@ -43,8 +53,8 @@ static void ReadProtosFromBinary( UCharVec& data, uint& pos, map< hash, T* >& pr
             props_data[ j ] = ReadDataArr< uchar >( data, props_data_sizes[ j ], pos );
         }
         proto->Props.RestoreData( props_data, props_data_sizes );
-        RUNTIME_ASSERT( !protos.count( pid ) );
-        protos.insert( std::make_pair( pid, proto ) );
+        RUNTIME_ASSERT( !protos.count( proto_id ) );
+        protos.insert( std::make_pair( proto_id, proto ) );
     }
 }
 
@@ -52,12 +62,20 @@ static void InsertMapValues( const StrMap& from_kv, StrMap& to_kv, bool overwrit
 {
     for( auto& kv : from_kv )
     {
-        if( !kv.first.empty() && kv.first[ 0 ] != '$' )
+        RUNTIME_ASSERT( !kv.first.empty() );
+        if( kv.first[ 0 ] != '$' )
         {
             if( overwrite )
                 to_kv[ kv.first ] = kv.second;
             else
                 to_kv.insert( std::make_pair( kv.first, kv.second ) );
+        }
+        else if( kv.first == "$Components" && !kv.second.empty() )
+        {
+            if( !to_kv.count( "$Components" ) )
+                to_kv[ "$Components" ] = kv.second;
+            else
+                to_kv[ "$Components" ] += " " + kv.second;
         }
     }
 }
@@ -217,6 +235,22 @@ static int ParseProtos( const string& ext, const string& app_name, map< hash, T*
             continue;
         }
 
+        // Components
+        if( final_kv.count( "$Components" ) )
+        {
+            for( const string& component_name : _str( final_kv[ "$Components" ] ).split( ' ' ) )
+            {
+                hash component_name_hash = _str( component_name ).toHash();
+                if( !proto->Props.GetRegistrator()->IsComponentRegistered( component_name_hash ) )
+                {
+                    WriteLog( "Proto item '{}' invalid component used '{}'.\n", base_name, component_name );
+                    errors++;
+                    continue;
+                }
+                proto->Components.insert( component_name_hash );
+            }
+        }
+
         // Add to collection
         protos.insert( std::make_pair( pid, proto ) );
     }
@@ -327,9 +361,6 @@ bool ProtoManager::LoadProtosFromFiles()
             break;
         case ITEM_TYPE_WALL:
             proto_item->CollectionName = "wall";
-            break;
-        case ITEM_TYPE_CAR:
-            proto_item->CollectionName = "car";
             break;
         default:
             proto_item->CollectionName = "other";

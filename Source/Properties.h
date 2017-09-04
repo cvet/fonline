@@ -142,6 +142,7 @@ private:
     // Static data
     string       propName;
     string       typeName;
+    string       componentName;
     DataType     dataType;
     int          asObjTypeId;
     asITypeInfo* asObjType;
@@ -293,12 +294,14 @@ public:
     ~PropertyRegistrator();
     bool      Init();
     Property* Register( const string& type_name, const string& name, Property::AccessType access, bool is_const, const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false );
+    bool      RegisterComponent( const string& name );
     void      SetDefaults( const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false );
     void      FinishRegistration();
     uint      GetCount();
     Property* Find( const string& property_name );
     Property* FindByEnum( int enum_value );
     Property* Get( uint property_index );
+    bool      IsComponentRegistered( hash component_name );
     void      SetNativeSetCallback( const string& property_name, NativeCallback callback );
     void      SetNativeSendCallback( NativeSendCallback callback );
     uint      GetWholeDataSize();
@@ -311,6 +314,7 @@ private:
     bool                         isServer;
     string                       scriptClassName;
     PropertyVec                  registeredProperties;
+    HashSet                      registeredComponents;
     string                       enumTypeName;
     map< string, CScriptArray* > enumGroups;
     uint                         getPropertiesCount;

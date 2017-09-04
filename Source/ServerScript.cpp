@@ -1990,16 +1990,6 @@ Item* FOServer::SScriptFunc::Map_GetDoor( Map* map, ushort hx, ushort hy )
     return map->GetItemDoor( hx, hy );
 }
 
-Item* FOServer::SScriptFunc::Map_GetCar( Map* map, ushort hx, ushort hy )
-{
-    if( map->IsDestroyed )
-        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
-    if( hx >= map->GetWidth() || hy >= map->GetHeight() )
-        SCRIPT_ERROR_R0( "Invalid hexes args." );
-
-    return map->GetItemCar( hx, hy );
-}
-
 Item* FOServer::SScriptFunc::Map_GetSceneryHex( Map* map, ushort hx, ushort hy, hash pid )
 {
     if( map->IsDestroyed )

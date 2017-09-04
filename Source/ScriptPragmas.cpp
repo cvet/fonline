@@ -426,6 +426,15 @@ public:
         string        class_name, access_str, property_type_name, property_name;
         str >> class_name >> access_str;
 
+        // Component
+        bool   is_component = false;
+        string component_name;
+        if( access_str == "Component" )
+        {
+            is_component = true;
+            str >> component_name;
+        }
+
         // Defaults
         bool is_defaults = false;
         if( access_str == "Defaults" )
@@ -433,7 +442,7 @@ public:
 
         // Property type and name
         bool is_const = false;
-        if( !is_defaults )
+        if( !is_component && !is_defaults )
         {
             str >> property_type_name;
             if( property_type_name == "const" )
@@ -476,7 +485,7 @@ public:
 
         // Parse access type
         Property::AccessType access = (Property::AccessType) 0;
-        if( !is_defaults )
+        if( !is_component && !is_defaults )
         {
             if( access_str == "PrivateCommon" )
                 access = Property::PrivateCommon;
@@ -586,7 +595,7 @@ public:
             return false;
 
         // Register
-        if( !is_defaults )
+        if( !is_component && !is_defaults )
         {
             if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access, is_const,
                                         group.length() > 0 ? group.c_str() : nullptr,
@@ -594,6 +603,16 @@ public:
                                         is_temporary ) )
             {
                 WriteLog( "Unable to register 'property' pragma '{}'.\n", text );
+                return false;
+            }
+        }
+
+        // New component
+        if( is_component )
+        {
+            if( !registrator->RegisterComponent( component_name ) )
+            {
+                WriteLog( "Unable to register component '{}' for 'property' pragma '{}'.\n", component_name, text );
                 return false;
             }
         }

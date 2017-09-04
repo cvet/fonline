@@ -221,7 +221,6 @@ struct BindClass
     static void Map_GetItem()                {}
     static void Map_GetItemHex()             {}
     static void Map_GetDoor()                {}
-    static void Map_GetCar()                 {}
     static void Map_GetSceneryHex()          {}
     static void Map_GetSceneriesHex()        {}
     static void Map_GetSceneriesHexEx()      {}

@@ -112,7 +112,12 @@ void IniParser::ParseStr( const string& str )
                 // Key value format
                 size_t separator = line.find( '=' );
                 if( separator != string::npos )
-                    ( *cur_app )[ _str( line.substr( 0, separator ) ).trim() ] = _str( line.substr( separator + 1 ) ).trim();
+                {
+                    string key = _str( line.substr( 0, separator ) ).trim();
+                    string value = _str( line.substr( separator + 1 ) ).trim();
+                    if( !key.empty() )
+                        ( *cur_app )[ key ] = value;
+                }
             }
         }
     }

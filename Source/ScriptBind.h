@@ -216,8 +216,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetItemsByType(int type) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsByType ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetDoor(uint16 hexX, uint16 hexY)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetDoor ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "const Item@+ GetDoor(uint16 hexX, uint16 hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetDoor ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetCar(uint16 hexX, uint16 hexY)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetCar ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "const Item@+ GetCar(uint16 hexX, uint16 hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetCar ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "const Item@+ GetScenery(uint16 hexX, uint16 hexY, hash protoId) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetSceneryHex ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetSceneries(uint16 hexX, uint16 hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetSceneriesHex ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetSceneries(uint16 hexX, uint16 hexY, uint radius, hash protoId) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetSceneriesHexEx ), SCRIPT_FUNC_THIS_CONV ) );

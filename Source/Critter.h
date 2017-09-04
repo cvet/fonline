@@ -174,7 +174,6 @@ public:
     Item*    GetItemByPid( hash item_pid );
     Item*    GetItemByPidInvPriority( hash item_pid );
     Item*    GetItemByPidSlot( hash item_pid, int slot );
-    Item*    GetItemCar();
     Item*    GetItemSlot( int slot );
     void     GetItemsSlot( int slot, ItemVec& items );
     void     GetItemsType( int type, ItemVec& items );

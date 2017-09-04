@@ -2134,6 +2134,7 @@ bool FOServer::InitReal()
         return false;
 
     // Modules initialization
+    Timer::UpdateTick();
     if( !Script::RunModuleInitFunctions() )
         return false;
 
@@ -2146,6 +2147,7 @@ bool FOServer::InitReal()
         return false;
 
     // Initialization script
+    Timer::UpdateTick();
     if( !Script::RaiseInternalEvent( ServerFunctions.Init ) )
     {
         WriteLog( "Initialization script return false.\n" );
@@ -2156,6 +2158,7 @@ bool FOServer::InitReal()
     if( GameOpt.GameServer && !Singleplayer )
     {
         // Copy of data
+        Timer::UpdateTick();
         if( !LoadWorld( nullptr ) )
             return false;
 
@@ -2949,8 +2952,8 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     if( !first_generation )
     {
         ConnectedClientsLocker.Lock();
-        for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
-            ( *it )->Disconnect();
+        for( Client* cl : ConnectedClients )
+            cl->Disconnect();
     }
 
     // Generate resources
@@ -2964,9 +2967,8 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 
     // Fill MSG
     UpdateFile update_file;
-    for( auto it = LangPacks.begin(), end = LangPacks.end(); it != end; ++it )
+    for( LanguagePack& lang_pack : LangPacks )
     {
-        LanguagePack& lang_pack = *it;
         for( int i = 0; i < TEXTMSG_COUNT; i++ )
         {
             UCharVec msg_data;
@@ -3006,13 +3008,12 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     // Fill files
     StrVec file_paths;
     FileManager::GetFolderFileNames( "Update/", true, "", file_paths );
-    for( size_t i = 0; i < file_paths.size(); i++ )
+    for( const string& file_path : file_paths )
     {
-        string      file_path = file_paths[ i ];
         FileManager file;
-        if( !file.LoadFile( ( "Update/" + file_path ).c_str() ) )
+        if( !file.LoadFile( "Update/" + file_path ) )
         {
-            WriteLog( "Can't load file '{}'.\n", file_path.c_str() );
+            WriteLog( "Can't load file 'Update/{}'.\n", file_path );
             continue;
         }
 
@@ -3036,13 +3037,12 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
     // Append binaries
     StrVec binary_paths;
     FileManager::GetFolderFileNames( "Binaries/", true, "", binary_paths );
-    for( size_t i = 0; i < binary_paths.size(); i++ )
+    for( const string& file_path : binary_paths )
     {
-        string      file_path = binary_paths[ i ];
         FileManager file;
-        if( !file.LoadFile( ( "Binaries/" + file_path ).c_str() ) )
+        if( !file.LoadFile( "Binaries/" + file_path ) )
         {
-            WriteLog( "Can't load file '{}'.\n", file_path.c_str() );
+            WriteLog( "Can't load file 'Binaries/{}'.\n", file_path );
             continue;
         }
 

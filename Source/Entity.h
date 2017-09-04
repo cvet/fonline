@@ -35,10 +35,12 @@ protected:
 
 public:
     Properties   Props;
+    HashSet      Components;
     const hash   ProtoId;
     mutable long RefCounter;
 
     string GetName() const;
+    bool   HaveComponent( hash name ) const;
     void   AddRef() const;
     void   Release() const;
 };
@@ -63,9 +65,9 @@ public:
     void      SetId( uint id );
     hash      GetProtoId() const;
     string    GetName() const;
+    EntityVec GetChildren() const;
     void      AddRef() const;
     void      Release() const;
-    EntityVec GetChildren() const;
 };
 
 class CustomEntity: public Entity

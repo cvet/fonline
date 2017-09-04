@@ -563,18 +563,6 @@ Item* Map::GetItemDoor( ushort hx, ushort hy )
     return nullptr;
 }
 
-Item* Map::GetItemCar( ushort hx, ushort hy )
-{
-    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
-    if( it_hex_all != mapItemsByHex.end() )
-    {
-        for( Item* item : it_hex_all->second )
-            if( item->IsCar() )
-                return item;
-    }
-    return nullptr;
-}
-
 Item* Map::GetItemContainer( ushort hx, ushort hy )
 {
     auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );

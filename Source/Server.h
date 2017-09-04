@@ -389,7 +389,6 @@ public:
         static Item*         Map_GetItem( Map* map, uint item_id );
         static Item*         Map_GetItemHex( Map* map, ushort hx, ushort hy, hash pid );
         static Item*         Map_GetDoor( Map* map, ushort hx, ushort hy );
-        static Item*         Map_GetCar( Map* map, ushort hx, ushort hy );
         static Item*         Map_GetSceneryHex( Map* map, ushort hx, ushort hy, hash pid );
         static CScriptArray* Map_GetSceneriesHex( Map* map, ushort hx, ushort hy );
         static CScriptArray* Map_GetSceneriesHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid );

@@ -33,7 +33,6 @@ class Critter;
 #define ITEM_TYPE_GRID               ( 10 )
 #define ITEM_TYPE_GENERIC            ( 11 )
 #define ITEM_TYPE_WALL               ( 12 )
-#define ITEM_TYPE_CAR                ( 13 )
 #define ITEM_MAX_TYPES               ( 14 )
 
 // Uses
@@ -243,7 +242,6 @@ public:
     bool IsWeapon()    { return GetType() == ITEM_TYPE_WEAPON; }
     bool IsContainer() { return GetType() == ITEM_TYPE_CONTAINER; }
     bool IsDoor()      { return GetType() == ITEM_TYPE_DOOR; }
-    bool IsCar()       { return GetType() == ITEM_TYPE_CAR; }
 
     void ChangeCount( int val );
 
