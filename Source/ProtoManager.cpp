@@ -243,7 +243,7 @@ static int ParseProtos( const string& ext, const string& app_name, map< hash, T*
                 hash component_name_hash = _str( component_name ).toHash();
                 if( !proto->Props.GetRegistrator()->IsComponentRegistered( component_name_hash ) )
                 {
-                    WriteLog( "Proto item '{}' invalid component used '{}'.\n", base_name, component_name );
+                    WriteLog( "Proto item '{}' invalid component '{}'.\n", base_name, component_name );
                     errors++;
                     continue;
                 }
