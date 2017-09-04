@@ -774,7 +774,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
 
             if( fmt_type == FORMAT_TYPE_DRAW && FLAG( flags, FT_NOBREAK ) )
             {
-                str[ i ] = '\0';
+                str[ i ] = 0;
                 break;
             }
             else if( FLAG( flags, FT_NOBREAK_LINE ) )
@@ -854,7 +854,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
                     if( fi.LinesInRect && !FLAG( flags, FT_UPPER ) )
                     {
                         // fi.LinesAll++;
-                        str[ i ] = '\0';
+                        str[ i ] = 0;
                         break;
                     }
                 }
@@ -862,7 +862,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
                 {
                     if( fi.LinesInRect && !( fi.LinesAll % fi.LinesInRect ) )
                     {
-                        str[ i ] = '\0';
+                        str[ i ] = 0;
                         ( *fi.StrLines ).push_back( str );
                         str = &str[ i + i_advance ];
                         i = -i_advance;
@@ -883,9 +883,11 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
                 i_advance = 0;
             }
 
+            if( curx > fi.MaxCurX )
+                fi.MaxCurX = curx;
             curx = r.L;
             continue;
-        case '\0':
+        case 0:
             break;
         default:
             curx += x_advance;
@@ -1005,7 +1007,7 @@ void FormatText( FontFormatInfo& fi, int fmt_type )
         case '\t':
             curx += font->SpaceWidth * 4;
             break;
-        case '\0':
+        case 0:
         case '\n':
             fi.LineWidth[ curstr ] = curx;
             cury += font->LineHeight + font->YAdvance;

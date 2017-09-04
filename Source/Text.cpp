@@ -193,7 +193,7 @@ _str& _str::upper()
 
 _str& _str::lowerUtf8()
 {
-    for( size_t i = 0; i < s.length(); i++ )
+    for( size_t i = 0; i < s.length();)
     {
         uint length;
         uint ucs = utf8::Decode( s.c_str() + i, &length );
@@ -201,13 +201,14 @@ _str& _str::lowerUtf8()
         char buf[ 4 ];
         uint new_length = utf8::Encode( ucs, buf );
         s.replace( i, length, buf, new_length );
+        i += new_length;
     }
     return *this;
 }
 
 _str& _str::upperUtf8()
 {
-    for( size_t i = 0; i < s.length(); i++ )
+    for( size_t i = 0; i < s.length();)
     {
         uint length;
         uint ucs = utf8::Decode( s.c_str() + i, &length );
@@ -215,6 +216,7 @@ _str& _str::upperUtf8()
         char buf[ 4 ];
         uint new_length = utf8::Encode( ucs, buf );
         s.replace( i, length, buf, new_length );
+        i += new_length;
     }
     return *this;
 }
