@@ -515,9 +515,12 @@ _str& _str::parseHash( hash h )
     SCOPE_LOCK( HashNamesLocker );
     #endif
 
-    auto it = HashNames.find( h );
-    if( h || it != HashNames.end() )
-        s += it->second;
+    if( h )
+    {
+        auto it = HashNames.find( h );
+        if( it != HashNames.end() )
+            s += it->second;
+    }
     return *this;
 }
 
