@@ -1340,7 +1340,9 @@ static string CodeString( const string& str, int deep )
     bool need_braces = false;
     if( deep > 0 && ( str.empty() || str.find_first_of( " \t" ) != string::npos ) )
         need_braces = true;
-    if( deep == 0 && !str.empty() && ( str.find_first_of( " \t" ) == 0 || str.find_last_of( " \t" ) == str.length() - 1 ) )
+    if( !need_braces && deep == 0 && !str.empty() && ( str.find_first_of( " \t" ) == 0 || str.find_last_of( " \t" ) == str.length() - 1 ) )
+        need_braces = true;
+    if( !need_braces && str.length() >= 2 && str.back() == '\\' && str[ str.length() - 2 ] == ' ' )
         need_braces = true;
 
     string result;

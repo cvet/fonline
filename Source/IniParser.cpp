@@ -44,10 +44,31 @@ void IniParser::ParseStr( const string& str )
 
     istringstream istr( str );
     string        line;
+    string        accum_line;
     while( std::getline( istr, line, '\n' ) )
     {
+        if( !line.empty() )
+            line = _str( line ).trim();
+
+        // Accumulate line
+        if( !accum_line.empty() )
+        {
+            line.insert( 0, accum_line );
+            accum_line.clear();
+        }
+
+        if( line.empty() )
+            continue;
+
+        if( line.length() >= 2 && line.back() == '\\' && ( line[ line.length() - 2 ] == ' ' || line[ line.length() - 2 ] == '\t' ) )
+        {
+            line.pop_back();
+            accum_line = _str( line ).trim() + " ";
+            continue;
+        }
+
         // New section
-        if( !line.empty() && line[ 0 ] == '[' )
+        if( line[ 0 ] == '[' )
         {
             // Parse name
             size_t end = line.find( ']' );
@@ -77,14 +98,6 @@ void IniParser::ParseStr( const string& str )
             if( collectContent )
                 app_content.append( line ).append( "\n" );
 
-            // Cut comments
-            line = _str( line ).trim();
-            size_t comment = line.find( '#' );
-            if( comment != string::npos )
-                line.erase( comment );
-            if( line.empty() )
-                continue;
-
             // Text format {}{}{}
             if( line[ 0 ] == '{' )
             {
@@ -109,6 +122,13 @@ void IniParser::ParseStr( const string& str )
             }
             else
             {
+                // Cut comments
+                size_t comment = line.find( '#' );
+                if( comment != string::npos )
+                    line.erase( comment );
+                if( line.empty() )
+                    continue;
+
                 // Key value format
                 size_t separator = line.find( '=' );
                 if( separator != string::npos )
