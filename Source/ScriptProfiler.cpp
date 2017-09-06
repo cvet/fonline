@@ -29,8 +29,8 @@ bool ScriptProfiler::Init( asIScriptEngine* engine, uint sample_time, bool save_
         DateTimeStamp dt;
         Timer::GetCurrentDateTime( dt );
 
-        string dump_file = _str( "{}Profiler_{}.{}.{}_{}-{}-{}.foprof",
-                                 FileManager::GetWritePath( "Profiler/" ), dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second );
+        string dump_file = FileManager::GetWritePath( _str( "Profiler/Profiler_{}.{}.{}_{}-{}-{}.foprof",
+                                                            dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second ) );
 
         saveFileHandle = FileOpen( dump_file, true );
         if( !saveFileHandle )
@@ -81,7 +81,7 @@ void ScriptProfiler::EndModules()
 
             FileWrite( saveFileHandle, &i, 4 );
 
-            string buf = func->GetModuleName();
+            string buf = ( func->GetModuleName() ? func->GetModuleName() : "" );
             FileWrite( saveFileHandle, buf.c_str(), (uint) buf.length() + 1 );
             buf = func->GetDeclaration();
             FileWrite( saveFileHandle, buf.c_str(), (uint) buf.length() + 1 );

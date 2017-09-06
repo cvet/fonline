@@ -632,16 +632,9 @@ bool Script::ReloadScripts( const string& target )
     // Add to profiler
     if( edata->Profiler )
     {
-        #ifdef FONLINE_SERVER
-        edata->Profiler->AddModule( "Root", result_code.c_str() );
-        #else
-        edata->Profiler->AddModule( "Root", result_code.c_str() );
-        #endif
-    }
-
-    // Finalize profiler
-    if( edata->Profiler )
+        edata->Profiler->AddModule( "Root", result_code );
         edata->Profiler->EndModules();
+    }
 
     // Done
     WriteLog( "Reload scripts complete.\n" );
