@@ -338,16 +338,34 @@ FileManager* ResourceConverter::Convert3d( const string& name, FileManager& file
         if( GameOpt.AssimpLogging )
         {
             aiEnableVerboseLogging( true );
-            static aiLogStream c = aiGetPredefinedLogStream( aiDefaultLogStream_FILE, "Assimp.log" );
-            aiAttachLogStream( &c );
+            aiLogStream log_stream = aiGetPredefinedLogStream( aiDefaultLogStream_FILE, "Assimp.log" );
+            aiAttachLogStream( &log_stream );
+        }
+
+        // Properties
+        static aiPropertyStore* import_props;
+        if( !import_props )
+        {
+            import_props = aiCreatePropertyStore();
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_READ_ALL_GEOMETRY_LAYERS, true );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_READ_ALL_MATERIALS, false );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_READ_MATERIALS, true );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_READ_TEXTURES, true );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_READ_CAMERAS, false );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_READ_LIGHTS, false );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_READ_ANIMATIONS, true );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_STRICT_MODE, false );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_OPTIMIZE_EMPTY_ANIMATION_CURVES, true );
+            aiSetImportPropertyInteger( import_props, AI_CONFIG_IMPORT_FBX_SEARCH_EMBEDDED_TEXTURES, false );
         }
 
         // Load scene
-        aiScene* scene = (aiScene*) aiImportFileFromMemory( (const char*) file.GetBuf(), file.GetFsize(),
-                                                            aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
-                                                            aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-                                                            aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
-                                                            aiProcess_ImproveCacheLocality, "" );
+        aiScene* scene = (aiScene*) aiImportFileFromMemoryWithProperties( (const char*) file.GetBuf(), file.GetFsize(),
+                                                                          aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_GenUVCoords |
+                                                                          aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
+                                                                          aiProcess_SortByPType | aiProcess_SplitLargeMeshes | aiProcess_LimitBoneWeights |
+                                                                          aiProcess_ImproveCacheLocality, "", import_props );
         if( !scene )
         {
             WriteLog( "Can't load 3d file, name '{}', error '{}'.\n", name, aiGetErrorString() );
@@ -463,7 +481,7 @@ static void ConvertAssimpPass2( Bone* root_bone, Bone* parent_bone, Bone* bone, 
         else
         {
             mesh_bone = new Bone();
-            mesh_bone->NameHash = Bone::GetHash( _str( "{}_{}", ai_node->mName.data, m + 1 ).c_str() );
+            mesh_bone->NameHash = Bone::GetHash( _str( "{}_{}", ai_node->mName.data, m + 1 ) );
             mesh_bone->CombinedTransformationMatrix = Matrix();
             if( parent_bone )
             {
