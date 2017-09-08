@@ -2,7 +2,8 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 All rights reserved.
 
 Redistribution and use of this software in source and binary forms,
@@ -127,7 +128,7 @@ protected:
     unsigned short ReadBinWord();
     unsigned int ReadBinDWord();
     unsigned int ReadInt();
-    float ReadFloat();
+    ai_real ReadFloat();
     aiVector2D ReadVector2();
     aiVector3D ReadVector3();
     aiColor3D ReadRGB();

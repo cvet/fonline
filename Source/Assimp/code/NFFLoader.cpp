@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 
 All rights reserved.
 
@@ -54,6 +55,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/IOSystem.hpp>
 #include <assimp/DefaultLogger.hpp>
 #include <assimp/scene.h>
+#include <assimp/importerdesc.h>
 #include <memory>
 
 
@@ -965,7 +967,7 @@ void NFFImporter::InternReadFile( const std::string& pFile,
                 // compute the center point of the cone/cylinder -
                 // it is its local transformation origin
                 currentMesh.dir    =  center2-center1;
-                currentMesh.center =  center1+currentMesh.dir/2.f;
+                currentMesh.center =  center1+currentMesh.dir/(ai_real)2.0;
 
                 float f;
                 if (( f = currentMesh.dir.Length()) < 10e-3f )
@@ -1159,7 +1161,7 @@ void NFFImporter::InternReadFile( const std::string& pFile,
             ++ppcChildren;
         } else {
             *pMeshes++ = m;
-        }   
+        }
 
         // copy vertex positions
         mesh->mVertices = new aiVector3D[mesh->mNumVertices];

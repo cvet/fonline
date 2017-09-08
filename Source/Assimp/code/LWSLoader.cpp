@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 
 All rights reserved.
 
@@ -50,7 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ParsingUtils.h"
 #include "fast_atof.h"
 
-#include "SceneCombiner.h"
+#include <assimp/SceneCombiner.h>
 #include "GenericProperty.h"
 #include "SkeletonMeshBuilder.h"
 #include "ConvertToLHProcess.h"
@@ -58,8 +59,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/DefaultLogger.hpp>
 #include <assimp/scene.h>
 #include <assimp/IOSystem.hpp>
+#include <assimp/importerdesc.h>
 #include <memory>
-
 
 using namespace Assimp;
 
@@ -902,7 +903,7 @@ void LWSImporter::InternReadFile( const std::string& pFile, aiScene* pScene,
         anim->mTicksPerSecond = fps;
         anim->mDuration = last-(first-1); /* fixme ... zero or one-based?*/
 
-        anim->mChannels = new aiNodeAnim*[anim->mNumChannels = anims.size()];
+        anim->mChannels = new aiNodeAnim*[anim->mNumChannels = static_cast<unsigned int>(anims.size())];
         std::copy(anims.begin(),anims.end(),anim->mChannels);
     }
 

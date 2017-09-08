@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 
 All rights reserved.
 
@@ -141,13 +142,13 @@ bool LWOImporter::HandleTextures(aiMaterial* pcMat, const TextureList& in, aiTex
             aiVector3D v;
             switch (texture.majorAxis) {
                 case Texture::AXIS_X:
-                    v = aiVector3D(1.f,0.f,0.f);
+                    v = aiVector3D(1.0,0.0,0.0);
                     break;
                 case Texture::AXIS_Y:
-                    v = aiVector3D(0.f,1.f,0.f);
+                    v = aiVector3D(0.0,1.0,0.0);
                     break;
                 default: // case Texture::AXIS_Z:
-                    v = aiVector3D(0.f,0.f,1.f);
+                    v = aiVector3D(0.0,0.0,1.0);
                     break;
             }
 
@@ -159,7 +160,7 @@ bool LWOImporter::HandleTextures(aiMaterial* pcMat, const TextureList& in, aiTex
                 trafo.mScaling.x = texture.wrapAmountW;
                 trafo.mScaling.y = texture.wrapAmountH;
 
-                static_assert(sizeof(aiUVTransform)/sizeof(float) == 5, "sizeof(aiUVTransform)/sizeof(float) == 5");
+                static_assert(sizeof(aiUVTransform)/sizeof(ai_real) == 5, "sizeof(aiUVTransform)/sizeof(ai_real) == 5");
                 pcMat->AddProperty(&trafo,1,AI_MATKEY_UVTRANSFORM(type,cur));
             }
             DefaultLogger::get()->debug("LWO2: Setting up non-UV mapping");
@@ -286,17 +287,17 @@ void LWOImporter::ConvertMaterial(const LWO::Surface& surf,aiMaterial* pcMat)
     {
         float fGloss;
         if (mIsLWO2)    {
-            fGloss = std::pow( surf.mGlossiness*10.0f+2.0f, 2.0f);
+            fGloss = std::pow( surf.mGlossiness*ai_real( 10.0 )+ ai_real( 2.0 ), ai_real( 2.0 ) );
         }
         else
         {
-            if (16.0f >= surf.mGlossiness)
-                fGloss = 6.0f;
-            else if (64.0f >= surf.mGlossiness)
-                fGloss = 20.0f;
-            else if (256.0f >= surf.mGlossiness)
-                fGloss = 50.0f;
-            else fGloss = 80.0f;
+            if (16.0 >= surf.mGlossiness)
+                fGloss = 6.0;
+            else if (64.0 >= surf.mGlossiness)
+                fGloss = 20.0;
+            else if (256.0 >= surf.mGlossiness)
+                fGloss = 50.0;
+            else fGloss = 80.0;
         }
 
         pcMat->AddProperty(&surf.mSpecularValue,1,AI_MATKEY_SHININESS_STRENGTH);
@@ -306,17 +307,17 @@ void LWOImporter::ConvertMaterial(const LWO::Surface& surf,aiMaterial* pcMat)
     else m = aiShadingMode_Gouraud;
 
     // specular color
-    aiColor3D clr = lerp( aiColor3D(1.f,1.f,1.f), surf.mColor, surf.mColorHighlights );
+    aiColor3D clr = lerp( aiColor3D(1.0,1.0,1.0), surf.mColor, surf.mColorHighlights );
     pcMat->AddProperty(&clr,1,AI_MATKEY_COLOR_SPECULAR);
     pcMat->AddProperty(&surf.mSpecularValue,1,AI_MATKEY_SHININESS_STRENGTH);
 
     // emissive color
     // luminosity is not really the same but it affects the surface in a similar way. Some scaling looks good.
-    clr.g = clr.b = clr.r = surf.mLuminosity*0.8f;
+    clr.g = clr.b = clr.r = surf.mLuminosity*ai_real( 0.8 );
     pcMat->AddProperty<aiColor3D>(&clr,1,AI_MATKEY_COLOR_EMISSIVE);
 
     // opacity ... either additive or default-blended, please
-    if (0.f != surf.mAdditiveTransparency)  {
+    if (0.0 != surf.mAdditiveTransparency)  {
 
         const int add = aiBlendMode_Additive;
         pcMat->AddProperty(&surf.mAdditiveTransparency,1,AI_MATKEY_OPACITY);
@@ -361,13 +362,13 @@ void LWOImporter::ConvertMaterial(const LWO::Surface& surf,aiMaterial* pcMat)
             DefaultLogger::get()->warn("LWO2: Unknown surface shader: " + shader.functionName);
         }
     }
-    if (surf.mMaximumSmoothAngle <= 0.0f)
+    if (surf.mMaximumSmoothAngle <= 0.0)
         m = aiShadingMode_Flat;
     pcMat->AddProperty((int*)&m,1,AI_MATKEY_SHADING_MODEL);
 
     // (the diffuse value is just a scaling factor)
     // If a diffuse texture is set, we set this value to 1.0
-    clr = (b && false ? aiColor3D(1.f,1.f,1.f) : surf.mColor);
+    clr = (b && false ? aiColor3D(1.0,1.0,1.0) : surf.mColor);
     clr.r *= surf.mDiffuseValue;
     clr.g *= surf.mDiffuseValue;
     clr.b *= surf.mDiffuseValue;
@@ -454,7 +455,7 @@ void LWOImporter::FindUVChannels(LWO::Surface& surf,
                             ++extra;
                             out[next++] = i;
                         }
-                        // B�h ... seems not to be used at all. Push to end if enough space is available.
+                        // Bah ... seems not to be used at all. Push to end if enough space is available.
                         else {
                             out[extra++] = i;
                             ++num_extra;
@@ -497,7 +498,7 @@ void LWOImporter::FindVCChannels(const LWO::Surface& surf, LWO::SortedRep& sorte
                 for (unsigned int n = 0; n < face.mNumIndices; ++n) {
                     unsigned int idx = face.mIndices[n];
 
-                    if (vc.abAssigned[idx] && ((aiColor4D*)&vc.rawData[0])[idx] != aiColor4D(0.f,0.f,0.f,1.f)) {
+                    if (vc.abAssigned[idx] && ((aiColor4D*)&vc.rawData[0])[idx] != aiColor4D(0.0,0.0,0.0,1.0)) {
                         if (next >= AI_MAX_NUMBER_OF_COLOR_SETS) {
 
                             DefaultLogger::get()->error("LWO: Maximum number of vertex color channels for "
@@ -851,7 +852,7 @@ void LWOImporter::LoadLWO2Surface(unsigned int size)
         case AI_LWO_SMAN:
             {
                 AI_LWO_VALIDATE_CHUNK_LENGTH(head.length,SMAN,4);
-                surf.mMaximumSmoothAngle = fabs( GetF4() );
+                surf.mMaximumSmoothAngle = std::fabs( GetF4() );
                 break;
             }
             // vertex color channel to be applied to the surface

@@ -18,10 +18,6 @@
 //
 // ===============================================================================
 
-#ifndef FONLINE_SERVER // Patch
-# define PACK_STRUCT // Patch
-#else // Patch
-
 #ifdef AI_PUSHPACK_IS_DEFINED
 #	error poppack1.h must be included after pushpack1.h
 #endif
@@ -40,11 +36,8 @@
 #endif
 
 #if defined(_MSC_VER)
-
 // C4103: Packing was changed after the inclusion of the header, probably missing #pragma pop
 #	pragma warning (disable : 4103) 
 #endif
 
 #define AI_PUSHPACK_IS_DEFINED
-
-#endif // Patch

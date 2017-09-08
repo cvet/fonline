@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 All rights reserved.
 
 Redistribution and use of this software in source and binary forms,
@@ -119,7 +120,7 @@ protected:
     * chunk behind afterwards. If no percentage chunk is found
     * QNAN is returned.
     */
-    float ParsePercentageChunk();
+    ai_real ParsePercentageChunk();
 
     // -------------------------------------------------------------------
     /** Parse a color chunk. mCurrent will point to the next
@@ -265,7 +266,7 @@ protected:
     aiColor3D mClrAmbient;
 
     /** Master scaling factor of the scene */
-    float mMasterScale;
+    ai_real mMasterScale;
 
     /** Path to the background image of the scene */
     std::string mBackgroundImage;

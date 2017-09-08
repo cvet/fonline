@@ -9,10 +9,6 @@
 // BORLAND (complains about 'pack state changed but not reverted', but works)
 // ===============================================================================
 
-#ifndef FONLINE_SERVER // Patch
-# undef PACK_STRUCT // Patch
-#else // Patch
-
 #ifndef AI_PUSHPACK_IS_DEFINED
 #	error pushpack1.h must be included after poppack1.h
 #endif
@@ -24,5 +20,3 @@
 #undef PACK_STRUCT
 
 #undef AI_PUSHPACK_IS_DEFINED
-
-#endif // Patch

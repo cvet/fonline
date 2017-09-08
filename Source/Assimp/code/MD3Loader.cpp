@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 
 All rights reserved.
 
@@ -52,7 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ASSIMP_BUILD_NO_MD3_IMPORTER
 
 #include "MD3Loader.h"
-#include "SceneCombiner.h"
+#include <assimp/SceneCombiner.h>
 #include "GenericProperty.h"
 #include "RemoveComments.h"
 #include "ParsingUtils.h"
@@ -62,9 +63,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/IOSystem.hpp>
 #include <assimp/material.h>
 #include <assimp/scene.h>
+#include <assimp/importerdesc.h>
 #include <cctype>
-
-
 
 using namespace Assimp;
 
@@ -709,7 +709,7 @@ void MD3Importer::ConvertPath(const char* texture_name, const char* header_name,
             }
         }
         else len2 = std::min (len1, (size_t)(end2 - texture_name ));
-        if (!ASSIMP_strincmp(texture_name,header_name,len2)) {
+        if (!ASSIMP_strincmp(texture_name,header_name,static_cast<unsigned int>(len2))) {
             // Use the file name only
             out = end2+1;
             return;
@@ -1018,7 +1018,7 @@ void MD3Importer::InternReadFile( const std::string& pFile,
 
                 // Convert the normal vector to uncompressed float3 format
                 aiVector3D& nor = pcMesh->mNormals[iCurrent];
-                LatLngNormalToVec3(pcVertices[pcTriangles->INDEXES[c]].NORMAL,(float*)&nor);
+                LatLngNormalToVec3(pcVertices[pcTriangles->INDEXES[c]].NORMAL,(ai_real*)&nor);
 
                 // Read texture coordinates
                 pcMesh->mTextureCoords[0][iCurrent].x = pcUVs[ pcTriangles->INDEXES[c]].U;

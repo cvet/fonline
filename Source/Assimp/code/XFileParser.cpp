@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 
 All rights reserved.
 
@@ -465,15 +466,12 @@ void XFileParser::ParseDataObjectMesh( Mesh* pMesh)
     pMesh->mPosFaces.resize( numPosFaces);
     for( unsigned int a = 0; a < numPosFaces; a++)
     {
-        unsigned int numIndices = ReadInt();
-        if( numIndices < 3) {
-            ThrowException( format() << "Invalid index count " << numIndices << " for face " << a << "." );
-        }
-
         // read indices
+        unsigned int numIndices = ReadInt();
         Face& face = pMesh->mPosFaces[a];
-        for( unsigned int b = 0; b < numIndices; b++)
-            face.mIndices.push_back( ReadInt());
+        for (unsigned int b = 0; b < numIndices; b++) {
+            face.mIndices.push_back( ReadInt() );
+        }
         TestForSeparator();
     }
 
@@ -731,7 +729,7 @@ void XFileParser::ParseDataObjectMaterial( Material* pMaterial)
     std::string matName;
     readHeadOfDataObject( &matName);
     if( matName.empty())
-        matName = std::string( "material") + std::to_string( mLineNumber );
+        matName = std::string( "material") + to_string( mLineNumber );
     pMaterial->mName = matName;
     pMaterial->mIsReference = false;
 
@@ -1326,7 +1324,7 @@ unsigned int XFileParser::ReadInt()
 }
 
 // ------------------------------------------------------------------------------------------------
-float XFileParser::ReadFloat()
+ai_real XFileParser::ReadFloat()
 {
     if( mIsBinaryFormat)
     {
@@ -1343,7 +1341,7 @@ float XFileParser::ReadFloat()
         if( mBinaryFloatSize == 8)
         {
             if( End - P >= 8) {
-                float result = (float) (*(double*) P);
+                ai_real result = (ai_real) (*(double*) P);
                 P += 8;
                 return result;
             } else {
@@ -1353,7 +1351,7 @@ float XFileParser::ReadFloat()
         } else
         {
             if( End - P >= 4) {
-                float result = *(float*) P;
+                ai_real result = *(ai_real*) P;
                 P += 4;
                 return result;
             } else {
@@ -1372,17 +1370,17 @@ float XFileParser::ReadFloat()
     {
         P += 9;
         CheckForSeparator();
-        return 0.0f;
+        return 0.0;
     } else
     if( strncmp( P, "1.#QNAN0", 8) == 0)
     {
         P += 8;
         CheckForSeparator();
-        return 0.0f;
+        return 0.0;
     }
 
-    float result = 0.0f;
-    P = fast_atoreal_move<float>( P, result);
+    ai_real result = 0.0;
+    P = fast_atoreal_move<ai_real>( P, result);
 
     CheckForSeparator();
 

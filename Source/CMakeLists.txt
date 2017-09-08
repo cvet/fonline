@@ -266,6 +266,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	set( ASSIMP_OPT_BUILD_PACKAGES OFF CACHE STRING "" FORCE )
 	set( ASSIMP_INSTALL_PDB OFF CACHE STRING "" FORCE )
 	add_subdirectory( "Assimp" )
+	include_directories( "${CMAKE_BINARY_DIR}/Assimp/include" )
 endif()
 include_directories( "Assimp/include" )
 
@@ -330,7 +331,6 @@ set( COMMON_SOURCE
 	Types.h
 )
 set( SERVER_CLIENT_MAPPER_SOURCE
-	${Assimp_SOURCE}
 	3dAnimation.h
 	CritterData.h
 	GraphicStructures.cpp GraphicStructures.h

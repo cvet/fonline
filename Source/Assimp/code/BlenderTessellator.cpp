@@ -2,7 +2,8 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 All rights reserved.
 
 Redistribution and use of this software in source and binary forms,
@@ -50,7 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BlenderBMesh.h"
 #include "BlenderTessellator.h"
 
-#include <stddef.h> 
+#include <stddef.h>
 
 static const unsigned int BLEND_TESS_MAGIC = 0x83ed9ac3;
 
@@ -412,9 +413,9 @@ float BlenderTessellatorP2T::FindLargestMatrixElem( const aiMatrix3x3& mtx ) con
 {
     float result = 0.0f;
 
-    for ( size_t x = 0; x < 3; ++x )
+    for ( unsigned int x = 0; x < 3; ++x )
     {
-        for ( size_t y = 0; y < 3; ++y )
+        for ( unsigned int y = 0; y < 3; ++y )
         {
             result = p2tMax( std::fabs( mtx[ x ][ y ] ), result );
         }
@@ -429,9 +430,9 @@ aiMatrix3x3 BlenderTessellatorP2T::ScaleMatrix( const aiMatrix3x3& mtx, float sc
 {
     aiMatrix3x3 result;
 
-    for ( size_t x = 0; x < 3; ++x )
+    for ( unsigned int x = 0; x < 3; ++x )
     {
-        for ( size_t y = 0; y < 3; ++y )
+        for ( unsigned int y = 0; y < 3; ++y )
         {
             result[ x ][ y ] = mtx[ x ][ y ] * scale;
         }
@@ -470,19 +471,19 @@ PlaneP2T BlenderTessellatorP2T::FindLLSQPlane( const std::vector< PointP2T >& po
 {
     PlaneP2T result;
 
-    aiVector3D sum( 0.0f );
+    aiVector3D sum( 0.0 );
     for ( size_t i = 0; i < points.size( ); ++i )
     {
         sum += points[ i ].point3D;
     }
-    result.centre = sum * ( 1.0f / points.size( ) );
+    result.centre = sum * (ai_real)( 1.0 / points.size( ) );
 
-    float sumXX = 0.0f;
-    float sumXY = 0.0f;
-    float sumXZ = 0.0f;
-    float sumYY = 0.0f;
-    float sumYZ = 0.0f;
-    float sumZZ = 0.0f;
+    ai_real sumXX = 0.0;
+    ai_real sumXY = 0.0;
+    ai_real sumXZ = 0.0;
+    ai_real sumYY = 0.0;
+    ai_real sumYZ = 0.0;
+    ai_real sumZZ = 0.0;
     for ( size_t i = 0; i < points.size( ); ++i )
     {
         aiVector3D offset = points[ i ].point3D - result.centre;
@@ -496,7 +497,7 @@ PlaneP2T BlenderTessellatorP2T::FindLLSQPlane( const std::vector< PointP2T >& po
 
     aiMatrix3x3 mtx( sumXX, sumXY, sumXZ, sumXY, sumYY, sumYZ, sumXZ, sumYZ, sumZZ );
 
-    const float det = mtx.Determinant( );
+    const ai_real det = mtx.Determinant( );
     if ( det == 0.0f )
     {
         result.normal = aiVector3D( 0.0f );
