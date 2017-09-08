@@ -380,6 +380,19 @@ _str& _str::extractDir()
     return *this;
 }
 
+_str& _str::extractLastDir()
+{
+    formatPath();
+    extractDir();
+
+    if( !s.empty() )
+        s.pop_back();
+    size_t pos = s.find_last_of( '/' );
+    if( pos != string::npos )
+        s = s.substr( pos + 1 );
+    return *this;
+}
+
 _str& _str::extractFileName()
 {
     formatPath();

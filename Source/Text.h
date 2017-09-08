@@ -84,6 +84,7 @@ public:
 
     _str& formatPath();
     _str& extractDir();
+    _str& extractLastDir();
     _str& extractFileName();
     _str& getFileExtension();   // Extension without dot
     _str& eraseFileExtension(); // Erase extension with dot

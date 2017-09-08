@@ -138,7 +138,7 @@ typedef vector< RectF > FltRectVec;
 string GetLastSocketError();
 
 extern IniParser* MainConfig;
-extern StrVec     GameModules;
+extern StrVec     ProjectFiles;
 void InitialSetup( uint argc, char** argv );
 
 extern Randomizer DefaultRandomizer;

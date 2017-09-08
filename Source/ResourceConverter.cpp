@@ -142,7 +142,7 @@ FileManager* ResourceConverter::Convert( const string& name, FileManager& file )
     string ext = _str( name ).getFileExtension();
     if( ext == "png" || ext == "tga" )
         return ConvertImage( name, file );
-    if( !ext.empty() && Is3dExtensionSupported( ext.c_str() ) && ext != "fo3d" )
+    if( !ext.empty() && Is3dExtensionSupported( ext ) && ext != "fo3d" )
         return Convert3d( name, file );
     file.SwitchToWrite();
     return &file;
@@ -1115,23 +1115,24 @@ bool ResourceConverter::Generate( StrVec* resource_names )
     bool   something_changed = false;
     StrSet update_file_names;
 
-    for( const auto& module : GameModules )
+    for( const string& project_path : ProjectFiles )
     {
-        StrVec      dummy_vec;
-        StrVec      all_dirs_path;
-        FindDataVec all_dirs;
-        FileManager::GetFolderFileNames( module, true, "", dummy_vec, nullptr, &all_dirs_path, &all_dirs );
-        for( size_t d = 0; d < all_dirs.size(); d++ )
+        StrVec dummy_vec;
+        StrVec check_dirs;
+        FileManager::GetFolderFileNames( project_path, true, "", dummy_vec, nullptr, &check_dirs );
+        check_dirs.insert( check_dirs.begin(), "" );
+
+        for( const string& check_dir : check_dirs )
         {
-            if( !_str( all_dirs[ d ].FileName ).compareIgnoreCase( "Resources" ) )
+            if( !_str( project_path + check_dir ).extractLastDir().compareIgnoreCase( "Resources" ) )
                 continue;
 
-            string      resources_root = module + all_dirs_path[ d ];
+            string      resources_root = project_path + check_dir;
             FindDataVec resources_dirs;
             FileManager::GetFolderFileNames( resources_root, false, "", dummy_vec, nullptr, nullptr, &resources_dirs );
-            for( size_t r = 0; r < resources_dirs.size(); r++ )
+            for( const FindData& resource_dir : resources_dirs )
             {
-                const string&   res_name = resources_dirs[ r ].FileName;
+                const string&   res_name = resource_dir.FileName;
                 FilesCollection resources( "", resources_root + res_name + "/" );
 
                 if( res_name.find( "_Raw" ) == string::npos )
@@ -1140,11 +1141,11 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                     string zip_path = (string) "Update/" + res_name_zip;
                     bool   skip_making_zip = true;
 
-                    FileManager::CreateDirectoryTree( zip_path.c_str() );
+                    FileManager::CreateDirectoryTree( zip_path );
 
                     // Check if file available
                     FileManager zip_file;
-                    if( !zip_file.LoadFile( zip_path.c_str(), true ) )
+                    if( !zip_file.LoadFile( zip_path, true ) )
                         skip_making_zip = false;
 
                     // Test consistency
@@ -1194,13 +1195,13 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                                 if( zipOpenNewFileInZip( zip, relative_path.c_str(), &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED ) == ZIP_OK )
                                 {
                                     if( zipWriteInFileInZip( zip, converted_file->GetOutBuf(), converted_file->GetOutBufLen() ) )
-                                        WriteLog( "Can't write file '{}' in zip file '{}'.\n", relative_path, zip_path.c_str() );
+                                        WriteLog( "Can't write file '{}' in zip file '{}'.\n", relative_path, zip_path );
 
                                     zipCloseFileInZip( zip );
                                 }
                                 else
                                 {
-                                    WriteLog( "Can't open file '{}' in zip file '{}'.\n", relative_path, zip_path.c_str() );
+                                    WriteLog( "Can't open file '{}' in zip file '{}'.\n", relative_path, zip_path );
                                 }
 
                                 if( converted_file != &file )
@@ -1208,15 +1209,15 @@ bool ResourceConverter::Generate( StrVec* resource_names )
                             }
                             zipClose( zip, nullptr );
 
-                            FileManager::DeleteFile( zip_path.c_str() );
-                            if( !FileManager::RenameFile( ( zip_path + ".tmp" ).c_str(), zip_path.c_str() ) )
+                            FileManager::DeleteFile( zip_path );
+                            if( !FileManager::RenameFile( zip_path + ".tmp", zip_path ) )
                                 WriteLog( "Can't rename file '{}' to '{}'.\n", zip_path + ".tmp", zip_path );
 
                             something_changed = true;
                         }
                         else
                         {
-                            WriteLog( "Can't open zip file '{}'.\n", zip_path.c_str() );
+                            WriteLog( "Can't open zip file '{}'.\n", zip_path );
                         }
                     }
 

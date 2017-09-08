@@ -41,7 +41,7 @@ STATIC_ASSERT( sizeof( uint64 ) >= sizeof( void* ) );
 /************************************************************************/
 
 IniParser* MainConfig;
-StrVec     GameModules;
+StrVec     ProjectFiles;
 
 void InitialSetup( uint argc, char** argv )
 {
@@ -174,16 +174,16 @@ void InitialSetup( uint argc, char** argv )
         MainConfig->SetStr( "", arg.substr( 1 ), arg_value );
     }
 
-    // Cache modules
+    // Cache project files
     #if defined ( FONLINE_SERVER ) || defined ( FONLINE_MAPPER ) || defined ( FONLINE_SCRIPT_COMPILER )
-    RUNTIME_ASSERT_STR( MainConfig->IsKey( "", "Modules" ), "'Modules' not found in config files" );
-    string modules = MainConfig->GetStr( "", "Modules" );
-    for( const string& module : _str( modules ).split( ';' ) )
+    RUNTIME_ASSERT_STR( MainConfig->IsKey( "", "ProjectFiles" ), "'ProjectFiles' not found in config file" );
+    string project_files = MainConfig->GetStr( "", "ProjectFiles" );
+    for( string project_path : _str( project_files ).split( ';' ) )
     {
-        string module_path = _str( config_dir ).combinePath( module ).normalizePathSlashes().resolvePath();
-        if( !module_path.empty() && module_path.back() != '/' && module_path.back() != '\\' )
-            module_path += "/";
-        GameModules.push_back( _str( module_path ).normalizePathSlashes() );
+        project_path = _str( config_dir ).combinePath( project_path ).normalizePathSlashes().resolvePath();
+        if( !project_path.empty() && project_path.back() != '/' && project_path.back() != '\\' )
+            project_path += "/";
+        ProjectFiles.push_back( _str( project_path ).normalizePathSlashes() );
     }
     #endif
 }

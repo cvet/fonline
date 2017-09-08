@@ -774,7 +774,7 @@ FilesCollection::FilesCollection( const string& ext, const string& fixed_dir /* 
 
     StrVec find_dirs;
     if( fixed_dir.empty() )
-        find_dirs = GameModules;
+        find_dirs = ProjectFiles;
     else
         find_dirs.push_back( fixed_dir );
 
