@@ -275,8 +275,8 @@ HexManager::HexManager()
     dayColor[ 9 ] = 128;
     dayColor[ 10 ] = 86;
     dayColor[ 11 ] = 29;
-    picRainFallName = "art/misc/rain_fall.fofrm";
-    picRainDropName = "art/misc/rain_drop.fofrm";
+    picRainFallName = "Rain/Fall.fofrm";
+    picRainDropName = "Rain/Drop.fofrm";
     picRainFall = nullptr;
     picRainDrop = nullptr;
     picTrack1 = picTrack2 = picHexMask = nullptr;
@@ -350,17 +350,17 @@ void HexManager::ReloadSprites()
     curDataPrefix = GameOpt.MapDataPrefix;
 
     // Must be valid
-    picHex[ 0 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex1.png" ).c_str(), true );
-    picHex[ 1 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex2.png" ).c_str(), true );
-    picHex[ 2 ] = SprMngr.LoadAnimation( ( curDataPrefix + "hex3.png" ).c_str(), true );
-    cursorPrePic = SprMngr.LoadAnimation( ( curDataPrefix + "move_pre.png" ).c_str(), true );
-    cursorPostPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_post.png" ).c_str(), true );
-    cursorXPic = SprMngr.LoadAnimation( ( curDataPrefix + "move_x.png" ).c_str(), true );
-    picTrack1 = SprMngr.LoadAnimation( ( curDataPrefix + "track1.png" ).c_str(), true );
-    picTrack2 = SprMngr.LoadAnimation( ( curDataPrefix + "track2.png" ).c_str(), true );
+    picHex[ 0 ] = SprMngr.LoadAnimation( curDataPrefix + "hex1.png", true );
+    picHex[ 1 ] = SprMngr.LoadAnimation( curDataPrefix + "hex2.png", true );
+    picHex[ 2 ] = SprMngr.LoadAnimation( curDataPrefix + "hex3.png", true );
+    cursorPrePic = SprMngr.LoadAnimation( curDataPrefix + "move_pre.png", true );
+    cursorPostPic = SprMngr.LoadAnimation( curDataPrefix + "move_post.png", true );
+    cursorXPic = SprMngr.LoadAnimation( curDataPrefix + "move_x.png", true );
+    picTrack1 = SprMngr.LoadAnimation( curDataPrefix + "track1.png", true );
+    picTrack2 = SprMngr.LoadAnimation( curDataPrefix + "track2.png", true );
 
     // May be null
-    picHexMask = SprMngr.LoadAnimation( ( curDataPrefix + "hex_mask.png" ).c_str() );
+    picHexMask = SprMngr.LoadAnimation( curDataPrefix + "hex_mask.png" );
 
     // Rain
     SetRainAnimation( nullptr, nullptr );
@@ -777,8 +777,8 @@ void HexManager::SetRainAnimation( const char* fall_anim_name, const char* drop_
     else
         AnyFrames::Destroy( picRainDrop );
 
-    picRainFall = SprMngr.LoadAnimation( picRainFallName.c_str(), true );
-    picRainDrop = SprMngr.LoadAnimation( picRainDropName.c_str(), true );
+    picRainFall = SprMngr.LoadAnimation( picRainFallName, true );
+    picRainDrop = SprMngr.LoadAnimation( picRainDropName, true );
 }
 
 void HexManager::SetCursorPos( int x, int y, bool show_steps, bool refresh )
