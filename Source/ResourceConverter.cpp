@@ -1134,6 +1134,8 @@ bool ResourceConverter::Generate( StrVec* resource_names )
             {
                 const string&   res_name = resource_dir.FileName;
                 FilesCollection resources( "", resources_root + res_name + "/" );
+                if( !resources.GetFilesCount() )
+                    continue;
 
                 if( res_name.find( "_Raw" ) == string::npos )
                 {
