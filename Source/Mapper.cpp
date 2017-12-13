@@ -4826,17 +4826,17 @@ CScriptArray* FOMapper::SScriptFunc::Global_GetMapFileNames( string dir )
     if( !h )
     {
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
-        return 0;
+        return nullptr;
     }
 
     CScriptArray* names = Script::CreateArray( "string[]" );
     while( true )
     {
-        if( ProtoMap::IsMapFile( ( dir_ + file_find_fname ).c_str() ) )
+        if( ProtoMap::IsMapFile( dir_ + file_find_fname ) )
         {
             string  fname = _str( file_find_fname ).eraseFileExtension();
-            int     len = names->GetSize();
-            names->Resize( names->GetSize() + 1 );
+            asUINT  len = names->GetSize();
+            names->Resize( len + 1 );
             string& str = *(string*) names->At( len );
             str = fname;
         }
