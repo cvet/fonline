@@ -57,6 +57,8 @@
 #define SDL_DYNAMIC_API 0  /* Turn off for static analysis, so reports are more clear. */
 #endif
 
+#define SDL_DYNAMIC_API 0 //! FOnline
+
 /* everyone else. This is where we turn on the API if nothing forced it off. */
 #ifndef SDL_DYNAMIC_API
 #define SDL_DYNAMIC_API 1
