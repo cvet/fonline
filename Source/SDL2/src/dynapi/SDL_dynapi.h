@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2016 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2017 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,8 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef _SDL_dynapi_h
-#define _SDL_dynapi_h
+#ifndef SDL_dynapi_h_
+#define SDL_dynapi_h_
 
 /* IMPORTANT:
    This is the master switch to disabling the dynamic API. We made it so you
@@ -56,8 +56,6 @@
 #elif defined(__clang_analyzer__)
 #define SDL_DYNAMIC_API 0  /* Turn off for static analysis, so reports are more clear. */
 #endif
-
-#define SDL_DYNAMIC_API 0 // FOnline
 
 /* everyone else. This is where we turn on the API if nothing forced it off. */
 #ifndef SDL_DYNAMIC_API
