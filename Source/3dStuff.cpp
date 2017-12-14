@@ -1419,10 +1419,10 @@ bool Animation3dEntity::Load( const string& name )
         };
         vector< anim_entry > anims;
 
-        while( !( *istr ).eof() )
+        while( !istr->eof() )
         {
             ( *istr ) >> token;
-            if( ( *istr ).fail() )
+            if( istr->fail() )
                 break;
 
             size_t comment = token.find( ';' );
@@ -1483,7 +1483,7 @@ bool Animation3dEntity::Load( const string& name )
                         new_content = _str( new_content ).replace( templates[ i ], templates[ i + 1 ] );
 
                 // Insert new buffer
-                file_buf = _str( "{}\n{}", new_content, !istr->eof() ? file_buf.substr( ( *istr ).tellg() ) : "" );
+                file_buf = _str( "{}\n{}", new_content, !istr->eof() ? file_buf.substr( istr->tellg() ) : "" );
 
                 // Reinitialize stream
                 delete istr;
