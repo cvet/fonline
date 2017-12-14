@@ -405,9 +405,7 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling,
             // Samples count
             GLint max_samples = 0;
             GL( glGetIntegerv( GL_MAX_COLOR_TEXTURE_SAMPLES, &max_samples ) );
-            if( GameOpt.MultiSampling < 0 )
-                GameOpt.MultiSampling = 8;
-            samples = MIN( GameOpt.MultiSampling, max_samples );
+            samples = MIN( GameOpt.MultiSampling > 0 ? GameOpt.MultiSampling : 8, max_samples );
 
             // Flush effect
             Effect::FlushRenderTargetMSDefault = GraphicLoader::LoadEffect( "Flush_RenderTargetMS.glsl", true, "", "Effects/" );
