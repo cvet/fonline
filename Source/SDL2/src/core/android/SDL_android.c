@@ -52,7 +52,7 @@
 #define LOGE(...) do {} while (0)
 
 
-#define SDL_JAVA_PREFIX                                 org_libsdl_app
+#define SDL_JAVA_PREFIX                                 com_fonline_app //! FOnline
 #define CONCAT1(prefix, class, function)                CONCAT2(prefix, class, function)
 #define CONCAT2(prefix, class, function)                Java_ ## prefix ## _ ## class ## _ ## function
 #define SDL_JAVA_INTERFACE(function)                    CONCAT1(SDL_JAVA_PREFIX, SDLActivity, function)
@@ -547,7 +547,7 @@ JNIEXPORT jint JNICALL SDL_JAVA_CONTROLLER_INTERFACE(nativeAddHaptic)(
     int retval;
     const char *name = (*env)->GetStringUTFChars(env, device_name, NULL);
 
-    retval = Android_AddHaptic(device_id, name);
+    retval = -1; //! Android_AddHaptic(device_id, name);
 
     (*env)->ReleaseStringUTFChars(env, device_name, name);
 
@@ -557,7 +557,7 @@ JNIEXPORT jint JNICALL SDL_JAVA_CONTROLLER_INTERFACE(nativeAddHaptic)(
 JNIEXPORT jint JNICALL SDL_JAVA_CONTROLLER_INTERFACE(nativeRemoveHaptic)(
     JNIEnv* env, jclass jcls, jint device_id)
 {
-    return Android_RemoveHaptic(device_id);
+    return -1; //! Android_RemoveHaptic(device_id);
 }
 
 
