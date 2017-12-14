@@ -1590,8 +1590,7 @@ void Script::CacheEnumValues()
         if( _str( ns ).startsWith( "Content" ) )
         {
             RUNTIME_ASSERT( type_id == asTYPEID_UINT32 ); // hash
-            string name = _str( "{}::{}", ns, name );
-            cached_enums.insert( std::make_pair( name, (int) *value ) );
+            cached_enums.insert( std::make_pair( _str( "{}::{}", ns, name ), (int) *value ) );
         }
     }
 }

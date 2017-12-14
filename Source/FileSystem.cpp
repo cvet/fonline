@@ -650,7 +650,6 @@ void MakeDirectory( const string& path )
 
 void MakeDirectoryTree( const string& path )
 {
-    uint   result = 0;
     string work = path;
     NormalizePathSlashesInplace( work );
     for( size_t i = 0; i < work.length(); i++ )

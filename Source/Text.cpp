@@ -120,7 +120,7 @@ _str& _str::trim()
     {
         s.erase();
     }
-    else if( l >= 0 )
+    else
     {
         if( l > 0 )
             s.erase( 0, l );

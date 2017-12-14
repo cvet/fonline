@@ -49,8 +49,9 @@ uint CryptManager::MurmurHash2( const uchar* data, uint len )
     return h;
 }
 
-static uint64 MurmurHash64A( const void* key, uint len )
+uint64 CryptManager::MurmurHash2_64( const uchar* data, uint len )
 {
+    #if defined ( FO_X64 )
     const uint    seed = 0;
 
     const uint64  m = 0xc6a4a7935bd1e995ULL;
@@ -58,12 +59,12 @@ static uint64 MurmurHash64A( const void* key, uint len )
 
     uint64        h = seed ^ ( len * m );
 
-    const uint64* data = (const uint64*) key;
-    const uint64* end = data + ( len / 8 );
+    const uint64* data2 = (const uint64*) data;
+    const uint64* end = data2 + ( len / 8 );
 
-    while( data != end )
+    while( data2 != end )
     {
-        uint64 k = *data++;
+        uint64 k = *data2++;
 
         k *= m;
         k ^= k >> r;
@@ -73,24 +74,24 @@ static uint64 MurmurHash64A( const void* key, uint len )
         h *= m;
     }
 
-    const uchar* data2 = (const uchar*) data;
+    const uchar* data3 = (const uchar*) data2;
 
     switch( len & 7 )
     {
     case 7:
-        h ^= uint64( data2[ 6 ] ) << 48;
+        h ^= uint64( data3[ 6 ] ) << 48;
     case 6:
-        h ^= uint64( data2[ 5 ] ) << 40;
+        h ^= uint64( data3[ 5 ] ) << 40;
     case 5:
-        h ^= uint64( data2[ 4 ] ) << 32;
+        h ^= uint64( data3[ 4 ] ) << 32;
     case 4:
-        h ^= uint64( data2[ 3 ] ) << 24;
+        h ^= uint64( data3[ 3 ] ) << 24;
     case 3:
-        h ^= uint64( data2[ 2 ] ) << 16;
+        h ^= uint64( data3[ 2 ] ) << 16;
     case 2:
-        h ^= uint64( data2[ 1 ] ) << 8;
+        h ^= uint64( data3[ 1 ] ) << 8;
     case 1:
-        h ^= uint64( data2[ 0 ] );
+        h ^= uint64( data3[ 0 ] );
         h *= m;
         break;
     }
@@ -99,10 +100,8 @@ static uint64 MurmurHash64A( const void* key, uint len )
     h *= m;
     h ^= h >> r;
     return h;
-}
 
-static uint64 MurmurHash64B( const void* key, uint len )
-{
+    #elif defined ( FO_X86 )
     const uint  seed = 0;
 
     const uint  m = 0x5bd1e995;
@@ -111,11 +110,11 @@ static uint64 MurmurHash64B( const void* key, uint len )
     uint        h1 = seed ^ len;
     uint        h2 = 0;
 
-    const uint* data = (const uint*) key;
+    const uint* data2 = (const uint*) data;
 
     while( len >= 8 )
     {
-        uint k1 = *data++;
+        uint k1 = *data2++;
         k1 *= m;
         k1 ^= k1 >> r;
         k1 *= m;
@@ -123,7 +122,7 @@ static uint64 MurmurHash64B( const void* key, uint len )
         h1 ^= k1;
         len -= 4;
 
-        uint k2 = *data++;
+        uint k2 = *data2++;
         k2 *= m;
         k2 ^= k2 >> r;
         k2 *= m;
@@ -134,7 +133,7 @@ static uint64 MurmurHash64B( const void* key, uint len )
 
     if( len >= 4 )
     {
-        uint k1 = *data++;
+        uint k1 = *data2++;
         k1 *= m;
         k1 ^= k1 >> r;
         k1 *= m;
@@ -146,11 +145,11 @@ static uint64 MurmurHash64B( const void* key, uint len )
     switch( len )
     {
     case 3:
-        h2 ^= ( (uchar*) data )[ 2 ] << 16;
+        h2 ^= ( (uchar*) data2 )[ 2 ] << 16;
     case 2:
-        h2 ^= ( (uchar*) data )[ 1 ] << 8;
+        h2 ^= ( (uchar*) data2 )[ 1 ] << 8;
     case 1:
-        h2 ^= ( (uchar*) data )[ 0 ];
+        h2 ^= ( (uchar*) data2 )[ 0 ];
         h2 *= m;
         break;
     }
@@ -167,14 +166,6 @@ static uint64 MurmurHash64B( const void* key, uint len )
     uint64 h = h1;
     h = ( h << 32 ) | h2;
     return h;
-}
-
-uint64 CryptManager::MurmurHash2_64( const uchar* data, uint len )
-{
-    #if defined ( FO_X64 )
-    return MurmurHash64A( data, len );
-    #elif defined ( FO_X86 )
-    return MurmurHash64B( data, len );
     #endif
 }
 
