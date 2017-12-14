@@ -63,6 +63,7 @@ designer. CCSID 0 can be used to select the current job's CCSID.
 _ curl_easy_setopt_ccsid()
   Variable arguments are a string pointer and a CCSID (unsigned int) for
 options:
+        CURLOPT_ABSTRACT_UNIX_SOCKET
         CURLOPT_CAINFO
         CURLOPT_CAPATH
         CURLOPT_COOKIE
@@ -90,6 +91,7 @@ options:
         CURLOPT_NOPROXY
         CURLOPT_PASSWORD
         CURLOPT_PINNEDPUBLICKEY
+        CURLOPT_PRE_PROXY
         CURLOPT_PROXY
         CURLOPT_PROXYPASSWORD
         CURLOPT_PROXYUSERNAME
@@ -116,7 +118,6 @@ options:
         CURLOPT_RTSP_TRANSPORT
         CURLOPT_SERVICE_NAME
         CURLOPT_SOCKS5_GSSAPI_SERVICE
-        CURLOPT_SOCKS_PROXY
         CURLOPT_SSH_HOST_PUBLIC_KEY_MD5
         CURLOPT_SSH_KNOWNHOSTS
         CURLOPT_SSH_PRIVATE_KEYFILE
@@ -240,7 +241,8 @@ _ If data compression has to be supported, ZLIB development environment must
   be installed.
 _ Likewise, if SCP and SFTP protocols have to be compiled in, LIBSSH2
   developent environment must be installed.
-_ Install the curl source directory in IFS.
+_ Install the curl source directory in IFS. Do NOT install it in the
+  installation target directory (wich defaults to /curl).
 _ Enter shell (QSH)
 _ Change current directory to the curl installation directory
 _ Change current directory to ./packages/OS400
@@ -275,7 +277,7 @@ _ CURL.INC member in file H. This defines everything needed by an ILE/RPG
   program using libcurl.
 _ LIBxxx modules and programs. Although the test environment is not supported
   on OS/400, the libcurl test programs are compiled for manual tests.
-_ IFS directory /curl/include/curl containg the C header files for IFS source
+_ IFS directory /curl/include/curl containing the C header files for IFS source
   C/C++ compilation and curl.inc.rpgle for IFS source ILE/RPG compilation.
 
 

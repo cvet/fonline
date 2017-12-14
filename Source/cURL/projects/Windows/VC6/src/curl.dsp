@@ -787,10 +787,6 @@ SOURCE=..\..\..\..\src\tool_metalink.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\..\src\tool_mfiles.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\..\..\..\src\tool_msgs.c
 # End Source File
 # Begin Source File
@@ -836,10 +832,6 @@ SOURCE=..\..\..\..\src\tool_util.c
 # Begin Source File
 
 SOURCE=..\..\..\..\src\tool_vms.c
-# End Source File
-# Begin Source File
-
-SOURCE=..\..\..\..\src\tool_writeenv.c
 # End Source File
 # Begin Source File
 
@@ -971,10 +963,6 @@ SOURCE=..\..\..\..\src\tool_metalink.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\..\src\tool_mfiles.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\..\..\..\src\tool_msgs.h
 # End Source File
 # Begin Source File
@@ -1032,10 +1020,6 @@ SOURCE=..\..\..\..\src\tool_version.h
 # Begin Source File
 
 SOURCE=..\..\..\..\src\tool_vms.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\..\..\..\src\tool_writeenv.h
 # End Source File
 # Begin Source File
 

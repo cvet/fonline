@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2016, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -20,7 +20,8 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PINNEDPUBLICKEY 3 "27 Aug 2014" "libcurl 7.38.0" "curl_easy_setopt options"
+.TH CURLOPT_PINNEDPUBLICKEY 3 "April 17, 2017" "libcurl 7.57.0" "curl_easy_setopt options"
+
 .SH NAME
 CURLOPT_PINNEDPUBLICKEY \- set pinned public key
 .SH SYNOPSIS
@@ -39,6 +40,9 @@ if it does not exactly match the public key provided to this option, curl will
 abort the connection before sending or receiving any data.
 
 On mismatch, \fICURLE_SSL_PINNEDPUBKEYNOTMATCH\fP is returned.
+
+The application does not have to keep the string around after setting this
+option.
 .SH DEFAULT
 NULL
 .SH PROTOCOLS
@@ -100,6 +104,8 @@ PEM/DER support:
 
   7.49.0: PolarSSL
 
+  7.54.1: SecureTransport/DarwinSSL on macOS 10.7+/iOS 10+
+
 sha256 support:
 
   7.44.0: OpenSSL, GnuTLS, NSS and wolfSSL/CyaSSL
@@ -107,6 +113,8 @@ sha256 support:
   7.47.0: mbedtls
 
   7.49.0: PolarSSL
+
+  7.54.1: SecureTransport/DarwinSSL on macOS 10.7+/iOS 10+
 
 Other SSL backends not supported.
 .SH RETURN VALUE

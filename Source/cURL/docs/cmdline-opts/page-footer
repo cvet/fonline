@@ -23,6 +23,16 @@ Sets the proxy server to use if no protocol-specific proxy is set.
 .IP "NO_PROXY <comma-separated list of hosts>"
 list of host names that shouldn't go through any proxy. If set to a asterisk
 \&'*' only, it matches all hosts.
+
+Since 7.53.0, this environment variable disable the proxy even if specify
+--proxy option. That is
+.B NO_PROXY=direct.example.com curl -x http://proxy.example.com
+.B http://direct.example.com
+accesses the target URL directly, and
+.B NO_PROXY=direct.example.com curl -x http://proxy.example.com
+.B http://somewhere.example.com
+accesses the target URL through proxy.
+
 .SH "PROXY PROTOCOL PREFIXES"
 Since curl version 7.21.7, the proxy string may be specified with a
 protocol:// prefix to specify alternative proxy protocols.
@@ -65,14 +75,25 @@ Weird server reply. The server sent data curl couldn't parse.
 FTP access denied. The server denied login or denied access to the particular
 resource or directory you wanted to reach. Most often you tried to change to a
 directory that doesn't exist on the server.
+.IP 10
+FTP accept failed. While waiting for the server to connect back when an active
+FTP session is used, an error code was sent over the control connection or
+similar.
 .IP 11
 FTP weird PASS reply. Curl couldn't parse the reply sent to the PASS request.
+.IP 12
+During an active FTP session while waiting for the server to connect back to
+curl, the timeout expired.
 .IP 13
 FTP weird PASV reply, Curl couldn't parse the reply sent to the PASV request.
 .IP 14
 FTP weird 227 format. Curl couldn't parse the 227-line the server sent.
 .IP 15
 FTP can't get host. Couldn't resolve the host IP we got in the 227-line.
+.IP 16
+HTTP/2 error. A problem was detected in the HTTP2 framing layer. This is
+somewhat generic and can be one out of several problems, see the error message
+for details.
 .IP 17
 FTP couldn't set binary. Couldn't change transfer method to binary.
 .IP 18
@@ -111,7 +132,7 @@ HTTP post error. Internal post-request generation error.
 .IP 35
 SSL connect error. The SSL handshaking failed.
 .IP 36
-FTP bad download resume. Couldn't continue an earlier aborted download.
+Bad download resume. Couldn't continue an earlier aborted download.
 .IP 37
 FILE couldn't read file. Failed to open the file. Permissions?
 .IP 38
@@ -218,8 +239,6 @@ Daniel Stenberg is the main author, but the whole list of contributors is
 found in the separate THANKS file.
 .SH WWW
 https://curl.haxx.se
-.SH FTP
-ftp://ftp.sunet.se/pub/www/utilities/curl/
 .SH "SEE ALSO"
 .BR ftp (1),
 .BR wget (1)

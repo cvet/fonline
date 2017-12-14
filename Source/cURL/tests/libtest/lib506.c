@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2016, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -33,11 +33,11 @@ struct Tdata {
 };
 
 struct userdata {
-  char *text;
+  const char *text;
   int counter;
 };
 
-int lock[3];
+static int locks[3];
 
 /* lock callback */
 static void my_lock(CURL *handle, curl_lock_data data,
@@ -69,11 +69,11 @@ static void my_lock(CURL *handle, curl_lock_data data,
   }
 
   /* detect locking of locked locks */
-  if(lock[locknum]) {
+  if(locks[locknum]) {
     printf("lock: double locked %s\n", what);
     return;
   }
-  lock[locknum]++;
+  locks[locknum]++;
 
   printf("lock:   %-6s [%s]: %d\n", what, user->text, user->counter);
   user->counter++;
@@ -105,11 +105,11 @@ static void my_unlock(CURL *handle, curl_lock_data data, void *useptr)
   }
 
   /* detect unlocking of unlocked locks */
-  if(!lock[locknum]) {
+  if(!locks[locknum]) {
     printf("unlock: double unlocked %s\n", what);
     return;
   }
-  lock[locknum]--;
+  locks[locknum]--;
 
   printf("unlock: %-6s [%s]: %d\n", what, user->text, user->counter);
   user->counter++;
@@ -131,7 +131,7 @@ static void *fire(void *ptr)
   struct curl_slist *headers;
   struct Tdata *tdata = (struct Tdata*)ptr;
   CURL *curl;
-  int i=0;
+  int i = 0;
 
   curl = curl_easy_init();
   if(!curl) {
@@ -184,7 +184,7 @@ int test(char *URL)
   int i;
   struct userdata user;
 
-  user.text = (char *)"Pigs in space";
+  user.text = "Pigs in space";
   user.counter = 0;
 
   printf("GLOBAL_INIT\n");
@@ -261,7 +261,7 @@ int test(char *URL)
   res = 0;
 
   /* start treads */
-  for(i=1; i<=THREADS; i++) {
+  for(i = 1; i <= THREADS; i++) {
 
     /* set thread data */
     tdata.url   = suburl(URL, i); /* must be curl_free()d */
@@ -349,7 +349,7 @@ int test(char *URL)
   /* try to free share, expect to fail because share is in use*/
   printf("try SHARE_CLEANUP...\n");
   scode = curl_share_cleanup(share);
-  if(scode==CURLSHE_OK) {
+  if(scode == CURLSHE_OK) {
     fprintf(stderr, "curl_share_cleanup succeed but error expected\n");
     share = NULL;
   }
@@ -368,7 +368,7 @@ test_cleanup:
   /* free share */
   printf("SHARE_CLEANUP\n");
   scode = curl_share_cleanup(share);
-  if(scode!=CURLSHE_OK)
+  if(scode != CURLSHE_OK)
     fprintf(stderr, "curl_share_cleanup failed, code errno %d\n",
             (int)scode);
 

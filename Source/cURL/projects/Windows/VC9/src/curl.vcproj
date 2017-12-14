@@ -4046,10 +4046,6 @@
 			>
 			</File>
 			<File
-				RelativePath="..\..\..\..\src\tool_mfiles.c"
-			>
-			</File>
-			<File
 				RelativePath="..\..\..\..\src\tool_msgs.c"
 			>
 			</File>
@@ -4095,10 +4091,6 @@
 			</File>
 			<File
 				RelativePath="..\..\..\..\src\tool_vms.c"
-			>
-			</File>
-			<File
-				RelativePath="..\..\..\..\src\tool_writeenv.c"
 			>
 			</File>
 			<File
@@ -4230,10 +4222,6 @@
 			>
 			</File>
 			<File
-				RelativePath="..\..\..\..\src\tool_mfiles.h"
-			>
-			</File>
-			<File
 				RelativePath="..\..\..\..\src\tool_msgs.h"
 			>
 			</File>
@@ -4291,10 +4279,6 @@
 			</File>
 			<File
 				RelativePath="..\..\..\..\src\tool_vms.h"
-			>
-			</File>
-			<File
-				RelativePath="..\..\..\..\src\tool_writeenv.h"
 			>
 			</File>
 			<File
