@@ -9,6 +9,7 @@
 #include <vector>
 #include <deque>
 #include <sstream>
+#include <tuple>
 
 #if defined ( FO_MSVC )
 using uchar = unsigned char;
@@ -36,6 +37,7 @@ using std::multimap;
 using std::set;
 using std::deque;
 using std::pair;
+using std::tuple;
 using std::istringstream;
 
 using StrUCharMap = map< string, uchar >;

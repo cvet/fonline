@@ -1387,30 +1387,38 @@ bool Animation3dEntity::Load( const string& name )
             return false;
 
         // Parse
-        string           file_buf = fo3d.GetCStr();
-        string           model;
-        string           render_fname;
-        string           render_anim;
-        vector< size_t > anim_indexes;
-        bool             disable_animation_interpolation = false;
-        bool             convert_value_fail = false;
+        string          file_buf = fo3d.GetCStr();
+        string          model;
+        string          render_fname;
+        string          render_anim;
+        bool            disable_animation_interpolation = false;
+        bool            convert_value_fail = false;
 
-        uint             mesh = 0;
-        int              layer = -1;
-        int              layer_val = 0;
-        EffectInstance*  cur_effect = nullptr;
+        uint            mesh = 0;
+        int             layer = -1;
+        int             layer_val = 0;
+        EffectInstance* cur_effect = nullptr;
 
-        AnimParams       dummy_link;
+        AnimParams      dummy_link;
         memzero( &dummy_link, sizeof( dummy_link ) );
-        AnimParams*      link = &animDataDefault;
-        static uint      link_id = 0;
+        AnimParams*     link = &animDataDefault;
+        static uint     link_id = 0;
 
-        istringstream*   istr = new istringstream( file_buf );
-        bool             closed = false;
-        string           token;
-        string           buf;
-        float            valuei = 0;
-        float            valuef = 0.0f;
+        istringstream*  istr = new istringstream( file_buf );
+        bool            closed = false;
+        string          token;
+        string          buf;
+        float           valuei = 0;
+        float           valuef = 0.0f;
+
+        struct anim_entry
+        {
+            int    index;
+            string fname;
+            string name;
+        };
+        vector< anim_entry > anims;
+
         while( !( *istr ).eof() )
         {
             ( *istr ) >> token;
@@ -1947,19 +1955,14 @@ bool Animation3dEntity::Load( const string& name )
                     // Deferred loading
                     // Todo: Reverse play
 
-                    anim_indexes.push_back( ( ind1 << 16 ) | ind2 );
-                    ( *istr ) >> buf;
-                    anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
-                    ( *istr ) >> buf;
-                    anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
+                    string a1, a2;
+                    ( *istr ) >> a1 >> a2;
+                    anims.push_back( { ( ind1 << 16 ) | ind2, a1, a2 } );
 
                     if( token == "AnimExt" )
                     {
-                        anim_indexes.push_back( ( ind1 << 16 ) | ( ind2 | 0x8000 ) );
-                        ( *istr ) >> buf;
-                        anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
-                        ( *istr ) >> buf;
-                        anim_indexes.push_back( ( size_t ) Str::Duplicate( buf ) );
+                        ( *istr ) >> a1 >> a2;
+                        anims.push_back( { ( ind1 << 16 ) | ( ind2 | 0x8000 ), a1, a2 } );
                     }
                 }
                 else
@@ -2015,11 +2018,7 @@ bool Animation3dEntity::Load( const string& name )
             }
             else if( token == "RenderFrame" || token == "RenderFrames" )
             {
-                anim_indexes.push_back( 0 );
-                ( *istr ) >> render_fname;
-                anim_indexes.push_back( ( size_t ) Str::Duplicate( render_fname ) );
-                ( *istr ) >> render_anim;
-                anim_indexes.push_back( ( size_t ) Str::Duplicate( render_anim ) );
+                anims.push_back( { 0, render_fname, render_anim } );
 
                 ( *istr ) >> renderAnimProcFrom;
 
@@ -2090,14 +2089,10 @@ bool Animation3dEntity::Load( const string& name )
 
         // Single frame render
         if( render_fname[ 0 ] && render_anim[ 0 ] )
-        {
-            anim_indexes.push_back( -1 );
-            anim_indexes.push_back( ( size_t ) Str::Duplicate( render_fname ) );
-            anim_indexes.push_back( ( size_t ) Str::Duplicate( render_anim ) );
-        }
+            anims.push_back( { -1, render_fname, render_anim } );
 
         // Create animation controller
-        if( !anim_indexes.empty() )
+        if( !anims.empty() )
         {
             animController = AnimController::Create( 2 );
             if( !animController )
@@ -2107,36 +2102,25 @@ bool Animation3dEntity::Load( const string& name )
         // Parse animations
         if( animController )
         {
-            for( uint i = 0, j = (uint) anim_indexes.size(); i < j; i += 3 )
+            for( const auto& anim : anims )
             {
-                int    anim_index = (int) anim_indexes[ i + 0 ];
-                char*  anim_fname = (char*) anim_indexes[ i + 1 ];
-                char*  anim_name = (char*) anim_indexes[ i + 2 ];
-
                 string anim_path;
-                if( anim_fname == "ModelFile" )
+                if( anim.fname == "ModelFile" )
                     anim_path = model;
                 else
-                    anim_path = _str( name ).combinePath( anim_fname );
+                    anim_path = _str( name ).combinePath( anim.fname );
 
-                AnimSet* set = GraphicLoader::LoadAnimation( anim_path, anim_name );
+                AnimSet* set = GraphicLoader::LoadAnimation( anim_path, anim.name );
                 if( set )
                 {
                     animController->RegisterAnimationSet( set );
                     uint set_index = animController->GetNumAnimationSets() - 1;
 
-                    if( anim_index == -1 )
+                    if( anim.index == -1 )
                         renderAnim = set_index;
-                    else if( anim_index )
-                        animIndexes.insert( std::make_pair( anim_index, set_index ) );
+                    else if( anim.index )
+                        animIndexes.insert( std::make_pair( anim.index, set_index ) );
                 }
-                else
-                {
-                    // WriteLog( "Animation '{}'/'{}' not found.\n", anim_path, anim_name );
-                }
-
-                delete[] anim_fname;
-                delete[] anim_name;
             }
 
             numAnimationSets = animController->GetNumAnimationSets();
