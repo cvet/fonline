@@ -1483,8 +1483,7 @@ bool Animation3dEntity::Load( const string& name )
                         new_content = _str( new_content ).replace( templates[ i ], templates[ i + 1 ] );
 
                 // Insert new buffer
-                size_t cur_pos = ( *istr ).tellg();
-                file_buf = _str( "{}\n{}", new_content, file_buf.substr( cur_pos ) );
+                file_buf = _str( "{}\n{}", new_content, !istr->eof() ? file_buf.substr( ( *istr ).tellg() ) : "" );
 
                 // Reinitialize stream
                 delete istr;
