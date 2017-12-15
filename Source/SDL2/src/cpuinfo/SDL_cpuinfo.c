@@ -70,9 +70,7 @@
 #define HWCAP_NEON (1 << 12)
 #endif
 #if defined HAVE_GETAUXVAL
-#if !defined(__ANDROID__) //! Android API-19 compilation workaround
 #include <sys/auxv.h>
-#endif
 #else
 #include <fcntl.h>
 #endif
