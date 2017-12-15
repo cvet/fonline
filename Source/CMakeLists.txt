@@ -279,7 +279,7 @@ else()
 endif()
 
 if( NOT BUILD_ONLY_CLIENT )
-	set( CURL_DIR "cURL" ) # curl-7.52.1
+	set( CURL_DIR "cURL" ) # curl-7.57.0
 	set( CURL_STATICLIB ON CACHE STRING "" FORCE )
 	set( CURL_CA_PATH "none" CACHE STRING "" FORCE )
 	set( BUILD_CURL_EXE OFF CACHE STRING "" FORCE )
