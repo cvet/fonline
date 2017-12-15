@@ -525,13 +525,13 @@ RenderTarget* SpriteManager::CreateRenderTarget( bool depth, bool multisampling,
     {
         GLenum status;
         GL( status = glCheckFramebufferStatus( GL_FRAMEBUFFER ) );
-        RUNTIME_ASSERT_STR( status == GL_FRAMEBUFFER_COMPLETE, _str( "Framebuffer not created, status {:#X}.\n", status ).c_str() );
+        RUNTIME_ASSERT_STR( status == GL_FRAMEBUFFER_COMPLETE, _str( "Framebuffer not created, status {:#X}.\n", status ) );
     }
     else // framebuffer_object_ext
     {
         GLenum status;
         GL( status = glCheckFramebufferStatusEXT( GL_FRAMEBUFFER_EXT ) );
-        RUNTIME_ASSERT_STR( status == GL_FRAMEBUFFER_COMPLETE_EXT, _str( "FramebufferExt not created, status {:#X}.\n", status ).c_str() );
+        RUNTIME_ASSERT_STR( status == GL_FRAMEBUFFER_COMPLETE_EXT, _str( "FramebufferExt not created, status {:#X}.\n", status ) );
     }
 
     // Effect
@@ -1157,7 +1157,7 @@ void SpriteManager::DumpAtlases()
     {
         TextureAtlas* atlas = *it;
         string        fname = _str( "{}{}_{}_{}x{}.png", path, cnt, atlas->Type, atlas->Width, atlas->Height );
-        SaveTexture( atlas->TextureOwner, fname.c_str(), false );
+        SaveTexture( atlas->TextureOwner, fname, false );
         cnt++;
     }
 }
@@ -1704,21 +1704,24 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
     if( fofrm.IsKey( "", "effect" ) )
         effect = GraphicLoader::LoadEffect( fofrm.GetStr( "", "effect" ), true );
 
-    AnimVec anims;
-    IntVec  anims_offs;
-    anims.reserve( 50 );
-    anims_offs.reserve( 100 );
+    struct frame_t
+    {
+        AnyFrames* anim;
+        int        next_x;
+        int        next_y;
+    };
 
     AnyFrames* base_anim = nullptr;
     for( int dir = 0; dir < DIRS_COUNT; dir++ )
     {
-        anims.clear();
-        anims_offs.clear();
+        vector< frame_t > anim_seq;
+        anim_seq.reserve( 50 );
 
         string dir_str = _str( "dir_{}", dir );
-        bool   no_app = !fofrm.IsApp( dir_str.c_str() );
+        if( !fofrm.IsApp( dir_str ) )
+            dir_str = "";
 
-        if( no_app )
+        if( dir_str.empty() )
         {
             if( dir == 1 )
                 break;
@@ -1732,8 +1735,8 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
         }
         else
         {
-            ox = fofrm.GetInt( dir_str.c_str(), "offs_x", ox );
-            oy = fofrm.GetInt( dir_str.c_str(), "offs_y", oy );
+            ox = fofrm.GetInt( dir_str, "offs_x", ox );
+            oy = fofrm.GetInt( dir_str, "offs_y", oy );
         }
 
         string frm_dir = _str( fname ).extractDir();
@@ -1744,14 +1747,14 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
         for( int frm = 0; frm < frm_num; frm++ )
         {
             string frm_name;
-            if( ( frm_name = fofrm.GetStr( no_app ? "" : dir_str, _str( "frm_{}", frm ) ) ).empty() &&
-                ( frm != 0 || ( frm_name = fofrm.GetStr( no_app ? "" : dir_str, "frm" ) ).empty() ) )
+            if( ( frm_name = fofrm.GetStr( dir_str, _str( "frm_{}", frm ) ) ).empty() &&
+                ( frm != 0 || ( frm_name = fofrm.GetStr( dir_str, "frm" ) ).empty() ) )
             {
                 no_info = true;
                 break;
             }
 
-            AnyFrames* anim = LoadAnimation( ( frm_dir + frm_name ).c_str() );
+            AnyFrames* anim = LoadAnimation( frm_dir + frm_name );
             if( !anim )
             {
                 WriteLog( "Anim '{}' not found.\n", frm_dir + frm_name );
@@ -1760,21 +1763,21 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
             }
 
             frames += anim->CntFrm;
-            anims.push_back( anim );
 
-            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str.c_str(), _str( "next_x_{}", frm ).c_str(), 0 ) );
-            anims_offs.push_back( fofrm.GetInt( no_app ? "" : dir_str.c_str(), _str( "next_y_{}", frm ).c_str(), 0 ) );
+            int next_x = fofrm.GetInt( dir_str, _str( "next_x_{}", frm ), 0 );
+            int next_y = fofrm.GetInt( dir_str, _str( "next_y_{}", frm ), 0 );
+            anim_seq.push_back( { anim, next_x, next_y } );
         }
 
         // No frames found or error
-        if( no_info || load_fail || anims.empty() || ( dir > 0 && (uint) anims.size() != base_anim->GetCnt() ) )
+        if( no_info || load_fail || anim_seq.empty() || ( dir > 0 && (uint) anim_seq.size() != base_anim->GetCnt() ) )
         {
             if( no_info && dir == 1 )
                 break;
 
             WriteLog( "FOFRM file '{}' invalid data.\n", fname );
-            for( uint i = 0, j = (uint) anims.size(); i < j; i++ )
-                AnyFrames::Destroy( anims[ i ] );
+            for( auto& frame : anim_seq )
+                AnyFrames::Destroy( frame.anim );
             AnyFrames::Destroy( base_anim );
             return nullptr;
         }
@@ -1788,15 +1791,13 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
 
         // Merge many animations in one
         uint frm = 0;
-        for( uint i = 0, j = (uint) anims.size(); i < j; i++ )
+        for( auto& frame : anim_seq )
         {
-            AnyFrames* part = anims[ i ];
-
-            for( uint j = 0; j < part->CntFrm; j++, frm++ )
+            for( uint j = 0; j < frame.anim->CntFrm; j++, frm++ )
             {
-                anim->Ind[ frm ] = part->Ind[ j ];
-                anim->NextX[ frm ] += anims_offs[ frm * 2 + 0 ];
-                anim->NextY[ frm ] += anims_offs[ frm * 2 + 1 ];
+                anim->Ind[ frm ] = frame.anim->Ind[ j ];
+                anim->NextX[ frm ] += frame.next_x;
+                anim->NextY[ frm ] += frame.next_y;
 
                 SpriteInfo* si = GetSpriteInfo( anim->Ind[ frm ] );
                 si->OffsX += ox;
@@ -1804,7 +1805,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
                 si->DrawEffect = effect;
             }
 
-            AnyFrames::Destroy( part );
+            AnyFrames::Destroy( frame.anim );
         }
     }
 
@@ -4175,7 +4176,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             if( spr->DrawOrderType >= DRAW_ORDER_FLAT && spr->DrawOrderType < DRAW_ORDER )
                 y1 -= (int) ( 40.0f / z );
 
-            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), _str( "{}", spr->TreeIndex ).c_str(), 0 );
+            DrawStr( Rect( x1, y1, x1 + 100, y1 + 100 ), _str( "{}", spr->TreeIndex ), 0 );
         }
         #endif
 
