@@ -137,18 +137,15 @@ static string Global_EncodeUTF8( uint ucs )
     return string( buf, len );
 }
 
-static uint Global_GetFolderFileNames( string path, string ext, bool include_subdirs, CScriptArray* result )
+static CScriptArray* Global_GetFolderFileNames( string path, string ext, bool include_subdirs )
 {
     StrVec files;
     FileManager::GetFolderFileNames( path, include_subdirs, ext, files );
 
-    if( result )
-    {
-        for( string f : files )
-            result->InsertLast( &f );
-    }
-
-    return (uint) files.size();
+    CScriptArray* result = Script::CreateArray( "string[]" );
+    for( string f : files )
+        result->InsertLast( &f );
+    return result;
 }
 
 static bool Global_DeleteFile( string filename )

@@ -1099,9 +1099,7 @@ void FOClient::MainLoop()
     CHECK_MULTIPLY_WINDOWS1;
 
     // Game time
-    ushort full_second = GameOpt.FullSecond;
-    Timer::ProcessGameTime();
-    if( full_second != GameOpt.FullSecond )
+    if( Timer::ProcessGameTime() )
         SetDayTime( false );
 
     if( IsMainScreen( SCREEN_GLOBAL_MAP ) )

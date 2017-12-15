@@ -25,10 +25,6 @@ namespace Timer
     void SetGamePause( bool pause );
     bool IsGamePaused();
 
-    void StartAccelerator( int num );
-    bool ProcessAccelerator( int num );
-    int  GetAcceleratorNum();
-
     void GetCurrentDateTime( DateTimeStamp& dt );
     void DateTimeToFullTime( const DateTimeStamp& dt, uint64& ft );
     void FullTimeToDateTime( uint64 ft, DateTimeStamp& dt );
@@ -40,7 +36,7 @@ namespace Timer
     uint          GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second );
     DateTimeStamp GetGameTime( uint full_second );
     uint          GameTimeMonthDay( ushort year, ushort month );
-    void          ProcessGameTime();
+    bool          ProcessGameTime();
 };
 
 #endif // __TIMER__

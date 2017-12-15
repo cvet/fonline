@@ -29,10 +29,10 @@ void Timer::Init()
     #endif
 
     InitialAccurateTick = AccurateTick();
+    UpdateTick();
     LastGameTick = FastTick();
     SkipGameTick = LastGameTick;
     GameTickPaused = false;
-    UpdateTick();
 }
 
 void Timer::UpdateTick()
@@ -255,7 +255,7 @@ uint Timer::GameTimeMonthDay( ushort year, ushort month )
     return 0;
 }
 
-void Timer::ProcessGameTime()
+bool Timer::ProcessGameTime()
 {
     uint tick = Timer::GameTick();
     uint dt = tick - GameOpt.GameTimeTick;
@@ -271,5 +271,7 @@ void Timer::ProcessGameTime()
         GameOpt.Hour = st.Hour;
         GameOpt.Minute = st.Minute;
         GameOpt.Second = st.Second;
+        return true;
     }
+    return false;
 }
