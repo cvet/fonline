@@ -1,4 +1,4 @@
-package org.libsdl.app;
+package com.fonline.app;
 
 import android.content.Context;
 
