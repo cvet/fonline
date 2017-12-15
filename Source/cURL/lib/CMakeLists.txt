@@ -108,6 +108,8 @@ if(WIN32)
   endif()
 endif()
 
+return() #!
+
 target_include_directories(${LIB_NAME} INTERFACE
 	$<INSTALL_INTERFACE:include>)
 

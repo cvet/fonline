@@ -74,6 +74,8 @@ target_link_libraries( ${EXE_NAME} libcurl ${CURL_LIBS})
 set_target_properties(${EXE_NAME} PROPERTIES
   DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 
+return() #!
+
 #INCLUDE(ModuleInstall OPTIONAL)
 
 install(TARGETS ${EXE_NAME} EXPORT curl-target DESTINATION bin)

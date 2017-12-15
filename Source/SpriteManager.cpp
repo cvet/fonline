@@ -1784,7 +1784,7 @@ AnyFrames* SpriteManager::LoadAnimationFofrm( const string& fname )
 
         // Allocate animation storage
         if( !base_anim )
-            base_anim = AnyFrames::Create( frames, 1000 / frm_fps * frm_num );
+            base_anim = AnyFrames::Create( frames, 1000 * frm_num / frm_fps );
         if( dir == 1 )
             base_anim->CreateDirAnims();
         AnyFrames* anim = base_anim->GetDir( dir );
