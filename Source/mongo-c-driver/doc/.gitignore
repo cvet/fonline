@@ -1,0 +1,8 @@
+*.7
+html/*.html
+html/*.css
+html/*.js
+html/*.png
+man/*.3
+mongoc_installing.page
+mongoc_version.page

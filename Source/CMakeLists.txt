@@ -301,6 +301,19 @@ if( NOT BUILD_ONLY_CLIENT )
 	include_directories( "websocketpp" )
 endif()
 
+# MongoDB C driver
+if( NOT BUILD_ONLY_CLIENT )
+	add_subdirectory( "${CMAKE_CURRENT_SOURCE_DIR}/libbson" )
+	set( BSON_INCLUDE_DIR "${CMAKE_BINARY_DIR}/libbson/src/bson"
+		"${CMAKE_CURRENT_SOURCE_DIR}/libbson/src/bson" CACHE STRING "" FORCE )
+	set( BSON_LIBRARIES "bson_static" CACHE STRING "" FORCE )
+	include_directories( "${BSON_INCLUDE_DIR}" )
+	add_subdirectory( "${CMAKE_CURRENT_SOURCE_DIR}/mongo-c-driver" )
+	set( MONGOC_INCLUDE_DIR "${CMAKE_BINARY_DIR}/mongo-c-driver/src/mongoc"
+		"${CMAKE_CURRENT_SOURCE_DIR}/mongo-c-driver/src/mongoc" CACHE STRING "" FORCE )
+	include_directories( "${MONGOC_INCLUDE_DIR}" )
+endif()
+
 set( COMMON_SOURCE
 	${Json_SOURCE}
 	${fmt_SOURCE}
@@ -450,13 +463,13 @@ if( NOT BUILD_ONLY_CLIENT )
 	add_executable( FOnlineServer WIN32 ${SERVER_SOURCE} "Server.rc" )
 	set_target_properties( FOnlineServer PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES}" )
-	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "fltk" "${FBXSDK}" "assimp" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineServer "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "fltk" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${CMAKE_DL_LIBS}" )
 
 	if( NOT WIN32 )
 		add_executable( FOnlineServerDaemon ${SERVER_SOURCE} "Server.rc" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES ${RO0} ${SERVER_OUTPUT} ${RO1} ${SERVER_OUTPUT} ${RO2} ${SERVER_OUTPUT} ${RO3} ${SERVER_OUTPUT} ${RO4} ${SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon${NON_CLIENT_POSTFIX}" COMPILE_FLAGS "${SERVER_DEFINES} -DSERVER_DAEMON" )
-		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "${CMAKE_DL_LIBS}" )
+		target_link_libraries( FOnlineServerDaemon "Angelscript" "AngelscriptExt" "zlibstatic" "${PNG16}" "SHA" "libcurl" "${NCODEHOOK}" "${FBXSDK}" "assimp" "mongoc_static" "bson_static" "${CMAKE_DL_LIBS}" )
 	endif()
 
 	add_executable( Mapper WIN32 ${MAPPER_SOURCE} "Mapper.rc" )
@@ -471,5 +484,5 @@ if( NOT BUILD_ONLY_CLIENT )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline Mapper ASCompiler PROPERTY FOLDER "Binaries")
-	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp PROPERTY FOLDER "Libraries")
+	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static PROPERTY FOLDER "Libraries")
 endif()

@@ -1741,6 +1741,8 @@ if(SDL_STATIC)
   target_include_directories(SDL2-static PUBLIC $<INSTALL_INTERFACE:include>)
 endif()
 
+return() #!
+
 ##### Installation targets #####
 install(TARGETS ${_INSTALL_LIBS} EXPORT SDL2Targets
   LIBRARY DESTINATION "lib${LIB_SUFFIX}"

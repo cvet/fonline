@@ -316,6 +316,7 @@ void FOServer::LogicTick()
     for( Client* cl : clients )
         cl->AddRef();
     ConnectedClientsLocker.Unlock();
+
     for( Client* cl : clients )
     {
         // Check for removing
