@@ -15,6 +15,7 @@ AM_CONDITIONAL([COMPILER_CLANG],[test "$c_compiler" = "clang" && test "$cxx_comp
 
 # Feature Conditionals
 AM_CONDITIONAL([ENABLE_DEBUG],[test "$enable_debug" = "yes"])
+AM_CONDITIONAL([ENABLE_STATIC],[test "$enable_static" = "yes"])
 
 # C99 Features
 AM_CONDITIONAL([ENABLE_STDBOOL],[test "$enable_stdbool" = "yes"])
@@ -30,8 +31,10 @@ AM_CONDITIONAL([ENABLE_TESTS],[test "$enable_tests" = "yes"])
 
 # Should we build man pages
 AM_CONDITIONAL([ENABLE_MAN_PAGES],[test "$enable_man_pages" = "yes"])
+AS_IF([test "$enable_man_pages" = "yes" && test -z "$SPHINX_BUILD"],
+      [AC_MSG_ERROR([The Sphinx Python package must be installed to generate man pages.])])
 
 # Should we build HTML documentation
 AM_CONDITIONAL([ENABLE_HTML_DOCS],[test "$enable_html_docs" = "yes"])
-AS_IF([test "$enable_html_docs" = "yes" && test -z "$YELP_BUILD"],
-      [AC_MSG_ERROR([yelp-build must be installed to generate HTML documentation.])])
+AS_IF([test "$enable_html_docs" = "yes" && test -z "$SPHINX_BUILD"],
+      [AC_MSG_ERROR([The Sphinx Python package must be installed to generate HTML documentation.])])

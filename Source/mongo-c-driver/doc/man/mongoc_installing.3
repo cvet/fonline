@@ -1,0 +1,494 @@
+.\" Man page generated from reStructuredText.
+.
+.TH "MONGOC_INSTALLING" "3" "Nov 16, 2017" "1.8.2" "MongoDB C Driver"
+.SH NAME
+mongoc_installing \- Installing the MongoDB C Driver
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.sp
+The following guide will step you through the process of downloading, building, and installing the current release of the MongoDB C Driver.
+.SH SUPPORTED PLATFORMS
+.sp
+The MongoDB C Driver is \fI\%continuously tested\fP on variety of platforms including:
+.INDENT 0.0
+.IP \(bu 2
+Archlinux
+.IP \(bu 2
+Debian 8.1
+.IP \(bu 2
+macOS 10.10
+.IP \(bu 2
+Microsoft Windows Server 2008
+.IP \(bu 2
+RHEL 7.0, 7.1, 7.2
+.IP \(bu 2
+SUSE 12
+.IP \(bu 2
+Ubuntu 12.04, 14.04, 16.04
+.IP \(bu 2
+Clang 3.4, 3.5, 3.7, 3.8
+.IP \(bu 2
+GCC 4.6, 4.8, 4.9, 5.3
+.IP \(bu 2
+MinGW\-W64
+.IP \(bu 2
+Visual Studio 2010, 2013, 2015
+.IP \(bu 2
+x86, x86_64, ARM (aarch64), Power8 (ppc64le), zSeries (s390x)
+.UNINDENT
+.SH INSTALL WITH A PACKAGE MANAGER
+.sp
+The libmongoc package is available on recent versions of Debian and Ubuntu.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ apt\-get install libmongoc\-1.0\-0
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+On Fedora, a mongo\-c\-driver package is available in the default repositories and can be installed with:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ dnf install mongo\-c\-driver
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+On recent Red Hat systems, such as CentOS and RHEL 7, a mongo\-c\-driver package is available in the \fI\%EPEL\fP repository. To check version available, see \fI\%https://apps.fedoraproject.org/packages/mongo\-c\-driver\fP\&. The package can be installed with:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ yum install mongo\-c\-driver
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH BUILDING ON UNIX
+.SS Prerequisites
+.sp
+OpenSSL is required for authentication or for SSL connections to MongoDB. Kerberos or LDAP support requires Cyrus SASL.
+.sp
+To install all optional dependencies on RedHat / Fedora:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ sudo yum install pkg\-config openssl\-devel cyrus\-sasl\-devel
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+On Debian / Ubuntu:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ sudo apt\-get install pkg\-config libssl\-dev libsasl2\-dev
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+On FreeBSD:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ su \-c \(aqpkg install pkgconf openssl cyrus\-sasl\(aq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Building from a release tarball
+.sp
+Unless you intend on contributing to the mongo\-c\-driver, you will want to build from a release tarball.
+.sp
+The most recent release of libmongoc is 1.8.2 and can be \fI\%downloaded here\fP\&. The following snippet will download and extract the driver, and configure it:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ wget \fI\%https://github.com/mongodb/mongo\-c\-driver/releases/download/1.8.2/mongo\-c\-driver\-1.8.2.tar.gz\fP
+$ tar xzf mongo\-c\-driver\-1.8.2\&.tar.gz
+$ cd mongo\-c\-driver\-1.8.2
+$ ./configure \-\-disable\-automatic\-init\-and\-cleanup
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+The \fB\-\-disable\-automatic\-init\-and\-cleanup\fP option is recommended, see init\-cleanup\&. For a list of all configure options, run \fB\&./configure \-\-help\fP\&.
+.sp
+If \fBconfigure\fP completed successfully, you’ll see something like the following describing your build configuration.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+libmongoc 1.8.2 was configured with the following options:
+
+Build configuration:
+  Enable debugging (slow)                          : no
+  Compile with debug symbols (slow)                : no
+  Enable GCC build optimization                    : yes
+  Enable automatic init and cleanup                : no
+  Enable maintainer flags                          : no
+  Code coverage support                            : no
+  Cross Compiling                                  : no
+  Fast counters                                    : no
+  Shared memory performance counters               : yes
+  SASL                                             : sasl2
+  SSL                                              : openssl
+  Snappy Compression                               : no
+  Zlib Compression                                 : bundled
+  Libbson                                          : bundled
+
+Documentation:
+  man                                              : no
+  HTML                                             : no
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+mongo\-c\-driver contains a copy of libbson, in case your system does not already have libbson installed. The configure script will detect if libbson is not installed and use the bundled libbson.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ make
+$ sudo make install
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Building from git
+.sp
+To build an unreleased version of the driver from git requires additional dependencies.
+.sp
+RedHat / Fedora:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ sudo yum install git gcc automake autoconf libtool
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Debian / Ubuntu:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ sudo apt\-get install git gcc automake autoconf libtool
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+FreeBSD:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ su \-c \(aqpkg install git gcc automake autoconf libtool\(aq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Once you have the dependencies installed, clone the repository and build the current master or a particular release tag:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ git clone https://github.com/mongodb/mongo\-c\-driver.git
+$ cd mongo\-c\-driver
+$ git checkout x.y.z  # To build a particular release
+$ ./autogen.sh \-\-with\-libbson=bundled
+$ make
+$ sudo make install
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Generating the documentation
+.sp
+Install \fI\%Sphinx\fP, then:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ ./configure \-\-enable\-html\-docs \-\-enable\-man\-pages
+$ make man html
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH BUILDING ON MAC OS X
+.sp
+Install the XCode Command Line Tools:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ xcode\-select \-\-install
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+The \fBpkg\-config\fP utility is also required. First \fI\%install Homebrew according to its instructions\fP, then:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ brew install pkgconfig
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Download the latest release tarball:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ curl \-LO \fI\%https://github.com/mongodb/mongo\-c\-driver/releases/download/1.8.2/mongo\-c\-driver\-1.8.2.tar.gz\fP
+$ tar xzf mongo\-c\-driver\-1.8.2\&.tar.gz
+$ cd mongo\-c\-driver\-1.8.2
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Build and install the driver:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ ./configure
+$ make
+$ sudo make install
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Native TLS Support on Mac OS X / Darwin (Secure Transport)
+.sp
+The MongoDB C Driver supports the Darwin native TLS and crypto libraries.
+Using the native libraries there is no need to install OpenSSL. By
+default however, the driver will compile against OpenSSL if it
+detects it being available. If OpenSSL is not available, it will
+fallback on the native libraries.
+.sp
+To compile against the Darwin native TLS and crypto libraries, even when
+OpenSSL is available, configure the driver like so:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ ./configure \-\-enable\-ssl=darwin
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS OpenSSL support on El Capitan
+.sp
+Beginning in OS X 10.11 El Capitan, OS X no longer includes the OpenSSL headers. To build the driver with SSL on El Capitan and later:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ brew install openssl
+$ export LDFLAGS="\-L/usr/local/opt/openssl/lib"
+$ export CPPFLAGS="\-I/usr/local/opt/openssl/include"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH BUILDING ON WINDOWS
+.sp
+Building on Windows requires Windows Vista or newer and Visual Studio 2010 or newer. Additionally, \fBcmake\fP is required to generate Visual Studio project files.
+.sp
+Let’s start by generating Visual Studio project files for libbson, a dependency of the C driver. The following assumes we are compiling for 64\-bit Windows using Visual Studio 2015 Express, which can be freely downloaded from Microsoft.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cd mongo\-c\-driver\-1.8.2\esrc\elibbson
+cmake \-G "Visual Studio 14 2015 Win64" \e
+  "\-DCMAKE_INSTALL_PREFIX=C:\emongo\-c\-driver" \e
+  "\-DCMAKE_BUILD_TYPE=Release" # Defaults to debug builds
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+(Run \fBcmake \-LH .\fP for a list of other options.)
+.sp
+Now that we have project files generated, we can either open the project in Visual Studio or compile from the command line. Let’s build using the command line program \fBmsbuild.exe\fP
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+msbuild.exe /p:Configuration=Release ALL_BUILD.vcxproj
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Now that libbson is compiled, let’s install it using msbuild. It will be installed to the path specified by \fBCMAKE_INSTALL_PREFIX\fP\&.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+msbuild.exe /p:Configuration=Release INSTALL.vcxproj
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+You should now see libbson installed in \fBC:\emongo\-c\-driver\fP
+.sp
+Now let’s do the same for the MongoDB C driver.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cd mongo\-c\-driver\-1.8.2
+cmake \-G "Visual Studio 14 2015 Win64" \e
+  "\-DENABLE_SSL=WINDOWS" \e
+  "\-DENABLE_SASL=SSPI" \e
+  "\-DCMAKE_INSTALL_PREFIX=C:\emongo\-c\-driver" \e
+  "\-DCMAKE_PREFIX_PATH=C:\emongo\-c\-driver" \e
+  "\-DCMAKE_BUILD_TYPE=Release" # Defaults to debug builds
+
+msbuild.exe /p:Configuration=Release ALL_BUILD.vcxproj
+msbuild.exe /p:Configuration=Release INSTALL.vcxproj
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+All of the MongoDB C Driver’s components will now have been build in release
+mode and can be found in \fBC:\emongo\-c\-driver\fP\&.
+To build and install debug binaries, remove the
+\fB"\-DCMAKE_BUILD_TYPE=Release"\fP argument to \fBcmake\fP and
+\fB/p:Configuration=Release\fP to \fBmsbuild.exe\fP\&.
+.sp
+To use the driver libraries in your program, see visual\-studio\-guide\&.
+.SS Native TLS Support on Windows (Secure Channel)
+.sp
+The MongoDB C Driver supports the Windows native TLS and crypto libraries.
+Using the native libraries there is no need to install OpenSSL. By
+default however, the driver will compile against OpenSSL if it
+detects it being available. If OpenSSL is not available, it will
+fallback on the native libraries.
+.sp
+To compile against the Windows native TLS and crypto libraries, even when
+OpenSSL is available, configure the driver like so:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cmake \-G "Visual Studio 14 2015 Win64" \e
+  "\-DENABLE_SSL=WINDOWS" \e
+  "\-DCMAKE_INSTALL_PREFIX=C:\e\emongo\-c\-driver" \e
+  "\-DCMAKE_PREFIX_PATH=C:\e\emongo\-c\-driver"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Native SASL Support on Windows (SSPI)
+.sp
+The MongoDB C Driver supports the Windows native Kerberos and Active Directory
+interface, SSPI. Using the native libraries there is no need to install any
+dependencies, such as cyrus\-sasl.  By default however, the driver will compile
+against cyrus\-sasl.
+.sp
+To compile against the Windows native SSPI, configure the driver like so:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cmake \-G "Visual Studio 14 2015 Win64" \e
+  "\-DENABLE_SASL=SSPI" \e
+  "\-DCMAKE_INSTALL_PREFIX=C:\e\emongo\-c\-driver" \e
+  "\-DCMAKE_PREFIX_PATH=C:\e\emongo\-c\-driver"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS OpenSSL support on Windows
+.sp
+For backwards compatibility CMake will default to OpenSSL support.
+If not found, it will fallback to native TLS support provided by the platform.
+.sp
+OpenSSL 1.1.0 support requires CMake 3.7 or later on Windows.
+.SH AUTHOR
+MongoDB, Inc
+.SH COPYRIGHT
+2017, MongoDB, Inc
+.\" Generated by docutils manpage writer.
+.

@@ -28,14 +28,15 @@ https://github.com/mongodb/specifications/blob/master/source/server-discovery-an
 void
 _mongoc_topology_description_monitor_server_opening (
    const mongoc_topology_description_t *td,
-   const mongoc_server_description_t *sd)
+   mongoc_server_description_t *sd)
 {
-   if (td->apm_callbacks.server_opening) {
+   if (td->apm_callbacks.server_opening && !sd->opened) {
       mongoc_apm_server_opening_t event;
 
       bson_oid_copy (&td->topology_id, &event.topology_id);
       event.host = &sd->host;
       event.context = td->apm_context;
+      sd->opened = true;
       td->apm_callbacks.server_opening (&event);
    }
 }
@@ -80,8 +81,7 @@ _mongoc_topology_description_monitor_server_closed (
 /* Send TopologyOpeningEvent when first called on this topology description.
  * td is not const: we set its "opened" field here */
 void
-_mongoc_topology_description_monitor_opening (
-   mongoc_topology_description_t *td)
+_mongoc_topology_description_monitor_opening (mongoc_topology_description_t *td)
 {
    mongoc_topology_description_t *prev_td = NULL;
    size_t i;
@@ -94,8 +94,8 @@ _mongoc_topology_description_monitor_opening (
    if (td->apm_callbacks.topology_changed) {
       /* prepare to call monitor_changed */
       prev_td = bson_malloc0 (sizeof (mongoc_topology_description_t));
-      mongoc_topology_description_init (prev_td, MONGOC_TOPOLOGY_UNKNOWN,
-                                        td->heartbeat_msec);
+      mongoc_topology_description_init (
+         prev_td, MONGOC_TOPOLOGY_UNKNOWN, td->heartbeat_msec);
    }
 
    td->opened = true;

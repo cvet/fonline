@@ -37,10 +37,22 @@ example_client_SOURCES = examples/example-client.c
 example_client_CFLAGS = $(EXAMPLE_CFLAGS)
 example_client_LDADD = $(EXAMPLE_LDADD)
 
+noinst_PROGRAMS += example-create-indexes
+example_create_indexes_SOURCES = examples/example-create-indexes.c
+example_create_indexes_CFLAGS = $(EXAMPLE_CFLAGS)
+example_create_indexes_LDADD = $(EXAMPLE_LDADD)
+
+EXAMPLE_POOL_LDADD =
+EXAMPLE_POOL_CFLAGS =
+if EXPLICIT_LIBS
+EXAMPLE_POOL_LDADD += $(PTHREAD_LIBS)
+EXAMPLE_POOL_CFLAGS += $(PTHREAD_CFLAGS)
+endif
+
 noinst_PROGRAMS += example-pool
 example_pool_SOURCES = examples/example-pool.c
-example_pool_CFLAGS = $(EXAMPLE_CFLAGS)
-example_pool_LDADD = $(EXAMPLE_LDADD)
+example_pool_CFLAGS = $(EXAMPLE_CFLAGS) $(EXAMPLE_POOL_CFLAGS)
+example_pool_LDADD = $(EXAMPLE_LDADD) $(EXAMPLE_POOL_LDADD)
 
 noinst_PROGRAMS += example-command-with-opts
 example_command_with_opts_SOURCES = examples/example-command-with-opts.c
@@ -118,9 +130,27 @@ fam_CFLAGS = $(EXAMPLE_CFLAGS)
 fam_LDADD = $(EXAMPLE_LDADD)
 
 EXTRA_DIST += \
+	examples/doc-common-insert.c \
+	examples/basic_aggregation/map-reduce-basic.c \
+	examples/basic_aggregation/map-reduce-advanced.c \
+	examples/basic_aggregation/distinct.c \
+	examples/basic_aggregation/basic-aggregation.c \
+	examples/basic_aggregation/constants.c \
+	examples/common_operations/explain.c \
+	examples/common_operations/copydb.c \
+	examples/common_operations/common-operations.c \
+	examples/common_operations/clone-collection.c \
 	examples/find_and_modify_with_opts/bypass.c \
 	examples/find_and_modify_with_opts/fields.c \
 	examples/find_and_modify_with_opts/flags.c \
 	examples/find_and_modify_with_opts/opts.c \
 	examples/find_and_modify_with_opts/sort.c \
 	examples/find_and_modify_with_opts/update.c
+
+# These files are included when we generate docs from tutorial.rst
+EXTRA_DIST += \
+	examples/hello_mongoc.c \
+	examples/compile-with-pkg-config.sh \
+	examples/compile-with-pkg-config-static.sh \
+	examples/cmake/find_package/CMakeLists.txt \
+	examples/cmake/find_package_static/CMakeLists.txt

@@ -24,10 +24,12 @@
 #include <bson.h>
 #include <stdio.h>
 
+#ifndef STDIN_FILENO
+#define STDIN_FILENO 0
+#endif
 
 int
-main (int   argc,
-      char *argv[])
+main (int argc, char *argv[])
 {
    bson_reader_t *reader;
    const bson_t *b;
@@ -40,9 +42,7 @@ main (int   argc,
     * Print program usage if no arguments are provided.
     */
    if (argc == 1) {
-      fprintf(stderr,
-              "usage: %s [FILE | -]...\nUse - for STDIN.\n",
-              argv[0]);
+      fprintf (stderr, "usage: %s [FILE | -]...\nUse - for STDIN.\n", argv[0]);
       return 1;
    }
 
@@ -56,8 +56,8 @@ main (int   argc,
          reader = bson_reader_new_from_fd (STDIN_FILENO, false);
       } else {
          if (!(reader = bson_reader_new_from_file (filename, &error))) {
-            fprintf (stderr, "Failed to open \"%s\": %s\n",
-                     filename, error.message);
+            fprintf (
+               stderr, "Failed to open \"%s\": %s\n", filename, error.message);
             continue;
          }
       }
@@ -66,9 +66,9 @@ main (int   argc,
        * Convert each incoming document to JSON and print to stdout.
        */
       while ((b = bson_reader_read (reader, NULL))) {
-         str = bson_as_json(b, NULL);
-         fprintf(stdout, "%s\n", str);
-         bson_free(str);
+         str = bson_as_canonical_extended_json (b, NULL);
+         fprintf (stdout, "%s\n", str);
+         bson_free (str);
       }
 
       /*

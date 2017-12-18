@@ -18,15 +18,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #ifdef _WIN32
-# include <winsock2.h>
-# include <ws2tcpip.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
-# include <netdb.h>
-# include <netinet/in.h>
-# include <sys/socket.h>
-# include <sys/types.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #endif
 
 
@@ -50,14 +50,10 @@
  *       -1 on failure.
  */
 int
-bson_streaming_remote_open (const char *hostname,
-                            const char *port)
+bson_streaming_remote_open (const char *hostname, const char *port)
 {
-   int              error,
-                    sock;
-   struct addrinfo  hints,
-                   *ptr,
-                   *server_list;
+   int error, sock;
+   struct addrinfo hints, *ptr, *server_list;
 
    /*
     * Look up the host's address information, hinting that we'd like to use a
@@ -67,10 +63,11 @@ bson_streaming_remote_open (const char *hostname,
    hints.ai_family = PF_UNSPEC;
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_protocol = IPPROTO_TCP;
-   error = getaddrinfo ((!hostname || !strlen (hostname)) ? DEFAULT_HOST : hostname,
-                        (!port || !strlen (port)) ? DEFAULT_PORT : port,
-                        &hints,
-                        &server_list);
+   error =
+      getaddrinfo ((!hostname || !strlen (hostname)) ? DEFAULT_HOST : hostname,
+                   (!port || !strlen (port)) ? DEFAULT_PORT : port,
+                   &hints,
+                   &server_list);
 
    if (error) {
       fprintf (stderr,
@@ -103,13 +100,13 @@ bson_streaming_remote_open (const char *hostname,
       break;
    }
 
+   freeaddrinfo (server_list);
    if (ptr == NULL) {
       fprintf (stderr,
                "bson-streaming-remote-open: failed to connect to server\n");
       return -1;
    }
 
-   freeaddrinfo (server_list);
    return sock;
 }
 
@@ -125,16 +122,15 @@ bson_streaming_remote_open (const char *hostname,
  *          -p PORT_NUM     Specify the port number to connect to on the server.
  */
 int
-main (int   argc,
-      char *argv[])
+main (int argc, char *argv[])
 {
-   bson_reader_t  *reader;
-   char           *hostname = NULL;
-   char           *json;
-   char           *port = NULL;
-   const bson_t   *document;
-   int             fd;
-   int             opt;
+   bson_reader_t *reader;
+   char *hostname = NULL;
+   char *json;
+   char *port = NULL;
+   const bson_t *document;
+   int fd;
+   int opt;
 
    opterr = 1;
 
@@ -144,20 +140,19 @@ main (int   argc,
    while ((opt = getopt (argc, argv, "hs:p:")) != -1) {
       switch (opt) {
       case 'h':
-         fprintf (stdout,
-                  "Usage: %s [-s SERVER_NAME] [-p PORT_NUM]\n",
-                  argv[0]);
+         fprintf (
+            stdout, "Usage: %s [-s SERVER_NAME] [-p PORT_NUM]\n", argv[0]);
          free (hostname);
          free (port);
          return EXIT_SUCCESS;
       case 'p':
          free (port);
-         port = (char *)malloc (strlen (optarg) + 1);
+         port = (char *) malloc (strlen (optarg) + 1);
          strcpy (port, optarg);
          break;
       case 's':
          free (hostname);
-         hostname = (char *)malloc (strlen (optarg) + 1);
+         hostname = (char *) malloc (strlen (optarg) + 1);
          strcpy (hostname, optarg);
          break;
       default:
@@ -179,7 +174,7 @@ main (int   argc,
 
    reader = bson_reader_new_from_fd (fd, true);
    while ((document = bson_reader_read (reader, NULL))) {
-      json = bson_as_json (document, NULL);
+      json = bson_as_canonical_extended_json (document, NULL);
       fprintf (stdout, "%s\n", json);
       bson_free (json);
    }

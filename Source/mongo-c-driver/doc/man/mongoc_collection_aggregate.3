@@ -1,0 +1,163 @@
+.\" Man page generated from reStructuredText.
+.
+.TH "MONGOC_COLLECTION_AGGREGATE" "3" "Nov 16, 2017" "1.8.2" "MongoDB C Driver"
+.SH NAME
+mongoc_collection_aggregate \- mongoc_collection_aggregate()
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.SH SYNOPSIS
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mongoc_cursor_t *
+mongoc_collection_aggregate (mongoc_collection_t *collection,
+                             mongoc_query_flags_t flags,
+                             const bson_t *pipeline,
+                             const bson_t *opts,
+                             const mongoc_read_prefs_t *read_prefs)
+   BSON_GNUC_WARN_UNUSED_RESULT;
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH PARAMETERS
+.INDENT 0.0
+.IP \(bu 2
+\fBcollection\fP: A \fBmongoc_collection_t\fP\&.
+.IP \(bu 2
+\fBflags\fP: A \fBmongoc_query_flags_t\fP\&.
+.IP \(bu 2
+\fBpipeline\fP: A \fI\%bson_t\fP containing the pipeline array.
+.IP \(bu 2
+\fBopts\fP: A \fI\%bson_t\fP containing options for the command, or \fBNULL\fP\&.
+.IP \(bu 2
+\fBread_prefs\fP: A \fBmongoc_read_prefs_t\fP or \fBNULL\fP\&.
+.UNINDENT
+.SH DESCRIPTION
+.sp
+This function shall execute an aggregation query on the underlying ‘collection’. The bson ‘pipeline’ is not validated, simply passed along as appropriate to the server.  As such, compatibility and errors should be validated in the appropriate server documentation.
+.sp
+In the case of older server versions, < v2.5, the returned cursor is a synthetic iterator over the result set. This provides a limitation insofar as returned documents can be no larger than 16MB. When connecting to newer servers this limitation doesn’t exist. The specific test is for wire_version > 0.
+.sp
+For more information on building MongoDB pipelines, see \fI\%MongoDB Aggregation Command\fP on the MongoDB website.
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+The \fBpipeline\fP parameter should contain a field named \fBpipeline\fP containing a BSON array of pipeline stages.
+.UNINDENT
+.UNINDENT
+.sp
+To target a specific server, include an integer “serverId” field in \fBopts\fP with an id obtained first by calling \fBmongoc_client_select_server\fP, then \fBmongoc_server_description_id\fP on its return value.
+.sp
+The \fBmongoc_read_concern_t\fP and the \fBmongoc_write_concern_t\fP specified on the \fBmongoc_collection_t\fP will be used, if any.
+.SH RETURNS
+.sp
+This function returns a newly allocated \fBmongoc_cursor_t\fP that should be freed with \fBmongoc_cursor_destroy()\fP when no longer in use. The returned \fBmongoc_cursor_t\fP is never \fBNULL\fP; if the parameters are invalid, the \fI\%bson_error_t\fP in the \fBmongoc_cursor_t\fP is filled out, and the \fBmongoc_cursor_t\fP is returned before the server is selected.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Failure to handle the result of this function is a programming error.
+.UNINDENT
+.UNINDENT
+.SH EXAMPLE
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+#include <bcon.h>
+#include <mongoc.h>
+
+static mongoc_cursor_t *
+pipeline_query (mongoc_collection_t *collection)
+{
+   mongoc_cursor_t *cursor;
+   bson_t *pipeline;
+
+   pipeline = BCON_NEW ("pipeline",
+                        "[",
+                        "{",
+                        "$match",
+                        "{",
+                        "foo",
+                        BCON_UTF8 ("A"),
+                        "}",
+                        "}",
+                        "{",
+                        "$match",
+                        "{",
+                        "bar",
+                        BCON_BOOL (false),
+                        "}",
+                        "}",
+                        "]");
+
+   cursor = mongoc_collection_aggregate (
+      collection, MONGOC_QUERY_NONE, pipeline, NULL, NULL, NULL);
+
+   bson_destroy (pipeline);
+
+   return cursor;
+}
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH OTHER PARAMETERS
+.sp
+When using \fB$out\fP, the pipeline stage that writes, the write_concern field of the \fBmongoc_cursor_t\fP will be set to the \fBmongoc_write_concern_t\fP parameter, if it is valid, and applied to the write command when \fBmongoc_cursor_next()\fP is called. Pass any other parameters to the \fBaggregate\fP command, besides \fBpipeline\fP, as fields in \fBopts\fP:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+mongoc_write_concern_t *write_concern = mongoc_write_concern_new ();
+mongoc_write_concern_set_w (write_concern, 3);
+
+pipeline =
+   BCON_NEW ("pipeline", "[", "{", "$out", BCON_UTF8 ("collection2"), "}", "]");
+
+opts = BCON_NEW ("bypassDocumentValidation", BCON_BOOL (true));
+mongoc_write_concern_append (write_concern, opts);
+
+cursor = mongoc_collection_aggregate (
+   collection1, MONGOC_QUERY_NONE, pipeline, opts, NULL);
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH AUTHOR
+MongoDB, Inc
+.SH COPYRIGHT
+2017, MongoDB, Inc
+.\" Generated by docutils manpage writer.
+.

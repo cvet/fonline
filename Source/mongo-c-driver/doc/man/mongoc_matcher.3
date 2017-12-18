@@ -1,0 +1,249 @@
+.\" Man page generated from reStructuredText.
+.
+.TH "MONGOC_MATCHER" "3" "Nov 16, 2017" "1.8.2" "MongoDB C Driver"
+.SH NAME
+mongoc_matcher \- Client Side Document Matching
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.SH BASIC DOCUMENT MATCHING (DEPRECATED)
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This feature will be removed in version 2.0.
+.UNINDENT
+.UNINDENT
+.sp
+The MongoDB C driver supports matching a subset of the MongoDB query specification on the client.
+.sp
+Currently, basic numeric, string, subdocument, and array equality, \fB$gt\fP, \fB$gte\fP, \fB$lt\fP, \fB$lte\fP, \fB$in\fP, \fB$nin\fP, \fB$ne\fP, \fB$exists\fP, \fB$type\fP, \fB$and\fP, and \fB$or\fP are supported. As this is not the same implementation as the MongoDB server, some inconsistencies may occur. Please file a bug if you find such a case.
+.sp
+The following example performs a basic query against a BSON document.
+example\-matcher.c.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+#include <bcon.h>
+#include <mongoc.h>
+#include <stdio.h>
+
+static void
+log_query (const bson_t *doc, const bson_t *query)
+{
+   char *str1;
+   char *str2;
+
+   str1 = bson_as_canonical_extended_json (doc, NULL);
+   str2 = bson_as_canonical_extended_json (query, NULL);
+
+   printf ("Matching %s against %s\en", str2, str1);
+
+   bson_free (str1);
+   bson_free (str2);
+}
+
+static void
+check_match (const bson_t *doc, const bson_t *query)
+{
+   bson_error_t error;
+   mongoc_matcher_t *matcher = mongoc_matcher_new (query, &error);
+   if (!matcher) {
+      fprintf (stderr, "Error: %s\en", error.message);
+      return;
+   }
+
+   if (mongoc_matcher_match (matcher, doc)) {
+      printf ("  Document matched!\en");
+   } else {
+      printf ("  No match.\en");
+   }
+
+   mongoc_matcher_destroy (matcher);
+}
+
+static void
+example (void)
+{
+   bson_t *query;
+   bson_t *doc;
+
+   doc = BCON_NEW ("hello", "[", "{", "foo", BCON_UTF8 ("bar"), "}", "]");
+   query = BCON_NEW ("hello.0.foo", BCON_UTF8 ("bar"));
+
+   log_query (doc, query);
+   check_match (doc, query);
+
+   bson_destroy (doc);
+   bson_destroy (query);
+
+   /* i is > 1 or i < \-1. */
+   query = BCON_NEW ("$or",
+                     "[",
+                     "{",
+                     "i",
+                     "{",
+                     "$gt",
+                     BCON_INT32 (1),
+                     "}",
+                     "}",
+                     "{",
+                     "i",
+                     "{",
+                     "$lt",
+                     BCON_INT32 (\-1),
+                     "}",
+                     "}",
+                     "]");
+
+   doc = BCON_NEW ("i", BCON_INT32 (2));
+   log_query (doc, query);
+   check_match (doc, query);
+
+   bson_destroy (doc);
+
+   doc = BCON_NEW ("i", BCON_INT32 (0));
+   log_query (doc, query);
+   check_match (doc, query);
+
+   bson_destroy (doc);
+   bson_destroy (query);
+}
+
+int
+main (int argc, char *argv[])
+{
+   mongoc_init ();
+   example ();
+   mongoc_cleanup ();
+
+   return 0;
+}
+
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+The following example shows how to process a BSON stream from \fBstdin\fP and match it against a query. This can be useful if you need to perform simple matching against \fBmongodump\fP backups.
+filter\-bsondump.c.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+/*
+ * Copyright 2014 MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE\-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+#include <bcon.h>
+#include <bson.h>
+#include <mongoc.h>
+#include <stdio.h>
+
+
+/*
+ * This is an example that reads BSON documents from STDIN and prints them
+ * to standard output as JSON if they match {\(aqhello\(aq: \(aqworld\(aq}.
+ */
+
+
+int
+main (int argc, char *argv[])
+{
+   mongoc_matcher_t *matcher;
+   bson_reader_t *reader;
+   const bson_t *bson;
+   bson_t *spec;
+   char *str;
+   int fd;
+
+   mongoc_init ();
+
+#ifdef _WIN32
+   fd = fileno (stdin);
+#else
+   fd = STDIN_FILENO;
+#endif
+
+   reader = bson_reader_new_from_fd (fd, false);
+
+   spec = BCON_NEW ("hello", "world");
+   matcher = mongoc_matcher_new (spec, NULL);
+
+   while ((bson = bson_reader_read (reader, NULL))) {
+      if (mongoc_matcher_match (matcher, bson)) {
+         str = bson_as_canonical_extended_json (bson, NULL);
+         printf ("%s\en", str);
+         bson_free (str);
+      }
+   }
+
+   bson_reader_destroy (reader);
+   bson_destroy (spec);
+
+   return 0;
+}
+
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+To test this, perform a \fBmongodump\fP of a single collection and pipe it to the program.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ echo "db.test.insert({hello:\(aqworld\(aq})" | mongoMongoDB shell version: 2.6.1
+connecting to: test
+WriteResult({ "nInserted" : 1 })
+bye$ mongodump \-d test \-c test \-o \- | filter\-bsondump{ "_id" : { "$oid" : "537afac9a70e5b4d556153bc" }, "hello" : "world" }
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SH AUTHOR
+MongoDB, Inc
+.SH COPYRIGHT
+2017, MongoDB, Inc
+.\" Generated by docutils manpage writer.
+.

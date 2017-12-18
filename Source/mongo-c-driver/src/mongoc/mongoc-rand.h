@@ -15,7 +15,7 @@
  */
 
 
-#if !defined (MONGOC_INSIDE) && !defined (MONGOC_COMPILATION)
+#if !defined(MONGOC_INSIDE) && !defined(MONGOC_COMPILATION)
 #error "Only <mongoc.h> can be included directly."
 #endif
 
@@ -26,15 +26,16 @@
 
 #include <bson.h>
 
+#include "mongoc-macros.h"
 
 BSON_BEGIN_DECLS
 
-BSON_API
-void mongoc_rand_seed(const void* buf, int num);
-BSON_API
-void mongoc_rand_add(const void* buf, int num, double entropy);
-BSON_API
-int mongoc_rand_status(void);
+MONGOC_EXPORT (void)
+mongoc_rand_seed (const void *buf, int num);
+MONGOC_EXPORT (void)
+mongoc_rand_add (const void *buf, int num, double entropy);
+MONGOC_EXPORT (int)
+mongoc_rand_status (void);
 
 BSON_END_DECLS
 

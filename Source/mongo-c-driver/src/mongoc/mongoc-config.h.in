@@ -137,6 +137,16 @@
 
 
 /*
+ * Use ASN1_STRING_get0_data () rather than the deprecated ASN1_STRING_data
+ */
+#define MONGOC_HAVE_ASN1_STRING_GET0_DATA @MONGOC_HAVE_ASN1_STRING_GET0_DATA@
+
+#if MONGOC_HAVE_ASN1_STRING_GET0_DATA != 1
+#  undef MONGOC_HAVE_ASN1_STRING_GET0_DATA
+#endif
+
+
+/*
  * MONGOC_ENABLE_SASL is set from configure to determine if we are
  * compiled with SASL support.
  */
@@ -144,6 +154,39 @@
 
 #if MONGOC_ENABLE_SASL != 1
 #  undef MONGOC_ENABLE_SASL
+#endif
+
+
+/*
+ * MONGOC_ENABLE_SASL_CYRUS is set from configure to determine if we are
+ * compiled with Cyrus SASL support.
+ */
+#define MONGOC_ENABLE_SASL_CYRUS @MONGOC_ENABLE_SASL_CYRUS@
+
+#if MONGOC_ENABLE_SASL_CYRUS != 1
+#  undef MONGOC_ENABLE_SASL_CYRUS
+#endif
+
+
+/*
+ * MONGOC_ENABLE_SASL_SSPI is set from configure to determine if we are
+ * compiled with SSPI support.
+ */
+#define MONGOC_ENABLE_SASL_SSPI @MONGOC_ENABLE_SASL_SSPI@
+
+#if MONGOC_ENABLE_SASL_SSPI != 1
+#  undef MONGOC_ENABLE_SASL_SSPI
+#endif
+
+
+/*
+ * MONGOC_ENABLE_SASL_GSSAPI is set from configure to determine if we are
+ * compiled with GSSAPI support.
+ */
+#define MONGOC_ENABLE_SASL_GSSAPI @MONGOC_ENABLE_SASL_GSSAPI@
+
+#if MONGOC_ENABLE_SASL_GSSAPI != 1
+#  undef MONGOC_ENABLE_SASL_GSSAPI
 #endif
 
 
@@ -181,6 +224,56 @@
 #if MONGOC_NO_AUTOMATIC_GLOBALS != 1
 #  undef MONGOC_NO_AUTOMATIC_GLOBALS
 #endif
+
+/*
+ * MONGOC_HAVE_SOCKLEN is set from configure to determine if we
+ * need to emulate the type.
+ */
+#define MONGOC_HAVE_SOCKLEN @MONGOC_HAVE_SOCKLEN@
+
+#if MONGOC_HAVE_SOCKLEN != 1
+#  undef MONGOC_HAVE_SOCKLEN
+#endif
+
+
+/*
+ * Set from configure, see
+ * https://curl.haxx.se/mail/lib-2009-04/0287.html
+ */
+#define MONGOC_SOCKET_ARG2 @MONGOC_SOCKET_ARG2@
+#define MONGOC_SOCKET_ARG3 @MONGOC_SOCKET_ARG3@
+
+/*
+ * Enable wire protocol compression negotiation
+ *
+ */
+#define MONGOC_ENABLE_COMPRESSION @MONGOC_ENABLE_COMPRESSION@
+
+#if MONGOC_ENABLE_COMPRESSION != 1
+#  undef MONGOC_ENABLE_COMPRESSION
+#endif
+
+/*
+ * Set if we have snappy compression support
+ *
+ */
+#define MONGOC_ENABLE_COMPRESSION_SNAPPY @MONGOC_ENABLE_COMPRESSION_SNAPPY@
+
+#if MONGOC_ENABLE_COMPRESSION_SNAPPY != 1
+#  undef MONGOC_ENABLE_COMPRESSION_SNAPPY
+#endif
+
+
+/*
+ * Set if we have zlib compression support
+ *
+ */
+#define MONGOC_ENABLE_COMPRESSION_ZLIB @MONGOC_ENABLE_COMPRESSION_ZLIB@
+
+#if MONGOC_ENABLE_COMPRESSION_ZLIB != 1
+#  undef MONGOC_ENABLE_COMPRESSION_ZLIB
+#endif
+
 
 /*
  * NOTICE:

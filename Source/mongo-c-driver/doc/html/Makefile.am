@@ -1,26 +1,24 @@
-CLEANFILES += $(wildcard doc/html/*.html)
-CLEANFILES += $(wildcard doc/html/*.css)
-CLEANFILES += $(wildcard doc/html/*.js)
-CLEANFILES += $(wildcard doc/html/*.png)
+SPHINX_HTML_FILES = \
+   $(wildcard doc/html/*.html) \
+   $(wildcard doc/html/*.css) \
+   $(wildcard doc/html/*.js) \
+   $(wildcard doc/html/*.png) \
+   $(wildcard doc/html/_static/*.css) \
+   $(wildcard doc/html/_static/*.js) \
+   $(wildcard doc/html/_static/*.png) \
+   doc/html/.nojekyll \
+   doc/html/objects.inv
+
+CLEANFILES += $(SPHINX_HTML_FILES)
 
 .PHONY: doc/html
 
-doc/html:
-	-mkdir -p doc/html
-	$(AM_V_GEN)$(YELP_BUILD) html -x $(top_srcdir)/build/libmongoc.xsl -o doc/html/ doc
+doc/html: $(SPHINX_HTML_FILES)
 
-YELP_HTML_FILES = \
-	doc/html/C.css \
-	doc/html/jquery.js \
-	doc/html/jquery.syntax.brush.clang.js \
-	doc/html/jquery.syntax.core.js \
-	doc/html/jquery.syntax.js \
-	doc/html/jquery.syntax.layout.yelp.js \
-	doc/html/yelp-note-tip.png \
-	doc/html/yelp-note-warning.png \
-	doc/html/yelp-note.png \
-	doc/html/yelp.js
+# sphinx-build "-E" is "ignore cache".
+$(SPHINX_HTML_FILES):
+	-mkdir -p doc/html
+	$(SPHINX_BUILD) -qEW $(top_srcdir)/doc doc/html
+	rm -rf doc/html/.doctrees doc/html/.buildinfo
 
 EXTRA_DIST += doc/html
-EXTRA_DIST += $(YELP_HTML_FILES)
-

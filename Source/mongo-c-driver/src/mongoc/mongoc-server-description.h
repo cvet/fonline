@@ -19,37 +19,44 @@
 
 #include <bson.h>
 
+#include "mongoc-macros.h"
 #include "mongoc-read-prefs.h"
 #include "mongoc-host-list.h"
 
+BSON_BEGIN_DECLS
+
 typedef struct _mongoc_server_description_t mongoc_server_description_t;
 
-BSON_API
-void
+MONGOC_EXPORT (void)
 mongoc_server_description_destroy (mongoc_server_description_t *description);
 
-BSON_API
-mongoc_server_description_t *
-mongoc_server_description_new_copy (const mongoc_server_description_t *description);
+MONGOC_EXPORT (mongoc_server_description_t *)
+mongoc_server_description_new_copy (
+   const mongoc_server_description_t *description);
 
-BSON_API
-uint32_t
+MONGOC_EXPORT (uint32_t)
 mongoc_server_description_id (const mongoc_server_description_t *description);
 
-BSON_API
-mongoc_host_list_t *
+MONGOC_EXPORT (mongoc_host_list_t *)
 mongoc_server_description_host (const mongoc_server_description_t *description);
 
-BSON_API
-int64_t
-mongoc_server_description_round_trip_time (const mongoc_server_description_t *description);
+MONGOC_EXPORT (int64_t)
+mongoc_server_description_round_trip_time (
+   const mongoc_server_description_t *description);
 
-BSON_API
-const char *
+MONGOC_EXPORT (const char *)
 mongoc_server_description_type (const mongoc_server_description_t *description);
 
-BSON_API
-const bson_t *
-mongoc_server_description_ismaster (const mongoc_server_description_t *description);
+MONGOC_EXPORT (const bson_t *)
+mongoc_server_description_ismaster (
+   const mongoc_server_description_t *description);
+
+#ifdef MONGOC_ENABLE_COMPRESSION
+MONGOC_EXPORT (int32_t)
+mongoc_server_description_compressor_id (
+   const mongoc_server_description_t *description);
+#endif
+
+BSON_END_DECLS
 
 #endif

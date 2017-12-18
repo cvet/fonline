@@ -41,7 +41,7 @@ bulk3 (mongoc_collection_t *collection)
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
-   str = bson_as_json (&reply, NULL);
+   str = bson_as_canonical_extended_json (&reply, NULL);
    printf ("%s\n", str);
    bson_free (str);
 
@@ -54,8 +54,7 @@ bulk3 (mongoc_collection_t *collection)
 }
 
 int
-main (int argc,
-      char *argv[])
+main (int argc, char *argv[])
 {
    mongoc_client_t *client;
    mongoc_collection_t *collection;

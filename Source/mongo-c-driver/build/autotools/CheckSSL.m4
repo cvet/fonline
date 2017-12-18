@@ -1,6 +1,6 @@
 AC_MSG_CHECKING([whether to enable crypto and TLS])
 AC_ARG_ENABLE([ssl],
-              [AS_HELP_STRING([--enable-ssl=@<:@auto/no/openssl/darwin@:>@],
+              [AS_HELP_STRING([--enable-ssl=@<:@auto/no/openssl/libressl/darwin@:>@],
                               [Enable TLS connections and SCRAM-SHA-1 authentication.])],
               [],
               [enable_ssl=auto])
@@ -34,15 +34,19 @@ AS_IF([test "$enable_ssl" != "no"],[
       ])
    ])
    AS_IF([test "$enable_ssl" = "libressl"],[
-      AC_CHECK_LIB([tls],[tls_init],[
-         SSL_LIBS="-ltls -lcrypto"
-         enable_ssl=libressl
+      PKG_CHECK_MODULES(SSL, [libtls], [enable_ssl=libressl], [
+         AC_CHECK_LIB([tls],[tls_init],[
+            SSL_LIBS="-ltls -lcrypto"
+            enable_ssl=libressl
+         ])
       ])
    ])
 
    dnl PKG_CHECK_MODULES() doesn't check for headers
    dnl OSX for example has the lib, but not headers, so double confirm if OpenSSL works
    AS_IF([test "$enable_ssl" = "openssl" -o "$enable_openssl" = "auto"], [
+      old_CFLAGS=$CFLAGS
+      CFLAGS=$SSL_CFLAGS
       AC_CHECK_HEADERS([openssl/bio.h openssl/ssl.h openssl/err.h openssl/crypto.h],
          [have_ssl_headers=yes],
          [have_ssl_headers=no])
@@ -54,6 +58,8 @@ AS_IF([test "$enable_ssl" != "no"],[
          SSL_LIBS=""
          enable_ssl=auto
       fi
+      AC_CHECK_DECLS([ASN1_STRING_get0_data], [have_ASN1_STRING_get0_data=yes], [have_ASN1_STRING_get0_data=no], [[#include <openssl/asn1.h>]])
+      CFLAGS=$old_CFLAGS
    ])
    AS_IF([test "$enable_ssl" != "openssl" -a "$os_darwin" = "yes"],[
       SSL_LIBS="-framework Security -framework CoreFoundation"
@@ -66,7 +72,6 @@ AS_IF([test "$enable_ssl" != "no"],[
    AC_MSG_CHECKING([which TLS library to use])
    AC_MSG_RESULT([$enable_ssl])
 ], [enable_ssl=no])
-
 
 
 
@@ -109,6 +114,12 @@ else
    AC_SUBST(MONGOC_ENABLE_CRYPTO_LIBCRYPTO, 0)
    AC_SUBST(MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO, 0)
 fi
+if test "$have_ASN1_STRING_get0_data" = "yes"; then
+   AC_SUBST(MONGOC_HAVE_ASN1_STRING_GET0_DATA, 1)
+else
+   AC_SUBST(MONGOC_HAVE_ASN1_STRING_GET0_DATA, 0)
+fi
+
 if test "x$enable_crypto_system_profile" = xyes; then
    if test "$enable_ssl" = "openssl"; then
       AC_SUBST(MONGOC_ENABLE_CRYPTO_SYSTEM_PROFILE, 1)

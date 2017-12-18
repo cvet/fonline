@@ -22,15 +22,16 @@
 #include "mongoc-ssl.h"
 #include "mongoc-ssl-private.h"
 #include "mongoc-log.h"
+#include "mongoc-uri.h"
 
 #if defined(MONGOC_ENABLE_SSL_OPENSSL)
-#  include "mongoc-openssl-private.h"
+#include "mongoc-openssl-private.h"
 #elif defined(MONGOC_ENABLE_SSL_LIBRESSL)
-#  include "mongoc-libressl-private.h"
+#include "mongoc-libressl-private.h"
 #elif defined(MONGOC_ENABLE_SSL_SECURE_TRANSPORT)
-#  include "mongoc-secure-transport-private.h"
+#include "mongoc-secure-transport-private.h"
 #elif defined(MONGOC_ENABLE_SSL_SECURE_CHANNEL)
-#  include "mongoc-secure-channel-private.h"
+#include "mongoc-secure-channel-private.h"
 #endif
 
 /* TODO: we could populate these from a config or something further down the
@@ -42,12 +43,8 @@
 #define MONGOC_SSL_DEFAULT_TRUST_DIR NULL
 #endif
 
-static
-mongoc_ssl_opt_t gMongocSslOptDefault = {
-   NULL,
-   NULL,
-   MONGOC_SSL_DEFAULT_TRUST_FILE,
-   MONGOC_SSL_DEFAULT_TRUST_DIR,
+static mongoc_ssl_opt_t gMongocSslOptDefault = {
+   NULL, NULL, MONGOC_SSL_DEFAULT_TRUST_FILE, MONGOC_SSL_DEFAULT_TRUST_DIR,
 };
 
 const mongoc_ssl_opt_t *
@@ -71,19 +68,22 @@ mongoc_ssl_extract_subject (const char *filename, const char *passphrase)
 #else
    if (access (filename, R_OK) != 0) {
 #endif
-      MONGOC_ERROR ("Can't extract subject from unreadable file: '%s'", filename);
+      MONGOC_ERROR ("Can't extract subject from unreadable file: '%s'",
+                    filename);
       return NULL;
    }
 
 #if defined(MONGOC_ENABLE_SSL_OPENSSL)
-	retval = _mongoc_openssl_extract_subject (filename, passphrase);
+   retval = _mongoc_openssl_extract_subject (filename, passphrase);
 #elif defined(MONGOC_ENABLE_SSL_LIBRESSL)
-    MONGOC_WARNING ("libtls doesn't support automatically extracting subject from "
-                    "certificate to use with authentication");
+   MONGOC_WARNING (
+      "libtls doesn't support automatically extracting subject from "
+      "certificate to use with authentication");
+   retval = NULL;
 #elif defined(MONGOC_ENABLE_SSL_SECURE_TRANSPORT)
-	retval = _mongoc_secure_transport_extract_subject (filename, passphrase);
+retval = _mongoc_secure_transport_extract_subject (filename, passphrase);
 #elif defined(MONGOC_ENABLE_SSL_SECURE_CHANNEL)
-	retval = _mongoc_secure_channel_extract_subject (filename, passphrase);
+retval = _mongoc_secure_channel_extract_subject (filename, passphrase);
 #endif
 
    if (!retval) {
@@ -93,8 +93,23 @@ mongoc_ssl_extract_subject (const char *filename, const char *passphrase)
    return retval;
 }
 
-void _mongoc_ssl_opts_copy_to (const mongoc_ssl_opt_t* src,
-                               mongoc_ssl_opt_t* dst)
+void
+_mongoc_ssl_opts_from_uri (mongoc_ssl_opt_t *ssl_opt, mongoc_uri_t *uri)
+{
+   ssl_opt->pem_file = mongoc_uri_get_option_as_utf8 (
+      uri, MONGOC_URI_SSLCLIENTCERTIFICATEKEYFILE, NULL);
+   ssl_opt->pem_pwd = mongoc_uri_get_option_as_utf8 (
+      uri, MONGOC_URI_SSLCLIENTCERTIFICATEKEYPASSWORD, NULL);
+   ssl_opt->ca_file = mongoc_uri_get_option_as_utf8 (
+      uri, MONGOC_URI_SSLCERTIFICATEAUTHORITYFILE, NULL);
+   ssl_opt->weak_cert_validation = mongoc_uri_get_option_as_bool (
+      uri, MONGOC_URI_SSLALLOWINVALIDCERTIFICATES, false);
+   ssl_opt->allow_invalid_hostname = mongoc_uri_get_option_as_bool (
+      uri, MONGOC_URI_SSLALLOWINVALIDHOSTNAMES, false);
+}
+
+void
+_mongoc_ssl_opts_copy_to (const mongoc_ssl_opt_t *src, mongoc_ssl_opt_t *dst)
 {
    BSON_ASSERT (src);
    BSON_ASSERT (dst);
@@ -108,13 +123,14 @@ void _mongoc_ssl_opts_copy_to (const mongoc_ssl_opt_t* src,
    dst->allow_invalid_hostname = src->allow_invalid_hostname;
 }
 
-void _mongoc_ssl_opts_cleanup (mongoc_ssl_opt_t* opt)
+void
+_mongoc_ssl_opts_cleanup (mongoc_ssl_opt_t *opt)
 {
-   bson_free ((char*)opt->pem_file);
-   bson_free ((char*)opt->pem_pwd);
-   bson_free ((char*)opt->ca_file);
-   bson_free ((char*)opt->ca_dir);
-   bson_free ((char*)opt->crl_file);
+   bson_free ((char *) opt->pem_file);
+   bson_free ((char *) opt->pem_pwd);
+   bson_free ((char *) opt->ca_file);
+   bson_free ((char *) opt->ca_dir);
+   bson_free ((char *) opt->crl_file);
 }
 
 

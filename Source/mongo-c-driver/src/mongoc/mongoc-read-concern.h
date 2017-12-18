@@ -17,38 +17,39 @@
 #ifndef MONGOC_READ_CONCERN_H
 #define MONGOC_READ_CONCERN_H
 
-#if !defined (MONGOC_INSIDE) && !defined (MONGOC_COMPILATION)
-# error "Only <mongoc.h> can be included directly."
+#if !defined(MONGOC_INSIDE) && !defined(MONGOC_COMPILATION)
+#error "Only <mongoc.h> can be included directly."
 #endif
 
 #include <bson.h>
 
+#include "mongoc-macros.h"
 
 BSON_BEGIN_DECLS
 
 
-#define MONGOC_READ_CONCERN_LEVEL_LOCAL        "local"
-#define MONGOC_READ_CONCERN_LEVEL_MAJORITY     "majority"
+#define MONGOC_READ_CONCERN_LEVEL_LOCAL "local"
+#define MONGOC_READ_CONCERN_LEVEL_MAJORITY "majority"
 #define MONGOC_READ_CONCERN_LEVEL_LINEARIZABLE "linearizable"
 
 typedef struct _mongoc_read_concern_t mongoc_read_concern_t;
 
 
-BSON_API
-mongoc_read_concern_t  *mongoc_read_concern_new           (void);
-BSON_API
-mongoc_read_concern_t  *mongoc_read_concern_copy          (const mongoc_read_concern_t *read_concern);
-BSON_API
-void                    mongoc_read_concern_destroy       (mongoc_read_concern_t       *read_concern);
-BSON_API
-const char             *mongoc_read_concern_get_level     (const mongoc_read_concern_t *read_concern);
-BSON_API
-bool                    mongoc_read_concern_set_level     (mongoc_read_concern_t       *read_concern,
-                                                           const char                  *level);
-BSON_API
-bool                    mongoc_read_concern_append        (mongoc_read_concern_t       *read_concern,
-                                                           bson_t                      *doc);
-
+MONGOC_EXPORT (mongoc_read_concern_t *)
+mongoc_read_concern_new (void);
+MONGOC_EXPORT (mongoc_read_concern_t *)
+mongoc_read_concern_copy (const mongoc_read_concern_t *read_concern);
+MONGOC_EXPORT (void)
+mongoc_read_concern_destroy (mongoc_read_concern_t *read_concern);
+MONGOC_EXPORT (const char *)
+mongoc_read_concern_get_level (const mongoc_read_concern_t *read_concern);
+MONGOC_EXPORT (bool)
+mongoc_read_concern_set_level (mongoc_read_concern_t *read_concern,
+                               const char *level);
+MONGOC_EXPORT (bool)
+mongoc_read_concern_append (mongoc_read_concern_t *read_concern, bson_t *doc);
+MONGOC_EXPORT (bool)
+mongoc_read_concern_is_default (const mongoc_read_concern_t *read_concern);
 
 BSON_END_DECLS
 

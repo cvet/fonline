@@ -17,21 +17,22 @@
 #ifndef MONGOC_STREAM_TLS_OPENSSL_H
 #define MONGOC_STREAM_TLS_OPENSSL_H
 
-#if !defined (MONGOC_INSIDE) && !defined (MONGOC_COMPILATION)
-# error "Only <mongoc.h> can be included directly."
+#if !defined(MONGOC_INSIDE) && !defined(MONGOC_COMPILATION)
+#error "Only <mongoc.h> can be included directly."
 #endif
 
 #ifdef MONGOC_ENABLE_SSL_OPENSSL
 #include <bson.h>
 
+#include "mongoc-macros.h"
+
 BSON_BEGIN_DECLS
 
-BSON_API
-mongoc_stream_t *
-mongoc_stream_tls_openssl_new (mongoc_stream_t  *base_stream,
-                               const char       *host,
+MONGOC_EXPORT (mongoc_stream_t *)
+mongoc_stream_tls_openssl_new (mongoc_stream_t *base_stream,
+                               const char *host,
                                mongoc_ssl_opt_t *opt,
-                               int               client);
+                               int client);
 
 BSON_END_DECLS
 

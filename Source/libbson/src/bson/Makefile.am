@@ -49,9 +49,10 @@ NOINST_H_FILES = \
 
 libbson_la_CPPFLAGS = \
 	-DBSON_COMPILATION \
+	-DJSONSL_PARSE_NAN \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/src/bson \
-	-I$(top_srcdir)/src/yajl \
+	-I$(top_srcdir)/src/jsonsl \
 	-I$(top_builddir)/src/bson
 
 libbson_la_CFLAGS = \
@@ -87,12 +88,6 @@ libbson_la_SOURCES = \
 	src/bson/bson-writer.c
 
 libbson_la_LIBADD =
-
-if !OS_WIN32
-libbson_la_LIBADD += $(PTHREAD_LIBS)
-else
-libbson_la_LIBADD += -lws2_32
-endif
 
 EXTRA_DIST += \
 	src/bson/bson-config.h.in \

@@ -1,21 +1,22 @@
-AS_IF([test "x$enable_maintainer_flags" = "xyes" && test "x$GCC" = "xyes"],
-      [AX_CHECK_COMPILE_FLAG([-Wall],                         [CFLAGS="$CFLAGS -Wall"])
-       AX_CHECK_COMPILE_FLAG([-Waggregate-return],            [CFLAGS="$CFLAGS -Waggregate-return"])
-       AX_CHECK_COMPILE_FLAG([-Wcast-align],                  [CFLAGS="$CFLAGS -Wcast-align"])
-       AX_CHECK_COMPILE_FLAG([-Wdeclaration-after-statement], [CFLAGS="$CFLAGS -Wdeclaration-after-statement"])
-       AX_CHECK_COMPILE_FLAG([-Wempty-body],                  [CFLAGS="$CFLAGS -Wempty-body"])
-       AX_CHECK_COMPILE_FLAG([-Wformat],                      [CFLAGS="$CFLAGS -Wformat"])
-       AX_CHECK_COMPILE_FLAG([-Wformat-nonliteral],           [CFLAGS="$CFLAGS -Wformat-nonliteral"])
-       AX_CHECK_COMPILE_FLAG([-Wformat-security],             [CFLAGS="$CFLAGS -Wformat-security"])
-       AX_CHECK_COMPILE_FLAG([-Winit-self],                   [CFLAGS="$CFLAGS -Winit-self"])
-       AX_CHECK_COMPILE_FLAG([-Winline],                      [CFLAGS="$CFLAGS -Winline"])
-       AX_CHECK_COMPILE_FLAG([-Wmissing-include-dirs],        [CFLAGS="$CFLAGS -Wmissing-include-dirs"])
-       AX_CHECK_COMPILE_FLAG([-Wno-strict-aliasing],          [CFLAGS="$CFLAGS -Wno-strict-aliasing"])
-       AX_CHECK_COMPILE_FLAG([-Wno-uninitialized],            [CFLAGS="$CFLAGS -Wno-uninitialized"])
-       AX_CHECK_COMPILE_FLAG([-Wredundant-decls],             [CFLAGS="$CFLAGS -Wredundant-decls"])
-       AX_CHECK_COMPILE_FLAG([-Wreturn-type],                 [CFLAGS="$CFLAGS -Wreturn-type"])
-       AX_CHECK_COMPILE_FLAG([-Wshadow],                      [CFLAGS="$CFLAGS -Wshadow"])
-       AX_CHECK_COMPILE_FLAG([-Wswitch-default],              [CFLAGS="$CFLAGS -Wswitch-default"])
-       AX_CHECK_COMPILE_FLAG([-Wswitch-enum],                 [CFLAGS="$CFLAGS -Wswitch-enum"])
-       AX_CHECK_COMPILE_FLAG([-Wundef],                       [CFLAGS="$CFLAGS -Wundef"])
-       AX_CHECK_COMPILE_FLAG([-Wuninitialized],               [CFLAGS="$CFLAGS -Wuninitialized"])])
+AS_IF(
+   [test "x$enable_maintainer_flags" = "xyes" && test "x$GCC" = "xyes"],
+   [
+    # clang only warns if it doesn't support a warning option, turn it into an
+    # error so we really know if whether it supports it.
+    AX_CHECK_COMPILE_FLAG(
+       "-Werror=unknown-warning-option",
+       [WERROR_UNKNOWN_OPTION="-Werror=unknown-warning-option"],
+       [WERROR_UNKNOWN_OPTION=""])
+
+    # Read maintainer-flags.txt and apply each flag that the compiler supports.
+    m4_foreach([MAINTAINER_FLAG], m4_split(m4_normalize(m4_esyscmd(cat build/maintainer-flags.txt))), [
+        AX_CHECK_COMPILE_FLAG(
+           MAINTAINER_FLAG,
+           [MAINTAINER_CFLAGS="$MAINTAINER_CFLAGS MAINTAINER_FLAG"],
+           [],
+           [$WERROR_UNKNOWN_OPTION])
+    ])
+   ]
+
+   AC_SUBST(MAINTAINER_CFLAGS)
+)

@@ -21,9 +21,13 @@
 
 #include <bson.h>
 
+#include "mongoc-macros.h"
 #include "mongoc-write-concern.h"
 
-#define MONGOC_BULK_WRITE_FLAGS_INIT { true, MONGOC_BYPASS_DOCUMENT_VALIDATION_DEFAULT, 0 }
+#define MONGOC_BULK_WRITE_FLAGS_INIT                     \
+   {                                                     \
+      true, MONGOC_BYPASS_DOCUMENT_VALIDATION_DEFAULT, 0 \
+   }
 
 BSON_BEGIN_DECLS
 
@@ -32,75 +36,80 @@ typedef struct _mongoc_bulk_operation_t mongoc_bulk_operation_t;
 typedef struct _mongoc_bulk_write_flags_t mongoc_bulk_write_flags_t;
 
 
-BSON_API
-void mongoc_bulk_operation_destroy               (mongoc_bulk_operation_t       *bulk);
-BSON_API
-uint32_t mongoc_bulk_operation_execute           (mongoc_bulk_operation_t       *bulk,
-                                                  bson_t                        *reply,
-                                                  bson_error_t                  *error);
-BSON_API
-void mongoc_bulk_operation_delete                (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector)
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_destroy (mongoc_bulk_operation_t *bulk);
+MONGOC_EXPORT (uint32_t)
+mongoc_bulk_operation_execute (mongoc_bulk_operation_t *bulk,
+                               bson_t *reply,
+                               bson_error_t *error);
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_delete (mongoc_bulk_operation_t *bulk,
+                              const bson_t *selector)
    BSON_GNUC_DEPRECATED_FOR (mongoc_bulk_operation_remove);
-BSON_API
-void mongoc_bulk_operation_delete_one            (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector)
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_delete_one (mongoc_bulk_operation_t *bulk,
+                                  const bson_t *selector)
    BSON_GNUC_DEPRECATED_FOR (mongoc_bulk_operation_remove_one);
-BSON_API
-void mongoc_bulk_operation_insert                (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *document);
-BSON_API
-void mongoc_bulk_operation_remove                (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector);
-BSON_API
-bool mongoc_bulk_operation_remove_many_with_opts (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector,
-                                                  const bson_t                  *opts,
-                                                  bson_error_t                  *error); /* OUT */
-BSON_API
-void mongoc_bulk_operation_remove_one            (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector);
-BSON_API
-bool mongoc_bulk_operation_remove_one_with_opts  (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector,
-                                                  const bson_t                  *opts,
-                                                  bson_error_t                  *error); /* OUT */
-BSON_API
-void mongoc_bulk_operation_replace_one           (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector,
-                                                  const bson_t                  *document,
-                                                  bool                           upsert);
-BSON_API
-bool mongoc_bulk_operation_replace_one_with_opts (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector,
-                                                  const bson_t                  *document,
-                                                  const bson_t                  *opts,
-                                                  bson_error_t                  *error); /* OUT */
-BSON_API
-void mongoc_bulk_operation_update                (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector,
-                                                  const bson_t                  *document,
-                                                  bool                           upsert);
-BSON_API
-bool mongoc_bulk_operation_update_many_with_opts (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector,
-                                                  const bson_t                  *document,
-                                                  const bson_t                  *opts,
-                                                  bson_error_t                  *error); /* OUT */
-BSON_API
-void mongoc_bulk_operation_update_one            (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector,
-                                                  const bson_t                  *document,
-                                                  bool                           upsert);
-BSON_API
-bool mongoc_bulk_operation_update_one_with_opts  (mongoc_bulk_operation_t       *bulk,
-                                                  const bson_t                  *selector,
-                                                  const bson_t                  *document,
-                                                  const bson_t                  *opts,
-                                                  bson_error_t                  *error); /* OUT */
-BSON_API
-void mongoc_bulk_operation_set_bypass_document_validation (mongoc_bulk_operation_t *bulk,
-                                                           bool                     bypass);
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_insert (mongoc_bulk_operation_t *bulk,
+                              const bson_t *document);
+MONGOC_EXPORT (bool)
+mongoc_bulk_operation_insert_with_opts (mongoc_bulk_operation_t *bulk,
+                                        const bson_t *document,
+                                        const bson_t *opts,
+                                        bson_error_t *error); /* OUT */
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_remove (mongoc_bulk_operation_t *bulk,
+                              const bson_t *selector);
+MONGOC_EXPORT (bool)
+mongoc_bulk_operation_remove_many_with_opts (mongoc_bulk_operation_t *bulk,
+                                             const bson_t *selector,
+                                             const bson_t *opts,
+                                             bson_error_t *error); /* OUT */
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_remove_one (mongoc_bulk_operation_t *bulk,
+                                  const bson_t *selector);
+MONGOC_EXPORT (bool)
+mongoc_bulk_operation_remove_one_with_opts (mongoc_bulk_operation_t *bulk,
+                                            const bson_t *selector,
+                                            const bson_t *opts,
+                                            bson_error_t *error); /* OUT */
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_replace_one (mongoc_bulk_operation_t *bulk,
+                                   const bson_t *selector,
+                                   const bson_t *document,
+                                   bool upsert);
+MONGOC_EXPORT (bool)
+mongoc_bulk_operation_replace_one_with_opts (mongoc_bulk_operation_t *bulk,
+                                             const bson_t *selector,
+                                             const bson_t *document,
+                                             const bson_t *opts,
+                                             bson_error_t *error); /* OUT */
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_update (mongoc_bulk_operation_t *bulk,
+                              const bson_t *selector,
+                              const bson_t *document,
+                              bool upsert);
+MONGOC_EXPORT (bool)
+mongoc_bulk_operation_update_many_with_opts (mongoc_bulk_operation_t *bulk,
+                                             const bson_t *selector,
+                                             const bson_t *document,
+                                             const bson_t *opts,
+                                             bson_error_t *error); /* OUT */
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_update_one (mongoc_bulk_operation_t *bulk,
+                                  const bson_t *selector,
+                                  const bson_t *document,
+                                  bool upsert);
+MONGOC_EXPORT (bool)
+mongoc_bulk_operation_update_one_with_opts (mongoc_bulk_operation_t *bulk,
+                                            const bson_t *selector,
+                                            const bson_t *document,
+                                            const bson_t *opts,
+                                            bson_error_t *error); /* OUT */
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_set_bypass_document_validation (
+   mongoc_bulk_operation_t *bulk, bool bypass);
 
 
 /*
@@ -108,29 +117,28 @@ void mongoc_bulk_operation_set_bypass_document_validation (mongoc_bulk_operation
  * those wanting to replay a bulk operation to a number of clients or
  * collections.
  */
-BSON_API
-mongoc_bulk_operation_t      *mongoc_bulk_operation_new               (bool                           ordered);
-BSON_API
-void                          mongoc_bulk_operation_set_write_concern (mongoc_bulk_operation_t       *bulk,
-                                                                       const mongoc_write_concern_t  *write_concern);
-BSON_API
-void                          mongoc_bulk_operation_set_database      (mongoc_bulk_operation_t       *bulk,
-                                                                       const char                    *database);
-BSON_API
-void                          mongoc_bulk_operation_set_collection    (mongoc_bulk_operation_t       *bulk,
-                                                                       const char                    *collection);
-BSON_API
-void                          mongoc_bulk_operation_set_client        (mongoc_bulk_operation_t       *bulk,
-                                                                       void                          *client);
+MONGOC_EXPORT (mongoc_bulk_operation_t *)
+mongoc_bulk_operation_new (bool ordered);
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_set_write_concern (
+   mongoc_bulk_operation_t *bulk, const mongoc_write_concern_t *write_concern);
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_set_database (mongoc_bulk_operation_t *bulk,
+                                    const char *database);
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_set_collection (mongoc_bulk_operation_t *bulk,
+                                      const char *collection);
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_set_client (mongoc_bulk_operation_t *bulk, void *client);
 /* These names include the term "hint" for backward compatibility, should be
  * mongoc_bulk_operation_get_server_id, mongoc_bulk_operation_set_server_id. */
-BSON_API
-void                          mongoc_bulk_operation_set_hint          (mongoc_bulk_operation_t       *bulk,
-                                                                       uint32_t                       server_id);
-BSON_API
-uint32_t                      mongoc_bulk_operation_get_hint          (const mongoc_bulk_operation_t *bulk);
-BSON_API
-const mongoc_write_concern_t *mongoc_bulk_operation_get_write_concern (const mongoc_bulk_operation_t *bulk);
+MONGOC_EXPORT (void)
+mongoc_bulk_operation_set_hint (mongoc_bulk_operation_t *bulk,
+                                uint32_t server_id);
+MONGOC_EXPORT (uint32_t)
+mongoc_bulk_operation_get_hint (const mongoc_bulk_operation_t *bulk);
+MONGOC_EXPORT (const mongoc_write_concern_t *)
+mongoc_bulk_operation_get_write_concern (const mongoc_bulk_operation_t *bulk);
 BSON_END_DECLS
 
 

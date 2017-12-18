@@ -28,7 +28,7 @@ bulk5_fail (mongoc_collection_t *collection)
     * we created previously, so this will result in an error */
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
-   str = bson_as_json (&reply, NULL);
+   str = bson_as_canonical_extended_json (&reply, NULL);
    printf ("%s\n", str);
    bson_free (str);
 
@@ -68,7 +68,7 @@ bulk5_success (mongoc_collection_t *collection)
 
    ret = mongoc_bulk_operation_execute (bulk, &reply, &error);
 
-   str = bson_as_json (&reply, NULL);
+   str = bson_as_canonical_extended_json (&reply, NULL);
    printf ("%s\n", str);
    bson_free (str);
 
@@ -81,8 +81,7 @@ bulk5_success (mongoc_collection_t *collection)
 }
 
 int
-main (int argc,
-      char *argv[])
+main (int argc, char *argv[])
 {
    bson_t *options;
    bson_error_t error;
@@ -97,15 +96,17 @@ main (int argc,
    database = mongoc_client_get_database (client, "testasdf");
 
    /* Create schema validator */
-   options = BCON_NEW ("validator", "{", "number", "{", "$gte", BCON_INT32 (5), "}", "}");
-   collection = mongoc_database_create_collection (database, "collname", options, &error);
+   options = BCON_NEW (
+      "validator", "{", "number", "{", "$gte", BCON_INT32 (5), "}", "}");
+   collection =
+      mongoc_database_create_collection (database, "collname", options, &error);
 
    if (collection) {
       bulk5_fail (collection);
       bulk5_success (collection);
       mongoc_collection_destroy (collection);
    } else {
-      fprintf(stderr, "Couldn't create collection: '%s'\n", error.message);
+      fprintf (stderr, "Couldn't create collection: '%s'\n", error.message);
    }
 
    bson_free (options);
@@ -116,4 +117,3 @@ main (int argc,
 
    return 0;
 }
-
