@@ -610,6 +610,7 @@ if (MONGOC_ENABLE_SASL)
    endif()
 else()
    message (STATUS "SASL disabled")
+   set (SASL_LIBS "") #!
 endif()
 
 
