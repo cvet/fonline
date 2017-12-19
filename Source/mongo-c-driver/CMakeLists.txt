@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 
-#!set (MESSAGES_ENABLED 1)
-#!
+set (MESSAGES_ENABLED 1)
+
 #!function(message)
 #!   list (GET ARGV 0 MessageType)
 #!   if (MESSAGES_ENABLED)
@@ -547,6 +547,7 @@ if (NOT ENABLE_SSL STREQUAL OFF)
            ${SOURCE_DIR}/src/mongoc/mongoc-stream-tls-openssl-bio.c
            ${SOURCE_DIR}/src/mongoc/mongoc-openssl.c
       )
+      string (REPLACE "x86_64" "i386" OPENSSL_LIBRARIES ${OPENSSL_LIBRARIES}) #!
       set (SSL_LIBS ${OPENSSL_LIBRARIES})
       include_directories (${OPENSSL_INCLUDE_DIR})
       if(WIN32)

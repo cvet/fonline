@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 
-#!set (MESSAGES_ENABLED 1)
-#!
+set (MESSAGES_ENABLED 1)
+
 #!function(message)
 #!   list (GET ARGV 0 MessageType)
 #!   if (MESSAGES_ENABLED)
