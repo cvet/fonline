@@ -310,7 +310,7 @@ if( NOT BUILD_ONLY_CLIENT )
 	set( BSON_LIBRARIES "bson_static" CACHE STRING "" FORCE )
 	include_directories( "${BSON_INCLUDE_DIR}" )
 	
-	set( BSON_STATIC_LIBRARY ON CACHE STRING "" FORCE )
+	set( MONGOC_ENABLE_STATIC ON CACHE STRING "" FORCE )
 	add_subdirectory( "${CMAKE_CURRENT_SOURCE_DIR}/mongo-c-driver" )
 	set( MONGOC_INCLUDE_DIR "${CMAKE_BINARY_DIR}/mongo-c-driver/src/mongoc"
 		"${CMAKE_CURRENT_SOURCE_DIR}/mongo-c-driver/src/mongoc" CACHE STRING "" FORCE )

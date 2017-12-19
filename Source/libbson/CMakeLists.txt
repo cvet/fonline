@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.1)
 
-set (MESSAGES_ENABLED 1)
-
-function(message)
-   list (GET ARGV 0 MessageType)
-   if (MESSAGES_ENABLED)
-      list (REMOVE_AT ARGV 0)
-      _message (${MessageType} "${ARGV}")
-   endif()
-endfunction()
+#!set (MESSAGES_ENABLED 1)
+#!
+#!function(message)
+#!   list (GET ARGV 0 MessageType)
+#!   if (MESSAGES_ENABLED)
+#!      list (REMOVE_AT ARGV 0)
+#!      _message (${MessageType} "${ARGV}")
+#!   endif()
+#!endfunction()
 
 project (libbson C)
 
@@ -243,7 +243,7 @@ if (M_LIBRARY)
 endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG 1)
-find_package (Threads REQUIRED)
+#!find_package (Threads REQUIRED)
 #!target_link_libraries(bson_shared Threads::Threads)
 if(CMAKE_USE_PTHREADS_INIT)
    set(BSON_LIBS ${BSON_LIBS} ${CMAKE_THREAD_LIBS_INIT})
