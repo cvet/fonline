@@ -399,6 +399,7 @@ set( SERVER_SOURCE
 	Critter.cpp Critter.h
 	CritterData.h
 	CritterManager.h CritterManager.cpp
+	DataBase.cpp DataBase.h
 	Dialogs.cpp Dialogs.h
 	EntityManager.cpp EntityManager.h
 	ItemManager.cpp ItemManager.h
