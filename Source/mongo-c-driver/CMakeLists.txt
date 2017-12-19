@@ -613,6 +613,11 @@ else()
    set (SASL_LIBS "") #!
 endif()
 
+#! +
+if (CMAKE_CROSSCOMPILING)
+	set (THREADS_PTHREAD_ARG "2" CACHE STRING "" FORCE)
+endif()
+#! -
 
 set(THREADS_PREFER_PTHREAD_FLAG 1)
 find_package (Threads REQUIRED)

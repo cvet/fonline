@@ -242,6 +242,12 @@ if (M_LIBRARY)
    set(BSON_LIBS ${BSON_LIBS} ${M_LIBRARY})
 endif()
 
+#! +
+if (CMAKE_CROSSCOMPILING)
+	set (THREADS_PTHREAD_ARG "2" CACHE STRING "" FORCE)
+endif()
+#! -
+
 set(THREADS_PREFER_PTHREAD_FLAG 1)
 find_package (Threads REQUIRED)
 #!target_link_libraries(bson_shared Threads::Threads)
