@@ -243,7 +243,7 @@ if (M_LIBRARY)
 endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG 1)
-#!find_package (Threads REQUIRED)
+find_package (Threads REQUIRED)
 #!target_link_libraries(bson_shared Threads::Threads)
 if(CMAKE_USE_PTHREADS_INIT)
    set(BSON_LIBS ${BSON_LIBS} ${CMAKE_THREAD_LIBS_INIT})

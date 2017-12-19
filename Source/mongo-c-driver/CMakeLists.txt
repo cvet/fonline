@@ -615,7 +615,7 @@ endif()
 
 
 set(THREADS_PREFER_PTHREAD_FLAG 1)
-#!find_package (Threads REQUIRED)
+find_package (Threads REQUIRED)
 if(CMAKE_USE_PTHREADS_INIT)
    set(THREAD_LIB ${CMAKE_THREAD_LIBS_INIT})
 endif()
