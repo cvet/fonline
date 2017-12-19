@@ -547,7 +547,13 @@ if (NOT ENABLE_SSL STREQUAL OFF)
            ${SOURCE_DIR}/src/mongoc/mongoc-stream-tls-openssl-bio.c
            ${SOURCE_DIR}/src/mongoc/mongoc-openssl.c
       )
-      string (REPLACE "x86_64" "i386" OPENSSL_LIBRARIES ${OPENSSL_LIBRARIES}) #!
+
+      #! +
+      if (CMAKE_CROSSCOMPILING)
+        set (OPENSSL_LIBRARIES "/usr/lib/i386-linux-gnu/libssl.so" "/usr/lib/i386-linux-gnu/libcrypto.so")
+      endif()
+      #! -
+
       set (SSL_LIBS ${OPENSSL_LIBRARIES})
       include_directories (${OPENSSL_INCLUDE_DIR})
       if(WIN32)
