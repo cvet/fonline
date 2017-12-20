@@ -150,7 +150,6 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( Start );
     BIND_INTERNAL_EVENT( Finish );
     BIND_INTERNAL_EVENT( Loop );
-    BIND_INTERNAL_EVENT( WorldSave );
     BIND_INTERNAL_EVENT( GlobalMapCritterIn );
     BIND_INTERNAL_EVENT( GlobalMapCritterOut );
     BIND_INTERNAL_EVENT( LocationInit );
@@ -3046,10 +3045,8 @@ Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
 Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
 {
     // Check existance
-    ClientsDataLocker.Lock();
     uint id = MAKE_CLIENT_ID( name );
-    bool available = ( GetClientData( id ) != nullptr );
-    ClientsDataLocker.Unlock();
+    bool available = true; // Todo: db ( GetClientData( id ) != nullptr );
     if( !available )
         return nullptr;
 
@@ -3448,11 +3445,12 @@ uint FOServer::SScriptFunc::Global_GetRegisteredPlayers( CScriptArray* ids, CScr
     {
         UIntVec          ids_;
         vector< string > names_;
-        for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
-        {
-            ids_.push_back( it->first );
-            names_.push_back( it->second->ClientName );
-        }
+        // Todo: db
+        // for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
+        // {
+        //    ids_.push_back( it->first );
+        //    names_.push_back( it->second->ClientName );
+        // }
 
         if( !ids_.size() )
             return 0;
@@ -3465,7 +3463,7 @@ uint FOServer::SScriptFunc::Global_GetRegisteredPlayers( CScriptArray* ids, CScr
         return (uint) ids_.size();
     }
 
-    return (uint) ClientsData.size();
+    return 0; // Todo: db (uint) ClientsData.size();
 }
 
 CScriptArray* FOServer::SScriptFunc::Global_GetAllNpc( hash pid )

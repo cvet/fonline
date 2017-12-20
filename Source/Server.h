@@ -134,7 +134,6 @@ public:
 
     static void DisconnectClient( Client* cl );
     static void RemoveClient( Client* cl );
-    static void DeleteClientFile( const char* client_name );
     static void AddSaveClient( Client* cl );
     static void EraseSaveClient( uint crid );
     static void Process( Client* cl );
@@ -177,31 +176,11 @@ public:
     static void OnNewConnection( NetConnection* connection );
 
     // Dump save/load
-    #define WORLD_SAVE_MAX_INDEX             ( 9999 )
-
-    struct EntityDump
-    {
-        bool        IsClient;
-        string      TypeName;
-        Properties* Props;
-        Properties* ProtoProps;
-        StrMap      ExtraData;
-    };
-    typedef vector< EntityDump* > EntityDumpVec;
-
-    static uint          SaveWorldIndex, SaveWorldTime, SaveWorldNextTick;
-    static UIntVec       SaveWorldDeleteIndexes;
-    static EntityDumpVec DumpedEntities;
-    static Thread        DumpThread;
-
-    static bool SaveClient( Client* cl );
     static bool LoadClient( Client* cl );
     static bool NewWorld();
-    static void SaveWorld( const char* fname );
-    static bool LoadWorld( const char* fname );
-    static void UnloadWorld( bool save );
-    static void DumpEntity( Entity* entity );
-    static void Dump_Work( void* data );
+    static void SaveWorld( const string& fname );
+    static bool LoadWorld( const string& fname );
+    static void UnloadWorld();
 
     // Access
     static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );
@@ -237,22 +216,6 @@ public:
     static void          SaveBan( ClientBanned& ban, bool expired );
     static void          SaveBans();
     static void          LoadBans();
-
-    // Clients data
-    struct ClientData
-    {
-        char ClientName[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        char ClientPassHash[ UTF8_BUF_SIZE( MAX_NAME ) ];
-        uint SaveIndex;
-        uint UID[ 5 ];
-        uint UIDEndTick;
-    };
-    typedef map< uint, ClientData* > ClientDataMap;
-    static ClientDataMap ClientsData;
-    static Mutex         ClientsDataLocker;
-
-    static bool        LoadClientsData();
-    static ClientData* GetClientData( uint id );
 
     // Statistics
     struct Statistics_

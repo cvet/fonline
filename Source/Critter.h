@@ -320,7 +320,6 @@ public:
     NetConnection* Connection;
     uchar          Access;
     uint           LanguageMsg;
-    uint           UID[ 5 ];
     int            GameState;
     uint           LastActivityTime;
     uint           LastSendedMapTick;
@@ -391,7 +390,6 @@ public:
     void Send_MapTextMsg( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str );
     void Send_MapTextMsgLex( ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len );
     void Send_ViewMap();
-    void Send_CheckUIDS();
     void Send_SomeItem( Item* item );                                     // Without checks
     void Send_CustomMessage( uint msg );
     void Send_CustomMessage( uint msg, uchar* data, uint data_size );

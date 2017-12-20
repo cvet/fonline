@@ -38,7 +38,8 @@ public:
     Location* GetLocationByPid( hash pid, uint skip_count );
     void      GetLocations( LocVec& locations );
 
-    void DumpEntities( void ( * dump_entity )( Entity* ), IniParser& data );
+    void DumpEntity( IniParser& data, Entity* entity );
+    void DumpEntities( IniParser& data );
     bool LoadEntities( IniParser& data );
     void ClearEntities();
 };

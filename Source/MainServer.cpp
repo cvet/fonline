@@ -46,7 +46,7 @@ static Thread   GUIUpdateThread;
 static Fl_Window* GuiWindow;
 static Fl_Box*    GuiLabelGameTime, * GuiLabelClients, * GuiLabelIngame, * GuiLabelNPC, * GuiLabelLocCount,
 * GuiLabelItemsCount, * GuiLabelFPS, * GuiLabelDelta, * GuiLabelUptime, * GuiLabelSend, * GuiLabelRecv, * GuiLabelCompress;
-static Fl_Button* GuiBtnRlClScript, * GuiBtnSaveWorld, * GuiBtnSaveLog, * GuiBtnSaveInfo,
+static Fl_Button* GuiBtnRlClScript, * GuiBtnSaveLog, * GuiBtnSaveInfo,
 * GuiBtnCreateDump, * GuiBtnMemory, * GuiBtnPlayers, * GuiBtnLocsMaps, * GuiBtnDeferredCalls,
 * GuiBtnProperties, * GuiBtnItemsCount, * GuiBtnProfiler, * GuiBtnStartStop, * GuiBtnSplitUp, * GuiBtnSplitDown;
 static Fl_Check_Button* GuiCBtnAutoUpdate;
@@ -192,7 +192,6 @@ int main( int argc, char** argv )
             {
                 // Disable buttons
                 GuiBtnRlClScript->deactivate();
-                GuiBtnSaveWorld->deactivate();
                 GuiBtnPlayers->deactivate();
                 GuiBtnLocsMaps->deactivate();
                 GuiBtnDeferredCalls->deactivate();
@@ -303,8 +302,7 @@ static void GUIInit()
     GUISetup.Setup( GuiLabelCompress    = new Fl_Box( GUI_SIZE4( 5, 94, 124, 8 ), "Compress ratio:" ) );
 
     // Buttons
-    GUISetup.Setup( GuiBtnRlClScript = new Fl_Button( GUI_SIZE4( 5, 128, 124, 14 ), "Reload client scripts" ) );
-    GUISetup.Setup( GuiBtnSaveWorld = new Fl_Button( GUI_SIZE4( 5, 144, 124, 14 ), "Save world" ) );
+    GUISetup.Setup( GuiBtnRlClScript = new Fl_Button( GUI_SIZE4( 5, 144, 124, 14 ), "Reload client scripts" ) );
     GUISetup.Setup( GuiBtnSaveLog   = new Fl_Button( GUI_SIZE4( 5, 160, 124, 14 ), "Save log" ) );
     GUISetup.Setup( GuiBtnSaveInfo  = new Fl_Button( GUI_SIZE4( 5, 176, 124, 14 ), "Save info" ) );
     GUISetup.Setup( GuiBtnCreateDump = new Fl_Button( GUI_SIZE4( 5, 192, 124, 14 ), "Create dump" ) );
@@ -332,7 +330,6 @@ static void GUIInit()
 
     // Disable buttons
     GuiBtnRlClScript->deactivate();
-    GuiBtnSaveWorld->deactivate();
     GuiBtnPlayers->deactivate();
     GuiBtnLocsMaps->deactivate();
     GuiBtnDeferredCalls->deactivate();
@@ -379,11 +376,6 @@ static void GUICallback( Fl_Widget* widget, void* data )
     {
         if( Server.Started() )
             Server.RequestReloadClientScripts = true;
-    }
-    else if( widget == GuiBtnSaveWorld )
-    {
-        if( Server.Started() )
-            Server.SaveWorldNextTick = Timer::FastTick();                       // Force saving time
     }
     else if( widget == GuiBtnSaveLog || widget == GuiBtnSaveInfo )
     {
@@ -447,7 +439,6 @@ static void GUICallback( Fl_Widget* widget, void* data )
 
             // Disable buttons
             GuiBtnRlClScript->deactivate();
-            GuiBtnSaveWorld->deactivate();
             GuiBtnPlayers->deactivate();
             GuiBtnLocsMaps->deactivate();
             GuiBtnDeferredCalls->deactivate();
@@ -655,7 +646,6 @@ static void GameLoopThread( void* )
         {
             // Enable buttons
             GuiBtnRlClScript->activate();
-            GuiBtnSaveWorld->activate();
             GuiBtnPlayers->activate();
             GuiBtnLocsMaps->activate();
             GuiBtnDeferredCalls->activate();

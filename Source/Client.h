@@ -65,7 +65,6 @@ public:
 
     int        InitCalls;
     bool       DoRestart;
-    uint*      UID1;
     HexManager HexMngr;
     hash       CurMapPid;
     hash       CurMapLocPid;
@@ -134,8 +133,6 @@ public:
     sockaddr_in   SockAddr, ProxyAddr;
     SOCKET        Sock;
     fd_set        SockSet;
-    uint*         UID0;
-    bool          UIDFail;
     Item*         SomeItem;
     bool          IsConnecting;
     bool          IsConnected;
@@ -188,7 +185,6 @@ public:
     void Net_OnPlaySound();
     void Net_OnPing();
     void Net_OnEndParseToGame();
-    void Net_OnCheckUID0();
     void Net_OnProperty( uint data_size );
 
     void Net_OnCritterDir();
@@ -199,7 +195,6 @@ public:
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
     void Net_OnCustomCommand();
-    void Net_OnCheckUID1();
 
     void Net_OnCritterXY();
     void Net_OnAllProperties();
@@ -208,20 +203,17 @@ public:
     void Net_OnChosenEraseItem();
     void Net_OnAllItemsSend();
     void Net_OnChosenTalk();
-    void Net_OnCheckUID2();
 
     void Net_OnGameInfo();
     void Net_OnLoadMap();
     void Net_OnMap();
     void Net_OnGlobalInfo();
     void Net_OnSomeItems();
-    void Net_OnCheckUID3();
 
     void Net_OnUpdateFilesList();
     void Net_OnUpdateFileData();
 
     void Net_OnAutomapsInfo();
-    void Net_OnCheckUID4();
     void Net_OnViewMap();
 
     void OnText( const string& str, uint crid, int how_say );
@@ -688,8 +680,6 @@ public:
     void       DeleteCritter( uint remid );
 
     bool     NoLogOut;
-    uint*    UID3, * UID2;
-
     bool     RebuildLookBorders;
     bool     DrawLookBorders, DrawShootBorders;
     PointVec LookBorders, ShootBorders;

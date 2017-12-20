@@ -180,7 +180,48 @@ void EntityManager::GetLocations( LocVec& locs )
     }
 }
 
-void EntityManager::DumpEntities( void ( * dump_entity )( Entity* ), IniParser& data )
+void EntityManager::DumpEntity( IniParser& data, Entity* entity )
+{
+    const char* type_name;
+    switch( entity->Type )
+    {
+    case EntityType::Location:
+        type_name = "Location";
+        break;
+    case EntityType::Map:
+        type_name = "Map";
+        break;
+    case EntityType::Npc:
+        type_name = "Npc";
+        break;
+    case EntityType::Item:
+        type_name = "Item";
+        break;
+    case EntityType::Custom:
+        type_name = "Custom";
+        break;
+    case EntityType::Global:
+        type_name = "Global";
+        break;
+    case EntityType::Client:
+        type_name = "Client";
+        break;
+    default:
+        RUNTIME_ASSERT( !"Unreachable place" );
+        break;
+    }
+
+    StrMap& kv = data.SetApp( type_name );
+    if( entity->Id )
+        kv[ "$Id" ] = _str( "{}", entity->Id );
+    if( entity->Proto )
+        kv[ "$Proto" ] = _str().parseHash( entity->Proto->ProtoId );
+    if( entity->Type == EntityType::Custom )
+        kv[ "$ClassName" ] = ( (CustomEntity*) entity )->Props.GetClassName();
+    entity->Props.SaveToText( kv, entity->Proto ? &entity->Proto->Props : nullptr );
+}
+
+void EntityManager::DumpEntities( IniParser& data )
 {
     data.SetStr( "GeneralSettings", "LastEntityId", _str( "{}", currentId ) );
 
@@ -192,7 +233,7 @@ void EntityManager::DumpEntities( void ( * dump_entity )( Entity* ), IniParser& 
         {
             Entity* entity = it->second;
             if( type == entity->Type )
-                dump_entity( entity );
+                DumpEntity( data, entity );
         }
     }
 }

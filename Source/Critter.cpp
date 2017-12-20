@@ -1818,7 +1818,6 @@ Client::Client( NetConnection* conn, ProtoCritter* proto ): Critter( 0, EntityTy
     LastActivityTime = Timer::FastTick();
     LastSay[ 0 ] = 0;
     LastSayEqualCount = 0;
-    memzero( UID, sizeof( UID ) );
 }
 
 Client::~Client()
@@ -2940,41 +2939,6 @@ void Client::Send_ViewMap()
     Connection->Bout << ViewMapHy;
     Connection->Bout << ViewMapLocId;
     Connection->Bout << ViewMapLocEnt;
-    BOUT_END( this );
-}
-
-void Client::Send_CheckUIDS()
-{
-    if( IsSendDisabled() )
-        return;
-
-    const uint uid_msg[ 5 ] = { NETMSG_CHECK_UID0, NETMSG_CHECK_UID1, NETMSG_CHECK_UID2, NETMSG_CHECK_UID3, NETMSG_CHECK_UID4 };
-    uint       msg = uid_msg[ Random( 0, 4 ) ];
-    uchar      rnd_count = Random( 1, 21 );
-    uchar      rnd_count2 = Random( 2, 12 );
-    uint       uidxor[ 5 ] = { (uint) Random( 1, 0x6FFFFFFF ), (uint) Random( 1, 0x6FFFFFFF ), (uint) Random( 1, 0x6FFFFFFF ), (uint) Random( 1, 0x6FFFFFFF ), (uint) Random( 1, 0x6FFFFFFF ) };
-    uint       uid[ 5 ] = { UID[ 0 ] ^ uidxor[ 0 ], UID[ 1 ] ^ uidxor[ 1 ], UID[ 2 ] ^ uidxor[ 2 ], UID[ 3 ] ^ uidxor[ 3 ], UID[ 4 ] ^ uidxor[ 4 ] };
-    uint       msg_len = sizeof( msg ) + sizeof( msg_len ) + sizeof( uid ) + sizeof( uidxor ) + sizeof( rnd_count ) * 2 + rnd_count + rnd_count2;
-
-    BOUT_BEGIN( this );
-    Connection->Bout << msg;
-    Connection->Bout << msg_len;
-    Connection->Bout << uid[ 3 ];
-    Connection->Bout << uidxor[ 0 ];
-    Connection->Bout << rnd_count;
-    Connection->Bout << uid[ 1 ];
-    Connection->Bout << uidxor[ 2 ];
-    for( int i = 0; i < rnd_count; i++ )
-        Connection->Bout << (uchar) Random( 0, 255 );
-    Connection->Bout << uid[ 2 ];
-    Connection->Bout << uidxor[ 1 ];
-    Connection->Bout << uid[ 4 ];
-    Connection->Bout << rnd_count2;
-    Connection->Bout << uidxor[ 3 ];
-    Connection->Bout << uidxor[ 4 ];
-    Connection->Bout << uid[ 0 ];
-    for( int i = 0; i < rnd_count2; i++ )
-        Connection->Bout << (uchar) Random( 0, 255 );
     BOUT_END( this );
 }
 

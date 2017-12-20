@@ -1,7 +1,6 @@
 ﻿#include "Common.h"
 #include "Client.h"
 #include "Access.h"
-#include "Defence.h"
 #include "FileSystem.h"
 
 #ifdef MEMORY_DEBUG
@@ -110,9 +109,9 @@ int HandleAppEvents( void* userdata, SDL_Event* event )
 }
 #endif
 
-FOClient*    FOClient::Self = nullptr;
-int          FOClient::SpritesCanDraw = 0;
-static uint* UID4 = nullptr;
+FOClient* FOClient::Self = nullptr;
+int       FOClient::SpritesCanDraw = 0;
+
 FOClient::FOClient()
 {
     WriteLog( "Engine initialization...\n" );
@@ -160,8 +159,6 @@ FOClient::FOClient()
     CurVideo = nullptr;
     MusicVolumeRestore = -1;
 
-    UIDFail = false;
-
     CurMapPid = 0;
     CurMapLocPid = 0;
     CurMapIndexInLoc = 0;
@@ -170,34 +167,14 @@ FOClient::FOClient()
     GmapFog = nullptr;
 }
 
-uint* UID1;
 bool FOClient::PreInit()
 {
-    GET_UID0( UID0 );
-    UID_PREPARE_UID4_0;
-
-    // Another check for already runned window
-    #ifndef DISABLE_UIDS
-    if( !Singleplayer )
-    {
-        # ifdef FO_WINDOWS
-        HANDLE h = CreateEventW( nullptr, FALSE, FALSE, L"_fosync_" );
-        if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
-            memset( MulWndArray, 1, sizeof( MulWndArray ) );
-        # else
-        // Todo: Linux
-        # endif
-    }
-    #endif
-
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
         WriteLog( "SDL initialization fail, error '{}'.\n", SDL_GetError() );
         return false;
     }
-    GET_UID1( UID1 );
-    UID_PREPARE_UID4_1;
 
     // SDL events
     #if defined ( FO_ANDROID ) || defined ( FO_IOS )
@@ -254,18 +231,10 @@ bool FOClient::PreInit()
 
     // Input
     Keyb::Init();
-    GET_UID2( UID2 );
-    UID_PREPARE_UID4_2;
-    UID_PREPARE_UID4_3;
-    GET_UID3( UID3 );
-    UID_PREPARE_UID4_4;
-    UID_PREPARE_UID4_5;
 
     // Sprite manager
     if( !SprMngr.Init() )
         return false;
-    UID_PREPARE_UID4_6;
-    GET_UID4( UID4 );
 
     // Cursor position
     int sw = 0, sh = 0;
@@ -432,11 +401,6 @@ bool FOClient::PostInit()
     ShootBorders.clear();
 
     WriteLog( "Engine initialization complete.\n" );
-
-    // Disable dumps if multiple window detected
-    if( MulWndArray[ 11 ] )
-        CatchExceptions( "", 0 );
-
     return true;
 }
 
@@ -1050,8 +1014,6 @@ void FOClient::MainLoop()
         #endif
     }
 
-    CHECK_MULTIPLY_WINDOWS0;
-
     // Network
     if( InitNetReason != INIT_NET_REASON_NONE && !UpdateFilesInProgress )
     {
@@ -1096,7 +1058,6 @@ void FOClient::MainLoop()
 
     // Process
     AnimProcess();
-    CHECK_MULTIPLY_WINDOWS1;
 
     // Game time
     if( Timer::ProcessGameTime() )
@@ -1115,16 +1076,12 @@ void FOClient::MainLoop()
         HexMngr.ProcessRain();
     }
 
-    CHECK_MULTIPLY_WINDOWS2;
-
     // Video
     if( IsVideoPlayed() )
     {
         RenderVideo();
         return;
     }
-
-    CHECK_MULTIPLY_WINDOWS3;
 
     // Start render
     SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
@@ -1156,14 +1113,10 @@ void FOClient::MainLoop()
     if( SaveLoadProcessDraft && GetMainScreen() == SCREEN_GLOBAL_MAP )
         SaveLoadFillDraft();
 
-    CHECK_MULTIPLY_WINDOWS4;
-
     DrawIfaceLayer( 3 );
     DrawIfaceLayer( 4 );
 
     ProcessScreenEffectFading();
-
-    CHECK_MULTIPLY_WINDOWS5;
 
     SprMngr.EndScene();
 }
@@ -1992,9 +1945,6 @@ void FOClient::NetProcess()
         case NETMSG_END_PARSE_TO_GAME:
             Net_OnEndParseToGame();
             break;
-        case NETMSG_CHECK_UID0:
-            Net_OnCheckUID0();
-            break;
 
         case NETMSG_ADD_PLAYER:
             Net_OnAddCritter( false );
@@ -2031,9 +1981,6 @@ void FOClient::NetProcess()
             break;
         case NETMSG_CRITTER_XY:
             Net_OnCritterXY();
-            break;
-        case NETMSG_CHECK_UID1:
-            Net_OnCheckUID1();
             break;
 
         case NETMSG_POD_PROPERTY( 1, 0 ):
@@ -2078,9 +2025,6 @@ void FOClient::NetProcess()
         case NETMSG_MAP_TEXT_MSG_LEX:
             Net_OnMapTextMsgLex();
             break;
-        case NETMSG_CHECK_UID2:
-            Net_OnCheckUID2();
-            break;
 
         case NETMSG_ALL_PROPERTIES:
             Net_OnAllProperties();
@@ -2098,9 +2042,6 @@ void FOClient::NetProcess()
         case NETMSG_ALL_ITEMS_SEND:
             Net_OnAllItemsSend();
             break;
-        case NETMSG_CHECK_UID3:
-            Net_OnCheckUID3();
-            break;
 
         case NETMSG_TALK_NPC:
             Net_OnChosenTalk();
@@ -2112,9 +2053,6 @@ void FOClient::NetProcess()
 
         case NETMSG_AUTOMAPS_INFO:
             Net_OnAutomapsInfo();
-            break;
-        case NETMSG_CHECK_UID4:
-            Net_OnCheckUID4();
             break;
         case NETMSG_VIEW_MAP:
             Net_OnViewMap();
@@ -2189,7 +2127,7 @@ void FOClient::Net_SendUpdate()
     Bout << (ushort) FONLINE_VERSION;
 
     // Data encrypting
-    uint encrypt_key = *UID0;
+    uint encrypt_key = 0x00420042;
     Bout << encrypt_key;
     Bout.SetEncryptKey( encrypt_key + 521 );
     Bin.SetEncryptKey( encrypt_key + 3491 );
@@ -2204,46 +2142,16 @@ void FOClient::Net_SendLogIn()
     memzero( pass_, sizeof( pass_ ) );
     Str::Copy( pass_, LoginPassword.c_str() );
 
-    uint uid1 = *UID1;
     Bout << NETMSG_LOGIN;
     Bout << (ushort) FONLINE_VERSION;
-    uint uid4 = *UID4;
-    Bout << uid4;
-    uid4 = uid1;                                                                                                                                                        // UID4
 
     // Begin data encrypting
-    Bout.SetEncryptKey( *UID4 + 12345 );
-    Bin.SetEncryptKey( *UID4 + 12345 );
+    Bout.SetEncryptKey( 12345 );
+    Bin.SetEncryptKey( 12345 );
 
     Bout.Push( name_, sizeof( name_ ) );
-    Bout << uid1;
-    uid4 ^= uid1 * Random( 0, 432157 ) + *UID3;                                                                                                 // UID1
     Bout.Push( pass_, sizeof( pass_ ) );
-    uint uid2 = *UID2;
     Bout << CurLang.Name;
-    for( int i = 0; i < TEXTMSG_COUNT; i++ )
-        Bout << (uint) i;
-    Bout << UIDXOR;                                                                                                                                                             // UID xor
-    uint uid3 = *UID3;
-    Bout << uid3;
-    uid3 ^= uid1;
-    uid1 |= uid3 / Random( 2, 53 );                                                                                                             // UID3
-    Bout << uid2;
-    uid3 ^= uid2;
-    uid1 |= uid4 + 222 - *UID2;                                                                                                                 // UID2
-    Bout << UIDOR;                                                                                                                              // UID or
-    for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-        Bout << (uint) i + 111;
-    Bout << UIDCALC;                                                                                                                            // UID uidcalc
-    uint uid0 = *UID0;
-    Bout << uid0;
-    uid3 ^= uid1 + Random( 0, 53245 );
-    uid1 |= uid3 + *UID0;
-    uid3 ^= uid1 + uid3;
-    uid1 |= uid3;                                                                                       // UID0
-
-    char dummy[ 100 ];
-    Bout.Push( dummy, 100 );
 
     if( !Singleplayer )
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_SUCCESS ) );
@@ -3167,40 +3075,6 @@ void FOClient::Net_OnCritterSetAnims()
     }
 }
 
-void FOClient::Net_OnCheckUID0()
-{
-    #define CHECKUIDBIN                       \
-        uint uid[ 5 ];                        \
-        uint  uidxor[ 5 ];                    \
-        uchar rnd_count, rnd_count2;          \
-        uchar dummy;                          \
-        uint  msg_len;                        \
-        Bin >> msg_len;                       \
-        Bin >> uid[ 3 ];                      \
-        Bin >> uidxor[ 0 ];                   \
-        Bin >> rnd_count;                     \
-        Bin >> uid[ 1 ];                      \
-        Bin >> uidxor[ 2 ];                   \
-        for( int i = 0; i < rnd_count; i++ )  \
-            Bin >> dummy;                     \
-        Bin >> uid[ 2 ];                      \
-        Bin >> uidxor[ 1 ];                   \
-        Bin >> uid[ 4 ];                      \
-        Bin >> rnd_count2;                    \
-        Bin >> uidxor[ 3 ];                   \
-        Bin >> uidxor[ 4 ];                   \
-        Bin >> uid[ 0 ];                      \
-        for( int i = 0; i < 5; i++ )          \
-            uid[ i ] ^= uidxor[ i ];          \
-        for( int i = 0; i < rnd_count2; i++ ) \
-            Bin >> dummy;                     \
-        CHECK_IN_BUFF_ERROR
-
-        CHECKUIDBIN;
-    if( CHECK_UID0( uid ) )
-        UIDFail = true;
-}
-
 void FOClient::Net_OnCustomCommand()
 {
     uint   crid;
@@ -3287,17 +3161,8 @@ void FOClient::Net_OnCustomCommand()
     else
     {
         if( index == OTHER_FLAGS )
-        {
             cr->Flags = value;
-        }
     }
-}
-
-void FOClient::Net_OnCheckUID1()
-{
-    CHECKUIDBIN;
-    if( CHECK_UID1( uid ) )
-        ExitProcess( 0 );
 }
 
 void FOClient::Net_OnCritterXY()
@@ -3691,9 +3556,6 @@ void FOClient::Net_OnPing()
     }
     else if( ping == PING_CLIENT )
     {
-        if( UIDFail )
-            return;
-
         Bout << NETMSG_PING;
         Bout << (uchar) PING_CLIENT;
     }
@@ -3703,9 +3565,6 @@ void FOClient::Net_OnPing()
         PingTick = 0;
         PingCallTick = Timer::FastTick() + GameOpt.PingPeriod;
     }
-
-    CHECK_MULTIPLY_WINDOWS8;
-    CHECK_MULTIPLY_WINDOWS9;
 }
 
 void FOClient::Net_OnEndParseToGame()
@@ -3934,14 +3793,6 @@ void FOClient::Net_OnChosenTalk()
     ShowScreen( SCREEN__DIALOG, dict );
     answers_to_script->Release();
     dict->Release();
-}
-
-void FOClient::Net_OnCheckUID2()
-{
-    CHECKUIDBIN;
-    if( CHECK_UID2( uid ) )
-        UIDFail = true;
-    CHECK_MULTIPLY_WINDOWS6;
 }
 
 void FOClient::Net_OnGameInfo()
@@ -4352,14 +4203,6 @@ void FOClient::Net_OnSomeItems()
         items_arr->Release();
 }
 
-void FOClient::Net_OnCheckUID3()
-{
-    CHECKUIDBIN;
-    if( CHECK_UID1( uid ) )
-        Net_SendPing( PING_UID_FAIL );
-    CHECK_MULTIPLY_WINDOWS7;
-}
-
 void FOClient::Net_OnUpdateFilesList()
 {
     uint     msg_len;
@@ -4589,13 +4432,6 @@ void FOClient::Net_OnAutomapsInfo()
     }
 
     CHECK_IN_BUFF_ERROR;
-}
-
-void FOClient::Net_OnCheckUID4()
-{
-    CHECKUIDBIN;
-    if( CHECK_UID2( uid ) )
-        Net_SendPing( PING_UID_FAIL );
 }
 
 void FOClient::Net_OnViewMap()

@@ -25,28 +25,15 @@
 // ************************************************************************
 
 #define NETMSG_LOGIN                        MAKE_NETMSG_HEADER( 1 )
-#define NETMSG_LOGIN_SIZE                                               \
-    ( sizeof( uint ) + sizeof( ushort ) + sizeof( uint ) * 8 /*UIDs*/ + \
-      UTF8_BUF_SIZE( MAX_NAME ) * 2 + sizeof( uint ) + sizeof( uint ) * 10 /*MSG*/ + sizeof( uint ) * 14 /*Proto*/ + 100 )
+#define NETMSG_LOGIN_SIZE                 \
+    ( sizeof( uint ) + sizeof( ushort ) + UTF8_BUF_SIZE( MAX_NAME ) * 2 + sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
 // Enter to game
 // Params:
 // ushort protocol_version
-// !uint uid4
 // char name[MAX_NAME]
-// !uint uid1
 // char pass[MAX_NAME]
 // uint msg_language
-// uint hash_msg_game[TEXTMSG_COUNT]
-// !uint uidxor
-// !uint uid3
-// !uint uid2
-// !uint uidor
-// uint hash_proto[ITEM_MAX_TYPES]
-// !uint uidcalc
-// uchar default_combat_mode
-// !uint uid0
-// char[100] - reserved
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_LOGIN_SUCCESS                MAKE_NETMSG_HEADER( 2 )
@@ -102,36 +89,6 @@
 // if save
 //  uint save_pic_len
 //  uchar save_pic[save_pic_len]
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_CHECK_UID0                   MAKE_NETMSG_HEADER( 6 )
-#define NETMSG_CHECK_UID1                   MAKE_NETMSG_HEADER( 30 )
-#define NETMSG_CHECK_UID2                   MAKE_NETMSG_HEADER( 78 )
-#define NETMSG_CHECK_UID3                   MAKE_NETMSG_HEADER( 139 )
-#define NETMSG_CHECK_UID4                   MAKE_NETMSG_HEADER( 255 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// uint msg_len
-// uint uid3
-// uint xor for uid0
-// uchar rnd_count, 1..21
-// uint uid1
-// uint xor for uid2
-// char rnd_data[rnd_count] - random numbers
-// uint uid2
-// uint xor for uid1
-// uint uid4
-// uchar rnd_count2, 2..12
-// uint xor for uid3
-// uint xor for uid4
-// uint uid0
-// char rnd_data2[rnd_count] - random numbers
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_CHECK_UID_EXT                MAKE_NETMSG_HEADER( 140 )
-// ////////////////////////////////////////////////////////////////////////
-//
-// uint msg_len
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

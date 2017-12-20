@@ -62,7 +62,6 @@
 #define PING_PING                   ( 0 )
 #define PING_WAIT                   ( 1 )
 #define PING_CLIENT                 ( 2 )
-#define PING_UID_FAIL               ( 3 )
 
 // Say types
 #define SAY_NORM                    ( 1 )

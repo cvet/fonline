@@ -111,20 +111,6 @@ extern "C" int main( int argc, char** argv ) // Handled by SDL
         Thread_Sleep( 500 );
     #endif
 
-    // Check for already runned window
-    #ifndef DISABLE_UIDS
-    # ifdef FO_WINDOWS
-    HANDLE h = CreateEventW( nullptr, FALSE, FALSE, L"fonline_instance" );
-    if( !h || h == INVALID_HANDLE_VALUE || GetLastError() == ERROR_ALREADY_EXISTS )
-    {
-        ShowMessage( "FOnline engine instance is already running." );
-        return 0;
-    }
-    # else
-    // Todo: Linux
-    # endif
-    #endif
-
     // Options
     GetClientOptions();
 

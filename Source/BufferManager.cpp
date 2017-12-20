@@ -323,11 +323,6 @@ bool BufferManager::NeedProcess()
 
     switch( msg )
     {
-    case NETMSG_CHECK_UID0:
-    case NETMSG_CHECK_UID1:
-    case NETMSG_CHECK_UID2:
-    case NETMSG_CHECK_UID3:
-    case NETMSG_CHECK_UID4:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:
@@ -560,11 +555,6 @@ void BufferManager::SkipMsg( uint msg )
         size = NETMSG_POD_PROPERTY_SIZE( 8, 2 );
         break;
 
-    case NETMSG_CHECK_UID0:
-    case NETMSG_CHECK_UID1:
-    case NETMSG_CHECK_UID2:
-    case NETMSG_CHECK_UID3:
-    case NETMSG_CHECK_UID4:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:

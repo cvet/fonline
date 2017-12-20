@@ -423,7 +423,6 @@ set( CLIENT_SOURCE
 	${THEORA_SOURCE}
 	Client.cpp Client.h
 	ClientInterface.cpp
-	Defence.h
 	MainClient.cpp
 	SoundManager.cpp SoundManager.h
 )

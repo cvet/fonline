@@ -37,7 +37,6 @@
 #define CMD_BAN                      ( 33 )
 #define CMD_DELETE_ACCOUNT           ( 34 )
 #define CMD_CHANGE_PASSWORD          ( 35 )
-#define CMD_DROP_UID                 ( 36 )
 #define CMD_LOG                      ( 37 )
 #define CMD_DEV_EXEC                 ( 38 )
 #define CMD_DEV_FUNC                 ( 39 )
@@ -80,8 +79,6 @@ const CmdDef cmdlist[] =
     { "deleteself", CMD_DELETE_ACCOUNT },
     { "changepassword", CMD_CHANGE_PASSWORD },
     { "changepass", CMD_CHANGE_PASSWORD },
-    { "dropuid", CMD_DROP_UID },
-    { "drop", CMD_DROP_UID },
     { "log", CMD_LOG },
     { "exec", CMD_DEV_EXEC },
     { "func", CMD_DEV_FUNC },
@@ -583,13 +580,6 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
         buf << cmd;
         buf.Push( pass_hash.c_str(), PASS_HASH_SIZE );
         buf.Push( new_pass_hash.c_str(), PASS_HASH_SIZE );
-    }
-    break;
-    case CMD_DROP_UID:
-    {
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
     }
     break;
     case CMD_LOG:

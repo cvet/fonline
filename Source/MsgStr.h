@@ -278,7 +278,6 @@
 #define STR_NET_KNOCK_KNOCK                ( 1041 )
 #define STR_NET_REGISTRATION_IP_WAIT       ( 1042 )
 #define STR_NET_BANNED_IP                  ( 1043 )
-#define STR_NET_UID_FAIL                   ( 1044 )
 #define STR_NET_TIME_LEFT                  ( 1045 )
 #define STR_NET_BAN                        ( 1046 )
 #define STR_NET_BAN_REASON                 ( 1047 )

@@ -64,10 +64,6 @@ void FOServer::ProcessCritter( Critter* cr )
         // Ping client
         if( cl->IsToPing() )
         {
-            #ifndef DISABLE_UIDS
-            if( GameOpt.AccountPlayTime && Random( 0, 3 ) == 0 )
-                cl->Send_CheckUIDS();
-            #endif
             cl->PingClient();
             if( cl->GetMapId() )
                 MapMngr.TransitToMapHex( cr, MapMngr.GetMap( cr->GetMapId() ), cr->GetHexX(), cr->GetHexY(), cr->GetDir(), false );
@@ -402,7 +398,7 @@ void FOServer::Process_CreateClient( Client* cl )
     if( !Singleplayer )
     {
         SaveClientsLocker.Lock();
-        bool exist = ( GetClientData( id ) != nullptr );
+        bool exist = true; // Todo: db ( GetClientData( id ) != nullptr );
         SaveClientsLocker.Unlock();
 
         if( exist )
@@ -414,7 +410,6 @@ void FOServer::Process_CreateClient( Client* cl )
     }
 
     // Check brute force registration
-    #ifndef DISABLE_UIDS
     if( GameOpt.RegistrationTimeout && !Singleplayer )
     {
         SCOPE_LOCK( RegIpLocker );
@@ -440,7 +435,6 @@ void FOServer::Process_CreateClient( Client* cl )
             RegIp.insert( std::make_pair( ip, Timer::FastTick() ) );
         }
     }
-    #endif
 
     uint   disallow_msg_num = 0, disallow_str_num = 0;
     string lexems;
@@ -477,7 +471,9 @@ void FOServer::Process_CreateClient( Client* cl )
     cl->Access = ACCESS_DEFAULT;
 
     // First save
-    if( !SaveClient( cl ) )
+    StrMap data;
+    cl->Props.SaveToText( data, &cl->Proto->Props );
+    if( true ) // Todo: db
     {
         WriteLog( "First save fail.\n" );
         cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
@@ -522,19 +518,8 @@ void FOServer::Process_CreateClient( Client* cl )
     {
         // Todo: remove from game
     }
-    SaveClient( cl );
 
-    if( !Singleplayer )
-    {
-        ClientData* data = new ClientData();
-        memzero( data, sizeof( ClientData ) );
-        Str::Copy( data->ClientName, cl->Name.c_str() );
-        memcpy( data->ClientPassHash, password, strlen( password ) );
-
-        SCOPE_LOCK( ClientsDataLocker );
-        ClientsData.insert( std::make_pair( cl->GetId(), data ) );
-    }
-    else
+    if( Singleplayer )
     {
         SingleplayerSave.Valid = true;
         SingleplayerSave.Name = cl->Name;
@@ -556,14 +541,9 @@ void FOServer::Process_LogIn( Client*& cl )
     ushort proto_ver = 0;
     cl->Connection->Bin >> proto_ver;
 
-    // UIDs
-    uint uidxor, uidor, uidcalc;
-    uint uid[ 5 ];
-    cl->Connection->Bin >> uid[ 4 ];
-
     // Begin data encrypting
-    cl->Connection->Bin.SetEncryptKey( uid[ 4 ] + 12345 );
-    cl->Connection->Bout.SetEncryptKey( uid[ 4 ] + 12345 );
+    cl->Connection->Bin.SetEncryptKey( 12345 );
+    cl->Connection->Bout.SetEncryptKey( 12345 );
 
     // Check protocol
     if( proto_ver != FONLINE_VERSION )
@@ -578,7 +558,6 @@ void FOServer::Process_LogIn( Client*& cl )
     cl->Connection->Bin.Pop( name, sizeof( name ) );
     name[ sizeof( name ) - 1 ] = 0;
     cl->Name = name;
-    cl->Connection->Bin >> uid[ 1 ];
     char password[ UTF8_BUF_SIZE( MAX_NAME ) ];
     cl->Connection->Bin.Pop( password, sizeof( password ) );
 
@@ -597,22 +576,8 @@ void FOServer::Process_LogIn( Client*& cl )
 
     // Bin hashes
     uint msg_language;
-    uint textmsg_hash[ TEXTMSG_COUNT ];
-    uint item_hash[ ITEM_MAX_TYPES ];
-
     cl->Connection->Bin >> msg_language;
-    for( int i = 0; i < TEXTMSG_COUNT; i++ )
-        cl->Connection->Bin >> textmsg_hash[ i ];
-    cl->Connection->Bin >> uidxor;
-    cl->Connection->Bin >> uid[ 3 ];
-    cl->Connection->Bin >> uid[ 2 ];
-    cl->Connection->Bin >> uidor;
-    for( int i = 0; i < ITEM_MAX_TYPES; i++ )
-        cl->Connection->Bin >> item_hash[ i ];
-    cl->Connection->Bin >> uidcalc;
-    cl->Connection->Bin >> uid[ 0 ];
-    char dummy[ 100 ];
-    cl->Connection->Bin.Pop( dummy, 100 );
+
     CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
 
     // Language
@@ -675,33 +640,33 @@ void FOServer::Process_LogIn( Client*& cl )
     }
 
     // Get client account data
-    uint       id = MAKE_CLIENT_ID( cl->Name );
-    ClientData data;
+    uint id = MAKE_CLIENT_ID( cl->Name );
     if( !Singleplayer )
     {
-        SCOPE_LOCK( ClientsDataLocker );
+        // Todo: db
 
-        ClientData* data_ = GetClientData( id );
-        if( !data_ || !Str::Compare( password, data_->ClientPassHash ) )
-        {
+        /*ClientData* data_ = GetClientData( id );
+           if( !data_ || !Str::Compare( password, data_->ClientPassHash ) )
+           {
             cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
-        }
+           }
 
-        data = *data_;
+           data = *data_;*/
     }
     else
     {
-        Str::Copy( data.ClientName, SingleplayerSave.Name.c_str() );
-        id = MAKE_CLIENT_ID( data.ClientName );
+        // Todo: db
+        // Str::Copy( data.ClientName, SingleplayerSave.Name.c_str() );
+        // id = MAKE_CLIENT_ID( data.ClientName );
     }
 
     // Check for ban by name
     {
         SCOPE_LOCK( BannedLocker );
 
-        ClientBanned* ban = GetBanByName( data.ClientName );
+        ClientBanned* ban = GetBanByName( cl->Name.c_str() );
         if( ban && !Singleplayer )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED, SAY_NETMSG, TEXTMSG_GAME );
@@ -714,9 +679,8 @@ void FOServer::Process_LogIn( Client*& cl )
 
     // Request script
     uint   disallow_msg_num = 0, disallow_str_num = 0;
-    string name_str = data.ClientName;
     string lexems;
-    bool   allow = Script::RaiseInternalEvent( ServerFunctions.PlayerLogin, cl->GetIp(), &name_str, id, &disallow_msg_num, &disallow_str_num, &lexems );
+    bool   allow = Script::RaiseInternalEvent( ServerFunctions.PlayerLogin, cl->GetIp(), &cl->Name, id, &disallow_msg_num, &disallow_str_num, &lexems );
     if( !allow )
     {
         if( disallow_msg_num < TEXTMSG_COUNT && disallow_str_num )
@@ -728,116 +692,7 @@ void FOServer::Process_LogIn( Client*& cl )
     }
 
     // Copy data
-    cl->Name = data.ClientName;
     cl->RefreshName();
-
-    // Check UIDS
-    #ifndef DISABLE_UIDS
-    if( GameOpt.AccountPlayTime && !Singleplayer )
-    {
-        int uid_zero = 0;
-        for( int i = 0; i < 5; i++ )
-            if( !uid[ i ] )
-                uid_zero++;
-        if( uid_zero > 2 )
-        {
-            WriteLog( "Received more than two zero UIDs, client '{}'.\n", cl->Name );
-            cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
-
-        if( ( uid[ 0 ] && ( !FLAG( uid[ 0 ], 0x00800000 ) || FLAG( uid[ 0 ], 0x00000400 ) ) ) ||
-            ( uid[ 1 ] && ( !FLAG( uid[ 1 ], 0x04000000 ) || FLAG( uid[ 1 ], 0x00200000 ) ) ) ||
-            ( uid[ 2 ] && ( !FLAG( uid[ 2 ], 0x00000020 ) || FLAG( uid[ 2 ], 0x00000800 ) ) ) ||
-            ( uid[ 3 ] && ( !FLAG( uid[ 3 ], 0x80000000 ) || FLAG( uid[ 3 ], 0x40000000 ) ) ) ||
-            ( uid[ 4 ] && ( !FLAG( uid[ 4 ], 0x00000800 ) || FLAG( uid[ 4 ], 0x00004000 ) ) ) )
-        {
-            WriteLog( "Invalid UIDs, client '{}'.\n", cl->Name );
-            cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
-
-        uint uidxor_ = 0xF145668A, uidor_ = 0, uidcalc_ = 0x45012345;
-        for( int i = 0; i < 5; i++ )
-        {
-            uidxor_ ^= uid[ i ];
-            uidor_ |= uid[ i ];
-            uidcalc_ += uid[ i ];
-        }
-
-        if( uidxor != uidxor_ || uidor != uidor_ || uidcalc != uidcalc_ )
-        {
-            WriteLog( "Invalid UIDs hash, client '{}'.\n", cl->Name );
-            cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
-
-        SCOPE_LOCK( ClientsDataLocker );
-
-        uint tick = Timer::FastTick();
-        for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
-        {
-            ClientData* cd = it->second;
-            if( it->first == id )
-                continue;
-
-            int matches = 0;
-            if( !uid[ 0 ] || uid[ 0 ] == cd->UID[ 0 ] )
-                matches++;
-            if( !uid[ 1 ] || uid[ 1 ] == cd->UID[ 1 ] )
-                matches++;
-            if( !uid[ 2 ] || uid[ 2 ] == cd->UID[ 2 ] )
-                matches++;
-            if( !uid[ 3 ] || uid[ 3 ] == cd->UID[ 3 ] )
-                matches++;
-            if( !uid[ 4 ] || uid[ 4 ] == cd->UID[ 4 ] )
-                matches++;
-
-            if( matches >= 5 )
-            {
-                if( !cd->UIDEndTick || tick >= cd->UIDEndTick )
-                {
-                    for( int i = 0; i < 5; i++ )
-                        cd->UID[ i ] = 0;
-                    cd->UIDEndTick = 0;
-                }
-                else
-                {
-                    WriteLog( "UID already used by critter '{}', client '{}'.\n", cd->ClientName, cl->Name );
-                    cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-                    cl->Disconnect();
-                    return;
-                }
-            }
-        }
-
-        for( int i = 0; i < 5; i++ )
-        {
-            if( data.UID[ i ] != uid[ i ] )
-            {
-                if( !data.UIDEndTick || tick >= data.UIDEndTick )
-                {
-                    // Set new uids on this account and start play timeout
-                    ClientData* data_ = GetClientData( id );
-                    for( int j = 0; j < 5; j++ )
-                        data_->UID[ j ] = uid[ j ];
-                    data_->UIDEndTick = tick + GameOpt.AccountPlayTime * 1000;
-                }
-                else
-                {
-                    WriteLog( "Different UID {}, client '{}'.\n", i, cl->Name );
-                    cl->Send_TextMsg( cl, STR_NET_UID_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-                    cl->Disconnect();
-                    return;
-                }
-                break;
-            }
-        }
-    }
-    #endif
 
     // Find in players in game
     Client* cl_old = CrMngr.GetPlayer( id );
@@ -947,9 +802,6 @@ void FOServer::Process_LogIn( Client*& cl )
         // Restore data sending
         cl->DisableSend--;
     }
-
-    for( int i = 0; i < 5; i++ )
-        cl->UID[ i ] = uid[ i ];
 
     // Connection info
     uint          ip = cl->GetIp();
@@ -1783,23 +1635,6 @@ void FOServer::Process_Ping( Client* cl )
     {
         cl->PingOk( PING_CLIENT_LIFE_TIME );
         return;
-    }
-    else if( ping == PING_UID_FAIL )
-    {
-        #ifndef DISABLE_UIDS
-        SCOPE_LOCK( ClientsDataLocker );
-
-        ClientData* data = GetClientData( cl->GetId() );
-        if( data )
-        {
-            WriteLog( "Wrong UID, client '{}'. Disconnect.\n", cl->GetName() );
-            for( int i = 0; i < 5; i++ )
-                data->UID[ i ] = Random( 0, 10000 );
-            data->UIDEndTick = Timer::FastTick() + GameOpt.AccountPlayTime * 1000;
-        }
-        cl->Disconnect();
-        return;
-        #endif
     }
     else if( ping == PING_PING || ping == PING_WAIT )
     {

@@ -9,7 +9,6 @@
 // #define SHOW_DEPRECTAED // All known places with deprecated stuff
 // #define SHOW_ANDROID_TODO
 // #define DISABLE_EGG
-#define DISABLE_UIDS
 
 // Some platform specific definitions
 #include "PlatformSpecific.h"
@@ -374,7 +373,6 @@ struct ServerScriptFunctions
     void* Start;
     void* Finish;
     void* Loop;
-    void* WorldSave;
     void* GlobalMapCritterIn;
     void* GlobalMapCritterOut;
 
