@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Access.h"
 #include "FileSystem.h"
+#include <fcntl.h>
 
 #ifdef MEMORY_DEBUG
 static bool                 ASDbgMemoryCanWork = false;
