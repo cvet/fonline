@@ -15,6 +15,7 @@
 #include "Access.h"
 #include "EntityManager.h"
 #include "ProtoManager.h"
+#include "DataBase.h"
 
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR( client )    CHECK_IN_BUFF_ERROR_EXT( client, 0, return )
@@ -32,6 +33,8 @@ class FOServer
 public:
     FOServer();
     ~FOServer();
+
+    static DBCollection* DbPlayers;
 
     // Net process
     static void Process_ParseToGame( Client* cl );
@@ -76,7 +79,6 @@ public:
 
     // Init/Finish system
     static bool InitScriptSystem();
-    static bool PostInitScriptSystem();
     static void FinishScriptSystem();
 
     // Dialogs demand and result
@@ -127,15 +129,11 @@ public:
     static int     UpdateIndex, UpdateLastIndex;
     static uint    UpdateLastTick;
     static bool    Active, ActiveInProcess, ActiveOnce;
-    static ClVec   SaveClients;
-    static Mutex   SaveClientsLocker;
     static UIntMap RegIp;
     static Mutex   RegIpLocker;
 
     static void DisconnectClient( Client* cl );
     static void RemoveClient( Client* cl );
-    static void AddSaveClient( Client* cl );
-    static void EraseSaveClient( uint crid );
     static void Process( Client* cl );
     static void ProcessMove( Critter* cr );
 
@@ -444,8 +442,8 @@ public:
         static void          Global_EraseTextListener( int say_type, string first_str, uint parameter );
         static bool          Global_SwapCritters( Critter* cr1, Critter* cr2, bool with_inventory );
         static CScriptArray* Global_GetAllItems( hash pid );
-        static CScriptArray* Global_GetAllPlayers();
-        static uint          Global_GetRegisteredPlayers( CScriptArray* ids, CScriptArray* names );
+        static CScriptArray* Global_GetOnlinePlayers();
+        static CScriptArray* Global_GetRegisteredPlayerIds();
         static CScriptArray* Global_GetAllNpc( hash pid );
         static CScriptArray* Global_GetAllMaps( hash pid );
         static CScriptArray* Global_GetAllLocations( hash pid );

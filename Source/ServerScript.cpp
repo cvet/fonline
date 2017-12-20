@@ -421,9 +421,9 @@ bool FOServer::ReloadClientScripts()
         if( pragmas[ i ].Name != "property" )
         {
             // All pragmas exclude 'property'
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3, pragmas[ i ].Name.c_str() );
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 1, pragmas[ i ].Text.c_str() );
-            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 2, pragmas[ i ].CurrentFile.c_str() );
+            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3, pragmas[ i ].Name );
+            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 1, pragmas[ i ].Text );
+            msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 2, pragmas[ i ].CurrentFile );
             pragma_index++;
         }
         else
@@ -440,7 +440,7 @@ bool FOServer::ReloadClientScripts()
             }
             if( !found )
             {
-                WriteLog( "Property '{}' not registered in server scripts.\n", pragmas[ i ].Text.c_str() );
+                WriteLog( "Property '{}' not registered in server scripts.\n", pragmas[ i ].Text );
                 errors++;
             }
         }
@@ -448,9 +448,9 @@ bool FOServer::ReloadClientScripts()
     for( size_t i = 0; i < ServerPropertyPragmas.size(); i++ )
     {
         // All 'property' pragmas
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3, ServerPropertyPragmas[ i ].Name.c_str() );
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 1, ServerPropertyPragmas[ i ].Text.c_str() );
-        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 2, ServerPropertyPragmas[ i ].CurrentFile.c_str() );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3, ServerPropertyPragmas[ i ].Name );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 1, ServerPropertyPragmas[ i ].Text );
+        msg_script.AddStr( STR_INTERNAL_SCRIPT_PRAGMAS + pragma_index * 3 + 2, ServerPropertyPragmas[ i ].CurrentFile );
         pragma_index++;
     }
 
@@ -973,9 +973,9 @@ void FOServer::SScriptFunc::Crit_Say( Critter* cr, uchar how_say, string text )
         return;                                  // SCRIPT_ERROR_R("Npc is not life.");
 
     if( how_say >= SAY_NETMSG )
-        cr->Send_Text( cr, how_say != SAY_FLASH_WINDOW ? text.c_str() : " ", how_say );
+        cr->Send_Text( cr, how_say != SAY_FLASH_WINDOW ? text : " ", how_say );
     else if( cr->GetMapId() )
-        cr->SendAA_Text( cr->VisCr, text.c_str(), how_say, false );
+        cr->SendAA_Text( cr->VisCr, text, how_say, false );
 }
 
 void FOServer::SScriptFunc::Crit_SayMsg( Critter* cr, uchar how_say, ushort text_msg, uint num_str )
@@ -3046,7 +3046,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
 {
     // Check existance
     uint id = MAKE_CLIENT_ID( name );
-    bool available = true; // Todo: db ( GetClientData( id ) != nullptr );
+    bool available = DbPlayers->Exists( id );
     if( !available )
         return nullptr;
 
@@ -3058,24 +3058,11 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
         return cl;
     }
 
-    // Find in saves
-    SaveClientsLocker.Lock();
-    auto it = std::find_if( SaveClients.begin(), SaveClients.end(), [ id ] ( Client * cl ) { return cl->GetId() == id;
-                            } );
-    if( it != SaveClients.end() )
-        cl = *it;
-    SaveClientsLocker.Unlock();
-    if( cl )
-    {
-        cl->IsDestroyed = false;
-        cl->AddRef();
-        return cl;
-    }
-
     // Load from db
     ProtoCritter* cl_proto = ProtoMngr.GetProtoCritter( _str( "Player" ).toHash() );
     RUNTIME_ASSERT( cl_proto );
     cl = new Client( nullptr, cl_proto );
+    cl->SetId( id );
     cl->Name = name;
     if( !LoadClient( cl ) )
         SCRIPT_ERROR_R0( "Client data db read failed." );
@@ -3424,7 +3411,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetAllItems( hash pid )
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Global_GetAllPlayers()
+CScriptArray* FOServer::SScriptFunc::Global_GetOnlinePlayers()
 {
     CrVec players;
     ClVec all_players;
@@ -3439,31 +3426,16 @@ CScriptArray* FOServer::SScriptFunc::Global_GetAllPlayers()
     return Script::CreateArrayRef( "Critter[]", players );
 }
 
-uint FOServer::SScriptFunc::Global_GetRegisteredPlayers( CScriptArray* ids, CScriptArray* names )
+CScriptArray* FOServer::SScriptFunc::Global_GetRegisteredPlayerIds()
 {
-    if( ids || names )
-    {
-        UIntVec          ids_;
-        vector< string > names_;
-        // Todo: db
-        // for( auto it = ClientsData.begin(), end = ClientsData.end(); it != end; ++it )
-        // {
-        //    ids_.push_back( it->first );
-        //    names_.push_back( it->second->ClientName );
-        // }
+    UIntSet ids_set = DbPlayers->GetAllIds();
+    UIntVec ids_vec;
+    for( uint id : ids_set )
+        ids_vec.push_back( id );
 
-        if( !ids_.size() )
-            return 0;
-
-        if( ids )
-            Script::AppendVectorToArray< uint >( ids_, ids );
-        if( names )
-            Script::AppendVectorToArray< string >( names_, names );
-
-        return (uint) ids_.size();
-    }
-
-    return 0; // Todo: db (uint) ClientsData.size();
+    CScriptArray* result = Script::CreateArray( "uint[]" );
+    Script::AppendVectorToArray< uint >( ids_vec, result );
+    return result;
 }
 
 CScriptArray* FOServer::SScriptFunc::Global_GetAllNpc( hash pid )
@@ -3545,7 +3517,7 @@ void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
 
     string result = prop->SetGetCallback( *(asIScriptFunction**) ref );
     if( result != "" )
-        SCRIPT_ERROR_R( result.c_str() );
+        SCRIPT_ERROR_R( result );
 
     gen->SetReturnByte( 1 );
 }
@@ -3565,7 +3537,7 @@ void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
 
     string result = prop->AddSetCallback( *(asIScriptFunction**) ref, deferred );
     if( result != "" )
-        SCRIPT_ERROR_R( result.c_str() );
+        SCRIPT_ERROR_R( result );
 
     gen->SetReturnByte( 1 );
 }
@@ -3578,7 +3550,7 @@ void FOServer::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
 
 bool FOServer::SScriptFunc::Global_LoadDataFile( string dat_name )
 {
-    return FileManager::LoadDataFile( dat_name.c_str() );
+    return FileManager::LoadDataFile( dat_name );
 }
 
 struct ServerImage
@@ -3588,7 +3560,8 @@ struct ServerImage
     uint     Height;
     uint     Depth;
 };
-vector< ServerImage* > ServerImages;
+static vector< ServerImage* > ServerImages;
+
 bool FOServer::SScriptFunc::Global_LoadImage( uint index, string image_name, uint image_depth )
 {
     // Delete old

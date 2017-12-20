@@ -397,11 +397,7 @@ void FOServer::Process_CreateClient( Client* cl )
     RUNTIME_ASSERT( IS_CLIENT_ID( id ) );
     if( !Singleplayer )
     {
-        SaveClientsLocker.Lock();
-        bool exist = true; // Todo: db ( GetClientData( id ) != nullptr );
-        SaveClientsLocker.Unlock();
-
-        if( exist )
+        if( !DbPlayers->Exists( id ) )
         {
             cl->Send_TextMsg( cl, STR_NET_ACCOUNT_ALREADY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
@@ -473,7 +469,7 @@ void FOServer::Process_CreateClient( Client* cl )
     // First save
     StrMap data;
     cl->Props.SaveToText( data, &cl->Proto->Props );
-    if( true ) // Todo: db
+    if( !DbPlayers->Insert( id, data ) )
     {
         WriteLog( "First save fail.\n" );
         cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
@@ -639,27 +635,23 @@ void FOServer::Process_LogIn( Client*& cl )
         }
     }
 
-    // Get client account data
+    // Evaluate name and id
+    if( Singleplayer )
+        cl->Name = SingleplayerSave.Name;
+
     uint id = MAKE_CLIENT_ID( cl->Name );
+
+    // Check password
     if( !Singleplayer )
     {
-        // Todo: db
 
-        /*ClientData* data_ = GetClientData( id );
-           if( !data_ || !Str::Compare( password, data_->ClientPassHash ) )
-           {
+        StrMap data = DbPlayers->Get( id, { "ClientPassHash" } );
+        if( data.empty() || !Str::Compare( password, data[ "ClientPassHash" ].c_str() ) )
+        {
             cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
-           }
-
-           data = *data_;*/
-    }
-    else
-    {
-        // Todo: db
-        // Str::Copy( data.ClientName, SingleplayerSave.Name.c_str() );
-        // id = MAKE_CLIENT_ID( data.ClientName );
+        }
     }
 
     // Check for ban by name
@@ -728,9 +720,6 @@ void FOServer::Process_LogIn( Client*& cl )
 
         ConnectedClientsLocker.Unlock();
 
-        // Erase from save
-        EraseSaveClient( cl->GetId() );
-
         cl->SendA_Action( ACTION_CONNECT, 0, nullptr );
     }
     // Avatar not in game
@@ -745,31 +734,12 @@ void FOServer::Process_LogIn( Client*& cl )
             cl->Props = *SingleplayerSave.CrProps;
         }
 
-        // Find in saved array
-        SaveClientsLocker.Lock();
-        Client* cl_saved = nullptr;
-        auto    it = std::find_if( SaveClients.begin(), SaveClients.end(), [ id ] ( Client * cl )
-                                   {
-                                       return cl->GetId() == id;
-                                   } );
-        if( it != SaveClients.end() )
-            cl_saved = *it;
-        SaveClientsLocker.Unlock();
-
-        if( cl_saved )
+        if( !LoadClient( cl ) )
         {
-            cl->Props = cl_saved->Props;
-            EraseSaveClient( id );
-        }
-        else
-        {
-            if( !LoadClient( cl ) )
-            {
-                WriteLog( "Error load from data base, client '{}'.\n", cl->GetName() );
-                cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
-                cl->Disconnect();
-                return;
-            }
+            WriteLog( "Error load from data base, client '{}'.\n", cl->GetName() );
+            cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
+            cl->Disconnect();
+            return;
         }
 
         // Add to collection

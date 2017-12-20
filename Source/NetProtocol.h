@@ -25,7 +25,7 @@
 // ************************************************************************
 
 #define NETMSG_LOGIN                        MAKE_NETMSG_HEADER( 1 )
-#define NETMSG_LOGIN_SIZE                 \
+#define NETMSG_LOGIN_SIZE \
     ( sizeof( uint ) + sizeof( ushort ) + UTF8_BUF_SIZE( MAX_NAME ) * 2 + sizeof( uint ) )
 // ////////////////////////////////////////////////////////////////////////
 // Enter to game

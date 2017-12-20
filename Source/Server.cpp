@@ -7,25 +7,24 @@
 
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
 
+DBCollection*               FOServer::DbPlayers;
 int                         FOServer::UpdateIndex = -1;
 int                         FOServer::UpdateLastIndex = -1;
-uint                        FOServer::UpdateLastTick = 0;
+uint                        FOServer::UpdateLastTick;
 ClVec                       FOServer::LogClients;
 NetServerBase*              FOServer::TcpServer;
 NetServerBase*              FOServer::WebSocketsServer;
 ClVec                       FOServer::ConnectedClients;
 Mutex                       FOServer::ConnectedClientsLocker;
 FOServer::Statistics_       FOServer::Statistics;
-bool                        FOServer::RequestReloadClientScripts = false;
+bool                        FOServer::RequestReloadClientScripts;
 LangPackVec                 FOServer::LangPacks;
 Pragmas                     FOServer::ServerPropertyPragmas;
 FOServer::TextListenVec     FOServer::TextListeners;
 Mutex                       FOServer::TextListenersLocker;
-bool                        FOServer::Active = false;
-bool                        FOServer::ActiveInProcess = false;
-bool                        FOServer::ActiveOnce = false;
-ClVec                       FOServer::SaveClients;
-Mutex                       FOServer::SaveClientsLocker;
+bool                        FOServer::Active;
+bool                        FOServer::ActiveInProcess;
+bool                        FOServer::ActiveOnce;
 UIntMap                     FOServer::RegIp;
 Mutex                       FOServer::RegIpLocker;
 FOServer::ClientBannedVec   FOServer::Banned;
@@ -120,7 +119,7 @@ string FOServer::GetIngamePlayersStatistics()
         string    str_loc = _str( "{} ({}) {} ({})",
                                   map ? loc->GetName() : "", map ? loc->GetId() : 0, map ? map->GetName() : "", map ? map->GetId() : 0 );
         result += _str( "{:<20} {:<10} {:<15} {:<7} {:<8} {:<5} {:<5} {}\n",
-                        cl->Name.c_str(), cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->GetCond() ],
+                        cl->Name, cl->GetId(), cl->GetIpStr(), cl->IsOffline() ? "No" : "Yes", cond_states_str[ cl->GetCond() ],
                         map ? cl->GetHexX() : cl->GetWorldX(), map ? cl->GetHexY() : cl->GetWorldY(), map ? str_loc : "Global map" );
     }
     return result;
@@ -143,9 +142,6 @@ void FOServer::DisconnectClient( Client* cl )
     Client* cl_ = ( id ? CrMngr.GetPlayer( id ) : nullptr );
     if( cl_ && cl_ == cl )
     {
-        EraseSaveClient( cl->GetId() );
-        AddSaveClient( cl );
-
         SETFLAG( cl->Flags, FCRIT_DISCONNECT );
         if( cl->GetMapId() )
         {
@@ -175,11 +171,6 @@ void FOServer::RemoveClient( Client* cl )
 
         MapMngr.EraseCrFromMap( cl, cl->GetMap() );
 
-        // Deferred saving
-        EraseSaveClient( cl->GetId() );
-        if( !cl->GetClientToDelete() )
-            AddSaveClient( cl );
-
         // Destroy
         bool full_delete = cl->GetClientToDelete();
         EntityMngr.UnregisterEntity( cl );
@@ -198,8 +189,7 @@ void FOServer::RemoveClient( Client* cl )
         if( full_delete )
         {
             cl->DeleteInventory();
-            // Todo: db remove
-            // DeleteClientFile( cl->Name.c_str() );
+            DbPlayers->Delete( cl->Id );
         }
 
         cl->Release();
@@ -208,36 +198,6 @@ void FOServer::RemoveClient( Client* cl )
     {
         cl->IsDestroyed = true;
         Script::RemoveEventsEntity( cl );
-    }
-}
-
-void FOServer::AddSaveClient( Client* cl )
-{
-    if( Singleplayer )
-        return;
-
-    SCOPE_LOCK( SaveClientsLocker );
-
-    cl->AddRef();
-    SaveClients.push_back( cl );
-}
-
-void FOServer::EraseSaveClient( uint crid )
-{
-    SCOPE_LOCK( SaveClientsLocker );
-
-    for( auto it = SaveClients.begin(); it != SaveClients.end();)
-    {
-        Client* cl = *it;
-        if( cl->GetId() == crid )
-        {
-            cl->Release();
-            it = SaveClients.erase( it );
-        }
-        else
-        {
-            ++it;
-        }
     }
 }
 
@@ -614,7 +574,7 @@ void FOServer::Process( Client* cl )
             {
                 Process_Command( cl->Connection->Bin, [ cl ] ( auto s )
                                  {
-                                     cl->Send_Text( cl, _str( s ).trim().c_str(), SAY_NETMSG );
+                                     cl->Send_Text( cl, _str( s ).trim(), SAY_NETMSG );
                                  }, cl, "" );
                 BIN_END( cl );
                 continue;
@@ -958,7 +918,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
             break;
         }
 
-        logcb( istr.c_str() );
+        logcb( istr );
     }
     break;
     case CMD_GAMEINFO:
@@ -1011,15 +971,11 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
 
         CHECK_ALLOW_COMMAND;
 
-        SaveClientsLocker.Lock();
-
         uint id = MAKE_CLIENT_ID( name );
-        if( true ) // Todo: db exists
-            logcb( _str( "Client id is {}.", id ).c_str() );
+        if( DbPlayers->Exists( id ) )
+            logcb( _str( "Client id is {}.", id ) );
         else
             logcb( "Client not found." );
-
-        SaveClientsLocker.Unlock();
     }
     break;
     case CMD_MOVECRIT:
@@ -1494,7 +1450,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
         bool error = DlgMngr.LoadDialogs();
         InitLangPacksDialogs( LangPacks );
         GenerateUpdateFiles();
-        logcb( _str( "Dialogs reload done{}.", error ? ", with errors." : "" ).c_str() );
+        logcb( _str( "Dialogs reload done{}.", error ? ", with errors." : "" ) );
     }
     break;
     case CMD_LOADDIALOG:
@@ -1508,7 +1464,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
         FileManager&    fm = dialogs.FindFile( dlg_name );
         if( fm.IsLoaded() )
         {
-            DialogPack* pack = DlgMngr.ParseDialog( dlg_name.c_str(), (char*) fm.GetBuf() );
+            DialogPack* pack = DlgMngr.ParseDialog( dlg_name, (char*) fm.GetBuf() );
             if( pack )
             {
                 DlgMngr.EraseDialog( pack->PackId );
@@ -1626,7 +1582,8 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
                 return;
             }
 
-            Client*      cl_banned = CrMngr.GetPlayer( name.c_str() );
+            uint         id = MAKE_CLIENT_ID( name );
+            Client*      cl_banned = CrMngr.GetPlayer( id );
             ClientBanned ban;
             memzero( &ban, sizeof( ban ) );
             Str::Copy( ban.ClientName, name.c_str() );
@@ -2013,7 +1970,6 @@ bool FOServer::InitReal()
 
     // Generic
     ConnectedClients.clear();
-    SaveClients.clear();
     RegIp.clear();
 
     // Profiler
@@ -2026,7 +1982,6 @@ bool FOServer::InitReal()
     {
         // Reserve memory
         ConnectedClients.reserve( MAX_CLIENTS_IN_GAME );
-        SaveClients.reserve( MAX_CLIENTS_IN_GAME );
     }
 
     if( !InitScriptSystem() )
@@ -2165,7 +2120,7 @@ bool FOServer::InitLangPacks( LangPackVec& lang_packs )
         }
 
         LanguagePack lang;
-        if( !lang.LoadFromFiles( lang_name.c_str() ) )
+        if( !lang.LoadFromFiles( lang_name ) )
         {
             WriteLog( "Unable to init Language pack {}.\n", cur_lang );
             return false;
@@ -2217,7 +2172,7 @@ bool FOServer::InitLangPacksDialogs( LangPackVec& lang_packs )
                     continue;
 
                 if( lang.Msg[ TEXTMSG_DLG ].IsIntersects( *pack->Texts[ i ] ) )
-                    WriteLog( "Warning! Dialog '{}' text intersection detected, send notification about this to developers.\n", pack->PackName.c_str() );
+                    WriteLog( "Warning! Dialog '{}' text intersection detected, send notification about this to developers.\n", pack->PackName );
 
                 lang.Msg[ TEXTMSG_DLG ] += *pack->Texts[ i ];
             }
@@ -2449,26 +2404,17 @@ bool FOServer::LoadClient( Client* cl )
 {
     RUNTIME_ASSERT( !Singleplayer );
 
-    string    fname = _str( "Save/Clients/{}.foclient", cl->Name );
-    IniParser client_data;
-    if( !client_data.AppendFile( fname ) )
+    StrMap data = DbPlayers->Get( cl->Id );
+    if( data.empty() )
     {
-        WriteLog( "Unable to open client save file '{}'.\n", fname );
+        WriteLog( "Player '{}' data not found truncated.\n", cl->Name );
         return false;
     }
-    if( !client_data.IsApp( "Client" ) )
+    if( !cl->Props.LoadFromText( data ) )
     {
-        WriteLog( "Client save file '{}' truncated.\n", fname );
+        WriteLog( "Player '{}' data truncated.\n", cl->Name );
         return false;
     }
-
-    // Read data
-    if( !cl->Props.LoadFromText( client_data.GetApp( "Client" ) ) )
-    {
-        WriteLog( "Client save file '{}' truncated.\n", fname );
-        return false;
-    }
-
     return true;
 }
 
@@ -2515,14 +2461,6 @@ void FOServer::SaveWorld( const string& fname )
         if( cl->Id )
             EntityMngr.DumpEntity( data, cl );
     ConnectedClientsLocker.Unlock();
-    SaveClientsLocker.Lock();
-    for( auto& cl : SaveClients )
-    {
-        EntityMngr.DumpEntity( data, cl );
-        cl->Release();
-    }
-    SaveClients.clear();
-    SaveClientsLocker.Unlock();
 
     // Save hashes
     _str::saveHashes( data.SetApp( "Hashes" ) );

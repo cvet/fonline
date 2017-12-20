@@ -325,8 +325,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseTextListener(int sayType, string firstStr, uint parameter)", SCRIPT_FUNC( BIND_CLASS Global_EraseTextListener ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool SwapCritters(Critter@+ cr1, Critter@+ cr2, bool withInventory)", SCRIPT_FUNC( BIND_CLASS Global_SwapCritters ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Item@>@ GetAllItems(hash pid)", SCRIPT_FUNC( BIND_CLASS Global_GetAllItems ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "array<Critter@>@ GetAllPlayers()", SCRIPT_FUNC( BIND_CLASS Global_GetAllPlayers ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetRegisteredPlayers(array<uint>@+ ids, array<string>@+ names)", SCRIPT_FUNC( BIND_CLASS Global_GetRegisteredPlayers ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "array<Critter@>@ GetOnlinePlayers()", SCRIPT_FUNC( BIND_CLASS Global_GetOnlinePlayers ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "array<uint>@ GetRegisteredPlayerIds()", SCRIPT_FUNC( BIND_CLASS Global_GetRegisteredPlayerIds ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Critter@>@ GetAllNpc(hash pid)", SCRIPT_FUNC( BIND_CLASS Global_GetAllNpc ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Map@>@ GetAllMaps(hash pid)", SCRIPT_FUNC( BIND_CLASS Global_GetAllMaps ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Location@>@ GetAllLocations(hash pid)", SCRIPT_FUNC( BIND_CLASS Global_GetAllLocations ), SCRIPT_FUNC_CONV ) );
