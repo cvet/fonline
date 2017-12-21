@@ -350,7 +350,7 @@ void FOServer::Process_CreateClient( Client* cl )
 
         uint          ip = cl->GetIp();
         ClientBanned* ban = GetBanByIp( ip );
-        if( ban && !Singleplayer )
+        if( ban )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED_IP, SAY_NETMSG, TEXTMSG_GAME );
             // cl->Send_TextMsgLex(cl,STR_NET_BAN_REASON,SAY_NETMSG,TEXTMSG_GAME,ban->GetBanLexems());
@@ -395,18 +395,15 @@ void FOServer::Process_CreateClient( Client* cl )
     // Check for exist
     uint id = MAKE_CLIENT_ID( name );
     RUNTIME_ASSERT( IS_CLIENT_ID( id ) );
-    if( !Singleplayer )
+    if( DbPlayers->Get( id ).empty() )
     {
-        if( DbPlayers->Get( id ).empty() )
-        {
-            cl->Send_TextMsg( cl, STR_NET_ACCOUNT_ALREADY, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
+        cl->Send_TextMsg( cl, STR_NET_ACCOUNT_ALREADY, SAY_NETMSG, TEXTMSG_GAME );
+        cl->Disconnect();
+        return;
     }
 
     // Check brute force registration
-    if( GameOpt.RegistrationTimeout && !Singleplayer )
+    if( GameOpt.RegistrationTimeout )
     {
         SCOPE_LOCK( RegIpLocker );
 
@@ -480,24 +477,8 @@ void FOServer::Process_CreateClient( Client* cl )
     // Clear brute force ip and name, because client enter to game immediately after registration
     ClearBruteForceEntire( cl->GetIp(), cl->Name.c_str() );
 
-    // Load world
-    if( Singleplayer )
-    {
-        // Todo: singleplayer
-        /*if( !NewWorld() )
-           {
-            WriteLog( "Generate new world fail.\n" );
-            cl->Send_TextMsg( cl, STR_SP_NEW_GAME_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-           }*/
-    }
-
     // Notify
-    if( !Singleplayer )
-        cl->Send_TextMsg( cl, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
-    else
-        cl->Send_TextMsg( cl, STR_SP_NEW_GAME_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
+    cl->Send_TextMsg( cl, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
 
     BOUT_BEGIN( cl );
     cl->Connection->Bout << (uint) NETMSG_REGISTER_SUCCESS;
@@ -514,14 +495,6 @@ void FOServer::Process_CreateClient( Client* cl )
     if( !Script::RaiseInternalEvent( ServerFunctions.CritterInit, cl, true ) )
     {
         // Todo: remove from game
-    }
-
-    if( Singleplayer )
-    {
-        SingleplayerSave.Valid = true;
-        SingleplayerSave.Name = cl->Name;
-        SingleplayerSave.CrProps = &cl->Props;
-        SingleplayerSave.PicData.clear();
     }
 }
 
@@ -558,12 +531,6 @@ void FOServer::Process_LogIn( Client*& cl )
     char password[ UTF8_BUF_SIZE( MAX_NAME ) ];
     cl->Connection->Bin.Pop( password, sizeof( password ) );
 
-    if( Singleplayer )
-    {
-        cl->Name = "";
-        memzero( password, sizeof( password ) );
-    }
-
     // Prevent brute force by name
     if( CheckBruteForceName( cl->Name.c_str() ) )
     {
@@ -585,17 +552,8 @@ void FOServer::Process_LogIn( Client*& cl )
         cl->LanguageMsg = ( *LangPacks.begin() ).Name;
 
     // If only cache checking than disconnect
-    if( !Singleplayer && !name[ 0 ] )
+    if( !name[ 0 ] )
     {
-        cl->Disconnect();
-        return;
-    }
-
-    // Singleplayer
-    if( Singleplayer && !SingleplayerSave.Valid )
-    {
-        WriteLog( "World not contain singleplayer data.\n" );
-        cl->Send_TextMsg( cl, STR_SP_SAVE_FAIL, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
         return;
     }
@@ -606,7 +564,7 @@ void FOServer::Process_LogIn( Client*& cl )
 
         uint          ip = cl->GetIp();
         ClientBanned* ban = GetBanByIp( ip );
-        if( ban && !Singleplayer )
+        if( ban )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED_IP, SAY_NETMSG, TEXTMSG_GAME );
             if( _str( ban->ClientName ).compareIgnoreCaseUtf8( cl->Name ) )
@@ -618,40 +576,29 @@ void FOServer::Process_LogIn( Client*& cl )
     }
 
     // Check login/password
-    if( !Singleplayer )
+    uint name_len_utf8 = _str( cl->Name ).lengthUtf8();
+    if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength || name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
     {
-        uint name_len_utf8 = _str( cl->Name ).lengthUtf8();
-        if( name_len_utf8 < MIN_NAME || name_len_utf8 < GameOpt.MinNameLength || name_len_utf8 > MAX_NAME || name_len_utf8 > GameOpt.MaxNameLength )
-        {
-            cl->Send_TextMsg( cl, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
-
-        if( !_str( cl->Name ).isValidUtf8() || cl->Name.find( '*' ) != string::npos )
-        {
-            cl->Send_TextMsg( cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
+        cl->Send_TextMsg( cl, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME );
+        cl->Disconnect();
+        return;
     }
 
-    // Evaluate name and id
-    if( Singleplayer )
-        cl->Name = SingleplayerSave.Name;
-
-    uint id = MAKE_CLIENT_ID( cl->Name );
+    if( !_str( cl->Name ).isValidUtf8() || cl->Name.find( '*' ) != string::npos )
+    {
+        cl->Send_TextMsg( cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME );
+        cl->Disconnect();
+        return;
+    }
 
     // Check password
+    uint   id = MAKE_CLIENT_ID( cl->Name );
     StrMap data = DbPlayers->Get( id );
-    if( !Singleplayer )
+    if( !data.count( "ClientPassHash" ) || !Str::Compare( password, data[ "ClientPassHash" ].c_str() ) )
     {
-        if( !data.count( "ClientPassHash" ) || !Str::Compare( password, data[ "ClientPassHash" ].c_str() ) )
-        {
-            cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
+        cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
+        cl->Disconnect();
+        return;
     }
 
     // Check for ban by name
@@ -659,7 +606,7 @@ void FOServer::Process_LogIn( Client*& cl )
         SCOPE_LOCK( BannedLocker );
 
         ClientBanned* ban = GetBanByName( cl->Name.c_str() );
-        if( ban && !Singleplayer )
+        if( ban )
         {
             cl->Send_TextMsg( cl, STR_NET_BANNED, SAY_NETMSG, TEXTMSG_GAME );
             cl->Send_TextMsgLex( cl, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, ban->GetBanLexems().c_str() );
@@ -727,15 +674,8 @@ void FOServer::Process_LogIn( Client*& cl )
     {
         cl->SetId( id );
 
-        // Singleplayer data
-        if( Singleplayer )
-        {
-            cl->Name = SingleplayerSave.Name;
-            cl->Props = *SingleplayerSave.CrProps;
-        }
-
         // Data
-        if( !Singleplayer && !cl->Props.LoadFromText( data ) )
+        if( !cl->Props.LoadFromText( data ) )
         {
             WriteLog( "Player '{}' data truncated.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
@@ -833,63 +773,6 @@ void FOServer::Process_LogIn( Client*& cl )
     cl->Connection->Bout.SetEncryptKey( bout_seed );
 
     cl->Send_LoadMap( nullptr );
-}
-
-void FOServer::Process_SingleplayerSaveLoad( Client* cl )
-{
-    if( !Singleplayer )
-    {
-        cl->Disconnect();
-        return;
-    }
-
-    uint     msg_len;
-    bool     save;
-    ushort   fname_len;
-    char     fname[ MAX_FOTEXT ];
-    UCharVec pic_data;
-    cl->Connection->Bin >> msg_len;
-    cl->Connection->Bin >> save;
-    cl->Connection->Bin >> fname_len;
-    cl->Connection->Bin.Pop( fname, fname_len );
-    fname[ fname_len ] = 0;
-    if( save )
-    {
-        uint pic_data_len;
-        cl->Connection->Bin >> pic_data_len;
-        pic_data.resize( pic_data_len );
-        if( pic_data_len )
-            cl->Connection->Bin.Pop( &pic_data[ 0 ], pic_data_len );
-    }
-
-    CHECK_IN_BUFF_ERROR( cl );
-
-    if( save )
-    {
-        SingleplayerSave.PicData = pic_data;
-
-        // Todo: singleplayer
-        // SaveWorld( fname );
-        cl->Send_TextMsg( cl, STR_SP_SAVE_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
-    }
-    else
-    {
-        // Todo: singleplayer
-        /* if( !LoadWorld( fname ) )
-           {
-             WriteLog( "Unable load world from file '{}'.\n", fname );
-             cl->Send_TextMsg( cl, STR_SP_LOAD_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-             cl->Disconnect();
-             return;
-           }*/
-
-        cl->Send_TextMsg( cl, STR_SP_LOAD_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
-
-        BOUT_BEGIN( cl );
-        cl->Connection->Bout << (uint) NETMSG_REGISTER_SUCCESS;
-        BOUT_END( cl );
-        cl->Disconnect();
-    }
 }
 
 void FOServer::Process_ParseToGame( Client* cl )
@@ -1001,15 +884,12 @@ void FOServer::Process_GiveMap( Client* cl )
     cl->Connection->Bin >> hash_scen;
     CHECK_IN_BUFF_ERROR( cl );
 
-    if( !Singleplayer )
-    {
-        uint tick = Timer::FastTick();
-        if( tick - cl->LastSendedMapTick < GameOpt.Breaktime * 3 )
-            cl->SetBreakTime( GameOpt.Breaktime * 3 );
-        else
-            cl->SetBreakTime( GameOpt.Breaktime );
-        cl->LastSendedMapTick = tick;
-    }
+    uint tick = Timer::FastTick();
+    if( tick - cl->LastSendedMapTick < GameOpt.Breaktime * 3 )
+        cl->SetBreakTime( GameOpt.Breaktime * 3 );
+    else
+        cl->SetBreakTime( GameOpt.Breaktime );
+    cl->LastSendedMapTick = tick;
 
     ProtoMap* pmap = ProtoMngr.GetProtoMap( map_pid );
     if( !pmap )

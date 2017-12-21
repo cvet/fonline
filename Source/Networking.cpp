@@ -148,7 +148,7 @@ protected:
     void ReceiveCallback( const uchar* buf, uint len )
     {
         Bin.Lock();
-        if( Bin.GetCurPos() + len >= GameOpt.FloodSize && !Singleplayer )
+        if( Bin.GetCurPos() + len >= GameOpt.FloodSize )
         {
             Bin.Reset();
             Bin.Unlock();

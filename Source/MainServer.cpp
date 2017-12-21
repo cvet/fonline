@@ -101,38 +101,8 @@ int main( int argc, char** argv )
         return 0;
     }
 
-    // Check single player parameters
-    if( MainConfig->IsKey( "", "Singleplayer" ) )
-    {
-        # ifdef FO_WINDOWS
-        Singleplayer = true;
-        GameOpt.Singleplayer = true;
-        Timer::SetGamePause( true );
-
-        // Logging
-        string log_path;
-        if( !MainConfig->IsKey( "", "NoLogPath" ) && MainConfig->IsKey( "", "LogPath" ) )
-            log_path = MainConfig->GetStr( "", "LogPath" );
-        log_path = _str( log_path ).trim() + "FOnlineServer.log";
-        LogToFile( log_path );
-
-        WriteLog( "Singleplayer mode.\n" );
-
-        // Shared data
-        string sp = MainConfig->GetStr( "", "Singleplayer" );
-        HANDLE map_file = nullptr;
-        if( sscanf( sp.c_str(), "%p%p", &map_file, &SingleplayerClientProcess ) != 2 || !SingleplayerData.Attach( map_file ) )
-        {
-            WriteLog( "Can't attach to mapped file {}.\n", map_file );
-            return 0;
-        }
-        # else
-        return 0;
-        # endif
-    }
-
     // GUI
-    if( !Singleplayer || MainConfig->IsKey( "", "ShowGui" ) )
+    if( MainConfig->IsKey( "", "ShowGui" ) )
     {
         Fl::lock();         // Begin GUI multi threading
         GUIInit();
@@ -656,8 +626,6 @@ static void GameLoopThread( void* )
 
     if( GuiWindow )
         UpdateLog();
-    if( Singleplayer )
-        ExitProcess( 0 );
     if( GuiWindow && GracefulExit )
         Fl::awake( &GUIMessageExit );
 }
@@ -894,14 +862,6 @@ int main( int argc, char** argv )
     WriteLog( "FOnline server daemon, version {}.\n", FONLINE_VERSION );
     if( !GameOpt.CommandLine.empty() )
         WriteLog( "Command line '{}'.\n", GameOpt.CommandLine );
-
-    // Update stuff
-    if( !Singleplayer && GameOpt.CommandLine.find( "-game" ) != string::npos )
-        GameOpt.GameServer = true, GameOpt.UpdateServer = false;
-    else if( !Singleplayer && GameOpt.CommandLine.find( "-update" ) != string::npos )
-        GameOpt.GameServer = false, GameOpt.UpdateServer = true;
-    else
-        GameOpt.GameServer = true, GameOpt.UpdateServer = true;
 
     DaemonLoop(); // Never out from here
     return 0;

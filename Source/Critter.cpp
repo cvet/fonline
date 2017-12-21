@@ -1867,7 +1867,7 @@ uint Client::GetOfflineTime()
 
 bool Client::IsToPing()
 {
-    return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick && !IS_TIMEOUT( GetTimeoutTransfer() ) && !Singleplayer;
+    return GameState == STATE_PLAYING && Timer::FastTick() >= pingNextTick && !IS_TIMEOUT( GetTimeoutTransfer() );
 }
 
 void Client::PingClient()

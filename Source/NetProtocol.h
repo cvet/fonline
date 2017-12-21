@@ -79,18 +79,6 @@
 // Message about successfully map loading
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SINGLEPLAYER_SAVE_LOAD       MAKE_NETMSG_HEADER( 10 )
-// ////////////////////////////////////////////////////////////////////////
-// Singleplayer
-// uint msg_len
-// bool save
-// ushort fname_len
-// char fname[fname_len]
-// if save
-//  uint save_pic_len
-//  uchar save_pic[save_pic_len]
-// ////////////////////////////////////////////////////////////////////////
-
 // ************************************************************************
 // Update
 // ************************************************************************

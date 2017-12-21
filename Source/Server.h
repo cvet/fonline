@@ -45,7 +45,6 @@ public:
     static void Process_UpdateFileData( Client* cl );
     static void Process_CreateClient( Client* cl );
     static void Process_LogIn( Client*& cl );
-    static void Process_SingleplayerSaveLoad( Client* cl );
     static void Process_Dir( Client* cl );
     static void Process_Text( Client* cl );
     static void Process_Command( BufferManager& buf, LogFunc logcb, Client* cl, const string& admin_panel );
@@ -230,15 +229,6 @@ public:
     } static Statistics;
 
     static string GetIngamePlayersStatistics();
-
-    // Singleplayer save
-    struct SingleplayerSave_
-    {
-        bool        Valid;
-        string      Name;
-        Properties* CrProps;
-        UCharVec    PicData;
-    } static SingleplayerSave;
 
     // Brute force prevention
     static UIntUIntPairMap BruteForceIps;   // Ip -> Time / Fail count

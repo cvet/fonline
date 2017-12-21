@@ -337,15 +337,6 @@ bool FOClient::PostInit()
     // Pipboy
     Automaps.clear();
 
-    // Save/Load
-    if( Singleplayer )
-    {
-        SaveLoadDataSlots.clear();
-        SaveLoadDraft = SprMngr.CreateRenderTarget( false, false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
-        SaveLoadProcessDraft = false;
-        SaveLoadDraftValid = false;
-    }
-
     // Hex field sprites
     HexMngr.ReloadSprites();
 
@@ -509,7 +500,7 @@ void FOClient::UpdateFilesLoop()
         return;
 
     // Update indication
-    if( !Singleplayer && InitCalls < 2 )
+    if( InitCalls < 2 )
     {
         // Load font
         if( !UpdateFilesFontLoaded )
@@ -687,7 +678,7 @@ void FOClient::UpdateFilesLoop()
 
 void FOClient::UpdateFilesAddText( uint num_str, const string& num_str_str )
 {
-    if( !Singleplayer && UpdateFilesFontLoaded )
+    if( UpdateFilesFontLoaded )
     {
         string text = ( CurLang.Msg[ TEXTMSG_GAME ].Count( num_str ) ? CurLang.Msg[ TEXTMSG_GAME ].GetStr( num_str ) : num_str_str );
         UpdateFilesText += text + "\n";
@@ -998,21 +989,6 @@ void FOClient::MainLoop()
         }
     }
 
-    // Singleplayer data synchronization
-    if( Singleplayer )
-    {
-        #ifdef FO_WINDOWS
-        bool pause = SingleplayerData.Pause;
-        SingleplayerData.Lock();         // Read data
-        if( pause != SingleplayerData.Pause )
-        {
-            SingleplayerData.Pause = pause;
-            Timer::SetGamePause( pause );
-        }
-        SingleplayerData.Unlock();         // Write data
-        #endif
-    }
-
     // Network
     if( InitNetReason != INIT_NET_REASON_NONE && !UpdateFilesInProgress )
     {
@@ -1101,17 +1077,9 @@ void FOClient::MainLoop()
     DrawIfaceLayer( 1 );
 
     if( GetMainScreen() == SCREEN_GAME && HexMngr.IsMapLoaded() )
-    {
         GameDraw();
-        if( SaveLoadProcessDraft )
-            SaveLoadFillDraft();
-    }
 
     DrawIfaceLayer( 2 );
-
-    if( SaveLoadProcessDraft && GetMainScreen() == SCREEN_GLOBAL_MAP )
-        SaveLoadFillDraft();
-
     DrawIfaceLayer( 3 );
     DrawIfaceLayer( 4 );
 
@@ -1412,10 +1380,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     port++;
     #endif
 
-    if( !Singleplayer )
-        WriteLog( "Connecting to server '{}:{}'.\n", host, port );
-    else
-        WriteLog( "Connecting to server.\n" );
+    WriteLog( "Connecting to server '{}:{}'.\n", host, port );
 
     IsConnecting = false;
     IsConnected = false;
@@ -1438,31 +1403,10 @@ bool FOClient::NetConnect( const char* host, ushort port )
     }
     #endif
 
-    if( !Singleplayer )
-    {
-        if( !FillSockAddr( SockAddr, host, port ) )
-            return false;
-        if( GameOpt.ProxyType && !FillSockAddr( ProxyAddr, GameOpt.ProxyHost.c_str(), GameOpt.ProxyPort ) )
-            return false;
-    }
-    else
-    {
-        #ifdef FO_WINDOWS
-        for( int i = 0; i < 60; i++ )     // Wait 1 minute, then abort
-        {
-            if( !SingleplayerData.Refresh() )
-                return false;
-            if( SingleplayerData.NetPort )
-                break;
-            Thread_Sleep( 1000 );
-        }
-        if( !SingleplayerData.NetPort )
-            return false;
-        SockAddr.sin_family = AF_INET;
-        SockAddr.sin_port = SingleplayerData.NetPort;
-        SockAddr.sin_addr.s_addr = inet_addr( "127.0.0.1" );
-        #endif
-    }
+    if( !FillSockAddr( SockAddr, host, port ) )
+        return false;
+    if( GameOpt.ProxyType && !FillSockAddr( ProxyAddr, GameOpt.ProxyHost.c_str(), GameOpt.ProxyPort ) )
+        return false;
 
     Bin.SetEncryptKey( 0 );
     Bout.SetEncryptKey( 0 );
@@ -1484,7 +1428,7 @@ bool FOClient::NetConnect( const char* host, ushort port )
     #endif
 
     // Direct connect
-    if( !GameOpt.ProxyType || Singleplayer )
+    if( !GameOpt.ProxyType )
     {
         // Set non blocking mode
         #ifdef FO_WINDOWS
@@ -1932,10 +1876,7 @@ void FOClient::NetProcess()
             Net_OnLoginSuccess();
             break;
         case NETMSG_REGISTER_SUCCESS:
-            if( !Singleplayer )
-                WriteLog( "Registration success.\n" );
-            else
-                WriteLog( "World loaded, enter to it.\n" );
+            WriteLog( "Registration success.\n" );
             break;
 
         case NETMSG_PING:
@@ -2152,8 +2093,7 @@ void FOClient::Net_SendLogIn()
     Bout.Push( pass_, sizeof( pass_ ) );
     Bout << CurLang.Name;
 
-    if( !Singleplayer )
-        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_SUCCESS ) );
+    AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_CONN_SUCCESS ) );
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -2178,34 +2118,6 @@ void FOClient::Net_SendCreatePlayer()
     memzero( buf, sizeof( buf ) );
     Str::Copy( buf, LoginPassword.c_str() );
     Bout.Push( buf, UTF8_BUF_SIZE( MAX_NAME ) );
-
-    WriteLog( "complete.\n" );
-}
-
-void FOClient::Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data )
-{
-    if( save )
-        WriteLog( "Request save to file '{}'...", fname );
-    else
-        WriteLog( "Request load from file '{}'...", fname );
-
-    uint   msg = NETMSG_SINGLEPLAYER_SAVE_LOAD;
-    ushort fname_len = (ushort) strlen( fname );
-    uint   msg_len = sizeof( msg ) + sizeof( save ) + sizeof( fname_len ) + fname_len;
-    if( save )
-        msg_len += sizeof( uint ) + (uint) pic_data->size();
-
-    Bout << msg;
-    Bout << msg_len;
-    Bout << save;
-    Bout << fname_len;
-    Bout.Push( fname, fname_len );
-    if( save )
-    {
-        Bout << (uint) pic_data->size();
-        if( pic_data->size() )
-            Bout.Push( &( *pic_data )[ 0 ], (uint) pic_data->size() );
-    }
 
     WriteLog( "complete.\n" );
 }
@@ -2397,8 +2309,7 @@ void FOClient::Net_OnLoginSuccess()
 {
     WriteLog( "Authentication success.\n" );
 
-    if( !Singleplayer )
-        AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_LOGINOK ) );
+    AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_LOGINOK ) );
 
     // Set encrypt keys
     uint msg_len;
@@ -6993,10 +6904,6 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
             Self->RebuildLookBorders = true;
         }
     }
-    else if( cmd == "SwitchSingleplayerPause" )
-    {
-        SingleplayerData.Pause = !SingleplayerData.Pause;
-    }
     else if( cmd == "SetMousePos" && args.size() == 4 )
     {
         int  x = _str( args[ 1 ] ).toInt();
@@ -7163,16 +7070,6 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
     {
         int countour_type = _str( args[ 1 ] ).toInt();
         Self->HexMngr.SetCrittersContour( countour_type );
-    }
-    else if( cmd == "SaveGame" && args.size() == 2 )
-    {
-        Self->SaveLoadSaveGame( args[ 1 ].c_str() );
-    }
-    else if( cmd == "SingleplayerPause" && args.size() == 2 )
-    {
-        bool pause = _str( args[ 1 ] ).toBool();
-        if( Singleplayer )
-            SingleplayerData.Pause = pause;
     }
     else if( cmd == "DrawWait" )
     {

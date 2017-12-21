@@ -17,7 +17,6 @@
 #define STR_CLIENT_OUTDATED_APP_STORE      ( 13 )
 #define STR_CLIENT_OUTDATED_GOOGLE_PLAY    ( 14 )
 #define STR_CLIENT_UPDATED                 ( 15 )
-#define STR_START_SINGLEPLAYER             ( 17 )
 
 // Video
 #define STR_VIDEO_INTRO_BEGIN              ( 90 )
@@ -283,14 +282,6 @@
 #define STR_NET_BAN_REASON                 ( 1047 )
 #define STR_NET_LOGIN_SCRIPT_FAIL          ( 1048 )
 #define STR_NET_PERMANENT_DEATH            ( 1049 )
-
-// Singleplayer
-#define STR_SP_SAVE_SUCCESS                ( 1070 )
-#define STR_SP_SAVE_FAIL                   ( 1071 )
-#define STR_SP_LOAD_SUCCESS                ( 1072 )
-#define STR_SP_LOAD_FAIL                   ( 1073 )
-#define STR_SP_NEW_GAME_SUCCESS            ( 1074 )
-#define STR_SP_NEW_GAME_FAIL               ( 1075 )
 
 // Parameters
 #define STR_PARAM_NAME( index )                   ( 100000 + ( index ) * 10 + 1 )

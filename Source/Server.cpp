@@ -7,34 +7,33 @@
 
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
 
-DataBase*                   FOServer::DbPlayers;
-DataBase*                   FOServer::DbEntities;
-int                         FOServer::UpdateIndex = -1;
-int                         FOServer::UpdateLastIndex = -1;
-uint                        FOServer::UpdateLastTick;
-ClVec                       FOServer::LogClients;
-NetServerBase*              FOServer::TcpServer;
-NetServerBase*              FOServer::WebSocketsServer;
-ClVec                       FOServer::ConnectedClients;
-Mutex                       FOServer::ConnectedClientsLocker;
-FOServer::Statistics_       FOServer::Statistics;
-bool                        FOServer::RequestReloadClientScripts;
-LangPackVec                 FOServer::LangPacks;
-Pragmas                     FOServer::ServerPropertyPragmas;
-FOServer::TextListenVec     FOServer::TextListeners;
-Mutex                       FOServer::TextListenersLocker;
-bool                        FOServer::Active;
-bool                        FOServer::ActiveInProcess;
-bool                        FOServer::ActiveOnce;
-UIntMap                     FOServer::RegIp;
-Mutex                       FOServer::RegIpLocker;
-FOServer::ClientBannedVec   FOServer::Banned;
-Mutex                       FOServer::BannedLocker;
-FOServer::SingleplayerSave_ FOServer::SingleplayerSave;
-FOServer::UpdateFileVec     FOServer::UpdateFiles;
-UCharVec                    FOServer::UpdateFilesList;
-UIntUIntPairMap             FOServer::BruteForceIps;
-StrUIntMap                  FOServer::BruteForceNames;
+DataBase*                 FOServer::DbPlayers;
+DataBase*                 FOServer::DbEntities;
+int                       FOServer::UpdateIndex = -1;
+int                       FOServer::UpdateLastIndex = -1;
+uint                      FOServer::UpdateLastTick;
+ClVec                     FOServer::LogClients;
+NetServerBase*            FOServer::TcpServer;
+NetServerBase*            FOServer::WebSocketsServer;
+ClVec                     FOServer::ConnectedClients;
+Mutex                     FOServer::ConnectedClientsLocker;
+FOServer::Statistics_     FOServer::Statistics;
+bool                      FOServer::RequestReloadClientScripts;
+LangPackVec               FOServer::LangPacks;
+Pragmas                   FOServer::ServerPropertyPragmas;
+FOServer::TextListenVec   FOServer::TextListeners;
+Mutex                     FOServer::TextListenersLocker;
+bool                      FOServer::Active;
+bool                      FOServer::ActiveInProcess;
+bool                      FOServer::ActiveOnce;
+UIntMap                   FOServer::RegIp;
+Mutex                     FOServer::RegIpLocker;
+FOServer::ClientBannedVec FOServer::Banned;
+Mutex                     FOServer::BannedLocker;
+FOServer::UpdateFileVec   FOServer::UpdateFiles;
+UCharVec                  FOServer::UpdateFilesList;
+UIntUIntPairMap           FOServer::BruteForceIps;
+StrUIntMap                FOServer::BruteForceNames;
 
 FOServer::FOServer()
 {
@@ -43,7 +42,6 @@ FOServer::FOServer()
     ActiveOnce = false;
     memzero( &Statistics, sizeof( Statistics ) );
     memzero( &ServerFunctions, sizeof( ServerFunctions ) );
-    SingleplayerSave.Valid = false;
     RequestReloadClientScripts = false;
     MEMORY_PROCESS( MEMORY_STATIC, sizeof( FOServer ) );
 }
@@ -221,7 +219,6 @@ void FOServer::MainLoop()
     // Clean up
     ItemMngr.RadioClear();
     EntityMngr.ClearEntities();
-    SingleplayerSave.Valid = false;
 }
 
 void FOServer::LogicTick()
@@ -336,24 +333,6 @@ void FOServer::LogicTick()
         fps++;
     }
 
-    // Synchronize single player data
-    #ifdef FO_WINDOWS
-    if( Singleplayer )
-    {
-        // Check client process
-        if( WaitForSingleObject( SingleplayerClientProcess, 0 ) == WAIT_OBJECT_0 )
-        {
-            FOQuit = true;
-            return;
-        }
-
-        SingleplayerData.Refresh();
-
-        if( SingleplayerData.Pause != Timer::IsGamePaused() )
-            Timer::SetGamePause( SingleplayerData.Pause );
-    }
-    #endif
-
     // Client script
     if( RequestReloadClientScripts )
     {
@@ -436,10 +415,6 @@ void FOServer::Process( Client* cl )
                 Process_CreateClient( cl );
                 BIN_END( cl );
                 break;
-            case NETMSG_SINGLEPLAYER_SAVE_LOAD:
-                Process_SingleplayerSaveLoad( cl );
-                BIN_END( cl );
-                break;
             case NETMSG_UPDATE:
                 Process_Update( cl );
                 BIN_END( cl );
@@ -478,8 +453,8 @@ void FOServer::Process( Client* cl )
     }
     else if( cl->GameState == STATE_TRANSFERRING )
     {
-        #define CHECK_BUSY                                                                                                         \
-            if( cl->IsBusy() && !Singleplayer ) { cl->Connection->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; \
+        #define CHECK_BUSY                                                                                        \
+            if( cl->IsBusy() ) { cl->Connection->Bin.MoveReadPos( -int( sizeof( msg ) ) ); BIN_END( cl ); return; \
             }
 
         BIN_BEGIN( cl );
@@ -523,7 +498,7 @@ void FOServer::Process( Client* cl )
     {
         #define MESSAGES_PER_CYCLE    ( 5 )
         #define CHECK_BUSY                                                \
-            if( cl->IsBusy() && !Singleplayer )                           \
+            if( cl->IsBusy() )                                            \
             {                                                             \
                 cl->Connection->Bin.MoveReadPos( -int( sizeof( msg ) ) ); \
                 BIN_END( cl );                                            \
@@ -620,12 +595,6 @@ void FOServer::Process( Client* cl )
             {
                 CHECK_BUSY;
                 Script::HandleRpc( cl );
-                BIN_END( cl );
-                continue;
-            }
-            case NETMSG_SINGLEPLAYER_SAVE_LOAD:
-            {
-                Process_SingleplayerSaveLoad( cl );
                 BIN_END( cl );
                 continue;
             }
@@ -1895,11 +1864,8 @@ bool FOServer::InitReal()
     if( !profiler_mode )
         sample_time = 0;
 
-    if( !Singleplayer )
-    {
-        // Reserve memory
-        ConnectedClients.reserve( MAX_CLIENTS_IN_GAME );
-    }
+    // Reserve memory
+    ConnectedClients.reserve( MAX_CLIENTS_IN_GAME );
 
     if( !InitScriptSystem() )
         return false;                                  // Script system
@@ -1907,8 +1873,7 @@ bool FOServer::InitReal()
         return false;                                  // Language packs
     if( !ReloadClientScripts() )
         return false;                                  // Client scripts, after language packs initialization
-    if( !Singleplayer )
-        LoadBans();
+    LoadBans();
 
     // Managers
     if( !DlgMngr.LoadDialogs() )
@@ -1992,17 +1957,8 @@ bool FOServer::InitReal()
     Statistics.ServerStartTick = Timer::FastTick();
 
     // Net
-    ushort port;
-    if( !Singleplayer )
-    {
-        port = MainConfig->GetInt( "", "Port", 4000 );
-        WriteLog( "Starting server on port {} and {}.\n", port, port + 1 );
-    }
-    else
-    {
-        port = 0;
-        WriteLog( "Starting server on free port.\n", port );
-    }
+    ushort port = MainConfig->GetInt( "", "Port", 4000 );
+    WriteLog( "Starting server on port {} and {}.\n", port, port + 1 );
 
     if( !( TcpServer = NetServerBase::StartTcpServer( port, FOServer::OnNewConnection ) ) )
         return false;
@@ -2011,17 +1967,6 @@ bool FOServer::InitReal()
 
     // Script timeouts
     Script::SetRunTimeout( GameOpt.ScriptRunSuspendTimeout, GameOpt.ScriptRunMessageTimeout );
-
-    // Inform client about end of initialization
-    #ifdef FO_WINDOWS
-    if( Singleplayer )
-    {
-        if( !SingleplayerData.Lock() )
-            return false;
-        SingleplayerData.NetPort = port;
-        SingleplayerData.Unlock();
-    }
-    #endif
 
     Active = true;
     return true;
@@ -2468,7 +2413,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 bool FOServer::CheckBruteForceIp( uint ip )
 {
     // Skip checking
-    if( !GameOpt.BruteForceTick || Singleplayer )
+    if( !GameOpt.BruteForceTick )
         return false;
 
     // Get entire for this ip
@@ -2501,7 +2446,7 @@ bool FOServer::CheckBruteForceIp( uint ip )
 bool FOServer::CheckBruteForceName( const char* name )
 {
     // Skip checking
-    if( !GameOpt.BruteForceTick || Singleplayer )
+    if( !GameOpt.BruteForceTick )
         return false;
 
     // Get entire for this name

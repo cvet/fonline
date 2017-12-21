@@ -326,7 +326,6 @@ bool BufferManager::NeedProcess()
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:
-    case NETMSG_SINGLEPLAYER_SAVE_LOAD:
     case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
@@ -558,7 +557,6 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:
-    case NETMSG_SINGLEPLAYER_SAVE_LOAD:
     case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:

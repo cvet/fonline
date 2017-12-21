@@ -437,7 +437,6 @@ struct GameOptions
     uint   FullSecond;
     uint   GameTimeTick;
 
-    bool   Singleplayer;
     bool   DisableTcpNagle;
     bool   DisableZlibCompression;
     uint   FloodSize;
@@ -646,60 +645,6 @@ struct GameOptions
 #define MIN_ZOOM    ( 0.1f )
 #define MAX_ZOOM    ( 20.0f )
 
-/************************************************************************/
-/* File logger                                                          */
-/************************************************************************/
-
-class FileLogger
-{
-private:
-    FILE* logFile;
-    uint  startTick;
-
-public:
-    FileLogger( const char* fname );
-    ~FileLogger();
-    void Write( const char* fmt, ... );
-};
-
-/************************************************************************/
-/* Single player                                                        */
-/************************************************************************/
-
-#ifdef FO_WINDOWS
-class InterprocessData
-{
-public:
-    ushort NetPort;
-    bool   Pause;
-
-private:
-    HANDLE mapFileMutex;
-    HANDLE mapFile;
-    void*  mapFilePtr;
-
-public:
-    HANDLE Init();
-    void   Finish();
-    bool   Attach( HANDLE map_file );
-    bool   Lock();
-    void   Unlock();
-    bool   Refresh();
-};
-
-extern HANDLE SingleplayerClientProcess;
-#else
-// Todo: linux
-class InterprocessData
-{
-public:
-    ushort NetPort;
-    bool   Pause;
-};
-#endif
-
-extern bool             Singleplayer;
-extern InterprocessData SingleplayerData;
 
 /************************************************************************/
 /* Memory pool                                                          */

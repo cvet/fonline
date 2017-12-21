@@ -155,7 +155,6 @@ public:
     void Net_SendUpdate();
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
-    void Net_SendSaveLoad( bool save, const char* fname, UCharVec* pic_data );
     void Net_SendProperty( NetProperty::Type type, Property* prop, Entity* entity );
     void Net_SendTalk( uchar is_npc, uint id_to_talk, uchar answer );
     void Net_SendGetGameInfo();
@@ -541,7 +540,7 @@ public:
 /************************************************************************/
 /* Mini-map                                                             */
 /************************************************************************/
-    #define MINIMAP_PREPARE_TICK      ( 1000 )
+    #define MINIMAP_PREPARE_TICK    ( 1000 )
 
     PointVec LmapPrepPix;
     Rect     LmapWMap;
@@ -637,33 +636,6 @@ public:
     void WaitDraw();
 
 /************************************************************************/
-/* Save/Load                                                            */
-/************************************************************************/
-    #define SAVE_LOAD_IMAGE_WIDTH     ( 400 )
-    #define SAVE_LOAD_IMAGE_HEIGHT    ( 300 )
-
-    bool          SaveLoadProcessDraft, SaveLoadDraftValid;
-    RenderTarget* SaveLoadDraft;
-
-    struct SaveLoadDataSlot
-    {
-        string   Name;
-        string   Info;
-        string   InfoExt;
-        string   FileName;
-        uint64   RealTime;
-        UCharVec PicData;
-    };
-    typedef vector< SaveLoadDataSlot > SaveLoadDataSlotVec;
-    SaveLoadDataSlotVec SaveLoadDataSlots;
-
-    void SaveLoadCollect();
-    void SaveLoadSaveGame( const char* name );
-    void SaveLoadFillDraft();
-    void SaveLoadShowDraft();
-    void SaveLoadProcessDone();
-
-/************************************************************************/
 /* Generic                                                              */
 /************************************************************************/
     uint DaySumRGB;
@@ -689,8 +661,8 @@ public:
 /************************************************************************/
 /* MessBox                                                              */
 /************************************************************************/
-    #define FOMB_GAME                 ( 0 )
-    #define FOMB_TALK                 ( 1 )
+    #define FOMB_GAME               ( 0 )
+    #define FOMB_TALK               ( 1 )
     void AddMess( int mess_type, const string& msg, bool script_call = false );
 };
 
