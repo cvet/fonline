@@ -92,14 +92,6 @@ int main( int argc, char** argv )
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
 
-    // Update stuff
-    if( !Singleplayer && MainConfig->IsKey( "", "GameServer" ) )
-        GameOpt.GameServer = true, GameOpt.UpdateServer = false;
-    else if( !Singleplayer && MainConfig->IsKey( "", "UpdateServer" ) )
-        GameOpt.GameServer = false, GameOpt.UpdateServer = true;
-    else
-        GameOpt.GameServer = true, GameOpt.UpdateServer = true;
-
     // Service
     if( MainConfig->IsKey( "", "Service" ) )
     {
@@ -272,12 +264,7 @@ static void GUIInit()
     GuiWindow->size_range( GUI_SIZE2( 129, 129 ) );
 
     // Name
-    string title = MainConfig->GetStr( "", "WindowName", "FOnline" );
-    if( GameOpt.GameServer && !GameOpt.UpdateServer )
-        title += " GAME";
-    else if( !GameOpt.GameServer && GameOpt.UpdateServer )
-        title += " UPDATE";
-    GuiWindow->label( title.c_str() );
+    GuiWindow->label( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str() );
 
     // Icon
     # ifdef FO_WINDOWS

@@ -472,8 +472,6 @@ struct GameOptions
     uint   DlgTalkMinTime;
     uint   DlgBarterMinTime;
     uint   MinimumOfflineTime;
-    bool   GameServer;
-    bool   UpdateServer;
     bool   ForceRebuildResources;
 
     bool   MapHexagonal;
@@ -530,8 +528,6 @@ struct GameOptions
     int    Light;
     string Host;
     uint   Port;
-    string UpdateServerHost;
-    uint   UpdateServerPort;
     uint   ProxyType;
     string ProxyHost;
     uint   ProxyPort;

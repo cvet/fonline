@@ -898,9 +898,6 @@ void GetClientOptions()
     GameOpt.Port = MainConfig->GetInt( "", "RemotePort", 4010 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.Port, "RemotePort" );
     GETOPTIONS_CHECK( GameOpt.Port, 0, 0xFFFF, 4000 );
-    GameOpt.UpdateServerPort = MainConfig->GetInt( "", "UpdateServerPort", 0 );
-    GETOPTIONS_CMD_LINE_INT( GameOpt.UpdateServerPort, "UpdateServerPort" );
-    GETOPTIONS_CHECK( GameOpt.UpdateServerPort, 0, 0xFFFF, 0 );
     GameOpt.ProxyType = MainConfig->GetInt( "", "ProxyType", 0 );
     GETOPTIONS_CMD_LINE_INT( GameOpt.ProxyType, "ProxyType" );
     GETOPTIONS_CHECK( GameOpt.ProxyType, 0, 3, 0 );
@@ -924,9 +921,6 @@ void GetClientOptions()
     READ_CFG_STR_DEF( *MainConfig, "RemoteHost", "localhost" );
     GETOPTIONS_CMD_LINE_STR( buf, "RemoteHost" );
     GameOpt.Host = buf;
-    READ_CFG_STR_DEF( *MainConfig, "UpdateServerHost", "" );
-    GETOPTIONS_CMD_LINE_STR( buf, "UpdateServerHost" );
-    GameOpt.UpdateServerHost = buf;
     READ_CFG_STR_DEF( *MainConfig, "ProxyHost", "localhost" );
     GETOPTIONS_CMD_LINE_STR( buf, "ProxyHost" );
     GameOpt.ProxyHost = buf;
@@ -1162,8 +1156,6 @@ GameOptions::GameOptions()
     DlgTalkMinTime = 0;
     DlgBarterMinTime = 0;
     MinimumOfflineTime = 180000;
-    GameServer = false;
-    UpdateServer = false;
     ForceRebuildResources = false;
 
     MapHexagonal = true;
@@ -1220,8 +1212,6 @@ GameOptions::GameOptions()
     Light = 0;
     Host = "localhost";
     Port = 4000;
-    UpdateServerHost = "";
-    UpdateServerPort = 0;
     ProxyType = 0;
     ProxyHost = "";
     ProxyPort = 0;

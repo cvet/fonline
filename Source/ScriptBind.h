@@ -522,8 +522,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __DlgTalkMinTime", &GameOpt.DlgTalkMinTime ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __DlgBarterMinTime", &GameOpt.DlgBarterMinTime ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __MinimumOfflineTime", &GameOpt.MinimumOfflineTime ) );
-    BIND_ASSERT( engine->RegisterGlobalProperty( "bool __GameServer", &GameOpt.GameServer ) );
-    BIND_ASSERT( engine->RegisterGlobalProperty( "bool __UpdateServer", &GameOpt.UpdateServer ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ForceRebuildResources", &GameOpt.ForceRebuildResources ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "string __CommandLine", &GameOpt.CommandLine ) );
     #endif
@@ -682,8 +680,6 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __ScrollCheck", &GameOpt.ScrollCheck ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "string __Host", &GameOpt.Host ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Port", &GameOpt.Port ) );
-    BIND_ASSERT( engine->RegisterGlobalProperty( "string __UpdateServerHost", &GameOpt.UpdateServerHost ) );
-    BIND_ASSERT( engine->RegisterGlobalProperty( "uint __UpdateServerPort", &GameOpt.UpdateServerPort ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ProxyType", &GameOpt.ProxyType ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "string __ProxyHost", &GameOpt.ProxyHost ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __ProxyPort", &GameOpt.ProxyPort ) );

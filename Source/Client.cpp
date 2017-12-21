@@ -562,9 +562,7 @@ void FOClient::UpdateFilesLoop()
 
         // Connect to server
         UpdateFilesAddText( STR_CONNECT_TO_SERVER, "Connect to server..." );
-        const char* host = ( GameOpt.UpdateServerHost.length() > 0 ? GameOpt.UpdateServerHost.c_str() : GameOpt.Host.c_str() );
-        ushort      port = ( GameOpt.UpdateServerPort != 0 ? GameOpt.UpdateServerPort : GameOpt.Port );
-        NetConnect( host, port );
+        NetConnect( GameOpt.Host.c_str(), GameOpt.Port );
         UpdateFilesConnection = true;
     }
     else
@@ -660,8 +658,8 @@ void FOClient::UpdateFilesLoop()
                 UpdateFilesInProgress = false;
                 SAFEDEL( UpdateFilesList );
 
-                // Disconnect from non game server
-                if( InitCalls < 2 || !GameOpt.UpdateServerHost.empty() || GameOpt.UpdateServerPort != 0 )
+                // Disconnect
+                if( InitCalls < 2 )
                     NetDisconnect();
 
                 // Update binaries

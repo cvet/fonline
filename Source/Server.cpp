@@ -429,45 +429,27 @@ void FOServer::Process( Client* cl )
                 BIN_END( cl );
                 break;
             case NETMSG_LOGIN:
-                if( GameOpt.GameServer )
-                    Process_LogIn( cl );
-                else
-                    cl->Disconnect();
+                Process_LogIn( cl );
                 BIN_END( cl );
                 break;
             case NETMSG_CREATE_CLIENT:
-                if( GameOpt.GameServer )
-                    Process_CreateClient( cl );
-                else
-                    cl->Disconnect();
+                Process_CreateClient( cl );
                 BIN_END( cl );
                 break;
             case NETMSG_SINGLEPLAYER_SAVE_LOAD:
-                if( GameOpt.GameServer )
-                    Process_SingleplayerSaveLoad( cl );
-                else
-                    cl->Disconnect();
+                Process_SingleplayerSaveLoad( cl );
                 BIN_END( cl );
                 break;
             case NETMSG_UPDATE:
-                if( GameOpt.UpdateServer )
-                    Process_Update( cl );
-                else
-                    cl->Disconnect();
+                Process_Update( cl );
                 BIN_END( cl );
                 break;
             case NETMSG_GET_UPDATE_FILE:
-                if( GameOpt.UpdateServer )
-                    Process_UpdateFile( cl );
-                else
-                    cl->Disconnect();
+                Process_UpdateFile( cl );
                 BIN_END( cl );
                 break;
             case NETMSG_GET_UPDATE_FILE_DATA:
-                if( GameOpt.UpdateServer )
-                    Process_UpdateFileData( cl );
-                else
-                    cl->Disconnect();
+                Process_UpdateFileData( cl );
                 BIN_END( cl );
                 break;
             case NETMSG_RPC:
@@ -2014,12 +1996,6 @@ bool FOServer::InitReal()
     if( !Singleplayer )
     {
         port = MainConfig->GetInt( "", "Port", 4000 );
-        if( GameOpt.UpdateServer && !GameOpt.GameServer )
-        {
-            ushort update_port = (ushort) MainConfig->GetInt( "", "update" );
-            if( update_port )
-                port = update_port;
-        }
         WriteLog( "Starting server on port {} and {}.\n", port, port + 1 );
     }
     else
@@ -2363,8 +2339,6 @@ void FOServer::LoadBans()
 
 void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec* resource_names /* = nullptr */ )
 {
-    if( !GameOpt.UpdateServer )
-        return;
     if( !first_generation && UpdateFiles.empty() )
         return;
 
