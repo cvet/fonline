@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "Timer.h"
+#include "Entity.h"
 
 #ifdef FO_WINDOWS
 # include <Mmsystem.h>
@@ -205,13 +206,14 @@ void Timer::ContinueTime( DateTimeStamp& td, int seconds )
 
 void Timer::InitGameTime()
 {
-    DateTimeStamp dt = { GameOpt.YearStart, 1, 0, 1, 0, 0, 0, 0 };
+    DateTimeStamp dt = { Globals->GetYearStart(), 1, 0, 1, 0, 0, 0, 0 };
     uint64        start_ft;
     DateTimeToFullTime( dt, start_ft );
     GameOpt.YearStartFTHi = ( start_ft >> 32 ) & 0xFFFFFFFF;
     GameOpt.YearStartFTLo = start_ft & 0xFFFFFFFF;
 
-    GameOpt.FullSecond = GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
+    GameOpt.FullSecond = GetFullSecond( Globals->GetYear(), Globals->GetMonth(), Globals->GetDay(),
+                                        Globals->GetHour(), Globals->GetMinute(), Globals->GetSecond() );
     GameOpt.FullSecondStart = GameOpt.FullSecond;
     GameOpt.GameTimeTick = Timer::GameTick();
 }
@@ -259,18 +261,18 @@ bool Timer::ProcessGameTime()
 {
     uint tick = Timer::GameTick();
     uint dt = tick - GameOpt.GameTimeTick;
-    uint delta_second = dt / 1000 * GameOpt.TimeMultiplier + dt % 1000 * GameOpt.TimeMultiplier / 1000;
+    uint delta_second = dt / 1000 * Globals->GetTimeMultiplier() + dt % 1000 * Globals->GetTimeMultiplier() / 1000;
     uint fs = GameOpt.FullSecondStart + delta_second;
     if( GameOpt.FullSecond != fs )
     {
         GameOpt.FullSecond = fs;
         DateTimeStamp st = GetGameTime( GameOpt.FullSecond );
-        GameOpt.Year = st.Year;
-        GameOpt.Month = st.Month;
-        GameOpt.Day = st.Day;
-        GameOpt.Hour = st.Hour;
-        GameOpt.Minute = st.Minute;
-        GameOpt.Second = st.Second;
+        Globals->SetYear( st.Year );
+        Globals->SetMonth( st.Month );
+        Globals->SetDay( st.Day );
+        Globals->SetHour( st.Hour );
+        Globals->SetMinute( st.Minute );
+        Globals->SetSecond( st.Second );
         return true;
     }
     return false;

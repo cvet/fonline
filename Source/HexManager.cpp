@@ -3907,7 +3907,7 @@ void HexManager::GenerateItem( uint id, hash proto_id, Properties& props )
 
 int HexManager::GetDayTime()
 {
-    return GameOpt.Hour * 60 + GameOpt.Minute;
+    return Globals->GetHour() * 60 + Globals->GetMinute();
 }
 
 int HexManager::GetMapTime()
@@ -3949,8 +3949,8 @@ bool HexManager::SetProtoMap( ProtoMap& pmap )
     curPidMap = 1;
 
     int day_time = pmap.GetCurDayTime();
-    GameOpt.Minute = day_time % 60;
-    GameOpt.Hour = day_time / 60 % 24;
+    Globals->SetMinute( day_time % 60 );
+    Globals->SetHour( day_time / 60 % 24 );
     uint color = GetColorDay( GetMapDayTime(), GetMapDayColor(), GetMapTime(), nullptr );
     SprMngr.SetSpritesColor( COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF ) );
 

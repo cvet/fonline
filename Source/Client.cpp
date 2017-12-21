@@ -3803,14 +3803,23 @@ void FOClient::Net_OnGameInfo()
     bool   no_log_out;
     int*   day_time = HexMngr.GetMapDayTime();
     uchar* day_color = HexMngr.GetMapDayColor();
-    Bin >> GameOpt.YearStart;
-    Bin >> GameOpt.Year;
-    Bin >> GameOpt.Month;
-    Bin >> GameOpt.Day;
-    Bin >> GameOpt.Hour;
-    Bin >> GameOpt.Minute;
-    Bin >> GameOpt.Second;
-    Bin >> GameOpt.TimeMultiplier;
+    ushort time_var;
+    Bin >> time_var;
+    Globals->SetYearStart( time_var );
+    Bin >> time_var;
+    Globals->SetYear( time_var );
+    Bin >> time_var;
+    Globals->SetMonth( time_var );
+    Bin >> time_var;
+    Globals->SetDay( time_var );
+    Bin >> time_var;
+    Globals->SetHour( time_var );
+    Bin >> time_var;
+    Globals->SetMinute( time_var );
+    Bin >> time_var;
+    Globals->SetSecond( time_var );
+    Bin >> time_var;
+    Globals->SetTimeMultiplier( time_var );
     Bin >> time;
     Bin >> rain;
     Bin >> no_log_out;
@@ -7728,15 +7737,17 @@ void FOClient::SScriptFunc::Global_GetDayColor( uint day_part, uchar& r, uchar& 
 uint FOClient::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
 {
     if( !year )
-        year = GameOpt.Year;
+        year = Globals->GetYear();
     else
-        year = CLAMP( year, GameOpt.YearStart, GameOpt.YearStart + 130 );
+        year = CLAMP( year, Globals->GetYearStart(), Globals->GetYearStart() + 130 );
     if( !month )
-        month = GameOpt.Month;
+        month = Globals->GetMonth();
     else
         month = CLAMP( month, 1, 12 );
     if( !day )
-        day = GameOpt.Day;
+    {
+        day = Globals->GetDay();
+    }
     else
     {
         uint month_day = Timer::GameTimeMonthDay( year, month );

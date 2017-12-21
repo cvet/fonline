@@ -161,6 +161,17 @@ CustomEntity::CustomEntity( uint id, uint sub_type, PropertyRegistrator* registr
     //
 }
 
-PROPERTIES_IMPL( GlobalVars );
 GlobalVars::GlobalVars(): Entity( 0, EntityType::Global, PropertiesRegistrator, nullptr ) {}
 GlobalVars* Globals;
+
+PROPERTIES_IMPL( GlobalVars );
+CLASS_PROPERTY_IMPL( GlobalVars, YearStart );
+CLASS_PROPERTY_IMPL( GlobalVars, Year );
+CLASS_PROPERTY_IMPL( GlobalVars, Month );
+CLASS_PROPERTY_IMPL( GlobalVars, Day );
+CLASS_PROPERTY_IMPL( GlobalVars, Hour );
+CLASS_PROPERTY_IMPL( GlobalVars, Minute );
+CLASS_PROPERTY_IMPL( GlobalVars, Second );
+CLASS_PROPERTY_IMPL( GlobalVars, TimeMultiplier );
+CLASS_PROPERTY_IMPL( GlobalVars, LastEntityId );
+CLASS_PROPERTY_IMPL( GlobalVars, LastDeferredCallId );

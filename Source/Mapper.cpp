@@ -806,8 +806,8 @@ void FOMapper::ParseKeyboard()
                 {
                     int day_time = HexMngr.GetDayTime();
                     day_time += 60;
-                    GameOpt.Minute = day_time % 60;
-                    GameOpt.Hour = day_time / 60 % 24;
+                    Globals->SetMinute( day_time % 60 );
+                    Globals->SetHour( day_time / 60 % 24 );
                     ChangeGameTime();
                 }
                 break;
@@ -816,8 +816,8 @@ void FOMapper::ParseKeyboard()
                 {
                     int day_time = HexMngr.GetDayTime();
                     day_time -= 60;
-                    GameOpt.Minute = day_time % 60;
-                    GameOpt.Hour = day_time / 60 % 24;
+                    Globals->SetMinute( day_time % 60 );
+                    Globals->SetHour( day_time / 60 % 24 );
                     ChangeGameTime();
                 }
                 break;
@@ -853,8 +853,8 @@ void FOMapper::ParseKeyboard()
                 {
                     int day_time = HexMngr.GetDayTime();
                     day_time += 1;
-                    GameOpt.Minute = day_time % 60;
-                    GameOpt.Hour = day_time / 60 % 24;
+                    Globals->SetMinute( day_time % 60 );
+                    Globals->SetHour( day_time / 60 % 24 );
                     ChangeGameTime();
                 }
                 break;
@@ -863,8 +863,8 @@ void FOMapper::ParseKeyboard()
                 {
                     int day_time = HexMngr.GetDayTime();
                     day_time -= 60;
-                    GameOpt.Minute = day_time % 60;
-                    GameOpt.Hour = day_time / 60 % 24;
+                    Globals->SetMinute( day_time % 60 );
+                    Globals->SetHour( day_time / 60 % 24 );
                     ChangeGameTime();
                 }
                 break;

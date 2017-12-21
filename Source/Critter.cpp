@@ -2589,14 +2589,14 @@ void Client::Send_GameInfo( Map* map )
 
     BOUT_BEGIN( this );
     Connection->Bout << NETMSG_GAME_INFO;
-    Connection->Bout << GameOpt.YearStart;
-    Connection->Bout << GameOpt.Year;
-    Connection->Bout << GameOpt.Month;
-    Connection->Bout << GameOpt.Day;
-    Connection->Bout << GameOpt.Hour;
-    Connection->Bout << GameOpt.Minute;
-    Connection->Bout << GameOpt.Second;
-    Connection->Bout << GameOpt.TimeMultiplier;
+    Connection->Bout << Globals->GetYearStart();
+    Connection->Bout << Globals->GetYear();
+    Connection->Bout << Globals->GetMonth();
+    Connection->Bout << Globals->GetDay();
+    Connection->Bout << Globals->GetHour();
+    Connection->Bout << Globals->GetMinute();
+    Connection->Bout << Globals->GetSecond();
+    Connection->Bout << Globals->GetTimeMultiplier();
     Connection->Bout << time;
     Connection->Bout << rain;
     Connection->Bout << no_log_out;

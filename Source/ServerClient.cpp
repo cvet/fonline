@@ -39,7 +39,7 @@ void FOServer::ProcessCritter( Critter* cr )
 
             cr->EraseCrTimeEvent( 0 );
 
-            uint time = GameOpt.TimeMultiplier * 1800;             // 30 minutes on error
+            uint time = Globals->GetTimeMultiplier() * 1800;             // 30 minutes on error
             Script::PrepareScriptFuncContext( func_num, cr->GetName() );
             Script::SetArgEntity( cr );
             Script::SetArgUInt( identifier );
@@ -397,7 +397,7 @@ void FOServer::Process_CreateClient( Client* cl )
     RUNTIME_ASSERT( IS_CLIENT_ID( id ) );
     if( !Singleplayer )
     {
-        if( !DbPlayers->Exists( id ) )
+        if( DbPlayers->Get( id ).empty() )
         {
             cl->Send_TextMsg( cl, STR_NET_ACCOUNT_ALREADY, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
@@ -483,13 +483,14 @@ void FOServer::Process_CreateClient( Client* cl )
     // Load world
     if( Singleplayer )
     {
-        if( !NewWorld() )
-        {
+        // Todo: singleplayer
+        /*if( !NewWorld() )
+           {
             WriteLog( "Generate new world fail.\n" );
             cl->Send_TextMsg( cl, STR_SP_NEW_GAME_FAIL, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
-        }
+           }*/
     }
 
     // Notify
@@ -642,11 +643,10 @@ void FOServer::Process_LogIn( Client*& cl )
     uint id = MAKE_CLIENT_ID( cl->Name );
 
     // Check password
+    StrMap data = DbPlayers->Get( id );
     if( !Singleplayer )
     {
-
-        StrMap data = DbPlayers->Get( id, { "ClientPassHash" } );
-        if( data.empty() || !Str::Compare( password, data[ "ClientPassHash" ].c_str() ) )
+        if( !data.count( "ClientPassHash" ) || !Str::Compare( password, data[ "ClientPassHash" ].c_str() ) )
         {
             cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
@@ -734,9 +734,10 @@ void FOServer::Process_LogIn( Client*& cl )
             cl->Props = *SingleplayerSave.CrProps;
         }
 
-        if( !LoadClient( cl ) )
+        // Data
+        if( !Singleplayer && !cl->Props.LoadFromText( data ) )
         {
-            WriteLog( "Error load from data base, client '{}'.\n", cl->GetName() );
+            WriteLog( "Player '{}' data truncated.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
             cl->Disconnect();
             return;
@@ -867,18 +868,20 @@ void FOServer::Process_SingleplayerSaveLoad( Client* cl )
     {
         SingleplayerSave.PicData = pic_data;
 
-        SaveWorld( fname );
+        // Todo: singleplayer
+        // SaveWorld( fname );
         cl->Send_TextMsg( cl, STR_SP_SAVE_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
     }
     else
     {
-        if( !LoadWorld( fname ) )
-        {
-            WriteLog( "Unable load world from file '{}'.\n", fname );
-            cl->Send_TextMsg( cl, STR_SP_LOAD_FAIL, SAY_NETMSG, TEXTMSG_GAME );
-            cl->Disconnect();
-            return;
-        }
+        // Todo: singleplayer
+        /* if( !LoadWorld( fname ) )
+           {
+             WriteLog( "Unable load world from file '{}'.\n", fname );
+             cl->Send_TextMsg( cl, STR_SP_LOAD_FAIL, SAY_NETMSG, TEXTMSG_GAME );
+             cl->Disconnect();
+             return;
+           }*/
 
         cl->Send_TextMsg( cl, STR_SP_LOAD_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
 

@@ -7,7 +7,8 @@
 
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
 
-DBCollection*               FOServer::DbPlayers;
+DataBase*                   FOServer::DbPlayers;
+DataBase*                   FOServer::DbEntities;
 int                         FOServer::UpdateIndex = -1;
 int                         FOServer::UpdateLastIndex = -1;
 uint                        FOServer::UpdateLastTick;
@@ -214,7 +215,13 @@ void FOServer::MainLoop()
 
     WriteLog( "***   Finishing game loop  ***\n" );
 
-    UnloadWorld();
+    // Last process
+    Script::RaiseInternalEvent( ServerFunctions.Finish );
+
+    // Clean up
+    ItemMngr.RadioClear();
+    EntityMngr.ClearEntities();
+    SingleplayerSave.Valid = false;
 }
 
 void FOServer::LogicTick()
@@ -972,7 +979,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
         CHECK_ALLOW_COMMAND;
 
         uint id = MAKE_CLIENT_ID( name );
-        if( DbPlayers->Exists( id ) )
+        if( !DbPlayers->Get( id ).empty() )
             logcb( _str( "Client id is {}.", id ) );
         else
             logcb( "Client not found." );
@@ -1837,100 +1844,28 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
     }
 }
 
-void FOServer::SaveGameInfoFile( IniParser& data )
-{
-    StrMap& kv = data.GetApp( "GeneralSettings" );
-
-    // Singleplayer info
-    kv[ "Singleplayer" ] = ( SingleplayerSave.Valid ? "true" : "false" );
-    if( SingleplayerSave.Valid )
-    {
-        StrMap& client_kv = data.SetApp( "Client" );
-        SingleplayerSave.CrProps->SaveToText( client_kv, nullptr );
-        client_kv[ "$Id" ] = 1;
-        client_kv[ "$Name" ] = SingleplayerSave.Name;
-
-        string pic_data_str;
-        for( uchar& x : SingleplayerSave.PicData )
-            pic_data_str.append( _str( "{}", x ) ).append( " " );
-        if( !SingleplayerSave.PicData.empty() )
-            pic_data_str.pop_back();
-        kv[ "SaveLoadPicture" ] = pic_data_str;
-    }
-
-    // Real time
-    DateTimeStamp cur_time;
-    uint64        ft;
-    Timer::GetCurrentDateTime( cur_time );
-    Timer::DateTimeToFullTime( cur_time, ft );
-    kv[ "RealYear" ] = _str( "{}", cur_time.Year );
-    kv[ "RealMonth" ] = _str( "{}", cur_time.Month );
-    kv[ "RealDay" ] = _str( "{}", cur_time.Day );
-    kv[ "RealHour" ] = _str( "{}", cur_time.Hour );
-    kv[ "RealMinute" ] = _str( "{}", cur_time.Minute );
-    kv[ "RealSecond" ] = _str( "{}", cur_time.Second );
-    kv[ "SaveTimestamp" ] = _str( "{}", ft );
-
-    // Game time
-    kv[ "YearStart" ] = _str( "{}", GameOpt.YearStart );
-    kv[ "Year" ] = _str( "{}", GameOpt.Year );
-    kv[ "Month" ] = _str( "{}", GameOpt.Month );
-    kv[ "Day" ] = _str( "{}", GameOpt.Day );
-    kv[ "Hour" ] = _str( "{}", GameOpt.Hour );
-    kv[ "Minute" ] = _str( "{}", GameOpt.Minute );
-    kv[ "Second" ] = _str( "{}", GameOpt.Second );
-    kv[ "TimeMultiplier" ] = _str( "{}", GameOpt.TimeMultiplier );
-}
-
-bool FOServer::LoadGameInfoFile( IniParser& data )
-{
-    WriteLog( "Load game info...\n" );
-
-    StrMap& kv = data.GetApp( "GeneralSettings" );
-
-    // Singleplayer info
-    if( kv.count( "Singleplayer" ) && _str( kv[ "Singleplayer" ] ).compareIgnoreCase( "true" ) )
-    {
-        StrMap& client_kv = data.GetApp( "Client" );
-        SingleplayerSave.CrProps->LoadFromText( client_kv );
-        SingleplayerSave.Name = client_kv[ "$Name" ];
-        SingleplayerSave.Valid = true;
-    }
-
-    // Time
-    GameOpt.YearStart = _str( kv[ "YearStart" ] ).toInt();
-    GameOpt.Year = _str( kv[ "Year" ] ).toInt();
-    GameOpt.Month = _str( kv[ "Month" ] ).toInt();
-    GameOpt.Day = _str( kv[ "Day" ] ).toInt();
-    GameOpt.Hour = _str( kv[ "Hour" ] ).toInt();
-    GameOpt.Minute = _str( kv[ "Minute" ] ).toInt();
-    GameOpt.Second = _str( kv[ "Second" ] ).toInt();
-    GameOpt.TimeMultiplier = _str( kv[ "TimeMultiplier" ] ).toInt();
-    Timer::InitGameTime();
-
-    WriteLog( "Load game info complete.\n" );
-    return true;
-}
-
 void FOServer::SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second )
 {
-    if( multiplier >= 1 && multiplier <= 50000 )
-        GameOpt.TimeMultiplier = multiplier;
-    if( year >= GameOpt.YearStart && year <= GameOpt.YearStart + 130 )
-        GameOpt.Year = year;
-    if( month >= 1 && month <= 12 )
-        GameOpt.Month = month;
-    if( day >= 1 && day <= 31 )
-        GameOpt.Day = day;
-    if( hour >= 0 && hour <= 23 )
-        GameOpt.Hour = hour;
-    if( minute >= 0 && minute <= 59 )
-        GameOpt.Minute = minute;
-    if( second >= 0 && second <= 59 )
-        GameOpt.Second = second;
-    GameOpt.FullSecond = Timer::GetFullSecond( GameOpt.Year, GameOpt.Month, GameOpt.Day, GameOpt.Hour, GameOpt.Minute, GameOpt.Second );
-    GameOpt.FullSecondStart = GameOpt.FullSecond;
-    GameOpt.GameTimeTick = Timer::GameTick();
+    RUNTIME_ASSERT( multiplier >= 1 && multiplier <= 50000 );
+    RUNTIME_ASSERT( Globals->GetYearStart() == 0 || ( year >= Globals->GetYearStart() && year <= Globals->GetYearStart() + 130 ) );
+    RUNTIME_ASSERT( month >= 1 && month <= 12 );
+    RUNTIME_ASSERT( day >= 1 && day <= 31 );
+    RUNTIME_ASSERT( hour >= 0 && hour <= 23 );
+    RUNTIME_ASSERT( minute >= 0 && minute <= 59 );
+    RUNTIME_ASSERT( second >= 0 && second <= 59 );
+
+    Globals->SetTimeMultiplier( multiplier );
+    Globals->SetYear( year );
+    Globals->SetMonth( month );
+    Globals->SetDay( day );
+    Globals->SetHour( hour );
+    Globals->SetMinute( minute );
+    Globals->SetSecond( second );
+
+    if( Globals->GetYearStart() == 0 )
+        Globals->SetYearStart( year );
+
+    Timer::InitGameTime();
 
     ConnectedClientsLocker.Lock();
     for( auto it = ConnectedClients.begin(), end = ConnectedClients.end(); it != end; ++it )
@@ -2033,16 +1968,38 @@ bool FOServer::InitReal()
     }
 
     // World loading
-    if( GameOpt.GameServer && !Singleplayer )
+    if( Globals->GetYearStart() == 0 )
     {
-        // Copy of data
-        Timer::UpdateTick();
-        if( !LoadWorld( nullptr ) )
-            return false;
+        Script::RaiseInternalEvent( ServerFunctions.GenerateWorld );
 
-        // Try generate world if not exist
-        if( !MapMngr.GetLocationsCount() && !NewWorld() )
+        // Start script
+        if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
+        {
+            WriteLog( "Start script fail.\n" );
             return false;
+        }
+    }
+    else
+    {
+        WriteLog( "Load world.\n" );
+
+        Timer::UpdateTick();
+
+        // _str::loadHashes( data.GetApp( "Hashes" ) );
+        // if( !Script::LoadDeferredCalls( data ) )
+        //    return false;
+        // if( !Globals->Props.LoadFromText( data.GetApp( "Global" ) ) )
+        //    return false;
+
+        if( !EntityMngr.LoadEntities() )
+            return false;
+    }
+
+    // Start script
+    if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
+    {
+        WriteLog( "Start script fail.\n" );
+        return false;
     }
 
     // End of initialization
@@ -2398,124 +2355,6 @@ void FOServer::LoadBans()
         bans_txt.GotoNextApp( "Ban" );
     }
     ProcessBans();
-}
-
-bool FOServer::LoadClient( Client* cl )
-{
-    RUNTIME_ASSERT( !Singleplayer );
-
-    StrMap data = DbPlayers->Get( cl->Id );
-    if( data.empty() )
-    {
-        WriteLog( "Player '{}' data not found truncated.\n", cl->Name );
-        return false;
-    }
-    if( !cl->Props.LoadFromText( data ) )
-    {
-        WriteLog( "Player '{}' data truncated.\n", cl->Name );
-        return false;
-    }
-    return true;
-}
-
-bool FOServer::NewWorld()
-{
-    UnloadWorld();
-
-    Script::RaiseInternalEvent( ServerFunctions.GenerateWorld, &GameOpt.TimeMultiplier, &GameOpt.YearStart,
-                                &GameOpt.Month, &GameOpt.Day, &GameOpt.Hour, &GameOpt.Minute );
-
-    GameOpt.YearStart = CLAMP( GameOpt.YearStart, 1700, 30000 );
-    GameOpt.Year = GameOpt.YearStart;
-    GameOpt.Second = 0;
-    Timer::InitGameTime();
-
-    // Start script
-    if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
-    {
-        WriteLog( "Start script fail.\n" );
-        return false;
-    }
-
-    return true;
-}
-
-void FOServer::SaveWorld( const string& fname )
-{
-    // Do nessesary stuff before save
-    Script::RunMandatorySuspended();
-
-    // Time counter
-    double tick = Timer::AccurateTick();
-
-    // Collect data
-    IniParser data;
-    data.SetApp( "GeneralSettings" );
-    data.SetApp( "Globals" );
-    SaveGameInfoFile( data );
-    Script::SaveDeferredCalls( data );
-    EntityMngr.DumpEntity( data, Globals );
-    EntityMngr.DumpEntities( data );
-    ConnectedClientsLocker.Lock();
-    for( auto& cl : ConnectedClients )
-        if( cl->Id )
-            EntityMngr.DumpEntity( data, cl );
-    ConnectedClientsLocker.Unlock();
-
-    // Save hashes
-    _str::saveHashes( data.SetApp( "Hashes" ) );
-
-    // Save world to file
-    if( !data.SaveFile( fname ) )
-        WriteLog( "Unable to save world to '{}'.\n", fname );
-
-    // Report
-    WriteLog( "World saved in {} ms.\n", Timer::AccurateTick() - tick );
-}
-
-bool FOServer::LoadWorld( const string& fname )
-{
-    UnloadWorld();
-
-    WriteLog( "Load world from dump file '{}'.\n", fname );
-
-    IniParser data;
-    if( !data.AppendFile( fname ) )
-    {
-        WriteLog( "World dump file '{}' not found.\n", fname );
-        return false;
-    }
-
-    // Main data
-    _str::loadHashes( data.GetApp( "Hashes" ) );
-    if( !LoadGameInfoFile( data ) )
-        return false;
-    if( !Script::LoadDeferredCalls( data ) )
-        return false;
-    if( !Globals->Props.LoadFromText( data.GetApp( "Global" ) ) )
-        return false;
-    if( !EntityMngr.LoadEntities( data ) )
-        return false;
-
-    // Start script
-    if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
-    {
-        WriteLog( "Start script fail.\n" );
-        return false;
-    }
-
-    return true;
-}
-
-void FOServer::UnloadWorld()
-{
-    // Last process
-    Script::RaiseInternalEvent( ServerFunctions.Finish );
-
-    // Clean up
-    ItemMngr.RadioClear();
-    EntityMngr.ClearEntities();
-    SingleplayerSave.Valid = false;
 }
 
 /************************************************************************/

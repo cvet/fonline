@@ -34,7 +34,8 @@ public:
     FOServer();
     ~FOServer();
 
-    static DBCollection* DbPlayers;
+    static DataBase* DbPlayers;
+    static DataBase* DbEntities;
 
     // Net process
     static void Process_ParseToGame( Client* cl );
@@ -142,8 +143,6 @@ public:
     static void LogToClients( const string& str );
 
     // Game time
-    static void SaveGameInfoFile( IniParser& data );
-    static bool LoadGameInfoFile( IniParser& data );
     static void SetGameTime( int multiplier, int year, int month, int day, int hour, int minute, int second );
 
     // Lang packs
@@ -172,13 +171,6 @@ public:
     static Mutex          ConnectedClientsLocker;
 
     static void OnNewConnection( NetConnection* connection );
-
-    // Dump save/load
-    static bool LoadClient( Client* cl );
-    static bool NewWorld();
-    static void SaveWorld( const string& fname );
-    static bool LoadWorld( const string& fname );
-    static void UnloadWorld();
 
     // Access
     static void GetAccesses( StrVec& client, StrVec& tester, StrVec& moder, StrVec& admin, StrVec& admin_names );

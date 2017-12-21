@@ -1114,16 +1114,8 @@ GameOptions::GameOptions()
     WorkDir = "";
     CommandLine = "";
 
-    YearStart = 2246;
-    Year = 2246;
-    Month = 1;
-    Day = 2;
-    Hour = 14;
-    Minute = 5;
-    Second = 0;
     FullSecondStart = 0;
     FullSecond = 0;
-    TimeMultiplier = 0;
     GameTimeTick = 0;
 
     Singleplayer = false;

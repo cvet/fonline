@@ -431,18 +431,10 @@ struct GameOptions
     string WorkDir;
     string CommandLine;
 
-    ushort YearStart;
     uint   YearStartFTLo;
     uint   YearStartFTHi;
-    ushort Year;
-    ushort Month;
-    ushort Day;
-    ushort Hour;
-    ushort Minute;
-    ushort Second;
     uint   FullSecondStart;
     uint   FullSecond;
-    ushort TimeMultiplier;
     uint   GameTimeTick;
 
     bool   Singleplayer;

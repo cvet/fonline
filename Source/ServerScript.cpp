@@ -2946,16 +2946,16 @@ void FOServer::SScriptFunc::Global_RadioMessageMsgLex( ushort channel, ushort te
 uint FOServer::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second )
 {
     if( !year )
-        year = GameOpt.Year;
+        year = Globals->GetYear();
     else
-        year = CLAMP( year, GameOpt.YearStart, GameOpt.YearStart + 130 );
+        year = CLAMP( year, Globals->GetYearStart(), Globals->GetYearStart() + 130 );
     if( !month )
-        month = GameOpt.Month;
+        month = Globals->GetMonth();
     else
         month = CLAMP( month, 1, 12 );
     if( !day )
     {
-        day = GameOpt.Day;
+        day = Globals->GetDay();
     }
     else
     {
@@ -3045,9 +3045,9 @@ Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
 Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
 {
     // Check existance
-    uint id = MAKE_CLIENT_ID( name );
-    bool available = DbPlayers->Exists( id );
-    if( !available )
+    uint   id = MAKE_CLIENT_ID( name );
+    StrMap data = DbPlayers->Get( id );
+    if( data.empty() )
         return nullptr;
 
     // Find online
@@ -3064,7 +3064,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
     cl = new Client( nullptr, cl_proto );
     cl->SetId( id );
     cl->Name = name;
-    if( !LoadClient( cl ) )
+    if( !cl->Props.LoadFromText( data ) )
         SCRIPT_ERROR_R0( "Client data db read failed." );
     return cl;
 }
@@ -3428,13 +3428,9 @@ CScriptArray* FOServer::SScriptFunc::Global_GetOnlinePlayers()
 
 CScriptArray* FOServer::SScriptFunc::Global_GetRegisteredPlayerIds()
 {
-    UIntSet ids_set = DbPlayers->GetAllIds();
-    UIntVec ids_vec;
-    for( uint id : ids_set )
-        ids_vec.push_back( id );
-
+    UIntVec       ids = DbPlayers->GetAllIds();
     CScriptArray* result = Script::CreateArray( "uint[]" );
-    Script::AppendVectorToArray< uint >( ids_vec, result );
+    Script::AppendVectorToArray< uint >( ids, result );
     return result;
 }
 

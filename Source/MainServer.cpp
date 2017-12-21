@@ -503,7 +503,8 @@ static void UpdateInfo()
     if( Server.Started() )
     {
         DateTimeStamp st = Timer::GetGameTime( GameOpt.FullSecond );
-        Label::Update( GuiLabelGameTime, _str( "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, GameOpt.TimeMultiplier ) );
+        Label::Update( GuiLabelGameTime, _str( "Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}",
+                                               st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, Globals->GetTimeMultiplier() ) );
         Label::Update( GuiLabelClients, _str( "Connections: {}", Server.Statistics.CurOnline ) );
         Label::Update( GuiLabelIngame, _str( "Players in game: {}", CrMngr.PlayersInGame() ) );
         Label::Update( GuiLabelNPC, _str( "NPC in game: {}", CrMngr.NpcInGame() ) );

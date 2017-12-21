@@ -81,6 +81,17 @@ class GlobalVars: public Entity
 {
 public:
     PROPERTIES_HEADER();
+    CLASS_PROPERTY( ushort, YearStart );
+    CLASS_PROPERTY( ushort, Year );
+    CLASS_PROPERTY( ushort, Month );
+    CLASS_PROPERTY( ushort, Day );
+    CLASS_PROPERTY( ushort, Hour );
+    CLASS_PROPERTY( ushort, Minute );
+    CLASS_PROPERTY( ushort, Second );
+    CLASS_PROPERTY( ushort, TimeMultiplier );
+    CLASS_PROPERTY( uint, LastEntityId );
+    CLASS_PROPERTY( uint, LastDeferredCallId );
+
     GlobalVars();
 };
 extern GlobalVars* Globals;

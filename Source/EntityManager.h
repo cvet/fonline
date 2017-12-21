@@ -6,14 +6,14 @@
 #include "Item.h"
 #include "Critter.h"
 #include "Map.h"
+#include "DataBase.h"
 
 class EntityManager
 {
 private:
-    uint      currentId;
     EntityMap allEntities;
     uint      entitiesCount[ (int) EntityType::Max ];
-    Mutex     entitiesLocker;
+    DataBase* dbEntities;
 
     bool LinkMaps();
     bool LinkNpc();
@@ -38,9 +38,7 @@ public:
     Location* GetLocationByPid( hash pid, uint skip_count );
     void      GetLocations( LocVec& locations );
 
-    void DumpEntity( IniParser& data, Entity* entity );
-    void DumpEntities( IniParser& data );
-    bool LoadEntities( IniParser& data );
+    bool LoadEntities();
     void ClearEntities();
 };
 

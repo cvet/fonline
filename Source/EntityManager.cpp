@@ -8,16 +8,19 @@ EntityManager EntityMngr;
 
 EntityManager::EntityManager()
 {
-    currentId = 0;
     memzero( entitiesCount, sizeof( entitiesCount ) );
+    dbEntities = nullptr;
 }
 
 void EntityManager::RegisterEntity( Entity* entity )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     if( !entity->GetId() )
-        entity->SetId( ++currentId );
+    {
+        uint id = Globals->GetLastEntityId() + 1;
+        Globals->SetLastEntityId( id );
+
+        entity->SetId( id );
+    }
 
     auto it = allEntities.insert( std::make_pair( entity->GetId(), entity ) );
     RUNTIME_ASSERT( it.second );
@@ -26,8 +29,6 @@ void EntityManager::RegisterEntity( Entity* entity )
 
 void EntityManager::UnregisterEntity( Entity* entity )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     auto it = allEntities.find( entity->GetId() );
     RUNTIME_ASSERT( it != allEntities.end() );
     allEntities.erase( it );
@@ -38,8 +39,6 @@ void EntityManager::UnregisterEntity( Entity* entity )
 
 Entity* EntityManager::GetEntity( uint id, EntityType type )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     auto it = allEntities.find( id );
     if( it != allEntities.end() && it->second->Type == type )
         return it->second;
@@ -48,8 +47,6 @@ Entity* EntityManager::GetEntity( uint id, EntityType type )
 
 void EntityManager::GetEntities( EntityType type, EntityVec& entities )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     entities.reserve( entities.size() + entitiesCount[ (int) type ] );
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
@@ -60,15 +57,11 @@ void EntityManager::GetEntities( EntityType type, EntityVec& entities )
 
 uint EntityManager::GetEntitiesCount( EntityType type )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     return entitiesCount[ (int) type ];
 }
 
 void EntityManager::GetItems( ItemVec& items )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     items.reserve( items.size() + entitiesCount[ (int) EntityType::Item ] );
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
@@ -79,8 +72,6 @@ void EntityManager::GetItems( ItemVec& items )
 
 void EntityManager::GetCritterItems( uint crid, ItemVec& items )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
         if( it->second->Type == EntityType::Item )
@@ -94,8 +85,6 @@ void EntityManager::GetCritterItems( uint crid, ItemVec& items )
 
 Critter* EntityManager::GetCritter( uint id )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     auto it = allEntities.find( id );
     if( it != allEntities.end() && ( it->second->Type == EntityType::Npc || it->second->Type == EntityType::Client ) )
         return (Critter*) it->second;
@@ -104,8 +93,6 @@ Critter* EntityManager::GetCritter( uint id )
 
 void EntityManager::GetCritters( CrVec& critters )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     critters.reserve( critters.size() + entitiesCount[ (int) EntityType::Npc ] + entitiesCount[ (int) EntityType::Client ] );
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
@@ -116,8 +103,6 @@ void EntityManager::GetCritters( CrVec& critters )
 
 Map* EntityManager::GetMapByPid( hash pid, uint skip_count )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
         if( it->second->Type == EntityType::Map )
@@ -137,8 +122,6 @@ Map* EntityManager::GetMapByPid( hash pid, uint skip_count )
 
 void EntityManager::GetMaps( MapVec& maps )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     maps.reserve( maps.size() + entitiesCount[ (int) EntityType::Map ] );
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
@@ -149,8 +132,6 @@ void EntityManager::GetMaps( MapVec& maps )
 
 Location* EntityManager::GetLocationByPid( hash pid, uint skip_count )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
         if( it->second->Type == EntityType::Location )
@@ -170,8 +151,6 @@ Location* EntityManager::GetLocationByPid( hash pid, uint skip_count )
 
 void EntityManager::GetLocations( LocVec& locs )
 {
-    SCOPE_LOCK( entitiesLocker );
-
     locs.reserve( locs.size() + entitiesCount[ (int) EntityType::Location ] );
     for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
     {
@@ -180,98 +159,42 @@ void EntityManager::GetLocations( LocVec& locs )
     }
 }
 
-void EntityManager::DumpEntity( IniParser& data, Entity* entity )
-{
-    const char* type_name;
-    switch( entity->Type )
-    {
-    case EntityType::Location:
-        type_name = "Location";
-        break;
-    case EntityType::Map:
-        type_name = "Map";
-        break;
-    case EntityType::Npc:
-        type_name = "Npc";
-        break;
-    case EntityType::Item:
-        type_name = "Item";
-        break;
-    case EntityType::Custom:
-        type_name = "Custom";
-        break;
-    case EntityType::Global:
-        type_name = "Global";
-        break;
-    case EntityType::Client:
-        type_name = "Client";
-        break;
-    default:
-        RUNTIME_ASSERT( !"Unreachable place" );
-        break;
-    }
-
-    StrMap& kv = data.SetApp( type_name );
-    if( entity->Id )
-        kv[ "$Id" ] = _str( "{}", entity->Id );
-    if( entity->Proto )
-        kv[ "$Proto" ] = _str().parseHash( entity->Proto->ProtoId );
-    if( entity->Type == EntityType::Custom )
-        kv[ "$ClassName" ] = ( (CustomEntity*) entity )->Props.GetClassName();
-    entity->Props.SaveToText( kv, entity->Proto ? &entity->Proto->Props : nullptr );
-}
-
-void EntityManager::DumpEntities( IniParser& data )
-{
-    data.SetStr( "GeneralSettings", "LastEntityId", _str( "{}", currentId ) );
-
-    EntityType query[] = { EntityType::Location, EntityType::Map, EntityType::Npc, EntityType::Item, EntityType::Custom };
-    for( int q = 0; q < 5; q++ )
-    {
-        EntityType type = query[ q ];
-        for( auto it = allEntities.begin(); it != allEntities.end(); ++it )
-        {
-            Entity* entity = it->second;
-            if( type == entity->Type )
-                DumpEntity( data, entity );
-        }
-    }
-}
-
-bool EntityManager::LoadEntities( IniParser& data )
+bool EntityManager::LoadEntities()
 {
     WriteLog( "Load entities...\n" );
 
-    currentId = _str( data.GetStr( "GeneralSettings", "LastEntityId", "0" ) ).toUInt();
+    UIntVec          allIds = dbEntities->GetAllIds();
+    vector< StrMap > allData;
+    allData.reserve( allIds.size() );
+    for( uint id : allIds )
+        allData.push_back( dbEntities->Get( id ) );
 
-    uint       whole_count = 0;
     EntityType query[] = { EntityType::Location, EntityType::Map, EntityType::Npc, EntityType::Item, EntityType::Custom };
     for( int q = 0; q < 5; q++ )
     {
-        EntityType type = query[ q ];
-        PStrMapVec entities;
-        if( type == EntityType::Location )
-            data.GetApps( "Location", entities );
-        else if( type == EntityType::Map )
-            data.GetApps( "Map", entities );
-        else if( type == EntityType::Npc )
-            data.GetApps( "Npc", entities );
-        else if( type == EntityType::Item )
-            data.GetApps( "Item", entities );
-        else if( type == EntityType::Custom )
-            data.GetApps( "Custom", entities );
-
-        uint count = 0;
-        for( auto& pkv : entities )
+        for( const StrMap& data : allData )
         {
-            auto& kv = *pkv;
-            uint  id = _str( kv[ "$Id" ] ).toUInt();
-            auto  proto_it = kv.find( "$Proto" );
-            hash  proto_id = ( proto_it != kv.end() ? _str( proto_it->second ).toHash() : 0 );
+            const string& type_str = data.at( "$Type" );
+            EntityType    type = EntityType::Custom;
+            if( type_str == "Location" )
+                type = EntityType::Location;
+            else if( type_str == "Map" )
+                type = EntityType::Map;
+            else if( type_str == "Npc" )
+                type = EntityType::Npc;
+            else if( type_str == "Item" )
+                type = EntityType::Item;
+
+            if( type != query[ q ] )
+                continue;
+
+            uint id = _str( data.at( "$Id" ) ).toUInt();
+            auto proto_it = data.find( "$Proto" );
+            hash proto_id = ( proto_it != data.end() ? _str( proto_it->second ).toHash() : 0 );
 
             if( type == EntityType::Item )
             {
-                if( !ItemMngr.RestoreItem( id, proto_id, kv ) )
+                if( !ItemMngr.RestoreItem( id, proto_id, data ) )
                 {
                     WriteLog( "Fail to restore item {}.\n", id );
                     continue;
@@ -279,7 +202,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             }
             else if( type == EntityType::Npc )
             {
-                if( !CrMngr.RestoreNpc( id, proto_id, kv ) )
+                if( !CrMngr.RestoreNpc( id, proto_id, data ) )
                 {
                     WriteLog( "Fail to restore npc {}.\n", id );
                     continue;
@@ -287,7 +210,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             }
             else if( type == EntityType::Location )
             {
-                if( !MapMngr.RestoreLocation( id, proto_id, kv ) )
+                if( !MapMngr.RestoreLocation( id, proto_id, data ) )
                 {
                     WriteLog( "Fail to restore location {}.\n", id );
                     continue;
@@ -295,7 +218,7 @@ bool EntityManager::LoadEntities( IniParser& data )
             }
             else if( type == EntityType::Map )
             {
-                if( !MapMngr.RestoreMap( id, proto_id, kv ) )
+                if( !MapMngr.RestoreMap( id, proto_id, data ) )
                 {
                     WriteLog( "Fail to restore map {}.\n", id );
                     continue;
@@ -303,10 +226,9 @@ bool EntityManager::LoadEntities( IniParser& data )
             }
             else if( type == EntityType::Custom )
             {
-                const char* class_name = kv[ "$ClassName" ].c_str();
-                if( !Script::RestoreEntity( class_name, id, kv ) )
+                if( !Script::RestoreEntity( type_str, id, data ) )
                 {
-                    WriteLog( "Fail to restore entity {}.\n", id );
+                    WriteLog( "Fail to restore entity {} of type {}.\n", id, type_str );
                     continue;
                 }
             }
@@ -314,16 +236,10 @@ bool EntityManager::LoadEntities( IniParser& data )
             {
                 RUNTIME_ASSERT( !"Unreachable place" );
             }
-
-            count++;
         }
-
-        if( count != (uint) entities.size() )
-            return false;
-        whole_count += count;
     }
 
-    WriteLog( "Load entities complete, count {}.\n", whole_count );
+    WriteLog( "Load entities complete.\n" );
 
     if( !LinkMaps() )
         return false;

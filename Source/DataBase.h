@@ -3,19 +3,17 @@
 
 #include "Common.h"
 
-class DBCollection
+class DataBase
 {
 public:
-    virtual ~DBCollection() = default;
-    virtual bool    Exists( uint id ) = 0;
+    virtual ~DataBase() = default;
+    virtual UIntVec GetAllIds() = 0;
     virtual StrMap  Get( uint id ) = 0;
-    virtual StrMap  Get( uint id, const StrSet& specific_fields ) = 0;
-    virtual UIntSet GetAllIds() = 0;
-    virtual bool    Insert( uint id, const StrMap& insert ) = 0;
-    virtual bool    Update( uint id, const StrMap* update, const StrSet* remove ) = 0;
+    virtual bool    Insert( uint id, const StrMap& data ) = 0;
+    virtual bool    Update( uint id, const StrMap& data, const StrSet* remove_fields ) = 0;
     virtual bool    Delete( uint id ) = 0;
 };
 
-// DBCollection* GetDBCollection( const string& name );
+DataBase* GetDataBase( const string& collection_name, const string& connection_info );
 
 #endif // _DATA_BASE_
