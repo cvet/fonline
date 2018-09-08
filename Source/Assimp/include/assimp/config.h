@@ -958,6 +958,4 @@ enum aiComponent
  * Property type: Bool. Default value: undefined.
  */
 
-#define ASSIMP_DOUBLE_PRECISION 0
-
 #endif // !! AI_CONFIG_H_INC
