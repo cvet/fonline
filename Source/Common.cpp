@@ -1115,7 +1115,6 @@ GameOptions::GameOptions()
     DisableTcpNagle = false;
     DisableZlibCompression = false;
     FloodSize = 2048;
-    BruteForceTick = 100;
     NoAnswerShuffle = false;
     DialogDemandRecheck = false;
     SneakDivider = 6;

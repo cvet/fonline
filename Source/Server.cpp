@@ -32,8 +32,6 @@ FOServer::ClientBannedVec FOServer::Banned;
 Mutex                     FOServer::BannedLocker;
 FOServer::UpdateFileVec   FOServer::UpdateFiles;
 UCharVec                  FOServer::UpdateFilesList;
-UIntUIntPairMap           FOServer::BruteForceIps;
-StrUIntMap                FOServer::BruteForceNames;
 
 FOServer::FOServer()
 {
@@ -1867,6 +1865,16 @@ bool FOServer::InitReal()
     // Reserve memory
     ConnectedClients.reserve( MAX_CLIENTS_IN_GAME );
 
+    // Data base
+    DbPlayers = GetDataBase( "Players", MainConfig->GetStr( "", "DbStorage" ) ); // "mongodb://localhost:27017");
+    if( !DbPlayers )
+        return false;
+    DbEntities = GetDataBase( "Entities", MainConfig->GetStr( "", "DbStorage" ) );
+    if( !DbEntities )
+        return false;
+
+    PropertyRegistrator::GlobalSetCallbacks.push_back( EntitySetValue );
+
     if( !InitScriptSystem() )
         return false;                                  // Script system
     if( !InitLangPacks( LangPacks ) )
@@ -1917,12 +1925,17 @@ bool FOServer::InitReal()
     // World loading
     if( Globals->GetYearStart() == 0 )
     {
-        Script::RaiseInternalEvent( ServerFunctions.GenerateWorld );
+        // Generate world
+        if( !Script::RaiseInternalEvent( ServerFunctions.GenerateWorld ) )
+        {
+            WriteLog( "Generate world script failed.\n" );
+            return false;
+        }
 
         // Start script
         if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
         {
-            WriteLog( "Start script fail.\n" );
+            WriteLog( "Start script failed.\n" );
             return false;
         }
     }
@@ -2278,10 +2291,6 @@ void FOServer::LoadBans()
     ProcessBans();
 }
 
-/************************************************************************/
-/*                                                                      */
-/************************************************************************/
-
 void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec* resource_names /* = nullptr */ )
 {
     if( !first_generation && UpdateFiles.empty() )
@@ -2406,65 +2415,15 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
         ConnectedClientsLocker.Unlock();
 }
 
-/************************************************************************/
-/* Brute force                                                          */
-/************************************************************************/
-
-bool FOServer::CheckBruteForceIp( uint ip )
+void FOServer::EntitySetValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    // Skip checking
-    if( !GameOpt.BruteForceTick )
-        return false;
+    if( !entity->Id )
+        return;
 
-    // Get entire for this ip
-    uint tick = Timer::FastTick();
-    auto it = BruteForceIps.insert( std::make_pair( ip, std::make_pair( tick, 0 ) ) );
-
-    // Newly inserted
-    if( it.second )
-        return false;
-
-    // Blocked
-    if( it.first->second.first > tick )
-        return true;
-
-    // Check timeout
-    bool result = ( tick - it.first->second.first ) < GameOpt.BruteForceTick;
-    it.first->second.first = tick;
-
-    // After 10 fails block access for this ip on 10 minutes
-    if( result && ++it.first->second.second >= 10 )
-    {
-        it.first->second.first = tick + 10 * 60 * 1000;
-        it.first->second.second = 0;
-        return true;
-    }
-
-    return result;
-}
-
-bool FOServer::CheckBruteForceName( const char* name )
-{
-    // Skip checking
-    if( !GameOpt.BruteForceTick )
-        return false;
-
-    // Get entire for this name
-    uint tick = Timer::FastTick();
-    auto it = BruteForceNames.insert( std::make_pair( string( name ), tick ) );
-
-    // Newly inserted
-    if( it.second )
-        return false;
-
-    // Check timeout
-    bool result = ( tick - it.first->second ) < GameOpt.BruteForceTick;
-    it.first->second = tick;
-    return result;
-}
-
-void FOServer::ClearBruteForceEntire( uint ip, const char* name )
-{
-    BruteForceIps.erase( ip );
-    BruteForceNames.erase( string( name ) );
+    StrMap updated_data;
+    updated_data[ prop->GetName() ] = entity->Props.SavePropertyToText( prop );
+    if( entity->Type == EntityType::Client )
+        DbPlayers->Update( entity->Id, updated_data, nullptr );
+    else
+        DbEntities->Update( entity->Id, updated_data, nullptr );
 }

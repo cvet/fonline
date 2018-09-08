@@ -155,7 +155,8 @@ bool IniParser::SaveFile( const string& fname )
     for( auto& app_it : appKeyValuesOrder )
     {
         auto& app = *app_it;
-        str += _str( "[{}]\n", app.first );
+        if( !app.first.empty() )
+            str += _str( "[{}]\n", app.first );
         for( const auto& kv : app.second )
             if( !kv.first.empty() )
                 str += _str( "{} = {}\n", kv.first, kv.second );

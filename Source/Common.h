@@ -440,7 +440,6 @@ struct GameOptions
     bool   DisableTcpNagle;
     bool   DisableZlibCompression;
     uint   FloodSize;
-    uint   BruteForceTick;
     bool   NoAnswerShuffle;
     bool   DialogDemandRecheck;
     uint   SneakDivider;

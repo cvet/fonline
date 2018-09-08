@@ -37,6 +37,8 @@ public:
     static DataBase* DbPlayers;
     static DataBase* DbEntities;
 
+    static void EntitySetValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
+
     // Net process
     static void Process_ParseToGame( Client* cl );
     static void Process_Move( Client* cl );
@@ -229,13 +231,6 @@ public:
     } static Statistics;
 
     static string GetIngamePlayersStatistics();
-
-    // Brute force prevention
-    static UIntUIntPairMap BruteForceIps;   // Ip -> Time / Fail count
-    static StrUIntMap      BruteForceNames; // Name -> Time
-    static bool CheckBruteForceIp( uint ip );
-    static bool CheckBruteForceName( const char* name );
-    static void ClearBruteForceEntire( uint ip, const char* name );
 
     // Script functions
     struct SScriptFunc

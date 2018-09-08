@@ -317,13 +317,6 @@ void FOServer::Process_UpdateFileData( Client* cl )
 
 void FOServer::Process_CreateClient( Client* cl )
 {
-    // Prevent brute force by ip
-    if( CheckBruteForceIp( cl->GetIp() ) )
-    {
-        cl->Disconnect();
-        return;
-    }
-
     // Read message
     uint msg_len;
     cl->Connection->Bin >> msg_len;
@@ -395,7 +388,7 @@ void FOServer::Process_CreateClient( Client* cl )
     // Check for exist
     uint id = MAKE_CLIENT_ID( name );
     RUNTIME_ASSERT( IS_CLIENT_ID( id ) );
-    if( DbPlayers->Get( id ).empty() )
+    if( !DbPlayers->Get( id ).empty() )
     {
         cl->Send_TextMsg( cl, STR_NET_ACCOUNT_ALREADY, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -474,9 +467,6 @@ void FOServer::Process_CreateClient( Client* cl )
         return;
     }
 
-    // Clear brute force ip and name, because client enter to game immediately after registration
-    ClearBruteForceEntire( cl->GetIp(), cl->Name.c_str() );
-
     // Notify
     cl->Send_TextMsg( cl, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
 
@@ -500,13 +490,6 @@ void FOServer::Process_CreateClient( Client* cl )
 
 void FOServer::Process_LogIn( Client*& cl )
 {
-    // Prevent brute force by ip
-    if( CheckBruteForceIp( cl->GetIp() ) )
-    {
-        cl->Disconnect();
-        return;
-    }
-
     // Net protocol
     ushort proto_ver = 0;
     cl->Connection->Bin >> proto_ver;
@@ -530,13 +513,6 @@ void FOServer::Process_LogIn( Client*& cl )
     cl->Name = name;
     char password[ UTF8_BUF_SIZE( MAX_NAME ) ];
     cl->Connection->Bin.Pop( password, sizeof( password ) );
-
-    // Prevent brute force by name
-    if( CheckBruteForceName( cl->Name.c_str() ) )
-    {
-        cl->Disconnect();
-        return;
-    }
 
     // Bin hashes
     uint msg_language;
@@ -594,7 +570,7 @@ void FOServer::Process_LogIn( Client*& cl )
     // Check password
     uint   id = MAKE_CLIENT_ID( cl->Name );
     StrMap data = DbPlayers->Get( id );
-    if( !data.count( "ClientPassHash" ) || !Str::Compare( password, data[ "ClientPassHash" ].c_str() ) )
+    if( !data.count( "Password" ) || !Str::Compare( password, data[ "Password" ].c_str() ) )
     {
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();

@@ -102,13 +102,10 @@ int main( int argc, char** argv )
     }
 
     // GUI
-    if( MainConfig->IsKey( "", "ShowGui" ) )
-    {
-        Fl::lock();         // Begin GUI multi threading
-        GUIInit();
-        LogToFile( "" );
-        LogToBuffer( true );
-    }
+    Fl::lock();         // Begin GUI multi threading
+    GUIInit();
+    LogToFile( "" );
+    LogToBuffer( true );
 
     FOQuit = true;
 
