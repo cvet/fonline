@@ -43,16 +43,46 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "AbstractImportExportBase.h"
 
 #include <assimp/Importer.hpp>
+#include <assimp/Exporter.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+#include "D3MFExporter.h"
 
 class utD3MFImporterExporter : public AbstractImportExportBase {
 public:
     virtual bool importerTest() {
         Assimp::Importer importer;
-        const aiScene *scene = importer.ReadFile(ASSIMP_TEST_MODELS_DIR "/3MF/box.3mf", 0);
-        return nullptr != scene;
+        const aiScene *scene = importer.ReadFile(ASSIMP_TEST_MODELS_DIR "/3MF/box.3mf", aiProcess_ValidateDataStructure);
+        EXPECT_EQ( 1u, scene->mNumMeshes );
+        aiMesh *mesh = scene->mMeshes[ 0 ];
+        EXPECT_NE( nullptr, mesh );
+        EXPECT_EQ( 12u, mesh->mNumFaces );
+        EXPECT_EQ( 8u, mesh->mNumVertices );
+        
+        return ( nullptr != scene );
     }
+
+#ifndef ASSIMP_BUILD_NO_EXPORT
+
+    virtual bool exporterTest() {
+        Assimp::Importer importer;
+        const aiScene *scene = importer.ReadFile( ASSIMP_TEST_MODELS_DIR "/3MF/box.3mf", 0 );
+
+        Assimp::Exporter exporter;
+        return AI_SUCCESS == exporter.Export( scene, "3mf", "test.3mf" );
+    }
+#endif // ASSIMP_BUILD_NO_EXPORT
 };
 
 TEST_F(utD3MFImporterExporter, import3MFFromFileTest) {
     EXPECT_TRUE(importerTest());
 }
+
+#ifndef ASSIMP_BUILD_NO_EXPORT
+
+TEST_F( utD3MFImporterExporter, export3MFtoMemTest ) {
+    EXPECT_TRUE( exporterTest() );
+}
+
+#endif // ASSIMP_BUILD_NO_EXPORT
