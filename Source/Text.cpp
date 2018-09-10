@@ -479,6 +479,10 @@ std::wstring _str::toWideChar()
 }
 #endif
 
+#ifdef FONLINE_SERVER
+# include "DataBase.h"
+#endif
+
 #ifndef NO_THREADING
 static Mutex               HashNamesLocker;
 #endif
@@ -515,9 +519,18 @@ hash _str::toHash()
 
     auto ins = HashNames.insert( std::make_pair( h, "" ) );
     if( ins.second )
+    {
         ins.first->second = s;
+
+        #ifdef FONLINE_SERVER
+        if( DbStorage )
+            DbStorage->Insert( "Hashes", h, { { "Value", s } } );
+        #endif
+    }
     else if( ins.first->second != s )
+    {
         WriteLog( "Hash collision detected for names '{}' and '{}', hash {:#X}.\n", s, ins.first->second, h );
+    }
 
     return h;
 }
@@ -537,25 +550,26 @@ _str& _str::parseHash( hash h )
     return *this;
 }
 
-void _str::saveHashes( StrMap& hashes )
+#ifdef FONLINE_SERVER
+void _str::loadHashes()
 {
-    #ifndef NO_THREADING
+    WriteLog( "Load hashes...\n" );
+
+    # ifndef NO_THREADING
     SCOPE_LOCK( HashNamesLocker );
-    #endif
+    # endif
 
-    for( auto& kv : HashNames )
-        hashes[ _str( "{}", kv.first ) ] = kv.second;
+    UIntVec db_hashes = DbStorage->GetAllIds( "Hashes" );
+    for( uint hash_id : db_hashes )
+    {
+        StrMap        hash_data = DbStorage->Get( "Hashes", hash_id );
+        const string& hash_value = hash_data[ "Value" ];
+        HashNames[ hash_id ] = hash_value;
+    }
+
+    WriteLog( "Load hashes complete.\n" );
 }
-
-void _str::loadHashes( StrMap& hashes )
-{
-    #ifndef NO_THREADING
-    SCOPE_LOCK( HashNamesLocker );
-    #endif
-
-    for( auto& kv : hashes )
-        _str( kv.second ).toHash();
-}
+#endif
 
 void Str::Copy( char* to, size_t size, const char* from )
 {

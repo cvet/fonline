@@ -3046,7 +3046,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
 {
     // Check existance
     uint   id = MAKE_CLIENT_ID( name );
-    StrMap data = DbPlayers->Get( id );
+    StrMap data = DbStorage->Get( "Players", id );
     if( data.empty() )
         return nullptr;
 
@@ -3428,7 +3428,7 @@ CScriptArray* FOServer::SScriptFunc::Global_GetOnlinePlayers()
 
 CScriptArray* FOServer::SScriptFunc::Global_GetRegisteredPlayerIds()
 {
-    UIntVec       ids = DbPlayers->GetAllIds();
+    UIntVec       ids = DbStorage->GetAllIds( "Players" );
     CScriptArray* result = Script::CreateArray( "uint[]" );
     Script::AppendVectorToArray< uint >( ids, result );
     return result;

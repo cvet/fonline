@@ -99,10 +99,12 @@ public:
     std::wstring toWideChar();
     #endif
 
-    hash        toHash();
-    _str&       parseHash( hash h );
-    static void saveHashes( StrMap& hashes );
-    static void loadHashes( StrMap& hashes );
+    hash  toHash();
+    _str& parseHash( hash h );
+
+    #ifdef FONLINE_SERVER
+    static void loadHashes();
+    #endif
 };
 
 namespace utf8

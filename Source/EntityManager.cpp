@@ -3,38 +3,78 @@
 #include "CritterManager.h"
 #include "MapManager.h"
 #include "Script.h"
+#include "DataBase.h"
 
 EntityManager EntityMngr;
 
 EntityManager::EntityManager()
 {
     memzero( entitiesCount, sizeof( entitiesCount ) );
-    dbEntities = nullptr;
 }
 
 void EntityManager::RegisterEntity( Entity* entity )
 {
-    if( !entity->GetId() )
+    if( !entity->Id )
     {
         uint id = Globals->GetLastEntityId() + 1;
+        id = MAX( id, 2 );
         Globals->SetLastEntityId( id );
 
         entity->SetId( id );
+
+        StrMap data;
+        if( entity->Proto )
+        {
+            entity->Props.SaveToText( data, &entity->Proto->Props );
+            data[ "$Proto" ] = entity->Proto->GetName();
+        }
+        else
+        {
+            entity->Props.SaveToText( data, nullptr );
+        }
+
+        if( entity->Type == EntityType::Location )
+            DbStorage->Insert( "Locations", id, data );
+        else if( entity->Type == EntityType::Map )
+            DbStorage->Insert( "Maps", id, data );
+        else if( entity->Type == EntityType::Npc )
+            DbStorage->Insert( "Critters", id, data );
+        else if( entity->Type == EntityType::Item )
+            DbStorage->Insert( "Items", id, data );
+        else if( entity->Type == EntityType::Custom )
+            DbStorage->Insert( entity->Props.GetRegistrator()->GetClassName() + "s", id, data );
+        else
+            RUNTIME_ASSERT( !"Unreachable place" );
     }
 
-    auto it = allEntities.insert( std::make_pair( entity->GetId(), entity ) );
+    auto it = allEntities.insert( std::make_pair( entity->Id, entity ) );
     RUNTIME_ASSERT( it.second );
     entitiesCount[ (int) entity->Type ]++;
 }
 
 void EntityManager::UnregisterEntity( Entity* entity )
 {
-    auto it = allEntities.find( entity->GetId() );
+    auto it = allEntities.find( entity->Id );
     RUNTIME_ASSERT( it != allEntities.end() );
     allEntities.erase( it );
     entitiesCount[ (int) entity->Type ]--;
 
     Script::RemoveEventsEntity( entity );
+
+    if( entity->Type == EntityType::Location )
+        DbStorage->Delete( "Locations", entity->Id );
+    else if( entity->Type == EntityType::Map )
+        DbStorage->Delete( "Maps", entity->Id );
+    else if( entity->Type == EntityType::Npc )
+        DbStorage->Delete( "Critters", entity->Id );
+    else if( entity->Type == EntityType::Item )
+        DbStorage->Delete( "Items", entity->Id );
+    else if( entity->Type == EntityType::Custom )
+        DbStorage->Delete( entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id );
+    else
+        RUNTIME_ASSERT( !"Unreachable place" );
+
+    entity->SetId( 0 );
 }
 
 Entity* EntityManager::GetEntity( uint id, EntityType type )
@@ -163,52 +203,51 @@ bool EntityManager::LoadEntities()
 {
     WriteLog( "Load entities...\n" );
 
-    UIntVec          allIds = dbEntities->GetAllIds();
-    vector< StrMap > allData;
-    allData.reserve( allIds.size() );
-    for( uint id : allIds )
-        allData.push_back( dbEntities->Get( id ) );
+    EntityType query[] =
+    {
+        EntityType::Location,
+        EntityType::Map,
+        EntityType::Npc,
+        EntityType::Item,
+        EntityType::Custom,
+    };
 
-    EntityType query[] = { EntityType::Location, EntityType::Map, EntityType::Npc, EntityType::Item, EntityType::Custom };
+    StrVec custom_types = Script::GetCustomEntityTypes();
+    int    custom_index = -1;
+
     for( int q = 0; q < 5; q++ )
     {
-        for( const StrMap& data : allData )
+        EntityType type = query[ q ];
+
+        if( type == EntityType::Custom )
         {
-            const string& type_str = data.at( "$Type" );
-            EntityType    type = EntityType::Custom;
-            if( type_str == "Location" )
-                type = EntityType::Location;
-            else if( type_str == "Map" )
-                type = EntityType::Map;
-            else if( type_str == "Npc" )
-                type = EntityType::Npc;
-            else if( type_str == "Item" )
-                type = EntityType::Item;
+            custom_index++;
+            if( custom_index >= custom_types.size() )
+                break;
 
-            if( type != query[ q ] )
-                continue;
+            q--;
+        }
 
-            uint id = _str( data.at( "$Id" ) ).toUInt();
-            auto proto_it = data.find( "$Proto" );
-            hash proto_id = ( proto_it != data.end() ? _str( proto_it->second ).toHash() : 0 );
+        string collection_name;
+        if( type == EntityType::Location )
+            collection_name = "Locations";
+        else if( type == EntityType::Map )
+            collection_name = "Maps";
+        else if( type == EntityType::Npc )
+            collection_name = "Critters";
+        else if( type == EntityType::Item )
+            collection_name = "Items";
+        else if( type == EntityType::Custom )
+            collection_name = custom_types[ custom_index ] + "s";
 
-            if( type == EntityType::Item )
-            {
-                if( !ItemMngr.RestoreItem( id, proto_id, data ) )
-                {
-                    WriteLog( "Fail to restore item {}.\n", id );
-                    continue;
-                }
-            }
-            else if( type == EntityType::Npc )
-            {
-                if( !CrMngr.RestoreNpc( id, proto_id, data ) )
-                {
-                    WriteLog( "Fail to restore npc {}.\n", id );
-                    continue;
-                }
-            }
-            else if( type == EntityType::Location )
+        UIntVec ids = DbStorage->GetAllIds( collection_name );
+        for( uint id : ids )
+        {
+            StrMap data = DbStorage->Get( collection_name, id );
+            auto   proto_it = data.find( "$Proto" );
+            hash   proto_id = ( proto_it != data.end() ? _str( proto_it->second ).toHash() : 0 );
+
+            if( type == EntityType::Location )
             {
                 if( !MapMngr.RestoreLocation( id, proto_id, data ) )
                 {
@@ -224,11 +263,27 @@ bool EntityManager::LoadEntities()
                     continue;
                 }
             }
+            else if( type == EntityType::Npc )
+            {
+                if( !CrMngr.RestoreNpc( id, proto_id, data ) )
+                {
+                    WriteLog( "Fail to restore npc {}.\n", id );
+                    continue;
+                }
+            }
+            else if( type == EntityType::Item )
+            {
+                if( !ItemMngr.RestoreItem( id, proto_id, data ) )
+                {
+                    WriteLog( "Fail to restore item {}.\n", id );
+                    continue;
+                }
+            }
             else if( type == EntityType::Custom )
             {
-                if( !Script::RestoreEntity( type_str, id, data ) )
+                if( !Script::RestoreCustomEntity( custom_types[ custom_index ], id, data ) )
                 {
-                    WriteLog( "Fail to restore entity {} of type {}.\n", id, type_str );
+                    WriteLog( "Fail to restore entity {} of type {}.\n", id, custom_types[ custom_index ] );
                     continue;
                 }
             }
@@ -266,7 +321,7 @@ bool EntityManager::LinkMaps()
         Location* loc = MapMngr.GetLocation( loc_id );
         if( !loc )
         {
-            WriteLog( "Location {} for map '{}' ({}) not found.\n", loc_id, map->GetName(), map->GetId() );
+            WriteLog( "Location {} for map '{}' ({}) not found.\n", loc_id, map->GetName(), map->Id );
             errors++;
             continue;
         }
@@ -288,7 +343,7 @@ bool EntityManager::LinkMaps()
         {
             if( !maps[ i ] )
             {
-                WriteLog( "Location '{}' ({}) map index {} is empty.\n", loc->GetName(), loc->GetId(), i );
+                WriteLog( "Location '{}' ({}) map index {} is empty.\n", loc->GetName(), loc->Id, i );
                 errors++;
                 continue;
             }
@@ -313,7 +368,7 @@ bool EntityManager::LinkNpc()
     for( auto it = critters.begin(), end = critters.end(); it != end; ++it )
     {
         Critter* cr = *it;
-        if( !cr->GetMapId() && cr->GetGlobalMapLeaderId() && cr->GetGlobalMapLeaderId() != cr->GetId() )
+        if( !cr->GetMapId() && cr->GetGlobalMapLeaderId() && cr->GetGlobalMapLeaderId() != cr->Id )
         {
             critters_groups.push_back( cr );
             continue;
@@ -329,7 +384,7 @@ bool EntityManager::LinkNpc()
 
         if( !MapMngr.CanAddCrToMap( cr, map, cr->GetHexX(), cr->GetHexY(), 0 ) )
         {
-            WriteLog( "Error parsing npc '{}' ({}) to map {}, hx {}, hy {}.\n", cr->GetName(), cr->GetId(), cr->GetMapId(), cr->GetHexX(), cr->GetHexY() );
+            WriteLog( "Error parsing npc '{}' ({}) to map {}, hx {}, hy {}.\n", cr->GetName(), cr->Id, cr->GetMapId(), cr->GetHexX(), cr->GetHexY() );
             errors++;
             continue;
         }
@@ -377,7 +432,7 @@ bool EntityManager::LinkItems()
                 Critter* npc = CrMngr.GetNpc( item->GetCritId() );
                 if( !npc )
                 {
-                    WriteLog( "Item '{}' ({}) npc not found, npc id {}.\n", item->GetName(), item->GetId(), item->GetCritId() );
+                    WriteLog( "Item '{}' ({}) npc not found, npc id {}.\n", item->GetName(), item->Id, item->GetCritId() );
                     errors++;
                     continue;
                 }
@@ -390,21 +445,21 @@ bool EntityManager::LinkItems()
             Map* map = MapMngr.GetMap( item->GetMapId() );
             if( !map )
             {
-                WriteLog( "Item '{}' ({}) map not found, map id {}, hx {}, hy {}.\n", item->GetName(), item->GetId(), item->GetMapId(), item->GetHexX(), item->GetHexY() );
+                WriteLog( "Item '{}' ({}) map not found, map id {}, hx {}, hy {}.\n", item->GetName(), item->Id, item->GetMapId(), item->GetHexX(), item->GetHexY() );
                 errors++;
                 continue;
             }
 
             if( item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight() )
             {
-                WriteLog( "Item '{}' ({}) invalid hex position, hx {}, hy {}.\n", item->GetName(), item->GetId(), item->GetHexX(), item->GetHexY() );
+                WriteLog( "Item '{}' ({}) invalid hex position, hx {}, hy {}.\n", item->GetName(), item->Id, item->GetHexX(), item->GetHexY() );
                 errors++;
                 continue;
             }
 
             if( item->IsScenery() )
             {
-                WriteLog( "Item '{}' ({}) is scenery type {}.\n", item->GetName(), item->GetId(), item->GetType() );
+                WriteLog( "Item '{}' ({}) is scenery type {}.\n", item->GetName(), item->Id, item->GetType() );
                 errors++;
                 continue;
             }
@@ -417,7 +472,7 @@ bool EntityManager::LinkItems()
             Item* cont = ItemMngr.GetItem( item->GetContainerId() );
             if( !cont )
             {
-                WriteLog( "Item '{}' ({}) container not found, container id {}.\n", item->GetName(), item->GetId(), item->GetContainerId() );
+                WriteLog( "Item '{}' ({}) container not found, container id {}.\n", item->GetName(), item->Id, item->GetContainerId() );
                 errors++;
                 continue;
             }

@@ -388,7 +388,7 @@ void FOServer::Process_CreateClient( Client* cl )
     // Check for exist
     uint id = MAKE_CLIENT_ID( name );
     RUNTIME_ASSERT( IS_CLIENT_ID( id ) );
-    if( !DbPlayers->Get( id ).empty() )
+    if( !DbStorage->Get( "Players", id ).empty() )
     {
         cl->Send_TextMsg( cl, STR_NET_ACCOUNT_ALREADY, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -459,7 +459,7 @@ void FOServer::Process_CreateClient( Client* cl )
     // First save
     StrMap data;
     cl->Props.SaveToText( data, &cl->Proto->Props );
-    if( !DbPlayers->Insert( id, data ) )
+    if( !DbStorage->Insert( "Players", id, data ) )
     {
         WriteLog( "First save fail.\n" );
         cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
@@ -569,7 +569,7 @@ void FOServer::Process_LogIn( Client*& cl )
 
     // Check password
     uint   id = MAKE_CLIENT_ID( cl->Name );
-    StrMap data = DbPlayers->Get( id );
+    StrMap data = DbStorage->Get( "Players", id );
     if( !data.count( "Password" ) || !Str::Compare( password, data[ "Password" ].c_str() ) )
     {
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );

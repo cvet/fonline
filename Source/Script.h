@@ -93,13 +93,15 @@ public:
     static ScriptInvoker* GetInvoker();
     static string         GetDeferredCallsStatistics();
     static void           ProcessDeferredCalls();
-    static void           SaveDeferredCalls( IniParser& data );
-    static bool           LoadDeferredCalls( IniParser& data );
+    #ifdef FONLINE_SERVER
+    static bool LoadDeferredCalls();
+    #endif
 
     static void   ProfilerContextCallback( asIScriptContext* ctx, void* obj );
     static string GetProfilerStatistics();
 
-    static bool RestoreEntity( const string& class_name, uint id, const StrMap& props_data );
+    static StrVec GetCustomEntityTypes();
+    static bool   RestoreCustomEntity( const string& type_name, uint id, const StrMap& props_data );
 
     static void* FindInternalEvent( const string& event_name );
     static bool  RaiseInternalEvent( void* event_ptr, ... );

@@ -7,13 +7,15 @@ class DataBase
 {
 public:
     virtual ~DataBase() = default;
-    virtual UIntVec GetAllIds() = 0;
-    virtual StrMap  Get( uint id ) = 0;
-    virtual bool    Insert( uint id, const StrMap& data ) = 0;
-    virtual bool    Update( uint id, const StrMap& data, const StrSet* remove_fields ) = 0;
-    virtual bool    Delete( uint id ) = 0;
+    virtual UIntVec GetAllIds( const string& collection_name ) = 0;
+    virtual StrMap  Get( const string& collection_name, uint id ) = 0;
+    virtual bool    Insert( const string& collection_name, uint id, const StrMap& data ) = 0;
+    virtual bool    Update( const string& collection_name, uint id, const StrMap& data ) = 0;
+    virtual bool    Delete( const string& collection_name, uint id ) = 0;
 };
 
-DataBase* GetDataBase( const string& collection_name, const string& connection_info );
+extern DataBase* DbStorage;
+
+DataBase* GetDataBase( const string& connection_info );
 
 #endif // _DATA_BASE_

@@ -34,9 +34,6 @@ public:
     FOServer();
     ~FOServer();
 
-    static DataBase* DbPlayers;
-    static DataBase* DbEntities;
-
     static void EntitySetValue( Entity* entity, Property* prop, void* cur_value, void* old_value );
 
     // Net process

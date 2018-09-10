@@ -934,17 +934,13 @@ void Script::ProcessDeferredCalls()
     edata->Invoker->Process();
 }
 
-void Script::SaveDeferredCalls( IniParser& data )
+#ifdef FONLINE_SERVER
+bool Script::LoadDeferredCalls()
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    edata->Invoker->SaveDeferredCalls( data );
+    return edata->Invoker->LoadDeferredCalls();
 }
-
-bool Script::LoadDeferredCalls( IniParser& data )
-{
-    EngineData* edata = (EngineData*) Engine->GetUserData();
-    return edata->Invoker->LoadDeferredCalls( data );
-}
+#endif
 
 void Script::ProfilerContextCallback( asIScriptContext* ctx, void* obj )
 {
@@ -960,10 +956,16 @@ string Script::GetProfilerStatistics()
     return "Profiler not enabled.";
 }
 
-bool Script::RestoreEntity( const string& class_name, uint id, const StrMap& props_data )
+StrVec Script::GetCustomEntityTypes()
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    return edata->PragmaCB->RestoreEntity( class_name, id, props_data );
+    return edata->PragmaCB->GetCustomEntityTypes();
+}
+
+bool Script::RestoreCustomEntity( const string& type_name, uint id, const StrMap& props_data )
+{
+    EngineData* edata = (EngineData*) Engine->GetUserData();
+    return edata->PragmaCB->RestoreCustomEntity( type_name, id, props_data );
 }
 
 void* Script::FindInternalEvent( const string& event_name )

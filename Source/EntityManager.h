@@ -6,14 +6,12 @@
 #include "Item.h"
 #include "Critter.h"
 #include "Map.h"
-#include "DataBase.h"
 
 class EntityManager
 {
 private:
     EntityMap allEntities;
     uint      entitiesCount[ (int) EntityType::Max ];
-    DataBase* dbEntities;
 
     bool LinkMaps();
     bool LinkNpc();

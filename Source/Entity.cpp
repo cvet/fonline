@@ -66,7 +66,6 @@ uint Entity::GetId() const
 
 void Entity::SetId( uint id )
 {
-    RUNTIME_ASSERT( !Id );
     const_cast< uint& >( Id ) = id;
 }
 

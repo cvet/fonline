@@ -1,9 +1,13 @@
 #include "ScriptInvoker.h"
 #include "Script.h"
 
+#ifdef FONLINE_SERVER
+# include "DataBase.h"
+#endif
+
 ScriptInvoker::ScriptInvoker()
 {
-    lastDeferredCallId = 0;
+    // Dummy
 }
 
 uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* func, int* value, CScriptArray* values )
@@ -16,12 +20,17 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
     uint bind_id = Script::BindByFunc( func, false );
     RUNTIME_ASSERT( bind_id );
 
+    uint time_mul = Globals->GetTimeMultiplier();
+    if( time_mul == 0 )
+        time_mul = 1;
+
     DeferredCall call;
     call.Id = 0;
-    call.FireTick = ( delay ? Timer::FastTick() + delay : 0 );
+    call.FireTick = ( delay ? GameOpt.FullSecond + delay * time_mul : 0 );
     call.FuncNum = func_num;
     call.BindId = bind_id;
     call.Saved = saved;
+
     if( value )
     {
         call.IsValue = true;
@@ -37,6 +46,7 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
         call.Value = 0;
         call.ValueSigned = false;
     }
+
     if( values )
     {
         call.IsValues = true;
@@ -56,8 +66,36 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
     }
     else
     {
-        call.Id = ++lastDeferredCallId;
+        RUNTIME_ASSERT( call.FireTick != 0 );
+        call.Id = Globals->GetLastDeferredCallId() + 1;
+        Globals->SetLastDeferredCallId( call.Id );
         deferredCalls.push_back( call );
+
+        #ifdef FONLINE_SERVER
+        if( call.Saved )
+        {
+            StrMap call_data;
+            call_data[ "Script" ] = _str().parseHash( call.FuncNum );
+            call_data[ "FireTick" ] = _str( "{}", call.FireTick );
+
+            if( call.IsValue )
+            {
+                call_data[ "ValueSigned" ] = ( call.ValueSigned ? "true" : "false" );
+                call_data[ "Value" ] = _str( "{}", call.Value );
+            }
+
+            if( call.IsValues )
+            {
+                call_data[ "ValuesSigned" ] = ( call.ValuesSigned ? "true" : "false" );
+                string values;
+                for( int v : call.Values )
+                    values.append( _str( "{}", v ) ).append( " " );
+                call_data[ "Values" ] = values;
+            }
+
+            DbStorage->Insert( "DeferredCalls", call.Id, call_data );
+        }
+        #endif
     }
     return call.Id;
 }
@@ -77,6 +115,10 @@ bool ScriptInvoker::CancelDeferredCall( uint id )
         if( it->Id == id )
         {
             deferredCalls.erase( it );
+
+            #ifdef FONLINE_SERVER
+            DbStorage->Delete( "DeferredCalls", id );
+            #endif
             return true;
         }
     }
@@ -111,14 +153,18 @@ void ScriptInvoker::Process()
     {
         done = true;
 
-        uint tick = Timer::FastTick();
         for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
         {
             RUNTIME_ASSERT( it->FireTick != 0 );
-            if( tick >= it->FireTick )
+            if( GameOpt.FullSecond >= it->FireTick )
             {
                 DeferredCall call = *it;
                 it = deferredCalls.erase( it );
+
+                #ifdef FONLINE_SERVER
+                DbStorage->Delete( "DeferredCalls", call.Id );
+                #endif
+
                 RunDeferredCall( call );
                 done = false;
                 break;
@@ -151,68 +197,63 @@ void ScriptInvoker::RunDeferredCall( DeferredCall& call )
 
     if( arr )
         arr->Release();
-
 }
 
-void ScriptInvoker::SaveDeferredCalls( IniParser& data )
+string ScriptInvoker::GetStatistics()
 {
-    data.SetStr( "GeneralSettings", "LastDeferredCallId", _str( "{}", lastDeferredCallId ) );
-
-    uint tick = Timer::FastTick();
+    uint   time_mul = Globals->GetTimeMultiplier();
+    string result = _str( "Deferred calls count: {}\n", (uint) deferredCalls.size() );
+    result += "Id         Delay      Saved    Function                                                              Values\n";
     for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
     {
         DeferredCall& call = *it;
-        RUNTIME_ASSERT( call.FireTick != 0 );
-        if( !call.Saved )
-            continue;
+        string        func_name = Script::GetBindFuncName( call.BindId );
+        uint          delay = call.FireTick > GameOpt.FullSecond ? ( call.FireTick - GameOpt.FullSecond ) / time_mul : 0;
 
-        StrMap& kv = data.SetApp( "DeferredCall" );
-
-        kv[ "Id" ] = _str( "{}", call.Id );
-        kv[ "Script" ] = _str().parseHash( call.FuncNum );
-        kv[ "Delay" ] = _str( "{}", call.FireTick > tick ? call.FireTick - tick : 0 );
+        result += _str( "{:<10} {:<10} {:<8} {:<70}", call.Id, delay, call.Saved ? "true" : "false", func_name.c_str() );
 
         if( call.IsValue )
         {
-            kv[ "ValueSigned" ] = ( call.ValueSigned ? "true" : "false" );
-            kv[ "Value" ] = _str( "{}", call.Value );
+            result += "Single:";
+            result += _str( " {}", call.Value );
+        }
+        else if( call.IsValues )
+        {
+            result += "Multiple:";
+            for( size_t i = 0; i < call.Values.size(); i++ )
+                result += _str( " {}", call.Values[ i ] );
+        }
+        else
+        {
+            result += "None";
         }
 
-        if( call.IsValues )
-        {
-            kv[ "ValuesSigned" ] = ( call.ValuesSigned ? "true" : "false" );
-            string values;
-            for( int v : call.Values )
-                values.append( _str( "{}", v ) ).append( " " );
-            kv[ "Values" ] = values;
-        }
+        result += "\n";
     }
+    return result;
 }
 
-bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
+#ifdef FONLINE_SERVER
+bool ScriptInvoker::LoadDeferredCalls()
 {
     WriteLog( "Load deferred calls...\n" );
 
-    lastDeferredCallId = _str( data.GetStr( "GeneralSettings", "LastDeferredCallId", "0" ) ).toUInt();
-
-    int          errors = 0;
-    PStrMapVec   deferred_calls;
-    data.GetApps( "DeferredCall", deferred_calls );
-    uint         tick = Timer::FastTick();
-    DeferredCall call;
-    for( auto& pkv : deferred_calls )
+    UIntVec call_ids = DbStorage->GetAllIds( "DeferredCalls" );
+    int     errors = 0;
+    for( uint call_id : call_ids )
     {
-        auto& kv = *pkv;
+        StrMap       call_data = DbStorage->Get( "DeferredCalls", call_id );
 
-        call.Id = _str( kv[ "Id" ] ).toUInt();
-        call.FireTick = tick + _str( kv[ "Delay" ] ).toUInt();
+        DeferredCall call;
+        call.Id = _str( call_data[ "Id" ] ).toUInt();
+        call.FireTick = _str( call_data[ "FireTick" ] ).toUInt();
         RUNTIME_ASSERT( call.FireTick != 0 );
 
-        call.IsValue = ( kv.count( "Value" ) > 0 );
+        call.IsValue = ( call_data.count( "Value" ) > 0 );
         if( call.IsValue )
         {
-            call.ValueSigned = _str( kv[ "ValueSigned" ] ).compareIgnoreCase( "true" );
-            call.Value = _str( kv[ "Value" ] ).toInt();
+            call.ValueSigned = _str( call_data[ "ValueSigned" ] ).compareIgnoreCase( "true" );
+            call.Value = _str( call_data[ "Value" ] ).toInt();
         }
         else
         {
@@ -220,11 +261,11 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
             call.Value = 0;
         }
 
-        call.IsValues = ( kv.count( "Values" ) > 0 );
+        call.IsValues = ( call_data.count( "Values" ) > 0 );
         if( call.IsValues )
         {
-            call.ValuesSigned = _str( kv[ "ValuesSigned" ] ).compareIgnoreCase( "true" );
-            call.Values = _str( kv[ "Values" ] ).splitToInt( ' ' );
+            call.ValuesSigned = _str( call_data[ "ValuesSigned" ] ).compareIgnoreCase( "true" );
+            call.Values = _str( call_data[ "Values" ] ).splitToInt( ' ' );
         }
         else
         {
@@ -251,10 +292,10 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
         else
             decl = "void %s()";
 
-        call.FuncNum = Script::BindScriptFuncNumByFuncName( kv[ "Script" ].c_str(), decl );
+        call.FuncNum = Script::BindScriptFuncNumByFuncName( call_data[ "Script" ].c_str(), decl );
         if( !call.FuncNum )
         {
-            WriteLog( "Unable to find function '{}' with declaration '{}' for deferred call {}.\n", kv[ "Script" ].c_str(), decl, call.Id );
+            WriteLog( "Unable to find function '{}' with declaration '{}' for deferred call {}.\n", call_data[ "Script" ].c_str(), decl, call.Id );
             errors++;
             continue;
         }
@@ -274,37 +315,7 @@ bool ScriptInvoker::LoadDeferredCalls( IniParser& data )
     WriteLog( "Load deferred calls complete, count {}.\n", (uint) deferredCalls.size() );
     return errors == 0;
 }
-
-string ScriptInvoker::GetStatistics()
-{
-    uint   tick = Timer::FastTick();
-    string result = _str( "Deferred calls count: {}\n", (uint) deferredCalls.size() );
-    result += "Id         Delay      Saved    Function                                                              Values\n";
-    for( auto it = deferredCalls.begin(); it != deferredCalls.end(); ++it )
-    {
-        DeferredCall& call = *it;
-        string        func_name = Script::GetBindFuncName( call.BindId );
-        result += _str( "{:<10} {:<10} {:<8} {:<70}", call.Id, tick < call.FireTick ? call.FireTick - tick : 0,
-                        call.Saved ? "true" : "false", func_name.c_str() );
-        if( call.IsValue )
-        {
-            result += "Single:";
-            result += _str( " {}", call.Value );
-        }
-        else if( call.IsValues )
-        {
-            result += "Multiple:";
-            for( size_t i = 0; i < call.Values.size(); i++ )
-                result += _str( " {}", call.Values[ i ] );
-        }
-        else
-        {
-            result += "None";
-        }
-        result += "\n";
-    }
-    return result;
-}
+#endif
 
 uint ScriptInvoker::Global_DeferredCall( uint delay, asIScriptFunction* func )
 {
@@ -353,8 +364,7 @@ bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, CScriptArr
     DeferredCall   call;
     if( self->GetDeferredCallData( id, call ) )
     {
-        uint tick = Timer::FastTick();
-        delay = ( call.FireTick > tick ? call.FireTick - tick : 0 );
+        delay = ( call.FireTick > GameOpt.FullSecond ? call.FireTick - GameOpt.FullSecond : 0 ) / Globals->GetTimeMultiplier();
         if( values )
         {
             if( call.IsValue )

@@ -2,21 +2,23 @@
 #include "IniParser.h"
 #include <mongoc.h>
 
+DataBase* DbStorage;
+
 class DbDisk: public DataBase
 {
     string dir;
 
 public:
-    DbDisk( const string& collection_name, const string& connection_info )
+    DbDisk( const string& storage_dir )
     {
-        dir = _str( connection_info ).split( ' ' )[ 1 ] + "/" + collection_name;
+        dir = storage_dir;
     }
 
-    virtual UIntVec GetAllIds() override
+    virtual UIntVec GetAllIds( const string& collection_name ) override
     {
         UIntVec ids;
         StrVec  paths;
-        FileManager::GetFolderFileNames( dir, false, "txt", paths );
+        FileManager::GetFolderFileNames( dir + "/" + collection_name + "/", false, "txt", paths );
         ids.reserve( paths.size() );
         for( const string& path : paths )
         {
@@ -28,47 +30,41 @@ public:
         return ids;
     }
 
-    virtual StrMap Get( uint id ) override
+    virtual StrMap Get( const string& collection_name, uint id ) override
     {
         IniParser ini;
-        ini.AppendFile( _str( "{}/{}.txt", dir, id ) );
+        ini.AppendFile( _str( "{}/{}/{}.txt", dir, collection_name, id ) );
         if( ini.IsLoaded() )
             return ini.GetApp( "" );
         return StrMap();
     }
 
-    virtual bool Insert( uint id, const StrMap& data ) override
+    virtual bool Insert( const string& collection_name, uint id, const StrMap& data ) override
     {
         IniParser ini;
         ini.SetApp( "" ) = data;
-        return ini.SaveFile( _str( "{}/{}.txt", dir, id ) );
+        return ini.SaveFile( _str( "{}/{}/{}.txt", dir, collection_name, id ) );
     }
 
-    virtual bool Update( uint id, const StrMap& data, const StrSet* remove_fields ) override
+    virtual bool Update( const string& collection_name, uint id, const StrMap& data ) override
     {
-        StrMap actual_data = Get( id );
+        StrMap actual_data = Get( collection_name, id );
         for( const auto& kv : data )
             actual_data[ kv.first ] = kv.second;
 
-        if( remove_fields )
-            for( const string& f :* remove_fields )
-                actual_data.erase( f );
-
         IniParser ini;
         ini.SetApp( "" ) = actual_data;
-        return ini.SaveFile( _str( "{}/{}.txt", dir, id ) );
+        return ini.SaveFile( _str( "{}/{}/{}.txt", dir, collection_name, id ) );
     }
 
-    virtual bool Delete( uint id ) override
+    virtual bool Delete( const string& collection_name, uint id ) override
     {
-        return FileManager::DeleteFile( _str( "{}/{}.txt", dir, id ) );
+        return FileManager::DeleteFile( _str( "{}/{}/{}.txt", dir, collection_name, id ) );
     }
 };
 
 class DbMongo: public DataBase
 {
-    string               dir;
-
     const char*          uri_str = "mongodb://localhost:27017";
     mongoc_client_t*     client;
     mongoc_database_t*   database;
@@ -107,34 +103,47 @@ class DbMongo: public DataBase
         // }
     }
 
-    virtual UIntVec GetAllIds() override
+    virtual UIntVec GetAllIds( const string& collection_name ) override
     {
         UIntVec ids;
         return ids;
     }
 
-    virtual StrMap Get( uint id ) override
+    virtual StrMap Get( const string& collection_name, uint id ) override
     {
         return StrMap();
     }
 
-    virtual bool Insert( uint id, const StrMap& data ) override
+    virtual bool Insert( const string& collection_name, uint id, const StrMap& data ) override
     {
         return false;
     }
 
-    virtual bool Update( uint id, const StrMap& data, const StrSet* remove_fields ) override
+    virtual bool Update( const string& collection_name, uint id, const StrMap& data ) override
     {
         return false;
     }
 
-    virtual bool Delete( uint id ) override
+    virtual bool Delete( const string& collection_name, uint id ) override
     {
         return false;
     }
 };
 
-DataBase* GetDataBase( const string& collection_name, const string& connection_info )
+DataBase* GetDataBase( const string& connection_info )
 {
-    return new DbDisk( collection_name, connection_info );
+    auto entries = _str( connection_info ).split( ' ' );
+    if( entries.size() != 2 )
+    {
+        WriteLog( "Wrong connection info '{}'.\n", connection_info );
+        return nullptr;
+    }
+
+    if( entries[ 0 ] == "Disk" )
+        return new DbDisk( entries[ 1 ] );
+    else if( entries[ 0 ] == "Mongo" )
+        return new DbMongo();
+
+    WriteLog( "Wrong connection info '{}'.\n", connection_info );
+    return nullptr;
 }

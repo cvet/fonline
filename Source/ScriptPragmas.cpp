@@ -382,6 +382,14 @@ public:
         EntityCreator* entity_creator = entityCreators[ class_name ];
         return entity_creator->RestoreEntity( id, props_data );
     }
+
+    StrVec GetTypeNames()
+    {
+        StrVec result;
+        for( auto& creator : entityCreators )
+            result.push_back( creator.first );
+        return result;
+    }
 };
 
 // #pragma property "MyObject Virtual int PropName Default = 100 Min = 10 Max = 50 Random = true"
@@ -1788,7 +1796,12 @@ PropertyRegistrator** ScriptPragmaCallback::GetPropertyRegistrators()
     return propertyPragma->GetPropertyRegistrators();
 }
 
-bool ScriptPragmaCallback::RestoreEntity( const string& class_name, uint id, const StrMap& props_data )
+StrVec ScriptPragmaCallback::GetCustomEntityTypes()
+{
+    return entityPragma->GetTypeNames();
+}
+
+bool ScriptPragmaCallback::RestoreCustomEntity( const string& class_name, uint id, const StrMap& props_data )
 {
     return entityPragma->RestoreEntity( class_name, id, props_data );
 }

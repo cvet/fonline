@@ -7,8 +7,6 @@
 
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
 
-DataBase*                 FOServer::DbPlayers;
-DataBase*                 FOServer::DbEntities;
 int                       FOServer::UpdateIndex = -1;
 int                       FOServer::UpdateLastIndex = -1;
 uint                      FOServer::UpdateLastTick;
@@ -186,7 +184,7 @@ void FOServer::RemoveClient( Client* cl )
         if( full_delete )
         {
             cl->DeleteInventory();
-            DbPlayers->Delete( cl->Id );
+            DbStorage->Delete( "Players", cl->Id );
         }
 
         cl->Release();
@@ -928,7 +926,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
         CHECK_ALLOW_COMMAND;
 
         uint id = MAKE_CLIENT_ID( name );
-        if( !DbPlayers->Get( id ).empty() )
+        if( !DbStorage->Get( "Players", id ).empty() )
             logcb( _str( "Client id is {}.", id ) );
         else
             logcb( "Client not found." );
@@ -1866,11 +1864,8 @@ bool FOServer::InitReal()
     ConnectedClients.reserve( MAX_CLIENTS_IN_GAME );
 
     // Data base
-    DbPlayers = GetDataBase( "Players", MainConfig->GetStr( "", "DbStorage" ) ); // "mongodb://localhost:27017");
-    if( !DbPlayers )
-        return false;
-    DbEntities = GetDataBase( "Entities", MainConfig->GetStr( "", "DbStorage" ) );
-    if( !DbEntities )
+    DbStorage = GetDataBase( MainConfig->GetStr( "", "DbStorage", "Disk Storage" ) );
+    if( !DbStorage )
         return false;
 
     PropertyRegistrator::GlobalSetCallbacks.push_back( EntitySetValue );
@@ -1901,17 +1896,38 @@ bool FOServer::InitReal()
     if( !Script::PostInitScriptSystem() )
         return false;
 
-    // Modules initialization
-    Timer::UpdateTick();
-    if( !Script::RunModuleInitFunctions() )
-        return false;
-
     // Update files
     StrVec resource_names;
     GenerateUpdateFiles( true, &resource_names );
 
     // Validate protos resources
     if( !ProtoMngr.ValidateProtoResources( resource_names ) )
+        return false;
+
+    // Load globals
+    StrMap globals_data = DbStorage->Get( "Globals", 1 );
+    if( !globals_data.empty() )
+    {
+        if( !Globals->Props.LoadFromText( globals_data ) )
+        {
+            WriteLog( "Failed to load globals data.\n" );
+            return false;
+        }
+
+        Globals->SetId( 1 );
+    }
+
+    // Restore hashes
+    if( Globals->Id != 0 )
+        _str::loadHashes();
+
+    // Deferred calls
+    if( Globals->Id != 0 && !Script::LoadDeferredCalls() )
+        return false;
+
+    // Modules initialization
+    Timer::UpdateTick();
+    if( !Script::RunModuleInitFunctions() )
         return false;
 
     // Initialization script
@@ -1922,8 +1938,8 @@ bool FOServer::InitReal()
         return false;
     }
 
-    // World loading
-    if( Globals->GetYearStart() == 0 )
+    // Init world
+    if( Globals->Id == 0 )
     {
         // Generate world
         if( !Script::RaiseInternalEvent( ServerFunctions.GenerateWorld ) )
@@ -1932,25 +1948,15 @@ bool FOServer::InitReal()
             return false;
         }
 
-        // Start script
-        if( !Script::RaiseInternalEvent( ServerFunctions.Start ) )
-        {
-            WriteLog( "Start script failed.\n" );
-            return false;
-        }
+        // Globals initial save
+        Globals->SetId( 1 );
+        StrMap globals_data;
+        Globals->Props.SaveToText( globals_data, nullptr );
+        DbStorage->Insert( "Globals", Globals->Id, globals_data );
     }
     else
     {
-        WriteLog( "Load world.\n" );
-
-        Timer::UpdateTick();
-
-        // _str::loadHashes( data.GetApp( "Hashes" ) );
-        // if( !Script::LoadDeferredCalls( data ) )
-        //    return false;
-        // if( !Globals->Props.LoadFromText( data.GetApp( "Global" ) ) )
-        //    return false;
-
+        // World loading
         if( !EntityMngr.LoadEntities() )
             return false;
     }
@@ -2422,8 +2428,21 @@ void FOServer::EntitySetValue( Entity* entity, Property* prop, void* cur_value, 
 
     StrMap updated_data;
     updated_data[ prop->GetName() ] = entity->Props.SavePropertyToText( prop );
-    if( entity->Type == EntityType::Client )
-        DbPlayers->Update( entity->Id, updated_data, nullptr );
+
+    if( entity->Type == EntityType::Location )
+        DbStorage->Update( "Locations", entity->Id, updated_data );
+    else if( entity->Type == EntityType::Map )
+        DbStorage->Update( "Maps", entity->Id, updated_data );
+    else if( entity->Type == EntityType::Npc )
+        DbStorage->Update( "Critters", entity->Id, updated_data );
+    else if( entity->Type == EntityType::Item )
+        DbStorage->Update( "Items", entity->Id, updated_data );
+    else if( entity->Type == EntityType::Custom )
+        DbStorage->Update( entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id, updated_data );
+    else if( entity->Type == EntityType::Client )
+        DbStorage->Update( "Players", entity->Id, updated_data );
+    else if( entity->Type == EntityType::Global )
+        DbStorage->Update( "Globals", entity->Id, updated_data );
     else
-        DbEntities->Update( entity->Id, updated_data, nullptr );
+        RUNTIME_ASSERT( !"Unreachable place" );
 }

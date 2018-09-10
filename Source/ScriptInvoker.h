@@ -24,7 +24,6 @@ class ScriptInvoker
     friend class Script;
 
 private:
-    uint             lastDeferredCallId;
     DeferredCallList deferredCalls;
 
     ScriptInvoker();
@@ -35,9 +34,11 @@ private:
     void   GetDeferredCallsList( IntVec& ids );
     void   Process();
     void   RunDeferredCall( DeferredCall& call );
-    void   SaveDeferredCalls( IniParser& data );
-    bool   LoadDeferredCalls( IniParser& data );
     string GetStatistics();
+
+    #ifdef FONLINE_SERVER
+    bool LoadDeferredCalls();
+    #endif
 
 public:
     static uint Global_DeferredCall( uint delay, asIScriptFunction* func );
