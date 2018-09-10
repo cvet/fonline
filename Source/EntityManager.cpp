@@ -544,7 +544,7 @@ void EntityManager::InitAfterLoad()
         }
     }
 
-    WriteLog( "Init entites after load complete.\n" );
+    WriteLog( "Init entities after load complete.\n" );
 }
 
 void EntityManager::ClearEntities()
