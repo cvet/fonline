@@ -459,13 +459,7 @@ void FOServer::Process_CreateClient( Client* cl )
     // First save
     StrMap data;
     cl->Props.SaveToText( data, &cl->Proto->Props );
-    if( !DbStorage->Insert( "Players", id, data ) )
-    {
-        WriteLog( "First save fail.\n" );
-        cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );
-        cl->Disconnect();
-        return;
-    }
+    DbStorage->Insert( "Players", id, data );
 
     // Notify
     cl->Send_TextMsg( cl, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );

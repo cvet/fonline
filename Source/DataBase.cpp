@@ -1,19 +1,21 @@
 #include "DataBase.h"
 #include "IniParser.h"
-#include "FileSystem.h"
-#include <mongoc.h>
+#include "unqlite.h"
+#include "mongoc.h"
 
 DataBase* DbStorage;
 
-class DbDisk: public DataBase
+class DbDiskTxt: public DataBase
 {
-    string dir;
+    string storageDir;
 
 public:
-    static DbDisk* Create( const string& storage_dir )
+    static DbDiskTxt* Create( const string& storage_dir )
     {
-        DbDisk* dbDisk = new DbDisk();
-        dbDisk->dir = storage_dir;
+        FileManager::CreateDirectoryTree( storage_dir + "/" );
+
+        DbDiskTxt* dbDisk = new DbDiskTxt();
+        dbDisk->storageDir = storage_dir;
         return dbDisk;
     }
 
@@ -21,14 +23,14 @@ public:
     {
         UIntVec ids;
         StrVec  paths;
-        FileManager::GetFolderFileNames( dir + "/" + collection_name + "/", false, "txt", paths );
+        FileManager::GetFolderFileNames( storageDir + "/" + collection_name + "/", false, "txt", paths );
         ids.reserve( paths.size() );
         for( const string& path : paths )
         {
             string id_str = _str( path ).extractFileName().eraseFileExtension();
             uint   id = _str( id_str ).toUInt();
-            if( id )
-                ids.push_back( id );
+            RUNTIME_ASSERT( id );
+            ids.push_back( id );
         }
         return ids;
     }
@@ -36,168 +38,261 @@ public:
     virtual StrMap Get( const string& collection_name, uint id ) override
     {
         IniParser ini;
-        ini.AppendFile( _str( "{}/{}/{}.txt", dir, collection_name, id ) );
+        ini.AppendFile( _str( "{}/{}/{}.txt", storageDir, collection_name, id ) );
         if( ini.IsLoaded() )
             return ini.GetApp( "" );
         return StrMap();
     }
 
-    virtual bool Insert( const string& collection_name, uint id, const StrMap& data ) override
+    virtual void Insert( const string& collection_name, uint id, const StrMap& data ) override
     {
         StrMap actual_data = Get( collection_name, id );
-        if( !actual_data.empty() )
-            return false;
+        RUNTIME_ASSERT( actual_data.empty() );
 
         IniParser ini;
         ini.SetApp( "" ) = data;
-        return ini.SaveFile( _str( "{}/{}/{}.txt", dir, collection_name, id ) );
+        bool      txt_saved = ini.SaveFile( _str( "{}/{}/{}.txt", storageDir, collection_name, id ) );
+        RUNTIME_ASSERT( txt_saved );
     }
 
-    virtual bool Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
+    virtual void Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
     {
         StrMap actual_data = Get( collection_name, id );
         if( actual_data.empty() && !upsert )
-            return false;
+            return;
 
         for( const auto& kv : data )
             actual_data[ kv.first ] = kv.second;
 
         IniParser ini;
         ini.SetApp( "" ) = actual_data;
-        return ini.SaveFile( _str( "{}/{}/{}.txt", dir, collection_name, id ) );
+        bool      txt_saved = ini.SaveFile( _str( "{}/{}/{}.txt", storageDir, collection_name, id ) );
+        RUNTIME_ASSERT( txt_saved );
     }
 
-    virtual bool Delete( const string& collection_name, uint id ) override
+    virtual void Delete( const string& collection_name, uint id ) override
     {
-        return FileManager::DeleteFile( _str( "{}/{}/{}.txt", dir, collection_name, id ) );
+        bool txt_deleted = FileManager::DeleteFile( _str( "{}/{}/{}.txt", storageDir, collection_name, id ) );
+        RUNTIME_ASSERT( txt_deleted );
     }
 };
 
-
-class DbDiskV2: public DataBase
+class DbUnQLite: public DataBase
 {
-    string dir;
+    string                  storageDir;
+    map< string, unqlite* > collections;
 
 public:
-    static DbDiskV2* Create( const string& storage_dir )
+    static DbUnQLite* Create( const string& storage_dir )
     {
-        DbDiskV2* dbDisk = new DbDiskV2();
-        dbDisk->dir = storage_dir;
-        return dbDisk;
+        FileManager::CreateDirectoryTree( storage_dir + "/" );
+
+        unqlite* ping_db;
+        string   ping_db_path = storage_dir + "/Ping.unqlite";
+        int      r = unqlite_open( &ping_db, ping_db_path.c_str(), UNQLITE_OPEN_CREATE );
+        if( r != UNQLITE_OK )
+        {
+            WriteLog( "UnQLite : Can't open db at '{}'.\n", ping_db_path );
+            return nullptr;
+        }
+
+        uint ping = 42;
+        if( unqlite_kv_store( ping_db, &ping, sizeof( ping ), &ping, sizeof( ping ) ) != UNQLITE_OK )
+        {
+            WriteLog( "UnQLite : Can't write to db at '{}'.\n", ping_db_path );
+            unqlite_close( ping_db );
+            return nullptr;
+        }
+
+        unqlite_close( ping_db );
+        FileManager::DeleteFile( ping_db_path );
+
+        DbUnQLite* dbUnQLite = new DbUnQLite();
+        dbUnQLite->storageDir = storage_dir;
+        return dbUnQLite;
+    }
+
+    ~DbUnQLite()
+    {
+        for( auto& kv : collections )
+            unqlite_close( kv.second );
+        collections.clear();
     }
 
     virtual UIntVec GetAllIds( const string& collection_name ) override
     {
-        UIntSet ids;
-        StrVec  paths;
-        FileManager::GetFolderFileNames( dir + "/" + collection_name + "/", false, "", paths );
-        for( const string& path : paths )
+        unqlite* db = GetCollection( collection_name );
+        RUNTIME_ASSERT( db );
+
+        unqlite_kv_cursor* cursor;
+        int                kv_cursor_init = unqlite_kv_cursor_init( db, &cursor );
+        RUNTIME_ASSERT( kv_cursor_init == UNQLITE_OK );
+
+        int kv_cursor_first_entry = unqlite_kv_cursor_first_entry( cursor );
+        RUNTIME_ASSERT( kv_cursor_first_entry == UNQLITE_OK );
+
+        UIntVec ids;
+        while( unqlite_kv_cursor_valid_entry( cursor ) )
         {
-            string id_str = _str( path ).getFileExtension();
-            uint   id = _str( id_str ).toUInt();
-            if( id )
-                ids.insert( id );
+            uint id;
+            int  kv_cursor_key_callback = unqlite_kv_cursor_key_callback( cursor,
+                                                                          [] ( const void* output, unsigned int output_len, void* user_data )
+                                                                          {
+                                                                              RUNTIME_ASSERT( output_len == sizeof( uint ) );
+                                                                              *(uint*) user_data = *(uint*) output;
+                                                                              return UNQLITE_OK;
+                                                                          }, &id );
+            RUNTIME_ASSERT( kv_cursor_key_callback == UNQLITE_OK );
+            RUNTIME_ASSERT( id != 0 );
+
+            ids.push_back( id );
+
+            int kv_cursor_next_entry = unqlite_kv_cursor_next_entry( cursor );
+            RUNTIME_ASSERT( kv_cursor_next_entry == UNQLITE_OK );
         }
 
-        UIntVec ids_vec;
-        ids_vec.reserve( ids.size() );
-        for( uint id : ids )
-            ids_vec.push_back( id );
-
-        return ids_vec;
+        return ids;
     }
 
     virtual StrMap Get( const string& collection_name, uint id ) override
     {
-        StrVec paths;
-        FileManager::GetFolderFileNames( dir + "/" + collection_name + "/", false, _str( "{}", id ), paths );
+        unqlite* db = GetCollection( collection_name );
+        RUNTIME_ASSERT( db );
 
         StrMap data;
-        for( const string& path : paths )
-        {
-            void* f = FileOpen( path, false );
-            RUNTIME_ASSERT( f );
+        int    kv_fetch_callback = unqlite_kv_fetch_callback( db, &id, sizeof( id ),
+                                                              [] ( const void* output, unsigned int output_len, void* user_data )
+                                                              {
+                                                                  bson_t bson;
+                                                                  bool init_static = bson_init_static( &bson, (const uint8_t*) output, output_len );
+                                                                  RUNTIME_ASSERT( init_static );
 
-            uint   size = FileGetSize( f );
-            string value( size, ' ' );
+                                                                  bson_iter_t iter;
+                                                                  bool iter_init = bson_iter_init( &iter, &bson );
+                                                                  RUNTIME_ASSERT( iter_init );
 
-            if( size > 0 )
-            {
-                bool file_read = FileRead( f, &value[ 0 ], size );
-                RUNTIME_ASSERT( file_read );
-            }
+                                                                  StrMap& data = *(StrMap*) user_data;
+                                                                  while( bson_iter_next( &iter ) )
+                                                                  {
+                                                                      string key = bson_iter_key( &iter );
 
-            string key = _str( path ).extractFileName().eraseFileExtension();
-            data.insert( std::make_pair( key, value ) );
+                                                                      const bson_value_t* bson_value = bson_iter_value( &iter );
+                                                                      RUNTIME_ASSERT( bson_value->value_type == BSON_TYPE_UTF8 );
 
-            FileClose( f );
-        }
+                                                                      string value;
+                                                                      value.assign( bson_value->value.v_utf8.str, bson_value->value.v_utf8.len );
+
+                                                                      data.insert( std::make_pair( std::move( key ), std::move( value ) ) );
+                                                                  }
+
+                                                                  return UNQLITE_OK;
+                                                              }, &data );
+        RUNTIME_ASSERT( kv_fetch_callback == UNQLITE_OK || kv_fetch_callback == UNQLITE_NOTFOUND );
 
         return data;
     }
 
-    virtual bool Insert( const string& collection_name, uint id, const StrMap& data ) override
+    virtual void Insert( const string& collection_name, uint id, const StrMap& data ) override
     {
-        StrVec paths;
-        FileManager::GetFolderFileNames( dir + "/" + collection_name + "/", false, _str( "{}", id ), paths );
-        if( !paths.empty() )
-            return false;
+        unqlite* db = GetCollection( collection_name );
+        RUNTIME_ASSERT( db );
+
+        int kv_fetch_callback = unqlite_kv_fetch_callback( db, &id, sizeof( id ),
+                                                           [] ( const void*, unsigned int, void* )
+                                                           {
+                                                               return UNQLITE_OK;
+                                                           }, nullptr );
+        RUNTIME_ASSERT( kv_fetch_callback == UNQLITE_NOTFOUND );
+
+        bson_t bson;
+        bson_init( &bson );
 
         for( auto& kv : data )
         {
-            void* f = FileOpen( _str( "{}/{}/{}.{}", dir, collection_name, kv.first, id ), true );
-            RUNTIME_ASSERT( f );
-
-            if( !kv.second.empty() )
-            {
-                bool file_write = FileWrite( f, &kv.second[ 0 ], (uint) kv.second.length() );
-                RUNTIME_ASSERT( file_write );
-            }
-
-            FileClose( f );
+            bool append_utf8 = bson_append_utf8( &bson, kv.first.c_str(),
+                                                 (int) kv.first.length(), kv.second.c_str(), (int) kv.second.length() );
+            RUNTIME_ASSERT( append_utf8 );
         }
 
-        return true;
+        const uint8_t* bson_data = bson_get_data( &bson );
+        RUNTIME_ASSERT( bson_data );
+
+        int kv_store = unqlite_kv_store( db, &id, sizeof( id ), bson_data, bson.len );
+        RUNTIME_ASSERT( kv_store == UNQLITE_OK );
+
+        int commit = unqlite_commit( db );
+        RUNTIME_ASSERT( commit == UNQLITE_OK );
+
+        bson_destroy( &bson );
     }
 
-    virtual bool Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
+    virtual void Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
     {
-        StrVec paths;
-        FileManager::GetFolderFileNames( dir + "/" + collection_name + "/", false, _str( "{}", id ), paths );
-        if( paths.empty() && !upsert )
-            return false;
+        unqlite* db = GetCollection( collection_name );
+        RUNTIME_ASSERT( db );
+
+        StrMap actual_data = Get( collection_name, id );
+        RUNTIME_ASSERT( !actual_data.empty() || upsert );
+
+        bson_t bson;
+        bson_init( &bson );
 
         for( auto& kv : data )
+            actual_data[ kv.first ] = kv.second;
+
+        for( auto& kv : actual_data )
         {
-            void* f = FileOpen( _str( "{}/{}/{}.{}", dir, collection_name, kv.first, id ), true );
-            RUNTIME_ASSERT( f );
-
-            if( !kv.second.empty() )
-            {
-                bool file_write = FileWrite( f, &kv.second[ 0 ], (uint) kv.second.length() );
-                RUNTIME_ASSERT( file_write );
-            }
-
-            FileClose( f );
+            bool append_utf8 = bson_append_utf8( &bson, kv.first.c_str(),
+                                                 (int) kv.first.length(), kv.second.c_str(), (int) kv.second.length() );
+            RUNTIME_ASSERT( append_utf8 );
         }
 
-        return true;
+        const uint8_t* bson_data = bson_get_data( &bson );
+        RUNTIME_ASSERT( bson_data );
+
+        int kv_store = unqlite_kv_store( db, &id, sizeof( id ), bson_data, bson.len );
+        RUNTIME_ASSERT( kv_store == UNQLITE_OK );
+
+        int commit = unqlite_commit( db );
+        RUNTIME_ASSERT( commit == UNQLITE_OK );
+
+        bson_destroy( &bson );
     }
 
-    virtual bool Delete( const string& collection_name, uint id ) override
+    virtual void Delete( const string& collection_name, uint id ) override
     {
-        StrVec paths;
-        FileManager::GetFolderFileNames( dir + "/" + collection_name + "/", false, _str( "{}", id ), paths );
-        if( paths.empty() )
-            return false;
+        unqlite* db = GetCollection( collection_name );
+        RUNTIME_ASSERT( db );
 
-        for( const string& path : paths )
+        int kv_delete = unqlite_kv_delete( db, &id, sizeof( id ) );
+        RUNTIME_ASSERT( kv_delete == UNQLITE_OK );
+
+        int commit = unqlite_commit( db );
+        RUNTIME_ASSERT( commit == UNQLITE_OK );
+    }
+
+private:
+    unqlite* GetCollection( const string& collection_name )
+    {
+        unqlite* db;
+        auto     it = collections.find( collection_name );
+        if( it == collections.end() )
         {
-            bool file_delete = FileDelete( path );
-            RUNTIME_ASSERT( file_delete );
-        }
+            string db_path = _str( "{}/{}.unqlite", storageDir, collection_name );
+            int    r = unqlite_open( &db, db_path.c_str(), UNQLITE_OPEN_CREATE );
+            if( r != UNQLITE_OK )
+            {
+                WriteLog( "UnQLite : Can't open db at '{}'.\n", collection_name );
+                return nullptr;
+            }
 
-        return true;
+            collections.insert( std::make_pair( collection_name, db ) );
+        }
+        else
+        {
+            db = it->second;
+        }
+        return db;
     }
 };
 
@@ -217,14 +312,14 @@ public:
         mongoc_uri_t* mongo_uri = mongoc_uri_new_with_error( uri.c_str(), &error );
         if( !mongo_uri )
         {
-            WriteLog( "Mongo: failed to parse URI: {}, error: {}.\n", uri, error.message );
+            WriteLog( "Mongo : Failed to parse URI: {}, error: {}.\n", uri, error.message );
             return nullptr;
         }
 
         mongoc_client_t* client = mongoc_client_new_from_uri( mongo_uri );
         if( !client )
         {
-            WriteLog( "Mongo: can't create client.\n" );
+            WriteLog( "Mongo : Can't create client.\n" );
             return nullptr;
         }
 
@@ -234,7 +329,7 @@ public:
         mongoc_database_t* database = mongoc_client_get_database( client, db_name.c_str() );
         if( !database )
         {
-            WriteLog( "Mongo: can't get database '{}'.\n", db_name );
+            WriteLog( "Mongo : Can't get database '{}'.\n", db_name );
             return nullptr;
         }
 
@@ -243,7 +338,7 @@ public:
         bson_t  reply;
         if( !mongoc_client_command_simple( client, "admin", ping, nullptr, &reply, &error ) )
         {
-            WriteLog( "Mongo: can't ping database, error: {}.\n", error.message );
+            WriteLog( "Mongo : Can't ping database, error: {}.\n", error.message );
             return nullptr;
         }
 
@@ -268,8 +363,7 @@ public:
     virtual UIntVec GetAllIds( const string& collection_name ) override
     {
         mongoc_collection_t* collection = GetCollection( collection_name );
-        if( !collection )
-            return UIntVec();
+        RUNTIME_ASSERT( collection );
 
         bson_t fields;
         bson_init( &fields );
@@ -292,29 +386,14 @@ public:
             RUNTIME_ASSERT( iter_init );
             bool        iter_next = bson_iter_next( &iter );
             RUNTIME_ASSERT( iter_next );
-
-            if( bson_iter_type( &iter ) != BSON_TYPE_INT32 )
-            {
-                WriteLog( "Mongo: non int32 '_id' in collection '{}' during get all ids.\n", collection_name );
-                mongoc_cursor_destroy( cursor );
-                bson_destroy( &query );
-                bson_destroy( &fields );
-                return UIntVec();
-            }
+            RUNTIME_ASSERT( bson_iter_type( &iter ) == BSON_TYPE_INT32 );
 
             uint id = bson_iter_int32( &iter );
             ids.push_back( id );
         }
 
         bson_error_t error;
-        if( mongoc_cursor_error( cursor, &error ) )
-        {
-            WriteLog( "Mongo: an error occurred during get all ids: {}.\n", error.message );
-            mongoc_cursor_destroy( cursor );
-            bson_destroy( &query );
-            bson_destroy( &fields );
-            return UIntVec();
-        }
+        RUNTIME_ASSERT_STR( !mongoc_cursor_error( cursor, &error ), error.message );
 
         mongoc_cursor_destroy( cursor );
         bson_destroy( &query );
@@ -325,8 +404,7 @@ public:
     virtual StrMap Get( const string& collection_name, uint id ) override
     {
         mongoc_collection_t* collection = GetCollection( collection_name );
-        if( !collection )
-            return StrMap();
+        RUNTIME_ASSERT( collection );
 
         bson_t query;
         bson_init( &query );
@@ -353,26 +431,14 @@ public:
 
             if( key[ 0 ] == '_' && key[ 1 ] == 'i' && key[ 2 ] == 'd' )
             {
-                if( bson_iter_type( &iter ) != BSON_TYPE_INT32 )
-                {
-                    WriteLog( "Mongo: non int32 '_id' in collection '{}' during get document.\n", collection_name );
-                    mongoc_cursor_destroy( cursor );
-                    bson_destroy( &query );
-                    return StrMap();
-                }
+                RUNTIME_ASSERT( bson_iter_type( &iter ) == BSON_TYPE_INT32 );
 
                 uint document_id = bson_iter_int32( &iter );
                 RUNTIME_ASSERT( id == document_id );
             }
             else
             {
-                if( bson_iter_type( &iter ) != BSON_TYPE_UTF8 )
-                {
-                    WriteLog( "Mongo: non string value in collection '{}' during get document.\n", collection_name );
-                    mongoc_cursor_destroy( cursor );
-                    bson_destroy( &query );
-                    return StrMap();
-                }
+                RUNTIME_ASSERT( bson_iter_type( &iter ) == BSON_TYPE_UTF8 );
 
                 uint32_t    length;
                 const char* str = bson_iter_utf8( &iter, &length );
@@ -390,11 +456,10 @@ public:
         return data;
     }
 
-    virtual bool Insert( const string& collection_name, uint id, const StrMap& data ) override
+    virtual void Insert( const string& collection_name, uint id, const StrMap& data ) override
     {
         mongoc_collection_t* collection = GetCollection( collection_name );
-        if( !collection )
-            return false;
+        RUNTIME_ASSERT( collection );
 
         bson_t insert;
         bson_init( &insert );
@@ -410,22 +475,16 @@ public:
         }
 
         bson_error_t error;
-        if( !mongoc_collection_insert( collection, MONGOC_INSERT_NONE, &insert, nullptr, &error ) )
-        {
-            WriteLog( "Mongo: can't insert document in '{}', error: {}.\n", collection_name, error.message );
-            bson_destroy( &insert );
-            return false;
-        }
+        bool         collection_insert = mongoc_collection_insert( collection, MONGOC_INSERT_NONE, &insert, nullptr, &error );
+        RUNTIME_ASSERT_STR( collection_insert, error.message );
 
         bson_destroy( &insert );
-        return true;
     }
 
-    virtual bool Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
+    virtual void Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
     {
         mongoc_collection_t* collection = GetCollection( collection_name );
-        if( !collection )
-            return false;
+        RUNTIME_ASSERT( collection );
 
         bson_t selector;
         bson_init( &selector );
@@ -451,26 +510,18 @@ public:
         RUNTIME_ASSERT( append_document_end );
 
         bson_error_t error;
-        if( !mongoc_collection_update( collection, upsert ? MONGOC_UPDATE_UPSERT : MONGOC_UPDATE_NONE, &selector, &update, nullptr, &error ) )
-        {
-            WriteLog( "Mongo: can't update document in '{}'.\n", collection_name );
-            bson_destroy( &selector );
-            bson_destroy( &update );
-            bson_destroy( &update_set );
-            return false;
-        }
+        bool         collection_update = mongoc_collection_update( collection, upsert ? MONGOC_UPDATE_UPSERT : MONGOC_UPDATE_NONE, &selector, &update, nullptr, &error );
+        RUNTIME_ASSERT_STR( collection_update, error.message );
 
         bson_destroy( &selector );
         bson_destroy( &update );
         bson_destroy( &update_set );
-        return true;
     }
 
-    virtual bool Delete( const string& collection_name, uint id ) override
+    virtual void Delete( const string& collection_name, uint id ) override
     {
         mongoc_collection_t* collection = GetCollection( collection_name );
-        if( !collection )
-            return false;
+        RUNTIME_ASSERT( collection );
 
         bson_t selector;
         bson_init( &selector );
@@ -479,15 +530,10 @@ public:
         RUNTIME_ASSERT( append_int32 );
 
         bson_error_t error;
-        if( !mongoc_collection_remove( collection, MONGOC_REMOVE_SINGLE_REMOVE, &selector, nullptr, &error ) )
-        {
-            WriteLog( "Mongo: can't delete document in '{}'.\n", collection_name );
-            bson_destroy( &selector );
-            return false;
-        }
+        bool         collection_remove = mongoc_collection_remove( collection, MONGOC_REMOVE_SINGLE_REMOVE, &selector, nullptr, &error );
+        RUNTIME_ASSERT_STR( collection_remove, error.message );
 
         bson_destroy( &selector );
-        return true;
     }
 
 private:
@@ -500,7 +546,7 @@ private:
             collection = mongoc_client_get_collection( client, databaseName.c_str(), collection_name.c_str() );
             if( !collection )
             {
-                WriteLog( "Mongo: can't get collection '{}'.\n", collection_name );
+                WriteLog( "Mongo : Can't get collection '{}'.\n", collection_name );
                 return nullptr;
             }
 
@@ -516,28 +562,14 @@ private:
 
 DataBase* GetDataBase( const string& connection_info )
 {
-    auto entries = _str( connection_info ).split( ' ' );
-    if( entries[ 0 ] == "Disk" )
-    {
-        if( entries.size() != 2 )
-        {
-            WriteLog( "Wrong disk settings '{}'.\n", connection_info );
-            return nullptr;
-        }
+    auto options = _str( connection_info ).split( ' ' );
+    if( options[ 0 ] == "DiskTxt" && options.size() == 2 )
+        return DbDiskTxt::Create( options[ 1 ] );
+    else if( options[ 0 ] == "UnQLite" && options.size() == 2 )
+        return DbUnQLite::Create( options[ 1 ] );
+    else if( options[ 0 ] == "Mongo" && options.size() == 3 )
+        return DbMongo::Create( options[ 1 ], options[ 2 ] );
 
-        return DbDisk::Create( entries[ 1 ] );
-    }
-    else if( entries[ 0 ] == "Mongo" )
-    {
-        if( entries.size() != 3 )
-        {
-            WriteLog( "Wrong mongo settings '{}'.\n", connection_info );
-            return nullptr;
-        }
-
-        return DbMongo::Create( entries[ 1 ], entries[ 2 ] );
-    }
-
-    WriteLog( "Wrong data base connection info '{}'.\n", connection_info );
+    WriteLog( "Storage : Wrong data base connection info '{}'.\n", connection_info );
     return nullptr;
 }
