@@ -25,11 +25,11 @@ sudo apt-get -y update
 sudo apt-get -y install go-agent
 sudo gedit /etc/default/go-agent GO_SERVER=...
 sudo adduser go sudo
-sudo su go
-svn info --username gocd --password fgt43trfcvq23 https://cvet.by:8443/svn/FOnlineSource
 sudo -i
 echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-reboot
+exit
+sudo su go
+svn info --username gocd --password fgt43trfcvq23 https://cvet.by:8443/svn/FOnlineSource
 sudo /etc/init.d/go-agent start [start|stop|status|restart]
 
 Setup Mac:
