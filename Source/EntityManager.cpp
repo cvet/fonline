@@ -26,7 +26,7 @@ void EntityManager::RegisterEntity( Entity* entity )
         if( entity->Proto )
         {
             entity->Props.SaveToText( data, &entity->Proto->Props );
-            data[ "$Proto" ] = entity->Proto->GetName();
+            data[ "_Proto" ] = entity->Proto->GetName();
         }
         else
         {
@@ -242,7 +242,7 @@ bool EntityManager::LoadEntities()
         for( uint id : ids )
         {
             StrMap data = DbStorage->Get( collection_name, id );
-            auto   proto_it = data.find( "$Proto" );
+            auto   proto_it = data.find( "_Proto" );
             hash   proto_id = ( proto_it != data.end() ? _str( proto_it->second ).toHash() : 0 );
 
             if( type == EntityType::Location )

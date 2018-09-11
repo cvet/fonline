@@ -524,7 +524,7 @@ hash _str::toHash()
 
         #ifdef FONLINE_SERVER
         if( DbStorage )
-            DbStorage->Insert( "Hashes", h, { { "Value", s } } );
+            DbStorage->Update( "Hashes", h, { { "Value", s } }, true );
         #endif
     }
     else if( ins.first->second != s )

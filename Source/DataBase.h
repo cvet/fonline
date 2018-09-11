@@ -10,7 +10,7 @@ public:
     virtual UIntVec GetAllIds( const string& collection_name ) = 0;
     virtual StrMap  Get( const string& collection_name, uint id ) = 0;
     virtual bool    Insert( const string& collection_name, uint id, const StrMap& data ) = 0;
-    virtual bool    Update( const string& collection_name, uint id, const StrMap& data ) = 0;
+    virtual bool    Update( const string& collection_name, uint id, const StrMap& data, bool upsert = false ) = 0;
     virtual bool    Delete( const string& collection_name, uint id ) = 0;
 };
 

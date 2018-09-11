@@ -304,11 +304,14 @@ endif()
 # MongoDB C driver
 if( NOT BUILD_ONLY_CLIENT )
 	set( ENABLE_STATIC ON CACHE STRING "" FORCE )
+	set( BSON_ENABLE_STATIC ON CACHE STRING "" FORCE )
 	add_subdirectory( "${CMAKE_CURRENT_SOURCE_DIR}/libbson" )
 	set( BSON_INCLUDE_DIR "${CMAKE_BINARY_DIR}/libbson/src/bson"
 		"${CMAKE_CURRENT_SOURCE_DIR}/libbson/src/bson" CACHE STRING "" FORCE )
 	set( BSON_LIBRARIES "bson_static" CACHE STRING "" FORCE )
+	set( BSON_STATIC_LIBRARIES "bson_static" CACHE STRING "" FORCE )
 	include_directories( "${BSON_INCLUDE_DIR}" )
+	target_compile_definitions( bson_static PUBLIC BSON_COMPILATION BSON_STATIC JSONSL_PARSE_NAN )
 	
 	set( ENABLE_SASL "OFF" CACHE STRING "" FORCE )
 	set( MONGOC_ENABLE_STATIC ON CACHE STRING "" FORCE )

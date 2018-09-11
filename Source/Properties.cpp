@@ -1638,7 +1638,7 @@ bool Properties::LoadFromText( const StrMap& key_values )
         const string& value = kv.second;
 
         // Skip technical fields
-        if( key.empty() || key[ 0 ] == '$' )
+        if( key.empty() || key[ 0 ] == '$' || key[ 0 ] == '_' )
             continue;
 
         // Find property
