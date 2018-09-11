@@ -71,8 +71,6 @@ void EntityManager::UnregisterEntity( Entity* entity )
         DbStorage->Delete( "Items", entity->Id );
     else if( entity->Type == EntityType::Custom )
         DbStorage->Delete( entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id );
-    else
-        RUNTIME_ASSERT( !"Unreachable place" );
 
     entity->SetId( 0 );
 }

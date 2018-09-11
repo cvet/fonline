@@ -1896,14 +1896,6 @@ bool FOServer::InitReal()
     if( !Script::PostInitScriptSystem() )
         return false;
 
-    // Update files
-    StrVec resource_names;
-    GenerateUpdateFiles( true, &resource_names );
-
-    // Validate protos resources
-    if( !ProtoMngr.ValidateProtoResources( resource_names ) )
-        return false;
-
     // Load globals
     StrMap globals_data = DbStorage->Get( "Globals", 1 );
     if( !globals_data.empty() )
@@ -1928,6 +1920,14 @@ bool FOServer::InitReal()
     // Modules initialization
     Timer::UpdateTick();
     if( !Script::RunModuleInitFunctions() )
+        return false;
+
+    // Update files
+    StrVec resource_names;
+    GenerateUpdateFiles( true, &resource_names );
+
+    // Validate protos resources
+    if( !ProtoMngr.ValidateProtoResources( resource_names ) )
         return false;
 
     // Initialization script
