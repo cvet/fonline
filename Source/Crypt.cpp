@@ -315,7 +315,7 @@ bool CryptManager::IsCache( const string& data_name )
 {
     RUNTIME_ASSERT( CacheDb );
 
-    int r = unqlite_kv_fetch_callback( CacheDb, data_name.c_str(), data_name.length(),
+    int r = unqlite_kv_fetch_callback( CacheDb, data_name.c_str(), (int) data_name.length(),
                                        [] ( const void*, unsigned int, void* )
                                        {
                                            return UNQLITE_OK;
@@ -329,7 +329,7 @@ void CryptManager::EraseCache( const string& data_name )
 {
     RUNTIME_ASSERT( CacheDb );
 
-    int r = unqlite_kv_delete( CacheDb, data_name.c_str(), data_name.length() );
+    int r = unqlite_kv_delete( CacheDb, data_name.c_str(), (int) data_name.length() );
     RUNTIME_ASSERT( r == UNQLITE_OK || r == UNQLITE_NOTFOUND );
 
     if( r == UNQLITE_OK )
@@ -343,7 +343,7 @@ void CryptManager::SetCache( const string& data_name, const uchar* data, uint da
 {
     RUNTIME_ASSERT( CacheDb );
 
-    int r = unqlite_kv_store( CacheDb, data_name.c_str(), data_name.length(), data, data_len );
+    int r = unqlite_kv_store( CacheDb, data_name.c_str(), (int) data_name.length(), data, data_len );
     RUNTIME_ASSERT( r == UNQLITE_OK );
 
     r = unqlite_commit( CacheDb );
@@ -369,14 +369,14 @@ uchar* CryptManager::GetCache( const string& data_name, uint& data_len )
     RUNTIME_ASSERT( CacheDb );
 
     unqlite_int64 size;
-    int           r = unqlite_kv_fetch( CacheDb, data_name.c_str(), data_name.length(), nullptr, &size );
+    int           r = unqlite_kv_fetch( CacheDb, data_name.c_str(), (int) data_name.length(), nullptr, &size );
     RUNTIME_ASSERT( r == UNQLITE_OK || r == UNQLITE_NOTFOUND );
 
     if( r == UNQLITE_NOTFOUND )
         return nullptr;
 
     uchar* data = new uchar[ size ];
-    r = unqlite_kv_fetch( CacheDb, data_name.c_str(), data_name.length(), data, &size );
+    r = unqlite_kv_fetch( CacheDb, data_name.c_str(), (int) data_name.length(), data, &size );
     RUNTIME_ASSERT( r == UNQLITE_OK );
 
     data_len = (uint) size;
