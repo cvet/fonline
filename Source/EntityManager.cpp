@@ -31,6 +31,7 @@ void EntityManager::RegisterEntity( Entity* entity )
         else
         {
             entity->Props.SaveToText( data, nullptr );
+            data[ "_Proto" ] = "";
         }
 
         if( entity->Type == EntityType::Location )

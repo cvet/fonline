@@ -26,7 +26,7 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
 
     DeferredCall call;
     call.Id = 0;
-    call.FireTick = ( delay ? GameOpt.FullSecond + delay * time_mul : 0 );
+    call.FireTick = ( delay ? GameOpt.FullSecond + delay * 1000 / time_mul : 0 );
     call.FuncNum = func_num;
     call.BindId = bind_id;
     call.Saved = saved;
@@ -208,7 +208,7 @@ string ScriptInvoker::GetStatistics()
     {
         DeferredCall& call = *it;
         string        func_name = Script::GetBindFuncName( call.BindId );
-        uint          delay = call.FireTick > GameOpt.FullSecond ? ( call.FireTick - GameOpt.FullSecond ) / time_mul : 0;
+        uint          delay = call.FireTick > GameOpt.FullSecond ? ( call.FireTick - GameOpt.FullSecond ) * 1000 / time_mul : 0;
 
         result += _str( "{:<10} {:<10} {:<8} {:<70}", call.Id, delay, call.Saved ? "true" : "false", func_name.c_str() );
 
@@ -364,7 +364,7 @@ bool ScriptInvoker::Global_GetDeferredCallData( uint id, uint& delay, CScriptArr
     DeferredCall   call;
     if( self->GetDeferredCallData( id, call ) )
     {
-        delay = ( call.FireTick > GameOpt.FullSecond ? call.FireTick - GameOpt.FullSecond : 0 ) / Globals->GetTimeMultiplier();
+        delay = ( call.FireTick > GameOpt.FullSecond ? ( call.FireTick - GameOpt.FullSecond ) * 1000 / Globals->GetTimeMultiplier() : 0 );
         if( values )
         {
             if( call.IsValue )

@@ -5,18 +5,18 @@
 
 DataBase* DbStorage;
 
-class DbDiskTxt: public DataBase
+class DbTxt: public DataBase
 {
     string storageDir;
 
 public:
-    static DbDiskTxt* Create( const string& storage_dir )
+    static DbTxt* Create( const string& storage_dir )
     {
         FileManager::CreateDirectoryTree( storage_dir + "/" );
 
-        DbDiskTxt* dbDisk = new DbDiskTxt();
-        dbDisk->storageDir = storage_dir;
-        return dbDisk;
+        DbTxt* db_txt = new DbTxt();
+        db_txt->storageDir = storage_dir;
+        return db_txt;
     }
 
     virtual UIntVec GetAllIds( const string& collection_name ) override
@@ -46,6 +46,8 @@ public:
 
     virtual void Insert( const string& collection_name, uint id, const StrMap& data ) override
     {
+        RUNTIME_ASSERT( !data.empty() );
+
         StrMap actual_data = Get( collection_name, id );
         RUNTIME_ASSERT( actual_data.empty() );
 
@@ -57,6 +59,8 @@ public:
 
     virtual void Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
     {
+        RUNTIME_ASSERT( !data.empty() );
+
         StrMap actual_data = Get( collection_name, id );
         if( actual_data.empty() && !upsert )
             return;
@@ -85,12 +89,13 @@ class DbUnQLite: public DataBase
 public:
     static DbUnQLite* Create( const string& storage_dir )
     {
-        FileManager::CreateDirectoryTree( storage_dir + "/" );
+        if( !storage_dir.empty() )
+            FileManager::CreateDirectoryTree( storage_dir + "/" );
 
         unqlite* ping_db;
         string   ping_db_path = storage_dir + "/Ping.unqlite";
-        int      r = unqlite_open( &ping_db, ping_db_path.c_str(), UNQLITE_OPEN_CREATE );
-        if( r != UNQLITE_OK )
+        int      mode = storage_dir.empty() ? UNQLITE_OPEN_IN_MEMORY : UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING;
+        if( unqlite_open( &ping_db, ping_db_path.c_str(), mode ) != UNQLITE_OK )
         {
             WriteLog( "UnQLite : Can't open db at '{}'.\n", ping_db_path );
             return nullptr;
@@ -107,9 +112,9 @@ public:
         unqlite_close( ping_db );
         FileManager::DeleteFile( ping_db_path );
 
-        DbUnQLite* dbUnQLite = new DbUnQLite();
-        dbUnQLite->storageDir = storage_dir;
-        return dbUnQLite;
+        DbUnQLite* db_unqlite = new DbUnQLite();
+        db_unqlite->storageDir = storage_dir;
+        return db_unqlite;
     }
 
     ~DbUnQLite()
@@ -194,6 +199,8 @@ public:
 
     virtual void Insert( const string& collection_name, uint id, const StrMap& data ) override
     {
+        RUNTIME_ASSERT( !data.empty() );
+
         unqlite* db = GetCollection( collection_name );
         RUNTIME_ASSERT( db );
 
@@ -228,6 +235,8 @@ public:
 
     virtual void Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
     {
+        RUNTIME_ASSERT( !data.empty() );
+
         unqlite* db = GetCollection( collection_name );
         RUNTIME_ASSERT( db );
 
@@ -278,8 +287,9 @@ private:
         auto     it = collections.find( collection_name );
         if( it == collections.end() )
         {
-            string db_path = _str( "{}/{}.unqlite", storageDir, collection_name );
-            int    r = unqlite_open( &db, db_path.c_str(), UNQLITE_OPEN_CREATE );
+            string db_path = _str( "{}{}{}.unqlite", storageDir, storageDir.empty() ? "" : "/", collection_name );
+            int    mode = storageDir.empty() ? UNQLITE_OPEN_IN_MEMORY : UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING;
+            int    r = unqlite_open( &db, db_path.c_str(), mode );
             if( r != UNQLITE_OK )
             {
                 WriteLog( "UnQLite : Can't open db at '{}'.\n", collection_name );
@@ -342,11 +352,11 @@ public:
             return nullptr;
         }
 
-        DbMongo* dbMongo = new DbMongo();
-        dbMongo->client = client;
-        dbMongo->database = database;
-        dbMongo->databaseName = db_name;
-        return dbMongo;
+        DbMongo* db_mongo = new DbMongo();
+        db_mongo->client = client;
+        db_mongo->database = database;
+        db_mongo->databaseName = db_name;
+        return db_mongo;
     }
 
     ~DbMongo()
@@ -458,6 +468,8 @@ public:
 
     virtual void Insert( const string& collection_name, uint id, const StrMap& data ) override
     {
+        RUNTIME_ASSERT( !data.empty() );
+
         mongoc_collection_t* collection = GetCollection( collection_name );
         RUNTIME_ASSERT( collection );
 
@@ -483,6 +495,8 @@ public:
 
     virtual void Update( const string& collection_name, uint id, const StrMap& data, bool upsert /* = false */ ) override
     {
+        RUNTIME_ASSERT( !data.empty() );
+
         mongoc_collection_t* collection = GetCollection( collection_name );
         RUNTIME_ASSERT( collection );
 
@@ -563,12 +577,14 @@ private:
 DataBase* GetDataBase( const string& connection_info )
 {
     auto options = _str( connection_info ).split( ' ' );
-    if( options[ 0 ] == "DiskTxt" && options.size() == 2 )
-        return DbDiskTxt::Create( options[ 1 ] );
+    if( options[ 0 ] == "Txt" && options.size() == 2 )
+        return DbTxt::Create( options[ 1 ] );
     else if( options[ 0 ] == "UnQLite" && options.size() == 2 )
         return DbUnQLite::Create( options[ 1 ] );
     else if( options[ 0 ] == "Mongo" && options.size() == 3 )
         return DbMongo::Create( options[ 1 ], options[ 2 ] );
+    else if( options[ 0 ] == "Memory" && options.size() == 1 )
+        return DbUnQLite::Create( "" );
 
     WriteLog( "Storage : Wrong data base connection info '{}'.\n", connection_info );
     return nullptr;
