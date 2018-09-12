@@ -114,11 +114,12 @@ bool ScriptInvoker::CancelDeferredCall( uint id )
     {
         if( it->Id == id )
         {
-            deferredCalls.erase( it );
-
             #ifdef FONLINE_SERVER
-            DbStorage->Delete( "DeferredCalls", id );
+            if( it->Saved )
+                DbStorage->Delete( "DeferredCalls", id );
             #endif
+
+            deferredCalls.erase( it );
             return true;
         }
     }
@@ -162,7 +163,8 @@ void ScriptInvoker::Process()
                 it = deferredCalls.erase( it );
 
                 #ifdef FONLINE_SERVER
-                DbStorage->Delete( "DeferredCalls", call.Id );
+                if( call.Saved )
+                    DbStorage->Delete( "DeferredCalls", call.Id );
                 #endif
 
                 RunDeferredCall( call );
