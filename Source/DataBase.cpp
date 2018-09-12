@@ -576,6 +576,8 @@ private:
 
 DataBase* GetDataBase( const string& connection_info )
 {
+    WriteLog( "Storage : Initialize at '{}'.", connection_info );
+
     auto options = _str( connection_info ).split( ' ' );
     if( options[ 0 ] == "Txt" && options.size() == 2 )
         return DbTxt::Create( options[ 1 ] );
@@ -586,6 +588,6 @@ DataBase* GetDataBase( const string& connection_info )
     else if( options[ 0 ] == "Memory" && options.size() == 1 )
         return DbUnQLite::Create( "" );
 
-    WriteLog( "Storage : Wrong data base connection info '{}'.\n", connection_info );
+    WriteLog( "Storage : Wrong options.\n" );
     return nullptr;
 }

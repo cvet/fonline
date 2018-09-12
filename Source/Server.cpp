@@ -1864,7 +1864,7 @@ bool FOServer::InitReal()
     ConnectedClients.reserve( MAX_CLIENTS_IN_GAME );
 
     // Data base
-    DbStorage = GetDataBase( MainConfig->GetStr( "", "DbStorage", "Disk Storage" ) );
+    DbStorage = GetDataBase( MainConfig->GetStr( "", "DbStorage", "Memory" ) );
     if( !DbStorage )
         return false;
 
