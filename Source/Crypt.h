@@ -18,6 +18,7 @@ public:
     bool   Uncompress( UCharVec& data, uint mul_approx );
 
     // Cache stuff
+    bool   InitCache();
     bool   IsCache( const string& data_name );
     void   EraseCache( const string& data_name );
     void   SetCache( const string& data_name, const uchar* data, uint data_len );

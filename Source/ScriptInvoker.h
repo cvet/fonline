@@ -6,7 +6,7 @@
 struct DeferredCall
 {
     uint   Id;
-    uint   FireTick;
+    uint   FireFullSecond;
     hash   FuncNum;
     uint   BindId;
     bool   IsValue;

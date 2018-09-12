@@ -4,6 +4,7 @@
 #include "Timer.h"
 #include "SpriteManager.h"
 #include "ResourceManager.h"
+#include "Crypt.h"
 
 #if defined ( FO_WINDOWS ) || defined ( FO_LINUX )
 # include "png.h"
@@ -329,37 +330,37 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
     GLuint     program = 0;
 
     // Make effect binary file name
-    string binary_fname;
+    string binary_cache_name;
     if( GL_HAS( get_program_binary ) )
     {
-        binary_fname = "Cache/";
-        binary_fname += fname;
-        binary_fname = _str( binary_fname ).eraseFileExtension();
+        binary_cache_name = _str( "Shader/{}", fname ).eraseFileExtension();
         if( !defines.empty() )
         {
-            binary_fname += _str( "_" + defines ).
-                            replace( '\t', ' ' ).       // Tabs to spaces
-                            replace( ' ', ' ', ' ' ).   // Multiple spaces to single
-                            replace( '\r', '\n', '_' ). // EOL's to '_'
-                            replace( '\r', '_' ).       // EOL's to '_'
-                            replace( '\n', '_' );       // EOL's to '_'
+            binary_cache_name += _str( "_" + defines ).
+                                 replace( '\t', ' ' ).       // Tabs to spaces
+                                 replace( ' ', ' ', ' ' ).   // Multiple spaces to single
+                                 replace( '\r', '\n', '_' ). // EOL's to '_'
+                                 replace( '\r', '_' ).       // EOL's to '_'
+                                 replace( '\n', '_' );       // EOL's to '_'
         }
         #ifdef FO_X64
-        binary_fname += "_x64";
+        binary_cache_name += "_x64";
         #endif
-        binary_fname += "_";
-        binary_fname += _str( "{}", pass );
-        binary_fname += ".glslb";
+        binary_cache_name += "_";
+        binary_cache_name += _str( "{}", pass );
+        binary_cache_name += ".glslb";
     }
 
     // Load from binary
     FileManager file_binary;
     if( GL_HAS( get_program_binary ) )
     {
-        if( file_binary.LoadFile( binary_fname ) )
+        UCharVec data;
+        if( Crypt.GetCache( binary_cache_name, data ) && data.size() > sizeof( uint64 ) )
         {
-            if( file.GetWriteTime() > file_binary.GetWriteTime() )
-                file_binary.UnloadFile();                      // Disable loading from this binary, because its outdated
+            uint64 write_time = *(uint64*) &data[ data.size() - sizeof( uint64 ) ];
+            if( write_time >= file.GetWriteTime() )
+                file_binary.LoadStream( &data[ 0 ], (uint) data.size() - sizeof( uint64 ) );
         }
     }
     if( file_binary.IsLoaded() )
@@ -384,13 +385,13 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
                 }
                 else
                 {
-                    WriteLog( "Failed to link binary shader program '{}', effect '{}'.\n", binary_fname, fname );
+                    WriteLog( "Failed to link binary shader program '{}', effect '{}'.\n", binary_cache_name, fname );
                     GL( glDeleteProgram( program ) );
                 }
             }
             else
             {
-                WriteLog( "Binary shader program '{}' truncated, effect '{}'.\n", binary_fname, fname );
+                WriteLog( "Binary shader program '{}' truncated, effect '{}'.\n", binary_cache_name, fname );
             }
         }
         if( !loaded )
@@ -543,12 +544,16 @@ bool GraphicLoader::LoadEffectPass( Effect* effect, const string& fname, FileMan
             UCharVec buf;
             buf.resize( buf_size );
             GL( glGetProgramBinary( program, buf_size, &length, &format, &buf[ 0 ] ) );
+
             file_binary.SetBEUInt( FONLINE_VERSION );
             file_binary.SetBEUInt( format );
             file_binary.SetBEUInt( length );
             file_binary.SetData( &buf[ 0 ], length );
-            if( !file_binary.SaveFile( binary_fname ) )
-                WriteLog( "Can't save effect '{}' pass {} in binary '{}'.\n", fname, pass, binary_fname );
+
+            uint64 write_time = file.GetWriteTime() + 1;
+            file_binary.SetData( &write_time, sizeof( write_time ) );
+
+            Crypt.SetCache( binary_cache_name, file_binary.GetOutBuf(), file_binary.GetOutBufLen() );
         }
     }
 

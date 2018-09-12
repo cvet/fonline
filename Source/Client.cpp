@@ -170,6 +170,13 @@ FOClient::FOClient()
 
 bool FOClient::PreInit()
 {
+    // Cache
+    if( !Crypt.InitCache() )
+    {
+        WriteLog( "Can't create cache file.\n" );
+        return false;
+    }
+
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
@@ -6324,7 +6331,7 @@ bool FOClient::ReloadScripts()
         if( dll.LoadStream( &dll_binary[ 0 ], (uint) dll_binary.size() ) )
         {
             dll.SwitchToWrite();
-            dll.SaveFile( _str( "Cache/{}", dll_name ).normalizePathSlashes().replace( '/', '.' ) );
+            dll.SaveFile( _str( dll_name ).normalizePathSlashes().replace( '/', '.' ) );
         }
     }
 

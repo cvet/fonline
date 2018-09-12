@@ -1,7 +1,7 @@
 #include "Crypt.h"
 #include "zlib.h"
 #include "SHA/sha2.h"
-#include "FileSystem.h"
+#include "unqlite.h"
 
 CryptManager Crypt;
 
@@ -280,82 +280,113 @@ bool CryptManager::Uncompress( UCharVec& data, uint mul_approx )
     return true;
 }
 
-static string MakeCachePath( const string& data_name )
+static unqlite* CacheDb;
+
+bool CryptManager::InitCache()
 {
-    return FileManager::GetWritePath( "Cache/" + _str( data_name ).replace( '/', '_' ).replace( '\\', '_' ) );
+    RUNTIME_ASSERT( !CacheDb );
+
+    string path = FileManager::GetWritePath( "/Cache.bin" );
+    if( unqlite_open( &CacheDb, path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING ) != UNQLITE_OK )
+    {
+        CacheDb = nullptr;
+        return false;
+    }
+
+    uint ping = 42;
+    if( unqlite_kv_store( CacheDb, &ping, sizeof( ping ), &ping, sizeof( ping ) ) != UNQLITE_OK )
+    {
+        unqlite_close( CacheDb );
+        CacheDb = nullptr;
+        return false;
+    }
+
+    if( unqlite_commit( CacheDb ) != UNQLITE_OK )
+    {
+        unqlite_close( CacheDb );
+        CacheDb = nullptr;
+        return false;
+    }
+
+    return true;
 }
 
 bool CryptManager::IsCache( const string& data_name )
 {
-    string path = MakeCachePath( data_name );
-    void*  f = FileOpen( path, false );
-    bool   exists = ( f != nullptr );
-    FileClose( f );
-    return exists;
+    RUNTIME_ASSERT( CacheDb );
+
+    int r = unqlite_kv_fetch_callback( CacheDb, data_name.c_str(), data_name.length(),
+                                       [] ( const void*, unsigned int, void* )
+                                       {
+                                           return UNQLITE_OK;
+                                       }, nullptr );
+    RUNTIME_ASSERT( r == UNQLITE_OK || r == UNQLITE_NOTFOUND );
+
+    return r == UNQLITE_OK;
 }
 
 void CryptManager::EraseCache( const string& data_name )
 {
-    string path = MakeCachePath( data_name );
-    FileDelete( path );
+    RUNTIME_ASSERT( CacheDb );
+
+    int r = unqlite_kv_delete( CacheDb, data_name.c_str(), data_name.length() );
+    RUNTIME_ASSERT( r == UNQLITE_OK || r == UNQLITE_NOTFOUND );
+
+    if( r == UNQLITE_OK )
+    {
+        r = unqlite_commit( CacheDb );
+        RUNTIME_ASSERT( r == UNQLITE_OK );
+    }
 }
 
 void CryptManager::SetCache( const string& data_name, const uchar* data, uint data_len )
 {
-    string path = MakeCachePath( data_name );
-    void*  f = FileOpen( path, true );
-    if( !f )
-    {
-        WriteLog( "Can't open write cache at '{}'.\n", path );
-        return;
-    }
+    RUNTIME_ASSERT( CacheDb );
 
-    if( !FileWrite( f, data, data_len ) )
-    {
-        WriteLog( "Can't write cache to '{}'.\n", path );
-        FileClose( f );
-        FileDelete( path );
-        return;
-    }
+    int r = unqlite_kv_store( CacheDb, data_name.c_str(), data_name.length(), data, data_len );
+    RUNTIME_ASSERT( r == UNQLITE_OK );
 
-    FileClose( f );
+    r = unqlite_commit( CacheDb );
+    RUNTIME_ASSERT( r == UNQLITE_OK );
 }
 
 void CryptManager::SetCache( const string& data_name, const string& str )
 {
+    RUNTIME_ASSERT( CacheDb );
+
     SetCache( data_name, !str.empty() ? (uchar*) str.c_str() : (uchar*) "", (uint) str.length() );
 }
 
 void CryptManager::SetCache( const string& data_name, UCharVec& data )
 {
+    RUNTIME_ASSERT( CacheDb );
+
     SetCache( data_name, !data.empty() ? (uchar*) &data[ 0 ] : (uchar*) "", (uint) data.size() );
 }
 
 uchar* CryptManager::GetCache( const string& data_name, uint& data_len )
 {
-    string path = MakeCachePath( data_name );
-    void*  f = FileOpen( path, false );
-    if( !f )
+    RUNTIME_ASSERT( CacheDb );
+
+    unqlite_int64 size;
+    int           r = unqlite_kv_fetch( CacheDb, data_name.c_str(), data_name.length(), nullptr, &size );
+    RUNTIME_ASSERT( r == UNQLITE_OK || r == UNQLITE_NOTFOUND );
+
+    if( r == UNQLITE_NOTFOUND )
         return nullptr;
 
-    data_len = FileGetSize( f );
-    uchar* data = new uchar[ data_len ];
+    uchar* data = new uchar[ size ];
+    r = unqlite_kv_fetch( CacheDb, data_name.c_str(), data_name.length(), data, &size );
+    RUNTIME_ASSERT( r == UNQLITE_OK );
 
-    if( !FileRead( f, data, data_len ) )
-    {
-        WriteLog( "Can't read cache from '{}'.\n", path );
-        SAFEDELA( data );
-        data_len = 0;
-        FileClose( f );
-        return nullptr;
-    }
-
-    FileClose( f );
+    data_len = (uint) size;
     return data;
 }
 
 string CryptManager::GetCache( const string& data_name )
 {
+    RUNTIME_ASSERT( CacheDb );
+
     string str;
     uint   result_len;
     uchar* result = GetCache( data_name, result_len );
@@ -373,6 +404,8 @@ string CryptManager::GetCache( const string& data_name )
 
 bool CryptManager::GetCache( const string& data_name, UCharVec& data )
 {
+    RUNTIME_ASSERT( CacheDb );
+
     data.clear();
     uint   result_len;
     uchar* result = GetCache( data_name, result_len );

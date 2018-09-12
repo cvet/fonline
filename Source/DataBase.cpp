@@ -576,7 +576,7 @@ private:
 
 DataBase* GetDataBase( const string& connection_info )
 {
-    WriteLog( "Storage : Initialize at '{}'.", connection_info );
+    WriteLog( "Storage : Initialize at '{}'.\n", connection_info );
 
     auto options = _str( connection_info ).split( ' ' );
     if( options[ 0 ] == "Txt" && options.size() == 2 )

@@ -367,7 +367,6 @@ void* Script::LoadDynamicLibrary( const string& dll_name )
 
     // Client path fixes
     #ifdef FONLINE_CLIENT
-    dll_path.insert( 0, "Cache/" );
     std::replace( dll_path.begin(), dll_path.end(), '\\', '.' );
     std::replace( dll_path.begin(), dll_path.end(), '/', '.' );
     #endif

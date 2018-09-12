@@ -26,6 +26,13 @@ bool FOMapper::Init()
 {
     WriteLog( "Mapper initialization...\n" );
 
+    // Cache
+    if( !Crypt.InitCache() )
+    {
+        WriteLog( "Can't create cache file.\n" );
+        return false;
+    }
+
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
