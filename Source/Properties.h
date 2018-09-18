@@ -1,6 +1,9 @@
 #ifndef __PROPERTIES__
 #define __PROPERTIES__
 
+#include "Common.h"
+#include "DataBase.h"
+
 #define PROPERTIES_HEADER()                                          \
     static PropertyRegistrator * PropertiesRegistrator;              \
     static vector< pair< const char*, Property** > > PropertiesList; \
@@ -206,6 +209,9 @@ public:
     void                 RestoreData( UCharVecVec& all_data );
     bool                 LoadFromText( const StrMap& key_values );
     void                 SaveToText( StrMap& key_values, Properties* base );
+    DataBase::Document   SaveToDbDocument( Properties* base );
+    bool                 LoadFromDbDocument( const DataBase::Document& doc );
+    DataBase::Value      SavePropertyToDbValue( Property* prop );
     bool                 LoadPropertyFromText( Property* prop, const string& text );
     string               SavePropertyToText( Property* prop );
     static int           GetValueAsInt( Entity* entity, int enum_value );

@@ -170,13 +170,6 @@ FOClient::FOClient()
 
 bool FOClient::PreInit()
 {
-    // Cache
-    if( !Crypt.InitCache() )
-    {
-        WriteLog( "Can't create cache file.\n" );
-        return false;
-    }
-
     // SDL
     if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_EVENTS ) )
     {
@@ -239,6 +232,13 @@ bool FOClient::PreInit()
 
     // Input
     Keyb::Init();
+
+    // Cache
+    if( !Crypt.InitCache() )
+    {
+        WriteLog( "Can't create cache file.\n" );
+        return false;
+    }
 
     // Sprite manager
     if( !SprMngr.Init() )

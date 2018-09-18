@@ -1,6 +1,8 @@
 #ifndef __FLEX_RECT__
 #define __FLEX_RECT__
 
+#include <vector>
+
 template< typename Ty >
 struct FlexRect
 {
@@ -76,8 +78,10 @@ struct FlexRect
     }
 };
 
-typedef FlexRect< int >   Rect;
-typedef FlexRect< float > RectF;
+typedef FlexRect< int >      Rect;
+typedef FlexRect< float >    RectF;
+typedef std::vector< Rect >  IntRectVec;
+typedef std::vector< RectF > FltRectVec;
 
 template< typename Ty >
 struct FlexPoint

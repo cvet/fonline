@@ -2,6 +2,7 @@
 #define __RESOURCE_CONVERTER__
 
 #include "Common.h"
+#include "FileManager.h"
 
 class ResourceConverter
 {

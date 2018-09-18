@@ -6,6 +6,7 @@
 #include <math.h>
 #include "FileManager.h"
 #include "IniParser.h"
+#include "Randomizer.h"
 #include <stdarg.h>
 
 // Check the sizes of base types
@@ -189,7 +190,7 @@ void InitialSetup( uint argc, char** argv )
 }
 
 // Default randomizer
-Randomizer DefaultRandomizer;
+static Randomizer DefaultRandomizer;
 int Random( int minimum, int maximum )
 {
     return DefaultRandomizer.Random( minimum, maximum );

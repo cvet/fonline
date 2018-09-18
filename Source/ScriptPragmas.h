@@ -54,7 +54,7 @@ public:
     bool                  IsError();
     PropertyRegistrator** GetPropertyRegistrators();
     StrVec                GetCustomEntityTypes();
-    bool                  RestoreCustomEntity( const string& class_name, uint id, const StrMap& props_data );
+    bool                  RestoreCustomEntity( const string& class_name, uint id, const DataBase::Document& doc );
     void*                 FindInternalEvent( const string& event_name );
     bool                  RaiseInternalEvent( void* event_ptr, va_list args );
     void                  RemoveEventsEntity( Entity* entity );

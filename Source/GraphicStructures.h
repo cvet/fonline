@@ -6,6 +6,7 @@
 #include "assimp/types.h"
 #include "assimp/scene.h"
 #include "FileManager.h"
+#include "FlexRect.h"
 
 #if defined ( FONLINE_SERVER ) || defined ( FONLINE_SCRIPT_COMPILER )
 # define GL( x )        (void) 0

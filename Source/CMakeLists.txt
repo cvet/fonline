@@ -324,6 +324,8 @@ endif()
 add_subdirectory( "unqlite" )
 include_directories( "unqlite" )
 
+include_directories( "variant/include" )
+
 set( COMMON_SOURCE
 	${Json_SOURCE}
 	${fmt_SOURCE}

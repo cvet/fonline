@@ -22,28 +22,19 @@ void EntityManager::RegisterEntity( Entity* entity )
 
         entity->SetId( id );
 
-        StrMap data;
-        if( entity->Proto )
-        {
-            entity->Props.SaveToText( data, &entity->Proto->Props );
-            data[ "_Proto" ] = entity->Proto->GetName();
-        }
-        else
-        {
-            entity->Props.SaveToText( data, nullptr );
-            data[ "_Proto" ] = "";
-        }
+        DataBase::Document doc = entity->Props.SaveToDbDocument( entity->Proto ? &entity->Proto->Props : nullptr );
+        doc[ "_Proto" ] = entity->Proto ? entity->Proto->GetName() : "";
 
         if( entity->Type == EntityType::Location )
-            DbStorage->Insert( "Locations", id, data );
+            DbStorage->Insert( "Locations", id, doc );
         else if( entity->Type == EntityType::Map )
-            DbStorage->Insert( "Maps", id, data );
+            DbStorage->Insert( "Maps", id, doc );
         else if( entity->Type == EntityType::Npc )
-            DbStorage->Insert( "Critters", id, data );
+            DbStorage->Insert( "Critters", id, doc );
         else if( entity->Type == EntityType::Item )
-            DbStorage->Insert( "Items", id, data );
+            DbStorage->Insert( "Items", id, doc );
         else if( entity->Type == EntityType::Custom )
-            DbStorage->Insert( entity->Props.GetRegistrator()->GetClassName() + "s", id, data );
+            DbStorage->Insert( entity->Props.GetRegistrator()->GetClassName() + "s", id, doc );
         else
             RUNTIME_ASSERT( !"Unreachable place" );
     }
@@ -242,13 +233,17 @@ bool EntityManager::LoadEntities()
         UIntVec ids = DbStorage->GetAllIds( collection_name );
         for( uint id : ids )
         {
-            StrMap data = DbStorage->Get( collection_name, id );
-            auto   proto_it = data.find( "_Proto" );
-            hash   proto_id = ( proto_it != data.end() ? _str( proto_it->second ).toHash() : 0 );
+            DataBase::Document doc = DbStorage->Get( collection_name, id );
+            auto               proto_it = doc.find( "_Proto" );
+            RUNTIME_ASSERT( proto_it != doc.end() );
+            RUNTIME_ASSERT( proto_it->second.which() == DataBase::StringValue );
+
+            hash proto_id = ( !proto_it->second.get< string >().empty() ?
+                              _str( proto_it->second.get< string >() ).toHash() : 0 );
 
             if( type == EntityType::Location )
             {
-                if( !MapMngr.RestoreLocation( id, proto_id, data ) )
+                if( !MapMngr.RestoreLocation( id, proto_id, doc ) )
                 {
                     WriteLog( "Fail to restore location {}.\n", id );
                     continue;
@@ -256,7 +251,7 @@ bool EntityManager::LoadEntities()
             }
             else if( type == EntityType::Map )
             {
-                if( !MapMngr.RestoreMap( id, proto_id, data ) )
+                if( !MapMngr.RestoreMap( id, proto_id, doc ) )
                 {
                     WriteLog( "Fail to restore map {}.\n", id );
                     continue;
@@ -264,7 +259,7 @@ bool EntityManager::LoadEntities()
             }
             else if( type == EntityType::Npc )
             {
-                if( !CrMngr.RestoreNpc( id, proto_id, data ) )
+                if( !CrMngr.RestoreNpc( id, proto_id, doc ) )
                 {
                     WriteLog( "Fail to restore npc {}.\n", id );
                     continue;
@@ -272,7 +267,7 @@ bool EntityManager::LoadEntities()
             }
             else if( type == EntityType::Item )
             {
-                if( !ItemMngr.RestoreItem( id, proto_id, data ) )
+                if( !ItemMngr.RestoreItem( id, proto_id, doc ) )
                 {
                     WriteLog( "Fail to restore item {}.\n", id );
                     continue;
@@ -280,7 +275,7 @@ bool EntityManager::LoadEntities()
             }
             else if( type == EntityType::Custom )
             {
-                if( !Script::RestoreCustomEntity( custom_types[ custom_index ], id, data ) )
+                if( !Script::RestoreCustomEntity( custom_types[ custom_index ], id, doc ) )
                 {
                     WriteLog( "Fail to restore entity {} of type {}.\n", id, custom_types[ custom_index ] );
                     continue;

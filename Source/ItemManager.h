@@ -18,7 +18,7 @@ public:
     void SetCritterItems( Critter* cr );
 
     Item* CreateItem( hash pid, uint count = 0, Properties* props = nullptr );
-    bool  RestoreItem( uint id, hash proto_id, const StrMap& props_data );
+    bool  RestoreItem( uint id, hash proto_id, const DataBase::Document& doc );
     void  DeleteItem( Item* item );
 
     Item* SplitItem( Item* item, uint count );

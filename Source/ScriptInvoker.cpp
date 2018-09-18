@@ -74,26 +74,26 @@ uint ScriptInvoker::AddDeferredCall( uint delay, bool saved, asIScriptFunction* 
         #ifdef FONLINE_SERVER
         if( call.Saved )
         {
-            StrMap call_data;
-            call_data[ "Script" ] = _str().parseHash( call.FuncNum );
-            call_data[ "FireFullSecond" ] = _str( "{}", call.FireFullSecond );
+            DataBase::Document call_doc;
+            call_doc[ "Script" ] = _str().parseHash( call.FuncNum );
+            call_doc[ "FireFullSecond" ] = (int64) call.FireFullSecond;
 
             if( call.IsValue )
             {
-                call_data[ "ValueSigned" ] = ( call.ValueSigned ? "true" : "false" );
-                call_data[ "Value" ] = _str( "{}", call.Value );
+                call_doc[ "ValueSigned" ] = call.ValueSigned;
+                call_doc[ "Value" ] = call.Value;
             }
 
             if( call.IsValues )
             {
-                call_data[ "ValuesSigned" ] = ( call.ValuesSigned ? "true" : "false" );
-                string values;
+                call_doc[ "ValuesSigned" ] = call.ValuesSigned;
+                DataBase::Array values;
                 for( int v : call.Values )
-                    values.append( _str( "{}", v ) ).append( " " );
-                call_data[ "Values" ] = values;
+                    values.push_back( v );
+                call_doc[ "Values" ] = values;
             }
 
-            DbStorage->Insert( "DeferredCalls", call.Id, call_data );
+            DbStorage->Insert( "DeferredCalls", call.Id, call_doc );
         }
         #endif
     }
@@ -244,18 +244,18 @@ bool ScriptInvoker::LoadDeferredCalls()
     int     errors = 0;
     for( uint call_id : call_ids )
     {
-        StrMap       call_data = DbStorage->Get( "DeferredCalls", call_id );
+        DataBase::Document call_doc = DbStorage->Get( "DeferredCalls", call_id );
 
-        DeferredCall call;
-        call.Id = _str( call_data[ "Id" ] ).toUInt();
-        call.FireFullSecond = _str( call_data[ "FireFullSecond" ] ).toUInt();
+        DeferredCall       call;
+        call.Id = call_doc[ "Id" ].get< int >();
+        call.FireFullSecond = (uint) call_doc[ "FireFullSecond" ].get< int64 >();
         RUNTIME_ASSERT( call.FireFullSecond != 0 );
 
-        call.IsValue = ( call_data.count( "Value" ) > 0 );
+        call.IsValue = ( call_doc.count( "Value" ) > 0 );
         if( call.IsValue )
         {
-            call.ValueSigned = _str( call_data[ "ValueSigned" ] ).compareIgnoreCase( "true" );
-            call.Value = _str( call_data[ "Value" ] ).toInt();
+            call.ValueSigned = call_doc[ "ValueSigned" ].get< bool >();
+            call.Value = call_doc[ "Value" ].get< int >();
         }
         else
         {
@@ -263,11 +263,13 @@ bool ScriptInvoker::LoadDeferredCalls()
             call.Value = 0;
         }
 
-        call.IsValues = ( call_data.count( "Values" ) > 0 );
+        call.IsValues = ( call_doc.count( "Values" ) > 0 );
         if( call.IsValues )
         {
-            call.ValuesSigned = _str( call_data[ "ValuesSigned" ] ).compareIgnoreCase( "true" );
-            call.Values = _str( call_data[ "Values" ] ).splitToInt( ' ' );
+            call.ValuesSigned = call_doc[ "ValuesSigned" ].get< bool >();
+            const DataBase::Array& arr = call_doc[ "Values" ].get< DataBase::Array >();
+            for( auto& v : arr )
+                call.Values.push_back( v.get< int >() );
         }
         else
         {
@@ -294,10 +296,10 @@ bool ScriptInvoker::LoadDeferredCalls()
         else
             decl = "void %s()";
 
-        call.FuncNum = Script::BindScriptFuncNumByFuncName( call_data[ "Script" ].c_str(), decl );
+        call.FuncNum = Script::BindScriptFuncNumByFuncName( call_doc[ "Script" ].get< string >(), decl );
         if( !call.FuncNum )
         {
-            WriteLog( "Unable to find function '{}' with declaration '{}' for deferred call {}.\n", call_data[ "Script" ].c_str(), decl, call.Id );
+            WriteLog( "Unable to find function '{}' with declaration '{}' for deferred call {}.\n", call_doc[ "Script" ].get< string >(), decl, call.Id );
             errors++;
             continue;
         }

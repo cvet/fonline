@@ -3044,10 +3044,10 @@ Critter* FOServer::SScriptFunc::Global_GetCritter( uint crid )
 
 Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
 {
-    // Check existance
-    uint   id = MAKE_CLIENT_ID( name );
-    StrMap data = DbStorage->Get( "Players", id );
-    if( data.empty() )
+    // Check existence
+    uint               id = MAKE_CLIENT_ID( name );
+    DataBase::Document doc = DbStorage->Get( "Players", id );
+    if( doc.empty() )
         return nullptr;
 
     // Find online
@@ -3064,7 +3064,7 @@ Critter* FOServer::SScriptFunc::Global_GetPlayer( string name )
     cl = new Client( nullptr, cl_proto );
     cl->SetId( id );
     cl->Name = name;
-    if( !cl->Props.LoadFromText( data ) )
+    if( !cl->Props.LoadFromDbDocument( doc ) )
         SCRIPT_ERROR_R0( "Client data db read failed." );
     return cl;
 }

@@ -105,7 +105,7 @@ private:
 
 public:
     Location* CreateLocation( hash proto_id, ushort wx, ushort wy );
-    bool      RestoreLocation( uint id, hash proto_id, const StrMap& props_data );
+    bool      RestoreLocation( uint id, hash proto_id, const DataBase::Document& doc );
     Location* GetLocationByMap( uint map_id );
     Location* GetLocation( uint loc_id );
     Location* GetLocationByPid( hash loc_pid, uint skip_count );
@@ -123,7 +123,7 @@ private:
 
 public:
     Map*         CreateMap( hash proto_id, Location* loc );
-    bool         RestoreMap( uint id, hash proto_id, const StrMap& props_data );
+    bool         RestoreMap( uint id, hash proto_id, const DataBase::Document& doc );
     Map*         GetMap( uint map_id );
     Map*         GetMapByPid( hash map_pid, uint skip_count );
     void         GetMaps( MapVec& maps );

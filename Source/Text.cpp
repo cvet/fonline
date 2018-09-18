@@ -524,7 +524,10 @@ hash _str::toHash()
 
         #ifdef FONLINE_SERVER
         if( DbStorage )
-            DbStorage->Update( "Hashes", h, { { "Value", s } }, true );
+        {
+            if( DbStorage->Get( "Hashes", h ).empty() )
+                DbStorage->Insert( "Hashes", h, { { "Value", s } } );
+        }
         #endif
     }
     else if( ins.first->second != s )
@@ -562,8 +565,8 @@ void _str::loadHashes()
     UIntVec db_hashes = DbStorage->GetAllIds( "Hashes" );
     for( uint hash_id : db_hashes )
     {
-        StrMap        hash_data = DbStorage->Get( "Hashes", hash_id );
-        const string& hash_value = hash_data[ "Value" ];
+        DataBase::Document hash_doc = DbStorage->Get( "Hashes", hash_id );
+        const string&      hash_value = hash_doc[ "Value" ].get< string >();
         HashNames[ hash_id ] = hash_value;
     }
 

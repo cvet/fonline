@@ -20,6 +20,7 @@
 #include "MapCl.h"
 #include "ProtoManager.h"
 #include "theora/theoradec.h"
+#include "FlexRect.h"
 
 // Fonts
 #define FONT_DEFAULT              ( 0 )

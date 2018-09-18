@@ -1,6 +1,9 @@
 // Common functions for server, client, mapper
 // Works in scripts compiler
 
+#include "FileManager.h"
+#include "Randomizer.h"
+
 template< class T >
 static Entity* EntityDownCast( T* a )
 {
@@ -54,8 +57,7 @@ static void Global_ThrowException( string message )
 
 static int Global_Random( int min, int max )
 {
-    static Randomizer script_randomizer;
-    return script_randomizer.Random( min, max );
+    return Random( min, max );
 }
 
 static void Global_Log( string text )

@@ -52,6 +52,13 @@ void FOServer::Finish()
     Active = false;
     ActiveInProcess = true;
 
+    // Finish logic
+    DbStorage->StartChanges();
+    Script::RaiseInternalEvent( ServerFunctions.Finish );
+    ItemMngr.RadioClear();
+    EntityMngr.ClearEntities();
+    DbStorage->CommitChanges();
+
     // Logging clients
     LogToFunc( FOServer::LogToClients, false );
     for( auto it = LogClients.begin(), end = LogClients.end(); it != end; ++it )
@@ -72,7 +79,6 @@ void FOServer::Finish()
     SAFEDEL( WebSocketsServer );
 
     // Managers
-    EntityMngr.ClearEntities();
     DlgMngr.Finish();
     FinishScriptSystem();
     LangPacks.clear();
@@ -208,13 +214,6 @@ void FOServer::MainLoop()
         LogicTick();
 
     WriteLog( "***   Finishing game loop  ***\n" );
-
-    // Last process
-    Script::RaiseInternalEvent( ServerFunctions.Finish );
-
-    // Clean up
-    ItemMngr.RadioClear();
-    EntityMngr.ClearEntities();
 }
 
 void FOServer::LogicTick()
@@ -223,6 +222,9 @@ void FOServer::LogicTick()
 
     // Cycle time
     double frame_begin = Timer::AccurateTick();
+
+    // Begin data base changes
+    DbStorage->StartChanges();
 
     // Process clients
     ConnectedClientsLocker.Lock();
@@ -301,6 +303,9 @@ void FOServer::LogicTick()
 
     // Suspended contexts
     Script::RunSuspended();
+
+    // Commit changed to data base
+    DbStorage->CommitChanges();
 
     // Fill statistics
     double frame_time = Timer::AccurateTick() - frame_begin;
@@ -1868,6 +1873,9 @@ bool FOServer::InitReal()
     if( !DbStorage )
         return false;
 
+    // Start data base changes
+    DbStorage->StartChanges();
+
     PropertyRegistrator::GlobalSetCallbacks.push_back( EntitySetValue );
 
     if( !InitScriptSystem() )
@@ -1897,24 +1905,26 @@ bool FOServer::InitReal()
         return false;
 
     // Load globals
-    StrMap globals_data = DbStorage->Get( "Globals", 1 );
-    if( !globals_data.empty() )
+    Globals->SetId( 1 );
+    DataBase::Document globals_doc = DbStorage->Get( "Globals", 1 );
+    if( globals_doc.empty() )
     {
-        if( !Globals->Props.LoadFromText( globals_data ) )
+        DbStorage->Insert( "Globals", Globals->Id, { { "_Proto", string( "" ) } } );
+    }
+    else
+    {
+        if( !Globals->Props.LoadFromDbDocument( globals_doc ) )
         {
-            WriteLog( "Failed to load globals data.\n" );
+            WriteLog( "Failed to load globals document.\n" );
             return false;
         }
-
-        Globals->SetId( 1 );
     }
 
     // Restore hashes
-    if( Globals->Id != 0 )
-        _str::loadHashes();
+    _str::loadHashes();
 
     // Deferred calls
-    if( Globals->Id != 0 && !Script::LoadDeferredCalls() )
+    if( !Script::LoadDeferredCalls() )
         return false;
 
     // Modules initialization
@@ -1939,7 +1949,7 @@ bool FOServer::InitReal()
     }
 
     // Init world
-    if( Globals->Id == 0 )
+    if( globals_doc.empty() )
     {
         // Generate world
         if( !Script::RaiseInternalEvent( ServerFunctions.GenerateWorld ) )
@@ -1947,12 +1957,6 @@ bool FOServer::InitReal()
             WriteLog( "Generate world script failed.\n" );
             return false;
         }
-
-        // Globals initial save
-        Globals->SetId( 1 );
-        StrMap globals_data;
-        Globals->Props.SaveToText( globals_data, nullptr );
-        DbStorage->Insert( "Globals", Globals->Id, globals_data );
     }
     else
     {
@@ -1967,6 +1971,9 @@ bool FOServer::InitReal()
         WriteLog( "Start script fail.\n" );
         return false;
     }
+
+    // Commit data base changes
+    DbStorage->CommitChanges();
 
     // End of initialization
     Statistics.BytesSend = 0;
@@ -2426,23 +2433,22 @@ void FOServer::EntitySetValue( Entity* entity, Property* prop, void* cur_value, 
     if( !entity->Id )
         return;
 
-    StrMap updated_data;
-    updated_data[ prop->GetName() ] = entity->Props.SavePropertyToText( prop );
+    DataBase::Value value = entity->Props.SavePropertyToDbValue( prop );
 
     if( entity->Type == EntityType::Location )
-        DbStorage->Update( "Locations", entity->Id, updated_data );
+        DbStorage->Update( "Locations", entity->Id, prop->GetName(), value );
     else if( entity->Type == EntityType::Map )
-        DbStorage->Update( "Maps", entity->Id, updated_data );
+        DbStorage->Update( "Maps", entity->Id, prop->GetName(), value );
     else if( entity->Type == EntityType::Npc )
-        DbStorage->Update( "Critters", entity->Id, updated_data );
+        DbStorage->Update( "Critters", entity->Id, prop->GetName(), value );
     else if( entity->Type == EntityType::Item )
-        DbStorage->Update( "Items", entity->Id, updated_data );
+        DbStorage->Update( "Items", entity->Id, prop->GetName(), value );
     else if( entity->Type == EntityType::Custom )
-        DbStorage->Update( entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id, updated_data );
+        DbStorage->Update( entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id, prop->GetName(), value );
     else if( entity->Type == EntityType::Client )
-        DbStorage->Update( "Players", entity->Id, updated_data );
+        DbStorage->Update( "Players", entity->Id, prop->GetName(), value );
     else if( entity->Type == EntityType::Global )
-        DbStorage->Update( "Globals", entity->Id, updated_data );
+        DbStorage->Update( "Globals", entity->Id, prop->GetName(), value );
     else
         RUNTIME_ASSERT( !"Unreachable place" );
 }

@@ -2,6 +2,7 @@
 #include "zlib.h"
 #include "SHA/sha2.h"
 #include "unqlite.h"
+#include "FileManager.h"
 
 CryptManager Crypt;
 

@@ -101,7 +101,7 @@ public:
     static string GetProfilerStatistics();
 
     static StrVec GetCustomEntityTypes();
-    static bool   RestoreCustomEntity( const string& type_name, uint id, const StrMap& props_data );
+    static bool   RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc );
 
     static void* FindInternalEvent( const string& event_name );
     static bool  RaiseInternalEvent( void* event_ptr, ... );

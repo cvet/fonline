@@ -83,10 +83,7 @@
 #include "Timer.h"
 #include "Debugger.h"
 #include "Exception.h"
-#include "FlexRect.h"
-#include "Randomizer.h"
 #include "Text.h"
-#include "FileManager.h"
 #include "IniParser.h"
 #include "AngelScript/sdk/add_on/scriptarray/scriptarray.h"
 #include "AngelScript/sdk/add_on/scriptdictionary/scriptdictionary.h"
@@ -131,18 +128,13 @@
 # define ANDROID_TODO
 #endif
 
-typedef vector< Rect >  IntRectVec;
-typedef vector< RectF > FltRectVec;
-
 string GetLastSocketError();
 
 extern IniParser* MainConfig;
 extern StrVec     ProjectFiles;
 void InitialSetup( uint argc, char** argv );
 
-extern Randomizer DefaultRandomizer;
-int Random( int minimum, int maximum );
-
+int  Random( int minimum, int maximum );
 int  Procent( int full, int peace );
 uint NumericalNumber( uint num );
 uint DistSqrt( int x1, int y1, int x2, int y2 );

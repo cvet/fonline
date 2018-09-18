@@ -5,6 +5,7 @@
 #include "LineTracer.h"
 #include "EntityManager.h"
 #include "ProtoManager.h"
+#include "FlexRect.h"
 
 MapManager MapMngr;
 
@@ -21,7 +22,7 @@ MapManager::MapManager(): runGarbager( true )
     smoothSwitcher = false;
 }
 
-bool MapManager::RestoreLocation( uint id, hash proto_id, const StrMap& props_data )
+bool MapManager::RestoreLocation( uint id, hash proto_id, const DataBase::Document& doc )
 {
     ProtoLocation* proto = ProtoMngr.GetProtoLocation( proto_id );
     if( !proto )
@@ -31,7 +32,7 @@ bool MapManager::RestoreLocation( uint id, hash proto_id, const StrMap& props_da
     }
 
     Location* loc = new Location( id, proto );
-    if( !loc->Props.LoadFromText( props_data ) )
+    if( !loc->Props.LoadFromDbDocument( doc ) )
     {
         WriteLog( "Fail to restore properties for location '{}' ({}).\n", _str().parseHash( proto_id ), id );
         loc->Release();
@@ -156,7 +157,7 @@ Map* MapManager::CreateMap( hash proto_id, Location* loc )
     return map;
 }
 
-bool MapManager::RestoreMap( uint id, hash proto_id, const StrMap& props_data )
+bool MapManager::RestoreMap( uint id, hash proto_id, const DataBase::Document& doc )
 {
     ProtoMap* proto = ProtoMngr.GetProtoMap( proto_id );
     if( !proto )
@@ -166,7 +167,7 @@ bool MapManager::RestoreMap( uint id, hash proto_id, const StrMap& props_data )
     }
 
     Map* map = new Map( id, proto, nullptr );
-    if( !map->Props.LoadFromText( props_data ) )
+    if( !map->Props.LoadFromDbDocument( doc ) )
     {
         WriteLog( "Fail to restore properties for map '{}' ({}).\n", _str().parseHash( proto_id ), id );
         map->Release();

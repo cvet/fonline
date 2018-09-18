@@ -9,7 +9,7 @@ class CritterManager
 {
 public:
     Npc* CreateNpc( hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy );
-    bool RestoreNpc( uint id, hash proto_id, const StrMap& props_data );
+    bool RestoreNpc( uint id, hash proto_id, const DataBase::Document& doc );
     void DeleteNpc( Critter* cr );
 
     void     GetCritters( CrVec& critters );

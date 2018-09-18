@@ -3,6 +3,7 @@
 #include "Exception.h"
 #include "Access.h"
 #include "BufferManager.h"
+#include "FlexRect.h"
 #include <locale.h>
 #ifndef FO_WINDOWS
 # include <signal.h>

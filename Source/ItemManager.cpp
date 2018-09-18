@@ -121,7 +121,7 @@ Item* ItemManager::CreateItem( hash pid, uint count /* = 0 */, Properties* props
     return item;
 }
 
-bool ItemManager::RestoreItem( uint id, hash proto_id, const StrMap& props_data )
+bool ItemManager::RestoreItem( uint id, hash proto_id, const DataBase::Document& doc )
 {
     ProtoItem* proto = ProtoMngr.GetProtoItem( proto_id );
     if( !proto )
@@ -131,7 +131,7 @@ bool ItemManager::RestoreItem( uint id, hash proto_id, const StrMap& props_data 
     }
 
     Item* item = new Item( id, proto );
-    if( !item->Props.LoadFromText( props_data ) )
+    if( !item->Props.LoadFromDbDocument( doc ) )
     {
         WriteLog( "Fail to restore properties for item '{}' ({}).\n", _str().parseHash( proto_id ), id );
         item->Release();

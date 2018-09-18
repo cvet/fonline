@@ -221,10 +221,10 @@ public:
         gen->SetReturnObject( ( (EntityCreator*) gen->GetAuxiliary() )->CreateEntity() );
     }
 
-    bool RestoreEntity( uint id, const StrMap& props_data )
+    bool RestoreEntity( uint id, const DataBase::Document& doc )
     {
         CustomEntity* entity = new CustomEntity( id, SubType, Registrator );
-        if( !entity->Props.LoadFromText( props_data ) )
+        if( !entity->Props.LoadFromDbDocument( doc ) )
         {
             WriteLog( "Fail to restore properties for custom entity '{}' ({}).\n", Registrator->GetClassName(), id );
             entity->Release();
@@ -276,15 +276,15 @@ public:
     }
 
     #else
-    CustomEntity* CreateEntity()                                     { return nullptr; }
-    static void   CreateEntity_Generic( asIScriptGeneric* gen )      {}
-    bool          RestoreEntity( uint id, const StrMap& props_data ) { return false; }
-    void          DeleteEntity( CustomEntity* entity )               {}
-    static void   DeleteEntity_Generic( asIScriptGeneric* gen )      {}
-    void          DeleteEntityById( uint id )                        {}
-    static void   DeleteEntityById_Generic( asIScriptGeneric* gen )  {}
-    CustomEntity* GetEntity( uint id )                               { return nullptr; }
-    static void   GetEntity_Generic( asIScriptGeneric* gen )         {}
+    CustomEntity* CreateEntity()                                          { return nullptr; }
+    static void   CreateEntity_Generic( asIScriptGeneric* gen )           {}
+    bool          RestoreEntity( uint id, const DataBase::Document& doc ) { return false; }
+    void          DeleteEntity( CustomEntity* entity )                    {}
+    static void   DeleteEntity_Generic( asIScriptGeneric* gen )           {}
+    void          DeleteEntityById( uint id )                             {}
+    static void   DeleteEntityById_Generic( asIScriptGeneric* gen )       {}
+    CustomEntity* GetEntity( uint id )                                    { return nullptr; }
+    static void   GetEntity_Generic( asIScriptGeneric* gen )              {}
     #endif
 };
 
@@ -377,10 +377,10 @@ public:
         return true;
     }
 
-    bool RestoreEntity( const string& class_name, uint id, const StrMap& props_data )
+    bool RestoreEntity( const string& class_name, uint id, const DataBase::Document& doc )
     {
         EntityCreator* entity_creator = entityCreators[ class_name ];
-        return entity_creator->RestoreEntity( id, props_data );
+        return entity_creator->RestoreEntity( id, doc );
     }
 
     StrVec GetTypeNames()
@@ -1801,9 +1801,9 @@ StrVec ScriptPragmaCallback::GetCustomEntityTypes()
     return entityPragma->GetTypeNames();
 }
 
-bool ScriptPragmaCallback::RestoreCustomEntity( const string& class_name, uint id, const StrMap& props_data )
+bool ScriptPragmaCallback::RestoreCustomEntity( const string& class_name, uint id, const DataBase::Document& doc )
 {
-    return entityPragma->RestoreEntity( class_name, id, props_data );
+    return entityPragma->RestoreEntity( class_name, id, doc );
 }
 
 void* ScriptPragmaCallback::FindInternalEvent( const string& event_name )

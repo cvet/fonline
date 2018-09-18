@@ -363,7 +363,6 @@ void FOServer::Process_CreateClient( Client* cl )
     char password[ UTF8_BUF_SIZE( MAX_NAME ) ];
     cl->Connection->Bin.Pop( password, sizeof( password ) );
     password[ sizeof( password ) - 1 ] = 0;
-    cl->SetPassword( password );
 
     // Check net
     CHECK_IN_BUFF_ERROR_EXT( cl, cl->Send_TextMsg( cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME ), return );
@@ -437,7 +436,9 @@ void FOServer::Process_CreateClient( Client* cl )
 
     // Register
     cl->SetId( id );
+    DbStorage->Insert( "Players", id, { { "_Proto", string( "Player" ) } } );
     cl->RefreshName();
+    cl->SetPassword( password );
     cl->SetWorldX( GM_MAXX / 2 );
     cl->SetWorldY( GM_MAXY / 2 );
     cl->SetCond( COND_LIFE );
@@ -455,11 +456,6 @@ void FOServer::Process_CreateClient( Client* cl )
 
     // Assign base access
     cl->Access = ACCESS_DEFAULT;
-
-    // First save
-    StrMap data;
-    cl->Props.SaveToText( data, &cl->Proto->Props );
-    DbStorage->Insert( "Players", id, data );
 
     // Notify
     cl->Send_TextMsg( cl, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME );
@@ -562,9 +558,9 @@ void FOServer::Process_LogIn( Client*& cl )
     }
 
     // Check password
-    uint   id = MAKE_CLIENT_ID( cl->Name );
-    StrMap data = DbStorage->Get( "Players", id );
-    if( !data.count( "Password" ) || !Str::Compare( password, data[ "Password" ].c_str() ) )
+    uint               id = MAKE_CLIENT_ID( cl->Name );
+    DataBase::Document doc = DbStorage->Get( "Players", id );
+    if( !doc.count( "Password" ) || doc[ "Password" ].which() != DataBase::StringValue || !Str::Compare( password, doc[ "Password" ].get< string >().c_str() ) )
     {
         cl->Send_TextMsg( cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME );
         cl->Disconnect();
@@ -645,7 +641,7 @@ void FOServer::Process_LogIn( Client*& cl )
         cl->SetId( id );
 
         // Data
-        if( !cl->Props.LoadFromText( data ) )
+        if( !cl->Props.LoadFromDbDocument( doc ) )
         {
             WriteLog( "Player '{}' data truncated.\n", cl->Name );
             cl->Send_TextMsg( cl, STR_NET_BD_ERROR, SAY_NETMSG, TEXTMSG_GAME );

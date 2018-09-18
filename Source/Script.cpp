@@ -961,10 +961,10 @@ StrVec Script::GetCustomEntityTypes()
     return edata->PragmaCB->GetCustomEntityTypes();
 }
 
-bool Script::RestoreCustomEntity( const string& type_name, uint id, const StrMap& props_data )
+bool Script::RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc )
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
-    return edata->PragmaCB->RestoreCustomEntity( type_name, id, props_data );
+    return edata->PragmaCB->RestoreCustomEntity( type_name, id, doc );
 }
 
 void* Script::FindInternalEvent( const string& event_name )

@@ -3,6 +3,7 @@
 #include "IniParser.h"
 #include "Crypt.h"
 #include "F2Palette.h"
+#include <time.h>
 #ifdef FO_WEB
 # include <emscripten/html5.h>
 #endif

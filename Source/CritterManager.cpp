@@ -136,7 +136,7 @@ Npc* CritterManager::CreateNpc( hash proto_id, Properties* props, Map* map, usho
     return npc;
 }
 
-bool CritterManager::RestoreNpc( uint id, hash proto_id, const StrMap& props_data )
+bool CritterManager::RestoreNpc( uint id, hash proto_id, const DataBase::Document& doc )
 {
     ProtoCritter* proto = ProtoMngr.GetProtoCritter( proto_id );
     if( !proto )
@@ -146,7 +146,7 @@ bool CritterManager::RestoreNpc( uint id, hash proto_id, const StrMap& props_dat
     }
 
     Npc* npc = new Npc( id, proto );
-    if( !npc->Props.LoadFromText( props_data ) )
+    if( !npc->Props.LoadFromDbDocument( doc ) )
     {
         WriteLog( "Fail to restore properties for critter '{}' ({}).\n", _str().parseHash( proto_id ), id );
         npc->Release();
