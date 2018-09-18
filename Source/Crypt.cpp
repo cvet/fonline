@@ -288,6 +288,8 @@ bool CryptManager::InitCache()
     RUNTIME_ASSERT( !CacheDb );
 
     string path = FileManager::GetWritePath( "/Cache.bin" );
+    FileManager::CreateDirectoryTree( path );
+
     if( unqlite_open( &CacheDb, path.c_str(), UNQLITE_OPEN_CREATE | UNQLITE_OPEN_OMIT_JOURNALING ) != UNQLITE_OK )
     {
         CacheDb = nullptr;
