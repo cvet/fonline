@@ -811,6 +811,8 @@ void Script::ReturnContext( asIScriptContext* ctx )
     FreeContexts.push_back( ctx );
 
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
+    for( uint i = 0; i < ctx_data->EntityArgsCount; i++ )
+        ctx_data->EntityArgs[ i ]->Release();
     memzero( ctx_data, sizeof( ContextData ) );
 }
 
@@ -1758,6 +1760,8 @@ void Script::SetArgEntity( Entity* value )
     if( ScriptCall && value )
     {
         ContextData* ctx_data = (ContextData*) CurrentCtx->GetUserData();
+        value->AddRef();
+        RUNTIME_ASSERT( ctx_data->EntityArgsCount < 20 );
         ctx_data->EntityArgs[ ctx_data->EntityArgsCount ] = value;
         ctx_data->EntityArgsCount++;
     }
@@ -1981,6 +1985,7 @@ asIScriptContext* Script::SuspendCurrentContext( uint time )
     RUNTIME_ASSERT( std::find( BusyContexts.begin(), BusyContexts.end(), ctx ) != BusyContexts.end() );
     if( ctx->GetFunction( ctx->GetCallstackSize() - 1 )->GetReturnTypeId() != asTYPEID_VOID )
         SCRIPT_ERROR_R0( "Can't yield context which must return value." );
+
     ctx->Suspend();
     ContextData* ctx_data = (ContextData*) ctx->GetUserData();
     ctx_data->SuspendEndTick = ( time != uint( -1 ) ? ( time ? Timer::FastTick() + time : 0 ) : uint( -1 ) );
@@ -1997,32 +2002,30 @@ void Script::ResumeContext( asIScriptContext* ctx )
 
 void Script::RunSuspended()
 {
+    if( BusyContexts.empty() )
+        return;
+
     // Collect contexts to resume
     ContextVec resume_contexts;
+    uint       tick = Timer::FastTick();
+    for( auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it )
     {
-        if( BusyContexts.empty() )
-            return;
-
-        uint tick = Timer::FastTick();
-        for( auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it )
+        asIScriptContext* ctx = *it;
+        ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
+        if( ( ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED ) &&
+            ctx_data->SuspendEndTick != uint( -1 ) && tick >= ctx_data->SuspendEndTick )
         {
-            asIScriptContext* ctx = *it;
-            ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
-            if( ( ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED ) &&
-                ctx_data->SuspendEndTick != uint( -1 ) && tick >= ctx_data->SuspendEndTick )
-            {
-                resume_contexts.push_back( ctx );
-            }
+            resume_contexts.push_back( ctx );
         }
-
-        if( resume_contexts.empty() )
-            return;
     }
+
+    if( resume_contexts.empty() )
+        return;
 
     // Resume
     for( auto& ctx : resume_contexts )
     {
-        if( ctx->GetState() == asEXECUTION_PREPARED && !CheckContextEntities( ctx ) )
+        if( !CheckContextEntities( ctx ) )
         {
             ReturnContext( ctx );
             continue;
@@ -2039,28 +2042,26 @@ void Script::RunMandatorySuspended()
     uint i = 0;
     while( true )
     {
+        if( BusyContexts.empty() )
+            break;
+
         // Collect contexts to resume
         ContextVec resume_contexts;
+        for( auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it )
         {
-            if( BusyContexts.empty() )
-                break;
-
-            for( auto it = BusyContexts.begin(), end = BusyContexts.end(); it != end; ++it )
-            {
-                asIScriptContext* ctx = *it;
-                ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
-                if( ( ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED ) && ctx_data->SuspendEndTick == 0 )
-                    resume_contexts.push_back( ctx );
-            }
-
-            if( resume_contexts.empty() )
-                break;
+            asIScriptContext* ctx = *it;
+            ContextData*      ctx_data = (ContextData*) ctx->GetUserData();
+            if( ( ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED ) && ctx_data->SuspendEndTick == 0 )
+                resume_contexts.push_back( ctx );
         }
+
+        if( resume_contexts.empty() )
+            break;
 
         // Resume
         for( auto& ctx : resume_contexts )
         {
-            if( ctx->GetState() == asEXECUTION_PREPARED && !CheckContextEntities( ctx ) )
+            if( !CheckContextEntities( ctx ) )
             {
                 ReturnContext( ctx );
                 continue;

@@ -16,9 +16,6 @@
 # include "FL/Fl_Button.H"
 # include "FL/Fl_Check_Button.H"
 # include "FL/Fl_File_Icon.H"
-# ifdef FO_MSVC
-#  pragma comment( lib, "fltk.lib" )
-# endif
 #endif
 
 static void InitAdminManager();

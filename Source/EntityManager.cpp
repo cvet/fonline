@@ -212,7 +212,7 @@ bool EntityManager::LoadEntities()
         if( type == EntityType::Custom )
         {
             custom_index++;
-            if( custom_index >= custom_types.size() )
+            if( custom_index >= (int) custom_types.size() )
                 break;
 
             q--;

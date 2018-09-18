@@ -1125,11 +1125,11 @@ public:
 
             FuncVec callbacks_to_call;
 
-            // Global callbacs
+            // Global callbacks
             if( !Callbacks.empty() )
                 callbacks_to_call = Callbacks;
 
-            // Arg callbacs
+            // Arg callbacks
             for( size_t i = 0; i < ArgInfos.size(); i++ )
             {
                 const ArgInfo& arg_info = ArgInfos[ i ];

@@ -4012,7 +4012,6 @@ void FOMapper::ParseCommand( const string& command )
         }
         string str = _str( icmd.str() ).trim();
 
-
         // Reparse module
         uint bind_id = Script::BindByFuncName( func_name, "string %s(string)", true );
         if( bind_id )

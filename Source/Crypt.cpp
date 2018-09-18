@@ -378,7 +378,7 @@ uchar* CryptManager::GetCache( const string& data_name, uint& data_len )
     if( r == UNQLITE_NOTFOUND )
         return nullptr;
 
-    uchar* data = new uchar[ size ];
+    uchar* data = new uchar[ (uint) size ];
     r = unqlite_kv_fetch( CacheDb, data_name.c_str(), (int) data_name.length(), data, &size );
     RUNTIME_ASSERT( r == UNQLITE_OK );
 

@@ -860,7 +860,11 @@ public:
 
         const bson_t* bson;
         if( !mongoc_cursor_next( cursor, &bson ) )
+        {
+            mongoc_cursor_destroy( cursor );
+            bson_destroy( &query );
             return Document();
+        }
 
         Document doc;
         BsonToDocument( bson, doc );
@@ -924,7 +928,6 @@ protected:
 
         bson_destroy( &selector );
         bson_destroy( &update );
-        bson_destroy( &update_set );
     }
 
     virtual void DeleteRecord( const string& collection_name, uint id ) override
