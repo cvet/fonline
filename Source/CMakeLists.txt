@@ -5,7 +5,6 @@ project( FOnlineProject )
 # Preprocessor definitions
 #
 
-set( FO_DEBUG NO )
 set( BUILD_ONLY_CLIENT NO )
 set( BUILD_CLIENT_LIBRARY NO )
 set( CMAKE_VERBOSE_MAKEFILE ON CACHE STRING "" FORCE )
