@@ -6127,6 +6127,12 @@ void FOClient::OnSendCritterValue( Entity* entity, Property* prop )
         SCRIPT_ERROR_R( "Unable to send critter modifiable property '{}'", prop->GetName() );
 }
 
+void FOClient::OnSetCritterModelName( Entity* entity, Property* prop, void* cur_value, void* old_value )
+{
+    CritterCl* cr = (CritterCl*) entity;
+    cr->RefreshAnim();
+}
+
 void FOClient::OnSendItemValue( Entity* entity, Property* prop )
 {
     Item* item = (Item*) entity;
@@ -6264,6 +6270,9 @@ namespace ClientBind
     #define BIND_ASSERT( x )    if( ( x ) < 0 ) { WriteLog( "Bind error, line {}.\n", __LINE__ ); errors++; }
     #include "ScriptBind.h"
 }
+
+Map*      FOClient::SScriptFunc::ClientCurMap;
+Location* FOClient::SScriptFunc::ClientCurLocation;
 
 bool FOClient::ReloadScripts()
 {
@@ -6431,6 +6440,7 @@ bool FOClient::ReloadScripts()
     Globals = new GlobalVars();
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
     CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
+    CritterCl::PropertiesRegistrator->SetNativeSetCallback( "ModelName", OnSetCritterModelName );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
     Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
     Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
@@ -6471,18 +6481,21 @@ void FOClient::OnItemInvChanged( Item* old_item, Item* item )
     old_item->Release();
 }
 
-int SortCritterHx_ = 0, SortCritterHy_ = 0;
-bool SortCritterByDistPred( CritterCl* cr1, CritterCl* cr2 )
+static int SortCritterHx_ = 0;
+static int SortCritterHy_ = 0;
+static bool SortCritterByDistPred( CritterCl* cr1, CritterCl* cr2 )
 {
     return DistGame( SortCritterHx_, SortCritterHy_, cr1->GetHexX(), cr1->GetHexY() ) < DistGame( SortCritterHx_, SortCritterHy_, cr2->GetHexX(), cr2->GetHexY() );
 }
-void SortCritterByDist( CritterCl* cr, CritVec& critters )
+
+static void SortCritterByDist( CritterCl* cr, CritVec& critters )
 {
     SortCritterHx_ = cr->GetHexX();
     SortCritterHy_ = cr->GetHexY();
     std::sort( critters.begin(), critters.end(), SortCritterByDistPred );
 }
-void SortCritterByDist( int hx, int hy, CritVec& critters )
+
+static void SortCritterByDist( int hx, int hy, CritVec& critters )
 {
     SortCritterHx_ = hx;
     SortCritterHy_ = hy;
@@ -8524,6 +8537,3 @@ void FOClient::SScriptFunc::Global_SetUserConfig( CScriptArray* key_values )
     }
     cfg_user.SaveFile( CONFIG_NAME );
 }
-
-Map*      FOClient::SScriptFunc::ClientCurMap;
-Location* FOClient::SScriptFunc::ClientCurLocation;

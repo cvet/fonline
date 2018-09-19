@@ -231,6 +231,7 @@ public:
     // Properties callbacks
     static void OnSendGlobalValue( Entity* entity, Property* prop );
     static void OnSendCritterValue( Entity* entity, Property* prop );
+    static void OnSetCritterModelName( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void OnSendItemValue( Entity* entity, Property* prop );
     static void OnSetItemFlags( Entity* entity, Property* prop, void* cur_value, void* old_value );
     static void OnSetItemSomeLight( Entity* entity, Property* prop, void* cur_value, void* old_value );

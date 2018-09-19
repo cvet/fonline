@@ -501,10 +501,17 @@ void EntityManager::InitAfterLoad()
     // Other initialization
     EntityMap entities = allEntities;
     for( auto it = entities.begin(); it != entities.end(); ++it )
+        it->second->AddRef();
+
+    for( auto it = entities.begin(); it != entities.end(); ++it )
     {
         Entity* entity = it->second;
+        RUNTIME_ASSERT( entity->Id == it->first );
         if( entity->IsDestroyed )
+        {
+            entity->Release();
             continue;
+        }
 
         if( entity->Type == EntityType::Location )
         {
@@ -536,6 +543,8 @@ void EntityManager::InitAfterLoad()
             if( !item->IsDestroyed && item->GetScriptId() )
                 item->SetScript( nullptr, false );
         }
+
+        entity->Release();
     }
 
     WriteLog( "Init entities after load complete.\n" );
