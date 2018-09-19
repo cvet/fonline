@@ -506,7 +506,6 @@ void EntityManager::InitAfterLoad()
     for( auto it = entities.begin(); it != entities.end(); ++it )
     {
         Entity* entity = it->second;
-        RUNTIME_ASSERT( entity->Id == it->first );
         if( entity->IsDestroyed )
         {
             entity->Release();

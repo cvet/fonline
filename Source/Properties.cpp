@@ -2019,7 +2019,7 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                     continue;
                 }
 
-                uint data_size = 0;
+                uint data_size = sizeof( uint );
                 for( size_t i = 0; i < arr.size(); i++ )
                 {
                     RUNTIME_ASSERT( arr[ i ].which() == DataBase::StringValue );
@@ -2029,7 +2029,8 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
                 }
 
                 uchar* data = new uchar[ data_size ];
-                size_t data_pos = 0;
+                *(uint*) data = (uint) arr.size();
+                size_t data_pos = sizeof( uint );
                 for( size_t i = 0; i < arr.size(); i++ )
                 {
                     const string& str = arr[ i ].get< string >();
