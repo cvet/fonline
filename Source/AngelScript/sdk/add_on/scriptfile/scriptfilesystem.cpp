@@ -1,5 +1,6 @@
 #include "scriptfilesystem.h"
 #include "../autowrapper/aswrappedcall.h"
+#include <string.h>
 
 #if defined(_WIN32)
 #include <direct.h> // _getcwd
