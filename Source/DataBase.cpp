@@ -331,6 +331,25 @@ static void BsonToDocument( const bson_t* bson, DataBase::Document& doc )
     }
 }
 
+DataBase::Document DataBase::Get( const string& collection_name, uint id )
+{
+    if( deletedRecords[ collection_name ].count( id ) )
+        return Document();
+
+    if( newRecords[ collection_name ].count( id ) )
+        return recordChanges[ collection_name ][ id ];
+
+    Document doc = GetRecord( collection_name, id );
+
+    if( recordChanges[ collection_name ].count( id ) )
+    {
+        for( auto& kv : recordChanges[ collection_name ][ id ] )
+            doc[ kv.first ] = kv.second;
+    }
+
+    return doc;
+}
+
 void DataBase::StartChanges()
 {
     RUNTIME_ASSERT( !changesStarted );
@@ -429,7 +448,8 @@ public:
         return ids;
     }
 
-    virtual Document Get( const string& collection_name, uint id ) override
+protected:
+    virtual Document GetRecord( const string& collection_name, uint id ) override
     {
         string path = FileManager::GetWritePath( _str( "{}/{}/{}.json", storageDir, collection_name, id ) );
         void*  f = FileOpen( path.c_str(), false );
@@ -457,7 +477,6 @@ public:
         return doc;
     }
 
-protected:
     virtual void InsertRecord( const string& collection_name, uint id, const Document& doc ) override
     {
         RUNTIME_ASSERT( !doc.empty() );
@@ -619,7 +638,8 @@ public:
         return ids;
     }
 
-    virtual Document Get( const string& collection_name, uint id ) override
+protected:
+    virtual Document GetRecord( const string& collection_name, uint id ) override
     {
         unqlite* db = GetCollection( collection_name );
         RUNTIME_ASSERT( db );
@@ -642,7 +662,6 @@ public:
         return doc;
     }
 
-protected:
     virtual void InsertRecord( const string& collection_name, uint id, const Document& doc ) override
     {
         RUNTIME_ASSERT( !doc.empty() );
@@ -844,7 +863,8 @@ public:
         return ids;
     }
 
-    virtual Document Get( const string& collection_name, uint id ) override
+protected:
+    virtual Document GetRecord( const string& collection_name, uint id ) override
     {
         mongoc_collection_t* collection = GetCollection( collection_name );
         RUNTIME_ASSERT( collection );
@@ -874,7 +894,6 @@ public:
         return doc;
     }
 
-protected:
     virtual void InsertRecord( const string& collection_name, uint id, const Document& doc ) override
     {
         RUNTIME_ASSERT( !doc.empty() );
@@ -999,7 +1018,8 @@ public:
         return ids;
     }
 
-    virtual Document Get( const string& collection_name, uint id ) override
+protected:
+    virtual Document GetRecord( const string& collection_name, uint id ) override
     {
         Collection& collection = collections[ collection_name ];
 
@@ -1007,7 +1027,6 @@ public:
         return it != collection.end() ? it->second : Document();
     }
 
-protected:
     virtual void InsertRecord( const string& collection_name, uint id, const Document& doc ) override
     {
         RUNTIME_ASSERT( !doc.empty() );

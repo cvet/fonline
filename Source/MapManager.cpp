@@ -65,9 +65,10 @@ string MapManager::GetLocationsMapsStatistics()
         uint map_index = 0;
         for( Map* map : loc->GetMaps() )
         {
-            result += _str( "     {:02}) {:<20} {:<9}   {:<4} {:<4} {:<50}\n",
-                            map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity(),
-                            map->GetScriptId() ? _str().parseHash( map->GetScriptId() ) : "" );
+            result += _str( "     {:02}) {:<20} {:<9}   {:<4} {:<4} ",
+                            map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity() );
+            result += map->GetScriptId() ? _str().parseHash( map->GetScriptId() ) : "";
+            result += "\n";
             map_index++;
         }
     }

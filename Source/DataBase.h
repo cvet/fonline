@@ -30,15 +30,16 @@ private:
     RecordsState deletedRecords;
 
 protected:
-    virtual void InsertRecord( const string& collection_name, uint id, const Document& doc ) = 0;
-    virtual void UpdateRecord( const string& collection_name, uint id, const Document& doc ) = 0;
-    virtual void DeleteRecord( const string& collection_name, uint id ) = 0;
-    virtual void CommitRecords() = 0;
+    virtual Document GetRecord( const string& collection_name, uint id ) = 0;
+    virtual void     InsertRecord( const string& collection_name, uint id, const Document& doc ) = 0;
+    virtual void     UpdateRecord( const string& collection_name, uint id, const Document& doc ) = 0;
+    virtual void     DeleteRecord( const string& collection_name, uint id ) = 0;
+    virtual void     CommitRecords() = 0;
 
 public:
     virtual ~DataBase() = default;
-    virtual UIntVec  GetAllIds( const string& collection_name ) = 0;
-    virtual Document Get( const string& collection_name, uint id ) = 0;
+    virtual UIntVec GetAllIds( const string& collection_name ) = 0;
+    Document        Get( const string& collection_name, uint id );
 
     void StartChanges();
     void Insert( const string& collection_name, uint id, const Document& doc );

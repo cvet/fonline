@@ -1031,6 +1031,19 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
             {
                 // ignore
             }
+            else if( value == "#undef" )
+            {
+                directive.pop_front();
+
+                if( directive.empty() )
+                    PrintErrorMessage( "Undef directive without arguments." );
+                else if( directive.size() > 1 )
+                    PrintErrorMessage( "Undef directive multiple arguments." );
+                else if( directive.begin()->Type != IDENTIFIER )
+                    PrintErrorMessage( "Undef's name was not an identifier." );
+                else
+                    Undef( directive.begin()->Value );
+            }
             else if( value == "#include" )
             {
                 if( LNT )

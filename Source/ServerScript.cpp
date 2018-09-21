@@ -3365,9 +3365,6 @@ bool FOServer::SScriptFunc::Global_SwapCritters( Critter* cr1, Critter* cr2, boo
             cr1->AddItem( *it, false );
     }
 
-    // Swap properties
-    cr2->Props = cr1->Props;
-
     // Refresh
     cr1->ClearVisible();
     cr2->ClearVisible();

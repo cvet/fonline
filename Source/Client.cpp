@@ -6131,6 +6131,7 @@ void FOClient::OnSetCritterModelName( Entity* entity, Property* prop, void* cur_
 {
     CritterCl* cr = (CritterCl*) entity;
     cr->RefreshAnim();
+    cr->Action( ACTION_REFRESH, 0, nullptr );
 }
 
 void FOClient::OnSendItemValue( Entity* entity, Property* prop )
