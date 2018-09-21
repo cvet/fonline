@@ -477,7 +477,7 @@ int CScriptFileSystem::CopyFile(const string &source, const string &target)
 	FILE *src = 0, *tgt = 0;
 	src = fopen(search1.c_str(), "r");
 	if (src == 0) failure = true;
-	if( !failure ) tgt - fopen(search2.c_str(), "w");
+	if( !failure ) tgt = fopen(search2.c_str(), "w");
 	if (tgt == 0) failure = true;
 	char buf[1024];
 	size_t n;
