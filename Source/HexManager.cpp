@@ -1681,7 +1681,19 @@ void HexManager::RebuildRoof()
 
                     if( IsVisible( spr_id, ox, oy ) )
                     {
-                        Sprites&           tree = ( roof.Anim->GetCnt() == 1 && rtRoof ? roofTree : roofAnimatedTree );
+                        bool is_static_tile = ( roof.Anim->GetCnt() == 1 && rtRoof );
+                        if( is_static_tile )
+                        {
+                            is_static_tile =
+                                GetField( hx - GameOpt.MapRoofSkipSize, hy ).RoofNum &&
+                                GetField( hx - GameOpt.MapRoofSkipSize * 2, hy ).RoofNum &&
+                                GetField( hx - GameOpt.MapRoofSkipSize * 3, hy ).RoofNum &&
+                                GetField( hx, hy - GameOpt.MapRoofSkipSize ).RoofNum &&
+                                GetField( hx, hy - GameOpt.MapRoofSkipSize * 2 ).RoofNum &&
+                                GetField( hx, hy - GameOpt.MapRoofSkipSize * 3 ).RoofNum;
+                        }
+
+                        Sprites&           tree = ( is_static_tile ? roofTree : roofAnimatedTree );
                         #ifdef FONLINE_MAPPER
                         ProtoMap::TileVec& roofs = GetTiles( hx, hy, true );
                         tree.AddSprite( DRAW_ORDER_TILE + roof.Layer, hx, hy, 0, ox, oy, spr_id, nullptr, nullptr, nullptr, roofs[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : &GameOpt.RoofAlpha, &Effect::Roof, nullptr ).SetEgg( EGG_ALWAYS );
@@ -1706,7 +1718,7 @@ void HexManager::RebuildRoof()
     {
         SprMngr.PushRenderTarget( rtRoof );
         SprMngr.ClearCurrentRenderTarget( 0 );
-        SprMngr.DrawSprites( roofTree, false, true, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END, true, rtScreenOX, rtScreenOY );
+        SprMngr.DrawSprites( roofTree, false, false, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END, true, rtScreenOX, rtScreenOY );
         SprMngr.PopRenderTarget();
     }
 }
