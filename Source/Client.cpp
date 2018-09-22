@@ -583,7 +583,7 @@ void FOClient::UpdateFilesLoop()
             UpdateFilesFilesChanged = false;
             SAFEDEL( UpdateFilesList );
             UpdateFileDownloading = false;
-            FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
+            FileManager::DeleteFile( FileManager::GetWritePath( "Update.bin" ) );
             UpdateFilesTick = Timer::FastTick();
 
             Net_SendUpdate();
@@ -618,7 +618,7 @@ void FOClient::UpdateFilesLoop()
 
                 if( update_file.Name[ 0 ] == '$' )
                 {
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "Update.bin" ), true );
                     UpdateFilesCacheChanged = true;
                 }
                 else
@@ -633,7 +633,7 @@ void FOClient::UpdateFilesLoop()
                     #endif
 
                     FileManager::DeleteFile( FileManager::GetWritePath( update_file.Name ) );
-                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "update.temp" ), true );
+                    UpdateFileTemp = FileOpen( FileManager::GetWritePath( "Update.bin" ), true );
                     UpdateFilesFilesChanged = true;
                 }
 
@@ -4264,7 +4264,7 @@ void FOClient::Net_OnUpdateFileData()
         // Cache
         if( update_file.Name[ 0 ] == '$' )
         {
-            void* temp_file = FileOpen( FileManager::GetWritePath( "update.temp" ), false );
+            void* temp_file = FileOpen( FileManager::GetWritePath( "Update.bin" ), false );
             if( !temp_file )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, "Can't load update file!" );
@@ -4283,12 +4283,12 @@ void FOClient::Net_OnUpdateFileData()
 
             Crypt.SetCache( update_file.Name, &buf[ 0 ], len );
             Crypt.SetCache( update_file.Name + ".hash", (uchar*) &update_file.Hash, sizeof( update_file.Hash ) );
-            FileManager::DeleteFile( FileManager::GetWritePath( "update.temp" ) );
+            FileManager::DeleteFile( FileManager::GetWritePath( "Update.bin" ) );
         }
         // File
         else
         {
-            string from_path = FileManager::GetWritePath( "update.temp" );
+            string from_path = FileManager::GetWritePath( "Update.bin" );
             string to_path = FileManager::GetWritePath( update_file.Name );
             if( !FileManager::RenameFile( from_path, to_path ) )
             {
