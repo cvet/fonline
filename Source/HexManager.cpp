@@ -1681,8 +1681,9 @@ void HexManager::RebuildRoof()
 
                     if( IsVisible( spr_id, ox, oy ) )
                     {
+                        #pragma MESSAGE( "Roof optimization option to options" )
                         bool is_static_tile = ( roof.Anim->GetCnt() == 1 && rtRoof );
-                        if( is_static_tile )
+                        if( is_static_tile && hx >= GameOpt.MapRoofSkipSize * 3 && hy >= GameOpt.MapRoofSkipSize * 3 )
                         {
                             is_static_tile =
                                 GetField( hx - GameOpt.MapRoofSkipSize, hy ).RoofNum &&

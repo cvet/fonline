@@ -398,6 +398,7 @@ void Property::GenericGet( Entity* entity, void* ret_value )
             }
             else if( dataType == Property::Array || dataType == Property::Dict )
             {
+                memcpy( ret_value, Script::GetReturnedRawAddress(), sizeof( void* ) );
                 void*& val = *(void**) ret_value;
                 if( val )
                 {

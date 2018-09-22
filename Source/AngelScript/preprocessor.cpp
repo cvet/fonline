@@ -188,6 +188,7 @@ public:
     void        ParseDefine( DefineTable& define_table, LexemList& def_lexems );
     LLITR       ParseIfDef( LLITR itr, LLITR end );
     void        ParseIf( LexemList& directive, std::string& name_out );
+    void        ParseUndef( DefineTable& define_table, const std::string& identifier );
     bool        ConvertExpression( LexemList& expression, LexemList& output );
     int         EvaluateConvertedExpression( DefineTable& define_table, LexemList& expr );
     bool        EvaluateExpression( DefineTable& define_table, LexemList& directive );
@@ -644,6 +645,13 @@ void Preprocessor::ParseIf( LexemList& directive, std::string& name_out )
         PrintErrorMessage( "Too many arguments." );
 }
 
+void Preprocessor::ParseUndef( DefineTable& define_table, const std::string& identifier )
+{
+    auto it = define_table.find( identifier );
+    if( it != define_table.end() )
+        define_table.erase( it );
+}
+
 bool Preprocessor::ConvertExpression( LexemList& expression, LexemList& output )
 {
     if( expression.empty() )
@@ -1042,7 +1050,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
                 else if( directive.begin()->Type != IDENTIFIER )
                     PrintErrorMessage( "Undef's name was not an identifier." );
                 else
-                    Undef( directive.begin()->Value );
+                    ParseUndef( define_table, directive.begin()->Value );
             }
             else if( value == "#include" )
             {
@@ -1153,15 +1161,9 @@ void Preprocessor::Define( const std::string& str )
 
 void Preprocessor::Undef( const std::string& str )
 {
-    for( DefineTable::iterator it = CustomDefines.begin(), end = CustomDefines.end(); it != end; ++it )
-    {
-        if( it->first == str )
-        {
-            CustomDefines.erase( it );
-            Undef( str );
-            break;
-        }
-    }
+    auto it = CustomDefines.find( str );
+    if( it != CustomDefines.end() )
+        CustomDefines.erase( it );
 }
 
 void Preprocessor::UndefAll()
