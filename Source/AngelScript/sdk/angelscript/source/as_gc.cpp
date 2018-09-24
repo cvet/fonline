@@ -472,7 +472,8 @@ int asCGarbageCollector::ReportAndReleaseUndestroyedObjects()
 	// This function will only be called as the engine is shutting down
 
 	int items = 0;
-	for( asUINT n = 0; n < gcOldObjects.GetLength(); n++ )
+	// Patch
+	/*for( asUINT n = 0; n < gcOldObjects.GetLength(); n++ )
 	{
 		asSObjTypePair gcObj = GetOldObjectAtIdx(n);
 
@@ -504,7 +505,7 @@ int asCGarbageCollector::ReportAndReleaseUndestroyedObjects()
 			engine->CallObjectMethod(gcObj.obj, gcObj.type->beh.release);
 
 		items++;
-	}
+	}*/
 	return items;
 }
 
