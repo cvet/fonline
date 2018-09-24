@@ -4010,19 +4010,18 @@ void FOMapper::ParseCommand( const string& command )
             AddMess( "Function name not typed." );
             return;
         }
-        string str = _str( icmd.str() ).trim();
 
         // Reparse module
         uint bind_id = Script::BindByFuncName( func_name, "string %s(string)", true );
         if( bind_id )
         {
-            string sstr = str;
+            string str = _str( command ).substringAfter( ' ' ).trim();
             Script::PrepareContext( bind_id, "Mapper" );
-            Script::SetArgObject( &sstr );
+            Script::SetArgObject( &str );
             if( Script::RunPrepared() )
             {
-                string sstr_ = *(string*) Script::GetReturnedObject();
-                AddMessFormat( _str( "Result: {}", sstr_ ).c_str() );
+                string result = *(string*) Script::GetReturnedRawAddress();
+                AddMess( _str( "Result: {}", result ).c_str() );
             }
             else
             {
@@ -4167,16 +4166,6 @@ void FOMapper::AddMess( const char* message_text )
     MessBox.push_back( MessBoxMessage( 0, str.c_str(), mess_time.c_str() ) );
     MessBoxScroll = 0;
     MessBoxGenerate();
-}
-
-void FOMapper::AddMessFormat( const char* message_text, ... )
-{
-    char    str[ MAX_FOTEXT ];
-    va_list list;
-    va_start( list, message_text );
-    vsprintf( str, message_text, list );
-    va_end( list );
-    AddMess( str );
 }
 
 void FOMapper::MessBoxGenerate()

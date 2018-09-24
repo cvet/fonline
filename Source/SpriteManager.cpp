@@ -3172,6 +3172,8 @@ AnyFrames* SpriteManager::LoadAnimationBam( const string& fname )
             else
                 color |= 0xFF000000;
 
+            color = COLOR_SWAP_RB( color );
+
             if( rle && index == compr_color )
             {
                 uint copies = fm.GetUChar();

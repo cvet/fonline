@@ -360,7 +360,6 @@ public:
 
     void MessBoxGenerate();
     void AddMess( const char* message_text );
-    void AddMessFormat( const char* message_text, ... );
     void MessBoxDraw();
     bool SaveLogFile();
 
