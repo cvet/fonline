@@ -8413,6 +8413,7 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurface( int effect_subtype )
         SCRIPT_ERROR_R( "Invalid effect subtype." );
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
+
     SprMngr.DrawRenderTarget( rt, true );
 }
 
@@ -8431,7 +8432,10 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtyp
         SCRIPT_ERROR_R( "Invalid effect subtype." );
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
-    SprMngr.DrawRenderTarget( rt, true, &Rect( x, y, x + w, y + h ), &Rect( x, y, x + w, y + h ) );
+
+    Rect from( x, y, x + w, y + h );
+    Rect to( x, y, x + w, y + h );
+    SprMngr.DrawRenderTarget( rt, true, &from, &to );
 }
 
 void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subtype, int from_x, int from_y, int from_w, int from_h, int to_x, int to_y, int to_w, int to_h )
@@ -8449,7 +8453,10 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subty
         SCRIPT_ERROR_R( "Invalid effect subtype." );
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
-    SprMngr.DrawRenderTarget( rt, true, &Rect( from_x, from_y, from_x + from_w, from_y + from_h ), &Rect( to_x, to_y, to_x + to_w, to_y + to_h ) );
+
+    Rect from( from_x, from_y, from_x + from_w, from_y + from_h );
+    Rect to( to_x, to_y, to_x + to_w, to_y + to_h );
+    SprMngr.DrawRenderTarget( rt, true, &from, &to );
 }
 
 void FOClient::SScriptFunc::Global_ShowScreen( int screen, CScriptDictionary* params )
