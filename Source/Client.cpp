@@ -538,10 +538,11 @@ void FOClient::UpdateFilesLoop()
     {
         // Wait screen
         SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
-        DrawIfaceLayer( 1 );
-        DrawIfaceLayer( 2 );
-        DrawIfaceLayer( 3 );
-        DrawIfaceLayer( 4 );
+
+        SpritesCanDraw++;
+        Script::RaiseInternalEvent( ClientFunctions.RenderIface );
+        SpritesCanDraw--;
+
         SprMngr.EndScene();
     }
 
@@ -1068,6 +1069,13 @@ void FOClient::MainLoop()
     // Start render
     SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
 
+    // Make dirty offscreen surfaces
+    if( !PreDirtyOffscreenSurfaces.empty() )
+    {
+        DirtyOffscreenSurfaces.insert( DirtyOffscreenSurfaces.end(), Self->PreDirtyOffscreenSurfaces.begin(), Self->PreDirtyOffscreenSurfaces.end() );
+        PreDirtyOffscreenSurfaces.clear();
+    }
+
     // Process pending invocations
     Script::ProcessDeferredCalls();
 
@@ -1081,14 +1089,12 @@ void FOClient::MainLoop()
     ProcessScreenEffectQuake();
 
     // Render
-    DrawIfaceLayer( 1 );
-
     if( GetMainScreen() == SCREEN_GAME && HexMngr.IsMapLoaded() )
         GameDraw();
 
-    DrawIfaceLayer( 2 );
-    DrawIfaceLayer( 3 );
-    DrawIfaceLayer( 4 );
+    SpritesCanDraw++;
+    Script::RaiseInternalEvent( ClientFunctions.RenderIface );
+    SpritesCanDraw--;
 
     ProcessScreenEffectFading();
 
@@ -6469,13 +6475,6 @@ bool FOClient::ReloadScripts()
     return true;
 }
 
-void FOClient::DrawIfaceLayer( uint layer )
-{
-    SpritesCanDraw++;
-    Script::RaiseInternalEvent( ClientFunctions.RenderIface, layer );
-    SpritesCanDraw--;
-}
-
 void FOClient::OnItemInvChanged( Item* old_item, Item* item )
 {
     Script::RaiseInternalEvent( ClientFunctions.ItemInvChanged, item, old_item );
@@ -7768,6 +7767,7 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
     #define EFFECT_FLUSH_MAP                 ( 0x08000000 )
     #define EFFECT_FLUSH_LIGHT               ( 0x10000000 )
     #define EFFECT_FLUSH_FOG                 ( 0x20000000 )
+    #define EFFECT_OFFSCREEN                 ( 0x40000000 )
 
     Effect* effect = nullptr;
     if( !effect_name.empty() )
@@ -7834,6 +7834,15 @@ bool FOClient::SScriptFunc::Global_SetEffect( int effect_type, int effect_subtyp
         *Effect::FlushLight = ( effect ? *effect : *Effect::FlushLightDefault );
     if( effect_type & EFFECT_FLUSH_FOG )
         *Effect::FlushFog = ( effect ? *effect : *Effect::FlushFogDefault );
+
+    if( effect_type & EFFECT_OFFSCREEN )
+    {
+        if( effect_subtype < 0 )
+            SCRIPT_ERROR_R0( "Negative effect subtype." );
+
+        Self->OffscreenEffects.resize( effect_subtype + 1 );
+        Self->OffscreenEffects[ effect_subtype ] = effect;
+    }
 
     return true;
 }
@@ -8357,6 +8366,90 @@ void FOClient::SScriptFunc::Global_PushDrawScissor( int x, int y, int w, int h )
 void FOClient::SScriptFunc::Global_PopDrawScissor()
 {
     SprMngr.PopScissor();
+}
+
+void FOClient::SScriptFunc::Global_ActivateOffscreenSurface( bool force_clear )
+{
+    if( Self->OffscreenSurfaces.empty() )
+    {
+        RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false );
+        if( !rt )
+            SCRIPT_ERROR_R( "Can't create offscreen surface." );
+
+        Self->OffscreenSurfaces.push_back( rt );
+    }
+
+    RenderTarget* rt = Self->OffscreenSurfaces.back();
+    Self->OffscreenSurfaces.pop_back();
+    Self->ActiveOffscreenSurfaces.push_back( rt );
+
+    SprMngr.PushRenderTarget( rt );
+
+    auto it = std::find( Self->DirtyOffscreenSurfaces.begin(), Self->DirtyOffscreenSurfaces.end(), rt );
+    if( it != Self->DirtyOffscreenSurfaces.end() || force_clear )
+    {
+        if( it != Self->DirtyOffscreenSurfaces.end() )
+            Self->DirtyOffscreenSurfaces.erase( it );
+
+        SprMngr.ClearCurrentRenderTarget( 0 );
+    }
+
+    if( std::find( Self->PreDirtyOffscreenSurfaces.begin(), Self->PreDirtyOffscreenSurfaces.end(), rt ) == Self->PreDirtyOffscreenSurfaces.end() )
+        Self->PreDirtyOffscreenSurfaces.push_back( rt );
+}
+
+void FOClient::SScriptFunc::Global_PresentOffscreenSurface( int effect_subtype )
+{
+    if( Self->ActiveOffscreenSurfaces.empty() )
+        SCRIPT_ERROR_R( "No active offscreen surfaces." );
+
+    RenderTarget* rt = Self->ActiveOffscreenSurfaces.back();
+    Self->ActiveOffscreenSurfaces.pop_back();
+    Self->OffscreenSurfaces.push_back( rt );
+
+    SprMngr.PopRenderTarget();
+
+    if( effect_subtype < 0 || effect_subtype >= Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
+        SCRIPT_ERROR_R( "Invalid effect subtype." );
+
+    rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
+    SprMngr.DrawRenderTarget( rt, true );
+}
+
+void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtype, int x, int y, int w, int h )
+{
+    if( Self->ActiveOffscreenSurfaces.empty() )
+        SCRIPT_ERROR_R( "No active offscreen surfaces." );
+
+    RenderTarget* rt = Self->ActiveOffscreenSurfaces.back();
+    Self->ActiveOffscreenSurfaces.pop_back();
+    Self->OffscreenSurfaces.push_back( rt );
+
+    SprMngr.PopRenderTarget();
+
+    if( effect_subtype < 0 || effect_subtype >= Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
+        SCRIPT_ERROR_R( "Invalid effect subtype." );
+
+    rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
+    SprMngr.DrawRenderTarget( rt, true, &Rect( x, y, x + w, y + h ), &Rect( x, y, x + w, y + h ) );
+}
+
+void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subtype, int from_x, int from_y, int from_w, int from_h, int to_x, int to_y, int to_w, int to_h )
+{
+    if( Self->ActiveOffscreenSurfaces.empty() )
+        SCRIPT_ERROR_R( "No active offscreen surfaces." );
+
+    RenderTarget* rt = Self->ActiveOffscreenSurfaces.back();
+    Self->ActiveOffscreenSurfaces.pop_back();
+    Self->OffscreenSurfaces.push_back( rt );
+
+    SprMngr.PopRenderTarget();
+
+    if( effect_subtype < 0 || effect_subtype >= Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
+        SCRIPT_ERROR_R( "Invalid effect subtype." );
+
+    rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
+    SprMngr.DrawRenderTarget( rt, true, &Rect( from_x, from_y, from_x + from_w, from_y + from_h ), &Rect( to_x, to_y, to_x + to_w, to_y + to_h ) );
 }
 
 void FOClient::SScriptFunc::Global_ShowScreen( int screen, CScriptDictionary* params )

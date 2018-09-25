@@ -632,7 +632,7 @@ void SpriteManager::PopRenderTarget()
     }
 }
 
-void SpriteManager::DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from /* = NULL */, const Rect* region_to /* = NULL */ )
+void SpriteManager::DrawRenderTarget( RenderTarget* rt, bool alpha_blend, const Rect* region_from /* = nullptr */, const Rect* region_to /* = nullptr */ )
 {
     Flush();
 

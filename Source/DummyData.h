@@ -417,6 +417,11 @@ struct BindClass
     static void Global_EraseCacheData()    {}
     static void Global_SetUserConfig()     {}
 
+    static void Global_ActivateOffscreenSurface()    {}
+    static void Global_PresentOffscreenSurface()     {}
+    static void Global_PresentOffscreenSurfaceExt()  {}
+    static void Global_PresentOffscreenSurfaceExt2() {}
+
     static int  ClientCurMap;
     static int  ClientCurLocation;
     static int  IsConnected;

@@ -465,6 +465,10 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool IsCacheData(string name)", SCRIPT_FUNC( BIND_CLASS Global_IsCacheData ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void EraseCacheData(string name)", SCRIPT_FUNC( BIND_CLASS Global_EraseCacheData ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void SetUserConfig(array<string>@+ keyValues)", SCRIPT_FUNC( BIND_CLASS Global_SetUserConfig ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void ActivateOffscreenSurface(bool forceClear = false)", SCRIPT_FUNC( BIND_CLASS Global_ActivateOffscreenSurface ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void PresentOffscreenSurface(int effectSubtype)", SCRIPT_FUNC( BIND_CLASS Global_PresentOffscreenSurface ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void PresentOffscreenSurface(int effectSubtype, int x, int y, int w, int h)", SCRIPT_FUNC( BIND_CLASS Global_PresentOffscreenSurfaceExt ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void PresentOffscreenSurface(int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)", SCRIPT_FUNC( BIND_CLASS Global_PresentOffscreenSurfaceExt2 ), SCRIPT_FUNC_CONV ) );
 
     BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IsConnected", &BIND_CLASS_EXT IsConnected ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IsConnecting", &BIND_CLASS_EXT IsConnecting ) );

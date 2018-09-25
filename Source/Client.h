@@ -76,6 +76,13 @@ public:
     string     LoginName;
     string     LoginPassword;
 
+    // Offscreen drawing
+    EffectVec       OffscreenEffects;
+    RenderTargetVec OffscreenSurfaces;
+    RenderTargetVec ActiveOffscreenSurfaces;
+    RenderTargetVec PreDirtyOffscreenSurfaces;
+    RenderTargetVec DirtyOffscreenSurfaces;
+
     // Screen
     int ScreenModeMain;
     void ShowMainScreen( int new_screen, CScriptDictionary* params = nullptr );
@@ -357,7 +364,6 @@ public:
 /* Scripting                                                            */
 /************************************************************************/
     bool ReloadScripts();
-    void DrawIfaceLayer( uint layer );
     void OnItemInvChanged( Item* old_item, Item* new_item );
 
     struct SScriptFunc
@@ -383,7 +389,6 @@ public:
         static uint          Crit_CountItem( CritterCl* cr, hash proto_id );
         static Item*         Crit_GetItem( CritterCl* cr, uint item_id );
         static Item*         Crit_GetItemBySlot( CritterCl* cr, uchar slot );
-        static Item*         Crit_GetItemByType( CritterCl* cr, int type );
         static Item*         Crit_GetItemByPid( CritterCl* cr, hash proto_id );
         static CScriptArray* Crit_GetItems( CritterCl* cr );
         static CScriptArray* Crit_GetItemsBySlot( CritterCl* cr, uchar slot );
@@ -470,6 +475,10 @@ public:
         static void Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color );
         static void Global_PushDrawScissor( int x, int y, int w, int h );
         static void Global_PopDrawScissor();
+        static void Global_ActivateOffscreenSurface( bool force_clear );
+        static void Global_PresentOffscreenSurface( int effect_subtype );
+        static void Global_PresentOffscreenSurfaceExt( int effect_subtype, int x, int y, int w, int h );
+        static void Global_PresentOffscreenSurfaceExt2( int effect_subtype, int from_x, int from_y, int from_w, int from_h, int to_x, int to_y, int to_w, int to_h );
 
         static void          Global_ShowScreen( int screen, CScriptDictionary* params );
         static void          Global_HideScreen( int screen );

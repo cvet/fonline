@@ -109,7 +109,7 @@ void Timer::GetCurrentDateTime( DateTimeStamp& dt )
 void Timer::DateTimeToFullTime( const DateTimeStamp& dt, uint64& ft )
 {
     // Minor year
-    ft = (uint64) ( dt.Year - 1601 ) * 365 * 24 * 60 * 60 * 1000 * 1000;
+    ft = (uint64) ( dt.Year - 1601 ) * 365ULL * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
 
     // Leap days
     uint leap_days = ( dt.Year - 1601 ) / 4;
@@ -120,38 +120,35 @@ void Timer::DateTimeToFullTime( const DateTimeStamp& dt, uint64& ft )
     static const uint count1[ 12 ] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
     static const uint count2[ 12 ] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335 }; // Leap
     if( dt.Year % 400 == 0 || ( dt.Year % 4 == 0 && dt.Year % 100 != 0 ) )
-        ft += (uint64) ( count2[ dt.Month - 1 ] ) * 24 * 60 * 60 * 1000 * 1000;
+        ft += (uint64) ( count2[ dt.Month - 1 ] ) * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
     else
-        ft += (uint64) ( count1[ dt.Month - 1 ] ) * 24 * 60 * 60 * 1000 * 1000;
+        ft += (uint64) ( count1[ dt.Month - 1 ] ) * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
 
     // Other calculations
-    ft += (uint64) ( dt.Day - 1 + leap_days ) * 24 * 60 * 60 * 1000 * 1000;
-    ft += (uint64) dt.Hour * 60 * 60 * 1000 * 1000;
-    ft += (uint64) dt.Minute * 60 * 1000 * 1000;
-    ft += (uint64) dt.Second * 1000 * 1000;
-    ft += (uint64) dt.Milliseconds * 1000;
-    ft *= (uint64) 10;
+    ft += (uint64) ( dt.Day - 1 + leap_days ) * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
+    ft += (uint64) dt.Hour * 60ULL * 60ULL * 1000ULL * 1000ULL;
+    ft += (uint64) dt.Minute * 60ULL * 1000ULL * 1000ULL;
+    ft += (uint64) dt.Second * 1000ULL * 1000ULL;
+    ft += (uint64) dt.Milliseconds * 1000ULL;
+    ft *= (uint64) 10ULL;
 }
-#ifdef FO_MSVC
-# pragma optimize( "", on )
-#endif
 
 void Timer::FullTimeToDateTime( uint64 ft, DateTimeStamp& dt )
 {
     // Base
-    ft /= 10000;
-    dt.Milliseconds = ft % 1000;
-    ft /= 1000;
-    dt.Second = ft % 60;
-    ft /= 60;
-    dt.Minute = ft % 60;
-    ft /= 60;
-    dt.Hour = ft % 24;
-    ft /= 24;
+    ft /= 10000ULL;
+    dt.Milliseconds = (ushort) ( ft % 1000ULL );
+    ft /= 1000ULL;
+    dt.Second = (ushort) ( ft % 60ULL );
+    ft /= 60ULL;
+    dt.Minute = (ushort) ( ft % 60ULL );
+    ft /= 60ULL;
+    dt.Hour = (ushort) ( ft % 24ULL );
+    ft /= 24ULL;
 
     // Year
-    int year = (int) ft / 365;
-    int days = (int) ft % 365;
+    int year = (int) ( ft / 365ULL );
+    int days = (int) ( ft % 365ULL );
     days -= year / 4 + year / 400 - year / 100;
     while( days < 0 )
     {
@@ -187,20 +184,23 @@ void Timer::FullTimeToDateTime( uint64 ft, DateTimeStamp& dt )
     int m = dt.Month + 12 * a - 2;
     dt.DayOfWeek = ( 7000 + ( dt.Day + y + y / 4 - y / 100 + y / 400 + ( 31 * m ) / 12 ) ) % 7;
 }
+#ifdef FO_MSVC
+# pragma optimize( "", on )
+#endif
 
 int Timer::GetTimeDifference( const DateTimeStamp& dt1, const DateTimeStamp& dt2 )
 {
     uint64 ft1 = 0, ft2 = 0;
     DateTimeToFullTime( dt1, ft1 );
     DateTimeToFullTime( dt2, ft2 );
-    return (int) ( ( ft1 - ft2 ) / 10000000 );
+    return (int) ( ( ft1 - ft2 ) / 10000000ULL );
 }
 
 void Timer::ContinueTime( DateTimeStamp& td, int seconds )
 {
     uint64 ft;
     DateTimeToFullTime( td, ft );
-    ft += (uint64) seconds * 10000000;
+    ft += (uint64) seconds * 10000000ULL;
     FullTimeToDateTime( ft, td );
 }
 
@@ -224,12 +224,12 @@ uint Timer::GetFullSecond( ushort year, ushort month, ushort day, ushort hour, u
     uint64        ft = 0;
     Timer::DateTimeToFullTime( dt, ft );
     ft -= PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo );
-    return (uint) ( ft / 10000000 );
+    return (uint) ( ft / 10000000ULL );
 }
 
 DateTimeStamp Timer::GetGameTime( uint full_second )
 {
-    uint64        ft = PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo ) + uint64( full_second ) * 10000000;
+    uint64        ft = PACKUINT64( GameOpt.YearStartFTHi, GameOpt.YearStartFTLo ) + uint64( full_second ) * 10000000ULL;
     DateTimeStamp dt;
     Timer::FullTimeToDateTime( ft, dt );
     return dt;
