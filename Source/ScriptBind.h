@@ -742,6 +742,14 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalProperty( "float __MapCameraAngle", &GameOpt.MapCameraAngle ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapSmoothPath", &GameOpt.MapSmoothPath ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "string __MapDataPrefix", &GameOpt.MapDataPrefix ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __DesktopBuild", &GameOpt.DesktopBuild ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __TabletBuild", &GameOpt.TabletBuild ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __WebBuild", &GameOpt.WebBuild ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __WindowsBuild", &GameOpt.WindowsBuild ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __LinuxBuild", &GameOpt.LinuxBuild ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __MacOsBuild", &GameOpt.MacOsBuild ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __AndroidBuild", &GameOpt.AndroidBuild ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IOsBuild", &GameOpt.IOsBuild ) );
 
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool LoadDataFile(string dataFileName)", SCRIPT_FUNC( BIND_CLASS Global_LoadDataFile ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void AllowSlot(uint8 index, bool enableSend)", SCRIPT_FUNC( BIND_CLASS Global_AllowSlot ), SCRIPT_FUNC_CONV ) );

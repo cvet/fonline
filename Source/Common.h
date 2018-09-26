@@ -478,6 +478,15 @@ struct GameOptions
     bool   MapSmoothPath;
     string MapDataPrefix;
 
+    bool   DesktopBuild;
+    bool   TabletBuild;
+    bool   WebBuild;
+    bool   WindowsBuild;
+    bool   LinuxBuild;
+    bool   MacOsBuild;
+    bool   AndroidBuild;
+    bool   IOsBuild;
+
     // Client and Mapper
     bool   Quit;
     int    WaitPing;

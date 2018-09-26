@@ -1171,6 +1171,48 @@ GameOptions::GameOptions()
     MapSmoothPath = true;
     MapDataPrefix = "art/geometry/fallout_";
 
+    #ifdef FO_WEB
+    WebBuild = true;
+    #else
+    WebBuild = false;
+    #endif
+    #ifdef FO_WINDOWS
+    WindowsBuild = true;
+    #else
+    WindowsBuild = false;
+    #endif
+    #ifdef FO_LINUX
+    LinuxBuild = true;
+    #else
+    LinuxBuild = false;
+    #endif
+    #ifdef FO_MAC
+    MacOsBuild = true;
+    #else
+    MacOsBuild = false;
+    #endif
+    #ifdef FO_ANDROID
+    AndroidBuild = true;
+    #else
+    AndroidBuild = false;
+    #endif
+    #ifdef FO_IOS
+    IOsBuild = true;
+    #else
+    IOsBuild = false;
+    #endif
+
+    DesktopBuild = WindowsBuild || LinuxBuild || MacOsBuild;
+    TabletBuild = AndroidBuild || IOsBuild;
+
+    #ifdef FO_WINDOWS
+    if( GetSystemMetrics( SM_TABLETPC ) != 0 )
+    {
+        DesktopBuild = false;
+        TabletBuild = true;
+    }
+    #endif
+
     // Client and Mapper
     Quit = false;
     WaitPing = false;
