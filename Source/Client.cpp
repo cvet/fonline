@@ -8459,8 +8459,9 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtyp
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
 
-    Rect from( x, y, x + w, y + h );
-    Rect to( x, y, x + w, y + h );
+    Rect from( CLAMP( x, 0, GameOpt.ScreenWidth ), CLAMP( y, 0, GameOpt.ScreenHeight ),
+               CLAMP( x + w, 0, GameOpt.ScreenWidth ), CLAMP( y + h, 0, GameOpt.ScreenHeight ) );
+    Rect to = from;
     SprMngr.DrawRenderTarget( rt, true, &from, &to );
 }
 
@@ -8482,8 +8483,10 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subty
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
 
-    Rect from( from_x, from_y, from_x + from_w, from_y + from_h );
-    Rect to( to_x, to_y, to_x + to_w, to_y + to_h );
+    Rect from( CLAMP( from_x, 0, GameOpt.ScreenWidth ), CLAMP( from_y, 0, GameOpt.ScreenHeight ),
+               CLAMP( from_x + from_w, 0, GameOpt.ScreenWidth ), CLAMP( from_y + from_h, 0, GameOpt.ScreenHeight ) );
+    Rect to( CLAMP( to_x, 0, GameOpt.ScreenWidth ), CLAMP( to_y, 0, GameOpt.ScreenHeight ),
+             CLAMP( to_x + to_w, 0, GameOpt.ScreenWidth ), CLAMP( to_y + to_h, 0, GameOpt.ScreenHeight ) );
     SprMngr.DrawRenderTarget( rt, true, &from, &to );
 }
 
