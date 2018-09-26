@@ -63,6 +63,7 @@ public:
     void FlashGameWindow();
     void MainLoop();
     void NetDisconnect();
+    void DrawIface();
 
     int        InitCalls;
     bool       DoRestart;
@@ -75,6 +76,7 @@ public:
     int        WindowResolutionDiffY;
     string     LoginName;
     string     LoginPassword;
+    bool       CanDrawInScripts;
 
     // Offscreen drawing
     EffectVec       OffscreenEffects;
@@ -516,8 +518,6 @@ public:
         static Map*          ClientCurMap;
         static Location*     ClientCurLocation;
     } ScriptFunc;
-
-    static int SpritesCanDraw;
 
 /************************************************************************/
 /* Game                                                                 */

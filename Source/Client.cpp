@@ -111,7 +111,6 @@ int HandleAppEvents( void* userdata, SDL_Event* event )
 #endif
 
 FOClient* FOClient::Self = nullptr;
-int       FOClient::SpritesCanDraw = 0;
 
 FOClient::FOClient()
 {
@@ -166,6 +165,7 @@ FOClient::FOClient()
 
     SomeItem = nullptr;
     GmapFog = nullptr;
+    CanDrawInScripts = false;
 }
 
 bool FOClient::PreInit()
@@ -538,11 +538,7 @@ void FOClient::UpdateFilesLoop()
     {
         // Wait screen
         SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
-
-        SpritesCanDraw++;
-        Script::RaiseInternalEvent( ClientFunctions.RenderIface );
-        SpritesCanDraw--;
-
+        DrawIface();
         SprMngr.EndScene();
     }
 
@@ -1069,13 +1065,6 @@ void FOClient::MainLoop()
     // Start render
     SprMngr.BeginScene( COLOR_RGB( 0, 0, 0 ) );
 
-    // Make dirty offscreen surfaces
-    if( !PreDirtyOffscreenSurfaces.empty() )
-    {
-        DirtyOffscreenSurfaces.insert( DirtyOffscreenSurfaces.end(), Self->PreDirtyOffscreenSurfaces.begin(), Self->PreDirtyOffscreenSurfaces.end() );
-        PreDirtyOffscreenSurfaces.clear();
-    }
-
     // Process pending invocations
     Script::ProcessDeferredCalls();
 
@@ -1092,13 +1081,25 @@ void FOClient::MainLoop()
     if( GetMainScreen() == SCREEN_GAME && HexMngr.IsMapLoaded() )
         GameDraw();
 
-    SpritesCanDraw++;
-    Script::RaiseInternalEvent( ClientFunctions.RenderIface );
-    SpritesCanDraw--;
+    DrawIface();
 
     ProcessScreenEffectFading();
 
     SprMngr.EndScene();
+}
+
+void FOClient::DrawIface()
+{
+    // Make dirty offscreen surfaces
+    if( !PreDirtyOffscreenSurfaces.empty() )
+    {
+        DirtyOffscreenSurfaces.insert( DirtyOffscreenSurfaces.end(), Self->PreDirtyOffscreenSurfaces.begin(), Self->PreDirtyOffscreenSurfaces.end() );
+        PreDirtyOffscreenSurfaces.clear();
+    }
+
+    CanDrawInScripts = true;
+    Script::RaiseInternalEvent( ClientFunctions.RenderIface );
+    CanDrawInScripts = false;
 }
 
 void FOClient::ScreenFade( uint time, uint from_color, uint to_color, bool push_back )
@@ -8091,11 +8092,15 @@ void FOClient::SScriptFunc::Global_GetTextInfo( string text, int w, int h, int f
 
 void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
 {
-    if( !SpritesCanDraw || !spr_id )
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
+    if( !spr_id )
         return;
+
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
+
     uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( offs )
     {
@@ -8105,16 +8110,21 @@ void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int
         x += -si->Width / 2 + si->OffsX;
         y += -si->Height + si->OffsY;
     }
+
     SprMngr.DrawSprite( spr_id_, x, y, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs )
 {
-    if( !SpritesCanDraw || !spr_id )
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
+    if( !spr_id )
         return;
+
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
+
     uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
     if( offs )
     {
@@ -8124,36 +8134,45 @@ void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index,
         x += si->OffsX;
         y += si->OffsY;
     }
+
     SprMngr.DrawSpriteSizeExt( spr_id_, x, y, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color )
 {
-    if( !SpritesCanDraw || !spr_id )
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
+    if( !spr_id )
         return;
+
     AnyFrames* anim = Self->AnimGetFrames( spr_id );
     if( !anim || frame_index >= (int) anim->GetCnt() )
         return;
+
     SprMngr.DrawSpritePattern( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ), x, y, w, h, spr_width, spr_height, COLOR_SCRIPT_SPRITE( color ) );
 }
 
 void FOClient::SScriptFunc::Global_DrawText( string text, int x, int y, int w, int h, uint color, int font, int flags )
 {
-    if( !SpritesCanDraw )
-        return;
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
     if( text.length() == 0 )
         return;
+
     if( w < 0 )
         w = -w, x -= w;
     if( h < 0 )
         h = -h, y -= h;
+
     Rect r = Rect( x, y, x + w, y + h );
     SprMngr.DrawStr( r, text.c_str(), flags, COLOR_SCRIPT_TEXT( color ), font );
 }
 
 void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArray* data )
 {
-    if( !SpritesCanDraw || data->GetSize() == 0 )
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
+    if( data->GetSize() == 0 )
         return;
 
     int prim;
@@ -8370,6 +8389,9 @@ void FOClient::SScriptFunc::Global_PopDrawScissor()
 
 void FOClient::SScriptFunc::Global_ActivateOffscreenSurface( bool force_clear )
 {
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
+
     if( Self->OffscreenSurfaces.empty() )
     {
         RenderTarget* rt = SprMngr.CreateRenderTarget( false, false, true, 0, 0, false );
@@ -8400,6 +8422,8 @@ void FOClient::SScriptFunc::Global_ActivateOffscreenSurface( bool force_clear )
 
 void FOClient::SScriptFunc::Global_PresentOffscreenSurface( int effect_subtype )
 {
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
     if( Self->ActiveOffscreenSurfaces.empty() )
         SCRIPT_ERROR_R( "No active offscreen surfaces." );
 
@@ -8419,6 +8443,8 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurface( int effect_subtype )
 
 void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtype, int x, int y, int w, int h )
 {
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
     if( Self->ActiveOffscreenSurfaces.empty() )
         SCRIPT_ERROR_R( "No active offscreen surfaces." );
 
@@ -8440,6 +8466,8 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtyp
 
 void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subtype, int from_x, int from_y, int from_w, int from_h, int to_x, int to_y, int to_w, int to_h )
 {
+    if( !Self->CanDrawInScripts )
+        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
     if( Self->ActiveOffscreenSurfaces.empty() )
         SCRIPT_ERROR_R( "No active offscreen surfaces." );
 
