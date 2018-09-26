@@ -651,7 +651,7 @@ void GraphicLoader::EffectProcessVariables( EffectPass& effect_pass, bool start,
             double tick = Timer::AccurateTick();
             if( IS_EFFECT_VALUE( effect_pass.Time ) )
             {
-                effect_pass.TimeCurrent += (float) ( tick - effect_pass.TimeLastTick );
+                effect_pass.TimeCurrent += (float) ( tick - effect_pass.TimeLastTick ) / 1000.0f;
                 effect_pass.TimeLastTick = tick;
                 if( effect_pass.TimeCurrent >= 120.0f )
                     effect_pass.TimeCurrent = fmod( effect_pass.TimeCurrent, 120.0f );
