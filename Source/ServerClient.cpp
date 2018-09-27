@@ -897,7 +897,7 @@ void FOServer::Process_GiveMap( Client* cl )
     else
     {
         Map* map = cl->GetMap();
-        if( !map || ( map_pid != map->GetProtoId() && cl->ViewMapPid != map_pid ) )
+        if( ( !map || map_pid != map->GetProtoId() ) && map_pid != cl->ViewMapPid )
         {
             WriteLog( "Request for loading incorrect map, client '{}'.\n", cl->GetName() );
             return;
