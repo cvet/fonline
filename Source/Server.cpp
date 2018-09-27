@@ -1918,6 +1918,8 @@ bool FOServer::InitReal()
             WriteLog( "Failed to load globals document.\n" );
             return false;
         }
+
+        Timer::InitGameTime();
     }
 
     // Restore hashes
