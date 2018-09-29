@@ -5,17 +5,17 @@
 #include "Text.h"
 #include "Script.h"
 
-int       ModeWidth = 0, ModeHeight = 0;
-float     ModeWidthF = 0, ModeHeightF = 0;
-Matrix    MatrixProjRM, MatrixEmptyRM, MatrixProjCM, MatrixEmptyCM; // Row or Column major order
-float     MoveTransitionTime = 0.25f;
-float     GlobalSpeedAdjust = 1.0f;
-bool      SoftwareSkinning = false;
-uint      AnimDelay = 0;
-Color     LightColor;
-MatrixVec WorldMatrices;
+static int       ModeWidth = 0, ModeHeight = 0;
+static float     ModeWidthF = 0, ModeHeightF = 0;
+static Matrix    MatrixProjRM, MatrixEmptyRM, MatrixProjCM, MatrixEmptyCM; // Row or Column major order
+static float     MoveTransitionTime = 0.25f;
+static float     GlobalSpeedAdjust = 1.0f;
+static bool      SoftwareSkinning = false;
+static uint      AnimDelay = 0;
+static Color     LightColor;
+static MatrixVec WorldMatrices;
 
-void VecProject( const Vector& v, Vector& out )
+static void VecProject( const Vector& v, Vector& out )
 {
     int   viewport[ 4 ] = { 0, 0, ModeWidth, ModeHeight };
     float x = 0.0f, y = 0.0f, z = 0.0f;
@@ -25,7 +25,7 @@ void VecProject( const Vector& v, Vector& out )
     out.z = z;
 }
 
-void VecUnproject( const Vector& v, Vector& out )
+static void VecUnproject( const Vector& v, Vector& out )
 {
     int   viewport[ 4 ] = { 0, 0, ModeWidth, ModeHeight };
     float x = 0.0f, y = 0.0f, z = 0.0f;
@@ -35,7 +35,7 @@ void VecUnproject( const Vector& v, Vector& out )
     out.z = z;
 }
 
-void ProjectPosition( Vector& v )
+static void ProjectPosition( Vector& v )
 {
     v *= MatrixProjRM;
     v.x = ( ( v.x - 1.0f ) * 0.5f + 1.0f ) * ModeWidthF;
@@ -50,6 +50,8 @@ Animation3dVec Animation3d::loadedAnimations;
 
 Animation3d::Animation3d()
 {
+    curAnim1 = 0;
+    curAnim2 = 0;
     animEntity = nullptr;
     animController = nullptr;
     combinedMeshesSize = 0;
@@ -110,6 +112,9 @@ void Animation3d::StartMeshGeneration()
 
 bool Animation3d::SetAnimation( uint anim1, uint anim2, int* layers, int flags )
 {
+    curAnim1 = anim1;
+    curAnim2 = anim2;
+
     // Get animation index
     int   anim_pair = ( anim1 << 16 ) | anim2;
     float speed = 1.0f;
@@ -1050,18 +1055,23 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
     }
 
     // Advance animation time
+    float prev_track_pos;
+    float new_track_pos;
     if( animController && elapsed >= 0.0f )
     {
+        prev_track_pos = animController->GetTrackPosition( currentTrack );
+
         elapsed *= GetSpeed();
         animController->AdvanceTime( elapsed );
 
-        float track_position = animController->GetTrackPosition( currentTrack );
+        new_track_pos = animController->GetTrackPosition( currentTrack );
+
         if( animPosPeriod > 0.0f )
         {
-            animPosProc = track_position / animPosPeriod;
+            animPosProc = new_track_pos / animPosPeriod;
             if( animPosProc >= 1.0f )
                 animPosProc = fmod( animPosProc, 1.0f );
-            animPosTime = track_position;
+            animPosTime = new_track_pos;
             if( animPosTime >= animPosPeriod )
                 animPosTime = fmod( animPosTime, animPosPeriod );
         }
@@ -1074,8 +1084,6 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
     if( parentBone && linkBones.size() )
     {
         for( uint i = 0, j = (uint) linkBones.size() / 2; i < j; i++ )
-            // UpdateBoneMatrices(linkBones[i*2+1],&linkMatricles[i]);
-            // linkBones[i*2+1]->exCombinedTransformationMatrix=linkMatricles[i];
             linkBones[ i * 2 + 1 ]->CombinedTransformationMatrix = linkBones[ i * 2 ]->CombinedTransformationMatrix;
     }
 
@@ -1090,6 +1098,24 @@ void Animation3d::ProcessAnimation( float elapsed, int x, int y, float scale )
     // Move child animations
     for( auto it = childAnimations.begin(), end = childAnimations.end(); it != end; ++it )
         ( *it )->ProcessAnimation( elapsed, x, y, 1.0f );
+
+    // Animation callbacks
+    if( animController && elapsed >= 0.0f && animPosPeriod > 0.0f )
+    {
+        for( AnimationCallback& callback : AnimationCallbacks )
+        {
+            if( ( !callback.Anim1 || callback.Anim1 == curAnim1 ) && ( !callback.Anim2 || callback.Anim2 == curAnim2 ) )
+            {
+                float fire_track_pos1 = floorf( prev_track_pos / animPosPeriod ) * animPosPeriod + callback.NormalizedTime * animPosPeriod;
+                float fire_track_pos2 = floorf( new_track_pos / animPosPeriod ) * animPosPeriod + callback.NormalizedTime * animPosPeriod;
+                if( ( prev_track_pos < fire_track_pos1 && new_track_pos >= fire_track_pos1 ) ||
+                    ( prev_track_pos < fire_track_pos2 && new_track_pos >= fire_track_pos2 ) )
+                {
+                    callback.Callback();
+                }
+            }
+        }
+    }
 }
 
 void Animation3d::UpdateBoneMatrices( Bone* bone, const Matrix* parent_matrix )
@@ -1326,6 +1352,32 @@ Point Animation3d::Convert3dTo2d( Vector pos )
     Vector coords;
     VecProject( pos, coords );
     return Point( (int) coords.x, (int) coords.y );
+}
+
+bool Animation3d::GetBonePos( hash name_hash, int& x, int& y )
+{
+    Bone* bone = animEntity->xFile->rootBone->Find( name_hash );
+    if( !bone )
+    {
+        for( Animation3d* child : childAnimations )
+        {
+            bone = child->animEntity->xFile->rootBone->Find( name_hash );
+            if( bone )
+                break;
+        }
+    }
+
+    if( !bone )
+        return false;
+
+    Vector     pos;
+    Quaternion rot;
+    bone->CombinedTransformationMatrix.DecomposeNoScaling( rot, pos );
+
+    Point p = Convert3dTo2d( pos );
+    x = p.X - ModeWidth / 2;
+    y = -( p.Y - ModeHeight / 4 );
+    return true;
 }
 
 /************************************************************************/

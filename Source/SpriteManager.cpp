@@ -3402,6 +3402,7 @@ bool SpriteManager::TryLoadAnimationInFastFormat( const string& fname, FileManag
         anim = AnyFrames::Create( frames_count, ticks );
         if( dirs > 1 )
             anim->CreateDirAnims();
+
         for( ushort dir = 0; dir < dirs; dir++ )
         {
             AnyFrames* dir_anim = anim;

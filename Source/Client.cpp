@@ -6723,14 +6723,15 @@ void FOClient::SScriptFunc::Crit_set_ContourColor( CritterCl* cr, uint value )
 
     if( cr->SprDrawValid )
         cr->SprDraw->SetContour( cr->SprDraw->ContourType, value );
+
     cr->ContourColor = value;
 }
 
 uint FOClient::SScriptFunc::Crit_get_ContourColor( CritterCl* cr )
-
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
     return cr->ContourColor;
 }
 
@@ -6740,6 +6741,40 @@ void FOClient::SScriptFunc::Crit_GetNameTextInfo( CritterCl* cr, bool& name_visi
         SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
 
     cr->GetNameTextInfo( name_visible, x, y, w, h, lines );
+}
+
+void FOClient::SScriptFunc::Crit_AddAnimationCallback( CritterCl* cr, uint anim1, uint anim2, float normalized_time, asIScriptFunction* animation_callback )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
+    if( !cr->Anim3d )
+        SCRIPT_ERROR_R( "Critter is not 3d." );
+    if( normalized_time < 0.0f || normalized_time > 1.0f )
+        SCRIPT_ERROR_R( "Normalized time is not in range 0..1." );
+
+    uint bind_id = Script::BindByFunc( animation_callback, false );
+    RUNTIME_ASSERT( bind_id );
+    cr->Anim3d->AnimationCallbacks.push_back( { anim1, anim2, normalized_time, [ cr, bind_id ]
+                                                {
+                                                    Script::PrepareContext( bind_id, "AnimationCallback" );
+                                                    Script::SetArgObject( cr );
+                                                    Script::RunPrepared();
+                                                } } );
+}
+
+bool FOClient::SScriptFunc::Crit_GetBonePosition( CritterCl* cr, hash bone_name, int& bone_x, int& bone_y )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( !cr->Anim3d )
+        SCRIPT_ERROR_R0( "Critter is not 3d." );
+
+    if( !cr->Anim3d->GetBonePos( bone_name, bone_x, bone_y ) )
+        return false;
+
+    bone_x += cr->SprOx;
+    bone_y += cr->SprOy;
+    return true;
 }
 
 Item* FOClient::SScriptFunc::Item_Clone( Item* item, uint count )
@@ -7586,10 +7621,10 @@ string FOClient::SScriptFunc::Global_FormatTags( string text, string lexems )
 
 void FOClient::SScriptFunc::Global_MoveScreenToHex( ushort hx, ushort hy, uint speed, bool can_stop )
 {
-    if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
-        SCRIPT_ERROR_R( "Invalid hex args." );
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R( "Map is not loaded." );
+    if( hx >= Self->HexMngr.GetWidth() || hy >= Self->HexMngr.GetHeight() )
+        SCRIPT_ERROR_R( "Invalid hex args." );
 
     if( !speed )
         Self->HexMngr.FindSetCenter( hx, hy );
@@ -7631,6 +7666,7 @@ uint FOClient::SScriptFunc::Global_GetDayTime( uint day_part )
 {
     if( day_part >= 4 )
         SCRIPT_ERROR_R0( "Invalid day part arg." );
+
     if( Self->HexMngr.IsMapLoaded() )
         return Self->HexMngr.GetMapDayTime()[ day_part ];
     return 0;
@@ -7641,6 +7677,7 @@ void FOClient::SScriptFunc::Global_GetDayColor( uint day_part, uchar& r, uchar& 
     r = g = b = 0;
     if( day_part >= 4 )
         SCRIPT_ERROR_R( "Invalid day part arg." );
+
     if( Self->HexMngr.IsMapLoaded() )
     {
         uchar* col = Self->HexMngr.GetMapDayColor();
@@ -7669,12 +7706,14 @@ uint FOClient::SScriptFunc::Global_GetFullSecond( ushort year, ushort month, ush
         uint month_day = Timer::GameTimeMonthDay( year, month );
         day = CLAMP( day, 1, month_day );
     }
+
     if( hour > 23 )
         hour = 23;
     if( minute > 59 )
         minute = 59;
     if( second > 59 )
         second = 59;
+
     return Timer::GetFullSecond( year, month, day, hour, minute, second );
 }
 
@@ -7698,6 +7737,7 @@ void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
         SCRIPT_ERROR_R( "Invalid dir arg." );
     if( !steps )
         SCRIPT_ERROR_R( "Steps arg is zero." );
+
     if( steps > 1 )
     {
         for( uint i = 0; i < steps; i++ )
@@ -7707,6 +7747,31 @@ void FOClient::SScriptFunc::Global_MoveHexByDir( ushort& hx, ushort& hy, uchar d
     {
         MoveHexByDir( hx, hy, dir, Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight() );
     }
+}
+
+hash FOClient::SScriptFunc::Global_GetTileName( ushort hx, ushort hy, bool roof, int layer )
+{
+    if( !Self->HexMngr.IsMapLoaded() )
+        SCRIPT_ERROR_R0( "Map not loaded." );
+    if( hx >= Self->HexMngr.GetWidth() )
+        SCRIPT_ERROR_R0( "Invalid hex x arg." );
+    if( hy >= Self->HexMngr.GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid hex y arg." );
+
+    AnyFrames* simply_tile = Self->HexMngr.GetField( hx, hy ).SimplyTile[ roof ? 1 : 0 ];
+    if( simply_tile && !layer )
+        return simply_tile->NameHash;
+
+    Field::TileVec* tiles = Self->HexMngr.GetField( hx, hy ).Tiles[ roof ? 1 : 0 ];
+    if( !tiles || tiles->empty() )
+        return 0;
+
+    for( auto& tile :* tiles )
+    {
+        if( tile.Layer == layer )
+            return tile.Anim->NameHash;
+    }
+    return 0;
 }
 
 void FOClient::SScriptFunc::Global_Preload3dFiles( CScriptArray* fnames )
@@ -8217,48 +8282,50 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArr
     SprMngr.DrawPoints( points, prim );
 }
 
-void FOClient::SScriptFunc::Global_DrawMapSpriteProto( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, hash proto_id )
+void FOClient::SScriptFunc::Global_DrawMapSprite( void* pspr )
 {
-    if( !Self->HexMngr.SpritesCanDrawMap )
-        return;
-    if( !Self->HexMngr.GetHexToDraw( hx, hy ) )
-        return;
+    ClientBind::MapSprite& map_spr = *(ClientBind::MapSprite*) pspr;
 
-    ProtoItem* proto_item = ProtoMngr.GetProtoItem( proto_id );
-    if( !proto_item )
+    if( !Self->HexMngr.GetHexToDraw( map_spr.HexX, map_spr.HexY ) )
         return;
 
-    uint color = ( proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0 );
-    bool is_flat = proto_item->GetIsFlat();
-    bool is_item = !proto_item->IsScenery();
-    bool no_light = ( is_flat && !is_item );
-    int  draw_order = ( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) );
-    int  draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
-    int  corner = proto_item->GetCorner();
-    bool disable_egg = proto_item->GetDisableEgg();
-    uint contour_color = ( proto_item->GetIsBadItem() ? COLOR_RGB( 255, 0, 0 ) : 0 );
-
-    Global_DrawMapSpriteExt( hx, hy, spr_id, frame_index, ox, oy, is_flat, no_light, draw_order, draw_order_hy_offset, corner, disable_egg, color, contour_color );
-}
-
-void FOClient::SScriptFunc::Global_DrawMapSpriteExt( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy,
-                                                     bool is_flat, bool no_light, int draw_order, int draw_order_hy_offset,
-                                                     int corner, bool disable_egg, uint color, uint contour_color )
-{
-    if( !Self->HexMngr.SpritesCanDrawMap )
-        return;
-    if( !Self->HexMngr.GetHexToDraw( hx, hy ) )
+    AnyFrames* anim = Self->AnimGetFrames( map_spr.SprId );
+    if( !anim || map_spr.FrameIndex >= (int) anim->GetCnt() )
         return;
 
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || frame_index >= (int) anim->GetCnt() )
-        return;
+    uint color = map_spr.Color;
+    bool is_flat = map_spr.IsFlat;
+    bool no_light = map_spr.NoLight;
+    int  draw_order = map_spr.DrawOrder;
+    int  draw_order_hy_offset = map_spr.DrawOrderHyOffset;
+    int  corner = map_spr.Corner;
+    bool disable_egg = map_spr.DisableEgg;
+    uint contour_color = map_spr.ContourColor;
 
-    Field&   f = Self->HexMngr.GetField( hx, hy );
+    if( map_spr.ProtoId )
+    {
+        ProtoItem* proto_item = ProtoMngr.GetProtoItem( map_spr.ProtoId );
+        if( !proto_item )
+            return;
+
+        color = ( proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0 );
+        is_flat = proto_item->GetIsFlat();
+        bool is_item = !proto_item->IsScenery();
+        no_light = ( is_flat && !is_item );
+        draw_order = ( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) );
+        draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
+        corner = proto_item->GetCorner();
+        disable_egg = proto_item->GetDisableEgg();
+        contour_color = ( proto_item->GetIsBadItem() ? COLOR_RGB( 255, 0, 0 ) : 0 );
+    }
+
+    Field&   f = Self->HexMngr.GetField( map_spr.HexX, map_spr.HexY );
     Sprites& tree = Self->HexMngr.GetDrawTree();
-    Sprite&  spr = tree.InsertSprite( draw_order, hx, hy + draw_order_hy_offset, 0,
-                                      f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ),
-                                      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
+    Sprite&  spr = tree.InsertSprite( draw_order, map_spr.HexX, map_spr.HexY + draw_order_hy_offset, 0,
+                                      f.ScrX + HEX_OX + map_spr.OffsX, f.ScrY + HEX_OY + map_spr.OffsY,
+                                      map_spr.FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId( map_spr.FrameIndex ),
+                                      nullptr, map_spr.IsTweakOffs ? &map_spr.TweakOffsX : nullptr, map_spr.IsTweakOffs ? &map_spr.TweakOffsY : nullptr,
+                                      map_spr.IsTweakAlpha ? &map_spr.TweakAlpha : nullptr, nullptr, nullptr );
 
     if( !no_light )
         spr.SetLight( corner, Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight() );
@@ -8433,7 +8500,7 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurface( int effect_subtype )
 
     SprMngr.PopRenderTarget();
 
-    if( effect_subtype < 0 || effect_subtype >= Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
+    if( effect_subtype < 0 || effect_subtype >= (int) Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
         SCRIPT_ERROR_R( "Invalid effect subtype." );
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
@@ -8454,7 +8521,7 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt( int effect_subtyp
 
     SprMngr.PopRenderTarget();
 
-    if( effect_subtype < 0 || effect_subtype >= Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
+    if( effect_subtype < 0 || effect_subtype >= (int) Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
         SCRIPT_ERROR_R( "Invalid effect subtype." );
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];
@@ -8478,7 +8545,7 @@ void FOClient::SScriptFunc::Global_PresentOffscreenSurfaceExt2( int effect_subty
 
     SprMngr.PopRenderTarget();
 
-    if( effect_subtype < 0 || effect_subtype >= Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
+    if( effect_subtype < 0 || effect_subtype >= (int) Self->OffscreenEffects.size() || !Self->OffscreenEffects[ effect_subtype ] )
         SCRIPT_ERROR_R( "Invalid effect subtype." );
 
     rt->DrawEffect = Self->OffscreenEffects[ effect_subtype ];

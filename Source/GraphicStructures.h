@@ -84,6 +84,8 @@ struct AnyFrames
     uint  Ticks;                   // Time of playing animation
     uint  Anim1;
     uint  Anim2;
+    hash  NameHash;
+
     uint  GetSprId( uint num_frm ) { return Ind[ num_frm % CntFrm ]; }
     short GetNextX( uint num_frm ) { return NextX[ num_frm % CntFrm ]; }
     short GetNextY( uint num_frm ) { return NextY[ num_frm % CntFrm ]; }
@@ -94,6 +96,7 @@ struct AnyFrames
     // Dir animations
     bool              HaveDirs;
     AnyFrames*        Dirs[ 7 ];     // 7 additional for square hexes, 5 for hexagonal
+
     int        DirCount()        { return HaveDirs ? DIRS_COUNT : 1; }
     AnyFrames* GetDir( int dir ) { return dir == 0 || !HaveDirs ? this : Dirs[ dir - 1 ]; }
     void       CreateDirAnims();

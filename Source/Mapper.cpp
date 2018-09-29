@@ -5668,48 +5668,50 @@ void FOMapper::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArr
     SprMngr.DrawPoints( points, prim );
 }
 
-void FOMapper::SScriptFunc::Global_DrawMapSpriteProto( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, hash proto_id )
+void FOMapper::SScriptFunc::Global_DrawMapSprite( void* pspr )
 {
-    if( !Self->HexMngr.SpritesCanDrawMap )
-        return;
-    if( !Self->HexMngr.GetHexToDraw( hx, hy ) )
-        return;
+    MapperBind::MapSprite& map_spr = *(MapperBind::MapSprite*) pspr;
 
-    ProtoItem* proto_item = ProtoMngr.GetProtoItem( proto_id );
-    if( !proto_item )
+    if( !Self->HexMngr.GetHexToDraw( map_spr.HexX, map_spr.HexY ) )
         return;
 
-    uint color = ( proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0 );
-    bool is_flat = proto_item->GetIsFlat();
-    bool is_item = !proto_item->IsScenery();
-    bool no_light = ( is_flat && !is_item );
-    int  draw_order = ( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) );
-    int  draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
-    int  corner = proto_item->GetCorner();
-    bool disable_egg = proto_item->GetDisableEgg();
-    uint contour_color = ( proto_item->GetIsBadItem() ? COLOR_RGB( 255, 0, 0 ) : 0 );
-
-    Global_DrawMapSpriteExt( hx, hy, spr_id, frame_index, ox, oy, is_flat, no_light, draw_order, draw_order_hy_offset, corner, disable_egg, color, contour_color );
-}
-
-void FOMapper::SScriptFunc::Global_DrawMapSpriteExt( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy,
-                                                     bool is_flat, bool no_light, int draw_order, int draw_order_hy_offset,
-                                                     int corner, bool disable_egg, uint color, uint contour_color )
-{
-    if( !Self->HexMngr.SpritesCanDrawMap )
-        return;
-    if( !Self->HexMngr.GetHexToDraw( hx, hy ) )
+    AnyFrames* anim = Self->AnimGetFrames( map_spr.SprId );
+    if( !anim || map_spr.FrameIndex >= (int) anim->GetCnt() )
         return;
 
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || frame_index >= (int) anim->GetCnt() )
-        return;
+    uint color = map_spr.Color;
+    bool is_flat = map_spr.IsFlat;
+    bool no_light = map_spr.NoLight;
+    int  draw_order = map_spr.DrawOrder;
+    int  draw_order_hy_offset = map_spr.DrawOrderHyOffset;
+    int  corner = map_spr.Corner;
+    bool disable_egg = map_spr.DisableEgg;
+    uint contour_color = map_spr.ContourColor;
 
-    Field&   f = Self->HexMngr.GetField( hx, hy );
+    if( map_spr.ProtoId )
+    {
+        ProtoItem* proto_item = ProtoMngr.GetProtoItem( map_spr.ProtoId );
+        if( !proto_item )
+            return;
+
+        color = ( proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0 );
+        is_flat = proto_item->GetIsFlat();
+        bool is_item = !proto_item->IsScenery();
+        no_light = ( is_flat && !is_item );
+        draw_order = ( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) );
+        draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
+        corner = proto_item->GetCorner();
+        disable_egg = proto_item->GetDisableEgg();
+        contour_color = ( proto_item->GetIsBadItem() ? COLOR_RGB( 255, 0, 0 ) : 0 );
+    }
+
+    Field&   f = Self->HexMngr.GetField( map_spr.HexX, map_spr.HexY );
     Sprites& tree = Self->HexMngr.GetDrawTree();
-    Sprite&  spr = tree.InsertSprite( draw_order, hx, hy + draw_order_hy_offset, 0,
-                                      f.ScrX + HEX_OX + ox, f.ScrY + HEX_OY + oy, frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ),
-                                      nullptr, nullptr, nullptr, nullptr, nullptr, nullptr );
+    Sprite&  spr = tree.InsertSprite( draw_order, map_spr.HexX, map_spr.HexY + draw_order_hy_offset, 0,
+                                      f.ScrX + HEX_OX + map_spr.OffsX, f.ScrY + HEX_OY + map_spr.OffsY,
+                                      map_spr.FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId( map_spr.FrameIndex ),
+                                      nullptr, map_spr.IsTweakOffs ? &map_spr.TweakOffsX : nullptr, map_spr.IsTweakOffs ? &map_spr.TweakOffsY : nullptr,
+                                      map_spr.IsTweakAlpha ? &map_spr.TweakAlpha : nullptr, nullptr, nullptr );
 
     if( !no_light )
         spr.SetLight( corner, Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight() );

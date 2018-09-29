@@ -400,6 +400,8 @@ public:
         static void          Crit_set_ContourColor( CritterCl* cr, uint value );
         static uint          Crit_get_ContourColor( CritterCl* cr );
         static void          Crit_GetNameTextInfo( CritterCl* cr, bool& name_visible, int& x, int& y, int& w, int& h, int& lines );
+        static void          Crit_AddAnimationCallback( CritterCl* cr, uint anim1, uint anim2, float normalized_time, asIScriptFunction* animation_callback );
+        static bool          Crit_GetBonePosition( CritterCl* cr, hash bone_name, int& bone_x, int& bone_y );
 
         static Item*         Item_Clone( Item* item, uint count );
         static bool          Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
@@ -471,8 +473,7 @@ public:
         static void Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
         static void Global_DrawText( string text, int x, int y, int w, int h, uint color, int font, int flags );
         static void Global_DrawPrimitive( int primitive_type, CScriptArray* data );
-        static void Global_DrawMapSpriteProto( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, hash proto_id );
-        static void Global_DrawMapSpriteExt( ushort hx, ushort hy, uint spr_id, int frame_index, int ox, int oy, bool is_flat, bool no_light, int draw_order, int draw_order_hy_offset, int corner, bool disable_egg, uint color, uint contour_color );
+        static void Global_DrawMapSprite( void* pspr );
         static void Global_DrawCritter2d( hash model_name, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
         static void Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color );
         static void Global_PushDrawScissor( int x, int y, int w, int h );
@@ -494,6 +495,7 @@ public:
         static bool          Global_IsMapHexPassed( ushort hx, ushort hy );
         static bool          Global_IsMapHexRaked( ushort hx, ushort hy );
         static void          Global_MoveHexByDir( ushort& hx, ushort& hy, uchar dir, uint steps );
+        static hash          Global_GetTileName( ushort hx, ushort hy, bool roof, int layer );
         static void          Global_Preload3dFiles( CScriptArray* fnames );
         static void          Global_WaitPing();
         static bool          Global_LoadFont( int font, string font_fname );

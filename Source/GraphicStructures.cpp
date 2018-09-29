@@ -36,6 +36,7 @@ void AnyFrames::Destroy( AnyFrames* anim )
 {
     if( !anim || anim == DummyAnim )
         return;
+
     for( int dir = 1; dir < anim->DirCount(); dir++ )
         AnyFramesPool.Put( anim->GetDir( dir ) );
     AnyFramesPool.Put( anim );

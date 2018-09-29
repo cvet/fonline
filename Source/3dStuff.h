@@ -17,11 +17,11 @@
 class AnimController;
 class AnimSet;
 class Animation3d;
-typedef vector< Animation3d* >       Animation3dVec;
+using Animation3dVec = vector< Animation3d* >;
 class Animation3dEntity;
-typedef vector< Animation3dEntity* > Animation3dEntityVec;
+using Animation3dEntityVec = vector< Animation3dEntity* >;
 class Animation3dXFile;
-typedef vector< Animation3dXFile* >  Animation3dXFileVec;
+using Animation3dXFileVec = vector< Animation3dXFile* >;
 
 struct AnimParams
 {
@@ -53,7 +53,16 @@ struct AnimParams
     CutData**       Cut;
     uint            CutCount;
 };
-typedef vector< AnimParams > AnimParamsVec;
+using AnimParamsVec = vector< AnimParams >;
+
+struct AnimationCallback
+{
+    uint                    Anim1;
+    uint                    Anim2;
+    float                   NormalizedTime;
+    std::function< void() > Callback;
+};
+using AnimationCallbackVec = vector< AnimationCallback >;
 
 class Animation3d
 {
@@ -65,6 +74,8 @@ private:
     static Animation3dVec loadedAnimations;
 
     // Parameters
+    uint               curAnim1;
+    uint               curAnim2;
     CombinedMeshVec    combinedMeshes;
     size_t             combinedMeshesSize;
     bool               disableCulling;
@@ -106,14 +117,14 @@ private:
     void  UpdateBoneMatrices( Bone* bone, const Matrix* parent_matrix );
     void  DrawCombinedMeshes();
     void  DrawCombinedMesh( CombinedMesh* combined_mesh, bool shadow_disabled );
-    void  TransformMesh( CombinedMesh* combined_mesh );
     float GetSpeed();
     uint  GetTick();
     void  SetAnimData( AnimParams& data, bool clear );
 
 public:
-    uint SprId;
-    int  SprAtlasType;
+    uint                 SprId;
+    int                  SprAtlasType;
+    AnimationCallbackVec AnimationCallbacks;
 
     Animation3d();
     ~Animation3d();
@@ -136,11 +147,11 @@ public:
     bool IsAnimationPlaying();
     void GetRenderFramesData( float& period, int& proc_from, int& proc_to, int& dir );
     void GetDrawSize( uint& draw_width, uint& draw_height );
+    bool GetBonePos( hash name_hash, int& x, int& y );
 
     static bool         StartUp();
     static void         SetScreenSize( int width, int height );
     static void         Finish();
-    static void         BeginScene();
     static Animation3d* GetAnimation( const string& name, bool is_child );
     static void         AnimateFaster();
     static void         AnimateSlower();

@@ -121,6 +121,8 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
     AnyFrames* anim = SprMngr.LoadAnimation( fname, false, true );
     SprMngr.PopAtlasType();
 
+    anim->NameHash = name_hash;
+
     loadedAnims.insert( std::make_pair( name_hash, LoadedAnim( res_type, anim ) ) );
     return anim;
 }

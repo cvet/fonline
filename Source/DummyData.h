@@ -94,18 +94,6 @@ struct Location: public Entity
     int GeckCount;
 };
 
-struct CraftItem
-{
-    int  Num;
-    int  Name;
-    int  Info;
-    int  Experience;
-    int  Script;
-
-    void AddRef()  {}
-    void Release() {}
-};
-
 struct ProtoMap
 {
     void AddRef()  {}
@@ -331,35 +319,37 @@ struct BindClass
     #endif
 
     #ifdef BIND_CLIENT
-    static void Crit_IsChosen()         {}
-    static void Crit_IsPlayer()         {}
-    static void Crit_IsNpc()            {}
-    static void Crit_IsOffline()        {}
-    static void Crit_IsLife()           {}
-    static void Crit_IsKnockout()       {}
-    static void Crit_IsDead()           {}
-    static void Crit_IsFree()           {}
-    static void Crit_IsBusy()           {}
-    static void Crit_IsAnim3d()         {}
-    static void Crit_IsAnimAviable()    {}
-    static void Crit_IsAnimPlaying()    {}
-    static void Crit_GetAnim1()         {}
-    static void Crit_Animate()          {}
-    static void Crit_AnimateEx()        {}
-    static void Crit_ClearAnim()        {}
-    static void Crit_Wait()             {}
-    static void Crit_CountItem()        {}
-    static void Crit_GetItem()          {}
-    static void Crit_GetItemByPid()     {}
-    static void Crit_GetItemBySlot()    {}
-    static void Crit_GetItems()         {}
-    static void Crit_GetItemsBySlot()   {}
-    static void Crit_GetItemsByType()   {}
-    static void Crit_SetVisible()       {}
-    static void Crit_GetVisible()       {}
-    static void Crit_set_ContourColor() {}
-    static void Crit_get_ContourColor() {}
-    static void Crit_GetNameTextInfo()  {}
+    static void Crit_IsChosen()             {}
+    static void Crit_IsPlayer()             {}
+    static void Crit_IsNpc()                {}
+    static void Crit_IsOffline()            {}
+    static void Crit_IsLife()               {}
+    static void Crit_IsKnockout()           {}
+    static void Crit_IsDead()               {}
+    static void Crit_IsFree()               {}
+    static void Crit_IsBusy()               {}
+    static void Crit_IsAnim3d()             {}
+    static void Crit_IsAnimAviable()        {}
+    static void Crit_IsAnimPlaying()        {}
+    static void Crit_GetAnim1()             {}
+    static void Crit_Animate()              {}
+    static void Crit_AnimateEx()            {}
+    static void Crit_ClearAnim()            {}
+    static void Crit_Wait()                 {}
+    static void Crit_CountItem()            {}
+    static void Crit_GetItem()              {}
+    static void Crit_GetItemByPid()         {}
+    static void Crit_GetItemBySlot()        {}
+    static void Crit_GetItems()             {}
+    static void Crit_GetItemsBySlot()       {}
+    static void Crit_GetItemsByType()       {}
+    static void Crit_SetVisible()           {}
+    static void Crit_GetVisible()           {}
+    static void Crit_set_ContourColor()     {}
+    static void Crit_get_ContourColor()     {}
+    static void Crit_GetNameTextInfo()      {}
+    static void Crit_AddAnimationCallback() {}
+    static void Crit_GetBonePosition()      {}
 
     static void Item_Clone()          {}
     static void Item_GetItems()       {}
@@ -393,6 +383,7 @@ struct BindClass
     static void Global_GetFullSecond()          {}
     static void Global_GetGameTime()            {}
     static void Global_Preload3dFiles()         {}
+    static void Global_GetTileName()            {}
 
     static void Global_ShowScreen()        {}
     static void Global_HideScreen()        {}
@@ -528,8 +519,7 @@ struct BindClass
     static void Global_DrawSpriteSizeOffs() {}
     static void Global_DrawText()           {}
     static void Global_DrawPrimitive()      {}
-    static void Global_DrawMapSpriteProto() {}
-    static void Global_DrawMapSpriteExt()   {}
+    static void Global_DrawMapSprite()      {}
     static void Global_DrawCritter2d()      {}
     static void Global_DrawCritter3d()      {}
     static void Global_PushDrawScissor()    {}

@@ -160,7 +160,8 @@ private:
         int        EndFrm;
         bool       MoveText;
         int        DirOffs;
-        uint       IndAnim1, IndAnim2;
+        uint       IndAnim1;
+        uint       IndAnim2;
         Item*      ActiveItem;
         CritterAnim() {}
         CritterAnim( AnyFrames* anim, uint tick, int beg_frm, int end_frm, bool move_text, int dir_offs, uint ind_anim1, uint ind_anim2, Item* item ): Anim( anim ), AnimTick( tick ), BeginFrm( beg_frm ), EndFrm( end_frm ), MoveText( move_text ), DirOffs( dir_offs ),
