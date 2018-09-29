@@ -223,8 +223,6 @@ private:
     void PrepareFogToDraw();
 
 public:
-    bool SpritesCanDrawMap;
-
     HexManager();
     bool Init();
     void Finish();

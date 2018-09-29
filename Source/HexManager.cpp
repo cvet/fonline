@@ -258,7 +258,6 @@ HexManager::HexManager()
     lightProcentR = 0;
     lightProcentG = 0;
     lightProcentB = 0;
-    SpritesCanDrawMap = false;
     dayTime[ 0 ] = 300;
     dayTime[ 1 ] = 600;
     dayTime[ 2 ] = 1140;
@@ -1083,13 +1082,11 @@ void HexManager::RebuildMap( int rx, int ry )
     mainTree.SortBySurfaces();
     mainTree.SortByMapPos();
 
-    SpritesCanDrawMap = true;
     #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.RenderMap );
     #else // FONLINE_MAPPER
     Script::RaiseInternalEvent( MapperFunctions.RenderMap );
     #endif
-    SpritesCanDrawMap = false;
 
     screenHexX = rx;
     screenHexY = ry;
