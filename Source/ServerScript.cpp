@@ -3505,6 +3505,9 @@ void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
     Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Critter::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
@@ -3525,6 +3528,9 @@ void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
 
     Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
     prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
