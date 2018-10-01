@@ -1089,7 +1089,8 @@ bool ProtoMap::IsMapFile( const string& fname )
         IniParser txt;
         if( !txt.AppendFile( fname ) )
             return false;
-        return txt.IsApp( "Header" ) && txt.IsApp( "Tiles" ) && txt.IsApp( "Objects" );
+
+        return txt.IsApp( "ProtoMap" ) || ( txt.IsApp( "Header" ) && txt.IsApp( "Tiles" ) && txt.IsApp( "Objects" ) );
     }
 
     return false;

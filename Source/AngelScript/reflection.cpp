@@ -338,7 +338,7 @@ static CScriptArray* GetEnumsModule(string module_name)
     return GetEnumsInternal(false, module_name.c_str());
 }
 
-static asUINT GetCallstack(CScriptArray* modules, CScriptArray* names, CScriptArray* lines, CScriptArray* columns, bool include_object_name, bool include_namespace, bool include_param_names)
+static asUINT GetCallstack(CScriptArray*& modules, CScriptArray*& names, CScriptArray*& lines, CScriptArray*& columns, bool include_object_name, bool include_namespace, bool include_param_names)
 {
     asIScriptContext* ctx = asGetActiveContext();
     if (!ctx)

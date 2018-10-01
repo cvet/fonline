@@ -464,8 +464,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b)", SCRIPT_FUNC( BIND_CLASS Global_GetDayColor ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void ShowScreen(int screen, dictionary@+ params = null)", SCRIPT_FUNC( BIND_CLASS Global_ShowScreen ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void HideScreen(int screen = 0)", SCRIPT_FUNC( BIND_CLASS Global_HideScreen ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hx, uint16 hy, int& x, int& y)", SCRIPT_FUNC( BIND_CLASS Global_GetHexPos ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hx, uint16& hy)", SCRIPT_FUNC( BIND_CLASS Global_GetMonitorHex ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetHexPos(uint16 hexX, uint16 hexY, int& x, int& y)", SCRIPT_FUNC( BIND_CLASS Global_GetHexPos ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "bool GetMonitorHex(int x, int y, uint16& hexX, uint16& hexY)", SCRIPT_FUNC( BIND_CLASS Global_GetMonitorHex ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetMonitorItem(int x, int y)", SCRIPT_FUNC( BIND_CLASS Global_GetMonitorItem ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ GetMonitorCritter(int x, int y)", SCRIPT_FUNC( BIND_CLASS Global_GetMonitorCritter ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Entity@+ GetMonitorEntity(int x, int y)", SCRIPT_FUNC( BIND_CLASS Global_GetMonitorEntity ), SCRIPT_FUNC_CONV ) );
