@@ -9,29 +9,30 @@
 class Sprite
 {
 public:
-    int      DrawOrderType;
-    uint     DrawOrderPos;
-    uint     TreeIndex;
-    uint     SprId;
-    uint*    PSprId;
-    int      HexX, HexY;
-    int      ScrX, ScrY;
-    short*   OffsX, * OffsY;
-    int      CutType;
-    Sprite*  Parent, * Child;
-    float    CutX, CutW, CutTexL, CutTexR;
-    uchar*   Alpha;
-    uchar*   Light;
-    uchar*   LightRight;
-    uchar*   LightLeft;
-    int      EggType;
-    int      ContourType;
-    uint     ContourColor;
-    uint     Color;
-    uint     FlashMask;
-    Effect** DrawEffect;
-    bool*    ValidCallback;
-    bool     Valid;
+    int        DrawOrderType;
+    uint       DrawOrderPos;
+    uint       TreeIndex;
+    uint       SprId;
+    uint*      PSprId;
+    int        HexX, HexY;
+    int        ScrX, ScrY;
+    short*     OffsX, * OffsY;
+    int        CutType;
+    Sprite*    Parent, * Child;
+    float      CutX, CutW, CutTexL, CutTexR;
+    uchar*     Alpha;
+    uchar*     Light;
+    uchar*     LightRight;
+    uchar*     LightLeft;
+    int        EggType;
+    int        ContourType;
+    uint       ContourColor;
+    uint       Color;
+    uint       FlashMask;
+    Effect**   DrawEffect;
+    bool*      ValidCallback;
+    bool       Valid;
+    MapSprite* MapSpr;
 
     #ifdef FONLINE_MAPPER
     int CutOyL, CutOyR;

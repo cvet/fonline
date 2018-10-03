@@ -27,32 +27,6 @@ static void DummyFunc( asIScriptGeneric* gen ) {}
 # define BIND_CLASS_EXT           BIND_CLASS
 #endif
 
-#if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-struct MapSprite
-{
-    uint   SprId;
-    ushort HexX;
-    ushort HexY;
-    hash   ProtoId;
-    int    FrameIndex;
-    int    OffsX;
-    int    OffsY;
-    bool   IsFlat;
-    bool   NoLight;
-    int    DrawOrder;
-    int    DrawOrderHyOffset;
-    int    Corner;
-    bool   DisableEgg;
-    uint   Color;
-    uint   ContourColor;
-    bool   IsTweakOffs;
-    short  TweakOffsX;
-    short  TweakOffsY;
-    bool   IsTweakAlpha;
-    uchar  TweakAlpha;
-};
-#endif
-
 static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 {
     int errors = 0;
@@ -643,7 +617,10 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )
-    BIND_ASSERT( engine->RegisterObjectType( "MapSprite", sizeof( MapSprite ), asOBJ_VALUE | asOBJ_POD ) );
+    BIND_ASSERT( engine->RegisterObjectType( "MapSprite", sizeof( MapSprite ), asOBJ_REF ) );
+    BIND_ASSERT( engine->RegisterObjectBehaviour( "MapSprite", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( MapSprite, AddRef ), SCRIPT_METHOD_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectBehaviour( "MapSprite", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( MapSprite, Release ), SCRIPT_METHOD_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectBehaviour( "MapSprite", asBEHAVE_FACTORY, "MapSprite@ f()", asFUNCTION( MapSprite::Factory ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "MapSprite", "uint SprId", OFFSETOF( MapSprite, SprId ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "MapSprite", "uint16 HexX", OFFSETOF( MapSprite, HexX ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "MapSprite", "uint16 HexY", OFFSETOF( MapSprite, HexY ) ) );
@@ -678,7 +655,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSpritePattern(uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color = 0)", SCRIPT_FUNC( BIND_CLASS Global_DrawSpritePattern ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawText(string text, int x, int y, int w, int h, uint color, int font, int flags)", SCRIPT_FUNC( BIND_CLASS Global_DrawText ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawPrimitive(int primitiveType, array<int>@+ data)", SCRIPT_FUNC( BIND_CLASS Global_DrawPrimitive ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(MapSprite& mapSprite)", SCRIPT_FUNC( BIND_CLASS Global_DrawMapSprite ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawMapSprite(MapSprite@+ mapSprite)", SCRIPT_FUNC( BIND_CLASS Global_DrawMapSprite ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter2d(hash modelName, uint anim1, uint anim2, uint8 dir, int l, int t, int r, int b, bool scratch, bool center, uint color)", SCRIPT_FUNC( BIND_CLASS Global_DrawCritter2d ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, hash modelName, uint anim1, uint anim2, const array<int>@+ layers, const array<float>@+ position, uint color)", SCRIPT_FUNC( BIND_CLASS Global_DrawCritter3d ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void PushDrawScissor(int x, int y, int w, int h)", SCRIPT_FUNC( BIND_CLASS Global_PushDrawScissor ), SCRIPT_FUNC_CONV ) );

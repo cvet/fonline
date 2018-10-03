@@ -2,6 +2,7 @@
 #include "Server.h"
 #include "AngelScript/preprocessor.h"
 #include "curl/curl.h"
+#include "GraphicStructures.h"
 
 // Global_LoadImage
 #include "PNG/png.h"

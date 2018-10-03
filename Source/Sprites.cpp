@@ -23,6 +23,12 @@ void Sprite::Unvalidate()
             Child->Parent = nullptr;
             Child->Unvalidate();
         }
+
+        if( MapSpr )
+        {
+            MapSpr->Release();
+            MapSpr = nullptr;
+        }
     }
 }
 

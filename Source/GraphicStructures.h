@@ -485,4 +485,53 @@ struct CutData
 };
 typedef vector< CutData* > CutDataVec;
 
+//
+// MapSprite
+//
+
+struct MapSprite
+{
+    static MapSprite* Factory()
+    {
+        MapSprite* ms = new MapSprite();
+        memzero( ms, sizeof( MapSprite ) );
+        ms->RefCount = 1;
+        return ms;
+    }
+
+    void AddRef()
+    {
+        ++RefCount;
+    }
+
+    void Release()
+    {
+        if( --RefCount == 0 )
+            delete this;
+    }
+
+    int    RefCount;
+
+    uint   SprId;
+    ushort HexX;
+    ushort HexY;
+    hash   ProtoId;
+    int    FrameIndex;
+    int    OffsX;
+    int    OffsY;
+    bool   IsFlat;
+    bool   NoLight;
+    int    DrawOrder;
+    int    DrawOrderHyOffset;
+    int    Corner;
+    bool   DisableEgg;
+    uint   Color;
+    uint   ContourColor;
+    bool   IsTweakOffs;
+    short  TweakOffsX;
+    short  TweakOffsY;
+    bool   IsTweakAlpha;
+    uchar  TweakAlpha;
+};
+
 #endif // __GRAPHIC_STRUCTURES__

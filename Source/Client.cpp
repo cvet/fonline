@@ -8288,29 +8288,30 @@ void FOClient::SScriptFunc::Global_DrawPrimitive( int primitive_type, CScriptArr
     SprMngr.DrawPoints( points, prim );
 }
 
-void FOClient::SScriptFunc::Global_DrawMapSprite( void* pspr )
+void FOClient::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
 {
-    ClientBind::MapSprite& map_spr = *(ClientBind::MapSprite*) pspr;
+    if( !map_spr )
+        SCRIPT_ERROR_R( "Map sprite arg is null." );
 
-    if( !Self->HexMngr.GetHexToDraw( map_spr.HexX, map_spr.HexY ) )
+    if( !Self->HexMngr.GetHexToDraw( map_spr->HexX, map_spr->HexY ) )
         return;
 
-    AnyFrames* anim = Self->AnimGetFrames( map_spr.SprId );
-    if( !anim || map_spr.FrameIndex >= (int) anim->GetCnt() )
+    AnyFrames* anim = Self->AnimGetFrames( map_spr->SprId );
+    if( !anim || map_spr->FrameIndex >= (int) anim->GetCnt() )
         return;
 
-    uint color = map_spr.Color;
-    bool is_flat = map_spr.IsFlat;
-    bool no_light = map_spr.NoLight;
-    int  draw_order = map_spr.DrawOrder;
-    int  draw_order_hy_offset = map_spr.DrawOrderHyOffset;
-    int  corner = map_spr.Corner;
-    bool disable_egg = map_spr.DisableEgg;
-    uint contour_color = map_spr.ContourColor;
+    uint color = map_spr->Color;
+    bool is_flat = map_spr->IsFlat;
+    bool no_light = map_spr->NoLight;
+    int  draw_order = map_spr->DrawOrder;
+    int  draw_order_hy_offset = map_spr->DrawOrderHyOffset;
+    int  corner = map_spr->Corner;
+    bool disable_egg = map_spr->DisableEgg;
+    uint contour_color = map_spr->ContourColor;
 
-    if( map_spr.ProtoId )
+    if( map_spr->ProtoId )
     {
-        ProtoItem* proto_item = ProtoMngr.GetProtoItem( map_spr.ProtoId );
+        ProtoItem* proto_item = ProtoMngr.GetProtoItem( map_spr->ProtoId );
         if( !proto_item )
             return;
 
@@ -8325,13 +8326,16 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( void* pspr )
         contour_color = ( proto_item->GetIsBadItem() ? COLOR_RGB( 255, 0, 0 ) : 0 );
     }
 
-    Field&   f = Self->HexMngr.GetField( map_spr.HexX, map_spr.HexY );
+    Field&   f = Self->HexMngr.GetField( map_spr->HexX, map_spr->HexY );
     Sprites& tree = Self->HexMngr.GetDrawTree();
-    Sprite&  spr = tree.InsertSprite( draw_order, map_spr.HexX, map_spr.HexY + draw_order_hy_offset, 0,
-                                      f.ScrX + HEX_OX + map_spr.OffsX, f.ScrY + HEX_OY + map_spr.OffsY,
-                                      map_spr.FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId( map_spr.FrameIndex ),
-                                      nullptr, map_spr.IsTweakOffs ? &map_spr.TweakOffsX : nullptr, map_spr.IsTweakOffs ? &map_spr.TweakOffsY : nullptr,
-                                      map_spr.IsTweakAlpha ? &map_spr.TweakAlpha : nullptr, nullptr, nullptr );
+    Sprite&  spr = tree.InsertSprite( draw_order, map_spr->HexX, map_spr->HexY + draw_order_hy_offset, 0,
+                                      f.ScrX + HEX_OX + map_spr->OffsX, f.ScrY + HEX_OY + map_spr->OffsY,
+                                      map_spr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId( map_spr->FrameIndex ),
+                                      nullptr, map_spr->IsTweakOffs ? &map_spr->TweakOffsX : nullptr, map_spr->IsTweakOffs ? &map_spr->TweakOffsY : nullptr,
+                                      map_spr->IsTweakAlpha ? &map_spr->TweakAlpha : nullptr, nullptr, nullptr );
+
+    spr.MapSpr = map_spr;
+    map_spr->AddRef();
 
     if( !no_light )
         spr.SetLight( corner, Self->HexMngr.GetLightHex( 0, 0 ), Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight() );

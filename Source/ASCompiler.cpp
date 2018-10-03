@@ -16,6 +16,7 @@
 #include "AngelScript/sdk/add_on/weakref/weakref.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include "FileManager.h"
+#include "GraphicStructures.h"
 
 int Compile( string target, FileManager& file, string path, string path_prep, const StrVec& defines, const StrVec& run_func );
 
