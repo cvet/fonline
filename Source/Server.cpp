@@ -4,6 +4,7 @@
 #include "minizip/zip.h"
 #include "ResourceConverter.h"
 #include "FileSystem.h"
+#include <chrono>
 
 #define MAX_CLIENTS_IN_GAME    ( 3000 )
 
@@ -54,10 +55,16 @@ void FOServer::Finish()
 
     // Finish logic
     DbStorage->StartChanges();
+    if( DbHistory )
+        DbHistory->StartChanges();
+
     Script::RaiseInternalEvent( ServerFunctions.Finish );
     ItemMngr.RadioClear();
     EntityMngr.ClearEntities();
+
     DbStorage->CommitChanges();
+    if( DbHistory )
+        DbHistory->CommitChanges();
 
     // Logging clients
     LogToFunc( FOServer::LogToClients, false );
@@ -225,6 +232,8 @@ void FOServer::LogicTick()
 
     // Begin data base changes
     DbStorage->StartChanges();
+    if( DbHistory )
+        DbHistory->StartChanges();
 
     // Process clients
     ConnectedClientsLocker.Lock();
@@ -306,6 +315,8 @@ void FOServer::LogicTick()
 
     // Commit changed to data base
     DbStorage->CommitChanges();
+    if( DbHistory )
+        DbHistory->CommitChanges();
 
     // Fill statistics
     double frame_time = Timer::AccurateTick() - frame_begin;
@@ -1869,12 +1880,25 @@ bool FOServer::InitReal()
     ConnectedClients.reserve( MAX_CLIENTS_IN_GAME );
 
     // Data base
-    DbStorage = GetDataBase( MainConfig->GetStr( "", "DbStorage", "Memory" ) );
+    string storage_db_type = MainConfig->GetStr( "", "DbStorage", "Memory" );
+    WriteLog( "Initialize storage data base at '{}'.\n", storage_db_type );
+    DbStorage = GetDataBase( storage_db_type );
     if( !DbStorage )
         return false;
 
+    string history_db_type = MainConfig->GetStr( "", "DbHistory", "Memory" );
+    if( history_db_type != "None" )
+    {
+        WriteLog( "Initialize history data base at '{}'.\n", history_db_type );
+        DbHistory = GetDataBase( history_db_type );
+        if( !DbHistory )
+            return false;
+    }
+
     // Start data base changes
     DbStorage->StartChanges();
+    if( DbHistory )
+        DbHistory->StartChanges();
 
     PropertyRegistrator::GlobalSetCallbacks.push_back( EntitySetValue );
 
@@ -1976,6 +2000,8 @@ bool FOServer::InitReal()
 
     // Commit data base changes
     DbStorage->CommitChanges();
+    if( DbHistory )
+        DbHistory->CommitChanges();
 
     // End of initialization
     Statistics.BytesSend = 0;
@@ -2432,7 +2458,7 @@ void FOServer::GenerateUpdateFiles( bool first_generation /* = false */, StrVec*
 
 void FOServer::EntitySetValue( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    if( !entity->Id )
+    if( !entity->Id || prop->IsTemporary() )
         return;
 
     DataBase::Value value = entity->Props.SavePropertyToDbValue( prop );
@@ -2453,4 +2479,35 @@ void FOServer::EntitySetValue( Entity* entity, Property* prop, void* cur_value, 
         DbStorage->Update( "Globals", entity->Id, prop->GetName(), value );
     else
         RUNTIME_ASSERT( !"Unreachable place" );
+
+    if( DbHistory && !prop->IsNoHistory() )
+    {
+        uint id = Globals->GetHistoryRecordsId();
+        Globals->SetHistoryRecordsId( id + 1 );
+
+        std::chrono::milliseconds time = std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::system_clock::now().time_since_epoch() );
+
+        DataBase::Document        doc;
+        doc[ "Time" ] = (int64) time.count();
+        doc[ "EntityId" ] = (int) entity->Id;
+        doc[ "Property" ] = prop->GetName();
+        doc[ "Value" ] = value;
+
+        if( entity->Type == EntityType::Location )
+            DbHistory->Insert( "LocationsHistory", id, doc );
+        else if( entity->Type == EntityType::Map )
+            DbHistory->Insert( "MapsHistory", id, doc );
+        else if( entity->Type == EntityType::Npc )
+            DbHistory->Insert( "CrittersHistory", id, doc );
+        else if( entity->Type == EntityType::Item )
+            DbHistory->Insert( "ItemsHistory", id, doc );
+        else if( entity->Type == EntityType::Custom )
+            DbHistory->Insert( entity->Props.GetRegistrator()->GetClassName() + "sHistory", id, doc );
+        else if( entity->Type == EntityType::Client )
+            DbHistory->Insert( "PlayersHistory", id, doc );
+        else if( entity->Type == EntityType::Global )
+            DbHistory->Insert( "GlobalsHistory", id, doc );
+        else
+            RUNTIME_ASSERT( !"Unreachable place" );
+    }
 }

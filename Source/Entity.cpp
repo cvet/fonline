@@ -174,3 +174,4 @@ CLASS_PROPERTY_IMPL( GlobalVars, Second );
 CLASS_PROPERTY_IMPL( GlobalVars, TimeMultiplier );
 CLASS_PROPERTY_IMPL( GlobalVars, LastEntityId );
 CLASS_PROPERTY_IMPL( GlobalVars, LastDeferredCallId );
+CLASS_PROPERTY_IMPL( GlobalVars, HistoryRecordsId );

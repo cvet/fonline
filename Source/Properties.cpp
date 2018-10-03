@@ -829,6 +829,16 @@ bool Property::IsConst()
     return isConst;
 }
 
+bool Property::IsTemporary()
+{
+    return isTemporary;
+}
+
+bool Property::IsNoHistory()
+{
+    return isNoHistory;
+}
+
 uchar* Property::GetRawData( Entity* entity, uint& data_size )
 {
     return GetPropRawData( &entity->Props, data_size );
@@ -2419,6 +2429,9 @@ bool Properties::LoadFromDbDocument( const DataBase::Document& doc )
 
 DataBase::Value Properties::SavePropertyToDbValue( Property* prop )
 {
+    RUNTIME_ASSERT( prop->podDataOffset != uint( -1 ) || prop->complexDataIndex != uint( -1 ) );
+    RUNTIME_ASSERT( !prop->isTemporary );
+
     uint data_size;
     uchar* data = prop->GetPropRawData( this, data_size );
 
@@ -2896,6 +2909,7 @@ PropertyRegistrator::PropertyRegistrator( bool is_server, const string& script_c
     defaultMinValue = nullptr;
     defaultMaxValue = nullptr;
     defaultTemporary = false;
+    defaultNoHistory = false;
     getPropertiesCount = 0;
 }
 
@@ -2981,7 +2995,8 @@ Property* PropertyRegistrator::Register(
     const char* group /* = nullptr */,
     int64* min_value /* = nullptr */,
     int64* max_value /* = nullptr */,
-    bool is_temporary /* = false */
+    bool is_temporary /* = false */,
+    bool is_no_history     /* = false */
     )
 {
     if( registrationFinished )
@@ -3394,6 +3409,7 @@ Property* PropertyRegistrator::Register(
     prop->isReadable = !disable_get;
     prop->isWritable = !disable_set;
     prop->isTemporary = ( defaultTemporary || is_temporary );
+    prop->isNoHistory = ( defaultNoHistory || is_no_history );
     prop->checkMinValue = ( min_value != nullptr && ( is_int_data_type || is_float_data_type ) );
     prop->checkMaxValue = ( max_value != nullptr && ( is_int_data_type || is_float_data_type ) );
     prop->minValue = ( min_value ? *min_value : 0 );
@@ -3460,13 +3476,15 @@ void PropertyRegistrator::SetDefaults(
     const char* group /* = nullptr */,
     int64* min_value /* = nullptr */,
     int64* max_value /* = nullptr */,
-    bool is_temporary /* = false */
+    bool is_temporary /* = false */,
+    bool is_no_history     /* = false */
     )
 {
     SAFEDELA( defaultGroup );
     SAFEDEL( defaultMinValue );
     SAFEDEL( defaultMaxValue );
     defaultTemporary = false;
+    defaultNoHistory = false;
 
     if( group )
         defaultGroup = Str::Duplicate( group );
@@ -3476,6 +3494,8 @@ void PropertyRegistrator::SetDefaults(
         defaultMaxValue = new int64( *max_value );
     if( is_temporary )
         defaultTemporary = true;
+    if( is_no_history )
+        defaultNoHistory = true;
 }
 
 void PropertyRegistrator::FinishRegistration()

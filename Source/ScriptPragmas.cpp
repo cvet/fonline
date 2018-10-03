@@ -538,13 +538,14 @@ public:
         string get_callback;
         StrVec set_callbacks;
         bool   is_temporary = false;
+        bool   is_no_history = false;
         for( const string& opt_entry_str : _str( options ).split( ',' ) )
         {
             StrVec        opt_entry = _str( opt_entry_str ).split( '=' );
             const string& opt_name = opt_entry[ 0 ];
             const string& opt_svalue = ( opt_entry.size() > 1 ? opt_entry[ 1 ] : "" );
 
-            if( opt_name != "Temporary" && opt_entry.size() != 2 )
+            if( opt_name != "Temporary" && opt_name != "NoHistory" && opt_entry.size() != 2 )
             {
                 WriteLog( "Error in 'property' pragma '{}', invalid options entry.\n", text );
                 return false;
@@ -575,6 +576,10 @@ public:
             else if( opt_name == "Temporary" )
             {
                 is_temporary = true;
+            }
+            else if( opt_name == "NoHistory" )
+            {
+                is_no_history = true;
             }
         }
         if( fail )
@@ -608,7 +613,7 @@ public:
             if( !registrator->Register( property_type_name.c_str(), property_name.c_str(), access, is_const,
                                         group.length() > 0 ? group.c_str() : nullptr,
                                         check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr,
-                                        is_temporary ) )
+                                        is_temporary, is_no_history ) )
             {
                 WriteLog( "Unable to register 'property' pragma '{}'.\n", text );
                 return false;
@@ -630,7 +635,7 @@ public:
         {
             registrator->SetDefaults( group.length() > 0 ? group.c_str() : nullptr,
                                       check_min_value ? &min_value : nullptr, check_max_value ? &max_value : nullptr,
-                                      is_temporary );
+                                      is_temporary, is_no_history );
         }
 
         return true;

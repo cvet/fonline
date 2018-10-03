@@ -49,6 +49,7 @@ public:
 };
 
 extern DataBase* DbStorage;
+extern DataBase* DbHistory;
 
 DataBase* GetDataBase( const string& connection_info );
 

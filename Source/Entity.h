@@ -91,6 +91,7 @@ public:
     CLASS_PROPERTY( ushort, TimeMultiplier );
     CLASS_PROPERTY( uint, LastEntityId );
     CLASS_PROPERTY( uint, LastDeferredCallId );
+    CLASS_PROPERTY( uint, HistoryRecordsId );
 
     GlobalVars();
 };

@@ -100,6 +100,8 @@ public:
     bool         IsReadable();
     bool         IsWritable();
     bool         IsConst();
+    bool         IsTemporary();
+    bool         IsNoHistory();
 
     template< typename T >
     T GetValue( Entity* entity )
@@ -172,6 +174,7 @@ private:
     int64        minValue;
     int64        maxValue;
     bool         isTemporary;
+    bool         isNoHistory;
 
     // Dynamic data
     PropertyRegistrator* registrator;
@@ -299,9 +302,9 @@ public:
     PropertyRegistrator( bool is_server, const string& class_name );
     ~PropertyRegistrator();
     bool      Init();
-    Property* Register( const string& type_name, const string& name, Property::AccessType access, bool is_const, const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false );
+    Property* Register( const string& type_name, const string& name, Property::AccessType access, bool is_const, const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false, bool is_no_history = false );
     bool      RegisterComponent( const string& name );
-    void      SetDefaults( const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false );
+    void      SetDefaults( const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false, bool is_no_history = false );
     void      FinishRegistration();
     uint      GetCount();
     Property* Find( const string& property_name );
@@ -344,6 +347,7 @@ private:
     int64* defaultMinValue;
     int64* defaultMaxValue;
     bool   defaultTemporary;
+    bool   defaultNoHistory;
 };
 
 #endif // __PROPERTIES__
