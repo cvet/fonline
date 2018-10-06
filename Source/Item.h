@@ -21,20 +21,6 @@ class Critter;
 // Generic
 #define MAX_ADDED_NOGROUP_ITEMS      ( 30 )
 
-// Types
-#define ITEM_TYPE_ARMOR              ( 1 )
-#define ITEM_TYPE_DRUG               ( 2 ) // -
-#define ITEM_TYPE_WEAPON             ( 3 )
-#define ITEM_TYPE_AMMO               ( 4 ) // -
-#define ITEM_TYPE_MISC               ( 5 ) // -
-#define ITEM_TYPE_KEY                ( 7 ) // -
-#define ITEM_TYPE_CONTAINER          ( 8 )
-#define ITEM_TYPE_DOOR               ( 9 )
-#define ITEM_TYPE_GRID               ( 10 )
-#define ITEM_TYPE_GENERIC            ( 11 )
-#define ITEM_TYPE_WALL               ( 12 )
-#define ITEM_MAX_TYPES               ( 14 )
-
 // Uses
 #define USE_PRIMARY                  ( 0 )
 #define USE_SECONDARY                ( 1 )
@@ -71,6 +57,14 @@ HASH_DECL( SP_GRID_EXITGRID );
 HASH_DECL( SP_GRID_ENTIRE );
 HASH_DECL( SP_MISC_SCRBLOCK );
 
+// Types
+HASH_DECL( ItemWeapon );
+HASH_DECL( ItemContainer );
+HASH_DECL( ItemDoor );
+HASH_DECL( ItemGrid );
+HASH_DECL( ItemGeneric );
+HASH_DECL( ItemWall );
+
 // Item prototype
 class ProtoItem: public ProtoEntity
 {
@@ -86,7 +80,6 @@ public:
     string CollectionName;
     #endif
 
-    CLASS_PROPERTY_ALIAS( int, Type );
     CLASS_PROPERTY_ALIAS( hash, PicMap );
     CLASS_PROPERTY_ALIAS( hash, PicInv );
     CLASS_PROPERTY_ALIAS( bool, Stackable );
@@ -106,18 +99,17 @@ public:
     CLASS_PROPERTY_ALIAS( bool, IsColorize );
     CLASS_PROPERTY_ALIAS( bool, IsShowAnim );
     CLASS_PROPERTY_ALIAS( bool, IsShowAnimExt );
-    CLASS_PROPERTY_ALIAS( uchar, AnimStay_0 );
-    CLASS_PROPERTY_ALIAS( uchar, AnimStay_1 );
+    CLASS_PROPERTY_ALIAS( uchar, AnimStay0 );
+    CLASS_PROPERTY_ALIAS( uchar, AnimStay1 );
     CLASS_PROPERTY_ALIAS( CScriptArray *, BlockLines );
 
-    bool IsScenery() { return IsGeneric() || IsWall() || IsGrid(); }
-    bool IsGeneric() { return GetType() == ITEM_TYPE_GENERIC; }
-    bool IsWall()    { return GetType() == ITEM_TYPE_WALL; }
-    bool IsGrid()    { return GetType() == ITEM_TYPE_GRID; }
-
-    bool IsWeapon()    { return GetType() == ITEM_TYPE_WEAPON; }
-    bool IsArmor()     { return GetType() == ITEM_TYPE_ARMOR; }
-    bool IsContainer() { return GetType() == ITEM_TYPE_CONTAINER; }
+    bool IsScenery()   { return IsGeneric() || IsWall() || IsGrid(); }
+    bool IsGeneric()   { return Components.count( ItemGeneric ); }
+    bool IsWall()      { return Components.count( ItemWall ); }
+    bool IsGrid()      { return Components.count( ItemGrid ); }
+    bool IsWeapon()    { return Components.count( ItemWeapon ); }
+    bool IsContainer() { return Components.count( ItemContainer ); }
+    bool IsDoor()      { return Components.count( ItemDoor ); }
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     uint GetCurSprId();
@@ -135,7 +127,6 @@ class Item: public Entity
 public:
     // Properties
     PROPERTIES_HEADER();
-    CLASS_PROPERTY( int, Type );
     CLASS_PROPERTY( bool, Stackable );
     CLASS_PROPERTY( bool, Opened );
     CLASS_PROPERTY( int, Corner );
@@ -144,12 +135,12 @@ public:
     CLASS_PROPERTY( ushort, AnimWaitBase );
     CLASS_PROPERTY( ushort, AnimWaitRndMin );
     CLASS_PROPERTY( ushort, AnimWaitRndMax );
-    CLASS_PROPERTY( uchar, AnimStay_0 );
-    CLASS_PROPERTY( uchar, AnimStay_1 );
-    CLASS_PROPERTY( uchar, AnimShow_0 );
-    CLASS_PROPERTY( uchar, AnimShow_1 );
-    CLASS_PROPERTY( uchar, AnimHide_0 );
-    CLASS_PROPERTY( uchar, AnimHide_1 );
+    CLASS_PROPERTY( uchar, AnimStay0 );
+    CLASS_PROPERTY( uchar, AnimStay1 );
+    CLASS_PROPERTY( uchar, AnimShow0 );
+    CLASS_PROPERTY( uchar, AnimShow1 );
+    CLASS_PROPERTY( uchar, AnimHide0 );
+    CLASS_PROPERTY( uchar, AnimHide1 );
     CLASS_PROPERTY( uchar, SpriteCut );
     CLASS_PROPERTY( char, DrawOrderOffsetHexY );
     CLASS_PROPERTY( CScriptArray *, BlockLines );
@@ -235,13 +226,12 @@ public:
 
     // All
     bool IsScenery()   { return IsGeneric() || IsWall() || IsGrid(); }
-    bool IsGeneric()   { return GetType() == ITEM_TYPE_GENERIC; }
-    bool IsWall()      { return GetType() == ITEM_TYPE_WALL; }
-    bool IsGrid()      { return GetType() == ITEM_TYPE_GRID; }
-    bool IsArmor()     { return GetType() == ITEM_TYPE_ARMOR; }
-    bool IsWeapon()    { return GetType() == ITEM_TYPE_WEAPON; }
-    bool IsContainer() { return GetType() == ITEM_TYPE_CONTAINER; }
-    bool IsDoor()      { return GetType() == ITEM_TYPE_DOOR; }
+    bool IsGeneric()   { return Proto->Components.count( ItemGeneric ); }
+    bool IsWall()      { return Proto->Components.count( ItemWall ); }
+    bool IsGrid()      { return Proto->Components.count( ItemGrid ); }
+    bool IsWeapon()    { return Proto->Components.count( ItemWeapon ); }
+    bool IsContainer() { return Proto->Components.count( ItemContainer ); }
+    bool IsDoor()      { return Proto->Components.count( ItemDoor ); }
 
     void ChangeCount( int val );
 

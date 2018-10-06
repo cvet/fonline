@@ -6653,6 +6653,34 @@ Item* FOClient::SScriptFunc::Crit_GetItem( CritterCl* cr, uint item_id )
     return cr->GetItem( item_id );
 }
 
+Item* FOClient::SScriptFunc::Crit_GetItemPredicate( CritterCl* cr, asIScriptFunction* predicate )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    uint bind_id = Script::BindByFunc( predicate, true );
+    RUNTIME_ASSERT( bind_id );
+
+    ItemVec inv_items = cr->InvItems;
+    for( Item* item : inv_items )
+    {
+        if( item->IsDestroyed )
+            continue;
+
+        Script::PrepareContext( bind_id, "Predicate" );
+        Script::SetArgObject( item );
+        if( !Script::RunPrepared() )
+        {
+            Script::PassException();
+            return nullptr;
+        }
+
+        if( Script::GetReturnedBool() && !item->IsDestroyed )
+            return item;
+    }
+    return nullptr;
+}
+
 Item* FOClient::SScriptFunc::Crit_GetItemBySlot( CritterCl* cr, uchar slot )
 {
     if( cr->IsDestroyed )
@@ -6674,9 +6702,7 @@ CScriptArray* FOClient::SScriptFunc::Crit_GetItems( CritterCl* cr )
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    ItemVec items;
-    cr->GetItemsSlot( -1, items );
-    return Script::CreateArrayRef( "Item[]", items );
+    return Script::CreateArrayRef( "Item[]", cr->InvItems );
 }
 
 CScriptArray* FOClient::SScriptFunc::Crit_GetItemsBySlot( CritterCl* cr, uchar slot )
@@ -6689,13 +6715,33 @@ CScriptArray* FOClient::SScriptFunc::Crit_GetItemsBySlot( CritterCl* cr, uchar s
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOClient::SScriptFunc::Crit_GetItemsByType( CritterCl* cr, int type )
+CScriptArray* FOClient::SScriptFunc::Crit_GetItemsPredicate( CritterCl* cr, asIScriptFunction* predicate )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
+    uint bind_id = Script::BindByFunc( predicate, true );
+    RUNTIME_ASSERT( bind_id );
+
+    ItemVec inv_items = cr->InvItems;
     ItemVec items;
-    cr->GetItemsType( type, items );
+    items.reserve( inv_items.size() );
+    for( Item* item : inv_items )
+    {
+        if( item->IsDestroyed )
+            continue;
+
+        Script::PrepareContext( bind_id, "Predicate" );
+        Script::SetArgObject( item );
+        if( !Script::RunPrepared() )
+        {
+            Script::PassException();
+            return nullptr;
+        }
+
+        if( Script::GetReturnedBool() && !item->IsDestroyed )
+            items.push_back( item );
+    }
     return Script::CreateArrayRef( "Item[]", items );
 }
 

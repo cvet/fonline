@@ -496,6 +496,12 @@ HASH_IMPL( SP_WALL_BLOCK, "Block" );
 HASH_IMPL( SP_GRID_EXITGRID, "ExitGrid" );
 HASH_IMPL( SP_GRID_ENTIRE, "Entrance" );
 HASH_IMPL( SP_MISC_SCRBLOCK, "ScrollBlock" );
+HASH_IMPL( ItemWeapon, "Weapon" );
+HASH_IMPL( ItemContainer, "Container" );
+HASH_IMPL( ItemDoor, "Door" );
+HASH_IMPL( ItemGrid, "Grid" );
+HASH_IMPL( ItemGeneric, "Generic" );
+HASH_IMPL( ItemWall, "Wall" );
 
 hash _str::toHash()
 {

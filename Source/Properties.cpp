@@ -1654,6 +1654,8 @@ bool Properties::LoadFromText( const StrMap& key_values )
 
         // Find property
         Property* prop = registrator->Find( key );
+        if( !prop && key.find( '.' ) != string::npos )
+            prop = registrator->Find( _str( key ).replace( '.', '_' ) );
         if( !prop || ( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) ) )
         {
             if( !prop )
@@ -2996,7 +2998,7 @@ Property* PropertyRegistrator::Register(
     int64* min_value /* = nullptr */,
     int64* max_value /* = nullptr */,
     bool is_temporary /* = false */,
-    bool is_no_history     /* = false */
+    bool is_no_history /* = false */
     )
 {
     if( registrationFinished )
@@ -3384,7 +3386,7 @@ Property* PropertyRegistrator::Register(
     prop->getCallbackArgs = 0;
     prop->nativeSetCallback = nullptr;
 
-    prop->propName = name;
+    prop->propName = _str( name ).replace( '.', '_' );
     prop->typeName = type_name;
     prop->componentName = component_name;
     prop->dataType = data_type;

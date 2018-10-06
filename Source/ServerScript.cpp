@@ -1152,6 +1152,34 @@ Item* FOServer::SScriptFunc::Crit_GetItem( Critter* cr, uint item_id )
     return cr->GetItem( item_id, false );
 }
 
+Item* FOServer::SScriptFunc::Crit_GetItemPredicate( Critter* cr, asIScriptFunction* predicate )
+{
+    if( cr->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    uint bind_id = Script::BindByFunc( predicate, true );
+    RUNTIME_ASSERT( bind_id );
+
+    ItemVec inv_items = cr->GetInventory();
+    for( Item* item : inv_items )
+    {
+        if( item->IsDestroyed )
+            continue;
+
+        Script::PrepareContext( bind_id, "Predicate" );
+        Script::SetArgObject( item );
+        if( !Script::RunPrepared() )
+        {
+            Script::PassException();
+            return nullptr;
+        }
+
+        if( Script::GetReturnedBool() && !item->IsDestroyed )
+            return item;
+    }
+    return nullptr;
+}
+
 Item* FOServer::SScriptFunc::Crit_GetItemBySlot( Critter* cr, uchar slot )
 {
     if( cr->IsDestroyed )
@@ -1173,9 +1201,7 @@ CScriptArray* FOServer::SScriptFunc::Crit_GetItems( Critter* cr )
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
-    ItemVec items;
-    cr->GetItemsSlot( -1, items );
-    return Script::CreateArrayRef( "Item[]", items );
+    return Script::CreateArrayRef( "Item[]", cr->GetInventory() );
 }
 
 CScriptArray* FOServer::SScriptFunc::Crit_GetItemsBySlot( Critter* cr, int slot )
@@ -1188,13 +1214,33 @@ CScriptArray* FOServer::SScriptFunc::Crit_GetItemsBySlot( Critter* cr, int slot 
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Crit_GetItemsByType( Critter* cr, int type )
+CScriptArray* FOServer::SScriptFunc::Crit_GetItemsPredicate( Critter* cr, asIScriptFunction* predicate )
 {
     if( cr->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
+    uint bind_id = Script::BindByFunc( predicate, true );
+    RUNTIME_ASSERT( bind_id );
+
+    ItemVec inv_items = cr->GetInventory();
     ItemVec items;
-    cr->GetItemsType( type, items );
+    items.reserve( inv_items.size() );
+    for( Item* item : inv_items )
+    {
+        if( item->IsDestroyed )
+            continue;
+
+        Script::PrepareContext( bind_id, "Predicate" );
+        Script::SetArgObject( item );
+        if( !Script::RunPrepared() )
+        {
+            Script::PassException();
+            return nullptr;
+        }
+
+        if( Script::GetReturnedBool() && !item->IsDestroyed )
+            items.push_back( item );
+    }
     return Script::CreateArrayRef( "Item[]", items );
 }
 
@@ -1937,13 +1983,101 @@ CScriptArray* FOServer::SScriptFunc::Map_GetItemsByPid( Map* map, hash pid )
     return Script::CreateArrayRef( "Item[]", items );
 }
 
-CScriptArray* FOServer::SScriptFunc::Map_GetItemsByType( Map* map, int type )
+CScriptArray* FOServer::SScriptFunc::Map_GetItemsPredicate( Map* map, asIScriptFunction* predicate )
 {
     if( map->IsDestroyed )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
+    uint bind_id = Script::BindByFunc( predicate, true );
+    RUNTIME_ASSERT( bind_id );
+
+    ItemVec map_items = map->GetItems();
     ItemVec items;
-    map->GetItemsType( type, items );
+    items.reserve( map_items.size() );
+    for( Item* item : map_items )
+    {
+        if( item->IsDestroyed )
+            continue;
+
+        Script::PrepareContext( bind_id, "Predicate" );
+        Script::SetArgObject( item );
+        if( !Script::RunPrepared() )
+        {
+            Script::PassException();
+            return nullptr;
+        }
+
+        if( Script::GetReturnedBool() && !item->IsDestroyed )
+            items.push_back( item );
+    }
+    return Script::CreateArrayRef( "Item[]", items );
+}
+
+CScriptArray* FOServer::SScriptFunc::Map_GetItemsHexPredicate( Map* map, ushort hx, ushort hy, asIScriptFunction* predicate )
+{
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( hx >= map->GetWidth() || hy >= map->GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid hexes args." );
+
+    uint bind_id = Script::BindByFunc( predicate, true );
+    RUNTIME_ASSERT( bind_id );
+
+    ItemVec map_items;
+    map->GetItemsHex( hx, hy, map_items );
+
+    ItemVec items;
+    items.reserve( map_items.size() );
+    for( Item* item : map_items )
+    {
+        if( item->IsDestroyed )
+            continue;
+
+        Script::PrepareContext( bind_id, "Predicate" );
+        Script::SetArgObject( item );
+        if( !Script::RunPrepared() )
+        {
+            Script::PassException();
+            return nullptr;
+        }
+
+        if( Script::GetReturnedBool() && !item->IsDestroyed )
+            items.push_back( item );
+    }
+    return Script::CreateArrayRef( "Item[]", items );
+}
+
+CScriptArray* FOServer::SScriptFunc::Map_GetItemsHexRadiusPredicate( Map* map, ushort hx, ushort hy, uint radius, asIScriptFunction* predicate )
+{
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+    if( hx >= map->GetWidth() || hy >= map->GetHeight() )
+        SCRIPT_ERROR_R0( "Invalid hexes args." );
+
+    uint bind_id = Script::BindByFunc( predicate, true );
+    RUNTIME_ASSERT( bind_id );
+
+    ItemVec map_items;
+    map->GetItemsHexEx( hx, hy, radius, 0, map_items );
+
+    ItemVec items;
+    items.reserve( map_items.size() );
+    for( Item* item : map_items )
+    {
+        if( item->IsDestroyed )
+            continue;
+
+        Script::PrepareContext( bind_id, "Predicate" );
+        Script::SetArgObject( item );
+        if( !Script::RunPrepared() )
+        {
+            Script::PassException();
+            return nullptr;
+        }
+
+        if( Script::GetReturnedBool() && !item->IsDestroyed )
+            items.push_back( item );
+    }
     return Script::CreateArrayRef( "Item[]", items );
 }
 

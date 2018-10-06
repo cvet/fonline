@@ -9,7 +9,6 @@
 # include "ItemManager.h"
 #endif
 
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Type );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicMap );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, hash, PicInv );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, Stackable );
@@ -29,8 +28,8 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsBadItem );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsColorize );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnim );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnimExt );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay_0 );
-CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay_1 );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay0 );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay1 );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, CScriptArray *, BlockLines );
 
 ProtoItem::ProtoItem( hash pid ): ProtoEntity( pid, Item::PropertiesRegistrator )
@@ -48,7 +47,6 @@ CLASS_PROPERTY_IMPL( Item, LightIntensity );
 CLASS_PROPERTY_IMPL( Item, LightDistance );
 CLASS_PROPERTY_IMPL( Item, LightFlags );
 CLASS_PROPERTY_IMPL( Item, LightColor );
-CLASS_PROPERTY_IMPL( Item, Type );
 CLASS_PROPERTY_IMPL( Item, Stackable );
 CLASS_PROPERTY_IMPL( Item, Opened );
 CLASS_PROPERTY_IMPL( Item, Corner );
@@ -57,12 +55,12 @@ CLASS_PROPERTY_IMPL( Item, DisableEgg );
 CLASS_PROPERTY_IMPL( Item, AnimWaitBase );
 CLASS_PROPERTY_IMPL( Item, AnimWaitRndMin );
 CLASS_PROPERTY_IMPL( Item, AnimWaitRndMax );
-CLASS_PROPERTY_IMPL( Item, AnimStay_0 );
-CLASS_PROPERTY_IMPL( Item, AnimStay_1 );
-CLASS_PROPERTY_IMPL( Item, AnimShow_0 );
-CLASS_PROPERTY_IMPL( Item, AnimShow_1 );
-CLASS_PROPERTY_IMPL( Item, AnimHide_0 );
-CLASS_PROPERTY_IMPL( Item, AnimHide_1 );
+CLASS_PROPERTY_IMPL( Item, AnimStay0 );
+CLASS_PROPERTY_IMPL( Item, AnimStay1 );
+CLASS_PROPERTY_IMPL( Item, AnimShow0 );
+CLASS_PROPERTY_IMPL( Item, AnimShow1 );
+CLASS_PROPERTY_IMPL( Item, AnimHide0 );
+CLASS_PROPERTY_IMPL( Item, AnimHide1 );
 CLASS_PROPERTY_IMPL( Item, SpriteCut );
 CLASS_PROPERTY_IMPL( Item, DrawOrderOffsetHexY );
 CLASS_PROPERTY_IMPL( Item, BlockLines );
@@ -405,8 +403,8 @@ uint Item::GetCurSprId()
     }
     if( GetIsShowAnimExt() )
     {
-        beg = GetAnimStay_0();
-        end = GetAnimStay_1();
+        beg = GetAnimStay0();
+        end = GetAnimStay1();
     }
     if( beg >= anim->CntFrm )
         beg = anim->CntFrm - 1;
@@ -434,8 +432,8 @@ uint ProtoItem::GetCurSprId()
     }
     if( GetIsShowAnimExt() )
     {
-        beg = GetAnimStay_0();
-        end = GetAnimStay_1();
+        beg = GetAnimStay0();
+        end = GetAnimStay1();
     }
     if( beg >= anim->CntFrm )
         beg = anim->CntFrm - 1;

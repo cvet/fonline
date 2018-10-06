@@ -176,7 +176,6 @@ public:
     Item*    GetItemByPidSlot( hash item_pid, int slot );
     Item*    GetItemSlot( int slot );
     void     GetItemsSlot( int slot, ItemVec& items );
-    void     GetItemsType( int type, ItemVec& items );
     uint     CountItemPid( hash item_pid );
     uint     RealCountItems() { return (uint) invItems.size(); }
     uint     CountItems();

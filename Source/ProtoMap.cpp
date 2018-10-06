@@ -728,7 +728,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     continue;
                 if( entity_cont->Type == MUTUAL_CRITTER_TYPE && ( ( (MUTUAL_CRITTER*) entity_cont )->GetHexX() != hx || ( (MUTUAL_CRITTER*) entity_cont )->GetHexY() != hy ) )
                     continue;
-                if( entity_cont->Type == EntityType::Item && ( (Item*) entity_cont )->GetType() != ITEM_TYPE_CONTAINER )
+                if( entity_cont->Type == EntityType::Item && !( (Item*) entity_cont )->IsContainer() )
                     continue;
                 if( !entity_cont_addon.UID )
                     entity_cont_addon.UID = ++uid;
@@ -800,7 +800,6 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
 
         RUNTIME_ASSERT( entity->Type == EntityType::Item );
         Item* item = (Item*) entity;
-        int type = item->GetType();
         hash pid = item->GetProtoId();
 
         if( !item->IsScenery() )
@@ -829,9 +828,9 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             continue;
         }
 
-        if( type == ITEM_TYPE_WALL || type == ITEM_TYPE_GENERIC || type == ITEM_TYPE_GRID )
+        if( item->IsScenery() )
         {
-            if( type == ITEM_TYPE_GRID )
+            if( item->IsGrid() )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN_GRID );
             if( !item->GetIsNoBlock() )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
@@ -840,7 +839,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
             }
-            if( type == ITEM_TYPE_WALL )
+            if( item->IsWall() )
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_WALL );
             else
                 SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN );
@@ -855,12 +854,12 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
                     SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
                 }
             }
-            else if( type == ITEM_TYPE_GRID )
+            else if( item->IsGrid() )
             {
                 item->AddRef();
                 GridsVec.push_back( item );
             }
-            else if( type == ITEM_TYPE_GENERIC )
+            else if( item->IsGeneric() )
             {
                 item->AddRef();
                 SceneryVec.push_back( item );

@@ -453,7 +453,7 @@ bool EntityManager::LinkItems()
 
             if( item->IsScenery() )
             {
-                WriteLog( "Item '{}' ({}) is scenery type {}.\n", item->GetName(), item->Id, item->GetType() );
+                WriteLog( "Item '{}' ({}) is scenery type.\n", item->GetName(), item->Id );
                 errors++;
                 continue;
             }

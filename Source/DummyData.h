@@ -156,12 +156,11 @@ struct BindClass
     static void Crit_DeleteItem()               {}
     static void Crit_AddItem()                  {}
     static void Crit_GetItem()                  {}
+    static void Crit_GetItemPredicate()         {}
     static void Crit_GetItemByPid()             {}
     static void Crit_GetItemBySlot()            {}
-    static void Crit_GetItemByType()            {}
     static void Crit_GetItems()                 {}
-    static void Crit_GetItemsBySlot()           {}
-    static void Crit_GetItemsByType()           {}
+    static void Crit_GetItemsPredicate()        {}
     static void Crit_ChangeItemSlot()           {}
     static void Crit_DropItem()                 {}
     static void Crit_SetCond()                  {}
@@ -198,59 +197,61 @@ struct BindClass
     static void Crit_GetMovingState()   {}
     static void Crit_ResetMovingState() {}
 
-    static void Map_GetLocation()            {}
-    static void Map_SetScript()              {}
-    static void Map_AddItem()                {}
-    static void Map_GetItems()               {}
-    static void Map_GetItemsHex()            {}
-    static void Map_GetItemsHexEx()          {}
-    static void Map_GetItemsByPid()          {}
-    static void Map_GetItemsByType()         {}
-    static void Map_GetItem()                {}
-    static void Map_GetItemHex()             {}
-    static void Map_GetDoor()                {}
-    static void Map_GetSceneryHex()          {}
-    static void Map_GetSceneriesHex()        {}
-    static void Map_GetSceneriesHexEx()      {}
-    static void Map_GetSceneriesByPid()      {}
-    static void Map_GetCritterHex()          {}
-    static void Map_GetCritterById()         {}
-    static void Map_GetCritters()            {}
-    static void Map_GetCrittersByPids()      {}
-    static void Map_GetCrittersInPath()      {}
-    static void Map_GetCrittersInPathBlock() {}
-    static void Map_GetCrittersWhoViewPath() {}
-    static void Map_GetCrittersSeeing()      {}
-    static void Map_GetHexInPath()           {}
-    static void Map_GetHexInPathWall()       {}
-    static void Map_GetPathLengthHex()       {}
-    static void Map_GetPathLengthCr()        {}
-    static void Map_AddNpc()                 {}
-    static void Map_GetNpcCount()            {}
-    static void Map_GetNpc()                 {}
-    static void Map_CountEntire()            {}
-    static void Map_GetAllEntires()          {}
-    static void Map_GetEntireCoords()        {}
-    static void Map_GetEntireCoordsDir()     {}
-    static void Map_GetEntireCoordsAll()     {}
-    static void Map_GetNearEntireCoords()    {}
-    static void Map_GetNearEntireCoordsDir() {}
-    static void Map_IsHexPassed()            {}
-    static void Map_IsHexesPassed()          {}
-    static void Map_IsHexRaked()             {}
-    static void Map_SetText()                {}
-    static void Map_SetTextMsg()             {}
-    static void Map_SetTextMsgLex()          {}
-    static void Map_RunEffect()              {}
-    static void Map_RunFlyEffect()           {}
-    static void Map_CheckPlaceForItem()      {}
-    static void Map_BlockHex()               {}
-    static void Map_UnblockHex()             {}
-    static void Map_PlaySound()              {}
-    static void Map_PlaySoundRadius()        {}
-    static void Map_Reload()                 {}
-    static void Map_MoveHexByDir()           {}
-    static void Map_VerifyTrigger()          {}
+    static void Map_GetLocation()                {}
+    static void Map_SetScript()                  {}
+    static void Map_AddItem()                    {}
+    static void Map_GetItems()                   {}
+    static void Map_GetItemsHex()                {}
+    static void Map_GetItemsHexEx()              {}
+    static void Map_GetItemsByPid()              {}
+    static void Map_GetItemsPredicate()          {}
+    static void Map_GetItemsHexPredicate()       {}
+    static void Map_GetItemsHexRadiusPredicate() {}
+    static void Map_GetItem()                    {}
+    static void Map_GetItemHex()                 {}
+    static void Map_GetDoor()                    {}
+    static void Map_GetSceneryHex()              {}
+    static void Map_GetSceneriesHex()            {}
+    static void Map_GetSceneriesHexEx()          {}
+    static void Map_GetSceneriesByPid()          {}
+    static void Map_GetCritterHex()              {}
+    static void Map_GetCritterById()             {}
+    static void Map_GetCritters()                {}
+    static void Map_GetCrittersByPids()          {}
+    static void Map_GetCrittersInPath()          {}
+    static void Map_GetCrittersInPathBlock()     {}
+    static void Map_GetCrittersWhoViewPath()     {}
+    static void Map_GetCrittersSeeing()          {}
+    static void Map_GetHexInPath()               {}
+    static void Map_GetHexInPathWall()           {}
+    static void Map_GetPathLengthHex()           {}
+    static void Map_GetPathLengthCr()            {}
+    static void Map_AddNpc()                     {}
+    static void Map_GetNpcCount()                {}
+    static void Map_GetNpc()                     {}
+    static void Map_CountEntire()                {}
+    static void Map_GetAllEntires()              {}
+    static void Map_GetEntireCoords()            {}
+    static void Map_GetEntireCoordsDir()         {}
+    static void Map_GetEntireCoordsAll()         {}
+    static void Map_GetNearEntireCoords()        {}
+    static void Map_GetNearEntireCoordsDir()     {}
+    static void Map_IsHexPassed()                {}
+    static void Map_IsHexesPassed()              {}
+    static void Map_IsHexRaked()                 {}
+    static void Map_SetText()                    {}
+    static void Map_SetTextMsg()                 {}
+    static void Map_SetTextMsgLex()              {}
+    static void Map_RunEffect()                  {}
+    static void Map_RunFlyEffect()               {}
+    static void Map_CheckPlaceForItem()          {}
+    static void Map_BlockHex()                   {}
+    static void Map_UnblockHex()                 {}
+    static void Map_PlaySound()                  {}
+    static void Map_PlaySoundRadius()            {}
+    static void Map_Reload()                     {}
+    static void Map_MoveHexByDir()               {}
+    static void Map_VerifyTrigger()              {}
 
     static void Location_GetMapCount()   {}
     static void Location_GetMap()        {}
@@ -341,8 +342,6 @@ struct BindClass
     static void Crit_GetItemByPid()         {}
     static void Crit_GetItemBySlot()        {}
     static void Crit_GetItems()             {}
-    static void Crit_GetItemsBySlot()       {}
-    static void Crit_GetItemsByType()       {}
     static void Crit_SetVisible()           {}
     static void Crit_GetVisible()           {}
     static void Crit_set_ContourColor()     {}

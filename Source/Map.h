@@ -92,7 +92,6 @@ public:
     void    GetItemsHex( ushort hx, ushort hy, ItemVec& items );
     void    GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items );
     void    GetItemsPid( hash pid, ItemVec& items );
-    void    GetItemsType( int type, ItemVec& items );
     void    GetItemsTrap( ushort hx, ushort hy, ItemVec& items );
 
     bool   IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item );

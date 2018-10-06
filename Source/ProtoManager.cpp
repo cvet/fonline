@@ -327,45 +327,10 @@ bool ProtoManager::LoadProtosFromFiles()
     for( auto& kv : itemProtos )
     {
         ProtoItem* proto_item = (ProtoItem*) kv.second;
-        switch( proto_item->GetType() )
-        {
-        case ITEM_TYPE_ARMOR:
-            proto_item->CollectionName = "armor";
-            break;
-        case ITEM_TYPE_DRUG:
-            proto_item->CollectionName = "drug";
-            break;
-        case ITEM_TYPE_WEAPON:
-            proto_item->CollectionName = "weapon";
-            break;
-        case ITEM_TYPE_AMMO:
-            proto_item->CollectionName = "ammo";
-            break;
-        case ITEM_TYPE_MISC:
-            proto_item->CollectionName = "misc";
-            break;
-        case ITEM_TYPE_KEY:
-            proto_item->CollectionName = "key";
-            break;
-        case ITEM_TYPE_CONTAINER:
-            proto_item->CollectionName = "container";
-            break;
-        case ITEM_TYPE_DOOR:
-            proto_item->CollectionName = "door";
-            break;
-        case ITEM_TYPE_GRID:
-            proto_item->CollectionName = "grid";
-            break;
-        case ITEM_TYPE_GENERIC:
-            proto_item->CollectionName = "generic";
-            break;
-        case ITEM_TYPE_WALL:
-            proto_item->CollectionName = "wall";
-            break;
-        default:
+        if( !proto_item->Components.empty() )
+            proto_item->CollectionName = _str().parseHash( *proto_item->Components.begin() ).lower();
+        else
             proto_item->CollectionName = "other";
-            break;
-        }
     }
     for( auto& kv : crProtos )
     {

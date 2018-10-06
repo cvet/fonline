@@ -273,11 +273,12 @@ public:
         static bool          Crit_DeleteItem( Critter* cr, hash pid, uint count );
         static Item*         Crit_AddItem( Critter* cr, hash pid, uint count );
         static Item*         Crit_GetItem( Critter* cr, uint item_id );
+        static Item*         Crit_GetItemPredicate( Critter* cr, asIScriptFunction* predicate );
         static Item*         Crit_GetItemBySlot( Critter* cr, uchar slot );
         static Item*         Crit_GetItemByPid( Critter* cr, hash proto_id );
         static CScriptArray* Crit_GetItems( Critter* cr );
         static CScriptArray* Crit_GetItemsBySlot( Critter* cr, int slot );
-        static CScriptArray* Crit_GetItemsByType( Critter* cr, int type );
+        static CScriptArray* Crit_GetItemsPredicate( Critter* cr, asIScriptFunction* predicate );
         static void          Crit_ChangeItemSlot( Critter* cr, uint item_id, uchar slot );
         static void          Crit_SetCond( Critter* cr, int cond );
         static void          Crit_CloseDialog( Critter* cr );
@@ -320,7 +321,9 @@ public:
         static CScriptArray* Map_GetItemsHex( Map* map, ushort hx, ushort hy );
         static CScriptArray* Map_GetItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid );
         static CScriptArray* Map_GetItemsByPid( Map* map, hash pid );
-        static CScriptArray* Map_GetItemsByType( Map* map, int type );
+        static CScriptArray* Map_GetItemsPredicate( Map* map, asIScriptFunction* predicate );
+        static CScriptArray* Map_GetItemsHexPredicate( Map* map, ushort hx, ushort hy, asIScriptFunction* predicate );
+        static CScriptArray* Map_GetItemsHexRadiusPredicate( Map* map, ushort hx, ushort hy, uint radius, asIScriptFunction* predicate );
         static Item*         Map_GetItem( Map* map, uint item_id );
         static Item*         Map_GetItemHex( Map* map, ushort hx, ushort hy, hash pid );
         static Item*         Map_GetDoor( Map* map, ushort hx, ushort hy );

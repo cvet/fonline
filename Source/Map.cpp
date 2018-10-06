@@ -609,13 +609,6 @@ void Map::GetItemsPid( hash pid, ItemVec& items )
             items.push_back( item );
 }
 
-void Map::GetItemsType( int type, ItemVec& items )
-{
-    for( Item* item : mapItems )
-        if( item->GetType() == type )
-            items.push_back( item );
-}
-
 void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps )
 {
     auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );

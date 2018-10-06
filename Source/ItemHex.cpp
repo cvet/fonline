@@ -241,7 +241,7 @@ void ItemHex::RefreshAnim()
     animBegSpr = begSpr;
     animEndSpr = endSpr;
 
-    if( GetType() == ITEM_TYPE_CONTAINER || GetType() == ITEM_TYPE_DOOR )
+    if( IsContainer() || IsDoor() )
     {
         if( GetOpened() )
             SetSprEnd();
@@ -366,7 +366,7 @@ void ItemHex::SetAnimOffs()
 void ItemHex::SetStayAnim()
 {
     if( GetIsShowAnimExt() )
-        SetAnim( GetAnimStay_0(), GetAnimStay_1() );
+        SetAnim( GetAnimStay0(), GetAnimStay1() );
     else
         SetAnim( 0, Anim->CntFrm - 1 );
 }
@@ -374,7 +374,7 @@ void ItemHex::SetStayAnim()
 void ItemHex::SetShowAnim()
 {
     if( GetIsShowAnimExt() )
-        SetAnim( GetAnimShow_0(), GetAnimShow_1() );
+        SetAnim( GetAnimShow0(), GetAnimShow1() );
     else
         SetAnim( 0, Anim->CntFrm - 1 );
 }
@@ -383,9 +383,9 @@ void ItemHex::SetHideAnim()
 {
     if( GetIsShowAnimExt() )
     {
-        SetAnim( GetAnimHide_0(), GetAnimHide_1() );
-        animBegSpr = ( GetAnimHide_1() );
-        animEndSpr = ( GetAnimHide_1() );
+        SetAnim( GetAnimHide0(), GetAnimHide1() );
+        animBegSpr = ( GetAnimHide1() );
+        animEndSpr = ( GetAnimHide1() );
     }
     else
     {

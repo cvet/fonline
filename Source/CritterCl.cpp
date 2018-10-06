@@ -263,16 +263,6 @@ void CritterCl::GetItemsSlot( int slot, ItemVec& items )
     }
 }
 
-void CritterCl::GetItemsType( int type, ItemVec& items )
-{
-    for( auto it = InvItems.begin(), end = InvItems.end(); it != end; ++it )
-    {
-        Item* item = *it;
-        if( item->GetType() == type )
-            items.push_back( item );
-    }
-}
-
 uint CritterCl::CountItemPid( hash item_pid )
 {
     uint result = 0;

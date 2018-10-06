@@ -86,6 +86,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     /************************************************************************/
     /* Item                                                                 */
     /************************************************************************/
+    BIND_ASSERT( engine->RegisterFuncdef( "bool ItemPredicate(Item@+)" ) );
     BIND_ASSERT( engine->RegisterFuncdef( "void ItemInitFunc(Item@+, bool)" ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool SetScript(ItemInitFunc@+ func)", SCRIPT_FUNC_THIS( BIND_CLASS Item_SetScript ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Item@+ AddItem(hash protoId, uint count, uint stackId)", SCRIPT_FUNC_THIS( BIND_CLASS Item_AddItem ), SCRIPT_FUNC_THIS_CONV ) );
@@ -133,12 +134,14 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Item@+ GetItemByPid(hash protoId) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemByPid ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItemBySlot(uint8 slot)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemBySlot ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Item@+ GetItemBySlot(uint8 slot) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemBySlot ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItem(ItemPredicate@+ predicate)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Item@+ GetItem(ItemPredicate@+ predicate) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemPredicate ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Item@>@ GetItems()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItems ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetItems() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItems ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Item@>@ GetItemsBySlot(uint8 slot)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsBySlot ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetItemsBySlot(uint8 slot) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsBySlot ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Item@>@ GetItemsByType(int type)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsByType ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetItemsByType(int type) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsByType ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Item@>@ GetItems(ItemPredicate@+ predicate)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetItems(ItemPredicate@+ predicate) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsPredicate ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void ChangeItemSlot(uint itemId, uint8 slot)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_ChangeItemSlot ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetCond(int cond)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SetCond ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void CloseDialog()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_CloseDialog ), SCRIPT_FUNC_THIS_CONV ) );
@@ -212,8 +215,12 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetItems(uint16 hexX, uint16 hexY, uint radius, hash protoId) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsHexEx ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<Item@>@ GetItemsByPid(hash protoId)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsByPid ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetItemsByPid(hash protoId) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsByPid ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<Item@>@ GetItemsByType(int type)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsByType ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetItemsByType(int type) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsByType ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<Item@>@ GetItems(ItemPredicate@+ predicate)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetItems(ItemPredicate@+ predicate) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<Item@>@ GetItems(uint16 hexX, uint16 hexY, ItemPredicate@+ predicate)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsHexPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetItems(uint16 hexX, uint16 hexY, ItemPredicate@+ predicate) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsHexPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<Item@>@ GetItems(uint16 hexX, uint16 hexY, uint radius, hash protoId, ItemPredicate@+ predicate)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsHexRadiusPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Map", "array<const Item@>@ GetItems(uint16 hexX, uint16 hexY, uint radius, hash protoId, ItemPredicate@+ predicate) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetItemsHexRadiusPredicate ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetDoor(uint16 hexX, uint16 hexY)", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetDoor ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "const Item@+ GetDoor(uint16 hexX, uint16 hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetDoor ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "const Item@+ GetScenery(uint16 hexX, uint16 hexY, hash protoId) const", SCRIPT_FUNC_THIS( BIND_CLASS Map_GetSceneryHex ), SCRIPT_FUNC_THIS_CONV ) );
@@ -344,6 +351,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #endif
 
     #ifdef BIND_CLIENT
+    BIND_ASSERT( engine->RegisterFuncdef( "bool ItemPredicate(Item@+)" ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsChosen() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_IsChosen ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsPlayer() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_IsPlayer ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool IsNpc() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_IsNpc ), SCRIPT_FUNC_THIS_CONV ) );
@@ -364,6 +372,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "uint CountItem(hash protoId) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_CountItem ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItem(uint itemId)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItem ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Item@+ GetItem(uint itemId) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItem ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItem(ItemPredicate@+ predicate)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Item@+ GetItem(ItemPredicate@+ predicate) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemPredicate ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItemBySlot(uint8 slot)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemBySlot ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Item@+ GetItemBySlot(uint8 slot) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemBySlot ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Item@+ GetItemByPid(hash protoId)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemByPid ), SCRIPT_FUNC_THIS_CONV ) );
@@ -372,8 +382,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetItems() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItems ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Item@>@ GetItemsBySlot(uint8 slot)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsBySlot ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetItemsBySlot(uint8 slot) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsBySlot ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Item@>@ GetItemsByType(int type)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsByType ), SCRIPT_FUNC_THIS_CONV ) );
-    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetItemsByType(int type) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsByType ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Item@>@ GetItems(ItemPredicate@+ predicate)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsPredicate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetItems(ItemPredicate@+ predicate) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetItemsPredicate ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void SetVisible(bool visible)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_SetVisible ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool GetVisible() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetVisible ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void set_ContourColor(uint value)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_set_ContourColor ), SCRIPT_FUNC_THIS_CONV ) );
