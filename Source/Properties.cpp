@@ -1654,8 +1654,6 @@ bool Properties::LoadFromText( const StrMap& key_values )
 
         // Find property
         Property* prop = registrator->Find( key );
-        if( !prop && key.find( '.' ) != string::npos )
-            prop = registrator->Find( _str( key ).replace( '.', '_' ) );
         if( !prop || ( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) ) )
         {
             if( !prop )
@@ -3533,8 +3531,13 @@ Property* PropertyRegistrator::Get( uint property_index )
 
 Property* PropertyRegistrator::Find( const string& property_name )
 {
+    string key = property_name;
+    size_t separator = key.find( '.' );
+    if( separator != string::npos )
+        key[ separator ] = '_';
+
     for( auto& prop : registeredProperties )
-        if( prop->propName == property_name )
+        if( prop->propName == key )
             return prop;
     return nullptr;
 }
