@@ -434,7 +434,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "string FormatTags(string text, string lexems)", SCRIPT_FUNC( BIND_CLASS Global_FormatTags ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreenToHex(uint16 hexX, uint16 hexY, uint speed, bool canStop = false)", SCRIPT_FUNC( BIND_CLASS Global_MoveScreenToHex ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void MoveScreenOffset(int ox, int oy, uint speed, bool canStop = false)", SCRIPT_FUNC( BIND_CLASS Global_MoveScreenOffset ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void LockScreenScroll(Critter@+ cr, bool unlockIfSame = false)", SCRIPT_FUNC( BIND_CLASS Global_LockScreenScroll ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void LockScreenScroll(Critter@+ cr, bool softLock, bool unlockIfSame = false)", SCRIPT_FUNC( BIND_CLASS Global_LockScreenScroll ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "int GetFog(uint16 zoneX, uint16 zoneY)", SCRIPT_FUNC( BIND_CLASS Global_GetFog ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetDayTime(uint dayPart)", SCRIPT_FUNC( BIND_CLASS Global_GetDayTime ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetDayColor(uint dayPart, uint8& r, uint8& g, uint8& b)", SCRIPT_FUNC( BIND_CLASS Global_GetDayColor ), SCRIPT_FUNC_CONV ) );

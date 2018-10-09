@@ -2173,13 +2173,24 @@ bool HexManager::Scroll()
         AutoScroll.Active = false;
 
     // Check critter scroll lock
-    if( AutoScroll.LockedCritter && !is_scroll )
+    if( AutoScroll.HardLockedCritter && !is_scroll )
     {
-        CritterCl* cr = GetCritter( AutoScroll.LockedCritter );
+        CritterCl* cr = GetCritter( AutoScroll.HardLockedCritter );
         if( cr && ( cr->GetHexX() != screenHexX || cr->GetHexY() != screenHexY ) )
             ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.02f, true );
-        // if( cr && DistSqrt( cr->GetHexX(), cr->GetHexY(), screenHexX, screenHexY ) > 4 )
-        //     ScrollToHex( cr->GetHexX(), cr->GetHexY(), 0.5f, true );
+    }
+
+    if( AutoScroll.SoftLockedCritter && !is_scroll )
+    {
+        CritterCl* cr = GetCritter( AutoScroll.SoftLockedCritter );
+        if( cr && ( cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY ) )
+        {
+            int ox, oy;
+            GetHexInterval( AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY(), ox, oy );
+            ScrollOffset( ox, oy, 0.02f, true );
+            AutoScroll.CritterLastHexX = cr->GetHexX();
+            AutoScroll.CritterLastHexY = cr->GetHexY();
+        }
     }
 
     if( AutoScroll.Active )

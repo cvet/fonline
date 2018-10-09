@@ -14,7 +14,8 @@
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include <strstream>
 
-#if defined ( FO_X86 ) && !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB )
+#pragma MESSAGE("Rework native calls.")
+#if defined ( FO_X86 ) && !defined ( FO_IOS ) && !defined ( FO_ANDROID ) && !defined ( FO_WEB ) && false
 # define ALLOW_NATIVE_CALLS
 #endif
 
@@ -1640,11 +1641,7 @@ static asIScriptContext* CurrentCtx = nullptr;
 static size_t            NativeFuncAddr = 0;
 static size_t            NativeArgs[ 256 ] = { 0 };
 static size_t            CurrentArg = 0;
-#ifdef FO_X86
-static size_t            RetValue[ 2 ] = { 0 }; // EAX:EDX
-#else
 static void*             RetValue;
-#endif
 
 void Script::PrepareContext( uint bind_id, const string& ctx_info )
 {
@@ -1922,11 +1919,7 @@ bool Script::RunPrepared()
         asEContextState state = ctx->GetState();
         if( state == asEXECUTION_SUSPENDED )
         {
-            #ifdef FO_X86
-            *(uint64*) RetValue = 0;
-            #else
             RetValue = 0;
-            #endif
             return true;
         }
         else if( state != asEXECUTION_FINISHED )
@@ -1957,11 +1950,7 @@ bool Script::RunPrepared()
             return false;
         }
 
-        #ifdef FO_X86
-        *(uint64*) RetValue = *(uint64*) ctx->GetAddressOfReturnValue();
-        #else
         RetValue = ctx->GetAddressOfReturnValue();
-        #endif
         ScriptCall = true;
 
         ReturnContext( ctx );
@@ -1990,11 +1979,7 @@ void Script::RunPreparedSuspend()
     CurrentCtx = nullptr;
     ctx_data->StartTick = tick;
     ctx_data->Parent = asGetActiveContext();
-    #ifdef FO_X86
-    *(uint64*) RetValue = 0;
-    #else
     RetValue = 0;
-    #endif
 }
 
 asIScriptContext* Script::SuspendCurrentContext( uint time )
@@ -2162,11 +2147,7 @@ double Script::GetReturnedDouble()
 
 void* Script::GetReturnedRawAddress()
 {
-    #ifdef FO_X86
-    return (void*) RetValue;
-    #else
     return RetValue;
-    #endif
 }
 
 /************************************************************************/

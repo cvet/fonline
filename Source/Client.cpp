@@ -7686,16 +7686,29 @@ void FOClient::SScriptFunc::Global_MoveScreenOffset( int ox, int oy, uint speed,
     Self->HexMngr.ScrollOffset( ox, oy, (float) speed / 1000.0f, can_stop );
 }
 
-void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same )
+void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool soft_lock, bool unlock_if_same )
 {
     if( cr && cr->IsDestroyed )
         SCRIPT_ERROR_R( "Critter arg is destroyed." );
 
     uint id = ( cr ? cr->GetId() : 0 );
-    if( unlock_if_same && id == Self->HexMngr.AutoScroll.LockedCritter )
-        Self->HexMngr.AutoScroll.LockedCritter = 0;
+    if( soft_lock )
+    {
+        if( unlock_if_same && id == Self->HexMngr.AutoScroll.SoftLockedCritter )
+            Self->HexMngr.AutoScroll.SoftLockedCritter = 0;
+        else
+            Self->HexMngr.AutoScroll.SoftLockedCritter = id;
+
+        Self->HexMngr.AutoScroll.CritterLastHexX = ( cr ? cr->GetHexX() : 0 );
+        Self->HexMngr.AutoScroll.CritterLastHexY = ( cr ? cr->GetHexY() : 0 );
+    }
     else
-        Self->HexMngr.AutoScroll.LockedCritter = id;
+    {
+        if( unlock_if_same && id == Self->HexMngr.AutoScroll.HardLockedCritter )
+            Self->HexMngr.AutoScroll.HardLockedCritter = 0;
+        else
+            Self->HexMngr.AutoScroll.HardLockedCritter = id;
+    }
 }
 
 int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )

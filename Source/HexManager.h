@@ -241,12 +241,15 @@ public:
 public:
     struct AutoScroll_
     {
-        bool  Active;
-        bool  CanStop;
-        float OffsX, OffsY;
-        float OffsXStep, OffsYStep;
-        float Speed;
-        uint  LockedCritter;
+        bool   Active;
+        bool   CanStop;
+        float  OffsX, OffsY;
+        float  OffsXStep, OffsYStep;
+        float  Speed;
+        uint   HardLockedCritter;
+        uint   SoftLockedCritter;
+        ushort CritterLastHexX;
+        ushort CritterLastHexY;
     } AutoScroll;
 
     bool Scroll();

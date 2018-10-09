@@ -448,7 +448,7 @@ public:
         static string Global_FormatTags( string text, string lexems );
         static void   Global_MoveScreenToHex( ushort hx, ushort hy, uint speed, bool can_stop );
         static void   Global_MoveScreenOffset( int ox, int oy, uint speed, bool can_stop );
-        static void   Global_LockScreenScroll( CritterCl* cr, bool unlock_if_same );
+        static void   Global_LockScreenScroll( CritterCl* cr, bool soft_lock, bool unlock_if_same );
         static int    Global_GetFog( ushort zone_x, ushort zone_y );
         static uint   Global_GetDayTime( uint day_part );
         static void   Global_GetDayColor( uint day_part, uchar& r, uchar& g, uchar& b );
