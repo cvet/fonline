@@ -958,6 +958,22 @@ bool ProtoMap::BindScripts( EntityVec& entities )
                 errors++;
             }
         }
+        else if( entity->Type == EntityType::Item && ( (Item*) entity )->IsStatic() && ( (Item*) entity )->GetScriptId() )
+        {
+            Item* item = (Item*) entity;
+            string func_name = _str().parseHash( item->GetScriptId() );
+            uint bind_id = 0;
+            if( item->GetIsTrigger() || item->GetIsTrap() )
+                bind_id = Script::BindByFuncName( func_name, "void %s(Critter, const Item, bool, uint8)", false );
+            else
+                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter, const Item, Item, int)", false );
+            if( !bind_id )
+            {
+                WriteLog( "Map '{}', can't bind static item function '{}'.\n", GetName(), func_name );
+                errors++;
+            }
+            item->SceneryScriptBindId = bind_id;
+        }
     }
     return errors == 0;
 }

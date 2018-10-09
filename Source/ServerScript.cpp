@@ -653,6 +653,19 @@ void FOServer::SScriptFunc::Item_Animate( Item* item, uchar from_frm, uchar to_f
     }
 }
 
+bool FOServer::SScriptFunc::Item_CallStaticItemFunction( Item* static_item, Critter* cr, Item* item, int param )
+{
+    if( !static_item->SceneryScriptBindId )
+        return false;
+
+    Script::PrepareContext( static_item->SceneryScriptBindId, cr->GetName() );
+    Script::SetArgEntity( cr );
+    Script::SetArgEntity( static_item );
+    Script::SetArgEntity( item );
+    Script::SetArgUInt( param );
+    return Script::RunPrepared() && Script::GetReturnedBool();
+}
+
 bool FOServer::SScriptFunc::Crit_IsPlayer( Critter* cr )
 {
     if( cr->IsDestroyed )

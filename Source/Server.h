@@ -238,6 +238,7 @@ public:
         static Map*          Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static bool          Item_ChangeProto( Item* item, hash pid );
         static void          Item_Animate( Item* item, uchar from_frm, uchar to_frm );
+        static bool          Item_CallStaticItemFunction( Item* static_item, Critter* cr, Item* item, int param );
 
         static bool          Crit_IsPlayer( Critter* cr );
         static bool          Crit_IsNpc( Critter* cr );

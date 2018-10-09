@@ -122,6 +122,7 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
     ViewPlaceOnMap = false;
 
     #ifdef FONLINE_SERVER
+    SceneryScriptBindId = 0;
     ViewByCritter = nullptr;
     #endif
 

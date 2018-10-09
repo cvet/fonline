@@ -108,13 +108,14 @@ struct BindClass
     static void NpcPlane_GetChild()       {}
     static void NpcPlane_Misc_SetScript() {}
 
-    static void Item_AddItem()        {}
-    static void Item_GetItems()       {}
-    static void Item_SetScript()      {}
-    static void Item_SetEvent()       {}
-    static void Item_GetMapPosition() {}
-    static void Item_ChangeProto()    {}
-    static void Item_Animate()        {}
+    static void Item_AddItem()                {}
+    static void Item_GetItems()               {}
+    static void Item_SetScript()              {}
+    static void Item_SetEvent()               {}
+    static void Item_GetMapPosition()         {}
+    static void Item_ChangeProto()            {}
+    static void Item_Animate()                {}
+    static void Item_CallStaticItemFunction() {}
 
     static void Crit_IsPlayer()                 {}
     static void Crit_IsNpc()                    {}

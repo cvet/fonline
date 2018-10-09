@@ -189,6 +189,7 @@ public:
     bool     ViewPlaceOnMap;
 
     #ifdef FONLINE_SERVER
+    uint     SceneryScriptBindId;
     Critter* ViewByCritter;
     #endif
 

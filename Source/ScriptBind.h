@@ -95,6 +95,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "Map@+ GetMapPosition(uint16& hexX, uint16& hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Item_GetMapPosition ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool ChangeProto(hash protoId)", SCRIPT_FUNC_THIS( BIND_CLASS Item_ChangeProto ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Item", "void Animate(uint fromFrame, uint toFrame)", SCRIPT_FUNC_THIS( BIND_CLASS Item_Animate ), SCRIPT_FUNC_THIS_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectMethod( "Item", "bool CallStaticItemFunction(Critter@+ cr, Item@+ item, int param) const", SCRIPT_FUNC_THIS( BIND_CLASS Item_CallStaticItemFunction ), SCRIPT_FUNC_THIS_CONV ) );
 
     /************************************************************************/
     /* Critter                                                              */

@@ -175,7 +175,19 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
         ItemVec triggers;
         map->GetProtoMap()->GetStaticItemTriggers( from_hx, from_hy, triggers );
         for( Item* item : triggers )
+        {
+            if( item->SceneryScriptBindId )
+            {
+                Script::PrepareContext( item->SceneryScriptBindId, cr->GetName() );
+                Script::SetArgEntity( cr );
+                Script::SetArgEntity( item );
+                Script::SetArgBool( false );
+                Script::SetArgUChar( dir );
+                Script::RunPreparedSuspend();
+            }
+
             Script::RaiseInternalEvent( ServerFunctions.StaticItemWalk, item, cr, false, dir );
+        }
     }
 
     if( map->IsHexStaticTrigger( to_hx, to_hy ) )
@@ -183,7 +195,19 @@ void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from
         ItemVec triggers;
         map->GetProtoMap()->GetStaticItemTriggers( to_hx, to_hy, triggers );
         for( Item* item : triggers )
+        {
+            if( item->SceneryScriptBindId )
+            {
+                Script::PrepareContext( item->SceneryScriptBindId, cr->GetName() );
+                Script::SetArgEntity( cr );
+                Script::SetArgEntity( item );
+                Script::SetArgBool( true );
+                Script::SetArgUChar( dir );
+                Script::RunPreparedSuspend();
+            }
+
             Script::RaiseInternalEvent( ServerFunctions.StaticItemWalk, item, cr, true, dir );
+        }
     }
 
     if( map->IsHexTrigger( from_hx, from_hy ) )
