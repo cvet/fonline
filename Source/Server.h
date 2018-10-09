@@ -328,6 +328,8 @@ public:
         static CScriptArray* Map_GetStaticItemsHex( Map* map, ushort hx, ushort hy );
         static CScriptArray* Map_GetStaticItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid );
         static CScriptArray* Map_GetStaticItemsByPid( Map* map, hash pid );
+        static CScriptArray* Map_GetStaticItemsPredicate( Map* map, asIScriptFunction* predicate );
+        static CScriptArray* Map_GetStaticItemsAll( Map* map );
         static Critter*      Map_GetCritterHex( Map* map, ushort hx, ushort hy );
         static Critter*      Map_GetCritterById( Map* map, uint crid );
         static CScriptArray* Map_GetCritters( Map* map, ushort hx, ushort hy, uint radius, int find_type );

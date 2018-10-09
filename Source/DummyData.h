@@ -211,6 +211,8 @@ struct BindClass
     static void Map_GetStaticItemsHex()          {}
     static void Map_GetStaticItemsHexEx()        {}
     static void Map_GetStaticItemsByPid()        {}
+    static void Map_GetStaticItemsPredicate()    {}
+    static void Map_GetStaticItemsAll()          {}
     static void Map_GetCritterHex()              {}
     static void Map_GetCritterById()             {}
     static void Map_GetCritters()                {}

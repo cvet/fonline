@@ -82,6 +82,7 @@ CLASS_PROPERTY_IMPL( Item, IsCanOpen );
 CLASS_PROPERTY_IMPL( Item, IsScrollBlock );
 CLASS_PROPERTY_IMPL( Item, IsHidden );
 CLASS_PROPERTY_IMPL( Item, IsHiddenPicture );
+CLASS_PROPERTY_IMPL( Item, IsHiddenInStatic );
 CLASS_PROPERTY_IMPL( Item, IsFlat );
 CLASS_PROPERTY_IMPL( Item, IsNoBlock );
 CLASS_PROPERTY_IMPL( Item, IsShootThru );

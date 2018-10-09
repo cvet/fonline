@@ -2120,6 +2120,43 @@ CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsByPid( Map* map, hash pid
     return Script::CreateArrayRef( "array<const Item>", static_items );
 }
 
+CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsPredicate( Map* map, asIScriptFunction* predicate )
+{
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    uint bind_id = Script::BindByFunc( predicate, true );
+    RUNTIME_ASSERT( bind_id );
+
+    ItemVec& map_static_items = map->GetProtoMap()->StaticItemsVec;
+    ItemVec  items;
+    items.reserve( map_static_items.size() );
+    for( Item* item : map_static_items )
+    {
+        RUNTIME_ASSERT( !item->IsDestroyed );
+
+        Script::PrepareContext( bind_id, "Predicate" );
+        Script::SetArgObject( item );
+        if( !Script::RunPrepared() )
+        {
+            Script::PassException();
+            return nullptr;
+        }
+
+        if( Script::GetReturnedBool() )
+            items.push_back( item );
+    }
+    return Script::CreateArrayRef( "array<const Item>", items );
+}
+
+CScriptArray* FOServer::SScriptFunc::Map_GetStaticItemsAll( Map* map )
+{
+    if( map->IsDestroyed )
+        SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
+
+    return Script::CreateArrayRef( "array<const Item>", map->GetProtoMap()->StaticItemsVec );
+}
+
 Critter* FOServer::SScriptFunc::Map_GetCritterById( Map* map, uint crid )
 {
     if( map->IsDestroyed )

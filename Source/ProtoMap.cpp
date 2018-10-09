@@ -66,6 +66,9 @@ ProtoMap::~ProtoMap()
     for( auto it = StaticItemsVec.begin(), end = StaticItemsVec.end(); it != end; ++it )
         SAFEREL( *it );
     StaticItemsVec.clear();
+    for( auto it = TriggerItemsVec.begin(), end = TriggerItemsVec.end(); it != end; ++it )
+        SAFEREL( *it );
+    TriggerItemsVec.clear();
     #endif
 
     Tiles.clear();
@@ -81,6 +84,7 @@ ProtoMap::~ProtoMap()
     CLEAN_CONTAINER( HexItemsVec );
     CLEAN_CONTAINER( ChildItemsVec );
     CLEAN_CONTAINER( StaticItemsVec );
+    CLEAN_CONTAINER( TriggerItemsVec );
     CLEAN_CONTAINER( Tiles );
     #endif
 }
@@ -809,8 +813,15 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             continue;
         }
 
+        if( !item->GetIsHiddenInStatic() )
+        {
+            item->AddRef();
+            StaticItemsVec.push_back( item );
+        }
+
         if( !item->GetIsNoBlock() )
             SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
+
         if( !item->GetIsShootThru() )
         {
             SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
@@ -828,11 +839,13 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             }
         }
 
-        item->AddRef();
-        StaticItemsVec.push_back( item );
+        if( item->GetIsTrigger() || item->GetIsTrap() )
+        {
+            item->AddRef();
+            TriggerItemsVec.push_back( item );
 
-        if( item->GetIsTrigger() )
             SETFLAG( HexFlags[ hy * maxhx + hx ], FH_STATIC_TRIGGER );
+        }
 
         if( item->IsNonEmptyBlockLines() )
         {
@@ -885,6 +898,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
     ItemVec( HexItemsVec ).swap( HexItemsVec );
     ItemVec( ChildItemsVec ).swap( ChildItemsVec );
     ItemVec( StaticItemsVec ).swap( StaticItemsVec );
+    ItemVec( TriggerItemsVec ).swap( TriggerItemsVec );
     TileVec( Tiles ).swap( Tiles );
 
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneryData.capacity() );
@@ -1042,8 +1056,8 @@ bool ProtoMap::IsMapFile( const string& fname )
 #ifdef FONLINE_SERVER
 void ProtoMap::GetStaticItemTriggers( ushort hx, ushort hy, ItemVec& triggers )
 {
-    for( auto& item : StaticItemsVec )
-        if( item->GetIsTrap() && item->GetHexX() == hx && item->GetHexY() == hy )
+    for( auto& item : TriggerItemsVec )
+        if( item->GetHexX() == hx && item->GetHexY() == hy )
             triggers.push_back( item );
 }
 

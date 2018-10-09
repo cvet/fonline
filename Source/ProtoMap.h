@@ -66,6 +66,7 @@ public:
     ItemVec  HexItemsVec;
     ItemVec  ChildItemsVec;
     ItemVec  StaticItemsVec;
+    ItemVec  TriggerItemsVec;
     uchar*   HexFlags;
 
 private:

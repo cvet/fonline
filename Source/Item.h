@@ -142,6 +142,7 @@ public:
     CLASS_PROPERTY( bool, IsScrollBlock );
     CLASS_PROPERTY( bool, IsHidden );
     CLASS_PROPERTY( bool, IsHiddenPicture );
+    CLASS_PROPERTY( bool, IsHiddenInStatic );
     CLASS_PROPERTY( bool, IsFlat );
     CLASS_PROPERTY( bool, IsNoBlock );
     CLASS_PROPERTY( bool, IsShootThru );
