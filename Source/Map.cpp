@@ -119,7 +119,7 @@ bool Map::Generate()
         id_map.insert( std::make_pair( base_item->GetId(), item->GetId() ) );
 
         // Other values
-        if( item->IsDoor() && item->GetOpened() )
+        if( item->GetIsCanOpen() && item->GetOpened() )
             item->SetIsLightThru( true );
 
         if( !AddItem( item, item->GetHexX(), item->GetHexY() ) )
@@ -209,28 +209,9 @@ Location* Map::GetLocation()
     return mapLocation;
 }
 
-bool Map::GetStartCoord( ushort& hx, ushort& hy, uchar& dir, hash entire )
-{
-    ProtoMap::MapEntire* ent;
-    ent = GetProtoMap()->GetEntireRandom( entire );
-
-    if( !ent )
-        return false;
-
-    hx = ent->HexX;
-    hy = ent->HexY;
-    dir = ent->Dir;
-
-    if( hx >= GetWidth() || hy >= GetHeight() )
-        return false;
-    if( dir >= DIRS_COUNT )
-        dir = Random( 0, DIRS_COUNT - 1 );
-    return true;
-}
-
 bool Map::FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe )
 {
-    if( IsHexesPassed( hx, hy, multihex ) && !( skip_unsafe && ( IsHexTrigger( hx, hy ) || IsHexTrap( hx, hy ) ) ) )
+    if( IsHexesPassed( hx, hy, multihex ) && !( skip_unsafe && ( IsHexStaticTrigger( hx, hy ) || IsHexTrigger( hx, hy ) ) ) )
         return true;
     if( !seek_radius )
         return false;
@@ -260,7 +241,7 @@ bool Map::FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius,
             continue;
         if( !IsHexesPassed( nx, ny, multihex ) )
             continue;
-        if( skip_unsafe && ( IsHexTrigger( nx, ny ) || IsHexTrap( nx, ny ) ) )
+        if( skip_unsafe && ( IsHexStaticTrigger( nx, ny ) || IsHexTrigger( nx, ny ) ) )
             continue;
         break;
     }
@@ -322,7 +303,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
 {
     if( !item )
         return false;
-    if( item->IsScenery() )
+    if( item->IsStatic() )
         return false;
     if( hx >= GetWidth() || hy >= GetHeight() )
         return false;
@@ -551,30 +532,6 @@ Item* Map::GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker )
     return nullptr;
 }
 
-Item* Map::GetItemDoor( ushort hx, ushort hy )
-{
-    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
-    if( it_hex_all != mapItemsByHex.end() )
-    {
-        for( Item* item : it_hex_all->second )
-            if( item->IsDoor() )
-                return item;
-    }
-    return nullptr;
-}
-
-Item* Map::GetItemContainer( ushort hx, ushort hy )
-{
-    auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
-    if( it_hex_all != mapItemsByHex.end() )
-    {
-        for( Item* item : it_hex_all->second )
-            if( item->IsContainer() )
-                return item;
-    }
-    return nullptr;
-}
-
 Item* Map::GetItemGag( ushort hx, ushort hy )
 {
     auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
@@ -609,13 +566,13 @@ void Map::GetItemsPid( hash pid, ItemVec& items )
             items.push_back( item );
 }
 
-void Map::GetItemsTrap( ushort hx, ushort hy, ItemVec& traps )
+void Map::GetItemsTrigger( ushort hx, ushort hy, ItemVec& traps )
 {
     auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
     if( it_hex_all != mapItemsByHex.end() )
     {
         for( Item* item : it_hex_all->second )
-            if( item->GetIsTrap() )
+            if( item->GetIsTrap() || item->GetIsTrigger() )
                 traps.push_back( item );
     }
 }
@@ -663,12 +620,13 @@ void Map::RecacheHexFlags( ushort hx, ushort hy )
     UnsetHexFlag( hx, hy, FH_BLOCK_ITEM );
     UnsetHexFlag( hx, hy, FH_NRAKE_ITEM );
     UnsetHexFlag( hx, hy, FH_GAG_ITEM );
-    UnsetHexFlag( hx, hy, FH_WALK_ITEM );
+    UnsetHexFlag( hx, hy, FH_TRIGGER );
 
     bool is_block = false;
     bool is_nrake = false;
     bool is_gag = false;
     bool is_trap = false;
+    bool is_trigger = false;
 
     auto it_hex_all = mapItemsByHex.find( ( hy << 16 ) | hx );
     if( it_hex_all != mapItemsByHex.end() )
@@ -683,7 +641,9 @@ void Map::RecacheHexFlags( ushort hx, ushort hy )
                 is_gag = true;
             if( !is_trap && item->GetIsTrap() )
                 is_trap = true;
-            if( is_block && is_nrake && is_gag && is_trap )
+            if( !is_trigger && item->GetIsTrigger() )
+                is_trigger = true;
+            if( is_block && is_nrake && is_gag && is_trap && is_trigger )
                 break;
         }
     }
@@ -713,7 +673,9 @@ void Map::RecacheHexFlags( ushort hx, ushort hy )
     if( is_gag )
         SetHexFlag( hx, hy, FH_GAG_ITEM );
     if( is_trap )
-        SetHexFlag( hx, hy, FH_WALK_ITEM );
+        SetHexFlag( hx, hy, FH_TRIGGER );
+    if( is_trigger )
+        SetHexFlag( hx, hy, FH_TRIGGER );
 }
 
 ushort Map::GetHexFlags( ushort hx, ushort hy )
@@ -1114,53 +1076,6 @@ uint Location::GetMapIndex( hash map_pid )
         index++;
     }
     return uint( -1 );
-}
-
-bool Location::GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir )
-{
-    if( !from_map || hx >= from_map->GetWidth() || hy >= from_map->GetHeight() )
-        return false;
-
-    Item* grid = from_map->GetProtoMap()->GetMapGrid( hx, hy );
-    if( !grid )
-        return false;
-
-    hash grid_to_map = grid->GetGrid_ToMap();
-    if( grid_to_map == 0 )
-    {
-        id_map = 0;
-        return true;
-    }
-
-    Map* to_map = nullptr;
-    for( Map* map : locMaps )
-    {
-        if( map->GetProtoId() == grid_to_map )
-        {
-            to_map = map;
-            break;
-        }
-    }
-
-    if( !to_map )
-        return false;
-
-    id_map = to_map->GetId();
-
-    hash                 grid_to_map_entire = grid->GetGrid_ToMapEntire();
-    ProtoMap::MapEntire* ent = to_map->GetProtoMap()->GetEntire( grid_to_map_entire, 0 );
-    if( !ent )
-        return false;
-
-    hx = ent->HexX;
-    hy = ent->HexY;
-    dir = ent->Dir;
-
-    if( dir >= DIRS_COUNT )
-        dir = Random( 0, DIRS_COUNT - 1 );
-    if( hx >= to_map->GetWidth() || hy >= to_map->GetHeight() )
-        return false;
-    return true;
 }
 
 bool Location::IsCanEnter( uint players_count )

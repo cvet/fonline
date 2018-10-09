@@ -48,13 +48,11 @@ ProtoMap::~ProtoMap()
     #ifdef FONLINE_SERVER
     MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) sizeof( ProtoMap ) );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) SceneryData.capacity() );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) mapEntires.capacity() * sizeof( MapEntire ) );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) Tiles.capacity() * sizeof( MapEntire ) );
+    MEMORY_PROCESS( MEMORY_PROTO_MAP, -(int) Tiles.capacity() * sizeof( Tile ) );
 
     SAFEDELA( HexFlags );
 
     SceneryData.clear();
-    mapEntires.clear();
 
     for( auto it = CrittersVec.begin(), end = CrittersVec.end(); it != end; ++it )
         SAFEREL( *it );
@@ -65,12 +63,9 @@ ProtoMap::~ProtoMap()
     for( auto it = ChildItemsVec.begin(), end = ChildItemsVec.end(); it != end; ++it )
         SAFEREL( *it );
     ChildItemsVec.clear();
-    for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )
+    for( auto it = StaticItemsVec.begin(), end = StaticItemsVec.end(); it != end; ++it )
         SAFEREL( *it );
-    SceneryVec.clear();
-    for( auto it = GridsVec.begin(), end = GridsVec.end(); it != end; ++it )
-        SAFEREL( *it );
-    GridsVec.clear();
+    StaticItemsVec.clear();
     #endif
 
     Tiles.clear();
@@ -82,12 +77,10 @@ ProtoMap::~ProtoMap()
 
     #ifdef FONLINE_SERVER
     CLEAN_CONTAINER( SceneryData );
-    CLEAN_CONTAINER( mapEntires );
     CLEAN_CONTAINER( CrittersVec );
     CLEAN_CONTAINER( HexItemsVec );
     CLEAN_CONTAINER( ChildItemsVec );
-    CLEAN_CONTAINER( SceneryVec );
-    CLEAN_CONTAINER( GridsVec );
+    CLEAN_CONTAINER( StaticItemsVec );
     CLEAN_CONTAINER( Tiles );
     #endif
 }
@@ -661,10 +654,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
 
                         if( field == "Scenery_CanTalk" )
                             ( (Item*) entities.back() )->SetIsCanTalk( ivalue != 0 );
-                        if( field == "Scenery_ToMap" || field == "Scenery_ToMapPid" )
-                            ( (Item*) entities.back() )->SetGrid_ToMap( _str( svalue ).toHash() );
-                        SET_FIELD_ITEM( "Scenery_ToEntire", Grid_ToMapEntire );
-                        SET_FIELD_ITEM( "Scenery_ToDir", Grid_ToMapDir );
                         SET_FIELD_ITEM( "Scenery_SpriteCut", SpriteCut );
                     }
                 }
@@ -727,8 +716,6 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                 if( entity_cont->Type == EntityType::Item && ( ( (Item*) entity_cont )->GetHexX() != hx || ( (Item*) entity_cont )->GetHexY() != hy ) )
                     continue;
                 if( entity_cont->Type == MUTUAL_CRITTER_TYPE && ( ( (MUTUAL_CRITTER*) entity_cont )->GetHexX() != hx || ( (MUTUAL_CRITTER*) entity_cont )->GetHexY() != hy ) )
-                    continue;
-                if( entity_cont->Type == EntityType::Item && !( (Item*) entity_cont )->IsContainer() )
                     continue;
                 if( !entity_cont_addon.UID )
                     entity_cont_addon.UID = ++uid;
@@ -802,7 +789,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
         Item* item = (Item*) entity;
         hash pid = item->GetProtoId();
 
-        if( !item->IsScenery() )
+        if( !item->IsStatic() )
         {
             entity->AddRef();
             if( item->GetAccessory() == ITEM_ACCESSORY_HEX )
@@ -822,81 +809,56 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             continue;
         }
 
-        if( pid == SP_GRID_ENTIRE )
+        if( !item->GetIsNoBlock() )
+            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
+        if( !item->GetIsShootThru() )
         {
-            mapEntires.push_back( MapEntire( hx, hy, item->GetGrid_ToMapDir(), item->GetGrid_ToMapEntire() ) );
-            continue;
+            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
+            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
         }
 
-        if( item->IsScenery() )
+        if( item->GetIsScrollBlock() )
         {
-            if( item->IsGrid() )
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN_GRID );
-            if( !item->GetIsNoBlock() )
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            if( !item->GetIsShootThru() )
-            {
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
-            }
-            if( item->IsWall() )
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_WALL );
-            else
-                SETFLAG( HexFlags[ hy * maxhx + hx ], FH_SCEN );
-
-            if( pid == SP_MISC_SCRBLOCK )
-            {
-                // Block around
-                for( int k = 0; k < 6; k++ )
-                {
-                    ushort hx_ = hx, hy_ = hy;
-                    MoveHexByDir( hx_, hy_, k, maxhx, maxhy );
-                    SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
-                }
-            }
-            else if( item->IsGrid() )
-            {
-                item->AddRef();
-                GridsVec.push_back( item );
-            }
-            else if( item->IsGeneric() )
-            {
-                item->AddRef();
-                SceneryVec.push_back( item );
-            }
-
-            if( pid == SP_SCEN_TRIGGER )
-            {
-                if( item->GetScriptId() )
-                    SETFLAG( HexFlags[ hy * maxhx + hx ], FH_TRIGGER );
-            }
-
-            if( item->IsNonEmptyBlockLines() )
+            // Block around
+            for( int k = 0; k < 6; k++ )
             {
                 ushort hx_ = hx, hy_ = hy;
-                bool raked = item->GetIsShootThru();
-                FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx_, hy_, maxhx, maxhy,
-                                          SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
-                                          if( !raked )
-                                              SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_NOTRAKE );
-                                          );
+                MoveHexByDir( hx_, hy_, k, maxhx, maxhy );
+                SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
             }
+        }
 
-            // Data for client
-            if( pid != SP_SCEN_TRIGGER )
+        item->AddRef();
+        StaticItemsVec.push_back( item );
+
+        if( item->GetIsTrigger() )
+            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_STATIC_TRIGGER );
+
+        if( item->IsNonEmptyBlockLines() )
+        {
+            ushort hx_ = hx, hy_ = hy;
+            bool raked = item->GetIsShootThru();
+            FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx_, hy_, maxhx, maxhy,
+                                      SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
+                                      if( !raked )
+                                          SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_NOTRAKE );
+                                      );
+        }
+
+        // Data for client
+        if( !item->GetIsHidden() )
+        {
+            scenery_count++;
+            WriteData( scenery_data, item->Id );
+            WriteData( scenery_data, item->GetProtoId() );
+            PUCharVec* all_data;
+            UIntVec* all_data_sizes;
+            item->Props.StoreData( false, &all_data, &all_data_sizes );
+            WriteData( scenery_data, (uint) all_data->size() );
+            for( size_t i = 0; i < all_data->size(); i++ )
             {
-                scenery_count++;
-                WriteData( scenery_data, item->Id );
-                WriteData( scenery_data, item->GetProtoId() );
-                PUCharVec* all_data;
-                UIntVec* all_data_sizes;
-                item->Props.StoreData( false, &all_data, &all_data_sizes );
-                WriteData( scenery_data, (uint) all_data->size() );
-                for( size_t i = 0; i < all_data->size(); i++ )
-                {
-                    WriteData( scenery_data, all_data_sizes->at( i ) );
-                    WriteDataArr( scenery_data, all_data->at( i ), all_data_sizes->at( i ) );
-                }
+                WriteData( scenery_data, all_data_sizes->at( i ) );
+                WriteDataArr( scenery_data, all_data->at( i ), all_data_sizes->at( i ) );
             }
         }
     }
@@ -919,16 +881,13 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
 
     // Shrink the vector capacities to fit their contents and reduce memory use
     UCharVec( SceneryData ).swap( SceneryData );
-    EntiresVec( mapEntires ).swap( mapEntires );
     CrVec( CrittersVec ).swap( CrittersVec );
     ItemVec( HexItemsVec ).swap( HexItemsVec );
     ItemVec( ChildItemsVec ).swap( ChildItemsVec );
-    ItemVec( SceneryVec ).swap( SceneryVec );
-    ItemVec( GridsVec ).swap( GridsVec );
+    ItemVec( StaticItemsVec ).swap( StaticItemsVec );
     TileVec( Tiles ).swap( Tiles );
 
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) SceneryData.capacity() );
-    MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) mapEntires.capacity() * sizeof( MapEntire ) );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) GetWidth() * GetHeight() );
     MEMORY_PROCESS( MEMORY_PROTO_MAP, (int) Tiles.capacity() * sizeof( Tile ) );
     #endif
@@ -975,7 +934,7 @@ bool ProtoMap::BindScripts( EntityVec& entities )
                 errors++;
             }
         }
-        else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
+        else if( entity->Type == EntityType::Item && !( (Item*) entity )->IsStatic() && ( (Item*) entity )->GetScriptId() )
         {
             string func_name = _str().parseHash( ( (Item*) entity )->GetScriptId() );
             hash func_num = Script::BindScriptFuncNumByFuncName( func_name, "void %s(Item, bool)" );
@@ -984,22 +943,6 @@ bool ProtoMap::BindScripts( EntityVec& entities )
                 WriteLog( "Map '{}', can't bind item function '{}'.\n", GetName(), func_name );
                 errors++;
             }
-        }
-        else if( entity->Type == EntityType::Item && ( (Item*) entity )->IsScenery() && ( (Item*) entity )->GetScriptId() )
-        {
-            Item* item = (Item*) entity;
-            string func_name = _str().parseHash( item->GetScriptId() );
-            uint bind_id = 0;
-            if( item->GetProtoId() != SP_SCEN_TRIGGER )
-                bind_id = Script::BindByFuncName( func_name, "bool %s(Critter, const Item, Item, int)", false );
-            else
-                bind_id = Script::BindByFuncName( func_name, "void %s(Critter, const Item, bool, uint8)", false );
-            if( !bind_id )
-            {
-                WriteLog( "Map '{}', can't bind scenery function '{}'.\n", GetName(), func_name );
-                errors++;
-            }
-            item->SceneryScriptBindId = bind_id;
         }
     }
     return errors == 0;
@@ -1097,134 +1040,41 @@ bool ProtoMap::IsMapFile( const string& fname )
 #endif // FONLINE_MAPPER
 
 #ifdef FONLINE_SERVER
-uint ProtoMap::CountEntire( hash name )
+void ProtoMap::GetStaticItemTriggers( ushort hx, ushort hy, ItemVec& triggers )
 {
-    if( name == hash( -1 ) )
-        return (uint) mapEntires.size();
-
-    uint result = 0;
-    for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
-    {
-        if( mapEntires[ i ].Name == name )
-            result++;
-    }
-    return result;
+    for( auto& item : StaticItemsVec )
+        if( item->GetIsTrap() && item->GetHexX() == hx && item->GetHexY() == hy )
+            triggers.push_back( item );
 }
 
-ProtoMap::MapEntire* ProtoMap::GetEntire( hash name, uint skip )
+Item* ProtoMap::GetStaticItem( ushort hx, ushort hy, hash pid )
 {
-    for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
-    {
-        if( name == hash( -1 ) || mapEntires[ i ].Name == name )
-        {
-            if( !skip )
-                return &mapEntires[ i ];
-            else
-                skip--;
-        }
-    }
-
-    return nullptr;
-}
-
-ProtoMap::MapEntire* ProtoMap::GetEntireRandom( hash name )
-{
-    vector< MapEntire* > entires;
-    for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
-    {
-        if( name == hash( -1 ) || mapEntires[ i ].Name == name )
-            entires.push_back( &mapEntires[ i ] );
-    }
-
-    if( entires.empty() )
-        return nullptr;
-    return entires[ Random( 0, (uint) entires.size() - 1 ) ];
-}
-
-ProtoMap::MapEntire* ProtoMap::GetEntireNear( hash name, ushort hx, ushort hy )
-{
-    MapEntire* near_entire = nullptr;
-    uint       last_dist = 0;
-    for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
-    {
-        MapEntire& entire = mapEntires[ i ];
-        if( name == hash( -1 ) || entire.Name == name )
-        {
-            uint dist = DistGame( hx, hy, entire.HexX, entire.HexY );
-            if( !near_entire || dist < last_dist )
-            {
-                near_entire = &entire;
-                last_dist = dist;
-            }
-        }
-    }
-    return near_entire;
-}
-
-ProtoMap::MapEntire* ProtoMap::GetEntireNear( hash name, hash name_ext, ushort hx, ushort hy )
-{
-    MapEntire* near_entire = nullptr;
-    uint       last_dist = 0;
-    for( uint i = 0, j = (uint) mapEntires.size(); i < j; i++ )
-    {
-        MapEntire& entire = mapEntires[ i ];
-        if( name == hash( -1 ) || name_ext == hash( -1 ) || entire.Name == name || entire.Name == name_ext )
-        {
-            uint dist = DistGame( hx, hy, entire.HexX, entire.HexY );
-            if( !near_entire || dist < last_dist )
-            {
-                near_entire = &entire;
-                last_dist = dist;
-            }
-        }
-    }
-    return near_entire;
-}
-
-void ProtoMap::GetEntires( hash name, EntiresVec& entires )
-{
-    for( auto& entire : mapEntires )
-        if( name == hash( -1 ) || entire.Name == name )
-            entires.push_back( entire );
-}
-
-Item* ProtoMap::GetMapScenery( ushort hx, ushort hy, hash pid )
-{
-    for( auto& item : SceneryVec )
+    for( auto& item : StaticItemsVec )
         if( ( !pid || item->GetProtoId() == pid ) && item->GetHexX() == hx && item->GetHexY() == hy )
             return item;
     return nullptr;
 }
 
-void ProtoMap::GetMapSceneriesHex( ushort hx, ushort hy, ItemVec& items )
+void ProtoMap::GetStaticItemsHex( ushort hx, ushort hy, ItemVec& items )
 {
-    for( auto& item : SceneryVec )
+    for( auto& item : StaticItemsVec )
         if( item->GetHexX() == hx && item->GetHexY() == hy )
             items.push_back( item );
 }
 
-void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items )
+void ProtoMap::GetStaticItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items )
 {
-    for( auto& item : SceneryVec )
+    for( auto& item : StaticItemsVec )
         if( ( !pid || item->GetProtoId() == pid ) && DistGame( item->GetHexX(), item->GetHexY(), hx, hy ) <= radius )
             items.push_back( item );
 }
 
-void ProtoMap::GetMapSceneriesByPid( hash pid, ItemVec& items )
+void ProtoMap::GetStaticItemsByPid( hash pid, ItemVec& items )
 {
-    for( auto& item : SceneryVec )
+    for( auto& item : StaticItemsVec )
         if( !pid || item->GetProtoId() == pid )
             items.push_back( item );
 }
-
-Item* ProtoMap::GetMapGrid( ushort hx, ushort hy )
-{
-    for( auto& item : GridsVec )
-        if( item->GetHexX() == hx && item->GetHexY() == hy )
-            return item;
-    return nullptr;
-}
-
 #endif // FONLINE_SERVER
 
 CLASS_PROPERTY_ALIAS_IMPL( ProtoLocation, Location, CScriptArray *, MapProtos );

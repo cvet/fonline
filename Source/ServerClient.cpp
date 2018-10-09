@@ -63,11 +63,7 @@ void FOServer::ProcessCritter( Critter* cr )
 
         // Ping client
         if( cl->IsToPing() )
-        {
             cl->PingClient();
-            if( cl->GetMapId() )
-                MapMngr.TransitToMapHex( cr, MapMngr.GetMap( cr->GetMapId() ), cr->GetHexX(), cr->GetHexY(), cr->GetDir(), false );
-        }
 
         // Kick from game
         if( cl->IsOffline() && cl->IsLife() && !IS_TIMEOUT( cl->GetTimeoutBattle() ) &&
@@ -154,32 +150,9 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     cr->ProcessVisibleCritters();
     cr->ProcessVisibleItems();
 
+    // Triggers
     if( cr->GetMapId() == map->GetId() )
-    {
-        // Triggers
         VerifyTrigger( map, cr, fx, fy, hx, hy, dir );
-
-        // Out trap
-        if( map->IsHexTrap( fx, fy ) )
-        {
-            ItemVec traps;
-            map->GetItemsTrap( fx, fy, traps );
-            for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
-                Script::RaiseInternalEvent( ServerFunctions.ItemWalk, *it, cr, false, dir );
-        }
-
-        // In trap
-        if( map->IsHexTrap( hx, hy ) )
-        {
-            ItemVec traps;
-            map->GetItemsTrap( hx, hy, traps );
-            for( auto it = traps.begin(), end = traps.end(); it != end; ++it )
-                Script::RaiseInternalEvent( ServerFunctions.ItemWalk, *it, cr, true, dir );
-        }
-
-        // Try transit
-        MapMngr.TransitToMapHex( cr, map, cr->GetHexX(), cr->GetHexY(), cr->GetDir(), false );
-    }
 
     return true;
 }
@@ -197,31 +170,36 @@ bool FOServer::RegenerateMap( Map* map )
 
 void FOServer::VerifyTrigger( Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir )
 {
-    if( map->IsHexTrigger( from_hx, from_hy ) || map->IsHexTrigger( to_hx, to_hy ) )
+    if( map->IsHexStaticTrigger( from_hx, from_hy ) )
     {
-        Item* out_trigger = map->GetProtoMap()->GetMapScenery( from_hx, from_hy, SP_SCEN_TRIGGER );
-        Item* in_trigger = map->GetProtoMap()->GetMapScenery( to_hx, to_hy, SP_SCEN_TRIGGER );
-        if( !( out_trigger && in_trigger && out_trigger->GetTriggerNum() == in_trigger->GetTriggerNum() ) )
-        {
-            if( out_trigger && out_trigger->SceneryScriptBindId )
-            {
-                Script::PrepareContext( out_trigger->SceneryScriptBindId, cr->GetName() );
-                Script::SetArgEntity( cr );
-                Script::SetArgEntity( out_trigger );
-                Script::SetArgBool( false );
-                Script::SetArgUChar( dir );
-                Script::RunPreparedSuspend();
-            }
-            if( in_trigger && in_trigger->SceneryScriptBindId )
-            {
-                Script::PrepareContext( in_trigger->SceneryScriptBindId, cr->GetName() );
-                Script::SetArgEntity( cr );
-                Script::SetArgEntity( in_trigger );
-                Script::SetArgBool( true );
-                Script::SetArgUChar( dir );
-                Script::RunPreparedSuspend();
-            }
-        }
+        ItemVec triggers;
+        map->GetProtoMap()->GetStaticItemTriggers( from_hx, from_hy, triggers );
+        for( Item* item : triggers )
+            Script::RaiseInternalEvent( ServerFunctions.StaticItemWalk, item, cr, false, dir );
+    }
+
+    if( map->IsHexStaticTrigger( to_hx, to_hy ) )
+    {
+        ItemVec triggers;
+        map->GetProtoMap()->GetStaticItemTriggers( to_hx, to_hy, triggers );
+        for( Item* item : triggers )
+            Script::RaiseInternalEvent( ServerFunctions.StaticItemWalk, item, cr, true, dir );
+    }
+
+    if( map->IsHexTrigger( from_hx, from_hy ) )
+    {
+        ItemVec triggers;
+        map->GetItemsTrigger( from_hx, from_hy, triggers );
+        for( Item* item : triggers )
+            Script::RaiseInternalEvent( ServerFunctions.ItemWalk, item, cr, false, dir );
+    }
+
+    if( map->IsHexTrigger( to_hx, to_hy ) )
+    {
+        ItemVec triggers;
+        map->GetItemsTrigger( to_hx, to_hy, triggers );
+        for( Item* item : triggers )
+            Script::RaiseInternalEvent( ServerFunctions.ItemWalk, item, cr, true, dir );
     }
 }
 

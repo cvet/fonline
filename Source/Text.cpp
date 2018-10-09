@@ -488,21 +488,6 @@ static Mutex               HashNamesLocker;
 #endif
 static map< hash, string > HashNames;
 
-#define HASH_IMPL( var, name )    hash var = _str( name ).toHash()
-HASH_IMPL( SP_SCEN_IBLOCK, "MinimapInvisibleBlock" );
-HASH_IMPL( SP_SCEN_TRIGGER, "Trigger" );
-HASH_IMPL( SP_WALL_BLOCK_LIGHT, "BlockLight" );
-HASH_IMPL( SP_WALL_BLOCK, "Block" );
-HASH_IMPL( SP_GRID_EXITGRID, "ExitGrid" );
-HASH_IMPL( SP_GRID_ENTIRE, "Entrance" );
-HASH_IMPL( SP_MISC_SCRBLOCK, "ScrollBlock" );
-HASH_IMPL( ItemWeapon, "Weapon" );
-HASH_IMPL( ItemContainer, "Container" );
-HASH_IMPL( ItemDoor, "Door" );
-HASH_IMPL( ItemGrid, "Grid" );
-HASH_IMPL( ItemGeneric, "Generic" );
-HASH_IMPL( ItemWall, "Wall" );
-
 hash _str::toHash()
 {
     if( s.empty() )

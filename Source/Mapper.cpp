@@ -1713,7 +1713,7 @@ void FOMapper::IntDraw()
             uint       col = ( i == (int) GetTabIndex() ? COLOR_IFACE_RED : COLOR_IFACE );
             SprMngr.DrawSpriteSize( proto_item->GetCurSprId(), x, y, w, h / 2, false, true, col );
 
-            if( !proto_item->IsScenery() )
+            if( proto_item->GetPicInv() )
             {
                 AnyFrames* anim = ResMngr.GetInvAnim( proto_item->GetPicInv() );
                 if( anim )
@@ -1931,7 +1931,7 @@ void FOMapper::ObjDraw()
             anim = ResMngr.ItemHexDefaultAnim;
         SprMngr.DrawSpriteSize( anim->GetCurSprId(), x + w - ProtoWidth, y, ProtoWidth, ProtoWidth, false, true );
 
-        if( !item->IsScenery() )
+        if( item->GetPicInv() )
         {
             AnyFrames* anim = ResMngr.GetInvAnim( item->GetPicInv() );
             if( anim )
@@ -1940,13 +1940,13 @@ void FOMapper::ObjDraw()
     }
 
     DrawLine( "Id", "", _str( "{} ({})", entity->Id, (int) entity->Id ), true, r );
-    DrawLine( "ProtoName", "", _str().parseHash( entity->GetProtoId() ).c_str(), true, r );
+    DrawLine( "ProtoName", "", _str().parseHash( entity->GetProtoId() ), true, r );
     if( cr )
         DrawLine( "Type", "", "Critter", true, r );
-    else if( item && !item->IsScenery() )
+    else if( item && !item->IsStatic() )
         DrawLine( "Type", "", "Item", true, r );
-    else if( item && item->IsScenery() )
-        DrawLine( "Type", "", "Scenery", true, r );
+    else if( item && item->IsStatic() )
+        DrawLine( "Type", "", "Static Item", true, r );
     else
         RUNTIME_ASSERT( !"Unreachable place" );
 
@@ -2364,7 +2364,6 @@ void FOMapper::IntLMouseDown()
                 else if( Keyb::ShiftDwn && InContItem && SelectedEntities[ 0 ]->Type == EntityType::CritterCl )
                 {
                     CritterCl* cr = (CritterCl*) SelectedEntities[ 0 ];
-                    uchar      anim1 = ( InContItem->IsWeapon() ? InContItem->GetWeapon_Anim1() : 0 );
 
                     int        to_slot = InContItem->GetCritSlot() + 1;
                     while( !CritterCl::SlotEnabled[ to_slot % 256 ] )
@@ -2641,9 +2640,9 @@ void FOMapper::IntLMouseUp()
                     if( !GameOpt.ShowFast && HexMngr.IsFastPid( pid ) )
                         continue;
 
-                    if( !items[ k ]->IsScenery() && IsSelectItem && GameOpt.ShowItem )
+                    if( !items[ k ]->IsAnyScenery() && IsSelectItem && GameOpt.ShowItem )
                         SelectAddItem( items[ k ] );
-                    else if( items[ k ]->IsGenericOrGrid() && IsSelectScen && GameOpt.ShowScen )
+                    else if( items[ k ]->IsScenery() && IsSelectScen && GameOpt.ShowScen )
                         SelectAddItem( items[ k ] );
                     else if( items[ k ]->IsWall() && IsSelectWall && GameOpt.ShowWall )
                         SelectAddItem( items[ k ] );
@@ -3014,9 +3013,9 @@ void FOMapper::SelectAll()
         if( HexMngr.IsIgnorePid( items[ i ]->GetProtoId() ) )
             continue;
 
-        if( !items[ i ]->IsScenery() && IsSelectItem && GameOpt.ShowItem )
+        if( !items[ i ]->IsAnyScenery() && IsSelectItem && GameOpt.ShowItem )
             SelectAddItem( items[ i ] );
-        else if( items[ i ]->IsGenericOrGrid() && IsSelectScen && GameOpt.ShowScen )
+        else if( items[ i ]->IsScenery() && IsSelectScen && GameOpt.ShowScen )
             SelectAddItem( items[ i ] );
         else if( items[ i ]->IsWall() && IsSelectWall && GameOpt.ShowWall )
             SelectAddItem( items[ i ] );
@@ -3349,7 +3348,7 @@ Item* FOMapper::AddItem( hash pid, ushort hx, ushort hy, Entity* owner )
         return nullptr;
     if( !owner && ( hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() ) )
         return nullptr;
-    if( proto_item->IsScenery() && owner )
+    if( proto_item->IsStatic() && owner )
         return nullptr;
 
     // Clear selection
@@ -4442,7 +4441,7 @@ void FOMapper::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
     bool  cur = *(bool*) cur_value;
     bool  old = *(bool*) old_value;
 
-    if( item->IsDoor() || item->IsContainer() )
+    if( item->GetIsCanOpen() )
     {
         ItemHex* hex_item = (ItemHex*) item;
         if( !old && cur )
@@ -4455,7 +4454,7 @@ void FOMapper::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
 Item* FOMapper::SScriptFunc::Item_AddChild( Item* item, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
-    if( !proto_item || proto_item->IsScenery() )
+    if( !proto_item || proto_item->IsStatic() )
         SCRIPT_ERROR_R0( "Added child is not item." );
 
     return Self->AddItem( pid, 0, 0, item );
@@ -4464,7 +4463,7 @@ Item* FOMapper::SScriptFunc::Item_AddChild( Item* item, hash pid )
 Item* FOMapper::SScriptFunc::Crit_AddChild( CritterCl* cr, hash pid )
 {
     ProtoItem* proto_item = ProtoMngr.GetProtoItem( pid );
-    if( !proto_item || proto_item->IsScenery() )
+    if( !proto_item || proto_item->IsStatic() )
         SCRIPT_ERROR_R0( "Added child is not item." );
 
     return Self->AddItem( pid, 0, 0, cr );
@@ -5697,7 +5696,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
 
         color = ( proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0 );
         is_flat = proto_item->GetIsFlat();
-        bool is_item = !proto_item->IsScenery();
+        bool is_item = !proto_item->IsAnyScenery();
         no_light = ( is_flat && !is_item );
         draw_order = ( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) );
         draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();

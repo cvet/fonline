@@ -108,14 +108,13 @@ struct BindClass
     static void NpcPlane_GetChild()       {}
     static void NpcPlane_Misc_SetScript() {}
 
-    static void Item_AddItem()             {}
-    static void Item_GetItems()            {}
-    static void Item_SetScript()           {}
-    static void Item_SetEvent()            {}
-    static void Item_GetMapPosition()      {}
-    static void Item_ChangeProto()         {}
-    static void Item_Animate()             {}
-    static void Item_CallSceneryFunction() {}
+    static void Item_AddItem()        {}
+    static void Item_GetItems()       {}
+    static void Item_SetScript()      {}
+    static void Item_SetEvent()       {}
+    static void Item_GetMapPosition() {}
+    static void Item_ChangeProto()    {}
+    static void Item_Animate()        {}
 
     static void Crit_IsPlayer()                 {}
     static void Crit_IsNpc()                    {}
@@ -131,7 +130,6 @@ struct BindClass
     static void Crit_MoveToDir()                {}
     static void Crit_TransitToHex()             {}
     static void Crit_TransitToMapHex()          {}
-    static void Crit_TransitToMapEntire()       {}
     static void Crit_TransitToGlobal()          {}
     static void Crit_TransitToGlobalWithGroup() {}
     static void Crit_TransitToGlobalGroup()     {}
@@ -209,11 +207,10 @@ struct BindClass
     static void Map_GetItemsHexRadiusPredicate() {}
     static void Map_GetItem()                    {}
     static void Map_GetItemHex()                 {}
-    static void Map_GetDoor()                    {}
-    static void Map_GetSceneryHex()              {}
-    static void Map_GetSceneriesHex()            {}
-    static void Map_GetSceneriesHexEx()          {}
-    static void Map_GetSceneriesByPid()          {}
+    static void Map_GetStaticItem()              {}
+    static void Map_GetStaticItemsHex()          {}
+    static void Map_GetStaticItemsHexEx()        {}
+    static void Map_GetStaticItemsByPid()        {}
     static void Map_GetCritterHex()              {}
     static void Map_GetCritterById()             {}
     static void Map_GetCritters()                {}
@@ -229,13 +226,6 @@ struct BindClass
     static void Map_AddNpc()                     {}
     static void Map_GetNpcCount()                {}
     static void Map_GetNpc()                     {}
-    static void Map_CountEntire()                {}
-    static void Map_GetAllEntires()              {}
-    static void Map_GetEntireCoords()            {}
-    static void Map_GetEntireCoordsDir()         {}
-    static void Map_GetEntireCoordsAll()         {}
-    static void Map_GetNearEntireCoords()        {}
-    static void Map_GetNearEntireCoordsDir()     {}
     static void Map_IsHexPassed()                {}
     static void Map_IsHexesPassed()              {}
     static void Map_IsHexRaked()                 {}

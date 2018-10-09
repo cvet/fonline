@@ -47,24 +47,6 @@ class Critter;
 #define LIGHT_GLOBAL                 ( 0x40 )
 #define LIGHT_INVERSE                ( 0x80 )
 
-// Special item pids
-#define HASH_DECL( var )              extern hash var
-HASH_DECL( SP_SCEN_IBLOCK );
-HASH_DECL( SP_SCEN_TRIGGER );
-HASH_DECL( SP_WALL_BLOCK_LIGHT );
-HASH_DECL( SP_WALL_BLOCK );
-HASH_DECL( SP_GRID_EXITGRID );
-HASH_DECL( SP_GRID_ENTIRE );
-HASH_DECL( SP_MISC_SCRBLOCK );
-
-// Types
-HASH_DECL( ItemWeapon );
-HASH_DECL( ItemContainer );
-HASH_DECL( ItemDoor );
-HASH_DECL( ItemGrid );
-HASH_DECL( ItemGeneric );
-HASH_DECL( ItemWall );
-
 // Item prototype
 class ProtoItem: public ProtoEntity
 {
@@ -95,6 +77,9 @@ public:
     CLASS_PROPERTY_ALIAS( char, DrawOrderOffsetHexY );
     CLASS_PROPERTY_ALIAS( int, Corner );
     CLASS_PROPERTY_ALIAS( bool, DisableEgg );
+    CLASS_PROPERTY_ALIAS( bool, IsStatic );
+    CLASS_PROPERTY_ALIAS( bool, IsScenery );
+    CLASS_PROPERTY_ALIAS( bool, IsWall );
     CLASS_PROPERTY_ALIAS( bool, IsBadItem );
     CLASS_PROPERTY_ALIAS( bool, IsColorize );
     CLASS_PROPERTY_ALIAS( bool, IsShowAnim );
@@ -103,13 +88,10 @@ public:
     CLASS_PROPERTY_ALIAS( uchar, AnimStay1 );
     CLASS_PROPERTY_ALIAS( CScriptArray *, BlockLines );
 
-    bool IsScenery()   { return IsGeneric() || IsWall() || IsGrid(); }
-    bool IsGeneric()   { return Components.count( ItemGeneric ); }
-    bool IsWall()      { return Components.count( ItemWall ); }
-    bool IsGrid()      { return Components.count( ItemGrid ); }
-    bool IsWeapon()    { return Components.count( ItemWeapon ); }
-    bool IsContainer() { return Components.count( ItemContainer ); }
-    bool IsDoor()      { return Components.count( ItemDoor ); }
+    bool IsStatic()     { return GetIsStatic(); }
+    bool IsAnyScenery() { return IsScenery() || IsWall(); }
+    bool IsScenery()    { return GetIsScenery(); }
+    bool IsWall()       { return GetIsWall(); }
 
     #if defined ( FONLINE_CLIENT ) || defined ( FONLINE_MAPPER )
     uint GetCurSprId();
@@ -144,10 +126,6 @@ public:
     CLASS_PROPERTY( uchar, SpriteCut );
     CLASS_PROPERTY( char, DrawOrderOffsetHexY );
     CLASS_PROPERTY( CScriptArray *, BlockLines );
-    CLASS_PROPERTY( uint, Weapon_Anim1 );
-    CLASS_PROPERTY( hash, Grid_ToMap );
-    CLASS_PROPERTY( hash, Grid_ToMapEntire );
-    CLASS_PROPERTY( uchar, Grid_ToMapDir );
     CLASS_PROPERTY( hash, ScriptId );
     CLASS_PROPERTY( int, Accessory ); // enum ItemOwnership
     CLASS_PROPERTY( uint, MapId );
@@ -157,7 +135,13 @@ public:
     CLASS_PROPERTY( uchar, CritSlot );
     CLASS_PROPERTY( uint, ContainerId );
     CLASS_PROPERTY( uint, ContainerStack );
+    CLASS_PROPERTY( bool, IsStatic );
+    CLASS_PROPERTY( bool, IsScenery );
+    CLASS_PROPERTY( bool, IsWall );
+    CLASS_PROPERTY( bool, IsCanOpen );
+    CLASS_PROPERTY( bool, IsScrollBlock );
     CLASS_PROPERTY( bool, IsHidden );
+    CLASS_PROPERTY( bool, IsHiddenPicture );
     CLASS_PROPERTY( bool, IsFlat );
     CLASS_PROPERTY( bool, IsNoBlock );
     CLASS_PROPERTY( bool, IsShootThru );
@@ -170,6 +154,7 @@ public:
     CLASS_PROPERTY( bool, IsLight );
     CLASS_PROPERTY( bool, IsGeck );
     CLASS_PROPERTY( bool, IsTrap );
+    CLASS_PROPERTY( bool, IsTrigger );
     CLASS_PROPERTY( bool, IsNoLightInfluence );
     CLASS_PROPERTY( bool, IsGag );
     CLASS_PROPERTY( bool, IsColorize );
@@ -192,7 +177,6 @@ public:
     CLASS_PROPERTY( uchar, RadioBroadcastRecv );
     CLASS_PROPERTY( short, OffsetX );
     CLASS_PROPERTY( short, OffsetY );
-    CLASS_PROPERTY( int, TriggerNum );
     CLASS_PROPERTY( float, FlyEffectSpeed );
 
 public:
@@ -204,7 +188,6 @@ public:
     bool     ViewPlaceOnMap;
 
     #ifdef FONLINE_SERVER
-    uint     SceneryScriptBindId;
     Critter* ViewByCritter;
     #endif
 
@@ -225,13 +208,10 @@ public:
     static void ClearItems( ItemVec& items );
 
     // All
-    bool IsScenery()   { return IsGeneric() || IsWall() || IsGrid(); }
-    bool IsGeneric()   { return Proto->Components.count( ItemGeneric ); }
-    bool IsWall()      { return Proto->Components.count( ItemWall ); }
-    bool IsGrid()      { return Proto->Components.count( ItemGrid ); }
-    bool IsWeapon()    { return Proto->Components.count( ItemWeapon ); }
-    bool IsContainer() { return Proto->Components.count( ItemContainer ); }
-    bool IsDoor()      { return Proto->Components.count( ItemDoor ); }
+    bool IsStatic()     { return GetIsStatic(); }
+    bool IsAnyScenery() { return IsScenery() || IsWall(); }
+    bool IsScenery()    { return GetIsScenery(); }
+    bool IsWall()       { return GetIsWall(); }
 
     void ChangeCount( int val );
 

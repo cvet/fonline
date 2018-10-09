@@ -393,13 +393,9 @@ void FOClient::LmapPrepareMap()
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x + ( LmapZoom - 1 ), LmapWMap[ 1 ] + pix_y, cur_color ) );
                 LmapPrepPix.push_back( PrepPoint( LmapWMap[ 0 ] + pix_x, LmapWMap[ 1 ] + pix_y + ( ( LmapZoom - 1 ) / 2 ), cur_color ) );
             }
-            else if( f.Flags.IsExitGrid )
-            {
-                cur_color = 0x3FFF7F00;
-            }
             else if( f.Flags.IsWall || f.Flags.IsScen )
             {
-                if( f.Flags.IsWallSAI || f.Flags.ScrollBlock )
+                if( f.Flags.ScrollBlock )
                     continue;
                 if( LmapSwitchHi == false && !f.Flags.IsWall )
                     continue;

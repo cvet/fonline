@@ -65,38 +65,12 @@ public:
     CrVec    CrittersVec;
     ItemVec  HexItemsVec;
     ItemVec  ChildItemsVec;
-    ItemVec  SceneryVec;
-    ItemVec  GridsVec;
+    ItemVec  StaticItemsVec;
     uchar*   HexFlags;
 
 private:
     bool BindScripts( EntityVec& entities );
     #endif
-
-public:
-    // Entires
-    struct MapEntire
-    {
-        hash   Name;
-        ushort HexX;
-        ushort HexY;
-        uchar  Dir;
-
-        MapEntire() { memzero( this, sizeof( MapEntire ) ); }
-        MapEntire( ushort hx, ushort hy, uchar dir, hash name ): Name( name ), HexX( hx ), HexY( hy ), Dir( dir ) {}
-    };
-    typedef vector< MapEntire > EntiresVec;
-
-private:
-    EntiresVec mapEntires;
-
-public:
-    uint       CountEntire( hash name );
-    MapEntire* GetEntire( hash name, uint skip );
-    MapEntire* GetEntireRandom( hash name );
-    MapEntire* GetEntireNear( hash name, ushort hx, ushort hy );
-    MapEntire* GetEntireNear( hash name, hash name_ext, ushort hx, ushort hy );
-    void       GetEntires( hash name, EntiresVec& entires );
 
 public:
     bool Load();
@@ -108,11 +82,11 @@ public:
     #endif
 
     #ifdef FONLINE_SERVER
-    Item* GetMapScenery( ushort hx, ushort hy, hash pid );
-    void  GetMapSceneriesHex( ushort hx, ushort hy, ItemVec& items );
-    void  GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items );
-    void  GetMapSceneriesByPid( hash pid, ItemVec& items );
-    Item* GetMapGrid( ushort hx, ushort hy );
+    void  GetStaticItemTriggers( ushort hx, ushort hy, ItemVec& triggers );
+    Item* GetStaticItem( ushort hx, ushort hy, hash pid );
+    void  GetStaticItemsHex( ushort hx, ushort hy, ItemVec& items );
+    void  GetStaticItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items );
+    void  GetStaticItemsByPid( hash pid, ItemVec& items );
     #endif
 
     UIntVec  TextsLang;

@@ -117,17 +117,14 @@
 // Proto map
 #define FH_BLOCK                    BIN8( 00000001 )
 #define FH_NOTRAKE                  BIN8( 00000010 )
-#define FH_WALL                     BIN8( 00000100 )
-#define FH_SCEN                     BIN8( 00001000 )
-#define FH_SCEN_GRID                BIN8( 00010000 )
-#define FH_TRIGGER                  BIN8( 00100000 )
+#define FH_STATIC_TRIGGER           BIN8( 00100000 )
 // Map copy
 #define FH_CRITTER                  BIN8( 00000001 )
 #define FH_DEAD_CRITTER             BIN8( 00000010 )
 #define FH_DOOR                     BIN8( 00001000 )
 #define FH_BLOCK_ITEM               BIN8( 00010000 )
 #define FH_NRAKE_ITEM               BIN8( 00100000 )
-#define FH_WALK_ITEM                BIN8( 01000000 )
+#define FH_TRIGGER                  BIN8( 01000000 )
 #define FH_GAG_ITEM                 BIN8( 10000000 )
 
 #define FH_NOWAY                    BIN16( 00010001, 00000001 )

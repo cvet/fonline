@@ -37,9 +37,8 @@ private:
     uint  animNextTick;
 
 public:
-    bool IsGenericOrGrid()    { return IsGeneric() || IsGrid(); }
     bool IsAnimated()         { return isAnimated; }
-    bool IsDrawContour()      { return /*IsFocused && */ !IsScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
+    bool IsDrawContour()      { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     bool IsTransparent()      { return maxAlpha < 0xFF; }
     bool IsFullyTransparent() { return maxAlpha == 0; }
     void RefreshAnim();

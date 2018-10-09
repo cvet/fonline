@@ -238,7 +238,6 @@ public:
         static Map*          Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
         static bool          Item_ChangeProto( Item* item, hash pid );
         static void          Item_Animate( Item* item, uchar from_frm, uchar to_frm );
-        static bool          Item_CallSceneryFunction( Item* scenery, Critter* cr, Item* item, int param );
 
         static bool          Crit_IsPlayer( Critter* cr );
         static bool          Crit_IsNpc( Critter* cr );
@@ -248,7 +247,6 @@ public:
         static bool          Crit_MoveToDir( Critter* cr, uchar direction );
         static void          Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir );
         static void          Crit_TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir );
-        static void          Crit_TransitToMapEntire( Critter* cr, Map* map, hash entire );
         static void          Crit_TransitToGlobal( Critter* cr );
         static void          Crit_TransitToGlobalWithGroup( Critter* cr, CScriptArray* group );
         static void          Crit_TransitToGlobalGroup( Critter* cr, Critter* leader );
@@ -326,11 +324,10 @@ public:
         static CScriptArray* Map_GetItemsHexRadiusPredicate( Map* map, ushort hx, ushort hy, uint radius, asIScriptFunction* predicate );
         static Item*         Map_GetItem( Map* map, uint item_id );
         static Item*         Map_GetItemHex( Map* map, ushort hx, ushort hy, hash pid );
-        static Item*         Map_GetDoor( Map* map, ushort hx, ushort hy );
-        static Item*         Map_GetSceneryHex( Map* map, ushort hx, ushort hy, hash pid );
-        static CScriptArray* Map_GetSceneriesHex( Map* map, ushort hx, ushort hy );
-        static CScriptArray* Map_GetSceneriesHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid );
-        static CScriptArray* Map_GetSceneriesByPid( Map* map, hash pid );
+        static Item*         Map_GetStaticItem( Map* map, ushort hx, ushort hy, hash pid );
+        static CScriptArray* Map_GetStaticItemsHex( Map* map, ushort hx, ushort hy );
+        static CScriptArray* Map_GetStaticItemsHexEx( Map* map, ushort hx, ushort hy, uint radius, hash pid );
+        static CScriptArray* Map_GetStaticItemsByPid( Map* map, hash pid );
         static Critter*      Map_GetCritterHex( Map* map, ushort hx, ushort hy );
         static Critter*      Map_GetCritterById( Map* map, uint crid );
         static CScriptArray* Map_GetCritters( Map* map, ushort hx, ushort hy, uint radius, int find_type );
@@ -346,13 +343,6 @@ public:
         static Critter*      Map_AddNpc( Map* map, hash proto_id, ushort hx, ushort hy, uchar dir, CScriptDict* props );
         static uint          Map_GetNpcCount( Map* map, int npc_role, int find_type );
         static Critter*      Map_GetNpc( Map* map, int npc_role, int find_type, uint skip_count );
-        static uint          Map_CountEntire( Map* map, hash entire );
-        static CScriptArray* Map_GetAllEntires( Map* map );
-        static bool          Map_GetEntireCoords( Map* map, hash entire, uint skip, ushort& hx, ushort& hy );
-        static bool          Map_GetEntireCoordsDir( Map* map, hash entire, uint skip, ushort& hx, ushort& hy, uchar& dir );
-        static uint          Map_GetEntireCoordsAll( Map* map, hash entire, CScriptArray* hx, CScriptArray* hy, CScriptArray* dirs );
-        static bool          Map_GetNearEntireCoords( Map* map, hash& entire, ushort& hx, ushort& hy );
-        static bool          Map_GetNearEntireCoordsDir( Map* map, hash& entire, ushort& hx, ushort& hy, uchar& dir );
         static bool          Map_IsHexPassed( Map* map, ushort hex_x, ushort hex_y );
         static bool          Map_IsHexesPassed( Map* map, ushort hex_x, ushort hex_y, uint radius );
         static bool          Map_IsHexRaked( Map* map, ushort hex_x, ushort hex_y );

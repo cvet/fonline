@@ -1160,52 +1160,6 @@ void MapManager::PathSetMoveParams( PathStepVec& path, bool is_run )
     }
 }
 
-bool MapManager::TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, bool force )
-{
-    if( cr->LockMapTransfers )
-    {
-        WriteLog( "Transfers locked, critter '{}'.\n", cr->GetName() );
-        return false;
-    }
-
-    if( !cr->IsPlayer() || !cr->IsLife() )
-        return false;
-    if( !map || !FLAG( map->GetHexFlags( hx, hy ), FH_SCEN_GRID ) )
-        return false;
-    if( !force && cr->IsTransferTimeouts( true ) )
-        return false;
-
-    Location* loc = map->GetLocation();
-    uint      id_map = 0;
-
-    if( !loc->GetTransit( map, id_map, hx, hy, dir ) )
-        return false;
-    if( loc->IsLocVisible() && cr->IsPlayer() )
-    {
-        ( (Client*) cr )->AddKnownLoc( loc->GetId() );
-        if( loc->IsNonEmptyAutomaps() )
-            cr->Send_AutomapsInfo( nullptr, loc );
-    }
-    cr->SetTimeoutTransfer( 0 );
-    cr->SetTimeoutBattle( 0 );
-
-    // To global
-    if( !id_map )
-    {
-        if( TransitToGlobal( cr, 0, force ) )
-            return true;
-    }
-    // To local
-    else
-    {
-        Map* to_map = MapMngr.GetMap( id_map );
-        if( to_map && Transit( cr, to_map, hx, hy, dir, 2, 0, force ) )
-            return true;
-    }
-
-    return false;
-}
-
 bool MapManager::TransitToGlobal( Critter* cr, uint leader_id, bool force )
 {
     if( cr->LockMapTransfers )

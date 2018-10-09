@@ -122,7 +122,7 @@ void FOServer::OnSetItemChangeView( Entity* entity, Property* prop, void* cur_va
 
 void FOServer::OnSetItemRecacheHex( Entity* entity, Property* prop, void* cur_value, void* old_value )
 {
-    // IsNoBlock, IsShootThru, IsGag
+    // IsNoBlock, IsShootThru, IsGag, IsTrigger
     Item* item = (Item*) entity;
     bool  value = *(bool*) cur_value;
 
@@ -175,7 +175,7 @@ void FOServer::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
     bool  cur = *(bool*) cur_value;
     bool  old = *(bool*) old_value;
 
-    if( item->IsDoor() || item->IsContainer() )
+    if( item->GetIsCanOpen() )
     {
         if( !old && cur )
         {

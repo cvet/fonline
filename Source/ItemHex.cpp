@@ -241,7 +241,7 @@ void ItemHex::RefreshAnim()
     animBegSpr = begSpr;
     animEndSpr = endSpr;
 
-    if( IsContainer() || IsDoor() )
+    if( GetIsCanOpen() )
     {
         if( GetOpened() )
             SetSprEnd();

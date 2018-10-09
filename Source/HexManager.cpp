@@ -161,10 +161,8 @@ void Field::EraseDeadCrit( CritterCl* cr )
 void Field::ProcessCache()
 {
     Flags.IsWall = false;
-    Flags.IsWallSAI = false;
     Flags.IsWallTransp = false;
     Flags.IsScen = false;
-    Flags.IsExitGrid = false;
     Flags.IsNotPassed = ( Crit != nullptr || Flags.IsMultihex );
     Flags.IsNotRaked = false;
     Flags.IsNoLight = false;
@@ -181,22 +179,16 @@ void Field::ProcessCache()
                 Flags.IsWall = true;
                 Flags.IsWallTransp = item->GetIsLightThru();
                 Corner = item->GetCorner();
-                if( pid == SP_SCEN_IBLOCK )
-                    Flags.IsWallSAI = true;
             }
-            else if( item->IsGenericOrGrid() )
+            else if( item->IsScenery() )
             {
                 Flags.IsScen = true;
-                if( pid == SP_WALL_BLOCK || pid == SP_WALL_BLOCK_LIGHT )
-                    Flags.IsWall = true;
-                else if( pid == SP_GRID_EXITGRID )
-                    Flags.IsExitGrid = true;
             }
             if( !item->GetIsNoBlock() )
                 Flags.IsNotPassed = true;
             if( !item->GetIsShootThru() )
                 Flags.IsNotRaked = true;
-            if( pid == SP_MISC_SCRBLOCK )
+            if( item->GetIsScrollBlock() )
                 Flags.ScrollBlock = true;
             if( !item->GetIsLightThru() )
                 Flags.IsNoLight = true;
@@ -444,12 +436,12 @@ uint HexManager::AddItem( uint id, hash pid, ushort hx, ushort hy, bool is_added
     if( !ProcessHexBorders( item->Anim->GetSprId( 0 ), item->GetOffsetX(), item->GetOffsetY(), true ) )
     {
         // Draw
-        if( GetHexToDraw( hx, hy ) && !item->GetIsHidden() && !item->IsFullyTransparent() )
+        if( GetHexToDraw( hx, hy ) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent() )
         {
             Sprite& spr = mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), hx, hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                  f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                  &item->DrawEffect, &item->SprDrawValid );
-            if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsGenericOrGrid() ) )
+            if( !item->GetIsNoLightInfluence() )
                 spr.SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
             item->SetSprite( &spr );
         }
@@ -543,7 +535,7 @@ void HexManager::ProcessItems()
                     item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), step.first, step.second + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                             f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                             &item->DrawEffect, &item->SprDrawValid );
-                    if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsGenericOrGrid() ) )
+                    if( !item->GetIsNoLightInfluence() )
                         item->SprDraw->SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
                 }
                 item->SetAnimOffs();
@@ -557,7 +549,7 @@ void HexManager::ProcessItems()
     }
 }
 
-bool ItemCompScen( ItemHex* o1, ItemHex* o2 ) { return o1->IsGenericOrGrid() && !o2->IsGenericOrGrid(); }
+bool ItemCompScen( ItemHex* o1, ItemHex* o2 ) { return o1->IsScenery() && !o2->IsScenery(); }
 bool ItemCompWall( ItemHex* o1, ItemHex* o2 ) { return o1->IsWall() && !o2->IsWall(); }
 void HexManager::PushItem( ItemHex* item )
 {
@@ -707,7 +699,7 @@ bool HexManager::RunEffect( hash eff_pid, ushort from_hx, ushort from_hy, ushort
         item->SprDraw = &mainTree.InsertSprite( DRAW_ORDER_ITEM_AUTO( item ), from_hx, from_hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                 f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                 &item->DrawEffect, &item->SprDrawValid );
-        if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsGenericOrGrid() ) )
+        if( !item->GetIsNoLightInfluence() )
             item->SprDraw->SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
     }
 
@@ -1007,19 +999,19 @@ void HexManager::RebuildMap( int rx, int ry )
                     ItemHex* item = *it;
 
                     #ifdef FONLINE_CLIENT
-                    if( item->GetIsHidden() || item->IsFullyTransparent() )
+                    if( item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent() )
                         continue;
-                    if( item->IsGenericOrGrid() && !GameOpt.ShowScen )
+                    if( item->IsScenery() && !GameOpt.ShowScen )
                         continue;
-                    if( !item->IsScenery() && !GameOpt.ShowItem )
+                    if( !item->IsAnyScenery() && !GameOpt.ShowItem )
                         continue;
                     if( item->IsWall() && !GameOpt.ShowWall )
                         continue;
                     #else
                     bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
-                    if( item->IsGenericOrGrid() && !GameOpt.ShowScen && !is_fast )
+                    if( item->IsScenery() && !GameOpt.ShowScen && !is_fast )
                         continue;
-                    if( !item->IsScenery() && !GameOpt.ShowItem && !is_fast )
+                    if( !item->IsAnyScenery() && !GameOpt.ShowItem && !is_fast )
                         continue;
                     if( item->IsWall() && !GameOpt.ShowWall && !is_fast )
                         continue;
@@ -1032,7 +1024,7 @@ void HexManager::RebuildMap( int rx, int ry )
                     Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(),
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha,
                                                       &item->DrawEffect, &item->SprDrawValid );
-                    if( !item->GetIsNoLightInfluence() && !( item->GetIsFlat() && item->IsGenericOrGrid() ) )
+                    if( !item->GetIsNoLightInfluence() )
                         spr.SetLight( item->GetCorner(), hexLight, maxHexX, maxHexY );
                     item->SetSprite( &spr );
                 }
@@ -1532,13 +1524,13 @@ void HexManager::CollectLightSources()
     lightSources = lightSourcesScen;
     #else
     for( auto& item : hexItems )
-        if( item->IsScenery() && item->GetIsLight() )
+        if( item->IsStatic() && item->GetIsLight() )
             lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
     #endif
 
     // Items on ground
     for( auto& item : hexItems )
-        if( !item->IsScenery() && item->GetIsLight() )
+        if( !item->IsStatic() && item->GetIsLight() )
             lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
 
     // Items in critters slots
@@ -2815,19 +2807,19 @@ ItemHex* HexManager::GetItemPixel( int x, int y, bool& item_egg )
             continue;
 
         #ifdef FONLINE_CLIENT
-        if( item->GetIsHidden() || item->IsFullyTransparent() )
+        if( item->GetIsHidden() || item->GetIsHiddenPicture() || item->IsFullyTransparent() )
             continue;
-        if( item->IsGenericOrGrid() && !GameOpt.ShowScen )
+        if( item->IsScenery() && !GameOpt.ShowScen )
             continue;
-        if( !item->IsScenery() && !GameOpt.ShowItem )
+        if( !item->IsAnyScenery() && !GameOpt.ShowItem )
             continue;
         if( item->IsWall() && !GameOpt.ShowWall )
             continue;
         #else // FONLINE_MAPPER
         bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
-        if( item->IsGenericOrGrid() && !GameOpt.ShowScen && !is_fast )
+        if( item->IsScenery() && !GameOpt.ShowScen && !is_fast )
             continue;
-        if( !item->IsScenery() && !GameOpt.ShowItem && !is_fast )
+        if( !item->IsAnyScenery() && !GameOpt.ShowItem && !is_fast )
             continue;
         if( item->IsWall() && !GameOpt.ShowWall && !is_fast )
             continue;
@@ -3911,7 +3903,7 @@ void HexManager::GenerateItem( uint id, hash proto_id, Properties& props )
 
     PushItem( scenery );
 
-    if( !scenery->GetIsHidden() && !scenery->IsFullyTransparent() )
+    if( !scenery->GetIsHidden() && !scenery->GetIsHiddenPicture() && !scenery->IsFullyTransparent() )
         ProcessHexBorders( scenery->Anim->GetSprId( 0 ), scenery->GetOffsetX(), scenery->GetOffsetY(), false );
 }
 

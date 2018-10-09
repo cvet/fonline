@@ -367,7 +367,7 @@ bool FOClient::PostInit()
     {
         WriteLog( "Preload 3d files...\n" );
         for( size_t i = 0, j = Preload3dFiles.size(); i < j; i++ )
-            Animation3dEntity::GetEntity( Preload3dFiles[ i ].c_str() );
+            Animation3dEntity::GetEntity( Preload3dFiles[ i ] );
         WriteLog( "Preload 3d files complete.\n" );
     }
 
@@ -3051,7 +3051,7 @@ void FOClient::Net_OnCustomCommand()
             for( auto it = items.begin(), end = items.end(); it != end; ++it )
             {
                 ItemHex* item = *it;
-                if( !item->IsScenery() )
+                if( !item->IsStatic() )
                     HexMngr.DeleteItem( *it, true );
             }
         }
@@ -6234,7 +6234,7 @@ void FOClient::OnSetItemOpened( Entity* entity, Property* prop, void* cur_value,
     bool  cur = *(bool*) cur_value;
     bool  old = *(bool*) old_value;
 
-    if( item->IsDoor() || item->IsContainer() )
+    if( item->GetIsCanOpen() )
     {
         ItemHex* hex_item = (ItemHex*) item;
         if( !old && cur )
@@ -8363,7 +8363,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
 
         color = ( proto_item->GetIsColorize() ? proto_item->GetLightColor() : 0 );
         is_flat = proto_item->GetIsFlat();
-        bool is_item = !proto_item->IsScenery();
+        bool is_item = !proto_item->IsAnyScenery();
         no_light = ( is_flat && !is_item );
         draw_order = ( is_flat ? ( is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY ) : ( is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY ) );
         draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();

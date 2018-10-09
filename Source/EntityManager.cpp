@@ -416,24 +416,31 @@ bool EntityManager::LinkItems()
     ItemMngr.GetGameItems( game_items );
     for( auto& item : game_items )
     {
+        if( item->IsStatic() )
+        {
+            WriteLog( "Item '{}' ({}) is static.\n", item->GetName(), item->Id );
+            errors++;
+            continue;
+        }
+
         switch( item->GetAccessory() )
         {
-        case ITEM_ACCESSORY_CRITTER :
+        case ITEM_ACCESSORY_CRITTER:
+        {
+            if( IS_CLIENT_ID( item->GetCritId() ) )
+                continue;                                                      // Skip player
+
+            Critter* npc = CrMngr.GetNpc( item->GetCritId() );
+            if( !npc )
             {
-                if( IS_CLIENT_ID( item->GetCritId() ) )
-                    continue;                                                  // Skip player
-
-                Critter* npc = CrMngr.GetNpc( item->GetCritId() );
-                if( !npc )
-                {
-                    WriteLog( "Item '{}' ({}) npc not found, npc id {}.\n", item->GetName(), item->Id, item->GetCritId() );
-                    errors++;
-                    continue;
-                }
-
-                npc->SetItem( item );
+                WriteLog( "Item '{}' ({}) npc not found, npc id {}.\n", item->GetName(), item->Id, item->GetCritId() );
+                errors++;
+                continue;
             }
-            break;
+
+            npc->SetItem( item );
+        }
+        break;
         case ITEM_ACCESSORY_HEX:
         {
             Map* map = MapMngr.GetMap( item->GetMapId() );
@@ -447,13 +454,6 @@ bool EntityManager::LinkItems()
             if( item->GetHexX() >= map->GetWidth() || item->GetHexY() >= map->GetHeight() )
             {
                 WriteLog( "Item '{}' ({}) invalid hex position, hx {}, hy {}.\n", item->GetName(), item->Id, item->GetHexX(), item->GetHexY() );
-                errors++;
-                continue;
-            }
-
-            if( item->IsScenery() )
-            {
-                WriteLog( "Item '{}' ({}) is scenery type.\n", item->GetName(), item->Id );
                 errors++;
                 continue;
             }

@@ -410,6 +410,8 @@ struct ServerScriptFunctions
     void* ItemFinish;
     void* ItemWalk;
     void* ItemCheckMove;
+
+    void* StaticItemWalk;
 } extern ServerFunctions;
 
 #endif

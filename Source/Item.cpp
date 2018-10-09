@@ -24,6 +24,9 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsFlat );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, char, DrawOrderOffsetHexY );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, int, Corner );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, DisableEgg );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsStatic );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsScenery );
+CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsWall );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsBadItem );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsColorize );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, bool, IsShowAnim );
@@ -38,7 +41,6 @@ ProtoItem::ProtoItem( hash pid ): ProtoEntity( pid, Item::PropertiesRegistrator 
 }
 
 PROPERTIES_IMPL( Item );
-CLASS_PROPERTY_IMPL( Item, TriggerNum );
 CLASS_PROPERTY_IMPL( Item, PicMap );
 CLASS_PROPERTY_IMPL( Item, PicInv );
 CLASS_PROPERTY_IMPL( Item, OffsetX );
@@ -64,10 +66,6 @@ CLASS_PROPERTY_IMPL( Item, AnimHide1 );
 CLASS_PROPERTY_IMPL( Item, SpriteCut );
 CLASS_PROPERTY_IMPL( Item, DrawOrderOffsetHexY );
 CLASS_PROPERTY_IMPL( Item, BlockLines );
-CLASS_PROPERTY_IMPL( Item, Weapon_Anim1 );
-CLASS_PROPERTY_IMPL( Item, Grid_ToMap );
-CLASS_PROPERTY_IMPL( Item, Grid_ToMapEntire );
-CLASS_PROPERTY_IMPL( Item, Grid_ToMapDir );
 CLASS_PROPERTY_IMPL( Item, ScriptId );
 CLASS_PROPERTY_IMPL( Item, Accessory );
 CLASS_PROPERTY_IMPL( Item, MapId );
@@ -77,7 +75,13 @@ CLASS_PROPERTY_IMPL( Item, CritId );
 CLASS_PROPERTY_IMPL( Item, CritSlot );
 CLASS_PROPERTY_IMPL( Item, ContainerId );
 CLASS_PROPERTY_IMPL( Item, ContainerStack );
+CLASS_PROPERTY_IMPL( Item, IsStatic );
+CLASS_PROPERTY_IMPL( Item, IsScenery );
+CLASS_PROPERTY_IMPL( Item, IsWall );
+CLASS_PROPERTY_IMPL( Item, IsCanOpen );
+CLASS_PROPERTY_IMPL( Item, IsScrollBlock );
 CLASS_PROPERTY_IMPL( Item, IsHidden );
+CLASS_PROPERTY_IMPL( Item, IsHiddenPicture );
 CLASS_PROPERTY_IMPL( Item, IsFlat );
 CLASS_PROPERTY_IMPL( Item, IsNoBlock );
 CLASS_PROPERTY_IMPL( Item, IsShootThru );
@@ -90,6 +94,7 @@ CLASS_PROPERTY_IMPL( Item, IsShowAnimExt );
 CLASS_PROPERTY_IMPL( Item, IsLight );
 CLASS_PROPERTY_IMPL( Item, IsGeck );
 CLASS_PROPERTY_IMPL( Item, IsTrap );
+CLASS_PROPERTY_IMPL( Item, IsTrigger );
 CLASS_PROPERTY_IMPL( Item, IsNoLightInfluence );
 CLASS_PROPERTY_IMPL( Item, IsGag );
 CLASS_PROPERTY_IMPL( Item, IsColorize );
@@ -116,7 +121,6 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
     ViewPlaceOnMap = false;
 
     #ifdef FONLINE_SERVER
-    SceneryScriptBindId = 0;
     ViewByCritter = nullptr;
     #endif
 

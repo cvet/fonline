@@ -68,7 +68,6 @@ public:
     void SetTextMsg( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str );
     void SetTextMsgLex( ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len );
 
-    bool GetStartCoord( ushort& hx, ushort& hy, uchar& dir, hash entire );
     bool FindStartHex( ushort& hx, ushort& hy, uint multihex, uint seek_radius, bool skip_unsafe );
 
     void AddCritter( Critter* cr );
@@ -84,15 +83,13 @@ public:
 
     Item* GetItem( uint item_id );
     Item* GetItemHex( ushort hx, ushort hy, hash item_pid, Critter* picker );
-    Item* GetItemDoor( ushort hx, ushort hy );
-    Item* GetItemContainer( ushort hx, ushort hy );
     Item* GetItemGag( ushort hx, ushort hy );
 
     ItemVec GetItems() { return mapItems; } // Make copy
     void    GetItemsHex( ushort hx, ushort hy, ItemVec& items );
     void    GetItemsHexEx( ushort hx, ushort hy, uint radius, hash pid, ItemVec& items );
     void    GetItemsPid( hash pid, ItemVec& items );
-    void    GetItemsTrap( ushort hx, ushort hy, ItemVec& items );
+    void    GetItemsTrigger( ushort hx, ushort hy, ItemVec& items );
 
     bool   IsPlaceForProtoItem( ushort hx, ushort hy, ProtoItem* proto_item );
     void   RecacheHexFlags( ushort hx, ushort hy );
@@ -104,10 +101,10 @@ public:
     bool IsHexRaked( ushort hx, ushort hy );
     bool IsHexesPassed( ushort hx, ushort hy, uint radius );
     bool IsMovePassed( ushort hx, ushort hy, uchar dir, uint multihex );
-    bool IsHexTrap( ushort hx, ushort hy )    { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_WALK_ITEM ); }
-    bool IsHexCritter( ushort hx, ushort hy ) { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_CRITTER | FH_DEAD_CRITTER ); }
-    bool IsHexGag( ushort hx, ushort hy )     { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_GAG_ITEM ); }
-    bool IsHexTrigger( ushort hx, ushort hy ) { return FLAG( GetProtoMap()->HexFlags[ hy * GetWidth() + hx ], FH_TRIGGER ); }
+    bool IsHexTrigger( ushort hx, ushort hy )       { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_TRIGGER ); }
+    bool IsHexCritter( ushort hx, ushort hy )       { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_CRITTER | FH_DEAD_CRITTER ); }
+    bool IsHexGag( ushort hx, ushort hy )           { return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_GAG_ITEM ); }
+    bool IsHexStaticTrigger( ushort hx, ushort hy ) { return FLAG( GetProtoMap()->HexFlags[ hy * GetWidth() + hx ], FH_STATIC_TRIGGER ); }
 
     bool     IsFlagCritter( ushort hx, ushort hy, bool dead );
     void     SetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead );
@@ -175,7 +172,6 @@ public:
     Map*           GetMapByIndex( uint index );
     Map*           GetMapByPid( hash map_pid );
     uint           GetMapIndex( hash map_pid );
-    bool           GetTransit( Map* from_map, uint& id_map, ushort& hx, ushort& hy, uchar& dir );
     bool           IsCanEnter( uint players_count );
 
     bool IsNoCrit();

@@ -89,10 +89,8 @@ struct Field
     {
         bool ScrollBlock : 1;
         bool IsWall : 1;
-        bool IsWallSAI : 1;
         bool IsWallTransp : 1;
         bool IsScen : 1;
-        bool IsExitGrid : 1;
         bool IsNotPassed : 1;
         bool IsNotRaked : 1;
         bool IsNoLight : 1;
