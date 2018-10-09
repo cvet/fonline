@@ -7696,7 +7696,6 @@ void FOClient::SScriptFunc::Global_LockScreenScroll( CritterCl* cr, bool unlock_
         Self->HexMngr.AutoScroll.LockedCritter = 0;
     else
         Self->HexMngr.AutoScroll.LockedCritter = id;
-
 }
 
 int FOClient::SScriptFunc::Global_GetFog( ushort zone_x, ushort zone_y )

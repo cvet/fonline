@@ -192,6 +192,7 @@ bool FOServer::InitScriptSystem()
     BIND_INTERNAL_EVENT( ItemFinish );
     BIND_INTERNAL_EVENT( ItemWalk );
     BIND_INTERNAL_EVENT( ItemCheckMove );
+    BIND_INTERNAL_EVENT( StaticItemWalk );
     #undef BIND_INTERNAL_EVENT
 
     ASDbgMemoryCanWork = true;
