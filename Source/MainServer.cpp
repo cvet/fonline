@@ -102,7 +102,7 @@ int main( int argc, char** argv )
     // GUI
     Fl::lock();         // Begin GUI multi threading
     GUIInit();
-    LogToFile( "" );
+    LogToFile( "FOnlineServer.log" );
     LogToBuffer( true );
 
     FOQuit = true;
@@ -851,7 +851,7 @@ int main( int argc, char** argv )
         Debugger::StartTraceMemory();
 
     // Logging
-    LogToFile( "./FOnlineServerDaemon.log" );
+    LogToFile( "./FOnlineServer.log" );
 
     // Log version
     WriteLog( "FOnline server daemon, version {}.\n", FONLINE_VERSION );

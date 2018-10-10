@@ -2,6 +2,7 @@
 #include "Timer.h"
 #include "FileSystem.h"
 #include <stdarg.h>
+#include <time.h>
 
 #ifdef FO_ANDROID
 # include <android/log.h>
@@ -104,16 +105,9 @@ void WriteLogMessage( const string& message )
     string result;
     if( !LogDisableTimestamp )
     {
-        uint delta = ( uint ) Timer::AccurateTick();
-        uint seconds = delta / 1000;
-        uint minutes = seconds / 60 % 60;
-        uint hours = seconds / 60 / 60;
-        if( hours )
-            result += _str( "[{:0=3}:{:0=2}:{:0=2}:{:0=3}] ", hours, minutes, seconds % 60, delta % 1000 );
-        else if( minutes )
-            result += _str( "[{:0=2}:{:0=2}:{:0=3}] ", minutes, seconds % 60, delta % 1000 );
-        else
-            result += _str( "[{:0=2}:{:0=3}] ", seconds % 60, delta % 1000 );
+        time_t     now = time( nullptr );
+        struct tm* t = localtime( &now );
+        result += _str( "[{:0=2}:{:0=2}:{:0=2}] ", t->tm_hour, t->tm_min, t->tm_sec );
     }
     result += message;
 
