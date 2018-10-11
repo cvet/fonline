@@ -1,0 +1,21 @@
+{
+  "name": "ipc",
+  "version": "1.0.0",
+  "description": "Interprocess Communication",
+  "main": "index.js",
+  "dependencies": {
+    "nan": "~2.6.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nmittu/ipc/"
+  },
+  "author": "Nikhil Mittu",
+  "license": "MIT",
+  "gypfile": true
+}
