@@ -33,5 +33,7 @@ svn info --username gocd --password fgt43trfcvq23 https://cvet.by:8443/svn/FOnli
 sudo /etc/init.d/go-agent start [start|stop|status|restart]
 
 Setup Mac:
-Download and install gocd
-Download and install cmake
+Install gocd
+Install cmake
+Install xcode
+Install svn
