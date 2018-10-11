@@ -107,6 +107,8 @@ endif()
 target_include_directories(${LIB_NAME} INTERFACE
   $<INSTALL_INTERFACE:include>)
 
+return() #!
+  
 install(TARGETS ${LIB_NAME}
   EXPORT libcurl-target
   ARCHIVE DESTINATION lib

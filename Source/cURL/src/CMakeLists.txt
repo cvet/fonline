@@ -72,6 +72,8 @@ target_link_libraries(${EXE_NAME} libcurl ${CURL_LIBS})
 
 #INCLUDE(ModuleInstall OPTIONAL)
 
+return() #!
+
 install(TARGETS ${EXE_NAME} EXPORT curl-target DESTINATION bin)
 export(TARGETS ${EXE_NAME}
        APPEND FILE ${PROJECT_BINARY_DIR}/curl-target.cmake
