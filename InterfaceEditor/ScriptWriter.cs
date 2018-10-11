@@ -261,6 +261,7 @@ namespace InterfaceEditor
 			WriteClassFunction("void OnAppear() override", obj.OnAppear);
 			WriteClassFunction("void OnDisappear() override", obj.OnDisappear);
 			WriteClassFunction("void OnDraw() override", obj.OnDraw);
+			WriteClassFunction("void OnPostDraw() override", obj.OnPostDraw);
 			WriteClassFunction("void OnMove( int deltaX, int deltaY ) override", obj.OnMove);
 			WriteClassFunction("void OnMouseDown( int button ) override", obj.OnMouseDown);
 			WriteClassFunction("void OnMouseUp( int button, bool lost ) override", obj.OnMouseUp);

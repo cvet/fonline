@@ -29,7 +29,7 @@
       (defined(HAVE_POSIX_STRERROR_R) && defined(HAVE_VXWORKS_STRERROR_R)) || \
       (defined(HAVE_GLIBC_STRERROR_R) && defined(HAVE_VXWORKS_STRERROR_R)) || \
       (defined(HAVE_POSIX_STRERROR_R) && defined(HAVE_GLIBC_STRERROR_R))
-//! Patch #    error "strerror_r MUST be either POSIX, glibc or vxworks-style"
+#    error "strerror_r MUST be either POSIX, glibc or vxworks-style"
 #  endif
 #endif
 
@@ -312,6 +312,9 @@ curl_easy_strerror(CURLcode error)
   case CURLE_HTTP2_STREAM:
     return "Stream error in the HTTP/2 framing layer";
 
+  case CURLE_RECURSIVE_API_CALL:
+    return "API function called from within callback";
+
     /* error codes not used by current libcurl */
   case CURLE_OBSOLETE20:
   case CURLE_OBSOLETE24:
@@ -379,6 +382,9 @@ curl_multi_strerror(CURLMcode error)
 
   case CURLM_ADDED_ALREADY:
     return "The easy handle is already added to a multi handle";
+
+  case CURLM_RECURSIVE_API_CALL:
+    return "API function called from within callback";
 
   case CURLM_LAST:
     break;

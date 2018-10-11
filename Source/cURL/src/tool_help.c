@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -108,6 +108,8 @@ static const struct helptxt helptext[] = {
    "Inhibit using EPRT or LPRT"},
   {"    --disable-epsv",
    "Inhibit using EPSV"},
+  {"    --disallow-username-in-url",
+   "Disallow username in url"},
   {"    --dns-interface <interface>",
    "Interface to use for DNS requests"},
   {"    --dns-ipv4-addr <address>",
@@ -160,6 +162,10 @@ static const struct helptxt helptext[] = {
    "Put the post data in the URL and use GET"},
   {"-g, --globoff",
    "Disable URL sequences and ranges using {} and []"},
+  {"    --happy-eyeballs-timeout-ms <milliseconds>",
+   "How long to wait in milliseconds for IPv6 before trying IPv4"},
+  {"    --haproxy-protocol",
+   "Send HAProxy PROXY protocol v1 header"},
   {"-I, --head",
    "Show document info only"},
   {"-H, --header <header/@file>",
@@ -217,14 +223,14 @@ static const struct helptxt helptext[] = {
   {"    --mail-from <address>",
    "Mail from this address"},
   {"    --mail-rcpt <address>",
-   "Mail from this address"},
+   "Mail to this address"},
   {"-M, --manual",
    "Display the full manual"},
   {"    --max-filesize <bytes>",
    "Maximum file size to download"},
   {"    --max-redirs <num>",
    "Maximum number of redirects allowed"},
-  {"-m, --max-time <time>",
+  {"-m, --max-time <seconds>",
    "Maximum time allowed for the transfer"},
   {"    --metalink",
    "Process given URLs as metalink XML file"},
@@ -293,7 +299,7 @@ static const struct helptxt helptext[] = {
   {"    --proxy-cert <cert[:passwd]>",
    "Set client certificate for proxy"},
   {"    --proxy-cert-type <type>",
-   "Client certificate type for HTTS proxy"},
+   "Client certificate type for HTTPS proxy"},
   {"    --proxy-ciphers <list>",
    "SSL ciphers to use for proxy"},
   {"    --proxy-crlfile <file>",
@@ -314,10 +320,14 @@ static const struct helptxt helptext[] = {
    "Use NTLM authentication on the proxy"},
   {"    --proxy-pass <phrase>",
    "Pass phrase for the private key for HTTPS proxy"},
+  {"    --proxy-pinnedpubkey <hashes>",
+   "FILE/HASHES public key to verify proxy with"},
   {"    --proxy-service-name <name>",
    "SPNEGO proxy service name"},
   {"    --proxy-ssl-allow-beast",
    "Allow security flaw for interop for HTTPS proxy"},
+  {"    --proxy-tls13-ciphers <ciphersuite list>",
+   "TLS 1.3 proxy cipher suites"},
   {"    --proxy-tlsauthtype <type>",
    "TLS authentication type for HTTPS proxy"},
   {"    --proxy-tlspassword <string>",
@@ -331,7 +341,7 @@ static const struct helptxt helptext[] = {
   {"    --proxy1.0 <host[:port]>",
    "Use HTTP/1.0 proxy on given port"},
   {"-p, --proxytunnel",
-   "Operate through a HTTP proxy tunnel (using CONNECT)"},
+   "Operate through an HTTP proxy tunnel (using CONNECT)"},
   {"    --pubkey <key>",
    "SSH Public key file name"},
   {"-Q, --quote",
@@ -356,7 +366,7 @@ static const struct helptxt helptext[] = {
    "Specify request command to use"},
   {"    --request-target",
    "Specify the target for this request"},
-  {"    --resolve <host:port:address>",
+  {"    --resolve <host:port:address[,address]...>",
    "Resolve the host+port to this address"},
   {"    --retry <num>",
    "Retry request if transient problems occur"},
@@ -408,6 +418,8 @@ static const struct helptxt helptext[] = {
    "Use SSLv3"},
   {"    --stderr",
    "Where to redirect stderr"},
+  {"    --styled-output",
+   "Enable styled output for HTTP headers"},
   {"    --suppress-connect-headers",
    "Suppress proxy CONNECT response headers"},
   {"    --tcp-fastopen",
@@ -424,6 +436,8 @@ static const struct helptxt helptext[] = {
    "Transfer based on a time condition"},
   {"    --tls-max <VERSION>",
    "Use TLSv1.0 or greater"},
+  {"    --tls13-ciphers <list of TLS 1.3 ciphersuites>",
+   "TLS 1.3 cipher suites to use"},
   {"    --tlsauthtype <type>",
    "TLS authentication type"},
   {"    --tlspassword",
@@ -505,7 +519,8 @@ static const struct feat feats[] = {
   {"HTTP2",          CURL_VERSION_HTTP2},
   {"UnixSockets",    CURL_VERSION_UNIX_SOCKETS},
   {"HTTPS-proxy",    CURL_VERSION_HTTPS_PROXY},
-  {"MultiSSL",       CURL_VERSION_MULTI_SSL}
+  {"MultiSSL",       CURL_VERSION_MULTI_SSL},
+  {"PSL",            CURL_VERSION_PSL},
 };
 
 void tool_help(void)
@@ -548,9 +563,6 @@ void tool_version_info(void)
     }
 #ifdef USE_METALINK
     printf("Metalink ");
-#endif
-#ifdef USE_LIBPSL
-    printf("PSL ");
 #endif
     puts(""); /* newline */
   }

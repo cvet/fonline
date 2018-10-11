@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2015, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -20,14 +20,14 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_READFUNCTION 3 "February 03, 2016" "libcurl 7.57.0" "curl_easy_setopt options"
+.TH CURLOPT_READFUNCTION 3 "August 11, 2018" "libcurl 7.61.1" "curl_easy_setopt options"
 
 .SH NAME
 CURLOPT_READFUNCTION \- read callback for data uploads
 .SH SYNOPSIS
 #include <curl/curl.h>
 
-size_t read_callback(char *buffer, size_t size, size_t nitems, void *instream);
+size_t read_callback(char *buffer, size_t size, size_t nitems, void *userdata);
 
 CURLcode curl_easy_setopt(CURL *handle, CURLOPT_READFUNCTION, read_callback);
 
@@ -37,12 +37,14 @@ Pass a pointer to your callback function, as the prototype shows above.
 This callback function gets called by libcurl as soon as it needs to read data
 in order to send it to the peer - like if you ask it to upload or post data to
 the server. The data area pointed at by the pointer \fIbuffer\fP should be
-filled up with at most \fIsize\fP multiplied with \fInmemb\fP number of bytes
+filled up with at most \fIsize\fP multiplied with \fInitems\fP number of bytes
 by your function.
 
-Your function must then return the actual number of bytes that it stored in
-that memory area. Returning 0 will signal end-of-file to the library and cause
-it to stop the current transfer.
+Set the \fIuserdata\fP argument with the \fICURLOPT_READDATA(3)\fP option.
+
+Your function must return the actual number of bytes that it stored in the data
+area pointed at by the pointer \fIbuffer\fP. Returning 0 will signal
+end-of-file to the library and cause it to stop the current transfer.
 
 If you stop the current transfer by returning 0 "pre-maturely" (i.e before the
 server expected it, like when you've said you will upload N bytes and you

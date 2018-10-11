@@ -12,6 +12,7 @@ SUPPORTFILES = first.c test.h
 
 # These are all libcurl test programs
 noinst_PROGRAMS = chkhostname libauthretry libntlmconnect                \
+ chkdecimalpoint                                                         \
  lib500 lib501 lib502 lib503 lib504 lib505 lib506 lib507 lib508 lib509   \
  lib510 lib511 lib512 lib513 lib514 lib515 lib516 lib517 lib518 lib519   \
  lib520 lib521 lib523 lib524 lib525 lib526 lib527 lib529 lib530 lib532   \
@@ -20,16 +21,23 @@ noinst_PROGRAMS = chkhostname libauthretry libntlmconnect                \
  lib559 lib560 lib562 lib564 lib565 lib566 lib567 lib568 lib569 lib570   \
  lib571 lib572 lib573 lib574 lib575 lib576        lib578 lib579 lib582   \
  lib583 lib585 lib586 lib587 lib589 lib590 lib591 lib597 lib598 lib599   \
- lib643 lib644 lib645 lib650 lib651 lib652 lib653 \
+ lib643 lib644 lib645 lib650 lib651 lib652 lib653 lib654 lib655 \
+ lib1156 \
  lib1500 lib1501 lib1502 lib1503 lib1504 lib1505 lib1506 lib1507 lib1508 \
  lib1509 lib1510 lib1511 lib1512 lib1513 lib1514 lib1515         lib1517 \
- lib1520 lib1521 \
+ lib1520 lib1521 lib1522 \
  lib1525 lib1526 lib1527 lib1528 lib1529 lib1530 lib1531 lib1532 lib1533 \
  lib1534 lib1535 lib1536 lib1537 lib1538 \
  lib1540 \
- lib1550 lib1551 lib1552 lib1553 lib1554 \
+ lib1550 lib1551 lib1552 lib1553 lib1554 lib1555 lib1556 lib1557 \
  lib1900 \
  lib2033
+
+chkdecimalpoint_SOURCES = chkdecimalpoint.c ../../lib/mprintf.c \
+ ../../lib/curl_ctype.c
+chkdecimalpoint_LDADD =
+chkdecimalpoint_CPPFLAGS = $(AM_CPPFLAGS) -DCURL_STATICLIB \
+ -DCURLX_NO_MEMORY_CALLBACKS
 
 chkhostname_SOURCES = chkhostname.c ../../lib/curl_gethostname.c
 chkhostname_LDADD = @CURL_NETWORK_LIBS@
@@ -324,6 +332,12 @@ lib652_CPPFLAGS = $(AM_CPPFLAGS)
 lib653_SOURCES = lib653.c $(SUPPORTFILES)
 lib653_CPPFLAGS = $(AM_CPPFLAGS)
 
+lib654_SOURCES = lib654.c $(SUPPORTFILES)
+lib654_CPPFLAGS = $(AM_CPPFLAGS)
+
+lib655_SOURCES = lib655.c $(SUPPORTFILES)
+lib655_CPPFLAGS = $(AM_CPPFLAGS)
+
 lib1500_SOURCES = lib1500.c $(SUPPORTFILES) $(TESTUTIL)
 lib1500_LDADD = $(TESTUTIL_LIBS)
 lib1500_CPPFLAGS = $(AM_CPPFLAGS)
@@ -351,6 +365,10 @@ lib1505_CPPFLAGS = $(AM_CPPFLAGS) -DLIB1505
 lib1506_SOURCES = lib1506.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib1506_LDADD = $(TESTUTIL_LIBS)
 lib1506_CPPFLAGS = $(AM_CPPFLAGS) -DLIB1506
+
+lib1156_SOURCES = lib1156.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
+lib1156_LDADD = $(TESTUTIL_LIBS)
+lib1156_CPPFLAGS = $(AM_CPPFLAGS) -DLIB1156
 
 lib1507_SOURCES = lib1507.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib1507_LDADD = $(TESTUTIL_LIBS)
@@ -394,8 +412,11 @@ lib1517_CPPFLAGS = $(AM_CPPFLAGS) -DLIB1517
 lib1520_SOURCES = lib1520.c $(SUPPORTFILES)
 lib1520_CPPFLAGS = $(AM_CPPFLAGS) -DLIB1520
 
-lib1521_SOURCES = lib1521.c $(SUPPORTFILES)
+nodist_lib1521_SOURCES = lib1521.c $(SUPPORTFILES)
 lib1521_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)
+
+lib1522_SOURCES = lib1522.c $(SUPPORTFILES)
+lib1522_CPPFLAGS = $(AM_CPPFLAGS)
 
 lib1525_SOURCES = lib1525.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib1525_LDADD = $(TESTUTIL_LIBS)
@@ -473,6 +494,18 @@ lib1553_CPPFLAGS = $(AM_CPPFLAGS)
 
 lib1554_SOURCES = lib1554.c $(SUPPORTFILES)
 lib1554_CPPFLAGS = $(AM_CPPFLAGS)
+
+lib1555_SOURCES = lib1555.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
+lib1555_LDADD = $(TESTUTIL_LIBS)
+lib1555_CPPFLAGS = $(AM_CPPFLAGS) -DLIB1555
+
+lib1556_SOURCES = lib1556.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
+lib1556_LDADD = $(TESTUTIL_LIBS)
+lib1556_CPPFLAGS = $(AM_CPPFLAGS) -DLIB1556
+
+lib1557_SOURCES = lib1557.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
+lib1557_LDADD = $(TESTUTIL_LIBS)
+lib1557_CPPFLAGS = $(AM_CPPFLAGS) -DLIB1557
 
 lib1900_SOURCES = lib1900.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib1900_LDADD = $(TESTUTIL_LIBS)

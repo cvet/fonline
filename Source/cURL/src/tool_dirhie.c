@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2016, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -41,9 +41,9 @@
 #  endif
 #endif
 
-#ifdef WIN32
+#if defined(WIN32) || (defined(MSDOS) && !defined(__DJGPP__))
 #  define mkdir(x,y) (mkdir)((x))
-#  ifndef __POCC__
+#  ifndef F_OK
 #    define F_OK 0
 #  endif
 #endif
@@ -91,7 +91,7 @@ static void show_dir_errno(FILE *errors, const char *name)
  *  should create all the dir* automagically
  */
 
-#ifdef WIN32
+#if defined(WIN32) || defined(__DJGPP__)
 /* systems that may use either or when specifying a path */
 #define PATH_DELIMITERS "\\/"
 #else
@@ -139,12 +139,10 @@ CURLcode create_dir_hierarchy(const char *outfile, FILE *errors)
         else
           snprintf(dirbuildup, outlen, "%s%s", DIR_CHAR, tempdir);
       }
-      if(access(dirbuildup, F_OK) == -1) {
-        if(-1 == mkdir(dirbuildup, (mode_t)0000750)) {
-          show_dir_errno(errors, dirbuildup);
-          result = CURLE_WRITE_ERROR;
-          break; /* get out of loop */
-        }
+      if((-1 == mkdir(dirbuildup, (mode_t)0000750)) && (errno != EEXIST)) {
+        show_dir_errno(errors, dirbuildup);
+        result = CURLE_WRITE_ERROR;
+        break; /* get out of loop */
       }
     }
     tempdir = tempdir2;

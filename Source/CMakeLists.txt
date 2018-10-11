@@ -281,12 +281,20 @@ else()
 endif()
 
 if( NOT BUILD_ONLY_CLIENT )
+	# mbed TLS 2.13.0
+	set( USE_STATIC_MBEDTLS_LIBRARY ON CACHE STRING "" FORCE )
+	set( ENABLE_PROGRAMS OFF CACHE STRING "" FORCE )
+	set( ENABLE_TESTING OFF CACHE STRING "" FORCE )
+	add_subdirectory( "mbedTLS" )
+
 	set( CURL_DIR "cURL" ) # curl-7.57.0
 	set( CURL_STATICLIB ON CACHE STRING "" FORCE )
 	set( CURL_CA_PATH "none" CACHE STRING "" FORCE )
 	set( BUILD_CURL_EXE OFF CACHE STRING "" FORCE )
 	set( BUILD_TESTING OFF CACHE STRING "" FORCE )
-	set( CMAKE_USE_OPENSSL OFF CACHE STRING "" FORCE )
+	set( CMAKE_USE_MBEDTLS ON CACHE STRING "" FORCE )
+	set( MBEDTLS_LIBRARIES "mbedcrypto;mbedtls;mbedx509" CACHE STRING "" FORCE )
+	set( MBEDTLS_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/mbedTLS/include" CACHE STRING "" FORCE )
 	add_definitions( "-DCURL_STATICLIB" )
 	add_subdirectory( "cURL" )
 	include_directories( "${CURL_DIR}/include" )
@@ -498,5 +506,5 @@ if( NOT BUILD_ONLY_CLIENT )
 
 	set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 	set_property( TARGET FOnlineServer FOnline Mapper ASCompiler PROPERTY FOLDER "Binaries")
-	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static unqlite PROPERTY FOLDER "Libraries")
+	set_property( TARGET Acm Angelscript AngelscriptExt fltk ${NCODEHOOK} png16_static SDL2main SDL2-static SHA zlibstatic libcurl assimp IrrXML mongoc_static bson_static unqlite mbedcrypto mbedtls mbedx509 PROPERTY FOLDER "Libraries")
 endif()

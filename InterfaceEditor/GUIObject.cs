@@ -227,6 +227,8 @@ namespace InterfaceEditor
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnDraw { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
+		public string OnPostDraw { get; set; }
+		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnMove { get; set; }
 		[Editor(typeof(StringEditor), typeof(UITypeEditor))]
 		public string OnMouseDown { get; set; }

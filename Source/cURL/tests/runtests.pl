@@ -6,7 +6,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) 1998 - 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -152,7 +152,7 @@ my $NEGTELNETPORT;       # TELNET server port with negotiation
 
 my $srcdir = $ENV{'srcdir'} || '.';
 my $CURL="../src/curl".exe_ext(); # what curl executable to run on the tests
-my $VCURL=$CURL;   # what curl binary to use to verify the servers with
+my $VCURL="curl";   # what curl binary to use to verify the servers with
                    # VCURL is handy to set to the system one when the one you
                    # just built hangs or crashes and thus prevent verification
 my $DBGCURL=$CURL; #"../src/.libs/curl";  # alternative for debugging
@@ -195,6 +195,7 @@ my $memdump="$LOGDIR/memdump";
 my $memanalyze="$perl $srcdir/memanalyze.pl";
 
 my $pwd = getcwd();          # current working directory
+my $posix_pwd = $pwd;
 
 my $start;
 my $ftpchecktime=1; # time it took to verify our test FTP server
@@ -235,6 +236,7 @@ my $has_threadedres;# set if built with threaded resolver
 my $has_psl;        # set if libcurl is built with PSL support
 my $has_ldpreload;  # set if curl is built for systems supporting LD_PRELOAD
 my $has_multissl;   # set if curl is build with MultiSSL support
+my $has_manual;     # set if curl is built with built-in manual
 
 # this version is decided by the particular nghttp2 library that is being used
 my $h2cver = "h2c";
@@ -340,6 +342,7 @@ $ENV{'CURL_MEMDEBUG'} = $memdump;
 $ENV{'CURL_ENTROPY'}="12345678";
 $ENV{'CURL_FORCETIME'}=1; # for debug NTLM magic
 $ENV{'HOME'}=$pwd;
+$ENV{'COLUMNS'}=79; # screen width!
 
 sub catch_zap {
     my $signame = shift;
@@ -2771,6 +2774,7 @@ sub checksystem {
             }
            if ($libcurl =~ /winssl/i) {
                $has_winssl=1;
+               $has_sslpinning=1;
                $ssllib="WinSSL";
            }
            elsif ($libcurl =~ /openssl/i) {
@@ -3031,6 +3035,17 @@ sub checksystem {
             "TrackMemory feature (--enable-curldebug)";
     }
 
+    open(M, "$CURL -M 2>&1|");
+    while(my $s = <M>) {
+        if($s =~ /built-in manual was disabled at build-time/) {
+            $has_manual = 0;
+            last;
+        }
+        $has_manual = 1;
+        last;
+    }
+    close(M);
+
     $has_shared = `sh $CURLCONFIG --built-shared`;
     chomp $has_shared;
 
@@ -3186,6 +3201,7 @@ sub subVariables {
 
   $$thing =~ s/%CURL/$CURL/g;
   $$thing =~ s/%PWD/$pwd/g;
+  $$thing =~ s/%POSIX_PWD/$posix_pwd/g;
   $$thing =~ s/%SRCDIR/$srcdir/g;
   $$thing =~ s/%USER/$USER/g;
 
@@ -3467,6 +3483,11 @@ sub singletest {
             }
             elsif($1 eq "PSL") {
                 if($has_psl) {
+                    next;
+                }
+            }
+            elsif($1 eq "manual") {
+                if($has_manual) {
                     next;
                 }
             }
@@ -3907,7 +3928,8 @@ sub singletest {
 
     if((!$cmdhash{'option'}) || ($cmdhash{'option'} !~ /no-output/)) {
         #We may slap on --output!
-        if (!@validstdout) {
+        if (!@validstdout ||
+                ($cmdhash{'option'} && $cmdhash{'option'} =~ /force-output/)) {
             $out=" --output $CURLOUT ";
         }
     }
@@ -4329,6 +4351,7 @@ sub singletest {
         # what parts to cut off from the protocol
         my @strippart = getpart("verify", "strippart");
         my $strip;
+        @strippart = fixarray(@strippart);
         for $strip (@strippart) {
             chomp $strip;
             for(@out) {
