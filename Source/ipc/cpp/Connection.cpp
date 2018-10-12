@@ -27,7 +27,7 @@ void cCallback(IPC_Message* msg){
 	char* name = msg->data + msg->len + sizeof(size_t);
 	IPC::ConnectionCallback cb = (IPC::ConnectionCallback) ht_get(ht, name);
 
-	if (cb != NULL){
+	if (cb){
 		cb(cppMsg);
 	}
 }
