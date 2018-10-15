@@ -166,8 +166,6 @@ public:
 
     // Logging
     static void Log( const string& str );
-    static void LogA( const string& str );
-    static void LogError( const string& call_func, const string& error );
 
     static void CallbackMessage( const asSMessageInfo* msg, void* param );
     static void CallbackException( asIScriptContext* ctx, void* param );

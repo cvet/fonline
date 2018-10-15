@@ -426,6 +426,7 @@ public:
         static bool Global_LoadImage( uint index, string image_name, uint image_depth );
         static uint Global_GetImageColor( uint index, uint x, uint y );
         static void Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result );
+        static void Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result );
     } ScriptFunc;
 };
 

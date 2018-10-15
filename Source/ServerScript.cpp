@@ -3758,7 +3758,7 @@ static size_t WriteMemoryCallback( char* ptr, size_t size, size_t nmemb, void* u
     return len;
 }
 
-void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result )
+static void YieldWebRequest( const string& url, CScriptArray* headers, CScriptDict* post1, const string& post2, bool& success, string& result )
 {
     success = false;
     result = "";
@@ -3772,7 +3772,9 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
         asIScriptContext* Context;
         Thread*           WorkThread;
         string            Url;
-        CScriptDict*      Post;
+        CScriptArray*     Headers;
+        CScriptDict*      Post1;
+        string            Post2;
         bool*             Success;
         string*           Result;
     };
@@ -3781,12 +3783,16 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
     request_data->Context = ctx;
     request_data->WorkThread = new Thread();
     request_data->Url = url;
-    request_data->Post = post;
+    request_data->Headers = headers;
+    request_data->Post1 = post1;
+    request_data->Post2 = post2;
     request_data->Success = &success;
     request_data->Result = &result;
 
-    if( post )
-        post->AddRef();
+    if( headers )
+        headers->AddRef();
+    if( post1 )
+        post1->AddRef();
 
     auto request_func = [] (void* data)
     {
@@ -3809,13 +3815,21 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
             curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
             curl_easy_setopt( curl, CURLOPT_WRITEDATA, &result );
 
-            string post;
-            if( request_data->Post )
+            curl_slist* header_list = nullptr;
+            if( request_data->Headers && request_data->Headers->GetSize() )
             {
-                for( uint i = 0, j = request_data->Post->GetSize(); i < j; i++ )
+                for( uint i = 0, j = request_data->Headers->GetSize(); i < j; i++ )
+                    header_list = curl_slist_append( header_list, ( *(string*) request_data->Headers->At( i ) ).c_str() );
+                curl_easy_setopt( curl, CURLOPT_HTTPHEADER, header_list );
+            }
+
+            string post;
+            if( request_data->Post1 )
+            {
+                for( uint i = 0, j = request_data->Post1->GetSize(); i < j; i++ )
                 {
-                    string& key = *(string*) request_data->Post->GetKey( i );
-                    string& value = *(string*) request_data->Post->GetValue( i );
+                    string& key = *(string*) request_data->Post1->GetKey( i );
+                    string& value = *(string*) request_data->Post1->GetValue( i );
                     char*   escaped_key = curl_easy_escape( curl, key.c_str(), (int) key.length() );
                     char*   escaped_value = curl_easy_escape( curl, value.c_str(), (int) value.length() );
                     if( i > 0 )
@@ -3828,6 +3842,10 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
                 }
                 curl_easy_setopt( curl, CURLOPT_POSTFIELDS, post.c_str() );
             }
+            else if( !request_data->Post2.empty() )
+            {
+                curl_easy_setopt( curl, CURLOPT_POSTFIELDS, request_data->Post2.c_str() );
+            }
 
             CURLcode curl_res = curl_easy_perform( curl );
             if( curl_res == CURLE_OK )
@@ -3839,7 +3857,10 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
                 result = "curl_easy_perform() failed: ";
                 result += curl_easy_strerror( curl_res );
             }
+
             curl_easy_cleanup( curl );
+            if( header_list )
+                curl_slist_free_all( header_list );
         }
         else
         {
@@ -3850,11 +3871,23 @@ void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* pos
         *request_data->Result = result;
         Script::ResumeContext( request_data->Context );
         delete request_data->WorkThread;
-        if( request_data->Post )
-            request_data->Post->Release();
+        if( request_data->Headers )
+            request_data->Headers->Release();
+        if( request_data->Post1 )
+            request_data->Post1->Release();
         delete request_data;
     };
     request_data->WorkThread->Start( request_func, "WebRequest", request_data );
+}
+
+void FOServer::SScriptFunc::Global_YieldWebRequest( string url, CScriptDict* post, bool& success, string& result )
+{
+    YieldWebRequest( url, nullptr, post, "", success, result );
+}
+
+void FOServer::SScriptFunc::Global_YieldWebRequestExt( string url, CScriptArray* headers, string post, bool& success, string& result )
+{
+    YieldWebRequest( url, headers, nullptr, post, success, result );
 }
 
 /************************************************************************/

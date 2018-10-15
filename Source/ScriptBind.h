@@ -333,6 +333,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetImageColor(uint index, uint x, uint y)", SCRIPT_FUNC( BIND_CLASS Global_GetImageColor ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void SetTime(uint16 multiplier, uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", SCRIPT_FUNC( BIND_CLASS Global_SetTime ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(string url, const dict<string, string>@+ post, bool& success, string& result)", SCRIPT_FUNC( BIND_CLASS Global_YieldWebRequest ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void YieldWebRequest(string url, const array<string>@+ headers, string post, bool& success, string& result)", SCRIPT_FUNC( BIND_CLASS Global_YieldWebRequestExt ), SCRIPT_FUNC_CONV ) );
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_MAPPER )

@@ -310,6 +310,7 @@ struct BindClass
     static void Global_GetImageColor()          {}
     static void Global_SetTime()                {}
     static void Global_YieldWebRequest()        {}
+    static void Global_YieldWebRequestExt()     {}
     #endif
 
     #ifdef BIND_CLIENT
