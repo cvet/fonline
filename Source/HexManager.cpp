@@ -471,9 +471,13 @@ void HexManager::FinishItem( uint id, bool is_deleted )
     item->Finish();
     if( is_deleted )
         item->SetHideAnim();
+
+    #ifdef FONLINE_MAPPER
+    DeleteItem( item );
+    #endif
 }
 
-void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, ItemHexVec::iterator* it_hex_items /* = NULL */ )
+void HexManager::DeleteItem( ItemHex* item, bool destroy_item /* = true */, ItemHexVec::iterator* it_hex_items /* = nullptr */ )
 {
     ushort hx = item->GetHexX();
     ushort hy = item->GetHexY();
