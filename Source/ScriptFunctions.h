@@ -366,3 +366,8 @@ static Item* Global_GetProtoItem( hash pid, CScriptDict* props )
     return nullptr;
     #endif
 }
+
+static uint Global_GetUnixTime()
+{
+    return (uint) time( nullptr );
+}

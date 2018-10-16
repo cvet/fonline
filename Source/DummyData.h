@@ -532,6 +532,7 @@ struct BindClass
     static void Global_AllowSlot()     {}
     static void Global_GetProtoItem()  {}
     static void Global_GetDistantion() {}
+    static void Global_GetUnixTime()   {}
 };
 
 #ifdef BIND_CLIENT
