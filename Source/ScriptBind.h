@@ -865,7 +865,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "int SystemCall(string command, string& output)", SCRIPT_FUNC( Global_SystemCallExt ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void OpenLink(string link)", SCRIPT_FUNC( Global_OpenLink ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "const Item@ GetProtoItem(hash protoId, dict<ItemProperty, int>@+ props = null)", SCRIPT_FUNC( Global_GetProtoItem ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetUnixTime()", SCRIPT_FUNC( BIND_CLASS Global_GetUnixTime ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetUnixTime()", SCRIPT_FUNC( Global_GetUnixTime ), SCRIPT_FUNC_CONV ) );
 
     /************************************************************************/
     /*                                                                      */
