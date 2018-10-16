@@ -3814,6 +3814,7 @@ static void YieldWebRequest( const string& url, CScriptArray* headers, CScriptDi
             curl_easy_setopt( curl, CURLOPT_URL, request_data->Url.c_str() );
             curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
             curl_easy_setopt( curl, CURLOPT_WRITEDATA, &result );
+            curl_easy_setopt( curl, CURLOPT_SSL_VERIFYPEER, 0 );
 
             curl_slist* header_list = nullptr;
             if( request_data->Headers && request_data->Headers->GetSize() )
