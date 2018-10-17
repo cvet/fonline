@@ -4297,6 +4297,7 @@ void FOClient::Net_OnUpdateFileData()
         {
             string from_path = FileManager::GetWritePath( "Update.bin" );
             string to_path = FileManager::GetWritePath( update_file.Name );
+            FileManager::DeleteFile( to_path );
             if( !FileManager::RenameFile( from_path, to_path ) )
             {
                 UpdateFilesAbort( STR_FILESYSTEM_ERROR, _str( "Can't rename file '{}' to '{}'!", from_path, to_path ) );
