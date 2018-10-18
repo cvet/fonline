@@ -224,6 +224,15 @@ void ItemHex::SetFade( bool fade_up )
     fading = true;
 }
 
+void ItemHex::SkipFade()
+{
+    if( fading )
+    {
+        fading = false;
+        Alpha = ( fadeUp ? maxAlpha : 0 );
+    }
+}
+
 void ItemHex::RefreshAnim()
 {
     Anim = nullptr;

@@ -87,6 +87,9 @@ private:
 
     void SetFade( bool fade_up );
 
+public:
+    void SkipFade();
+
     // Animation
 public:
     void StartAnimate();

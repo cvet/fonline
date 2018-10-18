@@ -553,6 +553,12 @@ void HexManager::ProcessItems()
     }
 }
 
+void HexManager::SkipItemsFade()
+{
+    for( auto& item : hexItems )
+        item->SkipFade();
+}
+
 bool ItemCompScen( ItemHex* o1, ItemHex* o2 ) { return o1->IsScenery() && !o2->IsScenery(); }
 bool ItemCompWall( ItemHex* o1, ItemHex* o2 ) { return o1->IsWall() && !o2->IsWall(); }
 void HexManager::PushItem( ItemHex* item )

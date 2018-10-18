@@ -307,6 +307,7 @@ public:
     ItemHexVec& GetItems() { return hexItems; }
     Rect        GetRectForText( ushort hx, ushort hy );
     void        ProcessItems();
+    void        SkipItemsFade();
 
     // Light
 private:

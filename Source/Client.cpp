@@ -3154,7 +3154,7 @@ void FOClient::Net_OnAllProperties()
 
     if( !Chosen )
     {
-        WriteLog( "chosen not created, skip.\n" );
+        WriteLog( "Chosen not created, skip.\n" );
         return;
     }
 
@@ -3504,6 +3504,7 @@ void FOClient::Net_OnEndParseToGame()
 
     if( CurMapPid )
     {
+        HexMngr.SkipItemsFade();
         HexMngr.FindSetCenter( Chosen->GetHexX(), Chosen->GetHexY() );
         Chosen->AnimateStay();
         ShowMainScreen( SCREEN_GAME );
