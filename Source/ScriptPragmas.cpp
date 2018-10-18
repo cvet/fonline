@@ -945,9 +945,7 @@ class EventPragma
 public:
         typedef vector< asIScriptFunction* >           FuncVec;
         typedef multimap< uint64, asIScriptFunction* > FuncMulMap;
-        typedef FuncMulMap::iterator                   FuncMulMapIt;
-        typedef pair< FuncMulMap*, FuncMulMapIt >      FuncMulMapItRef;
-        typedef multimap< Entity*, FuncMulMapItRef >   EntityFuncRefMulMap;
+        typedef multimap< Entity*, FuncMulMap* >       EntityFuncMulMap;
 
         struct ArgInfo
         {
@@ -959,12 +957,12 @@ public:
         };
         typedef vector< ArgInfo > ArgInfoVec;
 
-        string               Name;
-        mutable int          RefCount;
-        bool                 Deferred;
-        FuncVec              Callbacks;
-        ArgInfoVec           ArgInfos;
-        EntityFuncRefMulMap* EntityCallbacks;
+        string            Name;
+        mutable int       RefCount;
+        bool              Deferred;
+        FuncVec           Callbacks;
+        ArgInfoVec        ArgInfos;
+        EntityFuncMulMap* EntityCallbacks;
 
         ScriptEvent()
         {
@@ -1027,10 +1025,10 @@ public:
 
             asIScriptFunction* callback = (asIScriptFunction*) gen->GetArgObject( 1 );
             callback->AddRef();
-            auto               it = arg_info.Callbacks.insert( std::make_pair( value, callback ) );
+            arg_info.Callbacks.insert( std::make_pair( value, callback ) );
 
             if( arg_info.IsObjectEntity )
-                event->EntityCallbacks->insert( std::make_pair( (Entity*) gen->GetArgObject( 0 ), std::make_pair( &arg_info.Callbacks, it ) ) );
+                event->EntityCallbacks->insert( std::make_pair( (Entity*) gen->GetArgObject( 0 ), &arg_info.Callbacks ) );
         }
 
         static void UnsubscribeFrom( asIScriptGeneric* gen )
@@ -1057,7 +1055,8 @@ public:
                 if( arg_info.IsObjectEntity )
                 {
                     auto range_ = event->EntityCallbacks->equal_range( (Entity*) gen->GetArgObject( 0 ) );
-                    auto it_ = std::find_if( range_.first, range_.second, [ &it ] ( EntityFuncRefMulMap::value_type & kv ) { return kv.second.second == it; } );
+                    auto cb_ptr = &arg_info.Callbacks;
+                    auto it_ = std::find_if( range_.first, range_.second, [ &cb_ptr ] ( EntityFuncMulMap::value_type & kv ) { return kv.second == cb_ptr; } );
                     RUNTIME_ASSERT( it_ != range_.second );
                     event->EntityCallbacks->erase( it_ );
                 }
@@ -1082,11 +1081,20 @@ public:
             }
 
             // Entity callbacks
-            for( auto it = EntityCallbacks->begin(); it != EntityCallbacks->end(); ++it )
+            for( auto it = EntityCallbacks->begin(); it != EntityCallbacks->end();)
             {
+                bool erased = false;
                 for( auto it_ = ArgInfos.begin(); it_ != ArgInfos.end(); ++it_ )
-                    if( it->second.first == &it_->Callbacks )
-                        it->second.first->erase( it->second.second );
+                {
+                    if( it->second == &it_->Callbacks )
+                    {
+                        it = EntityCallbacks->erase( it );
+                        erased = true;
+                        break;
+                    }
+                }
+                if( !erased )
+                    ++it;
             }
         }
 
@@ -1226,8 +1234,8 @@ public:
         }
     };
 
-    list< ScriptEvent* >             events;
-    ScriptEvent::EntityFuncRefMulMap entityCallbacks;
+    list< ScriptEvent* >          events;
+    ScriptEvent::EntityFuncMulMap entityCallbacks;
 
 public:
     EventPragma()
@@ -1368,7 +1376,11 @@ public:
         if( range.first != range.second )
         {
             for( auto it = range.first; it != range.second; ++it )
-                it->second.first->erase( it->second.second );
+            {
+                auto range_ = it->second->equal_range( (uint64) entity );
+                RUNTIME_ASSERT( range_.first != range_.second );
+                it->second->erase( range_.first );
+            }
             entityCallbacks.erase( range.first, range.second );
         }
     }
