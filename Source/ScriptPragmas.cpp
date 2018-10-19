@@ -1061,6 +1061,7 @@ public:
                     event->EntityCallbacks->erase( it_ );
                 }
 
+                it->second->Release();
                 arg_info.Callbacks.erase( it );
             }
         }

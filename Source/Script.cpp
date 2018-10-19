@@ -122,6 +122,8 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
             return false;
     }
 
+    if( !BindedFunctions.empty() )
+        BindedFunctions[ 1 ].ScriptFunc = nullptr;
     for( auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it )
         it->Clear();
     BindedFunctions.clear();
@@ -323,6 +325,8 @@ void Script::Finish()
     ScriptWatcherThread.Wait();
     #endif
 
+    if( !BindedFunctions.empty() )
+        BindedFunctions[ 1 ].ScriptFunc = nullptr;
     for( auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it )
         it->Clear();
     BindedFunctions.clear();
@@ -1294,8 +1298,8 @@ uint Script::BindByFuncName( const string& func_name, const string& decl, bool i
             func_decl = func_name;
 
         asIScriptModule*   module = Engine->GetModuleByIndex( 0 );
-        asIScriptFunction* script_func = module->GetFunctionByDecl( func_decl.c_str() );
-        if( !script_func )
+        asIScriptFunction* func = module->GetFunctionByDecl( func_decl.c_str() );
+        if( !func )
         {
             if( !disable_log )
                 WriteLog( "Function '{}' not found.\n", func_decl );
@@ -1306,7 +1310,7 @@ uint Script::BindByFuncName( const string& func_name, const string& decl, bool i
         if( is_temp )
         {
             BindedFunctions[ 1 ].IsScriptCall = true;
-            BindedFunctions[ 1 ].ScriptFunc = script_func;
+            BindedFunctions[ 1 ].ScriptFunc = func;
             BindedFunctions[ 1 ].NativeFuncAddr = 0;
             return 1;
         }
@@ -1315,12 +1319,12 @@ uint Script::BindByFuncName( const string& func_name, const string& decl, bool i
         for( int i = 2, j = (int) BindedFunctions.size(); i < j; i++ )
         {
             BindFunction& bf = BindedFunctions[ i ];
-            if( bf.IsScriptCall && bf.ScriptFunc == script_func )
+            if( bf.IsScriptCall && bf.ScriptFunc == func )
                 return i;
         }
 
         // Create new bind
-        BindedFunctions.push_back( BindFunction( script_func ) );
+        BindedFunctions.push_back( BindFunction( func ) );
     }
     else
     {

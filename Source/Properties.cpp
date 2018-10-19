@@ -3057,7 +3057,7 @@ Property* PropertyRegistrator::Register(
         }
 
         is_int_data_type = ( type_id >= asTYPEID_INT8 && type_id <= asTYPEID_UINT64 );
-        is_signed_int_data_type = ( type_id >= asTYPEID_INT8 && asTYPEID_UINT8 <= asTYPEID_INT64 );
+        is_signed_int_data_type = ( type_id >= asTYPEID_INT8 && type_id <= asTYPEID_INT64 );
         is_float_data_type = ( type_id == asTYPEID_FLOAT || type_id == asTYPEID_DOUBLE );
         is_bool_data_type = ( type_id == asTYPEID_BOOL );
         is_enum_data_type = ( type_id > asTYPEID_DOUBLE );

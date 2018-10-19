@@ -478,7 +478,7 @@ int asCContext::Prepare(asIScriptFunction *func)
 #if 0 // Patch
 	m_regs.stackFramePointer = m_regs.stackPointer - m_argumentsSize - m_returnValueSize;
 #else
-	int size = m_argumentsSize - m_returnValueSize;
+	int size = m_argumentsSize + m_returnValueSize;
 	m_regs.stackFramePointer = m_regs.stackPointer - size - (size % 2 == 1 ? 1 : 0);
 #endif
 	m_originalStackPointer   = m_regs.stackPointer;
@@ -1201,7 +1201,7 @@ int asCContext::Execute()
 		if( m_currentFunction->funcType == asFUNC_DELEGATE )
 		{
 			// Push the object pointer onto the stack
-#if 0 // Patch
+#if 1 // Patch
 			asASSERT( m_regs.stackPointer - AS_PTR_SIZE >= m_stackBlocks[m_stackIndex] );
 			m_regs.stackPointer -= AS_PTR_SIZE;
 			m_regs.stackFramePointer -= AS_PTR_SIZE;
