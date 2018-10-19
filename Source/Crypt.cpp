@@ -237,12 +237,6 @@ uchar* CryptManager::Uncompress( const uchar* data, uint& data_len, uint mul_app
         return nullptr;
     }
 
-    if( data_len < 2 || *(ushort*) data != 0x9C78 )
-    {
-        WriteLog( "Unpack signature not found.\n" );
-        return nullptr;
-    }
-
     uchar* buf = new uchar[ buf_len ];
     while( true )
     {
