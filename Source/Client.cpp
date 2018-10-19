@@ -6404,6 +6404,7 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( Loop );
     BIND_INTERNAL_EVENT( GetActiveScreens );
     BIND_INTERNAL_EVENT( ScreenChange );
+    BIND_INTERNAL_EVENT( ScreenScroll );
     BIND_INTERNAL_EVENT( RenderIface );
     BIND_INTERNAL_EVENT( RenderMap );
     BIND_INTERNAL_EVENT( MouseDown );

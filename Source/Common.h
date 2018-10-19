@@ -285,6 +285,7 @@ struct ClientScriptFunctions
     void* Loop;
     void* GetActiveScreens;
     void* ScreenChange;
+    void* ScreenScroll;
     void* RenderIface;
     void* RenderMap;
     void* MouseDown;

@@ -2178,6 +2178,8 @@ bool HexManager::Scroll()
                        GameOpt.ScrollMouseDown || GameOpt.ScrollKeybDown );
     int scr_ox = GameOpt.ScrOx;
     int scr_oy = GameOpt.ScrOy;
+    int prev_scr_ox = scr_ox;
+    int prev_scr_oy = scr_oy;
 
     if( is_scroll && AutoScroll.CanStop )
         AutoScroll.Active = false;
@@ -2203,12 +2205,14 @@ bool HexManager::Scroll()
         }
     }
 
+    int xscroll = 0;
+    int yscroll = 0;
     if( AutoScroll.Active )
     {
         AutoScroll.OffsXStep += AutoScroll.OffsX * AutoScroll.Speed * time_k;
         AutoScroll.OffsYStep += AutoScroll.OffsY * AutoScroll.Speed * time_k;
-        int xscroll = (int) AutoScroll.OffsXStep;
-        int yscroll = (int) AutoScroll.OffsYStep;
+        xscroll = (int) AutoScroll.OffsXStep;
+        yscroll = (int) AutoScroll.OffsYStep;
         if( xscroll > SCROLL_OX )
         {
             xscroll = SCROLL_OX;
@@ -2238,17 +2242,11 @@ bool HexManager::Scroll()
             return false;
         if( !DistSqrt( 0, 0, (int) AutoScroll.OffsX, (int) AutoScroll.OffsY ) )
             AutoScroll.Active = false;
-
-        scr_ox += xscroll;
-        scr_oy += yscroll;
     }
     else
     {
         if( !is_scroll )
             return false;
-
-        int xscroll = 0;
-        int yscroll = 0;
 
         if( GameOpt.ScrollMouseLeft || GameOpt.ScrollKeybLeft )
             xscroll += 1;
@@ -2261,9 +2259,11 @@ bool HexManager::Scroll()
         if( !xscroll && !yscroll )
             return false;
 
-        scr_ox += (int) ( xscroll * GameOpt.ScrollStep * GameOpt.SpritesZoom * time_k );
-        scr_oy += (int) ( yscroll * ( GameOpt.ScrollStep * SCROLL_OY / SCROLL_OX ) * GameOpt.SpritesZoom * time_k );
+        xscroll = (int) ( xscroll * GameOpt.ScrollStep * GameOpt.SpritesZoom * time_k );
+        yscroll = (int) ( yscroll * ( GameOpt.ScrollStep * SCROLL_OY / SCROLL_OX ) * GameOpt.SpritesZoom * time_k );
     }
+    scr_ox += xscroll;
+    scr_oy += yscroll;
 
     if( GameOpt.ScrollCheck )
     {
@@ -2280,9 +2280,13 @@ bool HexManager::Scroll()
         if( ( xmod || ymod ) && ScrollCheck( xmod, ymod ) )
         {
             if( xmod && ymod && !ScrollCheck( 0, ymod ) )
+            {
                 scr_ox = 0;
+            }
             else if( xmod && ymod && !ScrollCheck( xmod, 0 ) )
+            {
                 scr_oy = 0;
+            }
             else
             {
                 if( xmod )
@@ -2347,12 +2351,12 @@ bool HexManager::Scroll()
                 GameOpt.ScrOy = 0;
         }
     }
-    else
-    {
-        return false;
-    }
 
-    return true;
+    int final_scr_ox = GameOpt.ScrOx - prev_scr_ox + xmod * SCROLL_OX;
+    int final_scr_oy = GameOpt.ScrOy - prev_scr_oy + ( -ymod / 2 ) * SCROLL_OY;
+    Script::RaiseInternalEvent( ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy );
+
+    return xmod || ymod;
 }
 
 bool HexManager::ScrollCheckPos( int(&positions)[ 4 ], int dir1, int dir2 )
