@@ -204,7 +204,7 @@ uchar* CryptManager::Compress( const uchar* data, uint& data_len )
     uLongf buf_len = data_len * 110 / 100 + 12;
     uchar* buf = new uchar[ buf_len ];
 
-    if( compress( buf, &buf_len, data, data_len ) != Z_OK )
+    if( compress2( buf, &buf_len, data, data_len, Z_BEST_SPEED ) != Z_OK )
     {
         SAFEDELA( buf );
         return nullptr;
@@ -222,6 +222,7 @@ bool CryptManager::Compress( UCharVec& data )
         return false;
 
     data.resize( result_len );
+    UCharVec( data ).swap( data );
     memcpy( &data[ 0 ], result, result_len );
     SAFEDELA( result );
     return true;
