@@ -2354,7 +2354,8 @@ bool HexManager::Scroll()
 
     int final_scr_ox = GameOpt.ScrOx - prev_scr_ox + xmod * SCROLL_OX;
     int final_scr_oy = GameOpt.ScrOy - prev_scr_oy + ( -ymod / 2 ) * SCROLL_OY;
-    Script::RaiseInternalEvent( ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy );
+    if( final_scr_ox || final_scr_oy )
+        Script::RaiseInternalEvent( ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy );
 
     return xmod || ymod;
 }
