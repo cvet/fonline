@@ -106,6 +106,11 @@ bool SpriteManager::Init()
         window_create_flags |= SDL_WINDOW_FULLSCREEN;
         window_create_flags |= SDL_WINDOW_BORDERLESS;
     }
+    #ifdef FO_OGL_ES
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
+    #endif
     MainWindow = SDL_CreateWindow( MainConfig->GetStr( "", "WindowName", "FOnline" ).c_str(), SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED, GameOpt.ScreenWidth, GameOpt.ScreenHeight, window_create_flags );
     if( !MainWindow )
@@ -114,25 +119,7 @@ bool SpriteManager::Init()
         return false;
     }
 
-    #ifdef FO_OGL_ES
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
-    #endif
     GLContext = SDL_GL_CreateContext( MainWindow );
-    #ifdef FO_OGL_ES
-    if( !GLContext )
-    {
-        SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
-        GLContext = SDL_GL_CreateContext( MainWindow );
-        if( GLContext )
-            WriteLog( "Created ES2 OpenGL context.\n" );
-    }
-    else
-    {
-        WriteLog( "Created ES3 OpenGL context.\n" );
-    }
-    #endif
     if( !GLContext )
     {
         WriteLog( "OpenGL context not created, error '{}'.\n", SDL_GetError() );
