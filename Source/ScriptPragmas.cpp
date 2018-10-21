@@ -996,14 +996,22 @@ public:
 
         void Unsubscribe( asIScriptFunction* callback )
         {
-            if( !Callbacks.empty() )
+            if( Callbacks.empty() )
+                return;
+
+            auto it = std::find( Callbacks.begin(), Callbacks.end(), callback );
+            if( it == Callbacks.end() && callback->GetFuncType() == asFUNC_DELEGATE )
             {
-                auto it = std::find( Callbacks.begin(), Callbacks.end(), callback );
-                if( it != Callbacks.end() )
-                {
-                    ( *it )->Release();
-                    Callbacks.erase( it );
-                }
+                it = std::find_if( Callbacks.begin(), Callbacks.end(), [ &callback ] ( asIScriptFunction * cb )
+                                   {
+                                       return cb->GetFuncType() == asFUNC_DELEGATE && cb->GetDelegateFunction() == callback->GetDelegateFunction();
+                                   } );
+            }
+
+            if( it != Callbacks.end() )
+            {
+                ( *it )->Release();
+                Callbacks.erase( it );
             }
         }
 
@@ -1049,6 +1057,14 @@ public:
             // Erase from arg callbacks
             auto range = arg_info.Callbacks.equal_range( value );
             auto it = std::find_if( range.first, range.second, [ &callback ] ( FuncMulMap::value_type & kv ) { return kv.second == callback; } );
+            if( it == range.second && callback->GetFuncType() == asFUNC_DELEGATE )
+            {
+                it = std::find_if( range.first, range.second, [ &callback ] ( FuncMulMap::value_type & kv )
+                                   {
+                                       return kv.second->GetFuncType() == asFUNC_DELEGATE && kv.second->GetDelegateFunction() == callback->GetDelegateFunction();
+                                   } );
+            }
+
             if( it != range.second )
             {
                 // Erase from entity callbacks
