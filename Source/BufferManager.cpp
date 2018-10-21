@@ -189,6 +189,8 @@ bool BufferManager::NeedProcess()
     {
     case 0xFFFFFFFF:
         return true;                                                                 // Ping
+    case NETMSG_DISCONNECT:
+        return ( NETMSG_DISCONNECT_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_LOGIN:
         return ( NETMSG_LOGIN_SIZE + bufReadPos <= bufEndPos );
     case NETMSG_WRONG_NET_PROTO:
@@ -372,6 +374,9 @@ void BufferManager::SkipMsg( uint msg )
     {
     case 0xFFFFFFFF:
         size = 16;
+        break;
+    case NETMSG_DISCONNECT:
+        size = NETMSG_DISCONNECT_SIZE;
         break;
     case NETMSG_LOGIN:
         size = NETMSG_LOGIN_SIZE;

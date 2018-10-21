@@ -1883,6 +1883,9 @@ void FOClient::NetProcess()
 
         switch( msg )
         {
+        case NETMSG_DISCONNECT:
+            NetDisconnect();
+            break;
         case NETMSG_WRONG_NET_PROTO:
             Net_OnWrongNetProto();
             break;
@@ -2315,8 +2318,6 @@ void FOClient::Net_OnWrongNetProto()
         UpdateFilesAbort( STR_CLIENT_OUTDATED, "Client outdated!" );
     else
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_CLIENT_OUTDATED ) );
-
-    GameOpt.Quit = true;
 }
 
 void FOClient::Net_OnLoginSuccess()

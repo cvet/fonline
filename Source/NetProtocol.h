@@ -15,14 +15,15 @@
 // 4 - players in game
 // 12 - reserved
 
-// Fixed headers
-// NETMSG_LOGIN
-// NETMSG_CREATE_CLIENT
-// NETMSG_NET_SETTINGS
-
 // ************************************************************************
 // LOGIN MESSAGES
 // ************************************************************************
+
+#define NETMSG_DISCONNECT                   MAKE_NETMSG_HEADER( 10 )
+#define NETMSG_DISCONNECT_SIZE              ( sizeof( uint ) )
+// ////////////////////////////////////////////////////////////////////////
+// Disconnect
+// ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_LOGIN                        MAKE_NETMSG_HEADER( 1 )
 #define NETMSG_LOGIN_SIZE \

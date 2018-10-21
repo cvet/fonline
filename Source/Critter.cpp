@@ -1842,7 +1842,9 @@ bool Client::IsOffline()
 
 void Client::Disconnect()
 {
-    Connection->Disconnect();
+    BOUT_BEGIN( this );
+    Connection->Bout << NETMSG_DISCONNECT;
+    BOUT_END( this );
 }
 
 void Client::RemoveFromGame()

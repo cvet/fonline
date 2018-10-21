@@ -222,15 +222,8 @@ class NetConnectionAsio: public NetConnectionImpl
 
     virtual void DisconnectImpl() override
     {
-        if( !writePending )
-        {
-            socket->shutdown( asio::ip::tcp::socket::shutdown_both, dummyError );
-            socket->close( dummyError );
-        }
-        else
-        {
-            socket->shutdown( asio::ip::tcp::socket::shutdown_receive, dummyError );
-        }
+        socket->shutdown( asio::ip::tcp::socket::shutdown_both, dummyError );
+        socket->close( dummyError );
     }
 
 public:
