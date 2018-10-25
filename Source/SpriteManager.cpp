@@ -281,6 +281,8 @@ bool SpriteManager::Init()
         AnyFrames::SetDummy( DummyAnimation );
     }
 
+    Sprites::GrowPool();
+
     WriteLog( "Sprite manager initialization complete.\n" );
     return true;
 }
@@ -3772,8 +3774,8 @@ void SpriteManager::GetDrawRect( Sprite* prep, Rect& rect )
     if( !si )
         return;
 
-    int x = prep->ScrX - si->Width / 2 + si->OffsX;
-    int y = prep->ScrY - si->Height + si->OffsY;
+    int x = prep->ScrX - si->Width / 2 + si->OffsX + *prep->PScrX;
+    int y = prep->ScrY - si->Height + si->OffsY + *prep->PScrY;
     if( prep->OffsX )
         x += *prep->OffsX;
     if( prep->OffsY )
@@ -3854,8 +3856,8 @@ void SpriteManager::SetEgg( ushort hx, ushort hy, Sprite* spr )
     if( !si )
         return;
 
-    eggX = spr->ScrX + si->OffsX - sprEgg->Width / 2 + *spr->OffsX;
-    eggY = spr->ScrY - si->Height / 2 + si->OffsY - sprEgg->Height / 2 + *spr->OffsY;
+    eggX = spr->ScrX + si->OffsX - sprEgg->Width / 2 + *spr->OffsX + *spr->PScrX;
+    eggY = spr->ScrY - si->Height / 2 + si->OffsY - sprEgg->Height / 2 + *spr->OffsY + *spr->PScrY;
     eggHx = hx;
     eggHy = hy;
     eggValid = true;
@@ -3874,12 +3876,9 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
     int  ey = eggY + GameOpt.ScrOy;
     uint cur_tick = Timer::FastTick();
 
-    for( auto it = dtree.Begin(), end = dtree.End(); it != end; ++it )
+    for( Sprite* spr = dtree.RootSprite(); spr; spr = spr->ChainChild )
     {
-        // Data
-        Sprite* spr = *it;
-        if( !spr->Valid )
-            continue;
+        RUNTIME_ASSERT( spr->Valid );
 
         if( spr->DrawOrderType < draw_oder_from )
             continue;
@@ -3892,8 +3891,8 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
             continue;
 
         // Coords
-        int x = spr->ScrX - si->Width / 2 + si->OffsX;
-        int y = spr->ScrY - si->Height + si->OffsY;
+        int x = spr->ScrX - si->Width / 2 + si->OffsX + *spr->PScrX;
+        int y = spr->ScrY - si->Height + si->OffsY + *spr->PScrY;
         if( !prerender )
         {
             x += GameOpt.ScrOx;
@@ -3965,7 +3964,7 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 }
                 tick = cur_tick + 100;
             }
-            static auto flush_func = [] ( uint & c, int cnt, uint mask )
+            static auto flash_func = [] ( uint & c, int cnt, uint mask )
             {
                 int r = ( ( c >> 16 ) & 0xFF ) + cnt;
                 int g = ( ( c >> 8 ) & 0xFF ) + cnt;
@@ -3978,8 +3977,8 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 ( (uchar*) &c )[ 0 ] = b;
                 c &= mask;
             };
-            flush_func( color_r, cnt, spr->FlashMask );
-            flush_func( color_l, cnt, spr->FlashMask );
+            flash_func( color_r, cnt, spr->FlashMask );
+            flash_func( color_l, cnt, spr->FlashMask );
         }
 
         // Fix color
@@ -3993,7 +3992,6 @@ bool SpriteManager::DrawSprites( Sprites& dtree, bool collect_contours, bool use
                 continue;
         }
 
-        // 2d sprite
         // Egg process
         #ifndef DISABLE_EGG
         bool egg_added = false;

@@ -31,7 +31,6 @@ static string ManualDumpMessage;
 
 static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except );
 
-# pragma MESSAGE( "Dump AS stack trace?" )
 static void DumpAngelScript( FILE* f );
 
 // Old version of the structure, used before Vista
@@ -166,7 +165,7 @@ static LONG WINAPI TopLevelFilterReadableDump( EXCEPTION_POINTERS* except )
         }
 
         // AngelScript dump
-        // DumpAngelScript( f );
+        DumpAngelScript( f );
 
         // Collect current threads
         HANDLE process = GetCurrentProcess();
@@ -598,7 +597,7 @@ static void TerminationHandler( int signum, siginfo_t* siginfo, void* context )
         }
 
         // AngelScript dump
-        // DumpAngelScript( f );
+        DumpAngelScript( f );
 
         // Threads
         # ifndef NO_THREADING

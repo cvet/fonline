@@ -4,7 +4,9 @@
 #include "GraphicStructures.h"
 
 #define SPRITES_POOL_GROW_SIZE    ( 10000 )
-#define SPRITES_RESIZE_COUNT      ( 100 )
+
+class Sprite;
+typedef vector< Sprite* > SpriteVec;
 
 class Sprite
 {
@@ -16,6 +18,7 @@ public:
     uint*      PSprId;
     int        HexX, HexY;
     int        ScrX, ScrY;
+    int*       PScrX, * PScrY;
     short*     OffsX, * OffsY;
     int        CutType;
     Sprite*    Parent, * Child;
@@ -33,6 +36,14 @@ public:
     bool*      ValidCallback;
     bool       Valid;
     MapSprite* MapSpr;
+    Sprite**   ExtraChainRoot;
+    Sprite*    ExtraChainParent;
+    Sprite*    ExtraChainChild;
+    Sprite**   ChainRoot;
+    Sprite**   ChainLast;
+    Sprite*    ChainParent;
+    Sprite*    ChainChild;
+    SpriteVec* UnvalidatedPlace;
 
     #ifdef FONLINE_MAPPER
     int CutOyL, CutOyR;
@@ -51,34 +62,28 @@ public:
     void SetLight( int corner, uchar* light, int maxhx, int maxhy );
     void SetFixedAlpha( uchar alpha );
 };
-typedef vector< Sprite* > SpriteVec;
 
 class Sprites
 {
 private:
-    // Pool
     static SpriteVec spritesPool;
-    static void GrowPool( uint size );
-    static void ClearPool();
-
-    // Data
-    SpriteVec spritesTree;
-    uint      spritesTreeSize;
-    Sprite&   PutSprite( uint index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
+    Sprite*          rootSprite;
+    Sprite*          lastSprite;
+    uint             spriteCount;
+    SpriteVec        unvalidatedSprites;
+    Sprite&          PutSprite( Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
 
 public:
-    Sprites(): spritesTreeSize( 0 ) {}
-    ~Sprites() { Resize( 0 ); }
-    SpriteVec::iterator Begin() { return spritesTree.begin(); }
-    SpriteVec::iterator End()   { return spritesTree.begin() + spritesTreeSize; }
-    uint                Size()  { return spritesTreeSize; }
-    Sprite&             AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
-    Sprite& InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
-    void    Resize( uint size );
-    void    Clear() { Resize( 0 ); }
+    static void GrowPool();
+    Sprites();
+    ~Sprites();
+    Sprite* RootSprite();
+    Sprite& AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
+    Sprite& InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback );
     void    Unvalidate();
-    void    SortBySurfaces();
     void    SortByMapPos();
+    uint    Size();
+    void    Clear();
 };
 
 #endif // __SPRITES__

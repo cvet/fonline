@@ -40,8 +40,9 @@ bool FOMapper::Init()
         {
             Sprites& tree = Self->HexMngr.GetDrawTree();
             count = tree.Size();
-            if( !count ) return nullptr;
-            return &( *tree.Begin() );
+            if( !count )
+                return nullptr;
+            return tree.RootSprite();
         }
     };
     GameOpt.GetDrawingSprites = &GetDrawingSprites_::GetDrawingSprites;
@@ -72,8 +73,8 @@ bool FOMapper::Init()
             if( !sprite_ || !sprite_->Valid ) return false;
             SpriteInfo* si = SprMngr.GetSpriteInfo( sprite_->PSprId ? *sprite_->PSprId : sprite_->SprId );
             if( !si ) return false;
-            int         sx = sprite_->ScrX - si->Width / 2 + si->OffsX + GameOpt.ScrOx + ( sprite_->OffsX ? *sprite_->OffsX : 0 );
-            int         sy = sprite_->ScrY - si->Height + si->OffsY + GameOpt.ScrOy + ( sprite_->OffsY ? *sprite_->OffsY : 0 );
+            int         sx = sprite_->ScrX - si->Width / 2 + si->OffsX + GameOpt.ScrOx + ( sprite_->OffsX ? *sprite_->OffsX : 0 ) + *sprite_->PScrX;
+            int         sy = sprite_->ScrY - si->Height + si->OffsY + GameOpt.ScrOy + ( sprite_->OffsY ? *sprite_->OffsY : 0 ) + *sprite_->PScrY;
             if( !( sprite_ = sprite_->GetIntersected( x - sx, y - sy ) ) ) return false;
             if( check_egg && SprMngr.CompareHexEgg( sprite_->HexX, sprite_->HexY, sprite_->EggType ) && SprMngr.IsEggTransp( x, y ) ) return false;
             return true;
@@ -5672,7 +5673,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
     if( !map_spr )
         SCRIPT_ERROR_R( "Map sprite arg is null." );
 
-    if( !Self->HexMngr.GetHexToDraw( map_spr->HexX, map_spr->HexY ) )
+    if( !Self->HexMngr.IsHexToDraw( map_spr->HexX, map_spr->HexY ) )
         return;
 
     AnyFrames* anim = Self->AnimGetFrames( map_spr->SprId );
@@ -5708,7 +5709,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
     Field&   f = Self->HexMngr.GetField( map_spr->HexX, map_spr->HexY );
     Sprites& tree = Self->HexMngr.GetDrawTree();
     Sprite&  spr = tree.InsertSprite( draw_order, map_spr->HexX, map_spr->HexY + draw_order_hy_offset, 0,
-                                      f.ScrX + HEX_OX + map_spr->OffsX, f.ScrY + HEX_OY + map_spr->OffsY,
+                                      HEX_OX + map_spr->OffsX, HEX_OY + map_spr->OffsY, &f.ScrX, &f.ScrY,
                                       map_spr->FrameIndex < 0 ? anim->GetCurSprId() : anim->GetSprId( map_spr->FrameIndex ),
                                       nullptr, map_spr->IsTweakOffs ? &map_spr->TweakOffsX : nullptr, map_spr->IsTweakOffs ? &map_spr->TweakOffsY : nullptr,
                                       map_spr->IsTweakAlpha ? &map_spr->TweakAlpha : nullptr, nullptr, nullptr );

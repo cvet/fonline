@@ -24,11 +24,43 @@ void Sprite::Unvalidate()
             Child->Unvalidate();
         }
 
+        if( ExtraChainRoot )
+            *ExtraChainRoot = ExtraChainChild;
+        if( ExtraChainParent )
+            ExtraChainParent->ExtraChainChild = ExtraChainChild;
+        if( ExtraChainChild )
+            ExtraChainChild->ExtraChainParent = ExtraChainParent;
+        if( ExtraChainRoot && ExtraChainChild )
+            ExtraChainChild->ExtraChainRoot = ExtraChainRoot;
+        ExtraChainRoot = nullptr;
+        ExtraChainParent = nullptr;
+        ExtraChainChild = nullptr;
+
         if( MapSpr )
         {
             MapSpr->Release();
             MapSpr = nullptr;
         }
+
+        UnvalidatedPlace->push_back( this );
+        UnvalidatedPlace = nullptr;
+
+        if( ChainRoot )
+            *ChainRoot = ChainChild;
+        if( ChainLast )
+            *ChainLast = ChainParent;
+        if( ChainParent )
+            ChainParent->ChainChild = ChainChild;
+        if( ChainChild )
+            ChainChild->ChainParent = ChainParent;
+        if( ChainRoot && ChainChild )
+            ChainChild->ChainRoot = ChainRoot;
+        if( ChainLast && ChainParent )
+            ChainParent->ChainLast = ChainLast;
+        ChainRoot = nullptr;
+        ChainLast = nullptr;
+        ChainParent = nullptr;
+        ChainChild = nullptr;
     }
 }
 
@@ -137,39 +169,109 @@ void Sprite::SetFixedAlpha( uchar alpha )
 }
 
 SpriteVec Sprites::spritesPool;
-void Sprites::GrowPool( uint size )
+
+void Sprites::GrowPool()
 {
-    spritesPool.reserve( spritesPool.size() + size );
-    for( uint i = 0; i < size; i++ )
+    spritesPool.reserve( spritesPool.size() + SPRITES_POOL_GROW_SIZE );
+    for( uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++ )
         spritesPool.push_back( new Sprite() );
 }
 
-void Sprites::ClearPool()
+Sprites::Sprites()
 {
-    for( auto it = spritesPool.begin(), end = spritesPool.end(); it != end; ++it )
-    {
-        Sprite* spr = *it;
-        spr->Unvalidate();
-        delete spr;
-    }
-    spritesPool.clear();
+    rootSprite = nullptr;
+    lastSprite = nullptr;
+    spriteCount = 0;
 }
 
-Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
+Sprites::~Sprites()
 {
-    if( index >= spritesTreeSize )
+    Clear();
+}
+
+Sprite* Sprites::RootSprite()
+{
+    return rootSprite;
+}
+
+Sprite& Sprites::PutSprite( Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
+{
+    spriteCount++;
+
+    Sprite* spr;
+    if( !unvalidatedSprites.empty() )
     {
-        spritesTreeSize = index + 1;
-        if( spritesTreeSize >= spritesTree.size() )
-            Resize( spritesTreeSize + SPRITES_RESIZE_COUNT );
+        spr = unvalidatedSprites.back();
+        unvalidatedSprites.pop_back();
     }
-    Sprite* spr = spritesTree[ index ];
-    spr->TreeIndex = index;
+    else
+    {
+        if( spritesPool.empty() )
+            GrowPool();
+
+        spr = spritesPool.back();
+        spritesPool.pop_back();
+    }
+
+    spr->UnvalidatedPlace = &unvalidatedSprites;
+
+    if( !child )
+    {
+        if( !lastSprite )
+        {
+            rootSprite = spr;
+            lastSprite = spr;
+            spr->ChainRoot = &rootSprite;
+            spr->ChainLast = &lastSprite;
+            spr->ChainParent = nullptr;
+            spr->ChainChild = nullptr;
+            spr->TreeIndex = 0;
+        }
+        else
+        {
+            spr->ChainParent = lastSprite;
+            spr->ChainChild = nullptr;
+            lastSprite->ChainChild = spr;
+            lastSprite->ChainLast = nullptr;
+            spr->ChainLast = &lastSprite;
+            spr->TreeIndex = lastSprite->TreeIndex + 1;
+            lastSprite = spr;
+        }
+    }
+    else
+    {
+        spr->ChainChild = child;
+        spr->ChainParent = child->ChainParent;
+        child->ChainParent = spr;
+        if( spr->ChainParent )
+            spr->ChainParent->ChainChild = spr;
+
+        // Recalculate indices
+        uint    index = ( spr->ChainParent ? spr->ChainParent->TreeIndex + 1 : 0 );
+        Sprite* spr_ = spr;
+        while( spr_ )
+        {
+            spr_->TreeIndex = index;
+            spr_ = spr_->ChainChild;
+            index++;
+        }
+
+        if( !spr->ChainParent )
+        {
+            RUNTIME_ASSERT( child->ChainRoot );
+            rootSprite = spr;
+            spr->ChainRoot = &rootSprite;
+            child->ChainRoot = nullptr;
+        }
+    }
+
     spr->HexX = hx;
     spr->HexY = hy;
     spr->CutType = 0;
     spr->ScrX = x;
     spr->ScrY = y;
+    spr->PScrX = sx;
+    spr->PScrY = sy;
     spr->SprId = id;
     spr->PSprId = id_ptr;
     spr->OffsX = ox;
@@ -230,7 +332,7 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
             if( xx + ww > widthf )
                 ww = widthf - xx;
 
-            Sprite& spr_ = ( i != h1 ? PutSprite( spritesTreeSize, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, id, id_ptr, ox, oy, alpha, effect, nullptr ) : *spr );
+            Sprite& spr_ = ( i != h1 ? PutSprite( nullptr, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, nullptr ) : *spr );
             if( i != h1 )
                 spr_.Parent = parent;
             parent->Child = &spr_;
@@ -267,17 +369,17 @@ Sprite& Sprites::PutSprite( uint index, int draw_order, int hx, int hy, int cut,
     return *spr;
 }
 
-Sprite& Sprites::AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
+Sprite& Sprites::AddSprite( int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
 {
-    return PutSprite( spritesTreeSize, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, effect, callback );
+    return PutSprite( nullptr, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback );
 }
 
-Sprite& Sprites::InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
+Sprite& Sprites::InsertSprite( int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, Effect** effect, bool* callback )
 {
     // For cutted sprites need resort all tree
     if( cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL )
     {
-        Sprite& spr = PutSprite( spritesTreeSize, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, effect, callback );
+        Sprite& spr = PutSprite( nullptr, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback );
         SortByMapPos();
         return spr;
     }
@@ -287,85 +389,33 @@ Sprite& Sprites::InsertSprite( int draw_order, int hx, int hy, int cut, int x, i
     uint pos = ( draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER ?
                  hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * ( draw_order - DRAW_ORDER_FLAT ) :
                  MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + hy * DRAW_ORDER * MAXHEX_MAX + hx * DRAW_ORDER + ( draw_order - DRAW_ORDER ) );
-    for( ; index < spritesTreeSize; index++ )
+
+    Sprite* parent = rootSprite;
+    while( parent )
     {
-        Sprite* spr = spritesTree[ index ];
-        if( !spr->Valid )
+        if( !parent->Valid )
             continue;
-        if( pos < spr->DrawOrderPos )
+        if( pos < parent->DrawOrderPos )
             break;
+        parent = parent->ChainChild;
     }
 
-    // Gain tree index to other sprites
-    for( uint i = index; i < spritesTreeSize; i++ )
-        spritesTree[ i ]->TreeIndex++;
-
-    // Insert to array
-    spritesTreeSize++;
-    if( spritesTreeSize >= spritesTree.size() )
-        Resize( spritesTreeSize + SPRITES_RESIZE_COUNT );
-    if( index < spritesTreeSize - 1 )
-    {
-        Sprite* back = spritesTree.back();
-        spritesTree.insert( spritesTree.begin() + index, back );
-        spritesTree.pop_back();
-    }
-
-    return PutSprite( index, draw_order, hx, hy, cut, x, y, id, id_ptr, ox, oy, alpha, effect, callback );
-}
-
-void Sprites::Resize( uint size )
-{
-    uint tree_size = (uint) spritesTree.size();
-    uint pool_size = (uint) spritesPool.size();
-    if( size > tree_size ) // Get from pool
-    {
-        uint diff = size - tree_size;
-        if( diff > pool_size )
-            GrowPool( diff > SPRITES_POOL_GROW_SIZE ? diff : SPRITES_POOL_GROW_SIZE );
-        spritesTree.reserve( tree_size + diff );
-        // spritesTree.insert(spritesTree.end(),spritesPool.rbegin(),spritesPool.rbegin()+diff);
-        // spritesPool.erase(spritesPool.begin()+tree_size-diff,spritesPool.end());
-        for( uint i = 0; i < diff; i++ )
-        {
-            Sprite* back = spritesPool.back();
-            spritesTree.push_back( back );
-            spritesPool.pop_back();
-        }
-    }
-    else if( size < tree_size ) // Put in pool
-    {
-        uint diff = tree_size - size;
-        if( diff > tree_size - spritesTreeSize )
-            spritesTreeSize -= diff - ( tree_size - spritesTreeSize );
-
-        // Unvalidate putted sprites
-        for( SpriteVec::reverse_iterator it = spritesTree.rbegin(), end = spritesTree.rbegin() + diff; it != end; ++it )
-            ( *it )->Unvalidate();
-
-        // Put
-        spritesPool.reserve( pool_size + diff );
-        // spritesPool.insert(spritesPool.end(),spritesTree.rbegin(),spritesTree.rbegin()+diff);
-        // spritesTree.erase(spritesTree.begin()+tree_size-diff,spritesTree.end());
-        for( uint i = 0; i < diff; i++ )
-        {
-            Sprite* back = spritesTree.back();
-            spritesPool.push_back( back );
-            spritesTree.pop_back();
-        }
-    }
+    return PutSprite( parent, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback );
 }
 
 void Sprites::Unvalidate()
 {
-    for( SpriteVec::iterator it = spritesTree.begin(), end = spritesTree.begin() + spritesTreeSize; it != end; ++it )
-        ( *it )->Unvalidate();
-    spritesTreeSize = 0;
+    while( rootSprite )
+        rootSprite->Unvalidate();
+    spriteCount = 0;
 }
 
 SprInfoVec* SortSpritesSurfSprData = nullptr;
-void Sprites::SortBySurfaces()
+void Sprites::SortByMapPos()
 {
+    if( !rootSprite )
+        return;
+
     struct Sorter
     {
         static bool SortBySurfaces( Sprite* spr1, Sprite* spr2 )
@@ -374,22 +424,58 @@ void Sprites::SortBySurfaces()
             SpriteInfo* si2 = ( *SortSpritesSurfSprData )[ spr2->PSprId ? *spr2->PSprId : spr2->SprId ];
             return si1 && si2 && si1->Atlas && si2->Atlas && si1->Atlas->TextureOwner < si2->Atlas->TextureOwner;
         }
-    };
-    SortSpritesSurfSprData = &SprMngr.GetSpritesInfo();
-    std::sort( spritesTree.begin(), spritesTree.begin() + spritesTreeSize, Sorter::SortBySurfaces );
-}
 
-void Sprites::SortByMapPos()
-{
-    struct Sorter
-    {
         static bool SortByMapPos( Sprite* spr1, Sprite* spr2 )
         {
-            if( spr1->DrawOrderPos == spr2->DrawOrderPos ) return spr1->TreeIndex < spr2->TreeIndex;
+            if( spr1->DrawOrderPos == spr2->DrawOrderPos )
+                return spr1->TreeIndex < spr2->TreeIndex;
             return spr1->DrawOrderPos < spr2->DrawOrderPos;
         }
     };
-    std::sort( spritesTree.begin(), spritesTree.begin() + spritesTreeSize, Sorter::SortByMapPos );
-    for( uint i = 0; i < spritesTreeSize; i++ )
-        spritesTree[ i ]->TreeIndex = i;
+    SortSpritesSurfSprData = &SprMngr.GetSpritesInfo();
+
+    SpriteVec sprites;
+    sprites.reserve( spriteCount );
+    Sprite*   spr = rootSprite;
+    while( spr )
+    {
+        sprites.push_back( spr );
+        spr = spr->ChainChild;
+    }
+
+    std::sort( sprites.begin(), sprites.end(), Sorter::SortBySurfaces );
+    std::sort( sprites.begin(), sprites.end(), Sorter::SortByMapPos );
+
+    for( size_t i = 0; i < sprites.size(); i++ )
+    {
+        sprites[ i ]->ChainParent = nullptr;
+        sprites[ i ]->ChainChild = nullptr;
+        sprites[ i ]->ChainRoot = nullptr;
+        sprites[ i ]->ChainLast = nullptr;
+    }
+
+    for( size_t i = 1; i < sprites.size(); i++ )
+    {
+        sprites[ i - 1 ]->ChainChild = sprites[ i ];
+        sprites[ i ]->ChainParent = sprites[ i - 1 ];
+    }
+
+    rootSprite = sprites.front();
+    lastSprite = sprites.back();
+    rootSprite->ChainRoot = &rootSprite;
+    lastSprite->ChainLast = &lastSprite;
+}
+
+uint Sprites::Size()
+{
+    return spriteCount;
+}
+
+void Sprites::Clear()
+{
+    Unvalidate();
+
+    for( Sprite* spr : unvalidatedSprites )
+        spritesPool.push_back( spr );
+    unvalidatedSprites.clear();
 }

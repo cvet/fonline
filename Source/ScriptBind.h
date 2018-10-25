@@ -624,6 +624,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectBehaviour( "MapSprite", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( MapSprite, AddRef ), SCRIPT_METHOD_CONV ) );
     BIND_ASSERT( engine->RegisterObjectBehaviour( "MapSprite", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( MapSprite, Release ), SCRIPT_METHOD_CONV ) );
     BIND_ASSERT( engine->RegisterObjectBehaviour( "MapSprite", asBEHAVE_FACTORY, "MapSprite@ f()", SCRIPT_FUNC( MapSprite::Factory ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterObjectProperty( "MapSprite", "bool Valid", OFFSETOF( MapSprite, Valid ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "MapSprite", "uint SprId", OFFSETOF( MapSprite, SprId ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "MapSprite", "uint16 HexX", OFFSETOF( MapSprite, HexX ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "MapSprite", "uint16 HexY", OFFSETOF( MapSprite, HexY ) ) );

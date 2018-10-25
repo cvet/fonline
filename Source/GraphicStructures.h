@@ -512,6 +512,7 @@ struct MapSprite
 
     int    RefCount;
 
+    bool   Valid;
     uint   SprId;
     ushort HexX;
     ushort HexY;

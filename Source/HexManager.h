@@ -75,6 +75,8 @@ struct Field
     };
     typedef vector< Tile > TileVec;
 
+    bool        IsView;
+    Sprite*     SpriteChain;
     CritterCl*  Crit;
     CritVec*    DeadCrits;
     int         ScrX;
@@ -111,6 +113,8 @@ struct Field
     void  AddDeadCrit( CritterCl* cr );
     void  EraseDeadCrit( CritterCl* cr );
     void  ProcessCache();
+    void  AddSpriteToChain( Sprite* spr );
+    void  UnvalidateSpriteChain();
 };
 
 /************************************************************************/
@@ -140,7 +144,6 @@ class HexManager
 private:
     ushort     maxHexX, maxHexY;
     Field*     hexField;
-    bool*      hexToDraw;
     char*      hexTrack;
     AnyFrames* picTrack1, * picTrack2;
     AnyFrames* picHexMask;
@@ -151,13 +154,12 @@ private:
 
 public:
     void   ResizeField( ushort w, ushort h );
-    Field& GetField( ushort hx, ushort hy )     { return hexField[ hy * maxHexX + hx ]; }
-    bool&  GetHexToDraw( ushort hx, ushort hy ) { return hexToDraw[ hy * maxHexX + hx ]; }
-    char&  GetHexTrack( ushort hx, ushort hy )  { return hexTrack[ hy * maxHexX + hx ]; }
-    ushort GetWidth()                           { return maxHexX; }
-    ushort GetHeight()                          { return maxHexY; }
-    void   ClearHexToDraw()                     { memzero( hexToDraw, maxHexX * maxHexY * sizeof( bool ) ); }
-    void   ClearHexTrack()                      { memzero( hexTrack, maxHexX * maxHexY * sizeof( char ) ); }
+    Field& GetField( ushort hx, ushort hy )    { return hexField[ hy * maxHexX + hx ]; }
+    bool   IsHexToDraw( ushort hx, ushort hy ) { return hexField[ hy * maxHexX + hx ].IsView; }
+    char&  GetHexTrack( ushort hx, ushort hy ) { return hexTrack[ hy * maxHexX + hx ]; }
+    ushort GetWidth()                          { return maxHexX; }
+    ushort GetHeight()                         { return maxHexY; }
+    void   ClearHexTrack()                     { memzero( hexTrack, maxHexX * maxHexY * sizeof( char ) ); }
     void   SwitchShowTrack();
     bool   IsShowTrack() { return isShowTrack; };
 
@@ -196,8 +198,6 @@ public:
     // Init, finish, restore
 private:
     RenderTarget* rtMap;
-    RenderTarget* rtTiles;
-    RenderTarget* rtRoof;
     RenderTarget* rtLight;
     RenderTarget* rtFog;
     uint          rtScreenOX, rtScreenOY;
@@ -232,6 +232,7 @@ public:
     bool ProcessHexBorders( ItemHex* item );
 
     void     RebuildMap( int rx, int ry );
+    void     RebuildMapOffset( int ox, int oy );
     void     DrawMap();
     void     SetFog( PointVec& look_points, PointVec& shoot_points, short* offs_x, short* offs_y );
     Sprites& GetDrawTree() { return mainTree; }
@@ -337,7 +338,6 @@ private:
     void MarkLightStep( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint inten );
     void TraceLight( ushort from_hx, ushort from_hy, ushort& hx, ushort& hy, int dist, uint inten );
     void ParseLightTriangleFan( LightSource& ls );
-    void ParseLight( ushort hx, ushort hy, int dist, uint inten, uint flags );
     void RealRebuildLight();
     void CollectLightSources();
 
@@ -349,9 +349,9 @@ public:
 
     // Tiles, roof
 private:
-    Sprites tilesTree, tilesAnimatedTree;
+    Sprites tilesTree;
+    Sprites roofTree;
     int     roofSkip;
-    Sprites roofTree, roofAnimatedTree;
 
     bool CheckTilesBorder( Field::Tile& tile, bool is_roof );
 
