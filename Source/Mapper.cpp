@@ -506,7 +506,8 @@ void FOMapper::ChangeGameTime()
 {
     uint color = GetColorDay( HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr );
     SprMngr.SetSpritesColor( COLOR_GAME_RGB( ( color >> 16 ) & 0xFF, ( color >> 8 ) & 0xFF, color & 0xFF ) );
-    HexMngr.RefreshMap();
+    if( HexMngr.IsMapLoaded() )
+        HexMngr.RefreshMap();
 }
 
 uint FOMapper::AnimLoad( uint name_hash, int res_type )

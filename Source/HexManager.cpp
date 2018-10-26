@@ -2139,7 +2139,8 @@ void HexManager::SwitchShowTrack()
     isShowTrack = !isShowTrack;
     if( !isShowTrack )
         ClearHexTrack();
-    RefreshMap();
+    if( IsMapLoaded() )
+        RefreshMap();
 }
 
 void HexManager::InitView( int cx, int cy )
@@ -2627,10 +2628,12 @@ bool HexManager::Scroll()
         }
     }
 
+    #ifdef FONLINE_CLIENT
     int final_scr_ox = GameOpt.ScrOx - prev_scr_ox + xmod * SCROLL_OX;
     int final_scr_oy = GameOpt.ScrOy - prev_scr_oy + ( -ymod / 2 ) * SCROLL_OY;
     if( final_scr_ox || final_scr_oy )
         Script::RaiseInternalEvent( ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy );
+    #endif
 
     return xmod || ymod;
 }
