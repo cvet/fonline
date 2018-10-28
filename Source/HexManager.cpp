@@ -1086,14 +1086,14 @@ void HexManager::RebuildMap( int rx, int ry )
     }
     mainTree.SortByMapPos();
 
+    screenHexX = rx;
+    screenHexY = ry;
+
     #ifdef FONLINE_CLIENT
     Script::RaiseInternalEvent( ClientFunctions.RenderMap );
     #else // FONLINE_MAPPER
     Script::RaiseInternalEvent( MapperFunctions.RenderMap );
     #endif
-
-    screenHexX = rx;
-    screenHexY = ry;
 }
 
 void HexManager::RebuildMapOffset( int ox, int oy )
