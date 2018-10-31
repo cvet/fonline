@@ -5,48 +5,6 @@
 // ******************************************************************************************************************************
 // ==============================================================================================================================
 
-int FOClient::InitIface()
-{
-    WriteLog( "Interface initialization...\n" );
-
-    // Minimap
-    LmapZoom = 2;
-    LmapSwitchHi = false;
-    LmapPrepareNextTick = 0;
-
-    // Global map
-    GmapFog.Create( GM__MAXZONEX, GM__MAXZONEY, nullptr );
-
-    // PickUp
-    PupTransferType = 0;
-    PupContId = 0;
-    PupContPid = 0;
-    PupCount = 0;
-    Item::ClearItems( PupCont2 );
-
-    // Pipboy
-    Automaps.clear();
-
-    // Save/Load
-    if( Singleplayer )
-    {
-        SaveLoadDataSlots.clear();
-        SaveLoadDraft = SprMngr.CreateRenderTarget( false, false, false, SAVE_LOAD_IMAGE_WIDTH, SAVE_LOAD_IMAGE_HEIGHT, true );
-        SaveLoadProcessDraft = false;
-        SaveLoadDraftValid = false;
-    }
-
-    // Hex field sprites
-    HexMngr.ReloadSprites();
-
-    WriteLog( "Interface initialization complete.\n" );
-    return 0;
-}
-
-// ==============================================================================================================================
-// ******************************************************************************************************************************
-// ==============================================================================================================================
-
 void FOClient::GameDraw()
 {
     // Move cursor

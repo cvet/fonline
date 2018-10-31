@@ -17,6 +17,9 @@
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
 #include "FileManager.h"
 #include "GraphicStructures.h"
+#include "SHA/sha1.h"
+#include "SHA/sha2.h"
+#include <time.h>
 
 int Compile( string target, FileManager& file, string path, string path_prep, const StrVec& defines, const StrVec& run_func );
 
@@ -137,6 +140,9 @@ int main( int argc, char* argv[] )
         WriteLog( "File '{}' empty.\n", path );
         return -1;
     }
+
+    // Restore directory
+    FileManager::ResetCurrentDir();
 
     if( !target )
     {

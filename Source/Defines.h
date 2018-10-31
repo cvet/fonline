@@ -239,15 +239,6 @@
 #define MESSAGE_TO_IAM_VISIBLE      ( 1 )
 #define MESSAGE_TO_ALL_ON_MAP       ( 2 )
 
-// Special skill values
-#define SKILL_PICK_ON_GROUND         ( -1 )
-#define SKILL_PUT_CONT               ( -2 )
-#define SKILL_TAKE_CONT              ( -3 )
-#define SKILL_TAKE_ALL_CONT          ( -4 )
-#define SKILL_LOOT_CRITTER           ( -5 )
-#define SKILL_PUSH_CRITTER           ( -6 )
-#define SKILL_TALK                   ( -7 )
-
 // Anim1
 #define ANIM1_UNARMED               ( 1 )
 // Anim2

@@ -507,48 +507,15 @@ bool Script::ReloadScripts( const string& target )
 
     EngineData* edata = (EngineData*) Engine->GetUserData();
 
-
-    // Get last write time in cache scripts
-    uint64          cache_write_time = 0;
-    StrSet          cache_file_names;
-    FilesCollection cache_files( "fosb", FileManager::GetDataPath( "", PT_SERVER_CACHE ) );
-    while( cache_files.IsNextFile() )
+    // Combine scripts
+    FilesCollection fos_files( "fos" );
+    int             file_index = 0;
+    int             errors = 0;
+    ScriptEntryVec  scripts;
+    while( fos_files.IsNextFile() )
     {
-        const char*  name;
-        FileManager& cache_file = cache_files.GetNextFile( &name );
-        RUNTIME_ASSERT( cache_file.IsLoaded() );
-        cache_write_time = ( cache_write_time ? MIN( cache_write_time, cache_file.GetWriteTime() ) : cache_file.GetWriteTime() );
-        cache_file_names.insert( name );
-        uint bin_version = cache_file.GetBEUInt();
-        if( bin_version != FONLINE_VERSION )
-        {
-            load_from_raw = true;
-            cache_file_names.clear();
-            break;
-        }
-    }
-
-    // Get last write time in raw scripts
-    FilesCollection raw_files = FilesCollection( "fos" );
-    while( !load_from_raw && raw_files.IsNextFile() )
-    {
-        const char*  file_name;
-        FileManager& raw_file = raw_files.GetNextFile( &file_name, NULL, true );
-        RUNTIME_ASSERT( raw_file.IsLoaded() );
-        if( raw_file.GetWriteTime() > cache_write_time )
-        {
-            load_from_raw = true;
-            break;
-        }
-    }
-
-    // Collect module names
-    vector< pair< string, string > > module_names;
-    raw_files.ResetCounter();
-    while( raw_files.IsNextFile() )
-    {
-        const char*  file_name, * file_full_name;
-        FileManager& file = raw_files.GetNextFile( &file_name, &file_full_name );
+        string       name, path;
+        FileManager& file = fos_files.GetNextFile( &name, &path );
         if( !file.IsLoaded() )
         {
             WriteLog( "Unable to open file '{}'.\n", path );
@@ -573,16 +540,15 @@ bool Script::ReloadScripts( const string& target )
             continue;
         }
 
-        // Skip headers
-        if( Str::Substring( line, "Header" ) )
-            continue;
-
         // Skip different targets
         if( line.find( target ) == string::npos && line.find( "Common" ) == string::npos )
             continue;
 
-        // Add file names
-        module_names.push_back( PAIR( string( file_name ), string( file_full_name ) ) );
+        // Sort value
+        int    sort_value = 0;
+        string sort_str = _str( line ).substringAfter( "Sort " );
+        if( !sort_str.empty() )
+            sort_value = _str( sort_str ).toInt();
 
         // Append
         ScriptEntry entry;
@@ -608,28 +574,13 @@ bool Script::ReloadScripts( const string& target )
         return false;
     }
 
-        // Load module
-        if( load_from_raw )
-        {
-            char dir[ MAX_FOPATH ];
-            FileManager::ExtractDir( path, dir );
-            Str::Insert( dir, FileManager::GetWritePath( "", PT_SERVER_MODULES ) );
-            if( !LoadModuleFromFile( name, raw_files.FindFile( name ), dir, cache_pefix ) )
-            {
-                WriteLog( "Load module '%s' from file fail.\n", name );
-                errors++;
-                continue;
-            }
-        }
-        else
-        {
-            if( !LoadModuleFromCache( name, cache_pefix ) )
-            {
-                WriteLog( "Load module '%s' from cache fail. Clear cache.\n", name );
-                errors++;
-                continue;
-            }
-        }
+    // Build
+    string result_code;
+    if( !LoadRootModule( scripts, result_code ) )
+    {
+        WriteLog( "Load scripts from files fail.\n" );
+        return false;
+    }
 
     // Cache enums
     CacheEnumValues();
@@ -671,21 +622,34 @@ bool Script::RunModuleInitFunctions()
     asIScriptModule* module = Engine->GetModuleByIndex( 0 );
     for( asUINT i = 0; i < module->GetFunctionCount(); i++ )
     {
-        asIScriptModule* module = Engine->GetModuleByIndex( i );
-        uint             bind_id = Script::BindByScriptName( Str::FormatBuf( "%s@module_init", module->GetName() ), "bool %s()", true, true );
-        if( !bind_id )
-            bind_id = Script::BindByScriptName( Str::FormatBuf( "%s@ModuleInit", module->GetName() ), "bool %s()", true, true );
-        if( bind_id && Script::PrepareContext( bind_id, _FUNC_, "Script" ) )
+        asIScriptFunction* func = module->GetFunctionByIndex( i );
+        if( !Str::Compare( func->GetName(), "ModuleInit" ) )
+            continue;
+
+        if( func->GetParamCount() != 0 )
+        {
+            WriteLog( "Init function '{}::{}' can't have arguments.\n", func->GetNamespace(), func->GetName() );
+            return false;
+        }
+        if( func->GetReturnTypeId() != asTYPEID_VOID && func->GetReturnTypeId() != asTYPEID_BOOL )
         {
             WriteLog( "Init function '{}::{}' must have void or bool return type.\n", func->GetNamespace(), func->GetName() );
             return false;
         }
 
-            if( !Script::GetReturnedBool() )
-            {
-                WriteLog( "Initialization stopped by module '%s'.\n", module->GetName() );
-                return false;
-            }
+        uint bind_id = Script::BindByFunc( func, true );
+        Script::PrepareContext( bind_id, "Script" );
+
+        if( !Script::RunPrepared() )
+        {
+            WriteLog( "Error executing init function '{}::{}'.\n", func->GetNamespace(), func->GetName() );
+            return false;
+        }
+
+        if( func->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool() )
+        {
+            WriteLog( "Initialization stopped by init function '{}::{}'.\n", func->GetNamespace(), func->GetName() );
+            return false;
         }
     }
 
@@ -1107,41 +1071,40 @@ public:
                 return true;
             }
 
-            char fname[ MAX_FOPATH ];
-            Str::Copy( fname, dir.c_str() );
-            Str::Append( fname, file_name.c_str() );
-            FileManager::FormatPath( fname );
+            includeDeep++;
+            RUNTIME_ASSERT( includeDeep <= 1 );
 
-            void* file = FileOpen( fname, false );
-            if( file )
+            if( includeDeep == 1 && !includeScripts.empty() )
             {
-                uint size = FileGetSize( file );
-                data.resize( size );
-                if( size )
-                {
-                    if( !FileRead( file, &data[ 0 ], size ) )
-                    {
-                        FileClose( file );
-                        return false;
-                    }
-                }
-                FileClose( file );
+                data.resize( includeScripts.front().Content.length() );
+                memcpy( &data[ 0 ], includeScripts.front().Content.c_str(), includeScripts.front().Content.length() );
+                #ifdef FONLINE_SCRIPT_COMPILER
+                file_path = _str( includeScripts.front().Path ).resolvePath();
+                #else
+                file_path = includeScripts.front().Name;
+                #endif
+                includeScripts.erase( includeScripts.begin() );
                 return true;
             }
-            return false;
+
+            bool loaded = Preprocessor::FileLoader::LoadFile( dir, file_name, data, file_path );
+            #ifdef FONLINE_SCRIPT_COMPILER
+            if( loaded )
+                file_path = _str( includeScripts.front().Path ).resolvePath();
+            #endif
+            return loaded;
+        }
+
+        virtual void FileLoaded() override
+        {
+            includeDeep--;
         }
     };
 
-    // Base script path
-    char path[ MAX_FOPATH ];
-    Str::Copy( path, dir );
-    Str::Append( path, module_name );
-    const char* ext = FileManager::GetExtension( module_name );
-    bool        is_header = ( ext && Str::CompareCase( ext, "fosh" ) );
-    if( !is_header )
-        Str::Append( path, ".fos" );
-    else
-        FileManager::EraseExtension( path );
+    // Make Root scripts
+    string root;
+    for( auto& script : scripts )
+        root += _str( "#include \"{}\"\n", script.Name );
 
     // Set preprocessor defines from command line
     const StrMap& config = MainConfig->GetApp( "" );
@@ -1154,7 +1117,7 @@ public:
     // Preprocess
     MemoryFileLoader              loader( root, scripts );
     Preprocessor::StringOutStream result, errors;
-    int                           errors_count = Preprocessor::Preprocess( path, result, &errors, &loader );
+    int                           errors_count = Preprocessor::Preprocess( "Root", result, &errors, &loader );
 
     if( errors.String != "" )
     {
@@ -1243,7 +1206,7 @@ public:
     as_result = module->Build();
     if( as_result < 0 )
     {
-        WriteLogF( _FUNC_, " - Unable to Build module '%s', result %d.\n", module_name, as_result );
+        WriteLog( "Unable to build module, result {}.\n", as_result );
         module->Discard();
         return false;
     }

@@ -1,9 +1,6 @@
 // Common functions for server, client, mapper
 // Works in scripts compiler
 
-#include "FileManager.h"
-#include "Randomizer.h"
-
 template< class T >
 static Entity* EntityDownCast( T* a )
 {

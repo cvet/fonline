@@ -330,23 +330,6 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
         buf << cmd;
     }
     break;
-    case CMD_LOADSCRIPT:
-    {
-        char script_name[ MAX_FOTEXT ];
-        if( sscanf( args, "%s", script_name ) != 1 )
-        {
-            logcb( "Invalid arguments. Example: loadscript name." );
-            break;
-        }
-        script_name[ MAX_FOTEXT - 1 ] = 0;
-        msg_len += MAX_FOTEXT;
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf.Push( script_name, MAX_FOTEXT );
-    }
-    break;
     case CMD_RELOAD_CLIENT_SCRIPTS:
     {
         buf << msg;
@@ -356,23 +339,19 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
     break;
     case CMD_RUNSCRIPT:
     {
-        char script_name[ MAX_FOTEXT ];
-        char func_name[ MAX_FOTEXT ];
-        uint param0, param1, param2;
-        if( sscanf( args.c_str(), "%s%d%d%d", func_name, &param0, &param1, &param2 ) != 4 )
+        string func_name;
+        uint   param0, param1, param2;
+        if( !( args_str >> func_name >> param0 >> param1 >> param2 ) )
         {
             logcb( "Invalid arguments. Example: runscript module::func param0 param1 param2." );
             break;
         }
-        script_name[ MAX_FOTEXT - 1 ] = 0;
-        func_name[ MAX_FOTEXT - 1 ] = 0;
-        msg_len += MAX_FOTEXT * 2 + sizeof( uint ) * 3;
+        msg_len += BufferManager::StringLenSize + (uint) func_name.length() + sizeof( uint ) * 3;
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf.Push( script_name, MAX_FOTEXT );
-        buf.Push( func_name, MAX_FOTEXT );
+        buf << func_name;
         buf << param0;
         buf << param1;
         buf << param2;
@@ -383,45 +362,6 @@ inline bool PackCommand( const string& str, BufferManager& buf, LogFunc logcb, c
         buf << msg;
         buf << msg_len;
         buf << cmd;
-    }
-    break;
-    case CMD_LOADLOCATION:
-    {
-        char loc_name[ MAX_FOPATH ];
-        if( sscanf( args, "%s", loc_name ) != 1 )
-        {
-            logcb( "Invalid arguments. Example: loadlocation loc_name." );
-            break;
-        }
-        msg_len += sizeof( loc_name );
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf.Push( loc_name, sizeof( loc_name ) );
-    }
-    break;
-    case CMD_RELOADMAPS:
-    {
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-    }
-    break;
-    case CMD_LOADMAP:
-    {
-        char map_name[ MAX_FOPATH ];
-        if( sscanf( args, "%s", map_name ) != 1 )
-        {
-            logcb( "Invalid arguments. Example: loadmap map_name." );
-            break;
-        }
-        msg_len += sizeof( map_name );
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf.Push( map_name, sizeof( map_name ) );
     }
     break;
     case CMD_REGENMAP:

@@ -615,32 +615,9 @@ public:
 /************************************************************************/
 /* PickUp                                                               */
 /************************************************************************/
-    AnyFrames* PupPMain, * PupPTakeAllOn, * PupPBOkOn,
-    * PupPBScrUpOn1, * PupPBScrUpOff1, * PupPBScrDwOn1, * PupPBScrDwOff1,
-    * PupPBScrUpOn2, * PupPBScrUpOff2, * PupPBScrDwOn2, * PupPBScrDwOff2,
-    * PupBNextCritLeftPicUp, * PupBNextCritLeftPicDown,
-    * PupBNextCritRightPicUp, * PupBNextCritRightPicDown;
-    uint   PupHoldId;
-    int    PupScroll1, PupScroll2, PupScrollCrit;
-    int    PupX, PupY;
-    int    PupVectX, PupVectY;
-    Rect   PupWMain, PupWInfo, PupWCont1, PupWCont2, PupBTakeAll, PupBOk,
-           PupBScrUp1, PupBScrDw1, PupBScrUp2, PupBScrDw2, PupBNextCritLeft, PupBNextCritRight;
-    int    PupHeightItem1, PupHeightItem2;
-    uchar  PupTransferType;
-    uint   PupContId;
-    hash   PupContPid;
-    uint   PupCount;
-    ushort PupSize;
-    uint   PupWeight;
-
-    void       PupDraw();
-    void       PupMouseMove();
-    void       PupLMouseDown();
-    void       PupLMouseUp();
-    void       PupRMouseDown();
-    CritVec&   PupGetLootCrits();
-    CritterCl* PupGetLootCrit( int scroll );
+    uchar PupTransferType;
+    uint  PupContId;
+    hash  PupContPid;
 
 /************************************************************************/
 /* Wait                                                                 */
@@ -679,90 +656,5 @@ public:
     #define FOMB_TALK               ( 1 )
     void AddMess( int mess_type, const string& msg, bool script_call = false );
 };
-
-// Fonts
-#define FONT_FO                        ( 0 )
-#define FONT_NUM                       ( 1 )
-#define FONT_BIG_NUM                   ( 2 )
-#define FONT_SAND_NUM                  ( 3 )
-#define FONT_SPECIAL                   ( 4 )
-#define FONT_DEFAULT                   ( 5 )
-#define FONT_THIN                      ( 6 )
-#define FONT_FAT                       ( 7 )
-#define FONT_BIG                       ( 8 )
-
-// Screens
-#define SCREEN_NONE                    ( 0 )
-// Primary screens
-#define SCREEN_LOGIN                   ( 1 )
-#define SCREEN_REGISTRATION            ( 2 )
-#define SCREEN_GAME                    ( 3 )
-#define SCREEN_GLOBAL_MAP              ( 4 )
-#define SCREEN_WAIT                    ( 5 )
-// Secondary screens
-#define SCREEN__PICKUP                 ( 11 )
-#define SCREEN__MINI_MAP               ( 12 )
-#define SCREEN__CHARACTER              ( 13 )
-#define SCREEN__DIALOG                 ( 14 )
-#define SCREEN__BARTER                 ( 15 )
-#define SCREEN__MENU_OPTION            ( 18 )
-#define SCREEN__AIM                    ( 19 )
-#define SCREEN__SPLIT                  ( 20 )
-#define SCREEN__TIMER                  ( 21 )
-#define SCREEN__DIALOGBOX              ( 22 )
-#define SCREEN__GM_TOWN                ( 28 )
-#define SCREEN__SKILLBOX               ( 30 )
-#define SCREEN__USE                    ( 31 )
-#define SCREEN__TOWN_VIEW              ( 33 )
-
-// Cur modes
-#define CUR_DEFAULT                    ( 0 )
-#define CUR_MOVE                       ( 1 )
-#define CUR_USE_ITEM                   ( 2 )
-#define CUR_USE_WEAPON                 ( 3 )
-#define CUR_USE_SKILL                  ( 4 )
-#define CUR_WAIT                       ( 5 )
-#define CUR_HAND                       ( 6 )
-
-// Chosen actions
-#define CHOSEN_NONE                    ( 0 )  //
-#define CHOSEN_MOVE                    ( 1 )  // HexX, HexY, Is run, Cut path, Wait double click, Double click tick
-#define CHOSEN_MOVE_TO_CRIT            ( 2 )  // Critter id, None, Is run, Cut path, Wait double click, Double click tick
-#define CHOSEN_DIR                     ( 3 )  // 0 (CW) or 1 (CCW)
-#define CHOSEN_USE_ITEM                ( 6 )  // Item id, -, Target type, Target id, Item mode, Some param (timer)
-#define CHOSEN_MOVE_ITEM               ( 7 )  // Item id, Item count, To slot, Is barter container, Is second try
-#define CHOSEN_MOVE_ITEM_CONT          ( 8 )  // From container, Item id, Count
-#define CHOSEN_TAKE_ALL                ( 9 )  //
-#define CHOSEN_USE_SKL_ON_CRITTER      ( 10 ) // Skill, Critter id
-#define CHOSEN_USE_SKL_ON_ITEM         ( 11 ) // Is inventory, Skill index, Item id
-#define CHOSEN_USE_SKL_ON_SCEN         ( 12 ) // Skill, Pid, HexX, HexY
-#define CHOSEN_TALK_NPC                ( 13 ) // Critter id
-#define CHOSEN_PICK_ITEM               ( 14 ) // Pid, HexX, HexY
-#define CHOSEN_PICK_CRIT               ( 15 ) // Critter id, (loot - 0, push - 1)
-#define CHOSEN_WRITE_HOLO              ( 16 ) // Holodisk id
-
-// Proxy types
-#define PROXY_SOCKS4                   ( 1 )
-#define PROXY_SOCKS5                   ( 2 )
-#define PROXY_HTTP                     ( 3 )
-
-// InitNetReason
-#define INIT_NET_REASON_NONE           ( 0 )
-#define INIT_NET_REASON_LOGIN          ( 1 )
-#define INIT_NET_REASON_REG            ( 2 )
-#define INIT_NET_REASON_LOAD           ( 3 )
-#define INIT_NET_REASON_LOGIN2         ( 4 )
-#define INIT_NET_REASON_CUSTOM         ( 5 )
-
-// Items collections
-#define ITEMS_CHOSEN_ALL               ( 0 )
-#define ITEMS_INVENTORY                ( 1 )
-#define ITEMS_USE                      ( 2 )
-#define ITEMS_BARTER                   ( 3 )
-#define ITEMS_BARTER_OFFER             ( 4 )
-#define ITEMS_BARTER_OPPONENT          ( 5 )
-#define ITEMS_BARTER_OPPONENT_OFFER    ( 6 )
-#define ITEMS_PICKUP                   ( 7 )
-#define ITEMS_PICKUP_FROM              ( 8 )
 
 #endif // __CLIENT__

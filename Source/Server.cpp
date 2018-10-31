@@ -1216,43 +1216,6 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
             logcb( "Fail." );
     }
     break;
-    case CMD_LOADSCRIPT:
-    {
-        char module_name[ MAX_FOTEXT ];
-        buf.Pop( module_name, MAX_FOTEXT );
-        module_name[ MAX_FOTEXT - 1 ] = 0;
-
-        CHECK_ALLOW_COMMAND;
-
-        SynchronizeLogicThreads();
-
-        FilesCollection scripts( "fos" );
-        const char*     path;
-        FileManager&    file = scripts.FindFile( module_name, &path );
-        if( file.IsLoaded() )
-        {
-            char dir[ MAX_FOPATH ];
-            FileManager::ExtractDir( path, dir );
-            if( Script::LoadModuleFromFile( module_name, file, dir, nullptr ) )
-            {
-                if( Script::BindImportedFunctions() )
-                    logcb( "Complete." );
-                else
-                    logcb( Str::FormatBuf( "Complete, with errors." ) );
-            }
-            else
-            {
-                logcb( "Unable to compile script." );
-            }
-        }
-        else
-        {
-            logcb( "Unable to load script." );
-        }
-
-        ResynchronizeLogicThreads();
-    }
-    break;
     case CMD_RELOAD_CLIENT_SCRIPTS:
     {
         CHECK_ALLOW_COMMAND;
@@ -1265,13 +1228,9 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
     break;
     case CMD_RUNSCRIPT:
     {
-        char module_name[ MAX_FOTEXT ];
-        char func_name[ MAX_FOTEXT ];
-        uint param0, param1, param2;
-        buf.Pop( module_name, MAX_FOTEXT );
-        module_name[ MAX_FOTEXT - 1 ] = 0;
-        buf.Pop( func_name, MAX_FOTEXT );
-        func_name[ MAX_FOTEXT - 1 ] = 0;
+        string func_name;
+        uint   param0, param1, param2;
+        buf >> func_name;
         buf >> param0;
         buf >> param1;
         buf >> param2;
@@ -1315,66 +1274,6 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
         InitLangPacksLocations( LangPacks );
         InitLangPacksItems( LangPacks );
         GenerateUpdateFiles();
-    }
-    break;
-    case CMD_LOADLOCATION:
-    {
-        char loc_name[ MAX_FOPATH ];
-        buf.Pop( loc_name, sizeof( loc_name ) );
-
-        CHECK_ALLOW_COMMAND;
-
-        SynchronizeLogicThreads();
-
-        FilesCollection locs( "foloc" );
-        FileManager&    file = locs.FindFile( loc_name );
-        if( file.IsLoaded() )
-        {
-            if( MapMngr.LoadLocationProto( loc_name, file ) )
-                logcb( "Load proto location success." );
-            else
-                logcb( "Load proto location fail." );
-        }
-        else
-        {
-            logcb( "File not found." );
-        }
-
-        InitLangPacksLocations( LangPacks );
-        GenerateUpdateFiles();
-
-        ResynchronizeLogicThreads();
-    }
-    break;
-    case CMD_RELOADMAPS:
-    {
-        CHECK_ALLOW_COMMAND;
-
-        SynchronizeLogicThreads();
-
-        if( MapMngr.ReloadMaps( nullptr ) == 0 )
-            logcb( "Reload proto maps complete, without fails." );
-        else
-            logcb( "Reload proto maps complete, with fails." );
-
-        ResynchronizeLogicThreads();
-    }
-    break;
-    case CMD_LOADMAP:
-    {
-        char map_name[ MAX_FOPATH ];
-        buf.Pop( map_name, sizeof( map_name ) );
-
-        CHECK_ALLOW_COMMAND;
-
-        SynchronizeLogicThreads();
-
-        if( MapMngr.ReloadMaps( map_name ) == 0 )
-            logcb( "Load proto map success." );
-        else
-            logcb( "Load proto map success." );
-
-        ResynchronizeLogicThreads();
     }
     break;
     case CMD_REGENMAP:

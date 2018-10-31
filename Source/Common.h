@@ -2,7 +2,7 @@
 #define __COMMON__
 
 // Versions
-#define FONLINE_VERSION                          ( 537 )
+#define FONLINE_VERSION                           ( 829 )
 
 // Debugging
 // #define DEV_VERSION
@@ -88,8 +88,6 @@
 #include "AngelScript/sdk/add_on/scriptarray/scriptarray.h"
 #include "AngelScript/sdk/add_on/scriptdictionary/scriptdictionary.h"
 #include "AngelScript/scriptdict.h"
-#include "SHA/sha1.h"
-#include "SHA/sha2.h"
 
 #if defined ( FONLINE_NPCEDITOR ) || defined ( FONLINE_MRFIXIT ) || defined ( FONLINE_CLIENT )
 # define NO_THREADING

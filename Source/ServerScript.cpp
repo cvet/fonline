@@ -3,9 +3,10 @@
 #include "AngelScript/preprocessor.h"
 #include "curl/curl.h"
 #include "GraphicStructures.h"
-
-// Global_LoadImage
+#include "SHA/sha1.h"
+#include "SHA/sha2.h"
 #include "PNG/png.h"
+#include <time.h>
 
 static void* ASDebugMalloc( size_t size )
 {
@@ -1463,21 +1464,6 @@ void FOServer::SScriptFunc::Cl_SendItems( Critter* cl, CScriptArray* items, int 
         return;
 
     ( (Client*) cl )->Send_SomeItems( items, param );
-}
-
-void FOServer::SScriptFunc::Cl_RunClientScript( Critter* cl, ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 )
-{
-    if( cl->IsDestroyed )
-        SCRIPT_ERROR_R( "Attempt to call method on destroyed object." );
-    if( !cl->IsPlayer() )
-        SCRIPT_ERROR_R( "Critter is not player." );
-
-    UIntVec dw;
-    if( p4 )
-        Script::AssignScriptArrayInVector< uint >( dw, p4 );
-
-    Client* cl_ = (Client*) cl;
-    cl_->Send_RunClientScript( func_name.c_str(), p0, p1, p2, p3 ? p3->c_str() : NULL, dw );
 }
 
 void FOServer::SScriptFunc::Cl_Disconnect( Critter* cl )

@@ -3,6 +3,9 @@
 #include "Script.h"
 #include "ResourceConverter.h"
 #include "FileSystem.h"
+#include "SHA/sha1.h"
+#include "SHA/sha2.h"
+#include <time.h>
 
 bool      FOMapper::SpritesCanDraw = false;
 FOMapper* FOMapper::Self = nullptr;
