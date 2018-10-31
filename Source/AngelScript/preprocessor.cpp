@@ -930,16 +930,17 @@ void Preprocessor::SetFileMacro( DefineTable& define_table, const std::string& f
 
 void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_source, LexemList& lexems, DefineTable& define_table )
 {
+    size_t      slash = filename.find_last_of( "/\\" );
+    std::string current_file = filename.substr( slash != std::string::npos ? slash + 1 : 0 );
+    if( std::find( FilesPreprocessed.begin(), FilesPreprocessed.end(), current_file ) != FilesPreprocessed.end() )
+        return;
+    FilesPreprocessed.push_back( current_file );
+    CurrentFile = current_file;
+
     unsigned int start_line = CurrentLine;
     LinesThisFile = 0;
-    CurrentFile = filename;
     SetFileMacro( define_table, CurrentFile );
     SetLineMacro( define_table, LinesThisFile );
-
-    // Path formatting must be done in main application
-    std::string CurrentFileRoot = RootPath + CurrentFile;
-    if( std::find( FilesPreprocessed.begin(), FilesPreprocessed.end(), CurrentFileRoot ) == FilesPreprocessed.end() )
-        FilesPreprocessed.push_back( CurrentFileRoot );
 
     std::vector< char > data;
     std::string         file_path;
@@ -1065,7 +1066,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
                 lexems.splice( itr, next_file );
                 start_line = CurrentLine;
                 LinesThisFile = save_lines_this_file;
-                CurrentFile = filename;
+                CurrentFile = current_file;
                 SetFileMacro( define_table, CurrentFile );
                 SetLineMacro( define_table, LinesThisFile );
             }
@@ -1224,11 +1225,6 @@ unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNu
 {
     lnt = ( lnt ? lnt : LNT );
     return lnt ? line_number - lnt->Search( line_number ).Offset : 0;
-}
-
-std::vector< std::string >& Preprocessor::GetFilesPreprocessed()
-{
-    return FilesPreprocessed;
 }
 
 void Preprocessor::PrintLexemList( LexemList& out, OutStream& destination )

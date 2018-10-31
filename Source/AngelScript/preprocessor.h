@@ -70,13 +70,12 @@ namespace Preprocessor
     void CallPragma( const PragmaInstance& pragma );
 
     // Post preprocess settings
-    LineNumberTranslator*       GetLineNumberTranslator();
-    void                        DeleteLineNumberTranslator( LineNumberTranslator* lnt );
-    void                        StoreLineNumberTranslator( LineNumberTranslator* lnt, std::vector< unsigned char >& data );
-    LineNumberTranslator*       RestoreLineNumberTranslator( const std::vector< unsigned char >& data );
-    const char*                 ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt = NULL );
-    unsigned int                ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt = NULL );
-    std::vector< std::string >& GetFilesPreprocessed();
+    LineNumberTranslator* GetLineNumberTranslator();
+    void                  DeleteLineNumberTranslator( LineNumberTranslator* lnt );
+    void                  StoreLineNumberTranslator( LineNumberTranslator* lnt, std::vector< unsigned char >& data );
+    LineNumberTranslator* RestoreLineNumberTranslator( const std::vector< unsigned char >& data );
+    std::string           ResolveOriginalFile( unsigned int line_number, LineNumberTranslator* lnt = NULL );
+    unsigned int          ResolveOriginalLine( unsigned int line_number, LineNumberTranslator* lnt = NULL );
 
     /************************************************************************/
     /* Streams                                                              */
